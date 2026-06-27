@@ -614,6 +614,22 @@ class SchedulerManager(ManagementBase):
         """Alias for create_autoscaling."""
         return await self.create_autoscaling(config)
     
+    async def pause_autoscaling(self, policy_id: str) -> bool:
+        """Pause an autoscaling policy."""
+        policy = self._autoscaling_policies.get(policy_id)
+        if policy is None:
+            return False
+        policy.status = "paused"
+        return True
+
+    async def resume_autoscaling(self, policy_id: str) -> bool:
+        """Resume an autoscaling policy."""
+        policy = self._autoscaling_policies.get(policy_id)
+        if policy is None:
+            return False
+        policy.status = "running"
+        return True
+
     async def update_autoscaling(self, service_name: str, config: Dict[str, Any]) -> None:
         """
         Update autoscaling policy.

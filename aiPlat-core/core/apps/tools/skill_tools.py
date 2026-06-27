@@ -7,6 +7,7 @@ These tools are intentionally "metadata-first":
 """
 
 from __future__ import annotations
+import logging
 
 import fnmatch
 import hashlib
@@ -85,8 +86,8 @@ def _load_permission_rules() -> Dict[str, str]:
                     continue
                 out[k.strip()] = s
             return out or {"*": "allow"}
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
     return {"*": "allow"}
 
 
@@ -138,8 +139,8 @@ def _load_exec_skill_permission_rules() -> Dict[str, str]:
                     continue
                 out[k.strip()] = s
             return out or {"*": "allow"}
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
     return {"*": "allow"}  # default: allow
 
 

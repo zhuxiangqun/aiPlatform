@@ -154,8 +154,8 @@ async def extract_and_persist_profile(
                     "updated_at": profile.updated_at,
                 },
             )
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
     log_data = {
         "preferences": len(profile.preferences),
         "constraints": len(profile.constraints),

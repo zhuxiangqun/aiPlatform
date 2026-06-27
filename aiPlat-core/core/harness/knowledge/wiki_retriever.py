@@ -7,6 +7,7 @@ with the existing KnowledgeRetriever pipeline.
 """
 
 from __future__ import annotations
+import logging
 
 from typing import Any, Dict, List, Optional
 
@@ -82,8 +83,8 @@ class WikiPageRetriever(IRetriever):
                 for p in pages:
                     if p["title"] in cache:
                         p["_cached_vector"] = cache[p["title"]]
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
         return pages
 
@@ -232,8 +233,8 @@ class WikiPageRetriever(IRetriever):
                         cp2 = _Path.home() / ".aiplat" / "wiki" / "collections" / cid / "inference_cache.json"
                         cp2.write_text(_cache_json.dumps(
                             {"ts": _time.time(), "inference": inf2}, ensure_ascii=False))
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        logging.debug(str(e), exc_info=True)
             except Exception:
                 return pages
 
@@ -279,8 +280,8 @@ class WikiPageRetriever(IRetriever):
                     w = self._relation_boost.get("related", 0.0)
                     if w:
                         boost[f"{page_title}->related->{r}"] = w
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
         return boost
 
     def _fts_wiki_ranks(self, query: str, top_n: int = 30) -> Dict[str, float]:
@@ -364,8 +365,8 @@ class WikiPageRetriever(IRetriever):
                     if pv is not None:
                         cache[pages[j]["title"]] = list(pv) if hasattr(pv, '__iter__') else pv
                 cache_path.write_text(_json.dumps(cache, ensure_ascii=False))
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
         else:
             missing_pvecs = []
 
@@ -486,10 +487,10 @@ class WikiPageRetriever(IRetriever):
                                 ))
                                 self._entries[c_entry.id] = c_entry
                                 seen_titles.add(clean_target)
-                        except Exception:
-                            pass
-        except Exception:
-            pass
+                        except Exception as e:
+                            logging.debug(str(e), exc_info=True)
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
         results.sort(key=lambda r: -r.score)
 
@@ -508,8 +509,8 @@ class WikiPageRetriever(IRetriever):
                 results = [r for r in results
                            if (r.entry.content or r.entry.title, r.score) in reranked_ids]
                 results.sort(key=lambda r: -r.score)
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
 
         return results[:limit]
 

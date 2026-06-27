@@ -8,6 +8,7 @@ Schema:
 """
 
 from __future__ import annotations
+import logging
 
 import sqlite3 as _sqlite3
 import json as _json
@@ -133,8 +134,8 @@ def _row_to_dict(row) -> dict:
     tags = []
     try:
         tags = _json.loads(row[10] or "[]")
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
     return {
         "id": row[0],
         "entity_name": row[1],

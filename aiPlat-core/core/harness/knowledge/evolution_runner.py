@@ -62,8 +62,8 @@ class EvolutionSnapshot:
             from core.harness.knowledge.knowledge_abox_builder import rebuild_full
             reset_ontology()
             rebuild_full(collection_id=self.collection_id)
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
         logger.info(f"Evolution snapshot rolled back for gen {self.generation_id}")
 
 
@@ -476,8 +476,8 @@ class EvolutionRunner:
         if _os.path.exists(path):
             try:
                 return _json.loads(open(path).read())
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
         return {}
 
     def _save_onto_state(self, state: Dict):
@@ -556,8 +556,8 @@ class EvolutionRunner:
                 history = _json.loads(open(path).read())
                 if history:
                     return history[-1]
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
         return None
 
     def _load_last_generation_id(self) -> int:
@@ -567,8 +567,8 @@ class EvolutionRunner:
                 history = _json.loads(open(path).read())
                 if history:
                     return max(h.get("id", 0) for h in history) + 1
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
         return 1
 
     def _record_generation(self, before: Dict, after: Dict,

@@ -9,6 +9,7 @@ App Studio API — conversational app creation, testing, and deployment.
 """
 
 from __future__ import annotations
+import logging
 
 import os
 import shutil
@@ -411,8 +412,8 @@ async def _register_studio_app(platform_url: str, project_id: str, app_url: str)
                 "project_id": project_id,
                 "app_url": app_url,
             })
-    except Exception:
-        pass  # 注册失败不阻塞部署流程
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
 
 def _rollback(current_link: Path, previous_link: Path, project_base: Path):

@@ -97,8 +97,8 @@ async def _governance_middleware(request: Request, call_next):
                 ip_address=request.client.host if request.client else None,
                 user_agent=request.headers.get("user-agent"),
             )
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
     return response
 
@@ -133,8 +133,8 @@ try:
         ingest_fn=ingest_document, query_fn=query,
         enqueue_fn=enqueue_ingest, load_doc_kinds_fn=load_doc_kinds,
     )
-except Exception:
-    pass
+except Exception as e:
+    logging.debug(str(e), exc_info=True)
 
 
 # Optional dependency: python-multipart (needed for UploadFile/File form parsing).
@@ -185,9 +185,9 @@ def _decode_jwt_claims(token: str) -> Dict[str, Any]:
             import jwt  # type: ignore
 
             return jwt.decode(token, secret, algorithms=["HS256", "RS256"], options={"verify_aud": False})
-        except Exception:
+        except Exception as e:
             # fallback to unverified decode
-            pass
+            logging.debug(str(e), exc_info=True)
     parts = token.split(".")
     if len(parts) < 2:
         return {}
@@ -301,8 +301,8 @@ def _resolve_identity(request: Request) -> Identity:
                 )
     except ImportError:
         pass  # python-jose not installed
-    except Exception:
-        pass  # OIDC not configured or token invalid
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     # 3) default fallback
     scopes: List[str] = []
@@ -617,8 +617,8 @@ def _kb_ensure_schema(conn) -> None:
     try:
         conn.executescript(_KB_SCHEMA_SQL)
         conn.commit()
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
     # FTS5 full-text index on kb_elements (best-effort)
     try:
         conn.execute(
@@ -626,20 +626,20 @@ def _kb_ensure_schema(conn) -> None:
             "USING fts5(element_id, doc_id, text, tokenize='unicode61')"
         )
         conn.commit()
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
     # Schema migration: add version column for existing DBs
     try:
         conn.execute("ALTER TABLE documents ADD COLUMN version INTEGER NOT NULL DEFAULT 1")
         conn.commit()
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
     # Schema migration: add wiki_status column for existing DBs
     try:
         conn.execute("ALTER TABLE documents ADD COLUMN wiki_status TEXT NOT NULL DEFAULT ''")
         conn.commit()
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
 
 def _new_analysis_run_id() -> str:
@@ -652,6 +652,59 @@ def _new_analysis_batch_id() -> str:
     import time, random
 
     return f"ab_{int(time.time() * 1000):x}{random.randint(0, 0xFFFF):04x}"
+
+
+def _persist_analysis_batch(*, tenant_id: str, collection_id: str, batch_type: str, title: str, input_obj: Dict[str, Any]) -> str:
+    import json
+
+    conn = _open_kb_db(tenant_id)
+    try:
+        _kb_ensure_schema(conn)
+        bid = _new_analysis_batch_id()
+        conn.execute(
+            "INSERT INTO analysis_batches(tenant_id, batch_id, collection_id, batch_type, title, input_json, created_at) "
+            "VALUES(?,?,?,?,?,?,strftime('%s','now'))",
+            (tenant_id, bid, collection_id, batch_type, title, json.dumps(input_obj or {}, ensure_ascii=False)),
+        )
+        conn.commit()
+        return bid
+    finally:
+        conn.close()
+
+
+def _list_analysis_batches(*, tenant_id: str, collection_id: Optional[str] = None) -> list:
+    conn = _open_kb_db(tenant_id)
+    try:
+        _kb_ensure_schema(conn)
+        if collection_id:
+            rows = conn.execute(
+                "SELECT tenant_id, batch_id, collection_id, batch_type, title, input_json, output_json, created_at "
+                "FROM analysis_batches WHERE tenant_id = ? AND collection_id = ? ORDER BY created_at DESC",
+                (tenant_id, collection_id),
+            ).fetchall()
+        else:
+            rows = conn.execute(
+                "SELECT tenant_id, batch_id, collection_id, batch_type, title, input_json, output_json, created_at "
+                "FROM analysis_batches WHERE tenant_id = ? ORDER BY created_at DESC",
+                (tenant_id,),
+            ).fetchall()
+        return [dict(r) for r in rows]
+    finally:
+        conn.close()
+
+
+def _delete_analysis_batch(*, tenant_id: str, batch_id: str) -> bool:
+    conn = _open_kb_db(tenant_id)
+    try:
+        _kb_ensure_schema(conn)
+        cur = conn.execute(
+            "DELETE FROM analysis_batches WHERE tenant_id = ? AND batch_id = ?",
+            (tenant_id, batch_id),
+        )
+        conn.commit()
+        return cur.rowcount > 0
+    finally:
+        conn.close()
 
 
 async def _core_request(
@@ -1177,8 +1230,8 @@ async def kb_delete_document(doc_id: str, request: Request):
         assets = Path(_kb_tenant_dir(identity.tenant_id)) / "assets" / doc_id
         if assets.exists():
             shutil.rmtree(str(assets), ignore_errors=True)
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
     # best-effort delete associated wiki pages (prevent orphans)
     try:
         from core.harness.knowledge.wiki_engine import search_pages, delete_page
@@ -1188,10 +1241,10 @@ async def kb_delete_document(doc_id: str, request: Request):
             if any(source_tag in str(s) for s in (p.get("source_articles") or [])):
                 try:
                     delete_page(p["title"])
-                except Exception:
-                    pass
-    except Exception:
-        pass
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
     return {"status": "deleted", "doc_id": doc_id}
 
 
@@ -1486,8 +1539,8 @@ async def documents_ingest(request: Request):
         doc_id = job.get("doc_id", "") if isinstance(job, dict) else ""
         if doc_id:
             _asyncio.create_task(_auto_wiki_update(doc_id, str(file_path)))
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     return {"job": job}
 
@@ -1517,8 +1570,8 @@ async def _auto_wiki_update(doc_id: str, file_path: str):
         from core.api.core_facade import wiki_auto_update
         from core.api.facades.service_facade import llm_generate
         await wiki_auto_update(doc_id, file_path)
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
     return {"output": data}
 
 
@@ -2071,6 +2124,75 @@ async def kb_query(req: KBQueryRequest, request: Request):
     return out
 
 
+@app.post("/api/platform/collections/query")
+async def collection_query(request: Request):
+    """Query a single KB collection — wraps kb_query with top_k→limit mapping."""
+    identity = _resolve_identity(request)
+    _require_scope(identity, "kb:read")
+    body = await request.json()
+    payload = {
+        "input": {
+            "tenant_id": identity.tenant_id,
+            "collection_id": str(body.get("collection_id", "")),
+            "question": str(body.get("question", "")),
+            "limit": int(body.get("top_k", 8)),
+        },
+        "context": {"tenant_id": identity.tenant_id, "actor_id": identity.actor_id, "request_id": identity.request_id},
+        "mode": "inline",
+    }
+    core_resp = await _core_request("POST", "/api/core/skills/kb_query/execute", identity=identity, json_body=payload)
+    out = dict(core_resp or {})
+    data = None
+    try:
+        data = (out.get("output") or {}).get("output") if isinstance(out.get("output"), dict) else None
+    except Exception:
+        data = None
+    if isinstance(data, dict):
+        out["kb"] = _normalize_citations_with_assets(tenant_id=identity.tenant_id, data=data)
+    return out
+
+
+@app.post("/api/platform/documents/summarize")
+async def document_summarize(request: Request):
+    """Summarize a document using LLM (calls core skill document_summarize)."""
+    identity = _resolve_identity(request)
+    _require_scope(identity, "kb:read")
+    body = await request.json()
+    payload = {
+        "input": {
+            "tenant_id": identity.tenant_id,
+            "doc_id": str(body.get("doc_id", "")),
+            "profile": str(body.get("profile", "key_points")),
+            "max_points": int(body.get("max_points", 5)),
+        },
+        "context": {"tenant_id": identity.tenant_id, "actor_id": identity.actor_id, "request_id": identity.request_id},
+        "mode": "inline",
+    }
+    core_resp = await _core_request("POST", "/api/core/skills/document_summarize/execute", identity=identity, json_body=payload)
+    return dict(core_resp or {})
+
+
+@app.post("/api/platform/collections/rewrite-answer")
+async def collection_rewrite_answer(request: Request):
+    """Rewrite/improve a KB answer using LLM (calls core skill collection_rewrite_answer)."""
+    identity = _resolve_identity(request)
+    _require_scope(identity, "kb:write")
+    body = await request.json()
+    payload = {
+        "input": {
+            "tenant_id": identity.tenant_id,
+            "collection_id": str(body.get("collection_id", "")),
+            "question": str(body.get("question", "")),
+            "current_answer": str(body.get("current_answer", "")),
+            "items": body.get("items", []) if isinstance(body.get("items"), list) else [],
+        },
+        "context": {"tenant_id": identity.tenant_id, "actor_id": identity.actor_id, "request_id": identity.request_id},
+        "mode": "inline",
+    }
+    core_resp = await _core_request("POST", "/api/core/skills/collection_rewrite_answer/execute", identity=identity, json_body=payload)
+    return dict(core_resp or {})
+
+
 @app.get("/kb/assets/{doc_id}/pages/{page_idx}")
 @app.get("/api/v1/kb/assets/{doc_id}/pages/{page_idx}")
 @app.get("/platform/kb/assets/{doc_id}/pages/{page_idx}")
@@ -2186,10 +2308,10 @@ async def api_v1_agents_create(request: Request, body: Dict[str, Any]):
                             "granted_by": "platform",
                         },
                     )
-                except Exception:
-                    pass
-    except Exception:
-        pass
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
     return created
 
 
@@ -2316,8 +2438,8 @@ async def gateway_execute(body: Dict[str, Any], request: Request):
             resource_id=payload.get("kind", "unknown"),
             run_id=str(run_id) if run_id else None,
         )
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
     return result
 
 
@@ -2501,8 +2623,8 @@ async def tenant_register(request: Request):
             raise HTTPException(status_code=409, detail="email_already_registered")
     except HTTPException:
         raise
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     import secrets as _secrets
     tid = f"tenant_{_secrets.token_urlsafe(8)}"
@@ -2524,8 +2646,8 @@ async def tenant_register(request: Request):
     try:
         from tenants.manager import tenant_manager
         tenant_manager.set_verification_token(tid, token)
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     return {
         "tenant_id": tid,
@@ -2643,8 +2765,8 @@ async def tenant_usage(request: Request):
         usage = quota_manager.get_usage(tid)
         if usage:
             return {"tenant_id": tid, "usage": usage.model_dump() if hasattr(usage, 'model_dump') else str(usage)}
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
     return {"tenant_id": tid, "usage": {"agents": 0, "skills": 0, "api_keys": 0, "monthly_tokens": 0}}
 
 
@@ -3056,8 +3178,8 @@ async def kb_create_with_ai(request: Request):
         # Ensure version column
         try:
             c.execute("ALTER TABLE documents ADD COLUMN version INTEGER NOT NULL DEFAULT 1")
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
         c.execute("INSERT OR REPLACE INTO documents(tenant_id,doc_id,collection_id,source_uri,kind,status,version,meta_json,created_at) VALUES(?,?,?,?,?,?,?,?,?)",
                   (identity.tenant_id, doc_id, collection_id, f"ai://{doc_id}", "txt", "ready", 1, json.dumps({"title": title}), now))
         c.execute("INSERT OR REPLACE INTO kb_elements(tenant_id,element_id,doc_id,type,page_idx,bbox_json,text,cells_json,asset_id,meta_json,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?)",
@@ -3163,8 +3285,8 @@ def _auto_archive_docs(tenant_id: str) -> None:
         )
         conn.commit()
         conn.close()
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
 
 
@@ -3251,6 +3373,46 @@ async def vault_wiki_backlinks(doc_id: str):
             backlinks.append({"title": p["title"], "category": p.get("category", ""),
                               "summary": p.get("summary", "")[:100]})
     return {"pages": backlinks, "total": len(backlinks)}
+
+
+# ── Analysis Batches (KB analysis job CRUD) ──
+
+@app.post("/api/platform/analysis-batches")
+async def create_analysis_batch(request: Request):
+    tenant_id = request.headers.get("X-AIPLAT-TENANT-ID", "default")
+    body = await request.json()
+    bid = _persist_analysis_batch(
+        tenant_id=tenant_id,
+        collection_id=str(body.get("collection_id", "")),
+        batch_type=str(body.get("batch_type", "analysis")),
+        title=str(body.get("title", "")),
+        input_obj=body.get("input_json", {}) or body,
+    )
+    return {"batch_id": bid, "status": "created"}
+
+
+@app.get("/api/platform/analysis-batches")
+async def list_analysis_batches(request: Request, collection_id: Optional[str] = None):
+    tenant_id = request.headers.get("X-AIPLAT-TENANT-ID", "default")
+    batches = _list_analysis_batches(tenant_id=tenant_id, collection_id=collection_id)
+    return {"batches": batches, "total": len(batches)}
+
+
+@app.delete("/api/platform/analysis-batches/{batch_id}")
+async def delete_analysis_batch(batch_id: str, request: Request):
+    tenant_id = request.headers.get("X-AIPLAT-TENANT-ID", "default")
+    ok = _delete_analysis_batch(tenant_id=tenant_id, batch_id=batch_id)
+    if not ok:
+        raise HTTPException(status_code=404, detail=f"Batch {batch_id} not found")
+    return {"batch_id": batch_id, "status": "deleted"}
+
+
+# ── Studio Sessions ──
+
+@app.get("/api/studio/sessions")
+async def list_studio_sessions():
+    """List studio sessions (scaffold — full Studio API to be implemented)."""
+    return {"sessions": [], "total": 0}
 
 if __name__ == "__main__":
     import uvicorn

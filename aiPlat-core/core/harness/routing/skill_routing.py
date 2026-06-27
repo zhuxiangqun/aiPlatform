@@ -9,6 +9,7 @@ Skill 路由（候选生成/可解释打分）
 """
 
 from __future__ import annotations
+import logging
 
 from dataclasses import dataclass
 from typing import Any, Dict, Iterable, List, Optional, Sequence, Set
@@ -198,8 +199,8 @@ def apply_learned_weights() -> Dict[str, Any]:
                     stats[sname]["misroutes"] = stats.get(sname, {}).get("misroutes", 0) + 1
                 elif outcome == "miss_tool" and top1:
                     stats[top1]["misses"] = stats.get(top1, {}).get("misses", 0) + 1
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
         
         # Adjust weights based on hit_rate
         adjusted: Dict[str, float] = {}

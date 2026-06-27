@@ -1,3 +1,4 @@
+import logging
 """
 Semantic Memory
 
@@ -56,12 +57,12 @@ class SemanticMemory:
         # Migration: add new columns for existing DBs
         try:
             self._conn.execute("ALTER TABLE semantic_memories ADD COLUMN expires_at TEXT")
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
         try:
             self._conn.execute("ALTER TABLE semantic_memories ADD COLUMN is_deleted INTEGER DEFAULT 0")
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
         self._conn.commit()
         self._load_from_sqlite()
 
@@ -146,8 +147,8 @@ class SemanticMemory:
                             results.append(item)
                     if results:
                         return results
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
 
         # Fallback: keyword matching
         results = []
@@ -177,8 +178,8 @@ class SemanticMemory:
             try:
                 from core.harness.memory.metrics import inc_semantic_renewed
                 inc_semantic_renewed()
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
     
     async def get(self, key: str) -> Optional[MemoryItem]:
         """Get a specific memory. Filters soft-deleted items."""
@@ -260,8 +261,8 @@ class SemanticMemory:
                 from core.harness.memory.metrics import inc_semantic_expired
                 for _ in to_delete:
                     inc_semantic_expired()
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
         return len(to_delete)
     
     async def search_by_metadata(

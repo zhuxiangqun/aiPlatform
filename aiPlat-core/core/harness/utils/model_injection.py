@@ -7,6 +7,7 @@ Model injection helpers.
 """
 
 from __future__ import annotations
+import logging
 
 import os
 from typing import Any, Optional
@@ -70,8 +71,8 @@ def _log_model_selection(purpose: str, selected: str, entry: str = "best_model_f
         samples.append(record)
         _log_os.makedirs(_log_os.path.dirname(log_path), exist_ok=True)
         _log_json.dump(samples[-1000:], open(log_path, "w"))
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
 
 def get_default_model(purpose: str = "default") -> str:
@@ -82,8 +83,8 @@ def get_default_model(purpose: str = "default") -> str:
         if result:
             _log_model_selection(purpose, result, entry="get_default_model", source="infra_ModelManager")
             return result
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
     return ""
 
 
@@ -151,8 +152,8 @@ def _load_adapter_from_store(adapter_id: str) -> Optional[dict]:
             try:
                 if d.get("api_key_enc") and is_configured():
                     api_key = decrypt_str(d.get("api_key_enc"))
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
             d["api_key"] = api_key
             try:
                 d["models"] = json.loads(d.get("models_json") or "[]") if d.get("models_json") else []
@@ -253,13 +254,13 @@ def _bind_model(obj: Any, adapter: Any) -> None:
             # fall back to attribute write
             try:
                 setattr(obj, "_model", adapter)
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
     else:
         try:
             setattr(obj, "_model", adapter)
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
     # 2) bind to internal loop (common pattern)
     try:
@@ -268,15 +269,15 @@ def _bind_model(obj: Any, adapter: Any) -> None:
             if hasattr(loop, "set_model"):
                 try:
                     loop.set_model(adapter)  # type: ignore[attr-defined]
-                except Exception:
-                    pass
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
             elif hasattr(loop, "_model"):
                 try:
                     setattr(loop, "_model", adapter)
-                except Exception:
-                    pass
-    except Exception:
-        pass
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
 
 def ensure_agent_model(agent: Any, *, model_name: str, force: bool = False) -> Any:
@@ -301,8 +302,8 @@ def ensure_agent_model(agent: Any, *, model_name: str, force: bool = False) -> A
         loop_model = getattr(loop, "_model", None) if loop is not None else None
         if loop is not None and loop_model is None:
             _bind_model(agent, cur)
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     return cur
 
@@ -391,8 +392,8 @@ async def generate_with_fallback(purpose: str,
     if not candidates:
         try:
             candidates = _get_cached_model_manager().select_by_purpose_list(purpose)
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
     if not candidates:
         candidates = [best_model_for_purpose(purpose)]
@@ -493,8 +494,8 @@ async def _record_quality_and_metrics_async(purpose: str, model_name: str, resp,
             latency_ms = max(tokens * 20, 500)
             get_latency_tracker().record_latency(model_name, latency_ms)
             log_entry["latency_ms"] = latency_ms
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     # 3. Route metrics (atomic update)
     is_local = any(k in model_name for k in ["qwen", "gemma", "minicpm", "mxbai", "all-MiniLM"])
@@ -553,8 +554,8 @@ def best_model_for_purpose(purpose: str) -> str:
             _log_model_selection(purpose, selected, entry="best_model_for_purpose",
                                  source="infra_select_by_purpose")
             return selected
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     # 2. Env var fallback via infra
     model_name = get_default_model(purpose=purpose) or "deepseek-chat"
@@ -619,5 +620,5 @@ def _register_adapter(provider: str, model_name: str, base_url: str = "", api_ke
                 created_at=now, updated_at=now,
             )
             am._adapters[adapter_id] = info
-    except Exception:
-        pass  # best-effort
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)

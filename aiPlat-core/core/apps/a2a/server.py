@@ -7,6 +7,7 @@ Zero new dependencies.
 """
 
 from __future__ import annotations
+import logging
 
 import json
 import uuid
@@ -77,8 +78,8 @@ async def _execute_task(task_id: str, user_input: str):
             mm = get_memory_manager()
             for ts_id, ts in getattr(mm, '_task_skills', {}).items():
                 task.artifacts.append({"id": ts_id, "name": ts.name, "pass_rate": ts.pass_rate})
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
     except Exception as e:
         task.status = TaskStatus.FAILED
         task.error = str(e)[:500]
@@ -99,8 +100,8 @@ async def get_task(task_id: str):
             if run:
                 return {"task_id": task_id, "status": getattr(run, "status", "completed"),
                         "result": getattr(run, "output", None)}
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
         raise HTTPException(404, "task_not_found")
 
     return {"task_id": task.id, "status": task.status.value, "user_input": task.user_input,

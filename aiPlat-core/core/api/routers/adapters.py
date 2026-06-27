@@ -9,6 +9,7 @@ from core.governance.changeset import record_changeset
 from core.harness.integration import KernelRuntime
 from core.harness.kernel.runtime import get_kernel_runtime
 from core.schemas_adapters import AdapterCreateRequest, AdapterUpdateRequest, ModelUpdateRequest
+import logging
 
 router = APIRouter()
 
@@ -62,8 +63,8 @@ async def create_adapter(request: AdapterCreateRequest, rt: RuntimeDep = Depends
             args={"name": request.name, "provider": request.provider, "api_base_url": request.api_base_url},
             result={"adapter_id": str(adapter.id), "api_key_sha256": api_key_hash, "api_key_len": len(str(request.api_key or ""))},
         )
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
     return {"adapter_id": adapter.id, "status": "created"}
 
 
@@ -115,8 +116,8 @@ async def update_adapter(adapter_id: str, request: AdapterUpdateRequest, rt: Run
             args={"name": request.name, "api_base_url": request.api_base_url, "rate_limit": request.rate_limit},
             result={"api_key_sha256": api_key_hash, "api_key_len": len(str(request.api_key or "")) if request.api_key else 0},
         )
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
     return {"status": "updated"}
 
 
@@ -131,8 +132,8 @@ async def delete_adapter(adapter_id: str, rt: RuntimeDep = Depends(get_kernel_ru
         raise HTTPException(status_code=404, detail=f"Adapter {adapter_id} not found")
     try:
         await _record_changeset(rt, name="adapter_delete", target_type="adapter", target_id=str(adapter_id), args={}, result={"status": "deleted"})
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
     return {"status": "deleted"}
 
 
@@ -156,8 +157,8 @@ async def enable_adapter(adapter_id: str, rt: RuntimeDep = Depends(get_kernel_ru
         raise HTTPException(status_code=404, detail=f"Adapter {adapter_id} not found")
     try:
         await _record_changeset(rt, name="adapter_enable", target_type="adapter", target_id=str(adapter_id), args={}, result={"status": "enabled"})
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
     return {"status": "enabled"}
 
 
@@ -172,8 +173,8 @@ async def disable_adapter(adapter_id: str, rt: RuntimeDep = Depends(get_kernel_r
         raise HTTPException(status_code=404, detail=f"Adapter {adapter_id} not found")
     try:
         await _record_changeset(rt, name="adapter_disable", target_type="adapter", target_id=str(adapter_id), args={}, result={"status": "disabled"})
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
     return {"status": "disabled"}
 
 
@@ -213,8 +214,8 @@ async def add_adapter_model(adapter_id: str, request: dict, rt: RuntimeDep = Dep
             args={"model": request.get("name", "default"), "max_tokens": request.get("max_tokens", 4096), "temperature": request.get("temperature", 0.7), "enabled": request.get("enabled", True)},
             result={"status": "added"},
         )
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
     return {"status": "added"}
 
 
@@ -236,8 +237,8 @@ async def delete_adapter_model(adapter_id: str, model_name: str, rt: RuntimeDep 
         raise HTTPException(status_code=404, detail=f"Adapter {adapter_id} not found")
     try:
         await _record_changeset(rt, name="adapter_model_delete", target_type="adapter", target_id=str(adapter_id), args={"model": str(model_name)}, result={"status": "deleted"})
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
     return {"status": "deleted"}
 
 

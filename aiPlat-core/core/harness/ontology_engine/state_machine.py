@@ -13,6 +13,7 @@ Usage:
 """
 
 from __future__ import annotations
+import logging
 
 import re as _re
 import time as _time
@@ -348,8 +349,8 @@ class StateMachine:
             try:
                 if self._simple_eval(when, {"to": to_state}):
                     matched.append(effect)
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
         return matched
 
     @staticmethod

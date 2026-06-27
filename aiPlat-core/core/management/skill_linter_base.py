@@ -12,6 +12,7 @@ Adding a new rule:
 """
 
 from __future__ import annotations
+import logging
 
 import importlib
 import os
@@ -196,8 +197,8 @@ class YAMLRule(LintRule):
         if handler:
             try:
                 return handler(skill)
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
         return []
 
     def propose_fix(self, skill: Any, issue: LintIssue) -> Optional[FixProposal]:
@@ -332,8 +333,8 @@ class RuleRegistry:
                         errors.append(issue)
                     else:
                         warnings.append(issue)
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
 
         meta = getattr(skill, "metadata", None) if not isinstance(skill, dict) else skill.get("metadata")
         meta = meta if isinstance(meta, dict) else {}
@@ -377,8 +378,8 @@ class RuleRegistry:
                         fix = rule.propose_fix(skill, lint_issue)
                         if fix:
                             fixes.append(fix)
-                except Exception:
-                    pass
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
         return fixes
 
     # ---- discovery ----
@@ -397,8 +398,8 @@ class RuleRegistry:
                     data = yaml.safe_load(f) or {}
                 for rule_def in data.get("rules", []):
                     self.register(YAMLRule(rule_def))
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
 
     def _load_python_rules(self) -> None:
         rules_pkg = Path(__file__).parent / "lint_rules"
@@ -425,10 +426,10 @@ class RuleRegistry:
                                     and attr is not YAMLRule
                                     and not attr.__name__.startswith("_")):
                                 self.register(attr())
-                except Exception:
-                    pass
-        except Exception:
-            pass
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
 
 # ============================================================

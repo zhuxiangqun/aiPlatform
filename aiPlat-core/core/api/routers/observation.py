@@ -8,6 +8,7 @@ Observation Router — 实时事件流 SSE 端点
   3. 对于诊断事件：从 diag_buffers 回放
 """
 from __future__ import annotations
+import logging
 
 import asyncio
 import json as _json
@@ -73,8 +74,8 @@ async def stream_events(run_id: str):
                     else:
                         yield f"data: {_json.dumps(dict(ev), default=str)}\n\n"
                 yield f"data: {_json.dumps({'type': 'replay_done'})}\n\n"
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
 
         # Phase 2: live streaming from EventBus (if active), else signal done
         q = EventBus.subscribe(run_id)
@@ -112,8 +113,8 @@ async def stream_events(run_id: str):
                             if not (any_events.get("items") or []):
                                 yield f"data: {_json.dumps({'type': 'done'})}\n\n"
                                 return
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            logging.debug(str(e), exc_info=True)
                     yield f"data: {_json.dumps({'type': 'heartbeat'})}\n\n"
         except asyncio.CancelledError:
             pass

@@ -296,6 +296,16 @@ class ServiceManager(ManagementBase):
                 return service
         return None
     
+    async def stop_service(self, service_name: str) -> bool:
+        """Stop a service (mark as stopped)."""
+        if self._standalone_mode:
+            self._refresh_services_from_processes()
+        for key, service in self._services.items():
+            if key.endswith(f"/{service_name}") or key == service_name:
+                service.status = "Stopped"
+                return True
+        return False
+    
     async def deploy_service(self, config: Dict[str, Any]) -> ServiceInfo:
         """Deploy a new service (not supported in standalone mode)."""
         if self._standalone_mode:

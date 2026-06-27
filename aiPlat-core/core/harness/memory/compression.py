@@ -1,3 +1,4 @@
+import logging
 """
 Context Compression
 
@@ -243,8 +244,8 @@ async def _background_tool_summarize(
     try:
         from core.harness.memory.metrics import inc_tool_truncated
         inc_tool_truncated(tool_name)
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
     try:
         summary = await asyncio.wait_for(
             _llm_summarize_tool_output(tool_name, raw_output),
@@ -264,16 +265,16 @@ async def _background_tool_summarize(
     try:
         from core.harness.memory.metrics import observe_tool_summary
         observe_tool_summary(tool_name, _time.time() - _t0)
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
 
 async def _llm_summarize_tool_output(tool_name: str, raw_output: str) -> str:
     """Call LLM to generate structured summary of tool output."""
     try:
         from core.harness.infrastructure.infra_llm_adapter import InfraLLMAdapter
-        model_name = os.getenv("AIPLAT_DOC_LLM_MODEL",
-                               os.getenv("AIPLAT_LLM_MODEL", ""))
+        from core.harness.utils.model_injection import best_model_for_purpose
+        model_name = best_model_for_purpose("doc_llm") or ""
         adapter = InfraLLMAdapter(model_name=model_name) if model_name else None
         if adapter is None:
             raise RuntimeError("no LLM model configured for tool summarization")

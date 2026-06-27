@@ -6,6 +6,7 @@ Output: a structured diff + human-readable summary suitable for evaluator prompt
 """
 
 from __future__ import annotations
+import logging
 
 from typing import Any, Dict, List, Tuple, Optional
 import hashlib
@@ -123,8 +124,8 @@ def compute_evidence_diff(base: Dict[str, Any], cur: Dict[str, Any]) -> Dict[str
             parts = k.split("|")
             if len(parts) >= 2:
                 return int(str(parts[1]).strip())
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
         return 0
 
     new_console_errors = [k for k in new_console if "error" in _level_from_console_key(k)]

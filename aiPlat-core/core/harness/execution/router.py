@@ -11,6 +11,7 @@ injects plan metadata into the agent context for step-by-step execution.
 """
 
 from __future__ import annotations
+import logging
 
 import os
 import time
@@ -55,8 +56,8 @@ class EngineRouter:
                     try:
                         from .engines.graph_engine import GraphEngine
                         self._graph_engine = GraphEngine()
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        logging.debug(str(e), exc_info=True)
                 if self._graph_engine is not None:
                     engine, engine_key, chain = self._graph_engine, "graph", ["graph", "loop", "quick"]
                 else:
@@ -113,8 +114,8 @@ class EngineRouter:
             try:
                 from .engines.graph_engine import GraphEngine
                 self._graph_engine = GraphEngine()
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
         if self._graph_engine is not None:
             engines["graph"] = self._graph_engine
         last_error: Optional[Exception] = None

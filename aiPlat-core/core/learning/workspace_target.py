@@ -6,6 +6,7 @@ from typing import Any, Dict, Optional
 from fastapi import HTTPException, Request
 
 from core.governance.changeset import record_changeset
+import logging
 
 
 async def ensure_workspace_target(
@@ -36,8 +37,8 @@ async def ensure_workspace_target(
                 s0 = await workspace_skill_manager.get_skill(tid)
                 if s0:
                     return {"target_type": "skill", "target_id": tid, "forked": False}
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
         if not engine_skill_manager:
             if strict:
                 raise HTTPException(status_code=503, detail="Engine skill manager not available")
@@ -89,8 +90,8 @@ async def ensure_workspace_target(
                 args={"source_scope": "engine", "source_skill_id": tid, "target_scope": "workspace"},
                 user_id=actor_id,
             )
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
         return {"target_type": "skill", "target_id": str(new_skill.id), "forked": True, "source_id": tid}
 
     # agents
@@ -100,8 +101,8 @@ async def ensure_workspace_target(
                 a0 = await workspace_agent_manager.get_agent(tid)
                 if a0:
                     return {"target_type": "agent", "target_id": tid, "forked": False}
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
         if not engine_agent_manager:
             if strict:
                 raise HTTPException(status_code=503, detail="Engine agent manager not available")
@@ -147,8 +148,8 @@ async def ensure_workspace_target(
                 args={"source_scope": "engine", "source_agent_id": tid, "target_scope": "workspace"},
                 user_id=actor_id,
             )
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
         return {"target_type": "agent", "target_id": str(new_agent.id), "forked": True, "source_id": tid}
 
     return {"target_type": t, "target_id": tid, "forked": False}

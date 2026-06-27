@@ -1,3 +1,4 @@
+import logging
 """
 Core Layer API Client
 
@@ -95,8 +96,8 @@ class CoreAPIClient:
                 for k, v in fh.items():
                     h.setdefault(k, v)
                 kwargs["headers"] = h
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
         response = await self._client.request(method, path, **kwargs)
         if response.status_code >= 400:
@@ -126,8 +127,8 @@ class CoreAPIClient:
                 for k, v in fh.items():
                     h.setdefault(k, v)
                 kwargs["headers"] = h
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
         resp = await self._client.request(method, path, **kwargs)
         if resp.status_code >= 400:

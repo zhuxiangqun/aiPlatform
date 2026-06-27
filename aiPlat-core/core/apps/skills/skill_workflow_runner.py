@@ -24,6 +24,7 @@ Usage from SKILL.md:
 """
 
 from __future__ import annotations
+import logging
 
 import asyncio
 import copy
@@ -66,8 +67,8 @@ class SkillWorkflowRunner:
                 "start_time": _time.time(),
                 "duration_ms": 0,
             })
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
         for i, step in enumerate(steps):
             step_name, step_config = self._parse_step(step)
@@ -95,8 +96,8 @@ class SkillWorkflowRunner:
                     "step_number": i,
                     "args": {"skill_name": step_name},
                 })
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
 
             try:
                 from .executor import SkillExecutor

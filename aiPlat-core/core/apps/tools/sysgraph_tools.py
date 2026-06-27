@@ -12,6 +12,7 @@ Tools:
 """
 
 from __future__ import annotations
+import logging
 
 from pathlib import Path
 from typing import Any, Dict, List
@@ -36,8 +37,8 @@ def _read_source(repo_root: Path, filepath: str, max_lines: int = 80) -> str:
         full = repo_root / filepath
         if full.exists() and full.suffix == ".py":
             return "\n".join(full.read_text(encoding="utf-8", errors="ignore").split("\n")[:max_lines])
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
     return ""
 
 

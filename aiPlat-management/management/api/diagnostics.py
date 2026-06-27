@@ -1,3 +1,4 @@
+import logging
 """
 Diagnostics API
 """
@@ -469,8 +470,8 @@ async def _get_learning_stats(core_client) -> Dict[str, Any]:
             "total_rollbacks": rollback.get("total", 0) if isinstance(rollback, dict) else 0,
             "recent": (evo.get("items", []) or [])[:3] if isinstance(evo, dict) else [],
         }
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     # A/B scores summary — check if prompt_eval_scores table has data
     try:
@@ -494,12 +495,12 @@ async def _get_learning_stats(core_client) -> Dict[str, Any]:
                         "templates": row[1] or 0,
                         "avg_score": round(row[2] or 0, 2),
                     }
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
             finally:
                 conn.close()
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     # Crystallized skills count
     try:
@@ -509,8 +510,8 @@ async def _get_learning_stats(core_client) -> Dict[str, Any]:
                 f for f in os.listdir(skill_auto_dir)
                 if os.path.isfile(os.path.join(skill_auto_dir, f, "SKILL.md"))
             ])
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     return result
 
@@ -544,8 +545,8 @@ async def doctor_report(request: Request) -> Dict[str, Any]:
     try:
         if core_client:
             adapters = await core_client.list_adapters(limit=50, offset=0)
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     # Autosmoke config: env overrides first, otherwise fall back to core global_settings(key="autosmoke")
     core_autosmoke_cfg: Dict[str, Any] = {}
@@ -630,8 +631,8 @@ async def doctor_report(request: Request) -> Dict[str, Any]:
                 "capability_counts": dict(sorted(cap_counts.items(), key=lambda kv: kv[1], reverse=True)),
                 "high_risk_skill_count": int(high_risk),
             }
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     # Prompt templates summary (best-effort)
     prompt_templates: Dict[str, Any] = {"total": 0}
@@ -685,8 +686,8 @@ async def doctor_report(request: Request) -> Dict[str, Any]:
                 "policy_version": tp.get("version"),
                 "approval_required_tools": approval_tools,
             }
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     links = {
         "onboarding_ui": "/onboarding",
@@ -969,8 +970,8 @@ async def doctor_report(request: Request) -> Dict[str, Any]:
                     },
                 }
             )
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     # If autosmoke is disabled, provide an action using config center (env still can override).
     if not autosmoke["enabled"]:
@@ -1006,8 +1007,8 @@ async def doctor_report(request: Request) -> Dict[str, Any]:
                         "links": {"onboarding_ui": "/onboarding"},
                     }
                 )
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     if strong_gate.get("enabled"):
         recs.append(
@@ -1035,8 +1036,8 @@ async def doctor_report(request: Request) -> Dict[str, Any]:
                     },
                 }
             )
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     # Capability governance hint
     try:
@@ -1049,8 +1050,8 @@ async def doctor_report(request: Request) -> Dict[str, Any]:
                     "links": {"onboarding_ui": "/onboarding", "tenant_policies_ui": "/diagnostics/policies"},
                 }
             )
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     return {
         "generated_at": time.time(),

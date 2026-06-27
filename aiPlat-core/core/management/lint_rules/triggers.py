@@ -3,6 +3,7 @@
 from typing import Any, Dict, List
 
 from core.management.skill_linter_base import LintIssue, LintRule
+import logging
 
 
 class TriggerTooFewCheck(LintRule):
@@ -137,8 +138,8 @@ class RoutingDisambigCheck(LintRule):
                     message=f"路由质量提示：selected={sel}, wrong_top1={wrong_top1}, wrong_cand={wrong_cand}, avg_rank={avg_rank}, rank>=3={rank_ge3}。建议补充 constraints/negative_triggers 提高区分度。",
                     location="observability.routing_funnel",
                 )]
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
         return []
 
     @staticmethod

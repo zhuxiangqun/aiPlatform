@@ -303,8 +303,8 @@ async def run_readiness_audit():
                     refs_mr += 1
                 if "model_router" in line and "model_router.py" not in line:
                     refs_rt += 1
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
     # If files exist AND have callers → migration incomplete (not a failure)
     # If files exist AND zero callers → they should be deleted (failure)
     migrating = (has_mr or has_rt) and (refs_mr > 0 or refs_rt > 0)
@@ -398,8 +398,8 @@ async def generate_eval_for_agent(agent_id: str):
                     recent_tools.append(r[0]); seen.add(r[0])
         finally:
             conn.close()
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     if has_scoring:
         return {
@@ -421,8 +421,8 @@ async def generate_eval_for_agent(agent_id: str):
         if len(parts) >= 3:
             try:
                 fm = yaml.safe_load(parts[1]) or {}
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
             body = parts[2].strip()
     name = str(fm.get("name", agent_id))
     desc = str(fm.get("description", ""))
@@ -516,6 +516,6 @@ def _parse_existing_scoring(content: str) -> list:
             if len(parts) >= 3:
                 fm = yaml.safe_load(parts[1]) or {}
                 return fm.get("scoring_dimensions", []) or []
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
     return []

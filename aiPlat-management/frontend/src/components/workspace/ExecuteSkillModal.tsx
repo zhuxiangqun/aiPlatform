@@ -136,7 +136,7 @@ const StructuredSkillOutput: React.FC<{ text: string }> = ({ text }) => {
 
 const ExecuteSkillModal: React.FC<ExecuteSkillModalProps> = ({ open, skill, onClose }) => {
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<{ status: string; output?: unknown; error?: any; error_message?: string; error_detail?: any; duration_ms?: number; tokens?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number } } | null>(null);
+  const [result, setResult] = useState<{ status: string; run_id?: string; output?: unknown; error?: any; error_message?: string; error_detail?: any; duration_ms?: number; tokens?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number } } | null>(null);
   const [inputText, setInputText] = useState('');
   const [helpLoading, setHelpLoading] = useState(false);
   const [helpMarkdown, setHelpMarkdown] = useState<string>('');

@@ -6,6 +6,7 @@ collects trace data, computes metrics, and produces reports.
 """
 
 from __future__ import annotations
+import logging
 
 import json
 import os
@@ -96,8 +97,8 @@ def list_eval_sets() -> List[Dict[str, Any]]:
                     "tasks": len(data.get("tasks", [])),
                     "created_at": data.get("created_at", 0),
                 })
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
     return result
 
 
@@ -209,8 +210,8 @@ class EvalRunner:
         try:
             events = await self._collect_events(run_id)
             steps = len([e for e in events if e.get("kind") == "tool" or e.get("event_type") == "tool_call"])
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
         # Determine task completion level
         level = self._determine_level(task, output, status, steps, events)
@@ -303,8 +304,8 @@ def _make_agent_info(agent_id: str) -> Any:
     try:
         from core.harness.utils.model_injection import get_default_model
         model = get_default_model("default")
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     return SimpleNamespace(
         id=agent_id,

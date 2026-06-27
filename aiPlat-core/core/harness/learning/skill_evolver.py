@@ -69,13 +69,13 @@ class SkillEvolver:
 
             # 检查是否已有 Skill 覆盖
             try:
-                from core.apps.skills.registry import SkillRegistry
-                reg = SkillRegistry()
+                from core.harness.integration import get_skill_registry
+                reg = get_skill_registry()
                 if hasattr(reg, 'search_by_pattern'):
                     if reg.search_by_pattern(list(pattern.tool_sequence)):
                         continue
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
 
             draft = SharedSkillDraft(
                 pattern_hash=pattern_hash,

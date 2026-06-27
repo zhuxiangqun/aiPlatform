@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Plus, RotateCw, PlayCircle, PauseCircle, Trash2, Pencil, Zap, Clock, MessageSquare, ShieldCheck, Upload, Key, Search } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Table, Select, Button, Modal, toast, Input } from '../../../components/ui';
+import { Table, Select, Button, Modal, toast } from '../../../components/ui';
 import { useWorkspaceAgentStore } from '../../../stores';
 import { workspaceAgentApi, type Agent } from '../../../services';
 import AddAgentModal from '../../../components/workspace/AddAgentModal';

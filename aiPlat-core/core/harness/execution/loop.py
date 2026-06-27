@@ -114,8 +114,8 @@ class BaseLoop(ILoop):
                         },
                         "step_number": step_num,
                     })
-                except Exception:
-                    pass
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
 
                 await self._trigger_hook(
                     HookPhase.POST_CONTRACT_CHECK,
@@ -158,8 +158,8 @@ class BaseLoop(ILoop):
                         key=f"praxis:{session.run_id}",
                         value={"session": session.to_dict()},
                     )
-                except Exception:
-                    pass
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
 
             # Post-loop hook
             await self._trigger_hook(HookPhase.POST_LOOP, {"state": self._current_state})
@@ -186,8 +186,8 @@ class BaseLoop(ILoop):
             try:
                 await self._trigger_hook(HookPhase.STOP, {"state": self._current_state, "reason": stop_reason, "error": str(e)})
                 await self._trigger_hook(HookPhase.SESSION_END, {"state": self._current_state, "reason": stop_reason, "error": str(e)})
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
             return LoopResult(
                 success=False,
                 final_state=self._current_state,
@@ -360,8 +360,8 @@ class ReActLoop(BaseLoop):
                 severity="warning",
                 description=reason,
             )
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
         return "continue"
 
     def set_model(self, model: Any) -> None:
@@ -402,8 +402,8 @@ class ReActLoop(BaseLoop):
                 raise RuntimeError(f"Tool '{tool_name}' not approved: {request.result.comments if request.result else 'pending'}")
         except RuntimeError:
             raise
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
     
     def _get_skill(self, name: str) -> Optional[Any]:
         """Get skill by name"""
@@ -458,8 +458,8 @@ class ReActLoop(BaseLoop):
                         "max_tokens": int(getattr(self._config, 'max_tokens', 0) or 0),
                     },
                 })
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
         state.history.append({
             "step": state.step_count,
@@ -504,8 +504,8 @@ class ReActLoop(BaseLoop):
         # Parse TODO_DONE markers from reasoning too (more "seamless")
         try:
             await self._apply_todo_done_markers(state, str(reasoning or ""), source="reasoning")
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
         # 支持“直接结束”语义：当模型给出 DONE/FINAL 且没有动作调用时，直接结束。
         # 这使得在无工具调用场景也能完成一次 agent 执行（例如 mock LLM / 纯对话）。
@@ -534,8 +534,8 @@ class ReActLoop(BaseLoop):
                         "result": {"answer": final_text[:500]},
                         "step_number": state.step_count,
                     })
-                except Exception:
-                    pass
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
                 # Optional: auto-complete current todo when finishing (best-effort)
                 try:
                     if os.getenv("AIPLAT_RUN_STATE_AUTO_COMPLETE_ON_DONE", "true").lower() in ("1", "true", "yes", "y"):
@@ -554,12 +554,12 @@ class ReActLoop(BaseLoop):
                             if cur_id:
                                 state.context["run_state"] = set_todo_status(rs, todo_id=cur_id, status="completed", source="auto_complete_on_done")
                                 await self._persist_run_state(state, source="auto_complete_on_done", extra={"todo_id": cur_id})
-                except Exception:
-                    pass
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
                 state.current = LoopStateEnum.FINISHED
                 return state
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
         # Auto-detect final output / stagnation
         parsed = parse_action_call(reasoning) if reasoning else None
@@ -579,8 +579,8 @@ class ReActLoop(BaseLoop):
                     "result": {"answer": str(reasoning)[:500]},
                     "step_number": state.step_count,
                 })
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
             state.current = LoopStateEnum.FINISHED
             return state
         if parsed and parsed.kind == "none" and len(str(reasoning or "").strip()) > 200:
@@ -652,8 +652,8 @@ class ReActLoop(BaseLoop):
         # Format: "TODO_DONE:<todo_id>" (can appear multiple times)
         try:
             await self._apply_todo_done_markers(state, f"{state.context.get('action_result','')}\n{observation}", source="observation")
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
         # Howl — runtime stall detection & intervention
         try:
@@ -668,8 +668,8 @@ class ReActLoop(BaseLoop):
             if intervention.triggered:
                 state.messages.append({"role": "user", "content": intervention.hint_message})
                 state.context["_howl_stall"] = intervention.details
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
         if "DONE" in observation.upper() or "FINISHED" in observation.upper():
             state.current = LoopStateEnum.FINISHED
@@ -701,8 +701,8 @@ class ReActLoop(BaseLoop):
                 trace_id=state.context.get("_trace_id") or state.context.get("trace_id"),
                 run_id=str(run_id),
             )
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
         try:
             if hasattr(store, "append_run_event"):
                 await store.append_run_event(
@@ -712,8 +712,8 @@ class ReActLoop(BaseLoop):
                     tenant_id=state.context.get("tenant_id"),
                     payload={"source": source, **(extra or {})},
                 )
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
     async def _apply_todo_done_markers(self, state: LoopState, text: str, *, source: str) -> None:
         if os.getenv("AIPLAT_RUN_STATE_PARSE_TODO_DONE", "true").lower() not in ("1", "true", "yes", "y"):
@@ -765,10 +765,10 @@ class ReActLoop(BaseLoop):
                         "messages": mem_ctx.messages,
                         "token_count": mem_ctx.token_count,
                     })
-            except Exception:
-                pass
-        except Exception:
-            pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
         # Drain AgentMessageBus before reasoning (P1: wire feedback/coordination messages)
         try:
@@ -784,8 +784,8 @@ class ReActLoop(BaseLoop):
                 state.context.setdefault("_bus_requests", []).extend(
                     {"request_id": r.msg_id, "sender": r.sender_id, "payload": r.payload}
                     for r in requests[:3])
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
         # Query rewrite: resolve pronouns and implicit references via conversational RAG (§03)
         try:
@@ -798,8 +798,8 @@ class ReActLoop(BaseLoop):
                 if rewritten and rewritten != current_query:
                     state.context["_original_query"] = current_query
                     state.context["task"] = rewritten
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
         # Inject code graph context on first reasoning call (replaces grep/glob exploration)
         graph_hints = await self._try_inject_graph_context(state)
@@ -816,15 +816,15 @@ class ReActLoop(BaseLoop):
                 if mem.get("episodic"): parts.append(f"Recent: {mem['episodic']}")
                 if mem.get("semantic"): parts.append(f"Relevant: {mem['semantic']}")
                 mem_hints = "\n".join(parts)
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
         bus_hints = ""
         try:
             bus_msgs = state.context.get("_bus_messages", [])
             if bus_msgs:
                 bus_hints = "\n".join(f"[Bus] {m}" for m in bus_msgs[-3:])
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
         task = state.context.get("task", "")
         history = "\n".join([
@@ -846,8 +846,8 @@ class ReActLoop(BaseLoop):
             state.context["tools_desc_stats"] = tools_desc_stats
             state.metadata["skills_desc_stats"] = skills_desc_stats
             state.context["skills_desc_stats"] = skills_desc_stats
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
         # ── ContextAssembler: token budget + source attribution (Phase 9) ──
         try:
@@ -876,8 +876,8 @@ class ReActLoop(BaseLoop):
                 "prompt_version": assembly_result.context.prompt_version,
                 "meta": assembly_result.metadata,
             }
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
         # P1-2: persist disclosure policy/budgets for replay (best-effort, de-duplicated)
         try:
@@ -908,21 +908,21 @@ class ReActLoop(BaseLoop):
                             "budgets": key_fields,
                         },
                     )
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
         # P0: context shaping pipeline (observable, default enabled)
         try:
             await self._apply_context_shaping_pipeline(state)
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
         # Restatement: load latest run_state and periodically refresh next_step
         try:
             await self._load_run_state_for_prompt(state)
             await self._maybe_restate_and_persist_run_state(state)
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
         if os.getenv("AIPLAT_ENABLE_PROMPT_ASSEMBLER", "true").lower() in ("1", "true", "yes", "y"):
             prompt = PromptAssembler().build_react_reasoning_messages(
@@ -964,8 +964,8 @@ class ReActLoop(BaseLoop):
                             prompt[0]["content"] = existing_sys + "\n\n" + toolset_instruction
                         else:
                             prompt.insert(0, {"role": "system", "content": toolset_instruction})
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
         else:
             from core.harness.utils.prompt_loader import _sync_resolve
             prompt = _sync_resolve("react-reasoning",
@@ -998,8 +998,8 @@ class ReActLoop(BaseLoop):
                     if total is None:
                         total = (usage.get("prompt_tokens") or 0) + (usage.get("completion_tokens") or 0)
                     state.used_tokens = float(getattr(state, "used_tokens", 0) or 0) + float(total or 0)
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
             # Update budget_remaining
             _max = float(getattr(self._config, "max_tokens", 0) or 0)
             if _max > 0:
@@ -1037,8 +1037,8 @@ class ReActLoop(BaseLoop):
                         response = await sys_llm_generate(self._model, emergency_prompt,
                             trace_context=trace_ctx, model_name=self._config.model_name)
                         return response.content if hasattr(response, "content") else str(response)
-                except Exception:
-                    pass
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
             # Track consecutive LLM failures for observability
             cf = state.context.get("_consecutive_llm_failures", 0) + 1
             state.context["_consecutive_llm_failures"] = cf
@@ -1074,8 +1074,8 @@ class ReActLoop(BaseLoop):
                 state.context["run_state"] = rs
                 state.context["_run_state_artifact_id"] = (items2[0] or {}).get("artifact_id")
                 return
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
         state.context["run_state"] = default_run_state(run_id=str(run_id), task=str(state.context.get("task") or ""))
 
     async def _maybe_restate_and_persist_run_state(self, state: LoopState) -> None:
@@ -1126,8 +1126,8 @@ class ReActLoop(BaseLoop):
                         tenant_id=state.context.get("tenant_id"),
                         payload={"source": "loop", "step_count": step_count, "locked": bool(rs2.get("locked")), "next_step": rs2.get("next_step")},
                     )
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
 
         # Persist (debounced)
         if persist_n > 0 and (step_count % persist_n == 0):
@@ -1153,8 +1153,8 @@ class ReActLoop(BaseLoop):
                     trace_id=state.context.get("_trace_id") or state.context.get("trace_id"),
                     run_id=str(run_id),
                 )
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
 
     def _estimate_context_stats(self, state: LoopState) -> Dict[str, Any]:
         """Cheap best-effort context size estimation."""
@@ -1371,8 +1371,8 @@ class ReActLoop(BaseLoop):
                     "message_count": len(msgs),
                     "task_hint": task_hint[:100],
                 }
-            except Exception:
-                pass  # best-effort, don't affect execution
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
 
         mapping = {
             "budget_trim": _budget_trim,
@@ -1390,8 +1390,8 @@ class ReActLoop(BaseLoop):
         try:
             state.metadata["context_shaping_stats"] = pipeline_stats
             state.context["context_shaping_stats"] = pipeline_stats
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
     async def _try_save_interaction(self, state: LoopState, user_msg: str, assistant_msg: str) -> None:
         """Persist interaction to MemoryManager for cross-turn context building."""
@@ -1434,18 +1434,18 @@ class ReActLoop(BaseLoop):
                         content={"user": user_msg[:500], "assistant": assistant_msg[:500]},
                         metadata={"stability": stability},
                     )
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
             # Feed interaction into local feedback loop (P1-7 wiring)
             try:
                 from core.harness.feedback_loops.local import get_local_feedback
                 fb = get_local_feedback()
                 if fb:
                     fb.emit("interaction", {"user": user_msg[:500], "assistant": assistant_msg[:500], "stability": stability})
-            except Exception:
-                pass
-        except Exception:
-            pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
     async def _try_extract_user_facts(self, state: LoopState, user_msg: str) -> None:
         u"""L3: Auto-extract structured facts from user messages.
@@ -1485,8 +1485,8 @@ class ReActLoop(BaseLoop):
                         logging.getLogger("harness.loop").info(
                             "Memory updated: %s → %s", learner_id, str(facts),
                         )
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
     async def _try_inject_graph_context(self, state: LoopState) -> dict:
         u"""注入代码图 + Wiki 知识图上下文到 Agent 决策循环。
@@ -1530,8 +1530,8 @@ class ReActLoop(BaseLoop):
                 code_ctx = sys_code_intel_context(task)
                 if code_ctx and code_ctx.get("related"):
                     hints["code_graph"] = code_ctx
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
 
         # Wiki availability
         try:
@@ -1567,8 +1567,8 @@ class ReActLoop(BaseLoop):
                         f"不需要重新推理或猜测已有知识，直接检索即可。"
                     ),
                 })
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
         # Skill graph availability
         try:
@@ -1587,8 +1587,8 @@ class ReActLoop(BaseLoop):
                         f"主要包括: {', '.join(skills[:10])}。"
                     ),
                 })
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
         # File operations: make agents aware of available file syscalls
         state.context.setdefault("messages", []).insert(3, {
@@ -1623,8 +1623,8 @@ class ReActLoop(BaseLoop):
                     "role": "user",
                     "content": str(reminder_text),
                 })
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
     async def _maybe_compact_messages(self, state: LoopState) -> None:
         """
@@ -1689,9 +1689,9 @@ class ReActLoop(BaseLoop):
             # Context Reflect: mark next step for clean-context boundary injection
             state.metadata["context_reflect"] = True
             return
-        except Exception:
+        except Exception as e:
             # fallback: legacy single-threshold compaction below
-            pass
+            logging.debug(str(e), exc_info=True)
 
         protect_last_n = int(os.getenv("AIPLAT_CONTEXT_COMPACTION_PROTECT_LAST_N", "6") or "6")
         protect_last_n = max(2, min(protect_last_n, 50))
@@ -1802,8 +1802,8 @@ class ReActLoop(BaseLoop):
                             parts.append(f"{pn}{rq}:{pt}")
                         if parts:
                             desc = f"Params({', '.join(parts)}). {desc}"
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
 
             # MCP tools: prepend server description so Agent knows which MCP this tool belongs to
             try:
@@ -1811,8 +1811,8 @@ class ReActLoop(BaseLoop):
                 srv_desc = str(meta.get("mcp_server_description", "") or "")
                 if srv_desc:
                     name = f"{name} [{srv_desc}]"
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
 
             line = f"- {name}: {desc}".strip()
             projected = stats["chars_total"] + len(line) + (1 if lines else 0)
@@ -2010,8 +2010,8 @@ class ReActLoop(BaseLoop):
                 },
                 "created_at": end_ts,
             })
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
     async def _emit_skill_candidates_snapshot(
         self, state: LoopState, routing_decision_id: str,
@@ -2101,8 +2101,8 @@ class ReActLoop(BaseLoop):
                             perm = resolve_skill_permission(nm)
                             if skill_kind == "executable":
                                 exec_perm = resolve_executable_skill_permission(nm)
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            logging.debug(str(e), exc_info=True)
                         candidates.append({
                             "skill_id": sid, "name": nm, "scope": scope0, "skill_kind": skill_kind,
                             "score": score, "overlap": sorted(list(inter))[:12],
@@ -2154,8 +2154,8 @@ class ReActLoop(BaseLoop):
                         gated_top1_reason = "permission_deny"
                     elif str(top1.get("skill_kind") or "") == "executable" and str(top1.get("exec_perm") or "") == "ask":
                         gated_top1_reason = "approval_required"
-                except Exception:
-                    pass
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
             for c in candidates_top or []:
                 if not isinstance(c, dict):
                     continue
@@ -2200,8 +2200,8 @@ class ReActLoop(BaseLoop):
                 },
                 "created_at": end_ts,
             })
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
     async def _emit_routing_explain(
         self, state: LoopState, routing_decision_id: str,
@@ -2242,16 +2242,16 @@ class ReActLoop(BaseLoop):
             try:
                 if top1_score is not None and sel_score is not None:
                     gap = float(top1_score - sel_score)
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
             top1_gate = None
             try:
                 if str(top1.get("perm") or "") == "deny":
                     top1_gate = "permission_deny"
                 elif str(top1.get("skill_kind") or "") == "executable" and str(top1.get("exec_perm") or "") == "ask":
                     top1_gate = "approval_required"
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
             end_ts = time.time()
             await store.add_syscall_event({
                 "trace_id": state.context.get("_trace_id") or state.context.get("trace_id"),
@@ -2272,8 +2272,8 @@ class ReActLoop(BaseLoop):
                 },
                 "created_at": end_ts,
             })
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
     async def _emit_no_action(self, state: LoopState, routing_decision_id: str) -> None:
         await self._emit_routing_decision(state, routing_decision_id, "none")
@@ -2314,8 +2314,8 @@ class ReActLoop(BaseLoop):
                 include = str((tool_args or {}).get("include", "") or (tool_args or {}).get("fileTypes", ""))
                 result = await sys_code_search(pattern, include=include, trace_context={"source": "loop_fallback"})
                 return json.dumps(result, ensure_ascii=False)
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
         return None
 
     async def _dispatch_skill_call(
@@ -2378,8 +2378,8 @@ class ReActLoop(BaseLoop):
                 try:
                     st = "success" if getattr(result, "success", False) else "failed"
                     await self._emit_routing_explain(state, routing_decision_id, "skill", str(skill_name), top, st, str(getattr(result, "error", "") or ""))
-                except Exception:
-                    pass
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
                 await self._trigger_hook(HookPhase.POST_SKILL_USE, {"skill": skill_name, "result": result_output, "format": parsed.format})
                 return str(result_output)
         return f"Skill not found: {skill_name}"
@@ -2414,8 +2414,8 @@ class ReActLoop(BaseLoop):
                         try:
                             tool_args = dict(tool_args or {})
                             tool_args["_approval_request_id"] = approval_req_id
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            logging.debug(str(e), exc_info=True)
                     result = await sys_tool_call(
                         tool, tool_args,
                         user_id=state.context.get("user_id", "system"),
@@ -2473,8 +2473,8 @@ class ReActLoop(BaseLoop):
                     else:
                         st = "success" if ok else "failed"
                     await self._emit_routing_explain(state, routing_decision_id, "tool", str(tool_name), top, st, str(getattr(result, "error", "") or ""))
-                except Exception:
-                    pass
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
                 state.metadata["tool_calls"] = int(state.metadata.get("tool_calls", 0) or 0) + 1
                 if not ok:
                     state.metadata["tool_failures"] = int(state.metadata.get("tool_failures", 0) or 0) + 1
@@ -2532,8 +2532,8 @@ class ReActLoop(BaseLoop):
                             )
                             state.metadata["tool_calls"] = int(state.metadata.get("tool_calls", 0) or 0) + 1
                             return getattr(result, 'output', str(result)) if hasattr(result, 'output') else str(result)
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
         # ---- File/Code syscall fallback ----
         file_result = await self._try_file_syscall(tool_name, tool_args, state)
         if file_result is not None:
@@ -2570,8 +2570,8 @@ class ReActLoop(BaseLoop):
                 "result": {"summary": str(result)[:500]},
                 "step_number": state.step_count,
             })
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
         return result
 
 
@@ -2659,8 +2659,8 @@ class PlanExecuteLoop(BaseLoop):
                     if total is None:
                         total = (usage.get("prompt_tokens") or 0) + (usage.get("completion_tokens") or 0)
                     state.used_tokens = float(getattr(state, "used_tokens", 0) or 0) + float(total or 0)
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
             
             # Parse plan (simplified)
             self._plan = [

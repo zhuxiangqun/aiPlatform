@@ -1,3 +1,4 @@
+import logging
 """
 Models route — v3.0 LLM routing statistics endpoint.
 Exposes quality scores, latency, fallback, cost metrics for all purposes.
@@ -37,8 +38,8 @@ async def get_v3_route_stats():
                     "p95_s": round(lt.p95_latency_seconds(model), 2),
                     "congestion": round(lt.congestion_penalty(model), 0),
                 }
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
         snapshot["latency"] = latency
     except Exception:
         snapshot["latency"] = {}

@@ -44,8 +44,8 @@ class ContextGate:
                         len(v.stale_warnings), len(v.conflict_markers),
                     )
                 prompt = v.deduplicated
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
 
         max_chars = int(os.getenv("AIPLAT_CONTEXT_MAX_CHARS", "0") or "0")
         max_messages = int(os.getenv("AIPLAT_CONTEXT_MAX_MESSAGES", "0") or "0")

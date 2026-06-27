@@ -17,6 +17,7 @@ Usage:
 """
 
 from __future__ import annotations
+import logging
 
 import json
 import os
@@ -249,8 +250,8 @@ class ExperienceVectorCache:
             }
             with open(self._storage_path, "w", encoding="utf-8") as f:
                 json.dump(data, f, ensure_ascii=False, indent=2)
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
     def _load_from_disk(self):
         """从磁盘加载"""
@@ -264,8 +265,8 @@ class ExperienceVectorCache:
                         label=e.get("label", ""), domain_id=e.get("domain_id", "default"),
                         tags=e.get("tags", []), created_at=e.get("created_at", time.time()),
                     )
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
 
 # ── Global singleton ─────────────────────────────────────────────────────────

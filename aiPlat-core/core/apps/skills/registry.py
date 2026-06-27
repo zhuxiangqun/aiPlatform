@@ -189,8 +189,8 @@ class SkillRegistry:
                             skip_conditions = fm.get("skip_when") or fm.get("skip_conditions") or []
                             triggers = fm.get("triggers") or []
                             body = parts[2].strip()
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            logging.debug(str(e), exc_info=True)
 
                 if self.get(name) is not None:
                     continue
@@ -218,8 +218,8 @@ class SkillRegistry:
                             build_fn = getattr(handler_mod, 'build_skill', None)
                             if callable(build_fn):
                                 skill_cls = type(build_fn())  # use returned instance's class
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        logging.debug(str(e), exc_info=True)
 
                 # Detect layered subdirectories for engine skills
                 layer_dirs: Dict[str, str] = {}
@@ -379,8 +379,8 @@ class SkillRegistry:
                             name, version, stored_digest[:16], digest[:16]
                         )
                 setattr(cfg, "metadata", meta)
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
             category = self._get_category(skill)
             self._skills[name] = skill
             if category not in self._categories:
@@ -611,8 +611,8 @@ class SkillRegistry:
                     )
                     s = GenSkill(config=sc)
                     self.register(s)
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
         # Folder scan fallback: auto-discover *.md files in ~/.aiplat/skills/
         self.scan_folder(os.path.expanduser(os.getenv("AIPLAT_WORKSPACE_SKILLS", "~/.aiplat/skills")))
 
@@ -668,8 +668,8 @@ class SkillRegistry:
                         fm = _yaml.safe_load(parts[1]) or {}
                         description = str(fm.get("description", ""))
                         category = str(fm.get("category", "general"))
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        logging.debug(str(e), exc_info=True)
                     body = parts[2].strip()
             if not description:
                 description = name.replace("_", " ").title()
@@ -699,8 +699,8 @@ class SkillRegistry:
                         build_fn = getattr(mod, 'build_skill', None)
                         if callable(build_fn):
                             skill_cls = type(build_fn())
-                except Exception:
-                    pass
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
 
             config = SC(
                 name=name,
@@ -787,8 +787,8 @@ class SkillRegistry:
                                         ["pip", "install", *deps],
                                         capture_output=True, timeout=60
                                     )
-                                except Exception:
-                                    pass
+                                except Exception as e:
+                                    logging.debug(str(e), exc_info=True)
 
                     except Exception as e:
                         result["errors"].append(f"{fname}: yaml parse error: {e}")
@@ -862,8 +862,8 @@ class SkillRegistry:
                 # Apply target config to the skill instance so rollback affects subsequent execution.
                 try:
                     setattr(skill, "_config", target.config)
-                except Exception:
-                    pass
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
             self._skills[name] = skill
             # Cache SKILL.md body content if available
             body = (getattr(cfg, "body", None) or "").strip()
@@ -969,14 +969,14 @@ class SkillRegistry:
                         try:
                             from core.harness.memory.metrics import inc_skill_downgraded
                             inc_skill_downgraded(name)
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            logging.debug(str(e), exc_info=True)
                     if stats.recent_pass_rate < 0.2:
                         try:
                             from core.harness.memory.metrics import inc_skill_alert
                             inc_skill_alert(name)
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            logging.debug(str(e), exc_info=True)
                 if latency > 0:
                     prev_avg = stats.avg_latency
                     count = stats.success_count + stats.error_count
@@ -1136,8 +1136,8 @@ async def _bg_curator_scan(interval_hours: int = 6):
         try:
             workspace = _os.path.expanduser(_os.getenv("AIPLAT_WORKSPACE_SKILLS", "~/.aiplat/skills"))
             _global_registry.scan_folder(workspace)
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
 
 def start_bg_curator(interval_hours: int = 6):
@@ -1390,8 +1390,8 @@ class _GenericSkill(BaseSkill):
                     if active_toolset:
                         policy = resolve_toolset(str(active_toolset))
                         allowed_tools = list(policy.allow)
-                except Exception:
-                    pass
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
 
             from core.harness.utils.prompt_loader import _sync_resolve
 
@@ -1456,8 +1456,8 @@ class _GenericSkill(BaseSkill):
                     sc = sc.get("steps", 0) if isinstance(sc, dict) else 0
                     _log.info("skill=%s stop_reason=%s steps=%s max_steps=%s",
                                self._config.name, sr, sc, max_steps)
-                except Exception:
-                    pass
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
                 if isinstance(out_schema, dict) and out_schema:
                     parsed = parse_json(str(result.output or ""))
                     if isinstance(parsed, dict):

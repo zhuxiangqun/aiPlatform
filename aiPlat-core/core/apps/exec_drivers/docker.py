@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Dict
 
 from .base import ExecDriver, ExecResult
+import logging
 
 
 class DockerExecDriver(ExecDriver):
@@ -107,8 +108,8 @@ class DockerExecDriver(ExecDriver):
                 except asyncio.TimeoutError:
                     try:
                         proc.kill()
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        logging.debug(str(e), exc_info=True)
                     return ExecResult(ok=False, exit_code=124, error="timeout", duration_ms=int((time.time() - t0) * 1000))
                 return ExecResult(
                     ok=proc.returncode == 0,

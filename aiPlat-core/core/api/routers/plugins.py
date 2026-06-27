@@ -11,6 +11,7 @@ from core.harness.kernel.runtime import get_kernel_runtime
 from core.policy.engine import PolicyDecision, evaluate_tool_policy_snapshot
 from core.schemas_run import RunStatus
 from core.utils.ids import new_prefixed_id
+import logging
 
 
 router = APIRouter()
@@ -81,8 +82,8 @@ async def upsert_plugin(request: dict, http_request: Request):
             resource_id=str(rec.get("plugin_id")),
             detail={"name": rec.get("name"), "version": rec.get("version"), "enabled": bool(rec.get("enabled"))},
         )
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
     return {"status": "ok", "plugin": rec}
 
 
@@ -120,8 +121,8 @@ async def set_plugin_enabled(plugin_id: str, request: dict, http_request: Reques
             resource_id=str(plugin_id),
             detail={"enabled": enabled},
         )
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
     return {"status": "ok", "plugin_id": plugin_id, "enabled": enabled}
 
 
@@ -156,8 +157,8 @@ async def set_plugin_disabled(plugin_id: str, request: dict, http_request: Reque
             resource_type="plugin", resource_id=str(plugin_id),
             detail={"enabled": False},
         )
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
     return {"status": "ok", "plugin_id": plugin_id, "enabled": False}
 
 
@@ -216,8 +217,8 @@ async def rollback_plugin(plugin_id: str, request: dict, http_request: Request):
             resource_id=str(plugin_id),
             detail={"version": str(ver)},
         )
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
     return {"status": "ok", "plugin": rec}
 
 
@@ -267,8 +268,8 @@ async def _require_plugin_run_approval(
     req = approval_manager.create_request(ctx, rule=rule)
     try:
         await approval_manager._persist(req)  # type: ignore[attr-defined]
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
     return req.request_id
 
 
@@ -348,8 +349,8 @@ async def run_plugin(plugin_id: str, request: dict, http_request: Request):
                 output=None,
                 error=str(deny_reason),
             )
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
         return JSONResponse(status_code=403, content={"error": {"code": "POLICY_DENIED", "message": str(deny_reason), "detail": {"policy_version": policy_version}}})
 
     if approval_needed and not approval_request_id:
@@ -382,8 +383,8 @@ async def run_plugin(plugin_id: str, request: dict, http_request: Request):
                 tenant_id=str(tid),
                 payload={"kind": "plugin", "plugin_id": str(plugin_id), "approval_request_id": str(approval_request_id)},
             )
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
         return {
             "ok": False,
             "run_id": run_id,
@@ -410,7 +411,7 @@ async def run_plugin(plugin_id: str, request: dict, http_request: Request):
                 change_id = one.get("change_id")
             except Exception:
                 change_id = None
-            raise HTTPException(
+            raise HTTPException(  # noqa: error-structured
                 status_code=409,
                 detail=gate_error_envelope(
                     code="not_approved",
@@ -432,8 +433,8 @@ async def run_plugin(plugin_id: str, request: dict, http_request: Request):
         await store.create_plugin_run(run_id=run_id, tenant_id=str(tid), plugin_id=str(plugin_id), status="running", approval_request_id=str(approval_request_id) if approval_request_id else None, input=input_obj, output=None, error=None)
         await store.append_run_event(run_id=str(run_id), event_type="run_start", trace_id=None, tenant_id=str(tid), payload={"kind": "plugin", "plugin_id": str(plugin_id), "actor_id": actor_id})
         await store.append_run_event(run_id=str(run_id), event_type="plugin_start", trace_id=None, tenant_id=str(tid), payload={"plugin_id": str(plugin_id), "required_tools": required_tools})
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     output = {"message": "plugin executed (mvp)", "plugin_id": str(plugin_id), "required_tools": required_tools}
     try:
@@ -441,7 +442,7 @@ async def run_plugin(plugin_id: str, request: dict, http_request: Request):
         await store.append_run_event(run_id=str(run_id), event_type="plugin_end", trace_id=None, tenant_id=str(tid), payload={"plugin_id": str(plugin_id), "status": "completed"})
         await store.append_run_event(run_id=str(run_id), event_type="run_end", trace_id=None, tenant_id=str(tid), payload={"kind": "plugin", "plugin_id": str(plugin_id), "status": "completed"})
         await store.add_audit_log(action="plugin_run", status="ok", tenant_id=str(tid), actor_id=str(actor_id), actor_role=str(actor_role) if actor_role else None, resource_type="plugin", resource_id=str(plugin_id), run_id=str(run_id), detail={"required_tools": required_tools})
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     return {"ok": True, "run_id": run_id, "trace_id": None, "status": RunStatus.completed.value, "legacy_status": "completed", "output": output, "error": None}

@@ -105,8 +105,8 @@ async def read_page(title: str, category: str = "entities", collection: str = "d
                         })
             if inferred:
                 page["inferred_relations"] = inferred
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
     return page
 
@@ -171,8 +171,8 @@ async def get_unprocessed_docs(tenant_id: str = "default", collection: str = "de
                 meta = _json.loads(d["meta_json"] or "{}")
                 if meta.get("wiki_pages"):
                     continue  # fully converted: wiki pages exist and status is wikified
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
         unprocessed.append({
             "doc_id": d["doc_id"],
             "source_uri": d["source_uri"],
@@ -220,7 +220,7 @@ async def install_skills_from_directory(search_path: str = Body(..., embed=True)
         md_files = _glob.glob(pattern2)
 
     if not md_files:
-        raise HTTPException(
+        raise HTTPException(  # noqa: error-structured
             status_code=404,
             detail=f"No SKILL.md files found in {expanded}. "
                    f"Expected structure: {{path}}/skills/<name>/SKILL.md "
@@ -248,8 +248,8 @@ async def install_skills_from_directory(search_path: str = Body(..., embed=True)
                         fm = _yaml.safe_load(parts[1])
                         if isinstance(fm, dict):
                             name = fm.get("name", name)
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        logging.debug(str(e), exc_info=True)
 
             dest_dir = _os.path.join(workspace, name)
             _os.makedirs(dest_dir, exist_ok=True)
@@ -375,8 +375,8 @@ async def run_self_harness_cycle():
             try:
                 events = await store.list_completed_runs(limit=50)
                 run_states = [e.get("pipeline_state", {}) for e in events if e.get("pipeline_state")]
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
 
         if not run_states:
             return {"accepted": [], "rejected": [], "message": "No completed runs found for analysis"}
@@ -443,8 +443,8 @@ async def diagnose_pipeline_run(run_id: str):
                 if isinstance(e, dict) and e.get("kind") == "pipeline":
                     run_state = e.get("args", {})
                     break
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
     if not run_state:
         raise HTTPException(status_code=404, detail=f"Run '{run_id}' not found")
@@ -641,8 +641,8 @@ async def create_wiki_page(body: WikiPageWrite, collection: str = "default"):
         auto_links = auto_link_page(body.title, body.body, all_titles)
         if auto_links:
             update_page(body.title, related=list(set(body.related or [] + auto_links)), collection_id=collection)
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
     # ── Version sync: if page was updated (not new), mark related ontology instances for review ──
     try:
         from core.harness.ontology_engine.graph_index import GraphIndex
@@ -666,14 +666,14 @@ async def create_wiki_page(body: WikiPageWrite, collection: str = "default"):
                         })
                 if affected:
                     _persist_reviews("ai-knowledge", affected)
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
     # ── Synthesis version sync: mark synthesis pages for review ──
     try:
         from core.harness.knowledge.wiki_engine import _sync_synthesis_pages
         _sync_synthesis_pages(body.title, collection_id=collection)
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
     # ── Provenance stale tracking: mark citations as stale if page version changed ──
     try:
         from core.harness.knowledge.wiki_engine import read_page
@@ -684,16 +684,16 @@ async def create_wiki_page(body: WikiPageWrite, collection: str = "default"):
             tracker = get_provenance_tracker()
             scanner = ProvenanceScanner(tracker)
             await scanner.on_source_updated(body.title, new_version)
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
     # ── SemanticCache invalidation: clear cache for this domain on wiki update ──
     try:
         from core.harness.knowledge.semantic_cache import get_semantic_cache
         cache = get_semantic_cache()
         if cache.enabled:
             await cache.invalidate_domain(collection)
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
     return {"title": body.title, "path": path, "status": "created", "auto_links": auto_links}
 
 
@@ -949,16 +949,16 @@ async def convert_from_kb(req: ConvertKbRequest = Body(default=None), collection
                             except Exception as e:
                                 writeback_errors += 1
                                 logger.warning(f"writeback failed for {doc_id}: {e}")
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            logging.debug(str(e), exc_info=True)
 
             # Cross-link pages that share keywords (validate against actual existing pages)
             valid_titles = set()
             try:
                 from core.harness.knowledge.wiki_engine import search_pages
                 valid_titles = set(p["title"] for p in (search_pages(limit=1000, collection_id=collection) or []))
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
             for kw, titles in topic_keywords.items():
                 if len(titles) >= 2:
                     # Filter out titles that don't correspond to actual wiki pages
@@ -1491,8 +1491,8 @@ async def list_ontology_domains():
                 "system_prompt_id": cfg.get("system_prompt_id", ""),
                 "collection_id": cfg.get("collection_id", domain.id),
             })
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
     return {"domains": domains, "total": len(domains)}
 
 
@@ -1507,7 +1507,7 @@ async def get_ontology_domain(domain_id: str):
     base_dir = _Path(_os.getenv("AIPLAT_HOME", _Path("~").expanduser() / ".aiplat")) / "ontologies"
     file_path = base_dir / f"{domain_id}.yaml"
     if not file_path.exists():
-        raise HTTPException(404, f"Domain ontology '{domain_id}' not found")
+        raise HTTPException(status_code=404, detail=f"Domain ontology '{domain_id}' not found")
     try:
         domain = load_ontology_from_yaml(str(file_path))
         cfg = DomainRouter().domain_config(domain.id)
@@ -1549,7 +1549,7 @@ async def get_ontology_domain(domain_id: str):
             } for p in domain.data_properties],
         }
     except Exception as e:
-        raise HTTPException(500, f"Failed to load domain '{domain_id}': {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to load domain '{domain_id}': {e}")
 
 
 @router.get("/ontology/domains/{domain_id}/validation-report")
@@ -1605,8 +1605,8 @@ async def verify_ontology_domain(domain_id: str, collection: str = ""):
         graph = GraphIndex.load(domain_id)
         graph_nodes = len(graph._nodes)
         graph_edges = sum(len(n.out_edges) for n in graph._nodes.values())
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     # 3. Issues detection
     issues = []
@@ -1744,8 +1744,8 @@ async def list_instances_by_class(domain_id: str, class_label: str = ""):
                         body = _re.sub(r'https?://\S+', '', body)
                         body = _re.sub(r'\s+', ' ', body).strip()
                         summary = body[:200]
-                except Exception:
-                    pass
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
 
             instances.append({
                 "entity_name": p.get("title", ""),
@@ -1852,8 +1852,8 @@ async def classify_all_pages(domain_id: str, collection: str = "", limit: int = 
             full = read_page(p["title"], collection_id=cid)
             if full:
                 page_bodies[p["title"]] = str(full.get("body", "") or "")[:100]
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
     cat_names = ", ".join(c["categories"][0] for c in all_classes if c["categories"])
     class_lines = "\n".join(
@@ -1986,12 +1986,12 @@ async def ontology_engine_process(req: dict, collection: str = "default"):
     doc_id = req.get("doc_id", "") if isinstance(req, dict) else ""
 
     if not text.strip():
-        raise HTTPException(400, "text is required")
+        raise HTTPException(status_code=400, detail="text is required")
 
     from core.harness.ontology_engine.engine import load_engine
     engine = load_engine(domain_id)
     if engine is None:
-        raise HTTPException(404, f"Domain '{domain_id}' not found")
+        raise HTTPException(status_code=404, detail=f"Domain '{domain_id}' not found")
 
     chunks = [{"id": "chunk-0", "text": text, "entities": []}]
     result = await engine.process_chunks(chunks, doc_id=doc_id)
@@ -2014,7 +2014,7 @@ async def ontology_engine_process_and_write(req: dict, collection: str = "defaul
 
     engine = load_engine(domain_id)
     if engine is None:
-        raise HTTPException(404, f"Domain '{domain_id}' not found")
+        raise HTTPException(status_code=404, detail=f"Domain '{domain_id}' not found")
 
     chunks = [{"id": "chunk-0", "text": text, "entities": []}]
     result = await engine.process_chunks(chunks, doc_id=doc_id)
@@ -2036,8 +2036,8 @@ async def ontology_engine_process_and_write(req: dict, collection: str = "defaul
                     summary=str(fm.get("summary", "") or ""),
                 )
                 written.append(title)
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
 
     return {**result.to_dict(), "written_pages": written, "written_count": len(written)}
 
@@ -2076,8 +2076,8 @@ async def cleanup_cross_domain_nodes(domain_id: str):
                 cross_keywords.add(cls.label)
                 for syn in (getattr(cls, "synonyms", []) or []):
                     cross_keywords.add(syn)
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     if not cross_keywords:
         return {"status": "no_cross_keywords", "domain_id": domain_id}
@@ -2124,8 +2124,8 @@ async def backfill_summaries(domain_id: str, collection: str = "", limit: int = 
                 tags=list(full.get("tags", []) or []),
             )
             filled += 1
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
     return {"status": "backfilled", "filled": filled, "total": min(len(pages), limit)}
 
@@ -2149,7 +2149,7 @@ async def build_instances_batch(domain_id: str, collection: str = "", limit: int
 
     engine = load_engine(domain_id)
     if engine is None:
-        raise HTTPException(404, f"Domain '{domain_id}' not found")
+        raise HTTPException(status_code=404, detail=f"Domain '{domain_id}' not found")
 
     # ── Differential: skip already-built pages ──
     import os as _os, json as _json
@@ -2159,8 +2159,8 @@ async def build_instances_batch(domain_id: str, collection: str = "", limit: int
     if built_path.exists():
         try:
             built_pages = set(_json.loads(built_path.read_text(encoding="utf-8")))
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
     pages = list_all_pages(collection_id=cid)
     if not pages:
@@ -2503,8 +2503,8 @@ async def _process_single_page(engine, page: dict, cid: str) -> dict:
                             title=ititle, body=fm.get("body", "") or str(fm.get("description", "") or ""),
                             category=fm.get("category", "entities"), collection_id=cid,
                         )
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        logging.debug(str(e), exc_info=True)
 
         return {"title": page["title"], "instances": inst_count,
                 "relations": len(result.relations) if hasattr(result, "relations") else 0}
@@ -2520,7 +2520,7 @@ async def ontology_engine_trace(instance_title: str, doc_id: str = ""):
     safe = instance_title.replace("/", "_")[:120]
     trace_file = traces_dir / f"{safe}.json"
     if not trace_file.exists():
-        raise HTTPException(404, f"No trace found for '{instance_title}'")
+        raise HTTPException(status_code=404, detail=f"No trace found for '{instance_title}'")
     return _json.loads(trace_file.read_text(encoding="utf-8"))
 
 
@@ -2537,7 +2537,7 @@ async def ontology_engine_parse(req: dict):
     domain_id = req.get("domain_id", "ai-knowledge") if isinstance(req, dict) else "ai-knowledge"
 
     if not text.strip():
-        raise HTTPException(400, "text is required")
+        raise HTTPException(status_code=400, detail="text is required")
 
     # Step 1: Parse document
     from core.harness.ontology_engine.document_parser import DocumentParser
@@ -2585,7 +2585,7 @@ async def ontology_engine_parse_and_process(req: dict, collection: str = "defaul
     auto_write = bool(req.get("auto_write", False)) if isinstance(req, dict) else False
 
     if not text.strip():
-        raise HTTPException(400, "text is required")
+        raise HTTPException(status_code=400, detail="text is required")
 
     # Parse
     parser = DocumentParser()
@@ -2594,7 +2594,7 @@ async def ontology_engine_parse_and_process(req: dict, collection: str = "defaul
     # Engine process
     engine = load_engine(domain_id)
     if engine is None:
-        raise HTTPException(404, f"Domain '{domain_id}' not found")
+        raise HTTPException(status_code=404, detail=f"Domain '{domain_id}' not found")
 
     chunks = [c.to_dict() for c in parsed.chunks]
     result = await engine.process_chunks(chunks, doc_id=f"upload:{parsed.title}")
@@ -2617,8 +2617,8 @@ async def ontology_engine_parse_and_process(req: dict, collection: str = "defaul
                     summary=str(fm.get("summary", "") or ""),
                 )
                 written.append(title)
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
 
     return {
         **result.to_dict(),
@@ -2648,11 +2648,11 @@ async def simulate_state_transitions(req: dict):
 
     engine = load_engine(domain_id)
     if not engine:
-        raise HTTPException(404, f"Domain '{domain_id}' not found")
+        raise HTTPException(status_code=404, detail=f"Domain '{domain_id}' not found")
 
     state_machine = getattr(engine, "_state_machine", None)
     if not state_machine:
-        raise HTTPException(500, "State machine not initialized")
+        raise HTTPException(status_code=500, detail="State machine not initialized")
 
     # Normalize instances
     instances = []
@@ -2727,11 +2727,11 @@ async def simulate_scenarios(req: dict):
 
     engine = load_engine(domain_id)
     if not engine:
-        raise HTTPException(404, f"Domain '{domain_id}' not found")
+        raise HTTPException(status_code=404, detail=f"Domain '{domain_id}' not found")
 
     state_machine = getattr(engine, "_state_machine", None)
     if not state_machine:
-        raise HTTPException(500, "State machine not initialized")
+        raise HTTPException(status_code=500, detail="State machine not initialized")
 
     def _run_scenario(insts):
         normalized = []
@@ -2818,12 +2818,12 @@ async def resolve_ontology_review(domain_id: str, req: dict):
 
     review_id = req.get("review_id", "") if isinstance(req, dict) else ""
     if not review_id:
-        raise HTTPException(400, "review_id required")
+        raise HTTPException(status_code=400, detail="review_id required")
 
     reviews_dir = _Path(_os.getenv("AIPLAT_HOME", _Path("~").expanduser() / ".aiplat")) / "ontology_reviews"
     review_file = reviews_dir / f"{domain_id}.json"
     if not review_file.exists():
-        raise HTTPException(404, "No reviews for this domain")
+        raise HTTPException(status_code=404, detail="No reviews for this domain")
 
     reviews = _json.loads(review_file.read_text())
     resolved = False
@@ -2833,7 +2833,7 @@ async def resolve_ontology_review(domain_id: str, req: dict):
             resolved = True
             break
     if not resolved:
-        raise HTTPException(404, f"Review '{review_id}' not found")
+        raise HTTPException(status_code=404, detail=f"Review '{review_id}' not found")
 
     review_file.write_text(_json.dumps(reviews, ensure_ascii=False, indent=2))
     return {"review_id": review_id, "status": "resolved"}
@@ -2926,7 +2926,7 @@ async def resolve_entities(req: dict):
 
     ont_path = _Path(_os.getenv("AIPLAT_HOME", _Path("~").expanduser() / ".aiplat")) / "ontologies" / f"{domain_id}.yaml"
     if not ont_path.exists():
-        raise HTTPException(404, f"Domain '{domain_id}' not found")
+        raise HTTPException(status_code=404, detail=f"Domain '{domain_id}' not found")
 
     domain = load_ontology_from_yaml(str(ont_path))
     resolver = EntityResolver(domain)
@@ -3023,14 +3023,14 @@ async def graph_traverse(req: dict):
     direction = str(req.get("direction", "both")) if isinstance(req, dict) else "both"
 
     if not start_entity:
-        raise HTTPException(400, "start_entity is required")
+        raise HTTPException(status_code=400, detail="start_entity is required")
 
     from core.harness.ontology_engine.graph_index import GraphIndex
     from core.harness.ontology_engine.graph_traversal import traverse as _traverse
 
     graph = GraphIndex.load(domain_id)
     if len(graph) == 0:
-        raise HTTPException(404, f"Graph for domain '{domain_id}' is empty. Run engine first.")
+        raise HTTPException(status_code=404, detail=f"Graph for domain '{domain_id}' is empty. Run engine first.")
 
     result = _traverse(
         start_entity=start_entity,
@@ -3095,7 +3095,7 @@ async def parse_logic_form(req: dict):
     """NL2LF: Parse natural language to structured Logic Form."""
     from core.harness.knowledge.ontology_query_mapper import parse_to_logic_form
     query = req.get("query", "") if isinstance(req, dict) else ""
-    if not query: raise HTTPException(400, "query required")
+    if not query: raise HTTPException(status_code=400, detail="query required")
     return parse_to_logic_form(query)
 
 
@@ -3131,12 +3131,12 @@ async def process_from_datasource(req: dict):
     domain_id = req.get("domain_id", "ai-knowledge") if isinstance(req, dict) else "ai-knowledge"
 
     if not source_id:
-        raise HTTPException(400, "source_id required")
+        raise HTTPException(status_code=400, detail="source_id required")
 
     DataSourceRegistry.load_from_dir()
     engine = load_engine(domain_id)
     if not engine:
-        raise HTTPException(404, f"Domain '{domain_id}' not found")
+        raise HTTPException(status_code=404, detail=f"Domain '{domain_id}' not found")
 
     result = await engine.process_from_datasource(source_id)
     return {
@@ -3169,7 +3169,7 @@ async def run_knowledge_synthesis(req: dict):
 
     graph = GraphIndex.load(domain_id)
     if len(graph) == 0:
-        raise HTTPException(404, f"Graph for '{domain_id}' is empty")
+        raise HTTPException(status_code=404, detail=f"Graph for '{domain_id}' is empty")
 
     synthesizer = KnowledgeSynthesizer(graph)
     result = synthesizer.synthesize(domain_id=domain_id, write_to_wiki=True)
@@ -3185,7 +3185,7 @@ async def create_graph_snapshot(domain_id: str, label: str = ""):
     from core.harness.ontology_engine.graph_index import GraphIndex
     graph = GraphIndex.load(domain_id)
     if len(graph) == 0:
-        raise HTTPException(404, f"Graph for '{domain_id}' is empty")
+        raise HTTPException(status_code=404, detail=f"Graph for '{domain_id}' is empty")
     result = graph.snapshot(label)
     return {"domain_id": domain_id, **result}
 
@@ -3201,7 +3201,7 @@ async def list_graph_snapshots(domain_id: str):
 async def restore_graph_snapshot(domain_id: str, req: dict):
     snapshot_id = int(req.get("snapshot_id", 0)) if isinstance(req, dict) else 0
     if not snapshot_id:
-        raise HTTPException(400, "snapshot_id required")
+        raise HTTPException(status_code=400, detail="snapshot_id required")
     from core.harness.ontology_engine.graph_index import GraphIndex
     graph = GraphIndex.load(domain_id)
     result = graph.restore_snapshot(snapshot_id)
@@ -3223,7 +3223,7 @@ async def generate_ontology_sdk(domain_id: str, language: str = "python"):
 
     ont_path = _Path(_os.getenv("AIPLAT_HOME", _Path("~").expanduser() / ".aiplat")) / "ontologies" / f"{domain_id}.yaml"
     if not ont_path.exists():
-        raise HTTPException(404, f"Domain '{domain_id}' not found")
+        raise HTTPException(status_code=404, detail=f"Domain '{domain_id}' not found")
 
     domain = load_ontology_from_yaml(str(ont_path))
 
@@ -3277,7 +3277,7 @@ async def generate_ontology_sdk(domain_id: str, language: str = "python"):
             ts.append('')
         return {"domain_id": domain_id, "language": language, "code": "\n".join(ts)}
 
-    raise HTTPException(400, f"Unsupported language: {language}. Use python or typescript")
+    raise HTTPException(status_code=400, detail=f"Unsupported language: {language}. Use python or typescript")
 
 
 @router.post("/ontology/engine/infer")
@@ -3297,12 +3297,12 @@ async def run_graph_inference(req: dict):
 
     ont_path = _Path(_os.getenv("AIPLAT_HOME", _Path("~").expanduser() / ".aiplat")) / "ontologies" / f"{domain_id}.yaml"
     if not ont_path.exists():
-        raise HTTPException(404, f"Domain '{domain_id}' not found")
+        raise HTTPException(status_code=404, detail=f"Domain '{domain_id}' not found")
 
     domain = load_ontology_from_yaml(str(ont_path))
     graph = GraphIndex.load(domain_id)
     if len(graph) == 0:
-        raise HTTPException(404, f"Graph for '{domain_id}' is empty")
+        raise HTTPException(status_code=404, detail=f"Graph for '{domain_id}' is empty")
 
     inferencer = GraphInference(domain, graph)
     result = inferencer.infer()
@@ -3394,7 +3394,7 @@ async def generate_ontology_domain(
 
     domain_id = id.strip().lower().replace(" ", "-")
     if not domain_id or not name.strip():
-        raise HTTPException(400, "id and name are required")
+        raise HTTPException(status_code=400, detail="id and name are required")
 
     # ── Step 0: GatherContent ──────────────────────────────────────────
     kw_list = _extract_keywords(keywords) if keywords else _extract_keywords(description)
@@ -3408,7 +3408,7 @@ async def generate_ontology_domain(
                    {"files": {s["file"]: s["hash"] for s in samples},
                     "scanned_at": __import__("time").time()})
     if not samples:
-        raise HTTPException(400, "No relevant vault files found. Connect a vault with markdown files.")
+        raise HTTPException(status_code=400, detail="No relevant vault files found. Connect a vault with markdown files.")
 
     content_text = _build_content_text(samples)
 
@@ -3560,8 +3560,8 @@ async def evolve_ontology_domain(
     if cache_file.exists():
         try:
             cached = _json.loads(cache_file.read_text()).get("files", {})
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
     # 2. Scan current vault
     all_files = []
@@ -3585,8 +3585,8 @@ async def evolve_ontology_domain(
             if fname not in cached or cached[fname] != h:
                 new_files.append({"file": fname, "path": fp, "content": content[:2000], "hash": h,
                                   "is_new": fname not in cached})
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
     if not new_files:
         return {"suggestions": [], "message": "No new or modified vault files found.",
@@ -3600,8 +3600,8 @@ async def evolve_ontology_domain(
             from core.harness.knowledge.ontology_loader import load_ontology_from_yaml
             domain = load_ontology_from_yaml(str(onto_path))
             existing_classes = [{"label": c.label, "categories": c.allowed_categories} for c in domain.classes]
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
     # 5. Delta entity scan on new content only (with optional keyword filtering)
     if keywords:
@@ -3789,8 +3789,8 @@ def _gather_vault_files(*, vault_path: str, vault_subdir: str = "", keywords: li
                 "file": _Path(fp).name, "path": fp,
                 "content": content[:2000], "hash": _hash_content(content),
             })
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
     return samples
 
 
@@ -3819,8 +3819,8 @@ def _discover_vault_path():
             conn.close()
             if row:
                 return row[0]
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
     return ""
 
 
@@ -3950,8 +3950,8 @@ def _save_step(domain_id: str, filename: str, data):
             (dir_path / filename).write_text(data, encoding="utf-8")
         else:
             (dir_path / filename).write_text(_json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
 
 def _assemble_yaml(domain_id, name, description, classes_data, relations_data, states_data, entities_data):
@@ -4036,7 +4036,7 @@ async def create_ontology_domain(req: OntologyDomainCreate):
     d = _Path(_os.getenv("AIPLAT_HOME", _Path("~").expanduser() / ".aiplat")) / "ontologies"
     file_path = d / f"{req.id}.yaml"
     if file_path.exists():
-        raise HTTPException(409, f"Domain '{req.id}' already exists")
+        raise HTTPException(status_code=409, detail=f"Domain '{req.id}' already exists")
     ns = req.namespace or f"http://aiplat.local/ontology/{req.id}/"
     data = {
         "name": req.name,
@@ -4076,7 +4076,7 @@ async def update_ontology_domain(domain_id: str, req: OntologyDomainCreate):
     d = _Path(_os.getenv("AIPLAT_HOME", _Path("~").expanduser() / ".aiplat")) / "ontologies"
     file_path = d / f"{domain_id}.yaml"
     if not file_path.exists():
-        raise HTTPException(404, f"Domain '{domain_id}' not found")
+        raise HTTPException(status_code=404, detail=f"Domain '{domain_id}' not found")
     domain = load_ontology_from_yaml(str(file_path))
     # Rebuild YAML preserving classes/properties
     # Detect state/transition changes for auto-re-evaluation
@@ -4177,7 +4177,7 @@ async def delete_ontology_domain(domain_id: str):
     d = _Path(_os.getenv("AIPLAT_HOME", _Path("~").expanduser() / ".aiplat"))
     file_path = d / "ontologies" / f"{domain_id}.yaml"
     if not file_path.exists():
-        raise HTTPException(404, f"Domain '{domain_id}' not found")
+        raise HTTPException(status_code=404, detail=f"Domain '{domain_id}' not found")
     file_path.unlink()
 
     # Remove from registry.json
@@ -4200,8 +4200,8 @@ async def delete_ontology_domain(domain_id: str):
                 else:
                     path.unlink()
                 cleaned.append(label)
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
 
     return {"status": "deleted", "id": domain_id, "cleaned": cleaned}
 
@@ -4214,13 +4214,13 @@ async def add_ontology_class(domain_id: str, req: OntologyClassCreate):
     d = _Path(_os.getenv("AIPLAT_HOME", _Path("~").expanduser() / ".aiplat")) / "ontologies"
     file_path = d / f"{domain_id}.yaml"
     if not file_path.exists():
-        raise HTTPException(404, f"Domain '{domain_id}' not found")
+        raise HTTPException(status_code=404, detail=f"Domain '{domain_id}' not found")
     import yaml as _yaml
     with open(file_path, "r", encoding="utf-8") as f:
         raw = _yaml.safe_load(f)
     classes = raw.get("classes", {}) or {}
     if req.name in classes:
-        raise HTTPException(409, f"Class '{req.name}' already exists")
+        raise HTTPException(status_code=409, detail=f"Class '{req.name}' already exists")
     classes[req.name] = {
         "label": req.label, "description": req.description or "",
         "required_fields": req.required_fields, "optional_fields": req.optional_fields,
@@ -4239,13 +4239,13 @@ async def update_ontology_class(domain_id: str, class_name: str, req: OntologyCl
     d = _Path(_os.getenv("AIPLAT_HOME", _Path("~").expanduser() / ".aiplat")) / "ontologies"
     file_path = d / f"{domain_id}.yaml"
     if not file_path.exists():
-        raise HTTPException(404, f"Domain '{domain_id}' not found")
+        raise HTTPException(status_code=404, detail=f"Domain '{domain_id}' not found")
     import yaml as _yaml
     with open(file_path, "r", encoding="utf-8") as f:
         raw = _yaml.safe_load(f)
     classes = raw.get("classes", {}) or {}
     if class_name not in classes:
-        raise HTTPException(404, f"Class '{class_name}' not found in '{domain_id}'")
+        raise HTTPException(status_code=404, detail=f"Class '{class_name}' not found in '{domain_id}'")
     # Preserve existing fields not being updated (states, transitions, fields, etc.)
     existing = classes[class_name]
     existing["label"] = req.label
@@ -4268,7 +4268,7 @@ async def update_ontology_property(domain_id: str, prop_name: str, req: Ontology
     d = _Path(_os.getenv("AIPLAT_HOME", _Path("~").expanduser() / ".aiplat")) / "ontologies"
     file_path = d / f"{domain_id}.yaml"
     if not file_path.exists():
-        raise HTTPException(404, f"Domain '{domain_id}' not found")
+        raise HTTPException(status_code=404, detail=f"Domain '{domain_id}' not found")
     import yaml as _yaml
     with open(file_path, "r", encoding="utf-8") as f:
         raw = _yaml.safe_load(f)
@@ -4285,7 +4285,7 @@ async def update_ontology_property(domain_id: str, prop_name: str, req: Ontology
             updated = True
             break
     if not updated:
-        raise HTTPException(404, f"Property '{prop_name}' not found in '{domain_id}'")
+        raise HTTPException(status_code=404, detail=f"Property '{prop_name}' not found in '{domain_id}'")
     raw["object_properties"] = props
     _write_domain_yaml(domain_id, raw)
     return {"status": "updated", "domain": domain_id, "property": prop_name}
@@ -4299,13 +4299,13 @@ async def delete_ontology_class(domain_id: str, class_name: str, force: bool = F
     d = _Path(_os.getenv("AIPLAT_HOME", _Path("~").expanduser() / ".aiplat")) / "ontologies"
     file_path = d / f"{domain_id}.yaml"
     if not file_path.exists():
-        raise HTTPException(404, f"Domain '{domain_id}' not found")
+        raise HTTPException(status_code=404, detail=f"Domain '{domain_id}' not found")
     import yaml as _yaml
     with open(file_path, "r", encoding="utf-8") as f:
         raw = _yaml.safe_load(f)
     classes = raw.get("classes", {}) or {}
     if class_name not in classes:
-        raise HTTPException(404, f"Class '{class_name}' not found in '{domain_id}'")
+        raise HTTPException(status_code=404, detail=f"Class '{class_name}' not found in '{domain_id}'")
 
     # Detect affected data before deletion
     class_label = str(classes[class_name].get("label", class_name))
@@ -4317,8 +4317,8 @@ async def delete_ontology_class(domain_id: str, class_name: str, force: bool = F
         from core.harness.ontology_engine.graph_index import GraphIndex
         g = GraphIndex.load(domain_id)
         orphan_nodes = sum(1 for n in g._nodes.values() if n.class_name == class_label)
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     if not force:
         return {
@@ -4338,8 +4338,8 @@ async def delete_ontology_class(domain_id: str, class_name: str, force: bool = F
             to_remove = [n.entity_id for n in g._nodes.values() if n.class_name == class_label]
             for eid in to_remove:
                 g.remove_entity(eid)
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
     del classes[class_name]
     raw["classes"] = classes
@@ -4355,7 +4355,7 @@ async def add_ontology_property(domain_id: str, req: OntologyPropertyCreate):
     d = _Path(_os.getenv("AIPLAT_HOME", _Path("~").expanduser() / ".aiplat")) / "ontologies"
     file_path = d / f"{domain_id}.yaml"
     if not file_path.exists():
-        raise HTTPException(404, f"Domain '{domain_id}' not found")
+        raise HTTPException(status_code=404, detail=f"Domain '{domain_id}' not found")
     import yaml as _yaml
     with open(file_path, "r", encoding="utf-8") as f:
         raw = _yaml.safe_load(f)
@@ -4378,7 +4378,7 @@ async def delete_ontology_property(domain_id: str, prop_name: str):
     d = _Path(_os.getenv("AIPLAT_HOME", _Path("~").expanduser() / ".aiplat")) / "ontologies"
     file_path = d / f"{domain_id}.yaml"
     if not file_path.exists():
-        raise HTTPException(404, f"Domain '{domain_id}' not found")
+        raise HTTPException(status_code=404, detail=f"Domain '{domain_id}' not found")
     import yaml as _yaml
     with open(file_path, "r", encoding="utf-8") as f:
         raw = _yaml.safe_load(f)
@@ -4386,7 +4386,7 @@ async def delete_ontology_property(domain_id: str, prop_name: str):
     before = len(props)
     raw["object_properties"] = [p for p in props if p.get("name") != prop_name]
     if len(raw["object_properties"]) == before:
-        raise HTTPException(404, f"Property '{prop_name}' not found in '{domain_id}'")
+        raise HTTPException(status_code=404, detail=f"Property '{prop_name}' not found in '{domain_id}'")
     _write_domain_yaml(domain_id, raw)
     return {"status": "deleted", "domain": domain_id, "property": prop_name}
 
@@ -4619,8 +4619,8 @@ async def get_ontology_metrics(collection: str = "default", refresh: bool = Fals
             try:
                 if _os.path.exists(cache_path):
                     _os.remove(cache_path)
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
             from core.harness.knowledge._bg_tasks import enqueue
             enqueue("rebuild_metrics", collection_id=collection)
             return {"source": "recomputing", "message": "后台重新计算中，请稍后刷新。预计 1-3 分钟完成。"}

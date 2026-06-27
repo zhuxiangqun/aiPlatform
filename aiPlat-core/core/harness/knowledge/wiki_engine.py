@@ -90,8 +90,8 @@ def list_collections() -> List[Dict[str, Any]]:
                 if idx.exists():
                     pages = _json.loads(idx.read_text(encoding="utf-8")).get("pages", {})
                     page_count = len(pages)
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
             result.append({"collection_id": d.name, "page_count": page_count})
     return result
 
@@ -287,8 +287,8 @@ def write_page(title: str, body: str, *, category: str = "entities", tags: List[
             _logger = logging.getLogger("wiki_engine")
             for w in a8_warnings:
                 _logger.warning(w)
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     # ── State transition validation ──
     # Valid: draft→curated, curated→published, curated→draft, published→contradicted,
@@ -430,8 +430,8 @@ def write_page(title: str, body: str, *, category: str = "entities", tags: List[
                 cache = _cache_json.loads(cache_path.read_text(encoding="utf-8"))
             cache[title] = vec
             cache_path.write_text(_cache_json.dumps(cache, ensure_ascii=False))
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     # ── Incremental inference on create ──
     if relationships or contradictions:
@@ -456,8 +456,8 @@ def write_page(title: str, body: str, *, category: str = "entities", tags: List[
                         if target:
                             onto.triples.append(OntologyTriple(
                                 f"{AI}{target}", f"{AI}childOf", f"{AI}{title}"))
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
     # ── Invalidate inference cache (page written) ──
     try:
@@ -465,8 +465,8 @@ def write_page(title: str, body: str, *, category: str = "entities", tags: List[
         cache_path = _wiki_root(collection_id) / "inference_cache.json"
         if cache_path.exists():
             _os.remove(cache_path)
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     # ── Invalidate metrics cache + trigger background rebuild (page written) ──
     try:
@@ -483,8 +483,8 @@ def write_page(title: str, body: str, *, category: str = "entities", tags: List[
         from core.harness.knowledge.knowledge_growth import take_growth_snapshot
         take_growth_snapshot(collection_id)
         invalidate_graph_cache(collection_id)
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     # ── KB↔Wiki bidirectional link: update kb.sqlite3 ──
     try:
@@ -510,31 +510,31 @@ def write_page(title: str, body: str, *, category: str = "entities", tags: List[
                     """, (title, title, title, doc_id))
                 conn.commit()
                 conn.close()
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     # ── Auto-maintenance: FTS index + atom extraction ──
     try:
         from core.harness.knowledge.wiki_fts import fts_upsert_page
         fts_upsert_page(title, tags=tags or [], summary=summary or "", body_preview=body[:5000])
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     # Auto-atomize: enqueue for background worker (topic pages with substantial content)
     try:
         if category == "topics" and len(body) > 500:
             from core.harness.knowledge._bg_tasks import enqueue
             enqueue("auto_atomize", title=title, collection_id=collection_id)
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     # ── Changelog: record this write ──
     try:
         _record_changelog(title, "write", existing_page=existing, new_body=body,
                           new_status=status, new_marking=marking,
                           collection_id=collection_id)
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     # ── Regression guard: run affected gold queries, warn on degradation ──
     try:
@@ -543,8 +543,8 @@ def write_page(title: str, body: str, *, category: str = "entities", tags: List[
             _check_regression(title, collection_id)
     except ValueError:
         raise  # blocking mode: propagate to API as 422
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     # ── Marking propagation: enqueue for background worker ──
     try:
@@ -552,15 +552,15 @@ def write_page(title: str, body: str, *, category: str = "entities", tags: List[
         if marking and marking != "public" and _ros2.environ.get("_AIPLAT_SKIP_MARKING_PROPAGATION") != "1":
             from core.harness.knowledge._bg_tasks import enqueue
             enqueue("propagate_marking", title=title, marking=marking, collection_id=collection_id)
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     # ── Validate source_articles: prune stale kb: references ──
     if source_articles:
         try:
             _reconcile_source_articles(title, source_articles, collection_id)
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
     # ── Programmatic update hooks: provenance + cache ──
     if existing:
@@ -570,16 +570,16 @@ def write_page(title: str, body: str, *, category: str = "entities", tags: List[
             tracker = get_provenance_tracker()
             scanner = ProvenanceScanner(tracker)
             _asyncio.run(scanner.on_source_updated(title, version))
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
     try:
         from core.harness.knowledge.semantic_cache import get_semantic_cache
         cache = get_semantic_cache()
         if cache.enabled:
             import asyncio as _asyncio
             _asyncio.run(cache.invalidate_domain(collection_id))
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     return str(p)
 
@@ -854,8 +854,8 @@ def _propagate_marking(title: str, marking: str, collection_id: str) -> None:
                     subj_name = str(t.subject).replace(AI, "")
                     if subj_name and subj_name != title:
                         connected.add(subj_name)
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
     
     # 3) Propagate: update each connected page if its marking is less restrictive
     updated = 0
@@ -875,8 +875,8 @@ def _propagate_marking(title: str, marking: str, collection_id: str) -> None:
                     _skip_marking_propagation=True,  # prevent recursion
                 )
                 updated += 1
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
     
     if updated:
         _log.info(f"Marking '{marking}' propagated from '{title}' to {updated} pages: {sorted(connected)}")
@@ -973,8 +973,8 @@ def delete_page(title: str, collection_id: str = "default") -> bool:
             idx = _json.loads(idx_path.read_text(encoding="utf-8"))
             idx.get("pages", {}).pop(title, None)
             idx_path.write_text(_json.dumps(idx, indent=2, ensure_ascii=False))
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
     # ── Cascade: mark stale references in pages that cited the deleted page ──
     try:
@@ -1027,21 +1027,21 @@ def delete_page(title: str, collection_id: str = "default") -> bool:
         from core.harness.knowledge.knowledge_growth import take_growth_snapshot
         take_growth_snapshot(collection_id)
         invalidate_graph_cache(collection_id)
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     # ── Auto-maintenance: remove from FTS index ──
     try:
         from core.harness.knowledge.wiki_fts import fts_delete_page
         fts_delete_page(title)
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     # ── Changelog: record this deletion ──
     try:
         _record_changelog(title, "delete", existing_page=old_page, collection_id=collection_id)
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     return True
 
@@ -1079,11 +1079,11 @@ def delete_all_pages(*, collection_id: str = "default") -> Dict[str, Any]:
                         conn.execute("UPDATE documents SET meta_json=? WHERE doc_id=? AND tenant_id='default'",
                                      (_json.dumps(meta, ensure_ascii=False), d["doc_id"]))
                         conn.commit()
-                except Exception:
-                    pass
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
             conn.close()
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     return {"deleted": deleted}
 
@@ -1225,8 +1225,8 @@ def _execute_merge(prop, from_title, to_title) -> Dict[str, Any]:
                 onto.triples.remove(t)
                 triple_updates += 1
         onto.triples.extend(new_triples)
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     # ── M1: Schema revalidation ──
     validation = {}
@@ -1268,10 +1268,10 @@ def _execute_merge(prop, from_title, to_title) -> Dict[str, Any]:
             if changed and p["title"] != from_title:  # skip the deleted page
                 try:
                     update_page(p["title"], contradictions=new_contras)
-                except Exception:
-                    pass
-    except Exception:
-        pass
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     delete_page(from_title)
     update_proposal_status(prop["id"], "resolved")
@@ -1477,8 +1477,8 @@ def invalidate_graph_cache(collection_id: str = "default") -> None:
             conn.execute("DELETE FROM graph_cache")
             conn.commit()
             conn.close()
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
 
 def _graph_cache_db() -> str:
@@ -1500,8 +1500,8 @@ def _read_graph_cache(cache_key: str) -> Optional[Dict[str, Any]]:
         conn.close()
         if row and _time.time() - row[1] < 120:
             return _json.loads(row[0])
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
     return None
 
 
@@ -1520,8 +1520,8 @@ def _write_graph_cache(cache_key: str, result: Dict[str, Any]) -> None:
         )
         conn.commit()
         conn.close()
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
 
 def _build_graph_raw(*, category: str = "", keyword: str = "", source: str = "", max_nodes: int = 300, collection_id: str = "default") -> Dict[str, Any]:
@@ -1571,6 +1571,11 @@ def _build_graph_raw(*, category: str = "", keyword: str = "", source: str = "",
         link_count = len(p.get("related", [])) + in_degree.get(title, 0)
         total_links += link_count
         cat_name = p.get("category", "entities")
+        # Wiki graph categories are a fixed 3-class visual grouping (entities/topics/
+        # contradictions). Normalize any leaked ontology-class category (e.g.
+        # "ai-techniques") to the default so the node contract stays valid.
+        if cat_name not in ("entities", "topics", "contradictions"):
+            cat_name = "entities"
         cat_counts[cat_name] = cat_counts.get(cat_name, 0) + 1
         symbol_size = min(12 + link_count * 3, 55)
         has_issues = bool(p.get("contradictions") or p.get("issues"))
@@ -1719,8 +1724,8 @@ def detect_duplicate_pages(threshold: float = 0.90, collection_id: str = "defaul
                                         "similarity": round(title_sim, 3), "layer": "L2_ontology",
                                         "suggestion": f"相同父概念 '{pa}' 且标题相似，可能是同一概念的不同表述",
                                     })
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     # ── L3: Structural duplicates (same category + shared >= 5 related pages + content similarity gate) ──
     # Build a title→index map for vector lookup (reuse L1 vecs)
@@ -1748,8 +1753,8 @@ def detect_duplicate_pages(threshold: float = 0.90, collection_id: str = "defaul
                     content_sim = cosine_similarity(vi, vj)
                     if content_sim < 0.70:
                         continue  # Structural overlap but content differs → not duplicate
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
             seen_pairs.add(pair)
             dupes.append({
                 "page_a": a["title"], "page_b": b["title"],
@@ -1844,8 +1849,8 @@ Source: {source_doc_id or 'unknown'}
                     onto_hint += f"  Under '{parent}': {', '.join(children[:5])}\n"
             onto_hint += "Check if the new content extends, contradicts, or should be merged into any of these groups.\n"
             prompt_content += onto_hint
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     prompt_content += """
 
@@ -2144,8 +2149,8 @@ async def atomize_document(doc_text: str, doc_id: str, *,
             try:
                 build_contradiction_page(valid_atoms, c, collection_id=collection_id)
                 result["contradiction_pages_created"] += 1
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
 
     return result
 
@@ -2174,8 +2179,8 @@ def clean_stale_references(collection_id: str = "default") -> Dict[str, Any]:
             rows = conn.execute("SELECT doc_id FROM documents WHERE status='ready'").fetchall()
             known_doc_ids = {r[0] for r in rows}
             conn.close()
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
     # Step 2: Scan each page for stale kb:/upload:/vault: references
     for page in all_pages:
@@ -2657,8 +2662,8 @@ def recommend_knowledge(
                     "priority": "high",
                     "source": "high_velocity",
                 })
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     # c) Knowledge gaps
     if recent_queries:
@@ -2672,8 +2677,8 @@ def recommend_knowledge(
                     "priority": "high",
                     "source": "knowledge_gap",
                 })
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
     # d) Pending reviews
     try:
@@ -2693,8 +2698,8 @@ def recommend_knowledge(
                     "priority": "high",
                     "source": "pending_review",
                 })
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     # Dedup by title and limit
     seen = set()

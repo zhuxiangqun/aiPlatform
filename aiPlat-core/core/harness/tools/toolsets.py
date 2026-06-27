@@ -11,6 +11,7 @@ trusting UI configuration alone.
 """
 
 from __future__ import annotations
+import logging
 
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Set
@@ -189,8 +190,8 @@ def check_workspace_gate(
     try:
         from core.harness.kernel.execution_context import mark_gate_passed
         mark_gate_passed("workspace_gate_checked")
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     policy = resolve_toolset(str(active_toolset))
 

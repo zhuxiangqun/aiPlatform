@@ -19,6 +19,10 @@ import sys
 from pathlib import Path
 import pytest
 
+# Heavy integration self-tests: several invoke real full-repo scripts (caller_verify.sh,
+# phase_check.sh) and run 100s+. Skipped in the fast guard; run via `pytest -m slow`.
+pytestmark = pytest.mark.slow
+
 WORKSPACE_ROOT = Path(__file__).resolve().parent.parent.parent.parent.parent
 SCRIPTS_DIR = WORKSPACE_ROOT / "scripts"
 

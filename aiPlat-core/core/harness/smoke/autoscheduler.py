@@ -10,6 +10,7 @@ Design goals:
 """
 
 from __future__ import annotations
+import logging
 
 import asyncio
 import os
@@ -34,8 +35,8 @@ async def _autosmoke_enabled(execution_store: Any) -> bool:
         if isinstance(s, dict):
             v = s.get("value") or {}
             return bool(v.get("enabled")) is True
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
     return False
 
 
@@ -53,8 +54,8 @@ async def _dedup_seconds(execution_store: Any) -> int:
             v = (s or {}).get("value") if isinstance(s, dict) else {}
             if isinstance(v, dict) and v.get("dedup_seconds") is not None:
                 return int(v.get("dedup_seconds"))
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
     return 600
 
 
@@ -195,8 +196,8 @@ async def enqueue_autosmoke(
                 change_id=str(change_id) if change_id else None,
             detail={"job_id": job_id, "payload": payload},
         )
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     # Async execution: run once in background so API returns immediately.
     async def _run_once():
@@ -217,13 +218,13 @@ async def enqueue_autosmoke(
                     trace_id=str((run or {}).get("trace_id") or "") or None,
                     detail={"job_id": job_id, "job_run": run},
                 )
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
             if on_complete is not None and isinstance(run, dict):
                 try:
                     await on_complete(run)
-                except Exception:
-                    pass
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
         except Exception:
             # job_run will be marked failed by scheduler when possible; swallow here to keep loop alive
             return

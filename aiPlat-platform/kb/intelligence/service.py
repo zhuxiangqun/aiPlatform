@@ -17,6 +17,7 @@ from core.api.facades.kb_facade import kb_transcribe_audio
 from kb.storage import get_tenant_storage
 from .embeddings import embed_text
 from core.utils.ids import new_prefixed_id
+import logging
 
 
 class _TextHTMLParser(HTMLParser):
@@ -135,8 +136,8 @@ def _extract_video_from_page_with_playwright(page_url: str, up_dir: Path, file_h
                 source_tag = page.locator("video source").first
                 if source_tag.count() > 0:
                     video_url = source_tag.get_attribute("src") or ""
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
         browser.close()
 
@@ -171,8 +172,8 @@ def _extract_video_from_page_with_playwright(page_url: str, up_dir: Path, file_h
                 os.remove(audio_path)
             except OSError:
                 pass
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
     # Step 2: enrich transcript with page metadata
     header = ""
@@ -496,8 +497,8 @@ def enqueue_doc_ingest(
                 )
                 db.append_job_event(tenant_id=st.tenant_id, job_id=job_id, level="info", message="dedupe_hit", extra={"doc_id": doc_id, "cache_hit": cache_hit})
                 return {"tenant_id": st.tenant_id, "collection_id": collection_id, "doc_id": doc_id, "job_id": job_id, "dedupe": True, "cache_hit": cache_hit, "cache_known": cache_known}
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
     db.upsert_document(
         tenant_id=st.tenant_id,

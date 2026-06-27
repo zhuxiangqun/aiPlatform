@@ -12,6 +12,7 @@ Typical workflow:
 """
 
 from __future__ import annotations
+import logging
 
 import uuid
 from dataclasses import dataclass
@@ -98,8 +99,8 @@ async def require_publish_approval(
     # Ensure persistence in short-lived offline processes (CLI).
     try:
         await approval_manager._persist(req)  # type: ignore[attr-defined]
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
     return req.request_id
 
 
@@ -122,8 +123,8 @@ async def require_rollback_approval(
     req = approval_manager.create_request(ctx, rule=rule)
     try:
         await approval_manager._persist(req)  # type: ignore[attr-defined]
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
     return req.request_id
 
 

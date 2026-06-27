@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any, Dict, List
 
 from core.management.arch_guard_base import ArchIssue, ArchRule
+import logging
 
 
 class SkillEffectsCheck(ArchRule):
@@ -26,8 +27,8 @@ class SkillEffectsCheck(ArchRule):
                 content = skill_md.read_text()
                 if not re.search(r'^effects:', content, re.MULTILINE):
                     missing.append(str(skill_md.parent.relative_to(repo_root)))
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
         if missing:
             return [ArchIssue(level=self.level, code=self.code,
                              message="SKILL.md files missing effects field",
@@ -149,8 +150,8 @@ class SkillRequiredFieldsCheck(ArchRule):
                         missing_fields.append(field)
                 if missing_fields:
                     missing.append(f"{skill_md.parent.relative_to(repo_root)}: missing {', '.join(missing_fields)}")
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
         if missing:
             return [ArchIssue(level=self.level, code=self.code,
                              message="SKILL.md files missing required fields",
@@ -179,8 +180,8 @@ class AgentHandoffCheck(ArchRule):
                 content = agent_md.read_text()
                 if not re.search(r'交接规范|\*\*做了什么\*\*', content):
                     missing.append(agent)
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
         if missing:
             return [ArchIssue(level=self.level, code=self.code,
                              message="AGENT.md files missing handoff section",
@@ -215,8 +216,8 @@ class CoreAppsDirectoryCheck(ArchRule):
                 if result.stdout.strip():
                     count = len(result.stdout.strip().split("\n"))
                     flagged.append(f"{d.name} ({count} files have DB/thread/job patterns)")
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
         if flagged:
             return [ArchIssue(level=self.level, code=self.code,
                              message="core/apps/ directories contain application-level concerns",
@@ -249,8 +250,8 @@ class AgentAddSkillCheck(ArchRule):
                 if re.search(r'BaseAgent', content):
                     continue  # inherits from BaseAgent which has add_skill
                 missing.append(f.stem)
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
         if missing:
             return [ArchIssue(level=self.level, code=self.code,
                              message="Agent classes missing add_skill method",
@@ -317,8 +318,8 @@ class BoundaryDeclarationCheck(ArchRule):
                     actual = "unknown"
                 if declared != actual:
                     mismatches.append(f"{d}: declared={declared}, actual={actual}")
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
         if mismatches:
             issues.append(ArchIssue(level=self.level, code="boundary_mismatch",
                                     message="BOUNDARY.yaml layer mismatch",
@@ -427,8 +428,8 @@ class ASTBehaviorCheck(ArchRule):
                 return [ArchIssue(level=self.level, code=self.code,
                                  message="platform functions perform LLM inference / agent discovery",
                                  files=violations[:20], count=len(violations))]
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
         return []
 
 
@@ -464,8 +465,8 @@ class TestCoverageCheck(ArchRule):
                 )
                 if not result.stdout.strip():
                     uncovered.append(mod)
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
         if uncovered:
             return [ArchIssue(level=self.level, code=self.code,
                              message="key modules with 0 dedicated test files (advisory)",
@@ -511,8 +512,8 @@ class InfraImplExposureCheck(ArchRule):
                     for cls in classes:
                         if cls not in ("ErrorHandler", "HealthChecker", "AlertManager"):
                             exposed.append(f"{init_file.parent.relative_to(repo_root)}: exposes {cls} (from .{mod_name})")
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
         if exposed:
             return [ArchIssue(level=self.level, code=self.code,
                              message="__init__.py exposes implementation classes",
@@ -540,6 +541,6 @@ class SkillDepsCheck(ArchRule):
                 return [ArchIssue(level=self.level, code=self.code,
                                  message="Agent→Skill references unresolved",
                                  files=items, count=len(items))]
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
         return []

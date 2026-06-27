@@ -1,3 +1,4 @@
+import logging
 """
 ConsulSource - Consul 配置源实现
 """
@@ -56,9 +57,9 @@ class ConsulSource(ConfigSource):
 
                     try:
                         value = base64.b64decode(value).decode("utf-8")
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        logging.debug(str(e), exc_info=True)
                 config[key] = value
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
         return config

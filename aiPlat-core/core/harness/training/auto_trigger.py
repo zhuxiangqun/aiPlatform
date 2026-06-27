@@ -12,6 +12,7 @@ LoRA AutoTrigger — 自动微调触发 (Phase 4.3)
 """
 
 from __future__ import annotations
+import logging
 
 import asyncio, json, os, time, logging
 from dataclasses import dataclass, field
@@ -123,8 +124,8 @@ class LoRAAutoTrigger:
                 "action": "/infra/finetune/new",
                 "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
             })
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
     def get_stats(self) -> Dict[str, Any]:
         return {

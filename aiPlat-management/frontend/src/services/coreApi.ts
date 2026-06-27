@@ -179,6 +179,7 @@ export const workspaceAgentApi = {
       skills: string[]; tools: string[]; mcp_ids: string[];
       sop_body: string; display_name: string; config: Record<string, unknown>;
       reasoning: string; error?: string;
+      trigger_conditions?: string[]; agent_ids?: string[]; permissions?: unknown[];
     }>('/core/workspace/agents/import-detect', data);
   },
 
@@ -629,7 +630,7 @@ export const approvalsApi = {
   },
 
   replay: async (requestId: string, payload: Record<string, unknown> = {}) => {
-    return apiClient.post<any>(`/core/approvals/${requestId}/replay`, payload as any);
+    return apiClient.post<any>(`/platform/approvals/${requestId}/replay`, payload as any);
   },
 };
 
@@ -1210,6 +1211,9 @@ export const workspaceSkillApi = {
       tools?: string[]; execution_type?: string; timeout?: number;
       category?: string; capabilities?: string[]; trigger_keywords?: string[];
       reasoning?: string; detected_name?: string; detected_description?: string;
+      display_name?: string; sop_body?: string;
+      input_schema?: Record<string, unknown>; output_schema?: Record<string, unknown>;
+      permissions?: unknown[]; trigger_conditions?: string[];
       error?: string;
     }>('/core/workspace/skills/import-detect', data);
   },
@@ -2219,39 +2223,39 @@ export type GatePolicyItem = {
 
 export const gatePolicyApi = {
   list: async () => {
-    return apiClient.get<{ status: string; default_id?: string; items: GatePolicyItem[] }>(`/core/governance/gate-policies`);
+    return apiClient.get<{ status: string; default_id?: string; items: GatePolicyItem[] }>(`/platform/governance/gate-policies`);
   },
   bootstrap: async (params: { force?: boolean } = {}) => {
     const q = new URLSearchParams();
     if (params.force != null) q.set('force', params.force ? 'true' : 'false');
     const qs = q.toString();
-    return apiClient.post<any>(`/core/governance/gate-policies/bootstrap${qs ? `?${qs}` : ''}`, {});
+    return apiClient.post<any>(`/platform/governance/gate-policies/bootstrap${qs ? `?${qs}` : ''}`, {});
   },
   get: async (policyId: string) => {
-    return apiClient.get<{ status: string; item: GatePolicyItem; default_id?: string }>(`/core/governance/gate-policies/${encodeURIComponent(policyId)}`);
+    return apiClient.get<{ status: string; item: GatePolicyItem; default_id?: string }>(`/platform/governance/gate-policies/${encodeURIComponent(policyId)}`);
   },
   versions: async (policyId: string) => {
     return apiClient.get<{ status: string; policy_id: string; current_version: number; revisions: any[] }>(
-      `/core/governance/gate-policies/${encodeURIComponent(policyId)}/versions`
+      `/platform/governance/gate-policies/${encodeURIComponent(policyId)}/versions`
     );
   },
   rollback: async (policyId: string, version: number) => {
-    return apiClient.post<any>(`/core/governance/gate-policies/${encodeURIComponent(policyId)}/rollback`, { version });
+    return apiClient.post<any>(`/platform/governance/gate-policies/${encodeURIComponent(policyId)}/rollback`, { version });
   },
   propose: async (policyId: string, body: { config: any; name?: string; description?: string; set_default?: boolean; require_approval?: boolean }) => {
-    return apiClient.post<any>(`/core/governance/gate-policies/${encodeURIComponent(policyId)}/propose`, body as any);
+    return apiClient.post<any>(`/platform/governance/gate-policies/${encodeURIComponent(policyId)}/propose`, body as any);
   },
   applyChange: async (changeId: string, body: { approval_request_id?: string } = {}) => {
-    return apiClient.post<any>(`/core/governance/gate-policies/changes/${encodeURIComponent(changeId)}/apply`, body as any);
+    return apiClient.post<any>(`/platform/governance/gate-policies/changes/${encodeURIComponent(changeId)}/apply`, body as any);
   },
   upsert: async (policyId: string, item: Partial<GatePolicyItem>, params: { set_default?: boolean } = {}) => {
-    return apiClient.put<{ status: string; item: GatePolicyItem; default_id?: string }>(`/core/governance/gate-policies/${encodeURIComponent(policyId)}`, {
+    return apiClient.put<{ status: string; item: GatePolicyItem; default_id?: string }>(`/platform/governance/gate-policies/${encodeURIComponent(policyId)}`, {
       ...item,
       set_default: params.set_default,
     } as any);
   },
   remove: async (policyId: string) => {
-    return apiClient.delete<{ status: string; deleted: string; default_id?: string }>(`/core/governance/gate-policies/${encodeURIComponent(policyId)}`);
+    return apiClient.delete<{ status: string; deleted: string; default_id?: string }>(`/platform/governance/gate-policies/${encodeURIComponent(policyId)}`);
   },
 };
 

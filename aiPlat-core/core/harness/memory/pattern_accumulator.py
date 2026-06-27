@@ -116,14 +116,14 @@ class PatternAccumulator:
 
         # 准则 2: 检索验证 — 已有 Skill 覆盖此模式？
         try:
-            from core.apps.skills.registry import SkillRegistry
-            reg = SkillRegistry()
+            from core.harness.integration import get_skill_registry
+            reg = get_skill_registry()
             similar = reg.search_by_pattern(list(pattern.tool_sequence)) if hasattr(reg, 'search_by_pattern') else None
             if similar:
                 _log.info(f"PatternAccumulator: pattern {pattern.hash[:8]} already covered by skill {similar}")
                 return None
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
         _log.info(f"PatternAccumulator: pattern {pattern.hash[:8]} freq={pattern.frequency} → triggering draft")
         return pattern

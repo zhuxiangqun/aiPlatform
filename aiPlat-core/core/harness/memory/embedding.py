@@ -13,6 +13,7 @@ Usage:
 """
 
 from __future__ import annotations
+import logging
 
 import os
 import math
@@ -94,8 +95,8 @@ class EmbeddingProvider:
                 None, lambda: self._model.embed_batch_sync(texts)
             )
             return [[float(v) for v in emb] for emb in embeddings]
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
         try:
             from sentence_transformers import SentenceTransformer
             if self._model is None:
@@ -127,8 +128,8 @@ class EmbeddingProvider:
                     if resp.status == 200:
                         data = await resp.json()
                         return [d["embedding"] for d in data.get("data", [])]
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
         return self._embed_simple(texts)
 
     async def _embed_infra(self, texts: List[str]) -> List[List[float]]:

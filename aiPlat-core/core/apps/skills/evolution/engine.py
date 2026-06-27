@@ -136,8 +136,8 @@ class EvolutionEngine:
                     "version": str(new_version.version),
                     "evolution_round": (self._state.get("evolution_round", 0) or 0) + 1,
                 }
-            except Exception:
-                pass  # best-effort: new version exists in lineage even if registry update fails
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
 
             # Phase 6.5 (optional): record learning artifact (best-effort; no behavior change).
             if os.getenv("AIPLAT_RECORD_LEARNING_ARTIFACTS", "false").lower() in ("1", "true", "yes", "y"):
@@ -166,8 +166,8 @@ class EvolutionEngine:
                         trace_id=artifact.trace_id,
                         run_id=artifact.run_id,
                     )
-                except Exception:
-                    pass
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
 
             return EvolutionResult(success=True, new_version=new_version)
 
@@ -320,8 +320,8 @@ class EvolutionEngine:
                                 trace_id=artifact.trace_id,
                                 run_id=artifact.run_id,
                             )
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            logging.debug(str(e), exc_info=True)
                     return True
         
         return False

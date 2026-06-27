@@ -126,14 +126,14 @@ class OTelSpan(Span):
     def set_attribute(self, key: str, value: Any) -> None:
         try:
             self._span.set_attribute(key, value)
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
     def add_event(self, name: str, attributes: Dict = None) -> None:
         try:
             self._span.add_event(name, attributes=attributes or {})
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
     def set_status(self, code: str, message: str = "") -> None:
         try:
@@ -141,14 +141,14 @@ class OTelSpan(Span):
 
             status_code = StatusCode.OK if str(code).lower() in ("ok", "success") else StatusCode.ERROR
             self._span.set_status(Status(status_code, message))
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
     def end(self) -> None:
         try:
             self._span.end()
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
 
 class OTelTracer(Tracer):
@@ -250,8 +250,8 @@ class OTelLoggerImpl(OTelLogger):
                 attrs = dict(attrs)
                 attrs["trace_id"] = format(ctx.trace_id, "032x") if ctx else ""
                 attrs["span_id"] = format(ctx.span_id, "016x") if ctx else ""
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
 
         sev = str(record.severity).upper()
         level = getattr(logging, sev, logging.INFO)

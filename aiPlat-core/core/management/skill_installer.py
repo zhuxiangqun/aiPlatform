@@ -58,8 +58,8 @@ def _apply_overrides(skill_dir: Path, overrides: Dict[str, Any]) -> None:
                     fm.pop("executable", None)
                 header = yaml.safe_dump(fm, sort_keys=False, allow_unicode=True).strip()
                 md.write_text(f"---\n{header}\n---{body}", encoding="utf-8")
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
 
 def _run(cmd: List[str], *, cwd: Optional[str] = None, timeout_s: int = 60) -> str:
@@ -166,8 +166,8 @@ def _record_import_audit(skill_dir: Path, skill_name: str, source: dict) -> None
             report = lint_skill(str(skill_dir))
             lint_errs = report.get("error_count", 0) if isinstance(report, dict) else 0
             lint_warns = report.get("warn_count", 0) if isinstance(report, dict) else 0
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
         import anyio
         anyio.run(
             store.add_import_audit,
@@ -180,8 +180,8 @@ def _record_import_audit(skill_dir: Path, skill_name: str, source: dict) -> None
             lint_warnings=lint_warns,
             details={"skill_dir": str(skill_dir), "handler_exists": has_handler, "scripts_exists": has_scripts},
         )
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
 
 
@@ -280,8 +280,8 @@ def _check_copy_limits(src_dir: Path) -> None:
         files += 1
         try:
             total += int(p.stat().st_size)
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
         if files > max_files:
             raise ValueError("skill_install_too_many_files")
         if total > max_bytes:
@@ -303,8 +303,8 @@ def _write_manifest(skill_dir: Path, *, source: Dict[str, Any]) -> None:
         extra = source.get("metadata")
         if isinstance(extra, dict):
             data["metadata"] = extra
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
     p.write_text(json.dumps(data, ensure_ascii=False, sort_keys=True, indent=2), encoding="utf-8")
 
 
@@ -637,13 +637,13 @@ class SkillInstaller:
                 src2 = dict(source or {})
                 src2["skill_id"] = sd.name
                 _write_manifest(dst, source=src2)
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
             # Record import audit for compliance tracking
             try:
                 _record_import_audit(dst, sd.name, source)
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
             installed.append(sd.name)
 
         return InstallResult(installed=installed, skipped=skipped)

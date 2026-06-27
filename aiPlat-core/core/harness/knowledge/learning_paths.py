@@ -97,8 +97,8 @@ def _path_meta(path_id: str, key: str) -> str:
         if _os.path.exists(config_path):
             data = _json.load(open(config_path))
             return str(data.get(path_id, {}).get(key, path_id))
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
     # Hardcoded fallback (learning content, not engine logic)
     defaults = {
         "ai_literate": {

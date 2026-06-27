@@ -1,3 +1,4 @@
+import logging
 """
 Message Queue - 消息队列服务
 """
@@ -93,8 +94,8 @@ class MessageQueue:
         for callback in self._subscribers.get(topic, []):
             try:
                 callback(message)
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
 
     def get_queue_size(self, topic: str) -> int:
         """获取队列大小"""

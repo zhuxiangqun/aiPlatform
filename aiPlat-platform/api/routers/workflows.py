@@ -196,8 +196,8 @@ async def sign_workflow(workflow_id: str, req: Dict[str, Any] = {}, _auth: str =
         if manifest_path.exists():
             try:
                 manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
         manifest["signature"] = signature
         manifest["version"] = str(version)
         manifest_path.write_text(json.dumps(manifest, indent=2, ensure_ascii=False), encoding="utf-8")

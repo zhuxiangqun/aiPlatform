@@ -112,7 +112,7 @@ export const builderTeamApi = {
 
   /** Manually rollback a stage */
   rollback: async (teamId: string, stageId: string) => {
-    return apiClient.post<{ team_id: string; phase: string }>(`/platform/builder/teams/${teamId}/rollback/${stageId}`);
+    return apiClient.post<{ team_id: string; phase: string }>(`/platform/builder/projects/${teamId}/rollback/${stageId}`);
   },
 
   /** Get pipeline state */

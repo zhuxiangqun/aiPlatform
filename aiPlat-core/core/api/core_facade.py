@@ -179,8 +179,8 @@ async def core_chat(ctx: ChatContext) -> ChatResult:
         if frontmatter:
             system_prompt = frontmatter.get("_sop_body", "") or frontmatter.get("system_prompt", "")
             agent_type = frontmatter.get("agent_type", agent_type)
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     # Fallback: load from core's AGENT.md
     if not system_prompt:
@@ -201,8 +201,8 @@ async def core_chat(ctx: ChatContext) -> ChatResult:
                         fm = _yaml.safe_load(parts[1]) or {}
                         system_prompt = parts[2].strip()
                         agent_type = fm.get("agent_type", agent_type)
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
     if not system_prompt:
         system_prompt = f"You are {ctx.agent_name}. Respond helpfully."
@@ -221,8 +221,8 @@ async def core_chat(ctx: ChatContext) -> ChatResult:
             existing = mem_ctx.get("messages") or mem_ctx.get("history") or []
             if isinstance(existing, list):
                 message_history = list(existing) + message_history
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     # ── 3. SkillRegistry: bind matching Skills ──
     skills_used: List[str] = []
@@ -232,8 +232,8 @@ async def core_chat(ctx: ChatContext) -> ChatResult:
         required = (frontmatter or {}).get("required_skills") if frontmatter else None
         if required:
             skills_used = [s for s in required if isinstance(s, str)]
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     # ── 4. Build context from extra_context ──
     user_prompt = ctx.user_input
@@ -259,8 +259,8 @@ async def core_chat(ctx: ChatContext) -> ChatResult:
         try:
             if hasattr(agent, "add_skill"):
                 agent.add_skill(skill_name)
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
     agent_ctx = AgentContext(
         session_id=ctx.session_id,
@@ -287,8 +287,8 @@ async def core_chat(ctx: ChatContext) -> ChatResult:
             metadata={"trace_id": trace_id, "agent_name": ctx.agent_name, "skills_used": skills_used},
         )
         memory_saved = True
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     return ChatResult(
         reply=reply,
@@ -368,8 +368,8 @@ def seed_all_registries() -> None:
     try:
         registry = get_skill_registry()
         registry.seed_for_platform()
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
     # Tool registry — register built-in tools
     try:
         from core.apps.tools import skill_tools, webfetch, http, repo
@@ -384,10 +384,10 @@ def seed_all_registries() -> None:
         for mod, cls_name, kwargs in _modules:
             try:
                 reg.register(getattr(mod, cls_name)(**kwargs))
-            except Exception:
-                pass
-    except Exception:
-        pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     # Model registry now bridged to infra ModelManager (no local seed needed)
 
@@ -781,8 +781,8 @@ async def wiki_auto_update(doc_id: str, file_path: str, collection_id: str = "")
         img_paths = extract_images_from_document(file_path)
         if img_paths:
             image_descriptions = await describe_images(img_paths[:8])
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     write_page(title, body, category="entities", tags=tags,
                summary=body[:300].replace("\n", " "),
@@ -868,10 +868,10 @@ async def wiki_auto_update(doc_id: str, file_path: str, collection_id: str = "")
                     stats["retries_total"] = stats.get("retries_total", 0) + curation_retries
                 _os.makedirs(_os.path.dirname(stats_path), exist_ok=True)
                 _json.dump(stats, open(stats_path, "w"))
-            except Exception:
-                pass
-        except Exception:
-            pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
     # Record changelog for this ingest operation
     try:
@@ -886,15 +886,15 @@ async def wiki_auto_update(doc_id: str, file_path: str, collection_id: str = "")
                 ops.append({"type": "link", "page": title,
                             "detail": f"关联 {len(curated['related'])} 个页面"})
         ingest_changelog(ops)
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     # ── Ontology: incremental A-Box rebuild after ingest ──
     try:
         from core.harness.knowledge.knowledge_abox_builder import rebuild_for_doc
         rebuild_for_doc(doc_id)
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     # ── Evolution: auto-trigger if enough new pages accumulated ──
     try:
@@ -902,8 +902,8 @@ async def wiki_auto_update(doc_id: str, file_path: str, collection_id: str = "")
         runner = EvolutionRunner(collection_id=collection_id or "default", max_mutations=3)
         if runner.can_evolve():
             await runner.run_one_generation(force=False)
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     final_category = "entities"
     if curated and not curated.get("error") and not curated.get("fallback"):
@@ -920,8 +920,8 @@ async def wiki_auto_update(doc_id: str, file_path: str, collection_id: str = "")
                     "UPDATE documents SET wiki_status='wikified' WHERE doc_id=?",
                     (doc_id,))
                 _conn.commit()
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     return {"status": "created", "title": title, "category": final_category, "chars": len(body)}
 
@@ -1173,8 +1173,8 @@ def _get_latest_eval_score(agent_id: str):
             if data.get("agent_id") == agent_id:
                 return {"score": data.get("composite_score", 0), "grade": data.get("grade", ""),
                         "total_tasks": data.get("total_tasks", 0), "has_data": True}
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
     return {"has_data": False}
 
 
@@ -1278,8 +1278,8 @@ async def _execute_workspace_agent_background(
                     sop_body = raw.split("---", 2)[2].strip() if len(raw.split("---", 2)) >= 3 else ""
                 else:
                     sop_body = raw.strip()
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
 
     def _resolve_model():
         from core.harness.utils.model_injection import create_selected_adapter, best_model_for_purpose
@@ -1324,8 +1324,8 @@ async def _execute_workspace_agent_background(
         for tn in (getattr(agent_info, "tools", []) or []):
             t = reg.get(str(tn))
             if t: resolved_tools.append(t)
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     # Resolve agent's bound skills from registry (parallel to tools resolution)
     resolved_skills = []
@@ -1335,8 +1335,8 @@ async def _execute_workspace_agent_background(
         for sn in (getattr(agent_info, "skills", []) or []):
             s = sk_reg.get(str(sn)) if hasattr(sk_reg, "get") else None
             if s: resolved_skills.append(s)
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     # ── Pre-filter tools against toolset policy (② avoid LLM seeing denied tools) ──
     if toolset:
@@ -1350,8 +1350,8 @@ async def _execute_workspace_agent_background(
                 if allowed:
                     filtered.append(t)
             resolved_tools = filtered
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
     prompt = (sop_body + "\n\n## Task\n" + user_message) if sop_body else user_message
     if sys_prompt:
@@ -1364,8 +1364,8 @@ async def _execute_workspace_agent_background(
     try:
         meta = getattr(agent_info, "metadata", None) or {}
         agent_loop_type = str(meta.get("loop_type") or agent_loop_type)
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
     class _RunnerConfig:
         max_steps_per_stage = max_steps
         max_tokens_per_run = 100000
@@ -1418,9 +1418,9 @@ async def _execute_workspace_agent_background(
         if _routing.should_clarify:
             state["_should_clarify"] = True
             state["_clarification_prompt"] = _routing.clarification_prompt
-    except Exception:
+    except Exception as e:
         # Best-effort: routing must not break execution
-        pass
+        logging.debug(str(e), exc_info=True)
 
     # ── Inject workspace context (toolset + mcp_ids + agent_ids + workflow_ids) ──
     ws_token = None
@@ -1432,23 +1432,23 @@ async def _execute_workspace_agent_background(
         try:
             meta = getattr(agent_info, "metadata", None) or {}
             toolset = str(meta.get("toolset") or "")
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
     try:
         agent_mcp_ids = getattr(agent_info, "mcp_ids", None)
         mcp_ids = list(agent_mcp_ids) if isinstance(agent_mcp_ids, list) else None
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
     try:
         agent_agent_ids = getattr(agent_info, "agent_ids", None)
         agent_ids = list(agent_agent_ids) if isinstance(agent_agent_ids, list) else None
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
     try:
         agent_workflow_ids = getattr(agent_info, "workflow_ids", None)
         workflow_ids = list(agent_workflow_ids) if isinstance(agent_workflow_ids, list) else None
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
     if toolset or mcp_ids or agent_ids or workflow_ids:
         from core.harness.kernel.execution_context import (
             set_active_workspace_context,
@@ -1467,8 +1467,8 @@ async def _execute_workspace_agent_background(
         try:
             from core.harness.kernel.execution_context import mark_gate_passed
             mark_gate_passed("workspace_context_injected")
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
     # ── Inject request identity context (aligns with Path B integration.py:1805) ──
     req_token = None
@@ -1489,10 +1489,10 @@ async def _execute_workspace_agent_background(
         try:
             from core.harness.kernel.execution_context import mark_gate_passed
             mark_gate_passed("request_context_injected")
-        except Exception:
-            pass
-    except Exception:
-        pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     # ── Emit agent_start via syscall_events so both SSE replay and EventBus see it ──
     # Delay 0.3s to give frontend SSE EventSource time to connect before execution begins.
@@ -1535,14 +1535,14 @@ async def _execute_workspace_agent_background(
             try:
                 from core.harness.kernel.execution_context import reset_active_workspace_context
                 reset_active_workspace_context(ws_token)
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
         if req_token is not None:
             try:
                 from core.harness.kernel.execution_context import reset_active_request_context
                 reset_active_request_context(req_token)
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
 
     # ── Emit agent_end + run_end for ExecutionViewer done detection + live events ──
     import json as _json
@@ -1567,8 +1567,8 @@ async def _execute_workspace_agent_background(
             "result_json": _json.dumps({"text": str(result_text or "")[:5000]}),
             "error": error_msg,
         })
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     try:
         from core.services.execution_store import get_execution_store
@@ -1591,8 +1591,8 @@ async def _execute_workspace_agent_background(
             tenant_id=None,
             payload={"kind": "agent", "agent_id": agent_id, "status": status, "duration_ms": _duration_ms, "error": error_msg or ""},
         )
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     # ── GateTracer: validate mandatory gates were all passed (Phase 3) ──
     try:
@@ -1618,10 +1618,10 @@ async def _execute_workspace_agent_background(
                         "status": status,
                     },
                 )
-            except Exception:
-                pass
-    except Exception:
-        pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     # Query token usage from syscall_events for this run
     tokens = None
@@ -1631,8 +1631,8 @@ async def _execute_workspace_agent_background(
         cost = await store.get_run_cost_summary(run_id=run_id)
         if cost.get("ok"):
             tokens = cost.get("llm_tokens")
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     # Extract real error from StageRunner output if present
     if (result_text or "") and "STAGE_ERROR:" in result_text:
@@ -1659,8 +1659,8 @@ def get_chat_service_model(rt: Any = None) -> Any:
     if rt and hasattr(rt, "adapter_manager") and getattr(rt.adapter_manager, "get_default_adapter", None):
         try:
             return rt.adapter_manager.get_default_adapter()
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
     model_name = get_default_model(purpose="chat") or get_default_model()
     return create_selected_adapter(model_name=model_name)
 

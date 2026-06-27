@@ -6,6 +6,7 @@ CLAUDE.md §5.14 (harness must not import from api/routers).
 """
 
 from __future__ import annotations
+import logging
 
 import ast
 import os
@@ -498,8 +499,8 @@ def _extract_router_prefix(filepath: Path) -> str:
         if m:
             prefix = m.group(1).strip('/')
             return prefix
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
     return ""
 
 
@@ -774,14 +775,14 @@ def build_graph(_repo_root: Path, roots: List[Path]) -> Tuple[Dict[str, Dict[str
                         from core.harness.knowledge.code_graph_persist import save_cross_edges, set_cross_edges_cached
                         save_cross_edges(edges)
                         set_cross_edges_cached()
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        logging.debug(str(e), exc_info=True)
                 with _CACHE_LOCK:
                     _CACHE = {"nodes": nodes, "edges": edges, "issues": [], "_ts": _t.time()}
                     _CACHE_ROOTS = ";".join(str(r) for r in roots)
                 return nodes, edges, []
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     # Fallback: in-memory cache (120s TTL)
     roots_key = ";".join(str(r) for r in roots)
@@ -824,8 +825,8 @@ def build_graph(_repo_root: Path, roots: List[Path]) -> Tuple[Dict[str, Dict[str
             # Extract symbols (functions/classes)
             try:
                 nodes[rel_from]["symbols"] = _extract_symbols_ast(f)
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
         else:
             for m in _JS_IMPORT_RE.finditer(text):
                 spec = m.group(1) or m.group(2) or m.group(3)
@@ -843,8 +844,8 @@ def build_graph(_repo_root: Path, roots: List[Path]) -> Tuple[Dict[str, Dict[str
                     routes = _extract_js_routes(f)
                     if routes:
                         nodes[rel_from]["routes"] = routes
-                except Exception:
-                    pass
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
         for rel_to in sorted(deps):
             edge = {"from": rel_from, "to": rel_to}
             # Determine edge scope: 'module' if both sides are top-level imports, else 'function'
@@ -858,8 +859,8 @@ def build_graph(_repo_root: Path, roots: List[Path]) -> Tuple[Dict[str, Dict[str
                 for func_name, line_no in calls[:50]:
                     edges.append({"from": rel_from, "to": rel_from, "kind": "calls",
                                   "label": f"{func_name}()", "line": line_no})
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
     # Resolve cross-file call edges
     _resolve_cross_call_edges(nodes, edges, files, _repo_root)
     # Build cross-language edges: frontend API calls → backend routes
@@ -875,8 +876,8 @@ def build_graph(_repo_root: Path, roots: List[Path]) -> Tuple[Dict[str, Dict[str
         save_graph(nodes, edges, _repo_root)
         save_cross_edges(edges)
         set_cross_edges_cached()
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
     return nodes, edges, issues
 
 
@@ -976,8 +977,8 @@ def _load_known_safe_count() -> int:
         if os.path.exists(wl_path):
             with open(wl_path) as f:
                 return sum(1 for line in f if line.strip() and not line.strip().startswith('#'))
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
     return 0
 
 
@@ -1103,8 +1104,8 @@ def _enrich_nodes_with_symbols(nodes, repo_root):
                 "total_classes": len(classes),
                 "total_functions": len(functions),
             }
-        except (SyntaxError, OSError):
-            pass
+        except (SyntaxError, OSError) as e:
+            logging.debug(str(e), exc_info=True)
 
 
 def _find_orphans(nodes):
@@ -1300,8 +1301,8 @@ def convert_file_graph_to_symbols(
                                     "label": f"{func_name}()",
                                     "line": line_no,
                                 })
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
     # Phase 2.5: Add "contains" edges using AST parent tracking.
     # Walk each file's AST to build a parent→child nesting map, then create
@@ -1318,8 +1319,8 @@ def convert_file_graph_to_symbols(
                 tree = ast.parse(text, filename=str(fpath))
                 # Build parent map: child_id → parent_name
                 _build_contains_edges(tree, file_id, symbol_nodes, symbol_edges)
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
     # Phase 3: Build import-based edges between symbols
     for edge in file_edges:
@@ -1495,5 +1496,5 @@ def _resolve_cross_call_edges(nodes, edges, files, repo_root):
                     edges.append({"from": rel_from, "to": tf, "kind": "calls",
                                   "label": f"{func_name}()", "line": line_no,
                                   "cross": True})
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)

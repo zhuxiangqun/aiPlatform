@@ -4,6 +4,7 @@ import re
 from typing import Any, Dict, List
 
 from core.management.skill_linter_base import LintIssue, LintRule
+import logging
 
 
 def _norm_text(s: str) -> str:
@@ -37,8 +38,8 @@ class ConflictPairCheck(LintRule):
                     message=f"路由冲突：与 {other.get('name') or other.get('skill_id')} 的 token 重合偏高（jaccard={j:.2f}）。建议做冲突对定向消歧（negative_triggers/constraints/减少泛化 triggers）。",
                     location="observability.lint_conflicts",
                 )]
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
         return []
 
     @staticmethod

@@ -21,7 +21,7 @@ interface RouteStats {
 
 const API = '/api/core/models/v3-stats';
 
-function colorCard(value: number, thresholds: [number, number][], invert: boolean = false) {
+function colorCard(value: number, thresholds: [number, string][], invert: boolean = false) {
   for (const [th, color] of thresholds) {
     if (invert ? value <= th : value >= th) return color;
   }

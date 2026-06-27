@@ -8,6 +8,7 @@ from fastapi import HTTPException
 
 from core.api.utils.governance import api_url, gate_error_envelope, ui_url
 from core.governance.changeset import record_changeset
+import logging
 
 
 def new_change_id() -> str:
@@ -77,8 +78,8 @@ async def require_targets_verified(
                     if store:
                         try:
                             item["job_run"] = await store.get_job_run(jr)
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            logging.debug(str(e), exc_info=True)
                 if isinstance(jid, str) and jid:
                     item["retry"] = {"method": "POST", "api_url": api_url(f"/api/core/jobs/{jid}/run"), "job_id": jid}
                 missing.append(item)
@@ -101,8 +102,8 @@ async def require_targets_verified(
                     if store:
                         try:
                             item["job_run"] = await store.get_job_run(jr)
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            logging.debug(str(e), exc_info=True)
                 if isinstance(jid, str) and jid:
                     item["retry"] = {"method": "POST", "api_url": api_url(f"/api/core/jobs/{jid}/run"), "job_id": jid}
                 missing.append(item)
@@ -125,8 +126,8 @@ async def require_targets_verified(
                     if store:
                         try:
                             item["job_run"] = await store.get_job_run(jr)
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            logging.debug(str(e), exc_info=True)
                 if isinstance(jid, str) and jid:
                     item["retry"] = {"method": "POST", "api_url": api_url(f"/api/core/jobs/{jid}/run"), "job_id": jid}
                 missing.append(item)
@@ -229,6 +230,6 @@ async def gate_with_change_control(
                     request_id=str(approval_request_id) if approval_request_id else None,
                     detail={"operation": operation, "targets": [{"type": t[0], "id": t[1]} for t in targets], "gate": detail},
                 )
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
         raise HTTPException(status_code=e.status_code, detail=detail)

@@ -202,14 +202,14 @@ class SubagentCoordinator:
                     try:
                         from core.harness.kernel.execution_context import reset_active_request_context
                         reset_active_request_context(req_token)
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        logging.debug(str(e), exc_info=True)
                 if sub_ws_token is not None:
                     try:
                         from core.harness.kernel.execution_context import reset_active_workspace_context
                         reset_active_workspace_context(sub_ws_token)
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        logging.debug(str(e), exc_info=True)
 
             if result.success:
                 output = result.output or ""

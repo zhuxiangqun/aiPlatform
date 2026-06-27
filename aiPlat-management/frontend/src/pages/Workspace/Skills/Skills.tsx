@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Copy, Info, Plus, RotateCw, Trash2, Pencil, Play, Layers, Clock, ShieldCheck, Upload, Key } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { Badge, Table, Select, Switch, Button, Modal, toast } from '../../../components/ui';
+import { Table, Select, Switch, Button, Modal, toast } from '../../../components/ui';
 import { useWorkspaceSkillStore } from '../../../stores';
 import { learningApi, type Skill } from '../../../services';
 import { workspaceSkillApi } from '../../../services';

@@ -5,6 +5,7 @@ from enum import Enum
 from collections import defaultdict
 import asyncio
 import uuid
+import logging
 
 
 class EventType(Enum):
@@ -150,13 +151,13 @@ class EventBus:
         for handler in self._global_handlers:
             try:
                 await handler(event)
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
         for handler in self._handlers.get(event.type, []):
             try:
                 await handler(event)
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
 
     def get_queue_size(self) -> int:
         return self._queue.qsize()

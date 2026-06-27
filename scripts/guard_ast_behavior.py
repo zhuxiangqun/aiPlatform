@@ -24,6 +24,12 @@ WORKSPACE_ROOT = Path(__file__).resolve().parents[1]
 PLATFORM_DIR = WORKSPACE_ROOT / "aiPlat-platform"
 CORE_AGENTS_DIR = WORKSPACE_ROOT / "aiPlat-core" / "core" / "apps" / "agents"
 
+# Silent except:pass baseline ratchet (§5.68/§25): forbid NEW silent error-swallowing.
+# Existing 1900+ are tracked as a baseline; CI fails only if the count INCREASES.
+SILENT_EXCEPT_ROOTS = ["aiPlat-core", "aiPlat-platform", "aiPlat-infra", "aiPlat-app", "aiPlat-management"]
+SILENT_EXCEPT_BASELINE = WORKSPACE_ROOT / "scripts" / "baselines" / "silent_except_baseline.txt"
+SILENT_EXCEPT_SKIP = ("__pycache__", "/tests/", "/test_", "/.venv/", "node_modules", "/generated/")
+
 # ── Detection rules ──────────────────────────────────────────────────────
 
 LLM_INFERENCE_CALLS = {
@@ -341,6 +347,12 @@ def _is_in_safe_ast_context(filepath: Path, target_line: int) -> bool:
 
 
 def main():
+    if "--write-baseline" in sys.argv:
+        count = len(scan_silent_except())
+        _write_silent_baseline(count)
+        print(f"PASS: silent except:pass baseline written = {count}")
+        return 0
+
     results, pragma_warnings = scan_platform()
     agent_results = scan_core_agents()
 
@@ -387,6 +399,24 @@ def main():
     else:
         print("PASS: No business role inference patterns in core")
 
+    # ── Silent except:pass — baseline ratchet (forbid NEW silent swallows, §5.68/§25) ──
+    silent_count = len(scan_silent_except())
+    baseline = _load_silent_baseline()
+    if baseline < 0:
+        print(f"WARN: silent except:pass baseline not set (current={silent_count}). "
+              "Run: python3 scripts/guard_ast_behavior.py --write-baseline")
+    elif silent_count > baseline:
+        print(f"FAIL: silent except:pass increased {baseline} → {silent_count} "
+              f"(+{silent_count - baseline}). NEW silent error-swallowing forbidden (§5.68).")
+        print("      Fix: add logging/raise in the new handler(s). "
+              "Do NOT raise the baseline to mask new swallows.")
+        exit_code = 1
+    elif silent_count < baseline:
+        print(f"PASS: silent except:pass {silent_count} < baseline {baseline} — ratchet down! "
+              "Lock it in: python3 scripts/guard_ast_behavior.py --write-baseline")
+    else:
+        print(f"PASS: silent except:pass at baseline ({silent_count})")
+
     return exit_code
 
 
@@ -423,6 +453,46 @@ def scan_core_business_strings() -> Dict[str, List[int]]:
     except subprocess.CalledProcessError:
         pass  # grep returns 1 when no matches
     return results
+
+
+def scan_silent_except() -> List[str]:
+    """AST-scan for silent except handlers whose body is ONLY `pass` (no log/raise/return).
+
+    These swallow errors at the source — the root cause of "errors that can't be traced".
+    Returns sorted list of 'relpath:line' locations across all repos.
+    """
+    locations: List[str] = []
+    for root in SILENT_EXCEPT_ROOTS:
+        root_dir = WORKSPACE_ROOT / root
+        if not root_dir.exists():
+            continue
+        for py in root_dir.rglob("*.py"):
+            sp = str(py)
+            if any(skip in sp for skip in SILENT_EXCEPT_SKIP):
+                continue
+            try:
+                tree = ast.parse(py.read_text(encoding="utf-8", errors="ignore"))
+            except SyntaxError:
+                continue
+            for node in ast.walk(tree):
+                if isinstance(node, ast.ExceptHandler) and all(
+                    isinstance(s, ast.Pass) for s in node.body
+                ):
+                    rel = sp.replace(str(WORKSPACE_ROOT) + "/", "")
+                    locations.append(f"{rel}:{node.lineno}")
+    return sorted(locations)
+
+
+def _load_silent_baseline() -> int:
+    try:
+        return int(SILENT_EXCEPT_BASELINE.read_text(encoding="utf-8").strip())
+    except Exception:
+        return -1
+
+
+def _write_silent_baseline(count: int) -> None:
+    SILENT_EXCEPT_BASELINE.parent.mkdir(parents=True, exist_ok=True)
+    SILENT_EXCEPT_BASELINE.write_text(f"{count}\n", encoding="utf-8")
 
 
 if __name__ == "__main__":

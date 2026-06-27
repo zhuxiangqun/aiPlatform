@@ -11,6 +11,7 @@ Important:
 """
 
 from __future__ import annotations
+import logging
 
 from typing import Any, Dict, List, Optional, Tuple
 import time
@@ -36,8 +37,8 @@ def compute_exec_metrics(items: List[Dict[str, Any]]) -> Dict[str, Any]:
             if d > 0:
                 duration_sum += d
                 duration_n += 1
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
     return {
         "samples": n,
         "failures": failures,
@@ -158,8 +159,8 @@ async def auto_rollback_regression(
             try:
                 st = float(r.get("start_time") or 0.0)
                 oldest_current_start = st if oldest_current_start is None else min(oldest_current_start, st)
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
         if len(current) >= current_window:
             break
 
@@ -520,8 +521,8 @@ async def auto_rollback_regression(
             status="rolled_back",
             metadata_update={"rollback_regression_report_id": regression_report_id},
         )
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     return out
 

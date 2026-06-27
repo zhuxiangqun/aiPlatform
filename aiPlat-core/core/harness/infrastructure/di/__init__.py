@@ -1,3 +1,4 @@
+import logging
 """
 Dependency Injection Module
 """
@@ -137,8 +138,8 @@ class DIContainer(IDIContainer):
                 continue
             try:
                 kwargs[param_name] = self.resolve(param_type)
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
         
         return service_type(**kwargs)
     

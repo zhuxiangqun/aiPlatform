@@ -4,6 +4,7 @@ Platform Gate Policies routes — gate policy CRUD with change control.
 Migrated from aiPlat-core/core/api/routers/gate_policies.py per architecture contract.
 """
 from __future__ import annotations
+import logging
 
 
 import hashlib
@@ -19,7 +20,7 @@ from core.api.utils.governance import gate_error_envelope, governance_links
 from core.api.core_facade import record_changeset, new_change_id
 from core.api.facades.runtime_facade import KernelRuntime, get_kernel_runtime
 
-router = APIRouter(prefix="/platform/gate-policies", tags=["gate_policies"])
+router = APIRouter(prefix="/platform", tags=["gate_policies"])
 
 RuntimeDep = Annotated[Optional[KernelRuntime], Depends(get_kernel_runtime)]
 
@@ -175,8 +176,8 @@ async def _create_gate_policy_approval_request(
     req = approval_manager.create_request(ctx, rule=rule)
     try:
         await approval_manager._persist(req)  # type: ignore[attr-defined]
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
     return str(req.request_id)
 
 
@@ -307,8 +308,8 @@ async def upsert_gate_policy(policy_id: str, request: dict, http_request: Reques
             user_id=str(http_request.headers.get("X-AIPLAT-ACTOR-ID") or "admin"),
             tenant_id=str(http_request.headers.get("X-AIPLAT-TENANT-ID") or "") or None,
         )
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
     return {"status": "ok", "item": item, "default_id": data.get("default_id"), "change_id": str(cid), "links": governance_links(change_id=str(cid))}
 
 
@@ -343,8 +344,8 @@ async def delete_gate_policy(policy_id: str, http_request: Request, rt: RuntimeD
             user_id=str(http_request.headers.get("X-AIPLAT-ACTOR-ID") or "admin"),
             tenant_id=str(http_request.headers.get("X-AIPLAT-TENANT-ID") or "") or None,
         )
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
     return {"status": "ok", "deleted": pid, "default_id": data.get("default_id"), "change_id": str(cid), "links": governance_links(change_id=str(cid))}
 
 
@@ -375,8 +376,8 @@ async def set_default_gate_policy(policy_id: str, http_request: Request, rt: Run
             user_id=str(http_request.headers.get("X-AIPLAT-ACTOR-ID") or "admin"),
             tenant_id=str(http_request.headers.get("X-AIPLAT-TENANT-ID") or "") or None,
         )
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
     return {"status": "ok", "default_id": pid, "change_id": str(cid), "links": governance_links(change_id=str(cid))}
 
 
@@ -448,8 +449,8 @@ async def rollback_gate_policy(policy_id: str, request: dict, http_request: Requ
                 user_id=str(http_request.headers.get("X-AIPLAT-ACTOR-ID") or "admin"),
                 tenant_id=str(http_request.headers.get("X-AIPLAT-TENANT-ID") or "") or None,
             )
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
         return {"status": "ok", "item": it, "change_id": str(cid), "links": governance_links(change_id=str(cid))}
     raise HTTPException(status_code=404, detail="policy_not_found")
 

@@ -3,6 +3,7 @@ Builder team service — team CRUD + file persistence + execution via CoreFacade
 """
 
 from __future__ import annotations
+import logging
 
 import json
 import os
@@ -43,8 +44,8 @@ class BuilderTeamService:
                 for item in data.get("teams", []):
                     team = TeamConfig(**item)
                     self._teams[team.team_id] = team
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
     def _save_teams(self) -> None:
         try:
@@ -57,8 +58,8 @@ class BuilderTeamService:
             with open(tmp, "w", encoding="utf-8") as f:
                 json.dump(data, f, ensure_ascii=False, indent=2)
             os.replace(tmp, _TEAMS_FILE)
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
     # ── CRUD ─────────────────────────────────────────────────────────
 

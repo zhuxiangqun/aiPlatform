@@ -5,6 +5,7 @@ Migrated from aiPlat-core/core/api/routers/ops_exports.py per architecture contr
 platform service endpoints should live in the platform layer, not core.
 """
 from __future__ import annotations
+import logging
 
 
 import os
@@ -54,8 +55,8 @@ async def ops_prune(request: dict, http_request: Request, rt: RuntimeDep = Depen
             resource_id="prune",
             detail=res,
         )
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
     return {"ok": True, "deleted": res}
 
 

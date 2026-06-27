@@ -217,8 +217,8 @@ class PromptAppManager:
             manifest = {"version": "1.0.0"}
             try:
                 (template_dir / "TEMPLATE.manifest.json").write_text(json.dumps(manifest, indent=2, ensure_ascii=False), encoding="utf-8")
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
         if manifest:
             for k in ("publisher", "source", "version", "signature"):
                 if manifest.get(k) is not None: prov.setdefault(k, manifest.get(k))

@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from core.harness.integration import KernelRuntime
 from core.harness.kernel.runtime import get_kernel_runtime
 from core.schemas_knowledge import CollectionCreateRequest, DocumentCreateRequest, SearchRequest
+import logging
 
 router = APIRouter()
 
@@ -118,8 +119,8 @@ async def reindex_collection(collection_id: str, rt: RuntimeDep = Depends(get_ke
         cache = get_semantic_cache()
         if cache.enabled:
             await cache.invalidate_domain(collection_id)
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
     return {"status": "reindexed", "documents_reindexed": len(docs)}
 
 

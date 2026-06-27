@@ -279,52 +279,6 @@ class EmbeddingBridge:
         }
 
 
-async def parallel_embed(
-    tasks: List[str],
-    *,
-    max_concurrency: int = 5,
-    with_embedding_bridge: bool = True,
-) -> Dict[str, Any]:
-    """批量 Embedding 编码 — 将多个任务的输出压缩为向量。
-
-    组合 ParallelExecutor + EmbeddingBridge:
-      1. 正常执行所有子任务
-      2. 对每个子任务输出 → encode() 为向量
-      3. Reduce 时用向量做语义权重排序
-
-    Args:
-        tasks: 任务描述列表
-        max_concurrency: 最大并发
-        with_embedding_bridge: 是否启用 Embedding 通信
-
-    Returns:
-        {"results": [...], "embeddings": [...], "stats": {...}}
-    """
-    executor = ParallelExecutor(max_concurrency=max_concurrency)
-    bridge = EmbeddingBridge() if with_embedding_bridge else None
-
-    # Map phase
-    map_result = await executor.map(tasks, lambda: create_dummy_agent())
-
-    # Encode phase
-    embeddings = []
-    if bridge and map_result.get("ok"):
-        for r in map_result.get("results", []):
-            if r.get("ok"):
-                text = str(r.get("output", str(r)))
-                vec, brief = await bridge.encode(text)
-                embeddings.append({
-                    "vector": vec[:16],  # store partial
-                    "brief": brief,
-                    "run_id": r.get("_sub_run_id", ""),
-                })
-
-    return {
-        "map_result": map_result,
-        "embeddings": embeddings,
-        "embedding_bridge_stats": bridge.compression_stats if bridge else {},
-    }
-
 
 # ── Helper ────────────────────────────────────────────────────────────
 

@@ -7,6 +7,7 @@ from datetime import datetime, timezone
 
 from .base import MessageClient
 from .schemas import Message, ConsumerConfig, MessagingConfig
+import logging
 
 
 class RedisClient(MessageClient):
@@ -112,8 +113,8 @@ class RedisClient(MessageClient):
         
         try:
             await self._redis.xgroup_create(stream_name, consumer_group, id="0", mkstream=True)
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
         if not self._running:
             self._running = True

@@ -3,7 +3,6 @@
  *
  * Used by all Core and Workspace list pages for consistent rendering.
  */
-import React from 'react';
 
 // ── Listing Status (上架状态) ──────────────────────────────────
 

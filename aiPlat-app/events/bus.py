@@ -1,3 +1,4 @@
+import logging
 """
 Event Bus - 事件总线
 
@@ -66,8 +67,8 @@ class EventBus:
         for handler in self._subscribers.get(event.event_type, []):
             try:
                 handler(event)
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
 
         return event.event_id
 
@@ -99,8 +100,8 @@ class EventBus:
         if handler:
             try:
                 handler(event)
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
 
     def get_history(
         self,

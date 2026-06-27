@@ -11,6 +11,7 @@ Design rule: see aiPlat-core/CLAUDE.md §5.31 (Core Adapter 设计规则)
 """
 
 from __future__ import annotations
+import logging
 
 import os
 from abc import ABC, abstractmethod
@@ -65,8 +66,8 @@ def resolve_model_name(capability: str) -> str:
         for m in mgr._models.values():
             if m.type.value == target_type and m.enabled:
                 return m.name
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     return _MODEL_DEFAULTS.get(capability, capability)
 

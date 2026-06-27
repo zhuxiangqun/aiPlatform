@@ -9,6 +9,7 @@ Phase 9: 节点函数内联 syscall 通道，不再依赖 nodes/ 的并行 ReAct
 """
 
 from __future__ import annotations
+import logging
 
 import os
 from typing import Any, Dict, List, Optional
@@ -144,8 +145,8 @@ def create_compiled_react_graph(
                 prompt = f"Observation: {observation}\nWhat does this mean for the next step?"
             try:
                 await sys_llm_generate(model, prompt, trace_context={"source": "compiled_react_observe"})
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
 
         obs = str(state.get("observation", "") or "")
         step_count = int(state.get("step_count", 0) or 0)

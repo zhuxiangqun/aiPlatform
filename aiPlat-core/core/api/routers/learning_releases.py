@@ -12,6 +12,7 @@ from core.governance.changeset import record_changeset
 from core.governance.gating import autosmoke_enforce, gate_with_change_control, new_change_id
 from core.harness.kernel.runtime import get_kernel_runtime
 from core.learning.workspace_target import ensure_workspace_target
+import logging
 
 
 router = APIRouter()
@@ -94,8 +95,8 @@ async def publish_release_candidate(candidate_id: str, request: dict, http_reque
             )
     except HTTPException:
         raise
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     user_id = (request or {}).get("user_id") or "system"
     tenant_id = actor0.get("tenant_id")
@@ -107,7 +108,7 @@ async def publish_release_candidate(candidate_id: str, request: dict, http_reque
     try:
         md0 = cand.get("metadata") if isinstance(cand.get("metadata"), dict) else {}
         if bool(md0.get("blocked")) and str(md0.get("blocked_via") or "") == "canary":
-            raise HTTPException(
+            raise HTTPException(  # noqa: error-structured
                 status_code=409,
                 detail=gate_error_envelope(
                     code="canary_blocked",
@@ -134,7 +135,7 @@ async def publish_release_candidate(candidate_id: str, request: dict, http_reque
                     continue
                 meta = it.get("metadata") if isinstance(it.get("metadata"), dict) else {}
                 if str(meta.get("candidate_id") or "") == str(candidate_id):
-                    raise HTTPException(
+                    raise HTTPException(  # noqa: error-structured
                         status_code=409,
                         detail=gate_error_envelope(
                             code="canary_blocked",
@@ -148,8 +149,8 @@ async def publish_release_candidate(candidate_id: str, request: dict, http_reque
                     )
     except HTTPException:
         raise
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     # Policy 自进化：强制审批（高风险变更不允许 bypass）
     if str(cand.get("target_type") or "").lower() == "policy":
@@ -176,8 +177,8 @@ async def publish_release_candidate(candidate_id: str, request: dict, http_reque
                     tenant_id=str(actor0.get("tenant_id") or "") or None,
                     session_id=str(actor0.get("session_id") or "") or None,
                 )
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
             return {
                 "status": "approval_required",
                 "approval_request_id": req_id,
@@ -185,7 +186,7 @@ async def publish_release_candidate(candidate_id: str, request: dict, http_reque
                 "links": governance_links(change_id=change_id, approval_request_id=req_id),
             }
         if not is_approved(approval_mgr, approval_request_id):
-            raise HTTPException(
+            raise HTTPException(  # noqa: error-structured
                 status_code=409,
                 detail=gate_error_envelope(
                     code="not_approved",
@@ -202,16 +203,16 @@ async def publish_release_candidate(candidate_id: str, request: dict, http_reque
     if expires_at is not None:
         try:
             meta_update["expires_at"] = float(expires_at)
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
     if ttl_seconds is not None:
         try:
             ttl = float(ttl_seconds)
             meta_update["ttl_seconds"] = ttl
             if "expires_at" not in meta_update:
                 meta_update["expires_at"] = now + ttl
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
     await mgr.set_artifact_status(artifact_id=candidate_id, status="published", metadata_update=meta_update)
     ids = (cand.get("payload") or {}).get("artifact_ids") if isinstance(cand.get("payload"), dict) else []
@@ -265,10 +266,10 @@ async def publish_release_candidate(candidate_id: str, request: dict, http_reque
                     status="published",
                     metadata_update={"tenant_policy_id": tenant_policy_id, "applied_policy_version": up.get("version"), "previous_policy_snapshot": {"version": cur_ver, "policy": cur_policy}},
                 )
-            except Exception:
-                pass
-    except Exception:
-        pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     # Best-effort: reflect publish into target skill metadata for runtime gating.
     try:
@@ -300,8 +301,8 @@ async def publish_release_candidate(candidate_id: str, request: dict, http_reque
                     wsid = str(ensured.get("target_id") or sid)
                     target_skill = await ms["workspace_skill_manager"].get_skill(wsid)
                     mgr2 = ms["workspace_skill_manager"] if target_skill else None
-                except Exception:
-                    pass
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
             if not target_skill and ms.get("engine_skill_manager"):
                 target_skill = await ms["engine_skill_manager"].get_skill(sid)
                 mgr2 = ms["engine_skill_manager"]
@@ -314,8 +315,8 @@ async def publish_release_candidate(candidate_id: str, request: dict, http_reque
                     summ = (cand.get("payload") or {}).get("summary") if isinstance(cand.get("payload"), dict) else ""
                     if isinstance(summ, str) and summ.strip():
                         changes_lines.append(f"summary: {summ.strip()}")
-                except Exception:
-                    pass
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
                 if isinstance(ids2, list):
                     for aid in ids2[:20]:
                         if not isinstance(aid, str) or not aid:
@@ -374,10 +375,10 @@ async def publish_release_candidate(candidate_id: str, request: dict, http_reque
                         status="published",
                         metadata_update={"published_workspace_skill_id": wsid, "published_skill_version": new_version, "rollback_to_skill_version": old_version},
                     )
-                except Exception:
-                    pass
-    except Exception:
-        pass
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     rollout = (request or {}).get("rollout") if isinstance(request, dict) else None
     rr = None
@@ -419,8 +420,8 @@ async def publish_release_candidate(candidate_id: str, request: dict, http_reque
             tenant_id=str(actor0.get("tenant_id") or "") or None,
             session_id=str(actor0.get("session_id") or "") or None,
         )
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     out: Dict[str, Any] = {
         "status": "published",
@@ -491,8 +492,8 @@ async def rollback_release_candidate(candidate_id: str, request: dict, http_requ
             )
     except HTTPException:
         raise
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     if require_approval:
         if not approval_request_id:
@@ -516,8 +517,8 @@ async def rollback_release_candidate(candidate_id: str, request: dict, http_requ
                     tenant_id=str(actor0.get("tenant_id") or "") or None,
                     session_id=str(actor0.get("session_id") or "") or None,
                 )
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
             return {"status": "approval_required", "approval_request_id": req_id, "change_id": change_id, "links": governance_links(change_id=change_id, approval_request_id=req_id)}
         if not is_approved(approval_mgr, approval_request_id):
             try:
@@ -534,9 +535,9 @@ async def rollback_release_candidate(candidate_id: str, request: dict, http_requ
                     tenant_id=str(actor0.get("tenant_id") or "") or None,
                     session_id=str(actor0.get("session_id") or "") or None,
                 )
-            except Exception:
-                pass
-            raise HTTPException(
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
+            raise HTTPException(  # noqa: error-structured
                 status_code=409,
                 detail=gate_error_envelope(
                     code="not_approved",
@@ -562,8 +563,8 @@ async def rollback_release_candidate(candidate_id: str, request: dict, http_requ
             prev = meta0.get("previous_policy_snapshot") if isinstance(meta0.get("previous_policy_snapshot"), dict) else None
             if isinstance(tenant_policy_id, str) and tenant_policy_id and isinstance(prev, dict) and isinstance(prev.get("policy"), dict):
                 await store.upsert_tenant_policy(tenant_id=str(tenant_policy_id), policy=prev.get("policy") or {}, version=None)
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     # Best-effort: reflect rollback into target skill metadata for runtime gating.
     try:
@@ -592,8 +593,8 @@ async def rollback_release_candidate(candidate_id: str, request: dict, http_requ
                     try:
                         if hasattr(mgr2, "rollback_version"):
                             await mgr2.rollback_version(wsid, rb_to_ver)  # type: ignore[attr-defined]
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        logging.debug(str(e), exc_info=True)
 
             if target_skill and mgr2:
                 meta = getattr(target_skill, "metadata", None) if target_skill else None
@@ -604,8 +605,8 @@ async def rollback_release_candidate(candidate_id: str, request: dict, http_requ
                     gov2.pop("published_at", None)
                 gov2.update({"status": "rolled_back", "rolled_back_candidate_id": candidate_id})
                 await mgr2.update_skill(wsid, metadata={"governance": gov2})
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     # PR-10: optionally disable rollout if it points to this candidate (best-effort)
     try:
@@ -627,8 +628,8 @@ async def rollback_release_candidate(candidate_id: str, request: dict, http_requ
                     enabled=False,
                     metadata={"disabled_via": "rollback_release_candidate"},
                 )
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     try:
         await record_changeset(
@@ -643,7 +644,7 @@ async def rollback_release_candidate(candidate_id: str, request: dict, http_requ
             tenant_id=str(actor0.get("tenant_id") or "") or None,
             session_id=str(actor0.get("session_id") or "") or None,
         )
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     return {"status": "rolled_back", "candidate_id": candidate_id, "approval_request_id": approval_request_id, "change_id": change_id, "links": governance_links(change_id=change_id, approval_request_id=str(approval_request_id) if approval_request_id else None)}

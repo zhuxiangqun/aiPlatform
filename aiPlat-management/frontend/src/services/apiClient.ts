@@ -343,7 +343,7 @@ export const diagnosticsApi = {
     if (params.gate_policy_id) q.set('gate_policy_id', params.gate_policy_id);
     const qs = q.toString();
     // NOTE: this is a core endpoint (not diagnostics proxy)
-    return apiClient.post<any>(`/core/change-control/changes/${encodeURIComponent(changeId)}/apply-engine-skill-md-patch${qs ? `?${qs}` : ''}`, {});
+    return apiClient.post<any>(`/platform/change-control/changes/${encodeURIComponent(changeId)}/apply-engine-skill-md-patch${qs ? `?${qs}` : ''}`, {});
   },
   exportChangeControlEvidence: async (changeId: string, params: { format?: 'zip' | 'json'; limit?: number } = {}) => {
     const q = new URLSearchParams();

@@ -3,6 +3,7 @@ from contextlib import asynccontextmanager
 from .base import DatabaseClient
 from .pool import ConnectionPool
 from .schemas import DatabaseConfig, PoolStats
+import logging
 
 
 class PostgresConnectionPool(ConnectionPool):
@@ -158,16 +159,16 @@ class PostgresClient(DatabaseClient):
                 if hasattr(self._connection, 'close'):
                     try:
                         await self._connection.close()
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        logging.debug(str(e), exc_info=True)
             self._connection = None
         
         # 关闭连接池
         if self._pool:
             try:
                 await self._pool.close()
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
             self._pool = None
 
     def is_connected(self) -> bool:

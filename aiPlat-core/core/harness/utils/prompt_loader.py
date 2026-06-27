@@ -79,8 +79,8 @@ def auto_classify(template_id: str) -> str:
                         break
             except Exception:
                 continue
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     # Classify based on caller location
     admin_dirs = (
@@ -171,10 +171,10 @@ async def _async_prompt_resolve(template_id: str, **variables) -> str:
                 if db_template:
                     _DB_TEMPLATE_CACHE[template_id] = (now, str(db_template))
                     return _substitute(str(db_template), variables)
-            except Exception:
-                pass
-    except Exception:
-        pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
     return _sync_resolve(template_id, **variables)
 
 

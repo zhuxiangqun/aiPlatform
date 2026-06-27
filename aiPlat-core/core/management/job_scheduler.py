@@ -8,6 +8,7 @@ Design goals:
 """
 
 from __future__ import annotations
+import logging
 
 import asyncio
 import time
@@ -139,8 +140,8 @@ class JobScheduler:
         if self._task:
             try:
                 await asyncio.wait_for(self._task, timeout=5)
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
 
     async def run_job_once(self, job_id: str) -> Dict[str, Any]:
         job = await self._store.get_job(job_id)
@@ -159,9 +160,9 @@ class JobScheduler:
                 for job in due:
                     # fire-and-forget; each run persists status
                     asyncio.create_task(self._execute_job(job, scheduled_for=job.get("next_run_at") or now), name=f"job:{job.get('id')}")
-            except Exception:
+            except Exception as e:
                 # keep scheduler alive
-                pass
+                logging.debug(str(e), exc_info=True)
             try:
                 await asyncio.wait_for(self._stop.wait(), timeout=float(self._cfg.poll_interval_seconds))
             except asyncio.TimeoutError:
@@ -202,8 +203,8 @@ class JobScheduler:
             # If cron invalid, disable job to avoid hot loop
             try:
                 await self._store.update_job(job_id, {"enabled": False})
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
 
         job_run = await self._store.create_job_run(
             {
@@ -237,10 +238,10 @@ class JobScheduler:
             if delivery_result is not None:
                 try:
                     await self._store.finish_job_run(run_id, {"result": {"started_delivery": delivery_result}})
-                except Exception:
-                    pass
-        except Exception:
-            pass
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
 
         payload = dict(job.get("payload") or {})
@@ -260,8 +261,8 @@ class JobScheduler:
             ctx.setdefault("job_id", job_id)
             ctx.setdefault("job_run_id", run_id)
             payload["context"] = ctx
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
         exec_req = ExecutionRequest(
             kind=kind,  # type: ignore[arg-type]
@@ -358,10 +359,10 @@ class JobScheduler:
                             }
                         },
                     )
-                except Exception:
-                    pass
-        except Exception:
-            pass
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
         # Return the run record (stable id)
         try:
@@ -370,8 +371,8 @@ class JobScheduler:
             # Always release lock when done (best-effort).
             try:
                 await self._store.release_job_lock(job_id, owner=lock_owner)
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
 
     async def _deliver_webhook(
         self,
@@ -449,8 +450,8 @@ class JobScheduler:
                 url = _public_url(f"/diagnostics/runs?run_id={run_id}")
                 if url:
                     body["text"] += f" | {url}"
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
         else:
             body = {"type": "job_run"}
             if "job" in include:
@@ -475,8 +476,8 @@ class JobScheduler:
                     links["job_ui"] = u3
                 if links:
                     body["links"] = links
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
 
         # env overrides
         retries = int(os.getenv("AIPLAT_JOBS_DELIVERY_RETRIES", str(self._cfg.delivery_retries)) or "2")
@@ -505,8 +506,8 @@ class JobScheduler:
                                     response_status=int(resp.status),
                                     payload=body,
                                 )
-                            except Exception:
-                                pass
+                            except Exception as e:
+                                logging.debug(str(e), exc_info=True)
                             return {"ok": True, "status": resp.status, "response_text": text[:2000]}
                         last_status = int(resp.status)
                         last_err = f"HTTP {resp.status}: {text[:2000]}"
@@ -525,8 +526,8 @@ class JobScheduler:
                     error=str(last_err or "delivery_failed"),
                     payload=body,
                 )
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
             if attempt < retries:
                 await asyncio.sleep(backoff * (attempt + 1))
         # enqueue DLQ item (best-effort)
@@ -540,8 +541,8 @@ class JobScheduler:
                 attempts=int(retries + 1),
                 error=str(last_err or "delivery_failed"),
             )
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
         return {"ok": False, "error": last_err or "delivery_failed"} 
 
     async def retry_dlq_delivery(self, dlq_id: str) -> Dict[str, Any]:
@@ -593,8 +594,8 @@ class JobScheduler:
                                 response_status=int(resp.status),
                                 payload=payload,
                             )
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            logging.debug(str(e), exc_info=True)
                         await self._store.mark_job_delivery_dlq_resolved(dlq_id)
                         return {"ok": True, "status": resp.status, "response_text": text[:2000]}
                     err = f"HTTP {resp.status}: {text[:2000]}"
@@ -609,8 +610,8 @@ class JobScheduler:
                             error=err,
                             payload=payload,
                         )
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        logging.debug(str(e), exc_info=True)
                     return {"ok": False, "error": err}
         except Exception as e:
             try:
@@ -623,6 +624,6 @@ class JobScheduler:
                     error=str(e),
                     payload=payload,
                 )
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
             return {"ok": False, "error": str(e)}

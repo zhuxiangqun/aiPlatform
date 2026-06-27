@@ -11,6 +11,7 @@ BrowserTestEngine — 全功能自动化浏览器测试引擎
 不经过 LLM，确定性执行。通过 workspace Agent + Skill 触发。
 """
 from __future__ import annotations
+import logging
 
 import asyncio
 import json
@@ -393,8 +394,8 @@ class PageDiscoverer:
             result = await self._session.evaluate(js)
             if isinstance(result, dict) and result.get("found"):
                 return result
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
         return None
 
     async def close_modal(self) -> bool:
@@ -488,8 +489,8 @@ class ActionExecutor:
                         result.result = "failed"
                         err_texts = [e.get("text", "")[:80] for e in form_errors[:3]]
                         result.error = " | ".join(err_texts)
-                except Exception:
-                    pass
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
         except Exception as e:
             result.result = "failed"
             result.error = str(e)[:500]
@@ -682,10 +683,10 @@ class BrowserTestEngine:
                                         elements = new_els  # update for subsequent comparisons
                                         content_fingerprints.add(new_fp)
                                         nav_kind = "element_change"
-                            except Exception:
-                                pass
-                    except Exception:
-                        pass
+                            except Exception as e:
+                                logging.debug(str(e), exc_info=True)
+                    except Exception as e:
+                        logging.debug(str(e), exc_info=True)
 
                     if page_changed and new_hash:
                         # Element-change pages (AJAX form steps): process inline, don't queue
@@ -736,8 +737,8 @@ class BrowserTestEngine:
                                                     if nn not in visited:
                                                         queue.append((nh, fp_depth + 1))
                                                 break
-                                        except Exception:
-                                            pass
+                                        except Exception as e:
+                                            logging.debug(str(e), exc_info=True)
                                         # Detect element change for recursive form steps
                                         try:
                                             await self._session.wait(300)
@@ -750,8 +751,8 @@ class BrowserTestEngine:
                                                     content_fingerprints.add(new_fp)
                                                     fp_changed = True
                                                     break
-                                        except Exception:
-                                            pass
+                                        except Exception as e:
+                                            logging.debug(str(e), exc_info=True)
                                 self._report.pages.append(fp_result)
                                 self._notify_progress("nav_enqueue", {
                                     "from": norm, "to": fp_url,
@@ -764,8 +765,8 @@ class BrowserTestEngine:
                             try:
                                 await self._session.goto(norm)
                                 await self._session.wait(2000)
-                            except Exception:
-                                pass
+                            except Exception as e:
+                                logging.debug(str(e), exc_info=True)
                             continue
 
                         # Hash/URL-change pages: queue for BFS
@@ -794,8 +795,8 @@ class BrowserTestEngine:
                         try:
                             await self._session.goto(norm)
                             await self._session.wait(2000)
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            logging.debug(str(e), exc_info=True)
 
             self._report.pages.append(page_result)
 
@@ -840,8 +841,8 @@ class BrowserTestEngine:
             if video_path:
                 self._report.metadata = self._report.metadata or {}
                 self._report.metadata["video_path"] = video_path
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
         self._notify_progress("finished", {"report": self._report_summary()})
 
@@ -862,8 +863,8 @@ class BrowserTestEngine:
         if self._progress_callback:
             try:
                 self._progress_callback(event, data)
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
 
     def _should_skip_url(self, url: str, auto_expand: bool = False) -> bool:
         import re

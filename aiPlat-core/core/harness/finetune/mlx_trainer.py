@@ -208,8 +208,8 @@ class MLXLoRATrainer:
         if self._progress_file.exists():
             try:
                 return json.loads(self._progress_file.read_text(encoding="utf-8"))
-            except (json.JSONDecodeError, OSError):
-                pass
+            except (json.JSONDecodeError, OSError) as e:
+                logging.debug(str(e), exc_info=True)
         return {
             "current_iter": 0,
             "total_iters": self.iters,

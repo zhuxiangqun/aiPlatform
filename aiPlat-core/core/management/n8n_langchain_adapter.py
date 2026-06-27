@@ -3,6 +3,7 @@ n8n + LangChain → aiPlatform format adapters.
 """
 
 from __future__ import annotations
+import logging
 
 import json as _json
 import re
@@ -27,8 +28,8 @@ class N8nAdapter:
                     data = _json.loads(item.read_text(encoding="utf-8", errors="replace"))
                     if isinstance(data, dict) and "nodes" in data and "connections" in data:
                         return True
-                except Exception:
-                    pass
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
         return False
 
     def convert(self, root_dir: Path, target_base: Path) -> Dict[str, Any]:
@@ -181,15 +182,15 @@ class LangChainAdapter:
                             return True
                         if "nodes" in data and "edges" in data and data.get("type") in ("graph", "langgraph"):
                             return True
-                except Exception:
-                    pass
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
             if item.suffix == ".py" and item.is_file():
                 try:
                     text = item.read_text(encoding="utf-8", errors="replace")
                     if "@tool" in text or "create_react_agent" in text or "LangGraph" in text or "StateGraph" in text:
                         return True
-                except Exception:
-                    pass
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
         return False
 
     def convert(self, root_dir: Path, target_base: Path) -> Dict[str, Any]:

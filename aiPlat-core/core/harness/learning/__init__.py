@@ -216,8 +216,8 @@ class AutoLearner:
             try:
                 from core.harness.training.auto_trigger import get_lora_auto_trigger
                 await get_lora_auto_trigger().on_skill_approved(draft)
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
             return True
         except Exception:
             return False
@@ -253,8 +253,8 @@ class AutoLearner:
                     if audit.high_count > 0:
                         _log.warning(f"AutoLearner: {draft_name} blocked by CodeAuditor ({audit.high_count} high issues)")
                         continue  # 跳过，不自动审批
-                except Exception:
-                    pass  # CodeAuditor unavailable → fall through to auto-approve
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
                 await self.approve(draft_name)
                 auto_approved += 1
         return {"pending": total_pending, "auto_approved": auto_approved}

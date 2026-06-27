@@ -1,3 +1,4 @@
+import logging
 """
 Config Loader Implementation - 配置加载器实现
 
@@ -59,8 +60,8 @@ class ConfigLoaderImpl(ConfigLoader):
             for callback in self._watch_callbacks:
                 try:
                     callback(changed_keys, self._config)
-                except Exception:
-                    pass
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
 
     @property
     def sources(self) -> List[Any]:
@@ -83,13 +84,13 @@ def create_default_sources() -> List[Any]:
     # 默认文件源
     try:
         sources.append(FileSource(path="config/infra/default.yaml", priority=0))
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     # 环境变量源（默认启用）
     try:
         sources.append(EnvSource(priority=100))
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     return sources

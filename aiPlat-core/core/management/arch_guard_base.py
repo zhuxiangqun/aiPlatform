@@ -20,6 +20,7 @@ Output:
 """
 
 from __future__ import annotations
+import logging
 
 import importlib
 import os
@@ -184,8 +185,8 @@ class ArchYAMLRule(ArchRule):
         if handler:
             try:
                 return handler(repo_root)
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
         return []
 
     def _make_issue(self, message: str, files: List[str] = None, count: int = 0) -> ArchIssue:
@@ -309,9 +310,17 @@ class ArchYAMLRule(ArchRule):
 
     def _check_cmd_output(self, repo_root: Path) -> List[ArchIssue]:
         import shlex
+        shell = self._check_def.get("shell", "")
         cmd = self._check_def.get("cmd", "")
         ok_pattern = self._check_def.get("ok_pattern", "^PASS")
-        result = subprocess.run(shlex.split(cmd) if isinstance(cmd, str) else cmd,
+        if shell:
+            # shell pipelines / globs / ~ expansion / redirects need a real shell
+            proc_cmd = ["bash", "-c", shell]
+        elif isinstance(cmd, str):
+            proc_cmd = shlex.split(cmd)
+        else:
+            proc_cmd = cmd
+        result = subprocess.run(proc_cmd,
                                 capture_output=True, text=True,
                                 cwd=str(repo_root), timeout=120).stdout
         if re.search(ok_pattern, result):
@@ -347,8 +356,8 @@ class GraphQueryAdapter:
             from core.harness.knowledge.code_graph import build_graph, default_roots
             roots = [self._repo_root / r for r in default_roots()]
             self._nodes, self._edges, _issues = build_graph(self._repo_root, roots)
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
         self._loaded = True
 
     def has_import(self, from_pattern: str, to_pattern: str) -> List[str]:
@@ -580,8 +589,8 @@ class ArchRegistry:
                 data = yaml.safe_load(f) or {}
             for rule_def in data.get("rules", []):
                 self.register(ArchYAMLRule(rule_def))
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
     def _load_python_rules(self) -> None:
         rules_pkg = Path(__file__).parent / "arch_guard_rules"
@@ -607,10 +616,10 @@ class ArchRegistry:
                                     and attr is not ArchYAMLRule
                                     and not attr.__name__.startswith("_")):
                                 self.register(attr())
-                except Exception:
-                    pass
-        except Exception:
-            pass
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
 
 # ============================================================

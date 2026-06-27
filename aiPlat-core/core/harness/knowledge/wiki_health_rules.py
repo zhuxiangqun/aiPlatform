@@ -8,6 +8,7 @@ Scoring: each rule has a penalty_weight. Final score = max(0, 100 - total_penalt
 """
 
 from __future__ import annotations
+import logging
 
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
@@ -388,8 +389,8 @@ class OntologyValidationRule(WikiRule):
                     description=f"[{v.axiom_id}] {v.description}",
                     suggestion=v.recommendation,
                 ))
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
         return issues
 
@@ -559,8 +560,8 @@ class WikiHealthRegistry:
         # ── Persist health history for trend tracking ──
         try:
             _save_health_snapshot(report)
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
         return report
 
@@ -578,8 +579,8 @@ def _save_health_snapshot(report: WikiHealthReport) -> None:
         if history_file.exists():
             with open(history_file, "r", encoding="utf-8") as f:
                 existing = _json.load(f)
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     snapshot = {
         "timestamp": datetime.now(timezone.utc).isoformat(),
@@ -600,8 +601,8 @@ def _save_health_snapshot(report: WikiHealthReport) -> None:
 
     try:
         history_file.write_text(_json.dumps(existing, ensure_ascii=False, indent=2), encoding="utf-8")
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
 
 def get_health_trend() -> Dict[str, Any]:
@@ -623,8 +624,8 @@ def get_health_trend() -> Dict[str, Any]:
         if history_file.exists():
             with open(history_file, "r", encoding="utf-8") as f:
                 entries = _json.load(f)
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     recent = entries[:10]
 

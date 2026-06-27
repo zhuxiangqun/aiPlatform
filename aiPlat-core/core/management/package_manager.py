@@ -25,6 +25,7 @@ If bundle/* exists, install uses bundled files; otherwise it copies from source 
 """
 
 from __future__ import annotations
+import logging
 
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -48,8 +49,8 @@ def _sha256_dir(path: Path) -> str:
         h.update(str(p.relative_to(path)).encode("utf-8"))
         try:
             h.update(p.read_bytes())
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
     return h.hexdigest()
 
 
@@ -484,6 +485,6 @@ class PackageManager:
         # remove record
         try:
             self._install_record_path(pkg_name).unlink(missing_ok=True)  # type: ignore[arg-type]
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
         return {"package": record.get("package"), "removed": removed, "kept": kept}

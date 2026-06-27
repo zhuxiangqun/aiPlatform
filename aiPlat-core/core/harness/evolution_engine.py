@@ -19,6 +19,7 @@ EvolutionEngine — 夜间统一进化引擎 (Phase 5.5)
 """
 
 from __future__ import annotations
+import logging
 
 import asyncio, os, time, json, logging
 from dataclasses import dataclass, field
@@ -138,8 +139,8 @@ class EvolutionEngine:
             for skill_id in result.get("approved_skills", []):
                 pass_result = await sim.run(skill_id)
                 _log.info(f"EvolutionEngine: SkillSimulator {skill_id} pass={pass_result.get('pass', False)}")
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
     async def _do_pattern_prune(self) -> Dict[str, Any]:
         try:
@@ -243,8 +244,8 @@ class EvolutionEngine:
                 "summary": run.summary,
                 "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
             })
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
 
 # ── Global singleton ─────────────────────────────────────────────────────────

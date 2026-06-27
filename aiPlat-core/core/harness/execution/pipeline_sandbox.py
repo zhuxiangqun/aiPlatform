@@ -236,8 +236,8 @@ def _validate_params(
                     v = float(actual) if actual is not None else None
                     if v is not None and (v < expected[0] or v > expected[1]):
                         errors.append(f"Value out of range for {field}: {v} not in {expected}")
-                except (ValueError, TypeError):
-                    pass
+                except (ValueError, TypeError) as e:
+                    logging.debug(str(e), exc_info=True)
 
     return errors
 

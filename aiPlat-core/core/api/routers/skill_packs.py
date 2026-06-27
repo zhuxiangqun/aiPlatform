@@ -5,6 +5,7 @@ aiPlat-platform's API layer. Currently served from core's FastAPI server.
 Migration plan: move to platform/api/routers/.
 """
 from __future__ import annotations
+import logging
 
 from typing import Any, Dict, List, Optional
 
@@ -169,8 +170,8 @@ async def publish_skill_pack(pack_id: str, request: SkillPackPublishRequest):
             )
     except HTTPException:
         raise
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     try:
         res = await store.publish_skill_pack_version(pack_id=pack_id, version=request.version)
@@ -189,8 +190,8 @@ async def publish_skill_pack(pack_id: str, request: SkillPackPublishRequest):
             args={"pack_id": pack_id, "version": request.version},
             user_id="admin",
         )
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
     return {**(res or {}), "change_id": change_id, "links": governance_links(change_id=change_id)}
 
 
@@ -243,8 +244,8 @@ async def install_skill_pack(pack_id: str, request: SkillPackInstallRequest):
             )
     except HTTPException:
         raise
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     try:
         install = await store.install_skill_pack(pack_id=pack_id, version=request.version, scope=request.scope, metadata=request.metadata or {})
@@ -313,8 +314,8 @@ async def install_skill_pack(pack_id: str, request: SkillPackInstallRequest):
             args={"pack_id": pack_id, "version": request.version, "scope": request.scope},
             user_id="admin",
         )
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
     return {"install": install, "applied": applied, "change_id": change_id, "links": governance_links(change_id=change_id)}
 
 

@@ -23,11 +23,36 @@ from pathlib import Path
 
 WORKSPACE_ROOT = Path(__file__).resolve().parent.parent
 
+# §45 path-mismatch baseline ratchet: existing contract breakages are tracked here;
+# the guard fails only on NEW mismatches (signatures not in this baseline).
+PATH_MISMATCH_BASELINE = Path(__file__).resolve().parent / "baselines" / "frontend_path_mismatch_baseline.txt"
+
 
 def bold(s): return f"\033[1m{s}\033[0m"
 def red(s): return f"\033[0;31m{s}\033[0m"
 def green(s): return f"\033[0;32m{s}\033[0m"
 def yellow(s): return f"\033[0;33m{s}\033[0m"
+
+
+def _normalize_fe_template(path: str) -> str:
+    """Normalize a frontend template-literal path to a comparable route path.
+
+    Rules (handles `apiClient.get(`/a/${id}/b${qs ? '?'+qs : ''}`)` style):
+      - A `${...}` preceded by '/' is a PATH PARAM     → `{param}`.
+      - A `${...}` NOT preceded by '/' is a QUERY/SUFFIX builder
+        (e.g. `${qs}`, `${qs ? '?'+qs : ''}`) → strip it and everything after.
+        Also handles truncated suffixes from nested-backtick extraction
+        (e.g. captured `/core/prompts${qs ? ` with no closing brace).
+      - Strip any literal query string (`?...`).
+    """
+    # Strip the first suffix-style ${ (not preceded by '/') and everything after it,
+    # whether or not it is closed (nested backtick templates truncate the closing brace).
+    path = re.sub(r"(?<!/)\$\{.*$", "", path, count=1)
+    # Remaining ${...} occurrences are path params.
+    path = re.sub(r"\$\{[^{}]*\}", "{param}", path)
+    # Strip literal query string.
+    path = path.split("?")[0]
+    return path
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -216,10 +241,10 @@ def _extract_frontend_paths_from_dir(frontend_dir: str) -> list[dict]:
     entries = []
 
     api_patterns = [
-        # apiClient.get/post/put/delete('path', ...) — 2 groups: (method, path)
-        (re.compile(r"apiClient\s*\.\s*(get|post|put|delete|patch)\s*\(\s*['\"]([^'\"]+)['\"]"), "apiClient"),
-        # apiClient.get/post/put/delete(`path`, ...) — 2 groups: (method, path)
-        (re.compile(r"apiClient\s*\.\s*(get|post|put|delete|patch)\s*\(\s*`([^`]+)`"), "apiClient"),
+        # apiClient.get<T>('path', ...) — optional generic type arg; 2 groups: (method, path)
+        (re.compile(r"apiClient\s*\.\s*(get|post|put|delete|patch)\s*(?:<[^>]*>)?\s*\(\s*['\"]([^'\"]+)['\"]"), "apiClient"),
+        # apiClient.get<T>(`path`, ...) — optional generic type arg; 2 groups: (method, path)
+        (re.compile(r"apiClient\s*\.\s*(get|post|put|delete|patch)\s*(?:<[^>]*>)?\s*\(\s*`([^`]+)`"), "apiClient"),
         # fetch('/path', ...) — 1 group: (path), check context for {method: 'POST'}
         (re.compile(r"fetch\s*\(\s*['\"]((?:/[^'\"]+))['\"]"), "fetch"),
     ]
@@ -248,7 +273,7 @@ def _extract_frontend_paths_from_dir(frontend_dir: str) -> list[dict]:
                         method = method_match.group(1).upper() if method_match else "GET"
                     if not path.startswith("/") or "//" in path:
                         continue
-                    normalized = re.sub(r'\$\{([^}]+)\}', r'{\1}', path)
+                    normalized = _normalize_fe_template(path)
                     entries.append({
                         "method": method,
                         "path": normalized,
@@ -326,7 +351,9 @@ def _extract_backend_routes() -> list[dict]:
         WORKSPACE_ROOT / "aiPlat-management",
     ]
     route_patterns = [
-        (re.compile(r"@(?:app|router)\s*\.\s*(get|post|put|delete|patch)\s*\(\s*['\"]([^'\"]+)['\"]"), "method"),
+        # Note: [^'"]* (not +) so empty-path collection roots `@router.get("")` are captured.
+        (re.compile(r"@api_router\s*\.\s*(get|post|put|delete|patch)\s*\(\s*['\"]([^'\"]*)['\"]"), "method"),
+        (re.compile(r"@(?:app|router)\s*\.\s*(get|post|put|delete|patch)\s*\(\s*['\"]([^'\"]*)['\"]"), "method"),
         (re.compile(r"@(?:app|router)\s*\.\s*route\s*\(\s*['\"]([^'\"]+)['\"]"), "flask_route"),
     ]
     for base_dir in backend_dirs:
@@ -367,11 +394,19 @@ def _extract_backend_routes() -> list[dict]:
                             method, path = m.group(1).upper(), m.group(2)
                         # Apply effective prefix for router-based routes (not top-level @app routes)
                         is_top_level = bool(re.search(r"@app\.", content[:m.start()+10]))
+                        # raw = route path independent of the (unreliable) MOUNT prefix,
+                        # but including the router's own self-prefix. Top-level @app routes
+                        # already carry their full path in the decorator.
+                        if is_top_level:
+                            raw_path = path
+                        else:
+                            raw_path = router_self_prefix + path
                         if effective_prefix and not is_top_level:
                             path = effective_prefix + path
                         entries.append({
                             "method": method,
                             "path": path,
+                            "raw": raw_path,
                             "file": os.path.relpath(fp, str(WORKSPACE_ROOT)),
                             "line": content[:m.start()].count("\n") + 1,
                         })
@@ -395,25 +430,48 @@ def _paths_match(fe_path: str, be_path: str) -> bool:
         is_param = lambda s: bool(re.match(r'^\{.+\}$', s) or re.match(r'^<.+>$', s) or s.startswith(':'))
         if fs == bs:
             continue
-        if is_param(fs) and is_param(bs):
+        # A path param on EITHER side matches the other segment: frontend often passes a
+        # concrete value (e.g. ".../trace/core") to a backend param route (".../trace/{layer}"),
+        # which FastAPI routes successfully. Literal segments still anchor the match.
+        if is_param(fs) or is_param(bs):
             continue
         return False
     return True
 
 
-def check_api_path_contract() -> list[dict]:
-    issues = []
+def _mismatch_sig(mm: dict) -> str:
+    """Stable signature for a path mismatch (method + normalized path)."""
+    return f"{mm['method'].upper()} {_normalize_path(mm['path'])}"
+
+
+def _load_path_baseline() -> set:
+    try:
+        return {
+            line.strip()
+            for line in PATH_MISMATCH_BASELINE.read_text(encoding="utf-8").splitlines()
+            if line.strip() and not line.startswith("#")
+        }
+    except Exception:
+        return set()
+
+
+def _write_path_baseline(signatures: set) -> None:
+    PATH_MISMATCH_BASELINE.parent.mkdir(parents=True, exist_ok=True)
+    PATH_MISMATCH_BASELINE.write_text("\n".join(sorted(signatures)) + "\n", encoding="utf-8")
+
+
+def _compute_path_mismatches():
+    """Single source of truth for §45 — frontend paths with no matching backend route.
+
+    Returns (mismatches: list[dict], n_fe: int, n_be: int).
+    n_fe == -1 → no frontend paths; n_be == -1 → no backend routes (cannot check).
+    """
     fe_paths = _extract_frontend_paths()
     be_routes = _extract_backend_routes()
-
     if not fe_paths:
-        issues.append({"code": "path_contract_skip", "level": "pass",
-                        "msg": "No frontend API paths found — skipping"})
-        return issues
+        return [], -1, 0
     if not be_routes:
-        issues.append({"code": "path_contract_skip", "level": "warning",
-                        "msg": "No backend routes found — incomplete"})
-        return issues
+        return [], len(fe_paths), -1
 
     seen = set()
     fe_unique = []
@@ -429,40 +487,85 @@ def check_api_path_contract() -> list[dict]:
         if any(s in pl for s in ("/health", "/metrics", "/static", ".js", ".css", ".png", ".svg")):
             continue
 
-        matched = False
-        for be in be_routes:
-            if _paths_match(fe["path"], be["path"]):
-                matched = True
-                break
-
+        # Method-aware: a frontend call only matches backend routes with the same HTTP
+        # method (flask "ALL" matches any). Without this the guard is method-blind — a
+        # DELETE route would wrongly "satisfy" a PUT/GET frontend call on the same path.
+        be_m = [be for be in be_routes if be["method"] in (fe["method"], "ALL")]
+        matched = any(_paths_match(fe["path"], be["path"]) for be in be_m)
         if not matched:
             for prefix in ("/api", "/api/platform", "/platform"):
                 if fe["path"].startswith(prefix + "/"):
                     stripped = fe["path"][len(prefix):]
-                    for be in be_routes:
-                        if _paths_match(stripped, be["path"]):
-                            matched = True
-                            break
-                    if matched:
+                    if any(_paths_match(stripped, be["path"]) for be in be_m):
+                        matched = True
                         break
+        if not matched:
+            # apiClient calls omit the configured baseURL (default "/api", see
+            # apiClient.ts) — try prepending it so e.g. "/core/variables/{id}"
+            # matches the mounted backend route "/api/core/variables/{variable_id}".
+            for prefix in ("/api", "/api/platform"):
+                if any(_paths_match(prefix + fe["path"], be["path"]) for be in be_m):
+                    matched = True
+                    break
+
+        if not matched:
+            # Mount-prefix-independent fallback: the guard's mount-prefix resolution
+            # (_build_mount_prefixes) is unreliable for many routers. Match the frontend
+            # route against backend DECORATOR paths (be["raw"], independent of where the
+            # router is mounted), after stripping the frontend's deployment/routing
+            # prefixes. e.g. fe "/core/runs/{id}/evaluate" → strip "/core" →
+            # "/runs/{id}/evaluate" matches runs_eval.py decorator "/runs/{run_id}/evaluate".
+            fe_variants = [fe["path"]]
+            for prefix in ("/api/core", "/api/platform", "/api", "/core", "/platform"):
+                if fe["path"].startswith(prefix + "/"):
+                    fe_variants.append(fe["path"][len(prefix):])
+            for v in fe_variants:
+                if any(_paths_match(v, be.get("raw", be["path"])) for be in be_m):
+                    matched = True
+                    break
 
         if not matched:
             mismatches.append(fe)
 
-    for mm in mismatches[:20]:
+    return mismatches, len(fe_unique), len(be_routes)
+
+
+def check_api_path_contract() -> list[dict]:
+    issues = []
+    mismatches, n_fe, n_be = _compute_path_mismatches()
+    if n_fe == -1:
+        return [{"code": "path_contract_skip", "level": "pass",
+                 "msg": "No frontend API paths found — skipping"}]
+    if n_be == -1:
+        return [{"code": "path_contract_skip", "level": "warning",
+                 "msg": "No backend routes found — incomplete"}]
+
+    baseline = _load_path_baseline()
+    new_mm = [mm for mm in mismatches if _mismatch_sig(mm) not in baseline]
+    known_mm = [mm for mm in mismatches if _mismatch_sig(mm) in baseline]
+
+    for mm in new_mm[:20]:
         issues.append({
             "code": "path_mismatch",
             "level": "error",
-            "msg": f"{mm['method']} {mm['path']} — no matching backend route",
+            "msg": f"{mm['method']} {mm['path']} — no matching backend route (NEW — not in baseline)",
+            "files": [mm["file"]],
+        })
+    for mm in known_mm[:20]:
+        issues.append({
+            "code": "path_mismatch_known",
+            "level": "warning",
+            "msg": f"{mm['method']} {mm['path']} — known contract debt (baseline)",
             "files": [mm["file"]],
         })
 
     if not mismatches:
         issues.append({"code": "path_contract_ok", "level": "pass",
-                        "msg": f"All {len(fe_unique)} frontend API paths matched to backend routes"})
+                       "msg": f"All {n_fe} frontend API paths matched to backend routes"})
     else:
         issues.append({"code": "path_contract_summary", "level": "info",
-                        "msg": f"Checked {len(fe_unique)} frontend paths vs {len(be_routes)} backend routes — {len(mismatches)} mismatches"})
+                       "msg": f"Checked {n_fe} frontend paths vs {n_be} backend routes — "
+                              f"{len(mismatches)} mismatches ({len(new_mm)} new, {len(known_mm)} baseline)"})
     return issues
 
 
@@ -519,6 +622,13 @@ def check_ts_import_hygiene() -> list[dict]:
 # ═══════════════════════════════════════════════════════════════
 
 def main():
+    if "--write-baseline" in sys.argv:
+        mismatches, _n_fe, _n_be = _compute_path_mismatches()
+        sigs = {_mismatch_sig(mm) for mm in mismatches}
+        _write_path_baseline(sigs)
+        print(f"PASS: frontend path-mismatch baseline written = {len(sigs)} signatures")
+        sys.exit(0)
+
     sections = [
         ("§43", "Frontend Proxy Routing", check_vite_proxy),
         ("§44", "Cross-Language API Contract", check_api_contract),

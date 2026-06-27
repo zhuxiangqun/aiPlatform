@@ -222,8 +222,8 @@ def _guard_messages(messages: List[Message]) -> tuple[List[Message], Dict[str, A
                     if "pii_mappings" not in stats:
                         stats["pii_mappings"] = {}
                     stats["pii_mappings"].update(pii_mapping)
-            except Exception:
-                pass  # PII detector failure must not block LLM calls
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
 
         if out and out[-1].get("role") == role and role != "system":
             # merge adjacent user/user or assistant/assistant (fail-open)
@@ -647,8 +647,8 @@ async def sys_llm_generate(
                     from core.harness.utils.model_injection import _log_model_selection
                     _log_model_selection(model_name or deployment.name, deployment.name or model_name,
                                          entry="create_adapter_legacy", source="sys_llm_generate")
-                except Exception:
-                    pass  # noqa: model-selection logging is best-effort, must not break LLM invocation
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
                 model = create_adapter(
                     provider=deployment.provider,
                     api_key=api_key,
@@ -686,8 +686,8 @@ async def sys_llm_generate(
         sb_result = await sb.check(kind="llm", tool_name="llm:" + (model_name or "generate"))
         if sb_result.verdict == Verdict.REJECT:
             logging.getLogger("aiplat.sandbox").warning("Sandbox rejected LLM call: %s", sb_result.reason)
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     if model is None or not hasattr(model, "generate"):
         end_ts = time.time()
@@ -880,8 +880,8 @@ async def sys_llm_generate(
             try:
                 from core.harness.kernel.execution_context import mark_gate_passed
                 mark_gate_passed("llm_generate_called")
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
             result = await model.generate(prepared)  # type: ignore[misc]
             # PII unmask: restore original values if role permits
             if message_guard_stats and message_guard_stats.get("pii_mappings"):
@@ -893,8 +893,8 @@ async def sys_llm_generate(
                                           role="admin")  # admin: has permission
                     if hasattr(result, 'content'):
                         result.content = unmasked
-                except Exception:
-                    pass
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
             return result
 
         # Set ActiveTraceContext for downstream event emission
@@ -918,8 +918,8 @@ async def sys_llm_generate(
             if trace_token is not None:
                 try:
                     reset_active_trace_context(trace_token)
-                except Exception:
-                    pass
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
         end_ts = time.time()
         await trace_gate.end(span, success=True)
         runtime = get_kernel_runtime()
@@ -1146,11 +1146,11 @@ async def sys_llm_generate_stream(
                             "args": {"model_name": model_name},
                             "result": {"stream_chunks": len(total_text)},
                         })
-                except Exception:
-                    pass
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
             return
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     # Fallback: non-streaming
     result = await sys_llm_generate(

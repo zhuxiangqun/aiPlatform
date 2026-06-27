@@ -54,8 +54,8 @@ def _get_context_size(model_name: str) -> int:
                 size = getattr(m, 'context_size', 0) or getattr(m, 'max_tokens', 0)
                 if size > 0:
                     return int(size)
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     # Fallback: known model sizes
     _KNOWN = {

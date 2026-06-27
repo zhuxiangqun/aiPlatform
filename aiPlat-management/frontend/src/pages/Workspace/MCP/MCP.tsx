@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Copy, Info, Pencil, Plus, RotateCw, ShieldCheck, Zap, Play, Trash2, Upload } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { Badge, Table, Switch, Button, Modal, Select, toast } from '../../../components/ui';
+import { Badge, Table, Switch, Button, Modal, toast } from '../../../components/ui';
 import { useWorkspaceMcpStore } from '../../../stores';
 import type { McpServer } from '../../../services';
 import { workspaceMcpApi, mcpApi } from '../../../services';
@@ -727,7 +727,7 @@ const WorkspaceMCP: React.FC = () => {
                     <Button variant="ghost" size="sm" className="text-xs" onClick={async () => {
                       try {
                         if (!s.installed) await installSeed(s.id);
-                        const r = await mcpApi.discoverTools(s.id);
+                        const r = await workspaceMcpApi.discoverTools(s.id);
                         toast.success(`${s.name}: ${r.tools?.length || 0} 个工具可用`);
                       } catch { toast.error(`${s.name}: 连接失败`); }
                     }}>

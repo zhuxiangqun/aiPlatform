@@ -99,8 +99,8 @@ def _load_diag_cache():
             with open(path, "r") as f:
                 _DIAG_CACHE = json.load(f)
             _DIAG_CACHE_TS = time.time()
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
 
 def _save_diag_cache():
@@ -111,8 +111,8 @@ def _save_diag_cache():
         if _DIAG_CACHE:
             with open(path, "w") as f:
                 json.dump(_DIAG_CACHE, f, ensure_ascii=False, default=str)
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
 
 async def _auto_fill_agents_async(names: list):
@@ -173,8 +173,8 @@ def _load_diag_history() -> list:
         if os.path.exists(p):
             with open(p) as f:
                 return json.loads(f.read() or "[]")
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
     return []
 
 
@@ -199,8 +199,8 @@ def _append_diag_history(result):
         os.makedirs(os.path.dirname(p), exist_ok=True)
         with open(p, "w") as f:
             json.dump(hist, f, ensure_ascii=False)
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
 
 # Load persisted cache on module init — DISABLED: always rebuild fresh
@@ -276,8 +276,8 @@ def _register_health_checks():
                     status=Status.HEALTHY if r.verdict.value == "pass" else Status.DEGRADED,
                     severity=Severity.MEDIUM, message="schema validation functional")
         reg.register(SchemaGateCheck())
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
 
 _register_health_checks()
@@ -320,8 +320,8 @@ async def run_e2e_smoke(request: Dict[str, Any]):
                 "status": "completed" if getattr(result, "ok", False) else "failed",
                 "timestamp": time.time(),
             })
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
     if not result.ok:
         raise HTTPException(status_code=result.http_status, detail=result.error or "Smoke failed")
     return result.payload
@@ -476,28 +476,28 @@ async def diagnostics_prompt_assemble(request: DiagnosticsPromptAssembleRequest,
                         "result": {"metrics": metrics},
                     }
                 )
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
         return resp
     finally:
         if t2 is not None:
             try:
                 reset_active_request_context(t2)
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
         if t1 is not None:
             try:
                 reset_active_workspace_context(t1)
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
         if env_set is not None:
             try:
                 if env_prev is None:
                     os.environ.pop("AIPLAT_ENABLE_SESSION_SEARCH", None)
                 else:
                     os.environ["AIPLAT_ENABLE_SESSION_SEARCH"] = env_prev
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
 
 
 @router.get("/diagnostics/context/metrics/recent")
@@ -548,22 +548,22 @@ async def diagnostics_context_metrics_summary(window_hours: int = 24, top_n: int
             ss_injected += 1
         try:
             ss_hits_sum += int(m.get("session_search_hits") or 0)
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
         try:
             pt = m.get("prompt_estimated_tokens")
             if isinstance(pt, (int, float)):
                 prompt_tok_sum += float(pt)
                 prompt_tok_cnt += 1
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
         try:
             bt = m.get("budgets_token_estimate")
             if isinstance(bt, (int, float)):
                 budget_tok_sum += float(bt)
                 budget_tok_cnt += 1
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
         h = str(m.get("workspace_context_hash") or it.get("target_id") or "").strip()
         if h:
@@ -760,8 +760,8 @@ async def run_all_diagnostics(category: str = "", quick: bool = False):
             event = {"type": event_type, "ts": time.time(), **kwargs}
             store_diag_event(run_id, event)
             EventBus.publish(run_id, event)
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
     _publish("diagnostics_started", categories=[
         "core_runtime","code_intel","capability","skill_lint","skill_realness",
@@ -886,8 +886,8 @@ async def run_all_diagnostics(category: str = "", quick: bool = False):
                         issues.append(f"'{name}': execution_type=handler 但 handler.py 不存在")
                     elif exec_type == "prompt" and handler_exists:
                         issues.append(f"'{name}': 有 handler.py 但 execution_type 声明为 prompt（误配？）")
-                except Exception:
-                    pass
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
             
             total = len(list(skills_dir.iterdir())) if skills_dir.exists() else 0
             return {
@@ -1021,8 +1021,8 @@ async def run_all_diagnostics(category: str = "", quick: bool = False):
                         for m in mgmt_modules:
                             if m in text.lower() or m in p.name.lower():
                                 frontend_covered.add(m)
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        logging.debug(str(e), exc_info=True)
 
             dead_modules = sorted(mgmt_modules - frontend_covered)
 
@@ -1280,8 +1280,8 @@ async def run_all_diagnostics(category: str = "", quick: bool = False):
                     v_str = item.get("detail", "0 violations")
                     v = int(re.findall(r'\d+', v_str)[0]) if re.findall(r'\d+', v_str) else 0
                     score -= min(v * 2 - 10, 20)  # extra penalty beyond base 10
-                except Exception:
-                    pass
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
 
         # Extract shell agents by scanning AGENT.md files directly (accurate)
         shell_agents = []
@@ -1304,8 +1304,8 @@ async def run_all_diagnostics(category: str = "", quick: bool = False):
                             scope = "workspace" if ".aiplat" in str(md_path) else "engine"
                             shell_agents.append(f"{scope}:{md_path.parent.name}")
                             break
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
         return {
             "status": "pass" if score >= 80 else "warn",
@@ -1442,8 +1442,8 @@ async def run_all_diagnostics(category: str = "", quick: bool = False):
                             "signals": {"last_smoke": "failed"},
                             "items": [{"check": "最近冒烟", "result": "⚠️",
                                        "detail": "上次执行未通过"}]}
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
         return {"status": "unavailable", "signals": {"last_smoke": "no data"},
                 "items": [{"check": "冒烟测试", "result": "⚪",
                            "detail": "尚未运行，点击 E2E Smoke 页面手动执行"}]}
@@ -1766,8 +1766,8 @@ async def run_all_diagnostics(category: str = "", quick: bool = False):
                 try:
                     proc.terminate()
                     await asyncio.wait_for(proc.wait(), timeout=3)
-                except Exception:
-                    pass
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
         except Exception as e:
             return {"status": "error", "score": 0, "error": str(e)[:200],
                     "items": [{"check": "MCP 连通性", "result": "❌",
@@ -1874,8 +1874,8 @@ async def run_all_diagnostics(category: str = "", quick: bool = False):
         ag_raw = await _check_arch_guard()
         if isinstance(ag_raw, dict) and "_raw" in ag_raw:
             _details["arch_guard"] = ag_raw["_raw"]
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     result = {
         "run_id": run_id,
@@ -1898,8 +1898,8 @@ async def run_all_diagnostics(category: str = "", quick: bool = False):
         if shell_agents:
             names = [a.split(":", 1)[1] if ":" in a else a for a in shell_agents]
             asyncio.create_task(_auto_fill_agents_async(names))
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     # Append to diagnostic history for trend chart
     _append_diag_history(result)
@@ -1912,8 +1912,8 @@ async def run_all_diagnostics(category: str = "", quick: bool = False):
     try:
         import core.api.routers.overview as _ov_mod
         _ov_mod._OV_CACHE = None
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
     _publish("diagnostics_complete", overall_score=overall, overall_grade=grade)
     return result
 
@@ -2322,8 +2322,8 @@ def _save_alert_config(config: List[dict]) -> None:
             conn.commit()
         finally:
             conn.close()
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
 
 def _evaluate_alerts(stats: Dict) -> List[dict]:
@@ -2363,7 +2363,7 @@ async def get_alerts():
 async def update_alerts(data: dict = None):
     rules = data.get("alerts") if data else None
     if not isinstance(rules, list):
-        raise HTTPException(400, "alerts must be a list")
+        raise HTTPException(status_code=400, detail="alerts must be a list")
     _save_alert_config(rules)
     return {"alerts": rules, "status": "saved"}
 
@@ -2395,11 +2395,11 @@ async def compare_models(data: dict = None):
     model_names = data.get("models", []) if data else []
 
     if not prompt or not isinstance(prompt, str) or not prompt.strip():
-        raise HTTPException(400, "prompt is required")
+        raise HTTPException(status_code=400, detail="prompt is required")
     if not isinstance(model_names, list) or len(model_names) == 0:
-        raise HTTPException(400, "models list is required")
+        raise HTTPException(status_code=400, detail="models list is required")
     if len(model_names) > 6:
-        raise HTTPException(400, "max 6 models at once")
+        raise HTTPException(status_code=400, detail="max 6 models at once")
 
     import time as _time
     from core.harness.utils.model_injection import create_selected_adapter
@@ -2461,13 +2461,13 @@ async def playground_chat(data: dict = None):
     stages = data.get("stages", []) if data else []
 
     if not message or not isinstance(message, str) or not message.strip():
-        raise HTTPException(400, "message is required")
+        raise HTTPException(status_code=400, detail="message is required")
 
     try:
         from core.harness.utils.model_injection import create_selected_adapter
         adapter = create_selected_adapter(model_name="")
         if adapter is None:
-            raise HTTPException(503, "No LLM adapter available")
+            raise HTTPException(status_code=503, detail="No LLM adapter available")
 
         # Build context from stages
         stage_ctx = ""
@@ -2499,7 +2499,7 @@ async def playground_chat(data: dict = None):
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(500, f"Chat failed: {e}")
+        raise HTTPException(status_code=500, detail=f"Chat failed: {e}")
 
 
 # ══════════════════════════════════════════════════════════════
@@ -2753,8 +2753,8 @@ async def eval_summary():
                         if sid not in stage_map:
                             stage_map[sid] = []
                         stage_map[sid].append({"reward": rw, "dimensions": dims})
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        logging.debug(str(e), exc_info=True)
                 result["stage_rewards"] = {
                     "total_stages": len(stage_map),
                     "by_stage": {k: {"recent": v[:5], "avg_reward": round(sum(x["reward"] for x in v) / max(len(v), 1), 1)} for k, v in stage_map.items()},

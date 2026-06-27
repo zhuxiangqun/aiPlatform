@@ -7,6 +7,7 @@ Used for quick-turnaround interactions like simple Q&A.
 """
 
 from __future__ import annotations
+import logging
 
 from typing import Any
 
@@ -29,13 +30,13 @@ class QuickEngine:
             msgs = getattr(context, "messages", None) or []
             if msgs:
                 return str(msgs[-1].get("content", "") or "")
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
         try:
             vars0 = dict(getattr(context, "variables", {}) or {})
             return str(vars0.get("message", "") or "")
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
         return ""
 
     def _wrap_result(self, content: str) -> Any:

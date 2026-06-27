@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from typing import Any, Dict, Optional
+import logging
 
 
 def rebuild_workspace_managers(
@@ -49,7 +50,7 @@ async def rebuild_workspace_managers_into_runtime(*, runtime: Any) -> Dict[str, 
     for k, v in out.items():
         try:
             setattr(runtime, k, v)
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
     return out
 

@@ -249,11 +249,11 @@ def enqueue_directory_ingest(
                         conn.execute("DELETE FROM kb_elements WHERE tenant_id=? AND doc_id=?", (tenant_id, existing_doc))
                         conn.execute("DELETE FROM kb_embeddings WHERE tenant_id=? AND doc_id=?", (tenant_id, existing_doc))
                         stale_cleaned += 1
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        logging.debug(str(e), exc_info=True)
             conn.commit()
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     job_ids = []
     doc_ids = []
@@ -360,8 +360,8 @@ def ingest_document(
         doc_id = _stable_doc_id(file_path)
         try:
             db.archive_doc_data(tenant_id=st.tenant_id, doc_id=doc_id)
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
         db.upsert_document(
             tenant_id=st.tenant_id,
             doc_id=doc_id,
@@ -390,8 +390,8 @@ def ingest_document(
                         "meta": ch.get("meta", {}),
                     })
                 parsed = chunked
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
         for i, el in enumerate(parsed):
             element_id = new_prefixed_id("el")
@@ -454,8 +454,8 @@ def ingest_document(
     # Clean previous ingest artifacts for idempotent re-ingest of same file/doc_id.
     try:
         db.delete_doc_data(tenant_id=st.tenant_id, doc_id=doc_id)
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
     db.upsert_document(
         tenant_id=st.tenant_id,
         doc_id=doc_id,
@@ -1000,8 +1000,8 @@ def preview_document(
             try:
                 from core.harness.document.video import probe_duration_ms
                 audio_dur_ms = probe_duration_ms(audio_path)
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
 
             diags.clear()
             segments = _transcribe_audio(audio_path, language="zh", diagnostics=diags)
@@ -1061,13 +1061,13 @@ def preview_document(
                 _os.makedirs(_os.path.dirname(cache_path) or ".", exist_ok=True)
                 with open(cache_path, "w", encoding="utf-8") as f:
                     _json.dump(cache, f, ensure_ascii=False)
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
         finally:
             try:
                 _os.unlink(audio_path)
-            except OSError:
-                pass
+            except OSError as e:
+                logging.debug(str(e), exc_info=True)
     else:
         # PDF: use PoC OCR pipeline for first few pages
         import tempfile
@@ -1176,10 +1176,10 @@ def watch_directory(
                 if result.get("total", 0) > 0:
                     try:
                         db.touch_watch(tenant_id=tenant_id, watch_id=watch_id)
-                    except Exception:
-                        pass
-            except Exception:
-                pass
+                    except Exception as e:
+                        logging.debug(str(e), exc_info=True)
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
             time.sleep(max(poll_interval, 5.0))
 
     t = threading.Thread(target=_poll, name=f"kb_watch_{watch_id}", daemon=True)
@@ -1198,8 +1198,8 @@ def unwatch_directory(*, tenant_id: str, watch_id: str) -> Dict[str, Any]:
     try:
         st = get_tenant_storage(tenant_id)
         KBSqlite(st.db_path).delete_watch(tenant_id=tenant_id, watch_id=watch_id)
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
     return {"status": "unwatched", "watch_id": watch_id}
 
 
@@ -1281,8 +1281,8 @@ def vault_tree(*, vault_path: str, subdir: str = "", max_depth: int = 3,
             db = KBSqlite(get_tenant_storage(tenant_id).db_path)
             db.ensure_schema()
             file_statuses = db.get_vault_file_statuses(vault_id=vault_id)
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
     def _walk(path: Path, depth: int) -> List[Dict[str, Any]]:
         if depth > max_depth:
@@ -1310,8 +1310,8 @@ def vault_tree(*, vault_path: str, subdir: str = "", max_depth: int = 3,
                         "type": "directory",
                         "children": children,
                     })
-        except PermissionError:
-            pass
+        except PermissionError as e:
+            logging.debug(str(e), exc_info=True)
         return entries
 
     return {"vault_path": str(root), "subdir": subdir, "entries": _walk(root, 0)}
@@ -1333,8 +1333,8 @@ def vault_read(*, file_path: str) -> Dict[str, Any]:
                 fm = _yaml.safe_load(parts[1]) or {}
                 if isinstance(fm, dict):
                     frontmatter = dict(fm)
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
             body = parts[2]
     return {
         "file_path": str(p),
@@ -1376,8 +1376,8 @@ async def vault_to_wiki(*, file_path: str, label: str = "", collection_id: str =
                 db.upsert_vault_file(
                     vault_id=vault_id, file_path=str(p), doc_id=doc_id,
                 )
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
 
         # V1: Schema validation after conversion
         schema_ok = None
@@ -1388,8 +1388,8 @@ async def vault_to_wiki(*, file_path: str, label: str = "", collection_id: str =
             if saved:
                 val = validate_page_against_schema(saved, collection_id=collection_id, mode="warning")
                 schema_ok = val.is_valid
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
         return {
             "status": status,
@@ -1408,8 +1408,8 @@ async def vault_to_wiki(*, file_path: str, label: str = "", collection_id: str =
                 db.upsert_vault_file_failed(
                     vault_id=vault_id, file_path=str(p), error=str(e)[:200],
                 )
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
         raise
 
 
@@ -1462,8 +1462,8 @@ def vault_start_indexer(
                                                   tenant_id=tenant_id)).result(timeout=120)
                                 if result.get("status") in ("created", "skipped"):
                                     wikified += 1
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            logging.debug(str(e), exc_info=True)
 
                 _VAULT_INDEX_STATE[key] = {
                     "status": "running",
@@ -1477,8 +1477,8 @@ def vault_start_indexer(
                         KBSqlite(get_tenant_storage(tenant_id).db_path).touch_vault(
                             tenant_id=tenant_id, vault_id=vault_id,
                         )
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        logging.debug(str(e), exc_info=True)
             except Exception as e:
                 _VAULT_INDEX_STATE[key] = {"status": "error", "progress": -1, "last_error": str(e)}
             time.sleep(max(poll_interval, 5.0))

@@ -1,3 +1,4 @@
+import logging
 """
 Trace Service - Execution Tracing and Metrics
 
@@ -186,8 +187,8 @@ class TraceService:
                         "attributes": trace.attributes,
                     }
                 )
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
         
         return trace
     
@@ -223,8 +224,8 @@ class TraceService:
                         "attributes": trace.attributes,
                     }
                 )
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
         
         return trace
     
@@ -283,8 +284,8 @@ class TraceService:
                         "events": span.events,
                     }
                 )
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
         
         return span
     
@@ -321,8 +322,8 @@ class TraceService:
                         "events": span.events,
                     }
                 )
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
         
         return span
     
@@ -364,8 +365,8 @@ class TraceService:
                         "events": span.events,
                     }
                 )
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
         return True
     
     async def set_span_attribute(self, span_id: str, key: str, value: Any) -> bool:
@@ -401,8 +402,8 @@ class TraceService:
                         "events": span.events,
                     }
                 )
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
         return True
 
     async def get_trace_persisted(self, trace_id: str) -> Optional[Dict[str, Any]]:

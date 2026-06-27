@@ -64,8 +64,8 @@ def ingest_video_document(
     doc_id = _stable_doc_id(file_path)
     try:
         db.archive_doc_data(tenant_id=st.tenant_id, doc_id=doc_id)
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
     db.upsert_document(
         tenant_id=st.tenant_id,
         doc_id=doc_id,
@@ -91,8 +91,8 @@ def ingest_video_document(
                 cache = json.loads(f.read())
             if isinstance(cache, dict) and cache.get("kind") == "video":
                 cached_segments = cache.get("segments") or []
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     if cached_segments and len(cached_segments) > 0:
         segments = cached_segments
@@ -237,10 +237,10 @@ def ingest_video_document(
                         "vector": embed_text(ch["text"][:4000]),
                         "model": "hash-128",
                     })
-            except Exception:
-                pass
-    except Exception:
-        pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     if elements_batch:
         # Delete old elements before re-inserting (reingest safety)

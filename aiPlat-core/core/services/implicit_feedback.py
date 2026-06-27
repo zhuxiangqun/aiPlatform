@@ -12,6 +12,7 @@ ImplicitFeedback — 用户行为隐式反馈收集器 (Phase 4.2)
 """
 
 from __future__ import annotations
+import logging
 
 import asyncio, os, time, logging
 from dataclasses import dataclass, field
@@ -116,8 +117,8 @@ class ImplicitFeedbackCollector:
             if prov:
                 for c in prov.citations:
                     c.confidence = min(1.0, c.confidence + delta)
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
     async def _mark_sample(self, run_id: str, label: str):
         """标记 execution_store 为正/负样本"""
@@ -126,8 +127,8 @@ class ImplicitFeedbackCollector:
             store = get_execution_store()
             await store.set_meta(run_id, "implicit_label", label)
             _log.info(f"ImplicitFeedback: marked {run_id} as {label}")
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
     def get_stats(self) -> Dict[str, Any]:
         """获取收集器统计"""

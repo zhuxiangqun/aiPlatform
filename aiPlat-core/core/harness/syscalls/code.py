@@ -9,6 +9,7 @@ Each syscall passes through TraceGate (audit) and workspace scoping.
 """
 
 from __future__ import annotations
+import logging
 
 import fnmatch
 import os
@@ -29,8 +30,8 @@ def _resolve_search_root() -> str:
             return os.path.realpath(os.path.expanduser(
                 getattr(ws, "workspace_path", None) or os.getcwd()
             ))
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
     return os.path.realpath(os.getcwd())
 
 

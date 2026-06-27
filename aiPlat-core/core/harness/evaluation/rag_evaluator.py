@@ -162,8 +162,8 @@ class RagEvaluator:
             from core.api.facades.kb_facade import kb_retrieve
             results = kb_retrieve(query=sample.question, doc_ids=sample.doc_ids, top_k=12)
             contexts = [r["text"] for r in results]
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
         # Always include paragraph (full transcript) as additional context for LLM generation
         paragraph_context = None
@@ -179,8 +179,8 @@ class RagEvaluator:
             if _row:
                 paragraph_context = _row[0]
                 contexts.insert(0, paragraph_context[:4000])
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
         # 2. Generate answer
         answer = "[no answer]"
@@ -199,8 +199,8 @@ class RagEvaluator:
                 model_name=best_model_for_purpose("chat"),  # noqa: model-legacy temperature=0.1, max_tokens=2000,
             )
             answer = (getattr(resp, "content", "") or str(resp)).strip()
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
         # 3. Score
         metrics = EvalMetrics()
@@ -235,8 +235,8 @@ class RagEvaluator:
         for sample in samples:
             try:
                 reports.append(await self.evaluate_sample(sample))
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
         return reports
 
     async def _ragas_score(self, question: str, answer: str, contexts: List[str], ground_truth: str) -> EvalMetrics:

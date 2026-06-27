@@ -226,6 +226,51 @@ class MonitoringManager(ManagementBase):
             return True
         return False
     
+    async def create_rule(self, config: Dict[str, Any]) -> AlertRule:
+        """Create an alert rule."""
+        rule = AlertRule(
+            name=config["name"],
+            metric=config.get("metric", ""),
+            threshold=float(config.get("threshold", 0)),
+            duration=int(config.get("duration", 0)),
+            severity=config.get("severity", "warning"),
+            enabled=bool(config.get("enabled", True)),
+        )
+        self._alert_rules[rule.name] = rule
+        return rule
+
+    async def update_rule(self, name: str, config: Dict[str, Any]) -> bool:
+        """Update an alert rule."""
+        rule = self._alert_rules.get(name)
+        if rule is None:
+            return False
+        if "metric" in config:
+            rule.metric = config["metric"]
+        if "threshold" in config:
+            rule.threshold = float(config["threshold"])
+        if "duration" in config:
+            rule.duration = int(config["duration"])
+        if "severity" in config:
+            rule.severity = config["severity"]
+        if "enabled" in config:
+            rule.enabled = bool(config["enabled"])
+        return True
+
+    async def delete_rule(self, name: str) -> bool:
+        """Delete an alert rule."""
+        if name in self._alert_rules:
+            del self._alert_rules[name]
+            return True
+        return False
+
+    async def acknowledge_alert(self, alert_id: str) -> bool:
+        """Acknowledge an alert."""
+        for alert in self._alerts:
+            if alert.alert_id == alert_id:
+                alert.status = "acknowledged"
+                return True
+        return False
+
     async def trigger_alert(self, rule_name: str, message: str = None) -> Alert:
         """
         Trigger an alert.

@@ -53,8 +53,8 @@ async def sys_agent_call(
         try:
             from core.harness.kernel.execution_context import mark_gate_passed
             mark_gate_passed("policy_gate_agent")
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
         coordinator = get_subagent_coordinator()
         # Parallel dispatch: comma-separated subagent names

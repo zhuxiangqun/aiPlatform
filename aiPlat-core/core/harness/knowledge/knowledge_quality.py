@@ -183,8 +183,8 @@ def get_entity_quality_score(
             recorded = datetime.fromisoformat(s.get("recorded_at", "").replace("Z", "+00:00"))
             age_days = (datetime.now(timezone.utc) - recorded).total_seconds() / 86400
             weight = max(0.1, 1.0 - age_days * 0.05)
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
         assessment = s.get("signal_value", {}).get("quality", "")
         if assessment:
@@ -259,8 +259,8 @@ def check_ontology_health_triggers(collection_id: str = "default") -> List[Dict[
                 "auto_created": True,
                 "created_at": _time.strftime("%Y-%m-%dT%H:%M:%SZ", _time.gmtime()),
             })
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     # Trigger 2: Accumulated negative quality signals per entity
     try:
@@ -291,8 +291,8 @@ def check_ontology_health_triggers(collection_id: str = "default") -> List[Dict[
                     "auto_created": True,
                     "created_at": _time.strftime("%Y-%m-%dT%H:%M:%SZ", _time.gmtime()),
                 })
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     # Trigger 3: Aged A1 violations
     try:
@@ -318,7 +318,7 @@ def check_ontology_health_triggers(collection_id: str = "default") -> List[Dict[
                         "auto_created": True,
                         "created_at": _time.strftime("%Y-%m-%dT%H:%M:%SZ", _time.gmtime()),
                     })
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     return triggers

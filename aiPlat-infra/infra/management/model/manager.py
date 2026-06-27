@@ -83,8 +83,8 @@ class ModelManager:
             with _cfutures.ThreadPoolExecutor(max_workers=1) as _pool:
                 _future = _pool.submit(self._scan_local_models_sync)
                 _future.result(timeout=10.0)
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
     
     async def initialize(self):
         """异步初始化 - 扫描本地模型"""
@@ -106,8 +106,8 @@ class ModelManager:
                     if existing.source == ModelSource.LOCAL:
                         existing.status = model.status
                         existing.config.base_url = model.config.base_url
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
     def _scan_local_models_sync(self):
         """Sync wrapper for _scan_local_models — runs in a dedicated event loop."""
@@ -256,7 +256,7 @@ class ModelManager:
                     break
             if not found:
                 import logging as _logging
-                _logging.getLogger("aiplat.model").warning(
+                _logging.getLogger("infra.model").warning(
                     f"Preferred model '{preferred}' for '{purpose}' not found or disabled"
                 )
                 preferred = None
@@ -305,8 +305,8 @@ class ModelManager:
                 from .quality_validator import get_quality_tracker
                 qs = get_quality_tracker().get(m.name, purpose)
                 score += int(qs * 80)  # -80 to +80
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
 
             # ── Concurrency capacity (from model tags or env) ──
             max_cc = getattr(m, 'max_concurrency', 0) or 0
@@ -326,16 +326,16 @@ class ModelManager:
                     score -= 40
                 elif p95 > 5:
                     score -= 20
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
 
             # ── v3.0: Congestion penalty (rate limiting / overload) ──
             try:
                 from .latency_tracker import get_latency_tracker
                 penalty = get_latency_tracker().congestion_penalty(m.name)
                 score -= int(penalty)
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
 
             # ── v3.0: Cost penalty (per 1k tokens) ──
             model_costs = profile_data.get("model_cost", {})
@@ -363,7 +363,7 @@ class ModelManager:
             result.insert(0, preferred)
         elif preferred and preferred not in result:
             import logging
-            logging.getLogger("aiplat.model").warning(
+            logging.getLogger("infra.model").warning(
                 f"Preferred model '{preferred}' for '{purpose}' not in scored list "
                 f"(may have wrong capabilities or is disabled). Falling back to auto-selection."
             )

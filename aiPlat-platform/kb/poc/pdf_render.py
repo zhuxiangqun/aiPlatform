@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import List, Optional
+import logging
 
 
 def render_pdf_to_images(pdf_path: str, *, out_dir: str, dpi: int = 200, max_pages: Optional[int] = None) -> List[str]:
@@ -30,8 +31,8 @@ def render_pdf_to_images(pdf_path: str, *, out_dir: str, dpi: int = 200, max_pag
             pix.save(str(fp))
             out.append(str(fp))
         return out
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     # --- pypdfium2 fallback (optional) ---
     try:

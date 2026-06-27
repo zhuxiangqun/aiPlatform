@@ -81,8 +81,8 @@ def _notify_resource_mutated(resource_type: str, action: str, resource_id: str) 
             source="SkillManager",
             data={"resource_type": resource_type, "action": action, "resource_id": resource_id},
         )
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
 
 class SkillManager:
@@ -229,8 +229,8 @@ class SkillManager:
                 try:
                     from core.apps.skills import get_skill_registry
                     get_skill_registry().disable(_id)
-                except Exception:
-                    pass
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
 
     def _detect_skill_kind(self, *, skill_dir: Path, front_matter: Dict[str, Any]) -> tuple[str, Dict[str, Any]]:
         """
@@ -368,8 +368,8 @@ class SkillManager:
                         files_sample.append(rel)
                 except Exception:
                     continue
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
         bundle_sha256 = hashlib.sha256(("\n".join(entries)).encode("utf-8")).hexdigest()
         return {
             "bundle_sha256": bundle_sha256,
@@ -400,15 +400,15 @@ class SkillManager:
                 mpath = skill_dir / "SKILL.manifest.json"
                 if mpath.exists():
                     prov.setdefault("manifest_sha256", self._sha256_file(mpath))
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
         metadata["provenance"] = prov
 
         integ = metadata.get("integrity") if isinstance(metadata.get("integrity"), dict) else {}
         try:
             integ.update(self._compute_skill_bundle_integrity(skill_dir))
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
         metadata["integrity"] = integ
 
     def compute_skill_signature_verification(self, skill: "SkillInfo", trusted_keys: Dict[str, str]) -> Dict[str, Any]:
@@ -636,8 +636,8 @@ class SkillManager:
             pm = get_permission_manager()
             for uid in ("system", "admin"):
                 pm.grant_permission(uid, skill_id, Permission.EXECUTE, granted_by="auto_create")
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
         # Materialize directory-based skill on filesystem (SKILL.md + skeleton).
         # This makes skill definitions explicit, versionable, and compatible with Agent Skill / SOP mode.
@@ -1027,8 +1027,8 @@ class SkillManager:
                             # Set effects on config for runtime validation
                             if effects_in:
                                 cfg.effects = effects_in
-                except Exception:
-                    pass
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
             else:
                 sop_markdown = ""
                 try:
@@ -1070,8 +1070,8 @@ class SkillManager:
             
             if skill_info.status == "disabled":
                 registry.disable(skill_id)
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
     
     async def get_skill(self, skill_id: str) -> Optional[SkillInfo]:
         """Get skill by ID"""
@@ -1162,8 +1162,8 @@ class SkillManager:
                     }
                 )
                 skill.metadata["audit"] = audit[-200:]
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
         # Best-effort: keep execution-layer registry config in sync
         self._sync_registry_config(skill)
@@ -1194,8 +1194,8 @@ class SkillManager:
                     # store minimal manifest snapshot too
                     cfg_snapshot = yaml.safe_dump(self._build_skill_manifest(skill), sort_keys=False, allow_unicode=True).strip()
                     rev_dir.joinpath("manifest.yaml").write_text(cfg_snapshot + "\n", encoding="utf-8")
-                except Exception:
-                    pass
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
                 raw = skill_md_path.read_text(encoding="utf-8")
                 fm, body = self._split_front_matter(raw)
                 fm = fm or {}
@@ -1264,16 +1264,16 @@ class SkillManager:
                           "tools", "execution_type", "timeout"):
                     if k in skill.metadata and skill.metadata.get(k) is not None:
                         manifest[k] = skill.metadata.get(k)
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
         # Persist selected traceability/governance metadata so it survives reload.
         try:
             if isinstance(getattr(skill, "metadata", None), dict):
                 for k in ("verification", "governance", "provenance", "integrity", "skill_pack"):
                     if k in skill.metadata:
                         manifest[k] = skill.metadata.get(k)
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
         return manifest
 
     def _sync_registry_config(self, skill: "SkillInfo") -> None:
@@ -1290,16 +1290,16 @@ class SkillManager:
                 return
             try:
                 cfg.description = skill.description
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
             try:
                 cfg.input_schema = skill.input_schema or {}
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
             try:
                 cfg.output_schema = skill.output_schema or {}
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
             try:
                 if hasattr(cfg, "metadata") and isinstance(cfg.metadata, dict):
                     cfg.metadata["category"] = skill.type
@@ -1310,8 +1310,8 @@ class SkillManager:
                             cfg.metadata["provenance"] = skill.metadata.get("provenance")
                         if isinstance(skill.metadata.get("integrity"), dict):
                             cfg.metadata["integrity"] = skill.metadata.get("integrity")
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
             # Refresh SOP from filesystem (L2)
             try:
                 md_path = self._find_skill_md(skill.id)
@@ -1321,8 +1321,8 @@ class SkillManager:
                     if hasattr(cfg, "metadata") and isinstance(cfg.metadata, dict):
                         cfg.metadata["sop_markdown"] = body.strip()
                         cfg.metadata["filesystem"] = (skill.metadata or {}).get("filesystem", {}) if isinstance(skill.metadata, dict) else {}
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
         except Exception:
             return
     
@@ -1354,15 +1354,15 @@ class SkillManager:
                 skill_dir = base_dir / skill.id
                 if skill_dir.exists():
                     shutil.rmtree(skill_dir)
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
 
             try:
                 from core.apps.skills import get_skill_registry
 
                 get_skill_registry().unregister(skill_id)
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
 
             self._skills.pop(skill_id, None)
             self._stats.pop(skill_id, None)
@@ -1382,8 +1382,8 @@ class SkillManager:
             from core.apps.skills import get_skill_registry
 
             get_skill_registry().disable(skill_id)
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
         self._writeback_skill_md(skill, extra_frontmatter={"deprecated_at": now_iso})
         return True
@@ -1403,8 +1403,8 @@ class SkillManager:
             from core.apps.skills import get_skill_registry
 
             get_skill_registry().enable(skill_id)
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
         self._writeback_skill_md(skill, remove_frontmatter_keys=["deprecated_at"])
         return True
     
@@ -1420,8 +1420,8 @@ class SkillManager:
             from core.apps.skills import get_skill_registry
 
             get_skill_registry().disable(skill_id)
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
         self._writeback_skill_md(skill)
         return True
 
@@ -1444,8 +1444,8 @@ class SkillManager:
             if not registry.get(skill_id):
                 self._bridge_to_registry(skill)
             registry.enable(skill_id)
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
         self._sync_registry_config(skill)
         self._writeback_skill_md(skill, remove_frontmatter_keys=["deprecated_at"])
@@ -1647,8 +1647,8 @@ class SkillManager:
                     from core.harness.utils.model_injection import create_selected_adapter, best_model_for_purpose
                     model = create_selected_adapter(model_name=best_model_for_purpose("skill_execution"))
                     skill.set_model(model)
-                except Exception:
-                    pass
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
             
             skill_tools = context.get("tools", []) if context else []
             # Propagate user_id from active request context when not explicitly provided in payload.context.
@@ -1798,8 +1798,8 @@ class SkillManager:
                 if isinstance(skill.metadata["filesystem"], dict):
                     skill.metadata["filesystem"]["skill_dir"] = str(skill_dir)
                     skill.metadata["filesystem"]["skill_md"] = str(skill_md_path)
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
         # Bridge to execution registry after materialization
         self._bridge_to_registry(skill)

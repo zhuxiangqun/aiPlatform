@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from fastapi import Request
+import logging
 
 
 def permission_detail(p: str) -> Dict[str, Any]:
@@ -205,8 +206,8 @@ def skill_governance_preview(*, scope: str, payload: Dict[str, Any], approval_ma
                     approval["matched_operations"].append(op)
             if approval["required"]:
                 _raise("high" if scope0 == "engine" else "medium", "根据审批规则：当前配置可能需要人工审批")
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     # engine scope is always more conservative
     if scope0 == "engine" and skill_kind == "executable":

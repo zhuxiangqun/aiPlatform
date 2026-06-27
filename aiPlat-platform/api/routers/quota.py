@@ -4,6 +4,7 @@ Platform Quota routes — tenant quota snapshot and usage CRUD.
 Migrated from aiPlat-core/core/api/routers/quota.py per architecture contract.
 """
 from __future__ import annotations
+import logging
 
 
 from typing import Annotated, Optional
@@ -81,8 +82,8 @@ async def put_quota_snapshot(request: dict, http_request: Request, rt: RuntimeDe
             resource_id=str(tenant_id),
             detail={"version": saved.get("version")},
         )
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
     return saved
 
 

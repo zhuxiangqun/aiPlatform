@@ -8,6 +8,7 @@ from core.api.deps import actor_from_http
 from core.api.utils.governance import ui_url
 from core.governance.verification import apply_autosmoke_result, autosmoke_job_id, get_resource_verification, mark_resource_pending
 from core.harness.kernel.runtime import get_kernel_runtime
+import logging
 
 
 router = APIRouter()
@@ -57,8 +58,8 @@ async def run_autosmoke(request: Dict[str, Any], http_request: Request):
     wam, wsm, wmm = _workspace_managers()
     try:
         await mark_resource_pending(resource_type=rtype, resource_id=rid, workspace_agent_manager=wam, workspace_skill_manager=wsm, workspace_mcp_manager=wmm)
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     from core.harness.smoke import enqueue_autosmoke
 
@@ -90,8 +91,8 @@ async def run_autosmoke(request: Dict[str, Any], http_request: Request):
             "job_runs_ui": ui_url(f"/core/jobs?job_id={jid}"),
             "syscalls_ui": ui_url("/diagnostics/syscalls?kind=onboarding&target_type=onboarding_evidence&target_id="),
         }
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
     return res
 
 
@@ -117,8 +118,8 @@ async def list_autosmoke_runs(resource_type: str, resource_id: str, http_request
                 "syscalls_ui": ui_url(f"/diagnostics/syscalls?run_id={run_id}"),
                 "audit_ui": ui_url(f"/diagnostics/audit?action=autosmoke_result&resource_id={rid}"),
             }
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
         items.append(d)
     return {**runs, "job_id": job_id, "resource": {"type": rtype, "id": rid}, "items": items}
 

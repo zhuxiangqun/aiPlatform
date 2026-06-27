@@ -69,8 +69,8 @@ def parse_agent_md(path: str) -> Dict[str, Any]:
             try:
                 fm = yaml.safe_load(parts[1]) or {}
                 result.update(fm)
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
             result["_sop_body"] = parts[2].strip()
     else:
         result["_sop_body"] = raw.strip()

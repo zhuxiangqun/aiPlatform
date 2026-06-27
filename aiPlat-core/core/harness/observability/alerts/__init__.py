@@ -3,6 +3,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import Enum
 import asyncio
+import logging
 
 
 class AlertSeverity(Enum):
@@ -125,8 +126,8 @@ class AlertManager:
         for handler in self._handlers:
             try:
                 await handler(alert)
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
 
         return alert
 

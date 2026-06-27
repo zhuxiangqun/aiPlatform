@@ -52,63 +52,6 @@ def _check_infra_available() -> bool:
     return _INFRA_AVAILABLE
 
 
-def get_infra_model_source() -> Optional[Any]:
-    """Return infra's LLMManager as a model source, or None if infra is unavailable.
-
-    This provides an optional fallback model provider chain through the
-    infra layer, which supports additional providers (local LLM, etc.)
-    not natively available in core's ModelRegistry.
-    """
-    if not _check_infra_available():
-        return None
-    try:
-        from infra.management.api.main import get_infra_manager
-        mgr = get_infra_manager()
-        llm = mgr.get("llm")
-        if llm is None:
-            return None
-        return llm
-    except Exception:
-        logger.debug("Failed to load infra LLM manager", exc_info=True)
-        return None
-
-
-def list_infra_models() -> List[Dict[str, Any]]:
-    """List models available through infra's LLMManager.
-
-    Returns list of dicts with keys: name, provider, api_key_env, description.
-    """
-    if not _check_infra_available():
-        return []
-    try:
-        from infra.management.api.main import get_infra_manager
-        mgr = get_infra_manager()
-        model_mgr = mgr.get("model")
-        if model_mgr is None:
-            return []
-        fn = getattr(model_mgr, "list_models", None)
-        if fn is None:
-            return []
-        import inspect as _inspect
-        result = fn()
-        if _inspect.iscoroutine(result):
-            import asyncio as _asyncio
-            try:
-                loop = _asyncio.get_running_loop()
-            except RuntimeError:
-                loop = None
-            if loop and loop.is_running():
-                import concurrent.futures as _futures
-                with _futures.ThreadPoolExecutor(max_workers=1) as pool:
-                    future = pool.submit(_asyncio.run, result)
-                    return future.result(timeout=5)
-            else:
-                return _asyncio.run(result)
-        return result
-    except Exception:
-        return []
-
-
 def create_infra_vector_client(backend: str = "faiss") -> Optional[Any]:
     """Create a vector store client backed by infra's factory.
 

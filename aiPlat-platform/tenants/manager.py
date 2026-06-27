@@ -1,3 +1,4 @@
+import logging
 """
 Tenant Manager - 租户管理
 
@@ -109,8 +110,8 @@ class TenantManager:
                     ),
                 )
                 self._tenants[tenant.tenant_id] = tenant
-        except Exception:
-            pass  # DB not available yet, start empty
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
     def _persist(self, tenant: Tenant):
         try:
@@ -126,8 +127,8 @@ class TenantManager:
                 "enable_mcp": tenant.config.enable_mcp,
                 "enable_approval_required": tenant.config.enable_approval_required,
             })
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
     def create_tenant(self, tenant_id: str, name: str, **kwargs) -> Tenant:
         """创建租户"""
@@ -171,8 +172,8 @@ class TenantManager:
             try:
                 self._ensure_db()
                 self._db.delete_tenant(tenant_id)
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
             return True
         return False
 
@@ -223,8 +224,8 @@ class TenantManager:
             row = self._db.find_by_email(email)
             if row:
                 return self._tenants.get(row["tenant_id"])
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
         return None
 
     def get_plan_quota(self, tenant_id: str) -> dict:

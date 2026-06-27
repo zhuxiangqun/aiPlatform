@@ -19,6 +19,7 @@ Usage:
 """
 
 from __future__ import annotations
+import logging
 
 import asyncio
 import hashlib
@@ -115,8 +116,8 @@ class SemanticCache:
             if raw:
                 self._l1_hits += 1
                 return json.loads(raw)
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
         return None
 
     async def set_l1(self, query: str, domain_id: str, result: Dict[str, Any]):
@@ -129,8 +130,8 @@ class SemanticCache:
                 self._ttl,
                 json.dumps(result, ensure_ascii=False),
             )
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
     # ── Layer 2: Semantic Similarity ─────────────────────────────────────
 
@@ -175,8 +176,8 @@ class SemanticCache:
                             return json.loads(result_raw)
                 except Exception:
                     continue
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
         return None
 
     async def set_l2(self, query: str, domain_id: str, result: Dict[str, Any]):
@@ -193,8 +194,8 @@ class SemanticCache:
                 self._ttl,
                 json.dumps(query_vec),
             )
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
     # ── Public API ────────────────────────────────────────────────────────
 
@@ -214,8 +215,8 @@ class SemanticCache:
                 if matches and matches[0].get("score", 0) >= 0.85:
                     self._l2_hits += 1
                     return matches[0].get("result") or matches[0]
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
         # L3: Redis semantic similarity (backup)
         result = await self.get_l2(query, domain_id)
         if result:
@@ -237,8 +238,8 @@ class SemanticCache:
                     self._cache_key(query, domain_id), "query", query_vec,
                     metadata={"domain": domain_id, "result": result},
                 )
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
     async def invalidate_domain(self, domain_id: str):
         """Atomically invalidate all cache for a domain using version increment (O(1)).
@@ -256,8 +257,8 @@ class SemanticCache:
             try:
                 from core.harness.memory.metrics import inc_cache_version
                 inc_cache_version(domain_id)
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
             if not hasattr(self, '_versions'):
                 self._versions: Dict[str, int] = {}
             self._versions[domain_id] = int(new_version)
@@ -272,8 +273,8 @@ class SemanticCache:
                         break
                 if keys:
                     await self._redis.delete(*keys)
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
 
             # Version window: keep only last 3 versions' L2 keys
             try:
@@ -286,12 +287,12 @@ class SemanticCache:
                     try:
                         async for key in self._redis.scan_iter(match=old_pattern, count=50):
                             await self._redis.delete(key)
-                    except Exception:
-                        pass
-            except Exception:
-                pass
-        except Exception:
-            pass
+                    except Exception as e:
+                        logging.debug(str(e), exc_info=True)
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
     def _cosine_similarity(self, a: list, b: list) -> float:
         """Compute cosine similarity between two vectors."""
@@ -431,56 +432,3 @@ def get_semantic_cache() -> SemanticCache:
     return _cache
 
 
-async def detect_semantic_duplicates(
-    function_bodies: list[tuple[str, str]],
-    threshold: float = 0.95,
-) -> list[dict]:
-    """Detect semantic duplicates using embedding similarity.
-    
-    Uses InfraEmbeddingAdapter for zero-cost vectorization (no LLM calls).
-    
-    Args:
-        function_bodies: list of (function_name, source_code) tuples
-        threshold: cosine similarity threshold (default 0.95)
-    
-    Returns:
-        list of {name_a, name_b, similarity, file_a, file_b} for duplicate pairs
-    """
-    try:
-        from core.harness.knowledge.embedder import embed_text
-    except Exception:
-        return []
-    
-    vectors = []
-    for name, _ in function_bodies:
-        try:
-            vec = await embed_text(name[:2000])
-            vectors.append(vec)
-        except Exception:
-            vectors.append([])
-    
-    duplicates = []
-    n = len(vectors)
-    for i in range(n):
-        for j in range(i + 1, n):
-            if not vectors[i] or not vectors[j]:
-                continue
-            sim = _cosine_similarity_static(vectors[i], vectors[j])
-            if sim >= threshold:
-                duplicates.append({
-                    "name_a": function_bodies[i][0],
-                    "name_b": function_bodies[j][0],
-                    "similarity": round(sim, 3),
-                })
-    return duplicates
-
-
-def _cosine_similarity_static(a: list, b: list) -> float:
-    """Static cosine similarity for two vectors."""
-    try:
-        dot = sum(x * y for x, y in zip(a, b))
-        na = sum(x * x for x in a) ** 0.5
-        nb = sum(x * x for x in b) ** 0.5
-        return dot / (na * nb) if na > 0 and nb > 0 else 0.0
-    except Exception:
-        return 0.0

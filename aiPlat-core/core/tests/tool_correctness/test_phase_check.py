@@ -11,6 +11,10 @@ import subprocess
 from pathlib import Path
 import pytest
 
+# Heavy integration self-test: invokes real full-repo phase_check.sh (slow, 95s+).
+# Skipped in the fast architecture guard; run explicitly via `pytest -m slow`.
+pytestmark = pytest.mark.slow
+
 WORKSPACE_ROOT = Path(__file__).resolve().parent.parent.parent.parent.parent
 PHASE_CHECK = str(WORKSPACE_ROOT / "scripts" / "phase_check.sh")
 

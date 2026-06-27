@@ -9,6 +9,7 @@ Later upgrades can add optional URL-driven UI testing (Playwright/MCP) and merge
 """
 
 from __future__ import annotations
+import logging
 
 import json
 import os
@@ -105,8 +106,8 @@ def parse_json_report(text: str) -> Tuple[Optional[Dict[str, Any]], str]:
         obj = json.loads(raw)
         if isinstance(obj, dict):
             return obj, "ok"
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
     # Try to extract JSON object from surrounding text
     try:
         start = raw.find("{")
@@ -115,8 +116,8 @@ def parse_json_report(text: str) -> Tuple[Optional[Dict[str, Any]], str]:
             obj = json.loads(raw[start : end + 1])
             if isinstance(obj, dict):
                 return obj, "ok_extracted"
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
     return None, "invalid_json"
 
 

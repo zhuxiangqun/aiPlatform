@@ -41,8 +41,8 @@ def _load_ov_cache():
             with open(path, "r") as f:
                 _OV_CACHE = json.load(f)
             _OV_CACHE_TS = time.time()
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
 
 def _save_ov_cache():
@@ -53,8 +53,8 @@ def _save_ov_cache():
         if _OV_CACHE:
             with open(path, "w") as f:
                 json.dump(_OV_CACHE, f, ensure_ascii=False, default=str)
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
 
 # Load persisted cache on module init — SKIP: governance data may change across restarts
@@ -208,8 +208,8 @@ async def _scan_governance() -> Dict[str, Any]:
             gs = await store.get_global_setting(key="trusted_skill_pubkeys")
             keys = (gs.get("value", {}).get("keys") or []) if gs and isinstance(gs, dict) else []
             has_keys = len(keys) > 0
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     score = 100
     score -= gov_no_manifest * 2
@@ -400,8 +400,8 @@ async def system_overview(refresh: bool = Query(False)) -> Dict[str, Any]:
                     meta = rt.agent_registry.get_agent_metadata(aid)
                     at = str(meta.get("type", "uncategorized")).lower() if isinstance(meta, dict) else "uncategorized"
                     agent_types[at] = agent_types.get(at, 0) + 1
-                except Exception:
-                    pass
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
         else:
             # Fallback: scan engine/agents/ directory directly
             engine_agents_dir = Path(__file__).resolve().parents[2] / "engine" / "agents"
@@ -484,8 +484,8 @@ async def system_overview(refresh: bool = Query(False)) -> Dict[str, Any]:
                     try:
                         proc.terminate()
                         await asyncio.wait_for(proc.wait(), timeout=2)
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        logging.debug(str(e), exc_info=True)
             except Exception:
                 core["mcp_servers"]["alive"] = False
         except Exception as e:
@@ -506,8 +506,8 @@ async def system_overview(refresh: bool = Query(False)) -> Dict[str, Any]:
                 lint_errors += len(rep.get("errors", []))
                 lint_warnings += len(rep.get("warnings", []))
             core["skills"]["lint"] = {"errors": lint_errors, "warnings": lint_warnings}
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
         if skill_count == 0 and tool_count == 0:
             core_issues += 1
     except Exception:
@@ -534,8 +534,8 @@ async def system_overview(refresh: bool = Query(False)) -> Dict[str, Any]:
                         completed = row[0]
                 finally:
                     conn.close()
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
             core["pipeline"] = {"active": active, "completed": completed}
             if active == 0 and completed == 0:
                 pass  # pipeline not used yet = not an issue

@@ -269,5 +269,5 @@ class VRAMMemoryManager(MemoryManager):
         if self._initialized and PYNVML_AVAILABLE:
             try:
                 pynvml.nvmlShutdown()
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)

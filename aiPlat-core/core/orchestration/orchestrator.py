@@ -12,6 +12,7 @@ Design:
 Side-effect free per docs/design/kernel_orchestrator/04-security-and-audit.md.
 """
 from __future__ import annotations
+import logging
 
 import json
 import os
@@ -122,8 +123,8 @@ class Orchestrator:
             raw = os.getenv("AIPLAT_DAG_ROLE_MODES", "")
             if raw:
                 role_modes = json.loads(raw)
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
         # Config-driven role→gate mapping (AIPLAT_DAG_ROLE_GATES env var, JSON)
         role_gates: Dict[str, str] = {}
@@ -131,8 +132,8 @@ class Orchestrator:
             raw = os.getenv("AIPLAT_DAG_ROLE_GATES", "")
             if raw:
                 role_gates = json.loads(raw)
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
         for step in chain:
             agent_id = agent_map.get(step.id, step.id)

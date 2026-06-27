@@ -6,6 +6,7 @@ API gateway management belongs in platform layer (docs/index.md §Layer 2).
 """
 
 from __future__ import annotations
+import logging
 
 import os
 from typing import Any, Dict, Optional
@@ -65,8 +66,8 @@ async def gateway_execute(request: GatewayExecuteRequest, http_request: Request,
     if request.options is not None:
         try:
             payload.setdefault("options", request.options)
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
     # Inject channel context for observability.
     try:
@@ -90,14 +91,14 @@ async def gateway_execute(request: GatewayExecuteRequest, http_request: Request,
                 ctx.setdefault("actor_id", str(actor_id))
             if actor_role:
                 ctx.setdefault("actor_role", str(actor_role))
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
         # preserve external identity if present
         if request.channel_user_id:
             ctx.setdefault("channel_user_id", request.channel_user_id)
         payload["context"] = ctx
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     deny = await rbac_guard(http_request=http_request, payload=payload, action="execute", resource_type="gateway", resource_id=str(request.target_id))
     if deny:
@@ -146,8 +147,8 @@ async def gateway_execute(request: GatewayExecuteRequest, http_request: Request,
                 if pairing.get("tenant_id"):
                     ctx.setdefault("tenant_id", pairing.get("tenant_id"))
                 payload["context"] = ctx
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
 
     # Platform contract: idempotency key from platform (recommended).
     request_id = (
@@ -165,8 +166,8 @@ async def gateway_execute(request: GatewayExecuteRequest, http_request: Request,
             ctx = dict(ctx) if isinstance(ctx, dict) else {}
             ctx.setdefault("request_id", str(request_id))
             payload["context"] = ctx
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     reserved_run_id = None
     if store and request_id:
@@ -191,8 +192,8 @@ async def gateway_execute(request: GatewayExecuteRequest, http_request: Request,
                     trace_id=(run or {}).get("trace_id"),
                     detail={"channel": request.channel, "kind": request.kind, "target_id": request.target_id},
                 )
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
             return {
                 "ok": True,
                 "status": RunStatus.completed.value,
@@ -210,8 +211,8 @@ async def gateway_execute(request: GatewayExecuteRequest, http_request: Request,
                 run_id=reserved_run_id,
                 tenant_id=str(resolved_tenant) if resolved_tenant else None,
             )
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
     exec_req = ExecutionRequest(
         kind=str(request.kind) if request.kind else "agent",  # type: ignore[arg-type]
@@ -231,8 +232,8 @@ async def gateway_execute(request: GatewayExecuteRequest, http_request: Request,
                 run_id=str(result.run_id),
                 tenant_id=str(resolved_tenant) if resolved_tenant else None,
             )
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
     # Audit (best-effort)
     try:
@@ -251,8 +252,8 @@ async def gateway_execute(request: GatewayExecuteRequest, http_request: Request,
                 trace_id=str(result.trace_id) if result.trace_id else None,
                 detail={"channel": request.channel, "channel_user_id": request.channel_user_id},
             )
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     # Normalize: always include trace_id/run_id.
     resp = dict(result.payload or {})
@@ -300,8 +301,8 @@ async def gateway_execute(request: GatewayExecuteRequest, http_request: Request,
         resp["legacy_status"] = legacy_status
         resp["status"] = normalize_run_status_v2(ok=bool(resp.get("ok")), legacy_status=legacy_status, error_code=err_code)
         resp.setdefault("output", resp.get("output"))
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
     return resp
 
 
@@ -325,8 +326,8 @@ async def gateway_webhook_message(http_request: Request, body: Dict[str, Any], r
         if body.get("channel_user_id"):
             ctx.setdefault("channel_user_id", body.get("channel_user_id"))
         payload["context"] = ctx
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     req = GatewayExecuteRequest(
         channel=str(body.get("channel") or "webhook"),

@@ -1,6 +1,7 @@
 """Skill/Tool facade — registry access (no core_facade dependency)."""
 from __future__ import annotations
 from typing import Any
+import logging
 
 
 def get_skill_registry() -> Any:
@@ -22,8 +23,8 @@ def seed_all_registries() -> None:
     """Seed SkillRegistry, ToolRegistry, and ModelRegistry with built-in defaults."""
     try:
         get_skill_registry().seed_for_platform()
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
     try:
         from core.apps.tools import skill_tools, webfetch, http, repo
         reg = get_tool_registry()
@@ -36,7 +37,7 @@ def seed_all_registries() -> None:
         ]:
             try:
                 reg.register(getattr(mod, cls_name)(**kwargs))
-            except Exception:
-                pass
-    except Exception:
-        pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)

@@ -1,3 +1,4 @@
+import logging
 """
 Agent Base Module
 
@@ -70,8 +71,8 @@ class BaseAgent(IAgent):
             try:
                 from core.harness.utils.model_injection import create_selected_adapter
                 self._model = create_selected_adapter(model_name=config.model)
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
         self._status = AgentStatus.READY
 
 
@@ -191,8 +192,8 @@ class BaseAgent(IAgent):
                         # normalize enum
                         try:
                             loop_snapshot["current"] = result.final_state.current.value
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            logging.debug(str(e), exc_info=True)
                     except Exception:
                         loop_snapshot = None
                 
@@ -395,8 +396,8 @@ def create_agent(
                 from .pipeline_agent import PipelineAgent
                 compiled = PipelineCompiler.compile(meta.stages)
                 return PipelineAgent(config=config, stages=compiled, **kwargs)
-        except Exception:
-            pass  # fall through to legacy path
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
         return MaterialsChatAgent(config=config, **kwargs)
     else:
         return BaseAgent(config=config, **kwargs)

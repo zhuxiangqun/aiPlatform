@@ -68,8 +68,8 @@ class McpClient:
             except Exception:
                 try:
                     self._process.kill()
-                except Exception:
-                    pass
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
             self._process = None
 
     async def list_tools(self) -> List[Dict[str, Any]]:
@@ -138,8 +138,8 @@ class McpClient:
                         self._pending[req_id].set_result(data.get("result"))
         except asyncio.CancelledError:
             pass
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
 
 class McpAdapter:
@@ -221,6 +221,6 @@ async def get_mcp_adapter() -> McpAdapter:
             try:
                 servers = json.loads(servers_json)
                 await _mcp_adapter.connect_all(servers if isinstance(servers, list) else [])
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
     return _mcp_adapter

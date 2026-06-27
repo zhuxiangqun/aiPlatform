@@ -9,6 +9,7 @@ from .base import ExecDriver
 from .docker import DockerExecDriver
 from .local import LocalExecDriver
 from .ssh import SSHExecDriver
+import logging
 
 
 _DRIVERS: Dict[str, ExecDriver] = {
@@ -39,8 +40,8 @@ async def get_exec_backend() -> str:
                 return str(v.get("backend"))
             if isinstance(v, str) and v:
                 return str(v)
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
     return "local"
 
 

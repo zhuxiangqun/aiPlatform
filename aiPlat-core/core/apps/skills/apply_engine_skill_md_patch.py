@@ -9,6 +9,7 @@ from core.apps.skills.base import BaseSkill
 from core.governance.changeset import record_changeset
 from core.harness.interfaces import SkillConfig, SkillContext, SkillResult
 from core.harness.kernel.runtime import get_kernel_runtime
+import logging
 
 
 class ApplyEngineSkillMdPatchSkill(BaseSkill):
@@ -108,8 +109,8 @@ class ApplyEngineSkillMdPatchSkill(BaseSkill):
                 tenant_id=None,
                 session_id=str(getattr(context, "session_id", None) or "") or None,
             )
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
         try:
             await store.add_audit_log(
                 action="engine_skill_md_patch_applied",
@@ -121,8 +122,8 @@ class ApplyEngineSkillMdPatchSkill(BaseSkill):
                 change_id=str(change_id),
                 detail={"path": str(path), "base_hash": cur_hash},
             )
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
         return SkillResult(success=True, output={"ok": True, "change_id": change_id, "skill_id": skill_id, "path": str(path), "base_hash": cur_hash})
 

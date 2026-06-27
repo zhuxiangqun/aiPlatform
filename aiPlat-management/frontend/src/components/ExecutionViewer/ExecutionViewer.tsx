@@ -103,7 +103,7 @@ export const StructuredDetail: React.FC<{ node: ENode }> = ({ node }) => {
     return { label, text, color };
   };
 
-  const rows: { label: string; text: string; color: string }[] = [];
+  const rows: ({ label: string; text: string; color: string } | null)[] = [];
 
   // Per-kind structured fields
   switch (kind) {
@@ -179,7 +179,7 @@ export const StructuredDetail: React.FC<{ node: ENode }> = ({ node }) => {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-      {rows.map((r, i) => (
+      {rows.filter((r): r is { label: string; text: string; color: string } => r !== null).map((r, i) => (
         <div key={i}>
           <div style={{ fontSize: 10, color: 'var(--ev-text-muted)', marginBottom: 1 }}>{r.label}</div>
           <div style={{
@@ -275,7 +275,7 @@ const ExecutionViewer: React.FC<ExecutionViewerProps> = ({ nodes: propNodes, tit
     for (const [key, entry] of merged) {
       if (entry.node.name === 'routing_strict_eval' || entry.node.name === 'routing_logic') {
         // Find matching routing_decision with same parent
-        for (const [k2, e2] of merged) {
+        for (const [, e2] of merged) {
           if (e2.node.name === 'routing_decision' && entry.node.parentSpanId === e2.node.parentSpanId) {
             e2.node.details = { ...e2.node.details, strictEval: entry.node.details };
             e2.node.name = 'routing';
@@ -285,7 +285,7 @@ const ExecutionViewer: React.FC<ExecutionViewerProps> = ({ nodes: propNodes, tit
         }
       }
       if (entry.node.name === 'skill_candidates') {
-        for (const [k2, e2] of merged) {
+        for (const [, e2] of merged) {
           if (e2.node.name === 'skill_route' && entry.node.parentSpanId === e2.node.parentSpanId) {
             e2.node.details = { ...e2.node.details, candidates: entry.node.details };
             merged.delete(key);
@@ -662,7 +662,7 @@ const ExecutionViewer: React.FC<ExecutionViewerProps> = ({ nodes: propNodes, tit
             {selectedNode.duration ? <span style={{ color: 'var(--ev-text-secondary)' }}>耗时: {selectedNode.duration}ms</span> : null}
             {(selectedNode.details?.input_tokens ?? 0) > 0 || (selectedNode.details?.output_tokens ?? 0) > 0 ? (
               <span style={{ color: 'var(--ev-text-secondary)' }}>
-                输入: {selectedNode.details.input_tokens ?? 0} · 输出: {selectedNode.details.output_tokens ?? 0} tok
+                输入: {selectedNode.details?.input_tokens ?? 0} · 输出: {selectedNode.details?.output_tokens ?? 0} tok
               </span>
             ) : null}
             {selectedNode.details?.cost ? (

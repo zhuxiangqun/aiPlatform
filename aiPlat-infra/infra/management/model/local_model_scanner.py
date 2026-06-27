@@ -1,3 +1,4 @@
+import logging
 """
 Local model scanner — discovers models from local inference servers.
 
@@ -61,8 +62,8 @@ async def _scan_openai_compatible(endpoint: str, provider_label: str, source: Mo
                             config=ModelConfig(base_url=endpoint),
                             stats=ModelStats(), created_at=datetime.now(timezone.utc), updated_at=datetime.now(timezone.utc),
                         ))
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
     return models
 
 
@@ -97,8 +98,8 @@ async def _scan_ollama(endpoint: str) -> List[ModelInfo]:
                             config=ModelConfig(base_url=endpoint),
                             stats=ModelStats(), created_at=datetime.now(timezone.utc), updated_at=datetime.now(timezone.utc),
                         ))
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
     return models
 
 

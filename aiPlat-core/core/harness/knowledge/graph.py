@@ -11,6 +11,7 @@ Architecture:
   - Graph search via entity linking at query time
 """
 from __future__ import annotations
+import logging
 
 import json as _json
 import os
@@ -42,8 +43,8 @@ def _ensure_graph_schema(conn: sqlite3.Connection) -> None:
     try:
         conn.executescript(_GRAPH_SCHEMA)
         conn.commit()
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
 
 async def extract_entities(
@@ -83,8 +84,8 @@ async def extract_entities(
                 # Store in graph
                 _store_triples(tenant_id, doc_id, triples)
                 return triples
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
     return []
 
 
@@ -110,8 +111,8 @@ def _store_triples(tenant_id: str, doc_id: str, triples: list) -> None:
                 )
         conn.commit()
         conn.close()
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
 
 def graph_enhance_query(

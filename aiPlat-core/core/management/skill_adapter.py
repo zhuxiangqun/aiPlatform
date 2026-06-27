@@ -10,6 +10,7 @@ Callers:
   - agentskills_parser.convert_agentskills_to_aiplat() — enrich conversion
 """
 from __future__ import annotations
+import logging
 
 import os
 import re
@@ -233,8 +234,8 @@ async def execute(params: dict) -> dict:
                     version = v
                 if fm.get("license"):
                     pass
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
             body = parts[2]
 
     if not body:
@@ -345,8 +346,8 @@ def _infer_permissions(body: str, root: Optional[Path] = None) -> tuple:
         for sf in sorted((root / "scripts").rglob("*.py"))[:15]:
             try:
                 scripts_text += sf.read_text(encoding="utf-8", errors="replace")[:200]
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
         combined = f"{body[:500]} {scripts_text}"
     else:
         combined = body[:1000]
@@ -469,8 +470,8 @@ def _adapt_agent_config(root: Path, profile: SkillProfile) -> dict:
                 cfg = yaml.safe_load(agent_files[0].read_text(encoding="utf-8")) or {}
                 name = cfg.get("name", name)
                 desc = cfg.get("description", desc)
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
         skill_md.write_text(f"""---
 name: {name}
 description: {desc}

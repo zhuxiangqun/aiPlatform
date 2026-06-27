@@ -44,14 +44,14 @@ class CMMGraduation:
 
         # 准则 2: 检索去重
         try:
-            from core.apps.skills.registry import SkillRegistry
-            reg = SkillRegistry()
+            from core.harness.integration import get_skill_registry
+            reg = get_skill_registry()
             similar = reg.search_by_pattern(list(pattern.tool_sequence)) if hasattr(reg, 'search_by_pattern') else None
             if similar:
                 _log.info(f"CMM: pattern {pattern_hash[:8]} already covered by {similar}, skipping")
                 return None
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
         # 准则 3: 生成 Draft → SkillSimulator → ApprovalGate
         draft_id = await self._generate_and_submit(pattern, error_context or {})

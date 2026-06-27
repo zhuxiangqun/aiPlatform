@@ -9,6 +9,7 @@ model resolution, etc.).
 Per capability_convergence.yaml contract.
 """
 from __future__ import annotations
+import logging
 
 import os
 import sys
@@ -100,8 +101,8 @@ def _build_or_load_symbol_graph(repo_root: Path, force_rebuild: bool = False) ->
                 edges = load_edges()
                 from core.harness.knowledge.code_graph import convert_file_graph_to_symbols
                 return convert_file_graph_to_symbols(nodes, edges, repo_root)
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
     # Fallback: rebuild from scratch (or force-rebuild)
     try:
@@ -152,8 +153,8 @@ def _check_forbidden_patterns(
                             "line": parts[1] if len(parts) > 1 else "",
                             "detail": parts[2].strip() if len(parts) > 2 else "",
                         })
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
 
 
 def _check_forbidden_paths(

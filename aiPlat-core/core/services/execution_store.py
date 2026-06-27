@@ -24,6 +24,7 @@ SPLIT PLAN (audit 2026-05):
 """
 
 from __future__ import annotations
+import logging
 
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Tuple
@@ -161,8 +162,8 @@ class ExecutionStore:
                             """,
                             (int(max_rows),),
                         )
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        logging.debug(str(e), exc_info=True)
                     conn.execute(
                         """
                         CREATE TABLE IF NOT EXISTS schema_migrations (
@@ -316,12 +317,12 @@ class ExecutionStore:
                         # graph_runs: resume lineage
                         try:
                             conn.execute("ALTER TABLE graph_runs ADD COLUMN parent_run_id TEXT;")
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            logging.debug(str(e), exc_info=True)
                         try:
                             conn.execute("ALTER TABLE graph_runs ADD COLUMN resumed_from_checkpoint_id TEXT;")
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            logging.debug(str(e), exc_info=True)
                         conn.execute(
                             "CREATE INDEX IF NOT EXISTS idx_graph_runs_parent ON graph_runs(parent_run_id);"
                         )
@@ -329,12 +330,12 @@ class ExecutionStore:
                         # executions: trace link
                         try:
                             conn.execute("ALTER TABLE agent_executions ADD COLUMN trace_id TEXT;")
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            logging.debug(str(e), exc_info=True)
                         try:
                             conn.execute("ALTER TABLE skill_executions ADD COLUMN trace_id TEXT;")
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            logging.debug(str(e), exc_info=True)
                         conn.execute(
                             "CREATE INDEX IF NOT EXISTS idx_agent_exec_trace_id ON agent_executions(trace_id);"
                         )
@@ -350,8 +351,8 @@ class ExecutionStore:
                         # Some DBs were created before trace_id column existed.
                         try:
                             conn.execute("ALTER TABLE graph_runs ADD COLUMN trace_id TEXT;")
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            logging.debug(str(e), exc_info=True)
                         conn.execute("CREATE INDEX IF NOT EXISTS idx_graph_runs_trace ON graph_runs(trace_id);")
                         _set_version(5)
                         current = 5
@@ -393,12 +394,12 @@ class ExecutionStore:
                     if current < 7:
                         try:
                             conn.execute("ALTER TABLE agent_executions ADD COLUMN metadata_json TEXT;")
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            logging.debug(str(e), exc_info=True)
                         try:
                             conn.execute("ALTER TABLE skill_executions ADD COLUMN metadata_json TEXT;")
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            logging.debug(str(e), exc_info=True)
                         _set_version(7)
                         current = 7
 
@@ -435,26 +436,26 @@ class ExecutionStore:
                         # agent_executions
                         try:
                             conn.execute("ALTER TABLE agent_executions ADD COLUMN approval_request_id TEXT;")
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            logging.debug(str(e), exc_info=True)
                         try:
                             conn.execute(
                                 "CREATE INDEX IF NOT EXISTS idx_agent_exec_approval_id ON agent_executions(approval_request_id);"
                             )
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            logging.debug(str(e), exc_info=True)
 
                         # syscall_events
                         try:
                             conn.execute("ALTER TABLE syscall_events ADD COLUMN approval_request_id TEXT;")
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            logging.debug(str(e), exc_info=True)
                         try:
                             conn.execute(
                                 "CREATE INDEX IF NOT EXISTS idx_syscall_events_approval_id ON syscall_events(approval_request_id);"
                             )
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            logging.debug(str(e), exc_info=True)
 
                         _set_version(9)
                         current = 9
@@ -463,12 +464,12 @@ class ExecutionStore:
                     if current < 10:
                         try:
                             conn.execute("ALTER TABLE syscall_events ADD COLUMN span_id TEXT;")
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            logging.debug(str(e), exc_info=True)
                         try:
                             conn.execute("CREATE INDEX IF NOT EXISTS idx_syscall_events_span_id ON syscall_events(span_id);")
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            logging.debug(str(e), exc_info=True)
                         _set_version(10)
                         current = 10
 
@@ -566,16 +567,16 @@ class ExecutionStore:
                         # If multiple schedulers are running, they will contend on (lock_until, lock_owner).
                         try:
                             conn.execute("ALTER TABLE jobs ADD COLUMN lock_until REAL;")
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            logging.debug(str(e), exc_info=True)
                         try:
                             conn.execute("ALTER TABLE jobs ADD COLUMN lock_owner TEXT;")
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            logging.debug(str(e), exc_info=True)
                         try:
                             conn.execute("CREATE INDEX IF NOT EXISTS idx_jobs_lock_until ON jobs(lock_until);")
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            logging.debug(str(e), exc_info=True)
                         _set_version(13)
                         current = 13
 
@@ -628,8 +629,8 @@ class ExecutionStore:
                                 );
                                 """
                             )
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            logging.debug(str(e), exc_info=True)
                         _set_version(15)
                         current = 15
 
@@ -670,20 +671,20 @@ class ExecutionStore:
                     if current < 17:
                         try:
                             conn.execute("ALTER TABLE agent_executions ADD COLUMN error_code TEXT;")
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            logging.debug(str(e), exc_info=True)
                         try:
                             conn.execute("ALTER TABLE skill_executions ADD COLUMN error_code TEXT;")
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            logging.debug(str(e), exc_info=True)
                         try:
                             conn.execute("CREATE INDEX IF NOT EXISTS idx_agent_exec_error_code ON agent_executions(error_code);")
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            logging.debug(str(e), exc_info=True)
                         try:
                             conn.execute("CREATE INDEX IF NOT EXISTS idx_skill_exec_error_code ON skill_executions(error_code);")
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            logging.debug(str(e), exc_info=True)
                         _set_version(17)
                         current = 17
 
@@ -737,8 +738,8 @@ class ExecutionStore:
                                 );
                                 """
                             )
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            logging.debug(str(e), exc_info=True)
                         _set_version(18)
                         current = 18
 
@@ -838,8 +839,8 @@ class ExecutionStore:
                         ]:
                             try:
                                 conn.execute(stmt)
-                            except Exception:
-                                pass
+                            except Exception as e:
+                                logging.debug(str(e), exc_info=True)
                         try:
                             conn.execute(
                                 "CREATE INDEX IF NOT EXISTS idx_syscall_events_error_code ON syscall_events(error_code, created_at DESC);"
@@ -850,8 +851,8 @@ class ExecutionStore:
                             conn.execute(
                                 "CREATE INDEX IF NOT EXISTS idx_syscall_events_user_sess ON syscall_events(user_id, session_id, created_at DESC);"
                             )
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            logging.debug(str(e), exc_info=True)
                         _set_version(21)
                         current = 21
 
@@ -877,8 +878,8 @@ class ExecutionStore:
                             conn.execute(
                                 "CREATE INDEX IF NOT EXISTS idx_run_events_time ON run_events(created_at DESC);"
                             )
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            logging.debug(str(e), exc_info=True)
                         try:
                             conn.execute(
                                 """
@@ -895,8 +896,8 @@ class ExecutionStore:
                             conn.execute(
                                 "CREATE INDEX IF NOT EXISTS idx_request_dedup_request ON request_dedup(request_id, created_at DESC);"
                             )
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            logging.debug(str(e), exc_info=True)
                         _set_version(22)
                         current = 22
 
@@ -928,8 +929,8 @@ class ExecutionStore:
                             conn.execute("CREATE INDEX IF NOT EXISTS idx_audit_logs_actor_time ON audit_logs(actor_id, created_at DESC);")
                             conn.execute("CREATE INDEX IF NOT EXISTS idx_audit_logs_run ON audit_logs(run_id, created_at DESC);")
                             conn.execute("CREATE INDEX IF NOT EXISTS idx_audit_logs_request ON audit_logs(request_id, created_at DESC);")
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            logging.debug(str(e), exc_info=True)
                         _set_version(23)
                         current = 23
 
@@ -947,8 +948,8 @@ class ExecutionStore:
                                 """
                             )
                             conn.execute("CREATE INDEX IF NOT EXISTS idx_tenant_policies_updated ON tenant_policies(updated_at DESC);")
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            logging.debug(str(e), exc_info=True)
                         _set_version(24)
                         current = 24
 
@@ -973,8 +974,8 @@ class ExecutionStore:
                             conn.execute(
                                 "CREATE INDEX IF NOT EXISTS idx_pkg_versions_name_time ON package_versions(package_name, created_at DESC);"
                             )
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            logging.debug(str(e), exc_info=True)
                         try:
                             conn.execute(
                                 """
@@ -995,8 +996,8 @@ class ExecutionStore:
                             conn.execute(
                                 "CREATE INDEX IF NOT EXISTS idx_pkg_installs_name_time ON package_installs(package_name, installed_at DESC);"
                             )
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            logging.debug(str(e), exc_info=True)
                         _set_version(25)
                         current = 25
 
@@ -1026,8 +1027,8 @@ class ExecutionStore:
                             conn.execute("CREATE INDEX IF NOT EXISTS idx_adapters_provider ON adapters(provider);")
                             conn.execute("CREATE INDEX IF NOT EXISTS idx_adapters_status ON adapters(status);")
                             conn.execute("CREATE INDEX IF NOT EXISTS idx_adapters_updated ON adapters(updated_at DESC);")
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            logging.debug(str(e), exc_info=True)
                         _set_version(26)
                         current = 26
 
@@ -1045,8 +1046,8 @@ class ExecutionStore:
                                 """
                             )
                             conn.execute("CREATE INDEX IF NOT EXISTS idx_global_settings_updated ON global_settings(updated_at DESC);")
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            logging.debug(str(e), exc_info=True)
 
                         # tenants (minimal registry; policy-as-code uses tenant_id)
                         try:
@@ -1062,18 +1063,18 @@ class ExecutionStore:
                                 """
                             )
                             conn.execute("CREATE INDEX IF NOT EXISTS idx_tenants_updated ON tenants(updated_at DESC);")
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            logging.debug(str(e), exc_info=True)
 
                         # encrypted api key columns (keep legacy api_key for backward compatibility)
                         try:
                             conn.execute("ALTER TABLE adapters ADD COLUMN api_key_enc TEXT;")
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            logging.debug(str(e), exc_info=True)
                         try:
                             conn.execute("ALTER TABLE adapters ADD COLUMN api_key_kid TEXT;")
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            logging.debug(str(e), exc_info=True)
 
                         _set_version(27)
                         current = 27
@@ -1095,8 +1096,8 @@ class ExecutionStore:
                                 """
                             )
                             conn.execute("CREATE INDEX IF NOT EXISTS idx_prompt_templates_updated ON prompt_templates(updated_at DESC);")
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            logging.debug(str(e), exc_info=True)
                         try:
                             conn.execute(
                                 """
@@ -1114,8 +1115,8 @@ class ExecutionStore:
                             conn.execute(
                                 "CREATE UNIQUE INDEX IF NOT EXISTS idx_prompt_template_versions_unique ON prompt_template_versions(template_id, version);"
                             )
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            logging.debug(str(e), exc_info=True)
 
                         _set_version(28)
                         current = 28
@@ -1129,26 +1130,26 @@ class ExecutionStore:
                         ]:
                             try:
                                 conn.execute(stmt)
-                            except Exception:
-                                pass
+                            except Exception as e:
+                                logging.debug(str(e), exc_info=True)
                         try:
                             conn.execute(
                                 "CREATE INDEX IF NOT EXISTS idx_agent_exec_tenant_time ON agent_executions(tenant_id, start_time DESC);"
                             )
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            logging.debug(str(e), exc_info=True)
                         try:
                             conn.execute(
                                 "CREATE INDEX IF NOT EXISTS idx_skill_exec_tenant_time ON skill_executions(tenant_id, start_time DESC);"
                             )
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            logging.debug(str(e), exc_info=True)
                         try:
                             conn.execute(
                                 "CREATE INDEX IF NOT EXISTS idx_syscall_events_tenant_time ON syscall_events(tenant_id, start_time DESC);"
                             )
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            logging.debug(str(e), exc_info=True)
                         _set_version(29)
                         current = 29
 
@@ -1170,8 +1171,8 @@ class ExecutionStore:
                             conn.execute(
                                 "CREATE INDEX IF NOT EXISTS idx_session_locks_exp ON session_locks(expires_at);"
                             )
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            logging.debug(str(e), exc_info=True)
                         try:
                             conn.execute(
                                 """
@@ -1197,8 +1198,8 @@ class ExecutionStore:
                             conn.execute(
                                 "CREATE INDEX IF NOT EXISTS idx_session_queue_status_time ON session_queue(status, created_at ASC);"
                             )
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            logging.debug(str(e), exc_info=True)
                         _set_version(30)
                         current = 30
 
@@ -1206,32 +1207,32 @@ class ExecutionStore:
                     if current < 31:
                         try:
                             conn.execute("ALTER TABLE approval_requests ADD COLUMN tenant_id TEXT;")
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            logging.debug(str(e), exc_info=True)
                         try:
                             conn.execute("ALTER TABLE approval_requests ADD COLUMN actor_id TEXT;")
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            logging.debug(str(e), exc_info=True)
                         try:
                             conn.execute("ALTER TABLE approval_requests ADD COLUMN actor_role TEXT;")
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            logging.debug(str(e), exc_info=True)
                         try:
                             conn.execute("ALTER TABLE approval_requests ADD COLUMN session_id TEXT;")
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            logging.debug(str(e), exc_info=True)
                         try:
                             conn.execute("ALTER TABLE approval_requests ADD COLUMN run_id TEXT;")
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            logging.debug(str(e), exc_info=True)
                         try:
                             conn.execute("CREATE INDEX IF NOT EXISTS idx_approval_tenant_time ON approval_requests(tenant_id, created_at DESC);")
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            logging.debug(str(e), exc_info=True)
                         try:
                             conn.execute("CREATE INDEX IF NOT EXISTS idx_approval_run_id ON approval_requests(run_id);")
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            logging.debug(str(e), exc_info=True)
                         _set_version(31)
                         current = 31
 
@@ -1240,36 +1241,36 @@ class ExecutionStore:
                         # memory_sessions: tenant_id
                         try:
                             conn.execute("ALTER TABLE memory_sessions ADD COLUMN tenant_id TEXT;")
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            logging.debug(str(e), exc_info=True)
                         try:
                             conn.execute("CREATE INDEX IF NOT EXISTS idx_mem_sess_tenant_time ON memory_sessions(tenant_id, updated_at DESC);")
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            logging.debug(str(e), exc_info=True)
 
                         # memory_messages: tenant_id + sensitivity + source_run_id
                         try:
                             conn.execute("ALTER TABLE memory_messages ADD COLUMN tenant_id TEXT;")
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            logging.debug(str(e), exc_info=True)
                         try:
                             conn.execute("ALTER TABLE memory_messages ADD COLUMN sensitivity TEXT;")
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            logging.debug(str(e), exc_info=True)
                         try:
                             conn.execute("ALTER TABLE memory_messages ADD COLUMN source_run_id TEXT;")
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            logging.debug(str(e), exc_info=True)
                         try:
                             conn.execute(
                                 "CREATE INDEX IF NOT EXISTS idx_mem_msg_tenant_sess_time ON memory_messages(tenant_id, session_id, created_at DESC);"
                             )
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            logging.debug(str(e), exc_info=True)
                         try:
                             conn.execute("CREATE INDEX IF NOT EXISTS idx_mem_msg_source_run ON memory_messages(source_run_id);")
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            logging.debug(str(e), exc_info=True)
 
                         # memory_pins: allow pinning important messages (tenant-scoped)
                         try:
@@ -1287,8 +1288,8 @@ class ExecutionStore:
                                 """
                             )
                             conn.execute("CREATE INDEX IF NOT EXISTS idx_mem_pins_sess_time ON memory_pins(tenant_id, session_id, created_at DESC);")
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            logging.debug(str(e), exc_info=True)
 
                         # memory_blocks: allow blocking patterns for injection/PII safety (tenant-scoped)
                         try:
@@ -1306,8 +1307,8 @@ class ExecutionStore:
                                 """
                             )
                             conn.execute("CREATE INDEX IF NOT EXISTS idx_mem_blocks_tenant_time ON memory_blocks(tenant_id, created_at DESC);")
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            logging.debug(str(e), exc_info=True)
 
                         _set_version(32)
                         current = 32
@@ -1340,8 +1341,8 @@ class ExecutionStore:
                             conn.execute(
                                 "CREATE INDEX IF NOT EXISTS idx_release_rollouts_tenant_time ON release_rollouts(tenant_id, updated_at DESC);"
                             )
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            logging.debug(str(e), exc_info=True)
                         try:
                             conn.execute(
                                 """
@@ -1364,8 +1365,8 @@ class ExecutionStore:
                             conn.execute(
                                 "CREATE INDEX IF NOT EXISTS idx_release_metrics_tenant_time ON release_metrics_snapshots(tenant_id, created_at DESC);"
                             )
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            logging.debug(str(e), exc_info=True)
                         _set_version(33)
                         current = 33
 
@@ -1389,8 +1390,8 @@ class ExecutionStore:
                                 """
                             )
                             conn.execute("CREATE INDEX IF NOT EXISTS idx_plugins_tenant_time ON plugins(tenant_id, updated_at DESC);")
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            logging.debug(str(e), exc_info=True)
                         try:
                             conn.execute(
                                 """
@@ -1412,8 +1413,8 @@ class ExecutionStore:
                             conn.execute("CREATE INDEX IF NOT EXISTS idx_plugin_runs_tenant_time ON plugin_runs(tenant_id, created_at DESC);")
                             conn.execute("CREATE INDEX IF NOT EXISTS idx_plugin_runs_plugin_time ON plugin_runs(plugin_id, created_at DESC);")
                             conn.execute("CREATE INDEX IF NOT EXISTS idx_plugin_runs_approval ON plugin_runs(approval_request_id);")
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            logging.debug(str(e), exc_info=True)
                         _set_version(34)
                         current = 34
 
@@ -1431,8 +1432,8 @@ class ExecutionStore:
                                 """
                             )
                             conn.execute("CREATE INDEX IF NOT EXISTS idx_tenant_quotas_updated ON tenant_quotas(updated_at DESC);")
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            logging.debug(str(e), exc_info=True)
                         try:
                             conn.execute(
                                 """
@@ -1452,8 +1453,8 @@ class ExecutionStore:
                             conn.execute(
                                 "CREATE INDEX IF NOT EXISTS idx_usage_metric_day ON tenant_usage_ledger(metric_key, day DESC);"
                             )
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            logging.debug(str(e), exc_info=True)
                         _set_version(35)
                         current = 35
 
@@ -1483,8 +1484,8 @@ class ExecutionStore:
                             conn.execute(
                                 "CREATE INDEX IF NOT EXISTS idx_cda_run_time ON connector_delivery_attempts(run_id, created_at DESC);"
                             )
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            logging.debug(str(e), exc_info=True)
                         try:
                             conn.execute(
                                 """
@@ -1512,8 +1513,8 @@ class ExecutionStore:
                             conn.execute(
                                 "CREATE INDEX IF NOT EXISTS idx_cdlq_run_time ON connector_delivery_dlq(run_id, created_at DESC);"
                             )
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            logging.debug(str(e), exc_info=True)
                         _set_version(36)
                         current = 36
 
@@ -1536,8 +1537,8 @@ class ExecutionStore:
                             conn.execute(
                                 "CREATE INDEX IF NOT EXISTS idx_plugin_versions_tenant_plugin_time ON plugin_versions(tenant_id, plugin_id, created_at DESC);"
                             )
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            logging.debug(str(e), exc_info=True)
                         _set_version(37)
                         current = 37
 
@@ -1563,8 +1564,8 @@ class ExecutionStore:
                             conn.execute(
                                 "CREATE INDEX IF NOT EXISTS idx_onboarding_evidence_tenant_step_time ON onboarding_evidence(tenant_id, step_key, created_at DESC);"
                             )
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            logging.debug(str(e), exc_info=True)
                         _set_version(38)
                         current = 38
 
@@ -1572,13 +1573,13 @@ class ExecutionStore:
                     if current < 39:
                         try:
                             conn.execute("ALTER TABLE audit_logs ADD COLUMN change_id TEXT;")
-                        except Exception:
+                        except Exception as e:
                             # already exists / legacy db without audit_logs
-                            pass
+                            logging.debug(str(e), exc_info=True)
                         try:
                             conn.execute("CREATE INDEX IF NOT EXISTS idx_audit_logs_change ON audit_logs(change_id, created_at DESC);")
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            logging.debug(str(e), exc_info=True)
                         _set_version(39)
                         current = 39
 
@@ -1591,15 +1592,15 @@ class ExecutionStore:
                                 "CREATE INDEX IF NOT EXISTS idx_syscall_events_kind_name_time "
                                 "ON syscall_events(kind, name, created_at DESC);"
                             )
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            logging.debug(str(e), exc_info=True)
                         try:
                             conn.execute(
                                 "CREATE INDEX IF NOT EXISTS idx_syscall_events_tenant_kind_name_time "
                                 "ON syscall_events(tenant_id, kind, name, created_at DESC);"
                             )
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            logging.debug(str(e), exc_info=True)
                         _set_version(40)
                         current = 40
 
@@ -1855,12 +1856,12 @@ class ExecutionStore:
                     if current < 50:
                         try:
                             conn.execute("ALTER TABLE long_term_memories ADD COLUMN updated_at REAL NOT NULL DEFAULT 0;")
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            logging.debug(str(e), exc_info=True)
                         try:
                             conn.execute("ALTER TABLE long_term_memories ADD COLUMN relevance_decay REAL NOT NULL DEFAULT 1.0;")
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            logging.debug(str(e), exc_info=True)
                         _set_version(50)
                         current = 50
 
@@ -1875,8 +1876,8 @@ class ExecutionStore:
                             "ON graph_runs(parent_run_id, resumed_from_checkpoint_id) "
                             "WHERE resumed_from_checkpoint_id IS NOT NULL;"
                         )
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        logging.debug(str(e), exc_info=True)
 
                     conn.commit()
                 finally:
@@ -1889,8 +1890,8 @@ class ExecutionStore:
             if self._config.prune_on_start and (self._config.retention_days or self._config.max_rows_per_entity):
                 try:
                     await self.prune()
-                except Exception:
-                    pass
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
 
     async def get_schema_version(self) -> int:
         await self.init()
@@ -2069,8 +2070,8 @@ class ExecutionStore:
                     try:
                         cur = conn.execute("DELETE FROM syscall_events WHERE created_at < ?", (cutoff,))
                         deleted["syscall_events"] += cur.rowcount or 0
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        logging.debug(str(e), exc_info=True)
                     # graph_checkpoints cascades via FK
                     cur = conn.execute("DELETE FROM traces WHERE start_time < ?", (cutoff,))
                     deleted["traces"] += cur.rowcount or 0
@@ -2729,8 +2730,8 @@ class ExecutionStore:
             meta["parent_run_id"] = parent_run_id
             meta["resumed_from_checkpoint_id"] = checkpoint_id
             restored_state["metadata"] = meta
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
         run_id = await self.start_graph_run(
             graph_name=parent["graph_name"],
             run_id=new_run_id,
@@ -2744,8 +2745,8 @@ class ExecutionStore:
             meta = restored_state.get("metadata") if isinstance(restored_state.get("metadata"), dict) else {}
             meta["graph_run_id"] = run_id
             restored_state["metadata"] = meta
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
         return {"run_id": run_id, "graph_name": parent["graph_name"], "checkpoint_id": checkpoint_id, "state": restored_state}
 
     # ==================== execution <-> trace link queries ====================
@@ -2842,8 +2843,8 @@ class ExecutionStore:
         try:
             from core.harness.observation.event_schema import SyscallEvent
             SyscallEvent.model_validate(event)
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
         await self.init()
         db_path = self._config.db_path
 
@@ -2914,8 +2915,8 @@ class ExecutionStore:
         try:
             from core.harness.observation.event_schema import SyscallEvent
             SyscallEvent.model_validate(event)
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
         await self.init()
         db_path = self._config.db_path
 
@@ -2991,14 +2992,14 @@ class ExecutionStore:
             publish_event.setdefault("output_tokens", int(event.get("output_tokens") or 0))
             publish_event.setdefault("cost", float(event.get("cost") or 0.0))
             EventBus.publish(str(event.get("run_id") or ""), publish_event)
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
         # Export to OpenTelemetry (best-effort)
         try:
             from core.harness.observation.otel_bridge import export_syscall_as_span
             export_syscall_as_span(event)
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
     async def add_import_audit(
         self,
@@ -3854,8 +3855,8 @@ class ExecutionStore:
                             "user_id": row["user_id"] if "user_id" in row.keys() else meta.get("user_id"),
                             "session_id": row["session_id"] if "session_id" in row.keys() else (meta.get("context") or {}).get("session_id") if isinstance(meta.get("context"), dict) else None,
                         }
-                except Exception:
-                    pass
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
 
                 # Fallback: build run summary from run_events (run_start/run_end).
                 try:
@@ -3911,8 +3912,8 @@ class ExecutionStore:
                             "session_id": session_id,
                             "tenant_id": tenant_id,
                         }
-                except Exception:
-                    pass
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
                 return None
             finally:
                 conn.close()
@@ -7043,9 +7044,9 @@ class ExecutionStore:
                     api_key_enc = encrypt_str(api_key_plain)
                     api_key_kid = "fernet:v1"
                     api_key_plain = ""  # avoid storing plaintext
-            except Exception:
+            except Exception as e:
                 # fail-open: keep legacy plaintext
-                pass
+                logging.debug(str(e), exc_info=True)
 
             conn = sqlite3.connect(db_path)
             conn.row_factory = sqlite3.Row
@@ -7107,8 +7108,8 @@ class ExecutionStore:
 
             if row.get("api_key_enc") and is_configured():
                 api_key = decrypt_str(row.get("api_key_enc"))
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
         return {
             "adapter_id": row.get("adapter_id"),
             "name": row.get("name"),
@@ -7148,8 +7149,8 @@ class ExecutionStore:
 
             if row.get("api_key_enc") and is_configured():
                 api_key = decrypt_str(row.get("api_key_enc"))
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
         return {
             "adapter_id": row.get("adapter_id"),
             "name": row.get("name"),
@@ -7450,8 +7451,8 @@ class ExecutionStore:
                         "INSERT INTO long_term_memories_fts(id,user_id,key,content) VALUES(?,?,?,?);",
                         (rec["id"], rec["user_id"], rec["key"], rec["content"]),
                     )
-                except Exception:
-                    pass
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
                 conn.commit()
                 return rec
             finally:
@@ -7501,8 +7502,8 @@ class ExecutionStore:
                             (decay_lambda, now, q_fts, uid, int(limit)),
                         ).fetchall()
                         return [dict(r) for r in rows]
-                except Exception:
-                    pass
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
 
                 q = f"%{query}%"
                 rows = conn.execute(
@@ -7570,19 +7571,19 @@ class ExecutionStore:
                 usage = res.get("usage") if isinstance(res.get("usage"), dict) else {}
                 try:
                     pt += float(usage.get("prompt_tokens") or 0)
-                except Exception:
-                    pass
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
                 try:
                     ct += float(usage.get("completion_tokens") or 0)
-                except Exception:
-                    pass
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
                 try:
                     v = usage.get("total_tokens")
                     if v is None:
                         v = (usage.get("prompt_tokens") or 0) + (usage.get("completion_tokens") or 0)
                     tt += float(v or 0)
-                except Exception:
-                    pass
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
 
         duration_ms = run.get("duration_ms")
         if duration_ms is None:
@@ -7774,8 +7775,8 @@ class ExecutionStore:
                         "INSERT INTO memory_messages_fts(id,user_id,session_id,role,content) VALUES(?,?,?,?,?);",
                         (rec["id"], rec["user_id"], rec["session_id"], rec["role"], rec["content"]),
                     )
-                except Exception:
-                    pass
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
                 conn.execute(
                     "UPDATE memory_sessions SET message_count = message_count + 1, updated_at = ? WHERE id = ?;",
                     (now, rec["session_id"]),
@@ -7854,8 +7855,8 @@ class ExecutionStore:
                 conn.execute("DELETE FROM memory_messages WHERE session_id = ?;", (str(session_id),))
                 try:
                     conn.execute("DELETE FROM memory_messages_fts WHERE session_id = ?;", (str(session_id),))
-                except Exception:
-                    pass
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
                 conn.commit()
                 return bool(cur.rowcount)
             finally:
@@ -7976,8 +7977,8 @@ class ExecutionStore:
                                 }
                             )
                         return {"items": items, "total": len(items)}
-                except Exception:
-                    pass
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
 
                 if not q:
                     return {"items": [], "total": 0}
@@ -8457,8 +8458,8 @@ class ExecutionStore:
                                 rec["updated_at"],
                             ),
                         )
-                except Exception:
-                    pass
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
                 conn.commit()
                 return rec
             finally:
@@ -8859,8 +8860,8 @@ class ExecutionStore:
                         "INSERT OR IGNORE INTO prompt_template_versions(id, template_id, version, template, metadata_json, created_at) VALUES(?,?,?,?,?,?);",
                         (vid, str(template_id), str(new_ver), str(template), json.dumps(metadata or {}), now),
                     )
-                except Exception:
-                    pass
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
                 conn.commit()
                 out = conn.execute("SELECT * FROM prompt_templates WHERE template_id=?;", (str(template_id),)).fetchone()
                 return dict(out) if out else {"template_id": template_id, "name": name, "version": new_ver}

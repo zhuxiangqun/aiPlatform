@@ -4,6 +4,7 @@ Platform Tenant Policies routes — tenant policy CRUD.
 Migrated from aiPlat-core/core/api/routers/tenant_policies.py per architecture contract.
 """
 from __future__ import annotations
+import logging
 
 
 import json
@@ -32,8 +33,8 @@ def _store(rt: Optional[KernelRuntime]):
         from api.routers.onboarding import _execution_store as _onb_store
         if _onb_store:
             return _onb_store
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
     return None
 
 
@@ -132,8 +133,8 @@ async def get_effective_tenant_policy(tenant_id: str, rt: RuntimeDep = None):
         if t_review.get("sample_rate") is not None:
             try:
                 approval_review["sample_rate"] = float(t_review.get("sample_rate"))
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
         if isinstance(t_review.get("high_risk_always"), bool):
             approval_review["high_risk_always"] = bool(t_review.get("high_risk_always"))
         if isinstance(t_review.get("force_list"), str):
@@ -220,8 +221,8 @@ async def upsert_tenant_policy(tenant_id: str, request: dict, http_request: Requ
             resource_id=str(tenant_id),
             detail={"version": saved.get("version")},
         )
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
     # Changeset (best-effort): store only hash + version
     try:
         import hashlib
@@ -245,8 +246,8 @@ async def upsert_tenant_policy(tenant_id: str, request: dict, http_request: Requ
             user_id=str((request or {}).get("actor_id") or "admin"),
             tenant_id=str(tenant_id),
         )
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
     # Attach change control links for UI
     out = dict(saved or {}) if isinstance(saved, dict) else {"tenant_id": str(tenant_id), "policy": policy}
     out["change_id"] = str(change_id)

@@ -227,8 +227,8 @@ async def run_smoke_e2e(*, payload: Dict[str, Any], execution_store: Any = None)
                 try:
                     logs = await execution_store.list_audit_logs(run_id=str(tool_run_id), limit=10, offset=0)
                     audit_count = len(logs.get("items") or [])
-                except Exception:
-                    pass
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
             evidence["audit_count_core"] = audit_count
             if audit_count < 1:
                 evidence["steps"].append({
@@ -248,8 +248,8 @@ async def run_smoke_e2e(*, payload: Dict[str, Any], execution_store: Any = None)
                 if tool_run_id:
                     a = await _req(client, "GET", f"{cfg.management_url}/api/audit/logs", headers=h, params={"run_id": tool_run_id, "action": "gateway_execute", "limit": 5, "offset": 0})
                     evidence["audit_count_mgmt"] = len(a.get("items") or [])
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
 
             ok = True
             return {
@@ -286,8 +286,8 @@ async def run_smoke_e2e(*, payload: Dict[str, Any], execution_store: Any = None)
                             mgr = getattr(rt, "workspace_agent_manager", None) if rt else None
                             if mgr and hasattr(mgr, "delete_agent"):
                                 await mgr.delete_agent(created_agent_id)
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            logging.debug(str(e), exc_info=True)
                 if created_session_id:
                     cleanup["attempted"].append("app.sessions.end")
                     try:

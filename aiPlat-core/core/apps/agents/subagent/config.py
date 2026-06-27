@@ -1,3 +1,4 @@
+import logging
 """
 Subagent Configuration
 
@@ -128,8 +129,8 @@ def _load_subagent_prompt(name: str) -> str:
                     parts = raw.split("---", 2)
                     return parts[2].strip() if len(parts) >= 3 else raw.strip()
                 return raw.strip()
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
     return ""
 
 
@@ -175,8 +176,8 @@ if _overrides_raw:
         for name, prompt in _overrides.items():
             if name in _DEFAULTS:
                 _DEFAULTS[name].system_prompt = prompt
-    except (_json.JSONDecodeError, KeyError):
-        pass
+    except (_json.JSONDecodeError, KeyError) as e:
+        logging.debug(str(e), exc_info=True)
 
 BUILTIN_SUBAGENTS = _DEFAULTS
 

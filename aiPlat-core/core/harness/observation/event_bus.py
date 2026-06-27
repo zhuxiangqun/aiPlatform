@@ -92,10 +92,10 @@ class EventBus:
                     try:
                         # Use _insert_event_raw: pure SQL, no re-publish to EventBus
                         await store._insert_event_raw(evt)
-                    except Exception:
-                        pass
-            except Exception:
-                pass  # best-effort
+                    except Exception as e:
+                        logging.debug(str(e), exc_info=True)
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
             finally:
                 for _ in batch:
                     _dlq.task_done()

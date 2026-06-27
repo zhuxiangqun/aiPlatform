@@ -11,6 +11,7 @@ Usage:
 """
 
 from __future__ import annotations
+import logging
 
 import ast
 import os
@@ -86,8 +87,8 @@ class RepositoryMap:
                 code = py_file.read_text(encoding="utf-8", errors="ignore")
                 entry.symbols = self._extract_symbols(code)
                 entry.imports_from = self._extract_imports(code)
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
 
             result.files.append(entry)
             for imp in entry.imports_from:

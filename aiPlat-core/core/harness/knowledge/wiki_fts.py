@@ -6,6 +6,7 @@ Complements embedding-based semantic search (embedder.py) with exact name lookup
 """
 
 from __future__ import annotations
+import logging
 
 import os
 from pathlib import Path
@@ -130,8 +131,8 @@ def fts_upsert_page(title: str, tags: list = None, summary: str = "", body_previ
             (title, tags_str, summary or "", body_text)
         )
         conn.commit()
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
     finally:
         conn.close()
 
@@ -142,7 +143,7 @@ def fts_delete_page(title: str) -> None:
     try:
         conn.execute("DELETE FROM wiki_fts WHERE title = ?", (title,))
         conn.commit()
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
     finally:
         conn.close()

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Plus, Trash2, Edit3, RefreshCw, Eye, EyeOff, ArrowRight } from 'lucide-react';
+import { Plus, Trash2, RefreshCw, Eye, EyeOff, ArrowRight } from 'lucide-react';
 import { Button, Modal, toast, Input } from '../../../components/ui';
 import OntologyGraph from '../../../components/wiki/OntologyGraph';
 
@@ -369,7 +369,7 @@ const OntologyManager: React.FC = () => {
         <div className="flex gap-2">
           <Button icon={<Plus className="w-4 h-4" />} onClick={() => { setNewId(''); setNewName(''); setNewDesc(''); setCreateOpen(true); }}>新建域</Button>
           <Button variant="secondary" onClick={() => { setGenId(''); setGenName(''); setGenDesc(''); setGenLimit(20); setGenSubdir(''); setGenKeywords(''); setGenResult(null); setGenYamlEdit(''); setGenOpen(true); fetchVaultDirs(); }}>🤖 智能生成</Button>
-          <Button variant="secondary" icon={<RefreshCw className="w-4 h-4" />} onClick={fetchDomains}>刷新</Button>
+          <Button variant="secondary" icon={<RefreshCw className="w-4 h-4" />} onClick={() => fetchDomains()}>刷新</Button>
         </div>
       </div>
 
@@ -801,7 +801,6 @@ const OntologyManager: React.FC = () => {
                 try {
                   const insts: any[] = [];
                   // Focus instance
-                  const focusCls = domainClasses.find(c => c.label === simFocus);
                   insts.push({ class_name: simFocus, properties: { name: simFocus + '_主实例' }, chunk_id: 'sim-c0' });
                   // Co-occurring instances
                   let ci = 1;

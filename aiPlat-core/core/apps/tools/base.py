@@ -1,3 +1,4 @@
+import logging
 """
 Tool Base Module
 
@@ -738,8 +739,8 @@ class FileOperationsTool(BaseTool):
                         if len(self._read_cache_order) > self._read_cache_max:
                             old = self._read_cache_order.pop(0)
                             self._read_cache.pop(old, None)
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        logging.debug(str(e), exc_info=True)
             elif operation == "write":
                 if os.environ.get("AIPLAT_FILE_OPERATIONS_ALLOW_WRITE", "false").lower() not in {"1", "true", "yes", "y"}:
                     raise PermissionError("write is disabled by policy (set AIPLAT_FILE_OPERATIONS_ALLOW_WRITE=true)")
@@ -764,8 +765,8 @@ class FileOperationsTool(BaseTool):
                     import time as _time
                     now_ns = int(_time.time_ns())
                     os.utime(target_resolved, ns=(now_ns, now_ns))
-                except Exception:
-                    pass
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
                 result = "ok"
             elif operation == "delete":
                 if os.environ.get("AIPLAT_FILE_OPERATIONS_ALLOW_DELETE", "false").lower() not in {"1", "true", "yes", "y"}:
@@ -798,8 +799,8 @@ class FileOperationsTool(BaseTool):
                 if operation == "read" and isinstance(result, str):
                     md["sha256"] = hashlib.sha256(result.encode("utf-8", errors="ignore")).hexdigest()
                     md["cache_hit"] = bool(locals().get("cache_hit", False))
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
             return ToolResult(success=True, output=result, latency=latency, metadata=md)
         except Exception as e:
             latency = time.time() - start_time

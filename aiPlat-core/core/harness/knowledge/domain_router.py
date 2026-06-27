@@ -15,6 +15,7 @@ Callers:
 """
 
 from __future__ import annotations
+import logging
 
 import json
 import os
@@ -201,8 +202,8 @@ class DomainRouter:
             for did in domains:
                 if did in answer:
                     return did
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
         return self._load_registry().get("fallback_domain", "ai-knowledge")
 

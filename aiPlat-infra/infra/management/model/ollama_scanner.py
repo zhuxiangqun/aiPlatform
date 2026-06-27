@@ -1,3 +1,4 @@
+import logging
 """
 Ollama Scanner - 扫描本地 Ollama 模型
 
@@ -79,7 +80,7 @@ class OllamaScanner:
         
         except Exception as e:
             # Ollama 未运行时返回空列表
-            pass
+            logging.debug(str(e), exc_info=True)
         
         return models
     
@@ -105,6 +106,6 @@ class OllamaScanner:
                 ) as resp:
                     if resp.status == 200:
                         return await resp.json()
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
         return {}

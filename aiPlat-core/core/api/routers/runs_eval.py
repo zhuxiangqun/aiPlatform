@@ -71,8 +71,8 @@ async def submit_run_evaluation(run_id: str, request: dict, http_request: Reques
             gated_report.setdefault("url", url)
         if isinstance(gated_report, dict) and base_evidence_pack_id_req:
             gated_report.setdefault("base_evidence_pack_id", base_evidence_pack_id_req)
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
     actor = actor_from_http(http_request, body or {})
     saved = await persist_evaluation(
         execution_store=store,
@@ -108,11 +108,61 @@ async def submit_run_evaluation(run_id: str, request: dict, http_request: Reques
             metadata={"source": "evaluator", "locked": bool(merged.get("locked"))},
             trace_id=run.get("trace_id"), run_id=rid,
         )
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
     if enforce_gate and not bool(gated_report.get("pass")):
         raise HTTPException(status_code=409, detail={"code": "evaluation_failed", "artifact_id": saved.get("artifact_id"), "report": gated_report})
     return {"status": "ok", "artifact_id": saved.get("artifact_id"), "report": gated_report}
+
+
+@router.post("/runs/{run_id}/evaluate/auto")
+async def auto_evaluate_run(run_id: str, http_request: Request, rt: RuntimeDep = None):
+    """Auto-collect latest evaluation summary for a run (reads existing data, no LLM)."""
+    store = _store(rt)
+    if not store:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+    rid = str(run_id)
+    run = await store.get_run_summary(run_id=rid)
+    if not run:
+        raise HTTPException(status_code=404, detail="run_not_found")
+    deny = await rbac_guard(http_request=http_request, payload={"run_id": rid}, action="read", resource_type="run", resource_id=rid)
+    if deny:
+        return deny
+
+    def _latest(items):
+        if isinstance(items, list) and items:
+            return sorted(items, key=lambda x: float((x or {}).get("created_at") or 0), reverse=True)[0]
+        return None
+
+    latest_eval = None
+    latest_pack = None
+    try:
+        r0 = await store.list_learning_artifacts(target_type="run", target_id=rid, kind="evaluation_report", limit=10, offset=0)
+        latest_eval = _latest((r0 or {}).get("items"))
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
+    try:
+        r0 = await store.list_learning_artifacts(target_type="run", target_id=rid, kind="evidence_pack", limit=10, offset=0)
+        latest_pack = _latest((r0 or {}).get("items"))
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
+
+    syscall_summary = {"total": 0, "errors": 0}
+    try:
+        s0 = await store.list_syscall_events(run_id=rid, limit=200, offset=0)
+        items = (s0 or {}).get("items") if isinstance(s0, dict) else []
+        if isinstance(items, list):
+            errs = [x for x in items if (x or {}).get("error")]
+            syscall_summary = {"total": len(items), "errors": len(errs)}
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
+
+    return {
+        "trace_id": run.get("trace_id"),
+        "latest_eval": (latest_eval or {}).get("payload", {}) if isinstance(latest_eval, dict) else {},
+        "latest_pack": (latest_pack or {}).get("payload", {}) if isinstance(latest_pack, dict) else {},
+        "syscall_summary": syscall_summary,
+    }
 
 
 @router.get("/runs/{run_id}/evaluation/latest")

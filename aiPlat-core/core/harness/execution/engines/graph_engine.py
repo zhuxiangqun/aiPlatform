@@ -6,6 +6,7 @@ Uses the internal CompiledGraph engine for consistent trace/callback integration
 """
 
 from __future__ import annotations
+import logging
 
 from typing import Any, Dict, Optional
 
@@ -50,13 +51,13 @@ class GraphEngine:
         try:
             msgs = getattr(context, "messages", None) or []
             state["messages"] = list(msgs)
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
         try:
             vars0 = dict(getattr(context, "variables", {}) or {})
             state["context"] = vars0
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
         return state
 
     def _wrap_result(self, state: Dict[str, Any]) -> Any:

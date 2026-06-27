@@ -14,6 +14,7 @@ Env:
 """
 
 from __future__ import annotations
+import logging
 
 import json
 import os
@@ -84,7 +85,7 @@ def _load_default_usage() -> Dict[str, int]:
             d = json.loads(raw)
             if isinstance(d, dict):
                 return {k: int(v) for k, v in d.items() if isinstance(k, str)}
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
     return {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
 

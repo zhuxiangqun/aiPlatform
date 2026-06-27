@@ -5,7 +5,7 @@ This is the REST API entry point for the infrastructure layer.
 """
 
 import os
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, File, Form, HTTPException, Query, UploadFile
 from typing import Dict, Any, Optional, List
 from pydantic import BaseModel, Field
 from datetime import datetime
@@ -107,7 +107,7 @@ def get_infra_manager() -> InfraManager:
     return _infra_manager
 
 
-def create_app() -> FastAPI:
+def create_app(manager=None) -> FastAPI:
     """Create FastAPI application for infra management."""
     app = FastAPI(
         title=os.getenv("AIPLAT_INFRA_API_TITLE", "Infra Management API"),
@@ -115,7 +115,8 @@ def create_app() -> FastAPI:
         version="0.1.0",
     )
     
-    manager = get_infra_manager()
+    if manager is None:
+        manager = get_infra_manager()
     
     @app.on_event("startup")
     async def startup_event():
@@ -1891,5 +1892,481 @@ def create_app() -> FastAPI:
             raise
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
-    
+
+    # ===== Wired write endpoints (frontend contract — delegate to existing managers) =====
+
+    @app.delete("/api/infra/network/ingresses/{ingress_name}")
+    async def delete_ingress_route(ingress_name: str):
+        """Delete an ingress."""
+        try:
+            network_mgr = manager.get("network")
+            if not network_mgr:
+                raise HTTPException(status_code=404, detail="Network manager not found")
+            success = await network_mgr.delete_ingress(ingress_name)
+            if not success:
+                raise HTTPException(status_code=404, detail=f"Ingress {ingress_name} not found")
+            return {"name": ingress_name, "status": "deleted"}
+        except HTTPException:
+            raise
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
+
+    @app.delete("/api/infra/network/policies/{policy_name}")
+    async def delete_network_policy_route(policy_name: str):
+        """Delete a network policy."""
+        try:
+            network_mgr = manager.get("network")
+            if not network_mgr:
+                raise HTTPException(status_code=404, detail="Network manager not found")
+            success = await network_mgr.delete_policy(policy_name)
+            if not success:
+                raise HTTPException(status_code=404, detail=f"Policy {policy_name} not found")
+            return {"name": policy_name, "status": "deleted"}
+        except HTTPException:
+            raise
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
+
+    @app.put("/api/infra/scheduler/policies/{policy_id}")
+    async def update_scheduler_policy_route(policy_id: str, request: Dict[str, Any]):
+        """Update a scheduler policy."""
+        try:
+            scheduler_mgr = manager.get("scheduler")
+            if not scheduler_mgr:
+                raise HTTPException(status_code=404, detail="Scheduler manager not found")
+            await scheduler_mgr.update_policy(policy_id, request)
+            return {"id": policy_id, "status": "updated"}
+        except HTTPException:
+            raise
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
+
+    @app.delete("/api/infra/scheduler/policies/{policy_id}")
+    async def delete_scheduler_policy_route(policy_id: str):
+        """Delete a scheduler policy."""
+        try:
+            scheduler_mgr = manager.get("scheduler")
+            if not scheduler_mgr:
+                raise HTTPException(status_code=404, detail="Scheduler manager not found")
+            await scheduler_mgr.delete_policy(policy_id)
+            return {"id": policy_id, "status": "deleted"}
+        except HTTPException:
+            raise
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
+
+    @app.post("/api/infra/scheduler/tasks/{task_id}/cancel")
+    async def cancel_scheduler_task_route(task_id: str):
+        """Cancel a scheduled task."""
+        try:
+            scheduler_mgr = manager.get("scheduler")
+            if not scheduler_mgr:
+                raise HTTPException(status_code=404, detail="Scheduler manager not found")
+            success = await scheduler_mgr.cancel_task(task_id)
+            if not success:
+                raise HTTPException(status_code=404, detail=f"Task {task_id} not found")
+            return {"id": task_id, "status": "cancelled"}
+        except HTTPException:
+            raise
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
+
+    @app.post("/api/infra/nodes/{node_name}/driver/upgrade")
+    async def upgrade_node_driver_route(node_name: str, request: Dict[str, Any]):
+        """Upgrade GPU driver on a node."""
+        try:
+            node_mgr = manager.get("node")
+            if not node_mgr:
+                raise HTTPException(status_code=404, detail="Node manager not found")
+            version = request.get("version", "")
+            await node_mgr.upgrade_driver(node_name, version)
+            return {"name": node_name, "version": version, "status": "upgrading"}
+        except HTTPException:
+            raise
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
+
+    @app.delete("/api/infra/storage/pvcs/{pvc_name}")
+    async def delete_storage_pvc_route(pvc_name: str):
+        """Delete a PVC."""
+        try:
+            storage_mgr = manager.get("storage")
+            if not storage_mgr:
+                raise HTTPException(status_code=404, detail="Storage manager not found")
+            success = await storage_mgr.delete_pvc(pvc_name)
+            if not success:
+                raise HTTPException(status_code=404, detail=f"PVC {pvc_name} not found")
+            return {"name": pvc_name, "status": "deleted"}
+        except HTTPException:
+            raise
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
+
+    @app.get("/api/infra/storage/collections/{name}")
+    async def get_storage_collection_route(name: str):
+        """Get a single vector collection."""
+        try:
+            storage_mgr = manager.get("storage")
+            if not storage_mgr:
+                raise HTTPException(status_code=404, detail="Storage manager not found")
+            collection = await storage_mgr.get_collection(name)
+            if collection is None:
+                raise HTTPException(status_code=404, detail=f"Collection {name} not found")
+            return collection
+        except HTTPException:
+            raise
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
+
+    # ===== Wired write endpoints batch 2 (alert rules / autoscaling / service stop / node gpus) =====
+
+    @app.post("/api/infra/monitoring/alerts/rules")
+    async def create_alert_rule_route(request: Dict[str, Any]):
+        """Create an alert rule."""
+        try:
+            monitoring_mgr = manager.get("monitoring")
+            if not monitoring_mgr:
+                raise HTTPException(status_code=404, detail="Monitoring manager not found")
+            rule = await monitoring_mgr.create_rule(request)
+            return {"name": rule.name, "status": "created"}
+        except HTTPException:
+            raise
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
+
+    @app.put("/api/infra/monitoring/alerts/rules/{rule_name}")
+    async def update_alert_rule_route(rule_name: str, request: Dict[str, Any]):
+        """Update an alert rule."""
+        try:
+            monitoring_mgr = manager.get("monitoring")
+            if not monitoring_mgr:
+                raise HTTPException(status_code=404, detail="Monitoring manager not found")
+            success = await monitoring_mgr.update_rule(rule_name, request)
+            if not success:
+                raise HTTPException(status_code=404, detail=f"Rule {rule_name} not found")
+            return {"name": rule_name, "status": "updated"}
+        except HTTPException:
+            raise
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
+
+    @app.delete("/api/infra/monitoring/alerts/rules/{rule_name}")
+    async def delete_alert_rule_route(rule_name: str):
+        """Delete an alert rule."""
+        try:
+            monitoring_mgr = manager.get("monitoring")
+            if not monitoring_mgr:
+                raise HTTPException(status_code=404, detail="Monitoring manager not found")
+            success = await monitoring_mgr.delete_rule(rule_name)
+            if not success:
+                raise HTTPException(status_code=404, detail=f"Rule {rule_name} not found")
+            return {"name": rule_name, "status": "deleted"}
+        except HTTPException:
+            raise
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
+
+    @app.post("/api/infra/monitoring/alerts/rules/{rule_name}/enable")
+    async def enable_alert_rule_route(rule_name: str):
+        """Enable an alert rule."""
+        try:
+            monitoring_mgr = manager.get("monitoring")
+            if not monitoring_mgr:
+                raise HTTPException(status_code=404, detail="Monitoring manager not found")
+            success = await monitoring_mgr.enable_rule(rule_name)
+            if not success:
+                raise HTTPException(status_code=404, detail=f"Rule {rule_name} not found")
+            return {"name": rule_name, "status": "enabled"}
+        except HTTPException:
+            raise
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
+
+    @app.post("/api/infra/monitoring/alerts/rules/{rule_name}/disable")
+    async def disable_alert_rule_route(rule_name: str):
+        """Disable an alert rule."""
+        try:
+            monitoring_mgr = manager.get("monitoring")
+            if not monitoring_mgr:
+                raise HTTPException(status_code=404, detail="Monitoring manager not found")
+            success = await monitoring_mgr.disable_rule(rule_name)
+            if not success:
+                raise HTTPException(status_code=404, detail=f"Rule {rule_name} not found")
+            return {"name": rule_name, "status": "disabled"}
+        except HTTPException:
+            raise
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
+
+    @app.post("/api/infra/monitoring/alerts/{alert_id}/acknowledge")
+    async def acknowledge_alert_route(alert_id: str):
+        """Acknowledge an alert."""
+        try:
+            monitoring_mgr = manager.get("monitoring")
+            if not monitoring_mgr:
+                raise HTTPException(status_code=404, detail="Monitoring manager not found")
+            success = await monitoring_mgr.acknowledge_alert(alert_id)
+            if not success:
+                raise HTTPException(status_code=404, detail=f"Alert {alert_id} not found")
+            return {"id": alert_id, "status": "acknowledged"}
+        except HTTPException:
+            raise
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
+
+    @app.get("/api/infra/monitoring/alerts")
+    async def list_alerts_route(status: Optional[str] = None, limit: int = Query(100, ge=1, le=1000)):
+        """List alerts."""
+        try:
+            monitoring_mgr = manager.get("monitoring")
+            if not monitoring_mgr:
+                raise HTTPException(status_code=404, detail="Monitoring manager not found")
+            alerts = await monitoring_mgr.get_alerts(status, limit)
+            return {"alerts": alerts, "total": len(alerts) if alerts else 0}
+        except HTTPException:
+            raise
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
+
+    @app.get("/api/infra/monitoring/audit")
+    async def get_monitoring_audit_route(limit: int = Query(100, ge=1, le=1000)):
+        """Get audit logs."""
+        try:
+            monitoring_mgr = manager.get("monitoring")
+            if not monitoring_mgr:
+                raise HTTPException(status_code=404, detail="Monitoring manager not found")
+            logs = await monitoring_mgr.get_audit_logs(limit=limit)
+            return {"logs": logs, "total": len(logs) if logs else 0}
+        except HTTPException:
+            raise
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
+
+    @app.get("/api/infra/nodes/{node_name}/gpus")
+    async def get_node_gpus_route(node_name: str):
+        """Get GPU status for a node."""
+        try:
+            node_mgr = manager.get("node")
+            if not node_mgr:
+                raise HTTPException(status_code=404, detail="Node manager not found")
+            gpus = await node_mgr.get_gpu_status(node_name)
+            return {"gpus": gpus, "total": len(gpus) if gpus else 0}
+        except HTTPException:
+            raise
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
+
+    @app.post("/api/infra/scheduler/policies")
+    async def create_scheduler_policy_route(request: Dict[str, Any]):
+        """Create a scheduler policy."""
+        try:
+            scheduler_mgr = manager.get("scheduler")
+            if not scheduler_mgr:
+                raise HTTPException(status_code=404, detail="Scheduler manager not found")
+            policy = await scheduler_mgr.create_policy(request)
+            return {"id": policy.id, "status": "created"}
+        except HTTPException:
+            raise
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
+
+    @app.post("/api/infra/scheduler/autoscaling/{policy_id}/pause")
+    async def pause_autoscaling_route(policy_id: str):
+        """Pause an autoscaling policy."""
+        try:
+            scheduler_mgr = manager.get("scheduler")
+            if not scheduler_mgr:
+                raise HTTPException(status_code=404, detail="Scheduler manager not found")
+            success = await scheduler_mgr.pause_autoscaling(policy_id)
+            if not success:
+                raise HTTPException(status_code=404, detail=f"Autoscaling policy {policy_id} not found")
+            return {"id": policy_id, "status": "paused"}
+        except HTTPException:
+            raise
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
+
+    @app.post("/api/infra/scheduler/autoscaling/{policy_id}/resume")
+    async def resume_autoscaling_route(policy_id: str):
+        """Resume an autoscaling policy."""
+        try:
+            scheduler_mgr = manager.get("scheduler")
+            if not scheduler_mgr:
+                raise HTTPException(status_code=404, detail="Scheduler manager not found")
+            success = await scheduler_mgr.resume_autoscaling(policy_id)
+            if not success:
+                raise HTTPException(status_code=404, detail=f"Autoscaling policy {policy_id} not found")
+            return {"id": policy_id, "status": "running"}
+        except HTTPException:
+            raise
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
+
+    @app.post("/api/infra/services/{service_name}/stop")
+    async def stop_service_route(service_name: str):
+        """Stop a service."""
+        try:
+            service_mgr = manager.get("service")
+            if not service_mgr:
+                raise HTTPException(status_code=404, detail="Service manager not found")
+            success = await service_mgr.stop_service(service_name)
+            if not success:
+                raise HTTPException(status_code=404, detail=f"Service {service_name} not found")
+            return {"name": service_name, "status": "stopped"}
+        except HTTPException:
+            raise
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
+
+    @app.get("/api/infra/network/services/{service_name}")
+    async def get_network_service_route(service_name: str):
+        """Get a single network service."""
+        try:
+            network_mgr = manager.get("network")
+            if not network_mgr:
+                raise HTTPException(status_code=404, detail="Network manager not found")
+            service = await network_mgr.get_service(service_name)
+            if service is None:
+                raise HTTPException(status_code=404, detail=f"Service {service_name} not found")
+            return service
+        except HTTPException:
+            raise
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
+
+    @app.put("/api/infra/network/services/{service_name}")
+    async def update_network_service_route(service_name: str, request: Dict[str, Any]):
+        """Update a stored network service."""
+        try:
+            network_mgr = manager.get("network")
+            if not network_mgr:
+                raise HTTPException(status_code=404, detail="Network manager not found")
+            success = await network_mgr.update_service(service_name, request)
+            if not success:
+                raise HTTPException(status_code=404, detail=f"Service {service_name} not found")
+            return {"name": service_name, "status": "updated"}
+        except HTTPException:
+            raise
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
+
+    @app.delete("/api/infra/network/services/{service_name}")
+    async def delete_network_service_route(service_name: str):
+        """Delete a stored network service."""
+        try:
+            network_mgr = manager.get("network")
+            if not network_mgr:
+                raise HTTPException(status_code=404, detail="Network manager not found")
+            success = await network_mgr.delete_network_service(service_name)
+            if not success:
+                raise HTTPException(status_code=404, detail=f"Service {service_name} not found")
+            return {"name": service_name, "status": "deleted"}
+        except HTTPException:
+            raise
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
+
+    @app.put("/api/infra/network/ingresses/{ingress_name}")
+    async def update_ingress_route(ingress_name: str, request: Dict[str, Any]):
+        """Update an ingress."""
+        try:
+            network_mgr = manager.get("network")
+            if not network_mgr:
+                raise HTTPException(status_code=404, detail="Network manager not found")
+            success = await network_mgr.update_ingress(ingress_name, request)
+            if not success:
+                raise HTTPException(status_code=404, detail=f"Ingress {ingress_name} not found")
+            return {"name": ingress_name, "status": "updated"}
+        except HTTPException:
+            raise
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
+
+    # ===== Path-alignment aliases (frontend plural / non-vector paths → existing create) =====
+
+    @app.post("/api/infra/storage/pvcs")
+    async def create_pvc_alias_route(request: PVCCreateRequest):
+        """Create a PVC (alias of /storage/pvc matching frontend plural path)."""
+        try:
+            storage_mgr = manager.get("storage")
+            if not storage_mgr:
+                raise HTTPException(status_code=404, detail="Storage manager not found")
+            pvc = await storage_mgr.create_pvc(request.dict())
+            return {"name": pvc.get("name"), "status": "created"}
+        except HTTPException:
+            raise
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
+
+    @app.post("/api/infra/storage/collections")
+    async def create_collection_alias_route(request: CollectionCreateRequest):
+        """Create a vector collection (alias of /storage/vector/collections matching frontend path)."""
+        try:
+            storage_mgr = manager.get("storage")
+            if not storage_mgr:
+                raise HTTPException(status_code=404, detail="Storage manager not found")
+            collection = await storage_mgr.create_collection(request.dict())
+            return {"name": collection.get("name"), "status": "created"}
+        except HTTPException:
+            raise
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
+
+    @app.post("/api/infra/network/ingresses")
+    async def create_ingress_alias_route(request: IngressCreateRequest):
+        """Create an ingress (alias of /network/ingress matching frontend plural path)."""
+        try:
+            network_mgr = manager.get("network")
+            if not network_mgr:
+                raise HTTPException(status_code=404, detail="Network manager not found")
+            ingress = await network_mgr.create_ingress(request.dict())
+            return {"name": ingress.get("name"), "status": "created"}
+        except HTTPException:
+            raise
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
+
+    # ===== Model Storage (upload / delete) =====
+
+    @app.post("/api/infra/storage/models")
+    async def upload_model_storage(file: UploadFile = File(...), type: str = Form("LLM")):
+        """Upload a model to storage (stores metadata)."""
+        try:
+            storage_mgr = manager.get("storage")
+            if not storage_mgr:
+                raise HTTPException(status_code=404, detail="Storage manager not found")
+            import hashlib
+            content = await file.read()
+            size = len(content)
+            checksum = hashlib.md5(content).hexdigest()
+            config = {
+                "name": file.filename or "unknown",
+                "type": type,
+                "size": str(size),
+                "path": f"model_storage/{file.filename or 'unnamed'}",
+                "checksum": checksum,
+            }
+            model = await storage_mgr.create_model_storage(config)
+            return model
+        except HTTPException:
+            raise
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
+
+    @app.delete("/api/infra/storage/models/{model_id}")
+    async def delete_model_storage(model_id: str):
+        """Delete model from storage."""
+        try:
+            storage_mgr = manager.get("storage")
+            if not storage_mgr:
+                raise HTTPException(status_code=404, detail="Storage manager not found")
+            success = await storage_mgr.delete_model_storage(model_id)
+            if not success:
+                raise HTTPException(status_code=404, detail=f"Model {model_id} not found")
+            return {"id": model_id, "status": "deleted"}
+        except HTTPException:
+            raise
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
+
     return app

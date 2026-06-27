@@ -52,6 +52,7 @@ asyncio_mode = "auto"
 markers = [
     "integration: mark test as integration test",
     "unit: mark test as unit test",
+    "slow: heavy integration self-test (runs real full-repo scripts; skipped in fast guard, run via -m slow)",
 ]
 
 [tool.coverage.run]

@@ -33,13 +33,13 @@ class GraphSyncHandler:
         try:
             from core.harness.knowledge.capability_graph import clear_capability_cache
             clear_capability_cache()
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
         try:
             from core.harness.knowledge.code_graph import clear_cache
             clear_cache()
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
     @classmethod
     async def wire(cls):

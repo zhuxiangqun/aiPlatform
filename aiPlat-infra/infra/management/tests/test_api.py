@@ -12,7 +12,7 @@ import os
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
 
-from infra.management.api.main import create_app, ManagerAPI
+from infra.management.api.main import create_app
 from infra.management.manager import InfraManager
 from infra.management.base import ManagementBase, Status, HealthStatus, Metrics, DiagnosisResult
 from typing import Dict, Any, List

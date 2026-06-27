@@ -121,8 +121,8 @@ class SqliteEmbeddingRetriever(IRetriever):
                     (entry.id, _json.dumps(entry.embedding), self._tenant_id),
                 )
             conn.commit()
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
         finally:
             conn.close()
 

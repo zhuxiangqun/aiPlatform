@@ -7,6 +7,7 @@ Goal:
 """
 
 from __future__ import annotations
+import logging
 
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -44,8 +45,8 @@ def _notify_resource_mutated(resource_type: str, action: str, resource_id: str) 
             source="MCPManager",
             data={"resource_type": resource_type, "action": action, "resource_id": resource_id},
         )
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
 
 class MCPManager:
@@ -218,8 +219,8 @@ class MCPManager:
                         files_sample.append(rel)
                 except Exception:
                     continue
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
         bundle_sha256 = hashlib.sha256(("\n".join(entries)).encode("utf-8")).hexdigest()
         return {
             "bundle_sha256": bundle_sha256,
@@ -241,8 +242,8 @@ class MCPManager:
             manifest = {"version": "1.0.0"}
             try:
                 (server_dir / "MCP.manifest.json").write_text(json.dumps(manifest, indent=2, ensure_ascii=False), encoding="utf-8")
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
         if manifest:
             prov.setdefault("publisher", manifest.get("publisher"))
             prov.setdefault("source", manifest.get("source"))
@@ -253,15 +254,15 @@ class MCPManager:
                 mpath = server_dir / "MCP.manifest.json"
                 if mpath.exists():
                     prov.setdefault("manifest_sha256", self._sha256_file(mpath))
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
         metadata["provenance"] = prov
 
         integ = metadata.get("integrity") if isinstance(metadata.get("integrity"), dict) else {}
         try:
             integ.update(self._compute_mcp_bundle_integrity(server_dir))
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
         metadata["integrity"] = integ
 
     def compute_mcp_signature_verification(self, server: "MCPServerInfo", trusted_keys: Dict[str, str]) -> Dict[str, Any]:

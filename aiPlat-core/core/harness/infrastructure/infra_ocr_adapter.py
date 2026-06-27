@@ -4,6 +4,7 @@ Inherits BaseModelAdapter for shared model resolution + caching.
 """
 
 from __future__ import annotations
+import logging
 
 import os
 from typing import Any, Dict, List
@@ -29,8 +30,8 @@ class InfraOCRAdapter(BaseModelAdapter):
                 import pytesseract
                 with Image.open(image_path) as img:
                     return pytesseract.image_to_string(img, lang=self._lang) or ""
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
         if self._backend in ("paddleocr", "auto"):
             try:
                 from paddleocr import PaddleOCR
@@ -38,8 +39,8 @@ class InfraOCRAdapter(BaseModelAdapter):
                 result = ocr.ocr(image_path)
                 if result and result[0]:
                     return " ".join(line[1][0] for line in result[0])
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
         return ""
 
     def ocr_frames(self, frames: List[Dict[str, Any]]) -> List[Dict[str, Any]]:

@@ -1,3 +1,4 @@
+import logging
 """
 Adapter Manager - Manages LLM adapters
 
@@ -189,8 +190,8 @@ class AdapterManager:
                         "metadata": adapter.metadata,
                     }
                 )
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
         return adapter
     
     async def get_adapter(self, adapter_id: str) -> Optional[AdapterInfo]:
@@ -261,8 +262,8 @@ class AdapterManager:
                         "metadata": adapter.metadata,
                     }
                 )
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
         
         return adapter
     
@@ -277,8 +278,8 @@ class AdapterManager:
         try:
             if self._execution_store:
                 await self._execution_store.delete_adapter(adapter_id)
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
         
         return True
     
@@ -292,8 +293,8 @@ class AdapterManager:
         try:
             if self._execution_store:
                 await self._execution_store.upsert_adapter({"adapter_id": adapter.id, "name": adapter.name, "provider": adapter.provider, "status": adapter.status, "api_key": adapter.api_key, "api_base_url": adapter.api_base_url, "models": adapter.models, "rate_limit": adapter.rate_limit, "retry_config": adapter.retry_config, "metadata": adapter.metadata, "description": adapter.description, "organization_id": adapter.organization_id})
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
         return True
     
     async def disable_adapter(self, adapter_id: str) -> bool:
@@ -306,8 +307,8 @@ class AdapterManager:
         try:
             if self._execution_store:
                 await self._execution_store.upsert_adapter({"adapter_id": adapter.id, "name": adapter.name, "provider": adapter.provider, "status": adapter.status, "api_key": adapter.api_key, "api_base_url": adapter.api_base_url, "models": adapter.models, "rate_limit": adapter.rate_limit, "retry_config": adapter.retry_config, "metadata": adapter.metadata, "description": adapter.description, "organization_id": adapter.organization_id})
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
         return True
     
     async def test_connection(self, adapter_id: str) -> Dict[str, Any]:
@@ -348,8 +349,8 @@ class AdapterManager:
         try:
             if self._execution_store:
                 await self._execution_store.upsert_adapter({"adapter_id": adapter.id, "name": adapter.name, "provider": adapter.provider, "status": adapter.status, "api_key": adapter.api_key, "api_base_url": adapter.api_base_url, "models": adapter.models, "rate_limit": adapter.rate_limit, "retry_config": adapter.retry_config, "metadata": adapter.metadata, "description": adapter.description, "organization_id": adapter.organization_id})
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
         
         return True
     
@@ -364,8 +365,8 @@ class AdapterManager:
         try:
             if self._execution_store:
                 await self._execution_store.upsert_adapter({"adapter_id": adapter.id, "name": adapter.name, "provider": adapter.provider, "status": adapter.status, "api_key": adapter.api_key, "api_base_url": adapter.api_base_url, "models": adapter.models, "rate_limit": adapter.rate_limit, "retry_config": adapter.retry_config, "metadata": adapter.metadata, "description": adapter.description, "organization_id": adapter.organization_id})
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
         
         return True
     

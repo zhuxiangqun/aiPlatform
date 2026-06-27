@@ -4,6 +4,7 @@ Skill Marketplace API router — list, install, and uninstall skills.
 Mounted at /api/management/skills
 """
 from __future__ import annotations
+import logging
 
 import os
 import json
@@ -63,8 +64,8 @@ def _scan_installed() -> List[Dict[str, Any]]:
                     info["version"] = fm.get("version", "")
                     info["description"] = fm.get("description", "")
                     info["category"] = fm.get("category", "general")
-                except Exception:
-                    pass
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
         skills.append(info)
     return skills
 
@@ -79,8 +80,8 @@ def _scan_catalog() -> List[Dict[str, Any]]:
                 data = yaml.safe_load(f.read()) or {}
             for item in data.get("skills", []):
                 available.append(dict(item))
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
     return available
 
 
@@ -166,8 +167,8 @@ async def uninstall_skill(skill_name: str, _auth: str = Depends(require_admin)):
         reg = get_skill_registry()
         if reg and reg.get(skill_name):
             reg.unregister(skill_name)
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
     return {"status": "uninstalled", "name": skill_name}
 
 
@@ -178,5 +179,5 @@ def _notify_registry(skill_name: str):
         reg = get_skill_registry()
         if reg and hasattr(reg, 'scan_folder'):
             reg.scan_folder(SKILLS_HOME)
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)

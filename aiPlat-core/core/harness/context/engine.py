@@ -13,6 +13,7 @@ This initial version only handles "project context files" (AGENTS.md / AIPLAT.md
 """
 
 from __future__ import annotations
+import logging
 
 import hashlib
 import json
@@ -373,8 +374,8 @@ class DefaultContextEngine(ContextEngine):
                     "reasons": reasons,
                 }
             )
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
         if reasons and self.should_compact(messages=msgs, metadata=meta):
             cr = self.compact(messages=msgs, metadata=meta)
@@ -388,15 +389,15 @@ class DefaultContextEngine(ContextEngine):
             status["budgets"]["system_chars"] = sum(
                 len(str(m.get("content") or "")) for m in msgs if isinstance(m, dict) and m.get("role") == "system"
             )
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
         try:
             total_chars = sum(len(str(m.get("content") or "")) for m in msgs if isinstance(m, dict))
             status["budgets"]["total_chars"] = int(total_chars)
             # naive token estimate (keeps deps minimal): ~4 chars/token for English-like text
             status["budgets"]["token_estimate"] = int(total_chars // 4) if total_chars else 0
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
         fin = self._finalize(
             msgs,
@@ -604,10 +605,10 @@ class DefaultContextEngine(ContextEngine):
                             conn.commit()
                         finally:
                             conn.close()
-                except Exception:
-                    pass
-        except Exception:
-            pass
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
         if policy == "warn":
             decision["action"] = "warn"
@@ -618,8 +619,8 @@ class DefaultContextEngine(ContextEngine):
             for pat, _reason in matched_patterns:
                 try:
                     redacted = pat.sub("[REDACTED]", redacted)
-                except Exception:
-                    pass
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
             decision["action"] = "truncate"
             return redacted, decision
 
@@ -646,8 +647,8 @@ class DefaultContextEngine(ContextEngine):
                     )
                     req = mgr.create_request(ctx)  # type: ignore[arg-type]
                     decision["approval_request_id"] = getattr(req, "request_id", None) if req else None
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
             return "", decision
 
         decision["action"] = "block"
@@ -727,8 +728,8 @@ class DefaultContextEngine(ContextEngine):
                             }
                         )
                     return out
-                except Exception:
-                    pass
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
                 like = f"%{q}%"
                 where = "WHERE user_id = ? AND content LIKE ?"
                 params3: List[Any] = [uid, like]
@@ -769,8 +770,8 @@ class DefaultContextEngine(ContextEngine):
         for m in msgs or []:
             try:
                 total_chars += len(str(m.get("content") or ""))
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
         return int(total_chars / 4) + 1
 
     def _estimate_chars(self, msgs: List[Message]) -> int:
@@ -778,8 +779,8 @@ class DefaultContextEngine(ContextEngine):
         for m in msgs or []:
             try:
                 total_chars += len(str(m.get("content") or ""))
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
         return int(total_chars)
 
     def _hash_messages(self, msgs: List[Message]) -> str:
@@ -1057,10 +1058,10 @@ class DefaultContextEngine(ContextEngine):
                             conn.commit()
                         finally:
                             conn.close()
-                except Exception:
-                    pass
-        except Exception:
-            pass
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
         if policy == "warn":
             decision["action"] = "warn"
@@ -1072,8 +1073,8 @@ class DefaultContextEngine(ContextEngine):
             for pat, _reason in matched_patterns:
                 try:
                     redacted = pat.sub("[REDACTED]", redacted)
-                except Exception:
-                    pass
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
             decision["action"] = "truncate"
             return redacted, decision
 
@@ -1101,8 +1102,8 @@ class DefaultContextEngine(ContextEngine):
                     )
                     req = mgr.create_request(ctx)  # type: ignore[arg-type]
                     decision["approval_request_id"] = getattr(req, "request_id", None) if req else None
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
             return "", decision
 
         # default: block

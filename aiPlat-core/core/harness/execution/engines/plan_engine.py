@@ -6,6 +6,7 @@ Falls back to LoopEngine when no plan is available.
 """
 
 from __future__ import annotations
+import logging
 
 from typing import Any, Dict, Optional
 
@@ -46,8 +47,8 @@ class PlanEngine:
                 "start_time": _time.time(),
                 "duration_ms": 0,
             })
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
         results: Dict[str, Any] = {"steps": [], "plan": plan.to_dict()}
         for step in plan.steps:
@@ -68,8 +69,8 @@ class PlanEngine:
                     "start_time": _time.time(),
                     "step_number": int(step.step) if str(step.step).isdigit() else 0,
                 })
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
             try:
                 output = await self._exec_step(step, agent, context, run_id, step_span_id)
                 step.status = "completed"

@@ -87,8 +87,8 @@ class FileWatcher:
                 for cb in callbacks:
                     try:
                         cb(filepath)
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        logging.debug(str(e), exc_info=True)
 
     def _poll_loop(self) -> None:
         mtimes: Dict[str, float] = {}
@@ -111,8 +111,8 @@ class FileWatcher:
                         for cb in self._watchers[p]:
                             try:
                                 cb(p)
-                            except Exception:
-                                pass
+                            except Exception as e:
+                                logging.debug(str(e), exc_info=True)
                 except OSError:
                     pass
 

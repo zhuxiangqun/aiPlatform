@@ -12,6 +12,7 @@ Endpoints:
 """
 
 from __future__ import annotations
+import logging
 
 import json
 import os
@@ -338,8 +339,8 @@ def get_node_detail(node_id: str) -> Dict[str, Any]:
             try:
                 if full_path.exists() and full_path.suffix == ".py":
                     code_snippet = full_path.read_text(encoding="utf-8", errors="ignore")[:3000]
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
             dependencies = [{"path": d, "name": _shorten(d)} for d in node.get("out", [])[:20]]
             dependents = []
             for src, n in nodes_raw.items():
@@ -384,8 +385,8 @@ def get_node_detail(node_id: str) -> Dict[str, Any]:
                         "blastRadius": [], "blastCount": 0,
                         "symbols": [], "crossCalls": [],
                     }
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
 
         # ── Wiki graph node ──
         try:
@@ -403,8 +404,8 @@ def get_node_detail(node_id: str) -> Dict[str, Any]:
                         "blastRadius": [], "blastCount": 0,
                         "symbols": [], "crossCalls": [],
                     }
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
         raise HTTPException(status_code=404, detail=f"Node not found: {node_id}")
     except HTTPException:
@@ -485,8 +486,8 @@ def global_search(q: str = Query("", min_length=2)) -> Dict[str, Any]:
                             })
                             if len(results["code"]) >= 8:
                                 break
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
         # ── Capability graph (SQLite read-only) ──
         try:
@@ -501,8 +502,8 @@ def global_search(q: str = Query("", min_length=2)) -> Dict[str, Any]:
                     })
                     if len(results["capability"]) >= 5:
                         break
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
         # ── Wiki graph ──
         try:
@@ -516,8 +517,8 @@ def global_search(q: str = Query("", min_length=2)) -> Dict[str, Any]:
                 })
                 if len(results["wiki"]) >= 5:
                     break
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
         return {"query": q, "results": results, "total": sum(len(v) for v in results.values())}
     except Exception as e:
@@ -589,8 +590,8 @@ async def graph_ask(req: Dict[str, Any]) -> Dict[str, Any]:
                     {"role": "user", "content": translate_prompt},
                 ], config=None)
                 answer = (resp2.content if hasattr(resp2, 'content') else str(resp2))[:800]
-            except Exception:
-                pass  # keep Phase 1 answer as fallback
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
 
         return {"answer": answer, "tool": tool, "args": args, "results": results}
     except Exception as e:
@@ -711,8 +712,8 @@ def _describe_layer(layer: str = "core", question_type: str = "capabilities") ->
             output["agents"] = agents
             output["skills"] = skills
             output["tools_count"] = tools_count
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
         output["total_files"] = sum(m["files"] for m in modules.values())
         output["total_symbols"] = sum(m["symbols_count"] for m in modules.values())
@@ -776,8 +777,8 @@ def _describe_layer(layer: str = "core", question_type: str = "capabilities") ->
                 content = fpath.read_text(encoding="utf-8", errors="ignore")[:10000]
                 for m in route_pattern.finditer(content):
                     endpoints.append(m.group(1))
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
 
         output["endpoints"] = sorted(set(endpoints))[:30]
         output["endpoint_count"] = len(set(endpoints))

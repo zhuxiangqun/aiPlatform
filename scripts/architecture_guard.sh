@@ -2,31 +2,50 @@
 # ============================================================================
 # architecture_guard.sh — architecture compliance checker (delegates to Python)
 #
-# Rules are now defined in:
-#   aiPlat-core/core/management/arch_guard_rules.yaml     (declarative, ~40 grep rules)
+# Rules are defined in:
+#   aiPlat-core/core/management/arch_guard_rules.yaml     (declarative grep rules)
 #   aiPlat-core/core/management/arch_guard_rules/*.py     (complex checks)
 #   scripts/guard_frontend.py                              (frontend proxy + API contract)
 #
-# Add a new rule:
-#   Simple: add 6 lines to arch_guard_rules.yaml
-#   Complex: add a class to arch_guard_rules/
-#   Frontend: add checks to guard_frontend.py
+# CONTROL FLOW: failure AGGREGATION (not `set -e` short-circuit). Every check runs
+# so ALL problems are visible; a non-zero step no longer skips the rest. The final
+# exit code is non-zero iff any aggregated step failed. The fast tool_correctness
+# subset runs here; the heavy self-tests (which invoke real full-repo scripts and
+# run 30-135s) are marked `slow` and run separately (`pytest -m slow`).
 # ============================================================================
 
-set -euo pipefail
+set -uo pipefail
 WORKSPACE_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$WORKSPACE_ROOT"
 
-python3 scripts/architecture_guard.py "$@"
-python3 aiPlat-core/core/management/capability_convergence.py "$@" --force
-python3 scripts/guard_ast_behavior.py "$@"
-python3 scripts/guard_frontend.py
+FAIL=0
+GP_PY="python3"
+[ -x "$WORKSPACE_ROOT/.venv/bin/python" ] && GP_PY="$WORKSPACE_ROOT/.venv/bin/python"
 
-# Cycle detection — check import graph for circular dependencies
-echo ""
-echo "═══════════════════════════════════════════════════════════════"
-echo "  CYCLE DETECTION: import graph circular dependencies"
-echo "═══════════════════════════════════════════════════════════════"
+sep() { echo "═══════════════════════════════════════════════════════════════"; }
+
+# ── Behavior plane: golden-path e2e (real ingest→retrieve / cache / contract) ──
+echo ""; sep; echo "  BEHAVIOR PLANE: golden-path facade (ingest→retrieve · cache · contract — no HTTP)"; sep
+"$GP_PY" -m pytest tests/golden_path/test_golden_path.py -k "not stub" -q || FAIL=1
+echo ""; sep; echo "  BEHAVIOR PLANE: golden-path HTTP (stub · agent-deny)"; sep
+"$GP_PY" -m pytest tests/golden_path/test_golden_path.py -k "stub" tests/golden_path/test_agent_orchestration.py -q || FAIL=1
+echo ""; sep; echo "  BEHAVIOR PLANE: management APIs (diagnostics · overview)"; sep
+"$GP_PY" -m pytest tests/golden_path/test_management_apis.py -q || FAIL=1
+
+# ── AST behavior guard (silent except:pass baseline ratchet, §5.68) ──
+python3 scripts/guard_ast_behavior.py "$@" || FAIL=1
+
+# ── Frontend contract guard (§45 path-mismatch baseline ratchet) ──
+python3 scripts/guard_frontend.py || FAIL=1
+
+# ── Architecture grep guard (declarative rules) ──
+python3 scripts/architecture_guard.py "$@" || FAIL=1
+
+# ── Capability convergence ──
+python3 aiPlat-core/core/management/capability_convergence.py "$@" --force || FAIL=1
+
+# ── Cycle detection (advisory; non-fatal as before) ──
+echo ""; sep; echo "  CYCLE DETECTION: import graph circular dependencies"; sep
 python3 -c "
 import sys; sys.path.insert(0, 'aiPlat-core')
 from core.harness.knowledge.code_graph import repo_root, default_roots, build_graph, count_cycles, report_cycles
@@ -65,28 +84,27 @@ else:
         print(f'Note: {known_count} known-safe cycles are tracked in scripts/known_safe_cycles.txt')
 " 2>/dev/null || echo "SKIP: code_graph module unavailable (run diagnostics first)"
 
-# Tool correctness tests — verify guards, diagnostics, and graphs are correct
-echo ""
-echo "═══════════════════════════════════════════════════════════════"
-echo "  TOOL CORRECTNESS: guards + diagnostics + graphs self-tests"
-echo "═══════════════════════════════════════════════════════════════"
-python3 -m pytest aiPlat-core/core/tests/tool_correctness/ \
-                 -v --tb=short 2>&1 | tail -25
+# ── Tool correctness self-tests (fast subset; heavy `-m slow` ones run separately) ──
+echo ""; sep; echo "  TOOL CORRECTNESS: guards + diagnostics self-tests (fast; heavy -m slow ones skipped)"; sep
+"$GP_PY" -m pytest aiPlat-core/core/tests/tool_correctness/ -m "not slow" -q --tb=line || FAIL=1
 
-# Constitution tests — Python-level semantic checks
-echo ""
-echo "═══════════════════════════════════════════════════════════════"
-echo "  CONSTITUTION TESTS: pytest (prompt_loading + skill_config + agent_md)"
-echo "═══════════════════════════════════════════════════════════════"
-python3 -m pytest aiPlat-core/core/tests/unit/test_prompt_loading.py \
-                 aiPlat-core/core/tests/unit/test_skill_config.py \
-                 aiPlat-core/core/tests/unit/test_agent_md_config.py \
-                 aiPlat-core/core/tests/unit/test_core_module_deps.py \
-                  -v --tb=short 2>&1 | tail -25
+# ── Constitution unit tests ──
+echo ""; sep; echo "  CONSTITUTION TESTS: prompt_loading + skill_config + agent_md + module_deps"; sep
+"$GP_PY" -m pytest aiPlat-core/core/tests/unit/test_prompt_loading.py \
+                  aiPlat-core/core/tests/unit/test_skill_config.py \
+                  aiPlat-core/core/tests/unit/test_agent_md_config.py \
+                  aiPlat-core/core/tests/unit/test_core_module_deps.py -q --tb=short || FAIL=1
 
-# Phase check — three-step acceptance checklist (§73)
-echo ""
-echo "═══════════════════════════════════════════════════════════════"
-echo "  PHASE CHECK: dead code + wiring tests + self-annotated"
-echo "═══════════════════════════════════════════════════════════════"
-bash scripts/phase_check.sh || exit 1
+# ── Phase check (dead code + wiring tests + self-annotated) ──
+echo ""; sep; echo "  PHASE CHECK: dead code + wiring tests + self-annotated"; sep
+bash scripts/phase_check.sh || FAIL=1
+
+# ── Aggregate ──
+echo ""; sep
+if [ "$FAIL" -ne 0 ]; then
+    echo "  ARCHITECTURE GUARD: one or more checks FAILED (all checks ran — see above)"
+    sep; exit 1
+else
+    echo "  ARCHITECTURE GUARD: all checks passed"
+    sep; exit 0
+fi

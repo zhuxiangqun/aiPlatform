@@ -6,6 +6,7 @@ down to low-level syscalls (e.g. sys_llm_generate) without changing every call s
 """
 
 from __future__ import annotations
+import logging
 
 from contextvars import ContextVar
 from dataclasses import dataclass
@@ -455,8 +456,8 @@ def emit_trace_event(
         if loop.is_running():
             loop.create_task(_async_emit(ctx, kind, name, status, args, result, duration_ms, error, eid))
             return eid
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
     return None
 
 

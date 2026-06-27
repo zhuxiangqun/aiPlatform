@@ -1,3 +1,4 @@
+import logging
 """
 Service Detector - 检测本地服务状态
 
@@ -54,8 +55,8 @@ async def check_postgresql(host: str = "localhost", port: int = 5432) -> Dict[st
             result["pool"]["usage_percent"] = min(100, (connections / 100) * 100)
             cursor.close()
             conn.close()
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
     
     return result
 
@@ -92,8 +93,8 @@ async def check_redis(host: str = "localhost", port: int = 6379) -> Dict[str, An
                 result["hit_rate"] = hits / total
                 result["miss_rate"] = misses / total
             client.close()
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
     
     return result
 
@@ -159,8 +160,8 @@ async def check_ollama(host: str = "localhost", port: int = 11434) -> Dict[str, 
                     if resp.status == 200:
                         data = await resp.json()
                         result["models"] = [m.get("name", "") for m in data.get("models", [])]
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
     
     return result
 
@@ -179,8 +180,8 @@ def get_network_connections() -> Dict[str, Any]:
         result["connections"]["total"] = len(connections)
         result["connections"]["active"] = sum(1 for c in connections if c.status == 'ESTABLISHED')
         result["connections"]["idle"] = result["connections"]["total"] - result["connections"]["active"]
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
     
     return result
 
@@ -208,7 +209,7 @@ def get_process_info() -> Dict[str, Any]:
                     result["ollama"] = {"running": True, "pid": proc.info['pid'], "memory_mb": memory_mb}
             except Exception:
                 continue
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
     
     return result

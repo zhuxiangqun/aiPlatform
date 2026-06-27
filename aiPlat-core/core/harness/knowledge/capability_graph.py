@@ -13,6 +13,7 @@ Analysis consumers (health, unused detection, impact) live in capability_health.
 """
 
 from __future__ import annotations
+import logging
 
 import os
 import re
@@ -51,8 +52,8 @@ def _parse_frontmatter(text: str) -> Dict[str, Any]:
                 if key in data and isinstance(data[key], str):
                     data[key] = [data[key]]
             return {str(k): v for k, v in data.items()}
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
     # Fallback: simple line parser (handles flat key: value format)
     fm: Dict[str, Any] = {}
     for line in raw.split("\n"):
@@ -87,8 +88,8 @@ def _find_engine_dir(*parts: str) -> Optional[Path]:
         import core as _core
         if hasattr(_core, '__file__') and _core.__file__:
             return Path(os.path.dirname(_core.__file__)) / "engine" / Path(*parts)
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
     return None
 
 
@@ -209,8 +210,8 @@ def build_capability_graph() -> CapabilityGraphResult:
                     _finalize(nodes, edges)
                     _resolve_cross_namespace_edges(nodes, edges)
                     return _cache_and_return(nodes, edges)
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     # Full rebuild (first run or >10 stale)
     nodes: Dict[str, Dict[str, Any]] = {}
@@ -321,8 +322,8 @@ def _save_cap_graph(nodes, edges):
     try:
         from core.harness.knowledge.cap_graph_persist import save_graph
         save_graph(nodes, edges)
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
 
 def _cache_and_return(nodes, edges):
@@ -356,8 +357,8 @@ def clear_capability_cache():
         path = _db_path()
         if _os.path.exists(path):
             _os.remove(path)
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
 
 # ---------------------------------------------------------------------------
@@ -609,8 +610,8 @@ def _scan_tools(nodes: Dict[str, Dict[str, Any]], edges: List[Dict[str, str]]):
                         "description": f"Syscall: {func_name}",
                         "category": "syscall",
                     }
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
         # Fallback 2: discover tools from source files (in case runtime registry is empty)
         if len(tool_names) == 0:
@@ -717,8 +718,8 @@ def _scan_mcp_servers(nodes: Dict[str, Dict[str, Any]], edges: List[Dict[str, st
                     "status": "unknown",
                 }
         _probe_mcp_reachability(nodes)
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
 
 def _probe_mcp_reachability(nodes: Dict[str, Dict[str, Any]]):
@@ -827,8 +828,8 @@ def _scan_workflows(nodes: Dict[str, Dict[str, Any]], edges: List[Dict[str, str]
                 skills = stage.get("required_skills", stage.get("skills", [])) if isinstance(stage, dict) else []
                 for skill_ref in (skills or []):
                     edges.append({"from": f"workflow:{wf_id}", "to": f"skill:{skill_ref}", "relation": "maps_to"})
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
 
 def _scan_entry_points(nodes: Dict[str, Dict[str, Any]], edges: List[Dict[str, str]]):

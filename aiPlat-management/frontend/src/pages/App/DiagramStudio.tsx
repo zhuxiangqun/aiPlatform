@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { PenTool, Plus, Trash2, RefreshCw, ExternalLink } from 'lucide-react';
+import { PenTool, Plus, Trash2, RefreshCw } from 'lucide-react';
 import { Button, Input, toast } from '../../components/ui';
 
 interface Diagram {

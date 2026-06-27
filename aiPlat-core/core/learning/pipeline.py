@@ -10,6 +10,7 @@ Constraints:
 """
 
 from __future__ import annotations
+import logging
 
 import uuid
 from typing import Any, Dict, Optional
@@ -46,8 +47,8 @@ def summarize_syscall_events(events: list[dict]) -> dict:
 
         try:
             duration_ms_sum += float(e.get("duration_ms") or 0.0)
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
         if kind == "llm":
             prompt_version_total += 1

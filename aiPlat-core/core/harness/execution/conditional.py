@@ -87,22 +87,7 @@ CONDITION_REGISTRY: Dict[str, Callable] = {
 }
 
 
-def register_condition(name: str, func: Callable) -> None:
-    """Register a custom pipeline routing condition."""
-    CONDITION_REGISTRY[name] = func
-
-
-def resolve_condition(name: str, *args, **kwargs) -> str:
-    """Resolve and execute a named condition."""
-    cond = CONDITION_REGISTRY.get(name)
-    if cond is None:
-        raise ValueError(f"Unknown condition: {name}. Available: {list(CONDITION_REGISTRY.keys())}")
-    return cond(*args, **kwargs)
-
-
 __all__ = [
     "PipelineCondition",
     "CONDITION_REGISTRY",
-    "register_condition",
-    "resolve_condition",
 ]

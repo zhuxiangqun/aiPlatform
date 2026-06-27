@@ -18,6 +18,7 @@ Callers:
   - Any agent that needs governed context assembly
 """
 from __future__ import annotations
+import logging
 
 import os
 import re
@@ -312,8 +313,8 @@ class PostRetrievalGovernor:
                             if pair not in hints.conflict_pairs:
                                 hints.conflict_pairs.append(pair)
                             stats.conflict_marked += 1
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
         # Mark conflicting chunks
         conflict_titles = set()
@@ -334,8 +335,8 @@ class PostRetrievalGovernor:
                     else:
                         dt = datetime.strptime(lu[:19], "%Y-%m-%d %H:%M:%S")
                     ages.append((_time.time() - dt.timestamp()) / 86400)
-                except (ValueError, OSError):
-                    pass
+                except (ValueError, OSError) as e:
+                    logging.debug(str(e), exc_info=True)
         if ages:
             hints.oldest_source_age = int(max(ages))
             hints.newest_source_age = int(min(ages))
@@ -425,5 +426,5 @@ class PostRetrievalGovernor:
             })
             os.makedirs(os.path.dirname(hist_path), exist_ok=True)
             open(hist_path, "w").write(_sj.dumps(history[-100:]))
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)

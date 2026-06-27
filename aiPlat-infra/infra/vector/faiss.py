@@ -9,6 +9,7 @@ import numpy as np
 
 from .base import VectorStore
 from .schemas import Vector, SearchResult, VectorConfig
+import logging
 
 
 class FaissStore(VectorStore):
@@ -287,8 +288,8 @@ class FaissStore(VectorStore):
                 try:
                     vec = self._index.reconstruct(idx)
                     vectors.append(vec)
-                except Exception:
-                    pass
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
             
             if vectors:
                 import faiss

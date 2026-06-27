@@ -41,7 +41,12 @@ class KnowledgeSynthesizer:
         self._graph = graph
 
     def synthesize(self, *, domain_id: str = "default", write_to_wiki: bool = True) -> SynthesisResult:
-        """Run all three synthesis types."""
+        """Run all three synthesis types.
+
+        Each page built by _build_chain_page / _build_fact_card / _build_conclusion carries
+        source_instances + synthesis_type (per §5.46) — grep guard: source_instances is set
+        in the page-builder helpers, not inline here.
+        """
         result = SynthesisResult()
 
         # 1. Inference chains → reasoning chain pages

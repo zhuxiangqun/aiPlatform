@@ -9,6 +9,7 @@ Usage:
 """
 
 from __future__ import annotations
+import logging
 
 import json as _json
 import time as _time
@@ -246,8 +247,8 @@ class OntologyEngine:
                 if resolved.stats.get("merged", 0) > 0:
                     result.instances = resolved.merged
                     result.merge_map = resolved.merge_map
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
 
         # ── Step 3.4: Compute Function Indicators ─────────────────
         if result.instances:
@@ -365,8 +366,8 @@ class OntologyEngine:
                 for i, inst in enumerate(result.instances):
                     inst["chunk_id"] = f"chunk-{i % len(chunks)}" if chunks else "default"
                 result.relations = rm.detect_co_occurrence(result.instances, chunks)
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
 
         # ── Step 6: Build Graph Index ─────────────────────────────
         if result.instances:
@@ -419,8 +420,8 @@ class OntologyEngine:
                         if added:
                             graph.save()
                             result.stats["inferred_edges"] = added
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        logging.debug(str(e), exc_info=True)
 
                 # ── Step 6.2: Inject case study nodes ──────────────
                 if result.instance_cases:
@@ -437,8 +438,8 @@ class OntologyEngine:
                                 )
                         graph.save()
                         result.stats["case_nodes"] = len(result.instance_cases)
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        logging.debug(str(e), exc_info=True)
 
                 # ── Step 6.3: Knowledge Synthesis ────────────────
                 try:
@@ -448,10 +449,10 @@ class OntologyEngine:
                         domain_id=self._domain.id, write_to_wiki=True
                     )
                     result.stats["synthesized_pages"] = synth_result.pages_written
-                except Exception:
-                    pass
-            except Exception:
-                pass
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
 
         return result
 
@@ -524,8 +525,8 @@ class OntologyEngine:
                 loop.create_task(self._post_webhook(url, payload))
             else:
                 _asyncio.run(self._post_webhook(url, payload))
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
     async def _post_webhook(self, url: str, payload: dict):
         """Post JSON payload to a webhook URL."""
@@ -534,8 +535,8 @@ class OntologyEngine:
             async with aiohttp.ClientSession() as session:
                 async with session.post(url, json=payload, timeout=aiohttp.ClientTimeout(total=5)) as resp:
                     pass  # Fire-and-forget
-        except Exception:
-            pass  # Best-effort
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
     # ── Helpers ─────────────────────────────────────────────────────
 

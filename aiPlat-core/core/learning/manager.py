@@ -11,6 +11,7 @@ Current implementation:
 """
 
 from __future__ import annotations
+import logging
 
 import uuid
 from typing import Any, Dict, Optional
@@ -59,14 +60,14 @@ class LearningManager:
         try:
             if isinstance(status, str) and status:
                 artifact.status = status  # type: ignore[assignment]
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
         store = self._get_store()
         if store is not None and hasattr(store, "upsert_learning_artifact"):
             try:
                 await store.upsert_learning_artifact(artifact.to_record())
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
         return artifact
 
     async def set_artifact_status(

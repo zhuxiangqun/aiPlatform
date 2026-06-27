@@ -16,6 +16,7 @@ Exit codes:
 """
 
 from __future__ import annotations
+import logging
 
 import argparse
 import json
@@ -158,8 +159,8 @@ def main() -> int:
     finally:
         try:
             conn.close()
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
 
 if __name__ == "__main__":

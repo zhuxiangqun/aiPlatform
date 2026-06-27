@@ -5,11 +5,11 @@ Provides REST API endpoints for agent, skill, tool, memory, knowledge, and harne
 Runs on port 8002.
 """
 
-from fastapi import FastAPI, HTTPException, APIRouter, Request
+from fastapi import FastAPI, HTTPException, APIRouter, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from typing import Optional, List, Dict, Any
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, suppress
 import asyncio
 import os
 import shutil
@@ -394,8 +394,8 @@ async def lifespan(app: FastAPI):
     try:
         if _approval_manager is not None:
             setattr(_approval_manager, "_execution_store", _execution_store)
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     # Canary block auto-action (next-step): when the canary-block approval is approved,
     # automatically mark release_candidate as blocked (non-destructive) and record changeset.
@@ -447,8 +447,8 @@ async def lifespan(app: FastAPI):
                                         "tenant_id": str(meta.get("project_id") or meta.get("tenant_id") or "") or None,
                                     }
                                 )
-                            except Exception:
-                                pass
+                            except Exception as e:
+                                logging.debug(str(e), exc_info=True)
                     elif op == "canary:block_repo_changeset":
                         repo_change_id = str(meta.get("repo_change_id") or "").strip()
                         if repo_change_id:
@@ -470,20 +470,20 @@ async def lifespan(app: FastAPI):
                                         "tenant_id": str(meta.get("project_id") or meta.get("tenant_id") or "") or None,
                                     }
                                 )
-                            except Exception:
-                                pass
+                            except Exception as e:
+                                logging.debug(str(e), exc_info=True)
                 except Exception:
                     return
 
             def _on_approved(req) -> None:
                 try:
                     asyncio.create_task(_apply_canary_block_approved(req))
-                except Exception:
-                    pass
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
 
             _approval_manager.register_callback("on_approved", _on_approved)
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
     # Plugins
     try:
         global _plugin_manager
@@ -499,8 +499,8 @@ async def lifespan(app: FastAPI):
             registry = get_tool_registry()
             if hasattr(registry, "set_tracer"):
                 registry.set_tracer(TraceServiceTracer(_trace_service))
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
     except Exception:
         _trace_service = None
 
@@ -541,8 +541,8 @@ async def lifespan(app: FastAPI):
                 return
 
         cb.register_global(_persist_graph_events)
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
     _approval_manager.register_rule(ApprovalRule(
         rule_id="first-time-ops",
         rule_type=RuleType.FIRST_TIME,
@@ -635,8 +635,8 @@ async def lifespan(app: FastAPI):
 
         from core.apps.document_intelligence.kb_provider import set_kb_load_doc_kinds_fn
         set_kb_load_doc_kinds_fn(_kb_load_doc_kinds)
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     # Workspace seeds (user-facing). Best-effort materialization into ~/.aiplat (do NOT overwrite).
     # This ensures "workspace skills" can exist out-of-the-box while keeping engine minimal and stable.
@@ -655,10 +655,10 @@ async def lifespan(app: FastAPI):
                     continue
                 try:
                     shutil.copytree(item, dst)
-                except Exception:
-                    pass
-    except Exception:
-        pass
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     # Workspace agent seeds (user-facing). Best-effort materialization into ~/.aiplat/agents (do NOT overwrite).
     try:
@@ -676,10 +676,10 @@ async def lifespan(app: FastAPI):
                     continue
                 try:
                     shutil.copytree(item, dst)
-                except Exception:
-                    pass
-    except Exception:
-        pass
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     # Workspace MCP seeds (user-facing). Best-effort materialization into ~/.aiplat/mcps (do NOT overwrite).
     try:
@@ -697,10 +697,10 @@ async def lifespan(app: FastAPI):
                     continue
                 try:
                     shutil.copytree(item, dst)
-                except Exception:
-                    pass
-    except Exception:
-        pass
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     # Workspace hooks seeds (user-facing). Best-effort materialization into ~/.aiplat/hooks (do NOT overwrite).
     try:
@@ -719,10 +719,10 @@ async def lifespan(app: FastAPI):
                         shutil.copy2(item, dst)
                     else:
                         shutil.copytree(item, dst)
-                except Exception:
-                    pass
-    except Exception:
-        pass
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     # Workspace managers (user-facing). Strictly separated: no override of engine ids.
     try:
@@ -750,8 +750,8 @@ async def lifespan(app: FastAPI):
     _adapter_manager = AdapterManager(execution_store=_execution_store)
     try:
         await _adapter_manager.init_from_store()
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
     _harness_manager = HarnessManager()
     
     # Seed execution-layer registries with real instances
@@ -821,12 +821,12 @@ async def lifespan(app: FastAPI):
                                         m0.setdefault(k, v)
                                     m0.setdefault("impl", "handler")
                                     setattr(cfg0, "metadata", m0)
-                            except Exception:
-                                pass
+                            except Exception as e:
+                                logging.debug(str(e), exc_info=True)
                             skill_registry.register(skill_obj)
                             continue
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        logging.debug(str(e), exc_info=True)
                 config = SkillConfig(
                     name=skill_name,
                     description=getattr(discovered, 'description', ''),
@@ -838,11 +838,11 @@ async def lifespan(app: FastAPI):
                 try:
                     config.metadata = dict(config.metadata or {})
                     config.metadata.setdefault("impl", "generic")
-                except Exception:
-                    pass
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
                 skill_registry.register(skill_instance)
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
         # Second pass: if handler-based implementation exists, prefer it (override generic fallback).
         # This also makes handler loading more robust in environments with import-order quirks.
         for skill_name, discovered in _skill_discovery._discovered.items():
@@ -882,11 +882,11 @@ async def lifespan(app: FastAPI):
                         })
                         m0.setdefault("impl", "handler")
                         setattr(cfg0, "metadata", m0)
-                except Exception:
-                    pass
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
                 skill_registry.register(skill_obj)
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
 
     # ── Workspace AGENT.md config validation ──
     try:
@@ -936,8 +936,8 @@ async def lifespan(app: FastAPI):
                     tags=getattr(discovered, 'tags', []),
                     phase=schema.get('phase', ''),
                 )
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
     
     # Register all available tools
     registry = get_tool_registry()
@@ -996,8 +996,8 @@ async def lifespan(app: FastAPI):
             cls = getattr(module, cls_name)
             tool = cls(**kwargs)
             registry.register(tool)
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
     # ── Tool config validation: ensure all registered tools have descriptions ──
     try:
@@ -1014,8 +1014,8 @@ async def lifespan(app: FastAPI):
                 "This wastes context budget as tools without descriptions are harder for LLMs to select.",
                 ", ".join(empty_desc)
             )
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     # Seed default permissions so the system is usable out-of-the-box.
     # Can be disabled by setting AIPLAT_SEED_DEFAULT_PERMISSIONS=false
@@ -1034,16 +1034,16 @@ async def lifespan(app: FastAPI):
                 agent_names=agent_names,
                 users=os.getenv("AIPLAT_DEFAULT_PERMISSION_USERS", "system,admin,anonymous").split(","),
             )
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
     # Roadmap-2: wire MCP servers into ToolRegistry (best-effort).
     try:
         from core.mcp.runtime_sync import sync_mcp_runtime
 
         await sync_mcp_runtime(mcp_manager=_mcp_manager, workspace_mcp_manager=_workspace_mcp_manager)
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     # Model discovery now handled by infra ModelManager (env vars + local scan).
     # The legacy ModelRegistry seed below is retired — infra is the single source of truth.
@@ -1077,8 +1077,8 @@ async def lifespan(app: FastAPI):
         # Keep legacy behavior: also attach to harness when supported.
         if hasattr(harness, "attach_runtime"):
             harness.attach_runtime(rt)
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     # Roadmap-3: Jobs/Cron scheduler (default enabled)
     global _job_scheduler
@@ -1092,8 +1092,8 @@ async def lifespan(app: FastAPI):
             try:
                 from core.apps.tools.discovery import get_tool_discovery
                 n = get_tool_discovery().register_all()
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
             # MCP server auto-connect
             try:
                 from core.apps.tools.mcp_adapter import get_mcp_adapter
@@ -1105,11 +1105,11 @@ async def lifespan(app: FastAPI):
                         try:
                             from core.apps.tools.discovery import _make_discovery_tool
                             reg.register(_make_discovery_tool(t))
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            logging.debug(str(e), exc_info=True)
                         logger.info(f"MCP: discovered {len(tools)} tools, registered into ToolRegistry")
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
             _job_scheduler = JobScheduler(
                 execution_store=_execution_store,
                 harness=get_harness(),
@@ -1126,20 +1126,20 @@ async def lifespan(app: FastAPI):
                 cron_sched = get_cron_scheduler()
                 await register_builtin_jobs()
                 await cron_sched.start()
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
 
             # Initialize artifact registry and embedding provider for cross-process availability
             try:
                 from core.harness.artifacts.registry import get_artifact_registry
                 get_artifact_registry()
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
             try:
                 from core.harness.memory.embedding import get_embedding_provider
                 get_embedding_provider()
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
 
             # Skill lint-scan cron (opt-out; graded enforcement is on enable, cron is for observability)
             try:
@@ -1169,8 +1169,8 @@ async def lifespan(app: FastAPI):
                         await _execution_store.create_job({"id": job_id, "created_at": now, **patch})
                     else:
                         await _execution_store.update_job(job_id, patch)
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
     except Exception:
         _job_scheduler = None
 
@@ -1181,8 +1181,8 @@ async def lifespan(app: FastAPI):
         rt = get_kernel_runtime()
         if rt is not None:
             setattr(rt, "job_scheduler", _job_scheduler)
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     # PR-14: background retention pruning loop (opt-in)
     global _ops_prune_task
@@ -1280,8 +1280,8 @@ async def lifespan(app: FastAPI):
                                         user_id="learning_scheduler",
                                         dry_run=False,
                                     )
-                                except Exception:
-                                    pass
+                                except Exception as e:
+                                    logging.debug(str(e), exc_info=True)
                     except asyncio.CancelledError:
                         raise
                     except Exception:
@@ -1296,8 +1296,8 @@ async def lifespan(app: FastAPI):
     try:
         from core.harness.infrastructure.hot_reload import wire_hot_reload
         wire_hot_reload()
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     # Cache warming: pre-build knowledge graphs on startup to avoid cold-start latency
     # ── Graph warmup disabled by default (saves ~100MB startup memory) ──
@@ -1317,8 +1317,8 @@ async def lifespan(app: FastAPI):
             import asyncio
             asyncio.create_task(asyncio.to_thread(_warm_code_graph))
             asyncio.create_task(asyncio.to_thread(_warm_cap_graph))
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
     # Cross-graph ontology bridge: scan AGENT.md/SKILL.md for dependency triples
     try:
@@ -1328,8 +1328,8 @@ async def lifespan(app: FastAPI):
             if stats.get("total_triples", 0) > 0:
                 log.info(f"Ontology bridge: {stats['total_triples']} triples indexed")
         asyncio.create_task(_bootstrap_ontology_triples())
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     # Auto-diagnostic scheduler: runs diagnostics periodically in background
     # Controlled by AIPLAT_ENABLE_AUTO_DIAG (default: true) and AIPLAT_AUTO_DIAG_INTERVAL_SECONDS (default: 300)
@@ -1348,12 +1348,12 @@ async def lifespan(app: FastAPI):
                         await run_all_diagnostics()
                     except asyncio.CancelledError:
                         raise
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        logging.debug(str(e), exc_info=True)
                     await asyncio.sleep(diag_interval)
             _diag_task = asyncio.create_task(_auto_diag_loop())
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     from core.harness.observation.event_bus import EventBus
     EventBus.start()
@@ -1362,29 +1362,31 @@ async def lifespan(app: FastAPI):
     try:
         from core.harness.knowledge._bg_tasks import start_worker as _wiki_bg_start
         await _wiki_bg_start()
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
     
     # Wire graph sync handler to keep capability + code graphs in sync with resource mutations
     try:
         from core.harness.knowledge.graph_sync import GraphSyncHandler
         await GraphSyncHandler.wire()
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     # Start Loop Scheduler (cron + webhook triggers)
     try:
         from core.harness.execution.event_loop import start_loop_scheduler
         start_loop_scheduler(interval=60)
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     # Start EvolutionEngine nightly cron (Phase 5.5)
+    _evolution_task = None
     try:
         from core.harness.evolution_engine import get_evolution_engine
         engine = get_evolution_engine()
         _cron_hour = int(os.getenv("AIPLAT_EVOLUTION_CRON_HOUR", "3"))
         async def _evolution_cron():
+            import time
             while True:
                 now = time.localtime()
                 if now.tm_hour == _cron_hour and now.tm_min == 0:
@@ -1393,9 +1395,9 @@ async def lifespan(app: FastAPI):
                     except Exception:
                         logging.getLogger("aiplat.evolution").error("nightly_evolution failed", exc_info=True)
                 await asyncio.sleep(60)
-        asyncio.create_task(_evolution_cron())
-    except Exception:
-        pass
+        _evolution_task = asyncio.create_task(_evolution_cron())
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     # Start EnterpriseGateway (Phase 2.3)
     try:
@@ -1414,8 +1416,8 @@ async def lifespan(app: FastAPI):
             await gateway.start()
             logging.getLogger("aiplat.gateway").info(
                 f"EnterpriseGateway started: {len(gateway._adapters)} channels")
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     yield
 
@@ -1424,33 +1426,41 @@ async def lifespan(app: FastAPI):
     try:
         from core.harness.knowledge._bg_tasks import stop_worker as _wiki_bg_stop
         await _wiki_bg_stop()
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
     try:
         if _job_scheduler is not None:
             await _job_scheduler.stop()
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
     try:
         from core.harness.scheduler.cron import get_cron_scheduler
         await get_cron_scheduler().stop()
-    except Exception:
-        pass
-    try:
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
+    # Cancel + await long-running background tasks so they unwind before the event
+    # loop closes — prevents leaked while-True tasks accumulating across reload(server).
+    # Uses contextlib.suppress (explicit intent) rather than bare except:pass.
+    with suppress(Exception):
         if _ops_prune_task is not None:
             _ops_prune_task.cancel()
-    except Exception:
-        pass
-    try:
+            with suppress(asyncio.CancelledError, Exception):
+                await _ops_prune_task
+    with suppress(Exception):
         if _learning_task is not None:
             _learning_task.cancel()
-    except Exception:
-        pass
-    try:
+            with suppress(asyncio.CancelledError, Exception):
+                await _learning_task
+    with suppress(Exception):
         if _diag_task is not None:
             _diag_task.cancel()
-    except Exception:
-        pass
+            with suppress(asyncio.CancelledError, Exception):
+                await _diag_task
+    with suppress(Exception):
+        if _evolution_task is not None:
+            _evolution_task.cancel()
+            with suppress(asyncio.CancelledError, Exception):
+                await _evolution_task
 
 
 app = FastAPI(
@@ -1492,6 +1502,17 @@ if _PROM_ENABLED:
         pass
 
 api_router = APIRouter(prefix="/api/core")
+
+
+@api_router.post("/ops/prune")
+async def ops_prune():
+    """Prune execution history data (best-effort)."""
+    try:
+        store = get_execution_store()
+        result = await store.prune()
+        return {"status": "ok", "pruned": result}
+    except Exception as e:
+        return {"status": "error", "detail": str(e)}
 
 # Incremental router split: routing observability endpoints live in a dedicated module.
 from core.api.routers.routing_observability import router as routing_observability_router  # noqa: E402
@@ -2007,14 +2028,84 @@ async def gateway_execute(http_request: Request, body: Dict[str, Any] = None):
     return wrap_execution_result_as_run_summary(result)
 
 
+@app.get("/api/core/gateway/dlq")
+async def gateway_dlq_list():
+    """List dead-letter queue entries."""
+    from core.gateway import get_enterprise_gateway
+    gw = get_enterprise_gateway()
+    entries = gw.get_dlq() if gw else []
+    return {"entries": entries, "total": len(entries)}
+
+
+@app.delete("/api/core/gateway/dlq/{entry_id}")
+async def gateway_dlq_delete(entry_id: str):
+    """Delete a DLQ entry."""
+    from core.gateway import get_enterprise_gateway
+    gw = get_enterprise_gateway()
+    if not gw or not gw.delete_dlq_entry(entry_id):
+        raise HTTPException(status_code=404, detail=f"DLQ entry {entry_id} not found")
+    return {"id": entry_id, "status": "deleted"}
+
+
+@app.post("/api/core/gateway/dlq/{entry_id}/retry")
+async def gateway_dlq_retry(entry_id: str):
+    """Retry a DLQ entry."""
+    from core.gateway import get_enterprise_gateway
+    gw = get_enterprise_gateway()
+    if not gw:
+        raise HTTPException(status_code=503, detail="Gateway not available")
+    result = await gw.retry_dlq_entry(entry_id)
+    return result
+
+
+@app.get("/api/core/quota/snapshot")
+async def quota_snapshot(tenant_id: str = Query("default")):
+    """Return a quota snapshot — aggregate execution store stats."""
+    try:
+        import time as _time
+        store = get_execution_store()
+        stats = await store.get_syscall_event_stats(window_hours=720, top_n=500)
+        total_events = stats.get("total", 0) if isinstance(stats, dict) else 0
+        by_kind = stats.get("by_kind", {}) if isinstance(stats, dict) else {}
+        return {
+            "tenant_id": tenant_id,
+            "version": 1,
+            "quota": {"total_events": total_events, "by_kind": by_kind},
+            "updated_at": _time.time(),
+        }
+    except Exception:
+        return {"tenant_id": tenant_id, "version": 1, "quota": {}, "updated_at": 0}
+
+
+@app.get("/api/core/quota/usage")
+async def quota_usage(
+    tenant_id: str = Query("default"),
+    limit: int = Query(50, ge=1, le=500),
+    offset: int = Query(0, ge=0),
+):
+    """Return quota usage items — paginated execution event stats."""
+    try:
+        store = get_execution_store()
+        stats = await store.get_syscall_event_stats(window_hours=720, top_n=limit + offset)
+        items = []
+        if isinstance(stats, dict):
+            by_kind = stats.get("by_kind", {})
+            for kind, count in list(by_kind.items())[offset:offset+limit]:
+                items.append({"tenant_id": tenant_id, "day": "", "metric_key": kind, "count": count})
+        total = len(by_kind) if isinstance(stats, dict) and "by_kind" in stats else 0
+        return {"items": items, "total": total, "limit": limit, "offset": offset}
+    except Exception:
+        return {"items": [], "total": 0, "limit": limit, "offset": offset}
+
+
 app.include_router(api_router)
 
 # A2A Protocol — Google Agent-to-Agent standard (external agent interoperability)
 try:
     from core.apps.a2a import a2a_router
     app.include_router(a2a_router)
-except Exception:
-    pass
+except Exception as e:
+    logging.debug(str(e), exc_info=True)
 
 
 def run_server(host: str = "0.0.0.0", port: int = 8002):

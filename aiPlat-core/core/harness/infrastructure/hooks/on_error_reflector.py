@@ -10,6 +10,7 @@ OnErrorReflector — 执行中实时反思 Hook (Phase 4.1)
 """
 
 from __future__ import annotations
+import logging
 
 import asyncio
 import os, logging
@@ -114,8 +115,8 @@ class OnErrorReflector:
             learner = get_auto_learner()
             _log.info("OnErrorReflector: triggering AutoLearner for self-iteration")
             await learner.process_pending(min_confidence=0.6)
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
 
 # ── Factory ─────────────────────────────────────────────────────────────

@@ -61,8 +61,8 @@ class PipelineEventBus:
         for fn in self._listeners:
             try:
                 fn(project_id, event_type, data)
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
         # Write to SQLite for cross-thread/process visibility
         import json
         _write_pipeline_event(
@@ -182,8 +182,8 @@ class PipelineEngine:
                 "action": action, "actor": actor, "detail": detail,
                 "timestamp": time.time(),
             })
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
     # Config-driven: agent types that use conversational execution (core_chat) vs ReActLoop
     _CONVERSATIONAL_AGENT_TYPES = frozenset({"conversational", "rag", "plan", "plan_execute", "reflection", "review", "materials_chat"})
@@ -645,7 +645,9 @@ Output format: JSON array of {{"rank": 1, "score": 0.95, "content": "..."}}"""
                 if v: ctx_base[s.output_artifact] = v
             if loop_mode == 'parallel':
                 try:
-                    from core.apps.agents.parallel_executor import parallel_analyze, create_dummy_agent, EmbeddingBridge
+                    from core.harness.integration import get_parallel_executor
+                    _pe = get_parallel_executor()
+                    parallel_analyze, create_dummy_agent, EmbeddingBridge = _pe.parallel_analyze, _pe.create_dummy_agent, _pe.EmbeddingBridge
                     topics = [
                         self._render_jinja2(body_template, {**ctx_base, 'loop': {'item': item, 'index': idx}}).strip()
                         for idx, item in enumerate(upstream_array)
@@ -1086,13 +1088,14 @@ Output format: JSON array of {{"rank": 1, "score": 0.95, "content": "..."}}"""
                                 else:  # "last" or default
                                     state[target_prop] = val
                                 break
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        logging.debug(str(e), exc_info=True)
 
             # Execute all stages in this layer in parallel with Semaphore control
             layer_timeout = max(600 * len(layer), 3600)
             try:
-                from core.apps.agents.parallel_executor import ParallelExecutor
+                from core.harness.integration import get_parallel_executor
+                ParallelExecutor = get_parallel_executor().ParallelExecutor
                 pool_size = max(1, min(len(layer), 5))
                 _executor = ParallelExecutor(max_concurrency=pool_size)
                 _sem = asyncio.Semaphore(pool_size)
@@ -1146,13 +1149,13 @@ Output format: JSON array of {{"rank": 1, "score": 0.95, "content": "..."}}"""
             state["phase"] = BuilderSessionPhase.done.value
         try:
             self._snapshot(state, "final_state")
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
         # Crystallize successful pipeline execution into a reusable Skill
         try:
             await self._crystallize_skill(state)
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
         # Notify PushManager on pipeline completion
         try:
             from core.harness.feedback_loops.push import get_push_manager
@@ -1167,8 +1170,8 @@ Output format: JSON array of {{"rank": 1, "score": 0.95, "content": "..."}}"""
             session_id = state.get("session_id", "")
             if session_id:
                 _update_workflow_run_phase(session_id, state.get("phase", "done"))
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
         _event_bus.emit(state.get("session_id", ""), "complete", {"state": dict(state)})
         return state
 
@@ -1350,8 +1353,8 @@ Output format: JSON array of {{"rank": 1, "score": 0.95, "content": "..."}}"""
                             r = _sp.run(["node", "--check", tmp_path], capture_output=True, text=True, timeout=10)
                             if r.returncode != 0:
                                 issues.append(f"node_check_error:{path}: {r.stderr[:200]}")
-                        except Exception:
-                            pass  # node check best-effort
+                        except Exception as e:
+                            logging.debug(str(e), exc_info=True)
                 elif path.endswith(".json"):
                     import json as _json
                     try:
@@ -1448,8 +1451,8 @@ Output format: JSON array of {{"rank": 1, "score": 0.95, "content": "..."}}"""
                         reflection = await self._capture_stage_reflection(stage, local_state)
                         if reflection:
                             local_state[f"_reflection_{stage.id}"] = reflection
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        logging.debug(str(e), exc_info=True)
                 return local_state, False
 
         t_start = time.time()
@@ -1503,8 +1506,8 @@ Output format: JSON array of {{"rank": 1, "score": 0.95, "content": "..."}}"""
                     "output_preview": str(artifact)[:300] if artifact is not None else "(empty)",
                     "output_keys": summary_keys,
                 })
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
         if artifact is not None:
             local_state[f"_stage_output_{stage.id}"] = json.dumps(artifact, ensure_ascii=False)[:2000]
         elapsed = round(t_end - local_state.get(f"_stage_ts_{stage.id}", t_end), 1)
@@ -1516,8 +1519,8 @@ Output format: JSON array of {{"rank": 1, "score": 0.95, "content": "..."}}"""
                 reflection = await self._capture_stage_reflection(stage, local_state)
                 if reflection:
                     local_state[f"_reflection_{stage.id}"] = reflection
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
         # Auto-initialize task_list if stage output contains trackable sub-items
         artifact = local_state.get(stage.output_artifact)
         if isinstance(artifact, dict) and not local_state.get("task_list"):
@@ -1537,8 +1540,8 @@ Output format: JSON array of {{"rank": 1, "score": 0.95, "content": "..."}}"""
                 local_state.setdefault("_quick_check_issues", []).append(
                     f"behavior_verify_failed: {bv.get('checks', [])}"
                 )
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
         cfg_fields = getattr(stage, 'coverage_trace_fields', None) or {}
         comp_key = cfg_fields.get("components_key", "components")
         files_key = cfg_fields.get("files_key", "files")
@@ -1879,8 +1882,8 @@ Output format: JSON array of {{"rank": 1, "score": 0.95, "content": "..."}}"""
             if rubric_path:
                 try:
                     rubric = _load_rubric_file(rubric_path)
-                except Exception:
-                    pass  # fall back to inline expected_outcomes
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
 
             # Algorithm replay snapshot (existing logic)
             node_type = getattr(stage, 'node_type', '') or ''
@@ -1894,8 +1897,8 @@ Output format: JSON array of {{"rank": 1, "score": 0.95, "content": "..."}}"""
                     try:
                         import json as _json
                         algo_result = _json.loads(artifact)
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        logging.debug(str(e), exc_info=True)
                 record_replay_snapshot(
                     str(state.get("session_id", "")),
                     stage.id, input_hash, str(artifact)[:2000],
@@ -1960,8 +1963,8 @@ Output format: JSON array of {{"rank": 1, "score": 0.95, "content": "..."}}"""
                 if isinstance(artifact, str):
                     try:
                         algo_result = __import__('json').loads(artifact)
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        logging.debug(str(e), exc_info=True)
                 record_replay_snapshot(
                     str(state.get("session_id", "")),
                     stage.id, input_hash, str(artifact)[:2000],
@@ -2024,8 +2027,8 @@ Output format: JSON array of {{"rank": 1, "score": 0.95, "content": "..."}}"""
             if tags:
                 _sp.run(["git", "-C", output_dir, "checkout", tags[0]], capture_output=True, check=False)
                 state["_git_rollback_tag"] = tags[0]
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
     @staticmethod
     def _load_rubric_file(rubric_path: str) -> List[Dict[str, Any]]:
@@ -2336,8 +2339,8 @@ Output format: JSON array of {{"rank": 1, "score": 0.95, "content": "..."}}"""
                                     content=f"Stage {stage.id} repeatedly encounters {ftype}. Rule: {rule}",
                                     metadata={"stage_id": stage.id, "failure_type": ftype, "count": 3},
                                 )
-                            except Exception:
-                                pass
+                            except Exception as e:
+                                logging.debug(str(e), exc_info=True)
 
         # Agentic Skill Router: tell Agent it can search disabled skills
         skill_corpus_context = (
@@ -2660,8 +2663,8 @@ Evaluate pass/fail based on pass_rate and configured dimension thresholds.""")
                     if fixed != artifact:
                         state[stage.output_artifact] = fixed
                         state["_postprocess_applied"] = True
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
         # Track score history for convergence detection and meta-optimization feedback
         state.setdefault("_score_history", []).append({
             "iteration": state.get("iteration", 0),
@@ -2684,8 +2687,8 @@ Evaluate pass/fail based on pass_rate and configured dimension thresholds.""")
                     recommendation=str(report.get("recommendation", "")),
                     session_id=str(state.get("session_id", "")),
                 )
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
         # Health Report: per-stage dimensional scoring for quality dashboard
         health_dims = []
         for d in dims:
@@ -2721,10 +2724,10 @@ Evaluate pass/fail based on pass_rate and configured dimension thresholds.""")
                     evaluator = RagEvaluator()
                     rag_result = await evaluator.evaluate_sample(sample)
                     state[f"_rag_eval_{stage.id}"] = rag_result.to_dict() if hasattr(rag_result, 'to_dict') else str(rag_result)
-                except Exception:
-                    pass
-        except Exception:
-            pass
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
         # AST graph diff for semantic-level regression detection
         try:
             from core.harness.evaluation.graph_diff import parse_code_to_graph, diff_graphs
@@ -2958,8 +2961,8 @@ Evaluate pass/fail based on pass_rate and configured dimension thresholds.""")
                 scene = get_scene(scene_id)
                 if scene:
                     scene_context = f"\n## Business Context (Scene: {scene.name})\n{scene.to_agent_context()}\n"
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
 
         # Cross-session memory: inject previous SESSION_NOTES so Agent remembers past context
         previous_notes = ""
@@ -2979,16 +2982,16 @@ Evaluate pass/fail based on pass_rate and configured dimension thresholds.""")
                     first_lines = "\n".join(text.split("\n")[:5])
                     summaries.append(f"## {_os.path.basename(_os.path.dirname(f))}\n{first_lines}")
                 previous_notes = "\n## Recent Session Context\n" + "\n---\n".join(summaries) + "\n"
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
         # Plur: collective learnings shared across all agent instances
         collective_context = ""
         try:
             from core.harness.memory.shared_memory import get_learnings_context
             collective_context = get_learnings_context()
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
         # Phase D: knowledge gap context — tell Agent what we don't know
         gaps_context = ""
@@ -3008,8 +3011,8 @@ Evaluate pass/fail based on pass_rate and configured dimension thresholds.""")
                     gap_lines.append(f"- {gaps['orphan_count']} pages have no connections to other knowledge")
                 if gap_lines:
                     gaps_context = "\n## Knowledge Gaps\n" + "\n".join(gap_lines) + "\n\nWhen producing knowledge artifacts, consider filling these gaps."
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
         # Progressive disclosure: skill stubs only (~50 tokens/skill)
         skill_stubs_context = ""
@@ -3023,8 +3026,8 @@ Evaluate pass/fail based on pass_rate and configured dimension thresholds.""")
                 "one of the available skills above, proactively describe how you would use it "
                 "before invoking sys_skill_call. This helps the user understand your approach.]\n"
             )
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
         # Ponytail: Lazy Senior Developer constraint (via PONytail_MODE env)
         ponytail_context = ""
@@ -3037,8 +3040,8 @@ Evaluate pass/fail based on pass_rate and configured dimension thresholds.""")
                     with open(skill_path, "r") as f:
                         body = f.read()
                     ponytail_context = f"\n## Ponytail: Lazy Senior Developer ({ponytail_mode} mode)\n{body}\n"
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
 
         # Output format instruction for code-generating stages
         fmt_text = ""
@@ -3270,8 +3273,8 @@ JSON format: {{"artifact": {{}},"confidence": "HIGH","issues": [{{"severity": "P
                         if isinstance(f, dict) and f.get("path") and f.get("content"):
                             if not any(e["path"] == f["path"] for e in files):
                                 files.append({"path": f["path"], "content": f["content"]})
-            except (json.JSONDecodeError, TypeError):
-                pass
+            except (json.JSONDecodeError, TypeError) as e:
+                logging.debug(str(e), exc_info=True)
 
         # 4) ## PATCH: path with <<< ORIGINAL / === / >>> UPDATED blocks (incremental edit)
         for m in re.finditer(r'##\s*PATCH:\s*(\S+)\s*\n(.*?)(?=\n##\s*(?:FILE|PATCH):|\Z)', text, re.DOTALL):
@@ -3298,8 +3301,8 @@ JSON format: {{"artifact": {{}},"confidence": "HIGH","issues": [{{"severity": "P
                                   issues=issues,
                                   confidence=AgentConfidence(data.get("confidence", "MEDIUM")),
                                   decision=AgentDecision(data.get("decision", "PROCEED")))
-            except (json.JSONDecodeError, TypeError):
-                pass
+            except (json.JSONDecodeError, TypeError) as e:
+                logging.debug(str(e), exc_info=True)
         return AgentOutput(artifact={"raw_output": raw[:5000]}, issues=[], confidence=AgentConfidence.LOW, decision=AgentDecision.PROCEED)
 
     def _compute_stage_reward(self, stage, state: PipelineState) -> None:
@@ -3383,8 +3386,8 @@ JSON format: {{"artifact": {{}},"confidence": "HIGH","issues": [{{"severity": "P
             state["_stage_lineage"][stage.id] = lineage
             state["_stage_prev_rewards"] = dict(rewards)
 
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
     def _snapshot(self, state: PipelineState, name: str) -> None:
         sid = state.get("session_id", "")
@@ -3662,8 +3665,8 @@ JSON format: {{"artifact": {{}},"confidence": "HIGH","issues": [{{"severity": "P
                 if used or produced:
                     logger.info("TaskSkill %s linked: %d used + %d produced ontology entities",
                                 skill_id, len(used), len(produced))
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
 
             # Self-improvement: cross-run learning from stage reflections
             if stage_reflections:
@@ -3683,8 +3686,8 @@ JSON format: {{"artifact": {{}},"confidence": "HIGH","issues": [{{"severity": "P
                                 agent_id = ref.get("agent_id", s_id)
                                 lesson = ref.get("lesson", "auto-detected failure pattern")
                                 self._append_agent_learning(agent_id, lesson)
-                except Exception:
-                    pass
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
 
             # Store pipeline artifacts in ArtifactRegistry for versioned retrieval
             self._store_artifacts(sid, state)
@@ -3712,8 +3715,8 @@ JSON format: {{"artifact": {{}},"confidence": "HIGH","issues": [{{"severity": "P
                 raw += f"\n- {lesson}\n"
                 with open(agent_md, "w") as f:
                     f.write(raw)
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
     async def _accept_plan_stages(self, plan_stages: List[Dict], state: PipelineState) -> PipelineState:
         """Accept AI-recommended stages JSON and write PipelineStageConfig.
@@ -4077,8 +4080,8 @@ Output ONLY this JSON (no preamble): {{"diagnosis":"<1 sentence>","suggested_pro
         # Phase 3: generate human-readable SESSION_NOTES
         try:
             PipelineEngine._generate_session_notes(state, output_dir=state.get("output_dir", ""))
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
         # Plur: record collective learnings for cross-instance sharing
         try:
@@ -4093,8 +4096,8 @@ Output ONLY this JSON (no preamble): {{"diagnosis":"<1 sentence>","suggested_pro
             for l in learnings:
                 record_learning(l.key, l.value, source_agent=l.source_agent,
                                 source_session=l.source_session, confidence=l.confidence)
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
     @staticmethod
     async def _run_self_harness_cycle(
@@ -4226,8 +4229,8 @@ Output ONLY this JSON (no preamble): {{"diagnosis":"<1 sentence>","suggested_pro
             end = content.rfind("}")
             if start >= 0 and end > start:
                 return _json.loads(content[start:end + 1])
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
         return None
 
 
@@ -4270,8 +4273,8 @@ def _write_pipeline_event(run_id: str, event_type: str, node_id: str,
             conn.commit()
         finally:
             conn.close()
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
 
 def _update_workflow_run_phase(project_id: str, phase: str) -> None:
@@ -4287,8 +4290,8 @@ def _update_workflow_run_phase(project_id: str, phase: str) -> None:
             conn.commit()
         finally:
             conn.close()
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
     spans = []
     trace_id = hex(int(time.time() * 1000000))[2:20]
     root_span_id = hex(int(time.time() * 1000000 + 1))[2:18]

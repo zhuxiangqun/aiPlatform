@@ -95,8 +95,8 @@ def _notify_resource_mutated(resource_type: str, action: str, resource_id: str) 
             source="AgentManager",
             data={"resource_type": resource_type, "action": action, "resource_id": resource_id},
         )
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
 
 class AgentManager:
@@ -330,8 +330,8 @@ class AgentManager:
                         files_sample.append(rel)
                 except Exception:
                     continue
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
         bundle_sha256 = hashlib.sha256(("\n".join(entries)).encode("utf-8")).hexdigest()
         return {
             "bundle_sha256": bundle_sha256,
@@ -353,8 +353,8 @@ class AgentManager:
             manifest = {"version": "1.0.0"}
             try:
                 (agent_dir / "AGENT.manifest.json").write_text(json.dumps(manifest, indent=2, ensure_ascii=False), encoding="utf-8")
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
         if manifest:
             prov.setdefault("publisher", manifest.get("publisher"))
             prov.setdefault("source", manifest.get("source"))
@@ -365,8 +365,8 @@ class AgentManager:
                 mpath = agent_dir / "AGENT.manifest.json"
                 if mpath.exists():
                     prov.setdefault("manifest_sha256", self._sha256_file(mpath))
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
         # Workspace items without external source → mark as locally created
         if (self._scope or "").strip().lower() == "workspace" and not prov.get("source"):
             prov["source"] = "local"
@@ -375,8 +375,8 @@ class AgentManager:
         integ = metadata.get("integrity") if isinstance(metadata.get("integrity"), dict) else {}
         try:
             integ.update(self._compute_agent_bundle_integrity(agent_dir))
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
         metadata["integrity"] = integ
 
     def compute_agent_signature_verification(self, agent: "AgentInfo", trusted_keys: Dict[str, str]) -> Dict[str, Any]:
@@ -466,8 +466,8 @@ class AgentManager:
                         category = str(fm.get("category") or "")
                         tags = fm.get("tags") or []
                         tags = tags if isinstance(tags, list) else []
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        logging.debug(str(e), exc_info=True)
 
             if name in self._agents:
                 continue
@@ -548,8 +548,8 @@ class AgentManager:
             pm = get_permission_manager()
             for uid in ("system", "admin"):
                 pm.grant_permission(uid, agent_id, Permission.EXECUTE, granted_by="auto_create")
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
         # Materialize directory-based agent on filesystem (AGENT.md + skeleton).
         try:
@@ -607,8 +607,8 @@ class AgentManager:
                     agent.metadata["filesystem"]["agent_md"] = str(agent_md_path)
             # Enrich with provenance and integrity
             self._enrich_agent_provenance_and_integrity(agent.metadata, agent_dir=agent_dir)
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
         
         _notify_resource_mutated("agent", "created", agent.id)
         return agent
@@ -803,8 +803,8 @@ class AgentManager:
                 })
                 header = yaml.safe_dump(fm, sort_keys=False, allow_unicode=True).strip()
                 agent_md_path.write_text(f"---\n{header}\n---\n{body.lstrip()}", encoding="utf-8")
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
         
         _notify_resource_mutated("agent", "updated", agent.id)
         return agent
@@ -1064,8 +1064,8 @@ class AgentManager:
             agent_dir = base_dir / agent_id
             if agent_dir.exists():
                 shutil.rmtree(str(agent_dir), ignore_errors=True)
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
         _notify_resource_mutated("agent", "deleted", agent_id)
         return True

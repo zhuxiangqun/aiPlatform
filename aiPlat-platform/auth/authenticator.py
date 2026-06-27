@@ -1,3 +1,4 @@
+import logging
 """
 Authentication Service - 认证服务
 
@@ -55,8 +56,8 @@ class Authenticator:
             self._ensure_db()
             for row in self._db.list_api_keys(""):  # load all keys
                 pass  # Keys loaded on-demand via get_api_key
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
     def create_api_key(
         self,
@@ -89,8 +90,8 @@ class Authenticator:
         try:
             self._ensure_db()
             self._db.upsert_api_key(key_data)
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
         return api_key
 
@@ -116,8 +117,8 @@ class Authenticator:
                         "permissions": row.get("permissions", []),
                     }
                     self._api_keys[key_hash] = key_data
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
 
         if not key_data:
             return AuthResult(success=False, error="Key not found")
@@ -146,8 +147,8 @@ class Authenticator:
         try:
             self._ensure_db()
             self._db.revoke_api_key(key_hash)
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
         return key_hash in self._api_keys or True
 
     def list_keys(self, tenant_id: str) -> List[Dict[str, Any]]:

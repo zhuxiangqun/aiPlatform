@@ -33,7 +33,7 @@ async def get_diagram_xml(diagram_id: str):
     import asyncio
     xml = await asyncio.to_thread(load_diagram, diagram_id)
     if not xml:
-        raise HTTPException(404, f"Diagram '{diagram_id}' not found")
+        raise HTTPException(status_code=404, detail=f"Diagram '{diagram_id}' not found")
     return PlainTextResponse(xml, media_type="application/xml")
 
 
@@ -43,7 +43,7 @@ async def view_diagram(diagram_id: str):
     import asyncio
     xml = await asyncio.to_thread(load_diagram, diagram_id)
     if not xml:
-        raise HTTPException(404, f"Diagram '{diagram_id}' not found")
+        raise HTTPException(status_code=404, detail=f"Diagram '{diagram_id}' not found")
     html = f"""<!DOCTYPE html>
 <html lang="zh">
 <head>
@@ -73,5 +73,5 @@ async def delete_diagram_api(diagram_id: str):
     from core.harness.syscalls.drawio_gen import delete_diagram
     ok = delete_diagram(diagram_id)
     if not ok:
-        raise HTTPException(404, f"Diagram '{diagram_id}' not found")
+        raise HTTPException(status_code=404, detail=f"Diagram '{diagram_id}' not found")
     return {"status": "ok"}

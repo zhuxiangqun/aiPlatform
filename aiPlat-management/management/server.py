@@ -1,3 +1,4 @@
+import logging
 """
 aiPlat-management 服务器 - FastAPI 应用
 """
@@ -86,10 +87,10 @@ def create_app() -> FastAPI:
             finally:
                 try:
                     reset_forward_headers(token)
-                except Exception:
-                    pass
-    except Exception:
-        pass
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
     
     # 配置 CORS
     cors_config = config.get("server", {}).get("api", {}).get("cors", {})
@@ -180,8 +181,8 @@ def create_app() -> FastAPI:
                     triggered = await app.state.alert_engine.evaluate(metrics)
                     if triggered:
                         app.state.active_alerts = {a.get("id", ""): a for a in triggered}
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
     import asyncio as _asyncio
     _asyncio.ensure_future(_alert_eval_loop())
 
@@ -194,8 +195,8 @@ def create_app() -> FastAPI:
     try:
         from management.api import core as _core_api
         _core_api._core_client = app.state.core_client
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
     
     # 健康检查端点
     @app.get("/health")

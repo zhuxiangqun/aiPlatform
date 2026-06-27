@@ -15,6 +15,7 @@ Protocol:
 """
 
 from __future__ import annotations
+import logging
 
 import importlib.util
 import json
@@ -49,8 +50,8 @@ def _scan_tools() -> List[Dict[str, Any]]:
                     "_execute_fn": td.get("execute"),
                     "_file": str(fpath),
                 })
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
     return tools
 

@@ -12,6 +12,7 @@ JobManager — 微调作业生命周期管理。
 """
 
 from __future__ import annotations
+import logging
 
 import asyncio as _asyncio
 import json as _json
@@ -160,8 +161,8 @@ class JobManager:
         if prov.available and entry.get("provider_job_id"):
             try:
                 prov.cancel_job(entry["provider_job_id"])
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
         entry["status"] = JobStatus.CANCELLED.value
         entry["completed_at"] = _time.time()
         meta[job_id] = entry
@@ -270,4 +271,4 @@ class JobManager:
             mgr.register_model(info)
             await mgr.save()
         except Exception as e:
-            pass  # Best-effort registration
+            logging.debug(str(e), exc_info=True)

@@ -12,6 +12,7 @@ from core.governance.gating import autosmoke_enforce, gate_with_change_control, 
 from core.harness.integration import KernelRuntime
 from core.harness.kernel.runtime import get_kernel_runtime
 from core.schemas_eval import UpsertEvaluationPolicyRequest, UpsertProjectEvaluationPolicyRequest
+import logging
 
 router = APIRouter()
 
@@ -144,8 +145,8 @@ async def upsert_scoped_evaluation_policy(
             )
     except HTTPException:
         raise
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     mgr = LearningManager(execution_store=store)
     art = await mgr.create_artifact(
@@ -170,8 +171,8 @@ async def upsert_scoped_evaluation_policy(
             args={"project_id": pid, "mode": mode},
             user_id=str(actor.get("actor_id") or "admin"),
         )
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
     return {
         "status": "ok",
         "artifact_id": art.artifact_id,

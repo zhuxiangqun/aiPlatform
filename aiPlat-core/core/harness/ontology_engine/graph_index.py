@@ -12,6 +12,7 @@ Exports to ~/.aiplat/graph/{domain_id}.json (optional, backward compat)
 """
 
 from __future__ import annotations
+import logging
 
 import json as _json
 import os as _os
@@ -178,6 +179,7 @@ class GraphIndex:
                 relation_label=inverse_label or inverse_name, confidence=confidence,
                 inferred=inferred, rule_name=rule_name,
             )
+        self._invalidate_cache()
 
     def _add_edge_internal(
         self, src: str, tgt: str, rname: str, *,
@@ -394,6 +396,7 @@ class GraphIndex:
         conn.execute("DELETE FROM graph_hyperedges WHERE domain_id=? AND event_id=?",
                      (self.domain_id, event_id))
         conn.commit()
+        self._invalidate_cache()
         return True
 
     # ── Edge Operations (binary) ──────────────────────────────────
@@ -542,8 +545,8 @@ class GraphIndex:
                     if emb_json:
                         try:
                             edge.embedding = _json.loads(emb_json)
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            logging.debug(str(e), exc_info=True)
                     graph._nodes[src].out_edges.append(edge)
                     graph._nodes[tgt].in_edges.append(edge)
             # Load hyperedges from SQL
@@ -567,8 +570,8 @@ class GraphIndex:
                     if emb_json:
                         try:
                             he.embedding = _json.loads(emb_json)
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            logging.debug(str(e), exc_info=True)
                     graph._hyperedges[ev_id] = he
             except _sqlite3.OperationalError:
                 pass  # Table doesn't exist yet (pre-migration)
@@ -623,8 +626,8 @@ class GraphIndex:
         try:
             from core.harness.ontology_engine.traversal_cache import get_traversal_cache
             get_traversal_cache(self.domain_id).invalidate()
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
     # ── Graph Snapshots (versioning + rollback) ────────────────────
 

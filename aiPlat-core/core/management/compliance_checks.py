@@ -9,6 +9,7 @@ to auto-generate compliance reports in those frameworks.
 """
 
 from __future__ import annotations
+import logging
 
 import os
 import re
@@ -177,10 +178,10 @@ async def check_shell_agents(rt, repo_root) -> Dict[str, Any]:
                     for issue in validate_agent_file(md_path):
                         if issue.severity in ("error", "warn") and "shell" in issue.message.lower():
                             shell_agents.append(f"workspace:{md_path.parent.name}")
-                except Exception:
-                    pass
-    except Exception:
-        pass
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     if shell_agents:
         return {

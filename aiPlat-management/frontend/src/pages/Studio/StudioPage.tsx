@@ -358,7 +358,7 @@ export default function StudioPage() {
         deployEs.close();
       });
 
-      deployEs.addEventListener('rollback_failed_critical', (e) => {
+      deployEs.addEventListener('rollback_failed_critical', () => {
         setDeployHealthStatus('failed');
         setPhase('completed');
         setError('部署失败且回滚失败！请手动检查部署目录。');

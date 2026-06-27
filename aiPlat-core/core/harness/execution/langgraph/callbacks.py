@@ -1,3 +1,4 @@
+import logging
 """
 LangGraph Callbacks Module
 
@@ -72,14 +73,14 @@ class CallbackRegistry:
         for handler in self._handlers[context.event]:
             try:
                 await handler(context)
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
         
         for handler in self._global_handlers:
             try:
                 await handler(context)
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
 
 
 class CallbackManager:

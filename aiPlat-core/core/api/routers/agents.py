@@ -14,6 +14,7 @@ from core.harness.integration import KernelRuntime, get_harness
 from core.harness.kernel.runtime import get_kernel_runtime
 from core.harness.kernel.types import ExecutionRequest
 from core.schemas_agents import AgentCreateRequest, AgentUpdateRequest
+import logging
 
 router = APIRouter()
 
@@ -381,8 +382,8 @@ async def execute_agent(agent_id: str, request: dict, http_request: Request, rt:
             from core.services.implicit_feedback import get_implicit_feedback_collector
             collector = get_implicit_feedback_collector()
             await collector.record(run_id=run_id, signal_type="response_delivered", session_id=session_id)
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
     # Cache paused requests in memory (minimal resume semantics).
     try:
@@ -420,15 +421,15 @@ async def execute_agent(agent_id: str, request: dict, http_request: Request, rt:
                         msg_text += f"Execution ID: {exec_id}\n"
                         msg = GatewayMessage(channel="feishu", channel_chat_id="default", text=msg_text)
                         await gw.handle_message(msg)
-                except Exception:
-                    pass
-    except Exception:
-        pass
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     try:
         await _audit_execute(rt, http_request=http_request, payload=payload, resource_type="agent", resource_id=str(agent_id), resp=resp)
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
     return JSONResponse(
         status_code=200 if resp.get("ok") else int(getattr(result, "http_status", 500) or 500),
         content=resp,
@@ -501,7 +502,7 @@ async def resume_agent_execution(execution_id: str, request: dict, rt: RuntimeDe
                     change_id = one.get("change_id")
             except Exception:
                 change_id = None
-            raise HTTPException(
+            raise HTTPException(  # noqa: error-structured
                 status_code=409,
                 detail=gate_error_envelope(
                     code="not_approved",
@@ -546,8 +547,8 @@ async def resume_agent_execution(execution_id: str, request: dict, rt: RuntimeDe
     try:
         if (result.payload or {}).get("status") == "completed":
             _paused_agent_executions.pop(execution_id, None)
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     payload2 = result.payload or {}
     payload2["resumed_from_execution_id"] = execution_id

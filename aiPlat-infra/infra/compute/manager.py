@@ -3,6 +3,7 @@ import os
 from typing import List, Optional, Dict
 from .base import ComputeManager
 from .schemas import ResourceRequest, Allocation, Node, Task, TaskStatus, ComputeConfig
+import logging
 
 
 class LocalComputeManager(ComputeManager):
@@ -190,8 +191,8 @@ class KubernetesComputeManager(ComputeManager):
 
         try:
             api.create_custom_object(group, version, "", plural, task_obj)
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
         self._tasks[task_id] = TaskStatus(id=task_id, state="pending", progress=0.0)
         return task_id

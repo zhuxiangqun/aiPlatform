@@ -6,6 +6,7 @@ from typing import Any, Dict, List, Optional, Tuple
 from . import video_retrieval as _video_retrieval
 from core.api.facades.kb_facade import kb_llm_chat_complete as chat_complete, kb_llm_enabled as llm_enabled
 from core.api.facades.kb_facade import kb_extract_keywords, kb_get_tenant_storage as get_tenant_storage
+import logging
 
 
 def _get_keywords(text: str) -> List[str]:
@@ -206,8 +207,8 @@ async def query_elements(
             if llm_ans:
                 answer = llm_ans
                 generation_mode = "llm"
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
     return {
         "tenant_id": tenant_id,

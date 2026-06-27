@@ -10,6 +10,7 @@ Supported formats:
 """
 
 from __future__ import annotations
+import logging
 
 import json as _json
 import os as _os
@@ -201,19 +202,19 @@ def get_all_adapters() -> List[Any]:
     try:
         from core.management.coze_adapter import CozeAdapter
         adapters.append(CozeAdapter())
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
     try:
         from core.management.dify_adapter import DifyAdapter
         adapters.append(DifyAdapter())
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
     try:
         from core.management.n8n_langchain_adapter import N8nAdapter, LangChainAdapter
         adapters.append(N8nAdapter())
         adapters.append(LangChainAdapter())
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
     return adapters
 
 

@@ -5,6 +5,7 @@ Only loaded when AGENT.md capabilities frontmatter scanning fails to find a matc
 Per CLAUDE.md §5.29: no hardcoded business role names or agent IDs in core.
 """
 from __future__ import annotations
+import logging
 
 import json
 import os
@@ -18,8 +19,8 @@ def _load_role_agent_map() -> Dict[str, str]:
     if raw:
         try:
             return json.loads(raw)
-        except (json.JSONDecodeError, TypeError):
-            pass
+        except (json.JSONDecodeError, TypeError) as e:
+            logging.debug(str(e), exc_info=True)
     return {}
 
 
@@ -80,8 +81,8 @@ def _scan_agent_capabilities() -> Dict[str, List[str]]:
                         agent_caps = fm.get("capabilities") or fm.get("skills") or []
                         if isinstance(agent_caps, list):
                             caps[agent_name] = [str(c).lower() for c in agent_caps]
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
     return caps
 
 

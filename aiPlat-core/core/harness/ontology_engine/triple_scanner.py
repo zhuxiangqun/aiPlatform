@@ -9,6 +9,7 @@ Usage:
 """
 
 from __future__ import annotations
+import logging
 
 import os
 import sys
@@ -51,8 +52,8 @@ def _parse_frontmatter(path: Path) -> Dict[str, Any]:
                 import yaml
                 fm = yaml.safe_load(parts[1])
                 return fm if isinstance(fm, dict) else {}
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
     return {}
 
 
@@ -151,13 +152,13 @@ async def scan_and_populate(store: TripleStore = None) -> Dict[str, Any]:
                 triples.append((agent_urn, "uses_skill",
                                _make_urn("skill", str(skill_dep)),
                                1.0, "code_scan", {}))
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     # ── 4. Pipeline → Wiki (from PipelineStageConfig) ──
     try:
-        from core.apps.agents.discovery import AgentDiscovery
-        discovery = AgentDiscovery()
+        from core.harness.integration import get_agent_discovery
+        discovery = get_agent_discovery()()
         for agent_id in (getattr(discovery, 'list_ids', lambda: [])() or []):
             try:
                 from core.api.core_facade import CoreFacade
@@ -169,10 +170,10 @@ async def scan_and_populate(store: TripleStore = None) -> Dict[str, Any]:
                         triples.append((stage_urn, "depends_on_wiki",
                                        _make_urn("wiki", kb),
                                        1.0, "code_scan", {}))
-            except Exception:
-                pass
-    except Exception:
-        pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     # ── 5. Batch write ────────────────────────────────
     if triples:

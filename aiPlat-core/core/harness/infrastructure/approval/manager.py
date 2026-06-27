@@ -153,8 +153,8 @@ class ApprovalManager:
                     timestamp=datetime.utcfromtimestamp(float(res.get("timestamp") or datetime.now(timezone.utc).timestamp())),
                     metadata=res.get("metadata") or {},
                 )
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
         return req
 
     async def _persist(self, req: ApprovalRequest) -> None:
@@ -275,13 +275,13 @@ class ApprovalManager:
             try:
                 if hasattr(context, "operation_context") and isinstance(context.operation_context, dict):
                     meta.setdefault("operation_context", dict(context.operation_context))
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
             try:
                 if getattr(context, "session_id", None):
                     meta.setdefault("session_id", getattr(context, "session_id"))
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
             request = ApprovalRequest(
                 request_id=str(uuid.uuid4()),
                 user_id=context.user_id,
@@ -305,8 +305,8 @@ class ApprovalManager:
                 # fire-and-forget persistence
                 import asyncio
                 asyncio.create_task(self._persist(request))
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
             return request
         
         expires_at = None
@@ -317,13 +317,13 @@ class ApprovalManager:
         try:
             if hasattr(context, "operation_context") and isinstance(context.operation_context, dict):
                 meta.setdefault("operation_context", dict(context.operation_context))
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
         try:
             if getattr(context, "session_id", None):
                 meta.setdefault("session_id", getattr(context, "session_id"))
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
         request = ApprovalRequest(
             request_id=str(uuid.uuid4()),
             user_id=context.user_id,
@@ -344,8 +344,8 @@ class ApprovalManager:
         try:
             import asyncio
             asyncio.create_task(self._persist(request))
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
         
         return request
 
@@ -723,16 +723,16 @@ class ApprovalManager:
                 user_id="system",
                 session_id="auto_iteration",
             )
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
     def _notify_callbacks(self, event: str, request: ApprovalRequest) -> None:
         """Notify registered callbacks of an event."""
         for callback in self._callbacks.get(event, []):
             try:
                 callback(request)
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
 
 
 def create_approval_manager(

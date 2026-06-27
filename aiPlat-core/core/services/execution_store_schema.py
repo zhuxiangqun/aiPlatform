@@ -9,6 +9,7 @@ Per architecture contract (docs/index.md §Layer 2).
 """
 
 from __future__ import annotations
+import logging
 
 PRAGMAS = [
     "PRAGMA journal_mode=WAL;",
@@ -214,8 +215,8 @@ def execute_schema(conn):
     for sql in ALL_TABLES:
         try:
             conn.execute(sql)
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
     conn.commit()
 
 

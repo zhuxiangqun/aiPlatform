@@ -15,6 +15,7 @@ class TestNodeManager:
         """Create node manager"""
         config = {
             "kubernetes_api": "https://k8s-api.example.com",
+            "standalone_mode": False,
             "driver_versions": ["535.54.03", "535.104.05"],
             "auto_drain_before_upgrade": True
         }
@@ -155,6 +156,7 @@ class TestServiceManager:
         """Create service manager"""
         config = {
             "kubernetes_api": "https://k8s-api.example.com",
+            "standalone_mode": False,
             "default_namespace": "test-namespace"
         }
         from infra.management.service.manager import ServiceManager
@@ -215,6 +217,7 @@ class TestSchedulerManager:
         """Create scheduler manager"""
         config = {
             "kubernetes_api": "https://k8s-api.example.com",
+            "standalone_mode": False,
             "default_scheduler": "default-scheduler"
         }
         from infra.management.scheduler.manager import SchedulerManager
@@ -271,11 +274,11 @@ class TestSchedulerManager:
     @pytest.mark.asyncio
     async def test_cancel_task(self, manager):
         """Test cancel task"""
-        await manager.submit_task({"name": "task-01"})
-        await manager.cancel_task("task-01")
+        task = await manager.submit_task({"name": "task-01"})
+        await manager.cancel_task(task.id)
         
-        task = await manager.get_task("task-01")
-        assert task.status == "cancelled"
+        task2 = await manager.get_task(task.id)
+        assert task2.status == "cancelled"
     
     @pytest.mark.asyncio
     async def test_get_queue_status(self, manager):

@@ -9,6 +9,7 @@ Callers:
   - Any AI agent that needs to read documents before reasoning
 """
 from __future__ import annotations
+import logging
 
 import os
 import re
@@ -72,8 +73,8 @@ def parse_markdown(file_path: str) -> List[Dict[str, Any]]:
                 fm = _yaml.safe_load(parts[1]) or {}
                 if isinstance(fm, dict):
                     frontmatter = {k: fm[k] for k in fm}
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
             body = parts[2]
 
     # Extract [[wikilinks]]
@@ -106,18 +107,7 @@ def parse_markdown(file_path: str) -> List[Dict[str, Any]]:
 
 # ── XLSX ──
 
-def parse_xlsx(file_path: str) -> List[Dict[str, Any]]:
-    try: from openpyxl import load_workbook
-    except ImportError: return _fallback_text(file_path, "xlsx")
-    wb = load_workbook(file_path, read_only=True, data_only=True)
-    elements: List[Dict[str, Any]] = []
-    for si, sheet_name in enumerate(wb.sheetnames):
-        ws = wb[sheet_name]
-        rows = [[str(c).strip() if c is not None else "" for c in row] for row in ws.iter_rows(values_only=True) if any(c is not None for c in row)]
-        if rows:
-            elements.append({"type": "table", "text": "\n".join(" | ".join(r) for r in rows), "page_idx": si, "cells": rows, "meta": {"source": "xlsx", "sheet_name": sheet_name}})
-    wb.close()
-    return elements or _fallback_text(file_path, "xlsx")
+
 
 
 # ── CSV ──
@@ -139,26 +129,7 @@ def parse_csv(file_path: str) -> List[Dict[str, Any]]:
 
 # ── PDF ──
 
-def parse_pdf(file_path: str) -> List[Dict[str, Any]]:
-    elements: List[Dict[str, Any]] = []
-    try:
-        import fitz
-        doc = fitz.open(file_path)
-        for pi in range(len(doc)):
-            text = doc[pi].get_text().strip()
-            if text: elements.append({"type": "text", "text": text, "page_idx": pi, "cells": None, "meta": {"source": "pdf", "engine": "pymupdf"}})
-        doc.close()
-        if elements: return elements
-    except ImportError: pass
-    try:
-        import pdfplumber
-        with pdfplumber.open(file_path) as pdf:
-            for pi, page in enumerate(pdf.pages):
-                text = page.extract_text()
-                if text and text.strip(): elements.append({"type": "text", "text": text.strip(), "page_idx": pi, "cells": None, "meta": {"source": "pdf", "engine": "pdfplumber"}})
-        if elements: return elements
-    except ImportError: pass
-    return elements or _fallback_text(file_path, "pdf")
+
 
 
 # ── MarkItDown (unified DOCX/PPTX/XLSX/PDF/HTML → structured Markdown) ──
@@ -284,7 +255,7 @@ def parse_eml(file_path: str) -> List[Dict[str, Any]]:
         return [{"type": "text", "text": f"[email parse failed: {e}]", "page_idx": 0, "cells": None, "meta": {"source": "eml", "error": str(e)}}]
 
 
-__all__ = ["parse_docx", "parse_pptx", "parse_markdown", "parse_xlsx", "parse_csv", "parse_pdf", "parse_audio", "parse_image", "parse_json_document", "parse_eml", "parse_markitdown", "parse_html", "extract_images_from_document", "describe_images"]
+__all__ = ["parse_docx", "parse_pptx", "parse_markdown", "parse_csv", "parse_audio", "parse_image", "parse_json_document", "parse_eml", "parse_markitdown", "parse_html", "extract_images_from_document", "describe_images"]
 
 
 # ── Image extraction from documents ──

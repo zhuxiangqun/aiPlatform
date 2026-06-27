@@ -4,6 +4,7 @@ Platform Onboarding routes — tenant bootstrap and initial setup.
 Migrated from aiPlat-core/core/api/routers/onboarding.py per architecture contract.
 """
 from __future__ import annotations
+import logging
 
 
 import os
@@ -95,8 +96,8 @@ async def _require_onboarding_approval(*, operation: str, user_id: str, details:
     req = mgr.create_request(ctx, rule=rule)
     try:
         await mgr._persist(req)  # type: ignore[attr-defined]
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
     return req.request_id
 
 
@@ -146,8 +147,8 @@ async def create_onboarding_evidence(request: Dict[str, Any], http_request: Requ
             links.setdefault("approvals_ui", "/core/approvals")
             links.setdefault("syscalls_ui", f"/diagnostics/syscalls?approval_request_id={approval_request_id}")
             links.setdefault("audit_ui", f"/diagnostics/audit?action=onboarding_evidence&request_id={approval_request_id}")
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     rec = await store.create_onboarding_evidence(
         tenant_id=str(tid),
@@ -177,8 +178,8 @@ async def create_onboarding_evidence(request: Dict[str, Any], http_request: Requ
                 "created_at": time.time(),
             }
         )
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     try:
         links2 = dict(rec.get("links") or {})
@@ -191,8 +192,8 @@ async def create_onboarding_evidence(request: Dict[str, Any], http_request: Requ
         links2.setdefault("approvals_ui", "/core/approvals")
         rec["links"] = links2
         await store.update_onboarding_evidence_links(tenant_id=str(tid), evidence_id=str(rec.get("id")), links=links2)
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     try:
         req_id = str(approval_request_id) if approval_request_id else str(rec.get("id") or "")
@@ -213,8 +214,8 @@ async def create_onboarding_evidence(request: Dict[str, Any], http_request: Requ
                 "links": links,
             },
         )
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
     return {"status": "ok", "evidence": rec}
 
 
@@ -266,8 +267,8 @@ async def set_default_llm(request: OnboardingDefaultLLMRequest, _auth: str = Dep
                     approval_request_id=rid,
                     user_id="admin",
                 )
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
             return {"status": "approval_required", "approval_request_id": rid}
         if not _is_approval_resolved_approved(request.approval_request_id):
             try:
@@ -282,8 +283,8 @@ async def set_default_llm(request: OnboardingDefaultLLMRequest, _auth: str = Dep
                     approval_request_id=request.approval_request_id,
                     user_id="admin",
                 )
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
             raise HTTPException(
                 status_code=409,
                 detail=gate_error_envelope(
@@ -308,8 +309,8 @@ async def set_default_llm(request: OnboardingDefaultLLMRequest, _auth: str = Dep
                 approval_request_id=request.approval_request_id,
                 user_id="admin",
             )
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
         raise HTTPException(status_code=404, detail="adapter_not_found")
 
     try:
@@ -327,8 +328,8 @@ async def set_default_llm(request: OnboardingDefaultLLMRequest, _auth: str = Dep
                 approval_request_id=request.approval_request_id,
                 user_id="admin",
             )
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
         raise
 
     try:
@@ -342,8 +343,8 @@ async def set_default_llm(request: OnboardingDefaultLLMRequest, _auth: str = Dep
             approval_request_id=request.approval_request_id,
             user_id="admin",
         )
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
     return {"status": "updated", "default_llm": res}
 
 
@@ -372,8 +373,8 @@ async def init_default_tenant(request: OnboardingInitTenantRequest, _auth: str =
                     approval_request_id=rid,
                     user_id="admin",
                 )
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
             return {"status": "approval_required", "approval_request_id": rid}
         if not _is_approval_resolved_approved(request.approval_request_id):
             try:
@@ -388,8 +389,8 @@ async def init_default_tenant(request: OnboardingInitTenantRequest, _auth: str =
                     approval_request_id=request.approval_request_id,
                     user_id="admin",
                 )
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
             raise HTTPException(
                 status_code=409,
                 detail=gate_error_envelope(
@@ -415,8 +416,8 @@ async def init_default_tenant(request: OnboardingInitTenantRequest, _auth: str =
                 approval_request_id=request.approval_request_id,
                 user_id="admin",
             )
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
         raise
 
     policy_res = None
@@ -437,8 +438,8 @@ async def init_default_tenant(request: OnboardingInitTenantRequest, _auth: str =
                     approval_request_id=request.approval_request_id,
                     user_id="admin",
                 )
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
             raise
 
     try:
@@ -452,8 +453,8 @@ async def init_default_tenant(request: OnboardingInitTenantRequest, _auth: str =
             approval_request_id=request.approval_request_id,
             user_id="admin",
         )
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
     return {"status": "initialized", "tenant": tenant, "tenant_policy": policy_res}
 
 
@@ -482,8 +483,8 @@ async def set_autosmoke_config(request: OnboardingAutosmokeConfigRequest, _auth:
                     approval_request_id=rid,
                     user_id="admin",
                 )
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
             return {"status": "approval_required", "approval_request_id": rid}
         if not _is_approval_resolved_approved(request.approval_request_id):
             try:
@@ -498,8 +499,8 @@ async def set_autosmoke_config(request: OnboardingAutosmokeConfigRequest, _auth:
                     approval_request_id=request.approval_request_id,
                     user_id="admin",
                 )
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
             raise HTTPException(
                 status_code=409,
                 detail=gate_error_envelope(
@@ -531,8 +532,8 @@ async def set_autosmoke_config(request: OnboardingAutosmokeConfigRequest, _auth:
                 approval_request_id=request.approval_request_id,
                 user_id="admin",
             )
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
         raise
 
     try:
@@ -546,8 +547,8 @@ async def set_autosmoke_config(request: OnboardingAutosmokeConfigRequest, _auth:
             approval_request_id=request.approval_request_id,
             user_id="admin",
         )
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
     return {"status": "updated", "autosmoke": res}
 
 
@@ -575,8 +576,8 @@ async def set_exec_backend(request: OnboardingExecBackendRequest, _auth: str = D
                     approval_request_id=rid,
                     user_id="admin",
                 )
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
             return {"status": "approval_required", "approval_request_id": rid}
         if not _is_approval_resolved_approved(request.approval_request_id):
             try:
@@ -591,8 +592,8 @@ async def set_exec_backend(request: OnboardingExecBackendRequest, _auth: str = D
                     approval_request_id=request.approval_request_id,
                     user_id="admin",
                 )
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
             raise HTTPException(
                 status_code=409,
                 detail=gate_error_envelope(
@@ -615,8 +616,8 @@ async def set_exec_backend(request: OnboardingExecBackendRequest, _auth: str = D
             approval_request_id=request.approval_request_id,
             user_id="admin",
         )
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
     return {"status": "updated", "exec_backend": res}
 
 
@@ -657,8 +658,8 @@ async def set_trusted_skill_keys(request: OnboardingTrustedSkillKeysRequest, _au
                     approval_request_id=rid,
                     user_id="admin",
                 )
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
             return {"status": "approval_required", "approval_request_id": rid}
         if not _is_approval_resolved_approved(request.approval_request_id):
             try:
@@ -673,8 +674,8 @@ async def set_trusted_skill_keys(request: OnboardingTrustedSkillKeysRequest, _au
                     approval_request_id=request.approval_request_id,
                     user_id="admin",
                 )
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
             raise HTTPException(
                 status_code=409,
                 detail=gate_error_envelope(
@@ -697,8 +698,8 @@ async def set_trusted_skill_keys(request: OnboardingTrustedSkillKeysRequest, _au
             approval_request_id=request.approval_request_id,
             user_id="admin",
         )
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
     return {"status": "updated", "trusted_skill_pubkeys": {"keys_count": len(keys_out), "key_ids": [k.get("key_id") for k in keys_out]}}
 
 
@@ -725,10 +726,10 @@ async def generate_skill_key(request: OnboardingGenerateSkillKeyRequest, _auth: 
                         target_type="global_setting", target_id="trusted_skill_pubkeys",
                         args={"action": "generate_key", "key_id": kid}, user_id="admin",
                     )
-                except Exception:
-                    pass
-        except Exception:
-            pass
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
     return {"key_id": kid, "public_key": pk_pem, "private_key": sk_pem, "label": request.label}
 
@@ -763,8 +764,8 @@ async def set_context_config(request: OnboardingContextConfigRequest, _auth: str
                     approval_request_id=rid,
                     user_id="admin",
                 )
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
             return {"status": "approval_required", "approval_request_id": rid}
         if not _is_approval_resolved_approved(request.approval_request_id):
             try:
@@ -779,8 +780,8 @@ async def set_context_config(request: OnboardingContextConfigRequest, _auth: str
                     approval_request_id=request.approval_request_id,
                     user_id="admin",
                 )
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
             raise HTTPException(
                 status_code=409,
                 detail=gate_error_envelope(
@@ -805,8 +806,8 @@ async def set_context_config(request: OnboardingContextConfigRequest, _auth: str
             os.environ["AIPLAT_CONTEXT_CHAR_LIMIT"] = str(int(merged["context_char_limit"]))
         if "context_max_messages" in merged and merged["context_max_messages"] is not None:
             os.environ["AIPLAT_CONTEXT_MAX_MESSAGES"] = str(int(merged["context_max_messages"]))
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     res = await store.upsert_global_setting(key="context", value=merged)
     try:
@@ -820,8 +821,8 @@ async def set_context_config(request: OnboardingContextConfigRequest, _auth: str
             approval_request_id=request.approval_request_id,
             user_id="admin",
         )
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
     return {"status": "updated", "context": res}
 
 
@@ -860,8 +861,8 @@ async def migrate_secrets(request: OnboardingSecretsMigrateRequest, _auth: str =
                     approval_request_id=rid,
                     user_id="admin",
                 )
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
             return {"status": "approval_required", "approval_request_id": rid}
         if not _is_approval_resolved_approved(request.approval_request_id):
             try:
@@ -876,8 +877,8 @@ async def migrate_secrets(request: OnboardingSecretsMigrateRequest, _auth: str =
                     approval_request_id=request.approval_request_id,
                     user_id="admin",
                 )
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
             raise HTTPException(
                 status_code=409,
                 detail=gate_error_envelope(
@@ -903,8 +904,8 @@ async def migrate_secrets(request: OnboardingSecretsMigrateRequest, _auth: str =
                 approval_request_id=request.approval_request_id,
                 user_id="admin",
             )
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
         raise HTTPException(status_code=400, detail=str(e))
 
     st = await store.get_adapter_secrets_status()
@@ -919,8 +920,8 @@ async def migrate_secrets(request: OnboardingSecretsMigrateRequest, _auth: str =
             approval_request_id=request.approval_request_id,
             user_id="admin",
         )
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
     return {"status": "migrated", "result": res, "secrets_status": st}
 
 
@@ -947,8 +948,8 @@ async def set_strong_gate(request: OnboardingStrongGateRequest, _auth: str = Dep
                     approval_request_id=rid,
                     user_id="admin",
                 )
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
             return {"status": "approval_required", "approval_request_id": rid}
         if not _is_approval_resolved_approved(request.approval_request_id):
             try:
@@ -963,8 +964,8 @@ async def set_strong_gate(request: OnboardingStrongGateRequest, _auth: str = Dep
                     approval_request_id=request.approval_request_id,
                     user_id="admin",
                 )
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
             raise HTTPException(
                 status_code=409,
                 detail=gate_error_envelope(
@@ -977,8 +978,8 @@ async def set_strong_gate(request: OnboardingStrongGateRequest, _auth: str = Dep
 
     try:
         platform_store.upsert_tenant_by_id(tenant_id=tenant_id, name=tenant_id)
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     cur = await store.get_tenant_policy(tenant_id=tenant_id)
     policy = (cur or {}).get("policy") if isinstance(cur, dict) else None
@@ -1018,8 +1019,8 @@ async def set_strong_gate(request: OnboardingStrongGateRequest, _auth: str = Dep
                 approval_request_id=request.approval_request_id,
                 user_id="admin",
             )
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
         raise
 
     try:
@@ -1033,6 +1034,6 @@ async def set_strong_gate(request: OnboardingStrongGateRequest, _auth: str = Dep
             approval_request_id=request.approval_request_id,
             user_id="admin",
         )
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
     return {"status": "updated", "tenant_policy": saved, "enabled": enabled}

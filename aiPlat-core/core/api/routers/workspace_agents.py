@@ -246,8 +246,8 @@ async def create_workspace_agent(request: AgentCreateRequest, http_request: Requ
                                 from core.management.asset_installer import AgentInstaller
                                 inst = AgentInstaller(target_base_dir=base)
                                 inst._enrich_asset_frontmatter(agent_dir)
-                            except Exception:
-                                pass
+                            except Exception as e:
+                                logging.debug(str(e), exc_info=True)
                         else:
                             # Fallback: flat zip without AGENT.md wrapper dir
                             with zipfile.ZipFile(io.BytesIO(zip_data)) as zf:
@@ -261,16 +261,16 @@ async def create_workspace_agent(request: AgentCreateRequest, http_request: Requ
                                     target.parent.mkdir(parents=True, exist_ok=True)
                                     with zf.open(name) as src:
                                         target.write_bytes(src.read())
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
         # Mark as pending verification (best-effort)
         try:
             await mgr.update_agent(
                 str(agent.id),
                 metadata={"verification": {"status": "pending", "updated_at": time.time(), "source": "autosmoke"}},
             )
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
         # Auto-smoke (async, dedup): trigger on create/update to validate the full chain.
         try:
@@ -295,8 +295,8 @@ async def create_workspace_agent(request: AgentCreateRequest, http_request: Requ
                     }
                     try:
                         await mgr.update_agent(agent_id, metadata={"verification": ver})
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        logging.debug(str(e), exc_info=True)
 
                 await enqueue_autosmoke(
                     execution_store=store,
@@ -308,8 +308,8 @@ async def create_workspace_agent(request: AgentCreateRequest, http_request: Requ
                     detail={"op": "create", "name": agent.name},
                     on_complete=_on_complete,
                 )
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
         # Auto-grant execute permission to the creating user
         try:
@@ -322,8 +322,8 @@ async def create_workspace_agent(request: AgentCreateRequest, http_request: Requ
                 pm = get_permission_manager()
             if pm and hasattr(pm, "grant_permission"):
                 pm.grant_permission(str(actor_id), str(agent.id), "execute", granted_by="auto_create")
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
         return {"id": agent.id, "status": "created", "name": agent.name}
     except ValueError as e:
@@ -451,8 +451,8 @@ def _scan_skills_direct() -> List[Dict[str, Any]]:
             import core as _core
             if hasattr(_core, '__file__') and _core.__file__:
                 engine_root = _Py(_os.path.dirname(_core.__file__)) / "engine" / "skills"
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
     
     aiplat_home = _os.getenv("AIPLAT_HOME", _os.path.expanduser("~/.aiplat"))
     workspace_root = _Py(aiplat_home) / "skills"
@@ -614,8 +614,8 @@ def _cleanup_expired_tasks() -> None:
             data = _task_json.loads(p.read_text())
             if now - data.get("created_at", 0) > _TASK_TTL:
                 p.unlink(missing_ok=True)
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
 
 @router.get("/workspace/agents/auto-fill/{task_id}")
@@ -624,7 +624,7 @@ async def poll_auto_fill(task_id: str):
     _cleanup_expired_tasks()
     task = _read_task(task_id)
     if not task:
-        raise HTTPException(404, f"任务 {task_id} 不存在或已过期")
+        raise HTTPException(status_code=404, detail=f"任务 {task_id} 不存在或已过期")
     return {
         "task_id": task_id,
         "status": task["status"],
@@ -686,7 +686,7 @@ async def poll_role_definition(task_id: str):
     _cleanup_expired_tasks()
     task = _read_task(task_id)
     if not task:
-        raise HTTPException(404, f"任务 {task_id} 不存在或已过期")
+        raise HTTPException(status_code=404, detail=f"任务 {task_id} 不存在或已过期")
     return {
         "task_id": task_id,
         "status": task["status"],
@@ -968,8 +968,8 @@ async def _build_wf_catalog() -> List[str]:
                     wdesc = str(data.get("description", "") or "")[:100]
                     ext = f" | {wdesc}" if wdesc else ""
                     entries.append(f"  - {f.stem} | {nm} | stages={sz}{ext}")
-                except Exception:
-                    pass
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
         if not entries:
             entries = ["(no workflow templates available)"]
     except Exception:
@@ -1158,8 +1158,8 @@ async def classify_user_request(request: Request, rt: RuntimeDep = None):
                         agent_desc = str((getattr(agent, "metadata", {}) or {}).get("description", ""))
                         agent_skills = list(getattr(agent, "skills", []) or [])
                         agent_tools = list(getattr(agent, "tools", []) or [])
-                except Exception:
-                    pass
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
 
     ctx = _Rctx(
         user_message=message,
@@ -1244,8 +1244,8 @@ async def update_workspace_agent(agent_id: str, request: AgentUpdateRequest, htt
     # Mark as pending verification (best-effort)
     try:
         await mgr.update_agent(str(agent_id), metadata={"verification": {"status": "pending", "updated_at": time.time(), "source": "autosmoke"}})
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     # Auto-smoke (async, dedup)
     try:
@@ -1270,8 +1270,8 @@ async def update_workspace_agent(agent_id: str, request: AgentUpdateRequest, htt
                 }
                 try:
                     await mgr.update_agent(aid, metadata={"verification": ver})
-                except Exception:
-                    pass
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
 
             await enqueue_autosmoke(
                 execution_store=store,
@@ -1283,8 +1283,8 @@ async def update_workspace_agent(agent_id: str, request: AgentUpdateRequest, htt
                 detail={"op": "update"},
                 on_complete=_on_complete,
             )
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
     return {"status": "updated", "id": agent_id}
 
 
@@ -1554,8 +1554,8 @@ async def execute_workspace_agent(agent_id: str, request: dict, http_request: Re
 
     try:
         await _audit_execute(rt, http_request=http_request, payload=payload, resource_type="agent", resource_id=str(agent_id), resp=resp)
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
     return JSONResponse(status_code=200 if resp.get("ok") else 500, content=resp)
 
 
@@ -1614,8 +1614,8 @@ async def sign_workspace_agent(agent_id: str, request: Dict[str, Any], http_requ
         if manifest_path.exists():
             try:
                 manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
         manifest["signature"] = signature
         manifest_path.write_text(json.dumps(manifest, indent=2, ensure_ascii=False), encoding="utf-8")
 
@@ -1712,7 +1712,7 @@ async def enable_workspace_agent(agent_id: str, http_request: Request = None, rt
             )
             approved = await is_approval_resolved_approved(approval_request_id)
             if not approved:
-                raise HTTPException(
+                raise HTTPException(  # noqa: error-structured
                     status_code=409,
                     detail=gate_error_envelope(
                         code="not_approved",
@@ -1734,8 +1734,8 @@ async def enable_workspace_agent(agent_id: str, http_request: Request = None, rt
                         approval_request_id=approval_request_id,
                         user_id="admin",
                     )
-                except Exception:
-                    pass
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
     except HTTPException:
         raise
     except Exception as e:
@@ -1756,8 +1756,8 @@ async def enable_workspace_agent(agent_id: str, http_request: Request = None, rt
                 status="ok",
                 metadata={"change_id": change_id, "approval_request_id": str(approval_request_id) if approval_request_id else None},
             )
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
     return {
         "status": "enabled",
@@ -1898,8 +1898,8 @@ async def detect_agent_import(request: Dict[str, Any], rt: RuntimeDep = None):
         if len(parts) >= 3:
             try:
                 existing = _yaml.safe_load(parts[1]) or {}
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
             sop_body = parts[2].strip() if len(parts) > 2 else agmd_body
 
     name = str(existing.get("name") or "")
@@ -2258,8 +2258,8 @@ async def submit_agent_for_review(agent_id: str, rt: RuntimeDep = None):
             engine_agents = _Path(__file__).resolve().parent.parent.parent.parent / "engine" / "agents" / agent_id / "AGENT.md"
             if engine_agents.exists():
                 agent_path = engine_agents
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     if agent_path:
         try:
@@ -2297,9 +2297,9 @@ async def submit_agent_for_review(agent_id: str, rt: RuntimeDep = None):
                     "source": "config_validator",
                 },
             })
-        except Exception:
-            pass
-        raise HTTPException(
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
+        raise HTTPException(  # noqa: error-structured
             status_code=422,
             detail={
                 "message": f"配置校验未通过：{lint_errors} 个错误，{lint_warnings} 个警告",
@@ -2396,18 +2396,18 @@ async def audit_agent_config(agent_id: str) -> AgentAuditResponse:
     from pathlib import Path as _P
     md_path = _P(os.path.expanduser("~/.aiplat")) / "agents" / agent_id / "AGENT.md"
     if not md_path.exists():
-        raise HTTPException(404, f"Agent '{agent_id}' 的 AGENT.md 不存在")
+        raise HTTPException(status_code=404, detail=f"Agent '{agent_id}' 的 AGENT.md 不存在")
 
     raw = md_path.read_text(encoding="utf-8", errors="ignore")
     parts = raw.split("---", 2)
     if len(parts) < 2:
-        raise HTTPException(400, "AGENT.md YAML frontmatter 解析失败")
+        raise HTTPException(status_code=400, detail="AGENT.md YAML frontmatter 解析失败")
 
     import re as _audit_re, yaml as _yaml
     try:
         fm = _yaml.safe_load(parts[1]) or {}
     except Exception:
-        raise HTTPException(400, "AGENT.md frontmatter YAML 非法")
+        raise HTTPException(status_code=400, detail="AGENT.md frontmatter YAML 非法")
 
     body = parts[2] if len(parts) > 2 else ""
 
@@ -2418,8 +2418,8 @@ async def audit_agent_config(agent_id: str) -> AgentAuditResponse:
         reg = get_tool_registry()
         for tn in (reg.list_tools() or []):
             valid_tools.add(str(tn))
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     # ── Skill catalog ──
     valid_skills: set = set()
@@ -2434,8 +2434,8 @@ async def audit_agent_config(agent_id: str) -> AgentAuditResponse:
                         sk_fm = _yaml.safe_load(sp[1]) or {}
                         name = sk_fm.get("name", d.name)
                         valid_skills.add(name)
-                except Exception:
-                    pass
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
     # Also engine skills
     engine_skill_dir = _P(__file__).resolve().parents[3] / "core" / "engine" / "skills"
     if engine_skill_dir.exists():
@@ -2448,8 +2448,8 @@ async def audit_agent_config(agent_id: str) -> AgentAuditResponse:
                         sk_fm = _yaml.safe_load(sp[1]) or {}
                         name = sk_fm.get("name", d.name)
                         valid_skills.add(name)
-                except Exception:
-                    pass
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
 
     # ── Check tools ──
     tools = fm.get("required_tools") or fm.get("tools") or []
@@ -2652,8 +2652,8 @@ async def audit_agent_config(agent_id: str) -> AgentAuditResponse:
         if _model_name:
             import asyncio
             asyncio.create_task(asyncio.to_thread(record_model_quality, _model_name, "agent_creation", issues))
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     return AgentAuditResponse(
         agent_id=agent_id,

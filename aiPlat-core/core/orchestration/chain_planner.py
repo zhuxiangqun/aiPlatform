@@ -5,6 +5,7 @@ Only loaded when AGENT.md scanning cannot produce a chain. Per CLAUDE.md §5.29:
 no hardcoded business role names, phase strings, or domain-specific chains in core.
 """
 from __future__ import annotations
+import logging
 
 import json
 import os
@@ -20,8 +21,8 @@ def _load_chain_templates() -> Dict[str, List[Dict[str, Any]]]:
     if raw:
         try:
             return json.loads(raw)
-        except (json.JSONDecodeError, TypeError):
-            pass
+        except (json.JSONDecodeError, TypeError) as e:
+            logging.debug(str(e), exc_info=True)
     return {}
 
 
@@ -58,8 +59,8 @@ async def plan_chain(intent: StructuredIntent, model: Any = None) -> List[ChainS
             llm_chain = await _llm_plan_chain(intent, model)
             if llm_chain:
                 return llm_chain
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
     return matched
 
 
@@ -84,8 +85,8 @@ async def _llm_plan_chain(intent: StructuredIntent, model: Any) -> List[ChainSte
         if isinstance(data, list):
             return [ChainStep(id=s.get("id", ""), role=s.get("role", ""),
                               depends_on=s.get("depends_on", [])) for s in data if isinstance(s, dict)]
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
     return []
 
 

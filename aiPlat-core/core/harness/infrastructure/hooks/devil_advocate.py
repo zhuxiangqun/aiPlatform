@@ -143,8 +143,8 @@ class DevilAdvocate:
             end = content.rfind("}") + 1
             if start >= 0 and end > start:
                 return json.loads(content[start:end])
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
         return {"risk_level": 1, "failure_mode": "analysis unavailable",
                 "irreversible": "none", "safer_alternative": "none"}
 

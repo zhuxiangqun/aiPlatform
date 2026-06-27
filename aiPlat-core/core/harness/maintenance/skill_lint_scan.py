@@ -11,6 +11,7 @@ This module keeps side-effects minimal:
 """
 
 from __future__ import annotations
+import logging
 
 import os
 import time
@@ -182,8 +183,8 @@ async def run_skill_lint_scan(
                     code_stats["warnings"][c] = int(code_stats["warnings"].get(c) or 0) + 1
                     if c not in code_stats["warning_examples"] and it.get("message"):
                         code_stats["warning_examples"][c] = str(it.get("message"))
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
             totals["skills"] += 1
             totals["errors"] += int(summ.get("error_count") or 0)
             totals["warnings"] += int(summ.get("warning_count") or 0)
@@ -215,8 +216,8 @@ async def run_skill_lint_scan(
                         change_id=None,
                         detail={"scope": sc, "summary": summ},
                     )
-                except Exception:
-                    pass
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
 
     finished_at = time.time()
     # Top issue codes for UI (keep payload compact, do not include full per-skill lint by default)
@@ -298,7 +299,7 @@ async def run_skill_lint_scan(
             if hook:
                 await _deliver_webhook_if_configured(url=str(hook), event=ev)
             out["alert"] = {"severity": severity, "event": ev}
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
     return out

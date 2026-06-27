@@ -10,6 +10,7 @@ Important:
 """
 
 from __future__ import annotations
+import logging
 
 from dataclasses import dataclass
 from typing import Any, Dict, Optional
@@ -96,8 +97,8 @@ class LearningApplier:
                                     version=str(cand.get("version") or ""),
                                     summary=str(payload.get("summary") or ""),
                                 )
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
 
         payload = stable.get("payload") if isinstance(stable.get("payload"), dict) else {}
         return ActiveRelease(

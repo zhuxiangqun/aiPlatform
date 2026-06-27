@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 from enum import Enum
 import asyncio
 import time
+import logging
 
 
 class MetricType(Enum):
@@ -156,8 +157,8 @@ class MonitoringSystem:
         for handler in self.alert_handlers:
             try:
                 handler(alert)
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
 
     async def start_monitoring(self):
         self._running = True

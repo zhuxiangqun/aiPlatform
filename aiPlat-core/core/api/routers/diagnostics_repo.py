@@ -14,6 +14,7 @@ from core.governance.changeset import record_changeset
 from core.governance.gating import new_change_id
 from core.harness.kernel.runtime import get_kernel_runtime
 from core.schemas_repo import RepoChangesetPreviewRequest, RepoGitBranchRequest, RepoGitCommitRequest, RepoStagedPreviewRequest, RepoTestsRunRequest
+import logging
 
 
 router = APIRouter()
@@ -134,13 +135,13 @@ async def diagnostics_repo_changeset_preview(request: RepoChangesetPreviewReques
             try:
                 if a.isdigit():
                     added += int(a)
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
             try:
                 if d.isdigit():
                     deleted += int(d)
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
         return {"files_changed": files, "lines_added": added, "lines_deleted": deleted}
 
     out: Dict[str, Any] = {
@@ -333,8 +334,8 @@ async def diagnostics_repo_changeset_record(request: RepoChangesetPreviewRequest
                 },
                 user_id="admin",
             )
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
         raise
 
     # ==================== governance: approval when high-risk / non-local ====================
@@ -393,8 +394,8 @@ async def diagnostics_repo_changeset_record(request: RepoChangesetPreviewRequest
                 approval_request_id = req.request_id
                 try:
                     await _approval_manager()._persist(req)  # type: ignore[union-attr]
-                except Exception:
-                    pass
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
 
             try:
                 await record_changeset(
@@ -430,8 +431,8 @@ async def diagnostics_repo_changeset_record(request: RepoChangesetPreviewRequest
                     approval_request_id=str(approval_request_id) if approval_request_id else None,
                     user_id=user_id,
                 )
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
             return {
                 "status": "approval_required",
                 "approval_request_id": approval_request_id,
@@ -475,8 +476,8 @@ async def diagnostics_repo_changeset_record(request: RepoChangesetPreviewRequest
             approval_request_id=str(approval_request_id) if approval_request_id else None,
             user_id=user_id,
         )
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
     return {
         "status": "recorded",
         "change_id": change_id,
@@ -551,8 +552,8 @@ async def diagnostics_repo_git_branch(request: RepoGitBranchRequest):
             approval_request_id = req.request_id
             try:
                 await _approval_manager()._persist(req)  # type: ignore[union-attr]
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
         if approval_request_id and not _is_approved(approval_mgr, approval_request_id):
             try:
                 await record_changeset(
@@ -573,8 +574,8 @@ async def diagnostics_repo_git_branch(request: RepoGitBranchRequest):
                     approval_request_id=str(approval_request_id),
                     user_id=user_id,
                 )
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
             return {"status": "approval_required", "approval_request_id": approval_request_id, "change_id": change_id, "links": governance_links(change_id=change_id, approval_request_id=str(approval_request_id)), "backend": backend}
 
     base = str(getattr(request, "base", "") or "").strip() or None
@@ -604,8 +605,8 @@ async def diagnostics_repo_git_branch(request: RepoGitBranchRequest):
             approval_request_id=str(approval_request_id) if approval_request_id else None,
             user_id=user_id,
         )
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     # Keep backward-compatible response fields with the legacy server.py implementation.
     return {
@@ -683,8 +684,8 @@ async def diagnostics_repo_git_commit(request: RepoGitCommitRequest):
             approval_request_id = req.request_id
             try:
                 await _approval_manager()._persist(req)  # type: ignore[union-attr]
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
         if approval_request_id and not _is_approved(approval_mgr, approval_request_id):
             try:
                 await record_changeset(
@@ -697,8 +698,8 @@ async def diagnostics_repo_git_commit(request: RepoGitCommitRequest):
                     approval_request_id=str(approval_request_id),
                     user_id=user_id,
                 )
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
             return {"status": "approval_required", "approval_request_id": approval_request_id, "change_id": change_id, "links": governance_links(change_id=change_id, approval_request_id=str(approval_request_id)), "backend": backend}
 
     # Execute commit
@@ -717,8 +718,8 @@ async def diagnostics_repo_git_commit(request: RepoGitCommitRequest):
             approval_request_id=str(approval_request_id) if approval_request_id else None,
             user_id=user_id,
         )
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
     # Keep backward-compatible response fields with the legacy server.py implementation.
     return {
         "status": "ok",

@@ -1,3 +1,4 @@
+import logging
 """
 MCP Tool Adapter
 
@@ -55,8 +56,8 @@ class MCPToolAdapter(BaseTool):
         if extra_metadata:
             try:
                 metadata.update(extra_metadata)
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
         config = ToolConfig(
             name=f"mcp.{server_name}.{tool_name}",
             description=mcp_tool.description,

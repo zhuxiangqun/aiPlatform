@@ -12,6 +12,7 @@ enabling domain experts to define ontologies without writing code.
 """
 
 from __future__ import annotations
+import logging
 
 import os as _os
 from dataclasses import dataclass, field
@@ -147,6 +148,6 @@ def load_all_domains(base_dir: str = "") -> Dict[str, OntologyDomain]:
         file_path = d / f"{domain_id}.yaml"
         try:
             domains[domain_id] = load_ontology_from_yaml(str(file_path))
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
     return domains

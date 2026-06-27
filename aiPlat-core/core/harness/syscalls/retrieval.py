@@ -93,8 +93,8 @@ def sys_kb_retrieve(
                 para_results = _format_results(para_rows)
                 for p in para_results:
                     p["score"] = 0.05
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
 
         # ── Graph-enhanced document expansion (keep) ──
         if doc_ids:
@@ -108,8 +108,8 @@ def sys_kb_retrieve(
                         expanded_ids.append(gid)
                 if len(expanded_ids) > len(doc_ids):
                     doc_ids = expanded_ids[:max(1, len(doc_ids) + 5)]
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
 
         # ── Unified retrieval via KnowledgeRetriever (replaces kw+vec+RRF+rerank) ──
         from core.harness.knowledge.sqlite_retriever import create_sqlite_retriever
@@ -174,8 +174,8 @@ def sys_kb_retrieve(
                     logging.getLogger("aiplat.retrieval").info(
                         f"Provenance stale filter: {before - len(results)}/{before} results excluded (stale sources)"
                     )
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
     # Peak-End anchoring: most relevant chunk first, second-most last
     # LLM attention decays in the middle 70% of the prompt — put
@@ -239,8 +239,8 @@ def _format_results(rows: list) -> List[Dict[str, Any]]:
         meta = {}
         try:
             meta = _json.loads(d.get("meta_json") or "{}")
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
         out.append({
             "text": str(d.get("text") or ""),
             "doc_id": str(d.get("doc_id") or ""),
@@ -268,8 +268,8 @@ def _cross_encode_rerank(
         from core.harness.infrastructure.base_model_adapter import create_adapter
         adapter = create_adapter("reranker")
         return adapter.rerank(query, candidates, top_k)
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
     try:
         from sentence_transformers import CrossEncoder
         from core.harness.infrastructure.base_model_adapter import resolve_model_name
@@ -388,8 +388,8 @@ def _vector_search_chroma(
                         for i, rid in enumerate(results["ids"][0])]
     except ImportError:
         pass
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
     return None
 
 
@@ -619,7 +619,8 @@ def sys_knowledge_retrieve(
                 kr["summary"] = kr.get("text", "")[:200]
                 kr["score"] = kr.get("score", 0.5)
         except Exception:
-            pass
+            logging.getLogger("retrieval").warning(
+                "sys_knowledge_retrieve KB-only path failed", exc_info=True)
         _total = _time.time() - _t0
         logging.getLogger("retrieval").debug(
             f"sys_knowledge_retrieve: total={_total:.3f}s kb-only results={len(results)}")
@@ -667,6 +668,8 @@ def sys_knowledge_retrieve(
                 kr["score"] = kr.get("score", 0.5)
             return out
         except Exception:
+            logging.getLogger("retrieval").warning(
+                "sys_knowledge_retrieve KB fetch failed", exc_info=True)
             return []
 
     # ── Execute Wiki + KB in parallel ──
@@ -694,16 +697,16 @@ def sys_knowledge_retrieve(
                     "tags": g_results[0].get("tags", []),
                     "source": "graph_index",
                 }]
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     if graph_early_exit:
         _total = _time.time() - _t0
         try:
             from core.harness.memory.metrics import inc_early_exit
             inc_early_exit("graph")
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
         logging.getLogger("retrieval").debug(
             f"sys_knowledge_retrieve: total={_total:.3f}s graph-early-exit results={len(results)}")
         return results
@@ -756,8 +759,8 @@ def sys_knowledge_retrieve(
     try:
         from core.harness.memory.metrics import observe_rrf_latency
         observe_rrf_latency(_total)
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
     logging.getLogger("retrieval").debug(
         f"sys_knowledge_retrieve: total={_total:.3f}s rrf-fused results={len(results)}")
 
@@ -809,8 +812,8 @@ def sys_knowledge_retrieve(
                         "wiki": round(_wiki_time, 4), "kb": round(_kb_time, 4)})
         _l_os.makedirs(_l_os.path.dirname(lat_path), exist_ok=True)
         open(lat_path, "w").write(_l_json.dumps(samples[-1000:]))
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     return results[:top_k]
 

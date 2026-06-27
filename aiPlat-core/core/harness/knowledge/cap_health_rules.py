@@ -11,6 +11,7 @@ Architecture:
 """
 
 from __future__ import annotations
+import logging
 
 import os
 import re
@@ -436,8 +437,8 @@ class CodeHygieneCheck(CapRule):
                     label=n["label"],
                     detail="missing code-hygiene principles (add 'code-hygiene' to required_skills)",
                 ))
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
         return issues
 
     def penalty(self, ctx: CapContext, issues: List[CapIssue]) -> float:
@@ -548,8 +549,8 @@ class CapHealthRegistry:
 
                 score -= rule.penalty(ctx, issues)
                 score += rule.bonus(ctx, issues)
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
 
         # Structural penalties (not per-rule)
         total_tools = by_type.get("tool", 0)

@@ -6,6 +6,7 @@ Used by CI guard (§32) and runtime Skill impact analysis.
 """
 
 from __future__ import annotations
+import logging
 
 import os
 from pathlib import Path
@@ -38,8 +39,8 @@ def _parse_frontmatter(text: str) -> Dict[str, Any]:
                 if key in data and isinstance(data[key], str):
                     data[key] = [data[key]]
             return {str(k): v for k, v in data.items()}
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
     # Fallback: simple line parser
     fm: Dict[str, Any] = {}
     for line in raw.split("\n"):

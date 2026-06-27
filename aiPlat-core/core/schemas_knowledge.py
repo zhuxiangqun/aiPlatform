@@ -17,6 +17,7 @@ class SearchRequest(BaseModel):
 class CollectionCreateRequest(BaseModel):
     name: str
     description: str = ""
+    metadata: Dict[str, Any] = Field(default_factory=dict)
 
 
 class DocumentCreateRequest(BaseModel):

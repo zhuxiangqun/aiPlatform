@@ -32,12 +32,18 @@ echo ""
 # ══════════════════════════════════════════════════════════════
 echo "━━━ Step 1/5: Dead Code Detection ━━━"
 echo ""
-if bash "$SCRIPT_DIR/caller_verify.sh"; then
+# caller_verify.sh exits 1 on raw 0-caller hits; filter_dataclass_dead.py removes
+# known false positives (dataclasses/classes/internal callers) and is the authoritative
+# arbiter (it sys.exit()s on the FILTERED count). Disable pipefail here so the pipeline
+# inherits the filter's exit code, not caller_verify's raw exit.
+set +o pipefail
+if bash "$SCRIPT_DIR/caller_verify.sh" 2>&1 | python3 "$SCRIPT_DIR/filter_dataclass_dead.py"; then
     echo -e "${GREEN}  PASS${NC} Step 1: No 0-caller symbols detected"
 else
     echo -e "${RED}  FAIL${NC} Step 1: 0-caller symbols found (see above)"
     FAILURES=$((FAILURES + 1))
 fi
+set -o pipefail
 
 # ══════════════════════════════════════════════════════════════
 # Step 2: Wiring assertion tests

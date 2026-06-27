@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from typing import Any, Dict, Optional
+import logging
 
 
 class ConnectorDelivery:
@@ -51,8 +52,8 @@ class ConnectorDelivery:
                                     error=None if 200 <= status < 300 else (txt[:500] if isinstance(txt, str) else "failed"),
                                     payload=payload,
                                 )
-                            except Exception:
-                                pass
+                            except Exception as e:
+                                logging.debug(str(e), exc_info=True)
                         if 200 <= status < 300:
                             return {"ok": True, "status": status}
                         last_err = f"http_{status}"
@@ -71,8 +72,8 @@ class ConnectorDelivery:
                             error=str(e),
                             payload=payload,
                         )
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        logging.debug(str(e), exc_info=True)
 
         # DLQ
         if self._store is not None:
@@ -86,7 +87,7 @@ class ConnectorDelivery:
                     attempts=int(attempts),
                     error=str(last_err or "delivery_failed"),
                 )
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
         return {"ok": False, "error": str(last_err or "delivery_failed"), "attempts": int(attempts)}
 

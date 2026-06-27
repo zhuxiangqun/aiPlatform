@@ -1,6 +1,6 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Button, Card, CardContent, CardHeader, Input, Textarea, toast } from '../../../components/ui';
-import { Plus, AlertTriangle, Database, RefreshCw, Trash2 } from 'lucide-react';
+import { Plus, AlertTriangle, Database, Trash2 } from 'lucide-react';
 import { useKBStore } from '../../../stores';
 import { kbApi } from '../../../services';
 import { DocumentGrid } from './DocumentGrid';
@@ -64,7 +64,6 @@ const KnowledgeBasePage: React.FC = () => {
   const [newPageOpen, setNewPageOpen] = useState(false);
   const [unprocessedCount, setUnprocessedCount] = useState(0);
   const [unprocessedDocs, setUnprocessedDocs] = useState<any[]>([]);
-  const [wikiDocIds, setWikiDocIds] = useState<Set<string>>(new Set());
   const [lintResult, setLintResult] = useState<any>(null);
   const [healthTrend, setHealthTrend] = useState<any>(null);
   const [lintLoading, setLintLoading] = useState(false);
@@ -79,8 +78,8 @@ const KnowledgeBasePage: React.FC = () => {
   const [wikiCollections, setWikiCollections] = useState<Array<{ collection_id: string; page_count: number }>>([]);
   const [schema, setSchema] = useState<any>(null);
   const [allSchemas, setAllSchemas] = useState<any[]>([]);
-  const [hasExtension, setHasExtension] = useState(false);
-  const [extensionLabel, setExtensionLabel] = useState('');
+  const [, setHasExtension] = useState(false);
+  const [, setExtensionLabel] = useState('');
   const [extraFields, setExtraFields] = useState<Record<string, string>>({});  // ontology-driven dynamic fields
   const [showOptionalFields, setShowOptionalFields] = useState(false);
   // ── Ontology engine upload state ──
@@ -102,7 +101,6 @@ const KnowledgeBasePage: React.FC = () => {
   const [ontoGraphOpen, setOntoGraphOpen] = useState(false);
   const [ontoGraphData, setOntoGraphData] = useState<any>(null);
   const [modelLog, setModelLog] = useState<any[]>([]);
-  const [latencyData, setLatencyData] = useState<any>(null);
   const [evolutionHistory, setEvolutionHistory] = useState<any[]>([]);
   const [evolving, setEvolving] = useState(false);
   const [evidenceChain, setEvidenceChain] = useState<any>(null);
@@ -397,7 +395,7 @@ const KnowledgeBasePage: React.FC = () => {
       const data = await r.json();
       setOntoMetrics(data); markFresh('onto');
       if (data.source === 'recomputing') {
-        toast('后台重新计算中，预计 1-3 分钟...');
+        toast.info('后台重新计算中，预计 1-3 分钟...');
         // Poll until cache is ready
         for (let i = 0; i < 30; i++) {
           await new Promise(r => setTimeout(r, 3000));
@@ -493,7 +491,7 @@ const KnowledgeBasePage: React.FC = () => {
       fetchOntoSuggestions();
     } catch { toast.error('操作失败'); }
   };
-    const [codeGenSugId, setCodeGenSugId] = useState<string | null>(null);
+    const [, setCodeGenSugId] = useState<string | null>(null);
   const [codeGenResult, setCodeGenResult] = useState<any>(null);
   const handleGenerateCode = async (id: string) => {
     setCodeGenSugId(id);

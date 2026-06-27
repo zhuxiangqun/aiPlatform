@@ -14,6 +14,7 @@ or AIPLAT_EVAL_DIMENSIONS env var. Per CLAUDE.md §5.29.
 """
 
 from __future__ import annotations
+import logging
 
 import os
 import time
@@ -118,8 +119,8 @@ def apply_threshold_gate(
                             "suggested_fix": f"补齐{name}相关指标后重新评估。",
                         },
                     )
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
 
     # Best-effort overall score using weighted average
     from .dimensions import compute_overall_score
@@ -174,8 +175,8 @@ async def persist_evaluation(
             tenant_id=(actor or {}).get("tenant_id") if isinstance(actor, dict) else None,
             payload={"artifact_id": art.artifact_id, "pass": bool(report.get("pass")), "evaluator": evaluator, "version": version},
         )
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
     # audit log (best-effort)
     try:
         if hasattr(execution_store, "add_audit_log") and isinstance(actor, dict):
@@ -189,8 +190,8 @@ async def persist_evaluation(
                 resource_id=str(run_id),
                 detail={"artifact_id": art.artifact_id, "evaluator": evaluator, "pass": bool(report.get("pass"))},
             )
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     # Regression → auto-rollback bridge: REJECTED + primary dimension < 5.0 triggers rollback
     try:
@@ -211,7 +212,7 @@ async def persist_evaluation(
                         error_rate_delta_threshold=0.2,
                         require_approval=False,
                     )
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     return {"artifact_id": art.artifact_id, "version": version}

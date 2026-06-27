@@ -212,8 +212,8 @@ class ApprovalWorkflow:
                 from core.harness.memory.metrics import inc_skill_alert
                 for _ in escalated:
                     inc_skill_alert("approval_timeout")
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
         return escalated
 
     async def _resolve_default_assignee(self, group: str) -> str:
@@ -234,8 +234,8 @@ class ApprovalWorkflow:
             if not ok:
                 logger.error(f"状态转换无效: {msg}")
                 return
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
         logger.info(f"Entity {record.entity_id}: {record.current_state} → {record.proposed_state}")
 
     async def _revert_transition(self, record: ApprovalRecord):

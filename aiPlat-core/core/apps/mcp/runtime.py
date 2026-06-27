@@ -8,6 +8,7 @@ Goal:
 """
 
 from __future__ import annotations
+import logging
 
 import os
 from dataclasses import dataclass, field
@@ -75,13 +76,13 @@ class MCPRuntime:
             for name in state.tool_names:
                 try:
                     tool_registry.unregister(name)
-                except Exception:
-                    pass
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
             self._registered.pop(server_name, None)
         try:
             await self._manager.remove_server(server_name)
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
     def _policy(self, s: Any) -> Dict[str, Any]:
         meta = getattr(s, "metadata", None)
@@ -148,8 +149,8 @@ class MCPRuntime:
                                     "args": {"transport": str(transport), "policy_version": ev.policy_version},
                                 }
                             )
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        logging.debug(str(e), exc_info=True)
                     raise RuntimeError(ev.reason)
             except Exception:
                 # fallback to legacy prod guard
@@ -171,8 +172,8 @@ class MCPRuntime:
                                     "args": {"transport": "stdio"},
                                 }
                             )
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        logging.debug(str(e), exc_info=True)
                     raise RuntimeError("prod policy denies stdio MCP server (set policy.prod_allowed=true to allow)")
 
         cfg = self._to_client_config(s)
@@ -230,8 +231,8 @@ class MCPRuntime:
                             allowed_tools=[match_name.split(".", 2)[-1]],
                         )
                         return match_name
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        logging.debug(str(e), exc_info=True)
         return None
 
     def _to_client_config(self, s: Any) -> MCPClientConfig:

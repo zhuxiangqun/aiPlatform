@@ -1,3 +1,4 @@
+import logging
 """
 Episodic Memory
 
@@ -121,10 +122,10 @@ class EpisodicMemory:
                             try:
                                 from core.harness.memory.metrics import inc_critical_promoted
                                 inc_critical_promoted()
-                            except Exception:
-                                pass
-        except Exception:
-            pass
+                            except Exception as e:
+                                logging.debug(str(e), exc_info=True)
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
     def get_critical_episodes(self, limit: int = 10) -> List[Dict]:
         """Get critical episodes for injection into context (never compressed)."""

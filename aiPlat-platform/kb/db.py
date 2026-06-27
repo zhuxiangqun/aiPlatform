@@ -7,6 +7,7 @@ from typing import Any, Dict, Iterable, Iterator, List, Optional, Tuple
 
 from core.utils.ids import new_prefixed_id
 from core.api.facades.kb_facade import kb_create_infra_db_client
+import logging
 
 
 SCHEMA_SQL = """
@@ -236,8 +237,8 @@ class KBSqlite:
             # Migration: add wiki_status column for existing DBs
             try:
                 conn.execute("ALTER TABLE documents ADD COLUMN wiki_status TEXT NOT NULL DEFAULT ''")
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
             conn.commit()
         # FTS5 full-text search on kb_elements (created separately to handle missing fts5 builds)
         self._ensure_fts5()
@@ -260,10 +261,10 @@ class KBSqlite:
                         (tenant_id, element_id, element_id, doc_id, text),
                     )
                     conn.commit()
-                except Exception:
-                    pass
-        except Exception:
-            pass  # some SQLite builds lack FTS5
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
     def search_fts(self, *, tenant_id: str, query: str, doc_ids: Optional[List[str]] = None,
                    limit: int = 20) -> List[Dict[str, Any]]:

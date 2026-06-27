@@ -12,6 +12,7 @@ API 文档: https://api-docs.deepseek.com/api/create-fine-tuning-job
 """
 
 from __future__ import annotations
+import logging
 
 import json as _json
 import os as _os
@@ -61,8 +62,8 @@ class DeepSeekFineTuneProvider:
                 running = sum(1 for j in jobs if j.get("status") in ("running", "queued", "validating_files"))
                 # DeepSeek allows up to 5 concurrent fine-tuning jobs (common limit)
                 return {"total": 5, "used": running, "available": 5 - running}
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
         return {"total": 0, "used": 0, "available": 0}
 
     def estimate_cost(self, sample_count: int, epochs: int = 3) -> str:

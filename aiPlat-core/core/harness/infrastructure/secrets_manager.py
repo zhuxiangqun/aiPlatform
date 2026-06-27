@@ -52,8 +52,8 @@ class SecretsManager:
         if env_key:
             try:
                 return base64.b64decode(env_key)
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
         if key_path.exists():
             return key_path.read_bytes()
         new_key = AESGCM.generate_key(bit_length=256)
@@ -133,8 +133,8 @@ class SecretsManager:
                 kind=f"secret_{action}",
                 payload={"secret_name": name, "action": action, "timestamp": time.time()},
             ))
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
 
 _secrets_manager: Optional[SecretsManager] = None

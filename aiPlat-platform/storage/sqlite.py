@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from core.api.facades.kb_facade import create_infra_database_client
+import logging
 
 
 def _db_path() -> str:
@@ -89,8 +90,8 @@ def init_db() -> None:
         # Migration: add enabled column if missing
         try:
             conn.execute("ALTER TABLE workflows ADD COLUMN enabled INTEGER DEFAULT 1")
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
         conn.execute(
             """
@@ -125,8 +126,8 @@ def init_db() -> None:
         for col, dflt in [("enabled", "INTEGER DEFAULT 1"), ("capability_type", "TEXT DEFAULT ''"), ("capability_id", "TEXT DEFAULT ''")]:
             try:
                 conn.execute(f"ALTER TABLE apps ADD COLUMN {col} {dflt}")
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
 
         conn.execute(
             """

@@ -1,3 +1,4 @@
+import logging
 """
 Prometheus Metrics Exporter for Management Module
 
@@ -239,8 +240,8 @@ class ManagementMetricsExporter:
                 labels={"manager": manager_name}
             )
             metrics_data["status"] = str(status_value)
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
         
         try:
             health = await manager.health_check()
@@ -252,8 +253,8 @@ class ManagementMetricsExporter:
                 labels={"manager": manager_name}
             )
             metrics_data["health"] = str(health_value)
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
         
         try:
             metrics = await manager.get_metrics()
@@ -267,8 +268,8 @@ class ManagementMetricsExporter:
                     labels=labels
                 )
                 metrics_data[metric.name] = str(metric.value)
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
         
         return metrics_data
     

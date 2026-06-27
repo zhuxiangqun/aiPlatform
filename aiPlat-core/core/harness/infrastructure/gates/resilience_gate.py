@@ -8,6 +8,7 @@ Provides a simple retry wrapper for syscalls. In later phases it will support:
 """
 
 from __future__ import annotations
+import logging
 
 import asyncio
 import random
@@ -58,8 +59,8 @@ class ResilienceGate:
                     delay = min(backoff_max_seconds, backoff_base_seconds * (2**attempt))
                     delay = max(0.0, delay + random.uniform(0.0, delay * 0.1))
                     await asyncio.sleep(delay)
-                except Exception:
+                except Exception as e:
                     # If sleep fails, continue retrying without delay.
-                    pass
+                    logging.debug(str(e), exc_info=True)
         # unreachable
         raise last_exc or RuntimeError("ResilienceGate failed")

@@ -10,6 +10,7 @@ This is the first step from L4 (passive response) toward L5 (active perception).
 """
 
 from __future__ import annotations
+import logging
 
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
@@ -69,8 +70,8 @@ def detect_knowledge_gaps(
     try:
         from core.harness.ontology_engine.graph_index import GraphIndex
         graph = GraphIndex.load(domain_id)
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     gaps: List[KnowledgeGap] = []
 

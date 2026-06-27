@@ -118,15 +118,15 @@ class HookManager(IHookManager):
         try:
             for hook in get_default_hooks().values():
                 self.register(hook)
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
         # Optional: load workspace hooks (Claude Code-style extension point)
         try:
             from .workspace_loader import load_workspace_hooks
 
             load_workspace_hooks(hook_manager=self)
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
     
     def register(self, hook: Hook) -> None:
         """Register a hook"""
@@ -470,8 +470,8 @@ def get_default_hooks() -> Dict[str, Hook]:
                                 claude_md_files=list(files),
                             )
                         )
-                except Exception:
-                    pass
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
             # Still no repo_root -> allow (backward compatible) but record
             if not (isinstance(repo_root, str) and repo_root.strip()):
                 return {"allow": True, "claude_md": {"enforced": True, "skipped": "no_repo_root"}}
@@ -543,8 +543,8 @@ def get_default_hooks() -> Dict[str, Hook]:
                 for m in messages:
                     msg_text += str(getattr(m, "content", m)) if not isinstance(m, str) else m
                 tokens_est = len(msg_text) // 4 if msg_text else 0
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
             
             result = {
                 "agent_id": agent_id, "eval_set_id": "auto_session", "eval_time": _time.time(),
@@ -611,8 +611,8 @@ def get_default_hooks() -> Dict[str, Hook]:
                 logging.getLogger("aiplat.hooks").info(
                     f"OnErrorReflector: injected reasoning hint after {error_count} consecutive errors"
                 )
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
         return {"continue": True}
 
     hooks["on_error_reflector"] = create_hook(
@@ -652,8 +652,8 @@ def get_default_hooks() -> Dict[str, Hook]:
                 ctx["_devil_mitigation"] = hint.get("mitigation", "")
                 ctx["_devil_risk_level"] = hint.get("risk_level", 0)
                 _log.info(f"DevilAdvocate: risk{wint.get('risk_level',0)} — {tool_name}")
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
         return {"continue": True}
 
     hooks["devil_advocate"] = create_hook(

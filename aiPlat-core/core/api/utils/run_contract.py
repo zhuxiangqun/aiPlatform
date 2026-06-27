@@ -4,6 +4,7 @@ from typing import Any, Dict, Optional
 
 from core.schemas_run import RunStatus
 from core.utils.ids import new_prefixed_id
+import logging
 
 
 def normalize_run_status_v2(*, ok: bool, legacy_status: Optional[str], error_code: Optional[str]) -> str:
@@ -53,8 +54,8 @@ def wrap_execution_result_as_run_summary(result: Any) -> Dict[str, Any]:
             "timeout",
         }:
             ok0 = False
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
     run_id = (
         getattr(result, "run_id", None)
         or payload.get("run_id")

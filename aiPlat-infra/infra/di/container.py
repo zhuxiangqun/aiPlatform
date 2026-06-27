@@ -72,8 +72,8 @@ class ScopeImpl(IScope):
             if hasattr(instance, "close"):
                 try:
                     instance.close()
-                except Exception:
-                    pass
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
         self._instances.clear()
         _log.debug(f"Scope '{self._name}' closed")
 

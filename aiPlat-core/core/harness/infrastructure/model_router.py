@@ -6,6 +6,7 @@ Runtime state (failure tracking, cooldown) is managed here.
 """
 
 from __future__ import annotations
+import logging
 
 import os
 import asyncio
@@ -221,8 +222,8 @@ class ModelRouter:
                 }
             with open(self._state_path(), "w") as f:
                 json.dump(data, f, indent=2)
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
     def _load_persisted_state(self) -> None:
         try:
@@ -243,8 +244,8 @@ class ModelRouter:
                 e.total_success = stats.get("total_success", 0)
                 e.cooldown_until = stats.get("cooldown_until", 0)
                 e.last_latency_ms = stats.get("last_latency_ms", 0)
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
 
 # Global singleton

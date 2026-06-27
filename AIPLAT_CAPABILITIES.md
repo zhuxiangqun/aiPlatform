@@ -18,6 +18,15 @@
 ## 一、Harness 执行引擎
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| debate | `harness/execution/debate.py` | ✅ | 自动同步 | 已合入 |
+| conditional | `harness/execution/conditional.py` | ✅ | 自动同步 | 已合入 |
+| stage_runner | `harness/execution/langgraph/stage_runner.py` | ✅ | 自动同步 | 已合入 |
+| verification | `harness/execution/verification.py` | ✅ | 自动同步 | 已合入 |
+| event_loop | `harness/execution/event_loop.py` | ✅ | 自动同步 | 已合入 |
+| quick_engine | `harness/execution/engines/quick_engine.py` | ✅ | 自动同步 | 已合入 |
+| graph_engine | `harness/execution/engines/graph_engine.py` | ✅ | 自动同步 | 已合入 |
+| plan_engine | `harness/execution/engines/plan_engine.py` | ✅ | 自动同步 | 已合入 |
+| team_planner | `harness/execution/team_planner.py` | ✅ | 自动同步 | 已合入 |
 |------|------|:---:|------|------|
 | ReAct 执行循环 | `harness/execution/loop.py:292` | ✅ | Reason→Act→Observe，集成 Hook/压缩/记忆 | 已合入 |
 | Plan-Execute 循环 | `harness/execution/loop.py:2578` | ✅ | 先规划后执行模式 | 已合入 |
@@ -69,6 +78,7 @@
 ## 三、知识引擎（本体）
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| knowledge_gap_detector | `harness/ontology_engine/knowledge_gap_detector.py` | ✅ | 自动同步 | 已合入 |
 |------|------|:---:|------|------|
 | 13步本体管线 | `ontology_engine/engine.py:94` | ✅ | 3Phase: Classify→Extract并行→Validate串行 | 已合入 |
 | ClassMapper（零LLM） | `ontology_engine/class_mapper.py:18` | ✅ | 关键词倒排索引 → T-Box 类映射 | 已合入 |
@@ -95,6 +105,15 @@
 ## 四、RAG 检索
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| wiki_engine | `harness/knowledge/wiki_engine.py` | ✅ | 自动同步 | 已合入 |
+| capability_graph | `harness/knowledge/capability_graph.py` | ✅ | 自动同步 | 已合入 |
+| sqlite_retriever | `harness/knowledge/sqlite_retriever.py` | ✅ | 自动同步 | 已合入 |
+| code_graph | `harness/knowledge/code_graph.py` | ✅ | 自动同步 | 已合入 |
+| doc_compressor | `harness/knowledge/doc_compressor.py` | ✅ | 自动同步 | 已合入 |
+| ontology_query_mapper | `harness/knowledge/ontology_query_mapper.py` | ✅ | 自动同步 | 已合入 |
+| wiki_retriever | `harness/knowledge/wiki_retriever.py` | ✅ | 自动同步 | 已合入 |
+| cap_health_rules | `harness/knowledge/cap_health_rules.py` | ✅ | 自动同步 | 已合入 |
+| skill_deps | `harness/knowledge/skill_deps.py` | ✅ | 自动同步 | 已合入 |
 |------|------|:---:|------|------|
 | 统一知识检索 | `syscalls/retrieval.py:569` | ✅ | 并行 Wiki + KB，RRF 三路融合 | 已合入 |
 | KB 文档检索 | `syscalls/retrieval.py:39` | ✅ | hybrid: LIKE + FTS5 + FAISS 向量 | 已合入 |
@@ -190,6 +209,7 @@
 ## 七、安全与治理
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| prompt_auditor | `harness/audit/prompt_auditor.py` | ✅ | 自动同步 | 已合入 |
 |------|------|:---:|------|------|
 | PolicyGate | `infrastructure/gates/policy_gate.py` | ✅ | 统一权限检查 + 架构边界实时拦截 | 已合入 |
 | ApprovalGate | `infrastructure/approval/manager.py` | ✅ | approve/deny/pending，双门禁 | 已合入 |
@@ -238,6 +258,9 @@
 ## 九、模型基础设施
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| infra_bridge | `harness/infrastructure/infra_bridge.py` | ✅ | 自动同步 | 已合入 |
+| base_model_adapter | `harness/infrastructure/base_model_adapter.py` | ✅ | 自动同步 | 已合入 |
+| infra_audio_adapter | `harness/infrastructure/infra_audio_adapter.py` | ✅ | 自动同步 | 已合入 |
 |------|------|:---:|------|------|
 | InfraLLMAdapter | `infrastructure/infra_llm_adapter.py` | ✅ | Core 唯一 LLM 适配器 | 已合入 |
 | InfraEmbeddingAdapter | `infrastructure/infra_embedding_adapter.py` | ✅ | SentenceTransformer | 已合入 |
@@ -271,6 +294,14 @@
 ## 十一、扩展与学习
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| cmm_graduation | `harness/learning/cmm_graduation.py` | ✅ | 自动同步 | 已合入 |
+| integration | `harness/integration.py` | ✅ | 自动同步 | 已合入 |
+| toolsets | `harness/tools/toolsets.py` | ✅ | 自动同步 | 已合入 |
+| deepseek | `harness/finetune/providers/deepseek.py` | ✅ | 自动同步 | 已合入 |
+| skill_lint_scan | `harness/maintenance/skill_lint_scan.py` | ✅ | 自动同步 | 已合入 |
+| model_feedback | `harness/routing/model_feedback.py` | ✅ | 自动同步 | 已合入 |
+| execution_context | `harness/kernel/execution_context.py` | ✅ | 自动同步 | 已合入 |
+| wiki_context | `harness/syscalls/wiki_context.py` | ✅ | 自动同步 | 已合入 |
 |------|------|:---:|------|------|
 | ExperienceVector | `learning/experience_vector.py` | ✅ | PipelineTrace→Embedding→语义检索 | 已合入 |
 | SkillSimulator | `learning/skill_simulator.py` | ✅ | Docker沙盒预检，pass≥80% | 已合入 |
@@ -432,6 +463,8 @@
 ## 二十一、平台治理
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| authenticator | `aiPlat-platform/auth/authenticator.py` | ✅ | 自动同步 | 已合入 |
+| pdf_render | `aiPlat-platform/kb/poc/pdf_render.py` | ✅ | 自动同步 | 已合入 |
 |------|------|:---:|------|------|
 | Change Control | `platform/api/routers/change_control.py` | ✅ | 变更请求跟踪/审计/autosmoke强制执行 | 已合入 |
 | Tenant Onboarding | `platform/api/routers/onboarding.py` | ✅ | 租户引导：LLM配置/执行后端/密钥迁移/信任密钥 | 已合入 |

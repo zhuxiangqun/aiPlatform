@@ -9,6 +9,7 @@ from fastapi import APIRouter, HTTPException, Request
 from core.harness.kernel.runtime import get_kernel_runtime
 from core.learning.pipeline import summarize_syscall_events
 from core.learning.workspace_target import ensure_workspace_target
+import logging
 
 router = APIRouter()
 
@@ -451,8 +452,8 @@ async def record_learning_feedback(request: dict, http_request: Request):
                 user_id=str(http_request.headers.get("X-AIPLAT-ACTOR-ID") or "system"),
                 tenant_id=str(http_request.headers.get("X-AIPLAT-TENANT-ID") or "") or None,
             )
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
         try:
             await store.add_audit_log(
                 action="learning_feedback_recorded",
@@ -464,7 +465,7 @@ async def record_learning_feedback(request: dict, http_request: Request):
                 resource_id=str(suite_id),
                 detail={"decision": decision, "suite_kind": suite_kind, "artifact_id": art.artifact_id},
             )
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
     return {"status": "ok", "artifact": await store.get_learning_artifact(art.artifact_id), "suite": updated_suite}

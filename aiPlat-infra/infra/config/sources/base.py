@@ -1,3 +1,4 @@
+import logging
 """
 ConfigSource Base - 配置源抽象基类及实现
 """
@@ -70,8 +71,8 @@ class ConfigWatcher:
                         )
                         self.callback(change)
                         self._last_config = new_config
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
             time.sleep(self.interval)
 
     def _diff_configs(self, old: Dict[str, Any], new: Dict[str, Any]) -> set:

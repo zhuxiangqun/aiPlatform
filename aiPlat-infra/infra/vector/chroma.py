@@ -4,6 +4,7 @@ from typing import List, Optional, Dict, Any
 
 from .base import VectorStore
 from .schemas import Vector, SearchResult, VectorConfig
+import logging
 
 
 class ChromaStore(VectorStore):
@@ -212,8 +213,8 @@ class ChromaStore(VectorStore):
             try:
                 if hasattr(self._client, '_heartbeat'):
                     del self._client
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
             self._client = None
             self._collection = None
             self._initialized = False

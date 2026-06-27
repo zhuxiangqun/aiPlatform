@@ -1,3 +1,4 @@
+import logging
 """
 Onboarding API (management layer)
 
@@ -145,8 +146,8 @@ async def set_trusted_skill_keys(request: Request, body: Dict[str, Any]) -> Dict
             b["keys"] = []
         try:
             b.pop("keys_json", None)
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
     return await core_client.set_trusted_skill_keys(b)
 
 

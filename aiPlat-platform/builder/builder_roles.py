@@ -7,6 +7,7 @@ is hardcoded in this module per CLAUDE.md §5.29.
 """
 
 from __future__ import annotations
+import logging
 
 import os
 import yaml
@@ -40,8 +41,8 @@ def _load_agent_md(agent_name: str) -> Dict[str, Any]:
                 result["agent_type"] = str(fm.get("agent_type", "conversational"))
                 result["system_prompt"] = sop
                 result["metadata"] = {k: fm[k] for k in fm if k not in ("agent_type",)}
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
     _AGENT_MD_CACHE[agent_name] = result
     return result
 

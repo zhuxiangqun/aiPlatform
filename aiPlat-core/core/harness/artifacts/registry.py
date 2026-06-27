@@ -9,6 +9,7 @@ Storage: ~/.aiplat/artifacts/<project_id>/<artifact_name>/<version>/
 """
 
 from __future__ import annotations
+import logging
 
 import json
 import os
@@ -112,8 +113,8 @@ class ArtifactRegistry:
                     with open(meta_path) as f:
                         data = json.load(f)
                     results.append(ArtifactRecord(**data))
-                except Exception:
-                    pass
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
         return results
 
     def get_latest(self, project_id: str, name: str) -> Optional[ArtifactRecord]:

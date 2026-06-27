@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Any, Dict, Optional
 
 from fastapi import HTTPException
+import logging
 
 
 async def get_trusted_skill_pubkeys_map(execution_store: Any) -> Dict[str, str]:
@@ -63,8 +64,8 @@ async def require_skill_signature_gate_approval(
     req = approval_manager.create_request(ctx, rule=rule)
     try:
         await approval_manager._persist(req)  # type: ignore[attr-defined]
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
     return req.request_id
 
 

@@ -4,6 +4,7 @@ import threading
 from typing import List, AsyncIterator, Optional, Dict, Any
 from ..base import LLMClient
 from ..schemas import ChatRequest, ChatResponse, StreamChunk, LLMConfig
+import logging
 
 
 class LocalLLMClient(LLMClient):
@@ -264,8 +265,8 @@ class LocalLLMClient(LLMClient):
         try:
             if hasattr(tokenizer, "apply_chat_template"):
                 return tokenizer.apply_chat_template(messages, tokenize=False)
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
         prompt_parts = []
         for msg in messages:
@@ -413,8 +414,8 @@ class LocalLLMClient(LLMClient):
             elif self._backend == "transformers" and self._model:
                 tokenizer = self._model["tokenizer"]
                 return len(tokenizer.encode(text))
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
         return len(text) // 4
 
     def get_metrics(self) -> dict:

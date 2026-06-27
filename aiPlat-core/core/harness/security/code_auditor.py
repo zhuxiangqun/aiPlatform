@@ -241,10 +241,4 @@ class CodeAuditor:
 
 # ── Global singleton ─────────────────────────────────────────────────────────
 
-_auditor: Optional[CodeAuditor] = None
 
-def get_code_auditor() -> CodeAuditor:
-    global _auditor
-    if _auditor is None:
-        _auditor = CodeAuditor()
-    return _auditor

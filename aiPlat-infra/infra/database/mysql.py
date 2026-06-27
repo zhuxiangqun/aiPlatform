@@ -4,6 +4,7 @@ from .base import DatabaseClient
 from .pool import ConnectionPool
 from .schemas import DatabaseConfig, PoolStats
 import aiomysql
+import logging
 
 
 class MySQLConnectionPool(ConnectionPool):
@@ -151,16 +152,16 @@ class MySqlClient(DatabaseClient):
                     try:
                         self._connection.close()
                         await self._connection.wait_closed()
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        logging.debug(str(e), exc_info=True)
             self._connection = None
         
         # 关闭连接池
         if self._pool:
             try:
                 await self._pool.close()
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
             self._pool = None
 
     def is_connected(self) -> bool:

@@ -7,6 +7,7 @@ from .embeddings import cosine_similarity, embed_text
 from core.api.facades.kb_facade import kb_extract_keywords as extract_keywords
 from core.api.facades.kb_facade import kb_score_text as score_text
 from core.api.facades.kb_facade import kb_element_source as element_source
+import logging
 
 
 def element_time_ms(e: Dict[str, Any]) -> Optional[int]:
@@ -18,8 +19,8 @@ def element_time_ms(e: Dict[str, Any]) -> Optional[int]:
             v = meta.get(k)
             if v is not None:
                 return int(v)
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
     return None
 
 

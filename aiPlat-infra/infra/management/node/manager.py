@@ -1,3 +1,4 @@
+import logging
 """
 Node Manager
 
@@ -74,10 +75,10 @@ def get_local_node_info() -> NodeInfo:
                                 drv = subprocess.run(cmd_parts, capture_output=True, text=True, timeout=5)
                                 if drv.returncode == 0:
                                     driver_version = drv.stdout.strip()
-                            except Exception:
-                                pass
-    except Exception:
-        pass
+                            except Exception as e:
+                                logging.debug(str(e), exc_info=True)
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
     
     try:
         import psutil
@@ -382,6 +383,14 @@ class NodeManager(ManagementBase):
         self._healthy_nodes = sum(1 for n in self._nodes.values() if n.status == "Ready")
         
         return node
+    
+    async def update_node_labels(self, node_name: str, labels: Dict[str, str]) -> bool:
+        """Update (merge) labels on a node."""
+        node = self._nodes.get(node_name)
+        if node is None:
+            return False
+        node.labels.update(labels)
+        return True
     
     async def remove_node(self, node_name: str) -> None:
         """

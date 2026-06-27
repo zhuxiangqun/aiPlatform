@@ -11,6 +11,7 @@ GraphIndex 加持 (aiPlat 独有):
 """
 
 from __future__ import annotations
+import logging
 
 import re, time, json, hashlib
 from dataclasses import dataclass, field
@@ -284,8 +285,8 @@ class HallucinationTracker:
                 # Check for edges between them
                 edges = graph.get_edges_between(node_a.get("id"), node_b.get("id"))
                 return len(edges) > 0
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
         return False
 
     def _text_similarity(self, a: str, b: str) -> float:

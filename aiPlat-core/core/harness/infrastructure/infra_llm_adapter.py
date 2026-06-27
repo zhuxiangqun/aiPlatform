@@ -7,6 +7,7 @@ available as fallback when AIPLAT_ENABLE_CORE_ADAPTER_FALLBACK=true.
 """
 
 from __future__ import annotations
+import logging
 
 from typing import Any, AsyncIterator, Dict, List, Optional
 
@@ -82,8 +83,8 @@ class InfraLLMAdapter(ILLMAdapter):
                     "completion_tokens": getattr(u, "completion_tokens", u.get("completion_tokens", 0) if hasattr(u, "get") else 0),
                     "total_tokens": getattr(u, "total_tokens", u.get("total_tokens", 0) if hasattr(u, "get") else 0),
                 }
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
         return LLMResponse(
             content=resp.content or "",
             usage=usage,

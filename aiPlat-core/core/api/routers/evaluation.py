@@ -14,6 +14,7 @@ Endpoints:
 """
 
 from __future__ import annotations
+import logging
 
 import json
 import os
@@ -82,8 +83,8 @@ def _load_results(agent_id: str = "") -> List[Dict[str, Any]]:
     for fp in sorted(_results_dir().glob(pattern), reverse=True):
         try:
             results.append(json.loads(fp.read_text(encoding="utf-8")))
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
     return results
 
 
@@ -162,7 +163,7 @@ async def get_eval_set_api(set_id: str):
     from core.harness.evaluation.eval_runner import load_eval_set
     s = load_eval_set(set_id)
     if not s:
-        raise HTTPException(404, f"Eval set '{set_id}' not found")
+        raise HTTPException(status_code=404, detail=f"Eval set '{set_id}' not found")
     return {
         "set_id": s.set_id, "category": s.category, "description": s.description,
         "tasks": [{"task_id": t.task_id, "agent_id": t.agent_id, "user_input": t.user_input,
@@ -180,7 +181,7 @@ async def update_eval_set_api(set_id: str, req: EvalSetUpdate):
 
     s = load_eval_set(set_id)
     if not s:
-        raise HTTPException(404, f"Eval set '{set_id}' not found")
+        raise HTTPException(status_code=404, detail=f"Eval set '{set_id}' not found")
     if req.category is not None:
         s.category = req.category
     if req.description is not None:
@@ -197,7 +198,7 @@ async def delete_eval_set_api(set_id: str):
     from core.harness.evaluation.eval_runner import delete_eval_set
     ok = delete_eval_set(set_id)
     if not ok:
-        raise HTTPException(404, f"Eval set '{set_id}' not found")
+        raise HTTPException(status_code=404, detail=f"Eval set '{set_id}' not found")
     return {"status": "ok"}
 
 
@@ -215,7 +216,7 @@ async def run_eval_set_api(set_id: str, req: EvalRunRequest = EvalRunRequest()):
 
     evalset = load_eval_set(set_id)
     if not evalset:
-        raise HTTPException(404, f"Eval set '{set_id}' not found")
+        raise HTTPException(status_code=404, detail=f"Eval set '{set_id}' not found")
 
     runner = EvalRunner()
     result = await runner.run_eval_set(

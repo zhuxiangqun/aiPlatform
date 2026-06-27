@@ -51,8 +51,8 @@ def _notify_resource_mutated(resource_type: str, action: str, resource_id: str) 
             source="WorkflowManager",
             data={"resource_type": resource_type, "action": action, "resource_id": resource_id},
         )
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
 
 class WorkflowManager:
@@ -170,8 +170,8 @@ class WorkflowManager:
                 wf_json.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
                 migrated += 1
                 _logger.info(f"Migrated workflow from SQLite: {wf_id}")
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
         if migrated:
             _logger.info(f"Migrated {migrated} workflows from SQLite to directories")
             self.reload()
@@ -248,8 +248,8 @@ class WorkflowManager:
                         files_sample.append(rel)
                 except Exception:
                     continue
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
         bundle_sha256 = hashlib.sha256(("\n".join(entries)).encode("utf-8")).hexdigest()
         return {
             "bundle_sha256": bundle_sha256,
@@ -271,8 +271,8 @@ class WorkflowManager:
             manifest = {"version": "1.0.0"}
             try:
                 (workflow_dir / "WORKFLOW.manifest.json").write_text(json.dumps(manifest, indent=2, ensure_ascii=False), encoding="utf-8")
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
         if manifest:
             prov.setdefault("publisher", manifest.get("publisher"))
             prov.setdefault("source", manifest.get("source"))
@@ -283,15 +283,15 @@ class WorkflowManager:
                 mpath = workflow_dir / "WORKFLOW.manifest.json"
                 if mpath.exists():
                     prov.setdefault("manifest_sha256", self._sha256_file(mpath))
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
         metadata["provenance"] = prov
 
         integ = metadata.get("integrity") if isinstance(metadata.get("integrity"), dict) else {}
         try:
             integ.update(self._compute_workflow_bundle_integrity(workflow_dir))
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
         metadata["integrity"] = integ
 
     def compute_workflow_signature_verification(self, wf: WorkflowInfo, trusted_keys: Dict[str, str]) -> Dict[str, Any]:

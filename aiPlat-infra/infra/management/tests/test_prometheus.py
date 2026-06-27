@@ -158,7 +158,9 @@ class TestManagementMetricsExporter:
     
     def test_get_prometheus_output(self):
         """Test getting Prometheus output"""
-        exporter = ManagementMetricsExporter()
+        # namespace is env-driven (de-application-ized, empty default); pass explicitly
+        # to verify namespacing is applied to metric names.
+        exporter = ManagementMetricsExporter(namespace="aiplat_infra")
         
         exporter.collector.update_metric("manager_status", 1.0)
         

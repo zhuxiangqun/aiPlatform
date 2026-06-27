@@ -16,6 +16,7 @@ RBAC 控制: unmask() 仅 admin / data_owner 角色可见原文。
 """
 
 from __future__ import annotations
+import logging
 
 import re
 import hashlib
@@ -133,8 +134,8 @@ class PIIDetector:
                         self._counter[label] = idx
                         masked_id = f"{label}_{idx:03d}"
                         mapping[masked_id] = original
-            except Exception:
-                pass  # Presidio 降级, 内置正则已覆盖
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
 
         return masked, mapping
 

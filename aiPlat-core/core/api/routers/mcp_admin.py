@@ -137,8 +137,8 @@ async def enable_mcp_server(server_name: str):
             from core.security.skill_signature_gate import get_trusted_skill_pubkeys_map
             trusted = await get_trusted_skill_pubkeys_map(store)
             mgr.compute_mcp_signature_verification(server, trusted)
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
     if store:
         await record_changeset(
@@ -206,8 +206,8 @@ async def sign_mcp_server(server_name: str, request: Dict[str, Any]):
         if manifest_path.exists():
             try:
                 manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
         manifest["signature"] = signature
         manifest["version"] = str(version)
         manifest_path.write_text(json.dumps(manifest, indent=2, ensure_ascii=False), encoding="utf-8")
@@ -360,8 +360,8 @@ async def check_workspace_mcp_server_policy(server_name: str):
         details["policy"]["AIPLAT_STDIO_PROD_LAUNCHER"] = launcher
         details["checks"]["launcher_required"] = force_launcher
         details["checks"]["launcher_ok"] = (not force_launcher) or (bool(launcher) and cmd == launcher)
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     return {"env": runtime_env(), "server_name": server_name, "transport": transport, "ok": bool(ok), "reason": reason, "details": details}
 
@@ -400,8 +400,8 @@ async def upsert_workspace_mcp_server(request: dict, http_request: Request):
             pm = get_permission_manager()
             for uid in ("system", "admin"):
                 pm.grant_permission(uid, saved.name, Permission.EXECUTE, granted_by="auto_create")
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
         if store:
             await audit_event(store=store, kind="mcp_admin", name="workspace.mcp.upsert", status="success", args={"server_name": saved.name, "transport": saved.transport, "command": saved.command, "url": saved.url})
@@ -413,8 +413,8 @@ async def upsert_workspace_mcp_server(request: dict, http_request: Request):
         try:
             wam, wsm, wmm = _workspace_managers()
             await mark_resource_pending(resource_type="mcp", resource_id=str(saved.name), workspace_agent_manager=wam, workspace_skill_manager=wsm, workspace_mcp_manager=wmm)
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
         # Auto-smoke on MCP upsert (async, dedup)
         try:
@@ -441,8 +441,8 @@ async def upsert_workspace_mcp_server(request: dict, http_request: Request):
                     detail={"op": "upsert", "transport": saved.transport},
                     on_complete=_on_complete,
                 )
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
         return {"status": "upserted", "server": {"name": saved.name, "enabled": saved.enabled}}
     except ValueError as e:
         raise HTTPException(status_code=409, detail=str(e))
@@ -568,8 +568,8 @@ async def enable_workspace_mcp_server(server_name: str, http_request: Request):
                 tenant_id=str(actor0.get("tenant_id") or "") or None,
                 session_id=str(actor0.get("session_id") or "") or None,
             )
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
     await sync_mcp_runtime(mcp_manager=_mcp_manager(), workspace_mcp_manager=mgr)
     return {"status": "enabled", "change_id": change_id, "links": governance_links(change_id=change_id) if change_id else {}}
 
@@ -797,8 +797,8 @@ async def _run_mcp_test(
                 trace_id=None, tenant_id=None,
                 payload={"kind": "mcp_test", "server_name": server_name, "status": "running"},
             )
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     async def _pub(name: str, status: str, **kwargs):
         """Publish event to EventBus and persist to SQLite for later SSE replay."""
@@ -835,10 +835,10 @@ async def _run_mcp_test(
             try:
                 if store:
                     await store._insert_event_raw(event)
-            except Exception:
-                pass
-        except Exception:
-            pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
     async def _step(name: str, status: str, **kwargs):
         """Record a test step (both for sync return and EventBus)."""
@@ -962,21 +962,21 @@ async def _run_mcp_test(
             try:
                 if stdio_proc.stdin:
                     stdio_proc.stdin.close()
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
             # Read stderr for diagnostics
             try:
                 if stdio_proc.stderr:
                     stderr_bytes = await asyncio.wait_for(stdio_proc.stderr.read(), timeout=3)
                     if stderr_bytes:
                         logger.error("MCP server '%s' stderr:\n%s", server_name, stderr_bytes.decode("utf-8", errors="replace")[:2000])
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
             try:
                 stdio_proc.terminate()
                 await asyncio.wait_for(stdio_proc.wait(), timeout=2)
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
 
     # ── Emit run_end for SSE done detection ──
     try:
@@ -993,8 +993,8 @@ async def _run_mcp_test(
                 trace_id=None, tenant_id=None,
                 payload={"kind": "mcp_test", "server_name": server_name, "status": final_status},
             )
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     return steps
 
@@ -1183,8 +1183,8 @@ async def submit_mcp_for_review(server_name: str):
                 metadata={"governance": {"status": "failed", "lint_result": lint_result, "submitted_at": _time.time(), "last_op": "submit_for_review"}},
             )
             mgr.upsert_server(info)
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
         raise HTTPException(status_code=422, detail={"message": f"配置校验未通过：{lint_errors} 个错误", "lint": lint_result})
 
     try:
@@ -1272,7 +1272,7 @@ async def install_mcp_seed(seed_id: str):
     if mgr and hasattr(mgr, 'reload'):
         try:
             mgr.reload()
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
     return {"status": "installed", "id": seed_id}

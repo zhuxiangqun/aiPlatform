@@ -15,6 +15,7 @@ from core.api.utils.governance import ui_url
 from core.governance.changeset import record_changeset
 from core.harness.kernel.runtime import get_kernel_runtime
 from core.utils.ids import new_prefixed_id
+import logging
 
 router = APIRouter()
 
@@ -761,8 +762,8 @@ async def apply_skill_md_suggestion(suite_id: str, request: dict, http_request: 
                                     "run_id": None,
                                 }
                             )
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        logging.debug(str(e), exc_info=True)
                     try:
                         await store.add_audit_log(
                             action="engine_skill_md_patch_approval_requested",
@@ -776,8 +777,8 @@ async def apply_skill_md_suggestion(suite_id: str, request: dict, http_request: 
                             change_id=str(change_id),
                             detail={"suite_id": str(suite_id), "diff_hash": diff_hash},
                         )
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        logging.debug(str(e), exc_info=True)
             except Exception:
                 approval_request_id = None
         try:
@@ -801,8 +802,8 @@ async def apply_skill_md_suggestion(suite_id: str, request: dict, http_request: 
                 tenant_id=str(tenant_id) if tenant_id else None,
                 session_id=str(actor0.get("session_id") or "") or None,
             )
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
         try:
             await store.add_audit_log(
                 action="engine_skill_md_patch_proposed",
@@ -816,8 +817,8 @@ async def apply_skill_md_suggestion(suite_id: str, request: dict, http_request: 
                 change_id=str(change_id),
                 detail={"suite_id": str(suite_id), "diff_hash": diff_hash, "base_hash": base_hash},
             )
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
         try:
             links = {
                 "change_control_ui": ui_url(f"/diagnostics/change-control/{str(change_id)}"),

@@ -5,6 +5,7 @@ aiPlat-platform's API layer. Currently served from core's FastAPI server.
 Migration plan: move to platform/api/routers/.
 """
 from __future__ import annotations
+import logging
 
 from typing import Any, Dict, List
 
@@ -207,8 +208,8 @@ async def export_workspace_package(data: Dict[str, Any]):
     finally:
         try:
             shutil.rmtree(tmpdir, ignore_errors=True)
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
 
 @router.post("/workspace/packages")
@@ -294,8 +295,8 @@ async def create_workspace_package(request: Dict[str, Any]) -> Dict[str, Any]:
 
             (pkg_dir / "package.yaml").write_text(yaml.safe_dump(manifest, sort_keys=False, allow_unicode=True), encoding="utf-8")
             workspace_pkg_mgr.reload()
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
     return {"status": "upserted", "package": await get_workspace_package(name)}
 
@@ -353,8 +354,8 @@ async def install_workspace_package(pkg_name: str, http_request: Request, reques
                     actor_id=actor_id or "admin",
                     detail={"op": "package_install", "package": pkg_name},
                 )
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     return {"status": "installed", "record": record}
 

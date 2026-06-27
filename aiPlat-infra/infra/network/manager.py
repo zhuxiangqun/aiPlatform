@@ -116,8 +116,8 @@ class ConsulNetworkManager(NetworkManager):
 
         try:
             client.put(url, json=payload)
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
         service_id = service.id or str(uuid.uuid4())
         self._services[service_id] = service
@@ -129,8 +129,8 @@ class ConsulNetworkManager(NetworkManager):
 
         try:
             client.put(url)
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
         if service_id in self._services:
             del self._services[service_id]

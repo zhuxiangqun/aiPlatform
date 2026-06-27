@@ -175,8 +175,8 @@ async def core_chat(ctx: ChatContext) -> ChatResult:
         if frontmatter:
             system_prompt = frontmatter.get("_sop_body", "") or frontmatter.get("system_prompt", "")
             agent_type = frontmatter.get("agent_type", agent_type)
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     if not system_prompt:
         try:
@@ -196,8 +196,8 @@ async def core_chat(ctx: ChatContext) -> ChatResult:
                         fm = _yaml.safe_load(parts[1]) or {}
                         system_prompt = parts[2].strip()
                         agent_type = fm.get("agent_type", agent_type)
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
     if not system_prompt:
         import logging
@@ -224,8 +224,8 @@ async def core_chat(ctx: ChatContext) -> ChatResult:
             existing = mem_ctx.get("messages") or mem_ctx.get("history") or []
             if isinstance(existing, list):
                 message_history = list(existing) + message_history
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     # ── 3. SkillRegistry: bind matching Skills ──
     skills_used: List[str] = []
@@ -238,8 +238,8 @@ async def core_chat(ctx: ChatContext) -> ChatResult:
             # Fallback: load from SkillRegistry directly when AGENT.md is missing
             # (agent may still benefit from universally available skills)
             pass
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     # ── 4. Create and execute agent ──
     from core.harness.interfaces.agent import AgentConfig, AgentContext
@@ -286,8 +286,8 @@ async def core_chat(ctx: ChatContext) -> ChatResult:
             metadata={"trace_id": trace_id, "agent_name": ctx.agent_name, "skills_used": skills_used},
         )
         memory_saved = True
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     return ChatResult(
         reply=reply,
@@ -375,8 +375,8 @@ async def core_query(ctx: QueryContext) -> QueryResult:
         try:
             if skill_reg.get(skill_name) and hasattr(agent, "add_skill"):
                 agent.add_skill(skill_name)
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
     from core.harness.interfaces.agent import AgentContext
     messages: List[Dict[str, str]] = [{"role": "user", "content": ctx.query_text}]

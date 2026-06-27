@@ -3,6 +3,7 @@
 Caller: aiPlat-platform/kb/intelligence/summarize.py (re-export stub)
 """
 from __future__ import annotations
+import logging
 
 import json
 import re
@@ -193,8 +194,8 @@ async def summarize_document(
                     ]
                     summary = llm_summary if llm_summary else f"已生成 {len(points)} 条{profile}要点。"
                     generation_mode = "llm"
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
     return {
         "tenant_id": tenant_id,

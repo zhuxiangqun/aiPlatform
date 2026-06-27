@@ -403,8 +403,8 @@ def _write_mastery_to_abox(
         onto.triples.append(OntologyTriple(
             chapter_uri, f"{AI}masteryScore", f'"{avg_score}"',
         ))
-    except Exception:
-        pass  # best-effort — learning data in JSON is primary store
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
 
 def _safe_parse_json(content: str) -> Dict[str, Any]:
@@ -575,5 +575,5 @@ def _enqueue_pending_assessment(
 
         with open(path, "w", encoding="utf-8") as f:
             _json.dump(existing, f, ensure_ascii=False, indent=2)
-    except Exception:
-        pass  # best-effort
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)

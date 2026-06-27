@@ -16,6 +16,7 @@ Callers:
   - Any agent that needs speech-to-text capability
 """
 from __future__ import annotations
+import logging
 
 import os
 import shutil
@@ -63,8 +64,8 @@ def transcribe_audio(
         result = adapter.transcribe(audio_path, language)
         _fill_diagnostics(diagnostics, result)
         return result
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     model_name = resolve_model_name("audio")
 
@@ -87,8 +88,8 @@ def transcribe_audio(
             })
         _fill_diagnostics(diagnostics, out)
         return out
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     try:
         import whisper
@@ -109,8 +110,8 @@ def transcribe_audio(
             })
         _fill_diagnostics(diagnostics, out)
         return out
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     raise RuntimeError("whisper_not_installed")
 
@@ -155,8 +156,8 @@ def transcribe_audio_chunked(
     finally:
         try:
             shutil.rmtree(tmpdir, ignore_errors=True)
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
 
 __all__ = ["transcribe_audio", "transcribe_audio_chunked"]

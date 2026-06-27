@@ -4,6 +4,7 @@ Inherits BaseModelAdapter for shared model resolution + caching.
 """
 
 from __future__ import annotations
+import logging
 
 import os
 from typing import Any, Dict, List, Optional
@@ -46,8 +47,8 @@ class InfraAudioAdapter(BaseModelAdapter):
                     "text": txt,
                 })
             return out
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
         try:
             import whisper
             model = whisper.load_model(self._model_name)
@@ -56,8 +57,8 @@ class InfraAudioAdapter(BaseModelAdapter):
                      "end_ms": int(s.get("end", 0) * 1000),
                      "text": str(s.get("text", "")).strip()}
                     for s in result.get("segments", [])]
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
         raise RuntimeError("No Whisper backend available (faster-whisper or openai-whisper)")
 
 

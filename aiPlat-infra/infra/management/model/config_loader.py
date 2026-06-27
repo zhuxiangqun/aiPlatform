@@ -1,3 +1,4 @@
+import logging
 """
 Config Loader — discovers models from environment variables + YAML config.
 
@@ -190,8 +191,8 @@ def _detect_system_capability_models() -> List[ModelInfo]:
                 config=ModelConfig(), stats=ModelStats(),
                 created_at=datetime.now(timezone.utc), updated_at=datetime.now(timezone.utc),
             ))
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     # Default sentence-transformers model (always available if installed)
     try:

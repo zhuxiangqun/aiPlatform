@@ -14,6 +14,7 @@ Harness execution engine.
 """
 
 from __future__ import annotations
+import logging
 
 from typing import Any, Dict, List, Optional
 
@@ -95,8 +96,8 @@ class StageRunner:
                 if active_t:
                     policy = resolve_toolset(str(active_t))
                     tools = [t for t in tools if is_tool_allowed(policy, getattr(t, 'name', ''))[0]]
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
             return tools
         except Exception:
             return fallback or []
@@ -173,14 +174,14 @@ class StageRunner:
             try:
                 from core.harness.memory.profile_builder import run_skill_review
                 asyncio.create_task(run_skill_review(state))
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
         if getattr(loop, '_iters_since_memory', 0) >= memory_nudge and memory_nudge > 0:
             try:
                 from core.harness.memory.profile_builder import extract_and_persist_profile
                 asyncio.create_task(extract_and_persist_profile(state))
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
 
         # Extract best output: prefer reasoning (LLM output) > DONE output > observation > action_result
         # reasoning is the actual LLM response; observation is often "No action to execute" filler.

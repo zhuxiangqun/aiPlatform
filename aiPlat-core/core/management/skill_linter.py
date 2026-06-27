@@ -15,6 +15,7 @@ propose_skill_fixes) for backward compatibility with existing API callers.
 """
 
 from __future__ import annotations
+import logging
 
 import re
 from dataclasses import dataclass, asdict, field
@@ -238,8 +239,8 @@ def propose_skill_fixes(*, skill: Any, lint: Dict[str, Any]) -> Dict[str, Any]:
                 scope = "engine"
             elif "/workspace/" in p or "/.aiplat/" in p:
                 scope = "workspace"
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
     errors = lint.get("errors") if isinstance(lint, dict) else []
     warnings = lint.get("warnings") if isinstance(lint, dict) else []
@@ -554,8 +555,8 @@ def propose_skill_fixes(*, skill: Any, lint: Dict[str, Any]) -> Dict[str, Any]:
                 cand = f"当用户提到“{t}”时，不选择本技能；优先使用 {other_name}（{other_id}）"
                 if cand not in neg and cand not in add_negs:
                     add_negs.append(cand)
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
         # fallback generic lines
         for cand in [
             f"不处理 {other_name}（{other_id}）相关的请求",

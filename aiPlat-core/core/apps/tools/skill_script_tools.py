@@ -11,6 +11,7 @@ Skill scripts governance tools (P1-3).
 """
 
 from __future__ import annotations
+import logging
 
 import asyncio
 import os
@@ -143,8 +144,8 @@ class SkillRunScriptTool(BaseTool):
                 except asyncio.TimeoutError:
                     try:
                         proc.kill()
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        logging.debug(str(e), exc_info=True)
                     return ToolResult(success=False, error="script_timeout")
 
                 end = time.time()

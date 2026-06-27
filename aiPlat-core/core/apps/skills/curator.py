@@ -11,6 +11,7 @@ the next version?".
 """
 
 from __future__ import annotations
+import logging
 
 import json
 import os
@@ -112,8 +113,8 @@ class SkillCurator:
             try:
                 with open(state_file, "r") as f:
                     data = json.load(f)
-            except (json.JSONDecodeError, OSError):
-                pass
+            except (json.JSONDecodeError, OSError) as e:
+                logging.debug(str(e), exc_info=True)
         data["call_count"] = data.get("call_count", 0) + 1
         data["last_activity_at"] = time.time()
         data["lifecycle"] = "active"  # call → automatic promotion to active
@@ -229,8 +230,8 @@ class SkillCurator:
                     try:
                         with open(state_file, "r") as f:
                             data.update(json.load(f))
-                    except (json.JSONDecodeError, OSError):
-                        pass
+                    except (json.JSONDecodeError, OSError) as e:
+                        logging.debug(str(e), exc_info=True)
                 data["template"] = True
                 data["promoted_at"] = time.time()
                 try:
@@ -279,8 +280,8 @@ class SkillCurator:
                     with open(state_file, "r") as f:
                         stored = json.load(f)
                     meta.update(stored)
-                except (json.JSONDecodeError, OSError):
-                    pass
+                except (json.JSONDecodeError, OSError) as e:
+                    logging.debug(str(e), exc_info=True)
             # Fallback: use directory mtime as last activity
             if not meta.get("last_activity_at"):
                 try:
@@ -305,8 +306,8 @@ class SkillCurator:
             try:
                 with open(state_file, "r") as f:
                     data.update(json.load(f))
-            except (json.JSONDecodeError, OSError):
-                pass
+            except (json.JSONDecodeError, OSError) as e:
+                logging.debug(str(e), exc_info=True)
         try:
             with open(state_file, "w") as f:
                 json.dump(data, f, indent=2)
@@ -354,8 +355,8 @@ class SkillCurator:
             try:
                 with open(path, "r") as f:
                     self._state = json.load(f)
-            except (json.JSONDecodeError, OSError):
-                pass
+            except (json.JSONDecodeError, OSError) as e:
+                logging.debug(str(e), exc_info=True)
 
     def _persist_state(self):
         path = Path(self._config.state_file)

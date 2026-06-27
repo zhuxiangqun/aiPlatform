@@ -110,8 +110,8 @@ class RegressionRunner:
             try:
                 with open(os.path.expanduser(baseline_path)) as f:
                     baseline = yaml.safe_load(f.read()) if f else {}
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
         report.baseline = baseline or {}
 
         # Run each task
@@ -194,8 +194,8 @@ class RegressionRunner:
                 import json
                 with open(bp, "w") as f:
                     json.dump(report.current, f, indent=2)
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
 
         log.info("Regression: %s (pass_rate=%.1f%%, %d/%d tasks)",
                  report.verdict, report.current["pass_rate"], total_passed, len(tasks))

@@ -1,3 +1,4 @@
+import logging
 """
 Network Manager
 
@@ -69,10 +70,10 @@ def get_real_network_info() -> Dict[str, Any]:
                                     "pid": None,
                                     "process": parts[0]
                                 })
-                    except (ValueError, IndexError):
-                        pass
-    except Exception:
-        pass
+                    except (ValueError, IndexError) as e:
+                        logging.debug(str(e), exc_info=True)
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
     
     known_defaults = []
     for port, svc in _get_port_services().items():
@@ -112,6 +113,7 @@ class NetworkManager(ManagementBase):
         super().__init__(config)
         self._ingresses: Dict[str, IngressInfo] = {}
         self._policies: Dict[str, NetworkPolicyInfo] = {}
+        self._network_services: Dict[str, Dict[str, Any]] = {}
         self._standalone_mode = config.get("standalone_mode", True) if config else True
     
     def _refresh_network_info(self):
@@ -365,6 +367,19 @@ class NetworkManager(ManagementBase):
             return True
         return False
     
+    async def update_ingress(self, name: str, config: Dict[str, Any], namespace: str = "default") -> bool:
+        """Update an ingress (sets provided fields that exist on the record)."""
+        if self._standalone_mode:
+            raise RuntimeError("Update ingress not supported in standalone mode")
+        key = f"{namespace}/{name}"
+        ing = self._ingresses.get(key)
+        if ing is None:
+            return False
+        for field, value in config.items():
+            if hasattr(ing, field):
+                setattr(ing, field, value)
+        return True
+    
     async def list_policies(self) -> List[Dict[str, Any]]:
         """List all network policies."""
         if self._standalone_mode:
@@ -428,22 +443,18 @@ class NetworkManager(ManagementBase):
         return False
     
     async def list_services(self) -> List[Dict[str, Any]]:
-        """List all network services (listening ports in standalone mode)."""
-        if not self._standalone_mode:
-            return []
-        
-        network_info = get_real_network_info()
-        services = []
-        
-        known_names = {port: svc.get("name", f"service-{port}") for port, svc in _get_port_services().items()}
-        
-        for port_info in network_info.get("listening_ports", []):
-            port = port_info["port"]
-            name = known_names.get(port, port_info.get("process", f"service-{port}"))
-            services.append({
-                "id": f"svc-{port}",
-                "name": name,
-                "namespace": "standalone",
+        """List all network services (stored + listening ports in standalone mode)."""
+        services = list(self._network_services.values())
+        if self._standalone_mode:
+            network_info = get_real_network_info()
+            known_names = {port: svc.get("name", f"service-{port}") for port, svc in _get_port_services().items()}
+            for port_info in network_info.get("listening_ports", []):
+                port = port_info["port"]
+                name = known_names.get(port, port_info.get("process", f"service-{port}"))
+                services.append({
+                    "id": f"svc-{port}",
+                    "name": name,
+                    "namespace": "standalone",
                 "type": "ClusterIP" if port_info["address"] == "127.0.0.1" else "LoadBalancer",
                 "clusterIP": port_info["address"],
                 "ports": [{"name": "http", "port": port, "targetPort": port, "protocol": "TCP"}],
@@ -453,19 +464,49 @@ class NetworkManager(ManagementBase):
         
         return services
     
+    async def get_service(self, name: str) -> Optional[Dict[str, Any]]:
+        """Get a single network service (dict first, then derived)."""
+        for key, svc in self._network_services.items():
+            if key.endswith(f"/{name}") or svc.get("name") == name:
+                return svc
+        services = await self.list_services()
+        for svc in services:
+            if svc.get("name") == name or svc.get("id") == name:
+                return svc
+        return None
+    
     async def create_service(self, config: Dict[str, Any]) -> Dict[str, Any]:
         """Create a network service."""
         import uuid
         name = config.get("name", f"service-{uuid.uuid4().hex[:8]}")
-        
-        return {
+        ns = config.get("namespace", "default")
+        entry = {
             "name": name,
-            "namespace": config.get("namespace", "default"),
+            "namespace": ns,
             "type": config.get("type", "ClusterIP"),
             "ports": config.get("ports", []),
             "selector": config.get("selector", {}),
-            "status": "created"
+            "status": "created",
         }
+        key = f"{ns}/{name}"
+        self._network_services[key] = entry
+        return entry
+
+    async def update_service(self, name: str, config: Dict[str, Any]) -> bool:
+        """Update a stored network service."""
+        for key, svc in self._network_services.items():
+            if key.endswith(f"/{name}") or svc.get("name") == name:
+                svc.update(config)
+                return True
+        return False
+
+    async def delete_network_service(self, name: str) -> bool:
+        """Delete a stored network service."""
+        for key in list(self._network_services.keys()):
+            if key.endswith(f"/{name}") or self._network_services[key].get("name") == name:
+                del self._network_services[key]
+                return True
+        return False
     
     async def test_connectivity(self, source: str, target: str, port: int) -> Dict[str, Any]:
         """Test network connectivity between source and target."""
@@ -490,7 +531,7 @@ class NetworkManager(ManagementBase):
             
             result["reachable"] = sock_result == 0
             result["latency_ms"] = int((end - start) * 1000)
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
         
         return result

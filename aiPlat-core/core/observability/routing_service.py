@@ -4,6 +4,7 @@ import time
 from typing import Any, Dict, Optional
 
 from fastapi import HTTPException
+import logging
 
 
 async def skill_invocation_metrics(*, store: Any, tenant_id: Optional[str], since_hours: int, limit: int) -> Dict[str, Any]:
@@ -136,8 +137,8 @@ async def skill_routing_funnel(
                 sel = str(args.get("selected_skill_id") or args.get("selected_name") or "")
                 if sel:
                     strict_by_skill_misroute[sel] = int(strict_by_skill_misroute.get(sel, 0)) + 1
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     # routing events (dedup by routing_decision_id when present)
     rr = await store.list_syscall_events(limit=limit, offset=0, tenant_id=tenant_id, kind="routing", name="skill_route")
@@ -224,8 +225,8 @@ async def skill_routing_funnel(
                     x["top1_permission_denied"] = int(x.get("top1_permission_denied") or 0) + 1
                 if str(m.get("skill_kind") or "") == "executable" and str(m.get("exec_perm") or "") == "ask":
                     x["top1_approval_required"] = int(x.get("top1_approval_required") or 0) + 1
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
         if allset is not None and len(allset) > 0 and sn not in allset:
             x["selected_not_in_candidates"] = int(x.get("selected_not_in_candidates") or 0) + 1
         try:
@@ -235,8 +236,8 @@ async def skill_routing_funnel(
                 x["selected_rank_sum"] = int(x.get("selected_rank_sum") or 0) + int(rank)
                 if rank >= 3:
                     x["selected_rank_ge3"] = int(x.get("selected_rank_ge3") or 0) + 1
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
         try:
             ss = (cand_score_map.get(did) or {}).get(sn)
             ts = (cand_score_map.get(did) or {}).get(top1) if top1 else None
@@ -249,8 +250,8 @@ async def skill_routing_funnel(
             if ss is not None and ts is not None:
                 x["score_gap_sum"] = float(x.get("score_gap_sum") or 0.0) + float(ts - ss)
                 x["score_gap_cnt"] = int(x.get("score_gap_cnt") or 0) + 1
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
     em = await skill_invocation_metrics(store=store, tenant_id=tenant_id, since_hours=since_hours, limit=limit)
     for it in em.get("items") or []:
@@ -458,8 +459,8 @@ async def routing_replay(
             aid2 = str(res.get("approval_request_id") or "").strip()
             if aid2:
                 approval_ids.add(aid2)
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
     linkages = {}
     try:
         if approval_ids:
@@ -536,8 +537,8 @@ async def routing_metrics(
                 buck["miss_total"] += 1
             if outc in ("misroute", "miss_tool", "miss_no_action", "hit"):
                 buck[outc] = int(buck.get(outc) or 0) + 1
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     strict_miss_series = []
     strict_misroute_series = []
@@ -590,8 +591,8 @@ async def routing_metrics(
                     rank_hist["2"] += 1
                 else:
                     rank_hist["3+"] += 1
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     gap_series = []
     for b in sorted(gap_buckets.keys()):

@@ -13,6 +13,7 @@ from core.harness.integration import KernelRuntime, get_harness
 from core.harness.kernel.runtime import get_kernel_runtime
 from core.harness.kernel.types import ExecutionRequest
 from core.services.trace_service import SpanStatus
+import logging
 
 router = APIRouter()
 
@@ -310,8 +311,8 @@ async def resume_and_execute_compiled_graph(run_id: str, request: dict, rt: Runt
         meta = restored_state.get("metadata") if isinstance(restored_state.get("metadata"), dict) else {}
         meta["trace_id"] = trace_id
         restored_state["metadata"] = meta
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     graph = create_compiled_react_graph(model=_DefaultModel(), tools=[], max_steps=max_steps, graph_name=resumed.get("graph_name") or "compiled_react")
     try:
@@ -323,12 +324,12 @@ async def resume_and_execute_compiled_graph(run_id: str, request: dict, rt: Runt
         if ts and trace_id:
             try:
                 await ts.end_trace(trace_id, status=SpanStatus.SUCCESS)
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
             try:
                 ts._context = None
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
     return {"parent_run_id": run_id, "run_id": resumed.get("run_id"), "checkpoint_id": resumed.get("checkpoint_id"), "final_state": final_state}
 
 

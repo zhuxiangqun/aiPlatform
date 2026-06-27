@@ -15,6 +15,7 @@ How it works:
 """
 
 from __future__ import annotations
+import logging
 
 import json as _json
 import os as _os
@@ -110,8 +111,8 @@ def record_model_quality(model_name: str, purpose: str, audit_issues: List[Dict[
         try:
             old_data = _json.loads(p.read_text())
             samples = old_data.get("samples", 0) + 1
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
     
     _write_quality(model_name, purpose, new, samples)
     return new

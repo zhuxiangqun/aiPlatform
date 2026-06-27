@@ -100,6 +100,7 @@ class StorageManager(ManagementBase):
         super().__init__(config)
         self._pvcs: Dict[str, PVCInfo] = {}
         self._collections: Dict[str, VectorCollectionInfo] = {}
+        self._model_storage: Dict[str, Dict[str, Any]] = {}
         self._standalone_mode = config.get("standalone_mode", True) if config else True
         self._last_refresh: float = 0
         self._cache_ttl: float = 30.0
@@ -476,4 +477,32 @@ status="Active"
     
     async def list_model_storage(self) -> List[Dict[str, Any]]:
         """List model storage."""
-        return []
+        return list(self._model_storage.values())
+
+    async def create_model_storage(self, config: Dict[str, Any]) -> Dict[str, Any]:
+        """Upload model to storage (simulation — stores metadata)."""
+        if self._standalone_mode:
+            raise RuntimeError("Create model storage not supported in standalone mode")
+        import uuid, hashlib
+        mid = uuid.uuid4().hex[:12]
+        name = config.get("name", f"model-{mid}")
+        entry = {
+            "id": f"ms_{mid}",
+            "name": name,
+            "type": config.get("type", "LLM"),
+            "size": str(config.get("size", "")),
+            "path": config.get("path", f"model_storage/ms_{mid}"),
+            "checksum": config.get("checksum", hashlib.md5(str(config).encode()).hexdigest()),
+            "createdAt": datetime.now(timezone.utc).isoformat(),
+        }
+        self._model_storage[entry["id"]] = entry
+        return entry
+
+    async def delete_model_storage(self, model_id: str) -> bool:
+        """Delete model from storage."""
+        if self._standalone_mode:
+            raise RuntimeError("Delete model storage not supported in standalone mode")
+        if model_id in self._model_storage:
+            del self._model_storage[model_id]
+            return True
+        return False

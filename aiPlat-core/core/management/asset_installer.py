@@ -10,6 +10,7 @@ Security:
 """
 
 from __future__ import annotations
+import logging
 
 import json
 import os
@@ -117,8 +118,8 @@ def _check_copy_limits(src_dir: Path) -> None:
         files += 1
         try:
             total += int(p.stat().st_size)
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
         if files > max_files:
             raise ValueError("asset_install_too_many_files")
         if total > max_bytes:
@@ -197,10 +198,10 @@ def _record_asset_import_audit(asset_dir: Path, asset_name: str, asset_type: str
                 adapted=adapted,
                 details={"asset_type": asset_type, "asset_dir": str(asset_dir)},
             )
-        except Exception:
-            pass
-    except Exception:
-        pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
 
 class AssetInstaller:
@@ -422,8 +423,8 @@ class AssetInstaller:
             extra = source.get("metadata")
             if isinstance(extra, dict):
                 data["metadata"] = extra
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
         p.write_text(json.dumps(data, ensure_ascii=False, sort_keys=True, indent=2), encoding="utf-8")
 
     def _get_target_dir(self, asset_name: str) -> Path:
@@ -439,8 +440,8 @@ class AssetInstaller:
         converted = None
         try:
             converted = _try_adapt(root, self._target_base_dir)
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
         assets = self._iter_asset_dirs(root)
         if not assets and not subdir:
@@ -467,8 +468,8 @@ class AssetInstaller:
                     # Still run enrichment on existing dir (may be broken from previous import)
                     try:
                         self._enrich_asset_frontmatter(dst)
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        logging.debug(str(e), exc_info=True)
                     continue
                 try:
                     shutil.rmtree(dst)
@@ -482,13 +483,13 @@ class AssetInstaller:
                 src2 = dict(source or {})
                 src2["asset_id"] = ad.name
                 self._write_manifest(dst, source=src2)
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
             # Record import audit (best-effort)
             try:
                 _record_asset_import_audit(dst, ad.name, self.ASSET_TYPE, source)
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
             installed.append(ad.name)
 
         return InstallResult(installed=installed, skipped=skipped,
@@ -577,8 +578,8 @@ _auto_adapted: true
             new_content = f"---\n{new_fm}\n---{body}"
             cfg_file.write_text(new_content, encoding="utf-8")
 
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
     def _plan_from_dir(self, *, root: Path, source: Dict[str, Any],
                        asset_id: Optional[str], subdir: Optional[str],

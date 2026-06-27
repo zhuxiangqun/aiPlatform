@@ -243,8 +243,8 @@ class KnowledgeRetriever:
                 kw_ranked = [(i, results[i]) for i, s in keyword_search(search_query, chunks, top_k=20)]
                 merged = rrf_fusion(vec_ranked, kw_ranked, k=60, top_n=limit)
                 return merged[:limit] if merged else results[:limit]
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
 
         # Re-rank: select top_k most relevant chunks (reduces token waste and noise)
         if effective_rerank and len(results) > self._rerank_top_k:
@@ -256,8 +256,8 @@ class KnowledgeRetriever:
                 else:
                     scored = reranker.rerank_by_relevance(search_query, chunks, top_k=self._rerank_top_k)
                 results = [results[i] for i, _ in scored if i < len(results)]
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
 
         # CRAG quality gate: if retrieved chunks are low quality, flag for web search fallback
         if effective_qgate and results:
@@ -269,8 +269,8 @@ class KnowledgeRetriever:
                     r.metadata = dict(getattr(r, 'metadata', None) or {})
                     r.metadata["_quality_gate"] = gate["action"]
                     r.metadata["_avg_relevance"] = gate["avg_score"]
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
 
         # Provenance stale filter — exclude results from known-stale sources
         if results:
@@ -289,8 +289,8 @@ class KnowledgeRetriever:
                         logging.getLogger("aiplat.retrieval").info(
                             f"Provenance stale filter: {before - len(results)}/{before} results excluded"
                         )
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
 
         return results[:limit]
 

@@ -269,8 +269,8 @@ def run_rules(trigger: RuleTrigger, store: TripleStore,
                     "severity": rule.severity,
                     **inf,
                 })
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
     return results
 
 
@@ -494,10 +494,10 @@ def detect_ontology_patterns(collection_id: str = "default") -> OntologyPatterns
                                                f"{AI}{rtype}" not in defined_relations:
                                                 rel_counts.setdefault(rtype, []).append(
                                                     fname[:-3])
-                                except Exception:
-                                    pass
-                except Exception:
-                    pass
+                                except Exception as e:
+                                    logging.debug(str(e), exc_info=True)
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
     undefined_relations = [
         {"type_name": rtype, "count": len(titles), "example_pairs": titles[:5]}
         for rtype, titles in sorted(rel_counts.items(), key=lambda x: -len(x[1]))
@@ -805,8 +805,8 @@ def compute_ontology_metrics(collection_id: str = "default",
             "score": report.score,
             "trend": "stable",
         }
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     # 3. Inference gain (reuse same A-Box + store)
     inference = {"transitive_edges": 0, "source_chains": 0, "total_inferred": 0, "summary": ""}
@@ -818,8 +818,8 @@ def compute_ontology_metrics(collection_id: str = "default",
             "total_inferred": inf.get("total", 0),
             "summary": inf.get("summary", ""),
         }
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     # 4. Maintenance cost
     suggestions_path = _os.path.join(
@@ -836,8 +836,8 @@ def compute_ontology_metrics(collection_id: str = "default",
                         if s.get("status") == "accepted"]
             if accepted:
                 last_review = max(a.get("reviewed_at", "") for a in accepted)
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     # Suggestion age (hours since last generation)
     suggestion_age_hours = None
@@ -845,8 +845,8 @@ def compute_ontology_metrics(collection_id: str = "default",
         if _os.path.exists(suggestions_path):
             suggestion_age_hours = round(
                 (_time.time() - _os.path.getmtime(suggestions_path)) / 3600, 1)
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     maintenance = {
         "pending_suggestions": pending,
@@ -934,8 +934,8 @@ def compute_ontology_metrics(collection_id: str = "default",
         if cached and "metrics" in cached:
             prev = cached["metrics"].get("coverage", {}).get("percentage", coverage_pct)
             prev_coverage = prev
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
     metrics["coverage_trend"] = {
         "delta": round(coverage_pct - prev_coverage, 1),
         "direction": "up" if coverage_pct > prev_coverage else ("down" if coverage_pct < prev_coverage else "stable"),
@@ -964,8 +964,8 @@ def compute_ontology_metrics(collection_id: str = "default",
             if age > 86400:
                 from core.harness.knowledge.knowledge_ontology import add_suggestions_from_patterns
                 add_suggestions_from_patterns(collection_id)
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     # ── Golden regression auto-trigger ──
     try:
@@ -1001,8 +1001,8 @@ def compute_ontology_metrics(collection_id: str = "default",
         if history:
             lowest = min(h["pass_rate"] for h in history)
             metrics["golden_regression"]["lowest_ever"] = lowest
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     # ── Latency percentiles ──
     lat_path2 = _os.path.expanduser("~/.aiplat/wiki/retrieval_latency.json")
@@ -1018,8 +1018,8 @@ def compute_ontology_metrics(collection_id: str = "default",
                     "p99": round(totals[int(n * 0.99)], 4),
                     "samples": n,
                 }
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
     # ── Curation stats ──
     curation_path = _os.path.expanduser("~/.aiplat/wiki/curation_stats.json")
@@ -1032,8 +1032,8 @@ def compute_ontology_metrics(collection_id: str = "default",
                 "retries_total": cs.get("retries_total", 0),
                 "last_success": cs.get("last_success"),
             }
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
     # ── 11. Retrieval governance metrics ──
     governance = {
@@ -1064,15 +1064,15 @@ def compute_ontology_metrics(collection_id: str = "default",
                 "avg_composite_score": round(sum(h.get("avg_comp", 0) for h in gov_history) / n, 3),
                 "avg_cutoff_score": round(sum(h.get("cutoff", 0) for h in gov_history) / n, 3),
             }
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
     metrics["retrieval_governance"] = governance
 
     # Save cache
     try:
         save_metrics_cache(metrics, collection_id)
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     return metrics
 

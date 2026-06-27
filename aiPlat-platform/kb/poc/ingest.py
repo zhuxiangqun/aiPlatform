@@ -11,6 +11,7 @@ from .ocr import choose_best_ocr_engine, ocr_image
 from .pdf_render import render_pdf_to_images
 from .table_extract import extract_budget_table
 from .types import IngestResult
+import logging
 
 
 def ingest_scanned_pdf(
@@ -60,8 +61,8 @@ def ingest_scanned_pdf(
         # progress hint (visible in core logs)
         try:
             print(f"[kb_ingest] OCR page {i+1}/{len(pages)}: {img_path}")
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
         tokens = ocr_image(img_path, engine="paddleocr" if engine == "paddleocr" else "tesseract", lang=ocr_lang)
         # For budget-like questions, a larger context window helps keep headers (预算/年度/单位) close to numbers.
         nums = extract_numbers(tokens, window=15)

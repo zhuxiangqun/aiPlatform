@@ -2,6 +2,7 @@
 
 from dataclasses import dataclass, field
 from typing import Dict, List
+import logging
 
 
 @dataclass
@@ -36,8 +37,8 @@ class AgentCard:
                     "status": "enabled" if enabled else "disabled",
                     "source": "skill_registry",
                 })
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
         try:
             from core.apps.tools.discovery import get_tool_registry
@@ -50,8 +51,8 @@ class AgentCard:
                     "status": "enabled",
                     "source": "tool_registry",
                 })
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
         return cls(
             skills=skills[:50],

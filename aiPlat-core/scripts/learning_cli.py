@@ -12,6 +12,7 @@ Examples:
 """
 
 from __future__ import annotations
+import logging
 
 import argparse
 import json
@@ -373,16 +374,16 @@ async def _publish_release(db: str, args: argparse.Namespace) -> int:
     if args.expires_at:
         try:
             meta_update["expires_at"] = float(args.expires_at)
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
     if args.ttl_seconds:
         try:
             ttl = float(args.ttl_seconds)
             meta_update["ttl_seconds"] = ttl
             if "expires_at" not in meta_update:
                 meta_update["expires_at"] = now + ttl
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
     await mgr.set_artifact_status(
         artifact_id=args.candidate_id,
         status="published",
@@ -687,8 +688,8 @@ async def _auto_rollback_metrics(db: str, args: argparse.Namespace) -> int:
             if d > 0:
                 duration_sum += d
                 duration_n += 1
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
     error_rate = failures / max(1, n)
     avg_duration_ms = (duration_sum / duration_n) if duration_n else None
@@ -740,8 +741,8 @@ def _compute_exec_metrics(items: list[dict]) -> dict:
             if d > 0:
                 duration_sum += d
                 duration_n += 1
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
     return {
         "samples": n,
         "failures": failures,
@@ -835,8 +836,8 @@ async def _auto_rollback_regression(db: str, args: argparse.Namespace) -> int:
             try:
                 st = float(r.get("start_time") or 0.0)
                 oldest_current_start = st if oldest_current_start is None else min(oldest_current_start, st)
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
         if len(current) >= current_window:
             break
 
@@ -858,8 +859,8 @@ async def _auto_rollback_regression(db: str, args: argparse.Namespace) -> int:
                 cid = str(x.get("artifact_id") or "")
                 if cid and cid != candidate_id:
                     baseline_selection["tried"].append({"candidate_id": cid, "samples": 0})
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
     def _collect_baseline_for_candidate(cid_filter: str | None) -> list[dict]:
         out: list[dict] = []
         for r in hist:
@@ -1074,8 +1075,8 @@ async def _auto_rollback_regression(db: str, args: argparse.Namespace) -> int:
                     rid = (req.metadata or {}).get("regression_report_id")
                 if isinstance(rid, str) and rid:
                     regression_report_id = rid
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
             # If we have a pre-created report, reuse its run_id/trace_id for outputs.
             try:
                 if regression_report_id:
@@ -1083,8 +1084,8 @@ async def _auto_rollback_regression(db: str, args: argparse.Namespace) -> int:
                     if rep0:
                         out["regression_report_run_id"] = rep0.get("run_id")
                         out["regression_report_trace_id"] = rep0.get("trace_id")
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
 
         # Phase 6.19: artifactize "why rollback" as regression_report
         try:
@@ -1175,8 +1176,8 @@ async def _auto_rollback_regression(db: str, args: argparse.Namespace) -> int:
                     linked_current.append(eid)
                 out["linked_current_executions"] = updated_execution_links
                 out["linked_current_execution_ids"] = linked_current
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
 
             # Phase 6.22: optional link baseline window executions.
             if args.link_baseline:
@@ -1215,8 +1216,8 @@ async def _auto_rollback_regression(db: str, args: argparse.Namespace) -> int:
                         linked_baseline.append(eid)
                     out["linked_baseline_executions"] = updated_baseline_links
                     out["linked_baseline_execution_ids"] = linked_baseline
-                except Exception:
-                    pass
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
 
             # Phase 6.22: best-effort update regression_report evidence with linked ids
             try:
@@ -1268,8 +1269,8 @@ async def _auto_rollback_regression(db: str, args: argparse.Namespace) -> int:
                     out["linked_evidence_cap"] = cap
                     out["linked_current_truncated"] = ev["linked_current_truncated"]
                     out["linked_baseline_truncated"] = ev["linked_baseline_truncated"]
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
             # best-effort link from candidate metadata
             try:
                 await mgr.set_artifact_status(
@@ -1277,8 +1278,8 @@ async def _auto_rollback_regression(db: str, args: argparse.Namespace) -> int:
                     status="rolled_back",
                     metadata_update={"rollback_regression_report_id": regression_report_id},
                 )
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
     else:
         out["rollback"] = "skipped"
 

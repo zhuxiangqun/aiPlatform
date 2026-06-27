@@ -32,8 +32,8 @@ async def optimize_prompt(req: PromptOptimizeRequest):
                     name = tpl.get("name", "")
                     vars_text = tpl.get("variables", "[]")
                     context_text = f"\n模板名称: {name}\n行业分类: {cat}\n变量定义: {vars_text[:500]}"
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
 
     try:
         from core.harness.utils.model_injection import create_selected_adapter, best_model_for_purpose

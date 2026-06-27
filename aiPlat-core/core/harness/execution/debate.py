@@ -132,20 +132,4 @@ def _debate_summary_block(outputs: Dict[str, str]) -> str:
     parts.append("\nSynthesize these views into a single decision. Which side has the stronger arguments?\n")
     return "\n".join(parts)
 
-
-def parse_debate_rating(output: str, ratings: Dict[str, int]) -> Optional[Tuple[str, int]]:
-    """Parse rating from debate output for structured decision comparison.
-    
-    Args:
-        output: Agent output text
-        ratings: {rating_label: numeric_value} mapping, e.g., {'Buy': 5, 'Hold': 3, 'Sell': 1}
-    Returns:
-        (label, value) or None if no rating found
-    """
-    for label, value in sorted(ratings.items(), key=lambda x: -len(x[0])):
-        if label.lower() in str(output).lower():
-            return (label, value)
-    return None
-
-
-__all__ = ["run_agent_debate", "DebateState", "parse_debate_rating"]
+__all__ = ["run_agent_debate", "DebateState"]

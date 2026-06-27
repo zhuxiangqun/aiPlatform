@@ -4,6 +4,7 @@ Platform Approvals routes — approval request CRUD.
 Migrated from aiPlat-core/core/api/routers/approvals.py per architecture contract.
 """
 from __future__ import annotations
+import logging
 
 
 from typing import Any, Dict, Optional
@@ -18,7 +19,7 @@ from core.api.utils.run_contract import wrap_execution_result_as_run_summary
 from core.api.facades.runtime_facade import get_kernel_runtime
 
 
-router = APIRouter(prefix="/platform/approvals", tags=["approvals"])
+router = APIRouter(prefix="/platform", tags=["approvals"])
 
 
 def _rt():
@@ -83,8 +84,8 @@ async def list_approvals(
                 it2["change_links"] = change_links(str(cid))
             out_items.append(it2)
         res["items"] = out_items
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
     return res
 
 
@@ -127,8 +128,8 @@ async def list_pending_approvals(
                     it2["change_links"] = change_links(str(cid))
                 out_items.append(it2)
             res["items"] = out_items
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
         return res
 
     # Fallback: memory-only (rare)
@@ -152,8 +153,8 @@ async def list_pending_approvals(
                     "metadata": r.metadata,
                 }
             )
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
     return {"items": out, "total": len(out)}
 
 
@@ -209,8 +210,8 @@ async def get_approval_request(request_id: str, _auth: str = Depends(require_aut
             if cid:
                 resp["change_id"] = str(cid)
                 resp["links"].update(change_links(str(cid)))
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
     return resp
 
@@ -260,8 +261,8 @@ async def approve_request(request_id: str, request: dict, http_request: Request,
                 )
     except HTTPException:
         raise
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     approved_by = (request or {}).get("approved_by", "admin")
     comments = (request or {}).get("comments", "")
@@ -281,8 +282,8 @@ async def approve_request(request_id: str, request: dict, http_request: Request,
                 tenant_id=str(meta.get("tenant_id")) if meta.get("tenant_id") else None,
                 payload={"approval_request_id": str(request_id), "approved_by": str(approved_by), "comments": str(comments or "")},
             )
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     if store:
         try:
@@ -297,8 +298,8 @@ async def approve_request(request_id: str, request: dict, http_request: Request,
                 resource_id=str(request_id),
                 detail={"comments": comments},
             )
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
     return {"status": updated.status.value, "request_id": updated.request_id}
 
 
@@ -335,8 +336,8 @@ async def reject_request(request_id: str, request: dict, http_request: Request, 
                 tenant_id=str(meta.get("tenant_id")) if meta.get("tenant_id") else None,
                 payload={"approval_request_id": str(request_id), "rejected_by": str(rejected_by), "comments": str(comments or "")},
             )
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     if store:
         try:
@@ -351,8 +352,8 @@ async def reject_request(request_id: str, request: dict, http_request: Request, 
                 resource_id=str(request_id),
                 detail={"comments": comments},
             )
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
     return {"status": updated.status.value, "request_id": updated.request_id}
 
@@ -578,8 +579,8 @@ async def replay_approval(request_id: str, request: dict, http_request: Request,
                         "approval_request_id": str(request_id),
                     }
                 )
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
         return {
             "status": "published" if op == "config:publish" else "rolled_back",
             "asset_type": asset_type,

@@ -6,6 +6,7 @@ Migration plan: delegate to core.harness.document.parsers once core provides
 a MinerU-based parser. This file is in poc/ and marked experimental.
 """
 from __future__ import annotations
+import logging
 
 import json
 import os
@@ -182,16 +183,16 @@ def run_mineru_parse(
                 if heartbeat_cb:
                     try:
                         heartbeat_cb(elapsed, timeout_s, {"backend": backend, "lang": lang})
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        logging.debug(str(e), exc_info=True)
                 if elapsed >= timeout_s:
                     try:
                         proc.terminate()
                         time.sleep(1)
                         if proc.poll() is None:
                             proc.kill()
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        logging.debug(str(e), exc_info=True)
                     last_err = f"mineru_timeout_{timeout_s}s"
                     break
                 time.sleep(poll_s)
@@ -203,8 +204,8 @@ def run_mineru_parse(
             try:
                 if proc and proc.poll() is None:
                     proc.kill()
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
     raise RuntimeError(f"mineru_failed: {last_err}")
 
 

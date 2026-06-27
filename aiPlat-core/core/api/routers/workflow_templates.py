@@ -4,6 +4,7 @@ Storage: ~/.aiplat/workflow_templates/{name}.json
 """
 
 from __future__ import annotations
+import logging
 
 import json
 import os
@@ -52,8 +53,8 @@ async def list_templates():
                 "updated_at": data.get("updated_at", ""),
                 "version": data.get("version", "1"),
             })
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
     return {"templates": templates, "total": len(templates)}
 
 
@@ -70,8 +71,8 @@ async def save_template(body: TemplateSave):
     if fp.exists():
         try:
             existing = json.loads(fp.read_text(encoding="utf-8"))
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
     version = str(int(existing.get("version", "1") if existing else "1") + 1 if existing else "1")
     data = {
         "name": body.name,
@@ -250,8 +251,8 @@ async def submit_workflow_for_review(template_name: str):
             raw = _json.loads(json_path.read_text(encoding="utf-8", errors="replace"))
             raw["_governance"] = {"status": "failed", "lint_result": lint_result, "submitted_at": _time.time()}
             json_path.write_text(_json.dumps(raw, ensure_ascii=False, indent=2), encoding="utf-8")
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
         raise HTTPException(status_code=422, detail={"message": f"配置校验未通过：{lint_errors} 个错误", "lint": lint_result})
 
     try:

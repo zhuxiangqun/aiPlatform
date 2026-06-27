@@ -1,3 +1,4 @@
+import logging
 """
 Browser Tool — Full Playwright-based implementation.
 
@@ -91,8 +92,8 @@ class _BrowserSession:
                     files = sorted(glob.glob(os.path.join(self._video_path, "*.webm")))
                     if files:
                         video_path = files[-1]
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
             self._context = None
         if self._browser:
             await self._browser.close()

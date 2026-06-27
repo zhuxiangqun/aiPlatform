@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, Trophy, TrendingUp, Zap, Shield, AlertTriangle, Brain, Target } from 'lucide-react';
+import { ArrowLeft, Trophy, Brain, Target } from 'lucide-react';
 import ReactEChartsCore from 'echarts-for-react/lib/core';
 import * as echarts from 'echarts/core';
 import { BarChart } from 'echarts/charts';

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Plus, Trash2, Upload, Play, Square, RefreshCw, FileText } from 'lucide-react';
+import { Plus, Trash2, Play, Square, RefreshCw } from 'lucide-react';
 import { Button, Modal, toast, Input, Select } from '../../../components/ui';
 import { finetuneApi } from '../../../services';
 

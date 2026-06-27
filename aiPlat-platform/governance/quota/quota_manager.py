@@ -1,3 +1,4 @@
+import logging
 """
 Quota Manager - 配额管理
 """
@@ -50,8 +51,8 @@ class QuotaManager:
     def _load_from_db(self):
         try:
             self._ensure_db()
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
     def set_quota(
         self,
@@ -81,8 +82,8 @@ class QuotaManager:
                 "max_concurrent_runs": max_concurrent_runs,
                 "monthly_tokens": monthly_tokens,
             })
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
     def get_quota(self, tenant_id: str) -> Optional[Quota]:
         """获取配额"""

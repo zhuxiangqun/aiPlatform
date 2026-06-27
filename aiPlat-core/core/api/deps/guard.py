@@ -12,6 +12,7 @@ from core.security.rbac import check_permission as rbac_check_permission, should
 from core.utils.ids import new_prefixed_id
 
 from .actor import actor_from_http
+import logging
 
 
 async def rbac_guard(
@@ -49,8 +50,8 @@ async def rbac_guard(
                 request_id=http_request.headers.get("X-AIPLAT-REQUEST-ID") or http_request.headers.get("x-aiplat-request-id"),
                 detail={"reason": decision.reason},
             )
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
     if rbac_should_enforce():
         body = {

@@ -11,6 +11,7 @@ Until fully migrated, NO NEW reverse imports should be added to this file.
 """
 
 from __future__ import annotations
+import logging
 
 from typing import Any, Dict, Optional
 from dataclasses import dataclass, field
@@ -105,8 +106,8 @@ def _resolve_or_import(key: str, fallback_import: str) -> Any:
             result = di.resolve(key)
             if result is not None:
                 return result
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
     # Fallback: direct import (legacy compat)
     import importlib
     mod_path, attr = fallback_import.rsplit(":", 1)
@@ -120,8 +121,8 @@ def _resolve_tool_registry():
     if di:
         try:
             return di.resolve("ToolRegistry")
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
     from core.apps.tools.base import get_tool_registry  # noqa
     return get_tool_registry()
 
@@ -132,8 +133,8 @@ def _resolve_exec_backend():
     if di:
         try:
             return di.resolve("ExecBackend")
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
     from core.apps.exec_drivers.registry import get_exec_backend  # noqa
     return get_exec_backend()
 
@@ -194,13 +195,30 @@ def get_evolution_engine():
     return _resolve_or_import("EvolutionEngine", "core.apps.skills.evolution.engine:get_evolution_engine")()
 
 
+def get_parallel_executor():
+    """Resolve parallel executor module (harness→apps boundary, via integration accessor).
+
+    Returns the apps.agents.parallel_executor module; callers pick the symbols they
+    need (parallel_analyze / create_dummy_agent / EmbeddingBridge / ParallelExecutor).
+    Uses importlib (like _resolve_or_import) so harness modules never import apps directly.
+    """
+    import importlib
+    return importlib.import_module("core.apps.agents.parallel_executor")
+
+
+def get_agent_discovery():
+    """Resolve AgentDiscovery class (harness→apps boundary, via integration accessor)."""
+    import importlib
+    return importlib.import_module("core.apps.agents.discovery").AgentDiscovery
+
+
 def _start_bg_curator():
     """Start background skill curator (DI-wrapped for harness use)."""
     try:
         from core.apps.skills.registry import start_bg_curator as _curator
         _curator()
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
 
 def get_mcp_runtime():
@@ -209,8 +227,8 @@ def get_mcp_runtime():
     if di:
         try:
             return di.resolve("MCPRuntime")
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
     from core.apps.mcp.runtime import MCPRuntime  # noqa
     return MCPRuntime()
 
@@ -221,8 +239,8 @@ def get_latest_predictions():
     if di:
         try:
             return di.resolve("LatestPredictions")
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
     from core.apps.skills.evolution.engine import get_latest_predictions  # noqa
     return get_latest_predictions()
 
@@ -357,8 +375,8 @@ class HarnessIntegration:
             from core.harness.kernel.runtime import set_kernel_runtime
 
             set_kernel_runtime(runtime)
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
     async def execute(self, request: "ExecutionRequest") -> "ExecutionResult":
         """
@@ -400,8 +418,8 @@ class HarnessIntegration:
                     run_id=run_id,
                     tenant_id=str(tenant_id) if tenant_id is not None else None,
                 )
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
 
         lock_acquired = False
         if enable_queue and store is not None and session_id and request.kind in ("agent", "skill", "tool", "graph"):
@@ -428,8 +446,8 @@ class HarnessIntegration:
                         payload=request.payload if isinstance(request.payload, dict) else {},
                         queue_mode=str(queue_mode) if queue_mode else None,
                     )
-                except Exception:
-                    pass
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
                 try:
                     await store.append_run_event(
                         run_id=run_id,
@@ -452,8 +470,8 @@ class HarnessIntegration:
                         tenant_id=str(tenant_id) if tenant_id is not None else None,
                         payload={"reason": "session_locked", "session_id": session_id},
                     )
-                except Exception:
-                    pass
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
                 return ExecutionResult(
                     ok=True,
                     payload={
@@ -472,8 +490,8 @@ class HarnessIntegration:
             if isinstance(request.payload, dict):
                 opts = request.payload.get("options", {}) if isinstance(request.payload.get("options"), dict) else {}
                 stream_mode = str(opts.get("stream", "")).lower() in ("1", "true", "yes")
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
         if stream_mode:
             asyncio.create_task(self._execute_stream_background(request))
             return ExecutionResult(
@@ -493,8 +511,8 @@ class HarnessIntegration:
                         tenant_id=str(tenant_id) if tenant_id is not None else None,
                         payload={"status": "cancelled", "reason": "cancel_requested"},
                     )
-                except Exception:
-                    pass
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
                 return ExecutionResult(
                     ok=False,
                     error="cancelled",
@@ -502,8 +520,8 @@ class HarnessIntegration:
                     http_status=409,
                     run_id=run_id,
                 )
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
         try:
             if request.kind == "agent":
@@ -528,13 +546,13 @@ class HarnessIntegration:
                         session_id=session_id,
                         run_id=run_id,
                     )
-                except Exception:
-                    pass
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
                 # Kick queue drain in background (best-effort)
                 try:
                     self._kick_session_drain(tenant_id=str(tenant_id) if tenant_id is not None else None, session_id=session_id)
-                except Exception:
-                    pass
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
         return ExecutionResult(
             ok=False,
             error=f"Unsupported kind: {request.kind}",
@@ -555,8 +573,8 @@ class HarnessIntegration:
                     run_id=run_id, event_type="run_start", trace_id=None, tenant_id=None,
                     payload={"kind": str(request.kind), "status": "running", "stream": True},
                 )
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
         result = None
         try:
@@ -579,8 +597,8 @@ class HarnessIntegration:
                     run_id=run_id, event_type="run_end", trace_id=None, tenant_id=None,
                     payload={"status": "completed" if (result and result.ok) else "failed"},
                 )
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
     async def _execute_skill_lint_scan(self, req: "ExecutionRequest") -> "ExecutionResult":
         """Scheduled lint scan over skills (workspace/engine), returns aggregated report."""
@@ -694,8 +712,8 @@ class HarnessIntegration:
                 tenant_id=None,
                 payload={"kind": "canary_web", "status": "running", "request_payload": self._redact_request_payload(payload)},
             )
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
         # Load evaluation policy: system/default ⊕ project ⊕ request override (best-effort)
         evaluation_policy: Dict[str, Any] = {}
@@ -724,8 +742,8 @@ class HarnessIntegration:
                         p1 = (proj_items2[0] or {}).get("payload") if isinstance(proj_items2[0], dict) else None
                         if isinstance(p1, dict):
                             merged = merge_policy(merged, p1)
-                except Exception:
-                    pass
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
             # request override
             pol_override = payload.get("policy") if isinstance(payload.get("policy"), dict) else None
             if isinstance(pol_override, dict):
@@ -746,8 +764,8 @@ class HarnessIntegration:
                 if tag_expectations is None and isinstance(tcfg.get("tag_expectations"), dict):
                     tag_expectations = tcfg.get("tag_expectations")
                 tag_template = tname
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
         # Build LLM adapter (same rules as auto-eval)
         provider = str(os.getenv("AIPLAT_AUTO_EVAL_LLM_PROVIDER") or os.getenv("LLM_PROVIDER") or "").strip().lower()  # noqa: env-legacy
@@ -863,32 +881,32 @@ class HarnessIntegration:
                     out0 = await _call("mcp.integrated_browser.browser_wait_for", {"timeoutMs": 1500})
                     be["steps"].append({"tool": "browser_wait_for", "output": try_parse_json(out0), "tag": "wait_for"})
                     be["coverage"]["executed_tags"].append("wait_for")
-                except Exception:
-                    pass
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
                 try:
                     snap = await _call("mcp.integrated_browser.browser_snapshot", {})
                     be["snapshot"] = try_parse_json(snap)
                     be["coverage"]["executed_tags"].append("snapshot")
-                except Exception:
-                    pass
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
                 try:
                     shot = await _call("mcp.integrated_browser.browser_take_screenshot", {})
                     be["screenshot"] = try_parse_json(shot)
                     be["coverage"]["executed_tags"].append("screenshot")
-                except Exception:
-                    pass
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
                 try:
                     con = await _call("mcp.integrated_browser.browser_console_messages", {})
                     be["console_messages"] = try_parse_json(con)
                     be["coverage"]["executed_tags"].append("console")
-                except Exception:
-                    pass
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
                 try:
                     net = await _call("mcp.integrated_browser.browser_network_requests", {})
                     be["network_requests"] = try_parse_json(net)
                     be["coverage"]["executed_tags"].append("network")
-                except Exception:
-                    pass
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
 
                 # Optional steps with tags
                 if steps:
@@ -904,8 +922,8 @@ class HarnessIntegration:
                             if _active_tag:
                                 try:
                                     await _capture_tag(_active_tag)
-                                except Exception:
-                                    pass
+                                except Exception as e:
+                                    logging.debug(str(e), exc_info=True)
                             _active_tag = tag
                             _tag_started_at.setdefault(tag, time.time())
                         out = await _call(f"mcp.integrated_browser.{tname}", args)
@@ -915,8 +933,8 @@ class HarnessIntegration:
                     if _active_tag:
                         try:
                             await _capture_tag(_active_tag)
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            logging.debug(str(e), exc_info=True)
                 return be
 
             for i in range(attempts):
@@ -948,8 +966,8 @@ class HarnessIntegration:
                 ok_cov, missing = evaluate_coverage(cov.get("expected_tags"), cov.get("executed_tags"))
                 cov["missing_expected_tags"] = missing
                 cov["ok"] = bool(ok_cov)
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
         # Persist evidence_pack artifact as run-scoped (so existing UI works)
         from core.learning.manager import LearningManager
@@ -1092,8 +1110,8 @@ class HarnessIntegration:
                 report.setdefault("evidence_diff_id", evidence_diff_id)
                 if isinstance(evidence_diff, dict):
                     report.setdefault("evidence_diff_summary", evidence_diff.get("summary"))
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
         thresholds0 = evaluation_policy.get("thresholds") if isinstance(evaluation_policy.get("thresholds"), dict) else {}
         thresholds = EvaluatorThresholds.from_dict(thresholds0)
@@ -1105,8 +1123,8 @@ class HarnessIntegration:
             gated_report.setdefault("canary_id", str(req.target_id))
             if base_evidence_pack_id_req:
                 gated_report.setdefault("base_evidence_pack_id", base_evidence_pack_id_req)
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
         # Coverage gate + tag assertions + regression gate (reuse server helpers)
         try:
@@ -1139,8 +1157,8 @@ class HarnessIntegration:
                                 "suggested_fix": "补齐 steps[] 的 tag 或调整 expected/required tags。",
                             },
                         )
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
         try:
             if isinstance(browser_evidence, dict) and isinstance(tag_expectations, dict) and tag_expectations:
@@ -1153,8 +1171,8 @@ class HarnessIntegration:
                 gated_report["assertions"]["tag_stats"] = stats
                 if not ok:
                     gated_report["pass"] = False
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
         try:
             gate = evaluation_policy.get("regression_gate") if isinstance(evaluation_policy.get("regression_gate"), dict) else None
@@ -1169,8 +1187,8 @@ class HarnessIntegration:
                 gated_report["regression"] = {"is_regression": is_reg, "reasons": reasons, "gate": gate, "evidence_diff_id": evidence_diff_id}
                 if is_reg:
                     gated_report["pass"] = False
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
         # persist evaluation_report + canary_report
         eval_artifact_id = None
@@ -1216,8 +1234,8 @@ class HarnessIntegration:
                 run_id=run_id,
             )
             canary_report_id = getattr(art_canary, "artifact_id", None)
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
         status = "completed" if bool((gated_report or {}).get("pass")) else "failed"
 
@@ -1387,8 +1405,8 @@ class HarnessIntegration:
                                     "tenant_id": str(project_id) if project_id else None,
                                 }
                             )
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            logging.debug(str(e), exc_info=True)
 
                     # Link into release-candidate change-control stream (if provided)
                     if approval_rc_id and candidate_id:
@@ -1413,10 +1431,10 @@ class HarnessIntegration:
                                     "tenant_id": str(project_id) if project_id else None,
                                 }
                             )
-                        except Exception:
-                            pass
-        except Exception:
-            pass
+                        except Exception as e:
+                            logging.debug(str(e), exc_info=True)
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
         try:
             await store.append_run_event(run_id=run_id, event_type="run_end", trace_id=trace_id, tenant_id=None, payload={"kind": "canary_web", "status": status, "evaluation_report_id": eval_artifact_id})
         except Exception:
@@ -1429,8 +1447,8 @@ class HarnessIntegration:
                 from core.services.trace_service import SpanStatus
 
                 await runtime.trace_service.end_trace(trace_id, status=SpanStatus.SUCCESS if status == "completed" else SpanStatus.ERROR)
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
 
         if enforce_gate and status != "completed":
             return ExecutionResult(ok=False, error="canary_failed", payload={"run_id": run_id, "status": status, "artifact_id": eval_artifact_id, "report": gated_report}, trace_id=trace_id, run_id=run_id)
@@ -1480,8 +1498,8 @@ class HarnessIntegration:
             finally:
                 try:
                     self._session_drain_inflight.discard(key)
-                except Exception:
-                    pass
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
 
         asyncio.create_task(_runner())
 
@@ -1507,8 +1525,8 @@ class HarnessIntegration:
                     tenant_id=str(tenant_id) if tenant_id is not None else None,
                     payload={"session_id": session_id, "kind": item.get("kind"), "target_id": item.get("target_id")},
                 )
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
             try:
                 from core.harness.kernel.types import ExecutionRequest
 
@@ -1522,9 +1540,9 @@ class HarnessIntegration:
                 )
                 if req.target_id:
                     await self.execute(req)
-            except Exception:
+            except Exception as e:
                 # best-effort: swallow to continue draining other sessions
-                pass
+                logging.debug(str(e), exc_info=True)
 
     # -----------------------------
     # Roadmap-0: error normalization
@@ -1651,9 +1669,10 @@ class HarnessIntegration:
                 http_status=403,
             )
 
-        # Resolve model name from AgentManager metadata (best effort)
+        # Resolve model from env/config (best_model_for_purpose first, config default as fallback)
         agent_info = await runtime.agent_manager.get_agent(agent_id)
-        model_name = agent_info.config.get("model") if agent_info else best_model_for_purpose("chat")
+        from core.harness.utils.model_injection import best_model_for_purpose
+        model_name = best_model_for_purpose("chat") or (agent_info.config.get("model") if agent_info else None)
 
         # Ensure agent model is usable and consistent (agent + internal loop).
         try:
@@ -1667,15 +1686,15 @@ class HarnessIntegration:
             except Exception:
                 force_rebind = False
             ensure_agent_model(agent, model_name=model_name, force=force_rebind)
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
         # Wire approval manager into loop (best effort)
         if runtime.approval_manager and hasattr(agent, "_loop") and hasattr(agent._loop, "set_approval_manager"):
             try:
                 agent._loop.set_approval_manager(runtime.approval_manager)  # type: ignore[attr-defined]
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
 
         # Bind tools (best effort)
         if agent_info and getattr(agent_info, "tools", None) and hasattr(agent, "add_tool"):
@@ -1691,8 +1710,8 @@ class HarnessIntegration:
                 if tool:
                     try:
                         agent.add_tool(tool)  # type: ignore[attr-defined]
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        logging.debug(str(e), exc_info=True)
 
         # Bind skills (best effort)
         if agent_info and getattr(agent_info, "skills", None) and hasattr(agent, "add_skill"):
@@ -1707,12 +1726,12 @@ class HarnessIntegration:
                             from core.harness.utils.model_injection import ensure_skill_model
 
                             ensure_skill_model(skill, model_name=model_name)
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            logging.debug(str(e), exc_info=True)
                     try:
                         agent.add_skill(skill)  # type: ignore[attr-defined]
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        logging.debug(str(e), exc_info=True)
 
         # Platform default: run_id should be time-sortable and stable for tracing/log correlation.
         execution_id = str(getattr(req, "run_id", None) or "") or new_prefixed_id("run")
@@ -1740,8 +1759,8 @@ class HarnessIntegration:
                                 attrs["job_id"] = ctx0.get("job_id")
                             if ctx0.get("job_run_id"):
                                 attrs["job_run_id"] = ctx0.get("job_run_id")
-                except Exception:
-                    pass
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
                 trace = await runtime.trace_service.start_trace(
                     name=f"agent:{agent_id}",
                     attributes=attrs,
@@ -1773,8 +1792,8 @@ class HarnessIntegration:
                         "project_id": ((req.payload or {}).get("context") or {}).get("project_id") if isinstance(req.payload, dict) else None,
                     },
                 )
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
 
         try:
             payload = req.payload or {}
@@ -1813,10 +1832,10 @@ class HarnessIntegration:
                                 tenant_id=str(tenant_id) if tenant_id else None,
                                 payload={"persona_template_id": str(persona_tid)},
                             )
-                        except Exception:
-                            pass
-            except Exception:
-                pass
+                        except Exception as e:
+                            logging.debug(str(e), exc_info=True)
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
 
             # Phase R1: workspace/repo context for prompt assembly (best-effort).
             # Phase R4: request identity context for session search injection.
@@ -1862,8 +1881,8 @@ class HarnessIntegration:
                         auto = os.getenv("AIPLAT_AUTO_REPO_ROOT", "true").strip().lower() in ("1", "true", "yes", "y", "on")
                         if auto:
                             repo_root = self._infer_default_repo_root()
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        logging.debug(str(e), exc_info=True)
                 if (isinstance(repo_root, str) and repo_root.strip()) or requested_toolset:
                     workspace_token = set_active_workspace_context(
                         ActiveWorkspaceContext(
@@ -1920,8 +1939,8 @@ class HarnessIntegration:
                 try:
                     variables = dict(variables or {})
                     variables["_resume_loop_state"] = payload.get("_resume_loop_state")
-                except Exception:
-                    pass
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
             context = AgentContext(
                 session_id=payload.get("session_id", req.session_id or "default"),
                 user_id=user_id,
@@ -1945,15 +1964,15 @@ class HarnessIntegration:
                     # Surface to downstream via variables/metadata for observability.
                     context.variables.setdefault("_toolset", policy.name)
                     context.metadata.setdefault("toolset", policy.name)
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
             # Propagate trace/run identifiers into agent variables so loops can pass them to syscalls.
             try:
                 if isinstance(context.variables, dict):
                     context.variables.setdefault("_trace_id", trace_id)
                     context.variables.setdefault("_run_id", execution_id)
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
 
             # Phase 5.2: optional Orchestrator planning (Phase 9: plan drives execution)
             orchestrator_plan = None
@@ -1979,8 +1998,8 @@ class HarnessIntegration:
             if execution_plan is not None and hasattr(agent, "context") and isinstance(getattr(agent, "context", None), dict):
                 try:
                     agent.context.setdefault("_execution_plan", execution_plan.to_dict())
-                except Exception:
-                    pass
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
 
             # Phase 5.0: route via EngineRouter (plan-aware in Phase 9)
             engine_router = None
@@ -1994,8 +2013,8 @@ class HarnessIntegration:
                     agent_cfg = getattr(agent, 'config', None) or getattr(agent, '_config', None)
                     if agent_cfg:
                         enriched_payload["agent_type"] = getattr(agent_cfg, 'agent_type', '') or ''
-                except Exception:
-                    pass
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
                 engine, decision = engine_router.route_agent(
                     agent_id=agent_id,
                     payload=enriched_payload,
@@ -2069,8 +2088,8 @@ class HarnessIntegration:
                             # If result is not set due to exception, mark failed.
                             try:
                                 await TraceGate().end(exec_span, success=False)
-                            except Exception:
-                                pass
+                            except Exception as e:
+                                logging.debug(str(e), exc_info=True)
                 else:
                     from core.harness.infrastructure.gates import TraceGate
 
@@ -2090,8 +2109,8 @@ class HarnessIntegration:
                         except Exception:
                             try:
                                 await TraceGate().end(exec_span, success=False)
-                            except Exception:
-                                pass
+                            except Exception as e:
+                                logging.debug(str(e), exc_info=True)
             finally:
                 # Capture then reset prompt revision audit
                 if audit_token is not None:
@@ -2101,36 +2120,36 @@ class HarnessIntegration:
                         audit = get_prompt_revision_audit()
                         audit_data = audit.to_dict() if audit is not None else None
                         reset_prompt_revision_audit(audit_token)
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        logging.debug(str(e), exc_info=True)
                 if token is not None:
                     try:
                         from core.harness.kernel.execution_context import reset_active_release_context
 
                         reset_active_release_context(token)
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        logging.debug(str(e), exc_info=True)
                 if workspace_token is not None:
                     try:
                         from core.harness.kernel.execution_context import reset_active_workspace_context
 
                         reset_active_workspace_context(workspace_token)
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        logging.debug(str(e), exc_info=True)
                 if request_token is not None:
                     try:
                         from core.harness.kernel.execution_context import reset_active_request_context
 
                         reset_active_request_context(request_token)
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        logging.debug(str(e), exc_info=True)
                 if tenant_policy_token is not None:
                     try:
                         from core.harness.kernel.execution_context import reset_active_tenant_policy_context
 
                         reset_active_tenant_policy_context(tenant_policy_token)
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        logging.debug(str(e), exc_info=True)
 
             # Attach kernel-managed resume payload (Phase 3.5) so resume can work after server restart.
             # Keep it minimal: only what is required to re-run agent execute.
@@ -2150,13 +2169,13 @@ class HarnessIntegration:
             if orchestrator_plan is not None:
                 try:
                     meta.setdefault("orchestrator_plan", orchestrator_plan.to_dict())
-                except Exception:
-                    pass
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
             if active_release is not None:
                 try:
                     meta.setdefault("active_release", active_release.to_dict())
-                except Exception:
-                    pass
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
             # Phase 6.12: attach prompt revision audit into execution metadata
             if audit_data is not None:
                 meta.setdefault("prompt_revision_audit", audit_data)
@@ -2191,8 +2210,8 @@ class HarnessIntegration:
                         fallback_message=str(result.error or "执行失败"),
                     ),
                 )
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
             # Persist (best effort)
             if runtime.execution_store:
                 try:
@@ -2201,11 +2220,11 @@ class HarnessIntegration:
                         ctx0 = payload.get("context") if isinstance(payload, dict) else None
                         if isinstance(ctx0, dict) and ctx0.get("project_id") and isinstance(meta, dict):
                             meta.setdefault("project_id", str(ctx0.get("project_id")))
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        logging.debug(str(e), exc_info=True)
                     await runtime.execution_store.upsert_agent_execution(record)
-                except Exception:
-                    pass
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
                 # Roadmap-4: persist session messages for cross-session search (best-effort).
                 try:
                     sess_id = str(payload.get("session_id", req.session_id or "default")) if isinstance(payload, dict) else str(req.session_id or "default")
@@ -2235,8 +2254,8 @@ class HarnessIntegration:
                             trace_id=trace_id,
                             run_id=execution_id,
                         )
-                except Exception:
-                    pass
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
             if runtime.trace_service and trace_id:
                 try:
                     from core.services.trace_service import SpanStatus
@@ -2244,8 +2263,8 @@ class HarnessIntegration:
                     await runtime.trace_service.end_trace(
                         trace_id, status=SpanStatus.SUCCESS if result.success else SpanStatus.FAILED
                     )
-                except Exception:
-                    pass
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
 
             # Run events (best-effort): end
             if runtime.execution_store:
@@ -2262,8 +2281,8 @@ class HarnessIntegration:
                             "error": result.error,
                         },
                     )
-                except Exception:
-                    pass
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
 
             return ExecutionResult(
                 ok=True,
@@ -2313,8 +2332,8 @@ class HarnessIntegration:
                             "metadata": {"exception": str(e)},
                         }
                     )
-                except Exception:
-                    pass
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
                 try:
                     await runtime.execution_store.append_run_event(
                         run_id=execution_id,
@@ -2323,15 +2342,15 @@ class HarnessIntegration:
                         tenant_id=str(tenant_id) if tenant_id else None,
                         payload={"kind": "agent", "agent_id": agent_id, "status": "failed", "error": str(e)},
                     )
-                except Exception:
-                    pass
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
             if runtime.trace_service and trace_id:
                 try:
                     from core.services.trace_service import SpanStatus
 
                     await runtime.trace_service.end_trace(trace_id, status=SpanStatus.FAILED)
-                except Exception:
-                    pass
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
             return self._fail(code="EXCEPTION", message=str(e), http_status=500, trace_id=trace_id, run_id=execution_id)
 
     async def _execute_skill(self, req: "ExecutionRequest") -> "ExecutionResult":
@@ -2368,8 +2387,8 @@ class HarnessIntegration:
                                 attrs["job_id"] = ctx0.get("job_id")
                             if ctx0.get("job_run_id"):
                                 attrs["job_run_id"] = ctx0.get("job_run_id")
-                except Exception:
-                    pass
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
                 trace = await runtime.trace_service.start_trace(
                     name=f"skill:{skill_id}",
                     attributes=attrs,
@@ -2511,36 +2530,36 @@ class HarnessIntegration:
                     audit = get_prompt_revision_audit()
                     audit_data = audit.to_dict() if audit is not None else None
                     reset_prompt_revision_audit(audit_token)
-                except Exception:
-                    pass
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
             if token is not None:
                 try:
                     from core.harness.kernel.execution_context import reset_active_release_context
 
                     reset_active_release_context(token)
-                except Exception:
-                    pass
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
             if workspace_token is not None:
                 try:
                     from core.harness.kernel.execution_context import reset_active_workspace_context
 
                     reset_active_workspace_context(workspace_token)
-                except Exception:
-                    pass
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
             if request_token is not None:
                 try:
                     from core.harness.kernel.execution_context import reset_active_request_context
 
                     reset_active_request_context(request_token)
-                except Exception:
-                    pass
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
             if tenant_policy_token is not None:
                 try:
                     from core.harness.kernel.execution_context import reset_active_tenant_policy_context
 
                     reset_active_tenant_policy_context(tenant_policy_token)
-                except Exception:
-                    pass
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
 
         # Persist execution (best effort)
         if runtime.execution_store:
@@ -2558,8 +2577,8 @@ class HarnessIntegration:
                 if active_release is not None:
                     try:
                         meta2.setdefault("active_release", active_release.to_dict())
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        logging.debug(str(e), exc_info=True)
                 if audit_data is not None:
                     meta2.setdefault("prompt_revision_audit", audit_data)
                 if tenant_id:
@@ -2577,8 +2596,8 @@ class HarnessIntegration:
                             fallback_message=str(execution.error or "执行失败"),
                         ),
                     )
-                except Exception:
-                    pass
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
                 try:
                     exec_backend = None
                     try:
@@ -2600,8 +2619,8 @@ class HarnessIntegration:
                             "request_payload": self._redact_request_payload(req.payload if isinstance(req.payload, dict) else {}),
                         },
                     )
-                except Exception:
-                    pass
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
                 await runtime.execution_store.upsert_skill_execution(
                     {
                         "id": execution.id,
@@ -2642,8 +2661,8 @@ class HarnessIntegration:
                             trace_id=trace_id,
                             run_id=execution.id,
                         )
-                except Exception:
-                    pass
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
                 try:
                     await runtime.execution_store.append_run_event(
                         run_id=execution.id,
@@ -2658,10 +2677,10 @@ class HarnessIntegration:
                             "prompt_revision_audit": audit_data,
                         },
                     )
-                except Exception:
-                    pass
-            except Exception:
-                pass
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
 
         if runtime.trace_service and trace_id:
             try:
@@ -2670,8 +2689,8 @@ class HarnessIntegration:
                 await runtime.trace_service.end_trace(
                     trace_id, status=SpanStatus.SUCCESS if execution.status == "completed" else SpanStatus.FAILED
                 )
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
 
         return ExecutionResult(
             ok=True,
@@ -2862,8 +2881,8 @@ class HarnessIntegration:
                                 attrs["job_id"] = ctx0.get("job_id")
                             if ctx0.get("job_run_id"):
                                 attrs["job_run_id"] = ctx0.get("job_run_id")
-                except Exception:
-                    pass
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
                 t = await runtime.trace_service.start_trace(name=f"tool:{req.target_id}", attributes=attrs)
                 trace_id = t.trace_id
             except Exception:
@@ -2892,8 +2911,8 @@ class HarnessIntegration:
                         "request_payload": self._redact_request_payload(req.payload if isinstance(req.payload, dict) else {}),
                     },
                 )
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
 
         try:
             result = await sys_tool_call(
@@ -2935,8 +2954,8 @@ class HarnessIntegration:
                         trace_id=trace_id,
                         run_id=run_id,
                     )
-                except Exception:
-                    pass
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
             # Run events (best-effort): end
             if runtime and runtime.execution_store:
                 try:
@@ -2953,8 +2972,8 @@ class HarnessIntegration:
                             "prompt_revision_audit": audit_data,
                         },
                     )
-                except Exception:
-                    pass
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
             return ExecutionResult(
                 ok=True,
                 payload={
@@ -2999,8 +3018,8 @@ class HarnessIntegration:
                         tenant_id=str(tenant_id) if tenant_id else None,
                         payload={"kind": "tool", "tool_name": req.target_id, "status": "timeout", "error": "TIMEOUT"},
                     )
-                except Exception:
-                    pass
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
             return self._fail(code="TIMEOUT", message="Tool execution timed out (60s)", http_status=504, trace_id=trace_id, run_id=run_id)
         except Exception as e:
             if runtime and runtime.execution_store:
@@ -3012,8 +3031,8 @@ class HarnessIntegration:
                         tenant_id=str(tenant_id) if tenant_id else None,
                         payload={"kind": "tool", "tool_name": req.target_id, "status": "failed", "error": str(e)},
                     )
-                except Exception:
-                    pass
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
             return self._fail(code="EXCEPTION", message=str(e), http_status=500, trace_id=trace_id, run_id=run_id)
         finally:
             if runtime and runtime.trace_service and trace_id:
@@ -3021,44 +3040,44 @@ class HarnessIntegration:
                     from core.services.trace_service import SpanStatus
 
                     await runtime.trace_service.end_trace(trace_id, status=SpanStatus.SUCCESS)
-                except Exception:
-                    pass
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
             # Reset prompt revision audit
             if audit_token is not None:
                 try:
                     from core.harness.kernel.execution_context import reset_prompt_revision_audit
 
                     reset_prompt_revision_audit(audit_token)
-                except Exception:
-                    pass
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
             if token is not None:
                 try:
                     from core.harness.kernel.execution_context import reset_active_release_context
 
                     reset_active_release_context(token)
-                except Exception:
-                    pass
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
             if workspace_token is not None:
                 try:
                     from core.harness.kernel.execution_context import reset_active_workspace_context
 
                     reset_active_workspace_context(workspace_token)
-                except Exception:
-                    pass
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
             if request_token is not None:
                 try:
                     from core.harness.kernel.execution_context import reset_active_request_context
 
                     reset_active_request_context(request_token)
-                except Exception:
-                    pass
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
             if tenant_policy_token is not None:
                 try:
                     from core.harness.kernel.execution_context import reset_active_tenant_policy_context
 
                     reset_active_tenant_policy_context(tenant_policy_token)
-                except Exception:
-                    pass
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
 
     async def _execute_graph(self, req: "ExecutionRequest") -> "ExecutionResult":
         # Phase-1: only support compiled_react execution via internal compiled graph.
@@ -3118,8 +3137,8 @@ class HarnessIntegration:
                     from core.services.trace_service import SpanStatus
 
                     await runtime.trace_service.end_trace(trace_id, status=SpanStatus.SUCCESS)
-                except Exception:
-                    pass
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
         run_id = (final_state.get("metadata") or {}).get("graph_run_id")
         return ExecutionResult(ok=True, payload={"run_id": run_id, "final_state": final_state}, trace_id=trace_id, run_id=run_id)
 
@@ -3169,8 +3188,8 @@ class HarnessIntegration:
                     "request_payload": self._redact_request_payload(payload),
                 },
             )
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
         try:
             from core.harness.smoke.e2e import run_smoke_e2e
@@ -3185,8 +3204,8 @@ class HarnessIntegration:
                     tenant_id=str(payload.get("tenant_id")) if payload.get("tenant_id") else None,
                     payload={"kind": "smoke_e2e", "status": status},
                 )
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
             return ExecutionResult(
                 ok=True,
                 payload={"run_id": run_id, "status": status, **res},
@@ -3202,8 +3221,8 @@ class HarnessIntegration:
                     tenant_id=str(payload.get("tenant_id")) if payload.get("tenant_id") else None,
                     payload={"kind": "smoke_e2e", "status": "failed", "error": str(e)},
                 )
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
             return self._fail(code="EXCEPTION", message=str(e), http_status=500, trace_id=trace_id, run_id=run_id)
 
     @staticmethod
@@ -3224,8 +3243,8 @@ class HarnessIntegration:
             env_root = (os.getenv("AIPLAT_DEFAULT_REPO_ROOT", "") or "").strip()
             if env_root:
                 return env_root
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
         try:
             here = Path(__file__).resolve()  # .../aiPlat-core/core/harness/integration.py

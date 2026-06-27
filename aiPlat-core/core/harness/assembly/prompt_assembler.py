@@ -12,6 +12,7 @@ Notes:
 """
 
 from __future__ import annotations
+import logging
 
 import hashlib
 import json
@@ -88,8 +89,8 @@ class MessageFormatter:
                 meta.setdefault("workspace_context_hash", getattr(res, "workspace_context_hash", None))
             if getattr(res, "status", None) and isinstance(getattr(res, "status", None), dict):
                 meta.setdefault("context_status", getattr(res, "status", None))
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
         # ── Architecture Contract Injection ──
         # For code-generation skills, inject architecture constraints
@@ -113,16 +114,16 @@ class MessageFormatter:
                         prompt[sys_idx]["content"] = str(prompt[sys_idx].get("content", "")) + "\n" + contract
                     else:
                         prompt.insert(0, {"role": "system", "content": contract})
-        except Exception:
-            pass  # Never block agent startup
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
         # Roadmap-1 (Phase 1): lightweight prompt stats (no behavior change).
         try:
             meta.setdefault("context_engine", "default_v1")
             meta.setdefault("prompt_message_count", len(msgs))
             meta.setdefault("prompt_estimated_tokens", self._estimate_tokens(msgs))
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
         version = self._hash_messages(msgs)
         meta.setdefault("versioning", "sha256(messages)")
@@ -173,8 +174,8 @@ class MessageFormatter:
                 if isinstance(cs.get("prompt"), dict):
                     cs["prompt"]["message_count"] = len(msgs)
                     cs["prompt"]["estimated_tokens"] = meta.get("prompt_estimated_tokens")
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
         return PromptAssemblyResult(
             messages=msgs,

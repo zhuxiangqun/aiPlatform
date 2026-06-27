@@ -129,8 +129,8 @@ def take_growth_snapshot(collection_id: str = "default") -> GrowthSnapshot:
         elif t.predicate == f"{AI}qualityScore":
             try:
                 quality_scores.append(float(obj.strip('"')))
-            except (ValueError, TypeError):
-                pass
+            except (ValueError, TypeError) as e:
+                logging.debug(str(e), exc_info=True)
 
     # Halve cross-links since each link is a pair
     cross_links = cross_links // 2

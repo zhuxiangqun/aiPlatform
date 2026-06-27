@@ -64,8 +64,8 @@ def _verify_tool_signature(tool_id: str, entry: Dict[str, Any]) -> None:
             with _cf.ThreadPoolExecutor(max_workers=1) as _pool:
                 trusted = _pool.submit(asyncio.run, get_trusted_skill_pubkeys_map(store)).result(timeout=10) if store else {}
             verify_skill_signature(skill_id=tool_id, version="0.1.0", bundle_sha256=bundle, signature=sig, trusted_keys=trusted)
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
 
 class ToolDiscovery:
@@ -113,8 +113,8 @@ class ToolDiscovery:
             manifest = {"version": "1.0.0"}
             try:
                 manifest_path.write_text(json.dumps(manifest, indent=2, ensure_ascii=False), encoding="utf-8")
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
 
         results = []
         for attr_name in dir(module):

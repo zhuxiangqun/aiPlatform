@@ -172,8 +172,8 @@ async def publish_template(template_id: str):
     try:
         await store.db.execute("UPDATE prompt_app_templates SET status='published', updated_at=? WHERE template_id=?", (time.time(), template_id))
         await store.db.commit()
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
     await _record_changeset(store, "publish_prompt_app_template", template_id, args={"status": "published"})
     return {"status": "published", "template_id": template_id}
 
@@ -484,8 +484,8 @@ async def seed_app_templates():
     # Seed scenario tags first
     try:
         await seed_scenario_tags()
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
     for tid, name, cat, tags, sp, up, ap in _APP_DEFAULTS:
         try:
             existing = await store.get_prompt_app_template(template_id=tid)

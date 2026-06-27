@@ -36,6 +36,42 @@ def yellow(text: str) -> str:
     return f"\033[0;33m{text}\033[0m"
 
 
+# Baseline ratchet (mirrors guard_frontend.py §45 + guard_ast_behavior except:pass):
+# lock the CURRENT set of ERROR-level violations as known debt → exit 0; only NEW
+# error-level violations (signature not in baseline) block (exit 1). Without this,
+# the guard exits 1 forever on documented known-debt and gets ignored ("cried wolf").
+ARCH_BASELINE = WORKSPACE_ROOT / "scripts" / "baselines" / "architecture_guard_baseline.txt"
+
+
+def _arch_error_sigs(report) -> dict:
+    """Stable signatures for ERROR-level violations (these drive report.violations/ok).
+
+    Signature = '§<section>:<code>' — stable across runs (no line numbers, no counts).
+    """
+    sigs = {}
+    for section in report.sections:
+        for item in getattr(section, "items", []) or []:
+            if getattr(item, "level", "") == "error":
+                sigs[f"{section.number}:{item.code}"] = item
+    return sigs
+
+
+def _load_arch_baseline() -> set:
+    try:
+        return {
+            ln.strip()
+            for ln in ARCH_BASELINE.read_text(encoding="utf-8").splitlines()
+            if ln.strip() and not ln.startswith("#")
+        }
+    except Exception:
+        return set()
+
+
+def _write_arch_baseline(sigs) -> None:
+    ARCH_BASELINE.parent.mkdir(parents=True, exist_ok=True)
+    ARCH_BASELINE.write_text("\n".join(sorted(sigs)) + "\n", encoding="utf-8")
+
+
 def format_text(report) -> str:
     """Format ArchReport as text matching the original .sh output."""
     lines = []
@@ -151,6 +187,7 @@ def main():
     parser.add_argument("--json", action="store_true", help="JSON output")
     parser.add_argument("--quick", action="store_true", help="Quick mode (imports only)")
     parser.add_argument("--diff-only", action="store_true", help="Only scan git-changed files + CodeGraph callers")
+    parser.add_argument("--write-baseline", action="store_true", help="Regenerate the ERROR-level baseline ratchet")
     args = parser.parse_args()
 
     # ── --diff-only: expand changed files via CodeGraph for faster PR CI ──
@@ -189,10 +226,23 @@ def main():
     registry = get_arch_registry()
     report = registry.run_all(WORKSPACE_ROOT)
 
+    # ── Baseline ratchet: lock known ERROR-level debt, fail only on NEW ──
+    error_sigs = _arch_error_sigs(report)
+    if args.write_baseline:
+        _write_arch_baseline(set(error_sigs))
+        print(f"PASS: architecture_guard baseline written = {len(error_sigs)} error signatures")
+        sys.exit(0)
+
+    baseline = _load_arch_baseline()
+    new_sigs = sorted(s for s in error_sigs if s not in baseline)
+    known_sigs = sorted(s for s in error_sigs if s in baseline)
+
     if args.json:
         output = {
             "ok": report.ok,
             "violations": report.violations,
+            "new_violations": new_sigs,
+            "baseline_violations": known_sigs,
             "duration_ms": report.duration_ms,
             "summary": report.summary,
             "sections": [s.to_dict() for s in report.sections],
@@ -200,8 +250,17 @@ def main():
         print(json.dumps(output, ensure_ascii=False, indent=2))
     else:
         print(format_text(report))
+        print("")
+        if new_sigs:
+            print(red(f"═══ ARCH GUARD RATCHET: {len(new_sigs)} NEW error violation(s) — not in baseline ═══"))
+            for s in new_sigs:
+                print(red(f"  [NEW] {s}"))
+            print("  → Fix the violation, or (if intentional) run: "
+                  "python scripts/architecture_guard.py --write-baseline")
+        else:
+            print(green(f"═══ ARCH GUARD RATCHET: 0 new, {len(known_sigs)} baseline known-debt error(s) — OK ═══"))
 
-    sys.exit(0 if report.ok else 1)
+    sys.exit(1 if new_sigs else 0)
 
 
 if __name__ == "__main__":

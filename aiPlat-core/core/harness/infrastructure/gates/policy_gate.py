@@ -107,8 +107,8 @@ def _get_protected_paths() -> set:
                 if af.get("enabled") and af.get("safety_level") == "high":
                     for p in rule.get("check", {}).get("paths", []):
                         protected.add(p)
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
     return protected
 
 
@@ -174,8 +174,8 @@ class PolicyGate:
             if t.get("sample_rate") is not None:
                 try:
                     sample_rate = float(t.get("sample_rate"))
-                except Exception:
-                    pass
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
             if isinstance(t.get("high_risk_always"), bool):
                 high_risk_always = bool(t.get("high_risk_always"))
             if isinstance(t.get("force_list"), str):
@@ -338,8 +338,8 @@ class PolicyGate:
                     )
                 if decision == "ask":
                     force_approval = True
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
         try:
             runtime = get_kernel_runtime()
             store = getattr(runtime, "execution_store", None) if runtime else None
@@ -376,9 +376,9 @@ class PolicyGate:
                     )
                 if ev.decision == EngineDecision.APPROVAL_REQUIRED:
                     force_approval = True
-        except Exception:
+        except Exception as e:
             # Fail-open for compatibility.
-            pass
+            logging.debug(str(e), exc_info=True)
 
         # P6-3: approval sampling/exception review (best-effort)
         waive_reason = None
@@ -408,8 +408,8 @@ class PolicyGate:
                         tenant_id=str(tenant_id) if tenant_id else None,
                         payload={"operation": f"tool:{tool_name}", "reason": waive_reason, "policy_version": policy_version},
                     )
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
             return PolicyResult(decision=PolicyDecision.ALLOW)
 
         runtime = get_kernel_runtime()
@@ -503,8 +503,8 @@ class PolicyGate:
                             metadata={"sensitive_operations": [ctx.operation]},
                         )
                     )
-                except Exception:
-                    pass
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
             req = approval_mgr.check_and_request(ctx)
             # Ensure request metadata includes risk fields (ApprovalManager persists metadata).
             try:
@@ -513,8 +513,8 @@ class PolicyGate:
                     req.metadata.setdefault("risk_level", ctx.metadata.get("risk_level"))
                     req.metadata.setdefault("risk_weight", ctx.metadata.get("risk_weight"))
                     req.metadata.setdefault("tool_name", ctx.metadata.get("tool_name"))
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
             status = getattr(req, "status", None)
             if status in (RequestStatus.PENDING, RequestStatus.REJECTED):
                 return PolicyResult(
@@ -553,9 +553,9 @@ class PolicyGate:
                         decision=PolicyDecision.DENY,
                         reason=f"User '{user_id}' lacks EXECUTE permission for skill '{skill_name}'",
                     )
-        except Exception:
+        except Exception as e:
             # Fail-open for compatibility (Phase 3).
-            pass
+            logging.debug(str(e), exc_info=True)
         tenant_id = args.get("_tenant_id")
         policy_version: Optional[int] = None
         force_approval = bool(args.get("_approval_required"))
@@ -586,8 +586,8 @@ class PolicyGate:
                         tenant_id=str(tenant_id) if tenant_id else None,
                         payload={"operation": f"skill:{skill_name}", "reason": waive_reason, "policy_version": policy_version},
                     )
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
             return PolicyResult(decision=PolicyDecision.ALLOW)
 
         runtime = get_kernel_runtime()
@@ -667,8 +667,8 @@ class PolicyGate:
                             metadata={"sensitive_operations": [ctx.operation]},
                         )
                     )
-                except Exception:
-                    pass
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
             req = approval_mgr.check_and_request(ctx)
             status = getattr(req, "status", None)
             if status in (RequestStatus.PENDING, RequestStatus.REJECTED):
@@ -694,15 +694,15 @@ class PolicyGate:
                 perm_mgr = get_permission_manager()
                 if not perm_mgr.check_permission(user_id, str(agent_id or ""), Permission.EXECUTE):
                     return PolicyResult(decision=PolicyDecision.DENY, reason=f"User '{user_id}' lacks EXECUTE permission for agent '{agent_id}'")
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
         force_approval = bool(args.get("_approval_required"))
         try:
             force_approval, _ = await self._maybe_waive_approval(operation=f"agent:{agent_id}", force_approval=force_approval,
                 tenant_id=str(args.get("_tenant_id")) if args.get("_tenant_id") else None,
                 args=args if isinstance(args, dict) else None)
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
         if not force_approval:
             return PolicyResult(decision=PolicyDecision.ALLOW)
         # Approval flow (same as check_skill)
@@ -737,15 +737,15 @@ class PolicyGate:
                 perm_mgr = get_permission_manager()
                 if not perm_mgr.check_permission(user_id, str(workflow_id or ""), Permission.EXECUTE):
                     return PolicyResult(decision=PolicyDecision.DENY, reason=f"User '{user_id}' lacks EXECUTE permission for workflow '{workflow_id}'")
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
         force_approval = bool(args.get("_approval_required"))
         try:
             force_approval, _ = await self._maybe_waive_approval(operation=f"workflow:{workflow_id}", force_approval=force_approval,
                 tenant_id=str(args.get("_tenant_id")) if args.get("_tenant_id") else None,
                 args=args if isinstance(args, dict) else None)
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
         if not force_approval:
             return PolicyResult(decision=PolicyDecision.ALLOW)
         return PolicyResult(decision=PolicyDecision.APPROVAL_REQUIRED, reason=f"Workflow '{workflow_id}' requires approval")
@@ -834,8 +834,8 @@ async def check_stage_ontology_guard(
                                 "Ontology: stage %s depends on contradicted entity '%s'",
                                 getattr(stage, 'id', '?'), ref_title,
                             )
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
     return None
 

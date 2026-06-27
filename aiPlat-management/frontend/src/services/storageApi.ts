@@ -51,7 +51,7 @@ export const storageApi = {
   },
 
   deleteCollection: async (name: string): Promise<void> => {
-    return apiClient.delete(`/infra/storage/collections/${name}`);
+    return apiClient.delete(`/infra/storage/vector/collections/${name}`);
   },
 
   // Model Storage
@@ -78,7 +78,7 @@ export const storageApi = {
   },
 
   expandPVC: async (pvcName: string, size: string): Promise<void> => {
-    return apiClient.post(`/infra/storage/pvcs/${pvcName}/expand`, { size });
+    return apiClient.post(`/infra/storage/pvc/${pvcName}/resize?size=${size}`);
   },
 
   deletePVC: async (pvcName: string): Promise<void> => {

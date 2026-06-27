@@ -4,6 +4,7 @@ Platform Chat routes — web chat session management.
 Migrated from aiPlat-core/core/api/routers/chat.py per architecture contract.
 """
 from __future__ import annotations
+import logging
 
 from typing import Annotated, Any, Optional
 
@@ -48,8 +49,8 @@ async def create_session(request: dict, rt: RuntimeDep = None, _auth: str = Depe
                     for k, v in variables.items():
                         up = up.replace("$" + "{" + k + "}", str(v))
                     system_prompt = (sp + "\n\n" + up).strip()
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
     initial_context = request.get("initial_context", {})
     session_id = await _svc(rt).create_session(agent_id, system_prompt, initial_context)

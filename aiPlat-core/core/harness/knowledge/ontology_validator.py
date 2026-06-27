@@ -9,6 +9,7 @@ Callers:
 """
 
 from __future__ import annotations
+import logging
 
 from dataclasses import dataclass, field
 from pathlib import Path as _Path
@@ -97,8 +98,8 @@ def _validate_wiki_pages(report: ValidationReport, domain, collection_id: str, h
                 for cat in cls.allowed_categories or []:
                     valid_categories.add(cat)
                     cls_by_category[cat] = cls
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
         # Add domain-specific class categories
         for cls in domain.classes:
@@ -158,8 +159,8 @@ def _validate_graph_nodes(report: ValidationReport, domain, domain_id: str, home
             for cls in CLASSES:
                 valid_labels.add(cls.label)
                 cls_by_label[cls.label] = cls
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
         # Add domain-specific class labels
         for cls in domain.classes:

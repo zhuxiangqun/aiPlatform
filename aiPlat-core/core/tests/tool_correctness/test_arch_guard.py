@@ -14,6 +14,10 @@ import tempfile
 from pathlib import Path
 import pytest
 
+# Heavy integration self-test: invokes real full-repo guard scripts (slow, 100s+).
+# Skipped in the fast architecture guard; run explicitly via `pytest -m slow`.
+pytestmark = pytest.mark.slow
+
 WORKSPACE_ROOT = Path(__file__).resolve().parent.parent.parent.parent.parent
 sys.path.insert(0, str(WORKSPACE_ROOT))
 sys.path.insert(0, str(WORKSPACE_ROOT / "aiPlat-core"))

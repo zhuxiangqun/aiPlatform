@@ -9,7 +9,9 @@ Layer 4: Task Skills   (External)— 可复用执行模式 (流水线晶体化, 
 Design reference: Hermes Agent 四层记忆诊断框架.
 """
 
+import asyncio
 import logging
+import os
 from typing import List, Optional, Dict, Any
 from dataclasses import dataclass, field
 
@@ -118,8 +120,8 @@ class MemoryManager:
                     logger.debug(f"Semantic cleanup: soft-deleted {count} expired items")
             except asyncio.CancelledError:
                 break
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
 
     async def shutdown(self) -> None:
         """Gracefully stop background tasks."""
@@ -205,8 +207,8 @@ class MemoryManager:
                             if msg:
                                 messages.append({"role": "system", "content": msg})
                         break
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
         
         # Add working memory
         messages.extend(working_context)
@@ -240,7 +242,12 @@ class MemoryManager:
             messages=messages,
             token_count=int(total_tokens),
             reminder=reminder,
-            working_context=working_context[-3] if isinstance(working_context, list) and working_context else "",
+            working_context=(
+                working_context[-3]
+                if isinstance(working_context, list) and len(working_context) >= 3
+                else working_context[-1] if isinstance(working_context, list) and working_context
+                else ""
+            ),
             episodic_summary=episodic_summary,
             relevant_memories="\n".join([m.content[:200] for m in relevant_memories[:3]]) if relevant_memories else "",
         )
@@ -336,8 +343,8 @@ class MemoryManager:
                                        tags=["memory", "auto-extracted"],
                                        summary=assistant[:300].replace('\n', ' '),
                                        source_articles=["memory:episodic"])
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
 
     def export_episodic_state(self) -> Dict[str, Any]:
         """Export episodic memory for persistence (survives restart)."""
@@ -419,8 +426,8 @@ class MemoryManager:
                 )
                 registry.register(meta)
                 logger.info(f"TaskSkill registered in SkillRegistry: {skill.skill_id}")
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
         return skill_path
 
@@ -797,8 +804,8 @@ def _wire_persist_callback(mgr: MemoryManager) -> None:
                 (str(uuid.uuid4()), user_id, key, content,
                  str(interaction.get("metadata", "{}"))[:2000],
                  interaction.get("timestamp", now), now, 1.0))
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
     mgr._persist_callback = _persist
 
 

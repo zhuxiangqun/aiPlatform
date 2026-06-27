@@ -105,7 +105,8 @@ check_git_diff_sync() {
 
     # Check if there are unstaged .py changes
     local py_changes=$(git -C "$WORKSPACE" diff --name-only 2>/dev/null | grep '\.py$' | grep -v __pycache__ | head -5 || true)
-    local caps_changed=$(git -C "$WORKSPACE" diff --name-only 2>/dev/null | grep -c "CAPABILITIES.md\|ROADMAP.md" || echo "0")
+    local caps_changed=$(git -C "$WORKSPACE" diff --name-only 2>/dev/null | grep -c "CAPABILITIES.md\|ROADMAP.md" || true)
+    caps_changed=${caps_changed:-0}
 
     if [ -n "$py_changes" ] && [ "$caps_changed" -eq 0 ]; then
         echo -e "  ${YELLOW}⚠${NC} 检测到 .py 变更但 CAPABILITIES.md/ROADMAP.md 未同步更新"

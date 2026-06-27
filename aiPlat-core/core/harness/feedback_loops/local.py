@@ -3,6 +3,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
 import asyncio
+import logging
 
 
 class FeedbackLevel(Enum):
@@ -86,8 +87,8 @@ class LocalFeedbackLoop:
         for handler in self._handlers:
             try:
                 handler(feedback)
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
 
     def success(self, source: str, content: Any, **context):
         self.emit(FeedbackLevel.INFO, FeedbackType.RESULT, source, content, **context)

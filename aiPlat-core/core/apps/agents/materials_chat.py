@@ -17,6 +17,7 @@ from core.harness.syscalls.skill import sys_skill_call
 from core.harness.kernel.runtime import get_kernel_runtime
 from core.services.conversations import ConversationService
 from core.apps.document_intelligence.kb_provider import get_kb_load_doc_kinds_fn
+import logging
 
 
 def _self_review(answer: str, citations: list, reasoning_path: list) -> str:
@@ -182,8 +183,8 @@ class MaterialsChatAgent(BaseAgent):
                                 "reasoning_path": [], "pipeline_trace": pipeline_trace,
                                 "quality": "trivial"},
                         metadata={"intent": "trivial", "strategy": "trivial_bypass"})
-                except Exception:
-                    pass  # fall through to normal pipeline
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
 
             # Lightweight complexity classifier (zero LLM, rule-based)
             # Categorize before analyze_question so ModelManager can use it for routing
@@ -212,8 +213,8 @@ class MaterialsChatAgent(BaseAgent):
                 dmqr_variants = rewrite_multi_dmqr(question, strategies=["generic", "keywords", "core"])
                 if len(dmqr_variants) > 1:
                     enhanced_question = f"{enhanced_question} [variants: {' | '.join(dmqr_variants[1:4])}]"
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
             retrieval_policy = choose_retrieval_policy(analysis=analysis, scope=scope, doc_kinds=doc_kinds)
             answer_strategy = choose_answer_strategy(analysis=analysis, retrieval_policy=retrieval_policy)
 
@@ -251,8 +252,8 @@ class MaterialsChatAgent(BaseAgent):
                     matched = onto_mapping.get("matched_classes") or []
                     if matched and matched[0].get("score", 0) >= 0.8:
                         ontology_class_uri = matched[0].get("uri", "")
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
             _trace("本体感知", f"匹配类: {', '.join((m.get('label','') for m in (ontology_mapping.get('matched_classes',[]) if ontology_mapping else [])[:3])) or '无'}",
                    matched_count=len(ontology_mapping.get("matched_classes", [])) if ontology_mapping else 0)
 
@@ -339,10 +340,10 @@ class MaterialsChatAgent(BaseAgent):
                                                 "relation_label": f"跨域关联({did})",
                                                 "confidence": 0.7,
                                             })
-                            except Exception:
-                                pass
-                except Exception:
-                    pass
+                            except Exception as e:
+                                logging.debug(str(e), exc_info=True)
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
 
             reasoning_path.append({
                 "step": len(reasoning_path) + 1,
@@ -374,8 +375,8 @@ class MaterialsChatAgent(BaseAgent):
                             metadata={"intent": intent, "strategy": "cache_hit", "cache_level": cached.get("level", ""),
                                        "doc_count": len(doc_ids)},
                         )
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
 
             # ── Retrieve document content (ontology-first, FTS5 fallback) ──
             retrieved_docs: str = ""
@@ -397,8 +398,8 @@ class MaterialsChatAgent(BaseAgent):
                                 for n in neighbors[:3]:
                                     if n.class_name and n.class_name not in target_classes:
                                         target_classes.append(n.uri if hasattr(n, 'uri') else n.class_name)
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        logging.debug(str(e), exc_info=True)
                     # Multi-class retrieval: search each target class then merge
                     import asyncio
                     retrieval_tasks = []
@@ -494,10 +495,10 @@ class MaterialsChatAgent(BaseAgent):
                                     {"source": f"HyDE:{r.get('source', 'wiki')}", "text": str(r.get("content", ""))[:200]}
                                     for r in hyde_results
                                 ]
-                    except Exception:
-                        pass
-            except Exception:
-                pass
+                    except Exception as e:
+                        logging.debug(str(e), exc_info=True)
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
             _trace("多路检索", f"检索到 {len(retrieved_docs)} 字符", sources=len(citations) if citations else 0)
             if retrieved_docs:
                 skill_params["doc_content"] = retrieved_docs
@@ -535,8 +536,8 @@ class MaterialsChatAgent(BaseAgent):
                                 answer_parts.append(chunk)
                                 try:
                                     stream_queue.append(chunk)
-                                except Exception:
-                                    pass
+                                except Exception as e:
+                                    logging.debug(str(e), exc_info=True)
                         answer = "".join(answer_parts).strip()
                         # Cost tracking (stream path)
                         try:
@@ -547,8 +548,8 @@ class MaterialsChatAgent(BaseAgent):
                                 f"[CostTrace] model={_model} complexity={_complexity} "
                                 f"input_tok_est={_in_tokens} stream=true max_tokens=2000"
                             )
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            logging.debug(str(e), exc_info=True)
                     else:
                         from core.harness.syscalls.llm import sys_llm_generate
                         sys_msgs = []
@@ -576,8 +577,8 @@ class MaterialsChatAgent(BaseAgent):
                                 f"[CostTrace] model={_model} complexity={_complexity} "
                                 f"input_tok_est={_in_tokens} max_tokens=2000"
                             )
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            logging.debug(str(e), exc_info=True)
                         if convo is not None and answer:
                             try:
                                 await convo.append_conversation_assistant_message(
@@ -588,8 +589,8 @@ class MaterialsChatAgent(BaseAgent):
                                     analysis=analysis, retrieval_policy=retrieval_policy,
                                     answer_strategy=answer_strategy, run_id=run_id,
                                 )
-                            except Exception:
-                                pass
+                            except Exception as e:
+                                logging.debug(str(e), exc_info=True)
                         quality = _self_review(answer, citations, reasoning_path)
                         # Self-RAG: auto-retry on low_evidence via HyDE reroute
                         if quality == "low_evidence" and not retrieved_docs:
@@ -632,8 +633,8 @@ class MaterialsChatAgent(BaseAgent):
                                         )
                                         text = getattr(resp, 'content', '') or str(resp)
                                         answer = text.strip() if text and len(text) > 5 else ""
-                            except Exception:
-                                pass
+                            except Exception as e:
+                                logging.debug(str(e), exc_info=True)
                         quality = _self_review(answer, citations, reasoning_path)
                         _trace("质量评估", f"Self-RAG: {quality}", quality=quality)
 
@@ -653,8 +654,8 @@ class MaterialsChatAgent(BaseAgent):
                             hallucination_risk = report.hallucination_risk
                             if hallucination_risk > 0.7:
                                 _trace("幻觉检测", f"risk={hallucination_risk:.2f}", risk=hallucination_risk)
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            logging.debug(str(e), exc_info=True)
 
                         # ── Phase 0.3: Semantic cache write ──
                         try:
@@ -664,8 +665,8 @@ class MaterialsChatAgent(BaseAgent):
                                 await cache.set(enhanced_question, domain_id, {
                                     "answer": answer, "citations": citations,
                                 })
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            logging.debug(str(e), exc_info=True)
                         # PatternCache: store execution pattern for future optimization
                         try:
                             from core.harness.execution.pattern_cache import get_pattern_cache
@@ -675,8 +676,8 @@ class MaterialsChatAgent(BaseAgent):
                                 "intent": intent, "qual": quality,
                             }
                             await pcache.store(domain_id, enhanced_question, exec_path, success=bool(answer))
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            logging.debug(str(e), exc_info=True)
 
                         return AgentResult(
                             success=True,
@@ -691,8 +692,8 @@ class MaterialsChatAgent(BaseAgent):
                             metadata={"intent": intent, "strategy": "direct_retrieve", "doc_count": len(doc_ids),
                                        "hallucination_risk": hallucination_risk},
                         )
-                except Exception:
-                    pass  # fall through to skill path
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
 
             registry = get_skill_registry()
             skill = registry.get(skill_name)
@@ -704,8 +705,8 @@ class MaterialsChatAgent(BaseAgent):
                 try:
                     from core.server import _inject_model_into_skill
                     _inject_model_into_skill(skill)
-                except Exception:
-                    pass
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
 
             # Fast path: direct sys_skill_call (single LLM invocation, no ReAct loop overhead)
             response = await sys_skill_call(skill, skill_params, user_id=user_id, session_id=session_id)
@@ -744,16 +745,16 @@ class MaterialsChatAgent(BaseAgent):
                         answer_strategy=answer_strategy,
                         run_id=run_id,
                     )
-                except Exception:
-                    pass
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
 
             # Bridge to MemoryManager for cross-session recall
             try:
                 from core.harness.memory.manager import get_memory_manager
                 mm = get_memory_manager(namespace=f"kb_{session_id}")
                 await mm.save_interaction(question, answer, stability="high")
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
 
             return AgentResult(
                 success=True,

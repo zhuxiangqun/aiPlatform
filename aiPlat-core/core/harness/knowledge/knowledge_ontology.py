@@ -606,8 +606,8 @@ def get_class_by_category(category: str) -> Optional[OntologyClass]:
                 for cls in dom.classes:
                     if category in (cls.allowed_categories or []):
                         candidates.append(cls)
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
     if not candidates:
         return None

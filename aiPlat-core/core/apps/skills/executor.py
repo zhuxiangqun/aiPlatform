@@ -1,3 +1,4 @@
+import logging
 """
 Skill Executor Module
 
@@ -128,8 +129,8 @@ class SkillExecutor:
                 skill_timeout = meta.get('timeout') if isinstance(meta, dict) else None
                 if skill_timeout is not None:
                     effective_timeout = float(skill_timeout)
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
         if not effective_timeout:
             effective_timeout = self._default_timeout
 
@@ -139,8 +140,8 @@ class SkillExecutor:
             cfg = getattr(skill, '_config', None)
             meta = getattr(cfg, 'metadata', None) if cfg else None
             workflow_steps = meta.get('steps') if isinstance(meta, dict) else None
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
         if isinstance(workflow_steps, list) and workflow_steps:
             from .skill_workflow_runner import get_workflow_runner
             runner = get_workflow_runner()
@@ -181,8 +182,8 @@ class SkillExecutor:
                     "target_type": skill_name,
                     "duration_ms": 0,
                 })
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
             tc = {"run_id": _run_id}
             if _parent_span_id:
                 tc["parent_span_id"] = _parent_span_id

@@ -55,7 +55,7 @@ async def create_dataset(req: DatasetCreateRequest):
 async def get_dataset(dataset_id: str):
     ds = _get_dataset_mgr().get(dataset_id)
     if not ds:
-        raise HTTPException(404, f"Dataset {dataset_id} not found")
+        raise HTTPException(status_code=404, detail=f"Dataset {dataset_id} not found")
     return ds
 
 
@@ -68,7 +68,7 @@ async def update_dataset(dataset_id: str, req: DatasetUpdateRequest):
         updates["description"] = req.description
     ds = _get_dataset_mgr().update(dataset_id, updates)
     if not ds:
-        raise HTTPException(404, f"Dataset {dataset_id} not found")
+        raise HTTPException(status_code=404, detail=f"Dataset {dataset_id} not found")
     return ds
 
 
@@ -76,7 +76,7 @@ async def update_dataset(dataset_id: str, req: DatasetUpdateRequest):
 async def delete_dataset(dataset_id: str):
     ok = _get_dataset_mgr().delete(dataset_id)
     if not ok:
-        raise HTTPException(404, f"Dataset {dataset_id} not found")
+        raise HTTPException(status_code=404, detail=f"Dataset {dataset_id} not found")
     return {"status": "deleted", "id": dataset_id}
 
 
@@ -85,7 +85,7 @@ async def import_dataset(dataset_id: str, req: DatasetImportRequest):
     try:
         return _get_dataset_mgr().import_jsonl(dataset_id, req.content)
     except ValueError as e:
-        raise HTTPException(400, str(e))
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 @router.get("/datasets/{dataset_id}/preview", response_model=DatasetPreviewResponse)
@@ -93,7 +93,7 @@ async def preview_dataset(dataset_id: str, limit: int = 100):
     try:
         return _get_dataset_mgr().preview(dataset_id, limit=limit)
     except ValueError as e:
-        raise HTTPException(404, str(e))
+        raise HTTPException(status_code=404, detail=str(e))
 
 
 # ── Jobs ─────────────────────────────────────────────────────────────
@@ -108,14 +108,14 @@ async def create_job(req: JobCreateRequest):
     try:
         return _get_job_mgr().create(req)
     except ValueError as e:
-        raise HTTPException(400, str(e))
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 @router.get("/jobs/{job_id}", response_model=JobResponse)
 async def get_job(job_id: str):
     job = _get_job_mgr().get(job_id)
     if not job:
-        raise HTTPException(404, f"Job {job_id} not found")
+        raise HTTPException(status_code=404, detail=f"Job {job_id} not found")
     return job
 
 
@@ -123,7 +123,7 @@ async def get_job(job_id: str):
 async def cancel_job(job_id: str):
     ok = _get_job_mgr().cancel(job_id)
     if not ok:
-        raise HTTPException(404, f"Job {job_id} not found or already completed")
+        raise HTTPException(status_code=404, detail=f"Job {job_id} not found or already completed")
     return {"status": "cancelled", "id": job_id}
 
 

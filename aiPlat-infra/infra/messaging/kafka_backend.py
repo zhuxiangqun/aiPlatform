@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 
 from .base import MessageClient
 from .schemas import Message, ConsumerConfig, MessagingConfig
+import logging
 
 
 class KafkaClient(MessageClient):
@@ -64,8 +65,8 @@ class KafkaClient(MessageClient):
                     await admin.create_topics([new_topic])
             finally:
                 await admin.close()
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
     def _get_topic_name(self, topic: str) -> str:
         if self.config.topic_prefix:
@@ -215,8 +216,8 @@ class KafkaClient(MessageClient):
         for topic, consumer in list(self._consumers.items()):
             try:
                 await consumer.stop()
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
         self._consumers.clear()
 
         if self._producer:

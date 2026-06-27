@@ -17,6 +17,7 @@ callers: sys_wiki_context, sys_kb_retrieve, sys_ontology_context
 """
 
 from __future__ import annotations
+import logging
 
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -75,16 +76,16 @@ def map_query_to_ontology(
             for cls in domain.classes:
                 thresh = getattr(cls, 'confidence_threshold', None)
                 adaptive_thresholds[cls.label] = float(thresh) if thresh else 0.7
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
     else:
         # Fallback: load all domains (backward compat)
         try:
             from core.harness.knowledge.ontology_loader import load_all_domains
             for d_id, d in load_all_domains().items():
                 all_classes.extend(d.classes)
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
     # ── Match T-Box classes ──
     for cls in all_classes:

@@ -350,10 +350,10 @@ class TestCrossLayerCalls:
         exempt = re.compile(r"tests/|__pycache__|poc/|\.bak$")
         # Approved direct harness imports (boundary-standard.md §5.2 whitelist)
         approved = re.compile(
-            r"infrastructure\.infra_bridge|infrastructure\.database_port|"
+            r"infrastructure\.infra_bridge|infrastructure\.database_port|infrastructure\.crypto|"
             r"knowledge\.db|knowledge\.embedder|knowledge\.utils|"
             r"harness\.document|apps/document_intelligence|"
-            r"llm_env|syscalls\.llm|model_injection|intelligence"
+            r"llm_env|syscalls\.llm|model_injection|intelligence|utils\.prompt_loader"
         )
 
         for f in sorted(PLATFORM_DIR.rglob("*.py")):

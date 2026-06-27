@@ -15,6 +15,7 @@ Architecture:
 """
 
 from __future__ import annotations
+import logging
 
 import json as _json
 import os as _os
@@ -197,8 +198,8 @@ class DataSourceRegistry:
                 config = DataSourceConfig.from_yaml(str(f))
                 cls._configs[f.stem] = config
                 count += 1
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
         return count
 
     @classmethod

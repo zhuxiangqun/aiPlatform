@@ -65,19 +65,33 @@ def _get_semantic_model() -> Any:
 
 
 def embed_text_semantic(text: str) -> Optional[List[float]]:
-    """Sync semantic embedding via infra InfraEmbeddingAdapter."""
+    """Sync semantic embedding. Respects AIPLAT_EMBED_BACKEND=hash for offline/test parity."""
+    if _backend_name() == "hash":
+        return hash_embed(text)
     model = _get_semantic_model()
     if model is None:
         return None
-    return model.embed_sync(text)
+    try:
+        return model.embed_sync(text)
+    except Exception:
+        import logging
+        logging.getLogger("embedder").debug("embed_text_semantic failed", exc_info=True)
+        return None
 
 
 def embed_texts_semantic(texts: List[str]) -> Optional[List[List[float]]]:
-    """Sync batch semantic embedding via infra InfraEmbeddingAdapter."""
+    """Sync batch semantic embedding. Respects AIPLAT_EMBED_BACKEND=hash for offline/test parity."""
+    if _backend_name() == "hash":
+        return [hash_embed(t) for t in texts]
     model = _get_semantic_model()
     if model is None:
         return None
-    return model.embed_batch_sync(texts)
+    try:
+        return model.embed_batch_sync(texts)
+    except Exception:
+        import logging
+        logging.getLogger("embedder").debug("embed_texts_semantic failed", exc_info=True)
+        return None
 
 
 # ── Unified embed_text (router) ───────────────────────────────────────────
@@ -101,8 +115,8 @@ async def embed_text(text: str, dim: int = 128) -> List[float]:
         try:
             provider = get_embedding_provider()
             return await provider.embed_single(text)
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
     return hash_embed(text, dim)
 
 
@@ -119,8 +133,8 @@ async def embed_texts(texts: List[str], dim: int = 128) -> List[List[float]]:
         try:
             provider = get_embedding_provider()
             return await provider.embed(texts)
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
     return [hash_embed(t, dim) for t in texts]
 
 

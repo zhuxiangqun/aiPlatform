@@ -6,6 +6,7 @@ FastAPI server for historical reasons. Migration plan: move to platform/api/rout
 and proxy through platform's API gateway.
 """
 from __future__ import annotations
+import logging
 
 import json
 import os
@@ -379,8 +380,8 @@ async def _create_config_publish_approval_request(
                     summary_lines.append(f"breaking={json.dumps(bc[:5], ensure_ascii=False)}")
                 if wn:
                     summary_lines.append(f"warnings={json.dumps(wn[:5], ensure_ascii=False)}")
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
         if version:
             summary_lines.append(f"to_version={version}")
         assessment_summary = "\n".join([x for x in summary_lines if x]).strip()
@@ -459,8 +460,8 @@ async def _create_config_publish_approval_request(
                     "created_at": now,
                 }
             )
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
         return request_id
     except Exception:
         return None
@@ -555,8 +556,8 @@ async def _create_config_rollback_approval_request(
                     "created_at": now,
                 }
             )
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
         return request_id
     except Exception:
         return None
@@ -715,7 +716,7 @@ async def workspace_config_registry_publish(
                 from core.harness.infrastructure.approval.types import RequestStatus
 
                 if r.status not in (RequestStatus.APPROVED, RequestStatus.AUTO_APPROVED):
-                    raise HTTPException(
+                    raise HTTPException(  # noqa: error-structured
                         status_code=409,
                         detail=gate_error_envelope(
                             code="approval_required",
@@ -748,7 +749,7 @@ async def workspace_config_registry_publish(
                     assessment=assessment if isinstance(assessment, dict) else None,
                     diff=diff_text,
                 )
-                raise HTTPException(
+                raise HTTPException(  # noqa: error-structured
                     status_code=409,
                     detail=gate_error_envelope(
                         code="approval_required",
@@ -766,8 +767,8 @@ async def workspace_config_registry_publish(
                 raise HTTPException(status_code=400, detail={"code": "confirm_phrase_required", "confirm_phrase": expected, "risk_level": assessment.get("risk_level")})
     except HTTPException:
         raise
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     key = ConfigRegistryKey(asset_type=str(asset_type), scope=sc, tenant_id=ctx["tenant_id"], channel=ctx["channel"])
     v2 = await store.publish(key=key, payload=payload, actor=actor, note=note, version=ver)
@@ -797,8 +798,8 @@ async def workspace_config_registry_publish(
                     "approval_request_id": approval_request_id or None,
                 }
             )
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
     return {"status": "published", "version": v2, **ctx, "scope": sc, "asset_type": str(asset_type)}
 
 
@@ -858,7 +859,7 @@ async def workspace_config_registry_rollback(
             from core.harness.infrastructure.approval.types import RequestStatus
 
             if r.status not in (RequestStatus.APPROVED, RequestStatus.AUTO_APPROVED):
-                raise HTTPException(
+                raise HTTPException(  # noqa: error-structured
                     status_code=409,
                     detail=gate_error_envelope(
                         code="approval_required",
@@ -893,8 +894,8 @@ async def workspace_config_registry_rollback(
                                     "approval_request_id": str(approval_request_id),
                                 }
                             )
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        logging.debug(str(e), exc_info=True)
                     return {"status": "rolled_back", "version": str(to_v), "from_version": from_v, **ctx, "scope": sc, "asset_type": str(asset_type), "approval_request_id": str(approval_request_id)}
         # create approval request and block
         rid = await _create_config_rollback_approval_request(
@@ -909,7 +910,7 @@ async def workspace_config_registry_rollback(
             to_version=str(prev_v) if prev_v else None,
             note="rollback",
         )
-        raise HTTPException(
+        raise HTTPException(  # noqa: error-structured
             status_code=409,
             detail=gate_error_envelope(
                 code="approval_required",
@@ -952,8 +953,8 @@ async def workspace_config_registry_rollback(
                     "approval_request_id": None,
                 }
             )
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
     return {"status": "rolled_back", "version": ver, "from_version": from_v, **ctx, "scope": sc, "asset_type": str(asset_type)}
 
 
@@ -1008,8 +1009,8 @@ async def workspace_config_registry_diff(
                 assessment["confirm_phrase"] = None
             else:
                 assessment["requires_approval"] = False
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
     diff_text = _unified_diff_text(cur_payload, proposed_payload)
     return {
         "status": "ok",
@@ -1090,7 +1091,7 @@ async def workspace_skills_installer_install(request: SkillInstallerInstallReque
                 planned_skills_digest=str(digest or ""),
             )
             if not (request.plan_id or "").strip():
-                raise HTTPException(
+                raise HTTPException(  # noqa: error-structured
                     status_code=409,
                     detail={"code": "plan_id_required", "message": "必须先调用 /workspace/skills/installer/plan 获取 plan_id", "plan": plan},
                 )
@@ -1113,7 +1114,7 @@ async def workspace_skills_installer_install(request: SkillInstallerInstallReque
                     auto_detect_subdir=bool(getattr(request, "auto_detect_subdir", True)),
                     metadata=request.metadata,
                 )
-            raise HTTPException(
+            raise HTTPException(  # noqa: error-structured
                 status_code=409,
                 detail={"code": "confirm_required", "message": "请先确认安装计划（建议先调用 /workspace/skills/installer/plan）", "plan": plan},
             )
@@ -1166,9 +1167,9 @@ async def workspace_skills_installer_install(request: SkillInstallerInstallReque
                 ar = approval_mgr.create_request(ctx, rule=rule)
                 try:
                     await approval_mgr._persist(ar)  # type: ignore[attr-defined]
-                except Exception:
-                    pass
-                raise HTTPException(
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
+                raise HTTPException(  # noqa: error-structured
                     status_code=409,
                     detail={
                         "code": "approval_required",
@@ -1209,8 +1210,8 @@ async def workspace_skills_installer_install(request: SkillInstallerInstallReque
                         "skipped": res.get("skipped") if isinstance(res, dict) else None,
                     },
                 )
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
         return {"status": "ok", **res}
     except PermissionError as e:
         raise HTTPException(status_code=403, detail=str(e))
@@ -1280,8 +1281,8 @@ async def workspace_skills_installer_plan(request: SkillInstallerInstallRequest,
             from core.management.skill_install_plan_token import skills_digest as _skills_digest
 
             out["planned_skills_digest"] = _skills_digest((plan or {}).get("skills"))
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
         if plan_id:
             out["plan_id"] = plan_id
             out["plan_expires_at"] = expires_at
@@ -1320,8 +1321,8 @@ async def workspace_skills_installer_resolve_head(payload: dict, http_request: R
                     resource_id=None,
                     detail={"url": url, "head_sha": (res or {}).get("head_sha") if isinstance(res, dict) else None},
                 )
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
         return {"status": "ok", **res}
     except PermissionError as e:
         raise HTTPException(status_code=403, detail=str(e))
@@ -1365,8 +1366,8 @@ async def workspace_skills_installer_update(skill_id: str, request: SkillInstall
                     resource_id=str(skill_id),
                     detail={"ref": request.ref, "installed": (res or {}).get("installed") if isinstance(res, dict) else None},
                 )
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
         return {"status": "ok", **res}
     except PermissionError as e:
         raise HTTPException(status_code=403, detail=str(e))
@@ -1408,8 +1409,8 @@ async def workspace_skills_installer_uninstall(skill_id: str, http_request: Requ
                     resource_id=str(skill_id),
                     detail={"delete_files": bool(delete_files), "deleted": (res or {}).get("deleted") if isinstance(res, dict) else None},
                 )
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
         return {"status": "ok", **res}
     except PermissionError as e:
         raise HTTPException(status_code=403, detail=str(e))

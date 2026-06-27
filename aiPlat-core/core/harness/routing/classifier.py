@@ -8,6 +8,7 @@ Architecture:
 """
 
 from __future__ import annotations
+import logging
 
 import json as _json
 import re as _re
@@ -343,7 +344,7 @@ async def classify_with_llm(ctx: RoutingContext) -> RoutingResult:
                 result.suggested_tool_ids = _map_intent_to_tools(new_intent, ctx)
             except ValueError:
                 pass  # Keep rule-based result
-    except Exception:
-        pass  # LLM unavailable, keep rule-based result
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     return result

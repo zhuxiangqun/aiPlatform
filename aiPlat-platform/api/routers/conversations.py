@@ -4,6 +4,7 @@ Platform Conversations routes — conversation session CRUD.
 Migrated from aiPlat-core/core/api/routers/conversations.py per architecture contract.
 """
 from __future__ import annotations
+import logging
 
 
 from typing import Annotated, Any, Optional, Dict
@@ -231,8 +232,8 @@ async def query_conversation_stream(session_id: str, request: ConversationQueryR
         domain_id = router.classify(question)
         domain_cfg = router.domain_config(domain_id)
         domain_name = domain_cfg.get("name", domain_id)
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
 
     await svc.append_conversation_user_message(
         tenant_id=tenant_id, session_id=session_id, user_id=user_id, content=question,
@@ -292,8 +293,8 @@ async def query_conversation_stream(session_id: str, request: ConversationQueryR
                     skills_used=["sys_kb_retrieve", "sys_llm_generate_stream"],
                     analysis={}, retrieval_policy={}, answer_strategy={}, run_id="",
                 )
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
             yield f"data: {_json.dumps({'done': True, 'answer': answer, 'domain_id': domain_id, 'domain_name': domain_name})}\n\n"
         except Exception as e:
             yield f"data: {_json.dumps({'error': str(e), 'done': True})}\n\n"

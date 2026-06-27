@@ -9,6 +9,7 @@ Meta-Agent — 元认知自改进 (Phase 4.4, 远期探索)
 """
 
 from __future__ import annotations
+import logging
 
 import asyncio, os, time, logging, json
 from dataclasses import dataclass, field
@@ -226,8 +227,8 @@ class MetaAgent:
                 "severity": suggestion.severity,
                 "category": suggestion.category,
             })
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
     def get_stats(self) -> Dict[str, Any]:
         return {

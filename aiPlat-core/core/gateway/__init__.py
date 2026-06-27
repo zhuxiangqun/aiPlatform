@@ -41,7 +41,7 @@ class EnterpriseGateway:
         gateway = EnterpriseGateway()
         gateway.register("feishu", FeishuAdapter(webhook_url="..."))
         gateway.register("wecom", WeComAdapter(webhook_url="..."))
-        gateway.register("slack", SlackAdapter(bot_token="...", signing_secret="..."))
+        gateway.register("slack", SlackAdapter(bot_token="..."))
         await gateway.start()
     """
 
@@ -52,6 +52,7 @@ class EnterpriseGateway:
         self._session_store: Dict[str, List[Dict[str, str]]] = {}
         self._rate_limits: Dict[str, List[float]] = {}
         self._rate_limit_per_minute: int = 100
+        self._dlq: Dict[str, Dict[str, Any]] = {}
 
     def register(self, channel_name: str, adapter: Any):
         """注册渠道适配器。"""
@@ -108,6 +109,41 @@ class EnterpriseGateway:
         except Exception as e:
             _log.error(f"Gateway: agent call failed: {e}")
             return {"ok": False, "error": str(e)}
+
+    # ── Dead-Letter Queue (DLQ) ──
+
+    def get_dlq(self) -> List[Dict[str, Any]]:
+        """List dead-letter queue entries."""
+        return list(self._dlq.values())
+
+    def delete_dlq_entry(self, entry_id: str) -> bool:
+        """Delete a DLQ entry."""
+        if entry_id in self._dlq:
+            del self._dlq[entry_id]
+            return True
+        return False
+
+    async def retry_dlq_entry(self, entry_id: str) -> Dict[str, Any]:
+        """Retry a DLQ entry — re-process the failed message."""
+        entry = self._dlq.get(entry_id)
+        if not entry:
+            return {"status": "not_found"}
+        try:
+            msg = GatewayMessage(
+                channel=entry.get("channel", ""),
+                channel_chat_id=entry.get("channel_chat_id", ""),
+                user_id=entry.get("user_id", ""),
+                text=entry.get("text", ""),
+                message_type=entry.get("message_type", "text"),
+                raw=entry.get("raw", {}),
+            )
+            result = await self.handle_message(msg)
+            del self._dlq[entry_id]
+            return {"status": "retried", "result": result}
+        except Exception as e:
+            entry["error"] = str(e)
+            entry["retries"] = entry.get("retries", 0) + 1
+            return {"status": "failed", "error": str(e)}
 
     def _check_rate(self, chat_id: str) -> bool:
         now = time.time()
@@ -218,15 +254,16 @@ class WeComAdapter(BaseAdapter):
 
 
 class SlackAdapter(BaseAdapter):
-    """Slack 适配器 — Bolt SDK app_mention 事件。
+    """Slack 适配器 — 出站消息推送（chat.postMessage）。
+
+    仅出站推送，不处理入站渠道事件；入站渠道逻辑在 aiPlat-app/channels/。
 
     Usage:
-        adapter = SlackAdapter(bot_token="xoxb-xxx", signing_secret="xxx")
+        adapter = SlackAdapter(bot_token="xoxb-xxx")
     """
 
-    def __init__(self, *, bot_token: str = "", signing_secret: str = ""):
+    def __init__(self, *, bot_token: str = ""):
         self._token = bot_token or os.getenv("AIPLAT_SLACK_BOT_TOKEN", "")
-        self._secret = signing_secret or os.getenv("AIPLAT_SLACK_SIGNING_SECRET", "")
 
     async def start(self):
         if not self._token:

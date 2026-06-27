@@ -1,3 +1,4 @@
+import logging
 """
 Skill Base Module
 
@@ -201,8 +202,8 @@ class CodeGenerationSkill(BaseSkill):
         try:
             from core.harness.utils.model_injection import create_selected_adapter, get_default_model
             return create_selected_adapter(model_name=get_default_model(purpose="code_gen") or best_model_for_purpose("chat"))  # noqa: model-legacy
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
         # Fallback: model_router for provider-aware selection
         try:
             from core.harness.infrastructure.model_router import get_model_router
@@ -211,8 +212,8 @@ class CodeGenerationSkill(BaseSkill):
             entry = await router.select(task_purpose="code_generation", task_complexity="high")
             if entry and entry.name:
                 return create_selected_adapter(model_name=entry.name)
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
         except Exception:
             return None
 
