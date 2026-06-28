@@ -865,8 +865,9 @@ class SkillRegistry:
                 except Exception as e:
                     logging.debug(str(e), exc_info=True)
             self._skills[name] = skill
-            # Cache SKILL.md body content if available
-            body = (getattr(cfg, "body", None) or "").strip()
+            # Cache SKILL.md body content if available (lives in config.metadata["body"]).
+            md = getattr(target.config, "metadata", None)
+            body = ((md.get("body") if isinstance(md, dict) else None) or "").strip()
             if body:
                 self._body_cache[name] = body
             return True

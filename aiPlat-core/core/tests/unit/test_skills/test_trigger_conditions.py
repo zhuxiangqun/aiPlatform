@@ -39,6 +39,7 @@ input_schema:
   prompt:
     type: string
     required: true
+---
 """
         
         skill_md = skill_dir / "SKILL.md"
@@ -61,6 +62,7 @@ version: 1.0.0
 
 capabilities:
   - 文本生成
+---
 """
         
         skill_md = skill_dir / "SKILL.md"
