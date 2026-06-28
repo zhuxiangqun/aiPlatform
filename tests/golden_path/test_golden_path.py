@@ -1877,6 +1877,32 @@ def test_sb_sandbox_blocks_path_traversal(isolated_env, monkeypatch):
     assert r3.verdict == Verdict.REJECT, f"sibling 越界目录(<ws>EVIL)应被拒: {r3.verdict} | {r3.reason}"
 
 
+# ── 断言 SB-net：SandboxGate network 白名单（opt-in 数据外泄防护）─────────────
+# 实现"声称却未做"的 network 检查: 配置 AIPLAT_NETWORK_WHITELIST 时强制(非白名单→REJECT,
+# 白名单/子域→PASS); 未配置时不强制(向后兼容)。
+
+def test_sb_network_whitelist_opt_in(isolated_env, monkeypatch):
+    """SB-net：白名单配置时非白名单目标 REJECT、白名单(含子域)PASS；未配置不强制。"""
+    from core.harness.infrastructure.gates.sandbox_gate import SandboxGate, Verdict
+
+    monkeypatch.setenv("AIPLAT_NETWORK_WHITELIST", "api.example.com,internal.corp")
+    sb = SandboxGate()
+
+    r = asyncio.run(sb.check(kind="tool", tool_name="", tool_args={"url": "https://evil.com/exfil"}))
+    assert r.verdict == Verdict.REJECT, f"非白名单目标应被拒(防外泄): {r.verdict} | {r.reason}"
+
+    r2 = asyncio.run(sb.check(kind="tool", tool_name="", tool_args={"url": "https://api.example.com/data"}))
+    assert r2.verdict == Verdict.PASS, f"白名单目标应放行: {r2.verdict} | {r2.reason}"
+
+    r3 = asyncio.run(sb.check(kind="tool", tool_name="", tool_args={"url": "https://x.internal.corp/y"}))
+    assert r3.verdict == Verdict.PASS, f"白名单子域应放行: {r3.verdict} | {r3.reason}"
+
+    # 未配置白名单 → 不强制(向后兼容)
+    monkeypatch.delenv("AIPLAT_NETWORK_WHITELIST", raising=False)
+    r4 = asyncio.run(sb.check(kind="tool", tool_name="", tool_args={"url": "https://anything.com"}))
+    assert r4.verdict == Verdict.PASS, f"未配置白名单应不强制(放行): {r4.verdict} | {r4.reason}"
+
+
 # ── 断言 SG：SchemaGate 对 skill 输出的校验必须真生效（§5.10 输出契约）──────────
 # 真 bug: skill.py 取 cfg.output_schema(顶层, registry 建的 skill 为空) → fallback 用
 # getattr(meta_dict, "output_schema") 在 dict 上做属性访问 → 恒 None → 校验被整体跳过。

@@ -43,9 +43,10 @@ class SandboxGate:
     
     Checks run in check():
       1. Filesystem safety — target paths within allowed workspace (path-traversal safe)
-      2. Rate limits — not exceeding per-minute quotas
-      3. Pattern safety — known-dangerous input patterns
-    Planned but not yet enforced in check(): network whitelist, resource budget.
+      2. Network safety — destination host in AIPLAT_NETWORK_WHITELIST (opt-in)
+      3. Rate limits — not exceeding per-minute quotas
+      4. Pattern safety — known-dangerous input patterns
+    Planned but not yet enforced in check(): resource budget (token/time).
     """
 
     # Filesystem safety — paths that must NOT be written to
@@ -101,6 +102,7 @@ class SandboxGate:
         tool_args = tool_args or {}
         checks: List[Tuple[str, Callable[[], Tuple[bool, str]]]] = [
             ("filesystem", lambda: self._check_filesystem(file_path)),
+            ("network", lambda: self._check_network(tool_args)),
             ("rate_limit", lambda: self._check_rate_limit(tool_name)),
             ("pattern", lambda: self._check_patterns(tool_args)),
         ]
@@ -217,6 +219,39 @@ class SandboxGate:
                     if pattern.search(value):
                         return (False, f"REJECT: dangerous pattern '{pattern.pattern}' in arg '{key}'")
         return (True, "no dangerous patterns detected")
+
+    def _check_network(self, args: Dict[str, Any]) -> Tuple[bool, str]:
+        """Check network destination against an optional whitelist.
+
+        Opt-in: enforced only when AIPLAT_NETWORK_WHITELIST is configured
+        (comma-separated hosts/domains; subdomains allowed). Empty whitelist
+        means no enforcement (backward compatible). Restricts network tools to
+        allowed hosts to prevent exfiltration to arbitrary destinations.
+        """
+        whitelist_raw = os.getenv("AIPLAT_NETWORK_WHITELIST", "").strip()
+        if not whitelist_raw:
+            return (True, "no network whitelist configured")
+        dest = ""
+        for k in ("url", "endpoint", "host", "uri", "target_url"):
+            v = (args or {}).get(k)
+            if isinstance(v, str) and v.strip():
+                dest = v.strip()
+                break
+        if not dest:
+            return (True, "no network destination")
+        try:
+            from urllib.parse import urlparse
+            parsed = urlparse(dest if "://" in dest else "//" + dest)
+            host = (parsed.hostname or "").lower()
+        except Exception:
+            host = dest.lower()
+        if not host:
+            return (True, "no host parsed")
+        allowed = [w.strip().lower() for w in whitelist_raw.split(",") if w.strip()]
+        for w in allowed:
+            if host == w or host.endswith("." + w):
+                return (True, f"host '{host}' in whitelist")
+        return (False, f"REJECT: network destination '{host}' not in whitelist")
 
 
 _sandbox_instance: Optional[SandboxGate] = None
