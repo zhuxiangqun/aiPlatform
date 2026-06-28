@@ -1784,9 +1784,8 @@ def test_ep_critical_episodes_preserved(isolated_env):
 
 
 # ── 断言 RRF：Wiki+KB 多路混合（白皮书 Layer3 检索融合）行为锁定 ──────────
-# 发现(代码核验): 最终排序用 _normalize_scores 的 normalized_score(基于原始 score 按源
-# 归一化), rrf_score 被丢弃 → 实为"按源归一化加权混合", 非真 RRF(详见上报)。
-# 本测试锁定当前混合行为: wiki+kb 双源都进入结果(回归锁)。
+# 已修为真 RRF（见 test_rrf_true_fusion_cross_source_boost）: 按文档身份融合跨源分数 +
+# rrf_score 驱动排序。本测试锁定: wiki+kb 双源都进入混合结果（回归锁）。
 
 def test_rrf_blends_wiki_and_kb_sources(isolated_env, monkeypatch):
     """RRF：sys_knowledge_retrieve 必须把 Wiki 与 KB 两路结果都混入输出(多路融合)。"""
@@ -1818,6 +1817,44 @@ def test_rrf_blends_wiki_and_kb_sources(isolated_env, monkeypatch):
     titles = [r.get("title") for r in results]
     assert "WIKI-DOC-A" in titles, f"缺最高分 wiki 文档: {titles}"
     assert "KB-DOC-X" in titles, f"缺最高分 kb 文档: {titles}"
+
+
+# ── 断言 RRF-true：真 RRF——同一文档跨 wiki+kb 出现时融合分求和(加分)+去重 ──────
+# 设计区分新旧: SHARED-DOC 在 wiki/kb 各居 rank 1(非各自最高), 靠跨源融合分求和(≈0.034)
+# 超过单源最高的 WIKI-TOP(≈0.018)。旧码按(source,position)作 key 不融合 → SHARED 单源
+# 分(0.0177)< WIKI-TOP(0.0180), 且重复两条。新码 dedup+combine → SHARED 分最高、仅一条。
+
+def test_rrf_true_fusion_cross_source_boost(isolated_env, monkeypatch):
+    """RRF-true：跨源同名文档融合分求和(高于单源最高)+ 去重为一条。"""
+    import core.harness.syscalls.retrieval as R
+
+    def _stub_wiki(query, **kwargs):
+        return [
+            {"title": "WIKI-TOP", "text": "wiki top", "score": 0.9, "summary": "", "source": "wiki"},
+            {"title": "SHARED-DOC", "text": "shared wiki", "score": 0.5, "summary": "", "source": "wiki"},
+        ]
+
+    def _stub_kb(query, doc_ids=None, **kwargs):
+        return [
+            {"title": "KB-TOP", "text": "kb top", "doc_id": "kbtop", "score": 0.8},
+            {"title": "SHARED-DOC", "text": "shared kb", "doc_id": "shared", "score": 0.4},
+        ]
+
+    monkeypatch.setattr(R, "sys_wiki_retrieve", _stub_wiki)
+    monkeypatch.setattr(R, "sys_kb_retrieve", _stub_kb)
+
+    results = R.sys_knowledge_retrieve("query", top_k=8)
+    titles = [r.get("title") for r in results]
+    by_title = {r.get("title"): r.get("rrf_score", 0) for r in results}
+
+    # 去重: 跨源同名文档只剩一条
+    assert titles.count("SHARED-DOC") == 1, f"跨源同名文档应去重为一条: {titles}"
+    assert "SHARED-DOC" in by_title and "WIKI-TOP" in by_title, f"两文档都应在结果中: {list(by_title)}"
+    # 跨源融合加分: SHARED-DOC(wiki rank1 + kb rank1 求和) 应高于单源最高 WIKI-TOP(wiki rank0)
+    assert by_title["SHARED-DOC"] > by_title["WIKI-TOP"], (
+        f"跨源命中文档的 RRF 融合分应高于单源最高文档(真 RRF 跨源加分): "
+        f"SHARED={by_title['SHARED-DOC']:.5f} WIKI-TOP={by_title['WIKI-TOP']:.5f}"
+    )
 
 
 # ── 断言 RES：§5.19 重试安全——SkillConfig.idempotent 必须从 effects 派生 ──────

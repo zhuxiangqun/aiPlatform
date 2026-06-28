@@ -714,34 +714,34 @@ def sys_knowledge_retrieve(
     # ── RRF Fusion: merge Wiki + KB results ──
     if wiki_results or kb_results:
         try:
-            from core.harness.knowledge.hybrid_retriever import rrf_fusion
-
-            # Build ranked lists for RRF
-            wiki_ranked = [(i, wr) for i, wr in enumerate(wiki_results)]
-            kb_ranked = [(i, kr) for i, kr in enumerate(kb_results)]
-
-            # RRF with Wiki boost
+            # True Reciprocal Rank Fusion: key by document identity (normalized title) so a
+            # document appearing in BOTH the Wiki and KB ranked lists has its reciprocal-rank
+            # contributions SUMMED (cross-source relevance boost) and is deduplicated to a single
+            # entry — rather than keyed by (source, position), which never fused across sources.
             rrf_k = 60
-            scores: Dict[int, float] = {}
-            items: Dict[int, Any] = {}
+            scores: Dict[str, float] = {}
+            items: Dict[str, Any] = {}
             wiki_boost = float(os.getenv("AIPLAT_WIKI_BOOST", "1.1"))
 
-            for rank, (idx, item) in enumerate(wiki_ranked):
-                key = hash(f"wiki_{idx}")
-                scores[key] = scores.get(key, 0) + wiki_boost / (rrf_k + rank + 1)
-                items[key] = item
-            for rank, (idx, item) in enumerate(kb_ranked):
-                key = hash(f"kb_{idx}")
-                scores[key] = scores.get(key, 0) + 1.0 / (rrf_k + rank + 1)
-                items[key] = item
+            def _doc_key(it: Dict[str, Any], source: str, idx: int) -> str:
+                t = str(it.get("title") or "").strip().lower()
+                return t or f"__{source}_{idx}__"
+
+            for rank, item in enumerate(wiki_results):
+                key = _doc_key(item, "wiki", rank)
+                scores[key] = scores.get(key, 0.0) + wiki_boost / (rrf_k + rank + 1)
+                items.setdefault(key, item)
+            for rank, item in enumerate(kb_results):
+                key = _doc_key(item, "kb", rank)
+                scores[key] = scores.get(key, 0.0) + 1.0 / (rrf_k + rank + 1)
+                items.setdefault(key, item)
 
             ranked = sorted(scores.keys(), key=lambda k: scores[k], reverse=True)
             results = [items[k] for k in ranked[:top_k * 2]]
 
-            # Carry RRF score
+            # Carry the fused RRF score (drives final ordering below).
             for k in ranked[:len(results)]:
-                r = items[k]
-                r["rrf_score"] = scores[k]
+                items[k]["rrf_score"] = scores[k]
         except Exception:
             # Fallback: simple concatenation
             results = wiki_results + kb_results
@@ -753,8 +753,11 @@ def sys_knowledge_retrieve(
     _normalize_scores(wiki_items, boost=wiki_boost_norm)
     _normalize_scores(kb_items, boost=1.0)
 
-    # ── Sort blended results ──
-    results.sort(key=lambda x: x.get("normalized_score", x.get("rrf_score", x.get("score", 0))), reverse=True)
+    # ── Sort blended results: fused RRF score drives order, normalized score tie-breaks ──
+    results.sort(
+        key=lambda x: (x.get("rrf_score", 0.0), x.get("normalized_score", x.get("score", 0))),
+        reverse=True,
+    )
     _total = _time.time() - _t0
     try:
         from core.harness.memory.metrics import observe_rrf_latency
