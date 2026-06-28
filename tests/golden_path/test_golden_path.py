@@ -1781,3 +1781,40 @@ def test_ep_critical_episodes_preserved(isolated_env):
     assert "CRIT-APPROVAL-Z9" in blob, f"高分(0.9)关键决策未被保留为 critical: {blob[:300]!r}"
     assert "CRIT-HITL-H7" in blob, f"is_critical=True 的 HITL 决策未被保留: {blob[:300]!r}"
     assert "REGULAR-50" not in blob, f"普通交互(0.5)不应进入 critical episodes: {blob[:300]!r}"
+
+
+# ── 断言 RRF：Wiki+KB 多路混合（白皮书 Layer3 检索融合）行为锁定 ──────────
+# 发现(代码核验): 最终排序用 _normalize_scores 的 normalized_score(基于原始 score 按源
+# 归一化), rrf_score 被丢弃 → 实为"按源归一化加权混合", 非真 RRF(详见上报)。
+# 本测试锁定当前混合行为: wiki+kb 双源都进入结果(回归锁)。
+
+def test_rrf_blends_wiki_and_kb_sources(isolated_env, monkeypatch):
+    """RRF：sys_knowledge_retrieve 必须把 Wiki 与 KB 两路结果都混入输出(多路融合)。"""
+    import core.harness.syscalls.retrieval as R
+
+    def _stub_wiki(query, **kwargs):
+        return [
+            {"title": "WIKI-DOC-A", "text": "wiki a content", "score": 0.9,
+             "summary": "wa", "source": "wiki"},
+            {"title": "WIKI-DOC-B", "text": "wiki b content", "score": 0.5,
+             "summary": "wb", "source": "wiki"},
+        ]
+
+    def _stub_kb(query, doc_ids=None, **kwargs):
+        return [
+            {"title": "KB-DOC-X", "text": "kb x content", "doc_id": "kbx", "score": 0.8},
+            {"title": "KB-DOC-Y", "text": "kb y content", "doc_id": "kby", "score": 0.4},
+        ]
+
+    monkeypatch.setattr(R, "sys_wiki_retrieve", _stub_wiki)
+    monkeypatch.setattr(R, "sys_kb_retrieve", _stub_kb)
+
+    results = R.sys_knowledge_retrieve("龙骨 query", top_k=4)
+
+    assert results, "融合结果为空"
+    source_types = {r.get("source_type") for r in results}
+    assert "wiki" in source_types, f"融合结果缺 wiki 源: {[(r.get('title'), r.get('source_type')) for r in results]}"
+    assert "kb" in source_types, f"融合结果缺 kb 源: {[(r.get('title'), r.get('source_type')) for r in results]}"
+    titles = [r.get("title") for r in results]
+    assert "WIKI-DOC-A" in titles, f"缺最高分 wiki 文档: {titles}"
+    assert "KB-DOC-X" in titles, f"缺最高分 kb 文档: {titles}"
