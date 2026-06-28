@@ -198,7 +198,7 @@ class MemoryManager:
 
         # Inject user profile from semantic memory (auto-extracted via ProfileBuilder)
         try:
-            profiles = await self._semantic.retrieve("user_profile preferences constraints", k=1)
+            profiles = await self._semantic.retrieve("user_profile preferences constraints", top_k=1)
             for p in profiles:
                 if hasattr(p, 'metadata') and isinstance(p.metadata, dict):
                     if p.metadata.get("tag") == "user_profile":
