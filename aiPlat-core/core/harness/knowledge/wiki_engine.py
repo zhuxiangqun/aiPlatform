@@ -236,6 +236,25 @@ def read_page(title_or_path: str, *, category: str = "entities", collection_id: 
     return None
 
 
+def _run_coro_blocking(coro):
+    """Run an async coroutine to completion from a sync function.
+
+    write_page is sync but is often called from within a running event loop
+    (e.g. the async wiki_auto_update ingest path). asyncio.run() raises inside
+    a running loop, which previously dropped the cache-invalidation / provenance
+    update hooks silently. Offload to a worker thread with a fresh loop when a
+    loop is already running; otherwise run directly.
+    """
+    import asyncio as _a
+    import concurrent.futures as _cf
+    try:
+        _a.get_running_loop()
+    except RuntimeError:
+        return _a.run(coro)
+    with _cf.ThreadPoolExecutor(max_workers=1) as _pool:
+        return _pool.submit(_a.run, coro).result(timeout=30)
+
+
 def write_page(title: str, body: str, *, category: str = "entities", tags: List[str] = None,
                related: List[str] = None, contradictions: List[str] = None,
                source_articles: List[str] = None, stale_references: List[str] = None,
@@ -565,19 +584,17 @@ def write_page(title: str, body: str, *, category: str = "entities", tags: List[
     # ── Programmatic update hooks: provenance + cache ──
     if existing:
         try:
-            import asyncio as _asyncio
             from core.harness.knowledge.provenance import get_provenance_tracker, ProvenanceScanner
             tracker = get_provenance_tracker()
             scanner = ProvenanceScanner(tracker)
-            _asyncio.run(scanner.on_source_updated(title, version))
+            _run_coro_blocking(scanner.on_source_updated(title, version))
         except Exception as e:
             logging.debug(str(e), exc_info=True)
     try:
         from core.harness.knowledge.semantic_cache import get_semantic_cache
         cache = get_semantic_cache()
         if cache.enabled:
-            import asyncio as _asyncio
-            _asyncio.run(cache.invalidate_domain(collection_id))
+            _run_coro_blocking(cache.invalidate_domain(collection_id))
     except Exception as e:
         logging.debug(str(e), exc_info=True)
 

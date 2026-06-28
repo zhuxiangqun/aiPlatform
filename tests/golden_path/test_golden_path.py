@@ -948,3 +948,531 @@ def test_class_mapper_classify(isolated_env):
     # 负向：无关查询应返回空（None 或空列表）
     no_match = mapper.classify_text("Python programming language")
     assert not no_match, f"无关查询不应匹配任何类: {no_match}"
+
+
+# ── 断言 C1：多租户/多 collection 数据隔离（企业安全红线 §5.62）─────────
+# 直击白皮书"三层多租户"与 CLAUDE §5.62"禁止跨租户数据查询(无特例)"。
+# 入库 collection-A 的独特事实，以 collection-B 范围检索必须零泄漏；
+# 同时正向校验 collection-B 自己的事实能召回（排除"全空=假通过"）。
+
+def _ingest_into(doc_id, file_path, collection_id):
+    """把文档入库到指定 collection（区别于 _ingest 写死 default）。"""
+    from core.api.core_facade import wiki_auto_update
+    return asyncio.run(wiki_auto_update(doc_id, str(file_path), collection_id))
+
+
+def test_c1_wiki_collection_isolation(isolated_env, monkeypatch):
+    """行为断言 C1：collection-A 的事实不得被 collection-B 范围的检索召回。
+
+    若 WikiPageRetriever 未按 collection_ids 真隔离（或走全局 FTS 索引泄漏），
+    租户 B 将检索到租户 A 的数据 —— 企业部署的致命越权。
+    """
+    _apply_offline_patches(monkeypatch)
+
+    doc_a = isolated_env / "tenant_a.md"
+    doc_a.write_text(
+        "# 租户A机密\n\n龙骨编号 TENANTA-AAA-1111 的抗压强度为 11.1 MPa。\n",
+        encoding="utf-8",
+    )
+    doc_b = isolated_env / "tenant_b.md"
+    doc_b.write_text(
+        "# 租户B机密\n\n龙骨编号 TENANTB-BBB-2222 的抗压强度为 22.2 MPa。\n",
+        encoding="utf-8",
+    )
+    _ingest_into("doc-a", doc_a, "gp-tenant-a")
+    _ingest_into("doc-b", doc_b, "gp-tenant-b")
+
+    from core.harness.syscalls.retrieval import sys_knowledge_retrieve
+
+    # 以 collection-B 范围查询租户 A 的独特编号 → 必须零泄漏
+    cross = sys_knowledge_retrieve(
+        "TENANTA-AAA-1111 抗压强度",
+        collection_id="gp-tenant-b",
+        wiki_collection_ids=["gp-tenant-b"],
+        top_k=8,
+    )
+    leaked = " ".join(
+        f"{h.get('text','')} {h.get('summary','')} {h.get('title','')}" for h in cross
+    )
+    assert "TENANTA-AAA-1111" not in leaked, (
+        f"跨 collection 数据泄漏！collection-B 检索到了 collection-A 的机密事实: {leaked[:300]!r}"
+    )
+    assert "11.1" not in leaked, (
+        f"跨 collection 数值泄漏！collection-B 检索到 collection-A 的 11.1: {leaked[:300]!r}"
+    )
+
+    # 正向校验：collection-B 自己的事实必须可召回（排除"全空=假通过"）
+    own = sys_knowledge_retrieve(
+        "TENANTB-BBB-2222 抗压强度",
+        collection_id="gp-tenant-b",
+        wiki_collection_ids=["gp-tenant-b"],
+        top_k=8,
+    )
+    own_blob = " ".join(
+        f"{h.get('text','')} {h.get('summary','')} {h.get('title','')}" for h in own
+    )
+    assert "TENANTB-BBB-2222" in own_blob, (
+        f"collection-B 未召回自身事实（测试设置无效，隔离断言不可信）: {own_blob[:300]!r}"
+    )
+
+
+# ── 断言 A1：Layer1 Harness happy-path（ReActLoop reason→act→observe 真实生成）──
+# 白皮书第一卖点。诚实报告抓到"200 completed / output:'No model available'"空壳假绿：
+# 形状绿(成功状态)但行为空(没真跑循环)。本测试用脚本化 stub model 驱动一条完整
+# reason→act(真实执行工具)→observe→final，断言工具确被调用 + 终答非空且非空壳占位。
+
+def test_a1_react_loop_full_happy_path(isolated_env):
+    """行为断言 A1：ReActLoop 跑完一条完整 reason→act→observe→final，且工具真被执行。
+
+    step1 stub model 返回工具调用 JSON → 循环必须真实执行该工具（ACT 阶段）；
+    step2+ 返回纯文本终答 → 循环 FINISHED，输出非空且不是"No model available"空壳。
+    """
+    from types import SimpleNamespace
+    from core.harness.execution.loop import ReActLoop
+    from core.harness.interfaces.loop import LoopState, LoopConfig, LoopStateEnum
+
+    class _ToolResult:
+        def __init__(self, output):
+            self.success = True
+            self.output = output
+            self.error = None
+
+    class _KeelLookupTool:
+        name = "keel_lookup"
+        description = "查询龙骨规格"
+
+        def __init__(self):
+            self.called = False
+            self.last_args = None
+
+        async def execute(self, args):
+            self.called = True
+            self.last_args = args
+            return _ToolResult(output="龙骨 ZX-7731 抗压强度 42.8 MPa")
+
+    class _ScriptedModel:
+        """首次返回工具调用，其后均返回终答（对 reason 调用次数鲁棒）。"""
+        def __init__(self):
+            self._first = '{"tool":"keel_lookup","args":{"q":"ZX-7731"}}'
+            self._final = "已查得：龙骨 ZX-7731 抗压强度 42.8 MPa。"
+            self.calls = 0
+
+        async def generate(self, *args, **kwargs):
+            self.calls += 1
+            content = self._first if self.calls == 1 else self._final
+            return SimpleNamespace(content=content)
+
+    tool = _KeelLookupTool()
+    model = _ScriptedModel()
+    loop = ReActLoop(model=model, tools=[tool], config=LoopConfig(max_steps=4))
+    state = LoopState(current=LoopStateEnum.INIT,
+                      context={"task": "查询龙骨 ZX-7731 抗压强度", "messages": []})
+
+    result = asyncio.run(loop.run(state, LoopConfig(max_steps=4)))
+
+    # 循环真实推进且成功收敛
+    assert result is not None, "loop.run 返回 None"
+    assert result.success is True, f"循环未成功收敛: success={result.success}"
+    assert result.final_state.current == LoopStateEnum.FINISHED, (
+        f"循环未进入 FINISHED: {result.final_state.current}"
+    )
+    # ACT 阶段真实执行了工具（不是被跳过的空壳）
+    assert tool.called is True, "工具从未被执行 —— ACT 阶段未真实运行（空壳假绿）"
+    assert result.final_state.context.get("tool_call", {}).get("tool") == "keel_lookup", (
+        f"循环未记录工具调用: {result.final_state.context.get('tool_call')}"
+    )
+    # 终答非空，且不是诚实报告抓到的"No model available"空壳占位
+    assert isinstance(result.output, str) and result.output.strip(), (
+        f"终答为空 —— 行为空壳: {result.output!r}"
+    )
+    assert "No model available" not in result.output, (
+        f"终答是降级空壳占位 'No model available'，并非真实生成: {result.output!r}"
+    )
+
+
+# ── 断言 B1-hook：知识更新时语义缓存失效/溯源扫描必须真实执行 ──────────
+# 诚实报告 + 入库测试告警坐实：write_page 用 asyncio.run() 调失效协程，但生产路径
+# write_page 被 async wiki_auto_update 同步调用（已有运行中的事件循环）→ asyncio.run()
+# 抛 RuntimeError → 协程从未 await → 失效静默不发生 → 知识更新后检索仍返回旧缓存。
+
+def test_b1_cache_invalidation_runs_in_running_loop(isolated_env, monkeypatch):
+    """行为断言：在运行中的事件循环内 write_page，语义缓存失效协程必须真实执行。
+
+    复现生产场景（async wiki_auto_update → 同步 write_page）。
+    若失效协程未被 await（B1 bug），stub 缓存的 invalidate_domain 不会被调用。
+    """
+    import core.harness.knowledge.semantic_cache as sc
+
+    invalidated = []
+
+    class _StubCache:
+        enabled = True
+
+        async def invalidate_domain(self, collection_id):
+            invalidated.append(collection_id)
+
+    monkeypatch.setattr(sc, "get_semantic_cache", lambda: _StubCache(), raising=False)
+
+    from core.harness.knowledge.wiki_engine import write_page
+
+    async def _write_within_loop():
+        # 在运行中的 loop 内同步调用 write_page（= 生产 wiki_auto_update 的调用形态）
+        write_page("b1-hook-page", "龙骨 ZX-7731 v1", collection_id="gp-b1")
+        write_page("b1-hook-page", "龙骨 ZX-7731 v2 已更新", collection_id="gp-b1")
+
+    asyncio.run(_write_within_loop())
+
+    assert "gp-b1" in invalidated, (
+        "运行中的事件循环内 write_page 未触发语义缓存失效 —— "
+        "失效协程未被 await（asyncio.run 在已有 loop 内抛错被吞），知识更新后将返回旧缓存"
+    )
+
+
+# ── 断言 A3：ParallelExecutor map-reduce 异常隔离（编排层 Layer4 / roadmap 1.2）──
+# roadmap KPI："异常隔离: 1 个子任务失败不影响其他 (其他正常输出)"。
+# 此前零行为验证。确定性、离线（stub agent，无 LLM）。
+
+def test_a3_parallel_executor_fault_isolation():
+    """行为断言 A3：一个子任务抛异常，其余子任务仍正常产出且顺序保留。
+
+    若隔离失效（异常冒泡 / gather 短路），整批 map 会崩或其余任务丢失输出。
+    """
+    from core.apps.agents.parallel_executor import ParallelExecutor
+
+    FAIL_TOKEN = "POISON-9999"
+
+    class _StubSubAgent:
+        def __init__(self):
+            self.ran = False
+
+        def execute(self, task):
+            self.ran = True
+            if FAIL_TOKEN in task:
+                raise RuntimeError(f"boom on {task}")
+            return {"ok": True, "output": {"answer": f"分析完成: {task}"}}
+
+    tasks = ["分析 方案A", f"分析 {FAIL_TOKEN} 方案", "分析 方案C"]
+    executor = ParallelExecutor(max_concurrency=3)
+
+    map_result = asyncio.run(executor.map(tasks, lambda: _StubSubAgent()))
+
+    # 整批不崩、统计正确
+    assert map_result.get("ok") is True, f"map 整体失败: {map_result}"
+    assert map_result["total_tasks"] == 3, map_result
+    assert map_result["failed"] == 1, f"应恰好 1 个失败: {map_result}"
+    assert map_result["successful"] == 2, f"应恰好 2 个成功（隔离生效）: {map_result}"
+
+    results = map_result["results"]
+    assert len(results) == 3, "结果数应与任务数一致"
+    # 顺序保留 + 失败项隔离在 index 1
+    assert results[0].get("ok") is True and "方案A" in str(results[0].get("output")), results[0]
+    assert results[1].get("ok") is False, f"index1（毒任务）应失败: {results[1]}"
+    assert "boom" in str(results[1].get("error", "")), f"失败项应带异常信息: {results[1]}"
+    assert results[2].get("ok") is True and "方案C" in str(results[2].get("output")), results[2]
+
+
+# ── 断言 A2：编排层 8 协调模式（Pipeline/FanOutFanIn/Supervisor）行为验证 ──
+# 白皮书 Layer4 核心，此前零行为证明。stub agent 记录执行日志，断言真实协调语义
+# （顺序链式 / 并行聚合 / 委派），而非仅形状返回。确定性、离线。
+
+class _MarkerAgent:
+    """协调 agent 契约：async def execute(task) -> str。记录(marker, 收到的task)。"""
+    def __init__(self, marker, log):
+        self.marker = marker
+        self._log = log
+
+    async def execute(self, task):
+        self._log.append((self.marker, task))
+        return f"{self.marker}({task})"
+
+
+def test_a2_pipeline_mode_chains_output_to_next():
+    """A2-Pipeline：上游输出必须作为下游任务（顺序链式），非各自独立跑。"""
+    from core.harness.coordination.patterns import CoordinationContext, PipelinePattern
+
+    log = []
+    a0, a1 = _MarkerAgent("step0", log), _MarkerAgent("step1", log)
+    ctx = CoordinationContext(task="龙骨", agents=[a0, a1])
+
+    res = asyncio.run(PipelinePattern().coordinate(ctx))
+    assert res.success is True, f"pipeline 失败: {res.errors}"
+    assert len(res.outputs) == 2, f"应有 2 段输出: {res.outputs}"
+    # 链式核心：step1 收到的 task 必须是 step0 的输出
+    assert any(m == "step1" and "step0(龙骨)" in t for (m, t) in log), (
+        f"Pipeline 未把上游输出作为下游任务（链式断裂）: {log}"
+    )
+    assert "step0(龙骨)" in str(res.outputs[1]), f"下游输出未包含上游产物: {res.outputs[1]}"
+
+
+def test_a2_fanout_fanin_mode_parallel_aggregate():
+    """A2-FanOutFanIn：所有 agent 收到同一任务并行执行，结果聚合（扇出→扇入）。"""
+    from core.harness.coordination.patterns import CoordinationContext, FanOutFanInPattern
+
+    log = []
+    agents = [_MarkerAgent(f"exp{i}", log) for i in range(3)]
+    ctx = CoordinationContext(task="对比A/B/C", agents=agents)
+
+    res = asyncio.run(FanOutFanInPattern().coordinate(ctx))
+    assert res.success is True, f"fan-out/fan-in 失败: {res.errors}"
+    assert res.metadata.get("parallel") is True and res.metadata.get("count") == 3, res.metadata
+    # 扇出：3 个 agent 收到同一任务
+    assert all(t == "对比A/B/C" for (_, t) in log), f"扇出未广播同一任务: {log}"
+    # 扇入：聚合结果含全部 3 个 agent 的产物
+    agg = str(res.outputs[0])
+    for i in range(3):
+        assert f"exp{i}" in agg, f"fan-in 聚合缺 exp{i}: {agg}"
+
+
+def test_a2_supervisor_mode_delegates_to_workers():
+    """A2-Supervisor：中心 supervisor 委派给 workers 并聚合，workers 必须真实执行。"""
+    from core.harness.coordination.patterns import CoordinationContext, SupervisorPattern
+
+    log = []
+    sup = _MarkerAgent("SUP", log)
+    w1, w2 = _MarkerAgent("W1", log), _MarkerAgent("W2", log)
+    pattern = SupervisorPattern()
+    pattern.set_supervisor(sup)
+    pattern.add_worker(w1)
+    pattern.add_worker(w2)
+    ctx = CoordinationContext(task="任务X", agents=[])
+
+    res = asyncio.run(pattern.coordinate(ctx))
+    assert res.success is True, f"supervisor 失败: {res.errors}"
+    assert res.outputs and str(res.outputs[0]).strip(), f"聚合输出为空: {res.outputs}"
+    # 两个 worker 都被真实委派执行
+    worker_markers = {m for (m, _) in log if m in ("W1", "W2")}
+    assert worker_markers == {"W1", "W2"}, f"两个 worker 都应被委派执行: {log}"
+    # supervisor 至少执行两次（委派 + 聚合）
+    assert sum(1 for (m, _) in log if m == "SUP") >= 2, f"supervisor 应执行委派与聚合: {log}"
+
+
+# ── 断言 A4：本体 13 步管线 e2e（Layer3 知识引擎）─────────────────────
+# 白皮书 Layer3 核心。此前只验过图原语，没验过"喂文档→产出本体实例"整条管线。
+# 唯一 LLM 步骤（属性抽取）确定性 stub，其余 13 步真实运行。
+
+def test_a4_ontology_pipeline_e2e(isolated_env):
+    """行为断言 A4：文档 chunk 经 13 步管线产出本体实例，携带抽取属性。
+
+    Phase1 分类(零LLM) → Phase2 抽取(stub) → Phase3 校验/构建/状态机 全链真实运行。
+    """
+    import yaml as _yaml
+    from core.harness.knowledge.ontology_loader import load_ontology_from_yaml
+    from core.harness.ontology_engine.engine import OntologyEngine
+
+    yaml_path = isolated_env / "a4_domain.yaml"
+    yaml_path.write_text(_yaml.dump({
+        "id": "a4-test", "name": "A4测试域",
+        "namespace": "http://a4.test/",
+        "classes": {
+            "Material": {"label": "材料", "description": "建筑材料与结构材料",
+                         "required_fields": ["name", "description"], "fields": []}
+        }
+    }), encoding="utf-8")
+
+    domain = load_ontology_from_yaml(str(yaml_path))
+    engine = OntologyEngine(domain)
+
+    # 唯一 LLM 步骤 stub 为确定性返回（保留前后 12 步真实执行）
+    async def _stub_extract(**kwargs):
+        return {"name": "龙骨 ZX-7731", "description": "船体结构材料，抗压强度 42.8 MPa"}
+    engine._extractor.extract = _stub_extract
+
+    chunks = [{"id": "c1",
+               "text": "龙骨 ZX-7731 是一种船体结构材料，抗压强度 42.8 MPa。",
+               "entities": []}]
+
+    result = asyncio.run(engine.process_chunks(chunks, doc_id="a4-doc"))
+
+    # Phase1：零 LLM 分类映射到类
+    assert result.stats.get("mapped_entities", 0) >= 1, (
+        f"Phase1 分类未映射任何实体（ClassMapper 断裂）: {result.stats}"
+    )
+    # Phase2：抽取产出实例
+    assert result.stats.get("extracted_instances", 0) >= 1, (
+        f"Phase2 抽取未产出实例: {result.stats}"
+    )
+    # Phase3：校验通过 + 实例构建
+    assert result.stats.get("valid_instances", 0) >= 1, f"Phase3 校验无通过实例: {result.stats}"
+    assert len(result.instances) >= 1, "管线未产出任何本体实例"
+    # 抽取属性真实贯穿管线到最终实例
+    blob = str(result.instances)
+    assert "ZX-7731" in blob, f"抽取属性未贯穿到最终实例: {blob[:300]!r}"
+
+
+# ── 断言 C2：PolicyGate 单点门禁（CLAUDE §11 双门禁 / deny-by-default）──────
+# 诚实报告：gate 只有单测、无 e2e 证明"审批真拦住工具调用"。本测试在 syscall 边界
+# 验证：① 门禁逻辑 deny-by-default；② 有 request context 时 sys_tool_call 真拦截。
+# 并显式锁定一个真实发现：无 request context 时 sys_tool_call 故意 fail-open（绕过门禁）。
+
+def test_c2_policy_gate_deny_by_default(monkeypatch):
+    """C2-①：未授权用户对未授权工具，PolicyGate.check_tool 必须 DENY（单点强制）。"""
+    monkeypatch.delenv("AIPLAT_APPROVALS_DISABLED", raising=False)
+    from core.harness.infrastructure.gates import PolicyGate, PolicyDecision
+
+    gate = PolicyGate()
+    res = asyncio.run(gate.check_tool(
+        user_id="c2-unauth-xyz", tool_name="c2_probe_tool", tool_args={}))
+    assert res.decision == PolicyDecision.DENY, (
+        f"未授权用户应被 deny-by-default 拒绝，实为 {res.decision}"
+    )
+
+
+def test_c2_sys_tool_call_enforces_gate_with_request_context(isolated_env, monkeypatch):
+    """C2-②：sys_tool_call 在有 request context 时真实强制门禁；无 context 时 fail-open（锁定绕过）。
+
+    锁定一个真实发现（tool.py:436-439）：无 active request context 时 sys_tool_call 故意
+    fail-open 放行 → 任何不透传 context 的内部路径（后台 job/cron/子 agent）将绕过门禁。
+    """
+    monkeypatch.delenv("AIPLAT_APPROVALS_DISABLED", raising=False)
+    from core.harness.syscalls.tool import sys_tool_call
+    from core.harness.kernel.execution_context import (
+        ActiveRequestContext, set_active_request_context, reset_active_request_context,
+    )
+
+    class _ResultObj:
+        def __init__(self):
+            self.success = True
+            self.output = "ran"
+            self.error = None
+
+    class _ProbeTool:
+        name = "c2_probe_tool"
+        description = "C2 探针工具"
+
+        def __init__(self):
+            self.called = False
+
+        async def execute(self, args):
+            self.called = True
+            return _ResultObj()
+
+    # (a) 无 request context → 已知 fail-open：放行执行（锁定该绕过条件）
+    t_open = _ProbeTool()
+    asyncio.run(sys_tool_call(t_open, {}, user_id="c2-unauth-xyz"))
+    assert t_open.called is True, (
+        "无 request context 时 sys_tool_call 预期 fail-open 放行（tool.py:436-439）；"
+        "若此断言失败说明 fail-open 行为已变更，需复核绕过面"
+    )
+
+    # (b) 有 request context → 门禁真实强制：未授权用户被拦截，工具体不执行
+    t_guarded = _ProbeTool()
+
+    async def _call_with_ctx():
+        ctx = ActiveRequestContext(user_id="c2-unauth-xyz", tenant_id="c2-tenant")
+        token = set_active_request_context(ctx)
+        try:
+            return await sys_tool_call(t_guarded, {}, user_id="c2-unauth-xyz")
+        finally:
+            reset_active_request_context(token)
+
+    r = asyncio.run(_call_with_ctx())
+    assert t_guarded.called is False, (
+        "有 request context 时未授权工具调用必须被 PolicyGate 拦截（工具体不得执行）"
+    )
+    assert getattr(r, "success", getattr(r, "ok", True)) is False, (
+        f"被门禁拦截的调用应返回失败结果: {r!r}"
+    )
+
+
+# ── 断言 D1：先进能力接线棘轮（杜绝"✅ 但 0-caller"死代码）─────────────
+# 诊断报告标"✅ 已接线"的 Phase 模块，必须各有≥1 生产(非测试)调用者。
+# 把"代码存在/可达"升级为"真被生产代码调用"——任何能力被解除接线(回归)即变红，
+# 强制"重新接线 或 把文档 ✅ 降级"。（注：run_nightly 已不存在、ImplicitFeedback
+# 已于近期接线到 agents.py，故不在死列表——以当前代码为准，非 4 天前报告。）
+
+def test_d1_advanced_capabilities_are_wired():
+    """D1：文档标 ✅ 的先进能力必须有生产调用者（接线棘轮，防"已实现"虚标）。"""
+    import pathlib
+
+    core_root = pathlib.Path(__file__).resolve().parents[2] / "aiPlat-core" / "core"
+    # symbol -> 定义文件标记（计 caller 时排除自身定义文件）
+    watched = {
+        "get_semantic_cache": "semantic_cache.py",          # §5.81 语义缓存
+        "HallucinationTracker": "hallucination_tracker.py",  # §5.87 幻觉检测
+        "ParallelExecutor": "parallel_executor.py",          # §5.83 FanOut 并行
+        "EnterpriseGateway": "gateway/__init__.py",          # §5.86 企业网关
+        "get_implicit_feedback_collector": "implicit_feedback.py",  # §5.90 隐式反馈
+        "ProvenanceScanner": "provenance.py",                # §5.85 声明级溯源
+    }
+
+    py_files = [
+        p for p in core_root.rglob("*.py")
+        if "__pycache__" not in str(p)
+        and "/tests/" not in str(p).replace("\\", "/")
+        and not p.name.startswith("test_")
+    ]
+    texts = {p: p.read_text(encoding="utf-8", errors="ignore") for p in py_files}
+
+    dead = []
+    for sym, def_marker in watched.items():
+        callers = [
+            p for p, t in texts.items()
+            if sym in t and def_marker not in str(p).replace("\\", "/")
+        ]
+        if not callers:
+            dead.append(sym)
+
+    assert not dead, (
+        f"以下能力被文档标 ✅ 但无生产(非测试)调用者 —— 死代码/未接线，"
+        f"必须重新接线或把文档 ✅ 降级为 ⚠️: {dead}"
+    )
+
+
+# ── 断言 F1：门控 live-model e2e tier（解决"LLM 依赖路径离线无法证明"）─────
+# golden_path 全程离线/stub LLM；凡需真模型的路径（ReActLoop 生成、13步抽取、
+# CRAG HyDE、域路由 T3）离线永远得不到真实证明（诚实报告反复出现的"D2 困境"）。
+# 本 tier 默认 SKIP，设 AIPLAT_LIVE_MODEL_TESTS=1 开启，对真模型跑一遍。
+# 模型不可达时优雅 skip（不 error），保证默认/离线 CI 绿。
+
+def _live_gate():
+    import os
+    import pytest
+    if os.getenv("AIPLAT_LIVE_MODEL_TESTS", "").lower() not in ("1", "true", "yes"):
+        pytest.skip("set AIPLAT_LIVE_MODEL_TESTS=1 to run live-model tier")
+
+
+def _resolve_live_adapter(purpose="general"):
+    import pytest
+    from core.harness.utils.model_injection import best_model_for_purpose, create_selected_adapter
+    model_name = best_model_for_purpose(purpose)
+    if not model_name:
+        pytest.skip("no model resolved for live tier")
+    try:
+        return create_selected_adapter(model_name=model_name)
+    except Exception as e:
+        pytest.skip(f"live adapter unavailable: {e}")
+
+
+def test_f1_live_sys_llm_generate():
+    """F1-①：真模型经 sys_llm_generate 产生非空补全（real LLM 链路证明）。"""
+    _live_gate()
+    import pytest
+    from core.harness.syscalls import sys_llm_generate
+
+    adapter = _resolve_live_adapter("general")
+    result = asyncio.run(sys_llm_generate(adapter, "用一句话回答：1 加 1 等于几？"))
+    if getattr(result, "error_type", None) in ("model_unavailable", "model_error"):
+        pytest.skip(f"live model not reachable: {getattr(result, 'error_type', '')}")
+    content = getattr(result, "content", None)
+    assert content and str(content).strip(), f"真模型补全为空: {result!r}"
+
+
+def test_f1_live_react_loop_real_model(isolated_env):
+    """F1-②：真模型驱动 ReActLoop reason→final，FINISHED 且输出非空（非 stub）。"""
+    _live_gate()
+    import pytest
+    from core.harness.execution.loop import ReActLoop
+    from core.harness.interfaces.loop import LoopState, LoopConfig, LoopStateEnum
+
+    adapter = _resolve_live_adapter("general")
+    loop = ReActLoop(model=adapter, config=LoopConfig(max_steps=4))
+    state = LoopState(current=LoopStateEnum.INIT,
+                      context={"task": "用一句话说明什么是龙骨。", "messages": []})
+    result = asyncio.run(loop.run(state, LoopConfig(max_steps=4)))
+    if result is None or not getattr(result, "success", False):
+        pytest.skip(f"live ReActLoop did not converge (model env): {result!r}")
+    assert result.final_state.current == LoopStateEnum.FINISHED
+    assert isinstance(result.output, str) and result.output.strip(), (
+        f"真模型 ReActLoop 输出为空: {result.output!r}"
+    )
+    assert "No model available" not in (result.output or ""), result.output

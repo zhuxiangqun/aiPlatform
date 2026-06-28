@@ -955,8 +955,9 @@ async def lifespan(app: FastAPI):
         try:
             tool = create_tool(tool_type)
             registry.register(tool)
-        except ValueError:
-            pass
+        except ValueError as e:
+            logging.getLogger("aiplat.server").debug(
+                "Built-in tool '%s' registration skipped: %s", tool_type, e, exc_info=True)
     
     # Tools from dedicated modules (real implementations and stubs)
     _tool_modules = [

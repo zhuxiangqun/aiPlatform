@@ -787,7 +787,8 @@ async def wiki_auto_update(doc_id: str, file_path: str, collection_id: str = "")
     write_page(title, body, category="entities", tags=tags,
                summary=body[:300].replace("\n", " "),
                source_articles=[f"kb:{doc_id}"],
-               images=image_descriptions)
+               images=image_descriptions,
+               collection_id=collection_id or "default")
 
     # LLM curation: extract knowledge atoms, generate proper metadata (with retry)
     import asyncio as _asyncio
@@ -825,10 +826,11 @@ async def wiki_auto_update(doc_id: str, file_path: str, collection_id: str = "")
                 relationships=relationships,
                 summary=curated.get("summary", body[:300].replace("\n", " ")),
                 source_articles=[f"kb:{doc_id}"],
-                images=image_descriptions)
+                images=image_descriptions,
+                collection_id=collection_id or "default")
             if curated["title"] != old_title:
                 from core.harness.knowledge.wiki_engine import delete_page
-                try: delete_page(old_title)
+                try: delete_page(old_title, collection_id=collection_id or "default")
                 except Exception: logging.debug(f"Failed to delete old page {old_title}", exc_info=True)
             # Create knowledge atom pages with evidence tracking
             from core.harness.knowledge.wiki_engine import write_atom
