@@ -1704,3 +1704,54 @@ def test_w2_factory_tenant_scoped_managers_isolated(isolated_env):
     d1 = get_memory_manager()
     d2 = get_memory_manager(namespace="default")
     assert d1 is d2, "默认单例向后兼容"
+
+
+# ── 断言 CC：5 级上下文压缩——high 优先级永不丢、low 优先删（白皮书旗舰可靠性）──
+# CLAUDE §5.21 / 白皮书场景二："上下文 99% 满还不丢关键指令"。high=用户原始需求/
+# HITL审批/关键错误，low=调试输出。验证 EMERGENCY 压缩下 system + high 保留、low 先删。
+
+def test_cc_compress_keeps_system_and_high_priority():
+    """CC：EMERGENCY 压缩必须保留 system 指令与 high 优先级消息，丢弃 low。"""
+    from core.harness.memory.compression import ContextCompression, ContextState
+
+    comp = ContextCompression()
+    context = [
+        {"role": "system", "content": "SYS-PROMPT KEY-RULE-XYZ"},
+        # high = 用户原始需求（§5.21: 不可压缩）
+        {"role": "user", "content": "ORIGINAL-REQUIREMENT-HIGH", "priority": "high"},
+    ]
+    for i in range(20):
+        context.append({"role": "assistant", "content": f"DEBUG-LOW-{i}", "priority": "low"})
+
+    # token_usage/limit → ratio 0.995 → EMERGENCY
+    state = ContextState(token_usage=995, token_limit=1000, message_count=len(context))
+    result = asyncio.run(comp.compress(context, state))
+    blob = " ".join(str(m.get("content", "")) for m in result)
+
+    assert "KEY-RULE-XYZ" in blob, f"EMERGENCY 丢失了系统指令: {blob[:300]!r}"
+    assert "ORIGINAL-REQUIREMENT-HIGH" in blob, (
+        f"EMERGENCY 丢失了 high 优先级(用户原始需求)却保留 low 调试 —— 优先级裁剪反了(§5.21): {blob[:300]!r}"
+    )
+    assert len(result) < len(context), "EMERGENCY 未发生压缩"
+
+
+def test_cc_prune_keeps_high_and_recency():
+    """CC：PRUNE 级保留 system + high，丢最老 low、保最近 low（recency 不再被优先级排序破坏）。"""
+    from core.harness.memory.compression import ContextCompression, ContextState
+
+    comp = ContextCompression()
+    context = [
+        {"role": "system", "content": "SYS KEEP-SYS"},
+        {"role": "user", "content": "REQ-HIGH", "priority": "high"},
+    ]
+    for i in range(20):
+        context.append({"role": "assistant", "content": f"LOW-{i}", "priority": "low"})
+
+    # ratio 0.94 → PRUNE (keep_last=5 of the rest)
+    state = ContextState(token_usage=940, token_limit=1000, message_count=len(context))
+    result = asyncio.run(comp.compress(context, state))
+    blob = " ".join(str(m.get("content", "")) for m in result)
+
+    assert "KEEP-SYS" in blob and "REQ-HIGH" in blob, f"PRUNE 丢了 system/high: {blob[:200]!r}"
+    assert "LOW-0" not in blob, f"PRUNE 应丢弃最老的 low: {blob[:200]!r}"
+    assert "LOW-19" in blob, f"PRUNE 应保留最近的 low(recency): {blob[:200]!r}"

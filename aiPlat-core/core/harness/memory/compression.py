@@ -170,17 +170,23 @@ class ContextCompression:
         context: List[Dict],
         keep_last: int = 5
     ) -> List[Dict]:
-        """Keep only recent N messages fully, respecting priority."""
+        """Keep system + all high-priority + most-recent N of the rest (§5.21).
+
+        High-priority messages (user's original requirement, HITL approval, key
+        errors) are never dropped; low/medium are kept by recency up to keep_last.
+        """
         system_msgs = [m for m in context if m.get("role") == "system"]
         non_system = [m for m in context if m.get("role") != "system"]
-        non_system.sort(key=self._priority_order)
-        return system_msgs + non_system[-keep_last:]
+        high = [m for m in non_system if self._priority_order(m) == 0]
+        rest = [m for m in non_system if self._priority_order(m) != 0]
+        return system_msgs + high + rest[-keep_last:]
 
     async def _aggressive_compress(self, context: List[Dict]) -> List[Dict]:
-        """Aggressive compression — preserve previous summary, append new turns."""
+        """Aggressive compression — preserve summary + all high-priority + recent turns (§5.21)."""
         system_msgs = [m for m in context if m.get("role") == "system"]
         non_system = [m for m in context if m.get("role") != "system"]
-        non_system.sort(key=self._priority_order)
+        high = [m for m in non_system if self._priority_order(m) == 0]
+        rest = [m for m in non_system if self._priority_order(m) != 0]
 
         # Detect and preserve previous summary for iterative update
         prev_summary_content = self._prev_summary
@@ -191,30 +197,33 @@ class ContextCompression:
                     prev_summary_content = c
                     break
 
-        recent = non_system[-2:] if len(non_system) > 2 else non_system
+        recent = rest[-2:] if len(rest) > 2 else rest
+        summarized_count = max(0, len(rest) - len(recent))
         if prev_summary_content:
             summary_msg = {
                 "role": "system",
                 "content": (
                     f"CONTEXT_SUMMARY (updated):\n{prev_summary_content}\n\n"
-                    f"[+{len(non_system) - 2} new turns incorporated]"
+                    f"[+{summarized_count} new turns incorporated]"
                 ),
             }
         else:
             summary_msg = {
                 "role": "system",
-                "content": f"[Previous {max(0, len(non_system) - 2)} messages summarized]",
+                "content": f"[Previous {summarized_count} messages summarized]",
             }
 
         self._prev_summary = str(summary_msg["content"])
-        return system_msgs + [summary_msg] + recent
+        return system_msgs + high + [summary_msg] + recent
 
     async def _emergency_compress(self, context: List[Dict]) -> List[Dict]:
-        """Emergency compression — keep only system + last message."""
+        """Emergency compression — keep system + all high-priority + last message (§5.21)."""
         system_msgs = [m for m in context if m.get("role") == "system"]
         non_system = [m for m in context if m.get("role") != "system"]
-        non_system.sort(key=self._priority_order)
-        return system_msgs + [non_system[-1]] if non_system else system_msgs
+        high = [m for m in non_system if self._priority_order(m) == 0]
+        rest = [m for m in non_system if self._priority_order(m) != 0]
+        keep = high + (rest[-1:] if rest else [])
+        return system_msgs + keep
 
     def should_trigger_compression(self, state: ContextState) -> bool:
         """Check if compression should be triggered"""
