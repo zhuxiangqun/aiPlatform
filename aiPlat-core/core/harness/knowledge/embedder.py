@@ -25,10 +25,16 @@ def hash_embed(text: str, dim: int = 128) -> List[float]:
         return [0.0] * dim
     n = max(1, dim // 4)
     vec = [0.0] * dim
-    for i in range(0, len(text) - n + 1, n):
-        ngram = text[i: i + n].encode("utf-8", errors="ignore")
-        h = int(hashlib.sha256(ngram).hexdigest()[:16], 16)
+    if len(text) < n:
+        # Text shorter than the n-gram window: embed the entire text as a single feature
+        # so short queries don't produce an all-zero (useless) vector.
+        h = int(hashlib.sha256(text.encode("utf-8")).hexdigest()[:16], 16)
         vec[h % dim] += 1.0
+    else:
+        for i in range(0, len(text) - n + 1, n):
+            ngram = text[i: i + n].encode("utf-8", errors="ignore")
+            h = int(hashlib.sha256(ngram).hexdigest()[:16], 16)
+            vec[h % dim] += 1.0
     norm = math.sqrt(sum(v * v for v in vec))
     if norm > 0:
         vec = [v / norm for v in vec]

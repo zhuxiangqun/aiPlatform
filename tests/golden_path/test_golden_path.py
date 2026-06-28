@@ -2044,3 +2044,24 @@ def test_sc_l2_cache_works_without_redis_and_invalidates(isolated_env, monkeypat
     assert miss is None, (
         "invalidate_domain 后 get 应未命中（L2 被清，不服务陈旧）"
     )
+
+
+# ── 断言 HE：hash_embed 对短文本(＜32 字符)必须产生有效向量（非全零）─────────────
+# 真 bug(项三调查暴露, 预存): range(0, len("短")-32+1=-N, 32) 为空循环 → 全零向量 →
+# cosine=0 → L2 语义缓存/任何 hash 嵌入对短 query 失效。修: <n 时整段作单一特征。
+
+def test_he_hash_embed_handles_short_text():
+    """HE：短文本(＜32字) hash_embed 必须产出非零、归一化、确定性向量，自身余弦=1。"""
+    from core.harness.knowledge.embedder import hash_embed, cosine_similarity
+    import math
+
+    v1 = hash_embed("ZX-7731")
+    assert any(x != 0.0 for x in v1), "短文本(＜32字)不应产全零向量"
+
+    v2 = hash_embed("ZX-7731")
+    assert v1 == v2, "同文本嵌入必须一致(确定性)"
+
+    norm = math.sqrt(sum(x * x for x in v1))
+    assert 0.99 <= norm <= 1.01, f"向量应归一化: norm={norm:.4f}"
+
+    assert abs(cosine_similarity(v1, v1) - 1.0) < 0.001, "自身余弦应=1.0"
