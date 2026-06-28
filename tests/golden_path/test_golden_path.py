@@ -1818,3 +1818,32 @@ def test_rrf_blends_wiki_and_kb_sources(isolated_env, monkeypatch):
     titles = [r.get("title") for r in results]
     assert "WIKI-DOC-A" in titles, f"缺最高分 wiki 文档: {titles}"
     assert "KB-DOC-X" in titles, f"缺最高分 kb 文档: {titles}"
+
+
+# ── 断言 RES：§5.19 重试安全——SkillConfig.idempotent 必须从 effects 派生 ──────
+# 真 bug: registry 构造 SkillConfig 时不传 idempotent → 顶层恒为默认 True，
+# 即使 effects[].idempotent=false。导致 §5.19 运行时检查(skill.py:696
+# 'retries>0 and not is_idempotent')永不触发 → 非幂等写 skill 仍被重试(安全失效)。
+
+def test_res_skill_idempotent_derived_from_effects():
+    """RES：任一 effect 非幂等 → skill 顶层 idempotent 派生为 False（§5.19 安全前提）。"""
+    from core.harness.interfaces.skill import SkillConfig
+
+    # 写 effect 声明 idempotent=false → 顶层必须为 False（否则重试安全失效）
+    writer = SkillConfig(
+        name="writer",
+        effects=[{"type": "write", "resources": [], "idempotent": False}],
+    )
+    assert writer.idempotent is False, (
+        "非幂等写 effect 的 skill 顶层 idempotent 应派生为 False(§5.19)——否则非幂等写操作会被重试"
+    )
+
+    # 全幂等 effects → True
+    reader = SkillConfig(name="reader", effects=[{"type": "read", "idempotent": True}])
+    assert reader.idempotent is True, f"全幂等 effects 应为 True: {reader.idempotent}"
+
+    # 无 effects → 默认 True
+    assert SkillConfig(name="noeffects").idempotent is True
+
+    # 显式 idempotent=False + 无 effects → 保持 False（只收紧不放松）
+    assert SkillConfig(name="x", idempotent=False, effects=[]).idempotent is False

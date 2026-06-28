@@ -20,6 +20,17 @@ class SkillConfig:
     idempotent: bool = True
     rollback_available: bool = False
 
+    def __post_init__(self):
+        # §5.19: any non-idempotent effect makes the whole skill non-idempotent (unsafe to
+        # retry). Derive the top-level flag from per-effect declarations so it always reflects
+        # reality — callers building SkillConfig with effects but no explicit idempotent (e.g.
+        # the SKILL.md registry path) would otherwise leave it at the default True, silently
+        # disabling the §5.19 retry-safety check. Tighten-only: never loosens an explicit value.
+        if self.effects and any(
+            isinstance(e, dict) and not bool(e.get("idempotent", True)) for e in self.effects
+        ):
+            self.idempotent = False
+
 
 @dataclass
 class SkillContext:
