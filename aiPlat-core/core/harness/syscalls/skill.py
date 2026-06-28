@@ -805,7 +805,7 @@ async def sys_skill_call(
                 output_schema = getattr(cfg, "output_schema", None) if cfg else None
                 if not output_schema:
                     meta = getattr(cfg, "metadata", None) if cfg else None
-                    output_schema = getattr(meta, "output_schema", None) if isinstance(meta, dict) else None
+                    output_schema = meta.get("output_schema") if isinstance(meta, dict) else None
                 if output_schema:
                     sg = get_schema_gate()
                     s_result = sg.validate(getattr(result, "output", None), output_schema)

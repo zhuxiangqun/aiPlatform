@@ -1875,3 +1875,43 @@ def test_sb_sandbox_blocks_path_traversal(isolated_env, monkeypatch):
     # sibling 越界目录(workspace + 'EVIL') → 必须被拒
     r3 = asyncio.run(sb.check(kind="tool", tool_name="", file_path=ws + "EVIL/secret"))
     assert r3.verdict == Verdict.REJECT, f"sibling 越界目录(<ws>EVIL)应被拒: {r3.verdict} | {r3.reason}"
+
+
+# ── 断言 SG：SchemaGate 对 skill 输出的校验必须真生效（§5.10 输出契约）──────────
+# 真 bug: skill.py 取 cfg.output_schema(顶层, registry 建的 skill 为空) → fallback 用
+# getattr(meta_dict, "output_schema") 在 dict 上做属性访问 → 恒 None → 校验被整体跳过。
+# 修为 meta.get(...)。本测试: output_schema 存于 metadata、输出违反 → success 必须 False。
+
+def test_sg_skill_output_schema_enforced_from_metadata(isolated_env, monkeypatch):
+    """SG：output_schema 存于 metadata 时校验生效——输出缺 required 字段 → success=False。"""
+    monkeypatch.setenv("AIPLAT_APPROVALS_DISABLED", "true")  # 绕过审批，使 skill 真执行到校验
+    from core.harness.interfaces import SkillConfig, SkillResult
+    from core.harness.syscalls.skill import sys_skill_call
+
+    cfg = SkillConfig(
+        name="schema-test-skill",
+        metadata={"output_schema": {"type": "object", "required": ["mandatory_field"]}},
+    )
+
+    class _StubSkill:
+        name = "schema-test-skill"
+
+        def __init__(self, c):
+            self._config = c
+
+        def get_config(self):
+            return self._config
+
+        async def execute(self, ctx, params):
+            # 缺 required 'mandatory_field' → 违反 output_schema
+            return SkillResult(success=True, output={"wrong": "value"}, error=None)
+
+    res = asyncio.run(sys_skill_call(_StubSkill(cfg), {}, user_id="system", session_id="s"))
+
+    assert getattr(res, "success", None) is False, (
+        f"输出违反 metadata 中的 output_schema 时校验未生效(success 仍 True) → schema 校验被跳过: "
+        f"success={getattr(res, 'success', None)} error={getattr(res, 'error', None)}"
+    )
+    assert "schema_validation_failed" in str(getattr(res, "error", "")), (
+        f"应标记 schema_validation_failed: {getattr(res, 'error', None)}"
+    )
