@@ -84,9 +84,14 @@ class MemoryManager:
     to keep memories separate (e.g., 'agent_a', 'agent_b', 'agent_c').
     """
 
-    def __init__(self, config: Optional[MemoryConfig] = None, namespace: str = "default"):
+    def __init__(self, config: Optional[MemoryConfig] = None, namespace: str = "default",
+                 *, tenant_id: Optional[str] = None, session_id: Optional[str] = None):
         self._config = config or MemoryConfig()
         self.namespace = namespace
+        # §5.12 isolation scope: when set, semantic retrieve/capture are tenant+session
+        # scoped (build_context auto-applies the S1 filter; capture stamps metadata).
+        self._tenant_id = tenant_id
+        self._session_id = session_id
         self._persist_callback = None  # injected by service layer for SQLite persistence  # noqa: pending-wire
 
         # Initialize layers
@@ -148,7 +153,8 @@ class MemoryManager:
         """
         
         # 1. Retrieve relevant semantic memories
-        relevant_memories = await self._semantic.retrieve(current_query)
+        relevant_memories = await self._semantic.retrieve(
+            current_query, tenant_id=self._tenant_id, session_id=self._session_id)
         
         # 2. Get episodic summary
         episodic_summary = self._episodic.get_summary()
@@ -377,6 +383,13 @@ class MemoryManager:
             expires_at: Optional datetime for TTL-based expiration.
                         stability="low" → 7 days, "medium" → 30 days, "high" → None (permanent).
         """
+        # Stamp tenant/session so semantic retrieve can enforce isolation (§5.12).
+        if self._tenant_id is not None or self._session_id is not None:
+            metadata = dict(metadata or {})
+            if self._tenant_id is not None:
+                metadata.setdefault("tenant_id", self._tenant_id)
+            if self._session_id is not None:
+                metadata.setdefault("session_id", self._session_id)
         await self._semantic.store(key, content, metadata, expires_at=expires_at)
 
     async def cleanup_semantic_expired(self) -> int:
@@ -766,26 +779,33 @@ class MemoryManager:
 
 
 # Per-namespace memory managers
-_memory_managers: Dict[str, MemoryManager] = {}
+_memory_managers: Dict[tuple, MemoryManager] = {}
 _default_manager: Optional[MemoryManager] = None
 
 
-def get_memory_manager(config: Optional[MemoryConfig] = None, namespace: str = "default") -> MemoryManager:
+def get_memory_manager(config: Optional[MemoryConfig] = None, namespace: str = "default",
+                       *, tenant_id: Optional[str] = None,
+                       session_id: Optional[str] = None) -> MemoryManager:
     """Get memory manager for a namespace.
 
-    When namespace='default', returns the legacy singleton (backward compat).
-    Other namespaces get their own isolated MemoryManager instance.
+    When namespace='default' (and no tenant/session scope), returns the legacy
+    singleton (backward compat). Other namespaces / tenant-scoped managers get their
+    own isolated MemoryManager instance, cached by (namespace, tenant_id, session_id)
+    so a tenant-scoped manager is never reused across tenants.
     """
     global _default_manager, _memory_managers
-    if namespace == "default" or not namespace:
+    if (namespace == "default" or not namespace) and tenant_id is None and session_id is None:
         if _default_manager is None:
             _default_manager = MemoryManager(config, namespace="default")
             _wire_persist_callback(_default_manager)
         return _default_manager
-    if namespace not in _memory_managers:
-        _memory_managers[namespace] = MemoryManager(config, namespace=namespace)
-        _wire_persist_callback(_memory_managers[namespace])
-    return _memory_managers[namespace]
+    key = (namespace or "default", tenant_id, session_id)
+    if key not in _memory_managers:
+        _memory_managers[key] = MemoryManager(
+            config, namespace=namespace or "default",
+            tenant_id=tenant_id, session_id=session_id)
+        _wire_persist_callback(_memory_managers[key])
+    return _memory_managers[key]
 
 
 def _wire_persist_callback(mgr: MemoryManager) -> None:

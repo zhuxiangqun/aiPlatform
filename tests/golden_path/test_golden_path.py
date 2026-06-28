@@ -1666,3 +1666,41 @@ def test_s4_audit_log_tamper_evidence(isolated_env):
     assert v_ok["verified"] == 3, f"应校验 3 条审计记录: {v_ok}"
     assert v_bad["ok"] is False, f"篡改审计行后必须检出断链: {v_bad}"
     assert v_bad["broken_at"] == rid, f"应定位到被篡改行 id={rid}: {v_bad}"
+
+
+# ── 断言 W2：MemoryManager 租户接线（build_context 默认带 S1 隔离过滤）──────
+# W1/W2 接线后续：MemoryManager 跟踪 tenant/session，capture 盖戳 metadata、
+# build_context 自动按租户检索；工厂按 (namespace,tenant,session) 缓存防跨租户复用。
+
+def test_w2_build_context_auto_scopes_by_tenant(isolated_env):
+    """W2a：tenant 感知的 MemoryManager，build_context 自动隔离——即使同实例被污染。"""
+    from core.harness.memory.manager import MemoryManager, MemoryConfig
+
+    mgr = MemoryManager(config=MemoryConfig(), namespace="ns1", tenant_id="tenant-A")
+    # capture 本租户记忆（capture_to_semantic 自动盖戳 tenant_id=A）
+    asyncio.run(mgr.capture_to_semantic("memA", "ALPHA FACT AAA111", {}))
+    # 污染：直接往同一语义库塞一个 tenant-B 的项（模拟共享实例泄漏风险）
+    asyncio.run(mgr._semantic.store("memB", "BETA FACT BBB222", {"tenant_id": "tenant-B"}))
+
+    ctx = asyncio.run(mgr.build_context("FACT", "sys-prompt"))
+    blob = " ".join(str(m.get("content", "")) for m in ctx.messages)
+    assert "AAA111" in blob, f"build_context 应注入本租户(A)记忆: {blob[:300]!r}"
+    assert "BBB222" not in blob, (
+        f"build_context 未自动按租户隔离，泄漏了租户 B 记忆: {blob[:300]!r}"
+    )
+
+
+def test_w2_factory_tenant_scoped_managers_isolated(isolated_env):
+    """W2b：工厂同 namespace 不同租户返回不同实例；同租户复用；默认单例向后兼容。"""
+    from core.harness.memory.manager import get_memory_manager
+
+    a = get_memory_manager(namespace="shared-ns", tenant_id="A")
+    b = get_memory_manager(namespace="shared-ns", tenant_id="B")
+    a2 = get_memory_manager(namespace="shared-ns", tenant_id="A")
+    assert a is not b, "同 namespace 不同租户必须是不同实例（防跨租户复用）"
+    assert a is a2, "同 namespace 同租户应复用同一实例"
+    assert a._tenant_id == "A" and b._tenant_id == "B"
+
+    d1 = get_memory_manager()
+    d2 = get_memory_manager(namespace="default")
+    assert d1 is d2, "默认单例向后兼容"

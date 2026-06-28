@@ -56,6 +56,22 @@ async def list_audit_logs(
     )
 
 
+@router.get("/audit/verify")
+async def verify_audit_chain(
+    tenant_id: Optional[str] = None,
+    rt: RuntimeDep = None,
+):
+    """Verify the tamper-evidence hash chain of the audit log for a tenant.
+
+    Returns {ok, total, verified, unverifiable, broken_at}. ok=False (with broken_at
+    = the offending row id) indicates an audit row was modified/deleted out of band.
+    """
+    store = _store(rt)
+    if not store:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+    return await store.verify_audit_chain(tenant_id=tenant_id)
+
+
 @router.get("/ops/export/audit_logs.csv")
 async def export_audit_logs_csv(
     http_request: Request,
