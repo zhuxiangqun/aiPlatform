@@ -1755,3 +1755,29 @@ def test_cc_prune_keeps_high_and_recency():
     assert "KEEP-SYS" in blob and "REQ-HIGH" in blob, f"PRUNE 丢了 system/high: {blob[:200]!r}"
     assert "LOW-0" not in blob, f"PRUNE 应丢弃最老的 low: {blob[:200]!r}"
     assert "LOW-19" in blob, f"PRUNE 应保留最近的 low(recency): {blob[:200]!r}"
+
+
+# ── 断言 EP：Episodic critical-episode(>0.8 / is_critical) 永不压缩(§5.12 方案三)──
+# 高分关键决策/HITL审批存入独立 _critical_episodes 列表，不受 _full_messages 驱逐影响；
+# build_context 始终注入为 protected system 消息(经 CC 修复后压缩中存活)。
+
+def test_ep_critical_episodes_preserved(isolated_env):
+    """EP：importance>0.8 与 is_critical=True 的交互被保留为 critical episode，普通(0.5)不入。"""
+    from core.harness.memory.episodic import EpisodicMemory
+
+    ep = EpisodicMemory()
+
+    async def _run():
+        await ep.add_interaction("批准上线", "已批准 CRIT-APPROVAL-Z9", importance_score=0.9)
+        await ep.add_interaction("是否HITL", "待审批 CRIT-HITL-H7", is_critical=True)
+        # 大量普通(0.5)交互——会驱逐 _full_messages，但不得影响 critical episodes
+        for i in range(100):
+            await ep.add_interaction(f"regular {i}", f"REGULAR-{i}", importance_score=0.5)
+        return ep.get_critical_episodes(limit=10)
+
+    crit = asyncio.run(_run())
+    blob = " ".join(str(c.get("assistant", "")) for c in crit)
+
+    assert "CRIT-APPROVAL-Z9" in blob, f"高分(0.9)关键决策未被保留为 critical: {blob[:300]!r}"
+    assert "CRIT-HITL-H7" in blob, f"is_critical=True 的 HITL 决策未被保留: {blob[:300]!r}"
+    assert "REGULAR-50" not in blob, f"普通交互(0.5)不应进入 critical episodes: {blob[:300]!r}"
