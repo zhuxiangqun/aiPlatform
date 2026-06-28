@@ -157,20 +157,28 @@ class SandboxGate:
         if not path:
             return (True, "no filesystem operation")
 
-        expanded = os.path.expanduser(path)
+        # Normalize to resolve '..' traversal (lexical — works for not-yet-created paths).
+        # Without this, '<ws>/../../etc/passwd' literally starts with the workspace prefix
+        # and bypasses both the forbidden-path and workspace checks (sandbox escape).
+        expanded = os.path.normpath(os.path.expanduser(path))
+
+        def _under(base: str) -> bool:
+            base = os.path.normpath(os.path.expanduser(base))
+            # Boundary-aware so a sibling like '<base>EVIL' does not match '<base>'.
+            return expanded == base or expanded.startswith(base.rstrip(os.sep) + os.sep)
 
         # Forbidden paths
         for forbidden in self._FORBIDDEN_PATHS:
-            if expanded.startswith(os.path.expanduser(forbidden)):
+            if _under(forbidden):
                 return (False, f"REJECT: path '{path}' matches forbidden pattern '{forbidden}'")
 
-        # Must be in allowed prefix or within workspace
+        # Must be within workspace or an allowed prefix (boundary-aware)
         workspace = os.environ.get("AIPLAT_WORKSPACE_ROOT", os.path.expanduser("~/.aiplat"))
-        if expanded.startswith(workspace):
+        if _under(workspace):
             return (True, f"path in workspace: {expanded}")
 
         for allowed in self._ALLOWED_PREFIXES:
-            if expanded.startswith(allowed):
+            if _under(allowed):
                 return (True, f"path in allowed prefix: {expanded}")
 
         return (False, f"REJECT: path '{path}' not in allowed workspace")

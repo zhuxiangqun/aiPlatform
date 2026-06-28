@@ -1847,3 +1847,31 @@ def test_res_skill_idempotent_derived_from_effects():
 
     # 显式 idempotent=False + 无 effects → 保持 False（只收紧不放松）
     assert SkillConfig(name="x", idempotent=False, effects=[]).idempotent is False
+
+
+# ── 断言 SB：SandboxGate 文件系统沙箱——路径穿越/越界必须拒绝（安全红线）──────
+# 真 bug: _check_filesystem 用 os.path.expanduser(不解析 '..') + 裸 startswith(workspace)
+# → '<ws>/../../../etc/passwd' 字面 startswith <ws> → 通过 workspace 检查 → 绕过沙箱写
+# /etc/passwd; sibling '<ws>EVIL/' 同样被误放行。check 在 sys_tool_call 对写入路径调用→可达。
+
+def test_sb_sandbox_blocks_path_traversal(isolated_env, monkeypatch):
+    """SB：路径穿越出工作区(到 /etc/passwd)与 sibling 越界目录必须 REJECT；区内合法 PASS。"""
+    from core.harness.infrastructure.gates.sandbox_gate import SandboxGate, Verdict
+
+    ws = str(isolated_env / "ws")
+    monkeypatch.setenv("AIPLAT_WORKSPACE_ROOT", ws)
+    sb = SandboxGate()
+
+    # 路径穿越出工作区 → /etc/passwd，必须被拒
+    r = asyncio.run(sb.check(
+        kind="tool", tool_name="",
+        file_path=ws + "/../../../../../../../../../etc/passwd"))
+    assert r.verdict == Verdict.REJECT, f"路径穿越到 /etc/passwd 必须被拒: {r.verdict} | {r.reason}"
+
+    # 工作区内合法路径 → 放行
+    r2 = asyncio.run(sb.check(kind="tool", tool_name="", file_path=ws + "/legit.txt"))
+    assert r2.verdict == Verdict.PASS, f"工作区内合法路径应放行: {r2.verdict} | {r2.reason}"
+
+    # sibling 越界目录(workspace + 'EVIL') → 必须被拒
+    r3 = asyncio.run(sb.check(kind="tool", tool_name="", file_path=ws + "EVIL/secret"))
+    assert r3.verdict == Verdict.REJECT, f"sibling 越界目录(<ws>EVIL)应被拒: {r3.verdict} | {r3.reason}"
