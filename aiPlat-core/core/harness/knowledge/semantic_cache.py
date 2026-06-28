@@ -84,7 +84,9 @@ class SemanticCache:
             await self._redis.ping()
         except Exception:
             self._redis = False  # type: ignore[assignment]
-            self._enabled = False
+            # Keep _enabled unchanged so the in-memory LatentStageCache (L2)
+            # still works when Redis is unavailable — it has its own _enabled flag
+            # and does not depend on Redis.
 
     def _cache_key(self, query: str, domain_id: str) -> str:
         raw = f"aiplat:cache:v{self._get_version(domain_id)}:{domain_id}:{query.strip().lower()}"
@@ -242,14 +244,24 @@ class SemanticCache:
             logging.debug(str(e), exc_info=True)
 
     async def invalidate_domain(self, domain_id: str):
-        """Atomically invalidate all cache for a domain using version increment (O(1)).
+        """Atomically invalidate all cache for a domain.
 
-        Instead of scanning and deleting keys (O(N) blocking), this increments a
-        version counter. Old keys are left for Redis LRU to evict naturally.
-        Also proactively clears L1 exact-match keys (few in number, cheap to delete).
+        Redis: increments a version counter (O(1)) so versioned keys naturally miss;
+        old keys are left for Redis LRU eviction. Also proactively clears L1 keys.
+        In-memory LatentStageCache (L2): explicitly cleared — it matches by embedding
+        (not versioned key), so version bumps do NOT invalidate it.
         """
+        if not self._enabled:
+            return
+        # Always clear the in-memory L2 — embedding-based, so version bumps do not affect it.
+        try:
+            self._latent.clear_domain(domain_id)
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
+
+        # Redis: version bump + L1/L2 Redis key cleanup (best-effort; only when available)
         await self._ensure_redis()
-        if not self._enabled or self._redis is False:
+        if self._redis is False:
             return
         try:
             vkey = self._version_key(domain_id)
@@ -375,32 +387,58 @@ class LatentStageCache:
 
         scored = []
         for run_id, stages in self._stages.items():
-            q_vec = stages.get("query_embedding", {}).get("vector", [])
+            # set() stores the query vector under the "query" stage with result in metadata.
+            q_stage = stages.get("query") or stages.get("query_embedding") or {}
+            q_vec = q_stage.get("vector", [])
+            if not q_vec:
+                continue
+
+            query_sim = self._cosine(query_vector, q_vec)
+
+            # Multi-stage combination when domain/retrieval vectors are also cached
             d_vec = stages.get("domain_vector", {}).get("vector", [])
             r_vec = stages.get("retrieval_vector", {}).get("vector", [])
 
-            query_sim = self._cosine(query_vector, q_vec) if q_vec else 0.0
-            domain_sim = self._cosine(domain_vector or [], d_vec) if d_vec else 0.0
-            retrieval_sim = self._cosine(query_vector, r_vec) if r_vec else 0.0  # reuse query_vec
-
-            combined = (
-                self._alpha * query_sim +
-                self._beta * domain_sim +
-                self._gamma * retrieval_sim
-            )
+            if d_vec or r_vec:
+                domain_sim = self._cosine(domain_vector or [], d_vec) if d_vec else 0.0
+                retrieval_sim = self._cosine(query_vector, r_vec) if r_vec else 0.0
+                combined = (
+                    self._alpha * query_sim +
+                    self._beta * domain_sim +
+                    self._gamma * retrieval_sim
+                )
+            else:
+                # Only the query stage is cached — score by query similarity directly.
+                combined = query_sim
 
             if combined > 0.5:  # minimum combined threshold
-                result = stages.get("result", {})
+                result = (q_stage.get("metadata") or {}).get("result", {})
                 scored.append({
                     "run_id": run_id,
                     "score": round(combined, 3),
-                    "query_sim": round(query_sim, 3),
-                    "domain_sim": round(domain_sim, 3),
+                    "result": result,
                     "answer": result.get("answer", "")[:200] if isinstance(result, dict) else str(result)[:200],
                 })
 
         scored.sort(key=lambda x: -x["score"])
         return scored[:top_k]
+
+    def clear_domain(self, domain_id: str) -> int:
+        """Remove cached stages for a domain (in-memory invalidation).
+
+        The LatentStageCache matches by embedding similarity (not versioned key),
+        so version bumps on their own do NOT invalidate it. This removes all cached
+        stages whose metadata.domain matches. Returns count removed.
+        """
+        to_remove = []
+        for run_id, stages in self._stages.items():
+            for st in stages.values():
+                if isinstance(st, dict) and (st.get("metadata") or {}).get("domain") == domain_id:
+                    to_remove.append(run_id)
+                    break
+        for rid in to_remove:
+            self._stages.pop(rid, None)
+        return len(to_remove)
 
     def _cosine(self, a: List[float], b: List[float]) -> float:
         if not a or not b or len(a) != len(b):

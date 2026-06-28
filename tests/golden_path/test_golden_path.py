@@ -2004,3 +2004,43 @@ def test_sg_skill_output_schema_enforced_from_metadata(isolated_env, monkeypatch
     assert "schema_validation_failed" in str(getattr(res, "error", "")), (
         f"应标记 schema_validation_failed: {getattr(res, 'error', None)}"
     )
+
+
+# ── 断言 SC：语义缓存 L2 内存层功能化（项三/3，set/match 对齐 + Redis 解耦 + 失效）────
+# 真 bug×2: ① set() 存 stage "query"+result 在 metadata; match() 读 "query_embedding"+
+# 顶层 result → 永不对齐 → 永不命中。② 单 stage 用 α/β/γ 多 stage 评分, max=0.4<阈值0.5
+# → 即便对齐也永不超过阈值。③ _enabled 在 Redis 失败时翻 False → 内存层跟死。④ invalidate
+# 不清内存 L2 → 陈旧。四改合一：读对齐+单stage 评+解耦+invalidate清L2。
+
+def test_sc_l2_cache_works_without_redis_and_invalidates(isolated_env, monkeypatch):
+    """SC：内存 L2 缓存 set→get 命中（无 Redis）、invalidate 后 get 未命中（不陈旧）。"""
+    monkeypatch.setenv("AIPLAT_EMBED_BACKEND", "hash")  # 离线确定性 embedding
+    import core.harness.knowledge.semantic_cache as _sc
+
+    async def _no_redis(self):
+        self._redis = False
+
+    monkeypatch.setattr(_sc.SemanticCache, "_ensure_redis", _no_redis)
+
+    from core.harness.knowledge.semantic_cache import SemanticCache
+    sc = SemanticCache()
+
+    async def _run():
+        # hash_embed 需要 ≥ dim//4=32 字符才产生 non-zero 向量; 用长 query 确保嵌入可用
+        long_q = "龙骨 ZX-7731 船体结构材料抗压强度 42.8 MPa 技术规格"
+        await sc.set(long_q, "default", {"answer": "42.8 MPa"})
+        hit = await sc.get(long_q, "default")
+        await sc.invalidate_domain("default")
+        miss = await sc.get(long_q, "default")
+        return hit, miss
+
+    hit, miss = asyncio.run(_run())
+
+    assert hit is not None, (
+        "set→get 应命中（内存 L2 应在无 Redis 时工作）—— set/match 对齐+评分生效"
+    )
+    if isinstance(hit, dict):
+        assert hit.get("answer") == "42.8 MPa", f"命中内容错: {hit}"
+    assert miss is None, (
+        "invalidate_domain 后 get 应未命中（L2 被清，不服务陈旧）"
+    )
