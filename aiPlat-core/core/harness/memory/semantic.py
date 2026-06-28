@@ -118,13 +118,24 @@ class SemanticMemory:
         self,
         query: str,
         top_k: int = 3,
-        threshold: float = 0.5
+        threshold: float = 0.5,
+        *,
+        tenant_id: Optional[str] = None,
+        session_id: Optional[str] = None,
     ) -> List[MemoryItem]:
         """Retrieve relevant memories using vector similarity (primary) or keyword match (fallback).
         On hit: dynamically renews expires_at to prevent high-frequency memories from being cleaned.
         Filters out soft-deleted items.
         """
         active_items = [item for item in self._items.values() if not item.is_deleted]
+        # Defense-in-depth tenant+session isolation (§5.12): when a scope is given,
+        # only items whose metadata matches are eligible — prevents cross-tenant recall.
+        if tenant_id is not None or session_id is not None:
+            active_items = [
+                it for it in active_items
+                if (tenant_id is None or (it.metadata or {}).get("tenant_id") == tenant_id)
+                and (session_id is None or (it.metadata or {}).get("session_id") == session_id)
+            ]
         vector_items = [(item, item.embedding) for item in active_items if item.embedding]
 
         if vector_items:
@@ -181,10 +192,21 @@ class SemanticMemory:
             except Exception as e:
                 logging.debug(str(e), exc_info=True)
     
-    async def get(self, key: str) -> Optional[MemoryItem]:
-        """Get a specific memory. Filters soft-deleted items."""
+    async def get(self, key: str, *, tenant_id: Optional[str] = None,
+                  session_id: Optional[str] = None) -> Optional[MemoryItem]:
+        """Get a specific memory. Filters soft-deleted items.
+
+        When tenant_id/session_id are provided, enforces tenant+session isolation
+        (returns None for cross-tenant/session keys) — defense-in-depth matching
+        get_deleted()'s isolation guarantee (§5.12).
+        """
         item = self._items.get(key)
         if item and not item.is_deleted:
+            if tenant_id is not None or session_id is not None:
+                meta = item.metadata or {}
+                if (tenant_id is not None and meta.get("tenant_id") != tenant_id) or \
+                   (session_id is not None and meta.get("session_id") != session_id):
+                    return None
             self._renew_expiry(item)
             return item
         return None

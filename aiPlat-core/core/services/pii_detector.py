@@ -154,15 +154,16 @@ class PIIDetector:
             return text
 
         allowed = role in self.ALLOWED_UNMASK_ROLES
+        if not allowed:
+            # 非特权角色：保持脱敏（占位符不还原）
+            return text
+
+        # 特权角色 (admin/data_owner)：将占位符 [masked_id] 还原为原始明文。
+        # mask() 已把敏感值替换为占位符 [masked_id]，因此还原必须以占位符为目标，
+        # 而不是替换原文值（原文已不在文本中）。
         result = text
-
         for masked_id, original in mapping.items():
-            replacement = original if allowed else f"[{masked_id}]"
-            result = result.replace(original, replacement)
-            # 同时替换 masked_id 形式 (以防 LLM 输出中保留了 masked_id)
-            if not allowed:
-                result = result.replace(f"[{masked_id}]", f"[{masked_id}]")  # 保持不变
-
+            result = result.replace(f"[{masked_id}]", original)
         return result
 
     def get_audit_info(self, mapping: Dict[str, str]) -> Dict[str, Any]:
