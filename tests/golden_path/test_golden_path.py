@@ -1966,6 +1966,34 @@ def test_sb_resource_budget_opt_in(isolated_env, monkeypatch):
     assert r4.verdict == Verdict.PASS, f"未启用应不强制(放行): {r4.verdict} | {r4.reason}"
 
 
+# ── 断言 SB-fbn：SandboxGate 相对 forbidden 模式（.env/.git/config）必须生效 ────────
+# 此前 startswith 对绝对路径永远不命中相对模式 → .env/.git/config 形同虚设。
+# 修: 相对模式按路径后缀匹配(expanded.endswith('/.env') 等)。
+
+def test_sb_sandbox_blocks_relative_forbidden_patterns(isolated_env, monkeypatch):
+    """SB-fbn：.env/.git/config 等工作区内写入必须被拒；legit 文件放行；basename 不误杀。"""
+    from core.harness.infrastructure.gates.sandbox_gate import SandboxGate, Verdict
+
+    ws = str(isolated_env / "ws")
+    monkeypatch.setenv("AIPLAT_WORKSPACE_ROOT", ws)
+    sb = SandboxGate()
+
+    r = asyncio.run(sb.check(kind="tool", tool_name="", file_path=ws + "/.env"))
+    assert r.verdict == Verdict.REJECT, f"写 .env 必须被拒(forbidden): {r.verdict} | {r.reason}"
+
+    r2 = asyncio.run(sb.check(kind="tool", tool_name="", file_path=ws + "/.git/config"))
+    assert r2.verdict == Verdict.REJECT, f"写 .git/config 必须被拒: {r2.verdict} | {r2.reason}"
+
+    r3 = asyncio.run(sb.check(kind="tool", tool_name="", file_path=ws + "/legit.txt"))
+    assert r3.verdict == Verdict.PASS, f"合法文件应放行: {r3.verdict} | {r3.reason}"
+
+    # "config" 单独出现不应被误拒(仅 .git/config 完整模式匹配)
+    r4 = asyncio.run(sb.check(kind="tool", tool_name="", file_path=ws + "/config"))
+    assert r4.verdict == Verdict.PASS, (
+        f"'config' 单独不应被拒(只是 basename, 非 .git/config 完整模式): {r4.verdict}"
+    )
+
+
 # ── 断言 SG：SchemaGate 对 skill 输出的校验必须真生效（§5.10 输出契约）──────────
 # 真 bug: skill.py 取 cfg.output_schema(顶层, registry 建的 skill 为空) → fallback 用
 # getattr(meta_dict, "output_schema") 在 dict 上做属性访问 → 恒 None → 校验被整体跳过。

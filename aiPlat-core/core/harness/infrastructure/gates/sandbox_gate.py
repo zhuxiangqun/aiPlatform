@@ -171,7 +171,13 @@ class SandboxGate:
 
         # Forbidden paths
         for forbidden in self._FORBIDDEN_PATHS:
-            if _under(forbidden):
+            fb = os.path.expanduser(forbidden)
+            if os.path.isabs(fb) or fb.startswith("~"):
+                if _under(forbidden):
+                    return (False, f"REJECT: path '{path}' matches forbidden pattern '{forbidden}'")
+            elif fb and (expanded == fb or expanded.endswith(os.sep + fb)):
+                # Relative patterns (.env, .git/config): match by path suffix since
+                # absolute startswith never matches these (expanded is always absolute).
                 return (False, f"REJECT: path '{path}' matches forbidden pattern '{forbidden}'")
 
         # Must be within workspace or an allowed prefix (boundary-aware)
