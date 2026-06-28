@@ -45,8 +45,8 @@ class SandboxGate:
       1. Filesystem safety — target paths within allowed workspace (path-traversal safe)
       2. Network safety — destination host in AIPLAT_NETWORK_WHITELIST (opt-in)
       3. Rate limits — not exceeding per-minute quotas
-      4. Pattern safety — known-dangerous input patterns
-    Planned but not yet enforced in check(): resource budget (token/time).
+      4. Resource budget — token/timeout limits (opt-in via AIPLAT_SANDBOX_RESOURCE_BUDGET)
+      5. Pattern safety — known-dangerous input patterns
     """
 
     # Filesystem safety — paths that must NOT be written to
@@ -104,6 +104,7 @@ class SandboxGate:
             ("filesystem", lambda: self._check_filesystem(file_path)),
             ("network", lambda: self._check_network(tool_args)),
             ("rate_limit", lambda: self._check_rate_limit(tool_name)),
+            ("resource", lambda: self._check_resource_budget(tool_args)),
             ("pattern", lambda: self._check_patterns(tool_args)),
         ]
 
@@ -252,6 +253,36 @@ class SandboxGate:
             if host == w or host.endswith("." + w):
                 return (True, f"host '{host}' in whitelist")
         return (False, f"REJECT: network destination '{host}' not in whitelist")
+
+    def _check_resource_budget(self, args: Dict[str, Any]) -> Tuple[bool, str]:
+        """Check requested resource budget against per-tool limits.
+
+        Opt-in: enforced only when AIPLAT_SANDBOX_RESOURCE_BUDGET is truthy
+        (avoids rejecting tools that legitimately request high timeout/tokens).
+        Rejects tool_args whose explicit timeout / max_tokens exceed the budget.
+        """
+        if os.getenv("AIPLAT_SANDBOX_RESOURCE_BUDGET", "").lower() not in ("1", "true", "yes"):
+            return (True, "resource budget check disabled")
+        a = args or {}
+        for k in ("timeout_seconds", "timeout"):
+            v = a.get(k)
+            if v is not None:
+                try:
+                    if float(v) > self._MAX_TIMEOUT_PER_TOOL:
+                        return (False, f"REJECT: requested timeout {v}s exceeds budget {self._MAX_TIMEOUT_PER_TOOL}s")
+                except (TypeError, ValueError):
+                    pass
+                break
+        for k in ("max_tokens", "tokens"):
+            v = a.get(k)
+            if v is not None:
+                try:
+                    if int(v) > self._MAX_TOKENS_PER_TOOL:
+                        return (False, f"REJECT: requested tokens {v} exceeds budget {self._MAX_TOKENS_PER_TOOL}")
+                except (TypeError, ValueError):
+                    pass
+                break
+        return (True, "resource budget OK")
 
 
 _sandbox_instance: Optional[SandboxGate] = None

@@ -1903,6 +1903,32 @@ def test_sb_network_whitelist_opt_in(isolated_env, monkeypatch):
     assert r4.verdict == Verdict.PASS, f"未配置白名单应不强制(放行): {r4.verdict} | {r4.reason}"
 
 
+# ── 断言 SB-res：SandboxGate resource-budget（opt-in，复用 _MAX_TOKENS/_MAX_TIMEOUT）──
+# 实现原"planned"的资源预算检查: 启用 AIPLAT_SANDBOX_RESOURCE_BUDGET 时, tool_args 显式
+# 请求的 timeout/max_tokens 超过预算 → REJECT; 未启用时不强制(向后兼容)。
+
+def test_sb_resource_budget_opt_in(isolated_env, monkeypatch):
+    """SB-res：启用时超预算 timeout/tokens 被拒；预算内 PASS；未启用不强制。"""
+    from core.harness.infrastructure.gates.sandbox_gate import SandboxGate, Verdict
+
+    monkeypatch.setenv("AIPLAT_SANDBOX_RESOURCE_BUDGET", "true")
+    sb = SandboxGate()
+
+    r = asyncio.run(sb.check(kind="tool", tool_name="", tool_args={"timeout": 999}))
+    assert r.verdict == Verdict.REJECT, f"超预算 timeout(>300s)应被拒: {r.verdict} | {r.reason}"
+
+    r2 = asyncio.run(sb.check(kind="tool", tool_name="", tool_args={"max_tokens": 200000}))
+    assert r2.verdict == Verdict.REJECT, f"超预算 tokens(>100K)应被拒: {r2.verdict} | {r2.reason}"
+
+    r3 = asyncio.run(sb.check(kind="tool", tool_name="", tool_args={"timeout": 30, "max_tokens": 1000}))
+    assert r3.verdict == Verdict.PASS, f"预算内应放行: {r3.verdict} | {r3.reason}"
+
+    # 未启用(默认) → 不强制(向后兼容)
+    monkeypatch.delenv("AIPLAT_SANDBOX_RESOURCE_BUDGET", raising=False)
+    r4 = asyncio.run(sb.check(kind="tool", tool_name="", tool_args={"timeout": 999}))
+    assert r4.verdict == Verdict.PASS, f"未启用应不强制(放行): {r4.verdict} | {r4.reason}"
+
+
 # ── 断言 SG：SchemaGate 对 skill 输出的校验必须真生效（§5.10 输出契约）──────────
 # 真 bug: skill.py 取 cfg.output_schema(顶层, registry 建的 skill 为空) → fallback 用
 # getattr(meta_dict, "output_schema") 在 dict 上做属性访问 → 恒 None → 校验被整体跳过。
