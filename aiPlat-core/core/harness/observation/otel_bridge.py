@@ -14,9 +14,18 @@ _tracer: Optional[Any] = None
 
 
 def _init_otel() -> None:
-    """Lazy-init OpenTelemetry if available. No-op if not installed."""
+    """Lazy-init OpenTelemetry if available. No-op if not installed or disabled.
+
+    Gated by AIPLAT_OTEL_ENABLED (consistent with §5.80 / server.py). The
+    ConsoleSpanExporter is debug-only (opt-in via AIPLAT_OTEL_CONSOLE): it writes
+    spans to stdout and can raise 'I/O operation on closed file' at interpreter
+    shutdown, so it must not be installed by default.
+    """
     global _OTEL_AVAILABLE, _tracer
     if _OTEL_AVAILABLE:
+        return
+    import os
+    if os.getenv("AIPLAT_OTEL_ENABLED", "false").lower() not in ("1", "true", "yes"):
         return
     try:
         from opentelemetry import trace
@@ -27,7 +36,8 @@ def _init_otel() -> None:
         provider = TracerProvider(
             resource=Resource.create({SERVICE_NAME: "aiPlat-core"})
         )
-        provider.add_span_processor(BatchSpanProcessor(ConsoleSpanExporter()))
+        if os.getenv("AIPLAT_OTEL_CONSOLE", "false").lower() in ("1", "true", "yes"):
+            provider.add_span_processor(BatchSpanProcessor(ConsoleSpanExporter()))
         trace.set_tracer_provider(provider)
         _tracer = trace.get_tracer("aiplat.syscall")
         _OTEL_AVAILABLE = True

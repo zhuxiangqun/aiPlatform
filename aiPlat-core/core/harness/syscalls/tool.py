@@ -429,11 +429,14 @@ async def sys_tool_call(
         logging.debug(str(e), exc_info=True)
 
     try:
-        # Unit tests / internal calls may not set request context. In that case, fail-open
-        # so pure harness tests can execute dummy tools without wiring full policy runtime.
+        # No active request context (internal/background/test calls): the trusted "system"
+        # default stays fail-open so pure harness tests can run dummy tools without wiring
+        # a full request context. Any EXPLICIT non-system identity is still enforced via
+        # PolicyGate even without context — closes the cross-actor bypass (background jobs /
+        # sub-agents that pass a real user_id but forget to propagate request context).
         from core.harness.kernel.execution_context import get_active_request_context
 
-        if get_active_request_context() is None:
+        if get_active_request_context() is None and str(user_id) == "system":
             pr = type("_PR", (), {"decision": PolicyDecision.ALLOW, "tenant_id": None, "reason": None})()
         else:
             pr = await policy_gate.check_tool(user_id=user_id, tool_name=tool_name or "<unknown>", tool_args=args)

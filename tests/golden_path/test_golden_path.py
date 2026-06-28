@@ -1317,11 +1317,12 @@ def test_c2_policy_gate_deny_by_default(monkeypatch):
     )
 
 
-def test_c2_sys_tool_call_enforces_gate_with_request_context(isolated_env, monkeypatch):
-    """C2-②：sys_tool_call 在有 request context 时真实强制门禁；无 context 时 fail-open（锁定绕过）。
+def test_c2_sys_tool_call_enforces_gate(isolated_env, monkeypatch):
+    """C2-②：sys_tool_call 门禁强制（收紧后）。
 
-    锁定一个真实发现（tool.py:436-439）：无 active request context 时 sys_tool_call 故意
-    fail-open 放行 → 任何不透传 context 的内部路径（后台 job/cron/子 agent）将绕过门禁。
+    收紧策略（tool.py:431-442）：无 active request context 时，仅受信 "system" 默认
+    放行（保留 harness 内部/测试路径）；任何显式非 system 身份即使无 context 也强制
+    走 PolicyGate —— 关闭"后台 job/cron/子 agent 传真实用户却忘记透传 context"的越权面。
     """
     monkeypatch.delenv("AIPLAT_APPROVALS_DISABLED", raising=False)
     from core.harness.syscalls.tool import sys_tool_call
@@ -1346,15 +1347,19 @@ def test_c2_sys_tool_call_enforces_gate_with_request_context(isolated_env, monke
             self.called = True
             return _ResultObj()
 
-    # (a) 无 request context → 已知 fail-open：放行执行（锁定该绕过条件）
-    t_open = _ProbeTool()
-    asyncio.run(sys_tool_call(t_open, {}, user_id="c2-unauth-xyz"))
-    assert t_open.called is True, (
-        "无 request context 时 sys_tool_call 预期 fail-open 放行（tool.py:436-439）；"
-        "若此断言失败说明 fail-open 行为已变更，需复核绕过面"
+    # (a) 无 context + system（受信默认）→ 放行执行（保留 harness 内部/测试路径）
+    t_system = _ProbeTool()
+    asyncio.run(sys_tool_call(t_system, {}, user_id="system"))
+    assert t_system.called is True, "无 context 的 system 默认调用应放行（受信内部路径）"
+
+    # (b) 无 context + 非 system 显式身份 → 强制门禁，未授权被拦截（收紧后的关键修复）
+    t_nocxt = _ProbeTool()
+    asyncio.run(sys_tool_call(t_nocxt, {}, user_id="c2-unauth-xyz"))
+    assert t_nocxt.called is False, (
+        "无 context 但显式非 system 身份必须强制走 PolicyGate 拦截（已关闭 fail-open 越权面）"
     )
 
-    # (b) 有 request context → 门禁真实强制：未授权用户被拦截，工具体不执行
+    # (c) 有 context + 非 system → 强制门禁拦截，工具体不执行
     t_guarded = _ProbeTool()
 
     async def _call_with_ctx():
