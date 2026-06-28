@@ -117,7 +117,7 @@ class ExecutionStoreConfig:
 
 
 class ExecutionStore:
-    CURRENT_SCHEMA_VERSION = 50
+    CURRENT_SCHEMA_VERSION = 51
 
     def __init__(self, config: ExecutionStoreConfig):
         self._config = config
@@ -1864,6 +1864,19 @@ class ExecutionStore:
                             logging.debug(str(e), exc_info=True)
                         _set_version(50)
                         current = 50
+
+                    # ---- Migration v51: audit_logs tamper-evidence (hash chain) ----
+                    if current < 51:
+                        try:
+                            conn.execute("ALTER TABLE audit_logs ADD COLUMN entry_hash TEXT;")
+                        except Exception as e:
+                            logging.debug(str(e), exc_info=True)
+                        try:
+                            conn.execute("ALTER TABLE audit_logs ADD COLUMN prev_hash TEXT;")
+                        except Exception as e:
+                            logging.debug(str(e), exc_info=True)
+                        _set_version(51)
+                        current = 51
 
                     # If legacy db exists with tables but without meta, upgrade meta to current
                     if current < self.CURRENT_SCHEMA_VERSION:
@@ -3943,14 +3956,37 @@ class ExecutionStore:
         db_path = self._config.db_path
 
         def _sync() -> None:
+            import hashlib as _hashlib
             conn = sqlite3.connect(db_path, timeout=5.0)
+            # Manage the transaction explicitly so (read last hash → insert) is atomic
+            # under concurrency: BEGIN IMMEDIATE takes a write lock up-front, serializing
+            # writers and preventing chain forks.
+            conn.isolation_level = None
             try:
+                ts = float(created_at if created_at is not None else time.time())
+                detail_str = _json_dumps(detail or {})
+                conn.execute("BEGIN IMMEDIATE;")
+                row = conn.execute(
+                    "SELECT entry_hash FROM audit_logs WHERE tenant_id IS ? "
+                    "ORDER BY id DESC LIMIT 1;",
+                    (tenant_id,),
+                ).fetchone()
+                prev_hash = row[0] if (row and row[0]) else ""
+                # Tamper-evidence: per-tenant hash chain over the immutable entry fields.
+                canonical = "|".join(str(x) for x in (
+                    tenant_id, actor_id, actor_role, str(action), resource_type, resource_id,
+                    request_id, change_id, run_id, trace_id, status, detail_str, ts,
+                ))
+                entry_hash = _hashlib.sha256(
+                    (prev_hash + "|" + canonical).encode("utf-8")
+                ).hexdigest()
                 conn.execute(
                     """
                     INSERT INTO audit_logs(
                       tenant_id, actor_id, actor_role, action, resource_type, resource_id,
-                      request_id, change_id, run_id, trace_id, status, detail_json, created_at
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+                      request_id, change_id, run_id, trace_id, status, detail_json, created_at,
+                      prev_hash, entry_hash
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
                     """,
                     (
                         tenant_id,
@@ -3964,15 +4000,73 @@ class ExecutionStore:
                         run_id,
                         trace_id,
                         status,
-                        _json_dumps(detail or {}),
-                        float(created_at if created_at is not None else time.time()),
+                        detail_str,
+                        ts,
+                        (prev_hash or None),
+                        entry_hash,
                     ),
                 )
-                conn.commit()
+                conn.execute("COMMIT;")
             finally:
                 conn.close()
 
         await anyio.to_thread.run_sync(_sync)
+
+    async def verify_audit_chain(self, *, tenant_id: Optional[str] = None) -> Dict[str, Any]:
+        """Verify the tamper-evidence hash chain for a tenant's audit log.
+
+        Recomputes each entry_hash from the stored immutable fields + the prior row's
+        hash and compares to the stored hash. Any mismatch means a row was modified,
+        deleted, or inserted out of band (tampering). Legacy rows with NULL entry_hash
+        (written before the v51 migration) are counted as 'unverifiable' and skipped.
+
+        Returns: {ok, total, verified, unverifiable, broken_at}
+          - ok: True iff every hashed row verifies
+          - broken_at: id of the first row whose recomputed hash mismatches (None if ok)
+        """
+        await self.init()
+        db_path = self._config.db_path
+
+        def _sync() -> Dict[str, Any]:
+            import hashlib as _hashlib
+            conn = sqlite3.connect(db_path)
+            try:
+                rows = conn.execute(
+                    "SELECT id, tenant_id, actor_id, actor_role, action, resource_type, "
+                    "resource_id, request_id, change_id, run_id, trace_id, status, detail_json, "
+                    "created_at, prev_hash, entry_hash FROM audit_logs "
+                    "WHERE tenant_id IS ? ORDER BY id ASC;",
+                    (tenant_id,),
+                ).fetchall()
+            finally:
+                conn.close()
+
+            prev = ""
+            verified = 0
+            unverifiable = 0
+            for r in rows:
+                (rid, t, aid, arole, action, rtype, rid_res, req, chg, run, trace,
+                 status, detail_json, ts, prev_hash, entry_hash) = r
+                if not entry_hash:
+                    unverifiable += 1
+                    prev = ""  # write path treated a NULL previous hash as ""
+                    continue
+                canonical = "|".join(str(x) for x in (
+                    t, aid, arole, str(action), rtype, rid_res, req, chg, run, trace,
+                    status, detail_json, float(ts),
+                ))
+                expected = _hashlib.sha256(
+                    (prev + "|" + canonical).encode("utf-8")
+                ).hexdigest()
+                if expected != entry_hash:
+                    return {"ok": False, "total": len(rows), "verified": verified,
+                            "unverifiable": unverifiable, "broken_at": rid}
+                verified += 1
+                prev = entry_hash
+            return {"ok": True, "total": len(rows), "verified": verified,
+                    "unverifiable": unverifiable, "broken_at": None}
+
+        return await anyio.to_thread.run_sync(_sync)
 
     async def list_audit_logs(
         self,

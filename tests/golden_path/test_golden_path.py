@@ -1625,3 +1625,44 @@ def test_s3_pii_unmask_rbac():
         assert phone in view and email in view, (
             f"特权角色 '{role}' 应能还原原始 PII: {view}"
         )
+
+
+# ── 断言 S4：审计日志防篡改（企业合规 — hash 链 tamper-evidence）──────────
+# 此前 add_audit_log 仅 INSERT、无完整性保护（行可被静默改/删而不可检测）。
+# v51 迁移加 entry_hash/prev_hash，add_audit_log 计算 per-tenant 哈希链，
+# verify_audit_chain 重算比对检出篡改。
+
+def test_s4_audit_log_tamper_evidence(isolated_env):
+    """S4：审计日志哈希链——未篡改校验通过；直接改库中某行后必须检出断链并定位。"""
+    import sqlite3
+    from core.services.execution_store import ExecutionStore, ExecutionStoreConfig
+
+    db = str(isolated_env / "audit_chain.sqlite3")
+    store = ExecutionStore(ExecutionStoreConfig(db_path=db, prune_on_start=False))
+
+    async def _run():
+        for i, act in enumerate(("login", "tool_call", "export"), 1):
+            await store.add_audit_log(
+                action=act, tenant_id="tenant-X", actor_id="u1", detail={"seq": i})
+        v_ok = await store.verify_audit_chain(tenant_id="tenant-X")
+
+        # 越权篡改：直接改库中"tool_call"行的 detail_json
+        conn = sqlite3.connect(db)
+        try:
+            rid = conn.execute(
+                "SELECT id FROM audit_logs WHERE action='tool_call';").fetchone()[0]
+            conn.execute(
+                "UPDATE audit_logs SET detail_json=? WHERE id=?;", ('{"seq": 999}', rid))
+            conn.commit()
+        finally:
+            conn.close()
+
+        v_bad = await store.verify_audit_chain(tenant_id="tenant-X")
+        return v_ok, v_bad, rid
+
+    v_ok, v_bad, rid = asyncio.run(_run())
+
+    assert v_ok["ok"] is True, f"未篡改时审计链应校验通过: {v_ok}"
+    assert v_ok["verified"] == 3, f"应校验 3 条审计记录: {v_ok}"
+    assert v_bad["ok"] is False, f"篡改审计行后必须检出断链: {v_bad}"
+    assert v_bad["broken_at"] == rid, f"应定位到被篡改行 id={rid}: {v_bad}"
