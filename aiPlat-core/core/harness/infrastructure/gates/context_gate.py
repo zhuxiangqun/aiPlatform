@@ -87,7 +87,7 @@ class ContextGate:
         """Check whether context should be compressed at current usage level.
 
         Delegates to ContextCompression.should_trigger_compression.
-        Returns True when usage ratio exceeds the NORMAL threshold (70%).
+        Returns True when usage ratio reaches the NORMAL threshold (85%).
         """
         if not self._enabled:
             return False

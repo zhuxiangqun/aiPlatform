@@ -31,16 +31,17 @@ def test_skill_registry_rollback_updates_instance_config():
 
 
 def test_rollback_endpoint_returns_active_version(monkeypatch):
-    from core import server as server_mod
+    # Endpoint moved from core.server to the engine_skills router.
+    import core.api.routers.engine_skills as engine_skills
 
     reg = SkillRegistry()
     cfg_v1 = SkillConfig(name="s1", description="desc-v1", metadata={"version": "v1"})
     skill = _GenericSkill(cfg_v1)
     reg.register(skill)
 
-    monkeypatch.setattr(server_mod, "get_skill_registry", lambda: reg)
+    monkeypatch.setattr(engine_skills, "get_skill_registry", lambda: reg)
 
-    out = asyncio.run(server_mod.rollback_skill_version("s1", "v1"))
+    out = asyncio.run(engine_skills.rollback_skill_version("s1", "v1"))
     assert out["status"] == "rolled_back"
     assert out["active_version"] == "v1"
     assert out["active_config"]["description"] == "desc-v1"

@@ -41,12 +41,11 @@ class SandboxGate:
     Pre-execution sandbox. Run before PolicyGate to catch obvious issues
     BEFORE context/token budget is consumed.
     
-    Checks:
-      1. Filesystem safety — target paths within allowed workspace
-      2. Network safety — destinations in whitelist
-      3. Rate limits — not exceeding per-minute quotas
-      4. Resource budget — estimated tokens/time/memory
-      5. Pattern safety — known-dangerous input patterns
+    Checks run in check():
+      1. Filesystem safety — target paths within allowed workspace (path-traversal safe)
+      2. Rate limits — not exceeding per-minute quotas
+      3. Pattern safety — known-dangerous input patterns
+    Planned but not yet enforced in check(): network whitelist, resource budget.
     """
 
     # Filesystem safety — paths that must NOT be written to

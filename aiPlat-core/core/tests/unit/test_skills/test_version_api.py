@@ -1,20 +1,9 @@
 import asyncio
-import importlib.util
-from pathlib import Path
-
-
-def _load_server_module():
-    core_dir = Path(__file__).resolve().parents[3]  # .../aiPlat-core/core
-    module_path = core_dir / "server.py"
-    spec = importlib.util.spec_from_file_location("core_server_module", module_path)
-    module = importlib.util.module_from_spec(spec)
-    assert spec and spec.loader
-    spec.loader.exec_module(module)
-    return module
 
 
 def test_get_skill_version_returns_real_config(monkeypatch):
-    server = _load_server_module()
+    # Endpoint moved from core.server to the engine_skills router.
+    import core.api.routers.engine_skills as engine_skills
 
     class _DummyRegistry:
         def get_version(self, skill_id: str, version: str):
@@ -30,9 +19,9 @@ def test_get_skill_version_returns_real_config(monkeypatch):
                 metadata={"k": "v"},
             )
 
-    monkeypatch.setattr(server, "get_skill_registry", lambda: _DummyRegistry())
+    monkeypatch.setattr(engine_skills, "get_skill_registry", lambda: _DummyRegistry())
 
-    out = asyncio.run(server.get_skill_version("s1", "v1"))
+    out = asyncio.run(engine_skills.get_skill_version("s1", "v1"))
     assert out["version"] == "v1"
     assert isinstance(out["config"], dict)
     assert out["config"]["name"] == "s1"
