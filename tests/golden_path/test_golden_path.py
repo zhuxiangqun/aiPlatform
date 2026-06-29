@@ -1994,6 +1994,44 @@ def test_sb_sandbox_blocks_relative_forbidden_patterns(isolated_env, monkeypatch
     )
 
 
+# ── 断言 GV：PostRetrievalGovernor 检索后治理——按综合评分排序、丰富度最低排后 ──────
+# 此前零行为覆盖、纯函数离线可测: freshness/credibility/density→composite→dedup→cutoff。
+# 经核验管道逻辑正确(无 CC 式反转), 此处加行为锁证明排序 + 丰富功能。
+
+def test_governor_ranks_by_composite_score(isolated_env):
+    """GV：治理后 high-quality 结果排第一（按 _composite 降序），所有结果被丰富。"""
+    from core.harness.knowledge.post_retrieval_governor import PostRetrievalGovernor
+
+    results = [
+        {"title": "RECENT-DENSE-WIKI", "text": "comprehensive analysis of structural materials for ship hulls",
+         "score": 0.9, "source_type": "wiki", "last_updated": "2026-06-29T00:00:00Z"},
+        {"title": "OLD-SPARSE-KB", "text": "short note",
+         "score": 0.2, "source_type": "kb", "last_updated": "2020-01-01T00:00:00Z"},
+    ]
+
+    gov = PostRetrievalGovernor()
+    governed, hints, stats = gov.govern(results)
+
+    assert len(governed) >= 1, f"至少一个结果应存活: governed={len(governed)}"
+    assert stats.raw_count == 2
+
+    # 高质量结果（最近+密集+wiki可信度高）综合评分应最高 → 排第一
+    assert governed[0]["title"] == "RECENT-DENSE-WIKI", (
+        f"高质量结果应排第一: {[g['title'] for g in governed]}"
+    )
+
+    # 所有存活结果都被丰富（_composite/_freshness/_credibility/_density）
+    for g in governed:
+        assert "_composite" in g, f"缺 _composite: {g.get('title')}"
+        assert "_freshness" in g, f"缺 _freshness: {g.get('title')}"
+
+    # 按 _composite 降序
+    composites = [g["_composite"] for g in governed]
+    assert composites == sorted(composites, reverse=True), (
+        f"治理后应按 _composite 降序: {composites}"
+    )
+
+
 # ── 断言 SG：SchemaGate 对 skill 输出的校验必须真生效（§5.10 输出契约）──────────
 # 真 bug: skill.py 取 cfg.output_schema(顶层, registry 建的 skill 为空) → fallback 用
 # getattr(meta_dict, "output_schema") 在 dict 上做属性访问 → 恒 None → 校验被整体跳过。
