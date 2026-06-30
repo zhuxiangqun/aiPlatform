@@ -262,6 +262,7 @@ class PipelineStageConfig(BaseModel):
     context_profile: str = "code"        # "minimal" | "code" | "debug" | "deep"
     # Anthropic 5 patterns: chain | router | parallel | orchestrator | evaluator_optimizer
     pipeline_mode: str = "chain"          # "chain" | "router" | "parallel" | "orchestrator" | "evaluator_optimizer" | "agent"
+    routing_mode: str = "static"           # "static" | "llm" — LLM-driven dynamic next-stage routing (DynamicRouter)
     eval_model: str = ""  # dedicated evaluator model (empty = fallback to stage.model or AIPLAT_EVAL_MODEL)
     routing_rules: List[dict] = Field(default_factory=list)  # declarative conditional routing  # 4step-verified
     deviation_tolerance: float = 0.0  # [0.0, 10.0] Accept output when overall score >= this (0=disabled)
@@ -279,6 +280,8 @@ class PipelineStageConfig(BaseModel):
     # Declarative cross-entity property propagation (OntoGraph-inspired)
     propagation_rules: List[Dict[str, Any]] = Field(default_factory=list)
     # [{source_entity, source_prop, target_entity, target_prop, aggregation}]
+    # Parallel state merge strategies for reducer (prevents overwrite in parallel stages)
+    merge_strategies: Dict[str, str] = Field(default_factory=lambda: {})  # {"messages": "append", "trace": "append", ...}
     coverage_trace_fields: Dict[str, str] = Field(default_factory=lambda: {"components_key": "components", "api_contracts_key": "api_contracts", "data_model_key": "data_model", "files_key": "files", "test_cases_key": "test_cases"})
     # Debate pattern: stage uses adversarial multi-agent debate (TradingAgents-inspired)
     debate_participants: List[Dict[str, Any]] = Field(default_factory=list)
@@ -313,6 +316,11 @@ class PipelineStageConfig(BaseModel):
     """Domain routing rules: {tiers, fallback_domain}"""
     retry_policy: Dict[str, Any] = Field(default_factory=dict)
     """Self-heal retry: {on, action, max_retries}"""
+    # ── v4.1: Cross-stage rollback (delegation + adversarial pattern) ──
+    rollback_on_reject: bool = False
+    """When evaluation REJECTED, rollback to upstream stage instead of same-stage retry."""
+    rollback_target_id: str = ""
+    """Target stage ID to rollback to when rejected (empty = use depends_on for upstream)."""
 
 
 class PipelineConfig(BaseModel):

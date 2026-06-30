@@ -1056,6 +1056,18 @@ Output format: JSON array of {{"rank": 1, "score": 0.95, "content": "..."}}"""
             # Check if pipeline is already failed before executing layer
             if state.get("phase") == BuilderSessionPhase.failed.value:
                 state.setdefault("_last_action_reason", "phase_failed")
+                # Fire-and-forget: trigger AutoLearner on pipeline failure
+                try:
+                    import asyncio as _asyncio_p
+                    _asyncio_p.ensure_future(_trigger_pipeline_auto_learner(
+                        agent_id=str(state.get("agent_id", "")),
+                        run_id=str(state.get("_run_id", "")),
+                        task=str(state.get("task", "")),
+                        error=str(state.get("error", "") or "pipeline phase failed"),
+                        session_id=str(state.get("session_id", "")),
+                    ))
+                except Exception:
+                    pass
                 break
             # Emit pre-layer state for frontend polling
             _event_bus.emit(state.get("session_id", ""), "layer_before", {"state": dict(state)})
@@ -1124,14 +1136,8 @@ Output format: JSON array of {{"rank": 1, "score": 0.95, "content": "..."}}"""
                 if result is None:
                     continue
                 r_state, r_paused = result
-                # Merge list-type keys (graph_trace, checkpoints) instead of overwriting
-                for list_key in ("_graph_trace", "_checkpoints"):
-                    if list_key in r_state and isinstance(r_state[list_key], list):
-                        if list_key not in state or not isinstance(state[list_key], list):
-                            state[list_key] = []
-                        state[list_key].extend(r_state[list_key])
-                        del r_state[list_key]
-                state.update(r_state)
+                # Reducer-based state merge (config-driven, prevents parallel overwrite)
+                self._merge_state(state, r_state, stages[layer[i]] if i < len(layer) else None)
                 if r_paused:
                     paused = True
             # Handle conditional routing after layer results are merged
@@ -1165,6 +1171,33 @@ Output format: JSON array of {{"rank": 1, "score": 0.95, "content": "..."}}"""
                     "session_id": state.get("session_id")})
         except Exception:
             logging.getLogger("pipeline_engine").warning("best-effort skipped", exc_info=True)
+        
+        # Feed successful pipeline into CMM PatternAccumulator + ExperienceVector
+        try:
+            run_id = str(state.get("_run_id", ""))
+            if run_id:
+                from core.harness.memory.pattern_accumulator import get_pattern_accumulator
+                pa = get_pattern_accumulator()
+                await pa.extract_from_run(run_id=run_id, tenant_id=str(state.get("tenant_id", "")))
+                
+                from core.harness.learning.experience_vector import get_experience_cache
+                cache = get_experience_cache()
+                agent_id = str(state.get("agent_id", ""))
+                stage_count = len(state.get("stages", []))
+                await cache.store(
+                    run_id=run_id,
+                    summary=f"[{agent_id}] Pipeline completed: {stage_count} stages",
+                    label="success",
+                )
+        except Exception:
+            pass
+        
+        # Generalize successful pipeline execution into reusable rules
+        try:
+            import asyncio as _asyncio_g
+            _asyncio_g.ensure_future(_generalize_pipeline_success(state))
+        except Exception:
+            pass
         # Update workflow_runs phase
         try:
             session_id = state.get("session_id", "")
@@ -3410,6 +3443,44 @@ JSON format: {{"artifact": {{}},"confidence": "HIGH","issues": [{{"severity": "P
             logging.getLogger("pipeline_engine").warning(
                 "Failed to persist checkpoint for %s: %s", sid, str(e)[:200])
 
+    def _merge_state(self, state: dict, r_state: dict, stage: Optional[PipelineStageConfig] = None) -> None:
+        """Reducer-based state merge — prevents parallel overwrite.
+        
+        Reads merge_strategies from PipelineStageConfig (or defaults):
+          "append"     → extend list fields instead of overwriting
+          "overwrite"  → standard dict.update (last writer wins, default)
+          "merge_deep" → recursive dict merge for nested structures
+        
+        Default: _graph_trace, _checkpoints, messages always append.
+        """
+        # Default append keys (engine-level guarantees)
+        default_append = {"_graph_trace", "_checkpoints", "messages", "trace", "sub_agent_results"}
+        strategies = {}
+        if stage and hasattr(stage, "merge_strategies") and stage.merge_strategies:
+            strategies = stage.merge_strategies
+        strategies.update({k: "append" for k in default_append if k not in strategies})
+
+        for key, new_value in list(r_state.items()):
+            if new_value is None:
+                continue
+            strategy = strategies.get(key, "overwrite")
+
+            if strategy == "append":
+                if key in state and isinstance(state[key], list):
+                    if isinstance(new_value, list):
+                        state[key].extend(new_value)
+                    else:
+                        state[key].append(new_value)
+                else:
+                    state[key] = [new_value] if not isinstance(new_value, list) else list(new_value)
+            elif strategy == "merge_deep":
+                if key in state and isinstance(state[key], dict) and isinstance(new_value, dict):
+                    state[key].update(new_value)
+                else:
+                    state[key] = new_value
+            else:  # "overwrite" (default)
+                state[key] = new_value
+
     def _load_checkpoints_from_disk(self, state: PipelineState) -> List[Dict[str, Any]]:
         """Load checkpoint summaries from disk checkpoint files (survives restart)."""
         checkpoints = []
@@ -4321,3 +4392,72 @@ def _update_workflow_run_phase(project_id: str, phase: str) -> None:
         with open(output_path, 'w') as f:
             f.write(result)
     return result
+
+
+# ── AutoLearner pipeline integration ──
+
+async def _trigger_pipeline_auto_learner(
+    agent_id: str, run_id: str, task: str, error: str, session_id: str
+) -> None:
+    """Trigger AutoLearner + PatternAccumulator + ExperienceVector on pipeline failure."""
+    try:
+        from core.harness.learning import get_auto_learner
+        learner = get_auto_learner()
+        draft = learner.analyze_failure(
+            error=error[:500],
+            agent_id=agent_id,
+            run_id=run_id,
+            task=task,
+            suggested_fix="",
+        )
+        if draft.confidence >= 0.7:
+            try:
+                await learner.simulate(draft)
+            except Exception:
+                pass
+        learner.submit_for_review(draft)
+        logging.getLogger("harness.learning").warning(
+            "AutoLearner: generated SkillDraft '%s' from pipeline run_id=%s",
+            draft.name, run_id,
+        )
+    except Exception:
+        logging.getLogger("harness.learning").debug(
+            "AutoLearner pipeline trigger skipped", exc_info=True
+        )
+
+
+async def _generalize_pipeline_success(state: PipelineState) -> None:
+    """Generalize successful pipeline execution into reusable rules (fire-and-forget)."""
+    try:
+        from core.harness.learning.success_generalizer import get_success_generalizer
+        sg = get_success_generalizer()
+        agent_id = str(state.get("agent_id", ""))
+        stages = state.get("stages", [])
+        summary = f"[{agent_id}] Pipeline completed {len(stages)} stages successfully"
+        await sg.generalize(task_skill=agent_id, trajectory_summary=summary)
+    except Exception:
+        pass
+    
+    # CMM PatternAccumulator: extract tool-call fingerprints from pipeline failure
+    try:
+        from core.harness.memory.pattern_accumulator import get_pattern_accumulator
+        pa = get_pattern_accumulator()
+        await pa.extract_from_failure(
+            run_id=run_id,
+            error_context={"error": error[:300], "agent_id": agent_id},
+            tenant_id="",
+        )
+    except Exception:
+        pass
+    
+    # ExperienceVector: store pipeline failure for semantic retrieval
+    try:
+        from core.harness.learning.experience_vector import get_experience_cache
+        cache = get_experience_cache()
+        await cache.store(
+            run_id=run_id,
+            summary=f"[{agent_id}] Pipeline failure: {error[:200]}",
+            label="failure",
+        )
+    except Exception:
+        pass

@@ -322,6 +322,8 @@
 | wiki_context | `harness/syscalls/wiki_context.py` | ✅ | 自动同步 | 已合入 |
 |------|------|:---:|------|------|
 | ExperienceVector | `learning/experience_vector.py` | ✅ | PipelineTrace→Embedding→语义检索 | 已合入 |
+| ToolDriftDetector | `learning/tool_drift_detector.py` | ✅ | 4类漂移检测(struct/field/latency/error) + 重放校验自适应 | 已合入 |
+| ImmuneMemory | `security/immune_memory.py` | ✅ | 三级渐进拦截(>0.95拦截/>0.88防御前缀/<0.88放行) + 防御Skill自动生成 | 已合入 |
 | SkillSimulator | `learning/skill_simulator.py` | ✅ | Docker沙盒预检，pass≥80% | 已合入 |
 | SFT AutoTrigger | `training/auto_trigger.py` | ✅ | ≥100条+quality≥0.8→自动生成SFT数据集 | 已合入 |
 | HITL 反馈记忆回路 | `approval/manager.py:428` + `learning/__init__.py:150` | ✅ | 拒绝原因→ExperienceVectorCache→enrich_skill_draft 错题本检索 | 已合入 |
@@ -581,6 +583,7 @@
 | DAG 编排器 | `orchestration/orchestrator.py` | ✅ | 多步流水线编排 + DAG 输出 | 已合入 |
 | Pipeline 引擎 | `harness/execution/pipeline_engine.py` | ✅ | 多阶段调度/HITL暂停/重试/snapshot | 已合入 |
 | LangGraph 图执行 | `harness/execution/langgraph/` | ✅ | 节点拓扑执行+条件边路由+checkpoint | 已合入 |
+| DynamicRouter (LLM路由) | `harness/execution/dynamic_router.py` | ✅ | LLM驱动动态下一跳选择 + Reducer状态合并防并行覆盖 | 已合入 |
 | SubAgent 协调器 | `apps/agents/subagent/coordinator.py` | ✅ | execute_single/parallel/sequential/fanout | 已合入 |
 | 并行执行器 | `apps/agents/parallel_executor.py` | ✅ | Map-Reduce 模式 + max_concurrency + 异常隔离 | 已合入 |
 | 8 种协调模式 | `harness/coordination/patterns/` | ✅ | Pipeline/FanOut/Supervisor/ExpertPool/ProducerReviewer/Hierarchical | 已合入 |
@@ -604,7 +607,7 @@
 | 可观测性 | 12 | 0 | 12 |
 | 模型基础设施 | 10 | 1 | 11 |
 | 部署与运维 | 16 | 0 | 16 |
-| 扩展与学习 | 18 | 0 | 18 |
+| 扩展与学习 | 20 | 0 | 20 |
 | Gate 系统 | 5 | 0 | 5 |
 | 评估系统 | 13 | 0 | 13 |
 | MCP 协议 | 6 | 0 | 6 |
@@ -618,11 +621,11 @@
 | 平台治理 | 14 | 0 | 14 |
 | Infra 基础设施 | 11 | 0 | 11 |
 | 核心API统一入口 | 5 | 0 | 5 |
-| 编排系统 | 11 | 0 | 11 |
+| 编排系统 | 12 | 0 | 12 |
 | 管理 & 质量 | 11 | 0 | 11 |
-| **总计** | **381** | **0** | **381** |
+| **总计** | **384** | **0** | **384** |
 
 ---
 
 *最后更新: 2026-06-30*
-*版本: 10.1 · 28章 · 381项能力 · 381✅ · 全对齐：代码/文档/守卫/诊断/测试/稳定性*
+*版本: 10.3 · 28章 · 384项能力 · 384✅ · DynamicRouter + Reducer 多智能体协作*

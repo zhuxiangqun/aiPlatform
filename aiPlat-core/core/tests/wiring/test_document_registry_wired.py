@@ -62,6 +62,53 @@ class TestNewlyWiredDocumentModules:
                       "Phase 1.1", "Centralized extension-to-kind mapping (eliminates 5 duplicated dispatch points)")
 
 
+class TestAutoLearnerWired:
+
+    def test_auto_learner_has_caller(self):
+        """AutoLearner.analyze_failure() must have production callers (from loop.py or pipeline_engine.py)."""
+        assert has_production_caller("analyze_failure", "__init__.py"), (
+            "AutoLearner.analyze_failure() has 0 production callers — "
+            "the self-learning loop is not connected. "
+            "Expected callers: loop.py, pipeline_engine.py"
+        )
+
+    def test_get_auto_learner_called(self):
+        """get_auto_learner() must be called from execution paths."""
+        assert has_production_caller("get_auto_learner", "__init__.py"), (
+            "get_auto_learner() has 0 production callers — "
+            "the AutoLearner singleton is never accessed from execution paths."
+        )
+
+    def test_self_learning_loop_connected(self):
+        """Verify the self-learning loop: auto learner is importable and functional."""
+        import sys, os
+        sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../.."))
+        from core.harness.learning import get_auto_learner, AutoLearner
+        learner = get_auto_learner()
+        assert learner is not None
+        assert isinstance(learner, AutoLearner)
+        draft = learner.analyze_failure(
+            error="test error",
+            agent_id="test",
+            run_id="test",
+            task="test task",
+        )
+        assert draft is not None
+        assert draft.status == "draft"
+
+    def test_converter_registry_wired(self):
+        assert_wired("get_document_registry", "protocol.py",
+                      "Phase 1.1", "DocumentConverter registry — single source of truth for all parsing")
+
+    def test_kind_normalization_wired(self):
+        assert_wired("normalize_kind", "kb_facade.py",
+                      "Phase 1.1", "Canonical document kind normalization (eliminates duplicated dispatch)")
+
+    def test_kind_to_ext_wired(self):
+        assert_wired("_KIND_TO_EXT", "kb_facade.py",
+                      "Phase 1.1", "Centralized extension-to-kind mapping (eliminates 5 duplicated dispatch points)")
+
+
 class TestFacadeConsistency:
 
     def test_categories_consistent(self):

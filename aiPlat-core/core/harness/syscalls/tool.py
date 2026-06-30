@@ -710,6 +710,20 @@ async def sys_tool_call(
                 )
             except Exception as e:
                 logging.debug(str(e), exc_info=True)
+        # ToolDriftDetector: record this call for drift analysis (non-blocking)
+        try:
+            from core.harness.learning.tool_drift_detector import get_drift_detector
+            dd = get_drift_detector()
+            dd.record_call(
+                tool_name=tool_name or "<unknown>",
+                request_schema=prepared_args if isinstance(prepared_args, dict) else {},
+                response_data={"output": _sanitize_tool_output_for_syscall_event(tool_name or "<unknown>", getattr(result, "output", None))} if hasattr(result, "output") else {},
+                status_code=200 if bool(getattr(result, "success", True)) else 500,
+                latency_ms=(end_ts - start_ts) * 1000.0,
+                error_code=getattr(result, "error", None),
+            )
+        except Exception:
+            pass
         return result
     except Exception:
         end_ts = time.time()

@@ -207,10 +207,19 @@ def _guard_messages(messages: List[Message]) -> tuple[List[Message], Dict[str, A
             if content != orig_content:
                 stats["special_tokens_removed"] += 1
             # Detect injection patterns
+            detected_type = ""
             for pat in _compiled:
                 if pat.search(content):
                     stats["injection_alerts"] += 1
+                    detected_type = _detect_attack_type(content)
                     break  # one alert per message is enough
+            # ImmuneMemory: remember attack pattern for future defense
+            if detected_type:
+                try:
+                    from core.harness.security.immune_memory import ImmuneMemory
+                    ImmuneMemory.immunize(content, detected_type)
+                except Exception:
+                    pass
             # PII 脱敏 (§69): mask sensitive data before sending to LLM
             try:
                 from core.services.pii_detector import get_pii_detector
@@ -223,7 +232,7 @@ def _guard_messages(messages: List[Message]) -> tuple[List[Message], Dict[str, A
                         stats["pii_mappings"] = {}
                     stats["pii_mappings"].update(pii_mapping)
             except Exception as e:
-                logging.debug(str(e), exc_info=True)
+                logging.warning(str(e), exc_info=True)
 
         if out and out[-1].get("role") == role and role != "system":
             # merge adjacent user/user or assistant/assistant (fail-open)
@@ -298,7 +307,7 @@ def _try_inject_claude_md(messages: List[Message]) -> None:
         else:
             messages.insert(0, {"role": "system", "content": guard})
     except Exception:
-        logging.getLogger("llm").debug("best-effort skipped", exc_info=True)
+        logging.getLogger("llm").warning("best-effort skipped", exc_info=True)
 
 
 def _try_inject_governance_rules(messages: List[Message]) -> str:
@@ -455,7 +464,7 @@ def _try_inject_claude_md(messages: List[Message]) -> None:
         else:
             messages.insert(0, {"role": "system", "content": guard})
     except Exception:
-        logging.getLogger("llm").debug("best-effort skipped", exc_info=True)
+        logging.getLogger("llm").warning("best-effort skipped", exc_info=True)
 
 
 # ── Task → Clause keyword mapping (heuristic) ──────────────────────
@@ -617,49 +626,31 @@ async def sys_llm_generate(
         max_tokens: Optional override for max tokens.
         response_format: Optional response format (e.g. json_schema).
     """
-    # Model routing: auto-detect model_name and route via ModelRouter
-    deployment = None
+    # Model routing: auto-detect model_name and resolve via model_injection (canonical path)
     if not model_name:
         model_name = getattr(model, 'model_name', '') or getattr(model, '_model_name', '') or ''
     if model_name:
-        from core.harness.infrastructure.model_router import get_model_router
-        router = get_model_router()
-        deployment = await router.select(model_name=model_name)
-        if deployment and getattr(deployment, 'api_key', ''):
-            api_key = deployment.api_key
-        elif deployment:
-            # Try resolving via env var name
-            import os as _llm_os
-            api_key = _llm_os.getenv(getattr(deployment, 'api_key_env', '') or '', '') or ""
-            if not api_key:
-                try:
-                    from core.harness.infrastructure.secrets_manager import get_secrets_manager
-                    api_key = get_secrets_manager().get(deployment.api_key_env) or ""
-                except Exception:
-                    api_key = ""
-        else:
-            api_key = ""
-        if deployment and api_key:
-            try:
-                from core.adapters.llm.base import create_adapter
-                # ── Log model selection ──
-                try:
-                    from core.harness.utils.model_injection import _log_model_selection
-                    _log_model_selection(model_name or deployment.name, deployment.name or model_name,
-                                         entry="create_adapter_legacy", source="sys_llm_generate")
-                except Exception as e:
-                    logging.debug(str(e), exc_info=True)
-                model = create_adapter(
-                    provider=deployment.provider,
-                    api_key=api_key,
-                    model=deployment.name,
-                    base_url=deployment.base_url,
-                )
-            except Exception as e:
-                import sys, traceback
-                print(f"[LLM DEBUG] create_adapter FAILED for '{model_name}': {e}", file=sys.stderr)
-                traceback.print_exc(file=sys.stderr)
-                deployment = None
+        try:
+            from core.harness.utils.model_injection import create_selected_adapter
+            model = create_selected_adapter(model_name=model_name)
+        except Exception as e:
+            import sys, traceback
+            print(f"[LLM DEBUG] create_selected_adapter FAILED for '{model_name}': {e}", file=sys.stderr)
+            traceback.print_exc(file=sys.stderr)
+
+    # ImmuneMemory: scan input for known attack patterns before LLM call
+    if isinstance(prompt, str):
+        try:
+            from core.harness.security.immune_memory import ImmuneMemory
+            match = ImmuneMemory.scan(prompt)
+            if match.action == "BLOCK":
+                import collections
+                FakeResponse = collections.namedtuple("FakeResponse", ["content", "usage"])
+                return FakeResponse(content=ImmuneMemory.SAFE_RESPONSE, usage={})
+            elif match.action == "PREFIX_INJECT":
+                prompt = match.prefix_prompt + "\n" + prompt
+        except Exception:
+            pass
 
     # Phase 3: gates (best-effort, fail-open).
     trace_gate = TraceGate()
@@ -687,7 +678,7 @@ async def sys_llm_generate(
         if sb_result.verdict == Verdict.REJECT:
             logging.getLogger("aiplat.sandbox").warning("Sandbox rejected LLM call: %s", sb_result.reason)
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
 
     if model is None or not hasattr(model, "generate"):
         end_ts = time.time()
@@ -718,7 +709,7 @@ async def sys_llm_generate(
                     }
                 )
             except Exception:
-                logging.getLogger("llm").debug("best-effort skipped", exc_info=True)
+                logging.getLogger("llm").warning("best-effort skipped", exc_info=True)
         raise RuntimeError("No model available for sys_llm_generate")
 
     prepared = ctx_gate.prepare_llm_args(prompt, context=trace_context or {})
@@ -746,7 +737,7 @@ async def sys_llm_generate(
                         },
                     )
             except Exception:
-                logging.getLogger("llm").debug("best-effort skipped", exc_info=True)
+                logging.getLogger("llm").warning("best-effort skipped", exc_info=True)
     except Exception:
             message_guard_stats = {"error": "message_guard_failed"}
 
@@ -774,6 +765,34 @@ async def sys_llm_generate(
                 "alerts": message_guard_stats["injection_alerts"],
             })
         raise RuntimeError(f"LLM call rejected: {message_guard_stats['injection_alerts']} prompt injection alert(s) detected")
+
+    # §5.93: Refuse LLM call when crisis/self-harm detected in BLOCK mode
+    if message_guard_stats and message_guard_stats.get("crisis_blocked"):
+        await trace_gate.end(span, success=False)
+        end_ts = time.time()
+        runtime = get_kernel_runtime()
+        store = getattr(runtime, "execution_store", None) if runtime else None
+        if store is not None:
+            alerts = message_guard_stats.get("crisis_alerts", [])
+            await store.add_syscall_event({
+                "kind": "llm",
+                "name": "generate",
+                "status": "failed",
+                "trace_id": span.trace_id,
+                "span_id": getattr(span, "span_id", None),
+                "parent_span_id": (trace_context or {}).get("parent_span_id") if isinstance(trace_context, dict) else None,
+                "run_id": (trace_context or {}).get("run_id") if isinstance(trace_context, dict) else None,
+                "start_time": start_ts,
+                "end_time": end_ts,
+                "duration_ms": (end_ts - start_ts) * 1000.0,
+                "action": "rejected_crisis",
+                "reason": "self_harm_crisis_detected",
+                "error": f"crisis_blocked: {len(alerts)} signal(s)",
+            })
+        severity = ""
+        if message_guard_stats.get("crisis_alerts"):
+            severity = message_guard_stats["crisis_alerts"][0].get("severity", "high")
+        raise RuntimeError(f"LLM call rejected: crisis detected (severity={severity})")
 
     # Phase 4 (optional): central prompt assembly + prompt_version for replay/audit.
     prompt_version = None
@@ -805,7 +824,7 @@ async def sys_llm_generate(
                         if isinstance(patch, dict) and patch:
                             prepared = _apply_prompt_patch(prepared, patch)
                 except Exception:
-                    logging.getLogger("llm").debug("best-effort skipped", exc_info=True)
+                    logging.getLogger("llm").warning("best-effort skipped", exc_info=True)
             # Phase 6.12: aggregate audit info for the whole execution (best-effort).
             try:
                 record_prompt_revision_application(
@@ -814,7 +833,7 @@ async def sys_llm_generate(
                     conflicts=prompt_revision_conflicts,
                 )
             except Exception:
-                logging.getLogger("llm").debug("best-effort skipped", exc_info=True)
+                logging.getLogger("llm").warning("best-effort skipped", exc_info=True)
 
             # Provide target identity for prompt caching keys (Roadmap-1).
             _ctx = get_active_release_context()
@@ -863,25 +882,37 @@ async def sys_llm_generate(
                 },
             )
     except Exception:
-        logging.getLogger("llm").debug("best-effort skipped", exc_info=True)
+        logging.getLogger("llm").warning("best-effort skipped", exc_info=True)
     try:
         async def _call():
             # Apply per-call overrides to model adapter config
             if temperature is not None:
                 try: model._config.temperature = temperature
-                except Exception: logging.debug('best-effort operation', exc_info=True)  # noqa: intentional — best-effort operation, logged at debug
+                except Exception: logging.warning('best-effort operation', exc_info=True)  # noqa: intentional — best-effort operation, logged at warning
             if max_tokens is not None:
                 try: model._config.max_tokens = max_tokens
-                except Exception: logging.debug('best-effort operation', exc_info=True)  # noqa: intentional — best-effort operation, logged at debug
+                except Exception: logging.warning('best-effort operation', exc_info=True)  # noqa: intentional — best-effort operation, logged at warning
             if response_format is not None:
                 try: model._config.response_format = response_format
-                except Exception: logging.debug('best-effort operation', exc_info=True)  # noqa: intentional — best-effort operation, logged at debug
+                except Exception: logging.warning('best-effort operation', exc_info=True)  # noqa: intentional — best-effort operation, logged at warning
             # Mark gate coverage (Phase 3 GateTracer)
             try:
                 from core.harness.kernel.execution_context import mark_gate_passed
                 mark_gate_passed("llm_generate_called")
             except Exception as e:
-                logging.debug(str(e), exc_info=True)
+                logging.warning(str(e), exc_info=True)
+
+            # §5.93: Crisis detection — check user messages for self-harm/violence signals
+            try:
+                from core.harness.security.crisis_detector import get_crisis_detector
+                detector = get_crisis_detector()
+                crisis_result = detector.detect(content)
+                if crisis_result.is_crisis:
+                    stats.setdefault("crisis_alerts", []).append(crisis_result.to_dict())
+                    if crisis_result.escalation_required:
+                        stats["crisis_blocked"] = True
+            except Exception as e:
+                logging.debug("Crisis check skipped: %s", e)
             result = await model.generate(prepared)  # type: ignore[misc]
             # PII unmask: restore original values if role permits
             if message_guard_stats and message_guard_stats.get("pii_mappings"):
@@ -894,7 +925,7 @@ async def sys_llm_generate(
                     if hasattr(result, 'content'):
                         result.content = unmasked
                 except Exception as e:
-                    logging.debug(str(e), exc_info=True)
+                    logging.warning(str(e), exc_info=True)
             return result
 
         # Set ActiveTraceContext for downstream event emission
@@ -919,7 +950,7 @@ async def sys_llm_generate(
                 try:
                     reset_active_trace_context(trace_token)
                 except Exception as e:
-                    logging.debug(str(e), exc_info=True)
+                    logging.warning(str(e), exc_info=True)
         end_ts = time.time()
         await trace_gate.end(span, success=True)
         runtime = get_kernel_runtime()
@@ -940,7 +971,7 @@ async def sys_llm_generate(
                                 day = time.strftime("%Y-%m-%d", time.gmtime())
                                 await store.add_tenant_usage(tenant_id=str(tid), metric_key="llm_total_tokens", amount=total_f, day=day)
                 except Exception:
-                    logging.getLogger("llm").debug("best-effort skipped", exc_info=True)
+                    logging.getLogger("llm").warning("best-effort skipped", exc_info=True)
                 usage = getattr(result, "usage", None) if isinstance(getattr(result, "usage", None), dict) else None
                 input_tokens = (usage.get("prompt_tokens") or 0) if usage else 0
                 output_tokens = (usage.get("completion_tokens") or 0) if usage else 0
@@ -995,18 +1026,49 @@ async def sys_llm_generate(
                     }
                 )
             except Exception:
-                logging.getLogger("llm").debug("best-effort skipped", exc_info=True)
-        # Notify router of success
-        if model_name and deployment:
-            router.mark_success(model_name, deployment)
+                logging.getLogger("llm").warning("best-effort skipped", exc_info=True)
+        # Notify infra ModelManager of success (for health tracking)
+        if model_name:
+            try:
+                from infra.management.model.manager import ModelManager
+                mgr = ModelManager()
+                mgr.record_success(model_name)
+            except Exception:
+                pass
+        # Phase 3.1: best-effort hallucination detection on generated content
+        if os.getenv("AIPLAT_HALLUCINATION_CHECK", "").lower() in ("true", "1", "yes"):
+            try:
+                content = getattr(result, "content", "") or ""
+                question = str(prepared[-1].get("content", "")) if isinstance(prepared, list) and prepared else ""
+                if content and question:
+                    from core.harness.evaluation.hallucination_tracker import get_hallucination_tracker
+                    tracker = get_hallucination_tracker()
+                    report = await tracker.evaluate(
+                        run_id=(trace_context or {}).get("run_id", "") if isinstance(trace_context, dict) else "",
+                        question=question,
+                        answer=content[:5000],
+                        retrieved_context=[],
+                    )
+                    if report and report.hallucination_risk > 0.5:
+                        logging.getLogger("llm").warning(
+                            "Hallucination detected: risk=%.2f, faithfulness=%.2f, claims=%d/%d",
+                            report.hallucination_risk, report.faithfulness_score,
+                            report.supported_claims, report.total_claims)
+            except Exception:
+                pass
         return _wrap_llm_result(result, model_name or "")
     except Exception:
         end_ts = time.time()
         await trace_gate.end(span, success=False)
 
-        # Notify router of failure so it can fallback on retry
-        if model_name and deployment:
-            router.mark_failure(model_name, deployment)
+        # Notify infra ModelManager of failure (for cooldown tracking)
+        if model_name:
+            try:
+                from infra.management.model.manager import ModelManager
+                mgr = ModelManager()
+                mgr.record_failure(model_name)
+            except Exception:
+                pass
 
         runtime = get_kernel_runtime()
         store = getattr(runtime, "execution_store", None) if runtime else None
@@ -1041,7 +1103,7 @@ async def sys_llm_generate(
                     }
                 )
             except Exception:
-                logging.getLogger("llm").debug("best-effort skipped", exc_info=True)
+                logging.getLogger("llm").warning("best-effort skipped", exc_info=True)
         raise
 
 
@@ -1147,10 +1209,10 @@ async def sys_llm_generate_stream(
                             "result": {"stream_chunks": len(total_text)},
                         })
                 except Exception as e:
-                    logging.debug(str(e), exc_info=True)
+                    logging.warning(str(e), exc_info=True)
             return
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
 
     # Fallback: non-streaming
     result = await sys_llm_generate(

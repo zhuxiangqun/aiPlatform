@@ -29,6 +29,7 @@ _log = logging.getLogger("aiplat.evolution")
 
 
 @dataclass
+# disposition: internal data type — used within evolution engine
 class StepResult:
     step_name: str
     status: str          # ok / timeout / error / skipped
@@ -38,6 +39,7 @@ class StepResult:
 
 
 @dataclass
+# disposition: internal data type — used within evolution engine
 class EvolutionRun:
     run_id: str
     started_at: float
@@ -97,6 +99,15 @@ class EvolutionEngine:
 
         # Step 6: LoRA trigger check
         run.steps.append(await self._step("sft_trigger", self._do_sft_trigger))
+
+        # Step 7: Tool drift detection
+        run.steps.append(await self._step("drift_detect", self._do_drift_detect))
+
+        # Step 8: Defense skill export (ImmuneMemory)
+        run.steps.append(await self._step("defense_export", self._do_defense_export))
+
+        # Step 9: Self-harness cycle (pipeline engine optimization)
+        run.steps.append(await self._step("self_harness", self._do_self_harness))
 
         # Build report
         run.summary = self._build_daily_report(run)
@@ -178,6 +189,43 @@ class EvolutionEngine:
             trigger = get_lora_auto_trigger()
             await trigger.trigger()
             return trigger.get_stats()
+        except Exception as e:
+            return {"error": str(e)[:100]}
+
+    async def _do_drift_detect(self) -> Dict[str, Any]:
+        try:
+            from core.harness.learning.tool_drift_detector import get_drift_detector
+            dd = get_drift_detector()
+            alerts = dd.detect_all()
+            for alert in alerts:
+                _log.warning("Drift: %s %s %s", alert.tool_name, alert.drift_type.value, alert.detail)
+            return {"alerts_count": len(alerts), "tools_monitored": len(dd.list_tools())}
+        except Exception as e:
+            return {"error": str(e)[:100]}
+
+    async def _do_defense_export(self) -> Dict[str, Any]:
+        try:
+            from core.harness.security.immune_memory import ImmuneMemory
+            stats = ImmuneMemory.get_stats()
+            drafts = []
+            for atype in ImmuneMemory._memories:
+                draft = ImmuneMemory.export_defense_skill(atype)
+                if draft:
+                    drafts.append(draft["name"])
+            ImmuneMemory.save_persistent()
+            return {"types": stats["total_types"], "records": stats["total_records"],
+                    "drafts_exported": len(drafts), "drafts": drafts}
+        except Exception as e:
+            return {"error": str(e)[:100]}
+
+    async def _do_self_harness(self) -> Dict[str, Any]:
+        try:
+            # Note: _run_self_harness_cycle is a method on PipelineEngine instance,
+            # requiring pipeline run_states and current_config. Full wiring needs
+            # access to the active engine's execution history.
+            # For now, this step is a placeholder — the engine's failure_clusterer
+            # API is already available via wiki.py REST endpoints.
+            return {"status": "skipped", "note": "requires active pipeline engine instance"}
         except Exception as e:
             return {"error": str(e)[:100]}
 
