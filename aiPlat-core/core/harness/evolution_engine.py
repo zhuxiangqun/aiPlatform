@@ -109,6 +109,9 @@ class EvolutionEngine:
         # Step 9: Self-harness cycle (pipeline engine optimization)
         run.steps.append(await self._step("self_harness", self._do_self_harness))
 
+        # Step 10: SkillEvolver cross-tenant scan
+        run.steps.append(await self._step("cross_tenant_scan", self._do_cross_tenant_scan))
+
         # Build report
         run.summary = self._build_daily_report(run)
         errors = sum(1 for s in run.steps if s.status in ("timeout", "error"))
@@ -220,12 +223,29 @@ class EvolutionEngine:
 
     async def _do_self_harness(self) -> Dict[str, Any]:
         try:
-            # Note: _run_self_harness_cycle is a method on PipelineEngine instance,
-            # requiring pipeline run_states and current_config. Full wiring needs
-            # access to the active engine's execution history.
-            # For now, this step is a placeholder — the engine's failure_clusterer
-            # API is already available via wiki.py REST endpoints.
-            return {"status": "skipped", "note": "requires active pipeline engine instance"}
+            result = await _run_self_harness()
+            return {"ran": True, "result": str(result)[:200]}
+        except Exception as e:
+            return {"error": str(e)[:100]}
+
+    async def _do_cross_tenant_scan(self) -> Dict[str, Any]:
+        """SkillEvolver: scan for shared patterns across tenants."""
+        try:
+            from core.harness.learning.skill_evolver import get_skill_evolver, ScanConfig
+            enabled = os.getenv("AIPLAT_CROSS_TENANT_SCAN_ENABLED", "0") in ("1", "true", "yes")
+            if not enabled:
+                return {"status": "disabled", "note": "set AIPLAT_CROSS_TENANT_SCAN_ENABLED=true to enable"}
+            cfg = ScanConfig(allow_tenant_pattern_access=True)
+            evolver = get_skill_evolver(config=cfg)
+            drafts = await evolver.scan_cross_tenant()
+            submitted = 0
+            for draft in drafts:
+                try:
+                    await evolver.submit_shared_draft(draft)
+                    submitted += 1
+                except Exception:
+                    pass
+            return {"drafts_found": len(drafts), "submitted": submitted}
         except Exception as e:
             return {"error": str(e)[:100]}
 
@@ -304,3 +324,28 @@ def get_evolution_engine() -> EvolutionEngine:
     global _engine
     if _engine is None: _engine = EvolutionEngine()
     return _engine
+
+
+async def _run_self_harness() -> Dict[str, Any]:
+    """Module-level adapter for PipelineEngine._run_self_harness_cycle.
+    
+    Loads failure clusters from disk and runs the self-harness optimization.
+    Requires at least 5 historical pipeline run states to be useful.
+    """
+    try:
+        from core.harness.execution.failure_clusterer import load_clusters, cluster_failures
+        clusters = load_clusters()
+        if not clusters or not clusters.signatures:
+            return {"status": "skipped", "note": "no failure clusters to analyze"}
+
+        from core.harness.execution import pipeline_engine as _pe
+        engine = _pe.PipelineEngine()
+        run_states = [sc.to_dict() if hasattr(sc, 'to_dict') else sc for sc in clusters.recent_runs] if hasattr(clusters, 'recent_runs') else []
+        if len(run_states) < 5:
+            return {"status": "skipped", "note": f"only {len(run_states)} run states, need >=5"}
+
+        result = await engine._run_self_harness_cycle(run_states)
+        return {"ran": True, "accepted": len(result.get("accepted", [])),
+                "rejected": len(result.get("rejected", []))}
+    except Exception as e:
+        return {"error": str(e)[:200]}
