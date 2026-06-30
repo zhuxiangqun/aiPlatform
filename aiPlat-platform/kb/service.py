@@ -143,7 +143,8 @@ def enqueue_ingest(
                 collection_id=collection_id,
                 source_uri=file_path,
                 kind=kind,
-                status="ingesting",
+            status="ingesting",
+            content_hash=new_hash,
                 meta={"ocr_lang": ocr_lang, "ocr_engine": ocr_engine, "dpi": dpi, "max_pages": max_pages, "last_job_id": job_id},
             )
             out = ingest_document(
@@ -286,6 +287,71 @@ def enqueue_directory_ingest(
     }
 
 
+
+
+def ingest_url(
+    *,
+    tenant_id: str,
+    collection_id: str,
+    url: str,
+    name: str = "",
+    kind: str = "html",
+) -> Dict[str, Any]:
+    """Ingest a web page by URL — fetch, parse HTML, ingest as document."""
+    if not url:
+        raise ValueError("url_required")
+    if not tenant_id:
+        raise ValueError("tenant_id_required")
+
+    import tempfile, re, asyncio
+    import httpx
+
+    async def _fetch():
+        async with httpx.AsyncClient(timeout=30, follow_redirects=True) as client:
+            r = await client.get(url, headers={"User-Agent": "aiPlat-RAG/1.0"})
+            r.raise_for_status()
+            return r.text
+
+    try:
+        loop = asyncio.get_event_loop()
+        if loop.is_running():
+            import concurrent.futures
+            with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+                html_text = pool.submit(asyncio.run, _fetch()).result(timeout=30)
+        else:
+            html_text = asyncio.run(_fetch())
+    except RuntimeError:
+        html_text = asyncio.run(_fetch())
+
+    # Parse HTML to plain text
+    try:
+        from core.harness.document.parsers import parse_html as _parse_html
+        text = _parse_html(html_text)
+    except (ImportError, AttributeError):
+        text = re.sub(r"<[^>]+>", " ", html_text)
+        text = re.sub(r"\s+", " ", text).strip()
+
+    if not text or len(text) < 50:
+        raise ValueError(f"URL returned insufficient content: {len(text)} chars")
+
+    doc_name = name or url.rsplit("/", 1)[-1][:60] or "web_page"
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".html", delete=False, encoding="utf-8") as tmp:
+        tmp.write(text)
+        tmp_path = tmp.name
+
+    try:
+        return ingest_document(
+            tenant_id=tenant_id, collection_id=collection_id,
+            file_path=tmp_path, kind=kind, name=doc_name,
+        )
+    finally:
+        try:
+            __import__("os").unlink(tmp_path)
+        except Exception:
+            pass
+
+
+
 def ingest_document(
     *,
     tenant_id: str,
@@ -313,6 +379,12 @@ def ingest_document(
     if not _safe_readable_path(file_path):
         raise ValueError("file_path_not_accessible")
 
+    # Phase G: Document metadata governance check
+    _doc_meta = {"ingested_at": time.time()}
+    if os.getenv("AIPLAT_KB_STRICT_META", "").lower() in ("true", "1"):
+        if not name:
+            raise ValueError("document name is required in strict metadata mode (AIPLAT_KB_STRICT_META=true)")
+
     if str(kind or "").lower() == "video":
         from .video import ingest_video_document
 
@@ -326,31 +398,39 @@ def ingest_document(
             last_job_id=last_job_id,
         )
 
-    # ── Text-based formats (word/ppt/markdown) ──
+    # Phase D: content hash change detection — skip unchanged documents
+    import hashlib
+    doc_id = hashlib.md5(f"{tenant_id}:{collection_id}:{file_path}".encode()).hexdigest()[:16] if not name else name
+    try:
+        raw_bytes = open(file_path, "rb").read()
+        import re as _re
+        normalized = _re.sub(rb"\s+", b" ", raw_bytes)
+        new_hash = hashlib.sha256(normalized).hexdigest()
+        st = get_tenant_storage(tenant_id)
+        db_path = os.path.join(str(st), "aiplat_knowledge.sqlite3")
+        if os.path.exists(db_path):
+            import sqlite3
+            conn = sqlite3.connect(db_path)
+            try:
+                row = conn.execute(
+                    "SELECT content_hash FROM documents WHERE tenant_id=? AND doc_id=?",
+                    (tenant_id, doc_id),
+                ).fetchone()
+                if row and row[0] == new_hash:
+                    conn.close()
+                    logger.info("content_hash unchanged for doc_id=%s — skip re-ingest", doc_id)
+                    return {"doc_id": doc_id, "status": "skipped_unchanged", "content_hash": new_hash}
+            finally:
+                conn.close()
+    except Exception:
+        new_hash = ""
+
+    # ── Text-based formats ──
+    from core.api.facades.kb_facade import _KIND_TO_EXT, normalize_kind
     _kind_lower = str(kind or "").lower()
-    if _kind_lower in ("word", "docx", "ppt", "pptx", "md", "markdown", "xlsx", "xls", "csv", "pdf", "audio", "mp3", "wav", "image", "png", "jpg", "json", "txt", "text", "plain"):
-        effective_kind = _kind_lower
+    if _kind_lower in _KIND_TO_EXT or _kind_lower in ("txt", "text", "plain"):
+        effective_kind = normalize_kind(_kind_lower)
         parsed = kb_parse_document(file_path, _kind_lower)
-        if _kind_lower in ("word", "docx"):
-            effective_kind = "word"
-        elif _kind_lower in ("pdf",):
-            effective_kind = "pdf"
-        elif _kind_lower in ("ppt", "pptx"):
-            effective_kind = "ppt"
-        elif _kind_lower in ("xlsx", "xls"):
-            effective_kind = "xlsx"
-        elif _kind_lower == "csv":
-            effective_kind = "csv"
-        elif _kind_lower in ("audio", "mp3", "wav"):
-            effective_kind = "audio"
-        elif _kind_lower in ("image", "png", "jpg"):
-            effective_kind = "image"
-        elif _kind_lower == "json":
-            effective_kind = "json"
-        elif _kind_lower in ("txt", "text", "plain"):
-            effective_kind = "txt"
-        else:
-            effective_kind = "markdown"
 
         st = get_tenant_storage(tenant_id)
         db = KBSqlite(st.db_path)
@@ -951,37 +1031,15 @@ def preview_document(
     parser = ""
     diags: Dict[str, Any] = {}
 
-    if k in ("word", "docx"):
-        elements = kb_parse_document(file_path, "word")
-        parser = "docx"
-    elif k in ("pdf",):
-        elements = kb_parse_document(file_path, "pdf")
-        parser = "pdf"
-    elif k in ("ppt", "pptx"):
-        elements = kb_parse_document(file_path, "ppt")
-        parser = "pptx"
-    elif k in ("xlsx", "xls"):
-        elements = kb_parse_document(file_path, "xlsx")
-        parser = "xlsx"
-    elif k == "csv":
-        elements = kb_parse_document(file_path, "csv")
-        parser = "csv"
-    elif k in ("md", "markdown"):
-        elements = kb_parse_document(file_path, "markdown")
-        parser = "markdown"
+    from core.api.facades.kb_facade import _KIND_TO_EXT, normalize_kind
+    canonical = normalize_kind(k)
+    if k in _KIND_TO_EXT:
+        elements = kb_parse_document(file_path, k)
+        parser = canonical
     elif k in ("txt", "text", "plain"):
         text = _mask_pii(Path(file_path).read_text(encoding="utf-8", errors="replace"))
         elements = [{"type": "paragraph", "text": text[:10000], "page": 1}]
         parser = "text"
-    elif k in ("audio", "mp3", "wav", "m4a"):
-        elements = kb_parse_document(file_path, "audio")
-        parser = "audio"
-    elif k in ("image", "png", "jpg", "jpeg", "bmp"):
-        elements = kb_parse_document(file_path, "image")
-        parser = "image"
-    elif k in ("json",):
-        elements = kb_parse_document(file_path, "json")
-        parser = "json"
     elif k == "video":
         # Extract audio from video file and transcribe via core/harness transcriber
         import subprocess, tempfile, os as _os, json as _json

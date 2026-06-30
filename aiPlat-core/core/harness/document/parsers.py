@@ -4,6 +4,9 @@ Core document parsers — unified document format → text elements.
 Each parser takes a file path and returns a list of element dicts:
   {type: "text"|"table", text: str, page_idx: int, cells: Optional[List], meta: dict}
 
+All parser functions are thin wrappers that delegate to the ConverterRegistry.
+The registry is the SINGLE SOURCE OF TRUTH for format→converter dispatch.
+
 Callers:
   - platform/kb/service.py (ingest pipeline)
   - Any AI agent that needs to read documents before reasoning
@@ -15,245 +18,146 @@ import os
 import re
 from typing import Any, Dict, List
 
+from core.harness.document.protocol import StreamInfo
 
-def _fallback_text(file_path: str, source: str) -> List[Dict[str, Any]]:
-    with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
-        text = f.read()
-    if not text.strip():
-        return []
-    return [{"type": "text", "text": text.strip(), "page_idx": 0, "cells": None, "meta": {"source": source, "fallback": True}}]
+
+def _elements_to_dicts(elements: list) -> List[Dict[str, Any]]:
+    """Convert DocumentElement list to legacy dict format for backward compatibility."""
+    result = []
+    for el in elements:
+        result.append({
+            "type": el.type,
+            "text": el.text,
+            "page_idx": el.page_idx,
+            "cells": el.cells,
+            "meta": el.meta,
+        })
+    return result
+
+
+def _resolve_parser(file_path: str, formats: List[str]):
+    """Find the right converter for a given file path and format list."""
+    from core.harness.document.protocol import get_document_registry, StreamInfo
+    ext = os.path.splitext(file_path)[1].lower()
+    registry = get_document_registry()
+    info = StreamInfo(local_path=file_path, extension=ext)
+    for fmt in formats:
+        converter = registry.find_converter(StreamInfo(extension=f".{fmt}"))
+        if converter:
+            return converter, info
+        converter = registry.find_converter(StreamInfo(extension=ext))
+        if converter:
+            return converter, info
+    return None, info
 
 
 # ── DOCX ──
 
 def parse_docx(file_path: str) -> List[Dict[str, Any]]:
-    try: from docx import Document
-    except ImportError: return _fallback_text(file_path, "docx")
-    doc = Document(file_path)
-    elements: List[Dict[str, Any]] = []
-    for para in doc.paragraphs:
-        text = (para.text or "").strip()
-        if not text: continue
-        elements.append({"type": "text", "text": text, "page_idx": 0, "cells": None, "meta": {"source": "docx"}})
-    for ti, table in enumerate(doc.tables):
-        rows = [[cell.text.strip() for cell in row.cells] for row in table.rows]
-        if any(any(c for c in row) for row in rows):
-            elements.append({"type": "table", "text": "\n".join(" | ".join(r) for r in rows), "page_idx": 0, "cells": rows, "meta": {"source": "docx", "table_index": ti}})
-    return elements or _fallback_text(file_path, "docx")
+    converter, info = _resolve_parser(file_path, ["docx", "doc"])
+    if converter:
+        with open(file_path, "rb") as f:
+            return _elements_to_dicts(converter.convert(f, info))
+    return []
 
 
 # ── PPTX ──
 
 def parse_pptx(file_path: str) -> List[Dict[str, Any]]:
-    try: from pptx import Presentation
-    except ImportError: return _fallback_text(file_path, "pptx")
-    prs = Presentation(file_path)
-    elements: List[Dict[str, Any]] = []
-    for si, slide in enumerate(prs.slides):
-        texts = [para.text.strip() for shape in slide.shapes if shape.has_text_frame for para in shape.text_frame.paragraphs if (para.text or "").strip()]
-        if texts: elements.append({"type": "text", "text": "\n".join(texts), "page_idx": si, "cells": None, "meta": {"source": "pptx", "slide_index": si}})
-    return elements or _fallback_text(file_path, "pptx")
+    converter, info = _resolve_parser(file_path, ["pptx", "ppt"])
+    if converter:
+        with open(file_path, "rb") as f:
+            return _elements_to_dicts(converter.convert(f, info))
+    return []
 
 
 # ── MARKDOWN ──
 
 def parse_markdown(file_path: str) -> List[Dict[str, Any]]:
-    with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
-        text = f.read()
-    if not text.strip(): return []
-
-    # Extract YAML frontmatter (Obsidian-style --- at top)
-    frontmatter: Dict[str, Any] = {}
-    body = text
-    if text.startswith("---"):
-        parts = text.split("---", 2)
-        if len(parts) >= 3:
-            try:
-                import yaml as _yaml
-                fm = _yaml.safe_load(parts[1]) or {}
-                if isinstance(fm, dict):
-                    frontmatter = {k: fm[k] for k in fm}
-            except Exception as e:
-                logging.debug(str(e), exc_info=True)
-            body = parts[2]
-
-    # Extract [[wikilinks]]
-    wikilinks = re.findall(r"\[\[([^\]|]+)(?:\|([^\]]+))?\]\]", body)
-    link_texts = [l[0] for l in wikilinks]
-
-    # Split body by markdown headings
-    sections = re.split(r"\n(?=#{1,6}\s)", body)
-    elements: List[Dict[str, Any]] = []
-    for si, section in enumerate(sections):
-        if section.strip():
-            meta = {"source": "markdown"}
-            # First section inherits full frontmatter; later sections get summary
-            if frontmatter:
-                meta.update(frontmatter if si == 0 else {
-                    "tags": frontmatter.get("tags", []) if isinstance(frontmatter.get("tags"), list) else [],
-                    "aliases": frontmatter.get("aliases", []) if isinstance(frontmatter.get("aliases"), list) else [],
-                })
-            if link_texts:
-                meta["wikilinks"] = link_texts
-            elements.append({
-                "type": "text", "text": section.strip(),
-                "page_idx": si, "cells": None, "meta": meta,
-            })
-    return elements or [{
-        "type": "text", "text": text.strip(), "page_idx": 0, "cells": None,
-        "meta": {"source": "markdown", **frontmatter},
-    }]
-
-
-# ── XLSX ──
-
-
+    converter, info = _resolve_parser(file_path, ["md", "markdown"])
+    if converter:
+        with open(file_path, "rb") as f:
+            return _elements_to_dicts(converter.convert(f, info))
+    return []
 
 
 # ── CSV ──
 
 def parse_csv(file_path: str) -> List[Dict[str, Any]]:
-    import csv
-    content = None
-    for enc in ("utf-8", "utf-8-sig", "latin-1", "gbk"):
-        try:
-            with open(file_path, "r", encoding=enc, errors="replace") as f: content = f.read()
-            break
-        except Exception: continue
-    if content is None: return []
-    rows = [[c.strip() for c in row] for row in csv.reader(content.splitlines())]
-    if not rows: return []
-    texts = [" | ".join(r) for r in rows]
-    return [{"type": "table", "text": "\n".join(texts), "page_idx": 0, "cells": rows, "meta": {"source": "csv", "rows": len(rows)}}]
-
-
-# ── PDF ──
-
-
+    converter, info = _resolve_parser(file_path, ["csv"])
+    if converter:
+        with open(file_path, "rb") as f:
+            return _elements_to_dicts(converter.convert(f, info))
+    return []
 
 
 # ── MarkItDown (unified DOCX/PPTX/XLSX/PDF/HTML → structured Markdown) ──
 
 def parse_markitdown(file_path: str) -> List[Dict[str, Any]]:
-    """Convert office documents to structured Markdown via MarkItDown, then split by headings.
+    ext = os.path.splitext(file_path)[1].lower()
+    registry = get_document_registry()
+    info = StreamInfo(local_path=file_path, extension=ext)
+    converter = registry.find_converter(info)
+    if converter:
+        with open(file_path, "rb") as f:
+            return _elements_to_dicts(converter.convert(f, info))
 
-    Preserves heading hierarchy (#/##/###), tables (Markdown tables), lists, and links.
-    Falls back to format-specific parser if MarkItDown is unavailable.
-    """
-    ext = os.path.splitext(file_path)[1].lower().lstrip(".")
-    if ext == "html":
-        return _parse_markitdown_impl(file_path, ext)
-    try:
-        from markitdown import MarkItDown
-    except ImportError:
-        return _fallback_text(file_path, f"markitdown+{ext}")
-    return _parse_markitdown_impl(file_path, ext)
-
-
-def _parse_markitdown_impl(file_path: str, ext: str) -> List[Dict[str, Any]]:
-    try:
-        from markitdown import MarkItDown
-        md = MarkItDown()
-        result = md.convert(file_path)
-        text = result.text_content or ""
-    except Exception as e:
-        return [{"type": "text", "text": f"[markitdown conversion failed: {e}]",
-                 "page_idx": 0, "cells": None, "meta": {"source": f"markitdown+{ext}", "error": str(e)}}]
-
+    ext_no_dot = ext.lstrip(".")
+    with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
+        text = f.read()
     if not text.strip():
         return []
-
-    # Split by Markdown headings (reuse same strategy as parse_markdown)
-    sections = re.split(r"\n(?=#{1,6}\s)", text)
-    elements: List[Dict[str, Any]] = []
-    for si, section in enumerate(sections):
-        if section.strip():
-            elements.append({
-                "type": "text",
-                "text": section.strip(),
-                "page_idx": si,
-                "cells": None,
-                "meta": {"source": f"markitdown+{ext}", "parser": "markitdown"},
-            })
-    return elements or [{
-        "type": "text", "text": text.strip(), "page_idx": 0, "cells": None,
-        "meta": {"source": f"markitdown+{ext}", "parser": "markitdown"},
-    }]
+    return [{"type": "text", "text": text.strip(), "page_idx": 0, "cells": None,
+             "meta": {"source": f"markitdown+{ext_no_dot}", "fallback": True}}]
 
 
-# ── HTML (via MarkItDown) ──
+# ── HTML ──
 
 def parse_html(file_path: str) -> List[Dict[str, Any]]:
-    """Parse HTML files via MarkItDown → structured Markdown."""
     return parse_markitdown(file_path)
 
 
 # ── Audio ──
 
 def parse_audio(file_path: str) -> List[Dict[str, Any]]:
-    ext = os.path.splitext(file_path)[1].lower().strip(".")
-    if ext not in ("mp3", "wav", "m4a", "ogg", "flac", "aac", "opus", "wma"):
-        return [{"type": "text", "text": f"[unsupported audio format: .{ext}]", "page_idx": 0, "cells": None, "meta": {"source": "audio", "error": "unsupported_format"}}]
-    try:
-        from core.harness.document.transcriber import transcribe_audio
-        segments = transcribe_audio(file_path, language="zh")
-        text = " ".join(s.get("text", "") for s in segments if s.get("text"))
-        return [{"type": "text", "text": text, "page_idx": 0, "cells": None, "meta": {"source": "audio"}}] if text else [{"type": "text", "text": "[no speech detected]", "page_idx": 0, "cells": None, "meta": {"source": "audio"}}]
-    except Exception as e:
-        return [{"type": "text", "text": f"[audio transcription failed: {e}]", "page_idx": 0, "cells": None, "meta": {"source": "audio", "error": str(e)}}]
+    converter, info = _resolve_parser(file_path, ["audio", "mp3", "wav", "m4a"])
+    if converter:
+        with open(file_path, "rb") as f:
+            return _elements_to_dicts(converter.convert(f, info))
+    return []
 
 
 # ── Image ──
 
 def parse_image(file_path: str) -> List[Dict[str, Any]]:
-    ext = os.path.splitext(file_path)[1].lower().strip(".")
-    if ext not in ("png", "jpg", "jpeg", "bmp", "tiff", "tif", "webp"):
-        return [{"type": "text", "text": f"[unsupported image format: .{ext}]", "page_idx": 0, "cells": None, "meta": {"source": "image", "error": "unsupported_format"}}]
-    try:
-        from core.harness.document.ocr import ocr_keyframes
-        segments = ocr_keyframes([file_path])
-        text = " ".join(s.get("text", "") for s in segments if s.get("text"))
-        return [{"type": "text", "text": text, "page_idx": 0, "cells": None, "meta": {"source": "image"}}] if text else [{"type": "text", "text": "[no text detected]", "page_idx": 0, "cells": None, "meta": {"source": "image"}}]
-    except Exception as e:
-        return [{"type": "text", "text": f"[image OCR failed: {e}]", "page_idx": 0, "cells": None, "meta": {"source": "image", "error": str(e)}}]
+    converter, info = _resolve_parser(file_path, ["image", "png", "jpg", "jpeg"])
+    if converter:
+        with open(file_path, "rb") as f:
+            return _elements_to_dicts(converter.convert(f, info))
+    return []
 
 
 # ── JSON ──
 
 def parse_json_document(file_path: str) -> List[Dict[str, Any]]:
-    import json as _json
-    try:
-        with open(file_path, "r", encoding="utf-8", errors="replace") as f: data = _json.load(f)
-        if isinstance(data, list): text = "\n".join(_json.dumps(item, ensure_ascii=False) for item in data[:200])
-        elif isinstance(data, dict): text = _json.dumps(data, ensure_ascii=False, indent=2)
-        else: text = str(data)
-        return [{"type": "text", "text": text, "page_idx": 0, "cells": None, "meta": {"source": "json"}}]
-    except Exception as e:
-        return [{"type": "text", "text": f"[json parse failed: {e}]", "page_idx": 0, "cells": None, "meta": {"source": "json", "error": str(e)}}]
+    converter, info = _resolve_parser(file_path, ["json"])
+    if converter:
+        with open(file_path, "rb") as f:
+            return _elements_to_dicts(converter.convert(f, info))
+    return []
 
 
 # ── Email .eml ──
 
 def parse_eml(file_path: str) -> List[Dict[str, Any]]:
-    import email
-    from email.policy import default
-    try:
-        with open(file_path, "r", encoding="utf-8", errors="replace") as f: msg = email.message_from_string(f.read(), policy=default)
-        parts = [f"Subject: {msg.get('Subject', '(no subject)')}", f"From: {msg.get('From', '(unknown)')}", f"Date: {msg.get('Date', '(unknown)')}"]
-        body = ""
-        if msg.is_multipart():
-            for part in msg.walk():
-                if part.get_content_type() == "text/plain":
-                    payload = part.get_payload(decode=True)
-                    if payload: body += payload.decode("utf-8", errors="replace") + "\n"
-        else:
-            payload = msg.get_payload(decode=True)
-            if payload: body = payload.decode("utf-8", errors="replace")
-        if body.strip(): parts.append(f"\nBody:\n{body.strip()}")
-        return [{"type": "text", "text": "\n".join(parts), "page_idx": 0, "cells": None, "meta": {"source": "eml"}}]
-    except Exception as e:
-        return [{"type": "text", "text": f"[email parse failed: {e}]", "page_idx": 0, "cells": None, "meta": {"source": "eml", "error": str(e)}}]
+    converter, info = _resolve_parser(file_path, ["eml"])
+    if converter:
+        with open(file_path, "rb") as f:
+            return _elements_to_dicts(converter.convert(f, info))
+    return []
 
+
+from core.harness.document.protocol import get_document_registry
 
 __all__ = ["parse_docx", "parse_pptx", "parse_markdown", "parse_csv", "parse_audio", "parse_image", "parse_json_document", "parse_eml", "parse_markitdown", "parse_html", "extract_images_from_document", "describe_images"]
 

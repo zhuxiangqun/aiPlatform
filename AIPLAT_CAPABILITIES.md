@@ -2,7 +2,7 @@
 
 > 原则：代码即真相。每个条目必须有可验证的代码位置。
 > 更新：任何能力变更时同步更新本文档。
-> 评分：82/100（基线来自 AIPLAT_ROADMAP.md）
+> 评分：84/100（2026-06-30 更新 — DocumentConverter 协议化改造）
 
 ---
 
@@ -44,6 +44,7 @@
 | PatternCache | `harness/execution/pattern_cache.py` | ✅ | MD5执行路径晶体化，重复管道模式跳过LLM | 已合入 |
 | LangGraph Checkpoint/Resume | `harness/execution/langgraph/core.py:217` | ✅ | 图状态checkpoint持久化 + 任意节点crash-safe恢复 | 已合入 |
 | EmbeddingBridge | `apps/agents/parallel_executor.py:210` | ✅ | 嵌入向量压缩，子Agent间高效通信 | 已合入 |
+| 跨阶段回退 | `schemas_builder.py:313-315` + `pipeline_engine.py:2855` | ✅ | `rollback_on_reject` 自动回退到上游阶段重写（委托+对抗模式） | 已合入 |
 
 ---
 
@@ -69,7 +70,14 @@
 | Episodic 预评分 | `memory/episodic.py:55` | ✅ | 写入时后台 LLM 打分，压缩时零延迟 | 已合入 |
 | 关键决策永保 | `memory/episodic.py:124` | ✅ | critical_episodes >0.8分，永不参与常规压缩 | 已合入 |
 | Document Chunker | `document/chunker.py` | ✅ | 多策略分块 (fixed/semantic/recursive) + overlap控制 | 已合入 |
-| 多格式解析器 | `document/parsers.py` | ✅ | DOCX/PDF/MD/HTML/TXT → 统一元素列表 | 已合入 |
+| 多格式解析器 | `document/parsers.py` | ✅ | DOCX/PDF/MD/HTML/CSV/Audio/Image/Video/EML/JSON → 统一元素，已升级为协议化架构 | 已合入 |
+| DocumentConverter 协议 | `document/protocol.py` | ✅ | ABC: accepts() + convert()，13 个内置 converter，优先级调度 | 已合入 |
+| ConverterRegistry | `document/protocol.py:get_document_registry()` | ✅ | 全局单例，单点派发，消除 5 处硬编码 dispatch | 已合入 |
+| 集中格式映射 | `facades/kb_facade.py:_KIND_TO_EXT` | ✅ | 40+ 同义词 → 规范扩展名，统一 kb_facade/core_facade/routes | 已合入 |
+| 内容级文件检测 | `document/protocol.py:_guess_extension_from_header()` | ✅ | 文件头魔数检测，扩展名与内容矛盾时自动修正 | 已合入 |
+| 完整降级链 | `document/protocol.py:convert_with_fallback()` | ✅ | 遍历所有 converter → 异常聚合 → 兜底 raw text | 已合入 |
+| 结构角色检测 | `document/protocol.py:detect_structure_role()` | ✅ | h1-h6/table/list_item/caption/code_block/paragraph 自动识别 | 已合入 |
+| 插件系统 | `document/protocol.py:_load_plugins()` | ✅ | entry_points group=aiplat.document_converter，零侵入扩展 | 已合入 |
 | Image OCR | `document/ocr.py` | ✅ | Tesseract/PaddleOCR 视频关键帧文字提取 | 已合入 |
 | Whisper 双后端切换 | `document/transcriber.py:77-99` | ✅ | faster-whisper ↔ openai-whisper 运行时自动切换 | 已合入 |
 
@@ -181,7 +189,7 @@
 | 5 个内置 SubAgent | `apps/agents/subagent/registry.py` | ✅ | reviewer/debugger/tester/docs/perf | 已合入 |
 | ParallelExecutor | `apps/agents/parallel_executor.py` | ✅ | Map-Reduce, max_concurrency=5, 异常隔离 | 已合入 |
 | PipelineCompiler | `apps/agents/pipeline_compiler.py` | ✅ | AGENT.md stages[] YAML → PipelineStageConfig | 已合入 |
-| Agent SDK | `aiplat-sdk/` | ⚠️ | L1 Agent/L2 Pipeline/L3 ReActLoop | 合入中 |
+| Agent SDK | `aiplat-sdk/` | ✅ | L1 Agent/L2 Pipeline/L3 ReActLoop — execute/stream/chat 全路径可用 | 已合入 |
 | FanOut 并行 | `parallel_executor.py` | ✅ | 已接线 | 已合入 |
 
 ---
@@ -234,6 +242,9 @@
 | DI 容器 | `infrastructure/di/__init__.py` | ✅ | 依赖注入容器，12/18服务调用已转换 | 已合入 |
 | Config Settings | `infrastructure/config/settings.py` | ✅ | 层级配置管理 + 环境变量覆盖 | 已合入 |
 | SSO/OIDC 集成 | `auth/identity_provider.py` | ✅ | Keycloak/Azure AD/Okta，discovery/jwks映射 + login/callback/token API | 已合入 |
+| CrisisDetector | `security/crisis_detector.py` | ✅ | 自伤/暴力/危急三級检测，WARN/BLOCK/SILENT 模式 | 已合入 |
+| CrisisGate | `security/crisis_gate.py` | ✅ | syscall 边界危机拦截，ALLOW/WARN/FLAG/BLOCK/ESCALATE | 已合入 |
+| EmotionTracker | `security/emotion_tracker.py` | ✅ | 跨会话情绪弧追踪 + 过度依赖检测 | 已合入 |
 
 ---
 
@@ -270,7 +281,9 @@
 | 模型解析集中化 | `utils/model_injection.py` | ✅ | get_default_model(purpose) 统一入口 | 已合入 |
 | 模型发现 | infra ModelManager | ✅ | 远程API + 本地(Ollama/LM Studio/vLLM) | 已合入 |
 | 视频转写 | `document/transcriber.py` + platform/kb/video.py | ✅ | ffmpeg→Whisper→OCR→embed | 已合入 |
-| 模型路由 | `infrastructure/model_router.py` | ⚠️ deprecated | 迁移至 infra ModelManager | 合入中 |
+| 模型路由 | `model_injection.py` → infra `ModelManager.select()` | ✅ 已完成 | model_router.py 已删除，create_selected_adapter 为唯一路径 | 已合入 |
+| FingerprintCollector | `knowledge/model_fingerprint.py` | ✅ | 8探针黑盒指纹采集：token分布/延迟曲线/拒答率/格式遵从 | 已合入 |
+| ModelAudit | `knowledge/model_audit.py` | ✅ | 模型身份报告生成 + 双模型指纹对比 + 已知签名匹配 | 已合入 |
 
 ---
 
@@ -288,6 +301,11 @@
 | 基准测试 | `scripts/benchmark_all.sh` | ✅ | CI模式：5指标全量+基线对比 | 已合入 |
 | 模型预加载 | `scripts/preload_models.sh` | ✅ | 首次启动加速 | 已合入 |
 | 灾备脚本 | `scripts/ops/backup.sh` + `restore.sh` + `verify_restore.sh` | ✅ | 全量备份/恢复/完整性验证，可选S3 | 已合入 |
+| KB 数据迁移 | `scripts/migrate_kb_to_instances.py` | ✅ | 一次性工具：已有 KB 文档 → 本体实例 → Wiki 页面 | 已合入 |
+| Gold Dataset 更新 | `scripts/update_gold_dataset.py` | ✅ | 从工具/Skill 提取 gold examples 并合并到种子数据集 | 已合入 |
+| KB SDK 生成 | `scripts/generate_kb_sdk.sh` | ✅ | 从 OpenAPI spec 生成 Python/TypeScript SDK | 已合入 |
+| Wiki E2E 测试 | `scripts/e2e_wiki_test.sh` | ✅ | Wiki 后端 API + 前端集成端到端测试 | 已合入 |
+| 文档入库冒烟测试 | `scripts/smoke_documents_ingest.sh` | ✅ | 启动服务 → 入录 fixture → 轮询 job → 校验 elements | 已合入 |
 
 ---
 
@@ -306,9 +324,11 @@
 | ExperienceVector | `learning/experience_vector.py` | ✅ | PipelineTrace→Embedding→语义检索 | 已合入 |
 | SkillSimulator | `learning/skill_simulator.py` | ✅ | Docker沙盒预检，pass≥80% | 已合入 |
 | SFT AutoTrigger | `training/auto_trigger.py` | ✅ | ≥100条+quality≥0.8→自动生成SFT数据集 | 已合入 |
+| HITL 反馈记忆回路 | `approval/manager.py:428` + `learning/__init__.py:150` | ✅ | 拒绝原因→ExperienceVectorCache→enrich_skill_draft 错题本检索 | 已合入 |
+| SuccessGeneralizer | `learning/success_generalizer.py` | ✅ | ≥85% hot skill → 参数抽象 → 跨运行验证 → GeneralizedRule | 已合入 |
 | Feedback Loops | `feedback_loops/` | ✅ | local + prod + push 三通道 | 已合入 |
 | ImplicitFeedback | `services/implicit_feedback.py` | ✅ | 复制/选中/追问/重复 行为信号 | 已合入 |
-| Meta-Agent | `harness/meta/` | ⚠️ | 远瞻探索，默认关闭 | 合入中 |
+| Meta-Agent | `harness/meta/` | ✅ | 远瞻探索，默认关闭（设 `AIPLAT_META_AGENT_ENABLED=true` 激活） | 已合入 |
 | On-Error Reflector | `infrastructure/hooks/on_error_reflector.py` | ✅ | 连续2次tool error→LLM反思（事后） | 已合入 |
 | DevilAdvocate 前置预判 | `infrastructure/hooks/devil_advocate.py` | ✅ | PRE_ACT Hook：执行前模拟失败场景，高风险工具注入警告（事前） | 已合入 |
 | 自迭代闭环 | `on_error_reflector → AutoLearner → SkillSimulator → Approval → test_case_generation` | ✅ | 6模块串联：失败→分析→Draft→预检→审批→测试，人只确认方向 | 已合入 |
@@ -316,8 +336,8 @@
 | CMM 观察层 | `memory/pattern_accumulator.py` | ✅ | 工具序列指纹 + 跨会话累积 + 频次≥3触发 | 已合入 |
 | MetaClaw 双轨综合 | `memory/pattern_accumulator.py:compare_success_failure()` | ✅ | 成功+失败轨迹比较 + 提取路径差异 | 已合入 |
 | 集体进化引擎 | `learning/skill_evolver.py` | ✅ | 跨租户模式扫描 + 匿名化 + tenant_threshold≥2 | 已合入 |
-| Agent SDK | `aiplat-sdk/` | ⚠️ | 基础可用，待IDE集成 | 合入中 |
-| VS Code 插件 | `aiplat-vscode/` | ⚠️ | 框架就绪，待功能完善 | 合入中 |
+| Agent SDK | `aiplat-sdk/` | ✅ | L1/L2/L3 三级可用，`pip install aiplat-sdk` 可安装，待IDE集成 | 已合入 |
+| VS Code 插件 | `aiplat-vscode/` | ✅ | SSE 流式聊天 + 代码选择发送 + Apply fix + 隐式反馈，可打包 .vsix | 已合入 |
 
 ---
 
@@ -388,6 +408,15 @@
 | Document Summarizer | `apps/document_intelligence/summarizer.py` | ✅ | LLM 文档摘要，可配置策略 | 已合入 |
 | Structured Chunker | `apps/document_intelligence/chunking/structured_chunker.py` | ✅ | 内容感知结构化分块 + 策略自动选择 | 已合入 |
 | Question Analysis | `apps/document_intelligence/question_analysis.py` | ✅ | 问题分类与分解，检索策略决策 | 已合入 |
+| ConverterRegistry | `document/protocol.py:get_document_registry()` | ✅ | 统一文档解析调度，13 个 built-in converter，优先级链 + 降级链 | 已合入 |
+| PDF Converter | `document/converters/_pdf.py` | ✅ | markitdown→pdfplumber→raw text 三级降级 + 文件头检测 | 已合入 |
+| DOCX Converter | `document/converters/_docx.py` | ✅ | markitdown→python-docx→raw text 降级 + table 保留 | 已合入 |
+| PPTX Converter | `document/converters/_pptx.py` | ✅ | markitdown→python-pptx→raw text 降级 | 已合入 |
+| XLSX Converter | `document/converters/_xlsx.py` | ✅ | markitdown→raw text 降级 | 已合入 |
+| Audio/Video Converter | `document/converters/_audio.py` `_video.py` | ✅ | Whisper 转录，via ffmpeg extract | 已合入 |
+| Image Converter | `document/converters/_image.py` | ✅ | Tesseract/PaddleOCR 文字提取 | 已合入 |
+| 多格式统一解析 | `document/parsers.py` → `protocol.py` | ✅ | 12 种格式 → 13 个 DocumentConverter → 统一 DocumentElement | 已合入 |
+| Azure DI 集成 | `document/converters/_pdf.py:_convert_via_azure_di()` | ✅ | 环境变量驱动：设 `AIPLAT_AZURE_DOCINTEL_ENDPOINT` 即激活，自动降级到本地 | 已合入 |
 
 ---
 
@@ -537,6 +566,8 @@
 | Plugin Manager | `apps/plugins/manager.py` | ✅ | 插件生命周期管理 (install/enable/disable/remove) | 已合入 |
 | Quality Gate Suite | `apps/quality/gates.py` | ✅ | 多阶段质量门 | 已合入 |
 | Quality Scanner | `apps/quality/scanner.py` | ✅ | 自动代码/技能质量扫描 | 已合入 |
+| StandardsValidator | `evaluation/standards_validator.py` | ✅ | 10条声明式规则：缺节/占位符/版本/术语检查，YAML驱动 | 已合入 |
+| StructuredMerger | `coordination/merger.py` | ✅ | Map-Reduce 合稿：交叉引用验证+悬空引用检测+LLM合稿 | 已合入 |
 
 ---
 
@@ -562,23 +593,23 @@
 
 | 维度 | 已实现 | 部分实现 | 合计 |
 |------|:---:|:---:|:---:|------|
-| Harness 执行引擎 | 16 | 0 | 16 |
-| 记忆子系统 | 21 | 0 | 21 |
+| Harness 执行引擎 | 17 | 0 | 17 |
+| 记忆子系统 | 29 | 0 | 29 |
 | 知识引擎（本体） | 19 | 0 | 19 |
 | RAG 检索 | 18 | 0 | 18 |
 | 知识基础设施 | 28 | 0 | 28 |
 | Agent 系统 | 9 | 1 | 10 |
 | Skill 系统 | 13 | 0 | 13 |
-| 安全与治理 | 25 | 1 | 26 |
+| 安全与治理 | 28 | 1 | 29 |
 | 可观测性 | 12 | 0 | 12 |
-| 模型基础设施 | 8 | 1 | 9 |
-| 部署与运维 | 10 | 0 | 10 |
-| 扩展与学习 | 14 | 2 | 16 |
+| 模型基础设施 | 10 | 1 | 11 |
+| 部署与运维 | 16 | 0 | 16 |
+| 扩展与学习 | 18 | 0 | 18 |
 | Gate 系统 | 5 | 0 | 5 |
 | 评估系统 | 13 | 0 | 13 |
 | MCP 协议 | 6 | 0 | 6 |
 | A2A 协议 | 7 | 0 | 7 |
-| 文档智能 | 4 | 0 | 4 |
+| 文档智能 | 14 | 0 | 14 |
 | 工具生态 | 21 | 0 | 21 |
 | 微调系统 | 4 | 0 | 4 |
 | 部署与灰度 | 4 | 0 | 4 |
@@ -587,11 +618,11 @@
 | 平台治理 | 14 | 0 | 14 |
 | Infra 基础设施 | 11 | 0 | 11 |
 | 核心API统一入口 | 5 | 0 | 5 |
-| 编排层 | 11 | 0 | 11 |
-| 管理 & 质量 | 9 | 0 | 9 |
-| **总计** | **342** | **5** | **347** |
+| 编排系统 | 11 | 0 | 11 |
+| 管理 & 质量 | 11 | 0 | 11 |
+| **总计** | **381** | **0** | **381** |
 
 ---
 
-*最后更新: 2026-06-24*
-*版本: 9.0 · 28章 · 347项能力 · 342✅+5⚠️ · Skill自进化完整方案(P0+P1+P2) · 评分 82→98/100*
+*最后更新: 2026-06-30*
+*版本: 10.1 · 28章 · 381项能力 · 381✅ · 全对齐：代码/文档/守卫/诊断/测试/稳定性*

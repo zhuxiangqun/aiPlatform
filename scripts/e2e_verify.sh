@@ -5,6 +5,8 @@
 # Tests: token tracking, event persistence, span_id integrity, dedup,
 #        and MCP test flow.
 #
+# See also: e2e_wiki_test.sh — Wiki specific E2E (backend API + frontend)
+#
 # Usage: bash scripts/e2e_verify.sh
 # ============================================================================
 set -euo pipefail

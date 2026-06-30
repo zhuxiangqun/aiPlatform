@@ -185,9 +185,14 @@ def _decode_jwt_claims(token: str) -> Dict[str, Any]:
             import jwt  # type: ignore
 
             return jwt.decode(token, secret, algorithms=["HS256", "RS256"], options={"verify_aud": False})
-        except Exception as e:
-            # fallback to unverified decode
-            logging.debug(str(e), exc_info=True)
+        except jwt.PyJWTError as e:
+            import logging
+            logging.getLogger("aiplat.platform").warning(
+                "JWT verification failed (falling back to unverified decode): %s", e)
+        except Exception:
+            import logging
+            logging.getLogger("aiplat.platform").error(
+                "Unexpected error during JWT verification", exc_info=True)
     parts = token.split(".")
     if len(parts) < 2:
         return {}
@@ -1218,7 +1223,7 @@ async def kb_delete_document(doc_id: str, request: Request):
             conn.execute("DELETE FROM kb_eval_samples WHERE doc_ids = ?", (json.dumps([doc_id]),))
             conn.execute("DELETE FROM kb_eval_reports WHERE sample_id NOT IN (SELECT id FROM kb_eval_samples)")
         except Exception:
-            logging.getLogger("platform.routes").debug("KB cleanup best-effort", exc_info=True)
+            logging.getLogger("platform.routes").warning("KB cleanup best-effort", exc_info=True)
         conn.execute("DELETE FROM documents WHERE tenant_id=? AND doc_id=?", (identity.tenant_id, doc_id))
         conn.commit()
     finally:
@@ -1245,7 +1250,41 @@ async def kb_delete_document(doc_id: str, request: Request):
                     logging.debug(str(e), exc_info=True)
     except Exception as e:
         logging.debug(str(e), exc_info=True)
+    # Phase E3: best-effort cleanup of ontology graph entities tied to this doc
+    try:
+        from core.harness.ontology_engine.cleanup import cleanup_stale_entities_by_doc
+        cleanup_stale_entities_by_doc(doc_id=doc_id, dry_run=False)
+    except Exception as e:
+        logging.getLogger("platform.routes").debug("Ontology cleanup skipped: %s", e)
     return {"status": "deleted", "doc_id": doc_id}
+
+
+@app.post("/kb/ingest-url")
+@app.post("/platform/kb/ingest-url")
+@app.post("/api/v1/kb/ingest-url")
+async def kb_ingest_url(request: Request):
+    """Ingest a web page by URL. Parses HTML and adds to knowledge base."""
+    import logging
+    identity = _resolve_identity(request)
+    _require_scope(identity, "kb:write")
+    body = await request.json()
+    url = str(body.get("url", "")).strip()
+    if not url:
+        raise HTTPException(status_code=400, detail="url is required")
+    collection_id = str(body.get("collection_id", "default"))
+    name = str(body.get("name", ""))
+    from kb.service import ingest_url
+    result = ingest_url(tenant_id=identity.tenant_id, collection_id=collection_id, url=url, name=name)
+    return result
+
+
+@app.get("/kb/metrics")
+@app.get("/platform/kb/metrics")
+@app.get("/api/v1/kb/metrics")
+async def kb_metrics(tenant_id: str = "", hours: int = 168):
+    """Return 7 operational KB metrics: no-answer rate, citation coverage, etc."""
+    from kb.metrics import get_kb_metrics
+    return get_kb_metrics(window_hours=hours, tenant_id=tenant_id)
 
 
 @app.post("/kb/documents/{doc_id}/reingest")
@@ -1318,6 +1357,12 @@ async def kb_reingest_document(doc_id: str, request: Request):
         return {"status": "reingested", "kind": "video", "result": result}
 
     core_resp = await _core_request("POST", f"/api/core/skills/knowledge_ingest/execute", identity=identity, json_body=payload)
+    # Phase E2: best-effort ontology re-process — clean old entities, trigger re-extraction
+    try:
+        from core.harness.ontology_engine.cleanup import cleanup_stale_entities_by_doc
+        cleanup_stale_entities_by_doc(doc_id=doc_id, dry_run=False)
+    except Exception as e:
+        logging.getLogger("platform.routes").debug("Ontology re-process skipped: %s", e)
     return core_resp
 
 
@@ -1460,16 +1505,18 @@ async def documents_ingest(request: Request):
         kind = str(form.get("kind") or "").strip().lower()
         if not kind:
             ext = os.path.splitext(file.filename or "")[1].lower()
-            if ext in (".mp4", ".mov", ".mkv", ".avi", ".webm", ".m4v"):
-                kind = "video"
-            elif ext in (".txt", ".text"):
-                kind = "txt"
-            elif ext in (".docx", ".doc"):
-                kind = "word"
-            elif ext in (".pptx", ".ppt"):
-                kind = "ppt"
-            elif ext in (".md", ".markdown"):
-                kind = "markdown"
+            from core.api.facades.kb_facade import _KIND_TO_EXT, normalize_kind
+            # Use centralized extension→kind mapping from kb_facade
+            raw_kind = _KIND_TO_EXT.get(ext.lstrip("."), "")
+            if not raw_kind:
+                if ext in (".mp4", ".mov", ".mkv", ".avi", ".webm", ".m4v"):
+                    kind = "video"
+                elif ext in (".txt", ".text"):
+                    kind = "txt"
+                else:
+                    kind = ext.lstrip(".").lower()
+            else:
+                kind = normalize_kind(ext.lstrip("."))
     else:
         body = await request.json()
         if not isinstance(body, dict):
@@ -1495,12 +1542,9 @@ async def documents_ingest(request: Request):
                 kind = "video"
             if not kind and url:
                 ext = os.path.splitext(str(url).split("?")[0])[1].lower()
-                if ext in (".docx", ".doc"):
-                    kind = "word"
-                elif ext in (".pptx", ".ppt"):
-                    kind = "ppt"
-                elif ext in (".md", ".markdown"):
-                    kind = "markdown"
+                from core.api.facades.kb_facade import _KIND_TO_EXT, normalize_kind
+                raw = _KIND_TO_EXT.get(ext.lstrip("."))
+                kind = normalize_kind(ext.lstrip(".")) if raw else ""
 
         # Download URL to local file if no file_path provided
         if url and not file_path:
@@ -1547,18 +1591,22 @@ async def documents_ingest(request: Request):
 
 @app.post("/platform/documents/ingest-directory")
 async def documents_ingest_directory(request: Request):
-    """Batch ingest documents from a directory (stub — not yet implemented)."""
+    """Batch ingest documents from a directory (not yet implemented)."""
     identity = _resolve_identity(request)
     _require_scope(identity, "kb:write")
-    return {"status": "not_implemented", "message": "Directory batch ingest is planned for a future release"}
+    import logging
+    logging.getLogger("aiplat.platform").warning("Directory batch ingest called but not yet implemented")
+    raise HTTPException(status_code=501, detail="Directory batch ingest is planned for a future release")
 
 
 @app.post("/platform/kb/watch")
 async def kb_watch_directory(request: Request):
-    """Watch a directory for auto-ingest (stub — not yet implemented)."""
+    """Watch a directory for auto-ingest (not yet implemented)."""
     identity = _resolve_identity(request)
     _require_scope(identity, "kb:write")
-    return {"status": "not_implemented", "message": "Directory watch is planned for a future release"}
+    import logging
+    logging.getLogger("aiplat.platform").warning("Directory watch called but not yet implemented")
+    raise HTTPException(status_code=501, detail="Directory watch is planned for a future release")
 
 
 async def _auto_wiki_update(doc_id: str, file_path: str):
@@ -2270,6 +2318,7 @@ async def platform_workspace_agents_list(request: Request, limit: int = 200, off
 
 @app.post("/api/v1/agents")
 async def api_v1_agents_create(request: Request, body: Dict[str, Any]):
+    import logging
     identity = _resolve_identity(request)
     if not isinstance(body, dict):
         raise HTTPException(status_code=400, detail="body must be json object")
@@ -3411,7 +3460,9 @@ async def delete_analysis_batch(batch_id: str, request: Request):
 
 @app.get("/api/studio/sessions")
 async def list_studio_sessions():
-    """List studio sessions (scaffold — full Studio API to be implemented)."""
+    """List studio sessions (not yet implemented — returns empty until Phase 7)."""
+    import logging
+    logging.getLogger("aiplat.platform").warning("Studio sessions listing called but not yet implemented")
     return {"sessions": [], "total": 0}
 
 if __name__ == "__main__":

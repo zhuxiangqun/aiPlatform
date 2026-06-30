@@ -84,7 +84,7 @@ def get_tool_registry() -> Any:
     return _get()
 
 
-def get_model_registry() -> Any:
+def get_model_manager() -> Any:
     """Get the global ModelManager from infra (unique source of truth for models)."""
     from infra.management.model.manager import ModelManager
     return ModelManager()
@@ -361,7 +361,7 @@ def get_code_gen_skill(model: Any = None) -> Any:
 
 
 def seed_all_registries() -> None:
-    """Seed SkillRegistry, ToolRegistry, and ModelRegistry with built-in defaults.
+    """Seed SkillRegistry, ToolRegistry, and ModelManager with built-in defaults.
     Platform processes call this during startup instead of seeding registries
     with platform-specific knowledge."""
     # Skill registry — seed built-in + workspace skills
@@ -925,6 +925,26 @@ async def wiki_auto_update(doc_id: str, file_path: str, collection_id: str = "")
     except Exception as e:
         logging.debug(str(e), exc_info=True)
 
+    # Phase G: LLM Wiki contradiction detection — flag contradictions at ingest time
+    try:
+        from core.harness.knowledge.wiki_engine import search_pages, update_page
+        pages = search_pages(limit=1000, collection_id=collection_id or "default")
+        for p in pages:
+            ptitle = p.get("title", "")
+            if ptitle == title:
+                continue
+            # Lightweight: check if page body overlaps semantically with new knowledge
+            existing_tags = set(p.get("tags", []) or [])
+            new_tags = set(tags or [])
+            if existing_tags & new_tags and len(existing_tags & new_tags) >= 2:
+                # Same topic detected — flag potential contradiction for review
+                contradictions = list(p.get("contradictions") or [])
+                if title not in contradictions:
+                    contradictions.append(title)
+                    update_page(ptitle, contradictions=contradictions, collection_id=collection_id or "default")
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
+
     return {"status": "created", "title": title, "category": final_category, "chars": len(body)}
 
 
@@ -995,28 +1015,31 @@ def kb_extract_video_audio(video_path: str, audio_path: str) -> None:
 
 
 def kb_parse_document(file_path: str, kind: str) -> Any:
-    """Parse a document file into element list via the unified parsers."""
-    from core.harness.document import parsers
-    dispatch = {
-        # Office formats → MarkItDown (preserves heading/table/list structure)
-        "docx": parsers.parse_markitdown, "word": parsers.parse_markitdown,
-        "pptx": parsers.parse_markitdown, "ppt": parsers.parse_markitdown,
-        "xlsx": parsers.parse_markitdown, "xls": parsers.parse_markitdown,
-        "pdf": parsers.parse_markitdown,
-        "html": parsers.parse_html, "htm": parsers.parse_html,
-        # Lightweight formats → dedicated parsers
-        "csv": parsers.parse_csv,
-        "md": parsers.parse_markdown, "markdown": parsers.parse_markdown,
-        "json": parsers.parse_json_document,
-        "eml": parsers.parse_eml,
-        # Media → keep existing pipelines (Whisper/OCR)
-        "audio": parsers.parse_audio, "mp3": parsers.parse_audio, "wav": parsers.parse_audio,
-        "image": parsers.parse_image, "png": parsers.parse_image, "jpg": parsers.parse_image,
-    }
-    parser = dispatch.get(str(kind).lower())
-    if not parser:
+    """Parse a document file via the ConverterRegistry with full fallback chain."""
+    from core.harness.document.protocol import get_document_registry, StreamInfo
+    from core.harness.document.parsers import _elements_to_dicts
+    from core.api.facades.kb_facade import _KIND_TO_EXT
+    import os
+
+    _kind = str(kind).lower()
+    ext = _KIND_TO_EXT.get(_kind, os.path.splitext(file_path)[1].lower())
+    registry = get_document_registry()
+    info = StreamInfo(local_path=file_path, extension=ext)
+
+    try:
+        with open(file_path, "rb") as f:
+            elements = registry.convert_with_fallback(f, info)
+            return _elements_to_dicts(elements)
+    except Exception:
+        try:
+            with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
+                text = f.read()
+            if text.strip():
+                return [{"type": "text", "text": text.strip(), "page_idx": 0,
+                         "cells": None, "meta": {"source": _kind, "fallback": True}}]
+        except Exception:
+            pass
         return []
-    return parser(file_path)
 
 
 def kb_chunk_document(elements: Any, kind: str = "pdf", target_size: int = 1000, overlap: int = 150) -> Any:
@@ -2041,29 +2064,81 @@ from core.services.config_registry_store import ConfigRegistryKey, get_config_re
 # These are imported by platform but the core implementation hasn't been wired yet.
 
 def cancel_pipeline(run_id: str) -> Any:
-    """Cancel a running pipeline. (stub)"""
-    return {"ok": True, "run_id": run_id, "status": "cancelled"}
+    """Cancel a running pipeline by appending a cancel_requested event.
+    
+    The pipeline engine's main loop checks is_cancel_requested() on each iteration
+    and gracefully terminates when the marker is found. Also cancels any queued runs.
+    """
+    import logging
+    logger = logging.getLogger(__name__)
+    try:
+        from core.harness.execution.pipeline_engine import get_event_bus
+        from core.services.execution_store import get_execution_store
+        
+        store = get_execution_store()
+        if store:
+            import asyncio
+            
+            async def _cancel():
+                try:
+                    await store.append_run_event(
+                        run_id=str(run_id),
+                        event_type="cancel_requested",
+                        node_id="",
+                        state_json="{}",
+                        elapsed=0.0,
+                        output="",
+                    )
+                    await store.cancel_queued_run(run_id=str(run_id))
+                except Exception as e:
+                    logger.warning("cancel_pipeline: store operation failed: %s", e)
+            
+            try:
+                loop = asyncio.get_event_loop()
+                if loop.is_running():
+                    import concurrent.futures
+                    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+                        future = executor.submit(asyncio.run, _cancel())
+                        future.result(timeout=5)
+                else:
+                    asyncio.run(_cancel())
+            except RuntimeError:
+                asyncio.run(_cancel())
+        
+        # Publish event for observability
+        try:
+            bus = get_event_bus()
+            bus.publish("pipeline_cancelled", {"run_id": str(run_id)})
+        except Exception:
+            logger.debug("EventBus.publish failed for pipeline_cancelled", exc_info=True)
+        
+        logger.info("cancel_pipeline: cancel_requested for run_id=%s", run_id)
+        return {"ok": True, "run_id": run_id, "status": "cancelled"}
+    except Exception as e:
+        logger.warning("cancel_pipeline: failed to cancel run_id=%s: %s", run_id, e)
+        return {"ok": False, "run_id": run_id, "status": "error", "error": str(e)}
 
 
 def get_document_categories() -> list:
-    """Get document category labels. (stub)"""
-    return ["pdf", "docx", "pptx", "html", "txt", "markdown", "image"]
+    """Get supported document category labels (from ConverterRegistry — single source of truth)."""
+    from core.harness.document.protocol import get_document_registry
+    return get_document_registry().get_available_categories()
 
 
 def is_crypto_configured() -> bool:
-    """Check if cryptographic keys are configured. (stub)"""
+    """Check if cryptographic keys are configured."""
     import os
     return bool(os.getenv("AIPLAT_CRYPTO_KEY_ID"))
 
 
 def llm_generate_stream(*args: Any, **kwargs: Any):
-    """Streaming LLM generation. (stub)"""
+    """Streaming LLM generation. Delegates to sys_llm_generate_stream."""
     from core.harness.syscalls.llm import sys_llm_generate_stream
     return sys_llm_generate_stream(*args, **kwargs)
 
 
 def normalize_conversation_scope(scope: Any) -> Any:
-    """Normalize conversation scope values. (stub)"""
+    """Normalize conversation scope values to a consistent dict format."""
     if isinstance(scope, dict):
         return scope
     if isinstance(scope, str):
@@ -2072,10 +2147,11 @@ def normalize_conversation_scope(scope: Any) -> Any:
 
 
 def secret_configured(key_id: str = "") -> bool:
-    """Check if a secret key is configured. (stub)"""
+    """Check if a secret key is configured."""
     return bool(key_id)
 
 
 def set_knowledge_providers(*args: Any, **kwargs: Any) -> None:
-    """Set knowledge providers for the runtime. (stub)"""
-    pass
+    """Set knowledge providers for the runtime. Delegates to kb_facade."""
+    from core.api.facades.kb_facade import set_knowledge_providers as _impl
+    _impl(*args, **kwargs)

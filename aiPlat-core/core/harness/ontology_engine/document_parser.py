@@ -239,40 +239,67 @@ class VisualPageParser:
 
 
 class DocumentParser:
-    """Multi-format document parser."""
+    """Multi-format document parser.
+    
+    Delegates raw text extraction to ConverterRegistry (System A),
+    and adds structural enrichment: heading paths, structured tables,
+    QA pairs, entity candidates, VLM page parsing.
+    
+    This implements the "API entry uniqueness" principle (§5.7)
+    — all raw parsing converges through the ConverterRegistry.
+    """
 
     # ── Public API ──
 
     def parse_file(self, file_path: str) -> ParsedDocument:
         """Parse a document file by path. Auto-detects format from extension.
-
+        
         Supports: pdf, docx, html, md, txt, mp4, avi, mov, wav, mp3, png, jpg
+        
+        Now delegates dispatch to ConverterRegistry (System A) for raw text extraction,
+        adding System B's structural enrichment on top.
         """
+        from core.api.facades.kb_facade import _KIND_TO_EXT, normalize_kind
         path = _Path(file_path)
         ext = path.suffix.lower()
-
-        if ext == ".pdf":
-            return self._parse_pdf(path.read_bytes(), file_path)
-        elif ext in (".docx", ".doc"):
-            return self._parse_docx(path.read_bytes(), file_path)
-        elif ext in (".html", ".htm"):
+        kind = normalize_kind(ext.lstrip("."))
+        
+        # Delegate to registry for formats that have converters
+        if kind in ("pdf", "docx", "pptx", "xlsx", "video", "audio"):
+            if kind == "pdf":
+                return self._parse_pdf(path.read_bytes(), file_path)
+            elif kind == "docx":
+                return self._parse_docx(path.read_bytes(), file_path)
+            elif kind == "video":
+                return self._parse_video(file_path)
+            elif kind == "audio":
+                return self._parse_audio_file(file_path)
+            elif kind == "image":
+                return self._parse_image_file(file_path)
+            else:
+                # Other registry formats: pass through raw text
+                elements = self._parse_via_registry(file_path, ext)
+                if elements:
+                    return self._parse_text("\n\n".join(
+                        el.text for el in elements if el.text.strip()
+                    ), file_path)
+                return self._parse_text("", file_path)
+        elif kind == "html" or ext in (".html", ".htm"):
             return self._parse_html(path.read_bytes().decode("utf-8", errors="ignore"), file_path)
-        elif ext == ".md":
+        elif kind in ("markdown", "md") or ext == ".md":
             return self._parse_markdown(path.read_bytes().decode("utf-8", errors="ignore"), file_path)
-        elif ext in (".mp4", ".avi", ".mov", ".mkv", ".webm"):
-            return self._parse_video(file_path)
-        elif ext in (".wav", ".mp3", ".ogg", ".flac", ".m4a"):
-            return self._parse_audio_file(file_path)
-        elif ext in (".png", ".jpg", ".jpeg", ".gif", ".bmp", ".webp"):
+        elif kind == "image":
             return self._parse_image_file(file_path)
         else:
             return self._parse_text(path.read_bytes().decode("utf-8", errors="ignore"), file_path)
 
     def parse_text(self, text: str, *, title: str = "", format: str = "txt") -> ParsedDocument:
-        """Parse raw text string."""
-        if format == "md" or format == "markdown":
+        """Parse raw text string. Uses canonical format normalization."""
+        from core.api.facades.kb_facade import normalize_kind
+        fmt = normalize_kind(format)
+        if fmt == "markdown":
             return self._parse_markdown(text, title)
-        elif format == "html":
+        elif fmt == "html":
             return self._parse_html(text, title)
         else:
             return self._parse_text(text, title)
@@ -329,49 +356,94 @@ class DocumentParser:
         return doc
 
     def _parse_pdf(self, content: bytes, source: str = "") -> ParsedDocument:
-        """Parse PDF with table structure preservation (soft dependency: pdfplumber)."""
+        """Parse PDF via ConverterRegistry, with table extraction from pdfplumber.
+        
+        Text extraction delegates to the ConverterRegistry (System A).
+        Table extraction is unique to System B — pdfplumber preserves
+        row/column relationships that the registry converters flatten.
+        """
         doc = ParsedDocument(format="pdf", raw_text="")
         doc.title = source
-        text = ""
-        all_tables: List[StructuredTable] = []
 
-        # Try pdfplumber first (better quality + table extraction)
+        # Step 1: Try registry-based parsing (markitdown or pdfplumber)
+        elements = self._parse_via_registry(source, ".pdf")
+        if elements:
+            text = "\n\n".join(el.text for el in elements if el.text.strip())
+            doc.raw_text = text
+            doc.chunks = self._build_chunks_from_elements(elements)
+        else:
+            text = ""
+
+        # Step 2: Extract tables with pdfplumber (System B unique value)
+        all_tables: List[StructuredTable] = self._extract_pdf_tables(content)
+
+        # Step 3: Fallback to pdfplumber/PyPDF2 if registry produced no text
+        if not text:
+            text = self._fallback_pdf_text(content, doc)
+            if text:
+                doc.raw_text = text
+                doc.chunks = self._build_chunks_from_raw(text)
+
+        if text and not doc.chunks:
+            result = self._parse_text(text, source)
+            result.tables = all_tables
+            result.metadata["table_count"] = len(all_tables)
+            self._attach_tables_to_chunks(result)
+            return result
+
+        doc.tables = all_tables
+        doc.metadata["table_count"] = len(all_tables)
+        if doc.chunks:
+            self._attach_tables_to_chunks(doc)
+        if not text and not doc.chunks:
+            doc.parse_warnings.append("No text extracted from PDF")
+        return doc
+
+    def _extract_pdf_tables(self, content: bytes) -> List[StructuredTable]:
+        """Extract tables from PDF content using pdfplumber."""
+        tables: List[StructuredTable] = []
         try:
             import pdfplumber
             import io
             with pdfplumber.open(io.BytesIO(content)) as pdf:
-                pages_text = []
                 for i, page in enumerate(pdf.pages):
-                    t = page.extract_text() or ""
-                    if t.strip():
-                        pages_text.append(t)
-                    # Adaptive routing: detect image-heavy pages
-                    image_regions = len(page.images) if hasattr(page, 'images') else 0
-                    route = AdaptiveRouter.route(t, image_regions)
-                    if route == "vlm" and image_regions > 0:
-                        doc.metadata.setdefault("vlm_pages", []).append(i)
-                    # Extract tables with structure preserved
                     raw_tables = page.extract_tables()
                     if raw_tables:
                         for ti, raw in enumerate(raw_tables):
                             if raw and len(raw) > 1:
                                 headers = [str(c or "") for c in raw[0]]
                                 rows = [[str(c or "") for c in row] for row in raw[1:]]
-                                all_tables.append(StructuredTable(
+                                tables.append(StructuredTable(
                                     table_id=f"pdf-page{i}-table{ti}",
                                     headers=headers,
                                     rows=rows,
                                     page_num=i,
                                 ))
-                text = "\n\n".join(pages_text)
+        except ImportError:
+            pass
+        except Exception as e:
+            pass  # Table extraction is best-effort
+        return tables
+
+    def _fallback_pdf_text(self, content: bytes, doc: ParsedDocument) -> str:
+        """Fallback PDF text extraction using pdfplumber or PyPDF2."""
+        text = ""
+        try:
+            import pdfplumber
+            import io
+            with pdfplumber.open(io.BytesIO(content)) as pdf:
+                pages = []
+                for page in pdf.pages:
+                    t = page.extract_text() or ""
+                    if t.strip():
+                        pages.append(t)
+                text = "\n\n".join(pages)
                 doc.metadata["page_count"] = len(pdf.pages)
-                doc.metadata["table_count"] = len(all_tables)
-                doc.tables = all_tables
         except ImportError:
             pass
         except Exception as e:
             doc.parse_warnings.append(f"pdfplumber error: {e}")
-        # Fallback: PyPDF2
+
         if not text:
             try:
                 import PyPDF2
@@ -385,46 +457,32 @@ class DocumentParser:
                 text = "\n\n".join(pages)
                 doc.metadata["page_count"] = len(reader.pages)
             except ImportError:
-                doc.parse_warnings.append("PDF parsing requires pdfplumber or PyPDF2. Install: pip install pdfplumber")
+                doc.parse_warnings.append(
+                    "PDF parsing requires pdfplumber or PyPDF2. Install: pip install pdfplumber"
+                )
             except Exception as e:
                 doc.parse_warnings.append(f"PyPDF2 error: {e}")
-        if text:
-            result = self._parse_text(text, source)
-            # Carry tables from PDF extraction
-            result.format = "pdf"
-            result.tables = all_tables
-            result.metadata["table_count"] = len(all_tables)
-            self._attach_tables_to_chunks(result)
-            return result
-        else:
-            doc.parse_warnings.append("No text extracted from PDF")
-            return doc
+        return text
 
     def _parse_docx(self, content: bytes, source: str = "") -> ParsedDocument:
-        """Parse Word document (soft dependency)."""
+        """Parse Word document via ConverterRegistry + table extraction."""
         doc = ParsedDocument(format="docx", raw_text="")
-        doc.title = source
+
+        # Step 1: Try registry-based parsing (markitdown)
+        elements = self._parse_via_registry(source, ".docx")
+        if elements:
+            doc.raw_text = "\n\n".join(el.text for el in elements if el.text.strip())
+            doc.chunks = self._build_chunks_from_elements(elements)
+            doc.title = doc.chunks[0].text[:120] if doc.chunks else source
+        else:
+            doc.title = source
+
+        # Step 2: Extract tables via python-docx (System B unique value)
+        all_tables: List[StructuredTable] = []
         try:
             import docx as _docx
             import io
             d = _docx.Document(io.BytesIO(content))
-            paragraphs = []
-            for p in d.paragraphs:
-                style = p.style.name if p.style else ""
-                text = p.text.strip()
-                if text:
-                    level = 0
-                    if "Heading" in style or "heading" in style:
-                        try:
-                            level = int(_re.search(r"\d+", style).group())
-                        except Exception:
-                            level = 1
-                    paragraphs.append((text, level))
-            doc.title = paragraphs[0][0][:120] if paragraphs else source
-            chunks = self._build_heading_chunks(paragraphs)
-            doc.chunks = self._build_chunks(chunks)
-            # Extract tables from docx
-            all_tables: List[StructuredTable] = []
             for ti, table in enumerate(d.tables):
                 rows = [[cell.text.strip() for cell in row.cells] for row in table.rows]
                 if rows and len(rows) > 1:
@@ -435,14 +493,45 @@ class DocumentParser:
                         headers=headers,
                         rows=data_rows,
                     ))
-            doc.tables = all_tables
-            doc.metadata["table_count"] = len(all_tables)
-            self._attach_tables_to_chunks(doc)
         except ImportError:
-            doc.parse_warnings.append("Word parsing requires python-docx. Install: pip install python-docx")
+            pass
         except Exception as e:
-            doc.parse_warnings.append(f"DOCX parse error: {e}")
+            doc.parse_warnings.append(f"DOCX table extraction error: {e}")
+
+        doc.tables = all_tables
+        doc.metadata["table_count"] = len(all_tables)
+
+        # Step 3: Fallback to python-docx for text if registry failed
         if not doc.chunks:
+            try:
+                import docx as _docx
+                import io
+                d = _docx.Document(io.BytesIO(content))
+                paragraphs = []
+                for p in d.paragraphs:
+                    style = p.style.name if p.style else ""
+                    text = p.text.strip()
+                    if text:
+                        level = 0
+                        if "Heading" in style or "heading" in style:
+                            try:
+                                level = int(_re.search(r"\d+", style).group())
+                            except Exception:
+                                level = 1
+                        paragraphs.append((text, level))
+                doc.title = paragraphs[0][0][:120] if paragraphs else source
+                chunks = self._build_heading_chunks(paragraphs)
+                doc.chunks = self._build_chunks(chunks)
+            except ImportError:
+                doc.parse_warnings.append(
+                    "Word parsing requires python-docx. Install: pip install python-docx"
+                )
+            except Exception as e:
+                doc.parse_warnings.append(f"DOCX parse error: {e}")
+
+        if doc.chunks:
+            self._attach_tables_to_chunks(doc)
+        elif not doc.chunks and not doc.parse_warnings:
             text = content.decode("utf-8", errors="ignore")
             return self._parse_text(text, source)
         return doc
@@ -546,6 +635,36 @@ class DocumentParser:
             ))
         return result
 
+    def _parse_via_registry(self, file_path: str, expected_ext: str = "") -> list:
+        """Parse a file via the ConverterRegistry (System A). Returns DocumentElement[] or empty list."""
+        try:
+            from core.harness.document.protocol import get_document_registry, StreamInfo
+            import os
+            ext = expected_ext or os.path.splitext(file_path)[1].lower()
+            registry = get_document_registry()
+            info = StreamInfo(local_path=file_path, extension=ext)
+            converter = registry.find_converter(info)
+            if converter:
+                with open(file_path, "rb") as f:
+                    return converter.convert(f, info)
+            return []
+        except Exception:
+            return []
+
+    def _build_chunks_from_elements(self, elements: list) -> List[StructuredChunk]:
+        """Convert DocumentElement[] to StructuredChunk[] with heading path tracking.
+        
+        Detects markdown headings in element text (from markitdown output)
+        and builds heading_path for each chunk.
+        """
+        full_text = "\n\n".join(el.text for el in elements if el.text.strip())
+        return self._build_chunks_from_raw(full_text)
+
+    def _build_chunks_from_raw(self, text: str) -> List[StructuredChunk]:
+        """Parse raw text into heading-structured chunks. Detects markdown headings."""
+        chunks = self._split_by_headings(text)
+        return self._build_chunks(chunks)
+
     def _attach_tables_to_chunks(self, doc: ParsedDocument) -> None:
         """Attach extracted tables to their parent chunks by page number."""
         if not doc.tables or not doc.chunks:
@@ -613,12 +732,25 @@ class DocumentParser:
         return result
 
     def _parse_video(self, file_path: str) -> ParsedDocument:
-        """Parse video file: extract audio → transcribe → text chunks.
-        Soft deps: ffmpeg, faster-whisper/openai-whisper.
+        """Parse video file via ConverterRegistry (delegates to VideoConverter).
+        
+        The VideoConverter handles ffmpeg audio extraction + Whisper transcription.
+        System B wraps the result in ParsedDocument format.
         """
         doc = ParsedDocument(format="video", raw_text="")
         doc.title = _Path(file_path).stem
-        text = ""
+
+        # Delegate to registry
+        elements = self._parse_via_registry(file_path, ".mp4")
+        if elements:
+            text = " ".join(el.text for el in elements if el.text.strip() and not el.text.startswith("["))
+            if text:
+                return self._parse_text(text, _Path(file_path).stem)
+            else:
+                doc.parse_warnings.append("No transcription produced")
+                return doc
+
+        # Fallback: direct transcriber call
         try:
             from core.harness.document.video import probe_duration_ms, extract_audio
             from core.harness.document.transcriber import transcribe_audio
@@ -630,36 +762,45 @@ class DocumentParser:
                 segments = transcribe_audio(tmp.name)
                 text = " ".join(s.get("text", "") for s in segments if s.get("text"))
                 doc.metadata["transcription_segments"] = len(segments)
+                if text:
+                    return self._parse_text(text, _Path(file_path).stem)
         except ImportError as e:
             doc.parse_warnings.append(f"Video parsing unavailable: {e}")
         except Exception as e:
             doc.parse_warnings.append(f"Video parse error: {e}")
-        if text:
-            return self._parse_text(text, _Path(file_path).stem)
-        else:
-            doc.parse_warnings.append("No transcription produced")
-            return doc
+
+        doc.parse_warnings.append("No transcription produced")
+        return doc
 
     def _parse_audio_file(self, file_path: str) -> ParsedDocument:
-        """Parse audio file: transcribe → text chunks.
-        Soft deps: faster-whisper/openai-whisper.
-        """
+        """Parse audio file via ConverterRegistry (delegates to AudioConverter)."""
         doc = ParsedDocument(format="audio", raw_text="")
         doc.title = _Path(file_path).stem
-        text = ""
+
+        # Delegate to registry
+        elements = self._parse_via_registry(file_path, ".mp3")
+        if elements:
+            text = " ".join(el.text for el in elements if el.text.strip() and not el.text.startswith("["))
+            if text:
+                return self._parse_text(text, _Path(file_path).stem)
+            else:
+                doc.parse_warnings.append("No transcription produced")
+                return doc
+
+        # Fallback: direct transcriber call
         try:
             from core.harness.document.transcriber import transcribe_audio
             segments = transcribe_audio(file_path)
             text = " ".join(s.get("text", "") for s in segments if s.get("text"))
             doc.metadata["transcription_segments"] = len(segments)
+            if text:
+                return self._parse_text(text, _Path(file_path).stem)
         except ImportError as e:
             doc.parse_warnings.append(f"Audio parsing unavailable: {e}")
         except Exception as e:
             doc.parse_warnings.append(f"Audio parse error: {e}")
-        if text:
-            return self._parse_text(text, _Path(file_path).stem)
-        else:
-            return doc
+
+        return doc
 
     def _parse_image_file(self, file_path: str) -> ParsedDocument:
         """Parse image file via OCR/VLM → text chunks."""

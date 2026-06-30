@@ -107,26 +107,82 @@ async def kb_summarize_document(*, tenant_id: str, collection_id: str, doc_id: s
     return await summarize_document(tenant_id=tenant_id, collection_id=collection_id, doc_id=doc_id, profile=profile, **kwargs)
 
 
+# Kind normalisation map (kind strings → canonical extensions for registry lookup)
+_KIND_TO_EXT = {
+    "docx": ".docx", "word": ".docx",
+    "pptx": ".pptx", "ppt": ".pptx",
+    "xlsx": ".xlsx", "xls": ".xlsx",
+    "pdf": ".pdf",
+    "html": ".html", "htm": ".html",
+    "csv": ".csv",
+    "md": ".md", "markdown": ".md",
+    "json": ".json",
+    "eml": ".eml",
+    "audio": ".mp3", "mp3": ".mp3", "wav": ".wav", "m4a": ".m4a",
+    "image": ".png", "png": ".png", "jpg": ".jpg", "jpeg": ".jpeg",
+    "txt": ".txt", "text": ".txt", "plain": ".txt",
+    "video": ".mp4", "mp4": ".mp4",
+}
+
+# Canonical kind names (synonym → canonical)
+_KIND_CANONICAL = {
+    "word": "docx", "doc": "docx", "docx": "docx",
+    "ppt": "pptx", "pptx": "pptx",
+    "xls": "xlsx", "xlsx": "xlsx",
+    "pdf": "pdf",
+    "html": "html", "htm": "html",
+    "csv": "csv",
+    "md": "markdown", "markdown": "markdown",
+    "json": "json",
+    "eml": "eml",
+    "mp3": "audio", "wav": "audio", "m4a": "audio", "ogg": "audio",
+    "flac": "audio", "aac": "audio", "opus": "audio", "wma": "audio",
+    "audio": "audio",
+    "png": "image", "jpg": "image", "jpeg": "image", "bmp": "image",
+    "tiff": "image", "tif": "image", "webp": "image",
+    "image": "image",
+    "txt": "txt", "text": "txt", "plain": "txt",
+    "mp4": "video", "mov": "video", "mkv": "video", "avi": "video",
+    "webm": "video", "m4v": "video",
+    "video": "video",
+}
+
+
+def normalize_kind(kind: str) -> str:
+    """Normalize a document kind string to its canonical form."""
+    return _KIND_CANONICAL.get(str(kind).lower(), str(kind).lower())
+
+
 def kb_parse_document(file_path: str, kind: str) -> Any:
-    from core.harness.document import parsers
-    dispatch = {
-        # Office formats → MarkItDown (preserves heading/table/list structure)
-        "docx": parsers.parse_markitdown, "word": parsers.parse_markitdown,
-        "pptx": parsers.parse_markitdown, "ppt": parsers.parse_markitdown,
-        "xlsx": parsers.parse_markitdown, "xls": parsers.parse_markitdown,
-        "pdf": parsers.parse_markitdown,
-        "html": parsers.parse_html, "htm": parsers.parse_html,
-        # Lightweight formats → dedicated parsers
-        "csv": parsers.parse_csv,
-        "md": parsers.parse_markdown, "markdown": parsers.parse_markdown,
-        "json": parsers.parse_json_document,
-        "eml": parsers.parse_eml,
-        # Media → keep existing pipelines (Whisper/OCR)
-        "audio": parsers.parse_audio, "mp3": parsers.parse_audio, "wav": parsers.parse_audio,
-        "image": parsers.parse_image, "png": parsers.parse_image, "jpg": parsers.parse_image,
-    }
-    parser = dispatch.get(str(kind).lower())
-    return parser(file_path) if parser else []
+    """Parse a document file via the ConverterRegistry with full fallback chain.
+    
+    Uses convert_with_fallback() — tries all accepting converters in priority order.
+    Each failure is collected; if no converter succeeds, FileConversionException is raised.
+    """
+    from core.harness.document.protocol import get_document_registry, StreamInfo
+    from core.harness.document.parsers import _elements_to_dicts
+    import os
+
+    _kind = str(kind).lower()
+    ext = _KIND_TO_EXT.get(_kind, os.path.splitext(file_path)[1].lower())
+    registry = get_document_registry()
+    info = StreamInfo(local_path=file_path, extension=ext)
+
+    try:
+        with open(file_path, "rb") as f:
+            elements = registry.convert_with_fallback(f, info)
+            return _elements_to_dicts(elements)
+    except Exception:
+        # Ultimate fallback: raw text read
+        try:
+            with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
+                text = f.read()
+            if text.strip():
+                return [{"type": "text", "text": text.strip(), "page_idx": 0,
+                         "cells": None, "meta": {"source": _kind, "fallback": True}}]
+        except Exception:
+            pass
+        return []
 
 
 def kb_chunk_document(elements: Any, kind: str = "pdf", target_size: int = 1000, overlap: int = 150) -> Any:
@@ -135,11 +191,32 @@ def kb_chunk_document(elements: Any, kind: str = "pdf", target_size: int = 1000,
 
 
 def get_document_categories() -> list:
-    return ["pdf", "docx", "pptx", "xlsx", "html", "txt", "markdown", "image", "audio", "video"]
+    """Get supported document category labels (from ConverterRegistry — single source of truth)."""
+    from core.harness.document.protocol import get_document_registry
+    return get_document_registry().get_available_categories()
 
 
 def set_knowledge_providers(*args: Any, **kwargs: Any) -> None:
-    pass
+    """Register platform-level knowledge provider callbacks for core KB operations.
+    
+    Callbacks registered:
+        ingest_fn      → set_knowledge_ingest_fn()
+        query_fn       → set_kb_query_fn()
+        enqueue_fn     → set_kb_enqueue_ingest_fn()
+        load_doc_kinds_fn → set_kb_load_doc_kinds_fn()
+    """
+    from core.apps.document_intelligence.kb_provider import (
+        set_knowledge_ingest_fn, set_kb_query_fn,
+        set_kb_enqueue_ingest_fn, set_kb_load_doc_kinds_fn,
+    )
+    if "ingest_fn" in kwargs and kwargs["ingest_fn"] is not None:
+        set_knowledge_ingest_fn(kwargs["ingest_fn"])
+    if "query_fn" in kwargs and kwargs["query_fn"] is not None:
+        set_kb_query_fn(kwargs["query_fn"])
+    if "enqueue_fn" in kwargs and kwargs["enqueue_fn"] is not None:
+        set_kb_enqueue_ingest_fn(kwargs["enqueue_fn"])
+    if "load_doc_kinds_fn" in kwargs and kwargs["load_doc_kinds_fn"] is not None:
+        set_kb_load_doc_kinds_fn(kwargs["load_doc_kinds_fn"])
 
 
 def get_embedding_model_name() -> str:
