@@ -1041,3 +1041,73 @@ _register("domain-prompt-it-ops",
 
 _register("ontology-engineer", "You are an ontology engineer. Output ONLY valid JSON. No markdown, no explanations.",
     category="system_roles")
+
+# ═══════════════════════════════════════════════════════════════
+# AutoLearner SkillDraft SOP 模板 (SkillOpt-inspired)
+# ═══════════════════════════════════════════════════════════════
+
+_register("skill-draft-failure", """# ${error}
+
+## 做了什么
+自动生成的修复 Skill，用于处理以下类型的错误。
+
+## 触发场景
+当 Agent 执行任务时遇到以下错误模式时触发：
+```
+${error_full}
+```
+
+## 操作步骤
+1. 识别错误类型和根因
+2. 应用修复策略
+3. 验证修复结果
+
+## 原始任务
+${task}
+
+## 建议修复
+${suggested_fix}
+
+## 编辑限制
+本次最多 ${max_edits} 条规则修改。每增加一条规则必须对应一个可验证的改进点。
+
+## 如何验证
+重新执行原始任务，确认错误不再出现。
+
+## 已知问题
+此 Skill 由 AI 自动生成，可能不完整。请人工审核后使用。
+""",
+    category="learning",
+    variables=["error", "error_full", "task", "suggested_fix", "max_edits"])
+
+_register("skill-draft-success", """# 成功模式: ${task}
+
+## 来源
+从以下成功执行的轨迹中提取的可复用规则。
+
+## 成功轨迹摘要
+${trajectory}
+
+## Rule 1: 关键步骤
+${task}
+
+## Rule 2: 工具使用
+成功执行所使用的工具序列和参数模式。
+
+## Rule 3: 验证方式
+成功执行的验证步骤和判断标准。
+
+## 原始任务
+${task_full}
+
+## 编辑限制
+本次最多 ${max_edits} 条规则。每条规则对应一个可独立验证的改进点。
+
+## 如何验证
+在新任务中复用此规则，确认成功率提升。
+
+## 已知问题
+此 Skill 由 AI 从成功轨迹中自动提取，可能包含任务特定逻辑。请人工审核后使用。
+""",
+    category="learning",
+    variables=["task", "task_full", "trajectory", "max_edits"])

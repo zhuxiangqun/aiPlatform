@@ -13,6 +13,7 @@ Agent 失败后自动分析根因 → 生成 SkillDraft.yaml → SkillSimulator 
 from __future__ import annotations
 
 import json
+import logging
 import os
 import time
 import uuid
@@ -39,7 +40,10 @@ class SkillDraft:
     source_run_id: str = ""           # 触发生成的 run_id
     source_agent_id: str = ""         # 触发生成的 agent_id
     source_error: str = ""            # 触发生成的错误信息
+    source_type: str = "failure"      # "failure" | "success" — dual-channel analysis (SkillOpt-inspired)
     confidence: float = 0.0           # Agent 自评置信度 [0, 1]
+    edit_count: int = 0               # SOP 中包含的实际改动数量 (SkillOpt "text learning rate")
+    max_edits: int = 4                # 本轮允许的最大改动数 (SkillOpt default, env: AIPLAT_MAX_EDITS_PER_DRAFT)
     status: str = "draft"             # draft / simulated / pending_review / approved / rejected
     simulation_pass_rate: float = 0.0 # SkillSimulator 模拟通过率
     created_at: str = ""              # ISO timestamp
@@ -102,6 +106,11 @@ class AutoLearner:
         self._storage: Dict[str, SkillDraft] = {}
         self._agent_failure_count: Dict[str, List[float]] = {}  # agent_id → [timestamps]
         self._agent_suspended: Dict[str, float] = {}  # agent_id → suspended_until_ts
+        # SkillOpt-inspired: rejected edit buffer (prevents repeating bad edits)
+        self._rejected_buffer: set = set()
+        self._buffer_max_size = int(os.getenv("AIPLAT_REJECTED_BUFFER_SIZE", "500"))
+        # SkillOpt-inspired: text learning rate (max edits per draft)
+        self._max_edits = int(os.getenv("AIPLAT_MAX_EDITS_PER_DRAFT", "4"))
 
     # ── Public API ──────────────────────────────────────────────────────
 
@@ -140,11 +149,129 @@ class AutoLearner:
             source_run_id=run_id,
             source_agent_id=agent_id,
             source_error=error,
-            confidence=0.8,  # Agent's self-assessed confidence
+            source_type="failure",
+            confidence=0.8,
+            max_edits=self._max_edits,
+            edit_count=3,  # Default 3-step SOP
+            created_at=time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+        )
+
+        # Check rejected buffer — if similar edit was previously rejected, flag it
+        if self.is_rejected_before(draft):
+            draft.confidence *= 0.5
+            draft.description += " [WARNING: similar edit was previously rejected — confidence halved]"
+        self._storage[draft_name] = draft
+        # § v4.1: Enrich draft with historical rejection feedback from ExperienceVectorCache
+        try:
+            import asyncio as _asyncio
+            loop = _asyncio.get_event_loop()
+            if loop.is_running():
+                _asyncio.ensure_future(self._enrich_with_history(draft, error))
+        except Exception:
+            pass
+        return draft
+
+    def analyze_success(
+        self,
+        task: str,
+        *,
+        agent_id: str = "",
+        run_id: str = "",
+        trajectory_summary: str = "",
+    ) -> Optional[SkillDraft]:
+        """分析 Agent 成功轨迹并生成可复用规则 Draft（双通道分析的 success 通道）。
+
+        与 analyze_failure 的差异:
+          - 输入: 成功轨迹摘要（而非错误信息）
+          - 方向: 记住"怎么做对的"（而非"避免怎么做错的"）
+          - 标记: source_type="success"
+
+        Args:
+            task: 原始任务描述
+            agent_id: 触发 Agent ID
+            run_id: 触发 run_id
+            trajectory_summary: 成功执行轨迹摘要（工具序列、关键步骤、最终输出）
+
+        Returns:
+            生成的 SkillDraft，如果成功模式无明显可提取规则则返回 None
+        """
+        if not trajectory_summary or len(trajectory_summary) < 30:
+            return None
+
+        success_id = hashlib.md5(f"{task}{agent_id}{run_id}".encode()).hexdigest()[:8]
+        draft_name = f"success-{success_id}"
+
+        sop = self._generate_sop_from_success(task, trajectory_summary)
+        if not sop or len(sop) < 50:
+            return None
+
+        draft = SkillDraft(
+            name=draft_name,
+            display_name=f"成功模式: {task[:50]}",
+            category="best_practice",
+            description=f"从成功执行中提取的可复用规则: {task[:100]}",
+            sop_body=sop,
+            effects=[{"type": "read", "resources": [], "idempotent": True, "rollback_available": False}],
+            source_run_id=run_id,
+            source_agent_id=agent_id,
+            source_error="",
+            source_type="success",
+            confidence=0.85,
+            max_edits=self._max_edits,
+            edit_count=sop.count("## Rule") if "## Rule" in sop else 1,
             created_at=time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         )
         self._storage[draft_name] = draft
+
+        try:
+            import asyncio as _asyncio2
+            loop = _asyncio2.get_event_loop()
+            if loop.is_running():
+                _asyncio2.ensure_future(self._enrich_with_history(draft, trajectory_summary[:200]))
+        except Exception:
+            pass
         return draft
+
+    # ── Rejected Edit Buffer (SkillOpt "refused-edit buffer") ──
+
+    @staticmethod
+    def _hash_edit_pattern(draft: SkillDraft) -> str:
+        """MD5 hash of draft identity — used for rejection de-duplication."""
+        return hashlib.md5(
+            f"{draft.name}:{draft.sop_body[:200]}:{draft.source_type}".encode()
+        ).hexdigest()[:16]
+
+    def record_rejection(self, draft: SkillDraft) -> None:
+        """Record a rejected draft pattern to prevent future similar edits."""
+        h = self._hash_edit_pattern(draft)
+        self._rejected_buffer.add(h)
+        if len(self._rejected_buffer) > self._buffer_max_size:
+            self._rejected_buffer = set(list(self._rejected_buffer)[-self._buffer_max_size:])
+        logging.getLogger("aiplat.auto_learner").debug(
+            "Rejected buffer: %d entries, added %s", len(self._rejected_buffer), h
+        )
+
+    def is_rejected_before(self, draft: SkillDraft) -> bool:
+        """Check if a similar draft pattern was previously rejected."""
+        return self._hash_edit_pattern(draft) in self._rejected_buffer
+
+    async def _enrich_with_history(self, draft: SkillDraft, error: str) -> None:
+        try:
+            from core.harness.learning.experience_vector import get_experience_cache
+            cache = get_experience_cache()
+            context = await cache.enrich_skill_draft(error)
+            if context.get("similar_failures") or context.get("similar_successes"):
+                enrichment = "\n\n## 历史经验（错题本）\n"
+                for f in context.get("similar_failures", [])[:3]:
+                    enrichment += f"- [失败] {f.get('summary', '')[:200]}\n"
+                for s in context.get("similar_successes", [])[:2]:
+                    enrichment += f"- [成功] {s.get('summary', '')[:200]}\n"
+                if context.get("best_practice"):
+                    enrichment += f"\n**最佳实践**: {context['best_practice'][:300]}"
+                draft.sop_body = (draft.sop_body or "") + enrichment
+                draft.description = (draft.description or "") + " [历史经验已注入]"
+        except Exception:
+            pass
 
     def is_suspended(self, agent_id: str) -> bool:
         """检查 Agent 是否因低质量而被暂停。"""
@@ -269,35 +396,25 @@ class AutoLearner:
     # ── Internal ────────────────────────────────────────────────────────
 
     def _generate_sop(self, task: str, error: str, suggested_fix: str) -> str:
-        """生成 Skill SOP 操作手册。"""
-        return f"""# {error[:50]}
+        """生成 Skill SOP 操作手册（失败修复方向）。委托 prompt_loader 统一管理模板。"""
+        from core.harness.utils.prompt_loader import _sync_resolve
+        return _sync_resolve("skill-draft-failure",
+            error=error[:50],
+            error_full=error[:200],
+            task=task[:300],
+            suggested_fix=suggested_fix[:500] if suggested_fix else "请人工补充修复步骤",
+            max_edits=str(self._max_edits),
+        )
 
-## 做了什么
-自动生成的修复 Skill，用于处理以下类型的错误。
-
-## 触发场景
-当 Agent 执行任务时遇到以下错误模式时触发：
-```
-{error[:200]}
-```
-
-## 操作步骤
-1. 识别错误类型和根因
-2. 应用修复策略
-3. 验证修复结果
-
-## 原始任务
-{task[:300]}
-
-## 建议修复
-{suggested_fix[:500] if suggested_fix else "请人工补充修复步骤"}
-
-## 如何验证
-重新执行原始任务，确认错误不再出现。
-
-## 已知问题
-此 Skill 由 AI 自动生成，可能不完整。请人工审核后使用。
-"""
+    def _generate_sop_from_success(self, task: str, trajectory_summary: str) -> str:
+        """从成功轨迹中提取可复用的规则。委托 prompt_loader 统一管理模板。"""
+        from core.harness.utils.prompt_loader import _sync_resolve
+        return _sync_resolve("skill-draft-success",
+            task=task[:60],
+            task_full=task[:300],
+            trajectory=trajectory_summary[:400],
+            max_edits=str(self._max_edits),
+        )
 
 
 # ── Global singleton ─────────────────────────────────────────────────────

@@ -1541,12 +1541,21 @@ class ReActLoop(BaseLoop):
             # Auto-simulate if confidence is high enough
             if draft.confidence >= 0.7:
                 try:
-                    await learner.simulate(draft)
+                    pass_rate = await learner.simulate(draft)
                 except Exception:
-                    pass  # Simulator unavailable → still submit for review
+                    pass_rate = -1  # Simulator unavailable
             
-            # Submit for review (even without simulation, admin can review)
-            learner.submit_for_review(draft)
+            # Rejected edit buffer: if simulation failed, record rejection pattern
+            if draft.confidence < 0.5 or (draft.confidence >= 0.7 and 'pass_rate' in dir() and pass_rate >= 0 and pass_rate < 0.8):
+                learner.record_rejection(draft)
+                logging.getLogger("harness.learning").debug(
+                    "AutoLearner: draft '%s' rejected (simulated_pass_rate=%.2f), buffered", draft.name,
+                    pass_rate if 'pass_rate' in dir() and pass_rate > 0 else 0.0,
+                )
+                # Don't submit rejected drafts
+            else:
+                # Submit for review (even without simulation, admin can review)
+                learner.submit_for_review(draft)
             
             logging.getLogger("harness.learning").info(
                 "AutoLearner: generated SkillDraft '%s' from run_id=%s, confidence=%.2f",
@@ -1662,6 +1671,27 @@ class ReActLoop(BaseLoop):
             label = "failure" if stability == "low" else "success"
             summary = f"[{agent_id}] User: {user_msg[:150]} | Agent: {assistant_msg[:150]}"
             await cache.store(run_id=run_id, summary=summary, label=label)
+        except Exception:
+            pass
+
+        # ── SkillOpt: dual-channel analysis — analyze successful trajectories too ──
+        if stability != "low" and assistant_msg:
+            try:
+                from core.harness.learning import get_auto_learner
+                learner = get_auto_learner()
+                task = str(state.context.get("task") or user_msg[:200])
+                learner.analyze_success(
+                    task=task, agent_id=agent_id,
+                    run_id=run_id, trajectory_summary=assistant_msg[:500],
+                )
+            except Exception:
+                pass
+
+        # ── MetaClaw: compare success vs failure for this agent's tasks ──
+        try:
+            from core.harness.memory.pattern_accumulator import get_pattern_accumulator
+            pa = get_pattern_accumulator()
+            await pa.compare_success_failure(intent=agent_id)
         except Exception:
             pass
 
