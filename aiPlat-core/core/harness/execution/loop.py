@@ -38,6 +38,18 @@ from ..restatement.run_state import (
 )
 
 
+def _infer_task_type(task: str, agent_id: str) -> str:
+    """推断任务来源类型（Paper Data Recipes: coding/terminal/qa/system）"""
+    t = (task or "").lower(); a = (agent_id or "").lower()
+    if any(kw in a for kw in ("terminal", "shell", "bash", "cmd", "console")): return "terminal"
+    if any(kw in t for kw in ("$", "ls ", "cd ", "grep", "git ", "pwd", "chmod")): return "terminal"
+    if any(kw in a for kw in ("code", "coder", "programmer", "dev", "engineer")): return "coding"
+    if any(kw in t for kw in ("def ", "class ", "import ", "function", "test_")): return "coding"
+    if any(kw in a for kw in ("search", "retrieval", "qa", "question", "answer")): return "qa"
+    if any(kw in t for kw in ("search", "find ", "query ", "retrieve")): return "qa"
+    return "general"
+
+
 class BaseLoop(ILoop):
     """
     Base execution loop implementation
@@ -65,6 +77,12 @@ class BaseLoop(ILoop):
         # Session start + pre-loop hooks
         await self._trigger_hook(HookPhase.SESSION_START, {"state": state, "config": config})
         await self._trigger_hook(HookPhase.PRE_LOOP, {"state": state})
+
+        # Paper "Data Recipes for Agentic Models": task source classification
+        task = str(state.context.get("task") or "")
+        agent_id = str(state.context.get("_agent_id") or state.context.get("agent_id") or "")
+        task_type = _infer_task_type(task, agent_id)
+        state.context["task_type"] = task_type
         
         # PraxisRecorder — session-level execution recording
         try:
@@ -1480,6 +1498,18 @@ class ReActLoop(BaseLoop):
             _asyncio.ensure_future(self._try_trigger_auto_learner(state, user_msg, assistant_msg, stability))
         except Exception:
             pass
+
+        # Persist task_type for SFT data pipeline stratified sampling
+        task_type = str(state.context.get("task_type") or "")
+        if task_type:
+            try:
+                from core.services.execution_store import get_execution_store
+                store = get_execution_store()
+                run_id = str(state.context.get("_run_id") or state.context.get("run_id") or "")
+                if run_id and hasattr(store, 'set_meta'):
+                    await store.set_meta(run_id, "task_type", task_type)
+            except Exception:
+                pass
         
         # CMM + ExperienceVector: extract patterns and store experience from this run
         try:

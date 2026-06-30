@@ -109,6 +109,47 @@ class TrajectoryScorer:
             self._seen_hashes = set(list(self._seen_hashes)[-5000:])
         return 1.0  # 新轨迹
 
+    # ── Learnability Filter (Paper: Data Recipes — teacher ≠ student fit) ──
+
+    async def is_learnable(self, run_id: str, student_model: str,
+                           max_steps: int = 5) -> bool:
+        """检查轨迹是否适合学生模型学习（可模仿性过滤）。
+
+        用学生模型预测前 N 步的 Action，与教师轨迹对比。
+        如果前 max_steps 步中有 >= 2 步不一致 → 该轨迹对学生太难，丢弃。
+        """
+        try:
+            store = await self._ensure_store()
+            events = await self._get_events(store, run_id)
+            if not events or len(events) < 3:
+                return True  # 无法获取足够事件时默认保留，避免误删
+
+            from core.harness.syscalls.llm import sys_llm_generate
+            mismatch_count = 0
+            for step in events[:max_steps]:
+                action_name = str(step.get("name", step.get("tool_name", "")))
+                if not action_name:
+                    continue
+                try:
+                    resp = await sys_llm_generate(
+                        None,
+                        [{"role": "user", "content": f"Predict next action for: {str(step.get('args', ''))[:200]}"}],
+                        model_name=student_model,
+                        temperature=0.0,
+                        max_tokens=50,
+                    )
+                    predicted = (getattr(resp, "content", "") or "").strip()
+                    if action_name not in predicted:
+                        mismatch_count += 1
+                        if mismatch_count >= 2:
+                            return False
+                except Exception:
+                    pass
+            return True
+        except Exception:
+            logger.debug("is_learnable check skipped for %s", run_id, exc_info=True)
+            return True  # 无法验证时默认保留，避免误删
+
     # ── Helpers ──
 
     @staticmethod

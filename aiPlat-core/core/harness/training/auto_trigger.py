@@ -73,6 +73,24 @@ class LoRAAutoTrigger:
             _log.warning("SFT AutoTrigger: no qualified samples found")
             return
 
+        # 1.5 Paper Data Recipes: learnability filter (student model must be able to imitate)
+        student_model = os.getenv("AIPLAT_SFT_STUDENT_MODEL", "")
+        teacher_model = os.getenv("AIPLAT_SFT_TEACHER_MODEL", "")
+        if student_model and samples:
+            try:
+                from core.harness.training.trajectory_scorer import TrajectoryScorer
+                scorer = TrajectoryScorer()
+                learnable = []
+                for s in samples:
+                    run_id = s.get("run_id", "")
+                    if not run_id or await scorer.is_learnable(run_id, student_model):
+                        learnable.append(s)
+                if learnable:
+                    samples = learnable
+                    _log.info("Learnability filter: %d/%d samples pass", len(learnable), len(samples) if 'len' in dir() else 0)
+            except Exception:
+                _log.debug("Learnability filter skipped", exc_info=True)
+
         # 2. 生成 ShareGPT 格式
         dataset = self._convert_to_sharegpt(samples)
         timestamp = time.strftime("%Y%m%d_%H%M%S")
@@ -163,7 +181,7 @@ class LoRAAutoTrigger:
         _log.info(f"SFT AutoTrigger: dataset generated at {path} ({len(dataset)} samples)")
 
     async def _fetch_samples(self, limit: int) -> List[Dict[str, Any]]:
-        """从 execution_store 获取标记为 'positive' 的样本，经轨迹评分过滤"""
+        """从 execution_store 获取标记为 'positive' 的样本，经轨迹评分过滤 + 混合采样"""
         try:
             from core.services.execution_store import get_execution_store
             store = get_execution_store()
@@ -183,10 +201,41 @@ class LoRAAutoTrigger:
                     # Keep only samples with score > 0.5
                     filtered = [(s, sc) for s, sc in scored if sc > 0.5]
                     filtered.sort(key=lambda x: x[1], reverse=True)
-                    samples = [s for s, _ in filtered[:limit]]
+                    
+                    # Paper Data Recipes: mixed sampling by task_type (Top-4 sources)
+                    samples = self._mixed_sample_by_task_type(filtered, limit)
             return samples
         except Exception:
             return []
+
+    def _mixed_sample_by_task_type(
+        self, scored: List[tuple], limit: int
+    ) -> List[Dict[str, Any]]:
+        """混合采样：按 task_type 分组均匀采样 Top 来源，避免单一来源主导"""
+        buckets: Dict[str, List[tuple]] = {}
+        for s, sc in scored:
+            tt = s.get("task_type", "general")
+            buckets.setdefault(tt, []).append((s, sc))
+        
+        source_order = ["coding", "terminal", "qa", "system", "general"]
+        selected = []
+        source_idx = 0
+        while len(selected) < limit and buckets:
+            source = source_order[source_idx % len(source_order)]
+            bucket = buckets.get(source)
+            if bucket:
+                selected.append(bucket.pop(0)[0])
+                if not bucket:
+                    del buckets[source]
+            source_idx += 1
+            # If all buckets exhausted, take remaining from any source
+            if not any(buckets.values()):
+                break
+        
+        # Pad with any remaining if mixed sampling undershoots limit
+        remaining = [s for bucket in buckets.values() for s, _ in bucket]
+        selected.extend(remaining[:limit - len(selected)])
+        return selected[:limit]
 
     def _convert_to_sharegpt(self, samples: list) -> list:
         """转换为 ShareGPT 格式"""
