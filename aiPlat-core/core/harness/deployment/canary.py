@@ -29,6 +29,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 
 @dataclass
+# disposition: internal data type — Phase 3.2 canary deployment, wiring pending
 class RolloutConfig:
     """单个 Skill 版本的灰度配置。"""
     skill_name: str
@@ -43,6 +44,7 @@ class RolloutConfig:
 
 
 @dataclass
+# disposition: internal data type — Phase 3.2 A/B testing, wiring pending
 class ABTestResult:
     """A-B 测试单次结果。"""
     skill_name: str
@@ -277,8 +279,17 @@ class SkillRouter:
             success = True
             result = None
 
-            # (In production, this calls the actual Skill execution)
-            # result = await execute_skill(skill_name, version=rollout.version, input=input_data)
+            # Shadow execute the new skill version (silent, no impact on production)
+            try:
+                from core.harness.syscalls.skill import sys_skill_call
+                result = await sys_skill_call(
+                    skill_name=skill_name,
+                    input_data=input_data,
+                    version_override=rollout.version,
+                )
+                success = bool(getattr(result, "success", True)) if hasattr(result, "success") else True
+            except Exception:
+                success = False
 
             latency = (time.time() - start) * 1000
             self.record_ab_result(skill_name, rollout.version, success=success, latency_ms=latency)

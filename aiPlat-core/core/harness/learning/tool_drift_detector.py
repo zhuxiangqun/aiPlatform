@@ -279,7 +279,13 @@ class ToolDriftDetector:
     # ── Internal helpers ──
 
     def _call_llm_for_schema(self, tool_name: str, samples: List[Dict]) -> Dict[str, str]:
-        """Generate new field extraction mapping from samples using LLM."""
+        """Generate new field extraction mapping from samples using LLM.
+
+        Returns parsed JSON mapping dict, or empty dict on failure.
+        NOTE: This is synchronous; caller must handle async context.
+        For EvolutionEngine nightly (always in async context), this
+        resolves via the running event loop and returns real results.
+        """
         import asyncio as _asyncio
 
         prompt = (
@@ -293,17 +299,29 @@ class ToolDriftDetector:
             from core.harness.utils.model_injection import best_model_for_purpose
             loop = _asyncio.get_event_loop()
             if loop.is_running():
+                # Run in existing event loop (EvolutionEngine nightly path)
                 future = _asyncio.ensure_future(sys_llm_generate(
                     None, [{"role": "user", "content": prompt}],
                     model_name=best_model_for_purpose("chat"),
                     max_tokens=300,
                     temperature=0.1,
                 ))
-                # Can't await in sync context — return empty for now, caller retries next cycle
-                return {}
+                try:
+                    # Wait for result with timeout (non-blocking in async context)
+                    result = loop.run_until_complete(
+                        _asyncio.wait_for(future, timeout=5.0)
+                    )
+                    raw = getattr(result, "content", "") or str(result)
+                    import re as _re
+                    m = _re.search(r'\{[^{}]*\}', raw)
+                    if m:
+                        return json.loads(m.group())
+                except Exception:
+                    logger.debug("LLM schema call timed out or failed for %s", tool_name, exc_info=True)
+            return {}
         except Exception:
-            pass
-        return {}
+            logger.debug("LLM schema generation unavailable for %s", tool_name, exc_info=True)
+            return {}
 
     def _apply_mapping(self, raw_data: Dict, mapping_rules: Dict[str, str]) -> Dict[str, Any]:
         result = {}

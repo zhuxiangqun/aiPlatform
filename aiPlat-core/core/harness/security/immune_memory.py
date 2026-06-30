@@ -81,19 +81,14 @@ class ImmuneMemory:
 
     @classmethod
     def _get_embedding(cls, text: str) -> List[float]:
-        """Get text embedding via system SemanticEmbedder."""
-        if cls._embedding_model is None:
-            try:
-                from core.harness.knowledge.embedder import SemanticEmbedder
-                cls._embedding_model = SemanticEmbedder()
-            except Exception:
-                return cls._hash_embedding(text)
+        """Get text embedding — uses system embed_text_semantic, falls back to hash."""
         try:
-            vec = cls._embedding_model.embed_text(text)
-            if isinstance(vec, list):
+            from core.harness.knowledge.embedder import embed_text_semantic
+            vec = embed_text_semantic(text)
+            if vec and len(vec) > 0:
                 return vec
         except Exception:
-            pass
+            logger.debug("embed_text_semantic failed, using hash fallback", exc_info=True)
         return cls._hash_embedding(text)
 
     @classmethod
