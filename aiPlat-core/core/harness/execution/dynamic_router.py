@@ -12,10 +12,24 @@ The router writes to state["_route_after"] and the existing
 _compute_dependency_layers handles the rest.
 
 Architecture:
-  - Reuses SubagentCoordinator.execute_single() via `context` for instruction injection
+  - Reuses SubagentCoordinator.execute_single() via context for instruction injection
   - Respects PipelineStageConfig.merge_strategies for safe parallel state merge
   - Feature-flagged via routing_mode field (default "static", backward compatible)
   - Supervisor model: configurable via AIPLAT_SUPERVISOR_MODEL or stage.model
+
+Grayscale Deployment:
+  1. Select one low-risk pipeline (e.g., internal doc search, non-production)
+  2. Set routing_mode="llm" on that pipeline's PipelineStageConfig
+  3. Monitor supervisor decisions via state["_dynamic_trace"] for 1 week
+  4. If supervisor routing accuracy > 80% (via human review of traces),
+     expand to 3 more pipelines
+  5. If accuracy drops or cost spikes (>2x baseline), set back to "static"
+
+Safety defaults:
+  - max_steps=15 (hard cap, not LLM-modifiable)
+  - Supervisor temperature=0.2 (deterministic routing)
+  - Non-blocking: router failures fall back to static dependency_layers
+  - All supervisor decisions logged to state["_dynamic_trace"]
 """
 from __future__ import annotations
 
