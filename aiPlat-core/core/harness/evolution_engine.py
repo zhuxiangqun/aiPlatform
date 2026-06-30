@@ -112,6 +112,9 @@ class EvolutionEngine:
         # Step 10: SkillEvolver cross-tenant scan
         run.steps.append(await self._step("cross_tenant_scan", self._do_cross_tenant_scan))
 
+        # Step 11: RL training trigger (after SFT data pipeline, if enabled)
+        run.steps.append(await self._step("rl_trigger", self._do_rl_trigger))
+
         # Build report
         run.summary = self._build_daily_report(run)
         errors = sum(1 for s in run.steps if s.status in ("timeout", "error"))
@@ -246,6 +249,23 @@ class EvolutionEngine:
                 except Exception:
                     pass
             return {"drafts_found": len(drafts), "submitted": submitted}
+        except Exception as e:
+            return {"error": str(e)[:100]}
+
+    async def _do_rl_trigger(self) -> Dict[str, Any]:
+        """RL training trigger: export RL dataset from recent trajectories."""
+        try:
+            from core.harness.training.rl_trainer import get_rl_trainer
+            base = os.getenv("AIPLAT_RL_BASE_MODEL", os.getenv("AIPLAT_SFT_BASE_MODEL", ""))
+            student = os.getenv("AIPLAT_RL_STUDENT_MODEL", os.getenv("AIPLAT_SFT_STUDENT_MODEL", ""))
+            if not base:
+                return {"status": "skipped", "note": "no base model configured"}
+            trainer = get_rl_trainer(base_model=base, student_model=student)
+            run = await trainer.train(num_iterations=1, episodes_per_iter=8)
+            path = trainer.export_rl_dataset(run) if run.trajectories else ""
+            return {"status": run.status, "iterations": run.iterations,
+                    "episodes": run.total_episodes, "avg_reward": run.avg_reward,
+                    "dataset": path}
         except Exception as e:
             return {"error": str(e)[:100]}
 
