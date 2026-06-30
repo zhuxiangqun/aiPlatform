@@ -121,6 +121,7 @@ class TestProductionRejectedBuffer:
 
     def setup_method(self):
         self.learner = get_auto_learner()
+        self.learner._rejected_buffer.clear()
 
     def test_repeated_failure_gets_buffered(self):
         """Same error pattern repeated 3 times → buffer should reduce confidence."""

@@ -252,8 +252,31 @@ class JobManager:
     async def _register_model(self, entry: dict):
         """Register the fine-tuned model with infra ModelManager."""
         try:
-            from infra.management.model.schemas import ModelInfo, ModelType, ModelSource, ModelStatus, ModelConfig
+            from infra.management.model.schemas import ModelInfo, ModelType, ModelSource, ModelConfig
             from infra.management.model.manager import ModelManager
+            
+            # Field integrity check before registration
+            required = {"model_name": entry.get("result_model"), 
+                       "base_model": entry.get("base_model"),
+                       "provider": entry.get("provider")}
+            missing = [f for f, v in required.items() if not v]
+            if missing:
+                logging.warning("Model registration aborted: missing fields %s", missing)
+                # Degradation: write pending registration for admin recovery
+                import json, time as _time2
+                pending_path = os.path.join(os.path.expanduser("~/.aiplat"), "pending_models.json")
+                pending = []
+                if os.path.exists(pending_path):
+                    try:
+                        with open(pending_path) as f:
+                            pending = json.load(f)
+                    except Exception:
+                        pass
+                pending.append({"entry": entry, "missing": missing, "timestamp": _time2.time()})
+                with open(pending_path, "w") as f:
+                    json.dump(pending, f, indent=2, default=str)
+                return
+            
             mgr = ModelManager()
             await mgr.initialize()
             info = ModelInfo(
@@ -268,7 +291,7 @@ class JobManager:
                 tags=["fine-tuned", entry["provider"]],
                 capabilities=["chat", "function_call", "json_mode"],
             )
-            mgr.register_model(info)
-            await mgr.save()
+            await mgr.add_model(info)
+            logging.info("Model registered: %s", info.name)
         except Exception as e:
-            logging.debug(str(e), exc_info=True)
+            logging.warning("Model registration failed (non-critical): %s", str(e)[:200], exc_info=True)

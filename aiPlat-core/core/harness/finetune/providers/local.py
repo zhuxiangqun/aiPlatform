@@ -209,6 +209,15 @@ class LocalFineTuneProvider:
             status = "COMPLETED"
             job["status"] = "COMPLETED"
             self._save_jobs_meta()
+            # Auto-export: fuse → gguf → register with Ollama
+            if not job.get("_gguf_exported"):
+                try:
+                    _asyncio = __import__("asyncio")
+                    _asyncio.ensure_future(self._auto_export_gguf(job, provider_job_id))
+                    job["_gguf_exported"] = True
+                    self._save_jobs_meta()
+                except Exception:
+                    pass
         elif trainer and trainer._process is not None and trainer._process.poll() is not None:
             status = "FAILED"
             job["status"] = "FAILED"
@@ -269,6 +278,36 @@ class LocalFineTuneProvider:
         if "qwen" in model_name.lower():
             return "Qwen/Qwen2.5-7B-Instruct"
         return model_name
+
+    async def _auto_export_gguf(self, job: dict, provider_job_id: str):
+        """Auto-chain: fuse adapters → convert to GGUF → register with Ollama."""
+        try:
+            from core.harness.finetune.gguf_exporter import GGUFExporter
+            exporter = GGUFExporter()
+            if not exporter.available:
+                logging.warning("GGUF export skipped: llama.cpp tools not available")
+                return
+
+            base_model = job.get("model", "")
+            suffix = job.get("suffix", "")
+            model_name = f"{base_model}:{suffix}" if suffix else f"{base_model}:{provider_job_id[:8]}"
+
+            # Step 1: Fuse LoRA adapters into base model
+            adapter_path = self._jobs_dir / provider_job_id / "adapters"
+            fused_output = self._jobs_dir / provider_job_id / "fused"
+            await exporter.fuse_adapters(str(adapter_path), base_model, str(fused_output))
+
+            # Step 2: Convert to GGUF (FP16 → Q4_K_M)
+            gguf_path = self._jobs_dir / provider_job_id / f"{model_name.replace(':','-')}.gguf"
+            await exporter.convert_to_gguf(str(fused_output), str(gguf_path))
+
+            # Step 3: Register with Ollama
+            await exporter.register_ollama(str(gguf_path), model_name.replace(":", "-"))
+
+            job["gguf_path"] = str(gguf_path)
+            logging.info("GGUF export complete: %s", gguf_path)
+        except Exception as e:
+            logging.warning("GGUF export failed (non-critical): %s", str(e)[:200], exc_info=True)
 
     def _save_jobs_meta(self):
         meta_path = self._jobs_dir / "jobs_meta.json"
