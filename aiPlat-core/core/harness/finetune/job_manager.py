@@ -230,6 +230,8 @@ class JobManager:
                     self._update(job_id, entry)
                     # Register model with infra
                     await self._register_model(entry)
+                    # Signal SFT completion for downstream RL pipeline
+                    self._signal_sft_complete(entry)
                     return
 
                 if new_status in (JobStatus.FAILED, JobStatus.CANCELLED):
@@ -295,3 +297,34 @@ class JobManager:
             logging.info("Model registered: %s", info.name)
         except Exception as e:
             logging.warning("Model registration failed (non-critical): %s", str(e)[:200], exc_info=True)
+
+    @staticmethod
+    def _signal_sft_complete(entry: dict) -> None:
+        """Write SFT completion signal for downstream RL pipeline.
+
+        Saves {result_model, base_model, job_id, completed_at} to
+        ~/.aiplat/sft_models/latest.json so RLTrainer can auto-detect
+        the latest SFT model and start RL training on it.
+        """
+        try:
+            import json as _json2, time as _time3
+            signal_path = os.path.expanduser("~/.aiplat/sft_models/latest.json")
+            os.makedirs(os.path.dirname(signal_path), exist_ok=True)
+            signal = {
+                "result_model": entry.get("result_model", ""),
+                "base_model": entry.get("base_model", ""),
+                "job_id": entry.get("id", ""),
+                "dataset_id": entry.get("dataset_id", ""),
+                "completed_at": _time3.time(),
+            }
+            # Append to history log
+            history_path = os.path.expanduser("~/.aiplat/sft_models/history.jsonl")
+            os.makedirs(os.path.dirname(history_path), exist_ok=True)
+            with open(history_path, "a") as f:
+                f.write(_json2.dumps(signal) + "\n")
+            # Write latest pointer
+            with open(signal_path, "w") as f:
+                _json2.dump(signal, f)
+            logging.info("SFT→RL signal written: %s", signal["result_model"])
+        except Exception:
+            logging.debug("SFT→RL signal failed (non-critical)", exc_info=True)

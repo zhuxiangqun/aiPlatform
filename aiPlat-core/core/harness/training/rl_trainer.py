@@ -163,14 +163,35 @@ class RLTrainer:
     """
 
     def __init__(self, *, base_model: str = "", student_model: str = ""):
-        self.base_model = base_model
-        self.student_model = student_model or base_model
+        self.base_model = base_model or self._detect_latest_sft_model()
+        self.student_model = student_model or self.base_model
         self._enabled = os.getenv("AIPLAT_RL_ENABLED", "false").lower() in ("1", "true", "yes")
         self._episodes_per_iter = int(os.getenv("AIPLAT_RL_EPISODES_PER_ITER", "64"))
         self._max_iterations = int(os.getenv("AIPLAT_RL_MAX_ITERATIONS", "10"))
         self._learning_rate = float(os.getenv("AIPLAT_RL_LEARNING_RATE", "1e-5"))
         self.reward = VerifierReward()
         self.updater = RLOOUpdater()
+
+    @staticmethod
+    def _detect_latest_sft_model() -> str:
+        """Auto-detect the latest SFT-trained model from ~/.aiplat/sft_models/latest.json.
+
+        This is the bridge from SFT pipeline → RL pipeline.
+        After SFT job completes, job_manager._signal_sft_complete() writes this file.
+        """
+        try:
+            signal_path = os.path.expanduser("~/.aiplat/sft_models/latest.json")
+            if os.path.exists(signal_path):
+                with open(signal_path) as f:
+                    signal = json.load(f)
+                model = signal.get("result_model", signal.get("base_model", ""))
+                if model:
+                    logger.info("RL: auto-detected SFT model: %s", model)
+                    return model
+        except Exception:
+            pass
+        logger.debug("RL: no SFT model detected, using default")
+        return ""
 
     # ── Public API ──
 
