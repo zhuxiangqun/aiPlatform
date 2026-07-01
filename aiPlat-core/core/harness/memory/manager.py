@@ -87,6 +87,20 @@ class MemoryManager:
     def __init__(self, config: Optional[MemoryConfig] = None, namespace: str = "default",
                  *, tenant_id: Optional[str] = None, session_id: Optional[str] = None):
         self._config = config or MemoryConfig()
+        # Auto-inject model for episodic LLM summarization if not provided by caller
+        if self._config.use_llm_summary and self._config.model is None:
+            try:
+                from core.harness.utils.model_injection import best_model_for_purpose
+                purpose = "doc_llm"
+                model_name = best_model_for_purpose(purpose)
+                if model_name:
+                    from core.harness.utils.model_injection import create_selected_adapter
+                    self._config.model = create_selected_adapter(model_name=model_name)
+                    logger.info("Episodic LLM summarization: auto-injected model '%s'", model_name)
+                else:
+                    logger.warning("Episodic LLM summarization: no model available, using rule-based fallback")
+            except Exception as e:
+                logger.warning("Episodic LLM summarization: auto-injection failed: %s", e)
         self.namespace = namespace
         # §5.12 isolation scope: when set, semantic retrieve/capture are tenant+session
         # scoped (build_context auto-applies the S1 filter; capture stamps metadata).
@@ -126,7 +140,7 @@ class MemoryManager:
             except asyncio.CancelledError:
                 break
             except Exception as e:
-                logging.debug(str(e), exc_info=True)
+                logging.warning(str(e), exc_info=True)
 
     async def shutdown(self) -> None:
         """Gracefully stop background tasks."""
@@ -214,7 +228,7 @@ class MemoryManager:
                                 messages.append({"role": "system", "content": msg})
                         break
         except Exception as e:
-            logging.debug(str(e), exc_info=True)
+            logging.warning(str(e), exc_info=True)
         
         # Add working memory
         messages.extend(working_context)
@@ -329,7 +343,24 @@ class MemoryManager:
                     assistant_message=assistant_message,
                 )
             except Exception:
-                logging.getLogger("manager").debug("best-effort skipped", exc_info=True)
+                logging.getLogger("memory").warning("best-effort skipped", exc_info=True)
+
+        # Auto Memory (P6): detect patterns and auto-save learnings to file
+        try:
+            self._interaction_count = getattr(self, "_interaction_count", 0) + 1
+            corrections = sum(1 for tc in (tool_calls or []) if isinstance(tc, dict) and tc.get("name") == "correct_agent")
+            from core.harness.memory.file_store import auto_save_learning, should_auto_learn
+            if should_auto_learn(self._interaction_count, corrections):
+                if corrections >= 2:
+                    auto_save_learning("correction",
+                        f"Agent corrected {corrections} times in session",
+                        source="auto")
+                if self._interaction_count % 10 == 0:
+                    auto_save_learning("pattern",
+                        f"Checkpoint: {self._interaction_count} interactions",
+                        source="auto")
+        except Exception:
+            pass
 
             # Wiki auto-extraction: high-stability insights → knowledge atoms
             try:
@@ -350,7 +381,7 @@ class MemoryManager:
                                        summary=assistant[:300].replace('\n', ' '),
                                        source_articles=["memory:episodic"])
             except Exception as e:
-                logging.debug(str(e), exc_info=True)
+                logging.warning(str(e), exc_info=True)
 
     def export_episodic_state(self) -> Dict[str, Any]:
         """Export episodic memory for persistence (survives restart)."""
@@ -440,7 +471,7 @@ class MemoryManager:
                 registry.register(meta)
                 logger.info(f"TaskSkill registered in SkillRegistry: {skill.skill_id}")
         except Exception as e:
-            logging.debug(str(e), exc_info=True)
+            logging.warning(str(e), exc_info=True)
 
         return skill_path
 
@@ -545,7 +576,7 @@ class MemoryManager:
                             if len(results) >= limit:
                                 break
             except Exception:
-                logging.getLogger("manager").debug("best-effort skipped", exc_info=True)
+                logging.getLogger("manager").warning("best-effort skipped", exc_info=True)
 
         results.sort(key=lambda s: (-s.pass_rate, -len(s.keywords)))
         return results[:limit]
@@ -640,7 +671,7 @@ class MemoryManager:
                         with open(_os.path.join(skills_dir, fname)) as f:
                             result["memory"]["task_skills"].append(_json.load(f))
                     except Exception:
-                        logging.getLogger("manager").debug("best-effort skipped", exc_info=True)
+                        logging.getLogger("manager").warning("best-effort skipped", exc_info=True)
 
         return result
 
@@ -718,7 +749,7 @@ class MemoryManager:
                             sk = _json.load(f)
                             result["task_skills"]["skills"].append({"skill_id": sk.get("skill_id"), "pass_rate": sk.get("pass_rate"), "name": sk.get("name")})
                     except Exception:
-                        logging.getLogger("manager").debug("best-effort skipped", exc_info=True)
+                        logging.getLogger("manager").warning("best-effort skipped", exc_info=True)
         result["task_skills"]["total"] = len(result["task_skills"]["skills"])
         return result
     
@@ -825,7 +856,7 @@ def _wire_persist_callback(mgr: MemoryManager) -> None:
                  str(interaction.get("metadata", "{}"))[:2000],
                  interaction.get("timestamp", now), now, 1.0))
         except Exception as e:
-            logging.debug(str(e), exc_info=True)
+            logging.warning(str(e), exc_info=True)
     mgr._persist_callback = _persist
 
 

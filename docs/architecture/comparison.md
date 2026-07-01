@@ -1,6 +1,6 @@
 # aiPlat 架构对标 — 四方案深度对比
 
-> 最后更新: 2026-07-01 | 数据源: 代码级分析 (aiPlat), 仓库 README + 源码 (Hermes/Claude Code/OpenClaw)
+> 最后更新: 2026-07-01 | Phase 5 竞品借鉴已全部合入 (404✅) | 数据源: 代码级分析
 > 对标对象: [Hermes Agent](https://github.com/NousResearch/hermes-agent) · [Claude Code](https://github.com/anthropics/claude-code) · [OpenClaw](https://github.com/openclaw/openclaw)
 >
 > **规则**: 本文档是 aiPlat 与其他系统的架构对比统一入口。新增对标方只需加一个章节。
@@ -86,7 +86,7 @@ Claude Code (闭源引擎+开源插件层)        OpenClaw (Gateway)
 | **架构层次** | ✅ 4 层 (Working/Episodic/Semantic/TaskSkills) | 2 层 (会话内 + MEMORY.md) + 可插拔 MemoryProvider | 2 层 (会话 + Auto Memory) + Agent Memory | 文件层 + 可插拔 MemoryBackend (SQLite/QMD/Honcho) |
 | **Working 记忆** | deque 滑动窗口, 30K token 限制 | 会话内保留 | 会话内保留 | 会话内保留 |
 | **Episodic 记忆** | 规则摘要 + LLM 预评分 (>0.8 永不压缩) | MEMORY.md 持久化 | Auto Memory (Claude 自动学习保存) | MEMORY.md + memory/*.md (Markdown 文件) |
-| **Semantic 记忆** | SQLite + FTS5 + 向量存储 + 动态续期 + 软删除 | FTS5 Session Search | 无独立实现 | 语义混合搜索 (vector + keyword) |
+| **Semantic 记忆** | SQLite + FTS5 + ✅ Markdown 双写 (人类可验证) | FTS5 Session Search | 无独立实现 | 语义混合搜索 (vector + keyword) |
 | **Task Skills** | Pipeline 完成自动晶体化 (pass_rate ≥85%) + 注册 SkillRegistry | Agent 自创技能 + 修补过时技能 | 无可复用 Skill 机制 | 无可复用机制 |
 | **压缩策略** | ✅ 5 级 ContextCompression (70%→99%) + 工具输出预算帽 | 2 级压缩 (Preflight >50% + Gateway >85%) | Auto Compaction + Manual `/compact` | Auto Compaction + 静默 Memory Flush |
 | **投毒防御** | ✅ source_tag + trust_weight + provenance 三字段 + 写前校验 | ❌ 无 | ❌ 无 | ❌ 无 |
@@ -98,7 +98,7 @@ Claude Code (闭源引擎+开源插件层)        OpenClaw (Gateway)
 |------|------|------|------|------|
 | **Agent 类型** | 7 种实现类 (ReAct/Conv/PlanExe/RAG/MultiAgent/MaterialsChat/Base) | 单一 AIAgent 类，配置差异 | 内建 Subagent 类型 (Explore/Plan/General-purpose) | 多 Agent 配置 (`agents.list[]`) |
 | **注册机制** | AGENT.md frontmatter → PipelineStageConfig + agent_registry | 无注册表，单实例运行 | 无需注册，直接创建 | 配置文件声明 |
-| **Subagent** | SubAgentCoordinator + execute_single/parallel/sequential/fanout | delegate_task → 独立上下文 + 预算 | ✅ 完全上下文隔离 + 仅返回摘要 | sessions_spawn (轻量) |
+| **Subagent** | SubAgentCoordinator + ✅ isolate_context + read_only_context | delegate_task → 独立上下文 + 预算 | ✅ 完全上下文隔离 + 仅返回摘要 | sessions_spawn (轻量) |
 | **Agent 通信** | AgentMessageBus (TASK_ASSIGN/RESULT/ERROR/CANCEL) | 子代理返回最终文本 | 父子通过摘要通信 | 直接消息发送 |
 | **动态路由** | DynamicRouter (LLM Supervisor) + GoalAwareRouter | 无 | 无 | Deterministic binding (规则驱动) |
 | **辩论模式** | ✅ debate.py (N-Agent 对抗 + Manager 合成) | ❌ 无 | ❌ 无 | ❌ 无 |
@@ -124,7 +124,7 @@ Claude Code (闭源引擎+开源插件层)        OpenClaw (Gateway)
 |------|------|------|------|------|
 | **MCP 客户端** | ✅ MCPClient + MCPClientManager + Runtime | ✅ Both stdio/HTTP + OAuth 2.1 + mTLS | ✅ Full MCP 集成 | 通过插件 |
 | **MCP 服务端** | ✅ MCPServer + create_mcp_server | ✅ `hermes mcp serve` (10 tools) | ✅ `claude mcp serve` | 通过插件 |
-| **工具延迟加载** | ❌ 全量加载 | ❌ 全量加载 | ✅ **默认仅加载名称** (~120 tokens) | ❌ 全量加载 |
+| **工具延迟加载** | ✅ Lazy Load (启动仅加载名称, Schema按需获取, AIPLAT_MCP_LAZY_LOAD) | ❌ 全量加载 | ✅ **默认仅加载名称** (~120 tokens) | ❌ 全量加载 |
 | **动态工具更新** | ❌ 无 | ✅ `list_changed` 通知 | ✅ `list_changed` 通知 | ❌ 无 |
 | **OAuth 支持** | ❌ 无 | ✅ PKCE + Token Exchange + mTLS | ✅ OAuth 2.0 内置流程 | 通过插件 |
 | **安全分层** | PolicyGate 统一门禁 | ❌ 无 | Permissions 引擎强制执行 | Tool Policy 前置过滤 |
@@ -135,7 +135,7 @@ Claude Code (闭源引擎+开源插件层)        OpenClaw (Gateway)
 |------|------|------|------|------|
 | **工具数量** | ~19 内置 + MCP | 70+ 内置 + MCP | ~20+ 内置 + MCP | ~15+ 内置 + MCP |
 | **注册机制** | ToolRegistry + BaseTool 子类 | 导入时 `registry.register()` 自发现 | 内置自动注册 | `api.registerTool()` |
-| **权限系统** | PolicyGate + ApprovalGate 双门禁 + RBAC | 危险命令检测 + 写审批 + 路径安全 | ✅ **3 层优先级 (deny>ask>allow)** + 6 种模式 + 参数级匹配 | Allow/Deny 列表 + Exec 批准 |
+| **权限系统** | PolicyGate + ApprovalGate + ✅ **3层(deny>ask>allow)** + RBAC | 危险命令检测 + 写审批 + 路径安全 | ✅ **3 层优先级 (deny>ask>allow)** + 6 种模式 + 参数级匹配 | Allow/Deny 列表 + Exec 批准 |
 | **沙箱** | PipelineSandbox | ❌ 无内置（依赖 OS） | ✅ **OS 级文件系统+网络隔离** | Docker/SSH/OpenShell |
 | **Browser** | BrowserTool (10 actions) | 10 browser tools (cdp/camofox/supervisor) | ❌ 无内置 | puppeteer-based |
 | **后台执行** | Cron + Async Task | Cron + Background 子代理 | Background Tasks + Monitor | Cron + Heartbeat |
@@ -146,7 +146,7 @@ Claude Code (闭源引擎+开源插件层)        OpenClaw (Gateway)
 |------|------|------|------|------|
 | **模板管理** | ✅ `prompt_loader._register()` + `_sync_resolve()` (55+ 模板, 分类管理) | ❌ 硬编码在代码中 | ❌ CLAUDE.md 用户自写 | ❌ SKILL.md 指令注入 |
 | **CoT 自动注入** | ✅ 引擎层自动追加 4 步推理指令 (`cot-auto-inject` 模板) | ❌ 无 | ❌ 模型自行推理 | ❌ 无 |
-| **提示词缓存** | ❌ 无 | ✅ **Anthropic Prompt Caching (字节稳定, SQLite 跨会话恢复)** | ✅ **3 层缓存 (系统+项目+会话)** | ❌ 无 |
+| **提示词缓存** | ✅ cache_control注入 + stable/volatile分离 (AIPLAT_PROMPT_CACHE) | ✅ **Anthropic Prompt Caching (字节稳定, SQLite 跨会话恢复)** | ✅ **3 层缓存 (系统+项目+会话)** | ❌ 无 |
 | **动态组装** | PromptAssembler (stable_system_prompt vs ephemeral_overlay) | 3 层组装 (Stable→Context→Volatile) | CLAUDE.md 注入 (用户消息, 非系统提示) | System Prompt + Skills XML 注入 |
 | **安全规则** | ✅ 注入检测 (6 正则) + PII 脱敏 + 特殊 Token 过滤 + override guard | Threat Patterns 扫描 + 作用域检测 | 引擎强制 deny 规则 (模型不可绕过) | ❌ 无内置 |
 | **模型适配** | Model Injection (单一适配器, 按 capability 类型) | 18+ Provider + 3 API 模式 + Fallback 链 | 专有 Anthropic API | Provider 配置 |
@@ -193,7 +193,7 @@ Claude Code (闭源引擎+开源插件层)        OpenClaw (Gateway)
 | 7 | **Ontology 引擎** | 13 步认知管线 + Palantir 对齐 (四系统唯一) |
 | 8 | **CoT + 自纠错** | 引擎层自动注入，所有 Agent 受益 |
 | 9 | **4 层记忆** | Working→Episodic→Semantic→TaskSkills + 投毒防御 |
-| 10 | **文档-代码同步** | CI 强制统计表一致性 (四系统唯一) |
+| 11 | **竞品借鉴闭环** | Phase 5 完成: 7/7 已合入 (MCP懒加载 + Prompt Caching + 三层权限 + Subagent隔离 + File记忆 + Plugin Slot) |\n| 12 | **文档-代码同步** | CI 强制统计表一致性 (404✅)+ code-doc-gap 检测 |
 
 ---
 
@@ -204,7 +204,7 @@ Claude Code (闭源引擎+开源插件层)        OpenClaw (Gateway)
 | 来源 | 能力 | 理由 | 优先级 | 状态 |
 |------|------|------|:---:|:---:|
 | Claude Code | **MCP 工具延迟加载** (仅加载名称, Schema 按需) | aiPlat 全量加载会撑爆上下文窗口 | P0 | ✅ |
-| Hermes | **Prompt Caching** (Anthropic 字节稳定 + SQLite 跨会话恢复) | 可大幅降低 API 成本 | P0 | ✅ |
+| Hermes | **Prompt Caching** (Anthropic 字节稳定 + SHA256 跨会话持久化) | 可大幅降低 API 成本 | P0 | ✅ |
 | Claude Code | **Permissions 3 层优先级** (deny > ask > allow, 参数级匹配) | 比当前 PolicyGate 更精细化 | P1 | ✅ |
 | Claude Code | **Subagent 完全上下文隔离 + 仅返回摘要** | 当前 SubAgentCoordinator 在同一个上下文 | P1 | ✅ |
 | OpenClaw | **File-based Memory (Markdown) 作为标准答案** | 透明、人类可读、可编辑 | P1 | ✅ |

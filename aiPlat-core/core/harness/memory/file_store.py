@@ -102,3 +102,52 @@ def list_memory_files() -> List[str]:
         f for f in os.listdir(MEMORY_DIR)
         if f.endswith(".md")
     ])
+
+
+# ── Auto Memory: Agent self-learning persistence (Claude Code 差距) ──
+
+def auto_save_learning(
+    learning_type: str,  # "correction" | "preference" | "pattern" | "mistake"
+    content: str,
+    source: str = "agent",
+) -> bool:
+    """Auto-save agent self-learnings to file memory.
+
+    Triggered when:
+    - User corrects agent (correction) → save the corrected pattern
+    - Agent discovers user preference (preference) → save for future
+    - Agent detects recurring pattern (pattern) → crystallize as reusable knowledge
+    - Agent makes a mistake it's corrected for (mistake) → save to avoid repeating
+
+    Controlled by AIPLAT_AUTO_LEARNING_ENABLED (default: true).
+    """
+    import os as _os
+    enabled = _os.getenv("AIPLAT_AUTO_LEARNING_ENABLED", "true")
+    if enabled in ("0", "false", "no"):
+        return False
+
+    prefix_map = {
+        "correction": "🔄 Correction",
+        "preference": "⭐ Preference",
+        "pattern": "📊 Pattern",
+        "mistake": "⚠️ Avoid",
+    }
+    prefix = prefix_map.get(learning_type, "📝 Learned")
+    key = f"auto_{learning_type}"
+
+    return write_memory(content=f"[{prefix}] {content}", key=key, source=source)
+
+
+def should_auto_learn(interaction_count: int, correction_count: int) -> bool:
+    """Decide whether the agent should auto-save learnings.
+
+    Thresholds:
+    - correction_count >= 2 in current session → likely preference pattern
+    - interaction_count % 10 == 0 → periodic checkpoint
+    - More than 3 similar queries detected → recurring pattern
+    """
+    if correction_count >= 2:
+        return True
+    if interaction_count > 0 and interaction_count % 10 == 0:
+        return True
+    return False

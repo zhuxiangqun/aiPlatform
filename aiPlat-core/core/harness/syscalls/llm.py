@@ -667,18 +667,43 @@ async def sys_llm_generate(
     ctx_gate = ContextGate()
     res_gate = ResilienceGate()
 
-    # P0-2: Prompt Caching — inject cache_control markers for Anthropic
+    # P0-2+1: Prompt Caching — inject cache_control with cross-session persistence
     cache_enabled = os.getenv("AIPLAT_PROMPT_CACHE_ENABLED", "true")
     if cache_enabled not in ("0", "false", "no") and isinstance(prompt, list):
         try:
-            # Skip cache if messages contain dynamic content (datetime, uuid, run_id)
             _dynamic_patterns = [r'\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}', r'run_id', r'uuid']
             _has_dynamic = any(
-                any(re.search(p, str(msg.get("content", ""))) for p in _dynamic_patterns) 
+                any(re.search(p, str(msg.get("content", ""))) for p in _dynamic_patterns)
                 for msg in prompt if isinstance(msg, dict)
             )
             if not _has_dynamic and len(prompt) > 0 and prompt[0].get("role") == "system":
+                import hashlib, json as _json
+                stable_text = str(prompt[0].get("content", ""))
+                stable_hash = hashlib.sha256(stable_text.encode()).hexdigest()[:16]
+
+                # Cross-session persistence: check cached hash
+                cache_dir = os.path.expanduser("~/.aiplat/cache")
+                cache_file = os.path.join(cache_dir, "prompt_cache.json")
+                cached_hash = ""
+                try:
+                    os.makedirs(cache_dir, exist_ok=True)
+                    if os.path.exists(cache_file):
+                        with open(cache_file) as f:
+                            cached = _json.load(f)
+                            cached_hash = cached.get("hash", "")
+                except Exception:
+                    pass
+
+                # Set cache_control: ephemeral + persisted hash for cross-session
                 prompt[0]["cache_control"] = {"type": "ephemeral"}
+
+                # If hash changed, update cache file for future sessions
+                if stable_hash != cached_hash:
+                    try:
+                        with open(cache_file, "w") as f:
+                            _json.dump({"hash": stable_hash, "ts": time.time()}, f)
+                    except Exception:
+                        pass
         except Exception:
             pass
 

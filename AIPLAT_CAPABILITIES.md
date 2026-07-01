@@ -355,10 +355,11 @@
 | FeedbackRadar | `harness/learning/feedback_radar.py` | ✅ | 5种用户信号检测→Spec调整建议 (boundary/direction/overload/drift/cold) | 已合入 |
 | InlineSelfCorrect | `harness/execution/loop.py:_try_self_correct` | ✅ | 内联自纠错: PostObserve→reflection-critic→reflection-improve, 1次/步 | 已合入 |
 | MCPToolLazyLoad | `apps/mcp/client.py` | ✅ | MCP工具延迟加载: 启动仅加载名称, Schema首次调用时按需获取, AIPLAT_MCP_LAZY_LOAD控制 | 已合入 |
-| PromptCaching | `syscalls/llm.py` | ✅ | Anthropic Prompt Caching: stable消息注入cache_control, 动态内容检测跳过, AIPLAT_PROMPT_CACHE_ENABLED控制 | 已合入 |
+| PromptCaching | `syscalls/llm.py` | ✅ | Prompt Caching: stable消息cache_control注入 + SHA256跨会话持久化(~/.aiplat/cache/), AIPLAT_PROMPT_CACHE_ENABLED控制 | 已合入 |
 | ThreeLayerPermissions | `gates/policy_gate.py:_match_tool_rule` | ✅ | 三层权限(deny>ask>allow)+参数级fnmatch匹配 | 已合入 |
 | SubagentIsolation | `subagent/coordinator.py:isolate_context` | ✅ | 子代理上下文隔离: 仅传摘要+只读模式, 默认开启 | 已合入 |
 | FileBasedMemory | `memory/file_store.py` | ✅ | 文件记忆: Markdown双写(MEMORY.md+日期文件)+SQLite索引, 人类可验证 | 已合入 |
+| AutoMemory | `memory/file_store.py:auto_save_learning` + `memory/manager.py:save_interaction` | ✅ | 自动记忆: 纠正≥2次/10轮交互自动保存到文件, AIPLAT_AUTO_LEARNING_ENABLED控制 | 已合入 |
 | PluginSlot | `apps/plugins/manager.py` | ✅ | 插件Slot: 同类别单一活跃, 旧插件状态归档 | 已合入 |
 
 ---
@@ -635,7 +636,7 @@
 | 可观测性 | 13 | 0 | 13 |
 | 模型基础设施 | 13 | 0 | 13 |
 | 部署与运维 | 15 | 0 | 15 |
-| 扩展与学习 | 39 | 0 | 39 |
+| 扩展与学习 | 40 | 0 | 40 |
 | Gate 系统 | 5 | 0 | 5 |
 | 评估系统 | 13 | 0 | 13 |
 | MCP 协议 | 6 | 0 | 6 |
@@ -652,12 +653,12 @@
 | 编排系统 | 4 | 0 | 4 |
 | 管理 & 质量 | 14 | 0 | 14 |
 | 编排层 | 17 | 0 | 17 |
-| **总计** | **404** | **0** | **404** |
+| **总计** | **405** | **0** | **405** |
 
 ---
 
 *最后更新: 2026-07-01*
-*版本: 11.3 · 28章 · 404项能力 · 404✅ · 七项竞品借鉴已合入*
+*版本: 11.4 · 28章 · 405项能力 · 405✅ · Auto Memory 自动学习已合入*
 
 **自检命令**：
 ```bash
