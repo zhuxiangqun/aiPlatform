@@ -150,6 +150,21 @@ const SpecDetailPage: React.FC = () => {
           }}>
             复制 Spec
           </button>
+          <button onClick={async () => {
+            try {
+              await fetch(`/api/core/workbench/spec/${specId}/promote`, {
+                method: 'POST', headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({requester: 'developer', notes: 'Promoted via SpecDetail'}),
+              });
+              const hRes = await fetch(`/api/core/workbench/spec/${specId}/history`);
+              setHistory((await hRes.json())?.versions || []);
+            } catch {}
+          }} style={{
+            background: '#a855f720', color: '#a855f7', border: '1px solid #a855f740', borderRadius: 8,
+            padding: '8px 14px', cursor: 'pointer', fontSize: 13, fontWeight: 600,
+          }}>
+            🚀 提升为平台能力
+          </button>
           <button onClick={openRevise} style={{
             background: '#3b82f6', color: '#fff', border: 'none', borderRadius: 8,
             padding: '8px 18px', cursor: 'pointer', fontSize: 13, fontWeight: 600,

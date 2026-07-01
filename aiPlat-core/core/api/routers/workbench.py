@@ -909,5 +909,82 @@ async def batch_mark_stable(body: Dict[str, Any]) -> Dict[str, Any]:
     return {"total": len(spec_ids), "stable": stable_count, "results": results}
 
 
+# ── Platform Promotion (Palantir 碎石路→高速公路) ──
+
+@router.post("/spec/{spec_id}/promote")
+async def promote_to_platform(spec_id: str, body: Dict[str, Any]) -> Dict[str, Any]:
+    """Request Spec promotion to platform scope."""
+    try:
+        from core.harness.models.spec_lifecycle import get_spec_lifecycle
+        sl = get_spec_lifecycle()
+        result = sl.promote_to_platform(
+            spec_id,
+            requester=body.get("requester", "developer"),
+            notes=body.get("notes", ""),
+        )
+        if not result:
+            raise HTTPException(status_code=400, detail="Cannot promote: spec must be tenant-scoped")
+        return {"spec_id": spec_id, "scope": "platform", "promotion_status": "pending"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e)[:200])
+
+
+@router.post("/spec/{spec_id}/promote/approve")
+async def approve_promotion(spec_id: str, body: Dict[str, Any]) -> Dict[str, Any]:
+    """Approve platform promotion (reviewer action)."""
+    try:
+        from core.harness.models.spec_lifecycle import get_spec_lifecycle
+        sl = get_spec_lifecycle()
+        result = sl.promote_approve(
+            spec_id,
+            reviewer=body.get("reviewer", "architect"),
+            notes=body.get("notes", ""),
+        )
+        if not result:
+            raise HTTPException(status_code=400, detail="Cannot approve: spec not in pending promotion")
+        return {"spec_id": spec_id, "scope": "platform", "promotion_status": "approved",
+                "reviewer": result.promotion_reviewer}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e)[:200])
+
+
+@router.post("/spec/{spec_id}/promote/reject")
+async def reject_promotion(spec_id: str, body: Dict[str, Any]) -> Dict[str, Any]:
+    """Reject platform promotion (reviewer action)."""
+    try:
+        from core.harness.models.spec_lifecycle import get_spec_lifecycle
+        sl = get_spec_lifecycle()
+        result = sl.promote_reject(
+            spec_id,
+            reviewer=body.get("reviewer", "architect"),
+            reason=body.get("reason", ""),
+        )
+        if not result:
+            raise HTTPException(status_code=400, detail="Cannot reject: spec not in pending promotion")
+        return {"spec_id": spec_id, "scope": "tenant", "promotion_status": "rejected"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e)[:200])
+
+
+@router.get("/promotion-queue")
+async def get_promotion_queue() -> Dict[str, Any]:
+    """List all Specs awaiting platform promotion review."""
+    try:
+        from core.harness.models.spec_lifecycle import get_spec_lifecycle
+        sl = get_spec_lifecycle()
+        queue = sl.get_promotion_queue()
+        items = [{"spec_id": s.spec_id, "version": s.version, "requester": s.promotion_requester,
+                  "notes": s.promotion_notes, "created_at": s.created_at} for s in queue]
+        return {"queue": items, "total": len(items)}
+    except Exception as e:
+        return {"queue": [], "total": 0, "error": str(e)}
+
+
 # Local helper for _trigger_spec_re_execution
 from core.harness.models.spec_lifecycle import get_spec_lifecycle
