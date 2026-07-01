@@ -105,8 +105,17 @@ const RepairCenter = lazy(() => import('./pages/Diagnostics/RepairCenter'));
 const ObservabilityDashboard = lazy(() => import('./pages/Diagnostics/ObservabilityDashboard'));
 const RunComparison = lazy(() => import('./pages/Diagnostics/RunComparison'));
 const ModelPlayground = lazy(() => import('./pages/Diagnostics/ModelPlayground'));
+const ModelAuditPanel = lazy(() => import('./pages/Diagnostics/ModelAuditPanel'));
+const SafetyPanel = lazy(() => import('./pages/Diagnostics/SafetyPanel'));
 const SystemGraph = lazy(() => import('./pages/SystemGraph'));
 const Onboarding = lazy(() => import('./pages/Onboarding/Onboarding'));
+const OnboardingWizard = lazy(() => import('./pages/Onboarding/OnboardingWizard'));
+const ValueDashboard = lazy(() => import('./pages/ValueCenter/ValueDashboard'));
+const EnterpriseKPIs = lazy(() => import('./pages/ValueCenter/EnterpriseKPIs'));
+const BusinessGoals = lazy(() => import('./pages/ValueCenter/BusinessGoals'));
+const RoleManager = lazy(() => import('./pages/ValueCenter/RoleManager'));
+const StrategyControl = lazy(() => import('./pages/ValueCenter/StrategyControl'));
+const UserWorkbench = lazy(() => import('./pages/ValueCenter/UserWorkbench'));
 const StudioPage = lazy(() => import('./pages/Studio/StudioPage'));
 
 const router = createBrowserRouter([
@@ -120,6 +129,13 @@ const router = createBrowserRouter([
       { path: 'system-graph', element: withSuspense(SystemGraph) },
       { path: 'alerts', element: withSuspense(Alerts) },
       { path: 'onboarding', element: withSuspense(Onboarding) },
+      { path: 'onboarding/wizard', element: withSuspense(OnboardingWizard) },
+      { path: 'value-center', element: withSuspense(ValueDashboard) },
+      { path: 'value-center/kpis', element: withSuspense(EnterpriseKPIs) },
+      { path: 'value-center/goals', element: withSuspense(BusinessGoals) },
+      { path: 'value-center/roles', element: withSuspense(RoleManager) },
+      { path: 'value-center/strategy', element: withSuspense(StrategyControl) },
+      { path: 'workbench', element: withSuspense(UserWorkbench) },
       { path: 'infra/nodes', element: withSuspense(InfraNodes) },
       { path: 'infra/models', element: withSuspense(InfraModels) },
       { path: 'infra/finetune', element: withSuspense(InfraFineTune) },
@@ -209,6 +225,8 @@ const router = createBrowserRouter([
       { path: 'diagnostics/observability', element: withSuspense(ObservabilityDashboard) },
       { path: 'diagnostics/run-comparison', element: withSuspense(RunComparison) },
       { path: 'diagnostics/model-playground', element: withSuspense(ModelPlayground) },
+      { path: 'diagnostics/model-audit', element: withSuspense(ModelAuditPanel) },
+      { path: 'diagnostics/safety', element: withSuspense(SafetyPanel) },
       { path: 'diagnostics/eval', element: withSuspense(DiagnosticsEvalDashboard) },
       { path: 'studio', element: withSuspense(StudioPage) },
     ],
