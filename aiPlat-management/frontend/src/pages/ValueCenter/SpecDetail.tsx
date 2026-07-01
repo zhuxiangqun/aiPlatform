@@ -204,6 +204,18 @@ const SpecDetailPage: React.FC = () => {
                   }}>
                     {STATUS_LABELS[v.status] || v.status}
                   </span>
+                  {v.promotion_status && v.promotion_status !== 'none' && (
+                    <div style={{
+                      marginTop: 4, padding: '1px 6px', borderRadius: 3, fontSize: 9, fontWeight: 700,
+                      background: v.promotion_status === 'approved' ? '#22c55e20' :
+                                  v.promotion_status === 'pending' ? '#f59e0b20' : '#ef444420',
+                      color: v.promotion_status === 'approved' ? '#22c55e' :
+                             v.promotion_status === 'pending' ? '#f59e0b' : '#ef4444',
+                    }}>
+                      {v.promotion_status === 'approved' ? '🌐 平台' :
+                       v.promotion_status === 'pending' ? '⏳ 审批中' : '❌ 已退回'}
+                    </div>
+                  )}
                 </div>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: 13, color: '#e2e8f0', marginBottom: 4 }}>
