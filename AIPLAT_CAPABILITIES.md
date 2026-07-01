@@ -2,7 +2,7 @@
 
 > 原则：代码即真相。每个条目必须有可验证的代码位置。
 > 更新：任何能力变更时同步更新本文档。
-> 评分：97/100（2026-07-01 — 425✅, FDE操作系统 + Phase5竞品借鉴 + RL+业务价值+诊断全登记）
+> 评分：98/100（2026-07-01 — 427✅, FDE操作系统 + Phase5竞品借鉴 + RL+业务价值+诊断+沙箱全登记）
 
 ---
 
@@ -40,8 +40,8 @@
 | 8 种图构建 | `harness/execution/langgraph/graphs/` | ✅ | Pipeline/ReAct/PlanExecute/MultiAgent/TriAgent/Reflection | 已合入 |
 | EngineRouter 回退链 | `harness/execution/router.py` | ✅ | graph→loop→quick 三引擎 | 已合入 |
 | Token 预算管理 | `harness/execution/loop.py:214-215` | ✅ | 总预算 100K，推理预算 60K，80%阈值预警 | 已合入 |
-| 上下文压缩（5级） | `memory/compression.py:40` | ✅ | NORMAL→WARNING→REPLACE→PRUNE→AGGRESSIVE→EMERGENCY | 已合入 |
-| 工具输出预算帽 | `memory/compression.py:230` | ✅ | >2000字→占位符+后台LLM摘要，热路径零阻塞 | 已合入 |
+| 上下文压缩（5级） | `harness/memory/compression.py:40` | ✅ | NORMAL→WARNING→REPLACE→PRUNE→AGGRESSIVE→EMERGENCY | 已合入 |
+| 工具输出预算帽 | `harness/memory/compression.py:230` | ✅ | >2000字→占位符+后台LLM摘要，热路径零阻塞 | 已合入 |
 | 失败分类 | `harness/execution/failure_classifier.py` | ✅ | budget_exhausted / stagnation / token_budget | 已合入 |
 | 收敛检测 | `harness/coordination/detector/convergence.py` | ✅ | 多 Agent 投票收敛 | 已合入 |
 | Pipeline Sandbox | `harness/execution/pipeline_sandbox.py` | ✅ | 流水线沙箱执行 | 已合入 |
@@ -56,23 +56,23 @@
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
 |------|------|:---:|------|------|
-| 四层记忆架构 | `memory/manager.py` | ✅ | Working(Hot) → Episodic(Warm) → Semantic(Cold) → TaskSkills(External) | 已合入 |
-| WorkingMemory | `memory/working.py:22` | ✅ | deque滑动窗口，30K token，20条消息 | 已合入 |
-| EpisodicMemory | `memory/episodic.py:24` | ✅ | 会话摘要 + LLM预评分 | 已合入 |
-| SemanticMemory | `memory/semantic.py:28` | ✅ | SQLite + FTS5 + 向量存储 | 已合入 |
-| LongTermMemory | `memory/long_term.py:137` | ✅ | 关键词索引，TTL 30天 | 已合入 |
-| ShortTermMemory | `memory/short_term.py` | ✅ | deque 会话级，TTL 1h | 已合入 |
-| TaskSkills (L4) | `memory/manager.py` | ✅ | 流水线晶体化，pass_rate≥85% 自动注册 | 已合入 |
-| ProfileBuilder | `memory/profile_builder.py` | ✅ | 用户画像提取，原地更新 | 已合入 |
-| SystemReminders | `memory/reminders.py:33` | ✅ | 事件驱动提醒，user-role 注入 | 已合入 |
-| SharedMemory | `memory/shared_memory.py` | ✅ | 跨实例共享，置信度去重 | 已合入 |
-| SessionManager | `memory/session.py` | ✅ | 会话 CRUD，自动清理 | 已合入 |
-| 语义记忆动态续期 | `memory/semantic.py` | ✅ | search() 命中自动续期 expires_at | 已合入 |
-| 语义记忆软删除 | `memory/semantic.py` | ✅ | is_deleted=1 + get_deleted() 可恢复 | 已合入 |
-| 语义记忆过期清理 | `memory/semantic.py` | ✅ | expired AND access_count<3 → 软删除 | 已合入 |
-| 投毒防御字段 | `memory/base.py:39` | ✅ | source_tag + trust_weight + provenance | 已合入 |
-| Episodic 预评分 | `memory/episodic.py:55` | ✅ | 写入时后台 LLM 打分，压缩时零延迟 | 已合入 |
-| 关键决策永保 | `memory/episodic.py:124` | ✅ | critical_episodes >0.8分，永不参与常规压缩 | 已合入 |
+| 四层记忆架构 | `harness/memory/manager.py` | ✅ | Working(Hot) → Episodic(Warm) → Semantic(Cold) → TaskSkills(External) | 已合入 |
+| WorkingMemory | `harness/memory/working.py:22` | ✅ | deque滑动窗口，30K token，20条消息 | 已合入 |
+| EpisodicMemory | `harness/memory/episodic.py:24` | ✅ | 会话摘要 + LLM预评分 | 已合入 |
+| SemanticMemory | `harness/memory/semantic.py:28` | ✅ | SQLite + FTS5 + 向量存储 | 已合入 |
+| LongTermMemory | `harness/memory/long_term.py:137` | ✅ | 关键词索引，TTL 30天 | 已合入 |
+| ShortTermMemory | `harness/memory/short_term.py` | ✅ | deque 会话级，TTL 1h | 已合入 |
+| TaskSkills (L4) | `harness/memory/manager.py` | ✅ | 流水线晶体化，pass_rate≥85% 自动注册 | 已合入 |
+| ProfileBuilder | `harness/memory/profile_builder.py` | ✅ | 用户画像提取，原地更新 | 已合入 |
+| SystemReminders | `harness/memory/reminders.py:33` | ✅ | 事件驱动提醒，user-role 注入 | 已合入 |
+| SharedMemory | `harness/memory/shared_memory.py` | ✅ | 跨实例共享，置信度去重 | 已合入 |
+| SessionManager | `harness/memory/session.py` | ✅ | 会话 CRUD，自动清理 | 已合入 |
+| 语义记忆动态续期 | `harness/memory/semantic.py` | ✅ | search() 命中自动续期 expires_at | 已合入 |
+| 语义记忆软删除 | `harness/memory/semantic.py` | ✅ | is_deleted=1 + get_deleted() 可恢复 | 已合入 |
+| 语义记忆过期清理 | `harness/memory/semantic.py` | ✅ | expired AND access_count<3 → 软删除 | 已合入 |
+| 投毒防御字段 | `harness/memory/base.py:39` | ✅ | source_tag + trust_weight + provenance | 已合入 |
+| Episodic 预评分 | `harness/memory/episodic.py:55` | ✅ | 写入时后台 LLM 打分，压缩时零延迟 | 已合入 |
+| 关键决策永保 | `harness/memory/episodic.py:124` | ✅ | critical_episodes >0.8分，永不参与常规压缩 | 已合入 |
 
 ---
 
@@ -81,25 +81,25 @@
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
 | knowledge_gap_detector | `harness/ontology_engine/knowledge_gap_detector.py` | ✅ | 自动同步 | 已合入 |
 |------|------|:---:|------|------|
-| 13步本体管线 | `ontology_engine/engine.py:94` | ✅ | 3Phase: Classify→Extract并行→Validate串行 | 已合入 |
-| ClassMapper（零LLM） | `ontology_engine/class_mapper.py:18` | ✅ | 关键词倒排索引 → T-Box 类映射 | 已合入 |
-| PropertyExtractor | `ontology_engine/property_extractor.py:19` | ✅ | LLM属性提取 + table_context注入（并行） | 已合入 |
-| StateMachine | `ontology_engine/state_machine.py:113` | ✅ | YAML驱动，3触发器×7联动 | 已合入 |
-| StateHistory | `ontology_engine/state_history.py` | ✅ | SQLite 状态变更审计表 | 已合入 |
-| GraphIndex | `ontology_engine/graph_index.py:68` | ✅ | 有向图 + HyperEdge (SAG风格) | 已合入 |
-| GraphTraversal | `ontology_engine/graph_traversal.py:88` | ✅ | BFS遍历 + traverse_multi + ranked_terminals | 已合入 |
-| GraphInference | `ontology_engine/graph_inference.py:47` | ✅ | YAML推理规则 → 传递闭包推断边 | 已合入 |
-| KnowledgeSynthesizer | `ontology_engine/knowledge_synthesis.py:37` | ✅ | 推理链/事实卡/综合结论 → Wiki页面 | 已合入 |
-| EntityResolver | `ontology_engine/entity_resolver.py` | ✅ | strict(3层) / lazy(仅同源) 双模式 | 已合入 |
-| DocumentParser | `ontology_engine/document_parser.py` | ✅ | MD/HTML/TXT/PDF/DOCX 5格式 + 视频/音频 | 已合入 |
-| Graph Snapshot | `ontology_engine/graph_index.py:631` | ✅ | 版本化图快照 + restore + compare | 已合入 |
+| 13步本体管线 | `harness/ontology_engine/engine.py:94` | ✅ | 3Phase: Classify→Extract并行→Validate串行 | 已合入 |
+| ClassMapper（零LLM） | `harness/ontology_engine/class_mapper.py:18` | ✅ | 关键词倒排索引 → T-Box 类映射 | 已合入 |
+| PropertyExtractor | `harness/ontology_engine/property_extractor.py:19` | ✅ | LLM属性提取 + table_context注入（并行） | 已合入 |
+| StateMachine | `harness/ontology_engine/state_machine.py:113` | ✅ | YAML驱动，3触发器×7联动 | 已合入 |
+| StateHistory | `harness/ontology_engine/state_history.py` | ✅ | SQLite 状态变更审计表 | 已合入 |
+| GraphIndex | `harness/ontology_engine/graph_index.py:68` | ✅ | 有向图 + HyperEdge (SAG风格) | 已合入 |
+| GraphTraversal | `harness/ontology_engine/graph_traversal.py:88` | ✅ | BFS遍历 + traverse_multi + ranked_terminals | 已合入 |
+| GraphInference | `harness/ontology_engine/graph_inference.py:47` | ✅ | YAML推理规则 → 传递闭包推断边 | 已合入 |
+| KnowledgeSynthesizer | `harness/ontology_engine/knowledge_synthesis.py:37` | ✅ | 推理链/事实卡/综合结论 → Wiki页面 | 已合入 |
+| EntityResolver | `harness/ontology_engine/entity_resolver.py` | ✅ | strict(3层) / lazy(仅同源) 双模式 | 已合入 |
+| DocumentParser | `harness/ontology_engine/document_parser.py` | ✅ | MD/HTML/TXT/PDF/DOCX 5格式 + 视频/音频 | 已合入 |
+| Graph Snapshot | `harness/ontology_engine/graph_index.py:631` | ✅ | 版本化图快照 + restore + compare | 已合入 |
 | 域本体 YAML | `~/.aiplat/ontologies/` | ✅ | 20+类，34+关系，K1-K4 知识治理 | 已合入 |
-| 数据源连接器 | `ontology_engine/data_source.py` | ✅ | SQL/API/File → 本体实例映射 | 已合入 |
-| Webhook 写回 | `ontology_engine/engine.py:294` | ✅ | state transition → call_webhook | 已合入 |
+| 数据源连接器 | `harness/ontology_engine/data_source.py` | ✅ | SQL/API/File → 本体实例映射 | 已合入 |
+| Webhook 写回 | `harness/ontology_engine/engine.py:294` | ✅ | state transition → call_webhook | 已合入 |
 | 场景推演沙箱 | API: simulate-scenarios | ✅ | 多方案对比推演 | 已合入 |
-| ShardedGraphIndex | `ontology_engine/sharded_graph.py` | ✅ | 跨域分片图索引 | 已合入 |
-| 跨域本体桥接 | `ontology_engine/triple_store.py` + `triple_scanner.py` | ✅ | 统一三元组存储 + BFS多跳遍历 + 5数据源自动扫描 + 3 API端点 | 已合入 |
-| 审批工作流引擎 | `ontology_engine/approval.py` | ✅ | submit/approve/reject/changes + 超时升级 + 告警通道 | 已合入 |
+| ShardedGraphIndex | `harness/ontology_engine/sharded_graph.py` | ✅ | 跨域分片图索引 | 已合入 |
+| 跨域本体桥接 | `harness/ontology_engine/triple_store.py` + `triple_scanner.py` | ✅ | 统一三元组存储 + BFS多跳遍历 + 5数据源自动扫描 + 3 API端点 | 已合入 |
+| 审批工作流引擎 | `harness/ontology_engine/approval.py` | ✅ | submit/approve/reject/changes + 超时升级 + 告警通道 | 已合入 |
 
 ---
 
@@ -116,22 +116,22 @@
 | cap_health_rules | `harness/knowledge/cap_health_rules.py` | ✅ | 自动同步 | 已合入 |
 | skill_deps | `harness/knowledge/skill_deps.py` | ✅ | 自动同步 | 已合入 |
 |------|------|:---:|------|------|
-| 统一知识检索 | `syscalls/retrieval.py:569` | ✅ | 并行 Wiki + KB，RRF 三路融合 | 已合入 |
-| KB 文档检索 | `syscalls/retrieval.py:39` | ✅ | hybrid: LIKE + FTS5 + FAISS 向量 | 已合入 |
-| Wiki 页面检索 | `syscalls/retrieval.py:467` | ✅ | FTS5 + embedding + 链接遍历 + 本体过滤 | 已合入 |
-| RRF 三路融合 | `knowledge/hybrid_retriever.py:53` | ✅ | Wiki+KB+Graph 统一 1/(k+rank) 融合 | 已合入 |
-| Graph Early Exit | `syscalls/retrieval.py:591` | ✅ | confidence>0.92 直接返回，取消Wiki/KB | 已合入 |
-| CRAG 3级回退 | `knowledge/retriever.py:262` | ✅ | 本体优先→FTS5→HyDE | 已合入 |
-| HyDE 假设答案 | `knowledge/hyde_expander.py:27` | ✅ | LLM生成假设 → 向量检索 | 已合入 |
-| Wiki CircuitBreaker | `syscalls/retrieval.py:506` | ✅ | CLOSED→OPEN(3次失败)→HALF_OPEN | 已合入 |
-| DomainRouter | `knowledge/domain_router.py:26` | ✅ | T1标签→T2向量→T3 LLM，3层级联 | 已合入 |
-| SemanticCache (L1/L2) | `knowledge/semantic_cache.py:31` | ✅ | L1精确(md5)→L2语义(cosine≥0.95)→L3穿透 | 已合入 |
-| 缓存版本号切换 | `knowledge/semantic_cache.py` | ✅ | INCR version O(1) + L1主动清 + 版本窗口 | 已合入 |
-| LatentStageCache | `knowledge/semantic_cache.py:305` | ✅ | 多阶段隐空间缓存，query+domain+retrieval向量组合匹配 | 已合入 |
-| QueryRewriter | `knowledge/query_rewriter.py` | ✅ | 查询改写/扩展 | 已合入 |
+| 统一知识检索 | `harness/syscalls/retrieval.py:569` | ✅ | 并行 Wiki + KB，RRF 三路融合 | 已合入 |
+| KB 文档检索 | `harness/syscalls/retrieval.py:39` | ✅ | hybrid: LIKE + FTS5 + FAISS 向量 | 已合入 |
+| Wiki 页面检索 | `harness/syscalls/retrieval.py:467` | ✅ | FTS5 + embedding + 链接遍历 + 本体过滤 | 已合入 |
+| RRF 三路融合 | `harness/knowledge/hybrid_retriever.py:53` | ✅ | Wiki+KB+Graph 统一 1/(k+rank) 融合 | 已合入 |
+| Graph Early Exit | `harness/syscalls/retrieval.py:591` | ✅ | confidence>0.92 直接返回，取消Wiki/KB | 已合入 |
+| CRAG 3级回退 | `harness/knowledge/retriever.py:262` | ✅ | 本体优先→FTS5→HyDE | 已合入 |
+| HyDE 假设答案 | `harness/knowledge/hyde_expander.py:27` | ✅ | LLM生成假设 → 向量检索 | 已合入 |
+| Wiki CircuitBreaker | `harness/syscalls/retrieval.py:506` | ✅ | CLOSED→OPEN(3次失败)→HALF_OPEN | 已合入 |
+| DomainRouter | `harness/knowledge/domain_router.py:26` | ✅ | T1标签→T2向量→T3 LLM，3层级联 | 已合入 |
+| SemanticCache (L1/L2) | `harness/knowledge/semantic_cache.py:31` | ✅ | L1精确(md5)→L2语义(cosine≥0.95)→L3穿透 | 已合入 |
+| 缓存版本号切换 | `harness/knowledge/semantic_cache.py` | ✅ | INCR version O(1) + L1主动清 + 版本窗口 | 已合入 |
+| LatentStageCache | `harness/knowledge/semantic_cache.py:305` | ✅ | 多阶段隐空间缓存，query+domain+retrieval向量组合匹配 | 已合入 |
+| QueryRewriter | `harness/knowledge/query_rewriter.py` | ✅ | 查询改写/扩展 | 已合入 |
 | Reranker | `harness/knowledge/reranker.py` | ✅ | CrossEncoder 重排序 | 已合入 |
-| ProvenanceTracker | `knowledge/provenance.py` | ✅ | 声明级溯源 + 过期扫描 | 已合入 |
-| PostRetrievalGovernor | `knowledge/post_retrieval_governor.py` | ✅ | 检索后去重/归一化/截断 | 已合入 |
+| ProvenanceTracker | `harness/knowledge/provenance.py` | ✅ | 声明级溯源 + 过期扫描 | 已合入 |
+| PostRetrievalGovernor | `harness/knowledge/post_retrieval_governor.py` | ✅ | 检索后去重/归一化/截断 | 已合入 |
 | HallucinationTracker | `knowledge/` | ✅ | NLI 事实核查 + GraphIndex 图边验证 | 已合入 |
 
 ---
@@ -140,34 +140,34 @@
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
 |------|------|:---:|------|------|
-| SemanticEmbedder | `knowledge/embedder.py` | ✅ | 文本→向量，via InfraEmbeddingAdapter | 已合入 |
-| DB Abstraction | `knowledge/db.py` | ✅ | 知识库数据库抽象层 | 已合入 |
-| Graph Sync | `knowledge/graph_sync.py` | ✅ | 图数据同步 | 已合入 |
-| Graph Module | `knowledge/graph.py` | ✅ | 知识图基础结构 | 已合入 |
-| RepoMap | `knowledge/repo_map.py` | ✅ | 仓库结构映射 | 已合入 |
-| Wiki FTS5 | `knowledge/wiki_fts.py` | ✅ | FTS5 全文检索 | 已合入 |
-| Wiki Structured Query | `knowledge/wiki_structured_query.py` | ✅ | Wiki 结构化查询 | 已合入 |
-| Wiki Health Rules | `knowledge/wiki_health_rules.py` | ✅ | Wiki 健康规则检查 | 已合入 |
-| Knowledge Quality | `knowledge/knowledge_quality.py` | ✅ | 知识质量评分 | 已合入 |
-| Knowledge Growth | `knowledge/knowledge_growth.py` | ✅ | 知识增长追踪 | 已合入 |
-| Knowledge Writeback | `knowledge/knowledge_writeback.py` | ✅ | 知识写回 | 已合入 |
-| Knowledge Markings | `knowledge/knowledge_markings.py` | ✅ | 知识标记与权限 | 已合入 |
-| Knowledge Ontology | `knowledge/knowledge_ontology.py` | ✅ | 知识本体管理 | 已合入 |
-| Knowledge Action | `knowledge/knowledge_action.py` | ✅ | 知识操作 | 已合入 |
-| Knowledge Validator | `knowledge/knowledge_validator.py` | ✅ | 知识条目校验 | 已合入 |
-| Knowledge ABox Builder | `knowledge/knowledge_abox_builder.py` | ✅ | A-Box (实例) 构建 | 已合入 |
-| Knowledge Evolution LLM | `knowledge/knowledge_evolution_llm.py` | ✅ | 知识进化 LLM 驱动 | 已合入 |
-| SceneModel | `knowledge/scene_model.py` | ✅ | 场景模型 | 已合入 |
-| Learning Assessment | `knowledge/learning_assessment.py` | ✅ | 学习评估 | 已合入 |
-| Learning Ontology | `knowledge/learning_ontology.py` | ✅ | 学习本体 | 已合入 |
-| Learning Paths | `knowledge/learning_paths.py` | ✅ | 学习路径推荐 | 已合入 |
-| Ontology Loader | `knowledge/ontology_loader.py` | ✅ | YAML本体加载 | 已合入 |
-| Ontology Validator | `knowledge/ontology_validator.py` | ✅ | 本体校验 | 已合入 |
-| Capability Health | `knowledge/capability_health.py` | ✅ | 能力健康评分 + Graph 持久化 | 已合入 |
-| Symbol Health | `knowledge/symbol_health.py` | ✅ | 知识符号健康度 | 已合入 |
-| Evolution Runner | `knowledge/evolution_runner.py` | ✅ | 知识进化执行 | 已合入 |
-| KB Callbacks | `knowledge/callbacks.py` | ✅ | Ingest/Query/EnqueueIngest/LoadDocKinds 回调 | 已合入 |
-| Complexity Router | `knowledge/complexity_router.py` | ✅ | 复杂查询路由 | 已合入 |
+| SemanticEmbedder | `harness/knowledge/embedder.py` | ✅ | 文本→向量，via InfraEmbeddingAdapter | 已合入 |
+| DB Abstraction | `harness/knowledge/db.py` | ✅ | 知识库数据库抽象层 | 已合入 |
+| Graph Sync | `harness/knowledge/graph_sync.py` | ✅ | 图数据同步 | 已合入 |
+| Graph Module | `harness/knowledge/graph.py` | ✅ | 知识图基础结构 | 已合入 |
+| RepoMap | `harness/knowledge/repo_map.py` | ✅ | 仓库结构映射 | 已合入 |
+| Wiki FTS5 | `harness/knowledge/wiki_fts.py` | ✅ | FTS5 全文检索 | 已合入 |
+| Wiki Structured Query | `harness/knowledge/wiki_structured_query.py` | ✅ | Wiki 结构化查询 | 已合入 |
+| Wiki Health Rules | `harness/knowledge/wiki_health_rules.py` | ✅ | Wiki 健康规则检查 | 已合入 |
+| Knowledge Quality | `harness/knowledge/knowledge_quality.py` | ✅ | 知识质量评分 | 已合入 |
+| Knowledge Growth | `harness/knowledge/knowledge_growth.py` | ✅ | 知识增长追踪 | 已合入 |
+| Knowledge Writeback | `harness/knowledge/knowledge_writeback.py` | ✅ | 知识写回 | 已合入 |
+| Knowledge Markings | `harness/knowledge/knowledge_markings.py` | ✅ | 知识标记与权限 | 已合入 |
+| Knowledge Ontology | `harness/knowledge/knowledge_ontology.py` | ✅ | 知识本体管理 | 已合入 |
+| Knowledge Action | `harness/knowledge/knowledge_action.py` | ✅ | 知识操作 | 已合入 |
+| Knowledge Validator | `harness/knowledge/knowledge_validator.py` | ✅ | 知识条目校验 | 已合入 |
+| Knowledge ABox Builder | `harness/knowledge/knowledge_abox_builder.py` | ✅ | A-Box (实例) 构建 | 已合入 |
+| Knowledge Evolution LLM | `harness/knowledge/knowledge_evolution_llm.py` | ✅ | 知识进化 LLM 驱动 | 已合入 |
+| SceneModel | `harness/knowledge/scene_model.py` | ✅ | 场景模型 | 已合入 |
+| Learning Assessment | `harness/knowledge/learning_assessment.py` | ✅ | 学习评估 | 已合入 |
+| Learning Ontology | `harness/knowledge/learning_ontology.py` | ✅ | 学习本体 | 已合入 |
+| Learning Paths | `harness/knowledge/learning_paths.py` | ✅ | 学习路径推荐 | 已合入 |
+| Ontology Loader | `harness/knowledge/ontology_loader.py` | ✅ | YAML本体加载 | 已合入 |
+| Ontology Validator | `harness/knowledge/ontology_validator.py` | ✅ | 本体校验 | 已合入 |
+| Capability Health | `harness/knowledge/capability_health.py` | ✅ | 能力健康评分 + Graph 持久化 | 已合入 |
+| Symbol Health | `harness/knowledge/symbol_health.py` | ✅ | 知识符号健康度 | 已合入 |
+| Evolution Runner | `harness/knowledge/evolution_runner.py` | ✅ | 知识进化执行 | 已合入 |
+| KB Callbacks | `harness/knowledge/callbacks.py` | ✅ | Ingest/Query/EnqueueIngest/LoadDocKinds 回调 | 已合入 |
+| Complexity Router | `harness/knowledge/complexity_router.py` | ✅ | 复杂查询路由 | 已合入 |
 
 ---
 
@@ -195,7 +195,7 @@
 |------|------|:---:|------|------|
 | SkillRegistry | `apps/skills/registry.py` | ✅ | 注册/启用/禁用/版本管理/semver回滚 | 已合入 |
 | SkillExecutor | `apps/skills/executor.py` | ✅ | Agent调用 + 独立执行双路径 | 已合入 |
-| skill_call syscall | `syscalls/skill.py` | ✅ | PolicyGate + ApprovalGate + 审计 | 已合入 |
+| skill_call syscall | `harness/syscalls/skill.py` | ✅ | PolicyGate + ApprovalGate + 审计 | 已合入 |
 | 5 准入标准 | `skills/architecture.md` | ✅ | 独立/边界/复用/治理/执行单元 | 已合入 |
 | 副作用声明 | SKILL.md frontmatter | ✅ | effects: type/idempotent/rollback | 已合入 |
 | EvolutionEngine | `apps/skills/evolution/engine.py` | ✅ | AI草稿→模拟→人工审批 | 已合入 |
@@ -214,32 +214,32 @@
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
 | prompt_auditor | `harness/audit/prompt_auditor.py` | ✅ | 自动同步 | 已合入 |
 |------|------|:---:|------|------|
-| PolicyGate | `infrastructure/gates/policy_gate.py` | ✅ | 统一权限检查 + 架构边界实时拦截 | 已合入 |
-| ApprovalGate | `infrastructure/approval/manager.py` | ✅ | approve/deny/pending，双门禁 | 已合入 |
-| Prompt 注入防护 | `syscalls/llm.py:125` | ✅ | 6条正则+特殊token过滤+覆盖防护指令 | 已合入 |
-| 记忆投毒防御 | `memory/base.py:39` | ✅ | source_tag/trust_weight/provenance | 已合入 |
+| PolicyGate | `harness/infrastructure/gates/policy_gate.py` | ✅ | 统一权限检查 + 架构边界实时拦截 | 已合入 |
+| ApprovalGate | `harness/infrastructure/approval/manager.py` | ✅ | approve/deny/pending，双门禁 | 已合入 |
+| Prompt 注入防护 | `harness/syscalls/llm.py:125` | ✅ | 6条正则+特殊token过滤+覆盖防护指令 | 已合入 |
+| 记忆投毒防御 | `harness/memory/base.py:39` | ✅ | source_tag/trust_weight/provenance | 已合入 |
 | PII 脱敏（全量覆盖） | `kb/service.py` → `_mask_pii()` + `services/pii_detector.py` | ✅ | 手机/身份证/邮箱/银行卡/地址/IP，全部 6 条入库路径已覆盖 | 已合入 |
-| CodeAuditor | `security/code_auditor.py` | ✅ | 注入/XSS/CSRF/认证/授权检查 | 已合入 |
+| CodeAuditor | `harness/security/code_auditor.py` | ✅ | 注入/XSS/CSRF/认证/授权检查 | 已合入 |
 | RBAC 多租户 | platform 层 | ✅ | tenant + actor + scopes 三级隔离 | 已合入 |
 | 架构守卫 75+ 规则 | `arch_guard_rules.yaml` | ✅ | §1-§75 自动扫描 | 已合入 |
 | 26 条 CI 检查 | `architecture_guard.sh` | ✅ | 零依赖 grep 扫描 | 已合入 |
-| 前端 API 契约检查 | `guard_frontend.py` | ✅ | TS fetch ↔ Python data.get 一致性 | 已合入 |
+| 前端 API 契约检查 | `../../scripts/guard_frontend.py` | ✅ | TS fetch ↔ Python data.get 一致性 | 已合入 |
 | PII 检测脱敏 | `services/pii_detector.py` | ✅ | 手机/身份证/邮箱/银行卡/地址/IP，Presidio+正则双引擎 | 已合入 |
 | 合规报告 SOC2/ISO27001 | `management/compliance_checks.py` | ✅ | 12检查 + SOC2 CC/ISO27001 A映射 + 自动报告生成 | 已合入 |
 | 架构契约上下文注入 | `prompt_loader.py` → `prompt_assembler.py` | ✅ | coding-contract 模板在代码生成前注入 Agent system prompt（6条核心约束） | 已合入 |
-| 审计日志防篡改 | `governance/audit/logger.py` | ✅ | SHA-256 链式哈希 + verify_integrity() | 已合入 |
+| 审计日志防篡改 | `../../aiPlat-management/governance/audit/logger.py` | ✅ | SHA-256 链式哈希 + verify_integrity() | 已合入 |
 | 对象级权限 | `policy/object_permission.py` | ✅ | 每实体/每动作/每角色细粒度控制，支持本体继承 | 已合入 |
 | 字段级安全 | `policy/field_level_security.py` | ✅ | 单元/字段级数据可见性，Palantir CBAC对齐 | 已合入 |
 | 技能签名验证 | `security/skill_signature_gate.py` | ✅ | Ed25519 签名校验 + 可信公钥注册表 | 已合入 |
-| SecretsManager | `infrastructure/secrets_manager.py` | ✅ | AES-256-GCM 加密存储 + 审计日志 | 已合入 |
-| Ed25519 签名 | `infrastructure/crypto/signature.py` | ✅ | 密钥生成/签名/验签，技能/制品完整性保护 | 已合入 |
-| CryptoSecretBox | `infrastructure/crypto/secretbox.py` | ✅ | 对称加密盒，运行时密钥保护 | 已合入 |
-| DI 容器 | `infrastructure/di/__init__.py` | ✅ | 依赖注入容器，12/18服务调用已转换 | 已合入 |
-| Config Settings | `infrastructure/config/settings.py` | ✅ | 层级配置管理 + 环境变量覆盖 | 已合入 |
-| SSO/OIDC 集成 | `auth/identity_provider.py` | ✅ | Keycloak/Azure AD/Okta，discovery/jwks映射 + login/callback/token API | 已合入 |
-| CrisisDetector | `security/crisis_detector.py` | ✅ | 自伤/暴力/危急三級检测，WARN/BLOCK/SILENT 模式 | 已合入 |
-| CrisisGate | `security/crisis_gate.py` | ✅ | syscall 边界危机拦截，ALLOW/WARN/FLAG/BLOCK/ESCALATE | 已合入 |
-| EmotionTracker | `security/emotion_tracker.py` | ✅ | 跨会话情绪弧追踪 + 过度依赖检测 | 已合入 |
+| SecretsManager | `harness/infrastructure/secrets_manager.py` | ✅ | AES-256-GCM 加密存储 + 审计日志 | 已合入 |
+| Ed25519 签名 | `harness/infrastructure/crypto/signature.py` | ✅ | 密钥生成/签名/验签，技能/制品完整性保护 | 已合入 |
+| CryptoSecretBox | `harness/infrastructure/crypto/secretbox.py` | ✅ | 对称加密盒，运行时密钥保护 | 已合入 |
+| DI 容器 | `harness/infrastructure/di/__init__.py` | ✅ | 依赖注入容器，12/18服务调用已转换 | 已合入 |
+| Config Settings | `harness/infrastructure/config/settings.py` | ✅ | 层级配置管理 + 环境变量覆盖 | 已合入 |
+| SSO/OIDC 集成 | `../../aiPlat-platform/auth/identity_provider.py` | ✅ | Keycloak/Azure AD/Okta，discovery/jwks映射 + login/callback/token API | 已合入 |
+| CrisisDetector | `harness/security/crisis_detector.py` | ✅ | 自伤/暴力/危急三級检测，WARN/BLOCK/SILENT 模式 | 已合入 |
+| CrisisGate | `harness/security/crisis_gate.py` | ✅ | syscall 边界危机拦截，ALLOW/WARN/FLAG/BLOCK/ESCALATE | 已合入 |
+| EmotionTracker | `harness/security/emotion_tracker.py` | ✅ | 跨会话情绪弧追踪 + 过度依赖检测 | 已合入 |
 
 ---
 
@@ -247,17 +247,17 @@
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
 |------|------|:---:|------|------|
-| trace_id / span_id | `observation/event_schema.py` | ✅ | 每次 syscall 携带 | 已合入 |
-| EventBus | `observation/event_bus.py` | ✅ | 发布/订阅 syscall 事件 | 已合入 |
-| PipelineTrace | `execution/pipeline_engine.py` | ✅ | 每阶段 started/completed/skipped/failed | 已合入 |
+| trace_id / span_id | `harness/observation/event_schema.py` | ✅ | 每次 syscall 携带 | 已合入 |
+| EventBus | `harness/observation/event_bus.py` | ✅ | 发布/订阅 syscall 事件 | 已合入 |
+| PipelineTrace | `harness/execution/pipeline_engine.py` | ✅ | 每阶段 started/completed/skipped/failed | 已合入 |
 | 决策溯源 | 引擎内 `_last_action_reason` | ✅ | budget_exhausted 等非正常路径 | 已合入 |
-| OtelBridge | `observation/otel_bridge.py` | ✅ | AIPLAT_OTEL_ENABLED=true | 已合入 |
+| OtelBridge | `harness/observation/otel_bridge.py` | ✅ | AIPLAT_OTEL_ENABLED=true | 已合入 |
 | Prometheus | `infrastructure/` | ✅ | prometheus-fastapi-instrumentator | 已合入 |
 | MetricsCollector | `observability/metrics/` | ✅ | 滑动窗口聚合器 | 已合入 |
 | 执行审计 | execution_store audit_log | ✅ | AIPLAT_EXECUTION_AUDIT=true | 已合入 |
-| 健康检查 | `health/` + `knowledge/capability_health.py` | ✅ | 能力健康+Symbol健康+Wiki健康 | 已合入 |
-| Prometheus 10 指标 | `memory/metrics.py` | ✅ | tool_truncated/semantic_renewed/rrf_latency/early_exit/cache_version 等 | 已合入 |
-| 语义记忆后台清理 | `memory/manager.py:111` | ✅ | 每日定时软删除过期低频记忆，AIPLAT_MEMORY_CLEANUP_INTERVAL 可配 | 已合入 |
+| 健康检查 | `health/` + `harness/knowledge/capability_health.py` | ✅ | 能力健康+Symbol健康+Wiki健康 | 已合入 |
+| Prometheus 10 指标 | `harness/memory/metrics.py` | ✅ | tool_truncated/semantic_renewed/rrf_latency/early_exit/cache_version 等 | 已合入 |
+| 语义记忆后台清理 | `harness/memory/manager.py:111` | ✅ | 每日定时软删除过期低频记忆，AIPLAT_MEMORY_CLEANUP_INTERVAL 可配 | 已合入 |
 | TraceVisualizer | `harness/execution/trace_visualizer.py` | ✅ | 决策痕迹可视化: 犹豫检测/重复检测/异常预警→Spec调整建议 | 已合入 |
 | FDE Dashboard | `api/routers/workbench.py:fde-dashboard` + `UserWorkbench.tsx` | ✅ | 4卡聚合(待决策/信号预警/执行异常/训练)+时间轴+Spec筛选联动 | 已合入 |
 
@@ -270,17 +270,17 @@
 | base_model_adapter | `harness/infrastructure/base_model_adapter.py` | ✅ | 自动同步 | 已合入 |
 | infra_audio_adapter | `harness/infrastructure/infra_audio_adapter.py` | ✅ | 自动同步 | 已合入 |
 |------|------|:---:|------|------|
-| InfraLLMAdapter | `infrastructure/infra_llm_adapter.py` | ✅ | Core 唯一 LLM 适配器 | 已合入 |
-| InfraEmbeddingAdapter | `infrastructure/infra_embedding_adapter.py` | ✅ | SentenceTransformer | 已合入 |
-| InfraRerankerAdapter | `infrastructure/infra_reranker_adapter.py` | ✅ | CrossEncoder | 已合入 |
-| InfraAudioAdapter | `document/transcriber.py` | ✅ | faster-whisper + openai-whisper | 已合入 |
-| InfraOCRAdapter | `infrastructure/infra_ocr_adapter.py` | ✅ | Tesseract/PaddleOCR | 已合入 |
-| 模型解析集中化 | `utils/model_injection.py` | ✅ | get_default_model(purpose) 统一入口 | 已合入 |
+| InfraLLMAdapter | `harness/infrastructure/infra_llm_adapter.py` | ✅ | Core 唯一 LLM 适配器 | 已合入 |
+| InfraEmbeddingAdapter | `harness/infrastructure/infra_embedding_adapter.py` | ✅ | SentenceTransformer | 已合入 |
+| InfraRerankerAdapter | `harness/infrastructure/infra_reranker_adapter.py` | ✅ | CrossEncoder | 已合入 |
+| InfraAudioAdapter | `harness/document/transcriber.py` | ✅ | faster-whisper + openai-whisper | 已合入 |
+| InfraOCRAdapter | `harness/infrastructure/infra_ocr_adapter.py` | ✅ | Tesseract/PaddleOCR | 已合入 |
+| 模型解析集中化 | `harness/utils/model_injection.py` | ✅ | get_default_model(purpose) 统一入口 | 已合入 |
 | 模型发现 | infra ModelManager | ✅ | 远程API + 本地(Ollama/LM Studio/vLLM) | 已合入 |
-| 视频转写 | `document/transcriber.py` + platform/kb/video.py | ✅ | ffmpeg→Whisper→OCR→embed | 已合入 |
+| 视频转写 | `harness/document/transcriber.py` + platform/kb/video.py | ✅ | ffmpeg→Whisper→OCR→embed | 已合入 |
 | 模型路由 | `model_injection.py` → infra `ModelManager.select()` | ✅ 已完成 | model_router.py 已删除，create_selected_adapter 为唯一路径 | 已合入 |
-| FingerprintCollector | `knowledge/model_fingerprint.py` | ✅ | 8探针黑盒指纹采集：token分布/延迟曲线/拒答率/格式遵从 | 已合入 |
-| ModelAudit | `knowledge/model_audit.py` | ✅ | 模型身份报告生成 + 双模型指纹对比 + 已知签名匹配 | 已合入 |
+| FingerprintCollector | `harness/knowledge/model_fingerprint.py` | ✅ | 8探针黑盒指纹采集：token分布/延迟曲线/拒答率/格式遵从 | 已合入 |
+| ModelAudit | `harness/knowledge/model_audit.py` | ✅ | 模型身份报告生成 + 双模型指纹对比 + 已知签名匹配 | 已合入 |
 
 ---
 
@@ -321,35 +321,37 @@
 | rl_trainer | `harness/training/rl_trainer.py` | ✅ | 自动同步 | 已合入 |
 | value_calculator | `harness/finance/value_calculator.py` | ✅ | 自动同步 | 已合入 |
 |------|------|:---:|------|------|
-| ExperienceVector | `learning/experience_vector.py` | ✅ | PipelineTrace→Embedding→语义检索 | 已合入 |
-| ToolDriftDetector | `learning/tool_drift_detector.py` | ✅ | 4类漂移检测(struct/field/latency/error) + 重放校验自适应 | 已合入 |
-| ImmuneMemory | `security/immune_memory.py` | ✅ | 三级渐进拦截(>0.95拦截/>0.88防御前缀/<0.88放行) + 防御Skill自动生成 | 已合入 |
-| SkillSimulator | `learning/skill_simulator.py` | ✅ | Docker沙盒预检，pass≥80% | 已合入 |
-| SFT AutoTrigger | `training/auto_trigger.py` | ✅ | ≥100条+quality≥0.8→自动生成SFT数据集 | 已合入 |
-| HITL 反馈记忆回路 | `approval/manager.py:428` + `learning/__init__.py:150` | ✅ | 拒绝原因→ExperienceVectorCache→enrich_skill_draft 错题本检索 | 已合入 |
-| SuccessGeneralizer | `learning/success_generalizer.py` | ✅ | ≥85% hot skill → 参数抽象 → 跨运行验证 → GeneralizedRule | 已合入 |
+| ExperienceVector | `harness/learning/experience_vector.py` | ✅ | PipelineTrace→Embedding→语义检索 | 已合入 |
+| ToolDriftDetector | `harness/learning/tool_drift_detector.py` | ✅ | 4类漂移检测(struct/field/latency/error) + 重放校验自适应 | 已合入 |
+| ImmuneMemory | `harness/security/immune_memory.py` | ✅ | 三级渐进拦截(>0.95拦截/>0.88防御前缀/<0.88放行) + 防御Skill自动生成 | 已合入 |
+| SkillSimulator | `harness/learning/skill_simulator.py` | ✅ | Docker沙盒预检，pass≥80% | 已合入 |
+| SFT AutoTrigger | `harness/training/auto_trigger.py` | ✅ | ≥100条+quality≥0.8→自动生成SFT数据集 | 已合入 |
+| HITL 反馈记忆回路 | `approval/manager.py:428` + `harness/learning/__init__.py:150` | ✅ | 拒绝原因→ExperienceVectorCache→enrich_skill_draft 错题本检索 | 已合入 |
+| SuccessGeneralizer | `harness/learning/success_generalizer.py` | ✅ | ≥85% hot skill → 参数抽象 → 跨运行验证 → GeneralizedRule | 已合入 |
 | Feedback Loops | `feedback_loops/` | ✅ | local + prod + push 三通道 | 已合入 |
 | ImplicitFeedback | `services/implicit_feedback.py` | ✅ | 复制/选中/追问/重复 行为信号 | 已合入 |
 | Meta-Agent | `harness/meta/` | ✅ | 远瞻探索，默认关闭（设 `AIPLAT_META_AGENT_ENABLED=true` 激活） | 已合入 |
-| On-Error Reflector | `infrastructure/hooks/on_error_reflector.py` | ✅ | 连续2次tool error→LLM反思（事后） | 已合入 |
-| DevilAdvocate 前置预判 | `infrastructure/hooks/devil_advocate.py` | ✅ | PRE_ACT Hook：执行前模拟失败场景，高风险工具注入警告（事前） | 已合入 |
+| On-Error Reflector | `harness/infrastructure/hooks/on_error_reflector.py` | ✅ | 连续2次tool error→LLM反思（事后） | 已合入 |
+| DevilAdvocate 前置预判 | `harness/infrastructure/hooks/devil_advocate.py` | ✅ | PRE_ACT Hook：执行前模拟失败场景，高风险工具注入警告（事前） | 已合入 |
 | 自迭代闭环 | `on_error_reflector → AutoLearner → SkillSimulator → Approval → test_case_generation` | ✅ | 6模块串联：失败→分析→Draft→预检→审批→测试，人只确认方向 | 已合入 |
 | Skill 质量离线基准 | `tests/eval/test_skill_quality.py` + `gold_skill_quality.json` | ✅ | 10任务×5领域×3条件 (No/Cured/Auto)，对标 SkillsBench | 已合入 |
-| CMM 观察层 | `memory/pattern_accumulator.py` | ✅ | 工具序列指纹 + 跨会话累积 + 频次≥3触发 | 已合入 |
-| MetaClaw 双轨综合 | `memory/pattern_accumulator.py:compare_success_failure()` | ✅ | 成功+失败轨迹比较 + 提取路径差异 | 已合入 |
-| 集体进化引擎 | `learning/skill_evolver.py` | ✅ | 跨租户模式扫描 + 匿名化 + tenant_threshold≥2 | 已合入 |
+| CMM 观察层 | `harness/memory/pattern_accumulator.py` | ✅ | 工具序列指纹 + 跨会话累积 + 频次≥3触发 | 已合入 |
+| MetaClaw 双轨综合 | `harness/memory/pattern_accumulator.py:compare_success_failure()` | ✅ | 成功+失败轨迹比较 + 提取路径差异 | 已合入 |
+| 集体进化引擎 | `harness/learning/skill_evolver.py` | ✅ | 跨租户模式扫描 + 匿名化 + tenant_threshold≥2 | 已合入 |
 | Agent SDK | `aiplat-sdk/` | ✅ | L1/L2/L3 三级可用，`pip install aiplat-sdk` 可安装，待IDE集成 | 已合入 |
 | VS Code 插件 | `aiplat-vscode/` | ✅ | SSE 流式聊天 + 代码选择发送 + Apply fix + 隐式反馈，可打包 .vsix | 已合入 |
 | SpecLifecycle | `harness/models/spec_lifecycle.py` | ✅ | Spec 版本状态机: DRAFT→PENDING→EXECUTING→REVIEW→STABLE→ARCHIVED | 已合入 |
 | FeedbackRadar | `harness/learning/feedback_radar.py` | ✅ | 5种用户信号检测→Spec调整建议 (boundary/direction/overload/drift/cold) | 已合入 |
 | InlineSelfCorrect | `harness/execution/loop.py:_try_self_correct` | ✅ | 内联自纠错: PostObserve→reflection-critic→reflection-improve, 1次/步 | 已合入 |
 | MCPToolLazyLoad | `apps/mcp/client.py` | ✅ | MCP工具延迟加载: 启动仅加载名称, Schema首次调用时按需获取, AIPLAT_MCP_LAZY_LOAD控制 | 已合入 |
-| PromptCaching | `syscalls/llm.py` | ✅ | Prompt Caching: stable消息cache_control注入 + SHA256跨会话持久化(~/.aiplat/cache/), AIPLAT_PROMPT_CACHE_ENABLED控制 | 已合入 |
+| PromptCaching | `harness/syscalls/llm.py` | ✅ | Prompt Caching: stable消息cache_control注入 + SHA256跨会话持久化(~/.aiplat/cache/), AIPLAT_PROMPT_CACHE_ENABLED控制 | 已合入 |
 | ThreeLayerPermissions | `gates/policy_gate.py:_match_tool_rule` | ✅ | 三层权限(deny>ask>allow)+参数级fnmatch匹配 | 已合入 |
 | SubagentIsolation | `subagent/coordinator.py:isolate_context` | ✅ | 子代理上下文隔离: 仅传摘要+只读模式, 默认开启 | 已合入 |
-| FileBasedMemory | `memory/file_store.py` | ✅ | 文件记忆: Markdown双写(MEMORY.md+日期文件)+SQLite索引, 人类可验证 | 已合入 |
-| AutoMemory | `memory/file_store.py:auto_save_learning` + `memory/manager.py:save_interaction` | ✅ | 自动记忆: 纠正≥2次/10轮交互自动保存到文件, AIPLAT_AUTO_LEARNING_ENABLED控制 | 已合入 |
+| FileBasedMemory | `harness/memory/file_store.py` | ✅ | 文件记忆: Markdown双写(MEMORY.md+日期文件)+SQLite索引, 人类可验证 | 已合入 |
+| AutoMemory | `harness/memory/file_store.py:auto_save_learning` + `harness/memory/manager.py:save_interaction` | ✅ | 自动记忆: 纠正≥2次/10轮交互自动保存到文件, AIPLAT_AUTO_LEARNING_ENABLED控制 | 已合入 |
 | PluginSlot | `apps/plugins/manager.py` | ✅ | 插件Slot: 同类别单一活跃, 旧插件状态归档 | 已合入 |
+| StageSandbox (子进程) | `harness/execution/sandbox.py:StageSandbox` | ✅ | 进程级沙箱: 资源限制(cpu/memory/processes)+凭证隔离+超时控制 | 已合入 |
+| DockerSandbox (容器) | `harness/execution/sandbox.py:DockerSandbox` | ✅ | 容器级沙箱: Docker隔离(--network none)+fallback到子进程, sandbox_mode='docker' | 已合入 |
 | 五维 ROI 计算 | `harness/finance/value_calculator.py:compute_monthly()` | ✅ | 效率/质量/安全/创新/体验五维价值计量, 月度聚合 | 已合入 |
 | 三受众翻译 | `harness/finance/value_calculator.py:translate_for()` | ✅ | CEO(战略+目标)/CFO(成本+ROI)/PM(准确度+满意度) 三视角自动翻译 | 已合入 |
 | BusinessGoalTracker | `harness/finance/value_calculator.py` | ✅ | 目标设定→进度追踪→偏离预警, on_track/at_risk/behind 实时状态 | 已合入 |
@@ -362,11 +364,11 @@
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
 |------|------|:---:|------|------|
-| ContextGate | `infrastructure/gates/context_gate.py` | ✅ | Token预算强制执行 + 上下文去重/陈旧校验 | 已合入 |
-| SchemaGate | `infrastructure/gates/schema_gate.py` | ✅ | JSON Schema 强制校验，Agent输出在下游阶段前验证 | 已合入 |
-| ResilienceGate | `infrastructure/gates/resilience_gate.py` | ✅ | 可配置重试策略 + 回退链 + 熔断器包装 | 已合入 |
-| TraceGate | `infrastructure/gates/trace_gate.py` | ✅ | 最佳努力追踪span包装，syscall审计 | 已合入 |
-| SandboxGate | `infrastructure/gates/sandbox_gate.py` | ✅ | 沙箱执行门 + 结果校验 | 已合入 |
+| ContextGate | `harness/infrastructure/gates/context_gate.py` | ✅ | Token预算强制执行 + 上下文去重/陈旧校验 | 已合入 |
+| SchemaGate | `harness/infrastructure/gates/schema_gate.py` | ✅ | JSON Schema 强制校验，Agent输出在下游阶段前验证 | 已合入 |
+| ResilienceGate | `harness/infrastructure/gates/resilience_gate.py` | ✅ | 可配置重试策略 + 回退链 + 熔断器包装 | 已合入 |
+| TraceGate | `harness/infrastructure/gates/trace_gate.py` | ✅ | 最佳努力追踪span包装，syscall审计 | 已合入 |
+| SandboxGate | `harness/infrastructure/gates/sandbox_gate.py` | ✅ | 沙箱执行门 + 结果校验 | 已合入 |
 
 ---
 
@@ -425,26 +427,26 @@
 | Document Summarizer | `apps/document_intelligence/summarizer.py` | ✅ | LLM 文档摘要，可配置策略 | 已合入 |
 | Structured Chunker | `apps/document_intelligence/chunking/structured_chunker.py` | ✅ | 内容感知结构化分块 + 策略自动选择 | 已合入 |
 | Question Analysis | `apps/document_intelligence/question_analysis.py` | ✅ | 问题分类与分解，检索策略决策 | 已合入 |
-| ConverterRegistry | `document/protocol.py:get_document_registry()` | ✅ | 统一文档解析调度，13 个 built-in converter，优先级链 + 降级链 | 已合入 |
-| PDF Converter | `document/converters/_pdf.py` | ✅ | markitdown→pdfplumber→raw text 三级降级 + 文件头检测 | 已合入 |
-| DOCX Converter | `document/converters/_docx.py` | ✅ | markitdown→python-docx→raw text 降级 + table 保留 | 已合入 |
-| PPTX Converter | `document/converters/_pptx.py` | ✅ | markitdown→python-pptx→raw text 降级 | 已合入 |
-| XLSX Converter | `document/converters/_xlsx.py` | ✅ | markitdown→raw text 降级 | 已合入 |
-| Audio/Video Converter | `document/converters/_audio.py` `_video.py` | ✅ | Whisper 转录，via ffmpeg extract | 已合入 |
-| Image Converter | `document/converters/_image.py` | ✅ | Tesseract/PaddleOCR 文字提取 | 已合入 |
-| 多格式统一解析 | `document/parsers.py` → `protocol.py` | ✅ | 12 种格式 → 13 个 DocumentConverter → 统一 DocumentElement | 已合入 |
-| Azure DI 集成 | `document/converters/_pdf.py:_convert_via_azure_di()` | ✅ | 环境变量驱动：设 `AIPLAT_AZURE_DOCINTEL_ENDPOINT` 即激活，自动降级到本地 | 已合入 |
-| DocumentConverter 协议 | `document/protocol.py` | ✅ | ABC: accepts() + convert()，13 个内置 converter，优先级调度 | 已合入 |
-| ConverterRegistry | `document/protocol.py:get_document_registry()` | ✅ | 全局单例，单点派发，消除 5 处硬编码 dispatch | 已合入 |
-| 内容级文件检测 | `document/protocol.py:_guess_extension_from_header()` | ✅ | 文件头魔数检测，扩展名与内容矛盾时自动修正 | 已合入 |
-| 完整降级链 | `document/protocol.py:convert_with_fallback()` | ✅ | 遍历所有 converter → 异常聚合 → 兜底 raw text | 已合入 |
-| 结构角色检测 | `document/protocol.py:detect_structure_role()` | ✅ | h1-h6/table/list_item/caption/code_block/paragraph 自动识别 | 已合入 |
-| 插件系统 | `document/protocol.py:_load_plugins()` | ✅ | entry_points group=aiplat.document_converter，零侵入扩展 | 已合入 |
-| 集中格式映射 | `facades/kb_facade.py:_KIND_TO_EXT` | ✅ | 40+ 同义词 → 规范扩展名，统一 kb_facade/core_facade/routes | 已合入 |
-| Whisper 双后端切换 | `document/transcriber.py:77-99` | ✅ | faster-whisper ↔ openai-whisper 运行时自动切换 | 已合入 |
-| Image OCR | `document/ocr.py` | ✅ | Tesseract/PaddleOCR 关键帧文字提取 | 已合入 |
-| Document Chunker | `document/chunker.py` | ✅ | 多策略分块 (fixed/semantic/recursive) + overlap控制 | 已合入 |
-| 多格式解析器 | `document/parsers.py` | ✅ | DOCX/PDF/MD/HTML/CSV/Audio/Image/Video/EML/JSON → 统一元素，已升级为协议化架构 | 已合入 |
+| ConverterRegistry | `harness/document/protocol.py:get_document_registry()` | ✅ | 统一文档解析调度，13 个 built-in converter，优先级链 + 降级链 | 已合入 |
+| PDF Converter | `harness/document/converters/_pdf.py` | ✅ | markitdown→pdfplumber→raw text 三级降级 + 文件头检测 | 已合入 |
+| DOCX Converter | `harness/document/converters/_docx.py` | ✅ | markitdown→python-docx→raw text 降级 + table 保留 | 已合入 |
+| PPTX Converter | `harness/document/converters/_pptx.py` | ✅ | markitdown→python-pptx→raw text 降级 | 已合入 |
+| XLSX Converter | `harness/document/converters/_xlsx.py` | ✅ | markitdown→raw text 降级 | 已合入 |
+| Audio/Video Converter | `harness/document/converters/_audio.py` `_video.py` | ✅ | Whisper 转录，via ffmpeg extract | 已合入 |
+| Image Converter | `harness/document/converters/_image.py` | ✅ | Tesseract/PaddleOCR 文字提取 | 已合入 |
+| 多格式统一解析 | `harness/document/parsers.py` → `protocol.py` | ✅ | 12 种格式 → 13 个 DocumentConverter → 统一 DocumentElement | 已合入 |
+| Azure DI 集成 | `harness/document/converters/_pdf.py:_convert_via_azure_di()` | ✅ | 环境变量驱动：设 `AIPLAT_AZURE_DOCINTEL_ENDPOINT` 即激活，自动降级到本地 | 已合入 |
+| DocumentConverter 协议 | `harness/document/protocol.py` | ✅ | ABC: accepts() + convert()，13 个内置 converter，优先级调度 | 已合入 |
+| ConverterRegistry | `harness/document/protocol.py:get_document_registry()` | ✅ | 全局单例，单点派发，消除 5 处硬编码 dispatch | 已合入 |
+| 内容级文件检测 | `harness/document/protocol.py:_guess_extension_from_header()` | ✅ | 文件头魔数检测，扩展名与内容矛盾时自动修正 | 已合入 |
+| 完整降级链 | `harness/document/protocol.py:convert_with_fallback()` | ✅ | 遍历所有 converter → 异常聚合 → 兜底 raw text | 已合入 |
+| 结构角色检测 | `harness/document/protocol.py:detect_structure_role()` | ✅ | h1-h6/table/list_item/caption/code_block/paragraph 自动识别 | 已合入 |
+| 插件系统 | `harness/document/protocol.py:_load_plugins()` | ✅ | entry_points group=aiplat.document_converter，零侵入扩展 | 已合入 |
+| 集中格式映射 | `api/facades/kb_facade.py:_KIND_TO_EXT` | ✅ | 40+ 同义词 → 规范扩展名，统一 kb_facade/core_facade/routes | 已合入 |
+| Whisper 双后端切换 | `harness/document/transcriber.py:77-99` | ✅ | faster-whisper ↔ openai-whisper 运行时自动切换 | 已合入 |
+| Image OCR | `harness/document/ocr.py` | ✅ | Tesseract/PaddleOCR 关键帧文字提取 | 已合入 |
+| Document Chunker | `harness/document/chunker.py` | ✅ | 多策略分块 (fixed/semantic/recursive) + overlap控制 | 已合入 |
+| 多格式解析器 | `harness/document/parsers.py` | ✅ | DOCX/PDF/MD/HTML/CSV/Audio/Image/Video/EML/JSON → 统一元素，已升级为协议化架构 | 已合入 |
 
 ---
 
@@ -455,8 +457,8 @@
 | Browser 自动化 | `apps/tools/browser.py` + `browser_test_engine.py` | ✅ | Playwright 全浏览器自动化，BFS遍历/RPA/截图 | 已合入 |
 | Test Case Generator | `apps/tools/test_case_generator.py` | ✅ | 页面分析 → 结构化 Excel 测试用例 | 已合入 |
 | SysGraph Tools (5) | `apps/tools/sysgraph_tools.py` | ✅ | context/search/impact/callers/node 代码图查询 | 已合入 |
-| Draw.io Generator | `syscalls/drawio_gen.py` | ✅ | LLM→draw.io XML 图表生成，零外部依赖 | 已合入 |
-| Code Intelligence | `syscalls/code_intel_syscall.py` | ✅ | 预构建依赖图SQLite查询 | 已合入 |
+| Draw.io Generator | `harness/syscalls/drawio_gen.py` | ✅ | LLM→draw.io XML 图表生成，零外部依赖 | 已合入 |
+| Code Intelligence | `harness/syscalls/code_intel_syscall.py` | ✅ | 预构建依赖图SQLite查询 | 已合入 |
 | Docker Exec Driver | `apps/exec_drivers/docker.py` | ✅ | Docker 容器内沙箱执行 | 已合入 |
 | SSH Exec Driver | `apps/exec_drivers/ssh.py` | ✅ | SSH 远程代码执行 | 已合入 |
 | Local Exec Driver | `apps/exec_drivers/local.py` | ✅ | 本地进程执行 + 资源限制 | 已合入 |
@@ -501,7 +503,7 @@
 | Skill Canary 部署 | `harness/deployment/canary.py` | ✅ | Canary/A-B/Shadow/Auto-Rollback 四种模式 | 已合入 |
 | Canary Escalation | `harness/canary/escalation.py` | ✅ | 确定性灰度升级 + 变更控制集成 | 已合入 |
 | Canary Recommendation | `harness/canary/recommendation.py` | ✅ | 灰度比例推荐引擎 | 已合入 |
-| Config Hot Reload | `infrastructure/hot_reload.py` | ✅ | 文件监听回调 + 缓存失效 | 已合入 |
+| Config Hot Reload | `harness/infrastructure/hot_reload.py` | ✅ | 文件监听回调 + 缓存失效 | 已合入 |
 
 ---
 
@@ -536,7 +538,7 @@
 | Quota Manager | `platform/governance/quota/quota_manager.py` | ✅ | 资源配额管理与强制执行 | 已合入 |
 | Rate Limiter | `platform/governance/rate_limit/limiter.py` | ✅ | 单进程 in-memory + Redis 分布式令牌桶（原子Lua脚本） | 已合入 |
 | Billing Meter | `platform/billing/meter.py` | ✅ | 用量计量与计费结算 | 已合入 |
-| MQ WriteBack 适配器 | `knowledge/knowledge_writeback.py` | ✅ | Kafka/RabbitMQ 消息队列写回 + none降级LOG_ONLY | 已合入 |
+| MQ WriteBack 适配器 | `harness/knowledge/knowledge_writeback.py` | ✅ | Kafka/RabbitMQ 消息队列写回 + none降级LOG_ONLY | 已合入 |
 | KB Intelligence | `platform/kb/intelligence/service.py` | ✅ | URL抓取/HTML→text/格式检测/视频URL转录 | 已合入 |
 | MinerU PDF 提取 | `platform/kb/poc/mineru_extract.py` | ✅ | 结构化PDF内容提取 + 表格 | 已合入 |
 | Video Retrieval | `platform/kb/intelligence/video_retrieval.py` | ✅ | 时间索引视频内容检索 + 转录对齐 | 已合入 |
@@ -632,7 +634,7 @@
 | Swarm | `harness/execution/swarm.py` | ✅ | N-Agent竞选择优: 同任务独立执行→Arena评分→胜出合并, routing_mode="swarm" | 已合入 |
 | Roundtable | `harness/execution/roundtable.py` | ✅ | 多Agent平等讨论: 每轮全员发言→共识收敛→综合合成, routing_mode="roundtable" | 已合入 |
 | Matter (验收+交付) | `SpecDetail.tsx` revise modal | ✅ | 交付物定义 + 验收标准字段, 存储于 SpecVersion.content | 已合入 |
-| CoT AutoInject | `syscalls/llm.py:253` + `prompt_loader.py:cot-auto-inject` | ✅ | 每次LLM调用自动注入4步推理指令, AIPLAT_COT_AUTO_INJECT控制 | 已合入 |
+| CoT AutoInject | `harness/syscalls/llm.py:253` + `prompt_loader.py:cot-auto-inject` | ✅ | 每次LLM调用自动注入4步推理指令, AIPLAT_COT_AUTO_INJECT控制 | 已合入 |
 | SubAgent 协调器 | `apps/agents/subagent/coordinator.py` | ✅ | execute_single/parallel/sequential/fanout | 已合入 |
 | 并行执行器 | `apps/agents/parallel_executor.py` | ✅ | Map-Reduce 模式 + max_concurrency + 异常隔离 | 已合入 |
 | 8 种协调模式 | `harness/coordination/patterns/` | ✅ | Pipeline/FanOut/Supervisor/ExpertPool/ProducerReviewer/Hierarchical | 已合入 |
@@ -656,7 +658,7 @@
 | 可观测性 | 13 | 0 | 13 |
 | 模型基础设施 | 13 | 0 | 13 |
 | 部署与运维 | 15 | 0 | 15 |
-| 扩展与学习 | 45 | 0 | 45 |
+| 扩展与学习 | 47 | 0 | 47 |
 | Gate 系统 | 5 | 0 | 5 |
 | 评估系统 | 13 | 0 | 13 |
 | MCP 协议 | 6 | 0 | 6 |
@@ -673,12 +675,12 @@
 | 编排系统 | 4 | 0 | 4 |
 | 管理 & 质量 | 21 | 0 | 21 |
 | 编排层 | 17 | 0 | 17 |
-| **总计** | **425** | **0** | **425** |
+| **总计** | **427** | **0** | **427** |
 
 ---
 
 *最后更新: 2026-07-01*
-*版本: 12.1 · 28章 · 425项能力 · 425✅ · 业务价值+诊断+RL全登记*
+*版本: 12.2 · 28章 · 427项能力 · 427✅ · 路径标准化158条 + 沙箱双模式登记*
 
 **自检命令**：
 ```bash
