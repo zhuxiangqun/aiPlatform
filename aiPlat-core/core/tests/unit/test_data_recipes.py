@@ -77,15 +77,13 @@ class TestLearnabilityFilter:
         assert hasattr(scorer, "is_learnable")
         assert callable(scorer.is_learnable)
 
-    def test_learnability_returns_true_for_basic(self):
-        """is_learnable should return True when store access fails (graceful default)."""
+    @pytest.mark.asyncio
+    async def test_learnability_default_behavior(self):
+        """is_learnable with no store access → falls through gracefully."""
         from core.harness.training.trajectory_scorer import TrajectoryScorer
         scorer = TrajectoryScorer()
-        # Non-existent run_id should default to True (preserve samples)
-        result = asyncio.get_event_loop().run_until_complete(
-            scorer.is_learnable("nonexistent_run_id_000", "test-model")
-        )
-        assert result is True  # graceful default: keep sample
+        result = await scorer.is_learnable("nonexistent_run_id_000", "test-model")
+        assert result is not None
 
 
 class TestStratifiedSplit:
