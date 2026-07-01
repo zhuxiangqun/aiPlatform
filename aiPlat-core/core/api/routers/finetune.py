@@ -334,6 +334,25 @@ async def list_scratch_jobs() -> Dict[str, Any]:
         return {"jobs": [], "total": 0, "error": str(e)[:200]}
 
 
+@router.get("/models")
+async def list_registered_models() -> Dict[str, Any]:
+    """List all registered models from infra ModelManager."""
+    try:
+        from aiPlat_infra.infra.management.model.manager import ModelManager
+        mgr = ModelManager()
+        models = await mgr.list_models()
+        return {"models": [{
+            "name": m.get("name", ""),
+            "display_name": m.get("display_name", m.get("name", "")),
+            "provider_name": m.get("provider_name", ""),
+            "purpose": m.get("purpose", "chat"),
+            "capability_score": m.get("capability_score", 0),
+            "available": m.get("available", True),
+        } for m in (models or [])], "total": len(models or [])}
+    except Exception as e:
+        return {"models": [], "total": 0, "error": str(e)[:200]}
+
+
 def _local_provider():
     """Lazy load LocalFineTuneProvider class to avoid MLX import errors."""
     from core.harness.finetune.providers.local import LocalFineTuneProvider

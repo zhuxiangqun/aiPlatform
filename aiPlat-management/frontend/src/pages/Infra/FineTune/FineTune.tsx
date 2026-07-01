@@ -109,7 +109,7 @@ const FineTunePage: React.FC = () => {
       {/* ── Tabs ── */}
       <div className="flex gap-2 border-b border-dark-border pb-2">
         {(['datasets', 'jobs', 'training', 'distill', 'scratch', 'models'] as const).map(t => (
-          <button key={t} onClick={() => { setTab(t); if (t === 'models') fetch('/api/core/finetune/providers').then(r=>r.json()).then(d => setModels(d.providers || [])); }}
+          <button key={t}             onClick={() => { setTab(t); if (t === 'models') fetch('/api/core/finetune/models').then(r=>r.json()).then(d => setModels(d.models || [])); }}
             className={`px-4 py-2 text-sm rounded-t-lg transition-colors ${
               tab === t ? 'bg-dark-card text-gray-100 border border-dark-border border-b-dark-card' : 'text-gray-500 hover:text-gray-300'
             }`}>
