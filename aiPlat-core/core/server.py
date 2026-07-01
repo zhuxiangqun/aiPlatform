@@ -1622,6 +1622,8 @@ from core.api.routers.finetune import router as finetune_router  # noqa: E402
 api_router.include_router(finetune_router)
 from core.api.routers.value import router as value_router  # noqa: E402
 api_router.include_router(value_router)
+from core.api.routers.roles import router as roles_router  # noqa: E402
+api_router.include_router(roles_router)
 api_router.include_router(variables_router)
 api_router.include_router(credentials_router)
 api_router.include_router(workflow_templates_router)
