@@ -1,6 +1,6 @@
 # aiPlatform 系统架构全景
 
-> 最后更新: 2026-07-01 | 428✅ | 从 `AIPLAT_CAPABILITIES.md` 聚合生成
+> 最后更新: 2026-07-01 | 429✅ | 从 `AIPLAT_CAPABILITIES.md` 聚合生成
 > 
 > 本文档是 aiPlat 架构的**唯一全景入口**。5 分钟读懂系统长什么样。
 > 零件清单见 CAPABILITIES，详细规约见 CLAUDE.md，对标见 comparison.md。
@@ -141,7 +141,7 @@ A2A 交互路径:
 | **SpecLifecycle** | `harness/models/spec_lifecycle.py` | DRAFT→STABLE 版本状态机 | — |
 | **诊断中心** | `api/routers/diagnostics.py` | 25类检查 + 14项全域测试 | — |
 
-完整清单: `AIPLAT_CAPABILITIES.md`（428 项，每项标注代码位置）
+完整清单: `AIPLAT_CAPABILITIES.md`（429 项，每项标注代码位置）
 
 > 注：业务价值、诊断中心的能力分散在"扩展与学习"(45项)、"管理 & 质量"(20项)章节中。SpecLifecycle 包含在扩展与学习的 45 项内。
 
