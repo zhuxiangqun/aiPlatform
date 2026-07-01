@@ -185,7 +185,7 @@ tests/constitution/test_infra_agnostic.py    ← Infra 去应用化
     | A | §1 | `workflow_manager.py` → `platform/storage/sqlite.py` 跨层导入 | **已知例外** — 管理工具允许跨层访问 |
     | B | §35 | 2 个 execute 端点（引擎 + 工作区）被标记为 WARNING | **永久告警** — 2 是正确数量，若增至 ≥3 升级为 ERROR |
     | C | §40 | 模型注册/路由迁移 | **✅ 已完成 (2026-06-29)** — `model_router.py` 已删除，`get_model_registry()` 重命名为 `get_model_manager()`，llm.py 和 base.py 迁移到 `model_injection.create_selected_adapter()`。infra `ModelManager.select()` 已确认存在。 |
-    | D | §65 | 4 个检索函数缺 tenant_id | **✅ 部分完成 (2026-06-29)** — `KnowledgeQuery` 新增 `tenant_id` 字段，`_sync_wiki_retrieve` 透传，`sys_wiki_context` 加参数。`WikiPageRetriever.retrieve` 仍通过 `collection_ids` 隔离（`KnowledgeQuery.tenant_id` 已接收但未用于实际过滤）。 |
+    | D | §65 | 4 个检索函数缺 tenant_id | **✅ 已修复 (2026-07-01)** — `KnowledgeQuery` 增加 `tenant_id` 字段，`WikiPageRetriever.retrieve()` tenant_id 不匹配时返回空结果（WARNING→ERROR 阻断），非只读放行。 |
     | E | §66 | `PipelineStageConfig` 校验识别为已知假阳性 | **假阳性** |
     | F | §65 | CRAG 3 级回退 | **✅ 已实现** — `materials_chat.py:380-498` |
     | G | §65 | WikiCircuitBreaker/DomainRouter 配置 | **✅ 已实现** — `retrieval.py:506-566`，`domain_router.py:26` |

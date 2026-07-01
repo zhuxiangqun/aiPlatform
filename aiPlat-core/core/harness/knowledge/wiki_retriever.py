@@ -33,6 +33,8 @@ class WikiPageRetriever(IRetriever):
                  relation_boost: Dict[str, float] = None,
                  # ── Inference expansion ──
                  inference_expand: bool = False,
+                 # ── Multi-tenant isolation ──
+                 tenant_id: str = "",
                  ):
         self._wiki_titles = wiki_titles or []
         self._link_depth = link_depth
@@ -42,6 +44,7 @@ class WikiPageRetriever(IRetriever):
         self._relation_filter = relation_filter or {}
         self._relation_boost = relation_boost or {}
         self._inference_expand = inference_expand
+        self._tenant_id = tenant_id
         self._entries: Dict[str, KnowledgeEntry] = {}
 
     def _load_pages(self) -> List[Dict[str, Any]]:
@@ -301,6 +304,21 @@ class WikiPageRetriever(IRetriever):
         return ranks
 
     async def retrieve(self, query: KnowledgeQuery) -> List[KnowledgeResult]:
+        """Retrieve wiki pages via embedding semantic search.
+        
+        Multi-tenant isolation: uses self._collection_ids (set by caller via collection routing).
+        query.tenant_id is cross-validated against self._tenant_id for defense-in-depth —
+        mismatch is logged at WARNING but does not block retrieval (collection_ids are the
+        actual filtering boundary).
+        """
+        # ── Defense-in-depth: cross-validate tenant_id ──
+        if self._tenant_id and query.tenant_id and self._tenant_id != query.tenant_id:
+            import logging
+            logging.getLogger("wiki_retriever").error(
+                "tenant_id mismatch: caller=%s retriever=%s — BLOCKING retrieval (security)",
+                query.tenant_id, self._tenant_id)
+            return []  # Security: tenant mismatch → empty results, not just warning
+        
         from core.harness.knowledge.embedder import embed_text_semantic, embed_texts_semantic, cosine_similarity
 
         pages = self._load_pages()

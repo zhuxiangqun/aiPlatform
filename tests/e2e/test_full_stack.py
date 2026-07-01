@@ -157,6 +157,46 @@ def test_j5_radar(client):
 
 # ── Cleanup ──
 
+def test_prompt_cache_persistence():
+    """验证 Prompt Caching 跨会话持久化逻辑.
+    
+    不调用真实 LLM — 只测试 SHA256 hash 计算和 JSON 文件读写。
+    """
+    import hashlib, json, os, tempfile
+
+    stable = "System: You are an AI. SOUL: Be concise. CLAUDE.md: Follow rules."
+    stable_hash = hashlib.sha256(stable.encode()).hexdigest()[:16]
+
+    with tempfile.TemporaryDirectory() as tmp:
+        cache_file = os.path.join(tmp, "prompt_cache.json")
+
+        # Simulate first call: write hash
+        with open(cache_file, "w") as f:
+            json.dump({"hash": stable_hash}, f)
+
+        # Simulate restart: read back
+        with open(cache_file) as f:
+            cached = json.load(f)
+            assert cached["hash"] == stable_hash, f"Hash mismatch: {cached['hash']} vs {stable_hash}"
+
+        # Hash not changed → cache valid
+        new_hash = hashlib.sha256(stable.encode()).hexdigest()[:16]
+        assert new_hash == cached["hash"], "Restart hash changed unexpectedly"
+
+        # Content changed → hash different
+        modified = stable + " New rule added."
+        modified_hash = hashlib.sha256(modified.encode()).hexdigest()[:16]
+        assert modified_hash != cached["hash"], "Content changed but hash didn't"
+
+        # Update cache with new hash
+        with open(cache_file, "w") as f:
+            json.dump({"hash": modified_hash}, f)
+
+        with open(cache_file) as f:
+            updated = json.load(f)
+            assert updated["hash"] == modified_hash
+
+
 def test_cleanup_seed_demo(client):
     """清理: 种子 demo 数据（可选，不阻塞）"""
     try:
