@@ -38,6 +38,7 @@ const UserWorkbench: React.FC = () => {
   const [createContent, setCreateContent] = useState('');
   const [expandedCard, setExpandedCard] = useState<string | null>(null);
   const [specFilter, setSpecFilter] = useState<string>('all');
+  const [promoQueue, setPromoQueue] = useState<any[]>([]);
   const pollRef = useRef<number>(0);
   const dashRef = useRef<number>(0);
 
@@ -61,6 +62,7 @@ const UserWorkbench: React.FC = () => {
     fetch('/api/core/workbench/tasks').then(r => r.json()).then(d => setHistory(d.items || []));
     fetch('/api/core/workbench/specs').then(r => r.json()).then(d => setSpecs(d.specs || []));
     fetch('/api/core/workbench/fde-dashboard').then(r => r.json()).then(setFDEData);
+    fetch('/api/core/workbench/promotion-queue').then(r => r.json()).then(d => setPromoQueue(d.queue || []));
   }, []);
 
   useEffect(() => {
@@ -255,6 +257,22 @@ const UserWorkbench: React.FC = () => {
               expanded={expandedCard}
               onToggle={setExpandedCard}
             />
+            {promoQueue.length > 0 && (
+              <ExpandableCard
+                id="promotions"
+                title="审批队列"
+                count={promoQueue.length}
+                unit="个待审"
+                color="#a855f7"
+                items={promoQueue.map((p: any) => ({
+                  label: p.spec_id,
+                  sub: `v${p.version} · ${p.requester || ''}`,
+                  link: `/value-center/spec/${p.spec_id}`,
+                }))}
+                expanded={expandedCard}
+                onToggle={setExpandedCard}
+              />
+            )}
           </div>
 
           <div style={{ borderTop: '1px solid #1e293b', paddingTop: 12 }}>
