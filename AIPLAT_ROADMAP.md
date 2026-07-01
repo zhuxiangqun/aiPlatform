@@ -1,10 +1,10 @@
 # aiPlat 商业化演进终极作战手册
 
-> 基线：代码交叉验证 | 状态：400项能力, 18/18 syntax, 5/5 服务健康, 架构守卫0违规, 全域诊断14项  
+> 基线：代码交叉验证 | 状态：405项能力,6/6 syntax,5/5服务健康,架构守卫0违规,全域诊断14项
 > 对标：Hermes Agent · Claude Code · OpenClaw · Octo (明略科技)  
 > 定位：**企业级 FDE 操作系统**（Agent 协作网络 + Spec 生命周期管理）
 > 
-> **当前能力全貌**：参见 [`AIPLAT_CAPABILITIES.md`](./AIPLAT_CAPABILITIES.md)（398 项能力，398 ✅）
+> **当前能力全貌**：参见 [`AIPLAT_CAPABILITIES.md`](./AIPLAT_CAPABILITIES.md)（405 项能力，405 ✅）
 > 
 > **最新更新 (2026-07-01)**：本会话完成 FDE 操作系统建设 — SpecLifecycle + FeedbackRadar + TraceVisualizer (Andrew Ng 三层 Loop 传动轴) + FDE Dashboard (4卡+时间轴) + 全域诊断 14 项 + 5 routing_modes (static/llm/debate/swarm/roundtable) + Matter 验收 + CoT/自纠错模板化 + 诊断中心竟态修复 + 合规审计3项修复 + CAPABILITIES 384→400。评分 90→99。https://github.com/octo-models/octo
 
