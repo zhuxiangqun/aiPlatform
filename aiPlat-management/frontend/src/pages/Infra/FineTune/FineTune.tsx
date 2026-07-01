@@ -4,7 +4,7 @@ import { Button, Modal, toast, Input, Select } from '../../../components/ui';
 import { finetuneApi } from '../../../services';
 
 const FineTunePage: React.FC = () => {
-  const [tab, setTab] = useState<'datasets' | 'jobs' | 'training' | 'distill' | 'scratch'>('datasets');
+  const [tab, setTab] = useState<'datasets' | 'jobs' | 'training' | 'distill' | 'scratch' | 'models'>('datasets');
   const [datasets, setDatasets] = useState<any[]>([]);
   const [jobs, setJobs] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
@@ -57,6 +57,7 @@ const FineTunePage: React.FC = () => {
   const [scratchLR, setScratchLR] = useState('5e-5');
   const [scratchJobs, setScratchJobs] = useState<any[]>([]);
   const [scratchRunning, setScratchRunning] = useState(false);
+  const [models, setModels] = useState<any[]>([]);
   const [baseModelOptions, setBaseModelOptions] = useState<{value:string,label:string}[]>([
     {value:'deepseek-chat',label:'deepseek-chat'},
     {value:'deepseek-v4-pro',label:'deepseek-v4-pro'}
@@ -107,12 +108,12 @@ const FineTunePage: React.FC = () => {
 
       {/* ── Tabs ── */}
       <div className="flex gap-2 border-b border-dark-border pb-2">
-        {(['datasets', 'jobs', 'training', 'distill', 'scratch'] as const).map(t => (
-          <button key={t} onClick={() => setTab(t)}
+        {(['datasets', 'jobs', 'training', 'distill', 'scratch', 'models'] as const).map(t => (
+          <button key={t} onClick={() => { setTab(t); if (t === 'models') fetch('/api/core/finetune/providers').then(r=>r.json()).then(d => setModels(d.providers || [])); }}
             className={`px-4 py-2 text-sm rounded-t-lg transition-colors ${
               tab === t ? 'bg-dark-card text-gray-100 border border-dark-border border-b-dark-card' : 'text-gray-500 hover:text-gray-300'
             }`}>
-            {t === 'datasets' ? '📊 数据集' : t === 'jobs' ? '⚙️ 微调作业' : t === 'training' ? '🧠 RL训练' : t === 'distill' ? '🔮 蒸馏' : '🏗️ 从零训练'}
+            {t === 'datasets' ? '📊 数据集' : t === 'jobs' ? '⚙️ 微调作业' : t === 'training' ? '🧠 RL训练' : t === 'distill' ? '🔮 蒸馏' : t === 'scratch' ? '🏗️ 从零训练' : '📋 模型注册表'}
           </button>
         ))}
       </div>
@@ -566,6 +567,45 @@ const FineTunePage: React.FC = () => {
                 ))}
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* ── Models Tab ── */}
+      {tab === 'models' && (
+        <div className="space-y-4 mt-4">
+          <div className="bg-dark-card rounded-lg p-6 border border-dark-border">
+            <h3 className="text-lg font-semibold text-gray-100 mb-4">已注册模型</h3>
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-gray-500 border-b border-dark-border">
+                  <th className="text-left py-2">名称</th>
+                  <th className="text-left py-2">Provider</th>
+                  <th className="text-left py-2">用途</th>
+                  <th className="text-left py-2">分数</th>
+                  <th className="text-left py-2">状态</th>
+                </tr>
+              </thead>
+              <tbody>
+                {models.length === 0 ? (
+                  <tr><td colSpan={5} className="py-4 text-gray-500 text-center">暂无已注册模型</td></tr>
+                ) : (
+                  models.map((m: any, i: number) => (
+                    <tr key={i} className="border-b border-dark-border/50">
+                      <td className="py-2 text-gray-200">{m.display_name || m.name || '—'}</td>
+                      <td className="py-2 text-gray-400">{m.provider_name || '—'}</td>
+                      <td className="py-2 text-gray-400">{m.purpose || 'chat'}</td>
+                      <td className="py-2 text-gray-400">{m.capability_score?.toFixed(2) || '—'}</td>
+                      <td className="py-2">
+                        <span className={`px-2 py-0.5 rounded text-xs ${m.available !== false ? 'bg-green-900 text-green-400' : 'bg-red-900 text-red-400'}`}>
+                          {m.available !== false ? '可用' : '不可用'}
+                        </span>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
           </div>
         </div>
       )}
