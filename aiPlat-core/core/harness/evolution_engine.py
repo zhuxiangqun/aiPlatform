@@ -115,6 +115,9 @@ class EvolutionEngine:
         # Step 11: RL training trigger (after SFT data pipeline, if enabled)
         run.steps.append(await self._step("rl_trigger", self._do_rl_trigger))
 
+        # Step 12: Monthly value snapshot (business ROI + goal tracking)
+        run.steps.append(await self._step("value_snapshot", self._do_value_snapshot))
+
         # Build report
         run.summary = self._build_daily_report(run)
         errors = sum(1 for s in run.steps if s.status in ("timeout", "error"))
@@ -266,6 +269,19 @@ class EvolutionEngine:
             return {"status": run.status, "iterations": run.iterations,
                     "episodes": run.total_episodes, "avg_reward": run.avg_reward,
                     "dataset": path}
+        except Exception as e:
+            return {"error": str(e)[:100]}
+
+    async def _do_value_snapshot(self) -> Dict[str, Any]:
+        """Monthly business value snapshot (five-dimension ROI)."""
+        try:
+            from core.harness.finance.value_calculator import get_value_calculator
+            calc = get_value_calculator()
+            month = time.strftime("%Y-%m")
+            report = await calc.compute_monthly(tenant_id="all", month=month)
+            calc._persist(report)
+            return {"month": month, "total_runs": report.total_runs,
+                    "total_value_cny": report.total_value_cny}
         except Exception as e:
             return {"error": str(e)[:100]}
 

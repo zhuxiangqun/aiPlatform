@@ -45,6 +45,46 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
+# ── Goal-Aware Routing Strategy ──
+
+class GoalAwareRouter:
+    """Adjust routing strategy based on business goal status.
+
+    Three strategies:
+      - Speed: lagging goal → reduce steps, bypass approvals for known tasks
+      - Quality: declining quality → force reflection, prefer high-cost model
+      - Safety: frequent incidents → force human-in-the-loop for external calls
+    """
+
+    def __init__(self, goal_tracker: Any = None):
+        self.goal_tracker = goal_tracker
+
+    def adjust(self) -> Dict[str, Any]:
+        """Return {params: dict, context: str} for DynamicRouter injection."""
+        params = {}
+        context = []
+        if not self.goal_tracker:
+            return {"params": params, "context": ""}
+
+        try:
+            status = self.goal_tracker.get_status_for_routing()
+        except Exception:
+            return {"params": params, "context": ""}
+
+        if status.get("has_lagging_goal"):
+            params["max_steps"] = 10
+            context.append("⚡当前有业务目标进度落后，请优先选择最快的Agent，减少冗余步骤")
+
+        if status.get("quality_trend") == "declining":
+            params["force_reflection"] = True
+            context.append("🔍检测到质量指标下滑，请启用反思模式，输出前自检")
+
+        if status.get("security_incidents", 0) > 3:
+            context.append("🛡️安全事件增多，外部调用必须经过人工确认")
+
+        return {"params": params, "context": "\n".join(context)}
+
+
 class DynamicRouter:
     """LLM-driven routing loop — Supervisor as Router, not as Executor."""
 
@@ -54,11 +94,14 @@ class DynamicRouter:
         supervisor_model: str = "",
         max_steps: int = 15,
         agent_descriptions: Optional[Dict[str, str]] = None,
+        goal_tracker: Any = None,
     ):
         self.max_steps = max_steps
         self.supervisor_model = supervisor_model or self._default_supervisor_model()
         self.agent_descriptions = agent_descriptions or {}
         self._trace: List[Dict[str, Any]] = []
+        self.goal_tracker = goal_tracker
+        self.goal_router = GoalAwareRouter(goal_tracker) if goal_tracker else None
 
     @staticmethod
     def _default_supervisor_model() -> str:
@@ -146,6 +189,11 @@ class DynamicRouter:
             f"2. 如果任务已完成，输出 finish\n"
             f"3. 如果当前信息不足，优先选能获取信息的Agent\n"
         )
+        # Inject business goal context if available
+        if self.goal_router:
+            strategy = self.goal_router.adjust()
+            if strategy.get("context"):
+                system += f"\n【业务目标牵引】\n{strategy['context']}\n"
         user = (
             f"【目标】{goal[:200]}\n\n"
             f"【执行历史】\n{history_str}\n\n"
