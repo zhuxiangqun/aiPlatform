@@ -822,5 +822,64 @@ async def duplicate_spec(spec_id: str, body: Dict[str, Any]) -> Dict[str, Any]:
         raise HTTPException(status_code=500, detail=str(e)[:200])
 
 
+@router.get("/spec/{spec_id}/diff")
+async def diff_spec_versions(spec_id: str, v1: int = 0, v2: int = 0) -> Dict[str, Any]:
+    """Compare two Spec versions side by side (FDE troubleshooting tool).
+
+    Query: ?v1=1&v2=3 — compares v1 to v3.
+    Defaults to comparing latest vs previous version.
+    """
+    try:
+        from core.harness.models.spec_lifecycle import get_spec_lifecycle
+        sl = get_spec_lifecycle()
+        if v1 <= 0 or v2 <= 0:
+            history = sl.get_history(spec_id)
+            if len(history) < 2:
+                return {"spec_id": spec_id, "diff": None, "reason": "need at least 2 versions"}
+            v2 = history[-1].version if v2 <= 0 else v2
+            v1 = history[-2].version if v1 <= 0 else v1
+
+        src = sl.get_version(spec_id, v1)
+        dst = sl.get_version(spec_id, v2)
+        if not src or not dst:
+            raise HTTPException(status_code=404, detail="version not found")
+
+        # Compute content changes
+        changes = []
+        old_content = src.content or {}
+        new_content = dst.content or {}
+        all_keys = set(old_content.keys()) | set(new_content.keys())
+
+        for key in sorted(all_keys):
+            old_val = old_content.get(key)
+            new_val = new_content.get(key)
+            if old_val != new_val:
+                changes.append({
+                    "field": key,
+                    "v1_value": str(old_val)[:200] if old_val else "(未设置)",
+                    "v2_value": str(new_val)[:200] if new_val else "(删除)",
+                    "changed": True,
+                })
+
+        # Compute acceptance/deliverable changes (Matter fields)
+        for field, label in [("acceptance_criteria", "验收标准"), ("deliverable", "交付物")]:
+            o = old_content.get(field, "")
+            n = new_content.get(field, "")
+            if o != n:
+                changes.append({"field": label, "v1_value": o or "(未设置)", "v2_value": n or "(删除)", "changed": True})
+
+        return {
+            "spec_id": spec_id,
+            "v1": {"version": v1, "status": src.status.value, "trigger_detail": src.trigger_detail},
+            "v2": {"version": v2, "status": dst.status.value, "trigger_detail": dst.trigger_detail},
+            "changes": changes,
+            "total_changes": len(changes),
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e)[:200])
+
+
 # Local helper for _trigger_spec_re_execution
 from core.harness.models.spec_lifecycle import get_spec_lifecycle
