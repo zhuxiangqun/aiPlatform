@@ -2,7 +2,7 @@
 
 > 原则：代码即真相。每个条目必须有可验证的代码位置。
 > 更新：任何能力变更时同步更新本文档。
-> 评分：97/100（2026-07-01 — 413✅, FDE操作系统 + Phase5竞品借鉴 + RL训练管线全登记）
+> 评分：97/100（2026-07-01 — 425✅, FDE操作系统 + Phase5竞品借鉴 + RL+业务价值+诊断全登记）
 
 ---
 
@@ -350,6 +350,11 @@
 | FileBasedMemory | `memory/file_store.py` | ✅ | 文件记忆: Markdown双写(MEMORY.md+日期文件)+SQLite索引, 人类可验证 | 已合入 |
 | AutoMemory | `memory/file_store.py:auto_save_learning` + `memory/manager.py:save_interaction` | ✅ | 自动记忆: 纠正≥2次/10轮交互自动保存到文件, AIPLAT_AUTO_LEARNING_ENABLED控制 | 已合入 |
 | PluginSlot | `apps/plugins/manager.py` | ✅ | 插件Slot: 同类别单一活跃, 旧插件状态归档 | 已合入 |
+| 五维 ROI 计算 | `harness/finance/value_calculator.py:compute_monthly()` | ✅ | 效率/质量/安全/创新/体验五维价值计量, 月度聚合 | 已合入 |
+| 三受众翻译 | `harness/finance/value_calculator.py:translate_for()` | ✅ | CEO(战略+目标)/CFO(成本+ROI)/PM(准确度+满意度) 三视角自动翻译 | 已合入 |
+| BusinessGoalTracker | `harness/finance/value_calculator.py` | ✅ | 目标设定→进度追踪→偏离预警, on_track/at_risk/behind 实时状态 | 已合入 |
+| GoalAwareRouter | `harness/execution/dynamic_router.py:GoalAwareRouter` | ✅ | 业务目标感知调度: Speed(提速)/Quality(反思)/Safety(HITL) 策略自动切换 | 已合入 |
+| KPIAgent 监控 | `harness/agents/kpi_agent.py` | ✅ | 自动追踪 KPI → 偏离预警 → strategy_suggest, EvolutionEngine Step12 触发 | 已合入 |
 
 ---
 
@@ -602,6 +607,13 @@
 | FullStack 诊断 | `api/routers/diagnostics.py:_check_full_stack` | ✅ | 12项全域检查(入驻/知识/协作/学习/FDE日常 5条旅程) | 已合入 |
 | Spec 冒烟测试 | `scripts/smoke_spec_lifecycle.sh` | ✅ | 8阶段自动化: create→submit→poll→trace→dashboard→stable | 已合入 |
 | Demo 种子数据 | `api/routers/workbench.py:seed-demo` | ✅ | 一键创建2个Spec+提交任务→仪表板立即可用 | 已合入 |
+| 合规审计 (ComplianceChecks) | `management/compliance_checks.py` | ✅ | 可扩展生产就绪审计: 任务规格/MemoryManager/PolicyGate/RBAC/CLAUDE.md检查 | 已合入 |
+| 架构守卫诊断集成 | `api/routers/diagnostics.py:_check_arch_guard` | ✅ | 架构守卫违规数自动检测→诊断卡片展示, 0违规=满分 | 已合入 |
+| Skill Lint 诊断 | `api/routers/diagnostics.py:_check_skill_lint` | ✅ | 全量 Skill Lint 扫描→error/warning 统计→诊断评分 | 已合入 |
+| Core 运行时诊断 | `api/routers/diagnostics.py:_check_core_runtime` | ✅ | ExecutionStore 初始化状态检查 | 已合入 |
+| 能力图谱健康 | `api/routers/diagnostics.py:_check_capability` | ✅ | 孤立Agent/未解析引用/入口重复自动检测 | 已合入 |
+| Wiki 健康检查 | `api/routers/diagnostics.py:_check_wiki_health` | ✅ | 死链/孤立/矛盾/过期页面检测→health_score 评分 | 已合入 |
+| 链路追踪诊断 | `api/routers/diagnostics.py:_check_traces` | ✅ | 链路追踪完整性: span_id/trace_id/事件持久化检查 | 已合入 |
 
 ---
 
@@ -644,7 +656,7 @@
 | 可观测性 | 13 | 0 | 13 |
 | 模型基础设施 | 13 | 0 | 13 |
 | 部署与运维 | 15 | 0 | 15 |
-| 扩展与学习 | 40 | 0 | 40 |
+| 扩展与学习 | 45 | 0 | 45 |
 | Gate 系统 | 5 | 0 | 5 |
 | 评估系统 | 13 | 0 | 13 |
 | MCP 协议 | 6 | 0 | 6 |
@@ -659,14 +671,14 @@
 | Infra 基础设施 | 11 | 0 | 11 |
 | 核心API统一入口 | 5 | 0 | 5 |
 | 编排系统 | 4 | 0 | 4 |
-| 管理 & 质量 | 14 | 0 | 14 |
+| 管理 & 质量 | 21 | 0 | 21 |
 | 编排层 | 17 | 0 | 17 |
-| **总计** | **413** | **0** | **413** |
+| **总计** | **425** | **0** | **425** |
 
 ---
 
 *最后更新: 2026-07-01*
-*版本: 12.0 · 28章 · 413项能力 · 413✅ · RL训练管线全登记*
+*版本: 12.1 · 28章 · 425项能力 · 425✅ · 业务价值+诊断+RL全登记*
 
 **自检命令**：
 ```bash
