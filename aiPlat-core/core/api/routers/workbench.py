@@ -881,5 +881,33 @@ async def diff_spec_versions(spec_id: str, v1: int = 0, v2: int = 0) -> Dict[str
         raise HTTPException(status_code=500, detail=str(e)[:200])
 
 
+@router.post("/spec/batch-mark-stable")
+async def batch_mark_stable(body: Dict[str, Any]) -> Dict[str, Any]:
+    """Batch operation: mark multiple REVIEW specs as STABLE at once.
+
+    Body: {"spec_ids": ["spec-a", "spec-b", ...]}
+    Returns: results per spec (stable / unchanged / error).
+    """
+    spec_ids = body.get("spec_ids", [])
+    if not spec_ids or not isinstance(spec_ids, list):
+        raise HTTPException(status_code=400, detail="spec_ids (list) is required")
+
+    from core.harness.models.spec_lifecycle import get_spec_lifecycle
+    sl = get_spec_lifecycle()
+    results = []
+    for sid in spec_ids:
+        try:
+            result = sl.mark_stable(sid)
+            if result:
+                results.append({"spec_id": sid, "status": "stable", "version": result.version})
+            else:
+                results.append({"spec_id": sid, "status": "unchanged", "reason": "not in review"})
+        except Exception as e:
+            results.append({"spec_id": sid, "status": "error", "reason": str(e)[:100]})
+
+    stable_count = sum(1 for r in results if r["status"] == "stable")
+    return {"total": len(spec_ids), "stable": stable_count, "results": results}
+
+
 # Local helper for _trigger_spec_re_execution
 from core.harness.models.spec_lifecycle import get_spec_lifecycle
