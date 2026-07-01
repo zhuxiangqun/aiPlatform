@@ -794,5 +794,33 @@ async def install_skill_from_url(body: Dict[str, Any]) -> Dict[str, Any]:
         raise HTTPException(status_code=500, detail=str(e)[:200])
 
 
+@router.post("/spec/{spec_id}/duplicate")
+async def duplicate_spec(spec_id: str, body: Dict[str, Any]) -> Dict[str, Any]:
+    """Duplicate an existing Spec as a new one (FDE productivity shortcut).
+
+    Body: {"new_spec_id": "my-new-spec"} — optional, defaults to {spec_id}_copy
+    """
+    try:
+        from core.harness.models.spec_lifecycle import get_spec_lifecycle
+        sl = get_spec_lifecycle()
+        source = sl.get_latest(spec_id)
+        if not source:
+            raise HTTPException(status_code=404, detail=f"Spec '{spec_id}' not found")
+
+        new_id = body.get("new_spec_id", f"{spec_id}_copy")
+        sv = sl.create_draft(
+            new_id,
+            content=source.content,
+            created_by=body.get("created_by", "developer"),
+            trigger_detail=f"Duplicated from {spec_id} v{source.version}",
+        )
+        return {"spec_id": sv.spec_id, "version": sv.version, "status": sv.status.value,
+                "source": spec_id, "source_version": source.version}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e)[:200])
+
+
 # Local helper for _trigger_spec_re_execution
 from core.harness.models.spec_lifecycle import get_spec_lifecycle
