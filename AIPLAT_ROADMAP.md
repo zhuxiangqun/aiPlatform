@@ -75,14 +75,16 @@ Phase 4: FDE 操作系统 (✅ 已完成 — 本会话)
 └─ 4.8 Matter 验收      ✅ (交付物定义 + 验收标准 + SpecDetail revise 增强)
 
 Phase 5: 竞品借鉴（✅ 已完成 — 本会话）
-├─ 5.1 MCP 工具延迟加载  ✅ (启动仅加载名称, Schema按需获取)
-├─ 5.2 Prompt Caching     ✅ (cache_control注入 + SHA256跨会话持久化)
-├─ 5.3 Permissions 三层优先级 ✅ (deny>ask>allow + fnmatch参数级匹配)
-├─ 5.4 Subagent 上下文隔离   ✅ (isolate_context + read_only_context)
-├─ 5.5 File-based Memory     ✅ (Markdown双写 + SQLite索引)
-├─ 5.6 工具自发现            ✅ (已有 discovery.py)
-├─ 5.7 Plugin Slot 模式      ✅ (slot registry + archive)
-└─ 5.8 Auto Memory 自动学习  ✅ (纠正≥2次/10轮交互自动保存到文件)
+├─ 5.1  MCP 工具延迟加载   ✅ (启动仅加载名称, Schema按需获取)
+├─ 5.2  Prompt Caching      ✅ (cache_control注入 + SHA256跨会话持久化 + 集成测试)
+├─ 5.3  Permissions 三层优先级 ✅ (deny>ask>allow + fnmatch参数级匹配)
+├─ 5.4  Subagent 上下文隔离    ✅ (isolate_context + read_only_context)
+├─ 5.5  File-based Memory      ✅ (Markdown双写 + SQLite索引)
+├─ 5.6  工具自发现             ✅ (已有 discovery.py)
+├─ 5.7  Plugin Slot 模式       ✅ (slot registry + archive)
+├─ 5.8  Auto Memory 自动学习   ✅ (纠正≥2次/10轮交互自动保存到文件)
+├─ 5.9  多租户检索隔离修复     ✅ (WikiPageRetriever tenant_id mismatch WARNING→ERROR阻断)
+├─ 5.10 文档全部同步至 425✅   ✅ (6个核心文档数字一致, CI校验器通过)
 
 评分: 90 → 99
 ```
