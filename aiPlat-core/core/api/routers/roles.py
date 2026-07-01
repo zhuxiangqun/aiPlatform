@@ -49,8 +49,7 @@ ROLE_DEFAULTS = {
 @router.get("/agents")
 async def get_role_agents() -> List[Dict[str, Any]]:
     """List all agents with current role assignments and config."""
-    from core.harness.finance.value_calculator import get_value_calculator
-    calc = get_value_calculator()
+    import os
     agents = []
 
     # Each agent can be configured with a role
@@ -63,15 +62,20 @@ async def get_role_agents() -> List[Dict[str, Any]]:
             "last_updated": config.get("last_updated", ""),
         })
 
-    # Add default agents if not overridden
-    default_agents = ["ci_fix_agent", "notes_agent", "security_agent", "report_agent"]
-    for aid in default_agents:
-        if aid not in _role_configs:
-            agents.append({
-                "agent_id": aid, "role": "employee",
-                "model": "", "reflection_enabled": False,
-                "last_updated": "",
-            })
+    # Scan workspace agents directory
+    workspace_dir = os.path.expanduser("~/.aiplat/agents")
+    if os.path.isdir(workspace_dir):
+        for name in os.listdir(workspace_dir):
+            if name not in _role_configs and os.path.isdir(os.path.join(workspace_dir, name)):
+                role = "employee"
+                # Map known agent types to default roles
+                if name in ("kpi_agent", "strategy_agent"):
+                    role = name.split("_")[0] if "_" in name else "employee"
+                agents.append({
+                    "agent_id": name, "role": role, "model": "",
+                    "reflection_enabled": name == "advisor_agent",
+                    "last_updated": "",
+                })
 
     return agents
 
