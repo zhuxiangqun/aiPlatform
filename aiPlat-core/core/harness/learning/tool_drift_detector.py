@@ -44,6 +44,15 @@ class DriftType(Enum):
     ERROR_PATTERN_DRIFT = "error_pattern_drift"
 
 
+# ── Realtime anomaly types (Layer 1: 感知) ──
+
+class AnomalyType(Enum):
+    REDUNDANT_CALL = "redundant_call"       # 同工具+同参数 短时间高频重复
+    OUTLIER_LATENCY = "outlier_latency"     # 单次延迟远超 P95
+    CASCADE_FAILURE = "cascade_failure"     # 连续 N 次全失败
+    CIRCUIT_OPEN = "circuit_open"           # 熔断器触发
+
+
 # ── Data models ──
 
 @dataclass
@@ -74,6 +83,23 @@ class SchemaMapping:
     version: int = 1
 
 
+@dataclass
+class RealtimeAlert:
+    anomaly_type: AnomalyType
+    tool_name: str
+    detail: str
+    timestamp: float = field(default_factory=time.time)
+
+
+@dataclass
+class CircuitBreaker:
+    tool_name: str
+    opened_at: float
+    cooldown_s: float
+    reason: str
+    reject_count: int = 0
+
+
 # ── Core detector ──
 
 class ToolDriftDetector:
@@ -92,6 +118,24 @@ class ToolDriftDetector:
         self._field_missing_threshold = float(os.getenv("AIPLAT_DRIFT_FIELD_MISSING_THRESHOLD", "0.1"))
         self._latency_ratio = float(os.getenv("AIPLAT_DRIFT_LATENCY_RATIO", "2.0"))
         self._error_rate_threshold = float(os.getenv("AIPLAT_DRIFT_ERROR_RATE_THRESHOLD", "0.05"))
+
+        # ── Realtime mode: small window, high frequency checks ──
+        self._realtime_buffer: Dict[str, Deque[ToolCallRecord]] = defaultdict(
+            lambda: deque(maxlen=int(os.getenv("AIPLAT_REALTIME_WINDOW_SIZE", "20")))
+        )
+        self._realtime_enabled = os.getenv("AIPLAT_REALTIME_ANOMALY_ENABLED", "true") \
+            .lower() in ("1", "true", "yes")
+        self._redundant_interval = float(os.getenv("AIPLAT_REALTIME_REDUNDANT_INTERVAL", "3.0"))
+        self._outlier_ratio = float(os.getenv("AIPLAT_REALTIME_OUTLIER_RATIO", "3.0"))
+        self._cascade_threshold = int(os.getenv("AIPLAT_REALTIME_CASCADE_THRESHOLD", "5"))
+
+        # ── Circuit breaker ──
+        self._circuit_breakers: Dict[str, CircuitBreaker] = {}
+        self._circuit_cooldown = float(os.getenv("AIPLAT_CIRCUIT_COOLDOWN", "60"))
+
+        # ── Alert cooldown (prevent alert fatigue) ──
+        self._alert_cooldown: Dict[str, float] = {}
+        self._alert_cooldown_s = float(os.getenv("AIPLAT_ALERT_COOLDOWN", "300"))
 
     # ── Lifecycle ──
 
@@ -119,6 +163,18 @@ class ToolDriftDetector:
         latency_ms: float,
         error_code: Optional[str] = None,
     ) -> None:
+        # Circuit breaker: reject calls when breaker is open
+        if tool_name and tool_name in self._circuit_breakers:
+            cb = self._circuit_breakers[tool_name]
+            if time.time() - cb.opened_at < cb.cooldown_s:
+                cb.reject_count += 1
+                self._alert(AnomalyType.CIRCUIT_OPEN, tool_name,
+                            f"Rejected (#{cb.reject_count}): {cb.reason}")
+                return
+            else:
+                del self._circuit_breakers[tool_name]
+                logger.info("Circuit breaker auto-closed for %s", tool_name)
+
         golden_keys = list(response_data.keys())[:5] if isinstance(response_data, dict) else []
         record = ToolCallRecord(
             tool_name=tool_name,
@@ -130,10 +186,16 @@ class ToolDriftDetector:
             error_code=error_code,
             golden_keys=golden_keys,
         )
+        # Async queue (nightly batch drift detection — unchanged)
         try:
             self._queue.put_nowait(record)
         except asyncio.QueueFull:
             pass
+
+        # Sync realtime anomaly check
+        if self._realtime_enabled and tool_name:
+            self._check_realtime(tool_name, request_schema, status_code,
+                                 latency_ms, error_code, record)
 
     # ── Background worker ──
 
@@ -276,7 +338,113 @@ class ToolDriftDetector:
             self._trigger_alert(f"Tool {tool_name} adapt failed: replay={replay_rate:.0%}")
             return None
 
-    # ── Internal helpers ──
+    # ── Realtime anomaly checks ──
+
+    def _check_realtime(self, tool_name: str, request_schema: dict,
+                        status_code: int, latency_ms: float, error_code: str,
+                        record: ToolCallRecord) -> None:
+        """Synchronous realtime checks — ring buffer only, zero I/O."""
+        now = time.time()
+        args_hash = self._hash_args(request_schema)
+        buf = self._realtime_buffer[tool_name]
+        buf.append(record)
+
+        # Check 1: REDUNDANT_CALL — same tool + same args in recent window
+        redundant = 0
+        for r in reversed(list(buf)[-10:]):
+            if (now - r.timestamp) > self._redundant_interval:
+                break
+            if r.status_code == 200 and self._hash_args(r.request_schema) == args_hash:
+                redundant += 1
+        if redundant >= 3:
+            self._alert(AnomalyType.REDUNDANT_CALL, tool_name,
+                        f"{redundant} identical calls in {self._redundant_interval}s")
+
+        # Check 2: OUTLIER_LATENCY — single call abnormally slow
+        latencies = [r.latency_ms for r in buf if r.latency_ms > 0 and r.status_code == 200]
+        if len(latencies) >= 5:
+            p95 = sorted(latencies)[int(len(latencies) * 0.95)]
+            if latency_ms > p95 * self._outlier_ratio and latency_ms > 100:
+                self._alert(AnomalyType.OUTLIER_LATENCY, tool_name,
+                            f"{latency_ms:.0f}ms > P95={p95:.0f}ms × {self._outlier_ratio}")
+
+        # Check 3: CASCADE_FAILURE — consecutive failures
+        recent = list(buf)[-self._cascade_threshold:]
+        if len(recent) >= self._cascade_threshold:
+            if all(r.status_code != 200 for r in recent):
+                self._unstable_tools.add(tool_name)
+                self._circuit_breakers[tool_name] = CircuitBreaker(
+                    tool_name=tool_name, opened_at=now,
+                    cooldown_s=self._circuit_cooldown,
+                    reason=f"Last {len(recent)} calls all failed",
+                )
+                self._alert(AnomalyType.CASCADE_FAILURE, tool_name,
+                            f"Opened circuit (cooldown={self._circuit_cooldown}s)")
+
+    @staticmethod
+    def _hash_args(request_schema) -> str:
+        return hashlib.md5(str(request_schema).encode()).hexdigest()[:12]
+
+    def _alert(self, anomaly_type: AnomalyType, tool_name: str, detail: str) -> None:
+        """Cooldown-controlled alert to EventBus + reaction triggers."""
+        cooldown_key = f"{tool_name}:{anomaly_type.value}"
+        now = time.time()
+        last = self._alert_cooldown.get(cooldown_key, 0)
+        if now - last < self._alert_cooldown_s:
+            return
+        self._alert_cooldown[cooldown_key] = now
+
+        logger.warning("REALTIME ⚡ %s: %s %s", anomaly_type.value, tool_name, detail)
+        try:
+            from core.harness.observation.event_bus import EventBus
+            EventBus.publish("system", {
+                "type": "tool_anomaly",
+                "anomaly": anomaly_type.value,
+                "tool": tool_name,
+                "detail": detail,
+                "timestamp": now,
+            })
+        except Exception:
+            pass
+
+        # Layer 2+3 glue: realtime reaction via running event loop
+        try:
+            loop = asyncio.get_running_loop()
+            if anomaly_type in (AnomalyType.REDUNDANT_CALL, AnomalyType.OUTLIER_LATENCY):
+                loop.create_task(self._trigger_pattern_analysis(tool_name, anomaly_type, detail))
+            elif anomaly_type == AnomalyType.CASCADE_FAILURE:
+                loop.create_task(self._trigger_circuit_breaker_skill(tool_name, detail))
+        except RuntimeError:
+            pass
+
+    async def _trigger_pattern_analysis(self, tool_name: str,
+                                        anomaly_type: AnomalyType, detail: str) -> None:
+        try:
+            from core.harness.memory.pattern_accumulator import get_pattern_accumulator
+            acc = get_pattern_accumulator()
+            await acc.ingest_anomaly(tool_name, {
+                "type": anomaly_type.value,
+                "detail": detail,
+                "timestamp": time.time(),
+            })
+        except Exception:
+            logger.debug("Pattern analysis trigger failed", exc_info=True)
+
+    async def _trigger_circuit_breaker_skill(self, tool_name: str, detail: str) -> None:
+        try:
+            from core.harness.learning.skill_evolver import get_skill_evolver, SharedSkillDraft
+            evolver = get_skill_evolver()
+            draft = SharedSkillDraft(
+                pattern_hash=hashlib.md5(f"cb:{tool_name}".encode()).hexdigest()[:16],
+                tool_sequence=[tool_name, "circuit_breaker"],
+                tenant_count=1,
+                total_frequency=1,
+                suggestion=f"级联失败触发: {detail}. 建议为 {tool_name} 配置降级策略。",
+                source="realtime_anomaly",
+            )
+            await evolver.submit_shared_draft(draft)
+        except Exception:
+            logger.debug("Circuit breaker skill trigger failed", exc_info=True)
 
     def _call_llm_for_schema(self, tool_name: str, samples: List[Dict]) -> Dict[str, str]:
         """Generate new field extraction mapping from samples using LLM.
@@ -370,6 +538,25 @@ class ToolDriftDetector:
         )
         self._windows[tool_name].append(record)
 
+    def _inject_realtime(self, tool_name: str, request_schema: dict,
+                         status_code: int = 200, latency_ms: float = 100,
+                         error_code: Optional[str] = None) -> None:
+        """Direct realtime buffer injection for tests (triggers _check_realtime)."""
+        record = ToolCallRecord(
+            tool_name=tool_name,
+            timestamp=time.time(),
+            request_schema=request_schema,
+            response_data={},
+            status_code=status_code,
+            latency_ms=latency_ms,
+            error_code=error_code,
+        )
+        self._realtime_buffer[tool_name].append(record)
+        # Trigger realtime check so anomaly detection runs
+        if self._realtime_enabled:
+            self._check_realtime(tool_name, request_schema, status_code,
+                                 latency_ms, error_code, record)
+
     def get_stats(self, tool_name: str) -> Dict[str, Any]:
         records = list(self._windows.get(tool_name, []))
         if not records:
@@ -382,6 +569,19 @@ class ToolDriftDetector:
             "error_rate": len(errors) / len(records),
             "is_unstable": tool_name in self._unstable_tools,
             "has_mapping": tool_name in self._mapping_cache,
+        }
+
+    def get_realtime_stats(self) -> Dict[str, Any]:
+        return {
+            "enabled": self._realtime_enabled,
+            "tools_monitored": len(self._realtime_buffer),
+            "circuit_breakers_open": {
+                t: {"opened_at": cb.opened_at, "cooldown_s": cb.cooldown_s,
+                    "reject_count": cb.reject_count, "reason": cb.reason}
+                for t, cb in self._circuit_breakers.items()
+            },
+            "buffer_sizes": {t: len(buf) for t, buf in self._realtime_buffer.items()},
+            "unstable_tools": list(self._unstable_tools),
         }
 
     def list_tools(self) -> List[str]:

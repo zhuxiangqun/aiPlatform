@@ -126,7 +126,38 @@ class PatternAccumulator:
             logging.debug(str(e), exc_info=True)
 
         _log.info(f"PatternAccumulator: pattern {pattern.hash[:8]} freq={pattern.frequency} → triggering draft")
+        
+        # Phase 6: CMM graduation — promote high-frequency patterns to AutoLearner pipeline
+        try:
+            from core.harness.learning.cmm_graduation import get_cmm_graduation
+            cmm = get_cmm_graduation()
+            import asyncio
+            asyncio.create_task(cmm.graduate(pattern.hash, error_context))
+        except Exception:
+            pass
+        
         return pattern
+
+    async def ingest_anomaly(self, tool_name: str, anomaly: Dict[str, Any]) -> None:
+        """实时接入：将异常事件转化为 Pattern（CMM 观察层 Layer 2）。
+
+        与 extract_from_failure 不同：extract_from_failure 读完整 syscall_events，
+        ingest_anomaly 只接收单个异常事件，用于实时模式。
+        """
+        anomaly_type = anomaly.get("type", "unknown")
+        tool_seq = (tool_name, f"anomaly:{anomaly_type}")
+        pattern_hash = hashlib.md5(str(tool_seq).encode()).hexdigest()
+        pattern = self._get_or_create(pattern_hash, tool_seq)
+        pattern.frequency += 1
+        pattern.last_seen = datetime.now(timezone.utc).isoformat()
+        if pattern.meets_frequency(self._freq_threshold):
+            _log.info("Anomaly pattern %s freq=%d → triggering CMM", pattern_hash[:8], pattern.frequency)
+            try:
+                from core.harness.learning.cmm_graduation import get_cmm_graduation
+                cmm = get_cmm_graduation()
+                cmm.graduate(pattern_hash, {"anomaly": anomaly})
+            except Exception:
+                pass
 
     # ── MetaClaw: 双轨综合 ────────────────────────────
 
