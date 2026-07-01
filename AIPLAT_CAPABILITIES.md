@@ -129,7 +129,7 @@
 | 缓存版本号切换 | `knowledge/semantic_cache.py` | ✅ | INCR version O(1) + L1主动清 + 版本窗口 | 已合入 |
 | LatentStageCache | `knowledge/semantic_cache.py:305` | ✅ | 多阶段隐空间缓存，query+domain+retrieval向量组合匹配 | 已合入 |
 | QueryRewriter | `knowledge/query_rewriter.py` | ✅ | 查询改写/扩展 | 已合入 |
-| Reranker | `knowledge/reranker.py` | ✅ | CrossEncoder 重排序 | 已合入 |
+| Reranker | `harness/knowledge/reranker.py` | ✅ | CrossEncoder 重排序 | 已合入 |
 | ProvenanceTracker | `knowledge/provenance.py` | ✅ | 声明级溯源 + 过期扫描 | 已合入 |
 | PostRetrievalGovernor | `knowledge/post_retrieval_governor.py` | ✅ | 检索后去重/归一化/截断 | 已合入 |
 | HallucinationTracker | `knowledge/` | ✅ | NLI 事实核查 + GraphIndex 图边验证 | 已合入 |
