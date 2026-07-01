@@ -2,7 +2,7 @@
 
 > 原则：代码即真相。每个条目必须有可验证的代码位置。
 > 更新：任何能力变更时同步更新本文档。
-> 评分：96/100（2026-07-01 更新 — 405✅, FDE操作系统 + Phase 5竞品借鉴全部合入, CI校验器逐章验证一致）
+> 评分：97/100（2026-07-01 — 413✅, FDE操作系统 + Phase5竞品借鉴 + RL训练管线全登记）
 
 ---
 
@@ -478,6 +478,14 @@
 | GGUF Exporter | `harness/finetune/gguf_exporter.py` | ✅ | 模型导出 GGUF 格式 | 已合入 |
 | Fine-tune Job Manager | `harness/finetune/job_manager.py` | ✅ | 微调任务生命周期管理 | 已合入 |
 | SFT Dataset Manager | `harness/finetune/dataset_manager.py` | ✅ | SFT 数据集准备/版本化/存储 | 已合入 |
+| RLOOUpdater | `harness/training/rl_trainer.py` | ✅ | RLOO 优势值更新: EMA 平滑, 多目标权重自适应, clip_range=0.2 | 已合入 |
+| CodeTestReward | `harness/training/rl_trainer.py` | ✅ | 代码测试奖励: 从 PipelineState 提取 test pass_rate 自动评分 | 已合入 |
+| VerifierReward | `harness/training/rl_trainer.py` | ✅ | 验证器奖励: LLM 输出正确性评分, 语义一致性检查 | 已合入 |
+| Online Rollout | `harness/training/rl_trainer.py:_rollout_online` | ✅ | 在线策略探索: Semaphore(2), timeout(300s), 深拷贝状态隔离 | 已合入 |
+| SFT→RL 桥接 | `harness/finetune/job_manager.py:239` → `rl_trainer.py:_detect_latest_sft_model` | ✅ | SFT 完成→~/.aiplat/sft_models/latest.json 信号→RL 自动检测最新模型 | 已合入 |
+| TrajectoryScorer 四维 | `harness/training/trajectory_scorer.py` | ✅ | 正确性+效率+优雅性+可学习性四维评分, score_batch 批量处理 | 已合入 |
+| 混合采样 | `harness/training/auto_trigger.py:_mixed_sample_by_task_type` | ✅ | coding/terminal/qa/general 分组均匀采样, 防止单一来源主导 | 已合入 |
+| 可模仿性过滤 | `harness/training/auto_trigger.py:learnability` | ✅ | 学生模型必须能模仿教师轨迹, is_learnable() 预筛选 | 已合入 |
 
 ---
 
@@ -643,7 +651,7 @@
 | A2A 协议 | 7 | 0 | 7 |
 | 文档智能 | 24 | 0 | 24 |
 | 工具生态 | 20 | 0 | 20 |
-| 微调系统 | 4 | 0 | 4 |
+| 微调系统 | 12 | 0 | 12 |
 | 部署与灰度 | 4 | 0 | 4 |
 | 运行时干预 | 2 | 0 | 2 |
 | Arena & 调度 | 4 | 0 | 4 |
@@ -653,12 +661,12 @@
 | 编排系统 | 4 | 0 | 4 |
 | 管理 & 质量 | 14 | 0 | 14 |
 | 编排层 | 17 | 0 | 17 |
-| **总计** | **405** | **0** | **405** |
+| **总计** | **413** | **0** | **413** |
 
 ---
 
 *最后更新: 2026-07-01*
-*版本: 11.4 · 28章 · 405项能力 · 405✅ · Auto Memory 自动学习已合入*
+*版本: 12.0 · 28章 · 413项能力 · 413✅ · RL训练管线全登记*
 
 **自检命令**：
 ```bash

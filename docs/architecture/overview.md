@@ -1,6 +1,6 @@
 # aiPlatform 系统架构全景
 
-> 最后更新: 2026-07-01 | 405✅ | 从 `AIPLAT_CAPABILITIES.md` 聚合生成
+> 最后更新: 2026-07-01 | 413✅ | 从 `AIPLAT_CAPABILITIES.md` 聚合生成
 > 
 > 本文档是 aiPlat 架构的**唯一全景入口**。5 分钟读懂系统长什么样。
 > 零件清单见 CAPABILITIES，详细规约见 CLAUDE.md，对标见 comparison.md。
@@ -135,11 +135,12 @@ A2A 交互路径:
 | **可观测性** | `harness/observability/` | trace/span + Dashboard(含FDE Dashboard 3项) + Prometheus + 全域诊断14项 | 13 |
 | **模型管理** | `aiPlat-infra/` + `harness/infrastructure/` | ModelManager + 多Provider + PromptCaching | 13 |
 | **学习系统** | `harness/learning/` | AutoLearner + FeedbackRadar + SkillEvolver | 40 |
+| **RL 训练** | `harness/training/rl_trainer.py` | RLOO + CodeTestReward + Online Rollout + SFT→RL桥接 | 8 |
 | **业务价值** | `harness/finance/value_calculator.py` | 5维ROI + GoalAwareRouter + FDE Dashboard | — |
 | **SpecLifecycle** | `harness/models/spec_lifecycle.py` | DRAFT→STABLE 版本状态机 | — |
 | **诊断中心** | `api/routers/diagnostics.py` | 25类检查 + 14项全域测试 | — |
 
-完整清单: `AIPLAT_CAPABILITIES.md`（405 项，每项标注代码位置）
+完整清单: `AIPLAT_CAPABILITIES.md`（413 项，每项标注代码位置）
 
 > 注：业务价值、SpecLifecycle、诊断中心的能力分散在"扩展与学习"(40项)、"管理 & 质量"(14项)等章节中，未单独计数。
 
@@ -154,6 +155,7 @@ A2A 交互路径:
 | **多 Agent 协作** | DynamicRouter → PipelineEngine → Reducer | `pipeline_engine.py:1266` |
 | **Spec 迭代** | Onboarding → Task → SpecLifecycle → REVIEW | `spec_lifecycle.py` |
 | **自学习** | Failure → AutoLearner → SkillDraft → Simulator → Approval | `learning/__init__.py` |
+| **SFT→RL训练** | AutoLearner审批→TrajectoryScorer评分→混合采样→ShareGPT→SFT Job→latest.json→RL(RLOO)→Online Rollout | `training/auto_trigger.py` → `rl_trainer.py` |
 | **夜间进化** | EvolutionEngine(13步) → ValueCalc → SFT → SpecHealth | `evolution_engine.py:98` |
 | **FDE 仪表板** | SpecLifecycle + FeedbackRadar + TraceVisualizer → Dashboard | `workbench.py:441` |
 
