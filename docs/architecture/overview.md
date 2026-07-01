@@ -132,7 +132,7 @@ A2A 交互路径:
 | **Agent 系统** | `apps/agents/` | 7种实现类 + DynamicRouter + SubAgent | 11 |
 | **Skill 系统** | `apps/skills/registry.py` | 31 engine + ~45 workspace + 自进化 | 13 |
 | **安全与治理** | `harness/security/` + `gates/` | ImmuneMemory + PolicyGate(3层) + CircuitBreaker | 27 |
-| **可观测性** | `harness/observability/` | trace/span + Dashboard + Prometheus + 全域诊断14项 | 13 |
+| **可观测性** | `harness/observability/` | trace/span + Dashboard(含FDE Dashboard 3项) + Prometheus + 全域诊断14项 | 13 |
 | **模型管理** | `aiPlat-infra/` + `harness/infrastructure/` | ModelManager + 多Provider + PromptCaching | 13 |
 | **学习系统** | `harness/learning/` | AutoLearner + FeedbackRadar + SkillEvolver | 40 |
 | **业务价值** | `harness/finance/value_calculator.py` | 5维ROI + GoalAwareRouter + FDE Dashboard | — |
