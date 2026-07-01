@@ -28,9 +28,8 @@ from harness.feedback_loops import (
     ProductionFeedbackLoop,
     EvolutionEngine,
     EvolutionTriggerManager,
-    # Factory functions
-    get_evolution_engine,
 )
+from harness.evolution_engine import get_evolution_engine
 
 
 class TestFeedbackLevel:
