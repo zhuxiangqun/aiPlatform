@@ -148,22 +148,22 @@ class TestSFTEndToEnd:
 
 class TestEvolutionEngineNightly:
 
-    def test_all_11_steps_present(self):
-        """EvolutionEngine.nightly_evolution has exactly 11 steps."""
+    def test_all_12_steps_present(self):
+        """EvolutionEngine.nightly_evolution has exactly 12 steps."""
         from core.harness.evolution_engine import EvolutionEngine
         import inspect
         src = inspect.getsource(EvolutionEngine.nightly_evolution)
         step_count = src.count("self._step(")
-        assert step_count == 11, f"Expected 11 nightly steps, found {step_count}"
+        assert step_count == 12, f"Expected 12 nightly steps, found {step_count}"
 
     def test_all_step_handlers_exist(self):
-        """All 11 step handler methods exist on EvolutionEngine."""
+        """All 12 step handler methods exist on EvolutionEngine."""
         from core.harness.evolution_engine import EvolutionEngine
         handlers = [
             "_do_meta_analysis", "_do_skill_processing", "_do_pattern_prune",
             "_do_rollback_check", "_do_experience_evict", "_do_sft_trigger",
             "_do_drift_detect", "_do_defense_export", "_do_self_harness",
-            "_do_cross_tenant_scan", "_do_rl_trigger",
+            "_do_cross_tenant_scan", "_do_rl_trigger", "_do_value_snapshot",
         ]
         for h in handlers:
             assert hasattr(EvolutionEngine, h), f"Missing handler: {h}"
