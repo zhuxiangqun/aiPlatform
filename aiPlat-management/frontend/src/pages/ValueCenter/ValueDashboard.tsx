@@ -70,7 +70,7 @@ const ValueDashboard: React.FC = () => {
               <div style={{ fontSize: 28, fontWeight: 800, color: '#3b82f6' }}>{data.hero_number}</div>
               <div style={{ fontSize: 13, color: '#94a3b8' }}>{data.hero_label}</div>
             </div>
-            {data.total_runs !== undefined && (
+            {data.total_runs !== undefined && audience !== 'ceo' && (
               <div style={cardStyle}>
                 <div style={{ fontSize: 28, fontWeight: 800, color: '#22c55e' }}>{data.total_runs.toLocaleString()}</div>
                 <div style={{ fontSize: 13, color: '#94a3b8' }}>本月执行</div>
@@ -92,7 +92,7 @@ const ValueDashboard: React.FC = () => {
           )}
 
           {/* Breakdown */}
-          {data.breakdown && (
+          {data.breakdown && audience !== 'pm' && (
             <div style={{ ...cardStyle, marginTop: 16 }}>
               <h3 style={{ margin: '0 0 12px 0', fontSize: 16 }}>价值构成</h3>
               {data.breakdown.map((b, i) => (
@@ -122,6 +122,13 @@ const ValueDashboard: React.FC = () => {
                       height: 8, borderRadius: 4, width: `${Math.min(g.progress_pct * 100, 100)}%`,
                     }} />
                   </div>
+                  {/* CEO-only: notify button for lagging goals */}
+                  {audience === 'ceo' && !g.achieved && g.progress_pct < 0.8 && (
+                    <button onClick={() => window.open('/api/core/roles/strategy/override', '_blank')}
+                      style={{ marginTop: 8, fontSize: 11, padding: '4px 10px', background: '#ef4444', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer' }}>
+                      通知业务负责人
+                    </button>
+                  )}
                 </div>
               ))}
             </div>
