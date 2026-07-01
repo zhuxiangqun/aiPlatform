@@ -194,7 +194,9 @@ Claude Code (闭源引擎+开源插件层)        OpenClaw (Gateway)
 | 8 | **CoT + 自纠错** | 引擎层自动注入，所有 Agent 受益 |
 | 9 | **4 层记忆** | Working→Episodic→Semantic→TaskSkills + 投毒防御 |
 | 10 | **竞品借鉴闭环** | Phase 5 完成: 8/8 已合入 (MCP懒加载 + Prompt Caching + 三层权限 + Subagent隔离 + File记忆 + Plugin Slot + Auto Memory + Skill Marketplace) |
+| 10 | **竞品借鉴闭环** | Phase 5 完成: 8/8 已合入 (MCP懒加载 + Prompt Caching + 三层权限 + Subagent隔离 + File记忆 + Plugin Slot + Auto Memory + Skill Marketplace) |
 | 11 | **文档-代码同步** | CI 强制统计表一致性 (427✅) + code-doc-gap 检测 + 路径标准化158条 |
+| 12 | **平台能力提升 (碎石路→高速公路)** | Spec→promote→approve→SkillRegistry。FDE 一线经验沉淀为全平台可复用能力 (Palantir 模式) |
 
 ---
 

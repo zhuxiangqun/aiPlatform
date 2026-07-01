@@ -84,7 +84,8 @@ Phase 5: 竞品借鉴（✅ 已完成 — 本会话）
 ├─ 5.7  Plugin Slot 模式       ✅ (slot registry + archive)
 ├─ 5.8  Auto Memory 自动学习   ✅ (纠正≥2次/10轮交互自动保存到文件)
 ├─ 5.9  多租户检索隔离修复     ✅ (WikiPageRetriever tenant_id mismatch WARNING→ERROR阻断)
-├─ 5.10 文档全部同步至 425✅   ✅ (6个核心文档数字一致, CI校验器通过)
+├─ 5.10 文档全部同步至 427✅   ✅ (6个核心文档数字一致, CI校验器通过)
+└─ 5.11 平台能力提升 (Palantir碎石路→高速公路) ✅ (promote→approve→SkillRegistry)
 
 评分: 90 → 99
 ```
