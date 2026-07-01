@@ -738,5 +738,61 @@ async def seed_demo_data() -> Dict[str, Any]:
             "note": "任务正在后台执行，约 5 秒后仪表板将显示数据"}
 
 
+@router.post("/skill/install")
+async def install_skill_from_url(body: Dict[str, Any]) -> Dict[str, Any]:
+    """Install a skill from an agentskills.io URL / git repo / zip URL.
+
+    Skill Marketplace (Competitor Gap Closure): wraps skill_installer to
+    provide one-click install from external skill registries.
+
+    Body: {"url": "https://agentskills.io/skill/security-auditor" | git URL | zip URL}
+    """
+    url = body.get("url", "")
+    if not url:
+        raise HTTPException(status_code=400, detail="url is required")
+
+    try:
+        from core.management.skill_installer import SkillInstaller
+        installer = SkillInstaller()
+
+        # Determine install source
+        if "agentskills.io" in url or url.endswith(".md"):
+            # Single SKILL.md URL — download and wrap into skill directory
+            import tempfile, httpx
+            async with httpx.AsyncClient() as client:
+                resp = await client.get(url, timeout=30)
+                resp.raise_for_status()
+                raw_md = resp.text
+
+            with tempfile.TemporaryDirectory(prefix="aiplat-skill-url-") as td:
+                import os as _os
+                skill_dir = _os.path.join(td, "imported-skill")
+                _os.makedirs(skill_dir, exist_ok=True)
+                # Convert agentskills.io format if needed
+                try:
+                    from core.management.agentskills_parser import convert_agentskills_to_aiplat, is_agentskills_format
+                    if is_agentskills_format(raw_md):
+                        raw_md = convert_agentskills_to_aiplat(raw_md, "imported-skill")
+                except Exception:
+                    pass
+                with open(_os.path.join(skill_dir, "SKILL.md"), "w") as f:
+                    f.write(raw_md)
+                result = await installer.install_from_dir(skill_dir)
+                return {"status": "installed", "skill": result.get("name", "imported-skill"),
+                        "source": url}
+
+        elif url.startswith(("http", "git@")):
+            # Git repo or zip URL — delegate to installer
+            result = installer.install_from_git(url) if "git" in url else installer.install_from_zip(url)
+            return {"status": "installed", "skill": result.get("name", ""), "source": url}
+
+        else:
+            raise HTTPException(status_code=400, detail="unsupported URL format")
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e)[:200])
+
+
 # Local helper for _trigger_spec_re_execution
 from core.harness.models.spec_lifecycle import get_spec_lifecycle
