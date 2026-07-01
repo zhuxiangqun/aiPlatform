@@ -70,6 +70,8 @@ const UserWorkbench: React.FC = () => {
       try {
         const res = await fetch('/api/core/workbench/fde-dashboard');
         setFDEData(await res.json());
+        const pRes = await fetch('/api/core/workbench/promotion-queue');
+        setPromoQueue((await pRes.json()).queue || []);
       } catch {}
     }, 30000);
     return () => clearInterval(dashRef.current);
@@ -272,6 +274,44 @@ const UserWorkbench: React.FC = () => {
                 expanded={expandedCard}
                 onToggle={setExpandedCard}
               />
+              {expandedCard === 'promotions' && promoQueue.length > 0 && (
+                <div style={{
+                  marginTop: 8, display: 'flex', gap: 8, flexWrap: 'wrap',
+                }}>
+                  <button onClick={async () => {
+                    for (const p of promoQueue) {
+                      await fetch(`/api/core/workbench/spec/${p.spec_id}/promote/approve`, {
+                        method: 'POST', headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({reviewer: 'dashboard'}),
+                      });
+                    }
+                    const res = await fetch('/api/core/workbench/promotion-queue');
+                    setPromoQueue((await res.json()).queue || []);
+                    const dashRes = await fetch('/api/core/workbench/fde-dashboard');
+                    setFDEData(await dashRes.json());
+                  }} style={{
+                    background: '#22c55e', color: '#fff', border: 'none', borderRadius: 6,
+                    padding: '6px 14px', cursor: 'pointer', fontSize: 12, fontWeight: 600,
+                  }}>
+                    ✅ 全部批准
+                  </button>
+                  {promoQueue.map((p: any) => (
+                    <button key={p.spec_id} onClick={async () => {
+                      await fetch(`/api/core/workbench/spec/${p.spec_id}/promote/reject`, {
+                        method: 'POST', headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({reviewer: 'dashboard', reason: 'Rejected from dashboard'}),
+                      });
+                      const res = await fetch('/api/core/workbench/promotion-queue');
+                      setPromoQueue((await res.json()).queue || []);
+                    }} style={{
+                      background: '#334155', color: '#ef4444', border: '1px solid #ef444440',
+                      borderRadius: 6, padding: '4px 10px', cursor: 'pointer', fontSize: 11,
+                    }}>
+                      ✕ {p.spec_id}
+                    </button>
+                  ))}
+                </div>
+              )}
             )}
           </div>
 
