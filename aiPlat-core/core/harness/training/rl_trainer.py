@@ -3,26 +3,31 @@ RLTrainer — Async RL + RLOO training module for Agent models (V2.5).
 
 Based on Paper "Data Recipes for Agentic Models":
   - Async RL with RLOO (REINFORCE Leave-One-Out) algorithm
-  - Verifier-based reward signals from execution traces
+  - CodeTestReward: verifier-based deterministic reward for testable tasks
+  - Online mode: real-time agent execution (not offline history replay)
   - SFT pre-training quality determines RL upper bound
 
 Architecture:
-  1. Rollout  — current policy model executes tasks, collects trajectories
-  2. Evaluate — VerifierReward computes reward from trajectory (deterministic)
+  1. Rollout  — online (ReActLoop.run) or offline (ExecutionStore history)
+  2. Evaluate — CodeTestReward (coding) or VerifierReward (general)
   3. Update   — RLOOUpdater computes advantages and updates policy
   4. Iterate  — repeat until convergence or max iterations
 
 Integration:
-  - Reward: reuses TrajectoryScorer (complexity/success/length/diversity)
+  - Reward: CodeTestReward for coding/tests, VerifierReward for general
   - Model: reuses MLXLoRATrainer for local training
   - Data: reuses ExecutionStore for trajectory storage
   - SFT: SFT pre-training required before RL (quality → upper bound)
 
 Environment variables:
   AIPLAT_RL_ENABLED: enable RL training (default: false)
+  AIPLAT_RL_ONLINE: online real-time execution (default: false)
   AIPLAT_RL_EPISODES_PER_ITER: rollouts per RL iteration (default: 64)
   AIPLAT_RL_MAX_ITERATIONS: max RL iterations (default: 10)
   AIPLAT_RL_LEARNING_RATE: RLOO learning rate (default: 1e-5)
+  AIPLAT_RL_MAX_CONCURRENT: max concurrent online rollouts (default: 2)
+  AIPLAT_RL_ROLLOUT_TIMEOUT: timeout per rollout in seconds (default: 300)
+  AIPLAT_RL_MAX_ROLLOUT_STEPS: max steps per online rollout (default: 20)
 """
 from __future__ import annotations
 
@@ -52,6 +57,10 @@ class RLTrajectory:
     reward: float = 0.0
     total_tokens: int = 0
     total_steps: int = 0
+    # CodeTestReward fields (Paper: verifier-based reward for testable tasks)
+    test_pass_count: int = 0
+    test_total: int = 0
+    code_test_metrics: Dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
@@ -116,6 +125,77 @@ class VerifierReward:
         return min(unique_tools / 5, 1.0)
 
 
+# ── CodeTestReward (verifier-based, Paper: '可验证任务表现更优') ──
+
+class CodeTestReward(VerifierReward):
+    """Verifier reward using actual test results (pytest pass/fail).
+
+    Paper conclusion: verifier-based reward > heuristic reward for RL convergence.
+    Uses deterministic test pass/fail count as primary signal,
+    blended with parent class efficiency/quality heuristics (80/20 split).
+
+    Weight bias: test results dominate (0.6 success_weight).
+    """
+
+    def __init__(self, *, success_weight: float = 0.6,
+                 efficiency_weight: float = 0.2,
+                 quality_weight: float = 0.2):
+        super().__init__(success_weight=success_weight,
+                         efficiency_weight=efficiency_weight,
+                         quality_weight=quality_weight)
+
+    def _success_reward(self, t: RLTrajectory) -> float:
+        """Override: deterministic test results + heuristic blend.
+
+        80% test pass rate + 20% efficiency/quality heuristic.
+        If no test data available, falls back to parent class.
+        """
+        if t.test_total > 0:
+            test_reward = t.test_pass_count / t.test_total
+            efficiency_reward = super()._success_reward(t)
+            return 0.8 * test_reward + 0.2 * efficiency_reward
+
+        metrics = t.code_test_metrics
+        if metrics.get("pass_rate") is not None:
+            test_reward = float(metrics["pass_rate"])
+            efficiency_reward = super()._success_reward(t)
+            return 0.8 * test_reward + 0.2 * efficiency_reward
+
+        return super()._success_reward(t)
+
+
+# ── Trajectory extractors ──
+
+def _extract_test_results(events: List[Dict]) -> Dict[str, Any]:
+    """Extract test pass/fail data from syscall_events.
+
+    Reads CodeExecutionTool results from execution traces.
+    Returns {passed, total, pass_rate, ...} or empty dict.
+    """
+    for e in reversed(events):
+        if e.get("kind") == "tool" and "test" in str(e.get("name", "")).lower():
+            result = e.get("result", {})
+            output = result.get("output", result)
+            if isinstance(output, dict):
+                passed = output.get("passed_count", output.get("passed", 0))
+                total = output.get("total_count", output.get("total", 0))
+                if total > 0:
+                    return {"passed": int(passed), "total": int(total),
+                            "pass_rate": int(passed) / int(total)}
+    return {}
+
+
+def _extract_test_from_state(state: dict) -> Dict[str, Any]:
+    """Extract test results from PipelineState / LoopState context."""
+    report = state.get("test_report", state.get("_test_report", {}))
+    if isinstance(report, dict):
+        passed = report.get("passed_count", 0)
+        total = passed + report.get("failed_count", 0)
+        if total > 0:
+            return {"passed": passed, "total": total, "pass_rate": passed / total}
+    return {}
+
+
 # ── RLOO Algorithm ──
 
 class RLOOUpdater:
@@ -162,7 +242,8 @@ class RLTrainer:
         run = await trainer.train(num_iterations=5, episodes_per_iter=32)
     """
 
-    def __init__(self, *, base_model: str = "", student_model: str = ""):
+    def __init__(self, *, base_model: str = "", student_model: str = "",
+                 online_mode: bool = False):
         self.base_model = base_model or self._detect_latest_sft_model()
         self.student_model = student_model or self.base_model
         self._enabled = os.getenv("AIPLAT_RL_ENABLED", "false").lower() in ("1", "true", "yes")
@@ -171,6 +252,12 @@ class RLTrainer:
         self._learning_rate = float(os.getenv("AIPLAT_RL_LEARNING_RATE", "1e-5"))
         self.reward = VerifierReward()
         self.updater = RLOOUpdater()
+
+        # Online mode: real-time agent execution (not offline history replay)
+        self._online_mode = online_mode or os.getenv("AIPLAT_RL_ONLINE", "false").lower() in ("1", "true", "yes")
+        self._semaphore = asyncio.Semaphore(int(os.getenv("AIPLAT_RL_MAX_CONCURRENT", "2")))
+        self._rollout_timeout = float(os.getenv("AIPLAT_RL_ROLLOUT_TIMEOUT", "300"))
+        self._max_rollout_steps = int(os.getenv("AIPLAT_RL_MAX_ROLLOUT_STEPS", "20"))
 
     @staticmethod
     def _detect_latest_sft_model() -> str:
@@ -206,6 +293,13 @@ class RLTrainer:
         if not self._enabled:
             return RLTrainingRun(run_id="skipped", base_model=self.base_model, status="disabled")
 
+        # Auto-select optimal reward based on task type
+        if tasks:
+            self.reward = self._select_reward(tasks)
+            logger.info("RL: selected %s (online=%s, sample_task=%s)",
+                         type(self.reward).__name__, self._online_mode,
+                         tasks[0].get("task_type", "general") if tasks else "none")
+
         n_iter = num_iterations or self._max_iterations
         n_ep = episodes_per_iter or self._episodes_per_iter
         run_id = f"rl-{time.strftime('%Y%m%d_%H%M%S')}"
@@ -227,6 +321,23 @@ class RLTrainer:
         if run.status != "converged":
             run.status = "completed"
         return run
+
+    def _select_reward(self, tasks: List[Dict]) -> VerifierReward:
+        """Auto-select reward based on task verifiability.
+
+        1. Explicit task_type=coding tag
+        2. Task content contains test/pytest/unit test keywords
+        Otherwise: default VerifierReward.
+        """
+        for t in tasks:
+            if t.get("task_type") == "coding":
+                return CodeTestReward()
+        for t in tasks:
+            task_str = str(t.get("task", "")).lower()
+            if any(kw in task_str for kw in ("test", "pytest", "unit test")):
+                logger.info("RL: auto-detected testable task in content, using CodeTestReward")
+                return CodeTestReward()
+        return VerifierReward()
 
     async def _train_step(
         self, iteration: int, n_episodes: int, tasks=None
@@ -263,28 +374,56 @@ class RLTrainer:
             "trajectories": trajectories,
         }
 
-    # ── Rollout (collection of execution trajectories) ──
+    # ── Rollout (online or offline based on config) ──
 
     async def _rollout(
         self, n_episodes: int, tasks: Optional[List[Dict[str, Any]]] = None
     ) -> List[RLTrajectory]:
-        """Collect trajectories by executing the current policy on tasks."""
+        """Collect trajectories — online (real agent execution) or offline (history replay)."""
+        if self._online_mode:
+            return await self._rollout_online(n_episodes, tasks)
+        return await self._rollout_offline(n_episodes, tasks)
+
+    async def _rollout_offline(
+        self, n_episodes: int, tasks=None
+    ) -> List[RLTrajectory]:
+        """Offline: read historical trajectories from ExecutionStore."""
         trajectories = []
         for i in range(n_episodes):
             task_info = tasks[i % len(tasks)] if tasks else {"task": f"rl_task_{i}"}
-            traj = await self._execute_one(task_info)
+            traj = await self._execute_offline(task_info)
             if traj:
                 trajectories.append(traj)
         return trajectories
 
-    async def _execute_one(self, task_info: Dict[str, Any]) -> Optional[RLTrajectory]:
-        """Execute one task and collect trajectory data."""
+    async def _rollout_online(
+        self, n_episodes: int, tasks=None
+    ) -> List[RLTrajectory]:
+        """Online: execute agent in real-time with concurrency control."""
+        sem = self._semaphore
+
+        async def _run_one(i: int) -> Optional[RLTrajectory]:
+            task_info = tasks[i % len(tasks)] if tasks else {"task": f"rl_task_{i}"}
+            async with sem:
+                try:
+                    async with asyncio.timeout(self._rollout_timeout):
+                        return await self._execute_online(task_info)
+                except asyncio.TimeoutError:
+                    logger.warning("RL rollout %d timeout after %.0fs", i, self._rollout_timeout)
+                except Exception:
+                    logger.debug("RL rollout %d failed", i, exc_info=True)
+                return None
+
+        results = await asyncio.gather(*[_run_one(i) for i in range(n_episodes)])
+        return [r for r in results if r is not None]
+
+    async def _execute_offline(self, task_info: Dict[str, Any]) -> Optional[RLTrajectory]:
+        """Offline: read trajectory from ExecutionStore history."""
         try:
             task = str(task_info.get("task", task_info.get("question", "unknown")))
             task_type = str(task_info.get("task_type", "general"))
             ep_id = f"ep-{uuid.uuid4().hex[:8]}"
 
-            # Collect actions from syscall_events (read from ExecutionStore after execution)
             store = await self._ensure_store()
             run_id = f"rl-run-{ep_id}"
             events = await self._get_events(store, run_id)
@@ -295,15 +434,75 @@ class RLTrainer:
             ]
             success = any(e.get("status") in ("success", "completed") for e in events)
             tokens = sum(e.get("input_tokens", 0) + e.get("output_tokens", 0) for e in events)
+            test_info = _extract_test_results(events)
 
             return RLTrajectory(
                 episode_id=ep_id, task=task, task_type=task_type,
                 actions=actions, success=success,
                 total_tokens=int(tokens), total_steps=len(events),
+                test_pass_count=int(test_info.get("passed", 0)),
+                test_total=int(test_info.get("total", 0)),
+                code_test_metrics=test_info,
             )
         except Exception:
-            logger.debug("RL rollout skipped for task: %s", str(task_info)[:100], exc_info=True)
+            logger.debug("RL offline rollout skipped", exc_info=True)
             return None
+
+    async def _execute_online(self, task_info: Dict[str, Any]) -> Optional[RLTrajectory]:
+        """Online: execute task via real ReActLoop engine.
+
+        Uses deep-copied LoopState for concurrent isolation.
+        Extracts test results for CodeTestReward evaluation.
+        """
+        task = str(task_info.get("task", task_info.get("question", "unknown")))
+        task_type = str(task_info.get("task_type", "general"))
+        ep_id = f"rl-{uuid.uuid4().hex[:8]}"
+
+        # Deep-copy isolation: prevent concurrent state cross-contamination
+        from core.harness.execution.loop import LoopState, ReActLoop, LoopConfig
+        state = LoopState()
+        state.context = {
+            "task": task,
+            "_agent_id": task_info.get("agent_id", "rl_agent"),
+            "_run_id": ep_id,
+            "task_type": task_type,
+            "_tool_calls": [],
+            "_trace": [],
+        }
+
+        config = LoopConfig(
+            model_name=self.base_model,
+            max_tokens=100000,
+            max_steps=self._max_rollout_steps,
+        )
+
+        loop = ReActLoop()
+        result = await loop.run(state, config)
+
+        # Adapter: LoopResult → RLTrajectory
+        ctx = state.context
+        actions = [
+            {"tool_name": a.get("name", ""), "args": a.get("args", {}),
+             "status": a.get("status", "success")}
+            for a in ctx.get("_tool_calls", [])
+        ]
+
+        # Extract test results for CodeTestReward
+        store = await self._ensure_store()
+        events = await self._get_events(store, ep_id)
+        test_info = _extract_test_results(events)
+        if not test_info.get("total"):
+            test_info = _extract_test_from_state(ctx)
+
+        return RLTrajectory(
+            episode_id=ep_id, task=task, task_type=task_type,
+            actions=actions, success=result.success,
+            total_tokens=int(getattr(state, "used_tokens", 0)),
+            total_steps=getattr(state, "step_count", 0),
+            test_pass_count=int(test_info.get("passed", 0)),
+            test_total=int(test_info.get("total", 0)),
+            code_test_metrics=test_info,
+        )
 
     # ── Helpers ──
 
@@ -338,6 +537,8 @@ class RLTrainer:
                     "success": t.success,
                     "reward": t.reward,
                     "total_steps": t.total_steps,
+                    "test_pass_count": t.test_pass_count,
+                    "test_total": t.test_total,
                 }, ensure_ascii=False) + "\n")
         logger.info("RL dataset exported: %d trajectories → %s", len(run.trajectories), output)
         return output

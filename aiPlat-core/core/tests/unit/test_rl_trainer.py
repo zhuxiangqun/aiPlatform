@@ -111,3 +111,77 @@ class TestRLTrainingRun:
         run = RLTrainingRun(run_id="rl-002", base_model="test")
         run.trajectories.append(RLTrajectory(episode_id="ep1", task="t1"))
         assert len(run.trajectories) == 1
+
+
+class TestCodeTestReward:
+
+    def test_full_pass(self):
+        """5/5 tests pass → reward > 0.8"""
+        from core.harness.training.rl_trainer import CodeTestReward, RLTrajectory
+        reward_fn = CodeTestReward()
+        t = RLTrajectory(episode_id="ep1", task="test task", task_type="coding",
+                         actions=[{"tool_name": "code_apply"}]*2,
+                         success=True, total_steps=4,
+                         test_pass_count=5, test_total=5)
+        r = reward_fn.compute(t)
+        assert r > 0.8, f"Full pass reward too low: {r}"
+
+    def test_partial_pass(self):
+        """2/5 tests pass → reward in [0.3, 0.7]"""
+        from core.harness.training.rl_trainer import CodeTestReward, RLTrajectory
+        reward_fn = CodeTestReward()
+        t = RLTrajectory(episode_id="ep2", task="test", task_type="coding",
+                         actions=[], success=False, total_steps=5,
+                         test_pass_count=2, test_total=5)
+        r = reward_fn.compute(t)
+        assert 0.2 < r < 0.8, f"Partial pass reward out of range: {r}"
+
+    def test_no_tests_fallback(self):
+        """test_total=0 → falls back to parent VerifierReward"""
+        from core.harness.training.rl_trainer import CodeTestReward, RLTrajectory
+        reward_fn = CodeTestReward()
+        t = RLTrajectory(episode_id="ep3", task="qa task", task_type="qa",
+                         success=True, total_steps=3)
+        r = reward_fn.compute(t)
+        assert r > 0.5, f"Fallback reward too low: {r}"
+
+    def test_80_20_heuristic_blend(self):
+        """Test reward blended with 20% efficiency heuristic"""
+        from core.harness.training.rl_trainer import CodeTestReward, RLTrajectory
+        reward_fn = CodeTestReward()
+        # High test pass but very inefficient (many steps)
+        t = RLTrajectory(episode_id="ep4", task="test", task_type="coding",
+                         success=True, total_steps=50,
+                         test_pass_count=10, test_total=10)
+        r = reward_fn.compute(t)
+        # Should be < 1.0 because efficiency penalty reduces it
+        assert r < 1.0, f"Full pass with many steps should have efficiency penalty: {r}"
+
+
+class TestRewardSelection:
+
+    def test_coding_tag_selects_code_reward(self):
+        from core.harness.training.rl_trainer import RLTrainer, CodeTestReward
+        trainer = RLTrainer()
+        reward = trainer._select_reward([{"task_type": "coding", "task": "fix bug"}])
+        assert isinstance(reward, CodeTestReward)
+
+    def test_keyword_detection_selects_code_reward(self):
+        from core.harness.training.rl_trainer import RLTrainer, CodeTestReward
+        trainer = RLTrainer()
+        reward = trainer._select_reward([{"task": "run pytest for my module", "task_type": "general"}])
+        assert isinstance(reward, CodeTestReward)
+
+    def test_general_task_gets_base_reward(self):
+        from core.harness.training.rl_trainer import RLTrainer, VerifierReward, CodeTestReward
+        trainer = RLTrainer()
+        reward = trainer._select_reward([{"task": "explain quantum computing", "task_type": "qa"}])
+        assert not isinstance(reward, CodeTestReward)
+
+
+class TestOnlineRollout:
+
+    def test_online_mode_default_false(self):
+        from core.harness.training.rl_trainer import RLTrainer
+        trainer = RLTrainer()
+        assert not trainer._online_mode
