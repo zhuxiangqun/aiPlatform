@@ -51,6 +51,8 @@ const SpecDetailPage: React.FC = () => {
   const [reviseResult, setReviseResult] = useState<any>(null);
   const [acceptanceCriteria, setAcceptanceCriteria] = useState('');
   const [deliverable, setDeliverable] = useState('');
+  const [diffData, setDiffData] = useState<any>(null);
+  const [diffLoading, setDiffLoading] = useState(false);
 
   const openRevise = () => {
     const content = latestVersion?.content || {};
@@ -211,6 +213,42 @@ const SpecDetailPage: React.FC = () => {
                       background: '#0f172a', padding: '6px 10px', borderRadius: 4,
                     }}>
                       {v.execution_summary}
+                    </div>
+                  )}
+                  {i > 0 && (
+                    <div style={{ marginTop: 8 }}>
+                      <button onClick={async () => {
+                        setDiffLoading(true);
+                        const prev = history[i-1];
+                        const res = await fetch(`/api/core/workbench/spec/${specId}/diff?v1=${prev.version}&v2=${v.version}`);
+                        setDiffData({...await res.json(), key: `${v.version}`});
+                        setDiffLoading(false);
+                      }} style={{
+                        background: 'transparent', color: '#64748b', border: '1px solid #334155',
+                        borderRadius: 4, padding: '2px 8px', cursor: 'pointer', fontSize: 11,
+                      }}>
+                        对比 v{history[i-1].version}
+                      </button>
+                      {diffData && diffData.key === `${v.version}` && (
+                        <div style={{
+                          marginTop: 6, background: '#0f172a', borderRadius: 6, padding: '10px',
+                          fontSize: 12, color: '#94a3b8', maxHeight: 200, overflow: 'auto',
+                        }}>
+                          {diffLoading ? '加载中...' : (diffData.changes || []).length === 0 ? '无变更' :
+                            diffData.changes.map((c: any, j: number) => (
+                              <div key={j} style={{
+                                padding: '4px 0', borderBottom: '1px solid #1e293b',
+                                color: c.changed ? '#f59e0b' : '#64748b',
+                              }}>
+                                <span style={{ color: '#3b82f6', fontWeight: 600 }}>{c.field}:</span>{' '}
+                                <span style={{ textDecoration: 'line-through', color: '#ef4444' }}>{c.v1_value}</span>
+                                {' → '}
+                                <span style={{ color: '#22c55e' }}>{c.v2_value}</span>
+                              </div>
+                            ))
+                          )}
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
