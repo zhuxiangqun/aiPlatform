@@ -90,6 +90,13 @@ User Query
 Pipeline 多阶段执行:
   PipelineEngine → LangGraph(可视化+checkpoint) → StageRunner → ReActLoop
   → HITL 暂停/恢复 → snapshot → 下一阶段 → 完成 → Skill 晶体化
+
+MCP 交互路径:
+  外部 MCP Server → MCPClient (client.py) → sys_tool_call → PolicyGate → Agent 使用工具
+  本地工具 → MCPServer (server.py) → 外部 MCP Client 调用 aiPlat 能力
+
+A2A 交互路径:
+  外部 Agent → /tasks API (A2A协议) → CoreFacade → Agent 执行 → /tasks/{id} 查询结果/artifact
 ```
 
 ---
@@ -118,9 +125,10 @@ Pipeline 多阶段执行:
 | 子系统 | 代码入口 | 核心能力 | 能力数 |
 |------|------|------|:---:|
 | **Harness 执行** | `harness/execution/pipeline_engine.py` | 多阶段调度 + ReAct循环 + 5种协作 + HITL | 26 |
-| **记忆** | `harness/memory/manager.py` | 4层记忆 + 5级压缩 + 投毒防御 + 自动学习 | 28 |
+| **记忆** | `harness/memory/manager.py` | 4层记忆 + 5级压缩 + 投毒防御 + 自动学习 | 17 |
 | **知识引擎** | `harness/ontology_engine/engine.py` | 13步本体管线 + GraphIndex + Palantir 对齐 | 20 |
 | **RAG 检索** | `harness/knowledge/retriever.py` | CRAG 3级回退 + RRF融合 + DomainRouter | 26 |
+| **知识基础设施** | `harness/knowledge/` (embedder/db/graph/repo_map/wiki_fts/cap_health...) | 嵌入/图同步/仓库映射/Wiki FTS5/知识质量/进化 | 28 |
 | **Agent 系统** | `apps/agents/` | 7种实现类 + DynamicRouter + SubAgent | 11 |
 | **Skill 系统** | `apps/skills/registry.py` | 31 engine + ~45 workspace + 自进化 | 13 |
 | **安全与治理** | `harness/security/` + `gates/` | ImmuneMemory + PolicyGate(3层) + CircuitBreaker | 27 |

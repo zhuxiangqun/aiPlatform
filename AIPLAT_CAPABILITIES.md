@@ -2,7 +2,7 @@
 
 > 原则：代码即真相。每个条目必须有可验证的代码位置。
 > 更新：任何能力变更时同步更新本文档。
-> 评分：89/100（2026-07-01 更新 — FDE 操作系统 + 5 routing_modes + Matter 验收 + Swarm/Roundtable — 396✅，统计表与章节计数已校正一致）
+> 评分：89/100（2026-07-01 更新 — 405✅, FDE操作系统 + Phase 5竞品借鉴全部合入, CI校验器逐章验证一致）
 
 ---
 
@@ -73,17 +73,6 @@
 | 投毒防御字段 | `memory/base.py:39` | ✅ | source_tag + trust_weight + provenance | 已合入 |
 | Episodic 预评分 | `memory/episodic.py:55` | ✅ | 写入时后台 LLM 打分，压缩时零延迟 | 已合入 |
 | 关键决策永保 | `memory/episodic.py:124` | ✅ | critical_episodes >0.8分，永不参与常规压缩 | 已合入 |
-| Document Chunker | `document/chunker.py` | ✅ | 多策略分块 (fixed/semantic/recursive) + overlap控制 | 已合入 |
-| 多格式解析器 | `document/parsers.py` | ✅ | DOCX/PDF/MD/HTML/CSV/Audio/Image/Video/EML/JSON → 统一元素，已升级为协议化架构 | 已合入 |
-| DocumentConverter 协议 | `document/protocol.py` | ✅ | ABC: accepts() + convert()，13 个内置 converter，优先级调度 | 已合入 |
-| ConverterRegistry | `document/protocol.py:get_document_registry()` | ✅ | 全局单例，单点派发，消除 5 处硬编码 dispatch | 已合入 |
-| 集中格式映射 | `facades/kb_facade.py:_KIND_TO_EXT` | ✅ | 40+ 同义词 → 规范扩展名，统一 kb_facade/core_facade/routes | 已合入 |
-| 内容级文件检测 | `document/protocol.py:_guess_extension_from_header()` | ✅ | 文件头魔数检测，扩展名与内容矛盾时自动修正 | 已合入 |
-| 完整降级链 | `document/protocol.py:convert_with_fallback()` | ✅ | 遍历所有 converter → 异常聚合 → 兜底 raw text | 已合入 |
-| 结构角色检测 | `document/protocol.py:detect_structure_role()` | ✅ | h1-h6/table/list_item/caption/code_block/paragraph 自动识别 | 已合入 |
-| 插件系统 | `document/protocol.py:_load_plugins()` | ✅ | entry_points group=aiplat.document_converter，零侵入扩展 | 已合入 |
-| Image OCR | `document/ocr.py` | ✅ | Tesseract/PaddleOCR 视频关键帧文字提取 | 已合入 |
-| Whisper 双后端切换 | `document/transcriber.py:77-99` | ✅ | faster-whisper ↔ openai-whisper 运行时自动切换 | 已合入 |
 
 ---
 
@@ -440,6 +429,17 @@
 | Image Converter | `document/converters/_image.py` | ✅ | Tesseract/PaddleOCR 文字提取 | 已合入 |
 | 多格式统一解析 | `document/parsers.py` → `protocol.py` | ✅ | 12 种格式 → 13 个 DocumentConverter → 统一 DocumentElement | 已合入 |
 | Azure DI 集成 | `document/converters/_pdf.py:_convert_via_azure_di()` | ✅ | 环境变量驱动：设 `AIPLAT_AZURE_DOCINTEL_ENDPOINT` 即激活，自动降级到本地 | 已合入 |
+| DocumentConverter 协议 | `document/protocol.py` | ✅ | ABC: accepts() + convert()，13 个内置 converter，优先级调度 | 已合入 |
+| ConverterRegistry | `document/protocol.py:get_document_registry()` | ✅ | 全局单例，单点派发，消除 5 处硬编码 dispatch | 已合入 |
+| 内容级文件检测 | `document/protocol.py:_guess_extension_from_header()` | ✅ | 文件头魔数检测，扩展名与内容矛盾时自动修正 | 已合入 |
+| 完整降级链 | `document/protocol.py:convert_with_fallback()` | ✅ | 遍历所有 converter → 异常聚合 → 兜底 raw text | 已合入 |
+| 结构角色检测 | `document/protocol.py:detect_structure_role()` | ✅ | h1-h6/table/list_item/caption/code_block/paragraph 自动识别 | 已合入 |
+| 插件系统 | `document/protocol.py:_load_plugins()` | ✅ | entry_points group=aiplat.document_converter，零侵入扩展 | 已合入 |
+| 集中格式映射 | `facades/kb_facade.py:_KIND_TO_EXT` | ✅ | 40+ 同义词 → 规范扩展名，统一 kb_facade/core_facade/routes | 已合入 |
+| Whisper 双后端切换 | `document/transcriber.py:77-99` | ✅ | faster-whisper ↔ openai-whisper 运行时自动切换 | 已合入 |
+| Image OCR | `document/ocr.py` | ✅ | Tesseract/PaddleOCR 关键帧文字提取 | 已合入 |
+| Document Chunker | `document/chunker.py` | ✅ | 多策略分块 (fixed/semantic/recursive) + overlap控制 | 已合入 |
+| 多格式解析器 | `document/parsers.py` | ✅ | DOCX/PDF/MD/HTML/CSV/Audio/Image/Video/EML/JSON → 统一元素，已升级为协议化架构 | 已合入 |
 
 ---
 
@@ -626,7 +626,7 @@
 | 维度 | 已实现 | 部分实现 | 合计 |
 |------|:---:|:---:|:---:|------|
 | Harness 执行引擎 | 26 | 0 | 26 |
-| 记忆子系统 | 28 | 0 | 28 |
+| 记忆子系统 | 17 | 0 | 17 |
 | 知识引擎（本体） | 20 | 0 | 20 |
 | RAG 检索 | 26 | 0 | 26 |
 | 知识基础设施 | 28 | 0 | 28 |
@@ -641,7 +641,7 @@
 | 评估系统 | 13 | 0 | 13 |
 | MCP 协议 | 6 | 0 | 6 |
 | A2A 协议 | 7 | 0 | 7 |
-| 文档智能 | 13 | 0 | 13 |
+| 文档智能 | 24 | 0 | 24 |
 | 工具生态 | 20 | 0 | 20 |
 | 微调系统 | 4 | 0 | 4 |
 | 部署与灰度 | 4 | 0 | 4 |
