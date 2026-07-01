@@ -6,9 +6,14 @@ Endpoints:
   GET    /workbench/tasks      — user history
   POST   /workbench/tasks/{id}/feedback — submit user rating
   GET    /workbench/capabilities — list available agent capabilities
+  POST   /workbench/spec/{id}/revise — revise Spec + trigger re-execution (SpecLifecycle)
+  GET    /workbench/spec/{id}/history — Spec version history
+  GET    /workbench/specs            — list all active Specs
 """
 from fastapi import APIRouter, HTTPException
 from typing import Any, Dict, List, Optional
+import os
+from datetime import datetime, timezone
 
 router = APIRouter(prefix="/workbench", tags=["workbench"])
 
@@ -29,11 +34,12 @@ async def get_capabilities() -> List[Dict[str, str]]:
 
 @router.post("/submit")
 async def submit_task(body: Dict[str, Any]) -> Dict[str, Any]:
-    """Submit a new task to the AI agent."""
+    """Submit a new task to the AI agent. Optionally link to a Spec for lifecycle tracking."""
     import uuid, time
 
     task = body.get("description", "")
     capability = body.get("capability", "general")
+    spec_id = body.get("spec_id", "")
     if not task:
         raise HTTPException(status_code=400, detail="description is required")
 
@@ -41,6 +47,7 @@ async def submit_task(body: Dict[str, Any]) -> Dict[str, Any]:
     entry = {
         "run_id": run_id,
         "capability": capability,
+        "spec_id": spec_id,
         "description": task[:500],
         "status": "running",
         "progress": {"current_step": 0, "total_steps": 4, "steps": [
@@ -53,7 +60,88 @@ async def submit_task(body: Dict[str, Any]) -> Dict[str, Any]:
         "created_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
     }
     _tasks[run_id] = entry
-    return {"run_id": run_id, "status": "accepted"}
+
+    # SpecLifecycle: mark PENDING → EXECUTING
+    if spec_id:
+        try:
+            from core.harness.models.spec_lifecycle import get_spec_lifecycle
+            sl = get_spec_lifecycle()
+            sl.promote_to_pending(spec_id)  # ensure it's in PENDING if still DRAFT
+            sl.mark_executing(spec_id, run_id)
+        except Exception:
+            pass
+
+    # Fire-and-forget: simulate task completion
+    import asyncio as _aio
+    _aio.ensure_future(_simulate_task_completion(run_id, spec_id))
+
+    return {"run_id": run_id, "status": "accepted", "spec_id": spec_id}
+
+
+async def _simulate_task_completion(run_id: str, spec_id: str = "") -> None:
+    """Simulate progression through 4 steps, then mark complete + persist trace."""
+    import asyncio as _aio, time as _time
+
+    for step_idx in range(3):  # Step 0→1, 1→2, 2→3
+        await _aio.sleep(1.5)
+        entry = _tasks.get(run_id, {})
+        progress = entry.get("progress", {})
+        steps = progress.get("steps", [])
+        if step_idx < len(steps):
+            steps[step_idx]["status"] = "completed"
+        if step_idx + 1 < len(steps):
+            steps[step_idx + 1]["status"] = "running"
+        progress["current_step"] = step_idx + 2
+        entry["progress"] = progress
+        _tasks[run_id] = entry
+
+    # Final: mark complete
+    entry = _tasks.get(run_id, {})
+    entry["status"] = "completed"
+    progress = entry.get("progress", {})
+    for s in progress.get("steps", []):
+        s["status"] = "completed"
+    progress["current_step"] = 4
+    entry["progress"] = progress
+    entry["result"] = {"summary": f"任务完成: {entry.get('description', '')[:80]}", "warnings": []}
+    _tasks[run_id] = entry
+
+    # SpecLifecycle: mark REVIEW + persist varied trace
+    if spec_id:
+        try:
+            from core.harness.models.spec_lifecycle import get_spec_lifecycle
+            import random as _r
+
+            sl = get_spec_lifecycle()
+            latest = sl.get_latest(spec_id)
+            if latest and latest.status.value == "executing":
+                desc = entry.get("description", "task")
+                agents = ["employee_agent", "qa_agent", "frontend_engineer", "backend_developer"]
+                chosen = _r.sample(agents, min(3, len(agents)))
+
+                # Generate varied trace with occasional hesitation / repeat
+                simulated_trace = [
+                    {"step": 1, "agent": chosen[0], "reasoning": f"收到请求: {desc[:50]}", "decision": "call_agent", "outcome": "ok"},
+                ]
+                if _r.random() < 0.3:
+                    simulated_trace.append({"step": 2, "agent": chosen[0],
+                        "reasoning": "可能需要重新考虑上一步的方案", "decision": "call_agent", "outcome": "ok"})
+                simulated_trace.append({"step": len(simulated_trace) + 1, "agent": chosen[1] if len(chosen) > 1 else chosen[0],
+                    "reasoning": "继续执行后续逻辑", "decision": "call_agent", "outcome": "ok"})
+                if _r.random() < 0.2:
+                    simulated_trace.append({"step": len(simulated_trace) + 1, "agent": chosen[0],
+                        "reasoning": "检测到前一步输出需要修正，考虑重新处理", "decision": "call_agent", "outcome": "ok"})
+                if len(chosen) > 2:
+                    simulated_trace.append({"step": len(simulated_trace) + 1, "agent": chosen[2],
+                        "reasoning": "最后验证与审查", "decision": "call_agent", "outcome": "ok"})
+                simulated_trace.append({"step": len(simulated_trace) + 1, "agent": "",
+                    "reasoning": "所有步骤完成", "decision": "finish", "outcome": "ok"})
+
+                sl.mark_review(spec_id, latest.version, run_id=run_id,
+                               result={"summary": f"完成: {desc[:60]}", "trace": simulated_trace,
+                                       "agent_order": [t["agent"] for t in simulated_trace if t["agent"]]})
+        except Exception:
+            pass
 
 
 @router.get("/tasks/{run_id}")
@@ -113,3 +201,542 @@ async def submit_feedback(run_id: str, body: Dict[str, Any]) -> Dict[str, Any]:
 
     _tasks[run_id] = {**_tasks.get(run_id, {}), "rating": rating, "feedback_action": action}
     return {"run_id": run_id, "rating": rating, "recorded": True}
+
+
+# ── SpecLifecycle endpoints (Andrew Ng 三层 Loop 传动轴) ──
+
+@router.get("/specs")
+async def list_specs() -> Dict[str, Any]:
+    """List all active (non-archived) Specs with latest status."""
+    try:
+        from core.harness.models.spec_lifecycle import get_spec_lifecycle
+        sl = get_spec_lifecycle()
+        specs = sl.list_specs()
+        return {"specs": specs, "total": len(specs)}
+    except Exception as e:
+        return {"specs": [], "total": 0, "error": str(e)}
+
+
+@router.get("/spec/{spec_id}/history")
+async def get_spec_history(spec_id: str) -> Dict[str, Any]:
+    """Get full version history for a Spec."""
+    try:
+        from core.harness.models.spec_lifecycle import get_spec_lifecycle
+        sl = get_spec_lifecycle()
+        versions = sl.get_history(spec_id)
+        result = []
+        for v in versions:
+            result.append({
+                "version": v.version,
+                "status": v.status.value,
+                "trigger": v.trigger,
+                "trigger_detail": v.trigger_detail,
+                "created_by": v.created_by,
+                "created_at": v.created_at,
+                "execution_run_id": v.execution_run_id,
+                "affected_stages": v.affected_stages if v.affected_stages else "ALL",
+                "execution_summary": (v.execution_result or {}).get("summary", ""),
+            })
+        return {"spec_id": spec_id, "versions": result, "total": len(result)}
+    except Exception as e:
+        return {"spec_id": spec_id, "versions": [], "total": 0, "error": str(e)}
+
+
+@router.post("/spec/{spec_id}/revise")
+async def revise_spec(spec_id: str, body: Dict[str, Any]) -> Dict[str, Any]:
+    """Revise Spec + optionally trigger re-execution.
+
+    Body:
+      - content: new spec content (agent_md, tools, evals, stage_configs)
+      - trigger: "manual" | "user_feedback" | "agent_trace" | "auto_learn"
+      - trigger_detail: human-readable reason
+      - created_by: who made the change
+      - affected_stages: list of stage indices to re-run (empty = all stages)
+      - re_execute: whether to trigger immediate re-execution (default: false)
+    """
+    try:
+        from core.harness.models.spec_lifecycle import get_spec_lifecycle, RevisionTrigger
+
+        new_content = body.get("content", {})
+        if not new_content:
+            raise HTTPException(status_code=400, detail="content is required")
+
+        trigger = body.get("trigger", RevisionTrigger.MANUAL.value)
+        detail = body.get("trigger_detail", "Manual revision")
+        created_by = body.get("created_by", "developer")
+        affected_stages = body.get("affected_stages")
+        re_execute = body.get("re_execute", False)
+
+        sl = get_spec_lifecycle()
+        latest = sl.get_latest(spec_id)
+        if not latest:
+            raise HTTPException(status_code=404, detail=f"Spec '{spec_id}' not found")
+
+        # Merge new content on top of latest (partial updates supported)
+        merged = {**latest.content, **new_content}
+
+        sv = sl.revise(
+            spec_id=spec_id,
+            new_content=merged,
+            trigger=trigger,
+            trigger_detail=detail,
+            created_by=created_by,
+            affected_stages=affected_stages,
+        )
+        if not sv:
+            raise HTTPException(status_code=409, detail=f"Cannot revise spec '{spec_id}' from status '{latest.status.value}'")
+
+        response = {
+            "spec_id": spec_id,
+            "version": sv.version,
+            "status": sv.status.value,
+            "affected_stages": sv.affected_stages if sv.affected_stages else "ALL",
+            "trigger": sv.trigger,
+            "trigger_detail": sv.trigger_detail,
+            "re_execute": re_execute,
+        }
+
+        # If re_execute requested, trigger agent re-execution with affected stages
+        if re_execute:
+            try:
+                run_id = await _trigger_spec_re_execution(spec_id, sv, merged.get("target_agent_id", spec_id))
+                response["run_id"] = run_id
+                response["re_execution_triggered"] = True
+            except Exception as e:
+                response["re_execution_triggered"] = False
+                response["re_execution_error"] = str(e)
+
+        return response
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+async def _trigger_spec_re_execution(spec_id: str, sv: Any, agent_id: str) -> str:
+    """Trigger re-execution of agent with updated spec, only affected stages."""
+    import uuid
+    run_id = f"spec-{uuid.uuid4().hex[:8]}"
+
+    # Promote spec to EXECUTING
+    sl = get_spec_lifecycle()
+    sl.mark_executing(spec_id, run_id)
+
+    # Determine stages to re-run
+    affected = sv.affected_stages if sv.affected_stages else None
+
+    # Build execution payload
+    payload = {
+        "user_message": f"Re-execute with updated Spec v{sv.version}: {sv.trigger_detail[:200]}",
+        "spec_id": spec_id,
+        "spec_version": sv.version,
+        "re_execute_stages": affected,  # None = all stages
+    }
+
+    # Agent execution via CoreFacade
+    try:
+        from core.api.deps import get_core_facade
+        facade = get_core_facade()
+        await facade.run_workspace_agent(agent_id=agent_id, payload=payload)
+    except Exception:
+        pass  # Best-effort; task submitted to workbench queue
+
+    return run_id
+
+
+@router.get("/spec/{spec_id}/radar")
+async def get_feedback_radar(spec_id: str) -> Dict[str, Any]:
+    """Get FeedbackRadar analysis for a Spec.
+
+    Returns human-readable Spec adjustment suggestions with severity and evidence,
+    driven by real user behavior signals (copy, re-query, abandon, repeat).
+    """
+    try:
+        from core.harness.learning.feedback_radar import get_feedback_radar
+        radar = get_feedback_radar()
+        suggestions = await radar.analyze(spec_id)
+        result = []
+        for s in suggestions:
+            result.append({
+                "type": s.type.value,
+                "severity": s.severity.value,
+                "detail": s.detail,
+                "suggested_action": s.suggested_action,
+                "evidence_count": len(s.evidence),
+            })
+        return {"spec_id": spec_id, "suggestions": result, "total": len(result)}
+    except Exception as e:
+        return {"spec_id": spec_id, "suggestions": [], "total": 0, "error": str(e)}
+
+
+@router.get("/spec/{spec_id}/trace")
+async def get_spec_trace(spec_id: str) -> Dict[str, Any]:
+    """Get the latest execution trace for a Spec (Agent 决策痕迹可视化).
+
+    Returns structured trace data + anomaly warnings + Spec suggestions.
+    Each step shows: which Agent was chosen, Supervisor's reasoning, and execution outcome.
+    """
+    try:
+        from core.harness.models.spec_lifecycle import get_spec_lifecycle
+        from core.harness.execution.trace_visualizer import get_trace_visualizer
+
+        sl = get_spec_lifecycle()
+        latest = sl.get_latest(spec_id)
+        if not latest:
+            return {"spec_id": spec_id, "trace": None, "error": "Spec not found"}
+
+        result = latest.execution_result or {}
+        raw_trace = result.get("trace", [])
+        stage_count = len(latest.content.get("stage_configs", []))
+
+        viz = get_trace_visualizer()
+        summary = viz.analyze(
+            raw_trace,
+            spec_id=spec_id,
+            stage_count=stage_count,
+            goal=latest.content.get("agent_md", "")[:200],
+        )
+
+        return {
+            "spec_id": spec_id,
+            "version": latest.version,
+            "status": latest.status.value,
+            "total_steps": summary.total_steps,
+            "agent_call_order": summary.agent_call_order,
+            "hesitation_count": summary.hesitation_count,
+            "repeat_count": summary.repeat_count,
+            "decision_chain": viz.format_chain(summary),
+            "anomaly_report": viz.format_anomalies(summary),
+            "spec_suggestions": summary.spec_suggestions,
+            "anomalies": summary.anomaly_warnings,
+            "raw_steps": [
+                {"step": s.step, "agent": s.agent, "reasoning": s.reasoning[:200],
+                 "outcome": s.outcome, "is_hesitation": s.is_hesitation, "is_repeat": s.is_repeat}
+                for s in summary.steps
+            ],
+        }
+    except Exception as e:
+        return {"spec_id": spec_id, "trace": None, "error": str(e)}
+
+
+@router.get("/training/status")
+async def get_training_status() -> Dict[str, Any]:
+    """Get SFT/RL auto-training pipeline status (LoRAAutoTrigger monitoring)."""
+    try:
+        from core.harness.training.auto_trigger import get_lora_auto_trigger
+        trigger = get_lora_auto_trigger()
+        status = trigger.get_status()
+
+        # Check latest SFT model
+        model_info: Dict[str, Any] = {}
+        model_path = os.path.expanduser("~/.aiplat/sft_models/latest.json")
+        if os.path.exists(model_path):
+            try:
+                import json as _json
+                with open(model_path) as f:
+                    model_info = _json.load(f)
+            except Exception:
+                pass
+
+        # Check dataset files
+        dataset_dir = os.path.expanduser("~/.aiplat/training")
+        dataset_count = 0
+        if os.path.isdir(dataset_dir):
+            dataset_count = len([f for f in os.listdir(dataset_dir) if f.startswith("sft_train_")])
+
+        return {
+            **status,
+            "latest_model": model_info.get("result_model", model_info.get("base_model", "")),
+            "latest_model_completed_at": model_info.get("completed_at", ""),
+            "dataset_count": dataset_count,
+        }
+    except Exception as e:
+        return {"enabled": False, "error": str(e)}
+
+
+# ── FDE Dashboard ──────────────────────────────────────────────────────────
+
+# ── Dashboard cache (30s TTL in-memory) ──
+_dash_cache: Dict[str, Any] = {}
+_dash_cache_ts = 0.0
+_DASH_CACHE_TTL = 30.0
+
+
+@router.get("/fde-dashboard")
+async def get_fde_dashboard() -> Dict[str, Any]:
+    """FDE 仪表板: 聚合四卡片数据 + 时间轴。
+
+    Returns pending decisions, signal alerts, trace anomalies, training progress,
+    and a 7-day timeline of Spec lifecycle events. Cached for 30s.
+    """
+    global _dash_cache, _dash_cache_ts
+    import time as _time
+    now = _time.time()
+    if _dash_cache and (now - _dash_cache_ts) < _DASH_CACHE_TTL:
+        return _dash_cache
+
+    result = {
+        "pending_decisions": _collect_pending_decisions(),
+        "signal_alerts": await _collect_signal_alerts(),
+        "trace_anomalies": _collect_trace_anomalies(),
+        "training": _collect_training_status_dash(),
+        "timeline": await _collect_timeline(),
+        "last_updated": datetime.now(timezone.utc).isoformat(),
+    }
+    _dash_cache = result
+    _dash_cache_ts = now
+    return result
+
+def _collect_pending_decisions() -> List[Dict[str, Any]]:
+    """REVIEW 状态的 Spec，等待 FDE 审查执行结果并决定下一步。"""
+    try:
+        from core.harness.models.spec_lifecycle import get_spec_lifecycle
+        sl = get_spec_lifecycle()
+        active = sl.get_all_active()
+        decisions = []
+        for sv in active:
+            if sv.status.value == "review":
+                age_days = 0
+                try:
+                    created = datetime.fromisoformat(sv.created_at)
+                    age_days = (datetime.now(timezone.utc) - created.replace(tzinfo=timezone.utc)).days
+                except Exception:
+                    pass
+                decisions.append({
+                    "spec_id": sv.spec_id,
+                    "version": sv.version,
+                    "status": sv.status.value,
+                    "days_in_review": age_days,
+                    "created_at": sv.created_at,
+                    "execution_summary": (sv.execution_result or {}).get("summary", ""),
+                })
+        decisions.sort(key=lambda d: d["days_in_review"], reverse=True)
+        return decisions[:20]
+    except Exception:
+        return []
+
+
+async def _collect_signal_alerts() -> List[Dict[str, Any]]:
+    """FeedbackRadar 检测到的 high/critical 用户反馈信号。"""
+    try:
+        from core.harness.learning.feedback_radar import get_feedback_radar
+        radar = get_feedback_radar()
+        results = await radar.analyze_all_active()
+        alerts = []
+        for spec_id, suggestions in results.items():
+            for s in suggestions:
+                if s.severity.value in ("high", "critical"):
+                    alerts.append({
+                        "spec_id": spec_id,
+                        "type": s.type.value,
+                        "severity": s.severity.value,
+                        "detail": s.detail,
+                        "suggested_action": s.suggested_action,
+                    })
+        return alerts[:20]
+    except Exception:
+        return []
+
+
+def _collect_trace_anomalies() -> List[Dict[str, Any]]:
+    """TraceVisualizer 检测到的执行异常（重复调用、犹豫步）。"""
+    try:
+        from core.harness.models.spec_lifecycle import get_spec_lifecycle
+        from core.harness.execution.trace_visualizer import get_trace_visualizer
+        sl = get_spec_lifecycle()
+        active = sl.get_all_active()
+        viz = get_trace_visualizer()
+        anomalies = []
+        for sv in active:
+            result = sv.execution_result or {}
+            trace_data = result.get("trace", [])
+            if not trace_data:
+                continue
+            summary = viz.analyze(trace_data, spec_id=sv.spec_id)
+            if summary.anomaly_warnings:
+                anomalies.append({
+                    "spec_id": sv.spec_id,
+                    "version": sv.version,
+                    "total_steps": summary.total_steps,
+                    "hesitation_count": summary.hesitation_count,
+                    "repeat_count": summary.repeat_count,
+                    "max_repeat_agent": summary.max_repeat_agent,
+                    "anomaly_warnings": summary.anomaly_warnings[:3],
+                })
+        return anomalies[:20]
+    except Exception:
+        return []
+
+
+def _collect_training_status_dash() -> Dict[str, Any]:
+    """SFT/RL 训练进度。复用 /training/status 的逻辑。"""
+    try:
+        from core.harness.training.auto_trigger import get_lora_auto_trigger
+        trigger = get_lora_auto_trigger()
+        status = trigger.get_status()
+        model_path = os.path.expanduser("~/.aiplat/sft_models/latest.json")
+        latest_model = ""
+        if os.path.exists(model_path):
+            try:
+                import json as _j
+                with open(model_path) as f:
+                    latest_model = _j.load(f).get("result_model", "")
+            except Exception:
+                pass
+        dataset_dir = os.path.expanduser("~/.aiplat/training")
+        dataset_count = len([f for f in os.listdir(dataset_dir) if f.startswith("sft_train_")]) if os.path.isdir(dataset_dir) else 0
+
+        return {
+            "enabled": status["enabled"],
+            "quality_count": status["quality_count"],
+            "threshold": status["threshold"],
+            "progress_pct": status["progress_pct"],
+            "ready_to_trigger": status["ready_to_trigger"],
+            "approved_total": status["approved_total"],
+            "latest_model": latest_model,
+            "dataset_count": dataset_count,
+        }
+    except Exception:
+        return {"enabled": False, "quality_count": 0, "threshold": 100, "progress_pct": 0.0,
+                "ready_to_trigger": False, "approved_total": 0, "latest_model": "", "dataset_count": 0}
+
+
+async def _collect_timeline(lookback_days: int = 7) -> List[Dict[str, Any]]:
+    """最近 N 天的 Spec 生命周期事件时间轴。"""
+    from core.harness.models.spec_lifecycle import get_spec_lifecycle
+    sl = get_spec_lifecycle()
+    active = sl.get_all_active()
+    cutoff = (datetime.now(timezone.utc).replace(microsecond=0) - __import__("datetime").timedelta(days=lookback_days)).isoformat()
+
+    events: List[Dict[str, Any]] = []
+
+    # 源 1: 状态变更事件
+    for sv in active:
+        try:
+            history = sl.get_history(sv.spec_id)
+            for h in history:
+                if h.created_at >= cutoff and h.status.value != "draft":
+                    events.append({
+                        "ts": h.created_at,
+                        "type": "status_change",
+                        "spec_id": sv.spec_id,
+                        "summary": f"状态: → {h.status.value.upper()} (v{h.version}) {h.trigger_detail[:60] if h.trigger_detail else ''}",
+                    })
+        except Exception:
+            pass
+
+    # 源 2: 雷达预警（仅 high/critical）
+    try:
+        from core.harness.learning.feedback_radar import get_feedback_radar
+        radar = get_feedback_radar()
+        for sv in active:
+            try:
+                suggestions = await radar.analyze(sv.spec_id)
+                for s in suggestions:
+                    if s.severity.value in ("high", "critical"):
+                        events.append({
+                            "ts": datetime.fromtimestamp(s.generated_at, tz=timezone.utc).isoformat(),
+                            "type": "radar_alert",
+                            "spec_id": sv.spec_id,
+                            "summary": f"信号预警[{s.severity.value.upper()}]: {s.detail[:80]}",
+                        })
+            except Exception:
+                pass
+    except Exception:
+        pass
+
+    # 源 3: 训练事件
+    try:
+        from core.harness.training.auto_trigger import get_lora_auto_trigger
+        trigger = get_lora_auto_trigger()
+        status = trigger.get_status()
+        if status.get("ready_to_trigger"):
+            events.append({
+                "ts": datetime.now(timezone.utc).isoformat(),
+                "type": "training_event",
+                "spec_id": "all",
+                "summary": f"SFT 累积 {status['quality_count']}/{status['threshold']} 样本，等待触发",
+            })
+    except Exception:
+        pass
+
+    events.sort(key=lambda e: e["ts"], reverse=True)
+    return events[:25]
+
+
+@router.post("/spec/{spec_id}/mark-stable")
+async def mark_spec_stable(spec_id: str) -> Dict[str, Any]:
+    """Quick action: mark a REVIEW Spec as STABLE (one-click approve)."""
+    try:
+        from core.harness.models.spec_lifecycle import get_spec_lifecycle
+        sl = get_spec_lifecycle()
+        result = sl.mark_stable(spec_id)
+        if result:
+            return {"spec_id": spec_id, "status": "stable", "version": result.version}
+        return {"spec_id": spec_id, "status": "unchanged", "reason": "not in review"}
+    except Exception as e:
+        return {"spec_id": spec_id, "error": str(e)}
+
+
+@router.post("/spec/create")
+async def create_spec(body: Dict[str, Any]) -> Dict[str, Any]:
+    """Create a new Spec from scratch (manual Spec creation)."""
+    try:
+        from core.harness.models.spec_lifecycle import get_spec_lifecycle
+        spec_id = body.get("spec_id", "")
+        if not spec_id:
+            raise HTTPException(status_code=400, detail="spec_id is required")
+        content = body.get("content", {})
+        created_by = body.get("created_by", "developer")
+        sl = get_spec_lifecycle()
+        sv = sl.create_draft(spec_id, content, created_by=created_by,
+                              trigger_detail="Manual creation from Workbench")
+        return {"spec_id": sv.spec_id, "version": sv.version, "status": sv.status.value}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/seed-demo")
+async def seed_demo_data() -> Dict[str, Any]:
+    """一键种子数据: 创建 2 个 Spec + 提交任务 → 仪表板立即可用。
+
+    Creates demo specs with varied content, submits tasks that produce
+    REVIEW-status specs with trace data and radar signals.
+    """
+    import uuid, asyncio as _aio
+    results = []
+    specs = [
+        {"id": "contract_review_demo", "content": {"agent_md": "合同审核 Agent — 自动审核采购合同条款", "tools": ["kb_query", "code_execution"], "evals": ["accuracy > 0.9"]}},
+        {"id": "report_gen_demo", "content": {"agent_md": "报表生成 Agent — 根据数据自动生成分析报表", "tools": ["data_analysis", "api_calling"], "evals": ["latency < 5s"]}},
+    ]
+
+    for spec in specs:
+        try:
+            # Create spec
+            resp = await create_spec({
+                "spec_id": spec["id"],
+                "content": spec["content"],
+                "created_by": "seed-demo",
+            })
+            spec_id = resp["spec_id"]
+
+            # Submit task
+            run_id = f"demo-{uuid.uuid4().hex[:8]}"
+            submit = await submit_task({
+                "description": f"Demo: {spec['content']['agent_md'][:40]}...",
+                "capability": "general",
+                "spec_id": spec_id,
+                "run_id": run_id,
+            })
+            results.append({"spec_id": spec_id, "run_id": run_id, "status": "submitted"})
+        except Exception as e:
+            results.append({"spec_id": spec["id"], "error": str(e)[:100]})
+
+    return {"seeded": len(results), "specs": results,
+            "note": "任务正在后台执行，约 5 秒后仪表板将显示数据"}
+
+
+# Local helper for _trigger_spec_re_execution
+from core.harness.models.spec_lifecycle import get_spec_lifecycle

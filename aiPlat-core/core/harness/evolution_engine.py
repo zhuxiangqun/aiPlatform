@@ -118,6 +118,9 @@ class EvolutionEngine:
         # Step 12: Monthly value snapshot (business ROI + goal tracking)
         run.steps.append(await self._step("value_snapshot", self._do_value_snapshot))
 
+        # Step 13: SpecLifecycle ageing + FeedbackRadar scan (三层 Loop 连接)
+        run.steps.append(await self._step("spec_health", self._do_spec_health))
+
         # Build report
         run.summary = self._build_daily_report(run)
         errors = sum(1 for s in run.steps if s.status in ("timeout", "error"))
@@ -259,8 +262,9 @@ class EvolutionEngine:
         """RL training trigger: export RL dataset from recent trajectories."""
         try:
             from core.harness.training.rl_trainer import get_rl_trainer
-            base = os.getenv("AIPLAT_RL_BASE_MODEL", os.getenv("AIPLAT_SFT_BASE_MODEL", ""))
-            student = os.getenv("AIPLAT_RL_STUDENT_MODEL", os.getenv("AIPLAT_SFT_STUDENT_MODEL", ""))
+            from core.harness.utils.model_injection import get_default_model
+            base = get_default_model("chat")
+            student = get_default_model("chat")
             if not base:
                 return {"status": "skipped", "note": "no base model configured"}
             trainer = get_rl_trainer(base_model=base, student_model=student)
@@ -311,6 +315,61 @@ class EvolutionEngine:
                     "total_value_cny": report.total_value_cny}
         except Exception as e:
             return {"error": str(e)[:100]}
+
+    async def _do_spec_health(self) -> Dict[str, Any]:
+        """Step 13: SpecLifecycle ageing + FeedbackRadar scan (Andrew Ng 三层 Loop P1)."""
+        result: Dict[str, Any] = {"spec_stables": 0, "spec_archived": 0, "radar_suggestions": 0}
+        try:
+            from core.harness.models.spec_lifecycle import get_spec_lifecycle
+            sl = get_spec_lifecycle()
+            active = sl.get_all_active()
+            from datetime import datetime, timezone as _tz
+
+            for sv in active:
+                if sv.status.value == "review":
+                    try:
+                        created = datetime.fromisoformat(sv.created_at)
+                        age_days = (datetime.now(_tz.utc) - created.replace(tzinfo=_tz.utc)).days
+                        if age_days > 7:
+                            sl.mark_stable(sv.spec_id)
+                            result["spec_stables"] += 1
+                    except Exception:
+                        pass
+                elif sv.status.value == "stable":
+                    try:
+                        created = datetime.fromisoformat(sv.created_at)
+                        age_days = (datetime.now(_tz.utc) - created.replace(tzinfo=_tz.utc)).days
+                        if age_days > 90:
+                            sl.mark_archived(sv.spec_id)
+                            result["spec_archived"] += 1
+                    except Exception:
+                        pass
+        except Exception:
+            pass
+
+        # FeedbackRadar: scan all active specs for signal patterns
+        try:
+            from core.harness.learning.feedback_radar import get_feedback_radar
+            radar = get_feedback_radar()
+            findings = await radar.analyze_all_active()
+            for spec_id, suggestions in findings.items():
+                result["radar_suggestions"] += len(suggestions)
+                for s in suggestions:
+                    if s.severity.value in ("high", "critical"):
+                        from core.harness.observation.event_bus import EventBus
+                        EventBus.publish("system", {
+                            "type": "spec_health_alert",
+                            "spec_id": spec_id,
+                            "severity": s.severity.value,
+                            "suggestion_type": s.type.value,
+                            "detail": s.detail,
+                            "suggested_action": s.suggested_action,
+                        })
+            _log.debug("FeedbackRadar: %d specs with suggestions", len(findings))
+        except Exception:
+            pass
+
+        return result
 
     # ── Infrastructure ──────────────────────────────────────────────────
 

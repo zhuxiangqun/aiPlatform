@@ -67,9 +67,9 @@ jobs:
           CORE_BOUNDARY_UPDATED=false
 
           if has_change '^docs/architecture/system-architecture-contract\.md$'; then SYS_CONTRACT_UPDATED=true; fi
-          if has_change '^规范-platform-鉴权与身份透传\.md$'; then AUTH_SPEC_UPDATED=true; fi
-          if has_change '^规范-core-run_id-trace_id-request_id\.md$'; then RUN_SPEC_UPDATED=true; fi
-          if has_change '^规范-app-session_id与conversation_key\.md$'; then SESSION_SPEC_UPDATED=true; fi
+          if has_change '^docs/standards/规范-platform-鉴权与身份透传\.md$'; then AUTH_SPEC_UPDATED=true; fi
+          if has_change '^docs/standards/规范-core-run_id-trace_id-request_id\.md$'; then RUN_SPEC_UPDATED=true; fi
+          if has_change '^docs/standards/规范-app-session_id与conversation_key\.md$'; then SESSION_SPEC_UPDATED=true; fi
           if has_change '^aiPlat-core/docs/contracts/01-architecture-contract\.md$|^aiPlat-core/docs/architecture/index\.md$'; then CORE_BOUNDARY_UPDATED=true; fi
 
           # 1) Auth / tenant / gateway / identity changes must update auth spec or system contract
@@ -193,8 +193,35 @@ jobs:
         run: |
           python scripts/rag_eval_cli.py --all --threshold 0.5 || echo "::warning::RAG eval below threshold — review KB quality"
 
-      - name: E2E smoke test (warn-only)
+      - name: E2E API smoke test (warn-only)
         continue-on-error: true
         run: |
-          python -m pip install pytest requests
-          python e2e_smoke.py || echo "::warning::E2E smoke test failed"
+          python -m pip install pytest httpx
+          python -m pytest tests/e2e/ -v --tb=short || echo "::warning::E2E API smoke test failed"
+
+  e2e-docker:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: contracts-guard
+    if: ${{ false }}  # Opt-in: set to true when docker infra is ready
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build images
+        run: |
+          docker build -t aiplat-core:latest ./aiPlat-core
+          docker build -t aiplat-platform:latest ./aiPlat-platform
+          docker build -t aiplat-management:latest ./aiPlat-management
+
+      - name: Start services
+        run: docker compose -f docker-compose.test.yml up -d
+
+      - name: Wait for health
+        run: bash scripts/wait_for_health.sh 60
+
+      - name: Run E2E tests
+        run: python -m pytest tests/e2e/ -v --tb=short
+
+      - name: Cleanup
+        if: always()
+        run: docker compose -f docker-compose.test.yml down -v

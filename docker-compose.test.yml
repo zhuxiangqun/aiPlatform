@@ -1,0 +1,69 @@
+# docker-compose.test.yml — E2E 测试环境（Mock LLM，隔离数据）
+#
+# 用法:
+#   docker compose -f docker-compose.test.yml up -d
+#   bash scripts/wait_for_health.sh
+#   pytest tests/e2e/ -v
+#   docker compose -f docker-compose.test.yml down
+
+services:
+  core:
+    image: aiplat-core:latest
+    restart: "no"
+    ports:
+      - "8002:8002"
+    volumes:
+      - ./data/test/core:/app/.aiplat
+    environment:
+      - AIPLAT_HOME=/app/.aiplat
+      - AIPLAT_LLM_MOCK=true
+      - AIPLAT_TEST_MODE=true
+      - AIPLAT_DB_PATH=/app/.aiplat/test_data.sqlite3
+      - AIPLAT_COT_AUTO_INJECT=false
+      - AIPLAT_SELF_CORRECT_ENABLED=false
+      - AIPLAT_DEBATE_MODE=false
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8002/api/core/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  management:
+    image: aiplat-management:latest
+    restart: "no"
+    ports:
+      - "8000:8000"
+    depends_on:
+      core:
+        condition: service_healthy
+    volumes:
+      - ./data/test/management:/app/.aiplat
+    environment:
+      - AIPLAT_HOME=/app/.aiplat
+      - AIPLAT_MANAGEMENT_MODE=docker
+      - AIPLAT_TEST_MODE=true
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  platform:
+    image: aiplat-platform:latest
+    restart: "no"
+    ports:
+      - "8003:8003"
+    depends_on:
+      core:
+        condition: service_healthy
+    environment:
+      - AIPLAT_HOME=/app/.aiplat
+      - AIPLAT_TEST_MODE=true
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8003/api/platform/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s

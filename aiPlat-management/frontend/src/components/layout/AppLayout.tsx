@@ -95,6 +95,7 @@ const menuItems: (MenuItem | { divider: boolean } | MenuGroup)[] = [
     { key: '/value-center/goals', icon: Flag, label: '目标追踪' },
     { key: '/value-center/roles', icon: Users, label: '角色管理' },
     { key: '/value-center/strategy', icon: Sliders, label: '策略控制' },
+    { key: '/value-center/training', icon: GitBranch, label: '训练监控' },
   ]},
   { divider: true },
   { group: 'user', label: '终端使用', items: [

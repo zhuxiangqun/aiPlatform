@@ -67,15 +67,21 @@ async def get_role_agents() -> List[Dict[str, Any]]:
     if os.path.isdir(workspace_dir):
         for name in os.listdir(workspace_dir):
             if name not in _role_configs and os.path.isdir(os.path.join(workspace_dir, name)):
-                role = "employee"
-                # Map known agent types to default roles
-                if name in ("kpi_agent", "strategy_agent"):
-                    role = name.split("_")[0] if "_" in name else "employee"
                 agents.append({
-                    "agent_id": name, "role": role, "model": "",
+                    "agent_id": name, "role": "employee", "model": "",
                     "reflection_enabled": name == "advisor_agent",
                     "last_updated": "",
                 })
+
+    # System services (not AGENT.md-driven, display-only — no role assignment)
+    agents.append({"agent_id": "kpi_agent", "role": "system_service",
+                    "model": "core.harness.agents.kpi_agent.KPIAgent",
+                    "reflection_enabled": False, "last_updated": "",
+                    "agent_type": "system_service", "description": "KPI监控：自动追踪目标、偏离预警"})
+    agents.append({"agent_id": "strategy_agent", "role": "system_service",
+                    "model": "core.harness.agents.strategy_agent.StrategyAgent",
+                    "reflection_enabled": False, "last_updated": "",
+                    "agent_type": "system_service", "description": "策略调优：日常参数微调、异常响应"})
 
     return agents
 

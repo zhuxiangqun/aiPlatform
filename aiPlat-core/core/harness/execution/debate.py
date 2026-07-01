@@ -18,6 +18,7 @@ from core.schemas_builder import PipelineStageConfig
 logger = logging.getLogger("aiplat.debate")
 
 
+# disposition: internal helper — used by run_agent_debate() in same module
 class DebateState:
     """Tracks debate state across rounds."""
 

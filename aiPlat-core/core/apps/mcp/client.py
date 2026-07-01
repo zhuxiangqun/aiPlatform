@@ -38,6 +38,10 @@ class MCPClient:
         self._server_info: Dict[str, str] = {}
         self._tools: Dict[str, MCPTool] = {}
         self._request_id = 0
+        # P0-1: Lazy loading — only store name+desc on startup, fetch schema on first call
+        import os as _os
+        self._lazy_load = _os.getenv("AIPLAT_MCP_LAZY_LOAD", "true").lower() not in ("0", "false", "no")
+        self._tool_schemas_cached: Dict[str, Dict] = {}  # name → inputSchema (lazy-filled)
         
     @property
     def is_connected(self) -> bool:
@@ -151,15 +155,30 @@ class MCPClient:
             raise RuntimeError(f"MCP tools/list error: {response.error}")
             
         tools_data = response.result.get("tools", [])
-        self._tools = {
-            tool["name"]: MCPTool(
-                name=tool["name"],
-                description=tool.get("description", ""),
-                input_schema=tool.get("inputSchema", {})
-            )
-            for tool in tools_data
-        }
-        
+        if self._lazy_load:
+            # Store only name + description; schema loaded on first call
+            self._tools = {
+                tool["name"]: MCPTool(
+                    name=tool["name"],
+                    description=tool.get("description", ""),
+                    input_schema={}  # Empty — lazy-loaded on first call_tool
+                )
+                for tool in tools_data
+            }
+            # Cache full schemas for later lazy fetch
+            for tool in tools_data:
+                if tool.get("inputSchema"):
+                    self._tool_schemas_cached[tool["name"]] = tool["inputSchema"]
+        else:
+            self._tools = {
+                tool["name"]: MCPTool(
+                    name=tool["name"],
+                    description=tool.get("description", ""),
+                    input_schema=tool.get("inputSchema", {})
+                )
+                for tool in tools_data
+            }
+            
         return list(self._tools.values())
         
     async def call_tool(
@@ -173,6 +192,30 @@ class MCPClient:
             
         if name not in self._tools:
             raise ValueError(f"Tool '{name}' not found")
+        
+        # P0-1: Lazy-load schema on first call if not yet loaded
+        if self._lazy_load and not self._tools[name].input_schema:
+            schema = self._tool_schemas_cached.get(name)
+            if not schema:
+                # Fetch from server
+                tools_resp = await self._transport.call(
+                    self._config.server_url,
+                    self._protocol.create_request(
+                        method="tools/list", params={},
+                        request_id=self._next_id()
+                    )
+                )
+                for t in (tools_resp.result or {}).get("tools", []):
+                    if t["name"] == name and t.get("inputSchema"):
+                        schema = t["inputSchema"]
+                        self._tool_schemas_cached[name] = schema
+                        break
+            if schema:
+                self._tools[name] = MCPTool(
+                    name=name,
+                    description=self._tools[name].description,
+                    input_schema=schema,
+                )
             
         request = self._protocol.create_request(
             method="tools/call",

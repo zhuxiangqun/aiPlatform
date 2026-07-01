@@ -439,6 +439,17 @@ Please improve your output based on the feedback. Keep what was correct and fix 
     category="engine",
     variables=["previous_output", "feedback"])
 
+# === KERNEL — Chain-of-Thought (Skill 2) ===
+_register("cot-auto-inject", """[推理要求] 在回答之前，请按以下步骤思考和展示推理过程：
+1. 分析问题的关键约束和隐含条件
+2. 列出 2-3 个可能的解决方案或角度
+3. 比较各方案的优劣，说明取舍理由
+4. 选择最优方案并给出完整答案
+
+请在输出中展示你的思考步骤（用 ### 步骤N 标记），然后再给出最终结论。""",
+    category="engine",
+    variables=[])
+
 # === KERNEL — Coordination ===
 _register("supervisor-delegate", """Task: ${task}
 

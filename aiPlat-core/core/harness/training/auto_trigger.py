@@ -27,7 +27,7 @@ class SFTDatasetConfig:
     min_quality_label: str = "positive"
     max_samples: int = 1000
     output_format: str = "sharegpt"  # sharegpt / alpaca / openai
-    target_model: str = "qwen2.5-coder:7b"
+    target_model: str = "qwen2.5-coder:7b"  # noqa: env-legacy — SFT dataset default, not engine routing
 
 
 class LoRAAutoTrigger:
@@ -74,8 +74,8 @@ class LoRAAutoTrigger:
             return
 
         # 1.5 Paper Data Recipes: learnability filter (student model must be able to imitate)
-        student_model = os.getenv("AIPLAT_SFT_STUDENT_MODEL", "")
-        teacher_model = os.getenv("AIPLAT_SFT_TEACHER_MODEL", "")
+        student_model = os.getenv("AIPLAT_SFT_STUDENT_MODEL", "")  # noqa: env-legacy — training config
+        teacher_model = os.getenv("AIPLAT_SFT_TEACHER_MODEL", "")  # noqa: env-legacy — training config
         if student_model and samples:
             try:
                 from core.harness.training.trajectory_scorer import TrajectoryScorer
@@ -151,7 +151,7 @@ class LoRAAutoTrigger:
             
             mgr = JobManager()
             provider = os.getenv("AIPLAT_SFT_PROVIDER", "local")
-            base_model = os.getenv("AIPLAT_SFT_BASE_MODEL", "qwen2.5-coder:7b")
+            base_model = os.getenv("AIPLAT_SFT_BASE_MODEL", "qwen2.5-coder:7b")  # noqa: env-legacy — training config
             
             # Step 1: Import dataset via DatasetManager
             import_result = await mgr._dataset_mgr.import_jsonl(
@@ -174,11 +174,20 @@ class LoRAAutoTrigger:
         except Exception:
             _log.debug("Auto job submission skipped (manual trigger required)", exc_info=True)
             return None
-        await self._notify(path, len(dataset))
 
-        # 4. 重置计数
-        self._quality_count = 0
-        _log.info(f"SFT AutoTrigger: dataset generated at {path} ({len(dataset)} samples)")
+    def get_status(self) -> Dict[str, Any]:
+        """Operational monitoring: accumulated sample counts and threshold info."""
+        return {
+            "enabled": self._enabled,
+            "approved_total": self._approved_count,
+            "quality_count": self._quality_count,
+            "threshold": self._threshold,
+            "quality_threshold": self._quality_threshold,
+            "max_samples": self._max_samples,
+            "progress_pct": round(self._quality_count / self._threshold * 100, 1) if self._threshold > 0 else 0.0,
+            "ready_to_trigger": self._quality_count >= self._threshold,
+            "dataset_dir": self._dataset_dir,
+        }
 
     async def _fetch_samples(self, limit: int) -> List[Dict[str, Any]]:
         """从 execution_store 获取标记为 'positive' 的样本，经轨迹评分过滤 + 混合采样"""

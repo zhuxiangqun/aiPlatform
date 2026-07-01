@@ -116,6 +116,8 @@ const BusinessGoals = lazy(() => import('./pages/ValueCenter/BusinessGoals'));
 const RoleManager = lazy(() => import('./pages/ValueCenter/RoleManager'));
 const StrategyControl = lazy(() => import('./pages/ValueCenter/StrategyControl'));
 const UserWorkbench = lazy(() => import('./pages/ValueCenter/UserWorkbench'));
+const TrainingMonitor = lazy(() => import('./pages/ValueCenter/TrainingMonitor'));
+const SpecDetailPage = lazy(() => import('./pages/ValueCenter/SpecDetail'));
 const StudioPage = lazy(() => import('./pages/Studio/StudioPage'));
 
 const router = createBrowserRouter([
@@ -135,6 +137,8 @@ const router = createBrowserRouter([
       { path: 'value-center/goals', element: withSuspense(BusinessGoals) },
       { path: 'value-center/roles', element: withSuspense(RoleManager) },
       { path: 'value-center/strategy', element: withSuspense(StrategyControl) },
+      { path: 'value-center/training', element: withSuspense(TrainingMonitor) },
+      { path: 'value-center/spec/:specId', element: withSuspense(SpecDetailPage) },
       { path: 'workbench', element: withSuspense(UserWorkbench) },
       { path: 'infra/nodes', element: withSuspense(InfraNodes) },
       { path: 'infra/models', element: withSuspense(InfraModels) },

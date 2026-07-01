@@ -204,6 +204,17 @@ class UnresolvedRefCheck(CapRule):
         issues = []
         for e in ctx.edges:
             if e.get("relation") == "requires" and e["to"] not in ctx.nodes:
+                # Skip engine-internal / workspace-persona / workspace-utility skills
+                # that don't need AGENT.md binding (accessible via sys_skill_call or system prompt)
+                target = e["to"]
+                if target in UnusedSkillCheck._ENGINE_INTERNAL:
+                    continue
+                if target in UnusedSkillCheck._WORKSPACE_PERSONA:
+                    continue
+                if target in UnusedSkillCheck._WORKSPACE_UTILITY:
+                    continue
+                if target in UnusedSkillCheck._ENGINE_SYSTEM:
+                    continue
                 from_node = ctx.nodes.get(e["from"], {})
                 issues.append(CapIssue(
                     type=self.code,

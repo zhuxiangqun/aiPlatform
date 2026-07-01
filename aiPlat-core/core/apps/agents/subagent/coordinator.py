@@ -90,7 +90,10 @@ class SubagentCoordinator:
         self,
         task: str,
         subagent_name: str,
-        context: Optional[List[Dict]] = None
+        context: Optional[List[Dict]] = None,
+        *,
+        isolate_context: bool = True,  # P1-2: 隔离上下文, 仅返回摘要
+        read_only_context: bool = False,  # P1-2: 只读父 context 摘要 (≤500 tokens)
     ) -> SubagentResult:
         """Execute a single Subagent via a conversational AI agent.
 
@@ -112,11 +115,25 @@ class SubagentCoordinator:
             if instance.config.system_prompt:
                 messages.append({"role": "system", "content": instance.config.system_prompt})
             if context:
-                for msg in context:
-                    messages.append({
-                        "role": msg.get("role", "user"),
-                        "content": str(msg.get("content", "")),
-                    })
+                if isolate_context:
+                    # P1-2: Isolated mode — only pass a brief summary, not full history
+                    summary_parts = []
+                    for msg in context[-3:]:  # Last 3 messages only
+                        content = str(msg.get("content", ""))[:200]
+                        if content:
+                            summary_parts.append(content)
+                    if summary_parts:
+                        messages.append({"role": "system", "content": "[上下文摘要] " + " | ".join(summary_parts)})
+                elif read_only_context:
+                    # Read-only mode: pass a compact summary (≤500 tokens)
+                    context_text = " ".join(str(m.get("content", ""))[:150] for m in context[-5:])
+                    messages.append({"role": "system", "content": f"[只读上下文] {context_text[:500]}"})
+                else:
+                    for msg in context:
+                        messages.append({
+                            "role": msg.get("role", "user"),
+                            "content": str(msg.get("content", "")),
+                        })
             messages.append({"role": "user", "content": task})
 
             # Create agent via injected factory (DI) or fallback to import

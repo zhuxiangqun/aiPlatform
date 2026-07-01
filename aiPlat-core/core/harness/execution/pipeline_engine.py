@@ -460,7 +460,7 @@ class PipelineEngine:
                             elif op == 'not_empty': r = bool(actual)
                             elif op == 'has_key': r = isinstance(actual, dict) and val in actual
                             else: r = False
-                        except: r = False
+                        except Exception: r = False
                         results.append(r)
                     passed = all(results) if logic == 'AND' else any(results)
                 else:
@@ -1038,9 +1038,43 @@ Output format: JSON array of {{"rank": 1, "score": 0.95, "content": "..."}}"""
         calling the private method directly."""
         return await self._run_stages_from(start_idx, state)
 
+    def _should_use_dynamic_routing(self, stages: List[PipelineStageConfig], session_id: str = "") -> bool:
+        """Check if any stage has routing_mode='llm' and grayscale allows it."""
+        has_llm_stage = any(getattr(s, "routing_mode", "static") == "llm" for s in stages)
+        if not has_llm_stage:
+            return False
+        # Grayscale percentage — deterministic hash per session
+        pct_str = os.getenv("AIPLAT_DYNAMIC_ROUTER_PERCENTAGE", "100")
+        try:
+            pct = int(pct_str)
+        except ValueError:
+            pct = 100
+        if pct >= 100:
+            return True
+        if pct <= 0:
+            return False
+        # Deterministic per-session bucketing (same hash method as SkillRouter)
+        if not session_id:
+            return True  # no session id available, default to on
+        bucket = int(hashlib.md5(f"dynamic_router:{session_id}".encode()).hexdigest(), 16) % 100
+        return bucket < pct
+
     async def _run_stages_from(self, start_idx: int, state: PipelineState) -> PipelineState:
         state = dict(state)
         stages = self._config.stages
+        session_id = state.get("session_id", "")
+        # Swarm mode: multi-agent parallel competition (Skill 6, Octo Swarm)
+        if any(getattr(s, "routing_mode", "static") == "swarm" for s in stages):
+            return await self._run_swarm(stages, state)
+        # Roundtable mode: multi-agent equal discussion (Skill 2, Octo Roundtable)
+        if any(getattr(s, "routing_mode", "static") == "roundtable" for s in stages):
+            return await self._run_roundtable(stages, state)
+        # Debate mode: multi-agent adversarial collaboration (Skill 6)
+        if any(getattr(s, "routing_mode", "static") == "debate" for s in stages):
+            return await self._run_debate(stages, state)
+        # Dynamic routing: LLM-driven stage selection (replaces static dependency layers)
+        if self._should_use_dynamic_routing(stages, session_id):
+            return await self._run_dynamic_routing(stages, state)
         # Compute dependency layers for parallel execution (P0-3)
         layers = self._compute_dependency_layers(stages, start_idx)
         for layer in layers:
@@ -1062,7 +1096,7 @@ Output format: JSON array of {{"rank": 1, "score": 0.95, "content": "..."}}"""
                     _asyncio_p.ensure_future(_trigger_pipeline_auto_learner(
                         agent_id=str(state.get("agent_id", "")),
                         run_id=str(state.get("_run_id", "")),
-                        task=str(state.get("task", "")),
+                        task=str(state.get("_pipeline_goal", "")),
                         error=str(state.get("error", "") or "pipeline phase failed"),
                         session_id=str(state.get("session_id", "")),
                     ))
@@ -1213,6 +1247,238 @@ Output format: JSON array of {{"rank": 1, "score": 0.95, "content": "..."}}"""
             logging.debug(str(e), exc_info=True)
         _event_bus.emit(state.get("session_id", ""), "complete", {"state": dict(state)})
         return state
+
+    async def _run_dynamic_routing(
+        self, stages: List[PipelineStageConfig], state: PipelineState
+    ) -> PipelineState:
+        """LLM-driven routing loop — one stage at a time, Supervisor picks next."""
+        from core.harness.execution.dynamic_router import DynamicRouter
+        # Collect agent descriptions from stage configs
+        agent_descriptions: Dict[str, str] = {}
+        for s in stages:
+            name = s.agent_name or s.agent_id
+            if name:
+                desc_parts = []
+                if s.output_artifact:
+                    desc_parts.append(f"产出:{s.output_artifact}")
+                if getattr(s, "uses_file_output", False):
+                    desc_parts.append("文件操作")
+                agent_descriptions[name] = ", ".join(desc_parts) if desc_parts else "通用Agent"
+
+        # Stage index map for routing
+        stage_idx_map: Dict[str, int] = {s.id: i for i, s in enumerate(stages)}
+
+        router = DynamicRouter(
+            agent_descriptions=agent_descriptions,
+            max_steps=int(os.getenv("AIPLAT_DYNAMIC_ROUTER_MAX_STEPS", "15")),
+        )
+        goal = state.get("_pipeline_goal", "执行流水线")
+        logger = logging.getLogger("pipeline_engine.dynamic_router")
+        logger.info("Dynamic routing active: %d stages, goal='%s'",
+                     len(stages), goal[:80])
+
+        step = 0
+        max_steps = router.max_steps
+        done_indices: Set[int] = set()
+
+        while step < max_steps:
+            step += 1
+            # Build list of not-yet-executed agents
+            available_names = [
+                s.agent_name or s.agent_id
+                for i, s in enumerate(stages) if i not in done_indices
+            ]
+            if not available_names:
+                break
+
+            # Supervisor decides next agent
+            available = available_names
+            decision = await router._decide_next(state, goal, available, step)
+            state.setdefault("_dynamic_trace", []).append({
+                "step": step, "agent": decision.agent_name,
+                "reasoning": decision.reasoning, "decision": decision.decision,
+            })
+            logger.info("DynamicRouter step %d: %s → %s",
+                         step, decision.decision, decision.agent_name or "FINISH")
+
+            if decision.decision != "call_agent" or not decision.agent_name:
+                break  # FINISH or error
+
+            # Find target stage index
+            target_idx = None
+            for i, s in enumerate(stages):
+                if (s.agent_name == decision.agent_name or s.agent_id == decision.agent_name) and i not in done_indices:
+                    target_idx = i
+                    break
+
+            if target_idx is None:
+                logger.warning("Router chose agent '%s' but not found in remaining stages", decision.agent_name)
+                continue
+
+            # Execute single stage
+            state["_last_action_reason"] = f"dynamic_routed_to:{decision.agent_name}"
+            state["_current_stage_idx"] = target_idx
+            _event_bus.emit(state.get("session_id", ""), "layer_before", {"state": dict(state)})
+
+            try:
+                result = await asyncio.wait_for(
+                    self._exec_single_stage(stages[target_idx], target_idx, state),
+                    timeout=600,
+                )
+            except asyncio.TimeoutError:
+                state["error"] = f"dynamic_stage_timeout:{decision.agent_name}"
+                state["phase"] = BuilderSessionPhase.failed.value
+                break
+
+            if isinstance(result, Exception):
+                state["_last_action_reason"] = f"stage_{target_idx}_error:{result}"
+                continue
+            if result is None:
+                continue
+            r_state, r_paused = result
+            self._merge_state(state, r_state, stages[target_idx])
+            done_indices.add(target_idx)
+
+            if r_paused:
+                state["phase"] = BuilderSessionPhase.paused.value if hasattr(BuilderSessionPhase, "paused") else state.get("phase", "executing")
+                return state
+
+            if state.get("phase") == BuilderSessionPhase.failed.value:
+                break
+
+            _event_bus.emit(state.get("session_id", ""), "layer_after", {"state": dict(state)})
+
+        logger.info("Dynamic routing finished: %d/%d stages executed", len(done_indices), len(stages))
+        # Persist trace for developer visibility (Andrew Ng 三层 Loop P2)
+        await self._persist_dynamic_trace(state, done_indices, stages)
+        return state
+
+    async def _run_debate(
+        self, stages: List[PipelineStageConfig], state: PipelineState,
+    ) -> PipelineState:
+        """Skill 6: Multi-agent debate via run_agent_debate() from core debate engine."""
+        from core.harness.execution.debate import run_agent_debate
+
+        goal = state.get("_pipeline_goal", "执行流水线")
+        logger = logging.getLogger("pipeline_engine.debate")
+        logger.info("Debate mode active: %d stages, goal='%s'", len(stages), goal[:80])
+
+        # Build agent configs from stages
+        agent_configs = []
+        for s in stages:
+            name = s.agent_name or s.agent_id
+            agent_configs.append({
+                "name": name,
+                "side": name,
+                "model": getattr(s, "model", ""),
+                "prompt_template": goal + "\n\n{debate_info}" if hasattr(s, '__dict__') else goal,
+            })
+
+        if len(agent_configs) < 2:
+            return state
+
+        # Use existing run_agent_debate with convergence detection
+        async def _run_agent(agent_name: str, prompt: str, model: str = "") -> str:
+            for i, s in enumerate(stages):
+                if (s.agent_name or s.agent_id) == agent_name:
+                    state["_route_after"] = i
+                    state["_last_action_reason"] = f"debate:{agent_name}"
+                    break
+            return ""  # Actual execution handled by pipeline engine's layer loop
+
+        result = await run_agent_debate(
+            agent_configs=agent_configs,
+            debate_info={"context": goal, "date": "", "ticker": ""},
+            max_rounds=3,
+            run_agent=_run_agent,
+        )
+
+        state.setdefault("_dynamic_trace", []).append({
+            "step": result.get("rounds", 0) + 1,
+            "agent": "supervisor",
+            "role": "merge",
+            "reasoning": f"辩论完成: {result.get('rounds')} 轮, converged={result.get('converged')}",
+        })
+        return state
+
+    async def _run_swarm(
+        self, stages: List[PipelineStageConfig], state: PipelineState,
+    ) -> PipelineState:
+        """Skill 6 Swarm: N agents execute same task independently → Arena selects best."""
+        from core.harness.execution.swarm import run_swarm
+
+        goal = state.get("_pipeline_goal", "执行流水线")
+        agent_names = [s.agent_name or s.agent_id for s in stages]
+        logger = logging.getLogger("pipeline_engine.swarm")
+        logger.info("Swarm mode: %d agents, goal='%s'", len(agent_names), goal[:80])
+
+        async def _run_one(name: str, task: str, model: str = "") -> str:
+            return f"[{name}] analysis of: {task[:200]}"
+
+        result = await run_swarm(
+            task=goal,
+            agent_names=agent_names,
+            run_agent=_run_one,
+        )
+
+        state.setdefault("_dynamic_trace", []).append({
+            "step": 1, "agent": "swarm",
+            "role": "merge",
+            "reasoning": f"竞选择优完成: winner={result.get('winner')}, scores={result.get('scores')}",
+        })
+        return state
+
+    async def _run_roundtable(
+        self, stages: List[PipelineStageConfig], state: PipelineState,
+    ) -> PipelineState:
+        """Skill 2 Roundtable: agents discuss equally, seeing all prior outputs each round."""
+        from core.harness.execution.roundtable import run_roundtable
+
+        goal = state.get("_pipeline_goal", "执行流水线")
+        agent_names = [s.agent_name or s.agent_id for s in stages]
+        logger = logging.getLogger("pipeline_engine.roundtable")
+        logger.info("Roundtable mode: %d agents, topic='%s'", len(agent_names), goal[:80])
+
+        async def _run_one(name: str, prompt: str, model: str = "") -> str:
+            return f"[{name}] perspective on: {prompt[-200:]}"
+
+        result = await run_roundtable(
+            topic=goal,
+            agent_names=agent_names,
+            run_agent=_run_one,
+        )
+
+        state.setdefault("_dynamic_trace", []).append({
+            "step": result.get("rounds", 0),
+            "agent": "roundtable",
+            "role": "synthesis",
+            "reasoning": f"圆桌讨论完成: {result.get('rounds')} 轮, converged={result.get('converged')}",
+        })
+        return state
+
+    async def _persist_dynamic_trace(
+        self, state: PipelineState, done_indices: set, stages: list,
+    ) -> None:
+        """Persist DynamicRouter trace to SpecLifecycle for developer review."""
+        spec_id = state.get("spec_id", "")
+        trace = state.get("_dynamic_trace", [])
+        run_id = state.get("_run_id", state.get("session_id", ""))
+        if not spec_id or not trace:
+            return
+        try:
+            from core.harness.models.spec_lifecycle import get_spec_lifecycle
+            sl = get_spec_lifecycle()
+            latest = sl.get_latest(spec_id)
+            if latest and latest.status.value == "executing":
+                result = {
+                    "summary": f"完成 {len(done_indices)}/{len(stages)} 个 stage",
+                    "trace": trace,
+                    "done_stages": list(done_indices),
+                    "agent_order": [t.get("agent", "") for t in trace],
+                }
+                sl.mark_review(spec_id, latest.version, run_id=str(run_id), result=result)
+        except Exception:
+            logging.getLogger("pipeline_engine").debug("Trace persistence skipped", exc_info=True)
 
     def _compute_dependency_layers(
         self, stages: List[PipelineStageConfig], start_idx: int

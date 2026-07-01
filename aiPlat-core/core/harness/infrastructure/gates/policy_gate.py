@@ -141,6 +141,27 @@ class PolicyGate:
             "y",
         )
 
+    @staticmethod
+    def _match_tool_rule(rule: Dict[str, Any], tool_name: str, tool_args: Optional[Dict[str, Any]]) -> bool:
+        """P1-1: Match rule against tool name + optional params (fnmatch + re support)."""
+        import fnmatch
+        rule_tool = rule.get("tool", "")
+        if not rule_tool:
+            return False
+        # Tool name match: exact or fnmatch
+        if not (rule_tool == tool_name or fnmatch.fnmatch(tool_name, rule_tool)):
+            return False
+        # Param-level match (optional)
+        rule_params = rule.get("params") or {}
+        if not rule_params:
+            return True
+        args = tool_args or {}
+        for k, v in rule_params.items():
+            actual = str(args.get(k, ""))
+            if not fnmatch.fnmatch(actual, str(v)):
+                return False
+        return True
+
     def _load_approval_review_policy(self, *, tenant_policy: Optional[Dict[str, Any]]) -> Dict[str, Any]:
         """
         P6-3: approval review strategy (sampling/exception review).
@@ -292,8 +313,20 @@ class PolicyGate:
         """Single-point permission enforcement for tool execution (§11)."""
         if self._disable_approvals:
             return PolicyResult(decision=PolicyDecision.ALLOW)
+
+        # P1-1: Three-layer rule priority (deny > ask > allow) with param-level matching
         from core.harness.integration import get_permission_manager
         perm_mgr = get_permission_manager()
+        rules = getattr(perm_mgr, "_permission_rules", None) or []
+        # Sort: deny first, then ask, then allow
+        for rule in sorted(rules, key=lambda r: {"deny": 0, "ask": 1, "allow": 2}.get(r.get("action", ""), 99)):
+            if not self._match_tool_rule(rule, tool_name, tool_args):
+                continue
+            if rule["action"] == "deny":
+                return PolicyResult(decision=PolicyDecision.DENY, reason=rule.get("reason", "denied by policy"))
+            if rule["action"] == "ask":
+                return PolicyResult(decision=PolicyDecision.ASK, reason=rule.get("reason", "requires approval"))
+
         if not perm_mgr.check_permission(user_id, tool_name, Permission.EXECUTE):
             return PolicyResult(
                 decision=PolicyDecision.DENY,

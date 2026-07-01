@@ -59,7 +59,7 @@ def get_checks() -> List[Dict[str, Any]]:
 async def check_task_spec(rt, repo_root) -> Dict[str, Any]:
     try:
         if hasattr(rt, "agent_registry") and rt.agent_registry:
-            agent_count = len(rt.agent_registry.list_ids() or [])
+            agent_count = len(rt.agent_registry.list_all() or [])
         else:
             agent_count = 0
         return {"check": "任务规格", "result": "✅" if agent_count > 0 else "❌",

@@ -1,7 +1,9 @@
 # aiPlat 系统全面架构分析 & 四方案对照报告
 
-> 生成时间：2026-06-22  
-> 分析范围：aiPlat（代码级全量分析）vs Hermes Agent vs Claude Code vs OpenClaw
+> 生成时间：2026-07-01（更新 — FDE 操作系统 + 5 routing_modes + 全域诊断）
+> 分析范围：aiPlat（代码级全量分析）vs Hermes Agent vs Claude Code vs OpenClaw vs Octo (明略科技)
+> 架构守卫状态：0 ERROR, 10 WARNING（全已知, 无阻断）
+> 合规状态：0 违规（shell agents 已修复, env-legacy 已标记）
 
 ---
 

@@ -165,6 +165,42 @@ class DynamicRouter:
         logger.info("DynamicRouter finished: %d steps, %d trace entries", step, len(self._trace))
         return state
 
+    @staticmethod
+    def canary_enabled(session_id: str = "") -> bool:
+        """Percentage-based grayscale rollout for DynamicRouter.
+
+        Reads AIPLAT_DYNAMIC_ROUTER_PERCENTAGE (0-100). Uses deterministic
+        hashing per session_id so the same session always gets the same routing mode.
+
+        Also supports AIPLAT_DYNAMIC_ROUTER_CANARY_TENANTS (comma-separated
+        tenant IDs always routed to llm mode).
+        """
+        import hashlib
+        import os
+
+        # Canary tenants always get dynamic routing
+        canary_tenants = os.getenv("AIPLAT_DYNAMIC_ROUTER_CANARY_TENANTS", "")
+        if canary_tenants and session_id:
+            # session_id format is typically <tenant>:<uuid>
+            tenant = session_id.split(":", 1)[0] if ":" in session_id else ""
+            if tenant and tenant in canary_tenants.split(","):
+                return True
+
+        try:
+            pct = int(os.getenv("AIPLAT_DYNAMIC_ROUTER_PERCENTAGE", "100"))
+        except ValueError:
+            pct = 100
+
+        if pct >= 100:
+            return True
+        if pct <= 0:
+            return False
+        if not session_id:
+            return False
+
+        bucket = int(hashlib.md5(f"dynamic_router:{session_id}".encode()).hexdigest(), 16) % 100
+        return bucket < pct
+
     # ── Core: LLM decision ──
 
     async def _decide_next(
@@ -229,6 +265,8 @@ class DynamicRouter:
 
     def get_trace(self) -> List[Dict[str, Any]]:
         return list(self._trace)
+
+    # Debate mode: delegated to core.harness.execution.debate.run_agent_debate() (Skill 6)
 
 
 class _Decision:

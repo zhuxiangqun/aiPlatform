@@ -2850,7 +2850,84 @@ class ReActLoop(BaseLoop):
             })
         except Exception as e:
             logging.warning(str(e), exc_info=True)
+
+        # §Skill 4: Inline self-correction — let Agent critique its own output
+        corrected = await self._try_self_correct(result, state)
+        if corrected:
+            state.context["action_result"] = corrected
+            result = corrected
+
         return result
+
+    async def _try_self_correct(self, result: str, state: LoopState) -> str:
+        """PostObserve: Agent self-critique → auto-fix if issues found.
+
+        Uses prompt_loader templates reflection-critic + reflection-improve.
+        Controlled by AIPLAT_SELF_CORRECT_ENABLED (default: true).
+        Max 1 correction attempt per step to prevent infinite loops.
+        """
+        import os as _os
+        enabled = _os.getenv("AIPLAT_SELF_CORRECT_ENABLED", "true")
+        if enabled in ("0", "false", "no") or not result:
+            return ""
+
+        correction_count = state.context.get("_correction_count", 0)
+        if correction_count >= 1:
+            return ""
+
+        try:
+            from core.harness.utils.prompt_loader import _sync_resolve
+
+            # Step 1: Critique using reflection-critic template
+            critique_prompt = _sync_resolve("reflection-critic",
+                output=result[:2000],
+                dimensions="正确性、完整性、逻辑一致性、格式规范性",
+            )
+            critique = await sys_llm_generate(
+                None,
+                [{"role": "user", "content": critique_prompt}],
+                model_name=state.context.get("model", ""),
+                max_tokens=4000,
+            )
+            critique_text = critique.content if hasattr(critique, 'content') else str(critique)
+            if not critique_text or len(critique_text) < 20:
+                return ""
+
+            # Check if critic rejected the output
+            import json as _json
+            verdict = "PASS"
+            try:
+                parsed = _json.loads(critique_text) if critique_text.strip().startswith("{") else {}
+                verdict = parsed.get("verdict", "PASS")
+            except Exception:
+                verdict = "PASS"  # Non-JSON response → don't correct
+
+            if verdict == "PASS":
+                return ""
+
+            # Step 2: Improve using reflection-improve template
+            improve_prompt = _sync_resolve("reflection-improve",
+                previous_output=result[:1500],
+                feedback=critique_text[:1000],
+            )
+            improved = await sys_llm_generate(
+                None,
+                [{"role": "user", "content": improve_prompt}],
+                model_name=state.context.get("model", ""),
+                max_tokens=4000,
+            )
+            improved_text = improved.content if hasattr(improved, 'content') else str(improved)
+            if improved_text and len(improved_text) > 20:
+                state.context["_correction_count"] = correction_count + 1
+                state.context["_was_corrected"] = True
+                logging.getLogger("loop.correct").info(
+                    "Self-correction applied at step %d via reflection templates", state.step_count
+                )
+                return improved_text
+        except Exception:
+            logging.getLogger("loop.correct").debug("Self-correction skipped", exc_info=True)
+
+        return ""
 
 
 class PlanExecuteLoop(BaseLoop):

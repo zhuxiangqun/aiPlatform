@@ -1183,4 +1183,29 @@ async def activate_tenant(_auth: str = Depends(require_auth)):
     if not all_done:
         raise HTTPException(status_code=400, detail="readiness check not passed")
     _onboarding_state[tenant_id]["live"] = True
-    return {"tenant_id": tenant_id, "status": "active", "activated_at": __import__("time").strftime("%Y-%m-%dT%H:%M:%SZ", __import__("time").gmtime())}
+
+    # ── SpecLifecycle: 创建 DRAFT 版本 ──
+    try:
+        from core.harness.models.spec_lifecycle import get_spec_lifecycle, RevisionTrigger
+        sl = get_spec_lifecycle()
+        agent_config = state.get("agent", {})
+        agent_id = agent_config.get("agent_id", tenant_id) if isinstance(agent_config, dict) else tenant_id
+        spec_content = {
+            "agent_md": state.get("agent_md", agent_config.get("template_description", "") if isinstance(agent_config, dict) else ""),
+            "tools": state.get("tools", []),
+            "evals": state.get("evals", []),
+            "stage_configs": state.get("stage_configs", []),
+            "model": state.get("model", {}),
+        }
+        sl.create_draft(
+            spec_id=agent_id,
+            content=spec_content,
+            created_by="OnboardingWizard",
+            trigger_detail=f"Onboarding activated: {agent_id}",
+        )
+    except Exception:
+        logging.getLogger("onboarding").debug("SpecLifecycle draft creation skipped", exc_info=True)
+
+    return {"tenant_id": tenant_id, "status": "active",
+            "spec_id": agent_id,
+            "activated_at": __import__("time").strftime("%Y-%m-%dT%H:%M:%SZ", __import__("time").gmtime())}

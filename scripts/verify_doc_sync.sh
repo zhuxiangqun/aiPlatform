@@ -146,3 +146,26 @@ else
     echo "    3. 重新运行: bash scripts/verify_doc_sync.sh"
     exit 1  # always block — doc sync is mandatory
 fi
+
+# Step 3: Code-doc capability gap check (new harness modules without CAPABILITIES entry)
+echo ""
+echo -e "${YELLOW}═══ Step 3: Code-Doc capability gap ═══${NC}"
+if python3 "$WORKSPACE/scripts/check_code_doc_gap.py" 2>&1; then
+    echo -e "${GREEN}✅ 无能力缺口${NC}"
+else
+    echo -e "${RED}❌ 新增代码未同步文档${NC}"
+    echo "  修复: 在 AIPLAT_CAPABILITIES.md 对应章节为每个新模块添加一行"
+    echo "  脚本: python3 scripts/check_code_doc_gap.py 查看缺口列表"
+    exit 1
+fi
+
+# Step 2: Capability count consistency (stats table vs section ✅ counts)
+echo ""
+echo -e "${YELLOW}═══ Step 2: Capability count consistency ═══${NC}"
+if python3 "$WORKSPACE/scripts/verify_capability_consistency.py" 2>&1; then
+    echo -e "${GREEN}✅ 一致性检查通过${NC}"
+else
+    echo -e "${RED}❌ 统计表与实际章节计数不一致${NC}"
+    echo "  修复: 手动更新统计表，或运行 python3 scripts/verify_capability_consistency.py 查看差异"
+    exit 1
+fi

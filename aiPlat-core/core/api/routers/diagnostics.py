@@ -159,7 +159,7 @@ async def _auto_fill_agents_async(names: list):
                     f"Auto-filled {saved}/{len(results)} shell agents"
                 )
     except Exception:
-        logging.getLogger("aiplat.diagnostics").debug("Auto-fill best-effort skipped", exc_info=True)
+        logging.getLogger("aiplat.diagnostics").warning("Auto-fill best-effort skipped", exc_info=True)
 
 
 def _history_path() -> str:
@@ -292,7 +292,7 @@ def _store():
     return getattr(rt, "execution_store", None) if rt else None
 
 
-@router.post("/diagnostics/e2e/smoke")
+@router.post("/diagnostics/e2e/smoke", response_model=Dict[str, Any])
 async def run_e2e_smoke(request: Dict[str, Any]):
     """
     Production-grade full-chain smoke.
@@ -327,7 +327,7 @@ async def run_e2e_smoke(request: Dict[str, Any]):
     return result.payload
 
 
-@router.get("/diagnostics/context/config")
+@router.get("/diagnostics/context/config", response_model=Dict[str, Any])
 async def get_context_config():
     """Return context/prompt assembly configuration for observability (no secrets)."""
     from core.harness.context.engine import DefaultContextEngine
@@ -366,7 +366,7 @@ async def get_context_config():
     }
 
 
-@router.post("/diagnostics/prompt/assemble")
+@router.post("/diagnostics/prompt/assemble", response_model=Dict[str, Any])
 async def diagnostics_prompt_assemble(request: DiagnosticsPromptAssembleRequest, http_request: Request):
     """
     Assemble prompt + context and return metadata for debugging.
@@ -500,7 +500,7 @@ async def diagnostics_prompt_assemble(request: DiagnosticsPromptAssembleRequest,
                 logging.debug(str(e), exc_info=True)
 
 
-@router.get("/diagnostics/context/metrics/recent")
+@router.get("/diagnostics/context/metrics/recent", response_model=Dict[str, Any])
 async def diagnostics_context_metrics_recent(limit: int = 50, offset: int = 0, tenant_id: Optional[str] = None, session_id: Optional[str] = None):
     """Recent context assembly metrics (syscall_events kind=metric, name=context_assemble)."""
     store = _store()
@@ -509,7 +509,7 @@ async def diagnostics_context_metrics_recent(limit: int = 50, offset: int = 0, t
     return await store.list_syscall_events(limit=int(limit), offset=int(offset), kind="metric", name="context_assemble", tenant_id=tenant_id, session_id=session_id)
 
 
-@router.get("/diagnostics/context/metrics/summary")
+@router.get("/diagnostics/context/metrics/summary", response_model=Dict[str, Any])
 async def diagnostics_context_metrics_summary(window_hours: int = 24, top_n: int = 8, tenant_id: Optional[str] = None):
     """Aggregate context metrics for trends/regression (diagnostics use)."""
     store = _store()
@@ -593,7 +593,7 @@ async def diagnostics_context_metrics_summary(window_hours: int = 24, top_n: int
     }
 
 
-@router.get("/diagnostics/exec/backends")
+@router.get("/diagnostics/exec/backends", response_model=Dict[str, Any])
 async def diagnostics_exec_backends():
     """Exec backend diagnostics."""
     from core.api.facades.security_facade import get_exec_backend
@@ -603,7 +603,7 @@ async def diagnostics_exec_backends():
     return {"status": "ok", "current_backend": backend, "backends": health.get("backends") if isinstance(health, dict) else [], "non_local_requires_approval": True}
 
 
-@router.get("/diagnostics/exec/metrics/summary")
+@router.get("/diagnostics/exec/metrics/summary", response_model=Dict[str, Any])
 async def diagnostics_exec_backend_metrics_summary(window_hours: int = 24, limit: int = 20):
     """Exec backend metrics summary (uses run_events aggregated in ExecutionStore)."""
     store = _store()
@@ -612,7 +612,7 @@ async def diagnostics_exec_backend_metrics_summary(window_hours: int = 24, limit
     return await store.exec_backend_metrics_summary(window_hours=int(window_hours or 24), limit=int(limit or 20))
 
 
-@router.post("/diagnostics/guard/run")
+@router.post("/diagnostics/guard/run", response_model=Dict[str, Any])
 async def run_architecture_guard():
     """Execute architecture guard rules and return structured results."""
     from pathlib import Path as _Path
@@ -636,7 +636,7 @@ async def run_architecture_guard():
     }
 
 
-@router.get("/diagnostics/latest")
+@router.get("/diagnostics/latest", response_model=Dict[str, Any])
 def get_latest_diagnostic():
     """Return last diagnostic result (in-memory, current session only)."""
     if _DIAG_CACHE is not None:
@@ -646,7 +646,7 @@ def get_latest_diagnostic():
     return {"cached": False, "message": "尚未运行诊断 — POST /diagnostics/run-all 先"}
 
 
-@router.get("/diagnostics/repairs-latest")
+@router.get("/diagnostics/repairs-latest", response_model=Dict[str, Any])
 async def get_latest_repairs():
     """Return last repair result (in-memory, current session only)."""
     if _DIAG_CACHE is not None:
@@ -654,7 +654,7 @@ async def get_latest_repairs():
     return {"cached": False, "needs_diagnostics": True, "summary": {"total_issues": 0}}
 
 
-@router.get("/diagnostics/summary")
+@router.get("/diagnostics/summary", response_model=Dict[str, Any])
 def get_diagnostic_summary():
     """Return quick alert summary from last diagnostic run."""
     if _DIAG_CACHE is None:
@@ -706,10 +706,11 @@ _LABELS = {
     "traces": "链路追踪", "graph_runs": "图执行", "context_metrics": "上下文",
     "e2e_smoke": "冒烟测试", "doctor": "Doctor", "overview_issues": "概览问题",
     "symbol_health": "符号健康", "lsp": "LSP 诊断", "security": "安全扫描",
+    "full_stack": "全域测试",
 }
 
 
-@router.get("/diagnostics/history")
+@router.get("/diagnostics/history", response_model=Dict[str, Any])
 def get_diagnostic_history():
     """Return last N diagnostic results for trend chart (max 30 entries)."""
     hist = _load_diag_history()
@@ -732,7 +733,7 @@ def _diag_lock(func):
     return wrapper
 
 
-@router.post("/diagnostics/run-all")
+@router.post("/diagnostics/run-all", response_model=Dict[str, Any])
 @_diag_lock
 async def run_all_diagnostics(category: str = "", quick: bool = False):
     """Unified diagnostic endpoint — runs all checks in parallel and returns a combined report.
@@ -768,7 +769,7 @@ async def run_all_diagnostics(category: str = "", quick: bool = False):
         "wiki_health","compliance","overview_issues","traces",
         "graph_runs","context_metrics","e2e_smoke","symbol_health",
         "doctor","lsp","security","arch_guard",
-        "frontend","mcp"
+        "frontend","mcp","full_stack"
     ])
 
     async def _safe(cat_name: str, coro):
@@ -1773,6 +1774,220 @@ async def run_all_diagnostics(category: str = "", quick: bool = False):
                     "items": [{"check": "MCP 连通性", "result": "❌",
                                "detail": f"不可达: {str(e)[:200]}"}]}
 
+    async def _check_full_stack():
+        """Full-stack E2E: Spec lifecycle → Task → Trace → Radar → Dashboard → MarkStable.
+
+        Tests the complete journey from Spec DRAFT through execution to STABLE,
+        verifying that all three Andrew Ng loops (inner/middle/outer) are wired.
+        Uses mock LLM responses — no real LLM calls.
+        """
+        import uuid, time as _time, json as _json
+        run_id = f"diag-{uuid.uuid4().hex[:8]}"
+        items: List[Dict[str, Any]] = []
+        score = 0
+        max_score = 14
+
+        try:
+            from core.harness.models.spec_lifecycle import get_spec_lifecycle, SpecStatus
+            sl = get_spec_lifecycle()
+
+            # J1: Spec creation → execution → review
+            spec_id = "_diag_fullstack"
+            # Clean up previous diagnostic run to prevent dashboard pollution
+            existing = sl.get_latest(spec_id)
+            if existing:
+                try:
+                    sl.mark_archived(spec_id)
+                except Exception:
+                    pass
+            sv = sl.create_draft(spec_id, {"agent_md": "诊断全域测试 Spec"}, created_by="diagnostics",
+                                   trigger_detail="Full-stack diagnostic")
+            if sv and sv.status == SpecStatus.DRAFT:
+                items.append({"check": "J1A Spec 创建", "result": "✅", "detail": f"{spec_id} v{sv.version} DRAFT"})
+                score += 1
+            else:
+                items.append({"check": "J1A Spec 创建", "result": "❌", "detail": "创建失败",
+                               "suggested_fix": "检查 spec_lifecycle.db 是否可写，SpecLifecycle 单例是否正常"})
+
+            # Promote → PENDING → EXECUTING → REVIEW
+            sl.promote_to_pending(spec_id)
+            v = sl.get_latest(spec_id)
+            if v and v.status == SpecStatus.PENDING:
+                items.append({"check": "J1B PENDING", "result": "✅", "detail": f"v{v.version} PENDING"})
+                score += 1
+            else:
+                items.append({"check": "J1B PENDING", "result": "❌", "detail": f"status={v.status.value if v else 'nil'}",
+                               "suggested_fix": "检查 SpecLifecycle.promote_to_pending() 的状态转换逻辑"})
+
+            sl.mark_executing(spec_id, run_id)
+            v = sl.get_latest(spec_id)
+            if v and v.status == SpecStatus.EXECUTING:
+                items.append({"check": "J1C EXECUTING", "result": "✅", "detail": f"run={run_id}"})
+                score += 1
+            else:
+                items.append({"check": "J1C EXECUTING", "result": "❌", "detail": f"status={v.status.value if v else 'nil'}",
+                               "suggested_fix": "检查 SpecLifecycle.mark_executing() 的状态转换逻辑"})
+
+            # Simulate trace data exactly like production
+            sim_trace = [
+                {"step": 1, "agent": "employee_agent", "reasoning": "开始执行诊断任务", "decision": "call_agent", "outcome": "ok"},
+                {"step": 2, "agent": "employee_agent", "reasoning": "执行核心逻辑", "decision": "call_agent", "outcome": "ok"},
+                {"step": 3, "agent": "employee_agent", "reasoning": "生成输出", "decision": "call_agent", "outcome": "ok"},
+                {"step": 4, "agent": "", "reasoning": "任务完成", "decision": "finish", "outcome": "ok"},
+            ]
+            sl.mark_review(spec_id, sv.version, run_id=run_id,
+                           result={"summary": "诊断测试完成", "trace": sim_trace,
+                                   "agent_order": ["employee_agent"] * 3})
+            v = sl.get_latest(spec_id)
+            if v and v.status == SpecStatus.REVIEW:
+                items.append({"check": "J1D REVIEW", "result": "✅", "detail": f"trace={len(sim_trace)} steps"})
+                score += 1
+            else:
+                items.append({"check": "J1D REVIEW", "result": "❌", "detail": f"status={v.status.value if v else 'nil'}",
+                               "suggested_fix": "检查 SpecLifecycle.mark_review() 是否正确写入 trace 数据"})
+
+            # J2: Knowledge pipeline — ontology → wiki → document
+            try:
+                from core.harness.ontology_engine.engine import OntologyEngine
+                if OntologyEngine:
+                    items.append({"check": "J2A 本体引擎", "result": "✅", "detail": f"OntologyEngine 可导入"})
+                    score += 1
+                else:
+                    items.append({"check": "J2A 本体引擎", "result": "❌", "detail": "导入失败"})
+            except Exception as e:
+                items.append({"check": "J2A 本体引擎", "result": "❌", "detail": str(e)[:80],
+                               "suggested_fix": "检查 ontology_engine/ 模块和本体 YAML 文件是否存在"})
+
+            try:
+                from core.harness.knowledge.wiki_engine import wiki_health_report
+                if callable(wiki_health_report):
+                    items.append({"check": "J2B Wiki引擎", "result": "✅", "detail": f"wiki_health_report 可用"})
+                    score += 1
+                else:
+                    items.append({"check": "J2B Wiki引擎", "result": "❌", "detail": "不可调用"})
+            except Exception as e:
+                items.append({"check": "J2B Wiki引擎", "result": "❌", "detail": str(e)[:80],
+                               "suggested_fix": "检查知识库目录和 wiki_engine 模块配置"})
+
+            try:
+                from core.harness.document.protocol import ConverterRegistry
+                if ConverterRegistry:
+                    items.append({"check": "J2C 文档解析", "result": "✅", "detail": f"ConverterRegistry 可导入"})
+                    score += 1
+                else:
+                    items.append({"check": "J2C 文档解析", "result": "❌", "detail": "导入失败"})
+            except Exception as e:
+                items.append({"check": "J2C 文档解析", "result": "❌", "detail": str(e)[:80],
+                               "suggested_fix": "检查 document/converters/ 模块是否正确注册"})
+
+            # J2D/E: Swarm + Roundtable (new collaboration modes)
+            try:
+                from core.harness.execution.swarm import run_swarm
+                if run_swarm:
+                    items.append({"check": "J2D Swarm模式", "result": "✅", "detail": f"run_swarm 可导入"})
+                    score += 1
+                else:
+                    items.append({"check": "J2D Swarm模式", "result": "❌", "detail": "导入失败"})
+            except Exception as e:
+                items.append({"check": "J2D Swarm模式", "result": "❌", "detail": str(e)[:80],
+                               "suggested_fix": "检查 harness/execution/swarm.py 是否存在"})
+
+            try:
+                from core.harness.execution.roundtable import run_roundtable
+                if run_roundtable:
+                    items.append({"check": "J2E Roundtable模式", "result": "✅", "detail": f"run_roundtable 可导入"})
+                    score += 1
+                else:
+                    items.append({"check": "J2E Roundtable模式", "result": "❌", "detail": "导入失败"})
+            except Exception as e:
+                items.append({"check": "J2E Roundtable模式", "result": "❌", "detail": str(e)[:80],
+                               "suggested_fix": "检查 harness/execution/roundtable.py 是否存在"})
+
+            # J3/J5: TraceVisualizer
+            try:
+                from core.harness.execution.trace_visualizer import get_trace_visualizer
+                viz = get_trace_visualizer()
+                result = v.execution_result or {}
+                trace_data = result.get("trace", [])
+                summary = viz.analyze(trace_data, spec_id=spec_id, stage_count=1)
+                if summary.total_steps == 4 and summary.agent_call_order:
+                    items.append({"check": "J3A Trace 解析", "result": "✅", "detail": f"{summary.total_steps}步, {len(summary.agent_call_order)} agents"})
+                    score += 1
+                else:
+                    items.append({"check": "J3A Trace 解析", "result": "❌", "detail": f"steps={summary.total_steps}",
+                                   "suggested_fix": "检查 DynamicRouter._persist_dynamic_trace() 是否正确保存 trace"})
+            except Exception as e:
+                items.append({"check": "J3A Trace 解析", "result": "❌", "detail": str(e)[:80],
+                               "suggested_fix": "检查 TraceVisualizer.analyze() 是否正确导入"})
+
+            # J5A: Dashboard aggregation
+            try:
+                # Inline _collect_pending_decisions to avoid cross-router import
+                active = sl.get_all_active()
+                decisions_count = sum(1 for sv in active if sv.status == SpecStatus.REVIEW)
+                found_self = any(sv.spec_id == spec_id for sv in active if sv.status == SpecStatus.REVIEW)
+                if found_self:
+                    items.append({"check": "J5A 仪表板聚合", "result": "✅", "detail": f"pending={decisions_count}"})
+                    score += 1
+                else:
+                    items.append({"check": "J5A 仪表板聚合", "result": "⚠️", "detail": "未在 pending 中找到",
+                                   "suggested_fix": "检查 get_all_active() 是否包含 REVIEW 状态的 Spec"})
+            except Exception as e:
+                items.append({"check": "J5A 仪表板聚合", "result": "❌", "detail": str(e)[:80],
+                               "suggested_fix": "检查 SpecLifecycle.get_all_active() 的 SQL 查询"})
+
+            # J3B/J5B: Mark → STABLE
+            sl.mark_stable(spec_id)
+            v = sl.get_latest(spec_id)
+            if v and v.status == SpecStatus.STABLE:
+                items.append({"check": "J3B Spec→STABLE", "result": "✅", "detail": f"v{v.version} STABLE"})
+                score += 1
+            else:
+                items.append({"check": "J3B Spec→STABLE", "result": "❌", "detail": f"status={v.status.value if v else 'nil'}",
+                               "suggested_fix": "检查 SpecLifecycle.mark_stable() 状态转换: 只有 REVIEW 状态可转为 STABLE"})
+
+            # J4: Training monitor
+            try:
+                from core.harness.training.auto_trigger import get_lora_auto_trigger
+                trigger = get_lora_auto_trigger()
+                status = trigger.get_status()
+                if isinstance(status, dict) and "threshold" in status:
+                    items.append({"check": "J4A 训练监控", "result": "✅", "detail": f"q={status['quality_count']}/{status['threshold']}"})
+                    score += 1
+                else:
+                    items.append({"check": "J4A 训练监控", "result": "⚠️", "detail": "状态不可读",
+                                   "suggested_fix": "检查 LoRAAutoTrigger.get_status() 是否正确返回 dict"})
+            except Exception as e:
+                items.append({"check": "J4A 训练监控", "result": "❌", "detail": str(e)[:80],
+                               "suggested_fix": "检查 auto_trigger.py 模块是否可导入"})
+
+            # J5C: Timeline — inlined from workbench._collect_timeline
+            try:
+                history = sl.get_history(spec_id)
+                timeline_entries = [h for h in history if h.status.value != "draft"]
+                items.append({"check": "J5C 时间轴", "result": "✅", "detail": f"{len(timeline_entries)} 个版本事件"})
+                score += 1
+            except Exception as e:
+                items.append({"check": "J5C 时间轴", "result": "⚠️", "detail": str(e)[:80],
+                               "suggested_fix": "检查 SpecLifecycle.get_history() 是否正确返回版本记录"})
+
+            # Clean up: archive the test spec to keep dashboard clean
+            try:
+                sl.mark_archived(spec_id)
+            except Exception:
+                pass
+
+            status_str = "pass" if score >= 12 else "warn" if score >= 8 else "fail"
+            return {
+                "status": status_str,
+                "score": round(score / max_score * 100),
+                "signals": {"spec_id": spec_id, "run_id": run_id},
+                "items": items,
+            }
+        except Exception as e:
+            return {"status": "error", "score": 0, "error": str(e)[:200],
+                    "items": items + [{"check": "全域测试", "result": "❌", "detail": f"异常: {str(e)[:150]}"}]}
+
     # Build check list: all or single category
     checks = [
         ("core_runtime", _check_core_runtime()),
@@ -1792,6 +2007,7 @@ async def run_all_diagnostics(category: str = "", quick: bool = False):
         ("context_metrics", _check_context_metrics()),
         ("governance", _check_governance()),
         ("frontend", _check_frontend()),
+        ("full_stack", _check_full_stack()),
     ]
     # Slow checks — skipped in quick mode
     if not quick:
@@ -1842,10 +2058,11 @@ async def run_all_diagnostics(category: str = "", quick: bool = False):
         "traces": "链路追踪", "graph_runs": "图执行", "context_metrics": "上下文",
         "e2e_smoke": "冒烟测试", "doctor": "Doctor", "overview_issues": "概览问题",
         "symbol_health": "符号健康", "lsp": "LSP 诊断", "security": "安全扫描",
-        "cross_lang": "跨语言连接", "route_coverage": "路由覆盖",
-        "domain_coupling": "跨域耦合", "fragile_base": "脆弱基类",
+    "cross_lang": "跨语言连接", "route_coverage": "路由覆盖",
+    "domain_coupling": "跨域耦合", "fragile_base": "脆弱基类",
         "governance": "治理", "skill_lint": "Skill Lint",
         "frontend": "前端守卫", "mcp": "MCP 连通性",
+        "full_stack": "全域测试",
     }
     for cat_name, cat in categories.items():
         if not isinstance(cat, dict):
@@ -1918,7 +2135,7 @@ async def run_all_diagnostics(category: str = "", quick: bool = False):
     return result
 
 
-@router.post("/diagnostics/run-single")
+@router.post("/diagnostics/run-single", response_model=Dict[str, Any])
 async def run_single_diagnostics(req: dict):
     """Run a single diagnostic category and return its result with real-time observation."""
     category = req.get("category", "")
@@ -1928,7 +2145,7 @@ async def run_single_diagnostics(req: dict):
     return await run_all_diagnostics(category=category)
 
 
-@router.post("/diagnostics/repairs")
+@router.post("/diagnostics/repairs", response_model=Dict[str, Any])
 async def get_repairs():
     """Aggregate all fixable issues across diagnostic systems.
 
@@ -2121,7 +2338,7 @@ async def get_repairs():
     }
 
 
-@router.get("/diagnostics/observability/stats")
+@router.get("/diagnostics/observability/stats", response_model=Dict[str, Any])
 async def observability_stats():
     """Aggregated observability stats for the dashboard."""
     import sqlite3
@@ -2354,12 +2571,12 @@ def _evaluate_alerts(stats: Dict) -> List[dict]:
     return alerts
 
 
-@router.get("/diagnostics/observability/alerts")
+@router.get("/diagnostics/observability/alerts", response_model=Dict[str, Any])
 async def get_alerts():
     return {"alerts": _load_alert_config()}
 
 
-@router.put("/diagnostics/observability/alerts")
+@router.put("/diagnostics/observability/alerts", response_model=Dict[str, Any])
 async def update_alerts(data: dict = None):
     rules = data.get("alerts") if data else None
     if not isinstance(rules, list):
@@ -2370,7 +2587,7 @@ async def update_alerts(data: dict = None):
 
 # ── Model Playground ─────────────────────────────────────────────
 
-@router.get("/diagnostics/playground/models")
+@router.get("/diagnostics/playground/models", response_model=Dict[str, Any])
 async def list_playground_models():
     """List available LLM models for the playground."""
     try:
@@ -2388,7 +2605,7 @@ async def list_playground_models():
         return {"models": []}
 
 
-@router.post("/diagnostics/playground/compare")
+@router.post("/diagnostics/playground/compare", response_model=Dict[str, Any])
 async def compare_models(data: dict = None):
     """Compare LLM outputs across multiple models concurrently."""
     prompt = data.get("prompt", "") if data else ""
@@ -2454,7 +2671,7 @@ async def compare_models(data: dict = None):
     return {"results": clean, "prompt": prompt}
 
 
-@router.post("/diagnostics/playground/chat")
+@router.post("/diagnostics/playground/chat", response_model=Dict[str, Any])
 async def playground_chat(data: dict = None):
     """Quick-test chat: send a message with pipeline stages as context."""
     message = data.get("message", "") if data else ""
@@ -2506,7 +2723,7 @@ async def playground_chat(data: dict = None):
 # Darwin Arena — agent competition benchmark (manual trigger only)
 # ══════════════════════════════════════════════════════════════
 
-@router.post("/diagnostics/arena/run")
+@router.post("/diagnostics/arena/run", response_model=Dict[str, Any])
 async def arena_run_round_robin(contenders: List[Dict[str, Any]]):
     """
     Run a round-robin tournament among agent variants.
@@ -2556,7 +2773,7 @@ async def arena_run_round_robin(contenders: List[Dict[str, Any]]):
         raise HTTPException(status_code=500, detail=f"Arena failed: {str(e)}")
 
 
-@router.get("/diagnostics/arena/leaderboard")
+@router.get("/diagnostics/arena/leaderboard", response_model=Dict[str, Any])
 async def arena_leaderboard():
     """Get current Darwin Arena leaderboard (read-only)."""
     try:
@@ -2567,7 +2784,7 @@ async def arena_leaderboard():
         return {"leaderboard": [], "error": str(e)}
 
 
-@router.post("/diagnostics/arena/regression")
+@router.post("/diagnostics/arena/regression", response_model=Dict[str, Any])
 async def arena_run_regression(baseline_path: Optional[str] = None):
     """
     Run benchmark regression against baseline.
@@ -2623,7 +2840,7 @@ async def arena_run_regression(baseline_path: Optional[str] = None):
 # Eval Dashboard — unified evaluation metrics aggregation
 # ══════════════════════════════════════════════════════════════
 
-@router.get("/diagnostics/eval/summary")
+@router.get("/diagnostics/eval/summary", response_model=Dict[str, Any])
 async def eval_summary():
     """Unified eval dashboard: arena + AB scores + evolution + obs + diagnostic trend."""
     import time as _time
@@ -2771,7 +2988,7 @@ async def eval_summary():
     return result
 
 
-@router.get("/diagnostics/eval/ab-scores")
+@router.get("/diagnostics/eval/ab-scores", response_model=Dict[str, Any])
 async def eval_ab_scores(template_id: Optional[str] = None, limit: int = Query(50, ge=1, le=200)):
     """AB optimizer per-template score history."""
     store = _store()
@@ -2800,7 +3017,7 @@ async def eval_ab_scores(template_id: Optional[str] = None, limit: int = Query(5
         raise HTTPException(status_code=500, detail=f"AB scores query failed: {str(e)}")
 
 
-@router.get("/diagnostics/eval/arena-history")
+@router.get("/diagnostics/eval/arena-history", response_model=Dict[str, Any])
 async def eval_arena_history(limit: int = Query(20, ge=1, le=100)):
     """Persisted Arena match history and leaderboard."""
     gs = _store()

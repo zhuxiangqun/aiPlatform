@@ -262,7 +262,7 @@ class PipelineStageConfig(BaseModel):
     context_profile: str = "code"        # "minimal" | "code" | "debug" | "deep"
     # Anthropic 5 patterns: chain | router | parallel | orchestrator | evaluator_optimizer
     pipeline_mode: str = "chain"          # "chain" | "router" | "parallel" | "orchestrator" | "evaluator_optimizer" | "agent"
-    routing_mode: str = "static"           # "static" | "llm" — LLM-driven dynamic next-stage routing (DynamicRouter)
+    routing_mode: str = "static"           # "static" | "llm" | "debate" | "swarm" | "roundtable" — routing strategy
     eval_model: str = ""  # dedicated evaluator model (empty = fallback to stage.model or AIPLAT_EVAL_MODEL)
     routing_rules: List[dict] = Field(default_factory=list)  # declarative conditional routing  # 4step-verified
     deviation_tolerance: float = 0.0  # [0.0, 10.0] Accept output when overall score >= this (0=disabled)

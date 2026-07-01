@@ -178,22 +178,35 @@ tests/constitution/test_infra_agnostic.py    ← Infra 去应用化
     2. pytest tests/ -v --tb=short                  ← Python 语义检查
     ```
 
-16. **已知例外与永久债务（2026-06）- 3 条**：
+16. **已知例外与永久债务（2026-06 → 2026-07 更新）- 9 条**：
 
     | 编号 | 章节 | 内容 | 分类 |
     |------|------|------|------|
     | A | §1 | `workflow_manager.py` → `platform/storage/sqlite.py` 跨层导入 | **已知例外** — 管理工具允许跨层访问 |
     | B | §35 | 2 个 execute 端点（引擎 + 工作区）被标记为 WARNING | **永久告警** — 2 是正确数量，若增至 ≥3 升级为 ERROR |
-    | C | §40 | 模型注册/路由迁移尚未完成（33 条规则） | **迁移中** — CLAUDE.md §14 已规划从 core 迁到 infra，`model_registry.py`/`model_router.py` 标记 deprecated。`model_injection.py` 为集中注入点（canonical）。`kb_eval.py`/`packages_registry.py`/`prompt_eval.py` 等含裸 `sqlite3.connect()` 为已批准模式。`base.py:get_model()` 为 Agent 级别模型（与 model_injection 区分）。待到 infra ModelManager 提供完整 `select()` 后再统一迁移。 |
-    | D | §65 | 4 个检索函数缺 tenant_id：`wiki_fts.py:fts_search`、`retriever.py:retrieve`、`retrieval.py:sys_wiki_retrieve`、`sys_wiki_context` | **修复中** — `fts_search` 已加 `tenant_id` 参数(2026-06-24)，`sys_wiki_retrieve` 已加 `tenant_id` 参数(2026-06-24)，`WikiPageRetriever` 通过 `collection_ids` 隔离 |
+    | C | §40 | 模型注册/路由迁移 | **✅ 已完成 (2026-06-29)** — `model_router.py` 已删除，`get_model_registry()` 重命名为 `get_model_manager()`，llm.py 和 base.py 迁移到 `model_injection.create_selected_adapter()`。infra `ModelManager.select()` 已确认存在。 |
+    | D | §65 | 4 个检索函数缺 tenant_id | **✅ 部分完成 (2026-06-29)** — `KnowledgeQuery` 新增 `tenant_id` 字段，`_sync_wiki_retrieve` 透传，`sys_wiki_context` 加参数。`WikiPageRetriever.retrieve` 仍通过 `collection_ids` 隔离（`KnowledgeQuery.tenant_id` 已接收但未用于实际过滤）。 |
     | E | §66 | `PipelineStageConfig` 校验识别为已知假阳性 | **假阳性** |
-    | F | §65 | CRAG 3 级回退 | **✅ 已实现** — `materials_chat.py:380-498`：Level1 本体优先→Level2 FTS5→Level3 HyDE，代码审计确认（2026-06-24） |
-    | G | §65 | WikiCircuitBreaker/DomainRouter 配置 | **✅ 已实现** — `retrieval.py:506-566` WikiCircuitBreaker 三态熔断器，`domain_router.py:26` DomainRouter 3层级联，均已接入（2026-06-24） |
-    | H | §67 | 约 15 个路由端点缺 `response_model` | **已知债务** — API 契约化改造尚未完成，不影响功能 |
+    | F | §65 | CRAG 3 级回退 | **✅ 已实现** — `materials_chat.py:380-498` |
+    | G | §65 | WikiCircuitBreaker/DomainRouter 配置 | **✅ 已实现** — `retrieval.py:506-566`，`domain_router.py:26` |
+    | H | §67 | ~60+ 个路由文件缺 `response_model`（~1,000+ 端点） | **已知债务** — API 契约化改造尚未完成。已修补 15 个核心端点（chat/conversations/approvals/builder）。 |
+    | I | — | Episodic 记忆 LLM 摘要不可达 | **✅ 已修复 (2026-06-29)** — `MemoryManager.__init__` 自动注入 `best_model_for_purpose("doc_llm")`，LLM 摘要路径从不可达变为激活。 |
+    | J | — | FeedbackLoops DB 后端未实现 | **✅ 已修复 (2026-06-29)** — `_store_to_db()` 实现 SQLite INSERT/retrieve/delete/cleanup 全路径。 |
+    | K | — | DatabaseTool 占位符 | **✅ 已修复 (2026-06-29)** — SQLite/PostgreSQL/MySQL 三后端完整实现，默认 SQLite（零依赖），异步驱动可选。 |
+    | L | — | BrowserTestEngine 缺失 action | **✅ 已修复 (2026-06-29)** — 新增 `select_option`/`scroll`/`hover`/`press_key`/`file_upload` 五个 action。 |
+    | M | — | 31 个 engine Skill 缺 `execution_type` 字段 | **✅ 已修复 (2026-06-29)** — 全部 31 个 SKILL.md 已添加 `execution_type: prompt`。 |
+    | N | — | architecture_guard.sh 超时 | **✅ 已修复 (2026-06-29)** — 移除 golden_path E2E 测试（→CI 独立 job）+ 并行化 4 个独立脚本 + 排除 .venv/node_modules。 |
+    | O | — | 3 builder stub routers (死代码) | **✅ 已修复 (2026-06-29)** — `builder_projects.py`/`builder_pipeline.py`/`builder_teams.py` 已删除（未挂载的失源码死代码）。 |
+    | P | — | 3 platform endpoint stubs | **✅ 已修复 (2026-06-29)** — `ingest-directory`/`kb/watch` → 501 Not Implemented + WARNING 日志；`studio/sessions` → WARNING 日志。 |
+    | Q | — | EmailNotifier 假成功 | **✅ 已修复 (2026-06-29)** — 实现 SMTP/TLS 真实发送，环境变量配置（`AIPLAT_SMTP_*`），回退到 console log。 |
+    | R | — | 5 infra management 占位符 | **✅ 已修复 (2026-06-29)** — 全部改为 `raise NotImplementedError` + 清晰的接线说明。 |
+    | S | — | `cancel_pipeline` no-op stub | **✅ 已修复 (2026-06-29)** — 真实实现：append_run_event(cancel_requested) + cancel_queued_run + EventBus.publish。pipeline engine 主循环定期检查 is_cancel_requested()。 |
+    | T | — | `set_knowledge_providers` no-op stub | **✅ 已修复 (2026-06-29)** — 真实实现：委托 kb_facade → kb_provider 的 4 个 setter 函数 (ingest_fn/query_fn/enqueue_fn/load_doc_kinds_fn)。 |
+    | U | §40 | `auto_trigger.py` 4 处直接读 `AIPLAT_SFT_*_MODEL` env var | **已知例外 (2026-07-01)** — SFT 训练的目标模型是运维决策。已加 `# noqa: env-legacy` 注释标记，与 arch_guard_rules.yaml §40.2 `grep_exclude` 一致。验证：`grep -c 'env-legacy' auto_trigger.py` → 4。 |
 
     **验证命令（排查已知例外后）**：
     ```bash
-    bash scripts/architecture_guard.sh  # 预期：1 ERROR (§1) + 2 WARNING (§35) + 4 ERROR/WARN (§65-§66) = 7 total，其中 4 个 §65-§66 为已知债务，其余已排除
+    bash scripts/architecture_guard.sh  # 预期：1 ERROR (§1) + 2 WARNING (§35) = 3 total
     ```
 
 ## 17. 技能执行真实性（强制——2026-06 新增 §44）

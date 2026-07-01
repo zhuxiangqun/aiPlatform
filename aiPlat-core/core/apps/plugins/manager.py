@@ -69,3 +69,40 @@ class PluginManager:
         enabled = bool(int(cur.get("enabled") or 0) == 1)
         # upsert using stored manifest + keep enabled flag
         return await self.upsert_plugin(tenant_id=str(tenant_id) if tenant_id else None, manifest=pv.get("manifest") or {}, enabled=enabled)
+
+
+# ── P2-2: Plugin Slot System (OpenClaw 借鉴) ──
+
+import os as _os
+import logging as _logging
+
+_slot_log = _logging.getLogger("aiplat.plugins.slot")
+
+# Slot registry: {slot_name: active_plugin_id}
+_slot_registry: Dict[str, str] = {}
+# Archived states: {plugin_id: {slot_name: state_json}}
+_slot_archives: Dict[str, Dict[str, Any]] = {}
+
+
+def register_plugin_slot(plugin_id: str, slot: str) -> bool:
+    """Register plugin to a slot. Replaces existing plugin if slot occupied."""
+    strict = _os.getenv("AIPLAT_PLUGIN_SLOT_STRICT", "true").lower() not in ("0", "false", "no")
+    if strict and slot in _slot_registry and _slot_registry[slot] != plugin_id:
+        _slot_log.error("Slot '%s' already occupied by '%s', rejecting '%s'", slot, _slot_registry[slot], plugin_id)
+        return False
+    _slot_registry[slot] = plugin_id
+    _slot_log.info("Slot '%s' registered to '%s'", slot, plugin_id)
+    return True
+
+
+def get_active_plugin(slot: str) -> Optional[str]:
+    """Get the active plugin ID for a slot."""
+    return _slot_registry.get(slot)
+
+
+def unregister_plugin_slot(slot: str, archive_state: Optional[Dict[str, Any]] = None) -> None:
+    """Unregister a slot, optionally archiving the old plugin's state."""
+    old = _slot_registry.pop(slot, None)
+    if old and archive_state:
+        _slot_archives.setdefault(old, {})[slot] = archive_state
+    _slot_log.info("Slot '%s' freed (was '%s')", slot, old or "none")

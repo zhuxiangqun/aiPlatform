@@ -126,6 +126,16 @@ docker load < images/aiplat-core.tar
 
 检查防火墙，确保端口 5173/8000/8002 允许入站。
 
+## 文档导航
+
+部署只是第一步。了解系统全貌请从 [docs/README.md](docs/README.md) 开始——按 5 分钟 → 30 分钟 → 深入子系统的分层结构引导阅读。
+
+关键入口：
+- [能力全景](AIPLAT_CAPABILITIES.md) — 398 项能力 × 代码位置
+- [开发规约](CLAUDE.md) — 什么能做、什么不能做
+- [路线图](AIPLAT_ROADMAP.md) — 做完了什么、下一步做什么
+- [诊断报告](AIPLAT_DIAGNOSTIC_REPORT.md) — 系统健康快照
+
 ## 技术支持
 
 如有问题，请联系管理员或查看项目文档。

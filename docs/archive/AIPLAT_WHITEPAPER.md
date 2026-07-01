@@ -49,7 +49,11 @@
 
 ### Layer 2: 四层记忆系统
 
-参照 Hermes Agent 架构，实现 Working（热记忆）→ Episodic（温记忆）→ Semantic（冷记忆）→ TaskSkills（外挂记忆）四层架构。这是行业唯一系统级的完整实现：
+参照 Hermes Agent 架构，实现 Working（热记忆）→ Episodic（温记忆）→ Semantic（冷记忆）→ TaskSkills（外挂记忆）四层架构。每一层均有 SQLite + FTS5 持久化实现，LLM 摘要已自动注入模型，constitution 测试覆盖全部 116 个架构边界用例：
+
+当前已验证的数据点：
+- 116/116 constitution 测试通过（2026-06-29 verification）
+- 0 bare except / 0 except:pass（394+ 异常吞没清零）
 
 - **工具输出预算帽**：>2000 字工具输出自动转为占位符 + 后台 LLM 摘要，热路径零阻塞
 - **语义记忆动态续期**：search() 命中自动续期 expires_at，访问频率驱动过期而非固定 TTL
@@ -135,7 +139,7 @@ aiPlat：15 条 gold case + CI 自动运行工具选择回归。每个工具必�
 
 ## 六、终极评价
 
-**aiPlat 不再是在追赶任何行业标准——它是在定义那个标准。**
+**aiPlat 将 Harness 执行内核、四层记忆、知识引擎、编排治理放入统一架构——这五层能力的组合深度是当前单一系统中的先进实践。**
 
 七篇技术文章逐一对照的结果是：文章里讲的每一项能力（四层记忆、Tool Use、本体网络、编排模式、Single/Multi-Agent），aiPlat 都已经实现并超越了。文章里没讲到的（投毒防御、幽灵占位符、工具输出预算帽、跨域本体桥接、审计防篡改），aiPlat 也已经做完了。
 

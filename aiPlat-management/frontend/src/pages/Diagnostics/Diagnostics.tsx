@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Activity, GitBranch, Share2, Zap, Wrench, FolderSearch, Wand2, ShieldCheck, AlertTriangle, BarChart3, ArrowLeftRight } from 'lucide-react';
+import { Activity, GitBranch, Share2, Zap, Wrench, FolderSearch, Wand2, ShieldCheck, AlertTriangle, BarChart3, ArrowLeftRight, Fingerprint, Heart } from 'lucide-react';
 
 import { Card, CardContent, CardHeader, Badge, Button, toast } from '../../components/ui';
 import { diagnosticsApi } from '../../services';
@@ -47,6 +47,7 @@ const DIAG_TO_TOOL: Record<string, { tool: string; threshold: number }[]> = {
   mcp: [{ tool: 'Syscalls', threshold: 75 }],
   frontend: [{ tool: 'Code Intel', threshold: 80 }],
   skill_realness: [{ tool: 'Doctor', threshold: 75 }],
+  full_stack: [{ tool: 'E2E Smoke', threshold: 100 }, { tool: 'Traces', threshold: 90 }, { tool: 'Doctor', threshold: 80 }],
 };
 
 const Diagnostics: React.FC = () => {
@@ -86,13 +87,20 @@ const Diagnostics: React.FC = () => {
     manualRunRef.current = true;
     try {
       const res = await fetch('/api/core/diagnostics/run-all', { method: 'POST' });
+      if (!res.ok) throw new Error(`请求失败 (${res.status})`);
       const data = await res.json();
+      if (data.run_id === 'skipped') {
+        toast.warning('诊断引擎正忙，请等当前诊断完成后再试');
+        setDiagRunning(false);
+        return;
+      }
       setDiagResult(data);
       setDiagRunId(data.run_id || '');
-      setDiagRunning(false);
     } catch (e: any) {
+      toast.error('诊断失败', e?.message || String(e));
+    } finally {
       setDiagRunning(false);
-      toast.error('诊断失败', e?.message || e);
+      manualRunRef.current = false;
     }
   };
 
@@ -103,13 +111,20 @@ const Diagnostics: React.FC = () => {
     manualRunRef.current = true;
     try {
       const res = await fetch('/api/core/diagnostics/run-all?quick=true', { method: 'POST' });
+      if (!res.ok) throw new Error(`请求失败 (${res.status})`);
       const data = await res.json();
+      if (data.run_id === 'skipped') {
+        toast.warning('诊断引擎正忙，请等当前诊断完成后再试');
+        setQuickDiagRunning(false);
+        return;
+      }
       setDiagResult(data);
       setDiagRunId(data.run_id || '');
-      setQuickDiagRunning(false);
     } catch (e: any) {
+      toast.error('快速诊断失败', e?.message || String(e));
+    } finally {
       setQuickDiagRunning(false);
-      toast.error('快速诊断失败', e?.message || e);
+      manualRunRef.current = false;
     }
   };
 
@@ -122,6 +137,7 @@ const Diagnostics: React.FC = () => {
     symbol_health: '符号健康', lsp: 'LSP 诊断', security: '安全扫描',
     governance: '治理', cross_lang: '跨语言', domain_coupling: '领域耦合',
     fragile_base: '脆弱基类', route_coverage: '路由覆盖',
+    full_stack: '全域测试',
   };
   const catColors: Record<string, string> = {
     core_runtime: 'bg-blue-400', code_intel: 'bg-violet-400', capability: 'bg-amber-400',
@@ -132,6 +148,7 @@ const Diagnostics: React.FC = () => {
     symbol_health: 'bg-teal-400', lsp: 'bg-fuchsia-400', security: 'bg-lime-400',
     governance: 'bg-amber-400', cross_lang: 'bg-gray-400', domain_coupling: 'bg-gray-400',
     fragile_base: 'bg-gray-400', route_coverage: 'bg-gray-400',
+    full_stack: 'bg-sky-400',
   };
   
   useEffect(() => {
@@ -160,10 +177,17 @@ const Diagnostics: React.FC = () => {
   // Load cached diagnostic on mount — skip if user already clicked manual run
   useEffect(() => {
     if (isRunning || manualRunRef.current) return;
-    fetch('/api/core/diagnostics/latest')
+    const ctrl = new AbortController();
+    fetch('/api/core/diagnostics/latest', { signal: ctrl.signal })
       .then(r => r.json())
-      .then(data => { if (data.cached !== false && data.overall_score != null) setDiagResult(data); })
+      .then(data => {
+        // Discard stale cache if user triggered a manual run in the meantime
+        if (!manualRunRef.current && data.cached !== false && data.overall_score != null) {
+          setDiagResult(data);
+        }
+      })
       .catch(() => {});
+    return () => ctrl.abort();
   }, [isRunning]);
 
   const items = useMemo(() => [
@@ -188,6 +212,8 @@ const Diagnostics: React.FC = () => {
     { title: 'Observability', desc: 'LLM 调用 / 延迟 / Token 消耗 / 错误率', href: '/diagnostics/observability', icon: BarChart3 },
     { title: 'Run 对比', desc: '并排对比两次执行的差异', href: '/diagnostics/run-comparison', icon: ArrowLeftRight },
     { title: 'Model Playground', desc: '同一 Prompt 并发多模型输出对比', href: '/diagnostics/model-playground', icon: Zap },
+    { title: 'Model Audit', desc: 'LLM 指纹溯源与身份验证', href: '/diagnostics/model-audit', icon: Fingerprint },
+    { title: 'Safety', desc: '对话危机检测与情感安全监控', href: '/diagnostics/safety', icon: Heart },
     { title: 'Eval Dashboard', desc: '统一评估：Arena排名、AB评分、进化适应度、Token效率', href: '/diagnostics/eval', icon: BarChart3 },
   ], []);
 

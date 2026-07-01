@@ -1,7 +1,7 @@
-# aiPlat Remaining Checklist（以 “可结束” 为目标）
+# aiPlat Remaining Checklist — ✅ MVP 已达成
 
-> 目的：把“看起来一直在做但结束不了”的问题，拆成**可验收**的清单。  
-> 规则：除非明确新增需求，否则**不再加新项**，按优先级逐一打勾直至清单清零/或达到 MVP 退出标准。
+> 所有条目已于 2026-07-01 完成。Phase 5 (竞品借鉴) 全部 7 项已合入。
+> 本文档保留仅供审计追溯。
 
 ## MVP 退出标准（建议）
 
@@ -82,6 +82,22 @@
   - [x] 逐步检测：依赖 → 配置 → 验证 → 运行
   - [x] 每一步都能 Doctor→Action 自动修复（带审批/重试）
   - [x] 导出一份 “onboarding 报告”（便于支持/排障）
+
+---
+
+## H. Phase 4: FDE 操作系统 (2026-07-01 ✅ 已完成)
+
+> 本会话完成：SpecLifecycle + FeedbackRadar + TraceVisualizer + FDE Dashboard + 全域诊断 14 项 + 5 routing_modes + Matter 验收
+
+- [x] **Spec 生命周期** — DRAFT→PENDING→EXECUTING→REVIEW→STABLE→ARCHIVED
+- [x] **用户反馈翻译** — FeedbackRadar 5 类信号→Spec 调整建议
+- [x] **决策痕迹可视化** — TraceVisualizer 犹豫/重复/异常检测
+- [x] **FDE 仪表板** — 4 卡聚合 + 时间轴 + 筛选联动 + 种子 Demo
+- [x] **全域诊断** — 14 项检查 (5 条旅程 + 5 routing_modes)
+- [x] **核心 Skills** — CoT 模板化注入 + 内联自纠错 + Debate/Swarm/Roundtable
+- [x] **合规审计修复** — agent list_all bug + shell agents + env-legacy 标记
+- [x] **Matter 验收** — 交付物定义 + 验收标准字段
+- [x] **文档同步** — CAPABILITIES 384→400 (90/100) + CLAUDE.md §16 更新
 
 ---
 

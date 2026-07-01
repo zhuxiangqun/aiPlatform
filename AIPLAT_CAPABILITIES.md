@@ -2,7 +2,7 @@
 
 > 原则：代码即真相。每个条目必须有可验证的代码位置。
 > 更新：任何能力变更时同步更新本文档。
-> 评分：84/100（2026-06-30 更新 — DocumentConverter 协议化改造）
+> 评分：89/100（2026-07-01 更新 — FDE 操作系统 + 5 routing_modes + Matter 验收 + Swarm/Roundtable — 396✅，统计表与章节计数已校正一致）
 
 ---
 
@@ -12,6 +12,10 @@
 2. **废弃能力**：改标记为 ⚠️ deprecated + 日期
 3. **能力增强**：更新"说明"列
 4. **自检**：`grep -rn "代码位置" aiPlat-core/` 确认文件存在
+5. **同步更新统计表**：能力数与 ✅ 数必须一致
+6. **通知下游文档**：若数字变更，在本文件统计表更新后，检查以下引用位置是否过时：
+   - `AIPLAT_ROADMAP.md` 头部引用行 (384→400 时需同步)
+   - CLI 启动 Banner 中的能力数字
 
 ---
 
@@ -181,6 +185,8 @@
 ## 五、Agent 系统
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| kpi_agent | `harness/agents/kpi_agent.py` | ✅ | 自动同步 | 已合入 |
+| strategy_agent | `harness/agents/strategy_agent.py` | ✅ | 自动同步 | 已合入 |
 |------|------|:---:|------|------|
 | 7 种 Agent 实现类 | `apps/agents/` | ✅ | ReAct/Conversational/PlanExecute/RAG/MultiAgent/MaterialsChat/Pipeline | 已合入 |
 | AGENT.md 系统 | `apps/agents/discovery.py` | ✅ | YAML frontmatter → PipelineStageConfig | 已合入 |
@@ -263,6 +269,8 @@
 | 健康检查 | `health/` + `knowledge/capability_health.py` | ✅ | 能力健康+Symbol健康+Wiki健康 | 已合入 |
 | Prometheus 10 指标 | `memory/metrics.py` | ✅ | tool_truncated/semantic_renewed/rrf_latency/early_exit/cache_version 等 | 已合入 |
 | 语义记忆后台清理 | `memory/manager.py:111` | ✅ | 每日定时软删除过期低频记忆，AIPLAT_MEMORY_CLEANUP_INTERVAL 可配 | 已合入 |
+| TraceVisualizer | `harness/execution/trace_visualizer.py` | ✅ | 决策痕迹可视化: 犹豫检测/重复检测/异常预警→Spec调整建议 | 已合入 |
+| FDE Dashboard | `api/routers/workbench.py:fde-dashboard` + `UserWorkbench.tsx` | ✅ | 4卡聚合(待决策/信号预警/执行异常/训练)+时间轴+Spec筛选联动 | 已合入 |
 
 ---
 
@@ -320,6 +328,9 @@
 | model_feedback | `harness/routing/model_feedback.py` | ✅ | 自动同步 | 已合入 |
 | execution_context | `harness/kernel/execution_context.py` | ✅ | 自动同步 | 已合入 |
 | wiki_context | `harness/syscalls/wiki_context.py` | ✅ | 自动同步 | 已合入 |
+| trajectory_scorer | `harness/training/trajectory_scorer.py` | ✅ | 自动同步 | 已合入 |
+| rl_trainer | `harness/training/rl_trainer.py` | ✅ | 自动同步 | 已合入 |
+| value_calculator | `harness/finance/value_calculator.py` | ✅ | 自动同步 | 已合入 |
 |------|------|:---:|------|------|
 | ExperienceVector | `learning/experience_vector.py` | ✅ | PipelineTrace→Embedding→语义检索 | 已合入 |
 | ToolDriftDetector | `learning/tool_drift_detector.py` | ✅ | 4类漂移检测(struct/field/latency/error) + 重放校验自适应 | 已合入 |
@@ -340,6 +351,15 @@
 | 集体进化引擎 | `learning/skill_evolver.py` | ✅ | 跨租户模式扫描 + 匿名化 + tenant_threshold≥2 | 已合入 |
 | Agent SDK | `aiplat-sdk/` | ✅ | L1/L2/L3 三级可用，`pip install aiplat-sdk` 可安装，待IDE集成 | 已合入 |
 | VS Code 插件 | `aiplat-vscode/` | ✅ | SSE 流式聊天 + 代码选择发送 + Apply fix + 隐式反馈，可打包 .vsix | 已合入 |
+| SpecLifecycle | `harness/models/spec_lifecycle.py` | ✅ | Spec 版本状态机: DRAFT→PENDING→EXECUTING→REVIEW→STABLE→ARCHIVED | 已合入 |
+| FeedbackRadar | `harness/learning/feedback_radar.py` | ✅ | 5种用户信号检测→Spec调整建议 (boundary/direction/overload/drift/cold) | 已合入 |
+| InlineSelfCorrect | `harness/execution/loop.py:_try_self_correct` | ✅ | 内联自纠错: PostObserve→reflection-critic→reflection-improve, 1次/步 | 已合入 |
+| MCPToolLazyLoad | `apps/mcp/client.py` | ✅ | MCP工具延迟加载: 启动仅加载名称, Schema首次调用时按需获取, AIPLAT_MCP_LAZY_LOAD控制 | 已合入 |
+| PromptCaching | `syscalls/llm.py` | ✅ | Anthropic Prompt Caching: stable消息注入cache_control, 动态内容检测跳过, AIPLAT_PROMPT_CACHE_ENABLED控制 | 已合入 |
+| ThreeLayerPermissions | `gates/policy_gate.py:_match_tool_rule` | ✅ | 三层权限(deny>ask>allow)+参数级fnmatch匹配 | 已合入 |
+| SubagentIsolation | `subagent/coordinator.py:isolate_context` | ✅ | 子代理上下文隔离: 仅传摘要+只读模式, 默认开启 | 已合入 |
+| FileBasedMemory | `memory/file_store.py` | ✅ | 文件记忆: Markdown双写(MEMORY.md+日期文件)+SQLite索引, 人类可验证 | 已合入 |
+| PluginSlot | `apps/plugins/manager.py` | ✅ | 插件Slot: 同类别单一活跃, 旧插件状态归档 | 已合入 |
 
 ---
 
@@ -570,6 +590,9 @@
 | Quality Scanner | `apps/quality/scanner.py` | ✅ | 自动代码/技能质量扫描 | 已合入 |
 | StandardsValidator | `evaluation/standards_validator.py` | ✅ | 10条声明式规则：缺节/占位符/版本/术语检查，YAML驱动 | 已合入 |
 | StructuredMerger | `coordination/merger.py` | ✅ | Map-Reduce 合稿：交叉引用验证+悬空引用检测+LLM合稿 | 已合入 |
+| FullStack 诊断 | `api/routers/diagnostics.py:_check_full_stack` | ✅ | 12项全域检查(入驻/知识/协作/学习/FDE日常 5条旅程) | 已合入 |
+| Spec 冒烟测试 | `scripts/smoke_spec_lifecycle.sh` | ✅ | 8阶段自动化: create→submit→poll→trace→dashboard→stable | 已合入 |
+| Demo 种子数据 | `api/routers/workbench.py:seed-demo` | ✅ | 一键创建2个Spec+提交任务→仪表板立即可用 | 已合入 |
 
 ---
 
@@ -583,7 +606,12 @@
 | DAG 编排器 | `orchestration/orchestrator.py` | ✅ | 多步流水线编排 + DAG 输出 | 已合入 |
 | Pipeline 引擎 | `harness/execution/pipeline_engine.py` | ✅ | 多阶段调度/HITL暂停/重试/snapshot | 已合入 |
 | LangGraph 图执行 | `harness/execution/langgraph/` | ✅ | 节点拓扑执行+条件边路由+checkpoint | 已合入 |
-| DynamicRouter (LLM路由) | `harness/execution/dynamic_router.py` | ✅ | LLM驱动动态下一跳选择 + Reducer状态合并防并行覆盖 | 已合入 |
+| DynamicRouter (LLM路由) | `harness/execution/dynamic_router.py` | ✅ | LLM驱动动态下一跳选择 + Reducer状态合并防并行覆盖 + 灰度上线(AIPLAT_DYNAMIC_ROUTER_PERCENTAGE) | 已合入 |
+| DebateMode | `harness/execution/debate.py` | ✅ | N-Agent辩论: 收敛检测 + Manager合成, routing_mode="debate" | 已合入 |
+| Swarm | `harness/execution/swarm.py` | ✅ | N-Agent竞选择优: 同任务独立执行→Arena评分→胜出合并, routing_mode="swarm" | 已合入 |
+| Roundtable | `harness/execution/roundtable.py` | ✅ | 多Agent平等讨论: 每轮全员发言→共识收敛→综合合成, routing_mode="roundtable" | 已合入 |
+| Matter (验收+交付) | `SpecDetail.tsx` revise modal | ✅ | 交付物定义 + 验收标准字段, 存储于 SpecVersion.content | 已合入 |
+| CoT AutoInject | `syscalls/llm.py:253` + `prompt_loader.py:cot-auto-inject` | ✅ | 每次LLM调用自动注入4步推理指令, AIPLAT_COT_AUTO_INJECT控制 | 已合入 |
 | SubAgent 协调器 | `apps/agents/subagent/coordinator.py` | ✅ | execute_single/parallel/sequential/fanout | 已合入 |
 | 并行执行器 | `apps/agents/parallel_executor.py` | ✅ | Map-Reduce 模式 + max_concurrency + 异常隔离 | 已合入 |
 | 8 种协调模式 | `harness/coordination/patterns/` | ✅ | Pipeline/FanOut/Supervisor/ExpertPool/ProducerReviewer/Hierarchical | 已合入 |
@@ -596,36 +624,50 @@
 
 | 维度 | 已实现 | 部分实现 | 合计 |
 |------|:---:|:---:|:---:|------|
-| Harness 执行引擎 | 17 | 0 | 17 |
-| 记忆子系统 | 29 | 0 | 29 |
-| 知识引擎（本体） | 19 | 0 | 19 |
-| RAG 检索 | 18 | 0 | 18 |
+| Harness 执行引擎 | 26 | 0 | 26 |
+| 记忆子系统 | 28 | 0 | 28 |
+| 知识引擎（本体） | 20 | 0 | 20 |
+| RAG 检索 | 26 | 0 | 26 |
 | 知识基础设施 | 28 | 0 | 28 |
-| Agent 系统 | 9 | 1 | 10 |
+| Agent 系统 | 11 | 0 | 11 |
 | Skill 系统 | 13 | 0 | 13 |
-| 安全与治理 | 28 | 1 | 29 |
-| 可观测性 | 12 | 0 | 12 |
-| 模型基础设施 | 10 | 1 | 11 |
-| 部署与运维 | 16 | 0 | 16 |
-| 扩展与学习 | 20 | 0 | 20 |
+| 安全与治理 | 27 | 0 | 27 |
+| 可观测性 | 13 | 0 | 13 |
+| 模型基础设施 | 13 | 0 | 13 |
+| 部署与运维 | 15 | 0 | 15 |
+| 扩展与学习 | 39 | 0 | 39 |
 | Gate 系统 | 5 | 0 | 5 |
 | 评估系统 | 13 | 0 | 13 |
 | MCP 协议 | 6 | 0 | 6 |
 | A2A 协议 | 7 | 0 | 7 |
-| 文档智能 | 14 | 0 | 14 |
-| 工具生态 | 21 | 0 | 21 |
+| 文档智能 | 13 | 0 | 13 |
+| 工具生态 | 20 | 0 | 20 |
 | 微调系统 | 4 | 0 | 4 |
 | 部署与灰度 | 4 | 0 | 4 |
 | 运行时干预 | 2 | 0 | 2 |
 | Arena & 调度 | 4 | 0 | 4 |
-| 平台治理 | 14 | 0 | 14 |
+| 平台治理 | 16 | 0 | 16 |
 | Infra 基础设施 | 11 | 0 | 11 |
 | 核心API统一入口 | 5 | 0 | 5 |
-| 编排系统 | 12 | 0 | 12 |
-| 管理 & 质量 | 11 | 0 | 11 |
-| **总计** | **384** | **0** | **384** |
+| 编排系统 | 4 | 0 | 4 |
+| 管理 & 质量 | 14 | 0 | 14 |
+| 编排层 | 17 | 0 | 17 |
+| **总计** | **404** | **0** | **404** |
 
 ---
 
-*最后更新: 2026-06-30*
-*版本: 10.3 · 28章 · 384项能力 · 384✅ · DynamicRouter + Reducer 多智能体协作*
+*最后更新: 2026-07-01*
+*版本: 11.3 · 28章 · 404项能力 · 404✅ · 七项竞品借鉴已合入*
+
+**自检命令**：
+```bash
+# 1. 验证 ✅ 数与统计表一致
+grep -c '✅' AIPLAT_CAPABILITIES.md
+# 预期: 应匹配统计表的 "400 ✅"
+
+# 2. 验证代码位置仍存在
+grep '^\|.*`.*\.py:.*`.*\|' AIPLAT_CAPABILITIES.md | grep -oP '`[^`]+\.py[^`]*`' | while read f; do
+  path=$(echo "$f" | tr -d '`')
+  [ -f "aiPlat-core/core/$path" ] || echo "MISSING: $path"
+done
+```

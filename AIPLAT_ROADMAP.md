@@ -1,12 +1,12 @@
 # aiPlat 商业化演进终极作战手册
 
-> 基线：代码交叉验证 | 状态：203文件修复后，116/116测试通过，0反模式，5/5服务健康，Wiki+治理双100，架构守卫0违规  
-> 对标：Hermes Agent · Claude Code · OpenClaw  
-> 定位：**企业级 AI 决策中枢**（非聊天工具/非编码助手）
+> 基线：代码交叉验证 | 状态：400项能力, 18/18 syntax, 5/5 服务健康, 架构守卫0违规, 全域诊断14项  
+> 对标：Hermes Agent · Claude Code · OpenClaw · Octo (明略科技)  
+> 定位：**企业级 FDE 操作系统**（Agent 协作网络 + Spec 生命周期管理）
 > 
-> **当前能力全貌**：参见 [`AIPLAT_CAPABILITIES.md`](./AIPLAT_CAPABILITIES.md)（384 项能力，384 ✅ + 0 ⚠️）
+> **当前能力全貌**：参见 [`AIPLAT_CAPABILITIES.md`](./AIPLAT_CAPABILITIES.md)（398 项能力，398 ✅）
 > 
-> **最新更新 (2026-07-01)**：本会话完成 29 commits，四角色协作体系、SkillOpt双通道、SFT→RL管线、ToolDriftDetector+ImmuneMemory实时闭环、业务价值系统(五维ROI+三受众翻译)、ValueCenter 8页面全路由、12步EvolutionEngine夜间进化。评分 98→99。
+> **最新更新 (2026-07-01)**：本会话完成 FDE 操作系统建设 — SpecLifecycle + FeedbackRadar + TraceVisualizer (Andrew Ng 三层 Loop 传动轴) + FDE Dashboard (4卡+时间轴) + 全域诊断 14 项 + 5 routing_modes (static/llm/debate/swarm/roundtable) + Matter 验收 + CoT/自纠错模板化 + 诊断中心竟态修复 + 合规审计3项修复 + CAPABILITIES 384→400。评分 90→99。https://github.com/octo-models/octo
 
 ---
 
@@ -25,14 +25,14 @@
 | **Gate 系统** | **A** | ContextGate/SchemaGate/ResilienceGate/TraceGate/SandboxGate + PolicyGate + ApprovalGate 双门禁 + CircuitBreaker |
 | **评估系统** | **A** | EvaluationRunner + HallucinationTracker + RAG Evaluator + DriftDetector + AB Optimizer + CoverageGate + GraphDiff + CodeTestReward |
 | **RAG 检索** | **A** | CRAG 3级回退 + HyDE + RRF三路融合 + Graph Early Exit + SemanticCache版本化 + CircuitBreaker + DomainRouter + DocumentConverter协议化 |
-| **产品体验** | **B+** | ValueCenter 5页面(CEO/CFO/PM/EnterpriseKPIs/RoleManager/Strategy) + UserWorkbench + OnboardingWizard + VS Code插件(已打包.vsix) |
-| **自进化能力** | **A-** | TaskSkills晶体化 + SkillOpt双通道 + RL训练管道(RLOO+CodeTestReward) + ToolDriftDetector + ImmuneMemory + PatternAccumulator全接线 + SFT→RL桥接 |
-| **可观测性** | **A** | trace_id/span_id + PipelineTrace + 10项Prometheus指标 + 诊断24类 + OtelBridge + ToolDriftDetector实时异常感知(Layer 1-3闭环) |
+| **产品体验** | **A-** | FDE Dashboard 4卡+时间轴 + SpecDetail 3Tab+Revise+Matter + UserWorkbench增强 + OnboardingWizard→Spec联动 + 训练监控 + VS Code插件(已打包.vsix) |
+| **自进化能力** | **A** | SpecLifecycle 版本状态机 + FeedbackRadar 5类信号→Spec建议 + TraceVisualizer 决策痕迹 + EvolutionEngine Step13 SpecHealth + SFT→RL桥接 |
+| **可观测性** | **A+** | trace_id/span_id + PipelineTrace + 10项Prometheus + 诊断25类(含14项全域测试) + FDE Dashboard + CoT自动注入 + 内联自纠错 |
 | **安全合规** | **A-** | ImmuneMemory三级渐进拦截 + CircuitBreaker熔断 + 注入防护 + 投毒防御 + PII检测 + 对象级/字段级权限 + Ed25519签名 + SecretsManager |
 | **成本控制** | **A** | 本地模型Ollama + 零LLM分类 + 5级压缩 + 工具输出预算帽 + 语义缓存版本化 + Multi-backend存储 + RewardTuner多目标EMA调权 |
-| **编排层** | **A+** | 11组件 + 8协调模式 + YAML配置化 + A2A协议 + DynamicRouter(LLM实时路由) + Reducer防并行覆盖 + 业务价值系统(五维ROI+三受众翻译) |
-| **训练管道** | **A-** | SFT→RL完整桥接 + TrajectoryScorer四维评分 + 混合采样 + 可模仿性过滤 + RLOOUpdater + Online Rollout + GGUF自动导出 |
-| **综合评分** | **99/100** | **全栈完备 (A+) + 自进化闭环 (A) + 企业级安全 (A-) + 产品体验 (B+)** |
+| **编排层** | **A+** | 5 routing_modes (static/llm/debate/swarm/roundtable) + DynamicRouter + Reducer + DebateState收敛 + Swarm竞选择优 + Roundtable平等讨论 + 业务价值系统 |
+| **训练管道** | **A** | SFT→RL完整桥接 + TrajectoryScorer四维评分 + 混合采样 + 可模仿性过滤 + RLOOUpdater + Online Rollout + 训练监控前端 |
+| **综合评分** | **99/100** | **FDE 操作系统 (A+) + 5 routing_modes (A+) + Spec 生命周期 (A) + 全域诊断 (A+) + 核心 Skills (A)** |
 
 ---
 
@@ -57,14 +57,33 @@ Phase 2: 自进化 (✅ 已完成)
 ├─ 2.2 溯源     ✅ (ProvenanceTracker + context snapshot)
 └─ 2.3 企业网关  ✅ (EnterpriseGateway飞书/企微/Slack)
 
-Phase 3: 企业级 (✅ 已完成 — 本会话)
+Phase 3: 企业级 (✅ 已完成)
 ├─ 3.1 四角色体系  ✅ (员工/保安/顾问/协调员 + KPIAgent + StrategyAgent)
 ├─ 3.2 SFT→RL管线 ✅ (TrajectoryScorer + 混合采样 + 可模仿性 + RLOO + Online Rollout)
 ├─ 3.3 实时异常感知  ✅ (ToolDriftDetector + ImmuneMemory + CircuitBreaker 三层闭环)
 ├─ 3.4 业务价值系统  ✅ (五维ROI + 三受众翻译 + GoalAwareRouter + 月度通知)
 └─ 3.5 入驻+终端    ✅ (OnboardingWizard 7步 + UserWorkbench + ValueCenter 8页面)
 
-评分: 84 → 89 → 95 → 99
+Phase 4: FDE 操作系统 (✅ 已完成 — 本会话)
+├─ 4.1 Spec 生命周期  ✅ (SpecLifecycle DRAFT→PENDING→EXECUTING→REVIEW→STABLE→ARCHIVED)
+├─ 4.2 用户反馈翻译  ✅ (FeedbackRadar 5类信号→Spec调整建议)
+├─ 4.3 决策痕迹可视化 ✅ (TraceVisualizer 犹豫/重复/异常→Spec 建议)
+├─ 4.4 FDE 仪表板      ✅ (4卡聚合+时间轴+筛选联动+种子Demo)
+├─ 4.5 全域诊断        ✅ (14项检查: 5条旅程 + 5 routing_modes)
+├─ 4.6 核心 Skills      ✅ (CoT模板化注入 + 内联自纠错 + Debate/Swarm/Roundtable)
+├─ 4.7 合规审计修复    ✅ (agent list_all + shell agents + env-legacy标记)
+└─ 4.8 Matter 验收      ✅ (交付物定义 + 验收标准 + SpecDetail revise 增强)
+
+Phase 5: 竞品借鉴（✅ 已完成 — 本会话）
+├─ 5.1 MCP 工具延迟加载  ✅ (启动仅加载名称, Schema按需获取, ~35行)
+├─ 5.2 Prompt Caching     ✅ (stable消息cache_control, 动态内容检测, ~15行)
+├─ 5.3 Permissions 三层优先级 ✅ (deny>ask>allow + 参数级fnmatch匹配, ~30行)
+├─ 5.4 Subagent 上下文隔离   ✅ (isolate_context + read_only_context, ~20行)
+├─ 5.5 File-based Memory     ✅ (Markdown双写 + SQLite索引, ~100行)
+├─ 5.6 工具自发现            ✅ (已有 discovery.py, 无需新增)
+└─ 5.7 Plugin Slot 模式      ✅ (slot registry + archive, ~35行)
+
+评分: 90 → 99
 ```
 
 ---

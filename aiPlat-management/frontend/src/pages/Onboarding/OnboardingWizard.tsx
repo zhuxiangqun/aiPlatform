@@ -7,12 +7,16 @@
  *       POST /onboarding/activate
  */
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 interface Step { step: number; key: string; name: string; done: boolean; }
 interface ProgressData { tenant_id: string; status: string; steps: Step[]; progress_pct: number; estimated_completion: string; }
 
 const OnboardingWizard: React.FC = () => {
+  const navigate = useNavigate();
   const [progress, setProgress] = useState<ProgressData | null>(null);
+  const [activated, setActivated] = useState(false);
+  const [specId, setSpecId] = useState('');
   const [currentStep, setCurrentStep] = useState(3); // skip register+verify for demo
   const [models, setModels] = useState<any[]>([]);
   const [templates, setTemplates] = useState<any[]>([]);
@@ -48,7 +52,10 @@ const OnboardingWizard: React.FC = () => {
   const activate = async () => {
     const ready = await checkReadiness();
     if (!ready) return;
-    await fetch('/api/platform/onboarding/activate', { method: 'POST' });
+    const res = await fetch('/api/platform/onboarding/activate', { method: 'POST' });
+    const data = await res.json();
+    if (data.spec_id) setSpecId(data.spec_id);
+    setActivated(true);
     await fetchProgress();
   };
 
@@ -61,6 +68,39 @@ const OnboardingWizard: React.FC = () => {
         <h1 style={{ fontSize: 28, fontWeight: 800, marginBottom: 8 }}>入驻向导</h1>
         <div style={{ fontSize: 13, color: '#94a3b8' }}>{progress.estimated_completion}</div>
       </div>
+
+      {/* Activation banner — link to Workbench + SpecDetail */}
+      {activated && (
+        <div style={{
+          background: '#052e16', border: '1px solid #22c55e40', borderRadius: 12,
+          padding: '16px 20px', marginBottom: 24, display: 'flex',
+          justifyContent: 'space-between', alignItems: 'center',
+        }}>
+          <div>
+            <div style={{ fontSize: 14, fontWeight: 700, color: '#22c55e' }}>入驻完成！</div>
+            <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 2 }}>
+              租户已激活。
+              {specId && <span> Spec <span style={{ color: '#3b82f6', cursor: 'pointer', fontWeight: 600 }} onClick={() => navigate(`/value-center/spec/${specId}`)}>{specId}</span> 已创建为 DRAFT。</span>}
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            {specId && (
+              <button onClick={() => navigate(`/value-center/spec/${specId}`)} style={{
+                background: '#1e293b', color: '#3b82f6', border: '1px solid #3b82f640',
+                borderRadius: 8, padding: '8px 16px', cursor: 'pointer', fontSize: 13, fontWeight: 600,
+              }}>
+                查看 Spec →
+              </button>
+            )}
+            <button onClick={() => navigate('/workbench')} style={{
+              background: '#22c55e', color: '#fff', border: 'none', borderRadius: 8,
+              padding: '8px 20px', cursor: 'pointer', fontSize: 13, fontWeight: 600,
+            }}>
+              进入工作台 →
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Progress Bar */}
       <div style={{ display: 'flex', justifyContent: 'center', gap: 0, marginBottom: 32 }}>
