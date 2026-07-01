@@ -1,13 +1,27 @@
-# aiPlat 系统全面架构分析 & 四方案对照报告
+# aiPlat 系统全面架构分析报告
 
-> 生成时间：2026-07-01（更新 — FDE 操作系统 + 5 routing_modes + 全域诊断）
-> 分析范围：aiPlat（代码级全量分析）vs Hermes Agent vs Claude Code vs OpenClaw vs Octo (明略科技)
+> 生成时间：2026-07-01（更新 — FDE 操作系统 + Phase 5 竞品借鉴全部合入, 405✅）
+> 分析范围：aiPlat（代码级全量分析）
 > 架构守卫状态：0 ERROR, 10 WARNING（全已知, 无阻断）
 > 合规状态：0 违规（shell agents 已修复, env-legacy 已标记）
+>
+> **多系统对标已独立 → [`docs/architecture/comparison.md`](docs/architecture/comparison.md)** — 9 维度 vs Hermes/ClaudeCode/OpenClaw 深度对比 + 12 项体系性优势 + 竞品借鉴全部 ✅。本文档聚焦 aiPlat 内部架构分析。
 
 ---
 
 ## 一、四方案核心定位对比
+
+> **对标已移至** [`docs/architecture/comparison.md`](docs/architecture/comparison.md) §一。本文档此处仅保留 aiPlat 定位摘要。
+
+| aiPlat | Hermes | Claude Code | OpenClaw |
+|------|------|------|------|
+| 企业 FDE 操作系统 · 4层分层 · Python · 405✅ | 个人 AI 助手 · MIT 开源 · Python · 207k★ | 编程 Agent · 闭源引擎+开源插件 · TS · 135k★ | 个人 AI 助手 · MIT 开源 · TS · 381k★ |
+
+---
+
+## 二、Harness 执行内核对比
+
+> **对标已移至** [`docs/architecture/comparison.md`](docs/architecture/comparison.md) §三·维度1。以下保留 aiPlat 内部 Harness 架构分析。
 
 ```
 ┌──────────────────┬──────────────────┬──────────────────┬──────────────────┐
