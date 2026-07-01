@@ -89,7 +89,8 @@ User Query
 
 Pipeline 多阶段执行:
   PipelineEngine → LangGraph(可视化+checkpoint) → StageRunner → ReActLoop
-  → HITL 暂停/恢复 → snapshot → 下一阶段 → 完成 → Skill 晶体化
+  → [Sandbox: 子进程(Docker可选, --network none)] → HITL 暂停/恢复
+  → snapshot → 下一阶段 → 完成 → Skill 晶体化
 
 MCP 交互路径:
   外部 MCP Server → MCPClient (client.py) → sys_tool_call → PolicyGate → Agent 使用工具
