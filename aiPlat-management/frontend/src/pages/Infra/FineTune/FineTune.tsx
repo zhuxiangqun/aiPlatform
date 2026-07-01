@@ -4,7 +4,7 @@ import { Button, Modal, toast, Input, Select } from '../../../components/ui';
 import { finetuneApi } from '../../../services';
 
 const FineTunePage: React.FC = () => {
-  const [tab, setTab] = useState<'datasets' | 'jobs'>('datasets');
+  const [tab, setTab] = useState<'datasets' | 'jobs' | 'training' | 'distill'>('datasets');
   const [datasets, setDatasets] = useState<any[]>([]);
   const [jobs, setJobs] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
@@ -29,6 +29,24 @@ const FineTunePage: React.FC = () => {
   const [jobProvider, setJobProvider] = useState('deepseek');
   const [loraRank, setLoraRank] = useState('16');
   const [loraAlpha, setLoraAlpha] = useState('32');
+
+  // ── Training state ──
+  const [trainBaseModel, setTrainBaseModel] = useState('');
+  const [trainDatasetId, setTrainDatasetId] = useState('');
+  const [trainIterations, setTrainIterations] = useState('1');
+  const [trainEpisodes, setTrainEpisodes] = useState('8');
+  const [trainResult, setTrainResult] = useState<any>(null);
+  const [trainRunning, setTrainRunning] = useState(false);
+
+  // ── Distill state ──
+  const [distillTeacher, setDistillTeacher] = useState('');
+  const [distillStudent, setDistillStudent] = useState('');
+  const [distillDatasetId, setDistillDatasetId] = useState('');
+  const [distillTemp, setDistillTemp] = useState('2.0');
+  const [distillAlpha, setDistillAlpha] = useState('0.5');
+  const [distillMode, setDistillMode] = useState('lora');
+  const [distillJobs, setDistillJobs] = useState<any[]>([]);
+  const [distillRunning, setDistillRunning] = useState(false);
   const [baseModelOptions, setBaseModelOptions] = useState<{value:string,label:string}[]>([
     {value:'deepseek-chat',label:'deepseek-chat'},
     {value:'deepseek-v4-pro',label:'deepseek-v4-pro'}
@@ -79,12 +97,12 @@ const FineTunePage: React.FC = () => {
 
       {/* ── Tabs ── */}
       <div className="flex gap-2 border-b border-dark-border pb-2">
-        {(['datasets', 'jobs'] as const).map(t => (
+        {(['datasets', 'jobs', 'training', 'distill'] as const).map(t => (
           <button key={t} onClick={() => setTab(t)}
             className={`px-4 py-2 text-sm rounded-t-lg transition-colors ${
               tab === t ? 'bg-dark-card text-gray-100 border border-dark-border border-b-dark-card' : 'text-gray-500 hover:text-gray-300'
             }`}>
-            {t === 'datasets' ? '📊 数据集' : '⚙️ 微调作业'}
+            {t === 'datasets' ? '📊 数据集' : t === 'jobs' ? '⚙️ 微调作业' : t === 'training' ? '🧠 RL训练' : '🔮 蒸馏'}
           </button>
         ))}
       </div>
@@ -312,6 +330,148 @@ const FineTunePage: React.FC = () => {
           }}>提交</Button>
         </div>
       </Modal>
+
+      {/* ── RL Training Tab ── */}
+      {tab === 'training' && (
+        <div className="space-y-4 mt-4">
+          <div className="bg-dark-card rounded-lg p-6 border border-dark-border">
+            <h3 className="text-lg font-semibold text-gray-100 mb-4">RL 强化学习训练</h3>
+            <div className="grid grid-cols-2 gap-4 mb-4">
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">基座模型</label>
+                <input value={trainBaseModel} onChange={e => setTrainBaseModel(e.target.value)}
+                  placeholder="qwen2.5-coder:7b"
+                  className="w-full bg-dark-bg border border-dark-border rounded px-3 py-2 text-gray-200 text-sm" />
+              </div>
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">数据集 ID</label>
+                <select value={trainDatasetId} onChange={e => setTrainDatasetId(e.target.value)}
+                  className="w-full bg-dark-bg border border-dark-border rounded px-3 py-2 text-gray-200 text-sm">
+                  <option value="">选择数据集</option>
+                  {datasets.map((d: any) => <option key={d.id} value={d.id}>{d.name || d.id}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">迭代次数</label>
+                <input value={trainIterations} onChange={e => setTrainIterations(e.target.value)}
+                  className="w-full bg-dark-bg border border-dark-border rounded px-3 py-2 text-gray-200 text-sm" />
+              </div>
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">每迭代样本数</label>
+                <input value={trainEpisodes} onChange={e => setTrainEpisodes(e.target.value)}
+                  className="w-full bg-dark-bg border border-dark-border rounded px-3 py-2 text-gray-200 text-sm" />
+              </div>
+            </div>
+            <Button icon={<Play className="w-4 h-4" />} loading={trainRunning} onClick={async () => {
+              setTrainRunning(true); setTrainResult(null);
+              try {
+                const res = await fetch('/api/core/finetune/train', {
+                  method: 'POST', headers: {'Content-Type': 'application/json'},
+                  body: JSON.stringify({
+                    base_model: trainBaseModel, dataset_id: trainDatasetId,
+                    num_iterations: parseInt(trainIterations) || 1,
+                    episodes_per_iter: parseInt(trainEpisodes) || 8,
+                  }),
+                });
+                setTrainResult(await res.json());
+                toast.success('RL 训练已启动');
+              } catch (e: any) { toast.error('训练失败', e?.message); }
+              setTrainRunning(false);
+            }}>开始 RL 训练</Button>
+            {trainResult && (
+              <div className="mt-4 p-4 bg-dark-bg rounded border border-dark-border">
+                <div className="text-sm text-gray-300">状态: <span className="text-green-400">{trainResult.status}</span></div>
+                <div className="text-sm text-gray-300">迭代: {trainResult.iterations} · 样本: {trainResult.episodes}</div>
+                <div className="text-sm text-gray-300">平均奖励: {trainResult.avg_reward?.toFixed(2)}</div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── Distillation Tab ── */}
+      {tab === 'distill' && (
+        <div className="space-y-4 mt-4">
+          <div className="bg-dark-card rounded-lg p-6 border border-dark-border">
+            <h3 className="text-lg font-semibold text-gray-100 mb-4">知识蒸馏 (Teacher→Student)</h3>
+            <div className="grid grid-cols-2 gap-4 mb-4">
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">教师模型 (Teacher)</label>
+                <input value={distillTeacher} onChange={e => setDistillTeacher(e.target.value)}
+                  placeholder="qwen2.5-coder:32b"
+                  className="w-full bg-dark-bg border border-dark-border rounded px-3 py-2 text-gray-200 text-sm" />
+              </div>
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">学生模型 (Student)</label>
+                <input value={distillStudent} onChange={e => setDistillStudent(e.target.value)}
+                  placeholder="qwen2.5-coder:7b"
+                  className="w-full bg-dark-bg border border-dark-border rounded px-3 py-2 text-gray-200 text-sm" />
+              </div>
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">数据集 ID</label>
+                <select value={distillDatasetId} onChange={e => setDistillDatasetId(e.target.value)}
+                  className="w-full bg-dark-bg border border-dark-border rounded px-3 py-2 text-gray-200 text-sm">
+                  <option value="">选择数据集</option>
+                  {datasets.map((d: any) => <option key={d.id} value={d.id}>{d.name || d.id}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">模式</label>
+                <select value={distillMode} onChange={e => setDistillMode(e.target.value)}
+                  className="w-full bg-dark-bg border border-dark-border rounded px-3 py-2 text-gray-200 text-sm">
+                  <option value="lora">LoRA (轻量, ~5MB)</option>
+                  <option value="full">Full (全参数)</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">温度 (Temperature)</label>
+                <input value={distillTemp} onChange={e => setDistillTemp(e.target.value)}
+                  className="w-full bg-dark-bg border border-dark-border rounded px-3 py-2 text-gray-200 text-sm" />
+              </div>
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">硬目标权重 (Alpha)</label>
+                <input value={distillAlpha} onChange={e => setDistillAlpha(e.target.value)}
+                  className="w-full bg-dark-bg border border-dark-border rounded px-3 py-2 text-gray-200 text-sm" />
+              </div>
+            </div>
+            <Button icon={<Play className="w-4 h-4" />} loading={distillRunning} onClick={async () => {
+              setDistillRunning(true);
+              try {
+                const res = await fetch('/api/core/finetune/distill', {
+                  method: 'POST', headers: {'Content-Type': 'application/json'},
+                  body: JSON.stringify({
+                    teacher_model: distillTeacher, student_model: distillStudent,
+                    dataset_id: distillDatasetId, temperature: parseFloat(distillTemp) || 2,
+                    alpha: parseFloat(distillAlpha) || 0.5, mode: distillMode,
+                  }),
+                });
+                const data = await res.json();
+                setDistillJobs([data, ...distillJobs]);
+                toast.success(`蒸馏作业已提交: ${data.job_id}`);
+              } catch (e: any) { toast.error('蒸馏失败', e?.message); }
+              setDistillRunning(false);
+            }}>开始蒸馏</Button>
+            {/* Distill jobs list */}
+            {distillJobs.length > 0 && (
+              <div className="mt-4">
+                <h4 className="text-sm text-gray-400 mb-2">蒸馏作业</h4>
+                {distillJobs.map((j: any, i: number) => (
+                  <div key={i} className="flex justify-between items-center p-3 bg-dark-bg rounded border border-dark-border mb-2">
+                    <div className="text-sm text-gray-300">
+                      <span className="font-mono text-xs text-blue-400">{j.job_id?.slice(0, 12)}</span>
+                      <span className={`ml-2 px-2 py-0.5 rounded text-xs ${
+                        j.status === 'completed' ? 'bg-green-900 text-green-400' :
+                        j.status === 'running' ? 'bg-blue-900 text-blue-400' : 'bg-gray-700 text-gray-400'
+                      }`}>{j.status}</span>
+                    </div>
+                    <span className="text-xs text-gray-500">{j.teacher}→{j.student}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

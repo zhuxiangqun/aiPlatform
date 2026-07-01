@@ -72,7 +72,7 @@ async def update_dataset(dataset_id: str, req: DatasetUpdateRequest):
     return ds
 
 
-@router.delete("/datasets/{dataset_id}")
+@router.delete("/datasets/{dataset_id}", response_model=Dict[str, Any])
 async def delete_dataset(dataset_id: str):
     ok = _get_dataset_mgr().delete(dataset_id)
     if not ok:
@@ -119,7 +119,7 @@ async def get_job(job_id: str):
     return job
 
 
-@router.delete("/jobs/{job_id}")
+@router.delete("/jobs/{job_id}", response_model=Dict[str, Any])
 async def cancel_job(job_id: str):
     ok = _get_job_mgr().cancel(job_id)
     if not ok:
@@ -158,6 +158,121 @@ async def list_providers():
                 estimated_cost_per_job="N/A",
             ))
     return ProviderListResponse(providers=providers)
+
+
+# ── RL Training ──────────────────────────────────────────────────────────
+
+@router.post("/train")
+async def start_training(body: Dict[str, Any]) -> Dict[str, Any]:
+    """Start an RL training job.
+
+    Body:
+      - base_model: str (e.g. "qwen2.5-coder:7b")
+      - dataset_id: str
+      - num_iterations: int (default: 1)
+      - episodes_per_iter: int (default: 8)
+    """
+    try:
+        from core.harness.training.rl_trainer import get_rl_trainer
+        base_model = body.get("base_model", "")
+        dataset_id = body.get("dataset_id", "")
+        if not base_model:
+            raise HTTPException(status_code=400, detail="base_model is required")
+
+        trainer = get_rl_trainer(base_model=base_model)
+        run = await trainer.train(
+            num_iterations=body.get("num_iterations", 1),
+            episodes_per_iter=body.get("episodes_per_iter", 8),
+        )
+        return {
+            "status": run.status,
+            "iterations": run.iterations,
+            "episodes": run.total_episodes,
+            "avg_reward": run.avg_reward,
+            "avg_loss": getattr(run, "avg_loss", 0),
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e)[:200])
+
+
+@router.get("/train/{job_id}")
+async def get_training_status(job_id: str) -> Dict[str, Any]:
+    """Get RL training job status."""
+    try:
+        from core.harness.training.rl_trainer import get_rl_trainer
+        trainer = get_rl_trainer(base_model="")
+        status = getattr(trainer, "_latest_run", None)
+        if status:
+            return {
+                "job_id": job_id,
+                "status": status.status if hasattr(status, 'status') else "running",
+                "iterations": getattr(status, 'iterations', 0),
+                "episodes": getattr(status, 'total_episodes', 0),
+                "avg_reward": getattr(status, 'avg_reward', 0),
+            }
+        return {"job_id": job_id, "status": "unknown"}
+    except Exception as e:
+        return {"job_id": job_id, "status": "error", "error": str(e)[:200]}
+
+
+# ── Knowledge Distillation ───────────────────────────────────────────────
+
+@router.post("/distill")
+async def start_distillation(body: Dict[str, Any]) -> Dict[str, Any]:
+    """Start a knowledge distillation job (Teacher→Student).
+
+    Body:
+      - teacher_model: str (e.g. "qwen2.5-coder:32b")
+      - student_model: str (e.g. "qwen2.5-coder:7b")
+      - dataset_id: str
+      - temperature: float (default: 2.0)
+      - alpha: float (default: 0.5, hard target weight)
+      - mode: str (default: "lora", "lora"|"full")
+      - epochs: int (default: 3)
+    """
+    try:
+        from core.harness.training.distillation import get_distillation_engine
+        engine = get_distillation_engine()
+        job_id = await engine.distill(
+            teacher_model=body.get("teacher_model", ""),
+            student_model=body.get("student_model", ""),
+            dataset_id=body.get("dataset_id", ""),
+            temperature=float(body.get("temperature", 2.0)),
+            alpha=float(body.get("alpha", 0.5)),
+            mode=body.get("mode", "lora"),
+            epochs=int(body.get("epochs", 3)),
+        )
+        return {"job_id": job_id, "status": "running"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e)[:200])
+
+
+@router.get("/distill/{job_id}")
+async def get_distillation_status(job_id: str) -> Dict[str, Any]:
+    """Get knowledge distillation job status."""
+    try:
+        from core.harness.training.distillation import get_distillation_engine
+        engine = get_distillation_engine()
+        status = engine.get_status(job_id)
+        if not status:
+            raise HTTPException(status_code=404, detail="Job not found")
+        return status
+    except HTTPException:
+        raise
+    except Exception as e:
+        return {"job_id": job_id, "status": "error", "error": str(e)[:200]}
+
+
+@router.get("/distill")
+async def list_distillation_jobs() -> Dict[str, Any]:
+    """List all distillation jobs."""
+    try:
+        from core.harness.training.distillation import get_distillation_engine
+        engine = get_distillation_engine()
+        jobs = engine.list_jobs()
+        return {"jobs": jobs, "total": len(jobs)}
+    except Exception as e:
+        return {"jobs": [], "total": 0, "error": str(e)[:200]}
 
 
 def _local_provider():
