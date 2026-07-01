@@ -10,14 +10,41 @@ Endpoints:
   GET    /workbench/spec/{id}/history — Spec version history
   GET    /workbench/specs            — list all active Specs
 """
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request, Depends
 from typing import Any, Dict, List, Optional
 import os
 from datetime import datetime, timezone
 
-router = APIRouter(prefix="/workbench", tags=["workbench"])
+router = APIRouter(prefix="/workbench", tags=["workbench"], dependencies=[Depends(_require_auth)])
 
 _tasks: Dict[str, Dict[str, Any]] = {}
+
+# ── Auth ────────────────────────────────────────────────────────────────────
+
+def _require_auth(request: Request) -> str:
+    """Platform gateway identity passthrough + dev-mode fallback.
+    
+    Prod mode: validates X-AIPLAT-API-KEY or Bearer token.
+    Dev mode (default): trusts X-AIPLAT-TENANT-ID header from platform gateway.
+    """
+    api_key = os.getenv("AIPLAT_API_KEY", "")
+    admin_key = os.getenv("AIPLAT_ADMIN_KEY", "")
+
+    if api_key or admin_key:
+        # Prod mode — require valid API key
+        h_key = request.headers.get("X-AIPLAT-API-KEY", "")
+        h_auth = request.headers.get("Authorization", "")
+        if h_auth.startswith("Bearer "):
+            h_key = h_auth[7:]
+        if h_key not in (api_key, admin_key):
+            raise HTTPException(status_code=401, detail="Invalid API key")
+        return h_key
+
+    # Dev mode — trust platform gateway identity headers
+    tenant = request.headers.get("X-AIPLAT-TENANT-ID", "")
+    if not tenant:
+        tenant = request.headers.get("x-aiplat-tenant-id", "") or "dev-default"
+    return tenant
 
 
 @router.get("/capabilities")

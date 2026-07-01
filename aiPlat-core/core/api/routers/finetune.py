@@ -17,7 +17,22 @@ from core.schemas_finetune import (
 from core.harness.finetune.dataset_manager import DatasetManager
 from core.harness.finetune.job_manager import JobManager
 
-router = APIRouter(prefix="/finetune", tags=["finetune"])
+from fastapi import APIRouter, HTTPException, Request, Depends
+import os
+
+# ── Auth passthrough (shared with workbench) ──
+
+def _require_auth(request: Request) -> str:
+    api_key = os.getenv("AIPLAT_API_KEY", "")
+    if api_key:
+        h_key = request.headers.get("X-AIPLAT-API-KEY", "")
+        if h_key != api_key:
+            raise HTTPException(status_code=401, detail="Invalid API key")
+        return h_key
+    tenant = request.headers.get("X-AIPLAT-TENANT-ID", "dev-default")
+    return tenant
+
+router = APIRouter(prefix="/finetune", tags=["finetune"], dependencies=[Depends(_require_auth)])
 
 # ── Lazy singletons ──────────────────────────────────────────────────
 
