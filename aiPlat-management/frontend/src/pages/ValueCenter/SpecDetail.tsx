@@ -132,13 +132,30 @@ const SpecDetailPage: React.FC = () => {
             </div>
           </div>
         </div>
-        <button onClick={openRevise} style={{
-          background: '#3b82f6', color: '#fff', border: 'none', borderRadius: 8,
-          padding: '8px 18px', cursor: 'pointer', fontSize: 13, fontWeight: 600,
-          display: 'flex', alignItems: 'center', gap: 6,
-        }}>
-          <Edit3 size={14} /> 修订 Spec
-        </button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button onClick={async () => {
+            try {
+              const res = await fetch(`/api/core/workbench/spec/${specId}/duplicate`, {
+                method: 'POST', headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({created_by: 'developer'}),
+              });
+              const data = await res.json();
+              if (data.spec_id) navigate(`/value-center/spec/${data.spec_id}`);
+            } catch {}
+          }} style={{
+            background: '#334155', color: '#e2e8f0', border: 'none', borderRadius: 8,
+            padding: '8px 18px', cursor: 'pointer', fontSize: 13, fontWeight: 600,
+          }}>
+            复制 Spec
+          </button>
+          <button onClick={openRevise} style={{
+            background: '#3b82f6', color: '#fff', border: 'none', borderRadius: 8,
+            padding: '8px 18px', cursor: 'pointer', fontSize: 13, fontWeight: 600,
+            display: 'flex', alignItems: 'center', gap: 6,
+          }}>
+            <Edit3 size={14} /> 修订 Spec
+          </button>
+        </div>
       </div>
 
       {/* Tabs */}
