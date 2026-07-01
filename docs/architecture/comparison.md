@@ -193,7 +193,8 @@ Claude Code (闭源引擎+开源插件层)        OpenClaw (Gateway)
 | 7 | **Ontology 引擎** | 13 步认知管线 + Palantir 对齐 (四系统唯一) |
 | 8 | **CoT + 自纠错** | 引擎层自动注入，所有 Agent 受益 |
 | 9 | **4 层记忆** | Working→Episodic→Semantic→TaskSkills + 投毒防御 |
-| 11 | **竞品借鉴闭环** | Phase 5 完成: 7/7 已合入 (MCP懒加载 + Prompt Caching + 三层权限 + Subagent隔离 + File记忆 + Plugin Slot) |\n| 12 | **文档-代码同步** | CI 强制统计表一致性 (404✅)+ code-doc-gap 检测 |
+| 10 | **竞品借鉴闭环** | Phase 5 完成: 8/8 已合入 (MCP懒加载 + Prompt Caching + 三层权限 + Subagent隔离 + File记忆 + Plugin Slot + Auto Memory + Skill Marketplace) |
+| 11 | **文档-代码同步** | CI 强制统计表一致性 (427✅) + code-doc-gap 检测 + 路径标准化158条 |
 
 ---
 
@@ -210,6 +211,7 @@ Claude Code (闭源引擎+开源插件层)        OpenClaw (Gateway)
 | OpenClaw | **File-based Memory (Markdown) 作为标准答案** | 透明、人类可读、可编辑 | P1 | ✅ |
 | Hermes | **工具导入时自发现** (`registry.register()` at import time) | 减少手动注册维护 | P2 | ✅ |
 | OpenClaw | **Plugin Slot 模式** (同一时刻单一插件活跃) | 避免上下文碎片化 | P2 | ✅ |
+| Hermes/OpenClaw | **Skill Marketplace** (agentskills.io URL一键安装) | 接入外部技能生态 | P2 | ✅ |
 
 ---
 
