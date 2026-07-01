@@ -273,13 +273,23 @@ class EvolutionEngine:
             return {"error": str(e)[:100]}
 
     async def _do_value_snapshot(self) -> Dict[str, Any]:
-        """Monthly business value snapshot (five-dimension ROI)."""
+        """Monthly business value snapshot (five-dimension ROI) + audience notifications."""
         try:
             from core.harness.finance.value_calculator import get_value_calculator
             calc = get_value_calculator()
             month = time.strftime("%Y-%m")
             report = await calc.compute_monthly(tenant_id="all", month=month)
             calc._persist(report)
+            # Notify all three audiences
+            for audience in ("ceo", "cfo", "pm"):
+                try:
+                    payload = calc.translate_for(report, audience)
+                    payload["type"] = "monthly_value_report"
+                    payload["month"] = month
+                    from core.harness.observation.event_bus import EventBus
+                    EventBus.publish("system", payload)
+                except Exception:
+                    pass
             return {"month": month, "total_runs": report.total_runs,
                     "total_value_cny": report.total_value_cny}
         except Exception as e:

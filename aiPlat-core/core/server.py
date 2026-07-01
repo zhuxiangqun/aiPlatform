@@ -1441,7 +1441,7 @@ async def lifespan(app: FastAPI):
         logging.debug(str(e), exc_info=True)
     # Cancel + await long-running background tasks so they unwind before the event
     # loop closes — prevents leaked while-True tasks accumulating across reload(server).
-    # Uses contextlib.suppress (explicit intent) rather than bare except:pass.
+    # Uses contextlib.suppress (explicit intent) rather than bare except-pass.
     with suppress(Exception):
         if _ops_prune_task is not None:
             _ops_prune_task.cancel()
@@ -1565,7 +1565,9 @@ from core.api.routers.kb_eval import router as kb_eval_router  # noqa: E402
 from core.api.routers.entropy import router as entropy_router  # noqa: E402
 from core.api.routers.overview import router as overview_router  # noqa: E402
 from core.api.routers.wiki import router as wiki_router  # noqa: E402
-from core.api.routers.models_route import router as models_router  # noqa: E402
+from core.api.routers.models_route import router as models_router
+from core.api.routers.model_audit import router as model_audit_router
+from core.api.routers.safety import router as safety_router  # noqa: E402
 from core.api.routers.diagrams import router as diagrams_router  # noqa: E402
 from core.api.routers.capability import router as capability_router  # noqa: E402
 from core.api.routers.knowledge_graph import router as knowledge_graph_router  # noqa: E402
@@ -1618,6 +1620,8 @@ api_router.include_router(health_router)
 api_router.include_router(root_router)
 from core.api.routers.finetune import router as finetune_router  # noqa: E402
 api_router.include_router(finetune_router)
+from core.api.routers.value import router as value_router  # noqa: E402
+api_router.include_router(value_router)
 api_router.include_router(variables_router)
 api_router.include_router(credentials_router)
 api_router.include_router(workflow_templates_router)
@@ -1626,6 +1630,8 @@ api_router.include_router(entropy_router)
 api_router.include_router(overview_router)
 api_router.include_router(wiki_router)
 api_router.include_router(models_router)
+api_router.include_router(model_audit_router)
+api_router.include_router(safety_router)
 api_router.include_router(diagrams_router)
 api_router.include_router(capability_router)
 api_router.include_router(knowledge_graph_router)

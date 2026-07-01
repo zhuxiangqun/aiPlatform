@@ -338,6 +338,53 @@ class ValueCalculator:
         return []
 
 
+# ── Goal Prediction (V3.0) ──
+
+def predict_goal_achievement(goal: BusinessGoal) -> Dict[str, Any]:
+    """Linear trend extrapolation: predict if goal will be achieved by period end.
+
+    Uses current progress vs elapsed time ratio:
+      - If progress% > elapsed time% → on_track
+      - If progress% ≈ elapsed time% → at_risk
+      - If progress% < elapsed time% → behind
+
+    Returns: {status, projected_value, days_to_target, recommendation}
+    """
+    span = goal.target_value - goal.baseline_value
+    if abs(span) < 0.001:
+        return {"status": "achieved" if goal.achieved else "unknown", "projected_value": goal.current_value,
+                "days_to_target": 0, "recommendation": ""}
+
+    elapsed_pct = 0.5  # assume mid-period if no time tracking
+    progress = goal.progress_pct
+    gap_ratio = progress / max(elapsed_pct, 0.01)
+
+    if gap_ratio >= 1.1:
+        status = "on_track"
+        rec = ""
+    elif gap_ratio >= 0.9:
+        status = "at_risk"
+        rec = "建议适度加速执行或启用提速Strategy"
+    else:
+        status = "behind"
+        rec = "⚠️强烈建议启用提速Strategy: 减少审批环节, 增加并行执行"
+
+    remaining = abs(span) * (1 - goal.progress_pct)
+    daily_rate = abs(span) * progress / 30 if progress > 0 else 0.001
+    days = int(remaining / daily_rate) if daily_rate > 0 else 999
+
+    projected = goal.current_value + (daily_rate * (90 - 45))
+
+    return {
+        "status": status,
+        "projected_value": round(projected, 2),
+        "days_to_target": days,
+        "recommendation": rec,
+        "goal_id": goal.goal_id,
+        "current_progress_pct": goal.progress_pct,
+    }
+
+
 # ── Global singleton ──
 
 _value_calc: Optional[ValueCalculator] = None
