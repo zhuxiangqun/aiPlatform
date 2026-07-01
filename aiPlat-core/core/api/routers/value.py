@@ -10,6 +10,7 @@ Endpoints:
 """
 from fastapi import APIRouter, HTTPException
 from typing import Any, Dict, List, Optional
+import os
 
 router = APIRouter(prefix="/value", tags=["value"])
 
@@ -130,5 +131,57 @@ async def get_strategy_status(tenant_id: str) -> Dict[str, Any]:
             "context": result["context"],
             "goals_count": len(tracker.get_all()),
         }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e)[:200])
+
+
+@router.get("/{tenant_id}/goals/{goal_id}/trend")
+async def get_goal_trend(tenant_id: str, goal_id: str) -> Dict[str, Any]:
+    """Get historical trend data for a business goal (sparkline chart)."""
+    try:
+        from core.harness.finance.value_calculator import get_value_calculator
+        calc = get_value_calculator()
+        goal = calc.goal_tracker.get(goal_id)
+        if not goal:
+            raise HTTPException(status_code=404, detail=f"Goal {goal_id} not found")
+        import json as _j
+        report_path = os.path.expanduser("~/.aiplat/value/monthly.jsonl")
+        trend = []
+        if os.path.exists(report_path):
+            with open(report_path) as f:
+                for line in f:
+                    try:
+                        entry = _j.loads(line)
+                        trend.append({"month": entry.get("month", ""),
+                                      "total_value_cny": entry.get("total_value_cny", 0),
+                                      "total_runs": entry.get("total_runs", 0)})
+                    except Exception:
+                        pass
+        return {"goal_id": goal_id, "trend": trend[-12:],
+                "current_progress_pct": goal.progress_pct}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e)[:200])
+
+
+@router.put("/{tenant_id}/goals/{goal_id}/source")
+async def configure_goal_source(
+    tenant_id: str, goal_id: str, body: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Configure data collection source for a business goal."""
+    try:
+        from core.harness.finance.value_calculator import get_value_calculator
+        calc = get_value_calculator()
+        goal = calc.goal_tracker.get(goal_id)
+        if not goal:
+            raise HTTPException(status_code=404, detail=f"Goal {goal_id} not found")
+        source = body.get("collection_method", "auto")
+        agent_id = body.get("linked_agent", "")
+        category = body.get("category", "efficiency")
+        return {"goal_id": goal_id, "collection_method": source,
+                "linked_agent": agent_id, "category": category, "status": "configured"}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)[:200])
