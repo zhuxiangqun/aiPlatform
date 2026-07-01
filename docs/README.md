@@ -9,7 +9,8 @@
 | 文档 | 回答什么问题 |
 |------|------------|
 | [README.md](../README.md) | 这个项目是干什么的？ |
-| [AIPLAT_CAPABILITIES.md](../AIPLAT_CAPABILITIES.md) | 系统能做什么？398 项能力全清单 |
+| [architecture/overview.md](architecture/overview.md) | 系统架构长什么样？四层+数据流+8个关键决策 |
+| [AIPLAT_CAPABILITIES.md](../AIPLAT_CAPABILITIES.md) | 系统能做什么？405 项能力全清单 |
 
 ### 第 2 层：30 分钟知道怎么工作
 
