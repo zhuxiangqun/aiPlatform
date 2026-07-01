@@ -6,11 +6,11 @@
 > 
 > **当前能力全貌**：参见 [`AIPLAT_CAPABILITIES.md`](./AIPLAT_CAPABILITIES.md)（405 项能力，405 ✅）
 > 
-> **最新更新 (2026-07-01)**：本会话完成 FDE 操作系统建设 — SpecLifecycle + FeedbackRadar + TraceVisualizer (Andrew Ng 三层 Loop 传动轴) + FDE Dashboard (4卡+时间轴) + 全域诊断 14 项 + 5 routing_modes (static/llm/debate/swarm/roundtable) + Matter 验收 + CoT/自纠错模板化 + 诊断中心竟态修复 + 合规审计3项修复 + CAPABILITIES 384→400。评分 90→99。https://github.com/octo-models/octo
+> **最新更新 (2026-07-01)**：本会话完成 FDE 操作系统建设 + Phase 5 竞品借鉴全合入 — CAPABILITIES 384→425。评分 90→99。
 
 ---
 
-## 一、基线诊断（来自 `AIPLAT_CAPABILITIES.md` 代码交叉验证，384 项）
+## 一、基线诊断（来自 `AIPLAT_CAPABILITIES.md` 代码交叉验证，425 项）
 
 | 维度 | 评分 | 关键发现 |
 |------|:---:|------|
