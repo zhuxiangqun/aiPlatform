@@ -2,7 +2,7 @@
 
 > 原则：代码即真相。每个条目必须有可验证的代码位置。
 > 更新：任何能力变更时同步更新本文档。
-> 评分：98/100（2026-07-01 — 427✅, FDE操作系统 + Phase5竞品借鉴 + RL+业务价值+诊断+沙箱全登记）
+> 评分：98/100（2026-07-01 — 428✅, FDE操作系统 + Phase5竞品借鉴 + RL+业务价值+诊断+沙箱+蒸馏全登记）
 
 ---
 
@@ -320,6 +320,7 @@
 | trajectory_scorer | `harness/training/trajectory_scorer.py` | ✅ | 自动同步 | 已合入 |
 | rl_trainer | `harness/training/rl_trainer.py` | ✅ | 自动同步 | 已合入 |
 | value_calculator | `harness/finance/value_calculator.py` | ✅ | 自动同步 | 已合入 |
+| distillation | `harness/training/distillation.py` | ✅ | 自动同步 | 已合入 |
 |------|------|:---:|------|------|
 | ExperienceVector | `harness/learning/experience_vector.py` | ✅ | PipelineTrace→Embedding→语义检索 | 已合入 |
 | ToolDriftDetector | `harness/learning/tool_drift_detector.py` | ✅ | 4类漂移检测(struct/field/latency/error) + 重放校验自适应 | 已合入 |
@@ -658,7 +659,7 @@
 | 可观测性 | 13 | 0 | 13 |
 | 模型基础设施 | 13 | 0 | 13 |
 | 部署与运维 | 15 | 0 | 15 |
-| 扩展与学习 | 47 | 0 | 47 |
+| 扩展与学习 | 48 | 0 | 48 |
 | Gate 系统 | 5 | 0 | 5 |
 | 评估系统 | 13 | 0 | 13 |
 | MCP 协议 | 6 | 0 | 6 |
@@ -675,12 +676,12 @@
 | 编排系统 | 4 | 0 | 4 |
 | 管理 & 质量 | 21 | 0 | 21 |
 | 编排层 | 17 | 0 | 17 |
-| **总计** | **427** | **0** | **427** |
+| **总计** | **428** | **0** | **428** |
 
 ---
 
 *最后更新: 2026-07-01*
-*版本: 12.2 · 28章 · 427项能力 · 427✅ · 路径标准化158条 + 沙箱双模式登记*
+*版本: 12.3 · 28章 · 428项能力 · 428✅ · 蒸馏引擎+RL训练API+管理UI全登记*
 
 **自检命令**：
 ```bash
