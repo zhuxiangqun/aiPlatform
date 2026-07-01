@@ -3,9 +3,9 @@ import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Activity, BarChart3, Bell, Bot, Box, Brain, ChevronDown, ChevronLeft,
-  ChevronRight, Cpu, Database, FileText, FolderOpen, GitBranch, HardDrive, Key,
+  ChevronRight, Cpu, Database, FileText, Flag, FolderOpen, GitBranch, HardDrive, Key,
   LogOut, MessageSquare, Monitor, Network, Package, PenTool, Plug,
-  Rocket, Server, Settings, Share2, Shield, ShoppingBag, Sparkles, User, Users, Wrench,
+  Rocket, Server, Settings, Share2, Shield, ShoppingBag, Sliders, Sparkles, Target, User, Users, Wrench,
   type LucideIcon,
 } from 'lucide-react';
 import { NotificationBellButton, NotificationProvider, ToastProvider } from '../ui';
@@ -87,6 +87,18 @@ const menuItems: (MenuItem | { divider: boolean } | MenuGroup)[] = [
     { key: '/app/diagrams', icon: PenTool, label: '图表工作室' },
     { key: '/app/apps', icon: Rocket, label: '已部署应用' },
   { key: '/studio', icon: Sparkles, label: 'App Studio' },
+  ]},
+  { divider: true },
+  { group: 'value', label: '价值中心', items: [
+    { key: '/value-center', icon: BarChart3, label: '价值看板' },
+    { key: '/value-center/kpis', icon: Target, label: 'KPI管理' },
+    { key: '/value-center/goals', icon: Flag, label: '目标追踪' },
+    { key: '/value-center/roles', icon: Users, label: '角色管理' },
+    { key: '/value-center/strategy', icon: Sliders, label: '策略控制' },
+  ]},
+  { divider: true },
+  { group: 'user', label: '终端使用', items: [
+    { key: '/workbench', icon: Monitor, label: '工作台' },
   ]},
 ];
 
