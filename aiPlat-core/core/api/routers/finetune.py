@@ -275,6 +275,65 @@ async def list_distillation_jobs() -> Dict[str, Any]:
         return {"jobs": [], "total": 0, "error": str(e)[:200]}
 
 
+# ── From-Scratch Training ────────────────────────────────────────────────
+
+@router.post("/scratch")
+async def start_scratch_training(body: Dict[str, Any]) -> Dict[str, Any]:
+    """Start a from-scratch model training job (random initialization).
+
+    Body:
+      - model_architecture: str (e.g. "gpt2", "pythia-160m")
+      - dataset_id: str
+      - output_model_name: str (optional)
+      - epochs: int (default: 3)
+      - batch_size: int (default: 4)
+      - learning_rate: float (default: 5e-5)
+    """
+    try:
+        from core.harness.training.full_training import get_full_training_engine, FullTrainingConfig
+        engine = get_full_training_engine()
+        config = FullTrainingConfig(
+            model_architecture=body.get("model_architecture", "gpt2"),
+            dataset_id=body.get("dataset_id", ""),
+            output_model_name=body.get("output_model_name", ""),
+            epochs=int(body.get("epochs", 3)),
+            batch_size=int(body.get("batch_size", 4)),
+            learning_rate=float(body.get("learning_rate", 5e-5)),
+        )
+        job_id = await engine.train_from_scratch(config)
+        return {"job_id": job_id, "status": "running"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e)[:200])
+
+
+@router.get("/scratch/{job_id}")
+async def get_scratch_status(job_id: str) -> Dict[str, Any]:
+    """Get from-scratch training job status."""
+    try:
+        from core.harness.training.full_training import get_full_training_engine
+        engine = get_full_training_engine()
+        status = engine.get_status(job_id)
+        if not status:
+            raise HTTPException(status_code=404, detail="Job not found")
+        return status
+    except HTTPException:
+        raise
+    except Exception as e:
+        return {"job_id": job_id, "status": "error", "error": str(e)[:200]}
+
+
+@router.get("/scratch")
+async def list_scratch_jobs() -> Dict[str, Any]:
+    """List all from-scratch training jobs."""
+    try:
+        from core.harness.training.full_training import get_full_training_engine
+        engine = get_full_training_engine()
+        jobs = engine.list_jobs()
+        return {"jobs": jobs, "total": len(jobs)}
+    except Exception as e:
+        return {"jobs": [], "total": 0, "error": str(e)[:200]}
+
+
 def _local_provider():
     """Lazy load LocalFineTuneProvider class to avoid MLX import errors."""
     from core.harness.finetune.providers.local import LocalFineTuneProvider

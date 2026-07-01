@@ -4,7 +4,7 @@ import { Button, Modal, toast, Input, Select } from '../../../components/ui';
 import { finetuneApi } from '../../../services';
 
 const FineTunePage: React.FC = () => {
-  const [tab, setTab] = useState<'datasets' | 'jobs' | 'training' | 'distill'>('datasets');
+  const [tab, setTab] = useState<'datasets' | 'jobs' | 'training' | 'distill' | 'scratch'>('datasets');
   const [datasets, setDatasets] = useState<any[]>([]);
   const [jobs, setJobs] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
@@ -47,6 +47,16 @@ const FineTunePage: React.FC = () => {
   const [distillMode, setDistillMode] = useState('lora');
   const [distillJobs, setDistillJobs] = useState<any[]>([]);
   const [distillRunning, setDistillRunning] = useState(false);
+
+  // ── Scratch state ──
+  const [scratchArch, setScratchArch] = useState('gpt2');
+  const [scratchDataset, setScratchDataset] = useState('');
+  const [scratchOutputName, setScratchOutputName] = useState('');
+  const [scratchEpochs, setScratchEpochs] = useState('3');
+  const [scratchBatchSize, setScratchBatchSize] = useState('4');
+  const [scratchLR, setScratchLR] = useState('5e-5');
+  const [scratchJobs, setScratchJobs] = useState<any[]>([]);
+  const [scratchRunning, setScratchRunning] = useState(false);
   const [baseModelOptions, setBaseModelOptions] = useState<{value:string,label:string}[]>([
     {value:'deepseek-chat',label:'deepseek-chat'},
     {value:'deepseek-v4-pro',label:'deepseek-v4-pro'}
@@ -97,12 +107,12 @@ const FineTunePage: React.FC = () => {
 
       {/* ── Tabs ── */}
       <div className="flex gap-2 border-b border-dark-border pb-2">
-        {(['datasets', 'jobs', 'training', 'distill'] as const).map(t => (
+        {(['datasets', 'jobs', 'training', 'distill', 'scratch'] as const).map(t => (
           <button key={t} onClick={() => setTab(t)}
             className={`px-4 py-2 text-sm rounded-t-lg transition-colors ${
               tab === t ? 'bg-dark-card text-gray-100 border border-dark-border border-b-dark-card' : 'text-gray-500 hover:text-gray-300'
             }`}>
-            {t === 'datasets' ? '📊 数据集' : t === 'jobs' ? '⚙️ 微调作业' : t === 'training' ? '🧠 RL训练' : '🔮 蒸馏'}
+            {t === 'datasets' ? '📊 数据集' : t === 'jobs' ? '⚙️ 微调作业' : t === 'training' ? '🧠 RL训练' : t === 'distill' ? '🔮 蒸馏' : '🏗️ 从零训练'}
           </button>
         ))}
       </div>
@@ -465,6 +475,93 @@ const FineTunePage: React.FC = () => {
                       }`}>{j.status}</span>
                     </div>
                     <span className="text-xs text-gray-500">{j.teacher}→{j.student}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── From-Scratch Training Tab ── */}
+      {tab === 'scratch' && (
+        <div className="space-y-4 mt-4">
+          <div className="bg-dark-card rounded-lg p-6 border border-dark-border">
+            <h3 className="text-lg font-semibold text-gray-100 mb-2">从零训练模型</h3>
+            <p className="text-sm text-gray-500 mb-4">随机初始化权重 → 在自定义数据集上训练 → 产出独立模型。适用于小型专用模型。</p>
+            <div className="grid grid-cols-2 gap-4 mb-4">
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">模型架构</label>
+                <select value={scratchArch} onChange={e => setScratchArch(e.target.value)}
+                  className="w-full bg-dark-bg border border-dark-border rounded px-3 py-2 text-gray-200 text-sm">
+                  <option value="gpt2">GPT-2 (124M, ~4GB RAM)</option>
+                  <option value="pythia-160m">Pythia (160M, ~6GB RAM)</option>
+                  <option value="gpt2-medium">GPT-2 Medium (355M, ~12GB RAM)</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">数据集</label>
+                <select value={scratchDataset} onChange={e => setScratchDataset(e.target.value)}
+                  className="w-full bg-dark-bg border border-dark-border rounded px-3 py-2 text-gray-200 text-sm">
+                  <option value="">选择数据集</option>
+                  {datasets.map((d: any) => <option key={d.id} value={d.id}>{d.name || d.id}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">输出模型名</label>
+                <input value={scratchOutputName} onChange={e => setScratchOutputName(e.target.value)}
+                  placeholder="my-custom-model"
+                  className="w-full bg-dark-bg border border-dark-border rounded px-3 py-2 text-gray-200 text-sm" />
+              </div>
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">Epochs</label>
+                <input value={scratchEpochs} onChange={e => setScratchEpochs(e.target.value)}
+                  className="w-full bg-dark-bg border border-dark-border rounded px-3 py-2 text-gray-200 text-sm" />
+              </div>
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">Batch Size</label>
+                <input value={scratchBatchSize} onChange={e => setScratchBatchSize(e.target.value)}
+                  className="w-full bg-dark-bg border border-dark-border rounded px-3 py-2 text-gray-200 text-sm" />
+              </div>
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">学习率</label>
+                <input value={scratchLR} onChange={e => setScratchLR(e.target.value)}
+                  className="w-full bg-dark-bg border border-dark-border rounded px-3 py-2 text-gray-200 text-sm" />
+              </div>
+            </div>
+            <div className="bg-amber-900/20 border border-amber-800/40 rounded-lg p-3 mb-4">
+              <p className="text-xs text-amber-400">
+                ⚠️ 从零训练需要大量数据（建议 1,000+ 条）和计算资源。适用于训练小型专用模型，不适合训练通用 LLM。
+              </p>
+            </div>
+            <Button icon={<Play className="w-4 h-4" />} loading={scratchRunning} onClick={async () => {
+              setScratchRunning(true);
+              try {
+                const res = await fetch('/api/core/finetune/scratch', {
+                  method: 'POST', headers: {'Content-Type': 'application/json'},
+                  body: JSON.stringify({
+                    model_architecture: scratchArch, dataset_id: scratchDataset,
+                    output_model_name: scratchOutputName, epochs: parseInt(scratchEpochs) || 3,
+                    batch_size: parseInt(scratchBatchSize) || 4,
+                    learning_rate: parseFloat(scratchLR) || 5e-5,
+                  }),
+                });
+                const data = await res.json();
+                setScratchJobs([data, ...scratchJobs]);
+                toast.success(`训练已启动: ${data.job_id}`);
+              } catch (e: any) { toast.error('训练失败', e?.message); }
+              setScratchRunning(false);
+            }}>开始训练</Button>
+            {scratchJobs.length > 0 && (
+              <div className="mt-4">
+                <h4 className="text-sm text-gray-400 mb-2">训练作业</h4>
+                {scratchJobs.map((j: any, i: number) => (
+                  <div key={i} className="flex justify-between items-center p-3 bg-dark-bg rounded border border-dark-border mb-2">
+                    <span className="font-mono text-xs text-blue-400">{j.job_id?.slice(0, 12)}</span>
+                    <span className={`px-2 py-0.5 rounded text-xs ${
+                      j.status === 'completed' ? 'bg-green-900 text-green-400' :
+                      j.status === 'running' ? 'bg-blue-900 text-blue-400' : 'bg-gray-700 text-gray-400'
+                    }`}>{j.status}</span>
                   </div>
                 ))}
               </div>
