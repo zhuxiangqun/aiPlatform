@@ -86,6 +86,7 @@ Phase 5: 竞品借鉴（✅ 已完成 — 本会话）
 ├─ 5.9  多租户检索隔离修复     ✅ (WikiPageRetriever tenant_id mismatch WARNING→ERROR阻断)
 ├─ 5.10 文档全部同步至 427✅   ✅ (6个核心文档数字一致, CI校验器通过)
 └─ 5.11 平台能力提升 (Palantir碎石路→高速公路) ✅ (promote→approve→SkillRegistry)
+└─ 5.12 模型训练(RL) + 知识蒸馏 ✅ (DistillationEngine + RL API + FineTune 4-Tab UI)
 
 评分: 90 → 99
 ```
