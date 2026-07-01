@@ -273,7 +273,7 @@ class EvolutionEngine:
             return {"error": str(e)[:100]}
 
     async def _do_value_snapshot(self) -> Dict[str, Any]:
-        """Monthly business value snapshot (five-dimension ROI) + audience notifications."""
+        """Monthly business value snapshot (five-dimension ROI) + audience notifications + KPI monitoring."""
         try:
             from core.harness.finance.value_calculator import get_value_calculator
             calc = get_value_calculator()
@@ -290,6 +290,23 @@ class EvolutionEngine:
                     EventBus.publish("system", payload)
                 except Exception:
                     pass
+            # KPIAgent: check all goals, alert on deviation
+            try:
+                from core.harness.agents.kpi_agent import get_kpi_agent
+                kpi = get_kpi_agent()
+                alerts = await kpi.monitor_all()
+                for alert in alerts:
+                    if alert.level != "ok":
+                        from core.harness.observation.event_bus import EventBus
+                        EventBus.publish("system", {
+                            "type": "kpi_alert",
+                            "level": alert.level,
+                            "message": alert.message,
+                            "suggested_action": alert.suggested_action,
+                            "month": month,
+                        })
+            except Exception:
+                pass
             return {"month": month, "total_runs": report.total_runs,
                     "total_value_cny": report.total_value_cny}
         except Exception as e:
