@@ -260,25 +260,26 @@ const UserWorkbench: React.FC = () => {
               onToggle={setExpandedCard}
             />
             {promoQueue.length > 0 && (
-              <ExpandableCard
-                id="promotions"
-                title="审批队列"
-                count={promoQueue.length}
-                unit="个待审"
-                color="#a855f7"
-                items={promoQueue.map((p: any) => ({
-                  label: p.spec_id,
-                  sub: `v${p.version} · ${p.requester || ''}`,
-                  link: `/value-center/spec/${p.spec_id}`,
-                }))}
-                expanded={expandedCard}
-                onToggle={setExpandedCard}
-              />
-              {expandedCard === 'promotions' && promoQueue.length > 0 && (
-                <div style={{
-                  marginTop: 8, display: 'flex', gap: 8, flexWrap: 'wrap',
-                }}>
-                  <button onClick={async () => {
+              <div>
+                <ExpandableCard
+                  id="promotions"
+                  title="审批队列"
+                  count={promoQueue.length}
+                  unit="个待审"
+                  color="#a855f7"
+                  items={promoQueue.map((p: any) => ({
+                    label: p.spec_id,
+                    sub: `v${p.version} · ${p.requester || ''}`,
+                    link: `/value-center/spec/${p.spec_id}`,
+                  }))}
+                  expanded={expandedCard}
+                  onToggle={setExpandedCard}
+                />
+                {expandedCard === 'promotions' && (
+                  <div style={{
+                    marginTop: 8, display: 'flex', gap: 8, flexWrap: 'wrap',
+                  }}>
+                    <button onClick={async () => {
                     for (const p of promoQueue) {
                       await fetch(`/api/core/workbench/spec/${p.spec_id}/promote/approve`, {
                         method: 'POST', headers: {'Content-Type': 'application/json'},
@@ -312,6 +313,7 @@ const UserWorkbench: React.FC = () => {
                   ))}
                 </div>
               )}
+              </div>
             )}
           </div>
 

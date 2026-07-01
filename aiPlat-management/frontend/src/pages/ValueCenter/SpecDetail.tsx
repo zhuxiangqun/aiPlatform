@@ -261,8 +261,10 @@ const SpecDetailPage: React.FC = () => {
                           marginTop: 6, background: '#0f172a', borderRadius: 6, padding: '10px',
                           fontSize: 12, color: '#94a3b8', maxHeight: 200, overflow: 'auto',
                         }}>
-                          {diffLoading ? '加载中...' : (diffData.changes || []).length === 0 ? '无变更' :
-                            diffData.changes.map((c: any, j: number) => (
+                          {diffLoading ? '加载中...' : (
+                            (diffData.changes || []).length === 0
+                              ? <span>无变更</span>
+                              : diffData.changes.map((c: any, j: number) => (
                               <div key={j} style={{
                                 padding: '4px 0', borderBottom: '1px solid #1e293b',
                                 color: c.changed ? '#f59e0b' : '#64748b',
