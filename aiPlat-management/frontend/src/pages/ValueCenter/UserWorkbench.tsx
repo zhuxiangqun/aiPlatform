@@ -309,6 +309,26 @@ const UserWorkbench: React.FC = () => {
             <h2 style={{ fontSize: 16, margin: 0 }}>Spec 管理</h2>
             <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
               <span style={{ fontSize: 12, color: '#64748b' }}>{specs.length} 个活跃 Spec</span>
+              {specs.filter(s => s.latest_status === 'review').length > 0 && (
+                <button onClick={async () => {
+                  const reviewIds = specs.filter(s => s.latest_status === 'review').map(s => s.spec_id);
+                  await fetch('/api/core/workbench/spec/batch-mark-stable', {
+                    method: 'POST', headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({spec_ids: reviewIds}),
+                  });
+                  const [sRes, dRes] = await Promise.all([
+                    fetch('/api/core/workbench/specs'),
+                    fetch('/api/core/workbench/fde-dashboard'),
+                  ]);
+                  setSpecs((await sRes.json()).specs || []);
+                  setFDEData(await dRes.json());
+                }} style={{
+                  background: '#22c55e20', color: '#22c55e', border: '1px solid #22c55e40',
+                  borderRadius: 6, padding: '5px 12px', cursor: 'pointer', fontSize: 12, fontWeight: 600,
+                }}>
+                  全部批准 ({specs.filter(s => s.latest_status === 'review').length})
+                </button>
+              )}
               <button onClick={() => setCreateOpen(true)} style={{
                 background: '#334155', color: '#e2e8f0', border: 'none',
                 borderRadius: 6, padding: '5px 12px', cursor: 'pointer', fontSize: 12, fontWeight: 600,
