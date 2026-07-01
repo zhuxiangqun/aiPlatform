@@ -159,6 +159,7 @@ A2A 交互路径:
 | **SFT→RL训练** | AutoLearner审批→TrajectoryScorer评分→混合采样→ShareGPT→SFT Job→latest.json→RL(RLOO)→Online Rollout | `training/auto_trigger.py` → `rl_trainer.py` |
 | **夜间进化** | EvolutionEngine(13步) → ValueCalc → SFT → SpecHealth | `evolution_engine.py:98` |
 | **FDE 仪表板** | SpecLifecycle + FeedbackRadar + TraceVisualizer → Dashboard | `workbench.py:441` |
+| **平台能力提升 (碎石路→高速公路)** | Spec promote → Approval Queue → SkillRegistry | `spec_lifecycle.py:promote_to_platform` → `workbench.py:post /promote` |
 
 ---
 
