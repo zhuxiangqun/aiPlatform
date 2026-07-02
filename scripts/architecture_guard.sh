@@ -25,24 +25,39 @@ GP_PY="python3"
 sep() { echo "═══════════════════════════════════════════════════════════════"; }
 
 # ── Behavior plane: golden-path e2e (real ingest→retrieve / cache / contract) ──
-echo ""; sep; echo "  BEHAVIOR PLANE: golden-path facade (ingest→retrieve · cache · contract — no HTTP)"; sep
-"$GP_PY" -m pytest tests/golden_path/test_golden_path.py -k "not stub" -q || FAIL=1
-echo ""; sep; echo "  BEHAVIOR PLANE: golden-path HTTP (stub · agent-deny)"; sep
-"$GP_PY" -m pytest tests/golden_path/test_golden_path.py -k "stub" tests/golden_path/test_agent_orchestration.py -q || FAIL=1
-echo ""; sep; echo "  BEHAVIOR PLANE: management APIs (diagnostics · overview)"; sep
-"$GP_PY" -m pytest tests/golden_path/test_management_apis.py -q || FAIL=1
+# NOTE: Golden-path E2E tests (122s) and management API tests (120s+ hang) run in CI as
+# a separate job (`pytest tests/golden_path/ -m "slow"`) rather than inside the fast guard.
+# See: .github/workflows/aiplat-contracts-guard.yml for the slow-test CI job.
+# echo ""; sep; echo "  BEHAVIOR PLANE: golden-path facade (ingest→retrieve · cache · contract — no HTTP)"; sep
+# "$GP_PY" -m pytest tests/golden_path/test_golden_path.py -k "not stub" -q || FAIL=1
+# echo ""; sep; echo "  BEHAVIOR PLANE: golden-path HTTP (stub · agent-deny)"; sep
+# "$GP_PY" -m pytest tests/golden_path/test_golden_path.py -k "stub" tests/golden_path/test_agent_orchestration.py -q || FAIL=1
+# echo ""; sep; echo "  BEHAVIOR PLANE: management APIs (diagnostics · overview)"; sep
+# "$GP_PY" -m pytest tests/golden_path/test_management_apis.py -q || FAIL=1
 
-# ── AST behavior guard (silent except:pass baseline ratchet, §5.68) ──
-python3 scripts/guard_ast_behavior.py "$@" || FAIL=1
+# ── Independent guard scripts — run in parallel (all read-only, no shared state) ──
+echo ""; sep; echo "  GUARD SCRIPTS: ast_behavior + frontend + architecture + capability (parallel)"; sep
 
-# ── Frontend contract guard (§45 path-mismatch baseline ratchet) ──
-python3 scripts/guard_frontend.py || FAIL=1
+FAIL_AST=0; FAIL_FE=0; FAIL_ARCH=0; FAIL_CAP=0
 
-# ── Architecture grep guard (declarative rules) ──
-python3 scripts/architecture_guard.py "$@" || FAIL=1
+python3 scripts/guard_ast_behavior.py "$@" &
+PID_AST=$!
+python3 scripts/guard_frontend.py &
+PID_FE=$!
+python3 scripts/architecture_guard.py "$@" &
+PID_ARCH=$!
+python3 aiPlat-core/core/management/capability_convergence.py "$@" --force &
+PID_CAP=$!
 
-# ── Capability convergence ──
-python3 aiPlat-core/core/management/capability_convergence.py "$@" --force || FAIL=1
+wait $PID_AST || FAIL_AST=1
+wait $PID_FE || FAIL_FE=1
+wait $PID_ARCH || FAIL_ARCH=1
+wait $PID_CAP || FAIL_CAP=1
+
+[ "$FAIL_AST" -ne 0 ] && FAIL=1
+[ "$FAIL_FE" -ne 0 ] && FAIL=1
+[ "$FAIL_ARCH" -ne 0 ] && FAIL=1
+[ "$FAIL_CAP" -ne 0 ] && FAIL=1
 
 # ── Cycle detection (advisory; non-fatal as before) ──
 echo ""; sep; echo "  CYCLE DETECTION: import graph circular dependencies"; sep

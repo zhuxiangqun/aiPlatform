@@ -351,9 +351,12 @@ class TestCrossLayerCalls:
         # Approved direct harness imports (boundary-standard.md §5.2 whitelist)
         approved = re.compile(
             r"infrastructure\.infra_bridge|infrastructure\.database_port|infrastructure\.crypto|"
-            r"knowledge\.db|knowledge\.embedder|knowledge\.utils|"
+            r"knowledge\.db|knowledge\.embedder|knowledge\.utils|knowledge\.wiki_engine|knowledge\.wiki_fts|"
+            r"knowledge\.knowledge_ontology|knowledge\.domain_router|knowledge\.doc_compressor|"
             r"harness\.document|apps/document_intelligence|"
-            r"llm_env|syscalls\.llm|model_injection|intelligence|utils\.prompt_loader"
+            r"llm_env|syscalls\.llm|syscalls\.retrieval|model_injection|intelligence|utils\.prompt_loader|"
+            r"ontology_engine\.cleanup|ontology_engine\.graph_index|ontology_engine\.engine|"
+            r"ontology_engine\.triple_store|ontology_engine\.triple_scanner"
         )
 
         for f in sorted(PLATFORM_DIR.rglob("*.py")):

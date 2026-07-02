@@ -1,35 +1,87 @@
 # DO NOT add new entries here without verifying the imports are truly lazy
 # Known-safe cycles — all imports are function-scoped or TYPE_CHECKING
+
+
+
+
+
+__init__ → prompt_assembler → engine → manager → skill → integration → __init__ → react
+__init__ → prompt_assembler → engine → manager → skill → integration → registry → react → base → pipeline_agent → pipeline_engine → intents → manager → profile_builder → loop
+__init__ → prompt_assembler → engine → manager → skill → integration → router → graph_engine → planning
+__init__ → prompt_assembler → engine → manager → skill → integration → router → graph_engine → reflection
+__init__ → prompt_assembler → engine → manager → skill → integration → router → graph_engine → tri_agent
+base -> pipeline_agent -> pipeline_engine -> intents -> manager -> integration -> registry -> react
 base → infra_llm_adapter
 base → pipeline_agent
-base -> pipeline_agent -> pipeline_engine -> intents -> manager -> integration -> registry -> react
-builder_project_service → builder
 builder_project_service -> builder
+builder_project_service → builder
+cmm_graduation → pattern_accumulator
+core_facade → kb_facade → llm_client → llm → __init__ → prompt_assembler → engine → manager → skill → integration
+core_facade → kb_facade → llm_client → llm → __init__ → prompt_assembler → engine → manager → skill → integration → __init__ → parallel_executor → materials_chat → server
+core_facade → kb_facade → llm_client → llm → __init__ → prompt_assembler → engine → manager → skill → integration → __init__ → parallel_executor → materials_chat → server → traces_graphs
+core_facade → kb_facade → llm_client → llm → __init__ → prompt_assembler → engine → manager → skill → integration → __init__ → parallel_executor → materials_chat → server → triple_scanner
+core_facade → kb_facade → llm_client → llm → __init__ → prompt_assembler → engine → manager → skill → integration → __init__ → parallel_executor → materials_chat → server → wiki
+core_facade → kb_facade → llm_client → llm → __init__ → prompt_assembler → engine → manager → skill → integration → __init__ → parallel_executor → materials_chat → server → workspace_agents
+core_facade → kb_facade → llm_client → llm → __init__ → prompt_assembler → engine → manager → skill → integration → coordinator
+core_facade → kb_facade → llm_client → llm → __init__ → prompt_assembler → engine → manager → skill → integration → registry → react → base → pipeline_agent → pipeline_engine → eval_runner
+core_facade → kb_facade → llm_client → llm → __init__ → prompt_assembler → engine → manager → skill → integration → registry → react → base → pipeline_agent → pipeline_engine → intents
 core_facade → pipeline_engine → intents
 core_facade → stage_runner → loop → integration
 core_facade → stage_runner → loop → integration → coordinator
-embedder → retriever
 embedder -> retriever
-execution_store → event_bus
+embedder → retriever
+engine → manager → skill → integration → __init__ → parallel_executor → materials_chat → server → diagnostics
 execution_store -> event_bus
-executor → skill_workflow_runner
+execution_store → event_bus
 executor -> skill_workflow_runner
+executor → skill_workflow_runner
 integration → __init__ → manager
-knowledge_abox_builder → knowledge_ontology → knowledge_validator
-knowledge_abox_builder → knowledge_ontology → knowledge_validator → retrieval → wiki_retriever
-knowledge_abox_builder → knowledge_ontology → knowledge_validator → wiki_engine
-knowledge_abox_builder → knowledge_ontology → knowledge_validator → wiki_engine → wiki_health_rules
-knowledge_abox_builder → wiki_engine
+integration → __init__ → parallel_executor → materials_chat → server
+integration → __init__ → parallel_executor → materials_chat → server → adapters
+integration → __init__ → parallel_executor → materials_chat → server → agents
+integration → __init__ → parallel_executor → materials_chat → server → audit_ops_export
+integration → __init__ → parallel_executor → materials_chat → server → capability → capability_graph
+integration → __init__ → parallel_executor → materials_chat → server → cron
+integration → __init__ → parallel_executor → materials_chat → server → diagnostics
+integration → __init__ → parallel_executor → materials_chat → server → diagnostics → overview → health
+integration → __init__ → parallel_executor → materials_chat → server → engine_skills
+integration → __init__ → parallel_executor → materials_chat → server → evaluation_policies
+integration → __init__ → parallel_executor → materials_chat → server → executions_trace
+integration → __init__ → parallel_executor → materials_chat → server → harness_admin
+integration → __init__ → parallel_executor → materials_chat → server → knowledge
+integration → __init__ → parallel_executor → materials_chat → server → learning_misc
+integration → __init__ → parallel_executor → materials_chat → server → memory
+integration → __init__ → parallel_executor → materials_chat → server → routing_observability
+integration → __init__ → parallel_executor → materials_chat → server → runs
+integration → __init__ → parallel_executor → materials_chat → server → runs_eval
+integration → __init__ → parallel_executor → materials_chat → server → syscalls
+integration → __init__ → parallel_executor → materials_chat → server → tools
+integration → __init__ → parallel_executor → materials_chat → server → traces_graphs
+integration → __init__ → parallel_executor → materials_chat → server → triple_scanner
+integration → __init__ → parallel_executor → materials_chat → server → workspace_agents
+integration → __init__ → parallel_executor → materials_chat → server → workspace_agents → workspace_skills
+integration → __init__ → parallel_executor → materials_chat → server → workspace_skills_meta
+integration → registry → react → base → pipeline_agent → pipeline_engine
+integration → registry → react → base → pipeline_agent → pipeline_engine → intents → manager
+integration → registry → react → base → pipeline_agent → pipeline_engine → intents → manager → profile_builder → loop
+integration → registry → react → base → pipeline_agent → pipeline_engine → policy_gate
+integration → registry → react → base → pipeline_agent → pipeline_engine → stage_runner
+integration → registry → react → base → pipeline_agent → pipeline_engine → tool
+kb_facade → llm_client → llm → __init__ → prompt_assembler → engine → manager → skill → integration → __init__ → parallel_executor → materials_chat
+kb_facade → llm_client → llm → __init__ → prompt_assembler → engine → manager → skill → integration → __init__ → parallel_executor → materials_chat → server → __init__ → knowledge_manager
+kb_facade → llm_client → llm → __init__ → prompt_assembler → engine → manager → skill → integration → registry → react → base → pipeline_agent → pipeline_engine → rag_evaluator
 knowledge_abox_builder -> wiki_engine
 knowledge_abox_builder -> wiki_engine -> _bg_tasks -> knowledge_validator
 knowledge_abox_builder -> wiki_engine -> _bg_tasks -> knowledge_validator -> retrieval
 knowledge_abox_builder -> wiki_engine -> _bg_tasks -> knowledge_validator -> retrieval -> wiki_retriever
 knowledge_abox_builder -> wiki_engine -> wiki_health_rules
-knowledge_ontology → knowledge_abox_builder
-knowledge_ontology → knowledge_evolution_llm
-knowledge_ontology → knowledge_validator
-knowledge_ontology → knowledge_validator → retrieval → wiki_retriever
-knowledge_ontology → knowledge_validator → wiki_engine
+knowledge_abox_builder → knowledge_ontology
+knowledge_abox_builder → knowledge_ontology → knowledge_evolution_llm
+knowledge_abox_builder → knowledge_ontology → knowledge_validator
+knowledge_abox_builder → knowledge_ontology → knowledge_validator → retrieval → wiki_retriever
+knowledge_abox_builder → knowledge_ontology → knowledge_validator → wiki_engine
+knowledge_abox_builder → knowledge_ontology → knowledge_validator → wiki_engine → wiki_health_rules
+knowledge_abox_builder → wiki_engine
 knowledge_ontology -> knowledge_abox_builder
 knowledge_ontology -> knowledge_abox_builder -> wiki_engine
 knowledge_ontology -> knowledge_abox_builder -> wiki_engine -> _bg_tasks -> knowledge_validator
@@ -40,28 +92,73 @@ knowledge_ontology -> knowledge_abox_builder -> wiki_engine -> knowledge_gap_det
 knowledge_ontology -> knowledge_abox_builder -> wiki_engine -> knowledge_growth
 knowledge_ontology -> knowledge_abox_builder -> wiki_engine -> wiki_health_rules
 knowledge_ontology -> knowledge_evolution_llm
+knowledge_ontology → knowledge_abox_builder
+knowledge_ontology → knowledge_evolution_llm
+knowledge_ontology → knowledge_validator
+knowledge_ontology → knowledge_validator → retrieval → wiki_retriever
+knowledge_ontology → knowledge_validator → wiki_engine
+knowledge_ontology → ontology_loader
+knowledge_validator -> retrieval -> wiki_retriever
+knowledge_validator → knowledge_abox_builder → knowledge_ontology
 knowledge_validator → retrieval → wiki_retriever
 knowledge_validator → wiki_engine → wiki_health_rules
-knowledge_validator -> retrieval -> wiki_retriever
-llm → post_retrieval_governor → knowledge_abox_builder → knowledge_ontology → knowledge_validator → retrieval → graph
-llm → post_retrieval_governor → knowledge_abox_builder → knowledge_ontology → knowledge_validator → wiki_engine → embedder → retriever → hyde_expander
 llm -> post_retrieval_governor -> knowledge_ontology -> embedder -> retriever -> hyde_expander
 llm -> post_retrieval_governor -> knowledge_ontology -> knowledge_abox_builder -> wiki_engine -> _bg_tasks -> knowledge_validator -> retrieval -> graph
 llm -> post_retrieval_governor -> knowledge_ontology -> knowledge_abox_builder -> wiki_engine -> knowledge_gap_detector -> ontology_query_mapper -> domain_router
 llm -> post_retrieval_governor -> knowledge_ontology -> knowledge_evolution_llm
+llm → __init__ → prompt_assembler → engine → manager → skill → integration
+llm → __init__ → prompt_assembler → engine → manager → skill → integration → __init__ → chain_planner
+llm → __init__ → prompt_assembler → engine → manager → skill → integration → __init__ → parallel_executor → materials_chat
+llm → __init__ → prompt_assembler → engine → manager → skill → integration → __init__ → parallel_executor → materials_chat → question_analysis
+llm → __init__ → prompt_assembler → engine → manager → skill → integration → __init__ → parallel_executor → materials_chat → server → diagnostics
+llm → __init__ → prompt_assembler → engine → manager → skill → integration → __init__ → parallel_executor → materials_chat → server → diagrams → drawio_gen
+llm → __init__ → prompt_assembler → engine → manager → skill → integration → __init__ → parallel_executor → materials_chat → server → entropy
+llm → __init__ → prompt_assembler → engine → manager → skill → integration → __init__ → parallel_executor → materials_chat → server → knowledge_graph
+llm → __init__ → prompt_assembler → engine → manager → skill → integration → __init__ → parallel_executor → materials_chat → server → mcp_admin
+llm → __init__ → prompt_assembler → engine → manager → skill → integration → __init__ → parallel_executor → materials_chat → server → prompt_app
+llm → __init__ → prompt_assembler → engine → manager → skill → integration → __init__ → parallel_executor → materials_chat → server → prompt_eval
+llm → __init__ → prompt_assembler → engine → manager → skill → integration → __init__ → parallel_executor → materials_chat → server → prompt_optimize
+llm → __init__ → prompt_assembler → engine → manager → skill → integration → __init__ → parallel_executor → materials_chat → server → tools
+llm → __init__ → prompt_assembler → engine → manager → skill → integration → __init__ → parallel_executor → materials_chat → server → wiki
+llm → __init__ → prompt_assembler → engine → manager → skill → integration → __init__ → parallel_executor → materials_chat → server → wiki → document_parser
+llm → __init__ → prompt_assembler → engine → manager → skill → integration → __init__ → parallel_executor → materials_chat → server → wiki → learning_assessment
+llm → __init__ → prompt_assembler → engine → manager → skill → integration → __init__ → parallel_executor → materials_chat → server → wiki → learning_assessment → learning_paths
+llm → __init__ → prompt_assembler → engine → manager → skill → integration → __init__ → parallel_executor → materials_chat → server → workspace_agents
+llm → __init__ → prompt_assembler → engine → manager → skill → integration → __init__ → parallel_executor → materials_chat → server → workspace_agents → workspace_skills
+llm → __init__ → prompt_assembler → engine → manager → skill → integration → registry
+llm → __init__ → prompt_assembler → engine → manager → skill → integration → registry → base
+llm → __init__ → prompt_assembler → engine → manager → skill → integration → registry → react → base
+llm → __init__ → prompt_assembler → engine → manager → skill → integration → registry → react → base → pipeline_agent → pipeline_engine
+llm → __init__ → prompt_assembler → engine → manager → skill → integration → registry → react → base → pipeline_agent → pipeline_engine → intents → manager
+llm → __init__ → prompt_assembler → engine → manager → skill → integration → registry → react → base → pipeline_agent → pipeline_engine → intents → manager → profile_builder → loop → __init__ → hook_manager → devil_advocate
+llm → __init__ → prompt_assembler → engine → manager → skill → integration → registry → react → base → pipeline_agent → pipeline_engine → intents → manager → profile_builder → loop → __init__ → hook_manager → on_error_reflector
+llm → __init__ → prompt_assembler → engine → manager → skill → integration → registry → react → base → pipeline_agent → pipeline_engine → intents → manager → profile_builder → loop → query_rewriter
+llm → __init__ → prompt_assembler → engine → manager → skill → integration → registry → react → base → pipeline_agent → pipeline_engine → intents → manager → wiki_engine → _bg_tasks → knowledge_validator → knowledge_abox_builder → knowledge_ontology → embedder → retriever → hyde_expander
+llm → __init__ → prompt_assembler → engine → manager → skill → integration → registry → react → base → pipeline_agent → pipeline_engine → intents → manager → wiki_engine → _bg_tasks → knowledge_validator → knowledge_abox_builder → knowledge_ontology → knowledge_evolution_llm
+llm → __init__ → prompt_assembler → engine → manager → skill → integration → registry → react → base → pipeline_agent → pipeline_engine → intents → manager → wiki_engine → _bg_tasks → knowledge_validator → retrieval → graph
+llm → __init__ → prompt_assembler → engine → manager → skill → integration → registry → react → base → pipeline_agent → pipeline_engine → intents → manager → wiki_engine → knowledge_gap_detector → ontology_query_mapper → domain_router
+llm → __init__ → prompt_assembler → engine → manager → skill → integration → registry → react → base → pipeline_agent → pipeline_engine → rag_evaluator
+llm → __init__ → prompt_assembler → engine → manager → skill → integration → registry → react → base → pipeline_agent → pipeline_engine → tool
+llm → post_retrieval_governor → knowledge_abox_builder → knowledge_ontology → knowledge_validator → retrieval → graph
+llm → post_retrieval_governor → knowledge_abox_builder → knowledge_ontology → knowledge_validator → wiki_engine → embedder → retriever → hyde_expander
 loop → integration → __init__ → manager → profile_builder
 manager -> profile_builder -> loop
-post_retrieval_governor → knowledge_abox_builder → knowledge_ontology → knowledge_validator → retrieval
-post_retrieval_governor → knowledge_abox_builder → knowledge_ontology → knowledge_validator → retrieval → wiki_retriever
+manager → profile_builder → loop
+manager → skill → integration → __init__ → parallel_executor → materials_chat → server → diagnostics_repo
+manager → skill → integration → __init__ → parallel_executor → materials_chat → server → learning_releases
+manager → skill → integration → registry → react → base → pipeline_agent → pipeline_engine → intents → manager → profile_builder → loop → __init__
+manager → skill → integration → workbench → autorollback
+manager → skill → integration → workbench → autorollback → release
 post_retrieval_governor -> knowledge_ontology -> knowledge_abox_builder -> wiki_engine -> _bg_tasks -> knowledge_validator -> retrieval
 post_retrieval_governor -> knowledge_ontology -> knowledge_abox_builder -> wiki_engine -> _bg_tasks -> knowledge_validator -> retrieval -> wiki_retriever
-retrieval → wiki_retriever
+post_retrieval_governor → knowledge_abox_builder → knowledge_ontology → knowledge_validator → retrieval
+post_retrieval_governor → knowledge_abox_builder → knowledge_ontology → knowledge_validator → retrieval → wiki_retriever
+prompt_assembler → engine → manager → skill → integration → __init__ → parallel_executor → materials_chat → server → diagnostics
 retrieval -> wiki_retriever
-service → video
+retrieval → wiki_retriever
 service -> video
-wiki_engine → _bg_tasks
-wiki_engine → wiki_health_rules
-wiki_engine → wiki_structured_query
+service → video
+skill → integration → __init__ → parallel_executor → materials_chat
 wiki_engine -> _bg_tasks
 wiki_engine -> _bg_tasks -> knowledge_validator
 wiki_engine -> _bg_tasks -> knowledge_validator -> retrieval -> wiki_retriever
@@ -69,5 +166,14 @@ wiki_engine -> _bg_tasks -> knowledge_validator -> retrieval -> wiki_retriever -
 wiki_engine -> engine -> knowledge_synthesis
 wiki_engine -> wiki_health_rules
 wiki_engine -> wiki_structured_query
-workspace_agents → workspace_skills
+wiki_engine → _bg_tasks
+wiki_engine → _bg_tasks → knowledge_validator
+wiki_engine → _bg_tasks → knowledge_validator → knowledge_abox_builder
+wiki_engine → _bg_tasks → knowledge_validator → knowledge_abox_builder → knowledge_ontology
+wiki_engine → _bg_tasks → knowledge_validator → retrieval → wiki_retriever
+wiki_engine → _bg_tasks → knowledge_validator → retrieval → wiki_retriever → wiki_fts
+wiki_engine → engine → knowledge_synthesis
+wiki_engine → wiki_health_rules
+wiki_engine → wiki_structured_query
 workspace_agents -> workspace_skills
+workspace_agents → workspace_skills

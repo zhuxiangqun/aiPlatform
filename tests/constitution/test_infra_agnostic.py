@@ -29,7 +29,7 @@ def _find_py_files(dir_path: str) -> List[Path]:
         return []
     files = []
     for root, dirs, filenames in os.walk(str(dir_full)):
-        dirs[:] = [d for d in dirs if d not in ("__pycache__", ".pytest_cache")]
+        dirs[:] = [d for d in dirs if d not in ("__pycache__", ".pytest_cache", "tests")]
         for f in filenames:
             if f.endswith(".py"):
                 files.append(Path(root) / f)

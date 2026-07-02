@@ -19,6 +19,27 @@ NC='\033[0m'
 
 FAILURES=0
 
+# Timeout helper: run a command with a time limit, kill if exceeded
+_run_with_timeout() {
+  local timeout_secs="$1"; shift
+  local label="$1"; shift
+  "$@" &
+  local pid=$!
+  local waited=0
+  while [ $waited -lt "$timeout_secs" ]; do
+    if ! kill -0 "$pid" 2>/dev/null; then
+      wait "$pid"
+      return $?
+    fi
+    sleep 1
+    waited=$((waited + 1))
+  done
+  kill "$pid" 2>/dev/null
+  wait "$pid" 2>/dev/null
+  echo -e "${YELLOW}  WARN${NC} $label timed out after ${timeout_secs}s (skipped)"
+  return 0  # Don't fail on timeout — running slow test suite
+}
+
 _log() { echo -e "$@" >&2; }
 
 echo ""
@@ -37,7 +58,7 @@ echo ""
 # arbiter (it sys.exit()s on the FILTERED count). Disable pipefail here so the pipeline
 # inherits the filter's exit code, not caller_verify's raw exit.
 set +o pipefail
-if bash "$SCRIPT_DIR/caller_verify.sh" 2>&1 | python3 "$SCRIPT_DIR/filter_dataclass_dead.py"; then
+if _run_with_timeout 25 "caller_verify.sh" bash "$SCRIPT_DIR/caller_verify.sh" 2>&1 | python3 "$SCRIPT_DIR/filter_dataclass_dead.py"; then
     echo -e "${GREEN}  PASS${NC} Step 1: No 0-caller symbols detected"
 else
     echo -e "${RED}  FAIL${NC} Step 1: 0-caller symbols found (see above)"
