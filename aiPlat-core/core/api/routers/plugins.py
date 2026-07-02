@@ -36,7 +36,7 @@ def _plugin_mgr():
     return getattr(rt, "plugin_manager", None) if rt else None
 
 
-@router.get("/plugins")
+@router.get("/plugins", response_model=Dict[str, Any])
 async def list_plugins(http_request: Request, limit: int = 100, offset: int = 0):
     store = _store()
     plugin_mgr = _plugin_mgr()
@@ -47,7 +47,7 @@ async def list_plugins(http_request: Request, limit: int = 100, offset: int = 0)
     return await plugin_mgr.list_plugins(tenant_id=str(tid) if tid else None, limit=limit, offset=offset)
 
 
-@router.put("/plugins")
+@router.put("/plugins", response_model=Dict[str, Any])
 async def upsert_plugin(request: dict, http_request: Request):
     store = _store()
     plugin_mgr = _plugin_mgr()
@@ -87,7 +87,7 @@ async def upsert_plugin(request: dict, http_request: Request):
     return {"status": "ok", "plugin": rec}
 
 
-@router.post("/plugins/{plugin_id}/enable")
+@router.post("/plugins/{plugin_id}/enable", response_model=Dict[str, Any])
 async def set_plugin_enabled(plugin_id: str, request: dict, http_request: Request):
     store = _store()
     plugin_mgr = _plugin_mgr()
@@ -126,7 +126,7 @@ async def set_plugin_enabled(plugin_id: str, request: dict, http_request: Reques
     return {"status": "ok", "plugin_id": plugin_id, "enabled": enabled}
 
 
-@router.post("/plugins/{plugin_id}/disable")
+@router.post("/plugins/{plugin_id}/disable", response_model=Dict[str, Any])
 async def set_plugin_disabled(plugin_id: str, request: dict, http_request: Request):
     """Disable a plugin (delegates to set_enabled with enabled=False)."""
     store = _store()
@@ -162,7 +162,7 @@ async def set_plugin_disabled(plugin_id: str, request: dict, http_request: Reque
     return {"status": "ok", "plugin_id": plugin_id, "enabled": False}
 
 
-@router.get("/plugins/{plugin_id}/versions")
+@router.get("/plugins/{plugin_id}/versions", response_model=Dict[str, Any])
 async def list_plugin_versions(plugin_id: str, http_request: Request, limit: int = 50, offset: int = 0):
     plugin_mgr = _plugin_mgr()
     store = _store()
@@ -178,7 +178,7 @@ async def list_plugin_versions(plugin_id: str, http_request: Request, limit: int
     return await plugin_mgr.list_versions(tenant_id=str(tid), plugin_id=str(plugin_id), limit=limit, offset=offset)
 
 
-@router.post("/plugins/{plugin_id}/rollback")
+@router.post("/plugins/{plugin_id}/rollback", response_model=Dict[str, Any])
 async def rollback_plugin(plugin_id: str, request: dict, http_request: Request):
     plugin_mgr = _plugin_mgr()
     store = _store()
@@ -273,7 +273,7 @@ async def _require_plugin_run_approval(
     return req.request_id
 
 
-@router.post("/plugins/{plugin_id}/run")
+@router.post("/plugins/{plugin_id}/run", response_model=Dict[str, Any])
 async def run_plugin(plugin_id: str, request: dict, http_request: Request):
     """
     PR-11: plugin run (MVP)

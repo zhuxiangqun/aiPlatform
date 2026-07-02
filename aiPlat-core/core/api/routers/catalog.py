@@ -22,7 +22,7 @@ def _ws_skill_mgr(rt):
     return getattr(rt, "workspace_skill_manager", None) if rt else None
 
 
-@router.get("/catalog/skills")
+@router.get("/catalog/skills", response_model=Dict[str, Any])
 async def list_skill_catalog(
     q: Optional[str] = None,
     scope: str = "all",  # all|engine|workspace

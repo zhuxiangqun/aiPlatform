@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Annotated, Optional
+from typing import Dict, Annotated, Optional, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 
@@ -17,7 +17,7 @@ def _store(rt: Optional[KernelRuntime]):
     return getattr(rt, "execution_store", None) if rt else None
 
 
-@router.get("/audit/logs")
+@router.get("/audit/logs", response_model=Dict[str, Any])
 async def list_audit_logs(
     tenant_id: Optional[str] = None,
     actor_id: Optional[str] = None,
@@ -56,7 +56,7 @@ async def list_audit_logs(
     )
 
 
-@router.get("/audit/verify")
+@router.get("/audit/verify", response_model=Dict[str, Any])
 async def verify_audit_chain(
     tenant_id: Optional[str] = None,
     rt: RuntimeDep = None,
@@ -72,7 +72,7 @@ async def verify_audit_chain(
     return await store.verify_audit_chain(tenant_id=tenant_id)
 
 
-@router.get("/ops/export/audit_logs.csv")
+@router.get("/ops/export/audit_logs.csv", response_model=Dict[str, Any])
 async def export_audit_logs_csv(
     http_request: Request,
     tenant_id: Optional[str] = None,

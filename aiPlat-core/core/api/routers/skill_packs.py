@@ -78,7 +78,7 @@ def _normalize_skill_pack_manifest(manifest: Any) -> Dict[str, Any]:
     return out
 
 
-@router.get("/skill-packs")
+@router.get("/skill-packs", response_model=Dict[str, Any])
 async def list_skill_packs(limit: int = 100, offset: int = 0):
     store = _store()
     if not store:
@@ -86,7 +86,7 @@ async def list_skill_packs(limit: int = 100, offset: int = 0):
     return await store.list_skill_packs(limit=limit, offset=offset)
 
 
-@router.post("/skill-packs")
+@router.post("/skill-packs", response_model=Dict[str, Any])
 async def create_skill_pack(request: SkillPackCreateRequest):
     store = _store()
     if not store:
@@ -95,7 +95,7 @@ async def create_skill_pack(request: SkillPackCreateRequest):
     return await store.create_skill_pack({"name": request.name, "description": request.description, "manifest": manifest})
 
 
-@router.get("/skill-packs/{pack_id}")
+@router.get("/skill-packs/{pack_id}", response_model=Dict[str, Any])
 async def get_skill_pack(pack_id: str):
     store = _store()
     if not store:
@@ -106,7 +106,7 @@ async def get_skill_pack(pack_id: str):
     return pack
 
 
-@router.put("/skill-packs/{pack_id}")
+@router.put("/skill-packs/{pack_id}", response_model=Dict[str, Any])
 async def update_skill_pack(pack_id: str, request: SkillPackUpdateRequest):
     store = _store()
     if not store:
@@ -120,7 +120,7 @@ async def update_skill_pack(pack_id: str, request: SkillPackUpdateRequest):
     return updated
 
 
-@router.delete("/skill-packs/{pack_id}")
+@router.delete("/skill-packs/{pack_id}", response_model=Dict[str, Any])
 async def delete_skill_pack(pack_id: str):
     store = _store()
     if not store:
@@ -131,7 +131,7 @@ async def delete_skill_pack(pack_id: str):
     return {"status": "deleted", "id": pack_id}
 
 
-@router.post("/skill-packs/{pack_id}/publish")
+@router.post("/skill-packs/{pack_id}/publish", response_model=Dict[str, Any])
 async def publish_skill_pack(pack_id: str, request: SkillPackPublishRequest):
     store = _store()
     if not store:
@@ -195,7 +195,7 @@ async def publish_skill_pack(pack_id: str, request: SkillPackPublishRequest):
     return {**(res or {}), "change_id": change_id, "links": governance_links(change_id=change_id)}
 
 
-@router.get("/skill-packs/{pack_id}/versions")
+@router.get("/skill-packs/{pack_id}/versions", response_model=Dict[str, Any])
 async def list_skill_pack_versions(pack_id: str, limit: int = 100, offset: int = 0):
     store = _store()
     if not store:
@@ -203,7 +203,7 @@ async def list_skill_pack_versions(pack_id: str, limit: int = 100, offset: int =
     return await store.list_skill_pack_versions(pack_id=pack_id, limit=limit, offset=offset)
 
 
-@router.post("/skill-packs/{pack_id}/install")
+@router.post("/skill-packs/{pack_id}/install", response_model=Dict[str, Any])
 async def install_skill_pack(pack_id: str, request: SkillPackInstallRequest):
     store = _store()
     if not store:
@@ -319,7 +319,7 @@ async def install_skill_pack(pack_id: str, request: SkillPackInstallRequest):
     return {"install": install, "applied": applied, "change_id": change_id, "links": governance_links(change_id=change_id)}
 
 
-@router.get("/skill-packs/installs")
+@router.get("/skill-packs/installs", response_model=Dict[str, Any])
 async def list_skill_pack_installs(scope: Optional[str] = None, limit: int = 100, offset: int = 0):
     store = _store()
     if not store:

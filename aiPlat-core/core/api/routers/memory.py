@@ -26,7 +26,7 @@ def _memory_mgr(rt: RuntimeDep):
 # ==================== Memory Management ====================
 
 
-@router.get("/memory/sessions")
+@router.get("/memory/sessions", response_model=Dict[str, Any])
 async def list_sessions(http_request: Request, limit: int = 100, offset: int = 0, rt: RuntimeDep = Depends(get_kernel_runtime)):
     """List memory sessions"""
     store = _store(rt)
@@ -70,7 +70,7 @@ async def list_sessions(http_request: Request, limit: int = 100, offset: int = 0
     return {"sessions": result, "total": counts["total"]}
 
 
-@router.post("/memory/sessions")
+@router.post("/memory/sessions", response_model=Dict[str, Any])
 async def create_session(request: SessionCreateRequest, http_request: Request, rt: RuntimeDep = Depends(get_kernel_runtime)):
     """Create memory session"""
     meta = request.metadata or {}
@@ -107,7 +107,7 @@ async def create_session(request: SessionCreateRequest, http_request: Request, r
     return {"session_id": session.id, "status": "created"}
 
 
-@router.get("/memory/sessions/{session_id}")
+@router.get("/memory/sessions/{session_id}", response_model=Dict[str, Any])
 async def get_session(session_id: str, http_request: Request, rt: RuntimeDep = Depends(get_kernel_runtime)):
     """Get session details"""
     store = _store(rt)
@@ -151,7 +151,7 @@ async def get_session(session_id: str, http_request: Request, rt: RuntimeDep = D
     }
 
 
-@router.delete("/memory/sessions/{session_id}")
+@router.delete("/memory/sessions/{session_id}", response_model=Dict[str, Any])
 async def delete_session(session_id: str, http_request: Request, rt: RuntimeDep = Depends(get_kernel_runtime)):
     """Delete session"""
     store = _store(rt)
@@ -172,7 +172,7 @@ async def delete_session(session_id: str, http_request: Request, rt: RuntimeDep 
     return {"status": "deleted", "session_id": session_id}
 
 
-@router.get("/memory/sessions/{session_id}/context")
+@router.get("/memory/sessions/{session_id}/context", response_model=Dict[str, Any])
 async def get_session_context(session_id: str, http_request: Request, rt: RuntimeDep = Depends(get_kernel_runtime)):
     """Get session context"""
     store = _store(rt)
@@ -194,7 +194,7 @@ async def get_session_context(session_id: str, http_request: Request, rt: Runtim
     return {"session_id": session_id, "context": {"messages": context.get("messages", []), "message_count": len(context.get("messages", []))}}
 
 
-@router.post("/memory/sessions/{session_id}/messages")
+@router.post("/memory/sessions/{session_id}/messages", response_model=Dict[str, Any])
 async def add_message(session_id: str, request: MessageCreateRequest, http_request: Request, rt: RuntimeDep = Depends(get_kernel_runtime)):
     """Add message to session"""
     store = _store(rt)
@@ -224,7 +224,7 @@ async def add_message(session_id: str, request: MessageCreateRequest, http_reque
     return {"status": "added", "message": {"role": message.role, "content": message.content, "timestamp": message.created_at.isoformat() if message.created_at else None}}
 
 
-@router.post("/memory/search")
+@router.post("/memory/search", response_model=Dict[str, Any])
 async def search_memory(request: SearchRequest, http_request: Request, rt: RuntimeDep = Depends(get_kernel_runtime)):
     """Search memory"""
     store = _store(rt)
@@ -247,7 +247,7 @@ async def search_memory(request: SearchRequest, http_request: Request, rt: Runti
     return {"results": results, "total": len(results)}
 
 
-@router.get("/memory/pins")
+@router.get("/memory/pins", response_model=Dict[str, Any])
 async def list_memory_pins(http_request: Request, session_id: Optional[str] = None, limit: int = 100, offset: int = 0, rt: RuntimeDep = Depends(get_kernel_runtime)):
     store = _store(rt)
     if not store:
@@ -260,7 +260,7 @@ async def list_memory_pins(http_request: Request, session_id: Optional[str] = No
     return await store.list_memory_pins(tenant_id=str(tenant_id) if tenant_id else None, session_id=session_id, limit=limit, offset=offset)
 
 
-@router.post("/memory/pins")
+@router.post("/memory/pins", response_model=Dict[str, Any])
 async def pin_memory(request: dict, http_request: Request, rt: RuntimeDep = Depends(get_kernel_runtime)):
     store = _store(rt)
     if not store:
@@ -282,7 +282,7 @@ async def pin_memory(request: dict, http_request: Request, rt: RuntimeDep = Depe
     return {"status": "pinned", "pin": rec}
 
 
-@router.delete("/memory/pins/{message_id}")
+@router.delete("/memory/pins/{message_id}", response_model=Dict[str, Any])
 async def unpin_memory(message_id: str, http_request: Request, rt: RuntimeDep = Depends(get_kernel_runtime)):
     store = _store(rt)
     if not store:
@@ -295,7 +295,7 @@ async def unpin_memory(message_id: str, http_request: Request, rt: RuntimeDep = 
     return {"status": "unpinned", "message_id": str(message_id)}
 
 
-@router.get("/memory/stats")
+@router.get("/memory/stats", response_model=Dict[str, Any])
 async def get_memory_stats(rt: RuntimeDep = Depends(get_kernel_runtime)):
     """Get memory statistics"""
     mm = _memory_mgr(rt)
@@ -314,7 +314,7 @@ async def get_memory_stats(rt: RuntimeDep = Depends(get_kernel_runtime)):
     }
 
 
-@router.post("/memory/cleanup")
+@router.post("/memory/cleanup", response_model=Dict[str, Any])
 async def cleanup_memory(request: dict, rt: RuntimeDep = Depends(get_kernel_runtime)):
     """Cleanup memory"""
     mm = _memory_mgr(rt)
@@ -325,7 +325,7 @@ async def cleanup_memory(request: dict, rt: RuntimeDep = Depends(get_kernel_runt
     return {"status": "cleaned", "sessions_cleaned": cleaned}
 
 
-@router.get("/memory/export")
+@router.get("/memory/export", response_model=Dict[str, Any])
 async def export_memory(rt: RuntimeDep = Depends(get_kernel_runtime)):
     """Export complete memory snapshot for migration or backup.
 
@@ -346,7 +346,7 @@ async def export_memory(rt: RuntimeDep = Depends(get_kernel_runtime)):
         raise HTTPException(status_code=500, detail=f"export_failed: {e}")
 
 
-@router.post("/memory/import")
+@router.post("/memory/import", response_model=Dict[str, Any])
 async def import_memory(request: dict, rt: RuntimeDep = Depends(get_kernel_runtime)):
     """Import memory from a previously exported JSON snapshot.
 
@@ -367,7 +367,7 @@ async def import_memory(request: dict, rt: RuntimeDep = Depends(get_kernel_runti
         raise HTTPException(status_code=500, detail=f"import_failed: {e}")
 
 
-@router.post("/memory/import/validate")
+@router.post("/memory/import/validate", response_model=Dict[str, Any])
 async def validate_import(request: dict, rt: RuntimeDep = Depends(get_kernel_runtime)):
     """Dry-run validate a memory import without applying it.
 
@@ -394,7 +394,7 @@ async def validate_import(request: dict, rt: RuntimeDep = Depends(get_kernel_run
     }
 
 
-@router.get("/memory/inspect")
+@router.get("/memory/inspect", response_model=Dict[str, Any])
 async def inspect_memory(namespace: str = "", rt: RuntimeDep = Depends(get_kernel_runtime)):
     """Inspect memory contents for diagnostics.
 
@@ -413,7 +413,7 @@ async def inspect_memory(namespace: str = "", rt: RuntimeDep = Depends(get_kerne
 # ==================== Long-term Memory ====================
 
 
-@router.post("/memory/longterm")
+@router.post("/memory/longterm", response_model=Dict[str, Any])
 async def add_long_term_memory(request: LongTermMemoryAddRequest, rt: RuntimeDep = Depends(get_kernel_runtime)):
     store = _store(rt)
     if not store:
@@ -427,7 +427,7 @@ async def add_long_term_memory(request: LongTermMemoryAddRequest, rt: RuntimeDep
     )
 
 
-@router.post("/memory/longterm/search")
+@router.post("/memory/longterm/search", response_model=Dict[str, Any])
 async def search_long_term_memory(request: LongTermMemorySearchRequest, rt: RuntimeDep = Depends(get_kernel_runtime)):
     store = _store(rt)
     if not store:

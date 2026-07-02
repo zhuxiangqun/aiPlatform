@@ -36,7 +36,7 @@ def _sanitize(name: str) -> str:
     return "".join(c for c in name if c.isalnum() or c in "_-").strip("_-")[:50]
 
 
-@router.get("/workflow/templates")
+@router.get("/workflow/templates", response_model=Dict[str, Any])
 async def list_templates():
     """List all saved workflow templates."""
     d = _templates_dir()
@@ -58,7 +58,7 @@ async def list_templates():
     return {"templates": templates, "total": len(templates)}
 
 
-@router.post("/workflow/templates")
+@router.post("/workflow/templates", response_model=Dict[str, Any])
 async def save_template(body: TemplateSave):
     """Save workflow as a named template."""
     name = _sanitize(body.name)
@@ -85,7 +85,7 @@ async def save_template(body: TemplateSave):
     return {"status": "saved", "name": name, "version": version}
 
 
-@router.get("/workflow/templates/{name}")
+@router.get("/workflow/templates/{name}", response_model=Dict[str, Any])
 async def load_template(name: str):
     """Load a workflow template by name."""
     name = _sanitize(name)
@@ -96,7 +96,7 @@ async def load_template(name: str):
     return json.loads(fp.read_text(encoding="utf-8"))
 
 
-@router.delete("/workflow/templates/{name}")
+@router.delete("/workflow/templates/{name}", response_model=Dict[str, Any])
 async def delete_template(name: str):
     """Delete a workflow template."""
     name = _sanitize(name)
@@ -110,7 +110,7 @@ async def delete_template(name: str):
 
 # ── Workflow Installer endpoints ──────────────────────────────────
 
-@router.post("/workflows/installer/plan")
+@router.post("/workflows/installer/plan", response_model=Dict[str, Any])
 async def workflow_installer_plan(request: dict):
     try:
         from core.management.asset_installer import WorkflowInstaller
@@ -133,7 +133,7 @@ async def workflow_installer_plan(request: dict):
         return {"workflows": [], "warnings": [str(e)]}
 
 
-@router.post("/workflows/installer/install")
+@router.post("/workflows/installer/install", response_model=Dict[str, Any])
 async def workflow_installer_install(request: dict):
     try:
         from core.management.asset_installer import WorkflowInstaller
@@ -158,7 +158,7 @@ async def workflow_installer_install(request: dict):
         return {"installed": [], "skipped": [{"reason": str(e)}]}
 
 
-@router.post("/workflows/installer/upload-plan")
+@router.post("/workflows/installer/upload-plan", response_model=Dict[str, Any])
 async def workflow_installer_upload_plan(
     file: UploadFile = File(...),
     subdir: str = Form(""),
@@ -183,7 +183,7 @@ async def workflow_installer_upload_plan(
             os.unlink(tmp_path)
 
 
-@router.post("/workflows/installer/upload-install")
+@router.post("/workflows/installer/upload-install", response_model=Dict[str, Any])
 async def workflow_installer_upload_install(
     file: UploadFile = File(...),
     subdir: str = Form(""),
@@ -209,7 +209,7 @@ async def workflow_installer_upload_install(
             os.unlink(tmp_path)
 
 
-@router.post("/workflow/templates/{template_name}/submit-for-review")
+@router.post("/workflow/templates/{template_name}/submit-for-review", response_model=Dict[str, Any])
 async def submit_workflow_for_review(template_name: str):
     """提交 Workflow 进入审批流水线。"""
     import time as _time

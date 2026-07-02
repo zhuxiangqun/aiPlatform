@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Annotated, Optional
+from typing import Dict, Annotated, Optional, Any
 
 from fastapi import APIRouter, Depends, HTTPException
 
@@ -16,7 +16,7 @@ def _store(rt: Optional[KernelRuntime]):
     return getattr(rt, "execution_store", None) if rt else None
 
 
-@router.get("/syscalls/events")
+@router.get("/syscalls/events", response_model=Dict[str, Any])
 async def list_syscall_events(
     limit: int = 100,
     offset: int = 0,
@@ -53,7 +53,7 @@ async def list_syscall_events(
     )
 
 
-@router.get("/syscalls/stats")
+@router.get("/syscalls/stats", response_model=Dict[str, Any])
 async def get_syscall_stats(
     window_hours: int = 24,
     top_n: int = 10,

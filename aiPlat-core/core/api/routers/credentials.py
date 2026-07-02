@@ -69,13 +69,13 @@ def _mask_item(item: Dict[str, Any]) -> Dict[str, Any]:
     return masked
 
 
-@router.get("/credentials")
+@router.get("/credentials", response_model=Dict[str, Any])
 async def list_credentials():
     items = _load()
     return {"credentials": [_mask_item(i) for i in items], "total": len(items)}
 
 
-@router.post("/credentials")
+@router.post("/credentials", response_model=Dict[str, Any])
 async def create_credential(body: CredentialCreate):
     items = _load()
     for c in items:
@@ -94,7 +94,7 @@ async def create_credential(body: CredentialCreate):
     return _mask_item(new_cred)
 
 
-@router.get("/credentials/{credential_id}")
+@router.get("/credentials/{credential_id}", response_model=Dict[str, Any])
 async def get_credential(credential_id: str, reveal: bool = Query(False)):
     for c in _load():
         if c["id"] == credential_id:
@@ -104,7 +104,7 @@ async def get_credential(credential_id: str, reveal: bool = Query(False)):
     raise HTTPException(status_code=404, detail="Credential not found")
 
 
-@router.put("/credentials/{credential_id}")
+@router.put("/credentials/{credential_id}", response_model=Dict[str, Any])
 async def update_credential(credential_id: str, body: CredentialUpdate):
     items = _load()
     for i, c in enumerate(items):
@@ -123,7 +123,7 @@ async def update_credential(credential_id: str, body: CredentialUpdate):
     raise HTTPException(status_code=404, detail="Credential not found")
 
 
-@router.delete("/credentials/{credential_id}")
+@router.delete("/credentials/{credential_id}", response_model=Dict[str, Any])
 async def delete_credential(credential_id: str):
     items = _load()
     filtered = [c for c in items if c["id"] != credential_id]

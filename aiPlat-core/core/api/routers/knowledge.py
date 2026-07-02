@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Optional
+from typing import Dict, Optional, Any
 
 from fastapi import APIRouter, Depends, HTTPException
 
@@ -21,7 +21,7 @@ def _km(rt: RuntimeDep):
 # ==================== Knowledge Management ====================
 
 
-@router.get("/knowledge/collections")
+@router.get("/knowledge/collections", response_model=Dict[str, Any])
 async def list_collections(limit: int = 100, offset: int = 0, rt: RuntimeDep = Depends(get_kernel_runtime)):
     """List knowledge collections"""
     km = _km(rt)
@@ -46,7 +46,7 @@ async def list_collections(limit: int = 100, offset: int = 0, rt: RuntimeDep = D
     }
 
 
-@router.post("/knowledge/collections")
+@router.post("/knowledge/collections", response_model=Dict[str, Any])
 async def create_collection(request: CollectionCreateRequest, rt: RuntimeDep = Depends(get_kernel_runtime)):
     """Create knowledge collection"""
     km = _km(rt)
@@ -56,7 +56,7 @@ async def create_collection(request: CollectionCreateRequest, rt: RuntimeDep = D
     return {"collection_id": collection.id, "status": "created"}
 
 
-@router.get("/knowledge/collections/{collection_id}")
+@router.get("/knowledge/collections/{collection_id}", response_model=Dict[str, Any])
 async def get_collection(collection_id: str, rt: RuntimeDep = Depends(get_kernel_runtime)):
     """Get collection details"""
     km = _km(rt)
@@ -79,7 +79,7 @@ async def get_collection(collection_id: str, rt: RuntimeDep = Depends(get_kernel
     }
 
 
-@router.put("/knowledge/collections/{collection_id}")
+@router.put("/knowledge/collections/{collection_id}", response_model=Dict[str, Any])
 async def update_collection(collection_id: str, request: dict, rt: RuntimeDep = Depends(get_kernel_runtime)):
     """Update collection"""
     km = _km(rt)
@@ -91,7 +91,7 @@ async def update_collection(collection_id: str, request: dict, rt: RuntimeDep = 
     return {"status": "updated", "collection_id": collection_id}
 
 
-@router.delete("/knowledge/collections/{collection_id}")
+@router.delete("/knowledge/collections/{collection_id}", response_model=Dict[str, Any])
 async def delete_collection(collection_id: str, rt: RuntimeDep = Depends(get_kernel_runtime)):
     """Delete collection"""
     km = _km(rt)
@@ -103,7 +103,7 @@ async def delete_collection(collection_id: str, rt: RuntimeDep = Depends(get_ker
     return {"status": "deleted", "collection_id": collection_id}
 
 
-@router.post("/knowledge/collections/{collection_id}/reindex")
+@router.post("/knowledge/collections/{collection_id}/reindex", response_model=Dict[str, Any])
 async def reindex_collection(collection_id: str, rt: RuntimeDep = Depends(get_kernel_runtime)):
     """Reindex collection"""
     km = _km(rt)
@@ -124,7 +124,7 @@ async def reindex_collection(collection_id: str, rt: RuntimeDep = Depends(get_ke
     return {"status": "reindexed", "documents_reindexed": len(docs)}
 
 
-@router.post("/knowledge/documents")
+@router.post("/knowledge/documents", response_model=Dict[str, Any])
 async def create_document(request: DocumentCreateRequest, rt: RuntimeDep = Depends(get_kernel_runtime)):
     """Create document"""
     km = _km(rt)
@@ -145,7 +145,7 @@ async def create_document(request: DocumentCreateRequest, rt: RuntimeDep = Depen
     return {"document_id": doc.id, "status": "created"}
 
 
-@router.get("/knowledge/documents/{document_id}")
+@router.get("/knowledge/documents/{document_id}", response_model=Dict[str, Any])
 async def get_document(document_id: str, rt: RuntimeDep = Depends(get_kernel_runtime)):
     """Get document"""
     km = _km(rt)
@@ -166,7 +166,7 @@ async def get_document(document_id: str, rt: RuntimeDep = Depends(get_kernel_run
     }
 
 
-@router.get("/knowledge/collections/{collection_id}/documents")
+@router.get("/knowledge/collections/{collection_id}/documents", response_model=Dict[str, Any])
 async def list_documents(collection_id: str, limit: int = 100, offset: int = 0, rt: RuntimeDep = Depends(get_kernel_runtime)):
     """List documents"""
     km = _km(rt)
@@ -182,7 +182,7 @@ async def list_documents(collection_id: str, limit: int = 100, offset: int = 0, 
     }
 
 
-@router.delete("/knowledge/documents/{document_id}")
+@router.delete("/knowledge/documents/{document_id}", response_model=Dict[str, Any])
 async def delete_document(document_id: str, rt: RuntimeDep = Depends(get_kernel_runtime)):
     """Delete document"""
     km = _km(rt)
@@ -194,7 +194,7 @@ async def delete_document(document_id: str, rt: RuntimeDep = Depends(get_kernel_
     return {"status": "deleted", "document_id": document_id}
 
 
-@router.post("/knowledge/search")
+@router.post("/knowledge/search", response_model=Dict[str, Any])
 async def search_knowledge(request: SearchRequest, rt: RuntimeDep = Depends(get_kernel_runtime)):
     """Search knowledge"""
     km = _km(rt)
@@ -204,7 +204,7 @@ async def search_knowledge(request: SearchRequest, rt: RuntimeDep = Depends(get_
     return {"results": [{"content": r.content, "score": r.score, "metadata": r.metadata} for r in results], "total": len(results)}
 
 
-@router.get("/knowledge/collections/{collection_id}/search/logs")
+@router.get("/knowledge/collections/{collection_id}/search/logs", response_model=Dict[str, Any])
 async def get_search_logs(collection_id: str, limit: int = 100, offset: int = 0):
     """Get search logs"""
     return {"logs": [], "total": 0}

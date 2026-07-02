@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Optional
+from typing import Dict, Optional, Any
 
 from fastapi import APIRouter, Depends, HTTPException
 
@@ -17,7 +17,7 @@ def _store(rt: RuntimeDep):
     return getattr(rt, "execution_store", None) if rt else None
 
 
-@router.get("/executions/{execution_id}/trace")
+@router.get("/executions/{execution_id}/trace", response_model=Dict[str, Any])
 async def get_trace_by_execution(execution_id: str, rt: RuntimeDep = Depends(get_kernel_runtime)):
     """Get trace (with spans) by execution_id (agent/skill)."""
     store = _store(rt)
@@ -34,7 +34,7 @@ async def get_trace_by_execution(execution_id: str, rt: RuntimeDep = Depends(get
     return trace
 
 
-@router.get("/executions/{execution_id}/status")
+@router.get("/executions/{execution_id}/status", response_model=Dict[str, Any])
 async def get_execution_status(execution_id: str, rt: RuntimeDep = Depends(get_kernel_runtime)):
     """Get agent execution status (for frontend polling in stream mode)."""
     store = _store(rt)

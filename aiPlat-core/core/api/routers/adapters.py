@@ -32,7 +32,7 @@ async def _record_changeset(rt: RuntimeDep, **kwargs) -> None:
 # ==================== Adapter Management ====================
 
 
-@router.get("/adapters")
+@router.get("/adapters", response_model=Dict[str, Any])
 async def list_adapters(limit: int = 100, offset: int = 0, rt: RuntimeDep = Depends(get_kernel_runtime)):
     """List adapters"""
     am = _am(rt)
@@ -46,7 +46,7 @@ async def list_adapters(limit: int = 100, offset: int = 0, rt: RuntimeDep = Depe
     }
 
 
-@router.post("/adapters")
+@router.post("/adapters", response_model=Dict[str, Any])
 async def create_adapter(request: AdapterCreateRequest, rt: RuntimeDep = Depends(get_kernel_runtime)):
     """Create adapter"""
     am = _am(rt)
@@ -68,7 +68,7 @@ async def create_adapter(request: AdapterCreateRequest, rt: RuntimeDep = Depends
     return {"adapter_id": adapter.id, "status": "created"}
 
 
-@router.get("/adapters/{adapter_id}")
+@router.get("/adapters/{adapter_id}", response_model=Dict[str, Any])
 async def get_adapter(adapter_id: str, rt: RuntimeDep = Depends(get_kernel_runtime)):
     """Get adapter details"""
     am = _am(rt)
@@ -90,7 +90,7 @@ async def get_adapter(adapter_id: str, rt: RuntimeDep = Depends(get_kernel_runti
     }
 
 
-@router.put("/adapters/{adapter_id}")
+@router.put("/adapters/{adapter_id}", response_model=Dict[str, Any])
 async def update_adapter(adapter_id: str, request: AdapterUpdateRequest, rt: RuntimeDep = Depends(get_kernel_runtime)):
     """Update adapter"""
     am = _am(rt)
@@ -121,7 +121,7 @@ async def update_adapter(adapter_id: str, request: AdapterUpdateRequest, rt: Run
     return {"status": "updated"}
 
 
-@router.delete("/adapters/{adapter_id}")
+@router.delete("/adapters/{adapter_id}", response_model=Dict[str, Any])
 async def delete_adapter(adapter_id: str, rt: RuntimeDep = Depends(get_kernel_runtime)):
     """Delete adapter"""
     am = _am(rt)
@@ -137,7 +137,7 @@ async def delete_adapter(adapter_id: str, rt: RuntimeDep = Depends(get_kernel_ru
     return {"status": "deleted"}
 
 
-@router.post("/adapters/{adapter_id}/test")
+@router.post("/adapters/{adapter_id}/test", response_model=Dict[str, Any])
 async def test_adapter(adapter_id: str, request: dict, rt: RuntimeDep = Depends(get_kernel_runtime)):
     """Test adapter"""
     am = _am(rt)
@@ -146,7 +146,7 @@ async def test_adapter(adapter_id: str, request: dict, rt: RuntimeDep = Depends(
     return await am.test_connection(adapter_id)
 
 
-@router.post("/adapters/{adapter_id}/enable")
+@router.post("/adapters/{adapter_id}/enable", response_model=Dict[str, Any])
 async def enable_adapter(adapter_id: str, rt: RuntimeDep = Depends(get_kernel_runtime)):
     """Enable adapter"""
     am = _am(rt)
@@ -162,7 +162,7 @@ async def enable_adapter(adapter_id: str, rt: RuntimeDep = Depends(get_kernel_ru
     return {"status": "enabled"}
 
 
-@router.post("/adapters/{adapter_id}/disable")
+@router.post("/adapters/{adapter_id}/disable", response_model=Dict[str, Any])
 async def disable_adapter(adapter_id: str, rt: RuntimeDep = Depends(get_kernel_runtime)):
     """Disable adapter"""
     am = _am(rt)
@@ -178,7 +178,7 @@ async def disable_adapter(adapter_id: str, rt: RuntimeDep = Depends(get_kernel_r
     return {"status": "disabled"}
 
 
-@router.get("/adapters/{adapter_id}/models")
+@router.get("/adapters/{adapter_id}/models", response_model=Dict[str, Any])
 async def list_adapter_models(adapter_id: str, rt: RuntimeDep = Depends(get_kernel_runtime)):
     """List adapter models"""
     am = _am(rt)
@@ -190,7 +190,7 @@ async def list_adapter_models(adapter_id: str, rt: RuntimeDep = Depends(get_kern
     return {"models": adapter.models}
 
 
-@router.post("/adapters/{adapter_id}/models")
+@router.post("/adapters/{adapter_id}/models", response_model=Dict[str, Any])
 async def add_adapter_model(adapter_id: str, request: dict, rt: RuntimeDep = Depends(get_kernel_runtime)):
     """Add model to adapter"""
     am = _am(rt)
@@ -219,14 +219,14 @@ async def add_adapter_model(adapter_id: str, request: dict, rt: RuntimeDep = Dep
     return {"status": "added"}
 
 
-@router.put("/adapters/{adapter_id}/models/{model_name}")
+@router.put("/adapters/{adapter_id}/models/{model_name}", response_model=Dict[str, Any])
 async def update_adapter_model(adapter_id: str, model_name: str, request: ModelUpdateRequest, rt: RuntimeDep = Depends(get_kernel_runtime)):
     """Update adapter model"""
     # 保持旧实现：目前仅返回 updated（不执行实际更新）
     return {"status": "updated"}
 
 
-@router.delete("/adapters/{adapter_id}/models/{model_name}")
+@router.delete("/adapters/{adapter_id}/models/{model_name}", response_model=Dict[str, Any])
 async def delete_adapter_model(adapter_id: str, model_name: str, rt: RuntimeDep = Depends(get_kernel_runtime)):
     """Delete adapter model"""
     am = _am(rt)
@@ -242,7 +242,7 @@ async def delete_adapter_model(adapter_id: str, model_name: str, rt: RuntimeDep 
     return {"status": "deleted"}
 
 
-@router.get("/adapters/{adapter_id}/stats")
+@router.get("/adapters/{adapter_id}/stats", response_model=Dict[str, Any])
 async def get_adapter_stats(adapter_id: str, rt: RuntimeDep = Depends(get_kernel_runtime)):
     """Get adapter stats"""
     am = _am(rt)
@@ -262,7 +262,7 @@ async def get_adapter_stats(adapter_id: str, rt: RuntimeDep = Depends(get_kernel
     }
 
 
-@router.get("/adapters/{adapter_id}/calls")
+@router.get("/adapters/{adapter_id}/calls", response_model=Dict[str, Any])
 async def get_adapter_calls(adapter_id: str, limit: int = 100, offset: int = 0, rt: RuntimeDep = Depends(get_kernel_runtime)):
     """Get adapter calls"""
     am = _am(rt)
@@ -275,7 +275,7 @@ async def get_adapter_calls(adapter_id: str, limit: int = 100, offset: int = 0, 
     }
 
 
-@router.get("/adapters/{adapter_id}/model-distribution")
+@router.get("/adapters/{adapter_id}/model-distribution", response_model=Dict[str, Any])
 async def get_model_distribution(adapter_id: str, rt: RuntimeDep = Depends(get_kernel_runtime)):
     """Get model distribution"""
     am = _am(rt)

@@ -42,7 +42,7 @@ def _managers():
     }
 
 
-@router.post("/learning/releases/{candidate_id}/publish")
+@router.post("/learning/releases/{candidate_id}/publish", response_model=Dict[str, Any])
 async def publish_release_candidate(candidate_id: str, request: dict, http_request: Request):
     """
     Publish a release_candidate (status transitions only).
@@ -435,7 +435,7 @@ async def publish_release_candidate(candidate_id: str, request: dict, http_reque
     return out
 
 
-@router.post("/learning/releases/{candidate_id}/rollback")
+@router.post("/learning/releases/{candidate_id}/rollback", response_model=Dict[str, Any])
 async def rollback_release_candidate(candidate_id: str, request: dict, http_request: Request):
     """
     Rollback a release_candidate (status transitions only).

@@ -96,7 +96,7 @@ async def _audit_execute(
         return
 
 
-@router.get("/tools")
+@router.get("/tools", response_model=Dict[str, Any])
 async def list_tools(limit: int = 100, offset: int = 0, available_only: bool = False):
     """List all tools"""
     registry = get_tool_registry()
@@ -162,7 +162,7 @@ async def list_tools(limit: int = 100, offset: int = 0, available_only: bool = F
     return {"total": len(tools), "tools": result}
 
 
-@router.delete("/tools/{tool_name}")
+@router.delete("/tools/{tool_name}", response_model=Dict[str, Any])
 async def delete_workspace_tool(tool_name: str, http_request: Request):
     """Delete a workspace tool — removes .py file and unregisters from ToolRegistry."""
     registry = get_tool_registry()
@@ -195,7 +195,7 @@ async def delete_workspace_tool(tool_name: str, http_request: Request):
     return {"status": "deleted", "name": tool_name}
 
 
-@router.put("/tools/{tool_name}")
+@router.put("/tools/{tool_name}", response_model=Dict[str, Any])
 async def update_tool_config(tool_name: str, request: dict):
     """Update tool configuration"""
     raise HTTPException(  # noqa: error-structured
@@ -204,7 +204,7 @@ async def update_tool_config(tool_name: str, request: dict):
     )
 
 
-@router.post("/tools")
+@router.post("/tools", response_model=Dict[str, Any])
 async def create_workspace_tool(request: dict, http_request: Request, rt: RuntimeDep = None):
     """Create a new workspace tool. Writes a .py file to ~/.aiplat/tools/ and registers it."""
     name = str(request.get("name") or "").strip()
@@ -265,7 +265,7 @@ async def create_workspace_tool(request: dict, http_request: Request, rt: Runtim
     return {"status": "created", "name": name, "path": str(tool_file)}
 
 
-@router.post("/tools/auto-fill")
+@router.post("/tools/auto-fill", response_model=Dict[str, Any])
 async def tool_auto_fill(request: dict):
     """AI 生成：根据名称和描述，自动生成 TOOL_DEF 代码。"""
     name = str(request.get("name") or "").strip()
@@ -345,7 +345,7 @@ async def tool_auto_fill(request: dict):
         return {"code": "", "category": "general", "description": description, "parameters": {}, "error": f"Auto-fill failed: {str(e)}"}
 
 
-@router.post("/tools/{tool_name}/execute")
+@router.post("/tools/{tool_name}/execute", response_model=Dict[str, Any])
 async def execute_tool(tool_name: str, request: dict, http_request: Request, rt: RuntimeDep = None):
     """Execute a tool with given parameters"""
     harness = get_harness()
@@ -368,7 +368,7 @@ async def execute_tool(tool_name: str, request: dict, http_request: Request, rt:
     return JSONResponse(status_code=200, content=resp)
 
 
-@router.post("/tools/{tool_name}/sign")
+@router.post("/tools/{tool_name}/sign", response_model=Dict[str, Any])
 async def sign_tool(tool_name: str, request: dict, http_request: Request, rt: RuntimeDep = None):
     """
     Sign a workspace tool's .py file with an Ed25519 private key.

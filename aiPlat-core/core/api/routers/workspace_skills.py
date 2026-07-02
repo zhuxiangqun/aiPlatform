@@ -331,7 +331,7 @@ def _reload_workspace_managers(rt: Optional[KernelRuntime]) -> None:
         return
 
 
-@router.get("/workspace/skills")
+@router.get("/workspace/skills", response_model=Dict[str, Any])
 async def list_workspace_skills(
     category: Optional[str] = None,
     enabled_only: bool = False,
@@ -382,7 +382,7 @@ async def list_workspace_skills(
     return {"skills": result, "total": mgr.get_skill_count().get("total", 0), "limit": limit, "offset": offset}
 
 
-@router.post("/workspace/skills")
+@router.post("/workspace/skills", response_model=Dict[str, Any])
 async def create_workspace_skill(request: SkillCreateRequest, http_request: Request, rt: RuntimeDep = None):
     """Create a new workspace skill."""
     mgr = _ws_skill_mgr(rt)
@@ -670,7 +670,7 @@ async def create_workspace_skill(request: SkillCreateRequest, http_request: Requ
         raise HTTPException(status_code=409, detail=str(e))
 
 
-@router.get("/workspace/skills/{skill_id}")
+@router.get("/workspace/skills/{skill_id}", response_model=Dict[str, Any])
 async def get_workspace_skill(skill_id: str, rt: RuntimeDep = None):
     mgr = _ws_skill_mgr(rt)
     if not mgr:
@@ -693,7 +693,7 @@ async def get_workspace_skill(skill_id: str, rt: RuntimeDep = None):
     }
 
 
-@router.put("/workspace/skills/{skill_id}")
+@router.put("/workspace/skills/{skill_id}", response_model=Dict[str, Any])
 async def update_workspace_skill(skill_id: str, request: dict, http_request: Request, rt: RuntimeDep = None):
     mgr = _ws_skill_mgr(rt)
     if not mgr:
@@ -1027,7 +1027,7 @@ async def _lint_conflicts_workspace_skills(
     return {"status": "ok", "items": conflicts[:limit], "total": len(conflicts), "threshold": threshold, "min_overlap": min_overlap}
 
 
-@router.get("/workspace/skills/{skill_id}/lint")
+@router.get("/workspace/skills/{skill_id}/lint", response_model=Dict[str, Any])
 async def lint_workspace_skill(skill_id: str, rt: RuntimeDep = None):
     mgr = _ws_skill_mgr(rt)
     if not mgr:
@@ -1081,7 +1081,7 @@ async def lint_workspace_skill(skill_id: str, rt: RuntimeDep = None):
     return {"skill_id": str(skill_id), "lint": lint, "fixes": fixes.get("fixes") or [], "fix_summary": fixes.get("summary") or {}}
 
 
-@router.post("/workspace/skills/{skill_id}/apply-lint-fix")
+@router.post("/workspace/skills/{skill_id}/apply-lint-fix", response_model=Dict[str, Any])
 async def apply_lint_fix_workspace_skill(
     skill_id: str,
     request: Optional[Dict[str, Any]] = None,
@@ -1257,7 +1257,7 @@ async def apply_lint_fix_workspace_skill(
     }
 
 
-@router.post("/workspace/skills/lint-scan")
+@router.post("/workspace/skills/lint-scan", response_model=Dict[str, Any])
 async def lint_scan_workspace_skills(request: Optional[dict] = None, rt: RuntimeDep = None):
     """
     Lint-scan workspace skills (for cron / ops). Best-effort and side-effect free.
@@ -1282,7 +1282,7 @@ async def lint_scan_workspace_skills(request: Optional[dict] = None, rt: Runtime
     return {"items": items, "total": len(items), "limit": limit, "offset": offset}
 
 
-@router.get("/workspace/skills/meta/lint-conflicts")
+@router.get("/workspace/skills/meta/lint-conflicts", response_model=Dict[str, Any])
 async def lint_conflicts_workspace_skills(
     tenant_id: Optional[str] = None,
     threshold: float = 0.35,
@@ -1328,13 +1328,13 @@ async def _skill_invocation_metrics(rt: Optional[KernelRuntime], *, tenant_id: O
     return {"items": out, "total": len(out), "since_hours": since_hours}
 
 
-@router.get("/workspace/skills/observability/skill-metrics")
+@router.get("/workspace/skills/observability/skill-metrics", response_model=Dict[str, Any])
 async def workspace_skill_metrics(tenant_id: Optional[str] = None, since_hours: int = 24, limit: int = 5000, rt: RuntimeDep = None):
     """Aggregate syscall_events(kind=skill) into a skill-level metrics view."""
     return {"status": "ok", **(await _skill_invocation_metrics(rt, tenant_id=tenant_id, since_hours=since_hours, limit=limit))}
 
 
-@router.delete("/workspace/skills/{skill_id}")
+@router.delete("/workspace/skills/{skill_id}", response_model=Dict[str, Any])
 async def delete_workspace_skill(skill_id: str, delete_files: bool = False, http_request: Request = None, rt: RuntimeDep = None):
     mgr = _ws_skill_mgr(rt)
     if not mgr:
@@ -1395,7 +1395,7 @@ async def delete_workspace_skill(skill_id: str, delete_files: bool = False, http
     return {"status": "deleted", "id": skill_id, "delete_files": delete_files}
 
 
-@router.post("/workspace/skills/{skill_id}/enable")
+@router.post("/workspace/skills/{skill_id}/enable", response_model=Dict[str, Any])
 async def enable_workspace_skill(skill_id: str, request: Optional[Dict[str, Any]] = None, http_request: Request = None, rt: RuntimeDep = None):
     mgr = _ws_skill_mgr(rt)
     if not mgr:
@@ -1618,7 +1618,7 @@ async def enable_workspace_skill(skill_id: str, request: Optional[Dict[str, Any]
     }
 
 
-@router.post("/workspace/skills/{skill_id}/sign")
+@router.post("/workspace/skills/{skill_id}/sign", response_model=Dict[str, Any])
 async def sign_workspace_skill(skill_id: str, request: Dict[str, Any], http_request: Request = None, rt: RuntimeDep = None):
     """
     Sign a skill with an Ed25519 private key, writing the signature to
@@ -1701,7 +1701,7 @@ async def sign_workspace_skill(skill_id: str, request: Dict[str, Any], http_requ
     }
 
 
-@router.post("/workspace/skills/{skill_id}/disable")
+@router.post("/workspace/skills/{skill_id}/disable", response_model=Dict[str, Any])
 async def disable_workspace_skill(skill_id: str, http_request: Request = None, rt: RuntimeDep = None):
     mgr = _ws_skill_mgr(rt)
     if not mgr:
@@ -1732,7 +1732,7 @@ async def disable_workspace_skill(skill_id: str, http_request: Request = None, r
     return {"status": "disabled"}
 
 
-@router.post("/workspace/skills/{skill_id}/restore")
+@router.post("/workspace/skills/{skill_id}/restore", response_model=Dict[str, Any])
 async def restore_workspace_skill(skill_id: str, http_request: Request = None, rt: RuntimeDep = None):
     mgr = _ws_skill_mgr(rt)
     if not mgr:
@@ -1763,7 +1763,7 @@ async def restore_workspace_skill(skill_id: str, http_request: Request = None, r
     return {"status": "enabled"}
 
 
-@router.get("/workspace/skills/{skill_id}/revisions")
+@router.get("/workspace/skills/{skill_id}/revisions", response_model=Dict[str, Any])
 async def list_workspace_skill_revisions(skill_id: str, limit: int = 50, offset: int = 0, rt: RuntimeDep = None):
     """List revision snapshots for a workspace skill (best-effort)."""
     mgr = _ws_skill_mgr(rt)
@@ -1801,7 +1801,7 @@ async def list_workspace_skill_revisions(skill_id: str, limit: int = 50, offset:
     return {"items": page, "total": total, "limit": limit, "offset": offset}
 
 
-@router.get("/workspace/skills/{skill_id}/files")
+@router.get("/workspace/skills/{skill_id}/files", response_model=Dict[str, Any])
 async def list_workspace_skill_files(skill_id: str, dir: str = "references", rt: RuntimeDep = None):
     """List files under workspace skill directory (references/scripts/assets)."""
     mgr = _ws_skill_mgr(rt)
@@ -1834,7 +1834,7 @@ async def list_workspace_skill_files(skill_id: str, dir: str = "references", rt:
     return {"items": items, "total": len(items)}
 
 
-@router.get("/workspace/skills/{skill_id}/files/{rel_path:path}")
+@router.get("/workspace/skills/{skill_id}/files/{rel_path:path}", response_model=Dict[str, Any])
 async def get_workspace_skill_file(skill_id: str, rel_path: str, rt: RuntimeDep = None):
     """Fetch a workspace skill file content (text only, best-effort)."""
     mgr = _ws_skill_mgr(rt)
@@ -1861,7 +1861,7 @@ async def get_workspace_skill_file(skill_id: str, rel_path: str, rt: RuntimeDep 
     return {"path": rel_path, "content": text}
 
 
-@router.post("/workspace/skills/{skill_id}/execute")
+@router.post("/workspace/skills/{skill_id}/execute", response_model=Dict[str, Any])
 async def execute_workspace_skill(skill_id: str, request: SkillExecuteRequest, http_request: Request, rt: RuntimeDep = None):
     """Execute workspace skill."""
     mgr = _ws_skill_mgr(rt)
@@ -2028,7 +2028,7 @@ async def execute_workspace_skill(skill_id: str, request: SkillExecuteRequest, h
     return JSONResponse(status_code=200 if resp.get("ok") else int(getattr(result, "http_status", 500) or 500), content=resp)
 
 
-@router.get("/workspace/skills/{skill_id}/agents")
+@router.get("/workspace/skills/{skill_id}/agents", response_model=Dict[str, Any])
 async def get_workspace_skill_agents(skill_id: str, rt: RuntimeDep = None):
     """Get agents bound to workspace skill."""
     mgr = _ws_skill_mgr(rt)
@@ -2038,7 +2038,7 @@ async def get_workspace_skill_agents(skill_id: str, rt: RuntimeDep = None):
     return {"agents": [{"id": a} for a in agent_ids], "total": len(agent_ids)}
 
 
-@router.get("/workspace/skills/{skill_id}/executions")
+@router.get("/workspace/skills/{skill_id}/executions", response_model=Dict[str, Any])
 async def list_workspace_skill_executions(skill_id: str, limit: int = 100, offset: int = 0, rt: RuntimeDep = None):
     """List workspace skill executions."""
     mgr = _ws_skill_mgr(rt)
@@ -2069,7 +2069,7 @@ async def list_workspace_skill_executions(skill_id: str, limit: int = 100, offse
     return {"executions": [], "total": 0}
 
 
-@router.get("/workspace/skills/{skill_id}/versions")
+@router.get("/workspace/skills/{skill_id}/versions", response_model=Dict[str, Any])
 async def get_workspace_skill_versions(skill_id: str, rt: RuntimeDep = None):
     """Get versions for a workspace skill."""
     mgr = _ws_skill_mgr(rt)
@@ -2083,7 +2083,7 @@ async def get_workspace_skill_versions(skill_id: str, rt: RuntimeDep = None):
     return {"versions": [{"version": v.version, "is_active": v.is_active} for v in versions]}
 
 
-@router.get("/workspace/skills/{skill_id}/versions/{version}")
+@router.get("/workspace/skills/{skill_id}/versions/{version}", response_model=Dict[str, Any])
 async def get_workspace_skill_version(skill_id: str, version: str, rt: RuntimeDep = None):
     """Get specific version config for workspace skill."""
     mgr = _ws_skill_mgr(rt)
@@ -2112,7 +2112,7 @@ async def get_workspace_skill_version(skill_id: str, version: str, rt: RuntimeDe
     return {"version": version, "config": cfg_dict}
 
 
-@router.post("/workspace/skills/{skill_id}/versions/{version}/rollback")
+@router.post("/workspace/skills/{skill_id}/versions/{version}/rollback", response_model=Dict[str, Any])
 async def rollback_workspace_skill_version(skill_id: str, version: str, rt: RuntimeDep = None):
     """Rollback workspace skill to a specific version."""
     mgr = _ws_skill_mgr(rt)
@@ -2129,7 +2129,7 @@ async def rollback_workspace_skill_version(skill_id: str, version: str, rt: Runt
     return {"status": "rolled_back", "active_version": active_version}
 
 
-@router.get("/workspace/skills/{skill_id}/active-version")
+@router.get("/workspace/skills/{skill_id}/active-version", response_model=Dict[str, Any])
 async def get_workspace_skill_active_version(skill_id: str, rt: RuntimeDep = None):
     """Get currently active version for a workspace skill."""
     mgr = _ws_skill_mgr(rt)
@@ -2143,7 +2143,7 @@ async def get_workspace_skill_active_version(skill_id: str, rt: RuntimeDep = Non
     return {"skill_id": skill_id, "active_version": active_version}
 
 
-@router.get("/workspace/skills/{skill_id}/execution-help")
+@router.get("/workspace/skills/{skill_id}/execution-help", response_model=Dict[str, Any])
 async def get_workspace_skill_execution_help(skill_id: str, rt: RuntimeDep = None):
     """Get execution input help/examples for a skill."""
     mgr = _ws_skill_mgr(rt)
@@ -2158,7 +2158,7 @@ async def get_workspace_skill_execution_help(skill_id: str, rt: RuntimeDep = Non
     return data
 
 
-@router.get("/workspace/skills/{skill_id}/skill-md")
+@router.get("/workspace/skills/{skill_id}/skill-md", response_model=Dict[str, Any])
 async def get_workspace_skill_markdown(skill_id: str, rt: RuntimeDep = None):
     """Fetch raw SKILL.md content for a workspace skill (for UI preview)."""
     mgr = _ws_skill_mgr(rt)
@@ -2195,7 +2195,7 @@ async def get_workspace_skill_markdown(skill_id: str, rt: RuntimeDep = None):
         raise HTTPException(status_code=500, detail=f"Failed to read SKILL.md: {e}")
 
 
-@router.put("/workspace/skills/{skill_id}/skill-md")
+@router.put("/workspace/skills/{skill_id}/skill-md", response_model=Dict[str, Any])
 async def update_workspace_skill_markdown(skill_id: str, request: Dict[str, Any], http_request: Request, rt: RuntimeDep = None):
     """
     Update SKILL.md for a workspace skill.
@@ -2294,7 +2294,7 @@ async def update_workspace_skill_markdown(skill_id: str, request: Dict[str, Any]
         raise HTTPException(status_code=500, detail=f"Failed to write SKILL.md: {e}")
 
 
-@router.post("/workspace/skills/{skill_id}/reload")
+@router.post("/workspace/skills/{skill_id}/reload", response_model=Dict[str, Any])
 async def reload_workspace_skill(skill_id: str, rt: RuntimeDep = None):
     """Best-effort reload workspace managers (pull latest SKILL.md edits from disk)."""
     _reload_workspace_managers(rt)
@@ -2307,7 +2307,7 @@ async def reload_workspace_skill(skill_id: str, rt: RuntimeDep = None):
     return {"status": "reloaded", "skill_id": skill_id}
 
 
-@router.post("/workspace/skills/{skill_id}/submit-for-review")
+@router.post("/workspace/skills/{skill_id}/submit-for-review", response_model=Dict[str, Any])
 async def submit_skill_for_review(skill_id: str, rt: RuntimeDep = None):
     """提交 Skill 进入审批流水线。
 
@@ -2417,7 +2417,7 @@ async def submit_skill_for_review(skill_id: str, rt: RuntimeDep = None):
     }
 
 
-@router.get("/workspace/skills/seeds")
+@router.get("/workspace/skills/seeds", response_model=Dict[str, Any])
 async def list_skill_seeds(rt: RuntimeDep = None):
     """List available skill seed templates from workspace_seeds/skills/."""
     from pathlib import Path as _P
@@ -2454,7 +2454,7 @@ async def list_skill_seeds(rt: RuntimeDep = None):
     return {"seeds": seeds, "total": len(seeds)}
 
 
-@router.post("/workspace/skills/seeds/{seed_id}/install")
+@router.post("/workspace/skills/seeds/{seed_id}/install", response_model=Dict[str, Any])
 async def install_skill_seed(seed_id: str, rt: RuntimeDep = None):
     """Install a skill seed template into ~/.aiplat/skills/."""
     import shutil as _shutil
@@ -2486,7 +2486,7 @@ async def install_skill_seed(seed_id: str, rt: RuntimeDep = None):
     return {"status": "installed", "id": seed_id}
 
 
-@router.post("/workspace/skills/sign-all")
+@router.post("/workspace/skills/sign-all", response_model=Dict[str, Any])
 async def sign_all_workspace_skills(request: Dict[str, Any], http_request: Request = None, rt: RuntimeDep = None):
     """Batch-sign all workspace skills with a single Ed25519 private key."""
     mgr = _ws_skill_mgr(rt)
@@ -2556,7 +2556,7 @@ async def sign_all_workspace_skills(request: Dict[str, Any], http_request: Reque
     return {"total": len(skill_ids), "signed": signed, "failed": failed, "results": results}
 
 
-@router.post("/workspace/skills/auto-fill")
+@router.post("/workspace/skills/auto-fill", response_model=Dict[str, Any])
 async def skill_auto_fill(request: Dict[str, Any], rt: RuntimeDep = None):
     """AI 生成：根据名称和描述，自动生成 Skill 的 YAML frontmatter + SOP。"""
     name = str(request.get("name") or "").strip()
@@ -2645,7 +2645,7 @@ async def skill_auto_fill(request: Dict[str, Any], rt: RuntimeDep = None):
 
 # ==================== Skill Import Detection (AI) ====================
 
-@router.post("/workspace/skills/import-detect")
+@router.post("/workspace/skills/import-detect", response_model=Dict[str, Any])
 async def detect_skill_import(request: Dict[str, Any], rt: RuntimeDep = None):
     """AI 检测导入的 skill 配置。接收 URL 或 SOP 正文，返回推荐配置。"""
     import yaml as _yaml

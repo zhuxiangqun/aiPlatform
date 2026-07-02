@@ -29,7 +29,7 @@ def _runtime_env() -> str:
     return runtime_env()
 
 
-@router.get("/evaluation/policy/latest")
+@router.get("/evaluation/policy/latest", response_model=Dict[str, Any])
 async def get_latest_evaluation_policy(rt: RuntimeDep = None):
     """
     Returns the latest evaluation_policy (global default).
@@ -53,7 +53,7 @@ async def get_latest_evaluation_policy(rt: RuntimeDep = None):
     return {"status": "ok", "item": items2[0]}
 
 
-@router.get("/scopes/{scope_id}/evaluation/policy/latest")
+@router.get("/scopes/{scope_id}/evaluation/policy/latest", response_model=Dict[str, Any])
 async def get_latest_scoped_evaluation_policy(scope_id: str, rt: RuntimeDep = None):
     """
     Returns:
@@ -89,7 +89,7 @@ async def get_latest_scoped_evaluation_policy(scope_id: str, rt: RuntimeDep = No
     return {"status": "ok", "item": proj_item, "merged": merged}
 
 
-@router.post("/scopes/{scope_id}/evaluation/policy")
+@router.post("/scopes/{scope_id}/evaluation/policy", response_model=Dict[str, Any])
 async def upsert_scoped_evaluation_policy(
     scope_id: str,
     request: UpsertProjectEvaluationPolicyRequest,
@@ -183,7 +183,7 @@ async def upsert_scoped_evaluation_policy(
     }
 
 
-@router.post("/evaluation/policy")
+@router.post("/evaluation/policy", response_model=Dict[str, Any])
 async def upsert_evaluation_policy(request: UpsertEvaluationPolicyRequest, http_request: Request, rt: RuntimeDep = None):
     """
     Upsert global evaluation policy.
@@ -221,7 +221,7 @@ async def upsert_evaluation_policy(request: UpsertEvaluationPolicyRequest, http_
     return {"status": "ok", "artifact_id": art.artifact_id, "policy": policy}
 
 
-@router.post("/policies/evaluate")
+@router.post("/policies/evaluate", response_model=Dict[str, Any])
 async def evaluate_policy_debug(request: dict, http_request: Request, rt: RuntimeDep = None):
     """
     调试接口：评估 tenant policy + RBAC 对某个“操作”的决策（不产生任何副作用）。

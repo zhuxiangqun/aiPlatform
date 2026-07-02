@@ -20,7 +20,7 @@ def _store():
     return getattr(rt, "execution_store", None) if rt else None
 
 
-@router.get("/workspace/skills/observability/routing-funnel")
+@router.get("/workspace/skills/observability/routing-funnel", response_model=Dict[str, Any])
 async def workspace_routing_funnel(
     tenant_id: Optional[str] = None,
     since_hours: int = 24,
@@ -41,7 +41,7 @@ async def workspace_routing_funnel(
     }
 
 
-@router.get("/workspace/skills/observability/routing-explain")
+@router.get("/workspace/skills/observability/routing-explain", response_model=Dict[str, Any])
 async def workspace_routing_explain(
     tenant_id: Optional[str] = None,
     since_hours: int = 24,
@@ -66,7 +66,7 @@ async def workspace_routing_explain(
     }
 
 
-@router.get("/workspace/skills/observability/routing-replay")
+@router.get("/workspace/skills/observability/routing-replay", response_model=Dict[str, Any])
 async def workspace_routing_replay(
     routing_decision_id: str,
     tenant_id: Optional[str] = None,
@@ -89,7 +89,7 @@ async def workspace_routing_replay(
     }
 
 
-@router.get("/workspace/skills/observability/routing-metrics")
+@router.get("/workspace/skills/observability/routing-metrics", response_model=Dict[str, Any])
 async def workspace_routing_metrics(
     tenant_id: Optional[str] = None,
     since_hours: int = 24,
@@ -115,12 +115,12 @@ async def workspace_routing_metrics(
     }
 
 
-@router.get("/workspace/skills/observability/routing-metrics/tags")
+@router.get("/workspace/skills/observability/routing-metrics/tags", response_model=Dict[str, Any])
 async def workspace_routing_metric_tags() -> Dict[str, Any]:
     return {"status": "ok", **routing_metric_tags()}
 
 
-@router.get("/skills/observability/routing-funnel")
+@router.get("/skills/observability/routing-funnel", response_model=Dict[str, Any])
 async def engine_routing_funnel(
     tenant_id: Optional[str] = None,
     since_hours: int = 24,
@@ -141,7 +141,7 @@ async def engine_routing_funnel(
     }
 
 
-@router.get("/skills/observability/routing-explain")
+@router.get("/skills/observability/routing-explain", response_model=Dict[str, Any])
 async def engine_routing_explain(
     tenant_id: Optional[str] = None,
     since_hours: int = 24,
@@ -166,7 +166,7 @@ async def engine_routing_explain(
     }
 
 
-@router.get("/skills/observability/routing-replay")
+@router.get("/skills/observability/routing-replay", response_model=Dict[str, Any])
 async def engine_routing_replay(
     routing_decision_id: str,
     tenant_id: Optional[str] = None,
@@ -189,7 +189,7 @@ async def engine_routing_replay(
     }
 
 
-@router.get("/skills/observability/routing-metrics")
+@router.get("/skills/observability/routing-metrics", response_model=Dict[str, Any])
 async def engine_routing_metrics(
     tenant_id: Optional[str] = None,
     since_hours: int = 24,
@@ -215,7 +215,7 @@ async def engine_routing_metrics(
     }
 
 
-@router.post("/routing/learn")
+@router.post("/routing/learn", response_model=Dict[str, Any])
 async def apply_routing_learning(rt: RuntimeDep = None):
     """
     Analyze routing strict_eval events and adjust per-skill routing weights.
@@ -232,6 +232,6 @@ async def apply_routing_learning(rt: RuntimeDep = None):
         raise HTTPException(status_code=500, detail=f"Routing learning failed: {e}")
 
 
-@router.get("/skills/observability/routing-metrics/tags")
+@router.get("/skills/observability/routing-metrics/tags", response_model=Dict[str, Any])
 async def engine_routing_metric_tags() -> Dict[str, Any]:
     return {"status": "ok", **routing_metric_tags()}

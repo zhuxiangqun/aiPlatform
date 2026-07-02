@@ -1,4 +1,5 @@
 u"""Diagram API — LLM-generated draw.io diagrams (zero external deps)."""
+from typing import Dict, Any
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import PlainTextResponse, HTMLResponse
 from pydantic import BaseModel
@@ -12,7 +13,7 @@ class DiagramGenerateRequest(BaseModel):
     modify_id: str = ""
 
 
-@router.post("/generate")
+@router.post("/generate", response_model=Dict[str, Any])
 async def generate_diagram_api(req: DiagramGenerateRequest):
     from core.harness.syscalls.drawio_gen import generate_diagram, save_diagram, load_diagram
     context = load_diagram(req.modify_id) if req.modify_id else None
@@ -21,13 +22,13 @@ async def generate_diagram_api(req: DiagramGenerateRequest):
     return {"diagram_id": did, "viewer_url": f"/diagrams/viewer/{did}", "xml_preview": xml[:300]}
 
 
-@router.get("")
+@router.get("", response_model=Dict[str, Any])
 async def list_diagrams_api():
     from core.harness.syscalls.drawio_gen import list_diagrams
     return {"diagrams": list_diagrams()}
 
 
-@router.get("/{diagram_id}")
+@router.get("/{diagram_id}", response_model=Dict[str, Any])
 async def get_diagram_xml(diagram_id: str):
     from core.harness.syscalls.drawio_gen import load_diagram
     import asyncio
@@ -37,7 +38,7 @@ async def get_diagram_xml(diagram_id: str):
     return PlainTextResponse(xml, media_type="application/xml")
 
 
-@router.get("/viewer/{diagram_id}")
+@router.get("/viewer/{diagram_id}", response_model=Dict[str, Any])
 async def view_diagram(diagram_id: str):
     from core.harness.syscalls.drawio_gen import load_diagram
     import asyncio
@@ -68,7 +69,7 @@ setTimeout(send,800);
     return HTMLResponse(html)
 
 
-@router.delete("/{diagram_id}")
+@router.delete("/{diagram_id}", response_model=Dict[str, Any])
 async def delete_diagram_api(diagram_id: str):
     from core.harness.syscalls.drawio_gen import delete_diagram
     ok = delete_diagram(diagram_id)

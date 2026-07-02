@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import time
-from typing import Optional
+from typing import Dict, Optional, Any
 
 from fastapi import APIRouter, HTTPException
 
@@ -30,7 +30,7 @@ def _scheduler():
 # ==================== Jobs / Cron (Roadmap-3) ====================
 
 
-@router.get("/jobs")
+@router.get("/jobs", response_model=Dict[str, Any])
 async def list_jobs(limit: int = 100, offset: int = 0, enabled: Optional[bool] = None):
     store = _store()
     if not store:
@@ -38,7 +38,7 @@ async def list_jobs(limit: int = 100, offset: int = 0, enabled: Optional[bool] =
     return await store.list_jobs(limit=limit, offset=offset, enabled=enabled)
 
 
-@router.post("/jobs")
+@router.post("/jobs", response_model=Dict[str, Any])
 async def create_job(request: JobCreateRequest):
     store = _store()
     if not store:
@@ -67,7 +67,7 @@ async def create_job(request: JobCreateRequest):
     return job
 
 
-@router.get("/jobs/{job_id}")
+@router.get("/jobs/{job_id}", response_model=Dict[str, Any])
 async def get_job(job_id: str):
     store = _store()
     if not store:
@@ -78,7 +78,7 @@ async def get_job(job_id: str):
     return job
 
 
-@router.put("/jobs/{job_id}")
+@router.put("/jobs/{job_id}", response_model=Dict[str, Any])
 async def update_job(job_id: str, request: JobUpdateRequest):
     store = _store()
     if not store:
@@ -105,7 +105,7 @@ async def update_job(job_id: str, request: JobUpdateRequest):
     return updated
 
 
-@router.delete("/jobs/{job_id}")
+@router.delete("/jobs/{job_id}", response_model=Dict[str, Any])
 async def delete_job(job_id: str):
     store = _store()
     if not store:
@@ -116,7 +116,7 @@ async def delete_job(job_id: str):
     return {"status": "deleted", "job_id": job_id}
 
 
-@router.post("/jobs/{job_id}/enable")
+@router.post("/jobs/{job_id}/enable", response_model=Dict[str, Any])
 async def enable_job(job_id: str):
     store = _store()
     if not store:
@@ -129,7 +129,7 @@ async def enable_job(job_id: str):
     return updated
 
 
-@router.post("/jobs/{job_id}/disable")
+@router.post("/jobs/{job_id}/disable", response_model=Dict[str, Any])
 async def disable_job(job_id: str):
     store = _store()
     if not store:
@@ -140,7 +140,7 @@ async def disable_job(job_id: str):
     return updated
 
 
-@router.post("/jobs/{job_id}/run")
+@router.post("/jobs/{job_id}/run", response_model=Dict[str, Any])
 async def run_job_now(job_id: str):
     scheduler = _scheduler()
     if not scheduler:
@@ -153,7 +153,7 @@ async def run_job_now(job_id: str):
         raise HTTPException(status_code=409, detail=str(e))
 
 
-@router.get("/jobs/{job_id}/runs/{run_id}")
+@router.get("/jobs/{job_id}/runs/{run_id}", response_model=Dict[str, Any])
 async def get_job_run(job_id: str, run_id: str):
     store = _store()
     if not store:
@@ -164,7 +164,7 @@ async def get_job_run(job_id: str, run_id: str):
     return run
 
 
-@router.get("/jobs/{job_id}/runs")
+@router.get("/jobs/{job_id}/runs", response_model=Dict[str, Any])
 async def list_job_runs(job_id: str, limit: int = 100, offset: int = 0):
     store = _store()
     if not store:
@@ -172,7 +172,7 @@ async def list_job_runs(job_id: str, limit: int = 100, offset: int = 0):
     return await store.list_job_runs(job_id=job_id, limit=limit, offset=offset)
 
 
-@router.get("/jobs/dlq")
+@router.get("/jobs/dlq", response_model=Dict[str, Any])
 async def list_job_delivery_dlq(status: Optional[str] = None, job_id: Optional[str] = None, limit: int = 100, offset: int = 0):
     store = _store()
     if not store:
@@ -180,7 +180,7 @@ async def list_job_delivery_dlq(status: Optional[str] = None, job_id: Optional[s
     return await store.list_job_delivery_dlq(status=status, job_id=job_id, limit=limit, offset=offset)
 
 
-@router.post("/jobs/dlq/{dlq_id}/retry")
+@router.post("/jobs/dlq/{dlq_id}/retry", response_model=Dict[str, Any])
 async def retry_job_delivery_dlq(dlq_id: str):
     scheduler = _scheduler()
     if not scheduler:
@@ -193,7 +193,7 @@ async def retry_job_delivery_dlq(dlq_id: str):
         raise HTTPException(status_code=409, detail=str(e))
 
 
-@router.delete("/jobs/dlq/{dlq_id}")
+@router.delete("/jobs/dlq/{dlq_id}", response_model=Dict[str, Any])
 async def delete_job_delivery_dlq(dlq_id: str):
     store = _store()
     if not store:

@@ -216,7 +216,7 @@ def _resolve_skill_md_path(*, skill_id: str, scope: str) -> Optional[Path]:
 
 
 
-@router.post("/skill-evals/suites")
+@router.post("/skill-evals/suites", response_model=Dict[str, Any])
 async def upsert_skill_eval_suite(request: dict, http_request: Request):
     """
     创建/更新评测套件（Trigger Eval MVP）。
@@ -308,7 +308,7 @@ async def upsert_skill_eval_suite(request: dict, http_request: Request):
     return {"status": "ok", "suite": row}
 
 
-@router.get("/skill-evals/suites")
+@router.get("/skill-evals/suites", response_model=Dict[str, Any])
 async def list_skill_eval_suites(limit: int = 50, offset: int = 0, tenant_id: Optional[str] = None):
     store = _store()
     if not store:
@@ -317,7 +317,7 @@ async def list_skill_eval_suites(limit: int = 50, offset: int = 0, tenant_id: Op
     return res
 
 
-@router.get("/skill-evals/suites/{suite_id}")
+@router.get("/skill-evals/suites/{suite_id}", response_model=Dict[str, Any])
 async def get_skill_eval_suite(suite_id: str):
     store = _store()
     if not store:
@@ -328,7 +328,7 @@ async def get_skill_eval_suite(suite_id: str):
     return row
 
 
-@router.delete("/skill-evals/suites/{suite_id}")
+@router.delete("/skill-evals/suites/{suite_id}", response_model=Dict[str, Any])
 async def delete_skill_eval_suite(suite_id: str, http_request: Request):
     store = _store()
     if not store:
@@ -347,7 +347,7 @@ async def delete_skill_eval_suite(suite_id: str, http_request: Request):
     return {"status": "ok", "deleted": bool(ok)}
 
 
-@router.post("/skill-evals/suites/{suite_id}/run")
+@router.post("/skill-evals/suites/{suite_id}/run", response_model=Dict[str, Any])
 async def run_skill_eval_suite(suite_id: str, request: dict, http_request: Request):
     """
     运行 Trigger Eval（同步）。
@@ -412,7 +412,7 @@ async def run_skill_eval_suite(suite_id: str, request: dict, http_request: Reque
     return {"status": "ok", "run_id": str(eval_run_id), "result": res, "run": run_row}
 
 
-@router.get("/skill-evals/runs/{run_id}")
+@router.get("/skill-evals/runs/{run_id}", response_model=Dict[str, Any])
 async def get_skill_eval_run(run_id: str):
     store = _store()
     if not store:
@@ -423,7 +423,7 @@ async def get_skill_eval_run(run_id: str):
     return row
 
 
-@router.get("/skill-evals/runs/{run_id}/results")
+@router.get("/skill-evals/runs/{run_id}/results", response_model=Dict[str, Any])
 async def list_skill_eval_results(run_id: str, limit: int = 200, offset: int = 0):
     store = _store()
     if not store:
@@ -431,7 +431,7 @@ async def list_skill_eval_results(run_id: str, limit: int = 200, offset: int = 0
     return await store.list_skill_eval_results(run_id=str(run_id), limit=int(limit), offset=int(offset))
 
 
-@router.post("/skill-evals/runs/{run_id}/suggest")
+@router.post("/skill-evals/runs/{run_id}/suggest", response_model=Dict[str, Any])
 async def suggest_trigger_improvements(run_id: str, request: dict, http_request: Request):
     """
     Analyzer-lite: generate heuristic suggestions from a completed Trigger Eval run:
@@ -517,7 +517,7 @@ async def suggest_trigger_improvements(run_id: str, request: dict, http_request:
     }
 
 
-@router.post("/skill-evals/suites/{suite_id}/apply-suggestion")
+@router.post("/skill-evals/suites/{suite_id}/apply-suggestion", response_model=Dict[str, Any])
 async def apply_skill_eval_suggestion(suite_id: str, request: dict, http_request: Request):
     """
     Apply a suggestion patch to a suite (MVP).
@@ -575,7 +575,7 @@ async def apply_skill_eval_suggestion(suite_id: str, request: dict, http_request
     return {"status": "ok", "suite": updated}
 
 
-@router.post("/skill-evals/suites/{suite_id}/apply-skill-suggestion")
+@router.post("/skill-evals/suites/{suite_id}/apply-skill-suggestion", response_model=Dict[str, Any])
 async def apply_skill_md_suggestion(suite_id: str, request: dict, http_request: Request):
     """
     Generate (and optionally apply) a SKILL.md front matter patch for the target skill in this suite.
@@ -841,7 +841,7 @@ async def apply_skill_md_suggestion(suite_id: str, request: dict, http_request: 
     }
 
 
-@router.post("/skill-evals/compare")
+@router.post("/skill-evals/compare", response_model=Dict[str, Any])
 async def compare_skill_eval_runs(request: dict, http_request: Request):
     """
     A/B compare two eval runs (MVP).
@@ -911,7 +911,7 @@ async def compare_skill_eval_runs(request: dict, http_request: Request):
     }
 
 
-@router.post("/skill-evals/suites/{suite_id}/jobs/create")
+@router.post("/skill-evals/suites/{suite_id}/jobs/create", response_model=Dict[str, Any])
 async def create_skill_eval_job(suite_id: str, request: dict, http_request: Request):
     """
     创建一个定时 Job（由 JobScheduler 周期性执行 skill_eval_trigger）。

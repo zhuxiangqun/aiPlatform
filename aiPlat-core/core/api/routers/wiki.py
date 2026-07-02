@@ -46,7 +46,7 @@ class CollectionCreate(BaseModel):
     collection_id: str
 
 
-@router.get("/pages")
+@router.get("/pages", response_model=Dict[str, Any])
 async def list_pages(
     category: str = "",
     tag: str = "",
@@ -73,7 +73,7 @@ async def list_pages(
     return {"items": pages, "total": len(pages)}
 
 
-@router.get("/pages/{title}")
+@router.get("/pages/{title}", response_model=Dict[str, Any])
 async def read_page(title: str, category: str = "entities", collection: str = "default"):
     from core.harness.knowledge.wiki_engine import read_page
     page = read_page(title, category=category, collection_id=collection)
@@ -106,12 +106,12 @@ async def read_page(title: str, category: str = "entities", collection: str = "d
             if inferred:
                 page["inferred_relations"] = inferred
         except Exception as e:
-            logging.debug(str(e), exc_info=True)
+            logging.warning(str(e), exc_info=True)
 
     return page
 
 
-@router.delete("/pages/{title}")
+@router.delete("/pages/{title}", response_model=Dict[str, Any])
 async def delete_page(title: str, collection: str = "default"):
     from core.harness.knowledge.wiki_engine import delete_page as _del
     ok = _del(title, collection_id=collection)
@@ -120,14 +120,31 @@ async def delete_page(title: str, collection: str = "default"):
     return {"title": title, "status": "deleted"}
 
 
-@router.delete("/pages-all")
+@router.delete("/pages-all", response_model=Dict[str, Any])
 async def delete_all_pages(collection: str = "default"):
     from core.harness.knowledge.wiki_engine import delete_all_pages
     result = delete_all_pages(collection_id=collection)
     return {"deleted": result["deleted"], "message": f"已清空 {result['deleted']} 个 Wiki 页面"}
 
 
-@router.get("/unprocessed-docs")
+@router.post("/cleanup-ghosts", response_model=Dict[str, Any])
+async def cleanup_ghost_pages(collection: str = "default", dry_run: bool = True):
+    """Batch-clean ghost pages (search index entries with no stored page data).
+
+    Ghost pages exist in the search index but have no real content.
+    They are removed from disk and the FTS index. A single cache invalidation
+    round runs at the end (instead of per-page O(n²) similarity checks).
+
+    Query params:
+        collection: Wiki collection ID (default: "default")
+        dry_run: If true (default), only scan and report. Set false to actually delete.
+    """
+    from core.harness.knowledge.wiki_engine import cleanup_ghost_pages as _cleanup
+    result = _cleanup(collection_id=collection, dry_run=dry_run)
+    return result
+
+
+@router.get("/unprocessed-docs", response_model=Dict[str, Any])
 async def get_unprocessed_docs(tenant_id: str = "default", collection: str = "default"):
     u"""Return KB documents that don't have corresponding wiki pages.
     
@@ -172,7 +189,7 @@ async def get_unprocessed_docs(tenant_id: str = "default", collection: str = "de
                 if meta.get("wiki_pages"):
                     continue  # fully converted: wiki pages exist and status is wikified
             except Exception as e:
-                logging.debug(str(e), exc_info=True)
+                logging.warning(str(e), exc_info=True)
         unprocessed.append({
             "doc_id": d["doc_id"],
             "source_uri": d["source_uri"],
@@ -183,14 +200,14 @@ async def get_unprocessed_docs(tenant_id: str = "default", collection: str = "de
     return {"items": unprocessed, "total": len(unprocessed)}
 
 
-@router.get("/skill-deps")
+@router.get("/skill-deps", response_model=Dict[str, Any])
 async def get_skill_deps():
     u"""Return Agent→Skill→Syscall dependency graph."""
     from core.harness.knowledge.skill_deps import build_skill_deps
     return build_skill_deps()
 
 
-@router.get("/skill-impact/{skill_id}")
+@router.get("/skill-impact/{skill_id}", response_model=Dict[str, Any])
 async def get_skill_impact(skill_id: str):
     u"""Return agents and skills affected by a given skill."""
     from core.harness.knowledge.skill_deps import skill_impact
@@ -200,7 +217,7 @@ async def get_skill_impact(skill_id: str):
     return result
 
 
-@router.post("/skills/install-from-directory")
+@router.post("/skills/install-from-directory", response_model=Dict[str, Any])
 async def install_skills_from_directory(search_path: str = Body(..., embed=True)):
     u"""Install SKILL.md files from a directory (e.g. cloned agent-skills repo).
 
@@ -249,7 +266,7 @@ async def install_skills_from_directory(search_path: str = Body(..., embed=True)
                         if isinstance(fm, dict):
                             name = fm.get("name", name)
                     except Exception as e:
-                        logging.debug(str(e), exc_info=True)
+                        logging.warning(str(e), exc_info=True)
 
             dest_dir = _os.path.join(workspace, name)
             _os.makedirs(dest_dir, exist_ok=True)
@@ -282,7 +299,7 @@ class ShipRequest(BaseModel):
     sandbox_scenarios: int = 10
 
 
-@router.post("/pipeline/ship")
+@router.post("/pipeline/ship", response_model=Dict[str, Any])
 async def ship_pipeline(req: ShipRequest):
     u"""Final deployment gate. Requires all assessments PASS before allowing ship.
 
@@ -360,7 +377,7 @@ async def ship_pipeline(req: ShipRequest):
     return {"decision": "ALLOW", "gates": gates, "message": "All gates passed. Ready to ship."}
 
 
-@router.post("/pipeline/self-harness")
+@router.post("/pipeline/self-harness", response_model=Dict[str, Any])
 async def run_self_harness_cycle():
     u"""Run the Self-Harness optimization cycle."""
     try:
@@ -376,7 +393,7 @@ async def run_self_harness_cycle():
                 events = await store.list_completed_runs(limit=50)
                 run_states = [e.get("pipeline_state", {}) for e in events if e.get("pipeline_state")]
             except Exception as e:
-                logging.debug(str(e), exc_info=True)
+                logging.warning(str(e), exc_info=True)
 
         if not run_states:
             return {"accepted": [], "rejected": [], "message": "No completed runs found for analysis"}
@@ -392,7 +409,7 @@ class SandboxRequest(BaseModel):
     scenario_count: int = 10
 
 
-@router.post("/pipeline/sandbox")
+@router.post("/pipeline/sandbox", response_model=Dict[str, Any])
 async def run_pipeline_sandbox(req: SandboxRequest):
     u"""Run Pipeline Sandbox — generate variant scenarios and validate.
 
@@ -419,7 +436,7 @@ async def run_pipeline_sandbox(req: SandboxRequest):
 
 
 
-@router.get("/pipeline/diagnose/{run_id}")
+@router.get("/pipeline/diagnose/{run_id}", response_model=Dict[str, Any])
 async def diagnose_pipeline_run(run_id: str):
     u"""Diagnostic report for a single pipeline run.
 
@@ -444,7 +461,7 @@ async def diagnose_pipeline_run(run_id: str):
                     run_state = e.get("args", {})
                     break
         except Exception as e:
-            logging.debug(str(e), exc_info=True)
+            logging.warning(str(e), exc_info=True)
 
     if not run_state:
         raise HTTPException(status_code=404, detail=f"Run '{run_id}' not found")
@@ -597,7 +614,7 @@ def _check_session_notes(pipeline_id: str) -> bool:
     return len(_glob.glob(pattern)) > 0
 
 
-@router.get("/proposals")
+@router.get("/proposals", response_model=Dict[str, Any])
 async def get_proposals(status: str = "", collection: str = "default"):
     u"""List pending wiki knowledge proposals (merge/update/supplement/contradict)."""
     from core.harness.knowledge.wiki_engine import load_proposals
@@ -607,7 +624,7 @@ async def get_proposals(status: str = "", collection: str = "default"):
     return {"items": proposals, "total": len(proposals)}
 
 
-@router.put("/proposals/{proposal_id}")
+@router.put("/proposals/{proposal_id}", response_model=Dict[str, Any])
 async def handle_proposal(proposal_id: str, body: Dict[str, Any], collection: str = "default"):
     u"""Approve/reject a proposal. Body: {status: 'approved'|'rejected'}."""
     from core.harness.knowledge.wiki_engine import update_proposal_status, apply_proposal
@@ -624,7 +641,7 @@ async def handle_proposal(proposal_id: str, body: Dict[str, Any], collection: st
     return result
 
 
-@router.post("/pages")
+@router.post("/pages", response_model=Dict[str, Any])
 async def create_wiki_page(body: WikiPageWrite, collection: str = "default"):
     from core.harness.knowledge.wiki_engine import write_page, auto_link_page, search_pages, update_page
     try:
@@ -642,7 +659,7 @@ async def create_wiki_page(body: WikiPageWrite, collection: str = "default"):
         if auto_links:
             update_page(body.title, related=list(set(body.related or [] + auto_links)), collection_id=collection)
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
     # ── Version sync: if page was updated (not new), mark related ontology instances for review ──
     try:
         from core.harness.ontology_engine.graph_index import GraphIndex
@@ -667,13 +684,13 @@ async def create_wiki_page(body: WikiPageWrite, collection: str = "default"):
                 if affected:
                     _persist_reviews("ai-knowledge", affected)
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
     # ── Synthesis version sync: mark synthesis pages for review ──
     try:
         from core.harness.knowledge.wiki_engine import _sync_synthesis_pages
         _sync_synthesis_pages(body.title, collection_id=collection)
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
     # ── Provenance stale tracking: mark citations as stale if page version changed ──
     try:
         from core.harness.knowledge.wiki_engine import read_page
@@ -685,7 +702,7 @@ async def create_wiki_page(body: WikiPageWrite, collection: str = "default"):
             scanner = ProvenanceScanner(tracker)
             await scanner.on_source_updated(body.title, new_version)
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
     # ── SemanticCache invalidation: clear cache for this domain on wiki update ──
     try:
         from core.harness.knowledge.semantic_cache import get_semantic_cache
@@ -693,24 +710,24 @@ async def create_wiki_page(body: WikiPageWrite, collection: str = "default"):
         if cache.enabled:
             await cache.invalidate_domain(collection)
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
     return {"title": body.title, "path": path, "status": "created", "auto_links": auto_links}
 
 
-@router.get("/traverse/{title}")
+@router.get("/traverse/{title}", response_model=Dict[str, Any])
 async def traverse_links(title: str, depth: int = 2, collection: str = "default"):
     from core.harness.knowledge.wiki_engine import traverse_links
     pages = traverse_links(title, depth=depth, collection_id=collection)
     return {"root": title, "depth": depth, "pages": len(pages), "items": pages}
 
 
-@router.get("/lint")
+@router.get("/lint", response_model=Dict[str, Any])
 async def lint_wiki(collection: str = "default"):
     from core.harness.knowledge.wiki_engine import wiki_health_report
     return wiki_health_report()
 
 
-@router.get("/graph")
+@router.get("/graph", response_model=Dict[str, Any])
 async def wiki_graph(
     category: str = "",
     keyword: str = "",
@@ -721,7 +738,7 @@ async def wiki_graph(
     return build_graph(category=category, keyword=keyword, source=source, max_nodes=max_nodes, collection_id=collection)
 
 
-@router.post("/ingest")
+@router.post("/ingest", response_model=Dict[str, Any])
 async def ingest_text(body: WikiIngest):
     """Submit text for wiki processing. The wiki_curator agent handles this asynchronously."""
     import uuid, time
@@ -739,7 +756,7 @@ async def ingest_text(body: WikiIngest):
             "message": "Text stored. Execute wiki_curator agent to process and update wiki pages."}
 
 
-@router.post("/atomize-document")
+@router.post("/atomize-document", response_model=Dict[str, Any])
 async def atomize_document(body: AtomizeRequest, collection: str = "default"):
     """Ontology-driven atom extraction: raw document → KnowledgeAtoms with evidence.
 
@@ -770,7 +787,7 @@ async def atomize_document(body: AtomizeRequest, collection: str = "default"):
         raise HTTPException(status_code=500, detail=f"Atomization failed: {e}")
 
 
-@router.post("/convert-from-kb")
+@router.post("/convert-from-kb", response_model=Dict[str, Any])
 async def convert_from_kb(req: ConvertKbRequest = Body(default=None), collection: str = "default"):
     u"""Convert existing KB documents into Wiki pages.
     
@@ -832,7 +849,7 @@ async def convert_from_kb(req: ConvertKbRequest = Body(default=None), collection
                     meta = _json.loads(doc["meta_json"] or "{}")
                     if meta.get("title"):
                         title = str(meta["title"])[:120]
-                except Exception: logging.debug('best-effort operation', exc_info=True)  # noqa: intentional — best-effort operation, logged at debug
+                except Exception: logging.warning('best-effort operation', exc_info=True)  # noqa: intentional — best-effort operation, logged at warning
                 # Try to parse a human-readable title from the URI
                 from core.harness.knowledge.wiki_engine import parse_title_from_uri
                 readable = parse_title_from_uri(source_uri)
@@ -847,7 +864,7 @@ async def convert_from_kb(req: ConvertKbRequest = Body(default=None), collection
                     if wiki_pages and wiki_status == "wikified":
                         skipped += 1
                         continue
-                except Exception: logging.debug('best-effort operation', exc_info=True)  # noqa: intentional — best-effort operation, logged at debug
+                except Exception: logging.warning('best-effort operation', exc_info=True)  # noqa: intentional — best-effort operation, logged at warning
 
                 # Read document elements (full text)
                 elements = conn.execute(
@@ -918,7 +935,7 @@ async def convert_from_kb(req: ConvertKbRequest = Body(default=None), collection
                                 source_articles=[f"kb:{doc_id}"], collection_id=collection)
                             if curated.get("title") != old_title:
                                 try: delete_page(old_title)
-                                except Exception: logging.debug('best-effort operation', exc_info=True)  # noqa: intentional — best-effort operation, logged at debug
+                                except Exception: logging.warning('best-effort operation', exc_info=True)  # noqa: intentional — best-effort operation, logged at warning
                             for atom in curated.get("knowledge_atoms", [])[:6]:
                                 if not atom.get("title") or not atom.get("body"):
                                     continue
@@ -932,7 +949,7 @@ async def convert_from_kb(req: ConvertKbRequest = Body(default=None), collection
                                             "confidence": float(atom.get("confidence",0.5)),
                                             "tags": list(atom.get("tags",[]))[:5]}, collection_id=collection)
                                         entities_created += 1
-                                    except Exception: logging.debug('best-effort operation', exc_info=True)  # noqa: intentional — best-effort operation, logged at debug
+                                    except Exception: logging.warning('best-effort operation', exc_info=True)  # noqa: intentional — best-effort operation, logged at warning
                             # Write back to KB
                             final_title = curated.get("title", old_title)
                             try:
@@ -950,7 +967,7 @@ async def convert_from_kb(req: ConvertKbRequest = Body(default=None), collection
                                 writeback_errors += 1
                                 logger.warning(f"writeback failed for {doc_id}: {e}")
                         except Exception as e:
-                            logging.debug(str(e), exc_info=True)
+                            logging.warning(str(e), exc_info=True)
 
             # Cross-link pages that share keywords (validate against actual existing pages)
             valid_titles = set()
@@ -958,7 +975,7 @@ async def convert_from_kb(req: ConvertKbRequest = Body(default=None), collection
                 from core.harness.knowledge.wiki_engine import search_pages
                 valid_titles = set(p["title"] for p in (search_pages(limit=1000, collection_id=collection) or []))
             except Exception as e:
-                logging.debug(str(e), exc_info=True)
+                logging.warning(str(e), exc_info=True)
             for kw, titles in topic_keywords.items():
                 if len(titles) >= 2:
                     # Filter out titles that don't correspond to actual wiki pages
@@ -1008,7 +1025,7 @@ async def convert_from_kb(req: ConvertKbRequest = Body(default=None), collection
                                 already_converted = True
                                 break
                         if already_converted: continue
-                    except Exception: logging.debug('best-effort operation', exc_info=True)  # noqa: intentional — best-effort operation, logged at debug
+                    except Exception: logging.warning('best-effort operation', exc_info=True)  # noqa: intentional — best-effort operation, logged at warning
 
                     title = os.path.splitext(fname)[0][:100]
                     title = re.sub(r"[<>:\"/\\|?*]", "_", title)
@@ -1038,7 +1055,7 @@ async def convert_from_kb(req: ConvertKbRequest = Body(default=None), collection
                         c2 = _sq.connect(kb_db)
                         existing = c2.execute("SELECT 1 FROM documents WHERE doc_id LIKE ?", (f"%{fname[:20]}%",)).fetchone()
                         c2.close()
-                    except Exception: logging.debug('best-effort operation', exc_info=True)  # noqa: intentional — best-effort operation, logged at debug
+                    except Exception: logging.warning('best-effort operation', exc_info=True)  # noqa: intentional — best-effort operation, logged at warning
                     if uploads_converted >= limit * 2:
                         break
         except Exception as e:
@@ -1056,7 +1073,7 @@ async def convert_from_kb(req: ConvertKbRequest = Body(default=None), collection
     }
 
 
-@router.post("/curate")
+@router.post("/curate", response_model=Dict[str, Any])
 async def curate_wiki(collection: str = "default"):
     u"""LLM 深度策展：遍历所有 Wiki 页面，用 LLM 重写标题/分类/标签/摘要/关联。
 
@@ -1150,7 +1167,7 @@ async def curate_wiki(collection: str = "default"):
     return report
 
 
-@router.post("/wiki/index-md")
+@router.post("/wiki/index-md", response_model=Dict[str, Any])
 async def regenerate_wiki_index(collection: str = "default"):
     """Generate a human-readable wiki index page (index.md) from index.json."""
     try:
@@ -1162,7 +1179,7 @@ async def regenerate_wiki_index(collection: str = "default"):
         raise HTTPException(status_code=500, detail=f"Index generation failed: {e}")
 
 
-@router.get("/wiki/health-trend")
+@router.get("/wiki/health-trend", response_model=Dict[str, Any])
 async def get_wiki_health_trend():
     """Get wiki health score trend over time."""
     try:
@@ -1172,7 +1189,7 @@ async def get_wiki_health_trend():
         raise HTTPException(status_code=500, detail=f"Failed to get health trend: {e}")
 
 
-@router.get("/wiki/golden-queries/seed")
+@router.get("/wiki/golden-queries/seed", response_model=Dict[str, Any])
 async def seed_golden_queries():
     """Create a default golden_queries.yaml template."""
     try:
@@ -1182,7 +1199,7 @@ async def seed_golden_queries():
         raise HTTPException(status_code=500, detail=f"Failed: {e}")
 
 
-@router.post("/wiki/golden-queries/run")
+@router.post("/wiki/golden-queries/run", response_model=Dict[str, Any])
 async def run_golden_tests():
     """Run regression tests against golden queries."""
     try:
@@ -1192,7 +1209,7 @@ async def run_golden_tests():
         raise HTTPException(status_code=500, detail=f"Golden test failed: {e}")
 
 
-@router.get("/wiki/query-structured")
+@router.get("/wiki/query-structured", response_model=Dict[str, Any])
 async def wiki_structured_query(q: str = ""):
     """Deterministic structured query — same question, same answer."""
     if not q:
@@ -1205,7 +1222,7 @@ async def wiki_structured_query(q: str = ""):
         raise HTTPException(status_code=500, detail=f"Structured query failed: {e}")
 
 
-@router.post("/ontology/rebuild")
+@router.post("/ontology/rebuild", response_model=Dict[str, Any])
 async def ontology_rebuild(collection: str = "default"):
     """Full rebuild of the knowledge ontology A-Box from current Wiki+KB data."""
     try:
@@ -1216,7 +1233,7 @@ async def ontology_rebuild(collection: str = "default"):
         raise HTTPException(status_code=500, detail=f"Rebuild failed: {e}")
 
 
-@router.get("/ontology/validate")
+@router.get("/ontology/validate", response_model=Dict[str, Any])
 async def ontology_validate(collection: str = "default"):
     """Run all ontology axioms (A1-A7) against the current A-Box."""
     try:
@@ -1243,7 +1260,7 @@ async def ontology_validate(collection: str = "default"):
         raise HTTPException(status_code=500, detail=f"Validation failed: {e}")
 
 
-@router.get("/ontology/network/{title:path}")
+@router.get("/ontology/network/{title:path}", response_model=Dict[str, Any])
 async def ontology_network(title: str, collection: str = "default"):
     """Get the transitive knowledge network from a starting Wiki page."""
     try:
@@ -1257,7 +1274,7 @@ async def ontology_network(title: str, collection: str = "default"):
         raise HTTPException(status_code=500, detail=f"Network query failed: {e}")
 
 
-@router.get("/ontology/source-impact")
+@router.get("/ontology/source-impact", response_model=Dict[str, Any])
 async def ontology_source_impact(collection: str = "default"):
     """Rank KB documents by how many Wiki pages cite them."""
     try:
@@ -1271,7 +1288,7 @@ async def ontology_source_impact(collection: str = "default"):
         raise HTTPException(status_code=500, detail=f"Impact query failed: {e}")
 
 
-@router.get("/wiki/changelog")
+@router.get("/wiki/changelog", response_model=Dict[str, Any])
 async def get_wiki_changelog(title: str = "", limit: int = 20, collection: str = "default"):
     """Get wiki changelog entries, optionally filtered by page title."""
     from core.harness.knowledge.wiki_engine import _wiki_root
@@ -1291,7 +1308,7 @@ async def get_wiki_changelog(title: str = "", limit: int = 20, collection: str =
         raise HTTPException(status_code=500, detail=f"Failed to read changelog: {e}")
 
 
-@router.post("/wiki/rollback/{title}")
+@router.post("/wiki/rollback/{title}", response_model=Dict[str, Any])
 async def wiki_rollback(title: str, index: int = -1, collection: str = "default"):
     """Rollback a wiki page to a previous version from changelog.
     
@@ -1306,7 +1323,7 @@ async def wiki_rollback(title: str, index: int = -1, collection: str = "default"
     return {"status": "rolled_back", "title": title, "index": index}
 
 
-@router.get("/wiki/duplicates")
+@router.get("/wiki/duplicates", response_model=Dict[str, Any])
 async def detect_wiki_duplicates(collection: str = "default"):
     """Detect potentially duplicate wiki pages using embedding similarity."""
     try:
@@ -1319,7 +1336,7 @@ async def detect_wiki_duplicates(collection: str = "default"):
 
 # ── Collection Management ───────────────────────────────────────
 
-@router.get("/collections")
+@router.get("/collections", response_model=Dict[str, Any])
 async def list_wiki_collections():
     """List all wiki collections with page counts."""
     try:
@@ -1330,7 +1347,7 @@ async def list_wiki_collections():
         raise HTTPException(status_code=500, detail=f"Failed to list collections: {e}")
 
 
-@router.post("/collections")
+@router.post("/collections", response_model=Dict[str, Any])
 async def create_wiki_collection(body: CollectionCreate):
     """Create a new wiki collection."""
     try:
@@ -1343,7 +1360,7 @@ async def create_wiki_collection(body: CollectionCreate):
         raise HTTPException(status_code=500, detail=f"Failed to create collection: {e}")
 
 
-@router.delete("/collections/{collection_id}")
+@router.delete("/collections/{collection_id}", response_model=Dict[str, Any])
 async def delete_wiki_collection(collection_id: str):
     """Delete a wiki collection and all its pages."""
     try:
@@ -1362,7 +1379,7 @@ async def delete_wiki_collection(collection_id: str):
 
 # ── Schema API ─────────────────────────────────────────────────
 
-@router.get("/schema")
+@router.get("/schema", response_model=Dict[str, Any])
 async def get_wiki_schema(collection: str = "default", domain: str = ""):
     """Return T-Box class schemas, with per-collection extensions + domain ontologies applied."""
     try:
@@ -1438,7 +1455,7 @@ def _class_to_schema(display_cls, OBJECT_PROPERTIES, AI) -> dict:
     }
 
 
-@router.get("/ontology/classes")
+@router.get("/ontology/classes", response_model=Dict[str, Any])
 async def list_ontology_classes():
     """Return T-Box class hierarchy for Agent query routing."""
     try:
@@ -1461,7 +1478,7 @@ async def list_ontology_classes():
 
 # ── Domain Ontology API (YAML-based) ─────────────────────────────
 
-@router.get("/ontology/domains")
+@router.get("/ontology/domains", response_model=Dict[str, Any])
 async def list_ontology_domains():
     """List available domain ontology files."""
     from core.harness.knowledge.ontology_loader import list_domain_files, load_ontology_from_yaml
@@ -1492,11 +1509,11 @@ async def list_ontology_domains():
                 "collection_id": cfg.get("collection_id", domain.id),
             })
         except Exception as e:
-            logging.debug(str(e), exc_info=True)
+            logging.warning(str(e), exc_info=True)
     return {"domains": domains, "total": len(domains)}
 
 
-@router.get("/ontology/domains/{domain_id}")
+@router.get("/ontology/domains/{domain_id}", response_model=Dict[str, Any])
 async def get_ontology_domain(domain_id: str):
     """Get full domain ontology including classes + properties."""
     from core.harness.knowledge.ontology_loader import load_ontology_from_yaml
@@ -1552,7 +1569,7 @@ async def get_ontology_domain(domain_id: str):
         raise HTTPException(status_code=500, detail=f"Failed to load domain '{domain_id}': {e}")
 
 
-@router.get("/ontology/domains/{domain_id}/validation-report")
+@router.get("/ontology/domains/{domain_id}/validation-report", response_model=Dict[str, Any])
 async def validate_ontology_domain(domain_id: str, collection: str = ""):
     """Cross-check existing data (Wiki pages + Graph nodes) against current ontology schema.
 
@@ -1568,7 +1585,7 @@ async def validate_ontology_domain(domain_id: str, collection: str = ""):
 _verify_cache: dict = {}  # domain_id → (timestamp, result)
 
 
-@router.post("/ontology/domains/{domain_id}/verify")
+@router.post("/ontology/domains/{domain_id}/verify", response_model=Dict[str, Any])
 async def verify_ontology_domain(domain_id: str, collection: str = ""):
     """Unified verification: classification coverage + graph stats + anomalies.
     
@@ -1606,7 +1623,7 @@ async def verify_ontology_domain(domain_id: str, collection: str = ""):
         graph_nodes = len(graph._nodes)
         graph_edges = sum(len(n.out_edges) for n in graph._nodes.values())
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
 
     # 3. Issues detection
     issues = []
@@ -1641,7 +1658,7 @@ async def verify_ontology_domain(domain_id: str, collection: str = ""):
     return result
 
 
-@router.get("/ontology/domains/{domain_id}/scoring")
+@router.get("/ontology/domains/{domain_id}/scoring", response_model=Dict[str, Any])
 async def get_scoring_config(domain_id: str):
     """Get current retrieval scoring weights for a domain."""
     try:
@@ -1659,7 +1676,7 @@ async def get_scoring_config(domain_id: str):
         return {"semantic": 0.55, "fts_keyword": 0.15, "freshness": 0.10, "credibility": 0.10, "density": 0.10}
 
 
-@router.put("/ontology/domains/{domain_id}/scoring")
+@router.put("/ontology/domains/{domain_id}/scoring", response_model=Dict[str, Any])
 async def update_scoring_config(domain_id: str, config: dict):
     """Update retrieval scoring weights. Changes take effect immediately."""
     import yaml, os
@@ -1697,7 +1714,7 @@ def _clean_summary(text: str, max_len: int = 200) -> str:
     return text[:max_len]
 
 
-@router.get("/ontology/domains/{domain_id}/instances")
+@router.get("/ontology/domains/{domain_id}/instances", response_model=Dict[str, Any])
 async def list_instances_by_class(domain_id: str, class_label: str = ""):
     """List all ontology instances (Wiki pages) for a given class_label.
 
@@ -1745,7 +1762,7 @@ async def list_instances_by_class(domain_id: str, class_label: str = ""):
                         body = _re.sub(r'\s+', ' ', body).strip()
                         summary = body[:200]
                 except Exception as e:
-                    logging.debug(str(e), exc_info=True)
+                    logging.warning(str(e), exc_info=True)
 
             instances.append({
                 "entity_name": p.get("title", ""),
@@ -1764,7 +1781,7 @@ async def list_instances_by_class(domain_id: str, class_label: str = ""):
 
 
 
-@router.get("/ontology/class-by-category")
+@router.get("/ontology/class-by-category", response_model=Dict[str, Any])
 async def get_ontology_class_by_category(category: str = "entities", collection: str = "default"):
     """Return the OntologyClass matching a category name, with required/optional/template fields.
     
@@ -1812,7 +1829,7 @@ async def get_ontology_class_by_category(category: str = "entities", collection:
     return result
 
 
-@router.post("/ontology/domains/{domain_id}/classify-all")
+@router.post("/ontology/domains/{domain_id}/classify-all", response_model=Dict[str, Any])
 async def classify_all_pages(domain_id: str, collection: str = "", limit: int = 5):
     """Auto-classify unclassified wiki pages using LLM (reads body content), then auto-trigger build-instances.
 
@@ -1853,7 +1870,7 @@ async def classify_all_pages(domain_id: str, collection: str = "", limit: int = 
             if full:
                 page_bodies[p["title"]] = str(full.get("body", "") or "")[:100]
         except Exception as e:
-            logging.debug(str(e), exc_info=True)
+            logging.warning(str(e), exc_info=True)
 
     cat_names = ", ".join(c["categories"][0] for c in all_classes if c["categories"])
     class_lines = "\n".join(
@@ -1975,7 +1992,7 @@ async def classify_all_pages(domain_id: str, collection: str = "", limit: int = 
 
 # ── Ontology Engine API ─────────────────────────────────────────
 
-@router.post("/ontology/engine/process")
+@router.post("/ontology/engine/process", response_model=Dict[str, Any])
 async def ontology_engine_process(req: dict, collection: str = "default"):
     """本体引擎处理：单文档 → 本体实例。
     
@@ -1998,7 +2015,7 @@ async def ontology_engine_process(req: dict, collection: str = "default"):
     return result.to_dict()
 
 
-@router.post("/ontology/engine/process-and-write")
+@router.post("/ontology/engine/process-and-write", response_model=Dict[str, Any])
 async def ontology_engine_process_and_write(req: dict, collection: str = "default"):
     """本体引擎 → 实例 → 自动写 Wiki 页面。
     
@@ -2037,12 +2054,12 @@ async def ontology_engine_process_and_write(req: dict, collection: str = "defaul
                 )
                 written.append(title)
             except Exception as e:
-                logging.debug(str(e), exc_info=True)
+                logging.warning(str(e), exc_info=True)
 
     return {**result.to_dict(), "written_pages": written, "written_count": len(written)}
 
 
-@router.post("/ontology/domains/{domain_id}/cleanup-nodes")
+@router.post("/ontology/domains/{domain_id}/cleanup-nodes", response_model=Dict[str, Any])
 async def cleanup_cross_domain_nodes(domain_id: str):
     """Remove graph nodes whose entity_name matches keywords from other domains.
 
@@ -2077,7 +2094,7 @@ async def cleanup_cross_domain_nodes(domain_id: str):
                 for syn in (getattr(cls, "synonyms", []) or []):
                     cross_keywords.add(syn)
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
 
     if not cross_keywords:
         return {"status": "no_cross_keywords", "domain_id": domain_id}
@@ -2092,7 +2109,7 @@ async def cleanup_cross_domain_nodes(domain_id: str):
     return {"status": "cleaned", "domain_id": domain_id, "removed": len(removed), "details": removed[:20]}
 
 
-@router.post("/ontology/domains/{domain_id}/backfill-summaries")
+@router.post("/ontology/domains/{domain_id}/backfill-summaries", response_model=Dict[str, Any])
 async def backfill_summaries(domain_id: str, collection: str = "", limit: int = 200):
     """Backfill empty summaries for all wiki pages in this domain's collection.
 
@@ -2125,7 +2142,7 @@ async def backfill_summaries(domain_id: str, collection: str = "", limit: int = 
             )
             filled += 1
         except Exception as e:
-            logging.debug(str(e), exc_info=True)
+            logging.warning(str(e), exc_info=True)
 
     return {"status": "backfilled", "filled": filled, "total": min(len(pages), limit)}
 
@@ -2133,7 +2150,7 @@ async def backfill_summaries(domain_id: str, collection: str = "", limit: int = 
 _build_semaphore = None  # lazy init to avoid import-time asyncio issues
 
 
-@router.post("/ontology/domains/{domain_id}/build-instances")
+@router.post("/ontology/domains/{domain_id}/build-instances", response_model=Dict[str, Any])
 async def build_instances_batch(domain_id: str, collection: str = "", limit: int = 50):
     """Batch-run ontology engine on all Wiki pages in this domain's collection.
     
@@ -2160,7 +2177,7 @@ async def build_instances_batch(domain_id: str, collection: str = "", limit: int
         try:
             built_pages = set(_json.loads(built_path.read_text(encoding="utf-8")))
         except Exception as e:
-            logging.debug(str(e), exc_info=True)
+            logging.warning(str(e), exc_info=True)
 
     pages = list_all_pages(collection_id=cid)
     if not pages:
@@ -2213,7 +2230,7 @@ async def build_instances_batch(domain_id: str, collection: str = "", limit: int
     return results
 
 
-@router.post("/ontology/domains/{domain_id}/build-edges")
+@router.post("/ontology/domains/{domain_id}/build-edges", response_model=Dict[str, Any])
 async def build_cross_page_edges(domain_id: str):
     """Build cross-page edges by linking graph nodes via wiki references + keyword overlap.
     
@@ -2504,13 +2521,13 @@ async def _process_single_page(engine, page: dict, cid: str) -> dict:
                             category=fm.get("category", "entities"), collection_id=cid,
                         )
                     except Exception as e:
-                        logging.debug(str(e), exc_info=True)
+                        logging.warning(str(e), exc_info=True)
 
         return {"title": page["title"], "instances": inst_count,
                 "relations": len(result.relations) if hasattr(result, "relations") else 0}
 
 
-@router.get("/ontology/engine/traces/{instance_title:path}")
+@router.get("/ontology/engine/traces/{instance_title:path}", response_model=Dict[str, Any])
 async def ontology_engine_trace(instance_title: str, doc_id: str = ""):
     """查询实例溯源。需提供 instance_title 和可选的 doc_id。"""
     import os as _os
@@ -2524,7 +2541,7 @@ async def ontology_engine_trace(instance_title: str, doc_id: str = ""):
     return _json.loads(trace_file.read_text(encoding="utf-8"))
 
 
-@router.post("/ontology/engine/parse")
+@router.post("/ontology/engine/parse", response_model=Dict[str, Any])
 async def ontology_engine_parse(req: dict):
     """解析文档 → 结构化Chunk → 本体引擎处理。
     
@@ -2570,7 +2587,7 @@ async def ontology_engine_parse(req: dict):
     }
 
 
-@router.post("/ontology/engine/parse-and-process")
+@router.post("/ontology/engine/parse-and-process", response_model=Dict[str, Any])
 async def ontology_engine_parse_and_process(req: dict, collection: str = "default"):
     """解析文档 → 结构化Chunk → 本体引擎 → 自动写Wiki页面。
     
@@ -2618,7 +2635,7 @@ async def ontology_engine_parse_and_process(req: dict, collection: str = "defaul
                 )
                 written.append(title)
             except Exception as e:
-                logging.debug(str(e), exc_info=True)
+                logging.warning(str(e), exc_info=True)
 
     return {
         **result.to_dict(),
@@ -2627,7 +2644,7 @@ async def ontology_engine_parse_and_process(req: dict, collection: str = "defaul
     }
 
 
-@router.post("/ontology/engine/simulate-state")
+@router.post("/ontology/engine/simulate-state", response_model=Dict[str, Any])
 async def simulate_state_transitions(req: dict):
     """模拟状态机：给定一批实例，返回状态转换链和受影响的实例。
 
@@ -2703,7 +2720,7 @@ async def simulate_state_transitions(req: dict):
     }
 
 
-@router.post("/ontology/engine/simulate-scenarios")
+@router.post("/ontology/engine/simulate-scenarios", response_model=Dict[str, Any])
 async def simulate_scenarios(req: dict):
     """Multi-scenario simulation sandbox — compare different configurations side by side.
 
@@ -2787,7 +2804,7 @@ async def simulate_scenarios(req: dict):
     }
 
 
-@router.get("/ontology/engine/reviews/{domain_id}")
+@router.get("/ontology/engine/reviews/{domain_id}", response_model=Dict[str, Any])
 async def list_ontology_reviews(domain_id: str):
     """Get pending review queue for a domain ontology."""
     from pathlib import Path as _Path
@@ -2810,7 +2827,7 @@ async def list_ontology_reviews(domain_id: str):
     }
 
 
-@router.post("/ontology/engine/reviews/{domain_id}/resolve")
+@router.post("/ontology/engine/reviews/{domain_id}/resolve", response_model=Dict[str, Any])
 async def resolve_ontology_review(domain_id: str, req: dict):
     """Mark a review as resolved."""
     from pathlib import Path as _Path
@@ -2839,7 +2856,7 @@ async def resolve_ontology_review(domain_id: str, req: dict):
     return {"review_id": review_id, "status": "resolved"}
 
 
-@router.get("/ontology/engine/cross-domain-stats")
+@router.get("/ontology/engine/cross-domain-stats", response_model=Dict[str, Any])
 async def get_cross_domain_stats():
     """Get aggregated stats across all domain graphs."""
     from core.harness.ontology_engine.engine import get_sharded_graph
@@ -2853,7 +2870,7 @@ async def get_cross_domain_stats():
     }
 
 
-@router.get("/ontology/engine/graph-stats/{domain_id}")
+@router.get("/ontology/engine/graph-stats/{domain_id}", response_model=Dict[str, Any])
 async def get_graph_stats(domain_id: str):
     """Get graph statistics: nodes, edges, inferred edges."""
     from core.harness.ontology_engine.graph_index import GraphIndex
@@ -2863,8 +2880,8 @@ async def get_graph_stats(domain_id: str):
     return {"domain_id": domain_id, "node_count": base["node_count"], "edge_count": base["edge_count"], "inferred_edges": inferred, "avg_degree": base["avg_degree"]}
 
 
-@router.post("/ontology/engine/resolve")
-@router.post("/ontology/engine/cross-source-resolve")
+@router.post("/ontology/engine/resolve", response_model=Dict[str, Any])
+@router.post("/ontology/engine/cross-source-resolve", response_model=Dict[str, Any])
 async def cross_source_resolve(req: dict):
     """P1: Cross-source entity aggregation. Link entities from different data sources.
 
@@ -2905,7 +2922,7 @@ async def cross_source_resolve(req: dict):
     return result.to_dict()
 
 
-@router.post("/ontology/engine/resolve")
+@router.post("/ontology/engine/resolve", response_model=Dict[str, Any])
 async def resolve_entities(req: dict):
     """Run entity resolver on a list of instances.
 
@@ -2942,7 +2959,7 @@ async def resolve_entities(req: dict):
     return result.to_dict()
 
 
-@router.get("/ontology/engine/state-history/{domain_id}")
+@router.get("/ontology/engine/state-history/{domain_id}", response_model=Dict[str, Any])
 async def get_state_history(domain_id: str, entity: str = "", limit: int = 200):
     """Get state machine change history for a domain or specific entity."""
     from core.harness.ontology_engine.state_history import get_domain_history, get_entity_history
@@ -2955,7 +2972,7 @@ async def get_state_history(domain_id: str, entity: str = "", limit: int = 200):
         return {"domain_id": domain_id, "history": history, "total": len(history)}
 
 
-@router.get("/ontology/engine/state-stats/{domain_id}")
+@router.get("/ontology/engine/state-stats/{domain_id}", response_model=Dict[str, Any])
 async def get_state_statistics(
     domain_id: str,
     entity: str = "",
@@ -3003,7 +3020,7 @@ async def get_state_statistics(
     }
 
 
-@router.post("/ontology/engine/traverse")
+@router.post("/ontology/engine/traverse", response_model=Dict[str, Any])
 async def graph_traverse(req: dict):
     """Multi-hop graph traversal from a start entity.
 
@@ -3047,7 +3064,7 @@ async def graph_traverse(req: dict):
     }
 
 
-@router.post("/ontology/engine/feedback")
+@router.post("/ontology/engine/feedback", response_model=Dict[str, Any])
 async def submit_feedback(req: dict):
     """Submit user feedback on an answer.
     
@@ -3063,13 +3080,13 @@ async def submit_feedback(req: dict):
     return {"status": "recorded"}
 
 
-@router.get("/ontology/engine/feedback-stats/{domain_id}")
+@router.get("/ontology/engine/feedback-stats/{domain_id}", response_model=Dict[str, Any])
 async def get_feedback_statistics(domain_id: str):
     from core.harness.ontology_engine.state_history import get_feedback_stats
     return get_feedback_stats(domain_id)
 
 
-@router.get("/ontology/engine/recommend/{domain_id}")
+@router.get("/ontology/engine/recommend/{domain_id}", response_model=Dict[str, Any])
 async def get_knowledge_recommendations(
     domain_id: str,
     department: str = "",
@@ -3090,7 +3107,7 @@ async def get_knowledge_recommendations(
     return {"domain_id": domain_id, "recommendations": result, "total": len(result)}
 
 
-@router.post("/ontology/engine/parse-logic-form")
+@router.post("/ontology/engine/parse-logic-form", response_model=Dict[str, Any])
 async def parse_logic_form(req: dict):
     """NL2LF: Parse natural language to structured Logic Form."""
     from core.harness.knowledge.ontology_query_mapper import parse_to_logic_form
@@ -3099,7 +3116,7 @@ async def parse_logic_form(req: dict):
     return parse_to_logic_form(query)
 
 
-@router.post("/ontology/engine/detect-gaps")
+@router.post("/ontology/engine/detect-gaps", response_model=Dict[str, Any])
 async def detect_knowledge_gaps_endpoint(req: dict):
     """Detect knowledge gaps from query patterns.
 
@@ -3118,7 +3135,7 @@ async def detect_knowledge_gaps_endpoint(req: dict):
     return {"domain_id": domain_id, **result}
 
 
-@router.post("/ontology/engine/process-from-datasource")
+@router.post("/ontology/engine/process-from-datasource", response_model=Dict[str, Any])
 async def process_from_datasource(req: dict):
     """Palantir-style: process data from an external data source through the ontology engine.
 
@@ -3149,14 +3166,14 @@ async def process_from_datasource(req: dict):
     }
 
 
-@router.get("/ontology/datasources")
+@router.get("/ontology/datasources", response_model=Dict[str, Any])
 async def list_datasources():
     from core.harness.ontology_engine.data_source import DataSourceRegistry
     DataSourceRegistry.load_from_dir()
     return {"datasources": DataSourceRegistry.list_sources()}
 
 
-@router.post("/ontology/engine/synthesize")
+@router.post("/ontology/engine/synthesize", response_model=Dict[str, Any])
 async def run_knowledge_synthesis(req: dict):
     """Synthesize graph knowledge into Wiki pages.
 
@@ -3179,7 +3196,7 @@ async def run_knowledge_synthesis(req: dict):
     }
 
 
-@router.post("/ontology/engine/snapshot/{domain_id}")
+@router.post("/ontology/engine/snapshot/{domain_id}", response_model=Dict[str, Any])
 async def create_graph_snapshot(domain_id: str, label: str = ""):
     """Create a versioned snapshot of the current graph state."""
     from core.harness.ontology_engine.graph_index import GraphIndex
@@ -3190,14 +3207,14 @@ async def create_graph_snapshot(domain_id: str, label: str = ""):
     return {"domain_id": domain_id, **result}
 
 
-@router.get("/ontology/engine/snapshots/{domain_id}")
+@router.get("/ontology/engine/snapshots/{domain_id}", response_model=Dict[str, Any])
 async def list_graph_snapshots(domain_id: str):
     from core.harness.ontology_engine.graph_index import GraphIndex
     graph = GraphIndex.load(domain_id)
     return {"domain_id": domain_id, "snapshots": graph.list_snapshots()}
 
 
-@router.post("/ontology/engine/snapshot/{domain_id}/restore")
+@router.post("/ontology/engine/snapshot/{domain_id}/restore", response_model=Dict[str, Any])
 async def restore_graph_snapshot(domain_id: str, req: dict):
     snapshot_id = int(req.get("snapshot_id", 0)) if isinstance(req, dict) else 0
     if not snapshot_id:
@@ -3208,7 +3225,7 @@ async def restore_graph_snapshot(domain_id: str, req: dict):
     return {"domain_id": domain_id, **result}
 
 
-@router.get("/ontology/sdk/{domain_id}")
+@router.get("/ontology/sdk/{domain_id}", response_model=Dict[str, Any])
 async def generate_ontology_sdk(domain_id: str, language: str = "python"):
     """Generate a client SDK from the domain ontology YAML.
 
@@ -3280,7 +3297,7 @@ async def generate_ontology_sdk(domain_id: str, language: str = "python"):
     raise HTTPException(status_code=400, detail=f"Unsupported language: {language}. Use python or typescript")
 
 
-@router.post("/ontology/engine/infer")
+@router.post("/ontology/engine/infer", response_model=Dict[str, Any])
 async def run_graph_inference(req: dict):
     """Run inference rules on the domain graph to derive new edges.
 
@@ -3373,7 +3390,7 @@ def _write_domain_yaml(domain_id: str, data: dict) -> None:
 
 # ── Ontology Domain Generation (LLM-assisted from Vault) ─────────
 
-@router.post("/ontology/domains/generate")
+@router.post("/ontology/domains/generate", response_model=Dict[str, Any])
 async def generate_ontology_domain(
     id: str = Body(...),
     name: str = Body(...),
@@ -3536,7 +3553,7 @@ OUTPUT ONLY valid JSON:"""
     }
 
 
-@router.post("/ontology/domains/{domain_id}/evolve")
+@router.post("/ontology/domains/{domain_id}/evolve", response_model=Dict[str, Any])
 async def evolve_ontology_domain(
     domain_id: str,
     vault_path: str = Body(""),
@@ -3561,7 +3578,7 @@ async def evolve_ontology_domain(
         try:
             cached = _json.loads(cache_file.read_text()).get("files", {})
         except Exception as e:
-            logging.debug(str(e), exc_info=True)
+            logging.warning(str(e), exc_info=True)
 
     # 2. Scan current vault
     all_files = []
@@ -3586,7 +3603,7 @@ async def evolve_ontology_domain(
                 new_files.append({"file": fname, "path": fp, "content": content[:2000], "hash": h,
                                   "is_new": fname not in cached})
         except Exception as e:
-            logging.debug(str(e), exc_info=True)
+            logging.warning(str(e), exc_info=True)
 
     if not new_files:
         return {"suggestions": [], "message": "No new or modified vault files found.",
@@ -3601,7 +3618,7 @@ async def evolve_ontology_domain(
             domain = load_ontology_from_yaml(str(onto_path))
             existing_classes = [{"label": c.label, "categories": c.allowed_categories} for c in domain.classes]
         except Exception as e:
-            logging.debug(str(e), exc_info=True)
+            logging.warning(str(e), exc_info=True)
 
     # 5. Delta entity scan on new content only (with optional keyword filtering)
     if keywords:
@@ -3657,7 +3674,7 @@ OUTPUT ONLY valid JSON:
     }
 
 
-@router.post("/ontology/domains/{domain_id}/repair")
+@router.post("/ontology/domains/{domain_id}/repair", response_model=Dict[str, Any])
 async def repair_ontology_domain(
     domain_id: str,
     vault_path: str = Body(""),
@@ -3790,7 +3807,7 @@ def _gather_vault_files(*, vault_path: str, vault_subdir: str = "", keywords: li
                 "content": content[:2000], "hash": _hash_content(content),
             })
         except Exception as e:
-            logging.debug(str(e), exc_info=True)
+            logging.warning(str(e), exc_info=True)
     return samples
 
 
@@ -3820,7 +3837,7 @@ def _discover_vault_path():
             if row:
                 return row[0]
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
     return ""
 
 
@@ -3951,7 +3968,7 @@ def _save_step(domain_id: str, filename: str, data):
         else:
             (dir_path / filename).write_text(_json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
 
 
 def _assemble_yaml(domain_id, name, description, classes_data, relations_data, states_data, entities_data):
@@ -4028,7 +4045,7 @@ def _assemble_yaml(domain_id, name, description, classes_data, relations_data, s
     return _yaml.dump(yaml_dict, allow_unicode=True, default_flow_style=False, sort_keys=False)
 
 
-@router.post("/ontology/domains")
+@router.post("/ontology/domains", response_model=Dict[str, Any])
 async def create_ontology_domain(req: OntologyDomainCreate):
     """Create a new domain ontology (YAML file)."""
     from pathlib import Path as _Path
@@ -4067,7 +4084,7 @@ async def create_ontology_domain(req: OntologyDomainCreate):
     return {"status": "created", "id": req.id, "name": req.name}
 
 
-@router.put("/ontology/domains/{domain_id}")
+@router.put("/ontology/domains/{domain_id}", response_model=Dict[str, Any])
 async def update_ontology_domain(domain_id: str, req: OntologyDomainCreate):
     """Update domain metadata (name, description, version)."""
     from core.harness.knowledge.ontology_loader import load_ontology_from_yaml
@@ -4169,7 +4186,7 @@ async def update_ontology_domain(domain_id: str, req: OntologyDomainCreate):
             "state_reevaluations": reeval_results if reeval_results else None}
 
 
-@router.delete("/ontology/domains/{domain_id}")
+@router.delete("/ontology/domains/{domain_id}", response_model=Dict[str, Any])
 async def delete_ontology_domain(domain_id: str):
     """Delete a domain ontology file + cascade cleanup."""
     from pathlib import Path as _Path
@@ -4201,12 +4218,12 @@ async def delete_ontology_domain(domain_id: str):
                     path.unlink()
                 cleaned.append(label)
             except Exception as e:
-                logging.debug(str(e), exc_info=True)
+                logging.warning(str(e), exc_info=True)
 
     return {"status": "deleted", "id": domain_id, "cleaned": cleaned}
 
 
-@router.post("/ontology/domains/{domain_id}/classes")
+@router.post("/ontology/domains/{domain_id}/classes", response_model=Dict[str, Any])
 async def add_ontology_class(domain_id: str, req: OntologyClassCreate):
     """Add a class to a domain ontology."""
     from pathlib import Path as _Path
@@ -4231,7 +4248,7 @@ async def add_ontology_class(domain_id: str, req: OntologyClassCreate):
     return {"status": "added", "domain": domain_id, "class": req.name}
 
 
-@router.put("/ontology/domains/{domain_id}/classes/{class_name}")
+@router.put("/ontology/domains/{domain_id}/classes/{class_name}", response_model=Dict[str, Any])
 async def update_ontology_class(domain_id: str, class_name: str, req: OntologyClassCreate):
     """Update an existing class in a domain ontology."""
     from pathlib import Path as _Path
@@ -4260,7 +4277,7 @@ async def update_ontology_class(domain_id: str, class_name: str, req: OntologyCl
     return {"status": "updated", "domain": domain_id, "class": class_name}
 
 
-@router.put("/ontology/domains/{domain_id}/properties/{prop_name}")
+@router.put("/ontology/domains/{domain_id}/properties/{prop_name}", response_model=Dict[str, Any])
 async def update_ontology_property(domain_id: str, prop_name: str, req: OntologyPropertyCreate):
     """Update an existing object property in a domain ontology."""
     from pathlib import Path as _Path
@@ -4291,7 +4308,7 @@ async def update_ontology_property(domain_id: str, prop_name: str, req: Ontology
     return {"status": "updated", "domain": domain_id, "property": prop_name}
 
 
-@router.delete("/ontology/domains/{domain_id}/classes/{class_name}")
+@router.delete("/ontology/domains/{domain_id}/classes/{class_name}", response_model=Dict[str, Any])
 async def delete_ontology_class(domain_id: str, class_name: str, force: bool = False):
     """Delete a class from a domain ontology. Use ?force=true for cascade cleanup."""
     from pathlib import Path as _Path
@@ -4318,7 +4335,7 @@ async def delete_ontology_class(domain_id: str, class_name: str, force: bool = F
         g = GraphIndex.load(domain_id)
         orphan_nodes = sum(1 for n in g._nodes.values() if n.class_name == class_label)
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
 
     if not force:
         return {
@@ -4339,7 +4356,7 @@ async def delete_ontology_class(domain_id: str, class_name: str, force: bool = F
             for eid in to_remove:
                 g.remove_entity(eid)
         except Exception as e:
-            logging.debug(str(e), exc_info=True)
+            logging.warning(str(e), exc_info=True)
 
     del classes[class_name]
     raw["classes"] = classes
@@ -4347,7 +4364,7 @@ async def delete_ontology_class(domain_id: str, class_name: str, force: bool = F
     return {"status": "deleted", "domain": domain_id, "class": class_name}
 
 
-@router.post("/ontology/domains/{domain_id}/properties")
+@router.post("/ontology/domains/{domain_id}/properties", response_model=Dict[str, Any])
 async def add_ontology_property(domain_id: str, req: OntologyPropertyCreate):
     """Add an object property to a domain ontology."""
     from pathlib import Path as _Path
@@ -4370,7 +4387,7 @@ async def add_ontology_property(domain_id: str, req: OntologyPropertyCreate):
     return {"status": "added", "domain": domain_id, "property": req.name}
 
 
-@router.delete("/ontology/domains/{domain_id}/properties/{prop_name}")
+@router.delete("/ontology/domains/{domain_id}/properties/{prop_name}", response_model=Dict[str, Any])
 async def delete_ontology_property(domain_id: str, prop_name: str):
     """Delete an object property from a domain ontology."""
     from pathlib import Path as _Path
@@ -4390,7 +4407,7 @@ async def delete_ontology_property(domain_id: str, prop_name: str):
     _write_domain_yaml(domain_id, raw)
     return {"status": "deleted", "domain": domain_id, "property": prop_name}
 
-@router.get("/ontology/rules")
+@router.get("/ontology/rules", response_model=Dict[str, Any])
 async def list_inference_rules():
     """List all inference rules (built-in + registered)."""
     try:
@@ -4405,7 +4422,7 @@ async def list_inference_rules():
         raise HTTPException(status_code=500, detail=f"Failed to list rules: {e}")
 
 
-@router.post("/ontology/rules")
+@router.post("/ontology/rules", response_model=Dict[str, Any])
 async def register_inference_rule(body: Dict[str, Any]):
     """Register a custom inference rule."""
     try:
@@ -4434,7 +4451,7 @@ async def register_inference_rule(body: Dict[str, Any]):
 
 # ── Evidence Chain API (Phase 4) ──────────────────────────────────
 
-@router.get("/claim/{title}/evidence-chain")
+@router.get("/claim/{title}/evidence-chain", response_model=Dict[str, Any])
 async def get_claim_evidence_chain(title: str, collection: str = "default"):
     """Return full evidence chain for a Wiki claim/atom.
 
@@ -4508,7 +4525,7 @@ async def get_claim_evidence_chain(title: str, collection: str = "default"):
 
 # ── OWL/RDF Export (Phase 5) ─────────────────────────────────────
 
-@router.get("/ontology/export")
+@router.get("/ontology/export", response_model=Dict[str, Any])
 async def export_ontology_rdf(format: str = "turtle", collection: str = "default"):
     """Export T-Box + A-Box as OWL/RDF.
 
@@ -4533,7 +4550,7 @@ async def export_ontology_rdf(format: str = "turtle", collection: str = "default
         raise HTTPException(status_code=500, detail=f"Export failed: {e}")
 
 
-@router.get("/ontology/infer")
+@router.get("/ontology/infer", response_model=Dict[str, Any])
 async def run_inference_engine(collection: str = "default"):
     """Run full inference engine and return suggested edges."""
     try:
@@ -4566,7 +4583,7 @@ async def run_inference_engine(collection: str = "default"):
 
 # ── Pattern Detector (Ontology Evolution Layer 1) ─────────────────
 
-@router.get("/ontology/patterns")
+@router.get("/ontology/patterns", response_model=Dict[str, Any])
 async def detect_patterns(collection: str = "default"):
     """Scan wiki data and detect patterns not yet covered by T-Box.
 
@@ -4594,7 +4611,7 @@ async def detect_patterns(collection: str = "default"):
         raise HTTPException(status_code=500, detail=f"Pattern detection failed: {e}")
 
 
-@router.get("/ontology/metrics")
+@router.get("/ontology/metrics", response_model=Dict[str, Any])
 async def get_ontology_metrics(collection: str = "default", refresh: bool = False):
     """Four-dimension ontology health metrics (cache-backed).
 
@@ -4620,7 +4637,7 @@ async def get_ontology_metrics(collection: str = "default", refresh: bool = Fals
                 if _os.path.exists(cache_path):
                     _os.remove(cache_path)
             except Exception as e:
-                logging.debug(str(e), exc_info=True)
+                logging.warning(str(e), exc_info=True)
             from core.harness.knowledge._bg_tasks import enqueue
             enqueue("rebuild_metrics", collection_id=collection)
             return {"source": "recomputing", "message": "后台重新计算中，请稍后刷新。预计 1-3 分钟完成。"}
@@ -4634,7 +4651,7 @@ async def get_ontology_metrics(collection: str = "default", refresh: bool = Fals
         raise HTTPException(status_code=500, detail=f"Metrics failed: {e}")
 
 
-@router.get("/ontology/metrics/history")
+@router.get("/ontology/metrics/history", response_model=Dict[str, Any])
 async def get_metrics_history(collection: str = "default"):
     """Return historical metrics snapshots for trend analysis (last 30 days)."""
     try:
@@ -4645,7 +4662,7 @@ async def get_metrics_history(collection: str = "default"):
         raise HTTPException(status_code=500, detail=f"History failed: {e}")
 
 
-@router.get("/ontology/golden-regression")
+@router.get("/ontology/golden-regression", response_model=Dict[str, Any])
 async def run_golden_regression(collection: str = "default", min_score: float = None, strict: bool = False):
     """Run golden query regression test to validate retrieval quality.
 
@@ -4666,7 +4683,7 @@ async def run_golden_regression(collection: str = "default", min_score: float = 
 
 # ── Ontology Suggestions (Layer 3) ───────────────────────────────
 
-@router.get("/ontology/suggestions")
+@router.get("/ontology/suggestions", response_model=Dict[str, Any])
 async def list_suggestions(status: str = "", collection: str = "default"):
     """List ontology evolution suggestions."""
     try:
@@ -4679,7 +4696,7 @@ async def list_suggestions(status: str = "", collection: str = "default"):
         raise HTTPException(status_code=500, detail=f"Failed to list suggestions: {e}")
 
 
-@router.post("/ontology/suggestions")
+@router.post("/ontology/suggestions", response_model=Dict[str, Any])
 async def generate_suggestions(collection: str = "default"):
     """Scan wiki data and generate ontology evolution suggestions."""
     try:
@@ -4691,7 +4708,7 @@ async def generate_suggestions(collection: str = "default"):
         raise HTTPException(status_code=500, detail=f"Suggestion generation failed: {e}")
 
 
-@router.post("/ontology/suggestions/{suggestion_id}/accept")
+@router.post("/ontology/suggestions/{suggestion_id}/accept", response_model=Dict[str, Any])
 async def accept_suggestion(suggestion_id: str, reviewer: str = "", collection: str = "default"):
     """Accept an ontology evolution suggestion (marks for implementation)."""
     try:
@@ -4706,7 +4723,7 @@ async def accept_suggestion(suggestion_id: str, reviewer: str = "", collection: 
         raise HTTPException(status_code=500, detail=f"Accept failed: {e}")
 
 
-@router.post("/ontology/suggestions/{suggestion_id}/reject")
+@router.post("/ontology/suggestions/{suggestion_id}/reject", response_model=Dict[str, Any])
 async def reject_suggestion(suggestion_id: str, reason: str = "", reviewer: str = "", collection: str = "default"):
     """Reject an ontology evolution suggestion."""
     try:
@@ -4721,7 +4738,7 @@ async def reject_suggestion(suggestion_id: str, reason: str = "", reviewer: str 
         raise HTTPException(status_code=500, detail=f"Reject failed: {e}")
 
 
-@router.post("/ontology/suggestions/{suggestion_id}/generate-code")
+@router.post("/ontology/suggestions/{suggestion_id}/generate-code", response_model=Dict[str, Any])
 async def generate_code(suggestion_id: str, collection: str = "default"):
     """Generate implementation code for an accepted suggestion."""
     try:
@@ -4732,7 +4749,7 @@ async def generate_code(suggestion_id: str, collection: str = "default"):
         raise HTTPException(status_code=500, detail=f"Code generation failed: {e}")
 
 
-@router.get("/ontology/schema-readiness")
+@router.get("/ontology/schema-readiness", response_model=Dict[str, Any])
 async def check_schema_readiness(collection: str = "default"):
     """Check how many wiki pages would pass ERROR-mode schema validation.
 
@@ -4746,7 +4763,7 @@ async def check_schema_readiness(collection: str = "default"):
         raise HTTPException(status_code=500, detail=f"Readiness check failed: {e}")
 
 
-@router.post("/clean-stale-references")
+@router.post("/clean-stale-references", response_model=Dict[str, Any])
 async def clean_stale_references_endpoint(collection: str = "default"):
     """Scan wiki pages, move stale kb: references from source_articles to stale_references.
 
@@ -4768,7 +4785,7 @@ async def clean_stale_references_endpoint(collection: str = "default"):
         raise HTTPException(status_code=500, detail=f"Cleanup failed: {e}")
 
 
-@router.post("/seed-instances")
+@router.post("/seed-instances", response_model=Dict[str, Any])
 async def seed_instances_endpoint(collection: str = "default"):
     """Create seed instances for empty T-Box categories (atoms, contradictions).
 
@@ -4788,7 +4805,7 @@ async def seed_instances_endpoint(collection: str = "default"):
         raise HTTPException(status_code=500, detail=f"Seeding failed: {e}")
 
 
-@router.post("/backfill-evidence")
+@router.post("/backfill-evidence", response_model=Dict[str, Any])
 async def backfill_evidence_endpoint(limit: int = 50, collection: str = "default"):
     """Backfill evidence annotations for wiki pages without them.
 
@@ -4808,7 +4825,7 @@ async def backfill_evidence_endpoint(limit: int = 50, collection: str = "default
         raise HTTPException(status_code=500, detail=f"Backfill failed: {e}")
 
 
-@router.post("/batch-atomize")
+@router.post("/batch-atomize", response_model=Dict[str, Any])
 async def batch_atomize_endpoint(limit: int = 10, category: str = "topics", collection: str = "default"):
     """Batch atomize pages of a given category using LLM sub-concept extraction.
 
@@ -4840,7 +4857,7 @@ async def batch_atomize_endpoint(limit: int = 10, category: str = "topics", coll
         raise HTTPException(status_code=500, detail=f"Batch atomize failed: {e}")
 
 
-@router.post("/maintain/fts-rebuild")
+@router.post("/maintain/fts-rebuild", response_model=Dict[str, Any])
 async def rebuild_fts_index(collection: str = "default"):
     """Rebuild FTS5 full-text search index for wiki pages."""
     try:
@@ -4851,7 +4868,7 @@ async def rebuild_fts_index(collection: str = "default"):
         raise HTTPException(status_code=500, detail=f"FTS rebuild failed: {e}")
 
 
-@router.post("/wiki/evolve")
+@router.post("/wiki/evolve", response_model=Dict[str, Any])
 async def evolve_knowledge(collection: str = "default", generations: int = 1,
                             max_mutations: int = 5, force: bool = False):
     """Run knowledge evolution — event-driven, not timer-driven.
@@ -4881,7 +4898,7 @@ async def evolve_knowledge(collection: str = "default", generations: int = 1,
         raise HTTPException(status_code=500, detail=f"Evolution failed: {e}")
 
 
-@router.get("/wiki/evolution-history")
+@router.get("/wiki/evolution-history", response_model=Dict[str, Any])
 async def get_evolution_history(collection: str = "default"):
     """Get evolution generation history."""
     import json as _json, os as _os
@@ -4897,7 +4914,7 @@ async def get_evolution_history(collection: str = "default"):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/maintain/model-log")
+@router.get("/maintain/model-log", response_model=Dict[str, Any])
 async def get_model_selection_log():
     """Return recent model selection log entries."""
     try:
@@ -4927,7 +4944,7 @@ class MarkingDeleteRequest(BaseModel):
     label: str = ""
 
 
-@router.put("/ontology/markings")
+@router.put("/ontology/markings", response_model=Dict[str, Any])
 async def set_entity_marking(req: MarkingSetRequest, collection: str = "default"):
     u"""Set a marking on an ontology entity."""
     from core.harness.knowledge.knowledge_markings import set_marking, MarkingLevel
@@ -4946,7 +4963,7 @@ async def set_entity_marking(req: MarkingSetRequest, collection: str = "default"
     return {"status": "ok", "marking": marking.to_dict()}
 
 
-@router.delete("/ontology/markings")
+@router.delete("/ontology/markings", response_model=Dict[str, Any])
 async def remove_entity_marking(req: MarkingDeleteRequest, collection: str = "default"):
     u"""Remove a marking from an entity (or all if label is empty)."""
     from core.harness.knowledge.knowledge_markings import remove_marking
@@ -4958,7 +4975,7 @@ async def remove_entity_marking(req: MarkingDeleteRequest, collection: str = "de
     return {"status": "ok" if ok else "not_found", "removed": ok}
 
 
-@router.get("/ontology/markings/{entity_uri:path}")
+@router.get("/ontology/markings/{entity_uri:path}", response_model=Dict[str, Any])
 async def get_entity_marking_info(
     entity_uri: str,
     collection: str = "default",
@@ -4975,7 +4992,7 @@ async def get_entity_marking_info(
     return result
 
 
-@router.put("/ontology/permissions")
+@router.put("/ontology/permissions", response_model=Dict[str, Any])
 async def grant_entity_permission(
     entity_uri: str = Body(...),
     role: str = Body(...),
@@ -4993,7 +5010,7 @@ async def grant_entity_permission(
     return {"status": "ok", "permission": perm.to_dict()}
 
 
-@router.delete("/ontology/permissions")
+@router.delete("/ontology/permissions", response_model=Dict[str, Any])
 async def revoke_entity_permission(
     entity_uri: str = Body(...),
     role: str = Body(default=""),
@@ -5011,7 +5028,7 @@ async def revoke_entity_permission(
     return {"status": "ok" if ok else "not_found", "revoked": ok}
 
 
-@router.get("/ontology/permissions/{entity_uri:path}")
+@router.get("/ontology/permissions/{entity_uri:path}", response_model=Dict[str, Any])
 async def list_entity_permissions(
     entity_uri: str,
     collection: str = "default",
@@ -5033,7 +5050,7 @@ class SemanticSuggestRequest(BaseModel):
     include_llm: bool = True
 
 
-@router.post("/ontology/suggestions/semantic")
+@router.post("/ontology/suggestions/semantic", response_model=Dict[str, Any])
 async def generate_semantic_suggestions_endpoint(req: SemanticSuggestRequest = Body(default=None)):
     u"""Generate semantic ontology evolution suggestions via LLM (Tier 2).
 
@@ -5062,7 +5079,7 @@ async def generate_semantic_suggestions_endpoint(req: SemanticSuggestRequest = B
         raise HTTPException(status_code=500, detail=f"Semantic suggestion generation failed: {e}")
 
 
-@router.post("/ontology/suggestions/{suggestion_id}/impact")
+@router.post("/ontology/suggestions/{suggestion_id}/impact", response_model=Dict[str, Any])
 async def predict_suggestion_impact(suggestion_id: str, collection: str = "default"):
     u"""Predict the impact scope of accepting an evolution suggestion."""
     from core.harness.knowledge.knowledge_ontology import (
@@ -5084,7 +5101,7 @@ async def predict_suggestion_impact(suggestion_id: str, collection: str = "defau
 # Health & Quality API (Phase 4 — pipeline feedback loop)
 # ══════════════════════════════════════════════════════════════
 
-@router.get("/ontology/health/triggers")
+@router.get("/ontology/health/triggers", response_model=Dict[str, Any])
 async def get_health_triggers(collection: str = "default"):
     u"""Get triggered curation tasks from ontology health checks."""
     from core.harness.knowledge.knowledge_quality import check_ontology_health_triggers
@@ -5092,7 +5109,7 @@ async def get_health_triggers(collection: str = "default"):
     return {"triggers": triggers, "total": len(triggers), "collection_id": collection}
 
 
-@router.get("/ontology/health/score")
+@router.get("/ontology/health/score", response_model=Dict[str, Any])
 async def get_ontology_health_score(collection: str = "default"):
     u"""Get composite ontology health score from axiom validation + quality signals."""
     try:
@@ -5109,7 +5126,7 @@ async def get_ontology_health_score(collection: str = "default"):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/ontology/quality/{entity_uri:path}")
+@router.get("/ontology/quality/{entity_uri:path}", response_model=Dict[str, Any])
 async def get_entity_quality(entity_uri: str, collection: str = "default"):
     u"""Get quality score and signal history for an ontology entity."""
     from core.harness.knowledge.knowledge_quality import (
@@ -5132,7 +5149,7 @@ class WritebackRegisterRequest(BaseModel):
     auth: Dict[str, str] = {}
 
 
-@router.get("/ontology/writebacks")
+@router.get("/ontology/writebacks", response_model=Dict[str, Any])
 async def list_writebacks(collection: str = "default"):
     u"""List all registered writeback configurations."""
     from core.harness.knowledge.knowledge_writeback import load_writebacks
@@ -5140,7 +5157,7 @@ async def list_writebacks(collection: str = "default"):
     return {"writebacks": [c.to_dict() for c in configs], "total": len(configs)}
 
 
-@router.post("/ontology/writebacks")
+@router.post("/ontology/writebacks", response_model=Dict[str, Any])
 async def register_writeback_endpoint(req: WritebackRegisterRequest, collection: str = "default"):
     u"""Register a new writeback target."""
     from core.harness.knowledge.knowledge_writeback import (
@@ -5162,7 +5179,7 @@ async def register_writeback_endpoint(req: WritebackRegisterRequest, collection:
     return {"status": "ok", "config": config.to_dict()}
 
 
-@router.delete("/ontology/writebacks")
+@router.delete("/ontology/writebacks", response_model=Dict[str, Any])
 async def unregister_writeback_endpoint(target_endpoint: str, collection: str = "default"):
     u"""Remove a writeback target."""
     from core.harness.knowledge.knowledge_writeback import unregister_writeback
@@ -5181,7 +5198,7 @@ class FieldPermissionRequest(BaseModel):
     redaction_strategy: str = "mask"
 
 
-@router.get("/ontology/field-permissions/{entity_uri:path}")
+@router.get("/ontology/field-permissions/{entity_uri:path}", response_model=Dict[str, Any])
 async def get_field_permissions(entity_uri: str, collection: str = "default"):
     u"""Get field-level permission rules for an entity."""
     from core.policy.field_level_security import load_field_permissions
@@ -5190,7 +5207,7 @@ async def get_field_permissions(entity_uri: str, collection: str = "default"):
     return {"entity_uri": entity_uri, "permissions": applicable, "total": len(applicable)}
 
 
-@router.put("/ontology/field-permissions")
+@router.put("/ontology/field-permissions", response_model=Dict[str, Any])
 async def set_field_permission_endpoint(req: FieldPermissionRequest, collection: str = "default"):
     u"""Set a field-level permission rule (visibility + redaction strategy)."""
     from core.policy.field_level_security import set_field_permission
@@ -5204,7 +5221,7 @@ async def set_field_permission_endpoint(req: FieldPermissionRequest, collection:
     return {"status": "ok", "permission": perm.to_dict()}
 
 
-@router.delete("/ontology/field-permissions")
+@router.delete("/ontology/field-permissions", response_model=Dict[str, Any])
 async def remove_field_permission_endpoint(
     entity_uri: str = Body(...),
     field_name: str = Body(default=""),
@@ -5232,7 +5249,7 @@ class SceneCreateRequest(BaseModel):
     tags: List[str] = []
 
 
-@router.get("/ontology/scenes")
+@router.get("/ontology/scenes", response_model=Dict[str, Any])
 async def list_scene_models(collection: str = "default"):
     u"""List all ontology scene templates. Auto-seeds built-in scenes on first access."""
     from core.harness.knowledge.scene_model import list_scenes, create_builtin_scenes
@@ -5246,7 +5263,7 @@ async def list_scene_models(collection: str = "default"):
     return {"scenes": [s.to_dict() for s in scenes], "total": len(scenes)}
 
 
-@router.post("/ontology/scenes")
+@router.post("/ontology/scenes", response_model=Dict[str, Any])
 async def create_scene_model(req: SceneCreateRequest, collection: str = "default"):
     from core.harness.knowledge.scene_model import OntologyScene, save_scene
     scene = OntologyScene(
@@ -5259,7 +5276,7 @@ async def create_scene_model(req: SceneCreateRequest, collection: str = "default
     return {"status": "ok", "scene": scene.to_dict()}
 
 
-@router.get("/ontology/scenes/{scene_id}")
+@router.get("/ontology/scenes/{scene_id}", response_model=Dict[str, Any])
 async def get_scene_model(scene_id: str, collection: str = "default"):
     from core.harness.knowledge.scene_model import get_scene
     scene = get_scene(scene_id, collection_id=collection)
@@ -5269,7 +5286,7 @@ async def get_scene_model(scene_id: str, collection: str = "default"):
             "stage_count": len(scene.to_pipeline_stages())}
 
 
-@router.post("/ontology/scenes/{scene_id}/instantiate")
+@router.post("/ontology/scenes/{scene_id}/instantiate", response_model=Dict[str, Any])
 async def instantiate_scene_model(scene_id: str, params: Dict[str, Any] = Body(default={}), collection: str = "default"):
     from core.harness.knowledge.scene_model import instantiate_scene
     config = instantiate_scene(scene_id, params=params, collection_id=collection)
@@ -5278,7 +5295,7 @@ async def instantiate_scene_model(scene_id: str, params: Dict[str, Any] = Body(d
     return {"pipeline_config": config, "stage_count": len(config.get("stages", []))}
 
 
-@router.delete("/ontology/scenes/{scene_id}")
+@router.delete("/ontology/scenes/{scene_id}", response_model=Dict[str, Any])
 async def delete_scene_model(scene_id: str, collection: str = "default"):
     from core.harness.knowledge.scene_model import delete_scene
     ok = delete_scene(scene_id, collection_id=collection)
@@ -5289,7 +5306,7 @@ async def delete_scene_model(scene_id: str, collection: str = "default"):
 # Growth Metrics API (Phase E — knowledge compound interest)
 # ══════════════════════════════════════════════════════════════
 
-@router.get("/ontology/growth-stats")
+@router.get("/ontology/growth-stats", response_model=Dict[str, Any])
 async def get_growth_stats(days: int = 30, collection: str = "default"):
     u"""Get knowledge base growth statistics for the last N days."""
     from core.harness.knowledge.knowledge_growth import get_growth_stats, estimate_compound_value
@@ -5298,7 +5315,7 @@ async def get_growth_stats(days: int = 30, collection: str = "default"):
     return {**stats, "compound": compound}
 
 
-@router.post("/ontology/growth/snapshot")
+@router.post("/ontology/growth/snapshot", response_model=Dict[str, Any])
 async def take_snapshot(collection: str = "default"):
     u"""Manually trigger a growth snapshot."""
     from core.harness.knowledge.knowledge_growth import take_growth_snapshot
@@ -5320,7 +5337,7 @@ class ProfileRequest(BaseModel):
     goals: str = ""
 
 
-@router.post("/learning/profile")
+@router.post("/learning/profile", response_model=Dict[str, Any])
 async def create_learner_profile(req: ProfileRequest):
     u"""Create or update a learner profile."""
     from core.harness.knowledge.learning_ontology import (
@@ -5341,7 +5358,7 @@ async def create_learner_profile(req: ProfileRequest):
     return {"status": "ok", "profile": profile.to_dict()}
 
 
-@router.get("/learning/profile/{learner_id}")
+@router.get("/learning/profile/{learner_id}", response_model=Dict[str, Any])
 async def get_learner_profile(learner_id: str):
     u"""Get a learner profile."""
     from core.harness.knowledge.learning_ontology import load_learner_profile
@@ -5351,14 +5368,14 @@ async def get_learner_profile(learner_id: str):
     return profile.to_dict()
 
 
-@router.get("/learning/paths")
+@router.get("/learning/paths", response_model=Dict[str, Any])
 async def list_learning_paths():
     u"""List all available learning paths with summaries."""
     from core.harness.knowledge.learning_paths import get_path_summary
     return {"paths": get_path_summary()}
 
 
-@router.post("/learning/start")
+@router.post("/learning/start", response_model=Dict[str, Any])
 async def start_learning_path(learner_id: str = Body(...), path_id: str = Body(...)):
     u"""Start a learning path. Returns the first chapter with content."""
     from core.harness.knowledge.learning_ontology import load_learner_profile, save_learner_profile
@@ -5385,7 +5402,7 @@ async def start_learning_path(learner_id: str = Body(...), path_id: str = Body(.
     }
 
 
-@router.get("/learning/chapter/{chapter_id}")
+@router.get("/learning/chapter/{chapter_id}", response_model=Dict[str, Any])
 async def get_chapter(chapter_id: str):
     u"""Get chapter content (cached body or skeleton)."""
     from core.harness.knowledge.learning_paths import get_builtin_paths, get_chapter_body_sync
@@ -5398,7 +5415,7 @@ async def get_chapter(chapter_id: str):
     raise HTTPException(status_code=404, detail=f"Chapter '{chapter_id}' not found")
 
 
-@router.post("/learning/chapter/{chapter_id}/compile")
+@router.post("/learning/chapter/{chapter_id}/compile", response_model=Dict[str, Any])
 async def compile_chapter_body_endpoint(chapter_id: str):
     u"""Trigger AI compilation of chapter body text."""
     from core.harness.knowledge.learning_paths import get_builtin_paths, compile_chapter_body
@@ -5411,7 +5428,7 @@ async def compile_chapter_body_endpoint(chapter_id: str):
     raise HTTPException(status_code=404, detail=f"Chapter '{chapter_id}' not found")
 
 
-@router.post("/learning/chapter/{chapter_id}/complete")
+@router.post("/learning/chapter/{chapter_id}/complete", response_model=Dict[str, Any])
 async def complete_chapter_endpoint(
     chapter_id: str,
     learner_id: str = Body(...),
@@ -5440,7 +5457,7 @@ async def complete_chapter_endpoint(
     return result
 
 
-@router.get("/learning/progress/{learner_id}")
+@router.get("/learning/progress/{learner_id}", response_model=Dict[str, Any])
 async def get_learning_progress(learner_id: str):
     u"""Get learning progress: completed chapters, scores, radar data."""
     from core.harness.knowledge.learning_ontology import load_learner_profile
@@ -5476,7 +5493,7 @@ async def get_learning_progress(learner_id: str):
     }
 
 
-@router.post("/learning/ask")
+@router.post("/learning/ask", response_model=Dict[str, Any])
 async def ask_learning_coach(
     learner_id: str = Body(...),
     question: str = Body(...),
@@ -5521,7 +5538,7 @@ async def ask_learning_coach(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/learning/recommendation/{learner_id}")
+@router.get("/learning/recommendation/{learner_id}", response_model=Dict[str, Any])
 async def get_learning_recommendation(learner_id: str):
     u"""Get recommended next learning action based on profile + gaps."""
     from core.harness.knowledge.learning_ontology import load_learner_profile
@@ -5569,7 +5586,7 @@ class TriggerRegisterRequest(BaseModel):
     params: Dict[str, Any] = {}
 
 
-@router.post("/loop/triggers")
+@router.post("/loop/triggers", response_model=Dict[str, Any])
 async def register_loop_trigger(req: TriggerRegisterRequest):
     u"""Register a pipeline trigger (cron/webhook/goal)."""
     from core.harness.execution.event_loop import register_trigger, Trigger
@@ -5582,7 +5599,7 @@ async def register_loop_trigger(req: TriggerRegisterRequest):
     return {"status": "ok", "trigger": t.to_dict()}
 
 
-@router.get("/loop/triggers")
+@router.get("/loop/triggers", response_model=Dict[str, Any])
 async def list_loop_triggers():
     u"""List all registered pipeline triggers."""
     from core.harness.execution.event_loop import load_triggers
@@ -5590,7 +5607,7 @@ async def list_loop_triggers():
     return {"triggers": [t.to_dict() for t in triggers], "total": len(triggers)}
 
 
-@router.delete("/loop/triggers/{trigger_id}")
+@router.delete("/loop/triggers/{trigger_id}", response_model=Dict[str, Any])
 async def remove_loop_trigger(trigger_id: str):
     u"""Remove a pipeline trigger."""
     from core.harness.execution.event_loop import remove_trigger
@@ -5598,7 +5615,7 @@ async def remove_loop_trigger(trigger_id: str):
     return {"status": "ok" if ok else "not_found"}
 
 
-@router.post("/loop/webhook")
+@router.post("/loop/webhook", response_model=Dict[str, Any])
 async def handle_webhook(source: str = Body(...), payload: Dict[str, Any] = Body(default={})):
     u"""Handle incoming webhook — dispatches to matching triggers."""
     from core.harness.execution.event_loop import dispatch_webhook

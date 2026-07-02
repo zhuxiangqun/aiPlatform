@@ -48,7 +48,7 @@ def _ws_skill_manager(rt: Optional[KernelRuntime]):
 RuntimeDep = Optional[KernelRuntime]
 
 
-@router.post("/workspace/skills/governance-preview")
+@router.post("/workspace/skills/governance-preview", response_model=Dict[str, Any])
 async def preview_workspace_skill_governance(request: Dict[str, Any], http_request: Request, rt: RuntimeDep = Depends(get_kernel_runtime)):
     """Preview governance/risk/approval hints for wizard UX (workspace scope)."""
     deny = await rbac_guard(
@@ -66,7 +66,7 @@ async def preview_workspace_skill_governance(request: Dict[str, Any], http_reque
     return skill_governance_preview(scope="workspace", payload=req, approval_manager=_approval_manager(rt))
 
 
-@router.get("/workspace/skills/meta/permissions-catalog")
+@router.get("/workspace/skills/meta/permissions-catalog", response_model=Dict[str, Any])
 async def workspace_permissions_catalog(http_request: Request, tenant_id: Optional[str] = None, channel: Optional[str] = None):
     """Permissions catalog for UI (workspace scope)."""
     deny = await rbac_guard(
@@ -98,7 +98,7 @@ async def workspace_permissions_catalog(http_request: Request, tenant_id: Option
     return out
 
 
-@router.get("/workspace/skills/meta/skill-spec-v2-schema")
+@router.get("/workspace/skills/meta/skill-spec-v2-schema", response_model=Dict[str, Any])
 async def workspace_skill_spec_v2_schema(http_request: Request, tenant_id: Optional[str] = None, channel: Optional[str] = None):
     """SkillSpec v2 schema registry endpoint (workspace scope)."""
     deny = await rbac_guard(
@@ -124,7 +124,7 @@ async def workspace_skill_spec_v2_schema(http_request: Request, tenant_id: Optio
     return {"schema": s, "version": schema_version(s), "source": "default", **ctx}
 
 
-@router.post("/workspace/skills/meta/skill-spec-v2-schema/publish")
+@router.post("/workspace/skills/meta/skill-spec-v2-schema/publish", response_model=Dict[str, Any])
 async def workspace_publish_skill_spec_v2_schema(request: Dict[str, Any], http_request: Request, tenant_id: Optional[str] = None, channel: Optional[str] = None):
     """Publish a new SkillSpec v2 schema for a tenant/channel (workspace scope)."""
     deny = await rbac_guard(
@@ -150,7 +150,7 @@ async def workspace_publish_skill_spec_v2_schema(request: Dict[str, Any], http_r
     return {"status": "published", "version": ver, **ctx}
 
 
-@router.post("/workspace/skills/meta/skill-spec-v2-schema/rollback")
+@router.post("/workspace/skills/meta/skill-spec-v2-schema/rollback", response_model=Dict[str, Any])
 async def workspace_rollback_skill_spec_v2_schema(http_request: Request, tenant_id: Optional[str] = None, channel: Optional[str] = None):
     """Rollback to previous published SkillSpec v2 schema (workspace scope)."""
     deny = await rbac_guard(
@@ -172,7 +172,7 @@ async def workspace_rollback_skill_spec_v2_schema(http_request: Request, tenant_
     return {"status": "rolled_back", "version": ver, **ctx}
 
 
-@router.post("/workspace/skills/meta/permissions-catalog/publish")
+@router.post("/workspace/skills/meta/permissions-catalog/publish", response_model=Dict[str, Any])
 async def workspace_publish_permissions_catalog(request: Dict[str, Any], http_request: Request, tenant_id: Optional[str] = None, channel: Optional[str] = None):
     """Publish a new permissions catalog for a tenant/channel (workspace scope)."""
     deny = await rbac_guard(
@@ -198,7 +198,7 @@ async def workspace_publish_permissions_catalog(request: Dict[str, Any], http_re
     return {"status": "published", "version": ver, **ctx}
 
 
-@router.post("/workspace/skills/meta/permissions-catalog/rollback")
+@router.post("/workspace/skills/meta/permissions-catalog/rollback", response_model=Dict[str, Any])
 async def workspace_rollback_permissions_catalog(http_request: Request, tenant_id: Optional[str] = None, channel: Optional[str] = None):
     """Rollback to previous published permissions catalog (workspace scope)."""
     deny = await rbac_guard(
@@ -563,7 +563,7 @@ async def _create_config_rollback_approval_request(
         return None
 
 
-@router.get("/workspace/skills/meta/config-registry/status")
+@router.get("/workspace/skills/meta/config-registry/status", response_model=Dict[str, Any])
 async def workspace_config_registry_status(
     http_request: Request,
     asset_type: str,
@@ -591,7 +591,7 @@ async def workspace_config_registry_status(
     return {"status": "ok", "published": row, **ctx, "scope": sc, "asset_type": str(asset_type)}
 
 
-@router.get("/workspace/skills/meta/config-registry/versions")
+@router.get("/workspace/skills/meta/config-registry/versions", response_model=Dict[str, Any])
 async def workspace_config_registry_versions(
     http_request: Request,
     asset_type: str,
@@ -620,7 +620,7 @@ async def workspace_config_registry_versions(
     return out
 
 
-@router.get("/workspace/skills/meta/config-registry/asset")
+@router.get("/workspace/skills/meta/config-registry/asset", response_model=Dict[str, Any])
 async def workspace_config_registry_asset(
     http_request: Request,
     asset_type: str,
@@ -647,7 +647,7 @@ async def workspace_config_registry_asset(
     return {"status": "ok", "item": item, "tenant_id": ctx["tenant_id"], "scope": sc, "asset_type": str(asset_type)}
 
 
-@router.post("/workspace/skills/meta/config-registry/publish")
+@router.post("/workspace/skills/meta/config-registry/publish", response_model=Dict[str, Any])
 async def workspace_config_registry_publish(
     request: Dict[str, Any],
     http_request: Request,
@@ -803,7 +803,7 @@ async def workspace_config_registry_publish(
     return {"status": "published", "version": v2, **ctx, "scope": sc, "asset_type": str(asset_type)}
 
 
-@router.post("/workspace/skills/meta/config-registry/rollback")
+@router.post("/workspace/skills/meta/config-registry/rollback", response_model=Dict[str, Any])
 async def workspace_config_registry_rollback(
     http_request: Request,
     asset_type: str,
@@ -958,7 +958,7 @@ async def workspace_config_registry_rollback(
     return {"status": "rolled_back", "version": ver, "from_version": from_v, **ctx, "scope": sc, "asset_type": str(asset_type)}
 
 
-@router.get("/workspace/skills/meta/config-registry/diff")
+@router.get("/workspace/skills/meta/config-registry/diff", response_model=Dict[str, Any])
 async def workspace_config_registry_diff(
     http_request: Request,
     asset_type: str,
@@ -1031,7 +1031,7 @@ async def workspace_config_registry_diff(
 # ====================
 
 
-@router.post("/workspace/skills/installer/install")
+@router.post("/workspace/skills/installer/install", response_model=Dict[str, Any])
 async def workspace_skills_installer_install(request: SkillInstallerInstallRequest, http_request: Request, rt: RuntimeDep = Depends(get_kernel_runtime)):
     """
     Install skills from external sources into workspace skills directory.
@@ -1221,7 +1221,7 @@ async def workspace_skills_installer_install(request: SkillInstallerInstallReque
         raise HTTPException(status_code=500, detail=f"installer_failed:{e}")
 
 
-@router.post("/workspace/skills/installer/plan")
+@router.post("/workspace/skills/installer/plan", response_model=Dict[str, Any])
 async def workspace_skills_installer_plan(request: SkillInstallerInstallRequest, http_request: Request, rt: RuntimeDep = Depends(get_kernel_runtime)):
     """Dry-run plan for installer. No filesystem write."""
     ws_mgr = _ws_skill_manager(rt)
@@ -1295,7 +1295,7 @@ async def workspace_skills_installer_plan(request: SkillInstallerInstallRequest,
         raise HTTPException(status_code=500, detail=f"installer_plan_failed:{e}")
 
 
-@router.post("/workspace/skills/installer/resolve-head")
+@router.post("/workspace/skills/installer/resolve-head", response_model=Dict[str, Any])
 async def workspace_skills_installer_resolve_head(payload: dict, http_request: Request, rt: RuntimeDep = Depends(get_kernel_runtime)):
     """Resolve git remote HEAD SHA for a URL (helper for 'always latest but pinned sha' workflow)."""
     ws_mgr = _ws_skill_manager(rt)
@@ -1332,7 +1332,7 @@ async def workspace_skills_installer_resolve_head(payload: dict, http_request: R
         raise HTTPException(status_code=500, detail=f"installer_resolve_head_failed:{e}")
 
 
-@router.post("/workspace/skills/installer/update/{skill_id}")
+@router.post("/workspace/skills/installer/update/{skill_id}", response_model=Dict[str, Any])
 async def workspace_skills_installer_update(skill_id: str, request: SkillInstallerUpdateRequest, http_request: Request, rt: RuntimeDep = Depends(get_kernel_runtime)):
     ws_mgr = _ws_skill_manager(rt)
     if not ws_mgr:
@@ -1377,7 +1377,7 @@ async def workspace_skills_installer_update(skill_id: str, request: SkillInstall
         raise HTTPException(status_code=500, detail=f"installer_update_failed:{e}")
 
 
-@router.post("/workspace/skills/installer/uninstall/{skill_id}")
+@router.post("/workspace/skills/installer/uninstall/{skill_id}", response_model=Dict[str, Any])
 async def workspace_skills_installer_uninstall(skill_id: str, http_request: Request, delete_files: bool = True, rt: RuntimeDep = Depends(get_kernel_runtime)):
     ws_mgr = _ws_skill_manager(rt)
     if not ws_mgr:
@@ -1420,7 +1420,7 @@ async def workspace_skills_installer_uninstall(skill_id: str, http_request: Requ
         raise HTTPException(status_code=500, detail=f"installer_uninstall_failed:{e}")
 
 
-@router.post("/workspace/skills/installer/upload-plan")
+@router.post("/workspace/skills/installer/upload-plan", response_model=Dict[str, Any])
 async def workspace_skills_installer_upload_plan(
     file: UploadFile = File(...),
     subdir: str = Form(""),
@@ -1458,7 +1458,7 @@ async def workspace_skills_installer_upload_plan(
             os.unlink(tmp_path)
 
 
-@router.post("/workspace/skills/installer/upload-install")
+@router.post("/workspace/skills/installer/upload-install", response_model=Dict[str, Any])
 async def workspace_skills_installer_upload_install(
     file: UploadFile = File(...),
     subdir: str = Form(""),
@@ -1504,7 +1504,7 @@ async def workspace_skills_installer_upload_install(
             os.unlink(tmp_path)
 
 
-@router.get("/workspace/skills/installer/catalog")
+@router.get("/workspace/skills/installer/catalog", response_model=Dict[str, Any])
 async def workspace_skills_installer_catalog(
     category: str = "",
     query: str = "",

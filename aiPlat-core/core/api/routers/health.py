@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from typing import Any, Dict, Optional
+from core.schemas_common import StatusResponse
 
 from fastapi import APIRouter, Depends
 
@@ -24,10 +25,10 @@ def _approval_manager(rt: RuntimeDep):
     return getattr(rt, "approval_manager", None) if rt else None
 
 
-@router.get("/health")
+@router.get("/health", response_model=StatusResponse)
 async def health_check(rt: RuntimeDep = Depends(get_kernel_runtime)):
     """Health check endpoint"""
-    out: Dict[str, Any] = {"status": "healthy"}
+    out: Dict[str, Any] = {"status": "healthy", "message": "operational"}
     checks: Dict[str, Any] = {}
     store = _store(rt)
 
@@ -79,7 +80,7 @@ async def health_check(rt: RuntimeDep = Depends(get_kernel_runtime)):
     return out
 
 
-@router.get("/healthz")
+@router.get("/healthz", response_model=Dict[str, Any])
 async def healthz(rt: RuntimeDep = Depends(get_kernel_runtime)):
     """K8s style health check (alias)."""
     return await health_check(rt)

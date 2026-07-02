@@ -80,7 +80,7 @@ def _is_high_risk(paths: list[str]) -> bool:
 # ==================== Repo Changeset (repo-aware workflow MVP) ====================
 
 
-@router.post("/diagnostics/repo/changeset/preview")
+@router.post("/diagnostics/repo/changeset/preview", response_model=Dict[str, Any])
 async def diagnostics_repo_changeset_preview(request: RepoChangesetPreviewRequest):
     """
     Repo-aware workflow MVP: summarize git working tree changes (no arbitrary commands).
@@ -160,7 +160,7 @@ async def diagnostics_repo_changeset_preview(request: RepoChangesetPreviewReques
     return out
 
 
-@router.post("/diagnostics/repo/tests/run")
+@router.post("/diagnostics/repo/tests/run", response_model=Dict[str, Any])
 async def diagnostics_repo_tests_run(request: RepoTestsRunRequest):
     """
     Repo-aware workflow MVP: run repo tests with an allowlisted command.
@@ -236,7 +236,7 @@ async def diagnostics_repo_tests_run(request: RepoTestsRunRequest):
     return {"status": "ok", "result": out}
 
 
-@router.post("/diagnostics/repo/staged/preview")
+@router.post("/diagnostics/repo/staged/preview", response_model=Dict[str, Any])
 async def diagnostics_repo_staged_preview(request: RepoStagedPreviewRequest):
     """Preview staged changes and suggest a deterministic commit message."""
     repo_root = str(request.repo_root or "").strip()
@@ -293,7 +293,7 @@ async def diagnostics_repo_staged_preview(request: RepoStagedPreviewRequest):
     return out
 
 
-@router.post("/diagnostics/repo/changeset/record")
+@router.post("/diagnostics/repo/changeset/record", response_model=Dict[str, Any])
 async def diagnostics_repo_changeset_record(request: RepoChangesetPreviewRequest):
     """
     Record the repo changeset summary as a first-class change (changeset syscall),
@@ -490,7 +490,7 @@ async def diagnostics_repo_changeset_record(request: RepoChangesetPreviewRequest
     }
 
 
-@router.post("/diagnostics/repo/git/branch")
+@router.post("/diagnostics/repo/git/branch", response_model=Dict[str, Any])
 async def diagnostics_repo_git_branch(request: RepoGitBranchRequest):
     """Create/switch branch (git)."""
     store = _store()
@@ -622,7 +622,7 @@ async def diagnostics_repo_git_branch(request: RepoGitBranchRequest):
     }
 
 
-@router.post("/diagnostics/repo/git/commit")
+@router.post("/diagnostics/repo/git/commit", response_model=Dict[str, Any])
 async def diagnostics_repo_git_commit(request: RepoGitCommitRequest):
     """Commit staged changes with commit message (with governance checks)."""
     store = _store()

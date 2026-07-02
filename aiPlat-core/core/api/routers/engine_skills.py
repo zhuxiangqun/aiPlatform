@@ -227,7 +227,7 @@ async def _maybe_verify_and_audit_skill_signature(rt: Optional[KernelRuntime], *
         return
 
 
-@router.get("/skills")
+@router.get("/skills", response_model=Dict[str, Any])
 async def list_skills(
     category: Optional[str] = None,
     enabled_only: bool = False,
@@ -279,7 +279,7 @@ async def list_skills(
     return {"skills": result, "total": total, "limit": limit, "offset": offset}
 
 
-@router.post("/skills")
+@router.post("/skills", response_model=Dict[str, Any])
 async def create_skill(request: SkillCreateRequest, rt: RuntimeDep = None):
     """Create a new skill (engine scope)."""
     mgr = _skill_mgr(rt)
@@ -332,7 +332,7 @@ async def create_skill(request: SkillCreateRequest, rt: RuntimeDep = None):
     return {"id": skill.id, "status": "created", "name": skill.name}
 
 
-@router.get("/skills/{skill_id}")
+@router.get("/skills/{skill_id}", response_model=Dict[str, Any])
 async def get_skill(skill_id: str, rt: RuntimeDep = None):
     """Get skill details (engine scope)."""
     mgr = _skill_mgr(rt)
@@ -437,7 +437,7 @@ async def _enrich_conflicts_for_skill(rt: Optional[KernelRuntime], *, skill_id: 
         return raw_items
 
 
-@router.get("/skills/meta/lint-conflicts")
+@router.get("/skills/meta/lint-conflicts", response_model=Dict[str, Any])
 async def lint_conflicts_engine_skills(
     tenant_id: Optional[str] = None,
     threshold: float = 0.35,
@@ -528,13 +528,13 @@ async def _skill_routing_funnel(rt: Optional[KernelRuntime], *, tenant_id: Optio
     return await skill_routing_funnel(store=_store(rt), tenant_id=tenant_id, since_hours=since_hours, limit=limit, coding_policy_profile=None)
 
 
-@router.get("/skills/observability/skill-metrics")
+@router.get("/skills/observability/skill-metrics", response_model=Dict[str, Any])
 async def engine_skill_metrics(tenant_id: Optional[str] = None, since_hours: int = 24, limit: int = 5000, rt: RuntimeDep = None):
     """Aggregate syscall_events(kind=skill) into a skill-level metrics view (engine scope)."""
     return {"status": "ok", **(await _skill_invocation_metrics(rt, tenant_id=tenant_id, since_hours=since_hours, limit=limit))}
 
 
-@router.get("/skills/{skill_id}/lint")
+@router.get("/skills/{skill_id}/lint", response_model=Dict[str, Any])
 async def lint_engine_skill(skill_id: str, rt: RuntimeDep = None):
     """Lint an engine skill (read-only)."""
     mgr = _skill_mgr(rt)
@@ -587,7 +587,7 @@ async def lint_engine_skill(skill_id: str, rt: RuntimeDep = None):
     return {"skill_id": str(skill_id), "lint": lint, "fixes": fixes.get("fixes") or [], "fix_summary": fixes.get("summary") or {}}
 
 
-@router.post("/skills/{skill_id}/apply-lint-fix")
+@router.post("/skills/{skill_id}/apply-lint-fix", response_model=Dict[str, Any])
 async def apply_lint_fix_engine_skill(skill_id: str, request: Optional[Dict[str, Any]] = None, rt: RuntimeDep = None):
     """
     Apply lint fixes to an engine skill (Phase-1: markdown/schema fixes only).
@@ -778,7 +778,7 @@ async def apply_lint_fix_engine_skill(skill_id: str, request: Optional[Dict[str,
     }
 
 
-@router.put("/skills/{skill_id}")
+@router.put("/skills/{skill_id}", response_model=Dict[str, Any])
 async def update_skill(skill_id: str, request: dict, rt: RuntimeDep = None):
     """Update skill (engine scope)."""
     mgr = _skill_mgr(rt)
@@ -812,7 +812,7 @@ async def update_skill(skill_id: str, request: dict, rt: RuntimeDep = None):
     return {"status": "updated"}
 
 
-@router.delete("/skills/{skill_id}")
+@router.delete("/skills/{skill_id}", response_model=Dict[str, Any])
 async def delete_skill(skill_id: str, delete_files: bool = False, rt: RuntimeDep = None):
     """Delete skill (default: soft delete; delete_files=true for hard delete)."""
     mgr = _skill_mgr(rt)
@@ -827,7 +827,7 @@ async def delete_skill(skill_id: str, delete_files: bool = False, rt: RuntimeDep
     return {"status": "deleted" if delete_files else "deprecated"}
 
 
-@router.post("/skills/{skill_id}/enable")
+@router.post("/skills/{skill_id}/enable", response_model=Dict[str, Any])
 async def enable_skill(skill_id: str, rt: RuntimeDep = None):
     """Enable skill (engine scope)."""
     mgr = _skill_mgr(rt)
@@ -860,7 +860,7 @@ async def enable_skill(skill_id: str, rt: RuntimeDep = None):
     return {"status": "enabled", "change_id": change_id, "links": _gov_links(change_id=change_id)}
 
 
-@router.post("/skills/{skill_id}/disable")
+@router.post("/skills/{skill_id}/disable", response_model=Dict[str, Any])
 async def disable_skill(skill_id: str, rt: RuntimeDep = None):
     """Disable skill (engine scope)."""
     mgr = _skill_mgr(rt)
@@ -872,7 +872,7 @@ async def disable_skill(skill_id: str, rt: RuntimeDep = None):
     return {"status": "disabled"}
 
 
-@router.post("/skills/{skill_id}/restore")
+@router.post("/skills/{skill_id}/restore", response_model=Dict[str, Any])
 async def restore_skill(skill_id: str, rt: RuntimeDep = None):
     """Restore a deprecated skill (status -> enabled)."""
     mgr = _skill_mgr(rt)
@@ -884,7 +884,7 @@ async def restore_skill(skill_id: str, rt: RuntimeDep = None):
     return {"status": "enabled"}
 
 
-@router.post("/skills/governance-preview")
+@router.post("/skills/governance-preview", response_model=Dict[str, Any])
 async def preview_engine_skill_governance(request: Dict[str, Any], rt: RuntimeDep = None):
     """Preview governance/risk/approval hints for wizard UX (engine scope)."""
     req = dict(request or {})
@@ -893,7 +893,7 @@ async def preview_engine_skill_governance(request: Dict[str, Any], rt: RuntimeDe
     return skill_governance_preview(scope="engine", payload=req, approval_manager=_approval_mgr(rt))
 
 
-@router.get("/skills/meta/permissions-catalog")
+@router.get("/skills/meta/permissions-catalog", response_model=Dict[str, Any])
 async def engine_permissions_catalog(http_request: Request, tenant_id: Optional[str] = None, channel: Optional[str] = None):
     """Permissions catalog for UI (engine scope)."""
     from core.services.config_registry_store import ConfigRegistryKey, get_config_registry_store
@@ -916,7 +916,7 @@ async def engine_permissions_catalog(http_request: Request, tenant_id: Optional[
     return out
 
 
-@router.get("/skills/meta/skill-spec-v2-schema")
+@router.get("/skills/meta/skill-spec-v2-schema", response_model=Dict[str, Any])
 async def engine_skill_spec_v2_schema(http_request: Request, tenant_id: Optional[str] = None, channel: Optional[str] = None):
     """SkillSpec v2 schema registry endpoint (engine scope)."""
     from core.services.config_registry_store import ConfigRegistryKey, get_config_registry_store
@@ -933,7 +933,7 @@ async def engine_skill_spec_v2_schema(http_request: Request, tenant_id: Optional
     return {"schema": s, "version": schema_version(s), "source": "default", **ctx}
 
 
-@router.get("/skills/{skill_id}/agents")
+@router.get("/skills/{skill_id}/agents", response_model=Dict[str, Any])
 async def get_skill_agents(skill_id: str, rt: RuntimeDep = None):
     """Get agents bound to skill (engine scope)."""
     mgr = _skill_mgr(rt)
@@ -943,7 +943,7 @@ async def get_skill_agents(skill_id: str, rt: RuntimeDep = None):
     return {"agents": [{"id": a} for a in agent_ids], "total": len(agent_ids)}
 
 
-@router.get("/skills/{skill_id}/binding-stats")
+@router.get("/skills/{skill_id}/binding-stats", response_model=Dict[str, Any])
 async def get_skill_binding_stats(skill_id: str):
     """Get skill binding statistics."""
     registry = get_skill_registry()
@@ -953,7 +953,7 @@ async def get_skill_binding_stats(skill_id: str):
     return {"total_agents": len(stats.bound_agents), "total_calls": stats.total_executions, "avg_success_rate": stats.success_count / stats.total_executions if stats.total_executions > 0 else 0}
 
 
-@router.get("/skills/{skill_id}/versions")
+@router.get("/skills/{skill_id}/versions", response_model=Dict[str, Any])
 async def get_skill_versions(skill_id: str):
     """Get skill versions."""
     registry = get_skill_registry()
@@ -961,7 +961,7 @@ async def get_skill_versions(skill_id: str):
     return {"versions": [{"version": v.version, "is_active": v.is_active} for v in versions]}
 
 
-@router.get("/skills/{skill_id}/versions/{version}")
+@router.get("/skills/{skill_id}/versions/{version}", response_model=Dict[str, Any])
 async def get_skill_version(skill_id: str, version: str):
     """Get specific skill version."""
     registry = get_skill_registry()
@@ -984,7 +984,7 @@ async def get_skill_version(skill_id: str, version: str):
     return {"version": version, "config": cfg_dict}
 
 
-@router.post("/skills/{skill_id}/versions/{version}/rollback")
+@router.post("/skills/{skill_id}/versions/{version}/rollback", response_model=Dict[str, Any])
 async def rollback_skill_version(skill_id: str, version: str):
     """Rollback skill version."""
     registry = get_skill_registry()
@@ -1004,7 +1004,7 @@ async def rollback_skill_version(skill_id: str, version: str):
     return {"status": "rolled_back", "active_version": active_version, "active_config": cfg}
 
 
-@router.get("/skills/{skill_id}/active-version")
+@router.get("/skills/{skill_id}/active-version", response_model=Dict[str, Any])
 async def get_skill_active_version(skill_id: str):
     """Get currently active version for a skill."""
     registry = get_skill_registry()
@@ -1014,7 +1014,7 @@ async def get_skill_active_version(skill_id: str):
     return {"skill_id": skill_id, "active_version": active_version}
 
 
-@router.post("/skills/{skill_id}/execute")
+@router.post("/skills/{skill_id}/execute", response_model=Dict[str, Any])
 async def execute_skill(skill_id: str, request: SkillExecuteRequest, http_request: Request, rt: RuntimeDep = None):
     """Execute skill (engine scope)."""
     ctx_for_user: Dict[str, Any] = dict(request.context or {}) if isinstance(request.context, dict) else {}
@@ -1044,7 +1044,7 @@ async def execute_skill(skill_id: str, request: SkillExecuteRequest, http_reques
     return JSONResponse(status_code=200 if resp.get("ok") else int(getattr(result, "http_status", 500) or 500), content=resp)
 
 
-@router.get("/skills/executions/{execution_id}")
+@router.get("/skills/executions/{execution_id}", response_model=Dict[str, Any])
 async def get_skill_execution(execution_id: str, rt: RuntimeDep = None):
     """Get skill execution."""
     store = _store(rt)
@@ -1084,7 +1084,7 @@ async def get_skill_execution(execution_id: str, rt: RuntimeDep = None):
     }
 
 
-@router.get("/skills/{skill_id}/executions")
+@router.get("/skills/{skill_id}/executions", response_model=Dict[str, Any])
 async def list_skill_executions(skill_id: str, limit: int = 100, offset: int = 0, rt: RuntimeDep = None):
     """List skill executions."""
     store = _store(rt)
@@ -1109,7 +1109,7 @@ async def list_skill_executions(skill_id: str, limit: int = 100, offset: int = 0
     return {"executions": [], "total": 0}
 
 
-@router.get("/skills/{skill_id}/trigger-conditions")
+@router.get("/skills/{skill_id}/trigger-conditions", response_model=Dict[str, Any])
 async def get_skill_trigger_conditions(skill_id: str, rt: RuntimeDep = None):
     """Get skill trigger conditions (routing rules)."""
     mgr = _skill_mgr(rt)
@@ -1121,7 +1121,7 @@ async def get_skill_trigger_conditions(skill_id: str, rt: RuntimeDep = None):
     return {"skill_id": skill_id, "trigger_conditions": skill.metadata.get("trigger_conditions", []) if skill.metadata else []}
 
 
-@router.put("/skills/{skill_id}/trigger-conditions")
+@router.put("/skills/{skill_id}/trigger-conditions", response_model=Dict[str, Any])
 async def update_skill_trigger_conditions(skill_id: str, request: dict, rt: RuntimeDep = None):
     """Update skill trigger conditions."""
     mgr = _skill_mgr(rt)
@@ -1135,7 +1135,7 @@ async def update_skill_trigger_conditions(skill_id: str, request: dict, rt: Runt
     return {"status": "updated", "trigger_conditions": trigger_conditions}
 
 
-@router.post("/skills/{skill_id}/test-trigger")
+@router.post("/skills/{skill_id}/test-trigger", response_model=Dict[str, Any])
 async def test_skill_trigger(skill_id: str, request: dict, rt: RuntimeDep = None):
     """Test if skill would be triggered by given input."""
     mgr = _skill_mgr(rt)
@@ -1154,7 +1154,7 @@ async def test_skill_trigger(skill_id: str, request: dict, rt: RuntimeDep = None
     return {"skill_id": skill_id, "would_trigger": matched, "matched_condition": condition if matched else None}
 
 
-@router.get("/skills/{skill_id}/evolution")
+@router.get("/skills/{skill_id}/evolution", response_model=Dict[str, Any])
 async def get_skill_evolution_status(skill_id: str, rt: RuntimeDep = None):
     """Get skill evolution status (CAPTURED/FIX/DERIVED)."""
     mgr = _skill_mgr(rt)
@@ -1174,7 +1174,7 @@ async def get_skill_evolution_status(skill_id: str, rt: RuntimeDep = None):
     }
 
 
-@router.post("/skills/{skill_id}/evolution")
+@router.post("/skills/{skill_id}/evolution", response_model=Dict[str, Any])
 async def trigger_skill_evolution(skill_id: str, request: dict, rt: RuntimeDep = None):
     """Manually trigger skill evolution."""
     mgr = _skill_mgr(rt)
@@ -1192,7 +1192,7 @@ async def trigger_skill_evolution(skill_id: str, request: dict, rt: RuntimeDep =
     return {"status": "triggered", "evolution_type": trigger_type, "evolution_count": evolution["evolution_count"]}
 
 
-@router.get("/skills/{skill_id}/lineage")
+@router.get("/skills/{skill_id}/lineage", response_model=Dict[str, Any])
 async def get_skill_lineage(skill_id: str, rt: RuntimeDep = None):
     """Get skill lineage (evolution history)."""
     mgr = _skill_mgr(rt)
@@ -1205,13 +1205,13 @@ async def get_skill_lineage(skill_id: str, rt: RuntimeDep = None):
     return {"skill_id": skill_id, "lineage": lineage, "total": len(lineage)}
 
 
-@router.get("/skills/{skill_id}/captures")
+@router.get("/skills/{skill_id}/captures", response_model=Dict[str, Any])
 async def get_skill_captures(skill_id: str, limit: int = 100, offset: int = 0):
     """Get captured interactions for skill (placeholder)."""
     return {"captures": [], "total": 0, "note": "Captures are stored in skill evolution module"}
 
 
-@router.get("/skills/{skill_id}/fixes")
+@router.get("/skills/{skill_id}/fixes", response_model=Dict[str, Any])
 async def get_skill_fixes(skill_id: str, limit: int = 100, offset: int = 0, rt: RuntimeDep = None):
     """Get applied fixes for skill."""
     mgr = _skill_mgr(rt)
@@ -1225,7 +1225,7 @@ async def get_skill_fixes(skill_id: str, limit: int = 100, offset: int = 0, rt: 
     return {"fixes": fixes[offset : offset + limit], "total": len(fixes)}
 
 
-@router.get("/skills/{skill_id}/derived")
+@router.get("/skills/{skill_id}/derived", response_model=Dict[str, Any])
 async def get_skill_derived(skill_id: str, rt: RuntimeDep = None):
     """Get derived skills (children) from this skill."""
     mgr = _skill_mgr(rt)
@@ -1239,7 +1239,7 @@ async def get_skill_derived(skill_id: str, rt: RuntimeDep = None):
     return {"derived_skills": [{"id": c} for c in child_ids], "total": len(child_ids)}
 
 
-@router.get("/skills/{skill_id}/sop")
+@router.get("/skills/{skill_id}/sop", response_model=Dict[str, Any])
 async def get_skill_sop(skill_id: str, rt: RuntimeDep = None):
     """Get skill SOP (SKILL.md body content)."""
     mgr = _skill_mgr(rt)

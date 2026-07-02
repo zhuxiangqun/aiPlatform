@@ -111,7 +111,7 @@ async def _audit_execute(
 # ==================== Agent Management ====================
 
 
-@router.get("/agents")
+@router.get("/agents", response_model=Dict[str, Any])
 async def list_agents(
     agent_type: Optional[str] = None,
     status: Optional[str] = None,
@@ -148,7 +148,7 @@ async def list_agents(
     }
 
 
-@router.post("/agents")
+@router.post("/agents", response_model=Dict[str, Any])
 async def create_agent(request: AgentCreateRequest, rt: RuntimeDep = None):
     """Create a new agent (engine scope)."""
     mgr = _agent_mgr(rt)
@@ -166,7 +166,7 @@ async def create_agent(request: AgentCreateRequest, rt: RuntimeDep = None):
     return {"id": agent.id, "status": "created", "name": agent.name}
 
 
-@router.get("/agents/{agent_id}")
+@router.get("/agents/{agent_id}", response_model=Dict[str, Any])
 async def get_agent(agent_id: str, rt: RuntimeDep = None):
     mgr = _agent_mgr(rt)
     if not mgr:
@@ -192,7 +192,7 @@ async def get_agent(agent_id: str, rt: RuntimeDep = None):
     }
 
 
-@router.get("/agents/{agent_id}/sop")
+@router.get("/agents/{agent_id}/sop", response_model=Dict[str, Any])
 async def get_agent_sop(agent_id: str, rt: RuntimeDep = None):
     """Get agent SOP (Markdown) from AGENT.md body."""
     mgr = _agent_mgr(rt)
@@ -204,7 +204,7 @@ async def get_agent_sop(agent_id: str, rt: RuntimeDep = None):
     return data
 
 
-@router.put("/agents/{agent_id}")
+@router.put("/agents/{agent_id}", response_model=Dict[str, Any])
 async def update_agent(agent_id: str, request: AgentUpdateRequest, rt: RuntimeDep = None):
     mgr = _agent_mgr(rt)
     if not mgr:
@@ -227,7 +227,7 @@ async def update_agent(agent_id: str, request: AgentUpdateRequest, rt: RuntimeDe
     return {"status": "updated", "id": agent_id}
 
 
-@router.delete("/agents/{agent_id}")
+@router.delete("/agents/{agent_id}", response_model=Dict[str, Any])
 async def delete_agent(agent_id: str, rt: RuntimeDep = None):
     mgr = _agent_mgr(rt)
     if not mgr:
@@ -241,7 +241,7 @@ async def delete_agent(agent_id: str, rt: RuntimeDep = None):
     return {"status": "deleted", "id": agent_id}
 
 
-@router.post("/agents/{agent_id}/start")
+@router.post("/agents/{agent_id}/start", response_model=Dict[str, Any])
 async def start_agent(agent_id: str, rt: RuntimeDep = None):
     mgr = _agent_mgr(rt)
     if not mgr:
@@ -252,7 +252,7 @@ async def start_agent(agent_id: str, rt: RuntimeDep = None):
     return {"status": "started", "id": agent_id}
 
 
-@router.post("/agents/{agent_id}/stop")
+@router.post("/agents/{agent_id}/stop", response_model=Dict[str, Any])
 async def stop_agent(agent_id: str, rt: RuntimeDep = None):
     mgr = _agent_mgr(rt)
     if not mgr:
@@ -266,7 +266,7 @@ async def stop_agent(agent_id: str, rt: RuntimeDep = None):
 # ==================== skills/tools bindings ====================
 
 
-@router.get("/agents/{agent_id}/skills")
+@router.get("/agents/{agent_id}/skills", response_model=Dict[str, Any])
 async def get_agent_skills(agent_id: str, rt: RuntimeDep = None):
     mgr = _agent_mgr(rt)
     if not mgr:
@@ -285,7 +285,7 @@ async def get_agent_skills(agent_id: str, rt: RuntimeDep = None):
     }
 
 
-@router.post("/agents/{agent_id}/skills")
+@router.post("/agents/{agent_id}/skills", response_model=Dict[str, Any])
 async def bind_agent_skills(agent_id: str, request: dict, rt: RuntimeDep = None):
     mgr = _agent_mgr(rt)
     if not mgr:
@@ -299,7 +299,7 @@ async def bind_agent_skills(agent_id: str, request: dict, rt: RuntimeDep = None)
     return {"status": "bound", "skill_ids": skill_ids}
 
 
-@router.delete("/agents/{agent_id}/skills/{skill_id}")
+@router.delete("/agents/{agent_id}/skills/{skill_id}", response_model=Dict[str, Any])
 async def unbind_agent_skill(agent_id: str, skill_id: str, rt: RuntimeDep = None):
     mgr = _agent_mgr(rt)
     if not mgr:
@@ -311,7 +311,7 @@ async def unbind_agent_skill(agent_id: str, skill_id: str, rt: RuntimeDep = None
     return {"status": "unbound"}
 
 
-@router.get("/agents/{agent_id}/tools")
+@router.get("/agents/{agent_id}/tools", response_model=Dict[str, Any])
 async def get_agent_tools(agent_id: str, rt: RuntimeDep = None):
     mgr = _agent_mgr(rt)
     if not mgr:
@@ -330,7 +330,7 @@ async def get_agent_tools(agent_id: str, rt: RuntimeDep = None):
     }
 
 
-@router.post("/agents/{agent_id}/tools")
+@router.post("/agents/{agent_id}/tools", response_model=Dict[str, Any])
 async def bind_agent_tools(agent_id: str, request: dict, rt: RuntimeDep = None):
     mgr = _agent_mgr(rt)
     if not mgr:
@@ -344,7 +344,7 @@ async def bind_agent_tools(agent_id: str, request: dict, rt: RuntimeDep = None):
     return {"status": "bound", "tool_ids": tool_ids}
 
 
-@router.delete("/agents/{agent_id}/tools/{tool_id}")
+@router.delete("/agents/{agent_id}/tools/{tool_id}", response_model=Dict[str, Any])
 async def unbind_agent_tool(agent_id: str, tool_id: str, rt: RuntimeDep = None):
     mgr = _agent_mgr(rt)
     if not mgr:
@@ -359,7 +359,7 @@ async def unbind_agent_tool(agent_id: str, tool_id: str, rt: RuntimeDep = None):
 # ==================== execute / resume / execution store views ====================
 
 
-@router.post("/agents/{agent_id}/execute")
+@router.post("/agents/{agent_id}/execute", response_model=Dict[str, Any])
 async def execute_agent(agent_id: str, request: dict, http_request: Request, rt: RuntimeDep = None):
     """Execute agent (engine scope)."""
     payload = _inject_http_request_context(dict(request or {}), http_request, entrypoint="api")
@@ -437,7 +437,7 @@ async def execute_agent(agent_id: str, request: dict, http_request: Request, rt:
     )
 
 
-@router.post("/agents/executions/{execution_id}/resume")
+@router.post("/agents/executions/{execution_id}/resume", response_model=Dict[str, Any])
 async def resume_agent_execution(execution_id: str, request: dict, rt: RuntimeDep = None):
     """
     Minimal resume: re-run the original execution request after approval is granted.
@@ -556,7 +556,7 @@ async def resume_agent_execution(execution_id: str, request: dict, rt: RuntimeDe
     return payload2
 
 
-@router.get("/agents/executions/{execution_id}")
+@router.get("/agents/executions/{execution_id}", response_model=Dict[str, Any])
 async def get_agent_execution(execution_id: str, rt: RuntimeDep = None):
     """Get agent execution record."""
     store = _store(rt)
@@ -568,7 +568,7 @@ async def get_agent_execution(execution_id: str, rt: RuntimeDep = None):
     return execution
 
 
-@router.get("/agents/{agent_id}/history")
+@router.get("/agents/{agent_id}/history", response_model=Dict[str, Any])
 async def get_agent_history(agent_id: str, limit: int = 100, offset: int = 0, rt: RuntimeDep = None):
     """Get agent execution history."""
     store = _store(rt)
@@ -579,7 +579,7 @@ async def get_agent_history(agent_id: str, limit: int = 100, offset: int = 0, rt
     return {"history": history, "total": len(_agent_history.get(agent_id, []))}
 
 
-@router.get("/agents/{agent_id}/versions")
+@router.get("/agents/{agent_id}/versions", response_model=Dict[str, Any])
 async def get_agent_versions(agent_id: str, rt: RuntimeDep = None):
     mgr = _agent_mgr(rt)
     if not mgr:
@@ -591,7 +591,7 @@ async def get_agent_versions(agent_id: str, rt: RuntimeDep = None):
     return {"agent_id": agent_id, "versions": [{"version": v.version, "status": v.status, "created_at": v.created_at.isoformat(), "changes": v.changes} for v in versions]}
 
 
-@router.post("/agents/{agent_id}/versions")
+@router.post("/agents/{agent_id}/versions", response_model=Dict[str, Any])
 async def create_agent_version(agent_id: str, request: dict, rt: RuntimeDep = None):
     mgr = _agent_mgr(rt)
     if not mgr:
@@ -603,7 +603,7 @@ async def create_agent_version(agent_id: str, request: dict, rt: RuntimeDep = No
     return {"version": version.version, "status": version.status, "created_at": version.created_at.isoformat(), "changes": version.changes}
 
 
-@router.post("/agents/{agent_id}/versions/{version}/rollback")
+@router.post("/agents/{agent_id}/versions/{version}/rollback", response_model=Dict[str, Any])
 async def rollback_agent_version(agent_id: str, version: str, rt: RuntimeDep = None):
     mgr = _agent_mgr(rt)
     if not mgr:
@@ -616,12 +616,12 @@ async def rollback_agent_version(agent_id: str, version: str, rt: RuntimeDep = N
 
 # ── Models catalog (for agent editor dropdowns) ──
 
-@router.get("/models")
+@router.get("/models", response_model=Dict[str, Any])
 async def list_models():
     """List available LLM models grouped by provider (for agent editor dropdown)."""
     try:
-        from core.api.facades.skill_tool_facade import get_model_registry
-        registry = get_model_registry()
+        from core.api.facades.skill_tool_facade import get_model_manager
+        registry = get_model_manager()
         # infra ModelManager returns models as list of objects
         if hasattr(registry, '_models'):
             entries = [{"name": m.name, "provider": m.provider, "enabled": m.enabled, "type": m.type.value if hasattr(m.type, 'value') else str(m.type)}
@@ -642,14 +642,14 @@ async def list_models():
             models.append({"name": name, "provider": "deepseek"})
         return {"models": models, "by_provider": {"deepseek": models}}
 
-@router.get("/approvals/pending")
+@router.get("/approvals/pending", response_model=Dict[str, Any])
 async def list_pending_approvals(request: Request):
     """兼容端点 — 返回空审批列表（新审批系统由 management 审批中心接管）"""
     _ = request
     return {"items": [], "total": 0}
 
 
-@router.post("/agents/feedback")
+@router.post("/agents/feedback", response_model=Dict[str, Any])
 async def submit_agent_feedback(body: dict, request: Request):
     """Phase 4.2: Submit implicit feedback signal for a previous agent execution.
 
@@ -682,7 +682,7 @@ async def submit_agent_feedback(body: dict, request: Request):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/agents/hallucination/dashboard")
+@router.get("/agents/hallucination/dashboard", response_model=Dict[str, Any])
 async def get_hallucination_dashboard(domain_id: str = "default"):
     """Phase 3.1: Get hallucination tracking dashboard."""
     try:
@@ -697,7 +697,7 @@ async def get_hallucination_dashboard(domain_id: str = "default"):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/agents/feedback/stats")
+@router.get("/agents/feedback/stats", response_model=Dict[str, Any])
 async def get_feedback_stats():
     """Phase 4.2: Get implicit feedback statistics."""
     try:

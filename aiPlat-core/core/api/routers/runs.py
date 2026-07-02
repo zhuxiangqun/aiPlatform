@@ -144,7 +144,7 @@ def _diff_outputs(prev_out: Any, new_out: Any) -> Dict[str, Any]:
         return {}
 
 
-@router.get("/runs/{run_id}")
+@router.get("/runs/{run_id}", response_model=Dict[str, Any])
 async def get_run(run_id: str, rt: RuntimeDep = None):
     store = _store(rt)
     if not store:
@@ -179,7 +179,7 @@ async def get_run(run_id: str, rt: RuntimeDep = None):
     return resp
 
 
-@router.get("/runs/{run_id}/events")
+@router.get("/runs/{run_id}/events", response_model=Dict[str, Any])
 async def list_run_events(run_id: str, after_seq: int = 0, limit: int = 200, rt: RuntimeDep = None):
     store = _store(rt)
     if not store:
@@ -187,7 +187,7 @@ async def list_run_events(run_id: str, after_seq: int = 0, limit: int = 200, rt:
     return await store.list_run_events(run_id=str(run_id), after_seq=int(after_seq or 0), limit=int(limit or 200))
 
 
-@router.get("/runs/{run_id}/cost")
+@router.get("/runs/{run_id}/cost", response_model=Dict[str, Any])
 async def get_run_cost(
     run_id: str,
     tenant_id: Optional[str] = None,
@@ -233,7 +233,7 @@ async def get_run_cost(
     return out
 
 
-@router.get("/runs/{run_id}/children")
+@router.get("/runs/{run_id}/children", response_model=Dict[str, Any])
 async def list_child_runs(run_id: str, rt: RuntimeDep = None):
     """
     P6-2: "SOP 节点 = 子 run" 原语：列出该 parent run 派生的子 run（从 run_events 推导）。
@@ -263,7 +263,7 @@ async def list_child_runs(run_id: str, rt: RuntimeDep = None):
     return {"run_id": rid, "items": out, "total": len(out)}
 
 
-@router.get("/runs/{run_id}/graph")
+@router.get("/runs/{run_id}/graph", response_model=Dict[str, Any])
 async def get_run_graph(run_id: str, include_child_summaries: bool = True, after_seq: int = 0, rt: RuntimeDep = None):
     """
     Return a graph/DAG view derived from run_events:
@@ -595,7 +595,7 @@ async def get_run_graph(run_id: str, include_child_summaries: bool = True, after
         },
         "stats": {"nodes": len(nodes), "edges": len(edges), "joins": len(joins), "checkpoints": len(checkpoints)},
     }
-@router.post("/runs/{run_id}/children/spawn")
+@router.post("/runs/{run_id}/children/spawn", response_model=Dict[str, Any])
 async def spawn_child_run(run_id: str, request: dict, http_request: Request, rt: RuntimeDep = None):
     """
     P6-2: "SOP 节点 = 子 run" 原语：在 parent run 下创建并执行一个 child run。
@@ -787,7 +787,7 @@ async def spawn_child_run(run_id: str, request: dict, http_request: Request, rt:
     return resp
 
 
-@router.post("/runs/{run_id}/joins/define")
+@router.post("/runs/{run_id}/joins/define", response_model=Dict[str, Any])
 async def define_join(run_id: str, request: dict, http_request: Request, rt: RuntimeDep = None):
     """
     P6-4: Define a join barrier on a parent run.
@@ -862,7 +862,7 @@ async def define_join(run_id: str, request: dict, http_request: Request, rt: Run
     return {"status": "ok", "run_id": parent_id, "join_id": join_id}
 
 
-@router.post("/runs/{run_id}/joins/{join_id}/wait")
+@router.post("/runs/{run_id}/joins/{join_id}/wait", response_model=Dict[str, Any])
 async def wait_join(run_id: str, join_id: str, request: dict, http_request: Request, rt: RuntimeDep = None):
     """
     P6-4: Long-poll until join is ready.
@@ -1116,7 +1116,7 @@ async def wait_join(run_id: str, join_id: str, request: dict, http_request: Requ
         "detail": {"missing": missing, "statuses": statuses},
     }
 
-@router.post("/runs/{run_id}/nodes/{node_id}/redo")
+@router.post("/runs/{run_id}/nodes/{node_id}/redo", response_model=Dict[str, Any])
 async def redo_node(run_id: str, node_id: str, request: dict, http_request: Request, rt: RuntimeDep = None):
     """
     P6-2 (node-level): Redo a single SOP node by re-spawning a new child run from stored request_payload.
@@ -1159,7 +1159,7 @@ async def redo_node(run_id: str, node_id: str, request: dict, http_request: Requ
     return await _redo_node_internal(store=store, parent=parent, parent_id=parent_id, node_id=str(node_id), actor=actor, patch=patch, reason=reason)
 
 
-@router.post("/runs/{run_id}/checkpoints/request")
+@router.post("/runs/{run_id}/checkpoints/request", response_model=Dict[str, Any])
 async def request_checkpoint(run_id: str, request: dict, http_request: Request, rt: RuntimeDep = None):
     """
     P6-1: Request a human checkpoint (review) for an in-flight run.
@@ -1226,7 +1226,7 @@ async def request_checkpoint(run_id: str, request: dict, http_request: Request, 
     return {"status": "ok", "run_id": rid, "checkpoint_id": checkpoint_id}
 
 
-@router.post("/runs/{run_id}/checkpoints/{checkpoint_id}/resolve")
+@router.post("/runs/{run_id}/checkpoints/{checkpoint_id}/resolve", response_model=Dict[str, Any])
 async def resolve_checkpoint(run_id: str, checkpoint_id: str, request: dict, http_request: Request, rt: RuntimeDep = None):
     """
     P6-1: Resolve a checkpoint (approve/reject/comment_only).
@@ -1542,7 +1542,7 @@ async def _redo_node_internal(
     return resp
 
 
-@router.post("/runs/{run_id}/checkpoints/{checkpoint_id}/apply")
+@router.post("/runs/{run_id}/checkpoints/{checkpoint_id}/apply", response_model=Dict[str, Any])
 async def apply_checkpoint(run_id: str, checkpoint_id: str, request: dict, http_request: Request, rt: RuntimeDep = None):
     """
     P6-4 enhancement: Apply a resolved checkpoint to advance workflow.
@@ -1852,7 +1852,7 @@ async def apply_checkpoint(run_id: str, checkpoint_id: str, request: dict, http_
     return {"status": "ok", "run_id": rid, "checkpoint_id": str(checkpoint_id), "action": "spawn", "child": child_resp}
 
 
-@router.post("/runs/{run_id}/checkpoints/{checkpoint_id}/redo")
+@router.post("/runs/{run_id}/checkpoints/{checkpoint_id}/redo", response_model=Dict[str, Any])
 async def redo_from_checkpoint(run_id: str, checkpoint_id: str, request: dict, http_request: Request, rt: RuntimeDep = None):
     """
     P6-2: Reject -> redo.
@@ -1971,7 +1971,7 @@ async def redo_from_checkpoint(run_id: str, checkpoint_id: str, request: dict, h
     return resp
 
 
-@router.post("/runs/{run_id}/cancel")
+@router.post("/runs/{run_id}/cancel", response_model=Dict[str, Any])
 async def cancel_run(run_id: str, http_request: Request, body: Optional[Dict[str, Any]] = None, rt: RuntimeDep = None):
     """
     Best-effort stop/cancel for platform runs.
@@ -2017,7 +2017,7 @@ async def cancel_run(run_id: str, http_request: Request, body: Optional[Dict[str
     return {"status": "cancel_requested", "run_id": rid, "cancelled_queued": bool(cancelled_queued)}
 
 
-@router.post("/runs/{run_id}/retry")
+@router.post("/runs/{run_id}/retry", response_model=Dict[str, Any])
 async def retry_run(run_id: str, http_request: Request, rt: RuntimeDep = None):
     """
     Best-effort retry for platform runs.
@@ -2069,7 +2069,7 @@ async def retry_run(run_id: str, http_request: Request, rt: RuntimeDep = None):
     return resp
 
 
-@router.post("/runs/{run_id}/undo")
+@router.post("/runs/{run_id}/undo", response_model=Dict[str, Any])
 async def undo_run(run_id: str, http_request: Request, body: Optional[Dict[str, Any]] = None, rt: RuntimeDep = None):
     """
     Minimal "undo" for runs: if the run is still queued, cancel it.
@@ -2091,7 +2091,7 @@ async def undo_run(run_id: str, http_request: Request, body: Optional[Dict[str, 
     raise HTTPException(status_code=409, detail="undo_not_supported")
 
 
-@router.post("/runs/{run_id}/wait")
+@router.post("/runs/{run_id}/wait", response_model=Dict[str, Any])
 async def wait_run(run_id: str, request: dict, http_request: Request, rt: RuntimeDep = None):
     """
     Long-poll run events until terminal state or timeout.

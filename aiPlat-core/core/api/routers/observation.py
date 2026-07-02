@@ -41,7 +41,7 @@ def get_diag_events(run_id: str) -> List[Dict[str, Any]]:
     return _diag_buffers.get(run_id, [])
 
 
-@router.get("/runs/{run_id}/stream")
+@router.get("/runs/{run_id}/stream", response_model=Dict[str, Any])
 async def stream_events(run_id: str):
     """SSE 实时事件流。先回放历史事件，再推送新事件。"""
 

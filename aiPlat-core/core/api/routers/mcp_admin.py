@@ -77,7 +77,7 @@ def _engine_managers():
 # ---------------------------
 
 
-@router.get("/mcp/servers")
+@router.get("/mcp/servers", response_model=Dict[str, Any])
 async def list_mcp_servers():
     """List MCP servers configured via filesystem (mcps/<server>/server.yaml)."""
     mgr = _mcp_manager()
@@ -102,7 +102,7 @@ async def list_mcp_servers():
     }
 
 
-@router.post("/mcp/servers/{server_name}/enable")
+@router.post("/mcp/servers/{server_name}/enable", response_model=Dict[str, Any])
 async def enable_mcp_server(server_name: str):
     """Enable an MCP server in filesystem config."""
     store = _store()
@@ -156,7 +156,7 @@ async def enable_mcp_server(server_name: str):
     return {"status": "enabled", "change_id": change_id, "links": governance_links(change_id=change_id) if change_id else {}}
 
 
-@router.post("/mcp/servers/{server_name}/sign")
+@router.post("/mcp/servers/{server_name}/sign", response_model=Dict[str, Any])
 async def sign_mcp_server(server_name: str, request: Dict[str, Any]):
     """
     Sign an MCP server directory with an Ed25519 private key.
@@ -230,7 +230,7 @@ async def sign_mcp_server(server_name: str, request: Dict[str, Any]):
     }
 
 
-@router.post("/mcp/servers/{server_name}/disable")
+@router.post("/mcp/servers/{server_name}/disable", response_model=Dict[str, Any])
 async def disable_mcp_server(server_name: str):
     """Disable an MCP server in filesystem config."""
     mgr = _mcp_manager()
@@ -243,7 +243,7 @@ async def disable_mcp_server(server_name: str):
     return {"status": "disabled"}
 
 
-@router.post("/mcp/servers/reload")
+@router.post("/mcp/servers/reload", response_model=Dict[str, Any])
 async def reload_mcp_servers():
     """Reload MCP server configs from disk (engine scope)."""
     mgr = _mcp_manager()
@@ -257,7 +257,7 @@ async def reload_mcp_servers():
 # ==================== Workspace MCP servers ====================
 
 
-@router.get("/workspace/mcp/servers")
+@router.get("/workspace/mcp/servers", response_model=Dict[str, Any])
 async def list_workspace_mcp_servers():
     """List workspace MCP servers (~/.aiplat/mcps)."""
     mgr = _workspace_mcp_manager()
@@ -283,7 +283,7 @@ async def list_workspace_mcp_servers():
     }
 
 
-@router.get("/workspace/mcp/servers/{server_name}")
+@router.get("/workspace/mcp/servers/{server_name}", response_model=Dict[str, Any])
 async def get_workspace_mcp_server(server_name: str):
     """Get workspace MCP server details."""
     mgr = _workspace_mcp_manager()
@@ -307,7 +307,7 @@ async def get_workspace_mcp_server(server_name: str):
     }
 
 
-@router.get("/workspace/mcp/servers/{server_name}/policy-check")
+@router.get("/workspace/mcp/servers/{server_name}/policy-check", response_model=Dict[str, Any])
 async def check_workspace_mcp_server_policy(server_name: str):
     """Check whether a workspace MCP server can be enabled/discovered under current policy."""
     mgr = _workspace_mcp_manager()
@@ -366,7 +366,7 @@ async def check_workspace_mcp_server_policy(server_name: str):
     return {"env": runtime_env(), "server_name": server_name, "transport": transport, "ok": bool(ok), "reason": reason, "details": details}
 
 
-@router.post("/workspace/mcp/servers")
+@router.post("/workspace/mcp/servers", response_model=Dict[str, Any])
 async def upsert_workspace_mcp_server(request: dict, http_request: Request):
     """Create or update a workspace MCP server (writes to ~/.aiplat/mcps/<name>/server.yaml + policy.yaml)."""
     mgr = _workspace_mcp_manager()
@@ -448,7 +448,7 @@ async def upsert_workspace_mcp_server(request: dict, http_request: Request):
         raise HTTPException(status_code=409, detail=str(e))
 
 
-@router.post("/workspace/mcp/servers/auto-fill")
+@router.post("/workspace/mcp/servers/auto-fill", response_model=Dict[str, Any])
 async def mcp_auto_fill(request: dict):
     """AI 智能填充：根据名称和描述，自动推荐 MCP 服务器配置。"""
     name = str(request.get("name") or "").strip()
@@ -510,7 +510,7 @@ async def mcp_auto_fill(request: dict):
         return {"error": f"Auto-fill failed: {str(e)}"}
 
 
-@router.put("/workspace/mcp/servers/{server_name}")
+@router.put("/workspace/mcp/servers/{server_name}", response_model=Dict[str, Any])
 async def update_workspace_mcp_server(server_name: str, request: dict, http_request: Request):
     """Update workspace MCP server (upsert semantics)."""
     payload = dict(request or {})
@@ -518,7 +518,7 @@ async def update_workspace_mcp_server(server_name: str, request: dict, http_requ
     return await upsert_workspace_mcp_server(payload, http_request)
 
 
-@router.post("/workspace/mcp/servers/{server_name}/enable")
+@router.post("/workspace/mcp/servers/{server_name}/enable", response_model=Dict[str, Any])
 async def enable_workspace_mcp_server(server_name: str, http_request: Request):
     mgr = _workspace_mcp_manager()
     store = _store()
@@ -574,7 +574,7 @@ async def enable_workspace_mcp_server(server_name: str, http_request: Request):
     return {"status": "enabled", "change_id": change_id, "links": governance_links(change_id=change_id) if change_id else {}}
 
 
-@router.post("/workspace/mcp/servers/{server_name}/disable")
+@router.post("/workspace/mcp/servers/{server_name}/disable", response_model=Dict[str, Any])
 async def disable_workspace_mcp_server(server_name: str):
     mgr = _workspace_mcp_manager()
     store = _store()
@@ -588,7 +588,7 @@ async def disable_workspace_mcp_server(server_name: str):
     await sync_mcp_runtime(mcp_manager=_mcp_manager(), workspace_mcp_manager=mgr)
 
 
-@router.post("/workspace/mcp/templates/{template}/create")
+@router.post("/workspace/mcp/templates/{template}/create", response_model=Dict[str, Any])
 async def create_mcp_from_template(template: str, data: dict):
     """Create a new MCP server from a seed template, copying config + script files."""
     mgr = _workspace_mcp_manager()
@@ -630,7 +630,7 @@ async def create_mcp_from_template(template: str, data: dict):
     return {"status": "created", "name": name, "template": template}
 
 
-@router.delete("/workspace/mcp/servers/{server_name}")
+@router.delete("/workspace/mcp/servers/{server_name}", response_model=Dict[str, Any])
 async def delete_workspace_mcp_server(server_name: str):
     """Delete a workspace MCP server config + directory."""
     mgr = _workspace_mcp_manager()
@@ -643,7 +643,7 @@ async def delete_workspace_mcp_server(server_name: str):
     return {"status": "deleted", "name": server_name}
 
 
-@router.get("/workspace/mcp/servers/{server_name}/tools")
+@router.get("/workspace/mcp/servers/{server_name}/tools", response_model=Dict[str, Any])
 async def list_mcp_server_tools(server_name: str, timeout_seconds: int = 25):
     """Lightweight tools/list — connect to MCP server and return tool definitions (with inputSchema)."""
     mgr = _workspace_mcp_manager()
@@ -703,8 +703,8 @@ async def list_mcp_server_tools(server_name: str, timeout_seconds: int = 25):
     return {"tools": tools, "total": len(tools)}
 
 
-@router.post("/workspace/mcp/servers/{server_name}/test-invoke")
-@router.post("/workspace/mcp/servers/{server_name}/test-invoke")
+@router.post("/workspace/mcp/servers/{server_name}/test-invoke", response_model=Dict[str, Any])
+@router.post("/workspace/mcp/servers/{server_name}/test-invoke", response_model=Dict[str, Any])
 async def test_invoke_mcp_server(server_name: str, data: dict = None):
     """Test an MCP server — connect, list tools, invoke a tool. Set sync=true for inline result."""
     import uuid
@@ -999,7 +999,7 @@ async def _run_mcp_test(
     return steps
 
 
-@router.post("/workspace/mcp/servers/reload")
+@router.post("/workspace/mcp/servers/reload", response_model=Dict[str, Any])
 async def reload_workspace_mcp_servers():
     """Reload MCP server configs from disk (workspace scope)."""
     mgr = _workspace_mcp_manager()
@@ -1012,7 +1012,7 @@ async def reload_workspace_mcp_servers():
 
 # ── MCP Installer endpoints (workspace scope) ──────────────────────
 
-@router.post("/workspace/mcps/installer/plan")
+@router.post("/workspace/mcps/installer/plan", response_model=Dict[str, Any])
 async def workspace_mcps_installer_plan(request: dict, rt: RuntimeDep = None):
     mgr = _workspace_mcp_manager()
     if not mgr:
@@ -1034,7 +1034,7 @@ async def workspace_mcps_installer_plan(request: dict, rt: RuntimeDep = None):
         raise HTTPException(status_code=403, detail=str(e))
 
 
-@router.post("/workspace/mcps/installer/install")
+@router.post("/workspace/mcps/installer/install", response_model=Dict[str, Any])
 async def workspace_mcps_installer_install(request: dict, rt: RuntimeDep = None):
     mgr = _workspace_mcp_manager()
     if not mgr:
@@ -1057,7 +1057,7 @@ async def workspace_mcps_installer_install(request: dict, rt: RuntimeDep = None)
         raise HTTPException(status_code=403, detail=str(e))
 
 
-@router.post("/workspace/mcps/installer/resolve-head")
+@router.post("/workspace/mcps/installer/resolve-head", response_model=Dict[str, Any])
 async def workspace_mcps_installer_resolve_head(request: dict, rt: RuntimeDep = None):
     mgr = _workspace_mcp_manager()
     if not mgr:
@@ -1068,7 +1068,7 @@ async def workspace_mcps_installer_resolve_head(request: dict, rt: RuntimeDep = 
         raise HTTPException(status_code=400, detail=str(e))
 
 
-@router.post("/workspace/mcps/installer/upload-plan")
+@router.post("/workspace/mcps/installer/upload-plan", response_model=Dict[str, Any])
 async def workspace_mcps_installer_upload_plan(
     file: UploadFile = File(...),
     subdir: str = Form(""),
@@ -1097,7 +1097,7 @@ async def workspace_mcps_installer_upload_plan(
             os.unlink(tmp_path)
 
 
-@router.post("/workspace/mcps/installer/upload-install")
+@router.post("/workspace/mcps/installer/upload-install", response_model=Dict[str, Any])
 async def workspace_mcps_installer_upload_install(
     file: UploadFile = File(...),
     subdir: str = Form(""),
@@ -1129,7 +1129,7 @@ async def workspace_mcps_installer_upload_install(
             os.unlink(tmp_path)
 
 
-@router.post("/workspace/mcp/servers/{server_name}/submit-for-review")
+@router.post("/workspace/mcp/servers/{server_name}/submit-for-review", response_model=Dict[str, Any])
 async def submit_mcp_for_review(server_name: str):
     """提交 MCP 服务器进入审批流水线。"""
     import time as _time
@@ -1215,7 +1215,7 @@ async def submit_mcp_for_review(server_name: str):
     }
 
 
-@router.get("/mcp/servers/seeds")
+@router.get("/mcp/servers/seeds", response_model=Dict[str, Any])
 async def list_mcp_seeds():
     """List available MCP server seed templates from workspace_seeds/mcps/."""
     import yaml as _yaml
@@ -1246,7 +1246,7 @@ async def list_mcp_seeds():
     return {"seeds": seeds, "total": len(seeds)}
 
 
-@router.post("/mcp/servers/seeds/{seed_id}/install")
+@router.post("/mcp/servers/seeds/{seed_id}/install", response_model=Dict[str, Any])
 async def install_mcp_seed(seed_id: str):
     """Install an MCP server seed template into ~/.aiplat/mcps/."""
     import shutil as _shutil

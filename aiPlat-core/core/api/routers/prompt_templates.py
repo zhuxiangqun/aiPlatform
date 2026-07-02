@@ -191,7 +191,7 @@ async def _record_changeset(
     )
 
 
-@router.get("/prompts")
+@router.get("/prompts", response_model=Dict[str, Any])
 async def list_prompt_templates(limit: int = 100, offset: int = 0):
     store = _store()
     if not store:
@@ -199,7 +199,7 @@ async def list_prompt_templates(limit: int = 100, offset: int = 0):
     return await store.list_prompt_templates(limit=int(limit), offset=int(offset))
 
 
-@router.post("/prompts/seed")
+@router.post("/prompts/seed", response_model=Dict[str, Any])
 async def seed_prompt_templates():
     """Batch-import default templates from prompt_loader (idempotent)."""
     store = _store()
@@ -228,7 +228,7 @@ async def seed_prompt_templates():
     return {"seeded": seeded, "skipped": skipped, "total": len(seeded) + len(skipped)}
 
 
-@router.get("/prompts/{template_id}/variables")
+@router.get("/prompts/{template_id}/variables", response_model=Dict[str, Any])
 async def get_template_variables(template_id: str):
     """Return template metadata (variables, role, category)."""
     from core.harness.utils.prompt_loader import get_metadata as _meta
@@ -238,7 +238,7 @@ async def get_template_variables(template_id: str):
     return {"template_id": template_id, **meta}
 
 
-@router.get("/prompts/{template_id}")
+@router.get("/prompts/{template_id}", response_model=Dict[str, Any])
 async def get_prompt_template(template_id: str):
     store = _store()
     if not store:
@@ -249,7 +249,7 @@ async def get_prompt_template(template_id: str):
     return tpl
 
 
-@router.get("/prompts/{template_id}/resolve")
+@router.get("/prompts/{template_id}/resolve", response_model=Dict[str, Any])
 async def resolve_prompt_template(template_id: str, tenant_id: Optional[str] = None, user_id: Optional[str] = None, session_id: Optional[str] = None):
     """
     Resolve effective prompt version with optional release semantics (P1):
@@ -282,7 +282,7 @@ async def resolve_prompt_template(template_id: str, tenant_id: Optional[str] = N
     return out
 
 
-@router.post("/prompts/{template_id}/release")
+@router.post("/prompts/{template_id}/release", response_model=Dict[str, Any])
 async def set_prompt_template_release(template_id: str, request: dict, http_request: Request):
     """
     P1: Prompt 发布/灰度语义（不修改 template 内容/版本，只修改 metadata.release）。
@@ -422,7 +422,7 @@ async def set_prompt_template_release(template_id: str, request: dict, http_requ
     return {"status": "updated", "change_id": change_id, "release": new_release, "links": governance_links(change_id=change_id)}
 
 
-@router.post("/prompts/{template_id}/release/rollback")
+@router.post("/prompts/{template_id}/release/rollback", response_model=Dict[str, Any])
 async def rollback_prompt_template_release(template_id: str, request: dict, http_request: Request):
     """Rollback metadata.release to previous_release (best-effort)."""
     store = _store()
@@ -485,7 +485,7 @@ async def rollback_prompt_template_release(template_id: str, request: dict, http
     return {"status": "rolled_back", "change_id": change_id, "release": prev2, "links": governance_links(change_id=change_id)}
 
 
-@router.post("/prompts")
+@router.post("/prompts", response_model=Dict[str, Any])
 async def upsert_prompt_template(request: PromptTemplateUpsertRequest, http_request: Request):
     store = _store()
     if not store:
@@ -708,7 +708,7 @@ async def upsert_prompt_template(request: PromptTemplateUpsertRequest, http_requ
     }
 
 
-@router.post("/prompts/{template_id}/rollback")
+@router.post("/prompts/{template_id}/rollback", response_model=Dict[str, Any])
 async def rollback_prompt_template(template_id: str, request: PromptTemplateRollbackRequest, http_request: Request):
     store = _store()
     if not store:
@@ -880,7 +880,7 @@ async def rollback_prompt_template(template_id: str, request: PromptTemplateRoll
     }
 
 
-@router.get("/prompts/{template_id}/versions")
+@router.get("/prompts/{template_id}/versions", response_model=Dict[str, Any])
 async def list_prompt_template_versions(template_id: str, limit: int = 100, offset: int = 0):
     store = _store()
     if not store:
@@ -888,7 +888,7 @@ async def list_prompt_template_versions(template_id: str, limit: int = 100, offs
     return await store.list_prompt_template_versions(template_id=str(template_id), limit=int(limit), offset=int(offset))
 
 
-@router.get("/prompts/{template_id}/diff")
+@router.get("/prompts/{template_id}/diff", response_model=Dict[str, Any])
 async def diff_prompt_template(template_id: str, from_version: Optional[str] = None, to_version: Optional[str] = None):
     """
     Diff prompt template content between two versions.
@@ -960,7 +960,7 @@ async def diff_prompt_template(template_id: str, from_version: Optional[str] = N
     }
 
 
-@router.post("/prompts/{template_id}/auto-optimize")
+@router.post("/prompts/{template_id}/auto-optimize", response_model=Dict[str, Any])
 async def auto_optimize_prompt_rollout(template_id: str):
     """
     Close the A/B testing loop: aggregate evaluation scores per version
@@ -1013,7 +1013,7 @@ async def auto_optimize_prompt_rollout(template_id: str):
     }
 
 
-@router.delete("/prompts/{template_id}")
+@router.delete("/prompts/{template_id}", response_model=Dict[str, Any])
 async def delete_prompt_template(
     template_id: str,
     http_request: Request,

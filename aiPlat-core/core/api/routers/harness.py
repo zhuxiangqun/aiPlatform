@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Annotated, Optional
+from typing import Dict, Annotated, Optional, Any
 
 from fastapi import APIRouter, Depends, HTTPException
 
@@ -20,7 +20,7 @@ def _mgr(rt: Optional[KernelRuntime]):
 # ==================== Harness Management ====================
 
 
-@router.get("/harness/status")
+@router.get("/harness/status", response_model=Dict[str, Any])
 async def get_harness_status(rt: RuntimeDep = None):
     """Get harness status"""
     hm = _mgr(rt)
@@ -30,7 +30,7 @@ async def get_harness_status(rt: RuntimeDep = None):
     return {"status": status.status, "components": status.components, "uptime_seconds": status.uptime_seconds}
 
 
-@router.get("/harness/config")
+@router.get("/harness/config", response_model=Dict[str, Any])
 async def get_harness_config(rt: RuntimeDep = None):
     """Get harness config"""
     hm = _mgr(rt)
@@ -45,7 +45,7 @@ async def get_harness_config(rt: RuntimeDep = None):
     }
 
 
-@router.put("/harness/config")
+@router.put("/harness/config", response_model=Dict[str, Any])
 async def update_harness_config(request: dict, rt: RuntimeDep = None):
     """Update harness config"""
     hm = _mgr(rt)
@@ -60,7 +60,7 @@ async def update_harness_config(request: dict, rt: RuntimeDep = None):
     return {"status": "updated", "config": config}
 
 
-@router.get("/harness/metrics")
+@router.get("/harness/metrics", response_model=Dict[str, Any])
 async def get_harness_metrics(rt: RuntimeDep = None):
     """Get harness metrics"""
     hm = _mgr(rt)
@@ -70,7 +70,7 @@ async def get_harness_metrics(rt: RuntimeDep = None):
     return {"metrics": metrics}
 
 
-@router.get("/harness/logs")
+@router.get("/harness/logs", response_model=Dict[str, Any])
 async def get_harness_logs(limit: int = 100, rt: RuntimeDep = None):
     """Get harness logs"""
     hm = _mgr(rt)
@@ -92,7 +92,7 @@ async def get_harness_logs(limit: int = 100, rt: RuntimeDep = None):
     }
 
 
-@router.get("/harness/hooks")
+@router.get("/harness/hooks", response_model=Dict[str, Any])
 async def list_hooks(rt: RuntimeDep = None):
     """List hooks"""
     hm = _mgr(rt)
@@ -104,7 +104,7 @@ async def list_hooks(rt: RuntimeDep = None):
     }
 
 
-@router.post("/harness/hooks")
+@router.post("/harness/hooks", response_model=Dict[str, Any])
 async def create_hook(request: HookCreateRequest, rt: RuntimeDep = None):
     """Create hook"""
     hm = _mgr(rt)
@@ -114,7 +114,7 @@ async def create_hook(request: HookCreateRequest, rt: RuntimeDep = None):
     return {"hook_id": hook.id, "status": "created"}
 
 
-@router.delete("/harness/hooks/{hook_id}")
+@router.delete("/harness/hooks/{hook_id}", response_model=Dict[str, Any])
 async def delete_hook(hook_id: str, rt: RuntimeDep = None):
     """Delete hook"""
     hm = _mgr(rt)
@@ -126,7 +126,7 @@ async def delete_hook(hook_id: str, rt: RuntimeDep = None):
     return {"status": "deleted"}
 
 
-@router.put("/harness/hooks/{hook_id}")
+@router.put("/harness/hooks/{hook_id}", response_model=Dict[str, Any])
 async def update_hook(hook_id: str, request: HookUpdateRequest, rt: RuntimeDep = None):
     """Update hook"""
     hm = _mgr(rt)
@@ -138,7 +138,7 @@ async def update_hook(hook_id: str, request: HookUpdateRequest, rt: RuntimeDep =
     return {"status": "updated"}
 
 
-@router.get("/harness/executions/{execution_id}")
+@router.get("/harness/executions/{execution_id}", response_model=Dict[str, Any])
 async def get_harness_execution(execution_id: str, rt: RuntimeDep = None):
     """Get harness execution"""
     hm = _mgr(rt)
@@ -150,7 +150,7 @@ async def get_harness_execution(execution_id: str, rt: RuntimeDep = None):
     return {"id": execution.id, "agent": execution.agent, "status": execution.status, "duration_ms": execution.duration_ms, "steps": execution.steps, "error": execution.error}
 
 
-@router.get("/harness/coordinators")
+@router.get("/harness/coordinators", response_model=Dict[str, Any])
 async def list_coordinators(rt: RuntimeDep = None):
     """List coordinators"""
     hm = _mgr(rt)
@@ -165,7 +165,7 @@ async def list_coordinators(rt: RuntimeDep = None):
     }
 
 
-@router.post("/harness/coordinators")
+@router.post("/harness/coordinators", response_model=Dict[str, Any])
 async def create_coordinator(request: CoordinatorCreateRequest, rt: RuntimeDep = None):
     """Create coordinator"""
     hm = _mgr(rt)
@@ -175,7 +175,7 @@ async def create_coordinator(request: CoordinatorCreateRequest, rt: RuntimeDep =
     return {"coordinator_id": coordinator.id, "status": "created"}
 
 
-@router.get("/harness/coordinators/{coordinator_id}")
+@router.get("/harness/coordinators/{coordinator_id}", response_model=Dict[str, Any])
 async def get_coordinator(coordinator_id: str, rt: RuntimeDep = None):
     """Get coordinator"""
     hm = _mgr(rt)
@@ -187,13 +187,13 @@ async def get_coordinator(coordinator_id: str, rt: RuntimeDep = None):
     return {"coordinator_id": coordinator.id, "pattern": coordinator.pattern, "agents": coordinator.agents, "status": coordinator.status, "config": coordinator.config}
 
 
-@router.put("/harness/coordinators/{coordinator_id}")
+@router.put("/harness/coordinators/{coordinator_id}", response_model=Dict[str, Any])
 async def update_coordinator(coordinator_id: str, request: dict, rt: RuntimeDep = None):
     """Update coordinator"""
     return {"status": "updated"}
 
 
-@router.delete("/harness/coordinators/{coordinator_id}")
+@router.delete("/harness/coordinators/{coordinator_id}", response_model=Dict[str, Any])
 async def delete_coordinator(coordinator_id: str, rt: RuntimeDep = None):
     """Delete coordinator"""
     hm = _mgr(rt)
@@ -205,7 +205,7 @@ async def delete_coordinator(coordinator_id: str, rt: RuntimeDep = None):
     return {"status": "deleted"}
 
 
-@router.get("/harness/feedback/config")
+@router.get("/harness/feedback/config", response_model=Dict[str, Any])
 async def get_feedback_config(rt: RuntimeDep = None):
     """Get feedback config"""
     hm = _mgr(rt)
@@ -215,7 +215,7 @@ async def get_feedback_config(rt: RuntimeDep = None):
     return {"config": {"local": config.local, "push": config.push, "prod": config.prod}}
 
 
-@router.put("/harness/feedback/config")
+@router.put("/harness/feedback/config", response_model=Dict[str, Any])
 async def update_feedback_config(request: FeedbackConfigUpdateRequest, rt: RuntimeDep = None):
     """Update feedback config"""
     hm = _mgr(rt)

@@ -61,7 +61,7 @@ def _inject_http_request_context(payload: Any, http_request: Request, *, entrypo
 # ==================== Trace / Graph Persistence ====================
 
 
-@router.get("/traces")
+@router.get("/traces", response_model=Dict[str, Any])
 async def list_traces(limit: int = 100, offset: int = 0, status: Optional[str] = None, rt: RuntimeDep = None):
     """List persisted traces (requires ExecutionStore)."""
     store = _store(rt)
@@ -79,7 +79,7 @@ async def list_traces(limit: int = 100, offset: int = 0, status: Optional[str] =
     return {"traces": traces, "total": total, "limit": limit, "offset": offset}
 
 
-@router.get("/traces/{trace_id}")
+@router.get("/traces/{trace_id}", response_model=Dict[str, Any])
 async def get_trace(trace_id: str, rt: RuntimeDep = None):
     """Get a persisted trace with spans."""
     store = _store(rt)
@@ -96,7 +96,7 @@ async def get_trace(trace_id: str, rt: RuntimeDep = None):
     return trace
 
 
-@router.get("/traces/{trace_id}/executions")
+@router.get("/traces/{trace_id}/executions", response_model=Dict[str, Any])
 async def list_executions_by_trace(trace_id: str, limit: int = 100, offset: int = 0, rt: RuntimeDep = None):
     """List agent/skill executions linked to a trace_id."""
     store = _store(rt)
@@ -106,7 +106,7 @@ async def list_executions_by_trace(trace_id: str, limit: int = 100, offset: int 
     return {"trace_id": trace_id, "items": items, "limit": limit, "offset": offset}
 
 
-@router.get("/graphs/runs/{run_id}")
+@router.get("/graphs/runs/{run_id}", response_model=Dict[str, Any])
 async def get_graph_run(run_id: str, rt: RuntimeDep = None):
     """Get a persisted LangGraph run (requires ExecutionStore)."""
     store = _store(rt)
@@ -120,7 +120,7 @@ async def get_graph_run(run_id: str, rt: RuntimeDep = None):
     return run
 
 
-@router.get("/graphs/runs")
+@router.get("/graphs/runs", response_model=Dict[str, Any])
 async def list_graph_runs(
     limit: int = 100,
     offset: int = 0,
@@ -141,7 +141,7 @@ async def list_graph_runs(
     return {"runs": items, "total": result.get("total", 0), "limit": limit, "offset": offset}
 
 
-@router.get("/graphs/runs/{run_id}/checkpoints")
+@router.get("/graphs/runs/{run_id}/checkpoints", response_model=Dict[str, Any])
 async def list_graph_checkpoints(run_id: str, limit: int = 100, offset: int = 0, rt: RuntimeDep = None):
     """List persisted checkpoints for a run."""
     store = _store(rt)
@@ -153,7 +153,7 @@ async def list_graph_checkpoints(run_id: str, limit: int = 100, offset: int = 0,
     return {"run_id": run_id, "checkpoints": checkpoints, "limit": limit, "offset": offset}
 
 
-@router.get("/graphs/runs/{run_id}/checkpoints/{checkpoint_id}")
+@router.get("/graphs/runs/{run_id}/checkpoints/{checkpoint_id}", response_model=Dict[str, Any])
 async def get_graph_checkpoint(run_id: str, checkpoint_id: str, rt: RuntimeDep = None):
     """Get a persisted checkpoint by id."""
     store = _store(rt)
@@ -166,7 +166,7 @@ async def get_graph_checkpoint(run_id: str, checkpoint_id: str, rt: RuntimeDep =
     return ckpt
 
 
-@router.post("/graphs/runs/{run_id}/resume")
+@router.post("/graphs/runs/{run_id}/resume", response_model=Dict[str, Any])
 async def resume_graph_run(run_id: str, request: dict, rt: RuntimeDep = None):
     """
     Create a new run from a checkpoint state (restore/resume semantics).
@@ -209,7 +209,7 @@ async def resume_graph_run(run_id: str, request: dict, rt: RuntimeDep = None):
     return resumed
 
 
-@router.post("/graphs/compiled/react/execute")
+@router.post("/graphs/compiled/react/execute", response_model=Dict[str, Any])
 async def execute_compiled_react_graph(request: dict, http_request: Request):
     """
     Execute internal CompiledGraph-based ReAct workflow (checkpoint/callback enabled).
@@ -230,7 +230,7 @@ async def execute_compiled_react_graph(request: dict, http_request: Request):
     return JSONResponse(status_code=200 if resp.get("ok") else int(getattr(result, "http_status", 500) or 500), content=resp)
 
 
-@router.post("/graphs/runs/{run_id}/resume/execute")
+@router.post("/graphs/runs/{run_id}/resume/execute", response_model=Dict[str, Any])
 async def resume_and_execute_compiled_graph(run_id: str, request: dict, rt: RuntimeDep = None):
     """
     Resume from a checkpoint and continue executing using CompiledGraph-based ReAct workflow.
@@ -334,7 +334,7 @@ async def resume_and_execute_compiled_graph(run_id: str, request: dict, rt: Runt
 
 
 
-@router.post("/graphs/runs/{run_id}/stages/{stage_id}/step-run")
+@router.post("/graphs/runs/{run_id}/stages/{stage_id}/step-run", response_model=Dict[str, Any])
 async def step_run_stage(run_id: str, stage_id: str, request: dict, http_request: Request):
     """Step-Run: execute a single pipeline stage with mock input for debugging.
 

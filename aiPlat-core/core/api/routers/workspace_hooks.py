@@ -29,13 +29,13 @@ def _list_hook_files() -> List[Dict[str, Any]]:
     return items
 
 
-@router.get("/workspace/hooks")
+@router.get("/workspace/hooks", response_model=Dict[str, Any])
 async def list_workspace_hooks():
     """List workspace hooks (~/.aiplat/hooks)."""
     return {"items": _list_hook_files()}
 
 
-@router.get("/workspace/hooks/{name}")
+@router.get("/workspace/hooks/{name}", response_model=Dict[str, Any])
 async def get_workspace_hook(name: str):
     """Get workspace hook file content."""
     base = _hooks_dir()
@@ -45,7 +45,7 @@ async def get_workspace_hook(name: str):
     return {"name": name, "content": hook_file.read_text(encoding="utf-8"), "size": hook_file.stat().st_size}
 
 
-@router.put("/workspace/hooks/{name}")
+@router.put("/workspace/hooks/{name}", response_model=Dict[str, Any])
 async def upsert_workspace_hook(name: str, data: dict):
     """Create or update a workspace hook file."""
     base = _hooks_dir()
@@ -58,7 +58,7 @@ async def upsert_workspace_hook(name: str, data: dict):
     return {"name": name, "status": "saved", "size": hook_file.stat().st_size}
 
 
-@router.delete("/workspace/hooks/{name}")
+@router.delete("/workspace/hooks/{name}", response_model=Dict[str, Any])
 async def delete_workspace_hook(name: str):
     """Delete a workspace hook file."""
     base = _hooks_dir()

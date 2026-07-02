@@ -30,7 +30,7 @@ def _mgrs():
     return getattr(rt, "workspace_package_manager", None), getattr(rt, "package_manager", None)
 
 
-@router.get("/workspace/packages")
+@router.get("/workspace/packages", response_model=Dict[str, Any])
 async def list_workspace_packages(include_engine: bool = True) -> Dict[str, Any]:
     workspace_pkg_mgr, engine_pkg_mgr = _mgrs()
     items: List[Dict[str, Any]] = []
@@ -43,7 +43,7 @@ async def list_workspace_packages(include_engine: bool = True) -> Dict[str, Any]
     return {"items": items, "total": len(items)}
 
 
-@router.get("/workspace/packages/{pkg_name}")
+@router.get("/workspace/packages/{pkg_name}", response_model=Dict[str, Any])
 async def get_workspace_package(pkg_name: str) -> Dict[str, Any]:
     workspace_pkg_mgr, engine_pkg_mgr = _mgrs()
     p = workspace_pkg_mgr.get_package(pkg_name) if workspace_pkg_mgr else None
@@ -63,7 +63,7 @@ async def get_workspace_package(pkg_name: str) -> Dict[str, Any]:
     }
 
 
-@router.post("/workspace/packages/{pkg_name}/submit-for-review")
+@router.post("/workspace/packages/{pkg_name}/submit-for-review", response_model=Dict[str, Any])
 async def submit_workspace_package_for_review(pkg_name: str):
     """Submit a workspace package for review. Requires draft or enabled status."""
     workspace_pkg_mgr, _ = _mgrs()
@@ -119,7 +119,7 @@ async def submit_workspace_package_for_review(pkg_name: str):
     }
 
 
-@router.post("/workspace/packages/export")
+@router.post("/workspace/packages/export", response_model=Dict[str, Any])
 async def export_workspace_package(data: Dict[str, Any]):
     """Export workspace assets as a redistributable plugin zip."""
     from pathlib import Path
@@ -212,7 +212,7 @@ async def export_workspace_package(data: Dict[str, Any]):
             logging.debug(str(e), exc_info=True)
 
 
-@router.post("/workspace/packages")
+@router.post("/workspace/packages", response_model=Dict[str, Any])
 async def create_workspace_package(request: Dict[str, Any]) -> Dict[str, Any]:
     workspace_pkg_mgr, _ = _mgrs()
     if not workspace_pkg_mgr:
@@ -301,7 +301,7 @@ async def create_workspace_package(request: Dict[str, Any]) -> Dict[str, Any]:
     return {"status": "upserted", "package": await get_workspace_package(name)}
 
 
-@router.delete("/workspace/packages/{pkg_name}")
+@router.delete("/workspace/packages/{pkg_name}", response_model=Dict[str, Any])
 async def delete_workspace_package(pkg_name: str) -> Dict[str, Any]:
     workspace_pkg_mgr, _ = _mgrs()
     if not workspace_pkg_mgr:
@@ -312,7 +312,7 @@ async def delete_workspace_package(pkg_name: str) -> Dict[str, Any]:
     return {"status": "deleted", "name": pkg_name}
 
 
-@router.post("/workspace/packages/{pkg_name}/install")
+@router.post("/workspace/packages/{pkg_name}/install", response_model=Dict[str, Any])
 async def install_workspace_package(pkg_name: str, http_request: Request, request: Dict[str, Any]) -> Dict[str, Any]:
     rt = _rt()
     if not rt:
@@ -360,7 +360,7 @@ async def install_workspace_package(pkg_name: str, http_request: Request, reques
     return {"status": "installed", "record": record}
 
 
-@router.post("/workspace/packages/{pkg_name}/uninstall")
+@router.post("/workspace/packages/{pkg_name}/uninstall", response_model=Dict[str, Any])
 async def uninstall_workspace_package(pkg_name: str, request: Dict[str, Any]) -> Dict[str, Any]:
     rt = _rt()
     if not rt:

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import time
 from datetime import datetime
-from typing import Annotated, Optional
+from typing import Dict, Annotated, Optional, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 
@@ -26,7 +26,7 @@ def _approval_mgr(rt: Optional[KernelRuntime]):
 # ==================== Learning artifacts ====================
 
 
-@router.get("/learning/artifacts")
+@router.get("/learning/artifacts", response_model=Dict[str, Any])
 async def list_learning_artifacts(
     target_type: Optional[str] = None,
     target_id: Optional[str] = None,
@@ -54,7 +54,7 @@ async def list_learning_artifacts(
     )
 
 
-@router.get("/learning/artifacts/{artifact_id}")
+@router.get("/learning/artifacts/{artifact_id}", response_model=Dict[str, Any])
 async def get_learning_artifact(artifact_id: str, rt: RuntimeDep = None):
     store = _store(rt)
     if not store:
@@ -65,7 +65,7 @@ async def get_learning_artifact(artifact_id: str, rt: RuntimeDep = None):
     return art
 
 
-@router.post("/learning/artifacts/{artifact_id}/status")
+@router.post("/learning/artifacts/{artifact_id}/status", response_model=Dict[str, Any])
 async def set_learning_artifact_status(artifact_id: str, request: dict, rt: RuntimeDep = None):
     """Update artifact status + merge metadata (status transitions only)."""
     store = _store(rt)
@@ -85,7 +85,7 @@ async def set_learning_artifact_status(artifact_id: str, request: dict, rt: Runt
 # ==================== Release rollouts / metrics snapshots ====================
 
 
-@router.get("/learning/rollouts")
+@router.get("/learning/rollouts", response_model=Dict[str, Any])
 async def list_release_rollouts(
     http_request: Request,
     target_type: Optional[str] = None,
@@ -102,7 +102,7 @@ async def list_release_rollouts(
     return await store.list_release_rollouts(tenant_id=str(tid) if tid else None, target_type=target_type, target_id=target_id, limit=limit, offset=offset)
 
 
-@router.put("/learning/rollouts")
+@router.put("/learning/rollouts", response_model=Dict[str, Any])
 async def upsert_release_rollout(request: dict, http_request: Request, rt: RuntimeDep = None):
     store = _store(rt)
     if not store:
@@ -131,7 +131,7 @@ async def upsert_release_rollout(request: dict, http_request: Request, rt: Runti
     return {"status": "ok", "rollout": rr}
 
 
-@router.delete("/learning/rollouts")
+@router.delete("/learning/rollouts", response_model=Dict[str, Any])
 async def delete_release_rollout(request: dict, http_request: Request, rt: RuntimeDep = None):
     store = _store(rt)
     if not store:
@@ -148,7 +148,7 @@ async def delete_release_rollout(request: dict, http_request: Request, rt: Runti
     return {"status": "deleted" if ok else "not_found"}
 
 
-@router.post("/learning/releases/{candidate_id}/metrics/snapshots")
+@router.post("/learning/releases/{candidate_id}/metrics/snapshots", response_model=Dict[str, Any])
 async def add_release_metric_snapshot(candidate_id: str, request: dict, http_request: Request, rt: RuntimeDep = None):
     store = _store(rt)
     if not store:
@@ -175,7 +175,7 @@ async def add_release_metric_snapshot(candidate_id: str, request: dict, http_req
     return {"status": "created", "snapshot": rec}
 
 
-@router.get("/learning/releases/{candidate_id}/metrics/snapshots")
+@router.get("/learning/releases/{candidate_id}/metrics/snapshots", response_model=Dict[str, Any])
 async def list_release_metric_snapshots(
     candidate_id: str,
     http_request: Request,
@@ -192,7 +192,7 @@ async def list_release_metric_snapshots(
     return await store.list_release_metric_snapshots(tenant_id=str(tid) if tid else None, candidate_id=str(candidate_id), metric_key=metric_key, limit=limit, offset=offset)
 
 
-@router.post("/learning/releases/expire")
+@router.post("/learning/releases/expire", response_model=Dict[str, Any])
 async def expire_releases(request: dict, rt: RuntimeDep = None):
     """Expire published release candidates based on metadata.expires_at (offline status transitions only)."""
     store = _store(rt)
@@ -235,7 +235,7 @@ async def expire_releases(request: dict, rt: RuntimeDep = None):
 # ==================== Auto rollback / approvals cleanup ====================
 
 
-@router.post("/learning/auto-rollback/regression")
+@router.post("/learning/auto-rollback/regression", response_model=Dict[str, Any])
 async def api_auto_rollback_regression(request: dict, rt: RuntimeDep = None):
     """HTTP wrapper for auto-rollback-regression (offline) used by management plane."""
     store = _store(rt)
@@ -271,7 +271,7 @@ async def api_auto_rollback_regression(request: dict, rt: RuntimeDep = None):
     )
 
 
-@router.post("/learning/approvals/cleanup-rollback-approvals")
+@router.post("/learning/approvals/cleanup-rollback-approvals", response_model=Dict[str, Any])
 async def api_cleanup_rollback_approvals(request: dict, rt: RuntimeDep = None):
     """HTTP wrapper for cleanup-rollback-approvals."""
     store = _store(rt)

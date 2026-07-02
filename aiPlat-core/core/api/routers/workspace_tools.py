@@ -81,14 +81,14 @@ def _scan_workspace_tools() -> List[Dict[str, Any]]:
         return []
 
 
-@router.get("/workspace/tools")
+@router.get("/workspace/tools", response_model=Dict[str, Any])
 async def list_workspace_tools():
     """List workspace-scoped tools only."""
     tools = _scan_workspace_tools()
     return {"tools": tools, "total": len(tools)}
 
 
-@router.post("/workspace/tools")
+@router.post("/workspace/tools", response_model=Dict[str, Any])
 async def create_workspace_tool(request: dict, http_request: Request):
     """Create a new workspace tool."""
     name = str(request.get("name") or "").strip()
@@ -146,7 +146,7 @@ async def create_workspace_tool(request: dict, http_request: Request):
     return {"status": "created", "name": name, "path": str(tool_file)}
 
 
-@router.delete("/workspace/tools/{tool_name}")
+@router.delete("/workspace/tools/{tool_name}", response_model=Dict[str, Any])
 async def delete_workspace_tool(tool_name: str):
     """Delete a workspace tool (hard) — removes .py file and unregisters."""
     from core.apps.tools.base import get_tool_registry
@@ -175,7 +175,7 @@ async def delete_workspace_tool(tool_name: str):
     return {"status": "deleted", "name": tool_name}
 
 
-@router.post("/workspace/tools/{tool_name}/sign")
+@router.post("/workspace/tools/{tool_name}/sign", response_model=Dict[str, Any])
 async def sign_workspace_tool(tool_name: str, request: dict):
     """Sign a workspace tool with an Ed25519 private key."""
     private_key = str(request.get("private_key") or "").strip().replace("\\n", "\n")
@@ -226,7 +226,7 @@ async def sign_workspace_tool(tool_name: str, request: dict):
     return {"status": "signed", "name": tool_name, "signature": sig}
 
 
-@router.post("/workspace/tools/discover")
+@router.post("/workspace/tools/discover", response_model=Dict[str, Any])
 async def discover_workspace_tools():
     """Scan ~/.aiplat/tools/ and return available tool definitions (no subprocess)."""
     import importlib.util, sys
@@ -257,7 +257,7 @@ async def discover_workspace_tools():
     return {"tools": results, "total": len(results)}
 
 
-@router.put("/workspace/tools/{tool_name}")
+@router.put("/workspace/tools/{tool_name}", response_model=Dict[str, Any])
 async def update_workspace_tool(tool_name: str, request: dict):
     """Update workspace tool metadata (description, category)."""
     from core.apps.tools.base import get_tool_registry
@@ -297,7 +297,7 @@ async def update_workspace_tool(tool_name: str, request: dict):
     return {"status": "updated", "name": tool_name}
 
 
-@router.get("/workspace/tools/{tool_name}/source")
+@router.get("/workspace/tools/{tool_name}/source", response_model=Dict[str, Any])
 async def get_workspace_tool_source(tool_name: str):
     """Return the .py source file content for a workspace tool."""
     from core.apps.tools.base import get_tool_registry
@@ -329,7 +329,7 @@ async def get_workspace_tool_source(tool_name: str):
     }
 
 
-@router.put("/workspace/tools/{tool_name}/source")
+@router.put("/workspace/tools/{tool_name}/source", response_model=Dict[str, Any])
 async def update_workspace_tool_source(tool_name: str, request: dict):
     """Save Python source code for a workspace tool. Validates syntax before saving."""
     from core.apps.tools.base import get_tool_registry, BaseTool, ToolConfig
@@ -395,7 +395,7 @@ async def update_workspace_tool_source(tool_name: str, request: dict):
     return {"status": "updated", "name": tool_name}
 
 
-@router.post("/workspace/tools/{tool_name}/reload")
+@router.post("/workspace/tools/{tool_name}/reload", response_model=Dict[str, Any])
 async def reload_workspace_tool(tool_name: str):
     """Re-import a workspace tool .py file and re-register it in ToolRegistry."""
     from core.apps.tools.base import get_tool_registry, BaseTool, ToolConfig

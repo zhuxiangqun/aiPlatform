@@ -22,7 +22,7 @@ class EntropyRecord(BaseModel):
     source_line: int = 0
 
 
-@router.get("/ledger")
+@router.get("/ledger", response_model=Dict[str, Any])
 async def list_entropy(
     project_id: Optional[str] = None,
     agent_id: Optional[str] = None,
@@ -72,7 +72,7 @@ async def list_entropy(
     return await _sync()
 
 
-@router.get("/summary")
+@router.get("/summary", response_model=Dict[str, Any])
 async def entropy_summary(project_id: str = ""):
     from core.services.execution_store import get_execution_store
     store = get_execution_store()
@@ -105,7 +105,7 @@ async def entropy_summary(project_id: str = ""):
     return await _sync()
 
 
-@router.post("/record")
+@router.post("/record", response_model=Dict[str, Any])
 async def record_entropy(body: EntropyRecord):
     import uuid, time
     from core.services.execution_store import get_execution_store
@@ -131,7 +131,7 @@ async def record_entropy(body: EntropyRecord):
     return await _sync()
 
 
-@router.get("/audit")
+@router.get("/audit", response_model=Dict[str, Any])
 async def run_readiness_audit():
     """Run full audit: production readiness + architecture compliance + layer boundaries."""
     import os, re, json, subprocess
@@ -186,7 +186,7 @@ async def run_readiness_audit():
     try:
         from core.api.deps import rbac_guard
         has_rbac = True
-    except Exception: logging.debug('best-effort operation', exc_info=True)  # noqa: intentional — best-effort operation, logged at debug
+    except Exception: logging.warning('best-effort operation', exc_info=True)  # noqa: intentional — best-effort operation, logged at warning
     readiness.append(_ok("权限校验", has_rbac, f"RBAC: {'✅' if has_rbac else '❌'}"))
 
     has_entropy = False
@@ -199,7 +199,7 @@ async def run_readiness_audit():
         rows = conn.execute("SELECT name FROM sqlite_master WHERE name='entropy_ledger'").fetchall()
         has_entropy = len(rows) > 0
         conn.close()
-    except Exception: logging.debug('best-effort operation', exc_info=True)  # noqa: intentional — best-effort operation, logged at debug
+    except Exception: logging.warning('best-effort operation', exc_info=True)  # noqa: intentional — best-effort operation, logged at warning
     readiness.append(_ok("熵审计", has_entropy, f"entropy_ledger v42: {'✅' if has_entropy else '❌'}"))
 
     has_chg = (core_src / "api" / "routers" / "change_control.py").exists() or (core_src / "governance" / "gating.py").exists()
@@ -240,7 +240,7 @@ async def run_readiness_audit():
         )
         plat_imports = [l.strip() for l in result.stdout.split("\n") if l.strip()
                         and "tests/" not in l and "poc/" not in l]
-    except Exception: logging.debug('best-effort operation', exc_info=True)  # noqa: intentional — best-effort operation, logged at debug
+    except Exception: logging.warning('best-effort operation', exc_info=True)  # noqa: intentional — best-effort operation, logged at warning
     boundary_items.append(_ok("平台层→core.harness 直导入", len(plat_imports) == 0,
         f"{len(plat_imports)} 处违规" if plat_imports else "0 处违规"))
 
@@ -253,7 +253,7 @@ async def run_readiness_audit():
             capture_output=True, text=True, timeout=10
         )
         app_imports = [l.strip() for l in result.stdout.split("\n") if l.strip() and "tests/" not in l and "api/rest/routes" not in l]
-    except Exception: logging.debug('best-effort operation', exc_info=True)  # noqa: intentional — best-effort operation, logged at debug
+    except Exception: logging.warning('best-effort operation', exc_info=True)  # noqa: intentional — best-effort operation, logged at warning
     boundary_items.append(_ok("应用层→core/infra 直导入", len(app_imports) == 0,
         f"{len(app_imports)} 处违规" if app_imports else "0 处违规"))
 
@@ -265,7 +265,7 @@ async def run_readiness_audit():
             capture_output=True, text=True, timeout=10
         )
         core_reverse = [l.strip() for l in result.stdout.split("\n") if l.strip() and "tests/" not in l]
-    except Exception: logging.debug('best-effort operation', exc_info=True)  # noqa: intentional — best-effort operation, logged at debug
+    except Exception: logging.warning('best-effort operation', exc_info=True)  # noqa: intentional — best-effort operation, logged at warning
     boundary_items.append(_ok("Harness→apps 反向依赖", len(core_reverse) <= 26,
         f"{len(core_reverse)} 处 lazy import (Phase 9 DI refactor scope)" if core_reverse else "0 处"))
 
@@ -277,7 +277,7 @@ async def run_readiness_audit():
             capture_output=True, text=True, timeout=10
         )
         model_loads = [l.strip() for l in result.stdout.split("\n") if l.strip() and "infra_" not in l and "tests/" not in l]
-    except Exception: logging.debug('best-effort operation', exc_info=True)  # noqa: intentional — best-effort operation, logged at debug
+    except Exception: logging.warning('best-effort operation', exc_info=True)  # noqa: intentional — best-effort operation, logged at warning
     boundary_items.append(_ok("Core 直加载模型（绕过 infra）", len(model_loads) <= 10,
         f"{len(model_loads)} 处 legacy fallback in adapters (intentional)" if model_loads else "0 处"))
 
@@ -287,10 +287,9 @@ async def run_readiness_audit():
     claude_items.append(_ok("CLAUDE.md 文件存在", len(claude_files) >= 3,
         f"发现 {len(claude_files)} 个 CLAUDE.md 文件"))
     
-    # Check if model_registry/model_router are deprecated AND safe to delete
+    # Check if model_registry/model_router migration is complete
     has_mr = (core_src / "harness" / "infrastructure" / "model_registry.py").exists()
     has_rt = (core_src / "harness" / "infrastructure" / "model_router.py").exists()
-    # Check if still referenced: grep all Python files excluding the deprecated files themselves
     import subprocess as _sp
     refs_mr = 0
     refs_rt = 0
@@ -304,18 +303,13 @@ async def run_readiness_audit():
                 if "model_router" in line and "model_router.py" not in line:
                     refs_rt += 1
         except Exception as e:
-            logging.debug(str(e), exc_info=True)
-    # If files exist AND have callers → migration incomplete (not a failure)
-    # If files exist AND zero callers → they should be deleted (failure)
+            logging.warning(str(e), exc_info=True)
     migrating = (has_mr or has_rt) and (refs_mr > 0 or refs_rt > 0)
-    if not migrating:
-        verdict = not (has_mr and has_rt)
-    else:
-        verdict = True  # Don't fail — migration is in progress
-    detail = (f"Migration in progress ({refs_mr}+{refs_rt} references remain). " 
-              "Model selector currently active in llm.py, core_facade.py, skills/base.py"
-              if migrating else
-              "Bridged to infra ModelManager, retained as backward-compat" if has_mr else "已删除")
+    verdict = not (has_mr or has_rt)
+    detail = ("Migration complete — model_registry.py and model_router.py deleted. "
+              "model_injection.py is the canonical path via infra ModelManager.select()."
+              if not (has_mr or has_rt) else
+              f"Migration in progress ({refs_mr}+{refs_rt} references remain).")
     claude_items.append(_ok("model_registry/model_router deprecated", verdict, detail))
 
     # Summaries
@@ -339,7 +333,7 @@ async def run_readiness_audit():
     }
 
 
-@router.post("/resolve/{entry_id}")
+@router.post("/resolve/{entry_id}", response_model=Dict[str, Any])
 async def resolve_entropy(entry_id: str):
     import time
     from core.services.execution_store import get_execution_store
@@ -359,7 +353,7 @@ async def resolve_entropy(entry_id: str):
     return await _sync()
 
 
-@router.post("/eval/generate/{agent_id}")
+@router.post("/eval/generate/{agent_id}", response_model=Dict[str, Any])
 async def generate_eval_for_agent(agent_id: str):
     """为 Agent 生成评估指标（scoring_dimensions），写入 AGENT.md。
 
@@ -399,7 +393,7 @@ async def generate_eval_for_agent(agent_id: str):
         finally:
             conn.close()
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
 
     if has_scoring:
         return {
@@ -422,7 +416,7 @@ async def generate_eval_for_agent(agent_id: str):
             try:
                 fm = yaml.safe_load(parts[1]) or {}
             except Exception as e:
-                logging.debug(str(e), exc_info=True)
+                logging.warning(str(e), exc_info=True)
             body = parts[2].strip()
     name = str(fm.get("name", agent_id))
     desc = str(fm.get("description", ""))
@@ -517,5 +511,5 @@ def _parse_existing_scoring(content: str) -> list:
                 fm = yaml.safe_load(parts[1]) or {}
                 return fm.get("scoring_dimensions", []) or []
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
     return []

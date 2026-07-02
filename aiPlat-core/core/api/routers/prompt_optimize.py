@@ -1,5 +1,6 @@
 """Prompt Optimize API — template-aware LLM optimization."""
 from __future__ import annotations
+from typing import Dict, Any
 import json as _json
 import re as _re
 import logging
@@ -12,7 +13,7 @@ router = APIRouter()
 _log = logging.getLogger("aiplat.prompt_optimize")
 
 
-@router.post("/prompts/optimize")
+@router.post("/prompts/optimize", response_model=Dict[str, Any])
 async def optimize_prompt(req: PromptOptimizeRequest):
     """Optimize a prompt template with context-aware analysis."""
     if not req.prompt:

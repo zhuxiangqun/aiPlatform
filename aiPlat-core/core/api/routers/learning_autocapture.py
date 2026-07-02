@@ -33,7 +33,7 @@ def _managers():
     }
 
 
-@router.post("/learning/autocapture")
+@router.post("/learning/autocapture", response_model=Dict[str, Any])
 async def autocapture_learning_suggestion(request: dict, http_request: Request):
     """
     Roadmap-4 (minimal): create a reviewable learning artifact from one execution.
@@ -125,7 +125,7 @@ async def autocapture_learning_suggestion(request: dict, http_request: Request):
     return await store.get_learning_artifact(artifact.artifact_id)
 
 
-@router.post("/learning/autocapture/to_prompt_revision")
+@router.post("/learning/autocapture/to_prompt_revision", response_model=Dict[str, Any])
 async def autocapture_to_prompt_revision(request: dict, http_request: Request):
     """
     Convert a feedback_summary artifact into a draft prompt_revision,
@@ -233,7 +233,7 @@ async def autocapture_to_prompt_revision(request: dict, http_request: Request):
     return out
 
 
-@router.post("/learning/autocapture/to_skill_evolution")
+@router.post("/learning/autocapture/to_skill_evolution", response_model=Dict[str, Any])
 async def autocapture_to_skill_evolution(request: dict, http_request: Request):
     """
     Convert a feedback_summary into a draft skill_evolution suggestion artifact.
@@ -328,7 +328,7 @@ async def autocapture_to_skill_evolution(request: dict, http_request: Request):
     return out
 
 
-@router.post("/learning/feedback")
+@router.post("/learning/feedback", response_model=Dict[str, Any])
 async def record_learning_feedback(request: dict, http_request: Request):
     """
     Minimal feedback loop (M1):

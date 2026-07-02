@@ -96,7 +96,7 @@ async def _load_results_async(agent_id: str = "") -> List[Dict[str, Any]]:
 
 # ── Overview ──────────────────────────────────────────────────────────────────
 
-@router.get("/overview")
+@router.get("/overview", response_model=Dict[str, Any])
 async def get_evaluation_overview():
     u"""Global evaluation dashboard — scores for all evaluated agents."""
     from core.harness.evaluation.eval_runner import list_eval_sets
@@ -134,14 +134,14 @@ async def get_evaluation_overview():
 
 # ── Eval Sets CRUD ────────────────────────────────────────────────────────────
 
-@router.get("/sets")
+@router.get("/sets", response_model=Dict[str, Any])
 async def list_eval_sets_api():
     u"""List all eval sets (built-in + custom)."""
     from core.harness.evaluation.eval_runner import list_eval_sets
     return {"items": list_eval_sets()}
 
 
-@router.post("/sets")
+@router.post("/sets", response_model=Dict[str, Any])
 async def create_eval_set_api(req: EvalSetCreate):
     u"""Create or overwrite an eval set."""
     from core.harness.evaluation.eval_runner import save_eval_set
@@ -157,7 +157,7 @@ async def create_eval_set_api(req: EvalSetCreate):
     return {"set_id": req.set_id, "tasks": len(req.tasks), "saved_to": path}
 
 
-@router.get("/sets/{set_id}")
+@router.get("/sets/{set_id}", response_model=Dict[str, Any])
 async def get_eval_set_api(set_id: str):
     u"""Get an eval set by ID."""
     from core.harness.evaluation.eval_runner import load_eval_set
@@ -173,7 +173,7 @@ async def get_eval_set_api(set_id: str):
     }
 
 
-@router.put("/sets/{set_id}")
+@router.put("/sets/{set_id}", response_model=Dict[str, Any])
 async def update_eval_set_api(set_id: str, req: EvalSetUpdate):
     u"""Update an eval set's description/tasks."""
     from core.harness.evaluation.eval_runner import load_eval_set, save_eval_set
@@ -192,7 +192,7 @@ async def update_eval_set_api(set_id: str, req: EvalSetUpdate):
     return {"set_id": set_id, "tasks": len(s.tasks), "saved_to": path}
 
 
-@router.delete("/sets/{set_id}")
+@router.delete("/sets/{set_id}", response_model=Dict[str, Any])
 async def delete_eval_set_api(set_id: str):
     u"""Delete an eval set."""
     from core.harness.evaluation.eval_runner import delete_eval_set
@@ -204,7 +204,7 @@ async def delete_eval_set_api(set_id: str):
 
 # ── Run Evaluation ────────────────────────────────────────────────────────────
 
-@router.post("/sets/{set_id}/run")
+@router.post("/sets/{set_id}/run", response_model=Dict[str, Any])
 async def run_eval_set_api(set_id: str, req: EvalRunRequest = EvalRunRequest()):
     u"""Run all tasks in an eval set against agents. Returns composite result.
 
@@ -284,7 +284,7 @@ async def run_eval_set_api(set_id: str, req: EvalRunRequest = EvalRunRequest()):
     return data
 
 
-@router.get("/sets/{set_id}/results")
+@router.get("/sets/{set_id}/results", response_model=Dict[str, Any])
 async def get_eval_set_results(set_id: str):
     u"""Get evaluation results for a specific eval set."""
     all_results = await _load_results_async()
@@ -294,7 +294,7 @@ async def get_eval_set_results(set_id: str):
 
 # ── Agent Scores ──────────────────────────────────────────────────────────────
 
-@router.get("/agents/{agent_id}/score")
+@router.get("/agents/{agent_id}/score", response_model=Dict[str, Any])
 async def get_agent_eval_score(agent_id: str):
     u"""Get the latest runtime evaluation score with full 6-dim metrics."""
     results = await _load_results_async(agent_id)
@@ -318,7 +318,7 @@ async def get_agent_eval_score(agent_id: str):
     }
 
 
-@router.get("/agents/{agent_id}/history")
+@router.get("/agents/{agent_id}/history", response_model=Dict[str, Any])
 async def get_agent_eval_history(agent_id: str, limit: int = Query(10, ge=1, le=100)):
     u"""Get evaluation score history for an agent (for trend charts)."""
     results = (await _load_results_async(agent_id))[:limit]

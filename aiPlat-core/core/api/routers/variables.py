@@ -53,7 +53,7 @@ def _save(data: List[Dict[str, Any]]) -> None:
     p.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
-@router.get("/variables")
+@router.get("/variables", response_model=Dict[str, Any])
 async def list_variables(scope: Optional[str] = None):
     items = _load()
     if scope:
@@ -61,7 +61,7 @@ async def list_variables(scope: Optional[str] = None):
     return {"variables": items, "total": len(items)}
 
 
-@router.post("/variables")
+@router.post("/variables", response_model=Dict[str, Any])
 async def create_variable(body: VariableCreate):
     items = _load()
     for v in items:
@@ -80,7 +80,7 @@ async def create_variable(body: VariableCreate):
     return new_var
 
 
-@router.get("/variables/{variable_id}")
+@router.get("/variables/{variable_id}", response_model=Dict[str, Any])
 async def get_variable(variable_id: str):
     for v in _load():
         if v["id"] == variable_id:
@@ -88,7 +88,7 @@ async def get_variable(variable_id: str):
     raise HTTPException(status_code=404, detail="Variable not found")
 
 
-@router.put("/variables/{variable_id}")
+@router.put("/variables/{variable_id}", response_model=Dict[str, Any])
 async def update_variable(variable_id: str, body: VariableUpdate):
     items = _load()
     for i, v in enumerate(items):
@@ -107,7 +107,7 @@ async def update_variable(variable_id: str, body: VariableUpdate):
     raise HTTPException(status_code=404, detail="Variable not found")
 
 
-@router.delete("/variables/{variable_id}")
+@router.delete("/variables/{variable_id}", response_model=Dict[str, Any])
 async def delete_variable(variable_id: str):
     items = _load()
     filtered = [v for v in items if v["id"] != variable_id]

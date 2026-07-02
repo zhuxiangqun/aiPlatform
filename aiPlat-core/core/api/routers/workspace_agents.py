@@ -140,7 +140,7 @@ def _autosmoke_gate_error(*, message: str) -> Dict[str, Any]:
 # ==================== Workspace Agent Management ====================
 
 
-@router.get("/workspace/agents")
+@router.get("/workspace/agents", response_model=Dict[str, Any])
 async def list_workspace_agents(
     agent_type: Optional[str] = None,
     status: Optional[str] = None,
@@ -179,7 +179,7 @@ async def list_workspace_agents(
     }
 
 
-@router.post("/workspace/agents")
+@router.post("/workspace/agents", response_model=Dict[str, Any])
 async def create_workspace_agent(request: AgentCreateRequest, http_request: Request, rt: RuntimeDep = None):
     mgr = _ws_agent_mgr(rt)
     if not mgr:
@@ -330,7 +330,7 @@ async def create_workspace_agent(request: AgentCreateRequest, http_request: Requ
         raise HTTPException(status_code=409, detail=str(e))
 
 
-@router.post("/workspace/agents/generate-role-definition")
+@router.post("/workspace/agents/generate-role-definition", response_model=Dict[str, Any])
 async def generate_role_definition(req: AgentAutoFillRequest) -> Any:
     """基于功能描述生成角色定义，让用户确认后再进行下一步的技能/工具推荐。
     
@@ -618,7 +618,7 @@ def _cleanup_expired_tasks() -> None:
             logging.debug(str(e), exc_info=True)
 
 
-@router.get("/workspace/agents/auto-fill/{task_id}")
+@router.get("/workspace/agents/auto-fill/{task_id}", response_model=Dict[str, Any])
 async def poll_auto_fill(task_id: str):
     u"""轮询异步智能填充任务状态。"""
     _cleanup_expired_tasks()
@@ -680,7 +680,7 @@ async def _run_role_def_task(tid: str, req: "AgentAutoFillRequest"):
         _write_task(tid, {"status": "failed", "result": None, "error": str(e), "created_at": _time.time()})
 
 
-@router.get("/workspace/agents/generate-role-definition/{task_id}")
+@router.get("/workspace/agents/generate-role-definition/{task_id}", response_model=Dict[str, Any])
 async def poll_role_definition(task_id: str):
     """轮询异步角色定义生成任务状态。"""
     _cleanup_expired_tasks()
@@ -705,7 +705,7 @@ async def _run_auto_fill_task(tid: str, req: "AgentAutoFillRequest"):
     # Clean up the role-def task if one was created earlier (shared store)
 
 
-@router.post("/workspace/agents/auto-fill")
+@router.post("/workspace/agents/auto-fill", response_model=Dict[str, Any])
 async def agent_auto_fill(req: AgentAutoFillRequest) -> AgentAutoFillResponse:
     """AI 智能填充：根据功能描述自动推荐 skills / tools / MCP / config / SOP 等。
     
@@ -806,7 +806,7 @@ async def _do_auto_fill(req: AgentAutoFillRequest) -> AgentAutoFillResponse:
     )
 
 
-@router.post("/workspace/agents/auto-fill-batch")
+@router.post("/workspace/agents/auto-fill-batch", response_model=Dict[str, Any])
 async def agent_auto_fill_batch(req: "AgentAutoFillBatchRequest") -> "AgentAutoFillBatchResponse":
     u"""Batch AI auto-fill: single LLM call for multiple agents."""
     from core.schemas_agents import AgentAutoFillBatchResponse as _BatchResp, AgentAutoFillResponse as _FillResp
@@ -981,7 +981,7 @@ async def _build_wf_catalog() -> List[str]:
 
 # ── Seed templates (must be before {agent_id} to avoid route conflict) ──
 
-@router.get("/workspace/agents/seeds")
+@router.get("/workspace/agents/seeds", response_model=Dict[str, Any])
 async def list_agent_seeds():
     """List available agent seed templates from workspace_seeds/agents/."""
     from pathlib import Path as _P
@@ -1019,7 +1019,7 @@ async def list_agent_seeds():
     return {"seeds": seeds, "total": len(seeds)}
 
 
-@router.post("/workspace/agents/seeds/{seed_id}/install")
+@router.post("/workspace/agents/seeds/{seed_id}/install", response_model=Dict[str, Any])
 async def install_agent_seed(seed_id: str):
     """Install a workspace agent seed template into ~/.aiplat/agents/."""
     import shutil as _shutil
@@ -1044,7 +1044,7 @@ async def install_agent_seed(seed_id: str):
     return {"status": "installed", "id": seed_id}
 
 
-@router.get("/workspace/agents/{agent_id}")
+@router.get("/workspace/agents/{agent_id}", response_model=Dict[str, Any])
 async def get_workspace_agent(agent_id: str, rt: RuntimeDep = None):
     mgr = _ws_agent_mgr(rt)
     if not mgr:
@@ -1068,7 +1068,7 @@ async def get_workspace_agent(agent_id: str, rt: RuntimeDep = None):
     }
 
 
-@router.get("/workspace/agents/{agent_id}/sop")
+@router.get("/workspace/agents/{agent_id}/sop", response_model=Dict[str, Any])
 async def get_workspace_agent_sop(agent_id: str, rt: RuntimeDep = None):
     """Get agent SOP (markdown) from AGENT.md '## SOP' section."""
     mgr = _ws_agent_mgr(rt)
@@ -1083,7 +1083,7 @@ async def get_workspace_agent_sop(agent_id: str, rt: RuntimeDep = None):
     return data
 
 
-@router.put("/workspace/agents/{agent_id}/sop")
+@router.put("/workspace/agents/{agent_id}/sop", response_model=Dict[str, Any])
 async def update_workspace_agent_sop(agent_id: str, request: dict, rt: RuntimeDep = None):
     """Update agent SOP section in AGENT.md."""
     mgr = _ws_agent_mgr(rt)
@@ -1104,7 +1104,7 @@ async def update_workspace_agent_sop(agent_id: str, request: dict, rt: RuntimeDe
     return {"status": "updated", "id": agent_id}
 
 
-@router.get("/workspace/agents/{agent_id}/execution-help")
+@router.get("/workspace/agents/{agent_id}/execution-help", response_model=Dict[str, Any])
 async def get_workspace_agent_execution_help(agent_id: str, rt: RuntimeDep = None):
     """Get execution input help/examples for agent."""
     mgr = _ws_agent_mgr(rt)
@@ -1119,7 +1119,7 @@ async def get_workspace_agent_execution_help(agent_id: str, rt: RuntimeDep = Non
     return data
 
 
-@router.post("/workspace/routing/classify")
+@router.post("/workspace/routing/classify", response_model=Dict[str, Any])
 async def classify_user_request(request: Request, rt: RuntimeDep = None):
     """Agent 路由：根据用户输入自动推荐最合适的 Agent。
     
@@ -1176,7 +1176,7 @@ async def classify_user_request(request: Request, rt: RuntimeDep = None):
     return result.model_dump()
 
 
-@router.delete("/workspace/agents/{agent_id}")
+@router.delete("/workspace/agents/{agent_id}", response_model=Dict[str, Any])
 async def delete_workspace_agent(agent_id: str, rt: RuntimeDep = None):
     mgr = _ws_agent_mgr(rt)
     if not mgr:
@@ -1187,7 +1187,7 @@ async def delete_workspace_agent(agent_id: str, rt: RuntimeDep = None):
     return {"status": "deleted", "id": agent_id}
 
 
-@router.post("/workspace/agents/{agent_id}/start")
+@router.post("/workspace/agents/{agent_id}/start", response_model=Dict[str, Any])
 async def start_workspace_agent(agent_id: str, rt: RuntimeDep = None):
     mgr = _ws_agent_mgr(rt)
     if not mgr:
@@ -1209,7 +1209,7 @@ async def start_workspace_agent(agent_id: str, rt: RuntimeDep = None):
     return {"status": "started", "id": agent_id}
 
 
-@router.post("/workspace/agents/{agent_id}/stop")
+@router.post("/workspace/agents/{agent_id}/stop", response_model=Dict[str, Any])
 async def stop_workspace_agent(agent_id: str, rt: RuntimeDep = None):
     mgr = _ws_agent_mgr(rt)
     if not mgr:
@@ -1220,7 +1220,7 @@ async def stop_workspace_agent(agent_id: str, rt: RuntimeDep = None):
     return {"status": "stopped", "id": agent_id}
 
 
-@router.put("/workspace/agents/{agent_id}")
+@router.put("/workspace/agents/{agent_id}", response_model=Dict[str, Any])
 async def update_workspace_agent(agent_id: str, request: AgentUpdateRequest, http_request: Request, rt: RuntimeDep = None):
     mgr = _ws_agent_mgr(rt)
     if not mgr:
@@ -1291,7 +1291,7 @@ async def update_workspace_agent(agent_id: str, request: AgentUpdateRequest, htt
 # ==================== skills/tools bindings ====================
 
 
-@router.get("/workspace/agents/{agent_id}/skills")
+@router.get("/workspace/agents/{agent_id}/skills", response_model=Dict[str, Any])
 async def get_workspace_agent_skills(agent_id: str, rt: RuntimeDep = None):
     mgr = _ws_agent_mgr(rt)
     if not mgr:
@@ -1310,7 +1310,7 @@ async def get_workspace_agent_skills(agent_id: str, rt: RuntimeDep = None):
     }
 
 
-@router.post("/workspace/agents/{agent_id}/skills")
+@router.post("/workspace/agents/{agent_id}/skills", response_model=Dict[str, Any])
 async def bind_workspace_agent_skills(agent_id: str, request: dict, rt: RuntimeDep = None):
     mgr = _ws_agent_mgr(rt)
     if not mgr:
@@ -1324,7 +1324,7 @@ async def bind_workspace_agent_skills(agent_id: str, request: dict, rt: RuntimeD
     return {"status": "bound", "skill_ids": skill_ids}
 
 
-@router.delete("/workspace/agents/{agent_id}/skills/{skill_id}")
+@router.delete("/workspace/agents/{agent_id}/skills/{skill_id}", response_model=Dict[str, Any])
 async def unbind_workspace_agent_skill(agent_id: str, skill_id: str, rt: RuntimeDep = None):
     mgr = _ws_agent_mgr(rt)
     if not mgr:
@@ -1336,7 +1336,7 @@ async def unbind_workspace_agent_skill(agent_id: str, skill_id: str, rt: Runtime
     return {"status": "unbound"}
 
 
-@router.get("/workspace/agents/{agent_id}/tools")
+@router.get("/workspace/agents/{agent_id}/tools", response_model=Dict[str, Any])
 async def get_workspace_agent_tools(agent_id: str, rt: RuntimeDep = None):
     mgr = _ws_agent_mgr(rt)
     if not mgr:
@@ -1355,7 +1355,7 @@ async def get_workspace_agent_tools(agent_id: str, rt: RuntimeDep = None):
     }
 
 
-@router.post("/workspace/agents/{agent_id}/tools")
+@router.post("/workspace/agents/{agent_id}/tools", response_model=Dict[str, Any])
 async def bind_workspace_agent_tools(agent_id: str, request: dict, rt: RuntimeDep = None):
     mgr = _ws_agent_mgr(rt)
     if not mgr:
@@ -1369,7 +1369,7 @@ async def bind_workspace_agent_tools(agent_id: str, request: dict, rt: RuntimeDe
     return {"status": "bound", "tool_ids": tool_ids}
 
 
-@router.delete("/workspace/agents/{agent_id}/tools/{tool_id}")
+@router.delete("/workspace/agents/{agent_id}/tools/{tool_id}", response_model=Dict[str, Any])
 async def unbind_workspace_agent_tool(agent_id: str, tool_id: str, rt: RuntimeDep = None):
     mgr = _ws_agent_mgr(rt)
     if not mgr:
@@ -1383,7 +1383,7 @@ async def unbind_workspace_agent_tool(agent_id: str, tool_id: str, rt: RuntimeDe
 
 # ── MCP server bindings ──
 
-@router.get("/workspace/agents/{agent_id}/mcp")
+@router.get("/workspace/agents/{agent_id}/mcp", response_model=Dict[str, Any])
 async def get_workspace_agent_mcp(agent_id: str, rt: RuntimeDep = None):
     mgr = _ws_agent_mgr(rt)
     if not mgr:
@@ -1394,7 +1394,7 @@ async def get_workspace_agent_mcp(agent_id: str, rt: RuntimeDep = None):
     return {"mcp_ids": agent.mcp_ids, "total": len(agent.mcp_ids)}
 
 
-@router.post("/workspace/agents/{agent_id}/mcp")
+@router.post("/workspace/agents/{agent_id}/mcp", response_model=Dict[str, Any])
 async def bind_workspace_agent_mcp(agent_id: str, request: dict, rt: RuntimeDep = None):
     mgr = _ws_agent_mgr(rt)
     if not mgr:
@@ -1407,7 +1407,7 @@ async def bind_workspace_agent_mcp(agent_id: str, request: dict, rt: RuntimeDep 
     return {"status": "bound", "mcp_ids": mcp_ids}
 
 
-@router.delete("/workspace/agents/{agent_id}/mcp/{mcp_id}")
+@router.delete("/workspace/agents/{agent_id}/mcp/{mcp_id}", response_model=Dict[str, Any])
 async def unbind_workspace_agent_mcp(agent_id: str, mcp_id: str, rt: RuntimeDep = None):
     mgr = _ws_agent_mgr(rt)
     if not mgr:
@@ -1422,7 +1422,7 @@ async def unbind_workspace_agent_mcp(agent_id: str, mcp_id: str, rt: RuntimeDep 
 
 # ── Workflow bindings ──
 
-@router.get("/workspace/agents/{agent_id}/workflows")
+@router.get("/workspace/agents/{agent_id}/workflows", response_model=Dict[str, Any])
 async def get_workspace_agent_workflows(agent_id: str, rt: RuntimeDep = None):
     mgr = _ws_agent_mgr(rt)
     if not mgr:
@@ -1433,7 +1433,7 @@ async def get_workspace_agent_workflows(agent_id: str, rt: RuntimeDep = None):
     return {"workflow_ids": agent.workflow_ids, "total": len(agent.workflow_ids)}
 
 
-@router.post("/workspace/agents/{agent_id}/workflows")
+@router.post("/workspace/agents/{agent_id}/workflows", response_model=Dict[str, Any])
 async def bind_workspace_agent_workflows(agent_id: str, request: dict, rt: RuntimeDep = None):
     mgr = _ws_agent_mgr(rt)
     if not mgr:
@@ -1446,7 +1446,7 @@ async def bind_workspace_agent_workflows(agent_id: str, request: dict, rt: Runti
     return {"status": "bound", "workflow_ids": workflow_ids}
 
 
-@router.delete("/workspace/agents/{agent_id}/workflows/{workflow_id}")
+@router.delete("/workspace/agents/{agent_id}/workflows/{workflow_id}", response_model=Dict[str, Any])
 async def unbind_workspace_agent_workflow(agent_id: str, workflow_id: str, rt: RuntimeDep = None):
     mgr = _ws_agent_mgr(rt)
     if not mgr:
@@ -1461,7 +1461,7 @@ async def unbind_workspace_agent_workflow(agent_id: str, workflow_id: str, rt: R
 
 # ── Sub-agent bindings ──
 
-@router.get("/workspace/agents/{agent_id}/agents")
+@router.get("/workspace/agents/{agent_id}/agents", response_model=Dict[str, Any])
 async def get_workspace_agent_sub_agents(agent_id: str, rt: RuntimeDep = None):
     mgr = _ws_agent_mgr(rt)
     if not mgr:
@@ -1472,7 +1472,7 @@ async def get_workspace_agent_sub_agents(agent_id: str, rt: RuntimeDep = None):
     return {"agent_ids": agent.agent_ids, "total": len(agent.agent_ids)}
 
 
-@router.post("/workspace/agents/{agent_id}/agents")
+@router.post("/workspace/agents/{agent_id}/agents", response_model=Dict[str, Any])
 async def bind_workspace_agent_sub_agents(agent_id: str, request: dict, rt: RuntimeDep = None):
     mgr = _ws_agent_mgr(rt)
     if not mgr:
@@ -1485,7 +1485,7 @@ async def bind_workspace_agent_sub_agents(agent_id: str, request: dict, rt: Runt
     return {"status": "bound", "agent_ids": agent_ids}
 
 
-@router.delete("/workspace/agents/{agent_id}/agents/{sub_agent_id}")
+@router.delete("/workspace/agents/{agent_id}/agents/{sub_agent_id}", response_model=Dict[str, Any])
 async def unbind_workspace_agent_sub_agent(agent_id: str, sub_agent_id: str, rt: RuntimeDep = None):
     mgr = _ws_agent_mgr(rt)
     if not mgr:
@@ -1501,7 +1501,7 @@ async def unbind_workspace_agent_sub_agent(agent_id: str, sub_agent_id: str, rt:
 # ==================== execute / history / versions ====================
 
 
-@router.post("/workspace/agents/{agent_id}/execute")
+@router.post("/workspace/agents/{agent_id}/execute", response_model=Dict[str, Any])
 async def execute_workspace_agent(agent_id: str, request: dict, http_request: Request, rt: RuntimeDep = None):
     mgr = _ws_agent_mgr(rt)
     if not mgr:
@@ -1559,7 +1559,7 @@ async def execute_workspace_agent(agent_id: str, request: dict, http_request: Re
     return JSONResponse(status_code=200 if resp.get("ok") else 500, content=resp)
 
 
-@router.post("/workspace/agents/{agent_id}/sign")
+@router.post("/workspace/agents/{agent_id}/sign", response_model=Dict[str, Any])
 async def sign_workspace_agent(agent_id: str, request: Dict[str, Any], http_request: Request = None, rt: RuntimeDep = None):
     """
     Sign an agent with an Ed25519 private key, writing the signature to
@@ -1637,7 +1637,7 @@ async def sign_workspace_agent(agent_id: str, request: Dict[str, Any], http_requ
     }
 
 
-@router.post("/workspace/agents/{agent_id}/toggle-enabled")
+@router.post("/workspace/agents/{agent_id}/toggle-enabled", response_model=Dict[str, Any])
 async def toggle_agent_enabled(agent_id: str, rt: RuntimeDep = None):
     mgr = _ws_agent_mgr(rt)
     if not mgr:
@@ -1648,7 +1648,7 @@ async def toggle_agent_enabled(agent_id: str, rt: RuntimeDep = None):
     return {"agent_id": agent_id, "enabled": result}
 
 
-@router.post("/workspace/agents/{agent_id}/enable")
+@router.post("/workspace/agents/{agent_id}/enable", response_model=Dict[str, Any])
 async def enable_workspace_agent(agent_id: str, http_request: Request = None, rt: RuntimeDep = None):
     """
     Enable an agent with governance gates: autosmoke + signature verification + approval.
@@ -1766,7 +1766,7 @@ async def enable_workspace_agent(agent_id: str, http_request: Request = None, rt
     }
 
 
-@router.get("/workspace/agents/{agent_id}/history")
+@router.get("/workspace/agents/{agent_id}/history", response_model=Dict[str, Any])
 async def get_workspace_agent_history(agent_id: str, limit: int = 100, offset: int = 0, rt: RuntimeDep = None):
     store = _store(rt)
     if store:
@@ -1776,7 +1776,7 @@ async def get_workspace_agent_history(agent_id: str, limit: int = 100, offset: i
     return {"history": history, "total": len(_workspace_agent_history.get(agent_id, []))}
 
 
-@router.get("/workspace/agents/{agent_id}/versions")
+@router.get("/workspace/agents/{agent_id}/versions", response_model=Dict[str, Any])
 async def get_workspace_agent_versions(agent_id: str, rt: RuntimeDep = None):
     mgr = _ws_agent_mgr(rt)
     if not mgr:
@@ -1788,7 +1788,7 @@ async def get_workspace_agent_versions(agent_id: str, rt: RuntimeDep = None):
     return {"agent_id": agent_id, "versions": [{"version": v.version, "status": v.status, "created_at": v.created_at.isoformat(), "changes": v.changes} for v in versions]}
 
 
-@router.post("/workspace/agents/{agent_id}/versions")
+@router.post("/workspace/agents/{agent_id}/versions", response_model=Dict[str, Any])
 async def create_workspace_agent_version(agent_id: str, request: dict, rt: RuntimeDep = None):
     mgr = _ws_agent_mgr(rt)
     if not mgr:
@@ -1800,7 +1800,7 @@ async def create_workspace_agent_version(agent_id: str, request: dict, rt: Runti
     return {"version": version.version, "status": version.status, "created_at": version.created_at.isoformat(), "changes": version.changes}
 
 
-@router.post("/workspace/agents/{agent_id}/versions/{version}/rollback")
+@router.post("/workspace/agents/{agent_id}/versions/{version}/rollback", response_model=Dict[str, Any])
 async def rollback_workspace_agent_version(agent_id: str, version: str, rt: RuntimeDep = None):
     mgr = _ws_agent_mgr(rt)
     if not mgr:
@@ -1831,7 +1831,7 @@ def _reload_workspace_managers(rt: Optional[KernelRuntime]) -> None:
         return
 
 
-@router.post("/workspace/agents/{agent_id}/reload")
+@router.post("/workspace/agents/{agent_id}/reload", response_model=Dict[str, Any])
 async def reload_workspace_agent(agent_id: str, rt: RuntimeDep = None):
     _reload_workspace_managers(rt)
     mgr = _ws_agent_mgr(rt)
@@ -1845,7 +1845,7 @@ async def reload_workspace_agent(agent_id: str, rt: RuntimeDep = None):
 
 # ── Agent Import Detection (analogous to workspace_skills import-detect) ──
 
-@router.post("/workspace/agents/import-detect")
+@router.post("/workspace/agents/import-detect", response_model=Dict[str, Any])
 async def detect_agent_import(request: Dict[str, Any], rt: RuntimeDep = None):
     """AI 检测导入的 agent 配置。接收 URL 或 zip 文件，返回推荐配置。"""
     import yaml as _yaml
@@ -2094,7 +2094,7 @@ _AGENT_IMPORT_CACHE: dict = {}
 
 # ── Agent Installer endpoints (workspace scope) ──────────────────────
 
-@router.post("/workspace/agents/installer/plan")
+@router.post("/workspace/agents/installer/plan", response_model=Dict[str, Any])
 async def workspace_agents_installer_plan(request: dict, rt: RuntimeDep = None):
     mgr = _ws_agent_mgr(rt)
     if not mgr:
@@ -2116,7 +2116,7 @@ async def workspace_agents_installer_plan(request: dict, rt: RuntimeDep = None):
         raise HTTPException(status_code=403, detail=str(e))
 
 
-@router.post("/workspace/agents/installer/install")
+@router.post("/workspace/agents/installer/install", response_model=Dict[str, Any])
 async def workspace_agents_installer_install(request: dict, http_request: Request, rt: RuntimeDep = None):
     mgr = _ws_agent_mgr(rt)
     if not mgr:
@@ -2139,7 +2139,7 @@ async def workspace_agents_installer_install(request: dict, http_request: Reques
         raise HTTPException(status_code=403, detail=str(e))
 
 
-@router.post("/workspace/agents/installer/resolve-head")
+@router.post("/workspace/agents/installer/resolve-head", response_model=Dict[str, Any])
 async def workspace_agents_installer_resolve_head(request: dict, rt: RuntimeDep = None):
     mgr = _ws_agent_mgr(rt)
     if not mgr:
@@ -2150,7 +2150,7 @@ async def workspace_agents_installer_resolve_head(request: dict, rt: RuntimeDep 
         raise HTTPException(status_code=400, detail=str(e))
 
 
-@router.post("/workspace/agents/installer/upload-plan")
+@router.post("/workspace/agents/installer/upload-plan", response_model=Dict[str, Any])
 async def workspace_agents_installer_upload_plan(
     file: UploadFile = File(...),
     subdir: str = Form(""),
@@ -2181,7 +2181,7 @@ async def workspace_agents_installer_upload_plan(
             os.unlink(tmp_path)
 
 
-@router.post("/workspace/agents/installer/upload-install")
+@router.post("/workspace/agents/installer/upload-install", response_model=Dict[str, Any])
 async def workspace_agents_installer_upload_install(
     file: UploadFile = File(...),
     subdir: str = Form(""),
@@ -2216,7 +2216,7 @@ async def workspace_agents_installer_upload_install(
             os.unlink(tmp_path)
 
 
-@router.post("/workspace/agents/{agent_id}/submit-for-review")
+@router.post("/workspace/agents/{agent_id}/submit-for-review", response_model=Dict[str, Any])
 async def submit_agent_for_review(agent_id: str, rt: RuntimeDep = None):
     """提交 Agent 进入审批流水线。
 
@@ -2339,7 +2339,7 @@ async def submit_agent_for_review(agent_id: str, rt: RuntimeDep = None):
     }
 
 
-@router.post("/workspace/agents/{agent_id}/invoke")
+@router.post("/workspace/agents/{agent_id}/invoke", response_model=Dict[str, Any])
 async def invoke_agent(agent_id: str, request: dict, http_request: Request, rt: RuntimeDep = None):
     """Standardized invoke endpoint — external systems call this to run an agent.
     Body: { input: "your message", config?: {}, options?: {} }
@@ -2384,7 +2384,7 @@ class AgentAuditResponse(BaseModel):
     summary: Dict[str, Any]
 
 
-@router.post("/workspace/agents/{agent_id}/audit")
+@router.post("/workspace/agents/{agent_id}/audit", response_model=Dict[str, Any])
 async def audit_agent_config(agent_id: str) -> AgentAuditResponse:
     u"""AI 审核：检查 Agent 配置的问题点及建议。规则驱动，毫秒返回，无需 LLM。
 

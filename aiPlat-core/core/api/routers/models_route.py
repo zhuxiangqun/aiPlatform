@@ -1,4 +1,5 @@
 import logging
+from typing import Dict, Any
 """
 Models route — v3.0 LLM routing statistics endpoint.
 Exposes quality scores, latency, fallback, cost metrics for all purposes.
@@ -9,7 +10,7 @@ import time as _time
 router = APIRouter(prefix="/models", tags=["models"])
 
 
-@router.get("/v3-stats")
+@router.get("/v3-stats", response_model=Dict[str, Any])
 async def get_v3_route_stats():
     """v3.0 LLM routing monitoring dashboard data (all purposes)."""
     snapshot = {"generated_at": _time.time()}

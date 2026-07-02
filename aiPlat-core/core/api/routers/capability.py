@@ -20,7 +20,7 @@ from core.harness.knowledge.capability_health import capability_health_report
 router = APIRouter()
 
 
-@router.get("/capability-graph")
+@router.get("/capability-graph", response_model=Dict[str, Any])
 async def get_capability_graph() -> Dict[str, Any]:
     u"""Return the pure AI capability graph (nodes + edges, zero analysis).
 
@@ -36,7 +36,7 @@ async def get_capability_graph() -> Dict[str, Any]:
     }
 
 
-@router.get("/capability-health")
+@router.get("/capability-health", response_model=Dict[str, Any])
 async def get_capability_health() -> Dict[str, Any]:
     u"""Return the AI capability health analysis.
 

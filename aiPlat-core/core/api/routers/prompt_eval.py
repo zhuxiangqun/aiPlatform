@@ -1,5 +1,6 @@
 """Prompt Eval API — A/B test, test case management, batch evaluation."""
 from __future__ import annotations
+from typing import Dict, Any
 import json as _json
 import logging
 import time
@@ -25,7 +26,7 @@ def _new_id() -> str:
 
 # ── Test Cases ──────────────────────────────────────────────────────
 
-@router.get("/prompts/eval/test-cases")
+@router.get("/prompts/eval/test-cases", response_model=Dict[str, Any])
 async def list_test_cases(template_id: str = "", limit: int = 100, offset: int = 0):
     store = _store()
     if not store:
@@ -54,7 +55,7 @@ async def list_test_cases(template_id: str = "", limit: int = 100, offset: int =
     return await anyio.to_thread.run_sync(_sync)
 
 
-@router.post("/prompts/eval/test-cases")
+@router.post("/prompts/eval/test-cases", response_model=Dict[str, Any])
 async def create_test_case(req: PromptTestCaseCreate):
     store = _store()
     if not store:
@@ -80,7 +81,7 @@ async def create_test_case(req: PromptTestCaseCreate):
     return await anyio.to_thread.run_sync(_sync)
 
 
-@router.put("/prompts/eval/test-cases/{case_id}")
+@router.put("/prompts/eval/test-cases/{case_id}", response_model=Dict[str, Any])
 async def update_test_case(case_id: str, req: PromptTestCaseUpdate):
     store = _store()
     if not store:
@@ -108,7 +109,7 @@ async def update_test_case(case_id: str, req: PromptTestCaseUpdate):
     return await anyio.to_thread.run_sync(_sync)
 
 
-@router.delete("/prompts/eval/test-cases/{case_id}")
+@router.delete("/prompts/eval/test-cases/{case_id}", response_model=Dict[str, Any])
 async def delete_test_case(case_id: str):
     store = _store()
     if not store:
@@ -130,7 +131,7 @@ async def delete_test_case(case_id: str):
 
 # ── Eval Runs ───────────────────────────────────────────────────────
 
-@router.post("/prompts/eval/runs")
+@router.post("/prompts/eval/runs", response_model=Dict[str, Any])
 async def create_eval_run(req: PromptEvalRunCreate):
     store = _store()
     if not store:
@@ -259,7 +260,7 @@ async def _run_evaluation(run_id: str, req: PromptEvalRunCreate, case_rows, tpl,
         _log.exception("Eval run failed: %s", run_id)
 
 
-@router.get("/prompts/eval/runs")
+@router.get("/prompts/eval/runs", response_model=Dict[str, Any])
 async def list_eval_runs(template_id: str = "", limit: int = 20, offset: int = 0):
     store = _store()
     if not store:
@@ -285,7 +286,7 @@ async def list_eval_runs(template_id: str = "", limit: int = 20, offset: int = 0
     return await anyio.to_thread.run_sync(_sync)
 
 
-@router.get("/prompts/eval/runs/{run_id}")
+@router.get("/prompts/eval/runs/{run_id}", response_model=Dict[str, Any])
 async def get_eval_run(run_id: str):
     store = _store()
     if not store:

@@ -109,7 +109,7 @@ def _build_bundle_dir_for_package(pkg_info: dict, bundle_dir: Path):
                 shutil.copytree(src, dst)
 
 
-@router.get("/packages")
+@router.get("/packages", response_model=Dict[str, Any])
 async def list_packages():
     store = _store()
     if not store:
@@ -129,7 +129,7 @@ async def list_packages():
         conn.close()
 
 
-@router.get("/packages/{pkg_name}/versions")
+@router.get("/packages/{pkg_name}/versions", response_model=Dict[str, Any])
 async def list_package_versions(pkg_name: str, limit: int = 100, offset: int = 0):
     store = _store()
     if not store:
@@ -137,7 +137,7 @@ async def list_package_versions(pkg_name: str, limit: int = 100, offset: int = 0
     return await store.list_package_versions(package_name=pkg_name, limit=limit, offset=offset)
 
 
-@router.get("/packages/{pkg_name}/versions/{version}")
+@router.get("/packages/{pkg_name}/versions/{version}", response_model=Dict[str, Any])
 async def get_package_version(pkg_name: str, version: str):
     store = _store()
     if not store:
@@ -148,7 +148,7 @@ async def get_package_version(pkg_name: str, version: str):
     return v
 
 
-@router.post("/packages/{pkg_name}/publish")
+@router.post("/packages/{pkg_name}/publish", response_model=Dict[str, Any])
 async def publish_package(pkg_name: str, http_request: Request, request: PackagePublishRequest):
     store = _store()
     if not store:
@@ -271,7 +271,7 @@ async def publish_package(pkg_name: str, http_request: Request, request: Package
     return {"status": "published", "package_version": rec, "change_id": change_id, "links": governance_links(change_id=change_id)}
 
 
-@router.post("/packages/{pkg_name}/install")
+@router.post("/packages/{pkg_name}/install", response_model=Dict[str, Any])
 async def install_package(pkg_name: str, http_request: Request, request: PackageInstallRequest):
     rt = _rt()
     store = _store()
@@ -448,7 +448,7 @@ async def install_package(pkg_name: str, http_request: Request, request: Package
     return {"status": "installed", "install": install_rec, "record": applied_record, "change_id": change_id, "links": governance_links(change_id=change_id)}
 
 
-@router.get("/packages/installs")
+@router.get("/packages/installs", response_model=Dict[str, Any])
 async def list_package_installs(scope: Optional[str] = None, limit: int = 100, offset: int = 0):
     store = _store()
     if not store:
@@ -456,7 +456,7 @@ async def list_package_installs(scope: Optional[str] = None, limit: int = 100, o
     return await store.list_package_installs(scope=scope, limit=limit, offset=offset)
 
 
-@router.post("/packages/{pkg_name}/uninstall")
+@router.post("/packages/{pkg_name}/uninstall", response_model=Dict[str, Any])
 async def uninstall_package(pkg_name: str, http_request: Request, request: PackageUninstallRequest):
     store = _store()
     rt = _rt()

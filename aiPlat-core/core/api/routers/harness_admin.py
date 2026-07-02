@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Optional
+from typing import Dict, Optional, Any
 
 from fastapi import APIRouter, Depends, HTTPException
 
@@ -20,7 +20,7 @@ def _hm(rt: RuntimeDep):
 # ==================== Harness Management ====================
 
 
-@router.get("/harness/status")
+@router.get("/harness/status", response_model=Dict[str, Any])
 async def get_harness_status(rt: RuntimeDep = Depends(get_kernel_runtime)):
     """Get harness status"""
     hm = _hm(rt)
@@ -30,7 +30,7 @@ async def get_harness_status(rt: RuntimeDep = Depends(get_kernel_runtime)):
     return {"status": status.status, "components": status.components, "uptime_seconds": status.uptime_seconds}
 
 
-@router.get("/harness/config")
+@router.get("/harness/config", response_model=Dict[str, Any])
 async def get_harness_config(rt: RuntimeDep = Depends(get_kernel_runtime)):
     """Get harness config"""
     hm = _hm(rt)
@@ -45,7 +45,7 @@ async def get_harness_config(rt: RuntimeDep = Depends(get_kernel_runtime)):
     }
 
 
-@router.put("/harness/config")
+@router.put("/harness/config", response_model=Dict[str, Any])
 async def update_harness_config(request: dict, rt: RuntimeDep = Depends(get_kernel_runtime)):
     """Update harness config"""
     hm = _hm(rt)
@@ -60,7 +60,7 @@ async def update_harness_config(request: dict, rt: RuntimeDep = Depends(get_kern
     return {"status": "updated", "config": config}
 
 
-@router.get("/harness/metrics")
+@router.get("/harness/metrics", response_model=Dict[str, Any])
 async def get_harness_metrics(rt: RuntimeDep = Depends(get_kernel_runtime)):
     """Get harness metrics"""
     hm = _hm(rt)
@@ -70,7 +70,7 @@ async def get_harness_metrics(rt: RuntimeDep = Depends(get_kernel_runtime)):
     return {"metrics": metrics}
 
 
-@router.get("/harness/logs")
+@router.get("/harness/logs", response_model=Dict[str, Any])
 async def get_harness_logs(limit: int = 100, rt: RuntimeDep = Depends(get_kernel_runtime)):
     """Get harness logs"""
     hm = _hm(rt)
@@ -82,7 +82,7 @@ async def get_harness_logs(limit: int = 100, rt: RuntimeDep = Depends(get_kernel
     }
 
 
-@router.get("/harness/hooks")
+@router.get("/harness/hooks", response_model=Dict[str, Any])
 async def list_hooks(rt: RuntimeDep = Depends(get_kernel_runtime)):
     """List hooks"""
     hm = _hm(rt)
@@ -92,7 +92,7 @@ async def list_hooks(rt: RuntimeDep = Depends(get_kernel_runtime)):
     return {"hooks": [{"id": h.id, "name": h.name, "type": h.type, "priority": h.priority, "enabled": h.enabled} for h in hooks]}
 
 
-@router.post("/harness/hooks")
+@router.post("/harness/hooks", response_model=Dict[str, Any])
 async def create_hook(request: HookCreateRequest, rt: RuntimeDep = Depends(get_kernel_runtime)):
     """Create hook"""
     hm = _hm(rt)
@@ -102,7 +102,7 @@ async def create_hook(request: HookCreateRequest, rt: RuntimeDep = Depends(get_k
     return {"hook_id": hook.id, "status": "created"}
 
 
-@router.delete("/harness/hooks/{hook_id}")
+@router.delete("/harness/hooks/{hook_id}", response_model=Dict[str, Any])
 async def delete_hook(hook_id: str, rt: RuntimeDep = Depends(get_kernel_runtime)):
     """Delete hook"""
     hm = _hm(rt)
@@ -114,7 +114,7 @@ async def delete_hook(hook_id: str, rt: RuntimeDep = Depends(get_kernel_runtime)
     return {"status": "deleted"}
 
 
-@router.put("/harness/hooks/{hook_id}")
+@router.put("/harness/hooks/{hook_id}", response_model=Dict[str, Any])
 async def update_hook(hook_id: str, request: HookUpdateRequest, rt: RuntimeDep = Depends(get_kernel_runtime)):
     """Update hook"""
     hm = _hm(rt)
@@ -126,7 +126,7 @@ async def update_hook(hook_id: str, request: HookUpdateRequest, rt: RuntimeDep =
     return {"status": "updated"}
 
 
-@router.get("/harness/executions/{execution_id}")
+@router.get("/harness/executions/{execution_id}", response_model=Dict[str, Any])
 async def get_harness_execution(execution_id: str, rt: RuntimeDep = Depends(get_kernel_runtime)):
     """Get harness execution"""
     hm = _hm(rt)
@@ -138,7 +138,7 @@ async def get_harness_execution(execution_id: str, rt: RuntimeDep = Depends(get_
     return {"id": execution.id, "agent": execution.agent, "status": execution.status, "duration_ms": execution.duration_ms, "steps": execution.steps, "error": execution.error}
 
 
-@router.get("/harness/coordinators")
+@router.get("/harness/coordinators", response_model=Dict[str, Any])
 async def list_coordinators(rt: RuntimeDep = Depends(get_kernel_runtime)):
     """List coordinators"""
     hm = _hm(rt)
@@ -150,7 +150,7 @@ async def list_coordinators(rt: RuntimeDep = Depends(get_kernel_runtime)):
     }
 
 
-@router.post("/harness/coordinators")
+@router.post("/harness/coordinators", response_model=Dict[str, Any])
 async def create_coordinator(request: CoordinatorCreateRequest, rt: RuntimeDep = Depends(get_kernel_runtime)):
     """Create coordinator"""
     hm = _hm(rt)
@@ -160,7 +160,7 @@ async def create_coordinator(request: CoordinatorCreateRequest, rt: RuntimeDep =
     return {"coordinator_id": coordinator.id, "status": "created"}
 
 
-@router.get("/harness/coordinators/{coordinator_id}")
+@router.get("/harness/coordinators/{coordinator_id}", response_model=Dict[str, Any])
 async def get_coordinator(coordinator_id: str, rt: RuntimeDep = Depends(get_kernel_runtime)):
     """Get coordinator"""
     hm = _hm(rt)
@@ -172,14 +172,14 @@ async def get_coordinator(coordinator_id: str, rt: RuntimeDep = Depends(get_kern
     return {"coordinator_id": coordinator.id, "pattern": coordinator.pattern, "agents": coordinator.agents, "status": coordinator.status, "config": coordinator.config}
 
 
-@router.put("/harness/coordinators/{coordinator_id}")
+@router.put("/harness/coordinators/{coordinator_id}", response_model=Dict[str, Any])
 async def update_coordinator(coordinator_id: str, request: dict):
     """Update coordinator"""
     # 保持旧实现：目前仅返回 updated（不执行实际更新）
     return {"status": "updated"}
 
 
-@router.delete("/harness/coordinators/{coordinator_id}")
+@router.delete("/harness/coordinators/{coordinator_id}", response_model=Dict[str, Any])
 async def delete_coordinator(coordinator_id: str, rt: RuntimeDep = Depends(get_kernel_runtime)):
     """Delete coordinator"""
     hm = _hm(rt)
@@ -191,7 +191,7 @@ async def delete_coordinator(coordinator_id: str, rt: RuntimeDep = Depends(get_k
     return {"status": "deleted"}
 
 
-@router.get("/harness/feedback/config")
+@router.get("/harness/feedback/config", response_model=Dict[str, Any])
 async def get_feedback_config(rt: RuntimeDep = Depends(get_kernel_runtime)):
     """Get feedback config"""
     hm = _hm(rt)
@@ -201,7 +201,7 @@ async def get_feedback_config(rt: RuntimeDep = Depends(get_kernel_runtime)):
     return {"config": {"local": config.local, "push": config.push, "prod": config.prod}}
 
 
-@router.put("/harness/feedback/config")
+@router.put("/harness/feedback/config", response_model=Dict[str, Any])
 async def update_feedback_config(request: FeedbackConfigUpdateRequest, rt: RuntimeDep = Depends(get_kernel_runtime)):
     """Update feedback config"""
     hm = _hm(rt)
