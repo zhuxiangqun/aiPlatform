@@ -2528,6 +2528,37 @@ async def delete_auth_user(user_id: str, _auth: str = Depends(require_admin)):
     return {"status": "ok"}
 
 
+@app.get("/platform/auth/roles")
+async def list_auth_roles(_auth: str = Depends(require_admin)):
+    """Return available system roles with their descriptions and permissions."""
+    return {
+        "roles": [
+            {"id": "admin", "label": "管理员", "description": "全局配置、安全审计、系统运维。可访问全部菜单和 API。",
+             "color": "red", "routes": ["system-overview", "diagnostics", "infra", "core", "platform", "workspace", "app", "value", "approval"]},
+            {"id": "developer", "label": "开发者", "description": "模型管理、Agent 开发、Skill 开发、诊断排查。无法访问平台配置和审批。",
+             "color": "blue", "routes": ["infra", "core", "workspace", "app", "value", "diagnostics"]},
+            {"id": "business", "label": "业务负责人", "description": "KPI 制定、目标追踪、价值看板。只读业务指标。",
+             "color": "green", "routes": ["value"]},
+            {"id": "user", "label": "终端用户", "description": "提交任务、查看结果、使用已部署应用。最受限的角色。",
+             "color": "gray", "routes": ["app", "user"]},
+            {"id": "approver", "label": "审批人", "description": "审批 HITL 请求和资产上线。独立审批流程。",
+             "color": "purple", "routes": ["approval", "user"]},
+        ]
+    }
+
+
+@app.put("/platform/auth/users/{user_id}/role")
+async def set_user_role(user_id: str, body: Dict[str, Any], _auth: str = Depends(require_admin)):
+    u = platform_store.get_auth_user(user_id)
+    if not u:
+        raise HTTPException(status_code=404, detail="user_not_found")
+    new_role = body.get("role", "")
+    if not new_role:
+        raise HTTPException(status_code=400, detail="role is required")
+    u["role"] = new_role
+    return platform_store.upsert_auth_user(u)
+
+
 # ── OIDC / SSO endpoints ──
 
 @app.get("/auth/oidc/login")

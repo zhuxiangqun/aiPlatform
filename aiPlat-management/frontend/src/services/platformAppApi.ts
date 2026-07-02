@@ -71,6 +71,12 @@ export const authApi = {
   update: async (id: string, data: Partial<AuthUser>) => {
     return apiClient.put<AuthUser>(`/platform/auth/users/${id}`, data);
   },
+  setRole: async (id: string, role: string) => {
+    return apiClient.put<AuthUser>(`/platform/auth/users/${id}/role`, { role });
+  },
+  listRoles: async () => {
+    return apiClient.get<{ roles: Array<{ id: string; label: string; description: string; color: string; routes: string[] }> }>('/platform/auth/roles');
+  },
   delete: async (id: string) => {
     return apiClient.delete<{ status: string }>(`/platform/auth/users/${id}`);
   },
