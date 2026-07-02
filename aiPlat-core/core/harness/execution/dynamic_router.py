@@ -15,7 +15,7 @@ Architecture:
   - Reuses SubagentCoordinator.execute_single() via context for instruction injection
   - Respects PipelineStageConfig.merge_strategies for safe parallel state merge
   - Feature-flagged via routing_mode field (default "static", backward compatible)
-  - Supervisor model: configurable via AIPLAT_SUPERVISOR_MODEL or stage.model
+  - Supervisor model: resolved via ModelManager (purpose=chat) or stage.model
 
 Grayscale Deployment:
   1. Select one low-risk pipeline (e.g., internal doc search, non-production)
@@ -107,7 +107,7 @@ class DynamicRouter:
     def _default_supervisor_model() -> str:
         import os
         from core.harness.utils.model_injection import best_model_for_purpose
-        return os.getenv("AIPLAT_SUPERVISOR_MODEL", "") or best_model_for_purpose("chat") or "qwen2.5-coder:7b"
+        return best_model_for_purpose("chat") or "qwen2.5-coder:7b"
 
     async def run(
         self,
