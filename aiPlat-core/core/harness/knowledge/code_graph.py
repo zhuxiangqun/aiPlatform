@@ -745,6 +745,13 @@ def build_graph(_repo_root: Path, roots: List[Path]) -> Tuple[Dict[str, Dict[str
                             edges.append({"from": rel, "to": d})
                             nodes[rel].setdefault("out", []).append(d)
 
+                # After incremental sync, if too few nodes remain (e.g. repo_root
+                # changed and all cached files became stale), force full rebuild
+                if len(nodes) < 10:
+                    raise Exception(
+                        f"Post-sync node count too low ({len(nodes)}), force full rebuild"
+                    )
+
                 # Save incrementally updated graph
             try:
                 from core.harness.knowledge.code_graph_persist import save_graph, clear_cross_edges_cache
