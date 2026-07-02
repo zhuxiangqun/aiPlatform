@@ -9,12 +9,10 @@ through core/adapters/llm/base.py::create_adapter() → InfraLLMAdapter.
 ✅ WIRED:
   create_infra_database_client() → aiPlat-platform/storage/sqlite.py, aiPlat-platform/kb/db.py
   create_infra_vector_client()   → core memory/semantic.py
-  get_infra_model_source()       → model_router.py (list_infra_models)
-  list_infra_models()            → model_router.py
-  NOTE: model_router.py uses these, but also handles deployment
-  resolution (API keys, provider routing) which infra doesn't yet
-  provide. Full migration blocked on infra ModelManager gaining
-  model SELECTION capability (currently only LISTING).
+  get_infra_model_source()       → model_injection.py (list_infra_models)
+  list_infra_models()            → model_injection.py
+  NOTE: Full model migration is COMPLETE. model_router.py was deleted.
+  model_injection.py is the canonical path, using infra ModelManager.select().
 
 ⚠ NOT YET WIRED:
   get_infra_embedding()          → embedding flows through memory/embedding.py::EmbeddingProvider

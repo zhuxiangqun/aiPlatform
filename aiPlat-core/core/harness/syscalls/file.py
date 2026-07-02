@@ -34,7 +34,7 @@ def _resolve_workspace_root() -> str:
                 getattr(ws, "workspace_path", None) or os.getcwd()
             ))
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
     return os.path.realpath(os.getcwd())
 
 

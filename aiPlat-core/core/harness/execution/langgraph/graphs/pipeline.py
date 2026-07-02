@@ -17,6 +17,16 @@ from typing import Any, Callable, Dict, List, Optional
 from core.schemas_builder import PipelineStageConfig, PipelineState
 from .core import GraphBuilder, CompiledGraph, GraphConfig, GraphState
 
+# Conditional routing registry — resolved at graph compile time for named conditions
+# (e.g., "phase_check", "debate_converged", "risk_threshold")
+_condition_registry: Dict[str, Callable] = {}
+try:
+    from core.harness.execution.conditional import CONDITION_REGISTRY
+    _condition_registry = dict(CONDITION_REGISTRY)
+except ImportError:
+    # CONDITION_REGISTRY from conditional.py — optional, graph works without it
+    import logging; logging.getLogger(__name__).debug("CONDITION_REGISTRY not available")
+
 
 class PipelineGraph:
     """Execute a pipeline subset as a named graph for trace observability."""
@@ -24,6 +34,15 @@ class PipelineGraph:
     def __init__(self, stages: List[PipelineStageConfig], name: str = "pipeline"):
         self._stages = list(stages)
         self._name = name
+
+    @staticmethod
+    def get_condition(name: str) -> Optional[Callable]:
+        """Resolve a named condition function from the CONDITION_REGISTRY.
+        
+        Used by graph builders for conditional edge routing:
+            builder.add_conditional_edge(from_node, condition=get_condition('phase_check'), ...)
+        """
+        return _condition_registry.get(name)
 
     async def execute(
         self,

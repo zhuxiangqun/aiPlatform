@@ -42,6 +42,7 @@ _log = logging.getLogger("aiplat.pattern_cache")
 
 
 @dataclass 
+# disposition: internal data type — Phase 5 pattern cache, wiring pending
 class ExecutionPattern:
     """单个执行模式"""
     pattern_id: str

@@ -33,6 +33,7 @@ class DomainRouter:
         self._built = False
         self._registry_cache: Optional[dict] = None
         self._llm_model = os.environ.get("AIPLAT_DOMAIN_ROUTER_MODEL", "qwen2.5-coder:7b")
+        self._route_stats: Dict[str, int] = {"t1_hits": 0, "t2_hits": 0, "t3_hits": 0, "total": 0}
 
     # ═══════════════════════════════════════════════════════════════
     # Public API
@@ -50,12 +51,22 @@ class DomainRouter:
         # ── Tier 1: Label match (<1ms) ──
         for label, did in self._label_index.items():
             if len(label) >= 2 and label in q:
+                self._route_stats["t1_hits"] += 1; self._route_stats["total"] += 1
                 return did
 
         # ── Tier 2: Embedding cosine similarity (~50ms) ──
         qvec = self._embed(query)
         if qvec is None:
-            return self._llm_classify(query)
+            did = self._llm_classify(query)
+        if self._route_stats["total"] % 10 == 0:  # Log every 10 classifications
+            import logging as _logging; _logging.warning(
+                "route_stats: T1=%.0f%% T2=%.0f%% T3=%.0f%% (total=%d, LLM calls avoided=%d)",
+                self._route_stats["t1_hits"]*100/max(self._route_stats["total"],1),
+                self._route_stats["t2_hits"]*100/max(self._route_stats["total"],1), 
+                self._route_stats["t3_hits"]*100/max(self._route_stats["total"],1),
+                self._route_stats["total"],
+                self._route_stats["t1_hits"] + self._route_stats["t2_hits"], file=_sys.stderr)
+        return did
 
         best_did, best_score, runner_up = None, 0.0, 0.0
         for did, dvec in self._domain_vectors.items():
@@ -71,10 +82,83 @@ class DomainRouter:
         min_margin = routing_cfg.get("min_margin", 0.08)
 
         if best_did and best_score >= min_conf and (best_score - runner_up) >= min_margin:
+            self._route_stats["t2_hits"] += 1; self._route_stats["total"] += 1
             return best_did
 
         # ── Tier 3: LLM classification (~300ms, rare) ──
-        return self._llm_classify(query)
+        self._route_stats["t3_hits"] += 1; self._route_stats["total"] += 1
+        did = self._llm_classify(query)
+        if self._route_stats["total"] % 10 == 0:  # Log every 10 classifications
+            import logging as _logging; _logging.warning(
+                "route_stats: T1=%.0f%% T2=%.0f%% T3=%.0f%% (total=%d, LLM calls avoided=%d)",
+                self._route_stats["t1_hits"]*100/max(self._route_stats["total"],1),
+                self._route_stats["t2_hits"]*100/max(self._route_stats["total"],1), 
+                self._route_stats["t3_hits"]*100/max(self._route_stats["total"],1),
+                self._route_stats["total"],
+                self._route_stats["t1_hits"] + self._route_stats["t2_hits"], file=_sys.stderr)
+        return did
+
+    def route_stats(self) -> Dict[str, Any]:
+        """Return routing tier hit distribution and estimated LLM cost savings."""
+        total = max(self._route_stats["total"], 1)
+        t1 = self._route_stats["t1_hits"]
+        t2 = self._route_stats["t2_hits"]
+        t3 = self._route_stats["t3_hits"]
+        # T3 is ~100 tokens per call, T1/T2 are 0 tokens
+        llm_calls_avoided = t1 + t2
+        estimated_token_saved = llm_calls_avoided * 100
+        return {
+            "total": total,
+            "t1_label_pct": round(100 * t1 / total, 1),
+            "t2_embedding_pct": round(100 * t2 / total, 1),
+            "t3_llm_pct": round(100 * t3 / total, 1),
+            "llm_calls_avoided": llm_calls_avoided,
+            "estimated_token_saved": estimated_token_saved,
+        }
+
+    def per_domain_cost(self, query: str) -> Dict[str, Any]:
+        """Estimate routing cost per domain for the given query.
+        
+        Returns a breakdown of which tier each domain would use,
+        and the estimated LLM token cost avoided by T1/T2 hits.
+        """
+        self._ensure_built()
+        domains = self.list_domains()
+        if len(domains) <= 1:
+            return {"domains": 1, "tier": "n/a", "llm_call_needed": False}
+
+        q = query.lower()
+        breakdown = {}
+        for did in domains:
+            # T1 check
+            for label, lid in self._label_index.items():
+                if lid == did and len(label) >= 2 and label in q:
+                    breakdown[did] = {"tier": "T1_label", "tokens": 0}
+                    break
+            else:
+                # T2 check
+                qvec = self._embed(query)
+                if qvec is not None and did in self._domain_vectors:
+                    dvec = self._domain_vectors[did]
+                    import numpy as np
+                    norm = np.linalg.norm(qvec) * np.linalg.norm(dvec)
+                    score = float(np.dot(qvec, dvec) / (norm + 1e-8))
+                    if score >= 0.4:
+                        breakdown[did] = {"tier": "T2_embedding", "tokens": 0, "confidence": round(score, 3)}
+                    else:
+                        breakdown[did] = {"tier": "T3_llm", "tokens": 100, "confidence": round(score, 3)}
+                else:
+                    breakdown[did] = {"tier": "T3_llm", "tokens": 100, "reason": "no embedding available"}
+
+        # Aggregate
+        t3_count = sum(1 for v in breakdown.values() if v["tier"] == "T3_llm")
+        llm_tokens_saved = (len(domains) - t3_count) * 100
+        return {
+            "domains": len(domains),
+            "t3_calls_needed": t3_count,
+            "estimated_llm_tokens_saved": llm_tokens_saved,
+            "per_domain": breakdown,
+        }
 
     def resolve(self, collection_id: str) -> str:
         u"""collection_id → domain_id via registry.json."""

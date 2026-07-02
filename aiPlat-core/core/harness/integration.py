@@ -78,6 +78,18 @@ def _ensure_di():
             from core.apps.skills.evolution.engine import get_evolution_engine  # noqa
             return get_evolution_engine()
 
+        def _mcp_runtime_factory():
+            from core.apps.mcp.runtime import MCPRuntime  # noqa
+            return MCPRuntime()
+
+        def _latest_predictions_factory():
+            from core.apps.skills.evolution.engine import get_latest_predictions  # noqa
+            return get_latest_predictions
+
+        def _bg_curator_factory():
+            from core.apps.skills.registry import start_bg_curator as _curator  # noqa
+            return _curator
+
         from .interfaces import IAgent, ISkill, ITool
 
         _di_container.register_singleton("AgentRegistry", _agent_registry_factory)
@@ -90,6 +102,9 @@ def _ensure_di():
         _di_container.register_singleton("SkillPermissionResolver", _skill_permission_resolver_factory)
         _di_container.register_singleton("SkillCurator", _skill_curator_factory)
         _di_container.register_singleton("EvolutionEngine", _evolution_engine_factory)
+        _di_container.register_singleton("MCPRuntime", _mcp_runtime_factory)
+        _di_container.register_singleton("LatestPredictions", _latest_predictions_factory)
+        _di_container.register_singleton("BgCurator", _bg_curator_factory)
         _di_container.register_singleton(IAgent, _agent_registry_factory)
         _di_container.register_singleton(ISkill, _skill_registry_factory)
         _di_container.register_singleton(ITool, _tool_registry_factory)
@@ -213,12 +228,18 @@ def get_agent_discovery():
 
 
 def _start_bg_curator():
-    """Start background skill curator (DI-wrapped for harness use)."""
+    """Start background skill curator (DI-resolved for harness use)."""
     try:
-        from core.apps.skills.registry import start_bg_curator as _curator
-        _curator()
+        di = _ensure_di()
+        curator_fn = None
+        if di:
+            curator_fn = di.resolve("BgCurator")
+        if curator_fn is None:
+            from core.apps.skills.registry import start_bg_curator as _curator
+            curator_fn = _curator
+        curator_fn()
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning("Failed to start background skill curator: %s", e, exc_info=True)
 
 
 def get_mcp_runtime():
@@ -1438,8 +1459,7 @@ class HarnessIntegration:
         try:
             await store.append_run_event(run_id=run_id, event_type="run_end", trace_id=trace_id, tenant_id=None, payload={"kind": "canary_web", "status": status, "evaluation_report_id": eval_artifact_id})
         except Exception:
-            pass
-            pass
+            logging.warning("run_end event append failed for canary_web", exc_info=True)
 
         # Finish trace
         if runtime.trace_service and trace_id:

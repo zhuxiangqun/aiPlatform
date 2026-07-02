@@ -102,7 +102,8 @@ class KnowledgeQuery:
     limit: int = 10
     min_confidence: float = 0.0
     min_relevance: float = 0.0
-    
+    tenant_id: str = ""
+
     def to_dict(self) -> Dict[str, Any]:
         return {
             "query": self.query,
@@ -112,6 +113,7 @@ class KnowledgeQuery:
             "limit": self.limit,
             "min_confidence": self.min_confidence,
             "min_relevance": self.min_relevance,
+            "tenant_id": self.tenant_id,
         }
 
 

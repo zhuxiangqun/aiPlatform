@@ -381,6 +381,7 @@ class OntologyEngine:
                             entity_id=title,
                             entity_name=title,
                             class_name=inst.get("class_name", ""),
+                            source_doc_id=doc_id,
                         )
                 # Add detected relations to graph (if any)
                 if result.relations:
@@ -717,6 +718,32 @@ def _persist_trace(trace: Dict[str, Any]) -> None:
 
 
 def _persist_reviews(domain_id: str, affected: List[Dict[str, Any]]) -> None:
+    """Persist review queue for entities needing human review.
+    
+    Phase 7: optionally trigger ApprovalWorkflow for high-risk entities (best-effort).
+    """
+    # Phase 7: best-effort approval workflow trigger
+    if affected and os.getenv("AIPLAT_ONTOLOGY_APPROVAL_ENABLED", "").lower() in ("true", "1", "yes"):
+        try:
+            import asyncio
+            from core.harness.ontology_engine.approval import get_approval_workflow
+            wf = get_approval_workflow()
+            loop = asyncio.get_event_loop()
+            if loop.is_running():
+                for entity in affected[:5]:
+                    loop.create_task(wf.submit(
+                        entity.get("instance_id", str(uuid.uuid4())),
+                        entity.get("target_state", "PUBLISHED"),
+                        assignee="admin",
+                    ))
+            else:
+                asyncio.run(wf.submit(
+                    affected[0].get("instance_id", str(uuid.uuid4())),
+                    affected[0].get("target_state", "PUBLISHED"),
+                    assignee="admin",
+                ))
+        except Exception:
+            pass
     """Persist affected_instances to review queue for this domain."""
     import os as _os3
     reviews_dir = _Path(_os3.getenv("AIPLAT_HOME", _Path("~").expanduser() / ".aiplat")) / "ontology_reviews"

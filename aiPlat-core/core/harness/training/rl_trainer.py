@@ -185,9 +185,9 @@ def _extract_test_results(events: List[Dict]) -> Dict[str, Any]:
     return {}
 
 
-def _extract_test_from_state(state: dict) -> Dict[str, Any]:
-    """Extract test results from PipelineState / LoopState context."""
-    report = state.get("test_report", state.get("_test_report", {}))
+def _extract_test_from_state(state: dict, test_result_key: str = "_test_report") -> Dict[str, Any]:
+    """Extract test results from PipelineState context using config-driven key."""
+    report = state.get(test_result_key, {})
     if isinstance(report, dict):
         passed = report.get("passed_count", 0)
         total = passed + report.get("failed_count", 0)

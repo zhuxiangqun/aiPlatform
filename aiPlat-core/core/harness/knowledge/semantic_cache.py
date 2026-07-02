@@ -320,6 +320,7 @@ class SemanticCache:
 
 # ── Phase 5.2: Latent Stage Cache ── 多阶段隐空间缓存 ───────────────────────
 
+# disposition: internal class — used by get_semantic_cache(); wired to MaterialsChatAgent
 class LatentStageCache:
     """多阶段隐空间缓存 — 缓存 RAG Pipeline 中间状态的向量"足迹"。
 

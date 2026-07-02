@@ -42,6 +42,8 @@ def is_excluded_from_dead_code(nid: str) -> bool:
         '/knowledge/reranker.py', 'infra/management/config.py',
         '/auth/rbac.py', 'management/run.py', 'management/capability_convergence.py',
         '/health/collector.py', '/health/registry.py',
+        # Wired modules called via import chains (caller_verify false positives)
+        '/knowledge/wiki_health_rules.py',
     )
     if any(nid.endswith(s) for s in _EXCLUDED_SUFFIXES):
         return True

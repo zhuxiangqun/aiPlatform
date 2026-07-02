@@ -14,6 +14,7 @@ from core.schemas_builder import PipelineStageConfig
 from core.harness.execution.pipeline_engine import PipelineState
 
 
+# disposition: internal helper — resolved via CONDITION_REGISTRY in same module, wired to PipelineGraph.get_condition()
 class PipelineCondition:
     """Semantic routing conditions for pipeline graph edges."""
 

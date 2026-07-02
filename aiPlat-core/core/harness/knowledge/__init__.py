@@ -51,6 +51,21 @@ from .callbacks import (
     KBLoadDocKindsCallback,
 )
 
+from .model_fingerprint import (
+    FingerprintCollector,
+    ModelFingerprint,
+    ProbeResult,
+    get_fingerprint_collector,
+)
+
+from .model_audit import (
+    AuditReport,
+    ComparisonResult,
+    ModelIdentity,
+    compare_fingerprints,
+    generate_audit_report,
+)
+
 __all__ = [
     "KnowledgeType",
     "KnowledgeSource",
@@ -81,4 +96,13 @@ __all__ = [
     "KBQueryCallback",
     "KBEnqueueIngestCallback",
     "KBLoadDocKindsCallback",
+    "FingerprintCollector",
+    "ModelFingerprint",
+    "ProbeResult",
+    "get_fingerprint_collector",
+    "AuditReport",
+    "ComparisonResult",
+    "ModelIdentity",
+    "compare_fingerprints",
+    "generate_audit_report",
 ]

@@ -24,6 +24,7 @@ _log = logging.getLogger("aiplat.code_auditor")
 
 
 @dataclass
+# disposition: internal data type — used within code auditor module
 class SecurityIssue:
     rule_id: str = ""
     severity: str = ""       # "high" / "medium"
@@ -33,6 +34,7 @@ class SecurityIssue:
 
 
 @dataclass
+# disposition: internal data type — used within code auditor module
 class AuditResult:
     skill_name: str = ""
     issues: List[SecurityIssue] = field(default_factory=list)

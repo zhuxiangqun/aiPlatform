@@ -455,17 +455,18 @@ def sys_wiki_retrieve(
             with _cfutures.ThreadPoolExecutor(max_workers=1) as executor:
                 future = executor.submit(
                     _sync_wiki_retrieve, query, wiki_titles, top_k, link_depth, cids,
-                    class_uri, expand_subclasses, relation_filter, relation_boost, inference_expand
+                    class_uri, expand_subclasses, relation_filter, relation_boost, inference_expand,
+                    tenant_id
                 )
                 return future.result(timeout=30)
         else:
             return _sync_wiki_retrieve(query, wiki_titles, top_k, link_depth, cids,
                                        class_uri, expand_subclasses, relation_filter, relation_boost,
-                                       inference_expand)
+                                       inference_expand, tenant_id)
     except RuntimeError:
         return _sync_wiki_retrieve(query, wiki_titles, top_k, link_depth, cids,
                                    class_uri, expand_subclasses, relation_filter, relation_boost,
-                                   inference_expand)
+                                   inference_expand, tenant_id)
 
 
 def _sync_wiki_retrieve(query: str, wiki_titles: List[str] = None,
@@ -475,7 +476,8 @@ def _sync_wiki_retrieve(query: str, wiki_titles: List[str] = None,
                         expand_subclasses: bool = False,
                         relation_filter: Dict[str, str] = None,
                         relation_boost: Dict[str, float] = None,
-                        inference_expand: bool = False) -> List[Dict[str, Any]]:
+                        inference_expand: bool = False,
+                        tenant_id: str = "") -> List[Dict[str, Any]]:
     from core.harness.knowledge.wiki_retriever import WikiPageRetriever
     from core.harness.knowledge.types import KnowledgeQuery
 
@@ -489,8 +491,9 @@ def _sync_wiki_retrieve(query: str, wiki_titles: List[str] = None,
         class_uri=class_uri, expand_subclasses=expand_subclasses,
         relation_filter=relation_filter, relation_boost=default_boost2,
         inference_expand=inference_expand,
+        tenant_id=tenant_id,
     )
-    results = _run_async_in_sync(retriever.retrieve(KnowledgeQuery(query=query, limit=top_k)))
+    results = _run_async_in_sync(retriever.retrieve(KnowledgeQuery(query=query, limit=top_k, tenant_id=tenant_id)))
 
     return [
         {
@@ -583,6 +586,9 @@ def sys_knowledge_retrieve(
     # ── Ontology-aware filtering ──
     target_class: str = None,
     expand_subclasses: bool = False,
+    # ── RAG Phase: latency tracking ──
+    _track_latency: bool = True,
+
     inference_expand: bool = False,
     # ── Security (Phase 6 fix) ──
     actor_scopes: List[str] = None,
@@ -817,6 +823,13 @@ def sys_knowledge_retrieve(
         open(lat_path, "w").write(_l_json.dumps(samples[-1000:]))
     except Exception as e:
         logging.debug(str(e), exc_info=True)
+
+    # Phase C6: record to centralized latency aggregator
+    try:
+        from core.harness.knowledge.cost_estimator import record_latency as _rec_lat
+        _rec_lat("rag", (_time.time() - _t0) * 1000)
+    except Exception:
+        pass
 
     return results[:top_k]
 

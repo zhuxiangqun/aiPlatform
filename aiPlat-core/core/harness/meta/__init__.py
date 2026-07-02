@@ -20,6 +20,7 @@ _log = logging.getLogger("aiplat.meta_agent")
 
 
 @dataclass
+# disposition: internal data type — Phase 4.4 meta-agent (experimental, disabled by default)
 class MetaSuggestion:
     """元策略建议"""
     type: str = ""              # rejection_pattern / user_quality / stagnation / coverage_gap

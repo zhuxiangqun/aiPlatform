@@ -20,6 +20,7 @@ from collections import defaultdict
 
 
 @dataclass
+# disposition: internal data type — used by HallucinationTracker.evaluate(); wired to llm.py
 class FactualClaim:
     """单个事实声明"""
     text: str                       # 声明原文
@@ -30,6 +31,7 @@ class FactualClaim:
 
 
 @dataclass
+# disposition: internal data type — used by HallucinationTracker.evaluate(); wired to llm.py
 class HallucinationReport:
     """单次答案的幻觉检测报告"""
     run_id: str

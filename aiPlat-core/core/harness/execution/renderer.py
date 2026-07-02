@@ -12,6 +12,7 @@ import json
 from typing import Any, Dict, List, Optional
 
 
+# disposition: internal helper — used by inject_rendered_output() in same module
 def render_stage_output(
     artifact: Any,
     *,

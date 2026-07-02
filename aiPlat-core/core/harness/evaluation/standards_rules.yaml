@@ -1,0 +1,86 @@
+# Document standards validation rules (declarative, YAML-driven)
+# Used by StandardsValidator for post-stage document compliance checking.
+#
+# Check types:
+#   section_required       — section heading must exist in document
+#   section_length_range   — section content length in [min, max] (characters)
+#   text_pattern_forbidden — regex match → violation (e.g. "TODO|待补充")
+#   text_pattern_required  — regex must match (e.g. version number format)
+#   terminology_check      — preferred term must be used (e.g. "aiPlat" not "aiplat")
+
+rules:
+  # === Required sections ===
+  - id: missing_conclusion
+    level: error
+    check:
+      type: section_required
+      section: "结论"
+    message: "文档缺少结论部分 — 不符合公司标准化管理要求"
+
+  - id: missing_risk_assessment
+    level: error
+    check:
+      type: section_required
+      section: "风险评估"
+    message: "文档缺少风险评估部分"
+
+  - id: missing_summary
+    level: warning
+    check:
+      type: section_required
+      section: "摘要"
+    message: "建议添加摘要部分"
+
+  - id: missing_references
+    level: warning
+    check:
+      type: section_required
+      section: "参考"
+    message: "建议添加参考文献部分"
+
+  # === Content quality checks ===
+  - id: short_summary
+    level: warning
+    check:
+      type: section_length_range
+      section: "摘要"
+      min: 30
+    message: "摘要过短，建议至少30字"
+
+  - id: forbidden_placeholder
+    level: error
+    check:
+      type: text_pattern_forbidden
+      pattern: "(TODO|待补充|TBD|FIXME|待完善)$"
+    message: "文档中包含 TODO/TBD/待补充 占位符，请补充完整后再提交"
+
+  - id: forbidden_template_marker
+    level: warning
+    check:
+      type: text_pattern_forbidden
+      pattern: "\\{\\{.*\\}\\}"
+    message: "文档中可能存在未替换的模板占位符 {{xxx}}"
+
+  # === Format checks ===
+  - id: requires_version
+    level: error
+    check:
+      type: text_pattern_required
+      pattern: "版本.*\\d+\\.\\d+"
+    message: "文档缺少版本号，需包含版本信息（如: 版本 1.0）"
+
+  - id: requires_date
+    level: warning
+    check:
+      type: text_pattern_required
+      pattern: "\\d{4}[-/年]\\d{1,2}[-/月]\\d{1,2}"
+    message: "文档缺少日期信息"
+
+  # === Terminology checks ===
+  - id: terminology_camelcase
+    level: warning
+    check:
+      type: text_pattern_forbidden
+      pattern: "\baiplat\b"
+      ignore_case: false
+    message: "请使用正确的产品名称 'aiPlat' 而非 'aiplat'"

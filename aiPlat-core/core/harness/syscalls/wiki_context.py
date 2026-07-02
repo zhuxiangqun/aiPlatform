@@ -16,6 +16,7 @@ from typing import Any, Dict, List, Optional
 def sys_wiki_context(question: str, *, wiki_titles: List[str] = None,
                      top_k: int = 8, link_depth: int = 1,
                      collection_ids: List[str] = None,
+                     tenant_id: str = "",
                      actor_scopes: Optional[List[str]] = None,
                      filter_by_markings: bool = False) -> Dict[str, Any]:
     u"""Return knowledge context for a question from the Wiki knowledge graph.
@@ -65,7 +66,8 @@ def sys_wiki_context(question: str, *, wiki_titles: List[str] = None,
 
     # Semantic search via wiki retriever
     results = sys_wiki_retrieve(question, wiki_titles=wiki_titles, top_k=top_k,
-                                 link_depth=link_depth, collection_ids=cids)
+                                 link_depth=link_depth, collection_ids=cids,
+                                 tenant_id=tenant_id)
 
     # Link-graph traversed related pages for top results
     related_pages: List[Dict[str, Any]] = []

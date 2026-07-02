@@ -85,6 +85,7 @@ def embed_text_semantic(text: str) -> Optional[List[float]]:
         return None
 
 
+# disposition: internal helper — used by SemanticEmbedder.embed_batch() in same module
 def embed_texts_semantic(texts: List[str]) -> Optional[List[List[float]]]:
     """Sync batch semantic embedding. Respects AIPLAT_EMBED_BACKEND=hash for offline/test parity."""
     if _backend_name() == "hash":

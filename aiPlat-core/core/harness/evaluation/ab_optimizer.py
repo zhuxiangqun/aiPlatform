@@ -85,7 +85,7 @@ class EvalABOptimizer:
                 (uuid.uuid4().hex, template_id, version, session_id, overall_score, pass_rate, recommendation, time.time()),
             )
         except Exception:
-            _log.debug("record_score best-effort skipped", exc_info=True)
+            _log.warning("record_score best-effort skipped", exc_info=True)
 
     @classmethod
     def get_version_scores(

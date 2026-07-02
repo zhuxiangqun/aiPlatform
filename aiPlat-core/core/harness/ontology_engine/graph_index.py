@@ -42,6 +42,7 @@ class GraphNode:
     entity_id: str
     entity_name: str
     class_name: str
+    source_doc_id: str = ""           # KB document ID this entity was extracted from
     out_edges: List[GraphEdge] = field(default_factory=list)
     in_edges: List[GraphEdge] = field(default_factory=list)
 
@@ -94,9 +95,15 @@ class GraphIndex:
                 entity_id TEXT NOT NULL,
                 entity_name TEXT NOT NULL DEFAULT '',
                 class_name TEXT NOT NULL DEFAULT '',
+                source_doc_id TEXT NOT NULL DEFAULT '',
                 PRIMARY KEY (domain_id, entity_id)
             )
         """)
+        # Phase E1: migration — add source_doc_id to existing tables
+        try:
+            conn.execute("ALTER TABLE graph_nodes ADD COLUMN source_doc_id TEXT NOT NULL DEFAULT ''")
+        except _sqlite3.OperationalError:
+            pass  # Column already exists
         conn.execute("""
             CREATE TABLE IF NOT EXISTS graph_edges (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -128,24 +135,25 @@ class GraphIndex:
 
     # ── Mutators ──────────────────────────────────────────────────
 
-    def add_entity(self, entity_id: str, entity_name: str, class_name: str) -> GraphNode:
+    def add_entity(self, entity_id: str, entity_name: str, class_name: str, *, source_doc_id: str = "") -> GraphNode:
         """Register a node (idempotent — returns existing if present).
         
-        Writes to SQLite incrementally.
+        Args:
+            source_doc_id: KB document ID for traceability (Phase E1)
         """
         if entity_id not in self._nodes:
             self._nodes[entity_id] = GraphNode(
                 entity_id=entity_id,
                 entity_name=entity_name,
                 class_name=class_name,
+                source_doc_id=source_doc_id,
             )
             conn = self._get_conn()
             conn.execute(
-                "INSERT OR REPLACE INTO graph_nodes(domain_id, entity_id, entity_name, class_name) VALUES (?,?,?,?)",
-                (self.domain_id, entity_id, entity_name, class_name),
+                "INSERT OR REPLACE INTO graph_nodes(domain_id, entity_id, entity_name, class_name, source_doc_id) VALUES (?,?,?,?,?)",
+                (self.domain_id, entity_id, entity_name, class_name, source_doc_id),
             )
             conn.commit()
-            # Invalidate traversal cache on mutation
             self._invalidate_cache()
         return self._nodes[entity_id]
 

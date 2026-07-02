@@ -72,7 +72,27 @@ async def sys_skill_call(
         if isinstance(layer, dict) and isinstance(layer.get("policy"), str) and layer.get("policy").strip():
             approval_layer_policy = str(layer.get("policy")).strip().lower()
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
+
+    # §5.93: Crisis gate — check skill params for crisis signals before execution
+    try:
+        from core.harness.security.crisis_gate import get_crisis_gate
+        gate = get_crisis_gate()
+        param_text = " ".join(str(v) for v in (params or {}).values() if isinstance(v, str))[:2000]
+        if param_text:
+            gate_result = gate.check(param_text, session_id=session_id, user_id=user_id)
+            if gate_result.decision.value in ("block", "escalate"):
+                _log = logging.getLogger("aiplat.skill")
+                _log.warning(
+                    "Skill %s blocked by crisis gate: severity=%s, decision=%s",
+                    skill_name,
+                    gate_result.crisis_result.severity.value if gate_result.crisis_result else "unknown",
+                    gate_result.decision.value,
+                )
+                from core.harness.security.crisis_detector import CrisisEscalation
+                raise CrisisEscalation(gate_result.crisis_result)
+    except Exception:
+        pass
 
     async def _emit_routing_event(status: str, *, extra: Optional[Dict[str, Any]] = None, approval_request_id: Optional[str] = None) -> None:
         """Emit best-effort routing event for observability/funnel metrics."""
@@ -253,7 +273,7 @@ async def sys_skill_call(
                     }
                 )
             except Exception as e:
-                logging.debug(str(e), exc_info=True)
+                logging.warning(str(e), exc_info=True)
         raise RuntimeError("Skill is not executable")
 
     ctx = context or SkillContext(session_id=session_id, user_id=user_id, variables=params or {})
@@ -264,7 +284,7 @@ async def sys_skill_call(
             if isinstance(prepared_params, dict):
                 prepared_params.setdefault("_coding_policy_profile", coding_profile)
         except Exception as e:
-            logging.debug(str(e), exc_info=True)
+            logging.warning(str(e), exc_info=True)
 
     # routing stage: selected for invocation (before policy gate)
     await _emit_routing_event("selected")
@@ -273,7 +293,7 @@ async def sys_skill_call(
         if not (isinstance(trace_context, dict) and trace_context.get("routing_candidates_emitted") is True):
             await _emit_candidates_event(skill_name or "<unknown>", prepared_params or {})
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
 
     # ---- P1: executable skill governance (deny/ask/allow + approval) ----
     try:
@@ -289,7 +309,7 @@ async def sys_skill_call(
                 elif isinstance(session_id, str) and "agent" in session_id.lower():
                     args.setdefault("_agent_id", str(session_id))
             except Exception as e:
-                logging.debug(str(e), exc_info=True)
+                logging.warning(str(e), exc_info=True)
             # Inject graph context for Skill awareness
             try:
                 if "_graph_context" not in args:
@@ -300,7 +320,7 @@ async def sys_skill_call(
                         if task_hint:
                             gc["code_graph"] = sys_code_intel_context(task_hint)
                     except Exception as e:
-                        logging.debug(str(e), exc_info=True)
+                        logging.warning(str(e), exc_info=True)
                     try:
                         from core.harness.knowledge.wiki_engine import search_pages
                         kbs = (trace_context or {}).get("knowledge_bases") or []
@@ -315,7 +335,7 @@ async def sys_skill_call(
                             if kbs:
                                 gc["wiki_collections"] = kbs
                     except Exception as e:
-                        logging.debug(str(e), exc_info=True)
+                        logging.warning(str(e), exc_info=True)
                     try:
                         from core.harness.knowledge.knowledge_ontology import CLASSES
                         gc["ontology_classes"] = [
@@ -323,11 +343,11 @@ async def sys_skill_call(
                             for c in CLASSES if c.allowed_categories
                         ]
                     except Exception as e:
-                        logging.debug(str(e), exc_info=True)
+                        logging.warning(str(e), exc_info=True)
                     if gc:
                         args["_graph_context"] = gc
             except Exception as e:
-                logging.debug(str(e), exc_info=True)
+                logging.warning(str(e), exc_info=True)
             # Best-effort: bind run_id for approval replay/linkage. For skill executions,
             # session_id is typically the execution id (run_*), so we use it as fallback.
             if "_run_id" not in args:
@@ -337,12 +357,12 @@ async def sys_skill_call(
                     elif isinstance(session_id, str) and session_id.startswith(("run_", "run-")):
                         args["_run_id"] = str(session_id)
                 except Exception as e:
-                    logging.debug(str(e), exc_info=True)
+                    logging.warning(str(e), exc_info=True)
             try:
                 if isinstance(trace_context, dict) and trace_context.get("tenant_id") and "_tenant_id" not in args:
                     args["_tenant_id"] = trace_context.get("tenant_id")
             except Exception as e:
-                logging.debug(str(e), exc_info=True)
+                logging.warning(str(e), exc_info=True)
             # Fallback tenant propagation from active request context.
             try:
                 if "_tenant_id" not in args:
@@ -350,7 +370,7 @@ async def sys_skill_call(
                     if arq and getattr(arq, "tenant_id", None):
                         args["_tenant_id"] = getattr(arq, "tenant_id")
             except Exception as e:
-                logging.debug(str(e), exc_info=True)
+                logging.warning(str(e), exc_info=True)
             # Resume semantics: allow passing approval_request_id via trace_context
             try:
                 if isinstance(trace_context, dict):
@@ -358,13 +378,13 @@ async def sys_skill_call(
                     if arid and "_approval_request_id" not in args:
                         args["_approval_request_id"] = str(arid)
             except Exception as e:
-                logging.debug(str(e), exc_info=True)
+                logging.warning(str(e), exc_info=True)
             try:
                 arq = get_active_request_context()
                 if arq and getattr(arq, "actor_role", None):
                     args.setdefault("_actor_role", getattr(arq, "actor_role"))
             except Exception as e:
-                logging.debug(str(e), exc_info=True)
+                logging.warning(str(e), exc_info=True)
 
             # ---- Coding policy (karpathy_v1) contract gate (Phase-2) ----
             # Goal: enforce Surgical + Goal-driven by requiring stable output contract.
@@ -389,7 +409,7 @@ async def sys_skill_call(
                             args["_policy_reason"] = "missing_change_contract"
                             args["_missing_change_contract_keys"] = missing[:10]
             except Exception as e:
-                logging.debug(str(e), exc_info=True)
+                logging.warning("Output schema enforcement check failed: %s", e, exc_info=True)
 
             # Basic permission posture for executable skills
             resolver = None; di = None
@@ -397,7 +417,8 @@ async def sys_skill_call(
                 from core.harness.integration import _ensure_di
                 di = _ensure_di()
                 if di: resolver = di.resolve("SkillPermissionResolver")
-            except Exception: pass  # noqa: allowed — DI best-effort
+            except Exception:
+                logging.warning("DI resolution failed for SkillPermissionResolver, using direct import fallback", exc_info=True)
             if resolver and isinstance(resolver, dict):
                 decision = resolver["resolve_exec"](skill_name)
             else:
@@ -432,7 +453,7 @@ async def sys_skill_call(
                             }
                         )
                     except Exception as e:
-                        logging.debug(str(e), exc_info=True)
+                        logging.warning(str(e), exc_info=True)
                 # Return a structured result instead of raising (so loop can handle it).
                 from core.harness.interfaces import SkillResult
 
@@ -475,7 +496,7 @@ async def sys_skill_call(
                 if approval_layer_policy != "tool_only" and meta.get("requires_approval") is True:
                     args["_approval_required"] = True
             except Exception as e:
-                logging.debug(str(e), exc_info=True)
+                logging.warning(str(e), exc_info=True)
 
             # SandboxGate — pre-execution safety validation
             try:
@@ -486,7 +507,7 @@ async def sys_skill_call(
                     return SkillResult(ok=False, error=f"Sandbox rejected: {sb_result.reason}",
                                       error_code="SANDBOX_REJECT")
             except Exception as e:
-                logging.debug(str(e), exc_info=True)
+                logging.warning(str(e), exc_info=True)
 
             # PolicyGate approval flow (mirrors sys_tool_call behavior)
             # tool_only: bypass skill-level approvals entirely (let tools request approvals).
@@ -494,7 +515,7 @@ async def sys_skill_call(
                 try:
                     args.pop("_approval_required", None)
                 except Exception as e:
-                    logging.debug(str(e), exc_info=True)
+                    logging.warning(str(e), exc_info=True)
                 pr = None
             else:
                 pr = await policy_gate.check_skill(user_id=user_id, skill_name=skill_name or "<unknown>", skill_args=args)
@@ -503,7 +524,7 @@ async def sys_skill_call(
                 from core.harness.kernel.execution_context import mark_gate_passed
                 mark_gate_passed("policy_gate_skill")
             except Exception as e:
-                logging.debug(str(e), exc_info=True)
+                logging.warning(str(e), exc_info=True)
             if pr is not None and pr.decision == PolicyDecision.DENY:
                 from core.harness.interfaces import SkillResult
                 # Emit syscall event for observability (deny)
@@ -538,7 +559,7 @@ async def sys_skill_call(
                             }
                         )
                 except Exception as e:
-                    logging.debug(str(e), exc_info=True)
+                    logging.warning(str(e), exc_info=True)
 
                 await _emit_routing_event("policy_denied", extra={"reason": pr.reason})
                 return SkillResult(success=False, output=None, error="policy_denied", metadata={"reason": pr.reason, "skill": skill_name})
@@ -598,9 +619,9 @@ async def sys_skill_call(
                                         },
                                     )
                             except Exception as e:
-                                logging.debug(str(e), exc_info=True)
+                                logging.warning(str(e), exc_info=True)
                     except Exception as e:
-                        logging.debug(str(e), exc_info=True)
+                        logging.warning(str(e), exc_info=True)
 
                     await _emit_routing_event("approval_required", extra={"reason": pr.reason}, approval_request_id=pr.approval_request_id)
                     return SkillResult(
@@ -629,7 +650,7 @@ async def sys_skill_call(
             )
     except Exception:
         import logging as _logging
-        _logging.getLogger("aiplat.syscall.skill").debug("Workspace gate check skipped", exc_info=True)
+        _logging.getLogger("aiplat.syscall.skill").warning("Workspace gate check skipped", exc_info=True)
 
     async def _run():
         # P4: propagate approval_request_id across nested tool calls (when present).
@@ -671,13 +692,13 @@ async def sys_skill_call(
                     try:
                         reset_active_trace_context(trace_token)
                     except Exception as e:
-                        logging.debug(str(e), exc_info=True)
+                        logging.warning(str(e), exc_info=True)
         finally:
             if tok is not None:
                 try:
                     reset_active_approval_request_id(tok)
                 except Exception as e:
-                    logging.debug(str(e), exc_info=True)
+                    logging.warning(str(e), exc_info=True)
 
     # (span already started above)
     try:
@@ -687,7 +708,7 @@ async def sys_skill_call(
                 from core.harness.utils.model_injection import ensure_skill_model, best_model_for_purpose
                 ensure_skill_model(skill, model_name=best_model_for_purpose("skill_execution"), force=False)
             except Exception as e:
-                logging.debug(str(e), exc_info=True)
+                logging.warning(str(e), exc_info=True)
 
         # §5.19: refuse retry on non-idempotent write skills
         cfg = getattr(skill, "_config", None)
@@ -726,7 +747,7 @@ async def sys_skill_call(
                         )
                         set_active_change_contract(contract)
         except Exception as e:
-            logging.debug(str(e), exc_info=True)
+            logging.warning(str(e), exc_info=True)
 
         runtime = get_kernel_runtime()
         store = getattr(runtime, "execution_store", None) if runtime else None
@@ -759,7 +780,7 @@ async def sys_skill_call(
                     }
                 )
             except Exception as e:
-                logging.debug(str(e), exc_info=True)
+                logging.warning(str(e), exc_info=True)
         # Audit: record execution realness when AIPLAT_EXECUTION_AUDIT is enabled
         if os.getenv("AIPLAT_EXECUTION_AUDIT", "false").lower() in ("1", "true", "yes"):
             try:
@@ -782,7 +803,7 @@ async def sys_skill_call(
                         },
                     )
             except Exception as e:
-                logging.debug(str(e), exc_info=True)
+                logging.warning("Execution audit recording failed: %s", e, exc_info=True)
         # Curator: record call for frequency tracking + lifecycle management
         try:
             curator = None
@@ -790,13 +811,14 @@ async def sys_skill_call(
                 from core.harness.integration import _ensure_di
                 di = _ensure_di()
                 if di: curator = di.resolve("SkillCurator")
-            except Exception: pass  # noqa: allowed — DI best-effort
+            except Exception:
+                logging.warning("DI resolution failed for SkillCurator, using direct import fallback", exc_info=True)
             if curator is None:
                 from core.harness.integration import get_skill_curator
                 curator = get_skill_curator()
             curator.record_call(skill_name) if skill_name else None
         except Exception as e:
-            logging.debug(str(e), exc_info=True)
+            logging.warning("Skill curator call recording failed: %s", e, exc_info=True)
         # SchemaGate — JSON Schema enforcement
         if bool(getattr(result, "success", True)):
             try:
@@ -813,7 +835,7 @@ async def sys_skill_call(
                         setattr(result, "success", False)
                         setattr(result, "error", f"schema_validation_failed{': ' + s_result.retry_hint[:200] if s_result.retry_hint else ''}")
             except Exception as e:
-                logging.debug(str(e), exc_info=True)
+                logging.warning("SchemaGate validation failed: %s", e, exc_info=True)
 
         return result
     except Exception:
@@ -850,7 +872,7 @@ async def sys_skill_call(
                     }
                 )
             except Exception as e:
-                logging.debug(str(e), exc_info=True)
+                logging.warning(str(e), exc_info=True)
         raise
 
 
@@ -913,5 +935,5 @@ def _get_skill_chain(skill: Any) -> List[str]:
             chain = meta.get("skill_chain", [])
             return [str(s) for s in chain] if chain else []
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
     return []

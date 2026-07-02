@@ -172,3 +172,29 @@ class GraphInference:
     def remove_inferred_edges(self) -> int:
         """Remove all inferred edges. Delegates to GraphIndex (SQL-backed)."""
         return self._graph.remove_inferred_edges()
+
+    # ── Phase F: Runtime rule CRUD ──
+
+    def add_rule(self, rule: Dict[str, Any]) -> str:
+        """Add or overwrite a rule at runtime. Returns rule name."""
+        name = str(rule.get("name", ""))
+        if not name:
+            raise ValueError("Rule must have a 'name' field")
+        for i, r in enumerate(self._rules):
+            if r.get("name") == name:
+                self._rules[i] = rule
+                return name
+        self._rules.append(rule)
+        return name
+
+    def remove_rule(self, name: str) -> bool:
+        """Remove a rule by name. Returns True if removed."""
+        for i, r in enumerate(self._rules):
+            if r.get("name") == name:
+                del self._rules[i]
+                return True
+        return False
+
+    def list_rules(self) -> List[Dict[str, Any]]:
+        """Return all active inference rules (read-only snapshot)."""
+        return [dict(r) for r in self._rules]

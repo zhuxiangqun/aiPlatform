@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 from enum import Enum
 import json
 import asyncio
+import sqlite3
 from pathlib import Path
 
 
@@ -53,6 +54,9 @@ class ProdFeedbackStore:
         self.config = config
         self._memory_store: List[StoredFeedback] = []
         self._session_index: Dict[str, List[str]] = {}
+        self._db_path = Path(config.storage_path or "~/.aiplat/feedback_store.db").expanduser()
+        if config.storage_backend == StorageBackend.DATABASE:
+            self._init_db()
 
     async def store(
         self,
@@ -100,7 +104,9 @@ class ProdFeedbackStore:
             return result[-limit:]
         elif self.config.storage_backend == StorageBackend.FILE:
             return await self._retrieve_from_file(session_id, feedback_type, limit)
-        # DB and S3: not yet implemented — return empty
+        elif self.config.storage_backend == StorageBackend.DATABASE:
+            return await self._retrieve_from_db(session_id, feedback_type, limit)
+        # S3: not yet implemented — return empty
         return []
 
     async def delete(self, feedback_id: str) -> bool:
@@ -109,6 +115,15 @@ class ProdFeedbackStore:
                 if f.id == feedback_id:
                     self._memory_store.pop(i)
                     return True
+        elif self.config.storage_backend == StorageBackend.DATABASE:
+            def _del():
+                conn = sqlite3.connect(str(self._db_path))
+                cursor = conn.execute("DELETE FROM feedback WHERE id = ?", (feedback_id,))
+                deleted = cursor.rowcount > 0
+                conn.commit()
+                conn.close()
+                return deleted
+            return await asyncio.to_thread(_del)
         return False
 
     async def cleanup(self, older_than_days: Optional[int] = None):
@@ -119,6 +134,13 @@ class ProdFeedbackStore:
             f for f in self._memory_store
             if f.timestamp.timestamp() > cutoff
         ]
+        if self.config.storage_backend == StorageBackend.DATABASE:
+            def _clean():
+                conn = sqlite3.connect(str(self._db_path))
+                conn.execute("DELETE FROM feedback WHERE timestamp < ?", (cutoff,))
+                conn.commit()
+                conn.close()
+            await asyncio.to_thread(_clean)
 
     async def _store_to_file(self, feedback: StoredFeedback):
         if not self.config.storage_path:
@@ -179,8 +201,94 @@ class ProdFeedbackStore:
 
         return await asyncio.to_thread(_read)
 
+    def _init_db(self):
+        """Initialize SQLite table for feedback storage."""
+        self._db_path.parent.mkdir(parents=True, exist_ok=True)
+        conn = sqlite3.connect(str(self._db_path))
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS feedback (
+                id TEXT PRIMARY KEY,
+                session_id TEXT NOT NULL,
+                feedback_type TEXT NOT NULL,
+                content TEXT,
+                timestamp REAL NOT NULL,
+                metadata_json TEXT,
+                environment TEXT,
+                storage_type TEXT
+            )
+        """)
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_feedback_session ON feedback(session_id)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_feedback_type ON feedback(feedback_type)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_feedback_timestamp ON feedback(timestamp)")
+        conn.commit()
+        conn.close()
+
     async def _store_to_db(self, feedback: StoredFeedback):
-        pass
+        """Store feedback to SQLite database."""
+        def _write():
+            conn = sqlite3.connect(str(self._db_path))
+            conn.execute(
+                "INSERT OR REPLACE INTO feedback (id, session_id, feedback_type, content, timestamp, metadata_json, environment, storage_type) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                (
+                    feedback.id,
+                    feedback.session_id,
+                    feedback.feedback_type,
+                    json.dumps(feedback.content, ensure_ascii=False) if isinstance(feedback.content, (dict, list)) else str(feedback.content),
+                    feedback.timestamp.timestamp(),
+                    json.dumps(feedback.metadata, ensure_ascii=False),
+                    feedback.environment.value,
+                    feedback.storage_type.value,
+                ),
+            )
+            conn.commit()
+            conn.close()
+        await asyncio.to_thread(_write)
+
+    async def _retrieve_from_db(
+        self,
+        session_id: Optional[str] = None,
+        feedback_type: Optional[str] = None,
+        limit: int = 100,
+    ) -> List[StoredFeedback]:
+        """Retrieve feedback from SQLite database."""
+        def _read():
+            conn = sqlite3.connect(str(self._db_path))
+            query = "SELECT id, session_id, feedback_type, content, timestamp, metadata_json, environment, storage_type FROM feedback WHERE 1=1"
+            params: list = []
+            if session_id:
+                query += " AND session_id = ?"
+                params.append(session_id)
+            if feedback_type:
+                query += " AND feedback_type = ?"
+                params.append(feedback_type)
+            query += " ORDER BY timestamp DESC LIMIT ?"
+            params.append(limit)
+            rows = conn.execute(query, params).fetchall()
+            conn.close()
+            result = []
+            for row in rows:
+                try:
+                    content = json.loads(row[3]) if row[3] else row[3]
+                except (json.JSONDecodeError, TypeError):
+                    content = row[3]
+                metadata = {}
+                try:
+                    if row[5]:
+                        metadata = json.loads(row[5])
+                except (json.JSONDecodeError, TypeError):
+                    pass
+                result.append(StoredFeedback(
+                    id=row[0],
+                    session_id=row[1],
+                    feedback_type=row[2],
+                    content=content,
+                    timestamp=datetime.fromtimestamp(row[4], tz=timezone.utc),
+                    metadata=metadata,
+                    environment=ProdEnvironment(row[6]) if row[6] else ProdEnvironment.DEVELOPMENT,
+                    storage_type=FeedbackStorageType(row[7]) if row[7] else FeedbackStorageType.SESSION,
+                ))
+            return list(reversed(result))  # oldest first
+        return await asyncio.to_thread(_read)
 
 
 class ProdFeedbackAnalytics:

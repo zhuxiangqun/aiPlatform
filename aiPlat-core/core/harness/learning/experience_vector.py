@@ -29,6 +29,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 
 @dataclass
+# disposition: internal data type — Phase 5.1 experience vector cache
 class ExperienceEntry:
     """单条经验记录"""
     id: str
@@ -41,6 +42,7 @@ class ExperienceEntry:
     created_at: float = field(default_factory=time.time)
 
 
+# disposition: internal class — Phase 5.1 experience vector cache
 class ExperienceVectorCache:
     """经验向量缓存 — 在 Embedding 空间做经验检索。
 

@@ -177,8 +177,41 @@ class ThinContentCheck(WikiRule):
 
     def check(self, all_pages: Dict[str, Dict[str, Any]]) -> List[WikiIssue]:
         issues = []
+        collection_id = "default"
+        
+        # ── Phase 1: detect ghost pages via batch cleanup (dry_run) ──
+        ghost_titles: set = set()
+        try:
+            from core.harness.knowledge.wiki_engine import cleanup_ghost_pages
+            result = cleanup_ghost_pages(collection_id=collection_id, dry_run=True)
+            ghost_titles = set(result.get("ghosts_found", []))
+        except Exception:
+            pass
+        
         for title, page in all_pages.items():
             body = page.get("body", "")
+            
+            # Ghost pages: search index entries with no stored data
+            if title in ghost_titles:
+                issues.append(WikiIssue(
+                    check_type=self.code,
+                    severity="low",
+                    page_a=title,
+                    description="幽灵页面（搜索索引残影，无存储数据）",
+                    suggestion=f"运行 POST /api/core/wiki/cleanup-ghosts 批量清理，或忽略此条",
+                ))
+                continue
+            
+            # search_pages returns truncated bodies. Use read_page() for full content.
+            if len(body) < 20:
+                try:
+                    from core.harness.knowledge.wiki_engine import read_page
+                    full_page = read_page(title, collection_id=page.get("collection_id", collection_id))
+                    if full_page:
+                        body = full_page.get("body", body)
+                except Exception:
+                    pass
+            
             if len(body) < 20:
                 issues.append(WikiIssue(
                     check_type=self.code,

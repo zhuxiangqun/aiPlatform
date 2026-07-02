@@ -44,6 +44,7 @@ class SandboxResult:
     error: str = ""
 
 
+# disposition: Phase 6 infrastructure — sandbox execution, wiring pending
 class StageSandbox:
     """Process-level sandbox with resource limits.
 
@@ -217,6 +218,7 @@ if __name__ == "__main__":
         return worker_path
 
 
+# disposition: Phase 6 infrastructure — Docker sandbox execution, wiring pending
 class DockerSandbox(StageSandbox):
     """Container-level sandbox using Docker for stronger isolation.
 

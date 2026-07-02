@@ -23,6 +23,7 @@ logger = logging.getLogger("aiplat.team_planner")
 
 
 @dataclass
+# disposition: internal helper — used by recommend_team_stages() in same module
 class AgentCatalogEntry:
     agent_id: str
     display_name: str
@@ -33,6 +34,7 @@ class AgentCatalogEntry:
 
 
 @dataclass
+# disposition: internal helper — used by recommend_team_stages() in same module
 class TeamRecommendation:
     team_name: str
     reasoning: str
@@ -40,6 +42,7 @@ class TeamRecommendation:
     raw_reply: str = ""
 
 
+# disposition: internal helper — used by recommend_team_stages() in same module
 def list_available_agents() -> List[AgentCatalogEntry]:
     """Scan all agent directories for AGENT.md files and return their frontmatter.
 
@@ -84,6 +87,7 @@ def list_available_agents() -> List[AgentCatalogEntry]:
     return entries
 
 
+# disposition: internal helper — used by recommend_team_stages() in same module
 def build_agent_catalog_markdown(agents: Optional[List[AgentCatalogEntry]] = None) -> str:
     """Format agent catalog as a markdown table for LLM prompts.
 
@@ -209,6 +213,7 @@ async def recommend_team_stages(
     return recommendation
 
 
+# disposition: internal helper — json serialization for prompt injection
 def json_dumps_safe(obj: Any, max_len: int = 8000) -> str:
     """Safe JSON dump with length limit."""
     import json as _json

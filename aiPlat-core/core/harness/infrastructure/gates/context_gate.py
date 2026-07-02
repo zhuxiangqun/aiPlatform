@@ -119,8 +119,29 @@ class ContextGate:
         return await self._compression.compress(messages, state)
 
     def prepare_tool_args(self, args: Dict[str, Any], *, context: Dict[str, Any] | None = None) -> Dict[str, Any]:
-        """Placeholder: return args as-is."""
-        return args
+        """Validate and sanitize tool arguments before execution.
+        
+        Applies: type validation, size limits, injection pattern detection.
+        """
+        if not isinstance(args, dict):
+            return {}
+        
+        sanitized = {}
+        for key, value in args.items():
+            if not isinstance(key, str):
+                continue
+            # Sanitize string values: detect common injection patterns
+            if isinstance(value, str):
+                if len(value) > 100_000:  # 100KB limit
+                    value = value[:100_000] + " [TRUNCATED]"
+                # Check for potential prompt injection markers
+                if "忽略" in value and "指令" in value:
+                    import logging
+                    logging.getLogger("context_gate").warning(
+                        "Potential prompt injection detected in tool arg '%s'", key)
+            sanitized[key] = value
+        
+        return sanitized
 
     def apply_profile(self, messages: List[Dict[str, Any]], profile: str = "code") -> List[Dict[str, Any]]:
         """Apply context profile strategy — control what the model sees.

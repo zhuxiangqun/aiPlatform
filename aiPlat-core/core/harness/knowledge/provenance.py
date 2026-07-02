@@ -27,6 +27,7 @@ class Citation:
 
 
 @dataclass
+# disposition: internal data type — used within provenance module
 class AnswerProvenance:
     run_id: str
     answer: str

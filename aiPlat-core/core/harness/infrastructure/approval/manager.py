@@ -427,8 +427,25 @@ class ApprovalManager:
             )
             self._notify_callbacks("on_rejected", request)
             await self._persist(request)
+            # § v4.1: Feed HITL rejection into ExperienceVectorCache for future retrieval
+            import asyncio as _asyncio
+            _asyncio.ensure_future(self._store_rejection_feedback(request, comments))
         
         return request
+
+    async def _store_rejection_feedback(self, request, comments: str) -> None:
+        try:
+            from core.harness.learning.experience_vector import get_experience_cache
+            cache = get_experience_cache()
+            await cache.store(
+                run_id=getattr(request, 'run_id', '') or '',
+                summary=f"[HITL_REJECTED] {comments[:500]}",
+                label="rejected",
+                domain_id=getattr(request, 'domain_id', 'default') if hasattr(request, 'domain_id') else 'default',
+                tags=["hitl_rejection", str(getattr(request, 'resource_type', ''))],
+            )
+        except Exception:
+            pass
 
     async def cancel_request(self, request_id: str) -> Optional[ApprovalRequest]:
         """
