@@ -51,10 +51,10 @@ const RoleManager: React.FC = () => {
   const fetchData = async () => {
     setLoading(true);
     const [aRes, mRes] = await Promise.all([
-      fetch('/api/core/roles/agents').then(r => r.json()),
-      fetch('/api/core/roles/metrics').then(r => r.json()),
+      fetch('/api/core/roles/agents').then(r => r.json()).catch(() => []),
+      fetch('/api/core/roles/metrics').then(r => r.json()).catch(() => ({})),
     ]);
-    setAgents(aRes);
+    setAgents(Array.isArray(aRes) ? aRes : (aRes.agents || []));
     setMetrics(mRes);
     setLoading(false);
   };
@@ -118,39 +118,52 @@ const RoleManager: React.FC = () => {
             </tr>
           </thead>
           <tbody>
-            {agents.map(a => (
+            {agents.map(a => {
+              const isService = a.role === 'system_service' || a.agent_type === 'system_service';
+              return (
               <tr key={a.agent_id} style={{ borderBottom: '1px solid #1e293b' }}>
                 <td style={{ padding: '8px 12px' }}>
                   <div style={{ fontWeight: 600 }}>{a.agent_id}</div>
                   {a.model && <div style={{ fontSize: 12, color: '#94a3b8' }}>{a.model}</div>}
+                  {a.description && <div style={{ fontSize: 11, color: '#64748b', marginTop: 2 }}>{a.description}</div>}
                 </td>
                 <td style={{ padding: '8px 12px' }}>
-                  <select value={a.role} onChange={e => updateRole(a.agent_id, e.target.value)}
-                    style={{
-                      background: '#1e293b', border: '1px solid #334155', borderRadius: 6,
-                      padding: '6px 12px', color: '#e2e8f0', fontSize: 13,
-                    }}>
-                    {Object.entries(ROLE_INFO).map(([k, v]) => (
-                      <option key={k} value={k}>{v.icon} {v.label}</option>
-                    ))}
-                  </select>
+                  {isService ? (
+                    <span style={{ fontSize: 12, color: '#a855f7', fontWeight: 600, padding: '4px 10px', background: '#a855f710', borderRadius: 4 }}>
+                      🔧 系统服务
+                    </span>
+                  ) : (
+                    <select value={a.role} onChange={e => updateRole(a.agent_id, e.target.value)}
+                      style={{
+                        background: '#1e293b', border: '1px solid #334155', borderRadius: 6,
+                        padding: '6px 12px', color: '#e2e8f0', fontSize: 13,
+                      }}>
+                      {Object.entries(ROLE_INFO).map(([k, v]) => (
+                        <option key={k} value={k}>{v.icon} {v.label}</option>
+                      ))}
+                    </select>
+                  )}
                 </td>
                 <td style={{ padding: '8px 12px' }}>
-                  <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-                    {MODES.slice(0, -1).map(m => (
-                      <button key={m.key} onClick={() => overrideMode(a.agent_id, m.key)}
-                        style={{
-                          padding: '4px 10px', borderRadius: 4, border: 'none', cursor: 'pointer',
-                          fontSize: 11, fontWeight: 600,
-                          background: '#1e293b', color: '#94a3b8',
-                        }}>
-                        {m.label}
-                      </button>
-                    ))}
-                  </div>
+                  {isService ? (
+                    <span style={{ fontSize: 12, color: '#64748b' }}>EvolutionEngine 自动调度</span>
+                  ) : (
+                    <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                      {MODES.slice(0, -1).map(m => (
+                        <button key={m.key} onClick={() => overrideMode(a.agent_id, m.key)}
+                          style={{
+                            padding: '4px 10px', borderRadius: 4, border: 'none', cursor: 'pointer',
+                            fontSize: 11, fontWeight: 600,
+                            background: '#1e293b', color: '#94a3b8',
+                          }}>
+                          {m.label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </td>
               </tr>
-            ))}
+            )})}
           </tbody>
         </table>
       </div>
