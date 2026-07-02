@@ -254,7 +254,7 @@ async def list_skills(
                 if prov2:
                     s.metadata["provenance"] = prov2
         except Exception as e:
-            logging.debug(str(e), exc_info=True)
+            logging.warning(str(e), exc_info=True)
         result.append(
             {
                 "id": s.id,
@@ -324,11 +324,11 @@ async def create_skill(request: SkillCreateRequest, rt: RuntimeDep = None):
             },
         )
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
     try:
         await _maybe_verify_and_audit_skill_signature(rt, skill=skill, scope="engine")
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
     return {"id": skill.id, "status": "created", "name": skill.name}
 
 
@@ -554,9 +554,9 @@ async def lint_engine_skill(skill_id: str, rt: RuntimeDep = None):
             try:
                 s.metadata = md
             except Exception as e:
-                logging.debug(str(e), exc_info=True)
+                logging.warning(str(e), exc_info=True)
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
 
     try:
         conf = await lint_conflicts_engine_skills(rt=rt, tenant_id=None, threshold=0.2, min_overlap=2, limit=200)
@@ -578,9 +578,9 @@ async def lint_engine_skill(skill_id: str, rt: RuntimeDep = None):
             try:
                 s.metadata = md
             except Exception as e:
-                logging.debug(str(e), exc_info=True)
+                logging.warning(str(e), exc_info=True)
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
 
     lint = lint_skill(s)
     fixes = propose_skill_fixes(skill=s, lint=lint)
@@ -621,7 +621,7 @@ async def apply_lint_fix_engine_skill(skill_id: str, request: Optional[Dict[str,
     except HTTPException:
         raise
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
 
     s = await mgr.get_skill(skill_id)
     if not s:
@@ -638,9 +638,9 @@ async def apply_lint_fix_engine_skill(skill_id: str, request: Optional[Dict[str,
             try:
                 s.metadata = md
             except Exception as e:
-                logging.debug(str(e), exc_info=True)
+                logging.warning(str(e), exc_info=True)
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
 
     try:
         conf = await lint_conflicts_engine_skills(rt=rt, tenant_id=None, threshold=0.2, min_overlap=2, limit=200)
@@ -662,9 +662,9 @@ async def apply_lint_fix_engine_skill(skill_id: str, request: Optional[Dict[str,
             try:
                 s.metadata = md
             except Exception as e:
-                logging.debug(str(e), exc_info=True)
+                logging.warning(str(e), exc_info=True)
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
 
     lint = lint_skill(s)
     fx = propose_skill_fixes(skill=s, lint=lint)
@@ -763,7 +763,7 @@ async def apply_lint_fix_engine_skill(skill_id: str, request: Optional[Dict[str,
             user_id="admin",
         )
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
 
     lint2 = lint_skill(skill2)
     fx2 = propose_skill_fixes(skill=skill2, lint=lint2)
@@ -804,11 +804,11 @@ async def update_skill(skill_id: str, request: dict, rt: RuntimeDep = None):
             },
         )
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
     try:
         await _maybe_verify_and_audit_skill_signature(rt, skill=skill, scope="engine")
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
     return {"status": "updated"}
 
 
@@ -852,7 +852,7 @@ async def enable_skill(skill_id: str, rt: RuntimeDep = None):
     except HTTPException:
         raise
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
     success = await mgr.enable_skill(skill_id)
     if not success:
         raise HTTPException(status_code=400, detail=f"Skill {skill_id} cannot be enabled (maybe deprecated; use restore)")
@@ -1022,7 +1022,7 @@ async def execute_skill(skill_id: str, request: SkillExecuteRequest, http_reques
         tmp = _inject_http_request_context({"context": dict(ctx_for_user)}, http_request, entrypoint="api")
         ctx_for_user = tmp.get("context") if isinstance(tmp, dict) and isinstance(tmp.get("context"), dict) else ctx_for_user
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
     deny = await rbac_guard(http_request=http_request, payload={"context": ctx_for_user}, action="execute", resource_type="skill", resource_id=str(skill_id))
     if deny:
         return deny
@@ -1040,7 +1040,7 @@ async def execute_skill(skill_id: str, request: SkillExecuteRequest, http_reques
     try:
         await _audit_execute(rt, http_request=http_request, payload={"context": ctx_for_user}, resource_type="skill", resource_id=str(skill_id), resp=resp, action="execute_skill")
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
     return JSONResponse(status_code=200 if resp.get("ok") else int(getattr(result, "http_status", 500) or 500), content=resp)
 
 
@@ -1066,7 +1066,7 @@ async def get_skill_execution(execution_id: str, rt: RuntimeDep = None):
                     "duration_ms": exec_.duration_ms,
                 }
         except Exception as e:
-            logging.debug(str(e), exc_info=True)
+            logging.warning(str(e), exc_info=True)
     if not record:
         raise HTTPException(status_code=404, detail=f"Execution {execution_id} not found")
 

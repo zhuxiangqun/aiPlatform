@@ -33,27 +33,27 @@ class PromptAppTemplateUpdate(BaseModel):
 
 class PromptPreviewRequest(BaseModel):
     variables: Dict[str, Any] = Field(default_factory=dict)
-    model: str = "deepseek-chat"  # noqa: model-legacy  # noqa: model-legacy
+    model: str = ""  # resolved via best_model_for_purpose("default") in handler
 
 
 class PromptPreviewTextRequest(BaseModel):
     system_prompt: str = ""
     user_prompt: str = ""
     variables: Dict[str, Any] = Field(default_factory=dict)
-    model: str = "deepseek-chat"  # noqa: model-legacy  # noqa: model-legacy
+    model: str = ""  # resolved via best_model_for_purpose("default") in handler
 
 
 class PromptRunRequest(BaseModel):
     template_id: Optional[str] = None
     instance_id: Optional[str] = None
     variables: Dict[str, Any] = Field(default_factory=dict)
-    model: str = "deepseek-chat"  # noqa: model-legacy  # noqa: model-legacy
+    model: str = ""  # resolved via best_model_for_purpose("default") in handler
 
 
 class PromptOptimizeRequest(BaseModel):
     prompt: str = ""
     template_id: Optional[str] = None
-    model: str = "deepseek-chat"  # noqa: model-legacy  # noqa: model-legacy
+    model: str = ""  # resolved via best_model_for_purpose("default") in handler
 
 
 class PromptTestCaseCreate(BaseModel):
@@ -73,7 +73,7 @@ class PromptEvalRunCreate(BaseModel):
     template_id: str
     version_a: str
     version_b: str
-    model: str = "deepseek-chat"  # noqa: model-legacy  # noqa: model-legacy
+    model: str = ""  # resolved via best_model_for_purpose("default") in handler
     case_ids: List[str] = Field(default_factory=list)
 
 

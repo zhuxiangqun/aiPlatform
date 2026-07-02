@@ -54,7 +54,7 @@ def sys_wiki_context(question: str, *, wiki_titles: List[str] = None,
         from core.harness.knowledge.ontology_query_mapper import enrich_query_for_retrieval
         question = enrich_query_for_retrieval(question, collection_id=cids[0])
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
 
     # FTS5 keyword search
     fts5_matches: List[str] = []
@@ -84,7 +84,7 @@ def sys_wiki_context(question: str, *, wiki_titles: List[str] = None,
                             related_pages.append({"title": lp["title"],
                                                   "summary": lp.get("summary", "")[:120]})
             except Exception as e:
-                logging.debug(str(e), exc_info=True)
+                logging.warning(str(e), exc_info=True)
 
     # Phase CM: cross-modal relation traversal
     AI = "http://aiplat.local/knowledge#"
@@ -105,7 +105,7 @@ def sys_wiki_context(question: str, *, wiki_titles: List[str] = None,
                         cross_modal_related.append({"title": target_name, "summary": f"cross-modal reference (via {t.predicate.replace(AI, '')})"})
         related_pages[:0] = cross_modal_related[:5]
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
 
     # Phase AligNet: three-tier abstraction retrieval (coarse/fine/boundary)
     abstraction_results: List[Dict[str, Any]] = []
@@ -152,7 +152,7 @@ def sys_wiki_context(question: str, *, wiki_titles: List[str] = None,
                             "summary": f"A8: key too similar to '{title}', consider merge",
                         })
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
 
     # Merge abstraction results into related pages
     existing_titles = {r.get("title", "") for r in results + related_pages}

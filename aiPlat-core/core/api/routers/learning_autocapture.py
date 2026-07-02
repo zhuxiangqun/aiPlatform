@@ -453,7 +453,7 @@ async def record_learning_feedback(request: dict, http_request: Request):
                 tenant_id=str(http_request.headers.get("X-AIPLAT-TENANT-ID") or "") or None,
             )
         except Exception as e:
-            logging.debug(str(e), exc_info=True)
+            logging.warning(str(e), exc_info=True)
         try:
             await store.add_audit_log(
                 action="learning_feedback_recorded",
@@ -466,6 +466,6 @@ async def record_learning_feedback(request: dict, http_request: Request):
                 detail={"decision": decision, "suite_kind": suite_kind, "artifact_id": art.artifact_id},
             )
         except Exception as e:
-            logging.debug(str(e), exc_info=True)
+            logging.warning(str(e), exc_info=True)
 
     return {"status": "ok", "artifact": await store.get_learning_artifact(art.artifact_id), "suite": updated_suite}

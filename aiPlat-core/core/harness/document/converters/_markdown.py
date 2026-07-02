@@ -7,14 +7,14 @@ from core.harness.document.protocol import (
     DocumentConverter, DocumentElement, StreamInfo, detect_structure_role,
 )
 
-ACCEPTED_MIME_PREFIXES = ["text/markdown", "text/x-markdown"]
-ACCEPTED_EXTENSIONS = [".md", ".markdown"]
-
 
 class MarkdownConverter(DocumentConverter):
     """Markdown → heading-split elements with frontmatter extraction."""
 
+    SOURCE_FORMAT = "markdown"
     REQUIRED_PACKAGES = {}  # yaml optional for frontmatter
+    ACCEPTED_EXTENSIONS = (".md", ".markdown")
+    ACCEPTED_MIME_PREFIXES = ("text/markdown", "text/x-markdown")
 
     def accepts(
         self,
@@ -22,14 +22,7 @@ class MarkdownConverter(DocumentConverter):
         stream_info: StreamInfo,
         **kwargs: Any,
     ) -> bool:
-        extension = (stream_info.extension or "").lower()
-        if extension in ACCEPTED_EXTENSIONS:
-            return True
-        mimetype = (stream_info.mimetype or "").lower()
-        for prefix in ACCEPTED_MIME_PREFIXES:
-            if mimetype.startswith(prefix):
-                return True
-        return False
+        return self._accepts_by_format(stream_info)
 
     def convert(
         self,

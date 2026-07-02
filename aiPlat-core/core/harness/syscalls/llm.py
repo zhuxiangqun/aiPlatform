@@ -266,143 +266,8 @@ def _guard_messages(messages: List[Message]) -> tuple[List[Message], Dict[str, A
     return out, stats
 
 
-def _try_inject_claude_md(messages: List[Message]) -> None:
-    """Read CLAUDE.md from disk and inject as a system message header.
 
-    Idempotent: skips injection if CLAUDE.md content already appears in messages
-    (prevents double injection when caller also injects via ReActLoop._reason).
-
-    Note: file reads are synchronous but small (<12KB per file). For large-scale
-    concurrent LLM calls, consider prefetching into a module-level cache.
-    """
-    try:
-        from pathlib import Path
-        project_root = os.getenv("AIPLAT_PROJECT_ROOT") or os.getcwd()
-        content_parts = []
-
-        # §5.27: SOUL.md — persona layer (loaded first)
-        soul_path = Path(os.getenv("AIPLAT_HOME", str(Path.home() / ".aiplat"))) / "SOUL.md"
-        if not soul_path.exists():
-            soul_path = Path(project_root) / "SOUL.md"
-        if soul_path.exists():
-            soul_text = soul_path.read_text(encoding="utf-8").strip()
-            if soul_text and not soul_text.startswith("<!--"):
-                content_parts.append("[SOUL.md] " + soul_text[:2000])
-
-        # Project rules: CLAUDE.md (never compressed, §5.25)
-        claude_paths = [
-            Path(project_root) / "CLAUDE.md",
-            Path(project_root) / "aiPlat-core" / "CLAUDE.md",
-        ]
-        for p in claude_paths:
-            if p.exists():
-                text = p.read_text(encoding="utf-8")[:12000]
-                content_parts.append(f"[{p.name}] {text}")
-
-        if not content_parts:
-            return
-
-        guard = ("\n\n## 项目规则（每次从磁盘重读，永不压缩）\n\n" + "\n\n---\n\n".join(content_parts))
-        # Architecture rules
-        guard += _try_inject_arch_rules(messages)
-
-        # Idempotent: check if guard content already present (prevent double injection)
-        existing_text = " ".join(str(m.get("content", "")) for m in messages[:3])
-        guard_snippet = guard[:200]
-        if guard_snippet in existing_text:
-            return  # already injected by caller (e.g. ReActLoop._try_inject_claude_md)
-
-        if messages and messages[0].get("role") == "system":
-            messages[0]["content"] = str(messages[0].get("content") or "") + guard
-        else:
-            messages.insert(0, {"role": "system", "content": guard})
-    except Exception:
-        logging.getLogger("llm").warning("best-effort skipped", exc_info=True)
-
-
-def _try_inject_governance_rules(messages: List[Message]) -> str:
-    """Inject post-retrieval governance rules + live retrieval context into system prompt.
-
-    Two-part injection:
-    1. Static rules: citation format, conflict handling, timeliness awareness
-    2. Live context: latest retrieval's actual conflicts, ages, governance stats
-    """
-    # Only inject when conversation context suggests knowledge retrieval
-    context_text = " ".join(str(m.get("content", ""))[:500] for m in messages[-3:])
-    triggers = ("知识库", "knowledge", "检索", "retrieve", "wiki", "Wiki",
-                "文档", "document", "信息", "查找", "搜索", "来源")
-    if not any(t in context_text for t in triggers):
-        return ""
-
-    # Try to get live governance context from last retrieval
-    live_ctx = ""
-    try:
-        from core.harness.knowledge.post_retrieval_governor import get_last_governance_context
-        ctx = get_last_governance_context()
-        if ctx:
-            live_ctx = "\n\n" + ctx
-    except ImportError:
-        pass
-
-    return """
-## 知识溯源规则（召回后治理）
-
-你引用知识库时需要遵守以下规则：
-
-1. **引用来源**：每条事实性陈述必须标注来源。
-   - Wiki 页面：使用 `[来源: wiki/页面标题]` 格式
-   - 知识库文档：使用 `[来源: 文档名]` 格式
-   - 多个来源共同支持同一观点时，列出所有来源
-
-2. **冲突处理**：如果检索结果中存在标记为矛盾的信息（⚠️ 矛盾观点），必须在回答中同时呈现冲突双方的立场，并明确指出存在分歧。不要猜测哪个是正确的。
-
-3. **时效性感知**：
-   - 优先采纳最近更新的信息（标记为更高时效性得分）
-   - 如果引用的信息来源超过 180 天未更新，请在回答中注明信息的最后更新时间
-   - 对于时效性敏感的问题（政策、价格、联系方式等），如无法确认信息是最新的，请说明"此信息基于 YYYY-MM-DD 的数据，最新情况可能有变化"
-
-4. **置信度透明**：如果检索到的信息得分较低或被标记为低可信度来源，请在回答中注明不确定的程度。
-
-5. **宁缺毋滥**：如果治理后的上下文质量不足以支撑一个可靠回答，请回复"当前知识库中未找到足够可靠的信息来回答这个问题，建议人工核实"，不要编造答案。
-""" + live_ctx
-
-
-def _try_inject_arch_rules(messages: List[Message]) -> str:
-    u"""Inject architecture boundary rules into the system prompt.
-
-    Prevents Agent from creating files in wrong layers (§5.1, §5.29).
-    """
-    try:
-        from core.harness.knowledge.code_graph import repo_root
-        project = repo_root()
-        # Detect layer directories
-        layers = {}
-        for layer_name in ["aiPlat-core", "aiPlat-platform", "aiPlat-infra", "aiPlat-app",
-                           "aiPlat-management", "scripts", "docs", "tests"]:
-            path = project / layer_name
-            if path.exists():
-                layers[layer_name] = str(path)
-
-        if not layers:
-            return ""
-
-        layer_list = "\n".join(f"- {name}/ → {path}" for name, path in sorted(layers.items()))
-        return (
-            "\n\n## 架构边界（必须遵守）\n\n"
-            "系统采用四层架构，严格单向依赖:\n"
-            "app → platform → core → infra\n\n"
-            "**禁止的跨层操作**:\n"
-            "- 禁止在 platform/ 下新建文件 import core.harness.execution（应走 CoreFacade）\n"
-            "- 禁止在 core/ 下新建文件 import api.routers（harness 是基础层）\n"
-            "- 禁止在 infra/ 下硬编码应用名称或端口号映射\n"
-            "- 修改核心接口（PipelineStageConfig, sys_llm_generate, sys_tool_call）时，\n"
-            "  必须同步更新对应层的 CLAUDE.md 规约文档\n\n"
-            f"项目各层路径:\n{layer_list}\n"
-        )
-    except Exception:
-        return ""
-
-
+# ── Project config injection (consolidated — duplicate removed in P2 cleanup) ──
 def _try_inject_claude_md(messages: List[Message]) -> None:
     """Read CLAUDE.md from disk and inject as a system message header.
 
@@ -622,6 +487,7 @@ async def sys_llm_generate(
     temperature: Optional[float] = None,
     max_tokens: Optional[int] = None,
     response_format: Optional[Dict[str, Any]] = None,
+    extra_context: Optional[Dict[str, Any]] = None,
 ) -> Any:
     """
     Execute a model generation call.
@@ -636,6 +502,16 @@ async def sys_llm_generate(
         max_tokens: Optional override for max tokens.
         response_format: Optional response format (e.g. json_schema).
     """
+    # P0-1: 将 extra_context 合并到 ExecutionContext，确保异步调用链中标记不丢失
+    if extra_context:
+        try:
+            from core.harness.kernel.execution_context import get_active_workspace_context
+            exec_ctx = get_active_workspace_context()
+            if exec_ctx:
+                exec_ctx.variables.update(extra_context)
+        except Exception:
+            pass
+
     # Model routing: auto-detect model_name and resolve via model_injection (canonical path)
     if not model_name:
         model_name = getattr(model, 'model_name', '') or getattr(model, '_model_name', '') or ''
@@ -1220,7 +1096,7 @@ async def sys_llm_generate_stream(
         model_name = getattr(model, 'model_name', '') or getattr(model, '_model_name', '') or ''
     if not model_name:
         from core.harness.utils.model_injection import best_model_for_purpose
-        model_name = best_model_for_purpose("chat")  # noqa: model-legacy
+        model_name = best_model_for_purpose("chat")
 
     # Try streaming
     try:

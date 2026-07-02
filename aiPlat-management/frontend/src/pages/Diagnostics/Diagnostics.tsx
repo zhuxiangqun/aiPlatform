@@ -36,6 +36,7 @@ const DIAG_TO_TOOL: Record<string, { tool: string; threshold: number }[]> = {
   symbol_health: [{ tool: 'Code Intel', threshold: 75 }],
   lsp: [{ tool: 'Code Intel', threshold: 75 }],
   security: [{ tool: 'Audit Logs', threshold: 75 }],
+  llm_review: [{ tool: 'Code Intel', threshold: 75 }, { tool: 'Syscalls', threshold: 70 }],
   governance: [{ tool: 'Tenant Policies', threshold: 75 }],
   compliance: [{ tool: 'Audit Logs', threshold: 80 }, { tool: 'Tenant Policies', threshold: 75 }],
   overview_issues: [{ tool: 'Doctor', threshold: 80 }],
@@ -137,7 +138,7 @@ const Diagnostics: React.FC = () => {
     symbol_health: '符号健康', lsp: 'LSP 诊断', security: '安全扫描',
     governance: '治理', cross_lang: '跨语言', domain_coupling: '领域耦合',
     fragile_base: '脆弱基类', route_coverage: '路由覆盖',
-    full_stack: '全域测试',
+    full_stack: '全域测试', llm_review: 'LLM审查',
   };
   const catColors: Record<string, string> = {
     core_runtime: 'bg-blue-400', code_intel: 'bg-violet-400', capability: 'bg-amber-400',
@@ -148,7 +149,7 @@ const Diagnostics: React.FC = () => {
     symbol_health: 'bg-teal-400', lsp: 'bg-fuchsia-400', security: 'bg-lime-400',
     governance: 'bg-amber-400', cross_lang: 'bg-gray-400', domain_coupling: 'bg-gray-400',
     fragile_base: 'bg-gray-400', route_coverage: 'bg-gray-400',
-    full_stack: 'bg-sky-400',
+    full_stack: 'bg-sky-400', llm_review: 'bg-cyan-400',
   };
   
   useEffect(() => {

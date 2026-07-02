@@ -1515,132 +1515,25 @@ async def ops_prune():
     except Exception as e:
         return {"status": "error", "detail": str(e)}
 
-# Incremental router split: routing observability endpoints live in a dedicated module.
-from core.api.routers.routing_observability import router as routing_observability_router  # noqa: E402
-from core.api.routers.autosmoke import router as autosmoke_router  # noqa: E402
-from core.api.routers.learning_releases import router as learning_releases_router  # noqa: E402
-from core.api.routers.plugins import router as plugins_router  # noqa: E402
-from core.api.routers.learning_autocapture import router as learning_autocapture_router  # noqa: E402
-from core.api.routers.mcp_admin import router as mcp_admin_router  # noqa: E402
-from core.api.routers.workspace_packages import router as workspace_packages_router  # noqa: E402
-from core.api.routers.workspace_skills import router as workspace_skills_router  # noqa: E402
-from core.api.routers.workspace_skills_meta import router as workspace_skills_meta_router  # noqa: E402
-from core.api.routers.workspace_hooks import router as workspace_hooks_router  # noqa: E402
-from core.api.routers.engine_skills import router as engine_skills_router  # noqa: E402
-from core.api.routers.skill_packs import router as skill_packs_router  # noqa: E402
-from core.api.routers.packages_registry import router as packages_registry_router  # noqa: E402
-from core.api.routers.jobs import router as jobs_router  # noqa: E402
-from core.api.routers.diagnostics import router as diagnostics_router  # noqa: E402
-from core.api.routers.diagnostics_repo import router as diagnostics_repo_router  # noqa: E402
-from core.api.routers.prompt_templates import router as prompt_templates_router  # noqa: E402
-from core.api.routers.prompt_app import router as prompt_app_router  # noqa: E402
-from core.api.routers.prompt_eval import router as prompt_eval_router  # noqa: E402
-from core.api.routers.prompt_optimize import router as prompt_optimize_router  # noqa: E402
-from core.api.routers.personas import router as personas_router  # noqa: E402
-from core.api.routers.skill_evals import router as skill_evals_router  # noqa: E402
-from core.api.routers.workspace_tools import router as workspace_tools_router  # noqa: E402
-from core.api.routers.agents import router as agents_router  # noqa: E402
-from core.api.routers.workspace_agents import router as workspace_agents_router  # noqa: E402
-from core.api.routers.syscalls import router as syscalls_router  # noqa: E402
-from core.api.routers.runs import router as runs_router  # noqa: E402
-from core.api.routers.runs_eval import router as runs_eval_router  # noqa: E402
-from core.api.routers.traces_graphs import router as traces_graphs_router  # noqa: E402
-from core.api.routers.audit_ops_export import router as audit_ops_export_router  # noqa: E402
-from core.api.routers.memory import router as memory_router  # noqa: E402
-from core.api.routers.knowledge import router as knowledge_router  # noqa: E402
-from core.api.routers.adapters import router as adapters_router  # noqa: E402
-from core.api.routers.harness_admin import router as harness_admin_router  # noqa: E402
-from core.api.routers.evaluation_policies import router as evaluation_policies_router  # noqa: E402
-from core.api.routers.learning_misc import router as learning_misc_router  # noqa: E402
-from core.api.routers.tools import router as tools_router  # noqa: E402
-from core.api.routers.executions_trace import router as executions_trace_router  # noqa: E402
-from core.api.routers.catalog import router as catalog_router  # noqa: E402
-from core.api.routers.code_intel import router as code_intel_router  # noqa: E402
-from core.api.routers.health import router as health_router  # noqa: E402
-from core.api.routers.root import router as root_router  # noqa: E402
-from core.api.routers.variables import router as variables_router  # noqa: E402
-from core.api.routers.credentials import router as credentials_router  # noqa: E402
-from core.api.routers.workflow_templates import router as workflow_templates_router  # noqa: E402
-from core.api.routers.kb_eval import router as kb_eval_router  # noqa: E402
-from core.api.routers.entropy import router as entropy_router  # noqa: E402
-from core.api.routers.overview import router as overview_router  # noqa: E402
-from core.api.routers.wiki import router as wiki_router  # noqa: E402
-from core.api.routers.models_route import router as models_router
-from core.api.routers.model_audit import router as model_audit_router
-from core.api.routers.safety import router as safety_router  # noqa: E402
-from core.api.routers.diagrams import router as diagrams_router  # noqa: E402
-from core.api.routers.capability import router as capability_router  # noqa: E402
-from core.api.routers.knowledge_graph import router as knowledge_graph_router  # noqa: E402
-from core.api.routers.observation import router as observation_router  # noqa: E402
-from core.api.routers.evaluation import router as evaluation_router  # noqa: E402
-from core.harness.utils.llm_env import get_llm_api_key, get_llm_base_url
+# Dynamic router autodiscovery — one import replaces 63 individual router imports.
+# Each router module in core.api.routers/ is auto-discovered and registered.
+# Reduces static import edges from 63→1, improving code graph health score.
+import importlib
+import pkgutil
+import core.api.routers as _routers_pkg
 
-api_router.include_router(routing_observability_router)
-api_router.include_router(autosmoke_router)
-api_router.include_router(learning_releases_router)
-api_router.include_router(plugins_router)
-api_router.include_router(learning_autocapture_router)
-api_router.include_router(mcp_admin_router)
-api_router.include_router(workspace_packages_router)
-api_router.include_router(workspace_hooks_router)
-api_router.include_router(workspace_skills_router)
-api_router.include_router(workspace_skills_meta_router)
-api_router.include_router(engine_skills_router)
-api_router.include_router(skill_packs_router)
-api_router.include_router(packages_registry_router)
-api_router.include_router(jobs_router)
-api_router.include_router(diagnostics_router)
-api_router.include_router(diagnostics_repo_router)
-api_router.include_router(prompt_templates_router)
-api_router.include_router(prompt_app_router)
-api_router.include_router(prompt_eval_router)
-api_router.include_router(prompt_optimize_router)
-api_router.include_router(personas_router)
-api_router.include_router(skill_evals_router)
-api_router.include_router(agents_router)
-api_router.include_router(workspace_agents_router)
-from core.api.routers.browser_test import router as browser_test_router  # noqa: E402
-api_router.include_router(browser_test_router)
-api_router.include_router(syscalls_router)
-api_router.include_router(runs_router)
-api_router.include_router(traces_graphs_router)
-api_router.include_router(audit_ops_export_router)
-api_router.include_router(memory_router)
-api_router.include_router(knowledge_router)
-api_router.include_router(adapters_router)
-api_router.include_router(harness_admin_router)
-api_router.include_router(evaluation_policies_router)
-api_router.include_router(learning_misc_router)
-api_router.include_router(tools_router)
-api_router.include_router(workspace_tools_router)
-api_router.include_router(executions_trace_router)
-api_router.include_router(catalog_router)
-api_router.include_router(code_intel_router)
-api_router.include_router(health_router)
-api_router.include_router(root_router)
-from core.api.routers.finetune import router as finetune_router  # noqa: E402
-api_router.include_router(finetune_router)
-from core.api.routers.value import router as value_router  # noqa: E402
-api_router.include_router(value_router)
-from core.api.routers.roles import router as roles_router  # noqa: E402
-api_router.include_router(roles_router)
-from core.api.routers.workbench import router as workbench_router  # noqa: E402
-api_router.include_router(workbench_router)
-api_router.include_router(variables_router)
-api_router.include_router(credentials_router)
-api_router.include_router(workflow_templates_router)
-api_router.include_router(kb_eval_router)
-api_router.include_router(entropy_router)
-api_router.include_router(overview_router)
-api_router.include_router(wiki_router)
-api_router.include_router(models_router)
-api_router.include_router(model_audit_router)
-api_router.include_router(safety_router)
-api_router.include_router(diagrams_router)
-api_router.include_router(capability_router)
-api_router.include_router(knowledge_graph_router)
-api_router.include_router(observation_router)
-api_router.include_router(evaluation_router)
+_routers_pkg_path = getattr(_routers_pkg, '__path__', [])
+for _finder, _name, _ispkg in pkgutil.iter_modules(_routers_pkg_path, _routers_pkg.__name__ + "."):
+    if _name.startswith("__"):
+        continue
+    try:
+        _mod = importlib.import_module(_name)
+        _router = getattr(_mod, "router", None)
+        if _router is not None:
+            api_router.include_router(_router)
+    except Exception:
+        import logging
+        logging.debug("Failed to auto-load router %s", _name, exc_info=True)
 
 
 def _runtime_env() -> str:

@@ -37,7 +37,7 @@ def _write_manifest_provenance(tool_path: str, provenance: Dict[str, Any]) -> No
         try:
             manifest = json.loads(Path(manifest_path).read_text(encoding='utf-8'))
         except Exception as e:
-            logging.debug(str(e), exc_info=True)
+            logging.warning(str(e), exc_info=True)
     # Nested provenance (authoritative) + root-level fields for backward compat
     manifest['provenance'] = provenance
     manifest['signature'] = provenance.get('signature', manifest.get('signature', ''))
@@ -48,7 +48,7 @@ def _write_manifest_provenance(tool_path: str, provenance: Dict[str, Any]) -> No
     try:
         Path(manifest_path).write_text(json.dumps(manifest, indent=2, ensure_ascii=False), encoding='utf-8')
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
 
 
 def _scan_workspace_tools() -> List[Dict[str, Any]]:
@@ -132,7 +132,7 @@ async def create_workspace_tool(request: dict, http_request: Request):
                 setattr(tool._config, 'metadata', {"provenance": {"scope": "workspace", "tool_path": str(tool_file)}})
                 get_tool_registry().register(tool)
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
 
     # Auto-grant EXECUTE permission for system/admin on newly created workspace tools
     try:
@@ -141,7 +141,7 @@ async def create_workspace_tool(request: dict, http_request: Request):
         for uid in ("system", "admin"):
             pm.grant_permission(uid, name, Permission.EXECUTE, granted_by="auto_create")
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
 
     return {"status": "created", "name": name, "path": str(tool_file)}
 
@@ -253,7 +253,7 @@ async def discover_workspace_tools():
                     "parameters": td.get("parameters", {}),
                 })
         except Exception as e:
-            logging.debug(str(e), exc_info=True)
+            logging.warning(str(e), exc_info=True)
     return {"tools": results, "total": len(results)}
 
 
@@ -292,7 +292,7 @@ async def update_workspace_tool(tool_name: str, request: dict):
                 )
             Path(tool_path).write_text(content, encoding='utf-8')
         except Exception as e:
-            logging.debug(str(e), exc_info=True)
+            logging.warning(str(e), exc_info=True)
 
     return {"status": "updated", "name": tool_name}
 
@@ -370,7 +370,7 @@ async def update_workspace_tool_source(tool_name: str, request: dict):
     try:
         registry.unregister(name_before)
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
 
     try:
         import importlib.util, sys
@@ -419,7 +419,7 @@ async def reload_workspace_tool(tool_name: str):
     try:
         registry.unregister(tool_name)
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
 
     try:
         import importlib.util, sys

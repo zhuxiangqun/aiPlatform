@@ -6,16 +6,16 @@ from core.harness.document.protocol import (
     DocumentConverter, DocumentElement, StreamInfo,
 )
 
-ACCEPTED_MIME_PREFIXES = ["audio/"]
-ACCEPTED_EXTENSIONS = [".mp3", ".wav", ".m4a", ".ogg", ".flac", ".aac", ".opus", ".wma"]
-
 
 class AudioConverter(DocumentConverter):
     """Audio → Whisper transcription."""
 
+    SOURCE_FORMAT = "audio"
     REQUIRED_PACKAGES = {
         # Transcribed through infra adapter (faster-whisper or openai-whisper)
     }
+    ACCEPTED_EXTENSIONS = (".mp3", ".wav", ".m4a", ".ogg", ".flac", ".aac", ".opus", ".wma")
+    ACCEPTED_MIME_PREFIXES = ("audio/",)
 
     def accepts(
         self,
@@ -23,14 +23,7 @@ class AudioConverter(DocumentConverter):
         stream_info: StreamInfo,
         **kwargs: Any,
     ) -> bool:
-        extension = (stream_info.extension or "").lower()
-        if extension in ACCEPTED_EXTENSIONS:
-            return True
-        mimetype = (stream_info.mimetype or "").lower()
-        for prefix in ACCEPTED_MIME_PREFIXES:
-            if mimetype.startswith(prefix):
-                return True
-        return False
+        return self._accepts_by_format(stream_info)
 
     def convert(
         self,

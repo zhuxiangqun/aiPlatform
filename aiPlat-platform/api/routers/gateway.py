@@ -67,7 +67,7 @@ async def gateway_execute(request: GatewayExecuteRequest, http_request: Request,
         try:
             payload.setdefault("options", request.options)
         except Exception as e:
-            logging.debug(str(e), exc_info=True)
+            logging.warning(str(e), exc_info=True)
 
     # Inject channel context for observability.
     try:
@@ -92,13 +92,13 @@ async def gateway_execute(request: GatewayExecuteRequest, http_request: Request,
             if actor_role:
                 ctx.setdefault("actor_role", str(actor_role))
         except Exception as e:
-            logging.debug(str(e), exc_info=True)
+            logging.warning(str(e), exc_info=True)
         # preserve external identity if present
         if request.channel_user_id:
             ctx.setdefault("channel_user_id", request.channel_user_id)
         payload["context"] = ctx
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
 
     deny = await rbac_guard(http_request=http_request, payload=payload, action="execute", resource_type="gateway", resource_id=str(request.target_id))
     if deny:
@@ -148,7 +148,7 @@ async def gateway_execute(request: GatewayExecuteRequest, http_request: Request,
                     ctx.setdefault("tenant_id", pairing.get("tenant_id"))
                 payload["context"] = ctx
             except Exception as e:
-                logging.debug(str(e), exc_info=True)
+                logging.warning(str(e), exc_info=True)
 
     # Platform contract: idempotency key from platform (recommended).
     request_id = (
@@ -167,7 +167,7 @@ async def gateway_execute(request: GatewayExecuteRequest, http_request: Request,
             ctx.setdefault("request_id", str(request_id))
             payload["context"] = ctx
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
 
     reserved_run_id = None
     if store and request_id:
@@ -193,7 +193,7 @@ async def gateway_execute(request: GatewayExecuteRequest, http_request: Request,
                     detail={"channel": request.channel, "kind": request.kind, "target_id": request.target_id},
                 )
             except Exception as e:
-                logging.debug(str(e), exc_info=True)
+                logging.warning(str(e), exc_info=True)
             return {
                 "ok": True,
                 "status": RunStatus.completed.value,
@@ -212,7 +212,7 @@ async def gateway_execute(request: GatewayExecuteRequest, http_request: Request,
                 tenant_id=str(resolved_tenant) if resolved_tenant else None,
             )
         except Exception as e:
-            logging.debug(str(e), exc_info=True)
+            logging.warning(str(e), exc_info=True)
 
     exec_req = ExecutionRequest(
         kind=str(request.kind) if request.kind else "agent",  # type: ignore[arg-type]
@@ -233,7 +233,7 @@ async def gateway_execute(request: GatewayExecuteRequest, http_request: Request,
                 tenant_id=str(resolved_tenant) if resolved_tenant else None,
             )
         except Exception as e:
-            logging.debug(str(e), exc_info=True)
+            logging.warning(str(e), exc_info=True)
 
     # Audit (best-effort)
     try:
@@ -253,7 +253,7 @@ async def gateway_execute(request: GatewayExecuteRequest, http_request: Request,
                 detail={"channel": request.channel, "channel_user_id": request.channel_user_id},
             )
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
 
     # Normalize: always include trace_id/run_id.
     resp = dict(result.payload or {})
@@ -302,7 +302,7 @@ async def gateway_execute(request: GatewayExecuteRequest, http_request: Request,
         resp["status"] = normalize_run_status_v2(ok=bool(resp.get("ok")), legacy_status=legacy_status, error_code=err_code)
         resp.setdefault("output", resp.get("output"))
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
     return resp
 
 
@@ -327,7 +327,7 @@ async def gateway_webhook_message(http_request: Request, body: Dict[str, Any], r
             ctx.setdefault("channel_user_id", body.get("channel_user_id"))
         payload["context"] = ctx
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
 
     req = GatewayExecuteRequest(
         channel=str(body.get("channel") or "webhook"),

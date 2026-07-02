@@ -383,7 +383,7 @@ async def execute_agent(agent_id: str, request: dict, http_request: Request, rt:
             collector = get_implicit_feedback_collector()
             await collector.record(run_id=run_id, signal_type="response_delivered", session_id=session_id)
         except Exception as e:
-            logging.debug(str(e), exc_info=True)
+            logging.warning(str(e), exc_info=True)
 
     # Cache paused requests in memory (minimal resume semantics).
     try:
@@ -422,14 +422,14 @@ async def execute_agent(agent_id: str, request: dict, http_request: Request, rt:
                         msg = GatewayMessage(channel="feishu", channel_chat_id="default", text=msg_text)
                         await gw.handle_message(msg)
                 except Exception as e:
-                    logging.debug(str(e), exc_info=True)
+                    logging.warning(str(e), exc_info=True)
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
 
     try:
         await _audit_execute(rt, http_request=http_request, payload=payload, resource_type="agent", resource_id=str(agent_id), resp=resp)
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
     return JSONResponse(
         status_code=200 if resp.get("ok") else int(getattr(result, "http_status", 500) or 500),
         content=resp,
@@ -548,7 +548,7 @@ async def resume_agent_execution(execution_id: str, request: dict, rt: RuntimeDe
         if (result.payload or {}).get("status") == "completed":
             _paused_agent_executions.pop(execution_id, None)
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
 
     payload2 = result.payload or {}
     payload2["resumed_from_execution_id"] = execution_id

@@ -56,7 +56,7 @@ async def ops_prune(request: dict, http_request: Request, rt: RuntimeDep = Depen
             detail=res,
         )
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
     return {"ok": True, "deleted": res}
 
 

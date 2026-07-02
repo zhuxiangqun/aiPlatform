@@ -201,7 +201,7 @@ class CodeGenerationSkill(BaseSkill):
         # Primary: central resolution via infra ModelManager
         try:
             from core.harness.utils.model_injection import create_selected_adapter, get_default_model
-            return create_selected_adapter(model_name=get_default_model(purpose="code_gen") or best_model_for_purpose("chat"))  # noqa: model-legacy
+            return create_selected_adapter(model_name=get_default_model(purpose="code_gen") or best_model_for_purpose("chat"))
         except Exception as e:
             logging.warning("Code-gen model resolution failed: %s", e, exc_info=True)
             return None

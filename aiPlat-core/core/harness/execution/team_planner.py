@@ -197,7 +197,7 @@ async def recommend_team_stages(
                         "id": s.get("id", f"stage_{len(recommendation.stages)}"),
                     })
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
 
     # Validate recommended agents
     unknown = []

@@ -213,7 +213,7 @@ class CompiledGraph:
             try:
                 await callback_mgr.trigger_graph_start(self.name, dict(state))
             except Exception as e:
-                logging.debug(str(e), exc_info=True)
+                logging.warning(str(e), exc_info=True)
         
         # 恢复语义：若 state 已包含 current_node（来自 checkpoint state），则从该节点继续
         current_node = state.get("current_node") or self._entry_point
@@ -231,7 +231,7 @@ class CompiledGraph:
                     try:
                         await callback_mgr.trigger_node_start(self.name, current_node, dict(state))
                     except Exception as e:
-                        logging.debug(str(e), exc_info=True)
+                        logging.warning(str(e), exc_info=True)
                 if asyncio.iscoroutinefunction(node_func):
                     result = await node_func(state)
                 else:
@@ -244,7 +244,7 @@ class CompiledGraph:
                     try:
                         await callback_mgr.trigger_node_end(self.name, current_node, dict(state), result)
                     except Exception as e:
-                        logging.debug(str(e), exc_info=True)
+                        logging.warning(str(e), exc_info=True)
                 
                 trace.record_node(current_node, result)
                 state["step_count"] += 1
@@ -259,7 +259,7 @@ class CompiledGraph:
                                 checkpoint_id=str(uuid.uuid4()),
                             )
                         except Exception as e:
-                            logging.debug(str(e), exc_info=True)
+                            logging.warning(str(e), exc_info=True)
                 
                 if not result.should_continue:
                     break
@@ -288,7 +288,7 @@ class CompiledGraph:
                         await callback_mgr.trigger_node_error(self.name, current_node, e, dict(state))
                         await callback_mgr.trigger_graph_error(self.name, e, dict(state))
                     except Exception as e:
-                        logging.debug(str(e), exc_info=True)
+                        logging.warning(str(e), exc_info=True)
                 state.setdefault("errors", []).append({
                     "node": current_node,
                     "error": str(e),
@@ -303,7 +303,7 @@ class CompiledGraph:
             try:
                 await callback_mgr.trigger_graph_end(self.name, dict(state))
             except Exception as e:
-                logging.debug(str(e), exc_info=True)
+                logging.warning(str(e), exc_info=True)
         return state
     
     def get_nodes(self) -> List[str]:

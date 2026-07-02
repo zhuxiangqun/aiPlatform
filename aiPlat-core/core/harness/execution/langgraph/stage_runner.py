@@ -97,7 +97,7 @@ class StageRunner:
                     policy = resolve_toolset(str(active_t))
                     tools = [t for t in tools if is_tool_allowed(policy, getattr(t, 'name', ''))[0]]
             except Exception as e:
-                logging.debug(str(e), exc_info=True)
+                logging.warning(str(e), exc_info=True)
             return tools
         except Exception:
             return fallback or []
@@ -128,6 +128,10 @@ class StageRunner:
         stage_token_min = int(_os.getenv("AIPLAT_STAGE_TOKEN_MIN", "4096"))
         stage_token_max = int(_os.getenv("AIPLAT_STAGE_TOKEN_MAX", "32768"))
         max_tokens = max(stage_token_min, min(total_budget // stage_count, stage_token_max))
+        # P1-3: 前序 stage 未用完的预算动态分配给当前 stage
+        tokens_bonus = int(state.get("_tokens_bonus", 0) or 0)
+        if tokens_bonus > 0:
+            max_tokens += tokens_bonus
         skills = self._resolve_skills(stage=s)
         tools = self._resolve_tools_selective(prompt)
         loop = ReActLoop(
@@ -175,13 +179,13 @@ class StageRunner:
                 from core.harness.memory.profile_builder import run_skill_review
                 asyncio.create_task(run_skill_review(state))
             except Exception as e:
-                logging.debug(str(e), exc_info=True)
+                logging.warning(str(e), exc_info=True)
         if getattr(loop, '_iters_since_memory', 0) >= memory_nudge and memory_nudge > 0:
             try:
                 from core.harness.memory.profile_builder import extract_and_persist_profile
                 asyncio.create_task(extract_and_persist_profile(state))
             except Exception as e:
-                logging.debug(str(e), exc_info=True)
+                logging.warning(str(e), exc_info=True)
 
         # Extract best output: prefer reasoning (LLM output) > DONE output > observation > action_result
         # reasoning is the actual LLM response; observation is often "No action to execute" filler.

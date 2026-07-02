@@ -180,6 +180,8 @@ class ArchYAMLRule(ArchRule):
             "cmd_output": self._check_cmd_output,
             "grep_graph_import": self._check_graph_import,
             "grep_graph": self._check_graph_grep,
+            "ast_call_chain": self._check_ast_call_chain,
+            "ast_field_assigned": self._check_ast_field_assigned,
         }
         handler = dispatcher.get(self._check_type)
         if handler:
@@ -328,6 +330,42 @@ class ArchYAMLRule(ArchRule):
         violations = result.strip().split("\n")
         msg = self._message or "command check failed"
         return [self._make_issue(msg, files=violations[:20], count=len(violations))]
+
+    def _check_ast_call_chain(self, repo_root: Path) -> List[ArchIssue]:
+        """Verify required_callee is reachable from entry_methods via AST call-chain analysis."""
+        from core.management.ast_checks import check_call_chain
+        entry_methods = self._check_def.get("entry_methods", [])
+        required_callee = self._check_def.get("required_callee", "")
+        max_depth = self._check_def.get("max_depth", 3)
+        filepath = str(repo_root / self._check_def.get("file", ""))
+        
+        if not entry_methods or not required_callee:
+            return [self._make_issue("ast_call_chain: missing entry_methods or required_callee")]
+        
+        unreachable = check_call_chain(filepath, entry_methods, required_callee, max_depth=max_depth)
+        if not unreachable:
+            return []
+        
+        msg = self._message or f"'{required_callee}' not reachable from: {', '.join(unreachable)}"
+        return [self._make_issue(msg, files=[f"{filepath}:{m}" for m in unreachable], count=len(unreachable))]
+
+    def _check_ast_field_assigned(self, repo_root: Path) -> List[ArchIssue]:
+        """Verify required_field is assigned in entry_function or its sub_functions via AST analysis."""
+        from core.management.ast_checks import check_field_assigned
+        entry_function = self._check_def.get("entry_function", "")
+        required_field = self._check_def.get("required_field", "")
+        sub_functions = self._check_def.get("sub_functions", [])
+        filepath = str(repo_root / self._check_def.get("file", ""))
+        
+        if not entry_function or not required_field:
+            return [self._make_issue("ast_field_assigned: missing entry_function or required_field")]
+        
+        found = check_field_assigned(filepath, entry_function, required_field, sub_functions=sub_functions)
+        if found:
+            return []
+        
+        msg = self._message or f"'{required_field}' not assigned in {entry_function} or sub_functions"
+        return [self._make_issue(msg, files=[filepath], count=1)]
 
 
 # ============================================================

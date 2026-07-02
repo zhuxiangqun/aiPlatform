@@ -42,7 +42,7 @@ class ResilienceGate:
                 if timeout_seconds is not None:
                     return await asyncio.wait_for(fn(), timeout=timeout_seconds)
                 return await fn()
-            except BaseException as e:  # noqa: BLE001
+            except Exception as e:
                 last_exc = e
                 # Only retry on selected exceptions; otherwise fail fast.
                 if not isinstance(e, tuple(retry_on)):

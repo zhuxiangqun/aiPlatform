@@ -64,6 +64,55 @@ def is_class_definition(filepath, symbol):
     return False
 
 
+def used_as_type_annotation(filepath, symbol):
+    """Check if symbol is used as a type annotation in other production files.
+    
+    Handles patterns like:
+      var: ClassName = ...
+      def foo() -> ClassName:
+      Dict[str, ClassName]
+      Optional[ClassName]
+    """
+    try:
+        tree = ast.parse(Path(filepath).read_text())
+    except Exception:
+        return False
+    
+    for node in ast.walk(tree):
+        # Direct annotation: x: Symbol = ...
+        if isinstance(node, ast.AnnAssign):
+            if isinstance(node.annotation, ast.Name) and node.annotation.id == symbol:
+                return True
+            # Optional[Symbol] or Dict[str, Symbol]
+            if isinstance(node.annotation, ast.Subscript):
+                for subnode in ast.walk(node.annotation):
+                    if isinstance(subnode, ast.Name) and subnode.id == symbol:
+                        return True
+        
+        # Return type: def foo() -> Symbol:
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            if node.returns:
+                if isinstance(node.returns, ast.Name) and node.returns.id == symbol:
+                    return True
+                if isinstance(node.returns, ast.Subscript):
+                    for subnode in ast.walk(node.returns):
+                        if isinstance(subnode, ast.Name) and subnode.id == symbol:
+                            return True
+        
+        # Argument annotation: def foo(x: Symbol):
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            for arg in node.args.args + node.args.kwonlyargs:
+                if arg.annotation:
+                    if isinstance(arg.annotation, ast.Name) and arg.annotation.id == symbol:
+                        return True
+                    if isinstance(arg.annotation, ast.Subscript):
+                        for subnode in ast.walk(arg.annotation):
+                            if isinstance(subnode, ast.Name) and subnode.id == symbol:
+                                return True
+    
+    return False
+
+
 def find_file(fname):
     """Find the project source file (excluding .venv, tests, __pycache__)."""
     for root in [".", "aiPlat-core", "aiPlat-platform", "aiPlat-infra", "aiPlat-app"]:
@@ -92,14 +141,15 @@ def find_files(fname):
 
 
 # ── Main filter loop ──
+# Filters are applied in order; only symbols that escape ALL automatic filters
+# land in KNOWN_FALSE_POSITIVE_CLASSES (last resort, documented per-entry).
 KNOWN_FALSE_POSITIVE_CLASSES = {
-    "PIIRecord", "PIIDetector",
-    "ImplicitSignal", "ImplicitFeedbackCollector",
-    "StepResult", "EvolutionRun",
-    "BaseAdapter", "PipelineCondition", "DebateState",
-    "StageSandbox", "DockerSandbox", "LatentStageCache",
-    "ExperienceVectorCache", "MetaSuggestion", "ExecutionPattern",
+    # Symbols that survive all 4 automatic filters but are known legitimate.
+    # Each entry MUST have a comment explaining WHY the filter misses it.
+    # Goal: this list should shrink as filters improve.
 }
+
+anno_count = 0  # Filter 4 counter
 
 dc_cache = {}
 internal_cache = {}
@@ -119,11 +169,6 @@ for line in sys.stdin:
     if m:
         fname, sym = m.group(1), m.group(2)
         full = find_file(fname)
-
-        # Filter 0: known false positive class names
-        if sym in KNOWN_FALSE_POSITIVE_CLASSES:
-            class_count += 1
-            continue
 
         # Filter 1: @dataclass
         if full and full not in dc_cache:
@@ -154,6 +199,28 @@ for line in sys.stdin:
             class_count += 1
             continue
 
+        # Filter 4: used as type annotation in other production files
+        if full:
+            used = False
+            for alt_full in find_files(fname):
+                if alt_full != full and used_as_type_annotation(alt_full, sym):
+                    used = True
+                    break
+            if not used:
+                # Also check the defining file itself (e.g., self-referencing in list/dict)
+                for alt_full in find_files(fname):
+                    if alt_full == full and used_as_type_annotation(alt_full, sym):
+                        used = True
+                        break
+            if used:
+                anno_count += 1
+                continue
+
+        # Filter 0 (last resort): known false positive classes
+        if sym in KNOWN_FALSE_POSITIVE_CLASSES:
+            class_count += 1
+            continue
+
     lines.append(line)
 
 # ── Replace summary with adjusted count ──
@@ -164,12 +231,12 @@ for i, line in enumerate(lines):
     if m:
         saw_summary = True
         orig = int(m.group(1))
-        total_f = dc_count + internal_count + class_count
+        total_f = dc_count + internal_count + class_count + anno_count
         new_count = orig - total_f
         final_new_count = new_count
         lines[i] = line.replace(
             f"{orig} dead symbols",
-            f"{new_count} dead symbols (dc={dc_count} int={internal_count} cls={class_count})"
+            f"{new_count} dead symbols (dc={dc_count} int={internal_count} cls={class_count} anno={anno_count})"
         )
         if new_count <= 0:
             lines[i] = lines[i].replace("CALLER VERIFY FAILED", "CALLER VERIFY PASSED (FP-filtered)")

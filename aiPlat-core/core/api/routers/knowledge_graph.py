@@ -353,7 +353,7 @@ def get_node_detail(node_id: str) -> Dict[str, Any]:
                 if full_path.exists() and full_path.suffix == ".py":
                     code_snippet = full_path.read_text(encoding="utf-8", errors="ignore")[:3000]
             except Exception as e:
-                logging.debug(str(e), exc_info=True)
+                logging.warning(str(e), exc_info=True)
             dependencies = [{"path": d, "name": _shorten(d)} for d in node.get("out", [])[:20]]
             dependents = []
             for src, n in nodes_raw.items():
@@ -399,7 +399,7 @@ def get_node_detail(node_id: str) -> Dict[str, Any]:
                         "symbols": [], "crossCalls": [],
                     }
             except Exception as e:
-                logging.debug(str(e), exc_info=True)
+                logging.warning(str(e), exc_info=True)
 
         # ── Wiki graph node ──
         try:
@@ -418,7 +418,7 @@ def get_node_detail(node_id: str) -> Dict[str, Any]:
                         "symbols": [], "crossCalls": [],
                     }
         except Exception as e:
-            logging.debug(str(e), exc_info=True)
+            logging.warning(str(e), exc_info=True)
 
         raise HTTPException(status_code=404, detail=f"Node not found: {node_id}")
     except HTTPException:
@@ -500,7 +500,7 @@ def global_search(q: str = Query("", min_length=2)) -> Dict[str, Any]:
                             if len(results["code"]) >= 8:
                                 break
         except Exception as e:
-            logging.debug(str(e), exc_info=True)
+            logging.warning(str(e), exc_info=True)
 
         # ── Capability graph (SQLite read-only) ──
         try:
@@ -516,7 +516,7 @@ def global_search(q: str = Query("", min_length=2)) -> Dict[str, Any]:
                     if len(results["capability"]) >= 5:
                         break
         except Exception as e:
-            logging.debug(str(e), exc_info=True)
+            logging.warning(str(e), exc_info=True)
 
         # ── Wiki graph ──
         try:
@@ -531,7 +531,7 @@ def global_search(q: str = Query("", min_length=2)) -> Dict[str, Any]:
                 if len(results["wiki"]) >= 5:
                     break
         except Exception as e:
-            logging.debug(str(e), exc_info=True)
+            logging.warning(str(e), exc_info=True)
 
         return {"query": q, "results": results, "total": sum(len(v) for v in results.values())}
     except Exception as e:
@@ -604,7 +604,7 @@ async def graph_ask(req: Dict[str, Any]) -> Dict[str, Any]:
                 ], config=None)
                 answer = (resp2.content if hasattr(resp2, 'content') else str(resp2))[:800]
             except Exception as e:
-                logging.debug(str(e), exc_info=True)
+                logging.warning(str(e), exc_info=True)
 
         return {"answer": answer, "tool": tool, "args": args, "results": results}
     except Exception as e:
@@ -726,7 +726,7 @@ def _describe_layer(layer: str = "core", question_type: str = "capabilities") ->
             output["skills"] = skills
             output["tools_count"] = tools_count
         except Exception as e:
-            logging.debug(str(e), exc_info=True)
+            logging.warning(str(e), exc_info=True)
 
         output["total_files"] = sum(m["files"] for m in modules.values())
         output["total_symbols"] = sum(m["symbols_count"] for m in modules.values())
@@ -791,7 +791,7 @@ def _describe_layer(layer: str = "core", question_type: str = "capabilities") ->
                 for m in route_pattern.finditer(content):
                     endpoints.append(m.group(1))
             except Exception as e:
-                logging.debug(str(e), exc_info=True)
+                logging.warning(str(e), exc_info=True)
 
         output["endpoints"] = sorted(set(endpoints))[:30]
         output["endpoint_count"] = len(set(endpoints))
@@ -827,7 +827,7 @@ async def graph_chat(req: Dict[str, Any]) -> StreamingResponse:
 
             # Stream LLM response via SSE
             from core.harness.syscalls.llm import sys_llm_generate_stream
-            async for chunk in sys_llm_generate_stream(best_model_for_purpose("query_translation"), prompt, max_tokens=600):  # noqa: model-legacy
+            async for chunk in sys_llm_generate_stream(best_model_for_purpose("query_translation"), prompt, max_tokens=600):
                 if chunk:
                     yield f"data: {json.dumps({'token': chunk}, ensure_ascii=False)}\n\n"
             yield "data: [DONE]\n\n"

@@ -312,7 +312,7 @@ async def resume_and_execute_compiled_graph(run_id: str, request: dict, rt: Runt
         meta["trace_id"] = trace_id
         restored_state["metadata"] = meta
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
 
     graph = create_compiled_react_graph(model=_DefaultModel(), tools=[], max_steps=max_steps, graph_name=resumed.get("graph_name") or "compiled_react")
     try:
@@ -325,11 +325,11 @@ async def resume_and_execute_compiled_graph(run_id: str, request: dict, rt: Runt
             try:
                 await ts.end_trace(trace_id, status=SpanStatus.SUCCESS)
             except Exception as e:
-                logging.debug(str(e), exc_info=True)
+                logging.warning(str(e), exc_info=True)
             try:
                 ts._context = None
             except Exception as e:
-                logging.debug(str(e), exc_info=True)
+                logging.warning(str(e), exc_info=True)
     return {"parent_run_id": run_id, "run_id": resumed.get("run_id"), "checkpoint_id": resumed.get("checkpoint_id"), "final_state": final_state}
 
 

@@ -159,7 +159,7 @@ async def get_run(run_id: str, rt: RuntimeDep = None):
         if isinstance(run.get("error"), dict) and (run.get("error") or {}).get("code"):
             err_code = (run.get("error") or {}).get("code")
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
     status2 = normalize_run_status_v2(ok=str(legacy_status) == "completed", legacy_status=legacy_status, error_code=err_code)
     # ok: treat queued/accepted/running as ok (no error), but waiting_approval carries error
     ok2 = status2 not in {RunStatus.failed.value, RunStatus.aborted.value, RunStatus.timeout.value, RunStatus.waiting_approval.value}
@@ -311,7 +311,7 @@ async def get_run_graph(run_id: str, include_child_summaries: bool = True, after
                 if cid:
                     changed_checkpoint_ids.add(cid)
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
 
     nodes: Dict[str, Dict[str, Any]] = {}
     invalidated_child_ids: set[str] = set()
@@ -542,7 +542,7 @@ async def get_run_graph(run_id: str, include_child_summaries: bool = True, after
             # Keep only last N history entries for delta
             out["history"] = hist[-20:] if isinstance(hist, list) else []
         except Exception as e:
-            logging.debug(str(e), exc_info=True)
+            logging.warning(str(e), exc_info=True)
         return out
 
     changed_nodes_updated = []
@@ -690,7 +690,7 @@ async def spawn_child_run(run_id: str, request: dict, http_request: Request, rt:
                             persona_template_id = pt0.strip()
                             routed = True
                     except Exception as e:
-                        logging.debug(str(e), exc_info=True)
+                        logging.warning(str(e), exc_info=True)
                 if (not routed_risk) and isinstance(pr.get("default_risk_by_kind"), dict):
                     try:
                         drk = pr.get("default_risk_by_kind") if isinstance(pr.get("default_risk_by_kind"), dict) else {}
@@ -698,7 +698,7 @@ async def spawn_child_run(run_id: str, request: dict, http_request: Request, rt:
                         if isinstance(rl0, str) and rl0.strip():
                             routed_risk = rl0.strip().lower()
                     except Exception as e:
-                        logging.debug(str(e), exc_info=True)
+                        logging.warning(str(e), exc_info=True)
                 if (not persona_template_id) and isinstance(pr.get("default_persona_template_id"), str):
                     dpt = str(pr.get("default_persona_template_id") or "").strip()
                     if dpt:
@@ -722,7 +722,7 @@ async def spawn_child_run(run_id: str, request: dict, http_request: Request, rt:
                 payload["input"] = {**(inp or {}), "_risk_level": str(routed_risk)}
                 routed_risk = str(routed_risk)
             except Exception as e:
-                logging.debug(str(e), exc_info=True)
+                logging.warning(str(e), exc_info=True)
     opts = body.get("options") if isinstance(body.get("options"), dict) else None
     if opts and isinstance(payload, dict):
         payload = dict(payload)
@@ -1017,7 +1017,7 @@ async def wait_join(run_id: str, join_id: str, request: dict, http_request: Requ
                         for it0 in _split_checklist((secs or {}).get("success_metrics") if isinstance(secs, dict) else None, max_items=10):
                             checklist.append({"text": f"[{n}] {it0.get('text')}", "status": "pending"})
                     except Exception as e:
-                        logging.debug(str(e), exc_info=True)
+                        logging.warning(str(e), exc_info=True)
             except Exception:
                 personas = []
                 checklist = []
@@ -1344,7 +1344,7 @@ async def _spawn_child_internal(
             payload=pld,
         )
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
 
     exec_req = ExecutionRequest(
         kind=kind,  # type: ignore[arg-type]
@@ -1370,7 +1370,7 @@ async def _spawn_child_internal(
             payload={"parent_run_id": parent_id, "node_id": node_id},
         )
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
     return resp
 
 
@@ -1455,7 +1455,7 @@ async def _redo_node_internal(
             payload={"node_id": str(node_id), "new_child_run_id": new_child_id, "reason": reason},
         )
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
 
     exec_req = ExecutionRequest(
         kind=kind,  # type: ignore[arg-type]
@@ -1491,7 +1491,7 @@ async def _redo_node_internal(
             },
         )
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
     try:
         await store.append_run_event(
             run_id=str(new_child_id),
@@ -1501,7 +1501,7 @@ async def _redo_node_internal(
             payload={"parent_run_id": parent_id, "node_id": str(node_id)},
         )
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
 
     # Invalidate downstream nodes that depend_on this node
     invalidated = []
@@ -1525,7 +1525,7 @@ async def _redo_node_internal(
                             payload={"node_id": dn_node, "child_run_id": dn_child, "because": str(node_id), "reason": "upstream_redo"},
                         )
                     except Exception as e:
-                        logging.debug(str(e), exc_info=True)
+                        logging.warning(str(e), exc_info=True)
                     try:
                         await store.append_run_event(
                             run_id=str(dn_child),
@@ -1535,7 +1535,7 @@ async def _redo_node_internal(
                             payload={"because_node": str(node_id), "parent_run_id": parent_id, "reason": "upstream_redo"},
                         )
                     except Exception as e:
-                        logging.debug(str(e), exc_info=True)
+                        logging.warning(str(e), exc_info=True)
     except Exception:
         invalidated = invalidated
     resp["invalidated"] = invalidated
@@ -1910,7 +1910,7 @@ async def redo_from_checkpoint(run_id: str, checkpoint_id: str, request: dict, h
                 ctx = req_payload.get("context") if isinstance(req_payload.get("context"), dict) else {}
                 req_payload["context"] = {**(ctx or {}), **patch.get("context")}
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
 
     # Determine target_id
     target_id = None
@@ -1940,7 +1940,7 @@ async def redo_from_checkpoint(run_id: str, checkpoint_id: str, request: dict, h
             payload={"checkpoint_id": str(checkpoint_id), "new_run_id": new_id, "reason": reason},
         )
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
 
     exec_req = ExecutionRequest(
         kind=kind,  # type: ignore[arg-type]
@@ -1966,7 +1966,7 @@ async def redo_from_checkpoint(run_id: str, checkpoint_id: str, request: dict, h
             payload={"from_run_id": rid, "checkpoint_id": str(checkpoint_id), "reason": reason},
         )
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
 
     return resp
 
@@ -2002,7 +2002,7 @@ async def cancel_run(run_id: str, http_request: Request, body: Optional[Dict[str
             payload={"reason": reason, "actor_id": actor.get("actor_id"), "actor_role": actor.get("actor_role")},
         )
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
     try:
         if not await store.has_run_end(run_id=rid):
             await store.append_run_event(
@@ -2013,7 +2013,7 @@ async def cancel_run(run_id: str, http_request: Request, body: Optional[Dict[str
                 payload={"status": "cancelled", "reason": reason},
             )
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
     return {"status": "cancel_requested", "run_id": rid, "cancelled_queued": bool(cancelled_queued)}
 
 
@@ -2122,7 +2122,7 @@ async def wait_run(run_id: str, request: dict, http_request: Request, rt: Runtim
                     if isinstance(pid, str) and pid:
                         return pid
         except Exception as e:
-            logging.debug(str(e), exc_info=True)
+            logging.warning(str(e), exc_info=True)
         # 2) run.error.extra.approval_request_id (skill/tool normalization path)
         try:
             err = run0.get("error") if isinstance(run0.get("error"), dict) else None
@@ -2131,7 +2131,7 @@ async def wait_run(run_id: str, request: dict, http_request: Request, rt: Runtim
             if isinstance(pid, str) and pid:
                 return pid
         except Exception as e:
-            logging.debug(str(e), exc_info=True)
+            logging.warning(str(e), exc_info=True)
         # 3) approval_requests table lookup by run_id (best-effort)
         try:
             res = await store.list_approval_requests(run_id=str(rid), status="pending", limit=5, offset=0)
@@ -2140,7 +2140,7 @@ async def wait_run(run_id: str, request: dict, http_request: Request, rt: Runtim
                 if isinstance(pid, str) and pid:
                     return pid
         except Exception as e:
-            logging.debug(str(e), exc_info=True)
+            logging.warning(str(e), exc_info=True)
         return None
 
     def _resolve_checkpoint(*, evs: list) -> Optional[Dict[str, Any]]:
@@ -2207,7 +2207,7 @@ async def wait_run(run_id: str, request: dict, http_request: Request, rt: Runtim
             if allow_patterns and not any(fnmatch.fnmatch(op, pat) for pat in allow_patterns):
                 return False
         except Exception as e:
-            logging.debug(str(e), exc_info=True)
+            logging.warning(str(e), exc_info=True)
         meta = rec.get("metadata") if isinstance(rec.get("metadata"), dict) else {}
         opctx = meta.get("operation_context") if isinstance(meta.get("operation_context"), dict) else {}
         # Prepare replay payload similar to approvals hub.
@@ -2226,7 +2226,7 @@ async def wait_run(run_id: str, request: dict, http_request: Request, rt: Runtim
                 if isinstance(run0, dict) and run0.get("tenant_id"):
                     ctx["tenant_id"] = str(run0.get("tenant_id"))
         except Exception as e:
-            logging.debug(str(e), exc_info=True)
+            logging.warning(str(e), exc_info=True)
         h = get_harness()
         if op.startswith("tool:"):
             # If this run_id belongs to a skill execution, prefer resuming the skill itself so the run status/output
@@ -2282,7 +2282,7 @@ async def wait_run(run_id: str, request: dict, http_request: Request, rt: Runtim
                     payload={"approval_request_id": str(approval_id), "operation": op, "source": "runs_wait"},
                 )
             except Exception as e:
-                logging.debug(str(e), exc_info=True)
+                logging.warning(str(e), exc_info=True)
             return True
         if op.startswith("skill:"):
             skill_id = op.split(":", 1)[1]
@@ -2307,7 +2307,7 @@ async def wait_run(run_id: str, request: dict, http_request: Request, rt: Runtim
                     payload={"approval_request_id": str(approval_id), "operation": op, "source": "runs_wait"},
                 )
             except Exception as e:
-                logging.debug(str(e), exc_info=True)
+                logging.warning(str(e), exc_info=True)
             return True
         return False
 
@@ -2332,7 +2332,7 @@ async def wait_run(run_id: str, request: dict, http_request: Request, rt: Runtim
                 if isinstance(rpol.get("allowlist"), str) and str(rpol.get("allowlist")).strip():
                     allowlist_raw = str(rpol.get("allowlist")).strip()
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
 
     if not enabled:
         auto_resume = False
@@ -2371,7 +2371,7 @@ async def wait_run(run_id: str, request: dict, http_request: Request, rt: Runtim
             if isinstance(run.get("error"), dict) and (run.get("error") or {}).get("code"):
                 err_code = (run.get("error") or {}).get("code")
         except Exception as e:
-            logging.debug(str(e), exc_info=True)
+            logging.warning(str(e), exc_info=True)
         st2 = normalize_run_status_v2(ok=legacy == "completed", legacy_status=legacy, error_code=err_code)
         if st2 in {RunStatus.completed.value, RunStatus.failed.value, RunStatus.aborted.value, RunStatus.timeout.value}:
             done = True
@@ -2425,7 +2425,7 @@ async def wait_run(run_id: str, request: dict, http_request: Request, rt: Runtim
         if isinstance(run.get("error"), dict) and (run.get("error") or {}).get("code"):
             err_code = (run.get("error") or {}).get("code")
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
     status2 = normalize_run_status_v2(ok=str(legacy_status) == "completed", legacy_status=legacy_status, error_code=err_code)
     ok2 = status2 not in {RunStatus.failed.value, RunStatus.aborted.value, RunStatus.timeout.value, RunStatus.waiting_approval.value}
     err_obj = None

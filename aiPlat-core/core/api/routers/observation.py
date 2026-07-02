@@ -75,7 +75,7 @@ async def stream_events(run_id: str):
                         yield f"data: {_json.dumps(dict(ev), default=str)}\n\n"
                 yield f"data: {_json.dumps({'type': 'replay_done'})}\n\n"
             except Exception as e:
-                logging.debug(str(e), exc_info=True)
+                logging.warning(str(e), exc_info=True)
 
         # Phase 2: live streaming from EventBus (if active), else signal done
         q = EventBus.subscribe(run_id)
@@ -114,7 +114,7 @@ async def stream_events(run_id: str):
                                 yield f"data: {_json.dumps({'type': 'done'})}\n\n"
                                 return
                         except Exception as e:
-                            logging.debug(str(e), exc_info=True)
+                            logging.warning(str(e), exc_info=True)
                     yield f"data: {_json.dumps({'type': 'heartbeat'})}\n\n"
         except asyncio.CancelledError:
             pass

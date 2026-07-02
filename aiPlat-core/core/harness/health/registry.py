@@ -83,7 +83,7 @@ class HealthCheckRegistry:
         self._cache_ttl: float = 300.0  # 5 minutes
 
     @classmethod
-    def get(cls) -> "HealthCheckRegistry":
+    def instance(cls) -> "HealthCheckRegistry":
         if cls._instance is None:
             cls._instance = cls()
         return cls._instance
@@ -233,7 +233,7 @@ class HealthCheckRegistry:
 
 
 def get_registry() -> HealthCheckRegistry:
-    return HealthCheckRegistry.get()
+    return HealthCheckRegistry.instance()
 
 
 __all__ = [

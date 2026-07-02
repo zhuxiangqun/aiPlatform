@@ -36,6 +36,10 @@ def yellow(text: str) -> str:
     return f"\033[0;33m{text}\033[0m"
 
 
+def cyan(text: str) -> str:
+    return f"\033[0;36m{text}\033[0m"
+
+
 # Baseline ratchet (mirrors guard_frontend.py §45 + guard_ast_behavior except:pass):
 # lock the CURRENT set of ERROR-level violations as known debt → exit 0; only NEW
 # error-level violations (signature not in baseline) block (exit 1). Without this,
@@ -92,8 +96,15 @@ def format_text(report) -> str:
             continue
 
         for item in section.items:
-            tag = "PASS" if not item.files else ("WARN" if item.level == "warning" else "FAIL")
-            color_func = {"PASS": green, "WARN": yellow, "FAIL": red}
+            if item.level == "info":
+                tag = "INFO"
+            elif not item.files:
+                tag = "PASS"
+            elif item.level == "warning":
+                tag = "WARN"
+            else:
+                tag = "FAIL"
+            color_func = {"PASS": green, "WARN": yellow, "FAIL": red, "INFO": cyan}
             cf = color_func.get(tag, lambda x: x)
             lines.append("")
             if item.files:

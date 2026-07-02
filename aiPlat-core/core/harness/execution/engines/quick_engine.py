@@ -31,12 +31,12 @@ class QuickEngine:
             if msgs:
                 return str(msgs[-1].get("content", "") or "")
         except Exception as e:
-            logging.debug(str(e), exc_info=True)
+            logging.warning(str(e), exc_info=True)
         try:
             vars0 = dict(getattr(context, "variables", {}) or {})
             return str(vars0.get("message", "") or "")
         except Exception as e:
-            logging.debug(str(e), exc_info=True)
+            logging.warning(str(e), exc_info=True)
         return ""
 
     def _wrap_result(self, content: str) -> Any:

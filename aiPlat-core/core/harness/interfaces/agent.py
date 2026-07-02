@@ -26,7 +26,7 @@ class AgentStatus(Enum):
 class AgentConfig:
     """Agent configuration"""
     name: str
-    model: str = "deepseek-chat"  # noqa: interface-default — AgentConfig base default
+    model: str = ""  # empty → caller resolves via best_model_for_purpose("chat")
     temperature: float = 0.7
     max_tokens: int = 4096
     timeout: int = 30

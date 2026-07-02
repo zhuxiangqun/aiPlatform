@@ -64,7 +64,7 @@ async def create_adapter(request: AdapterCreateRequest, rt: RuntimeDep = Depends
             result={"adapter_id": str(adapter.id), "api_key_sha256": api_key_hash, "api_key_len": len(str(request.api_key or ""))},
         )
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
     return {"adapter_id": adapter.id, "status": "created"}
 
 
@@ -117,7 +117,7 @@ async def update_adapter(adapter_id: str, request: AdapterUpdateRequest, rt: Run
             result={"api_key_sha256": api_key_hash, "api_key_len": len(str(request.api_key or "")) if request.api_key else 0},
         )
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
     return {"status": "updated"}
 
 
@@ -133,7 +133,7 @@ async def delete_adapter(adapter_id: str, rt: RuntimeDep = Depends(get_kernel_ru
     try:
         await _record_changeset(rt, name="adapter_delete", target_type="adapter", target_id=str(adapter_id), args={}, result={"status": "deleted"})
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
     return {"status": "deleted"}
 
 
@@ -158,7 +158,7 @@ async def enable_adapter(adapter_id: str, rt: RuntimeDep = Depends(get_kernel_ru
     try:
         await _record_changeset(rt, name="adapter_enable", target_type="adapter", target_id=str(adapter_id), args={}, result={"status": "enabled"})
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
     return {"status": "enabled"}
 
 
@@ -174,7 +174,7 @@ async def disable_adapter(adapter_id: str, rt: RuntimeDep = Depends(get_kernel_r
     try:
         await _record_changeset(rt, name="adapter_disable", target_type="adapter", target_id=str(adapter_id), args={}, result={"status": "disabled"})
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
     return {"status": "disabled"}
 
 
@@ -215,7 +215,7 @@ async def add_adapter_model(adapter_id: str, request: dict, rt: RuntimeDep = Dep
             result={"status": "added"},
         )
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
     return {"status": "added"}
 
 
@@ -238,7 +238,7 @@ async def delete_adapter_model(adapter_id: str, model_name: str, rt: RuntimeDep 
     try:
         await _record_changeset(rt, name="adapter_model_delete", target_type="adapter", target_id=str(adapter_id), args={"model": str(model_name)}, result={"status": "deleted"})
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
     return {"status": "deleted"}
 
 

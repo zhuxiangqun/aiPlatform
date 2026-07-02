@@ -91,7 +91,7 @@ async def sys_tool_call(
                 },
             )
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
 
     if tool is None or not hasattr(tool, "execute"):
         end_ts = time.time()
@@ -122,7 +122,7 @@ async def sys_tool_call(
                     }
                 )
             except Exception as e:
-                logging.debug(str(e), exc_info=True)
+                logging.warning(str(e), exc_info=True)
             try:
                 if _run_id:
                     await store.append_run_event(
@@ -133,7 +133,7 @@ async def sys_tool_call(
                         payload={"tool": tool_name or "<unknown>", "status": "failed", "error": "TOOL_NOT_EXECUTABLE"},
                     )
             except Exception as e:
-                logging.debug(str(e), exc_info=True)
+                logging.warning(str(e), exc_info=True)
         raise RuntimeError("Tool is not executable")
 
     args = dict(tool_args or {})
@@ -142,7 +142,7 @@ async def sys_tool_call(
         if isinstance(trace_context, dict) and trace_context.get("tenant_id") and "_tenant_id" not in args:
             args["_tenant_id"] = trace_context.get("tenant_id")
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
     # Fallback tenant propagation from active request context.
     try:
         if "_tenant_id" not in args:
@@ -152,20 +152,20 @@ async def sys_tool_call(
             if arq and getattr(arq, "tenant_id", None):
                 args["_tenant_id"] = getattr(arq, "tenant_id")
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
     # PR-08: persist run_id for approval replay/links (best-effort).
     try:
         _run_id = (trace_context or {}).get("run_id") if isinstance(trace_context, dict) else None
         if _run_id and "_run_id" not in args:
             args["_run_id"] = str(_run_id)
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
     # Fallback run_id: for nested calls, session_id is often the run_id.
     try:
         if "_run_id" not in args and isinstance(session_id, str) and session_id.startswith(("run_", "run-")):
             args["_run_id"] = str(session_id)
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
     # Provide identity info for permission wrapper + auditing.
     args.setdefault("_user_id", user_id)
     args.setdefault("_session_id", session_id)
@@ -180,7 +180,7 @@ async def sys_tool_call(
         if arq and getattr(arq, "actor_role", None):
             args.setdefault("_actor_role", getattr(arq, "actor_role"))
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
     # Provide tool risk metadata for approval/priority (best-effort).
     try:
         cfg = getattr(tool, "_config", None)
@@ -195,7 +195,7 @@ async def sys_tool_call(
             if meta.get("approval_required") is True:
                 args.setdefault("_approval_required", True)
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
 
     # P4: approval layering policy (skill-only / sensitive-only)
     # If a parent skill has already been approved, we can reuse the same approval_request_id
@@ -216,7 +216,7 @@ async def sys_tool_call(
                 if isinstance(layer.get("tool_force_list"), str):
                     tool_force_list = str(layer.get("tool_force_list")).strip()
         except Exception as e:
-            logging.debug(str(e), exc_info=True)
+            logging.warning(str(e), exc_info=True)
         if approval_layer_policy in {"skill_only", "tool_only", "skill_then_tool_sensitive_only"}:
             from core.harness.kernel.execution_context import get_active_approval_request_id
             import fnmatch
@@ -232,7 +232,7 @@ async def sys_tool_call(
                 if isinstance(arid, str) and arid:
                     args["_approval_request_id"] = str(arid)
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
 
     # P1-1: Exec backend gate (force approval for non-local execution backends).
     # Tool categories are defined per-tool via config, not hardcoded here.
@@ -256,7 +256,7 @@ async def sys_tool_call(
             if str(backend) and str(backend) != "local":
                 args["_approval_required"] = True
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
 
     # P0: repo-aware workflow gate (force approval for mutating git operations).
     repo_tools = set(os.getenv("AIPLAT_REPO_TOOLS", "repo").split(","))
@@ -307,7 +307,7 @@ async def sys_tool_call(
                             args.setdefault("_repo_status_count", len(files))
                             args.setdefault("_repo_status_files", files[:50])
                 except Exception as e:
-                    logging.debug(str(e), exc_info=True)
+                    logging.warning(str(e), exc_info=True)
 
                 # Diff Gate (Phase-2): compare repo status against declared change contract from coding skill output.
                 try:
@@ -338,9 +338,9 @@ async def sys_tool_call(
                                     args["_policy_reason"] = "repo_add_paths_out_of_contract"
                                     args["_out_of_contract_files"] = bad[:20]
                 except Exception as e:
-                    logging.debug(str(e), exc_info=True)
+                    logging.warning(str(e), exc_info=True)
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
 
     # Phase R2: Toolset gate (runtime allowlist). Fail-closed when a toolset is active.
     # Uses shared check_workspace_gate() for consistency with skill/agent syscalls.
@@ -378,7 +378,7 @@ async def sys_tool_call(
                         }
                     )
             except Exception as e:
-                logging.debug(str(e), exc_info=True)
+                logging.warning(str(e), exc_info=True)
             await trace_gate.end(span, success=False)
             try:
                 runtime = get_kernel_runtime()
@@ -392,7 +392,7 @@ async def sys_tool_call(
                         payload={"tool": tool_name or "<unknown>", "status": "toolset_denied", "error": reason or "TOOLSET_DENIED"},
                     )
             except Exception as e:
-                logging.debug(str(e), exc_info=True)
+                logging.warning(str(e), exc_info=True)
             return ToolResult(
                 success=False,
                 output=None,
@@ -426,7 +426,7 @@ async def sys_tool_call(
         from core.harness.kernel.execution_context import mark_gate_passed
         mark_gate_passed("policy_gate_tool")
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
 
     try:
         # No active request context (internal/background/test calls): the trusted "system"
@@ -473,7 +473,7 @@ async def sys_tool_call(
                     }
                 )
             except Exception as e:
-                logging.debug(str(e), exc_info=True)
+                logging.warning(str(e), exc_info=True)
             try:
                 # Audit (best-effort)
                 await store.add_audit_log(
@@ -491,7 +491,7 @@ async def sys_tool_call(
                     },
                 )
             except Exception as e:
-                logging.debug(str(e), exc_info=True)
+                logging.warning(str(e), exc_info=True)
         await trace_gate.end(span, success=False)
         try:
             runtime = get_kernel_runtime()
@@ -511,7 +511,7 @@ async def sys_tool_call(
                     },
                 )
         except Exception as e:
-            logging.debug(str(e), exc_info=True)
+            logging.warning(str(e), exc_info=True)
         return ToolResult(
             success=False,
             output=None,
@@ -554,7 +554,7 @@ async def sys_tool_call(
                     }
                 )
             except Exception as e:
-                logging.debug(str(e), exc_info=True)
+                logging.warning(str(e), exc_info=True)
             try:
                 await store.add_audit_log(
                     action="tool_policy_approval_required" if getattr(pr, "policy_version", None) else "tool_approval_required",
@@ -572,7 +572,7 @@ async def sys_tool_call(
                     },
                 )
             except Exception as e:
-                logging.debug(str(e), exc_info=True)
+                logging.warning(str(e), exc_info=True)
         await trace_gate.end(span, success=False)
         try:
             runtime = get_kernel_runtime()
@@ -594,7 +594,7 @@ async def sys_tool_call(
                         },
                     )
                 except Exception as e:
-                    logging.debug(str(e), exc_info=True)
+                    logging.warning(str(e), exc_info=True)
                 await store.append_run_event(
                     run_id=str(_run_id),
                     event_type="tool_end",
@@ -610,7 +610,7 @@ async def sys_tool_call(
                     },
                 )
         except Exception as e:
-            logging.debug(str(e), exc_info=True)
+            logging.warning(str(e), exc_info=True)
         return ToolResult(
             success=False,
             output=None,
@@ -631,7 +631,7 @@ async def sys_tool_call(
     try:
         prepared_args = await _llm_complete_params(tool, prepared_args, tool_name or "")
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
 
     async def _run():
         return await tool.execute(prepared_args)  # type: ignore[misc]
@@ -654,7 +654,7 @@ async def sys_tool_call(
                 try:
                     reset_active_trace_context(trace_token)
                 except Exception as e:
-                    logging.debug(str(e), exc_info=True)
+                    logging.warning(str(e), exc_info=True)
         end_ts = time.time()
         await trace_gate.end(span, success=bool(getattr(result, "success", True)))
         runtime = get_kernel_runtime()
@@ -680,7 +680,7 @@ async def sys_tool_call(
                             },
                         )
                 except Exception as e:
-                    logging.debug(str(e), exc_info=True)
+                    logging.warning(str(e), exc_info=True)
                 await store.add_syscall_event(
                     {
                         "trace_id": span.trace_id,
@@ -709,7 +709,7 @@ async def sys_tool_call(
                     }
                 )
             except Exception as e:
-                logging.debug(str(e), exc_info=True)
+                logging.warning(str(e), exc_info=True)
         # ToolDriftDetector: record this call for drift analysis (non-blocking)
         try:
             from core.harness.learning.tool_drift_detector import get_drift_detector
@@ -742,7 +742,7 @@ async def sys_tool_call(
                             payload={"tool": tool_name or "<unknown>", "status": "failed", "error": "tool_error"},
                         )
                 except Exception as e:
-                    logging.debug(str(e), exc_info=True)
+                    logging.warning(str(e), exc_info=True)
                 await store.add_syscall_event(
                     {
                         "trace_id": span.trace_id,
@@ -764,7 +764,7 @@ async def sys_tool_call(
                     }
                 )
             except Exception as e:
-                logging.debug(str(e), exc_info=True)
+                logging.warning(str(e), exc_info=True)
         raise
 
 
@@ -850,5 +850,5 @@ async def _llm_complete_params(tool: Any, args: Dict[str, Any], tool_name: str) 
                         merged[k] = v
                 return merged
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
     return args

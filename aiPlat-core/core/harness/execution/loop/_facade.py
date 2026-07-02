@@ -1,318 +1,36 @@
 """
-Execution Loop - Base Implementation
+ReActLoop — main execution loop facade.
 
-Implements ILoop interface with ReAct (Reasoning + Acting) execution pattern.
+Coordinates: reason → act → observe cycle.
+Heavy lifting delegated to sub-modules (extracted for SRP per §5.75):
+  - .inference.reason()
+  - .state_mgr.{persist,apply,load,restate}_*
+  - .compressor.{compact_messages,apply_context_shaping}
+  - .graph_injector.{inject_graph_context,inject_memory_reminders}
 """
-
-from abc import ABC, abstractmethod
-from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Callable, Tuple
-import asyncio
-import json
-import os
-import time
-import re
-import uuid
-import logging
+from typing import Any, Dict, List, Optional, Tuple
+import json, os, time, re, logging
 
 from core.harness.memory.compression import _background_tool_summarize
 
-from ..interfaces.loop import (
-    ILoop,
-    LoopState,
-    LoopStateEnum,
-    LoopConfig,
-    LoopResult,
+from .base import BaseLoop, _infer_task_type, _extract_deny
+from ...interfaces.loop import (
+    ILoop, LoopState, LoopStateEnum, LoopConfig, LoopResult,
 )
-from ..infrastructure.hooks import HookManager, HookPhase, HookContext
-from .tool_calling import parse_action_call, parse_tool_call
-from ..syscalls import sys_llm_generate, sys_skill_call, sys_tool_call
-from ..assembly import PromptAssembler, ContextAssembler, ContextSource
-from ..kernel.runtime import get_kernel_runtime
-from ..restatement.run_state import (
-    default_run_state,
-    format_run_state_for_prompt,
-    normalize_run_state,
-    restate_next_step,
-    set_todo_status,
+from ...infrastructure.hooks import HookManager, HookPhase, HookContext
+from ..tool_calling import parse_action_call, parse_tool_call
+from ...syscalls import sys_llm_generate, sys_skill_call, sys_tool_call
+from ...assembly import PromptAssembler, ContextAssembler, ContextSource
+from ...kernel.runtime import get_kernel_runtime
+
+# ── Delegates ──
+from .inference import reason
+from .state_mgr import (
+    persist_run_state, apply_todo_done_markers,
+    load_run_state_for_prompt, restate_and_persist_run_state,
 )
-
-
-def _infer_task_type(task: str, agent_id: str) -> str:
-    """推断任务来源类型（Paper Data Recipes: coding/terminal/qa/system）"""
-    t = (task or "").lower(); a = (agent_id or "").lower()
-    if any(kw in a for kw in ("terminal", "shell", "bash", "cmd", "console")): return "terminal"
-    if any(kw in t for kw in ("$", "ls ", "cd ", "grep", "git ", "pwd", "chmod")): return "terminal"
-    if any(kw in a for kw in ("code", "coder", "programmer", "dev", "engineer")): return "coding"
-    if any(kw in t for kw in ("def ", "class ", "import ", "function", "test_")): return "coding"
-    if any(kw in a for kw in ("search", "retrieval", "qa", "question", "answer")): return "qa"
-    if any(kw in t for kw in ("search", "find ", "query ", "retrieve")): return "qa"
-    return "general"
-
-
-class BaseLoop(ILoop):
-    """
-    Base execution loop implementation
-    
-    Provides common functionality for execution loops.
-    """
-
-    def __init__(
-        self,
-        config: Optional[LoopConfig] = None,
-        hook_manager: Optional[HookManager] = None
-    ):
-        self._config = config or LoopConfig()
-        self._hook_manager = hook_manager or HookManager()
-        self._current_state = LoopState()
-        self._current_node = "init"
-        self._step_handlers: Dict[LoopStateEnum, Callable] = {}
-
-    async def run(self, state: LoopState, config: LoopConfig) -> LoopResult:
-        """Run execution loop"""
-        self._current_state = state
-        self._config = config
-        stop_reason = None
-
-        # Session start + pre-loop hooks
-        await self._trigger_hook(HookPhase.SESSION_START, {"state": state, "config": config})
-        await self._trigger_hook(HookPhase.PRE_LOOP, {"state": state})
-
-        # Paper "Data Recipes for Agentic Models": task source classification
-        task = str(state.context.get("task") or "")
-        agent_id = str(state.context.get("_agent_id") or state.context.get("agent_id") or "")
-        task_type = _infer_task_type(task, agent_id)
-        state.context["task_type"] = task_type
-        
-        # PraxisRecorder — session-level execution recording
-        try:
-            from core.harness.practice.recorder import PraxisRecorder
-            run_id = getattr(state, "context", {}).get("_run_id", "") or ""
-            agent_id = getattr(state, "context", {}).get("_agent_id", "") or ""
-            recorder = PraxisRecorder(session_id=run_id, run_id=run_id, agent_id=agent_id)
-            recorder.start()
-            self._praxis_recorder = recorder
-        except Exception:
-            self._praxis_recorder = None
-        
-        try:
-            while self.should_continue(self._current_state):
-                # Contract check (optional hooks may block)
-                contract_results = await self._trigger_hook(
-                    HookPhase.PRE_CONTRACT_CHECK,
-                    {"state": self._current_state, "config": config},
-                )
-                deny = _extract_deny(contract_results)
-                if deny:
-                    await self._trigger_hook(HookPhase.SCOPE_REVIEW, {"reason": deny.get("reason", "contract denied")})
-                    raise RuntimeError(deny.get("reason", "contract denied"))
-
-                # Execute step
-                self._current_state = await self.step(self._current_state)
-
-                # Emit step_end so ExecutionViewer can mark step as completed
-                try:
-                    from core.services.execution_store import get_execution_store
-                    store = get_execution_store()
-                    step_num = self._current_state.step_count
-                    agent_id = self._current_state.context.get("_agent_id") or "react"
-                    step_span_id = f"step:{agent_id}:{step_num}"
-                    end_ts = time.time()
-                    await store.add_syscall_event({
-                        "id": f"{self._current_state.context.get('_run_id','?')}:step_end:{step_num}",
-                        "span_id": step_span_id,
-                        "parent_span_id": f"agent:{agent_id}:start",
-                        "kind": "step", "name": f"step_{step_num}", "status": self._current_state.current.value,
-                        "run_id": self._current_state.context.get("_run_id") or "",
-                        "start_time": end_ts,
-                        "duration_ms": 0,
-                        "args": {
-                            "reasoning": str(self._current_state.context.get("reasoning", ""))[:200],
-                            "action_result": str(self._current_state.context.get("action_result", ""))[:200],
-                        },
-                        "step_number": step_num,
-                    })
-                except Exception as e:
-                    logging.warning(str(e), exc_info=True)
-
-                await self._trigger_hook(
-                    HookPhase.POST_CONTRACT_CHECK,
-                    {"state": self._current_state, "config": config},
-                )
-
-                # Observability-driven control (minimal closed-loop)
-                self._apply_observability_control(self._current_state, config)
-                if self._current_state.current == LoopStateEnum.PAUSED:
-                    stop_reason = "paused"
-                    break
-                
-                # Check for errors
-                if self._current_state.current == LoopStateEnum.ERROR:
-                    if config.stop_on_error:
-                        break
-            
-            # Determine stop reason
-            if self._current_state.current == LoopStateEnum.FINISHED:
-                stop_reason = "finished"
-            elif self._current_state.current == LoopStateEnum.ERROR:
-                stop_reason = "error"
-            elif self._current_state.step_count >= self._config.max_steps:
-                stop_reason = "max_steps"
-            elif self._current_state.budget_remaining <= 0:
-                stop_reason = "budget_exhausted"
-            else:
-                stop_reason = "stopped"
-
-            # Persist stop_reason for observability (MUST be in output event)
-            self._current_state.context["_stop_reason"] = stop_reason
-
-            # Save Praxis recording for replay
-            if hasattr(self, '_praxis_recorder') and self._praxis_recorder:
-                try:
-                    session = self._praxis_recorder.finish(stop_reason or "unknown")
-                    from core.services.execution_store import get_execution_store
-                    store = get_execution_store()
-                    await store.upsert_global_setting(
-                        key=f"praxis:{session.run_id}",
-                        value={"session": session.to_dict()},
-                    )
-                except Exception as e:
-                    logging.warning(str(e), exc_info=True)
-
-            # Post-loop hook
-            await self._trigger_hook(HookPhase.POST_LOOP, {"state": self._current_state})
-            await self._trigger_hook(HookPhase.STOP, {"state": self._current_state, "reason": stop_reason})
-            await self._trigger_hook(HookPhase.SESSION_END, {"state": self._current_state, "reason": stop_reason})
-            
-            error = None
-            if self._current_state.current == LoopStateEnum.PAUSED:
-                error = self._current_state.context.get("error") or "paused"
-            elif self._current_state.current == LoopStateEnum.ERROR:
-                error = self._current_state.context.get("error") or "error"
-
-            return LoopResult(
-                success=self._current_state.current == LoopStateEnum.FINISHED,
-                final_state=self._current_state,
-                output=self._current_state.context.get("output"),
-                error=error,
-                metadata={"steps": self._current_state.step_count, "stop_reason": stop_reason}
-            )
-            
-        except Exception as e:
-            self._current_state.current = LoopStateEnum.ERROR
-            stop_reason = stop_reason or "exception"
-            try:
-                await self._trigger_hook(HookPhase.STOP, {"state": self._current_state, "reason": stop_reason, "error": str(e)})
-                await self._trigger_hook(HookPhase.SESSION_END, {"state": self._current_state, "reason": stop_reason, "error": str(e)})
-            except Exception as e:
-                logging.warning(str(e), exc_info=True)
-            # Fire-and-forget: trigger AutoLearner on unhandled exceptions
-            try:
-                import asyncio as _asyncio2
-                _asyncio2.ensure_future(self._try_trigger_auto_learner_from_exception(
-                    state=self._current_state, exc=e, stop_reason=stop_reason
-                ))
-            except Exception:
-                pass
-            return LoopResult(
-                success=False,
-                final_state=self._current_state,
-                error=str(e),
-                metadata={"exception": type(e).__name__}
-            )
-
-    def should_continue(self, state: LoopState) -> bool:
-        """Determine if loop should continue"""
-        # Hard safety cap: prevent runaway loops regardless of config
-        if state.step_count >= 1000:
-            logging.getLogger("aiplat.loop").error(
-                "SAFETY STOP: loop exceeded 1000 steps (run_id=%s, agent=%s, steps=%d)",
-                state.context.get("_run_id", "?"),
-                state.context.get("agent_id", "?"),
-                state.step_count,
-            )
-            return False
-        
-        # Check max steps
-        if state.step_count >= self._config.max_steps:
-            return False
-        
-        # Check token budget
-        if state.budget_remaining <= 0:
-            return False
-        
-        # Check state
-        if state.current in [LoopStateEnum.FINISHED, LoopStateEnum.ERROR, LoopStateEnum.PAUSED]:
-            return False
-        
-        return True
-
-    def _apply_observability_control(self, state: LoopState, config: LoopConfig) -> None:
-        """
-        Minimal observability-driven control:
-        - If tool_error_rate > 0.2 and tool_calls >= 10 -> pause + require manual
-        - If token usage ratio > 0.8 -> compact messages (keep last 2)
-        """
-        # 1) tool error rate based pause
-        tool_calls = int(state.metadata.get("tool_calls", 0) or 0)
-        tool_failures = int(state.metadata.get("tool_failures", 0) or 0)
-        if tool_calls >= 10:
-            rate = tool_failures / max(1, tool_calls)
-            if rate > 0.2:
-                state.current = LoopStateEnum.PAUSED
-                state.metadata["control_action"] = "require_manual"
-                state.metadata["tool_error_rate"] = rate
-                state.context["observation"] = f"Paused: tool_error_rate={rate:.2f} exceeds threshold"
-                return
-
-        # 2) token budget based compaction (best-effort)
-        max_tokens = float(getattr(config, "max_tokens", state.max_tokens) or state.max_tokens)
-        used_tokens = float(getattr(state, "used_tokens", 0) or 0)
-        if max_tokens > 0 and (used_tokens / max_tokens) > 0.8:
-            # If advanced compaction is enabled, let the loop implementation handle it
-            # (e.g., ReActLoop._maybe_compact_messages) rather than dropping turns here.
-            if True:  # always enable 5-level compaction (has its own threshold guards)
-                state.metadata["control_action"] = state.metadata.get("control_action") or "context_pressure"
-                state.metadata["context_pressure"] = True
-                return
-            msgs = state.context.get("messages")
-            if isinstance(msgs, list) and len(msgs) > 2:
-                state.context["messages"] = msgs[-2:]
-                state.metadata["control_action"] = "compact_context"
-                state.metadata["compacted_messages"] = True
-
-    async def step(self, state: LoopState) -> LoopState:
-        """Execute single step - to be implemented by subclass"""
-        state.step_count += 1
-        state.history.append({
-            "step": state.step_count,
-            "node": self._current_node,
-            "state": state.current.value
-        })
-        
-        return state
-
-    def get_current_node(self) -> str:
-        """Get current execution node"""
-        return self._current_node
-
-    async def reset(self) -> None:
-        """Reset loop to initial state"""
-        self._current_state = LoopState()
-        self._current_node = "init"
-
-    async def _trigger_hook(self, phase: HookPhase, data: Dict[str, Any]) -> List[Any]:
-        """Trigger hooks for a phase and return hook results."""
-        context = HookContext(phase=phase, state=data)
-        return await self._hook_manager.trigger(phase, context)
-
-
-def _extract_deny(results: List[Any]) -> Optional[Dict[str, Any]]:
-    """Extract first deny dict from hook results."""
-    for r in results or []:
-        if isinstance(r, dict) and r.get("allow") is False:
-            return r
-    return None
+from .compressor import compact_messages, apply_context_shaping
+from .graph_injector import inject_graph_context, inject_memory_reminders
 
 
 class ReActLoop(BaseLoop):
@@ -414,7 +132,7 @@ class ReActLoop(BaseLoop):
         if not self._approval_manager:
             return
         try:
-            from ..infrastructure.approval import ApprovalContext, RequestStatus
+            from ...infrastructure.approval import ApprovalContext, RequestStatus
             user_id = context.get("user_id", "system")
             session_id = context.get("session_id", "default")
             approval_ctx = ApprovalContext(
@@ -571,7 +289,7 @@ class ReActLoop(BaseLoop):
                             cur_id = None
                             try:
                                 todo = rs.get("todo") if isinstance(rs.get("todo"), list) else []
-                                from ..restatement.run_state import pick_next_todo
+                                from ...restatement.run_state import pick_next_todo
 
                                 top = pick_next_todo(todo) if isinstance(todo, list) else None
                                 cur_id = str((top or {}).get("id") or "").strip() or None
@@ -702,486 +420,26 @@ class ReActLoop(BaseLoop):
 
         return state
 
-    async def _persist_run_state(self, state: LoopState, *, source: str, extra: Optional[Dict[str, Any]] = None) -> None:
-        runtime = get_kernel_runtime()
-        store = getattr(runtime, "execution_store", None) if runtime else None
-        if store is None:
-            return
-        rs = state.context.get("run_state")
-        if not isinstance(rs, dict):
-            return
-        try:
-            from core.learning.manager import LearningManager
-            from core.learning.types import LearningArtifactKind
-
-            mgr = LearningManager(execution_store=store)
-            run_id = state.context.get("_run_id") or state.context.get("run_id")
-            await mgr.create_artifact(
-                kind=LearningArtifactKind.RUN_STATE,
-                target_type="run",
-                target_id=str(run_id),
-                version=f"run_state:{int(time.time())}",
-                status="draft",
-                payload=rs,
-                metadata={"source": source, **(extra or {}), "locked": bool(rs.get("locked"))},
-                trace_id=state.context.get("_trace_id") or state.context.get("trace_id"),
-                run_id=str(run_id),
-            )
-        except Exception as e:
-            logging.warning(str(e), exc_info=True)
-        try:
-            if hasattr(store, "append_run_event"):
-                await store.append_run_event(
-                    run_id=str(state.context.get("_run_id") or state.context.get("run_id")),
-                    event_type="run_state",
-                    trace_id=state.context.get("_trace_id") or state.context.get("trace_id"),
-                    tenant_id=state.context.get("tenant_id"),
-                    payload={"source": source, **(extra or {})},
-                )
-        except Exception as e:
-            logging.warning(str(e), exc_info=True)
-
-    async def _apply_todo_done_markers(self, state: LoopState, text: str, *, source: str) -> None:
-        if os.getenv("AIPLAT_RUN_STATE_PARSE_TODO_DONE", "true").lower() not in ("1", "true", "yes", "y"):
-            return
-        done_ids = []
-        for token in str(text or "").split():
-            if token.startswith("TODO_DONE:"):
-                done_ids.append(token.split("TODO_DONE:", 1)[1].strip())
-        if not done_ids:
-            return
-        rs = state.context.get("run_state")
-        if not isinstance(rs, dict):
-            return
-        for tid in done_ids[:20]:
-            rs = set_todo_status(rs, todo_id=tid, status="completed", source=f"todo_done_marker:{source}")
-        state.context["run_state"] = rs
-        await self._persist_run_state(state, source=f"todo_done_marker:{source}", extra={"done_ids": done_ids[:20]})
-
-    async def _reason(self, state: LoopState) -> str:
-        """Reasoning phase"""
-        if not self._model:
-            return "No model available"
-
-        # Preflight: estimate token pressure before sending request.
-        # Avoids "send → rejected → compress → resend" waste loop.
-        msgs = state.context.get("messages")
-        if isinstance(msgs, list) and len(msgs) > 6:
-            estimated_tokens = state.used_tokens or sum(
-                len(str(m.get("content", ""))).split() * 1.3 for m in msgs if isinstance(m, dict)
-            )
-            max_tokens = float(getattr(self._config, "max_tokens", 0) or 0)
-            if max_tokens > 0 and estimated_tokens / max_tokens > 0.80:
-                await self._maybe_compact_messages(state)
-
-        # Optional: context compaction + memory injection (best-effort)
-        try:
-            await self._maybe_compact_messages(state)
-            from ..memory.manager import get_memory_manager
-            try:
-                mgr = get_memory_manager()
-                task = state.context.get("task", "")
-                sys_prompt = state.context.get("system_prompt", "")
-                mem_ctx = await mgr.build_context(current_query=task, system_prompt=sys_prompt)
-                if mem_ctx and (mem_ctx.working_context or mem_ctx.messages):
-                    state.context.setdefault("_memory_context", {
-                        "working": str(mem_ctx.working_context)[:2000] if mem_ctx.working_context else "",
-                        "episodic": str(mem_ctx.episodic_summary)[:1000] if mem_ctx.episodic_summary else "",
-                        "semantic": str(mem_ctx.relevant_memories)[:1000] if mem_ctx.relevant_memories else "",
-                        "messages": mem_ctx.messages,
-                        "token_count": mem_ctx.token_count,
-                    })
-            except Exception as e:
-                logging.warning(str(e), exc_info=True)
-        except Exception as e:
-            logging.warning(str(e), exc_info=True)
-
-        # Drain AgentMessageBus before reasoning (P1: wire feedback/coordination messages)
-        try:
-            from ..interfaces.messaging import get_message_bus
-            bus = get_message_bus()
-            agent_id = state.context.get("agent_id", "") or getattr(self._config, 'name', 'react_agent')
-            messages = bus.drain(agent_id)
-            if messages:
-                state.context.setdefault("_bus_messages", []).extend(str(m)[:200] for m in messages)
-            # Check for pending requests that need responses
-            requests = bus.collect_requests(agent_id)
-            if requests:
-                state.context.setdefault("_bus_requests", []).extend(
-                    {"request_id": r.msg_id, "sender": r.sender_id, "payload": r.payload}
-                    for r in requests[:3])
-        except Exception as e:
-            logging.warning(str(e), exc_info=True)
-
-        # Query rewrite: resolve pronouns and implicit references via conversational RAG (§03)
-        try:
-            enable_qr = state.context.get("_enable_query_rewrite") or os.getenv("AIPLAT_ENABLE_QUERY_REWRITE", "").lower() in ("1", "true", "yes")
-            if enable_qr:
-                current_query = state.context.get("task", "")
-                history = state.context.get("messages", [])
-                from core.harness.knowledge.query_rewriter import rewrite_with_history
-                rewritten = await rewrite_with_history(current_query, history, self._model)
-                if rewritten and rewritten != current_query:
-                    state.context["_original_query"] = current_query
-                    state.context["task"] = rewritten
-        except Exception as e:
-            logging.warning(str(e), exc_info=True)
-
-        # Inject code graph context on first reasoning call (replaces grep/glob exploration)
-        graph_hints = await self._try_inject_graph_context(state)
-        if graph_hints:
-            state.context.setdefault("_graph_hints", graph_hints)
-
-        # Inject memory context + bus messages into prompt assembly
-        mem_hints = ""
-        try:
-            mem = state.context.get("_memory_context")
-            if mem:
-                parts = []
-                if mem.get("working"): parts.append(f"Working Memory: {mem['working']}")
-                if mem.get("episodic"): parts.append(f"Recent: {mem['episodic']}")
-                if mem.get("semantic"): parts.append(f"Relevant: {mem['semantic']}")
-                mem_hints = "\n".join(parts)
-        except Exception as e:
-            logging.warning(str(e), exc_info=True)
-        bus_hints = ""
-        try:
-            bus_msgs = state.context.get("_bus_messages", [])
-            if bus_msgs:
-                bus_hints = "\n".join(f"[Bus] {m}" for m in bus_msgs[-3:])
-        except Exception as e:
-            logging.warning(str(e), exc_info=True)
-
-        task = state.context.get("task", "")
-        history = "\n".join([
-            f"{msg.get('role', 'user')}: {msg.get('content', '')}"
-            for msg in state.context.get("messages", [])[-5:]
-        ])
-        tools_desc, tools_desc_stats = self._build_tools_desc()
-        # 上下文压力（best-effort）：用于渐进式披露预算
-        try:
-            max_tokens = float(getattr(self._config, "max_tokens", state.max_tokens) or state.max_tokens)
-            used_tokens = float(getattr(state, "used_tokens", 0) or 0)
-            pressure = (used_tokens / max_tokens) if max_tokens > 0 else 0.0
-        except Exception:
-            pressure = 0.0
-        skills_desc, skills_desc_stats = self._build_skills_desc(context_pressure=pressure)
-        # Best-effort: attach to state for observability/debugging
-        try:
-            state.metadata["tools_desc_stats"] = tools_desc_stats
-            state.context["tools_desc_stats"] = tools_desc_stats
-            state.metadata["skills_desc_stats"] = skills_desc_stats
-            state.context["skills_desc_stats"] = skills_desc_stats
-        except Exception as e:
-            logging.warning(str(e), exc_info=True)
-
-        # ── ContextAssembler: token budget + source attribution (Phase 9) ──
-        try:
-            from ..assembly import BudgetSpec
-            sources = [
-                ContextSource(key="tools_desc", origin="system", token_estimate=len(tools_desc) // 4, priority="high"),
-                ContextSource(key="skills_desc", origin="skill", token_estimate=len(skills_desc) // 4, priority="medium"),
-                ContextSource(key="history", origin="system", token_estimate=len(history) // 4, priority="medium"),
-            ]
-            tool_schemas = [{"name": getattr(t, "name", str(t)), "desc": str(getattr(getattr(t, '_config', None), 'description', ''))[:200]} for t in (self._tools or [])]
-            skill_schemas = [{"name": getattr(s, "name", str(s)), "desc": str(getattr(getattr(s, '_config', None), 'description', ''))[:200]} for s in (self._skills or [])]
-            assembly_result = ContextAssembler().assemble(
-                messages=state.context.get("messages", []),
-                session_id=state.context.get("session_id"),
-                user_id=state.context.get("user_id"),
-                budgets=BudgetSpec(token_budget=self._config.max_tokens or 100_000),
-                sources=sources,
-                tool_schemas=tool_schemas,
-                skill_schemas=skill_schemas,
-                metadata={"step_count": int(getattr(state, "step_count", 0) or 0)},
-            )
-            state.context["_context_assembly"] = {
-                "estimated_tokens": assembly_result.context.estimated_tokens(),
-                "over_budget": assembly_result.context.is_over_budget(),
-                "compact_needed": assembly_result.context.compact_needed(),
-                "prompt_version": assembly_result.context.prompt_version,
-                "meta": assembly_result.metadata,
-            }
-        except Exception as e:
-            logging.warning(str(e), exc_info=True)
-
-        # P1-2: persist disclosure policy/budgets for replay (best-effort, de-duplicated)
-        try:
-            runtime = get_kernel_runtime()
-            store = getattr(runtime, "execution_store", None) if runtime else None
-            run_id0 = state.context.get("_run_id") or state.context.get("run_id")
-            if store is not None and run_id0 and hasattr(store, "append_run_event"):
-                # Emit only when policy/budget changes to reduce noise.
-                key_fields = {
-                    "disclosure_policy": skills_desc_stats.get("disclosure_policy"),
-                    "per_skill_max_chars": skills_desc_stats.get("per_skill_max_chars"),
-                    "total_max_chars": skills_desc_stats.get("total_max_chars"),
-                    "skill_sop_recommended_max_chars": skills_desc_stats.get("skill_sop_recommended_max_chars"),
-                }
-                last = state.metadata.get("_skills_disclosure_last")
-                if last != key_fields:
-                    state.metadata["_skills_disclosure_last"] = dict(key_fields)
-                    await store.append_run_event(
-                        run_id=str(run_id0),
-                        event_type="skills_disclosure",
-                        trace_id=state.context.get("_trace_id") or state.context.get("trace_id"),
-                        tenant_id=state.context.get("tenant_id"),
-                        payload={
-                            "step_count": int(getattr(state, "step_count", 0) or 0),
-                            "context_pressure": float(pressure),
-                            "used_tokens": float(getattr(state, "used_tokens", 0) or 0),
-                            "max_tokens": float(getattr(self._config, "max_tokens", state.max_tokens) or state.max_tokens),
-                            "budgets": key_fields,
-                        },
-                    )
-        except Exception as e:
-            logging.warning(str(e), exc_info=True)
-
-        # P0: context shaping pipeline (observable, default enabled)
-        try:
-            await self._apply_context_shaping_pipeline(state)
-        except Exception as e:
-            logging.warning(str(e), exc_info=True)
-
-        # Restatement: load latest run_state and periodically refresh next_step
-        try:
-            await self._load_run_state_for_prompt(state)
-            await self._maybe_restate_and_persist_run_state(state)
-        except Exception as e:
-            logging.warning(str(e), exc_info=True)
-
-        if os.getenv("AIPLAT_ENABLE_PROMPT_ASSEMBLER", "true").lower() in ("1", "true", "yes", "y"):
-            prompt = PromptAssembler().build_react_reasoning_messages(
-                task=task,
-                history=history,
-                tools_desc=tools_desc,
-                skills_desc=skills_desc,
-                observation=state.context.get("observation", "None"),
-            )
-            # Inject system_prompt as a system message if configured
-            sp = state.context.get("_sys_prompt", "") or state.context.get("system_prompt", "")
-            if sp:
-                # Remove any existing system message and prepend with sys_prompt
-                prompt = [m for m in prompt if m.get("role") != "system"]
-                prompt.insert(0, {"role": "system", "content": sp})
-            rs = state.context.get("run_state")
-            if isinstance(rs, dict):
-                prompt.append({"role": "user", "content": format_run_state_for_prompt(rs)})
-            # Inject toolset behavioral constraints (force_tool_use, prefer_skill, prefer_agent_delegate)
-            try:
-                from core.harness.kernel.execution_context import get_active_workspace_context
-                from core.harness.tools.toolsets import resolve_toolset
-                ws = get_active_workspace_context()
-                active_t = getattr(ws, 'toolset', None) if ws else None
-                if active_t:
-                    policy = resolve_toolset(str(active_t))
-                    constraints = []
-                    if policy.force_tool_use:
-                        if not state.context.get("_capability_attempted"):
-                            constraints.append("You have not yet used any tool/skill/agent. You MUST call an available tool first. Do NOT answer from your own knowledge.")
-                        else:
-                            constraints.append("You may now respond with DONE to summarize results.")
-                    if policy.prefer_skill_use:
-                        constraints.append("Prefer using your bound skills over raw tool calls when available.")
-                    if constraints:
-                        toolset_instruction = "## Toolset Requirements\n" + "\n".join(f"- {c}" for c in constraints)
-                        existing_sys = prompt[0].get("content", "") if prompt and prompt[0].get("role") == "system" else ""
-                        if prompt and prompt[0].get("role") == "system":
-                            prompt[0]["content"] = existing_sys + "\n\n" + toolset_instruction
-                        else:
-                            prompt.insert(0, {"role": "system", "content": toolset_instruction})
-            except Exception as e:
-                logging.warning(str(e), exc_info=True)
-        else:
-            from core.harness.utils.prompt_loader import _sync_resolve
-            prompt = _sync_resolve("react-reasoning",
-                task=task, history=history, mem_hints=mem_hints, bus_hints=bus_hints,
-                tools_desc=tools_desc, skills_desc=skills_desc,
-                observation=str(state.context.get('observation', 'None')),
-            )
-            rs = state.context.get("run_state")
-            if isinstance(rs, dict):
-                prompt += "\n\n" + format_run_state_for_prompt(rs)
-        try:
-            trace_ctx = {
-                "trace_id": state.context.get("_trace_id") or state.context.get("trace_id"),
-                "run_id": state.context.get("_run_id") or state.context.get("run_id"),
-                "parent_span_id": state.context.get("_current_step_span_id") or (state.context.get("_agent_id") and f"agent:{state.context['_agent_id']}:start"),
-                "knowledge_bases": state.context.get("_knowledge_bases", []),
-            }
-            response = await sys_llm_generate(self._model, prompt,
-                trace_context=trace_ctx,
-                model_name=self._config.model_name)
-            # Persist this interaction to MemoryManager for cross-turn memory
-            await self._try_save_interaction(state, prompt, getattr(response, "content", str(response)))
-            # L3: Auto-extract user facts from conversation
-            await self._try_extract_user_facts(state, prompt)
-            # Track token usage (best-effort) for compaction budgets.
-            try:
-                usage = getattr(response, "usage", None)
-                if isinstance(usage, dict):
-                    total = usage.get("total_tokens")
-                    if total is None:
-                        total = (usage.get("prompt_tokens") or 0) + (usage.get("completion_tokens") or 0)
-                    state.used_tokens = float(getattr(state, "used_tokens", 0) or 0) + float(total or 0)
-            except Exception as e:
-                logging.warning(str(e), exc_info=True)
-            # Update budget_remaining
-            _max = float(getattr(self._config, "max_tokens", 0) or 0)
-            if _max > 0:
-                state.budget_remaining = max(0.0, 1.0 - (state.used_tokens / _max))
-            return response.content
-        except Exception as e:
-            # P3-15: Session overflow fallback — retry with emergency compression
-            err_msg = str(e).lower()
-            overflow_keywords = [
-                "context_length", "too long", "reduce the length",
-                "token limit", "max tokens", "context window",
-                "too many tokens", "truncat",
-            ]
-            if any(kw in err_msg for kw in overflow_keywords) and not state.context.get("_overflow_retried"):
-                state.context["_overflow_retried"] = True
-                state.context["_last_action_reason"] = "context_overflow_compressing"
-                try:
-                    from core.harness.memory.compression import ContextCompression, ContextState
-                    comp = ContextCompression()
-                    msgs = state.context.get("messages", [])
-                    est_tokens = len(json.dumps(msgs, default=str)) // 4 if msgs else 0
-                    cs = ContextState(token_usage=est_tokens, token_limit=est_tokens * 2, message_count=len(msgs))
-                    compressed = await comp._emergency_compress(msgs) if msgs else []
-                    if compressed:
-                        # Rebuild a minimal prompt from compressed messages
-                        system_text = "\n".join(
-                            m.get("content", "")[:500] for m in compressed
-                            if m.get("role") == "system"
-                        )
-                        last_text = "\n".join(
-                            m.get("content", "")[:300] for m in compressed
-                            if m.get("role") != "system"
-                        )
-                        emergency_prompt = f"{system_text}\n\n## Context (compressed)\n{last_text}\n\n## Current Task\n{state.context.get('task', '')}\n\nRespond with DONE: ..."
-                        response = await sys_llm_generate(self._model, emergency_prompt,
-                            trace_context=trace_ctx, model_name=self._config.model_name)
-                        return response.content if hasattr(response, "content") else str(response)
-                except Exception as e:
-                    logging.warning(str(e), exc_info=True)
-            # Track consecutive LLM failures for observability
-            cf = state.context.get("_consecutive_llm_failures", 0) + 1
-            state.context["_consecutive_llm_failures"] = cf
-            state.context["_last_action_reason"] = f"llm_call_failed:#{cf}"
-            max_cf = state.context.get("_max_consecutive_llm_failures", int(os.getenv("AIPLAT_MAX_CONSECUTIVE_LLM_FAILURES", "3") or "3"))
-            if cf >= max_cf:
-                state.context["_stop_reason"] = "llm_failure_exhausted"
-            return f"Model error: {e}"
-
-    async def _load_run_state_for_prompt(self, state: LoopState) -> None:
-        """
-        Load latest run_state artifact (if any) into state.context["run_state"].
-        """
-        run_id = state.context.get("_run_id") or state.context.get("run_id")
-        if not run_id:
-            return
-        if isinstance(state.context.get("run_state"), dict):
-            return
-        runtime = get_kernel_runtime()
-        store = getattr(runtime, "execution_store", None) if runtime else None
-        if store is None or not hasattr(store, "list_learning_artifacts"):
-            state.context["run_state"] = default_run_state(run_id=str(run_id), task=str(state.context.get("task") or ""))
-            return
-        try:
-            res = await store.list_learning_artifacts(target_type="run", target_id=str(run_id), kind="run_state", limit=10, offset=0)
-            items = res.get("items") if isinstance(res, dict) else None
-            if isinstance(items, list) and items:
-                items2 = sorted(items, key=lambda x: float((x or {}).get("created_at") or 0), reverse=True)
-                payload = (items2[0] or {}).get("payload") if isinstance(items2[0], dict) else {}
-                rs = normalize_run_state(payload, run_id=str(run_id))
-                if not str(rs.get("task") or "").strip():
-                    rs["task"] = str(state.context.get("task") or "")
-                state.context["run_state"] = rs
-                state.context["_run_state_artifact_id"] = (items2[0] or {}).get("artifact_id")
-                return
-        except Exception as e:
-            logging.warning(str(e), exc_info=True)
-        state.context["run_state"] = default_run_state(run_id=str(run_id), task=str(state.context.get("task") or ""))
-
-    async def _maybe_restate_and_persist_run_state(self, state: LoopState) -> None:
-        """
-        Periodically refresh run_state.next_step and persist (debounced).
-        - restate: append run_event every N steps
-        - persist: write learning artifact every M steps
-        """
-        run_id = state.context.get("_run_id") or state.context.get("run_id")
-        if not run_id:
-            return
-        rs = state.context.get("run_state")
-        if not isinstance(rs, dict):
-            return
-        if os.getenv("AIPLAT_ENABLE_RUN_STATE", "true").lower() not in ("1", "true", "yes", "y"):
-            return
-
-        try:
-            restate_n = int(os.getenv("AIPLAT_RUN_STATE_RESTATE_EVERY_N_STEPS", "5"))
-        except Exception:
-            restate_n = 5
-        try:
-            persist_n = int(os.getenv("AIPLAT_RUN_STATE_PERSIST_EVERY_N_STEPS", "20"))
-        except Exception:
-            persist_n = 20
-
-        step_count = int(getattr(state, "step_count", 0) or 0)
-        if step_count <= 0:
-            return
-
-        # Always keep task filled
-        if not str(rs.get("task") or "").strip():
-            rs["task"] = str(state.context.get("task") or "")
-
-        # Restate (cheap)
-        if restate_n > 0 and (step_count % restate_n == 0):
-            rs2 = restate_next_step(rs, step_count=step_count, last_error=state.context.get("error"))
-            state.context["run_state"] = rs2
-            # run event
-            try:
-                runtime = get_kernel_runtime()
-                store = getattr(runtime, "execution_store", None) if runtime else None
-                if store is not None and hasattr(store, "append_run_event"):
-                    await store.append_run_event(
-                        run_id=str(run_id),
-                        event_type="run_state",
-                        trace_id=state.context.get("_trace_id") or state.context.get("trace_id"),
-                        tenant_id=state.context.get("tenant_id"),
-                        payload={"source": "loop", "step_count": step_count, "locked": bool(rs2.get("locked")), "next_step": rs2.get("next_step")},
-                    )
-            except Exception as e:
-                logging.warning(str(e), exc_info=True)
-
-        # Persist (debounced)
-        if persist_n > 0 and (step_count % persist_n == 0):
-            try:
-                if bool(state.context.get("run_state", {}).get("locked")):
-                    return
-                runtime = get_kernel_runtime()
-                store = getattr(runtime, "execution_store", None) if runtime else None
-                if store is None:
-                    return
-                from core.learning.manager import LearningManager
-                from core.learning.types import LearningArtifactKind
-
-                mgr = LearningManager(execution_store=store)
-                await mgr.create_artifact(
-                    kind=LearningArtifactKind.RUN_STATE,
-                    target_type="run",
-                    target_id=str(run_id),
-                    version=f"run_state:{int(time.time())}",
-                    status="draft",
-                    payload=state.context.get("run_state"),
-                    metadata={"source": "loop", "step_count": step_count, "locked": bool(state.context.get("run_state", {}).get("locked"))},
-                    trace_id=state.context.get("_trace_id") or state.context.get("trace_id"),
-                    run_id=str(run_id),
-                )
-            except Exception as e:
-                logging.warning(str(e), exc_info=True)
-
+    # ── DELEGATED to state_mgr.py (extracted for SRP per §5.75) ──
+    async def _persist_run_state(self, state: LoopState, *, source: str, extra: Optional[Dict[str, Any]] = None):
+        """Delegate to state_mgr.persist_run_state — extracted from loop.py."""
+        return await persist_run_state(state, source=source, extra=extra)
+    # ── DELEGATED to state_mgr.py (extracted for SRP per §5.75) ──
+    async def _apply_todo_done_markers(self, state: LoopState, text: str, *, source: str):
+        """Delegate to state_mgr.apply_todo_done_markers — extracted from loop.py."""
+        return await apply_todo_done_markers(state, text, source=source)
+    # ── DELEGATED to inference.py (extracted for SRP per §5.75) ──
+    async def _reason(self, state: LoopState):
+        """Delegate to inference.reason — extracted from loop.py."""
+        return await reason(state, self._model, self._config, self._skills, self._tools)
+    # ── DELEGATED to state_mgr.py (extracted for SRP per §5.75) ──
+    async def _load_run_state_for_prompt(self, state: LoopState):
+        """Delegate to state_mgr.load_run_state_for_prompt — extracted from loop.py."""
+        return await load_run_state_for_prompt(state)
+    # ── DELEGATED to state_mgr.py (extracted for SRP per §5.75) ──
+    async def _maybe_restate_and_persist_run_state(self, state: LoopState):
+        """Delegate to state_mgr.restate_and_persist_run_state — extracted from loop.py."""
+        return await restate_and_persist_run_state(state)
     def _estimate_context_stats(self, state: LoopState) -> Dict[str, Any]:
         """Cheap best-effort context size estimation."""
         msgs = state.context.get("messages")
@@ -1220,205 +478,10 @@ class ReActLoop(BaseLoop):
         except Exception:
             return
 
-    async def _apply_context_shaping_pipeline(self, state: LoopState) -> None:
-        """
-        Multi-stage context shaping pipeline (skeleton + observability).
-
-        Stages (in order, cost ascending):
-        - budget_trim (observability record of current budget state)
-        - prune (priority-based message removal at >=80% budget)
-        - micro_compress (reuses existing ContextCompression at >=90%)
-        - fold (merge consecutive same-role messages, cost-free)
-        - auto_compress (episodic summarization via MemoryManager, fires at >=8 msgs)
-        """
-        if os.getenv("AIPLAT_ENABLE_CONTEXT_SHAPING_PIPELINE", "true").lower() not in ("1", "true", "yes", "y"):
-            return
-
-        stages = ["budget_trim", "prune", "micro_compress", "fold", "auto_compress"]
-        pipeline_stats: Dict[str, Any] = {"enabled": True, "stages": [], "started_at": time.time()}
-
-        async def _stage(name: str, fn) -> None:
-            s_before = self._estimate_context_stats(state)
-            err = None
-            started = time.time()
-            try:
-                await fn()
-            except Exception as e:
-                err = str(e)
-            ended = time.time()
-            s_after = self._estimate_context_stats(state)
-            item = {
-                "stage": name,
-                "started_at": started,
-                "ended_at": ended,
-                "duration_ms": (ended - started) * 1000.0,
-                "before": s_before,
-                "after": s_after,
-                "error": err,
-            }
-            pipeline_stats["stages"].append(item)
-            await self._append_run_event(state, event_type="context_shaping", payload=item)
-
-        async def _budget_trim():
-            """Record current tool/skill description budgets for observability.
-            
-            Tools and skills already have per-description budget limits applied
-            by the disclosure budget system. This stage records the current state
-            so downstream stages (prune, fold) can make informed decisions.
-            """
-            state.metadata["_budget_trim_applied"] = True
-
-        async def _prune():
-            """Priority-based message pruning at moderate pressure (>= 80%).
-            
-            When token budget exceeds 80%, remove low-priority messages first
-            (complete file contents, debug output, intermediate reasoning).
-            Replace medium-priority messages (API responses, tool outputs) with
-            structured summaries. High-priority messages (user input, system
-            prompts, error messages) are never touched.
-            
-            This complements micro_compress which triggers at 90%.
-            """
-            msgs = state.context.get("messages")
-            if not isinstance(msgs, list) or len(msgs) < 5:
-                return
-
-            max_tokens = float(getattr(self._config, "max_tokens", None) or getattr(state, "max_tokens", 0) or 0)
-            used_tokens = float(getattr(state, "used_tokens", 0) or 0)
-            if max_tokens <= 0 or used_tokens <= 0:
-                return
-
-            ratio = used_tokens / max_tokens
-            if ratio < 0.80:
-                return
-
-            priority_order = {"low": 0, "medium": 1, "high": 2}
-            preserved: list = []
-            pruned_count = 0
-            summarized_count = 0
-
-            for msg in msgs:
-                p = str(msg.get("priority") or msg.get("metadata", {}).get("priority", "medium"))
-                rank = priority_order.get(p, 1)
-
-                if rank == 0:  # low — discard
-                    pruned_count += 1
-                    continue
-                elif rank == 1 and ratio >= 0.85:  # medium — summarize at high pressure
-                    content = str(msg.get("content", ""))
-                    if len(content) > 500:
-                        msg["content"] = content[:200] + f"...(trl: {len(content)} chars)"
-                        msg.setdefault("metadata", {})["summarized"] = True
-                        summarized_count += 1
-                # high priority — always keep
-                preserved.append(msg)
-
-            if pruned_count or summarized_count:
-                state.context["messages"] = preserved
-                state.metadata["prune_stats"] = {
-                    "pruned": pruned_count,
-                    "summarized": summarized_count,
-                    "before": len(msgs),
-                    "after": len(preserved),
-                    "ratio": round(ratio, 2),
-                }
-
-        async def _fold():
-            """Merge consecutive same-role messages to reduce message count.
-            
-            When conversation gets long, consecutive user messages or assistant
-            messages can be folded into single messages separated by section breaks.
-            This is cost-free (no semantic loss) and reduces the prompt token count
-            by removing redundant role markers and formatting.
-            """
-            msgs = state.context.get("messages")
-            if not isinstance(msgs, list) or len(msgs) < 6:
-                return
-
-            folded: list = []
-            for msg in msgs:
-                role = str(msg.get("role", ""))
-                content = str(msg.get("content", ""))
-                if folded and folded[-1].get("role") == role and role in ("user", "assistant"):
-                    # Merge content with a section break
-                    folded[-1]["content"] = str(folded[-1].get("content", "")) + "\n---\n" + content
-                else:
-                    folded.append(dict(msg))
-
-            if len(folded) < len(msgs):
-                state.context["messages"] = folded
-                state.metadata["fold_stats"] = {
-                    "before": len(msgs),
-                    "after": len(folded),
-                    "saved": len(msgs) - len(folded),
-                }
-
-        async def _auto_compress():
-            """Auto-summarize conversation into Episodic memory for cross-session recall.
-            
-            After significant conversations (>= 8 messages), generate an episodic
-            summary and persist it via MemoryManager. This enables the next session
-            to recall what was discussed — the foundation of cross-session learning.
-            
-            Only fires when: message count >= 8 or conversation appears complete.
-            """
-            msgs = state.context.get("messages")
-            if not isinstance(msgs, list) or len(msgs) < 8:
-                return
-
-            # Skip if already compressed this conversation
-            if state.metadata.get("_auto_compress_applied"):
-                return
-
-            try:
-                from core.harness.memory.manager import get_memory_manager
-                mm = get_memory_manager()
-                # Extract the last user message as conversation context
-                user_msgs = [m for m in msgs if isinstance(m, dict) and str(m.get("role", "")) == "user"]
-                task_hint = str(user_msgs[-1].get("content", ""))[:300] if user_msgs else ""
-                # Extract key points from assistant responses
-                assistant_msgs = [m for m in msgs if isinstance(m, dict) and str(m.get("role", "")) == "assistant"]
-                key_outputs = " | ".join(
-                    str(m.get("content", ""))[:150] for m in assistant_msgs[-3:]
-                ) if assistant_msgs else ""
-                summary = (
-                    f"Task: {task_hint or 'conversation'}\n"
-                    f"Messages: {len(msgs)}\n"
-                    f"Recent outputs: {key_outputs or 'none'}"
-                )
-                await mm.save_interaction(
-                    session_id=state.context.get("_run_id", state.context.get("session_id", "default")),
-                    user_msg=task_hint[:500],
-                    assistant_msg=summary[:1000],
-                    stability="medium",
-                )
-                state.metadata["_auto_compress_applied"] = True
-                state.metadata["auto_compress_stats"] = {
-                    "message_count": len(msgs),
-                    "task_hint": task_hint[:100],
-                }
-            except Exception as e:
-                logging.warning(str(e), exc_info=True)
-
-        mapping = {
-            "budget_trim": _budget_trim,
-            "prune": _prune,
-            "micro_compress": _micro_compress,
-            "fold": _fold,
-            "auto_compress": _auto_compress,
-        }
-        pipeline_stats["before"] = self._estimate_context_stats(state)
-        for stg in stages:
-            await _stage(stg, mapping[stg])
-        pipeline_stats["after"] = self._estimate_context_stats(state)
-        pipeline_stats["ended_at"] = time.time()
-        pipeline_stats["total_duration_ms"] = (pipeline_stats["ended_at"] - pipeline_stats["started_at"]) * 1000.0
-        try:
-            state.metadata["context_shaping_stats"] = pipeline_stats
-            state.context["context_shaping_stats"] = pipeline_stats
-        except Exception as e:
-            logging.warning(str(e), exc_info=True)
-
+    # ── DELEGATED to compressor.py (extracted for SRP per §5.75) ──
+    async def _apply_context_shaping_pipeline(self, state: LoopState):
+        """Delegate to compressor.apply_context_shaping — extracted from loop.py."""
+        return await apply_context_shaping(state, self._config)
     async def _try_save_interaction(self, state: LoopState, user_msg: str, assistant_msg: str) -> None:
         """Persist interaction to MemoryManager for cross-turn context building."""
         try:
@@ -1766,250 +829,18 @@ class ReActLoop(BaseLoop):
         except Exception as e:
             logging.warning(str(e), exc_info=True)
 
-    async def _try_inject_graph_context(self, state: LoopState) -> dict:
-        u"""注入代码图 + Wiki 知识图上下文到 Agent 决策循环。
-
-        代码图：sys_code_intel_context → 相关文件 + 依赖关系
-        知识图：Wiki 页面可用性声明 → Agent 知道可以查 sys_wiki_context
-        技能图：可用技能列表 → Agent 规划时参考
-        """
-        hints: Dict[str, Any] = {}
-        task = state.context.get("task", "") or state.context.get("_original_query", "")
-        skip = state.context.get("_graph_loaded")
-        if skip:
-            return hints
-
-        # Code graph context
-        try:
-            from core.harness.syscalls.code_intel_syscall import sys_code_intel_context
-            code_ctx = sys_code_intel_context(task)
-            if code_ctx and code_ctx.get("related"):
-                related_files = code_ctx["related"][:10]
-                hints["code_graph"] = {
-                    "stats": code_ctx.get("stats", {}),
-                    "related": related_files,
-                }
-                # Inject into messages
-                file_list = "\n".join(
-                    f"- {f['file']} (imports: {', '.join(f['imports'][:3])})"
-                    for f in related_files if f.get("file")
-                )
-                state.context.setdefault("messages", []).insert(0, {
-                    "role": "user",
-                    "content": (
-                        "[系统] 代码知识图谱已预构建。以下是与任务相关的文件:\n"
-                        f"{file_list}\n\n"
-                        "优先使用代码图定位代码，避免反复 grep/glob。"
-                    ),
-                })
-        except Exception:
-            try:
-                from core.harness.syscalls.code_intel_syscall import sys_code_intel_context
-                code_ctx = sys_code_intel_context(task)
-                if code_ctx and code_ctx.get("related"):
-                    hints["code_graph"] = code_ctx
-            except Exception as e:
-                logging.warning(str(e), exc_info=True)
-
-        # Wiki availability
-        try:
-            from core.harness.knowledge.wiki_engine import search_pages, list_collections
-            from core.harness.knowledge.knowledge_ontology import AI as __AI
-            kbs = state.context.get("_knowledge_bases", []) or []
-            first_cid = kbs[0] if kbs else "default"
-            wiki_pages = search_pages(limit=1, collection_id=first_cid)
-            if wiki_pages:
-                total = 0
-                for cid in (kbs or ["default"]):
-                    total += len(search_pages(limit=1000, collection_id=cid))
-                kb_info = ""
-                if kbs:
-                    kb_info = f"（限定集合: {', '.join(kbs)}，共 {total} 页）"
-                else:
-                    kb_info = f"（共 {total} 页）"
-                hints["wiki"] = {"pages": total, "collections": kbs}
-                state.context.setdefault("messages", []).insert(1, {
-                    "role": "user",
-                    "content":                     (
-                        f"[系统] Wiki 知识库可用{kb_info}。\n\n"
-                        f"检索语法:\n"
-                        f"  sys_knowledge_retrieve('问题', wiki_collection_ids=['{first_cid}'])\n"
-                        f"  sys_wiki_context('问题', collection_ids=['{first_cid}'])\n\n"
-                        f"【可用本体类过滤 - 传 target_class 参数】\n"
-                        f"  '{__AI}ConceptPage' → 概念实体页 (entities)\n"
-                        f"  '{__AI}TopicPage' → 专题综述页 (topics)\n"
-                        f"  expand_subclasses=True → 同时查子类页面\n\n"
-                        f"【示例】\n"
-                        f"  sys_knowledge_retrieve('什么是记忆系统', wiki_collection_ids=['{first_cid}'], target_class='{__AI}ConceptPage', expand_subclasses=True)\n"
-                        f"  sys_knowledge_retrieve('各方案对比', wiki_collection_ids=['{first_cid}'], target_class='{__AI}TopicPage')\n\n"
-                        f"不需要重新推理或猜测已有知识，直接检索即可。"
-                    ),
-                })
-        except Exception as e:
-            logging.warning(str(e), exc_info=True)
-
-        # Skill graph availability
-        try:
-            from core.harness.knowledge.skill_deps import build_skill_deps
-            deps = build_skill_deps()
-            if deps.get("stats", {}).get("total_skills", 0) > 0:
-                skills = list(deps["skills"].keys())
-                hints["skills"] = {
-                    "total": deps["stats"]["total_skills"],
-                    "available": skills[:15],
-                }
-                state.context.setdefault("messages", []).insert(2, {
-                    "role": "user",
-                    "content": (
-                        f"[系统] 已注册 {deps['stats']['total_skills']} 个技能。"
-                        f"主要包括: {', '.join(skills[:10])}。"
-                    ),
-                })
-        except Exception as e:
-            logging.warning(str(e), exc_info=True)
-
-        # File operations: make agents aware of available file syscalls
-        state.context.setdefault("messages", []).insert(3, {
-            "role": "user",
-            "content": (
-                "[系统] 文件操作 syscall 可用: sys_file_read, sys_file_write, "
-                "sys_file_edit, sys_glob, sys_code_search。"
-                "读写文件时优先使用这些 syscall 而不是绕过 syscall 通道。"
-            ),
-        })
-
-        state.context["_graph_loaded"] = True
-        return hints
-
-    async def _try_inject_memory_reminders(self, state: LoopState) -> None:
-        """Bridge: inject MemoryManager reminders into the message loop.
-
-        When MemoryManager is available (wired at server startup), its
-        SystemReminders are injected as user-role messages for the agent.
-        """
-        try:
-            from core.harness.memory.manager import get_memory_manager
-            ns = state.context.get("_agent_namespace", "default")
-            mgr = get_memory_manager(namespace=ns)
-            if mgr is None:
-                return
-            reminders = await mgr.get_reminders()
-            if not reminders:
-                return
-            for reminder_text in reminders:
-                state.context.setdefault("messages", []).insert(0, {
-                    "role": "user",
-                    "content": str(reminder_text),
-                })
-        except Exception as e:
-            logging.warning(str(e), exc_info=True)
-
-    async def _maybe_compact_messages(self, state: LoopState) -> None:
-        """
-        When token budget pressure is high, compact older messages into a summary.
-
-        Inspired by OpenClaw:
-        - Preserve identifiers (UUIDs, hashes, filenames)
-        - Keep recent turns verbatim
-        - Best-effort; fail-open to no compaction
-
-        NOTE: 5-level ContextCompression (85%→90%→93%→96%→99%) is now the
-        primary compaction path. Legacy single-threshold compaction serves as
-        fallback when the 5-level module is unavailable or raises.
-        """
-        import os
-        import re
-
-        # MemoryManager bridge: inject system reminders if available
-        await self._try_inject_memory_reminders(state)
-
-        # Always attempt compaction; 5-level thresholds decide whether to act.
-
-        msgs = state.context.get("messages")
-        if not isinstance(msgs, list) or len(msgs) < 8:
-            return
-
-        max_tokens = float(getattr(self._config, "max_tokens", None) or getattr(state, "max_tokens", 0) or 0)
-        used_tokens = float(getattr(state, "used_tokens", 0) or 0)
-        if max_tokens <= 0:
-            return
-
-        threshold = float(os.getenv("AIPLAT_CONTEXT_COMPACTION_THRESHOLD", "0.90") or "0.90")
-        if (used_tokens / max_tokens) < threshold:
-            return
-
-        # Try 5-level ContextCompression as primary path
-        try:
-            from core.harness.memory.compression import ContextCompression
-            comp = ContextCompression()
-            ratio = used_tokens / max(1, max_tokens)
-            state_obj = type("State", (), {
-                "usage_ratio": ratio,
-                "token_usage": int(used_tokens),
-                "token_limit": int(max_tokens),
-                "message_count": len(msgs),
-            })()
-            with_priority = []
-            for msg in msgs:
-                p = str(msg.get("priority") or msg.get("metadata", {}).get("priority", "medium"))
-                msg_with_p = dict(msg, priority=p)
-                with_priority.append(msg_with_p)
-            result = await comp.compress(with_priority, state_obj)
-            # Strip injected priority keys after compression
-            clean = [{k: v for k, v in m.items() if k != "priority"} for m in result]
-            state.context["messages"] = clean
-            state.metadata["compaction_stats"] = {
-                "level": "5-level",
-                "before": len(msgs),
-                "after": len(result),
-                "ratio": round(ratio, 2),
-            }
-            # Context Reflect: mark next step for clean-context boundary injection
-            state.metadata["context_reflect"] = True
-            return
-        except Exception as e:
-            # fallback: legacy single-threshold compaction below
-            logging.warning(str(e), exc_info=True)
-
-        protect_last_n = int(os.getenv("AIPLAT_CONTEXT_COMPACTION_PROTECT_LAST_N", "6") or "6")
-        protect_last_n = max(2, min(protect_last_n, 50))
-        head = msgs[:-protect_last_n]
-        tail = msgs[-protect_last_n:]
-
-        # Extract identifiers to preserve
-        text = "\n".join([str(m.get("content", "")) for m in head if isinstance(m, dict)])
-        uuid_re = r"\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b"
-        sha_re = r"\b[0-9a-f]{12,64}\b"
-        file_re = r"\b[\w./-]+\.(?:py|ts|tsx|js|json|md|yaml|yml|toml|sql)\b"
-        ids = set(re.findall(uuid_re, text, flags=re.IGNORECASE))
-        ids |= set(re.findall(file_re, text, flags=re.IGNORECASE))
-        # Limit hashes (avoid huge noise)
-        for h in re.findall(sha_re, text, flags=re.IGNORECASE):
-            if 12 <= len(h) <= 40:
-                ids.add(h)
-        ids_list = sorted(list(ids))[:50]
-
-        summary_prompt = self._build_compaction_prompt(ids_list, head)
-
-        trace_ctx = {
-            "trace_id": state.context.get("_trace_id") or state.context.get("trace_id"),
-            "run_id": state.context.get("_run_id") or state.context.get("run_id"),
-        }
-        resp = await sys_llm_generate(self._model, summary_prompt, trace_context=trace_ctx)
-        summary_text = str(getattr(resp, "content", "") or "").strip()
-        if not summary_text:
-            return
-
-        state.context["messages"] = [
-            {
-                "role": "system",
-                "content": "CONTEXT_SUMMARY:\n" + summary_text + ("\n\nPRESERVED_IDENTIFIERS:\n" + "\n".join(ids_list) if ids_list else ""),
-            }
-        ] + tail
-        state.metadata["control_action"] = "compact_context_summary"
-        state.metadata["compacted_messages"] = True
-        state.metadata["compaction_stats"] = {"before": len(msgs), "after": len(state.context["messages"]), "preserved_ids": len(ids_list)}
-
+    # ── DELEGATED to graph_injector.py (extracted for SRP per §5.75) ──
+    async def _try_inject_graph_context(self, state: LoopState):
+        """Delegate to graph_injector.inject_graph_context — extracted from loop.py."""
+        return await inject_graph_context(state)
+    # ── DELEGATED to graph_injector.py (extracted for SRP per §5.75) ──
+    async def _try_inject_memory_reminders(self, state: LoopState):
+        """Delegate to graph_injector.inject_memory_reminders — extracted from loop.py."""
+        return await inject_memory_reminders(state)
+    # ── DELEGATED to compressor.py (extracted for SRP per §5.75) ──
+    async def _maybe_compact_messages(self, state: LoopState):
+        """Delegate to compressor.compact_messages — extracted from loop.py."""
+        return await compact_messages(state, self._config)
     def _build_compaction_prompt(self, ids_list: list, head: list) -> str:
         """Build compaction prompt from template (§8: engine code must not contain business SOP)."""
         from core.harness.assembly.compaction_prompt import get_compaction_prompt
@@ -2104,6 +935,30 @@ class ReActLoop(BaseLoop):
 
         if stats["tools_hidden"]:
             lines.append(f"... ({stats['tools_hidden']} tools hidden; use tool search/narrow toolset)")
+
+        # P1-1: 动态高亮最相关的 3 个工具（不改物理顺序，包尾追加提示）
+        try:
+            task = self._current_state.context.get("task", "")
+            tool_names = [getattr(t, "name", str(t)) for t in (self._tools or [])]
+            if task and len(tool_names) > 3:
+                from core.harness.memory.compression import get_cached_embedding
+                task_vec = get_cached_embedding(task)
+                if task_vec is not None:
+                    import numpy as np
+                    tool_scores = []
+                    for name in tool_names:
+                        desc_vec = get_cached_embedding(str(name)[:300])
+                        if desc_vec is not None:
+                            score = float(np.dot(task_vec, desc_vec) / (
+                                np.linalg.norm(task_vec) * np.linalg.norm(desc_vec) + 1e-8))
+                            tool_scores.append((name, score))
+                    top3 = sorted(tool_scores, key=lambda x: -x[1])[:3]
+                    if top3:
+                        names = ", ".join(f"`{name}`" for name, _ in top3)
+                        lines.append(f"\n[TOOL HINT] Task may benefit from: {names}. "
+                                     f"All tools remain available below.")
+        except Exception:
+            pass
 
         return "\n".join(lines), stats
 
@@ -2615,7 +1470,7 @@ class ReActLoop(BaseLoop):
                 await self._emit_routing_decision(state, routing_decision_id, "skill", str(skill_name))
                 top = await self._emit_skill_candidates_snapshot(state, routing_decision_id, "skill", str(skill_name))
                 await self._emit_routing_strict_eval(state, routing_decision_id, "skill", str(skill_name), top)
-                from ..interfaces import SkillContext
+                from ...interfaces import SkillContext
                 await self._trigger_hook(HookPhase.PRE_SKILL_USE, {"skill": skill_name, "skill_args": skill_args, "format": parsed.format})
                 try:
                     skill_context = SkillContext(

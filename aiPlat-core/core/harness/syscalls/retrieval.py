@@ -94,7 +94,7 @@ def sys_kb_retrieve(
                 for p in para_results:
                     p["score"] = 0.05
             except Exception as e:
-                logging.debug(str(e), exc_info=True)
+                logging.warning(str(e), exc_info=True)
 
         # ── Graph-enhanced document expansion (keep) ──
         if doc_ids:
@@ -109,7 +109,7 @@ def sys_kb_retrieve(
                 if len(expanded_ids) > len(doc_ids):
                     doc_ids = expanded_ids[:max(1, len(doc_ids) + 5)]
             except Exception as e:
-                logging.debug(str(e), exc_info=True)
+                logging.warning(str(e), exc_info=True)
 
         # ── Unified retrieval via KnowledgeRetriever (replaces kw+vec+RRF+rerank) ──
         from core.harness.knowledge.sqlite_retriever import create_sqlite_retriever
@@ -175,7 +175,7 @@ def sys_kb_retrieve(
                         f"Provenance stale filter: {before - len(results)}/{before} results excluded (stale sources)"
                     )
         except Exception as e:
-            logging.debug(str(e), exc_info=True)
+            logging.warning(str(e), exc_info=True)
 
     # Peak-End anchoring: most relevant chunk first, second-most last
     # LLM attention decays in the middle 70% of the prompt — put
@@ -240,7 +240,7 @@ def _format_results(rows: list) -> List[Dict[str, Any]]:
         try:
             meta = _json.loads(d.get("meta_json") or "{}")
         except Exception as e:
-            logging.debug(str(e), exc_info=True)
+            logging.warning(str(e), exc_info=True)
         out.append({
             "text": str(d.get("text") or ""),
             "doc_id": str(d.get("doc_id") or ""),
@@ -269,7 +269,7 @@ def _cross_encode_rerank(
         adapter = create_adapter("reranker")
         return adapter.rerank(query, candidates, top_k)
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
     try:
         from sentence_transformers import CrossEncoder
         from core.harness.infrastructure.base_model_adapter import resolve_model_name
@@ -389,7 +389,7 @@ def _vector_search_chroma(
     except ImportError:
         pass
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
     return None
 
 
@@ -704,7 +704,7 @@ def sys_knowledge_retrieve(
                     "source": "graph_index",
                 }]
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
 
     if graph_early_exit:
         _total = _time.time() - _t0
@@ -712,7 +712,7 @@ def sys_knowledge_retrieve(
             from core.harness.memory.metrics import inc_early_exit
             inc_early_exit("graph")
         except Exception as e:
-            logging.debug(str(e), exc_info=True)
+            logging.warning(str(e), exc_info=True)
         logging.getLogger("retrieval").debug(
             f"sys_knowledge_retrieve: total={_total:.3f}s graph-early-exit results={len(results)}")
         return results
@@ -769,7 +769,7 @@ def sys_knowledge_retrieve(
         from core.harness.memory.metrics import observe_rrf_latency
         observe_rrf_latency(_total)
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
     logging.getLogger("retrieval").debug(
         f"sys_knowledge_retrieve: total={_total:.3f}s rrf-fused results={len(results)}")
 
@@ -822,7 +822,7 @@ def sys_knowledge_retrieve(
         _l_os.makedirs(_l_os.path.dirname(lat_path), exist_ok=True)
         open(lat_path, "w").write(_l_json.dumps(samples[-1000:]))
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
 
     # Phase C6: record to centralized latency aggregator
     try:

@@ -562,7 +562,7 @@ class MaterialsChatAgent(BaseAgent):
                             system_msgs + [
                                 {"role": "user", "content": f"文档内容：\n{retrieved_docs}\n\n用户问题：{enhanced_question}\n\n请回答："},
                             ],
-                            model_name=best_model_for_purpose("chat"),  # noqa: model-legacy
+                            model_name=best_model_for_purpose("chat"),
                             temperature=0.3,
                             max_tokens=2000,
                         ):
@@ -596,7 +596,7 @@ class MaterialsChatAgent(BaseAgent):
                             sys_msgs + [
                                 {"role": "user", "content": f"文档内容：\n{retrieved_docs}\n\n用户问题：{enhanced_question}\n\n请回答："},
                             ],
-                            model_name=best_model_for_purpose("chat"),  # noqa: model-legacy
+                            model_name=best_model_for_purpose("chat"),
                             temperature=0.3,
                             max_tokens=2000,
                         )

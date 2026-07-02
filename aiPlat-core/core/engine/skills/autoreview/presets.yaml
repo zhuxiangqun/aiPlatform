@@ -1,0 +1,42 @@
+# Autoreview MoA presets — Mixture of Agents configuration.
+# Selected via params.preset (default: code_review).
+
+code_review:
+  reference_models:
+    - reasoning      # P0/P1: security + logic
+    - code_gen       # P2: style + fix patches
+    - chat           # P2: naming + dead code
+  aggregator_model: reasoning
+  roles:
+    - "Focus: security vulnerabilities and logic errors. Output compact evidence cards (<5 per category)."
+    - "Focus: style issues and code quality. Include exact fix patches for P2."
+    - "Focus: naming conventions and dead code detection."
+  temperatures:
+    reference: 0.6
+    aggregator: 0.3
+
+architecture:
+  reference_models:
+    - reasoning
+    - reasoning    # Two reasoning engines for cross-check
+  aggregator_model: reasoning
+  roles:
+    - "Focus: architectural patterns, coupling, cohesion."
+    - "Focus: maintainability, extensibility, testability."
+  temperatures:
+    reference: 0.5
+    aggregator: 0.2
+
+security:
+  reference_models:
+    - reasoning
+    - code_gen
+    - chat
+  aggregator_model: reasoning
+  roles:
+    - "Focus: OWASP top 10, injection, auth bypass."
+    - "Focus: crypto weaknesses, hardcoded secrets."
+    - "Focus: input validation, sanitization."
+  temperatures:
+    reference: 0.7   # Higher: broader threat surface
+    aggregator: 0.2   # Lower: conservative security judgment

@@ -177,7 +177,7 @@ async def _create_gate_policy_approval_request(
     try:
         await approval_manager._persist(req)  # type: ignore[attr-defined]
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
     return str(req.request_id)
 
 
@@ -309,7 +309,7 @@ async def upsert_gate_policy(policy_id: str, request: dict, http_request: Reques
             tenant_id=str(http_request.headers.get("X-AIPLAT-TENANT-ID") or "") or None,
         )
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
     return {"status": "ok", "item": item, "default_id": data.get("default_id"), "change_id": str(cid), "links": governance_links(change_id=str(cid))}
 
 
@@ -345,7 +345,7 @@ async def delete_gate_policy(policy_id: str, http_request: Request, rt: RuntimeD
             tenant_id=str(http_request.headers.get("X-AIPLAT-TENANT-ID") or "") or None,
         )
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
     return {"status": "ok", "deleted": pid, "default_id": data.get("default_id"), "change_id": str(cid), "links": governance_links(change_id=str(cid))}
 
 
@@ -377,7 +377,7 @@ async def set_default_gate_policy(policy_id: str, http_request: Request, rt: Run
             tenant_id=str(http_request.headers.get("X-AIPLAT-TENANT-ID") or "") or None,
         )
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
     return {"status": "ok", "default_id": pid, "change_id": str(cid), "links": governance_links(change_id=str(cid))}
 
 
@@ -450,7 +450,7 @@ async def rollback_gate_policy(policy_id: str, request: dict, http_request: Requ
                 tenant_id=str(http_request.headers.get("X-AIPLAT-TENANT-ID") or "") or None,
             )
         except Exception as e:
-            logging.debug(str(e), exc_info=True)
+            logging.warning(str(e), exc_info=True)
         return {"status": "ok", "item": it, "change_id": str(cid), "links": governance_links(change_id=str(cid))}
     raise HTTPException(status_code=404, detail="policy_not_found")
 

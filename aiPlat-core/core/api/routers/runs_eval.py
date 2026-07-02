@@ -72,7 +72,7 @@ async def submit_run_evaluation(run_id: str, request: dict, http_request: Reques
         if isinstance(gated_report, dict) and base_evidence_pack_id_req:
             gated_report.setdefault("base_evidence_pack_id", base_evidence_pack_id_req)
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
     actor = actor_from_http(http_request, body or {})
     saved = await persist_evaluation(
         execution_store=store,
@@ -109,7 +109,7 @@ async def submit_run_evaluation(run_id: str, request: dict, http_request: Reques
             trace_id=run.get("trace_id"), run_id=rid,
         )
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
     if enforce_gate and not bool(gated_report.get("pass")):
         raise HTTPException(status_code=409, detail={"code": "evaluation_failed", "artifact_id": saved.get("artifact_id"), "report": gated_report})
     return {"status": "ok", "artifact_id": saved.get("artifact_id"), "report": gated_report}
@@ -140,12 +140,12 @@ async def auto_evaluate_run(run_id: str, http_request: Request, rt: RuntimeDep =
         r0 = await store.list_learning_artifacts(target_type="run", target_id=rid, kind="evaluation_report", limit=10, offset=0)
         latest_eval = _latest((r0 or {}).get("items"))
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
     try:
         r0 = await store.list_learning_artifacts(target_type="run", target_id=rid, kind="evidence_pack", limit=10, offset=0)
         latest_pack = _latest((r0 or {}).get("items"))
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
 
     syscall_summary = {"total": 0, "errors": 0}
     try:
@@ -155,7 +155,7 @@ async def auto_evaluate_run(run_id: str, http_request: Request, rt: RuntimeDep =
             errs = [x for x in items if (x or {}).get("error")]
             syscall_summary = {"total": len(items), "errors": len(errs)}
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
 
     return {
         "trace_id": run.get("trace_id"),

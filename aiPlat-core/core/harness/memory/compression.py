@@ -10,8 +10,59 @@ to prevent context window exhaustion during tool-heavy tasks.
 from typing import List, Dict, Any, Optional, Tuple
 from dataclasses import dataclass, field
 from enum import Enum
+from functools import lru_cache
 import asyncio
 import os
+
+
+# ── P0-3: LRU-cached embedding for semantic relevance scoring ──
+
+@lru_cache(maxsize=1024)
+def get_cached_embedding(text: str) -> Optional[tuple]:
+    """LRU 缓存的 embedding。同一段文本重复调用只计算一次。
+    
+    Public function — used by both compression.py and manager.py for
+    cross-layer re-ranking (P0-4).
+    """
+    try:
+        from core.harness.infrastructure.infra_embedding_adapter import get_embedding
+        result = get_embedding(text[:500])
+        if result is not None:
+            if asyncio.iscoroutine(result):
+                result = asyncio.run(result)
+            return tuple(result)
+        return None
+    except Exception:
+        return None
+
+
+def score_semantic_relevance(messages: List[Dict], task: str) -> List[float]:
+    """P0-3: 计算每条消息与当前任务的语义相似度 [0, 1]。
+    
+    使用 LRU 缓存的 embedding，同一段文本只计算一次。
+    返回与 messages 等长的分数列表。
+    """
+    if not messages or not task:
+        return [0.5] * len(messages)
+    try:
+        import numpy as np
+        task_vec = get_cached_embedding(task)
+        if task_vec is None:
+            return [0.5] * len(messages)
+        scores = []
+        for msg in messages:
+            key = str(msg.get("content", ""))[:200]
+            msg_vec = get_cached_embedding(key)
+            if msg_vec is not None:
+                sim = np.dot(task_vec, msg_vec) / (
+                    np.linalg.norm(task_vec) * np.linalg.norm(msg_vec) + 1e-8
+                )
+                scores.append(max(0.0, min(1.0, (sim + 1.0) / 2.0)))
+            else:
+                scores.append(0.5)
+        return scores
+    except Exception:
+        return [0.5] * len(messages)
 
 
 class CompressionLevel(Enum):
@@ -46,6 +97,12 @@ class ContextCompression:
         self._thresholds = self._init_thresholds()
         self._compression_stats: List[Tuple[int, int]] = []  # (before, after) msg counts
         self._prev_summary: Optional[str] = None
+        # P0-2: temperature-aware pruning
+        self._last_temperature: float = 0.3
+    
+    def set_temperature(self, temp: float):
+        """P0-2: 设置当前推理温度，影响剪枝保留比例。"""
+        self._last_temperature = temp
 
     def _init_thresholds(self) -> Dict[CompressionLevel, float]:
         return {
@@ -168,18 +225,41 @@ class ContextCompression:
     async def _prune_old_messages(
         self,
         context: List[Dict],
-        keep_last: int = 5
+        keep_last: int = 5,
+        task: str = "",
     ) -> List[Dict]:
-        """Keep system + all high-priority + most-recent N of the rest (§5.21).
-
-        High-priority messages (user's original requirement, HITL approval, key
-        errors) are never dropped; low/medium are kept by recency up to keep_last.
+        """P0-2+P0-3: 温度感知 + 语义相关性的智能剪枝。
+        
+        高温（>0.5，探索）→ 保留更多消息（Top 60%）
+        低温（<0.3，决策）→ 激进剪枝（Top 15%）
+        
+        优先级：system(priority=high) 固定保留，其余按语义相关性降序排列。
         """
+        # P0-2: temperature-aware keep ratio
+        t = self._last_temperature
+        if t >= 0.6:
+            keep_ratio = 0.60
+        elif t >= 0.3:
+            keep_ratio = 0.40
+        else:
+            keep_ratio = 0.15
+
         system_msgs = [m for m in context if m.get("role") == "system"]
         non_system = [m for m in context if m.get("role") != "system"]
         high = [m for m in non_system if self._priority_order(m) == 0]
         rest = [m for m in non_system if self._priority_order(m) != 0]
-        return system_msgs + high + rest[-keep_last:]
+
+        # P0-3: 语义相关性评分（替代旧的位置启发性规则）
+        if task and rest:
+            relevance = score_semantic_relevance(rest, task)
+            # 按相关性降序排列
+            rest = [m for _, m in sorted(
+                zip(relevance, rest), key=lambda x: -x[0]
+            )]
+
+        keep_count = max(keep_last, int(len(context) * keep_ratio))
+        kept_rest = rest[:max(1, keep_count - len(system_msgs) - len(high))]
+        return system_msgs + high + kept_rest
 
     async def _aggressive_compress(self, context: List[Dict]) -> List[Dict]:
         """Aggressive compression — preserve summary + all high-priority + recent turns (§5.21)."""

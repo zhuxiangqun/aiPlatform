@@ -152,7 +152,7 @@ async def _require_onboarding_approval(*, operation: str, user_id: str, details:
     try:
         await mgr._persist(req)  # type: ignore[attr-defined]
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
     return req.request_id
 
 
@@ -358,7 +358,7 @@ async def set_prompt_template_release(template_id: str, request: dict, http_requ
     except HTTPException:
         raise
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
 
     require_approval = bool(request.get("require_approval", True))
     approval_request_id = request.get("approval_request_id")
@@ -381,7 +381,7 @@ async def set_prompt_template_release(template_id: str, request: dict, http_requ
                     approval_request_id=rid,
                 )
             except Exception as e:
-                logging.debug(str(e), exc_info=True)
+                logging.warning(str(e), exc_info=True)
             return {"status": "approval_required", "approval_request_id": rid, "change_id": change_id, "links": governance_links(change_id=change_id, approval_request_id=rid)}
         if not _is_approval_resolved_approved(str(approval_request_id)):
             raise HTTPException(  # noqa: error-structured
@@ -418,7 +418,7 @@ async def set_prompt_template_release(template_id: str, request: dict, http_requ
             approval_request_id=str(approval_request_id) if approval_request_id else None,
         )
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
     return {"status": "updated", "change_id": change_id, "release": new_release, "links": governance_links(change_id=change_id)}
 
 
@@ -481,7 +481,7 @@ async def rollback_prompt_template_release(template_id: str, request: dict, http
             approval_request_id=str(approval_request_id) if approval_request_id else None,
         )
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
     return {"status": "rolled_back", "change_id": change_id, "release": prev2, "links": governance_links(change_id=change_id)}
 
 
@@ -521,7 +521,7 @@ async def upsert_prompt_template(request: PromptTemplateUpsertRequest, http_requ
                         approval_request_id=request.approval_request_id,
                     )
                 except Exception as e:
-                    logging.debug(str(e), exc_info=True)
+                    logging.warning(str(e), exc_info=True)
                 raise HTTPException(  # noqa: error-structured
                     status_code=409,
                     detail=gate_error_envelope(
@@ -541,7 +541,7 @@ async def upsert_prompt_template(request: PromptTemplateUpsertRequest, http_requ
         raise
     except Exception as e:
         # Fail-open: do not block prompt ops on metadata parsing errors.
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
 
     if request.require_approval:
         if not request.approval_request_id:
@@ -561,7 +561,7 @@ async def upsert_prompt_template(request: PromptTemplateUpsertRequest, http_requ
                     approval_request_id=rid,
                 )
             except Exception as e:
-                logging.debug(str(e), exc_info=True)
+                logging.warning(str(e), exc_info=True)
             return {
                 "status": "approval_required",
                 "approval_request_id": rid,
@@ -580,7 +580,7 @@ async def upsert_prompt_template(request: PromptTemplateUpsertRequest, http_requ
                     approval_request_id=request.approval_request_id,
                 )
             except Exception as e:
-                logging.debug(str(e), exc_info=True)
+                logging.warning(str(e), exc_info=True)
             raise HTTPException(  # noqa: error-structured
                 status_code=409,
                 detail=gate_error_envelope(
@@ -612,7 +612,7 @@ async def upsert_prompt_template(request: PromptTemplateUpsertRequest, http_requ
                 approval_request_id=request.approval_request_id,
             )
         except Exception as e:
-            logging.debug(str(e), exc_info=True)
+            logging.warning(str(e), exc_info=True)
         raise
 
     # Audit as a "changeset" syscall event (no secret content, hash only)
@@ -637,7 +637,7 @@ async def upsert_prompt_template(request: PromptTemplateUpsertRequest, http_requ
             approval_request_id=request.approval_request_id,
         )
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
 
     # Verification: mark pending + enqueue autosmoke (best-effort)
     try:
@@ -668,7 +668,7 @@ async def upsert_prompt_template(request: PromptTemplateUpsertRequest, http_requ
                 try:
                     await store.update_prompt_template_metadata(template_id=str(request.template_id), patch={"verification": ver}, merge=True)
                 except Exception as e:
-                    logging.debug(str(e), exc_info=True)
+                    logging.warning(str(e), exc_info=True)
 
                 # Change Control writeback (best-effort): record autosmoke result to same change_id.
                 try:
@@ -685,7 +685,7 @@ async def upsert_prompt_template(request: PromptTemplateUpsertRequest, http_requ
                         tenant_id=http_request.headers.get("X-AIPLAT-TENANT-ID", None),
                     )
                 except Exception as e:
-                    logging.debug(str(e), exc_info=True)
+                    logging.warning(str(e), exc_info=True)
 
             await enqueue_autosmoke(
                 execution_store=store,
@@ -698,7 +698,7 @@ async def upsert_prompt_template(request: PromptTemplateUpsertRequest, http_requ
                 on_complete=_on_complete,
             )
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
     return {
         "status": "updated",
         "template": res,
@@ -737,7 +737,7 @@ async def rollback_prompt_template(template_id: str, request: PromptTemplateRoll
                     approval_request_id=rid,
                 )
             except Exception as e:
-                logging.debug(str(e), exc_info=True)
+                logging.warning(str(e), exc_info=True)
             return {
                 "status": "approval_required",
                 "approval_request_id": rid,
@@ -756,7 +756,7 @@ async def rollback_prompt_template(template_id: str, request: PromptTemplateRoll
                     approval_request_id=request.approval_request_id,
                 )
             except Exception as e:
-                logging.debug(str(e), exc_info=True)
+                logging.warning(str(e), exc_info=True)
             raise HTTPException(  # noqa: error-structured
                 status_code=409,
                 detail=gate_error_envelope(
@@ -782,7 +782,7 @@ async def rollback_prompt_template(template_id: str, request: PromptTemplateRoll
                 approval_request_id=request.approval_request_id,
             )
         except Exception as e:
-            logging.debug(str(e), exc_info=True)
+            logging.warning(str(e), exc_info=True)
         raise HTTPException(status_code=404, detail="version_not_found")
     except Exception as e:
         try:
@@ -796,7 +796,7 @@ async def rollback_prompt_template(template_id: str, request: PromptTemplateRoll
                 approval_request_id=request.approval_request_id,
             )
         except Exception as e:
-            logging.debug(str(e), exc_info=True)
+            logging.warning(str(e), exc_info=True)
         raise
 
     try:
@@ -810,7 +810,7 @@ async def rollback_prompt_template(template_id: str, request: PromptTemplateRoll
             approval_request_id=request.approval_request_id,
         )
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
 
     # Verification: mark pending + enqueue autosmoke (best-effort)
     try:
@@ -840,7 +840,7 @@ async def rollback_prompt_template(template_id: str, request: PromptTemplateRoll
                 try:
                     await store.update_prompt_template_metadata(template_id=str(template_id), patch={"verification": ver}, merge=True)
                 except Exception as e:
-                    logging.debug(str(e), exc_info=True)
+                    logging.warning(str(e), exc_info=True)
 
                 # Change Control writeback (best-effort): record autosmoke result to same change_id.
                 try:
@@ -857,7 +857,7 @@ async def rollback_prompt_template(template_id: str, request: PromptTemplateRoll
                         tenant_id=http_request.headers.get("X-AIPLAT-TENANT-ID", None),
                     )
                 except Exception as e:
-                    logging.debug(str(e), exc_info=True)
+                    logging.warning(str(e), exc_info=True)
 
             await enqueue_autosmoke(
                 execution_store=store,
@@ -870,7 +870,7 @@ async def rollback_prompt_template(template_id: str, request: PromptTemplateRoll
                 on_complete=_on_complete,
             )
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
     return {
         "status": "rolled_back",
         "template": tpl,
@@ -1045,7 +1045,7 @@ async def delete_prompt_template(
                     approval_request_id=rid,
                 )
             except Exception as e:
-                logging.debug(str(e), exc_info=True)
+                logging.warning(str(e), exc_info=True)
             return {
                 "status": "approval_required",
                 "approval_request_id": rid,
@@ -1064,7 +1064,7 @@ async def delete_prompt_template(
                     approval_request_id=str(approval_request_id),
                 )
             except Exception as e:
-                logging.debug(str(e), exc_info=True)
+                logging.warning(str(e), exc_info=True)
             raise HTTPException(  # noqa: error-structured
                 status_code=409,
                 detail=gate_error_envelope(
@@ -1087,7 +1087,7 @@ async def delete_prompt_template(
             approval_request_id=str(approval_request_id) if approval_request_id else None,
         )
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
 
     # Verification: enqueue autosmoke (best-effort)
     try:
@@ -1108,7 +1108,7 @@ async def delete_prompt_template(
                 detail={"op": "prompt_template_delete", "template_id": str(template_id), "change_id": str(change_id)},
             )
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
     return {
         "status": "deleted" if ok else "not_found",
         "change_id": change_id,

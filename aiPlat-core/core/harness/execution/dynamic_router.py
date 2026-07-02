@@ -107,7 +107,7 @@ class DynamicRouter:
     def _default_supervisor_model() -> str:
         import os
         from core.harness.utils.model_injection import best_model_for_purpose
-        return best_model_for_purpose("chat") or "qwen2.5-coder:7b"
+        return best_model_for_purpose("chat")
 
     async def run(
         self,

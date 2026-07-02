@@ -171,7 +171,7 @@ async def publish_skill_pack(pack_id: str, request: SkillPackPublishRequest):
     except HTTPException:
         raise
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
 
     try:
         res = await store.publish_skill_pack_version(pack_id=pack_id, version=request.version)
@@ -191,7 +191,7 @@ async def publish_skill_pack(pack_id: str, request: SkillPackPublishRequest):
             user_id="admin",
         )
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
     return {**(res or {}), "change_id": change_id, "links": governance_links(change_id=change_id)}
 
 
@@ -245,7 +245,7 @@ async def install_skill_pack(pack_id: str, request: SkillPackInstallRequest):
     except HTTPException:
         raise
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
 
     try:
         install = await store.install_skill_pack(pack_id=pack_id, version=request.version, scope=request.scope, metadata=request.metadata or {})
@@ -315,7 +315,7 @@ async def install_skill_pack(pack_id: str, request: SkillPackInstallRequest):
             user_id="admin",
         )
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
     return {"install": install, "applied": applied, "change_id": change_id, "links": governance_links(change_id=change_id)}
 
 

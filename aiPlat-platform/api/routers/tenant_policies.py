@@ -34,7 +34,7 @@ def _store(rt: Optional[KernelRuntime]):
         if _onb_store:
             return _onb_store
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
     return None
 
 
@@ -134,7 +134,7 @@ async def get_effective_tenant_policy(tenant_id: str, rt: RuntimeDep = None):
             try:
                 approval_review["sample_rate"] = float(t_review.get("sample_rate"))
             except Exception as e:
-                logging.debug(str(e), exc_info=True)
+                logging.warning(str(e), exc_info=True)
         if isinstance(t_review.get("high_risk_always"), bool):
             approval_review["high_risk_always"] = bool(t_review.get("high_risk_always"))
         if isinstance(t_review.get("force_list"), str):
@@ -222,7 +222,7 @@ async def upsert_tenant_policy(tenant_id: str, request: dict, http_request: Requ
             detail={"version": saved.get("version")},
         )
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
     # Changeset (best-effort): store only hash + version
     try:
         import hashlib
@@ -247,7 +247,7 @@ async def upsert_tenant_policy(tenant_id: str, request: dict, http_request: Requ
             tenant_id=str(tenant_id),
         )
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
     # Attach change control links for UI
     out = dict(saved or {}) if isinstance(saved, dict) else {"tenant_id": str(tenant_id), "policy": policy}
     out["change_id"] = str(change_id)

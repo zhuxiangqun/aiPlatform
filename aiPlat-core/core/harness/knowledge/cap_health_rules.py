@@ -170,6 +170,8 @@ class OrphanAgentCheck(CapRule):
         "test-engineer", "debugger", "documentation-writer",
         "meta_agent", "performance-analyzer", "planning_agent",
         "secure-reviewer", "materials_chat",
+        # Four-role system agents — selected directly by users via /roles
+        "advisor_agent", "employee_agent", "guard_agent", "orchestrator_agent",
     }
 
     def check(self, ctx: CapContext) -> List[CapIssue]:
@@ -207,13 +209,15 @@ class UnresolvedRefCheck(CapRule):
                 # Skip engine-internal / workspace-persona / workspace-utility skills
                 # that don't need AGENT.md binding (accessible via sys_skill_call or system prompt)
                 target = e["to"]
-                if target in UnusedSkillCheck._ENGINE_INTERNAL:
+                # Strip type prefix for whitelist matching (e.g. "tool:foo" → "foo")
+                _plain = target.split(":", 1)[-1] if ":" in target else target
+                if _plain in UnusedSkillCheck._ENGINE_INTERNAL:
                     continue
-                if target in UnusedSkillCheck._WORKSPACE_PERSONA:
+                if _plain in UnusedSkillCheck._WORKSPACE_PERSONA:
                     continue
-                if target in UnusedSkillCheck._WORKSPACE_UTILITY:
+                if _plain in UnusedSkillCheck._WORKSPACE_UTILITY:
                     continue
-                if target in UnusedSkillCheck._ENGINE_SYSTEM:
+                if _plain in UnusedSkillCheck._ENGINE_SYSTEM:
                     continue
                 from_node = ctx.nodes.get(e["from"], {})
                 issues.append(CapIssue(

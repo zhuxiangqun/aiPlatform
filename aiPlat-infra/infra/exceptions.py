@@ -7,7 +7,96 @@
 - 禁止暴露底层异常到上层
 """
 
+from enum import Enum
 from typing import Any, Optional
+
+
+class InfraErrorCode(str, Enum):
+    """Structured error codes for infra layer — single source of truth.
+    
+    Usage:
+        raise InfraError(InfraErrorCode.DB_CONNECTION, database="mydb", message="timeout")
+    
+    Backward compat: all legacy subclass names remain (e.g., DatabaseConnectionError).
+    """
+    # ── Database ──
+    DB_BASE = "DB000"
+    DB_CONNECTION = "DB001"
+    DB_TIMEOUT = "DB002"
+    DB_QUERY = "DB003"
+    DB_POOL = "DB004"
+
+    # ── LLM ──
+    LLM_BASE = "LLM000"
+    LLM_CONNECTION = "LLM001"
+    LLM_TIMEOUT = "LLM002"
+    LLM_RATE_LIMIT = "LLM003"
+    LLM_AUTH = "LLM004"
+    LLM_MODEL_NOT_FOUND = "LLM005"
+
+    # ── Vector Store ──
+    VECTOR_BASE = "VS000"
+    VECTOR_CONNECTION = "VS001"
+    VECTOR_TIMEOUT = "VS002"
+    VECTOR_INDEX = "VS003"
+    VECTOR_DIMENSION = "VS004"
+
+    # ── Cache ──
+    CACHE_BASE = "CH000"
+    CACHE_CONNECTION = "CH001"
+    CACHE_TIMEOUT = "CH002"
+    CACHE_KEY = "CH003"
+
+    # ── Messaging ──
+    MSG_BASE = "MSG000"
+    MSG_CONNECTION = "MSG001"
+    MSG_PUBLISH = "MSG002"
+    MSG_CONSUME = "MSG003"
+
+    # ── Storage ──
+    STORAGE_BASE = "ST000"
+    STORAGE_CONNECTION = "ST001"
+    STORAGE_NOT_FOUND = "ST002"
+    STORAGE_PERMISSION = "ST003"
+
+    # ── Config ──
+    CONFIG_BASE = "CFG000"
+    CONFIG_NOT_FOUND = "CFG001"
+    CONFIG_VALIDATION = "CFG002"
+    CONFIG_PARSE = "CFG003"
+
+    # ── Network ──
+    NETWORK_BASE = "NET000"
+    NETWORK_CONNECTION = "NET001"
+    NETWORK_TIMEOUT = "NET002"
+
+    # ── Compute ──
+    COMPUTE_BASE = "CPU000"
+    COMPUTE_RESOURCE = "CPU001"
+    COMPUTE_QUOTA = "CPU002"
+
+    # ── OS Memory ──
+    OS_MEMORY_BASE = "MEM000"
+    OS_MEMORY_ALLOCATION = "MEM001"
+    OS_MEMORY_OOM = "MEM002"
+
+    # ── Monitoring ──
+    MONITOR_BASE = "MON000"
+    MONITOR_METRICS = "MON001"
+
+    # ── Logging ──
+    LOG_BASE = "LOG000"
+    LOG_WRITE = "LOG001"
+
+    # ── DI ──
+    DI_BASE = "DI000"
+    DI_NAVIGATION = "DI001"
+    DI_RUNTIME = "DI002"
+
+    # ── MCP ──
+    MCP_BASE = "MCP000"
+    MCP_CONNECTION = "MCP001"
+    MCP_TOOL_NOT_FOUND = "MCP002"
 
 
 class InfraError(Exception):
@@ -399,12 +488,12 @@ class ComputeQuotaError(ComputeError):
 # 内存异常
 # ============================================================
 
-class MemoryError(InfraError):
-    """内存基础异常"""
+class InfraMemoryError(InfraError):
+    """OS-level memory error"""
     pass
 
 
-class MemoryAllocationError(MemoryError):
+class MemoryAllocationError(InfraMemoryError):
     """内存分配错误"""
     
     def __init__(self, size: int, available: int):
@@ -414,7 +503,7 @@ class MemoryAllocationError(MemoryError):
         )
 
 
-class MemoryOOMError(MemoryError):
+class MemoryOOMError(InfraMemoryError):
     """内存溢出错误"""
     
     def __init__(self, usage_percent: float):
@@ -422,6 +511,10 @@ class MemoryOOMError(MemoryError):
             f"Memory OOM protection triggered",
             {"usage_percent": usage_percent}
         )
+
+
+# Backward-compatible alias (renamed to avoid name collision with core's agent MemoryError)
+MemoryError = InfraMemoryError
 
 
 # ============================================================

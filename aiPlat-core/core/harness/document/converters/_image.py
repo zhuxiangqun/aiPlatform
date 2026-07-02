@@ -6,16 +6,16 @@ from core.harness.document.protocol import (
     DocumentConverter, DocumentElement, StreamInfo,
 )
 
-ACCEPTED_MIME_PREFIXES = ["image/"]
-ACCEPTED_EXTENSIONS = [".png", ".jpg", ".jpeg", ".bmp", ".tiff", ".tif", ".webp"]
-
 
 class ImageConverter(DocumentConverter):
     """Image → OCR text."""
 
+    SOURCE_FORMAT = "image"
     REQUIRED_PACKAGES = {
         # OCR through infra adapter (Tesseract/PaddleOCR)
     }
+    ACCEPTED_EXTENSIONS = (".png", ".jpg", ".jpeg", ".bmp", ".tiff", ".tif", ".webp")
+    ACCEPTED_MIME_PREFIXES = ("image/",)
 
     def accepts(
         self,
@@ -23,14 +23,7 @@ class ImageConverter(DocumentConverter):
         stream_info: StreamInfo,
         **kwargs: Any,
     ) -> bool:
-        extension = (stream_info.extension or "").lower()
-        if extension in ACCEPTED_EXTENSIONS:
-            return True
-        mimetype = (stream_info.mimetype or "").lower()
-        for prefix in ACCEPTED_MIME_PREFIXES:
-            if mimetype.startswith(prefix):
-                return True
-        return False
+        return self._accepts_by_format(stream_info)
 
     def convert(
         self,

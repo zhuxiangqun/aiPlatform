@@ -84,7 +84,7 @@ def _load_results(agent_id: str = "") -> List[Dict[str, Any]]:
         try:
             results.append(json.loads(fp.read_text(encoding="utf-8")))
         except Exception as e:
-            logging.debug(str(e), exc_info=True)
+            logging.warning(str(e), exc_info=True)
     return results
 
 

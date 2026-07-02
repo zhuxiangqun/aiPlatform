@@ -7,17 +7,17 @@ from core.harness.document.protocol import (
     DocumentConverter, DocumentElement, StreamInfo,
 )
 
-ACCEPTED_MIME_PREFIXES = ["video/"]
-ACCEPTED_EXTENSIONS = [".mp4", ".mov", ".mkv", ".avi", ".webm", ".m4v"]
-
 
 class VideoConverter(DocumentConverter):
     """Video → audio extract + Whisper transcription."""
 
+    SOURCE_FORMAT = "video"
     REQUIRED_PACKAGES = {
         # Uses core.harness.document.video (ffmpeg subprocess)
         # and core.harness.document.transcriber (Whisper via infra)
     }
+    ACCEPTED_EXTENSIONS = (".mp4", ".mov", ".mkv", ".avi", ".webm", ".m4v")
+    ACCEPTED_MIME_PREFIXES = ("video/",)
 
     def accepts(
         self,
@@ -25,14 +25,7 @@ class VideoConverter(DocumentConverter):
         stream_info: StreamInfo,
         **kwargs: Any,
     ) -> bool:
-        extension = (stream_info.extension or "").lower()
-        if extension in ACCEPTED_EXTENSIONS:
-            return True
-        mimetype = (stream_info.mimetype or "").lower()
-        for prefix in ACCEPTED_MIME_PREFIXES:
-            if mimetype.startswith(prefix):
-                return True
-        return False
+        return self._accepts_by_format(stream_info)
 
     def convert(
         self,

@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import logging
 import os
+import re
 import sys
 import traceback
 from abc import ABC, abstractmethod
@@ -143,14 +144,23 @@ class DocumentConverter(ABC):
       accepts(stream, stream_info, **kwargs) → bool  — can this converter handle this file?
       convert(stream, stream_info, **kwargs) → List[DocumentElement]  — do the conversion
     
+    Shared helpers (Template Method pattern — eliminate code duplication across 13 subclasses):
+      _accepts_by_format(stream_info) → bool  — reuse for all format-based accept checks
+      _convert_via_markitdown(file_path) → List[DocumentElement]  — shared MarkItDown pipeline
+      _split_headings(text, parser) → List[DocumentElement]  — shared heading-split logic
+      _fallback_text_from_file(file_path) → List[DocumentElement]  — shared raw-text fallback
+    
     Converter lifecycle in the registry:
       1. accepts() checked → if True, convert() called
       2. If convert() raises → exception collected, next converter tried
       3. If no converter succeeds → FileConversionException raised (aggregated errors)
     """
 
-    # Dependency declarations for centralized management (Phase 1.2)
+    # ── Class-level format identifiers (set by subclasses) ──
     REQUIRED_PACKAGES: Dict[str, str] = {}  # {package_name: pip_install_spec}
+    SOURCE_FORMAT: str = ""  # e.g., "pdf", "docx", "html"
+    ACCEPTED_EXTENSIONS: tuple = ()  # e.g., (".pdf",)
+    ACCEPTED_MIME_PREFIXES: tuple = ()  # e.g., ("application/pdf",)
 
     @classmethod
     def check_dependencies(cls) -> bool:
@@ -161,6 +171,80 @@ class DocumentConverter(ABC):
             except ImportError:
                 return False
         return True
+
+    # ── Shared Template Method helpers ──
+
+    def _accepts_by_format(self, stream_info: StreamInfo) -> bool:
+        """Check if stream_info extension/mimetype matches this converter's format.
+        
+        Uses self.ACCEPTED_EXTENSIONS and self.ACCEPTED_MIME_PREFIXES set by subclass.
+        12 of 13 subclasses share this identical logic — extracted here to eliminate duplication.
+        """
+        extension = (stream_info.extension or "").lower()
+        if extension in self.ACCEPTED_EXTENSIONS:
+            return True
+        mimetype = (stream_info.mimetype or "").lower()
+        for prefix in self.ACCEPTED_MIME_PREFIXES:
+            if mimetype.startswith(prefix):
+                return True
+        return False
+
+    def _convert_via_markitdown(self, file_path: str) -> List[DocumentElement]:
+        """Convert a file via MarkItDown library, splitting output by headings.
+        
+        Used by Pdf/Docx/Pptx/Html/Xlsx — 5 converters with identical logic, now shared.
+        """
+        from markitdown import MarkItDown
+        md = MarkItDown()
+        result = md.convert(file_path)
+        text = result.text_content or ""
+        return self._split_headings(text, "markitdown")
+
+    def _split_headings(self, text: str, parser: str) -> List[DocumentElement]:
+        """Split markdown text by headings into DocumentElements.
+        
+        Replaces duplicated inline heading-split logic in 5 converters.
+        Uses self.SOURCE_FORMAT for source_format and meta.source.
+        """
+        if not text.strip():
+            return []
+        fmt = self.SOURCE_FORMAT
+        sections = re.split(r"\n(?=#{1,6}\s)", text)
+        elements: List[DocumentElement] = []
+        for si, section in enumerate(sections):
+            if section.strip():
+                elements.append(DocumentElement(
+                    type="text",
+                    text=section.strip(),
+                    page_idx=si,
+                    meta={"source": fmt, "parser": parser},
+                    source_format=fmt,
+                    structure_role=detect_structure_role(section.strip()),
+                ))
+        return elements or [DocumentElement(
+            type="text", text=text.strip(), page_idx=0,
+            meta={"source": fmt, "parser": parser},
+            source_format=fmt,
+        )]
+
+    def _fallback_text_from_file(self, file_path: str) -> List[DocumentElement]:
+        """Ultimate fallback: read file as raw bytes and return single DocumentElement.
+        
+        Replaces duplicated fallback logic in 5 converters.
+        """
+        fmt = self.SOURCE_FORMAT
+        with open(file_path, "rb") as f:
+            data = f.read()
+        text = data.decode("utf-8", errors="ignore")
+        if not text.strip():
+            return []
+        return [DocumentElement(
+            type="text", text=text.strip(), page_idx=0,
+            meta={"source": fmt, "fallback": True},
+            source_format=fmt,
+        )]
+
+    # ── Abstract interface ──
 
     @abstractmethod
     def accepts(self, file_stream: BinaryIO, stream_info: StreamInfo, **kwargs: Any) -> bool:
@@ -494,25 +578,15 @@ class ConverterRegistry:
 
     @staticmethod
     def _converter_category(converter: DocumentConverter) -> str:
-        """Extract a human-readable category from a converter instance."""
+        """Extract a human-readable category from a converter instance.
+        
+        Uses SOURCE_FORMAT class attribute (set by each subclass).
+        Falls back to name-based inference for backward compatibility.
+        """
+        if converter.SOURCE_FORMAT:
+            return converter.SOURCE_FORMAT
         name = converter.name.lower()
-        mapping = {
-            "pdfconverter": "pdf",
-            "docxconverter": "docx",
-            "pptxconverter": "pptx",
-            "xlsxconverter": "xlsx",
-            "xlsconverter": "xlsx",
-            "htmlconverter": "html",
-            "csvconverter": "csv",
-            "markdownconverter": "markdown",
-            "textconverter": "txt",
-            "audioconverter": "audio",
-            "imageconverter": "image",
-            "videoconverter": "video",
-            "jsonconverter": "json",
-            "emlconverter": "eml",
-        }
-        return mapping.get(name, name.replace("converter", ""))
+        return name.replace("converter", "")
 
 
 def detect_structure_role(text: str) -> str:

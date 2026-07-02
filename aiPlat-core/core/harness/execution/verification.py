@@ -278,7 +278,7 @@ def verify_replay(
                     diff.append(f"{k}: {pv} → {cv}")
                     consistent = False
         except Exception as e:
-            logging.debug(str(e), exc_info=True)
+            logging.warning(str(e), exc_info=True)
 
     # For LLM outputs: compare hash (strict) or structural keys (loose)
     if not algorithm_result:

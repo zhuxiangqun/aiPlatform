@@ -15,18 +15,32 @@ _log = logging.getLogger("aiplat.prompt_loader")
 
 _DEFAULT_PROMPTS: Dict[str, str] = {}
 _METADATA: Dict[str, Dict[str, Any]] = {}
+# P2: Template versioning — {template_id: {version: text}}
+_VERSIONED_PROMPTS: Dict[str, Dict[str, str]] = {}
+_LATEST_VERSION: Dict[str, str] = {}  # {template_id: version}
 # B-class cache: high-frequency templates, 60s TTL
 _CACHE: Dict[str, str] = {}
 _CACHE_TS: Dict[str, float] = {}
 
 
 def _register(template_id: str, content: str, **metadata):
+    version = metadata.pop("version", "1.0.0")
+    
+    # Store versioned content
+    if template_id not in _VERSIONED_PROMPTS:
+        _VERSIONED_PROMPTS[template_id] = {}
+    _VERSIONED_PROMPTS[template_id][version] = content
+    _LATEST_VERSION[template_id] = version
+    
+    # Backward compat: _DEFAULT_PROMPTS always has latest
     _DEFAULT_PROMPTS[template_id] = content
+    
     _METADATA[template_id] = {
         "category": metadata.get("category", "general"),
         "immutable": metadata.get("immutable", False),
         "variables": metadata.get("variables", []),
         "cache_ttl": metadata.get("cache_ttl", 0),
+        "version": version,
     }
 
 
@@ -127,28 +141,56 @@ def _substitute(template: str, variables: Dict[str, Any]) -> str:
 
 
 def _sync_resolve(template_id: str, **variables) -> str:
-    """Sync resolve: cache → default. No DB dependency, safe for sync callers."""
+    """Sync resolve: cache → default. Supports version via 'id@version' syntax.
+    
+    Examples:
+        _sync_resolve("react-reasoning")       → latest version
+        _sync_resolve("react-reasoning@1.0.0") → specific version
+    """
+    # P2: 版本选择语法 "id@version"
+    version = None
+    if "@" in template_id:
+        template_id, version = template_id.rsplit("@", 1)
+    
+    cache_key = f"{template_id}@{version}" if version else template_id
     meta = _METADATA.get(template_id, {})
     ttl = meta.get("cache_ttl", 0)
     if ttl > 0:
-        cached = _CACHE.get(template_id, "")
-        if cached and (time.time() - _CACHE_TS.get(template_id, 0)) < ttl:
+        cached = _CACHE.get(cache_key, "")
+        if cached and (time.time() - _CACHE_TS.get(cache_key, 0)) < ttl:
             return _substitute(cached, variables)
 
-    default = _DEFAULT_PROMPTS.get(template_id)
+    if version:
+        versions = _VERSIONED_PROMPTS.get(template_id, {})
+        default = versions.get(version)
+        if not default:
+            raise ValueError(f"Unknown version '{version}' for template: {template_id}")
+    else:
+        default = _DEFAULT_PROMPTS.get(template_id)
+    
     if not default:
         raise ValueError(f"Unknown prompt template: {template_id}")
 
     if ttl > 0:
-        _CACHE[template_id] = default
-        _CACHE_TS[template_id] = time.time()
+        _CACHE[cache_key] = default
+        _CACHE_TS[cache_key] = time.time()
 
     return _substitute(default, variables)
 
 
 def get_metadata(template_id: str) -> Optional[Dict]:
-    """Get template metadata (variables, role, category, immutable)."""
+    """Get template metadata (variables, role, category, immutable, version)."""
     return _METADATA.get(template_id)
+
+
+def get_versions(template_id: str) -> Dict[str, str]:
+    """P2: Get all versions for a template. Returns {version: text} dict."""
+    return _VERSIONED_PROMPTS.get(template_id, {}).copy()
+
+
+def get_latest_version(template_id: str) -> str:
+    """P2: Get the latest version string for a template."""
+    return _LATEST_VERSION.get(template_id, "1.0.0")
 
 
 _DB_TEMPLATE_CACHE: Dict[str, tuple[float, str]] = {}

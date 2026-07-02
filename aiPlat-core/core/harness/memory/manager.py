@@ -77,6 +77,32 @@ class BuildContextResult:
     relevant_memories: str = ""
 
 
+# ── P0-4: Cross-layer re-rank helper ──
+
+def _re_rank_messages(messages: list, query: str) -> list:
+    """跨层重排：系统消息固定顺序，非系统消息按语义相关度排序。
+    
+    最近 3 条非系统消息保持原位（时效性保护），
+    其余按与当前 query 的语义相关度降序排列。
+    """
+    from core.harness.memory.compression import get_cached_embedding, score_semantic_relevance
+
+    system_msgs = [m for m in messages if m.get("role") == "system"]
+    non_system = [m for m in messages if m.get("role") != "system"]
+
+    if len(non_system) <= 3:
+        return messages  # 太少，不重排
+
+    # 时效性保护：最近 3 条保持原位
+    recent = non_system[-3:]
+    older = non_system[:-3]
+
+    relevance = score_semantic_relevance(older, query)
+    sorted_older = [m for _, m in sorted(zip(relevance, older), key=lambda x: -x[0])]
+
+    return system_msgs + sorted_older + recent
+
+
 class MemoryManager:
     """Unified memory manager with three-layer architecture.
 
@@ -165,16 +191,32 @@ class MemoryManager:
         (CLAUDE.md, project context) separately — only memory-layer context
         (working/episodic/semantic) is assembled here.
         """
-        
+        # P0-1: 检测审计模式——autoreview 审查时只保留 Working Memory
+        audit_mode = False
+        try:
+            from core.harness.kernel.execution_context import get_active_workspace_context
+            exec_ctx = get_active_workspace_context()
+            if exec_ctx:
+                audit_mode = exec_ctx.variables.get("_active_skill", "") == "autoreview"
+        except Exception:
+            pass
+
         # 1. Retrieve relevant semantic memories
-        relevant_memories = await self._semantic.retrieve(
-            current_query, tenant_id=self._tenant_id, session_id=self._session_id)
+        relevant_memories = []
+        if not audit_mode:
+            relevant_memories = await self._semantic.retrieve(
+                current_query, tenant_id=self._tenant_id, session_id=self._session_id)
         
         # 2. Get episodic summary
-        episodic_summary = self._episodic.get_summary()
+        episodic_summary = ""
+        if not audit_mode:
+            episodic_summary = self._episodic.get_summary()
         
         # 3. Get working memory context
-        working_context = self._working.get_context()
+        working_context = (
+            self._working.get_audit_context() if audit_mode 
+            else self._working.get_context()
+        )
         
         # 4. Build messages list
         messages: list = []
@@ -196,42 +238,51 @@ class MemoryManager:
             })
 
         # Add critical episodes (importance_score > 0.8) — never compressed
-        critical = self._episodic.get_critical_episodes(limit=5)
-        if critical:
-            lines = []
-            for ep in critical:
-                ts = ep.get("timestamp", "")[:19]
-                u = str(ep.get("user", ""))[:120]
-                a = str(ep.get("assistant", ""))[:120]
-                lines.append(f"[{ts}] User: {u}\n[{ts}] Assistant: {a}")
-            messages.append({
-                "role": "system",
-                "content": "## Critical Decisions (Preserved)\n" + "\n---\n".join(lines),
-                "meta": {"role": "system_arch"},
-            })
+        if not audit_mode:
+            critical = self._episodic.get_critical_episodes(limit=5)
+            if critical:
+                lines = []
+                for ep in critical:
+                    ts = ep.get("timestamp", "")[:19]
+                    u = str(ep.get("user", ""))[:120]
+                    a = str(ep.get("assistant", ""))[:120]
+                    lines.append(f"[{ts}] User: {u}\n[{ts}] Assistant: {a}")
+                messages.append({
+                    "role": "system",
+                    "content": "## Critical Decisions (Preserved)\n" + "\n---\n".join(lines),
+                    "meta": {"role": "system_arch"},
+                })
 
         # Inject user profile from semantic memory (auto-extracted via ProfileBuilder)
-        try:
-            profiles = await self._semantic.retrieve("user_profile preferences constraints", top_k=1)
-            for p in profiles:
-                if hasattr(p, 'metadata') and isinstance(p.metadata, dict):
-                    if p.metadata.get("tag") == "user_profile":
-                        import json as _json
-                        data = _json.loads(p.content) if isinstance(p.content, str) else p.content
-                        prefs = data.get("preferences", []) if isinstance(data, dict) else []
-                        constraints = data.get("constraints", []) if isinstance(data, dict) else []
-                        if prefs or constraints:
-                            from core.harness.memory.profile_builder import UserProfile
-                            profile = UserProfile.from_dict(data)
-                            msg = profile.to_system_message()
-                            if msg:
-                                messages.append({"role": "system", "content": msg})
-                        break
-        except Exception as e:
-            logging.warning(str(e), exc_info=True)
+        if not audit_mode:
+            try:
+                profiles = await self._semantic.retrieve("user_profile preferences constraints", top_k=1)
+                for p in profiles:
+                    if hasattr(p, 'metadata') and isinstance(p.metadata, dict):
+                        if p.metadata.get("tag") == "user_profile":
+                            import json as _json
+                            data = _json.loads(p.content) if isinstance(p.content, str) else p.content
+                            prefs = data.get("preferences", []) if isinstance(data, dict) else []
+                            constraints = data.get("constraints", []) if isinstance(data, dict) else []
+                            if prefs or constraints:
+                                from core.harness.memory.profile_builder import UserProfile
+                                profile = UserProfile.from_dict(data)
+                                msg = profile.to_system_message()
+                                if msg:
+                                    messages.append({"role": "system", "content": msg})
+                            break
+            except Exception as e:
+                logging.warning(str(e), exc_info=True)
         
         # Add working memory
         messages.extend(working_context)
+
+        # P0-4: 跨层统一重排——非系统消息按语义相关度排序（审计模式跳过）
+        if not audit_mode and current_query and len(messages) > 3:
+            try:
+                messages = _re_rank_messages(messages, current_query)
+            except Exception:
+                pass
         
         # Add current query
         messages.append({"role": "user", "content": current_query})

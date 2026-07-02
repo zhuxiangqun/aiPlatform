@@ -48,7 +48,7 @@ class PlanEngine:
                 "duration_ms": 0,
             })
         except Exception as e:
-            logging.debug(str(e), exc_info=True)
+            logging.warning(str(e), exc_info=True)
 
         results: Dict[str, Any] = {"steps": [], "plan": plan.to_dict()}
         for step in plan.steps:
@@ -70,7 +70,7 @@ class PlanEngine:
                     "step_number": int(step.step) if str(step.step).isdigit() else 0,
                 })
             except Exception as e:
-                logging.debug(str(e), exc_info=True)
+                logging.warning(str(e), exc_info=True)
             try:
                 output = await self._exec_step(step, agent, context, run_id, step_span_id)
                 step.status = "completed"

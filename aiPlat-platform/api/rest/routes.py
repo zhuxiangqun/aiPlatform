@@ -98,7 +98,7 @@ async def _governance_middleware(request: Request, call_next):
                 user_agent=request.headers.get("user-agent"),
             )
         except Exception as e:
-            logging.debug(str(e), exc_info=True)
+            logging.warning(str(e), exc_info=True)
 
     return response
 
@@ -134,7 +134,7 @@ try:
         enqueue_fn=enqueue_ingest, load_doc_kinds_fn=load_doc_kinds,
     )
 except Exception as e:
-    logging.debug(str(e), exc_info=True)
+    logging.warning(str(e), exc_info=True)
 
 
 # Optional dependency: python-multipart (needed for UploadFile/File form parsing).
@@ -307,7 +307,7 @@ def _resolve_identity(request: Request) -> Identity:
     except ImportError:
         pass  # python-jose not installed
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
 
     # 3) default fallback
     scopes: List[str] = []
@@ -623,7 +623,7 @@ def _kb_ensure_schema(conn) -> None:
         conn.executescript(_KB_SCHEMA_SQL)
         conn.commit()
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
     # FTS5 full-text index on kb_elements (best-effort)
     try:
         conn.execute(
@@ -632,19 +632,19 @@ def _kb_ensure_schema(conn) -> None:
         )
         conn.commit()
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
     # Schema migration: add version column for existing DBs
     try:
         conn.execute("ALTER TABLE documents ADD COLUMN version INTEGER NOT NULL DEFAULT 1")
         conn.commit()
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
     # Schema migration: add wiki_status column for existing DBs
     try:
         conn.execute("ALTER TABLE documents ADD COLUMN wiki_status TEXT NOT NULL DEFAULT ''")
         conn.commit()
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
 
 
 def _new_analysis_run_id() -> str:
@@ -1236,7 +1236,7 @@ async def kb_delete_document(doc_id: str, request: Request):
         if assets.exists():
             shutil.rmtree(str(assets), ignore_errors=True)
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
     # best-effort delete associated wiki pages (prevent orphans)
     try:
         from core.harness.knowledge.wiki_engine import search_pages, delete_page
@@ -1247,9 +1247,9 @@ async def kb_delete_document(doc_id: str, request: Request):
                 try:
                     delete_page(p["title"])
                 except Exception as e:
-                    logging.debug(str(e), exc_info=True)
+                    logging.warning(str(e), exc_info=True)
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
     # Phase E3: best-effort cleanup of ontology graph entities tied to this doc
     try:
         from core.harness.ontology_engine.cleanup import cleanup_stale_entities_by_doc
@@ -1584,7 +1584,7 @@ async def documents_ingest(request: Request):
         if doc_id:
             _asyncio.create_task(_auto_wiki_update(doc_id, str(file_path)))
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
 
     return {"job": job}
 
@@ -1619,7 +1619,7 @@ async def _auto_wiki_update(doc_id: str, file_path: str):
         from core.api.facades.service_facade import llm_generate
         await wiki_auto_update(doc_id, file_path)
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
     return {"output": data}
 
 
@@ -2358,9 +2358,9 @@ async def api_v1_agents_create(request: Request, body: Dict[str, Any]):
                         },
                     )
                 except Exception as e:
-                    logging.debug(str(e), exc_info=True)
+                    logging.warning(str(e), exc_info=True)
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
     return created
 
 
@@ -2488,7 +2488,7 @@ async def gateway_execute(body: Dict[str, Any], request: Request):
             run_id=str(run_id) if run_id else None,
         )
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
     return result
 
 
@@ -2704,7 +2704,7 @@ async def tenant_register(request: Request):
     except HTTPException:
         raise
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
 
     import secrets as _secrets
     tid = f"tenant_{_secrets.token_urlsafe(8)}"
@@ -2727,7 +2727,7 @@ async def tenant_register(request: Request):
         from tenants.manager import tenant_manager
         tenant_manager.set_verification_token(tid, token)
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
 
     return {
         "tenant_id": tid,
@@ -2846,7 +2846,7 @@ async def tenant_usage(request: Request):
         if usage:
             return {"tenant_id": tid, "usage": usage.model_dump() if hasattr(usage, 'model_dump') else str(usage)}
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
     return {"tenant_id": tid, "usage": {"agents": 0, "skills": 0, "api_keys": 0, "monthly_tokens": 0}}
 
 
@@ -3259,7 +3259,7 @@ async def kb_create_with_ai(request: Request):
         try:
             c.execute("ALTER TABLE documents ADD COLUMN version INTEGER NOT NULL DEFAULT 1")
         except Exception as e:
-            logging.debug(str(e), exc_info=True)
+            logging.warning(str(e), exc_info=True)
         c.execute("INSERT OR REPLACE INTO documents(tenant_id,doc_id,collection_id,source_uri,kind,status,version,meta_json,created_at) VALUES(?,?,?,?,?,?,?,?,?)",
                   (identity.tenant_id, doc_id, collection_id, f"ai://{doc_id}", "txt", "ready", 1, json.dumps({"title": title}), now))
         c.execute("INSERT OR REPLACE INTO kb_elements(tenant_id,element_id,doc_id,type,page_idx,bbox_json,text,cells_json,asset_id,meta_json,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?)",
@@ -3366,7 +3366,7 @@ def _auto_archive_docs(tenant_id: str) -> None:
         conn.commit()
         conn.close()
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
 
 
 

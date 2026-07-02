@@ -74,13 +74,13 @@ class CallbackRegistry:
             try:
                 await handler(context)
             except Exception as e:
-                logging.debug(str(e), exc_info=True)
+                logging.warning(str(e), exc_info=True)
         
         for handler in self._global_handlers:
             try:
                 await handler(context)
             except Exception as e:
-                logging.debug(str(e), exc_info=True)
+                logging.warning(str(e), exc_info=True)
 
 
 class CallbackManager:

@@ -320,7 +320,7 @@ async def tool_auto_fill(request: dict):
                                                 if isinstance(params_val, dict):
                                                     parameters = params_val
                                             except Exception as e:
-                                                logging.debug(str(e), exc_info=True)
+                                                logging.warning(str(e), exc_info=True)
                             break
             # Guess category from tool name/description
             text_lower = (name + " " + description).lower()
@@ -364,7 +364,7 @@ async def execute_tool(tool_name: str, request: dict, http_request: Request, rt:
     try:
         await _audit_execute(http_request=http_request, payload=payload, resource_type="tool", resource_id=str(tool_name), resp=resp, rt=rt)
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
     return JSONResponse(status_code=200, content=resp)
 
 
@@ -429,7 +429,7 @@ async def sign_tool(tool_name: str, request: dict, http_request: Request, rt: Ru
             try:
                 manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
             except Exception as e:
-                logging.debug(str(e), exc_info=True)
+                logging.warning(str(e), exc_info=True)
         manifest["signature"] = signature
         manifest["version"] = str(version)
         manifest_path.write_text(json.dumps(manifest, indent=2, ensure_ascii=False), encoding="utf-8")

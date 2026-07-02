@@ -40,7 +40,7 @@ async def get_v3_route_stats():
                     "congestion": round(lt.congestion_penalty(model), 0),
                 }
             except Exception as e:
-                logging.debug(str(e), exc_info=True)
+                logging.warning(str(e), exc_info=True)
         snapshot["latency"] = latency
     except Exception:
         snapshot["latency"] = {}

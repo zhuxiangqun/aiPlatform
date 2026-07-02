@@ -3,8 +3,14 @@ from __future__ import annotations
 from typing import Any, Dict, Optional
 
 
-def kb_retrieve(query: str, doc_ids: Any, **kwargs: Any) -> Any:
-    """Retrieve relevant KB document content through the syscall boundary."""
+def kb_retrieve(query: str, doc_ids: Any, tenant_id: Optional[str] = None, **kwargs: Any) -> Any:
+    """Retrieve relevant KB document content through the syscall boundary.
+    
+    Args:
+        tenant_id: Required for multi-tenant data isolation (§5.62). 
+                   If not provided, the syscall boundary will enforce tenant isolation
+                   based on the current execution context.
+    """
     from core.harness.syscalls.retrieval import sys_kb_retrieve
     return sys_kb_retrieve(query, doc_ids, **kwargs)
 

@@ -7,17 +7,17 @@ from core.harness.document.protocol import (
     DocumentConverter, DocumentElement, StreamInfo, detect_structure_role,
 )
 
-ACCEPTED_MIME_PREFIXES = [
-    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-    "application/msword",
-]
-ACCEPTED_EXTENSIONS = [".docx", ".doc"]
-
 
 class DocxConverter(DocumentConverter):
     """DOCX → Markdown via MarkItDown (or python-docx fallback)."""
 
+    SOURCE_FORMAT = "docx"
     REQUIRED_PACKAGES = {}  # markitdown + python-docx are soft deps
+    ACCEPTED_EXTENSIONS = (".docx", ".doc")
+    ACCEPTED_MIME_PREFIXES = (
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "application/msword",
+    )
 
     def accepts(
         self,
@@ -25,14 +25,7 @@ class DocxConverter(DocumentConverter):
         stream_info: StreamInfo,
         **kwargs: Any,
     ) -> bool:
-        extension = (stream_info.extension or "").lower()
-        if extension in ACCEPTED_EXTENSIONS:
-            return True
-        mimetype = (stream_info.mimetype or "").lower()
-        for prefix in ACCEPTED_MIME_PREFIXES:
-            if mimetype.startswith(prefix):
-                return True
-        return False
+        return self._accepts_by_format(stream_info)
 
     def convert(
         self,
@@ -50,38 +43,11 @@ class DocxConverter(DocumentConverter):
         except ImportError:
             return self._fallback_docx(file_path)
 
-    def _convert_via_markitdown(self, file_path: str) -> List[DocumentElement]:
-        from markitdown import MarkItDown
-        md = MarkItDown()
-        result = md.convert(file_path)
-        text = result.text_content or ""
-
-        if not text.strip():
-            return []
-
-        sections = re.split(r"\n(?=#{1,6}\s)", text)
-        elements: List[DocumentElement] = []
-        for si, section in enumerate(sections):
-            if section.strip():
-                elements.append(DocumentElement(
-                    type="text",
-                    text=section.strip(),
-                    page_idx=si,
-                    meta={"source": "docx", "parser": "markitdown"},
-                    source_format="docx",
-                    structure_role=detect_structure_role(section.strip()),
-                ))
-        return elements or [DocumentElement(
-            type="text", text=text.strip(), page_idx=0,
-            meta={"source": "docx", "parser": "markitdown"},
-            source_format="docx",
-        )]
-
     def _fallback_docx(self, file_path: str) -> List[DocumentElement]:
         try:
             from docx import Document
         except ImportError:
-            return self._fallback_text(file_path)
+            return self._fallback_text_from_file(file_path)
 
         doc = Document(file_path)
         elements: List[DocumentElement] = []
@@ -104,18 +70,7 @@ class DocxConverter(DocumentConverter):
                     meta={"source": "docx", "table_index": ti},
                     source_format="docx",
                 ))
-        return elements or self._fallback_text(file_path)
-
-    def _fallback_text(self, file_path: str) -> List[DocumentElement]:
-        with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
-            text = f.read()
-        if not text.strip():
-            return []
-        return [DocumentElement(
-            type="text", text=text.strip(), page_idx=0,
-            meta={"source": "docx", "fallback": True},
-            source_format="docx",
-        )]
+        return elements or self._fallback_text_from_file(file_path)
 
     def _convert_stream_docx(self, file_stream: BinaryIO) -> List[DocumentElement]:
         try:

@@ -7,14 +7,14 @@ from core.harness.document.protocol import (
     DocumentConverter, DocumentElement, StreamInfo,
 )
 
-ACCEPTED_MIME_PREFIXES = ["text/csv", "application/csv"]
-ACCEPTED_EXTENSIONS = [".csv"]
-
 
 class CsvConverter(DocumentConverter):
     """CSV → formatted table elements."""
 
+    SOURCE_FORMAT = "csv"
     REQUIRED_PACKAGES = {}  # stdlib csv module, no external deps
+    ACCEPTED_EXTENSIONS = (".csv",)
+    ACCEPTED_MIME_PREFIXES = ("text/csv", "application/csv")
 
     def accepts(
         self,
@@ -22,14 +22,7 @@ class CsvConverter(DocumentConverter):
         stream_info: StreamInfo,
         **kwargs: Any,
     ) -> bool:
-        extension = (stream_info.extension or "").lower()
-        if extension in ACCEPTED_EXTENSIONS:
-            return True
-        mimetype = (stream_info.mimetype or "").lower()
-        for prefix in ACCEPTED_MIME_PREFIXES:
-            if mimetype.startswith(prefix):
-                return True
-        return False
+        return self._accepts_by_format(stream_info)
 
     def convert(
         self,

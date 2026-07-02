@@ -6,14 +6,14 @@ from core.harness.document.protocol import (
     DocumentConverter, DocumentElement, StreamInfo,
 )
 
-ACCEPTED_MIME_PREFIXES = ["application/json"]
-ACCEPTED_EXTENSIONS = [".json"]
-
 
 class JsonConverter(DocumentConverter):
     """JSON → pretty-printed text."""
 
+    SOURCE_FORMAT = "json"
     REQUIRED_PACKAGES = {}  # stdlib json, no external deps
+    ACCEPTED_EXTENSIONS = (".json",)
+    ACCEPTED_MIME_PREFIXES = ("application/json",)
 
     def accepts(
         self,
@@ -21,14 +21,7 @@ class JsonConverter(DocumentConverter):
         stream_info: StreamInfo,
         **kwargs: Any,
     ) -> bool:
-        extension = (stream_info.extension or "").lower()
-        if extension in ACCEPTED_EXTENSIONS:
-            return True
-        mimetype = (stream_info.mimetype or "").lower()
-        for prefix in ACCEPTED_MIME_PREFIXES:
-            if mimetype.startswith(prefix):
-                return True
-        return False
+        return self._accepts_by_format(stream_info)
 
     def convert(
         self,

@@ -51,7 +51,7 @@ async def create_session(request: dict, rt: RuntimeDep = None, _auth: str = Depe
                         up = up.replace("$" + "{" + k + "}", str(v))
                     system_prompt = (sp + "\n\n" + up).strip()
         except Exception as e:
-            logging.debug(str(e), exc_info=True)
+            logging.warning(str(e), exc_info=True)
 
     initial_context = request.get("initial_context", {})
     session_id = await _svc(rt).create_session(agent_id, system_prompt, initial_context)

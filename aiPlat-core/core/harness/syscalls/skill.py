@@ -277,6 +277,9 @@ async def sys_skill_call(
         raise RuntimeError("Skill is not executable")
 
     ctx = context or SkillContext(session_id=session_id, user_id=user_id, variables=params or {})
+    # P0-1: 注入当前 skill 名称，供 MemoryManager 检测审计模式
+    if skill_name:
+        ctx.variables["_active_skill"] = skill_name
     prepared_params = ctx_gate.prepare_tool_args(params or {}, context=trace_context or {})
     if coding_profile and coding_profile not in ("off", "none", "0", "false"):
         # Provide profile hint to skill implementations (e.g., _GenericSkill).

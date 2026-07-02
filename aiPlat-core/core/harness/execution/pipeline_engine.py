@@ -62,7 +62,7 @@ class PipelineEventBus:
             try:
                 fn(project_id, event_type, data)
             except Exception as e:
-                logging.debug(str(e), exc_info=True)
+                logging.warning(str(e), exc_info=True)
         # Write to SQLite for cross-thread/process visibility
         import json
         _write_pipeline_event(
@@ -183,7 +183,7 @@ class PipelineEngine:
                 "timestamp": time.time(),
             })
         except Exception as e:
-            logging.debug(str(e), exc_info=True)
+            logging.warning(str(e), exc_info=True)
 
     # Config-driven: agent types that use conversational execution (core_chat) vs ReActLoop
     _CONVERSATIONAL_AGENT_TYPES = frozenset({"conversational", "rag", "plan", "plan_execute", "reflection", "review", "materials_chat"})
@@ -332,7 +332,7 @@ class PipelineEngine:
                     import json as _json
                     schema = _json.loads(llm_output_schema) if isinstance(llm_output_schema, str) else llm_output_schema
                     kwargs['response_format'] = {"type": "json_schema", "json_schema": {"name": "output", "schema": schema}}
-                except Exception: logging.debug('best-effort operation', exc_info=True)  # noqa: intentional — best-effort operation, logged at debug
+                except Exception: logging.warning('best-effort operation', exc_info=True)  # noqa: intentional — best-effort operation, logged at debug
             # Build messages — support multimodal vision when enabled
             vision_enabled = node_cfg.get('vision', False)
             image_url = node_cfg.get('image_url', '')
@@ -530,7 +530,7 @@ Output format: JSON array of {{"rank": 1, "score": 0.95, "content": "..."}}"""
                         rerank_text = getattr(rerank_resp, 'content', '') or ''
                         if rerank_text:
                             output = f"[Re-ranked]\n{rerank_text[:3000]}"
-                    except Exception: logging.debug('best-effort operation', exc_info=True)  # noqa: intentional — best-effort operation, logged at debug
+                    except Exception: logging.warning('best-effort operation', exc_info=True)  # noqa: intentional — best-effort operation, logged at debug
                 return str(output)[:5000] or "Knowledge node: no results"
             except Exception as e:
                 return f"Knowledge retrieval failed: {e}"
@@ -1135,7 +1135,7 @@ Output format: JSON array of {{"rank": 1, "score": 0.95, "content": "..."}}"""
                                     state[target_prop] = val
                                 break
                     except Exception as e:
-                        logging.debug(str(e), exc_info=True)
+                        logging.warning(str(e), exc_info=True)
 
             # Execute all stages in this layer in parallel with Semaphore control
             layer_timeout = max(600 * len(layer), 3600)
@@ -1182,6 +1182,22 @@ Output format: JSON array of {{"rank": 1, "score": 0.95, "content": "..."}}"""
                 continue
             # Live state push for frontend polling
             _event_bus.emit(state.get("session_id", ""), "layer_after", {"state": dict(state)})
+
+            # P1-3: 动态预算重分配——未使用的 token 均分给剩余 stage
+            try:
+                stage_count = len(stages)
+                completed = sum(1 for s in stages if state.get(f"_stage_{s.id}_done"))
+                remaining = stage_count - completed
+                if remaining > 0:
+                    total_budget = getattr(self._config, 'max_tokens_per_run', 100000)
+                    used = int(state.get("tokens_used", 0) or 0)
+                    expected_used = total_budget * (completed / stage_count)
+                    if used < expected_used:
+                        bonus = (expected_used - used) // remaining
+                        current_bonus = int(state.get("_tokens_bonus", 0) or 0)
+                        state["_tokens_bonus"] = current_bonus + bonus
+            except Exception:
+                pass
             if paused:
                 return state
 
@@ -1190,12 +1206,12 @@ Output format: JSON array of {{"rank": 1, "score": 0.95, "content": "..."}}"""
         try:
             self._snapshot(state, "final_state")
         except Exception as e:
-            logging.debug(str(e), exc_info=True)
+            logging.warning(str(e), exc_info=True)
         # Crystallize successful pipeline execution into a reusable Skill
         try:
             await self._crystallize_skill(state)
         except Exception as e:
-            logging.debug(str(e), exc_info=True)
+            logging.warning(str(e), exc_info=True)
         # Notify PushManager on pipeline completion
         try:
             from core.harness.feedback_loops.push import get_push_manager
@@ -1244,7 +1260,7 @@ Output format: JSON array of {{"rank": 1, "score": 0.95, "content": "..."}}"""
             if session_id:
                 _update_workflow_run_phase(session_id, state.get("phase", "done"))
         except Exception as e:
-            logging.debug(str(e), exc_info=True)
+            logging.warning(str(e), exc_info=True)
         _event_bus.emit(state.get("session_id", ""), "complete", {"state": dict(state)})
         return state
 
@@ -1659,7 +1675,7 @@ Output format: JSON array of {{"rank": 1, "score": 0.95, "content": "..."}}"""
                             if r.returncode != 0:
                                 issues.append(f"node_check_error:{path}: {r.stderr[:200]}")
                         except Exception as e:
-                            logging.debug(str(e), exc_info=True)
+                            logging.warning(str(e), exc_info=True)
                 elif path.endswith(".json"):
                     import json as _json
                     try:
@@ -1757,7 +1773,7 @@ Output format: JSON array of {{"rank": 1, "score": 0.95, "content": "..."}}"""
                         if reflection:
                             local_state[f"_reflection_{stage.id}"] = reflection
                     except Exception as e:
-                        logging.debug(str(e), exc_info=True)
+                        logging.warning(str(e), exc_info=True)
                 return local_state, False
 
         t_start = time.time()
@@ -1812,7 +1828,7 @@ Output format: JSON array of {{"rank": 1, "score": 0.95, "content": "..."}}"""
                     "output_keys": summary_keys,
                 })
         except Exception as e:
-            logging.debug(str(e), exc_info=True)
+            logging.warning(str(e), exc_info=True)
         if artifact is not None:
             local_state[f"_stage_output_{stage.id}"] = json.dumps(artifact, ensure_ascii=False)[:2000]
         elapsed = round(t_end - local_state.get(f"_stage_ts_{stage.id}", t_end), 1)
@@ -1825,7 +1841,7 @@ Output format: JSON array of {{"rank": 1, "score": 0.95, "content": "..."}}"""
                 if reflection:
                     local_state[f"_reflection_{stage.id}"] = reflection
             except Exception as e:
-                logging.debug(str(e), exc_info=True)
+                logging.warning(str(e), exc_info=True)
         # Auto-initialize task_list if stage output contains trackable sub-items
         artifact = local_state.get(stage.output_artifact)
         if isinstance(artifact, dict) and not local_state.get("task_list"):
@@ -1846,7 +1862,7 @@ Output format: JSON array of {{"rank": 1, "score": 0.95, "content": "..."}}"""
                     f"behavior_verify_failed: {bv.get('checks', [])}"
                 )
         except Exception as e:
-            logging.debug(str(e), exc_info=True)
+            logging.warning(str(e), exc_info=True)
         cfg_fields = getattr(stage, 'coverage_trace_fields', None) or {}
         comp_key = cfg_fields.get("components_key", "components")
         files_key = cfg_fields.get("files_key", "files")
@@ -2188,7 +2204,7 @@ Output format: JSON array of {{"rank": 1, "score": 0.95, "content": "..."}}"""
                 try:
                     rubric = _load_rubric_file(rubric_path)
                 except Exception as e:
-                    logging.debug(str(e), exc_info=True)
+                    logging.warning(str(e), exc_info=True)
 
             # Algorithm replay snapshot (existing logic)
             node_type = getattr(stage, 'node_type', '') or ''
@@ -2203,7 +2219,7 @@ Output format: JSON array of {{"rank": 1, "score": 0.95, "content": "..."}}"""
                         import json as _json
                         algo_result = _json.loads(artifact)
                     except Exception as e:
-                        logging.debug(str(e), exc_info=True)
+                        logging.warning(str(e), exc_info=True)
                 record_replay_snapshot(
                     str(state.get("session_id", "")),
                     stage.id, input_hash, str(artifact)[:2000],
@@ -2269,7 +2285,7 @@ Output format: JSON array of {{"rank": 1, "score": 0.95, "content": "..."}}"""
                     try:
                         algo_result = __import__('json').loads(artifact)
                     except Exception as e:
-                        logging.debug(str(e), exc_info=True)
+                        logging.warning(str(e), exc_info=True)
                 record_replay_snapshot(
                     str(state.get("session_id", "")),
                     stage.id, input_hash, str(artifact)[:2000],
@@ -2333,7 +2349,7 @@ Output format: JSON array of {{"rank": 1, "score": 0.95, "content": "..."}}"""
                 _sp.run(["git", "-C", output_dir, "checkout", tags[0]], capture_output=True, check=False)
                 state["_git_rollback_tag"] = tags[0]
         except Exception as e:
-            logging.debug(str(e), exc_info=True)
+            logging.warning(str(e), exc_info=True)
 
     @staticmethod
     def _load_rubric_file(rubric_path: str) -> List[Dict[str, Any]]:
@@ -2645,7 +2661,7 @@ Output format: JSON array of {{"rank": 1, "score": 0.95, "content": "..."}}"""
                                     metadata={"stage_id": stage.id, "failure_type": ftype, "count": 3},
                                 )
                             except Exception as e:
-                                logging.debug(str(e), exc_info=True)
+                                logging.warning(str(e), exc_info=True)
 
         # Agentic Skill Router: tell Agent it can search disabled skills
         skill_corpus_context = (
@@ -2969,7 +2985,7 @@ Evaluate pass/fail based on pass_rate and configured dimension thresholds.""")
                         state[stage.output_artifact] = fixed
                         state["_postprocess_applied"] = True
             except Exception as e:
-                logging.debug(str(e), exc_info=True)
+                logging.warning(str(e), exc_info=True)
         # Track score history for convergence detection and meta-optimization feedback
         state.setdefault("_score_history", []).append({
             "iteration": state.get("iteration", 0),
@@ -2993,7 +3009,7 @@ Evaluate pass/fail based on pass_rate and configured dimension thresholds.""")
                     session_id=str(state.get("session_id", "")),
                 )
         except Exception as e:
-            logging.debug(str(e), exc_info=True)
+            logging.warning(str(e), exc_info=True)
         # Health Report: per-stage dimensional scoring for quality dashboard
         health_dims = []
         for d in dims:
@@ -3030,9 +3046,9 @@ Evaluate pass/fail based on pass_rate and configured dimension thresholds.""")
                     rag_result = await evaluator.evaluate_sample(sample)
                     state[f"_rag_eval_{stage.id}"] = rag_result.to_dict() if hasattr(rag_result, 'to_dict') else str(rag_result)
                 except Exception as e:
-                    logging.debug(str(e), exc_info=True)
+                    logging.warning(str(e), exc_info=True)
         except Exception as e:
-            logging.debug(str(e), exc_info=True)
+            logging.warning(str(e), exc_info=True)
         # AST graph diff for semantic-level regression detection
         try:
             from core.harness.evaluation.graph_diff import parse_code_to_graph, diff_graphs
@@ -3140,7 +3156,7 @@ Evaluate pass/fail based on pass_rate and configured dimension thresholds.""")
                         trace = state.get("_graph_trace", [])
                         out_path = os.getenv("AIPLAT_OTEL_EXPORT_PATH", os.path.expanduser("~/.aiplat/traces/latest.json"))
                         export_otel_trace(trace, out_path)
-                    except Exception: logging.debug('best-effort operation', exc_info=True)  # noqa: intentional — best-effort operation, logged at debug
+                    except Exception: logging.warning('best-effort operation', exc_info=True)  # noqa: intentional — best-effort operation, logged at debug
                 # Save execution state snapshot for history
                 try:
                     snapshot_dir = os.path.expanduser("~/.aiplat/traces/history")
@@ -3151,7 +3167,7 @@ Evaluate pass/fail based on pass_rate and configured dimension thresholds.""")
                             "output": str(state.get(s.output_artifact,""))[:1000]} for s in self._config.stages}}
                     snap_path = os.path.join(snapshot_dir, f"{state.get('session_id','unknown')}_{ts}.json")
                     with open(snap_path, 'w') as sf: json.dump(snap, sf, ensure_ascii=False, indent=2)
-                except Exception: logging.debug('best-effort operation', exc_info=True)  # noqa: intentional — best-effort operation, logged at debug
+                except Exception: logging.warning('best-effort operation', exc_info=True)  # noqa: intentional — best-effort operation, logged at debug
                 break
             report = state.get(stage.output_artifact)
             if report and isinstance(report, dict) and report.get("recommendation") == "REJECTED":
@@ -3267,7 +3283,7 @@ Evaluate pass/fail based on pass_rate and configured dimension thresholds.""")
                 if scene:
                     scene_context = f"\n## Business Context (Scene: {scene.name})\n{scene.to_agent_context()}\n"
             except Exception as e:
-                logging.debug(str(e), exc_info=True)
+                logging.warning(str(e), exc_info=True)
 
         # Cross-session memory: inject previous SESSION_NOTES so Agent remembers past context
         previous_notes = ""
@@ -3288,7 +3304,7 @@ Evaluate pass/fail based on pass_rate and configured dimension thresholds.""")
                     summaries.append(f"## {_os.path.basename(_os.path.dirname(f))}\n{first_lines}")
                 previous_notes = "\n## Recent Session Context\n" + "\n---\n".join(summaries) + "\n"
         except Exception as e:
-            logging.debug(str(e), exc_info=True)
+            logging.warning(str(e), exc_info=True)
 
         # Plur: collective learnings shared across all agent instances
         collective_context = ""
@@ -3296,7 +3312,7 @@ Evaluate pass/fail based on pass_rate and configured dimension thresholds.""")
             from core.harness.memory.shared_memory import get_learnings_context
             collective_context = get_learnings_context()
         except Exception as e:
-            logging.debug(str(e), exc_info=True)
+            logging.warning(str(e), exc_info=True)
 
         # Phase D: knowledge gap context — tell Agent what we don't know
         gaps_context = ""
@@ -3317,7 +3333,7 @@ Evaluate pass/fail based on pass_rate and configured dimension thresholds.""")
                 if gap_lines:
                     gaps_context = "\n## Knowledge Gaps\n" + "\n".join(gap_lines) + "\n\nWhen producing knowledge artifacts, consider filling these gaps."
         except Exception as e:
-            logging.debug(str(e), exc_info=True)
+            logging.warning(str(e), exc_info=True)
 
         # Progressive disclosure: skill stubs only (~50 tokens/skill)
         skill_stubs_context = ""
@@ -3332,7 +3348,7 @@ Evaluate pass/fail based on pass_rate and configured dimension thresholds.""")
                 "before invoking sys_skill_call. This helps the user understand your approach.]\n"
             )
         except Exception as e:
-            logging.debug(str(e), exc_info=True)
+            logging.warning(str(e), exc_info=True)
 
         # Ponytail: Lazy Senior Developer constraint (via PONytail_MODE env)
         ponytail_context = ""
@@ -3346,7 +3362,7 @@ Evaluate pass/fail based on pass_rate and configured dimension thresholds.""")
                         body = f.read()
                     ponytail_context = f"\n## Ponytail: Lazy Senior Developer ({ponytail_mode} mode)\n{body}\n"
             except Exception as e:
-                logging.debug(str(e), exc_info=True)
+                logging.warning(str(e), exc_info=True)
 
         # Output format instruction for code-generating stages
         fmt_text = ""
@@ -3403,7 +3419,7 @@ Evaluate pass/fail based on pass_rate and configured dimension thresholds.""")
                     try:
                         with open(val['path'], 'r') as ff:
                             val['_content'] = ff.read()[:10000]
-                    except Exception: logging.debug('best-effort operation', exc_info=True)  # noqa: intentional — best-effort operation, logged at debug
+                    except Exception: logging.warning('best-effort operation', exc_info=True)  # noqa: intentional — best-effort operation, logged at debug
                 # Save execution state snapshot for history
                 try:
                     snapshot_dir = os.path.expanduser("~/.aiplat/traces/history")
@@ -3414,7 +3430,7 @@ Evaluate pass/fail based on pass_rate and configured dimension thresholds.""")
                             "output": str(state.get(s.output_artifact,""))[:1000]} for s in self._config.stages}}
                     snap_path = os.path.join(snapshot_dir, f"{state.get('session_id','unknown')}_{ts}.json")
                     with open(snap_path, 'w') as sf: json.dump(snap, sf, ensure_ascii=False, indent=2)
-                except Exception: logging.debug('best-effort operation', exc_info=True)  # noqa: intentional — best-effort operation, logged at debug
+                except Exception: logging.warning('best-effort operation', exc_info=True)  # noqa: intentional — best-effort operation, logged at debug
                 jinja_ctx[s.output_artifact or s.id] = val
         jinja_ctx.update({k: v for k, v in state.items() if not k.startswith('_') and k not in jinja_ctx})
         # Conversation state: cross-stage persistent memory
@@ -3579,7 +3595,7 @@ JSON format: {{"artifact": {{}},"confidence": "HIGH","issues": [{{"severity": "P
                             if not any(e["path"] == f["path"] for e in files):
                                 files.append({"path": f["path"], "content": f["content"]})
             except (json.JSONDecodeError, TypeError) as e:
-                logging.debug(str(e), exc_info=True)
+                logging.warning(str(e), exc_info=True)
 
         # 4) ## PATCH: path with <<< ORIGINAL / === / >>> UPDATED blocks (incremental edit)
         for m in re.finditer(r'##\s*PATCH:\s*(\S+)\s*\n(.*?)(?=\n##\s*(?:FILE|PATCH):|\Z)', text, re.DOTALL):
@@ -3607,7 +3623,7 @@ JSON format: {{"artifact": {{}},"confidence": "HIGH","issues": [{{"severity": "P
                                   confidence=AgentConfidence(data.get("confidence", "MEDIUM")),
                                   decision=AgentDecision(data.get("decision", "PROCEED")))
             except (json.JSONDecodeError, TypeError) as e:
-                logging.debug(str(e), exc_info=True)
+                logging.warning(str(e), exc_info=True)
         return AgentOutput(artifact={"raw_output": raw[:5000]}, issues=[], confidence=AgentConfidence.LOW, decision=AgentDecision.PROCEED)
 
     def _compute_stage_reward(self, stage, state: PipelineState) -> None:
@@ -3692,7 +3708,7 @@ JSON format: {{"artifact": {{}},"confidence": "HIGH","issues": [{{"severity": "P
             state["_stage_prev_rewards"] = dict(rewards)
 
         except Exception as e:
-            logging.debug(str(e), exc_info=True)
+            logging.warning(str(e), exc_info=True)
 
     def _snapshot(self, state: PipelineState, name: str) -> None:
         sid = state.get("session_id", "")
@@ -4009,7 +4025,7 @@ JSON format: {{"artifact": {{}},"confidence": "HIGH","issues": [{{"severity": "P
                     logger.info("TaskSkill %s linked: %d used + %d produced ontology entities",
                                 skill_id, len(used), len(produced))
             except Exception as e:
-                logging.debug(str(e), exc_info=True)
+                logging.warning(str(e), exc_info=True)
 
             # Self-improvement: cross-run learning from stage reflections
             if stage_reflections:
@@ -4030,7 +4046,7 @@ JSON format: {{"artifact": {{}},"confidence": "HIGH","issues": [{{"severity": "P
                                 lesson = ref.get("lesson", "auto-detected failure pattern")
                                 self._append_agent_learning(agent_id, lesson)
                 except Exception as e:
-                    logging.debug(str(e), exc_info=True)
+                    logging.warning(str(e), exc_info=True)
 
             # Store pipeline artifacts in ArtifactRegistry for versioned retrieval
             self._store_artifacts(sid, state)
@@ -4059,7 +4075,7 @@ JSON format: {{"artifact": {{}},"confidence": "HIGH","issues": [{{"severity": "P
                 with open(agent_md, "w") as f:
                     f.write(raw)
         except Exception as e:
-            logging.debug(str(e), exc_info=True)
+            logging.warning(str(e), exc_info=True)
 
     async def _accept_plan_stages(self, plan_stages: List[Dict], state: PipelineState) -> PipelineState:
         """Accept AI-recommended stages JSON and write PipelineStageConfig.
@@ -4424,7 +4440,7 @@ Output ONLY this JSON (no preamble): {{"diagnosis":"<1 sentence>","suggested_pro
         try:
             PipelineEngine._generate_session_notes(state, output_dir=state.get("output_dir", ""))
         except Exception as e:
-            logging.debug(str(e), exc_info=True)
+            logging.warning(str(e), exc_info=True)
 
         # Plur: record collective learnings for cross-instance sharing
         try:
@@ -4440,7 +4456,7 @@ Output ONLY this JSON (no preamble): {{"diagnosis":"<1 sentence>","suggested_pro
                 record_learning(l.key, l.value, source_agent=l.source_agent,
                                 source_session=l.source_session, confidence=l.confidence)
         except Exception as e:
-            logging.debug(str(e), exc_info=True)
+            logging.warning(str(e), exc_info=True)
 
     @staticmethod
     async def _run_self_harness_cycle(
@@ -4573,7 +4589,7 @@ Output ONLY this JSON (no preamble): {{"diagnosis":"<1 sentence>","suggested_pro
             if start >= 0 and end > start:
                 return _json.loads(content[start:end + 1])
         except Exception as e:
-            logging.debug(str(e), exc_info=True)
+            logging.warning(str(e), exc_info=True)
         return None
 
 
@@ -4617,7 +4633,7 @@ def _write_pipeline_event(run_id: str, event_type: str, node_id: str,
         finally:
             conn.close()
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
 
 
 def _update_workflow_run_phase(project_id: str, phase: str) -> None:
@@ -4634,7 +4650,7 @@ def _update_workflow_run_phase(project_id: str, phase: str) -> None:
         finally:
             conn.close()
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
     spans = []
     trace_id = hex(int(time.time() * 1000000))[2:20]
     root_span_id = hex(int(time.time() * 1000000 + 1))[2:18]

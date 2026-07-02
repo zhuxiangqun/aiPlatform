@@ -59,7 +59,7 @@ async def run_autosmoke(request: Dict[str, Any], http_request: Request):
     try:
         await mark_resource_pending(resource_type=rtype, resource_id=rid, workspace_agent_manager=wam, workspace_skill_manager=wsm, workspace_mcp_manager=wmm)
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
 
     from core.harness.smoke import enqueue_autosmoke
 
@@ -92,7 +92,7 @@ async def run_autosmoke(request: Dict[str, Any], http_request: Request):
             "syscalls_ui": ui_url("/diagnostics/syscalls?kind=onboarding&target_type=onboarding_evidence&target_id="),
         }
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
     return res
 
 
@@ -119,7 +119,7 @@ async def list_autosmoke_runs(resource_type: str, resource_id: str, http_request
                 "audit_ui": ui_url(f"/diagnostics/audit?action=autosmoke_result&resource_id={rid}"),
             }
         except Exception as e:
-            logging.debug(str(e), exc_info=True)
+            logging.warning(str(e), exc_info=True)
         items.append(d)
     return {**runs, "job_id": job_id, "resource": {"type": rtype, "id": rid}, "items": items}
 

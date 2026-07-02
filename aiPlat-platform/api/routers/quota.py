@@ -83,7 +83,7 @@ async def put_quota_snapshot(request: dict, http_request: Request, rt: RuntimeDe
             detail={"version": saved.get("version")},
         )
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
     return saved
 
 

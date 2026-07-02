@@ -196,7 +196,7 @@ class RetryableAdapterMixin:
 def create_adapter(
     provider: str,
     api_key: Optional[str] = None,
-    model: str = "deepseek-chat",  # noqa: interface-default — base adapter default
+    model: str = "",  # empty → resolved via best_model_for_purpose("chat")
     base_url: Optional[str] = None,
     **kwargs
 ) -> ILLMAdapter:
@@ -213,6 +213,11 @@ def create_adapter(
     """
     import importlib
     import os
+
+    # Resolve model from infra ModelManager when not explicitly specified
+    if not model and provider not in ("embedding", "audio", "ocr", "reranker"):
+        from core.harness.utils.model_injection import best_model_for_purpose
+        model = best_model_for_purpose("chat")
 
     # ── Primary path: infra LLM client (wrapped) ──
     if provider not in ("mock", "scripted"):

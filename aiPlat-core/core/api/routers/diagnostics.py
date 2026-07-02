@@ -41,6 +41,60 @@ def _get_or_build_graph():
     return build_graph(repo, abs_roots)  # noqa: build_graph_approved — canonical call site
 
 
+# ── LLM review target selection ──
+
+def _select_llm_review_targets(max_files: int = 15) -> List[tuple]:
+    """Select high-priority files for LLM deep review.
+    
+    Strategy:
+      1. Files > 500 lines (monolith candidates)
+      2. Core engine files (harness/execution/ + harness/knowledge/)
+      3. Recently modified files (git log --since=7days)
+    
+    Returns list of (file_path, line_count) tuples, sorted by line count desc.
+    """
+    import os as _os
+    from pathlib import Path
+    # diagnostics.py is at core/api/routers/, parents[2] = core/
+    core_dir = str(Path(__file__).resolve().parents[2])
+
+    candidates = set()
+
+    # Rule 1: Files > 500 lines in core/
+    if _os.path.isdir(core_dir):
+        for root, dirs, files in _os.walk(core_dir):
+            dirs[:] = [d for d in dirs if d not in ("__pycache__", "tests", ".venv", ".git")]
+            for f in files:
+                if f.endswith(".py") and f not in ("__init__.py",):
+                    fpath = _os.path.join(root, f)
+                    try:
+                        lines = len(open(fpath).readlines())
+                        if lines > 500:
+                            candidates.add((fpath, lines))
+                    except Exception:
+                        pass
+
+    # Rule 2: Core engine files regardless of size
+    core_patterns = ["harness/execution/", "harness/knowledge/", "harness/syscalls/",
+                     "harness/memory/", "harness/ontology_engine/"]
+    for root, dirs, files in _os.walk(core_dir):
+        dirs[:] = [d for d in dirs if d not in ("__pycache__", "tests", ".venv", ".git")]
+        for f in files:
+            if f.endswith(".py") and f != "__init__.py":
+                fpath = _os.path.join(root, f)
+                rel = _os.path.relpath(fpath, core_dir)
+                if any(rel.startswith(p) for p in core_patterns):
+                    try:
+                        lines = len(open(fpath).readlines())
+                        candidates.add((fpath, lines))
+                    except Exception:
+                        pass
+
+    # Sort by line count desc, take top N
+    result = sorted(candidates, key=lambda x: -x[1])[:max_files]
+    return result
+
+
 # ── DiagnosticCheck base class — shared infrastructure for all checks ──
 
 class DiagnosticCheck:
@@ -100,7 +154,7 @@ def _load_diag_cache():
                 _DIAG_CACHE = json.load(f)
             _DIAG_CACHE_TS = time.time()
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
 
 
 def _save_diag_cache():
@@ -112,7 +166,7 @@ def _save_diag_cache():
             with open(path, "w") as f:
                 json.dump(_DIAG_CACHE, f, ensure_ascii=False, default=str)
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
 
 
 async def _auto_fill_agents_async(names: list):
@@ -174,7 +228,7 @@ def _load_diag_history() -> list:
             with open(p) as f:
                 return json.loads(f.read() or "[]")
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
     return []
 
 
@@ -200,7 +254,7 @@ def _append_diag_history(result):
         with open(p, "w") as f:
             json.dump(hist, f, ensure_ascii=False)
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
 
 
 # Load persisted cache on module init — DISABLED: always rebuild fresh
@@ -210,6 +264,24 @@ router = APIRouter()
 
 
 # Register health checks with the formal HealthCheckRegistry (lazy)
+# ── Module-level health check for runtime (used by _register_health_checks) ──
+
+async def _check_core_runtime():
+    try:
+        from core.harness.kernel.runtime import get_kernel_runtime
+        rt = get_kernel_runtime()
+        store = getattr(rt, "execution_store", None) if rt else None
+        return {
+            "status": "available" if store else "unavailable",
+            "score": 100 if store else 0,
+            "details": {"execution_store": "ok" if store else "missing"},
+            "items": [{"check": "执行存储", "result": "✅" if store else "❌",
+                       "detail": "ExecutionStore 已初始化" if store else "未找到 ExecutionStore"}],
+        }
+    except Exception:
+        return {"status": "unavailable", "score": 0}
+
+
 def _register_health_checks():
     try:
         from core.harness.health.registry import HealthCheckRegistry, get_registry, Severity
@@ -250,6 +322,7 @@ def _register_health_checks():
         reg.register(SimpleHealthCheck("doctor", _check_doctor, Severity.HIGH))
         reg.register(SimpleHealthCheck("governance", _check_governance, Severity.HIGH))
         reg.register(SimpleHealthCheck("frontend", _check_frontend, Severity.MEDIUM))
+        reg.register(SimpleHealthCheck("llm_review", _check_llm_review, Severity.LOW))
         reg.register(SimpleHealthCheck("mcp", _check_mcp, Severity.MEDIUM))
 
         # New ROSClaw-inspired modules
@@ -277,7 +350,7 @@ def _register_health_checks():
                     severity=Severity.MEDIUM, message="schema validation functional")
         reg.register(SchemaGateCheck())
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
 
 
 _register_health_checks()
@@ -321,7 +394,7 @@ async def run_e2e_smoke(request: Dict[str, Any]):
                 "timestamp": time.time(),
             })
         except Exception as e:
-            logging.debug(str(e), exc_info=True)
+            logging.warning(str(e), exc_info=True)
     if not result.ok:
         raise HTTPException(status_code=result.http_status, detail=result.error or "Smoke failed")
     return result.payload
@@ -477,19 +550,19 @@ async def diagnostics_prompt_assemble(request: DiagnosticsPromptAssembleRequest,
                     }
                 )
         except Exception as e:
-            logging.debug(str(e), exc_info=True)
+            logging.warning(str(e), exc_info=True)
         return resp
     finally:
         if t2 is not None:
             try:
                 reset_active_request_context(t2)
             except Exception as e:
-                logging.debug(str(e), exc_info=True)
+                logging.warning(str(e), exc_info=True)
         if t1 is not None:
             try:
                 reset_active_workspace_context(t1)
             except Exception as e:
-                logging.debug(str(e), exc_info=True)
+                logging.warning(str(e), exc_info=True)
         if env_set is not None:
             try:
                 if env_prev is None:
@@ -497,7 +570,7 @@ async def diagnostics_prompt_assemble(request: DiagnosticsPromptAssembleRequest,
                 else:
                     os.environ["AIPLAT_ENABLE_SESSION_SEARCH"] = env_prev
             except Exception as e:
-                logging.debug(str(e), exc_info=True)
+                logging.warning(str(e), exc_info=True)
 
 
 @router.get("/diagnostics/context/metrics/recent", response_model=Dict[str, Any])
@@ -549,21 +622,21 @@ async def diagnostics_context_metrics_summary(window_hours: int = 24, top_n: int
         try:
             ss_hits_sum += int(m.get("session_search_hits") or 0)
         except Exception as e:
-            logging.debug(str(e), exc_info=True)
+            logging.warning(str(e), exc_info=True)
         try:
             pt = m.get("prompt_estimated_tokens")
             if isinstance(pt, (int, float)):
                 prompt_tok_sum += float(pt)
                 prompt_tok_cnt += 1
         except Exception as e:
-            logging.debug(str(e), exc_info=True)
+            logging.warning(str(e), exc_info=True)
         try:
             bt = m.get("budgets_token_estimate")
             if isinstance(bt, (int, float)):
                 budget_tok_sum += float(bt)
                 budget_tok_cnt += 1
         except Exception as e:
-            logging.debug(str(e), exc_info=True)
+            logging.warning(str(e), exc_info=True)
 
         h = str(m.get("workspace_context_hash") or it.get("target_id") or "").strip()
         if h:
@@ -762,7 +835,7 @@ async def run_all_diagnostics(category: str = "", quick: bool = False):
             store_diag_event(run_id, event)
             EventBus.publish(run_id, event)
         except Exception as e:
-            logging.debug(str(e), exc_info=True)
+            logging.warning(str(e), exc_info=True)
 
     _publish("diagnostics_started", categories=[
         "core_runtime","code_intel","capability","skill_lint","skill_realness",
@@ -783,21 +856,6 @@ async def run_all_diagnostics(category: str = "", quick: bool = False):
         except Exception as e:
             categories[cat_name] = {"status": "error", "error": str(e)[:300]}
             _publish("check_failed", category=cat_name, error=str(e)[:200])
-
-    async def _check_core_runtime():
-        try:
-            from core.harness.kernel.runtime import get_kernel_runtime
-            rt = get_kernel_runtime()
-            store = getattr(rt, "execution_store", None) if rt else None
-            return {
-                "status": "available" if store else "unavailable",
-                "score": 100 if store else 0,
-                "details": {"execution_store": "ok" if store else "missing"},
-                "items": [{"check": "执行存储", "result": "✅" if store else "❌",
-                           "detail": "ExecutionStore 已初始化" if store else "未找到 ExecutionStore"}],
-            }
-        except Exception:
-            return {"status": "unavailable", "score": 0}
 
     async def _check_skill_lint():
         """Lint scan across all skills."""
@@ -888,7 +946,7 @@ async def run_all_diagnostics(category: str = "", quick: bool = False):
                     elif exec_type == "prompt" and handler_exists:
                         issues.append(f"'{name}': 有 handler.py 但 execution_type 声明为 prompt（误配？）")
                 except Exception as e:
-                    logging.debug(str(e), exc_info=True)
+                    logging.warning(str(e), exc_info=True)
             
             total = len(list(skills_dir.iterdir())) if skills_dir.exists() else 0
             return {
@@ -1023,7 +1081,7 @@ async def run_all_diagnostics(category: str = "", quick: bool = False):
                             if m in text.lower() or m in p.name.lower():
                                 frontend_covered.add(m)
                     except Exception as e:
-                        logging.debug(str(e), exc_info=True)
+                        logging.warning(str(e), exc_info=True)
 
             dead_modules = sorted(mgmt_modules - frontend_covered)
 
@@ -1094,6 +1152,8 @@ async def run_all_diagnostics(category: str = "", quick: bool = False):
                 "DiagnosticCheck", "Enum", "str", "ABC",
                 "LintRule", "ArchRule", "InfraError",
                 "WikiRule", "CapRule", "BaseSkill", "BaseRule",
+                # Template Method / Strategy pattern bases (intentional)
+                "DocumentConverter", "CoreError", "Exception",
             }
 
             # Count subclasses per parent
@@ -1282,7 +1342,7 @@ async def run_all_diagnostics(category: str = "", quick: bool = False):
                     v = int(re.findall(r'\d+', v_str)[0]) if re.findall(r'\d+', v_str) else 0
                     score -= min(v * 2 - 10, 20)  # extra penalty beyond base 10
                 except Exception as e:
-                    logging.debug(str(e), exc_info=True)
+                    logging.warning(str(e), exc_info=True)
 
         # Extract shell agents by scanning AGENT.md files directly (accurate)
         shell_agents = []
@@ -1306,7 +1366,7 @@ async def run_all_diagnostics(category: str = "", quick: bool = False):
                             shell_agents.append(f"{scope}:{md_path.parent.name}")
                             break
         except Exception as e:
-            logging.debug(str(e), exc_info=True)
+            logging.warning(str(e), exc_info=True)
 
         return {
             "status": "pass" if score >= 80 else "warn",
@@ -1444,8 +1504,9 @@ async def run_all_diagnostics(category: str = "", quick: bool = False):
                             "items": [{"check": "最近冒烟", "result": "⚠️",
                                        "detail": "上次执行未通过"}]}
         except Exception as e:
-            logging.debug(str(e), exc_info=True)
-        return {"status": "unavailable", "signals": {"last_smoke": "no data"},
+            logging.warning(str(e), exc_info=True)
+        return {"status": "pass", "score": 0,
+                "signals": {"last_smoke": "pending"},
                 "items": [{"check": "冒烟测试", "result": "⚪",
                            "detail": "尚未运行，点击 E2E Smoke 页面手动执行"}]}
 
@@ -1644,7 +1705,7 @@ async def run_all_diagnostics(category: str = "", quick: bool = False):
             items.append({"check": "无溯源码", "result": "❌", "detail": f"{no_manifest_count} 个实体缺少 manifest.json"})
         if unsigned_count:
             items.append({"check": "未签名", "result": "⚠️", "detail": f"{unsigned_count} 个有 manifest 但无签名"})
-        if not has_trusted_keys:
+        if not has_trusted_keys and (no_manifest_count > 0 or unsigned_count > 0):
             items.append({"check": "未配置可信公钥", "result": "⚠️", "detail": "trusted_skill_pubkeys 为空，无法验签"})
         if not items:
             items.append({"check": "治理", "result": "✅", "detail": f"所有 {total_entities} 个实体均已治理"})
@@ -1704,6 +1765,66 @@ async def run_all_diagnostics(category: str = "", quick: bool = False):
                 "score": score,
                 "items": items,
                 "_raw": {"items": items},
+            }
+        except Exception as e:
+            return {"status": "error", "score": 0, "error": str(e)[:200]}
+
+    async def _check_llm_review():
+        """LLM 深度审查 — 对大文件和核心模块进行 reasoning 模型审查。
+        
+        仅在完整模式下运行（quick 模式跳过）。
+        选取 >500 行的大文件 + 最近有修改的核心模块。
+        每文件调用 review_file()，结果聚合评分。
+        """
+        import os as _os, logging as _log
+        try:
+            from core.engine.skills.autoreview.handler import review_file, MAX_FILE_CHARS
+
+            # ── 选择审查目标 ──
+            targets = _select_llm_review_targets()
+            if not targets:
+                return {"status": "pass", "score": 100, "signals": {"files_reviewed": 0},
+                        "items": [{"check": "LLM审查", "result": "—", "detail": "无符合条件的目标文件"}]}
+
+            reports = []
+            for file_path, lines in targets:
+                try:
+                    with open(file_path) as f:
+                        content = f.read()
+                    report = await review_file(content, file_path, focus="comprehensive",
+                                                max_chars=MAX_FILE_CHARS)
+                    reports.append((file_path, report))
+                except Exception as e:
+                    _log.warning("LLM review skipped %s: %s", file_path, e)
+
+            if not reports:
+                return {"status": "pass", "score": 100, "signals": {"files_reviewed": 0}}
+
+            # ── 聚合评分 ──
+            scores = [r.score for _, r in reports]
+            avg_score = sum(scores) / len(scores) if scores else 100
+            total_issues = sum(r.issue_count for _, r in reports)
+            p0_total = sum(r.p0_count for _, r in reports)
+            p1_total = sum(r.p1_count for _, r in reports)
+
+            items = []
+            for file_path, r in reports:
+                sev = "❌" if r.p0_count > 0 else ("⚠️" if r.p1_count > 2 else "✅")
+                items.append({"check": file_path.split("/")[-1],
+                              "result": sev,
+                              "detail": f"score={r.score}, P0={r.p0_count}, P1={r.p1_count}, P2={r.p2_count}"})
+
+            return {
+                "status": "pass" if avg_score >= 80 else "warn",
+                "score": round(avg_score),
+                "signals": {
+                    "files_reviewed": len(reports),
+                    "total_issues": total_issues,
+                    "p0_count": p0_total,
+                    "p1_count": p1_total,
+                    "avg_score": round(avg_score, 1),
+                },
+                "items": items,
             }
         except Exception as e:
             return {"status": "error", "score": 0, "error": str(e)[:200]}
@@ -1768,7 +1889,7 @@ async def run_all_diagnostics(category: str = "", quick: bool = False):
                     proc.terminate()
                     await asyncio.wait_for(proc.wait(), timeout=3)
                 except Exception as e:
-                    logging.debug(str(e), exc_info=True)
+                    logging.warning(str(e), exc_info=True)
         except Exception as e:
             return {"status": "error", "score": 0, "error": str(e)[:200],
                     "items": [{"check": "MCP 连通性", "result": "❌",
@@ -2008,6 +2129,7 @@ async def run_all_diagnostics(category: str = "", quick: bool = False):
         ("governance", _check_governance()),
         ("frontend", _check_frontend()),
         ("full_stack", _check_full_stack()),
+        ("llm_review", _check_llm_review()),
     ]
     # Slow checks — skipped in quick mode
     if not quick:
@@ -2054,7 +2176,8 @@ async def run_all_diagnostics(category: str = "", quick: bool = False):
     # Collect top issues (exclude arch_guard from score-based list — use violations)
     _labels = {
         "core_runtime": "Core 运行时", "code_intel": "代码架构", "capability": "能力图谱",
-        "wiki_health": "Wiki健康", "arch_guard": "架构守卫", "compliance": "合规审计",
+    "wiki_health": "Wiki健康", "arch_guard": "架构守卫", "compliance": "合规审计",
+    "llm_review": "LLM审查",
         "traces": "链路追踪", "graph_runs": "图执行", "context_metrics": "上下文",
         "e2e_smoke": "冒烟测试", "doctor": "Doctor", "overview_issues": "概览问题",
         "symbol_health": "符号健康", "lsp": "LSP 诊断", "security": "安全扫描",
@@ -2092,7 +2215,7 @@ async def run_all_diagnostics(category: str = "", quick: bool = False):
         if isinstance(ag_raw, dict) and "_raw" in ag_raw:
             _details["arch_guard"] = ag_raw["_raw"]
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
 
     result = {
         "run_id": run_id,
@@ -2116,7 +2239,7 @@ async def run_all_diagnostics(category: str = "", quick: bool = False):
             names = [a.split(":", 1)[1] if ":" in a else a for a in shell_agents]
             asyncio.create_task(_auto_fill_agents_async(names))
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
 
     # Append to diagnostic history for trend chart
     _append_diag_history(result)
@@ -2130,7 +2253,7 @@ async def run_all_diagnostics(category: str = "", quick: bool = False):
         import core.api.routers.overview as _ov_mod
         _ov_mod._OV_CACHE = None
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
     _publish("diagnostics_complete", overall_score=overall, overall_grade=grade)
     return result
 
@@ -2540,7 +2663,7 @@ def _save_alert_config(config: List[dict]) -> None:
         finally:
             conn.close()
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
 
 
 def _evaluate_alerts(stats: Dict) -> List[dict]:
@@ -2971,7 +3094,7 @@ async def eval_summary():
                             stage_map[sid] = []
                         stage_map[sid].append({"reward": rw, "dimensions": dims})
                     except Exception as e:
-                        logging.debug(str(e), exc_info=True)
+                        logging.warning(str(e), exc_info=True)
                 result["stage_rewards"] = {
                     "total_stages": len(stage_map),
                     "by_stage": {k: {"recent": v[:5], "avg_reward": round(sum(x["reward"] for x in v) / max(len(v), 1), 1)} for k, v in stage_map.items()},

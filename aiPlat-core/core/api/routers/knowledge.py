@@ -120,7 +120,7 @@ async def reindex_collection(collection_id: str, rt: RuntimeDep = Depends(get_ke
         if cache.enabled:
             await cache.invalidate_domain(collection_id)
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
     return {"status": "reindexed", "documents_reindexed": len(docs)}
 
 

@@ -763,7 +763,7 @@ async def apply_skill_md_suggestion(suite_id: str, request: dict, http_request: 
                                 }
                             )
                     except Exception as e:
-                        logging.debug(str(e), exc_info=True)
+                        logging.warning(str(e), exc_info=True)
                     try:
                         await store.add_audit_log(
                             action="engine_skill_md_patch_approval_requested",
@@ -778,7 +778,7 @@ async def apply_skill_md_suggestion(suite_id: str, request: dict, http_request: 
                             detail={"suite_id": str(suite_id), "diff_hash": diff_hash},
                         )
                     except Exception as e:
-                        logging.debug(str(e), exc_info=True)
+                        logging.warning(str(e), exc_info=True)
             except Exception:
                 approval_request_id = None
         try:
@@ -803,7 +803,7 @@ async def apply_skill_md_suggestion(suite_id: str, request: dict, http_request: 
                 session_id=str(actor0.get("session_id") or "") or None,
             )
         except Exception as e:
-            logging.debug(str(e), exc_info=True)
+            logging.warning(str(e), exc_info=True)
         try:
             await store.add_audit_log(
                 action="engine_skill_md_patch_proposed",
@@ -818,7 +818,7 @@ async def apply_skill_md_suggestion(suite_id: str, request: dict, http_request: 
                 detail={"suite_id": str(suite_id), "diff_hash": diff_hash, "base_hash": base_hash},
             )
         except Exception as e:
-            logging.debug(str(e), exc_info=True)
+            logging.warning(str(e), exc_info=True)
         try:
             links = {
                 "change_control_ui": ui_url(f"/diagnostics/change-control/{str(change_id)}"),

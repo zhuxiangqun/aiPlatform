@@ -67,7 +67,7 @@ def _scan_installed() -> List[Dict[str, Any]]:
                     info["description"] = fm.get("description", "")
                     info["category"] = fm.get("category", "general")
                 except Exception as e:
-                    logging.debug(str(e), exc_info=True)
+                    logging.warning(str(e), exc_info=True)
         skills.append(info)
     if failed_files:
         logging.getLogger(__name__).warning(
@@ -86,7 +86,7 @@ def _scan_catalog() -> List[Dict[str, Any]]:
             for item in data.get("skills", []):
                 available.append(dict(item))
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
     return available
 
 
@@ -173,7 +173,7 @@ async def uninstall_skill(skill_name: str, _auth: str = Depends(require_admin)):
         if reg and reg.get(skill_name):
             reg.unregister(skill_name)
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
     return {"status": "uninstalled", "name": skill_name}
 
 
@@ -185,4 +185,4 @@ def _notify_registry(skill_name: str):
         if reg and hasattr(reg, 'scan_folder'):
             reg.scan_folder(SKILLS_HOME)
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)

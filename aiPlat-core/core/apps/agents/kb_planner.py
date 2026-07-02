@@ -75,7 +75,7 @@ class KBPlannerAgent:
         )
         resp = await sys_llm_generate(
             None, [{"role": "user", "content": prompt}],
-            model_name=best_model_for_purpose("chat"),  # noqa: model-legacy temperature=0.1, max_tokens=500,
+            model_name=best_model_for_purpose("chat"), temperature=0.1, max_tokens=500,
         )
         import json, re
         raw = getattr(resp, "content", "") or str(resp)
@@ -101,7 +101,7 @@ class KBPlannerAgent:
             from core.harness.syscalls.llm import sys_llm_generate
             resp = await sys_llm_generate(
                 None, [{"role": "user", "content": f"请{action}以下内容：\n{content}"}],
-                model_name=best_model_for_purpose("chat"),  # noqa: model-legacy temperature=0.3, max_tokens=1000,
+                model_name=best_model_for_purpose("chat"), temperature=0.3, max_tokens=1000,
             )
             return getattr(resp, "content", "") or str(resp)
         return str(step)
@@ -113,6 +113,6 @@ class KBPlannerAgent:
         steps_text = compress_retrieved_docs(steps_text, model_name=best_model_for_purpose("chat"))
         resp = await sys_llm_generate(
             None, [{"role": "user", "content": f"基于以下中间结果，完成原始任务。\n\n任务：{task}\n\n中间结果：\n{steps_text}\n\n请给出最终答案："}],
-            model_name=best_model_for_purpose("chat"),  # noqa: model-legacy temperature=0.3, max_tokens=2000,
+            model_name=best_model_for_purpose("chat"), temperature=0.3, max_tokens=2000,
         )
         return getattr(resp, "content", "") or str(resp)

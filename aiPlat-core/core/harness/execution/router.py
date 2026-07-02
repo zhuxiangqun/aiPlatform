@@ -57,7 +57,7 @@ class EngineRouter:
                         from .engines.graph_engine import GraphEngine
                         self._graph_engine = GraphEngine()
                     except Exception as e:
-                        logging.debug(str(e), exc_info=True)
+                        logging.warning(str(e), exc_info=True)
                 if self._graph_engine is not None:
                     engine, engine_key, chain = self._graph_engine, "graph", ["graph", "loop", "quick"]
                 else:
@@ -115,7 +115,7 @@ class EngineRouter:
                 from .engines.graph_engine import GraphEngine
                 self._graph_engine = GraphEngine()
             except Exception as e:
-                logging.debug(str(e), exc_info=True)
+                logging.warning(str(e), exc_info=True)
         if self._graph_engine is not None:
             engines["graph"] = self._graph_engine
         last_error: Optional[Exception] = None

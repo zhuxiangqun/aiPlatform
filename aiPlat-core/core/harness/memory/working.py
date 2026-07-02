@@ -46,6 +46,18 @@ class WorkingMemory:
             for m in self._messages
         ]
     
+    def get_audit_context(self) -> List[Dict[str, Any]]:
+        """P0-1: 审计模式——只保留 system prompt + 最新用户消息（Diff 内容）。
+        
+        用于 autoreview 等审计场景，不注入历史对话和长期偏好。
+        """
+        system_msgs = [m for m in self._messages if m.role == "system"]
+        user_msgs = [m for m in self._messages if m.role == "user"][-1:]
+        return [
+            {"role": m.role, "content": m.content, **m.metadata}
+            for m in system_msgs + user_msgs
+        ]
+    
     def get_last_n(self, n: int) -> List[Message]:
         """Get last N messages"""
         return list(self._messages)[-n:]

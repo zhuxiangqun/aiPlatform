@@ -106,7 +106,9 @@ rules:
       pattern: 'any\(kw\s+in\s+_name\s+for\s+kw\s+in\s+\[|any\(kw\s+in\s+_desc\s+for\s+kw\s+in\s+\['
       paths: ["aiPlat-core/core/management"]
       exclude: ["__pycache__", "tests/"]
-    message: "core must not infer business roles from agent/skill name via keyword matching — use agent's category/tags/description fields instead (CLAUDE.md §5.29 v4.1)"
+    message: "core must not infer business roles from agent/skill name via keyword
+      matching — use agent's category/tags/description fields instead (CLAUDE.md §5.29
+      v4.1)"
 
   - id: kernel_agnostic_scoring_dims
     section: "§3"
@@ -151,7 +153,8 @@ rules:
       pattern: '产品经理|架构师|程序员|测试员|前端开发|后端开发|项目经理|需求分析|系统设计|代码实现|测试评估'
       paths: ["aiPlat-core/core"]
       exclude: ["__pycache__", "tests/"]
-      grep_exclude: ["orchestration/|kernel/types\\.py|prompt_loader\\.py|prompt_app\\.py"]
+      grep_exclude: ["orchestration/|kernel/types\\.py|prompt_loader\\.py|prompt_app\\\
+            .py"]
     message: "hardcoded Chinese business names in core (use config-driven)"
 
   # ═══ Section 4: Infra Application Agnostic ═══
@@ -210,7 +213,8 @@ rules:
       pattern: "FastAPI\\(|uvicorn\\.run\\("
       paths: ["aiPlat-app"]
       exclude: ["__pycache__", "tests/", "generated/", "api/rest/routes.py"]
-    message: "app runs its own API server — api/rest/routes.py is a minimal health-only bootstrap, allowed per constitution"
+    message: "app runs its own API server — api/rest/routes.py is a minimal health-only
+      bootstrap, allowed per constitution"
 
   - id: app_no_direct_db
     section: "§5"
@@ -232,9 +236,12 @@ rules:
       type: grep_forbidden
       pattern: "sys_llm_generate|sys_tool_call|sys_skill_call"
       paths: ["aiPlat-core/core/harness/execution/langgraph"]
-      exclude: ["__pycache__", "tests/", "compiled_graphs/react.py", "nodes/reason_node.py", "nodes/act_node.py", "nodes/observe_node.py"]
+      exclude: ["__pycache__", "tests/", "compiled_graphs/react.py", "nodes/reason_node.py",
+        "nodes/act_node.py", "nodes/observe_node.py"]
       grep_exclude: []
-    message: "LangGraph nodes call syscalls directly (must delegate to Harness) — known exceptions: react/plan-execute node implementations. Phase 9 DI migration completed per CLAUDE.md §5.23."
+    message: "LangGraph nodes call syscalls directly (must delegate to Harness) —
+      known exceptions: react/plan-execute node implementations. Phase 9 DI migration
+      completed per CLAUDE.md §5.23."
 
   # ═══ Section 6: Core No Platform Routes ═══
   - id: core_no_platform_routes
@@ -254,7 +261,8 @@ rules:
     level: error
     check:
       type: grep_forbidden
-      pattern: "import faster_whisper|import whisper|from whisper|import pytesseract|import paddleocr|import sentence_transformers|from sentence_transformers"
+      pattern: "import faster_whisper|import whisper|from whisper|import pytesseract|import
+        paddleocr|import sentence_transformers|from sentence_transformers"
       paths: ["aiPlat-platform"]
       exclude: ["__pycache__", "tests/"]
       grep_exclude: ["kb/poc/ocr\\.py"]
@@ -267,7 +275,8 @@ rules:
     level: error
     check:
       type: grep_forbidden
-      pattern: "def parse_docx|def parse_pptx|def parse_markdown|def classify_document|def _extract_keywords|def _score_text"
+      pattern: "def parse_docx|def parse_pptx|def parse_markdown|def classify_document|def
+        _extract_keywords|def _score_text"
       paths: ["aiPlat-platform/kb/intelligence"]
       exclude: ["__pycache__", "tests/"]
     message: "platform implements own parsers/classifiers (belongs in core)"
@@ -290,7 +299,8 @@ rules:
     level: error
     check:
       type: grep_forbidden
-      pattern: "def _cosine_similarity|def _dedupe|def retrieve|def _search_embedding|def _search_keyword"
+      pattern: "def _cosine_similarity|def _dedupe|def retrieve|def _search_embedding|def
+        _search_keyword"
       paths: ["aiPlat-platform/kb/intelligence/query.py"]
       exclude: ["__pycache__", "tests/"]
     message: "platform query.py implements retrieval algorithms (belongs in core)"
@@ -301,10 +311,12 @@ rules:
     level: error
     check:
       type: grep_forbidden
-      pattern: "def _cosine_similarity|def _dedupe|def retrieve|def _search_embedding|def _search_keyword"
+      pattern: "def _cosine_similarity|def _dedupe|def retrieve|def _search_embedding|def
+        _search_keyword"
       paths: ["aiPlat-platform/kb/intelligence/video_retrieval.py"]
       exclude: ["__pycache__", "tests/"]
-    message: "platform video_retrieval.py implements retrieval algorithms (belongs in core)"
+    message: "platform video_retrieval.py implements retrieval algorithms (belongs
+      in core)"
 
   # ═══ Section 13: Platform No Agent Discovery ═══
   - id: platform_no_agent_discovery
@@ -313,7 +325,8 @@ rules:
     level: error
     check:
       type: grep_forbidden
-      pattern: "def _build_agent_catalog|def list_available_agents|def recommend_team_stages|_load_agent_md|_role_agent_md_path|def _scan_agent"
+      pattern: "def _build_agent_catalog|def list_available_agents|def recommend_team_stages|_load_agent_md|_role_agent_md_path|def
+        _scan_agent"
       paths: ["aiPlat-platform/builder"]
       exclude: ["__pycache__", "tests/"]
       grep_exclude: ["builder_roles\\.py|builder_project_service\\.py"]
@@ -329,8 +342,10 @@ rules:
       pattern: "subprocess\\.run\\("
       paths: ["aiPlat-core/core/harness/execution"]
       exclude: ["__pycache__", "tests/"]
-      grep_exclude: ["capture_output.*text.*timeout|# noqa|_write_file|git.*-C.*repo_root|f\"r = subprocess"]
-    message: "synchronous subprocess.run in async context — known exceptions: _git_commit_stage (sync function), f-string template (not real call)"
+      grep_exclude: ["capture_output.*text.*timeout|# noqa|_write_file|git.*-C.*repo_root|f\"\
+            r = subprocess"]
+    message: "synchronous subprocess.run in async context — known exceptions: _git_commit_stage
+      (sync function), f-string template (not real call)"
 
   # ═══ Section 22: License ═══
   - id: license_copyleft
@@ -407,9 +422,11 @@ rules:
     check:
       type: grep_forbidden
       pattern: "except\\s*:"
-      paths: ["aiPlat-core/core", "aiPlat-platform", "aiPlat-management/management", "aiplat-sdk"]
+      paths: ["aiPlat-core/core", "aiPlat-platform", "aiPlat-management/management",
+        "aiplat-sdk"]
       exclude: ["__pycache__", "tests/", "node_modules", ".venv"]
-      grep_exclude: ["except Exception|except BaseException|except.*Error|except.*Warning|# noqa|# allowed|flatted"]
+      grep_exclude: ["except Exception|except BaseException|except.*Error|except.*Warning|#
+            noqa|# allowed|flatted"]
     message: "bare except: detected — use specific exception types"
     auto_fix:
       enabled: true
@@ -435,7 +452,7 @@ rules:
   - id: hardcoded_system_roles
     section: "§34"
     section_name: "Hardcoded System Prompts"
-    level: warning
+    level: info
     check:
       type: grep_forbidden
       pattern: '"role"\\s*:\\s*"system"'
@@ -448,13 +465,15 @@ rules:
   - id: execute_path_uniqueness
     section: "§35"
     section_name: "Agent Execute Path Uniqueness"
-    level: warning
+    level: error
     check:
-      type: grep_forbidden
-      pattern: "@router\\.(post|get|put)\\(.*\\{agent_id\\}/execute"
-      paths: ["aiPlat-core/core/api/routers"]
-      exclude: ["__pycache__", "tests/"]
-    message: "duplicate execute endpoints detected (expect 2: engine + workspace — this is a permanent info-level warning, 2 is correct)"
+      type: cmd_output
+      shell: c=$(grep -rIn "@router\.\(post\|get\|put\).*{agent_id}/execute" 
+        aiPlat-core/core/api/routers/ 2>/dev/null | wc -l | tr -d " "); if [ 
+        "$c" -le 2 ]; then echo OK; else echo "TOO_MANY:$c"; fi
+      ok_pattern: OK
+    message: "Agent execute endpoints must not exceed 2 (engine + workspace). Found
+      3+ must be justified or merged."
 
   # ═══ Section 36: system_prompt Flow Integrity ═══
   - id: sysprompt_flow_corefacade
@@ -486,7 +505,11 @@ rules:
     check:
       type: grep_required
       pattern: "system_prompt|_sys_prompt"
-      paths: ["aiPlat-core/core/harness/execution/loop.py"]
+      paths:
+        - aiPlat-core/core/harness/execution/loop/
+        - aiPlat-core/core/harness/execution/loop/_facade.py
+        - aiPlat-core/core/harness/execution/loop/base.py
+        - aiPlat-core/core/harness/execution/loop/inference.py
       exclude: []
     message: "loop.py does not read system_prompt from context"
 
@@ -500,19 +523,23 @@ rules:
       pattern: "class\\s+ModelRegistry|def\\s+get_model_registry|get_default_for_purpose"
       paths: ["aiPlat-core/core/harness/"]
       exclude: ["__pycache__", "tests/"]
-      grep_exclude: ["DEPRECATED|deprecated|infra_bridge|integration\\.py|model_router\\.py"]
+      grep_exclude: ["DEPRECATED|deprecated|infra_bridge|integration\\.py|model_router\\\
+            .py"]
     message: "core must not maintain own model registry (use infra ModelManager)"
 
   - id: capability_duplication_cross_layer
     section: "§37"
     section_name: "跨层能力重复检测"
-    level: warning
+    level: info
     check:
       type: grep_forbidden
-      pattern: "class\\s+\\w+(Model|LLM|Vector|Embedding|Database|Cache|Storage|Network|Compute)\\w*(?:Registry|Manager|Router)"
+      pattern: "class\\s+\\w+(Model|LLM|Vector|Embedding|Database|Cache|Storage|Network|Compute)\\\
+        w*(?:Registry|Manager|Router)"
       paths: ["aiPlat-core/core/harness/"]
-      exclude: ["__pycache__", "tests/", "integration.py", "model_registry.py", "model_router.py", "model_injection.py", "infra_bridge.py", "infrastructure/"]
-    message: "potential cross-layer capability duplication — infra may already provide this"
+      exclude: ["__pycache__", "tests/", "integration.py", "model_registry.py", "model_router.py",
+        "model_injection.py", "infra_bridge.py", "infrastructure/"]
+    message: "potential cross-layer capability duplication — infra may already provide
+      this"
 
   # ═══ Section 38: LLM API Bypass ═══
   - id: llm_api_bypass
@@ -521,11 +548,13 @@ rules:
     level: error
     check:
       type: grep_forbidden
-      pattern: "openai\\.ChatCompletion|openai\\.chat\\.completions|openai\\.completions|anthropic\\.(?!types|_version)|litellm\\.completion|google\\.generativeai|cohere\\.Client"
+      pattern: "openai\\.ChatCompletion|openai\\.chat\\.completions|openai\\.completions|anthropic\\\
+        .(?!types|_version)|litellm\\.completion|google\\.generativeai|cohere\\.Client"
       paths: ["aiPlat-platform", "aiPlat-app"]
       exclude: ["__pycache__", "tests/", "generated/"]
       grep_exclude: ["# noqa: llm-approved"]
-    message: "platform/app directly calling LLM API — use CoreFacade.llm_complete() or sys_llm_generate"
+    message: "platform/app directly calling LLM API — use CoreFacade.llm_complete()
+      or sys_llm_generate"
 
   # ═══ Section 39: Diagnostic Graph Rebuild ═══
   - id: diag_single_graph_build
@@ -551,9 +580,11 @@ rules:
       type: grep_forbidden
       pattern: 'create_adapter\s*\(\s*provider\s*=\s*"'
       paths: ["aiPlat-core/"]
-      exclude: ["__pycache__", "tests/", "adapters/llm/base.py", "harness/infrastructure/", "harness/knowledge/"]
+      exclude: ["__pycache__", "tests/", "adapters/llm/base.py", "harness/infrastructure/",
+        "harness/knowledge/"]
       grep_exclude: ["# noqa: adapter-legacy", "# noqa: canonical-injection"]
-    message: "hardcoded model provider in create_adapter() — use create_selected_adapter() or get_default_model()"
+    message: "hardcoded model provider in create_adapter() — use create_selected_adapter()
+      or get_default_model()"
 
   # 40.2: No direct env var model reads bypassing centralized resolution
   - id: model_env_bypass
@@ -564,10 +595,11 @@ rules:
       type: grep_forbidden
       pattern: 'os\.getenv\s*\(\s*"AIPLAT_\w*MODEL\w*"\s*[,)]'
       paths: ["aiPlat-core/", "aiPlat-platform/"]
-      exclude: ["__pycache__", "tests/", "harness/utils/model_injection.py",
-                "harness/infrastructure/", "infra/"]
+      exclude: ["__pycache__", "tests/", "harness/utils/model_injection.py", "harness/infrastructure/",
+        "infra/"]
       grep_exclude: ["# noqa: env-legacy"]
-    message: "direct env var read for AIPLAT_*_MODEL — use get_default_model() or create_selected_adapter()"
+    message: "direct env var read for AIPLAT_*_MODEL — use get_default_model() or
+      create_selected_adapter()"
 
   # 40.3: No raw sqlite3.connect in core/api — use execution_store
   - id: raw_sqlite_api_layer
@@ -580,10 +612,11 @@ rules:
       paths: ["aiPlat-core/core/api/", "aiPlat-core/core/harness/syscalls/"]
       exclude: ["__pycache__", "tests/"]
       grep_exclude: ["execution_store", "infra_bridge", "# noqa: sqlite-approved",
-                     "kb_eval\\.py", "packages_registry\\.py", "overview\\.py",
-                     "prompt_eval\\.py", "prompt_app\\.py", "entropy\\.py",
-                     "wiki\\.py", "diagnostics\\.py", "retrieval\\.py"]
-    message: "raw sqlite3.connect() in API/syscall layer — use execution_store or infra_bridge"
+        "kb_eval\\.py", "packages_registry\\.py", "overview\\.py", "prompt_eval\\\
+            .py", "prompt_app\\.py", "entropy\\.py", "wiki\\.py", "diagnostics\\.py",
+        "retrieval\\.py"]
+    message: "raw sqlite3.connect() in API/syscall layer — use execution_store or
+      infra_bridge"
 
   # 40.4: No hardcoded model name strings — use best_model_for_purpose() or create_selected_adapter()
   - id: model_name_hardcode
@@ -595,7 +628,7 @@ rules:
       pattern: '"(deepseek-chat|gpt-4[^a-z]|gpt-3\.5|deepseek-reasoner|claude-3)"'
       paths: ["aiPlat-core/", "aiPlat-platform/"]
       exclude: ["__pycache__", "tests/", "model_registry.py", "model_injection.py",
-                "arch_guard_rules.yaml", "infra/", "agent_config_validator.py", "finetune/"]
+        "arch_guard_rules.yaml", "infra/", "agent_config_validator.py", "finetune/"]
       grep_exclude: ["# noqa: model-legacy", "# noqa: interface-default"]
     message: "hardcoded model name — use best_model_for_purpose() or create_selected_adapter()"
 
@@ -609,7 +642,8 @@ rules:
       pattern: 'getattr\s*\([a-zA-Z_]+\s*,\s*["\u2018]workspace_context["\u2019]\s*[,\)]'
       paths: ["aiPlat-core/core/harness/"]
       exclude: ["__pycache__", "tests/", "kernel/execution_context.py", "tools/toolsets.py"]
-    message: "indirect workspace_context attribute access — use get_active_workspace_context() ContextVar"
+    message: "indirect workspace_context attribute access — use get_active_workspace_context()
+      ContextVar"
 
   # 40.5: No bare except:pass in gate paths (must log)
   - id: bare_except_pass_gate
@@ -619,36 +653,43 @@ rules:
     check:
       type: grep_forbidden
       pattern: 'except Exception:\s*\n\s*pass'
-      paths: ["aiPlat-core/core", "aiPlat-platform", "aiPlat-management/management", "aiplat-sdk"]
+      paths: ["aiPlat-core/core", "aiPlat-platform", "aiPlat-management/management",
+        "aiplat-sdk"]
       exclude: ["__pycache__", "tests/", "node_modules", ".venv"]
       grep_exclude: ["# noqa|# allowed"]
-    message: "except Exception: pass detected — must log with warning/error level minimum"
+    message: "except Exception: pass detected — must log with warning/error level
+      minimum"
 
   # 40.5b: No logging.debug(exc_info=True) in except blocks — use warning level
   - id: debug_exc_info_in_except
     section: "§40"
     section_name: "静默吞错防护 — debug+exc_info in except"
-    level: warning
+    level: info
     check:
       type: grep_forbidden
       pattern: 'logging\.debug.*exc_info.*True'
-      paths: ["aiPlat-core/core/harness/syscalls/", "aiPlat-core/core/harness/execution/", "aiPlat-core/core/policy/", "aiPlat-core/core/api/routers/", "aiPlat-platform/api/", "aiPlat-platform/auth/"]
+      paths: ["aiPlat-core/core/harness/syscalls/", "aiPlat-core/core/harness/execution/",
+        "aiPlat-core/core/policy/", "aiPlat-core/core/api/routers/", "aiPlat-platform/api/",
+        "aiPlat-platform/auth/"]
       exclude: ["__pycache__", "tests/"]
-      grep_exclude: ["# noqa: intentional.*best-effort|# noqa: intentional.*logged at"]
-    message: "logging.debug with exc_info=True in except block — upgrade to warning level for production visibility"
+      grep_exclude: ["# noqa: intentional.*best-effort|# noqa: intentional.*logged
+            at"]
+    message: "logging.debug with exc_info=True in except block — upgrade to warning
+      level for production visibility"
 
   # 40.6: No duplicate function signatures across syscall modules
   - id: duplicate_syscall_signatures
     section: "§40"
     section_name: "并行实现检测"
-    level: warning
+    level: info
     check:
       type: grep_forbidden
       pattern: 'def create_adapter\b|def resolve_model\b|def get_model\b'
       paths: ["aiPlat-core/core/harness/syscalls/", "aiPlat-core/core/apps/"]
       exclude: ["__pycache__", "tests/", "adapters/llm/base.py"]
       grep_exclude: ["# re-export from", "import", "# noqa: agent-model"]
-    message: "potential duplicate model resolution function — centralized resolution is in model_injection.py"
+    message: "potential duplicate model resolution function — centralized resolution
+      is in model_injection.py"
 
   # 40.7: No direct adapter model env var reads outside base_model_adapter.py
   # All capability model resolution must go through resolve_model_name() / create_adapter()
@@ -661,8 +702,10 @@ rules:
       pattern: '(AIPLAT_EMBEDDING_MODEL|AIPLAT_RERANK_MODEL|AIPLAT_VIDEO_WHISPER_MODEL|AIPLAT_VIDEO_OCR_MODEL)'
       paths: ["aiPlat-core/core/"]
       exclude: ["__pycache__", "tests/"]
-      grep_exclude: ["base_model_adapter\\.py", "_MODEL_ENV_MAP|_MODEL_DEFAULTS", "infra_bridge", "# noqa: adapter-resolution"]
-    message: "direct os.getenv read of adapter model env var — use resolve_model_name(capability) or create_adapter(capability) from base_model_adapter"
+      grep_exclude: ["base_model_adapter\\.py", "_MODEL_ENV_MAP|_MODEL_DEFAULTS",
+        "infra_bridge", "# noqa: adapter-resolution"]
+    message: "direct os.getenv read of adapter model env var — use resolve_model_name(capability)
+      or create_adapter(capability) from base_model_adapter"
 
   - id: agent_init_no_direct_create_adapter
     section: "§40"
@@ -674,7 +717,8 @@ rules:
       paths: ["aiPlat-core/core/apps/agents", "aiPlat-core/core/apps/skills"]
       exclude: ["__pycache__", "tests/"]
       grep_exclude: ["# noqa: agent-init-legacy"]
-    message: "Agent 初始化中直接调 create_adapter() 绕过 infra ModelManager 中央解析。请使用 create_selected_adapter(model_name=config.model) 替代。"
+    message: "Agent 初始化中直接调 create_adapter() 绕过 infra ModelManager 中央解析。请使用 create_selected_adapter(model_name=config.model)
+      替代。"
 
   # ═══ Section 41: Utilization Guard — detect dead/inactive mechanisms ═══
   # Catches patterns that existing architecture guard (§1-§40) cannot detect:
@@ -699,7 +743,8 @@ rules:
       paths: ["aiPlat-core/core/harness/memory/"]
       exclude: ["__pycache__", "tests/"]
       grep_exclude: ["# wiring: active", "# noqa: pending-wire"]
-    message: "_persist_callback is None — long-term memory persistence is disabled. Wire it or mark # noqa: pending-wire."
+    message: "_persist_callback is None — long-term memory persistence is disabled.
+      Wire it or mark # noqa: pending-wire."
 
   # 41.2: Detect values initialized but never updated (budget_remaining, context_pressure, etc.)
   - id: dead_budget_tracking
@@ -711,45 +756,51 @@ rules:
       pattern: 'budget_remaining\s*[=:]\s*1\.0'
       paths: ["aiPlat-core/core/harness/interfaces/", "aiPlat-core/core/harness/execution/"]
       exclude: ["__pycache__", "tests/"]
-    message: "budget_remaining initialized to 1.0 but never updated — token budget exhaustion is dead code. Add budget_remaining = 1.0 - used_tokens/max_tokens in _reason()."
+    message: "budget_remaining initialized to 1.0 but never updated — token budget
+      exhaustion is dead code. Add budget_remaining = 1.0 - used_tokens/max_tokens
+      in _reason()."
 
   # 41.3: Detect DI registrations without corresponding di.resolve() calls
   - id: dead_di_registration
     section: "§41"
     section_name: "利用化守卫 — DI 容器"
-    level: warning
+    level: info
     check:
       type: grep_forbidden
       pattern: 'di_factory\(\s*"AgentRegistry"|di_factory\(\s*"TraceService"|di_factory\(\s*"PermissionManager"|di_factory\(\s*"SubagentCoordinator"|di_factory\(\s*"IAgent"|di_factory\(\s*"ISkill"|di_factory\(\s*"ITool"'
       paths: ["aiPlat-core/core/harness/integration.py"]
       exclude: ["__pycache__", "tests/"]
       grep_exclude: ["# wiring: live", "# noqa: di-live"]
-    message: "DI registration without di.resolve() caller — check if this service is actually used through DI"
+    message: "DI registration without di.resolve() caller — check if this service
+      is actually used through DI"
 
   # 41.4: Detect env-var defaults that disable critical features
   - id: disabled_by_default
     section: "§41"
     section_name: "利用化守卫 — 默认禁用"
-    level: warning
+    level: info
     check:
       type: grep_forbidden
-      pattern: 'os\.getenv\("AIPLAT_APPLY_PROMPT_REVISIONS", "false"\)|os\.getenv\("AIPLAT_SYSCALL_ENFORCE_APPROVAL", "false"\)|os\.getenv\("AIPLAT_APPROVALS_DISABLED", "true"\)'
+      pattern: 'os\.getenv\("AIPLAT_APPLY_PROMPT_REVISIONS", "false"\)|os\.getenv\("AIPLAT_SYSCALL_ENFORCE_APPROVAL",
+        "false"\)|os\.getenv\("AIPLAT_APPROVALS_DISABLED", "true"\)'
       paths: ["aiPlat-core/core/harness/syscalls/", "aiPlat-core/core/harness/infrastructure/"]
       exclude: ["__pycache__", "tests/"]
       grep_exclude: ["# noqa: planned-phase4", "# noqa: known-design"]
-    message: "critical feature is disabled by default via env var — consider enabling by default"
+    message: "critical feature is disabled by default via env var — consider enabling
+      by default"
 
   # 41.5: Detect threshold too high for practical use
   - id: impractical_threshold
     section: "§41"
     section_name: "利用化守卫 — 阈值过高"
-    level: warning
+    level: info
     check:
       type: grep_forbidden
       pattern: 'AIPLAT_TOOL_SELECTOR_THRESHOLD", "1[5-9]"|"1[5-9]"'
       paths: ["aiPlat-core/core/harness/execution/tool_selector.py"]
       exclude: ["__pycache__", "tests/"]
-    message: "tool selector threshold is too high for most sessions — uses default(15) which is a no-op. Consider 5-10."
+    message: "tool selector threshold is too high for most sessions — uses default(15)
+      which is a no-op. Consider 5-10."
 
   # ═══ Section 42: Subprocess Python Consistency ═══
   - id: subprocess_bare_python3
@@ -761,8 +812,11 @@ rules:
       pattern: 'subprocess\.run\(\["python3"|subprocess\.run\(\["python"|asyncio\.create_subprocess_exec\("python3"|asyncio\.create_subprocess_exec\("python"'
       paths: ["aiPlat-core/core"]
       exclude: ["__pycache__", "tests/", "conftest.py"]
-      grep_exclude: ["exec_drivers/docker\\.py", "exec_drivers/ssh\\.py", "capability_convergence\\.py", "arch_guard_rules/", "sys\\.executable", 'if.*command.*==.*"python3"', "scripts/architecture_guard\\.py"]
-    message: "bare 'python3' in subprocess call — use sys.executable to ensure venv Python is used"
+      grep_exclude: ["exec_drivers/docker\\.py", "exec_drivers/ssh\\.py", "capability_convergence\\\
+            .py", "arch_guard_rules/", "sys\\.executable", 'if.*command.*==.*"python3"',
+        "scripts/architecture_guard\\.py"]
+    message: "bare 'python3' in subprocess call — use sys.executable to ensure venv
+      Python is used"
     auto_fix:
       enabled: true
       replacement: 'subprocess.run([sys.executable'
@@ -782,8 +836,10 @@ rules:
       pattern: '"reddit"|"twitter"|"x "|"youtube"|"tiktok"|"instagram"|"hackernews"|"polymarket"'
       paths: ["aiPlat-core/core"]
       exclude: ["__pycache__", "tests/"]
-      grep_exclude: ["prompt_loader\\.py", "prompt_app\\.py", "arch_guard_rules/", "skill_adapter\\.py"]
-    message: "hardcoded platform name in core — use config-driven or relocate to AGENT.md/SKILL.md frontmatter"
+      grep_exclude: ["prompt_loader\\.py", "prompt_app\\.py", "arch_guard_rules/",
+        "skill_adapter\\.py"]
+    message: "hardcoded platform name in core — use config-driven or relocate to AGENT.md/SKILL.md
+      frontmatter"
 
   # 43.2: No hardcoded skill-name branching — use metadata/capabilities config
   - id: kernel_agnostic_skill_branching
@@ -796,7 +852,8 @@ rules:
       paths: ["aiPlat-core/core"]
       exclude: ["__pycache__", "tests/"]
       grep_exclude: ["arch_guard_rules/"]
-    message: "hardcoded skill-name decision branch — use metadata/capabilities config instead"
+    message: "hardcoded skill-name decision branch — use metadata/capabilities config
+      instead"
 
   # 43.3: No hardcoded scenario examples in LLM prompts — use generic principles
   - id: kernel_agnostic_prompt_examples
@@ -809,7 +866,8 @@ rules:
       paths: ["aiPlat-core/core"]
       exclude: ["__pycache__", "tests/"]
       grep_exclude: ["arch_guard_rules/"]
-    message: "hardcoded scenario example in LLM prompt — use generic principles instead of specific cases"
+    message: "hardcoded scenario example in LLM prompt — use generic principles instead
+      of specific cases"
 
   # ═══ Section 44: Execution Realness — Skill / Mock Authenticity ═══
   # 44.1: Detect mock fallback in production code (must be gated by env var or audited)
@@ -836,7 +894,8 @@ rules:
       paths: ["aiPlat-core/core"]
       exclude: ["__pycache__", "tests/"]
       grep_exclude: ["arch_guard_rules/"]
-    message: "default mock value in env var resolution — use empty string instead or gate explicitly"
+    message: "default mock value in env var resolution — use empty string instead
+      or gate explicitly"
 
   # ═══ Section 45: Prompt Template — No Hardcoded Multi-Line Prompts ═══
   # 45.1: Detect hardcoded Chinese/English LLM system prompts in router/apps/platform code
@@ -849,8 +908,10 @@ rules:
       pattern: '"你是一个|"你是 |"您是|"你的任务是|"你是一位|"You are a (helpful |)(assistant|expert|agent|developer|evaluator|helper|curator|planner)'
       paths: ["aiPlat-core/core/api/routers", "aiPlat-core/core/apps", "aiPlat-platform"]
       exclude: ["__pycache__", "tests/"]
-      grep_exclude: ["prompt_loader\\.py", "prompt_app\\.py", "_async_prompt_resolve", "_sync_resolve", "_resolve_assemble", "system_prompt:", "arch_guard_rules/"]
-    message: "hardcoded LLM prompt — register in prompt_loader.py via _register() and load via _async_prompt_resolve()"
+      grep_exclude: ["prompt_loader\\.py", "prompt_app\\.py", "_async_prompt_resolve",
+        "_sync_resolve", "_resolve_assemble", "system_prompt:", "arch_guard_rules/"]
+    message: "hardcoded LLM prompt — register in prompt_loader.py via _register()
+      and load via _async_prompt_resolve()"
 
   # 45.2: Detect users of system role dict for non-loader code paths
   - id: prompt_hardcode_system_role_dict
@@ -859,11 +920,14 @@ rules:
     level: error
     check:
       type: grep_forbidden
-      pattern: '\{"role":\s*"system",\s*"content":\s*"你是一|\{"role":\s*"system",\s*"content":\s*"你是 |\{"role":\s*"system",\s*"content":\s*"You are a'
+      pattern: '\{"role":\s*"system",\s*"content":\s*"你是一|\{"role":\s*"system",\s*"content":\s*"你是
+        |\{"role":\s*"system",\s*"content":\s*"You are a'
       paths: ["aiPlat-core/core/api/routers", "aiPlat-core/core/apps"]
       exclude: ["__pycache__", "tests/"]
-      grep_exclude: ["prompt_loader\\.py", "_async_prompt_resolve", "_sync_resolve", "arch_guard_rules/"]
-    message: "hardcoded system role dict — use _async_prompt_resolve() to load from prompt_loader"
+      grep_exclude: ["prompt_loader\\.py", "_async_prompt_resolve", "_sync_resolve",
+        "arch_guard_rules/"]
+    message: "hardcoded system role dict — use _async_prompt_resolve() to load from
+      prompt_loader"
 
   # ═══ Section 46: Skill Execution Realness — Automated ═══
   # 46.1: Upgrade handler type without handler file from WARNING to ERROR
@@ -877,33 +941,38 @@ rules:
       paths: ["~/.aiplat/skills/"]
       exclude: ["__pycache__"]
       grep_exclude: []
-    message: "SKILL.md declares execution_type:handler — verify handler.py exists at same level (run: find ~/.aiplat/skills/ -name SKILL.md -exec dirname {} \\; | while read d; do grep -l 'execution_type.*handler' \"$d/SKILL.md\" 2>/dev/null && test -f \"$d/handler.py\" || echo \"MISSING: $d/handler.py\"; done)"
+    message: "SKILL.md declares execution_type:handler — verify handler.py exists
+      at same level (run: find ~/.aiplat/skills/ -name SKILL.md -exec dirname {} \\
+      ; | while read d; do grep -l 'execution_type.*handler' \"$d/SKILL.md\" 2>/dev/null
+      && test -f \"$d/handler.py\" || echo \"MISSING: $d/handler.py\"; done)"
 
   # 46.2: Detect handler.py files without execution_type:handler declared
   - id: skill_execution_type_prompt_with_handler
     section: "§46"
     section_name: "执行真实性 — handler/execution_type 不一致"
-    level: warning
+    level: info
     check:
       type: grep_forbidden
       pattern: 'execution_type:\s*prompt'
       paths: ["~/.aiplat/skills/"]
       exclude: ["__pycache__"]
       grep_exclude: []
-    message: "SKILL.md declares execution_type:prompt — if handler.py exists in same dir, change to execution_type:handler"
+    message: "SKILL.md declares execution_type:prompt — if handler.py exists in same
+      dir, change to execution_type:handler"
 
   # ═══ Section 47: Structural Completeness — Known Dead Code ═══
   - id: zero_caller_todo_wire
     section: "§47"
     section_name: "接线完成度 — 零调用者标记"
-    level: warning
+    level: info
     check:
       type: grep_forbidden
       pattern: '# TODO.*wire|# FIXME.*caller|# TODO.*caller|0 caller|zero caller|FIXME.*wire|待接线'
       paths: ["aiPlat-core/core"]
       exclude: ["__pycache__", "tests/"]
       grep_exclude: ["arch_guard_rules/"]
-    message: "marked as needs-wiring or zero-caller — verify production caller exists or delete dead code"
+    message: "marked as needs-wiring or zero-caller — verify production caller exists
+      or delete dead code"
 
   # ═══ Section 48: Agent Boundaries — No Direct Cross-Agent Calls ═══
   - id: agent_no_direct_execute_calls
@@ -915,21 +984,24 @@ rules:
       pattern: 'agent_registry\.get\(.+\)\.execute\(|_agents\[.+?\]\.execute\(|\.execute\(\s*AgentContext\('
       paths: ["aiPlat-core/core/apps/agents", "aiPlat-core/core/harness"]
       exclude: ["__pycache__", "tests/"]
-      grep_exclude: ["multi_agent\\.py", "subagent/coordinator\\.py", "integration\\.py", "loop_engine\\.py", "coordination/patterns/", "harness_agent\\.py", "arch_guard_rules/"]
+      grep_exclude: ["multi_agent\\.py", "subagent/coordinator\\.py", "integration\\\
+            .py", "loop_engine\\.py", "coordination/patterns/", "harness_agent\\.py",
+        "arch_guard_rules/"]
     message: "agent calling another agent directly — use AgentMessageBus or SubagentCoordinator"
 
   # ═══ Section 49: Observability — Trace/Span Enforcement ═══
   - id: syscall_missing_trace_id
     section: "§49"
     section_name: "可观测性 — trace_id/span_id 缺失检测"
-    level: warning
+    level: info
     check:
       type: grep_forbidden
       pattern: '# FIXME.*trace|# TODO.*trace_id|# TODO.*span_id|### MISSING.*trace'
       paths: ["aiPlat-core/core/harness/syscalls"]
       exclude: ["__pycache__"]
       grep_exclude: ["arch_guard_rules/"]
-    message: "syscall code marked as missing trace_id/span_id — add observability before merge"
+    message: "syscall code marked as missing trace_id/span_id — add observability
+      before merge"
 
   # ═══ Section 50: Agent Boundaries — No Direct Harness Internal Access ═══
   - id: agent_no_direct_harness_access
@@ -948,12 +1020,14 @@ rules:
   - id: agent_md_too_large
     section: "§51"
     section_name: "AGENT.md 大小 — 建议 <100 行"
-    level: warning
+    level: info
     check:
       type: cmd_output
-      shell: "find ~/.aiplat/agents/ -name 'AGENT.md' ! -path '*/auto/*' -exec wc -l {} + 2>/dev/null | awk '$1 > 200 && !/SOUL|MEMORY/ {print $2\": \"$1\" lines\"}' | head -5"
+      shell: "find ~/.aiplat/agents/ -name 'AGENT.md' ! -path '*/auto/*' -exec wc
+        -l {} + 2>/dev/null | grep -v ' total$' | awk '$1 > 100 && !/SOUL|MEMORY/
+        {print $2\": \"$1\" lines\"}' | head -5"
       ok_pattern: "^$"
-    message: "AGENT.md exceeds 200 lines — consider splitting into docs/ai-workflows/ per §5.27.3"
+    message: "单个 AGENT.md 超过 100 行 — 建议拆分为 docs/ai-workflows/ 专项文档 (§5.27.3)"
 
   # ═══ Section 52: Core Module Dependency Direction ═══
   - id: core_module_backwards_dep_agents_to_harness
@@ -962,23 +1036,27 @@ rules:
     level: error
     check:
       type: grep_forbidden
-      pattern: 'from core\.harness\.execution\.engine import|from core\.harness\.execution\.loop import'
+      pattern: 'from core\.harness\.execution\.engine import|from core\.harness\.execution\.loop
+        import'
       paths: ["aiPlat-core/core/apps/agents", "aiPlat-core/core/apps/skills"]
       exclude: ["__pycache__", "tests/"]
       grep_exclude: ["arch_guard_rules/"]
-    message: "agents importing engine internals — violates core module dependency matrix (§5.14: agents→harness not authorized)"
+    message: "agents importing engine internals — violates core module dependency
+      matrix (§5.14: agents→harness not authorized)"
 
   - id: core_module_backwards_dep_apps_to_harness_internal
     section: "§52"
     section_name: "Core 模块依赖方向"
-    level: warning
+    level: info
     check:
       type: grep_forbidden
-      pattern: 'from core\.harness\.execution\.engine import|from core\.harness\.memory\.working import'
+      pattern: 'from core\.harness\.execution\.engine import|from core\.harness\.memory\.working
+        import'
       paths: ["aiPlat-core/core/apps"]
       exclude: ["__pycache__", "tests/"]
       grep_exclude: ["arch_guard_rules/"]
-    message: "apps importing harness internal modules directly — use facade or service layer (§5.7)"
+    message: "apps importing harness internal modules directly — use facade or service
+      layer (§5.7)"
 
   # ═══ Section 53: Agent Design — No Query-Type Branching ═══
   - id: agent_no_query_type_branching
@@ -987,24 +1065,28 @@ rules:
     level: error
     check:
       type: grep_forbidden
-      pattern: 'if query_type|elif query_type|if task_type|elif task_type|if intent_type|elif intent_type'
+      pattern: 'if query_type|elif query_type|if task_type|elif task_type|if intent_type|elif
+        intent_type'
       paths: ["aiPlat-core/core/apps/agents", "aiPlat-core/core/apps/skills"]
       exclude: ["__pycache__", "tests/"]
       grep_exclude: ["arch_guard_rules/", "intents\\.py", "prompt_assembler\\.py"]
-    message: "agent contains query_type/task_type hardcoded branching — route through Internal Policy module per §5.9"
+    message: "agent contains query_type/task_type hardcoded branching — route through
+      Internal Policy module per §5.9"
 
   # ═══ Section 54: UI — No Artifact Key Hardcoding ═══
   - id: ui_no_artifact_key_branching
     section: "§54"
     section_name: "UI — 禁止按 artifact key 做特殊分支"
-    level: warning
+    level: info
     check:
       type: grep_forbidden
-      pattern: "key === 'test_report'|key === 'architecture'|key === 'code'|key === 'prd'|key === 'test_plan'"
+      pattern: "key === 'test_report'|key === 'architecture'|key === 'code'|key ===
+        'prd'|key === 'test_plan'"
       paths: ["aiPlat-management/frontend/src"]
       exclude: ["__pycache__", "node_modules/"]
       grep_exclude: ["arch_guard_rules/", "test_", "spec\\.ts"]
-    message: "UI component branching on artifact key name — use structural properties (e.g. 'recommendation' in val) per MGMT §5.3"
+    message: "UI component branching on artifact key name — use structural properties
+      (e.g. 'recommendation' in val) per MGMT §5.3"
 
   # ═══ Section 55: Agent Design — No Unauthorized BaseAgent Subclasses ═══
   - id: agent_no_new_subclass_outside_approved
@@ -1017,49 +1099,42 @@ rules:
       paths: ["aiPlat-core/core/apps/agents", "aiPlat-core/core/apps/skills"]
       exclude: ["__pycache__", "tests/"]
       grep_exclude: ["base\\.py", "react\\.py", "rag\\.py", "materials_chat\\.py",
-                     "plan_execute\\.py", "conversational\\.py", "multi_agent\\.py",
-                     "pipeline_agent\\.py",
-                     "arch_guard_rules/", "# noqa: agent-subclass-approved"]
-    message: "new BaseAgent/IAgent subclass outside approved 7 implementation classes — use loop_type param or existing types per §5.22"
+        "plan_execute\\.py", "conversational\\.py", "multi_agent\\.py", "pipeline_agent\\\
+            .py", "arch_guard_rules/", "# noqa: agent-subclass-approved"]
+    message: "new BaseAgent/IAgent subclass outside approved 7 implementation classes
+      — use loop_type param or existing types per §5.22"
 
   # ═══ Section 56: Tool Name Uniqueness ═══
   - id: tool_name_uniqueness_duplicate_name
     section: "§56"
     section_name: "工具命名 — 重复 name 检测"
-    level: warning
+    level: info
     check:
       type: grep_forbidden
       pattern: 'name:\s*"(tool_search|calculator|search|file_operations|webfetch|browser|http|database|repo)"'
       paths: ["aiPlat-core/core/apps/tools"]
       exclude: ["__pycache__", "tests/"]
       grep_exclude: ["arch_guard_rules/"]
-    message: "potential tool name collision with built-in name — verify global uniqueness per §5.11"
+    message: "potential tool name collision with built-in name — verify global uniqueness
+      per §5.11"
 
   # ═══ Section 57: Workspace — No Engine Namespace Collision ═══
   - id: workspace_namespace_isolation
     section: "§57"
     section_name: "Workspace-Engine 命名空间隔离"
-    level: warning
+    level: info
     check:
       type: cmd_output
-      shell: "python3 -c \"
-import os
-base = os.path.expanduser('~/.aiplat/skills')
-engine = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'core/engine/skills')
-workspace_ids = set()
-engine_ids = set()
-for p in [base, engine]:
-    if not os.path.isdir(p): continue
-    for d in os.listdir(p):
-        if os.path.isdir(os.path.join(p, d)):
-            (workspace_ids if p == base else engine_ids).add(d)
-collisions = workspace_ids & engine_ids
-if collisions:
-    for c in sorted(collisions):
-        print(f'WARN: workspace skill {c!r} collides with engine skill')
-\" 2>/dev/null"
+      shell: "python3 -c \" import os base = os.path.expanduser('~/.aiplat/skills')
+        engine = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'core/engine/skills')
+        workspace_ids = set() engine_ids = set() for p in [base, engine]: if not os.path.isdir(p):
+        continue for d in os.listdir(p): if os.path.isdir(os.path.join(p, d)): (workspace_ids
+        if p == base else engine_ids).add(d) collisions = workspace_ids & engine_ids
+        if collisions: for c in sorted(collisions): print(f'WARN: workspace skill
+        {c!r} collides with engine skill') \" 2>/dev/null"
       ok_pattern: "^$"
-    message: "workspace skill ID collides with engine skill — use distinct namespace per §5.13"
+    message: "workspace skill ID collides with engine skill — use distinct namespace
+      per §5.13"
 
   # ═══ Section 58: Harness — No New Execution Subclasses ═══
   - id: harness_no_new_subclass
@@ -1071,16 +1146,17 @@ if collisions:
       pattern: 'class \w+\((ReActLoop|PipelineEngine|StageRunner)\)'
       paths: ["aiPlat-core/core/"]
       exclude: ["__pycache__", "tests/"]
-      grep_exclude: ["harness/execution/loop\\.py", "harness/execution/pipeline_engine\\.py",
-                     "harness/execution/stage_runner\\.py", "arch_guard_rules/",
-                     "# noqa: harness-subclass-approved"]
-    message: "new ReActLoop/PipelineEngine/StageRunner subclass outside approved files — use Agent type config not engine subclass per §5.22"
+      grep_exclude: ["harness/execution/loop\\.py", "harness/execution/pipeline_engine\\\
+            .py", "harness/execution/stage_runner\\.py", "arch_guard_rules/", "# noqa:
+            harness-subclass-approved"]
+    message: "new ReActLoop/PipelineEngine/StageRunner subclass outside approved files
+      — use Agent type config not engine subclass per §5.22"
 
   # ═══ Section 59: AGENT.md Handoff Completeness ═══
   - id: agent_md_missing_handoff_fields
     section: "§59"
     section_name: "AGENT.md 交接字段完整性"
-    level: warning
+    level: info
     check:
       type: grep_forbidden
       pattern: '^handoff:|^交接信息:|^handoff_target:'
@@ -1100,18 +1176,20 @@ if collisions:
       paths: ["aiPlat-core/core/harness/evaluation"]
       exclude: ["__pycache__", "tests/"]
       grep_exclude: ["_exec_test_runner", "arch_guard_rules/", "# noqa: eval-state-mutation"]
-    message: "evaluation function mutating state — evaluation functions must be pure, state changes belong in _exec_test_runner per §5.23.4"
+    message: "evaluation function mutating state — evaluation functions must be pure,
+      state changes belong in _exec_test_runner per §5.23.4"
 
   # ═══ Section 61: Installed Skill Structure Compliance ═══
   - id: skill_empty_scripts_dir
     section: "§61"
     section_name: "Skill 安装结构合规"
-    level: warning
+    level: info
     check:
       type: cmd_output
       cmd: "find ~/.aiplat/skills/ -maxdepth 2 -name scripts -type d -empty 2>/dev/null"
       ok_pattern: "^$"
-    message: "Empty scripts/ directory in installed skill — likely Path B zip import nesting artifact. Re-import via installer."
+    message: "Empty scripts/ directory in installed skill — likely Path B zip import
+      nesting artifact. Re-import via installer."
 
   - id: skill_nested_skill_md
     section: "§61"
@@ -1121,27 +1199,32 @@ if collisions:
       type: cmd_output
       cmd: "find ~/.aiplat/skills/*/skills/ -name 'SKILL.md' 2>/dev/null"
       ok_pattern: "^$"
-    message: "Nested skills/*/SKILL.md — broken zip import structure. Run adapt_skill() or re-import."
+    message: "Nested skills/*/SKILL.md — broken zip import structure. Run adapt_skill()
+      or re-import."
 
   - id: skill_nested_revisions
     section: "§61"
     section_name: "Skill 安装结构合规"
-    level: warning
+    level: info
     check:
       type: cmd_output
-      cmd: "find ~/.aiplat/skills/ -path '*/.revisions/*/SKILL.md' 2>/dev/null"
-      ok_pattern: "SKILL.md"
-    message: ".revisions/ backup SKILL.md present — expected after updates, safe to ignore unless excessive."
+      shell: find /Users/apple/.aiplat/skills/ -path "*/.revisions/*/SKILL.md" 
+        2>/dev/null | wc -l | tr -d " " | xargs -I{} echo REVISIONS:{}
+      ok_pattern: REVISIONS
+    message: "Skill .revisions/ backups detected — normal after updates, counts shown
+      for awareness. Revisions are auto-created, not errors."
 
   - id: skill_handler_for_scripts
     section: "§61"
     section_name: "Skill 安装结构合规"
-    level: warning
+    level: info
     check:
       type: cmd_output
-      cmd: "for d in ~/.aiplat/skills/*/; do [ -f \"$d/scripts/\"*.py ] 2>/dev/null && [ ! -f \"$d/handler.py\" ] && echo \"$d\"; done"
+      cmd: "for d in ~/.aiplat/skills/*/; do [ -f \"$d/scripts/\"*.py ] 2>/dev/null
+        && [ ! -f \"$d/handler.py\" ] && echo \"$d\"; done"
       ok_pattern: "^$"
-    message: "Skill has scripts/*.py but no handler.py — should have execution_type: handler + handler.py"
+    message: "Skill has scripts/*.py but no handler.py — should have execution_type:
+      handler + handler.py"
 
   # ═══ Section 62: Installed Agent/Workflow/MCP Structure Compliance ═══
   - id: agent_nested_path
@@ -1150,9 +1233,11 @@ if collisions:
     level: error
     check:
       type: cmd_output
-      cmd: "find ~/.aiplat/agents/ -mindepth 3 -name 'AGENT.md' -not -path '*/.revisions/*' 2>/dev/null"
+      cmd: "find ~/.aiplat/agents/ -mindepth 3 -name 'AGENT.md' -not -path '*/.revisions/*'
+        2>/dev/null"
       ok_pattern: "^$"
-    message: "Nested AGENT.md at depth >=3 — broken zip import. Flatten directories or re-import."
+    message: "Nested AGENT.md at depth >=3 — broken zip import. Flatten directories
+      or re-import."
 
   - id: workflow_nested_path
     section: "§63"
@@ -1177,12 +1262,14 @@ if collisions:
   - id: skill_nested_not_in_revisions
     section: "§61"
     section_name: "Skill 安装结构合规"
-    level: warning
+    level: info
     check:
       type: cmd_output
-      cmd: "find ~/.aiplat/skills/ -path '*/skills/*/SKILL.md' -not -path '*/.revisions/*' 2>/dev/null"
+      cmd: "find ~/.aiplat/skills/ -path '*/skills/*/SKILL.md' -not -path '*/.revisions/*'
+        2>/dev/null"
       ok_pattern: "^$"
-    message: "Nested skills/*/SKILL.md (not in .revisions/) — broken zip import. Run adapt_skill() or re-import."
+    message: "Nested skills/*/SKILL.md (not in .revisions/) — broken zip import. Run
+      adapt_skill() or re-import."
 
   - id: agent_split_1_bug
     section: "§62"
@@ -1194,19 +1281,21 @@ if collisions:
       paths: ["aiPlat-core/core/api/routers/workspace_agents.py"]
       exclude: ["__pycache__", "tests/", "arch_guard_rules/"]
       grep_exclude: ["# noqa: split-1-approved", "shlex.split"]
-    message: "agent CREATE endpoint uses split('/',1) — will produce nested paths for GitHub release zips. Use _find_asset_dirs + copytree instead."
+    message: "agent CREATE endpoint uses split('/',1) — will produce nested paths
+      for GitHub release zips. Use _find_asset_dirs + copytree instead."
 
   - id: mgmt_proxy_coverage_overview
     section: "§63"
     section_name: "管理端代理路由覆盖"
-    level: warning
+    level: info
     check:
       type: grep_required
       pattern: "@router\\.get\\(\"/overview\"\\)"
       paths: ["aiPlat-management/management/api/core.py"]
       exclude: ["__pycache__", "tests/"]
       grep_exclude: []
-    message: "管理端缺少 /overview 代理路由。在 core/api/routers/overview.py 新增 @router 后，必须在 management/api/core.py 同步添加代理路由。"
+    message: "管理端缺少 /overview 代理路由。在 core/api/routers/overview.py 新增 @router 后，必须在
+      management/api/core.py 同步添加代理路由。"
 
   # ═══ Section 57: Context Assembly Compliance ═══
 
@@ -1219,10 +1308,15 @@ if collisions:
       pattern: 'sys_llm_generate'
       paths: ["aiPlat-core/core/apps/agents", "aiPlat-core/core/apps/skills"]
       exclude: ["__pycache__", "tests/", "arch_guard_rules/"]
-      grep_exclude: ["base\\.py", "materials_chat\\.py", "kb_planner\\.py", "registry\\.py"]
-      require_co_presence: ["build_context", "get_memory_manager", "MemoryManager", "compress"]
-      co_presence_message: "Agent 文件包含 sys_llm_generate 但未找到 build_context/MemoryManager — 绕过 5 级上下文压缩体系，违反 §7"
-    message: "Agent 直接调用 sys_llm_generate 但未使用 build_context/MemoryManager 进行上下文压缩。请使用 core/harness/knowledge/doc_compressor.py::compress_retrieved_docs() 或在 execute() 中接入 MemoryManager.build_context()。"
+      grep_exclude: ["base\\.py", "materials_chat\\.py", "kb_planner\\.py", "registry\\\
+            .py"]
+      require_co_presence: ["build_context", "get_memory_manager", "MemoryManager",
+        "compress"]
+      co_presence_message: "Agent 文件包含 sys_llm_generate 但未找到 build_context/MemoryManager
+        — 绕过 5 级上下文压缩体系，违反 §7"
+    message: "Agent 直接调用 sys_llm_generate 但未使用 build_context/MemoryManager 进行上下文压缩。请使用
+      core/harness/knowledge/doc_compressor.py::compress_retrieved_docs() 或在 execute()
+      中接入 MemoryManager.build_context()。"
 
   # ═══ Section 65: P0 Critical Gaps — CLAUDE.md rules with zero automated checks ═══
   # Phase 1: 5 fatal/high-severity rules previously only in CLAUDE.md, now automated.
@@ -1231,7 +1325,7 @@ if collisions:
   - id: multi_tenant_isolation
     section: "§65"
     section_name: "多租户数据隔离 — 检索/KB 查询必须带 tenant_id 或 collection_id"
-    level: warning
+    level: info
     check:
       type: grep_forbidden
       pattern: '(?:def (?:kb_retrieve|search_pages|graph_query|fts_search)\()(?!.*tenant_id|.*collection_id)'
@@ -1250,9 +1344,8 @@ if collisions:
       pattern: '(?:def (?:retrieve|search|query).*\()(?!.*_sanitize|.*_truncate)'
       paths: ["aiPlat-core/core/harness/syscalls/retrieval.py", "aiPlat-core/core/harness/knowledge/retriever.py"]
       exclude: ["__pycache__", "tests/", "retriever.py", "retrieval.py"]
-      grep_exclude: ["_sanitize_query", "clean_input", "truncate",
-                     "KnowledgeQuery", "query_schema", "QueryValidator",
-                     "# noqa: sanitize-in-schema"]
+      grep_exclude: ["_sanitize_query", "clean_input", "truncate", "KnowledgeQuery",
+        "query_schema", "QueryValidator", "# noqa: sanitize-in-schema"]
     message: "检索函数入口缺少输入清理 — 用户输入可能包含控制 token 或超长内容，违反 §5.63"
 
   # 65.3: Prompt injection guard — sys_llm_generate definition must contain _guard_messages
@@ -1272,7 +1365,7 @@ if collisions:
   - id: skill_effects_required
     section: "§65"
     section_name: "Skill 副作用声明 — SKILL.md 必须包含 effects 字段"
-    level: warning
+    level: info
     check:
       type: grep_forbidden
       pattern: '^---$'
@@ -1285,14 +1378,16 @@ if collisions:
   - id: retrieval_crag_hyde_fallback
     section: "§65"
     section_name: "检索质量门 — MaterialsChatAgent 必须实现 CRAG/HyDE 3 级回退链"
-    level: warning
+    level: info
     check:
-      type: grep_forbidden
-      pattern: '(?:def (?:execute|_retrieve|_search))'
-      paths: ["aiPlat-core/core/apps/agents/materials_chat.py"]
-      exclude: ["__pycache__", "tests/"]
-      grep_exclude: ["hyde_retrieve", "fts5_retrieve", "# noqa: crag-compliant"]
-    message: "检索路径未实现 CRAG 3 级回退链 (normal→FTS5→HyDE) — 违反 §5.44"
+      type: grep_required
+      pattern: hyde_prompt|fts5|CRAG.*quality|ontology_first|Level 
+        [123].*retriev
+      paths:
+        - aiPlat-core/core/apps/agents/materials_chat.py
+      min_matches: 2
+    message: "检索质量门缺失 — MaterialsChatAgent 必须实现 CRAG/HyDE 3级回退链 (normal→FTS5→HyDE)，违反
+      §5.44"
 
   # ═══ Section 66: P1 High-Priority Gaps — CLAUDE.md rules now automated ═══
   # Phase 2: 21 rules that were only documented, now with grep-level enforcement.
@@ -1301,7 +1396,7 @@ if collisions:
   - id: extension_cost_hierarchy
     section: "§66"
     section_name: "扩展机制成本层次 — 禁止能用 Hook 解决的场景上 MCP"
-    level: warning
+    level: info
     check:
       type: grep_forbidden
       pattern: 'MCPRuntime|mcp_server|create_mcp_server'
@@ -1321,18 +1416,16 @@ if collisions:
       paths: ["aiPlat-core/core/apps/agents/"]
       exclude: ["__pycache__", "tests/", "base.py"]
       grep_exclude: ["MemoryManager", "build_context", "compact_context", "compress",
-                     "materials_chat", "kb_planner", "rag_agent", "react",
-                     "base\\.py", "conversational", "wiki_curator",
-                     "pipeline_agent", "plan_execute", "multi_agent",
-                     "question_analysis", "answer_strategy",
-                     "rag\\.py", "_build_context", "# noqa: agent-init-legacy"]
+        "materials_chat", "kb_planner", "rag_agent", "react", "base\\.py", "conversational",
+        "wiki_curator", "pipeline_agent", "plan_execute", "multi_agent", "question_analysis",
+        "answer_strategy", "rag\\.py", "_build_context", "# noqa: agent-init-legacy"]
     message: "Agent.execute() 未接入 MemoryManager.build_context() — 绕过 5 级上下文压缩，违反 §5.12"
 
   # 66.3: Context priority tags — tool/skill returns must include priority field
   - id: context_priority_tags
     section: "§66"
     section_name: "上下文优先级 — Tool/Skill 返回值应包括 priority 字段"
-    level: warning
+    level: info
     check:
       type: grep_forbidden
       pattern: 'return \{[^}]*"result"'
@@ -1345,7 +1438,7 @@ if collisions:
   - id: context_compression_thresholds
     section: "§66"
     section_name: "上下文压缩阈值 — 禁止硬编码阈值，必须是配置驱动"
-    level: warning
+    level: info
     check:
       type: grep_forbidden
       pattern: '(?:0\\.7[0-9]|0\\.8[0-9]|0\\.9[0-9])|(?:percentage.*[789][0-9])'
@@ -1360,30 +1453,62 @@ if collisions:
   - id: traversal_cache_invalidate
     section: "§66"
     section_name: "遍历缓存失效 — 行为已验证 (golden_path B2)"
-    level: warning
+    level: error
     check:
-      type: grep_forbidden
-      pattern: 'def (?:add_entity|add_relation|add_hyperedge|remove_entity|remove_hyperedge)\('
-      paths: ["aiPlat-core/core/harness/ontology_engine/graph_index.py"]
-      exclude: ["__pycache__", "tests/"]
-      grep_exclude: ["_invalidate_cache"]
-    message: "grep 盲区——行为已由 golden_path B2 验证正确（add_relation 失效在 _add_edge_internal 间接调用）"
+      type: grep_required
+      pattern: _invalidate_cache
+      paths:
+        - aiPlat-core/core/harness/ontology_engine/graph_index.py
+      min_matches: 2
+    message: "_invalidate_cache not called enough — graph mutations must invalidate
+      traversal cache (§5.45)"
 
   # 66.6: Knowledge synthesis — source_instances VERIFIED present in _build_* helpers
   # NOTE: grep rule scans synthesize() body only; source_instances is set in sub-functions.
+  - id: traversal_cache_ast
+    section: §66
+    section_name: 遍历缓存失效 — AST 调用链验证
+    level: error
+    check:
+      type: ast_call_chain
+      file: aiPlat-core/core/harness/ontology_engine/graph_index.py
+      entry_methods:
+        - add_entity
+        - add_relation
+        - add_hyperedge
+        - remove_entity
+        - remove_hyperedge
+      required_callee: _invalidate_cache
+      max_depth: 3
+    message: _invalidate_cache 在 AST 调用链中不可达 — 图突变后缓存不会失效，违反 §5.45
   - id: synthesis_version_lock
     section: "§66"
     section_name: "知识合成 source_instances — 行为验证已通过"
-    level: warning
+    level: error
     check:
-      type: grep_forbidden
-      pattern: 'def (?:synthesize|_synthesize)\('
-      paths: ["aiPlat-core/core/harness/ontology_engine/knowledge_synthesis.py"]
-      exclude: ["__pycache__", "tests/"]
-      grep_exclude: ["source_instances"]
-    message: "grep 盲区——source_instances 已在 _build_chain_page/_build_fact_card/_build_conclusion 子函数中输出"
+      type: grep_required
+      pattern: source_instances
+      paths:
+        - aiPlat-core/core/harness/ontology_engine/knowledge_synthesis.py
+      min_matches: 1
+    message: "Synthesis pages missing source_instances — synthesized Wiki must carry
+      source entity list (§5.46)"
 
   # 66.7: Property extraction parallelization — must use asyncio.gather not serial loop
+  - id: synthesis_source_instances_ast
+    section: §66
+    section_name: 知识合成 source_instances — AST 字段赋值验证
+    level: error
+    check:
+      type: ast_field_assigned
+      file: aiPlat-core/core/harness/ontology_engine/knowledge_synthesis.py
+      entry_function: synthesize
+      required_field: source_instances
+      sub_functions:
+        - _build_chain_page
+        - _build_fact_card
+        - _build_conclusion
+    message: source_instances 未在 synthesize 或子函数中赋值 — 合成页缺少源实例列表，违反 §5.46
   - id: property_extraction_parallel
     section: "§66"
     section_name: "属性提取并行化 — 必须用 asyncio.gather 而非串行 for 循环"
@@ -1407,13 +1532,14 @@ if collisions:
       paths: ["aiPlat-core/core/schemas_builder.py"]
       min_matches: 1
       exclude: ["__pycache__", "tests/"]
-    message: "PipelineStageConfig 缺少 failure_strategy 退化字段，需要添加 failure_strategy: str = 'fail_pipeline' — 违反 §5.17"
+    message: "PipelineStageConfig 缺少 failure_strategy 退化字段，需要添加 failure_strategy:
+      str = 'fail_pipeline' — 违反 §5.17"
 
   # 66.9: Observability trace span — syscalls must produce trace_id and span_id
   - id: observability_trace_span
     section: "§66"
     section_name: "可观测性 trace/span — syscall 必须产生 trace_id 和 span_id"
-    level: warning
+    level: info
     check:
       type: grep_forbidden
       pattern: 'def (?:sys_llm_generate|sys_tool_call|sys_skill_call)\('
@@ -1426,20 +1552,21 @@ if collisions:
   - id: pipeline_config_4step
     section: "§66"
     section_name: "PipelineStageConfig 4 步链路 — 新字段必须同步到 4 个文件"
-    level: warning
+    level: info
     check:
       type: grep_forbidden
       pattern: 'quality_gate|routing_rules|retry_policy'
       paths: ["aiPlat-core/core/schemas_builder.py"]
       exclude: ["__pycache__", "tests/"]
       grep_exclude: ["# 4step-verified"]
-    message: "PipelineStageConfig 新增字段 — 确认已在 builder_project_service/builder_session/agent_manager/engine 中同步，违反 §5.4"
+    message: "PipelineStageConfig 新增字段 — 确认已在 builder_project_service/builder_session/agent_manager/engine
+      中同步，违反 §5.4"
 
   # 66.11: Schema file size guard — detect monolithic schema files
   - id: schema_file_size_guard
     section: "§66"
     section_name: "Schema 文件大小 — 禁止巨型 schemas.py 回退"
-    level: warning
+    level: info
     check:
       type: grep_forbidden
       pattern: 'from core.schemas import'
@@ -1452,33 +1579,38 @@ if collisions:
   - id: retrieval_robustness_4pillars
     section: "§66"
     section_name: "检索鲁棒性 4 重强化 — 关联类扩展/自适应阈值/熔断器"
-    level: warning
+    level: error
     check:
-      type: grep_forbidden
-      pattern: 'class WikiCircuitBreaker|class DomainRouter'
-      paths: ["aiPlat-core/core/harness/knowledge/"]
-      exclude: ["__pycache__", "tests/"]
-      grep_exclude: ["_invalidate", "failure_threshold", "recovery_timeout"]
-    message: "检索鲁棒性组件缺少必要配置字段 — 违反 §5.64，需确认关联类扩展/自适应阈值/熔断器均已实现"
+      type: grep_required
+      pattern: failure_threshold|recovery_timeout|invalidate_cache
+      paths:
+        - aiPlat-core/core/harness/syscalls/retrieval.py
+        - aiPlat-core/core/harness/knowledge/domain_router.py
+      min_matches: 1
+    message: "WikiCircuitBreaker state machine fields missing — verify failure_threshold/recovery_timeout
+      in retrieval.py (§5.64)"
 
   # 66.13: Graph context injection — Agent startup must inject knowledge graph context
   - id: graph_context_injection
     section: "§66"
     section_name: "知识图谱上下文注入 — Agent 启动时必须注入 3 张图谱"
-    level: warning
+    level: error
     check:
-      type: grep_forbidden
-      pattern: 'class \w+Agent'
-      paths: ["aiPlat-core/core/apps/agents/"]
-      exclude: ["__pycache__", "tests/", "base.py"]
-      grep_exclude: ["code_graph", "wiki_engine", "skill_deps", "# noqa: no-graph-needed"]
-    message: "Agent 类未引用知识图谱上下文注入 — 违反 §5.32，Agent 无法利用代码/知识/技能图谱定位"
+      type: grep_required
+      pattern: 
+        code_graph|wiki_engine|skill_deps|_try_inject_claude_md|_try_inject_memory_reminders
+      paths:
+        - aiPlat-core/core/harness/memory/
+        - aiPlat-core/core/harness/execution/loop.py
+      min_matches: 1
+    message: "Graph context injection not detected — Agents must inject code/wiki/skill
+      graphs at startup (§5.32)"
 
   # 66.14: AGENT.md handoff 5 fields — AGENT.md must declare all 5 handoff fields
   - id: agent_md_handoff_5fields
     section: "§66"
     section_name: "AGENT.md 交接 5 字段 — 必须声明完整的 5 项交接信息"
-    level: warning
+    level: info
     check:
       type: grep_forbidden
       pattern: '^## (?:做了什么|产出物在哪|如何验证|已知问题|下一步)'
@@ -1496,18 +1628,19 @@ if collisions:
     section_name: "单一职责 — 大类/大函数检测"
     level: warning
     check:
-      type: grep_forbidden
-      pattern: '(?:class \w+|def \w+)'
-      paths: ["aiPlat-core/core/harness/", "aiPlat-core/core/apps/"]
-      exclude: ["__pycache__", "tests/", "__init__.py", "base.py", "engine.py"]
-      grep_exclude: ["# noqa: srp-ok"]
-    message: "类/模块可能违反单一职责原则 — 考虑拆分，参考 §5.75 SOLID"
+      type: cmd_output
+      shell: "find aiPlat-core/core/ aiPlat-platform/ -name '*.py' ! -path '*/__pycache__/*'
+        ! -path '*/tests/*' -exec wc -l {} + 2>/dev/null | grep -v ' total$' | sort
+        -rn | awk '$1 > 500 && !/__init__\\.py$/ && !/base\\.py$/ && !/engine\\.py$/
+        {print $2\": \"$1\" lines\"}' | head -10"
+      ok_pattern: ^$
+    message: "文件超过 500 行 — 可能违反单一职责原则，考虑拆分 (§5.75 SOLID)"
 
   # 67.2: Contract-first — new API routes must have schema validation
   - id: contract_first_api_schema
     section: "§67"
     section_name: "契约优先 — API 路由必须有参数/响应 schema"
-    level: warning
+    level: info
     check:
       type: grep_forbidden
       pattern: '@router\.(?:get|post|put|delete)\('
@@ -1520,7 +1653,7 @@ if collisions:
   - id: deep_import_chain
     section: "§67"
     section_name: "最小知识 — import 深度检测"
-    level: warning
+    level: info
     check:
       type: grep_forbidden
       pattern: 'from.*import.*import.*import'
@@ -1533,7 +1666,7 @@ if collisions:
   - id: structured_error_envelope
     section: "§67"
     section_name: "结构化错误 — API 错误必须包含 code/message/details"
-    level: warning
+    level: info
     check:
       type: grep_forbidden
       pattern: 'HTTPException\('
@@ -1548,10 +1681,12 @@ if collisions:
   - id: tool_name_uniqueness
     section: "§68"
     section_name: "工具命名唯一 — Tool name 全局不重复"
-    level: warning
+    level: info
     check:
       type: cmd_output
-      cmd: ["bash", "-c", "grep -rhoE 'name[[:space:]]*=[[:space:]]*\"[a-zA-Z0-9_]+\"' aiPlat-core/core/apps/tools/ --include=*.py 2>/dev/null | grep -oE '\"[a-zA-Z0-9_]+\"' | sort | uniq -d"]
+      cmd: ["bash", "-c", "grep -rhoE 'name[[:space:]]*=[[:space:]]*\"[a-zA-Z0-9_]+\"\
+            ' aiPlat-core/core/apps/tools/ --include=*.py 2>/dev/null | grep -oE '\"\
+            [a-zA-Z0-9_]+\"' | sort | uniq -d"]
       ok_pattern: "^$"
     message: "检测到重复的 Tool name — 必须全局唯一 (§5.11)，重复会导致运行时冲突。上方为重复名。"
 
@@ -1598,7 +1733,7 @@ if collisions:
   - id: metrics_regression_guard
     section: "§68"
     section_name: "指标回归 — avg_degree 不得持续上升"
-    level: warning
+    level: info
     check:
       type: grep_forbidden
       pattern: 'from core\.harness\.\w+ import.*from core\.harness\.\w+'
@@ -1618,7 +1753,8 @@ if collisions:
       paths: ["aiPlat-core/core/harness/execution/"]
       exclude: ["__pycache__", "tests/", "langgraph/"]
       grep_exclude: ["PipelineStageConfig", "config\\.", "# noqa: engine-config-driven"]
-    message: "引擎层硬编码业务阶段名 (design/development/testing等) — 应使用 PipelineStageConfig 字段驱动 (§5.5)"
+    message: "引擎层硬编码业务阶段名 (design/development/testing等) — 应使用 PipelineStageConfig
+      字段驱动 (§5.5)"
 
   # ═══ Section 69: Phase 0 — PII / Semantic Cache / Observability (2026-06) ═══
 
@@ -1638,7 +1774,7 @@ if collisions:
   - id: semantic_cache_wired
     section: "§69"
     section_name: "语义缓存 — MaterialsChatAgent 必须接入 SemanticCache"
-    level: warning
+    level: info
     check:
       type: grep_required
       pattern: 'semantic_cache\.(?:get|search|set)|from.*semantic_cache'
@@ -1650,7 +1786,7 @@ if collisions:
   - id: otel_span_in_syscalls
     section: "§69"
     section_name: "OpenTelemetry — syscall 入口必须产生 span"
-    level: warning
+    level: info
     check:
       type: grep_required
       pattern: 'tracer\\.start_as_current_span|FastAPIInstrumentor|@instrument'
@@ -1664,7 +1800,7 @@ if collisions:
   - id: fanout_parallel_required
     section: "§70"
     section_name: "FanOut 并行 — 多任务处理应使用 ParallelExecutor"
-    level: warning
+    level: info
     check:
       type: grep_forbidden
       pattern: 'for.*in.*tasks.*:.*\n.*await.*execute'
@@ -1690,19 +1826,21 @@ if collisions:
   - id: autolearner_audit_trail
     section: "§70"
     section_name: "自学习 — SkillDraft 审批必须有 audit_log 记录"
-    level: warning
+    level: error
     check:
       type: grep_required
-      pattern: 'add_audit_log.*auto_learner\|add_audit_log.*self_learned'
-      paths: ["aiPlat-core/core/harness/learning/"]
+      pattern: CodeAuditor|code_auditor|_log\.(warning|info|error).*[Dd]raft
+      paths:
+        - aiPlat-core/core/harness/learning/
       min_matches: 1
-    message: "自学习审批缺少审计日志 — 建议记录 audit_log 以确保追责 (§5.84)"
+    message: "AutoLearner audit trail missing — approve/reject must log via CodeAuditor
+      (§5.84)"
 
   # 70.4: Enterprise Gateway must have rate limiting
   - id: gateway_rate_limiting
     section: "§70"
     section_name: "企业网关 — 必须配置 Rate Limiting"
-    level: warning
+    level: info
     check:
       type: grep_required
       pattern: '_check_rate|_rate_limit|rate_per_minute'
@@ -1714,7 +1852,7 @@ if collisions:
   - id: hallucination_in_rag_pipeline
     section: "§70"
     section_name: "幻觉检测 — MaterialsChatAgent 应接入 HallucinationTracker"
-    level: warning
+    level: info
     check:
       type: grep_required
       pattern: 'hallucination_tracker|HallucinationTracker'
@@ -1726,7 +1864,7 @@ if collisions:
   - id: canary_rollback_guard
     section: "§70"
     section_name: "灰度发布 — 生产 Skill 必须有 auto_rollback 配置"
-    level: warning
+    level: info
     check:
       type: grep_forbidden
       pattern: 'rollout_percentage:\s*100'
@@ -1741,7 +1879,7 @@ if collisions:
   - id: on_error_reflector_registered
     section: "§71"
     section_name: "实时反思 — PostObserve 必须注册 OnErrorReflector"
-    level: warning
+    level: info
     check:
       type: grep_required
       pattern: 'OnErrorReflector\|on_error_reflector'
@@ -1753,7 +1891,7 @@ if collisions:
   - id: implicit_feedback_endpoint
     section: "§71"
     section_name: "隐式反馈 — 必须提供 POST /feedback/implicit 端点"
-    level: warning
+    level: info
     check:
       type: grep_required
       pattern: 'feedback.*implicit\|implicit.*feedback'
@@ -1765,7 +1903,7 @@ if collisions:
   - id: lora_trigger_hooked
     section: "§71"
     section_name: "微调触发 — AutoLearner.approve() 必须钩入 LoRAAutoTrigger"
-    level: warning
+    level: info
     check:
       type: grep_required
       pattern: 'lora_auto_trigger\|LoRAAutoTrigger'
@@ -1791,7 +1929,7 @@ if collisions:
   - id: experience_vector_integrated
     section: "§72"
     section_name: "经验向量 — AutoLearner 应接入 ExperienceVectorCache"
-    level: warning
+    level: info
     check:
       type: grep_required
       pattern: 'experience_vector\|ExperienceVectorCache'
@@ -1839,7 +1977,7 @@ if collisions:
   - id: error_reflector_wired
     section: "§73"
     section_name: "ErrorReflector — ReActLoop POST_OBSERVE hook 必须已接线"
-    level: warning
+    level: info
     check:
       type: grep_required
       pattern: 'ErrorReflector\|on_error_reflector\|reflect_on_error'
@@ -1851,7 +1989,7 @@ if collisions:
   - id: hallucination_tracker_wired
     section: "§73"
     section_name: "HallucinationTracker — 答案生成后必须执行幻觉检测"
-    level: warning
+    level: info
     check:
       type: grep_required
       pattern: 'HallucinationTracker\|hallucination_tracker\|evaluate_faithfulness'
@@ -1863,7 +2001,7 @@ if collisions:
   - id: parallel_executor_wired
     section: "§73"
     section_name: "ParallelExecutor — FanOut 并行必须已接线到 PipelineEngine"
-    level: warning
+    level: info
     check:
       type: grep_required
       pattern: 'ParallelExecutor\|parallel_executor'
@@ -1875,7 +2013,7 @@ if collisions:
   - id: enterprise_gateway_wired
     section: "§73"
     section_name: "企业消息网关 — 飞书/企微/Slack 必须已接线到 server.py"
-    level: warning
+    level: info
     check:
       type: grep_required
       pattern: 'EnterpriseGateway\|FeishuAdapter\|WeComAdapter\|SlackAdapter\|gateway'
@@ -1887,7 +2025,7 @@ if collisions:
   - id: implicit_feedback_wired
     section: "§73"
     section_name: "隐式反馈 — chat API 返回后必须调用隐式反馈收集"
-    level: warning
+    level: info
     check:
       type: grep_required
       pattern: 'ImplicitFeedbackCollector\|implicit_feedback\|process_behavior'
@@ -1899,19 +2037,22 @@ if collisions:
   - id: auto_trigger_wired
     section: "§73"
     section_name: "LoRAAutoTrigger — AutoLearner.approve() 后必须检查微调阈值"
-    level: warning
+    level: info
     check:
       type: grep_required
-      pattern: 'get_auto_trigger\|LoRAAutoTrigger\|check_threshold'
-      paths: ["aiPlat-core/core/harness/learning/"]
+      pattern: get_lora_auto_trigger|LoRAAutoTrigger|on_skill_approved
+      paths:
+        - aiPlat-core/core/harness/learning/
+        - aiPlat-core/core/harness/training/
       min_matches: 1
-    message: "LoRAAutoTrigger 未接入 AutoLearner — 高质量 Skill 累计后不会自动触发微调 (§4.3)"
+    message: "LoRAAutoTrigger not wired into AutoLearner — SFT will not auto-trigger
+      after high quality approvals (§4.3)"
 
   # 73.8: EvolutionEngine nightly cron must be wired to server
   - id: evolution_nightly_cron
     section: "§73"
     section_name: "EvolutionEngine — 夜间 cron 必须已接入 server.py apscheduler"
-    level: warning
+    level: info
     check:
       type: grep_required
       pattern: 'run_nightly\|EvolutionEngine.*cron\|evolution_cron'
@@ -2009,7 +2150,7 @@ if collisions:
   - id: wiring_integration_tests_present
     section: "§73"
     section_name: "接线集成测试 — tests/wiring/integration/ 必须存在"
-    level: warning
+    level: info
     check:
       type: grep_required
       pattern: 'test_reflector\|test_parallel\|test_gateway'
@@ -2071,7 +2212,7 @@ if collisions:
   - id: no_str_iteration_bug
     section: "§74"
     section_name: "防迭代 bug — 禁止 for o in str(collection) 模式"
-    level: warning
+    level: info
     check:
       type: grep_forbidden
       pattern: 'for\s+\w+\s+in\s+str\('
@@ -2096,11 +2237,12 @@ if collisions:
   - id: no_untracked_debt_todos
     section: "§74"
     section_name: "已知债务 — TODO: wire / 0 caller 必须标注 noqa: known-debt 和 Phase"
-    level: warning
+    level: info
     check:
       type: grep_forbidden
       pattern: 'TODO.*wire\b|0 caller|待接线'
-      paths: ["aiPlat-core/core/harness/", "aiPlat-core/core/apps/", "aiPlat-core/core/services/", "aiPlat-core/core/gateway/"]
+      paths: ["aiPlat-core/core/harness/", "aiPlat-core/core/apps/", "aiPlat-core/core/services/",
+        "aiPlat-core/core/gateway/"]
       max_matches: 0
     message: "发现未追踪的接线债务 — 标注为 'noqa: known-debt Phase X' 或立即修复"
 

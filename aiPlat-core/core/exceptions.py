@@ -24,6 +24,86 @@ class ErrorCategory(Enum):
     PLATFORM = "platform"
 
 
+class CoreErrorCode(str, Enum):
+    """Structured error codes — single source of truth replacing subclass-per-code pattern.
+    
+    Usage:
+        raise CoreError(CoreErrorCode.AGENT_INIT, "Failed to init agent")
+        raise CoreError(CoreErrorCode.MODEL_TIMEOUT, "LLM timed out", details={"retry": 3})
+    
+    Backward compat: all legacy subclass names remain as aliases (e.g., AgentInitializationError).
+    """
+    # ── Agent errors ──
+    AGENT_BASE = "AG000"
+    AGENT_INIT = "AG001"
+    AGENT_EXEC = "AG002"
+    AGENT_TIMEOUT = "AG003"
+    AGENT_STATE = "AG004"
+
+    # ── Agent Memory errors ──
+    AGENT_MEMORY_BASE = "MM000"
+    AGENT_MEMORY_STORE = "MM001"
+    AGENT_MEMORY_RETRIEVE = "MM002"
+    AGENT_MEMORY_OVERFLOW = "MM003"
+
+    # ── Model errors ──
+    MODEL_BASE = "MD000"
+    MODEL_CONNECTION = "MD001"
+    MODEL_TIMEOUT = "MD002"
+    MODEL_RATE_LIMIT = "MD003"
+    MODEL_RESPONSE = "MD004"
+
+    # ── Skill errors ──
+    SKILL_BASE = "SK000"
+    SKILL_NOT_FOUND = "SK001"
+    SKILL_EXEC = "SK002"
+    SKILL_TIMEOUT = "SK003"
+
+    # ── Tool errors ──
+    TOOL_BASE = "TL000"
+    TOOL_NOT_FOUND = "TL001"
+    TOOL_EXEC = "TL002"
+    TOOL_TIMEOUT = "TL003"
+    TOOL_PERMISSION = "TL004"
+
+    # ── Knowledge errors ──
+    KNOWLEDGE_BASE = "KN000"
+    KNOWLEDGE_INDEX = "KN001"
+    KNOWLEDGE_RETRIEVE = "KN002"
+
+    # ── Orchestration errors ──
+    ORCHESTRATION_BASE = "OR000"
+    ORCHESTRATION_WORKFLOW = "OR001"
+    ORCHESTRATION_WORKFLOW_TIMEOUT = "OR002"
+    ORCHESTRATION_STEP_EXEC = "OR003"
+
+    # ── Infra errors (via core bridge) ──
+    INFRA_BASE = "INF000"
+    INFRA_DB = "INF100"
+    INFRA_DB_CONNECTION = "INF101"
+    INFRA_DB_TIMEOUT = "INF102"
+    INFRA_DB_QUERY = "INF103"
+    INFRA_LLM = "INF200"
+    INFRA_LLM_CONNECTION = "INF201"
+    INFRA_LLM_TIMEOUT = "INF202"
+    INFRA_LLM_RATE_LIMIT = "INF203"
+    INFRA_LLM_AUTH = "INF204"
+    INFRA_VECTOR = "INF300"
+
+    # ── Platform errors ──
+    PLATFORM_BASE = "PLT000"
+    PLATFORM_AUTH = "PLT100"
+    PLATFORM_AUTH_TOKEN_EXPIRED = "PLT101"
+    PLATFORM_AUTH_PERMISSION = "PLT102"
+    PLATFORM_RATE_LIMIT = "PLT200"
+    PLATFORM_TENANT = "PLT300"
+    PLATFORM_TENANT_NOT_FOUND = "PLT301"
+    PLATFORM_TENANT_QUOTA = "PLT302"
+    PLATFORM_API = "PLT400"
+    PLATFORM_API_NOT_FOUND = "PLT401"
+    PLATFORM_API_VALIDATION = "PLT402"
+
+
 class CoreError(Exception):
     """Base exception for core layer"""
 
@@ -91,24 +171,28 @@ class AgentStateError(AgentError):
     error_code = "AG004"
 
 
-class MemoryError(CoreError):
-    """Base exception for memory errors"""
+class CoreMemoryError(CoreError):
+    """Base exception for agent memory errors"""
     error_code = "MM000"
 
 
-class MemoryStoreError(MemoryError):
+class MemoryStoreError(CoreMemoryError):
     """Memory store failed"""
     error_code = "MM001"
 
 
-class MemoryRetrieveError(MemoryError):
+class MemoryRetrieveError(CoreMemoryError):
     """Memory retrieve failed"""
     error_code = "MM002"
 
 
-class MemoryOverflowError(MemoryError):
+class MemoryOverflowError(CoreMemoryError):
     """Memory overflow"""
     error_code = "MM003"
+
+
+# Backward-compatible alias (was "MemoryError", renamed to avoid collision with infra)
+MemoryError = CoreMemoryError
 
 
 class ModelError(CoreError):

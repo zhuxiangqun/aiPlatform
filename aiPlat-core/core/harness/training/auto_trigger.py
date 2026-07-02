@@ -27,7 +27,7 @@ class SFTDatasetConfig:
     min_quality_label: str = "positive"
     max_samples: int = 1000
     output_format: str = "sharegpt"  # sharegpt / alpaca / openai
-    target_model: str = "qwen2.5-coder:7b"  # noqa: env-legacy — SFT dataset default, not engine routing
+    target_model: str = ""  # default empty — ops sets via AIPLAT_SFT_STUDENT_MODEL
 
 
 class LoRAAutoTrigger:

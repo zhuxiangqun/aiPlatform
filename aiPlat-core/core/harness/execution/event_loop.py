@@ -239,7 +239,7 @@ async def run_loop_scheduler(interval: int = 60) -> None:
 
             save_triggers(triggers)
         except Exception as e:
-            logging.debug(str(e), exc_info=True)
+            logging.warning(str(e), exc_info=True)
         await asyncio.sleep(interval)
 
 

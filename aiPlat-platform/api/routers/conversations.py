@@ -239,7 +239,7 @@ async def query_conversation_stream(session_id: str, request: ConversationQueryR
         domain_cfg = router.domain_config(domain_id)
         domain_name = domain_cfg.get("name", domain_id)
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
 
     await svc.append_conversation_user_message(
         tenant_id=tenant_id, session_id=session_id, user_id=user_id, content=question,
@@ -300,7 +300,7 @@ async def query_conversation_stream(session_id: str, request: ConversationQueryR
                     analysis={}, retrieval_policy={}, answer_strategy={}, run_id="",
                 )
             except Exception as e:
-                logging.debug(str(e), exc_info=True)
+                logging.warning(str(e), exc_info=True)
             yield f"data: {_json.dumps({'done': True, 'answer': answer, 'domain_id': domain_id, 'domain_name': domain_name})}\n\n"
         except Exception as e:
             yield f"data: {_json.dumps({'error': str(e), 'done': True})}\n\n"

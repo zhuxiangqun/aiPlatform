@@ -100,7 +100,7 @@ async def get_change_control(change_id: str, limit: int = 200, offset: int = 0, 
         if rid:
             links["runs_ui"] = ui_url(f"/diagnostics/runs?run_id={rid}")
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
     out["links"] = links
     return out
 
@@ -159,7 +159,7 @@ async def autosmoke_change_control(change_id: str, http_request: Request, _auth:
         try:
             await mark_resource_pending(resource_type=rtype, resource_id=rid, workspace_agent_manager=wam, workspace_skill_manager=wsm, workspace_mcp_manager=wmm)
         except Exception as e:
-            logging.debug(str(e), exc_info=True)
+            logging.warning(str(e), exc_info=True)
 
         async def _on_complete(job_run: Dict[str, Any], *, _rtype=rtype, _rid=rid):
             await apply_autosmoke_result(
@@ -190,7 +190,7 @@ async def autosmoke_change_control(change_id: str, http_request: Request, _auth:
                     session_id=str(actor0.get("session_id") or "") or None,
                 )
             except Exception as e:
-                logging.debug(str(e), exc_info=True)
+                logging.warning(str(e), exc_info=True)
 
         try:
             res = await enqueue_autosmoke(
@@ -221,7 +221,7 @@ async def autosmoke_change_control(change_id: str, http_request: Request, _auth:
             session_id=str(actor0.get("session_id") or "") or None,
         )
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
 
     return {"status": "ok", "change_id": str(change_id), "targets": [{"type": t[0], "id": t[1]} for t in uniq], "results": results}
 
@@ -330,7 +330,7 @@ async def apply_engine_skill_md_patch(change_id: str, http_request: Request, _au
         )
     except Exception as e:
         # fail open: code intel should never block apply flow
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
 
     # ----------------------------
     # Gate Policy (productized)
@@ -396,7 +396,7 @@ async def apply_engine_skill_md_patch(change_id: str, http_request: Request, _au
         if isinstance(ag.get("require_approval"), bool):
             require_approval = bool(ag.get("require_approval"))
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
     # Backward-compatible query overrides:
     try:
         raw = (http_request.query_params.get("require_autosmoke") or "").strip().lower()
@@ -405,7 +405,7 @@ async def apply_engine_skill_md_patch(change_id: str, http_request: Request, _au
         if raw in {"1", "true", "yes", "y"}:
             require_autosmoke = True
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
     try:
         raw = (http_request.query_params.get("require_approval") or "").strip().lower()
         if raw in {"0", "false", "no", "n"}:
@@ -413,20 +413,20 @@ async def apply_engine_skill_md_patch(change_id: str, http_request: Request, _au
         if raw in {"1", "true", "yes", "y"}:
             require_approval = True
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
     # Env safety rails:
     try:
         env = (os.getenv("AIPLAT_REQUIRE_AUTOSMOKE_FOR_ENGINE_SKILL_PATCH", "true") or "true").strip().lower()
         if env in {"0", "false", "no", "n"}:
             require_autosmoke = False
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
     try:
         env = (os.getenv("AIPLAT_REQUIRE_APPROVAL_FOR_ENGINE_SKILL_PATCH", "false") or "false").strip().lower()
         if env in {"1", "true", "yes", "y"}:
             require_approval = True
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
 
     # Resolve non-executing gate parameters early so they can be recorded even if a gate fails later.
     # Eval gate (mode + suite ids + thresholds)
@@ -492,7 +492,7 @@ async def apply_engine_skill_md_patch(change_id: str, http_request: Request, _au
                 session_id=str(actor0.get("session_id") or "") or None,
             )
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
 
     autosmoke_ok = False
     if require_autosmoke:
@@ -589,7 +589,7 @@ async def apply_engine_skill_md_patch(change_id: str, http_request: Request, _au
         try:
             next_actions.sort(key=lambda x: (0 if x.get("recommended") else 1))
         except Exception as e:
-            logging.debug(str(e), exc_info=True)
+            logging.warning(str(e), exc_info=True)
         # Record a failure event for UI observability (best-effort)
         try:
             await record_changeset(
@@ -618,7 +618,7 @@ async def apply_engine_skill_md_patch(change_id: str, http_request: Request, _au
                 approval_request_id=str(approval_request_id) if approval_request_id else None,
             )
         except Exception as e:
-            logging.debug(str(e), exc_info=True)
+            logging.warning(str(e), exc_info=True)
         raise HTTPException(
             status_code=409,
             detail=gate_error_envelope(
@@ -904,7 +904,7 @@ async def apply_engine_skill_md_patch(change_id: str, http_request: Request, _au
                     session_id=str(actor0.get("session_id") or "") or None,
                 )
             except Exception as e:
-                logging.debug(str(e), exc_info=True)
+                logging.warning(str(e), exc_info=True)
         if security_gate == "scan_block" and not passed:
             links = governance_links(change_id=str(change_id))
             next_actions = [

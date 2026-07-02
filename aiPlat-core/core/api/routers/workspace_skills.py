@@ -358,7 +358,7 @@ async def list_workspace_skills(
                 if prov2:
                     s.metadata["provenance"] = prov2
         except Exception as e:
-            logging.debug(str(e), exc_info=True)
+            logging.warning(str(e), exc_info=True)
         item = {
             "id": s.id,
             "name": s.name,
@@ -494,9 +494,9 @@ async def create_workspace_skill(request: SkillCreateRequest, http_request: Requ
                         try:
                             adapt_skill(skill_dir)
                         except Exception as e:
-                            logging.debug(str(e), exc_info=True)
+                            logging.warning(str(e), exc_info=True)
             except Exception as e:
-                logging.debug(str(e), exc_info=True)
+                logging.warning(str(e), exc_info=True)
         # Mark as pending verification (best-effort)
         eval_artifact_id: Optional[str] = None
         candidate_id: Optional[str] = None
@@ -507,7 +507,7 @@ async def create_workspace_skill(request: SkillCreateRequest, http_request: Requ
                 metadata={"verification": {"status": "pending", "updated_at": time.time(), "source": "autosmoke"}},
             )
         except Exception as e:
-            logging.debug(str(e), exc_info=True)
+            logging.warning(str(e), exc_info=True)
         # Create governance artifacts (best-effort): evaluation_report + release_candidate
         try:
             store = _store(rt)
@@ -552,7 +552,7 @@ async def create_workspace_skill(request: SkillCreateRequest, http_request: Requ
                     },
                 )
         except Exception as e:
-            logging.debug(str(e), exc_info=True)
+            logging.warning(str(e), exc_info=True)
         try:
             store = _store(rt)
             sched = _job_scheduler(rt)
@@ -576,7 +576,7 @@ async def create_workspace_skill(request: SkillCreateRequest, http_request: Requ
                     try:
                         await mgr.update_skill(sid, metadata={"verification": ver})
                     except Exception as e:
-                        logging.debug(str(e), exc_info=True)
+                        logging.warning(str(e), exc_info=True)
                     # Update governance artifacts (best-effort)
                     try:
                         if store is not None:
@@ -608,7 +608,7 @@ async def create_workspace_skill(request: SkillCreateRequest, http_request: Requ
                                 metadata={"governance": {"status": "verified" if st == "completed" else "failed", "job_run_id": str(job_run.get("id") or ""), "updated_at": time.time()}},
                             )
                     except Exception as e:
-                        logging.debug(str(e), exc_info=True)
+                        logging.warning(str(e), exc_info=True)
 
                 await enqueue_autosmoke(
                     execution_store=store,
@@ -621,7 +621,7 @@ async def create_workspace_skill(request: SkillCreateRequest, http_request: Requ
                     on_complete=_on_complete,
                 )
         except Exception as e:
-            logging.debug(str(e), exc_info=True)
+            logging.warning(str(e), exc_info=True)
         try:
             await _record_changeset(
                 rt,
@@ -636,11 +636,11 @@ async def create_workspace_skill(request: SkillCreateRequest, http_request: Requ
                 },
             )
         except Exception as e:
-            logging.debug(str(e), exc_info=True)
+            logging.warning(str(e), exc_info=True)
         try:
             await _maybe_verify_and_audit_skill_signature(rt, skill=skill, scope="workspace")
         except Exception as e:
-            logging.debug(str(e), exc_info=True)
+            logging.warning(str(e), exc_info=True)
         # Audit log (best-effort)
         try:
             store = _store(rt)
@@ -657,7 +657,7 @@ async def create_workspace_skill(request: SkillCreateRequest, http_request: Requ
                     detail={"name": request.name, "category": request.category},
                 )
         except Exception as e:
-            logging.debug(str(e), exc_info=True)
+            logging.warning(str(e), exc_info=True)
         lint = None
         try:
             from core.management.skill_linter import lint_skill
@@ -719,7 +719,7 @@ async def update_workspace_skill(skill_id: str, request: dict, http_request: Req
             metadata={"verification": {"status": "pending", "updated_at": time.time(), "source": "autosmoke"}},
         )
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
     # Create governance artifacts (best-effort)
     try:
         store = _store(rt)
@@ -755,7 +755,7 @@ async def update_workspace_skill(skill_id: str, request: dict, http_request: Req
                 metadata={"governance": {"status": "pending", "evaluation_artifact_id": eval_artifact_id, "candidate_id": candidate_id, "job_id": job_id, "last_op": "update", "updated_at": time.time()}},
             )
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
     try:
         store = _store(rt)
         sched = _job_scheduler(rt)
@@ -779,7 +779,7 @@ async def update_workspace_skill(skill_id: str, request: dict, http_request: Req
                 try:
                     await mgr.update_skill(sid, metadata={"verification": ver})
                 except Exception as e:
-                    logging.debug(str(e), exc_info=True)
+                    logging.warning(str(e), exc_info=True)
                 try:
                     if store is not None:
                         from core.learning.manager import LearningManager
@@ -809,7 +809,7 @@ async def update_workspace_skill(skill_id: str, request: dict, http_request: Req
                             metadata={"governance": {"status": "verified" if st == "completed" else "failed", "job_run_id": str(job_run.get("id") or ""), "updated_at": time.time()}},
                         )
                 except Exception as e:
-                    logging.debug(str(e), exc_info=True)
+                    logging.warning(str(e), exc_info=True)
 
             await enqueue_autosmoke(
                 execution_store=store,
@@ -822,7 +822,7 @@ async def update_workspace_skill(skill_id: str, request: dict, http_request: Req
                 on_complete=_on_complete,
             )
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
     try:
         await _record_changeset(
             rt,
@@ -837,11 +837,11 @@ async def update_workspace_skill(skill_id: str, request: dict, http_request: Req
             },
         )
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
     try:
         await _maybe_verify_and_audit_skill_signature(rt, skill=skill, scope="workspace")
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
     # Audit log (best-effort)
     try:
         store = _store(rt)
@@ -858,7 +858,7 @@ async def update_workspace_skill(skill_id: str, request: dict, http_request: Req
                 detail={"fields": list((r.model_dump(exclude_unset=True) or {}).keys())},
             )
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
     lint = None
     try:
         from core.management.skill_linter import lint_skill
@@ -1047,9 +1047,9 @@ async def lint_workspace_skill(skill_id: str, rt: RuntimeDep = None):
             try:
                 s.metadata = md
             except Exception as e:
-                logging.debug(str(e), exc_info=True)
+                logging.warning(str(e), exc_info=True)
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
 
     # Attach conflict hints (best-effort): inject top conflict pairs for this skill
     try:
@@ -1072,9 +1072,9 @@ async def lint_workspace_skill(skill_id: str, rt: RuntimeDep = None):
             try:
                 s.metadata = md
             except Exception as e:
-                logging.debug(str(e), exc_info=True)
+                logging.warning(str(e), exc_info=True)
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
 
     lint = lint_skill(s)
     fixes = propose_skill_fixes(skill=s, lint=lint)
@@ -1126,9 +1126,9 @@ async def apply_lint_fix_workspace_skill(
             try:
                 s.metadata = md
             except Exception as e:
-                logging.debug(str(e), exc_info=True)
+                logging.warning(str(e), exc_info=True)
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
 
     # Attach conflict hints (best-effort) for conflict-pair disambiguation fixes
     try:
@@ -1151,9 +1151,9 @@ async def apply_lint_fix_workspace_skill(
             try:
                 s.metadata = md
             except Exception as e:
-                logging.debug(str(e), exc_info=True)
+                logging.warning(str(e), exc_info=True)
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
 
     lint = lint_skill(s)
     fx = propose_skill_fixes(skill=s, lint=lint)
@@ -1364,7 +1364,7 @@ async def delete_workspace_skill(skill_id: str, delete_files: bool = False, http
                 },
             )
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
 
     ok = await mgr.delete_skill(skill_id, delete_files=delete_files)
     if not ok:
@@ -1389,9 +1389,9 @@ async def delete_workspace_skill(skill_id: str, delete_files: bool = False, http
                     timeout=5.0,
                 )
             except (asyncio.TimeoutError, Exception) as e:
-                logging.debug(str(e), exc_info=True)
+                logging.warning(str(e), exc_info=True)
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
     return {"status": "deleted", "id": skill_id, "delete_files": delete_files}
 
 
@@ -1430,7 +1430,7 @@ async def enable_workspace_skill(skill_id: str, request: Optional[Dict[str, Any]
     except HTTPException:
         raise
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
 
     # Signature gate: unverified workspace skills require approval to enable.
     s = await mgr.get_skill(skill_id)
@@ -1457,7 +1457,7 @@ async def enable_workspace_skill(skill_id: str, request: Optional[Dict[str, Any]
                     result={"lint": lint_sum, "reason": "high_risk_lint_errors"},
                 )
             except Exception as e:
-                logging.debug(str(e), exc_info=True)
+                logging.warning(str(e), exc_info=True)
             raise HTTPException(  # noqa: error-structured
                 status_code=409,
                 detail=gate_error_envelope(
@@ -1490,7 +1490,7 @@ async def enable_workspace_skill(skill_id: str, request: Optional[Dict[str, Any]
                 result={"reason": "publish_required"},
             )
         except Exception as e:
-            logging.debug(str(e), exc_info=True)
+            logging.warning(str(e), exc_info=True)
         return {"status": "publish_required", "candidate_id": pg.get("candidate_id"), "releases_url": ui_url("/core/learning/releases"), "change_id": change_id, "links": governance_links(change_id=change_id)}
 
     trusted = await _get_trusted_skill_pubkeys_map(rt)
@@ -1529,7 +1529,7 @@ async def enable_workspace_skill(skill_id: str, request: Optional[Dict[str, Any]
                     approval_request_id=rid,
                 )
             except Exception as e:
-                logging.debug(str(e), exc_info=True)
+                logging.warning(str(e), exc_info=True)
             try:
                 await _record_changeset(
                     rt,
@@ -1544,7 +1544,7 @@ async def enable_workspace_skill(skill_id: str, request: Optional[Dict[str, Any]
                     session_id=str(actor0.get("session_id") or "") or None,
                 )
             except Exception as e:
-                logging.debug(str(e), exc_info=True)
+                logging.warning(str(e), exc_info=True)
             return {"status": "approval_required", "approval_request_id": rid, "change_id": change_id, "links": governance_links(change_id=change_id, approval_request_id=rid)}
         if not _is_approval_resolved_approved(rt, approval_request_id):
             try:
@@ -1559,7 +1559,7 @@ async def enable_workspace_skill(skill_id: str, request: Optional[Dict[str, Any]
                     approval_request_id=approval_request_id,
                 )
             except Exception as e:
-                logging.debug(str(e), exc_info=True)
+                logging.warning(str(e), exc_info=True)
             raise HTTPException(  # noqa: error-structured
                 status_code=409,
                 detail=gate_error_envelope(
@@ -1572,7 +1572,7 @@ async def enable_workspace_skill(skill_id: str, request: Optional[Dict[str, Any]
         try:
             await _record_changeset(rt, name="skill_signature_gate", target_type="skill", target_id=str(skill_id), status="success", args={"scope": "workspace", "action": "enable"}, approval_request_id=approval_request_id)
         except Exception as e:
-            logging.debug(str(e), exc_info=True)
+            logging.warning(str(e), exc_info=True)
 
     ok = await mgr.enable_skill(skill_id)
     if not ok:
@@ -1591,7 +1591,7 @@ async def enable_workspace_skill(skill_id: str, request: Optional[Dict[str, Any]
             session_id=str(actor0.get("session_id") or "") or None,
         )
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
     try:
         store = _store(rt)
         if store is not None and http_request is not None:
@@ -1607,7 +1607,7 @@ async def enable_workspace_skill(skill_id: str, request: Optional[Dict[str, Any]
                 detail={"approval_request_id": approval_request_id, "change_id": change_id},
             )
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
     return {
         "status": "enabled",
         "approval_request_id": approval_request_id,
@@ -1679,7 +1679,7 @@ async def sign_workspace_skill(skill_id: str, request: Dict[str, Any], http_requ
             try:
                 manifest = json.loads((await _asyncio.to_thread(lambda: manifest_path.read_text(encoding="utf-8"))))
             except Exception as e:
-                logging.debug(str(e), exc_info=True)
+                logging.warning(str(e), exc_info=True)
         manifest["signature"] = signature
         manifest_path.write_text(json.dumps(manifest, indent=2, ensure_ascii=False), encoding="utf-8")
 
@@ -1728,7 +1728,7 @@ async def disable_workspace_skill(skill_id: str, http_request: Request = None, r
                 detail={},
             )
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
     return {"status": "disabled"}
 
 
@@ -1759,7 +1759,7 @@ async def restore_workspace_skill(skill_id: str, http_request: Request = None, r
                 detail={},
             )
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
     return {"status": "enabled"}
 
 
@@ -1885,7 +1885,7 @@ async def execute_workspace_skill(skill_id: str, request: SkillExecuteRequest, h
                 result={"reason": "publish_required"},
             )
         except Exception as e:
-            logging.debug(str(e), exc_info=True)
+            logging.warning(str(e), exc_info=True)
         # PR-02: Run Contract v2 (blocked)
         resp = {
             "ok": False,
@@ -1901,7 +1901,7 @@ async def execute_workspace_skill(skill_id: str, request: SkillExecuteRequest, h
         try:
             await _audit_execute(rt, http_request=http_request, payload={"context": {}}, resource_type="skill", resource_id=str(skill_id), resp=resp, action="execute_skill")
         except Exception as e:
-            logging.debug(str(e), exc_info=True)
+            logging.warning(str(e), exc_info=True)
         return resp
 
     # Merge platform identity headers into context (best-effort)
@@ -1910,7 +1910,7 @@ async def execute_workspace_skill(skill_id: str, request: SkillExecuteRequest, h
         tmp = _inject_http_request_context({"context": dict(ctx_for_user)}, http_request, entrypoint="api")
         ctx_for_user = tmp.get("context") if isinstance(tmp, dict) and isinstance(tmp.get("context"), dict) else ctx_for_user
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
 
     deny = await rbac_guard(http_request=http_request, payload={"context": ctx_for_user}, action="execute", resource_type="skill", resource_id=str(skill_id))
     if deny:
@@ -1936,7 +1936,7 @@ async def execute_workspace_skill(skill_id: str, request: SkillExecuteRequest, h
         if isinstance(getattr(skill, "metadata", None), dict) and prov2:
             skill.metadata["provenance"] = prov2
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
     gate = _signature_gate_eval(metadata=getattr(skill, "metadata", None), trusted_keys_count=len(trusted))
     if gate.get("required") is True:
         if not approval_request_id:
@@ -1965,7 +1965,7 @@ async def execute_workspace_skill(skill_id: str, request: SkillExecuteRequest, h
                     approval_request_id=rid,
                 )
             except Exception as e:
-                logging.debug(str(e), exc_info=True)
+                logging.warning(str(e), exc_info=True)
             resp = {
                 "ok": False,
                 "run_id": new_prefixed_id("run"),
@@ -1980,7 +1980,7 @@ async def execute_workspace_skill(skill_id: str, request: SkillExecuteRequest, h
             try:
                 await _audit_execute(rt, http_request=http_request, payload={"context": ctx_for_user}, resource_type="skill", resource_id=str(skill_id), resp=resp, action="execute_skill")
             except Exception as e:
-                logging.debug(str(e), exc_info=True)
+                logging.warning(str(e), exc_info=True)
             return resp
         if not _is_approval_resolved_approved(rt, approval_request_id):
             try:
@@ -1995,7 +1995,7 @@ async def execute_workspace_skill(skill_id: str, request: SkillExecuteRequest, h
                     approval_request_id=approval_request_id,
                 )
             except Exception as e:
-                logging.debug(str(e), exc_info=True)
+                logging.warning(str(e), exc_info=True)
             raise HTTPException(  # noqa: error-structured
                 status_code=409,
                 detail=gate_error_envelope(
@@ -2008,7 +2008,7 @@ async def execute_workspace_skill(skill_id: str, request: SkillExecuteRequest, h
         try:
             await _record_changeset(rt, name="skill_signature_gate", target_type="skill", target_id=str(skill_id), status="success", args={"scope": "workspace", "action": "execute"}, approval_request_id=approval_request_id)
         except Exception as e:
-            logging.debug(str(e), exc_info=True)
+            logging.warning(str(e), exc_info=True)
 
     user_id = str(ctx_for_user.get("actor_id") or ctx_for_user.get("user_id") or "system")
     harness = get_harness()
@@ -2024,7 +2024,7 @@ async def execute_workspace_skill(skill_id: str, request: SkillExecuteRequest, h
     try:
         await _audit_execute(rt, http_request=http_request, payload={"context": ctx_for_user}, resource_type="skill", resource_id=str(skill_id), resp=resp, action="execute_skill")
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
     return JSONResponse(status_code=200 if resp.get("ok") else int(getattr(result, "http_status", 500) or 500), content=resp)
 
 
@@ -2270,7 +2270,7 @@ async def update_workspace_skill_markdown(skill_id: str, request: Dict[str, Any]
             rev_dir.mkdir(parents=True, exist_ok=True)
             rev_dir.joinpath("SKILL.md").write_text(raw, encoding="utf-8")
         except Exception as e:
-            logging.debug(str(e), exc_info=True)
+            logging.warning(str(e), exc_info=True)
 
         p.write_text(text, encoding="utf-8")
 
@@ -2373,7 +2373,7 @@ async def submit_skill_for_review(skill_id: str, rt: RuntimeDep = None):
                 },
             })
         except Exception as e:
-            logging.debug(str(e), exc_info=True)
+            logging.warning(str(e), exc_info=True)
         raise HTTPException(  # noqa: error-structured
             status_code=422,
             detail={
@@ -2481,7 +2481,7 @@ async def install_skill_seed(seed_id: str, rt: RuntimeDep = None):
         try:
             mgr.reload()
         except Exception as e:
-            logging.debug(str(e), exc_info=True)
+            logging.warning(str(e), exc_info=True)
 
     return {"status": "installed", "id": seed_id}
 
@@ -2541,7 +2541,7 @@ async def sign_all_workspace_skills(request: Dict[str, Any], http_request: Reque
                 try:
                     manifest = _json.loads((await _asyncio.to_thread(lambda: manifest_path.read_text(encoding="utf-8"))))
                 except Exception as e:
-                    logging.debug(str(e), exc_info=True)
+                    logging.warning(str(e), exc_info=True)
             manifest["signature"] = sig
             manifest["version"] = str(version)
             manifest_path.write_text(_json.dumps(manifest, indent=2, ensure_ascii=False), encoding="utf-8")
@@ -2573,7 +2573,7 @@ async def skill_auto_fill(request: Dict[str, Any], rt: RuntimeDep = None):
             if entries:
                 skills_catalog = "\n".join(entries[:50])
         except Exception as e:
-            logging.debug(str(e), exc_info=True)
+            logging.warning(str(e), exc_info=True)
 
         from core.harness.utils.prompt_loader import _async_prompt_resolve
         prompt = await _async_prompt_resolve("skill-auto-fill",
@@ -2608,7 +2608,7 @@ async def skill_auto_fill(request: Dict[str, Any], rt: RuntimeDep = None):
                     docs = list(_yaml.safe_load_all(m.group(1)))
                     fm = docs[0] if docs else {}
                 except Exception as e:
-                    logging.debug(str(e), exc_info=True)
+                    logging.warning(str(e), exc_info=True)
         elif text.startswith('---'):
             parts = text.split('---', 2)
             if len(parts) >= 3:
@@ -2619,7 +2619,7 @@ async def skill_auto_fill(request: Dict[str, Any], rt: RuntimeDep = None):
                         docs = list(_yaml.safe_load_all(parts[1]))
                         fm = docs[0] if docs else {}
                     except Exception as e:
-                        logging.debug(str(e), exc_info=True)
+                        logging.warning(str(e), exc_info=True)
                 sop = parts[2].strip() if len(parts) > 2 else ""
 
         if not fm:
@@ -2703,7 +2703,7 @@ async def detect_skill_import(request: Dict[str, Any], rt: RuntimeDep = None):
             try:
                 existing = _yaml.safe_load(parts[1]) or {}
             except Exception as e:
-                logging.debug(str(e), exc_info=True)
+                logging.warning(str(e), exc_info=True)
             sop_body = parts[2].strip() if len(parts) > 2 else sop_body
     
     name = str(existing.get("name") or "")
@@ -2794,7 +2794,7 @@ def _load_tool_mapping() -> dict:
         return {str(k).strip().lower(): list(v) if isinstance(v, list) else [str(v)]
                 for k, v in raw.items()}
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
     # Minimal fallback if config file is missing or unreadable
     return {
         "bash": ["code"], "read": ["file_operations"], "write": ["file_operations"],

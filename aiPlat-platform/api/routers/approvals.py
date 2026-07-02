@@ -86,7 +86,7 @@ async def list_approvals(
             out_items.append(it2)
         res["items"] = out_items
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
     return res
 
 
@@ -130,7 +130,7 @@ async def list_pending_approvals(
                 out_items.append(it2)
             res["items"] = out_items
         except Exception as e:
-            logging.debug(str(e), exc_info=True)
+            logging.warning(str(e), exc_info=True)
         return res
 
     # Fallback: memory-only (rare)
@@ -155,7 +155,7 @@ async def list_pending_approvals(
                 }
             )
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
     return {"items": out, "total": len(out)}
 
 
@@ -212,7 +212,7 @@ async def get_approval_request(request_id: str, _auth: str = Depends(require_aut
                 resp["change_id"] = str(cid)
                 resp["links"].update(change_links(str(cid)))
         except Exception as e:
-            logging.debug(str(e), exc_info=True)
+            logging.warning(str(e), exc_info=True)
 
     return resp
 
@@ -263,7 +263,7 @@ async def approve_request(request_id: str, request: dict, http_request: Request,
     except HTTPException:
         raise
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
 
     approved_by = (request or {}).get("approved_by", "admin")
     comments = (request or {}).get("comments", "")
@@ -284,7 +284,7 @@ async def approve_request(request_id: str, request: dict, http_request: Request,
                 payload={"approval_request_id": str(request_id), "approved_by": str(approved_by), "comments": str(comments or "")},
             )
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
 
     if store:
         try:
@@ -300,7 +300,7 @@ async def approve_request(request_id: str, request: dict, http_request: Request,
                 detail={"comments": comments},
             )
         except Exception as e:
-            logging.debug(str(e), exc_info=True)
+            logging.warning(str(e), exc_info=True)
     return {"status": updated.status.value, "request_id": updated.request_id}
 
 
@@ -338,7 +338,7 @@ async def reject_request(request_id: str, request: dict, http_request: Request, 
                 payload={"approval_request_id": str(request_id), "rejected_by": str(rejected_by), "comments": str(comments or "")},
             )
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
 
     if store:
         try:
@@ -354,7 +354,7 @@ async def reject_request(request_id: str, request: dict, http_request: Request, 
                 detail={"comments": comments},
             )
         except Exception as e:
-            logging.debug(str(e), exc_info=True)
+            logging.warning(str(e), exc_info=True)
 
     return {"status": updated.status.value, "request_id": updated.request_id}
 
@@ -581,7 +581,7 @@ async def replay_approval(request_id: str, request: dict, http_request: Request,
                     }
                 )
         except Exception as e:
-            logging.debug(str(e), exc_info=True)
+            logging.warning(str(e), exc_info=True)
         return {
             "status": "published" if op == "config:publish" else "rolled_back",
             "asset_type": asset_type,

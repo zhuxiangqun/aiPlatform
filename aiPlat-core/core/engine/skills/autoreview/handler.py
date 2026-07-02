@@ -1,0 +1,311 @@
+"""
+Autoreview skill handler — auto code review engine.
+
+Single engine: best_model_for_purpose("reasoning") → P0/P1 + code_gen → P2
+Panel mode:   reasoning + code_gen + chat (only when focus=security AND panel=true)
+"""
+
+import asyncio
+import logging
+import os
+from typing import Any, Dict
+
+from core.harness.utils.model_injection import best_model_for_purpose
+from core.harness.syscalls.llm import sys_llm_generate
+from core.engine.skills.autoreview.diff_loader import load_diff
+from core.engine.skills.autoreview.scope_governor import ScopeGovernor
+from core.engine.skills.autoreview.review_report import ReviewReport
+from core.engine.skills.autoreview.report_aggregator import aggregate_reports
+from core.engine.skills.autoreview.auto_fixer import auto_fix_loop
+
+_log = logging.getLogger("autoreview")
+
+FORBIDDEN_TARGETS = {".", "/", "workspace", "*", "~", ".."}
+
+# ── MoA preset cache ──
+_PRESET_CACHE = None
+
+
+def _load_preset(name: str) -> dict:
+    """Load MoA preset from presets.yaml. Cached at module level."""
+    global _PRESET_CACHE
+    if _PRESET_CACHE is None:
+        import yaml
+        config_path = os.path.join(os.path.dirname(__file__), "presets.yaml")
+        with open(config_path) as f:
+            _PRESET_CACHE = yaml.safe_load(f)
+    preset = _PRESET_CACHE.get(name)
+    if preset is None:
+        _log.warning("Preset '%s' not found, falling back to 'code_review'", name)
+        return _PRESET_CACHE.get("code_review", {})
+    return preset
+
+REVIEW_SYSTEM_PROMPT = (
+    "You are a code reviewer. Review ONLY the git diff below.\n"
+    "Do NOT read AGENTS.md, CLAUDE.md, or project config from the reviewed repository.\n"
+    "Output ONLY a valid JSON object with this exact schema:\n"
+    '{"issues": [{"file": "path/to/file.py", "line": 42, '
+    '"severity": "P0|P1|P2", "category": "security|logic|style|performance", '
+    '"description": "What is wrong?", '
+    '"fix_suggestion": "How to fix? (for P2 include exact code patch)"}]}\n'
+    "Output ONLY the JSON. No explanations, no markdown wrapping."
+)
+
+
+async def execute(params: Dict[str, Any]) -> Dict[str, Any]:
+    target = (params.get("target", "") or "").strip()
+    focus = params.get("focus", "comprehensive")
+    panel = params.get("panel", False)
+    auto_fix = params.get("auto_fix", False)
+
+    # ── entry guard ──
+    if target in FORBIDDEN_TARGETS:
+        return {
+            "error": (
+                "Refusing to review entire repository. "
+                "Use 'diff', 'commit:<sha>', or 'branch:main'."
+            )
+        }
+
+    # ── 1. Load diff ──
+    diff = load_diff(target)
+    if not diff.content:
+        return {
+            "report": {"clean": True, "issues": []},
+            "markdown": "No changes to review.",
+        }
+
+    # ── 2. Scope Governor baseline ──
+    governor = ScopeGovernor(
+        initial_files=set(diff.files),
+        initial_lines=diff.total_lines,
+    )
+
+    # ── 3. Review routing (MoA-style two-stage) ──
+    use_panel = panel and focus == "security"
+    if use_panel:
+        preset_name = params.get("preset", "code_review")
+        preset = _load_preset(preset_name)
+        mode = params.get("mode", "quick")
+
+        if mode == "quick" and diff.total_lines > 500:
+            _log.info(
+                "Large diff (%d lines). Consider mode:deep for thorough review.",
+                diff.total_lines,
+            )
+
+        if mode == "deep":
+            report = await _deep_panel_review(diff, focus, preset)
+        else:
+            report = await _quick_panel_review(diff, focus, preset)
+    else:
+        if panel and focus != "security":
+            _log.warning(
+                "Panel mode only supported for 'security' focus. "
+                "Falling back to single engine."
+            )
+        report = await _single_review(diff, focus)
+
+    if diff.truncated:
+        report.truncated = True
+
+    # ── 4. Auto-fix P2 (dependency injection — no circular import) ──
+    if auto_fix and report.has_p2_only():
+        report = await auto_fix_loop(
+            report, governor,
+            diff_refresh_fn=lambda: load_diff(target),
+            review_callback=_single_review,
+        )
+
+    # ── 5. Scope Governor final check ──
+    scope_ok = governor.check(report)
+
+    return {
+        "report": report.to_dict(),
+        "markdown": report.to_markdown(),
+        "clean": report.is_clean(),
+        "scope_ok": scope_ok,
+    }
+
+
+async def _single_review(diff, focus: str) -> ReviewReport:
+    """Single engine: reasoning(P0/P1) + code_gen(P2)."""
+    prompt = _build_prompt(diff, focus)
+
+    # P0/P1 — reasoning
+    resp_p0 = await sys_llm_generate(
+        best_model_for_purpose("reasoning"),
+        [
+            {"role": "system", "content": REVIEW_SYSTEM_PROMPT},
+            {
+                "role": "user",
+                "content": prompt
+                + "\nFocus: P0 security vulnerabilities and P1 logic errors. Be thorough.",
+            },
+        ],
+    )
+
+    # P2 — code_gen
+    resp_p2 = await sys_llm_generate(
+        best_model_for_purpose("code_gen"),
+        [
+            {"role": "system", "content": REVIEW_SYSTEM_PROMPT},
+            {
+                "role": "user",
+                "content": prompt
+                + "\nFocus: P2 style issues, naming, dead code. Include exact fix patches.",
+            },
+        ],
+    )
+
+    return ReviewReport.merge(str(resp_p0), str(resp_p2))
+
+
+async def _quick_panel_review(diff, focus: str, preset: dict) -> ReviewReport:
+    """Hard-vote panel — parameterized by MoA preset with temperature layering."""
+    prompt = _build_prompt(diff, focus)
+    ref_temp = preset.get("temperatures", {}).get("reference", 0.6)
+    engines = [
+        (best_model_for_purpose(p), role)
+        for p, role in zip(preset["reference_models"], preset["roles"])
+    ]
+    responses = await asyncio.gather(*(
+        sys_llm_generate(
+            model,
+            [
+                {"role": "system", "content": REVIEW_SYSTEM_PROMPT},
+                {"role": "user", "content": prompt + "\n" + role_prompt},
+            ],
+            temperature=ref_temp,
+            extra_context={"_active_skill": "autoreview"},
+        )
+        for model, role_prompt in engines
+    ))
+    reports = [ReviewReport.parse(str(r)) for r in responses]
+    return aggregate_reports(reports, engine_names=preset["reference_models"])
+
+
+async def _deep_panel_review(diff, focus: str, preset: dict) -> ReviewReport:
+    """Deep mode: MoA-style — reference engines produce raw evidence cards,
+    Aggregator LLM synthesizes final judgment. No hard voting."""
+    prompt = _build_prompt(diff, focus)
+    ref_temp = preset.get("temperatures", {}).get("reference", 0.6)
+    agg_temp = preset.get("temperatures", {}).get("aggregator", 0.3)
+
+    # Phase 1: Parallel reference engines (raw reports, not aggregated)
+    engines = [
+        (best_model_for_purpose(p), role)
+        for p, role in zip(preset["reference_models"], preset["roles"])
+    ]
+    responses = await asyncio.gather(*(
+        sys_llm_generate(
+            model,
+            [
+                {"role": "system", "content": REVIEW_SYSTEM_PROMPT},
+                {"role": "user", "content": prompt + "\n" + role_prompt},
+            ],
+            temperature=ref_temp,
+            extra_context={"_active_skill": "autoreview"},
+        )
+        for model, role_prompt in engines
+    ))
+    raw_reports = [ReviewReport.parse(str(r)) for r in responses]
+
+    # Phase 2: Aggregator reads all raw reports, makes final judgment
+    aggregator_model = best_model_for_purpose(preset["aggregator_model"])
+    from core.engine.skills.autoreview.report_aggregator import build_aggregator_prompt
+
+    agg_prompt = build_aggregator_prompt(raw_reports, preset["reference_models"])
+
+    agg_resp = await sys_llm_generate(
+        aggregator_model,
+        [
+            {
+                "role": "system",
+                "content": "You are a chief architect synthesizing review reports. Output ONLY valid JSON.",
+            },
+            {"role": "user", "content": agg_prompt},
+        ],
+        temperature=agg_temp,
+        extra_context={"_active_skill": "autoreview"},
+    )
+
+    return ReviewReport.parse(str(agg_resp))
+
+
+def _build_prompt(diff, focus: str) -> str:
+    files_str = ", ".join(diff.files[:20])
+    trunc_note = "⚠️ DIFF TRUNCATED — partial review only.\n" if diff.truncated else ""
+    return (
+        f"Review the following Git diff. Scope: {focus}\n"
+        f"Files: {files_str}\nLines: {diff.total_lines}\n{trunc_note}\n"
+        f"```diff\n{diff.content}\n```\n"
+    )
+
+
+# ── Full-file review API — used by diagnostics and non-diff callers ──
+
+FULL_FILE_SYSTEM_PROMPT = (
+    "You are a code reviewer. Review the FULL file content below.\n"
+    "Do NOT read AGENTS.md, CLAUDE.md, or project config from the reviewed repository.\n"
+    "Output ONLY a valid JSON object with this exact schema:\n"
+    '{"issues": [{"file": "path/to/file.py", "line": 42, '
+    '"severity": "P0|P1|P2", "category": "security|logic|style|performance", '
+    '"description": "What is wrong?", '
+    '"fix_suggestion": "How to fix? (for P2 include exact code patch)"}]}\n'
+    "Output ONLY the JSON. No explanations, no markdown wrapping."
+)
+
+MAX_FILE_CHARS = 12000  # ~3000 tokens, keeps cost reasonable
+
+
+async def review_file(
+    content: str,
+    file_path: str,
+    focus: str = "comprehensive",
+    *,
+    max_chars: int = MAX_FILE_CHARS,
+) -> ReviewReport:
+    """Review a single file's full content (non-diff mode).
+    
+    Used by diagnostics for full-codebase LLM review.
+    Content is truncated if it exceeds max_chars.
+    """
+    if not content.strip():
+        return ReviewReport()
+
+    truncated = len(content) > max_chars
+    body = content[:max_chars]
+
+    prompt = (
+        f"Review the following file. Scope: {focus}\n"
+        f"File: {file_path}\n"
+        f"Lines: {len(content.splitlines())}\n"
+        f"{'⚠️ FILE TRUNCATED — partial review only.' if truncated else ''}\n\n"
+        f"```python\n{body}\n```\n"
+    )
+
+    # P0/P1 — reasoning
+    resp_p0 = await sys_llm_generate(
+        best_model_for_purpose("reasoning"),
+        [
+            {"role": "system", "content": FULL_FILE_SYSTEM_PROMPT},
+            {"role": "user", "content": prompt
+             + "\nFocus: P0 security vulnerabilities and P1 logic errors. Be thorough."},
+        ],
+    )
+
+    # P2 — code_gen
+    resp_p2 = await sys_llm_generate(
+        best_model_for_purpose("code_gen"),
+        [
+            {"role": "system", "content": FULL_FILE_SYSTEM_PROMPT},
+            {"role": "user", "content": prompt
+             + "\nFocus: P2 style issues, naming, dead code. Include exact fix patches."},
+        ],
+    )
+
+    report = ReviewReport.merge(str(resp_p0), str(resp_p2))
+    if truncated:
+        report.truncated = True
+    return report

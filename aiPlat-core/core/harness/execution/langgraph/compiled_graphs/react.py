@@ -146,7 +146,7 @@ def create_compiled_react_graph(
             try:
                 await sys_llm_generate(model, prompt, trace_context={"source": "compiled_react_observe"})
             except Exception as e:
-                logging.debug(str(e), exc_info=True)
+                logging.warning(str(e), exc_info=True)
 
         obs = str(state.get("observation", "") or "")
         step_count = int(state.get("step_count", 0) or 0)

@@ -1314,7 +1314,7 @@ async def _execute_workspace_agent_background(
         
         # Always go through infra ModelManager for model resolution (single source of truth)
         if not model_name or model_name == "auto":
-            model_name = best_model_for_purpose("chat")  # noqa: model-legacy
+            model_name = best_model_for_purpose("chat")
         else:
             # Explicit model: validate it exists in infra registry; if not, fall back to auto
             try:
@@ -1325,9 +1325,9 @@ async def _execute_workspace_agent_background(
                     _logging.getLogger("aiplat.core_facade").warning(
                         f"Agent '{agent_id}' specified model '{model_name}' not found in infra registry; "
                         f"falling back to best_model_for_purpose('chat')")
-                    model_name = best_model_for_purpose("chat")  # noqa: model-legacy
+                    model_name = best_model_for_purpose("chat")
             except Exception:
-                model_name = best_model_for_purpose("chat")  # noqa: model-legacy
+                model_name = best_model_for_purpose("chat")
         
         try:
             return create_selected_adapter(model_name=model_name)

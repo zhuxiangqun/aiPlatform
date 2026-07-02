@@ -207,7 +207,7 @@ class AgentManager:
                     if not isinstance(config, dict):
                         config = {}
                     if not config.get("model"):
-                        config["model"] = fm.get("model") or best_model_for_purpose("chat")  # noqa: model-legacy
+                        config["model"] = fm.get("model") or best_model_for_purpose("chat")
 
                     category = str(fm.get("category") or "")
                     tags = fm.get("tags") or []
@@ -460,7 +460,7 @@ class AgentManager:
                         if not isinstance(config, dict):
                             config = {}
                         if not config.get("model"):
-                            config["model"] = fm.get("model") or best_model_for_purpose("chat")  # noqa: model-legacy
+                            config["model"] = fm.get("model") or best_model_for_purpose("chat")
                         skills = fm.get("skills") or fm.get("required_skills") or []
                         skills = skills if isinstance(skills, list) else []
                         tools = fm.get("tools") or fm.get("required_tools") or []

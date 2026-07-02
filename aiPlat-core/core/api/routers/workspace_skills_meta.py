@@ -381,7 +381,7 @@ async def _create_config_publish_approval_request(
                 if wn:
                     summary_lines.append(f"warnings={json.dumps(wn[:5], ensure_ascii=False)}")
         except Exception as e:
-            logging.debug(str(e), exc_info=True)
+            logging.warning(str(e), exc_info=True)
         if version:
             summary_lines.append(f"to_version={version}")
         assessment_summary = "\n".join([x for x in summary_lines if x]).strip()
@@ -461,7 +461,7 @@ async def _create_config_publish_approval_request(
                 }
             )
         except Exception as e:
-            logging.debug(str(e), exc_info=True)
+            logging.warning(str(e), exc_info=True)
         return request_id
     except Exception:
         return None
@@ -557,7 +557,7 @@ async def _create_config_rollback_approval_request(
                 }
             )
         except Exception as e:
-            logging.debug(str(e), exc_info=True)
+            logging.warning(str(e), exc_info=True)
         return request_id
     except Exception:
         return None
@@ -768,7 +768,7 @@ async def workspace_config_registry_publish(
     except HTTPException:
         raise
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
 
     key = ConfigRegistryKey(asset_type=str(asset_type), scope=sc, tenant_id=ctx["tenant_id"], channel=ctx["channel"])
     v2 = await store.publish(key=key, payload=payload, actor=actor, note=note, version=ver)
@@ -799,7 +799,7 @@ async def workspace_config_registry_publish(
                 }
             )
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
     return {"status": "published", "version": v2, **ctx, "scope": sc, "asset_type": str(asset_type)}
 
 
@@ -895,7 +895,7 @@ async def workspace_config_registry_rollback(
                                 }
                             )
                     except Exception as e:
-                        logging.debug(str(e), exc_info=True)
+                        logging.warning(str(e), exc_info=True)
                     return {"status": "rolled_back", "version": str(to_v), "from_version": from_v, **ctx, "scope": sc, "asset_type": str(asset_type), "approval_request_id": str(approval_request_id)}
         # create approval request and block
         rid = await _create_config_rollback_approval_request(
@@ -954,7 +954,7 @@ async def workspace_config_registry_rollback(
                 }
             )
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
     return {"status": "rolled_back", "version": ver, "from_version": from_v, **ctx, "scope": sc, "asset_type": str(asset_type)}
 
 
@@ -1010,7 +1010,7 @@ async def workspace_config_registry_diff(
             else:
                 assessment["requires_approval"] = False
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
     diff_text = _unified_diff_text(cur_payload, proposed_payload)
     return {
         "status": "ok",
@@ -1168,7 +1168,7 @@ async def workspace_skills_installer_install(request: SkillInstallerInstallReque
                 try:
                     await approval_mgr._persist(ar)  # type: ignore[attr-defined]
                 except Exception as e:
-                    logging.debug(str(e), exc_info=True)
+                    logging.warning(str(e), exc_info=True)
                 raise HTTPException(  # noqa: error-structured
                     status_code=409,
                     detail={
@@ -1211,7 +1211,7 @@ async def workspace_skills_installer_install(request: SkillInstallerInstallReque
                     },
                 )
         except Exception as e:
-            logging.debug(str(e), exc_info=True)
+            logging.warning(str(e), exc_info=True)
         return {"status": "ok", **res}
     except PermissionError as e:
         raise HTTPException(status_code=403, detail=str(e))
@@ -1282,7 +1282,7 @@ async def workspace_skills_installer_plan(request: SkillInstallerInstallRequest,
 
             out["planned_skills_digest"] = _skills_digest((plan or {}).get("skills"))
         except Exception as e:
-            logging.debug(str(e), exc_info=True)
+            logging.warning(str(e), exc_info=True)
         if plan_id:
             out["plan_id"] = plan_id
             out["plan_expires_at"] = expires_at
@@ -1322,7 +1322,7 @@ async def workspace_skills_installer_resolve_head(payload: dict, http_request: R
                     detail={"url": url, "head_sha": (res or {}).get("head_sha") if isinstance(res, dict) else None},
                 )
         except Exception as e:
-            logging.debug(str(e), exc_info=True)
+            logging.warning(str(e), exc_info=True)
         return {"status": "ok", **res}
     except PermissionError as e:
         raise HTTPException(status_code=403, detail=str(e))
@@ -1367,7 +1367,7 @@ async def workspace_skills_installer_update(skill_id: str, request: SkillInstall
                     detail={"ref": request.ref, "installed": (res or {}).get("installed") if isinstance(res, dict) else None},
                 )
         except Exception as e:
-            logging.debug(str(e), exc_info=True)
+            logging.warning(str(e), exc_info=True)
         return {"status": "ok", **res}
     except PermissionError as e:
         raise HTTPException(status_code=403, detail=str(e))
@@ -1410,7 +1410,7 @@ async def workspace_skills_installer_uninstall(skill_id: str, http_request: Requ
                     detail={"delete_files": bool(delete_files), "deleted": (res or {}).get("deleted") if isinstance(res, dict) else None},
                 )
         except Exception as e:
-            logging.debug(str(e), exc_info=True)
+            logging.warning(str(e), exc_info=True)
         return {"status": "ok", **res}
     except PermissionError as e:
         raise HTTPException(status_code=403, detail=str(e))

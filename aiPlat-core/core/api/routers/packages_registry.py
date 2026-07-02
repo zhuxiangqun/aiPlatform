@@ -72,7 +72,7 @@ def _find_filesystem_package(pkg_name: str):
             if pkg is not None:
                 return pkg
         except Exception as e:
-            logging.debug(str(e), exc_info=True)
+            logging.warning(str(e), exc_info=True)
     return None
 
 
@@ -181,7 +181,7 @@ async def publish_package(pkg_name: str, http_request: Request, request: Package
                     tenant_id=str(http_request.headers.get("X-AIPLAT-TENANT-ID")) if http_request.headers.get("X-AIPLAT-TENANT-ID") else None,
                 )
             except Exception as e:
-                logging.debug(str(e), exc_info=True)
+                logging.warning(str(e), exc_info=True)
             return {"status": "approval_required", "approval_request_id": rid, "change_id": change_id, "links": governance_links(change_id=change_id, approval_request_id=rid)}
         if not _is_approval_resolved_approved(request.approval_request_id):
             try:
@@ -198,7 +198,7 @@ async def publish_package(pkg_name: str, http_request: Request, request: Package
                     tenant_id=str(http_request.headers.get("X-AIPLAT-TENANT-ID")) if http_request.headers.get("X-AIPLAT-TENANT-ID") else None,
                 )
             except Exception as e:
-                logging.debug(str(e), exc_info=True)
+                logging.warning(str(e), exc_info=True)
             raise HTTPException(  # noqa: error-structured
                 status_code=409,
                 detail=gate_error_envelope(
@@ -267,7 +267,7 @@ async def publish_package(pkg_name: str, http_request: Request, request: Package
             tenant_id=str(http_request.headers.get("X-AIPLAT-TENANT-ID")) if http_request.headers.get("X-AIPLAT-TENANT-ID") else None,
         )
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
     return {"status": "published", "package_version": rec, "change_id": change_id, "links": governance_links(change_id=change_id)}
 
 
@@ -309,7 +309,7 @@ async def install_package(pkg_name: str, http_request: Request, request: Package
                     tenant_id=str(http_request.headers.get("X-AIPLAT-TENANT-ID")) if http_request.headers.get("X-AIPLAT-TENANT-ID") else None,
                 )
             except Exception as e:
-                logging.debug(str(e), exc_info=True)
+                logging.warning(str(e), exc_info=True)
             return {"status": "approval_required", "approval_request_id": rid, "change_id": change_id, "links": governance_links(change_id=change_id, approval_request_id=rid)}
         if not _is_approval_resolved_approved(request.approval_request_id):
             try:
@@ -326,7 +326,7 @@ async def install_package(pkg_name: str, http_request: Request, request: Package
                     tenant_id=str(http_request.headers.get("X-AIPLAT-TENANT-ID")) if http_request.headers.get("X-AIPLAT-TENANT-ID") else None,
                 )
             except Exception as e:
-                logging.debug(str(e), exc_info=True)
+                logging.warning(str(e), exc_info=True)
             raise HTTPException(  # noqa: error-structured
                 status_code=409,
                 detail=gate_error_envelope(
@@ -422,7 +422,7 @@ async def install_package(pkg_name: str, http_request: Request, request: Package
                     on_complete=_on_complete,
                 )
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
 
     # Change control record (best-effort)
     try:
@@ -443,7 +443,7 @@ async def install_package(pkg_name: str, http_request: Request, request: Package
             tenant_id=str(http_request.headers.get("X-AIPLAT-TENANT-ID")) if http_request.headers.get("X-AIPLAT-TENANT-ID") else None,
         )
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
 
     return {"status": "installed", "install": install_rec, "record": applied_record, "change_id": change_id, "links": governance_links(change_id=change_id)}
 
@@ -482,7 +482,7 @@ async def uninstall_package(pkg_name: str, http_request: Request, request: Packa
             try:
                 await record_changeset(store=store, name="package_uninstall", target_type="package", target_id=str(pkg_name), status="approval_required", args={"package_name": pkg_name, "keep_modified": bool(request.keep_modified)}, approval_request_id=rid)
             except Exception as e:
-                logging.debug(str(e), exc_info=True)
+                logging.warning(str(e), exc_info=True)
             try:
                 await record_changeset(
                     store=store,
@@ -496,7 +496,7 @@ async def uninstall_package(pkg_name: str, http_request: Request, request: Packa
                     tenant_id=str(http_request.headers.get("X-AIPLAT-TENANT-ID")) if http_request.headers.get("X-AIPLAT-TENANT-ID") else None,
                 )
             except Exception as e:
-                logging.debug(str(e), exc_info=True)
+                logging.warning(str(e), exc_info=True)
             return {"status": "approval_required", "approval_request_id": rid, "change_id": change_id, "links": governance_links(change_id=change_id, approval_request_id=rid)}
         if not _is_approval_resolved_approved(request.approval_request_id):
             try:
@@ -513,7 +513,7 @@ async def uninstall_package(pkg_name: str, http_request: Request, request: Packa
                     tenant_id=str(http_request.headers.get("X-AIPLAT-TENANT-ID")) if http_request.headers.get("X-AIPLAT-TENANT-ID") else None,
                 )
             except Exception as e:
-                logging.debug(str(e), exc_info=True)
+                logging.warning(str(e), exc_info=True)
             raise HTTPException(  # noqa: error-structured
                 status_code=409,
                 detail=gate_error_envelope(
@@ -541,7 +541,7 @@ async def uninstall_package(pkg_name: str, http_request: Request, request: Packa
             approval_request_id=request.approval_request_id,
         )
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
 
     try:
         await record_changeset(
@@ -557,7 +557,7 @@ async def uninstall_package(pkg_name: str, http_request: Request, request: Packa
             tenant_id=str(http_request.headers.get("X-AIPLAT-TENANT-ID")) if http_request.headers.get("X-AIPLAT-TENANT-ID") else None,
         )
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
 
     if rt is not None:
         await rebuild_workspace_managers_into_runtime(runtime=rt)

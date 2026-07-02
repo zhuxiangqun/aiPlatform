@@ -146,7 +146,7 @@ async def upsert_scoped_evaluation_policy(
     except HTTPException:
         raise
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
 
     mgr = LearningManager(execution_store=store)
     art = await mgr.create_artifact(
@@ -172,7 +172,7 @@ async def upsert_scoped_evaluation_policy(
             user_id=str(actor.get("actor_id") or "admin"),
         )
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
     return {
         "status": "ok",
         "artifact_id": art.artifact_id,

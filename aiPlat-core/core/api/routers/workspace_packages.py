@@ -209,7 +209,7 @@ async def export_workspace_package(data: Dict[str, Any]):
         try:
             shutil.rmtree(tmpdir, ignore_errors=True)
         except Exception as e:
-            logging.debug(str(e), exc_info=True)
+            logging.warning(str(e), exc_info=True)
 
 
 @router.post("/workspace/packages", response_model=Dict[str, Any])
@@ -296,7 +296,7 @@ async def create_workspace_package(request: Dict[str, Any]) -> Dict[str, Any]:
             (pkg_dir / "package.yaml").write_text(yaml.safe_dump(manifest, sort_keys=False, allow_unicode=True), encoding="utf-8")
             workspace_pkg_mgr.reload()
         except Exception as e:
-            logging.debug(str(e), exc_info=True)
+            logging.warning(str(e), exc_info=True)
 
     return {"status": "upserted", "package": await get_workspace_package(name)}
 
@@ -355,7 +355,7 @@ async def install_workspace_package(pkg_name: str, http_request: Request, reques
                     detail={"op": "package_install", "package": pkg_name},
                 )
     except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        logging.warning(str(e), exc_info=True)
 
     return {"status": "installed", "record": record}
 
