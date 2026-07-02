@@ -84,7 +84,7 @@ def _load(collection_id: str = "default") -> List[ObjectPermission]:
         data = _json.load(open(path, "r", encoding="utf-8"))
         return [ObjectPermission.from_dict(p) for p in data.get("permissions", [])]
     except Exception:
-        logger.warning("Failed to load object permissions for %s", collection_id)
+        logger.warning("Failed to load object permissions for %s", collection_id, exc_info=True)
         return []
 
 

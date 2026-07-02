@@ -12,7 +12,10 @@ from __future__ import annotations
 from dataclasses import dataclass
 from enum import Enum
 from typing import Any, Dict, Optional, Tuple
+import logging
 import os
+
+logger = logging.getLogger(__name__)
 
 
 class PolicyDecision(str, Enum):
@@ -124,6 +127,7 @@ async def _load_tenant_policy_snapshot(*, store: Any, tenant_id: str) -> Tuple[O
     try:
         item = await store.get_tenant_policy(tenant_id=str(tenant_id))
     except Exception:
+        logger.error("Policy engine: failed to load tenant policy for %s", tenant_id, exc_info=True)
         item = None
     if not isinstance(item, dict):
         return None, None
@@ -131,7 +135,8 @@ async def _load_tenant_policy_snapshot(*, store: Any, tenant_id: str) -> Tuple[O
     ver = item.get("version")
     try:
         ver_i = int(ver) if ver is not None else None
-    except Exception:
+    except (ValueError, TypeError):
+        logger.warning("Policy engine: invalid policy version %r for %s", ver, tenant_id)
         ver_i = None
     return pol, ver_i
 

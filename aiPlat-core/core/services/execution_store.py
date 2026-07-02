@@ -124,6 +124,18 @@ class ExecutionStore:
         self._init_once_lock = anyio.Lock()
         self._inited = False
 
+    def _connect(self) -> sqlite3.Connection:
+        """Create a properly configured SQLite connection.
+        
+        Centralized connection factory — all methods use this instead of raw
+        sqlite3.connect(). Ensures consistent WAL mode, timeout, and pragma settings.
+        """
+        conn = sqlite3.connect(self._config.db_path, timeout=5.0)
+        conn.execute("PRAGMA journal_mode=WAL;")
+        conn.execute("PRAGMA foreign_keys=ON;")
+        conn.row_factory = sqlite3.Row
+        return conn
+
     async def init(self) -> None:
         """Init database and run schema migrations (idempotent)."""
         async with self._init_once_lock:
@@ -134,7 +146,7 @@ class ExecutionStore:
             os.makedirs(os.path.dirname(db_path) or ".", exist_ok=True)
 
             def _init_sync():
-                conn = sqlite3.connect(db_path, timeout=5.0)
+                conn = self._connect()
                 try:
                     from .execution_store_schema import execute_schema
                     execute_schema(conn)
@@ -1911,7 +1923,7 @@ class ExecutionStore:
         db_path = self._config.db_path
 
         def _sync() -> int:
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             try:
                 row = conn.execute("SELECT v FROM aiplat_meta WHERE k='schema_version'").fetchone()
                 return int(row[0]) if row else 0
@@ -1934,7 +1946,7 @@ class ExecutionStore:
         db_path = self._config.db_path
 
         def _sync() -> Dict[str, Any]:
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             conn.row_factory = sqlite3.Row
             try:
                 now = time.time()
@@ -2068,7 +2080,7 @@ class ExecutionStore:
         cutoff = now_ts - float(retention_days or 0) * 86400.0
 
         def _sync() -> Dict[str, int]:
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             try:
                 conn.execute("PRAGMA foreign_keys=ON;")
                 deleted = {"agent_executions": 0, "skill_executions": 0, "graph_runs": 0, "graph_checkpoints": 0, "traces": 0, "spans": 0, "syscall_events": 0}
@@ -2193,7 +2205,7 @@ class ExecutionStore:
             trace_id = None
 
         def _sync():
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             try:
                 conn.execute(
                     """
@@ -2238,7 +2250,7 @@ class ExecutionStore:
             trace_id = None
 
         def _sync():
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             conn.row_factory = sqlite3.Row
             try:
                 row = conn.execute("SELECT start_time FROM graph_runs WHERE run_id=?", (run_id,)).fetchone()
@@ -2273,7 +2285,7 @@ class ExecutionStore:
         state_json = _json_dumps(state or {})
 
         def _sync():
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             try:
                 conn.execute(
                     """
@@ -2299,7 +2311,7 @@ class ExecutionStore:
         db_path = self._config.db_path
 
         def _sync() -> List[Dict[str, Any]]:
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             conn.row_factory = sqlite3.Row
             try:
                 rows = conn.execute(
@@ -2332,7 +2344,7 @@ class ExecutionStore:
         db_path = self._config.db_path
 
         def _sync() -> Optional[Dict[str, Any]]:
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             conn.row_factory = sqlite3.Row
             try:
                 row = conn.execute("SELECT * FROM graph_runs WHERE run_id=?", (run_id,)).fetchone()
@@ -2370,7 +2382,7 @@ class ExecutionStore:
         db_path = self._config.db_path
 
         def _sync() -> Dict[str, Any]:
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             conn.row_factory = sqlite3.Row
             try:
                 clauses = []
@@ -2439,7 +2451,7 @@ class ExecutionStore:
         )
 
         def _sync():
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             try:
                 conn.execute(
                     """
@@ -2479,7 +2491,7 @@ class ExecutionStore:
         )
 
         def _sync():
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             try:
                 conn.execute(
                     """
@@ -2509,7 +2521,7 @@ class ExecutionStore:
         db_path = self._config.db_path
 
         def _sync() -> Optional[Dict[str, Any]]:
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             conn.row_factory = sqlite3.Row
             try:
                 row = conn.execute("SELECT * FROM traces WHERE trace_id=?", (trace_id,)).fetchone()
@@ -2555,7 +2567,7 @@ class ExecutionStore:
         db_path = self._config.db_path
 
         def _sync() -> Tuple[List[Dict[str, Any]], int]:
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             conn.row_factory = sqlite3.Row
             try:
                 if status:
@@ -2595,7 +2607,7 @@ class ExecutionStore:
         db_path = self._config.db_path
 
         def _sync() -> Optional[Dict[str, Any]]:
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             conn.row_factory = sqlite3.Row
             try:
                 row = conn.execute(
@@ -2621,7 +2633,7 @@ class ExecutionStore:
         db_path = self._config.db_path
 
         def _sync() -> Optional[Dict[str, Any]]:
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             conn.row_factory = sqlite3.Row
             try:
                 row = conn.execute(
@@ -2653,7 +2665,7 @@ class ExecutionStore:
         db_path = self._config.db_path
 
         def _sync() -> Optional[Dict[str, Any]]:
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             conn.row_factory = sqlite3.Row
             try:
                 row = conn.execute(
@@ -2703,7 +2715,7 @@ class ExecutionStore:
         db_path = self._config.db_path
 
         def _find_existing() -> Optional[Dict[str, Any]]:
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             conn.row_factory = sqlite3.Row
             try:
                 row = conn.execute(
@@ -2769,7 +2781,7 @@ class ExecutionStore:
         db_path = self._config.db_path
 
         def _sync() -> Optional[str]:
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             conn.row_factory = sqlite3.Row
             try:
                 row = conn.execute("SELECT trace_id FROM agent_executions WHERE id=?", (execution_id,)).fetchone()
@@ -2789,7 +2801,7 @@ class ExecutionStore:
         db_path = self._config.db_path
 
         def _sync() -> Dict[str, Any]:
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             conn.row_factory = sqlite3.Row
             try:
                 agent_rows = conn.execute(
@@ -2903,7 +2915,7 @@ class ExecutionStore:
         )
 
         def _sync():
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             try:
                 conn.execute(
                     """
@@ -2979,7 +2991,7 @@ class ExecutionStore:
         )
 
         def _sync():
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             try:
                 conn.execute(
                     """
@@ -3031,7 +3043,7 @@ class ExecutionStore:
         db_path = self._config.db_path
 
         def _sync():
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             try:
                 conn.execute(
                     """
@@ -3079,7 +3091,7 @@ class ExecutionStore:
         db_path = self._config.db_path
 
         def _sync() -> Dict[str, Any]:
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             conn.row_factory = sqlite3.Row
             try:
                 clauses = []
@@ -3190,7 +3202,7 @@ class ExecutionStore:
         db_path = self._config.db_path
 
         def _sync() -> Dict[str, Any]:
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             conn.row_factory = sqlite3.Row
             try:
                 clauses = ["kind='changeset'", "target_type='change'", "target_id IS NOT NULL", "target_id != ''"]
@@ -3268,7 +3280,7 @@ class ExecutionStore:
         db_path = self._config.db_path
 
         def _sync() -> Optional[str]:
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             try:
                 row = conn.execute(
                     "SELECT run_id FROM request_dedup WHERE request_id=? AND (tenant_id=? OR tenant_id IS NULL OR ? IS NULL) LIMIT 1",
@@ -3286,7 +3298,7 @@ class ExecutionStore:
         db_path = self._config.db_path
 
         def _sync() -> None:
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             try:
                 conn.execute(
                     """
@@ -3316,7 +3328,7 @@ class ExecutionStore:
         db_path = self._config.db_path
 
         def _sync() -> int:
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             conn.row_factory = sqlite3.Row
             try:
                 row = conn.execute("SELECT COALESCE(MAX(seq), 0) AS m FROM run_events WHERE run_id=?", (run_id,)).fetchone()
@@ -3354,7 +3366,7 @@ class ExecutionStore:
         db_path = self._config.db_path
 
         def _sync() -> Dict[str, Any]:
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             conn.row_factory = sqlite3.Row
             try:
                 rows = conn.execute(
@@ -3393,7 +3405,7 @@ class ExecutionStore:
         db_path = self._config.db_path
 
         def _sync() -> Optional[Dict[str, Any]]:
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             conn.row_factory = sqlite3.Row
             try:
                 row = conn.execute(
@@ -3420,7 +3432,7 @@ class ExecutionStore:
         db_path = self._config.db_path
 
         def _sync() -> bool:
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             try:
                 row = conn.execute(
                     "SELECT 1 FROM run_events WHERE run_id=? AND type='run_end' LIMIT 1",
@@ -3438,7 +3450,7 @@ class ExecutionStore:
         db_path = self._config.db_path
 
         def _sync() -> bool:
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             try:
                 row = conn.execute(
                     "SELECT 1 FROM run_events WHERE run_id=? AND type='cancel_requested' LIMIT 1",
@@ -3456,7 +3468,7 @@ class ExecutionStore:
         db_path = self._config.db_path
 
         def _sync() -> Optional[Dict[str, Any]]:
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             conn.row_factory = sqlite3.Row
             try:
                 row = conn.execute(
@@ -3493,7 +3505,7 @@ class ExecutionStore:
         db_path = self._config.db_path
 
         def _sync() -> bool:
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             try:
                 cur = conn.execute(
                     "UPDATE session_queue SET status='cancelled' WHERE run_id=? AND status='queued'",
@@ -3525,7 +3537,7 @@ class ExecutionStore:
         db_path = self._config.db_path
 
         def _sync() -> List[Dict[str, Any]]:
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             conn.row_factory = sqlite3.Row
             try:
                 rows = conn.execute(
@@ -3650,7 +3662,7 @@ class ExecutionStore:
         def _sync() -> bool:
             now = float(time.time())
             exp = now + float(max(int(ttl_seconds), 1))
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             conn.row_factory = sqlite3.Row
             try:
                 row = conn.execute(
@@ -3687,7 +3699,7 @@ class ExecutionStore:
         t = str(tenant_id or "")
 
         def _sync() -> None:
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             try:
                 conn.execute(
                     "DELETE FROM session_locks WHERE tenant_id=? AND session_id=? AND run_id=?",
@@ -3716,7 +3728,7 @@ class ExecutionStore:
         t = str(tenant_id or "")
 
         def _sync() -> None:
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             try:
                 conn.execute(
                     """
@@ -3750,7 +3762,7 @@ class ExecutionStore:
         t = str(tenant_id or "")
 
         def _sync() -> Optional[Dict[str, Any]]:
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             conn.row_factory = sqlite3.Row
             try:
                 row = conn.execute(
@@ -3793,7 +3805,7 @@ class ExecutionStore:
         db_path = self._config.db_path
 
         def _sync() -> Optional[Dict[str, Any]]:
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             conn.row_factory = sqlite3.Row
             try:
                 # agent
@@ -3957,7 +3969,7 @@ class ExecutionStore:
 
         def _sync() -> None:
             import hashlib as _hashlib
-            conn = sqlite3.connect(db_path, timeout=5.0)
+            conn = self._connect()
             # Manage the transaction explicitly so (read last hash → insert) is atomic
             # under concurrency: BEGIN IMMEDIATE takes a write lock up-front, serializing
             # writers and preventing chain forks.
@@ -4029,7 +4041,7 @@ class ExecutionStore:
 
         def _sync() -> Dict[str, Any]:
             import hashlib as _hashlib
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             try:
                 rows = conn.execute(
                     "SELECT id, tenant_id, actor_id, actor_role, action, resource_type, "
@@ -4090,7 +4102,7 @@ class ExecutionStore:
         db_path = self._config.db_path
 
         def _sync() -> Dict[str, Any]:
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             conn.row_factory = sqlite3.Row
             try:
                 clauses = ["1=1"]
@@ -4177,7 +4189,7 @@ class ExecutionStore:
         db_path = self._config.db_path
 
         def _sync() -> Optional[Dict[str, Any]]:
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             conn.row_factory = sqlite3.Row
             try:
                 row = conn.execute(
@@ -4206,7 +4218,7 @@ class ExecutionStore:
         db_path = self._config.db_path
 
         def _sync() -> Dict[str, Any]:
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             conn.row_factory = sqlite3.Row
             try:
                 current = conn.execute(
@@ -4240,7 +4252,7 @@ class ExecutionStore:
         db_path = self._config.db_path
 
         def _sync() -> Dict[str, Any]:
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             conn.row_factory = sqlite3.Row
             try:
                 total = conn.execute("SELECT COUNT(1) FROM tenant_policies").fetchone()[0]
@@ -4276,7 +4288,7 @@ class ExecutionStore:
         db_path = self._config.db_path
 
         def _sync() -> Optional[Dict[str, Any]]:
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             conn.row_factory = sqlite3.Row
             try:
                 row = conn.execute(
@@ -4305,7 +4317,7 @@ class ExecutionStore:
         db_path = self._config.db_path
 
         def _sync() -> Dict[str, Any]:
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             conn.row_factory = sqlite3.Row
             try:
                 current = conn.execute(
@@ -4352,7 +4364,7 @@ class ExecutionStore:
         def _sync() -> Dict[str, Any]:
             d = str(day or _utc_day())
             now = float(time.time())
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             conn.row_factory = sqlite3.Row
             try:
                 conn.execute(
@@ -4387,7 +4399,7 @@ class ExecutionStore:
         db_path = self._config.db_path
 
         def _sync() -> float:
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             conn.row_factory = sqlite3.Row
             try:
                 row = conn.execute(
@@ -4414,7 +4426,7 @@ class ExecutionStore:
         db_path = self._config.db_path
 
         def _sync() -> Dict[str, Any]:
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             conn.row_factory = sqlite3.Row
             try:
                 clauses = ["tenant_id=?"]
@@ -4475,7 +4487,7 @@ class ExecutionStore:
                 "payload_json": _json_dumps(payload or {}),
                 "created_at": now,
             }
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             try:
                 conn.execute(
                     """
@@ -4519,7 +4531,7 @@ class ExecutionStore:
         db_path = self._config.db_path
 
         def _sync() -> Dict[str, Any]:
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             conn.row_factory = sqlite3.Row
             try:
                 clauses = []
@@ -4586,7 +4598,7 @@ class ExecutionStore:
                 "created_at": now,
                 "resolved_at": None,
             }
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             try:
                 conn.execute(
                     """
@@ -4621,7 +4633,7 @@ class ExecutionStore:
         db_path = self._config.db_path
 
         def _sync() -> Optional[Dict[str, Any]]:
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             conn.row_factory = sqlite3.Row
             try:
                 row = conn.execute("SELECT * FROM connector_delivery_dlq WHERE id=? LIMIT 1", (str(dlq_id),)).fetchone()
@@ -4647,7 +4659,7 @@ class ExecutionStore:
         db_path = self._config.db_path
 
         def _sync() -> Dict[str, Any]:
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             conn.row_factory = sqlite3.Row
             try:
                 clauses = []
@@ -4685,7 +4697,7 @@ class ExecutionStore:
 
         def _sync() -> bool:
             now = float(time.time())
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             try:
                 cur = conn.execute(
                     "UPDATE connector_delivery_dlq SET status='resolved', resolved_at=? WHERE id=? AND status='pending';",
@@ -4703,7 +4715,7 @@ class ExecutionStore:
         db_path = self._config.db_path
 
         def _sync() -> bool:
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             try:
                 cur = conn.execute("DELETE FROM connector_delivery_dlq WHERE id=?;", (str(dlq_id),))
                 conn.commit()
@@ -4750,7 +4762,7 @@ class ExecutionStore:
         )
 
         def _sync():
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             try:
                 conn.execute(
                     """
@@ -4795,7 +4807,7 @@ class ExecutionStore:
         db_path = self._config.db_path
 
         def _sync() -> Optional[Dict[str, Any]]:
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             conn.row_factory = sqlite3.Row
             try:
                 row = conn.execute("SELECT * FROM approval_requests WHERE request_id=?", (request_id,)).fetchone()
@@ -4835,7 +4847,7 @@ class ExecutionStore:
         It intentionally mirrors `get_approval_request()`'s SQL so semantics stay consistent.
         """
         db_path = self._config.db_path
-        conn = sqlite3.connect(db_path)
+        conn = self._connect()
         conn.row_factory = sqlite3.Row
         try:
             row = conn.execute("SELECT * FROM approval_requests WHERE request_id=?", (str(request_id),)).fetchone()
@@ -4885,7 +4897,7 @@ class ExecutionStore:
         db_path = self._config.db_path
 
         def _sync() -> Dict[str, Any]:
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             conn.row_factory = sqlite3.Row
             try:
                 clauses = []
@@ -5049,7 +5061,7 @@ class ExecutionStore:
         db_path = self._config.db_path
 
         def _sync() -> Dict[str, Dict[str, Any]]:
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             conn.row_factory = sqlite3.Row
             try:
                 placeholders = ",".join(["?"] * len(ids))
@@ -5133,7 +5145,7 @@ class ExecutionStore:
         )
 
         def _sync():
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             try:
                 conn.execute(
                     """
@@ -5168,7 +5180,7 @@ class ExecutionStore:
         db_path = self._config.db_path
 
         def _sync() -> Optional[Dict[str, Any]]:
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             conn.row_factory = sqlite3.Row
             try:
                 row = conn.execute(
@@ -5210,7 +5222,7 @@ class ExecutionStore:
         db_path = self._config.db_path
 
         def _sync() -> Dict[str, Any]:
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             conn.row_factory = sqlite3.Row
             try:
                 total_row = conn.execute(
@@ -5276,7 +5288,7 @@ class ExecutionStore:
         )
 
         def _sync() -> None:
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             try:
                 conn.execute(
                     """
@@ -5310,7 +5322,7 @@ class ExecutionStore:
         db_path = self._config.db_path
 
         def _sync() -> Optional[Dict[str, Any]]:
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             conn.row_factory = sqlite3.Row
             try:
                 row = conn.execute(
@@ -5354,7 +5366,7 @@ class ExecutionStore:
         db_path = self._config.db_path
 
         def _sync() -> Dict[str, Any]:
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             conn.row_factory = sqlite3.Row
             try:
                 clauses: List[str] = []
@@ -5425,7 +5437,7 @@ class ExecutionStore:
         db_path = self._config.db_path
 
         def _sync() -> Tuple[List[Dict[str, Any]], int]:
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             conn.row_factory = sqlite3.Row
             try:
                 total = conn.execute(
@@ -5508,7 +5520,7 @@ class ExecutionStore:
         )
 
         def _sync():
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             try:
                 conn.execute(
                     """
@@ -5543,7 +5555,7 @@ class ExecutionStore:
         db_path = self._config.db_path
 
         def _sync() -> Optional[Dict[str, Any]]:
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             conn.row_factory = sqlite3.Row
             try:
                 row = conn.execute(
@@ -5578,7 +5590,7 @@ class ExecutionStore:
         db_path = self._config.db_path
 
         def _sync() -> Tuple[List[Dict[str, Any]], int]:
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             conn.row_factory = sqlite3.Row
             try:
                 total = conn.execute(
@@ -5648,7 +5660,7 @@ class ExecutionStore:
                 "created_at": job.get("created_at") or now,
                 "updated_at": job.get("updated_at") or now,
             }
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             try:
                 conn.execute(
                     """
@@ -5675,7 +5687,7 @@ class ExecutionStore:
         db_path = self._config.db_path
 
         def _sync() -> Optional[Dict[str, Any]]:
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             conn.row_factory = sqlite3.Row
             try:
                 row = conn.execute("SELECT * FROM jobs WHERE id = ?", (job_id,)).fetchone()
@@ -5693,7 +5705,7 @@ class ExecutionStore:
         db_path = self._config.db_path
 
         def _sync() -> Dict[str, Any]:
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             conn.row_factory = sqlite3.Row
             try:
                 where = ""
@@ -5730,7 +5742,7 @@ class ExecutionStore:
         db_path = self._config.db_path
 
         def _sync() -> Optional[Dict[str, Any]]:
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             conn.row_factory = sqlite3.Row
             try:
                 row = conn.execute("SELECT * FROM jobs WHERE id = ?", (job_id,)).fetchone()
@@ -5787,7 +5799,7 @@ class ExecutionStore:
         db_path = self._config.db_path
 
         def _sync() -> bool:
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             try:
                 cur = conn.execute("DELETE FROM jobs WHERE id = ?;", (job_id,))
                 conn.commit()
@@ -5803,7 +5815,7 @@ class ExecutionStore:
         db_path = self._config.db_path
 
         def _sync() -> List[Dict[str, Any]]:
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             conn.row_factory = sqlite3.Row
             try:
                 rows = conn.execute(
@@ -5835,7 +5847,7 @@ class ExecutionStore:
         db_path = self._config.db_path
 
         def _sync() -> bool:
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             try:
                 now = time.time()
                 lock_until = now + float(ttl_seconds)
@@ -5861,7 +5873,7 @@ class ExecutionStore:
         db_path = self._config.db_path
 
         def _sync() -> None:
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             try:
                 now = time.time()
                 conn.execute(
@@ -5897,7 +5909,7 @@ class ExecutionStore:
                 "result_json": _json_dumps(run.get("result") or {}),
                 "created_at": run.get("created_at") or now,
             }
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             try:
                 conn.execute(
                     """
@@ -5922,7 +5934,7 @@ class ExecutionStore:
         db_path = self._config.db_path
 
         def _sync() -> Optional[Dict[str, Any]]:
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             conn.row_factory = sqlite3.Row
             try:
                 row = conn.execute("SELECT * FROM job_runs WHERE id = ?", (run_id,)).fetchone()
@@ -5964,7 +5976,7 @@ class ExecutionStore:
         db_path = self._config.db_path
 
         def _sync() -> Dict[str, Any]:
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             conn.row_factory = sqlite3.Row
             try:
                 total_row = conn.execute("SELECT COUNT(1) AS c FROM job_runs WHERE job_id = ?;", (job_id,)).fetchone()
@@ -5995,7 +6007,7 @@ class ExecutionStore:
         db_path = self._config.db_path
 
         def _sync() -> Optional[Dict[str, Any]]:
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             conn.row_factory = sqlite3.Row
             try:
                 row = conn.execute("SELECT * FROM job_runs WHERE id = ?", (str(run_id),)).fetchone()
@@ -6026,7 +6038,7 @@ class ExecutionStore:
                 "created_at": now,
                 "updated_at": now,
             }
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             try:
                 conn.execute(
                     "INSERT INTO skill_packs(id,name,description,manifest_json,created_at,updated_at) VALUES(?,?,?,?,?,?);",
@@ -6052,7 +6064,7 @@ class ExecutionStore:
         db_path = self._config.db_path
 
         def _sync() -> Optional[Dict[str, Any]]:
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             conn.row_factory = sqlite3.Row
             try:
                 row = conn.execute("SELECT * FROM skill_packs WHERE id = ?", (str(pack_id),)).fetchone()
@@ -6077,7 +6089,7 @@ class ExecutionStore:
         db_path = self._config.db_path
 
         def _sync() -> Dict[str, Any]:
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             conn.row_factory = sqlite3.Row
             try:
                 total_row = conn.execute("SELECT COUNT(1) AS c FROM skill_packs;").fetchone()
@@ -6136,7 +6148,7 @@ class ExecutionStore:
                 "payload_json": _json_dumps(payload or {}),
                 "created_at": now,
             }
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             try:
                 conn.execute(
                     """
@@ -6178,7 +6190,7 @@ class ExecutionStore:
         db_path = self._config.db_path
 
         def _sync() -> Dict[str, Any]:
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             conn.row_factory = sqlite3.Row
             try:
                 clauses = []
@@ -6241,7 +6253,7 @@ class ExecutionStore:
                 "created_at": now,
                 "resolved_at": None,
             }
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             try:
                 conn.execute(
                     """
@@ -6287,7 +6299,7 @@ class ExecutionStore:
         db_path = self._config.db_path
 
         def _sync() -> Dict[str, Any]:
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             conn.row_factory = sqlite3.Row
             try:
                 clauses = []
@@ -6326,7 +6338,7 @@ class ExecutionStore:
         db_path = self._config.db_path
 
         def _sync() -> Optional[Dict[str, Any]]:
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             conn.row_factory = sqlite3.Row
             try:
                 row = conn.execute("SELECT * FROM job_delivery_dlq WHERE id = ?;", (str(dlq_id),)).fetchone()
@@ -6344,7 +6356,7 @@ class ExecutionStore:
         db_path = self._config.db_path
 
         def _sync() -> bool:
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             try:
                 cur = conn.execute(
                     "UPDATE job_delivery_dlq SET status='resolved', resolved_at=? WHERE id=?;",
@@ -6362,7 +6374,7 @@ class ExecutionStore:
         db_path = self._config.db_path
 
         def _sync() -> bool:
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             try:
                 cur = conn.execute("DELETE FROM job_delivery_dlq WHERE id=?;", (str(dlq_id),))
                 conn.commit()
@@ -6400,7 +6412,7 @@ class ExecutionStore:
                 "created_at": now,
                 "updated_at": now,
             }
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             conn.row_factory = sqlite3.Row
             try:
                 conn.execute(
@@ -6444,7 +6456,7 @@ class ExecutionStore:
         db_path = self._config.db_path
 
         def _sync() -> Optional[Dict[str, Any]]:
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             conn.row_factory = sqlite3.Row
             try:
                 row = conn.execute(
@@ -6472,7 +6484,7 @@ class ExecutionStore:
         db_path = self._config.db_path
 
         def _sync() -> Dict[str, Any]:
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             conn.row_factory = sqlite3.Row
             try:
                 clauses = []
@@ -6505,7 +6517,7 @@ class ExecutionStore:
         db_path = self._config.db_path
 
         def _sync() -> bool:
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             try:
                 cur = conn.execute(
                     "DELETE FROM gateway_pairings WHERE channel=? AND channel_user_id=?;",
@@ -6542,7 +6554,7 @@ class ExecutionStore:
                 "created_at": now,
                 "metadata_json": _json_dumps(metadata or {}),
             }
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             conn.row_factory = sqlite3.Row
             try:
                 conn.execute(
@@ -6575,7 +6587,7 @@ class ExecutionStore:
 
         def _sync() -> Optional[Dict[str, Any]]:
             sha = hashlib.sha256(str(token).encode("utf-8")).hexdigest()
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             conn.row_factory = sqlite3.Row
             try:
                 row = conn.execute(
@@ -6596,7 +6608,7 @@ class ExecutionStore:
         db_path = self._config.db_path
 
         def _sync() -> Dict[str, Any]:
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             conn.row_factory = sqlite3.Row
             try:
                 clauses = []
@@ -6629,7 +6641,7 @@ class ExecutionStore:
         db_path = self._config.db_path
 
         def _sync() -> bool:
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             try:
                 cur = conn.execute("DELETE FROM gateway_tokens WHERE id=?;", (str(token_id),))
                 conn.commit()
@@ -6644,7 +6656,7 @@ class ExecutionStore:
         db_path = self._config.db_path
 
         def _sync() -> Optional[Dict[str, Any]]:
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             conn.row_factory = sqlite3.Row
             try:
                 row = conn.execute("SELECT * FROM skill_packs WHERE id = ?", (str(pack_id),)).fetchone()
@@ -6682,7 +6694,7 @@ class ExecutionStore:
         db_path = self._config.db_path
 
         def _sync() -> bool:
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             try:
                 cur = conn.execute("DELETE FROM skill_packs WHERE id = ?;", (str(pack_id),))
                 conn.commit()
@@ -6701,7 +6713,7 @@ class ExecutionStore:
 
         def _sync() -> Dict[str, Any]:
             now = time.time()
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             conn.row_factory = sqlite3.Row
             try:
                 pack = conn.execute("SELECT * FROM skill_packs WHERE id = ?", (str(pack_id),)).fetchone()
@@ -6737,7 +6749,7 @@ class ExecutionStore:
         db_path = self._config.db_path
 
         def _sync() -> Dict[str, Any]:
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             conn.row_factory = sqlite3.Row
             try:
                 total_row = conn.execute("SELECT COUNT(1) AS c FROM skill_pack_versions WHERE pack_id = ?;", (str(pack_id),)).fetchone()
@@ -6769,7 +6781,7 @@ class ExecutionStore:
         db_path = self._config.db_path
 
         def _sync() -> Optional[Dict[str, Any]]:
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             conn.row_factory = sqlite3.Row
             try:
                 row = conn.execute(
@@ -6805,7 +6817,7 @@ class ExecutionStore:
                 "installed_at": now,
                 "metadata_json": _json_dumps(metadata or {}),
             }
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             conn.row_factory = sqlite3.Row
             try:
                 # ensure pack exists
@@ -6844,7 +6856,7 @@ class ExecutionStore:
         db_path = self._config.db_path
 
         def _sync() -> Dict[str, Any]:
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             conn.row_factory = sqlite3.Row
             try:
                 where = ""
@@ -6906,7 +6918,7 @@ class ExecutionStore:
                 "approval_request_id": str(approval_request_id) if approval_request_id else None,
                 "created_at": now,
             }
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             conn.row_factory = sqlite3.Row
             try:
                 conn.execute(
@@ -6948,7 +6960,7 @@ class ExecutionStore:
         db_path = self._config.db_path
 
         def _sync() -> Dict[str, Any]:
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             conn.row_factory = sqlite3.Row
             try:
                 total_row = conn.execute("SELECT COUNT(1) AS c FROM package_versions WHERE package_name = ?;", (str(package_name),)).fetchone()
@@ -6983,7 +6995,7 @@ class ExecutionStore:
         db_path = self._config.db_path
 
         def _sync() -> Optional[Dict[str, Any]]:
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             conn.row_factory = sqlite3.Row
             try:
                 row = conn.execute(
@@ -7031,7 +7043,7 @@ class ExecutionStore:
                 "metadata_json": _json_dumps(metadata or {}),
                 "approval_request_id": str(approval_request_id) if approval_request_id else None,
             }
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             conn.row_factory = sqlite3.Row
             try:
                 if rec["version"]:
@@ -7074,7 +7086,7 @@ class ExecutionStore:
         db_path = self._config.db_path
 
         def _sync() -> Dict[str, Any]:
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             conn.row_factory = sqlite3.Row
             try:
                 where = ""
@@ -7142,7 +7154,7 @@ class ExecutionStore:
                 # fail-open: keep legacy plaintext
                 logging.debug(str(e), exc_info=True)
 
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             conn.row_factory = sqlite3.Row
             try:
                 conn.execute(
@@ -7226,7 +7238,7 @@ class ExecutionStore:
         db_path = self._config.db_path
 
         def _sync() -> Optional[Dict[str, Any]]:
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             conn.row_factory = sqlite3.Row
             try:
                 row = conn.execute("SELECT * FROM adapters WHERE adapter_id=?;", (str(adapter_id),)).fetchone()
@@ -7267,7 +7279,7 @@ class ExecutionStore:
         db_path = self._config.db_path
 
         def _sync() -> Dict[str, Any]:
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             conn.row_factory = sqlite3.Row
             try:
                 clauses = []
@@ -7312,7 +7324,7 @@ class ExecutionStore:
         db_path = self._config.db_path
 
         def _sync() -> bool:
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             try:
                 cur = conn.execute("DELETE FROM adapters WHERE adapter_id=?;", (str(adapter_id),))
                 conn.commit()
@@ -7330,7 +7342,7 @@ class ExecutionStore:
         db_path = self._config.db_path
 
         def _sync() -> Dict[str, Any]:
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             conn.row_factory = sqlite3.Row
             try:
                 total = int(conn.execute("SELECT COUNT(1) AS c FROM adapters;").fetchone()["c"])
@@ -7356,7 +7368,7 @@ class ExecutionStore:
             raise RuntimeError("AIPLAT_SECRET_KEY is not set")
 
         def _sync() -> Dict[str, Any]:
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             conn.row_factory = sqlite3.Row
             updated = 0
             skipped = 0
@@ -7394,7 +7406,7 @@ class ExecutionStore:
 
         def _sync() -> Dict[str, Any]:
             now = time.time()
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             conn.row_factory = sqlite3.Row
             try:
                 conn.execute(
@@ -7419,7 +7431,7 @@ class ExecutionStore:
         db_path = self._config.db_path
 
         def _sync() -> Optional[Dict[str, Any]]:
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             conn.row_factory = sqlite3.Row
             try:
                 row = conn.execute("SELECT * FROM global_settings WHERE key=?;", (str(key),)).fetchone()
@@ -7438,7 +7450,7 @@ class ExecutionStore:
         NOTE: Assumes init() has been called during startup (normal server flow).
         """
         db_path = self._config.db_path
-        conn = sqlite3.connect(db_path)
+        conn = self._connect()
         conn.row_factory = sqlite3.Row
         try:
             row = conn.execute("SELECT * FROM global_settings WHERE key=?;", (str(key),)).fetchone()
@@ -7459,7 +7471,7 @@ class ExecutionStore:
 
         def _sync() -> Dict[str, Any]:
             now = time.time()
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             conn.row_factory = sqlite3.Row
             try:
                 row0 = conn.execute("SELECT tenant_id, created_at FROM tenants WHERE tenant_id=?;", (str(tenant_id),)).fetchone()
@@ -7495,7 +7507,7 @@ class ExecutionStore:
         db_path = self._config.db_path
 
         def _sync() -> Dict[str, Any]:
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             conn.row_factory = sqlite3.Row
             try:
                 total = int(conn.execute("SELECT COUNT(1) FROM tenants;").fetchone()[0])
@@ -7533,7 +7545,7 @@ class ExecutionStore:
                 "updated_at": now,
                 "relevance_decay": 1.0,
             }
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             try:
                 conn.execute(
                     "INSERT INTO long_term_memories(id,user_id,key,content,metadata_json,created_at,updated_at,relevance_decay) VALUES(?,?,?,?,?,?,?,?);",
@@ -7567,7 +7579,7 @@ class ExecutionStore:
         db_path = self._config.db_path
 
         def _sync() -> List[Dict[str, Any]]:
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             conn.row_factory = sqlite3.Row
             try:
                 uid = str(user_id or "system")
@@ -7729,7 +7741,7 @@ class ExecutionStore:
                 "created_at": now,
                 "updated_at": now,
             }
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             try:
                 conn.execute(
                     """
@@ -7799,7 +7811,7 @@ class ExecutionStore:
                 "run_id": str(run_id) if run_id else None,
                 "created_at": now,
             }
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             try:
                 # Ensure session exists (idempotent).
                 conn.execute(
@@ -7890,7 +7902,7 @@ class ExecutionStore:
         db_path = self._config.db_path
 
         def _sync() -> Dict[str, Any]:
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             conn.row_factory = sqlite3.Row
             try:
                 where = ""
@@ -7925,7 +7937,7 @@ class ExecutionStore:
         db_path = self._config.db_path
 
         def _sync() -> Optional[Dict[str, Any]]:
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             conn.row_factory = sqlite3.Row
             try:
                 row = conn.execute("SELECT * FROM memory_sessions WHERE id = ?;", (str(session_id),)).fetchone()
@@ -7943,7 +7955,7 @@ class ExecutionStore:
         db_path = self._config.db_path
 
         def _sync() -> bool:
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             try:
                 cur = conn.execute("DELETE FROM memory_sessions WHERE id = ?;", (str(session_id),))
                 conn.execute("DELETE FROM memory_messages WHERE session_id = ?;", (str(session_id),))
@@ -7965,7 +7977,7 @@ class ExecutionStore:
         db_path = self._config.db_path
 
         def _sync() -> Dict[str, Any]:
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             conn.row_factory = sqlite3.Row
             try:
                 total_row = conn.execute(
@@ -8016,7 +8028,7 @@ class ExecutionStore:
         db_path = self._config.db_path
 
         def _sync() -> Dict[str, Any]:
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             conn.row_factory = sqlite3.Row
             try:
                 uid = str(user_id) if user_id else None
@@ -8131,7 +8143,7 @@ class ExecutionStore:
 
         def _sync() -> Dict[str, Any]:
             now = float(time.time())
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             try:
                 conn.execute(
                     """
@@ -8171,7 +8183,7 @@ class ExecutionStore:
         db_path = self._config.db_path
 
         def _sync() -> bool:
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             try:
                 cur = conn.execute(
                     "DELETE FROM memory_pins WHERE tenant_id=? AND message_id=?",
@@ -8191,7 +8203,7 @@ class ExecutionStore:
         db_path = self._config.db_path
 
         def _sync() -> Dict[str, Any]:
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             conn.row_factory = sqlite3.Row
             try:
                 clauses = ["tenant_id=?"]
@@ -8247,7 +8259,7 @@ class ExecutionStore:
                 "created_at": now,
                 "updated_at": now,
             }
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             try:
                 conn.execute(
                     """
@@ -8300,7 +8312,7 @@ class ExecutionStore:
         db_path = self._config.db_path
 
         def _sync() -> Optional[Dict[str, Any]]:
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             conn.row_factory = sqlite3.Row
             try:
                 row = conn.execute(
@@ -8334,7 +8346,7 @@ class ExecutionStore:
         db_path = self._config.db_path
 
         def _sync() -> Dict[str, Any]:
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             conn.row_factory = sqlite3.Row
             try:
                 clauses = ["tenant_id=?"]
@@ -8370,7 +8382,7 @@ class ExecutionStore:
         db_path = self._config.db_path
 
         def _sync() -> bool:
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             try:
                 cur = conn.execute(
                     "DELETE FROM release_rollouts WHERE tenant_id=? AND target_type=? AND target_id=?",
@@ -8411,7 +8423,7 @@ class ExecutionStore:
                 "metadata_json": _json_dumps(metadata or {}),
                 "created_at": now,
             }
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             try:
                 conn.execute(
                     """
@@ -8452,7 +8464,7 @@ class ExecutionStore:
         db_path = self._config.db_path
 
         def _sync() -> Dict[str, Any]:
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             conn.row_factory = sqlite3.Row
             try:
                 clauses = ["tenant_id=?", "candidate_id=?"]
@@ -8507,7 +8519,7 @@ class ExecutionStore:
                 "created_at": now,
                 "updated_at": now,
             }
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             try:
                 conn.execute(
                     """
@@ -8567,7 +8579,7 @@ class ExecutionStore:
         db_path = self._config.db_path
 
         def _sync() -> Dict[str, Any]:
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             conn.row_factory = sqlite3.Row
             try:
                 total_row = conn.execute(
@@ -8601,7 +8613,7 @@ class ExecutionStore:
         db_path = self._config.db_path
 
         def _sync() -> Optional[Dict[str, Any]]:
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             conn.row_factory = sqlite3.Row
             try:
                 row = conn.execute(
@@ -8649,7 +8661,7 @@ class ExecutionStore:
                 "approval_request_id": str(approval_request_id) if approval_request_id else None,
                 "created_at": now,
             }
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             try:
                 conn.execute(
                     """
@@ -8695,7 +8707,7 @@ class ExecutionStore:
         db_path = self._config.db_path
 
         def _sync() -> Dict[str, Any]:
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             conn.row_factory = sqlite3.Row
             try:
                 where = "tenant_id=?"
@@ -8732,7 +8744,7 @@ class ExecutionStore:
         db_path = self._config.db_path
 
         def _sync() -> Optional[Dict[str, Any]]:
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             conn.row_factory = sqlite3.Row
             try:
                 row = conn.execute(
@@ -8758,7 +8770,7 @@ class ExecutionStore:
         db_path = self._config.db_path
 
         def _sync() -> bool:
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             try:
                 cur = conn.execute(
                     "UPDATE onboarding_evidence SET links_json=? WHERE tenant_id=? AND id=?;",
@@ -8776,7 +8788,7 @@ class ExecutionStore:
         db_path = self._config.db_path
 
         def _sync() -> Optional[Dict[str, Any]]:
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             conn.row_factory = sqlite3.Row
             try:
                 row = conn.execute(
@@ -8797,7 +8809,7 @@ class ExecutionStore:
         db_path = self._config.db_path
 
         def _sync() -> Dict[str, Any]:
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             conn.row_factory = sqlite3.Row
             try:
                 total_row = conn.execute("SELECT COUNT(1) AS c FROM plugins WHERE tenant_id=?", (str(tenant_id or ""),)).fetchone()
@@ -8824,7 +8836,7 @@ class ExecutionStore:
 
         def _sync() -> bool:
             now = float(time.time())
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             try:
                 cur = conn.execute(
                     "UPDATE plugins SET enabled=?, updated_at=? WHERE tenant_id=? AND plugin_id=?;",
@@ -8868,7 +8880,7 @@ class ExecutionStore:
                 "created_at": now,
                 "updated_at": now,
             }
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             try:
                 conn.execute(
                     """
@@ -8929,7 +8941,7 @@ class ExecutionStore:
                 return "1.0.1"
 
         def _sync() -> Dict[str, Any]:
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             conn.row_factory = sqlite3.Row
             now = time.time()
             try:
@@ -8969,7 +8981,7 @@ class ExecutionStore:
         db_path = self._config.db_path
 
         def _sync() -> Optional[Dict[str, Any]]:
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             conn.row_factory = sqlite3.Row
             try:
                 row = conn.execute("SELECT * FROM prompt_templates WHERE template_id=?;", (str(template_id),)).fetchone()
@@ -8984,7 +8996,7 @@ class ExecutionStore:
         db_path = self._config.db_path
 
         def _sync() -> Optional[Dict[str, Any]]:
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             conn.row_factory = sqlite3.Row
             try:
                 row = conn.execute(
@@ -9006,7 +9018,7 @@ class ExecutionStore:
         db_path = self._config.db_path
 
         def _sync() -> Optional[Dict[str, Any]]:
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             conn.row_factory = sqlite3.Row
             now = time.time()
             try:
@@ -9036,7 +9048,7 @@ class ExecutionStore:
         db_path = self._config.db_path
 
         def _sync() -> Dict[str, Any]:
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             conn.row_factory = sqlite3.Row
             try:
                 total = int(conn.execute("SELECT COUNT(1) AS c FROM prompt_templates;").fetchone()["c"])
@@ -9055,7 +9067,7 @@ class ExecutionStore:
         db_path = self._config.db_path
 
         def _sync() -> Dict[str, Any]:
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             conn.row_factory = sqlite3.Row
             try:
                 total = int(
@@ -9079,7 +9091,7 @@ class ExecutionStore:
         db_path = self._config.db_path
 
         def _sync() -> Dict[str, Any]:
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             conn.row_factory = sqlite3.Row
             now = time.time()
             try:
@@ -9106,7 +9118,7 @@ class ExecutionStore:
         db_path = self._config.db_path
 
         def _sync() -> bool:
-            conn = sqlite3.connect(db_path)
+            conn = self._connect()
             try:
                 cur = conn.execute("DELETE FROM prompt_templates WHERE template_id=?;", (str(template_id),))
                 conn.execute("DELETE FROM prompt_template_versions WHERE template_id=?;", (str(template_id),))
@@ -9124,7 +9136,7 @@ class ExecutionStore:
         await self.init()
         db_path = self._config.db_path
         def _sync():
-            conn = sqlite3.connect(db_path); conn.row_factory = sqlite3.Row
+            conn = self._connect(); conn.row_factory = sqlite3.Row
             try:
                 where = []
                 params = []
@@ -9146,7 +9158,7 @@ class ExecutionStore:
         await self.init()
         db_path = self._config.db_path
         def _sync():
-            conn = sqlite3.connect(db_path); conn.row_factory = sqlite3.Row
+            conn = self._connect(); conn.row_factory = sqlite3.Row
             try:
                 row = conn.execute("SELECT * FROM prompt_app_templates WHERE id=?;", (str(template_id),)).fetchone()
                 return dict(row) if row else None
@@ -9165,7 +9177,7 @@ class ExecutionStore:
         import time as _t, json as _j
         now = _t.time()
         def _sync():
-            conn = sqlite3.connect(db_path); conn.row_factory = sqlite3.Row
+            conn = self._connect(); conn.row_factory = sqlite3.Row
             try:
                 existing = conn.execute("SELECT * FROM prompt_app_templates WHERE id=?;", (str(template_id),)).fetchone()
                 if existing:
@@ -9188,7 +9200,7 @@ class ExecutionStore:
         await self.init()
         db_path = self._config.db_path
         def _sync():
-            conn = sqlite3.connect(db_path); conn.row_factory = sqlite3.Row
+            conn = self._connect(); conn.row_factory = sqlite3.Row
             try:
                 cur = conn.execute("DELETE FROM prompt_app_templates WHERE id=?;", (str(template_id),))
                 conn.commit()
@@ -9201,7 +9213,7 @@ class ExecutionStore:
         await self.init()
         db_path = self._config.db_path
         def _sync():
-            conn = sqlite3.connect(db_path); conn.row_factory = sqlite3.Row
+            conn = self._connect(); conn.row_factory = sqlite3.Row
             try:
                 rows = conn.execute("SELECT name FROM prompt_app_categories ORDER BY display_order;").fetchall()
                 return [r[0] for r in rows]
@@ -9215,7 +9227,7 @@ class ExecutionStore:
         import time as _t
         now = _t.time()
         def _sync():
-            conn = sqlite3.connect(db_path); conn.row_factory = sqlite3.Row
+            conn = self._connect(); conn.row_factory = sqlite3.Row
             try:
                 conn.execute(
                     "INSERT OR REPLACE INTO prompt_app_categories(name,display_order,icon,parent,created_at) VALUES(?,?,?,?,COALESCE((SELECT created_at FROM prompt_app_categories WHERE name=?),?));",
@@ -9230,7 +9242,7 @@ class ExecutionStore:
         await self.init()
         db_path = self._config.db_path
         def _sync():
-            conn = sqlite3.connect(db_path); conn.row_factory = sqlite3.Row
+            conn = self._connect(); conn.row_factory = sqlite3.Row
             try:
                 conn.execute("DELETE FROM prompt_app_categories WHERE name=?;", (name,))
                 conn.commit()
@@ -9245,7 +9257,7 @@ class ExecutionStore:
         await self.init()
         db_path = self._config.db_path
         def _sync():
-            conn = sqlite3.connect(db_path); conn.row_factory = sqlite3.Row
+            conn = self._connect(); conn.row_factory = sqlite3.Row
             try:
                 total = conn.execute("SELECT COUNT(*) FROM prompt_app_instances;").fetchone()[0]
                 rows = conn.execute(
@@ -9262,7 +9274,7 @@ class ExecutionStore:
         await self.init()
         db_path = self._config.db_path
         def _sync():
-            conn = sqlite3.connect(db_path); conn.row_factory = sqlite3.Row
+            conn = self._connect(); conn.row_factory = sqlite3.Row
             try:
                 row = conn.execute("SELECT * FROM prompt_app_instances WHERE id=?;", (str(instance_id),)).fetchone()
                 return dict(row) if row else None
@@ -9279,7 +9291,7 @@ class ExecutionStore:
         import time as _t
         now = _t.time()
         def _sync():
-            conn = sqlite3.connect(db_path); conn.row_factory = sqlite3.Row
+            conn = self._connect(); conn.row_factory = sqlite3.Row
             try:
                 existing = conn.execute("SELECT * FROM prompt_app_instances WHERE id=?;", (str(instance_id),)).fetchone()
                 if existing:
@@ -9302,7 +9314,7 @@ class ExecutionStore:
         await self.init()
         db_path = self._config.db_path
         def _sync():
-            conn = sqlite3.connect(db_path); conn.row_factory = sqlite3.Row
+            conn = self._connect(); conn.row_factory = sqlite3.Row
             try:
                 cur = conn.execute("DELETE FROM prompt_app_instances WHERE id=?;", (str(instance_id),))
                 conn.commit()
@@ -9365,7 +9377,7 @@ class ExecutionStore:
         db_path = self._config.db_path
 
         def _sync() -> Dict[str, Any]:
-            conn = sqlite3.connect(db_path); conn.row_factory = sqlite3.Row
+            conn = self._connect(); conn.row_factory = sqlite3.Row
             conn.row_factory = sqlite3.Row
             now = float(time.time())
             try:
@@ -9413,7 +9425,7 @@ class ExecutionStore:
         db_path = self._config.db_path
 
         def _sync() -> Optional[Dict[str, Any]]:
-            conn = sqlite3.connect(db_path); conn.row_factory = sqlite3.Row
+            conn = self._connect(); conn.row_factory = sqlite3.Row
             conn.row_factory = sqlite3.Row
             try:
                 row = conn.execute("SELECT * FROM skill_eval_suites WHERE suite_id=?;", (str(suite_id),)).fetchone()
@@ -9431,7 +9443,7 @@ class ExecutionStore:
         db_path = self._config.db_path
 
         def _sync() -> Dict[str, Any]:
-            conn = sqlite3.connect(db_path); conn.row_factory = sqlite3.Row
+            conn = self._connect(); conn.row_factory = sqlite3.Row
             conn.row_factory = sqlite3.Row
             try:
                 where = ""
@@ -9461,7 +9473,7 @@ class ExecutionStore:
         db_path = self._config.db_path
 
         def _sync() -> bool:
-            conn = sqlite3.connect(db_path); conn.row_factory = sqlite3.Row
+            conn = self._connect(); conn.row_factory = sqlite3.Row
             try:
                 cur = conn.execute("DELETE FROM skill_eval_suites WHERE suite_id=?;", (str(suite_id),))
                 conn.commit()
@@ -9486,7 +9498,7 @@ class ExecutionStore:
         db_path = self._config.db_path
 
         def _sync() -> Dict[str, Any]:
-            conn = sqlite3.connect(db_path); conn.row_factory = sqlite3.Row
+            conn = self._connect(); conn.row_factory = sqlite3.Row
             conn.row_factory = sqlite3.Row
             now = float(time.time())
             try:
@@ -9534,7 +9546,7 @@ class ExecutionStore:
         db_path = self._config.db_path
 
         def _sync() -> Optional[Dict[str, Any]]:
-            conn = sqlite3.connect(db_path); conn.row_factory = sqlite3.Row
+            conn = self._connect(); conn.row_factory = sqlite3.Row
             conn.row_factory = sqlite3.Row
             try:
                 row = conn.execute("SELECT * FROM skill_eval_runs WHERE run_id=?;", (str(run_id),)).fetchone()
@@ -9564,7 +9576,7 @@ class ExecutionStore:
         db_path = self._config.db_path
 
         def _sync() -> Dict[str, Any]:
-            conn = sqlite3.connect(db_path); conn.row_factory = sqlite3.Row
+            conn = self._connect(); conn.row_factory = sqlite3.Row
             conn.row_factory = sqlite3.Row
             now = float(time.time())
             try:
@@ -9603,7 +9615,7 @@ class ExecutionStore:
         db_path = self._config.db_path
 
         def _sync() -> Dict[str, Any]:
-            conn = sqlite3.connect(db_path); conn.row_factory = sqlite3.Row
+            conn = self._connect(); conn.row_factory = sqlite3.Row
             conn.row_factory = sqlite3.Row
             try:
                 total_row = conn.execute("SELECT COUNT(1) AS c FROM skill_eval_results WHERE run_id=?;", (str(run_id),)).fetchone()

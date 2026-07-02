@@ -51,6 +51,7 @@ def _short_hash(s: str) -> str:
 
 
 @dataclass
+# disposition: internal data type — used within pii_detector module
 class PIIRecord:
     """单个 PII 匹配记录"""
     original: str
@@ -59,6 +60,7 @@ class PIIRecord:
     masked_id: str      # 如 PHONE_abc123
 
 
+# disposition: internal class — wired via _guard_messages() in llm.py syscall path
 class PIIDetector:
     """PII 检测与脱敏引擎。
 

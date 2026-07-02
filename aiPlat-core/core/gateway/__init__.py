@@ -158,6 +158,7 @@ class EnterpriseGateway:
 
 # ── Channel Adapters ──────────────────────────────────────────────────────
 
+# disposition: abstract base class — Phase 2.3 enterprise gateway, wiring pending
 class BaseAdapter:
     gateway: EnterpriseGateway = None
 

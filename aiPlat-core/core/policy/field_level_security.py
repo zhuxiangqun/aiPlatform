@@ -77,6 +77,7 @@ def load_field_permissions(collection_id: str = "default") -> List[FieldLevelPer
         data = _json.load(open(path, "r", encoding="utf-8"))
         return [FieldLevelPermission.from_dict(p) for p in data.get("permissions", [])]
     except Exception:
+        logger.error("Failed to load field-level permissions for %s", collection_id, exc_info=True)
         return []
 
 
