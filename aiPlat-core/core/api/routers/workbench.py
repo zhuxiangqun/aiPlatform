@@ -26,24 +26,41 @@ def _require_auth(request: Request) -> str:
     
     Prod mode: validates X-AIPLAT-API-KEY or Bearer token.
     Dev mode (default): trusts X-AIPLAT-TENANT-ID header from platform gateway.
+    
+    Returns tenant_id. Role is set on request.state for downstream checks.
     """
     api_key = os.getenv("AIPLAT_API_KEY", "")
     admin_key = os.getenv("AIPLAT_ADMIN_KEY", "")
 
     if api_key or admin_key:
-        # Prod mode — require valid API key
         h_key = request.headers.get("X-AIPLAT-API-KEY", "")
         h_auth = request.headers.get("Authorization", "")
         if h_auth.startswith("Bearer "):
             h_key = h_auth[7:]
         if h_key not in (api_key, admin_key):
             raise HTTPException(status_code=401, detail="Invalid API key")
+        # Prod: role from header or default
+        role = request.headers.get("X-AIPLAT-ROLE", "developer")
+        request.state.role = role
         return h_key
 
     # Dev mode — trust platform gateway identity headers
     tenant = request.headers.get("X-AIPLAT-TENANT-ID", "")
     if not tenant:
         tenant = request.headers.get("x-aiplat-tenant-id", "") or "dev-default"
+    role = request.headers.get("X-AIPLAT-ROLE", "")
+    if not role:
+        # Resolve role from env var lists
+        dev_user = os.getenv("AIPLAT_DEV_USER", "anonymous")
+        admin_users = os.getenv("AIPLAT_ADMIN_USERS", "").split(",")
+        dev_users = os.getenv("AIPLAT_DEVELOPER_USERS", "").split(",")
+        if dev_user in admin_users:
+            role = "admin"
+        elif dev_user in dev_users:
+            role = "developer"
+        else:
+            role = os.getenv("AIPLAT_DEFAULT_ROLE", "developer")
+    request.state.role = role
     return tenant
 
 

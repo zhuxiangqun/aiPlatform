@@ -142,6 +142,20 @@ class PolicyGate:
         )
 
     @staticmethod
+    def check_route_access(path: str, role: str) -> bool:
+        """Route-level access control — check if role can access this path.
+
+        Matches path against ROUTE_PERMISSIONS using prefix matching.
+        Each route entry defines which roles are allowed.
+        """
+        from core.schemas_policy import ROUTE_PERMISSIONS
+        for route_prefix, allowed_roles in ROUTE_PERMISSIONS.items():
+            if path.startswith(route_prefix):
+                return role in allowed_roles
+        # No matching route → allow (backward compatibility)
+        return True
+
+    @staticmethod
     def _match_tool_rule(rule: Dict[str, Any], tool_name: str, tool_args: Optional[Dict[str, Any]]) -> bool:
         """P1-1: Match rule against tool name + optional params (fnmatch + re support)."""
         import fnmatch

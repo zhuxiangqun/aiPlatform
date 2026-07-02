@@ -1,5 +1,22 @@
 import { useState } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
+
+// ── Role-based sidebar visibility ──────────────────────────────────────
+
+const ROLE_MENUS: Record<string, string[]> = {
+  admin:     ["system-overview", "diagnostics", "onboarding", "infra", "core", "platform", "value", "workbench", "finetune", "approval"],
+  developer: ["workbench", "value", "finetune", "core", "workspace", "diagnostics"],
+  business:  ["value", "workbench"],
+  user:      ["workbench", "app"],
+  approver:  ["approval", "workbench"],
+};
+
+function getRole(): string {
+  return localStorage.getItem('aiplat_role') || 'developer';
+}
+function canSee(group: string): boolean {
+  return (ROLE_MENUS[getRole()] || []).includes(group);
+}
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Activity, BarChart3, Bell, Bot, Box, Brain, ChevronDown, ChevronLeft,
@@ -136,9 +153,25 @@ const AppLayout: React.FC = () => {
               AI
             </div>
             {!collapsed && (
-              <span className="ml-3 font-semibold text-gray-200 tracking-tight">
-                AI Platform
-              </span>
+              <div>
+                <span className="ml-3 font-semibold text-gray-200 tracking-tight">
+                  AI Platform
+                </span>
+                <div className="ml-3 mt-1">
+                  <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${
+                    getRole() === 'admin' ? 'bg-red-900/50 text-red-400' :
+                    getRole() === 'developer' ? 'bg-blue-900/50 text-blue-400' :
+                    getRole() === 'business' ? 'bg-green-900/50 text-green-400' :
+                    getRole() === 'approver' ? 'bg-purple-900/50 text-purple-400' :
+                    'bg-gray-700 text-gray-400'
+                  }`}>
+                    {getRole() === 'admin' ? '管理员' :
+                     getRole() === 'developer' ? '开发者' :
+                     getRole() === 'business' ? '业务' :
+                     getRole() === 'approver' ? '审批' : '用户'}
+                  </span>
+                </div>
+              </div>
             )}
           </div>
 
@@ -150,6 +183,7 @@ const AppLayout: React.FC = () => {
               }
 
               if ('group' in item) {
+                if (!canSee(item.group)) return null;
                 return (
                   <div key={item.group} className="mb-2">
                     {!collapsed && (
