@@ -1,7 +1,12 @@
 /**
- * aiPlat Chat Panel — WebView side panel for SSE streaming chat.
+ * aiPlat Chat Panel — WebView side panel with SSE streaming chat.
+ *
+ * Features:
+ *   - SSE streaming from backend
+ *   - Code block detection and apply buttons
+ *   - Markdown rendering for agent responses
+ *   - Implicit feedback tracking (Phase 4.2)
  */
-
 import * as vscode from 'vscode';
 
 export class ChatPanel {
@@ -9,6 +14,7 @@ export class ChatPanel {
     private readonly _panel: vscode.WebviewPanel;
     private _disposables: vscode.Disposable[] = [];
     private _baseUrl: string;
+    private _lastCodeBlock: string = '';
 
     public static createOrShow(extensionUri: vscode.Uri, baseUrl: string) {
         const column = vscode.window.activeTextEditor
@@ -40,23 +46,20 @@ export class ChatPanel {
         this._panel.webview.html = this._getHtml(extensionUri);
         this._panel.onDidDispose(() => this.dispose(), null, this._disposables);
 
-        // Handle messages from webview
         this._panel.webview.onDidReceiveMessage(
             async (message) => {
                 switch (message.command) {
                     case 'sendToAgent':
-                        const response = await this._callAgent(message.text);
-                        this._panel.webview.postMessage({
-                            command: 'agentResponse',
-                            text: response,
-                        });
+                        await this._handleAgentQuery(message.text);
                         break;
-                    case 'applyFix':
-                        this.applyLastSuggestion();
+                    case 'getCodeBlock':
+                        this._sendCodeBlock();
+                        break;
+                    case 'applyCode':
+                        this._applyToEditor(message.code);
                         break;
                     case 'implicitFeedback':
-                        // Phase 4.2: Forward implicit feedback to server
-                        this._sendImplicitFeedback(message.type, message.runId);
+                        this._sendImplicitFeedback(message.type, message.runId || '');
                         break;
                 }
             },
@@ -66,56 +69,110 @@ export class ChatPanel {
     }
 
     public sendMessage(text: string) {
-        this._panel.webview.postMessage({ command: 'sendToAgent', text });
+        this._panel.webview.postMessage({ command: 'userPrompt', text });
     }
 
     public applyLastSuggestion() {
-        const editor = vscode.window.activeTextEditor;
-        if (!editor) return;
-
-        // The webview sends the code block content back
-        this._panel.webview.postMessage({ command: 'getCodeBlock' });
-        this._panel.webview.onDidReceiveMessage(
-            (msg) => {
-                if (msg.command === 'codeBlock' && msg.text && editor) {
-                    editor.edit((editBuilder) => {
-                        editBuilder.replace(editor.selection, msg.text);
-                    });
-                }
-            },
-            null,
-            this._disposables
-        );
-    }
-
-    private async _callAgent(text: string): Promise<string> {
-        try {
-            const config = vscode.workspace.getConfiguration('aiplat');
-            const model = config.get<string>('model') || 'qwen2.5-coder:7b';
-
-            // SSE streaming to core
-            const response = await fetch(`${this._baseUrl}/api/core/knowledge-graph/ask`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    question: text,
-                    options: { stream: false, max_tokens: 2000 },
-                }),
-            });
-            
-            if (!response.ok) {
-                return `Error: HTTP ${response.status}`;
-            }
-            
-            const data = await response.json() as any;
-            return data.answer || data.output?.answer || JSON.stringify(data);
-        } catch (e: any) {
-            return `Error: ${e.message || 'Connection failed'}`;
+        if (this._lastCodeBlock) {
+            this._applyToEditor(this._lastCodeBlock);
+        } else {
+            this._panel.webview.postMessage({ command: 'getCodeBlock' });
         }
     }
 
+    private _applyToEditor(code: string) {
+        const editor = vscode.window.activeTextEditor;
+        if (!editor || !code) {
+            vscode.window.showWarningMessage('No active editor or no code to apply.');
+            return;
+        }
+        editor.edit((editBuilder) => {
+            const selection = editor.selection;
+            if (selection && !selection.isEmpty) {
+                editBuilder.replace(selection, code);
+            } else {
+                editBuilder.insert(editor.selection.active, code);
+            }
+        });
+        vscode.window.showInformationMessage('Code applied to editor.');
+    }
+
+    private async _handleAgentQuery(text: string): Promise<void> {
+        try {
+            const config = vscode.workspace.getConfiguration('aiplat');
+            const base = this._baseUrl.replace(/\/$/, '');
+
+            const response = await fetch(`${base}/api/core/knowledge-graph/chat`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ question: text, history: [] }),
+            });
+
+            if (!response.ok) {
+                this._postToWebview('agentError', `HTTP ${response.status}`);
+                return;
+            }
+
+            const reader = response.body?.getReader();
+            if (!reader) {
+                this._postToWebview('agentError', 'No response stream');
+                return;
+            }
+
+            const decoder = new TextDecoder();
+            let buffer = '';
+            let fullResponse = '';
+
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+
+                buffer += decoder.decode(value, { stream: true });
+                const lines = buffer.split('\n');
+                buffer = lines.pop() || '';
+
+                for (const line of lines) {
+                    if (line.startsWith('data: ')) {
+                        const payload = line.slice(6).trim();
+                        if (payload === '[DONE]') break;
+
+                        try {
+                            const parsed = JSON.parse(payload);
+                            const token = parsed.token || '';
+                            if (token) {
+                                fullResponse += token;
+                            }
+                        } catch {
+                            // Skip non-JSON lines
+                        }
+
+                        if (payload === '[DONE]') break;
+                    }
+                }
+            }
+
+            if (fullResponse) {
+                this._postToWebview('agentResponse', fullResponse);
+                this._lastCodeBlock = fullResponse;
+            } else {
+                this._postToWebview('agentResponse', '(No response from agent)');
+            }
+        } catch (e: any) {
+            this._postToWebview('agentError', `Connection failed: ${e.message}`);
+        }
+    }
+
+    private _sendCodeBlock() {
+        if (this._lastCodeBlock) {
+            this._panel.webview.postMessage({ command: 'codeBlock', text: this._lastCodeBlock });
+        }
+    }
+
+    private _postToWebview(command: string, text: string) {
+        this._panel.webview.postMessage({ command, text });
+    }
+
     private async _sendImplicitFeedback(signalType: string, runId: string): Promise<void> {
-        /** Phase 4.2: Send implicit user feedback to backend */
         if (!signalType || !runId) return;
         try {
             await fetch(`${this._baseUrl}/api/core/feedback/implicit`, {
@@ -159,11 +216,21 @@ export class ChatPanel {
             flex: 1; overflow-y: auto; padding: 12px;
             display: flex; flex-direction: column; gap: 8px;
         }
-        .msg { padding: 8px 12px; border-radius: 8px; max-width: 85%; font-size: 13px; line-height: 1.5; }
+        .msg { padding: 8px 12px; border-radius: 8px; max-width: 90%; font-size: 13px; line-height: 1.5; overflow-wrap: break-word; }
         .msg.user { background: #1e40af; align-self: flex-end; color: #bfdbfe; }
         .msg.agent { background: #1e293b; align-self: flex-start; color: #e2e8f0; border: 1px solid #334155; }
-        .msg.agent pre { background: #0f172a; padding: 8px; border-radius: 4px; overflow-x: auto; margin-top: 4px; }
-        .msg.agent code { font-family: 'Fira Code', monospace; font-size: 12px; }
+        .msg.error { background: #7f1d1d; align-self: flex-start; color: #fca5a5; border: 1px solid #991b1b; }
+        .msg.agent pre {
+            background: #0f172a; padding: 8px; border-radius: 4px; overflow-x: auto; margin-top: 4px;
+            position: relative;
+        }
+        .msg.agent code { font-family: 'Fira Code', 'Cascadia Code', monospace; font-size: 12px; }
+        .msg.agent p { margin: 4px 0; }
+        .apply-btn {
+            background: #22c55e; color: white; border: none; border-radius: 4px;
+            padding: 2px 8px; cursor: pointer; font-size: 11px; float: right; margin-left: 8px;
+        }
+        .apply-btn:hover { background: #16a34a; }
         #input-area {
             display: flex; padding: 8px; border-top: 1px solid #334155; gap: 8px;
         }
@@ -177,71 +244,121 @@ export class ChatPanel {
             padding: 8px 16px; cursor: pointer; font-size: 13px; font-weight: 600;
         }
         #send:hover { background: #2563eb; }
+        #send:disabled { background: #475569; cursor: not-allowed; }
         .header {
             padding: 8px 12px; border-bottom: 1px solid #334155;
             font-size: 13px; font-weight: 600; color: #94a3b8;
             display: flex; align-items: center; justify-content: space-between;
         }
         .status { font-size: 11px; color: #22c55e; }
-        .apply-btn {
-            background: #22c55e; color: white; border: none; border-radius: 4px;
-            padding: 2px 8px; cursor: pointer; font-size: 11px; margin-top: 4px;
-        }
-        .apply-btn:hover { background: #16a34a; }
+        .status.error { color: #ef4444; }
     </style>
 </head>
 <body>
     <div class="header">
-        <span>🤖 aiPlat Agent</span>
-        <span class="status">● Connected</span>
+        <span>aiPlat Agent</span>
+        <span class="status" id="status">Connected</span>
     </div>
     <div id="messages">
-        <div class="msg agent">Hello! I'm aiPlat Agent. Send me code or ask a question.</div>
+        <div class="msg agent">Hello! I'm aiPlat Agent. Ask a question or send code to analyze.</div>
     </div>
     <div id="input-area">
-        <input id="input" type="text" placeholder="Ask aiPlat..." onkeydown="if(event.key==='Enter')send()" />
+        <input id="input" type="text" placeholder="Ask aiPlat..." onkeydown="if(event.key==='Enter')send()" autofocus />
         <button id="send" onclick="send()">Send</button>
     </div>
     <script>
         const vscode = acquireVsCodeApi();
         const msgs = document.getElementById('messages');
         const input = document.getElementById('input');
+        const sendBtn = document.getElementById('send');
+        const status = document.getElementById('status');
 
         function addMessage(text, role) {
             const div = document.createElement('div');
             div.className = 'msg ' + role;
-            div.textContent = text;
+            // Basic markdown: wrap code blocks
+            if (role === 'agent' && text.includes('\`\`\`')) {
+                let html = text
+                    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+                    .replace(/\`\`\`([^\\s]*)\\n([\\s\\S]*?)\`\`\`/g, function(m, lang, code) {
+                        return '<pre><button class="apply-btn" onclick="applyCode(this)" data-code="' + escapeHtml(code) + '">Apply</button><code>' + code + '</code></pre>';
+                    })
+                    .replace(/\\n/g, '<br>')
+                    .replace(/\`([^\`]+)\`/g, '<code>$1</code>');
+                div.innerHTML = html;
+            } else {
+                div.textContent = text;
+            }
             msgs.appendChild(div);
             msgs.scrollTop = msgs.scrollHeight;
         }
 
+        function escapeHtml(text) {
+            return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+        }
+
+        function applyCode(btn) {
+            const code = btn.getAttribute('data-code') || '';
+            vscode.postMessage({ command: 'applyCode', code });
+        }
+
+        let waiting = false;
+
         function send() {
             const text = input.value.trim();
-            if (!text) return;
+            if (!text || waiting) return;
             addMessage(text, 'user');
             input.value = '';
+            waiting = true;
+            sendBtn.disabled = true;
+            status.textContent = 'Thinking...';
+            status.className = 'status';
             vscode.postMessage({ command: 'sendToAgent', text });
         }
 
         window.addEventListener('message', (event) => {
             const msg = event.data;
-            if (msg.command === 'agentResponse') {
-                addMessage(msg.text, 'agent');
-                // Track run_id for implicit feedback
-                if (msg.runId) window._currentRunId = msg.runId;
+            switch (msg.command) {
+                case 'userPrompt':
+                    addMessage(msg.text, 'user');
+                    break;
+                case 'agentResponse':
+                    addMessage(msg.text, 'agent');
+                    waiting = false;
+                    sendBtn.disabled = false;
+                    status.textContent = 'Connected';
+                    status.className = 'status';
+                    input.focus();
+                    break;
+                case 'agentError':
+                    addMessage(msg.text, 'error');
+                    waiting = false;
+                    sendBtn.disabled = false;
+                    status.textContent = 'Error';
+                    status.className = 'status error';
+                    input.focus();
+                    break;
+                case 'getCodeBlock':
+                    // Send last code block to extension
+                    const blocks = document.querySelectorAll('pre code');
+                    if (blocks.length > 0) {
+                        const last = blocks[blocks.length - 1];
+                        vscode.postMessage({ command: 'codeBlock', text: last.textContent || '' });
+                    }
+                    break;
             }
         });
 
-        // ── Implicit Feedback (Phase 4.2) ──
+        // Implicit Feedback (Phase 4.2)
         let _lastCopyTime = 0;
         document.addEventListener('copy', () => {
             const now = Date.now();
-            if (now - _lastCopyTime < 2000) return; // Debounce 2s
+            if (now - _lastCopyTime < 2000) return;
             _lastCopyTime = now;
             const selected = window.getSelection()?.toString() || '';
             if (selected.length > 20) {
                 const signalType = selected.length > 100 ? 'copy_full' : 'select_text';
-                vscode.postMessage({ command: 'implicitFeedback', type: signalType, runId: window._currentRunId || '' });
+                vscode.postMessage({ command: 'implicitFeedback', type: signalType, runId: '' });
             }
         });
     </script>

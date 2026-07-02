@@ -1,13 +1,14 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
-import { Brain, Code, Network, RefreshCw, Download, GitBranch, BookOpen, Layers, Maximize2, Minimize2, Compass, Globe } from 'lucide-react';
+import { Brain, Code, Network, RefreshCw, Download, GitBranch, BookOpen, Layers, Maximize2, Minimize2, Compass, Globe, ScrollText } from 'lucide-react';
 import GraphCanvas from './GraphCanvas';
 import NodeDetailPanel from './NodeDetailPanel';
 import './SearchBar';
 import LayerLegend from './LayerLegend';
 import ArchitectureView from './ArchitectureView';
+import RulesPanel from './RulesPanel';
 
 const SystemGraph: React.FC = () => {
-  const [tab, setTab] = useState<'code' | 'capability' | 'wiki' | 'architecture' | 'domain'>('code');
+  const [tab, setTab] = useState<'code' | 'capability' | 'wiki' | 'architecture' | 'domain' | 'rules'>('code');
   const [codeMode, setCodeMode] = useState<'file' | 'symbol'>('file');
   const [graphData, setGraphData] = useState<any>(null);
   const [loading, setLoading] = useState(false);
@@ -191,6 +192,14 @@ const SystemGraph: React.FC = () => {
             >
               <Globe className="w-3 h-3" />领域视图
             </button>
+            <button
+              onClick={() => { setTab('rules'); setActiveLayers(new Set()); }}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-medium transition-colors ${
+                tab === 'rules' ? 'bg-primary/20 text-primary' : 'text-gray-400 hover:text-gray-300'
+              }`}
+            >
+              <ScrollText className="w-3 h-3" />推理规则
+            </button>
           </div>
           {/* Tour button */}
           {(tab === 'code' || tab === 'capability') && (
@@ -364,9 +373,11 @@ const SystemGraph: React.FC = () => {
 
       {/* Main content: graph + detail panel */}
        <div className="flex-1 flex overflow-hidden">
-         {tab === 'architecture' ? (
-           <ArchitectureView />
-         ) : (
+          {tab === 'architecture' ? (
+            <ArchitectureView />
+          ) : tab === 'rules' ? (
+            <RulesPanel />
+          ) : (
           <div className="flex-1 relative">
             {loading ? (
              <div className="flex items-center justify-center h-full text-gray-500">

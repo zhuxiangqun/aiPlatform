@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 import time
 import uuid
 from typing import Any, AsyncGenerator, Dict, List, Optional
@@ -15,6 +16,8 @@ from typing import Any, AsyncGenerator, Dict, List, Optional
 import httpx
 
 from .config import Config, get_config
+
+logger = logging.getLogger(__name__)
 
 
 class Agent:
@@ -53,6 +56,7 @@ class Agent:
         self._messages: List[Dict[str, str]] = []
         self._agent_id: Optional[str] = None
         self._created = False
+        self._permission_grant_failed = False
 
     # ── Public API ──────────────────────────────────────────────────────
 
@@ -187,11 +191,17 @@ class Agent:
                     },
                 )
             except Exception:
-                pass
+                logger.warning("Failed to grant execute permission for agent %s", self._agent_id, exc_info=True)
+                self._permission_grant_failed = True
 
     async def _execute_async(self, prompt: str, **kwargs) -> Dict[str, Any]:
         """异步执行核心逻辑。"""
         await self._ensure_agent()
+        if self._permission_grant_failed:
+            raise PermissionError(
+                f"Agent '{self._agent_id}' execute permission was not granted. "
+                "Check agent permissions or contact administrator."
+            )
         async with httpx.AsyncClient(timeout=self._config.timeout) as client:
             body = {
                 "input": {"text": prompt},

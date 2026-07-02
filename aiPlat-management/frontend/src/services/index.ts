@@ -55,6 +55,10 @@ export { gatewayAdminApi, SKILL_CATEGORIES } from './coreApi';
 // Legacy monitoring API (for layer metrics)
 export { monitoringApi as layerMonitoringApi } from './apiClient';
 export { browserTestApi } from './browserTestApi';
+export { modelAuditApi } from './modelAuditApi';
+export type { ProbeResult, ModelFingerprintData, ModelIdentity as ModelAuditIdentity, AuditReportData, ComparisonData } from './modelAuditApi';
+export { safetyApi } from './safetyApi';
+export type { CrisisSignal, CrisisCheckResult, EmotionSnapshot, EmotionStateData, FlaggedSessionsResponse } from './safetyApi';
 
 // Types - Infrastructure
 export type { Node, GPU, NodeListResponse, AddNodeRequest } from './nodeApi';

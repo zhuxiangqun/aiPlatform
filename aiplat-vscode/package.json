@@ -5,6 +5,11 @@
   "version": "0.1.0",
   "publisher": "aiplat",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/anomalyco/aiPlatform",
+    "directory": "aiplat-vscode"
+  },
   "engines": {
     "vscode": "^1.85.0"
   },
