@@ -4,11 +4,11 @@ import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 // ── Role-based sidebar visibility ──────────────────────────────────────
 
 const ROLE_MENUS: Record<string, string[]> = {
-  admin:     ["infra", "core", "platform", "workspace", "app", "value", "user", "prompts"],
+  admin:     ["infra", "core", "platform", "workspace", "app", "value", "user", "prompts", "approval"],
   developer: ["infra", "core", "workspace", "app", "value", "user", "diagnostics"],
   business:  ["value", "user"],
   user:      ["user", "app"],
-  approver:  ["user"],
+  approver:  ["approval", "user"],
 };
 
 function getRole(): string {
@@ -120,6 +120,10 @@ const menuItems: (MenuItem | { divider: boolean } | MenuGroup)[] = [
     { key: '/value-center/training', icon: GitBranch, label: '训练监控' },
   ]},
   { divider: true },
+  { group: 'approval', label: '审批中心', items: [
+    { key: '/approval', icon: Package, label: '资产审批' },
+    { key: '/core/approvals', icon: Shield, label: '运行时审批' },
+  ]},
   { group: 'user', label: '终端使用', items: [
     { key: '/workbench', icon: Monitor, label: '工作台' },
   ]},
