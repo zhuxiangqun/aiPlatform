@@ -7,7 +7,7 @@ platform service endpoints should live in the platform layer, not core.
 
 from __future__ import annotations
 
-from typing import Optional
+from typing import Dict, Optional, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 
@@ -23,7 +23,7 @@ def _store(rt: RuntimeDep):
     return getattr(rt, "execution_store", None) if rt else None
 
 
-@router.get("/snapshot")
+@router.get("/snapshot", response_model=Dict[str, Any])
 async def get_policy_snapshot(tenant_id: str, rt: RuntimeDep = Depends(get_kernel_runtime)):
     store = _store(rt)
     if not store:
@@ -34,7 +34,7 @@ async def get_policy_snapshot(tenant_id: str, rt: RuntimeDep = Depends(get_kerne
     return item
 
 
-@router.put("/snapshot")
+@router.put("/snapshot", response_model=Dict[str, Any])
 async def put_policy_snapshot(request: dict, http_request: Request, rt: RuntimeDep = Depends(get_kernel_runtime)):
     store = _store(rt)
     if not store:
@@ -63,7 +63,7 @@ async def put_policy_snapshot(request: dict, http_request: Request, rt: RuntimeD
     return await store.upsert_tenant_policy(tenant_id=str(tenant_id), policy=policy, version=version)
 
 
-@router.get("/versions")
+@router.get("/versions", response_model=Dict[str, Any])
 async def list_policy_versions(tenant_id: Optional[str] = None, rt: RuntimeDep = Depends(get_kernel_runtime)):
     store = _store(rt)
     if not store:

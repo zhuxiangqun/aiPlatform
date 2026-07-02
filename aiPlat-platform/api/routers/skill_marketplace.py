@@ -41,6 +41,7 @@ class SkillInfo(BaseModel):
 def _scan_installed() -> List[Dict[str, Any]]:
     """Scan ~/.aiplat/skills/ for installed skills."""
     skills = []
+    failed_files = []
     if not os.path.isdir(SKILLS_HOME):
         return skills
     for dirname in sorted(os.listdir(SKILLS_HOME)):
@@ -52,6 +53,7 @@ def _scan_installed() -> List[Dict[str, Any]]:
             with open(skill_md, "r") as f:
                 raw = f.read()
         except Exception:
+            failed_files.append(dirname)
             continue
         info = {"name": dirname, "source": "installed", "version": "", "description": "", "category": "general"}
         if raw.startswith("---"):
@@ -67,6 +69,9 @@ def _scan_installed() -> List[Dict[str, Any]]:
                 except Exception as e:
                     logging.debug(str(e), exc_info=True)
         skills.append(info)
+    if failed_files:
+        logging.getLogger(__name__).warning(
+            "Failed to read SKILL.md for %d skills: %s", len(failed_files), ", ".join(failed_files))
     return skills
 
 
@@ -85,7 +90,7 @@ def _scan_catalog() -> List[Dict[str, Any]]:
     return available
 
 
-@router.get("/marketplace")
+@router.get("/marketplace", response_model=Dict[str, Any])
 async def list_marketplace(_auth: str = Depends(require_auth)):
     """List installed and available skills."""
     installed = _scan_installed()
@@ -102,7 +107,7 @@ async def list_marketplace(_auth: str = Depends(require_auth)):
     }
 
 
-@router.post("/install")
+@router.post("/install", response_model=Dict[str, Any])
 async def install_skill(req: InstallRequest, _auth: str = Depends(require_admin)):
     """Install a skill from source URL or local path."""
     source = req.source.strip()
@@ -153,7 +158,7 @@ async def install_skill(req: InstallRequest, _auth: str = Depends(require_admin)
         raise HTTPException(400, "Unsupported source format. Use 'git+https://...' or 'local+/path/to/skill'")
 
 
-@router.delete("/uninstall/{skill_name}")
+@router.delete("/uninstall/{skill_name}", response_model=Dict[str, Any])
 async def uninstall_skill(skill_name: str, _auth: str = Depends(require_admin)):
     """Remove an installed skill."""
     dst = os.path.join(SKILLS_HOME, skill_name)

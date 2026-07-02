@@ -69,7 +69,26 @@ class ManagementConfigLoader:
         }
         
         if config_path:
-            # TODO: Load from YAML/JSON file
-            pass
+            import json
+            import logging
+            import os
+            import yaml as _yaml_module
+            logger = logging.getLogger(__name__)
+            try:
+                if os.path.isfile(config_path):
+                    with open(config_path, 'r', encoding='utf-8') as f:
+                        if config_path.endswith(('.yaml', '.yml')):
+                            file_config = _yaml_module.safe_load(f) or {}
+                        else:
+                            file_config = json.load(f)
+                    if isinstance(file_config, dict):
+                        for key, value in file_config.items():
+                            if hasattr(default_config, key):
+                                setattr(default_config, key, value)
+                    logger.info("Loaded management config from %s", config_path)
+                else:
+                    logger.warning("Config file not found: %s, using defaults", config_path)
+            except Exception as e:
+                logger.warning("Failed to load config from %s: %s. Using defaults.", config_path, e)
         
         return ManagementConfig.from_dict(default_config)

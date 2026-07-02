@@ -17,6 +17,7 @@ from core.api.deps import actor_from_http, rbac_guard
 from core.api.utils.governance import change_links, gate_error_envelope, ui_url
 from core.api.utils.run_contract import wrap_execution_result_as_run_summary
 from core.api.facades.runtime_facade import get_kernel_runtime
+from api.schemas_response import ApprovalListResponse, ApprovalActionResponse
 
 
 router = APIRouter(prefix="/platform", tags=["approvals"])
@@ -36,7 +37,7 @@ def _approval_mgr():
     return getattr(rt, "approval_manager", None) if rt else None
 
 
-@router.get("/approvals")
+@router.get("/approvals", response_model=ApprovalListResponse)
 async def list_approvals(
     status: Optional[str] = None,
     tenant_id: Optional[str] = None,
@@ -89,7 +90,7 @@ async def list_approvals(
     return res
 
 
-@router.get("/approvals/pending")
+@router.get("/approvals/pending", response_model=ApprovalListResponse)
 async def list_pending_approvals(
     user_id: Optional[str] = None,
     order_by: str = "priority_score",
@@ -158,7 +159,7 @@ async def list_pending_approvals(
     return {"items": out, "total": len(out)}
 
 
-@router.get("/approvals/{request_id}")
+@router.get("/approvals/{request_id}", response_model=Dict[str, Any])
 async def get_approval_request(request_id: str, _auth: str = Depends(require_auth)):
     mgr = _approval_mgr()
     if not mgr:
@@ -216,13 +217,13 @@ async def get_approval_request(request_id: str, _auth: str = Depends(require_aut
     return resp
 
 
-@router.get("/approvals/{request_id}/audit")
+@router.get("/approvals/{request_id}/audit", response_model=Dict[str, Any])
 async def get_approval_audit(request_id: str, _auth: str = Depends(require_auth)):
     # backward-compatible alias
     return await get_approval_request(request_id)
 
 
-@router.post("/approvals/{request_id}/approve")
+@router.post("/approvals/{request_id}/approve", response_model=ApprovalActionResponse)
 async def approve_request(request_id: str, request: dict, http_request: Request, _auth: str = Depends(require_auth)):
     mgr = _approval_mgr()
     if not mgr:
@@ -303,7 +304,7 @@ async def approve_request(request_id: str, request: dict, http_request: Request,
     return {"status": updated.status.value, "request_id": updated.request_id}
 
 
-@router.post("/approvals/{request_id}/reject")
+@router.post("/approvals/{request_id}/reject", response_model=ApprovalActionResponse)
 async def reject_request(request_id: str, request: dict, http_request: Request, _auth: str = Depends(require_auth)):
     mgr = _approval_mgr()
     if not mgr:
@@ -358,7 +359,7 @@ async def reject_request(request_id: str, request: dict, http_request: Request, 
     return {"status": updated.status.value, "request_id": updated.request_id}
 
 
-@router.post("/approvals/{request_id}/replay")
+@router.post("/approvals/{request_id}/replay", response_model=Dict[str, Any])
 async def replay_approval(request_id: str, request: dict, http_request: Request, _auth: str = Depends(require_auth)):
     """
     PR-08: Approval Hub replay

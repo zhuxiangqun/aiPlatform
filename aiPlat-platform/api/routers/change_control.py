@@ -46,7 +46,7 @@ def _workspace_managers():
     )
 
 
-@router.get("/change-control/changes")
+@router.get("/change-control/changes", response_model=Dict[str, Any])
 async def list_change_controls(limit: int = 50, offset: int = 0, tenant_id: Optional[str] = None, _auth: str = Depends(require_auth)):
     """List Change Control items (derived from syscall_events changesets)."""
     store = _store()
@@ -75,7 +75,7 @@ async def list_change_controls(limit: int = 50, offset: int = 0, tenant_id: Opti
     return {**res, "items": items}
 
 
-@router.get("/change-control/changes/{change_id}")
+@router.get("/change-control/changes/{change_id}", response_model=Dict[str, Any])
 async def get_change_control(change_id: str, limit: int = 200, offset: int = 0, tenant_id: Optional[str] = None, _auth: str = Depends(require_auth)):
     store = _store()
     if not store:
@@ -105,7 +105,7 @@ async def get_change_control(change_id: str, limit: int = 200, offset: int = 0, 
     return out
 
 
-@router.post("/change-control/changes/{change_id}/autosmoke")
+@router.post("/change-control/changes/{change_id}/autosmoke", response_model=Dict[str, Any])
 async def autosmoke_change_control(change_id: str, http_request: Request, _auth: str = Depends(require_auth)):
     """
     Trigger autosmoke for targets referenced by a change_id (best-effort).
@@ -226,7 +226,7 @@ async def autosmoke_change_control(change_id: str, http_request: Request, _auth:
     return {"status": "ok", "change_id": str(change_id), "targets": [{"type": t[0], "id": t[1]} for t in uniq], "results": results}
 
 
-@router.post("/change-control/changes/{change_id}/apply-engine-skill-md-patch")
+@router.post("/change-control/changes/{change_id}/apply-engine-skill-md-patch", response_model=Dict[str, Any])
 async def apply_engine_skill_md_patch(change_id: str, http_request: Request, _auth: str = Depends(require_auth)):
     """
     Apply an engine SKILL.md patch proposed by skill-eval change-control (sync run_job_once).
@@ -948,7 +948,7 @@ async def apply_engine_skill_md_patch(change_id: str, http_request: Request, _au
     return {"status": "ok", "change_id": str(change_id), "job_id": job_id, "job_run": run}
 
 
-@router.get("/change-control/changes/{change_id}/evidence")
+@router.get("/change-control/changes/{change_id}/evidence", response_model=Dict[str, Any])
 async def export_change_control_evidence(change_id: str, http_request: Request, format: str = "zip", limit: int = 500, _auth: str = Depends(require_auth)):
     """
     Export an evidence pack for a change_id.

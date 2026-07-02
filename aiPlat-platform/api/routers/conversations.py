@@ -22,6 +22,12 @@ from core.schemas_conversations import (
     ConversationQueryRequest,
     ConversationScopeUpdateRequest,
 )
+from api.schemas_response import (
+    ConversationResponse,
+    ConversationListResponse,
+    ConversationScopeUpdateResponse,
+    ConversationQueryResponse,
+)
 
 router = APIRouter(prefix="/platform", tags=["conversations"])
 
@@ -84,7 +90,7 @@ def _svc(rt: Optional[KernelRuntime]):
     return create_conversation_service(store)
 
 
-@router.post("/conversations")
+@router.post("/conversations", response_model=ConversationResponse)
 async def create_conversation(request: ConversationCreateRequest, http_request: Request, rt: RuntimeDep = None):
     actor = actor_from_http(http_request, request.model_dump())
     tenant_id = str(request.tenant_id or actor.get("tenant_id") or "default")
@@ -100,7 +106,7 @@ async def create_conversation(request: ConversationCreateRequest, http_request: 
     return out
 
 
-@router.get("/conversations")
+@router.get("/conversations", response_model=ConversationListResponse)
 async def list_conversations(http_request: Request, user_id: Optional[str] = None, limit: int = 100, offset: int = 0, rt: RuntimeDep = None):
     actor = actor_from_http(http_request, {})
     tenant_id = str(actor.get("tenant_id") or "default")
@@ -108,7 +114,7 @@ async def list_conversations(http_request: Request, user_id: Optional[str] = Non
     return await _svc(rt).list_conversation_sessions(tenant_id=tenant_id, user_id=uid, limit=limit, offset=offset)
 
 
-@router.get("/conversations/{session_id}")
+@router.get("/conversations/{session_id}", response_model=ConversationResponse)
 async def get_conversation(session_id: str, rt: RuntimeDep = None):
     try:
         return await _svc(rt).get_conversation_session(session_id=session_id)
@@ -116,7 +122,7 @@ async def get_conversation(session_id: str, rt: RuntimeDep = None):
         raise HTTPException(status_code=404, detail="conversation_not_found")
 
 
-@router.put("/conversations/{session_id}/scope")
+@router.put("/conversations/{session_id}/scope", response_model=ConversationScopeUpdateResponse)
 async def update_conversation_scope(session_id: str, request: ConversationScopeUpdateRequest, http_request: Request, rt: RuntimeDep = None):
     actor = actor_from_http(http_request, request.model_dump())
     tenant_id = str(actor.get("tenant_id") or "default")
@@ -134,7 +140,7 @@ async def update_conversation_scope(session_id: str, request: ConversationScopeU
     return {"ok": True, "scope": out}
 
 
-@router.post("/conversations/{session_id}/query")
+@router.post("/conversations/{session_id}/query", response_model=ConversationQueryResponse)
 async def query_conversation(session_id: str, request: ConversationQueryRequest, http_request: Request, rt: RuntimeDep = None):
     actor = actor_from_http(http_request, request.model_dump())
     tenant_id = str(actor.get("tenant_id") or "default")
@@ -203,7 +209,7 @@ async def query_conversation(session_id: str, request: ConversationQueryRequest,
     return resp
 
 
-@router.post("/conversations/{session_id}/query/stream")
+@router.post("/conversations/{session_id}/query/stream", response_model=Dict[str, Any])
 async def query_conversation_stream(session_id: str, request: ConversationQueryRequest, http_request: Request, rt: RuntimeDep = None):
     """Stream conversation query response via Server-Sent Events."""
     from fastapi.responses import StreamingResponse

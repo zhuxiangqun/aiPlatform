@@ -8,11 +8,14 @@ from core.api.facades.kb_facade import kb_llm_chat_complete as chat_complete, kb
 from core.api.facades.kb_facade import kb_extract_keywords, kb_get_tenant_storage as get_tenant_storage
 import logging
 
+logger = logging.getLogger(__name__)
+
 
 def _get_keywords(text: str) -> List[str]:
     try:
         return kb_extract_keywords(text)
     except Exception:
+        logger.warning("Keyword extraction failed, falling back to regex", exc_info=True)
         return re.findall(r'[\u4e00-\u9fff]{2,4}|[a-zA-Z]{2,}', str(text).lower())
 
 
@@ -55,6 +58,7 @@ async def query_elements(
                 ).fetchone()
             doc_kind = str((dict(row).get("kind") if row else "") or "").strip().lower() if row else ""
         except Exception:
+            logger.warning("Failed to look up document kind for doc_id=%s", doc_id, exc_info=True)
             doc_kind = ""
 
     if doc_id and doc_kind == "video" and route == "video_fact_lookup":
@@ -72,6 +76,7 @@ async def query_elements(
             else:
                 picked = []
         except Exception:
+            logger.warning("Video fact retrieval failed for doc_id=%s", doc_id, exc_info=True)
             picked = []
 
     if doc_id and doc_kind == "video" and not picked and (route == "video_window_query" or (not route and _video_retrieval.is_broad_video_question(question))):
@@ -89,6 +94,7 @@ async def query_elements(
             else:
                 picked = []
         except Exception:
+            logger.warning("Video window retrieval failed for doc_id=%s", doc_id, exc_info=True)
             picked = []
 
     from core.api.facades.kb_facade import kb_retrieve
@@ -102,6 +108,7 @@ async def query_elements(
         picked = kb_results[: max(1, int(top_k))]
         retrieval_mode = "hybrid_unified"
     except Exception:
+        logger.warning("KB retrieval failed for query", exc_info=True)
         picked = []
 
     # Map page_idx -> asset_path if possible (page_image first, then frame_image for videos)
@@ -138,6 +145,7 @@ async def query_elements(
                 page_map.setdefault(did, {})[int(r["page_idx"])] = item
                 timed_assets.setdefault(did, []).append(item)
         except Exception:
+            logger.warning("Asset mapping failed for doc_ids", exc_info=True)
             page_map = {}
             timed_assets = {}
 
@@ -208,7 +216,7 @@ async def query_elements(
                 answer = llm_ans
                 generation_mode = "llm"
         except Exception as e:
-            logging.debug(str(e), exc_info=True)
+            logger.warning("LLM answer generation failed: %s", e, exc_info=True)
 
     return {
         "tenant_id": tenant_id,

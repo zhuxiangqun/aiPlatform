@@ -40,7 +40,7 @@ class BuilderSessionService:
             from core.api.facades.skill_tool_facade import seed_all_registries
             seed_all_registries()
         except Exception as e:
-            logging.debug(str(e), exc_info=True)
+            logging.warning(str(e), exc_info=True)
 
     async def _restore_chat_history(self, session_id: str) -> List[Dict[str, str]]:
         """Restore conversation history from MemoryManager (survives restart)."""
@@ -51,7 +51,7 @@ class BuilderSessionService:
             if ctx and isinstance(ctx, dict):
                 return ctx.get("messages") or ctx.get("history") or []
         except Exception as e:
-            logging.debug(str(e), exc_info=True)
+            logging.warning(str(e), exc_info=True)
         return []
 
     def _get_or_create_session(self, session_id: str, max_tokens: int = 100000,
@@ -273,7 +273,7 @@ class BuilderSessionService:
                 if prd.get("functional_requirements") and prd.get("title"):
                     return prd
         except (json.JSONDecodeError, Exception) as e:
-            logging.debug(str(e), exc_info=True)
+            logging.warning(str(e), exc_info=True)
 
         # Markdown format: parse structured markdown as PRD dict
         if "## 项目名称" in reply or "## 项目背景" in reply:

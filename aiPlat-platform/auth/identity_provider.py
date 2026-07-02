@@ -18,12 +18,15 @@ Usage:
 from __future__ import annotations
 
 import json
+import logging
 import os
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 from urllib.parse import urlencode
 
 import httpx
+
+logger = logging.getLogger(__name__)
 
 
 class OIDCProvider:
@@ -92,7 +95,11 @@ class OIDCProvider:
         except ImportError:
             # python-jose 未安装 → 回退到不验证的模式（仅适合开发环境）
             return self._decode_unsigned(id_token)
+        except JWTError as e:
+            logger.warning("JWT verification failed: %s", e)
+            return None
         except Exception:
+            logger.error("Unexpected error during JWT verification", exc_info=True)
             return None
 
     def _decode_unsigned(self, id_token: str) -> Optional[Dict[str, Any]]:
@@ -107,7 +114,11 @@ class OIDCProvider:
             payload += "=" * (4 - len(payload) % 4)
             decoded = base64.urlsafe_b64decode(payload).decode("utf-8")
             return json.loads(decoded)
+        except (ValueError, json.JSONDecodeError, UnicodeDecodeError) as e:
+            logger.warning("Failed to decode unsigned JWT payload: %s", e)
+            return None
         except Exception:
+            logger.error("Unexpected error decoding unsigned JWT", exc_info=True)
             return None
 
     def extract_identity(self, claims: Dict[str, Any]) -> Dict[str, Any]:

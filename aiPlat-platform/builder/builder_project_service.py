@@ -210,9 +210,9 @@ class BuilderProjectService:
                                 "signature": manifest.get("signature"),
                             })
                         except Exception as e:
-                            logging.debug(str(e), exc_info=True)
+                            logging.warning(str(e), exc_info=True)
             except Exception:
-                _log.debug("Failed to write per-project directory files", exc_info=True)
+                _log.warning("Failed to write per-project directory files", exc_info=True)
         except Exception as e:
             _log.error("Failed to save projects to %s (project data may be lost on restart): %s", _PROJECTS_FILE, e)
 
@@ -299,7 +299,7 @@ class BuilderProjectService:
                 if team:
                     team_map[tid] = team.name
             except Exception as e:
-                logging.debug(str(e), exc_info=True)
+                logging.warning(str(e), exc_info=True)
 
         projects: List[Project] = []
         for pid, data in self._projects.items():
@@ -403,7 +403,7 @@ class BuilderProjectService:
                         if not (draft.get("user_stories") or draft.get("functional_requirements")):
                             draft = None
                 except Exception as e:
-                    logging.debug(str(e), exc_info=True)
+                    logging.warning(str(e), exc_info=True)
                 # Fallback: parse Markdown PRD
                 if not draft and "## 项目名称" in str(reply):
                     draft = self._parse_markdown_prd(reply)
@@ -504,7 +504,7 @@ class BuilderProjectService:
                             lines.append(f"| {aid} | {fpr:.0%} | {rej:.0%} | {qa:.0%} | {tr} |")
                     extra_context = "\n".join(lines)
         except Exception as e:
-            logging.debug(str(e), exc_info=True)
+            logging.warning(str(e), exc_info=True)
         
         rec = await recommend_team_stages(requirement=prd, model=self.model, extra_context=extra_context or None)
 
@@ -830,7 +830,7 @@ class BuilderProjectService:
                         if not sig_verified:
                             _log.warning("Project %s signature verification failed: %s", project_id, r.get("error"))
         except Exception:
-            _log.debug("Signature verification skipped for project %s", project_id, exc_info=True)
+            _log.warning("Signature verification skipped for project %s", project_id, exc_info=True)
 
         # Record as changeset for governance audit
         try:
@@ -844,7 +844,7 @@ class BuilderProjectService:
                 user_id="admin",
             )
         except Exception:
-            _log.debug(f"Failed to record start_pipeline changeset for {project_id}", exc_info=True)
+            _log.warning(f"Failed to record start_pipeline changeset for {project_id}", exc_info=True)
 
         return {"project_id": project_id, "phase": state.get("phase", "executing"), "run_id": run_id,
                 "state": state, "diagnostics": diagnostics}
@@ -858,7 +858,7 @@ class BuilderProjectService:
             mgr = get_memory_manager()
             state["_episodic"] = mgr.export_episodic_state()
         except Exception as e:
-            logging.debug(str(e), exc_info=True)
+            logging.warning(str(e), exc_info=True)
         self._save_pipeline_state(project_id, state)
         session = self._pipeline_sessions.get(project_id)
         # Config-driven: find test result key from session stages
@@ -1044,7 +1044,7 @@ class BuilderProjectService:
                 if st.get("phase"):
                     phase = st["phase"]
             except Exception as e:
-                logging.debug(str(e), exc_info=True)
+                logging.warning(str(e), exc_info=True)
         state["phase"] = state.get("phase", phase)
         if not state or state.get("phase") == "failed":
             persisted = self._load_pipeline_state(project_id)
@@ -1059,7 +1059,7 @@ class BuilderProjectService:
                         mgr = get_memory_manager()
                         mgr.import_episodic_state(episodic)
                     except Exception as e:
-                        logging.debug(str(e), exc_info=True)
+                        logging.warning(str(e), exc_info=True)
         if not state:
             state = {}
         proj = self._projects.get(project_id, {})
@@ -1112,7 +1112,7 @@ class BuilderProjectService:
                 with open(chat_file, "r", encoding="utf-8") as f:
                     return json.load(f)
         except Exception as e:
-            logging.debug(str(e), exc_info=True)
+            logging.warning(str(e), exc_info=True)
         return None
 
     def _load_pipeline_state(self, project_id: str) -> Optional[Dict[str, Any]]:
