@@ -33,6 +33,10 @@ section_for() {
         *knowledge*|*retrieval*|*rag*|*hyde*|*rrf*)   echo "## 四、RAG 检索" || echo "## 四附、知识基础设施（Knowledge）" ;;
         *agents*|*agent*)                               echo "## 五、Agent 系统" ;;
         *skills*|*skill*)                               echo "## 六、Skill 系统" ;;
+        *engine/skills*)                                echo "## 六、Skill 系统" ;;
+        *api/routers*)                                  echo "## 二十一、平台治理" ;;
+        *services*)                                     echo "## 一、Harness 执行引擎" ;;
+        *management*)                                   echo "## 七、安全与治理" ;;
         *policy*|*gate*|*rbac*|*audit*|*pii*|*secrets*) echo "## 七、安全与治理" ;;
         *observation*|*metrics*|*otel*|*health*)        echo "## 八、可观测性" ;;
         *infrastructure*|*adapter*|*model*)             echo "## 九、模型基础设施" ;;
@@ -53,7 +57,10 @@ echo "  AUTO SYNC DOCS — Detect + Fix CAPABILITIES.md gaps"
 echo "═══════════════════════════════════════════════════════════════"
 
 NEW_MODULES=""
-for root in "aiPlat-core/core/harness" "aiPlat-platform/auth" "aiPlat-platform/storage" "aiPlat-platform/kb"; do
+for root in "aiPlat-core/core/harness" "aiPlat-core/core/engine/skills" \
+    "aiPlat-core/core/api/routers" "aiPlat-core/core/services" \
+    "aiPlat-core/core/management" \
+    "aiPlat-platform/auth" "aiPlat-platform/storage" "aiPlat-platform/kb"; do
     if [ ! -d "$WORKSPACE/$root" ]; then continue; fi
     while IFS= read -r f; do
         basename="${f##*/}"
@@ -131,8 +138,10 @@ done
 
 # ── Step 3: Recalculate stats ──────────────────────────────
 
-TOTAL=$(grep -cE '^\|.*\|.*\| ✅' "$CAPS" 2>/dev/null || echo 0)
-PARTIAL=$(grep -cE '^\|.*\|.*\| ⚠️' "$CAPS" 2>/dev/null || echo 0)
+TOTAL=$(grep -cE '^\|.*\|.*\| ✅' "$CAPS" 2>/dev/null || true)
+TOTAL=${TOTAL:-0}
+PARTIAL=$(grep -cE '^\|.*\|.*\| ⚠️' "$CAPS" 2>/dev/null || true)
+PARTIAL=${PARTIAL:-0}
 SUM=$((TOTAL + PARTIAL))
 
 # Update the stats table total row
