@@ -115,6 +115,7 @@
 | wiki_retriever | `harness/knowledge/wiki_retriever.py` | ✅ | 自动同步 | 已合入 |
 | cap_health_rules | `harness/knowledge/cap_health_rules.py` | ✅ | 自动同步 | 已合入 |
 | skill_deps | `harness/knowledge/skill_deps.py` | ✅ | 自动同步 | 已合入 |
+| code_graph_persist | `harness/knowledge/code_graph_persist.py` | ✅ | 自动同步 | 已合入 |
 |------|------|:---:|------|------|
 | 统一知识检索 | `harness/syscalls/retrieval.py:569` | ✅ | 并行 Wiki + KB，RRF 三路融合 | 已合入 |
 | KB 文档检索 | `harness/syscalls/retrieval.py:39` | ✅ | hybrid: LIKE + FTS5 + FAISS 向量 | 已合入 |
