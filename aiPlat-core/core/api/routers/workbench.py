@@ -15,11 +15,9 @@ from typing import Any, Dict, List, Optional
 import os
 from datetime import datetime, timezone
 
-router = APIRouter(prefix="/workbench", tags=["workbench"], dependencies=[Depends(_require_auth)])
-
 _tasks: Dict[str, Dict[str, Any]] = {}
 
-# ── Auth ────────────────────────────────────────────────────────────────────
+# ── Auth (must be BEFORE router — evaluated at import time) ──────────────
 
 def _require_auth(request: Request) -> str:
     """Platform gateway identity passthrough + dev-mode fallback.
@@ -62,6 +60,8 @@ def _require_auth(request: Request) -> str:
             role = os.getenv("AIPLAT_DEFAULT_ROLE", "developer")
     request.state.role = role
     return tenant
+
+router = APIRouter(prefix="/workbench", tags=["workbench"], dependencies=[Depends(_require_auth)])
 
 
 @router.get("/capabilities")
