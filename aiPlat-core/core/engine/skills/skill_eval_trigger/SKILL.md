@@ -2,7 +2,7 @@
 name: skill_eval_trigger
 display_name: 技能触发评测
 description: 对指定Skill进行触发评测（正负例）并产出优化建议。涉及代码生成和接口审查。 涉及Skill相关操作。 主要进行评测。
-category: ops
+category: execution
 version: 1.0.0
 status: enabled
 protected: true
@@ -11,6 +11,11 @@ completion_criterion: |
   2. 测试覆盖 happy path + 至少一个边界 case
   3. red-capable command 已确认能稳定复现目标行为
 execution_mode: prompt
+execution_type: prompt
+triggers:
+  - 评估触发
+  - trigger check
+  - 检查触发
 permissions:
 - llm:generate
 effects:
@@ -52,6 +57,15 @@ metadata:
   - 不需要特定的编程语言知识
   - 不要猜测或编造不存在的数据
   sop_goal: 评测 Skill 触发条件的准确性
+sop_flow:
+  - "技能触发评测（Engine）"
+  - "加载指定 Skill 的正负例测试集。"
+  - "对每个用例执行触发评测，记录准确率/召回率/F1。"
+  - "输出指标报告：precision, recall, F1, 误触发 case 列表。"
+  - "评测 Skill 触发条件的准确性"
+  - "[ ] 输出格式符合规范"
+  - "[ ] 正确处理错误和边界条件"
+  - "[ ] 返回结果包含引用和来源标注"
 keywords:
   objects:
   - Skill

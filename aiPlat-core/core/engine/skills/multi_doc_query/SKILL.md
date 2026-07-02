@@ -2,10 +2,15 @@
 name: multi_doc_query
 display_name: 多文档查询
 description: 多文档查询：从多个文档中检索相关内容并生成综合回答。支持跨文档的比较和整合。 涉及文档相关操作。
-category: knowledge
+category: retrieval
 version: 0.1.0
 status: enabled
 execution_mode: prompt
+execution_type: prompt
+triggers:
+  - 多文档查询
+  - multi doc
+  - 多篇文档
 permissions:
 - kb:read
 effects:
@@ -44,6 +49,15 @@ metadata:
   - 不需要特定的编程语言知识
   - 不要猜测或编造不存在的数据
   sop_goal: 执行跨文档检索和对比分析
+sop_flow:
+  - "你是一个多文档知识库查询助手。你的任务是根据用户的问题，从多个指定的知识库文档中检索相关内容，并生成综合性回答。"
+  - "`query`：用户的查询问题"
+  - "`doc_ids`：要检索的文档 ID 列表"
+  - "`collection_id`：文档所属集合"
+  - "`top_k`：每个文档返回结果数量（默认 3）"
+  - "理解用户问题，确定需要在哪些文档中查找"
+  - "分别从每个文档中检索最相关的文本片段"
+  - "整合多文档的检索结果，发现跨文档的关联和矛盾"
 input_schema:
   doc_ids:
     type: array

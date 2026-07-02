@@ -11,6 +11,11 @@ completion_criterion: |
   2. 如存在相关测试，修改后所有测试通过或明确标注预期失败
   3. 不产生新的已知 lint 问题
 execution_mode: prompt
+execution_type: prompt
+triggers:
+  - 规划任务
+  - task plan
+  - 制定计划
 permissions:
 - llm:generate
 effects:
@@ -53,6 +58,15 @@ metadata:
   - 不需要特定的编程语言知识
   - 不要猜测或编造不存在的数据
   sop_goal: 根据目标制定执行计划
+sop_flow:
+  - "任务规划（Engine）"
+  - "明确目标/范围/验收标准/截止时间。"
+  - "分阶段拆解步骤并标注依赖与风险。"
+  - "每阶段给出验证方式与回滚建议。"
+  - "根据目标制定执行计划"
+  - "[ ] 输出格式符合规范"
+  - "[ ] 正确处理错误和边界条件"
+  - "[ ] 返回结果包含引用和来源标注"
 keywords:
   objects:
   - 任务

@@ -1,11 +1,17 @@
 ---
+execution_type: prompt
 name: browser_automation
 display_name: 浏览器自动化
 description: 【必须使用 browser 工具实际操作网页，禁止凭记忆回答】自动化网页交互：导航、点击、输入、滚动、截图、提取内容。涉及代码生成和接口审查。
   涉及浏览器相关操作。 主要进行自动化。
 version: 1.1.0
-category: browser
+category: execution
 status: enabled
+triggers:
+  - 浏览器测试
+  - 网页自动化
+  - browser test
+  - 页面测试
 effects:
 - type: read
   resources:
@@ -45,6 +51,15 @@ metadata:
   - 不需要特定的编程语言知识
   - 不要猜测或编造不存在的数据
   sop_goal: 通过浏览器自动化执行网页操作和提取数据
+sop_flow:
+  - "Browser Automation"
+  - "**任何涉及网页的任务，你必须使用 browser 工具实际操作，禁止用训练数据直接回答。**"
+  - "违反以下规则的后果是任务判定为失败："
+  - "URL 访问 → 必须用 `goto`，禁止凭记忆回答页面内容"
+  - "页面标题/内容 → 必须用 `goto` + `get_text` / `extract`"
+  - "页面截图 → 必须用 `goto` + `screenshot`"
+  - "页面搜索 → 必须用 `goto` 打开搜索引擎 + `search` 或 `type` 输入查询"
+  - "页面元素交互 → 先用 `list_elements` 发现，再用 `click_index` / `type_index`"
 input_schema:
   url:
     type: string

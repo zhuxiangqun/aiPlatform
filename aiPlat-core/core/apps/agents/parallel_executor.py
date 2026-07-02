@@ -13,6 +13,7 @@ Usage:
 from __future__ import annotations
 
 import asyncio
+import re
 import time
 import uuid
 from typing import Any, Callable, Dict, List, Optional, Tuple
@@ -127,6 +128,29 @@ class ParallelExecutor:
             agent = MaterialsChatAgent()
 
         reduce_result = agent.execute(combined) if hasattr(agent, 'execute') else {"ok": False, "error": "No reduce agent"}
+        # ── v4.1: Structured merge for chapter-based documents ──
+        chapter_outputs = []
+        for i, r in enumerate(results):
+            if r.get("ok"):
+                output = r.get("output", {})
+                text = output.get("answer", "") if isinstance(output, dict) else str(output)
+                if re.search(r'##\s+\d+\.?\s', text):
+                    chapter_outputs.append({
+                        "section": str(i + 1),
+                        "content": text,
+                        "title": text.split("\n")[0][:60] if "\n" in text else "",
+                    })
+        if len(chapter_outputs) >= 2:
+            try:
+                from core.harness.coordination.merger import StructuredMerger, ChapterOutput
+                merger = StructuredMerger(enable_llm_merge=False)
+                chapters = [ChapterOutput(section=c["section"], title=c["title"], content=c["content"]) for c in chapter_outputs]
+                merged = await merger.merge(chapters)
+                if merged.issues:
+                    reduce_result["_merge_issues"] = [{"type": i.issue_type, "severity": i.severity, "desc": i.description[:200]} for i in merged.issues]
+                reduce_result["_merge_stats"] = merged.stats
+            except Exception:
+                pass
         reduce_result["_map_stats"] = {
             "total": map_result.get("total_tasks"),
             "successful": map_result.get("successful"),

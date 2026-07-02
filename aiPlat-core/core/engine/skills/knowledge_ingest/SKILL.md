@@ -2,10 +2,11 @@
 name: knowledge_ingest
 display_name: 知识库入库（文档）
 description: 多模态知识库入库：PDF/扫描件→渲染→OCR→表格结构化→导出到多租户SQLite。支持FTS5索引。涉及PDF相关操作。 主要进行导入。
-category: knowledge
+category: retrieval
 version: 0.1.0
 status: enabled
 execution_mode: prompt
+execution_type: prompt
 permissions:
 - kb:write
 effects:
@@ -115,6 +116,14 @@ metadata:
   - 不需要特定的编程语言知识
   - 不要猜测或编造不存在的数据
   sop_goal: 将多模态文档结构化为知识库条目
+sop_flow:
+  - "知识库入库（文档）"
+  - "确认文件路径、租户ID、集合ID、分块参数（chunk_strategy/chunk_size/chunk_overlap）"
+  - "文件预处理检查："
+  - "扫描件检测：若为图像型 PDF（无内嵌文字），调用 OCR（参数见 input_schema.ocr_*）"
+  - "表格检测：若含表格，转 Markdown 表格格式后再索引"
+  - '时效检查：若文档修改时间超过 365 天，标记 metadata.age = "archived"'
+  - "版本检测：若文件名含日期或版本号，优先取最新版本"
 protected: true
 completion_criterion: |
   1. 所有引用的数据/文档都有具体来源（page/section/line）

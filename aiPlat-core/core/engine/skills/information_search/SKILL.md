@@ -12,6 +12,12 @@ completion_criterion: |
   2. 回答长度与问题复杂度匹配（不冗长不敷衍）
   3. 如需后续操作，已明确告知用户下一步做什么
 execution_mode: prompt
+execution_type: prompt
+triggers:
+  - 搜索
+  - 查找
+  - 检索
+  - 帮我查
 permissions:
 - web:search
 - kb:query
@@ -60,6 +66,15 @@ metadata:
   - 不需要特定的编程语言知识
   - 不要猜测或编造不存在的数据
   sop_goal: 从多数据源检索并融合信息
+sop_flow:
+  - "信息检索（Engine）"
+  - "分析查询意图，确定检索源和范围。"
+  - "执行多源检索并对结果去重排序。"
+  - "输出相关性排序的结果列表及每条的去源信息。"
+  - "从多数据源检索并融合信息"
+  - "[ ] 输出格式符合规范"
+  - "[ ] 正确处理错误和边界条件"
+  - "[ ] 返回结果包含引用和来源标注"
 keywords:
   objects:
   - 资料

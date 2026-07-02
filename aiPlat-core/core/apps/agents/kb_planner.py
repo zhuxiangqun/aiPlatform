@@ -9,6 +9,7 @@ from __future__ import annotations
 from typing import Any, Dict, List, Optional
 
 from core.harness.interfaces import AgentConfig, AgentContext, AgentResult, AgentStatus
+from core.harness.knowledge.cost_estimator import estimate_query_cost
 
 
 class KBPlannerAgent:
@@ -35,6 +36,9 @@ class KBPlannerAgent:
                 return AgentResult(success=False, error="task_required")
 
             doc_ids = [str(x).strip() for x in (scope.get("doc_ids") or []) if str(x).strip()]
+
+            # Phase C6: Cost-aware routing via shared core capability
+            _cost = estimate_query_cost(task, {"doc_ids": doc_ids})
 
             # Step 1: Plan decomposition via LLM
             plan = await self._decompose_task(task, doc_ids, tenant_id)

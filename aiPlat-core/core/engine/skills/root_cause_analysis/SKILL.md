@@ -2,10 +2,16 @@
 name: root_cause_analysis
 display_name: 根因分析
 description: 根据测试失败输出，分析失败根因并给出修复建议。触发条件：测试未通过时。跳过条件：测试全部通过。 涉及故障相关操作。 主要进行分析。
-category: quality
+category: analysis
 version: 1.0.0
 status: enabled
 execution_mode: prompt
+execution_type: prompt
+triggers:
+  - 根因分析
+  - root cause
+  - 为什么出错
+  - 排查
 permissions:
 - fs:read
 effects:
@@ -50,6 +56,15 @@ metadata:
   - 不需要特定的编程语言知识
   - 不要猜测或编造不存在的数据
   sop_goal: 追溯故障根因并给出修复建议
+sop_flow:
+  - "根因分析（Engine）"
+  - "读取 test_report 中的 failed cases 和 issues。"
+  - "按错误模式分类：代码逻辑错误、配置错误、环境问题、安全违规。"
+  - "对每类失败给出根因+建议修复方向。"
+  - "输出结构化分析报告（root_causes + fix_suggestions）。"
+  - "追溯故障根因并给出修复建议"
+  - "[ ] 输出格式符合规范"
+  - "[ ] 正确处理错误和边界条件"
 protected: true
 completion_criterion: |
   1. 每个改动都有明确的验收标准（可验证的 pass/fail 条件）

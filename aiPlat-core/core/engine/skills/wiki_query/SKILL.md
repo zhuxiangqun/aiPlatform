@@ -3,10 +3,15 @@ name: wiki_query
 display_name: Wiki 查询
 description: 在持久化 Wiki 中搜索知识，沿链接图展开，合成答案。支持输出 Markdown、Mermaid 图表、对比表格。与传统 RAG 不同——知识已由
   LLM 编缉过，交叉链接已存在，查询精度远超向量检索。 主要进行查询。
-category: knowledge
+category: retrieval
 version: 1.0.0
 status: enabled
 execution_mode: prompt
+execution_type: prompt
+triggers:
+  - 查询wiki
+  - wiki query
+  - 搜索wiki
 permissions:
 - wiki:read
 - llm:generate
@@ -62,6 +67,15 @@ metadata:
   - 不需要特定的编程语言知识
   - 不要猜测或编造不存在的数据
   sop_goal: 搜索 Wiki 并合成答案
+sop_flow:
+  - "你是一个 Wiki 知识查询引擎。与传统 RAG 不同——你搜索的是一个 **LLM 维护的持久化知识库**，里面的页面有人工（LLM）创建的交叉链接、摘药和矛"
+  - "**1. 搜索匹配页面**"
+  - "用 `search_pages(query)` 搜索标题和标签匹配的页面。返回前 10 个最相关的 page summary。"
+  - "**2. 沿链接图展开**"
+  - "对每个匹配的页面，用 `traverse_links(title, depth)` BFS 展开 1-2 层邻域。这些页面通过 `related` 字段互相关联"
+  - "**3. 组装上下文**"
+  - "拼接所有展开页面的 body + summary。注意："
+  - "如果页面有 `contradictions` 标记，在回答中标注存在争议"
 protected: true
 completion_criterion: |
   1. 所有引用的数据/文档都有具体来源（page/section/line）

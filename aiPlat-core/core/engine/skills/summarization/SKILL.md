@@ -11,6 +11,12 @@ completion_criterion: |
   2. 每个文件包含完整可运行代码
   3. 所有依赖项已声明，所有外部引用已校验
 execution_mode: prompt
+execution_type: prompt
+triggers:
+  - 总结
+  - 摘要
+  - 概括
+  - summarize
 permissions:
 - llm:generate
 effects:
@@ -54,6 +60,15 @@ metadata:
   - 不需要特定的编程语言知识
   - 不要猜测或编造不存在的数据
   sop_goal: 将长文本压缩为结构化摘要
+sop_flow:
+  - "内容摘要（Engine）"
+  - "提取主题、结论、关键数据与行动项。"
+  - "输出：TL;DR + 要点列表 + 待确认问题。"
+  - "长文按章节总结并标注标题。"
+  - "将长文本压缩为结构化摘要"
+  - "[ ] 输出格式符合规范"
+  - "[ ] 正确处理错误和边界条件"
+  - "[ ] 返回结果包含引用和来源标注"
 keywords:
   objects:
   - 文章

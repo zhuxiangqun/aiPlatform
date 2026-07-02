@@ -2,7 +2,7 @@
 name: skill_eval_quality
 display_name: 技能质量评测
 description: 对指定Skill执行质量评测（用例+规则评分）并产出指标和报告。涉及代码生成和接口审查。 涉及Skill相关操作。 主要进行评测。
-category: ops
+category: execution
 version: 1.0.0
 status: enabled
 protected: true
@@ -11,6 +11,11 @@ completion_criterion: |
   2. 测试覆盖 happy path + 至少一个边界 case
   3. red-capable command 已确认能稳定复现目标行为
 execution_mode: prompt
+execution_type: prompt
+triggers:
+  - 评估质量
+  - quality check
+  - 质量检查
 permissions:
 - llm:generate
 effects:
@@ -53,6 +58,15 @@ metadata:
   - 不需要特定的编程语言知识
   - 不要猜测或编造不存在的数据
   sop_goal: 多维度评测 Skill 执行质量
+sop_flow:
+  - "技能质量评测（Engine）"
+  - "加载 Skill 的评测用例集和评分规则。"
+  - "逐用例执行 Skill，按规则维度评分。"
+  - "输出质量报告：各维度得分、总分、不合格项列表。"
+  - "多维度评测 Skill 执行质量"
+  - "[ ] 输出格式符合规范"
+  - "[ ] 正确处理错误和边界条件"
+  - "[ ] 返回结果包含引用和来源标注"
 keywords:
   objects:
   - Skill

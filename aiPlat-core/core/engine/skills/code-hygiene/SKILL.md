@@ -3,14 +3,39 @@ name: code-hygiene
 display_name: Code Hygiene (Karpathy Principles)
 description: AI 编码行为规范——减少 LLM 常见编程错误。基于 Andrej Karpathy 的 CLAUDE.md 最佳实践，融入 aiPlat
   架构规约。用于编程类 Agent 的系统 prompt 注入，确保代码质量、最小改动面、可验证闭环。
-category: development
+category: coding
 version: 1.0.0
 status: enabled
+negative_triggers:
+  - 这不是编程任务
+  - 这不需要修改代码
+triggers:
+  - 写代码
+  - 实现功能
+  - 修复bug
+  - 代码审查
+  - 重构
+execution_type: prompt
+sop_goal: "不假设、不隐藏困惑、暴露权衡——遇到不确定先提问而非默认脑补"
 completion_criterion: |
   1. 每个改动都有明确的验收标准（可验证的 pass/fail 条件）
   2. 如存在相关测试，修改后所有测试通过或明确标注预期失败
   3. 不产生新的已知 lint 问题
+negative_triggers:
+  - 这不是编程任务
+  - 这不需要修改代码
+triggers:
+  - 写代码
+  - 实现功能
+  - 修复bug
+  - 代码审查
+  - 重构
 execution_type: prompt
+sop_flow:
+  - 收到编码任务后检查是否有相关测试
+  - 最小改动面原则修改代码
+  - 运行测试确认通过
+  - 自查代码规范
 effects:
 - type: read
   resources: []

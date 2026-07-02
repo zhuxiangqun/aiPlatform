@@ -12,6 +12,13 @@ completion_criterion: |
   2. 每个文件包含完整可运行代码
   3. 所有依赖项已声明，所有外部引用已校验
 execution_mode: prompt
+execution_type: prompt
+triggers:
+  - 调用API
+  - 请求接口
+  - api
+  - http请求
+  - 接口调用
 permissions:
 - http:request
 effects:
@@ -63,6 +70,15 @@ metadata:
   - 不需要特定的编程语言知识
   - 不要猜测或编造不存在的数据
   sop_goal: 安全地调用外部 API 并返回结构化响应
+sop_flow:
+  - "API调用（Engine）"
+  - "校验 URL 在白名单内，检查认证凭证可用性。"
+  - "构造请求并发送，处理 HTTP 状态码和重试。"
+  - "解析响应并返回结构化结果。"
+  - "安全地调用外部 API 并返回结构化响应"
+  - "[ ] 输出格式符合规范"
+  - "[ ] 正确处理错误和边界条件"
+  - "[ ] 返回结果包含引用和来源标注"
 keywords:
   objects:
   - API

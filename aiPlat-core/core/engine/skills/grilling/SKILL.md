@@ -2,10 +2,38 @@
 name: grilling
 display_name: 需求澄清追问
 description: 当用户需求模糊时，逐一追问直到细节清晰。每次只问一个问题，附带推荐选项。如果可通过读已有文件/代码回答，读文件，别问用户。
-category: engineering
+category: analysis
 version: 1.0.0
 status: enabled
-execution_mode: prompt
+execution_type: prompt
+sop_goal: "从用户描述中找出最模糊的点，逐一追问直到细节清晰"
+sop_flow:
+  - 从用户描述中找最模糊的点
+  - 问一个问题附带推荐选项
+  - 用户可A/B/C快速回答
+  - 可读文件时读文件不追问
+  - 重复直到需求完整
+  - 输出结构化澄清摘要
+input_schema:
+  type: object
+  properties:
+    question:
+      type: string
+      description: 用户的原始需求描述或模糊问题
+  required: [question]
+output_schema:
+  type: object
+  properties:
+    clarification_result:
+      type: string
+      description: 所有澄清问题的结构化摘要
+    questions_asked:
+      type: integer
+      description: 追问了多少轮才达到明确
+  required: [clarification_result]
+  markdown:
+    type: string
+    required: true
 completion_criterion: |
   1. 用户明确说"可以开始了"或"确认"或"没问题"
   2. 或连续两轮追问无新的实质性模糊点
@@ -17,6 +45,14 @@ effects:
     resources: [filesystem:~]
     idempotent: true
     rollback_available: false
+negative_triggers:
+  - 这不是模糊需求
+  - 已经非常明确的任务
+keywords:
+  - 追问
+  - 需求澄清
+  - 结构化提问
+  - 模糊需求
 triggers:
   - 帮我做一个
   - 帮我优化一下

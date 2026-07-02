@@ -1,11 +1,16 @@
 ---
+execution_type: prompt
 name: e2e_test
 display_name: E2E 测试自动生成
 description: 输入任意URL，自动探索站点、生成Playwright测试套件、运行测试、修复失败、补充覆盖。涉及代码生成和测试审查。 涉及测试用例相关操作。
   主要进行生成。
 version: 1.0.0
-category: testing
+category: execution
 status: enabled
+triggers:
+  - 端到端测试
+  - e2e test
+  - 全链路测试
 effects:
 - type: both
   resources:
@@ -44,6 +49,13 @@ metadata:
   - 不需要特定的编程语言知识
   - 不要猜测或编造不存在的数据
   sop_goal: 自动发现站点功能并生成 E2E 测试套件
+sop_flow:
+  - E2E Test 自动生成
+  - 对任何 Web 应用自动生成完整的 Playwright E2E 测试套件
+  - 使用 browser 进行浏览器自动化
+  - 使用 file_operations 保存测试代码
+  - 使用 code_execution 运行 Playwright 测试
+  - 生成 goto / wait / list_elements / click_index / type_index / screenshot 操作序列
 input_schema:
   url:
     type: string

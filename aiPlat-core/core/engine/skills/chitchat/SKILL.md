@@ -17,6 +17,7 @@ completion_criterion: |
   2. 回答长度与问题复杂度匹配（不冗长不敷衍）
   3. 如需后续操作，已明确告知用户下一步做什么
 execution_mode: prompt
+execution_type: prompt
 permissions:
 - llm:generate
 effects:
@@ -62,6 +63,15 @@ metadata:
   - 不需要特定的编程语言知识
   - 不要猜测或编造不存在的数据
   sop_goal: 提供友好自然的日常对话服务
+sop_flow:
+  - "闲聊（Engine）"
+  - "理解用户意图：纯闲聊 vs 混杂信息需求。"
+  - "友好自然地回复，必要时引导至其他 Skill。"
+  - "不输出未经确认的事实信息。"
+  - "提供友好自然的日常对话服务"
+  - "[ ] 输出格式符合规范"
+  - "[ ] 正确处理错误和边界条件"
+  - "[ ] 返回结果包含引用和来源标注"
 keywords:
   objects:
   - 闲聊话题

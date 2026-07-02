@@ -157,11 +157,11 @@ class CodeGenerationSkill(BaseSkill):
         self._model = model
 
     async def execute(self, context: SkillContext, params: Dict[str, Any]) -> SkillResult:
-        """Execute code generation using best-available LLM via ModelRouter."""
+        """Execute code generation using best-available LLM via model_injection."""
         language = params.get("language", "python")
         requirements = params.get("requirements", "")
 
-        # Auto-select model: try ModelRouter, fall back to env config
+        # Auto-select model: via model_injection (canonical path), fall back to env config
         model = self._model
         if model is None:
             model = await self._resolve_code_gen_model()
@@ -203,18 +203,7 @@ class CodeGenerationSkill(BaseSkill):
             from core.harness.utils.model_injection import create_selected_adapter, get_default_model
             return create_selected_adapter(model_name=get_default_model(purpose="code_gen") or best_model_for_purpose("chat"))  # noqa: model-legacy
         except Exception as e:
-            logging.debug(str(e), exc_info=True)
-        # Fallback: model_router for provider-aware selection
-        try:
-            from core.harness.infrastructure.model_router import get_model_router
-            from core.harness.utils.model_injection import create_selected_adapter
-            router = get_model_router()
-            entry = await router.select(task_purpose="code_generation", task_complexity="high")
-            if entry and entry.name:
-                return create_selected_adapter(model_name=entry.name)
-        except Exception as e:
-            logging.debug(str(e), exc_info=True)
-        except Exception:
+            logging.warning("Code-gen model resolution failed: %s", e, exc_info=True)
             return None
 
 

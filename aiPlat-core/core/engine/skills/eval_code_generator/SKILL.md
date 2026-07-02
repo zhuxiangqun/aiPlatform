@@ -3,10 +3,15 @@ name: eval_code_generator
 display_name: 评估代码生成器
 description: 基于 Amazon Eval Agent 论文方法——通过结构化过程性指令 + 代码模板 + API 文档检索，为 Agent 自动生成评估代码。每个
   Agent 不超过 5 个评分指标，产出 2 个文件。
-category: evaluation
+category: analysis
 version: 1.0.0
 status: enabled
 execution_mode: prompt
+execution_type: prompt
+triggers:
+  - 评估生成器
+  - evaluate generator
+  - 测试生成
 permissions:
 - eval:write
 - llm:generate
@@ -61,6 +66,15 @@ metadata:
   - 不需要特定的编程语言知识
   - 不要猜测或编造不存在的数据
   sop_goal: 为 Agent 自动生成评估代码
+sop_flow:
+  - "你是一个评估代码生成器。你的任务是：读取目标 Agent 的配置和执行轨迹，按约束式模板生成评估代码。"
+  - "**指标数量：不超过 5 个**。每个必须有明确的评分标准（0-10 或 PASS/FAIL）。禁止操作性度量（延迟、token 消耗、工具调用次数）。"
+  - "**文件数量：不超过 2 个**。一个 `eval_metric.py`（指标实现）+ 一个 `eval_runner.py`（执行入口）。"
+  - "**代码量：控制在 300 行以内**。先写最小可工作版本，不引入未验证的库。"
+  - "**API 先验证**：使用任何库之前，确认它确实存在且版本正确。"
+  - "读目标 Agent 的 AGENT.md："
+  - "它的 agent_type 是什么（conversational / react / rag）？"
+  - "它有哪些 tools 和 skills？"
 protected: true
 completion_criterion: |
   1. 每个 acceptance_criteria 至少有一个可执行的验证步骤

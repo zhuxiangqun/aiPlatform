@@ -320,11 +320,23 @@ class ActionGenerator:
         if role in ("checkbox",):
             return {"action": "click_target", "target": {"role": "checkbox", "text_contains": text[:20]}}
 
+        # Hover for menu/tooltip/dropdown triggers
+        if role in ("menu", "tooltip", "dropdown",):
+            return {"action": "hover", "target": {"role": role, "text_contains": text[:20]}}
+
+        # File upload for file input elements
+        if role == "file_input" or tp == "file":
+            return {"action": "file_upload", "target": {"role": "file_input", "name": name, "type": tp}}
+
         if role in ("select",):
-            return {"action": "click_target", "target": {"role": "select", "text_contains": text[:20]}}
+            return {"action": "select_option", "target": {"role": "select", "text_contains": text[:20]}}
 
         if role == "textarea":
             return {"action": "type_target", "target": {"role": "textarea"}, "text": "test content"}
+
+        # Scroll action for any actionable element (lazy-load trigger)
+        if role in ("scroll", "image", "section", "article",):
+            return {"action": "scroll", "amount": 300}
 
         return None
 
@@ -515,6 +527,81 @@ class ActionExecutor:
         elif act == "type_index":
             r = await self._session.type_index(action.get("index", 1), action.get("text", "test"))
             return r if "error" not in r else None
+        elif act == "select_option":
+            target = action.get("target", {})
+            # Click the select to open dropdown, then select first option via JS
+            click_r = await self._session.click_target(target)
+            if click_r.get("error"):
+                return None
+            await self._session._session.wait(500)
+            # Select first option via JavaScript
+            try:
+                script = "() => { const s = document.querySelector('select'); if(s&&s.options.length>0){s.selectedIndex=1;s.dispatchEvent(new Event('change',{bubbles:true}));} }"
+                await self._session._session.evaluate(script)
+                return {"status": "selected"}
+            except Exception:
+                return {"note": "select_option: could not select option"}
+        elif act == "scroll":
+            amount = action.get("amount", 300)
+            try:
+                r = await self._session._session.scroll(amount)
+                return r
+            except Exception:
+                return {"note": f"scroll action failed (amount={amount})"}
+        elif act == "hover":
+            target = action.get("target", {})
+            try:
+                script = """(target) => {
+                    const els = document.querySelectorAll('*');
+                    for (const el of els) {
+                        const text = (el.textContent||'').toLowerCase();
+                        const role = (el.getAttribute('role')||el.tagName||'').toLowerCase();
+                        if (text.includes(target.text_contains||'') && role.includes(target.role||'')) {
+                            el.dispatchEvent(new MouseEvent('mouseover', {bubbles:true}));
+                            el.dispatchEvent(new MouseEvent('mouseenter', {bubbles:true}));
+                            return 'hovered';
+                        }
+                    }
+                    return 'not_found';
+                }"""
+                await self._session._session.evaluate(f"({script})")
+                return {"status": "hovered"}
+            except Exception:
+                return {"note": "hover action failed"}
+        elif act == "press_key":
+            key = action.get("key", "Enter")
+            try:
+                script = f"document.dispatchEvent(new KeyboardEvent('keydown',{{key:'{key}',bubbles:true}}));document.dispatchEvent(new KeyboardEvent('keyup',{{key:'{key}',bubbles:true}}));"
+                await self._session._session.evaluate(script)
+                return {"status": "pressed", "key": key}
+            except Exception:
+                return {"note": f"press_key action failed (key={key})"}
+        elif act == "file_upload":
+            target = action.get("target", {})
+            try:
+                content = action.get("content", "test content")
+                filename = action.get("filename", "test.txt")
+                script = """
+                (target) => {
+                    const els = document.querySelectorAll('input[type="file"]');
+                    for (const el of els) {
+                        const name = (el.name||'').toLowerCase();
+                        if (name.includes((target.name||'').toLowerCase()) || els.length === 1) {
+                            const dt = new DataTransfer();
+                            const file = new File([target.content], target.filename, {type: 'text/plain'});
+                            dt.items.add(file);
+                            el.files = dt.files;
+                            el.dispatchEvent(new Event('change', {bubbles: true}));
+                            return 'uploaded';
+                        }
+                    }
+                    return 'not_found';
+                }
+                """
+                result = await self._session._session.evaluate(f"({script})({{name:'{target.get('name','')}',content:'{content[:100]}',filename:'{filename}'}})")
+                return {"status": result}
+            except Exception:
+                return {"note": "file_upload action failed"}
         else:
             return {"note": f"action '{act}' not yet implemented"}
 

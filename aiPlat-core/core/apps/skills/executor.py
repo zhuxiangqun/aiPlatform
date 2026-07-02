@@ -98,6 +98,18 @@ class SkillExecutor:
                 error=f"Skill is disabled: {skill_name}"
             )
 
+        # ── execution_type pre-check: handler/hybrid requires handler.py ──
+        cfg = getattr(skill, '_config', None)
+        meta = getattr(cfg, 'metadata', {}) if cfg else {}
+        exec_type = str(meta.get("execution_type", "") or "").strip()
+        if exec_type in ("handler", "hybrid"):
+            sd = str((meta.get("filesystem", {}) or {}).get("skill_dir", ""))
+            if not sd or not os.path.isfile(os.path.join(sd, "handler.py")):
+                return SkillResult(
+                    success=False,
+                    error=f"Skill '{skill_name}': execution_type={exec_type} but handler.py not found"
+                )
+
         execution_id = new_prefixed_id("run")
         record = ExecutionRecord(
             execution_id=execution_id,

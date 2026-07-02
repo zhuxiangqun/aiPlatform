@@ -1,11 +1,16 @@
 ---
+execution_type: prompt
 name: site_tester
 display_name: 全站自动化测试
 description: 自动遍历所有页面，发现可交互元素，执行全覆盖功能测试。支持多账号、弹窗递归、截图对比、视频录制。不经过LLM推理，确定性执行。 涉及站点相关操作。
   主要进行测试。
 version: 1.0.0
-category: testing
+category: execution
 status: enabled
+triggers:
+  - 网站测试
+  - site test
+  - 测试网站
 effects:
 - type: read
   resources:
@@ -43,6 +48,15 @@ metadata:
   - 不需要特定的编程语言知识
   - 不要猜测或编造不存在的数据
   sop_goal: 全自动遍历站点执行功能验证
+sop_flow:
+  - "全站自动化测试 (Site Tester)"
+  - "自动遍历系统所有路由页面，对每个页面的可交互元素（按钮/输入框/链接/弹窗）执行全覆盖功能测试。"
+  - "**全覆盖遍历**：BFS 广度优先，按路由表逐页测试，弹窗无限递归"
+  - "**智能操作**：自动识别元素 role（search_input / submit_button / link / text_input …），生成对应操作"
+  - "**安全策略**：默认跳过删除/清空等危险操作，需显式开启"
+  - "**多账号**：支持账号池轮换，登录态自动管理"
+  - "**输出**：通过/失败布尔报告 + 每步前后截图 + 详细日志"
+  - "在 Agent 的 ExecuteAgentModal 中输入测试配置："
 input_schema:
   url:
     type: string

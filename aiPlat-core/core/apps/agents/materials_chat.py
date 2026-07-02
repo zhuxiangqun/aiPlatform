@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import json
+import os
+import re
 import time
 from typing import Any, Dict, List, Optional
 
@@ -116,7 +118,39 @@ class MaterialsChatAgent(BaseAgent):
 
             # §5.63: Query sanitization
             question = _sanitize_query(question)
-            # §5.62: Scope enforcement
+            
+            # Phase C6: Cost-aware routing — shared core capability
+            from core.harness.knowledge.cost_estimator import estimate_query_cost
+            _cost = estimate_query_cost(question, scope, options)
+            _trace("成本预估", f"RAG={_cost.rag_est_tokens} vs 全量={_cost.full_est_tokens}, 选择={_cost.recommendation}",
+                   rag_tokens=_cost.rag_est_tokens, full_tokens=_cost.full_est_tokens,
+                   recommendation=_cost.recommendation, complexity=_cost.query_complexity)
+            
+            # Phase C6: Cost-aware routing — skip heavy RAG for small-context queries
+            _routing_mode = "rag"
+            if _cost.recommendation == "direct_llm":
+                _routing_mode = "direct_llm"
+            elif _cost.recommendation == "full_context" and _cost.full_est_tokens < 20000:
+                _routing_mode = "full_context"
+            _trace("路由决策", f"模式={_routing_mode}, 原因={_cost.recommendation}",
+                   routing_mode=_routing_mode, cache_available=_cost.cache_saving > 0)
+
+            # Phase 0.3: Semantic cache check — skip heavy retrieval if answer cached
+            if os.getenv("AIPLAT_SEMANTIC_CACHE_ENABLED", "false").lower() in ("true", "1", "yes"):
+                try:
+                    from core.harness.knowledge.semantic_cache import get_semantic_cache
+                    cache = get_semantic_cache()
+                    collection_id_pre = str(scope.get("collection_id") or vars0.get("collection_id") or "default")
+                    cached = await cache.get(question, domain=collection_id_pre)
+                    if cached and isinstance(cached, dict) and cached.get("answer"):
+                        _trace("缓存命中", f"语义缓存L1/L2", cached=True)
+                        return AgentResult(
+                            success=True,
+                            output=cached.get("answer", ""),
+                            metadata={"source": "semantic_cache", "pipeline_trace": pipeline_trace},
+                        )
+                except Exception:
+                    import logging; logging.getLogger(__name__).debug("Semantic cache check skipped", exc_info=True)
             collection_id = str(scope.get("collection_id") or vars0.get("collection_id") or "default")
             if not _enforce_scope(collection_id, str(vars0.get("tenant_id") or "default")):
                 return AgentResult(success=False, error="scope_required")
@@ -754,7 +788,16 @@ class MaterialsChatAgent(BaseAgent):
                 mm = get_memory_manager(namespace=f"kb_{session_id}")
                 await mm.save_interaction(question, answer, stability="high")
             except Exception as e:
-                logging.debug(str(e), exc_info=True)
+                logging.warning("Memory save_interaction failed", exc_info=True)
+
+            # Phase 0.3: Write back to semantic cache for future hit
+            if os.getenv("AIPLAT_SEMANTIC_CACHE_ENABLED", "false").lower() in ("true", "1", "yes"):
+                try:
+                    from core.harness.knowledge.semantic_cache import get_semantic_cache
+                    cache = get_semantic_cache()
+                    await cache.set(question, answer, domain=collection_id, metadata={"strategy": strategy})
+                except Exception:
+                    import logging; logging.getLogger(__name__).debug("Semantic cache write skipped", exc_info=True)
 
             return AgentResult(
                 success=True,
@@ -784,8 +827,24 @@ class MaterialsChatAgent(BaseAgent):
                     "retrieval_policy": retrieval_policy,
                     "answer_strategy": answer_strategy,
                     "doc_count": len(doc_ids),
+                    # Phase C6: latency baseline + routing cost breakdown
+                    "latency_ms": int((time.time() - _t0) * 1000),
+                    "cost_routing": {
+                        "rag_est_tokens": _cost.rag_est_tokens,
+                        "full_est_tokens": _cost.full_est_tokens,
+                        "recommendation": _cost.recommendation,
+                        "cache_saving": _cost.cache_saving,
+                        "cache_available": _cost.cache_saving > 0,
+                    },
+                    "fallback_chain": [
+                        t for t in pipeline_trace
+                        if t.get("phase") in ("检索质量门", "CRAG", "HyDE", "FTS5 fallback", "缓存命中")
+                    ],
                 },
             )
+            # Phase C6: record latency for aggregate P50/P95 stats
+            from core.harness.knowledge.cost_estimator import record_latency as _rec_lat
+            _rec_lat(_cost.recommendation, (time.time() - _t0) * 1000)
         except Exception as e:
             self._status = AgentStatus.ERROR
             return AgentResult(success=False, error=str(e), metadata={"exception": type(e).__name__})

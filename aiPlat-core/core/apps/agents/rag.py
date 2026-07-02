@@ -8,10 +8,12 @@ from typing import Any, Dict, List, Optional
 from dataclasses import dataclass, field
 from datetime import datetime
 import asyncio
+import time
 
 from .base import BaseAgent, AgentMetadata
 from ...harness.interfaces import AgentResult, AgentConfig, AgentContext
 from ...harness.knowledge import KnowledgeRetriever, KnowledgeResult
+from ...harness.knowledge.cost_estimator import estimate_query_cost, record_latency
 
 
 @dataclass
@@ -95,6 +97,10 @@ class RAGAgent(BaseAgent):
         if not query:
             return AgentResult(success=False, output=None, error="No query provided", metadata={"agent": self._name})
 
+        # Phase C6: Cost-aware routing via shared core capability
+        _t0 = time.time()
+        _cost = estimate_query_cost(query, {"doc_ids": context.variables.get("doc_ids", [])})
+
         try:
             retrieval_results = await self._retrieve(query)
             context_text = self._build_context(retrieval_results)
@@ -111,7 +117,10 @@ class RAGAgent(BaseAgent):
                 "query": query,
                 "context_length": len(context_text),
                 "sources": [r.entry.id for r in retrieval_results],
+                "latency_ms": int((time.time() - _t0) * 1000),
+                "cost_routing": _cost.to_dict(),
             })
+            record_latency(_cost.recommendation, (time.time() - _t0) * 1000)
             return result
         except Exception as e:
             return AgentResult(success=False, output=None, error=str(e), metadata={"agent": self._name})

@@ -14,13 +14,14 @@ def get_tool_registry() -> Any:
     return _get()
 
 
-def get_model_registry() -> Any:
+def get_model_manager() -> Any:
+    """Get the global ModelManager from infra (unique source of truth for models)."""
     from infra.management.model.manager import ModelManager
     return ModelManager()
 
 
 def seed_all_registries() -> None:
-    """Seed SkillRegistry, ToolRegistry, and ModelRegistry with built-in defaults."""
+    """Seed SkillRegistry, ToolRegistry, and ModelManager with built-in defaults."""
     try:
         get_skill_registry().seed_for_platform()
     except Exception as e:

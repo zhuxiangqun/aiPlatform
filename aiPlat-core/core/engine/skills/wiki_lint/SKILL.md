@@ -3,10 +3,15 @@ name: wiki_lint
 display_name: Wiki 健康检查
 description: 定期对 Wiki 做健康检查——找出矛盾数据、孤儿页面、死链接、过期内容。LLM 会自动建议补充缺失信息和下一步研究方向。 涉及Wiki相关操作。
   主要进行检查。
-category: governance
+category: analysis
 version: 1.0.0
 status: enabled
 execution_mode: prompt
+execution_type: prompt
+triggers:
+  - 检查wiki
+  - wiki lint
+  - 质量检查
 permissions:
 - wiki:read
 - llm:generate
@@ -55,6 +60,15 @@ metadata:
   - 不需要特定的编程语言知识
   - 不要猜测或编造不存在的数据
   sop_goal: 检测 Wiki 的矛盾和死链接
+sop_flow:
+  - "你是 Wiki 健康检查员。定期运行以保持知识库质量。"
+  - "**1. Contradictions（矛盾检测）**"
+  - "调用 `detect_contradictions()` 获取所有标记了矛盾关系的页面对。对每对矛盾："
+  - "读取两个页面的 body"
+  - "判断矛盾是否仍然存在（可能已被后续编辑解决）"
+  - "如果仍然矛盾：标记为需要解决"
+  - "如果已解决：清除 contradiction 标记"
+  - "**2. Orphans（孤儿页面）**"
 protected: true
 completion_criterion: |
   1. 所有引用的数据/文档都有具体来源（page/section/line）

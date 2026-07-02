@@ -3,10 +3,16 @@ name: knowledge_editor
 display_name: 知识编缉
 description: 阅读新文档，识别受影响的Wiki页面，编排更新。LLM持续编缉和维护知识库而非检索后丢弃。涉及代码生成和接口审查。 涉及Wiki相关操作。
   主要进行编辑。
-category: knowledge
+category: retrieval
 version: 1.0.0
 status: enabled
 execution_mode: prompt
+execution_type: prompt
+triggers:
+  - 编辑知识
+  - 添加知识
+  - 更新知识
+  - 知识编辑
 permissions:
 - wiki:write
 - llm:generate
@@ -63,6 +69,15 @@ metadata:
   - 不需要特定的编程语言知识
   - 不要猜测或编造不存在的数据
   sop_goal: 持续编缉和维护 Wiki 知识库
+sop_flow:
+  - "你是一个知识编缉器。你的任务是阅读一篇新的文章/文档，然后决定如何将其信息整合到现有的持久化 Wiki 中。"
+  - "**Step 1: 分析新内容**"
+  - "阅读 source_text，提取："
+  - "个关键实体（人名、概念、项目、技术）"
+  - "个核心论点或洞察"
+  - "与哪些已有 wiki 页面可能相关（根据标题和标签猜测）"
+  - "**Step 2: 检查已有页面**"
+  - '对每个可能相关的已有页面，调用 `sys_tool_call("webfetch", {url: "wiki://page_title"})` 或直接读取 `~'
 protected: true
 completion_criterion: |
   1. 所有引用的数据/文档都有具体来源（page/section/line）

@@ -12,6 +12,11 @@ completion_criterion: |
   2. 信息不足时明确告知用户，绝不编造
   3. 回答结构清晰，用户无需追问即可执行下一步
 execution_mode: prompt
+execution_type: prompt
+triggers:
+  - 检索知识
+  - 知识检索
+  - retrieve knowledge
 permissions:
 - llm:generate
 effects:
@@ -53,6 +58,15 @@ metadata:
   - 不需要特定的编程语言知识
   - 不要猜测或编造不存在的数据
   sop_goal: 从内部向量库召回相关文档片段
+sop_flow:
+  - "知识召回（Engine）"
+  - "规范化 query（补实体/同义词，查询改写已由 ReActLoop hook 自动处理）。"
+  - "召回 Top-K，去重并排序（混合检索 + 多因子重排 + CRAG 质量门已由 KnowledgeRetriever 自动处理）。"
+  - "基于检索到的片段生成回答。"
+  - "只根据提供的【已知信息】回答。"
+  - '如果已知信息中没有相关内容，直接回复"暂时无法回答这个问题"。'
+  - "不要编造事实、不要猜测、不要补充未在片段中出现的信息。"
+  - "回答末尾列出信息来源（doc_id 或片段编号）。"
 keywords:
   objects:
   - 知识

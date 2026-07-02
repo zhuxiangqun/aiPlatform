@@ -6,6 +6,12 @@ category: execution
 version: 1.0.0
 status: enabled
 execution_mode: prompt
+execution_type: prompt
+triggers:
+  - 操作文件
+  - 读写文件
+  - file operation
+  - 保存文件
 permissions:
 - fs:read
 - fs:write
@@ -51,6 +57,15 @@ metadata:
   - 不需要特定的编程语言知识
   - 不要猜测或编造不存在的数据
   sop_goal: 安全执行原子化文件读写编辑操作
+sop_flow:
+  - "文件操作（Engine）"
+  - "检查路径是否在 workspace 内。"
+  - "执行读/写/编辑操作。"
+  - "返回操作结果（success + 字节数/路径）。"
+  - "安全执行原子化文件读写编辑操作"
+  - "[ ] 输出格式符合规范"
+  - "[ ] 正确处理错误和边界条件"
+  - "[ ] 返回结果包含引用和来源标注"
 protected: true
 completion_criterion: |
   1. 每个改动都有明确的验收标准（可验证的 pass/fail 条件）

@@ -15,6 +15,7 @@ skills:
 - translation
 - text_generation
 - code-hygiene
+- grilling
 tools:
 - sysgraph_search
 - sysgraph_context

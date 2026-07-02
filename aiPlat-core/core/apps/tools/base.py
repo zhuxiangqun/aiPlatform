@@ -514,7 +514,7 @@ class SearchTool(BaseTool):
                 results = parser.results[:num_results]
                 
                 if not results:
-                    return self._mock_results(query, num_results)
+                    return []
                 
                 return results
                 

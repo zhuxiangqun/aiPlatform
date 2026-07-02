@@ -2,10 +2,11 @@
 name: knowledge_query
 display_name: 知识库查询
 description: 多模态知识库查询（MVP）：支持“投资预算”类问答，返回结构化条目与 citations（bbox/页码）。 涉及知识库相关操作。 主要进行查询。
-category: knowledge
+category: retrieval
 version: 0.1.0
 status: enabled
 execution_mode: prompt
+execution_type: prompt
 permissions:
 - kb:read
 effects:
@@ -83,6 +84,14 @@ metadata:
   - 不需要特定的编程语言知识
   - 不要猜测或编造不存在的数据
   sop_goal: 从结构化知识库返回带引用的精准答案
+sop_flow:
+  - "确认 question（问题文本）、tenant_id、collection_id"
+  - "**如果参数中包含 `doc_content`**（已检索的文档内容）："
+  - "直接基于 `doc_content` 内容回答 `question`"
+  - "回答要准确、简洁，引用原文关键信息"
+  - "如果 `doc_content` 不足以回答问题，如实告知"
+  - "**如果没有 `doc_content`**：调用 `kb_query` Tool 执行查询"
+  - "返回结构化结果（answer + citations）"
 protected: true
 completion_criterion: |
   1. 所有引用的数据/文档都有具体来源（page/section/line）

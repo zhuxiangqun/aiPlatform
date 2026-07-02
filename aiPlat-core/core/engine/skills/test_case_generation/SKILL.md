@@ -2,10 +2,15 @@
 name: test_case_generation
 display_name: 测试用例生成
 description: 根据 PRD 的 acceptance_criteria 生成结构化测试用例。触发条件：QA阶段自动触发。跳过条件：非功能需求变更。 涉及测试用例相关操作。
-category: quality
+category: analysis
 version: 1.0.0
 status: enabled
 execution_mode: prompt
+execution_type: prompt
+triggers:
+  - 生成测试用例
+  - test case
+  - 写测试
 permissions:
 - fs:write
 - fs:read
@@ -48,6 +53,15 @@ metadata:
   - 不需要特定的编程语言知识
   - 不要猜测或编造不存在的数据
   sop_goal: 根据验收标准生成测试用例
+sop_flow:
+  - "测试用例生成（Engine）"
+  - "读取 PRD 的 functional_requirements 和 acceptance_criteria。"
+  - "按风险分级策略：高风险接口→全组合判定表；标准→核心+2边界+1异常；低风险→happy+1异常。"
+  - "输出结构化 test_cases JSON。"
+  - "标注覆盖矩阵（接口×维度）。"
+  - "根据验收标准生成测试用例"
+  - "[ ] 输出格式符合规范"
+  - "[ ] 正确处理错误和边界条件"
 protected: true
 completion_criterion: |
   1. 每个 acceptance_criteria 至少有一个可执行的验证步骤

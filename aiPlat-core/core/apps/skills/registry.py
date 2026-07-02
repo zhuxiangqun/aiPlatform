@@ -338,6 +338,15 @@ class SkillRegistry:
                     f"Skill '{cfg.name}': effects[].type={e_type} requires rollback_available=true"
                 )
 
+        # ── execution_type validation: handler/hybrid requires handler.py ──
+        exec_type = str(meta.get("execution_type") or "").strip()
+        if exec_type in ("handler", "hybrid"):
+            sd = (meta.get("filesystem", {}) or {}).get("skill_dir", "")
+            if not sd or not os.path.isfile(os.path.join(str(sd), "handler.py")):
+                _fail(
+                    f"Skill '{cfg.name}': execution_type={exec_type} declared but handler.py not found"
+                )
+
     def register(self, skill: BaseSkill) -> None:
         """Register a skill"""
         self._pre_register_validate(skill)

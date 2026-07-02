@@ -12,6 +12,12 @@ completion_criterion: |
   2. 每个文件包含完整可运行代码
   3. 所有依赖项已声明，所有外部引用已校验
 execution_mode: prompt
+execution_type: prompt
+triggers:
+  - 分析数据
+  - data analysis
+  - 数据分析
+  - 统计
 permissions:
 - llm:generate
 effects:
@@ -57,6 +63,15 @@ metadata:
   - 不需要特定的编程语言知识
   - 不要猜测或编造不存在的数据
   sop_goal: 对数据执行统计分析并输出洞察
+sop_flow:
+  - "数据分析（Engine）"
+  - "理解数据格式、规模和目标分析问题。"
+  - "选择合适的统计/可视化方法并执行。"
+  - "输出结构化洞察：关键发现、趋势、异常点、建议。"
+  - "对数据执行统计分析并输出洞察"
+  - "[ ] 输出格式符合规范"
+  - "[ ] 正确处理错误和边界条件"
+  - "[ ] 返回结果包含引用和来源标注"
 keywords:
   objects:
   - 数据
