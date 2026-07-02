@@ -195,12 +195,15 @@
 ## 六、Skill 系统
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| review_report | `engine/skills/autoreview/review_report.py` | ✅ | 自动同步 | 已合入 |
 |------|------|:---:|------|------|
 | SkillRegistry | `apps/skills/registry.py` | ✅ | 注册/启用/禁用/版本管理/semver回滚 | 已合入 |
 | **autoreview skill** | `engine/skills/autoreview/` | ✅ | 自动代码审查引擎：单引擎/硬投票面板/MoA Deep Mode、3套preset、Scope Governor、auto_fixer (git stash回滚) | v2.1 |
 | autoreview handler | `engine/skills/autoreview/handler.py` | ✅ | 执行入口：温度分层(0.6探索/0.3决策)、preset加载、引擎隔离 | 已合入 |
 | autoreview diff_loader | `engine/skills/autoreview/diff_loader.py` | ✅ | Git Diff驱动：8000 tokens截断、dev/null保护、拒绝全仓库审查 | 已合入 |
 | autoreview aggregator | `engine/skills/autoreview/report_aggregator.py` | ✅ | MoA投票聚合：行号锚点+3级投票+Aggregator LLM综合判断 | 已合入 |
+| autoreview evidence_chain | `engine/skills/autoreview/review_report.py` | ✅ | v2.2: build_evidence()+clean_evidence()+to_markdown自动附加+_persist_review持久化 | 已合入 |
+| autoreview pipeline_stage | `engine/skills/autoreview/pipeline_stage.yaml` | ✅ | depends_on[code_gen,test_gen], failure_strategy:skip_stage, timeout:120s | 已合入 |
 | SkillExecutor | `apps/skills/executor.py` | ✅ | Agent调用 + 独立执行双路径 | 已合入 |
 | skill_call syscall | `harness/syscalls/skill.py` | ✅ | PolicyGate + ApprovalGate + 审计 | 已合入 |
 | 5 准入标准 | `skills/architecture.md` | ✅ | 独立/边界/复用/治理/执行单元 | 已合入 |

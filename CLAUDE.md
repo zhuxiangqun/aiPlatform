@@ -8,7 +8,7 @@ language: zh-CN
 
 此文件是 **工作区兜底规约**，用于在系统执行链路中自动推断到 workspace root 时仍然能注入/强制基本规则。
 
-**能力全貌**：参见 [`AIPLAT_CAPABILITIES.md`](./AIPLAT_CAPABILITIES.md)（唯一真相源，347 项能力）
+**能力全貌**：参见 [`AIPLAT_CAPABILITIES.md`](./AIPLAT_CAPABILITIES.md)（唯一真相源，443 项能力）
 
 **强制规则——代码变更必须同步文档**：
 
@@ -241,4 +241,78 @@ tests/constitution/test_infra_agnostic.py    ← Infra 去应用化
 - `success` — 是否成功
 
 审计事件写入 `execution_store` 的 `audit_log` 表，可通过诊断中心查看。
+
+## 18. Autoreview 技能 — 自动代码审查与上下文工程（2026-07-02 新增）
+
+### 18.1 Autoreview Skill (v2.1, engine skill)
+
+首个 `execution_type: handler` 的 engine skill，位于 `aiPlat-core/core/engine/skills/autoreview/`（8 文件，~1070 行）。
+
+**三种执行模式**：
+- **单引擎**（默认）：reasoning(P0/P1) + code_gen(P2)，2-3s，适合日常 PR
+- **硬投票面板**（quick）：三引擎并行 + 行号锚点投票，2-3s，适合 CI 门禁
+- **MoA Deep Mode**（deep）：Reference 引擎高温发散 + Aggregator LLM 综合裁决，10-15s，适合高风险审查
+
+**核心设计**：
+- Diff-only：绝不审查全量文件，入口防御拒绝 `. / *` 等全仓库 target
+- 引擎隔离：审查者使用独立 system prompt，`sys_llm_generate` 调用时 `inject_agent_config=False`
+- Scope Governor：修复不扩散为重构（文件边界/净增行数/收敛三重检查，P0 安全修复阈值翻倍）
+- Auto Fixer：P2 问题自动修复 + `git stash -u` checkpoint 回滚
+- 3 套 MoA preset：`code_review` / `architecture` / `security`（presets.yaml）
+
+**证据链 (v2.2)**：
+- clean 报告末尾自动附加证据卡（`build_evidence()` + `clean_evidence()`）
+- 审查结果持久化到 `execution_store`（key=`autoreview:last:{target}`）
+- 诊断面板展示审查历史 + clean 率趋势
+- 人工否决端点：`POST /agents/{id}/override-autoreview` → 触发 deep mode 重审
+
+### 18.2 上下文工程升级（P0-P2）
+
+**P0 级**：
+- P0-1 审计隔离：`skill.py` → `llm.py` → `MemoryManager.build_context()` 全链路，autoreview 执行时强制跳 Episodic/Semantic
+- P0-2 温度感知剪枝：高温(≥0.6)保留 60% 消息供探索，低温(<0.3)仅保留 15% 供决策
+- P0-3 语义相关性排序：InfraEmbeddingAdapter + LRU 缓存计算消息与任务 cosine similarity，替代位置启发性规则
+- P0-4 跨层重排：Working/Episodic/Semantic 统一语义排序 + 最近 3 轮时效性保护
+
+**P1 级**：
+- P1-1 工具动态高亮：不改物理顺序（避免 Positional Bias），System Prompt 末尾追加 `[TOOL HINT]`
+- P1-2 Token 预估算：tiktoken 采样预估，超标先压缩再调用 LLM
+- P1-3 Pipeline 预算重分配：前序 stage 未用完 token 均分给剩余 stage
+
+**P2 级**：
+- 模板版本化：`_sync_resolve("id@version")` + `get_versions()` / `get_latest_version()`
+- 重复函数清理：移除 llm.py 中 136 行死代码版本的 `_try_inject_claude_md`
+
+### 18.3 Pipeline + Agent 集成
+
+- `autoreview_reviewer` AGENT.md：薄 agent，唯一技能 `autoreview`
+- `programmer_agent` + `architect_agent`：`required_skills` 中加入 `autoreview`
+- `pipeline_stage.yaml`：`depends_on: [code_gen, test_gen]`，`failure_strategy: skip_stage`
+- `scripts/pre-commit-autoreview.sh`：git pre-commit hook 模板
+
+### 18.4 审查触发方式与结果查看
+
+| 触发方式 | 结果位置 |
+|------|------|
+| 诊断中心完整模式 | 诊断面板 → LLM审查卡片 → v2.2 证据历史 |
+| Pipeline 收尾 | Pipeline 运行记录 → autoreview_gate stage 输出 |
+| Agent 自动调用 | ReActLoop 推理中间步骤 → `sys_skill_call` 日志 |
+| 管理端 Execute | Core → Skills → autoreview → Execute → 弹窗报告 |
+| Pre-commit Hook | 终端输出 → `✅ clean` 或 `❌ P0=N P1=M score=X` |
+
+### 18.5 验证命令
+
+```bash
+# 确认 autoreview skill 注册成功
+ls aiPlat-core/core/engine/skills/autoreview/SKILL.md
+
+# 确认审查 agent 配置
+grep autoreview ~/.aiplat/agents/autoreview_reviewer/AGENT.md
+grep autoreview ~/.aiplat/agents/programmer_agent/AGENT.md
+grep autoreview ~/.aiplat/agents/architect_agent/AGENT.md
+
+# 确认上下文工程改动已生效
+python -c "from core.harness.memory.compression import get_cached_embedding; print('OK')"
+python -c "from core.harness.memory.manager import _re_rank_messages; print('OK')"
+```
 
