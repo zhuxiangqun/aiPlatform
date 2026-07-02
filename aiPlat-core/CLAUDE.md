@@ -277,6 +277,17 @@ Harness 是 AI Runtime Kernel（"操作系统"），解决**"任务如何被执�
 
 > 设计参考：Claude Code Skills 哲学——Skills 应该是"把东西放进文件夹就行"的门槛。当前系统通过 `SkillRegistry` + YAML frontmatter 创建 Skills。未来可扩展为文件夹扫描方式（`skill.md` + `scripts/` + `templates/`），降低非技术用户创建门槛。
 
+**新增 Engine Skill — autoreview (v2.1)**：
+- 整个 skill 位于 `core/engine/skills/autoreview/`（8文件，~1070行）
+- `execution_type: handler`——首个使用 handler.py 的 engine skill
+- 三种执行模式：单引擎（reasoning+code_gen, 2-3s）/ 硬投票面板（3引擎并行, 2-3s）/ MoA Deep Mode（Aggregator LLM综合, 10-15s）
+- 3套 MoA preset：code_review / architecture / security（presets.yaml）
+- Scope Governor：修复不扩散为重构（文件边界/净增行数/收敛检查）
+- Auto Fixer：P2自动修复 + git stash -u回滚（依赖注入，无循环导入）
+- 引擎隔离：审查者使用独立 system prompt，不读被审仓库 AGENT.md/CLAUDE.md
+- 诊断集成：`POST /diagnostics/run-all` 包含 LLM审查维度（选取>500行大文件+核心引擎）
+- 管理端：Core→Skills→autoreview→Execute（零前端改动，JSON输入透传参数）
+
 ### 5.11 工具系统规则（来自 `contracts/03`、`tools/index.md`）
 
 | 规则 | 说明 |
@@ -314,7 +325,7 @@ Harness 是 AI Runtime Kernel（"操作系统"），解决**"任务如何被执�
 - `core/docs/harness/context.md` §5级压缩策略、§System Reminders
 - `core/docs/contracts/04-prompt-context-contract.md`
 
-> **当前实现状态**：`MemoryManager` 四层架构已实现并接入 Agent 执行循环（`loop.py` 调用 `build_context`、`get_reminders`、`save_interaction`）。5 级 ContextCompression 为主压缩路径。工具输出预算帽在 `loop.py` + `compression.py` 中实现。语义记忆动态续期+软删除在 `semantic.py` 中实现。Episodic 预评分在 `episodic.py` + `manager.py` 中实现。Layer 4 (Task Skills) 在流水线完成时自动晶体化——pass_rate ≥85% 的 hot skill 自动注册到 SkillRegistry。Skill 衰减追踪在 `registry.py::SkillBindingStats.recent_results` 中实现。
+> **当前实现状态（v1.1 升级后）**：`MemoryManager` 四层架构已实现并接入 Agent 执行循环（`loop.py` 调用 `build_context`、`get_reminders`、`save_interaction`）。5 级 ContextCompression 为主压缩路径，新增温度感知剪枝（探索60%/决策15%）+ 语义相关性排序（InfraEmbeddingAdapter + LRU缓存）替代位置启发性规则。审计隔离：autoreview 执行时跳过 Episodic/Semantic 注入。跨层重排：Working/Episodic/Semantic 统一语义排序 + 最近3轮时效性保护。工具输出预算帽在 `loop.py` + `compression.py` 中实现。语义记忆动态续期+软删除在 `semantic.py` 中实现。Episodic 预评分在 `episodic.py` + `manager.py` 中实现。Layer 4 (Task Skills) 在流水线完成时自动晶体化——pass_rate ≥85% 的 hot skill 自动注册到 SkillRegistry。Skill 衰减追踪在 `registry.py::SkillBindingStats.recent_results` 中实现。
 
 ### 5.13 Engine vs Workspace 分离（来自 `core/docs/index.md` §Engine vs Workspace）
 
@@ -554,6 +565,13 @@ Tool/Skill 在返回结果时 MAY 附加 `priority` 字段：
 - 压缩触发阈值从 70% 开始（以 token_usage/token_limit 比例计算）
 - 5 级压缩已作为 `_maybe_compact_messages` 的主路径（单阈值 fallback 仅供异常时使用）
 - CLAUDE.md 永不压缩：每次 LLM 调用前从磁盘重读，注入为 system 消息头部
+
+**当前实现状态（v1.1 升级）**：
+- P0-1 审计隔离：autoreview 执行时 MemoryManager 跳过 Episodic/Semantic 注入，仅保留无菌 Working Memory
+- P0-2 温度感知剪枝：高温(≥0.6)保留60%消息供探索，低温(<0.3)仅保留15%供决策
+- P0-3 语义相关性替代位置启发性：用 InfraEmbeddingAdapter + LRU 缓存计算消息与任务的 cosine similarity，优先丢弃低相关消息
+- P0-4 跨层重排：Working/Episodic/Semantic 统一语义排序 + 最近3轮时效性保护
+- P1-2 Token预估：tiktoken采样预估，超标先压缩再调用LLM
 
 ### 5.26 Subagent 摘要原则
 
@@ -1061,6 +1079,8 @@ _register("my-template-id", """提示词正文，使用 ${variable} 占位符。
 - 纯数据/JSON 字符串拼接（如 `f"技能名称: {name}"`）
 - 单行简短系统角色已注册为模板的继续用模板
 - 日志/错误消息字符串不在此范围
+
+**P2 模板版本化**：支持 `id@version` 语法选择特定模板版本（`_sync_resolve("react-reasoning@1.0.0")`）。不指定版本时默认返回最新版（向后兼容）。`_register("id", "text", version="2.0.0")` 注册多版本。`get_versions()` / `get_latest_version()` 查询版本历史。
 
 ### 5.36 本体引擎模块总览（2026-06 更新 — 15 个模块）
 
