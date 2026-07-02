@@ -5,7 +5,7 @@ import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 
 const ROLE_MENUS: Record<string, string[]> = {
   admin:     ["infra", "core", "platform", "workspace", "app", "value", "user", "prompts"],
-  developer: ["infra", "core", "workspace", "value", "user", "diagnostics"],
+  developer: ["infra", "core", "workspace", "app", "value", "user", "diagnostics"],
   business:  ["value", "user"],
   user:      ["user", "app"],
   approver:  ["user"],
@@ -17,6 +17,11 @@ function getRole(): string {
 function canSee(group: string): boolean {
   return (ROLE_MENUS[getRole()] || []).includes(group);
 }
+
+const ROLE_LABELS: Record<string, string> = {
+  admin: '管理员', developer: '开发者', business: '业务负责人',
+  user: '终端用户', approver: '审批人',
+};
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Activity, BarChart3, Bell, Bot, Box, Brain, ChevronDown, ChevronLeft,
@@ -131,6 +136,7 @@ const AppLayout: React.FC = () => {
   const location = useLocation();
   const [collapsed, setCollapsed] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [roleMenuOpen, setRoleMenuOpen] = useState(false);
 
   const isActive = (path: string) => location.pathname === path;
 
@@ -165,10 +171,7 @@ const AppLayout: React.FC = () => {
                     getRole() === 'approver' ? 'bg-purple-900/50 text-purple-400' :
                     'bg-gray-700 text-gray-400'
                   }`}>
-                    {getRole() === 'admin' ? '管理员' :
-                     getRole() === 'developer' ? '开发者' :
-                     getRole() === 'business' ? '业务' :
-                     getRole() === 'approver' ? '审批' : '用户'}
+                    {ROLE_LABELS[getRole()] || '用户'}
                   </span>
                 </div>
               </div>
@@ -239,6 +242,41 @@ const AppLayout: React.FC = () => {
               );
             })}
           </nav>
+
+          {/* Role Switcher */}
+          <div className="border-t border-gray-100 px-3 py-2 relative">
+            <button
+              onClick={() => setRoleMenuOpen(!roleMenuOpen)}
+              className="w-full flex items-center gap-2 text-xs text-gray-500 hover:text-gray-200 rounded px-2 py-1.5"
+            >
+              <span className={`w-2 h-2 rounded-full flex-shrink-0 ${
+                getRole() === 'admin' ? 'bg-red-400' :
+                getRole() === 'developer' ? 'bg-blue-400' :
+                getRole() === 'business' ? 'bg-green-400' :
+                getRole() === 'approver' ? 'bg-purple-400' : 'bg-gray-400'
+              }`} />
+              {!collapsed && <span>{ROLE_LABELS[getRole()] || getRole()}</span>}
+              {!collapsed && <ChevronDown size={10} className="ml-auto" />}
+            </button>
+            {!collapsed && roleMenuOpen && (
+              <div className="absolute bottom-full left-3 right-3 mb-1 bg-dark-bg border border-dark-border rounded-lg shadow-lg p-1 z-50">
+                {Object.entries(ROLE_LABELS).map(([role, label]) => (
+                  <button
+                    key={role}
+                    onClick={() => {
+                      localStorage.setItem('aiplat_role', role);
+                      window.location.reload();
+                    }}
+                    className={`w-full text-left px-3 py-1.5 text-xs rounded hover:bg-dark-hover ${
+                      getRole() === role ? 'text-white font-semibold' : 'text-gray-500'
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
 
           {/* Collapse Button */}
           <button
