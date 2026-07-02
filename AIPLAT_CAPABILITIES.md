@@ -31,6 +31,8 @@
 | graph_engine | `harness/execution/engines/graph_engine.py` | ✅ | 自动同步 | 已合入 |
 | plan_engine | `harness/execution/engines/plan_engine.py` | ✅ | 自动同步 | 已合入 |
 | team_planner | `harness/execution/team_planner.py` | ✅ | 自动同步 | 已合入 |
+| state_mgr | `harness/execution/loop/state_mgr.py` | ✅ | 自动同步 | 已合入 |
+| graph_injector | `harness/execution/loop/graph_injector.py` | ✅ | 自动同步 | 已合入 |
 |------|------|:---:|------|------|
 | ReAct 执行循环 | `harness/execution/loop.py:292` | ✅ | Reason→Act→Observe，集成 Hook/压缩/记忆 | 已合入 |
 | Plan-Execute 循环 | `harness/execution/loop.py:2578` | ✅ | 先规划后执行模式 | 已合入 |
@@ -323,6 +325,11 @@
 | value_calculator | `harness/finance/value_calculator.py` | ✅ | 自动同步 | 已合入 |
 | distillation | `harness/training/distillation.py` | ✅ | 自动同步 | 已合入 |
 | full_training | `harness/training/full_training.py` | ✅ | 自动同步 | 已合入 |
+| _json | `harness/document/converters/_json.py` | ✅ | 自动同步 | 已合入 |
+| _eml | `harness/document/converters/_eml.py` | ✅ | 自动同步 | 已合入 |
+| _csv | `harness/document/converters/_csv.py` | ✅ | 自动同步 | 已合入 |
+| _markdown | `harness/document/converters/_markdown.py` | ✅ | 自动同步 | 已合入 |
+| _html | `harness/document/converters/_html.py` | ✅ | 自动同步 | 已合入 |
 |------|------|:---:|------|------|
 | ExperienceVector | `harness/learning/experience_vector.py` | ✅ | PipelineTrace→Embedding→语义检索 | 已合入 |
 | ToolDriftDetector | `harness/learning/tool_drift_detector.py` | ✅ | 4类漂移检测(struct/field/latency/error) + 重放校验自适应 | 已合入 |
