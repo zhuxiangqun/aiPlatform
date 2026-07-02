@@ -707,3 +707,33 @@ async def get_feedback_stats():
     except Exception as e:
         from fastapi import HTTPException
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# ── v2.2: HITL override — human veto on autoreview clean judgment ──
+
+@router.post("/agents/{agent_id}/override-autoreview", response_model=Dict[str, Any])
+async def override_autoreview(agent_id: str, body: Dict[str, Any]):
+    """人工否决 autoreview 的 clean 判断并触发 deep mode 重新审查。
+
+    Body: { "target": "diff", "reason": "misdiagnosed security issue", "actor_id": "admin" }
+    """
+    target = body.get("target", "diff")
+    reason = body.get("reason", "")
+    actor = body.get("actor_id", "system")
+    import time as _time
+
+    try:
+        from core.services.execution_store import get_execution_store
+        store = get_execution_store()
+        await store.upsert_global_setting(
+            key=f"autoreview:override:{actor}:{int(_time.time())}",
+            value={
+                "target": target, "reason": reason, "actor": actor,
+                "agent_id": agent_id, "timestamp": _time.time(),
+            },
+        )
+        from core.engine.skills.autoreview.handler import execute
+        return await execute({"target": target, "mode": "deep", "focus": "security"})
+    except Exception as e:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=500, detail=str(e))

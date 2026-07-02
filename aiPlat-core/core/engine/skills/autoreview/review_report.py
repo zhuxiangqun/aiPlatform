@@ -52,6 +52,13 @@ class ReviewReport:
     auto_fixed_count: int = 0
     truncated: bool = False
 
+    # v2.2: 完成证据链
+    evidence_cards: List[Dict] = field(default_factory=list)
+    engines_used: List[str] = field(default_factory=list)
+    reviewed_at: float = 0.0
+    target: str = ""
+    mode: str = "quick"
+
     # ── properties ──
 
     @property
@@ -87,6 +94,62 @@ class ReviewReport:
     def fixable_p2_issues(self) -> List[ReviewIssue]:
         return [i for i in self.issues
                 if i.severity == "P2" and i.fix_suggestion.strip()]
+
+    # ── v2.2: 完成证据链 ──
+
+    def build_evidence(self) -> "ReviewReport":
+        """从 self.issues 中自动反推每引擎的发现统计。
+        
+        无需外部传入监控数据——每条 issue 已标记 engine 来源。
+        """
+        engine_stats: Dict[str, Dict] = {}
+        for issue in self.issues:
+            eng = issue.engine or "unknown"
+            if eng not in engine_stats:
+                engine_stats[eng] = {"issues": 0, "categories": set()}
+            engine_stats[eng]["issues"] += 1
+            engine_stats[eng]["categories"].add(issue.category)
+
+        self.evidence_cards = [
+            {
+                "engine": eng,
+                "issues": stats["issues"],
+                "categories": sorted(stats["categories"]),
+            }
+            for eng, stats in engine_stats.items()
+        ]
+        return self
+
+    def clean_evidence(self) -> str:
+        """生成 clean 判决的 Markdown 证据摘要。
+        仅在 is_clean()=True 时产生有意义的输出。
+        """
+        if not self.is_clean():
+            return ""
+
+        lines = ["## Clean Evidence"]
+        if self.reviewed_at:
+            import datetime
+            dt = datetime.datetime.fromtimestamp(self.reviewed_at).isoformat()
+            lines.append(f"**Reviewed at**: {dt}")
+        if self.target:
+            lines.append(f"**Target**: {self.target} ({self.mode or 'quick'} mode)")
+        if self.engines_used:
+            lines.append(f"**Engines**: {', '.join(self.engines_used)}")
+        lines.append("")
+
+        if self.evidence_cards:
+            for card in self.evidence_cards:
+                cats = ", ".join(card.get("categories", [])[:3])
+                issues = card.get("issues", 0)
+                eng = card.get("engine", "?")
+                lines.append(f"- **{eng}**: found {issues} issues ({cats})")
+        else:
+            lines.append("- No issues found by any engine")
+
+        lines.append("")
+        lines.append(f"**P0=0, P1={self.p1_count}<3 → clean**")
+        return "\n".join(lines)
 
     # ── scope governor interface ──
 
@@ -206,4 +269,7 @@ class ReviewReport:
                     lines.append(f"- **{eng}**: {len(items)} unique")
         if self.is_clean():
             lines.append(f"\n---\n✅ **autoreview clean**")
+            # v2.2: 自动附加完成证据链
+            lines.append("")
+            lines.extend(self.clean_evidence().split("\n"))
         return "\n".join(lines)

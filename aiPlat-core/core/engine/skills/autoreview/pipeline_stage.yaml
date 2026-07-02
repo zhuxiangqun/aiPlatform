@@ -1,0 +1,40 @@
+---
+# Pipeline Stage: autoreview_gate
+# 
+# This stage runs after code_generation and test_generation stages complete.
+# It calls the autoreview skill to review code quality before the pipeline marks as done.
+#
+# Usage in PM Agent pipeline:
+#   Add 'autoreview_reviewer' to pm_agent's agent_ids field to register this stage.
+#   PipelineEngine will discover it during _resolve_stages() and schedule it.
+#
+stage_id: autoreview_gate
+agent_id: autoreview_reviewer
+display_name: 代码收尾审查
+phase: review
+depends_on:
+  - code_gen
+  - test_gen
+channels:
+  - TASK_ASSIGN
+
+# Quality gate: only pass when P0=0 and P1<3
+quality_gate:
+  condition: "P0 == 0 && P1 < 3"
+  fallback: manual_review
+
+# Review gate: LLM-driven review
+review_gate: llm
+
+# Failure strategy: skip the stage on failure (don't block the pipeline)
+failure_strategy: skip_stage
+
+# Timeout: 120 seconds for quick mode, 180 for deep mode
+timeout: 120
+
+# Review parameters passed to autoreview skill
+params:
+  target: diff
+  focus: comprehensive
+  mode: quick
+---

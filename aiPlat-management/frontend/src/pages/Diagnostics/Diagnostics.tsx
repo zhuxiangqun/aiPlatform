@@ -349,6 +349,26 @@ const Diagnostics: React.FC = () => {
                             <span className="text-gray-300">{v != null ? String(v) : '-'}</span>
                           </div>
                         ))}
+                        {/* v2.2: autoreview evidence chain status */}
+                        {cat?._autoreview && (cat._autoreview.last_clean || cat._autoreview.total_runs > 0) && (
+                          <div className="mt-2 pt-2 border-t border-gray-800 text-xs text-gray-400 space-y-1">
+                            {cat._autoreview.last_clean && (
+                              <div>
+                                <span className="text-green-400">✓</span>
+                                {` Last clean: ${new Date(cat._autoreview.last_clean * 1000).toLocaleString()}`}
+                              </div>
+                            )}
+                            <div>
+                              {`Mode: ${cat._autoreview.mode_used || 'N/A'}`}
+                              {cat._autoreview.engines?.length > 0
+                                ? ` · Engines: ${(cat._autoreview.engines as string[]).join(', ')}`
+                                : ''}
+                              {cat._autoreview.total_runs > 0
+                                ? ` · Clean rate: ${cat._autoreview.clean_rate}`
+                                : ''}
+                            </div>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>

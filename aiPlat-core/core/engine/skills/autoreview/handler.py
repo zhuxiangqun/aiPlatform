@@ -83,6 +83,7 @@ async def execute(params: Dict[str, Any]) -> Dict[str, Any]:
 
     # ── 3. Review routing (MoA-style two-stage) ──
     use_panel = panel and focus == "security"
+    preset = {}  # v2.2: 确保 preset 始终有定义（单引擎模式为空dict）
     if use_panel:
         preset_name = params.get("preset", "code_review")
         preset = _load_preset(preset_name)
@@ -119,6 +120,23 @@ async def execute(params: Dict[str, Any]) -> Dict[str, Any]:
 
     # ── 5. Scope Governor final check ──
     scope_ok = governor.check(report)
+
+    # ── v2.2: 完成证据链 + 持久化 ──
+    report.reviewed_at = time.time()
+    report.target = target
+    report.mode = mode if use_panel else "single"
+    report.engines_used = preset.get("reference_models", ["reasoning", "code_gen"]) if preset else ["reasoning", "code_gen"]
+    report.build_evidence()
+
+    # 持久化审查结果（best-effort，不阻断审查流程）
+    try:
+        await _persist_review(
+            rpt=report,
+            target=target, focus=focus, mode=report.mode,
+            engines_used=report.engines_used,
+        )
+    except Exception:
+        pass
 
     return {
         "report": report.to_dict(),
@@ -309,3 +327,31 @@ async def review_file(
     if truncated:
         report.truncated = True
     return report
+
+
+# ── v2.2: 审查结果持久化（best-effort）──
+
+async def _persist_review(rpt, target: str, focus: str, mode: str,
+                          engines_used: list = None):
+    """持久化审查结果到 execution_store（best-effort，失败不影响审查）。"""
+    try:
+        from core.services.execution_store import get_execution_store
+        store = get_execution_store()
+        await store.upsert_global_setting(
+            key=f"autoreview:last:{target}",
+            value={
+                "target": target,
+                "focus": focus,
+                "mode": mode,
+                "score": rpt.score,
+                "clean": rpt.is_clean(),
+                "p0": rpt.p0_count,
+                "p1": rpt.p1_count,
+                "p2": rpt.p2_count,
+                "engines_used": engines_used or [],
+                "evidence_cards": rpt.evidence_cards,
+                "timestamp": rpt.reviewed_at or __import__("time").time(),
+            },
+        )
+    except Exception:
+        pass

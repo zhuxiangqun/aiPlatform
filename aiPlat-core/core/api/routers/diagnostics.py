@@ -95,6 +95,44 @@ def _select_llm_review_targets(max_files: int = 15) -> List[tuple]:
     return result
 
 
+# ── v2.2: Autoreview evidence chain helper ──
+
+async def _get_autoreview_summary() -> Dict[str, Any]:
+    """获取最近 autoreview 审查状态的摘要信息。
+    
+    查询 execution_store 中 'autoreview:last:*' 键的持久化审查记录。
+    """
+    try:
+        from core.services.execution_store import get_execution_store
+        store = get_execution_store()
+
+        runs = []
+        for key in ("autoreview:last:diff", "autoreview:last:commit", "autoreview:last:branch"):
+            gs = await store.get_global_setting(key=key)
+            if gs and isinstance(gs, dict):
+                val = gs.get("value") or {}
+                if val:
+                    runs.append(val)
+
+        runs.sort(key=lambda r: r.get("timestamp", 0), reverse=True)
+
+        if not runs:
+            return {"last_clean": None, "mode_used": "N/A", "total_runs": 0}
+
+        clean_runs = [r for r in runs if r.get("clean")]
+        last_clean = clean_runs[0].get("timestamp") if clean_runs else None
+
+        return {
+            "last_clean": last_clean,
+            "mode_used": runs[0].get("mode", "N/A"),
+            "engines": runs[0].get("engines_used", []),
+            "total_runs": len(runs),
+            "clean_rate": f"{len(clean_runs)}/{len(runs)}",
+        }
+    except Exception:
+        return {"last_clean": None, "mode_used": "N/A", "total_runs": 0}
+
+
 # ── DiagnosticCheck base class — shared infrastructure for all checks ──
 
 class DiagnosticCheck:
@@ -1825,6 +1863,8 @@ async def run_all_diagnostics(category: str = "", quick: bool = False):
                     "avg_score": round(avg_score, 1),
                 },
                 "items": items,
+                # v2.2: autoreview 历史摘要
+                "_autoreview": await _get_autoreview_summary(),
             }
         except Exception as e:
             return {"status": "error", "score": 0, "error": str(e)[:200]}
