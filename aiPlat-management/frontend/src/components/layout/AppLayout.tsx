@@ -214,8 +214,10 @@ const AppLayout: React.FC = () => {
                     })}
                   </div>
                 );
-              }
+               }
 
+              // Individual menu items — admin only
+              if (getRole() !== 'admin') return null;
               const active = isActive(item.key);
               return (
                 <button
