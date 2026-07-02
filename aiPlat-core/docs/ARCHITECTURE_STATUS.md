@@ -1,7 +1,7 @@
 # 架构实现状态
 
 > 本文档是 aiPlat-core 各子系统实现状态的**唯一真相来源**。
-> 最后更新: 2026-04-16（已纳入持续交付修复：P0/P1/P2 + P0-EXECSTORE）
+> 最后更新: 2026-07-01（FDE 操作系统建设完毕: SpecLifecycle + FeedbackRadar + TraceVisualizer + 5 routing_modes + Matter 验收）
 
 ## 可追溯断言规则（必须遵守｜适用于全仓 docs）
 

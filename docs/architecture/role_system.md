@@ -13,8 +13,8 @@
 | 1 | CEO | 纯 Human | 战略决策需人类直觉和责任感 |
 | 2 | CFO | 纯 Human | 投入产出判断需人类权衡 |
 | 3 | PM | 纯 Human | 产品方向需人类同理心 |
-| 4 | 业务负责人 | **半自动 Human+Agent** | 人设 KPI，Agent 自追踪预警 |
-| 5 | 技术负责人 | **半自动 Human+Agent** | 人做关键决策，Agent 日常调优 |
+| 4 | 业务负责人 | **半自动 Human+Service** | 人设 KPI，系统服务自追踪预警 |
+| 5 | 技术负责人 | **半自动 Human+Service** | 人做关键决策，系统服务日常调优 |
 | 6 | 审批人 | 纯 Human | 高风险确认需法律责任 |
 | 7 | FDE | 纯 Human | 客户沟通需人类交互 |
 | 8 | BDE | 纯 Human | 代码开发需人类创造力 |
@@ -129,9 +129,9 @@
 
 ---
 
-## 三、半自动 Human+Agent 角色（2 个）
+## 三、半自动 Human+Service 角色（2 个）
 
-**共性**: 关键决策需要人类判断，但监控、预警、常规调优可以由 Agent 自动完成。
+**共性**: 关键决策需要人类判断，但监控、预警、常规调优可以由系统服务自动完成。KPIAgent 和 StrategyAgent 是 Python 系统服务（由 EvolutionEngine / API 调用），不是 AGENT.md 驱动的 Agent（不通过 ReActLoop 执行）。
 
 ### 3.1 📋 业务负责人 + KPIAgent
 
@@ -142,9 +142,9 @@
 | **边界** | Agent 只建议不执行——最终决策权始终在人手里 |
 | **频率** | Human: 月度设目标 / Agent: 每日自动追踪 |
 | **Human 入口** | `EnterpriseKPIs` + `BusinessGoals` |
-| **Agent 实现** | `KPIAgent` (待实现, ~60 行) |
+| **系统服务** | `KPIAgent` (core/harness/agents/kpi_agent.py) — Python 服务，非 Agent.md 驱动 |
 
-#### KPIAgent 设计
+#### KPIAgent 设计（系统服务）
 
 ```python
 class KPIAgent:
@@ -180,9 +180,9 @@ class KPIAgent:
 | **边界** | Agent 可执行常规调参(如调整 max_steps)，但涉及模型切换或 Skill 回滚必须人审批 |
 | **频率** | Human: 关键决策时 / Agent: 日常自动 |
 | **Human 入口** | `RoleManager` + `StrategyControl` |
-| **Agent 实现** | `GoalAwareRouter` (已实现) + `CircuitBreaker` (已实现) + `ToolDriftDetector` (已实现) |
+| **系统服务** | `GoalAwareRouter` (已实现) + `CircuitBreaker` (已实现) + `ToolDriftDetector` (已实现) — 不通过 ReActLoop 执行 |
 
-#### StrategyAgent 设计
+#### StrategyAgent 设计（系统服务）
 
 ```python
 class StrategyAgent:
@@ -279,8 +279,8 @@ class StrategyAgent:
                              │ (战略指示)
               ┌──────────────┼──────────────┐
               ▼              ▼              ▼
-        业务负责人        技术负责人       审批人
-       (半自动)          (半自动)        (纯Human)
+         业务负责人        技术负责人       审批人
+        (系统服务)        (系统服务)        (纯Human)
               │              │              │
     ┌─────────┼──────────────┼──────────────┼─────────┐
     │         │              │              │         │
@@ -308,9 +308,9 @@ class StrategyAgent:
 | 2 | **不需人类判断** | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ | ✓ | ✓ | ✓ | ✓ | ✗ |
 | 3 | **不需承担法律责任** | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ | ✓ | ✓ | ✓ | ✓ | ✓ |
 | 4 | **不需人类创造力** | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ | ✓ | ✓ | ✓ | ✓ | ✓ |
-| **结论** | **人** | **人** | **人** | **半** | **半** | **人** | **人** | **人** | **人** | **A** | **A** | **A** | **A** | **人** |
+| **结论** | **人** | **人** | **人** | **S** | **S** | **人** | **人** | **人** | **人** | **A** | **A** | **A** | **A** | **人** |
 
-> ✓ = 满足, ✗ = 不满足, △ = 部分满足, A = Agent, 半 = 半自动
+> ✓ = 满足, ✗ = 不满足, △ = 部分满足, A = Agent (纯 Agent), S = 系统服务 (半自动)
 
 ---
 

@@ -8,12 +8,14 @@
 - POST /approval/deprecate listed/published → deprecated
 """
 import asyncio
+import logging
 import os
 from typing import Dict
 from fastapi import APIRouter, HTTPException, Query
 import httpx
 
 router = APIRouter(prefix="", tags=["approval"])
+logger = logging.getLogger(__name__)
 
 CORE_BASE = os.environ.get("AIPLAT_CORE_API_URL", "http://localhost:8002/api/core")
 
@@ -70,7 +72,8 @@ async def list_items():
                 if nm and nm != sid:
                     engine_skills.add(nm)
                     skill_statuses[nm] = "listed"
-        except Exception: pass
+        except Exception:
+            logger.warning("Failed to fetch engine skills for approval list", exc_info=True)
 
         if all_skill_ids:
             try:
@@ -79,7 +82,8 @@ async def list_items():
                     key = s.get("id", "") or s.get("name", "")
                     if key and key not in engine_skills:
                         skill_statuses[key] = s.get("status", "draft")
-            except Exception: pass
+            except Exception:
+                logger.warning("Failed to fetch workspace skill details for approval list", exc_info=True)
 
         for a in agents:
             deps = []
@@ -110,7 +114,8 @@ async def list_items():
                     "lint": (a.get("metadata", {}) or {}).get("governance", {}).get("lint_result", {}),
                 },
             })
-    except Exception: pass
+    except Exception:
+        logger.warning("Failed to build agent approval items", exc_info=True)
 
     # Skills
     try:
@@ -135,7 +140,8 @@ async def list_items():
                     "lint": (s.get("metadata", {}) or {}).get("governance", {}).get("lint_result", {}),
                 },
             })
-    except Exception: pass
+    except Exception:
+        logger.warning("Failed to build skill approval items", exc_info=True)
 
     # MCP servers
     try:
@@ -158,7 +164,8 @@ async def list_items():
                     "tool_count": len(s.get("tools", []) if isinstance(s.get("tools"), list) else []),
                 },
             })
-    except Exception: pass
+    except Exception:
+        logger.warning("Failed to build MCP server approval items", exc_info=True)
 
     # Workflow templates
     try:
@@ -186,7 +193,8 @@ async def list_items():
                     "lint": (w.get("_governance", {}) or {}).get("lint_result", {}),
                 },
             })
-    except Exception: pass
+    except Exception:
+        logger.warning("Failed to build workflow template approval items", exc_info=True)
 
     return {
         "items": items,

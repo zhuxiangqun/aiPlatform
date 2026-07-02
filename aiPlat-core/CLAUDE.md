@@ -906,8 +906,8 @@ grep -rn "TODO.*wire\|0 caller\|待接线\|FIXME.*wire" aiPlat-core/core/ --incl
 | 规则 | 说明 |
 |------|------|
 | **禁止 core 自行加载模型** | core 不得直接 `import sentence_transformers`、`import faster_whisper`、`import PaddleOCR` 等加载模型。所有模型调用必须通过 infra 的适配器 |
-| **ModelRegistry → deprecated** | `core/harness/infrastructure/model_registry.py` 标记为 deprecated，改为从 infra `ModelManager` 获取模型列表 |
-| **ModelRouter → deprecated** | `core/harness/infrastructure/model_router.py` 标记为 deprecated，模型选择/路由逻辑迁移到 infra |
+| **ModelRegistry → 已删除** | `model_registry.py` 已删除。模型列表通过 infra `ModelManager` 获取。 |
+| **ModelRouter → 已删除** | `model_router.py` 已删除。模型选择/路由全部迁移到 `model_injection.create_selected_adapter()`，底层使用 infra `ModelManager.select()`。 |
 | **LLM 调用 → InfraLLMAdapter** | 所有 LLM 调用通过 infra 的 `LLMClient`（已接线 ✅） |
 | **Embedding → ✅** | `core/harness/knowledge/embedder.py` 通过 InfraEmbeddingAdapter 加载模型 ✅。sentence-transformers 仍在 adapter 内部使用，但不再由 core 直接 import |
 | **Reranker → ✅** | `core/harness/syscalls/retrieval.py` 使用 InfraRerankerAdapter（CrossEncoder） ✅ |
@@ -916,15 +916,15 @@ grep -rn "TODO.*wire\|0 caller\|待接线\|FIXME.*wire" aiPlat-core/core/ --incl
 
 ### `core/harness/infrastructure/` 目录职责
 
-该目录的职责是**运行时基础设施服务**，**其中模型注册/路由正在迁移中**。
+该目录的职责是**运行时基础设施服务**。
 
 | 模块 | 职责 | 状态 |
 |------|------|:---:|
 | `di/`, `hooks/`, `gates/`, `approval/`, `crypto/`, `config/`, `secrets/` | Harness 运行时服务（DI 容器、Hook 系统、Policy Gate、审批管理、加密签名、配置管理、密钥管理） | ✅ 合规 |
 | `infra_bridge.py` | 桥接 core→infra（ModelManager、LLM、Database、Vector） | ✅ 合规 |
 | `infra_llm_adapter.py` | 包装 infra LLMClient 为 core ILLMAdapter（**core 唯一 LLM 适配器**） | ✅ 合规 |
-| `model_registry.py` | 模型元数据存储。仍被 4 个调用者使用（llm.py, core_facade.py, skills/base.py, model_router.py） | ⚠️ 迁移中：infra 的 ModelManager 提供 list_models，但 model SELECTION（含 API key 解析、provider 路由）仍需 model_router |
-| `model_router.py` | 模型选择和部署解析。仍被 4 个调用者使用 | ⚠️ 迁移中：等 infra ModelManager 提供 select(model_name) 后迁移 |
+| ~~`model_registry.py`~~ | 已删除 | ✅ 迁移完毕 |
+| ~~`model_router.py`~~ | 已删除 | ✅ 迁移完毕 |
 
 ### Core 侧：通用 Adapter，禁止 per-provider 类
 
