@@ -127,6 +127,34 @@ def has_cache() -> bool:
         conn.close()
 
 
+def get_cached_repo_root() -> Optional[str]:
+    """Return the repo_root stored when the cache was last saved, or None if not set."""
+    if not os.path.exists(_db_path()):
+        return None
+    conn = _get_conn()
+    try:
+        row = conn.execute("SELECT value FROM meta WHERE key='repo_root'").fetchone()
+        return row[0] if row else None
+    finally:
+        conn.close()
+
+
+def clear_all_cache():
+    """Wipe all graph data from SQLite — forces full rebuild on next call."""
+    if not os.path.exists(_db_path()):
+        return
+    conn = _get_conn()
+    try:
+        conn.execute("DELETE FROM files")
+        conn.execute("DELETE FROM edges")
+        conn.execute("DELETE FROM symbols")
+        conn.execute("DELETE FROM meta")
+        conn.execute("DELETE FROM fts_files")
+        conn.commit()
+    finally:
+        conn.close()
+
+
 def load_nodes() -> Dict[str, Dict[str, Any]]:
     """Load all file nodes with adjacency and mtime from SQLite."""
     conn = _get_conn()
@@ -217,6 +245,11 @@ def save_graph(nodes: Dict[str, Dict[str, Any]], edges: List[Dict[str, str]], re
         # FTS sync
         conn.execute("INSERT INTO fts_files(fts_files) VALUES('rebuild')")
         conn.execute("INSERT OR REPLACE INTO meta (key, value) VALUES ('last_build', ?)", (str(now),))
+        if repo_root:
+            conn.execute(
+                "INSERT OR REPLACE INTO meta (key, value) VALUES ('repo_root', ?)",
+                (str(repo_root.resolve()),)
+            )
         conn.commit()
     finally:
         conn.close()

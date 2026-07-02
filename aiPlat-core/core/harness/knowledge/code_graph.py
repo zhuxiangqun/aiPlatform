@@ -681,8 +681,13 @@ def build_graph(_repo_root: Path, roots: List[Path]) -> Tuple[Dict[str, Dict[str
 
     # Try SQLite persistence first — with incremental sync on stale files
     try:
-        from core.harness.knowledge.code_graph_persist import has_cache, load_nodes, load_edges, init_db
+        from core.harness.knowledge.code_graph_persist import has_cache, load_nodes, load_edges, init_db, get_cached_repo_root, clear_all_cache
         init_db()
+        if has_cache():
+            cached_root = get_cached_repo_root()
+            current_root = str(_repo_root.resolve())
+            if cached_root and cached_root != current_root:
+                clear_all_cache()
         if has_cache():
             nodes = load_nodes()
             edges = load_edges()
@@ -744,13 +749,6 @@ def build_graph(_repo_root: Path, roots: List[Path]) -> Tuple[Dict[str, Dict[str
                         for d in sorted(deps):
                             edges.append({"from": rel, "to": d})
                             nodes[rel].setdefault("out", []).append(d)
-
-                # After incremental sync, if too few nodes remain (e.g. repo_root
-                # changed and all cached files became stale), force full rebuild
-                if len(nodes) < 10:
-                    raise Exception(
-                        f"Post-sync node count too low ({len(nodes)}), force full rebuild"
-                    )
 
                 # Save incrementally updated graph
             try:
