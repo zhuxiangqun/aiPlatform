@@ -66,6 +66,9 @@ class ScanResult:
 
 
 def repo_root() -> Path:
+    root = os.getenv("AIPLAT_REPO_ROOT", "")
+    if root and Path(root).exists():
+        return Path(root).resolve()
     here = Path(__file__).resolve()
     p = here
     for _ in range(12):
@@ -753,6 +756,7 @@ def build_graph(_repo_root: Path, roots: List[Path]) -> Tuple[Dict[str, Dict[str
                 with _CACHE_LOCK:
                     _CACHE = {"nodes": nodes, "edges": edges, "issues": [], "_ts": _t.time()}
                     _CACHE_ROOTS = ";".join(str(r) for r in roots)
+                import sys; sys.stderr.write("code_graph: cache valid — " + str(len(nodes)) + " nodes\n")
                 return nodes, edges, []
 
             # 0 stale or >100 stale → if >100, force full disk rebuild below
@@ -780,6 +784,7 @@ def build_graph(_repo_root: Path, roots: List[Path]) -> Tuple[Dict[str, Dict[str
                 with _CACHE_LOCK:
                     _CACHE = {"nodes": nodes, "edges": edges, "issues": [], "_ts": _t.time()}
                     _CACHE_ROOTS = ";".join(str(r) for r in roots)
+                import sys; sys.stderr.write("code_graph: cache valid — " + str(len(nodes)) + " nodes\n")
                 return nodes, edges, []
     except Exception as e:
         logging.debug(str(e), exc_info=True)
@@ -789,6 +794,7 @@ def build_graph(_repo_root: Path, roots: List[Path]) -> Tuple[Dict[str, Dict[str
     import time as _t
     with _CACHE_LOCK:
         if _CACHE and _CACHE_ROOTS == roots_key and _t.time() - _CACHE["_ts"] < 120:
+            import sys; sys.stderr.write("code_graph: mem-cache hit — " + str(len(_CACHE["nodes"])) + " nodes\n")
             return _CACHE["nodes"], _CACHE["edges"], _CACHE["issues"]
 
     nodes: Dict[str, Dict[str, Any]] = {}
@@ -878,6 +884,7 @@ def build_graph(_repo_root: Path, roots: List[Path]) -> Tuple[Dict[str, Dict[str
         set_cross_edges_cached()
     except Exception as e:
         logging.debug(str(e), exc_info=True)
+    import sys; sys.stderr.write("code_graph: full rebuild — " + str(len(nodes)) + " nodes, " + str(len(edges)) + " edges\n")
     return nodes, edges, issues
 
 

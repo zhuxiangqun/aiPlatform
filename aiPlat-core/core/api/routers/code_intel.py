@@ -536,7 +536,7 @@ async def code_intel_scan(rt, roots: List[str]) -> ScanResult:
     return ScanResult(created_at=time.time(), roots_key=roots_key, stats=stats, nodes=nodes, edges=edges, issues=issues, health=health)
 
 
-@router.get("/diagnostics/code-intel/scan")
+@router.get("/diagnostics/code-intel/scan", response_model=Dict[str, Any])
 async def scan_code_intel(
     request: Request,
     roots: Optional[str] = None,
@@ -570,7 +570,7 @@ async def scan_code_intel(
             "mode": "symbol",
             "stats": {"nodes": len(symbol_nodes), "edges": len(symbol_edges)},
             "nodes": list(symbol_nodes.values()),
-            "edges": symbol_edges,
+            "links": symbol_edges,
             "issues": [],
         }
 
@@ -638,21 +638,21 @@ async def scan_code_intel(
     }
 
 
-@router.get("/diagnostics/code-intel/hubs")
+@router.get("/diagnostics/code-intel/hubs", response_model=Dict[str, Any])
 async def code_intel_hubs(roots: Optional[str] = None, limit: int = 30, rt=Depends(get_kernel_runtime)):
     root_list = [x.strip() for x in (roots.split(",") if roots else default_roots()) if x.strip()]
     res = await code_intel_scan(rt, root_list)
     return {"status": "ok", "roots": root_list, "hubs": _top_hubs(nodes=res.nodes, issues=res.issues, limit=int(limit or 30), compute_blast_for_top=15)}
 
 
-@router.get("/diagnostics/code-intel/cycles")
+@router.get("/diagnostics/code-intel/cycles", response_model=Dict[str, Any])
 async def code_intel_cycles(roots: Optional[str] = None, limit: int = 30, rt=Depends(get_kernel_runtime)):
     root_list = [x.strip() for x in (roots.split(",") if roots else default_roots()) if x.strip()]
     res = await code_intel_scan(rt, root_list)
     return {"status": "ok", "roots": root_list, "cycles": _top_cycles(nodes=res.nodes, edges=res.edges, limit=int(limit or 30))}
 
 
-@router.get("/diagnostics/code-intel/blast")
+@router.get("/diagnostics/code-intel/blast", response_model=Dict[str, Any])
 async def blast_radius(
     file: str,
     roots: Optional[str] = None,
@@ -665,7 +665,7 @@ async def blast_radius(
     return {"status": "ok", "file": start, "affected": out, "count": len(out)}
 
 
-@router.get("/diagnostics/code-intel/export")
+@router.get("/diagnostics/code-intel/export", response_model=Dict[str, Any])
 async def export_code_graph(rt=Depends(get_kernel_runtime)):
     """Export the full code graph as committable JSON for team onboarding."""
     import time as _t
@@ -694,7 +694,7 @@ async def export_code_graph(rt=Depends(get_kernel_runtime)):
     }
 
 
-@router.get("/diagnostics/code-intel/tour")
+@router.get("/diagnostics/code-intel/tour", response_model=Dict[str, Any])
 async def guided_tour(limit: int = 30, rt=Depends(get_kernel_runtime)):
     """Return dependency-sorted file list for guided architecture tour."""
     root_list = default_roots()
@@ -722,7 +722,7 @@ async def guided_tour(limit: int = 30, rt=Depends(get_kernel_runtime)):
     return {"tour": tour, "total": len(res.nodes)}
 
 
-@router.get("/diagnostics/code-intel/domain-view")
+@router.get("/diagnostics/code-intel/domain-view", response_model=Dict[str, Any])
 async def domain_view(rt=Depends(get_kernel_runtime)):
     """Aggregate code graph into business domains."""
     root_list = default_roots()
@@ -733,8 +733,8 @@ async def domain_view(rt=Depends(get_kernel_runtime)):
     DOMAIN_RULES = [
         (lambda p: any(x in p for x in ["agents/", "AGENT.md"]), "agent_engineering", "研发 Agent", "#3b82f6"),
         (lambda p: any(x in p for x in ["product_manager", "pm_agent", "prd"]), "product", "产品管理", "#f59e0b"),
-        (lambda p: any(x in p for x in ["qa_agent", "test", "quality", "e2e"]), "qa", "质量保证", "#22c55e"),
-        (lambda p: any(x in p for x in ["architect", "design"]), "architecture", "架构设计", "#8b5cf6"),
+        (lambda p: any(x in p for x in ["qa_agent", "/tests/", "/test_", "/e2e", "quality"]), "qa", "质量保证", "#22c55e"),
+        (lambda p: any(x in p for x in ["architect", "/design", "design_pattern"]), "architecture", "架构设计", "#8b5cf6"),
         (lambda p: any(x in p for x in ["src/pages/", "src/components/", "App.tsx"]), "frontend_ui", "前端界面", "#ec4899"),
         (lambda p: any(x in p for x in ["src/services/", "src/hooks/", "src/stores/"]), "frontend_api", "前端数据层", "#f472b6"),
         (lambda p: any(x in p for x in ["api/routers/", "api/rest/", "facades/"]), "backend_api", "后端 API", "#6366f1"),
@@ -744,7 +744,7 @@ async def domain_view(rt=Depends(get_kernel_runtime)):
         (lambda p: any(x in p for x in ["infra/", "model/", "storage/"]), "infra", "基础设施", "#6b7280"),
         (lambda p: any(x in p for x in ["apps/skills/", "skills/", "SKILL.md"]), "skills", "技能库", "#10b981"),
         (lambda p: any(x in p for x in ["apps/agents/", "engine/agents/"]), "agent_definition", "Agent 定义", "#ef4444"),
-        (lambda p: any(x in p for x in ["management/", "governance", "audit"]), "governance", "治理审计", "#f97316"),
+        (lambda p: any(x in p for x in ["_manager.py", "governance", "audit"]), "governance", "治理审计", "#f97316"),
         (lambda p: any(x in p for x in ["workspace_seeds/", "templates/"]), "templates", "种子模板", "#84cc16"),
         (lambda p: any(x in p for x in ["docs/", "md$"]), "docs", "文档", "#9ca3af"),
         (lambda p: any(x in p for x in ["harness/assembly/", "harness/infrastructure/", "harness/coordination/", "harness/feedback", "harness/evaluation"]), "core_runtime", "核心运行时", "#0ea5e9"),

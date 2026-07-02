@@ -1063,6 +1063,95 @@ def delete_page(title: str, collection_id: str = "default") -> bool:
     return True
 
 
+def cleanup_ghost_pages(*, collection_id: str = "default", dry_run: bool = False) -> Dict[str, Any]:
+    u"""Batch-clean ghost pages — search index entries with no stored page data.
+
+    Ghost pages are entries that exist in the search_pages() index but:
+    - Have empty body (< 5 chars) in search_pages()
+    - Have no stored page data (read_page() returns None)
+
+    Unlike individual delete_page() calls, this method:
+    - Skips A8 duplicate similarity checks (O(n²) → O(n))
+    - Skips cascade stale-reference updates (ghosts have no real content)
+    - Skips contradiction/synthesis-page sync
+    - Does ONE FTS index rebuild at the end (not per-page)
+    - Does ONE cache invalidation round
+
+    Returns: {deleted: int, skipped: int, errors: list, dry_run: bool}
+    """
+    logger = logging.getLogger("wiki_engine")
+    all_pages = search_pages(limit=2000, collection_id=collection_id)
+    
+    ghosts: List[str] = []
+    skipped = 0
+    for p in all_pages:
+        title = p.get("title", "")
+        body = p.get("body", "")
+        if len(body) < 5:
+            full = read_page(title, collection_id=collection_id)
+            if full is None or len(full.get("body", "") or "") < 5:
+                ghosts.append(title)
+            else:
+                skipped += 1  # Has content, was just truncated in search_pages
+    
+    if dry_run:
+        logger.info("Ghost page scan (dry_run): %d ghosts found, %d skipped", len(ghosts), skipped)
+        return {"deleted": 0, "skipped": skipped, "ghosts_found": len(ghosts), "dry_run": True, "errors": []}
+    
+    deleted = 0
+    errors: List[str] = []
+    root = _wiki_root(collection_id)
+    
+    for title in ghosts:
+        try:
+            # Direct file removal (bypass cascade/duplicate/contradiction checks)
+            found = False
+            for cat_dir in root.iterdir():
+                if not cat_dir.is_dir() or cat_dir.name == "contradictions":
+                    continue
+                md_path = cat_dir / f"{title}.md"
+                if md_path.exists():
+                    md_path.unlink()
+                    found = True
+                    break
+            
+            if found:
+                # Update index
+                idx_path = root / "index.json"
+                if idx_path.exists():
+                    try:
+                        idx = _json.loads(idx_path.read_text(encoding="utf-8"))
+                        idx.get("pages", {}).pop(title, None)
+                        idx_path.write_text(_json.dumps(idx, indent=2, ensure_ascii=False))
+                    except Exception:
+                        pass
+                deleted += 1
+        except Exception as e:
+            errors.append(f"{title}: {e}")
+    
+    # ── One-time rebuild: FTS index + cache invalidation ──
+    if deleted > 0:
+        try:
+            from core.harness.knowledge.wiki_fts import fts_rebuild_on_update
+            fts_rebuild_on_update()
+        except Exception as e:
+            logger.warning("Ghost cleanup: FTS rebuild failed: %s", e)
+        
+        try:
+            import os as _os
+            for cache_name in ("inference_cache.json", "metrics_cache.json"):
+                cache_path = root / cache_name
+                if cache_path.exists():
+                    _os.remove(cache_path)
+            from core.harness.knowledge._bg_tasks import enqueue
+            enqueue("rebuild_metrics", collection_id=collection_id)
+        except Exception as e:
+            logger.warning("Ghost cleanup: cache invalidation failed: %s", e)
+    
+    logger.info("Ghost page cleanup: %d deleted, %d skipped, %d errors", deleted, skipped, len(errors))
+    return {"deleted": deleted, "skipped": skipped, "errors": errors, "dry_run": False}
+
+
 def delete_all_pages(*, collection_id: str = "default") -> Dict[str, Any]:
     u"""Delete ALL wiki pages, reset index, and clear KB document wiki_pages references."""
     _ensure_dirs(collection_id)
@@ -1571,6 +1660,17 @@ def _build_graph_raw(*, category: str = "", keyword: str = "", source: str = "",
         for rel in p.get("related", []):
             if rel in in_degree:
                 in_degree[rel] += 1
+
+    # Auto-link pages with no related links (one-time backfill using embedding similarity)
+    _titles_list = list(all_pages.keys())
+    for title, page in all_pages.items():
+        if not page.get("related") and len(_titles_list) > 1:
+            try:
+                auto_links = auto_link_page(title, page.get("body", ""), _titles_list)
+                if auto_links:
+                    page["related"] = auto_links
+            except Exception:
+                pass
 
     cat_colors = {"entities": "#4d9fff", "topics": "#a855f7", "contradictions": "#ef4444"}
     titles = list(all_pages.keys())

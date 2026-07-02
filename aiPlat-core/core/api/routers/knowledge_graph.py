@@ -54,7 +54,7 @@ def _shorten(path: str, max_len: int = 40) -> str:
 
 # ── Code Graph ────────────────────────────────────────────────────
 
-@router.get("/code")
+@router.get("/code", response_model=Dict[str, Any])
 def get_code_graph(
     layer: str = Query(None),
     center: str = Query(None),
@@ -172,7 +172,7 @@ def get_code_graph(
 
 # ── Architecture View (Sankey + Treemap) ──────────────────────────
 
-@router.get("/architecture")
+@router.get("/architecture", response_model=Dict[str, Any])
 def get_architecture_view() -> Dict[str, Any]:
     """Return aggregated architecture data for Sankey (cross-layer flows) and Treemap (intra-layer module structure)."""
     try:
@@ -251,7 +251,7 @@ def get_architecture_view() -> Dict[str, Any]:
 
 # ── Capability Graph ──────────────────────────────────────────────
 
-@router.get("/capability")
+@router.get("/capability", response_model=Dict[str, Any])
 def get_capability_graph() -> Dict[str, Any]:
     """Return capability dependency graph (agent/skill/tool/MCP/workflow) in ECharts force-layout format."""
     try:
@@ -264,10 +264,19 @@ def get_capability_graph() -> Dict[str, Any]:
             "agent": "#f97316", "skill": "#8b5cf6", "tool": "#06b6d4",
             "mcp_server": "#10b981", "workflow": "#f59e0b", "entry_point": "#ec4899",
         }
+        dependents_of: Dict[str, List[str]] = {}
+        dependencies_of: Dict[str, List[str]] = {}
+        for e in edges_list:
+            f, t = e["from"], e["to"]
+            dependents_of.setdefault(t, []).append(f)
+            dependencies_of.setdefault(f, []).append(t)
+
         nodes = []
         for nid, n in nodes_dict.items():
             ntype = n.get("type", "")
             link_count = sum(1 for e in edges_list if e["from"] == nid or e["to"] == nid)
+            in_deg = n.get("in_degree", 0)
+            out_deg = n.get("out_degree", 0)
             nodes.append({
                 "id": nid,
                 "name": str(n.get("label", n.get("raw_id", nid)))[:50],
@@ -275,6 +284,10 @@ def get_capability_graph() -> Dict[str, Any]:
                 "category": ntype,
                 "symbolSize": min(8 + link_count * 2, 50),
                 "degree": link_count,
+                "inDegree": in_deg,
+                "outDegree": out_deg,
+                "dependents": dependents_of.get(nid, [])[:20],
+                "dependencies": dependencies_of.get(nid, [])[:20],
                 "itemStyle": {"color": cat_colors.get(ntype, "#9ca3af")},
             })
 
@@ -294,7 +307,7 @@ def get_capability_graph() -> Dict[str, Any]:
 
 # ── Wiki Knowledge Graph ──────────────────────────────────────────
 
-@router.get("/wiki")
+@router.get("/wiki", response_model=Dict[str, Any])
 def get_wiki_graph(
     category: str = Query(""),
     keyword: str = Query(""),
@@ -321,7 +334,7 @@ def get_wiki_graph(
 
 # ── Node Detail ───────────────────────────────────────────────────
 
-@router.get("/node/{node_id:path}")
+@router.get("/node/{node_id:path}", response_model=Dict[str, Any])
 def get_node_detail(node_id: str) -> Dict[str, Any]:
     """Return details for a graph node: code, capability, or wiki."""
     try:
@@ -416,7 +429,7 @@ def get_node_detail(node_id: str) -> Dict[str, Any]:
 
 # ── Search ────────────────────────────────────────────────────────
 
-@router.get("/search")
+@router.get("/search", response_model=Dict[str, Any])
 def search_nodes(q: str = Query(...), limit: int = Query(20)) -> List[Dict[str, Any]]:
     """Fuzzy search nodes by name/path."""
     try:
@@ -448,7 +461,7 @@ def search_nodes(q: str = Query(...), limit: int = Query(20)) -> List[Dict[str, 
 
 # ── Global Search (across code + capability + wiki) ────────────────
 
-@router.get("/global-search")
+@router.get("/global-search", response_model=Dict[str, Any])
 def global_search(q: str = Query("", min_length=2)) -> Dict[str, Any]:
     """Search across code, capability, and wiki graphs (read-only SQLite — no rebuild)."""
     try:
@@ -527,7 +540,7 @@ def global_search(q: str = Query("", min_length=2)) -> Dict[str, Any]:
 
 # ── NL → Graph Query Translation ───────────────────────────────────
 
-@router.post("/ask")
+@router.post("/ask", response_model=Dict[str, Any])
 async def graph_ask(req: Dict[str, Any]) -> Dict[str, Any]:
     """Translate a natural language question into a sysgraph query using a local or configured model."""
     question = str(req.get("question", "")).strip()
@@ -788,7 +801,7 @@ def _describe_layer(layer: str = "core", question_type: str = "capabilities") ->
 
 # ── AI Chat ───────────────────────────────────────────────────────
 
-@router.post("/chat")
+@router.post("/chat", response_model=Dict[str, Any])
 async def graph_chat(req: Dict[str, Any]) -> StreamingResponse:
     """SSE-streamed AI chat with knowledge graph context injection."""
     question = req.get("question", "")
@@ -827,7 +840,7 @@ async def graph_chat(req: Dict[str, Any]) -> StreamingResponse:
 
 # ── Layer Stats ───────────────────────────────────────────────────
 
-@router.get("/layers")
+@router.get("/layers", response_model=Dict[str, Any])
 def get_layer_stats() -> Dict[str, Any]:
     """Return per-layer statistics."""
     try:
@@ -862,7 +875,7 @@ def get_layer_stats() -> Dict[str, Any]:
 
 # ── Codebase Stats ────────────────────────────────────────────────
 
-@router.get("/stats")
+@router.get("/stats", response_model=Dict[str, Any])
 async def get_codebase_stats() -> Dict[str, Any]:
     """Return global codebase statistics for the SystemOverview panel."""
     import asyncio
@@ -871,6 +884,49 @@ async def get_codebase_stats() -> Dict[str, Any]:
         return await loop.run_in_executor(None, _get_stats_sync)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# ═══════════════════════════════════════════════════════════════
+# Phase F: AI-Assisted Business Rule Design
+# ═══════════════════════════════════════════════════════════════
+
+@router.post("/rules/design", response_model=Dict[str, Any])
+async def design_rule(domain_id: str = "ai-knowledge", text: str = ""):
+    """Translate natural language business requirement into an inference rule.
+
+    POST body: {"domain_id": "ai-knowledge", "text": "当客户合同金额超过100万时标记为高价值"}
+    Returns: {"rule": {...}, "validation": {...}, "existing_related": [...]}
+    """
+    from core.harness.ontology_engine.rule_designer import design_rule as _design
+    if not text:
+        raise HTTPException(status_code=400, detail="text is required (natural language business requirement)")
+    return _design(domain_id, text)
+
+
+@router.post("/rules/deploy", response_model=Dict[str, Any])
+async def deploy_rule(domain_id: str = "ai-knowledge", rule: Dict[str, Any] = None):
+    """Deploy an inference rule to the domain.
+
+    POST body: {"domain_id": "ai-knowledge", "rule": {"name": "...", "premises": [...], "conclusion": {...}}}
+    Returns: {"deployed": true, "rule_name": "...", "total_rules": N}
+    """
+    from core.harness.ontology_engine.rule_designer import deploy_rule as _deploy
+    if not rule:
+        raise HTTPException(status_code=400, detail="rule is required")
+    result = _deploy(domain_id, rule)
+    if not result.get("deployed"):
+        raise HTTPException(status_code=400, detail=result.get("error", "validation failed"))
+    return result
+
+
+@router.get("/rules", response_model=Dict[str, Any])
+async def list_domain_rules(domain_id: str = "ai-knowledge"):
+    """List all inference rules for a domain.
+
+    Returns: {"domain": "ai-knowledge", "count": N, "rules": [...]}
+    """
+    from core.harness.ontology_engine.rule_designer import list_rules as _list
+    return _list(domain_id)
 
 
 def _get_stats_sync() -> Dict[str, Any]:

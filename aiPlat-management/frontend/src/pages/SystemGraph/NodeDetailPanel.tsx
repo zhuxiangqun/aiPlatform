@@ -25,6 +25,8 @@ const NodeDetailPanel: React.FC<Props> = ({ nodeId, tab, onClose, graphData }) =
           category: capNode.category || 'unknown',
           inDegree: capNode.inDegree ?? 0,
           outDegree: capNode.outDegree ?? 0,
+          dependents: capNode.dependents || [],
+          dependencies: capNode.dependencies || [],
           _isCapNode: true,
         });
       }
@@ -86,6 +88,40 @@ const NodeDetailPanel: React.FC<Props> = ({ nodeId, tab, onClose, graphData }) =
                 <div className="text-gray-200 font-mono">{detail.outDegree ?? '—'}</div>
               </div>
             </div>
+
+            {/* Dependents / Dependencies (capability nodes) */}
+            {detail._isCapNode && (
+              <>
+                {detail.dependents?.length > 0 && (
+                  <div>
+                    <div className="flex items-center gap-1 text-gray-500 text-[10px] mb-1">
+                      <ArrowRight className="w-3 h-3 rotate-180" />被谁依赖 ({detail.dependents.length})
+                    </div>
+                    <div className="space-y-0.5 max-h-24 overflow-y-auto">
+                      {detail.dependents.map((d: string, i: number) => (
+                        <div key={i} className="text-[10px] px-1.5 py-0.5 rounded bg-dark-bg/50 text-gray-300 truncate">
+                          {d}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {detail.dependencies?.length > 0 && (
+                  <div>
+                    <div className="flex items-center gap-1 text-gray-500 text-[10px] mb-1">
+                      <ArrowRight className="w-3 h-3" />依赖谁 ({detail.dependencies.length})
+                    </div>
+                    <div className="space-y-0.5 max-h-24 overflow-y-auto">
+                      {detail.dependencies.map((d: string, i: number) => (
+                        <div key={i} className="text-[10px] px-1.5 py-0.5 rounded bg-dark-bg/50 text-gray-300 truncate">
+                          {d}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
 
             {/* Symbols (functions/classes) */}
             {detail.symbols?.length > 0 && (
