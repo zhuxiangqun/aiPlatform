@@ -87,7 +87,8 @@ Phase 5: 竞品借鉴（✅ 已完成 — 本会话）
 ├─ 5.10 文档全部同步至 427✅   ✅ (6个核心文档数字一致, CI校验器通过)
 └─ 5.11 平台能力提升 (Palantir碎石路→高速公路) ✅ (promote→approve→SkillRegistry)
 ├─ 5.12 模型训练(RL) + 知识蒸馏 ✅ (DistillationEngine(PyTorch接线) + RL API + FineTune 4-Tab UI)
-└─ 5.13 从零训练引擎 ✅ (FullTrainingEngine, gpt2/pythia-160m/gpt2-medium, FineTune 5-Tab)
+├─ 5.13 从零训练引擎 ✅ (FullTrainingEngine, gpt2/pythia-160m/gpt2-medium, FineTune 5-Tab)
+└─ 5.14 五角色权限体系 ✅ (SystemRole(5), ROUTE_PERMISSIONS, 侧边栏显隐, 43端点认证)
 
 评分: 90 → 99
 ```
