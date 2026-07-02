@@ -4,11 +4,11 @@ import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 // ── Role-based sidebar visibility ──────────────────────────────────────
 
 const ROLE_MENUS: Record<string, string[]> = {
-  admin:     ["system-overview", "diagnostics", "onboarding", "infra", "core", "platform", "value", "workbench", "finetune", "approval"],
-  developer: ["workbench", "value", "finetune", "core", "workspace", "diagnostics"],
-  business:  ["value", "workbench"],
-  user:      ["workbench", "app"],
-  approver:  ["approval", "workbench"],
+  admin:     ["infra", "core", "platform", "workspace", "app", "value", "user", "prompts"],
+  developer: ["infra", "core", "workspace", "value", "user", "diagnostics"],
+  business:  ["value", "user"],
+  user:      ["user", "app"],
+  approver:  ["user"],
 };
 
 function getRole(): string {
