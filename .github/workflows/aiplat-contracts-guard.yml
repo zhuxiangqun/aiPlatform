@@ -203,7 +203,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     needs: contracts-guard
-    if: ${{ false }}  # Opt-in: set to true when docker infra is ready
+    if: true  # Enabled: runs E2E tests in docker-compose.test.yml
     steps:
       - uses: actions/checkout@v4
 

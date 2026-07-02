@@ -1,50 +1,141 @@
-version: '3.8'
+# docker-compose.yml — Production deployment
+#
+# 用法:
+#   docker compose up -d
+#   docker compose down
+#
+# 前置:
+#   docker compose build  # build images first
+#
+# 环境变量: 见 .env 或 .env.production
 
 services:
+  infra:
+    build:
+      context: .
+      dockerfile: aiPlat-infra/Dockerfile
+    restart: unless-stopped
+    ports:
+      - "8001:8001"
+    volumes:
+      - ./.aiplat:/app/.aiplat
+      - ./aiPlat-infra/config:/app/aiPlat-infra/config:ro
+    environment:
+      - AIPLAT_HOME=/app/.aiplat
+      - AIPLAT_LLM_CONFIG_PATH=/app/aiPlat-infra/config/infra/llm_profile.yaml
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
   core:
-    image: aiplat-core:latest
+    build:
+      context: .
+      dockerfile: aiPlat-core/Dockerfile
     restart: unless-stopped
     ports:
       - "8002:8002"
+    depends_on:
+      infra:
+        condition: service_healthy
     volumes:
-      - ./data/core:/app/.aiplat
+      - ./.aiplat:/app/.aiplat
     environment:
       - AIPLAT_HOME=/app/.aiplat
-      - BROWSER_USE_HEADLESS=true
-      - AIPLAT_LLM_PROVIDER=${AIPLAT_LLM_PROVIDER:-deepseek}
-      - AIPLAT_LLM_BASE_URL=${AIPLAT_LLM_BASE_URL:-https://api.deepseek.com/v1}
-      - AIPLAT_LLM_API_KEY=${AIPLAT_LLM_API_KEY:-}
-      - AIPLAT_PROJECT_ROOT=/app
+      - AIPLAT_REPO_ROOT=/app
+      - AIPLAT_LLM_CONFIG_PATH=/app/aiPlat-infra/config/infra/llm_profile.yaml
+      - AIPLAT_EXECUTION_DB_PATH=/app/.aiplat/aiplat_executions.sqlite3
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8002/api/core/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+
+  platform:
+    build:
+      context: .
+      dockerfile: aiPlat-platform/Dockerfile
+    restart: unless-stopped
+    ports:
+      - "8003:8003"
+    depends_on:
+      core:
+        condition: service_healthy
+    volumes:
+      - ./.aiplat:/app/.aiplat
+    environment:
+      - AIPLAT_HOME=/app/.aiplat
+      - AIPLAT_REPO_ROOT=/app
+      - AIPLAT_PLATFORM_DB_PATH=/app/.aiplat/aiplat_platform.sqlite3
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8003/platform/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  app:
+    build:
+      context: .
+      dockerfile: aiPlat-app/Dockerfile
+    restart: unless-stopped
+    ports:
+      - "8004:8004"
+    depends_on:
+      platform:
+        condition: service_healthy
+    volumes:
+      - ./.aiplat:/app/.aiplat
+    environment:
+      - AIPLAT_HOME=/app/.aiplat
+      - AIPLAT_APP_DB_PATH=/app/.aiplat/aiplat_app.sqlite3
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8004/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
 
   management:
-    image: aiplat-management:latest
+    build:
+      context: .
+      dockerfile: aiPlat-management/Dockerfile
     restart: unless-stopped
     ports:
       - "8000:8000"
     depends_on:
       core:
-        condition: service_started
+        condition: service_healthy
+      platform:
+        condition: service_healthy
     volumes:
-      - ./data/management:/app/.aiplat
+      - ./.aiplat:/app/.aiplat
     environment:
       - AIPLAT_HOME=/app/.aiplat
-      - AIPLAT_MANAGEMENT_MODE=docker
+      - AIPLAT_MANAGEMENT_MODE=production
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
 
   frontend:
-    image: aiplat-frontend:latest
+    build:
+      context: ./aiPlat-management/frontend
+      dockerfile: Dockerfile
     restart: unless-stopped
     ports:
       - "5173:80"
     depends_on:
-      - core
-      - management
+      management:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
