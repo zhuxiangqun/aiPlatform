@@ -97,6 +97,7 @@ class WorkflowManager:
                 try:
                     data = json.loads(wf_json.read_text(encoding="utf-8")) or {}
                 except Exception:
+                    logging.warning("Failed to parse workflow JSON %s", wf_json, exc_info=True)
                     data = {}
                 if not isinstance(data, dict):
                     continue
@@ -220,6 +221,7 @@ class WorkflowManager:
             data = json.loads(raw or "{}")
             return data if isinstance(data, dict) else {}
         except Exception:
+            logging.error("Failed to parse manifest %s", p, exc_info=True)
             return {}
 
     def _compute_workflow_bundle_integrity(self, workflow_dir: Path) -> Dict[str, Any]:

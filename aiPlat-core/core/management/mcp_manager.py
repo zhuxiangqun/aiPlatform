@@ -193,6 +193,7 @@ class MCPManager:
             data = json.loads(raw or "{}")
             return data if isinstance(data, dict) else {}
         except Exception:
+            logging.error("Failed to parse manifest %s", p, exc_info=True)
             return {}
 
     def _compute_mcp_bundle_integrity(self, server_dir: Path) -> Dict[str, Any]:

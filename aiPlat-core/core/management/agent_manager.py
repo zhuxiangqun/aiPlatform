@@ -300,6 +300,8 @@ class AgentManager:
             data = json.loads(raw or "{}")
             return data if isinstance(data, dict) else {}
         except Exception:
+            import logging
+            logging.getLogger(__name__).error("Failed to parse manifest %s", p, exc_info=True)
             return {}
 
     def _compute_agent_bundle_integrity(self, agent_dir: Path) -> Dict[str, Any]:

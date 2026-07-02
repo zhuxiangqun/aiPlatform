@@ -458,9 +458,8 @@ class AssetInstaller:
                     if f"name: {asset_id}" not in raw and asset_id not in ad.name:
                         continue
                 except Exception:
+                    logging.warning("Failed to read %s in asset %s", self._FILE_PATTERN, ad.name, exc_info=True)
                     continue
-
-            _check_copy_limits(ad)
             dst = self._get_target_dir(ad.name)
             if dst.exists():
                 if not allow_overwrite:
@@ -599,6 +598,7 @@ _auto_adapted: true
                     if f"name: {asset_id}" not in raw and asset_id not in ad.name:
                         continue
                 except Exception:
+                    logging.warning("Failed to read %s in asset %s (list)", self._FILE_PATTERN, ad.name, exc_info=True)
                     continue
 
             try:

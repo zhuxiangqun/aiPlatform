@@ -488,13 +488,18 @@ def _grep(repo_root: Path, pattern: str, paths: List[str], exclude: List[str],
     return results
 
 
+_SCAN_EXCLUDE_DIRS = {"__pycache__", "node_modules", ".venv", "venv", ".git", ".pytest_cache", ".mypy_cache", "dist", "build"}
+
+
 def _scan_files(d: Path) -> List[Path]:
-    """Fallback: scan directory with rglob."""
+    """Fallback: scan directory with rglob, excluding cache and vendor dirs."""
     targets: List[Path] = []
     if d.is_file():
         targets = [d]
     elif d.is_dir():
-        for py_file in d.rglob("*"):
+        for py_file in d.rglob("*.py"):
+            if any(ex in py_file.parts for ex in _SCAN_EXCLUDE_DIRS):
+                continue
             targets.append(py_file)
     return targets
 

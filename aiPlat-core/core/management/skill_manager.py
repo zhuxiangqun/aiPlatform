@@ -324,6 +324,8 @@ class SkillManager:
             data = json.loads(raw or "{}")
             return data if isinstance(data, dict) else {}
         except Exception:
+            import logging
+            logging.error("Failed to parse manifest %s", p, exc_info=True)
             return {}
 
     def _sha256_file(self, p: Path) -> str:

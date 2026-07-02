@@ -407,9 +407,9 @@ rules:
     check:
       type: grep_forbidden
       pattern: "except\\s*:"
-      paths: ["aiPlat-infra/infra"]
-      exclude: ["__pycache__", "tests/"]
-      grep_exclude: ["except Exception|except BaseException|except.*Error|except.*Warning|# noqa|# allowed"]
+      paths: ["aiPlat-core/core", "aiPlat-platform", "aiPlat-management/management", "aiplat-sdk"]
+      exclude: ["__pycache__", "tests/", "node_modules", ".venv"]
+      grep_exclude: ["except Exception|except BaseException|except.*Error|except.*Warning|# noqa|# allowed|flatted"]
     message: "bare except: detected — use specific exception types"
     auto_fix:
       enabled: true
@@ -614,14 +614,28 @@ rules:
   # 40.5: No bare except:pass in gate paths (must log)
   - id: bare_except_pass_gate
     section: "§40"
-    section_name: "静默吞错防护"
-    level: warning
+    section_name: "静默吞错防护 — except:pass"
+    level: error
     check:
       type: grep_forbidden
       pattern: 'except Exception:\s*\n\s*pass'
-      paths: ["aiPlat-core/core/harness/syscalls/", "aiPlat-core/core/api/routers/"]
+      paths: ["aiPlat-core/core", "aiPlat-platform", "aiPlat-management/management", "aiplat-sdk"]
+      exclude: ["__pycache__", "tests/", "node_modules", ".venv"]
+      grep_exclude: ["# noqa|# allowed"]
+    message: "except Exception: pass detected — must log with warning/error level minimum"
+
+  # 40.5b: No logging.debug(exc_info=True) in except blocks — use warning level
+  - id: debug_exc_info_in_except
+    section: "§40"
+    section_name: "静默吞错防护 — debug+exc_info in except"
+    level: warning
+    check:
+      type: grep_forbidden
+      pattern: 'logging\.debug.*exc_info.*True'
+      paths: ["aiPlat-core/core/harness/syscalls/", "aiPlat-core/core/harness/execution/", "aiPlat-core/core/policy/", "aiPlat-core/core/api/routers/", "aiPlat-platform/api/", "aiPlat-platform/auth/"]
       exclude: ["__pycache__", "tests/"]
-    message: "bare except:pass in syscall/router — add logging.debug(exc_info=True) for diagnostics"
+      grep_exclude: ["# noqa: intentional.*best-effort|# noqa: intentional.*logged at"]
+    message: "logging.debug with exc_info=True in except block — upgrade to warning level for production visibility"
 
   # 40.6: No duplicate function signatures across syscall modules
   - id: duplicate_syscall_signatures
@@ -1829,7 +1843,7 @@ if collisions:
     check:
       type: grep_required
       pattern: 'ErrorReflector\|on_error_reflector\|reflect_on_error'
-      paths: ["aiPlat-core/core/harness/execution/"]
+      paths: ["aiPlat-core/core/harness/infrastructure/hooks/"]
       min_matches: 1
     message: "ErrorReflector 未接入 ReActLoop — 连续 tool_call 失败后无反思能力 (§4.1)"
 
