@@ -391,6 +391,88 @@ def check_undocumented_env_vars() -> None:
         log_warning(f"... 还有 {len(missing) - capped} 个未声明的环境变量（设置 AIPLAT_DOC_CHECK_ENV=1 查看全部）")
 
 
+# ── 检查 11：git diff 新增 public API 登记（告警） ──
+def check_new_public_api() -> None:
+    """
+    Detect newly added public functions/classes/endpoints in recent .py changes
+    that are NOT yet registered in CAPABILITIES.md.
+    
+    Uses git diff to find added `def ` and `class ` lines, then checks
+    if they appear in AIPLAT_CAPABILITIES.md.
+    """
+    import subprocess
+    caps_text = CAPABILITIES_FILE.read_text(encoding="utf-8") if CAPABILITIES_FILE.exists() else ""
+    
+    # Get recently changed .py files (last commit)
+    try:
+        result = subprocess.run(
+            ["git", "-C", str(REPO_ROOT), "diff", "HEAD~1", "--name-only", "--diff-filter=AM"],
+            capture_output=True, text=True, timeout=10,
+        )
+        changed_files = [f.strip() for f in result.stdout.split("\n") if f.endswith(".py")]
+    except Exception:
+        return  # not a git repo or no history
+
+    if not changed_files:
+        return
+
+    unregistered = 0
+    for fpath in changed_files:
+        full_path = REPO_ROOT / fpath
+        if not full_path.exists():
+            continue
+        if "/tests/" in str(full_path) or "__pycache__" in str(full_path):
+            continue
+
+        try:
+            # Get the diff for this file
+            diff_result = subprocess.run(
+                ["git", "-C", str(REPO_ROOT), "diff", "HEAD~1", "--", fpath],
+                capture_output=True, text=True, timeout=10,
+            )
+            diff_lines = diff_result.stdout.split("\n")
+        except Exception:
+            continue
+
+        # Extract newly added public symbols
+        import re
+        new_symbols = set()
+        for line in diff_lines:
+            if not line.startswith("+"):
+                continue
+            # Skip the diff header
+            if line.startswith("+++"):
+                continue
+            # Match: +def function_name(  or  +class ClassName
+            m = re.match(r'^\+\s*(?:async\s+)?def\s+([a-zA-Z_][a-zA-Z0-9_]*)', line)
+            if m and not m.group(1).startswith("_"):
+                new_symbols.add(m.group(1))
+            m = re.match(r'^\+\s*class\s+([A-Z][a-zA-Z0-9_]*)', line)
+            if m:
+                new_symbols.add(m.group(1))
+            # Match: +@router.(get|post|...) → next line contains endpoint path
+            if '@router.' in line:
+                endpoint_match = re.search(r'@router\.(get|post|put|delete|patch)\("([^"]+)"', line)
+                if endpoint_match:
+                    new_symbols.add(f"endpoint:{endpoint_match.group(2)}")
+
+        # Check each new symbol against CAPABILITIES
+        for sym in sorted(new_symbols):
+            # Skip common framework names
+            if sym in ("__init__", "__post_init__", "main", "router", "to_dict", "from_dict",
+                        "get_stats", "to_json", "from_json", "validate", "to_select_star"):
+                continue
+            if sym not in caps_text:
+                rel = full_path.relative_to(REPO_ROOT)
+                log_warning(f"{rel} 新增了 '{sym}' 但未在 AIPLAT_CAPABILITIES.md 中登记")
+                unregistered += 1
+                if unregistered >= 10:
+                    break
+
+        if unregistered >= 10:
+            break
+
+
 def main():
     print(f"\U0001f50d 文档系统验证开始 (REPO_ROOT: {REPO_ROOT})")
     print("=" * 60)
@@ -405,6 +487,7 @@ def main():
     check_draft_expiry()
     check_code_references()
     check_undocumented_env_vars()
+    check_new_public_api()
 
     print("=" * 60)
     if errors:

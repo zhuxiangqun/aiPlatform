@@ -280,6 +280,16 @@ else:
     print(f"  ✅ {ref_count} file(s) updated")
 PYEOF_R12
 
+# ══════════════════════════════════════════════════════════════
+# Step 7: Auto-register new public APIs from git diff (Rule 11)
+# ══════════════════════════════════════════════════════════════
+echo ""
+echo "━━━ Step 7: Auto-register new public APIs from git diff ━━━"
+python3 "$WORKSPACE/scripts/verify_docs.py" 2>&1 | grep "新增了.*但未在" | while read -r line; do
+  echo "  📝 $line"
+done
+echo "  ℹ️  Run 'python3 scripts/verify_docs.py' for full report"
+
 echo ""
 echo "═══════════════════════════════════════════════════════════════"
 echo "  Sync complete: $ADDED new entries, $SUM total (CAPS+ROADMAP+CLAUDE)"
