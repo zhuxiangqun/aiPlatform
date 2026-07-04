@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from core.harness.integration import KernelRuntime
 from core.harness.kernel.runtime import get_kernel_runtime
 from core.schemas_knowledge import CollectionCreateRequest, DocumentCreateRequest, SearchRequest
+from core.schemas_common import MessageResponse
 import logging
 
 router = APIRouter()
@@ -46,7 +47,7 @@ async def list_collections(limit: int = 100, offset: int = 0, rt: RuntimeDep = D
     }
 
 
-@router.post("/knowledge/collections", response_model=Dict[str, Any])
+@router.post("/knowledge/collections", response_model=MessageResponse)
 async def create_collection(request: CollectionCreateRequest, rt: RuntimeDep = Depends(get_kernel_runtime)):
     """Create knowledge collection"""
     km = _km(rt)
@@ -91,7 +92,7 @@ async def update_collection(collection_id: str, request: dict, rt: RuntimeDep = 
     return {"status": "updated", "collection_id": collection_id}
 
 
-@router.delete("/knowledge/collections/{collection_id}", response_model=Dict[str, Any])
+@router.delete("/knowledge/collections/{collection_id}", response_model=MessageResponse)
 async def delete_collection(collection_id: str, rt: RuntimeDep = Depends(get_kernel_runtime)):
     """Delete collection"""
     km = _km(rt)
@@ -103,7 +104,7 @@ async def delete_collection(collection_id: str, rt: RuntimeDep = Depends(get_ker
     return {"status": "deleted", "collection_id": collection_id}
 
 
-@router.post("/knowledge/collections/{collection_id}/reindex", response_model=Dict[str, Any])
+@router.post("/knowledge/collections/{collection_id}/reindex", response_model=MessageResponse)
 async def reindex_collection(collection_id: str, rt: RuntimeDep = Depends(get_kernel_runtime)):
     """Reindex collection"""
     km = _km(rt)
@@ -124,7 +125,7 @@ async def reindex_collection(collection_id: str, rt: RuntimeDep = Depends(get_ke
     return {"status": "reindexed", "documents_reindexed": len(docs)}
 
 
-@router.post("/knowledge/documents", response_model=Dict[str, Any])
+@router.post("/knowledge/documents", response_model=MessageResponse)
 async def create_document(request: DocumentCreateRequest, rt: RuntimeDep = Depends(get_kernel_runtime)):
     """Create document"""
     km = _km(rt)
@@ -189,7 +190,7 @@ async def list_documents(collection_id: str, limit: int = 100, offset: int = 0, 
     }
 
 
-@router.delete("/knowledge/documents/{document_id}", response_model=Dict[str, Any])
+@router.delete("/knowledge/documents/{document_id}", response_model=MessageResponse)
 async def delete_document(document_id: str, rt: RuntimeDep = Depends(get_kernel_runtime)):
     """Delete document"""
     km = _km(rt)

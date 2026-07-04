@@ -165,6 +165,25 @@ def estimate_query_cost(
         latency_est_ms=latency,
     )
 
+def resolve_routing_mode(cost: CostEstimate) -> str:
+    """Map CostEstimate.recommendation to a concrete routing mode.
+
+    Extracted from MaterialsChatAgent — any cost-aware agent needs this mapping.
+    The full_context token threshold (20000) is a sensible default; override via
+    AIPLAT_FULL_CONTEXT_TOKEN_LIMIT env var.
+    """
+    threshold_raw = os.getenv("AIPLAT_FULL_CONTEXT_TOKEN_LIMIT", "20000")
+    try:
+        full_ctx_limit = int(threshold_raw)
+    except (ValueError, TypeError):
+        full_ctx_limit = 20000
+
+    if cost.recommendation == "direct_llm":
+        return "direct_llm"
+    elif cost.recommendation == "full_context" and cost.full_est_tokens < full_ctx_limit:
+        return "full_context"
+    return "rag"
+
 
 def get_cost_summary(recent: int = 100) -> Dict[str, Any]:
     """Return aggregate cost summary including token savings and strategy distribution."""

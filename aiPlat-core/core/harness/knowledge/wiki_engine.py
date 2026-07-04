@@ -1044,6 +1044,10 @@ def delete_page(title: str, collection_id: str = "default") -> bool:
         from core.harness.knowledge.knowledge_growth import take_growth_snapshot
         take_growth_snapshot(collection_id)
         invalidate_graph_cache(collection_id)
+        from core.harness.knowledge.semantic_cache import get_semantic_cache
+        cache = get_semantic_cache()
+        if cache.enabled:
+            _run_coro_blocking(cache.invalidate_domain(collection_id))
     except Exception as e:
         logging.debug(str(e), exc_info=True)
 
@@ -1145,6 +1149,10 @@ def cleanup_ghost_pages(*, collection_id: str = "default", dry_run: bool = False
                     _os.remove(cache_path)
             from core.harness.knowledge._bg_tasks import enqueue
             enqueue("rebuild_metrics", collection_id=collection_id)
+            from core.harness.knowledge.semantic_cache import get_semantic_cache
+            cache = get_semantic_cache()
+            if cache.enabled:
+                _run_coro_blocking(cache.invalidate_domain(collection_id))
         except Exception as e:
             logger.warning("Ghost cleanup: cache invalidation failed: %s", e)
     
@@ -1188,6 +1196,15 @@ def delete_all_pages(*, collection_id: str = "default") -> Dict[str, Any]:
                 except Exception as e:
                     logging.debug(str(e), exc_info=True)
             conn.close()
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
+
+    # ── Invalidate semantic cache ──
+    try:
+        from core.harness.knowledge.semantic_cache import get_semantic_cache
+        cache = get_semantic_cache()
+        if cache.enabled:
+            _run_coro_blocking(cache.invalidate_domain(collection_id))
     except Exception as e:
         logging.debug(str(e), exc_info=True)
 

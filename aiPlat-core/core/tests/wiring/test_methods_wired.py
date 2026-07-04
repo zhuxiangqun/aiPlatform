@@ -75,10 +75,10 @@ class TestMethodWired:
     # ── SemanticCache — use targeted pattern matching (get/set too generic) ──
 
     def test_semantic_cache_get_wired(self):
-        assert _grep_pattern(r"cache\.get\(enhanced_question", "semantic_cache.py")
+        assert has_production_caller("try_cache_hit", "semantic_cache_hook.py")
 
     def test_semantic_cache_set_wired(self):
-        assert _grep_pattern(r"cache\.set\(enhanced_question", "semantic_cache.py")
+        assert has_production_caller("write_cache_result", "semantic_cache_hook.py")
 
     def test_semantic_cache_invalidate_wired(self):
         assert has_production_caller("invalidate_domain", "semantic_cache.py")

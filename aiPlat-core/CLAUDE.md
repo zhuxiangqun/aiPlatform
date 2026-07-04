@@ -1601,7 +1601,7 @@ side_effects:
 | failure_threshold (连续失败次数) | 3 |
 | recovery_timeout (恢复超时) | 60s |
 
-**文件**: `retrieval.py:478-540,576-619`
+**文件**: `retrieval.py:（参见 AIPLAT_CAPABILITIES.md 当前计数）-540,576-619`
 
 ### 5.65 多域知识库架构（2026-06 新增）
 
@@ -2086,6 +2086,71 @@ SubAgent_B → decode(向量+摘要) → 注入 prompt 上下文
 **模块**: `core/apps/agents/parallel_executor.py:EmbeddingBridge`
 **架构守卫**: `arch_guard_rules.yaml §72.3`
 
+
+### 5.96 运行时上下文注入 — RunContext (Phase 10.1, 2026-07)
+
+`RunContext` 桥接静态本体和动态业务状态，解决"同一个故障在不同上下文中有不同语义"的问题。
+
+**核心类**: `core/harness/kernel/types.py:RunContext`
+
+**字段**:
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `entity` | `str` | 实体标识名，如 "注塑机#3" |
+| `entity_type` | `str` | 实体类型，如 "设备" / "订单" |
+| `situation` | `str` | 自由文本描述当前状态 |
+| `priority` | `str` | 业务优先级 — normal / elevated / critical |
+| `constraints` | `List[str]` | 约束条件列表 |
+| `metadata` | `Dict[str, Any]` | 扩展字段 |
+
+**序列化**: `to_compact()` → ~80 token: `当前设备: 注塑机#3 | 概况: 温度215℃超限 | 优先级: critical | 约束: 备件2件`
+
+**注入位置**: MaterialsChatAgent domain prompt 之后、base role 之前。3 个 LLM 调用点全覆盖。
+
+**数据流**: API payload.run_context → integration.py → context.variables._run_context → _inject_run_context() → system prompt
+
+**改动文件**: `types.py` (+27), `materials_chat.py` (+25), `integration.py` (+3)
+
+
+### 5.97 GraphIndex → RunContext 自动填充 (Phase 10.2, 2026-07)
+
+无需 API 调用方手动提供上下文时，自动从 GraphIndex 提取实体并填充 RunContext。
+
+**核心函数**: `materials_chat.py:_build_run_context_from_graph()`
+
+**处理流程**: 扫描用户问题中的实体名 → GraphIndex.find_by_name() → get_neighbors(direction="both") → 构建 RunContext(entity/entity_type/situation)
+
+**合并规则** (`_merge_run_context`): entity/type 调用方优先, situation/priority 调用方>实时>graph, constraints 合并去重
+
+
+### 5.98 DataSource → RunContext 实时数据桥接 (Phase 10.3, 2026-07)
+
+从外部 MES/ERP 系统通过 DataSource API 拉取动态数据填充 RunContext。
+
+**核心函数**: `materials_chat.py:_fetch_realtime_context()`
+
+**配置**: `~/.aiplat/datasources/<name>.yaml`, `mapping.run_context` 段定义 situation_template/priority_path/constraints_path 映射
+
+**降级**: 无 DataSource 时返回 None → 静默降级到 GraphIndex
+
+**合并链**: `caller > realtime_datasource > graph_index`
+
+
+### 5.99 OperatorAgent — 运维决策智能体 (Phase 10.4, 2026-07)
+
+企业运维决策支持 Agent，回答"现在怎么办"而非"是什么"。
+
+**核心类**: `core/apps/agents/operator_agent.py:OperatorAgent(BaseAgent)`
+
+**与 MaterialsChatAgent 的分工**: 知识查询/原因分析 → MaterialsChatAgent, 决策支持/影响评估/行动建议 → OperatorAgent
+
+**输出**: 结构化 JSON — severity + impact(affected_entities/downtime/risk) + can_continue + recommended_actions[] + confidence
+
+**决策框架**: ①评估严重程度 → ②评估影响范围 → ③给出可执行建议(含target+urgency) → ④二元判断
+
+**Prompt**: `operator-decision` (prompt_loader.py)
+
+**改动文件**: `operator_agent.py` (+145), `base.py` (+2), `prompt_loader.py` (+50), `AGENT.md` (+55)
 
 
 ---

@@ -11,7 +11,8 @@ Usage:
     # 一个 import 拿到全栈编排能力
 
     # 规划
-    plan = Orchestrator().plan_intent(user_goal)
+    intent = analyze_intent(user_goal)
+    plan = await Orchestrator().plan(intent)
 
     # 协调
     pattern = create_pattern("supervisor")
@@ -29,7 +30,7 @@ Usage:
 
 # ── L1: Planning ──────────────────────────────────────────
 
-from .orchestrator import Orchestrator, OrchestratorPlan, PlanStep
+from .orchestrator import Orchestrator
 from .intent_analyzer import analyze_intent, StructuredIntent
 from .chain_planner import plan_chain, ChainStep
 from .capability_mapper import map_capabilities
@@ -62,7 +63,7 @@ from core.apps.agents.parallel_executor import ParallelExecutor
 
 __all__ = [
     # L1 — Planning
-    "Orchestrator", "OrchestratorPlan", "PlanStep",
+    "Orchestrator",
     "analyze_intent", "StructuredIntent",
     "plan_chain", "ChainStep",
     "map_capabilities",

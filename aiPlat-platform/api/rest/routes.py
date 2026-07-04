@@ -1278,6 +1278,14 @@ async def kb_ingest_url(request: Request):
     name = str(body.get("name", ""))
     from kb.service import ingest_url
     result = ingest_url(tenant_id=identity.tenant_id, collection_id=collection_id, url=url, name=name)
+    try:
+        from core.harness.knowledge.semantic_cache import get_semantic_cache
+        from core.harness.utils.async_utils import _run_coro_blocking
+        cache = get_semantic_cache()
+        if cache.enabled:
+            _run_coro_blocking(cache.invalidate_domain(collection_id))
+    except Exception:
+        pass
     return result
 
 
@@ -1366,6 +1374,14 @@ async def kb_reingest_document(doc_id: str, request: Request):
         cleanup_stale_entities_by_doc(doc_id=doc_id, dry_run=False)
     except Exception as e:
         logging.getLogger("platform.routes").debug("Ontology re-process skipped: %s", e)
+    try:
+        from core.harness.knowledge.semantic_cache import get_semantic_cache
+        from core.harness.utils.async_utils import _run_coro_blocking
+        cache = get_semantic_cache()
+        if cache.enabled:
+            _run_coro_blocking(cache.invalidate_domain(collection_id))
+    except Exception:
+        pass
     return core_resp
 
 

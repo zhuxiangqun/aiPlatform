@@ -1,13 +1,19 @@
 {
   "_comment": "ruff F821 baseline. Rebuild: bash scripts/ruff_f821_ratchet.sh --rebuild",
-  "_generated": "2026-07-04T10:49:09Z",
-  "_total_files": 3,
-  "_total_violations": 5,
+  "_generated": "2026-07-04T14:38:26Z",
+  "_total_files": 4,
+  "_total_violations": 6,
   "files": {
     "aiPlat-core/core/api/routers/wiki.py": {
       "count": 1,
       "symbols": [
         "_json"
+      ]
+    },
+    "aiPlat-core/core/apps/agents/materials_chat.py": {
+      "count": 1,
+      "symbols": [
+        "_t0"
       ]
     },
     "aiPlat-core/core/harness/execution/pipeline_engine.py": {

@@ -22,56 +22,53 @@ from core.services.conversations import ConversationService
 from core.apps.document_intelligence.kb_provider import get_kb_load_doc_kinds_fn
 import logging
 
-
-def _self_review(answer: str, citations: list, reasoning_path: list) -> str:
-    """Self-RAG lite: post-generation quality check.
-    
-    Returns quality flag: "ok" | "needs_review" | "low_evidence"
-    """
-    if not answer or len(answer) < 20:
-        return "low_evidence"
-    has_evidence = bool(citations)
-    has_reasoning = len(reasoning_path) >= 2
-    if not has_evidence and not has_reasoning:
-        return "low_evidence"
-    if not has_evidence:
-        return "needs_review"
-    return "ok"
-
-
-def _sanitize_query(query: str) -> str:
-    """§5.63: Strip control tokens and truncate for safety."""
-    import re
-    # Remove model control tokens
-    q = re.sub(r'<\|[^|]+\|>', '', query)
-    q = re.sub(r'```[\s\S]*?```', '', q)  # Remove code blocks
-    q = q.replace('\\', '')
-    return q.strip()[:1000]
+from core.harness.knowledge.query_guard import sanitize_query
+from core.harness.context.run_context import inject_run_context
+from core.harness.ontology_engine.run_context_builder import (
+    build_run_context_from_graph,
+    merge_run_context,
+)
+from core.harness.data_source.realtime_context import fetch_realtime_context
+from core.harness.evaluation.self_review import self_review
 
 
 def _enforce_scope(collection_id: str, domain_id: str) -> bool:
-    """§5.62: Verify scope is set — no unscoped full-db scans."""
-    return bool(collection_id and collection_id != "default") or bool(domain_id != "default")
+    """§5.62: Verify scope is set — delegates to shared query_guard."""
+    from core.harness.knowledge.query_guard import enforce_scope
+    return enforce_scope(collection_id, domain_id)
 
 
 def _build_turn_summary(question: str, answer: str) -> str:
-    q = str(question or "").strip()
-    a = str(answer or "").strip()
-    if not a:
-        return f"用户提问：{q}"
-    return f"用户提问：{q}；本轮回答要点：{a[:160]}"
+    """Delegate to shared turn_summarizer."""
+    from core.harness.utils.turn_summarizer import build_turn_summary
+    return build_turn_summary(question, answer)
 
 
 def _load_doc_kinds(*, tenant_id: str, doc_ids: List[str]) -> List[str]:
     return get_kb_load_doc_kinds_fn()(tenant_id=tenant_id, doc_ids=doc_ids)
 
 
+def _assemble_chat_system_msgs(
+    domain_config: Dict[str, Any],
+    run_context: Optional[dict],
+) -> List[Dict[str, str]]:
+    """Assemble system prompt messages for chat answer generation.
+
+    Eliminates the 3x duplicated pattern: domain prompt → run_context → base role.
+    """
+    msgs: List[Dict[str, str]] = []
+    prompt_id = domain_config.get("system_prompt_id")
+    if prompt_id:
+        msgs.append({"role": "system", "content": _resolve(prompt_id)})
+    inject_run_context(msgs, run_context)
+    msgs.append({"role": "system", "content": _resolve("kb-chat-system-role")})
+    return msgs
+
+
 def _extract_answer_from_loop_output(output: Any) -> str:
-    if isinstance(output, dict):
-        return str(output.get("answer") or output.get("content") or output.get("output") or "")
-    if isinstance(output, str):
-        return output
-    return ""
+    """Delegate to shared answer_extractor."""
+    from core.harness.utils.answer_extractor import extract_answer_from_output
+    return extract_answer_from_output(output)
 
 
 class MaterialsChatAgent(BaseAgent):
@@ -95,15 +92,14 @@ class MaterialsChatAgent(BaseAgent):
 
     async def _execute_impl(self, context: AgentContext) -> AgentResult:
         try:
-            _t0 = time.time()
-            pipeline_trace: list = []  # [{phase, latency_ms, detail, ...}]
-            def _trace(phase: str, detail: str, **meta):
-                t = int((time.time() - _t0) * 1000)
-                entry = {"phase": phase, "detail": detail, "total_ms": t}
-                entry.update(meta)
-                pipeline_trace.append(entry)
+            from core.harness.utils.pipeline_tracer import PipelineTracer
+            tracer = PipelineTracer()
+            _trace = tracer
+            pipeline_trace = tracer._entries  # direct reference for AgentResult output
 
             vars0 = dict(context.variables or {})
+            run_context = vars0.get("_run_context")  # Phase 10.1: runtime context from API caller
+            run_id = str(vars0.get("_run_id") or "").strip() or None
             scope = dict(vars0.get("scope") or {})
             options = dict(vars0.get("options") or {})
             tenant_id = str(vars0.get("tenant_id") or "default")
@@ -118,36 +114,30 @@ class MaterialsChatAgent(BaseAgent):
                 return AgentResult(success=False, error="message_required")
 
             # §5.63: Query sanitization
-            question = _sanitize_query(question)
+            question = sanitize_query(question)
             
             # Phase C6: Cost-aware routing — shared core capability
-            from core.harness.knowledge.cost_estimator import estimate_query_cost
+            from core.harness.knowledge.cost_estimator import estimate_query_cost, resolve_routing_mode
             _cost = estimate_query_cost(question, scope, options)
             _trace("成本预估", f"RAG={_cost.rag_est_tokens} vs 全量={_cost.full_est_tokens}, 选择={_cost.recommendation}",
                    rag_tokens=_cost.rag_est_tokens, full_tokens=_cost.full_est_tokens,
                    recommendation=_cost.recommendation, complexity=_cost.query_complexity)
             
-            # Phase C6: Cost-aware routing — skip heavy RAG for small-context queries
-            _routing_mode = "rag"
-            if _cost.recommendation == "direct_llm":
-                _routing_mode = "direct_llm"
-            elif _cost.recommendation == "full_context" and _cost.full_est_tokens < 20000:
-                _routing_mode = "full_context"
+            _routing_mode = resolve_routing_mode(_cost)
             _trace("路由决策", f"模式={_routing_mode}, 原因={_cost.recommendation}",
                    routing_mode=_routing_mode, cache_available=_cost.cache_saving > 0)
 
             # Phase 0.3: Semantic cache check — skip heavy retrieval if answer cached
             if os.getenv("AIPLAT_SEMANTIC_CACHE_ENABLED", "false").lower() in ("true", "1", "yes"):
                 try:
-                    from core.harness.knowledge.semantic_cache import get_semantic_cache
-                    cache = get_semantic_cache()
+                    from core.harness.knowledge.semantic_cache_hook import try_cache_hit
                     collection_id_pre = str(scope.get("collection_id") or vars0.get("collection_id") or "default")
-                    cached = await cache.get(question, domain=collection_id_pre)
-                    if cached and isinstance(cached, dict) and cached.get("answer"):
+                    cached = await try_cache_hit(question, collection_id_pre)
+                    if cached:
                         _trace("缓存命中", f"语义缓存L1/L2", cached=True)
                         return AgentResult(
                             success=True,
-                            output=cached.get("answer", ""),
+                            output=cached["answer"],
                             metadata={"source": "semantic_cache", "pipeline_trace": pipeline_trace},
                         )
                 except Exception:
@@ -260,6 +250,36 @@ class MaterialsChatAgent(BaseAgent):
             domain_config = router.domain_config(domain_id)
             _trace("域路由", f"→ {domain_id}", domain_id=domain_id)
 
+            # Phase 10.2: auto-populate run_context from GraphIndex entity traversal
+            if domain_id:
+                graph_ctx = build_run_context_from_graph(enhanced_question, domain_id)
+                # Phase 10.3: fetch real-time DataSource data for dynamic fields
+                entity_name = ""
+                if run_context and run_context.get("entity"):
+                    entity_name = str(run_context.get("entity"))
+                elif graph_ctx and graph_ctx.get("entity"):
+                    entity_name = str(graph_ctx.get("entity"))
+                if entity_name:
+                    realtime_ctx = fetch_realtime_context(entity_name, domain_id)
+                else:
+                    realtime_ctx = None
+
+                # Merge chain: caller > realtime > graph
+                if realtime_ctx and graph_ctx:
+                    graph_ctx = merge_run_context(realtime_ctx, graph_ctx)
+                if run_context and graph_ctx:
+                    run_context = merge_run_context(run_context, graph_ctx)
+                    _trace("运行时上下文", f"合并调用方+实时数据+Graph: entity={run_context.get('entity')}",
+                           source="merged", has_realtime=bool(realtime_ctx))
+                elif realtime_ctx and not graph_ctx:
+                    run_context = merge_run_context(run_context, realtime_ctx) if run_context else realtime_ctx
+                    _trace("运行时上下文", f"实时数据: entity={realtime_ctx.get('entity')}",
+                           source="realtime_datasource")
+                elif graph_ctx:
+                    run_context = graph_ctx
+                    _trace("运行时上下文", f"GraphIndex自动构建: entity={graph_ctx.get('entity')}",
+                           source="graph_index")
+
             skill_name = str(retrieval_policy.get("skill_name") or ("doc_query" if len(doc_ids) == 1 else "multi_doc_query"))
             skill_params: Dict[str, Any] = {
                 "tenant_id": tenant_id,
@@ -293,38 +313,18 @@ class MaterialsChatAgent(BaseAgent):
                    matched_count=len(ontology_mapping.get("matched_classes", [])) if ontology_mapping else 0)
 
             # ── Build reasoning path ──
-            reasoning_path: List[Dict[str, Any]] = []
+            from core.harness.knowledge.orchestrated_retrieval import build_reasoning_path
+
+            reasoning_path = build_reasoning_path(question, ontology_mapping, None)
             if ontology_class_uri and ontology_mapping:
-                matched_name = (ontology_mapping.get("matched_classes") or [{}])[0].get("label", "")
-                reasoning_path.append({
-                    "step": 1,
-                    "from": question[:60],
-                    "to": matched_name or ontology_class_uri,
-                    "via": "intent_classify",
-                    "confidence": (ontology_mapping.get("matched_classes") or [{}])[0].get("score", 0),
-                })
-                # Try graph traversal to extend path (multi-entity SAG-style)
+                # Try graph traversal to extend path (shared pipeline)
                 try:
-                    from core.harness.ontology_engine.graph_index import GraphIndex
-                    from core.harness.ontology_engine.graph_traversal import traverse_multi as graph_traverse_multi
-                    from core.harness.knowledge.domain_router import DomainRouter
-                    router = DomainRouter()
-                    domain_id = router.resolve(collection_id)
-                    graph = GraphIndex.load(domain_id)
-                    if len(graph) > 0:
-                        # Collect entity names from ALL matched classes
-                        start_entities = []
-                        for mc in (ontology_mapping.get("matched_classes") or [])[:3]:
-                            label = mc.get("label", "")
-                            if label:
-                                node = graph.find_by_name(label)
-                                if node:
-                                    start_entities.append(node.entity_id)
-                                else:
-                                    start_entities.append(label)
-                        # Multi-entity traversal (SAG-style local subgraph expansion)
-                        trav = graph_traverse_multi(start_entities, graph, max_hops=2)
-                        for tpath in trav.paths[:5]:
+                    from core.harness.knowledge.orchestrated_retrieval import traverse_ontology_graph
+
+                    trav = traverse_ontology_graph(enhanced_question, domain_id=domain_id, max_hops=2)
+                    if trav["success"]:
+                        # Build reasoning path from traversal steps
+                        for tpath in trav["traversal_paths"][:5]:
                             for s in tpath.steps[1:]:
                                 reasoning_path.append({
                                     "step": len(reasoning_path) + 1,
@@ -334,23 +334,21 @@ class MaterialsChatAgent(BaseAgent):
                                     "relation_label": s.relation_label,
                                     "confidence": s.confidence,
                                 })
-                        # Enrich retrieval query with terminal entity names (structure → semantic)
-                        terminal_names = [t.get("entity_name", "") for t in trav.terminal_entities[:5] if t.get("entity_name")]
+                        # Enrich retrieval query with terminal entity names
+                        terminal_names = trav["terminal_names"]
                         if terminal_names:
                             enhanced_question = f"{enhanced_question} [related: {', '.join(terminal_names[:5])}]"
-                        # Cross-domain lookup via ShardedGraphIndex (domain-scoped + degradation)
+                        # Cross-domain lookup via ShardedGraphIndex
                         if terminal_names:
                             try:
                                 from core.harness.ontology_engine.engine import get_sharded_graph
                                 sharded = get_sharded_graph()
                                 for tname in terminal_names[:2]:
-                                    # Primary: domain-scoped only
                                     cross = sharded.cross_domain_neighbors(
                                         tname, primary_domain=domain_id, allow_cross=False
                                     )
                                     min_cross = domain_config.get("min_cross_results", 3)
                                     if not cross or len(cross.get(domain_id, [])) < min_cross:
-                                        # Degradation: fallback to supplementary domains
                                         cross = sharded.cross_domain_neighbors(
                                             tname,
                                             domains=list(set([domain_id] + router.fallback_domains())),
@@ -362,7 +360,7 @@ class MaterialsChatAgent(BaseAgent):
                                             "from": tname,
                                             "to": "",
                                             "via": f"cross_domain_fallback:{router.fallback_domains()}",
-                                            "relation_label": f"降级跨域查询",
+                                            "relation_label": "降级跨域查询",
                                             "confidence": 0.6,
                                         })
                                     for did, neighbors in cross.items():
@@ -380,36 +378,27 @@ class MaterialsChatAgent(BaseAgent):
                 except Exception as e:
                     logging.debug(str(e), exc_info=True)
 
-            reasoning_path.append({
-                "step": len(reasoning_path) + 1,
-                "from": "knowledge_base",
-                "to": "answer",
-                "via": "knowledge_retrieve",
-            })
-
             # ── Semantic cache check (L1+L2+L3) ──
             try:
-                from core.harness.knowledge.semantic_cache import get_semantic_cache
-                cache = get_semantic_cache()
-                if cache.enabled:
-                    cached = await cache.get(enhanced_question, domain_id)
-                    if cached and cached.get("answer"):
-                        _trace("缓存命中", f"L{cached.get('level', '?')} cache",
-                               cache_level=cached.get("level", ""))
-                        return AgentResult(
-                            success=True,
-                            output={"answer": cached["answer"],
-                                    "citations": cached.get("citations", []), "items": [],
-                                    "scope_applied": scope, "strategy": "cache_hit",
-                                    "skills_used": [], "turn_summary": "",
-                                    "intent": intent, "mode": "cache", "analysis": analysis,
-                                    "retrieval_policy": retrieval_policy, "answer_strategy": answer_strategy,
-                                    "reasoning_path": reasoning_path,
-                                    "pipeline_trace": pipeline_trace,
-                                    "quality": "cached"},
-                            metadata={"intent": intent, "strategy": "cache_hit", "cache_level": cached.get("level", ""),
-                                       "doc_count": len(doc_ids)},
-                        )
+                from core.harness.knowledge.semantic_cache_hook import try_cache_hit
+                cached = await try_cache_hit(enhanced_question, domain_id)
+                if cached:
+                    _trace("缓存命中", f"L{cached.get('level', '?')} cache",
+                           cache_level=cached.get("level", ""))
+                    return AgentResult(
+                        success=True,
+                        output={"answer": cached["answer"],
+                                "citations": cached.get("citations", []), "items": [],
+                                "scope_applied": scope, "strategy": "cache_hit",
+                                "skills_used": [], "turn_summary": "",
+                                "intent": intent, "mode": "cache", "analysis": analysis,
+                                "retrieval_policy": retrieval_policy, "answer_strategy": answer_strategy,
+                                "reasoning_path": reasoning_path,
+                                "pipeline_trace": pipeline_trace,
+                                "quality": "cached"},
+                        metadata={"intent": intent, "strategy": "cache_hit", "cache_level": cached.get("level", ""),
+                                   "doc_count": len(doc_ids)},
+                    )
             except Exception as e:
                 logging.debug(str(e), exc_info=True)
 
@@ -418,60 +407,15 @@ class MaterialsChatAgent(BaseAgent):
             citations: list = []
             try:
                 if ontology_class_uri:
-                    # Ontology-aware path: filter by target class
-                    from core.harness.syscalls.retrieval import sys_knowledge_retrieve
-                    # Related class tolerance: also retrieve neighbor classes via graph
-                    target_classes = [ontology_class_uri]
-                    try:
-                        from core.harness.ontology_engine.graph_index import GraphIndex
-                        g = GraphIndex.load("ai-knowledge")
-                        if len(g) > 0:
-                            short = ontology_class_uri.rsplit("/", 1)[-1] if "/" in ontology_class_uri else ontology_class_uri
-                            node = g.find_by_name(short)
-                            if node:
-                                neighbors = g.get_neighbors(node.entity_id, direction="both")
-                                for n in neighbors[:3]:
-                                    if n.class_name and n.class_name not in target_classes:
-                                        target_classes.append(n.uri if hasattr(n, 'uri') else n.class_name)
-                    except Exception as e:
-                        logging.debug(str(e), exc_info=True)
-                    # Multi-class retrieval: search each target class then merge
-                    import asyncio
-                    retrieval_tasks = []
-                    for tc in target_classes[:3]:
-                        retrieval_tasks.append(
-                            sys_knowledge_retrieve(
-                                query=enhanced_question,
-                                wiki_first=True,
-                                wiki_collection_ids=[router.resolve_collection(domain_id)] if domain_id else [collection_id] if collection_id else None,
-                                target_class=tc,
-                                expand_subclasses=True,
-                                top_k=int(retrieval_policy.get("top_k") or options.get("top_k") or 8),
-                            )
-                        )
-                    all_batches = await asyncio.gather(*retrieval_tasks, return_exceptions=True)
-                    # Merge & dedup by title
-                    seen_titles = set()
-                    merged = []
-                    for batch in all_batches:
-                        if isinstance(batch, Exception):
-                            continue
-                        for r in batch:
-                            key = r.get("title", r.get("source", str(r)[:80]))
-                            if key not in seen_titles:
-                                seen_titles.add(key)
-                                merged.append(r)
-                    wiki_results = merged
-                    if wiki_results:
-                        retrieved_docs = "\n\n---\n\n".join(
-                            f"[{r.get('source', 'wiki')}] {r.get('content', str(r))[:2000]}"
-                            for r in wiki_results
-                        )
-                        citations = [
-                            {"source": r.get("source", "wiki"), "text": str(r.get("content", ""))[:200]}
-                            for r in wiki_results
-                        ]
-                # ── CRAG: Quality gate — if retrieval is weak, try HyDE reroute ──
+                    from core.harness.knowledge.orchestrated_retrieval import ontology_first_retrieve
+                    retrieved_docs, citations = await ontology_first_retrieve(
+                        enhanced_question,
+                        ontology_class_uri,
+                        domain_id=domain_id,
+                        collection_id=collection_id,
+                        top_k=int(retrieval_policy.get("top_k") or options.get("top_k") or 8),
+                    )
+                # ── CRAG: Quality gate — if retrieval is weak, try KB fallback ──
                 if not retrieved_docs or len(retrieved_docs or "") < 100:
                     # Fallback: FTS5 + keyword search
                     from core.api.facades.kb_facade import kb_retrieve
@@ -504,32 +448,15 @@ class MaterialsChatAgent(BaseAgent):
                 # ── CRAG: Reroute via HyDE if still empty ──
                 if not retrieved_docs or len(retrieved_docs or "") < 50:
                     try:
-                        from core.harness.syscalls.llm import sys_llm_generate
-                        hyde_prompt = _resolve("hyde-generator", question=question)
-                        hyde_resp = await sys_llm_generate(
-                            None,
-                            [{"role": "user", "content": hyde_prompt}],
-                            model_name=best_model_for_purpose("chat"),
-                            temperature=0.3, max_tokens=200,
+                        from core.harness.knowledge.hyde_expander import hyde_retrieve
+                        hyde_docs, hyde_citations = await hyde_retrieve(
+                            question,
+                            wiki_collection_ids=[router.resolve_collection(domain_id)] if domain_id else [collection_id] if collection_id else None,
+                            top_k=int(retrieval_policy.get("top_k") or options.get("top_k") or 8),
                         )
-                        hyde_answer = getattr(hyde_resp, 'content', '') or str(hyde_resp)
-                        if hyde_answer and len(hyde_answer.strip()) > 10:
-                            # Retry with HyDE-generated query
-                            hyde_results = await sys_knowledge_retrieve(
-                                query=hyde_answer.strip()[:300],
-                                wiki_first=True,
-                                wiki_collection_ids=[router.resolve_collection(domain_id)] if domain_id else [collection_id] if collection_id else None,
-                                top_k=int(retrieval_policy.get("top_k") or options.get("top_k") or 8),
-                            )
-                            if hyde_results:
-                                retrieved_docs = "\n\n---\n\n".join(
-                                    f"[HyDE:{r.get('source', 'wiki')}] {r.get('content', str(r))[:2000]}"
-                                    for r in hyde_results
-                                )
-                                citations = [
-                                    {"source": f"HyDE:{r.get('source', 'wiki')}", "text": str(r.get("content", ""))[:200]}
-                                    for r in hyde_results
-                                ]
+                        if hyde_docs:
+                            retrieved_docs = hyde_docs
+                            citations = hyde_citations
                     except Exception as e:
                         logging.debug(str(e), exc_info=True)
             except Exception as e:
@@ -566,11 +493,7 @@ class MaterialsChatAgent(BaseAgent):
                     if stream_queue is not None:
                         # Stream mode: push chunks to queue, collect full answer
                         from core.harness.syscalls.llm import sys_llm_generate_stream
-                        system_msgs = []
-                        prompt_id = domain_config.get("system_prompt_id")
-                        if prompt_id:
-                            system_msgs.append({"role": "system", "content": _resolve(prompt_id)})
-                        system_msgs.append({"role": "system", "content": _resolve("kb-chat-system-role")})
+                        system_msgs = _assemble_chat_system_msgs(domain_config, run_context)
                         answer_parts = []
                         async for chunk in sys_llm_generate_stream(
                             None,
@@ -601,11 +524,7 @@ class MaterialsChatAgent(BaseAgent):
                             logging.debug(str(e), exc_info=True)
                     else:
                         from core.harness.syscalls.llm import sys_llm_generate
-                        sys_msgs = []
-                        prompt_id = domain_config.get("system_prompt_id")
-                        if prompt_id:
-                            sys_msgs.append({"role": "system", "content": _resolve(prompt_id)})
-                        sys_msgs.append({"role": "system", "content": _resolve("kb-chat-system-role")})
+                        sys_msgs = _assemble_chat_system_msgs(domain_config, run_context)
                         resp = await sys_llm_generate(
                             None,
                             sys_msgs + [
@@ -636,55 +555,36 @@ class MaterialsChatAgent(BaseAgent):
                                     strategy="direct_retrieve", mode="", intent=intent,
                                     skills_used=["sys_kb_retrieve"],
                                     analysis=analysis, retrieval_policy=retrieval_policy,
-                                    answer_strategy=answer_strategy, run_id=run_id,  # noqa: F821
+                                    answer_strategy=answer_strategy, run_id=run_id,
                                 )
                             except Exception as e:
                                 logging.debug(str(e), exc_info=True)
-                        quality = _self_review(answer, citations, reasoning_path)
+                        quality = self_review(answer, citations, reasoning_path)
                         # Self-RAG: auto-retry on low_evidence via HyDE reroute
                         if quality == "low_evidence" and not retrieved_docs:
                             try:
-                                from core.harness.syscalls.llm import sys_llm_generate
-                                hyde_prompt = _resolve("hyde-generator", question=question)
-                                hyde_resp = await sys_llm_generate(
-                                    None, [{"role": "user", "content": hyde_prompt}],
-                                    model_name=best_model_for_purpose("chat"),
-                                    temperature=0.3, max_tokens=200,
+                                from core.harness.knowledge.hyde_expander import hyde_retrieve
+                                hyde_docs, hyde_citations = await hyde_retrieve(
+                                    question,
+                                    wiki_collection_ids=[router.resolve_collection(domain_id)] if domain_id else [collection_id] if collection_id else None,
+                                    top_k=int(retrieval_policy.get("top_k") or options.get("top_k") or 8),
                                 )
-                                hyde_answer = getattr(hyde_resp, 'content', '') or str(hyde_resp)
-                                if hyde_answer and len(hyde_answer.strip()) > 10:
-                                    hyde_results = await sys_knowledge_retrieve(
-                                        query=hyde_answer.strip()[:300],
-                                        wiki_first=True,
-                                        wiki_collection_ids=[router.resolve_collection(domain_id)] if domain_id else [collection_id] if collection_id else None,
-                                        top_k=int(retrieval_policy.get("top_k") or options.get("top_k") or 8),
+                                if hyde_docs:
+                                    retrieved_docs = hyde_docs
+                                    citations = hyde_citations
+                                    # Re-generate answer with HyDE results
+                                    hyde_sys_msgs = _assemble_chat_system_msgs(domain_config, run_context)
+                                    resp = await sys_llm_generate(
+                                        None,
+                                        hyde_sys_msgs + [{"role": "user", "content": f"文档内容：\n{retrieved_docs}\n\n{graph_context}\n用户问题：{enhanced_question}\n\n请回答："}],
+                                        model_name=best_model_for_purpose("chat"),
+                                        temperature=0.3, max_tokens=2000,
                                     )
-                                    if hyde_results:
-                                        retrieved_docs = "\n\n---\n\n".join(
-                                            f"[HyDE:{r.get('source', 'wiki')}] {r.get('content', str(r))[:2000]}"
-                                            for r in hyde_results
-                                        )
-                                        citations = [
-                                            {"source": f"HyDE:{r.get('source', 'wiki')}", "text": str(r.get("content", ""))[:200]}
-                                            for r in hyde_results
-                                        ]
-                                        # Re-generate answer with HyDE results
-                                        hyde_sys_msgs = []
-                                        prompt_id = domain_config.get("system_prompt_id")
-                                        if prompt_id:
-                                            hyde_sys_msgs.append({"role": "system", "content": _resolve(prompt_id)})
-                                        hyde_sys_msgs.append({"role": "system", "content": _resolve("kb-chat-system-role")})
-                                        resp = await sys_llm_generate(
-                                            None,
-                                            hyde_sys_msgs + [{"role": "user", "content": f"文档内容：\n{retrieved_docs}\n\n{graph_context}\n用户问题：{enhanced_question}\n\n请回答："}],
-                                            model_name=best_model_for_purpose("chat"),
-                                            temperature=0.3, max_tokens=2000,
-                                        )
-                                        text = getattr(resp, 'content', '') or str(resp)
-                                        answer = text.strip() if text and len(text) > 5 else ""
+                                    text = getattr(resp, 'content', '') or str(resp)
+                                    answer = text.strip() if text and len(text) > 5 else ""
                             except Exception as e:
                                 logging.debug(str(e), exc_info=True)
-                        quality = _self_review(answer, citations, reasoning_path)
+                        quality = self_review(answer, citations, reasoning_path)
                         _trace("质量评估", f"Self-RAG: {quality}", quality=quality)
 
                         # ── Phase 3.1: Hallucination check ──
@@ -698,7 +598,7 @@ class MaterialsChatAgent(BaseAgent):
                                     {"text": c.get("text", c.get("source", ""))}
                                     for c in (citations or [])
                                 ],
-                                run_id=run_id, domain_id=domain_id,  # noqa: F821
+                                run_id=run_id, domain_id=domain_id,
                             )
                             hallucination_risk = report.hallucination_risk
                             if hallucination_risk > 0.7:
@@ -713,12 +613,9 @@ class MaterialsChatAgent(BaseAgent):
 
                         # ── Phase 0.3: Semantic cache write ──
                         try:
-                            from core.harness.knowledge.semantic_cache import get_semantic_cache
-                            cache = get_semantic_cache()
-                            if cache.enabled and answer:
-                                await cache.set(enhanced_question, domain_id, {
-                                    "answer": answer, "citations": citations,
-                                })
+                            from core.harness.knowledge.semantic_cache_hook import write_cache_result
+                            if answer:
+                                await write_cache_result(enhanced_question, domain_id, answer, citations)
                         except Exception as e:
                             logging.debug(str(e), exc_info=True)
                         # PatternCache: store execution pattern for future optimization
@@ -779,7 +676,6 @@ class MaterialsChatAgent(BaseAgent):
                 route=str(retrieval_policy.get("route") or ""),
                 default_skill=skill_name,
             )
-            run_id = str(vars0.get("_run_id") or "").strip() or None
 
             if convo is not None and answer:
                 try:
@@ -813,9 +709,8 @@ class MaterialsChatAgent(BaseAgent):
             # Phase 0.3: Write back to semantic cache for future hit
             if os.getenv("AIPLAT_SEMANTIC_CACHE_ENABLED", "false").lower() in ("true", "1", "yes"):
                 try:
-                    from core.harness.knowledge.semantic_cache import get_semantic_cache
-                    cache = get_semantic_cache()
-                    await cache.set(question, answer, domain=collection_id, metadata={"strategy": strategy})
+                    from core.harness.knowledge.semantic_cache_hook import write_cache_result
+                    await write_cache_result(question, domain_id, answer)
                 except Exception:
                     import logging; logging.getLogger(__name__).debug("Semantic cache write skipped", exc_info=True)
 
@@ -836,7 +731,7 @@ class MaterialsChatAgent(BaseAgent):
                     "answer_strategy": answer_strategy,
                     "reasoning_path": reasoning_path,
                     "pipeline_trace": pipeline_trace,
-                    "quality": _self_review(answer, citations, reasoning_path),
+                    "quality": self_review(answer, citations, reasoning_path),
                 },
                 metadata={
                     "intent": intent,

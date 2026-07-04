@@ -40,3 +40,50 @@ async def hyde_expand(query: str, model) -> Optional[str]:
         return hyde_text if hyde_text and len(hyde_text) > 20 else None
     except Exception:
         return None
+
+
+async def hyde_retrieve(
+    question: str,
+    *,
+    wiki_collection_ids: list = None,
+    top_k: int = 8,
+    model=None,
+    max_hyde_tokens: int = 300,
+) -> tuple:
+    """Full HyDE pipeline: generate hypothetical answer → retrieve real docs.
+
+    Returns (retrieved_docs: str, citations: list[dict]) or ("", []) on failure.
+    """
+    try:
+        from core.harness.utils.model_injection import best_model_for_purpose
+
+        mdl = model or best_model_for_purpose("chat")
+        if not mdl:
+            return "", []
+
+        hyde_text = await hyde_expand(question, mdl)
+        if not hyde_text:
+            return "", []
+
+        from core.harness.syscalls.retrieval import sys_knowledge_retrieve
+
+        results = await sys_knowledge_retrieve(
+            query=hyde_text.strip()[:300],
+            wiki_first=True,
+            wiki_collection_ids=wiki_collection_ids or [],
+            top_k=top_k,
+        )
+        if not results:
+            return "", []
+
+        retrieved_docs = "\n\n---\n\n".join(
+            f"[HyDE:{r.get('source', 'wiki')}] {r.get('content', str(r))[:2000]}"
+            for r in results
+        )
+        citations = [
+            {"source": f"HyDE:{r.get('source', 'wiki')}", "text": str(r.get("content", ""))[:200]}
+            for r in results
+        ]
+        return retrieved_docs, citations
+    except Exception:
+        return "", []

@@ -60,36 +60,19 @@ class MultiAgentOrchestrator:
         """
         pipeline_results: Dict[str, Any] = {"query": query}
 
-        # Stage 1: Ontology mapping (classify the question)
+        # Stage 1+2+3: Unified ontology→graph traversal (shared pipeline)
         try:
-            from core.harness.knowledge.ontology_query_mapper import map_query_to_ontology
-            mapping = map_query_to_ontology(query)
-            pipeline_results["ontology_mapping"] = mapping
+            from core.harness.knowledge.orchestrated_retrieval import traverse_ontology_graph
+            trav = traverse_ontology_graph(query, domain_id=domain_id, max_hops=2)
+            pipeline_results["ontology_mapping"] = trav["ontology_mapping"]
+            if trav["success"]:
+                pipeline_results["graph_traversal"] = {
+                    "terminals": trav["terminal_entities"],
+                    "ranked": trav["terminal_entities"],
+                    "paths_found": len(trav["traversal_paths"]),
+                }
         except Exception:
             pipeline_results["ontology_mapping"] = None
-
-        # Stage 2: Graph traversal (find related entities)
-        try:
-            from core.harness.ontology_engine.graph_index import GraphIndex
-            from core.harness.ontology_engine.graph_traversal import traverse_multi
-            graph = GraphIndex.load(domain_id)
-            if len(graph) > 0:
-                matched_labels = []
-                if pipeline_results.get("ontology_mapping"):
-                    for mc in (pipeline_results["ontology_mapping"].get("matched_classes") or [])[:2]:
-                        label = mc.get("label", "")
-                        if label:
-                            node = graph.find_by_name(label)
-                            if node:
-                                matched_labels.append(node.entity_id)
-                if matched_labels:
-                    traversal = traverse_multi(matched_labels, graph, max_hops=2)
-                    pipeline_results["graph_traversal"] = {
-                        "terminals": traversal.terminal_entities,
-                        "ranked": traversal.ranked_terminals,
-                        "paths_found": traversal.stats.get("paths_found", 0),
-                    }
-        except Exception:
             pipeline_results["graph_traversal"] = None
 
         # Stage 3: Knowledge retrieval + answer generation

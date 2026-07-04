@@ -1,4 +1,5 @@
 from __future__ import annotations
+from core.schemas_common import MessageResponse
 
 # ════════════════════════════════════════════════════════════════════════
 # STRUCTURAL DEBT: 3590 lines — split partially executed (audit 1.7).
@@ -1971,7 +1972,7 @@ async def redo_from_checkpoint(run_id: str, checkpoint_id: str, request: dict, h
     return resp
 
 
-@router.post("/runs/{run_id}/cancel", response_model=Dict[str, Any])
+@router.post("/runs/{run_id}/cancel", response_model=MessageResponse)
 async def cancel_run(run_id: str, http_request: Request, body: Optional[Dict[str, Any]] = None, rt: RuntimeDep = None):
     """
     Best-effort stop/cancel for platform runs.

@@ -1,4 +1,5 @@
 from __future__ import annotations
+from core.schemas_common import MessageResponse
 
 import os
 from datetime import datetime, timezone
@@ -227,7 +228,7 @@ async def update_agent(agent_id: str, request: AgentUpdateRequest, rt: RuntimeDe
     return {"status": "updated", "id": agent_id}
 
 
-@router.delete("/agents/{agent_id}", response_model=Dict[str, Any])
+@router.delete("/agents/{agent_id}", response_model=MessageResponse)
 async def delete_agent(agent_id: str, rt: RuntimeDep = None):
     mgr = _agent_mgr(rt)
     if not mgr:

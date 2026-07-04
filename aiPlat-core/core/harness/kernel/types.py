@@ -36,6 +36,45 @@ class SpecContext:
 
 
 @dataclass
+class RunContext:
+    """Operational runtime context — bridges static ontology with dynamic business state.
+
+    Injected by the API caller into system prompts so the LLM understands not just
+    *what* an entity is (ontology), but *what's happening now* with it (runtime).
+
+    Phase 10.1: caller-provided via API request body.
+    Phase 10.2: auto-populated from GraphIndex entity traversal.
+    Phase 10.3: real-time pull from DataSource connectors.
+
+    Attributes:
+        entity:      实体标识名，如 "注塑机#3"
+        entity_type: 实体类型，如 "设备" / "订单" / "生产线"
+        situation:   自由文本描述当前状态。建议格式: "主语+谓语+数值+单位"，
+                     如 "温度215℃超限15℃, 当前在产加急订单B(交期今日18:00)"
+        priority:    业务优先级 — normal / elevated / critical
+        constraints: 约束条件列表，如 ["温控模块备件剩余2件", "维修部10分钟内可响应"]
+        metadata:    扩展字段
+    """
+    entity: str = ""
+    entity_type: str = ""
+    situation: str = ""
+    priority: str = ""
+    constraints: List[str] = field(default_factory=list)
+    metadata: Dict[str, Any] = field(default_factory=dict)
+
+    def to_compact(self) -> str:
+        """Compact serialization for system prompt injection. Target: ≤100 tokens."""
+        parts = [f"当前{self.entity_type + ':' if self.entity_type else '实体:'} {self.entity}"]
+        if self.situation:
+            parts.append(f"概况: {self.situation}")
+        if self.priority:
+            parts.append(f"优先级: {self.priority}")
+        if self.constraints:
+            parts.append(f"约束: {'; '.join(self.constraints)}")
+        return " | ".join(parts)
+
+
+@dataclass
 class PlanStep:
     step: int
     action: str

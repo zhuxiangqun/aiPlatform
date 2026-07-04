@@ -1960,6 +1960,10 @@ class HarnessIntegration:
 
             # If resuming, pass loop snapshot down via AgentContext.variables
             variables = payload.get("context", {}) if isinstance(payload, dict) else {}
+            # Phase 10.1: extract run_context from API payload for contextual AI reasoning
+            if isinstance(payload, dict) and payload.get("run_context"):
+                variables = dict(variables or {})
+                variables["_run_context"] = payload["run_context"]
             if isinstance(payload, dict) and "_resume_loop_state" in payload:
                 try:
                     variables = dict(variables or {})
@@ -2004,17 +2008,20 @@ class HarnessIntegration:
             execution_plan = None
             if os.getenv("AIPLAT_ENABLE_ORCHESTRATOR", "true").lower() in ("1", "true", "yes", "y"):
                 try:
-                    from core.orchestration import Orchestrator
+                    # Extract user intent from messages
+                    user_input = ""
+                    messages_list = payload.get("messages", []) if isinstance(payload, dict) else []
+                    if messages_list:
+                        last_msg = messages_list[-1]
+                        user_input = last_msg.get("content", "") if isinstance(last_msg, dict) else str(last_msg)
 
-                    orchestrator = Orchestrator()
-                    orchestrator_plan = await orchestrator.plan(
-                        agent_id=agent_id,
-                        model=getattr(agent, "_model", None),
-                        messages=payload.get("messages", []) if isinstance(payload, dict) else [],
-                        context=payload.get("context") if isinstance(payload, dict) else {},
-                        trace_context={"trace_id": trace_id, "run_id": execution_id},
-                    )
-                    execution_plan = orchestrator_plan.to_execution_plan()
+                    if user_input:
+                        from core.orchestration.intent_analyzer import analyze_intent
+                        from core.orchestration import Orchestrator
+
+                        intent = analyze_intent(user_input)
+                        orchestrator = Orchestrator()
+                        execution_plan = await orchestrator.plan(intent)
                 except Exception:
                     orchestrator_plan = None
                     execution_plan = None

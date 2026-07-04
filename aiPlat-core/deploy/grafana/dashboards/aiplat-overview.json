@@ -1,0 +1,267 @@
+{
+  "dashboard": {
+    "title": "aiPlat — AI Platform Overview",
+    "uid": "aiplat-overview",
+    "timezone": "browser",
+    "refresh": "10s",
+    "tags": ["aiplat", "llm", "observability"],
+    "panels": [
+      {
+        "id": 1,
+        "title": "LLM QPS (requests/sec)",
+        "type": "timeseries",
+        "gridPos": {"x": 0, "y": 0, "w": 12, "h": 8},
+        "targets": [
+          {
+            "expr": "rate(http_requests_total{handler=~\".*llm.*\"}(${__rate_interval}))",
+            "legendFormat": "LLM QPS"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "reqps",
+            "custom": {"lineWidth": 2, "fillOpacity": 10}
+          }
+        }
+      },
+      {
+        "id": 2,
+        "title": "LLM Latency P95 (seconds)",
+        "type": "timeseries",
+        "gridPos": {"x": 12, "y": 0, "w": 12, "h": 8},
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, rate(http_request_duration_seconds_bucket{handler=~\".*llm.*\"}(${__rate_interval})))",
+            "legendFormat": "P95 latency"
+          },
+          {
+            "expr": "histogram_quantile(0.50, rate(http_request_duration_seconds_bucket{handler=~\".*llm.*\"}(${__rate_interval})))",
+            "legendFormat": "P50 latency"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "s",
+            "custom": {"lineWidth": 2}
+          }
+        }
+      },
+      {
+        "id": 3,
+        "title": "LLM Error Rate (%)",
+        "type": "timeseries",
+        "gridPos": {"x": 0, "y": 8, "w": 8, "h": 8},
+        "targets": [
+          {
+            "expr": "rate(http_requests_total{handler=~\".*llm.*\",status=~\"5..\"}(${__rate_interval})) / rate(http_requests_total{handler=~\".*llm.*\"}(${__rate_interval})) * 100",
+            "legendFormat": "Error rate"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percent",
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": null, "color": "green"},
+                {"value": 5, "color": "orange"},
+                {"value": 15, "color": "red"}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 4,
+        "title": "HTTP Request Rate (all endpoints)",
+        "type": "timeseries",
+        "gridPos": {"x": 8, "y": 8, "w": 8, "h": 8},
+        "targets": [
+          {
+            "expr": "rate(http_requests_total(${__rate_interval}))",
+            "legendFormat": "{{handler}}"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "reqps",
+            "custom": {"lineWidth": 1}
+          }
+        }
+      },
+      {
+        "id": 5,
+        "title": "HTTP Status Codes",
+        "type": "timeseries",
+        "gridPos": {"x": 16, "y": 8, "w": 8, "h": 8},
+        "targets": [
+          {
+            "expr": "sum(rate(http_requests_total(${__rate_interval})) by (status))",
+            "legendFormat": "{{status}}"
+          }
+        ]
+      },
+      {
+        "id": 6,
+        "title": "Pipeline Stage Execution Count",
+        "type": "bargauge",
+        "gridPos": {"x": 0, "y": 16, "w": 8, "h": 8},
+        "targets": [
+          {
+            "expr": "aiplat_skill_calls_total",
+            "legendFormat": "{{skill}}"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short"
+          }
+        }
+      },
+      {
+        "id": 7,
+        "title": "Pipeline Stage Latency P95 (seconds)",
+        "type": "timeseries",
+        "gridPos": {"x": 8, "y": 16, "w": 16, "h": 8},
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, rate(http_request_duration_seconds_bucket{handler=~\".*execute.*|.*pipeline.*\"}(${__rate_interval})))",
+            "legendFormat": "P95 execute/pipeline"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "s"
+          }
+        }
+      },
+      {
+        "id": 8,
+        "title": "Cache Hit Ratio",
+        "type": "stat",
+        "gridPos": {"x": 0, "y": 24, "w": 4, "h": 6},
+        "targets": [
+          {
+            "expr": "aiplat_cache_version_total or vector(0)",
+            "legendFormat": ""
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short",
+            "color": {"mode": "thresholds"},
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": null, "color": "blue"}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 9,
+        "title": "Skill Decay Rate",
+        "type": "stat",
+        "gridPos": {"x": 4, "y": 24, "w": 4, "h": 6},
+        "targets": [
+          {
+            "expr": "aiplat_skill_decay_total or vector(0)",
+            "legendFormat": ""
+          }
+        ]
+      },
+      {
+        "id": 10,
+        "title": "Episodic Memory Pre-Score",
+        "type": "stat",
+        "gridPos": {"x": 8, "y": 24, "w": 4, "h": 6},
+        "targets": [
+          {
+            "expr": "aiplat_episodic_prescore_total or vector(0)",
+            "legendFormat": ""
+          }
+        ]
+      },
+      {
+        "id": 11,
+        "title": "Open Spans / Orphan Rate",
+        "type": "gauge",
+        "gridPos": {"x": 12, "y": 24, "w": 6, "h": 6},
+        "targets": [
+          {
+            "expr": "aiplat_tool_truncate_total or vector(0)",
+            "legendFormat": "Tool truncations"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short",
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": null, "color": "green"},
+                {"value": 10, "color": "orange"},
+                {"value": 50, "color": "red"}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 12,
+        "title": "Semantic Memory Expiry",
+        "type": "stat",
+        "gridPos": {"x": 18, "y": 24, "w": 4, "h": 6},
+        "targets": [
+          {
+            "expr": "aiplat_semantic_expiry_total or vector(0)",
+            "legendFormat": ""
+          }
+        ]
+      },
+      {
+        "id": 13,
+        "title": "RRF Latency (seconds)",
+        "type": "timeseries",
+        "gridPos": {"x": 0, "y": 30, "w": 12, "h": 6},
+        "targets": [
+          {
+            "expr": "aiplat_rrf_latency_seconds or vector(0)",
+            "legendFormat": "RRF fusion"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {"unit": "s"}
+        }
+      },
+      {
+        "id": 14,
+        "title": "Tool Truncation Events",
+        "type": "timeseries",
+        "gridPos": {"x": 12, "y": 30, "w": 12, "h": 6},
+        "targets": [
+          {
+            "expr": "rate(aiplat_tool_truncate_total(${__rate_interval})) or vector(0)",
+            "legendFormat": "Truncations/s"
+          }
+        ]
+      }
+    ],
+    "templating": {
+      "list": [
+        {
+          "name": "__rate_interval",
+          "type": "interval",
+          "query": "1m,5m,15m,30m,1h",
+          "current": {"value": "5m"}
+        }
+      ]
+    },
+    "time": {
+      "from": "now-1h",
+      "to": "now"
+    },
+    "version": 1
+  }
+}

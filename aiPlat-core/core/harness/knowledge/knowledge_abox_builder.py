@@ -384,7 +384,17 @@ def rebuild_full(*, collection_id: str = "default") -> KnowledgeOntology:
     """Full A-Box rebuild from scratch."""
     from core.harness.knowledge.knowledge_ontology import reset_ontology
     reset_ontology()
-    return build_abox(collection_id=collection_id)
+    result = build_abox(collection_id=collection_id)
+    try:
+        from core.harness.knowledge.semantic_cache import get_semantic_cache
+        from core.harness.utils.async_utils import _run_coro_blocking
+        cache = get_semantic_cache()
+        if cache.enabled:
+            _run_coro_blocking(cache.invalidate_domain(collection_id))
+    except Exception as e:
+        import logging
+        logging.debug(str(e), exc_info=True)
+    return result
 
 
 def _extract_cross_modal_relations(onto: KnowledgeOntology) -> None:

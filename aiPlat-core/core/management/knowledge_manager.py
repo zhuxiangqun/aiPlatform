@@ -190,6 +190,17 @@ class KnowledgeManager:
         del self._documents[collection_id]
         del self._index_status[collection_id]
         
+        # Invalidate semantic cache for this collection
+        try:
+            from core.harness.knowledge.semantic_cache import get_semantic_cache
+            from core.harness.utils.async_utils import _run_coro_blocking
+            cache = get_semantic_cache()
+            if cache.enabled:
+                _run_coro_blocking(cache.invalidate_domain(collection_id))
+        except Exception as e:
+            import logging
+            logging.debug(str(e), exc_info=True)
+        
         return True
     
     async def upload_document(
@@ -252,6 +263,7 @@ class KnowledgeManager:
     
     async def delete_document(self, document_id: str) -> bool:
         """Delete document"""
+        deleted_collection_id = None
         for collection_id, documents in self._documents.items():
             for i, doc in enumerate(documents):
                 if doc.id == document_id:
@@ -259,6 +271,19 @@ class KnowledgeManager:
                     collection = self._collections[collection_id]
                     collection.document_count -= 1
                     collection.total_size_mb -= doc.size_mb
+                    deleted_collection_id = collection_id
+                    
+                    # Invalidate semantic cache for the affected collection
+                    try:
+                        from core.harness.knowledge.semantic_cache import get_semantic_cache
+                        from core.harness.utils.async_utils import _run_coro_blocking
+                        cache = get_semantic_cache()
+                        if cache.enabled:
+                            _run_coro_blocking(cache.invalidate_domain(collection_id))
+                    except Exception as e:
+                        import logging
+                        logging.debug(str(e), exc_info=True)
+                    
                     return True
         return False
     

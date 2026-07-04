@@ -5,6 +5,7 @@ Wiki API — persistent LLM-curated knowledge base endpoints.
 from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, HTTPException, Query, Body
 from pydantic import BaseModel
+from core.schemas_common import DeleteResponse, WikiDeleteAllResponse, ListResponse, WikiPageResponse, MessageResponse
 import logging
 
 router = APIRouter(prefix="/wiki", tags=["wiki"])
@@ -111,7 +112,7 @@ async def read_page(title: str, category: str = "entities", collection: str = "d
     return page
 
 
-@router.delete("/pages/{title}", response_model=Dict[str, Any])
+@router.delete("/pages/{title}", response_model=DeleteResponse)
 async def delete_page(title: str, collection: str = "default"):
     from core.harness.knowledge.wiki_engine import delete_page as _del
     ok = _del(title, collection_id=collection)
@@ -120,7 +121,7 @@ async def delete_page(title: str, collection: str = "default"):
     return {"title": title, "status": "deleted"}
 
 
-@router.delete("/pages-all", response_model=Dict[str, Any])
+@router.delete("/pages-all", response_model=WikiDeleteAllResponse)
 async def delete_all_pages(collection: str = "default"):
     from core.harness.knowledge.wiki_engine import delete_all_pages
     result = delete_all_pages(collection_id=collection)
@@ -1384,7 +1385,7 @@ async def detect_wiki_duplicates(collection: str = "default"):
 
 # ── Collection Management ───────────────────────────────────────
 
-@router.get("/collections", response_model=Dict[str, Any])
+@router.get("/collections", response_model=ListResponse[Dict[str, Any]])
 async def list_wiki_collections():
     """List all wiki collections with page counts."""
     try:
@@ -1408,7 +1409,7 @@ async def create_wiki_collection(body: CollectionCreate):
         raise HTTPException(status_code=500, detail=f"Failed to create collection: {e}")
 
 
-@router.delete("/collections/{collection_id}", response_model=Dict[str, Any])
+@router.delete("/collections/{collection_id}", response_model=DeleteResponse)
 async def delete_wiki_collection(collection_id: str):
     """Delete a wiki collection and all its pages."""
     try:

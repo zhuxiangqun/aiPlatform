@@ -68,6 +68,18 @@ class TraceGate:
         try:
             from core.services.trace_service import SpanStatus
 
+            status = SpanStatus.SUCCESS if success else SpanStatus.ERROR
+            await trace_service.end_span(
+                span_id=span.span_id,
+                status=status,
+            )
+            self._spans_ended += 1
+            if success:
+                self._spans_success += 1
+            else:
+                self._spans_failed += 1
+            if span.span_id in self._open_spans:
+                del self._open_spans[span.span_id]
         except Exception:
             return
 

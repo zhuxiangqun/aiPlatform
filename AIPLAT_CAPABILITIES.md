@@ -109,6 +109,10 @@
 | 审批工作流引擎 | `harness/ontology_engine/approval.py` | ✅ | submit/approve/reject/changes + 超时升级 + 告警通道 | 已合入 |
 | Interface 原语 (多态抽象) | `harness/knowledge/ontology_loader.py` | ✅ | 本体Interface定义 + implements声明 + get_entities_by_interface()查询 | 已合入 |
 | SQL Ontology Bridge | `harness/knowledge/sql_ontology.py` | ✅ | 三层架构(物理→语义→应用) + concept→SQL自动翻译 + virtual-first零摄取 | 已合入 |
+| RunContext 运行时上下文 | `harness/kernel/types.py` | ✅ | entity/type/situation/priority/constraints + to_compact()序列化 | Phase 10.1 |
+| GraphIndex → RunContext 自动填充 | `apps/agents/materials_chat.py` | ✅ | 实体名提取→GraphIndex遍历→RunContext自动构建 | Phase 10.2 |
+| DataSource → RunContext 实时桥接 | `apps/agents/materials_chat.py` + YAML | ✅ | DataSourceRegistry查询→API响应→RunContext字段映射+优雅降级 | Phase 10.3 |
+| RunContext 三层合并 | `apps/agents/materials_chat.py` | ✅ | caller>realtime>graph优先级规则 + constraints合并去重 | Phase 10.2 |
 
 ---
 
@@ -202,6 +206,17 @@
 | Agent SDK | `aiplat-sdk/` | ✅ | L1 Agent/L2 Pipeline/L3 ReActLoop — execute/stream/chat 全路径可用 | 已合入 |
 | FanOut 并行 | `apps/agents/parallel_executor.py` | ✅ | 已接线 | 已合入 |
 | DelegateManager | `harness/infrastructure/delegate_tool.py` | ✅ | 子Agent委托 + 资源预算隔离 + 重试退避 + 输出摘要(§5.26) | 已合入 |
+| OperatorAgent | `apps/agents/operator_agent.py` | ✅ | 运维决策助手 — 消费RunContext → 结构化JSON(severity/impact/actions/can_continue) | Phase 10.4 |
+| operator-decision prompt | `harness/utils/prompt_loader.py` | ✅ | 决策框架 + 输出格式 + 约束规则 | Phase 10.4 |
+| 共享检索管道 | `harness/knowledge/orchestrated_retrieval.py` | ✅ | traverse_ontology_graph + ontology_first_retrieve + build_reasoning_path | 重构 |
+| HyDE 检索统一 | `harness/knowledge/hyde_expander.py` | ✅ | hyde_retrieve() 封装全管道(生成→检索→格式化) | 重构 |
+| 成本路由决策 | `harness/knowledge/cost_estimator.py` | ✅ | resolve_routing_mode() 统一成本→路由映射 | 重构 |
+| 查询守卫 | `harness/knowledge/query_guard.py` | ✅ | sanitize_query + enforce_scope | 重构 |
+| 语义缓存钩子 | `harness/knowledge/semantic_cache_hook.py` | ✅ | try_cache_hit + write_cache_result (任意Agent复用) | 重构 |
+| PipelineTracer | `harness/utils/pipeline_tracer.py` | ✅ | 时序轨道上下文管理器 | 重构 |
+| 会话摘要器 | `harness/utils/turn_summarizer.py` | ✅ | question+answer → 中文摘要 | 重构 |
+| 答案提取器 | `harness/utils/answer_extractor.py` | ✅ | 循环输出 → 纯文本答案 | 重构 |
+| 琐问处理器 | `harness/utils/trivial_handlers.py` | ✅ | 时间/数学表达式即时响应 | 重构 |
 
 ---
 
@@ -729,7 +744,7 @@
 ---
 
 *最后更新: 2026-07-04*
-*版本: 12.5 · 28章 · 465项能力 · 465✅ · P0-P3 hermès-agent全量吸收+SQLite连接池化+TrendDetector*
+*版本: 12.5 · 28章 · 492项能力 · 492✅ · P0-P3 hermès-agent全量吸收+SQLite连接池化+TrendDetector*
 
 **自检命令**：
 ```bash

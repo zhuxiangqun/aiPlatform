@@ -332,6 +332,7 @@ def create_agent(
     ConversationalAgent = importlib.import_module(f"{__package__}.conversational").ConversationalAgent
     MultiAgent = importlib.import_module(f"{__package__}.multi_agent").MultiAgent
     MaterialsChatAgent = importlib.import_module(f"{__package__}.materials_chat").MaterialsChatAgent
+    OperatorAgent = importlib.import_module(f"{__package__}.operator_agent").OperatorAgent
     
     if config is None:
         config = AgentConfig(name="default")
@@ -344,6 +345,7 @@ def create_agent(
         "multi_agent": "multi_agent",
         "rag": "rag",
         "materials_chat": "materials_chat",
+        "operator": "operator",
         "tool": "react",
         "reflection": "plan_execute",
         "review": "conversational",
@@ -399,5 +401,7 @@ def create_agent(
         except Exception as e:
             logging.debug(str(e), exc_info=True)
         return MaterialsChatAgent(config=config, **kwargs)
+    elif resolved_type == "operator":
+        return OperatorAgent(config=config, **kwargs)
     else:
         return BaseAgent(config=config, **kwargs)

@@ -43,3 +43,61 @@ class IdResponse(BaseModel):
 class CountResponse(BaseModel):
     """Response containing a count."""
     count: int = 0
+
+
+class DeleteResponse(BaseModel):
+    """Response for delete operations."""
+    deleted: bool = True
+    id: str = ""
+    message: str = ""
+
+
+class ListResponse(BaseModel, Generic[T]):
+    """Simple unwrapped list response."""
+    items: List[T] = Field(default_factory=list)
+
+
+class MessageResponse(BaseModel):
+    """Response with a status message and optional detail."""
+    ok: bool = True
+    message: str = Field(default="")
+    detail: Optional[Dict[str, Any]] = None
+
+
+class DictResponse(BaseModel):
+    """Typed dict wrapper for key-value responses."""
+    data: Dict[str, Any] = Field(default_factory=dict)
+
+
+class IdNameResponse(BaseModel):
+    """Response with ID + display name."""
+    id: str
+    name: str = ""
+
+
+class WikiPageResponse(BaseModel):
+    """Response for wiki page operations (create/update/delete)."""
+    title: str
+    status: str = "ok"
+    path: str = ""
+    auto_links: List[str] = Field(default_factory=list)
+
+
+class WikiDeleteAllResponse(BaseModel):
+    """Response for wiki delete-all operation."""
+    deleted: int = 0
+    message: str = ""
+
+
+class ErrorDetail(BaseModel):
+    """Structured error detail."""
+    code: str = ""
+    message: str = ""
+    details: Optional[Dict[str, Any]] = None
+
+
+class EnvInfoResponse(BaseModel):
+    """Environment/info response."""
+    version: str = ""
+    python_version: str = ""
+    env: Dict[str, Any] = Field(default_factory=dict)
