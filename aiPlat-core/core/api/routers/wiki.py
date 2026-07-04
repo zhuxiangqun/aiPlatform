@@ -764,6 +764,15 @@ async def ingest_text(body: WikiIngest):
         invalidate_graph_cache(body.collection if hasattr(body, 'collection') else "default")
     except Exception:
         pass
+    # ── Provenance: mark all answers referencing this source as stale ──
+    try:
+        from core.harness.knowledge.provenance import get_provenance_tracker, ProvenanceScanner
+        tracker = get_provenance_tracker()
+        scanner = ProvenanceScanner(tracker)
+        import asyncio as _asyncio
+        _asyncio.create_task(scanner.on_source_updated(sid, str(time.time())))
+    except Exception:
+        pass
     return {"source_id": sid, "status": "ingested",
             "message": "Text stored. Execute wiki_curator agent to process and update wiki pages."}
 
