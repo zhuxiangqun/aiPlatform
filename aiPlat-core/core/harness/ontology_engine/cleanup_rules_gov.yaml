@@ -1,0 +1,42 @@
+# 政务行业文档清洗规则集
+industry: gov
+
+rules:
+  # ── 公文格式 ──
+  - name: "gov_document_header"
+    pattern: r"^(发文单位|发文字号|签发人|主送|抄送|密级|保密期限)[：:]\s*.*$"
+    action: remove
+    description: "公文固定头部字段"
+
+  - name: "gov_document_footer"
+    pattern: r"^(信息公开选项|公开类别|公开时限|公开方式)[：:]\s*.*$"
+    action: remove
+    description: "公文固定尾部字段"
+
+  - name: "gov_red_header"
+    pattern: r"^[\s　]*(\S{5,20}(政府|局|委|办|厅|部|院))[\s　]*$"
+    action: remove
+    description: "红头文件标题行（仅机构名，无正文）"
+
+  # ── 规章制度 ──
+  - name: "gov_chapter_number"
+    pattern: r"^第\s*[一二三四五六七八九十百千\d]+\s*(章|节)\s*.*$"
+    action: remove
+    description: "章节标题行（正文在标题后，单独保留会破坏上下文）"
+
+  - name: "gov_effective_date"
+    pattern: r"^(本.*(办法|规定|条例|通知|意见|方案)).*(自|从|于)\d{4}年\d{1,2}月\d{1,2}日起.*$"
+    action: mask
+    description: "生效日期信息 → [MASKED]（保留文件名称，隐藏日期）"
+
+  # ── 政策文件标记 ──
+  - name: "gov_policy_label"
+    pattern: r"^(此件|此文件|本文件|本通知|本意见|本方案)\s*(公开发布|内部掌握|不予公开|依申请公开)?\s*$"
+    action: remove
+    description: "文件发布标记行"
+
+  # ── 意见征集 ──
+  - name: "gov_public_comment"
+    pattern: r"(征求意见稿|草案|试行|暂行)\s*$"
+    action: mask
+    description: "草案/试行标记 → [MASKED]"

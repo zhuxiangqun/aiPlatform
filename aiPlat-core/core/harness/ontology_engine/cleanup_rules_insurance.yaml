@@ -1,0 +1,38 @@
+# 保险行业文档清洗规则集
+# 加载方式：TextCleaner 自动从 ~/.aiplat/cleanup_rules/ 加载所有 .yaml 文件
+industry: insurance
+
+rules:
+  # ── 保险条款编号 ──
+  - name: "insurance_clause_number"
+    pattern: r"^\s*第\s*[一二三四五六七八九十百千万\d]+\s*条\s*$"
+    action: remove
+    description: "孤立条款编号行（无正文内容）"
+
+  - name: "insurance_premium_table_header"
+    pattern: r"^(缴费期间|保险期间|基本保险金额|每期保险费)\s*$"
+    action: remove
+    description: "费率表孤立表头（表格数据保留，仅删空表头）"
+
+  # ── 理赔模板 ──
+  - name: "insurance_claim_template"
+    pattern: r"(请在[^。]+内提交|理赔申请须在[^。]+完成|报案时效[^。]+)"
+    action: mask
+    description: "理赔时限模板话术 → [MASKED]"
+
+  - name: "insurance_disclaimer"
+    pattern: r"(本产品由[^保]+保险公司承保|具体以保险合同约定为准|保险责任以条款为准)"
+    action: mask
+    description: "免责声明模板 → [MASKED]"
+
+  # ── 产品编号 ──
+  - name: "insurance_product_code"
+    pattern: r"^\s*(备|报备|备案号|条款编号)[：:]\s*[A-Z0-9]+\s*$"
+    action: remove
+    description: "产品备案编号行"
+
+  # ── 费率表重复数字 ──
+  - name: "insurance_rate_number"
+    pattern: r"^\s*\d+\.\d{2}\s*$"
+    action: remove
+    description: "独立费率数字行（没有险种名称做上下文的费率值）"

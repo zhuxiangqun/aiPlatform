@@ -27,9 +27,10 @@ class TextCleaner:
         self._load_rules()
 
     def _load_rules(self):
-        """Load rules: built-in defaults first, then user overrides."""
-        builtin_path = Path(__file__).parent / "cleanup_rules.yaml"
+        """Load rules: built-in defaults → industry packs → user overrides."""
+        builtin_path = Path(__file__).parent.parent / "ontology_engine" / "cleanup_rules.yaml"
         user_path = Path(os.path.expanduser("~/.aiplat/cleanup_rules.yaml"))
+        industry_dir = Path(os.path.expanduser("~/.aiplat/cleanup_rules"))
 
         # Load built-in defaults
         default_rules = {}
@@ -45,6 +46,23 @@ class TextCleaner:
             except Exception as e:
                 logger.debug("Failed to load built-in cleanup rules: %s", e)
 
+        # Load industry-specific rule packs
+        industry_rules: dict[str, dict] = {}
+        if industry_dir.exists() and industry_dir.is_dir():
+            for yf in sorted(industry_dir.glob("*.yaml")):
+                try:
+                    with open(yf, "r") as f:
+                        data = yaml.safe_load(f)
+                    for rule in data.get("rules", []):
+                        name = rule.get("name", "")
+                        if not rule.get("enabled", True):
+                            continue
+                        industry_rules[name] = rule
+                except Exception as e:
+                    logger.debug("Failed to load industry rules from %s: %s", yf.name, e)
+        if industry_rules:
+            logger.info("TextCleaner: loaded %d industry-specific rules", len(industry_rules))
+
         # Load user overrides
         user_rules = {}
         if user_path.exists():
@@ -54,23 +72,24 @@ class TextCleaner:
                 for rule in data.get("rules", []):
                     name = rule.get("name", "")
                     if not rule.get("enabled", True):
-                        user_rules[name] = rule  # also track disabled user rules
+                        user_rules[name] = rule
                         continue
                     user_rules[name] = rule
             except Exception as e:
                 logger.debug("Failed to load user cleanup rules: %s", e)
 
-        # Merge: user rules override defaults
+        # Merge: industry + defaults + user (user wins)
         merged = dict(default_rules)
+        merged.update(industry_rules)
         for name, rule in user_rules.items():
             if not rule.get("enabled", True):
-                merged.pop(name, None)  # user explicitly disabled
+                merged.pop(name, None)
             else:
-                merged[name] = rule  # user override
+                merged[name] = rule
 
         self._rules = list(merged.values())
-        logger.info("TextCleaner: loaded %d rules (%d built-in, %d user)",
-                     len(self._rules), len(default_rules), len(user_rules))
+        logger.info("TextCleaner: loaded %d rules (%d built-in, %d industry, %d user)",
+                     len(self._rules), len(default_rules), len(industry_rules), len(user_rules))
 
     def clean(self, text: str) -> Tuple[str, int]:
         """

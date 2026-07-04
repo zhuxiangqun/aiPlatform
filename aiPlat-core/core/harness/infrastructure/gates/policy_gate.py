@@ -36,12 +36,21 @@ class PolicyDecision(str, Enum):
     APPROVAL_REQUIRED = "approval_required"
 
 
+class PolicyScope(str, Enum):
+    """Scope of a policy rule — from broad to narrow."""
+    GLOBAL = "global"
+    INDUSTRY = "industry"
+    CUSTOMER = "customer"
+    SESSION = "session"
+
+
 @dataclass
 class PolicyResult:
     decision: PolicyDecision
     reason: Optional[str] = None
     approval_request_id: Optional[str] = None
     tenant_id: Optional[str] = None
+    scope: PolicyScope = PolicyScope.GLOBAL
     policy_version: Optional[int] = None
 
 
