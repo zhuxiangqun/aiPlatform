@@ -447,6 +447,8 @@
 | ErrorTranslator | `harness/infrastructure/gates/error_translator.py` | ✅ | 7级分类流水线 + 15种FailoverReason + 4 recovery flags + 智能重试 | 已合入 |
 | RateLimitTracker | `harness/infrastructure/gates/rate_limit_tracker.py` | ✅ | 滑动窗口 + 指数退避(max 120s) + asyncio.Lock | 已合入 |
 | SemanticGate | `harness/infrastructure/gates/semantic_gate.py` | ✅ | 3层语义合规验证(entity/value/relation) + warn/audit/block模式 | Phase 11.2 |
+| CompletionChecklistGate | `harness/infrastructure/gates/completion_gate.py` | ✅ | 2层完成度验证(固定模板+LLM深层) + 低置信度重试闭环 | Phase 15 |
+| 统一出口门控层 | `harness/integration.py` | ✅ | 8 gates在统一出口: Completion+SemanticGate+self_review+Hallucination+cache+pattern+memory+action_bridge | Phase 15 |
 | 本体感知路由 | `harness/execution/router.py` | ✅ | _ontology_routing_hint: 实体名匹配→邻居计数→graph/loop抉择 | Phase 11.1 |
 | CrossValidationGate | `harness/infrastructure/gates/cross_validation_gate.py` | ⚠️ | 设备↔工艺↔质量三层联动(框架占位, 等待≥50跨域连接) | Phase 11.3 |
 
