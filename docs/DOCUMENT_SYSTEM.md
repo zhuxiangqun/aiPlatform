@@ -282,11 +282,11 @@ python scripts/verify_docs.py
 
 | # | 问题 | 计划 |
 |---|------|------|
-| 1 | 竞品对比文件 7+ 个，多版本文档 | 归档旧版到 `archive/`，保留 `docs/architecture/comparison.md` 为唯一入口 |
-| 2 | Platform 文档 56% 为骨架占位 | 长期渐进补充，添加 `draft_date` 标记 |
-| 3 | `docs/design/` 下部分文件未标注 `last_synced` | 渐进标注 |
+| 1 | Platform 文档 9 个骨架占位（已加 `draft_date` 生命周期） | 长期渐进补充内容 |
+| 2 | `docs/design/` 下部分文件未标注 `last_synced` | 渐进标注 |
+| 3 | `docs/architecture/` 4 个文件提及控制平面模块但未引用 PCP | 低优先级 — 这些是架构全景描述，非重复内容 |
 
 ---
 
 *最后更新: 2026-07-04*
-*版本: 1.0*
+*版本: 1.1*

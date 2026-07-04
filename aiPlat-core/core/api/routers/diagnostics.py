@@ -492,28 +492,8 @@ def _register_health_checks():
         # Runtime check — _check_core_runtime is at module level (verified).
         reg.register(SimpleHealthCheck("runtime", _check_core_runtime, Severity.CRITICAL))
         reg.register(SimpleHealthCheck("doc_sync", _check_doc_sync, Severity.HIGH))
-        # Remaining _check_* functions are local closures inside run_all_diagnostics().
-        # Each registration is individually try/except'd to gracefully skip missing ones
-        # while allowing any module-level functions to register successfully.
-        # They still run as part of the full diagnostics report via run_all_diagnostics().
-        _check_fn_names = [
-            ("skill_lint",     "_check_skill_lint",       Severity.MEDIUM),
-            ("code_intel",     "_check_code_intel",       Severity.MEDIUM),
-            ("cross_lang",     "_check_cross_lang_links", Severity.MEDIUM),
-            ("route_coverage", "_check_route_coverage",   Severity.MEDIUM),
-            ("capability",     "_check_capability",       Severity.MEDIUM),
-            ("wiki_health",    "_check_wiki_health",      Severity.MEDIUM),
-            ("e2e_smoke",      "_check_e2e_smoke",        Severity.LOW),
-            ("doctor",         "_check_doctor",           Severity.HIGH),
-            ("governance",     "_check_governance",       Severity.HIGH),
-            ("frontend",       "_check_frontend",         Severity.MEDIUM),
-            ("llm_review",     "_check_llm_review",       Severity.LOW),
-            ("mcp",            "_check_mcp",              Severity.MEDIUM),
-        ]
-        for _name, _fn_name, _sev in _check_fn_names:
-            _fn = globals().get(_fn_name)
-            if _fn is not None and callable(_fn):
-                reg.register(SimpleHealthCheck(_name, _fn, _sev))
+
+        # Additional health checks are registered in run_all_diagnostics()
 
         # New ROSClaw-inspired modules
         class SandboxGateCheck(HealthCheck):

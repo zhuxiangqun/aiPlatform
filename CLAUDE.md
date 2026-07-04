@@ -8,7 +8,7 @@ language: zh-CN
 
 此文件是 **工作区兜底规约**，用于在系统执行链路中自动推断到 workspace root 时仍然能注入/强制基本规则。
 
-**能力全貌**：参见 [`AIPLAT_CAPABILITIES.md`](./AIPLAT_CAPABILITIES.md)（唯一真相源，464 项能力）
+**能力全貌**：参见 [`AIPLAT_CAPABILITIES.md`](./AIPLAT_CAPABILITIES.md)（唯一真相源，465 项能力）
 
 **强制规则——代码变更必须同步文档**：
 
@@ -230,7 +230,7 @@ scripts/ruff_f821_baseline.json        ← F821 基线快照（ratchet 对比基
     | S | — | `cancel_pipeline` no-op stub | **✅ 已修复 (2026-06-29)** — 真实实现：append_run_event(cancel_requested) + cancel_queued_run + EventBus.publish。pipeline engine 主循环定期检查 is_cancel_requested()。 |
     | T | — | `set_knowledge_providers` no-op stub | **✅ 已修复 (2026-06-29)** — 真实实现：委托 kb_facade → kb_provider 的 4 个 setter 函数 (ingest_fn/query_fn/enqueue_fn/load_doc_kinds_fn)。 |
     | U | §40 | `auto_trigger.py` 4 处直接读 `AIPLAT_SFT_*_MODEL` env var | **已知例外 (2026-07-01)** — SFT 训练的目标模型是运维决策。已加 `# noqa: env-legacy` 注释标记，与 arch_guard_rules.yaml §40.2 `grep_exclude` 一致。验证：`grep -c 'env-legacy' auto_trigger.py` → 4。 |
-    | V | §76 | diagnostics.py 25 个 `_check_*` 函数定义在 `run_all_diagnostics()` 内部（4 缩进）而非模块级别 | **已知债务 (2026-07-03)** — 这些函数只能在 `run_all_diagnostics()` 内部调用，无法被 `_register_health_checks()` 注册。已用 `globals().get()` 模式替换 lambda 避免 NameError。需要渐进式迁移到模块级别。验证：`python3 -c "import ast; tree=ast.parse(open('aiPlat-core/core/api/routers/diagnostics.py').read()); nested=[n.name for n in ast.walk(tree) if isinstance(n,(ast.FunctionDef,ast.AsyncFunctionDef)) and n.name.startswith('_check_') and n.lineno>0]" | wc -l | xargs echo "nested count:"` |
+    | V | §76 | diagnostics.py 12 个 `_check_*` 函数引用在列表中但对应的嵌套函数已被移除 — 剩余 2 个模块级函数（`_check_core_runtime` + `_check_doc_sync`）正常通过 HealthCheckRegistry 注册。（2026-07-04 清理：移除 12 条死代码字符串引用。） |
 
     **验证命令（排查已知例外后）**：
     ```bash
