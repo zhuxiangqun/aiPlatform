@@ -222,3 +222,5 @@ Claude Code (闭源引擎+开源插件层)        OpenClaw (Gateway)
 *历史版本存档: `aiPlat_arch_vs_hermes.md` → `docs/archive/`*  
 *历史版本存档: `架构对照-aiPlat-vs-Hermes-vs-ClaudeCode-vs-OpenClaw.md` → `docs/archive/`*  
 *历史版本存档: `aiPlat-vs-hermes-vs-claude-code-vs-openclaw-architecture.md` → `docs/archive/`*
+
+> 参见：[私有控制平面 — aiPlat 四层防御体系](articles/private-control-plane.md) 了解更多 PolicyGate/ApprovalGate 的设计细节。

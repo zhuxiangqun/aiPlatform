@@ -333,3 +333,5 @@ class StrategyAgent:
 | 🎯 协调员 | 系统自动 | 每次调度 |
 | 终端用户 | `UserWorkbench` | 日常 |
 | 新客户 | `OnboardingWizard` | 一次性 |
+
+> 参见：[私有控制平面 — aiPlat 四层防御体系](articles/private-control-plane.md) 了解更多 PolicyGate/ApprovalGate 的设计细节。
