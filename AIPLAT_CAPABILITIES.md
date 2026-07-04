@@ -258,6 +258,8 @@
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
 | prompt_auditor | `harness/audit/prompt_auditor.py` | ✅ | 自动同步 | 已合入 |
+| semantic_gate | `harness/infrastructure/gates/semantic_gate.py` | ✅ | 自动同步 | 已合入 |
+| cross_validation_gate | `harness/infrastructure/gates/cross_validation_gate.py` | ✅ | 自动同步 | 已合入 |
 |------|------|:---:|------|------|
 | PolicyGate | `harness/infrastructure/gates/policy_gate.py` | ✅ | 统一权限检查 + 架构边界实时拦截 | 已合入 |
 | ApprovalGate | `harness/infrastructure/approval/manager.py` | ✅ | approve/deny/pending，双门禁 | 已合入 |
@@ -437,6 +439,9 @@
 | SandboxGate | `harness/infrastructure/gates/sandbox_gate.py` | ✅ | 沙箱执行门 + 结果校验 | 已合入 |
 | ErrorTranslator | `harness/infrastructure/gates/error_translator.py` | ✅ | 7级分类流水线 + 15种FailoverReason + 4 recovery flags + 智能重试 | 已合入 |
 | RateLimitTracker | `harness/infrastructure/gates/rate_limit_tracker.py` | ✅ | 滑动窗口 + 指数退避(max 120s) + asyncio.Lock | 已合入 |
+| SemanticGate | `harness/infrastructure/gates/semantic_gate.py` | ✅ | 3层语义合规验证(entity/value/relation) + warn/audit/block模式 | Phase 11.2 |
+| 本体感知路由 | `harness/execution/router.py` | ✅ | _ontology_routing_hint: 实体名匹配→邻居计数→graph/loop抉择 | Phase 11.1 |
+| CrossValidationGate | `harness/infrastructure/gates/cross_validation_gate.py` | ⚠️ | 设备↔工艺↔质量三层联动(框架占位, 等待≥50跨域连接) | Phase 11.3 |
 
 ---
 
@@ -747,12 +752,12 @@
 | 编排系统 | 4 | 0 | 4 |
 | 管理 & 质量 | 21 | 0 | 21 |
 | 编排层 | 17 | 0 | 17 |
-| **总计** | **496** | **0** | **496** |
+| **总计** | **502** | **0** | **502** |
 
 ---
 
 *最后更新: 2026-07-04*
-*版本: 12.5 · 28章 · 500项能力 · 500✅ · P0-P3 hermès-agent全量吸收+SQLite连接池化+TrendDetector*
+*版本: 12.5 · 28章 · 504项能力 · 504✅ · P0-P3 hermès-agent全量吸收+SQLite连接池化+TrendDetector*
 
 **自检命令**：
 ```bash
