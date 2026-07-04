@@ -138,6 +138,7 @@
 | sql_ontology | `harness/knowledge/sql_ontology.py` | ✅ | 自动同步 | 已合入 |
 | wiki_quality_monitor | `harness/knowledge/wiki_quality_monitor.py` | ✅ | 自动同步 | 已合入 |
 | active_synthesis | `harness/knowledge/active_synthesis.py` | ✅ | 自动同步 | 已合入 |
+| code_entropy_detector | `harness/knowledge/code_entropy_detector.py` | ✅ | 自动同步 | 已合入 |
 |------|------|:---:|------|------|
 | 统一知识检索 | `harness/syscalls/retrieval.py:569` | ✅ | 并行 Wiki + KB，RRF 三路融合 | 已合入 |
 | KB 文档检索 | `harness/syscalls/retrieval.py:39` | ✅ | hybrid: LIKE + FTS5 + FAISS 向量 | 已合入 |
@@ -449,6 +450,8 @@
 | SemanticGate | `harness/infrastructure/gates/semantic_gate.py` | ✅ | 3层语义合规验证(entity/value/relation) + warn/audit/block模式 | Phase 11.2 |
 | CompletionChecklistGate | `harness/infrastructure/gates/completion_gate.py` | ✅ | 2层完成度验证(固定模板+LLM深层) + 低置信度重试闭环 | Phase 15 |
 | 统一出口门控层 | `harness/integration.py` | ✅ | 8 gates在统一出口: Completion+SemanticGate+self_review+Hallucination+cache+pattern+memory+action_bridge | Phase 15 |
+| 工具白名单 | `llm_profile.yaml` + `model_tier_router.py` + `integration.py` | ✅ | T1-T5每层max_tools限缩, 低复杂度→少工具 | Phase 16 |
+| 代码熵检测器 | `harness/knowledge/code_entropy_detector.py` | ✅ | 文件长度/函数数/TODO标记 3维度评分, GET /diagnostics/code-entropy | Phase 17 |
 | 本体感知路由 | `harness/execution/router.py` | ✅ | _ontology_routing_hint: 实体名匹配→邻居计数→graph/loop抉择 | Phase 11.1 |
 | CrossValidationGate | `harness/infrastructure/gates/cross_validation_gate.py` | ⚠️ | 设备↔工艺↔质量三层联动(框架占位, 等待≥50跨域连接) | Phase 11.3 |
 
@@ -761,7 +764,7 @@
 | 编排系统 | 4 | 0 | 4 |
 | 管理 & 质量 | 21 | 0 | 21 |
 | 编排层 | 17 | 0 | 17 |
-| **总计** | **511** | **1** | **512** |
+| **总计** | **514** | **1** | **515** |
 
 ---
 
