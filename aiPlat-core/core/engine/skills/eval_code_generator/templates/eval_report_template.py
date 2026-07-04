@@ -5,6 +5,8 @@ Target Agent: {agent_id}
 Generated: {timestamp}
 """
 
+# ruff: noqa: F821
+
 # ── Summary ──
 TOTAL_TRACES = {total_traces}
 SETUP_TRAPS = {setup_traps}

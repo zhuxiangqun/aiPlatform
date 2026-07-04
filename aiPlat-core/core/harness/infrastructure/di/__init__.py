@@ -218,3 +218,9 @@ def create_container_with_defaults() -> DIContainer:
     )
     
     return builder.build()
+
+
+def create_lifecycle_manager():
+    """Create a LifecycleManager instance for DI container registration."""
+    from core.harness.infrastructure.di.lifecycle import LifecycleManager as _LM
+    return _LM()

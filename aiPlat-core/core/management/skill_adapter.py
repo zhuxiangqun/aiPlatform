@@ -213,7 +213,7 @@ async def execute(params: dict) -> dict:
     if not skill_md.exists():
         # No SKILL.md — create minimal one with original body
         body = f"Auto-generated skill for {skill_name}.\nScript: {script_rel}"
-        new_md = _build_enriched_skill_md(skill_name, desc, body, script_rel, root)
+        new_md = _build_enriched_skill_md(skill_name, desc, body, script_rel, root)  # noqa: F821
         skill_md.write_text(new_md, encoding="utf-8")
         return {"adapted": True, "pattern": "script_based", "actions": ["generated_handler_py", "created_skill_md"]}
 

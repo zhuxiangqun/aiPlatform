@@ -133,7 +133,7 @@ async def summarize_document(
 
     citations = []
     try:
-        aconn = _mk_conn(_db_path)
+        aconn = create_infra_database_client(_db_path)
         try:
             rows = aconn.execute(
                 "SELECT page_idx, local_path FROM assets WHERE tenant_id=? AND doc_id=? AND kind='page_image'",

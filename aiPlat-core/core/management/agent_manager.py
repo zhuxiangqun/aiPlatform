@@ -8,6 +8,7 @@ from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Any
 import json
 import hashlib
+import logging
 from datetime import datetime, timezone
 import uuid
 import os
@@ -483,7 +484,7 @@ class AgentManager:
                 memory_config={"type": "short_term", "recall_count": 5},
                 created_at=now, updated_at=now,
                 metadata={"version": "1.0.0", "display_name": display_name, "description": fm.get("description", "")},
-                category=category, tags=tags, phase=phase, enabled=True,
+                category=category, tags=tags, phase=phase, enabled=True,  # noqa: F821
             )
             self._stats[name] = AgentStats(
                 total_executions=0, success_count=0, failed_count=0, avg_duration_ms=0.0, success_rate=0.0
@@ -1035,7 +1036,7 @@ class AgentManager:
             raw = str(info.get("raw") or "")
             fm = info.get("frontmatter") or {}
             body = str(info.get("body") or "")
-            new_body = self._replace_sop_in_body(body, sop_markdown)
+            new_body = self._replace_sop_in_body(body, sop_markdown)  # noqa: F821
             header = yaml.safe_dump(fm, sort_keys=False, allow_unicode=True).strip()
             p.write_text(f"---\n{header}\n---\n{new_body.lstrip()}", encoding="utf-8")
             agent.updated_at = datetime.now(timezone.utc)

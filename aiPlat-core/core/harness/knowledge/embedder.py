@@ -13,6 +13,7 @@ Model selection: create_adapter("embedding") → InfraEmbeddingAdapter
 from __future__ import annotations
 
 import hashlib
+import logging
 import math
 import os
 from typing import Any, List, Optional

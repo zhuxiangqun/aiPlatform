@@ -7,6 +7,7 @@ Use builder_project_service.py for all new development.
 from __future__ import annotations
 
 import json
+import logging
 import os
 import re
 import uuid

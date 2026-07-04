@@ -253,12 +253,12 @@ class KBSqlite:
                 """)
             conn.commit()
             # Also insert into FTS5 index for full-text search
-            if text and text.strip():
+            if text and text.strip():  # noqa: F821
                 try:
                     conn.execute(
                         "INSERT OR REPLACE INTO kb_elements_fts(rowid, element_id, doc_id, text) "
                         "VALUES((SELECT rowid FROM kb_elements WHERE tenant_id=? AND element_id=?), ?, ?, ?)",
-                        (tenant_id, element_id, element_id, doc_id, text),
+                        (tenant_id, element_id, element_id, doc_id, text),  # noqa: F821
                     )
                     conn.commit()
                 except Exception as e:

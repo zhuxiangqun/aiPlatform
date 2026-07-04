@@ -244,6 +244,7 @@ async def create_workspace_tool(request: dict, http_request: Request, rt: Runtim
         tool_def = getattr(mod, "TOOL_DEF", None)
         if tool_def and isinstance(tool_def, dict):
             from core.apps.tools.discovery import _make_discovery_tool
+            registry = get_tool_registry()
             entry = {"id": tool_def.get("id", name), "name": tool_def.get("name", name),
                      "description": tool_def.get("description", ""),
                      "parameters": tool_def.get("parameters", {}),

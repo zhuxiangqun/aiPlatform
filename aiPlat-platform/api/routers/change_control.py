@@ -861,7 +861,8 @@ async def apply_engine_skill_md_patch(change_id: str, http_request: Request, _au
         else:
             try:
                 from core.api.core_facade import scan_security
-                # VulnerabilitySeverity re-exported via core_facade
+                from core.apps.quality.scanner import create_security_scanner
+                from core.apps.quality.types import VulnerabilitySeverity
 
                 scanner = create_security_scanner(severity_threshold=VulnerabilitySeverity.MEDIUM)
                 updated_raw = proposed_result.get("updated_raw") if isinstance(proposed_result, dict) else None

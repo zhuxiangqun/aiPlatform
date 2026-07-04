@@ -5,6 +5,8 @@ import json as _json
 import logging
 import time
 import uuid
+from core.harness.infrastructure.db_utils import get_db_connection
+
 
 from fastapi import APIRouter, HTTPException
 from core.harness.kernel.runtime import get_kernel_runtime
@@ -36,8 +38,7 @@ async def list_test_cases(template_id: str = "", limit: int = 100, offset: int =
     import sqlite3
     db_path = store._config.db_path
     def _sync():
-        conn = sqlite3.connect(db_path); conn.row_factory = sqlite3.Row
-        try:
+        with get_db_connection(db_path) as conn:
             where, params = "", []
             if template_id:
                 where = " WHERE template_id=?"
@@ -49,8 +50,6 @@ async def list_test_cases(template_id: str = "", limit: int = 100, offset: int =
             ).fetchall()
             items = [dict(r) for r in rows]
             return {"total": total, "items": items}
-        finally:
-            conn.close()
     import anyio
     return await anyio.to_thread.run_sync(_sync)
 
@@ -66,8 +65,7 @@ async def create_test_case(req: PromptTestCaseCreate):
     case_id = f"tc-{_new_id().split('-')[1]}"
     now = time.time()
     def _sync():
-        conn = sqlite3.connect(db_path); conn.row_factory = sqlite3.Row
-        try:
+        with get_db_connection(db_path) as conn:
             conn.execute(
                 "INSERT INTO prompt_test_cases(id,template_id,name,variables,expected_keys,created_at) VALUES(?,?,?,?,?,?);",
                 (case_id, req.template_id, req.name, _json.dumps(req.variables, ensure_ascii=False),
@@ -75,8 +73,6 @@ async def create_test_case(req: PromptTestCaseCreate):
             conn.commit()
             row = conn.execute("SELECT * FROM prompt_test_cases WHERE id=?;", (case_id,)).fetchone()
             return dict(row) if row else {}
-        finally:
-            conn.close()
     import anyio
     return await anyio.to_thread.run_sync(_sync)
 
@@ -90,8 +86,7 @@ async def update_test_case(case_id: str, req: PromptTestCaseUpdate):
     import sqlite3
     db_path = store._config.db_path
     def _sync():
-        conn = sqlite3.connect(db_path); conn.row_factory = sqlite3.Row
-        try:
+        with get_db_connection(db_path) as conn:
             existing = conn.execute("SELECT * FROM prompt_test_cases WHERE id=?;", (case_id,)).fetchone()
             if not existing:
                 raise HTTPException(status_code=404, detail="Test case not found")
@@ -103,8 +98,6 @@ async def update_test_case(case_id: str, req: PromptTestCaseUpdate):
                 (name, variables, expected_keys, case_id))
             conn.commit()
             return {"status": "updated"}
-        finally:
-            conn.close()
     import anyio
     return await anyio.to_thread.run_sync(_sync)
 
@@ -118,13 +111,10 @@ async def delete_test_case(case_id: str):
     import sqlite3
     db_path = store._config.db_path
     def _sync():
-        conn = sqlite3.connect(db_path); conn.row_factory = sqlite3.Row
-        try:
+        with get_db_connection(db_path) as conn:
             conn.execute("DELETE FROM prompt_test_cases WHERE id=?;", (case_id,))
             conn.commit()
             return {"status": "deleted"}
-        finally:
-            conn.close()
     import anyio
     return await anyio.to_thread.run_sync(_sync)
 
@@ -144,8 +134,7 @@ async def create_eval_run(req: PromptEvalRunCreate):
 
     # Load test cases and template versions
     def _load():
-        conn = sqlite3.connect(db_path); conn.row_factory = sqlite3.Row
-        try:
+        with get_db_connection(db_path) as conn:
             # Get test cases
             case_rows = []
             if req.case_ids:
@@ -165,8 +154,6 @@ async def create_eval_run(req: PromptEvalRunCreate):
                 "SELECT * FROM prompt_app_templates WHERE id=?;", (req.template_id,)
             ).fetchone()
             return case_rows, tpl
-        finally:
-            conn.close()
 
     import anyio
     case_rows, tpl = await anyio.to_thread.run_sync(_load)
@@ -179,15 +166,12 @@ async def create_eval_run(req: PromptEvalRunCreate):
     # Create run record
     total = len(case_rows)
     def _init_run():
-        conn = sqlite3.connect(db_path); conn.row_factory = sqlite3.Row
-        try:
+        with get_db_connection(db_path) as conn:
             conn.execute(
                 "INSERT INTO prompt_eval_runs(id,template_id,version_a,version_b,model,status,total_cases,results_json,created_at) VALUES(?,?,?,?,?,?,?,?,?);",
                 (run_id, req.template_id, req.version_a, req.version_b, req.model,
                  "running", total, _json.dumps([]), now))
             conn.commit()
-        finally:
-            conn.close()
 
     await anyio.to_thread.run_sync(_init_run)
 
@@ -246,14 +230,11 @@ async def _run_evaluation(run_id: str, req: PromptEvalRunCreate, case_rows, tpl,
         avg_a = round(scores_a / max(total, 1), 1)
 
         def _save():
-            conn = sqlite3.connect(db_path); conn.row_factory = sqlite3.Row
-            try:
+            with get_db_connection(db_path) as conn:
                 conn.execute(
                     "UPDATE prompt_eval_runs SET status='done', results_json=?, a_wins=?, b_wins=?, draws=?, avg_score_a=?, avg_score_b=?, finished_at=? WHERE id=?;",
                     (_json.dumps(results, ensure_ascii=False), a_wins, b_wins, draws, avg_a, 0, time.time(), run_id))
                 conn.commit()
-            finally:
-                conn.close()
         import anyio
         await anyio.to_thread.run_sync(_save)
     except Exception as e:
@@ -269,8 +250,7 @@ async def list_eval_runs(template_id: str = "", limit: int = 20, offset: int = 0
     import sqlite3
     db_path = store._config.db_path
     def _sync():
-        conn = sqlite3.connect(db_path); conn.row_factory = sqlite3.Row
-        try:
+        with get_db_connection(db_path) as conn:
             where, params = "", []
             if template_id:
                 where = " WHERE template_id=?"
@@ -280,8 +260,6 @@ async def list_eval_runs(template_id: str = "", limit: int = 20, offset: int = 0
                 params + [limit, offset]
             ).fetchall()
             return [dict(r) for r in rows]
-        finally:
-            conn.close()
     import anyio
     return await anyio.to_thread.run_sync(_sync)
 
@@ -295,13 +273,10 @@ async def get_eval_run(run_id: str):
     import sqlite3
     db_path = store._config.db_path
     def _sync():
-        conn = sqlite3.connect(db_path); conn.row_factory = sqlite3.Row
-        try:
+        with get_db_connection(db_path) as conn:
             row = conn.execute("SELECT * FROM prompt_eval_runs WHERE id=?;", (run_id,)).fetchone()
             if not row:
                 raise HTTPException(status_code=404, detail="Eval run not found")
             return dict(row)
-        finally:
-            conn.close()
     import anyio
     return await anyio.to_thread.run_sync(_sync)

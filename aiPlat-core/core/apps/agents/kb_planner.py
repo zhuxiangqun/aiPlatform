@@ -10,6 +10,7 @@ from typing import Any, Dict, List, Optional
 
 from core.harness.interfaces import AgentConfig, AgentContext, AgentResult, AgentStatus
 from core.harness.knowledge.cost_estimator import estimate_query_cost
+from core.harness.utils.model_injection import best_model_for_purpose
 
 
 class KBPlannerAgent:

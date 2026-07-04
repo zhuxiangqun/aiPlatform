@@ -20,7 +20,10 @@ from __future__ import annotations
 
 import base64
 import json
+import logging
 import os
+import shutil
+import time
 from dataclasses import dataclass
 from typing import Any, Dict, Optional, List
 
@@ -872,7 +875,7 @@ async def kb_reindex(request: Request):
             text = str(r["text"] or "")
             if not text.strip():
                 continue
-            vec = await embed_text(text[:4000])
+            vec = await _embed_text(text[:4000])
             from core.api.facades.kb_facade import get_embedding_model_name
             emb_model = get_embedding_model_name()
             conn.execute(
@@ -1389,6 +1392,16 @@ class DocIngestRequest(BaseModel):
 class DocRefreshRequest(BaseModel):
     force: bool = False
 
+class KBCollectionCreateRequest(BaseModel):
+    collection_id: Optional[str] = ""
+    name: Optional[str] = ""
+
+class KBQueryRequest(BaseModel):
+    collection_id: Optional[str] = ""
+    question: Optional[str] = ""
+    year: Optional[int] = None
+    limit: Optional[int] = 10
+
 
 @app.post("/api/v1/documents/preview", response_model=Dict[str, Any])
 @app.post("/platform/documents/preview", response_model=Dict[str, Any])
@@ -1617,10 +1630,10 @@ async def _auto_wiki_update(doc_id: str, file_path: str):
     try:
         from core.api.core_facade import wiki_auto_update
         from core.api.facades.service_facade import llm_generate
-        await wiki_auto_update(doc_id, file_path)
+        result = await wiki_auto_update(doc_id, file_path)
     except Exception as e:
         logging.warning(str(e), exc_info=True)
-    return {"output": data}
+    return {"output": result or ""}
 
 
 @app.get("/api/v1/documents", response_model=Dict[str, Any])
@@ -1742,6 +1755,7 @@ async def documents_categories(request: Request, collection_id: Optional[str] = 
             cls = meta.get("classification") or {}
             cat = str(cls.get("content_category") or "general")
             content_count[cat] = content_count.get(cat, 0) + 1
+        from core.api.core_facade import CATEGORY_LABELS
         content_cats = [
             {"key": k, "label": CATEGORY_LABELS.get(k, k), "count": v}
             for k, v in sorted(content_count.items(), key=lambda x: -x[1])

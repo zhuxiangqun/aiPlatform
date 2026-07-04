@@ -9,7 +9,13 @@ Heavy lifting delegated to sub-modules (extracted for SRP per §5.75):
   - .graph_injector.{inject_graph_context,inject_memory_reminders}
 """
 from typing import Any, Dict, List, Optional, Tuple
-import json, os, time, re, logging
+import asyncio
+import json
+import logging
+import os
+import re
+import time
+import uuid
 
 from core.harness.memory.compression import _background_tool_summarize
 
@@ -296,6 +302,7 @@ class ReActLoop(BaseLoop):
                             except Exception:
                                 cur_id = None
                             if cur_id:
+                                from core.harness.restatement.run_state import set_todo_status
                                 state.context["run_state"] = set_todo_status(rs, todo_id=cur_id, status="completed", source="auto_complete_on_done")
                                 await self._persist_run_state(state, source="auto_complete_on_done", extra={"todo_id": cur_id})
                 except Exception as e:
@@ -1231,6 +1238,7 @@ class ReActLoop(BaseLoop):
                         perm = None; exec_perm = None
                         try:
                             # DI: resolve_skill_permission via SkillPermissionResolver (see integration.py _ensure_di), resolve_executable_skill_permission
+                            from core.api.core_facade import resolve_skill_permission, resolve_executable_skill_permission
                             perm = resolve_skill_permission(nm)
                             if skill_kind == "executable":
                                 exec_perm = resolve_executable_skill_permission(nm)

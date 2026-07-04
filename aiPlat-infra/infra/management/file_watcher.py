@@ -9,6 +9,7 @@ Infra-agnostic: all paths are env-var-driven, no application-specific defaults.
 
 from __future__ import annotations
 
+import logging
 import os
 import threading
 import time

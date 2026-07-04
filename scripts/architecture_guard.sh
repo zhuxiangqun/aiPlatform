@@ -114,6 +114,14 @@ echo ""; sep; echo "  CONSTITUTION TESTS: prompt_loading + skill_config + agent_
 echo ""; sep; echo "  PHASE CHECK: dead code + wiring tests + self-annotated"; sep
 bash scripts/phase_check.sh || FAIL=1
 
+# ── Frontmatter validation (YAML parse errors catch startup bugs like missing ---) ──
+echo ""; sep; echo "  FRONTMATTER: YAML frontmatter parse validation (AGENT.md / SKILL.md / CLAUDE.md)"; sep
+"$GP_PY" scripts/validate_frontmatter.py --quick || FAIL=1
+
+# ── ruff F821 ratchet (new undefined-name violations = block; existing = baseline) ──
+echo ""; sep; echo "  F821 RATCHET: undefined-name detection (new violations = block)"; sep
+bash scripts/ruff_f821_ratchet.sh || FAIL=1
+
 # ── Aggregate ──
 echo ""; sep
 if [ "$FAIL" -ne 0 ]; then

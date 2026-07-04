@@ -82,6 +82,7 @@ const DiagnosticsLinks = lazy(() => import('./pages/Diagnostics/Links/Links'));
 const DiagnosticsRuns = lazy(() => import('./pages/Diagnostics/Runs/Runs'));
 const DiagnosticsAudit = lazy(() => import('./pages/Diagnostics/Audit/Audit'));
 const DiagnosticsPolicies = lazy(() => import('./pages/Diagnostics/Policies/Policies'));
+const DiagnosticsLLMReview = lazy(() => import('./pages/Diagnostics/LLMReview'));
 const DiagnosticsSyscalls = lazy(() => import('./pages/Diagnostics/Syscalls'));
 const DiagnosticsSmoke = lazy(() => import('./pages/Diagnostics/Smoke/Smoke'));
 const DiagnosticsBrowserTest = lazy(() => import('./pages/Diagnostics/BrowserTest/BrowserTestPanel'));
@@ -197,6 +198,7 @@ const router = createBrowserRouter([
       { path: 'app/apps/:id/chat', element: withSuspense(AppChatPage) },
       { path: 'app/diagrams', element: withSuspense(AppDiagrams) },
       { path: 'diagnostics', element: withSuspense(DiagnosticsHome) },
+      { path: 'diagnostics/llm-review', element: withSuspense(DiagnosticsLLMReview) },
       { path: 'diagnostics/doctor', element: withSuspense(DiagnosticsDoctor) },
       { path: 'diagnostics/traces', element: withSuspense(DiagnosticsTraces) },
       { path: 'diagnostics/traces/:traceId', element: withSuspense(DiagnosticsTraceDetail) },

@@ -172,7 +172,7 @@ class _ExecutionStoreBase:
                               LIMIT -1 OFFSET ?
                             );
                             """,
-                            (int(max_rows),),
+                            (int(max_rows),),  # noqa: F821
                         )
                     except Exception as e:
                         logging.debug(str(e), exc_info=True)

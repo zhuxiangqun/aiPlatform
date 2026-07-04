@@ -501,7 +501,7 @@ class WikiPageRetriever(IRetriever):
                                     entry=c_entry, score=0.25, highlight=c_highlight,
                                     source_page=clean_target,
                                     source_category="contradictions",
-                                    evidence_range="contradiction_with:" + result.entry.title[:40],
+                                    evidence_range="contradiction_with:" + result.entry.title[:40],  # noqa: F821
                                 ))
                                 self._entries[c_entry.id] = c_entry
                                 seen_titles.add(clean_target)

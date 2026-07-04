@@ -23,10 +23,10 @@ skip_when: 用户仅询问最佳实践而不触发审查
 
 permissions:
   - llm:generate
-  - tool:file_read
-  - tool:file_edit
-  - tool:code_search
-  - tool:git
+  - sys:file_read
+  - sys:file_edit
+  - sys:code_search
+  - sys:exec_cmd
 
 effects:
   - type: read
@@ -51,8 +51,8 @@ input_schema:
     enum: [security, performance, style, comprehensive]
     description: >
       审查维度。security=全维度+面板模式可用, comprehensive=全维度单引擎,
-      style=仅P2风格检查, performance=性能反模式
-   panel:
+       style=仅P2风格检查, performance=性能反模式
+  panel:
     type: boolean
     default: false
     description: >

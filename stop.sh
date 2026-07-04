@@ -11,25 +11,20 @@ echo "============================================================"
 stop_port() {
     local port="$1"
     local name="$2"
-    local pid
-    # Use explicit TCP port lookup (compatible with macOS and Linux)
-    pid=$(lsof -i TCP:$port -t 2>/dev/null | head -1)
-    if [ -n "$pid" ]; then
-        kill $pid 2>/dev/null
+    local pids
+    # Kill ALL processes tied to this port (LISTEN + ESTABLISHED workers)
+    pids=$(lsof -ti :$port 2>/dev/null | grep -v "^$(pgrep -x 'clash-meta' 2>/dev/null || echo '99999')$" || true)
+    if [ -n "$pids" ]; then
+        for pid in $pids; do
+            kill $pid 2>/dev/null
+        done
         sleep 0.5
-        kill -9 $pid 2>/dev/null 2>/dev/null
+        for pid in $pids; do
+            kill -9 $pid 2>/dev/null 2>/dev/null
+        done
         echo "✓ 已停止 $name (端口 $port)"
     else
-        # Retry with alternative lsof syntax
-        pid=$(lsof -ti :$port 2>/dev/null | head -1)
-        if [ -n "$pid" ]; then
-            kill $pid 2>/dev/null
-            sleep 0.5
-            kill -9 $pid 2>/dev/null 2>/dev/null
-            echo "✓ 已停止 $name (端口 $port)"
-        else
-            echo "  $name (端口 $port) 未运行"
-        fi
+        echo "  $name (端口 $port) 未运行"
     fi
 }
 

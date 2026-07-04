@@ -22,12 +22,12 @@ class AdapterInfo:
     status: str  # active, disabled, error
     api_key: str
     api_base_url: str
-    organization_id: Optional[str]
-    models: List[Dict[str, Any]]
-    rate_limit: Dict[str, Any]
-    retry_config: Dict[str, Any]
     created_at: datetime
     updated_at: datetime
+    organization_id: Optional[str] = None
+    models: List[Dict[str, Any]] = field(default_factory=list)
+    rate_limit: Dict[str, Any] = field(default_factory=dict)
+    retry_config: Dict[str, Any] = field(default_factory=dict)
     metadata: Dict[str, Any] = field(default_factory=dict)
 
 

@@ -80,6 +80,8 @@ def _init_platform_runtime() -> None:
         execution_store=store,
         workspace_agent_manager=ws_agent_mgr,
     )
+    from core.harness.kernel.runtime import set_kernel_runtime
+    from core.harness.integration import get_harness
     set_kernel_runtime(rt)
     harness = get_harness()
     harness.attach_runtime(rt)

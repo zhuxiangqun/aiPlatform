@@ -15,11 +15,14 @@ Architecture:
 from __future__ import annotations
 
 import json as _json
+import logging
 import os
 import sqlite3
 import time
 from dataclasses import asdict, dataclass, field
 from typing import Any, Dict, List, Optional
+from core.harness.utils.model_injection import best_model_for_purpose
+from core.harness.utils.model_injection import best_model_for_purpose as _best_model_for_purpose
 
 
 # ── Schemas ──

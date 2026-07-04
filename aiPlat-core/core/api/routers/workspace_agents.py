@@ -18,6 +18,7 @@ from core.api.utils.governance import gate_error_envelope, ui_url
 from core.harness.integration import KernelRuntime
 from core.harness.kernel.runtime import get_kernel_runtime
 from core.harness.syscalls.llm import sys_llm_generate
+from core.schemas_agents import AgentAutoFillBatchRequest, AgentAutoFillBatchResponse
 from core.schemas_agents import AgentCreateRequest, AgentUpdateRequest, AgentAutoFillRequest, AgentAutoFillResponse, RoleDefinitionResponse
 import asyncio as _asyncio
 
@@ -807,7 +808,7 @@ async def _do_auto_fill(req: AgentAutoFillRequest) -> AgentAutoFillResponse:
 
 
 @router.post("/workspace/agents/auto-fill-batch", response_model=Dict[str, Any])
-async def agent_auto_fill_batch(req: "AgentAutoFillBatchRequest") -> "AgentAutoFillBatchResponse":
+async def agent_auto_fill_batch(req: AgentAutoFillBatchRequest) -> AgentAutoFillBatchResponse:
     u"""Batch AI auto-fill: single LLM call for multiple agents."""
     from core.schemas_agents import AgentAutoFillBatchResponse as _BatchResp, AgentAutoFillResponse as _FillResp
     import json as _json, re as _re

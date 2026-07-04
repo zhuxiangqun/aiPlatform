@@ -22,6 +22,7 @@ from typing import Any, AsyncIterator, Dict, List, Optional
 
 from fastapi import APIRouter, HTTPException, Query
 from starlette.responses import StreamingResponse
+from core.harness.utils.model_injection import best_model_for_purpose
 
 router = APIRouter(prefix="/knowledge-graph")
 

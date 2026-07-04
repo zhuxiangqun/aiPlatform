@@ -4,6 +4,8 @@ Workbench Client - Web UI Client
 Web 管理界面的前端组件（React 组件占位）。
 """
 
+from typing import Any
+
 
 class WorkbenchClient:
     """工作台客户端"""

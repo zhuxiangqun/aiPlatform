@@ -4,6 +4,7 @@ Error Handler - 错误处理实现
 文档位置：docs/utils/index.md
 """
 
+import logging
 import warnings
 import uuid
 from datetime import datetime, timezone

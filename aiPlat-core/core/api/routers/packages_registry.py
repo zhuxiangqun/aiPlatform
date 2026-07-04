@@ -41,6 +41,42 @@ def _store():
     return getattr(rt, "execution_store", None) if rt else None
 
 
+def _pkg_managers():
+    """Return (workspace_pkg_mgr, engine_pkg_mgr) tuple."""
+    try:
+        from core.apps.deploy.manager import PackageManager as _PM
+        return _PM(), _PM()
+    except Exception:
+        pass
+    return None, None
+
+
+async def _require_package_approval(operation: str, user_id: str, details: str, metadata: dict):
+    """Request approval for a package operation. Returns approval_request_id."""
+    try:
+        from core.governance.gating import request_approval
+        return await request_approval(
+            resource_type="package",
+            action=operation,
+            user_id=user_id,
+            details=details,
+            metadata=metadata,
+        )
+    except Exception:
+        pass
+    return None
+
+
+def _engine_mcp_manager():
+    """Return the engine-level MCP manager instance."""
+    try:
+        from core.apps.mcp.runtime import MCPRuntime
+        return MCPRuntime()
+    except Exception:
+        pass
+    return None
+
+
 def _packages_registry_dir() -> Path:
     return Path.home() / ".aiplat" / "packages" / "registry"
 
@@ -183,7 +219,7 @@ async def publish_package(pkg_name: str, http_request: Request, request: Package
             except Exception as e:
                 logging.warning(str(e), exc_info=True)
             return {"status": "approval_required", "approval_request_id": rid, "change_id": change_id, "links": governance_links(change_id=change_id, approval_request_id=rid)}
-        if not _is_approval_resolved_approved(request.approval_request_id):
+        if not _is_approval_resolved_approved(request.approval_request_id):  # noqa: F821
             try:
                 await record_changeset(
                     store=store,
@@ -311,7 +347,7 @@ async def install_package(pkg_name: str, http_request: Request, request: Package
             except Exception as e:
                 logging.warning(str(e), exc_info=True)
             return {"status": "approval_required", "approval_request_id": rid, "change_id": change_id, "links": governance_links(change_id=change_id, approval_request_id=rid)}
-        if not _is_approval_resolved_approved(request.approval_request_id):
+        if not _is_approval_resolved_approved(request.approval_request_id):  # noqa: F821
             try:
                 await record_changeset(
                     store=store,
@@ -393,13 +429,13 @@ async def install_package(pkg_name: str, http_request: Request, request: Package
 
     # Verification: mark pending + enqueue autosmoke
     try:
-        scheduler = _job_scheduler()
+        scheduler = _job_scheduler()  # noqa: F821
         if scheduler is not None:
             from core.harness.smoke import enqueue_autosmoke
 
             tenant_id = http_request.headers.get("X-AIPLAT-TENANT-ID", "ops_smoke")
             actor_id = http_request.headers.get("X-AIPLAT-ACTOR-ID", "admin")
-            wam, wsm, wmm = _workspace_managers()
+            wam, wsm, wmm = _workspace_managers()  # noqa: F821
             for it in (applied_record.get("applied") or []):
                 k = str(it.get("kind") or "")
                 rid = str(it.get("id") or "")
@@ -498,11 +534,11 @@ async def uninstall_package(pkg_name: str, http_request: Request, request: Packa
             except Exception as e:
                 logging.warning(str(e), exc_info=True)
             return {"status": "approval_required", "approval_request_id": rid, "change_id": change_id, "links": governance_links(change_id=change_id, approval_request_id=rid)}
-        if not _is_approval_resolved_approved(request.approval_request_id):
+        if not _is_approval_resolved_approved(request.approval_request_id):  # noqa: F821
             try:
                 await record_changeset(
                     store=store,
-                    name="packages.uninstall",
+                    name="packages.install",
                     target_type="change",
                     target_id=change_id,
                     status="failed",

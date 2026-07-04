@@ -1,14 +1,18 @@
 from __future__ import annotations
 
+import asyncio
 import hashlib
+import logging
 import os
+
+logger = logging.getLogger(__name__)
 import re
 import shutil
 import threading
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from core.utils.ids import new_prefixed_id
 
@@ -144,7 +148,7 @@ def enqueue_ingest(
                 source_uri=file_path,
                 kind=kind,
             status="ingesting",
-            content_hash=new_hash,
+            content_hash=new_hash,  # noqa: F821
                 meta={"ocr_lang": ocr_lang, "ocr_engine": ocr_engine, "dpi": dpi, "max_pages": max_pages, "last_job_id": job_id},
             )
             out = ingest_document(

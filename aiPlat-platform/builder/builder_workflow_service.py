@@ -197,4 +197,4 @@ class WorkflowService:
         return {"project_id": proj.project_id, "workflow_id": workflow_id, "run_id": proj.project_id}
 
     async def list_runs(self, workflow_id: str) -> list:
-        return list_workflow_runs(workflow_id)
+        return list_workflow_runs(workflow_id)  # noqa: F821

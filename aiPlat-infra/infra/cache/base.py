@@ -1,6 +1,8 @@
 from abc import ABC, abstractmethod
 from typing import Optional, List, Dict, Any
 
+from .schemas import CacheStats
+
 
 class CacheClient(ABC):
     @abstractmethod
@@ -54,5 +56,5 @@ class CacheManager(ABC):
         pass
 
     @abstractmethod
-    async def get_stats(self) -> "CacheStats":
+    async def get_stats(self) -> CacheStats:
         pass

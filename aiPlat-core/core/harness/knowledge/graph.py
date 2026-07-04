@@ -98,6 +98,7 @@ def _store_triples(tenant_id: str, doc_id: str, triples: list) -> None:
         return
     try:
         conn = sqlite3.connect(db_path)
+        conn.execute("PRAGMA busy_timeout=3000")
         _ensure_graph_schema(conn)
         for t in triples:
             if isinstance(t, dict):
@@ -130,6 +131,7 @@ def graph_enhance_query(
         return []
     try:
         conn = sqlite3.connect(db_path)
+        conn.execute("PRAGMA busy_timeout=3000")
         conn.row_factory = sqlite3.Row
         _ensure_graph_schema(conn)
         # Search for entities matching query terms in graph

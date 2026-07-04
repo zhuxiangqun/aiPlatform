@@ -193,7 +193,7 @@ class McpAdapter:
                         "parameters": t.get("inputSchema", {}),
                         "server_name": name,
                         "call_type": "mcp",
-                        "execute": lambda args=tool_def, c=client: asyncio.get_event_loop().create_task(
+                        "execute": lambda args=tool_def, c=client: asyncio.get_event_loop().create_task(  # noqa: F821
                             c.call_tool(args.get("name", ""), args)),
                     }
                     all_tools.append(tool_def)

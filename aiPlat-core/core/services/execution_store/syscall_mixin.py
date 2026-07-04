@@ -5,7 +5,9 @@ Auto-generated via Mixin split. Contains entity-specific CRUD methods.
 """
 from typing import Any, Dict, List, Optional, Tuple
 import json, time, sqlite3, logging
-from ._base import _json_dumps, _json_loads
+import anyio
+import uuid
+from ._base import _derive_change_summary, _json_dumps, _json_loads
 
 
 class SyscallMixin:

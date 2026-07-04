@@ -18,7 +18,10 @@ at their layer (PRD ready detection, approval logic, etc.).
 
 from __future__ import annotations
 
+import logging
 from typing import Any, Dict, List, Optional
+
+from core.harness.utils.model_injection import get_default_model
 
 
 # ═══════════════════════════════════════════════════════════════

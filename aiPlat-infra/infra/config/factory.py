@@ -4,6 +4,7 @@ Config Factory - 配置模块工厂函数
 
 from typing import List, Optional
 
+from .config import Config
 from .loader import ConfigLoader
 from .loader import ConfigLoaderImpl, create_default_sources
 from .schemas import (
@@ -87,7 +88,7 @@ def create_config_loader(config: Optional[ConfigLoaderConfig] = None) -> ConfigL
     )
 
 
-def load_config(path: Optional[str] = None) -> "Config":
+def load_config(path: Optional[str] = None) -> Config:
     """
     便捷函数：加载配置
 

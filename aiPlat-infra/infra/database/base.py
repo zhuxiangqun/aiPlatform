@@ -2,6 +2,8 @@ from abc import ABC, abstractmethod
 from typing import List, Dict, Any, Optional
 from contextlib import asynccontextmanager
 
+from .schemas import PoolStats
+
 
 class DatabaseClient(ABC):
     @abstractmethod
@@ -56,7 +58,7 @@ class ConnectionPool(ABC):
         pass
 
     @abstractmethod
-    def get_stats(self) -> "PoolStats":
+    def get_stats(self) -> PoolStats:
         pass
 
     @abstractmethod

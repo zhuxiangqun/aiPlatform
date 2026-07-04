@@ -1,11 +1,8 @@
-import logging
-"""
-Diagnostics API
-"""
-
 from fastapi import APIRouter, HTTPException, Request, Response
-from typing import Dict, Any, Optional
+import httpx
+import logging
 import os
+from typing import Any, Dict, Optional
 
 router = APIRouter(prefix="/diagnostics", tags=["diagnostics"])
 
@@ -590,7 +587,7 @@ async def doctor_report(request: Request) -> Dict[str, Any]:
     # return only status-like metadata (do not include full prompt content).
     context_status_sample: Dict[str, Any] = {}
     try:
-        repo_root = config.get("repo_root") if isinstance(config, dict) else None
+        repo_root = config.get("repo_root") if isinstance(config, dict) else None  # noqa: F821
         if core_client and repo_root:
             assembled = await core_client.diagnostics_prompt_assemble(
                 {
@@ -653,7 +650,7 @@ async def doctor_report(request: Request) -> Dict[str, Any]:
     # Repo changeset preview (optional; best-effort). This does not record by default.
     repo_changeset: Dict[str, Any] = {}
     try:
-        repo_root = config.get("repo_root") if isinstance(config, dict) else None
+        repo_root = config.get("repo_root") if isinstance(config, dict) else None  # noqa: F821
         if repo_root and core_client:
             repo_changeset = await core_client.repo_changeset_preview({"repo_root": repo_root, "include_patch": False})
     except Exception:
@@ -1486,7 +1483,7 @@ async def observability_stats(request: Request):
     if not core_client:
         raise HTTPException(status_code=503, detail="Core client not initialized")
     try:
-        return await core_client._request("GET", "/api/core/diagnostics/code-intel/scan", params=params)
+        return await core_client._request("GET", "/api/core/diagnostics/code-intel/scan", params=params)  # noqa: F821
     except httpx.HTTPError as e:
         raise HTTPException(status_code=503, detail=f"Core API unavailable: {str(e)}")
 

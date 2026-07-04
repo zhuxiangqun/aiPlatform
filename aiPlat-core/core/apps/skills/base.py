@@ -16,6 +16,7 @@ from ...harness.interfaces import (
     SkillContext,
     SkillResult,
 )
+from core.harness.utils.model_injection import best_model_for_purpose
 
 
 @dataclass

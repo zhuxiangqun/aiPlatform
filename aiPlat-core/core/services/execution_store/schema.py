@@ -6,6 +6,7 @@ Pure function: takes conn + version params, zero self dependency.
 """
 import time
 import logging
+import sqlite3
 
 
 def run_migrations(conn, current: int, target_version: int) -> int:

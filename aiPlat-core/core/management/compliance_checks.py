@@ -58,10 +58,9 @@ def get_checks() -> List[Dict[str, Any]]:
 @compliance_check(name="任务规格", penalty_on_fail=5)
 async def check_task_spec(rt, repo_root) -> Dict[str, Any]:
     try:
-        if hasattr(rt, "agent_registry") and rt.agent_registry:
-            agent_count = len(rt.agent_registry.list_all() or [])
-        else:
-            agent_count = 0
+        from core.apps.agents import get_agent_registry
+        reg = get_agent_registry()
+        agent_count = len(reg.list_all() or [])
         return {"check": "任务规格", "result": "✅" if agent_count > 0 else "❌",
                 "detail": f"{agent_count} agents registered"}
     except Exception as e:

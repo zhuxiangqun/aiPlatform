@@ -651,7 +651,7 @@ def get_default_hooks() -> Dict[str, Hook]:
                 ctx["_devil_hint"] = hint["warning"]
                 ctx["_devil_mitigation"] = hint.get("mitigation", "")
                 ctx["_devil_risk_level"] = hint.get("risk_level", 0)
-                _log.info(f"DevilAdvocate: risk{wint.get('risk_level',0)} — {tool_name}")
+                logging.info(f"DevilAdvocate: risk{hint.get('risk_level',0)} — {tool_name}")
         except Exception as e:
             logging.debug(str(e), exc_info=True)
         return {"continue": True}

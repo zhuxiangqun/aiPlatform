@@ -20,6 +20,7 @@ from ...apps.tools.base import get_tool_registry
 from ...harness.syscalls import sys_skill_call
 from core.utils.ids import new_prefixed_id
 from core.harness.utils.llm_env import get_llm_api_key, get_llm_base_url
+from core.harness.utils.model_injection import best_model_for_purpose
 
 
 @dataclass
@@ -363,7 +364,7 @@ class SkillExecutor:
 
                 agent_config = AgentConfig(
                     name=f"fork-{skill_name}",
-                    model=model_name,
+                    model=model_name,  # noqa: F821
                     metadata={"role": "fork-agent", "skill": skill_name},
                 )
                 # Use ReAct agent so fork mode can also orchestrate tools when provided.

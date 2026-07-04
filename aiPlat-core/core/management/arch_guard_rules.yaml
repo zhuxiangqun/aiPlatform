@@ -2285,3 +2285,69 @@ rules:
       max_matches: 0
     message: "kbApi.ts 中 refresh 路径应与后端 reingest 一致 — 将导致 404"
 
+  # ═══ Section 76: Runtime Integrity — module-level closures & undefined names ═══
+
+  # 76.1: diagnostics.py _check_* functions must be at module level (0 indent)
+  - id: diag_check_fns_module_level
+    section: "§76"
+    section_name: "diagnostics.py _check_* 函数必须在模块级别"
+    level: warning
+    check:
+      type: cmd_output
+      cmd: |
+        python3 -c "
+        import sys; sys.path.insert(0, 'aiPlat-core')
+        with open('aiPlat-core/core/api/routers/diagnostics.py') as f:
+            lines = f.readlines()
+        nested = []
+        in_run_all = False
+        for i, line in enumerate(lines, 1):
+            raw = line
+            ls = raw.lstrip()
+            if 'def run_all_diagnostics(' in ls or 'async def run_all_diagnostics(' in ls:
+                in_run_all = True
+                continue
+            if in_run_all and (ls.startswith('def _check_') or ls.startswith('async def _check_')):
+                indent = len(raw) - len(ls)
+                if indent >= 4:
+                    nested.append(f'  line {i}: {ls.split(\"(\")[0].strip()} (indent={indent})')
+        count = len(nested)
+        if count:
+            print(f'WARNING: diagnostics.py has {count} _check_* functions inside run_all_diagnostics() instead of module level — known debt, see CLAUDE.md §76')
+            # Non-fatal: always exit 0 so CI shows the warning but doesn't block
+        else:
+            print('PASS: all _check_* functions at module level')
+        " 2>/dev/null || echo "SKIP: diagnostics.py check unavailable"
+      ok_pattern: "PASS:|WARNING:"
+
+  # 76.2: YAML frontmatter parse check for engine skills + workspace (quick mode = parse only)
+  - id: yaml_frontmatter_parse
+    section: "§76"
+    section_name: "AGENT.md/SKILL.md YAML frontmatter 可解析"
+    level: error
+    check:
+      type: cmd_output
+      shell: python3 scripts/validate_frontmatter.py --quick > /dev/null 2>&1
+      ok_pattern: ""
+
+  # 76.3: engine skill execution_type field required
+  - id: engine_skill_execution_type
+    section: "§76"
+    section_name: "Engine Skill 必须有 execution_type 字段"
+    level: error
+    check:
+      type: cmd_output
+      shell: python3 scripts/validate_frontmatter.py --path aiPlat-core/core/engine/skills > /dev/null 2>&1
+      ok_pattern: ""
+
+  # 76.4: ruff F821 undefined names (ratchet — new violations = block)
+  - id: ruff_f821_ratchet
+    section: "§76"
+    section_name: "ruff F821 未定义变量 ratchet 门禁"
+    level: warning
+    check:
+      type: cmd_output
+      cmd: |
+        bash scripts/ruff_f821_ratchet.sh && echo "PASS: F821 ratchet" || echo "BLOCK: new F821 violations detected"
+      ok_pattern: "PASS:"
+

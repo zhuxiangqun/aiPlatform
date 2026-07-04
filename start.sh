@@ -231,10 +231,14 @@ PY
 
 kill_port_if_any () {
   port="$1"
-  pid=$(lsof -ti :$port 2>/dev/null || true)
-  if [ -n "$pid" ]; then
-    echo "端口 $port 已被占用，强制停止 PID=$pid"
-    kill -9 $pid 2>/dev/null || true
+  # Kill ALL processes tied to this port (LISTEN + ESTABLISHED workers)
+  local pids
+  pids=$(lsof -ti :$port 2>/dev/null | grep -v "^$(pgrep -x 'clash-meta' 2>/dev/null || echo '99999')$" || true)
+  if [ -n "$pids" ]; then
+    echo "端口 $port 清理残留进程: $pids"
+    for pid in $pids; do
+      kill -9 $pid 2>/dev/null || true
+    done
     sleep 1
   fi
 }
@@ -344,18 +348,30 @@ cd "$PROJECT_ROOT/aiPlat-core/core"
 export AIPLAT_EXECUTION_DB_PATH="${AIPLAT_EXECUTION_DB_PATH:-$PROJECT_ROOT/aiPlat-core/core/data/aiplat_executions.sqlite3}"
 mkdir -p "$(dirname "$AIPLAT_EXECUTION_DB_PATH")"
 echo "Execution DB: $AIPLAT_EXECUTION_DB_PATH"
-PYTHONPATH="$PROJECT_ROOT/aiPlat-core" nohup "$PY" -m uvicorn server:app --host 0.0.0.0 --port 8002 --workers 2 --timeout-keep-alive 120 > "$AIPLAT_HOME/logs/core.log" 2>&1 &
+PYTHONPATH="$PROJECT_ROOT/aiPlat-core" nohup "$PY" -m uvicorn server:app --host 0.0.0.0 --port 8002 --workers 1 > "$AIPLAT_HOME/logs/core.log" 2>&1 &
 CORE_PID=$!
 echo "PID: $CORE_PID"
 
 sleep 3
-for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15; do
-    curl -s http://localhost:8002/api/core/diagrams >/dev/null 2>&1 && echo "✓ aiPlat-core 启动成功 (8002)" && break
-    echo "等待... ($i/15)"
+# Core 启动后有 10-15s 初始化窗口（code_graph 构建 + skill registry 校验），
+# 需要连续 3 次 /docs 返回 200 才算真正就绪。
+ready=0
+for i in $(seq 1 30); do
+    code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 8 http://localhost:8002/docs 2>/dev/null || echo "000")
+    if [ "$code" = "200" ]; then
+        ready=$((ready + 1))
+        if [ $ready -ge 3 ]; then
+            echo "✓ aiPlat-core 启动成功 (8002)"
+            break
+        fi
+    else
+        ready=0
+    fi
+    echo "等待... ($i/30)"
     sleep 2
 done
 # If health check failed, report but continue - service may still be starting
-if ! curl -s http://localhost:8002/api/core/diagrams >/dev/null 2>&1; then
+if [ $ready -lt 3 ]; then
     echo "⚠ aiPlat-core 健康检查超时 (可能仍需数秒完成初始化)"
 fi
 

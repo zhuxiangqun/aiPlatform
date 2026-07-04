@@ -62,7 +62,7 @@ class APIClient:
             )
             return resp
         except requests.RequestException as e:
-            return type("Response", (), {"status_code": 500, "json": lambda: {"error": str(e)}})()
+            return type("Response", (), {"status_code": 500, "json": lambda: {"error": str(e)}})()  # noqa: F821
 
     def get(self, path: str, params: Optional[dict] = None) -> dict:
         resp = self._request("GET", path, params=params)

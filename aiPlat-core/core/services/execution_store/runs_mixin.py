@@ -5,6 +5,7 @@ Auto-generated via Mixin split from events_mixin.py.
 """
 from typing import Any, Dict, List, Optional, Tuple
 import json, time, sqlite3, logging
+import anyio
 from ._base import _json_dumps, _json_loads
 
 

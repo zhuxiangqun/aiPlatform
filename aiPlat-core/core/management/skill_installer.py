@@ -192,7 +192,7 @@ def _record_import_audit(skill_dir: Path, skill_name: str, source: dict) -> None
     """
     seen: set = set()
     out: List[Path] = []
-    for entry in sorted(root.rglob("SKILL.md")):
+    for entry in sorted(root.rglob("SKILL.md")):  # noqa: F821
         skill_dir = entry.parent
         key = str(skill_dir.resolve())
         if key not in seen:

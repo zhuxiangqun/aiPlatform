@@ -12,6 +12,7 @@ import os
 from pathlib import Path
 import json
 import hashlib
+import logging
 
 import yaml
 import re

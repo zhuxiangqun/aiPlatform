@@ -207,7 +207,7 @@ async def persist_evaluation(
                     await auto_rollback_regression(
                         store=execution_store,
                         approval_manager=ApprovalManager(),
-                        agent_id=target_id or "",
+                        agent_id=run_id or "",
                         min_samples=3,
                         error_rate_delta_threshold=0.2,
                         require_approval=False,

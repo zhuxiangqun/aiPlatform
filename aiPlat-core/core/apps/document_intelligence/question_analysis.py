@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import re
 from typing import Any, Dict, List, Optional
+from core.harness.utils.model_injection import best_model_for_purpose
 
 
 async def _llm_classify_intent(question: str) -> str:

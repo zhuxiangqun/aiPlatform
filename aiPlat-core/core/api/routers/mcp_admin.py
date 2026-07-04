@@ -21,6 +21,7 @@ from core.governance.changeset import record_changeset
 from core.governance.gating import autosmoke_enforce, gate_with_change_control
 from core.governance.verification import apply_autosmoke_result, mark_resource_pending
 from core.harness.kernel.runtime import get_kernel_runtime
+from core.management.mcp_manager import MCPServerInfo
 from core.mcp.prod_policy import prod_stdio_policy_check, runtime_env
 from core.mcp.runtime_sync import sync_mcp_runtime
 
@@ -1013,7 +1014,7 @@ async def reload_workspace_mcp_servers():
 # ── MCP Installer endpoints (workspace scope) ──────────────────────
 
 @router.post("/workspace/mcps/installer/plan", response_model=Dict[str, Any])
-async def workspace_mcps_installer_plan(request: dict, rt: RuntimeDep = None):
+async def workspace_mcps_installer_plan(request: dict, rt: RuntimeDep = None):  # noqa: F821
     mgr = _workspace_mcp_manager()
     if not mgr:
         raise HTTPException(status_code=503, detail="Workspace MCP manager not available")
@@ -1035,7 +1036,7 @@ async def workspace_mcps_installer_plan(request: dict, rt: RuntimeDep = None):
 
 
 @router.post("/workspace/mcps/installer/install", response_model=Dict[str, Any])
-async def workspace_mcps_installer_install(request: dict, rt: RuntimeDep = None):
+async def workspace_mcps_installer_install(request: dict, rt: RuntimeDep = None):  # noqa: F821
     mgr = _workspace_mcp_manager()
     if not mgr:
         raise HTTPException(status_code=503, detail="Workspace MCP manager not available")
@@ -1058,7 +1059,7 @@ async def workspace_mcps_installer_install(request: dict, rt: RuntimeDep = None)
 
 
 @router.post("/workspace/mcps/installer/resolve-head", response_model=Dict[str, Any])
-async def workspace_mcps_installer_resolve_head(request: dict, rt: RuntimeDep = None):
+async def workspace_mcps_installer_resolve_head(request: dict, rt: RuntimeDep = None):  # noqa: F821
     mgr = _workspace_mcp_manager()
     if not mgr:
         raise HTTPException(status_code=503, detail="Workspace MCP manager not available")
@@ -1073,7 +1074,7 @@ async def workspace_mcps_installer_upload_plan(
     file: UploadFile = File(...),
     subdir: str = Form(""),
     auto_detect_subdir: str = Form("true"),
-    rt: RuntimeDep = None,
+    rt: RuntimeDep = None,  # noqa: F821
 ):
     mgr = _workspace_mcp_manager()
     if not mgr:
@@ -1104,7 +1105,7 @@ async def workspace_mcps_installer_upload_install(
     auto_detect_subdir: str = Form("true"),
     allow_overwrite: str = Form("false"),
     plan_id: str = Form(""),
-    rt: RuntimeDep = None,
+    rt: RuntimeDep = None,  # noqa: F821
 ):
     mgr = _workspace_mcp_manager()
     if not mgr:

@@ -378,7 +378,7 @@ class AutoLearner:
                     auditor = CodeAuditor()
                     audit = auditor.audit(getattr(draft, "sop_body", ""), skill_name=draft_name)
                     if audit.high_count > 0:
-                        _log.warning(f"AutoLearner: {draft_name} blocked by CodeAuditor ({audit.high_count} high issues)")
+                        logging.warning(f"AutoLearner: {draft_name} blocked by CodeAuditor ({audit.high_count} high issues)")
                         continue  # 跳过，不自动审批
                 except Exception as e:
                     logging.debug(str(e), exc_info=True)

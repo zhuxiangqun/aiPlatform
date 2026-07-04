@@ -8,6 +8,7 @@ Panel mode:   reasoning + code_gen + chat (only when focus=security AND panel=tr
 import asyncio
 import logging
 import os
+import time
 from typing import Any, Dict
 
 from core.harness.utils.model_injection import best_model_for_purpose
@@ -151,9 +152,8 @@ async def _single_review(diff, focus: str) -> ReviewReport:
     prompt = _build_prompt(diff, focus)
 
     # P0/P1 — reasoning
-    resp_p0 = await sys_llm_generate(
-        best_model_for_purpose("reasoning"),
-        [
+    resp_p0 = await sys_llm_generate(model=None,
+        prompt=[
             {"role": "system", "content": REVIEW_SYSTEM_PROMPT},
             {
                 "role": "user",
@@ -161,12 +161,12 @@ async def _single_review(diff, focus: str) -> ReviewReport:
                 + "\nFocus: P0 security vulnerabilities and P1 logic errors. Be thorough.",
             },
         ],
+        model_name=best_model_for_purpose("reasoning"),
     )
 
     # P2 — code_gen
-    resp_p2 = await sys_llm_generate(
-        best_model_for_purpose("code_gen"),
-        [
+    resp_p2 = await sys_llm_generate(model=None,
+        prompt=[
             {"role": "system", "content": REVIEW_SYSTEM_PROMPT},
             {
                 "role": "user",
@@ -174,6 +174,7 @@ async def _single_review(diff, focus: str) -> ReviewReport:
                 + "\nFocus: P2 style issues, naming, dead code. Include exact fix patches.",
             },
         ],
+        model_name=best_model_for_purpose("code_gen"),
     )
 
     return ReviewReport.merge(str(resp_p0), str(resp_p2))
@@ -188,12 +189,12 @@ async def _quick_panel_review(diff, focus: str, preset: dict) -> ReviewReport:
         for p, role in zip(preset["reference_models"], preset["roles"])
     ]
     responses = await asyncio.gather(*(
-        sys_llm_generate(
-            model,
-            [
+        sys_llm_generate(model=None,
+            prompt=[
                 {"role": "system", "content": REVIEW_SYSTEM_PROMPT},
                 {"role": "user", "content": prompt + "\n" + role_prompt},
             ],
+            model_name=model,
             temperature=ref_temp,
             extra_context={"_active_skill": "autoreview"},
         )
@@ -216,12 +217,12 @@ async def _deep_panel_review(diff, focus: str, preset: dict) -> ReviewReport:
         for p, role in zip(preset["reference_models"], preset["roles"])
     ]
     responses = await asyncio.gather(*(
-        sys_llm_generate(
-            model,
-            [
+        sys_llm_generate(model=None,
+            prompt=[
                 {"role": "system", "content": REVIEW_SYSTEM_PROMPT},
                 {"role": "user", "content": prompt + "\n" + role_prompt},
             ],
+            model_name=model,
             temperature=ref_temp,
             extra_context={"_active_skill": "autoreview"},
         )
@@ -235,15 +236,15 @@ async def _deep_panel_review(diff, focus: str, preset: dict) -> ReviewReport:
 
     agg_prompt = build_aggregator_prompt(raw_reports, preset["reference_models"])
 
-    agg_resp = await sys_llm_generate(
-        aggregator_model,
-        [
+    agg_resp = await sys_llm_generate(model=None,
+        prompt=[
             {
                 "role": "system",
                 "content": "You are a chief architect synthesizing review reports. Output ONLY valid JSON.",
             },
             {"role": "user", "content": agg_prompt},
         ],
+        model_name=aggregator_model,
         temperature=agg_temp,
         extra_context={"_active_skill": "autoreview"},
     )
@@ -303,25 +304,59 @@ async def review_file(
         f"```python\n{body}\n```\n"
     )
 
-    # P0/P1 — reasoning
-    resp_p0 = await sys_llm_generate(
-        best_model_for_purpose("reasoning"),
-        [
-            {"role": "system", "content": FULL_FILE_SYSTEM_PROMPT},
-            {"role": "user", "content": prompt
-             + "\nFocus: P0 security vulnerabilities and P1 logic errors. Be thorough."},
-        ],
-    )
+    # ── Focus-driven prompts: each focus selects which models to call ──
+    _FOCUS_PROMPTS = {
+        "comprehensive": {
+            "reasoning": "Focus: P0 security vulnerabilities and P1 logic errors and edge cases. Be thorough.",
+            "code_gen": "Focus: P2 style issues, naming, dead code, and refactoring opportunities. Include exact fix patches.",
+        },
+        "security": {
+            "reasoning": "Focus ONLY on P0 security vulnerabilities: SQL injection, XSS, hardcoded secrets, unsafe deserialization, command injection, path traversal. For each finding include CWE identifier.",
+        },
+        "logic": {
+            "reasoning": "Focus ONLY on P1 logic errors: null/None dereference, resource leaks, race conditions, incorrect error handling, off-by-one, broken control flow.",
+        },
+        "performance": {
+            "reasoning": "Focus ONLY on performance: N+1 queries, unnecessary allocations, blocking I/O in async context, missing caching, O(n²) algorithms.",
+        },
+        "error_handling": {
+            "reasoning": "Focus ONLY on error handling: bare except clauses, overly broad try/except, swallowed exceptions (pass in except), missing finally/cleanup.",
+        },
+        "style": {
+            "code_gen": "Focus ONLY on P2 style issues: naming conventions, dead code, overly long functions, inconsistent formatting. Include exact fix patches.",
+        },
+        "naming": {
+            "code_gen": "Focus ONLY on naming: no single-letter names in non-trivial scope, missing type suffixes, inconsistent conventions, misleading names. Include exact fix patches.",
+        },
+        "dead_code": {
+            "code_gen": "Focus ONLY on dead/commented-out code, unused imports, unreachable branches, functions never called. Include exact fix patches.",
+        },
+    }
 
-    # P2 — code_gen
-    resp_p2 = await sys_llm_generate(
-        best_model_for_purpose("code_gen"),
-        [
-            {"role": "system", "content": FULL_FILE_SYSTEM_PROMPT},
-            {"role": "user", "content": prompt
-             + "\nFocus: P2 style issues, naming, dead code. Include exact fix patches."},
-        ],
-    )
+    fspec = _FOCUS_PROMPTS.get(focus, _FOCUS_PROMPTS["comprehensive"])
+    need_reasoning = "reasoning" in fspec
+    need_code_gen = "code_gen" in fspec
+
+    resp_p0 = ""
+    resp_p2 = ""
+
+    if need_reasoning:
+        resp_p0 = await sys_llm_generate(model=None,
+            prompt=[
+                {"role": "system", "content": FULL_FILE_SYSTEM_PROMPT},
+                {"role": "user", "content": prompt + "\n" + fspec["reasoning"]},
+            ],
+            model_name=best_model_for_purpose("reasoning"),
+        )
+
+    if need_code_gen:
+        resp_p2 = await sys_llm_generate(model=None,
+            prompt=[
+                {"role": "system", "content": FULL_FILE_SYSTEM_PROMPT},
+                {"role": "user", "content": prompt + "\n" + fspec["code_gen"]},
+            ],
+            model_name=best_model_for_purpose("code_gen"),
+        )
 
     report = ReviewReport.merge(str(resp_p0), str(resp_p2))
     if truncated:

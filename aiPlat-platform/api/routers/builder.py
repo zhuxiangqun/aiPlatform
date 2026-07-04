@@ -37,6 +37,10 @@ router = APIRouter(prefix="/platform/builder", tags=["builder"])
 
 _team_svc = BuilderTeamService()
 
+
+def _team_get_svc():
+    return _team_svc
+
 _deprecation_header = {"Deprecation": "true", "Sunset": "Sat, 01 Jan 2027 00:00:00 GMT",
                         "Link": '</api/v2/projects>; rel="successor-version"'}
 

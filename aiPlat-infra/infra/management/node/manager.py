@@ -10,6 +10,7 @@ from typing import Dict, Any, List, Optional
 from ..base import ManagementBase, Status, HealthStatus, Metrics, DiagnosisResult
 from ..schemas import NodeInfo, GPUStatus
 from datetime import datetime, timezone
+import os
 import time
 import platform
 import socket

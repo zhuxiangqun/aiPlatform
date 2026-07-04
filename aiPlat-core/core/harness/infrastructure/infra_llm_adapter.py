@@ -21,6 +21,22 @@ from infra.llm.base import LLMClient
 from infra.llm.schemas import ChatRequest, Message
 
 
+def _classify_llm_error(error: Exception, provider: str, model: str = "") -> Exception:
+    """Classify provider-specific API error via the 7-level translation pipeline.
+
+    Returns ClassifiedError (with retryable/should_compress/should_fallback flags)
+    that consumers can read without re-classifying.
+    """
+    try:
+        from core.harness.infrastructure.gates.error_translator import classify_api_error
+        return classify_api_error(error, provider=provider, model=model)
+    except Exception:
+        pass
+    import logging
+    logging.getLogger("llm").warning("Error classifier failed, wrapping as unknown", exc_info=True)
+    return RuntimeError(f"LLM call failed ({provider}): {str(error)[:300]}")
+
+
 class InfraLLMAdapter(ILLMAdapter):
     """Wraps an infra LLMClient as a core ILLMAdapter."""
 
@@ -73,7 +89,11 @@ class InfraLLMAdapter(ILLMAdapter):
             if config.timeout:
                 req.timeout = config.timeout
 
-        resp = await self._client.achat(req)
+        try:
+            resp = await self._client.achat(req)
+        except Exception as e:
+            raise _classify_llm_error(e, self._provider, self._model) from e
+
         usage = {}
         if resp.usage:
             try:

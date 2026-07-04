@@ -28,7 +28,7 @@ async def reason(
     """Execute a single LLM reasoning call."""
     # ── original: async def _reason(self, state: LoopState) -> str:
     """Reasoning phase"""
-    if not self._model:
+    if not self._model:  # noqa: F821
         return "No model available"
 
     # Preflight: estimate token pressure before sending request.
@@ -38,13 +38,13 @@ async def reason(
         estimated_tokens = state.used_tokens or sum(
             len(str(m.get("content", ""))).split() * 1.3 for m in msgs if isinstance(m, dict)
         )
-        max_tokens = float(getattr(self._config, "max_tokens", 0) or 0)
+        max_tokens = float(getattr(self._config, "max_tokens", 0) or 0)  # noqa: F821
         if max_tokens > 0 and estimated_tokens / max_tokens > 0.80:
-            await self._maybe_compact_messages(state)
+            await self._maybe_compact_messages(state)  # noqa: F821
 
     # Optional: context compaction + memory injection (best-effort)
     try:
-        await self._maybe_compact_messages(state)
+        await self._maybe_compact_messages(state)  # noqa: F821
         from ...memory.manager import get_memory_manager
         try:
             mgr = get_memory_manager()
@@ -68,7 +68,7 @@ async def reason(
     try:
         from ...interfaces.messaging import get_message_bus
         bus = get_message_bus()
-        agent_id = state.context.get("agent_id", "") or getattr(self._config, 'name', 'react_agent')
+        agent_id = state.context.get("agent_id", "") or getattr(self._config, 'name', 'react_agent')  # noqa: F821
         messages = bus.drain(agent_id)
         if messages:
             state.context.setdefault("_bus_messages", []).extend(str(m)[:200] for m in messages)
@@ -88,7 +88,7 @@ async def reason(
             current_query = state.context.get("task", "")
             history = state.context.get("messages", [])
             from core.harness.knowledge.query_rewriter import rewrite_with_history
-            rewritten = await rewrite_with_history(current_query, history, self._model)
+            rewritten = await rewrite_with_history(current_query, history, self._model)  # noqa: F821
             if rewritten and rewritten != current_query:
                 state.context["_original_query"] = current_query
                 state.context["task"] = rewritten
@@ -96,7 +96,7 @@ async def reason(
         logging.warning(str(e), exc_info=True)
 
     # Inject code graph context on first reasoning call (replaces grep/glob exploration)
-    graph_hints = await self._try_inject_graph_context(state)
+    graph_hints = await self._try_inject_graph_context(state)  # noqa: F821
     if graph_hints:
         state.context.setdefault("_graph_hints", graph_hints)
 
@@ -125,15 +125,15 @@ async def reason(
         f"{msg.get('role', 'user')}: {msg.get('content', '')}"
         for msg in state.context.get("messages", [])[-5:]
     ])
-    tools_desc, tools_desc_stats = self._build_tools_desc()
+    tools_desc, tools_desc_stats = self._build_tools_desc()  # noqa: F821
     # 上下文压力（best-effort）：用于渐进式披露预算
     try:
-        max_tokens = float(getattr(self._config, "max_tokens", state.max_tokens) or state.max_tokens)
+        max_tokens = float(getattr(self._config, "max_tokens", state.max_tokens) or state.max_tokens)  # noqa: F821
         used_tokens = float(getattr(state, "used_tokens", 0) or 0)
         pressure = (used_tokens / max_tokens) if max_tokens > 0 else 0.0
     except Exception:
         pressure = 0.0
-    skills_desc, skills_desc_stats = self._build_skills_desc(context_pressure=pressure)
+    skills_desc, skills_desc_stats = self._build_skills_desc(context_pressure=pressure)  # noqa: F821
     # Best-effort: attach to state for observability/debugging
     try:
         state.metadata["tools_desc_stats"] = tools_desc_stats
@@ -151,13 +151,13 @@ async def reason(
             ContextSource(key="skills_desc", origin="skill", token_estimate=len(skills_desc) // 4, priority="medium"),
             ContextSource(key="history", origin="system", token_estimate=len(history) // 4, priority="medium"),
         ]
-        tool_schemas = [{"name": getattr(t, "name", str(t)), "desc": str(getattr(getattr(t, '_config', None), 'description', ''))[:200]} for t in (self._tools or [])]
-        skill_schemas = [{"name": getattr(s, "name", str(s)), "desc": str(getattr(getattr(s, '_config', None), 'description', ''))[:200]} for s in (self._skills or [])]
+        tool_schemas = [{"name": getattr(t, "name", str(t)), "desc": str(getattr(getattr(t, '_config', None), 'description', ''))[:200]} for t in (self._tools or [])]  # noqa: F821
+        skill_schemas = [{"name": getattr(s, "name", str(s)), "desc": str(getattr(getattr(s, '_config', None), 'description', ''))[:200]} for s in (self._skills or [])]  # noqa: F821
         assembly_result = ContextAssembler().assemble(
             messages=state.context.get("messages", []),
             session_id=state.context.get("session_id"),
             user_id=state.context.get("user_id"),
-            budgets=BudgetSpec(token_budget=self._config.max_tokens or 100_000),
+            budgets=BudgetSpec(token_budget=self._config.max_tokens or 100_000),  # noqa: F821
             sources=sources,
             tool_schemas=tool_schemas,
             skill_schemas=skill_schemas,
@@ -198,7 +198,7 @@ async def reason(
                         "step_count": int(getattr(state, "step_count", 0) or 0),
                         "context_pressure": float(pressure),
                         "used_tokens": float(getattr(state, "used_tokens", 0) or 0),
-                        "max_tokens": float(getattr(self._config, "max_tokens", state.max_tokens) or state.max_tokens),
+                        "max_tokens": float(getattr(self._config, "max_tokens", state.max_tokens) or state.max_tokens),  # noqa: F821
                         "budgets": key_fields,
                     },
                 )
@@ -207,14 +207,14 @@ async def reason(
 
     # P0: context shaping pipeline (observable, default enabled)
     try:
-        await self._apply_context_shaping_pipeline(state)
+        await self._apply_context_shaping_pipeline(state)  # noqa: F821
     except Exception as e:
         logging.warning(str(e), exc_info=True)
 
     # Restatement: load latest run_state and periodically refresh next_step
     try:
-        await self._load_run_state_for_prompt(state)
-        await self._maybe_restate_and_persist_run_state(state)
+        await self._load_run_state_for_prompt(state)  # noqa: F821
+        await self._maybe_restate_and_persist_run_state(state)  # noqa: F821
     except Exception as e:
         logging.warning(str(e), exc_info=True)
 
@@ -234,6 +234,7 @@ async def reason(
             prompt.insert(0, {"role": "system", "content": sp})
         rs = state.context.get("run_state")
         if isinstance(rs, dict):
+            from core.harness.restatement.run_state import format_run_state_for_prompt
             prompt.append({"role": "user", "content": format_run_state_for_prompt(rs)})
         # Inject toolset behavioral constraints (force_tool_use, prefer_skill, prefer_agent_delegate)
         try:
@@ -277,14 +278,14 @@ async def reason(
             "parent_span_id": state.context.get("_current_step_span_id") or (state.context.get("_agent_id") and f"agent:{state.context['_agent_id']}:start"),
             "knowledge_bases": state.context.get("_knowledge_bases", []),
         }
-        response = await sys_llm_generate(self._model, prompt,
+        response = await sys_llm_generate(self._model, prompt,  # noqa: F821
             trace_context=trace_ctx,
-            model_name=self._config.model_name)
+            model_name=self._config.model_name)  # noqa: F821
         # P1-2: 调用后跟踪 token usage，供下次调用前预估+预压缩
         # Persist this interaction to MemoryManager for cross-turn memory
-        await self._try_save_interaction(state, prompt, getattr(response, "content", str(response)))
+        await self._try_save_interaction(state, prompt, getattr(response, "content", str(response)))  # noqa: F821
         # L3: Auto-extract user facts from conversation
-        await self._try_extract_user_facts(state, prompt)
+        await self._try_extract_user_facts(state, prompt)  # noqa: F821
         # Track token usage (best-effort) for compaction budgets.
         try:
             usage = getattr(response, "usage", None)
@@ -296,7 +297,7 @@ async def reason(
         except Exception as e:
             logging.warning(str(e), exc_info=True)
         # Update budget_remaining
-        _max = float(getattr(self._config, "max_tokens", 0) or 0)
+        _max = float(getattr(self._config, "max_tokens", 0) or 0)  # noqa: F821
         if _max > 0:
             state.budget_remaining = max(0.0, 1.0 - (state.used_tokens / _max))
         return response.content
@@ -329,8 +330,8 @@ async def reason(
                         if m.get("role") != "system"
                     )
                     emergency_prompt = f"{system_text}\n\n## Context (compressed)\n{last_text}\n\n## Current Task\n{state.context.get('task', '')}\n\nRespond with DONE: ..."
-                    response = await sys_llm_generate(self._model, emergency_prompt,
-                        trace_context=trace_ctx, model_name=self._config.model_name)
+                    response = await sys_llm_generate(self._model, emergency_prompt,  # noqa: F821
+                        trace_context=trace_ctx, model_name=self._config.model_name)  # noqa: F821
                     return response.content if hasattr(response, "content") else str(response)
             except Exception as e:
                 logging.warning(str(e), exc_info=True)

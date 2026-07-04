@@ -13,9 +13,14 @@ Until fully migrated, NO NEW reverse imports should be added to this file.
 from __future__ import annotations
 import logging
 
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 from dataclasses import dataclass, field
 import os
+from pathlib import Path
+
+from core.harness.memory.base import MemoryBase
+from core.harness.memory.session import SessionManager
+from core.harness.kernel.types import ExecutionRequest, ExecutionResult
 
 # ── DI bridge (Phase 9) ─────────────────────────────────────────────
 # Replaces 18 lazy imports with DI container lookups. Services are
@@ -399,7 +404,7 @@ class HarnessIntegration:
         except Exception as e:
             logging.debug(str(e), exc_info=True)
 
-    async def execute(self, request: "ExecutionRequest") -> "ExecutionResult":
+    async def execute(self, request: ExecutionRequest) -> ExecutionResult:
         """
         Unified execution entry point (Phase 1).
 
@@ -581,7 +586,7 @@ class HarnessIntegration:
             http_status=400,
         )
 
-    async def _execute_stream_background(self, request: "ExecutionRequest") -> None:
+    async def _execute_stream_background(self, request: ExecutionRequest) -> None:
         """Run execution in background for stream mode (returns run_id immediately)."""
         import time as _time
         run_id = request.run_id
@@ -621,7 +626,7 @@ class HarnessIntegration:
         except Exception as e:
             logging.debug(str(e), exc_info=True)
 
-    async def _execute_skill_lint_scan(self, req: "ExecutionRequest") -> "ExecutionResult":
+    async def _execute_skill_lint_scan(self, req: ExecutionRequest) -> ExecutionResult:
         """Scheduled lint scan over skills (workspace/engine), returns aggregated report."""
         from core.harness.kernel.types import ExecutionResult
 
@@ -673,7 +678,7 @@ class HarnessIntegration:
         except Exception as e:
             return self._fail(code="EXCEPTION", message=str(e), http_status=500, trace_id=trace_id, run_id=run_id)
 
-    async def _execute_canary_web(self, req: "ExecutionRequest") -> "ExecutionResult":
+    async def _execute_canary_web(self, req: ExecutionRequest) -> ExecutionResult:
         """
         P1-1 Canary (web): periodically run browser evidence + gates and persist artifacts.
 
@@ -1581,7 +1586,7 @@ class HarnessIntegration:
         http_status: int,
         trace_id: Optional[str] = None,
         run_id: Optional[str] = None,
-    ) -> "ExecutionResult":
+    ) -> ExecutionResult:
         """Create a standardized failure ExecutionResult (Roadmap-0)."""
         return ExecutionResult(
             ok=False,
@@ -1659,7 +1664,7 @@ class HarnessIntegration:
 
         return self._error_detail("EXCEPTION", err or fallback_message, extra={"error": err})
 
-    async def _execute_agent(self, req: "ExecutionRequest") -> "ExecutionResult":
+    async def _execute_agent(self, req: ExecutionRequest) -> ExecutionResult:
         agent_reg = _resolve_or_import("AgentRegistry", "core.apps.agents:get_agent_registry")
         agent_reg = agent_reg() if callable(agent_reg) else agent_reg
         skill_reg = _resolve_or_import("SkillRegistry", "core.apps.skills:get_skill_registry")
@@ -2373,7 +2378,7 @@ class HarnessIntegration:
                     logging.debug(str(e), exc_info=True)
             return self._fail(code="EXCEPTION", message=str(e), http_status=500, trace_id=trace_id, run_id=execution_id)
 
-    async def _execute_skill(self, req: "ExecutionRequest") -> "ExecutionResult":
+    async def _execute_skill(self, req: ExecutionRequest) -> ExecutionResult:
         from core.apps.tools.permission import Permission  # noqa: data type (enum) — allowed
         from core.harness.kernel.types import ExecutionResult
 
@@ -2758,7 +2763,7 @@ class HarnessIntegration:
             ),
         )
 
-    async def _execute_tool(self, req: "ExecutionRequest") -> "ExecutionResult":
+    async def _execute_tool(self, req: ExecutionRequest) -> ExecutionResult:
         from core.harness.kernel.types import ExecutionResult
         registry = _resolve_tool_registry()
         tool = registry.get(req.target_id)
@@ -3099,7 +3104,7 @@ class HarnessIntegration:
                 except Exception as e:
                     logging.debug(str(e), exc_info=True)
 
-    async def _execute_graph(self, req: "ExecutionRequest") -> "ExecutionResult":
+    async def _execute_graph(self, req: ExecutionRequest) -> ExecutionResult:
         # Phase-1: only support compiled_react execution via internal compiled graph.
         from core.harness.kernel.types import ExecutionResult
 
@@ -3162,7 +3167,7 @@ class HarnessIntegration:
         run_id = (final_state.get("metadata") or {}).get("graph_run_id")
         return ExecutionResult(ok=True, payload={"run_id": run_id, "final_state": final_state}, trace_id=trace_id, run_id=run_id)
 
-    async def _execute_smoke_e2e(self, req: "ExecutionRequest") -> "ExecutionResult":
+    async def _execute_smoke_e2e(self, req: ExecutionRequest) -> ExecutionResult:
         """Production-grade full-chain smoke (for CI & ops)."""
         from core.harness.kernel.types import ExecutionResult
 

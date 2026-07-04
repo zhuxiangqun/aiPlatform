@@ -10,6 +10,7 @@ Returns four-layer structure with per-component health indicators:
 
 from typing import Any, Dict, List, Optional
 import asyncio
+import httpx
 import logging
 import os
 import socket

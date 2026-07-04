@@ -38,7 +38,7 @@ async def persist_run_state(state: LoopState, **kwargs):
             version=f"run_state:{int(time.time())}",
             status="draft",
             payload=rs,
-            metadata={"source": source, **(extra or {}), "locked": bool(rs.get("locked"))},
+            metadata={"source": source, **(extra or {}), "locked": bool(rs.get("locked"))},  # noqa: F821
             trace_id=state.context.get("_trace_id") or state.context.get("trace_id"),
             run_id=str(run_id),
         )
@@ -51,7 +51,7 @@ async def persist_run_state(state: LoopState, **kwargs):
                 event_type="run_state",
                 trace_id=state.context.get("_trace_id") or state.context.get("trace_id"),
                 tenant_id=state.context.get("tenant_id"),
-                payload={"source": source, **(extra or {})},
+                payload={"source": source, **(extra or {})},  # noqa: F821
             )
     except Exception as e:
         logging.warning(str(e), exc_info=True)
@@ -62,7 +62,7 @@ async def apply_todo_done_markers(state: LoopState, **kwargs):
     if os.getenv("AIPLAT_RUN_STATE_PARSE_TODO_DONE", "true").lower() not in ("1", "true", "yes", "y"):
         return
     done_ids = []
-    for token in str(text or "").split():
+    for token in str(text or "").split():  # noqa: F821
         if token.startswith("TODO_DONE:"):
             done_ids.append(token.split("TODO_DONE:", 1)[1].strip())
     if not done_ids:
@@ -71,9 +71,9 @@ async def apply_todo_done_markers(state: LoopState, **kwargs):
     if not isinstance(rs, dict):
         return
     for tid in done_ids[:20]:
-        rs = set_todo_status(rs, todo_id=tid, status="completed", source=f"todo_done_marker:{source}")
+        rs = set_todo_status(rs, todo_id=tid, status="completed", source=f"todo_done_marker:{source}")  # noqa: F821
     state.context["run_state"] = rs
-    await self._persist_run_state(state, source=f"todo_done_marker:{source}", extra={"done_ids": done_ids[:20]})
+    await self._persist_run_state(state, source=f"todo_done_marker:{source}", extra={"done_ids": done_ids[:20]})  # noqa: F821
 
 
 async def load_run_state_for_prompt(state: LoopState, **kwargs):

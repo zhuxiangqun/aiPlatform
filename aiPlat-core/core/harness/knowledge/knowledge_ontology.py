@@ -18,13 +18,14 @@ Usage:
     # Load A-Box
     from core.harness.knowledge.knowledge_abox_builder import build_abox
     build_abox(onto)
+
+from pathlib import Path
     # Reason
     onto.sync_reasoner_pellet()
     # Query
     results = list(onto.world.sparql("SELECT ..."))
 """
 
-from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Set, Tuple
 import logging
@@ -643,7 +644,7 @@ def get_classes_with_templates() -> List[OntologyClass]:
 
 # ── Per-Collection Ontology Extension ──────────────────────────
 
-def _extension_path(collection_id: str) -> "Path":
+def _extension_path(collection_id: str):
     from pathlib import Path
     import os as _oss
     home = _oss.getenv("AIPLAT_HOME", _oss.path.expanduser("~/.aiplat"))

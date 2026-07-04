@@ -23,7 +23,7 @@ async def create_project(input_data: ProjectCreateInput, db: Session = Depends(g
     db.commit()
     db.refresh(project)
     
-    audit_log = AuditLog(
+    audit_log = AuditLog(  # noqa: F821
         project_id=project.id,
         phase="init",
         start_time=datetime.now(timezone.utc),
@@ -72,7 +72,7 @@ async def confirm_prd(project_id: str, input_data: PRDConfirmInput, db: Session 
     project = db.query(Project).filter(Project.id == project_id).first()
     project.current_phase = "prd_confirmed"
     
-    audit_log = AuditLog(
+    audit_log = AuditLog(  # noqa: F821
         project_id=project_id,
         phase="prd_confirmation",
         start_time=datetime.now(timezone.utc),

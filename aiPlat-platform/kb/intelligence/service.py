@@ -340,6 +340,7 @@ def enqueue_doc_ingest(
         raise ValueError("file_path_or_url_required")
 
     st = get_tenant_storage(tenant_id)
+    from core.harness.knowledge.db import get_knowledge_db
     db = get_knowledge_db()
     db.ensure_schema()
     db.upsert_collection(tenant_id=st.tenant_id, collection_id=collection_id, name="")
@@ -523,6 +524,7 @@ def enqueue_doc_ingest(
     db.append_job_event(tenant_id=st.tenant_id, job_id=job_id, level="info", message="queued", extra={})
 
     def _runner() -> None:
+        from core.harness.knowledge.db import get_knowledge_db
         db2 = get_knowledge_db()
         try:
             db2.update_job(tenant_id=st.tenant_id, job_id=job_id, status="running", progress=0.01, message="start")

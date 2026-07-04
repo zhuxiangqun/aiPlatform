@@ -9,6 +9,7 @@ Scoring: each rule has a penalty_weight. Final score = max(0, 100 - total_penalt
 
 from __future__ import annotations
 import logging
+import os
 
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone

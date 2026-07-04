@@ -85,6 +85,7 @@ def register_node(
             input_schema=input_schema or {},
             output_schema=output_schema or {},
         )
+        from core.apps.tools.base import _global_registry
         _global_registry.register(definition)
         return func
     return decorator

@@ -12,6 +12,7 @@ import os
 from typing import Any, Dict, List, Optional
 
 from core.harness.utils.llm_env import get_llm_api_key, get_llm_base_url
+from core.harness.utils.model_injection import best_model_for_purpose
 
 
 def llm_enabled() -> bool:
