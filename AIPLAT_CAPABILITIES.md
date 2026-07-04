@@ -260,6 +260,7 @@
 | prompt_auditor | `harness/audit/prompt_auditor.py` | ✅ | 自动同步 | 已合入 |
 | semantic_gate | `harness/infrastructure/gates/semantic_gate.py` | ✅ | 自动同步 | 已合入 |
 | cross_validation_gate | `harness/infrastructure/gates/cross_validation_gate.py` | ✅ | 自动同步 | 已合入 |
+| completion_gate | `harness/infrastructure/gates/completion_gate.py` | ✅ | 自动同步 | 已合入 |
 |------|------|:---:|------|------|
 | PolicyGate | `harness/infrastructure/gates/policy_gate.py` | ✅ | 统一权限检查 + 架构边界实时拦截 | 已合入 |
 | ApprovalGate | `harness/infrastructure/approval/manager.py` | ✅ | approve/deny/pending，双门禁 | 已合入 |
@@ -758,7 +759,7 @@
 | 编排系统 | 4 | 0 | 4 |
 | 管理 & 质量 | 21 | 0 | 21 |
 | 编排层 | 17 | 0 | 17 |
-| **总计** | **509** | **1** | **510** |
+| **总计** | **511** | **1** | **512** |
 
 ---
 

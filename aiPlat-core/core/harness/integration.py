@@ -2212,6 +2212,25 @@ class HarnessIntegration:
             if audit_data is not None:
                 meta.setdefault("prompt_revision_audit", audit_data)
             meta.setdefault("kernel_resume", kernel_resume)
+            # Phase 15: Completion checklist for all agent outputs
+            try:
+                from core.harness.infrastructure.gates.completion_gate import CompletionChecklistGate
+                gate = CompletionChecklistGate(llm_threshold=99)
+                q = ""
+                if isinstance(payload, dict):
+                    msgs = payload.get("messages", [])
+                    if msgs:
+                        q = str(msgs[-1].get("content", "") or "")[:300]
+                if hasattr(result, "output"):
+                    out = getattr(result, "output", {})
+                    comp = gate.verify(
+                        out if isinstance(out, dict) else {"answer": str(out)},
+                        question=q,
+                    )
+                    meta.setdefault("completion_gate_status", comp.status)
+                    meta.setdefault("completion_gate_valid", comp.valid)
+            except Exception:
+                pass
             approval_req_id = None
             try:
                 approval_req_id = (meta.get("approval") or {}).get("approval_request_id") if isinstance(meta.get("approval"), dict) else None
