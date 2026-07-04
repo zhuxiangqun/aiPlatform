@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Send, Loader2, Bot, User } from 'lucide-react';
+import { ArrowLeft, Send, Loader2, Bot, User, Cpu } from 'lucide-react';
 import { toast } from '../../../components/ui';
-import { appApi, workflowApi } from '../../../services';
+import { appApi, workflowApi, apiClient } from '../../../services';
 
 const AppChatPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -14,6 +14,13 @@ const AppChatPage: React.FC = () => {
   const [pollingRun, setPollingRun] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const pollRef = useRef<ReturnType<typeof setInterval>>();
+  const [modelInfo, setModelInfo] = useState<{ current_model?: string; override_active?: boolean }>({});
+
+  useEffect(() => {
+    apiClient.get<any>('/diagnostics/model-tier').then(r => 
+      setModelInfo(r.data?.status || {})
+    ).catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (!id) return;
@@ -114,6 +121,17 @@ const AppChatPage: React.FC = () => {
         <button onClick={() => navigate('/app/apps')} className="text-gray-500 hover:text-gray-300"><ArrowLeft className="w-4 h-4" /></button>
         <Bot className="w-4 h-4 text-blue-400" />
         <h1 className="text-sm font-semibold text-gray-100">{app?.name || 'Chat'}</h1>
+        {modelInfo.current_model && (
+          <span
+            className="text-[10px] px-1.5 py-0.5 rounded bg-blue-500/15 text-blue-400 border border-blue-500/20 cursor-pointer hover:bg-blue-500/25 transition-colors"
+            title={`Active model: ${modelInfo.current_model}${modelInfo.override_active ? ' (manual override)' : ' (auto-routing)'}`}
+            onClick={() => navigate('/diagnostics')}
+          >
+            <Cpu className="w-2.5 h-2.5 inline mr-1" />
+            {modelInfo.current_model}
+            {modelInfo.override_active && <span className="ml-1 text-purple-400">*</span>}
+          </span>
+        )}
         {pollingRun && <Loader2 className="w-3 h-3 text-blue-400 animate-spin" />}
       </div>
       <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
