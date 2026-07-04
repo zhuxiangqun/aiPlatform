@@ -13,6 +13,26 @@ from typing import Any, Dict, List, Literal, Optional
 
 ExecutionKind = Literal["agent", "skill", "tool", "graph"]
 PlanStepKind = Literal["instruction", "tool", "skill", "llm"]
+SpecLifecycle = Literal["draft", "review", "stable", "deprecated"]
+
+
+@dataclass
+class SpecContext:
+    """
+    FDE Spec lifecycle context — carries the spec's state into execution.
+
+    EngineRouter uses this for plan-aware routing:
+      - draft → experimental routing (fast engines, low-cost models)
+      - stable → production routing (full gate enforcement)
+      - deprecated → warn + suggest migration
+    """
+    spec_id: str = ""
+    spec_version: str = ""
+    lifecycle_state: SpecLifecycle = "draft"
+    quality_score: float = 0.0
+    promote_ready: bool = False
+    review_count: int = 0
+    metadata: Dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
@@ -21,7 +41,7 @@ class PlanStep:
     action: str
     kind: PlanStepKind = "instruction"
     args: Dict[str, Any] = field(default_factory=dict)
-    status: str = "pending"  # pending|in_progress|completed|skipped|failed
+    status: str = "pending"
 
 
 @dataclass
@@ -31,6 +51,8 @@ class ExecutionPlan:
     steps: List[PlanStep] = field(default_factory=list)
     current_step: int = 0
     metadata: Dict[str, Any] = field(default_factory=dict)
+    dag: Optional[dict] = None  # Phase 9: DAG topology for plan-aware routing
+    spec: Optional[SpecContext] = None  # Phase 9: FDE Spec lifecycle context
 
     @property
     def current(self) -> Optional[PlanStep]:
