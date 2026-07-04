@@ -513,18 +513,6 @@ class MaterialsChatAgent(BaseAgent):
                                 f"[CostTrace] model={trace['model_name']} complexity={_complexity} "
                                 f"input_tok_est={trace['input_tok_est']} max_tokens={trace['max_tokens']}"
                             )
-                        if convo is not None and answer:
-                            try:
-                                await convo.append_conversation_assistant_message(
-                                    tenant_id=tenant_id, session_id=session_id, user_id=user_id,
-                                    content=answer, citations=citations, turn_summary=_build_turn_summary(question, answer),
-                                    strategy="direct_retrieve", mode="", intent=intent,
-                                    skills_used=["sys_kb_retrieve"],
-                                    analysis=analysis, retrieval_policy=retrieval_policy,
-                                    answer_strategy=answer_strategy, run_id=run_id,
-                                )
-                            except Exception as e:
-                                logging.debug(str(e), exc_info=True)
                         quality = self_review(answer, citations, reasoning_path)
                         # Self-RAG: auto-retry on low_evidence via HyDE reroute
                         if quality == "low_evidence" and not retrieved_docs:
@@ -548,50 +536,6 @@ class MaterialsChatAgent(BaseAgent):
                         quality = self_review(answer, citations, reasoning_path)
                         _trace("质量评估", f"Self-RAG: {quality}", quality=quality)
 
-                        # ── Phase 3.1: Hallucination check ──
-                        hallucination_risk = 0.0
-                        try:
-                            from core.harness.evaluation.hallucination_tracker import get_hallucination_tracker
-                            tracker = get_hallucination_tracker()
-                            report = await tracker.evaluate(
-                                question=question, answer=answer,
-                                retrieved_context=[
-                                    {"text": c.get("text", c.get("source", ""))}
-                                    for c in (citations or [])
-                                ],
-                                run_id=run_id, domain_id=domain_id,
-                            )
-                            hallucination_risk = report.hallucination_risk
-                            if hallucination_risk > 0.7:
-                                quality = "low_evidence"  # downgrade to trigger consumer warning
-                                _trace("幻觉检测", f"risk={hallucination_risk:.2f} → quality downgraded to low_evidence", risk=hallucination_risk)
-                        except Exception as e:
-                            logging.debug(str(e), exc_info=True)
-
-                        # ── Phase 3.1: hallucination risk → Self-RAG reroute ──
-                        if hallucination_risk > 0.7:
-                            quality = "low_evidence"
-                            _trace("幻觉闭环", f"risk={hallucination_risk:.2f} → quality=low_evidence", risk=hallucination_risk)
-
-                        # ── Phase 0.3: Semantic cache write ──
-                        try:
-                            from core.harness.knowledge.semantic_cache_hook import write_cache_result
-                            if answer:
-                                await write_cache_result(enhanced_question, domain_id, answer, citations)
-                        except Exception as e:
-                            logging.debug(str(e), exc_info=True)
-                        # PatternCache: store execution pattern for future optimization
-                        try:
-                            from core.harness.execution.pattern_cache import get_pattern_cache
-                            pcache = get_pattern_cache()
-                            exec_path = {
-                                "retrieval_strategy": str(retrieval_policy.get("route", "direct")),
-                                "intent": intent, "qual": quality,
-                            }
-                            await pcache.store(domain_id, enhanced_question, exec_path, success=bool(answer))
-                        except Exception as e:
-                            logging.debug(str(e), exc_info=True)
-
                         return AgentResult(
                             success=True,
                             output={"answer": answer, "citations": citations, "items": [],
@@ -601,9 +545,8 @@ class MaterialsChatAgent(BaseAgent):
                                     "retrieval_policy": retrieval_policy, "answer_strategy": answer_strategy,
                                     "reasoning_path": reasoning_path,
                                     "pipeline_trace": pipeline_trace,
-                                    "quality": quality, "hallucination_risk": hallucination_risk},
-                            metadata={"intent": intent, "strategy": "direct_retrieve", "doc_count": len(doc_ids),
-                                       "hallucination_risk": hallucination_risk},
+                                    "quality": quality},
+                            metadata={"intent": intent, "strategy": "direct_retrieve", "doc_count": len(doc_ids)},
                         )
                 except Exception as e:
                     logging.debug(str(e), exc_info=True)
@@ -638,43 +581,6 @@ class MaterialsChatAgent(BaseAgent):
                 route=str(retrieval_policy.get("route") or ""),
                 default_skill=skill_name,
             )
-
-            if convo is not None and answer:
-                try:
-                    await convo.append_conversation_assistant_message(
-                        tenant_id=tenant_id,
-                        session_id=session_id,
-                        user_id=user_id,
-                        content=answer,
-                        citations=citations,
-                        turn_summary=turn_summary,
-                        strategy=strategy,
-                        mode=mode,
-                        intent=intent,
-                        skills_used=skills_used,
-                        analysis=analysis,
-                        retrieval_policy=retrieval_policy,
-                        answer_strategy=answer_strategy,
-                        run_id=run_id,
-                    )
-                except Exception as e:
-                    logging.debug(str(e), exc_info=True)
-
-            # Bridge to MemoryManager for cross-session recall
-            try:
-                from core.harness.memory.manager import get_memory_manager
-                mm = get_memory_manager(namespace=f"kb_{session_id}")
-                await mm.save_interaction(question, answer, stability="high")
-            except Exception as e:
-                logging.warning("Memory save_interaction failed", exc_info=True)
-
-            # Phase 0.3: Write back to semantic cache for future hit
-            if os.getenv("AIPLAT_SEMANTIC_CACHE_ENABLED", "false").lower() in ("true", "1", "yes"):
-                try:
-                    from core.harness.knowledge.semantic_cache_hook import write_cache_result
-                    await write_cache_result(question, domain_id, answer)
-                except Exception:
-                    import logging; logging.getLogger(__name__).debug("Semantic cache write skipped", exc_info=True)
 
             return AgentResult(
                 success=True,

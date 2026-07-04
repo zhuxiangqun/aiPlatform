@@ -128,28 +128,6 @@ class OperatorAgent(BaseAgent):
         # ── Parse structured decision ──
         decision = self._parse_decision(answer)
 
-        # Phase 11.2: Semantic compliance validation
-        _gate_status = "unavailable"
-        _gate_violations: list = []
-        try:
-            if os.getenv("AIPLAT_SEMANTIC_GATE_ENABLED", "true").lower() in ("true", "1", "yes"):
-                from core.harness.infrastructure.gates.semantic_gate import SemanticGate
-                gate = SemanticGate(mode=os.getenv("AIPLAT_SEMANTIC_GATE_MODE", "warn"))
-                gate_result = gate.verify(decision, domain_id=vars0.get("domain_id", "default"))
-                _gate_status = gate_result.status
-                _gate_violations = [
-                    v.to_dict() for v in gate_result.violations[:5]
-                ]
-        except Exception as e:
-            logger.debug("SemanticGate skipped: %s", e)
-
-        # Inject gate result into decision
-        decision["_semantic_gate"] = {
-            "status": _gate_status,
-            "violation_count": len(_gate_violations),
-            "violations": _gate_violations,
-        }
-
         # Phase 15: Lightweight retry on low-confidence outputs
         _retried = False
         try:
@@ -170,20 +148,6 @@ class OperatorAgent(BaseAgent):
         except Exception as e:
             logger.debug("Retry skipped: %s", e)
 
-        # ── Action bridge: fire webhooks for recommended actions ──
-        action_results = []
-        try:
-            if decision.get("recommended_actions"):
-                from core.harness.actions.action_bridge import execute_decision_actions
-                ctx = {
-                    "entity_id": vars0.get("entity", ""),
-                    "domain_id": vars0.get("domain_id", "default"),
-                    "timestamp": str(int(time.time())),
-                }
-                action_results = await execute_decision_actions(decision, context=ctx)
-        except Exception as e:
-            logger.debug("Action bridge skipped: %s", e)
-
         elapsed_ms = int((time.time() - _t0) * 1000)
         return AgentResult(
             success=bool(decision),
@@ -194,10 +158,6 @@ class OperatorAgent(BaseAgent):
                 "elapsed_ms": elapsed_ms,
                 "session_id": session_id,
                 "has_run_context": bool(run_context),
-                "actions_fired": len(action_results),
-                "action_results": action_results,
-                "semantic_gate_status": _gate_status,
-                "semantic_violations": len(_gate_violations),
                 "retried": _retried,
             },
         )

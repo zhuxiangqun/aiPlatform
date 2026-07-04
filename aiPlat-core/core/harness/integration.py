@@ -2231,6 +2231,105 @@ class HarnessIntegration:
                     meta.setdefault("completion_gate_valid", comp.valid)
             except Exception:
                 pass
+            # Phase 11.2: Semantic compliance validation (all agents)
+            try:
+                from core.harness.infrastructure.gates.semantic_gate import SemanticGate
+                gate = SemanticGate(mode=os.getenv("AIPLAT_SEMANTIC_GATE_MODE", "warn"))
+                out = getattr(result, "output", {}) if hasattr(result, "output") else {}
+                gate_result = gate.verify(out if isinstance(out, dict) else {}, domain_id="default")
+                meta.setdefault("semantic_gate_status", gate_result.status)
+                meta.setdefault("semantic_violations", len(gate_result.violations))
+            except Exception:
+                pass
+            # Post-generation: quality assessment (all agents)
+            try:
+                from core.harness.evaluation.self_review import self_review
+                out = getattr(result, "output", {}) if hasattr(result, "output") else {}
+                answer = (out if isinstance(out, str) else
+                          out.get("answer", "") if isinstance(out, dict) else "")
+                citations = out.get("citations", []) if isinstance(out, dict) else []
+                quality = self_review(str(answer), citations, [])
+                meta.setdefault("quality", quality)
+            except Exception:
+                pass
+            # Post-generation: Hallucination risk check (all agents)
+            try:
+                from core.harness.evaluation.hallucination_tracker import get_hallucination_tracker
+                tracker = get_hallucination_tracker()
+                out = getattr(result, "output", {}) if hasattr(result, "output") else {}
+                answer = (out if isinstance(out, str) else
+                          out.get("answer", "") if isinstance(out, dict) else "")
+                citations = out.get("citations", []) if isinstance(out, dict) else []
+                q = ""
+                if isinstance(payload, dict):
+                    msgs = payload.get("messages", [])
+                    if msgs:
+                        q = str(msgs[-1].get("content", "") or "")
+                report = await tracker.evaluate(
+                    question=q, answer=str(answer),
+                    retrieved_context=[{"text": str(c.get("text", c))} for c in (citations or [])[:5]],
+                    run_id=execution_id, domain_id="default",
+                )
+                meta.setdefault("hallucination_risk", report.hallucination_risk)
+                if report.hallucination_risk > 0.7:
+                    meta["quality"] = "low_evidence"  # downgrade quality on high risk
+            except Exception:
+                pass
+            # Post-generation: Semantic cache write (all agents)
+            try:
+                from core.harness.knowledge.semantic_cache_hook import write_cache_result
+                out = getattr(result, "output", {}) if hasattr(result, "output") else {}
+                answer = (out if isinstance(out, str) else
+                          out.get("answer", "") if isinstance(out, dict) else "")
+                citations = out.get("citations", []) if isinstance(out, dict) else []
+                q = ""
+                if isinstance(payload, dict):
+                    msgs = payload.get("messages", [])
+                    if msgs:
+                        q = str(msgs[-1].get("content", "") or "")
+                if answer and q:
+                    await write_cache_result(q, "default", str(answer), list(citations or []))
+            except Exception:
+                pass
+            # Post-generation: PatternCache store (all agents)
+            try:
+                from core.harness.execution.pattern_cache import get_pattern_cache
+                pcache = get_pattern_cache()
+                out = getattr(result, "output", {}) if hasattr(result, "output") else {}
+                strategy = (out.get("strategy", "") if isinstance(out, dict) else "")
+                await pcache.store("default", execution_id,
+                                    {"strategy": strategy, "quality": meta.get("quality", "")},
+                                    success=result.success)
+            except Exception:
+                pass
+            # Post-generation: Memory save (all agents)
+            try:
+                from core.harness.memory.manager import MemoryManager
+                mm = getattr(runtime, "memory_manager", None) if runtime else None
+                if mm:
+                    q = ""
+                    if isinstance(payload, dict):
+                        msgs = payload.get("messages", [])
+                        if msgs:
+                            q = str(msgs[-1].get("content", "") or "")
+                    out = getattr(result, "output", {}) if hasattr(result, "output") else {}
+                    answer = (out if isinstance(out, str) else
+                              out.get("answer", "") if isinstance(out, dict) else "")
+                    if q and answer:
+                        await mm.save_interaction(question=q, answer=str(answer), success=result.success)
+            except Exception:
+                pass
+            # Post-generation: Action bridge (fire webhooks for recommended_actions)
+            try:
+                out = getattr(result, "output", {}) if hasattr(result, "output") else {}
+                decision = out.get("decision", out) if isinstance(out, dict) else {}
+                if isinstance(decision, dict) and decision.get("recommended_actions"):
+                    from core.harness.actions.action_bridge import execute_decision_actions
+                    action_results = await execute_decision_actions(decision)
+                    meta.setdefault("actions_fired", len(action_results))
+                    meta.setdefault("action_results", action_results)
+            except Exception:
+                pass
             approval_req_id = None
             try:
                 approval_req_id = (meta.get("approval") or {}).get("approval_request_id") if isinstance(meta.get("approval"), dict) else None
