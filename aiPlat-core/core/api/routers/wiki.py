@@ -5190,6 +5190,35 @@ async def get_model_selection_log():
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.post("/active-synthesis", response_model=Dict[str, Any])
+async def run_active_synthesis(
+    domain: str = "default",
+    collection: str = "default",
+    max_gaps: int = 5,
+    auto_submit: bool = False,
+):
+    """Run active knowledge synthesis — detect gaps → research → draft → propose.
+
+    Trigger modes:
+      - Manual: set auto_submit=true to automatically create proposals
+      - Preview: set auto_submit=false (default) to see drafts without submitting
+
+    This is the STORM-style 'Compiler Mode': AI actively scans for knowledge
+    gaps and proposes new wiki pages, rather than passively waiting for uploads.
+    """
+    try:
+        from core.harness.knowledge.active_synthesis import run_active_synthesis as do_synthesis
+        result = await do_synthesis(
+            domain_id=domain,
+            collection_id=collection,
+            max_gaps=max_gaps,
+            auto_submit=auto_submit,
+        )
+        return {"status": "completed", **result}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e)[:300])
+
+
 # ══════════════════════════════════════════════════════════════
 # Markings API (Phase 2 — lineage-based security)
 # ══════════════════════════════════════════════════════════════

@@ -52,6 +52,11 @@ def _inc_change_counter() -> None:
             trigger_quality_check()
         except Exception:
             pass
+        try:
+            from core.harness.knowledge.active_synthesis import trigger_active_synthesis
+            trigger_active_synthesis()
+        except Exception:
+            pass
         _wiki_change_counter = 0
 
 
