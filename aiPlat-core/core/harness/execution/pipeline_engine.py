@@ -7,7 +7,18 @@ Canonical location: harness/execution/pipeline_engine.py (CLAUDE.md §5.23).
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Set, Tuple, TypedDict
+from typing import Any, Callable, Dict, List, Optional, Set, Tuple, TypedDict
+
+# ── Pipeline Registry (for Playbook v1 export/import) ──
+REGISTERED_PIPELINES: Dict[str, Callable] = {}
+
+def register_pipeline(name: str, builder_fn: Callable):
+    """Register a pipeline builder function for Playbook export/import."""
+    REGISTERED_PIPELINES[name] = builder_fn
+
+def get_pipeline_builder(name: str) -> Callable:
+    """Get a registered pipeline builder by name."""
+    return REGISTERED_PIPELINES.get(name)
 
 import asyncio
 import hashlib

@@ -69,6 +69,20 @@ class BaseSkill(ISkill):
         """Get output schema"""
         return self._config.output_schema
 
+    def to_dict(self) -> Dict[str, Any]:
+        """Export skill configuration as dict for Playbook serialization."""
+        cfg = self._config
+        return {
+            "name": cfg.name,
+            "version": cfg.version or "1.0.0",
+            "description": getattr(cfg, "description", ""),
+            "category": getattr(cfg, "category", "general"),
+            "input_schema": getattr(cfg, "input_schema", {}),
+            "output_schema": getattr(cfg, "output_schema", {}),
+            "tags": getattr(cfg, "tags", []),
+            "metadata": getattr(cfg, "metadata", {}),
+        }
+
 
 class TextGenerationSkill(BaseSkill):
     """
