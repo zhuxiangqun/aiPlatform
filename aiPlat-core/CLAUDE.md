@@ -1082,7 +1082,7 @@ _register("my-template-id", """提示词正文，使用 ${variable} 占位符。
 
 **P2 模板版本化**：支持 `id@version` 语法选择特定模板版本（`_sync_resolve("react-reasoning@1.0.0")`）。不指定版本时默认返回最新版（向后兼容）。`_register("id", "text", version="2.0.0")` 注册多版本。`get_versions()` / `get_latest_version()` 查询版本历史。
 
-### 5.36 本体引擎模块总览（2026-06 更新 — 15 个模块）
+### 5.36 本体引擎模块总览（2026-07-04 更新 — 23 个模块）
 
 `core/harness/ontology_engine/` 目录下的模块列表及其职责：
 
@@ -1101,7 +1101,17 @@ _register("my-template-id", """提示词正文，使用 ${variable} 占位符。
 | 11 | `entity_resolver.py` | 273 | 3层消歧 (strict/lazy双模式) |
 | 12 | `traversal_cache.py` | 101 | LRU遍历缓存 + 图突变失效 |
 | 13 | `knowledge_synthesis.py` | 194 | 推理链/事实卡/综合结论 → Wiki页面 |
-| **总** | | **~4,400** | |
+| 14 | `approval.py` | 271 | 本体变更审批工作流 |
+| 15 | `cleanup.py` | 130 | 过期实体/关系定时清理 |
+| 16 | `data_source.py` | 263 | 外部数据源连接器 (SQL/API/File) |
+| 17 | `datasource_status.py` | 161 | 数据源健康状态监控 |
+| 18 | `knowledge_gap_detector.py` | 142 | 知识缺口检测 → 自动建议补充 |
+| 19 | `rule_designer.py` | 321 | 推理规则可视化设计器 |
+| 20 | `rule_prompt.py` | 135 | 规则设计 LLM prompt 模板 |
+| 21 | `sharded_graph.py` | 75 | 多域图分片 + 跨域邻居查询 |
+| 22 | `triple_scanner.py` | 195 | AGENT.md/SKILL.md → 本体三元组扫描 |
+| 23 | `triple_store.py` | 190 | 三元组持久化存储 |
+| **总** | | **~6,800** | |
 
 ### 5.37 13步引擎管线（2026-06 最终形态）
 

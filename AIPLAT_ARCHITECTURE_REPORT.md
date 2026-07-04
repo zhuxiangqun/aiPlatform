@@ -1,6 +1,6 @@
 # aiPlat 系统全面架构分析报告
 
-> 生成时间：2026-07-01（更新 — FDE 操作系统 + Phase 5 竞品借鉴全部合入, 405✅）
+> 生成时间：2026-07-01（更新 — FDE 操作系统 + Phase 5 竞品借鉴全部合入, 464✅）
 > 分析范围：aiPlat（代码级全量分析）
 > 架构守卫状态：0 ERROR, 10 WARNING（全已知, 无阻断）
 > 合规状态：0 违规（shell agents 已修复, env-legacy 已标记）
@@ -15,7 +15,7 @@
 
 | aiPlat | Hermes | Claude Code | OpenClaw |
 |------|------|------|------|
-| 企业 FDE 操作系统 · 4层分层 · Python · 405✅ | 个人 AI 助手 · MIT 开源 · Python · 207k★ | 编程 Agent · 闭源引擎+开源插件 · TS · 135k★ | 个人 AI 助手 · MIT 开源 · TS · 381k★ |
+| 企业 FDE 操作系统 · 4层分层 · Python · 464✅ | 个人 AI 助手 · MIT 开源 · Python · 207k★ | 编程 Agent · 闭源引擎+开源插件 · TS · 135k★ | 个人 AI 助手 · MIT 开源 · TS · 381k★ |
 
 ---
 

@@ -2,7 +2,7 @@
 
 > 原则：代码即真相。每个条目必须有可验证的代码位置。
 > 更新：任何能力变更时同步更新本文档。
-> 评分：98/100（2026-07-04 — 460✅, P0-P3: gates安全体系+TrendDetector熵增预警+SQLite连接池化+模型定价+凭证轮换）
+> 评分：98/100（2026-07-04 — 464✅, P0-P3: gates安全体系+TrendDetector熵增预警+SQLite连接池化+模型定价+凭证轮换）
 
 ---
 
@@ -122,6 +122,7 @@
 | cap_health_rules | `harness/knowledge/cap_health_rules.py` | ✅ | 自动同步 | 已合入 |
 | skill_deps | `harness/knowledge/skill_deps.py` | ✅ | 自动同步 | 已合入 |
 | code_graph_persist | `harness/knowledge/code_graph_persist.py` | ✅ | 自动同步 | 已合入 |
+| cap_graph_persist | `harness/knowledge/cap_graph_persist.py` | ✅ | 自动同步 | 已合入 |
 |------|------|:---:|------|------|
 | 统一知识检索 | `harness/syscalls/retrieval.py:569` | ✅ | 并行 Wiki + KB，RRF 三路融合 | 已合入 |
 | KB 文档检索 | `harness/syscalls/retrieval.py:39` | ✅ | hybrid: LIKE + FTS5 + FAISS 向量 | 已合入 |
@@ -287,6 +288,7 @@
 | infra_bridge | `harness/infrastructure/infra_bridge.py` | ✅ | 自动同步 | 已合入 |
 | base_model_adapter | `harness/infrastructure/base_model_adapter.py` | ✅ | 自动同步 | 已合入 |
 | infra_audio_adapter | `harness/infrastructure/infra_audio_adapter.py` | ✅ | 自动同步 | 已合入 |
+| feedback_translator | `harness/infrastructure/feedback_translator.py` | ✅ | 自动同步 | 已合入 |
 |------|------|:---:|------|------|
 | InfraLLMAdapter | `harness/infrastructure/infra_llm_adapter.py` | ✅ | Core 唯一 LLM 适配器 | 已合入 |
 | InfraEmbeddingAdapter | `harness/infrastructure/infra_embedding_adapter.py` | ✅ | SentenceTransformer | 已合入 |
@@ -563,6 +565,8 @@
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
 | authenticator | `aiPlat-platform/auth/authenticator.py` | ✅ | 自动同步 | 已合入 |
 | pdf_render | `aiPlat-platform/kb/poc/pdf_render.py` | ✅ | 自动同步 | 已合入 |
+| prompt_app | `api/routers/prompt_app.py` | ✅ | 自动同步 | 已合入 |
+| entropy | `api/routers/entropy.py` | ✅ | 自动同步 | 已合入 |
 |------|------|:---:|------|------|
 | Change Control | `platform/api/routers/change_control.py` | ✅ | 变更请求跟踪/审计/autosmoke强制执行 | 已合入 |
 | Tenant Onboarding | `platform/api/routers/onboarding.py` | ✅ | 租户引导：LLM配置/执行后端/密钥迁移/信任密钥 | 已合入 |
@@ -707,7 +711,7 @@
 | 编排系统 | 4 | 0 | 4 |
 | 管理 & 质量 | 21 | 0 | 21 |
 | 编排层 | 17 | 0 | 17 |
-| **总计** | **460** | **0** | **460** |
+| **总计** | **464** | **0** | **464** |
 
 ---
 
