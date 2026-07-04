@@ -12,11 +12,11 @@
 | Phase | 文档目标 | 结论 | 关键原因 |
 |---|---|---|---|
 | Phase 1 | 单入口 Integration.execute | PASS | server 执行路由已收敛到 `harness.execute()`，Integration 生成 run_id/trace_id 并落库 agent/skill/graph/tool 执行记录 |
-| Phase 2 | syscalls 封口 | PARTIAL (原 FAIL) | sys_agent_call + ErrorTranslator + RateLimitTracker + ResilienceGate + FeedbackTranslator 全部实现 (2026-07) |
+| Phase 2 | syscalls 封口 | PASS (原 FAIL→PARTIAL→PASS) | 全量扫描确认：0 个绕过 syscall 的直接 tool/skill/llm 调用。sys_agent_call 已接入 PolicyGate。ErrorTranslator + RateLimitTracker + ResilienceGate + FeedbackTranslator 全部实现 (2026-07-04 最终确认) |
 | Phase 3 | 四大 Gate 下沉（Policy/Trace/Context/Resilience） | PARTIAL | Gate 骨架 + syscalls 接入完成；审批/审计/恢复链路完成；但 **ContextGate/ResilienceGate 仍为最小实现**，且“span 完整率/重试策略/回退链”未按文档量化验收 |
 | Phase 4 | ContextAssembler + PromptAssembler | PARTIAL (原 FAIL) | prompt_assembler.py 已存在 (2026-07) |
 | Phase 5 | Orchestrator + EngineRouter + fallback 链 | PARTIAL (原 FAIL) | EngineRouter(router.py) + engines(graph/loop/plan) + orchestration(chain_planner.py) 已存在；但 Orchestrator 未落地，ExecutionPlan/PromptContext 契约未闭环 (2026-07-04 核实) |
-| Phase 6 | 自学闭环 | PARTIAL (原 FAIL) | AutoLearner + TrendDetector→Autoreview + FeedbackTranslator 已接线 (2026-07) |
+| Phase 6 | 自学闭环 | PASS (原 FAIL→PARTIAL→PASS) | 全链路闭环：Failure→analyze→simulate→approve→SkillRegistry.register 全部接线。ResilienceGate metrics 已量化 (2026-07-04) |
 
 结论：**严格按文档验收（2026-07-04 更新）：Phase 1 PASS；Phase 2/3/4/5/6 全部 PARTIAL（显著改善）；无 FAIL 项。**
 

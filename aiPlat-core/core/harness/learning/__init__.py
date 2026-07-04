@@ -339,6 +339,16 @@ class AutoLearner:
             approved_path = Path(os.path.expanduser("~/.aiplat/skills")) / draft_name
             approved_path.mkdir(parents=True, exist_ok=True)
             (approved_path / "SKILL.md").write_text(draft.to_yaml(), encoding="utf-8")
+            # ── Register in SkillRegistry so it's immediately available ──
+            try:
+                from core.apps.skills.registry import SkillRegistry
+                from core.apps.skills.discovery import create_discovery
+                discovery = create_discovery()
+                skills = await discovery.scan_directory(str(approved_path))
+                for skill in skills:
+                    SkillRegistry().register(skill)
+            except Exception as e:
+                logging.debug("SkillRegistry registration skipped: %s", e)
             # Phase 4.3: Hook LoRA AutoTrigger
             try:
                 from core.harness.training.auto_trigger import get_lora_auto_trigger

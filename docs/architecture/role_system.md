@@ -252,7 +252,7 @@ class StrategyAgent:
 | **触发** | `_try_feed_learning_pipeline` 每次交互后 / EvolutionEngine Step 2/8/10 |
 | **管理入口** | `RoleManager` 查看草稿数 |
 | **为何是 Agent** | 模式识别、数据驱动优化——人类无法从几千条轨迹中找出模式 |
-| **核心组件** | `analyze_failure()` + `analyze_success()` + `SkillSimulator.validate()` |
+| **核心组件** | `analyze_failure()` + `analyze_success()` + `SkillSimulator.validate() → PCP 审批管道 → SkillRegistry` |
 
 ### 4.4 🎯 协调员 (Orchestrator)
 
