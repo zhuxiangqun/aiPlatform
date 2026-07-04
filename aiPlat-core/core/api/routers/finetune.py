@@ -190,7 +190,7 @@ async def list_providers():
 
 # ── RL Training ──────────────────────────────────────────────────────────
 
-@router.post("/train")  # noqa: contract-ok
+@router.post("/train", response_model=Dict[str, Any])  # noqa: contract-ok
 async def start_training(body: Dict[str, Any]) -> Dict[str, Any]:
     """Start an RL training job.
 
@@ -223,7 +223,7 @@ async def start_training(body: Dict[str, Any]) -> Dict[str, Any]:
         raise HTTPException(status_code=500, detail=str(e)[:200])
 
 
-@router.get("/train/{job_id}")  # noqa: contract-ok
+@router.get("/train/{job_id}", response_model=Dict[str, Any])  # noqa: contract-ok
 async def get_training_status(job_id: str) -> Dict[str, Any]:
     """Get RL training job status."""
     try:
@@ -245,7 +245,7 @@ async def get_training_status(job_id: str) -> Dict[str, Any]:
 
 # ── Knowledge Distillation ───────────────────────────────────────────────
 
-@router.post("/distill")  # noqa: contract-ok
+@router.post("/distill", response_model=Dict[str, Any])  # noqa: contract-ok
 async def start_distillation(body: Dict[str, Any]) -> Dict[str, Any]:
     """Start a knowledge distillation job (Teacher→Student).
 
@@ -275,7 +275,7 @@ async def start_distillation(body: Dict[str, Any]) -> Dict[str, Any]:
         raise HTTPException(status_code=500, detail=str(e)[:200])
 
 
-@router.get("/distill/{job_id}")  # noqa: contract-ok
+@router.get("/distill/{job_id}", response_model=Dict[str, Any])  # noqa: contract-ok
 async def get_distillation_status(job_id: str) -> Dict[str, Any]:
     """Get knowledge distillation job status."""
     try:
@@ -291,7 +291,7 @@ async def get_distillation_status(job_id: str) -> Dict[str, Any]:
         return {"job_id": job_id, "status": "error", "error": str(e)[:200]}
 
 
-@router.get("/distill")  # noqa: contract-ok
+@router.get("/distill", response_model=Dict[str, Any])  # noqa: contract-ok
 async def list_distillation_jobs() -> Dict[str, Any]:
     """List all distillation jobs."""
     try:
@@ -305,7 +305,7 @@ async def list_distillation_jobs() -> Dict[str, Any]:
 
 # ── From-Scratch Training ────────────────────────────────────────────────
 
-@router.post("/scratch")  # noqa: contract-ok
+@router.post("/scratch", response_model=Dict[str, Any])  # noqa: contract-ok
 async def start_scratch_training(body: Dict[str, Any]) -> Dict[str, Any]:
     """Start a from-scratch model training job (random initialization).
 
@@ -334,7 +334,7 @@ async def start_scratch_training(body: Dict[str, Any]) -> Dict[str, Any]:
         raise HTTPException(status_code=500, detail=str(e)[:200])
 
 
-@router.get("/scratch/{job_id}")  # noqa: contract-ok
+@router.get("/scratch/{job_id}", response_model=Dict[str, Any])  # noqa: contract-ok
 async def get_scratch_status(job_id: str) -> Dict[str, Any]:
     """Get from-scratch training job status."""
     try:
@@ -350,7 +350,7 @@ async def get_scratch_status(job_id: str) -> Dict[str, Any]:
         return {"job_id": job_id, "status": "error", "error": str(e)[:200]}
 
 
-@router.get("/scratch")  # noqa: contract-ok
+@router.get("/scratch", response_model=Dict[str, Any])  # noqa: contract-ok
 async def list_scratch_jobs() -> Dict[str, Any]:
     """List all from-scratch training jobs."""
     try:
@@ -362,7 +362,7 @@ async def list_scratch_jobs() -> Dict[str, Any]:
         return {"jobs": [], "total": 0, "error": str(e)[:200]}
 
 
-@router.get("/models")  # noqa: contract-ok
+@router.get("/models", response_model=Dict[str, Any])  # noqa: contract-ok
 async def list_registered_models() -> Dict[str, Any]:
     """List all registered models from infra ModelManager."""
     try:

@@ -1218,7 +1218,7 @@ async def llm_review_history(limit: int = 10):
 
 # ── Token/Cost Usage Insights ───────────────────────────────────────────────
 
-@router.get("/diagnostics/llm-review/summary-stats")
+@router.get("/diagnostics/llm-review/summary-stats", response_model=Dict[str, Any])
 async def get_llm_review_summary_stats():
     """
     Aggregated token usage and cost summary from latest diagnostic runs.
