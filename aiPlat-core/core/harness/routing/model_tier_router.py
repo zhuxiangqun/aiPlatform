@@ -28,6 +28,7 @@ class TierConfig:
     complexity_range: Tuple[float, float]
     default_model: str
     fallback_models: List[str] = field(default_factory=list)
+    max_tools: int = 0  # Phase 16: tool limit per tier
 
 
 class ModelTierRouter:
@@ -63,6 +64,7 @@ class ModelTierRouter:
                     complexity_range=(float(rng[0]), float(rng[1])),
                     default_model=cfg.get("default_model", ""),
                     fallback_models=cfg.get("fallback_models", []),
+                    max_tools=int(cfg.get("max_tools", 0)),
                 )
             if not self._tiers:
                 logger.warning("No tiers configured in llm_profile.yaml — router will return None")
@@ -164,6 +166,13 @@ class ModelTierRouter:
         )
         t1_config = self._tiers.get("T1")
         return t1_config.default_model if t1_config else None
+
+    def get_max_tools(self, tier_id: str) -> int:
+        """Return max tools limit for a tier. Default 0 (unlimited)."""
+        config = self._tiers.get(tier_id)
+        if config:
+            return getattr(config, 'max_tools', 0) or 0
+        return 0
 
 
 # ── Singleton ────────────────────────────────────────────────

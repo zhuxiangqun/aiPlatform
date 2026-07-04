@@ -71,21 +71,26 @@ tiers:
     label: "轻量/快速"
     complexity_range: [0, 1]
     default_model: "qwen2.5:3b"
+    max_tools: 4
   T2:
     label: "日常对话"
     complexity_range: [1, 2]
     default_model: "qwen2.5-coder:7b"
     fallback_models: ["deepseek/deepseek-v4-flash"]
+    max_tools: 8
   T3:
     label: "内容创作/编码"
     complexity_range: [2, 3]
     default_model: "qwen2.5-coder:7b"
     fallback_models: ["deepseek/deepseek-v4-flash"]
+    max_tools: 16
   T4:
     label: "复杂推理"
     complexity_range: [3, 4]
     default_model: "deepseek/deepseek-v4-pro"
+    max_tools: 32
   T5:
     label: "高难度推理"
     complexity_range: [4, 5]
     default_model: "deepseek/deepseek-v4-pro"
+    max_tools: 64

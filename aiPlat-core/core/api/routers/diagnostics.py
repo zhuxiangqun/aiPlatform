@@ -1536,3 +1536,25 @@ async def get_model_tier_status():
 
     return result
 
+
+# ── Phase 17: Code entropy scan ──
+
+@router.get("/diagnostics/code-entropy", response_model=Dict[str, Any])
+async def get_code_entropy(directory: str = ""):
+    """Scan code directory for high-entropy files (AI slop detection).
+
+    Inspect by OpenAI's weekly code cleanup practice — identifies files
+    that need refactoring due to accumulated AI-generated code degradation.
+    """
+    try:
+        from core.harness.knowledge.code_entropy_detector import CodeEntropyDetector
+        detector = CodeEntropyDetector()
+        target = directory or str(
+            __import__("pathlib").Path(__file__).resolve().parent.parent.parent.parent
+        )
+        result = detector.scan(target)
+        result["last_scan"] = detector.get_last_scan()
+        return result
+    except Exception as e:
+        return {"error": str(e)[:300]}
+

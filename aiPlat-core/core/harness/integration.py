@@ -2000,6 +2000,26 @@ class HarnessIntegration:
                 if isinstance(context.variables, dict):
                     context.variables.setdefault("_trace_id", trace_id)
                     context.variables.setdefault("_run_id", execution_id)
+                    # Phase 16: Tool whitelist — inject max_tools from complexity tier
+                    try:
+                        msg_text = ""
+                        if isinstance(payload, dict):
+                            msgs = payload.get("messages", [])
+                            if msgs:
+                                msg_text = str(msgs[-1].get("content", "") or "")
+                        if msg_text:
+                            from core.harness.knowledge.complexity_router import ComplexityRouter
+                            cr = ComplexityRouter.estimate([{"role": "user", "content": msg_text}])
+                            from core.harness.routing.model_tier_router import get_tier_router
+                            router = get_tier_router()
+                            tier = router._complexity_to_tier(
+                                router._normalize_complexity(cr.level, cr.confidence)
+                            )
+                            max_tools = router.get_max_tools(f"T{tier}")
+                            if max_tools > 0:
+                                context.variables["_max_tools"] = max_tools
+                    except Exception:
+                        pass
             except Exception as e:
                 logging.debug(str(e), exc_info=True)
 
