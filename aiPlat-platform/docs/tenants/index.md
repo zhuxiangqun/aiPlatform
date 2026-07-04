@@ -1,29 +1,21 @@
----
-status: draft
-draft_date: 2026-07-04
----
+# tenants 模块（Platform Layer 2：多租户管理）
 
-# tenants 模块（Platform Layer 2）
+## 定位
 
-> 本文档为**骨架**：用于补齐文档引用与边界说明，后续可按实现细节逐步完善。
+platform 的 `tenants/` 模块提供多租户创建、隔离、配额管理。所有 API 调用均需携带 `tenant_id`，核心层（core）通过透传 headers 获取租户上下文。
 
-## 1. 定位与职责
+## 已实现能力
 
-`tenants` 模块负责多租户治理与隔离策略的“平台控制面”：
+| 能力 | 状态 |
+|------|:--:|
+| 租户 CRUD（创建/查询/更新/删除） | ✅ |
+| tenant_id 注入到所有下游调用 | ✅ |
+| 租户自助入驻门户（register → verify email → API key） | ✅ |
+| 租户配额管理（tenant_quotas） | ✅ |
+| 租户用量追踪（tokens/calls） | ✅ |
 
-- 租户生命周期：创建/停用/删除
-- 租户隔离：命名空间/标签/逻辑边界
-- 租户配额/计量：与 `billing`（计费）协作
-- 租户级权限：与 `auth` 协作
+## 边界
 
-## 2. 依赖与边界
-
-- ✅ 可以调用 `aiPlat-core` 以实现“租户上下文注入”（例如执行上下文、审计上下文）
-- ❌ 不直接访问 `aiPlat-infra` 的具体数据库/队列/存储实现
-
-## 3. 相关文档
-
-- [平台层文档索引](../index.md)
-- [平台层开发规范](../guides/DEVELOPMENT.md)
-- [系统级测试指南](../../../docs/TESTING_GUIDE.md)
-
+- 租户数据隔离在 core 层执行（知识库、Wiki、GraphIndex 全部按 tenant_id/domain_id 隔离）
+- platform 只管理租户元数据（名称、配额、状态），不存储租户业务数据
+- 跨租户查询被 PolicyGate 在核心层阻断

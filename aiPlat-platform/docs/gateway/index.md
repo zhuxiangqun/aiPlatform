@@ -1,11 +1,8 @@
 ---
-status: draft
-draft_date: 2026-07-04
+last_synced: 2026-07-04
 ---
 
 # gateway 模块（Platform Layer 2：API Gateway）
-
-> 本文档为**骨架**：用于补齐文档引用与边界说明，后续可按实现细节逐步完善。
 
 ## 重要说明：区分两类网关
 

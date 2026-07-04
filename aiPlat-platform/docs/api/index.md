@@ -1,40 +1,24 @@
----
-status: draft
-draft_date: 2026-07-04
----
+# api 模块（Platform Layer 2：REST API 网关）
 
-# api 模块（Platform Layer 2）
+## 定位
 
-> 本文档为**骨架**：用于补齐文档引用与边界说明，后续可按实现细节逐步完善。
+`api/` 是 aiPlat 平台的 REST API 入口。所有外部请求通过此模块进入平台，经认证、限流后路由到下游服务。
 
-## 1. 定位与职责
+## 已实现能力
 
-`api` 模块位于 **aiPlat-platform（Layer 2）**，对外提供平台级 REST/GraphQL API，承担“对外契约层”职责：
+| 能力 | 状态 |
+|------|:--:|
+| REST API 路由注册（4 层全覆盖: core/infra/platform/app） | ✅ |
+| 统一请求/响应格式（`response_model=Dict[str, Any]`） | ✅ |
+| GraphQL 查询端点 | ✅ |
+| WebSocket 实时通信 | ✅ |
+| 健康检查（`/health`, `/core/health`） | ✅ |
+| 错误透传（下游错误信息保全） | ✅ |
+| API 版本管理 | ✅ |
 
-- 对外暴露端点（REST/GraphQL）
-- 认证与授权接入（依赖 `auth` 模块）
-- 请求校验、参数转换、响应规范化
-- 统一错误码与错误格式
-- 限流/熔断/审计等治理能力（可与 `gateway/governance` 协作）
+## 边界
 
-## 2. 依赖与边界
-
-- ✅ 允许依赖：`aiPlat-core`（通过门面/Facade 访问核心能力）
-- ❌ 禁止依赖：`aiPlat-infra`（基础设施访问必须经由 core 间接完成）
-- ❌ 禁止依赖：`aiPlat-app`
-
-> 核心业务逻辑（Agent Loop、Skill/Memory/Knowledge 具体处理）必须在 **aiPlat-core**。
-
-## 3. 产出物
-
-- OpenAPI/Swagger（REST）
-- GraphQL schema（如启用）
-- API 版本策略（如 `/api/v1`）
-
-## 4. 相关文档
-
-- [平台层文档索引](../index.md)
-- [平台层开发规范](../guides/DEVELOPMENT.md)
-- [系统级测试指南](../../../docs/TESTING_GUIDE.md)
-- [核心层文档索引](../../../aiPlat-core/docs/index.md)
-
+- 只做路由和转发，不做业务逻辑
+- 所有业务逻辑调用通过 CoreFacade 接口
+- 不直接访问 harness 内部模块
+- 认证/限流由中间件处理，不在路由中内嵌

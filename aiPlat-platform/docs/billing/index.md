@@ -1,29 +1,20 @@
----
-status: draft
-draft_date: 2026-07-04
----
+# billing 模块（Platform Layer 2：计费与用量管理）
 
-# billing 模块（Platform Layer 2）
+## 定位
 
-> 本文档为**骨架**：用于补齐文档引用与边界说明，后续可按实现细节逐步完善。
+`billing/` 提供租户级别的用量追踪和计费能力。基于 execution_store 中的 token/call 记录聚合每租户的用量数据。
 
-## 1. 定位与职责
+## 已实现能力
 
-`billing` 负责平台层的计费/计量/配额策略（策略与对外契约），典型能力：
+| 能力 | 状态 |
+|------|:--:|
+| 租户用量追踪（token 数、调用次数） | ✅ |
+| Per-tenant 计费面板 | ✅ |
+| 用量导出 CSV（ops/export/tenant_usage.csv） | ✅ |
+| 配额超限告警 | ✅ |
 
-- 租户配额（GPU/请求数/Token/存储）
-- 计量维度：请求量、成功率、Token 消耗、调用时长
-- 费用模型：按量/包年包月（视业务需要）
-- 与审计/治理联动：超额告警、限流策略
+## 边界
 
-## 2. 边界
-
-- 指标采集与底层计量数据来源在 `aiPlat-infra`/`aiPlat-management`
-- platform 负责“对外策略与权限”，不直接采集底层指标
-
-## 3. 相关文档
-
-- [平台层文档索引](../index.md)
-- [租户管理（tenants）](../tenants/index.md)
-- [管理平面（aiPlat-management）](../../../aiPlat-management/docs/index.md)
-
+- 计费数据来自 core 层的 execution_store（通过 sys_llm_generate 每次调用的 usage 记录）
+- billing 只做聚合和展示，不做实时扣费
+- 实际支付对接未实现（当前为用量追踪模式）

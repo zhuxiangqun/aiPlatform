@@ -1,30 +1,22 @@
----
-status: draft
-draft_date: 2026-07-04
----
+# governance 模块（Platform Layer 2：治理与合规）
 
-# governance 模块（Platform Layer 2）
+## 定位
 
-> 本文档为**骨架**：用于补齐文档引用与边界说明，后续可按实现细节逐步完善。
+`governance/` 提供限流、熔断、审计、配额管理等平台级治理能力。所有 API 请求在进入业务逻辑前先经治理层检查。
 
-## 1. 定位与职责
+## 已实现能力
 
-`governance` 提供平台层的治理能力（策略与对外契约），典型包括：
+| 能力 | 代码位置 | 状态 |
+|------|---------|:--:|
+| Rate Limiter（滑动窗口限流） | platform/governance/rate_limit/ | ✅ |
+| Circuit Breaker（熔断器） | platform/governance/ | ✅ |
+| Quota Manager（配额管理） | platform/governance/quota/ | ✅ |
+| Audit Logger（审计日志链式哈希） | platform/governance/audit/logger.py | ✅ |
+| SHA-256 防篡改 | governance/audit/logger.py → verify_integrity() | ✅ |
+| Compliance Checks（SOC2/ISO27001 映射） | core/management/compliance_checks.py | ✅ |
 
-- 限流/配额联动（与 `billing` 协作）
-- 熔断/重试/超时策略（与 `gateway` 协作）
-- 审计日志：关键操作留痕（与 `auth` 协作）
-- 风险控制：敏感操作二次确认（UI/流程层配合）
+## 边界
 
-## 2. 边界
-
-- 具体指标采集与告警执行在 `aiPlat-management`
-- 具体资源层面的实现细节在 `aiPlat-infra`
-- governance 在 platform 层更偏“策略控制面”
-
-## 3. 相关文档
-
-- [平台层文档索引](../index.md)
-- [系统级测试指南](../../../docs/TESTING_GUIDE.md)
-- [管理平面（aiPlat-management）](../../../aiPlat-management/docs/index.md)
-
+- 治理层做"限速"和"记录"，不做权限判断（权限在 PolicyGate）
+- 审计日志写入 SQLite（`~/.aiplat/`），不依赖外部日志系统
+- 熔断和限流策略通过环境变量配置（`AIPLAT_CIRCUIT_COOLDOWN` 等）
