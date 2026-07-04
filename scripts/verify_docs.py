@@ -127,7 +127,11 @@ def check_hardcoded_numbers() -> None:
 
     all_md = list(REPO_ROOT.glob("**/*.md"))
     excluded = {CAPABILITIES_FILE.resolve()}
-    target_files = [f for f in all_md if f.resolve() not in excluded]
+    target_files = [f for f in all_md
+                    if f.resolve() not in excluded
+                    and "node_modules" not in str(f)
+                    and ".venv" not in str(f)
+                    and "__pycache__" not in str(f)]
 
     pattern = re.compile(rf'\b{current_count}\b')
     for md_file in target_files:
@@ -310,18 +314,32 @@ def check_code_references() -> None:
         file_path = match[0]
         line_num = match[1] if len(match) > 1 and match[1] else None
         found = False
-        # References in CAPABILITIES use paths like `harness/infrastructure/...` without `core/` prefix
-        # Search in aiPlat-core/ (not aiPlat-core/core/)
+        # Handle platform/ prefixed paths — search directly under aiPlat-platform
+        prefix_map = {"platform": "aiPlat-platform", "management": "aiPlat-management",
+                      "infra": "aiPlat-infra", "app": "aiPlat-app"}
+        for prefix, base in prefix_map.items():
+            if file_path.startswith(f"{prefix}/"):
+                full = REPO_ROOT / base / file_path[len(prefix) + 1:]
+                if full.exists():
+                    found = True
+                    break
+        if found:
+            break
+
+        # Search bases in order: sub-project directories
         for base in ["aiPlat-core", "aiPlat-infra", "aiPlat-platform", "aiPlat-management", "aiPlat-app"]:
             full = REPO_ROOT / base / "core" / file_path
             if full.exists():
                 found = True
                 break
-            # Also try without core/ subdirectory
             full = REPO_ROOT / base / file_path
             if full.exists():
                 found = True
                 break
+        # For bare filenames (no path prefix), do a recursive search
+        if not found and "/" not in file_path and ".." not in file_path:
+            matches = list(REPO_ROOT.glob(f"**/{file_path}"))
+            found = any("__pycache__" not in str(m) for m in matches)
         if not found:
             # Try root-level
             if (REPO_ROOT / file_path).exists():

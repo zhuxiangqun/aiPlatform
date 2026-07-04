@@ -3,6 +3,7 @@ title: 规范：aiPlat-platform 鉴权与身份透传（企业平台默认）
 date: 2026-04-18
 scope: aiPlat-platform → aiPlat-app/aiPlat-core/aiPlat-management
 status: draft
+draft_date: 2026-07-04
 ---
 
 ## 1. 总原则（最佳实践默认值）

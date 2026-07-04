@@ -34,14 +34,14 @@
 | state_mgr | `harness/execution/loop/state_mgr.py` | ✅ | 自动同步 | 已合入 |
 | graph_injector | `harness/execution/loop/graph_injector.py` | ✅ | 自动同步 | 已合入 |
 |------|------|:---:|------|------|
-| ReAct 执行循环 | `harness/execution/loop.py:292` | ✅ | Reason→Act→Observe，集成 Hook/压缩/记忆 | 已合入 |
-| Plan-Execute 循环 | `harness/execution/loop.py:2578` | ✅ | 先规划后执行模式 | 已合入 |
+| ReAct 执行循环 | `harness/interfaces/loop.py:292` | ✅ | Reason→Act→Observe，集成 Hook/压缩/记忆 | 已合入 |
+| Plan-Execute 循环 | `harness/execution/loop/_facade.py` | ✅ | 先规划后执行模式 | 已合入 |
 | 20 Hook 阶段 | `harness/infrastructure/hooks/hook_manager.py:15` | ✅ | PRE/POST_LOOP, REASONING, ACT, OBSERVE, TOOL_USE, SKILL_USE, STOP, CONTRACT_CHECK, APPROVAL 等 | 已合入 |
 | Pipeline 引擎 | `harness/execution/pipeline_engine.py:162` | ✅ | 多阶段调度、HITL 暂停/恢复、重试、snapshot | 已合入 |
 | LangGraph 编排层 | `harness/execution/langgraph/core.py:54` | ✅ | 图节点拓扑、条件边路由、checkpoint | 已合入 |
 | 8 种图构建 | `harness/execution/langgraph/graphs/` | ✅ | Pipeline/ReAct/PlanExecute/MultiAgent/TriAgent/Reflection | 已合入 |
 | EngineRouter 回退链 | `harness/execution/router.py` | ✅ | graph→loop→quick 三引擎 | 已合入 |
-| Token 预算管理 | `harness/execution/loop.py:214-215` | ✅ | 总预算 100K，推理预算 60K，80%阈值预警 | 已合入 |
+| Token 预算管理 | `harness/execution/loop/_facade.py:214` | ✅ | 总预算 100K，推理预算 60K，80%阈值预警 | 已合入 |
 | 上下文压缩（5级） | `harness/memory/compression.py:40` | ✅ | NORMAL→WARNING→REPLACE→PRUNE→AGGRESSIVE→EMERGENCY | 已合入 |
 | 工具输出预算帽 | `harness/memory/compression.py:230` | ✅ | >2000字→占位符+后台LLM摘要，热路径零阻塞 | 已合入 |
 | 失败分类 | `harness/execution/failure_classifier.py` | ✅ | budget_exhausted / stagnation / token_budget | 已合入 |
@@ -50,7 +50,7 @@
 | PatternCache | `harness/execution/pattern_cache.py` | ✅ | MD5执行路径晶体化，重复管道模式跳过LLM | 已合入 |
 | LangGraph Checkpoint/Resume | `harness/execution/langgraph/core.py:217` | ✅ | 图状态checkpoint持久化 + 任意节点crash-safe恢复 | 已合入 |
 | EmbeddingBridge | `apps/agents/parallel_executor.py:210` | ✅ | 嵌入向量压缩，子Agent间高效通信 | 已合入 |
-| 跨阶段回退 | `schemas_builder.py:313-315` + `pipeline_engine.py:2855` | ✅ | `rollback_on_reject` 自动回退到上游阶段重写（委托+对抗模式） | 已合入 |
+| 跨阶段回退 | `schemas_builder.py:313-315` + `harness/execution/pipeline_engine.py:2855` | ✅ | `rollback_on_reject` 自动回退到上游阶段重写（委托+对抗模式） | 已合入 |
 | Prompt Caching | `harness/utils/prompt_caching.py` | ✅ | system_and_N 缓存策略，system + 末尾N消息标记cache_control | 已合入 |
 | Log Redaction | `harness/utils/redaction.py` | ✅ | RedactingFormatter 全局日志脱敏 | 已合入 |
 | Decorrelated Jitter | `harness/infrastructure/gates/resilience_gate.py` | ✅ | golden-ratio hash退避抖动，避免惊群效应 | 已合入 |
@@ -86,6 +86,7 @@
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
 | knowledge_gap_detector | `harness/ontology_engine/knowledge_gap_detector.py` | ✅ | 自动同步 | 已合入 |
+| graph_importer | `harness/ontology_engine/graph_importer.py` | ✅ | 自动同步 | 已合入 |
 |------|------|:---:|------|------|
 | 13步本体管线 | `harness/ontology_engine/engine.py:94` | ✅ | 3Phase: Classify→Extract并行→Validate串行 | 已合入 |
 | ClassMapper（零LLM） | `harness/ontology_engine/class_mapper.py:18` | ✅ | 关键词倒排索引 → T-Box 类映射 | 已合入 |
@@ -104,7 +105,7 @@
 | Webhook 写回 | `harness/ontology_engine/engine.py:294` | ✅ | state transition → call_webhook | 已合入 |
 | 场景推演沙箱 | API: simulate-scenarios | ✅ | 多方案对比推演 | 已合入 |
 | ShardedGraphIndex | `harness/ontology_engine/sharded_graph.py` | ✅ | 跨域分片图索引 | 已合入 |
-| 跨域本体桥接 | `harness/ontology_engine/triple_store.py` + `triple_scanner.py` | ✅ | 统一三元组存储 + BFS多跳遍历 + 5数据源自动扫描 + 3 API端点 | 已合入 |
+| 跨域本体桥接 | `harness/ontology_engine/triple_store.py` + `harness/ontology_engine/triple_scanner.py` | ✅ | 统一三元组存储 + BFS多跳遍历 + 5数据源自动扫描 + 3 API端点 | 已合入 |
 | 审批工作流引擎 | `harness/ontology_engine/approval.py` | ✅ | submit/approve/reject/changes + 超时升级 + 告警通道 | 已合入 |
 
 ---
@@ -193,7 +194,7 @@
 | ParallelExecutor | `apps/agents/parallel_executor.py` | ✅ | Map-Reduce, max_concurrency=5, 异常隔离 | 已合入 |
 | PipelineCompiler | `apps/agents/pipeline_compiler.py` | ✅ | AGENT.md stages[] YAML → PipelineStageConfig | 已合入 |
 | Agent SDK | `aiplat-sdk/` | ✅ | L1 Agent/L2 Pipeline/L3 ReActLoop — execute/stream/chat 全路径可用 | 已合入 |
-| FanOut 并行 | `parallel_executor.py` | ✅ | 已接线 | 已合入 |
+| FanOut 并行 | `apps/agents/parallel_executor.py` | ✅ | 已接线 | 已合入 |
 | DelegateManager | `harness/infrastructure/delegate_tool.py` | ✅ | 子Agent委托 + 资源预算隔离 + 重试退避 + 输出摘要(§5.26) | 已合入 |
 
 ---
@@ -242,8 +243,8 @@
 | 前端 API 契约检查 | `../../scripts/guard_frontend.py` | ✅ | TS fetch ↔ Python data.get 一致性 | 已合入 |
 | PII 检测脱敏 | `services/pii_detector.py` | ✅ | 手机/身份证/邮箱/银行卡/地址/IP，Presidio+正则双引擎 | 已合入 |
 | 合规报告 SOC2/ISO27001 | `management/compliance_checks.py` | ✅ | 12检查 + SOC2 CC/ISO27001 A映射 + 自动报告生成 | 已合入 |
-| 架构契约上下文注入 | `prompt_loader.py` → `prompt_assembler.py` | ✅ | coding-contract 模板在代码生成前注入 Agent system prompt（6条核心约束） | 已合入 |
-| 审计日志防篡改 | `../../aiPlat-management/governance/audit/logger.py` | ✅ | SHA-256 链式哈希 + verify_integrity() | 已合入 |
+| 架构契约上下文注入 | `harness/utils/prompt_loader.py` → `harness/assembly/prompt_assembler.py` | ✅ | coding-contract 模板在代码生成前注入 Agent system prompt（6条核心约束） | 已合入 |
+| 审计日志防篡改 | `../../aiPlat-platform/governance/audit/logger.py` | ✅ | SHA-256 链式哈希 + verify_integrity() | 已合入 |
 | 对象级权限 | `policy/object_permission.py` | ✅ | 每实体/每动作/每角色细粒度控制，支持本体继承 | 已合入 |
 | 字段级安全 | `policy/field_level_security.py` | ✅ | 单元/字段级数据可见性，Palantir CBAC对齐 | 已合入 |
 | 技能签名验证 | `security/skill_signature_gate.py` | ✅ | Ed25519 签名校验 + 可信公钥注册表 | 已合入 |
@@ -298,7 +299,7 @@
 | 模型解析集中化 | `harness/utils/model_injection.py` | ✅ | get_default_model(purpose) 统一入口 | 已合入 |
 | 模型发现 | infra ModelManager | ✅ | 远程API + 本地(Ollama/LM Studio/vLLM) | 已合入 |
 | 视频转写 | `harness/document/transcriber.py` + platform/kb/video.py | ✅ | ffmpeg→Whisper→OCR→embed | 已合入 |
-| 模型路由 | `model_injection.py` → infra `ModelManager.select()` | ✅ | model_router.py 已删除，create_selected_adapter 为唯一路径 | 已合入 |
+| 模型路由 | `harness/utils/model_injection.py` → infra `ModelManager.select()` | ✅ | model_router.py 已删除，create_selected_adapter 为唯一路径 | 已合入 |
 | FingerprintCollector | `harness/knowledge/model_fingerprint.py` | ✅ | 8探针黑盒指纹采集：token分布/延迟曲线/拒答率/格式遵从 | 已合入 |
 | ModelAudit | `harness/knowledge/model_audit.py` | ✅ | 模型身份报告生成 + 双模型指纹对比 + 已知签名匹配 | 已合入 |
 | CredentialPool | `infra/management/model/credential_pool.py` | ✅ | Round-Robin + 黑名单冷却 + 多key轮换 | 已合入 |
@@ -357,7 +358,7 @@
 | ImmuneMemory | `harness/security/immune_memory.py` | ✅ | 三级渐进拦截(>0.95拦截/>0.88防御前缀/<0.88放行) + 防御Skill自动生成 | 已合入 |
 | SkillSimulator | `harness/learning/skill_simulator.py` | ✅ | Docker沙盒预检，pass≥80% | 已合入 |
 | SFT AutoTrigger | `harness/training/auto_trigger.py` | ✅ | ≥100条+quality≥0.8→自动生成SFT数据集 | 已合入 |
-| HITL 反馈记忆回路 | `approval/manager.py:428` + `harness/learning/__init__.py:150` | ✅ | 拒绝原因→ExperienceVectorCache→enrich_skill_draft 错题本检索 | 已合入 |
+| HITL 反馈记忆回路 | `harness/infrastructure/approval/manager.py:428` + `harness/learning/__init__.py:150` | ✅ | 拒绝原因→ExperienceVectorCache→enrich_skill_draft 错题本检索 | 已合入 |
 | SuccessGeneralizer | `harness/learning/success_generalizer.py` | ✅ | ≥85% hot skill → 参数抽象 → 跨运行验证 → GeneralizedRule | 已合入 |
 | Feedback Loops | `feedback_loops/` | ✅ | local + prod + push 三通道 | 已合入 |
 | ImplicitFeedback | `services/implicit_feedback.py` | ✅ | 复制/选中/追问/重复 行为信号 | 已合入 |
@@ -373,7 +374,7 @@
 | VS Code 插件 | `aiplat-vscode/` | ✅ | SSE 流式聊天 + 代码选择发送 + Apply fix + 隐式反馈，可打包 .vsix | 已合入 |
 | SpecLifecycle | `harness/models/spec_lifecycle.py` | ✅ | Spec 版本状态机: DRAFT→PENDING→EXECUTING→REVIEW→STABLE→ARCHIVED | 已合入 |
 | FeedbackRadar | `harness/learning/feedback_radar.py` | ✅ | 5种用户信号检测→Spec调整建议 (boundary/direction/overload/drift/cold) | 已合入 |
-| InlineSelfCorrect | `harness/execution/loop.py:_try_self_correct` | ✅ | 内联自纠错: PostObserve→reflection-critic→reflection-improve, 1次/步 | 已合入 |
+| InlineSelfCorrect | `harness/execution/loop/_facade.py` | ✅ | 内联自纠错: PostObserve→reflection-critic→reflection-improve, 1次/步 | 已合入 |
 | MCPToolLazyLoad | `apps/mcp/client.py` | ✅ | MCP工具延迟加载: 启动仅加载名称, Schema首次调用时按需获取, AIPLAT_MCP_LAZY_LOAD控制 | 已合入 |
 | PromptCaching | `harness/syscalls/llm.py` | ✅ | Prompt Caching: stable消息cache_control注入 + SHA256跨会话持久化(~/.aiplat/cache/), AIPLAT_PROMPT_CACHE_ENABLED控制 | 已合入 |
 | ThreeLayerPermissions | `gates/policy_gate.py:_match_tool_rule` | ✅ | 三层权限(deny>ask>allow)+参数级fnmatch匹配 | 已合入 |
@@ -670,7 +671,7 @@
 | Swarm | `harness/execution/swarm.py` | ✅ | N-Agent竞选择优: 同任务独立执行→Arena评分→胜出合并, routing_mode="swarm" | 已合入 |
 | Roundtable | `harness/execution/roundtable.py` | ✅ | 多Agent平等讨论: 每轮全员发言→共识收敛→综合合成, routing_mode="roundtable" | 已合入 |
 | Matter (验收+交付) | `SpecDetail.tsx` revise modal | ✅ | 交付物定义 + 验收标准字段, 存储于 SpecVersion.content | 已合入 |
-| CoT AutoInject | `harness/syscalls/llm.py:253` + `prompt_loader.py:cot-auto-inject` | ✅ | 每次LLM调用自动注入4步推理指令, AIPLAT_COT_AUTO_INJECT控制 | 已合入 |
+| CoT AutoInject | `harness/syscalls/llm.py:253` + `harness/utils/prompt_loader.py:cot-auto-inject` | ✅ | 每次LLM调用自动注入4步推理指令, AIPLAT_COT_AUTO_INJECT控制 | 已合入 |
 | SubAgent 协调器 | `apps/agents/subagent/coordinator.py` | ✅ | execute_single/parallel/sequential/fanout | 已合入 |
 | 并行执行器 | `apps/agents/parallel_executor.py` | ✅ | Map-Reduce 模式 + max_concurrency + 异常隔离 | 已合入 |
 | 8 种协调模式 | `harness/coordination/patterns/` | ✅ | Pipeline/FanOut/Supervisor/ExpertPool/ProducerReviewer/Hierarchical | 已合入 |
@@ -711,12 +712,12 @@
 | 编排系统 | 4 | 0 | 4 |
 | 管理 & 质量 | 21 | 0 | 21 |
 | 编排层 | 17 | 0 | 17 |
-| **总计** | **464** | **0** | **464** |
+| **总计** | **465** | **0** | **465** |
 
 ---
 
 *最后更新: 2026-07-04*
-*版本: 12.5 · 28章 · 460项能力 · 460✅ · P0-P3 hermès-agent全量吸收+SQLite连接池化+TrendDetector*
+*版本: 12.5 · 28章 · 465项能力 · 465✅ · P0-P3 hermès-agent全量吸收+SQLite连接池化+TrendDetector*
 
 **自检命令**：
 ```bash

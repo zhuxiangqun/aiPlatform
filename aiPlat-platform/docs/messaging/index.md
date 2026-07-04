@@ -1,3 +1,8 @@
+---
+status: draft
+draft_date: 2026-07-04
+---
+
 # messaging 模块（Platform Layer 2）
 
 > 本文档为**骨架**：用于补齐文档引用与边界说明，后续可按实现细节逐步完善。
