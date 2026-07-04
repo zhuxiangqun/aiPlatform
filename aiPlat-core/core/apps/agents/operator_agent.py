@@ -127,6 +127,20 @@ class OperatorAgent(BaseAgent):
         # ── Parse structured decision ──
         decision = self._parse_decision(answer)
 
+        # ── Action bridge: fire webhooks for recommended actions ──
+        action_results = []
+        try:
+            if decision.get("recommended_actions"):
+                from core.harness.actions.action_bridge import execute_decision_actions
+                ctx = {
+                    "entity_id": vars0.get("entity", ""),
+                    "domain_id": vars0.get("domain_id", "default"),
+                    "timestamp": str(int(time.time())),
+                }
+                action_results = await execute_decision_actions(decision, context=ctx)
+        except Exception as e:
+            logger.debug("Action bridge skipped: %s", e)
+
         elapsed_ms = int((time.time() - _t0) * 1000)
         return AgentResult(
             success=bool(decision),
@@ -137,6 +151,8 @@ class OperatorAgent(BaseAgent):
                 "elapsed_ms": elapsed_ms,
                 "session_id": session_id,
                 "has_run_context": bool(run_context),
+                "actions_fired": len(action_results),
+                "action_results": action_results,
             },
         )
 

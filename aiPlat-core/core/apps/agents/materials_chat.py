@@ -492,61 +492,27 @@ class MaterialsChatAgent(BaseAgent):
                     stream_queue = vars0.get("_stream_queue")
                     if stream_queue is not None:
                         # Stream mode: push chunks to queue, collect full answer
-                        from core.harness.syscalls.llm import sys_llm_generate_stream
+                        from core.harness.generation.answer_generator import generate_stream_answer, build_rag_user_message
                         system_msgs = _assemble_chat_system_msgs(domain_config, run_context)
-                        answer_parts = []
-                        async for chunk in sys_llm_generate_stream(
-                            None,
-                            system_msgs + [
-                                {"role": "user", "content": f"文档内容：\n{retrieved_docs}\n\n{graph_context}\n用户问题：{enhanced_question}\n\n请回答："},
-                            ],
-                            model_name=best_model_for_purpose("chat"),
-                            temperature=0.3,
-                            max_tokens=2000,
-                        ):
-                            if chunk:
-                                answer_parts.append(chunk)
-                                try:
-                                    stream_queue.append(chunk)
-                                except Exception as e:
-                                    logging.debug(str(e), exc_info=True)
-                        answer = "".join(answer_parts).strip()
-                        # Cost tracking (stream path)
-                        try:
-                            _model = best_model_for_purpose("chat")
-                            _in_tokens = len(retrieved_docs) // 4 + len(enhanced_question) // 4
+                        user_msg = build_rag_user_message(retrieved_docs, enhanced_question, graph_context=graph_context)
+                        answer, trace = await generate_stream_answer(system_msgs, user_msg, stream_queue)
+                        if trace.get("model_name"):
                             _complexity = vars0.get("_query_complexity", "unknown")
                             logging.getLogger("aiplat.cost").info(
-                                f"[CostTrace] model={_model} complexity={_complexity} "
-                                f"input_tok_est={_in_tokens} stream=true max_tokens=2000"
+                                f"[CostTrace] model={trace['model_name']} complexity={_complexity} "
+                                f"input_tok_est={trace['input_tok_est']} stream=true max_tokens={trace['max_tokens']}"
                             )
-                        except Exception as e:
-                            logging.debug(str(e), exc_info=True)
                     else:
-                        from core.harness.syscalls.llm import sys_llm_generate
+                        from core.harness.generation.answer_generator import generate_answer, build_rag_user_message
                         sys_msgs = _assemble_chat_system_msgs(domain_config, run_context)
-                        resp = await sys_llm_generate(
-                            None,
-                            sys_msgs + [
-                                {"role": "user", "content": f"文档内容：\n{retrieved_docs}\n\n{graph_context}\n用户问题：{enhanced_question}\n\n请回答："},
-                            ],
-                            model_name=best_model_for_purpose("chat"),
-                            temperature=0.3,
-                            max_tokens=2000,
-                        )
-                        text = getattr(resp, 'content', '') or str(resp)
-                        answer = text.strip() if text and len(text) > 5 else ""
-                        # Cost tracking: log model + estimated tokens for cost optimization
-                        try:
-                            _model = best_model_for_purpose("chat")
-                            _in_tokens = len(retrieved_docs) // 4 + len(enhanced_question) // 4
+                        user_msg = build_rag_user_message(retrieved_docs, enhanced_question, graph_context=graph_context)
+                        answer, trace = await generate_answer(sys_msgs, user_msg)
+                        if trace.get("model_name"):
                             _complexity = vars0.get("_query_complexity", "unknown")
                             logging.getLogger("aiplat.cost").info(
-                                f"[CostTrace] model={_model} complexity={_complexity} "
-                                f"input_tok_est={_in_tokens} max_tokens=2000"
+                                f"[CostTrace] model={trace['model_name']} complexity={_complexity} "
+                                f"input_tok_est={trace['input_tok_est']} max_tokens={trace['max_tokens']}"
                             )
-                        except Exception as e:
-                            logging.debug(str(e), exc_info=True)
                         if convo is not None and answer:
                             try:
                                 await convo.append_conversation_assistant_message(
@@ -574,14 +540,9 @@ class MaterialsChatAgent(BaseAgent):
                                     citations = hyde_citations
                                     # Re-generate answer with HyDE results
                                     hyde_sys_msgs = _assemble_chat_system_msgs(domain_config, run_context)
-                                    resp = await sys_llm_generate(
-                                        None,
-                                        hyde_sys_msgs + [{"role": "user", "content": f"文档内容：\n{retrieved_docs}\n\n{graph_context}\n用户问题：{enhanced_question}\n\n请回答："}],
-                                        model_name=best_model_for_purpose("chat"),
-                                        temperature=0.3, max_tokens=2000,
-                                    )
-                                    text = getattr(resp, 'content', '') or str(resp)
-                                    answer = text.strip() if text and len(text) > 5 else ""
+                                    hyde_user = build_rag_user_message(retrieved_docs, enhanced_question, graph_context=graph_context)
+                                    hyde_answer, _ = await generate_answer(hyde_sys_msgs, hyde_user)
+                                    answer = hyde_answer
                             except Exception as e:
                                 logging.debug(str(e), exc_info=True)
                         quality = self_review(answer, citations, reasoning_path)
@@ -602,7 +563,8 @@ class MaterialsChatAgent(BaseAgent):
                             )
                             hallucination_risk = report.hallucination_risk
                             if hallucination_risk > 0.7:
-                                _trace("幻觉检测", f"risk={hallucination_risk:.2f}", risk=hallucination_risk)
+                                quality = "low_evidence"  # downgrade to trigger consumer warning
+                                _trace("幻觉检测", f"risk={hallucination_risk:.2f} → quality downgraded to low_evidence", risk=hallucination_risk)
                         except Exception as e:
                             logging.debug(str(e), exc_info=True)
 
