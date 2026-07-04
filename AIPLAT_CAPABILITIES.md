@@ -330,6 +330,9 @@
 | 模型发现 | infra ModelManager | ✅ | 远程API + 本地(Ollama/LM Studio/vLLM) | 已合入 |
 | 视频转写 | `harness/document/transcriber.py` + platform/kb/video.py | ✅ | ffmpeg→Whisper→OCR→embed | 已合入 |
 | 模型路由 | `harness/utils/model_injection.py` → infra `ModelManager.select()` | ✅ | model_router.py 已删除，create_selected_adapter 为唯一路径 | 已合入 |
+| T1-T5 分层路由 | `harness/routing/model_tier_router.py` + `llm_profile.yaml` | ✅ | complexity→tier→cheapest capable model, 5级可配置 | Phase 12 |
+| 复杂度感知选择 | `ModelManager.select_by_purpose(complexity=)` | ✅ | routing_rules 过滤 + best_model_for_purpose(messages=) | Phase 12.1 |
+| 模型能力档案 | `llm_profile.yaml.model_capabilities` | ✅ | per-model routing_rules/min_complexity/max_complexity | Phase 12 |
 | FingerprintCollector | `harness/knowledge/model_fingerprint.py` | ✅ | 8探针黑盒指纹采集：token分布/延迟曲线/拒答率/格式遵从 | 已合入 |
 | ModelAudit | `harness/knowledge/model_audit.py` | ✅ | 模型身份报告生成 + 双模型指纹对比 + 已知签名匹配 | 已合入 |
 | CredentialPool | `infra/management/model/credential_pool.py` | ✅ | Round-Robin + 黑名单冷却 + 多key轮换 | 已合入 |
@@ -386,6 +389,7 @@
 | proposal_store | `harness/learning/proposal_store.py` | ✅ | 自动同步 | 已合入 |
 | action_bridge | `harness/actions/action_bridge.py` | ✅ | 自动同步 | 已合入 |
 | answer_generator | `harness/generation/answer_generator.py` | ✅ | 自动同步 | 已合入 |
+| model_tier_router | `harness/routing/model_tier_router.py` | ✅ | 自动同步 | 已合入 |
 |------|------|:---:|------|------|
 | ExperienceVector | `harness/learning/experience_vector.py` | ✅ | PipelineTrace→Embedding→语义检索 | 已合入 |
 | ToolDriftDetector | `harness/learning/tool_drift_detector.py` | ✅ | 4类漂移检测(struct/field/latency/error) + 重放校验自适应 | 已合入 |
@@ -752,12 +756,12 @@
 | 编排系统 | 4 | 0 | 4 |
 | 管理 & 质量 | 21 | 0 | 21 |
 | 编排层 | 17 | 0 | 17 |
-| **总计** | **502** | **0** | **502** |
+| **总计** | **505** | **1** | **506** |
 
 ---
 
 *最后更新: 2026-07-04*
-*版本: 12.5 · 28章 · 504项能力 · 504✅ · P0-P3 hermès-agent全量吸收+SQLite连接池化+TrendDetector*
+*版本: 12.5 · 28章 · 508项能力 · 507✅ · P0-P3 hermès-agent全量吸收+SQLite连接池化+TrendDetector*
 
 **自检命令**：
 ```bash

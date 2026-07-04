@@ -541,6 +541,14 @@ def best_model_for_purpose(purpose: str, messages: list = None) -> str:
                   When None, falls back to static selection (backward compat).
     """
     import os as _os
+
+    # Step 0.5: Session-level model override (Phase 13: /model command)
+    override = _get_session_model_override()
+    if override:
+        _log_model_selection(purpose, override, entry="best_model_for_purpose",
+                             source="session_override")
+        return override
+
     purpose_env = f"AIPLAT_{purpose.upper()}_MODEL"
     env_val = _os.getenv(purpose_env, "").strip()
     if env_val:
@@ -654,3 +662,23 @@ def _register_adapter(provider: str, model_name: str, base_url: str = "", api_ke
             am._adapters[adapter_id] = info
     except Exception as e:
         logging.warning(str(e), exc_info=True)
+
+
+# ── Phase 13: Session-level model override (/model command) ──
+_model_overrides: Dict[str, str] = {}
+
+
+def _get_session_model_override() -> Optional[str]:
+    """Check for session-level model override set by /model command."""
+    return _model_overrides.get("_global", None)
+
+
+def set_model_override(model_name: str, session_id: str = "_global") -> None:
+    """Set a session-level model override."""
+    _model_overrides[session_id] = model_name
+    logging.getLogger("aiplat.model").info("Model override: %s (session=%s)", model_name, session_id)
+
+
+def clear_model_override(session_id: str = "_global") -> None:
+    """Clear session-level model override."""
+    _model_overrides.pop(session_id, None)

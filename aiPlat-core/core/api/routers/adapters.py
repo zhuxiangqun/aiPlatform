@@ -283,3 +283,27 @@ async def get_model_distribution(adapter_id: str, rt: RuntimeDep = Depends(get_k
         raise HTTPException(status_code=503, detail="AdapterManager not initialized")
     distribution = await am.get_model_distribution(adapter_id)
     return {"distribution": distribution}
+
+
+# ── Phase 13: Session model override (/model command) ──
+
+@router.post("/model-override", response_model=Dict[str, Any])
+async def set_model_override_endpoint(request: dict):
+    """Set session-level model override. Equivalent to /model <name> in Hermes CLI.
+
+    Body: {"model_name": "deepseek-v4-pro", "session_id": "xxx"}
+    Use session_id="_global" for global override.
+    Pass model_name="" to clear the override.
+    """
+    model_name = str(request.get("model_name", "")).strip()
+    session_id = str(request.get("session_id", "_global")).strip()
+    try:
+        from core.harness.utils.model_injection import set_model_override, clear_model_override
+        if model_name:
+            set_model_override(model_name, session_id)
+            return {"status": "override_set", "model_name": model_name, "session_id": session_id}
+        else:
+            clear_model_override(session_id)
+            return {"status": "override_cleared", "session_id": session_id}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
