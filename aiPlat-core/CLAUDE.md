@@ -264,7 +264,7 @@ Harness 是 AI Runtime Kernel（"操作系统"），解决**"任务如何被执�
 
 `disabled` Skill（`status: disabled`）不参与执行——`SkillRegistry` 不会返回 disabled 实例。
 
-**Skill 类型**：纯 prompt（当前全部 24 个 engine 内置 Skill）vs Python 类（架构支持但当前 0 个实例）。纯 prompt Skill 通过 LLM 理解 SOP 执行；Python 类 Skill（通过 `handler.py` 注册）由 `SkillExecutor` 检测到后直接调用其 `execute()` 方法。
+**Skill 类型**：纯 prompt（当前全部 32 个 engine 内置 Skill）vs Python 类（架构支持但当前 0 个实例）。纯 prompt Skill 通过 LLM 理解 SOP 执行；Python 类 Skill（通过 `handler.py` 注册）由 `SkillExecutor` 检测到后直接调用其 `execute()` 方法。
 
 **安全门槛**：permissions + provenance + integrity 三重校验。
 
@@ -1176,7 +1176,7 @@ Level 3: HyDE假设答案检索 (LLM生成专业描述→重新检索)
 
 API: `POST /ontology/engine/snapshot/{domain}`, `GET /snapshots/{domain}`, `POST /snapshot/{domain}/restore`。
 
-### 5.43 API 端点更新（2026-06 — 131端点）
+### 5.43 API 端点更新（2026-07-04 — 813端点）
 
 新增端点:
 - `POST /ontology/engine/traverse` — 图遍历

@@ -80,7 +80,7 @@
   sys_llm_generate    sys_tool_call      sys_skill_call
   (提示词注入防护)     (PolicyGate+)      (SkillExecutor)
 
-Hook 拦截点 (14个): PreLoop→PreReasoning→PostReasoning→PreAct→
+Hook 拦截点 (20个): PreLoop→PreReasoning→PostReasoning→PreAct→
   PostAct→PreObserve→PostObserve→PostLoop→Stop→SessionStart→
   PreApprovalCheck→PostApprovalCheck→PreContractCheck→PostContractCheck
 
@@ -152,7 +152,7 @@ Gateway 控制面 (Daemon 进程)
 |-------------|--------|--------|-------------|----------|
 | **执行循环** | ReAct (Reason→Act→Observe) | 对话循环 | 对话 + 编码循环 | 对话循环 + RPC |
 | **编排模式** | Pipeline (LangGraph) + Chain + Router + Parallel | 对话 + 子 Agent spawn | Sub-Agent 团队 | Multi-agent 路由 |
-| **Hook 系统** | 14 个生命周期拦截点 | 工具级 hook | Hooks (before/after actions) | - |
+| **Hook 系统** | 20 个生命周期拦截点 | 工具级 hook | Hooks (before/after actions) | - |
 | **Token 管理** | 5 级压缩 + 预算 + priority 标签 | /compact 手动压缩 | /compact 手动压缩 | /compact 命令 |
 | **HITL** | PolicyGate + ApprovalGate | DM 配对 + 命令审批 | 权限确认 + 审批 | DM 配对 + 审批 |
 | **退化策略** | fail_pipeline / skip_stage / use_fallback_result | - | - | Sandbox 回退 |
@@ -160,7 +160,7 @@ Gateway 控制面 (Daemon 进程)
 | **LangGraph** | ✅ 集成 (编排+可视化) | ❌ 无 | ❌ 无 | ❌ 无 |
 | **架构守卫** | ✅ 实时 PolicyGate 拦截 | ❌ | ❌ | ❌ |
 | **Syscall 边界** | ✅ 强制 (不可绕过) | ❌ | ❌ | ❌ |
-| **🏆 aiPlat 优势** | Pipeline+ReAct+LangGraph三层架构、14 Hook拦截、Syscall强制边界、5级压缩 | | | |
+| **🏆 aiPlat 优势** | Pipeline+ReAct+LangGraph三层架构、20 Hook拦截、Syscall强制边界、5级压缩 | | | |
 | **⚠️ aiPlat 劣势** | 无自学习循环(仅Task Skills晶体化)、架构复杂度高 | | | |
 
 ---
@@ -1002,7 +1002,7 @@ MaterialsChatAgent 六阶段认知流水线:
 │  ├──────────┴──────────┴──────────┴──────────┤              │
 │  │         Harness Kernel (执行内核)          │              │
 │  │  PipelineEngine → LangGraph → ReActLoop    │              │
-│  │  14 Hook 拦截点 / Token 预算 / 5级压缩     │              │
+│  │  20 Hook 拦截点 / Token 预算 / 5级压缩     │              │
 │  │  Syscall 边界: llm / tool / skill          │              │
 │  ├───────────────────────────────────────────┤              │
 │  │         Knowledge Engine (知识引擎)        │              │
@@ -1090,7 +1090,7 @@ MaterialsChatAgent 六阶段认知流水线:
 以下 20 项是 aiPlat 独有或显著领先的能力：
 
 1. **LangGraph + Harness 双层架构** — 编排与执行严格分离
-2. **14 个 Hook 拦截点** — 完整生命周期覆盖，0 token 成本
+2. **20 个 Hook 拦截点** — 完整生命周期覆盖，0 token 成本
 3. **Syscall 强制边界** — llm/tool/skill 不可绕过
 4. **PipelineAgent v4.0** — YAML 驱动阶段编译
 5. **Skill 5 准入标准 + effects 副作用声明** — 治理先行
@@ -1102,7 +1102,7 @@ MaterialsChatAgent 六阶段认知流水线:
 11. **CRAG/HyDE 3 级回退 + 4 重鲁棒性** — 检索质量
 12. **3 层级联域路由器** — 倒排→向量→LLM
 13. **代码图谱 + 能力图谱** — 双重可观测性
-14. **K4 知识治理** — 推理/状态机/同义词/元数据
+20. **K4 知识治理** — 推理/状态机/同义词/元数据
 15. **多租户三层隔离** — tenant/domain/collection
 16. **Palantir 九项本体能力对齐** — 企业级标准
 17. **架构守卫 68 节自动检查** — grep→AST→pytest
@@ -1357,7 +1357,7 @@ PII 脱敏: ❌ 当前未实现自动 PII 检测与替换
 | 调试能力 | aiPlat | Hermes | Claude Code | OpenClaw |
 |---------|--------|--------|-------------|----------|
 | **ReAct 过程可视化** | ✅ PipelineTrace + HallucinationTracker | | 终端 TUI 流式 | ✅ CLI 高亮+inline | ❌ |
-| **断点调试 (Hook 暂停)** | ✅ 14 Hook 拦截点 | ❌ | ❌ | ❌ |
+| **断点调试 (Hook 暂停)** | ✅ 20 Hook 拦截点 | ❌ | ❌ | ❌ |
 | **HITL 干预** | ✅ PolicyGate + ApprovalGate | ✅ 命令审批 | ✅ 权限确认 | ✅ 审批 |
 | **Prompt 热重载** | ✅ DB 动态更新 | ❌ (需重启) | ❌ (文件读取) | ❌ |
 | **Skill 热重载** | ✅ 文件系统监听 | ✅ 文件系统 | ❌ | ✅ |
@@ -1584,7 +1584,7 @@ Token 消耗分布 (以一次 RAG 问答为例):
 | **Voice/Talk 实时** | ❌ | ❌ | ❌ | ✅ |
 | **多频道消息网关** | ❌ | ✅ 4+ | ✅ Slack | ✅ 20+ |
 | **首字延迟 (TTFT)** | ~1.5-3s | ~0.5s | ~0.5s | ~0.5s |
-| **Hook 断点调试** | ✅ 14 个 | ❌ | ❌ | ❌ |
+| **Hook 断点调试** | ✅ 20 个 | ❌ | ❌ | ❌ |
 | **Skill/Agent 热重载** | ✅ DB+文件 | ✅ 文件 | ❌ | ✅ |
 
 **关键发现**: 所有四个方案在 **OpenTelemetry、语义缓存、异步任务队列、PII 脱敏、Prometheus 指标** 这 5 项上处于空白或极弱状态。这是 AI Agent 行业整体的基础设施缺口。

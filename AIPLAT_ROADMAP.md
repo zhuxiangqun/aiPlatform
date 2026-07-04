@@ -17,7 +17,7 @@
 | **Harness 内核** | **A+** | ReAct循环 + 14 Hook + LangGraph checkpoint/resume + Pipeline引擎 + 5级压缩 + 工具输出预算帽 + PatternCache + EmbeddingBridge |
 | **记忆子系统** | **A+** | 四层架构 (Working→Episodic→Semantic→TaskSkills) + 软删除动态续期 + 投毒防御字段 + Episodic预评分 + critical_episodes + 每日后台清理 |
 | **知识引擎** | **A+** | 本体13步管线 + GraphIndex/HyperEdge + StateMachine + KnowledgeSynthesizer + Palantir 9项对齐 + 多域本体 |
-| **企业治理** | **A** | 75+ arch_guard规则 + Skill Lint 10规则 + 三层多租户 + 诊断检查 + ComplianceChecks + CapabilityConvergence |
+| **企业治理** | **A** | 172 arch_guard规则 + Skill Lint 10规则 + 三层多租户 + 诊断检查 + ComplianceChecks + CapabilityConvergence |
 | **基础设施** | **A** | Multi-backend cache/vector/messaging/database/storage + 模型健康检查/质量验证/延迟追踪 + 本地模型自动发现 |
 | **Agent 系统** | **A** | 7种实现类 + DynamicRouter(LLM路由) + SubAgent协调器 + ParallelExecutor + 四角色协作体系 |
 | **Skill 系统** | **A** | SkillOpt双通道分析 + Rejected Edit Buffer + edit learning rate + effects副作用声明 + semver回滚 + AutoLearner + EvolutionEngine 12步夜间进化 |

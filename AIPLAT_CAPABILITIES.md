@@ -36,7 +36,7 @@
 |------|------|:---:|------|------|
 | ReAct 执行循环 | `harness/execution/loop.py:292` | ✅ | Reason→Act→Observe，集成 Hook/压缩/记忆 | 已合入 |
 | Plan-Execute 循环 | `harness/execution/loop.py:2578` | ✅ | 先规划后执行模式 | 已合入 |
-| 14 Hook 阶段 | `harness/infrastructure/hooks/hook_manager.py:15` | ✅ | PRE/POST_LOOP, REASONING, ACT, OBSERVE, TOOL_USE, SKILL_USE, STOP 等 | 已合入 |
+| 20 Hook 阶段 | `harness/infrastructure/hooks/hook_manager.py:15` | ✅ | PRE/POST_LOOP, REASONING, ACT, OBSERVE, TOOL_USE, SKILL_USE, STOP, CONTRACT_CHECK, APPROVAL 等 | 已合入 |
 | Pipeline 引擎 | `harness/execution/pipeline_engine.py:162` | ✅ | 多阶段调度、HITL 暂停/恢复、重试、snapshot | 已合入 |
 | LangGraph 编排层 | `harness/execution/langgraph/core.py:54` | ✅ | 图节点拓扑、条件边路由、checkpoint | 已合入 |
 | 8 种图构建 | `harness/execution/langgraph/graphs/` | ✅ | Pipeline/ReAct/PlanExecute/MultiAgent/TriAgent/Reflection | 已合入 |
@@ -237,8 +237,8 @@
 | PII 脱敏（全量覆盖） | `kb/service.py` → `_mask_pii()` + `services/pii_detector.py` | ✅ | 手机/身份证/邮箱/银行卡/地址/IP，全部 6 条入库路径已覆盖 | 已合入 |
 | CodeAuditor | `harness/security/code_auditor.py` | ✅ | 注入/XSS/CSRF/认证/授权检查 | 已合入 |
 | RBAC 多租户 | platform 层 | ✅ | tenant + actor + scopes 三级隔离 | 已合入 |
-| 架构守卫 75+ 规则 | `arch_guard_rules.yaml` | ✅ | §1-§75 自动扫描 | 已合入 |
-| 26 条 CI 检查 | `architecture_guard.sh` | ✅ | 零依赖 grep 扫描 | 已合入 |
+| 架构守卫 172 规则 | `arch_guard_rules.yaml` | ✅ | §1-§76 自动扫描 | 已合入 |
+| 172 条 CI 检查 | `architecture_guard.sh` | ✅ | 零依赖 grep 扫描 | 已合入 |
 | 前端 API 契约检查 | `../../scripts/guard_frontend.py` | ✅ | TS fetch ↔ Python data.get 一致性 | 已合入 |
 | PII 检测脱敏 | `services/pii_detector.py` | ✅ | 手机/身份证/邮箱/银行卡/地址/IP，Presidio+正则双引擎 | 已合入 |
 | 合规报告 SOC2/ISO27001 | `management/compliance_checks.py` | ✅ | 12检查 + SOC2 CC/ISO27001 A映射 + 自动报告生成 | 已合入 |
@@ -312,7 +312,7 @@
 |------|------|:---:|------|------|
 | 一键启动/停止 | `start.sh` / `stop.sh` | ✅ | 6服务顺序启动，pyc清理，端口释放 | 已合入 |
 | 开发环境 | `scripts/dev.sh` | ✅ | 5服务并行开发启动 | 已合入 |
-| 架构守卫 | `scripts/architecture_guard.sh` | ✅ | 75+规则零依赖扫描 | 已合入 |
+| 架构守卫 | `scripts/architecture_guard.sh` | ✅ | 172规则零依赖扫描 | 已合入 |
 | Phase 验收 | `scripts/phase_check.sh` | ✅ | caller_verify + wiring + 死代码 | 已合入 |
 | Caller 验证 | `scripts/caller_verify.sh` | ✅ | 零调用者模块检测 | 已合入 |
 | E2E 测试 | `scripts/e2e_verify.sh` | ✅ | 端到端验证 | 已合入 |
