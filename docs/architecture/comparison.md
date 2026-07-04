@@ -1,5 +1,6 @@
 # aiPlat 架构对标 — 四方案深度对比
 
+> **本文档是 aiPlat 竞品对比的唯一入口**。所有旧版对比文件已移至 `docs/archive/`。
 > 最后更新: 2026-07-04 | Phase 5 竞品借鉴已全部合入 | 数据源: 代码级分析
 > 对标对象: [Hermes Agent](https://github.com/NousResearch/hermes-agent) · [Claude Code](https://github.com/anthropics/claude-code) · [OpenClaw](https://github.com/openclaw/openclaw)
 >

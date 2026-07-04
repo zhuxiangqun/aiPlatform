@@ -116,6 +116,19 @@ workspace-root/
 | **指南（Guide）** | 操作步骤和最佳实践 | 随工具/流程更新 | 流程变更时 | DEPLOYMENT.md、TESTING_GUIDE.md |
 | **报告（Report）** | 某个时间点的快照 | **不维护**，过期后归档 | 永不 | ARCHITECTURE_REPORT.md、DIAGNOSTIC_REPORT.md |
 | **裁决（Decision/ADR）** | 架构决策的记录 | 永久留存 | 永不（除非决策推翻） | evaluator_calibration.md |
+| **骨架（Draft/Skeleton）** | 预留的占位文档 | **最多 180 天**，过期归档 | 填充或删除 | Platform 文档中的骨架文件 |
+
+### 2.2 骨架文档规则
+
+1. **头部必须包含**：`status: draft` + `draft_date: YYYY-MM-DD`
+2. **过期处理**：`draft_date` 超过 `180 天`（`AIPLAT_DOC_DRAFT_EXPIRY_DAYS`）仍未转为正式文档 → **自动归档或删除**
+3. **CI 检测**：`verify_docs.py` Rule 8 会在 PR 时告警过期骨架文档
+
+### 2.3 设计文档时效性规则
+
+1. **头部必须包含**：`最后更新: YYYY-MM-DD` 或 `last_synced: YYYY-MM-DD`
+2. **过期告警**：超过 `90 天`（`AIPLAT_DOC_DESIGN_STALE_DAYS`）未更新 → `verify_docs.py` Rule 7 告警
+3. **这不会阻断 PR**，但会在 CI 中提醒作者确认文档是否仍然准确 |
 
 ### 2.2 边界规则
 
@@ -235,6 +248,9 @@ workspace-root/
 | archive/README.md 缺少免责声明 | **阻断** | PR 触及 docs/ |
 | 非 CAPABILITIES 文件裸写能力数 | **告警**（不阻断） | PR 触及 docs/ |
 | 重复的"唯一真相源"声明 | **告警**（不阻断） | PR 触及 docs/ |
+| 架构文件重复了控制平面内容 | **告警**（不阻断） | PR 触及 docs/architecture/ |
+| 设计文档超过 90 天未更新 | **告警**（不阻断） | PR 触及 docs/design/ |
+| 骨架 draft 超过 180 天 | **告警**（不阻断） | PR 全仓库 |
 
 ### 7.2 本地验证
 
@@ -242,18 +258,24 @@ workspace-root/
 python scripts/verify_docs.py
 ```
 
+### 7.3 配置阈值
+
+| 配置项 | 环境变量 | 默认值 | 说明 |
+| :--- | :--- | :--- | :--- |
+| 设计文档过期天数 | `AIPLAT_DOC_DESIGN_STALE_DAYS` | 90 | 超过此天数未更新即告警 |
+| 骨架文档过期天数 | `AIPLAT_DOC_DRAFT_EXPIRY_DAYS` | 180 | 超过此天数仍为 draft 即归档 |
+
+阈值均可通过环境变量覆盖，无需修改代码。
+
 ---
 
 ## 八、已知问题与待清理项
 
 | # | 问题 | 计划 |
 |---|------|------|
-| 1 | `docs/architecture/overview.md` 仍写 429✅ | 修正为引用 CAPABILITIES |
-| 2 | `docs/architecture/comparison.md` 仍写 425✅ | 修正 |
-| 3 | `AIPLAT_ROADMAP.md` 内部矛盾（line 3 vs line 7） | 修正 |
-| 4 | 竞品对比文件 7+ 个，多版本文档 | 归档旧版，保留 1 份最新 |
-| 5 | Platform 文档 56% 为骨架占位 | 长期渐进补充 |
-| 6 | `docs/archive/` 无免责声明 | 已创建 README |
+| 1 | 竞品对比文件 7+ 个，多版本文档 | 归档旧版到 `archive/`，保留 `docs/architecture/comparison.md` 为唯一入口 |
+| 2 | Platform 文档 56% 为骨架占位 | 长期渐进补充，添加 `draft_date` 标记 |
+| 3 | `docs/design/` 下部分文件未标注 `last_synced` | 渐进标注 |
 
 ---
 

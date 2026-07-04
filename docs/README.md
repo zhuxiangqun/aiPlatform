@@ -42,7 +42,7 @@
 | `research/` | 调研报告 | **否**（留档） |
 | `operations/` | 运维参考 | 是 |
 | `articles/` | 技术文章 | 是 |
-| `comparison/` | 竞品对比 | 是 |
+| `comparison/` | 竞品对比 | 已归档，入口在 `architecture/comparison.md` |
 
 ## 文档治理
 

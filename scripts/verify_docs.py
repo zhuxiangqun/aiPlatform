@@ -17,6 +17,7 @@ aiPlat 文档系统治理验证脚本
 import os
 import re
 import sys
+import time
 from pathlib import Path
 from typing import List
 
@@ -29,6 +30,10 @@ CAPABILITIES_FILE = REPO_ROOT / "AIPLAT_CAPABILITIES.md"
 
 errors: List[str] = []
 warnings: List[str] = []
+
+# ── 可配置阈值（源自 DOCUMENT_SYSTEM.md §十一 配置清单） ──
+DESIGN_STALE_DAYS = int(os.environ.get("AIPLAT_DOC_DESIGN_STALE_DAYS", "90"))
+DRAFT_EXPIRY_DAYS = int(os.environ.get("AIPLAT_DOC_DRAFT_EXPIRY_DAYS", "180"))
 
 
 def log_error(msg: str) -> None:
@@ -173,6 +178,121 @@ def check_duplicate_authority() -> None:
             log_warning(f"{rel} 中出现了\"唯一真相源\"类声明，未被列入权威白名单")
 
 
+# ── 检查 6：架构重叠检测（告警） ──
+def check_architecture_duplication() -> None:
+    """检查 docs/architecture/ 是否重复了 private-control-plane.md 的核心内容。"""
+    pcp_path = DOCS_ROOT / "articles" / "private-control-plane.md"
+    if not pcp_path.exists():
+        return
+
+    # 核心控制平面模块关键词
+    key_modules = ["ErrorTranslator", "PolicyGate", "ApprovalGate", "SkillsGuard",
+                   "TrendDetector", "FeedbackTranslator"]
+    arch_dir = DOCS_ROOT / "architecture"
+    if not arch_dir.exists():
+        return
+
+    for md_file in arch_dir.glob("*.md"):
+        try:
+            content = md_file.read_text(encoding="utf-8")
+        except Exception:
+            continue
+
+        for mod in key_modules:
+            if mod in content and "private-control-plane" not in content:
+                rel = md_file.relative_to(REPO_ROOT)
+                log_warning(f"{rel} 中描述了 {mod}，但未引用 private-control-plane.md（可能内容重复）")
+                break
+
+
+# ── 检查 7：设计文档时效性（告警） ──
+def check_design_freshness() -> None:
+    """检查 docs/design/ 下的文件是否超过了 DESIGN_STALE_DAYS 未更新。"""
+    design_dir = DOCS_ROOT / "design"
+    if not design_dir.exists():
+        return
+
+    now = time.time()
+    for md_file in design_dir.glob("*.md"):
+        try:
+            content = md_file.read_text(encoding="utf-8")
+        except Exception:
+            continue
+
+        # 检查 frontmatter 中的 last_synced 或 最后更新 日期
+        import re as _re
+        # 格式：last_synced: 2026-07-04 或 最后更新: 2026-07-04
+        match = _re.search(r'(?:last_synced|最后更新)[:：]\s*(\d{4}-\d{2}-\d{2})', content)
+        if not match:
+            rel = md_file.relative_to(REPO_ROOT)
+            log_warning(f"{rel} 缺少 'last_synced' 或 '最后更新' 日期声明")
+            continue
+
+        date_str = match.group(1)
+        try:
+            from datetime import datetime
+            doc_date = datetime.strptime(date_str, "%Y-%m-%d")
+            doc_ts = doc_date.timestamp()
+        except ValueError:
+            continue
+
+        age_days = (now - doc_ts) / 86400
+        if age_days > DESIGN_STALE_DAYS:
+            rel = md_file.relative_to(REPO_ROOT)
+            log_warning(f"{rel} 已超过 {DESIGN_STALE_DAYS} 天未更新（最后: {date_str}，距今 {age_days:.0f} 天）")
+
+
+# ── 检查 8：骨架占位过期（告警） ──
+def check_draft_expiry() -> None:
+    """检查所有 .md 文件中标记为 status: draft 的文档是否超过 DRAFT_EXPIRY_DAYS。"""
+    now = time.time()
+    import re as _re
+
+    for md_file in REPO_ROOT.glob("**/*.md"):
+        if "archive" in md_file.parts or "__pycache__" in md_file.parts:
+            continue
+        try:
+            content = md_file.read_text(encoding="utf-8")
+        except Exception:
+            continue
+
+        # Only check YAML frontmatter (between first and second ---)
+        lines = content.split("\n")
+        if len(lines) < 3 or lines[0].strip() != "---":
+            continue
+        # Find closing ---
+        fm_end = -1
+        for i in range(1, min(len(lines), 20)):
+            if lines[i].strip() == "---":
+                fm_end = i
+                break
+        if fm_end < 0:
+            continue
+        frontmatter = "\n".join(lines[1:fm_end])
+
+        if "status: draft" not in frontmatter and "status:draft" not in frontmatter:
+            continue
+
+        match = _re.search(r'draft_date[:：]\s*(\d{4}-\d{2}-\d{2})', frontmatter)
+        if not match:
+            rel = md_file.relative_to(REPO_ROOT)
+            log_warning(f"{rel} 标记为 draft 但缺少 'draft_date' 声明")
+            continue
+
+        date_str = match.group(1)
+        try:
+            from datetime import datetime
+            draft_date = datetime.strptime(date_str, "%Y-%m-%d")
+            draft_ts = draft_date.timestamp()
+        except ValueError:
+            continue
+
+        age_days = (now - draft_ts) / 86400
+        if age_days > DRAFT_EXPIRY_DAYS:
+            rel = md_file.relative_to(REPO_ROOT)
+            log_warning(f"{rel} 标记为 draft 已超过 {DRAFT_EXPIRY_DAYS} 天（draft_date: {date_str}，距今 {age_days:.0f} 天）— 建议归档或删除")
+
+
 def main():
     print(f"\U0001f50d 文档系统验证开始 (REPO_ROOT: {REPO_ROOT})")
     print("=" * 60)
@@ -182,6 +302,9 @@ def main():
     check_archive_disclaimer()
     check_hardcoded_numbers()
     check_duplicate_authority()
+    check_architecture_duplication()
+    check_design_freshness()
+    check_draft_expiry()
 
     print("=" * 60)
     if errors:
