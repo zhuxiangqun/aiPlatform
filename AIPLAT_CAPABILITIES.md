@@ -398,6 +398,8 @@
 | BusinessGoalTracker | `harness/finance/value_calculator.py` | ✅ | 目标设定→进度追踪→偏离预警, on_track/at_risk/behind 实时状态 | 已合入 |
 | GoalAwareRouter | `harness/execution/dynamic_router.py:GoalAwareRouter` | ✅ | 业务目标感知调度: Speed(提速)/Quality(反思)/Safety(HITL) 策略自动切换 | 已合入 |
 | KPIAgent 监控 | `harness/agents/kpi_agent.py` | ✅ | 自动追踪 KPI → 偏离预警 → strategy_suggest, EvolutionEngine Step12 触发 | 已合入 |
+| Proposal 工作流 | `harness/learning/proposal_store.py` | ✅ | draft→pending_approval→approved→merged/rejected + branch/merge语义 (Palantir AIP对齐) | 已合入 |
+| Agent 可发现性 | `wiki.py:/ontology/{domain}/discover` | ✅ | Agent动态查询 ObjectTypes/Links/Actions/Interfaces，自主发现操作能力 | 已合入 |
 
 ---
 
@@ -722,7 +724,7 @@
 | 编排系统 | 4 | 0 | 4 |
 | 管理 & 质量 | 21 | 0 | 21 |
 | 编排层 | 17 | 0 | 17 |
-| **总计** | **475** | **0** | **475** |
+| **总计** | **477** | **0** | **477** |
 
 ---
 
