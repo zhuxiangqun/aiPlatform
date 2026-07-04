@@ -1174,7 +1174,7 @@ async def sys_llm_generate_stream(
         model_name = getattr(model, 'model_name', '') or getattr(model, '_model_name', '') or ''
     if not model_name:
         from core.harness.utils.model_injection import best_model_for_purpose
-        model_name = best_model_for_purpose("chat")
+        model_name = best_model_for_purpose("chat", messages=messages)
 
     # Try streaming
     try:

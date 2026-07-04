@@ -109,13 +109,14 @@ class OperatorAgent(BaseAgent):
             from core.harness.syscalls.llm import sys_llm_generate
             from core.harness.utils.model_injection import best_model_for_purpose
 
+            op_messages = [
+                {"role": "system", "content": sys_content},
+                {"role": "user", "content": f"当前问题：{question}\n\n请基于以上运行时上下文和决策框架，输出结构化JSON决策。"},
+            ]
             resp = await sys_llm_generate(
                 None,
-                [
-                    {"role": "system", "content": sys_content},
-                    {"role": "user", "content": f"当前问题：{question}\n\n请基于以上运行时上下文和决策框架，输出结构化JSON决策。"},
-                ],
-                model_name=best_model_for_purpose("doc_llm"),
+                op_messages,
+                model_name=best_model_for_purpose("doc_llm", messages=op_messages),
                 temperature=0.3,
                 max_tokens=2000,
             )

@@ -61,3 +61,31 @@ model_capabilities:
     routing_rules:
       min_complexity: 1
       max_complexity: 4
+
+# ── Phase 12.2: T1-T5 tiered routing ──
+# Each tier defines complexity range, default model, and fallback chain.
+# ModelTierRouter selects the first available model in tier order.
+# T1 = cheapest/fastest, T5 = most capable/expensive.
+tiers:
+  T1:
+    label: "轻量/快速"
+    complexity_range: [0, 1]
+    default_model: "qwen2.5:3b"
+  T2:
+    label: "日常对话"
+    complexity_range: [1, 2]
+    default_model: "qwen2.5-coder:7b"
+    fallback_models: ["deepseek/deepseek-v4-flash"]
+  T3:
+    label: "内容创作/编码"
+    complexity_range: [2, 3]
+    default_model: "qwen2.5-coder:7b"
+    fallback_models: ["deepseek/deepseek-v4-flash"]
+  T4:
+    label: "复杂推理"
+    complexity_range: [3, 4]
+    default_model: "deepseek/deepseek-v4-pro"
+  T5:
+    label: "高难度推理"
+    complexity_range: [4, 5]
+    default_model: "deepseek/deepseek-v4-pro"

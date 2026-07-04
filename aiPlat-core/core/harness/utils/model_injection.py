@@ -525,15 +525,20 @@ async def _record_quality_and_metrics_async(purpose: str, model_name: str, resp,
         _route_metrics["recent_logs"] = _route_metrics["recent_logs"][-50:]
 
 
-def best_model_for_purpose(purpose: str) -> str:
+def best_model_for_purpose(purpose: str, messages: list = None) -> str:
     """Select the best LLM model for a given task purpose.
 
     Resolution chain:
       0. Explicit purpose-specific env var (AIPLAT_{PURPOSE}_MODEL)
-         If env var contains commas, only the first model name is returned.
-      1. Capability-based auto-selection (infra ModelManager.select_by_purpose)
-      2. Env var resolution (infra ModelManager.get_default_model)
-      3. Ultimate fallback (llm_profile.yaml fallback.ultimate_model)
+      1. Complexity-aware tiered routing (Phase 12.3 — when messages provided)
+      2. Complexity-filtered capability scoring (infra ModelManager — Phase 12.1)
+      3. Env var resolution (infra ModelManager.get_default_model)
+      4. Ultimate fallback (llm_profile.yaml fallback.ultimate_model)
+
+    Args:
+        purpose: Task purpose (e.g. "chat", "code_gen", "doc_llm").
+        messages: Optional list of message dicts for complexity estimation.
+                  When None, falls back to static selection (backward compat).
     """
     import os as _os
     purpose_env = f"AIPLAT_{purpose.upper()}_MODEL"
@@ -545,11 +550,38 @@ def best_model_for_purpose(purpose: str) -> str:
                              source="env_" + purpose_env)
         return first_model
 
-    # 1. Capability-based auto-selection (infra)
+    # Phase 12.1: Estimate complexity from messages (if provided)
+    complexity = None
+    if messages and len(messages) > 0:
+        try:
+            from core.harness.knowledge.complexity_router import ComplexityRouter
+            result = ComplexityRouter.estimate(messages)
+            complexity = result.level  # "simple" | "medium" | "complex"
+        except Exception:
+            pass
+
+    # 1a. Phase 12.3: Tiered routing (when messages + tiers available)
+    if complexity and messages:
+        try:
+            from core.harness.routing.model_tier_router import get_tier_router
+            router = get_tier_router()
+            selected = router.route(purpose, complexity,
+                                    confidence=result.confidence if 'result' in dir() else 0.8)
+            if selected:
+                _log_model_selection(purpose, selected, entry="best_model_for_purpose",
+                                     source="tier_router")
+                return selected
+        except Exception as e:
+            logging.debug("Tier router skipped: %s", e)
+
+    # 1b. Capability-based auto-selection with complexity filtering (infra)
     try:
         from infra.management.model.manager import ModelManager
         mgr = _get_cached_model_manager()
-        selected = mgr.select_by_purpose(purpose)
+        if complexity:
+            selected = mgr.select_by_purpose(purpose, complexity=complexity)
+        else:
+            selected = mgr.select_by_purpose(purpose)
         if selected:
             _log_model_selection(purpose, selected, entry="best_model_for_purpose",
                                  source="infra_select_by_purpose")

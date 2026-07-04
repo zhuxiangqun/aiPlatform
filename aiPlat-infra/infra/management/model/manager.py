@@ -229,15 +229,15 @@ class ModelManager:
                 or os.getenv("AIPLAT_LLM_MODEL", "").strip()
                 or os.getenv("AIPLAT_DEFAULT_MODEL", "").strip())
 
-    def select_by_purpose(self, purpose: str) -> Optional[str]:
+    def select_by_purpose(self, purpose: str, complexity: str = None) -> Optional[str]:
         """Select best model for purpose via capability scoring.
         
-        See select_by_purpose_list() for full candidate list.
+        Phase 12.1: complexity filtering via routing_rules in llm_profile.yaml.
         """
-        candidates = self.select_by_purpose_list(purpose)
+        candidates = self.select_by_purpose_list(purpose, complexity=complexity)
         return candidates[0] if candidates else None
 
-    def select_by_purpose_list(self, purpose: str) -> List[str]:
+    def select_by_purpose_list(self, purpose: str, complexity: str = None) -> List[str]:
         """Return all eligible models for purpose, scored and sorted (best first).
         
         Useful for fallback: if the top model times out, try the next one.
@@ -291,6 +291,18 @@ class ModelManager:
             require = profile.get("require", {}).get("capabilities", [])
             if require and not all(c in (set(m.capabilities or []) if m.capabilities else ["chat"]) for c in require):
                 continue
+
+            # Phase 12.1: complexity-based filtering via model_capabilities.routing_rules
+            if complexity:
+                caps_data = profile_data.get("model_capabilities", {})
+                model_caps = caps_data.get(m.name, {})
+                routing_rules = model_caps.get("routing_rules", {})
+                min_c = routing_rules.get("min_complexity", 0)
+                max_c = routing_rules.get("max_complexity", 5)
+                c_map = {"simple": 1, "medium": 2, "complex": 4}
+                c_num = c_map.get(complexity, 2)
+                if c_num < min_c or c_num > max_c:
+                    continue  # model doesn't match this complexity tier
 
             score = 0
             if profile.get("prefer_local"):
