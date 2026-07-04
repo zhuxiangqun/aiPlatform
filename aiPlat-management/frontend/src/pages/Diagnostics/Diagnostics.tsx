@@ -5,6 +5,7 @@ import { Activity, GitBranch, Share2, Zap, Wrench, FolderSearch, Wand2, ShieldCh
 import { Card, CardContent, CardHeader, Badge, Button, toast } from '../../components/ui';
 import { diagnosticsApi } from '../../services';
 import CategoryDetailPanel from './CategoryDetailPanel';
+import ModelTierPanel from '../../components/model/ModelTierPanel';
 
 type Health = {
   layer: string;
@@ -591,6 +592,9 @@ const Diagnostics: React.FC = () => {
           </CardContent>
         </Card>
       )}
+
+      {/* ═══════════ Phase 14: Model Tier Panel ═══════ */}
+      <ModelTierPanel />
 
       {/* ═══════════ 诊断工具箱（折叠） ═══════ */}
       <details className="bg-dark-card border border-dark-border rounded-lg overflow-hidden">

@@ -1427,3 +1427,52 @@ async def get_entropy_alerts(limit: int = 20):
     except Exception as e:
         return {"alerts": [], "total": 0, "error": str(e)[:200]}
 
+
+# ── Phase 14: Model tier status + cost + health dashboard ──
+
+@router.get("/diagnostics/model-tier", response_model=Dict[str, Any])
+async def get_model_tier_status():
+    """Return unified model tier status: current tier, cost estimates, health.
+
+    Powers the frontend ModelTierIndicator + CostDashboard + ModelHealthPanel.
+    """
+    result: Dict[str, Any] = {
+        "status": {"current_tier": "N/A", "current_model": "N/A",
+                    "last_complexity": "unknown", "override_active": False},
+        "tiers": {},
+    }
+
+    # Load tier config
+    try:
+        from core.harness.routing.model_tier_router import get_tier_router
+        router = get_tier_router()
+        for tier_id, cfg in router._tiers.items():
+            available = router._is_model_available(cfg.default_model)
+            result["tiers"][tier_id] = {
+                "label": cfg.label,
+                "model": cfg.default_model,
+                "fallback_models": cfg.fallback_models,
+                "complexity_range": list(cfg.complexity_range),
+                "status": "available" if available else "degraded",
+            }
+
+        # Default tier estimation (simple query → what would we pick?)
+        for level in ["simple", "medium", "complex"]:
+            m = router.route("chat", level, 0.8)
+            if m:
+                result["status"]["current_model"] = m
+                break
+    except Exception:
+        result["tiers"] = {"error": "tier_router_unavailable"}
+
+    # Check for session override
+    try:
+        from core.harness.utils.model_injection import _model_overrides
+        if _model_overrides.get("_global"):
+            result["status"]["override_active"] = True
+            result["status"]["overridden_model"] = _model_overrides["_global"]
+    except Exception:
+        pass
+
+    return result
+
