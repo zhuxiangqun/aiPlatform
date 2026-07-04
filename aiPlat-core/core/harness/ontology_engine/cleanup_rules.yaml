@@ -1,0 +1,61 @@
+# aiPlat 文档清洗规则集（可配置化）
+#
+# 存储位置: ~/.aiplat/cleanup_rules.yaml
+# 合并策略: 用户规则覆盖默认规则，enabled: false 可禁用默认规则
+# 加载时机: 启动时加载一次（需重启生效）
+#
+# action 类型:
+#   remove    — 删除匹配的文本行
+#   replace   — 替换匹配内容为空（语义等同 remove，但保留行结构）
+#   mask      — 替换为 [MASKED]
+
+rules:
+  # ═══ 默认规则 ═══
+
+  - name: "default_page_number"
+    pattern: r"^第\s*\d+\s*页\s*(共\s*\d+\s*页)?$"
+    action: remove
+    description: "页码行: 第X页共Y页"
+
+  - name: "default_page_number_en"
+    pattern: r"^\s*Page\s+\d+\s*(of\s+\d+)?\s*$"
+    action: remove
+    description: "英文页码"
+
+  - name: "default_page_footer"
+    pattern: r"(内部资料请勿外传|内部资料|公司机密|confidential|版权所有|未经许可不得转载)"
+    action: remove
+    description: "固定页脚提示语"
+
+  - name: "default_blank_lines"
+    pattern: r"^[\s\t]*$\n{2,}"
+    action: remove
+    description: "连续空行压缩"
+
+  - name: "default_watermark_overlap"
+    pattern: r"(Draft|草稿|草案|SAMPLE|样本|水印)"
+    action: remove
+    description: "半透明水印文字"
+
+  - name: "default_url_fragment"
+    pattern: r"https?://[^\s]+"
+    action: remove
+    description: "裸 URL（可选关闭）"
+
+  - name: "default_header_date"
+    pattern: r"^(发表日期|发布日期|发布时间|最后修改)[:：]\s*$"
+    action: remove
+    description: "文档元数据页眉"
+
+  # ═══ 用户可在此区域添加自定义规则 ═══
+  # 示例:
+  # - name: "custom_company_slogan"
+  #   pattern: "诚信 专业 创新"
+  #   action: remove
+  #   description: "公司固定标语"
+  #
+  # - name: "disable_default_url"
+  #   pattern: "https?://[^\s]+"
+  #   action: remove
+  #   enabled: false
+  #   description: "禁用默认的 URL 过滤"

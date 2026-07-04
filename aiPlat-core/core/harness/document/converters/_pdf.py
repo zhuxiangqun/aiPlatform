@@ -113,3 +113,38 @@ class PdfConverter(DocumentConverter):
             meta={"source": "pdf", "parser": "pdfplumber"},
             source_format="pdf",
         )]
+
+    @staticmethod
+    def _reorder_columns(text: str) -> str:
+        """Detect and reorder multi-column text to single-column reading order."""
+        if not text:
+            return text
+        lines = text.split("\n")
+        if len(lines) < 10:
+            return text
+
+        max_width = max(len(l) for l in lines) if lines else 80
+        cols = [[], [], []]
+        single_col = True
+
+        for line in lines:
+            stripped = line.lstrip()
+            if not stripped:
+                continue
+            indent = len(line) - len(stripped)
+            # Full-width blocks stay in place (titles, wide tables)
+            if len(line) > max_width * 0.6:
+                cols[0].append(line)
+                continue
+            if indent < 4:
+                cols[0].append(line)
+            elif indent < max_width * 0.35:
+                cols[1].append(line)
+                single_col = False
+            else:
+                cols[2].append(line)
+                single_col = False
+
+        return text if single_col else "\n\n".join(
+            "\n".join(c) for c in cols if c
+        )

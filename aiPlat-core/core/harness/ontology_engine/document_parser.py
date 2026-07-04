@@ -339,8 +339,23 @@ class DocumentParser:
             doc.chunks = self._build_chunks([(clean, ["正文"])])
         return doc
 
+    def _clean_text(self, text: str) -> tuple:
+        """Apply configurable cleanup rules to raw extracted text."""
+        try:
+            from core.harness.knowledge.text_cleaner import get_text_cleaner
+            cleaner = get_text_cleaner()
+            return cleaner.clean(text)
+        except Exception:
+            return text, 0
+
     def _parse_text(self, text: str, source: str = "") -> ParsedDocument:
         """Parse plain text into paragraph chunks."""
+        # ── Apply configurable text cleanup ──
+        text, removed = self._clean_text(text)
+        if removed > 0:
+            import logging
+            logging.getLogger("document_parser").debug("Text cleanup: %d matches removed", removed)
+
         doc = ParsedDocument(format="txt", raw_text=text)
         # Extract first line as title
         lines = text.strip().split("\n")

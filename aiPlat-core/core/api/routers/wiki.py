@@ -777,6 +777,33 @@ async def ingest_text(body: WikiIngest):
             "message": "Text stored. Execute wiki_curator agent to process and update wiki pages."}
 
 
+@router.post("/ingest/reparse", response_model=Dict[str, Any])
+async def trigger_reparse(doc_id: str = "", source_path: str = ""):
+    """HITL reparse: submit a document for re-processing through the ontology pipeline.
+
+    The document is added to a queue and processed one-at-a-time by a background worker.
+    Status can be checked via GET /ingest/reparse/{doc_id}/status.
+    """
+    if not doc_id:
+        return {"success": False, "message": "doc_id is required"}
+    from core.harness.knowledge.reparse_queue import enqueue_reparse
+    return await enqueue_reparse(doc_id, source_path)
+
+
+@router.get("/ingest/reparse/{doc_id}/status", response_model=Dict[str, Any])
+async def get_reparse_status(doc_id: str):
+    """Check the reparse status for a document."""
+    from core.harness.knowledge.reparse_queue import get_reparse_status
+    return await get_reparse_status(doc_id)
+
+
+@router.get("/ingest/reparse/queue/stats", response_model=Dict[str, Any])
+async def get_reparse_queue_stats():
+    """Get reparse queue statistics."""
+    from core.harness.knowledge.reparse_queue import get_queue_stats
+    return await get_queue_stats()
+
+
 @router.post("/atomize-document", response_model=Dict[str, Any])
 async def atomize_document(body: AtomizeRequest, collection: str = "default"):
     """Ontology-driven atom extraction: raw document → KnowledgeAtoms with evidence.
