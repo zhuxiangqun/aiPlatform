@@ -37,6 +37,24 @@ FRONTMATTER_FIELDS = {
     "department": "", "owner": "",
 }
 
+# ── Wiki quality monitor trigger ──
+_wiki_change_counter: int = 0
+_WIKI_CHANGE_THRESHOLD = int(os.getenv("AIPLAT_WIKI_QUALITY_CHANGE_THRESHOLD", "50"))
+
+
+def _inc_change_counter() -> None:
+    """Increment wiki mutation counter; triggers quality check at threshold."""
+    global _wiki_change_counter
+    _wiki_change_counter += 1
+    if _wiki_change_counter >= _WIKI_CHANGE_THRESHOLD:
+        try:
+            from core.harness.knowledge.wiki_quality_monitor import trigger_quality_check
+            trigger_quality_check()
+        except Exception:
+            pass
+        _wiki_change_counter = 0
+
+
 def _wiki_root(collection_id: str = "default") -> Path:
     home = os.getenv("AIPLAT_HOME", os.path.expanduser("~/.aiplat"))
     root = Path(home) / "wiki"
@@ -598,6 +616,7 @@ def write_page(title: str, body: str, *, category: str = "entities", tags: List[
     except Exception as e:
         logging.debug(str(e), exc_info=True)
 
+    _inc_change_counter()
     return str(p)
 
 
@@ -1064,6 +1083,7 @@ def delete_page(title: str, collection_id: str = "default") -> bool:
     except Exception as e:
         logging.debug(str(e), exc_info=True)
 
+    _inc_change_counter()
     return True
 
 

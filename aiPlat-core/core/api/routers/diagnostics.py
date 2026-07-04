@@ -479,6 +479,24 @@ async def _check_doc_quality():
         return {"status": "unavailable", "score": 0}
 
 
+async def _check_wiki_content_quality():
+    """Check Wiki page content quality against original source documents."""
+    try:
+        from core.harness.knowledge.wiki_quality_monitor import get_wiki_quality_monitor
+        monitor = get_wiki_quality_monitor()
+        stats = monitor.get_stats()
+        alerts = monitor.get_alerts(limit=5)
+        low_count = stats.get("low_quality_unreviewed", 0)
+        return {
+            "status": "degraded" if low_count > 3 else "pass",
+            "signals": stats,
+            "items": [{"check": "Wiki内容质量", "result": "⚠️" if low_count > 0 else "✅",
+                        "detail": f"{low_count} low-quality pages pending review" if low_count else "All wiki pages quality OK"}],
+        }
+    except Exception:
+        return {"status": "unavailable", "score": 0}
+
+
 def _register_health_checks():
     try:
         from core.harness.health.registry import HealthCheckRegistry, get_registry, Severity
@@ -511,6 +529,7 @@ def _register_health_checks():
         reg.register(SimpleHealthCheck("runtime", _check_core_runtime, Severity.CRITICAL))
         reg.register(SimpleHealthCheck("doc_sync", _check_doc_sync, Severity.HIGH))
         reg.register(SimpleHealthCheck("doc_quality", _check_doc_quality, Severity.MEDIUM))
+        reg.register(SimpleHealthCheck("wiki_content_quality", _check_wiki_content_quality, Severity.MEDIUM))
 
         # Additional health checks are registered in run_all_diagnostics()
 
@@ -1350,6 +1369,25 @@ async def get_doc_quality(limit: int = 20):
         }
     except Exception as e:
         return {"alerts": [], "doc_health": [], "stats": {}, "error": str(e)[:200]}
+
+
+@router.get("/diagnostics/wiki-quality", response_model=Dict[str, Any])
+async def get_wiki_content_quality(limit: int = 20, collection: str = "default"):
+    """
+    Returns Wiki page content quality vs original source documents.
+
+    Response: { "alerts": [...], "trends": [...], "stats": {...} }
+    """
+    try:
+        from core.harness.knowledge.wiki_quality_monitor import get_wiki_quality_monitor
+        monitor = get_wiki_quality_monitor()
+        return {
+            "alerts": monitor.get_alerts(limit=limit, collection_id=collection),
+            "trends": monitor.get_trends(collection_id=collection, limit=10),
+            "stats": monitor.get_stats(),
+        }
+    except Exception as e:
+        return {"alerts": [], "trends": [], "stats": {}, "error": str(e)[:200]}
 
 
 # ── Entropy Trend Awareness ──────────────────────────────────────────────────

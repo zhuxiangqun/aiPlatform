@@ -1464,6 +1464,14 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logging.debug(str(e), exc_info=True)
 
+    # Initialize WikiQualityMonitor (content fidelity vs source documents)
+    try:
+        from core.harness.knowledge.wiki_quality_monitor import get_wiki_quality_monitor
+        get_wiki_quality_monitor()
+        logging.getLogger("aiplat.quality").info("WikiQualityMonitor initialized")
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
+
     yield
 
     # Shutdown background services
