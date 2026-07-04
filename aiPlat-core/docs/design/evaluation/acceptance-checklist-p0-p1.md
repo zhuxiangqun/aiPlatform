@@ -4,6 +4,7 @@
 > 原则：**先可信（P0）→再可治理（P1）→最后体验/自动化（P2）**。  
 > 说明：本清单以 As‑Is 代码事实为基础，尽量复用你们现有设施（Artifacts / Change Control / Approvals / Run events）。
 
+last_synced: 2026-07-04
 ---
 
 ## 0. 总体验收口径（Definition of Done）

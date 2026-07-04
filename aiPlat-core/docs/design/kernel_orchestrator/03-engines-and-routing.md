@@ -3,6 +3,7 @@
 状态：草案（Phase 5 设计；当前实现仍为 Loop-first 直连执行）  
 更新时间：2026-04-16
 
+last_synced: 2026-07-04
 ---
 
 ## 0. 现状对齐（As-Is vs To-Be）

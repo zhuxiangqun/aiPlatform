@@ -752,6 +752,18 @@ async def ingest_text(body: WikiIngest):
         "id": sid, "title": body.source_title, "text": body.source_text[:50000],
         "url": body.source_url, "ingested_at": time.time(),
     }, ensure_ascii=False))
+    # ── Cache invalidation ──
+    try:
+        from core.harness.knowledge.semantic_cache import SemanticCache
+        cache = SemanticCache()
+        cache.invalidate_domain(body.collection if hasattr(body, 'collection') else "default")
+    except Exception:
+        pass
+    try:
+        from core.harness.knowledge.wiki_engine import invalidate_graph_cache
+        invalidate_graph_cache(body.collection if hasattr(body, 'collection') else "default")
+    except Exception:
+        pass
     return {"source_id": sid, "status": "ingested",
             "message": "Text stored. Execute wiki_curator agent to process and update wiki pages."}
 

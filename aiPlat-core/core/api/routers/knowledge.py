@@ -142,6 +142,13 @@ async def create_document(request: DocumentCreateRequest, rt: RuntimeDep = Depen
         content=b"",
         metadata=request.metadata,
     )
+    # ── Cache invalidation ──
+    try:
+        from core.harness.knowledge.semantic_cache import SemanticCache
+        cache = SemanticCache()
+        cache.invalidate_domain(collection_id or "default")
+    except Exception:
+        pass
     return {"document_id": doc.id, "status": "created"}
 
 

@@ -2,6 +2,7 @@
 
 > 本文档用于把近期落地的“自动评估（auto-eval）/证据包（evidence）/回归对比（diff）/策略（policy）/项目级继承（project policy）/治理（change-control）”整理成可追溯的工程口径，避免实现与文档脱节。
 
+last_synced: 2026-07-04
 ---
 
 ## 1. 一句话定义

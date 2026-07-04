@@ -1,5 +1,7 @@
 # Kernel-Orchestrator 设计文档集
 
+> 最后更新: 2026-07-04
+
 本目录用于 **aiPlat-core 内核化改造（Harness=Kernel, Orchestrator=User-space）** 的设计评审与契约冻结，遵循“先文档、后改代码”的流程。
 
 ## 当前对齐状态（As-Is vs 设计）

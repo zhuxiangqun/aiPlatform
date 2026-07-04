@@ -1,5 +1,7 @@
 # 00｜总体架构设计：Harness Kernel + Orchestrator User-space
 
+> 最后更新: 2026-07-04
+
 状态：草案（Phase 1~3 已部分对齐实现；Phase 4+ 待落地）  
 更新时间：2026-04-16
 

@@ -1,5 +1,7 @@
 # Query Routing（Document Intelligence）
 
+> 最后更新: 2026-07-04
+
 ## 目标与边界
 
 本文档描述 `aiPlat-core` 在资料问答/资料对话场景下的通用决策机制，包括：
