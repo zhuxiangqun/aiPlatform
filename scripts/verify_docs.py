@@ -293,6 +293,86 @@ def check_draft_expiry() -> None:
             log_warning(f"{rel} 标记为 draft 已超过 {DRAFT_EXPIRY_DAYS} 天（draft_date: {date_str}，距今 {age_days:.0f} 天）— 建议归档或删除")
 
 
+# ── 检查 9：代码引用验证（告警） ──
+def check_code_references() -> None:
+    """
+    Verify that `file:line` references in CAPABILITIES.md point to existing code.
+    Pattern: `path/to/file.py` or `path/to/file.py:123`
+    """
+    if not CAPABILITIES_FILE.exists():
+        return
+
+    content = CAPABILITIES_FILE.read_text(encoding="utf-8")
+    # Match code references: `some/path.py` or `some/path.py:42`
+    refs = re.findall(r'`([a-zA-Z0-9_/.-]+\.py)(?::(\d+))?`', content)
+    broken = 0
+    for match in refs:
+        file_path = match[0]
+        line_num = match[1] if len(match) > 1 and match[1] else None
+        found = False
+        # References in CAPABILITIES use paths like `harness/infrastructure/...` without `core/` prefix
+        # Search in aiPlat-core/ (not aiPlat-core/core/)
+        for base in ["aiPlat-core", "aiPlat-infra", "aiPlat-platform", "aiPlat-management", "aiPlat-app"]:
+            full = REPO_ROOT / base / "core" / file_path
+            if full.exists():
+                found = True
+                break
+            # Also try without core/ subdirectory
+            full = REPO_ROOT / base / file_path
+            if full.exists():
+                found = True
+                break
+        if not found:
+            # Try root-level
+            if (REPO_ROOT / file_path).exists():
+                found = True
+        if not found:
+            log_warning(f"CAPABILITIES 引用文件不存在: {file_path}")
+            broken += 1
+            if broken >= 10:
+                break
+
+
+# ── 检查 10：环境变量声明检测（告警） ──
+def check_undocumented_env_vars() -> None:
+    """
+    Check that all AIPLAT_* environment variables used in code are documented.
+    Opt-in: requires AIPLAT_DOC_CHECK_ENV=1 to run (avoids noisy first-run on legacy code).
+    """
+    if os.environ.get("AIPLAT_DOC_CHECK_ENV", "0") != "1":
+        return
+
+    known_envs = set()
+    for doc_path in [DOCS_ROOT / "DOCUMENT_SYSTEM.md",
+                     DOCS_ROOT / "articles" / "private-control-plane.md"]:
+        if not doc_path.exists():
+            continue
+        text = doc_path.read_text(encoding="utf-8")
+        known_envs.update(re.findall(r'`(AIPLAT_[A-Z_]+)`', text))
+
+    if not known_envs:
+        return
+
+    code_envs = set()
+    for py_file in REPO_ROOT.glob("aiPlat-core/core/**/*.py"):
+        if "__pycache__" in str(py_file) or "/tests/" in str(py_file):
+            continue
+        try:
+            for line in py_file.read_text(encoding="utf-8").split("\n")[:200]:
+                match = re.search(r'getenv\(["\'](AIPLAT_[A-Z_]+)', line)
+                if match:
+                    code_envs.add(match.group(1))
+        except Exception:
+            continue
+
+    missing = sorted(code_envs - known_envs)
+    capped = 20
+    for env in missing[:capped]:
+        log_warning(f"环境变量 {env} 在代码中使用但未在文档中声明")
+    if len(missing) > capped:
+        log_warning(f"... 还有 {len(missing) - capped} 个未声明的环境变量（设置 AIPLAT_DOC_CHECK_ENV=1 查看全部）")
+
+
 def main():
     print(f"\U0001f50d 文档系统验证开始 (REPO_ROOT: {REPO_ROOT})")
     print("=" * 60)
@@ -305,6 +385,8 @@ def main():
     check_architecture_duplication()
     check_design_freshness()
     check_draft_expiry()
+    check_code_references()
+    check_undocumented_env_vars()
 
     print("=" * 60)
     if errors:

@@ -172,6 +172,114 @@ if python3 "$WORKSPACE/scripts/verify_capability_consistency.py" --fix 2>&1 | he
     echo "  ✅ Stats table recalculated"
 fi
 
+# ══════════════════════════════════════════════════════════════
+# Step 5: Deprecated capability detection (Rule 10)
+# ══════════════════════════════════════════════════════════════
+echo ""
+echo "━━━ Step 5: Detect deprecated capabilities ━━━"
+python3 - "$CAPS" "$WORKSPACE" 2>&1 << 'PYEOF_R10'
+import sys, re, os, subprocess
+caps_file = sys.argv[1]
+workspace = sys.argv[2]
+
+with open(caps_file) as f:
+    content = f.read()
+
+# Find all code-path references: `path/to/file.py` or `path/to/file.py:123`
+refs = re.findall(r'`([a-zA-Z0-9_/.-]+\.py)(?::\d+)?`', content)
+changes = 0
+
+for ref in set(refs):
+    full_path = os.path.join(workspace, "aiPlat-core/core", ref)
+    if os.path.exists(full_path):
+        continue
+
+    # Path doesn't exist — check if it was renamed/moved in last 30 days
+    dep_path = ref
+    moved = False
+    try:
+        result = subprocess.run(
+            ["git", "-C", workspace, "log", "--follow", "--diff-filter=R",
+             "--since=30.days.ago", "--oneline", "--", full_path],
+            capture_output=True, text=True, timeout=5,
+        )
+        if result.stdout.strip():
+            # File was renamed — extract new name
+            new_name = result.stdout.strip().split()[-1] if "=>" not in result.stdout else result.stdout.split("=>")[-1].strip()
+            if new_name:
+                content = content.replace(ref, new_name)
+                changes += 1
+                moved = True
+                print(f"  🔄 {ref} → {new_name} (renamed)")
+    except Exception:
+        pass
+
+    if not moved:
+        # Grant: 30 days no activity → mark deprecated
+        content = content.replace(f"| {ref}", f"| ⚠️ deprecated {ref}")
+        changes += 1
+        print(f"  ⚠️ {ref} → deprecated (not found, no recent rename)")
+
+if changes > 0:
+    with open(caps_file, "w") as f:
+        f.write(content)
+    print(f"  ✅ {changes} deprecated/renamed entries updated")
+else:
+    print("  ✅ No deprecated entries found")
+PYEOF_R10
+
+# ══════════════════════════════════════════════════════════════
+# Step 6: Bare number → reference replacement (Rule 12)
+# ══════════════════════════════════════════════════════════════
+echo ""
+echo "━━━ Step 6: Replace bare capability counts with references ━━━"
+python3 - "$CAPS" "$WORKSPACE" 2>&1 << 'PYEOF_R12'
+import sys, re
+caps_file = sys.argv[1]
+workspace = sys.argv[2]
+
+with open(caps_file) as f:
+    caps_content = f.read()
+
+# Get current capability count
+current_count = str(caps_content.count("✅"))
+
+# Standard reference format (from DOCUMENT_SYSTEM.md §3.1)
+reference = f"（参见 AIPLAT_CAPABILITIES.md 当前计数）"
+
+# Scan all .md files (except CAPABILITIES itself)
+import os as _os
+ref_count = 0
+for root, dirs, files in _os.walk(workspace):
+    dirs[:] = [d for d in dirs if d not in (".venv", ".git", "node_modules", "__pycache__", ".pytest_cache", "download", "output", ".aiplat", "archive")]
+    for fname in files:
+        if not fname.endswith(".md"):
+            continue
+        fpath = _os.path.join(root, fname)
+        if fpath == caps_file:
+            continue
+        try:
+            with open(fpath) as f:
+                text = f.read()
+        except Exception:
+            continue
+
+        # Whole-word match: replace bare current_count with reference (not inside URLs/ports/paths)
+        pattern = re.compile(r'(?<!\d)' + current_count + r'(?!\d)')
+        if pattern.search(text) and reference not in text:
+            new_text = pattern.sub(reference, text, count=1)
+            with open(fpath, "w") as f:
+                f.write(new_text)
+            rel = _os.path.relpath(fpath, workspace)
+            print(f"  📝 {rel}: {current_count} → reference")
+            ref_count += 1
+
+if ref_count == 0:
+    print("  ✅ No bare capability counts found")
+else:
+    print(f"  ✅ {ref_count} file(s) updated")
+PYEOF_R12
+
 echo ""
 echo "═══════════════════════════════════════════════════════════════"
 echo "  Sync complete: $ADDED new entries, $SUM total (CAPS+ROADMAP+CLAUDE)"

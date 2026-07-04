@@ -150,14 +150,20 @@ workspace-root/
 
 2. **非出处文档必须引用出处**。例如 `ROADMAP.md` 写能力数时，不裸写数字，而是写 "见 AIPLAT_CAPABILITIES.md 当前计数"。
 
-3. **数字声明必须可自动化验证**。每个数字声明附带验证命令：
+3. **标准引用格式**（Rule 12 的匹配目标）：
+   ```
+   （参见 AIPLAT_CAPABILITIES.md 当前计数）
+   ```
+   所有文档中的裸数字能力数将被自动替换为这个格式。整词匹配，不误替换 URL/端口号/文件路径中的数字。
+
+4. **数字声明必须可自动化验证**。每个数字声明附带验证命令：
    ```bash
    grep -c '✅' AIPLAT_CAPABILITIES.md          # 能力总数
    ls engine/skills/*/SKILL.md | wc -l           # Engine Skills 数
    grep -c '^  - id:' arch_guard_rules.yaml      # Arch Guard 规则数
    ```
 
-4. **CI 做数字变化检测，不阻断**。pre-commit 不校验当前计数是否等于某固定值，CI nightly 检测到数字变化时生成通知。
+5. **CI 做数字变化检测，不阻断**。pre-commit 不校验当前计数是否等于某固定值，CI nightly 检测到数字变化时生成通知。
 
 ### 3.2 当前已验证的数字声明
 

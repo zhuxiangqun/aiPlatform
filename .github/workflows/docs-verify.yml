@@ -40,23 +40,73 @@ jobs:
       - name: Verify docs
         id: docs_check
         continue-on-error: false
-        run: python scripts/verify_docs.py
+        run: |
+          python scripts/verify_docs.py
+          # Capture warnings for PR comment
+          echo "warnings=$(python scripts/verify_docs.py 2>&1 | grep '⚠️' | head -20 | tr '\n' '|')" >> $GITHUB_OUTPUT
+
+      - name: Check stale design docs
+        id: stale_check
+        if: github.event_name == 'pull_request'
+        run: |
+          # Find design docs with last_synced older than threshold
+          DAYS="${AIPLAT_DOC_DESIGN_STALE_DAYS:-90}"
+          STALE=$(python3 -c "
+import os, re, time
+design_dir = 'docs/design'
+if not os.path.isdir(design_dir):
+    exit(0)
+now = time.time()
+stale = []
+for f in os.listdir(design_dir):
+    if not f.endswith('.md'):
+        continue
+    fp = os.path.join(design_dir, f)
+    with open(fp) as fh:
+        c = fh.read()
+    m = re.search(r'(?:last_synced|最后更新)[:：]\s*(\d{4}-\d{2}-\d{2})', c)
+    if not m:
+        continue
+    from datetime import datetime
+    dt = datetime.strptime(m.group(1), '%Y-%m-%d')
+    age = (now - dt.timestamp()) / 86400
+    if age > $DAYS:
+        stale.append(f'{f} ({m.group(1)}, {age:.0f}d)')
+if stale:
+    print('\n'.join(stale))
+" 2>&1)
+          echo "stale_design=${STALE}" >> $GITHUB_OUTPUT
+        env:
+          AIPLAT_DOC_DESIGN_STALE_DAYS: ${{ vars.AIPLAT_DOC_DESIGN_STALE_DAYS || '90' }}
 
       - name: Post PR comment (warnings only)
-        if: github.event_name == 'pull_request' && steps.docs_check.outputs.warnings != ''
+        if: github.event_name == 'pull_request'
         uses: actions/github-script@v7
         with:
           script: |
-            const output = `⚠️ **文档验证告警**（不阻断合并）
+            const warnings = process.env.WARNING_MESSAGE || '';
+            const staleDesign = process.env.STALE_DESIGN || '';
 
-            ${process.env.WARNING_MESSAGE}
+            let body = '';
 
-            > 提示：数字变化（如能力数）无需手动修正，请确认是否预期。`;
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: output
-            });
+            if (warnings) {
+              body += `⚠️ **文档验证告警**（不阻断合并）\n\n${warnings}\n\n`;
+            }
+
+            if (staleDesign) {
+              body += `📝 **设计文档提醒**（${process.env.STALE_THRESHOLD || '90'} 天未同步）\n\n以下文件可能需要更新：\n${staleDesign}\n\n> 请确认内容是否仍然准确。`;
+            }
+
+            if (body) {
+              body += '\n> 提示：数字变化（如能力数）无需手动修正。';
+              github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: body
+              });
+            }
         env:
           WARNING_MESSAGE: ${{ steps.docs_check.outputs.warnings }}
+          STALE_DESIGN: ${{ steps.stale_check.outputs.stale_design }}
+          STALE_THRESHOLD: ${{ vars.AIPLAT_DOC_DESIGN_STALE_DAYS || '90' }}
