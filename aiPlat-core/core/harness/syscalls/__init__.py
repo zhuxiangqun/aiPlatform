@@ -28,6 +28,7 @@ __all__ = [
     "sys_code_intel_subclasses",
     "sys_file_read", "sys_file_write", "sys_file_edit",
     "sys_glob", "sys_code_search",
+    "sys_graph_query",
 ]
 
 _LAZY_MODULES = {
@@ -50,6 +51,7 @@ _LAZY_MODULES = {
     ],
     "file": ["sys_file_read", "sys_file_write", "sys_file_edit"],
     "code": ["sys_glob", "sys_code_search"],
+    "graph": ["sys_graph_query"],
 }
 
 

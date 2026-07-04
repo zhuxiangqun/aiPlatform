@@ -6,6 +6,7 @@ import re
 import time
 from typing import Any, Dict, List, Optional
 
+from core.harness.utils.model_injection import best_model_for_purpose
 from core.harness.utils.prompt_loader import _sync_resolve as _resolve
 
 from .base import BaseAgent, AgentMetadata
@@ -537,6 +538,20 @@ class MaterialsChatAgent(BaseAgent):
             if retrieved_docs:
                 skill_params["doc_content"] = retrieved_docs
 
+            # ── Graph context: inject structured graph knowledge ──
+            graph_context = ""
+            try:
+                from core.harness.syscalls.graph import sys_graph_query
+                gq = await sys_graph_query("stats", domain_id=domain_id)
+                if gq.get("success") and gq.get("data", {}).get("nodes", 0) > 0:
+                    graph_context = f"\n[知识图谱摘要] {gq['result']}\n"
+                    # Also get top classes
+                    gq2 = await sys_graph_query("classes", domain_id=domain_id)
+                    if gq2.get("success"):
+                        graph_context += f"{gq2['result']}\n"
+            except Exception:
+                pass
+
             # Compress retrieved docs to fit model context window
             if retrieved_docs:
                 from core.harness.knowledge.doc_compressor import compress_retrieved_docs
@@ -560,7 +575,7 @@ class MaterialsChatAgent(BaseAgent):
                         async for chunk in sys_llm_generate_stream(
                             None,
                             system_msgs + [
-                                {"role": "user", "content": f"文档内容：\n{retrieved_docs}\n\n用户问题：{enhanced_question}\n\n请回答："},
+                                {"role": "user", "content": f"文档内容：\n{retrieved_docs}\n\n{graph_context}\n用户问题：{enhanced_question}\n\n请回答："},
                             ],
                             model_name=best_model_for_purpose("chat"),
                             temperature=0.3,
@@ -594,7 +609,7 @@ class MaterialsChatAgent(BaseAgent):
                         resp = await sys_llm_generate(
                             None,
                             sys_msgs + [
-                                {"role": "user", "content": f"文档内容：\n{retrieved_docs}\n\n用户问题：{enhanced_question}\n\n请回答："},
+                                {"role": "user", "content": f"文档内容：\n{retrieved_docs}\n\n{graph_context}\n用户问题：{enhanced_question}\n\n请回答："},
                             ],
                             model_name=best_model_for_purpose("chat"),
                             temperature=0.3,
@@ -621,7 +636,7 @@ class MaterialsChatAgent(BaseAgent):
                                     strategy="direct_retrieve", mode="", intent=intent,
                                     skills_used=["sys_kb_retrieve"],
                                     analysis=analysis, retrieval_policy=retrieval_policy,
-                                    answer_strategy=answer_strategy, run_id=run_id,
+                                    answer_strategy=answer_strategy, run_id=run_id,  # noqa: F821
                                 )
                             except Exception as e:
                                 logging.debug(str(e), exc_info=True)
@@ -661,7 +676,7 @@ class MaterialsChatAgent(BaseAgent):
                                         hyde_sys_msgs.append({"role": "system", "content": _resolve("kb-chat-system-role")})
                                         resp = await sys_llm_generate(
                                             None,
-                                            hyde_sys_msgs + [{"role": "user", "content": f"文档内容：\n{retrieved_docs}\n\n用户问题：{enhanced_question}\n\n请回答："}],
+                                            hyde_sys_msgs + [{"role": "user", "content": f"文档内容：\n{retrieved_docs}\n\n{graph_context}\n用户问题：{enhanced_question}\n\n请回答："}],
                                             model_name=best_model_for_purpose("chat"),
                                             temperature=0.3, max_tokens=2000,
                                         )
@@ -683,7 +698,7 @@ class MaterialsChatAgent(BaseAgent):
                                     {"text": c.get("text", c.get("source", ""))}
                                     for c in (citations or [])
                                 ],
-                                run_id=run_id, domain_id=domain_id,
+                                run_id=run_id, domain_id=domain_id,  # noqa: F821
                             )
                             hallucination_risk = report.hallucination_risk
                             if hallucination_risk > 0.7:
