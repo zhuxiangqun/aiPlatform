@@ -21,6 +21,12 @@ class ContextGate:
         self._enabled = os.getenv("AIPLAT_CONTEXT_GATE_COMPRESSION", "true").lower() in (
             "1", "true", "yes", "y",
         )
+        # ── Structured metrics ──
+        self._total_validations: int = 0
+        self._total_dedup_removed: int = 0
+        self._total_tokens_saved: int = 0
+        self._total_stale_warnings: int = 0
+        self._total_conflicts: int = 0
 
     def prepare_llm_args(self, prompt: Any, *, context: Dict[str, Any] | None = None) -> Any:
         """Apply pre-context validation, then truncation guardrail and compression check.
@@ -36,6 +42,11 @@ class ContextGate:
                 memory_ctx = (context or {}).get("memory_context") if context else None
                 v = validator.validate(prompt, memory_context=memory_ctx)
                 if v.removed_count > 0 or v.stale_warnings or v.conflict_markers:
+                    self._total_validations += 1
+                    self._total_dedup_removed += v.removed_count
+                    self._total_tokens_saved += v.token_saved
+                    self._total_stale_warnings += len(v.stale_warnings)
+                    self._total_conflicts += len(v.conflict_markers)
                     import logging
                     _log = logging.getLogger("context_gate")
                     _log.info(
@@ -282,6 +293,16 @@ class ContextGate:
         stripped = content.strip()
         return (stripped.startswith('{') and stripped.endswith('}')) or \
                (stripped.startswith('[') and stripped.endswith(']'))
+
+    def get_stats(self) -> dict:
+        return {
+            "total_validations": self._total_validations,
+            "total_dedup_removed": self._total_dedup_removed,
+            "total_tokens_saved": self._total_tokens_saved,
+            "total_stale_warnings": self._total_stale_warnings,
+            "total_conflicts": self._total_conflicts,
+            "avg_quality_score": 0,  # quality_score is per-call, not aggregated
+        }
 
 
 def get_context_gate() -> ContextGate:
