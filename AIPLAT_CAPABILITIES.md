@@ -107,6 +107,8 @@
 | ShardedGraphIndex | `harness/ontology_engine/sharded_graph.py` | ✅ | 跨域分片图索引 | 已合入 |
 | 跨域本体桥接 | `harness/ontology_engine/triple_store.py` + `harness/ontology_engine/triple_scanner.py` | ✅ | 统一三元组存储 + BFS多跳遍历 + 5数据源自动扫描 + 3 API端点 | 已合入 |
 | 审批工作流引擎 | `harness/ontology_engine/approval.py` | ✅ | submit/approve/reject/changes + 超时升级 + 告警通道 | 已合入 |
+| Interface 原语 (多态抽象) | `harness/knowledge/ontology_loader.py` | ✅ | 本体Interface定义 + implements声明 + get_entities_by_interface()查询 | 已合入 |
+| SQL Ontology Bridge | `harness/knowledge/sql_ontology.py` | ✅ | 三层架构(物理→语义→应用) + concept→SQL自动翻译 + virtual-first零摄取 | 已合入 |
 
 ---
 
@@ -124,6 +126,10 @@
 | skill_deps | `harness/knowledge/skill_deps.py` | ✅ | 自动同步 | 已合入 |
 | code_graph_persist | `harness/knowledge/code_graph_persist.py` | ✅ | 自动同步 | 已合入 |
 | cap_graph_persist | `harness/knowledge/cap_graph_persist.py` | ✅ | 自动同步 | 已合入 |
+| reparse_queue | `harness/knowledge/reparse_queue.py` | ✅ | 自动同步 | 已合入 |
+| text_cleaner | `harness/knowledge/text_cleaner.py` | ✅ | 自动同步 | 已合入 |
+| doc_quality_monitor | `harness/knowledge/doc_quality_monitor.py` | ✅ | 自动同步 | 已合入 |
+| sql_ontology | `harness/knowledge/sql_ontology.py` | ✅ | 自动同步 | 已合入 |
 |------|------|:---:|------|------|
 | 统一知识检索 | `harness/syscalls/retrieval.py:569` | ✅ | 并行 Wiki + KB，RRF 三路融合 | 已合入 |
 | KB 文档检索 | `harness/syscalls/retrieval.py:39` | ✅ | hybrid: LIKE + FTS5 + FAISS 向量 | 已合入 |
@@ -223,6 +229,7 @@
 | Completion Criterion | 30个 SKILL.md frontmatter | ✅ | 每个 skill 显式声明完成条件，5类模板（知识/生成/工程/测试/交互） | 已合入 |
 | Grilling 追问技能 | `engine/skills/grilling/SKILL.md` | ✅ | Matt Pocock 风格：一次一问 + ≤3推荐选项 + 读文件原则 | 已合入 |
 | Leading Words 术语表 | `engine/skills/leading_words.md` | ✅ | 8个工程先验词汇（tight loop/tracer bullet/deep module/seam等） | 已合入 |
+| Action Type 操作契约 | `harness/interfaces/skill.py` + `apps/skills/executor.py` | ✅ | submission_criteria前置校验 + permissions角色控制 + side_effects声明 + _evaluate_criterion()执行前拦截 | 已合入 |
 
 ---
 
@@ -352,6 +359,8 @@
 | _csv | `harness/document/converters/_csv.py` | ✅ | 自动同步 | 已合入 |
 | _markdown | `harness/document/converters/_markdown.py` | ✅ | 自动同步 | 已合入 |
 | _html | `harness/document/converters/_html.py` | ✅ | 自动同步 | 已合入 |
+| playbook | `harness/learning/playbook.py` | ✅ | 自动同步 | 已合入 |
+| proposal_store | `harness/learning/proposal_store.py` | ✅ | 自动同步 | 已合入 |
 |------|------|:---:|------|------|
 | ExperienceVector | `harness/learning/experience_vector.py` | ✅ | PipelineTrace→Embedding→语义检索 | 已合入 |
 | ToolDriftDetector | `harness/learning/tool_drift_detector.py` | ✅ | 4类漂移检测(struct/field/latency/error) + 重放校验自适应 | 已合入 |
@@ -696,7 +705,7 @@
 | 可观测性 | 14 | 0 | 14 |
 | 模型基础设施 | 16 | 0 | 16 |
 | 部署与运维 | 17 | 0 | 17 |
-| 扩展与学习 | 54 | 0 | 54 |
+| 扩展与学习 | 56 | 0 | 56 |
 | Gate 系统 | 7 | 0 | 7 |
 | 评估系统 | 13 | 0 | 13 |
 | MCP 协议 | 6 | 0 | 6 |
@@ -713,7 +722,7 @@
 | 编排系统 | 4 | 0 | 4 |
 | 管理 & 质量 | 21 | 0 | 21 |
 | 编排层 | 17 | 0 | 17 |
-| **总计** | **466** | **0** | **466** |
+| **总计** | **475** | **0** | **475** |
 
 ---
 
