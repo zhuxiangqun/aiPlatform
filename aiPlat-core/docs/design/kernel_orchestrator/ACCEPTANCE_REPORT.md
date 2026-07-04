@@ -13,9 +13,9 @@
 |---|---|---|---|
 | Phase 1 | 单入口 Integration.execute | PASS | server 执行路由已收敛到 `harness.execute()`，Integration 生成 run_id/trace_id 并落库 agent/skill/graph/tool 执行记录 |
 | Phase 2 | syscalls 封口 | PASS (原 FAIL→PARTIAL→PASS) | 全量扫描确认：0 个绕过 syscall 的直接 tool/skill/llm 调用。sys_agent_call 已接入 PolicyGate。ErrorTranslator + RateLimitTracker + ResilienceGate + FeedbackTranslator 全部实现 (2026-07-04 最终确认) |
-| Phase 3 | 四大 Gate 下沉 | PASS (原 PARTIAL) | ResilienceGate(get_stats) + ContextGate(counters) + TraceGate(span completeness) 全部量化 (2026-07-04) | Gate 骨架 + syscalls 接入完成；审批/审计/恢复链路完成；但 **ContextGate/ResilienceGate 仍为最小实现**，且“span 完整率/重试策略/回退链”未按文档量化验收 |
+| Phase 3 | 四大 Gate 下沉 | PASS (原 PARTIAL) | ResilienceGate(get_stats) + ContextGate(counters) + TraceGate(span completeness) 全部量化 (2026-07-04) |
 | Phase 4 | ContextAssembler + PromptAssembler | PASS (原 FAIL→PARTIAL→PASS) | PromptAssembler 已集成到 loop/inference.py (line 222)、loop/_facade.py (line 1852)、langgraph/graphs/planning.py (line 211) 三个执行路径 (2026-07-04 验证) |
-| Phase 5 | Orchestrator + EngineRouter | PASS (原 PARTIAL→PASS) | SpecContext创建 + ExecutionPlan.dag + Orchestrator(plan→execute via EngineRouter) 全部实现 (2026-07-04) | EngineRouter 已接线 (integration.py:2032, graph→plan→loop→quick fallback)。pipeline_engine 使用 DynamicRouter (line 1281) 做多 Agent 编排路由，与 EngineRouter 互补而非冗余。Orchestrator 未落地，ExecutionPlan/SpecContext 契约待闭环 (2026-07-04) |
+| Phase 5 | Orchestrator + EngineRouter | PASS (原 PARTIAL→PASS) | SpecContext创建 + ExecutionPlan.dag + Orchestrator(plan→execute via EngineRouter) 全部实现 (2026-07-04) |
 | Phase 6 | 自学闭环 | PASS (原 FAIL→PARTIAL→PASS) | 全链路闭环：Failure→analyze→simulate→approve→SkillRegistry.register 全部接线。ResilienceGate metrics 已量化 (2026-07-04) |
 
 
