@@ -1474,5 +1474,65 @@ async def get_model_tier_status():
     except Exception:
         pass
 
+    # ── Phase 14 B/C: Cost estimates + health metrics per tier ──
+    result["cost"] = {}
+    result["health"] = {}
+    try:
+        import yaml
+        from pathlib import Path
+        config_path = os.getenv("AIPLAT_LLM_CONFIG_PATH",
+            str(Path(__file__).resolve().parent.parent.parent.parent.parent /
+                "aiPlat-infra" / "config" / "infra" / "llm_profile.yaml"))
+        profile = yaml.safe_load(open(config_path)) or {}
+        caps = profile.get("model_capabilities", {})
+
+        for tier_id, cfg in result.get("tiers", {}).items():
+            model_name = cfg.get("model", "")
+            model_caps = caps.get(model_name, {})
+
+            # Cost: per 1M tokens from YAML
+            pricing = model_caps.get("pricing", {})
+            prompt_cost = pricing.get("prompt_per_1m", 0)
+            completion_cost = pricing.get("completion_per_1m", 0)
+            result["cost"][tier_id] = {
+                "model": model_name,
+                "prompt_per_1m": prompt_cost,
+                "completion_per_1m": completion_cost,
+                "estimated_monthly": round(prompt_cost * 10, 2),
+            }
+
+            # Health: basic availability check
+            result["health"][tier_id] = {
+                "model": model_name,
+                "latency_p95_s": 0,
+                "failure_rate": 0,
+                "status": cfg.get("status", "unknown"),
+            }
+
+        # Try to enrich with live health data from infra
+        try:
+            from infra.management.model.manager import ModelManager
+            mgr = ModelManager._instance
+            if mgr:
+                for tier_id, cfg in result["tiers"].items():
+                    model_name = cfg.get("model", "")
+                    try:
+                        from infra.management.model.latency_tracker import get_latency_tracker
+                        lt = get_latency_tracker()
+                        p95 = lt.p95_latency_seconds(model_name)
+                        fail_rate = mgr._failure_rate(model_name) if hasattr(mgr, '_failure_rate') else 0
+                        result["health"][tier_id]["latency_p95_s"] = round(p95, 1)
+                        result["health"][tier_id]["failure_rate"] = round(fail_rate, 2)
+                        result["health"][tier_id]["status"] = (
+                            "healthy" if fail_rate <= 0.1 else
+                            "degraded" if fail_rate <= 0.5 else "critical"
+                        )
+                    except Exception:
+                        pass
+        except Exception:
+            pass  # infra health tracker unavailable
+    except Exception:
+        pass  # YAML config unreadable
+
     return result
 

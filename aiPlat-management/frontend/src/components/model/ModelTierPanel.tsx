@@ -15,6 +15,8 @@ interface TierInfo {
 interface ModelTierData {
   status: { current_tier: string; current_model: string; last_complexity: string; override_active: boolean };
   tiers: Record<string, TierInfo>;
+  cost?: Record<string, { model: string; prompt_per_1m: number; estimated_monthly: number }>;
+  health?: Record<string, { model: string; latency_p95_s: number; failure_rate: number; status: string }>;
 }
 
 const TIER_COLORS: Record<string, string> = {
@@ -144,6 +146,43 @@ export default function ModelTierPanel() {
               </div>
             ))}
           </div>
+
+          {/* Cost savings (B) */}
+          {data.cost && Object.keys(data.cost).length > 0 && (
+            <div className="mt-3 pt-2 border-t border-dark-border">
+              <div className="text-[10px] text-gray-500 mb-1">Estimated cost ($/1M prompt tokens)</div>
+              <div className="grid grid-cols-5 gap-1">
+                {Object.entries(data.cost).map(([tierId, c]) => (
+                  <div key={tierId} className="text-center text-[10px]">
+                    <div className="text-gray-400">{tierId}</div>
+                    <div className="text-gray-300 font-mono">${c.prompt_per_1m.toFixed(2)}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Health status (C) */}
+          {data.health && Object.keys(data.health).length > 0 && (
+            <div className="mt-2 pt-2 border-t border-dark-border">
+              <div className="text-[10px] text-gray-500 mb-1">Health (P95 / failure rate)</div>
+              <div className="grid grid-cols-5 gap-1">
+                {Object.entries(data.health).map(([tierId, h]) => (
+                  <div key={tierId} className="text-center text-[10px]">
+                    <div className={`font-medium ${
+                      h.status === 'healthy' ? 'text-green-400' :
+                      h.status === 'degraded' ? 'text-yellow-400' : 'text-red-400'
+                    }`}>
+                      {h.latency_p95_s > 0 ? `${h.latency_p95_s}s` : '--'}
+                    </div>
+                    <div className="text-gray-500">
+                      {h.failure_rate > 0 ? `${(h.failure_rate * 100).toFixed(0)}%` : '0%'}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Footer */}
           <div className="mt-3 pt-2 border-t border-dark-border text-[10px] text-gray-500">
