@@ -4,9 +4,9 @@
 > 对标：Hermes Agent · Claude Code · OpenClaw · Octo (明略科技)  
 > 定位：**企业级 FDE 操作系统**（Agent 协作网络 + Spec 生命周期管理）
 > 
-> **当前能力全貌**：参见 [`AIPLAT_CAPABILITIES.md`](./AIPLAT_CAPABILITIES.md)（405 项能力，405 ✅）
+> **当前能力全貌**：参见 [`AIPLAT_CAPABILITIES.md`](./AIPLAT_CAPABILITIES.md)（当前计数见该文件）
 > 
-> **最新更新 (2026-07-01)**：本会话完成 FDE 操作系统建设 + Phase 5 竞品借鉴全合入 — CAPABILITIES 384→425。评分 90→99。
+> **最新更新 (2026-07-04)**：P0-P3 hermès-agent 全量吸收 — CAPABILITIES 384→464。评分 90→99。
 
 ---
 

@@ -1,7 +1,6 @@
 # aiPlat 系统质量全面诊断报告
 
-> 生成时间: 2026-07-01 (更新 — Phase 5 竞品借鉴全部合入, 464✅)  
-> 增量更新: 2026-07-01 (合规审计修复, full_stack 12→14项, 5 routing_modes, Phase 5 7/7竞品借鉴)  
+> 生成时间: 2026-07-01 | **不手动编辑** — 需要新数据时重新生成
 > 诊断范围: 全仓库 (aiPlat-core + aiPlat-platform + aiPlat-management + aiPlat-infra)
 > 诊断结果: 25类检查, 0 ERROR, 2 WARNING, 全域测试 14/14
 
