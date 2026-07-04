@@ -1526,6 +1526,92 @@ async def list_ontology_classes():
 
 # ── Domain Ontology API (YAML-based) ─────────────────────────────
 
+@router.get("/ontology/domains/{domain_id}/discover", response_model=Dict[str, Any])
+async def discover_domain_assets(domain_id: str):
+    """
+    Agent discoverability API — returns all Object Types, Link Types, Action Types, 
+    and Interfaces available in a domain. Agent can query this at runtime to discover
+    what it can operate on, without pre-programmed tool descriptions.
+
+    Response:
+    {
+      "objects": [{"name": "Customer", "label": "客户", "properties": [...], "implements": ["Diagnosable"]}],
+      "links": [{"name": "places_order", "label": "下订单", "source": "Customer", "target": "Order"}],
+      "actions": [<registered skills for this domain>],
+      "interfaces": [{"name": "Diagnosable", "properties": [...], "implemented_by": [...]}]
+    }
+    """
+    from core.harness.knowledge.ontology_loader import load_ontology_from_yaml, list_domain_files
+    from core.harness.knowledge.ontology_loader import get_entities_by_interface, get_interface_definition
+    from pathlib import Path as _Path
+    import os as _os
+
+    base_dir = _Path(_os.getenv("AIPLAT_HOME", _Path("~").expanduser() / ".aiplat")) / "ontologies"
+    file_path = base_dir / f"{domain_id}.yaml"
+    if not file_path.exists():
+        raise HTTPException(status_code=404, detail=f"Domain '{domain_id}' not found")
+
+    domain = load_ontology_from_yaml(str(file_path))
+
+    # ── Object Types ──
+    objects = []
+    for cls in domain.classes:
+        obj = {
+            "name": cls.uri.split("/")[-1], "label": cls.label,
+            "description": cls.description,
+            "required_fields": cls.required_fields,
+            "optional_fields": cls.optional_fields,
+            "implements": cls.implements,
+        }
+        objects.append(obj)
+
+    # ── Link Types ──
+    links = []
+    for prop in domain.object_properties:
+        src = [d.split("/")[-1] for d in (prop.domain or [])]
+        tgt = [r.split("/")[-1] for r in (prop.range or [])]
+        links.append({
+            "name": prop.uri.split("/")[-1], "label": prop.label,
+            "source_types": src, "target_types": tgt,
+        })
+
+    # ── Interfaces ──
+    interfaces = []
+    for iface in domain.interfaces:
+        impls = get_entities_by_interface(domain_id, iface.name)
+        interfaces.append({
+            "name": iface.name, "label": iface.label,
+            "properties": iface.properties,
+            "implemented_by": impls, "count": len(impls),
+        })
+
+    # ── Actions (Skills registered in this domain) ──
+    actions = []
+    try:
+        from core.apps.skills.registry import SkillRegistry
+        registry = SkillRegistry()
+        for skill_id in registry.list_ids():
+            skill = registry.get(skill_id)
+            if skill:
+                cfg = skill.get_config()
+                actions.append({
+                    "name": cfg.name, "description": cfg.description or "",
+                    "input_schema": getattr(cfg, "input_schema", {}),
+                    "submission_criteria": getattr(cfg, "submission_criteria", []),
+                    "permissions": getattr(cfg, "permissions", None),
+                })
+    except Exception:
+        pass
+
+    return {
+        "domain_id": domain_id, "domain_name": domain.name,
+        "objects": objects, "links": links,
+        "interfaces": interfaces, "actions": actions,
+        "total_objects": len(objects), "total_links": len(links),
+        "total_interfaces": len(interfaces), "total_actions": len(actions),
+    }
+
+
 @router.get("/ontology/domains/{domain_id}/interfaces", response_model=Dict[str, Any])
 async def get_domain_interfaces(domain_id: str):
     """Return all Interface definitions and their implementations in a domain."""
