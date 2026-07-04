@@ -1,0 +1,54 @@
+# Example: SQL-mapped ontology domain
+# This demonstrates the three-layer architecture:
+#   Application (LLM/Agent) → Semantic (this file) → Physical (SQL tables)
+
+name: sales-domain
+description: 销售域本体 (SQL映射示例)
+namespace: http://aiplat.local/ontology/sales/
+version: 1.0.0
+
+classes:
+  Customer:
+    label: 客户
+    description: 公司客户信息
+    required_fields: [name]
+    fields:
+      - name: region
+        type: enum
+        values: [华北, 华东, 华南, 西部]
+      - name: tier
+        type: enum
+        values: [VIP, Standard]
+    sql_mapping:
+      source: "CRM_DB"
+      table: "sales.customers"
+      key_column: "customer_id"
+      column_map:
+        name: "customer_name"
+        region: "region_code"
+        tier: "tier_level"
+
+  Order:
+    label: 订单
+    description: 客户订单记录
+    required_fields: [order_date]
+    fields:
+      - name: status
+        type: enum
+        values: [PENDING, SHIPPED, DELIVERED, CANCELLED]
+      - name: total_amount
+        type: float
+    sql_mapping:
+      source: "ERP_DB"
+      table: "orders"
+      key_column: "order_id"
+      column_map:
+        status: "order_status"
+        total_amount: "total_amt"
+        order_date: "created_at"
+
+object_properties:
+  - name: places_order
+    label: 下单
+    domain: [Customer]
+    range: [Order]
