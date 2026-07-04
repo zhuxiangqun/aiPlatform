@@ -792,7 +792,7 @@ curl https://app.example.com/version
 ls -la /var/www/ai-platform/
 
 # 检查 SSL 证书
-openssl x509 -in /etc/ssl/certs/ai-platform.crt -text -noout
+openssl x（参见 AIPLAT_CAPABILITIES.md 当前计数） -in /etc/ssl/certs/ai-platform.crt -text -noout
 ```
 
 **更新前端**：

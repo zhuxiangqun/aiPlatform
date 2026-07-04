@@ -2226,6 +2226,58 @@ OperatorAgent 决策 JSON → Action Type 匹配 → webhook 通知 → 外部�
 **改动文件**: `action_bridge.py` (+106), `operator_agent.py` (+15)
 
 
+### 5.104 本体感知路由 (Phase 11.1, 2026-07)
+
+EngineRouter 集成本体感知——根据查询内容的**本体拓扑复杂度**动态选择引擎，取代硬编码规则。
+
+**核心函数**: `core/harness/execution/router.py:_ontology_routing_hint()`
+
+**两遍式算法**:
+1. Direct entity name substring matching (space-normalized) → `GraphIndex.find_by_name()` → count neighbors
+2. Fallback: `map_query_to_ontology()` T-Box class matching
+
+**路由决策**: 匹配实体的邻居总数 ≥ 3 → `graph` engine (关系密集型查询), 否则回退默认
+
+**插入位置**: EngineRouter `route_agent()` 规则 4（短消息→quick）和规则 5（默认→loop）之间
+
+**环境变量**: `AIPLAT_ENABLE_ONTOLOGY_ROUTING=true`, `AIPLAT_ONTOLOGY_ROUTING_MIN_NEIGHBORS=3`
+
+**改动文件**: `router.py` (+45)
+
+
+### 5.105 SemanticGate — 语义合规门控 (Phase 11.2, 2026-07)
+
+Post-generation 语义合规验证——用 YAML 本体验证 Agent 输出中的实体、数值、关系是否在定义的语义空间内。
+
+**核心模块**: `core/harness/infrastructure/gates/semantic_gate.py` (230 行)
+
+**三层验证**:
+| 层 | 检查内容 | 验证方式 |
+|:--:|------|------|
+| 1 | Entity 存在性 | `GraphIndex.find_by_name()` — 实体名是否在图中 |
+| 2 | Value 值域 | `confidence` 等数值字段是否在 [0,1] 范围内 |
+| 3 | Relation 合规 | block 模式下检查 action 名是否映射到 `object_properties` |
+
+**三种模式**: warn (默认, 标记但放行) / audit (日志记录, 不改变 status) / block (拒绝标记)
+
+**与已有 Gate 正交**: PolicyGate(权限) / ApprovalGate(审批) / TraceGate(追踪) / SemanticGate(语义)
+
+**集成**: OperatorAgent `_execute_impl()` 中 `_parse_decision()` 之后调用
+
+**改动文件**: `semantic_gate.py` (+230), `operator_agent.py` (+17)
+
+
+### 5.106 CrossValidationGate — 跨域验证 (Phase 11.3, 远期)
+
+设备↔工艺↔质量三层联动约束验证。框架占位，当 YAML 本体中跨域 `object_properties` 连接数 ≥ 50 时激活。
+
+**核心模块**: `core/harness/infrastructure/gates/cross_validation_gate.py` (90 行)
+
+**激活条件**: `CrossValidationGate.is_ready()` — 检查 `~/.aiplat/ontologies/*.yaml` 中 `domain` + `range` 的 `object_properties` 数量
+
+**改动文件**: `cross_validation_gate.py` (+90)
+
+
 ---
 
 ## 6) 输出要求（每次提交给用户的结果必须包含）

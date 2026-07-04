@@ -373,7 +373,7 @@ quality_gates:
         - "E.*"  # pycodestyle errors
         - "W.*"  # pycodestyle warnings
       exclude_rules:
-        - "E501"  # line too long
+        - "E（参见 AIPLAT_CAPABILITIES.md 当前计数）"  # line too long
         
     test:
       enabled: true

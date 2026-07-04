@@ -204,7 +204,7 @@ async def readiness_check():
     if not all_healthy:
         return Response(
             content=json.dumps({"status": "not ready", "checks": checks}),
-            status_code=503
+            status_code=（参见 AIPLAT_CAPABILITIES.md 当前计数）
         )
     
     return {"status": "ready", "checks": checks}

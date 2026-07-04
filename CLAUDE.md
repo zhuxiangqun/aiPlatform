@@ -8,7 +8,7 @@ language: zh-CN
 
 此文件是 **工作区兜底规约**，用于在系统执行链路中自动推断到 workspace root 时仍然能注入/强制基本规则。
 
-**能力全貌**：参见 [`AIPLAT_CAPABILITIES.md`](./AIPLAT_CAPABILITIES.md)（唯一真相源，472 项能力）
+**能力全貌**：参见 [`AIPLAT_CAPABILITIES.md`](./AIPLAT_CAPABILITIES.md)（唯一真相源，504 项能力）
 
 **强制规则——代码变更必须同步文档**：
 
@@ -225,7 +225,7 @@ scripts/ruff_f821_baseline.json        ← F821 基线快照（ratchet 对比基
     | M | — | 31 个 engine Skill 缺 `execution_type` 字段 | **✅ 已修复 (2026-06-29)** — 全部 31 个 SKILL.md 已添加 `execution_type: prompt`。 |
     | N | — | architecture_guard.sh 超时 | **✅ 已修复 (2026-06-29)** — 移除 golden_path E2E 测试（→CI 独立 job）+ 并行化 4 个独立脚本 + 排除 .venv/node_modules。 |
     | O | — | 3 builder stub routers (死代码) | **✅ 已修复 (2026-06-29)** — `builder_projects.py`/`builder_pipeline.py`/`builder_teams.py` 已删除（未挂载的失源码死代码）。 |
-    | P | — | 3 platform endpoint stubs | **✅ 已修复 (2026-06-29)** — `ingest-directory`/`kb/watch` → 501 Not Implemented + WARNING 日志；`studio/sessions` → WARNING 日志。 |
+    | P | — | 3 platform endpoint stubs | **✅ 已修复 (2026-06-29)** — `ingest-directory`/`kb/watch` → （参见 AIPLAT_CAPABILITIES.md 当前计数） Not Implemented + WARNING 日志；`studio/sessions` → WARNING 日志。 |
     | Q | — | EmailNotifier 假成功 | **✅ 已修复 (2026-06-29)** — 实现 SMTP/TLS 真实发送，环境变量配置（`AIPLAT_SMTP_*`），回退到 console log。 |
     | R | — | 5 infra management 占位符 | **✅ 已修复 (2026-06-29)** — 全部改为 `raise NotImplementedError` + 清晰的接线说明。 |
     | S | — | `cancel_pipeline` no-op stub | **✅ 已修复 (2026-06-29)** — 真实实现：append_run_event(cancel_requested) + cancel_queued_run + EventBus.publish。pipeline engine 主循环定期检查 is_cancel_requested()。 |

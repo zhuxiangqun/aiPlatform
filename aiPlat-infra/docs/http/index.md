@@ -38,7 +38,7 @@ http:
     enabled: true
     max_attempts: 3
     backoff_factor: 2
-    retry_on_status: [429, 500, 502, 503, 504]
+    retry_on_status: [429, 500, （参见 AIPLAT_CAPABILITIES.md 当前计数）, 503, 504]
   
   # 连接池配置
   pool:
