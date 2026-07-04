@@ -2,7 +2,7 @@
 
 > 原则：代码即真相。每个条目必须有可验证的代码位置。
 > 更新：任何能力变更时同步更新本文档。
-> 评分：98/100（2026-07-01 — 429✅, FDE操作系统 + Phase5竞品借鉴 + RL+业务价值+诊断+沙箱+蒸馏+从零训练全登记）
+> 评分：98/100（2026-07-04 — 460✅, P0-P3: gates安全体系+TrendDetector熵增预警+SQLite连接池化+模型定价+凭证轮换）
 
 ---
 
@@ -51,6 +51,9 @@
 | LangGraph Checkpoint/Resume | `harness/execution/langgraph/core.py:217` | ✅ | 图状态checkpoint持久化 + 任意节点crash-safe恢复 | 已合入 |
 | EmbeddingBridge | `apps/agents/parallel_executor.py:210` | ✅ | 嵌入向量压缩，子Agent间高效通信 | 已合入 |
 | 跨阶段回退 | `schemas_builder.py:313-315` + `pipeline_engine.py:2855` | ✅ | `rollback_on_reject` 自动回退到上游阶段重写（委托+对抗模式） | 已合入 |
+| Prompt Caching | `harness/utils/prompt_caching.py` | ✅ | system_and_N 缓存策略，system + 末尾N消息标记cache_control | 已合入 |
+| Log Redaction | `harness/utils/redaction.py` | ✅ | RedactingFormatter 全局日志脱敏 | 已合入 |
+| Decorrelated Jitter | `harness/infrastructure/gates/resilience_gate.py` | ✅ | golden-ratio hash退避抖动，避免惊群效应 | 已合入 |
 
 ---
 
@@ -75,6 +78,7 @@
 | 投毒防御字段 | `harness/memory/base.py:39` | ✅ | source_tag + trust_weight + provenance | 已合入 |
 | Episodic 预评分 | `harness/memory/episodic.py:55` | ✅ | 写入时后台 LLM 打分，压缩时零延迟 | 已合入 |
 | 关键决策永保 | `harness/memory/episodic.py:124` | ✅ | critical_episodes >0.8分，永不参与常规压缩 | 已合入 |
+| MemoryProvider (可插拔ABC) | `harness/memory/providers.py` | ✅ | SQLite/Redis/Postgres/Memory 可插拔后端 + 工厂模式 | 已合入 |
 
 ---
 
@@ -189,6 +193,7 @@
 | PipelineCompiler | `apps/agents/pipeline_compiler.py` | ✅ | AGENT.md stages[] YAML → PipelineStageConfig | 已合入 |
 | Agent SDK | `aiplat-sdk/` | ✅ | L1 Agent/L2 Pipeline/L3 ReActLoop — execute/stream/chat 全路径可用 | 已合入 |
 | FanOut 并行 | `parallel_executor.py` | ✅ | 已接线 | 已合入 |
+| DelegateManager | `harness/infrastructure/delegate_tool.py` | ✅ | 子Agent委托 + 资源预算隔离 + 重试退避 + 输出摘要(§5.26) | 已合入 |
 
 ---
 
@@ -250,6 +255,8 @@
 | CrisisDetector | `harness/security/crisis_detector.py` | ✅ | 自伤/暴力/危急三級检测，WARN/BLOCK/SILENT 模式 | 已合入 |
 | CrisisGate | `harness/security/crisis_gate.py` | ✅ | syscall 边界危机拦截，ALLOW/WARN/FLAG/BLOCK/ESCALATE | 已合入 |
 | EmotionTracker | `harness/security/emotion_tracker.py` | ✅ | 跨会话情绪弧追踪 + 过度依赖检测 | 已合入 |
+| ApprovalGate (危险命令) | `harness/infrastructure/gates/approval_gate.py` | ✅ | 25规则危险操作检测，CRITICAL/HIGH/MEDIUM/LOW 四级，集成 PolicyGate | 已合入 |
+| SkillsGuard (威胁扫描) | `harness/infrastructure/gates/skills_guard.py` | ✅ | 78威胁模式，skill注册前安全扫描，11类别全覆盖 | 已合入 |
 
 ---
 
@@ -270,6 +277,7 @@
 | 语义记忆后台清理 | `harness/memory/manager.py:111` | ✅ | 每日定时软删除过期低频记忆，AIPLAT_MEMORY_CLEANUP_INTERVAL 可配 | 已合入 |
 | TraceVisualizer | `harness/execution/trace_visualizer.py` | ✅ | 决策痕迹可视化: 犹豫检测/重复检测/异常预警→Spec调整建议 | 已合入 |
 | FDE Dashboard | `api/routers/workbench.py:fde-dashboard` + `UserWorkbench.tsx` | ✅ | 4卡聚合(待决策/信号预警/执行异常/训练)+时间轴+Spec筛选联动 | 已合入 |
+| TrendDetector (熵增预警) | `harness/infrastructure/trend_detector.py` | ✅ | 6桶滑动窗口+双缓冲+状态机(NORMAL/ALERTING/HIGH_ALERT/RESOLVED)+7天基线 | 已合入 |
 
 ---
 
@@ -288,9 +296,11 @@
 | 模型解析集中化 | `harness/utils/model_injection.py` | ✅ | get_default_model(purpose) 统一入口 | 已合入 |
 | 模型发现 | infra ModelManager | ✅ | 远程API + 本地(Ollama/LM Studio/vLLM) | 已合入 |
 | 视频转写 | `harness/document/transcriber.py` + platform/kb/video.py | ✅ | ffmpeg→Whisper→OCR→embed | 已合入 |
-| 模型路由 | `model_injection.py` → infra `ModelManager.select()` | ✅ 已完成 | model_router.py 已删除，create_selected_adapter 为唯一路径 | 已合入 |
+| 模型路由 | `model_injection.py` → infra `ModelManager.select()` | ✅ | model_router.py 已删除，create_selected_adapter 为唯一路径 | 已合入 |
 | FingerprintCollector | `harness/knowledge/model_fingerprint.py` | ✅ | 8探针黑盒指纹采集：token分布/延迟曲线/拒答率/格式遵从 | 已合入 |
 | ModelAudit | `harness/knowledge/model_audit.py` | ✅ | 模型身份报告生成 + 双模型指纹对比 + 已知签名匹配 | 已合入 |
+| CredentialPool | `infra/management/model/credential_pool.py` | ✅ | Round-Robin + 黑名单冷却 + 多key轮换 | 已合入 |
+| Model Pricing (llm_profile) | `config/infra/llm_profile.yaml` | ✅ | deepseek-v4-pro真实定价(prompt$0.27+completion$1.10/1M)+context_window 131072 | 已合入 |
 
 ---
 
@@ -313,6 +323,8 @@
 | KB SDK 生成 | `scripts/generate_kb_sdk.sh` | ✅ | 从 OpenAPI spec 生成 Python/TypeScript SDK | 已合入 |
 | Wiki E2E 测试 | `scripts/e2e_wiki_test.sh` | ✅ | Wiki 后端 API + 前端集成端到端测试 | 已合入 |
 | 文档入库冒烟测试 | `scripts/smoke_documents_ingest.sh` | ✅ | 启动服务 → 入录 fixture → 轮询 job → 校验 elements | 已合入 |
+| ProcessRegistry | `harness/infrastructure/process_registry.py` | ✅ | 进程生命周期管理 + 异步健康监控 + 优雅关闭 | 已合入 |
+| DB Utils (SQLite连接池) | `harness/infrastructure/db_utils.py` | ✅ | 统一WAL+busy_timeout连接层，冷路径context manager + 热路径persistent conn | 已合入 |
 
 ---
 
@@ -386,6 +398,8 @@
 | ResilienceGate | `harness/infrastructure/gates/resilience_gate.py` | ✅ | 可配置重试策略 + 回退链 + 熔断器包装 | 已合入 |
 | TraceGate | `harness/infrastructure/gates/trace_gate.py` | ✅ | 最佳努力追踪span包装，syscall审计 | 已合入 |
 | SandboxGate | `harness/infrastructure/gates/sandbox_gate.py` | ✅ | 沙箱执行门 + 结果校验 | 已合入 |
+| ErrorTranslator | `harness/infrastructure/gates/error_translator.py` | ✅ | 7级分类流水线 + 15种FailoverReason + 4 recovery flags + 智能重试 | 已合入 |
+| RateLimitTracker | `harness/infrastructure/gates/rate_limit_tracker.py` | ✅ | 滑动窗口 + 指数退避(max 120s) + asyncio.Lock | 已合入 |
 
 ---
 
@@ -564,6 +578,7 @@
 | 租户自助门户 | `api/rest/routes.py` (tenant/*) | ✅ | 仪表板/API Key管理/用量/计费面板 | 已合入 |
 | 运营大盘 | `api/rest/routes.py` (ops/overview) | ✅ | 跨租户聚合：租户数/Token/活跃度，platform_admin only | 已合入 |
 | 市场发布工作流 | `api/rest/routes.py` (marketplace/publish) | ✅ | 提交→SkillSimulator预检→审核，含test_result | 已合入 |
+| MessagingGateway | `harness/infrastructure/gateway/messaging.py` | ✅ | 飞书/企业微信/Slack三渠道通知，Pipeline失败自动广播 | 已合入 |
 
 ---
 
@@ -664,19 +679,19 @@
 
 | 维度 | 已实现 | 部分实现 | 合计 |
 |------|:---:|:---:|:---:|------|
-| Harness 执行引擎 | 26 | 0 | 26 |
-| 记忆子系统 | 17 | 0 | 17 |
+| Harness 执行引擎 | 31 | 0 | 31 |
+| 记忆子系统 | 18 | 0 | 18 |
 | 知识引擎（本体） | 20 | 0 | 20 |
-| RAG 检索 | 26 | 0 | 26 |
+| RAG 检索 | 27 | 0 | 27 |
 | 知识基础设施 | 28 | 0 | 28 |
-| Agent 系统 | 11 | 0 | 11 |
-| Skill 系统 | 13 | 0 | 13 |
-| 安全与治理 | 27 | 0 | 27 |
-| 可观测性 | 13 | 0 | 13 |
-| 模型基础设施 | 13 | 0 | 13 |
-| 部署与运维 | 15 | 0 | 15 |
-| 扩展与学习 | 49 | 0 | 49 |
-| Gate 系统 | 5 | 0 | 5 |
+| Agent 系统 | 12 | 0 | 12 |
+| Skill 系统 | 20 | 0 | 20 |
+| 安全与治理 | 29 | 0 | 29 |
+| 可观测性 | 14 | 0 | 14 |
+| 模型基础设施 | 16 | 0 | 16 |
+| 部署与运维 | 17 | 0 | 17 |
+| 扩展与学习 | 54 | 0 | 54 |
+| Gate 系统 | 7 | 0 | 7 |
 | 评估系统 | 13 | 0 | 13 |
 | MCP 协议 | 6 | 0 | 6 |
 | A2A 协议 | 7 | 0 | 7 |
@@ -686,18 +701,18 @@
 | 部署与灰度 | 4 | 0 | 4 |
 | 运行时干预 | 2 | 0 | 2 |
 | Arena & 调度 | 4 | 0 | 4 |
-| 平台治理 | 16 | 0 | 16 |
+| 平台治理 | 17 | 0 | 17 |
 | Infra 基础设施 | 11 | 0 | 11 |
 | 核心API统一入口 | 5 | 0 | 5 |
 | 编排系统 | 4 | 0 | 4 |
 | 管理 & 质量 | 21 | 0 | 21 |
 | 编排层 | 17 | 0 | 17 |
-| **总计** | **429** | **0** | **429** |
+| **总计** | **460** | **0** | **460** |
 
 ---
 
-*最后更新: 2026-07-01*
-*版本: 12.4 · 28章 · 429项能力 · 429✅ · 蒸馏PyTorch接线+从零训练引擎+5-Tab UI全登记*
+*最后更新: 2026-07-04*
+*版本: 12.5 · 28章 · 460项能力 · 460✅ · P0-P3 hermès-agent全量吸收+SQLite连接池化+TrendDetector*
 
 **自检命令**：
 ```bash

@@ -88,9 +88,9 @@ def count_checks_in_section(content: str, section_title: str) -> tuple[int, int]
             continue
         # parts[0] is empty (leading |), parts[1] name, parts[2] location, parts[3] status
         status = parts[3]
-        if status == "✅":
+        if status.startswith("✅"):
             implemented += 1
-        elif status == "⚠️":
+        elif status.startswith("⚠"):
             partial += 1
 
     return implemented, partial
@@ -178,8 +178,73 @@ def main() -> int:
         return 1
 
 
+def fix() -> None:
+    """Auto-fix: recalculate stats table from actual section counts and write back."""
+    content = CAPABILITIES.read_text(encoding="utf-8")
+    lines = content.split("\n")
+
+    # Step 1: Count actual per-section entries
+    actual: dict[str, tuple[int, int]] = {}
+    for section_title in CHAPTER_MAP:
+        impl, part = count_checks_in_section(content, section_title)
+        actual[section_title] = (impl, part)
+
+    # Step 2: Rebuild the file with corrected stats table
+    new_lines: list[str] = []
+    in_stats = False
+    in_table_rows = False
+    total_impl = 0
+    total_part = 0
+    STATS_HEADER = lines.index([l for l in lines if "## 统计" in l][0]) if any("## 统计" in l for l in lines) else -1
+
+    for i, line in enumerate(lines):
+        if "## 统计" in line:
+            in_stats = True
+            new_lines.append(line)
+            continue
+        if in_stats and not in_table_rows and line.startswith("|") and ("------" in line or ":--" in line):
+            in_table_rows = True
+            new_lines.append(line)
+            continue
+        if in_stats and in_table_rows and line.startswith("|"):
+            parts = [p.strip() for p in line.split("|") if p.strip()]
+            if not parts:
+                new_lines.append(line)
+                continue
+            dim = parts[0].replace("*", "")
+            if dim == "总计":
+                for (i_val, p_val) in actual.values():
+                    total_impl += i_val
+                    total_part += p_val
+                new_lines.append(f"| **总计** | **{total_impl}** | **{total_part}** | **{total_impl + total_part}** |")
+                continue
+            # Find matching section
+            section_title = None
+            for st in CHAPTER_MAP:
+                if st == dim:
+                    section_title = st
+                    break
+            if section_title and section_title in actual:
+                i_val, p_val = actual[section_title]
+                new_lines.append(f"| {dim} | {i_val} | {p_val} | {i_val + p_val} |")
+                continue
+            # Not a recognized dimension row — pass through
+            new_lines.append(line)
+            continue
+        if in_stats and in_table_rows and not line.startswith("|"):
+            in_stats = False
+            in_table_rows = False
+        new_lines.append(line)
+
+    if total_impl > 0:
+        CAPABILITIES.write_text("\n".join(new_lines), encoding="utf-8")
+        print(f"  ✅ Stats table recalculated: {total_impl}✅ + {total_part}⚠️ = {total_impl + total_part}")
+    else:
+        print("  ⚠ No changes (stats table not found)")
+
+
 if __name__ == "__main__":
     if "--fix" in sys.argv:
-        fix() if callable(fix := globals().get("fix")) else print("自动修复未实现，请手动更新统计表")
+        fix()
         sys.exit(0)
     sys.exit(main())

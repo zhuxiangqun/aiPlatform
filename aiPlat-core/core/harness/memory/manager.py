@@ -150,6 +150,13 @@ class MemoryManager:
         self._cleanup_task: Optional[asyncio.Task] = None
         self._cleanup_interval = int(os.getenv("AIPLAT_MEMORY_CLEANUP_INTERVAL", str(86400)))
 
+        # P2-25: Pluggable memory provider backend
+        try:
+            from core.harness.memory.providers import get_memory_provider
+            self._memory_provider = get_memory_provider()
+        except Exception:
+            self._memory_provider = None
+
     async def start_background_tasks(self) -> None:
         """Start periodic background maintenance tasks."""
         if self._cleanup_task is None:
@@ -324,7 +331,7 @@ class MemoryManager:
         )
 
     async def get_reminders(self, token_usage_ratio: float = 0.0, consecutive_reads: int = 0,
-                            tool_failed: bool = False) -> List[str]:
+                             tool_failed: bool = False) -> List[str]:
         """Lightweight reminder check without full context assembly.
 
         Used by the agent execution loop as a bridge hook.
@@ -339,6 +346,28 @@ class MemoryManager:
         }
         reminder = await self._reminders.check_and_inject(exec_state)
         return [reminder] if reminder else []
+
+    async def get_nudge(self, turn_number: int = 0) -> str:
+        """Periodic memory nudge — returns a summary every ~10 turns.
+
+        Hermes-aligned: memory_manager.py provides periodic reminders to
+        the agent so it doesn't forget long-term context.  Returns empty
+        string when not due.
+        """
+        if turn_number > 0 and turn_number % 10 == 0:
+            try:
+                recent = self._semantic.recent_entries(limit=3)
+                if recent:
+                    items = [f"- {e.content[:120]}" for e in recent if e.content]
+                    return (
+                        f"[Memory Nudge — turn #{turn_number}] "
+                        f"Key memories from your past sessions:\n"
+                        + "\n".join(items) + "\n"
+                        f"(Use memory:search to recall more if needed.)"
+                    )
+            except Exception:
+                pass
+        return ""
     
     async def save_interaction(
         self,

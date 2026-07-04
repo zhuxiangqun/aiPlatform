@@ -6,7 +6,6 @@
 model_overrides:
   chat: qwen2.5:3b
   agent_creation: qwen2.5:3b
-  code_gen: qwen2.5-coder:7b
   ontology_gen: qwen2.5-coder:7b
   embedding: mxbai-embed-large:latest
 
@@ -19,7 +18,9 @@ purpose_profiles:
     prefer_local: true
   code_gen:
     prefer: ["chat", "code"]
-    prefer_local: true
+  reasoning:
+    prefer: ["chat", "reasoning"]
+    prefer_external: true
   ontology_gen:
     prefer: ["chat"]
     prefer_local: true
@@ -42,15 +43,21 @@ model_capabilities:
     routing_rules:
       min_complexity: 0
       max_complexity: 2
-  deepseek-chat:
-    context_window: 65536
+  deepseek-v4-pro:
+    context_window: 131072
     effective_utilization: 0.85
-    input_token_budget: 40000
+    input_token_budget: 80000
+    max_tokens: 8192
     semantic_understanding: 5
     reasoning_quality: 5
     hallucination_rate: 0.04
     strength_areas: ["fact_lookup", "multi_doc_synthesis", "evaluation", "code_generation"]
     weakness_areas: []
+    pricing:
+      prompt_per_1m: 0.27
+      completion_per_1m: 1.10
+      cache_read_per_1m: 0.07
+      cache_write_per_1m: 0.27
     routing_rules:
       min_complexity: 1
       max_complexity: 4

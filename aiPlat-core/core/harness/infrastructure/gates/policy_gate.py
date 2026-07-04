@@ -19,6 +19,10 @@ from typing import Any, Dict, List, Optional
 import os
 import hashlib
 import fnmatch
+import logging
+import os
+
+logger = logging.getLogger(__name__)
 
 from core.apps.tools.permission import Permission  # noqa: allowed — data type (enum)
 from core.harness.kernel.runtime import get_kernel_runtime
@@ -328,6 +332,29 @@ class PolicyGate:
         if self._disable_approvals:
             return PolicyResult(decision=PolicyDecision.ALLOW)
 
+        # P2-19: ApprovalGate — dangerous command detection before permission check
+        try:
+            from core.harness.infrastructure.gates.approval_gate import get_approval_gate, ApprovalVerdict
+            approval_gate = get_approval_gate()
+            approval_result = approval_gate.check(
+                tool_name=tool_name,
+                tool_args=tool_args or {},
+                user_id=user_id,
+                session_id=(tool_args or {}).get("_session_id", "") if isinstance(tool_args, dict) else "",
+            )
+            if approval_result.verdict == ApprovalVerdict.DENY:
+                return PolicyResult(
+                    decision=PolicyDecision.DENY,
+                    reason=f"approval_gate:deny — {approval_result.message}",
+                )
+            if approval_result.verdict == ApprovalVerdict.ASK:
+                return PolicyResult(
+                    decision=PolicyDecision.APPROVAL_REQUIRED,
+                    reason=f"approval_gate:ask — {approval_result.message}",
+                )
+        except Exception:
+            pass
+
         # P1-1: Three-layer rule priority (deny > ask > allow) with param-level matching
         from core.harness.integration import get_permission_manager
         perm_mgr = get_permission_manager()
@@ -376,6 +403,7 @@ class PolicyGate:
         try:
             if str(tool_name).strip().lower() == "skill_load" and isinstance(tool_args, dict):
                 sname = str(tool_args.get("name") or tool_args.get("skill") or "").strip()
+                from core.api.core_facade import resolve_skill_permission
                 decision = resolve_skill_permission(sname)
                 if decision == "deny":
                     return PolicyResult(

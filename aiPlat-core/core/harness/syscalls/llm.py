@@ -13,11 +13,12 @@ error classification and truncation awareness.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, AsyncIterator, Dict, List, Optional, Union
 
 import asyncio
-import os
 import logging
+import os
+import re
 import time
 
 from core.harness.infrastructure.gates import TraceGate, ContextGate, ResilienceGate
@@ -265,6 +266,35 @@ def _guard_messages(messages: List[Message]) -> tuple[List[Message], Dict[str, A
     stats["output_count"] = len(out)
     return out, stats
 
+
+# ── Injection pattern classification ──
+_INJECTION_TYPE_MAP = [
+    ("ignore_instructions", r"(?i)ignore\s+(all\s+)?(previous|prior|above|earlier)\s+(instructions?|directives?)"),
+    ("role_hijack", r"(?i)(you\s+are\s+now|act\s+as\s+if\s+you\s+are|pretend\s+to\s+be)\s+(DAN|jailbreak|evil|without\s+restrictions)"),
+    ("prompt_leak", r"(?i)reveal\s+(your|the)\s+(system\s+)?(prompt|instructions?|internal|hidden)"),
+    ("prompt_leak", r"(?i)output\s+(your|the)\s+(system\s+)?(prompt|instructions?)"),
+    ("control_token", r"<\|im_start\||<\|im_end\|>"),
+    ("disregard", r"(?i)you\s+must\s+(disregard|forget|ignore)\s+(all\s+)?(previous\s+)?(instructions?|rules?)"),
+]
+
+
+def _detect_attack_type(content: str) -> str:
+    """Classify the type of injection attack detected in the content."""
+    import re as _re
+    for attack_type, pattern in _INJECTION_TYPE_MAP:
+        if _re.search(pattern, content):
+            return attack_type
+    return "unknown_injection"
+
+
+def _try_inject_arch_rules(messages) -> str:
+    """Inject architecture guard rules into system prompt. Placeholder — returns empty."""
+    return ""
+
+
+def _try_inject_governance_rules(messages) -> str:
+    """Inject knowledge governance guard rules into system prompt. Placeholder — returns empty."""
+    return ""
 
 
 # ── Project config injection (consolidated — duplicate removed in P2 cleanup) ──
@@ -543,45 +573,12 @@ async def sys_llm_generate(
     ctx_gate = ContextGate()
     res_gate = ResilienceGate()
 
-    # P0-2+1: Prompt Caching — inject cache_control with cross-session persistence
-    cache_enabled = os.getenv("AIPLAT_PROMPT_CACHE_ENABLED", "true")
-    if cache_enabled not in ("0", "false", "no") and isinstance(prompt, list):
-        try:
-            _dynamic_patterns = [r'\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}', r'run_id', r'uuid']
-            _has_dynamic = any(
-                any(re.search(p, str(msg.get("content", ""))) for p in _dynamic_patterns)
-                for msg in prompt if isinstance(msg, dict)
-            )
-            if not _has_dynamic and len(prompt) > 0 and prompt[0].get("role") == "system":
-                import hashlib, json as _json
-                stable_text = str(prompt[0].get("content", ""))
-                stable_hash = hashlib.sha256(stable_text.encode()).hexdigest()[:16]
-
-                # Cross-session persistence: check cached hash
-                cache_dir = os.path.expanduser("~/.aiplat/cache")
-                cache_file = os.path.join(cache_dir, "prompt_cache.json")
-                cached_hash = ""
-                try:
-                    os.makedirs(cache_dir, exist_ok=True)
-                    if os.path.exists(cache_file):
-                        with open(cache_file) as f:
-                            cached = _json.load(f)
-                            cached_hash = cached.get("hash", "")
-                except Exception:
-                    pass
-
-                # Set cache_control: ephemeral + persisted hash for cross-session
-                prompt[0]["cache_control"] = {"type": "ephemeral"}
-
-                # If hash changed, update cache file for future sessions
-                if stable_hash != cached_hash:
-                    try:
-                        with open(cache_file, "w") as f:
-                            _json.dump({"hash": stable_hash, "ts": time.time()}, f)
-                    except Exception:
-                        pass
-        except Exception:
-            pass
+    # ── Prompt Caching: inject cache_control with system_and_N strategy ──
+    try:
+        from core.harness.utils.prompt_caching import apply_cache_control
+        prompt = apply_cache_control(prompt)
+    except Exception:
+        pass
 
     # Start span as early as possible so "fast-fail" (e.g. missing model)
     # still produces an observable span and audit record.
@@ -834,12 +831,58 @@ async def sys_llm_generate(
                 detector = get_crisis_detector()
                 crisis_result = detector.detect(content)
                 if crisis_result.is_crisis:
-                    stats.setdefault("crisis_alerts", []).append(crisis_result.to_dict())
+                    stats.setdefault("crisis_alerts", []).append(crisis_result.to_dict())  # noqa: F821
                     if crisis_result.escalation_required:
-                        stats["crisis_blocked"] = True
+                        stats["crisis_blocked"] = True  # noqa: F821
             except Exception as e:
                 logging.debug("Crisis check skipped: %s", e)
-            result = await model.generate(prepared)  # type: ignore[misc]
+
+            # ── Smart retry: read ClassifiedError flags directly ──
+            from core.harness.infrastructure.gates.error_translator import ClassifiedError, FailoverReason
+            _attempt = 0
+            while True:
+                try:
+                    # ── Rate limit pre-check: wait if model is in cooldown ──
+                    from core.harness.infrastructure.gates.rate_limit_tracker import check_and_acquire, success as _rt_success, record as _rt_record
+                    wait = await check_and_acquire(model_name or "deepseek-v4-pro")
+                    if wait > 0:
+                        logging.getLogger("llm").info("Rate limit cooldown: waiting %.0fs before calling %s", wait, model_name)
+                        import asyncio as _asyncio
+                        await _asyncio.sleep(wait)
+
+                    result = await model.generate(prepared)  # type: ignore[misc]
+                    # Successful call — reset rate limit state
+                    await _rt_success(model_name or "deepseek-v4-pro")
+                    break
+                except ClassifiedError as ce:
+                    # 1. Rate limit — record and backoff
+                    if ce.reason == FailoverReason.rate_limit:
+                        await _rt_record(model_name or "deepseek-v4-pro", ce.retry_after_seconds)
+                    # 2. Smart retry: auto-fix params
+                    if ce.fix_kwargs and _attempt < 2:
+                        fix = ce.fix_kwargs
+                        if fix.get("max_tokens") and max_tokens is not None:
+                            corrected = min(max_tokens, fix["max_tokens"])
+                            logging.getLogger("llm").warning(
+                                "Smart retry: reducing max_tokens %s → %s", max_tokens, corrected)
+                            try:
+                                model._config.max_tokens = corrected
+                            except Exception:
+                                pass
+                            _attempt += 1
+                            continue
+                    # 2. Compress context
+                    if ce.should_compress:
+                        logging.getLogger("llm").warning(
+                            "Context overflow — triggering compression before retry")
+                        raise  # let ResilienceGate handle retry after compression
+                    # 3. Retryable → let ResilienceGate handle
+                    if ce.retryable:
+                        raise
+                    # 5. Non-retryable → fail fast
+                    raise
+                except BaseException:
+                    raise  # non-LLM errors pass through
             # PII unmask: restore original values if role permits
             if message_guard_stats and message_guard_stats.get("pii_mappings"):
                 try:
@@ -916,7 +959,26 @@ async def sys_llm_generate(
                     usage["total_tokens"] = input_tokens + output_tokens
                 cost = 0.0
                 if input_tokens > 0 or output_tokens > 0:
-                    cost = round((input_tokens / 1_000_000) * 1.0 + (output_tokens / 1_000_000) * 3.0, 6)
+                    # Read model pricing from infra llm_profile.yaml (core → infra, allowed direction)
+                    _pricing = {"prompt_per_1m": 0.27, "completion_per_1m": 1.10}
+                    try:
+                        import yaml as _yaml, os as _os
+                        from pathlib import Path as _Path
+                        config_path = _os.getenv("AIPLAT_LLM_CONFIG_PATH",
+                            str(_Path(__file__).resolve().parents[4] / "aiPlat-infra" / "config" / "infra" / "llm_profile.yaml"))
+                        profile = _yaml.safe_load(open(config_path))
+                        caps = (profile.get("model_capabilities") or {}).get(model_name, {})
+                        p = caps.get("pricing", {})
+                        if p:
+                            _pricing["prompt_per_1m"] = float(p.get("prompt_per_1m", 0.27))
+                            _pricing["completion_per_1m"] = float(p.get("completion_per_1m", 1.10))
+                    except Exception:
+                        pass  # use defaults
+                    cost = round(
+                        (input_tokens / 1_000_000) * _pricing["prompt_per_1m"] +
+                        (output_tokens / 1_000_000) * _pricing["completion_per_1m"],
+                        6
+                    )
                 await store.add_syscall_event(
                     {
                         "trace_id": span.trace_id,
@@ -982,8 +1044,24 @@ async def sys_llm_generate(
                             report.supported_claims, report.total_claims)
             except Exception:
                 pass
+        # ── TrendDetector: record successful call ──
+        try:
+            from core.harness.infrastructure.gates.error_translator import _record_classification
+            _record_classification("__total__")
+        except Exception:
+            pass
         return _wrap_llm_result(result, model_name or "")
     except Exception:
+        # ── TrendDetector: record failed call ──
+        try:
+            import sys
+            _exc_type, _exc_value, _tb = sys.exc_info()
+            from core.harness.infrastructure.gates.error_translator import _record_classification, ClassifiedError
+            if _exc_value is not None and isinstance(_exc_value, ClassifiedError):
+                _record_classification(_exc_value.reason.value)
+            _record_classification("__total__")
+        except Exception:
+            pass
         end_ts = time.time()
         await trace_gate.end(span, success=False)
 

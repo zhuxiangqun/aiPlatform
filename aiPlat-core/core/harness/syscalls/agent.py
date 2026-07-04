@@ -8,6 +8,7 @@ This is the syscall-level entry point for Agent→Agent orchestration.
 """
 from __future__ import annotations
 
+import logging
 from typing import Any, Dict, List, Optional
 
 
@@ -55,6 +56,26 @@ async def sys_agent_call(
             mark_gate_passed("policy_gate_agent")
         except Exception as e:
             logging.warning(str(e), exc_info=True)
+
+        # P2-24: DelegateManager — resource-budgeted delegation with retries
+        try:
+            from core.harness.infrastructure.delegate_tool import get_delegate_manager, DelegateConfig
+            mgr = get_delegate_manager()
+            config = DelegateConfig(
+                subagent_name=subagent_name,
+                task=task,
+            )
+            result = await mgr.delegate(config)
+            return {
+                "success": result.success,
+                "output": result.output,
+                "error": result.error,
+                "duration_ms": result.duration_ms,
+                "subagent_name": result.subagent_name,
+                "token_used": result.token_used,
+            }
+        except Exception:
+            pass
 
         coordinator = get_subagent_coordinator()
         # Parallel dispatch: comma-separated subagent names

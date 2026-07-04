@@ -89,6 +89,25 @@ class ContextState:
         return self.token_usage / self.token_limit
 
 
+def get_model_context_length(model_name: str) -> int:
+    """Read model context_window from infra llm_profile.yaml (core → infra, allowed direction).
+
+    Returns context_window or 200000 (safe default). Used by compression to
+    calculate accurate usage_ratio instead of a fixed token_limit.
+    """
+    try:
+        import yaml as _yaml, os as _os
+        from pathlib import Path as _Path
+        config_path = _os.getenv("AIPLAT_LLM_CONFIG_PATH",
+            str(_Path(__file__).resolve().parents[4] / "aiPlat-infra" / "config" / "infra" / "llm_profile.yaml"))
+        profile = _yaml.safe_load(open(config_path))
+        caps = (profile.get("model_capabilities") or {}).get(model_name, {})
+        window = caps.get("context_window", 200000)
+        return int(window)
+    except Exception:
+        return 200000  # safe default: assume 200K context window
+
+
 class ContextCompression:
     """Five-level context compression with anti-thrashing and iterative summary."""
 

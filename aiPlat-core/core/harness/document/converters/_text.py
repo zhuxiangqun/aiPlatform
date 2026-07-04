@@ -9,6 +9,7 @@ from core.harness.document.protocol import (
 class TextConverter(DocumentConverter):
     """Catch-all converter for plain text files."""
 
+    SOURCE_FORMAT = "txt"
     REQUIRED_PACKAGES = {}  # no external deps
 
     def accepts(

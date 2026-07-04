@@ -8,6 +8,7 @@ Manages AI models from three sources:
 """
 
 import asyncio
+import logging
 import os
 from typing import Dict, List, Optional, Any
 from datetime import datetime, timezone
@@ -36,6 +37,17 @@ def _write_env_local(key: str, value: str) -> None:
     if not found:
         lines.append(f"{key}={value}")
     env_file.write_text("\n".join(lines) + "\n")
+
+
+# ── Provider capability registry (mirrors get_providers() for sync access in scoring) ──
+_PROVIDER_CAPABILITIES = {
+    "deepseek": {"chat", "reasoning"},
+    "openai": {"chat", "embedding", "image", "audio"},
+    "anthropic": {"chat"},
+    "ollama": {"chat", "embedding"},
+    "local-embedding": {"embedding"},
+    "custom": {"chat", "embedding"},
+}
 
 
 class ModelManager:
@@ -268,6 +280,9 @@ class ModelManager:
         scored = []
         for m in chat_models:
             caps = set(m.capabilities or ["chat"]) | set(m.tags or [])
+            # Inherit provider-level capabilities (e.g., 'reasoning' from DeepSeek provider)
+            provider_caps = _PROVIDER_CAPABILITIES.get(m.provider, set())
+            caps |= provider_caps
             if not any(c in caps for c in profile.get("prefer", ["chat"])):
                 continue
             if any(c in caps for c in profile.get("avoid", [])):
@@ -285,6 +300,13 @@ class ModelManager:
                     score += 60
                 else:
                     score += 40
+            elif profile.get("prefer_external"):
+                if m.source.value == "external":
+                    score += 120
+                elif m.source.value == "local":
+                    score += 40
+                else:
+                    score += 60
             elif m.source.value == "config":
                 score += 100
 
@@ -292,10 +314,10 @@ class ModelManager:
                 if profile.get("prefer", [""])[0] == "reasoning":
                     score += 80
                 else:
-                    score -= 30
+                    score += 30
             else:
                 if profile.get("prefer", [""])[0] != "reasoning":
-                    score += 50
+                    score -= 20
 
             if "function_call" in caps:
                 score += 20

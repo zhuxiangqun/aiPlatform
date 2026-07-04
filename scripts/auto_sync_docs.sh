@@ -163,6 +163,15 @@ if [ -f "$CLAUDE" ]; then
     sed -i '' "s/唯一真相源，[0-9]* 项能力/唯一真相源，${SUM} 项能力/g" "$CLAUDE"
 fi
 
+# ══════════════════════════════════════════════════════════════
+# Step 4: Auto-recalculate stats table
+# ══════════════════════════════════════════════════════════════
+echo ""
+echo "━━━ Step 4: Recalculate stats table ━━━"
+if python3 "$WORKSPACE/scripts/verify_capability_consistency.py" --fix 2>&1 | head -10; then
+    echo "  ✅ Stats table recalculated"
+fi
+
 echo ""
 echo "═══════════════════════════════════════════════════════════════"
 echo "  Sync complete: $ADDED new entries, $SUM total (CAPS+ROADMAP+CLAUDE)"

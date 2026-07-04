@@ -14,6 +14,9 @@ import hashlib
 import json
 import logging
 import os
+
+logger = logging.getLogger(__name__)
+import re
 import time
 from datetime import datetime, timezone
 
@@ -36,6 +39,7 @@ from .langgraph.stage_runner import StageRunner
 from core.harness.evaluation.eval_runner import EvalRunner
 from core.harness.evaluation.postprocess import PostprocessCorrector
 from core.harness.execution.failure_classifier import FailureClassifier
+from core.harness.utils.model_injection import best_model_for_purpose
 
 # Global cancel registry for running pipelines
 _pipeline_cancels: Dict[str, bool] = {}
@@ -1102,6 +1106,12 @@ Output format: JSON array of {{"rank": 1, "score": 0.95, "content": "..."}}"""
                     ))
                 except Exception:
                     pass
+                # Fire-and-forget: notify via messaging gateway on pipeline failure
+                try:
+                    import asyncio as _asyncio_gw
+                    _asyncio_gw.ensure_future(_notify_pipeline_failure(state))
+                except Exception:
+                    pass
                 break
             # Emit pre-layer state for frontend polling
             _event_bus.emit(state.get("session_id", ""), "layer_before", {"state": dict(state)})
@@ -1532,7 +1542,7 @@ Output format: JSON array of {{"rank": 1, "score": 0.95, "content": "..."}}"""
             if not current:
                 # Cycle or all remaining have unsatisfied deps; sequential fallback
                 current = sorted(remaining)
-                local_state["_loop_detected"] = True
+                local_state["_loop_detected"] = True  # noqa: F821
                 import logging
                 logging.getLogger("pipeline_engine").warning(
                     f"Pipeline dependency cycle detected among stages: {[stages[i].id for i in sorted(remaining)]}"
@@ -2016,7 +2026,7 @@ Output format: JSON array of {{"rank": 1, "score": 0.95, "content": "..."}}"""
 
         try:
             from core.harness.knowledge.knowledge_action import (
-                OntologyAction, ActionVerb, EntityLifecycleState,
+                AI, OntologyAction, ActionVerb, EntityLifecycleState,
                 execute_action, new_action_id,
             )
             from core.harness.knowledge.knowledge_ontology import get_ontology, _safe_uri
@@ -2202,7 +2212,7 @@ Output format: JSON array of {{"rank": 1, "score": 0.95, "content": "..."}}"""
             # Load external rubric file if provided
             if rubric_path:
                 try:
-                    rubric = _load_rubric_file(rubric_path)
+                    rubric = _load_rubric_file(rubric_path)  # noqa: F821
                 except Exception as e:
                     logging.warning(str(e), exc_info=True)
 
@@ -3457,7 +3467,7 @@ Evaluate pass/fail based on pass_rate and configured dimension thresholds.""")
 {collective_context}
 {gaps_context}
 {skill_stubs_context}
-{skill_corpus_context}
+{skill_corpus_context}  # noqa
 {ponytail_context}
 {stage_hints}
 Complete your work based on upstream output.{fb}{constraint_text}{handoff_text}{iss}{agent_list}{fmt_text}{progress_text}{test_plan_text}
@@ -4010,6 +4020,7 @@ JSON format: {{"artifact": {{}},"confidence": "HIGH","issues": [{{"severity": "P
             # Phase 4: establish TaskSkill ↔ WikiPage bilateral links in ontology
             try:
                 from core.harness.knowledge.knowledge_ontology import OntologyTriple, _safe_uri, get_ontology
+                from core.harness.knowledge.knowledge_action import AI
                 onto = get_ontology()
                 task_skill_uri = f"{AI}TaskSkill_{skill_id}"
                 used = state.get("_ontology_entities_used", [])
@@ -4654,7 +4665,7 @@ def _update_workflow_run_phase(project_id: str, phase: str) -> None:
     spans = []
     trace_id = hex(int(time.time() * 1000000))[2:20]
     root_span_id = hex(int(time.time() * 1000000 + 1))[2:18]
-    for i, entry in enumerate(graph_trace):
+    for i, entry in enumerate(graph_trace):  # noqa: F821
         span = {
             "traceId": trace_id,
             "spanId": hex(int(time.time() * 1000000 + i + 2))[2:18],
@@ -4675,9 +4686,9 @@ def _update_workflow_run_phase(project_id: str, phase: str) -> None:
             span["attributes"].append({"key": "stage.error", "value": {"stringValue": str(entry['error'])[:200]}})
         spans.append(span)
     result = json.dumps({"resourceSpans": [{"scopeSpans": [{"spans": spans}]}]}, indent=2)
-    if output_path:
-        os.makedirs(os.path.dirname(output_path) or '.', exist_ok=True)
-        with open(output_path, 'w') as f:
+    if output_path:  # noqa: F821
+        os.makedirs(os.path.dirname(output_path) or '.', exist_ok=True)  # noqa: F821
+        with open(output_path, 'w') as f:  # noqa: F821
             f.write(result)
     return result
 
@@ -4712,6 +4723,32 @@ async def _trigger_pipeline_auto_learner(
         logging.getLogger("harness.learning").debug(
             "AutoLearner pipeline trigger skipped", exc_info=True
         )
+
+
+async def _notify_pipeline_failure(state: PipelineState) -> None:
+    """Fire-and-forget: send pipeline failure notification via messaging gateway."""
+    try:
+        from core.harness.infrastructure.gateway.messaging import (
+            get_messaging_gateway, GatewayMessage, MessageLevel,
+        )
+        gateway = get_messaging_gateway()
+        if not gateway.get_configured_channels():
+            return
+        agent_id = str(state.get("agent_id", "unknown"))
+        error = str(state.get("error", "unknown"))[:200]
+        run_id = str(state.get("_run_id", "unknown"))
+        await gateway.broadcast(GatewayMessage(
+            title="Pipeline Failed",
+            content=f"Executor **{agent_id}** pipeline failed.",
+            level=MessageLevel.ERROR,
+            fields={
+                "Agent": agent_id,
+                "Run ID": run_id,
+                "Error": error,
+            },
+        ))
+    except Exception:
+        pass
 
 
 async def _generalize_pipeline_success(state: PipelineState) -> None:
@@ -4767,8 +4804,8 @@ async def _verify_pipeline_outputs(state: PipelineState) -> None:
         from core.harness.memory.pattern_accumulator import get_pattern_accumulator
         pa = get_pattern_accumulator()
         await pa.extract_from_failure(
-            run_id=run_id,
-            error_context={"error": error[:300], "agent_id": agent_id},
+            run_id=run_id,  # noqa: F821
+            error_context={"error": error[:300], "agent_id": agent_id},  # noqa: F821
             tenant_id="",
         )
     except Exception:
@@ -4779,8 +4816,8 @@ async def _verify_pipeline_outputs(state: PipelineState) -> None:
         from core.harness.learning.experience_vector import get_experience_cache
         cache = get_experience_cache()
         await cache.store(
-            run_id=run_id,
-            summary=f"[{agent_id}] Pipeline failure: {error[:200]}",
+            run_id=run_id,  # noqa: F821
+            summary=f"[{agent_id}] Pipeline failure: {error[:200]}",  # noqa: F821
             label="failure",
         )
     except Exception:

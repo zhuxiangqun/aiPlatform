@@ -97,6 +97,9 @@ tests/constitution/test_layer_boundaries.py  ← 跨层导入 + 门面使用
 tests/constitution/test_kernel_agnostic.py   ← Core 引擎去业务化
 tests/constitution/test_infra_agnostic.py    ← Infra 去应用化
 .github/workflows/aiplat-contracts-guard.yml ← CI 流水线（已集成）
+scripts/validate_frontmatter.py         ← YAML frontmatter 解析校验（AGENT.md / SKILL.md / CLAUDE.md）
+scripts/ruff_f821_ratchet.py           ← F821 未定义变量 ratchet 门禁（基线对比，仅新违规阻断）
+scripts/ruff_f821_baseline.json        ← F821 基线快照（ratchet 对比基准，每次修复后重建）
 ```
 
 ---
@@ -171,10 +174,12 @@ tests/constitution/test_infra_agnostic.py    ← Infra 去应用化
     | **13** | **Skill 执行真实性** | `arch_guard_rules.yaml` §46 | `execution_type:handler` 必须有 `handler.py`；`prompt`+`handler.py` → WARNING |
     | **14** | **接线完成度标记** | `arch_guard_rules.yaml` §47 | 检测 `# TODO: wire/0 caller/待接线` 死代码标记 |
     | **15** | **Agent 边界** | `arch_guard_rules.yaml` §48+§50 | 禁止 Agent 直访 Harness 内部；禁止直接调用其他 Agent |
+    | **16** | **YAML frontmatter 解析** | `arch_guard_rules.yaml` §76 + `scripts/validate_frontmatter.py` | AGENT.md / SKILL.md / CLAUDE.md YAML frontmatter 完整性（缺失 `---` 分隔符、YAML 语法错误） |
+    | **17** | **Python 未定义变量** | `arch_guard_rules.yaml` §76 (ruff F821 ratchet) + `scripts/architecture_guard.sh` 前端检查 | core/ 生产代码中引用未定义的变量名（NameError 风险） |
 
     **执行顺序（更新）**：
     ```
-    1. bash scripts/architecture_guard.sh          ← 后端架构 §1-§52 + §42 子进程一致性 + §43-45 前端守卫
+    1. bash scripts/architecture_guard.sh          ← 后端架构 §1-§76 + §42 子进程一致性 + §43-45 前端守卫
     2. pytest tests/ -v --tb=short                  ← Python 语义检查
     ```
 
@@ -203,6 +208,7 @@ tests/constitution/test_infra_agnostic.py    ← Infra 去应用化
     | S | — | `cancel_pipeline` no-op stub | **✅ 已修复 (2026-06-29)** — 真实实现：append_run_event(cancel_requested) + cancel_queued_run + EventBus.publish。pipeline engine 主循环定期检查 is_cancel_requested()。 |
     | T | — | `set_knowledge_providers` no-op stub | **✅ 已修复 (2026-06-29)** — 真实实现：委托 kb_facade → kb_provider 的 4 个 setter 函数 (ingest_fn/query_fn/enqueue_fn/load_doc_kinds_fn)。 |
     | U | §40 | `auto_trigger.py` 4 处直接读 `AIPLAT_SFT_*_MODEL` env var | **已知例外 (2026-07-01)** — SFT 训练的目标模型是运维决策。已加 `# noqa: env-legacy` 注释标记，与 arch_guard_rules.yaml §40.2 `grep_exclude` 一致。验证：`grep -c 'env-legacy' auto_trigger.py` → 4。 |
+    | V | §76 | diagnostics.py 25 个 `_check_*` 函数定义在 `run_all_diagnostics()` 内部（4 缩进）而非模块级别 | **已知债务 (2026-07-03)** — 这些函数只能在 `run_all_diagnostics()` 内部调用，无法被 `_register_health_checks()` 注册。已用 `globals().get()` 模式替换 lambda 避免 NameError。需要渐进式迁移到模块级别。验证：`python3 -c "import ast; tree=ast.parse(open('aiPlat-core/core/api/routers/diagnostics.py').read()); nested=[n.name for n in ast.walk(tree) if isinstance(n,(ast.FunctionDef,ast.AsyncFunctionDef)) and n.name.startswith('_check_') and n.lineno>0]" | wc -l | xargs echo "nested count:"` |
 
     **验证命令（排查已知例外后）**：
     ```bash

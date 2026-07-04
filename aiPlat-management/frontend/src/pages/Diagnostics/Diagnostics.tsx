@@ -81,17 +81,39 @@ const Diagnostics: React.FC = () => {
     finally { setGuardRunning(false); }
   };
 
+  // ── Retry helper: covers core startup window (10-15s) ──
+  const fetchWithRetry = async (url: string, opts: RequestInit = {}, retries = 3): Promise<any> => {
+    let lastErr: any;
+    for (let i = 0; i < retries; i++) {
+      try {
+        const res = await fetch(url, opts);
+        if (res.status === 502) {
+          // Core still initializing — wait and retry
+          lastErr = new Error('Core 初始化中');
+          await new Promise(r => setTimeout(r, Math.pow(2, i + 1) * 1000));
+          continue;
+        }
+        if (!res.ok) throw new Error(`请求失败 (${res.status})`);
+        return await res.json();
+      } catch (e: any) {
+        lastErr = e;
+        if (i < retries - 1) {
+          await new Promise(r => setTimeout(r, Math.pow(2, i + 1) * 1000)); // 2s, 4s, 8s
+        }
+      }
+    }
+    throw lastErr;
+  };
+
   const runDiagnosticsInBg = async () => {
     setDiagRunning(true);
     setDiagMode('full');
     setDiagResult(null);
     manualRunRef.current = true;
     try {
-      const res = await fetch('/api/core/diagnostics/run-all', { method: 'POST' });
-      if (!res.ok) throw new Error(`请求失败 (${res.status})`);
-      const data = await res.json();
+      const data = await fetchWithRetry('/api/core/diagnostics/run-all', { method: 'POST' });
       if (data.run_id === 'skipped') {
-        toast.warning('诊断引擎正忙，请等当前诊断完成后再试');
+        toast.warning(data.message || '诊断引擎正忙，请等当前诊断完成后再试');
         setDiagRunning(false);
         return;
       }
@@ -111,11 +133,9 @@ const Diagnostics: React.FC = () => {
     setDiagResult(null);
     manualRunRef.current = true;
     try {
-      const res = await fetch('/api/core/diagnostics/run-all?quick=true', { method: 'POST' });
-      if (!res.ok) throw new Error(`请求失败 (${res.status})`);
-      const data = await res.json();
+      const data = await fetchWithRetry('/api/core/diagnostics/run-all?quick=true', { method: 'POST' });
       if (data.run_id === 'skipped') {
-        toast.warning('诊断引擎正忙，请等当前诊断完成后再试');
+        toast.warning(data.message || '诊断引擎正忙，请等当前诊断完成后再试');
         setQuickDiagRunning(false);
         return;
       }
@@ -193,6 +213,7 @@ const Diagnostics: React.FC = () => {
 
   const items = useMemo(() => [
     { title: 'Doctor', desc: '一键聚合诊断报告', href: '/diagnostics/doctor', icon: Activity },
+    { title: 'LLM审查', desc: 'DeepSeek 深度代码审查 — ~150K tokens/次，按需运行', href: '/diagnostics/llm-review', icon: Zap },
     { title: 'Workflows', desc: '把评估/证据/门控串成一键流水线', href: '/diagnostics/workflows', icon: Wand2 },
     { title: 'Context', desc: 'Prompt/context 组装诊断（cache/search/注入）', href: '/diagnostics/context', icon: Activity },
     { title: 'Capability→Policy', desc: '从 skill capabilities 生成工具门禁策略', href: '/diagnostics/capability-policy', icon: Activity },
@@ -306,7 +327,9 @@ const Diagnostics: React.FC = () => {
             </div>
             {/* Category cards */}
             <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-              {Object.entries(diagResult.categories || {}).map(([key, cat]: [string, any]) => {
+              {Object.entries(diagResult.categories || {})
+                .filter(([key]) => key !== 'llm_review')  // LLM审查 is standalone — ~150K tokens, run on demand
+                .map(([key, cat]: [string, any]) => {
                 const s = cat?.status || 'unknown';
                 const bg = s === 'pass' ? 'bg-green-900/20 border-green-500/20' : s === 'warn' ? 'bg-yellow-900/20 border-yellow-500/20' : 'bg-red-900/20 border-red-500/20';
                 return (

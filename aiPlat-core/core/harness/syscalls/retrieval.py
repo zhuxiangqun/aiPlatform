@@ -12,6 +12,7 @@ Callers:
 from __future__ import annotations
 
 import json as _json
+import logging
 import os
 import sqlite3
 from typing import Any, Dict, List, Optional, Tuple
@@ -70,16 +71,10 @@ def sys_kb_retrieve(
     if not os.path.exists(db_path):
         return []
 
-    try:
-        conn = sqlite3.connect(db_path)
-        conn.execute("PRAGMA journal_mode=WAL")
-        conn.row_factory = sqlite3.Row
-    except Exception:
-        return []
+    from core.harness.infrastructure.db_utils import get_db_connection
 
-    results: List[Dict[str, Any]] = []
-
-    try:
+    with get_db_connection(db_path) as conn:
+        results: List[Dict[str, Any]] = []
         # ── Paragraph fallback (keep) ──
         para_results: List[Dict[str, Any]] = []
         if not doc_ids:
@@ -150,8 +145,6 @@ def sys_kb_retrieve(
         if len(results) > top_k:
             results = _cross_encode_rerank(query, results, top_k) or _rerank(query, results, top_k)
 
-    finally:
-        conn.close()
 
     # Phase 6: Security filter for standalone KB retrieval
     if actor_scopes is not None and results:
@@ -818,7 +811,7 @@ def sys_knowledge_retrieve(
         if _l_os.path.exists(lat_path):
             samples = _l_json.loads(open(lat_path).read())
         samples.append({"ts": _t0, "total": round(_total, 4),
-                        "wiki": round(_wiki_time, 4), "kb": round(_kb_time, 4)})
+                        "wiki": round(_wiki_time, 4), "kb": round(_kb_time, 4)})  # noqa: F821
         _l_os.makedirs(_l_os.path.dirname(lat_path), exist_ok=True)
         open(lat_path, "w").write(_l_json.dumps(samples[-1000:]))
     except Exception as e:

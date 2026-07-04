@@ -44,23 +44,45 @@ class ResilienceGate:
                 return await fn()
             except Exception as e:
                 last_exc = e
-                # Only retry on selected exceptions; otherwise fail fast.
-                if not isinstance(e, tuple(retry_on)):
+                # ClassifiedError with retryable=True → always retry
+                from core.harness.infrastructure.gates.error_translator import ClassifiedError
+                if isinstance(e, ClassifiedError):
+                    if not e.retryable:
+                        raise
+                    if attempt >= retries:
+                        retry_msg = f"[RETRIED:{retries}] {e.reason.value} — {e.message[:200]}"
+                        raise RuntimeError(retry_msg) from e
+                elif not isinstance(e, tuple(retry_on)):
                     raise
-                if attempt >= retries:
-                    # Annotate error with retry count so Agent knows not to retry again
+                elif attempt >= retries:
                     retry_msg = f"[RETRIED:{retries}] {str(e)}"
                     try:
                         raise type(e)(retry_msg) from e
                     except TypeError:
                         raise RuntimeError(retry_msg) from e
-                # Exponential backoff with jitter (best-effort)
+                # ── Decorrelated jitter (hermes-aligned) ──
+                # Golden-ratio hash prevents thundering-herd when multiple
+                # concurrent workers retry the same provider simultaneously.
+                # `time_ns ^ (tick * golden_ratio)` decorrelates seeds even
+                # on coarse-resolution clocks.
                 try:
-                    delay = min(backoff_max_seconds, backoff_base_seconds * (2**attempt))
-                    delay = max(0.0, delay + random.uniform(0.0, delay * 0.1))
+                    import os as _os
+                    _jitter_ratio = float(_os.getenv("AIPLAT_JITTER_RATIO", "0.5") or "0.5")
+                    _base = backoff_base_seconds * (2 ** attempt)
+                    delay = min(backoff_max_seconds, _base)
+
+                    # Overflow guard: if exponent is too large, cap at max_delay
+                    if attempt >= 63 or backoff_base_seconds <= 0:
+                        delay = backoff_max_seconds
+
+                    # Decorrelated jitter via golden-ratio hash of time_ns
+                    _tick = time.time_ns() if hasattr(time, "time_ns") else int(time.time() * 1e9)
+                    _seed = (_tick ^ (attempt * 0x9E3779B9)) & 0xFFFFFFFF
+                    import random as _random_mod
+                    _rng = _random_mod.Random(_seed)
+                    delay = max(0.0, delay + _rng.uniform(0.0, _jitter_ratio * delay))
                     await asyncio.sleep(delay)
-                except Exception as e:
-                    # If sleep fails, continue retrying without delay.
-                    logging.debug(str(e), exc_info=True)
-        # unreachable
+                except Exception:
+                    # Fallback: simple backoff without jitter
+                    await asyncio.sleep(min(backoff_max_seconds, backoff_base_seconds * (2 ** attempt)))
         raise last_exc or RuntimeError("ResilienceGate failed")

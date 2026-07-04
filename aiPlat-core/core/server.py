@@ -13,6 +13,7 @@ from contextlib import asynccontextmanager, suppress
 import asyncio
 import os
 import shutil
+import time
 from pathlib import Path
 import uvicorn
 
@@ -40,6 +41,7 @@ from core.apps.plugins.manager import PluginManager
 from core.services import get_execution_store
 from core.services.trace_service import TraceService, TraceServiceTracer
 from core.harness.integration import get_harness, KernelRuntime
+from core.harness.utils.model_injection import best_model_for_purpose
 import uuid
 
 # Backward-compatible governance preview helper (used by unit tests / legacy callers)
@@ -1108,7 +1110,7 @@ async def lifespan(app: FastAPI):
                             reg.register(_make_discovery_tool(t))
                         except Exception as e:
                             logging.debug(str(e), exc_info=True)
-                        logger.info(f"MCP: discovered {len(tools)} tools, registered into ToolRegistry")
+                        logging.info(f"MCP: discovered {len(tools)} tools, registered into ToolRegistry")
             except Exception as e:
                 logging.debug(str(e), exc_info=True)
             _job_scheduler = JobScheduler(
@@ -1293,6 +1295,21 @@ async def lifespan(app: FastAPI):
     except Exception:
         _learning_task = None
 
+    # Ensure WAL mode on all known SQLite databases (one-time, startup only)
+    try:
+        from core.harness.infrastructure.db_utils import ensure_wal_enabled
+        # Core execution store
+        ensure_wal_enabled()
+        # Knowledge bases (tenant-specific paths will be handled on first access)
+        kb_base = os.path.expanduser(os.getenv("AIPLAT_KB_TENANTS_DIR", "~/.aiplat/kb/tenants"))
+        for root, dirs, files in os.walk(kb_base):
+            for f in files:
+                if f.endswith(".sqlite3"):
+                    ensure_wal_enabled(os.path.join(root, f))
+            break  # only top-level; sub-tenants are created on demand
+    except Exception:
+        pass
+
     # Hot-reload: watch code/config files for changes
     try:
         from core.harness.infrastructure.hot_reload import wire_hot_reload
@@ -1420,10 +1437,46 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logging.debug(str(e), exc_info=True)
 
+    # Start ProcessRegistry health monitor (P2-21)
+    try:
+        from core.harness.infrastructure.process_registry import get_process_registry
+        pr = get_process_registry()
+        await pr.start_health_monitor()
+        logging.getLogger("aiplat.process").info("ProcessRegistry health monitor started")
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
+
+    # Start TrendDetector (entropy trend awareness — detects error-rate volatility)
+    try:
+        from core.harness.infrastructure.trend_detector import get_trend_detector
+        td = get_trend_detector()
+        await td.start()
+        logging.getLogger("aiplat.trends").info("TrendDetector started")
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
+
     yield
 
     # Shutdown background services
     EventBus.stop()
+    try:
+        from core.harness.infrastructure.trend_detector import get_trend_detector
+        td = get_trend_detector()
+        await td.stop()
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
+    try:
+        from core.harness.infrastructure.process_registry import get_process_registry
+        pr = get_process_registry()
+        await pr.stop_health_monitor()
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
+    try:
+        from core.harness.ontology_engine.state_history import close_connection
+        close_connection()
+        logging.debug("state_history connection closed")
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
     try:
         from core.harness.knowledge._bg_tasks import stop_worker as _wiki_bg_stop
         await _wiki_bg_stop()

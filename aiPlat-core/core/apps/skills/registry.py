@@ -7,6 +7,7 @@ and binding statistics.
 
 import os
 import math
+import logging
 import threading
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Set
@@ -350,6 +351,25 @@ class SkillRegistry:
     def register(self, skill: BaseSkill) -> None:
         """Register a skill"""
         self._pre_register_validate(skill)
+
+        # P2-20: SkillsGuard — threat scan before registration
+        try:
+            from core.harness.infrastructure.gates.skills_guard import get_skills_guard
+            guard = get_skills_guard()
+            cfg = skill.get_config()
+            skill_path = getattr(cfg, "skill_path", "") or getattr(cfg, "path", "") or ""
+            if skill_path and os.path.isdir(skill_path):
+                result = guard.scan_skill(cfg.name, skill_path)
+                if not result.passed:
+                    msg = f"SkillsGuard BLOCKED registration of '{cfg.name}': {result.blocker_count} blocker(s), {result.critical_count} critical(s)"
+                    logging.getLogger("aiplat.skills").error(msg)
+                    if result.blocker_count > 0:
+                        raise ValueError(msg)
+        except ValueError:
+            raise
+        except Exception:
+            pass
+
         with self._lock:
             cfg = skill.get_config()
             name = cfg.name

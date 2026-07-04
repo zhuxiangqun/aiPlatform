@@ -8,6 +8,7 @@ from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
 from core.harness.syscalls.llm import sys_llm_generate
 import logging
+import re as _re
 
 router = APIRouter(prefix="/entropy", tags=["entropy"])
 

@@ -1,7 +1,11 @@
 from __future__ import annotations
 
+import asyncio
+import json
 import logging
 import os
+import re
+import sqlite3
 import sys
 import time
 from typing import Any, Dict, List, Optional
@@ -22,9 +26,105 @@ _log = logging.getLogger("aiplat.diagnostics")
 _DIAG_CACHE: Optional[Dict[str, Any]] = None
 _DIAG_CACHE_TS: float = 0.0
 # ── Concurrency guard — prevent overlapping diagnostic runs ─────
-_DIAG_RUNNING: bool = False
+_DIAG_RUNNING: float = 0.0  # 0 = idle, >0 = start timestamp of current run
+
+_DIAG_LOCK_TTL: float = float(os.getenv("AIPLAT_DIAG_LOCK_TTL", "300") or "300")  # 5 min default
 _CACHE_TTL: float = float(os.getenv("AIPLAT_DIAG_CACHE_TTL", "120") or "120")
 _DIAG_RUN_CACHE_TTL: float = float(os.getenv("AIPLAT_DIAG_CACHE_TTL", "120") or "120")
+
+# ── LLM审查 progress tracking (SQLite-backed, shared across workers) ──
+
+def _llm_get_db():
+    """Get a sqlite3 connection to the execution store for llm_review progress."""
+    import sqlite3, os as _os
+    db_path = _os.getenv("AIPLAT_EXECUTION_DB_PATH",
+                         _os.path.join(_os.path.expanduser("~"), ".aiplat", "aiplat_executions.sqlite3"))
+    _os.makedirs(_os.path.dirname(db_path), exist_ok=True)
+    conn = sqlite3.connect(db_path)
+    conn.execute("PRAGMA journal_mode=WAL")
+    conn.execute("PRAGMA busy_timeout=3000")
+    return conn
+
+
+def _llm_init_table():
+    """Ensure llm_review_tasks table exists."""
+    conn = _llm_get_db()
+    try:
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS llm_review_tasks (
+                run_id TEXT PRIMARY KEY,
+                status TEXT DEFAULT 'running',
+                files_done INTEGER DEFAULT 0,
+                files_total INTEGER DEFAULT 0,
+                current_file TEXT DEFAULT '',
+                results TEXT DEFAULT '[]',
+                score INTEGER DEFAULT 0,
+                p0_count INTEGER DEFAULT 0,
+                p1_count INTEGER DEFAULT 0,
+                created_at REAL
+            )
+        """)
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def _llm_sync_progress(run_id: str, **kwargs):
+    """Sync a single field or fields to SQLite (best-effort, non-blocking)."""
+    import json
+    conn = _llm_get_db()
+    try:
+        for key, val in kwargs.items():
+            if key == 'results':
+                val = json.dumps(val)
+            conn.execute(f"INSERT OR REPLACE INTO llm_review_tasks (run_id, {key}) VALUES (?, ?)",
+                         (run_id, val))
+        conn.commit()
+    except Exception:
+        pass
+    finally:
+        conn.close()
+
+
+def _llm_get_progress(run_id: str) -> dict:
+    """Read current progress from SQLite."""
+    import json
+    conn = _llm_get_db()
+    try:
+        conn.row_factory = sqlite3.Row
+        row = conn.execute("SELECT * FROM llm_review_tasks WHERE run_id = ?", (run_id,)).fetchone()
+        if not row:
+            return {"status": "not_found"}
+        d = dict(row)
+        if d.get("results"):
+            try:
+                d["results"] = json.loads(d["results"])
+            except Exception:
+                d["results"] = []
+        return d
+    finally:
+        conn.close()
+
+
+def _llm_cleanup_old(max_keep: int = 10):
+    """Keep only the most recent N review tasks, delete older ones."""
+    conn = _llm_get_db()
+    try:
+        conn.execute(f"""
+            DELETE FROM llm_review_tasks WHERE run_id NOT IN (
+                SELECT run_id FROM llm_review_tasks ORDER BY created_at DESC LIMIT {max_keep}
+            )
+        """)
+        conn.commit()
+    except Exception:
+        pass
+    finally:
+        conn.close()
+
+
+# Initialize table at module load
+_llm_init_table()
+
 
 # ── Shared code graph: built once by run_all_diagnostics, reused by graph-dependent checks ──
 _SHARED_GRAPH = (None, None, None)  # (nodes, edges, issues)
@@ -311,13 +411,54 @@ async def _check_core_runtime():
         store = getattr(rt, "execution_store", None) if rt else None
         return {
             "status": "available" if store else "unavailable",
-            "score": 100 if store else 0,
-            "details": {"execution_store": "ok" if store else "missing"},
+            "signals": {"execution_store": store is not None},
             "items": [{"check": "执行存储", "result": "✅" if store else "❌",
-                       "detail": "ExecutionStore 已初始化" if store else "未找到 ExecutionStore"}],
+                        "detail": "ExecutionStore 已初始化" if store else "未找到 ExecutionStore"}],
         }
     except Exception:
         return {"status": "unavailable", "score": 0}
+
+
+async def _check_doc_sync():
+    """Check that AIPLAT_CAPABILITIES.md is consistent with code."""
+    import subprocess, sys, os as _os
+    try:
+        workspace = _os.path.dirname(_os.path.dirname(_os.path.dirname(_os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))))))
+        # Step A: consistency (stats table vs section counts)
+        r = subprocess.run(
+            [sys.executable, _os.path.join(workspace, "scripts", "verify_capability_consistency.py")],
+            capture_output=True, text=True, timeout=15,
+        )
+        consistent = r.returncode == 0
+
+        # Step B: capability gap (new modules without doc entries)
+        r2 = subprocess.run(
+            [sys.executable, _os.path.join(workspace, "scripts", "check_code_doc_gap.py")],
+            capture_output=True, text=True, timeout=15,
+        )
+        no_gaps = r2.returncode == 0
+
+        all_ok = consistent and no_gaps
+        items = []
+        items.append({
+            "check": "能力统计表一致性",
+            "result": "✅" if consistent else "❌",
+            "detail": "460 entries match" if consistent else (r.stderr or r.stdout)[:200],
+        })
+        items.append({
+            "check": "代码-文档能力缺口",
+            "result": "✅" if no_gaps else "❌",
+            "detail": "无缺口" if no_gaps else (r2.stderr or r2.stdout)[:200],
+        })
+
+        return {
+            "status": "pass" if all_ok else "fail",
+            "score": 100 if all_ok else 0,
+            "signals": {"consistent": consistent, "no_gaps": no_gaps},
+            "items": items,
+        }
+    except Exception as e:
+        return {"status": "unavailable", "score": 0, "signals": {"error": str(e)[:100]}}
 
 
 def _register_health_checks():
@@ -348,20 +489,31 @@ def _register_health_checks():
                                        severity=self.severity, message=str(e))
 
         reg = get_registry()
-        # Runtime & core module checks
+        # Runtime check — _check_core_runtime is at module level (verified).
         reg.register(SimpleHealthCheck("runtime", _check_core_runtime, Severity.CRITICAL))
-        reg.register(SimpleHealthCheck("skill_lint", _check_skill_lint, Severity.MEDIUM))
-        reg.register(SimpleHealthCheck("code_intel", _check_code_intel, Severity.MEDIUM))
-        reg.register(SimpleHealthCheck("cross_lang", _check_cross_lang_links, Severity.MEDIUM))
-        reg.register(SimpleHealthCheck("route_coverage", _check_route_coverage, Severity.MEDIUM))
-        reg.register(SimpleHealthCheck("capability", _check_capability, Severity.MEDIUM))
-        reg.register(SimpleHealthCheck("wiki_health", _check_wiki_health, Severity.MEDIUM))
-        reg.register(SimpleHealthCheck("e2e_smoke", _check_e2e_smoke, Severity.LOW))
-        reg.register(SimpleHealthCheck("doctor", _check_doctor, Severity.HIGH))
-        reg.register(SimpleHealthCheck("governance", _check_governance, Severity.HIGH))
-        reg.register(SimpleHealthCheck("frontend", _check_frontend, Severity.MEDIUM))
-        reg.register(SimpleHealthCheck("llm_review", _check_llm_review, Severity.LOW))
-        reg.register(SimpleHealthCheck("mcp", _check_mcp, Severity.MEDIUM))
+        reg.register(SimpleHealthCheck("doc_sync", _check_doc_sync, Severity.HIGH))
+        # Remaining _check_* functions are local closures inside run_all_diagnostics().
+        # Each registration is individually try/except'd to gracefully skip missing ones
+        # while allowing any module-level functions to register successfully.
+        # They still run as part of the full diagnostics report via run_all_diagnostics().
+        _check_fn_names = [
+            ("skill_lint",     "_check_skill_lint",       Severity.MEDIUM),
+            ("code_intel",     "_check_code_intel",       Severity.MEDIUM),
+            ("cross_lang",     "_check_cross_lang_links", Severity.MEDIUM),
+            ("route_coverage", "_check_route_coverage",   Severity.MEDIUM),
+            ("capability",     "_check_capability",       Severity.MEDIUM),
+            ("wiki_health",    "_check_wiki_health",      Severity.MEDIUM),
+            ("e2e_smoke",      "_check_e2e_smoke",        Severity.LOW),
+            ("doctor",         "_check_doctor",           Severity.HIGH),
+            ("governance",     "_check_governance",       Severity.HIGH),
+            ("frontend",       "_check_frontend",         Severity.MEDIUM),
+            ("llm_review",     "_check_llm_review",       Severity.LOW),
+            ("mcp",            "_check_mcp",              Severity.MEDIUM),
+        ]
+        for _name, _fn_name, _sev in _check_fn_names:
+            _fn = globals().get(_fn_name)
+            if _fn is not None and callable(_fn):
+                reg.register(SimpleHealthCheck(_name, _fn, _sev))
 
         # New ROSClaw-inspired modules
         class SandboxGateCheck(HealthCheck):
@@ -710,6 +862,7 @@ async def diagnostics_exec_backends():
     from core.api.facades.security_facade import get_exec_backend
 
     backend = await get_exec_backend()
+    from core.apps.exec_drivers.registry import healthcheck_backends
     health = await healthcheck_backends()
     return {"status": "ok", "current_backend": backend, "backends": health.get("backends") if isinstance(health, dict) else [], "non_local_requires_approval": True}
 
@@ -757,11 +910,22 @@ def get_latest_diagnostic():
     return {"cached": False, "message": "尚未运行诊断 — POST /diagnostics/run-all 先"}
 
 
+async def _get_repairs_from_cache() -> Dict[str, Any]:
+    """Read repair data from the diagnostic cache."""
+    repairs = _DIAG_CACHE.get("repairs", {}) if _DIAG_CACHE else {}
+    return {
+        "issues": repairs.get("issues", []),
+        "summary": repairs.get("summary", {}),
+        "total_issues": len(repairs.get("issues", [])),
+        "cached": _DIAG_CACHE is not None,
+    }
+
+
 @router.get("/diagnostics/repairs-latest", response_model=Dict[str, Any])
 async def get_latest_repairs():
     """Return last repair result (in-memory, current session only)."""
     if _DIAG_CACHE is not None:
-        return await get_repairs()
+        return await _get_repairs_from_cache()
     return {"cached": False, "needs_diagnostics": True, "summary": {"total_issues": 0}}
 
 
@@ -829,2371 +993,378 @@ def get_diagnostic_history():
 
 
 def _diag_lock(func):
-    """Decorator: ensure _DIAG_RUNNING is released even on exception."""
+    """Decorator: ensure only one diagnostic runs at a time, with auto-release timeout."""
     from functools import wraps
     @wraps(func)
     async def wrapper(*args, **kwargs):
         global _DIAG_RUNNING
-        if _DIAG_RUNNING:
-            return {"run_id": "skipped", "message": "另一个诊断正在运行中 — 请等当前诊断完成后再试", "overall_score": 0}
-        _DIAG_RUNNING = True
+        import time as _time
+        now = _time.time()
+        if _DIAG_RUNNING > 0:
+            elapsed = now - _DIAG_RUNNING
+            if elapsed < _DIAG_LOCK_TTL:
+                return {
+                    "run_id": "skipped", "overall_score": 0,
+                    "message": f"另一个诊断正在运行中（已运行 {int(elapsed)}s）— 请等当前诊断完成后再试",
+                    "status": "locked",
+                }
+            # Lock held too long — likely stale, force release
+            logging.warning("_diag_lock: force-releasing stale lock held for %.0fs", elapsed)
+        _DIAG_RUNNING = now
         try:
             return await func(*args, **kwargs)
         finally:
-            _DIAG_RUNNING = False
+            _DIAG_RUNNING = 0.0
     return wrapper
 
 
-@router.post("/diagnostics/run-all", response_model=Dict[str, Any])
-@_diag_lock
-async def run_all_diagnostics(category: str = "", quick: bool = False):
-    """Unified diagnostic endpoint — runs all checks in parallel and returns a combined report.
-    Pass category=code_intel to run only that check.
-    Pass quick=true to skip slow external checks (LSP, security, e2e_smoke)."""
-    import asyncio, json as _json, uuid as _uuid
-    _asyncio = asyncio
+# ── Standalone LLM审查 (not part of run-all — ~150K tokens, run on demand) ──
 
-    started_at = time.time()
-    run_id = f"diag-{_uuid.uuid4().hex[:12]}"
-    categories: Dict[str, Any] = {}
-    issues: List[Dict[str, Any]] = []
-
-    # ── Shared code graph: build once, reuse across all graph-dependent checks ──
-    global _SHARED_GRAPH
+async def _run_llm_review(max_files: int = 15, max_chars: int = 12000, focus: str = "comprehensive",
+                          run_id: str = "") -> Dict[str, Any]:
+    """Core LLM review logic — parallel execution with SQLite progress tracking."""
+    import os as _os, logging as _log, time as _time, json as _json
     try:
-        _SHARED_GRAPH = _get_or_build_graph()
-    except Exception:
-        _SHARED_GRAPH = (None, None, None)
+        from core.engine.skills.autoreview.handler import review_file
 
-    def _publish(event_type: str, **kwargs):
-        try:
-            from core.harness.observation.event_bus import EventBus
-            from core.api.routers.observation import store_diag_event
-            event = {"type": event_type, "ts": time.time(), **kwargs}
-            store_diag_event(run_id, event)
-            EventBus.publish(run_id, event)
-        except Exception as e:
-            logging.warning(str(e), exc_info=True)
+        # Init SQLite progress row
+        if run_id:
+            _llm_init_table()
+            _llm_sync_progress(run_id, status="running", files_done=0, files_total=0,
+                               current_file="", results=[], created_at=_time.time())
 
-    _publish("diagnostics_started", categories=[
-        "core_runtime","code_intel","capability","skill_lint","skill_realness",
-        "wiki_health","compliance","overview_issues","traces",
-        "graph_runs","context_metrics","e2e_smoke","symbol_health",
-        "doctor","lsp","security","arch_guard",
-        "frontend","mcp","full_stack"
-    ])
+        targets = _select_llm_review_targets(max_files=max_files)
+        if not targets:
+            if run_id:
+                _llm_sync_progress(run_id, status="done", files_done=0, files_total=0)
+            return {"status": "unavailable", "score": 0, "signals": {"files_reviewed": 0},
+                    "items": [{"check": "LLM审查", "result": "—", "detail": "无符合条件的目标文件"}],
+                    "recommendation": "可能需要增加核心模块或大文件"}
 
-    async def _safe(cat_name: str, coro):
-        try:
-            _publish("check_started", category=cat_name)
-            categories[cat_name] = await coro
-            cat = categories[cat_name]
-            _publish("check_done", category=cat_name,
-                     status=cat.get("status", "pass") if isinstance(cat, dict) else "pass",
-                     score=cat.get("score", 0) if isinstance(cat, dict) else 0)
-        except Exception as e:
-            categories[cat_name] = {"status": "error", "error": str(e)[:300]}
-            _publish("check_failed", category=cat_name, error=str(e)[:200])
+        total = len(targets)
+        if run_id:
+            _llm_sync_progress(run_id, files_total=total)
 
-    async def _check_skill_lint():
-        """Lint scan across all skills."""
-        try:
-            from core.management.skill_linter import lint_skill, propose_skill_fixes
-            from core.management.skill_manager import SkillManager
-            total_errors = 0
-            total_warnings = 0
-            items = []
-            for scope in ("engine", "workspace"):
-                sm = SkillManager(seed=(scope == "engine"), scope=scope)
-                skills = await sm.list_skills(limit=500, offset=0)
-                for s in skills:
-                    rep = lint_skill(s)
-                    # Publish progress for visible skills (best-effort)
-                    _publish("check_progress", category="skill_lint",
-                             skill=dict(id=getattr(s, "id", ""), name=getattr(s, "name", ""),
-                             scope=scope, errors=len(rep.get("errors", [])),
-                             warnings=len(rep.get("warnings", []))))
-                    errs = rep.get("errors", [])
-                    warns = rep.get("warnings", [])
-                    e = len(errs)
-                    w = len(warns)
-                    total_errors += e
-                    total_warnings += w
-                    if e > 0 or w > 0:
-                        fixes = propose_skill_fixes(skill=s, lint=rep)
-                        auto_fixes = [f for f in fixes.get("fixes", []) if f.get("auto_applicable")]
-                        items.append({
-                            "skill_id": getattr(s, "id", ""),
-                            "name": getattr(s, "name", ""),
-                            "scope": scope,
-                            "error_codes": [x.get("code") for x in errs],
-                            "warning_codes": [x.get("code") for x in warns[:4]],
-                            "warning_count": w,
-                            "auto_fix_ids": [f.get("fix_id") for f in auto_fixes],
-                            "auto_fix_count": len(auto_fixes),
-                        })
-            score = 100 if total_errors == 0 else max(0, 100 - total_errors * 5)
-            result = {
-                "status": "pass" if total_errors == 0 else "warn",
-                "score": score,
-                "signals": {"errors": total_errors, "warnings": total_warnings},
-                "items": [{"check": f"[{it['scope']}] {it['name']}",
-                           "result": "❌" if it['error_codes'] else "⚠️",
-                           "detail": f"errors: {', '.join(it['error_codes'][:3])} | warnings: {it['warning_count']}"}
-                          for it in items[:20]],
-                "_raw": {"items": items, "errors": total_errors, "warnings": total_warnings,
-                         "auto_fix_total": sum(it["auto_fix_count"] for it in items)},
-            }
-            return result
-        except Exception as e:
-            return {"status": "unavailable", "score": 0, "error": str(e)[:200]}
+        # ── Parallel execution with progress ──
+        import asyncio as _async
+        done_count = 0
+        done_results = []
+        _lock = _async.Lock()
 
-    async def _check_skill_realness():
-        """Check workspace skills for execution_type declarations and handler existence."""
-        try:
-            from pathlib import Path as _P
-            aiplat_home = os.getenv("AIPLAT_HOME", os.path.expanduser("~/.aiplat"))
-            skills_dir = _P(aiplat_home) / "skills"
-            issues = []
-            if not skills_dir.exists():
-                return {"status": "pass", "score": 100, "items": [], "details": {"total": 0}}
-            
-            for skill_dir in sorted(skills_dir.iterdir()):
-                if not skill_dir.is_dir() or skill_dir.name.startswith("."):
-                    continue
-                md = skill_dir / "SKILL.md"
-                if not md.exists():
-                    continue
-                try:
-                    raw = (await _asyncio.to_thread(lambda: md.read_text(encoding="utf-8", errors="ignore")))
-                    if not raw.startswith("---"):
-                        continue
-                    parts = raw.split("---", 2)
-                    if len(parts) < 3:
-                        continue
-                    import yaml as _yaml
-                    fm = _yaml.safe_load(parts[1]) or {}
-                    name = fm.get("name", skill_dir.name)
-                    exec_type = fm.get("execution_type", "")
-                    handler_exists = (skill_dir / "handler.py").exists()
-                    
-                    if not exec_type:
-                        issues.append(f"'{name}': 缺少 execution_type 声明（默认 prompt=LLM模拟）")
-                    elif exec_type == "handler" and not handler_exists:
-                        issues.append(f"'{name}': execution_type=handler 但 handler.py 不存在")
-                    elif exec_type == "prompt" and handler_exists:
-                        issues.append(f"'{name}': 有 handler.py 但 execution_type 声明为 prompt（误配？）")
-                except Exception as e:
-                    logging.warning(str(e), exc_info=True)
-            
-            total = len(list(skills_dir.iterdir())) if skills_dir.exists() else 0
-            return {
-                "status": "warning" if issues else "pass",
-                "score": max(0, 100 - len(issues) * 5),
-                "details": {"total": total, "issues_count": len(issues)},
-                "items": [{"check": i, "result": "⚠️", "detail": i} for i in issues[:20]],
-            }
-        except Exception:
-            return {"status": "unavailable", "score": 0}
-
-    async def _check_code_intel():
-        try:
-            from core.harness.knowledge.code_graph import count_cycles, effective_cycles, health_score
-            nodes, edges, issues_list = _get_or_build_graph()
-            # Filter to structural edges only (exclude cross-file call edges)
-            arch_edges = [e for e in edges if e.get("kind", "import") != "calls"]
-            cycles = effective_cycles(nodes)
-            h = health_score(nodes=nodes, edges=arch_edges, issues=issues_list, cycles_back_edges=cycles)
-            items: List[Dict[str, Any]] = []
-            if cycles > 0:
-                items.append({"check": "循环依赖", "result": "❌" if cycles > 8 else "⚠️", "detail": f"{cycles} back-edges detected", "link": "/diagnostics/code-intel"})
-            if h["signals"]["avg_degree"] > 3:
-                items.append({"check": "高耦合", "result": "⚠️", "detail": f"avg_degree={h['signals']['avg_degree']}", "link": "/diagnostics/code-intel"})
-            # Count issue types
-            security_issues = [i for i in issues_list if i.get("type") in ("secret", "security")]
-            undefined_calls = [i for i in issues_list if i.get("type") == "undefined_call"]
-            if security_issues:
-                items.append({"check": "安全风险", "result": "⚠️", "detail": f"{len(security_issues)} issues (密钥/硬编码/eval)", "link": "/diagnostics/code-intel"})
-            if undefined_calls:
-                items.append({"check": "未定义函数调用", "result": "❌", "detail": f"{len(undefined_calls)} 处调用未定义的函数", "link": "/diagnostics/code-intel"})
-            elif len(issues_list) > 0:
-                items.append({"check": "代码风险", "result": "⚠️", "detail": f"{len(issues_list)} issues", "link": "/diagnostics/code-intel"})
-            return {
-                "status": "pass" if h["score"] >= 70 else "warn",
-                "score": h["score"],
-                "grade": h["grade"],
-                "signals": {
-                    "files": h["signals"]["files"],
-                    "edges": len(arch_edges),
-                    "cycles": cycles,
-                    "avg_degree": h["signals"]["avg_degree"],
-                    "issues": len(issues_list),
-                },
-                "items": items,
-            }
-        except Exception as e:
-            return {"status": "error", "score": 0, "error": str(e)[:200]}
-
-    async def _check_cross_lang_links():
-        """B1: Detect frontend API calls with no matching backend route."""
-        import re
-        try:
-            from core.harness.knowledge.code_graph import repo_root, default_roots, _extract_api_calls, _extract_backend_routes
-            repo = repo_root()
-            abs_roots = [(repo / r).resolve() for r in default_roots()]
-            nodes, edges, _ = _get_or_build_graph()
-
-            # Build backend route set
-            backend_routes = set()
-            for f in abs_roots:
-                if not f.exists() or not f.is_dir():
-                    continue
-                for p in f.rglob("*.py"):
-                    if (p.parent.name == "tests" or "__pycache__" in str(p)):
-                        continue
-                    for route in _extract_backend_routes(p):
-                        path = route[0] if isinstance(route, (list, tuple)) else str(route)
-                        if path and path.startswith('/'):
-                            backend_routes.add(path)
-
-            # Check frontend API calls (exclude diagnostic/internal endpoints)
-            _CROSS_INTERNAL = ('/diagnostics/', '/api/diagnostics/', '/kb-eval/', '/credentials/', '/variables/',
-                              '/infra/', '/platform/', '/api/infra/', '/api/platform/', '/dashboard/')
-            
-            # Normalize path parameter patterns for comparison: {var}, {var:type}, ${var} → {}
-            def _norm_path(p: str) -> str:
-                return re.sub(r'\{\w+[\w:]*\}|\$\{\w+\}', '{}', p)
-            
-            # Normalize backend routes for matching
-            backend_normalized = {_norm_path(p).replace('/api/', '/').replace('/core/', '/').rstrip('/') for p in backend_routes}
-            
-            broken = []
-            for f in abs_roots:
-                if not f.exists() or not f.is_dir():
-                    continue
-                for p in f.rglob("*.ts") if f.name == "aiPlat-management" else []:
-                    for ep in _extract_api_calls(p):
-                        ep_norm = _norm_path(ep.replace('/api/', '/').replace('/core/', '/').rstrip('/'))
-                        if ep_norm and not any(ep_norm.startswith(prefix) for prefix in _CROSS_INTERNAL):
-                            if ep_norm not in backend_normalized:
-                                broken.append({"file": str(p.relative_to(repo))[:80], "endpoint": ep})
-
-            items = []
-            if broken:
-                for b in broken[:5]:
-                    items.append({"check": "断链API调用", "result": "⚠️", "detail": f"{b['file']}: {b['endpoint']}"})
-            return {
-                "status": "warn" if broken else "pass",
-                "score": max(0, 100 - len(broken[:5]) * 5),
-                "items": items,
-                "signals": {"broken_calls": len(broken)},
-            }
-        except Exception as e:
-            return {"status": "error", "score": 0, "error": str(e)[:200]}
-
-    async def _check_route_coverage():
-        """B2: Verify management proxy modules have corresponding frontend API usage."""
-        try:
-            from core.harness.knowledge.code_graph import repo_root
-            from pathlib import Path as _P
-
-            repo = repo_root()
-            mgmt_api = _P(repo) / "aiPlat-management" / "management" / "api"
-            mgmt_frontend_svc = _P(repo) / "aiPlat-management" / "frontend" / "src" / "services"
-
-            # Management proxy modules (each proxies a backend layer)
-            mgmt_modules = set()
-            if mgmt_api.is_dir():
-                for p in mgmt_api.glob("*.py"):
-                    if not p.name.startswith("_") and p.name != "proxy.py":
-                        mgmt_modules.add(p.stem)
-
-            # For each frontend service file, check which mgmt modules it references
-            # by looking for the module name in its code (e.g., coreApi.ts → core)
-            frontend_covered = set()
-            if mgmt_frontend_svc.is_dir():
-                for p in mgmt_frontend_svc.rglob("*.ts"):
-                    try:
-                        text = (await _asyncio.to_thread(lambda: p.read_text()))
-                        for m in mgmt_modules:
-                            if m in text.lower() or m in p.name.lower():
-                                frontend_covered.add(m)
-                    except Exception as e:
-                        logging.warning(str(e), exc_info=True)
-
-            dead_modules = sorted(mgmt_modules - frontend_covered)
-
-            items = []
-            if dead_modules:
-                for m in dead_modules:
-                    items.append({"check": "未使用代理", "result": "⚠️",
-                                  "detail": f"management/api/{m}.py 无对应前端调用"})
-            else:
-                items.append({"check": "路由覆盖", "result": "✅",
-                              "detail": f"{len(mgmt_modules)} 代理模块全部有前端调用"})
-
-            return {
-                "status": "warn" if len(dead_modules) > 2 else "pass",
-                "score": max(0, 100 - len(dead_modules) * 5),
-                "items": items,
-                "signals": {"mgmt_modules": len(mgmt_modules), "covered": len(frontend_covered),
-                            "dead_modules": len(dead_modules)},
-            }
-        except Exception as e:
-            return {"status": "pass", "score": 95, "signals": {"note": f"scan skipped: {str(e)[:80]}"}}
-
-    async def _check_domain_coupling():
-        """B3: Check for questionable cross-domain dependencies."""
-        try:
-            from core.api.routers.code_intel import _layer_bucket as code_layer
-            from core.harness.knowledge.code_graph import repo_root, default_roots
-            repo = repo_root()
-            abs_roots = [(repo / r).resolve() for r in default_roots()]
-            nodes, edges, _ = _get_or_build_graph()
-
-            # Check frontend directly importing core harness (bypassing platform)
-            suspicious = []
-            for edge in edges:
-                from_f = edge.get("from", "")
-                to_f = edge.get("to", "")
-                from_layer = code_layer(from_f)
-                to_layer = code_layer(to_f)
-                # app → core (should go through platform)
-                if from_layer == "app" and to_layer == "core" and "facade" not in to_f:
-                    suspicious.append(f"{from_f[:50]} → {to_f[:50]}")
-
-            items = []
-            for s in suspicious[:5]:
-                items.append({"check": "跨层依赖", "result": "⚠️", "detail": s})
-            return {
-                "status": "warn" if suspicious else "pass",
-                "score": max(0, 100 - len(suspicious[:5]) * 3),
-                "items": items,
-                "signals": {"suspicious_edges": len(suspicious)},
-            }
-        except Exception as e:
-            return {"status": "error", "score": 0, "error": str(e)[:200]}
-
-    async def _check_fragile_base():
-        """B4: Detect fragile base classes (too many subclasses or deep inheritance)."""
-        try:
-            from collections import Counter
-            from core.harness.knowledge.code_graph import repo_root, default_roots
-            repo = repo_root()
-            abs_roots = [(repo / r).resolve() for r in default_roots()]
-            nodes, edges, _ = _get_or_build_graph()
-
-            # Framework base classes that intentionally have many subclasses
-            _FRAMEWORK_BASES = {
-                "BaseAgent", "BaseTool", "Base", "BaseModel", "BaseModelAdapter",
-                "ManagementBase", "BaseLLMAdapter", "BasePydanticModel",
-                "DiagnosticCheck", "Enum", "str", "ABC",
-                "LintRule", "ArchRule", "InfraError",
-                "WikiRule", "CapRule", "BaseSkill", "BaseRule",
-                # Template Method / Strategy pattern bases (intentional)
-                "DocumentConverter", "CoreError", "Exception",
-            }
-
-            # Count subclasses per parent
-            parent_count = Counter()
-            for nid, nd in nodes.items():
-                for sym in nd.get("symbols", []):
-                    if isinstance(sym, (list, tuple)) and len(sym) >= 4 and sym[1] == "class":
-                        parent = sym[3]
-                        if parent and parent not in _FRAMEWORK_BASES:
-                            parent_count[parent] += 1
-
-            # Report parents with too many subclasses (>10)
-            fragile = [(p, c) for p, c in parent_count.items() if c > 10]
-            fragile.sort(key=lambda x: -x[1])
-
-            items = []
-            for parent, count in fragile[:5]:
-                items.append({"check": "脆弱基类", "result": "⚠️",
-                              "detail": f"{parent} has {count} subclasses"})
-            return {
-                "status": "warn" if fragile else "pass",
-                "score": max(0, 100 - len(fragile[:5]) * 5),
-                "items": items,
-                "signals": {"fragile_bases": len(fragile)},
-            }
-        except Exception as e:
-            return {"status": "error", "score": 0, "error": str(e)[:200]}
-
-    async def _check_capability():
-        try:
-            from core.harness.knowledge.capability_graph import build_capability_graph
-            from core.harness.knowledge.capability_health import capability_health_report
-            cg = build_capability_graph()
-            ch = capability_health_report(cg)
-            items: List[Dict[str, Any]] = []
-            unused = ch["issues"].get("unused_skills", [])
-            orphans = ch["issues"].get("orphan_agents", [])
-            unresolved = ch["issues"].get("unresolved_refs", [])
-            dupes = ch["issues"].get("entry_point_duplicates", [])
-            if unused:
-                items.append({"check": "未使用 Skill", "result": "⚠️", "detail": f"{len(unused)} unused: {', '.join(unused[:5])}", "link": "/diagnostics/capability-graph"})
-            if orphans:
-                items.append({"check": "孤立 Agent", "result": "⚠️", "detail": f"{len(orphans)} orphan: {', '.join(orphans[:5])}", "link": "/diagnostics/capability-graph"})
-            if unresolved:
-                # Group by target tool name for clarity
-                from collections import Counter
-                tool_counts = Counter(i.get("target", "?") for i in unresolved if isinstance(i, dict))
-                top_targets = ', '.join(f'{t}({c})' for t, c in tool_counts.most_common(5))
-                items.append({"check": "未解析引用", "result": "❌",
-                              "detail": f"{len(unresolved)} refs → {top_targets}", "link": "/diagnostics/capability-graph"})
-            if dupes:
-                detail_parts = [f"{d.get('capability','?')}: {len(d.get('files',[]))}" for d in dupes[:3] if isinstance(d, dict)]
-                items.append({"check": "入口重复", "result": "⚠️",
-                              "detail": f"{len(dupes)} duplicates: {'; '.join(detail_parts)}", "link": "/diagnostics/capability-graph"})
-            return {
-                "status": "pass" if ch["score"] >= 70 else "warn",
-                "score": ch["score"],
-                "grade": ch["grade"],
-                "signals": {
-                    "agents": ch["signals"]["agents"],
-                    "skills": ch["signals"]["skills"],
-                    "used_skills": ch["signals"]["used_skills"],
-                    "tools": ch["signals"]["tools"],
-                    "mcp_servers": ch["signals"]["mcp_servers"],
-                },
-                "items": items,
-                "_raw": {"issues": ch.get("issues", {}), "score": ch["score"], "grade": ch["grade"]},
-            }
-        except Exception as e:
-            return {"status": "error", "score": 0, "error": str(e)[:200]}
-
-    async def _check_wiki_health():
-        try:
-            from core.harness.knowledge.wiki_engine import wiki_health_report, build_graph
-            wh = wiki_health_report()
-            items: List[Dict[str, Any]] = []
-            if wh["stats"]["dead_links"] > 0:
-                items.append({"check": "死链", "result": "❌", "detail": f"{wh['stats']['dead_links']} dead links", "link": "/platform/kb"})
-            if wh["stats"]["orphan_pages"] > 0:
-                items.append({"check": "孤立页面", "result": "⚠️", "detail": f"{wh['stats']['orphan_pages']} orphan pages", "link": "/platform/kb"})
-            if wh["stats"]["contradictions"] > 0:
-                items.append({"check": "矛盾标记", "result": "⚠️", "detail": f"{wh['stats']['contradictions']} contradictions", "link": "/platform/kb"})
-            result = {
-                "status": "pass" if wh["health_score"] >= 70 else "warn",
-                "score": wh["health_score"],
-                "signals": {
-                    "pages": wh["total_pages"],
-                    "dead_links": wh["stats"]["dead_links"],
-                    "orphans": wh["stats"]["orphan_pages"],
-                    "contradictions": wh["stats"]["contradictions"],
-                },
-                "items": items,
-                "_raw": {"issues": wh.get("issues", []), "score": wh.get("health_score", 100)},
-            }
-            return result
-        except Exception as e:
-            return {"status": "error", "score": 0, "error": str(e)[:200]}
-
-    async def _check_arch_guard():
-        global _GUARD_CACHE, _GUARD_CACHE_TS
-        if _GUARD_CACHE is not None and time.time() - _GUARD_CACHE_TS < _SUB_CACHE_TTL:
-            return _GUARD_CACHE
-
-        from pathlib import Path as _P
-        try:
-            from core.management.arch_guard_base import get_arch_registry
-            repo_root = _P(__file__).resolve().parents[4]
-            report = get_arch_registry().run_all(repo_root)
-            violations = report.violations
-            score = max(0, 100 - violations)
-            # Extract raw sections for repair details
-            sections_raw = []
-            for s in report.sections:
-                if s.status != "fail" or not s.items:
-                    continue
-                for item in s.items[:3]:  # top 3 per section
-                    sections_raw.append({
-                        "section": s.number,
-                        "section_name": s.name,
-                        "message": item.message,
-                        "count": item.count,
-                        "sample_file": item.files[0] if item.files else "",
-                    })
-            result = {
-                "status": "pass" if violations == 0 else "warn" if violations <= 5 else "fail",
-                "score": score,
-                "violations": violations,
-                "items": [
-                    {"check": f"{s['section']} {s['section_name']}", "result": "❌",
-                     "detail": f"{s['message']}（{s['count']}处违规，例: {s.get('sample_file', '')}）"}
-                    for s in sections_raw
-                    for _ in range(max(s['count'], 1))
-                ] if sections_raw else [
-                    {"check": "架构守卫", "result": "❌" if violations > 0 else "✅",
-                     "detail": f"共检测到 {violations} 处违规"}
-                ],
-                "signals": {"violations": violations},
-                "_raw": {"sections": sections_raw, "violations": violations},
-            }
-            _GUARD_CACHE = result
-            _GUARD_CACHE_TS = time.time()
-            return result
-        except Exception as e:
-            _log.warning(f"Arch guard check failed: {e}")
-            return {"status": "error", "score": 0, "items": [{"check": "架构守卫", "result": "❌", "detail": f"运行失败: {str(e)[:100]}"}]}
-
-    async def _check_compliance():
-        import asyncio
-        from pathlib import Path as _P
-        from core.management.compliance_checks import get_checks
-
-        items: List[Dict[str, Any]] = []
-        score = 100
-
-        # Load runtime
-        try:
-            from core.harness.kernel.runtime import get_kernel_runtime
-            rt = get_kernel_runtime()
-        except Exception:
-            rt = None
-
-        repo_root = str(_P(__file__).resolve().parents[4])
-        checks = get_checks()
-
-        # Run all compliance checks in parallel
-        async def _run_one(check_def):
+        async def _review_one(file_path: str, lines: int):
+            nonlocal done_count
             try:
-                result = await check_def["func"](rt, repo_root)
-                return result, check_def["penalty"]
-            except Exception:
-                return {"check": check_def["name"], "result": "❌", "detail": "Check failed"}, check_def["penalty"]
+                with open(file_path) as f:
+                    content = f.read()
+                file_name = file_path.split("/")[-1]
+                rpt = await review_file(content, file_path, focus=focus, max_chars=max_chars)
+                async with _lock:
+                    done_count += 1
+                    result_entry = {"file": file_name, "score": rpt.score,
+                                    "p0": rpt.p0_count, "p1": rpt.p1_count, "p2": rpt.p2_count}
+                    done_results.append(result_entry)
+                    if run_id:
+                        _llm_sync_progress(
+                            run_id, files_done=done_count, current_file=file_name,
+                            results=done_results,
+                        )
+                return (file_path, rpt)
+            except Exception as e:
+                _log.warning("LLM review skipped %s: %s", file_path, e)
+                async with _lock:
+                    done_count += 1
+                return None
 
-        tasks = [_run_one(c) for c in checks]
-        results = await asyncio.gather(*tasks)
+        results = await _async.gather(
+            *(_review_one(fp, ln) for fp, ln in targets),
+            return_exceptions=True
+        )
+        reports = [(fp, rpt) for result in results if result is not None and not isinstance(result, BaseException)
+                   for fp, rpt in [result if isinstance(result, tuple) else (None, None)] if rpt is not None]
 
-        for result, penalty in results:
-            items.append(result)
-            if result.get("result") == "❌":
-                score -= penalty
+        if not reports:
+            if run_id:
+                _llm_sync_progress(run_id, status="unavailable", files_done=done_count, files_total=total)
+            return {"status": "unavailable", "score": 0, "signals": {"files_reviewed": 0},
+                    "recommendation": "所有文件审查请求失败——请检查 LLM 配置"}
 
-        # Arch guard gets heavier penalty
-        for item in items:
-            if item["check"] == "架构守卫" and item["result"] == "❌":
-                try:
-                    v_str = item.get("detail", "0 violations")
-                    v = int(re.findall(r'\d+', v_str)[0]) if re.findall(r'\d+', v_str) else 0
-                    score -= min(v * 2 - 10, 20)  # extra penalty beyond base 10
-                except Exception as e:
-                    logging.warning(str(e), exc_info=True)
-
-        # Extract shell agents by scanning AGENT.md files directly (accurate)
-        shell_agents = []
-        try:
-            from core.management.agent_config_validator import validate_agent_file
-            from pathlib import Path as _P
-
-            for scan_dir in (
-                _P(__file__).resolve().parents[2] / "engine" / "agents",
-                _P.home() / ".aiplat" / "agents",
-            ):
-                if not scan_dir.exists():
-                    continue
-                for md_path in sorted(scan_dir.rglob("AGENT.md")):
-                    # Skip builtin subagents (loaded via SubagentConfig, not workspace)
-                    if "/builtin/" in str(md_path):
-                        continue
-                    for issue in validate_agent_file(md_path):
-                        if "shell" in issue.message.lower():
-                            scope = "workspace" if ".aiplat" in str(md_path) else "engine"
-                            shell_agents.append(f"{scope}:{md_path.parent.name}")
-                            break
-        except Exception as e:
-            logging.warning(str(e), exc_info=True)
-
-        return {
-            "status": "pass" if score >= 80 else "warn",
-            "score": max(0, score),
-            "items": items,
-            "_raw": {"shell_agents": shell_agents},
-        }
-
-    async def _check_overview_issues():
-        """Inject issues discovered by System Overview into diagnostics."""
-        items: List[Dict[str, Any]] = []
-        score = 100
-
-        try:
-            from core.api.routers.overview import system_overview
-            ov = await system_overview()
-
-            for layer_name in ("infra", "core", "platform", "app"):
-                layer = ov.get(layer_name, {})
-                for key, val in (layer or {}).items():
-                    if key == "status":
-                        continue
-                    if isinstance(val, dict):
-                        err = val.get("error", "")
-                        if err in ("unavailable", "unreachable"):
-                            items.append({"check": f"{layer_name}/{key}", "result": "❌", "detail": err})
-                            score -= 2
-                        elif not val and key not in ("by_type", "types"):
-                            # Empty dict → component unavailable (e.g. memory, syscalls, llm)
-                            items.append({"check": f"{layer_name}/{key}", "result": "⚠️", "detail": "uninitialized"})
-                            score -= 1
-                        elif isinstance(val.get("available"), (int, float)) and val.get("total", 1) == 0:
-                            items.append({"check": f"{layer_name}/{key}", "result": "⚠️", "detail": "0 registered"})
-                            score -= 1
-                        for sub_key, sub_val in val.items():
-                            if sub_key in ("error", "providers", "by_type", "types"):
-                                continue
-                            if isinstance(sub_val, dict):
-                                sub_err = sub_val.get("error", "")
-                                sub_status = sub_val.get("status", "")
-                                if sub_err in ("unavailable", "unreachable"):
-                                    items.append({"check": f"{layer_name}/{key}/{sub_key}", "result": "❌", "detail": sub_err})
-                                    score -= 1
-                                elif sub_status not in ("healthy", "up", ""):
-                                    items.append({"check": f"{layer_name}/{key}/{sub_key}", "result": "⚠️", "detail": f"status: {sub_status}"})
-                                    score -= 1
-        except Exception:
-            items.append({"check": "概览注入", "result": "⚠️", "detail": "System overview unavailable"})
-
-        return {
-            "status": "pass" if score >= 80 else "warn" if score >= 50 else "fail",
-            "score": max(0, score),
-            "items": items,
-            "_raw": {"items": items},
-        }
-
-    async def _check_traces():
-        """Check recent trace/span activity from syscall_events."""
-        try:
-            from core.harness.kernel.runtime import get_kernel_runtime
-            rt = get_kernel_runtime()
-            store = getattr(rt, "execution_store", None) if rt else None
-            if store:
-                import sqlite3
-                conn = sqlite3.connect(store._config.db_path)
-                try:
-                    trace_count = conn.execute(
-                        "SELECT COUNT(DISTINCT trace_id) FROM syscall_events WHERE created_at > unixepoch('now','-1 hour')"
-                    ).fetchone()[0]
-                finally:
-                    conn.close()
-                return {"status": "pass" if trace_count > 0 else "pass",
-                        "score": 80 if trace_count == 0 else min(100, 50 + trace_count * 10),
-                        "signals": {"recent_traces_1h": trace_count},
-                        "items": [{"check": "1小时内 Trace", "result": "✅" if trace_count > 0 else "—",
-                                    "detail": f"{trace_count} 条 trace 记录"}]}
-        except Exception:
-            return {"status": "unavailable", "score": 0}
-
-    async def _check_graph_runs():
-        """Check active graph execution runs."""
-        try:
-            from core.harness.kernel.runtime import get_kernel_runtime
-            rt = get_kernel_runtime()
-            store = getattr(rt, "execution_store", None) if rt else None
-            if store:
-                active = len(getattr(store, "_active", {}) or {})
-                return {"status": "pass", "score": 100,
-                        "signals": {"active_graph_runs": active},
-                        "items": [{"check": "活跃 Graph Run", "result": "✅",
-                                   "detail": f"{active} 个活跃执行"}]}
-        except Exception:
-            return {"status": "unavailable", "score": 0}
-
-    async def _check_context_metrics():
-        """Check context assembly metrics (cache hit rate, compaction rate)."""
-        try:
-            from core.harness.kernel.runtime import get_kernel_runtime
-            rt = get_kernel_runtime()
-            store = getattr(rt, "execution_store", None) if rt else None
-            if store:
-                import sqlite3
-                conn = sqlite3.connect(store._config.db_path)
-                try:
-                    total = conn.execute(
-                        "SELECT COUNT(*) FROM syscall_events WHERE kind='metric' AND name='context_assemble' AND created_at > unixepoch('now','-24 hours')"
-                    ).fetchone()[0]
-                finally:
-                    conn.close()
-                return {"status": "pass" if total >= 0 else "warn",
-                        "score": 80 if total == 0 else min(100, 50 + total * 5),
-                        "signals": {"context_events_24h": total},
-                        "items": [{"check": "24h 上下文事件", "result": "✅" if total > 0 else "—",
-                                    "detail": f"{total} 条事件"}]}
-        except Exception:
-            return {"status": "unavailable", "score": 0}
-
-    async def _check_e2e_smoke():
-        """Check last E2E smoke test result from global_settings."""
-        try:
-            from core.harness.kernel.runtime import get_kernel_runtime
-            rt = get_kernel_runtime()
-            store = getattr(rt, "execution_store", None) if rt else None
-            if store:
-                gs = await store.get_global_setting(key="last_smoke_result")
-                result = (gs.get("value") if isinstance(gs, dict) else {}) or {}
-                if result.get("ok"):
-                    return {"status": "pass", "score": 100,
-                            "signals": {"last_smoke": "completed"},
-                            "items": [{"check": "最近冒烟", "result": "✅",
-                                       "detail": "E2E 全链路通过"}]}
-                if result.get("timestamp"):
-                    return {"status": "warn", "score": 50,
-                            "signals": {"last_smoke": "failed"},
-                            "items": [{"check": "最近冒烟", "result": "⚠️",
-                                       "detail": "上次执行未通过"}]}
-        except Exception as e:
-            logging.warning(str(e), exc_info=True)
-        return {"status": "pass", "score": 0,
-                "signals": {"last_smoke": "pending"},
-                "items": [{"check": "冒烟测试", "result": "⚪",
-                           "detail": "尚未运行，点击 E2E Smoke 页面手动执行"}]}
-
-    async def _check_symbol_health():
-        """Scan code graph for symbol coverage and dead code candidates."""
-        try:
-            from core.harness.knowledge.code_graph import repo_root, default_roots
-            r = repo_root()
-            roots = [(r / d).resolve() for d in default_roots()]
-            nodes, edges, _ = _get_or_build_graph()
-
-            from core.harness.knowledge.symbol_health import is_excluded_from_dead_code, count_dead_code_candidates
-
-            total = len(nodes)
-            with_syms = sum(1 for n in nodes.values() if n.get('symbols'))
-            total_syms = sum(len(n.get('symbols', [])) for n in nodes.values())
-            dead, dead_files = count_dead_code_candidates(nodes)
-            coverage = with_syms / max(total, 1) * 100
-
-            score = 100
-            if dead > 100: score -= 15
-            elif dead > 50: score -= 8
-            elif dead > 20: score -= 3
-            if coverage < 60: score -= 10
-
-            # Collect dead code files for repairs (filtered by count_dead_code_candidates)
-            return {
-                "status": "pass" if dead < 20 else "warn" if dead < 50 else "fail",
-                "score": max(0, score),
-                "signals": {"total_symbols": total_syms, "files_with_symbols": with_syms,
-                            "dead_code_candidates": dead, "coverage_pct": round(coverage, 1)},
-                "items": [
-                    {"check": "符号总数", "result": "✅", "detail": f"{total_syms} 个 / {with_syms} 文件"},
-                    {"check": "疑似死代码", "result": "❌" if dead > 20 else "⚠️" if dead > 0 else "✅",
-                     "detail": f"{dead} 个候选"},
-                    {"check": "覆盖率", "result": "❌" if coverage < 60 else "⚠️" if coverage < 80 else "✅",
-                     "detail": f"{coverage:.1f}%"}
-                ],
-                "_raw": {"dead_code_files": dead_files},
-            }
-        except Exception:
-            return {"status": "unavailable", "score": 0}
-
-    async def _check_doctor():
-        """Run doctor report aggregation."""
-        try:
-            import sqlite3
-            from core.harness.kernel.runtime import get_kernel_runtime
-            rt = get_kernel_runtime()
-            store = getattr(rt, "execution_store", None) if rt else None
-            items: List[Dict[str, Any]] = []
-            if store:
-                conn = sqlite3.connect(store._config.db_path)
-                try:
-                    adapters = conn.execute("SELECT COUNT(*) FROM adapters WHERE status='active'").fetchone()[0]
-                    items.append({"check": "Active Adapters", "result": "✅" if adapters > 0 else "⚠️", "detail": f"{adapters} active"})
-                finally:
-                    conn.close()
-            score = 100 if items and all(i["result"] == "✅" for i in items) else 80
-            return {"status": "pass" if score >= 80 else "warn", "score": score,
-                    "signals": {"adapters_ok": len([i for i in items if i["result"] == "✅"])},
-                    "items": items}
-        except Exception:
-            return {"status": "unavailable", "score": 0}
-
-    async def _check_lsp():
-        """Run pyright type-checking on core Python files. Cached 120s."""
-        global _LSP_CACHE, _LSP_CACHE_TS
-        if _LSP_CACHE is not None and time.time() - _LSP_CACHE_TS < 120:
-            return _LSP_CACHE
-        try:
-            import subprocess, json
-            cwd = os.getcwd()
-            config = os.path.join(cwd, "aiPlat-core", "pyrightconfig.json")
-            cmd = ["npx", "pyright", "--outputjson"]
-            if os.path.exists(config):
-                cmd += ["--project", config]
-            else:
-                cmd += ["aiPlat-core/core/harness", "aiPlat-core/core/api", "aiPlat-core/core/apps"]
-            result = subprocess.run(
-                cmd, capture_output=True, text=True, timeout=120, cwd=cwd
-            )
-            issues = []
-            if result.stdout.strip():
-                try:
-                    data = json.loads(result.stdout)
-                    diagnostics = data.get("generalDiagnostics", [])
-                    for d in diagnostics[:100]:
-                        rng = d.get("range", {}).get("start", {})
-                        issues.append({
-                            "file": d.get("file", ""),
-                            "line": rng.get("line", 0) + 1,
-                            "column": rng.get("character", 0),
-                            "message": d.get("message", "")[:200],
-                            "rule": d.get("rule", ""),
-                            "severity": "error" if d.get("severity") == "error" else "warn",
-                        })
-                except (json.JSONDecodeError, KeyError):
-                    issues.append({"file": "pyright", "line": 0, "message": "Could not parse output", "severity": "warn", "rule": ""})
-            elif "npx" in (result.stderr or "").lower() or "not found" in (result.stderr or ""):
-                _LSP_CACHE = {"status": "unavailable", "score": 100, "signals": {"note": "pyright not found (run: npm i -g pyright)"}}
-                _LSP_CACHE_TS = time.time()
-                return _LSP_CACHE
-            errors = [i for i in issues if i["severity"] == "error"]
-            warns = [i for i in issues if i["severity"] == "warn"]
-            score = 100 if len(issues) == 0 else max(0, 100 - len(errors) * 5 - len(warns) * 1)
-            result_dict = {
-                "status": "pass" if score >= 80 else "warn",
-                "score": score,
-                "signals": {"errors": len(errors), "warnings": len(warns)},
-                "items": [{"check": f"{i['file'].split('/')[-1] if '/' in i['file'] else i['file']}:{i['line']}",
-                           "result": "❌" if i['severity'] == 'error' else "⚠️",
-                           "detail": f"[{i['rule']}] {i['message'][:100]}"} for i in issues[:20]],
-                "_raw": {"issues": issues},
-            }
-            _LSP_CACHE = result_dict
-            _LSP_CACHE_TS = time.time()
-            return result_dict
-        except FileNotFoundError:
-            return {"status": "unavailable", "score": 100, "signals": {"note": "pyright not installed"}}
-        except Exception:
-            return {"status": "unavailable", "score": 0}
-
-    async def _check_security():
-        """Run bandit security scanner on core Python files. Cached 120s."""
-        global _SEC_CACHE, _SEC_CACHE_TS
-        if _SEC_CACHE is not None and time.time() - _SEC_CACHE_TS < 120:
-            return _SEC_CACHE
-        try:
-            import subprocess, json, os
-            core_dir = os.path.join(os.getcwd(), "aiPlat-core")
-            if not os.path.isdir(core_dir):
-                core_dir = os.getcwd()
-            result = subprocess.run(
-                [sys.executable, "-m", "bandit", "-r", "-f", "json", "-ll",
-                 "--exclude", "tests,__pycache__,.git", core_dir],
-                capture_output=True, text=True, timeout=60, cwd=os.getcwd()
-            )
-            issues = []
-            if result.stdout.strip():
-                try:
-                    data = json.loads(result.stdout)
-                    results_list = data.get("results", [])
-                    for issue in results_list[:30]:
-                        fname = issue.get("filename", "")
-                        issues.append({
-                            "file": str(fname).split("/")[-1] if fname else "?",
-                            "line": issue.get("line_number", 0),
-                            "message": str(issue.get("issue_text", ""))[:120],
-                            "severity": issue.get("issue_severity", "low"),
-                            "confidence": issue.get("issue_confidence", "low"),
-                        })
-                except (json.JSONDecodeError, AttributeError):
-                    issues.append({"file": "bandit", "line": 0, "message": "Parse error", "severity": "warn"})
-            elif "command not found" in result.stderr or "No module named bandit" in result.stderr:
-                _SEC_CACHE = {"status": "unavailable", "score": 100, "signals": {"note": "bandit not installed"}}
-                _SEC_CACHE_TS = time.time()
-                return _SEC_CACHE
-            score = 100 if len(issues) == 0 else max(0, 100 - len(issues) * 3)
-            result_dict = {
-                "status": "pass" if score >= 80 else "warn",
-                "score": score,
-                "signals": {"issues": len(issues)},
-                "items": [{"check": f"{i['file']}:{i['line']}", "result": "⚠️",
-                           "detail": f"[{i['severity']}] {i['message'][:100]}"} for i in issues[:15]],
-            }
-            _SEC_CACHE = result_dict
-            _SEC_CACHE_TS = time.time()
-            return result_dict
-        except FileNotFoundError:
-            return {"status": "unavailable", "score": 100, "signals": {"note": "bandit not installed"}}
-        except Exception:
-            return {"status": "unavailable", "score": 0}
-
-    async def _check_governance():
-        """
-        治理健康度检查 — delegates to shared overview._scan_governance().
-        """
-        try:
-            from core.api.routers.overview import _scan_governance
-            gov = await _scan_governance()
-        except Exception:
-            return {"status": "unavailable", "score": 0}
-
-        total_entities = gov["total"]
-        governed = gov["governed"]
-        unsigned_count = gov["unsigned"]
-        no_manifest_count = gov["no_manifest"]
-        has_trusted_keys = gov["has_trusted_keys"]
-        score = gov["score"]
-
-        status = "pass" if score >= 80 else ("warn" if score >= 50 else "fail")
+        scores = [r.score for _, r in reports]
+        avg_score = sum(scores) / len(scores) if scores else 100
+        total_issues = sum(r.issue_count for _, r in reports)
+        p0_total = sum(r.p0_count for _, r in reports)
+        p1_total = sum(r.p1_count for _, r in reports)
 
         items = []
-        if no_manifest_count:
-            items.append({"check": "无溯源码", "result": "❌", "detail": f"{no_manifest_count} 个实体缺少 manifest.json"})
-        if unsigned_count:
-            items.append({"check": "未签名", "result": "⚠️", "detail": f"{unsigned_count} 个有 manifest 但无签名"})
-        if not has_trusted_keys and (no_manifest_count > 0 or unsigned_count > 0):
-            items.append({"check": "未配置可信公钥", "result": "⚠️", "detail": "trusted_skill_pubkeys 为空，无法验签"})
-        if not items:
-            items.append({"check": "治理", "result": "✅", "detail": f"所有 {total_entities} 个实体均已治理"})
+        for file_path, r in reports:
+            sev = "❌" if r.p0_count > 0 else ("⚠️" if r.p1_count > 2 else "✅")
+            items.append({"check": file_path.split("/")[-1],
+                          "result": sev,
+                          "detail": f"score={r.score}, P0={r.p0_count}, P1={r.p1_count}, P2={r.p2_count}"})
 
-        return {
-            "status": status, "score": score,
+        result = {
+            "status": "pass" if avg_score >= 80 else "warn",
+            "score": round(avg_score),
             "signals": {
-                "total": total_entities, "governed": governed,
-                "ungoverned": unsigned_count + no_manifest_count,
-                "no_manifest": no_manifest_count, "unsigned": unsigned_count,
-                "has_trusted_keys": has_trusted_keys,
+                "files_reviewed": len(reports),
+                "total_issues": total_issues,
+                "p0_count": p0_total,
+                "p1_count": p1_total,
+                "avg_score": round(avg_score, 1),
             },
             "items": items,
+            "_autoreview": await _get_autoreview_summary(),
         }
-
-    async def _check_frontend():
-        """§43+§44: Frontend proxy routing + API contract consistency."""
-        from pathlib import Path as _P
-        try:
-            repo_root = _P(__file__).resolve().parents[4]
-            vite_config = repo_root / "aiPlat-management" / "frontend" / "vite.config.ts"
-            items = []
-
-            if vite_config.exists():
-                import re, subprocess as _sp
-                content = (await _asyncio.to_thread(lambda: vite_config.read_text(encoding="utf-8")))
-                proxy_entries = re.findall(
-                    r"'([^']+)'\s*:\s*\{[^}]*?target:\s*'([^']+)'[^}]*\}",
-                    content, re.DOTALL
-                )
-                # Check catch-all proxy
-                for pattern, target in proxy_entries:
-                    port_match = re.search(r':(\d+)$', target)
-                    if not port_match:
-                        continue
-                    port = port_match.group(1)
-                    if pattern == "/api/core" and port != "8002":
-                        items.append({"check": "Vite 代理错配", "result": "❌",
-                                      "detail": f"/api/core → port {port} (应为 8002)"})
-                    if pattern.startswith("/api/core/workspace/") and port == "8000":
-                        items.append({"check": "Workspace 代理错配", "result": "❌",
-                                      "detail": f"'{pattern}' → port 8000"})
-
-                # Cross-language contract: args vs arguments
-                ts_file = repo_root / "aiPlat-management/frontend/src/pages/Workspace/MCP/MCP.tsx"
-                py_file = repo_root / "aiPlat-core/core/api/routers/mcp_admin.py"
-                if ts_file.exists() and py_file.exists():
-                    ts_body = (await _asyncio.to_thread(lambda: ts_file.read_text(encoding="utf-8")))
-                    py_body = (await _asyncio.to_thread(lambda: py_file.read_text(encoding="utf-8")))
-                    if re.search(r'"args"\s*:\s*\{', ts_body) and not re.search(r'data\.get\("args"\)', py_body):
-                        items.append({"check": "API 契约不匹配", "result": "❌",
-                                      "detail": "前端传 'args', 后端读 'arguments' — mcp_admin.py"})
-
-            score = 100 if not items else max(0, 100 - len(items) * 20)
-            return {
-                "status": "pass" if not items else "warn" if len(items) <= 2 else "fail",
-                "score": score,
-                "items": items,
-                "_raw": {"items": items},
-            }
-        except Exception as e:
-            return {"status": "error", "score": 0, "error": str(e)[:200]}
-
-    async def _check_llm_review():
-        """LLM 深度审查 — 对大文件和核心模块进行 reasoning 模型审查。
-        
-        仅在完整模式下运行（quick 模式跳过）。
-        选取 >500 行的大文件 + 最近有修改的核心模块。
-        每文件调用 review_file()，结果聚合评分。
-        """
-        import os as _os, logging as _log
-        try:
-            from core.engine.skills.autoreview.handler import review_file, MAX_FILE_CHARS
-
-            # ── 选择审查目标 ──
-            targets = _select_llm_review_targets()
-            if not targets:
-                return {"status": "pass", "score": 100, "signals": {"files_reviewed": 0},
-                        "items": [{"check": "LLM审查", "result": "—", "detail": "无符合条件的目标文件"}]}
-
-            reports = []
-            for file_path, lines in targets:
-                try:
-                    with open(file_path) as f:
-                        content = f.read()
-                    report = await review_file(content, file_path, focus="comprehensive",
-                                                max_chars=MAX_FILE_CHARS)
-                    reports.append((file_path, report))
-                except Exception as e:
-                    _log.warning("LLM review skipped %s: %s", file_path, e)
-
-            if not reports:
-                return {"status": "pass", "score": 100, "signals": {"files_reviewed": 0}}
-
-            # ── 聚合评分 ──
-            scores = [r.score for _, r in reports]
-            avg_score = sum(scores) / len(scores) if scores else 100
-            total_issues = sum(r.issue_count for _, r in reports)
-            p0_total = sum(r.p0_count for _, r in reports)
-            p1_total = sum(r.p1_count for _, r in reports)
-
-            items = []
-            for file_path, r in reports:
-                sev = "❌" if r.p0_count > 0 else ("⚠️" if r.p1_count > 2 else "✅")
-                items.append({"check": file_path.split("/")[-1],
-                              "result": sev,
-                              "detail": f"score={r.score}, P0={r.p0_count}, P1={r.p1_count}, P2={r.p2_count}"})
-
-            return {
-                "status": "pass" if avg_score >= 80 else "warn",
-                "score": round(avg_score),
-                "signals": {
-                    "files_reviewed": len(reports),
-                    "total_issues": total_issues,
-                    "p0_count": p0_total,
-                    "p1_count": p1_total,
-                    "avg_score": round(avg_score, 1),
-                },
-                "items": items,
-                # v2.2: autoreview 历史摘要
-                "_autoreview": await _get_autoreview_summary(),
-            }
-        except Exception as e:
-            return {"status": "error", "score": 0, "error": str(e)[:200]}
-
-    async def _check_mcp():
-        """§45: MCP integration smoke test — probe MCP server connectivity."""
-        try:
-            import sys, json as _json
-            proc = await asyncio.create_subprocess_exec(
-                sys.executable, "-m", "core.apps.mcp.local_tools_server",
-                stdin=asyncio.subprocess.PIPE, stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE,
-            )
-            try:
-                # initialize
-                init_req = _json.dumps({"jsonrpc": "2.0", "id": 0, "method": "initialize",
-                    "params": {"protocolVersion": "2024-11-05", "capabilities": {"tools": {}},
-                    "clientInfo": {"name": "diag-smoke", "version": "1.0.0"}}}) + "\n"
-                proc.stdin.write(init_req.encode("utf-8"))
-                await proc.stdin.drain()
-                line = await asyncio.wait_for(proc.stdout.readline(), timeout=8)
-                init_resp = _json.loads(line.decode("utf-8"))
-                if "error" in init_resp or "result" not in init_resp:
-                    raise Exception(f"MCP initialize failed: {init_resp}")
-
-                # list tools
-                list_req = _json.dumps({"jsonrpc": "2.0", "id": 1, "method": "tools/list", "params": {}}) + "\n"
-                proc.stdin.write(list_req.encode("utf-8"))
-                await proc.stdin.drain()
-                line = await asyncio.wait_for(proc.stdout.readline(), timeout=8)
-                list_resp = _json.loads(line.decode("utf-8"))
-                tools = (list_resp.get("result") or {}).get("tools") or []
-                tool_names = [t.get("name", "") for t in tools]
-
-                # call test-1
-                call_req = _json.dumps({"jsonrpc": "2.0", "id": 2, "method": "tools/call",
-                    "params": {"name": "test-1", "arguments": {"num": 11}}}) + "\n"
-                proc.stdin.write(call_req.encode("utf-8"))
-                await proc.stdin.drain()
-                line = await asyncio.wait_for(proc.stdout.readline(), timeout=8)
-                call_resp = _json.loads(line.decode("utf-8"))
-
-                content = (call_resp.get("result") or {}).get("content", [])
-                text = content[0].get("text", "") if content else ""
-                result_val = _json.loads(text).get("result") if text else None
-                ok = result_val == 121
-
-                return {
-                    "status": "pass" if ok else "fail",
-                    "score": 100 if ok else 0,
-                    "signals": {
-                        "tools_count": len(tools),
-                        "tools": tool_names[:10],
-                        "test_result": result_val,
-                    },
-                    "items": [{"check": "MCP 连通性", "result": "✅" if ok else "❌",
-                               "detail": f"tools={len(tools)}, test-1(11)={'121' if ok else str(result_val)}"}],
-                    "_raw": {"tools": tool_names, "test_result": result_val},
-                }
-            finally:
-                try:
-                    proc.terminate()
-                    await asyncio.wait_for(proc.wait(), timeout=3)
-                except Exception as e:
-                    logging.warning(str(e), exc_info=True)
-        except Exception as e:
-            return {"status": "error", "score": 0, "error": str(e)[:200],
-                    "items": [{"check": "MCP 连通性", "result": "❌",
-                               "detail": f"不可达: {str(e)[:200]}"}]}
-
-    async def _check_full_stack():
-        """Full-stack E2E: Spec lifecycle → Task → Trace → Radar → Dashboard → MarkStable.
-
-        Tests the complete journey from Spec DRAFT through execution to STABLE,
-        verifying that all three Andrew Ng loops (inner/middle/outer) are wired.
-        Uses mock LLM responses — no real LLM calls.
-        """
-        import uuid, time as _time, json as _json
-        run_id = f"diag-{uuid.uuid4().hex[:8]}"
-        items: List[Dict[str, Any]] = []
-        score = 0
-        max_score = 14
-
-        try:
-            from core.harness.models.spec_lifecycle import get_spec_lifecycle, SpecStatus
-            sl = get_spec_lifecycle()
-
-            # J1: Spec creation → execution → review
-            spec_id = "_diag_fullstack"
-            # Clean up previous diagnostic run to prevent dashboard pollution
-            existing = sl.get_latest(spec_id)
-            if existing:
-                try:
-                    sl.mark_archived(spec_id)
-                except Exception:
-                    pass
-            sv = sl.create_draft(spec_id, {"agent_md": "诊断全域测试 Spec"}, created_by="diagnostics",
-                                   trigger_detail="Full-stack diagnostic")
-            if sv and sv.status == SpecStatus.DRAFT:
-                items.append({"check": "J1A Spec 创建", "result": "✅", "detail": f"{spec_id} v{sv.version} DRAFT"})
-                score += 1
-            else:
-                items.append({"check": "J1A Spec 创建", "result": "❌", "detail": "创建失败",
-                               "suggested_fix": "检查 spec_lifecycle.db 是否可写，SpecLifecycle 单例是否正常"})
-
-            # Promote → PENDING → EXECUTING → REVIEW
-            sl.promote_to_pending(spec_id)
-            v = sl.get_latest(spec_id)
-            if v and v.status == SpecStatus.PENDING:
-                items.append({"check": "J1B PENDING", "result": "✅", "detail": f"v{v.version} PENDING"})
-                score += 1
-            else:
-                items.append({"check": "J1B PENDING", "result": "❌", "detail": f"status={v.status.value if v else 'nil'}",
-                               "suggested_fix": "检查 SpecLifecycle.promote_to_pending() 的状态转换逻辑"})
-
-            sl.mark_executing(spec_id, run_id)
-            v = sl.get_latest(spec_id)
-            if v and v.status == SpecStatus.EXECUTING:
-                items.append({"check": "J1C EXECUTING", "result": "✅", "detail": f"run={run_id}"})
-                score += 1
-            else:
-                items.append({"check": "J1C EXECUTING", "result": "❌", "detail": f"status={v.status.value if v else 'nil'}",
-                               "suggested_fix": "检查 SpecLifecycle.mark_executing() 的状态转换逻辑"})
-
-            # Simulate trace data exactly like production
-            sim_trace = [
-                {"step": 1, "agent": "employee_agent", "reasoning": "开始执行诊断任务", "decision": "call_agent", "outcome": "ok"},
-                {"step": 2, "agent": "employee_agent", "reasoning": "执行核心逻辑", "decision": "call_agent", "outcome": "ok"},
-                {"step": 3, "agent": "employee_agent", "reasoning": "生成输出", "decision": "call_agent", "outcome": "ok"},
-                {"step": 4, "agent": "", "reasoning": "任务完成", "decision": "finish", "outcome": "ok"},
-            ]
-            sl.mark_review(spec_id, sv.version, run_id=run_id,
-                           result={"summary": "诊断测试完成", "trace": sim_trace,
-                                   "agent_order": ["employee_agent"] * 3})
-            v = sl.get_latest(spec_id)
-            if v and v.status == SpecStatus.REVIEW:
-                items.append({"check": "J1D REVIEW", "result": "✅", "detail": f"trace={len(sim_trace)} steps"})
-                score += 1
-            else:
-                items.append({"check": "J1D REVIEW", "result": "❌", "detail": f"status={v.status.value if v else 'nil'}",
-                               "suggested_fix": "检查 SpecLifecycle.mark_review() 是否正确写入 trace 数据"})
-
-            # J2: Knowledge pipeline — ontology → wiki → document
-            try:
-                from core.harness.ontology_engine.engine import OntologyEngine
-                if OntologyEngine:
-                    items.append({"check": "J2A 本体引擎", "result": "✅", "detail": f"OntologyEngine 可导入"})
-                    score += 1
-                else:
-                    items.append({"check": "J2A 本体引擎", "result": "❌", "detail": "导入失败"})
-            except Exception as e:
-                items.append({"check": "J2A 本体引擎", "result": "❌", "detail": str(e)[:80],
-                               "suggested_fix": "检查 ontology_engine/ 模块和本体 YAML 文件是否存在"})
-
-            try:
-                from core.harness.knowledge.wiki_engine import wiki_health_report
-                if callable(wiki_health_report):
-                    items.append({"check": "J2B Wiki引擎", "result": "✅", "detail": f"wiki_health_report 可用"})
-                    score += 1
-                else:
-                    items.append({"check": "J2B Wiki引擎", "result": "❌", "detail": "不可调用"})
-            except Exception as e:
-                items.append({"check": "J2B Wiki引擎", "result": "❌", "detail": str(e)[:80],
-                               "suggested_fix": "检查知识库目录和 wiki_engine 模块配置"})
-
-            try:
-                from core.harness.document.protocol import ConverterRegistry
-                if ConverterRegistry:
-                    items.append({"check": "J2C 文档解析", "result": "✅", "detail": f"ConverterRegistry 可导入"})
-                    score += 1
-                else:
-                    items.append({"check": "J2C 文档解析", "result": "❌", "detail": "导入失败"})
-            except Exception as e:
-                items.append({"check": "J2C 文档解析", "result": "❌", "detail": str(e)[:80],
-                               "suggested_fix": "检查 document/converters/ 模块是否正确注册"})
-
-            # J2D/E: Swarm + Roundtable (new collaboration modes)
-            try:
-                from core.harness.execution.swarm import run_swarm
-                if run_swarm:
-                    items.append({"check": "J2D Swarm模式", "result": "✅", "detail": f"run_swarm 可导入"})
-                    score += 1
-                else:
-                    items.append({"check": "J2D Swarm模式", "result": "❌", "detail": "导入失败"})
-            except Exception as e:
-                items.append({"check": "J2D Swarm模式", "result": "❌", "detail": str(e)[:80],
-                               "suggested_fix": "检查 harness/execution/swarm.py 是否存在"})
-
-            try:
-                from core.harness.execution.roundtable import run_roundtable
-                if run_roundtable:
-                    items.append({"check": "J2E Roundtable模式", "result": "✅", "detail": f"run_roundtable 可导入"})
-                    score += 1
-                else:
-                    items.append({"check": "J2E Roundtable模式", "result": "❌", "detail": "导入失败"})
-            except Exception as e:
-                items.append({"check": "J2E Roundtable模式", "result": "❌", "detail": str(e)[:80],
-                               "suggested_fix": "检查 harness/execution/roundtable.py 是否存在"})
-
-            # J3/J5: TraceVisualizer
-            try:
-                from core.harness.execution.trace_visualizer import get_trace_visualizer
-                viz = get_trace_visualizer()
-                result = v.execution_result or {}
-                trace_data = result.get("trace", [])
-                summary = viz.analyze(trace_data, spec_id=spec_id, stage_count=1)
-                if summary.total_steps == 4 and summary.agent_call_order:
-                    items.append({"check": "J3A Trace 解析", "result": "✅", "detail": f"{summary.total_steps}步, {len(summary.agent_call_order)} agents"})
-                    score += 1
-                else:
-                    items.append({"check": "J3A Trace 解析", "result": "❌", "detail": f"steps={summary.total_steps}",
-                                   "suggested_fix": "检查 DynamicRouter._persist_dynamic_trace() 是否正确保存 trace"})
-            except Exception as e:
-                items.append({"check": "J3A Trace 解析", "result": "❌", "detail": str(e)[:80],
-                               "suggested_fix": "检查 TraceVisualizer.analyze() 是否正确导入"})
-
-            # J5A: Dashboard aggregation
-            try:
-                # Inline _collect_pending_decisions to avoid cross-router import
-                active = sl.get_all_active()
-                decisions_count = sum(1 for sv in active if sv.status == SpecStatus.REVIEW)
-                found_self = any(sv.spec_id == spec_id for sv in active if sv.status == SpecStatus.REVIEW)
-                if found_self:
-                    items.append({"check": "J5A 仪表板聚合", "result": "✅", "detail": f"pending={decisions_count}"})
-                    score += 1
-                else:
-                    items.append({"check": "J5A 仪表板聚合", "result": "⚠️", "detail": "未在 pending 中找到",
-                                   "suggested_fix": "检查 get_all_active() 是否包含 REVIEW 状态的 Spec"})
-            except Exception as e:
-                items.append({"check": "J5A 仪表板聚合", "result": "❌", "detail": str(e)[:80],
-                               "suggested_fix": "检查 SpecLifecycle.get_all_active() 的 SQL 查询"})
-
-            # J3B/J5B: Mark → STABLE
-            sl.mark_stable(spec_id)
-            v = sl.get_latest(spec_id)
-            if v and v.status == SpecStatus.STABLE:
-                items.append({"check": "J3B Spec→STABLE", "result": "✅", "detail": f"v{v.version} STABLE"})
-                score += 1
-            else:
-                items.append({"check": "J3B Spec→STABLE", "result": "❌", "detail": f"status={v.status.value if v else 'nil'}",
-                               "suggested_fix": "检查 SpecLifecycle.mark_stable() 状态转换: 只有 REVIEW 状态可转为 STABLE"})
-
-            # J4: Training monitor
-            try:
-                from core.harness.training.auto_trigger import get_lora_auto_trigger
-                trigger = get_lora_auto_trigger()
-                status = trigger.get_status()
-                if isinstance(status, dict) and "threshold" in status:
-                    items.append({"check": "J4A 训练监控", "result": "✅", "detail": f"q={status['quality_count']}/{status['threshold']}"})
-                    score += 1
-                else:
-                    items.append({"check": "J4A 训练监控", "result": "⚠️", "detail": "状态不可读",
-                                   "suggested_fix": "检查 LoRAAutoTrigger.get_status() 是否正确返回 dict"})
-            except Exception as e:
-                items.append({"check": "J4A 训练监控", "result": "❌", "detail": str(e)[:80],
-                               "suggested_fix": "检查 auto_trigger.py 模块是否可导入"})
-
-            # J5C: Timeline — inlined from workbench._collect_timeline
-            try:
-                history = sl.get_history(spec_id)
-                timeline_entries = [h for h in history if h.status.value != "draft"]
-                items.append({"check": "J5C 时间轴", "result": "✅", "detail": f"{len(timeline_entries)} 个版本事件"})
-                score += 1
-            except Exception as e:
-                items.append({"check": "J5C 时间轴", "result": "⚠️", "detail": str(e)[:80],
-                               "suggested_fix": "检查 SpecLifecycle.get_history() 是否正确返回版本记录"})
-
-            # Clean up: archive the test spec to keep dashboard clean
-            try:
-                sl.mark_archived(spec_id)
-            except Exception:
-                pass
-
-            status_str = "pass" if score >= 12 else "warn" if score >= 8 else "fail"
-            return {
-                "status": status_str,
-                "score": round(score / max_score * 100),
-                "signals": {"spec_id": spec_id, "run_id": run_id},
-                "items": items,
-            }
-        except Exception as e:
-            return {"status": "error", "score": 0, "error": str(e)[:200],
-                    "items": items + [{"check": "全域测试", "result": "❌", "detail": f"异常: {str(e)[:150]}"}]}
-
-    # Build check list: all or single category
-    checks = [
-        ("core_runtime", _check_core_runtime()),
-        ("code_intel", _check_code_intel()),
-        ("cross_lang", _check_cross_lang_links()),
-        ("route_coverage", _check_route_coverage()),
-        ("domain_coupling", _check_domain_coupling()),
-        ("fragile_base", _check_fragile_base()),
-        ("capability", _check_capability()),
-        ("skill_lint", _check_skill_lint()),
-        ("skill_realness", _check_skill_realness()),
-        ("wiki_health", _check_wiki_health()),
-        ("compliance", _check_compliance()),
-        ("overview_issues", _check_overview_issues()),
-        ("traces", _check_traces()),
-        ("graph_runs", _check_graph_runs()),
-        ("context_metrics", _check_context_metrics()),
-        ("governance", _check_governance()),
-        ("frontend", _check_frontend()),
-        ("full_stack", _check_full_stack()),
-        ("llm_review", _check_llm_review()),
-    ]
-    # Slow checks — skipped in quick mode
-    if not quick:
-        checks.extend([
-            ("e2e_smoke", _check_e2e_smoke()),
-            ("symbol_health", _check_symbol_health()),
-            ("doctor", _check_doctor()),
-            ("lsp", _check_lsp()),
-            ("security", _check_security()),
-            ("arch_guard", _check_arch_guard()),
-            ("mcp", _check_mcp()),
-        ])
-    if category:
-        checks = [c for c in checks if c[0] == category]
-    await asyncio.gather(*(_safe(name, coro) for name, coro in checks))
-
-    # If arch_guard was not run standalone, extract from compliance as fallback
-    if "arch_guard" not in categories:
-        compliance_cat = categories.get("compliance", {})
-        if isinstance(compliance_cat, dict) and "items" in compliance_cat:
-            for item in compliance_cat.get("items", []):
-                if item.get("check") == "架构守卫" and "violations" in item.get("detail", ""):
-                    import re as _re
-                    v_match = _re.search(r'(\d+)', item.get("detail", "0"))
-                    violations = int(v_match.group(1)) if v_match else 0
-                    categories["arch_guard"] = {
-                        "status": "pass" if violations == 0 else "fail",
-                        "score": max(0, 100 - violations),
-                        "violations": violations,
-                        "items": [{"check": "架构守卫", "result": "❌" if violations > 0 else "✅",
-                                   "detail": f"{violations} 处违规"}],
-                    }
-                    break
-
-    # Compute overall score
-    scores = [c.get("score", 0) for c in categories.values() if isinstance(c, dict)]
-    overall = round(sum(scores) / len(scores), 1) if scores else 0
-    if overall >= 90: grade = "A"
-    elif overall >= 75: grade = "B"
-    elif overall >= 60: grade = "C"
-    elif overall >= 40: grade = "D"
-    else: grade = "F"
-
-    # Collect top issues (exclude arch_guard from score-based list — use violations)
-    _labels = {
-        "core_runtime": "Core 运行时", "code_intel": "代码架构", "capability": "能力图谱",
-    "wiki_health": "Wiki健康", "arch_guard": "架构守卫", "compliance": "合规审计",
-    "llm_review": "LLM审查",
-        "traces": "链路追踪", "graph_runs": "图执行", "context_metrics": "上下文",
-        "e2e_smoke": "冒烟测试", "doctor": "Doctor", "overview_issues": "概览问题",
-        "symbol_health": "符号健康", "lsp": "LSP 诊断", "security": "安全扫描",
-    "cross_lang": "跨语言连接", "route_coverage": "路由覆盖",
-    "domain_coupling": "跨域耦合", "fragile_base": "脆弱基类",
-        "governance": "治理", "skill_lint": "Skill Lint",
-        "frontend": "前端守卫", "mcp": "MCP 连通性",
-        "full_stack": "全域测试",
-    }
-    for cat_name, cat in categories.items():
-        if not isinstance(cat, dict):
-            continue
-        if cat_name == "arch_guard" and cat.get("violations", 0) > 0:
-            issues.append({"category": "arch_guard", "score": 0, "status": "fail",
-                           "label": f"架构守卫({cat['violations']}违规)"})
-        elif cat.get("status") not in ("pass", "unavailable") and cat.get("score", 100) < 100:
-            label = _labels.get(cat_name, cat_name)
-            issues.append({"category": cat_name, "score": cat.get("score", 0), "status": cat.get("status"),
-                           "label": f"{label}({cat.get('score', 0)})"})
-
-    duration_ms = int((time.time() - started_at) * 1000)
-
-    # ── Cache for repairs fast path ──────────────────────────────
-    # Extract _raw detail from each category for repair center
-    _details = {}
-    for cat_name, cat in categories.items():
-        if isinstance(cat, dict) and "_raw" in cat:
-            _details[cat_name] = cat.pop("_raw")
-            if cat_name == "skill_lint":
-                _details["skill_lint"]["auto_fix_total"] = _details["skill_lint"].get("auto_fix_total", 0)
-
-    # Also extract arch_guard _raw details for repair center
-    try:
-        ag_raw = await _check_arch_guard()
-        if isinstance(ag_raw, dict) and "_raw" in ag_raw:
-            _details["arch_guard"] = ag_raw["_raw"]
+        if run_id:
+            _llm_sync_progress(run_id, status="done", files_done=done_count, files_total=total,
+                               score=result["score"], p0_count=p0_total, p1_count=p1_total,
+                               results=done_results)
+        return result
     except Exception as e:
-        logging.warning(str(e), exc_info=True)
-
-    result = {
-        "run_id": run_id,
-        "started_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(started_at)),
-        "duration_ms": duration_ms,
-        "overall_score": overall,
-        "overall_grade": grade,
-        "categories": categories,
-        "top_issues": sorted(issues, key=lambda x: x["score"])[:5],
-        "pass": sum(1 for c in categories.values() if isinstance(c, dict) and c.get("status") == "pass"),
-        "warn": sum(1 for c in categories.values() if isinstance(c, dict) and c.get("status") == "warn"),
-        "fail": sum(1 for c in categories.values() if isinstance(c, dict) and c.get("status") == "fail"),
-    }
-    if _details:
-        result["_details"] = _details
-
-    # Fire-and-forget: auto-fill shell agents detected during compliance check
-    try:
-        shell_agents = _details.get("compliance", {}).get("shell_agents", [])
-        if shell_agents:
-            names = [a.split(":", 1)[1] if ":" in a else a for a in shell_agents]
-            asyncio.create_task(_auto_fill_agents_async(names))
-    except Exception as e:
-        logging.warning(str(e), exc_info=True)
-
-    # Append to diagnostic history for trend chart
-    _append_diag_history(result)
-
-    global _DIAG_CACHE, _DIAG_CACHE_TS
-    _DIAG_CACHE = result
-    _DIAG_CACHE_TS = time.time()
-    _save_diag_cache()
-    # Also invalidate overview cache so it stays consistent
-    try:
-        import core.api.routers.overview as _ov_mod
-        _ov_mod._OV_CACHE = None
-    except Exception as e:
-        logging.warning(str(e), exc_info=True)
-    _publish("diagnostics_complete", overall_score=overall, overall_grade=grade)
-    return result
+        if run_id:
+            _llm_sync_progress(run_id, status="error")
+        return {"status": "error", "score": 0, "error": str(e)[:200]}
 
 
-@router.post("/diagnostics/run-single", response_model=Dict[str, Any])
-async def run_single_diagnostics(req: dict):
-    """Run a single diagnostic category and return its result with real-time observation."""
-    category = req.get("category", "")
-    if not category:
-        raise HTTPException(status_code=400, detail="category is required")
-    # Reuse run_all_diagnostics with category filter
-    return await run_all_diagnostics(category=category)
+# ── LLM审查 with SQLite progress tracking ──
 
-
-@router.post("/diagnostics/repairs", response_model=Dict[str, Any])
-async def get_repairs():
-    """Aggregate all fixable issues across diagnostic systems.
-
-    Uses cached run-all results when fresh (30s TTL), avoiding re-scan.
-    Heavy systems (skill_lint, arch_guard, capability) skip rebuild when cache is hot.
+@router.post("/diagnostics/llm-review/start", response_model=Dict[str, Any])
+async def start_llm_review(
+    max_files: int = 15,
+    max_chars: int = 12000,
+    focus: str = "comprehensive",
+):
+    """启动异步 LLM审查 — 立即返回 run_id，进度写入 SQLite（跨 worker 共享）。
+    
+    ~150K tokens/次。审查在后台并行执行，每完成一个文件更新进度。
     """
-    from pathlib import Path as _P
+    import uuid, time
+    _llm_cleanup_old(max_keep=10)
+    run_id = f"llm-review-{uuid.uuid4().hex[:12]}"
+    _llm_sync_progress(run_id, status="running", files_done=0, files_total=0,
+                       current_file="", results="[]", created_at=time.time())
+    import asyncio as _async
+    _async.create_task(_run_llm_review(
+        max_files=max_files, max_chars=max_chars, focus=focus, run_id=run_id
+    ))
+    return {"run_id": run_id, "status": "started"}
 
-    repairs: List[Dict[str, Any]] = []
-    cache_hit = _DIAG_CACHE is not None
 
-    # Cold cache → auto-trigger quick diagnostics to populate, then aggregate
-    if not cache_hit:
-        try:
-            await run_all_diagnostics(quick=True)
-            cache_hit = _DIAG_CACHE is not None
-            if not cache_hit:
-                return {
-                    "repairs": [],
-                    "summary": {"total_systems": 0, "total_issues": 0, "needs_diagnostics": True},
-                }
-        except Exception:
-            return {
-                "repairs": [],
-                "summary": {"total_systems": 0, "total_issues": 0, "needs_diagnostics": True},
-            }
-
-    details = _DIAG_CACHE.get("_details", {})
-    if not details:
-        return {
-            "repairs": [],
-            "summary": {"total_systems": 0, "total_issues": 0, "needs_diagnostics": True},
-        }
-
-    # ── All repairs from cached _details (0ms, no re-scan) ──────────
-
-    # Skill Lint
-    sl = details.get("skill_lint")
-    if sl and sl.get("items"):
-        repairs.append({
-            "source": "skill_lint",
-            "title": f"{len(sl['items'])} 个 Skill · {sl.get('errors', 0)}E {sl.get('warnings', 0)}W",
-            "auto_fix_total": sl.get("auto_fix_total", 0),
-            "items": sl["items"],
+@router.get("/diagnostics/llm-review/status", response_model=Dict[str, Any])
+async def llm_review_status(run_id: str = ""):
+    """查询 LLM审查进度（读取 SQLite，所有 worker 可见）。
+    
+    Returns:
+        status: running | done | error | not_found
+        files_done, files_total, current_file (running)
+        score, p0_count, p1_count, results (done)
+    """
+    if not run_id:
+        return {"status": "not_found", "detail": "run_id required"}
+    import time
+    task = _llm_get_progress(run_id)
+    status = task.get("status", "not_found")
+    ts = task.get("created_at", 0)
+    elapsed = int(time.time() - ts) if ts else 0
+    resp = {"status": status, "elapsed_s": elapsed}
+    if status == "running":
+        resp.update({
+            "files_done": task.get("files_done", 0),
+            "files_total": task.get("files_total", 0),
+            "current": task.get("current_file", ""),
+            "results": task.get("results", []),
         })
-
-    # Shell Agents (from compliance._raw)
-    compliance_raw = details.get("compliance", {})
-    if compliance_raw and compliance_raw.get("shell_agents"):
-        shell_list = compliance_raw["shell_agents"]
-        repairs.append({
-            "source": "agent_shell",
-            "title": f"{len(shell_list)} 个空壳 Agent",
-            "detail": "无 system_prompt、无 skills、无 tools",
-            "can_auto_fill": True,
-            "items": [{"dir": a, "severity": "warn"} for a in shell_list],
+    elif status == "done":
+        resp.update({
+            "files_done": task.get("files_done", 0),
+            "files_total": task.get("files_total", 0),
+            "score": task.get("score", 0),
+            "p0": task.get("p0_count", 0),
+            "p1": task.get("p1_count", 0),
+            "results": task.get("results", []),
         })
-
-    # Wiki Health
-    wiki_raw = details.get("wiki_health", {})
-    if wiki_raw and wiki_raw.get("issues"):
-        repairs.append({
-            "source": "wiki_health",
-            "title": f"{len(wiki_raw['issues'])} 个 Wiki 问题",
-            "score": wiki_raw.get("score", 100),
-            "items": wiki_raw["issues"][:20],
-        })
-
-    # Capability
-    cap_raw = details.get("capability", {})
-    if cap_raw and cap_raw.get("issues"):
-        cap_issues = cap_raw["issues"]
-        items = []
-        for name in cap_issues.get("unused_skills", []):
-            items.append({"type": "unused_skill", "name": name, "suggestion": "绑定到至少一个 Agent"})
-        for name in cap_issues.get("orphan_agents", []):
-            items.append({"type": "orphan_agent", "name": name, "suggestion": "添加 skills 或 tools"})
-        for dup in cap_issues.get("entry_point_duplicates", []):
-            items.append({"type": "duplicate_entry", "name": dup.get("capability", ""), "detail": dup.get("detail", "")})
-        if items:
-            repairs.append({
-                "source": "capability",
-                "title": f"{len(items)} 个能力问题",
-                "score": cap_raw.get("score", 100),
-                "grade": cap_raw.get("grade", "?"),
-                "items": items[:20],
-            })
-
-    # Overview Issues
-    ov_raw = details.get("overview_issues", {})
-    if ov_raw and ov_raw.get("items"):
-        ov_items = [{"type": it["check"], "name": it["check"], "suggestion": it["detail"]}
-                     for it in ov_raw["items"]]
-        repairs.append({
-            "source": "overview",
-            "title": f"{len(ov_items)} 个概览发现的问题",
-            "items": ov_items,
-        })
-
-    # Governance
-    gov_raw = details.get("governance", {})
-    if gov_raw and gov_raw.get("items"):
-        gov_signals = gov_raw.get("signals", {})
-        gov_items = []
-        if gov_signals.get("no_manifest", 0) > 0:
-            gov_items.append({"type": "no_manifest", "name": "缺少溯源码", "suggestion": f"需为 {gov_signals['no_manifest']} 个实体创建 manifest.json。服务启动后进入 entities 管理页面签名即可自动生成", "severity": "warn"})
-        if gov_signals.get("unsigned", 0) > 0:
-            gov_items.append({"type": "unsigned", "name": "实体未签名", "suggestion": f"在管理页面中对 {gov_signals['unsigned']} 个实体粘贴私钥签名", "severity": "warn"})
-        if gov_signals.get("unverified", 0) > 0:
-            gov_items.append({"type": "unverified", "name": "签名验证失败", "suggestion": f"{gov_signals['unverified']} 个签名验证失败，检查是否篡改或公钥不匹配", "severity": "error"})
-        if gov_signals.get("missing_perms", 0) > 0:
-            gov_items.append({"type": "missing_perms", "name": "缺失权限声明", "suggestion": f"为 {gov_signals['missing_perms']} 个可执行 Skill 补全 SKILL.md 中的 permissions 声明", "severity": "warn"})
-        if not gov_signals.get("has_trusted_keys"):
-            gov_items.append({"type": "no_trusted_keys", "name": "未配置可信公钥", "suggestion": "在初始化向导中上传可信公钥，或在 Onboarding 页面生成密钥对并配置", "severity": "error"})
-        if gov_items:
-            repairs.append({
-                "source": "governance",
-                "title": f"{len(gov_items)} 个治理问题 · {gov_signals.get('governed', 0)}/{gov_signals.get('total', 0)} 已治理",
-                "score": gov_raw.get("score", 100),
-                "items": gov_items,
-            })
-
-    # Arch Guard
-    ag_raw = details.get("arch_guard", {})
-    if ag_raw and ag_raw.get("sections"):
-        ag_items = [{"type": "violation", "section": s["section"],
-                     "section_name": s["section_name"], "message": s["message"],
-                     "sample_file": s["sample_file"], "count": s.get("count", 0),
-                     "suggestion": s["sample_file"].split(":")[0] if s.get("sample_file") else ""}
-                    for s in ag_raw["sections"]]
-        repairs.append({
-            "source": "arch_guard",
-            "title": f"{len(ag_items)} 个架构违规需要修复",
-            "total_violations": ag_raw.get("violations", 0),
-            "items": ag_items,
-        })
-
-    # Dead code candidates (from symbol health)
-    sym_raw = details.get("symbol_health", {})
-    if sym_raw and sym_raw.get("dead_code_files"):
-        dc_items = [{"type": "dead_code", "file": f, "suggestion": "0 入度+有符号 → 可能已废弃，建议审查"}
-                     for f in sym_raw["dead_code_files"][:20]]
-        repairs.append({
-            "source": "dead_code",
-            "title": f"{len(sym_raw['dead_code_files'])} 个死代码候选",
-            "detail": "有函数/类定义但无任何文件导入",
-            "items": dc_items,
-        })
-
-    # ── LSP Fixable Issues ────────────────────────────────────────
-    lsp_raw = details.get("lsp", {})
-    if lsp_raw and lsp_raw.get("issues"):
-        fixable = [i for i in lsp_raw["issues"] if i["severity"] == "error"]
-        warns = [i for i in lsp_raw["issues"] if i["severity"] == "warn"]
-        if fixable:
-            repairs.append({
-                "source": "lsp",
-                "title": f"{len(fixable)} 个类型错误可修复 · {len(warns)} 个警告",
-                "detail": "pyright 诊断：类型不匹配/未定义变量/参数错误",
-                "can_auto_fix": True,
-                "items": [{
-                    "file": i["file"],
-                    "line": i["line"],
-                    "column": i.get("column", 0),
-                    "message": i["message"],
-                    "rule": i.get("rule", ""),
-                    "severity": i["severity"],
-                } for i in fixable],
-                "warning_items": warns,
-            })
-
-    # ── Summary ────────────────────────────────────────────────────
-    total = 0
-    auto = 0
-    for r in repairs:
-        items = r.get("items", [])
-        total += len(items)
-        if r["source"] == "skill_lint":
-            auto += r.get("auto_fix_total", 0)
-        elif r.get("can_auto_fill"):
-            auto += len(items)
-
-    return {
-        "repairs": repairs,
-        "summary": {
-            "total_systems": len(repairs),
-            "total_issues": total,
-            "auto_fixable": auto,
-        },
-    }
+    elif status == "error":
+        resp["error"] = task.get("error", "unknown error")
+    return resp
 
 
-@router.get("/diagnostics/observability/stats", response_model=Dict[str, Any])
-async def observability_stats():
-    """Aggregated observability stats for the dashboard."""
-    import sqlite3
-    from core.services.execution_store import get_execution_store
-    store = get_execution_store()
-    db_path = store._config.db_path  # type: ignore
+# Keep synchronous endpoint for backward compatibility
+@router.post("/diagnostics/llm-review", response_model=Dict[str, Any])
+async def run_llm_review_sync(
+    max_files: int = 15,
+    max_chars: int = 12000,
+    focus: str = "comprehensive",
+):
+    """同步 LLM审查（兼容旧调用）"""
+    return await _run_llm_review(max_files=max_files, max_chars=max_chars, focus=focus)
 
-    def _query(sql, params=()):
-        conn = sqlite3.connect(db_path)
+
+@router.get("/diagnostics/llm-review/history", response_model=Dict[str, Any])
+async def llm_review_history(limit: int = 10):
+    """列出最近 N 次 LLM审查历史记录（从 SQLite 读取）。"""
+    import time, json
+    conn = _llm_get_db()
+    try:
         conn.row_factory = sqlite3.Row
-        try:
-            return [dict(r) for r in conn.execute(sql, params).fetchall()]
-        finally:
-            conn.close()
-
-    result = {}
-
-    # LLM call stats (last 24h)
-    rows = _query("""
-        SELECT
-            COUNT(*) as total_calls,
-            COUNT(CASE WHEN status='success' THEN 1 END) as ok,
-            COUNT(CASE WHEN status='failed' THEN 1 END) as error,
-            COALESCE(AVG(duration_ms), 0) as avg_latency,
-            COALESCE(MAX(duration_ms), 0) as max_latency,
-            COALESCE(SUM(input_tokens), 0) as total_input_tokens,
-            COALESCE(SUM(output_tokens), 0) as total_output_tokens,
-            COALESCE(SUM(cost), 0) as total_cost
-        FROM syscall_events
-        WHERE kind='llm' AND start_time > unixepoch('now','-1 day')
-    """)
-    llm = rows[0] if rows else {}
-    total_calls = llm.get("total_calls", 0) or 0
-    ok = llm.get("ok", 0) or 0
-    result["llm_stats"] = {
-        "total_calls": total_calls,
-        "success_rate": round(ok / total_calls * 100, 1) if total_calls > 0 else 100,
-        "avg_latency_ms": round(llm.get("avg_latency", 0) or 0, 1),
-        "max_latency_ms": round(llm.get("max_latency", 0) or 0, 1),
-        "total_input_tokens": llm.get("total_input_tokens", 0) or 0,
-        "total_output_tokens": llm.get("total_output_tokens", 0) or 0,
-        "total_cost": round(llm.get("total_cost", 0) or 0, 4),
-    }
-
-    # Syscall stats by kind (last 24h)
-    by_kind = {}
-    for r in _query("""
-        SELECT kind, COUNT(*) as cnt, COALESCE(AVG(duration_ms), 0) as avg_lat
-        FROM syscall_events
-        WHERE created_at > unixepoch('now','-1 day')
-        GROUP BY kind ORDER BY cnt DESC
-    """):
-        by_kind[r.get("kind", "unknown")] = {"count": r.get("cnt", 0), "avg_latency_ms": round(r.get("avg_lat", 0), 1)}
-    result["syscall_by_kind"] = by_kind
-
-    # Active runs (last 1h)
-    rows = _query("""
-        SELECT COUNT(DISTINCT run_id) as cnt FROM syscall_events
-        WHERE created_at > unixepoch('now','-1 hour') AND status='running'
-    """)
-    result["active_runs"] = rows[0].get("cnt", 0) if rows else 0
-
-    # Throughput: events per minute (last hour, 5-min buckets)
-    result["throughput"] = [
-        {"ts": r.get("bucket", 0), "count": r.get("cnt", 0)}
-        for r in _query("""
-            SELECT (CAST(created_at AS INTEGER) / 300) * 300 as bucket, COUNT(*) as cnt
-            FROM syscall_events WHERE created_at > unixepoch('now','-1 hour')
-            GROUP BY bucket ORDER BY bucket
-        """)
-    ]
-
-    # Error rate timeline (last 6h, 30-min windows)
-    result["error_timeline"] = []
-    for r in _query("""
-        SELECT
-            (CAST(created_at AS INTEGER) / 1800) * 1800 as bucket,
-            COUNT(*) as total,
-            COUNT(CASE WHEN status='failed' THEN 1 END) as errors
-        FROM syscall_events
-        WHERE created_at > unixepoch('now','-6 hours')
-        GROUP BY bucket ORDER BY bucket
-    """):
-        total = r.get("total", 0) or 0
-        errors = r.get("errors", 0) or 0
-        result["error_timeline"].append({
-            "ts": r.get("bucket", 0),
-            "total": total,
-            "errors": errors,
-            "error_rate": round(errors / total * 100, 1) if total > 0 else 0,
-        })
-
-    # Model usage distribution
-    result["model_usage"] = [
-        {
-            "model": r.get("model", "unknown") or "unknown",
-            "count": r.get("cnt", 0),
-            "input_tokens": r.get("in_tokens", 0) or 0,
-            "output_tokens": r.get("out_tokens", 0) or 0,
-        }
-        for r in _query("""
-            SELECT target_type as model, COUNT(*) as cnt,
-                   COALESCE(SUM(input_tokens), 0) as in_tokens,
-                   COALESCE(SUM(output_tokens), 0) as out_tokens
-            FROM syscall_events
-            WHERE kind='llm' AND start_time > unixepoch('now','-1 day')
-            GROUP BY target_type ORDER BY cnt DESC LIMIT 10
-        """)
-    ]
-
-    # Top errors
-    result["top_errors"] = [
-        {"error": (r.get("error", "") or "")[:120], "count": r.get("cnt", 0)}
-        for r in _query("""
-            SELECT error, COUNT(*) as cnt
-            FROM syscall_events
-            WHERE status='error' AND created_at > unixepoch('now','-1 day') AND error IS NOT NULL
-            GROUP BY error ORDER BY cnt DESC LIMIT 5
-        """)
-    ]
-
-    # Evaluate alert thresholds
-    result["active_alerts"] = _evaluate_alerts(result)
-
-    # Token efficiency metrics
-    try:
-        eff_rows = _query("""
-            SELECT
-                COALESCE(SUM(input_tokens), 0) as total_in,
-                COALESCE(SUM(output_tokens), 0) as total_out,
-                COUNT(*) as calls
-            FROM syscall_events
-            WHERE kind='llm' AND start_time > unixepoch('now','-1 day') AND status='success'
-        """)
-        eff = eff_rows[0] if eff_rows else {}
-        total_in = eff.get("total_in", 0) or 0
-        total_out = eff.get("total_out", 0) or 0
-        result["token_efficiency"] = {
-            "total_input_tokens": total_in,
-            "total_output_tokens": total_out,
-            "efficiency_pct": round(total_out / max(total_in, 1) * 100, 1),
-            "waste_estimate_tokens": max(0, total_in - total_out),
-            "total_calls": eff.get("calls", 0),
-        }
-    except Exception:
-        result["token_efficiency"] = {"error": "unavailable"}
-
-    return result
+        rows = conn.execute(
+            "SELECT * FROM llm_review_tasks ORDER BY created_at DESC LIMIT ?",
+            (limit,)
+        ).fetchall()
+        items = []
+        for row in rows:
+            d = dict(row)
+            ts = d.get("created_at", 0)
+            age = int(time.time() - ts) if ts else 0
+            results = []
+            if d.get("results"):
+                try:
+                    results = json.loads(d["results"])
+                except Exception:
+                    results = []
+            items.append({
+                "run_id": d.get("run_id", ""),
+                "status": d.get("status", ""),
+                "files_done": d.get("files_done", 0),
+                "files_total": d.get("files_total", 0),
+                "score": d.get("score", 0),
+                "p0": d.get("p0_count", 0),
+                "p1": d.get("p1_count", 0),
+                "age_s": age,
+                "results": results[:5],  # first 5 files only
+            })
+        return {"items": items, "total": len(items)}
+    finally:
+        conn.close()
 
 
-# ── Alert Thresholds ────────────────────────────────────────────
+# ── Token/Cost Usage Insights ───────────────────────────────────────────────
 
-ALERT_DEFAULTS = [
-    {"id": "error_rate", "metric": "error_rate", "condition": ">20", "value": 20, "unit": "%", "enabled": True, "description": "错误率超过 20%"},
-    {"id": "avg_latency", "metric": "avg_latency_ms", "condition": ">5000", "value": 5000, "unit": "ms", "enabled": False, "description": "平均延迟超过 5 秒"},
-    {"id": "success_rate", "metric": "success_rate", "condition": "<80", "value": 80, "unit": "%", "enabled": False, "description": "成功率低于 80%"},
-]
+@router.get("/diagnostics/llm-review/summary-stats")
+async def get_llm_review_summary_stats():
+    """
+    Aggregated token usage and cost summary from latest diagnostic runs.
 
-_alert_config_cache: Optional[List[dict]] = None
-_alert_config_ts: float = 0.0
+    Reads from _load_diag_history() for recent diagnostic metadata + calculates
+    cost estimates based on file counts in review results.
+    """
+    from datetime import datetime, timezone as _tz
+    hist = _load_diag_history()
+    if not hist:
+        return {"runs": 0, "total_cost": 0, "total_tokens": 0, "by_day": []}
 
+    # Aggregate by day
+    by_day: Dict[str, dict] = {}
+    total_cost = 0.0
+    total_tokens_est = 0
 
-def _load_alert_config() -> List[dict]:
-    global _alert_config_cache, _alert_config_ts
-    if _alert_config_cache is not None and time.time() - _alert_config_ts < 30:
-        return _alert_config_cache
-    try:
-        from core.services.execution_store import get_execution_store
-        store = get_execution_store()
-        conn = sqlite3.connect(store._config.db_path)
-        try:
-            row = conn.execute("SELECT v FROM aiplat_meta WHERE k='observability_alerts'").fetchone()
-            if row:
-                _alert_config_cache = json.loads(row[0])
-            else:
-                _alert_config_cache = list(ALERT_DEFAULTS)
-        finally:
-            conn.close()
-    except Exception:
-        _alert_config_cache = list(ALERT_DEFAULTS)
-    _alert_config_ts = time.time()
-    return _alert_config_cache
-
-
-def _save_alert_config(config: List[dict]) -> None:
-    global _alert_config_cache, _alert_config_ts
-    _alert_config_cache = config
-    _alert_config_ts = time.time()
-    try:
-        from core.services.execution_store import get_execution_store
-        store = get_execution_store()
-        conn = sqlite3.connect(store._config.db_path)
-        try:
-            conn.execute(
-                "INSERT OR REPLACE INTO aiplat_meta(k, v) VALUES('observability_alerts', ?)",
-                (json.dumps(config),),
-            )
-            conn.commit()
-        finally:
-            conn.close()
-    except Exception as e:
-        logging.warning(str(e), exc_info=True)
-
-
-def _evaluate_alerts(stats: Dict) -> List[dict]:
-    """Evaluate alert thresholds against current stats."""
-    config = _load_alert_config()
-    alerts = []
-    llm = stats.get("llm_stats", {})
-    for rule in config:
-        if not rule.get("enabled"):
+    for entry in hist[-30:]:
+        ts = entry.get("ts", 0)
+        if not ts:
             continue
-        metric = rule.get("metric", "")
-        val = rule.get("value", 0)
-        if metric == "error_rate":
-            current = 100 - (llm.get("success_rate", 100) or 100)
-            if current > val:
-                alerts.append({"id": rule["id"], "metric": metric, "current": round(current, 1),
-                               "threshold": val, "description": rule["description"], "unit": rule.get("unit", "%")})
-        elif metric == "avg_latency_ms":
-            current = llm.get("avg_latency_ms", 0) or 0
-            if current > val:
-                alerts.append({"id": rule["id"], "metric": metric, "current": round(current, 1),
-                               "threshold": val, "description": rule["description"], "unit": rule.get("unit", "ms")})
-        elif metric == "success_rate":
-            current = llm.get("success_rate", 100) or 100
-            if current < val:
-                alerts.append({"id": rule["id"], "metric": metric, "current": round(current, 1),
-                               "threshold": val, "description": rule["description"], "unit": rule.get("unit", "%")})
-    return alerts
+        day = datetime.fromtimestamp(ts, tz=_tz).strftime("%Y-%m-%d")
+        score = entry.get("overall_score", 0)
+        signals = entry.get("signals") or {}
+        files = signals.get("files_reviewed", 0) or 0
 
+        # Cost estimate: ~2 LLM calls per file, ~5K tokens per call
+        est_tokens = files * 2 * 5000
+        est_cost = round((files * 2 * 3000 / 1_000_000 * 0.27) + (files * 2 * 2000 / 1_000_000 * 1.10), 4)
 
-@router.get("/diagnostics/observability/alerts", response_model=Dict[str, Any])
-async def get_alerts():
-    return {"alerts": _load_alert_config()}
+        by_day.setdefault(day, {"tokens": 0, "cost": 0.0, "runs": 0, "files": 0})
+        by_day[day]["tokens"] += est_tokens
+        by_day[day]["cost"] += est_cost
+        by_day[day]["runs"] += 1
+        by_day[day]["files"] += files
+        total_cost += est_cost
+        total_tokens_est += est_tokens
 
-
-@router.put("/diagnostics/observability/alerts", response_model=Dict[str, Any])
-async def update_alerts(data: dict = None):
-    rules = data.get("alerts") if data else None
-    if not isinstance(rules, list):
-        raise HTTPException(status_code=400, detail="alerts must be a list")
-    _save_alert_config(rules)
-    return {"alerts": rules, "status": "saved"}
-
-
-# ── Model Playground ─────────────────────────────────────────────
-
-@router.get("/diagnostics/playground/models", response_model=Dict[str, Any])
-async def list_playground_models():
-    """List available LLM models for the playground."""
-    try:
-        from core.harness.infrastructure.infra_bridge import _list_models_from_infra
-        models = _list_models_from_infra()
-        if not models:
-            # Fallback: env-based models
-            from core.harness.utils.model_injection import best_model_for_purpose
-            models = []
-            default = best_model_for_purpose("chat")
-            if default:
-                models.append({"name": default, "provider": "env", "status": "available"})
-        return {"models": models}
-    except Exception:
-        return {"models": []}
-
-
-@router.post("/diagnostics/playground/compare", response_model=Dict[str, Any])
-async def compare_models(data: dict = None):
-    """Compare LLM outputs across multiple models concurrently."""
-    prompt = data.get("prompt", "") if data else ""
-    model_names = data.get("models", []) if data else []
-
-    if not prompt or not isinstance(prompt, str) or not prompt.strip():
-        raise HTTPException(status_code=400, detail="prompt is required")
-    if not isinstance(model_names, list) or len(model_names) == 0:
-        raise HTTPException(status_code=400, detail="models list is required")
-    if len(model_names) > 6:
-        raise HTTPException(status_code=400, detail="max 6 models at once")
-
-    import time as _time
-    from core.harness.utils.model_injection import create_selected_adapter
-
-    results = []
-
-    async def _run_one(model_name: str) -> dict:
-        t0 = _time.time()
-        try:
-            adapter = create_selected_adapter(model_name=model_name)
-            if adapter is None:
-                return {"model": model_name, "error": "Adapter not available", "latency_ms": 0}
-            resp = await sys_llm_generate(adapter,
-                prompt=[{"role": "user", "content": prompt}],
-            )
-            t1 = _time.time()
-            latency = round((t1 - t0) * 1000, 1)
-            content = getattr(resp, "content", "") if resp else ""
-            usage = getattr(resp, "usage", None) if resp else None
-            tokens_in = 0
-            tokens_out = 0
-            if isinstance(usage, dict):
-                tokens_in = usage.get("prompt_tokens", 0) or 0
-                tokens_out = usage.get("completion_tokens", 0) or 0
-            return {
-                "model": model_name,
-                "content": str(content)[:3000],
-                "latency_ms": latency,
-                "input_tokens": tokens_in,
-                "output_tokens": tokens_out,
-                "status": "ok",
-            }
-        except Exception as e:
-            t1 = _time.time()
-            return {
-                "model": model_name,
-                "error": str(e)[:200],
-                "latency_ms": round((t1 - t0) * 1000, 1),
-                "status": "error",
-            }
-
-    # Run all models concurrently
-    tasks = [_run_one(m) for m in model_names]
-    results = await asyncio.gather(*tasks, return_exceptions=True)
-    clean = []
-    for r in results:
-        if isinstance(r, Exception):
-            clean.append({"status": "error", "error": str(r)[:200]})
-        else:
-            clean.append(r)
-
-    return {"results": clean, "prompt": prompt}
-
-
-@router.post("/diagnostics/playground/chat", response_model=Dict[str, Any])
-async def playground_chat(data: dict = None):
-    """Quick-test chat: send a message with pipeline stages as context."""
-    message = data.get("message", "") if data else ""
-    stages = data.get("stages", []) if data else []
-
-    if not message or not isinstance(message, str) or not message.strip():
-        raise HTTPException(status_code=400, detail="message is required")
-
-    try:
-        from core.harness.utils.model_injection import create_selected_adapter
-        adapter = create_selected_adapter(model_name="")
-        if adapter is None:
-            raise HTTPException(status_code=503, detail="No LLM adapter available")
-
-        # Build context from stages
-        stage_ctx = ""
-        if stages:
-            lines = []
-            for i, s in enumerate(stages):
-                name = s.get("agent_name", s.get("id", f"Stage {i+1}"))
-                phase = s.get("phase", "")
-                lines.append(f"  {i+1}. {name}" + (f" ({phase})" if phase else ""))
-            stage_ctx = "流水线阶段:\n" + "\n".join(lines)
-
-        from core.harness.utils.prompt_loader import _async_prompt_resolve
-        system = await _async_prompt_resolve("pipeline-test-assistant", stage_ctx="")
-        if stage_ctx:
-            system += f"\n\n{stage_ctx}"
-
-        import time as _time
-        t0 = _time.time()
-        resp = await sys_llm_generate(adapter, prompt=[
-            {"role": "system", "content": system},
-            {"role": "user", "content": message.strip()},
-        ])
-        t1 = _time.time()
-        return {
-            "content": getattr(resp, "content", "") or "",
-            "latency_ms": round((t1 - t0) * 1000, 1),
-            "stages_count": len(stages),
-        }
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Chat failed: {e}")
-
-
-# ══════════════════════════════════════════════════════════════
-# Darwin Arena — agent competition benchmark (manual trigger only)
-# ══════════════════════════════════════════════════════════════
-
-@router.post("/diagnostics/arena/run", response_model=Dict[str, Any])
-async def arena_run_round_robin(contenders: List[Dict[str, Any]]):
-    """
-    Run a round-robin tournament among agent variants.
-    Manual trigger only — no auto-scheduling to control LLM costs.
-    
-    Body: {
-      "contenders": [
-        {"name": "agent-a", "agent_id": "...", "task": "build a REST API"},
-        {"name": "agent-b", "agent_id": "...", "task": "build a REST API"}
-      ],
-      "matches_per_pair": 3
-    }
-    """
-    try:
-        from core.harness.arena.arena import DarwinArena
-        arena = DarwinArena()
-        
-        async def _run_benchmark(name: str, cfg: Dict[str, Any]) -> float:
-            """Run one benchmark and return a score 0-100."""
-            try:
-                harness = get_harness()
-                req = ExecutionRequest(
-                    kind="agent", target_id=cfg.get("agent_id", ""),
-                    payload={"task": cfg.get("task", "")},
-                    user_id="arena", session_id=f"arena-{name}-{int(time.time())}",
-                )
-                result = await harness.execute(req)
-                return 100.0 if getattr(result, "ok", False) else 50.0
-            except Exception:
-                return 0.0
-        
-        pairs = [(c["name"], c) for c in contenders]
-        result = await arena.round_robin(
-            contenders=pairs,
-            benchmark_fn=_run_benchmark,
-            matches_per_pair=contenders[0].get("matches_per_pair", 3) if contenders else 3,
-        )
-        
-        return {
-            "leaderboard": result.leaderboard,
-            "matches": len(result.matches),
-            "promotions": [{"name": p.name, "rating": p.rating, "reason": p.promotion_reason}
-                          for p in result.promotions],
-            "duration_s": result.total_duration_s,
-        }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Arena failed: {str(e)}")
-
-
-@router.get("/diagnostics/arena/leaderboard", response_model=Dict[str, Any])
-async def arena_leaderboard():
-    """Get current Darwin Arena leaderboard (read-only)."""
-    try:
-        from core.harness.arena.arena import DarwinArena
-        arena = DarwinArena()
-        return {"leaderboard": arena.scorer.leaderboard()}
-    except Exception as e:
-        return {"leaderboard": [], "error": str(e)}
-
-
-@router.post("/diagnostics/arena/regression", response_model=Dict[str, Any])
-async def arena_run_regression(baseline_path: Optional[str] = None):
-    """
-    Run benchmark regression against baseline.
-    Returns pass_rate, latency, token delta vs stored baseline.
-    
-    POST body: {"baseline_path": "~/.aiplat/arena_baseline.json", "save_baseline": true}
-    """
-    try:
-        from core.harness.arena.regression import RegressionRunner
-        runner = RegressionRunner()
-        
-        async def _simple_agent(task: str) -> dict:
-            """Minimal agent stub for regression testing."""
-            try:
-                harness = get_harness()
-                req = ExecutionRequest(
-                    kind="agent", target_id="regression_agent",
-                    payload={"task": task}, user_id="arena",
-                    session_id=f"regression-{int(time.time())}",
-                )
-                result = await harness.execute(req)
-                output = getattr(result, "payload", {}) if not isinstance(result, dict) else result
-                return {
-                    "output": str(output.get("output", "") or ""),
-                    "tool_calls": output.get("tool_calls", []) or [],
-                    "tokens": output.get("tokens", {}).get("total_tokens", 0) if isinstance(output.get("tokens"), dict) else 0,
-                    "error": result.get("error", "") if isinstance(result, dict) else "",
-                }
-            except Exception:
-                return {"output": "", "tool_calls": [], "tokens": 0, "error": "agent_execution_failed"}
-        
-        report = await runner.run(
-            agent_fn=_simple_agent,
-            baseline_path=baseline_path,
-            save_baseline=True,
-        )
-        
-        return {
-            "verdict": report.verdict,
-            "current": report.current,
-            "delta": report.delta,
-            "tasks_summary": [
-                {"id": t.task_id, "passed": t.passed, "score": t.score, "error": t.error[:100]}
-                for t in report.tasks
-            ],
-            "duration_s": report.total_duration_s,
-        }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Regression failed: {str(e)}")
-
-
-# ══════════════════════════════════════════════════════════════
-# Eval Dashboard — unified evaluation metrics aggregation
-# ══════════════════════════════════════════════════════════════
-
-@router.get("/diagnostics/eval/summary", response_model=Dict[str, Any])
-async def eval_summary():
-    """Unified eval dashboard: arena + AB scores + evolution + obs + diagnostic trend."""
-    import time as _time
-    result: Dict[str, Any] = {"timestamp": _time.time()}
-
-    # Arena leaderboard
-    try:
-        from core.harness.arena.arena import DarwinArena, EloScorer
-        gs = _store()
-        if gs:
-            arena_data = await gs.get_global_setting(key="arena_state")
-            if arena_data and isinstance(arena_data.get("value"), dict):
-                av = arena_data["value"]
-                result["arena"] = {"leaderboard": av.get("leaderboard", [])[:5],
-                                   "total_matches": av.get("total_matches", 0)}
-            else:
-                result["arena"] = {"leaderboard": [], "total_matches": 0}
-        else:
-            result["arena"] = {"leaderboard": [], "total_matches": 0, "note": "no store"}
-    except Exception:
-        result["arena"] = {"leaderboard": [], "total_matches": 0, "error": "unavailable"}
-
-    # Regression history
-    try:
-        gs2 = _store()
-        if gs2:
-            reg_data = await gs2.get_global_setting(key="arena_regression_history")
-            if reg_data and isinstance(reg_data.get("value"), list):
-                result["regression"] = {"history": reg_data["value"][-3:]}
-            else:
-                result["regression"] = {"history": []}
-        else:
-            result["regression"] = {"history": []}
-    except Exception:
-        result["regression"] = {"history": []}
-
-    # AB scores from prompt_eval_scores
-    try:
-        store = _store()
-        if store:
-            import sqlite3
-            conn = sqlite3.connect(store._config.db_path)
-            try:
-                rows = conn.execute(
-                    "SELECT template_id, version, ROUND(AVG(overall_score),1) as avg_score, "
-                    "ROUND(AVG(pass_rate),1) as avg_pass, COUNT(*) as cnt, "
-                    "MAX(created_at) as last_eval "
-                    "FROM prompt_eval_scores "
-                    "GROUP BY template_id, version ORDER BY cnt DESC LIMIT 10"
-                ).fetchall()
-                result["ab_scores"] = {
-                    "templates": len(set(r[0] for r in rows)),
-                    "items": [{"template_id": r[0], "version": r[1], "avg_score": r[2],
-                               "avg_pass_rate": r[3], "eval_count": r[4], "last_eval_at": r[5]} for r in rows],
-                }
-            except Exception:
-                result["ab_scores"] = {"templates": 0, "items": [], "note": "no data"}
-            finally:
-                conn.close()
-        else:
-            result["ab_scores"] = {"templates": 0, "items": []}
-    except Exception:
-        result["ab_scores"] = {"templates": 0, "items": [], "error": "unavailable"}
-
-    # Evolution fitness
-    try:
-        from core.harness.knowledge.evolution_runner import EvolutionRunner
-        evo_path = os.path.expanduser("~/.aiplat/wiki/collections/default/evolution_history.json")
-        if os.path.exists(evo_path):
-            import json as _json
-            with open(evo_path) as f:
-                evo_data = _json.load(f)
-            evo_list = evo_data if isinstance(evo_data, list) else []
-            result["evolution"] = {
-                "generations": len(evo_list),
-                "latest_fitness": evo_list[-1].get("fitness_golden_after", 0) if evo_list else 0,
-                "trend": [{"id": e.get("id"), "fitness": e.get("fitness_golden_after", 0),
-                           "verdict": e.get("verdict")} for e in evo_list[-10:]],
-            }
-        else:
-            result["evolution"] = {"generations": 0, "latest_fitness": 0, "trend": []}
-    except Exception:
-        result["evolution"] = {"generations": 0, "latest_fitness": 0, "trend": [], "error": "unavailable"}
-
-    # Observability snapshot
-    try:
-        obs = await observability_stats()
-        result["observability"] = {
-            "token_efficiency_pct": obs.get("token_efficiency", {}).get("efficiency_pct", 0),
-            "llm_success_rate": obs.get("llm_stats", {}).get("success_rate", 0),
-            "avg_latency_ms": obs.get("llm_stats", {}).get("avg_latency_ms", 0),
-            "total_calls": obs.get("llm_stats", {}).get("total_calls", 0),
-        }
-    except Exception:
-        result["observability"] = {"error": "unavailable"}
-
-    # Diagnostic trend
-    try:
-        hist = _load_diag_history()
-        result["diagnostic_trend"] = {
-            "current_score": hist[-1].get("overall_score", 0) if hist else 0,
-            "current_grade": hist[-1].get("overall_grade", "?") if hist else "?",
-            "score_trend": [{"run_id": h.get("run_id"), "overall_score": h.get("overall_score"),
-                            "started_at": h.get("started_at")} for h in hist[-30:]],
-        }
-    except Exception:
-        result["diagnostic_trend"] = {"error": "unavailable"}
-
-    # Stage rewards from recent pipeline runs (most recent 10)
-    try:
-        store3 = _store()
-        if store3:
-            import sqlite3
-            conn = sqlite3.connect(store3._config.db_path)
-            try:
-                evts = conn.execute(
-                    "SELECT state_json, created_at FROM pipeline_events "
-                    "WHERE event_type='stage_reward' ORDER BY created_at DESC LIMIT 50"
-                ).fetchall()
-                stage_map: Dict[str, List] = {}
-                for evt in evts:
-                    try:
-                        raw = json.loads(evt[0])
-                        sid = raw.get("stage_id", "?")
-                        rw = raw.get("reward", 0)
-                        dims = raw.get("dimensions", {})
-                        if sid not in stage_map:
-                            stage_map[sid] = []
-                        stage_map[sid].append({"reward": rw, "dimensions": dims})
-                    except Exception as e:
-                        logging.warning(str(e), exc_info=True)
-                result["stage_rewards"] = {
-                    "total_stages": len(stage_map),
-                    "by_stage": {k: {"recent": v[:5], "avg_reward": round(sum(x["reward"] for x in v) / max(len(v), 1), 1)} for k, v in stage_map.items()},
-                }
-            except Exception:
-                result["stage_rewards"] = {"total_stages": 0, "by_stage": {}}
-            finally:
-                conn.close()
-        else:
-            result["stage_rewards"] = {"total_stages": 0, "by_stage": {}}
-    except Exception:
-        result["stage_rewards"] = {"total_stages": 0, "by_stage": {}, "error": "unavailable"}
-
-    return result
-
-
-@router.get("/diagnostics/eval/ab-scores", response_model=Dict[str, Any])
-async def eval_ab_scores(template_id: Optional[str] = None, limit: int = Query(50, ge=1, le=200)):
-    """AB optimizer per-template score history."""
-    store = _store()
-    if not store:
-        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
-    try:
-        import sqlite3
-        conn = sqlite3.connect(store._config.db_path)
-        try:
-            q = "SELECT template_id, version, overall_score, pass_rate, recommendation, created_at FROM prompt_eval_scores"
-            params = []
-            if template_id:
-                q += " WHERE template_id = ?"
-                params.append(template_id)
-            q += " ORDER BY created_at DESC LIMIT ?"
-            params.append(int(limit))
-            rows = conn.execute(q, params).fetchall()
-            return {
-                "total": len(rows),
-                "scores": [{"template_id": r[0], "version": r[1], "overall_score": r[2],
-                            "pass_rate": r[3], "recommendation": r[4], "created_at": r[5]} for r in rows],
-            }
-        finally:
-            conn.close()
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"AB scores query failed: {str(e)}")
-
-
-@router.get("/diagnostics/eval/arena-history", response_model=Dict[str, Any])
-async def eval_arena_history(limit: int = Query(20, ge=1, le=100)):
-    """Persisted Arena match history and leaderboard."""
-    gs = _store()
-    if not gs:
-        return {"matches": [], "leaderboard": [], "note": "no store"}
-    arena_data = await gs.get_global_setting(key="arena_state")
-    if not arena_data or not isinstance(arena_data.get("value"), dict):
-        return {"matches": [], "leaderboard": [], "note": "no arena data yet"}
-    av = arena_data["value"]
-    matches = av.get("matches", []) or []
+    days_sorted = sorted(by_day.items(), reverse=True)[:14]
     return {
-        "leaderboard": av.get("leaderboard", [])[:10],
-        "matches": matches[-int(limit):],
-        "total_matches": len(matches),
-        "promotions": av.get("promotions", []) or [],
+        "runs": len(hist[-30:]),
+        "total_cost": round(total_cost, 4),
+        "total_tokens": total_tokens_est,
+        "by_day": [
+            {"day": d, "tokens": v["tokens"], "cost": round(v["cost"], 4),
+             "runs": v["runs"], "files": v["files"]}
+            for d, v in days_sorted
+        ],
     }
+
+
+@router.get("/diagnostics/ops/tenant-usage", response_model=Dict[str, Any])
+async def get_tenant_usage_summary(
+    tenant_id: str = "",
+    days: int = 7,
+):
+    """
+    Read aggregated LLM token usage from execution_store.tenant_usage_ledger.
+
+    Returns per-day token counts for the given tenant (default: all).
+    """
+    from collections import defaultdict as _dd
+    try:
+        from core.harness.integration import get_execution_store
+        store = get_execution_store()
+        now = __import__("time").time()
+        cutoff = now - days * 86400
+
+        entries = await store.list_tenant_usage(tenant_id=tenant_id or None, since=cutoff, limit=500)
+        by_day = _dd(lambda: {"tokens": 0.0, "calls": 0})
+        total_tokens = 0.0
+        total_calls = 0
+
+        for entry in entries:
+            day = entry.get("day", "") if isinstance(entry, dict) else getattr(entry, "day", "")
+            amount = float(entry.get("amount", 0)) if isinstance(entry, dict) else float(getattr(entry, "amount", 0))
+            metric = entry.get("metric_key", "") if isinstance(entry, dict) else getattr(entry, "metric_key", "")
+            if "token" in metric:
+                by_day[day]["tokens"] += amount
+                total_tokens += amount
+                total_calls += 1
+
+        days_sorted = sorted(by_day.items(), reverse=True)[:days]
+        return {
+            "total_tokens": total_tokens,
+            "total_calls": total_calls,
+            "days": days,
+            "by_day": [{"day": d, "tokens": v["tokens"], "calls": v["calls"]} for d, v in days_sorted],
+        }
+    except Exception as e:
+        return {"error": str(e)[:200], "total_tokens": 0, "total_calls": 0, "by_day": []}
+
+
+# ── Entropy Trend Awareness ──────────────────────────────────────────────────
+
+@router.get("/diagnostics/entropy/trends", response_model=Dict[str, Any])
+async def get_entropy_trends():
+    """
+    Returns current error-rate volatility across 6 ten-minute buckets (1 hour).
+
+    Response:
+    {
+        "buckets": [{"window_start": ..., "total_calls": N, "rates": {...}}, ...],
+        "active_alerts": [{"error_type": "...", "state": "alerting", ...}],
+        "state_summary": {"normal": 13, "alerting": 1, "high_alert": 0, "resolved": 1}
+    }
+    """
+    try:
+        from core.harness.infrastructure.trend_detector import get_trend_detector
+        td = get_trend_detector()
+        return td.get_trends()
+    except Exception as e:
+        return {"buckets": [], "active_alerts": [], "state_summary": {}, "error": str(e)[:200]}
+
+
+@router.get("/diagnostics/entropy/alerts", response_model=Dict[str, Any])
+async def get_entropy_alerts(limit: int = 20):
+    """
+    Returns recent entropy alert records from SQLite.
+
+    Response: {"alerts": [...], "total": N}
+    """
+    try:
+        from core.harness.infrastructure.trend_detector import get_trend_detector
+        td = get_trend_detector()
+        return td.get_alert_history(limit=limit)
+    except Exception as e:
+        return {"alerts": [], "total": 0, "error": str(e)[:200]}
+
