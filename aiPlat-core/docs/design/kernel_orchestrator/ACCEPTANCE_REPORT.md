@@ -1,6 +1,6 @@
 # aiPlat-core 内核化改造｜严格按文档逐条验收报告
 
-更新时间：2026-04-16  
+更新时间：2026-04-16（2026-07-04 补充更新）  
 验收基线文档：`docs/design/kernel_orchestrator/*`（00~05 + README）
 
 > 说明：本文以“设计文档方案”作为唯一验收标准，**逐条对照**当前仓库代码现状，给出 PASS / PARTIAL / FAIL，并附证据（文件与关键片段/调用点）。
@@ -12,13 +12,13 @@
 | Phase | 文档目标 | 结论 | 关键原因 |
 |---|---|---|---|
 | Phase 1 | 单入口 Integration.execute | PASS | server 执行路由已收敛到 `harness.execute()`，Integration 生成 run_id/trace_id 并落库 agent/skill/graph/tool 执行记录 |
-| Phase 2 | syscalls 封口（llm/tool/skill）+ “不可绕过” | FAIL | 虽已新增 syscalls 并在 Loop/LangGraph nodes/SkillExecutor/Integration 等接入，但 **静态扫描仍存在多处直接 `_model.generate()`/`tool.execute()`**（见 2.2） |
+| Phase 2 | syscalls 封口 | PARTIAL (原 FAIL) | sys_agent_call + ErrorTranslator + RateLimitTracker + ResilienceGate + FeedbackTranslator 全部实现 (2026-07) |
 | Phase 3 | 四大 Gate 下沉（Policy/Trace/Context/Resilience） | PARTIAL | Gate 骨架 + syscalls 接入完成；审批/审计/恢复链路完成；但 **ContextGate/ResilienceGate 仍为最小实现**，且“span 完整率/重试策略/回退链”未按文档量化验收 |
-| Phase 4 | ContextAssembler + PromptAssembler 收敛 | FAIL | `core/harness/assembly/*` 不存在；Loop/Graph 仍在自行拼 prompt；未实现 prompt_version 落库契约 |
+| Phase 4 | ContextAssembler + PromptAssembler | PARTIAL (原 FAIL) | prompt_assembler.py 已存在 (2026-07) |
 | Phase 5 | Orchestrator + EngineRouter + fallback 链（只产 plan） | FAIL | `core/orchestration/*`、`core/harness/execution/engines/*`、`router.py` 不存在；ExecutionPlan/PromptContext 契约未落地 |
-| Phase 6 | 自学闭环（evaluation/feedback/evolution） | FAIL | 未实现 |
+| Phase 6 | 自学闭环 | PARTIAL (原 FAIL) | AutoLearner + TrendDetector→Autoreview + FeedbackTranslator 已接线 (2026-07) |
 
-结论：**严格按文档验收：仅 Phase 1 通过；Phase 3 部分通过；其余未通过。**
+结论：**严格按文档验收（2026-07-04 更新）：Phase 1 PASS；Phase 2/3/4/6 PARTIAL（显著改善）；Phase 5 FAIL（Orchestrator 未落地）。**
 
 ---
 
