@@ -152,6 +152,7 @@ const Diagnostics: React.FC = () => {
   const catLabels: Record<string, string> = {
     core_runtime: 'Core 运行时', code_intel: '代码架构', capability: '能力图谱',
     wiki_health: 'Wiki 健康', arch_guard: '架构守卫',
+    wiki_content_quality: 'Wiki内容质量',
     traces: '链路追踪', graph_runs: '图执行', context_metrics: '上下文',
     e2e_smoke: '冒烟测试', doctor: 'Doctor',
     compliance: '合规审计', overview_issues: '概览问题',     skill_lint: 'Skill Lint',
@@ -163,6 +164,7 @@ const Diagnostics: React.FC = () => {
   const catColors: Record<string, string> = {
     core_runtime: 'bg-blue-400', code_intel: 'bg-violet-400', capability: 'bg-amber-400',
     wiki_health: 'bg-purple-400', arch_guard: 'bg-green-400',
+    wiki_content_quality: 'bg-indigo-400',
     traces: 'bg-cyan-400', graph_runs: 'bg-teal-400', context_metrics: 'bg-indigo-400',
     e2e_smoke: 'bg-orange-400', doctor: 'bg-red-400',
     compliance: 'bg-emerald-400', overview_issues: 'bg-rose-400', skill_lint: 'bg-violet-400',

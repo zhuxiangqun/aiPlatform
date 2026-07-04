@@ -996,6 +996,7 @@ def get_diagnostic_summary():
 _LABELS = {
     "core_runtime": "Core 运行时", "code_intel": "代码架构", "capability": "能力图谱",
     "wiki_health": "Wiki健康", "arch_guard": "架构守卫", "compliance": "合规审计",
+    "wiki_content_quality": "Wiki内容质量",
     "traces": "链路追踪", "graph_runs": "图执行", "context_metrics": "上下文",
     "e2e_smoke": "冒烟测试", "doctor": "Doctor", "overview_issues": "概览问题",
     "symbol_health": "符号健康", "lsp": "LSP 诊断", "security": "安全扫描",
