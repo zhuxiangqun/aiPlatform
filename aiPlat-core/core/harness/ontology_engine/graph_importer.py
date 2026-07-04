@@ -17,6 +17,7 @@ import csv
 import logging
 import os
 import re
+import uuid
 from typing import Any, Dict, List, Optional, Tuple
 from xml.etree import ElementTree as ET
 
@@ -95,9 +96,11 @@ class GraphFileImporter:
 
                     relation = row[relation_col].strip() if relation_col is not None and len(row) > relation_col else "related_to"
 
-                    # Add nodes if they don't exist
-                    sid = graph.add_entity(entity_name=source, class_name="Imported")
-                    tid = graph.add_entity(entity_name=target, class_name="Imported")
+                    # Add nodes with generated UUIDs
+                    sid = str(uuid.uuid4())[:12]
+                    tid = str(uuid.uuid4())[:12]
+                    graph.add_entity(sid, entity_name=source, class_name="Imported")
+                    graph.add_entity(tid, entity_name=target, class_name="Imported")
                     graph.add_relation(sid, tid, relation_name=relation)
 
                     nodes_added += 2 if sid and tid else 0
@@ -129,7 +132,9 @@ class GraphFileImporter:
                 if data_elem.get("key") in ("label", "name", "d0"):
                     name = (data_elem.text or "").strip() or name
             if name:
-                node_id_map[nid] = graph.add_entity(entity_name=name, class_name="Imported")
+                eid = str(uuid.uuid4())[:12]
+                graph.add_entity(eid, entity_name=name, class_name="Imported")
+                node_id_map[nid] = eid
                 nodes_added += 1
 
         for edge_elem in root.findall(".//edge") or root.findall(".//g:edge", ns):
@@ -161,8 +166,10 @@ class GraphFileImporter:
                 target = m.group(2).strip()
                 relation = m.group(3).strip() if m.group(3) else "related_to"
 
-                sid = graph.add_entity(entity_name=source, class_name="Imported")
-                tid = graph.add_entity(entity_name=target, class_name="Imported")
+                sid = str(uuid.uuid4())[:12]
+                tid = str(uuid.uuid4())[:12]
+                graph.add_entity(sid, entity_name=source, class_name="Imported")
+                graph.add_entity(tid, entity_name=target, class_name="Imported")
                 graph.add_relation(sid, tid, relation_name=relation)
                 nodes_added += 2
                 edges_added += 1

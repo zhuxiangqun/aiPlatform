@@ -48,10 +48,9 @@ async def sys_graph_query(
     """
     try:
         from core.harness.ontology_engine.graph_index import GraphIndex
-        from core.harness.ontology_engine.graph_traversal import GraphTraversal
 
-        graph = GraphIndex(domain_id)
-        if not graph.node_count():
+        graph = GraphIndex.load(domain_id) if _graph_exists(domain_id) else GraphIndex(domain_id)
+        if len(graph) == 0:
             return _result(False, f"Domain '{domain_id}' has no entities yet.", domain_id, operation)
 
         # ── Auto-detect operation from query ──
@@ -93,23 +92,23 @@ def _detect_operation(query: str) -> str:
 # ── Operation handlers ──
 
 async def _query_stats(graph, domain_id: str) -> Dict[str, Any]:
-    nodes = graph.node_count()
-    edges = graph.edge_count()
-    hyperedges = graph.hyperedge_count()
+    s = graph.stats()
+    nodes = s.get("node_count", 0)
+    edges = s.get("edge_count", 0)
+    avg_deg = s.get("avg_degree", 0)
     result_text = (
         f"Knowledge graph '{domain_id}' statistics:\n"
         f"  • Entities (nodes): {nodes}\n"
         f"  • Relationships (edges): {edges}\n"
-        f"  • Events (hyperedges): {hyperedges}\n"
+        f"  • Average degree: {avg_deg}\n"
     )
     return _result(True, result_text, domain_id, "stats",
-                   data={"nodes": nodes, "edges": edges, "hyperedges": hyperedges})
+                   data={"nodes": nodes, "edges": edges, "avg_degree": avg_deg})
 
 
 async def _query_classes(graph, domain_id: str, query: str) -> Dict[str, Any]:
-    # Get all distinct class names
     class_counts = {}
-    for node in graph.iter_nodes():
+    for node in graph._nodes.values():
         cn = node.class_name or "unknown"
         class_counts[cn] = class_counts.get(cn, 0) + 1
 
@@ -123,13 +122,11 @@ async def _query_classes(graph, domain_id: str, query: str) -> Dict[str, Any]:
 
 
 async def _query_neighbors(graph, domain_id: str, query: str, top_k: int) -> Dict[str, Any]:
-    # Try to find the entity by name
     entity_name = _extract_entity_name(query)
-    node = graph.get_node_by_name(entity_name)
+    node = graph.find_by_name(entity_name)
     if not node:
-        # Fuzzy search
         candidates = []
-        for n in graph.iter_nodes():
+        for n in graph._nodes.values():
             if entity_name.lower() in (n.entity_name or "").lower():
                 candidates.append(n.entity_name)
         if candidates:
@@ -138,6 +135,7 @@ async def _query_neighbors(graph, domain_id: str, query: str, top_k: int) -> Dic
                 domain_id, "neighbors", data={"matches": candidates[:10]})
         return _result(False, f"No entity named '{entity_name}' found.", domain_id, "neighbors")
 
+    neighbors = graph.get_neighbors(node.entity_id)
     out_edges = getattr(node, "out_edges", []) or []
     in_edges = getattr(node, "in_edges", []) or []
     lines = [f"Entity: {node.entity_name} (class: {node.class_name})"]
@@ -158,44 +156,43 @@ async def _query_neighbors(graph, domain_id: str, query: str, top_k: int) -> Dic
 
 async def _query_path(graph, domain_id: str, query: str) -> Dict[str, Any]:
     """Find path between two entities using BFS traversal."""
-    from core.harness.ontology_engine.graph_traversal import GraphTraversal
-    traversal = GraphTraversal(graph)
+    from core.harness.ontology_engine.graph_traversal import traverse
 
-    # Try to extract two entity names from query
     names = _extract_two_names(query)
     if len(names) < 2:
         return _result(False, "Could not identify two entities in query. Try: 'path from X to Y'", domain_id, "path")
 
     start_name, end_name = names[0], names[1]
-    start = graph.get_node_by_name(start_name)
-    end = graph.get_node_by_name(end_name)
+    start = graph.find_by_name(start_name)
+    end = graph.find_by_name(end_name)
     if not start:
         return _result(False, f"Start entity '{start_name}' not found.", domain_id, "path")
     if not end:
         return _result(False, f"End entity '{end_name}' not found.", domain_id, "path")
 
-    paths = traversal.find_paths(start.entity_id, end.entity_id, max_hops=3)
-    if not paths:
+    # Use BFS traverse: check if end_id appears in result paths
+    result = traverse(graph, start.entity_id, max_hops=3, direction="outgoing")
+    paths = result.paths if hasattr(result, 'paths') else []
+    
+    # Filter paths that reach end_id
+    reachable = [p for p in paths if end.entity_id in [s.entity_id for s in p.steps]]
+    if not reachable:
         return _result(True,
             f"No path found between '{start_name}' and '{end_name}' within 3 hops.",
             domain_id, "path", data={"paths": []})
 
-    lines = [f"Paths from '{start_name}' to '{end_name}' ({len(paths)} found):"]
-    for i, path in enumerate(paths[:3]):
-        hops = len(path) - 1
-        path_str = " → ".join(
-            graph.get_node(nid).entity_name if graph.get_node(nid) else nid
-            for nid in path
-        )
+    lines = [f"Paths from '{start_name}' to '{end_name}' ({len(reachable)} found):"]
+    for i, path in enumerate(reachable[:3]):
+        hops = len(path.steps) - 1
+        path_str = " → ".join(s.entity_name or s.entity_id for s in path.steps)
         lines.append(f"  Path {i+1} ({hops} hops): {path_str}")
-    return _result(True, "\n".join(lines)[:800], domain_id, "path", data={"paths": paths[:3]})
+    return _result(True, "\n".join(lines)[:800], domain_id, "path", data={"paths_count": len(reachable)})
 
 
 async def _query_search(graph, domain_id: str, query: str, top_k: int) -> Dict[str, Any]:
-    """Search entities by keyword."""
     keyword = _extract_entity_name(query)
     matches = []
-    for node in graph.iter_nodes():
+    for node in graph._nodes.values():
         if keyword.lower() in (node.entity_name or "").lower() or \
            keyword.lower() in (node.class_name or "").lower():
             matches.append({
@@ -225,6 +222,14 @@ def _result(success: bool, text: str, domain_id: str, operation: str,
         "operation": operation,
         "error": error,
     }
+
+
+def _graph_exists(domain_id: str) -> bool:
+    """Check if a persisted graph file exists for the domain."""
+    import os as _os
+    home = _os.path.expanduser(_os.getenv("AIPLAT_HOME", "~/.aiplat"))
+    db_path = _os.path.join(home, "graph", f"{domain_id}.db")
+    return _os.path.exists(db_path)
 
 
 def _extract_entity_name(query: str) -> str:
