@@ -65,9 +65,12 @@ workspace-root/
 │   │   └── management-manual.md
 │   │
 │   ├── reports/                      ← 生成报告（时间点快照，不手动编辑）
-│   │   ├── README.md                 ← 报告生成命令 + "不手动编辑"声明
+│   │   ├── README.md
 │   │   ├── AIPLAT_ARCHITECTURE_REPORT.md
 │   │   └── AIPLAT_DIAGNOSTIC_REPORT.md
+│   │
+│   ├── strategy/                      ← 战略分析 / 竞品对比（对外可发布）
+│   │   └── comparison-vs-vendors.md   ← aiPlat vs 图数据库厂商
 │   │
 │   ├── articles/                     ← 技术文章（对外发布）
 │   │   └── private-control-plane.md
