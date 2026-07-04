@@ -113,6 +113,8 @@
 | GraphIndex → RunContext 自动填充 | `apps/agents/materials_chat.py` | ✅ | 实体名提取→GraphIndex遍历→RunContext自动构建 | Phase 10.2 |
 | DataSource → RunContext 实时桥接 | `apps/agents/materials_chat.py` + YAML | ✅ | DataSourceRegistry查询→API响应→RunContext字段映射+优雅降级 | Phase 10.3 |
 | RunContext 三层合并 | `apps/agents/materials_chat.py` | ✅ | caller>realtime>graph优先级规则 + constraints合并去重 | Phase 10.2 |
+| 主动综合 (Active Synthesis) | `harness/knowledge/active_synthesis.py` | ✅ | STORM式5步管道: detect_gaps→research_questions→retrieve→synthesize→proposal | 缺口一 |
+| Wiki 内容质量监控 | `harness/knowledge/wiki_quality_monitor.py` | ✅ | LLM评估Wiki页面vs原始文档保真度(completeness/accuracy/overall) | 缺口二 |
 
 ---
 
@@ -134,6 +136,8 @@
 | text_cleaner | `harness/knowledge/text_cleaner.py` | ✅ | 自动同步 | 已合入 |
 | doc_quality_monitor | `harness/knowledge/doc_quality_monitor.py` | ✅ | 自动同步 | 已合入 |
 | sql_ontology | `harness/knowledge/sql_ontology.py` | ✅ | 自动同步 | 已合入 |
+| wiki_quality_monitor | `harness/knowledge/wiki_quality_monitor.py` | ✅ | 自动同步 | 已合入 |
+| active_synthesis | `harness/knowledge/active_synthesis.py` | ✅ | 自动同步 | 已合入 |
 |------|------|:---:|------|------|
 | 统一知识检索 | `harness/syscalls/retrieval.py:569` | ✅ | 并行 Wiki + KB，RRF 三路融合 | 已合入 |
 | KB 文档检索 | `harness/syscalls/retrieval.py:39` | ✅ | hybrid: LIKE + FTS5 + FAISS 向量 | 已合入 |
@@ -152,6 +156,8 @@
 | ProvenanceTracker | `harness/knowledge/provenance.py` | ✅ | 声明级溯源 + 过期扫描 | 已合入 |
 | PostRetrievalGovernor | `harness/knowledge/post_retrieval_governor.py` | ✅ | 检索后去重/归一化/截断 | 已合入 |
 | HallucinationTracker | `knowledge/` | ✅ | NLI 事实核查 + GraphIndex 图边验证 | 已合入 |
+| 答案生成管道 | `harness/generation/answer_generator.py` | ✅ | generate_answer + generate_stream_answer + build_rag_user_message | 重构 |
+| Action 闭环桥接 | `harness/actions/action_bridge.py` | ✅ | OperatorAgent决策→webhook通知 + execute_decision_actions | 重构 |
 
 ---
 
@@ -376,6 +382,8 @@
 | _html | `harness/document/converters/_html.py` | ✅ | 自动同步 | 已合入 |
 | playbook | `harness/learning/playbook.py` | ✅ | 自动同步 | 已合入 |
 | proposal_store | `harness/learning/proposal_store.py` | ✅ | 自动同步 | 已合入 |
+| action_bridge | `harness/actions/action_bridge.py` | ✅ | 自动同步 | 已合入 |
+| answer_generator | `harness/generation/answer_generator.py` | ✅ | 自动同步 | 已合入 |
 |------|------|:---:|------|------|
 | ExperienceVector | `harness/learning/experience_vector.py` | ✅ | PipelineTrace→Embedding→语义检索 | 已合入 |
 | ToolDriftDetector | `harness/learning/tool_drift_detector.py` | ✅ | 4类漂移检测(struct/field/latency/error) + 重放校验自适应 | 已合入 |
@@ -739,12 +747,12 @@
 | 编排系统 | 4 | 0 | 4 |
 | 管理 & 质量 | 21 | 0 | 21 |
 | 编排层 | 17 | 0 | 17 |
-| **总计** | **477** | **0** | **477** |
+| **总计** | **496** | **0** | **496** |
 
 ---
 
 *最后更新: 2026-07-04*
-*版本: 12.5 · 28章 · 492项能力 · 492✅ · P0-P3 hermès-agent全量吸收+SQLite连接池化+TrendDetector*
+*版本: 12.5 · 28章 · 500项能力 · 500✅ · P0-P3 hermès-agent全量吸收+SQLite连接池化+TrendDetector*
 
 **自检命令**：
 ```bash
