@@ -28,6 +28,17 @@ from core.harness.knowledge.knowledge_ontology import (
 )
 
 
+# ── Interface 原语 (P1) ──────────────────────────────────────────────
+
+@dataclass
+class OntologyInterface:
+    """Represents a named Interface in the T-Box — enables polymorphism across entity types."""
+    name: str                           # Interface name (e.g. "Diagnosable")
+    label: str = ""                     # Human-readable label
+    description: str = ""
+    properties: List[dict] = field(default_factory=list)  # Interface property definitions
+
+
 # ── Domain-level container ────────────────────────────────────────────
 
 @dataclass
@@ -43,6 +54,7 @@ class OntologyDomain:
     data_properties: List[OntologyDataProperty] = field(default_factory=list)
     axioms: List[OntologyAxiom] = field(default_factory=list)
     inference_rules: List[Dict[str, Any]] = field(default_factory=list)
+    interfaces: List[OntologyInterface] = field(default_factory=list)  # P1: Interface 原语
 
 
 # ── YAML Loader ──────────────────────────────────────────────────────
@@ -99,6 +111,7 @@ def load_ontology_from_yaml(file_path: str) -> OntologyDomain:
                 side_effects=list(states_cfg.get("side_effects") or cls_def.get("side_effects") or []),
                 synonyms=list(cls_def.get("synonyms", []) or []),
                 confidence_threshold=float(cls_def.get("confidence_threshold", 0.7)),
+                implements=list(cls_def.get("implements", []) or []),  # P1: Interface
             ))
 
     # ── Load object properties ──
@@ -127,6 +140,17 @@ def load_ontology_from_yaml(file_path: str) -> OntologyDomain:
                 domain=[_resolve_uri(ns, d) for d in (dprop_def.get("domain", []) or [])],
                 range=dprop_def.get("range", "xsd:string"),
                 is_functional=bool(dprop_def.get("functional", False)),
+            ))
+
+    # ── Load interfaces (P1) ──
+    interfaces_raw = raw.get("interfaces", {})
+    if isinstance(interfaces_raw, dict):
+        for iface_name, iface_def in interfaces_raw.items():
+            domain.interfaces.append(OntologyInterface(
+                name=iface_name,
+                label=iface_def.get("label", iface_name),
+                description=iface_def.get("description", ""),
+                properties=list(iface_def.get("properties", []) or []),
             ))
 
     return domain
@@ -207,3 +231,52 @@ def save_domain_yaml(domain_id: str, yaml_text: str) -> str:
     dest_path = dest_dir / f"{domain_id}.yaml"
     dest_path.write_text(yaml_text, encoding="utf-8")
     return str(dest_path)
+
+
+# ════════════════════════════════════════════════════════════
+# Interface query API (P1)
+# ════════════════════════════════════════════════════════════
+
+def get_entities_by_interface(domain_id: str, interface_name: str, *, base_dir: str = "") -> List[str]:
+    """
+    Return class names implementing a given Interface in a domain.
+    
+    Args:
+        domain_id: Domain identifier (e.g., "equipment-domain")
+        interface_name: Interface name (e.g., "Diagnosable")
+        base_dir: Optional custom base directory
+    
+    Returns:
+        List of class names (e.g., ["CentrifugalPump", "ElectricMotor"])
+    """
+    d = _Path(base_dir or _os.getenv("AIPLAT_HOME", _Path.home() / ".aiplat")) / "ontologies"
+    file_path = d / f"{domain_id}.yaml"
+    if not file_path.exists():
+        return []
+    
+    domain = load_ontology_from_yaml(str(file_path))
+    result = []
+    for cls in domain.classes:
+        if interface_name in cls.implements:
+            result.append(cls.label or cls.uri.split("/")[-1])
+    return result
+
+
+def get_interface_definition(domain_id: str, interface_name: str, *, base_dir: str = "") -> Optional[dict]:
+    """
+    Return the full Interface definition from a domain.
+    """
+    d = _Path(base_dir or _os.getenv("AIPLAT_HOME", _Path.home() / ".aiplat")) / "ontologies"
+    file_path = d / f"{domain_id}.yaml"
+    if not file_path.exists():
+        return None
+    
+    domain = load_ontology_from_yaml(str(file_path))
+    for iface in domain.interfaces:
+        if iface.name == interface_name:
+            return {
+                "name": iface.name, "label": iface.label,
+                "description": iface.description,
+                "properties": iface.properties,
+            }
+    return None

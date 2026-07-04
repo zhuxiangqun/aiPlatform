@@ -79,6 +79,8 @@ class OntologyClass:
     """该类的描述文本"""
     states: Dict[str, Any] = field(default_factory=dict)
     """状态机定义：{description, default, enum: [{name, label, description}, ...]}"""
+    implements: List[str] = field(default_factory=list)
+    """该类实现的 Interface 名称列表（P1: Interface 原语）"""
     transitions: List[Dict[str, Any]] = field(default_factory=list)
     """状态转换规则：[{from, to, description, trigger: {type, ...}}, ...]"""
     side_effects: List[Dict[str, Any]] = field(default_factory=list)

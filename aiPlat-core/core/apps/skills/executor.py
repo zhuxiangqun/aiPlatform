@@ -111,6 +111,28 @@ class SkillExecutor:
                     error=f"Skill '{skill_name}': execution_type={exec_type} but handler.py not found"
                 )
 
+        # ── P1: Submission criteria validation ──
+        if cfg and cfg.submission_criteria:
+            for criterion in cfg.submission_criteria:
+                if not _evaluate_criterion(criterion, params, context):
+                    return SkillResult(
+                        success=False,
+                        error=f"Submission failed: {criterion.get('error_message', criterion.get('condition', 'unknown'))}",
+                        error_code="SUBMISSION_DENIED",
+                    )
+
+        # ── P1: Permissions check (PolicyGate is first line, this is second) ──
+        if cfg and cfg.permissions:
+            allowed_roles = cfg.permissions.get("roles_allowed", [])
+            if allowed_roles:
+                user_role = (context.user_role if context else "") if hasattr(context, 'user_role') else ""
+                if user_role and user_role not in allowed_roles:
+                    return SkillResult(
+                        success=False,
+                        error=f"Permission denied. Required roles: {allowed_roles}",
+                        error_code="PERMISSION_DENIED",
+                    )
+
         execution_id = new_prefixed_id("run")
         record = ExecutionRecord(
             execution_id=execution_id,
@@ -468,3 +490,52 @@ def get_skill_executor(discovery=None) -> SkillExecutor:
     if _global_executor is None:
         _global_executor = SkillExecutor(discovery=discovery)
     return _global_executor
+
+
+def _evaluate_criterion(criterion: dict, params: dict, context) -> bool:
+    """
+    Evaluate a simple submission criterion against params and context.
+    
+    Supports patterns:
+      - "key IN ['val1', 'val2']" 
+      - "key <= value"
+      - "key OPERATOR value"
+    Falls back to checking if the condition keyword appears in str(params).
+    """
+    import re
+    condition = criterion.get("condition", "")
+    if not condition:
+        return True  # no condition = always passes
+    
+    # Extract key from params or context
+    try:
+        # Pattern: "key OPERATOR value"
+        m = re.match(r'(\S+)\s+(IN|<=|>=|<|>|==|!=)\s+(.+)', condition)
+        if m:
+            key, op, val = m.group(1).strip(), m.group(2).strip(), m.group(3).strip()
+            actual = params.get(key, "")
+            # Try context if not in params
+            if not actual and hasattr(context, key):
+                actual = getattr(context, key, "")
+            actual = str(actual) if not isinstance(actual, (int, float)) else actual
+            
+            if op == "IN":
+                vals = re.findall(r"'([^']*)'", val)
+                return str(actual) in vals
+            if op == "<=":
+                return float(actual) <= float(val)
+            if op == ">=":
+                return float(actual) >= float(val)
+            if op == ">":
+                return float(actual) > float(val)
+            if op == "<":
+                return float(actual) < float(val)
+            if op == "==":
+                return str(actual) == str(val)
+            if op == "!=":
+                return str(actual) != str(val)
+    except Exception:
+        pass
+    
+    # Fallback: keyword match in params str
+    return condition.lower() in str(params).lower()

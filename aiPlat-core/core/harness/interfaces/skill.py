@@ -19,6 +19,10 @@ class SkillConfig:
     effects: List[Dict[str, Any]] = field(default_factory=list)
     idempotent: bool = True
     rollback_available: bool = False
+    # ── P1: Action Type 操作契约 ──
+    submission_criteria: List[Dict[str, Any]] = field(default_factory=list)
+    side_effects: List[Dict[str, Any]] = field(default_factory=list)
+    permissions: Optional[Dict[str, Any]] = None
 
     def __post_init__(self):
         # §5.19: any non-idempotent effect makes the whole skill non-idempotent (unsafe to

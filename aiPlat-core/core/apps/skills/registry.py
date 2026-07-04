@@ -186,6 +186,9 @@ class SkillRegistry:
                             input_schema = fm.get("input_schema") or {}
                             output_schema = fm.get("output_schema") or {}
                             effects = fm.get("effects") or []
+                            submission_criteria = fm.get("submission_criteria") or []  # P1: Action Type
+                            side_effects_raw = fm.get("side_effects") or []          # P1: Action Type
+                            perm_config = fm.get("permissions") or None              # P1: dict with roles_allowed
                             skill_chain = fm.get("skill_chain") or []
                             skip_conditions = fm.get("skip_when") or fm.get("skip_conditions") or []
                             triggers = fm.get("triggers") or []
@@ -268,6 +271,15 @@ class SkillRegistry:
                         if effects:
                             cfg.effects = effects
                             cfg.metadata["effects"] = effects
+                        if submission_criteria:
+                            cfg.submission_criteria = submission_criteria
+                            cfg.metadata["submission_criteria"] = submission_criteria
+                        if side_effects_raw:
+                            cfg.side_effects = side_effects_raw
+                            cfg.metadata["side_effects"] = side_effects_raw
+                        if perm_config:
+                            cfg.permissions = perm_config
+                            cfg.metadata["permissions_config"] = perm_config
                         cfg.metadata["filesystem"] = {"skill_md": skill_md}
                     self.register(skill)
                 else:
@@ -275,6 +287,9 @@ class SkillRegistry:
                         name=name,
                         description=description,
                         effects=effects,
+                        submission_criteria=submission_criteria,  # P1
+                        side_effects=side_effects_raw,            # P1
+                        permissions=perm_config,                 # P1
                     metadata={"category": category, "body": body, "version": version,
                               "uses_file_output": uses_file_output,
                               "execution_mode": execution_mode,

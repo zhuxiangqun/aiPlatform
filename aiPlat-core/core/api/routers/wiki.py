@@ -1526,6 +1526,26 @@ async def list_ontology_classes():
 
 # ── Domain Ontology API (YAML-based) ─────────────────────────────
 
+@router.get("/ontology/domains/{domain_id}/interfaces", response_model=Dict[str, Any])
+async def get_domain_interfaces(domain_id: str):
+    """Return all Interface definitions and their implementations in a domain."""
+    from core.harness.knowledge.ontology_loader import load_ontology_from_yaml, list_domain_files
+    from pathlib import Path as _Path
+    import os as _os
+    base_dir = _Path(_os.getenv("AIPLAT_HOME", _Path("~").expanduser() / ".aiplat")) / "ontologies"
+    file_path = base_dir / f"{domain_id}.yaml"
+    if not file_path.exists():
+        raise HTTPException(status_code=404, detail=f"Domain '{domain_id}' not found")
+    domain = load_ontology_from_yaml(str(file_path))
+    interfaces = []
+    for iface in domain.interfaces:
+        impls = [cls.label or cls.uri.split("/")[-1] for cls in domain.classes if iface.name in cls.implements]
+        interfaces.append({"name": iface.name, "label": iface.label,
+                          "description": iface.description, "properties": iface.properties,
+                          "implemented_by": impls, "count": len(impls)})
+    return {"domain_id": domain_id, "interfaces": interfaces, "total": len(interfaces)}
+
+
 def _generate_from_vault(scan_dir: str, domain_id: str, name: str, keywords: str, sample_limit: int) -> str:
     """Generate a basic ontology YAML from vault file scanning."""
     import os as _os, yaml as _yaml
