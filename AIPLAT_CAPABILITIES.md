@@ -568,6 +568,7 @@
 | pdf_render | `aiPlat-platform/kb/poc/pdf_render.py` | ✅ | 自动同步 | 已合入 |
 | prompt_app | `api/routers/prompt_app.py` | ✅ | 自动同步 | 已合入 |
 | entropy | `api/routers/entropy.py` | ✅ | 自动同步 | 已合入 |
+| roles | `api/routers/roles.py` | ✅ | 自动同步 | 已合入 |
 |------|------|:---:|------|------|
 | Change Control | `platform/api/routers/change_control.py` | ✅ | 变更请求跟踪/审计/autosmoke强制执行 | 已合入 |
 | Tenant Onboarding | `platform/api/routers/onboarding.py` | ✅ | 租户引导：LLM配置/执行后端/密钥迁移/信任密钥 | 已合入 |
@@ -712,7 +713,7 @@
 | 编排系统 | 4 | 0 | 4 |
 | 管理 & 质量 | 21 | 0 | 21 |
 | 编排层 | 17 | 0 | 17 |
-| **总计** | **465** | **0** | **465** |
+| **总计** | **466** | **0** | **466** |
 
 ---
 
