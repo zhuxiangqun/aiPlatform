@@ -352,8 +352,10 @@ class PolicyGate:
                     decision=PolicyDecision.APPROVAL_REQUIRED,
                     reason=f"approval_gate:ask — {approval_result.message}",
                 )
-        except Exception:
-            pass
+        except ImportError:
+            logging.debug("ApprovalGate module not available — skipping dangerous command check")
+        except Exception as e:
+            logging.warning("ApprovalGate check failed: %s — gate remains active", e)
 
         # P1-1: Three-layer rule priority (deny > ask > allow) with param-level matching
         from core.harness.integration import get_permission_manager

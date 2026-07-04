@@ -1,5 +1,6 @@
 """Prompt App Templates API — user-facing prompt templates organized by category."""
 from __future__ import annotations
+import json
 import json as _json
 import logging
 import os
@@ -578,7 +579,8 @@ async def list_scenario_tags():
     import sqlite3, anyio
     db_path = store._config.db_path
     def _sync():
-        conn = sqlite3.connect(db_path); conn.row_factory = sqlite3.Row
+        conn = sqlite3.connect(db_path)
+        conn.execute("PRAGMA busy_timeout=3000"); conn.row_factory = sqlite3.Row
         try:
             rows = conn.execute("SELECT * FROM prompt_scenario_tags ORDER BY display_order;").fetchall()
             result = {}
@@ -605,6 +607,7 @@ async def seed_scenario_tags():
     now = _t.time()
     def _sync():
         conn = sqlite3.connect(db_path)
+        conn.execute("PRAGMA busy_timeout=3000")
         try:
             for cat, name, parent, order in _SCENARIO_TAGS:
                 conn.execute(

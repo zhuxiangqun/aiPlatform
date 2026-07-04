@@ -219,6 +219,9 @@ class TrendDetector:
         alerts = await self._analyze()
         for alert in alerts:
             await self._persist_alert(alert, self._state.get(alert.error_type, AlertState.ALERTING))
+            # ── HIGH_ALERT → trigger Autoreview ──
+            if self._state.get(alert.error_type) == AlertState.HIGH_ALERT:
+                await self._trigger_autoreview(alert)
 
     def _flush_snapshot(self, snapshot: Dict[str, int], now: float) -> None:
         """Write one snapshot batch to entropy_snapshots table."""
@@ -539,6 +542,55 @@ class TrendDetector:
             finally:
                 conn.close()
         await asyncio.get_running_loop().run_in_executor(None, _sync)
+
+    async def _trigger_autoreview(self, alert: EntropyAlert) -> None:
+        """
+        Trigger an Autoreview session when entropy reaches HIGH_ALERT.
+
+        Constructs AutoreviewSession with:
+          - error_type + recent 6-bucket rates
+          - current model metadata (max_tokens, context_window)
+          - sample trace_ids from the past hour
+        """
+        try:
+            from core.engine.skills.autoreview.handler import review_file
+            import os as _os
+
+            # Build the review target: analyze the configuration for this error type
+            review_content = f"""ENTROPY HIGH_ALERT: {alert.error_type}
+Current stddev: {alert.current_std:.4f}
+Baseline stddev: {alert.baseline_std:.4f}
+6-bucket rates: {alert.rates}
+
+This error type has experienced sustained degradation.
+Hypothesis-driven diagnosis checklist:
+1. Has model metadata (max_tokens, context_window) changed recently?
+2. Has the prompt template version been updated?
+3. Has the API provider changed rate limits?
+4. Are there credential rotation issues?
+"""
+
+            # Review the infrastructure configuration files
+            infra_config_paths = [
+                _os.path.expanduser("~/.aiplat/config/infra/llm_profile.yaml"),
+                _os.path.expanduser("~/.aiplat/config/infra/models.yaml"),
+            ]
+            for cfg_path in infra_config_paths:
+                if _os.path.exists(cfg_path):
+                    with open(cfg_path, "r") as f:
+                        cfg_content = f.read()
+                    rpt = await review_file(
+                        cfg_content, cfg_path,
+                        focus="security",
+                        max_chars=8000,
+                    )
+                    if rpt and rpt.p0_count > 0:
+                        logger.warning(
+                            "TrendDetector: Autoreview found %d P0 issue(s) in %s for %s",
+                            rpt.p0_count, cfg_path, alert.error_type,
+                        )
+        except Exception:
+            logger.debug("TrendDetector: Autoreview trigger failed", exc_info=True)
 
     def _resolve_alert(self, error_type: str) -> None:
         def _sync():

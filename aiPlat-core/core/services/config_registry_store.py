@@ -54,7 +54,7 @@ class ConfigRegistryStore:
             os.makedirs(os.path.dirname(self._db_path) or ".", exist_ok=True)
 
             def _init_sync() -> None:
-                conn = sqlite3.connect(self._db_path)
+                conn = sqlite3.connect(self._db_path, timeout=5.0)
                 try:
                     conn.execute("PRAGMA journal_mode=WAL;")
                     conn.execute(
@@ -117,7 +117,7 @@ class ConfigRegistryStore:
         now = time.time()
 
         def _sync() -> None:
-            conn = sqlite3.connect(self._db_path)
+            conn = sqlite3.connect(self._db_path, timeout=5.0)
             try:
                 conn.execute(
                     """
@@ -158,7 +158,7 @@ class ConfigRegistryStore:
         now = time.time()
 
         def _sync() -> None:
-            conn = sqlite3.connect(self._db_path)
+            conn = sqlite3.connect(self._db_path, timeout=5.0)
             try:
                 prev = conn.execute(
                     "SELECT version FROM config_published WHERE asset_type=? AND scope=? AND tenant_id=? AND channel=?",
@@ -190,7 +190,7 @@ class ConfigRegistryStore:
         now = time.time()
 
         def _sync() -> Optional[str]:
-            conn = sqlite3.connect(self._db_path)
+            conn = sqlite3.connect(self._db_path, timeout=5.0)
             try:
                 row = conn.execute(
                     "SELECT version, prev_version FROM config_published WHERE asset_type=? AND scope=? AND tenant_id=? AND channel=?",
@@ -224,7 +224,7 @@ class ConfigRegistryStore:
         await self.init()
 
         def _sync() -> Optional[Tuple[str, Any]]:
-            conn = sqlite3.connect(self._db_path)
+            conn = sqlite3.connect(self._db_path, timeout=5.0)
             try:
                 row = conn.execute(
                     "SELECT version FROM config_published WHERE asset_type=? AND scope=? AND tenant_id=? AND channel=?",
@@ -249,7 +249,7 @@ class ConfigRegistryStore:
         await self.init()
 
         def _sync() -> Optional[Dict[str, Any]]:
-            conn = sqlite3.connect(self._db_path)
+            conn = sqlite3.connect(self._db_path, timeout=5.0)
             try:
                 row = conn.execute(
                     """
@@ -282,7 +282,7 @@ class ConfigRegistryStore:
         offset = max(0, int(offset or 0))
 
         def _sync() -> Dict[str, Any]:
-            conn = sqlite3.connect(self._db_path)
+            conn = sqlite3.connect(self._db_path, timeout=5.0)
             try:
                 rows = conn.execute(
                     """
@@ -317,7 +317,7 @@ class ConfigRegistryStore:
             return None
 
         def _sync() -> Optional[Dict[str, Any]]:
-            conn = sqlite3.connect(self._db_path)
+            conn = sqlite3.connect(self._db_path, timeout=5.0)
             try:
                 row = conn.execute(
                     """

@@ -630,7 +630,7 @@ def _reconcile_source_articles(title: str, sources: list, collection_id: str = "
         import os as _os
         kb_db = Path(_os.getenv("AIPLAT_HOME", Path.home() / ".aiplat")) / "kb" / "tenants" / collection_id / "kb.sqlite3"
         if kb_db.exists():
-            conn = sqlite3.connect(str(kb_db))
+            conn = sqlite3.connect(str(kb_db, timeout=5.0))
             placeholders = ",".join("?" * len(kb_ids))
             rows = conn.execute(
                 f"SELECT doc_id FROM kb_documents WHERE doc_id IN ({placeholders})",
@@ -1579,7 +1579,7 @@ def invalidate_graph_cache(collection_id: str = "default") -> None:
     if os.path.exists(db_path):
         try:
             import sqlite3
-            conn = sqlite3.connect(db_path)
+            conn = sqlite3.connect(db_path, timeout=5.0)
             conn.execute("DELETE FROM graph_cache")
             conn.commit()
             conn.close()
@@ -1598,7 +1598,7 @@ def _read_graph_cache(cache_key: str) -> Optional[Dict[str, Any]]:
     if not os.path.exists(db_path):
         return None
     try:
-        conn = sqlite3.connect(db_path)
+        conn = sqlite3.connect(db_path, timeout=5.0)
         row = conn.execute(
             "SELECT result_json, updated_at FROM graph_cache WHERE cache_key=?",
             (cache_key,),
@@ -1616,7 +1616,7 @@ def _write_graph_cache(cache_key: str, result: Dict[str, Any]) -> None:
     db_path = _graph_cache_db()
     os.makedirs(os.path.dirname(db_path), exist_ok=True)
     try:
-        conn = sqlite3.connect(db_path)
+        conn = sqlite3.connect(db_path, timeout=5.0)
         conn.execute(
             "CREATE TABLE IF NOT EXISTS graph_cache (cache_key TEXT PRIMARY KEY, result_json TEXT, updated_at REAL)"
         )

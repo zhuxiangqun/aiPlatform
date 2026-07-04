@@ -16,7 +16,7 @@ aiPlat 的 `core/harness/` 层就是一个这样的控制平面。13 个模块�
 
 ### 四层防御
 
-**第一层·准入**：PolicyGate 是唯一权限入口。所有 syscall 执行前先过 ApprovalGate（24 条危险操作规则）和 SkillsGuard（79 个威胁模式，Skill 注册前扫描）。问题："这个操作能做吗？"
+**第一层·准入**：PolicyGate 作为统一权限网关被所有 sys_tool_call / sys_skill_call / sys_agent_call 调用。操作执行前先过 ApprovalGate（24 条危险操作规则）和 SkillsGuard（79 个威胁模式，Skill 注册前扫描）。Deny 或需要审批时，FeedbackTranslator 将机器决策翻译为 Agent 可理解的自然语言反馈。问题："这个操作能做吗？"
 
 **第二层·恢复**：ErrorTranslator 用 7 级流水线把 LLM 错误分类为 15 种根因，每种带 4 个恢复标志（重试？压缩？换凭证？换提供商？）。调用方不需要重新判断。问题："失败了怎么恢复？"
 
@@ -116,9 +116,11 @@ aiPlat 的 `core/harness/` 层就是一个这样的控制平面。13 个模块�
 
 **Layer 1 · 准入**
 
-PolicyGate 是整个系统**唯一的权限入口**。不是 HTTP 层查一遍、Gateway 层再查一遍、syscall 层又查一遍——`check_tool()` 是 `sys_tool_call`、`sys_skill_call`、`sys_agent_call` 三个 syscall 的唯一网关。
+PolicyGate 是 syscall 层的统一权限网关，`check_tool()` / `check_skill()` / `check_agent()` 被 `sys_tool_call`、`sys_skill_call`、`sys_agent_call` 三个 syscall 各自调用。HTTP 层的 `rbac_guard()` 作为早期快速拒绝层仍然存在，但长期收敛方向是将所有权限判断统一到 PolicyGate。
 
 准入检查顺序：三层规则优先级（deny > ask > allow） → RBAC 角色权限 → 架构边界保护（非 core 层禁止写入 `aiPlat-core/`，任何层禁止写入 `aiPlat-infra/`） → 保护路径（`**/auth/**`、`**/.env*`） → 租户策略快照。
+
+Deny/ApprovalRequired 的决策通过 FeedbackTranslator 转化为 Agent 可理解的自然语言反馈（例如：`[DENIED] 操作被安全门禁拦截：文件删除不可撤销。下一步: 放弃此操作，寻找替代方案。`），Agent 据此决定等待、放弃或换方案。
 
 在权限检查之前，先跑 ApprovalGate。24 条规则分四级：
 - **CRITICAL**（12 条）：`delete`、`delete_recursive`、`shell_exec`、`drop_table`、`drop_database`、`force_push`、`kill_9`、凭证文件操作等 → 必须交互式审批
@@ -224,21 +226,12 @@ NORMAL ── ratio > 2.0x baseline ──→ ALERTING
 - 其中 **84%**（75 处）缺少 `busy_timeout` pragma——并发写直接 SQLITE_BUSY
 - `state_history.py`（ontology 状态转换的热路径）每次写入都建新连接——9 次调用产生 9 次 connect/disconnect 开销
 
-修复：
+修复进展：
 
-```python
-# ctx管理器（冷路径）：自动 commit/rollback/close
-with get_db_connection() as conn:
-    rows = conn.execute("SELECT ...").fetchall()
-
-# 持久连接（热路径）：1个 connect 服务所有写入
-_conn = create_persistent_conn()  # WAL + busy_timeout=3000
-with _lock:                        # threading.Lock 保护并发写
-    _conn.execute("INSERT ...")
-    _conn.commit()
-```
-
-`state_history.py` 从每次建连改成了模块级长连接，写入延迟降低 70%。全局 WAL 在 `server.py` 启动时一次性开启。
+- **热路径已迁移**：`state_history.py`、`retrieval.py`、`prompt_eval.py` 使用 `get_db_connection()` / `create_persistent_conn()`（5 个文件）
+- **+busy_timeout**：13 个额外文件通过 `sqlite3.connect(..., timeout=5.0)` 参数获得了并发写入保护
+- `state_history.py` 从每次建连改成了模块级长连接，写入延迟降低 70%
+- 全局 WAL 在 `server.py` 启动时一次性开启
 
 ---
 
@@ -431,7 +424,7 @@ with _lock:                        # threading.Lock 保护并发写
 
 这篇文章讨论的是"对抗熵增"——在系统运行过程中保持稳定。但控制平面的下一个挑战是"从熵增中学习"。
 
-TrendDetector 已经可以通过 `HIGH_ALERT` 状态自动触发 Autoreview——当某个错误类型持续恶化时，系统会主动检查是不是上游配置过期了。
+TrendDetector 已经可以通过 `HIGH_ALERT` 状态自动触发 Autoreview——当某个错误类型持续恶化时，系统会主动检查是不是上游配置过期了。**这条链路已经接线**：`_trigger_autoreview()` 在 HIGH_ALERT 时调用 Autoreview handler，巡检 `llm_profile.yaml` 等基础设施配置文件，发现 P0 级别问题后写入诊断日志。
 
 **Autoreview 的入参契约**：当 TrendDetector 升级为 `HIGH_ALERT` 时，它会自动构造一个 `AutoreviewSession`，包含：
 - `error_type` + 最近 6 个桶的 `rates` 序列（用于还原错误率曲线）

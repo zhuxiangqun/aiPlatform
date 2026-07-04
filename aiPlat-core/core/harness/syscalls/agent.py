@@ -50,12 +50,33 @@ async def sys_agent_call(
             import logging as _logging
             _logging.getLogger("aiplat.syscall.agent").debug("Workspace gate check skipped", exc_info=True)
 
-        # Mark gate coverage (Phase 3 GateTracer)
+        # ── PolicyGate enforcement (single entry point, §3.2) ──
         try:
-            from core.harness.kernel.execution_context import mark_gate_passed
-            mark_gate_passed("policy_gate_agent")
-        except Exception as e:
-            logging.warning(str(e), exc_info=True)
+            from core.harness.infrastructure.gates.policy_gate import PolicyGate, PolicyDecision
+            pg = PolicyGate()
+            pr = await pg.check_agent(
+                user_id="",
+                agent_id=str(subagent_name).strip(),
+                agent_args={"task": task},
+            )
+            if pr.decision == PolicyDecision.DENY:
+                from core.harness.infrastructure.feedback_translator import translate_denial, format_for_agent
+                fb = translate_denial(pr.reason or "", str(subagent_name).strip())
+                return {
+                    "success": False, "output": format_for_agent(fb),
+                    "error": f"policy_gate:deny — {pr.reason}",
+                    "duration_ms": 0, "subagent_name": subagent_name,
+                }
+            if pr.decision == PolicyDecision.APPROVAL_REQUIRED:
+                from core.harness.infrastructure.feedback_translator import translate_approval_required, format_for_agent
+                fb = translate_approval_required(pr.reason or "", str(subagent_name).strip())
+                return {
+                    "success": False, "output": format_for_agent(fb),
+                    "error": f"policy_gate:approval_required — {pr.reason}",
+                    "duration_ms": 0, "subagent_name": subagent_name,
+                }
+        except Exception:
+            pass
 
         # P2-24: DelegateManager — resource-budgeted delegation with retries
         try:

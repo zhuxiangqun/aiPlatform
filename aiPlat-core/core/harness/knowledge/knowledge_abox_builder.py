@@ -171,7 +171,7 @@ def _scan_kb_documents(partial: Optional[str] = None) -> List[Dict[str, Any]]:
         if not db_path.exists():
             continue
         try:
-            conn = sqlite3.connect(str(db_path))
+            conn = sqlite3.connect(str(db_path, timeout=5.0))
             conn.row_factory = sqlite3.Row
             query = "SELECT doc_id, source_uri, kind, collection_id FROM documents"
             if partial:
@@ -415,7 +415,7 @@ def _extract_cross_modal_relations(onto: KnowledgeOntology) -> None:
             continue
 
         try:
-            conn = sqlite3.connect(str(db_path))
+            conn = sqlite3.connect(str(db_path, timeout=5.0))
             conn.row_factory = sqlite3.Row
 
             # Load all elements grouped by doc_id + page

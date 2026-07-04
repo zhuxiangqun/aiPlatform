@@ -117,7 +117,7 @@ class ProdFeedbackStore:
                     return True
         elif self.config.storage_backend == StorageBackend.DATABASE:
             def _del():
-                conn = sqlite3.connect(str(self._db_path))
+                conn = sqlite3.connect(str(self._db_path, timeout=5.0))
                 cursor = conn.execute("DELETE FROM feedback WHERE id = ?", (feedback_id,))
                 deleted = cursor.rowcount > 0
                 conn.commit()
@@ -136,7 +136,7 @@ class ProdFeedbackStore:
         ]
         if self.config.storage_backend == StorageBackend.DATABASE:
             def _clean():
-                conn = sqlite3.connect(str(self._db_path))
+                conn = sqlite3.connect(str(self._db_path, timeout=5.0))
                 conn.execute("DELETE FROM feedback WHERE timestamp < ?", (cutoff,))
                 conn.commit()
                 conn.close()
@@ -204,7 +204,7 @@ class ProdFeedbackStore:
     def _init_db(self):
         """Initialize SQLite table for feedback storage."""
         self._db_path.parent.mkdir(parents=True, exist_ok=True)
-        conn = sqlite3.connect(str(self._db_path))
+        conn = sqlite3.connect(str(self._db_path, timeout=5.0))
         conn.execute("""
             CREATE TABLE IF NOT EXISTS feedback (
                 id TEXT PRIMARY KEY,
@@ -226,7 +226,7 @@ class ProdFeedbackStore:
     async def _store_to_db(self, feedback: StoredFeedback):
         """Store feedback to SQLite database."""
         def _write():
-            conn = sqlite3.connect(str(self._db_path))
+            conn = sqlite3.connect(str(self._db_path, timeout=5.0))
             conn.execute(
                 "INSERT OR REPLACE INTO feedback (id, session_id, feedback_type, content, timestamp, metadata_json, environment, storage_type) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
                 (
@@ -252,7 +252,7 @@ class ProdFeedbackStore:
     ) -> List[StoredFeedback]:
         """Retrieve feedback from SQLite database."""
         def _read():
-            conn = sqlite3.connect(str(self._db_path))
+            conn = sqlite3.connect(str(self._db_path, timeout=5.0))
             query = "SELECT id, session_id, feedback_type, content, timestamp, metadata_json, environment, storage_type FROM feedback WHERE 1=1"
             params: list = []
             if session_id:

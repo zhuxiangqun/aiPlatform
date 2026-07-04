@@ -39,6 +39,7 @@ async def list_entropy(
 
     def _sync():
         conn = sqlite3.connect(db_path)
+        conn.execute("PRAGMA busy_timeout=3000")
         conn.row_factory = sqlite3.Row
         try:
             where = ["1=1"]
@@ -83,6 +84,7 @@ async def entropy_summary(project_id: str = ""):
 
     def _sync():
         conn = sqlite3.connect(db_path)
+        conn.execute("PRAGMA busy_timeout=3000")
         conn.row_factory = sqlite3.Row
         try:
             where = "WHERE project_id=?" if project_id else ""
@@ -117,6 +119,7 @@ async def record_entropy(body: EntropyRecord):
 
     def _sync():
         conn = sqlite3.connect(db_path)
+        conn.execute("PRAGMA busy_timeout=3000")
         try:
             eid = f"ent_{uuid.uuid4().hex[:12]}"
             now = time.time()
@@ -197,6 +200,7 @@ async def run_readiness_audit():
         await store.init()
         import sqlite3
         conn = sqlite3.connect(store._config.db_path)
+        conn.execute("PRAGMA busy_timeout=3000")
         rows = conn.execute("SELECT name FROM sqlite_master WHERE name='entropy_ledger'").fetchall()
         has_entropy = len(rows) > 0
         conn.close()
@@ -345,6 +349,7 @@ async def resolve_entropy(entry_id: str):
 
     def _sync():
         conn = sqlite3.connect(db_path)
+        conn.execute("PRAGMA busy_timeout=3000")
         try:
             conn.execute("UPDATE entropy_ledger SET resolved_at=? WHERE id=?", (time.time(), entry_id))
             conn.commit()
@@ -380,6 +385,7 @@ async def generate_eval_for_agent(agent_id: str):
         await store.init()
         import sqlite3
         conn = sqlite3.connect(store._config.db_path)
+        conn.execute("PRAGMA busy_timeout=3000")
         try:
             rows = conn.execute(
                 "SELECT name, kind, created_at FROM syscall_events "

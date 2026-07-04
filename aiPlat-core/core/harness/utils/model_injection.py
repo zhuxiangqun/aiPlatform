@@ -116,7 +116,7 @@ def _load_default_llm_from_store() -> Optional[dict]:
         db_path = getattr(getattr(store, "_config", None), "db_path", None)
         if not db_path:
             return None
-        conn = sqlite3.connect(str(db_path))
+        conn = sqlite3.connect(str(db_path, timeout=5.0))
         try:
             row = conn.execute("SELECT value_json FROM global_settings WHERE key='default_llm' LIMIT 1;").fetchone()
             if not row or not row[0]:
@@ -141,7 +141,7 @@ def _load_adapter_from_store(adapter_id: str) -> Optional[dict]:
         db_path = getattr(getattr(store, "_config", None), "db_path", None)
         if not db_path:
             return None
-        conn = sqlite3.connect(str(db_path))
+        conn = sqlite3.connect(str(db_path, timeout=5.0))
         conn.row_factory = sqlite3.Row
         try:
             r = conn.execute("SELECT * FROM adapters WHERE adapter_id=? LIMIT 1;", (str(adapter_id),)).fetchone()

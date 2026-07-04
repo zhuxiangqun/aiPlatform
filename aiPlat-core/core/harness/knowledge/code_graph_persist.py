@@ -78,7 +78,7 @@ def init_db():
     import sqlite3
     path = _db_path()
     os.makedirs(os.path.dirname(path), exist_ok=True)
-    conn = sqlite3.connect(path)
+    conn = sqlite3.connect(path, timeout=5.0)
     conn.executescript(_SCHEMA)
     # Migration: add label/line/cross columns if upgrading from old schema
     for col, typ in (("label", "TEXT NOT NULL DEFAULT ''"),
@@ -99,7 +99,7 @@ def init_db():
 
 def _get_conn():
     import sqlite3
-    return sqlite3.connect(_db_path())
+    return sqlite3.connect(_db_path(), timeout=5.0)
 
 
 def get_cache_info() -> Dict[str, Any]:
@@ -206,7 +206,7 @@ def save_graph(nodes: Dict[str, Dict[str, Any]], edges: List[Dict[str, str]], re
     import sqlite3
     path = _db_path()
     os.makedirs(os.path.dirname(path), exist_ok=True)
-    conn = sqlite3.connect(path)
+    conn = sqlite3.connect(path, timeout=5.0)
     try:
         conn.execute("DELETE FROM files")
         conn.execute("DELETE FROM edges")
@@ -304,7 +304,7 @@ def clear_cross_edges_cache():
 def save_cross_edges(edges: List[Dict[str, str]]):
     """Persist computed cross-call/cross-language edges to SQLite."""
     import sqlite3
-    conn = sqlite3.connect(_db_path())
+    conn = sqlite3.connect(_db_path(), timeout=5.0)
     try:
         # Remove old cross edges before inserting new ones
         conn.execute("DELETE FROM edges WHERE kind IN ('calls', 'cross_call')")
