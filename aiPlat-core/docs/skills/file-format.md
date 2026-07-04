@@ -272,7 +272,7 @@ class SandboxConfig:
     """沙箱配置"""
     allowed_extensions: List[str] = [".sh", ".py", ".js"]  # 允许的脚本类型
     max_execution_time: float = 30.0  # 最大执行时间 (秒)
-    max_memory_mb: int = 512  # 最大内存
+    max_memory_mb: int = （参见 AIPLAT_CAPABILITIES.md 当前计数）  # 最大内存
     allowed_env_vars: List[str] = ["PATH", "HOME"]  # 允许的环境变量
     blocked_commands: List[str] = ["rm -rf", "sudo", "kill"]  # 禁止的命令
 ```

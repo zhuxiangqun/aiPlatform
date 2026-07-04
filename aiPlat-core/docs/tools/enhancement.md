@@ -142,7 +142,7 @@ class CodeExecutionTool(BaseTool):
 ```
 
 **安全限制**：
-- 资源限制：CPU 50%, 内存 512MB
+- 资源限制：CPU 50%, 内存 （参见 AIPLAT_CAPABILITIES.md 当前计数）MB
 - 网络隔离（可选）
 - 禁止文件系统访问（除临时目录）
 - 禁止子进程 spawn

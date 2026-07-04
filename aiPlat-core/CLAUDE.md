@@ -2278,6 +2278,58 @@ Post-generation 语义合规验证——用 YAML 本体验证 Agent 输出中的
 **改动文件**: `cross_validation_gate.py` (+90)
 
 
+### 5.107 ModelTierRouter — T1-T5 分层路由 (Phase 12, 2026-07)
+
+Hermes 式 T1-T5 五级模型路由：根据任务复杂度自动选择"最便宜且能胜任"的模型。
+
+**核心模块**: `core/harness/routing/model_tier_router.py` (168 行)
+
+**层级配置** (`llm_profile.yaml.tiers`):
+
+| 层级 | 复杂度范围 | 默认模型 | 用途 |
+|:--:|:--:|------|------|
+| T1 | [0,1] | qwen2.5:3b | 轻量/快速 |
+| T2 | [1,2] | qwen2.5-coder:7b | 日常对话 |
+| T3 | [2,3] | qwen2.5-coder:7b | 内容创作/编码 |
+| T4 | [3,4] | deepseek-v4-pro | 复杂推理 |
+| T5 | [4,5] | deepseek-v4-pro | 高难度推理 |
+
+**路由算法**: `_normalize_complexity(simple/medium/complex, confidence) → 0-5 连续分`
+→ `_complexity_to_tier()`（左闭右开 [low, high)，边界保守）
+→ `route(purpose, level, confidence)` → 第一可用模型 → T1 降级
+
+**集成**: `best_model_for_purpose(purpose, messages=[])` 新增 Step 1a（层级路由）和 Step 1b（复杂度过滤）
+
+**配置驱动**: T1-T5 层级的模型列表可通过 `llm_profile.yaml.tiers` 完全自定义
+
+**改动文件**: `model_tier_router.py` (+168), `llm_profile.yaml` (+25), `model_injection.py` (+30),
+`manager.py` (+10), `operator_agent.py` (+5), `llm.py` (+1)
+
+
+### 5.108 复杂度感知模型选择 (Phase 12.1, 2026-07)
+
+将 `llm_profile.yaml` 中已定义的 `model_capabilities.routing_rules.min/max_complexity` 接入 `ModelManager.select_by_purpose()` 评分循环。
+
+**核心改动**: `ModelManager.select_by_purpose(complexity="simple"|"medium"|"complex")`
+
+**复杂度映射**: simple→1, medium→2, complex→4，与 `routing_rules` 的 0-5 范围对齐
+
+**降级**: 无 `routing_rules` 的模型默认 `min=0, max=5`（不受限）
+
+**改动文件**: `manager.py` (+10), `model_injection.py` (+20)
+
+
+### 5.109 会话模型覆盖 — /model 命令 (Phase 13, 2026-07)
+
+允许运行时覆盖模型选择，等效于 Hermes 的 `/model` CLI 命令。
+
+**API**: `POST /api/core/model-override` — `{"model_name": "deepseek-v4-pro"}` 设置，`{"model_name": ""}` 清除
+
+**实现**: `model_injection.py:_get_session_model_override()`，在 `best_model_for_purpose()` Step 0.5 检查，优先级高于环境变量和层级路由
+
+**改动文件**: `model_injection.py` (+20), `adapters.py` (+20)
+
+
 ---
 
 ## 6) 输出要求（每次提交给用户的结果必须包含）

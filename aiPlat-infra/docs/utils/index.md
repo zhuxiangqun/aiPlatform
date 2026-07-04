@@ -405,7 +405,7 @@ handler.handle(error, category=CustomErrorCategory.RATE_LIMIT)
 | 配置项 | 校验规则 | 错误信息 |
 |--------|----------|----------|
 | `utils.error.default_level` | low/medium/high/critical | invalid level |
-| `utils.security.hash_algorithm` | sha256/sha512/md5 | invalid algorithm |
+| `utils.security.hash_algorithm` | sha256/sha（参见 AIPLAT_CAPABILITIES.md 当前计数）/md5 | invalid algorithm |
 | `utils.cache.max_size` | > 0 | must be > 0 |
 
 ---
