@@ -8,7 +8,7 @@ language: zh-CN
 
 此文件是 **工作区兜底规约**，用于在系统执行链路中自动推断到 workspace root 时仍然能注入/强制基本规则。
 
-**能力全貌**：参见 [`AIPLAT_CAPABILITIES.md`](./AIPLAT_CAPABILITIES.md)（唯一真相源，466 项能力）
+**能力全貌**：参见 [`AIPLAT_CAPABILITIES.md`](./AIPLAT_CAPABILITIES.md)（唯一真相源，472 项能力）
 
 **强制规则——代码变更必须同步文档**：
 
@@ -196,7 +196,8 @@ scripts/ruff_f821_baseline.json        ← F821 基线快照（ratchet 对比基
     | **13** | **Skill 执行真实性** | `arch_guard_rules.yaml` §46 | `execution_type:handler` 必须有 `handler.py`；`prompt`+`handler.py` → WARNING |
     | **14** | **接线完成度标记** | `arch_guard_rules.yaml` §47 | 检测 `# TODO: wire/0 caller/待接线` 死代码标记 |
     | **15** | **Agent 边界** | `arch_guard_rules.yaml` §48+§50 | 禁止 Agent 直访 Harness 内部；禁止直接调用其他 Agent |
-    | **16** | **YAML frontmatter 解析** | `arch_guard_rules.yaml` §76 + `scripts/validate_frontmatter.py` | AGENT.md / SKILL.md / CLAUDE.md YAML frontmatter 完整性（缺失 `---` 分隔符、YAML 语法错误） |
+    | **11** | **git diff 新增API登记** |  §11 | 检测 git diff 中新增的 public 函数/类/端点是否在 CAPABILITIES 中登记 — 解决"已有文件新增能力不自动补登"问题 — 1 violation(s)
+| **16** | **YAML frontmatter 解析** | `arch_guard_rules.yaml` §76 + `scripts/validate_frontmatter.py` | AGENT.md / SKILL.md / CLAUDE.md YAML frontmatter 完整性（缺失 `---` 分隔符、YAML 语法错误） |
     | **17** | **Python 未定义变量** | `arch_guard_rules.yaml` §76 (ruff F821 ratchet) + `scripts/architecture_guard.sh` 前端检查 | core/ 生产代码中引用未定义的变量名（NameError 风险） |
 
     **执行顺序（更新）**：
