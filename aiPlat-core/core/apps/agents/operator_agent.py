@@ -150,6 +150,55 @@ class OperatorAgent(BaseAgent):
             "violations": _gate_violations,
         }
 
+        # Phase 15: Completion checklist (task coverage validation)
+        _completion_status = "unavailable"
+        _completion_checklist: list = []
+        try:
+            if os.getenv("AIPLAT_COMPLETION_GATE_ENABLED", "true").lower() in ("true", "1", "yes"):
+                from core.harness.infrastructure.gates.completion_gate import CompletionChecklistGate
+                comp_gate = CompletionChecklistGate()
+                comp_result = comp_gate.verify(
+                    decision, question=question,
+                    semantic_violation_count=len(_gate_violations),
+                )
+                _completion_status = comp_result.status
+                _completion_checklist = [
+                    {"item": c.item, "verified": c.verified, "detail": c.detail}
+                    for c in comp_result.checklist
+                ]
+
+                # Lightweight retry: re-generate with lower temperature
+                if _completion_status == "needs_review" and decision.get("confidence", 0) > 0.8:
+                    logger.info("CompletionGate triggered retry for '%s'", question)
+                    retry_temp = min(0.3, 0.2)  # fixed to 0.2 for focused re-generation
+                    resp2 = await sys_llm_generate(
+                        None,
+                        op_messages,
+                        model_name=best_model_for_purpose("doc_llm", messages=op_messages),
+                        temperature=retry_temp,
+                        max_tokens=2000,
+                    )
+                    answer2 = getattr(resp2, "content", "") or str(resp2)
+                    decision2 = self._parse_decision(answer2)
+                    comp_result2 = comp_gate.verify(
+                        decision2, question=question,
+                        semantic_violation_count=len(_gate_violations),
+                    )
+                    if comp_result2.status == "pass":
+                        decision = decision2
+                        _completion_status = "pass_after_retry"
+                        _completion_checklist = [
+                            {"item": c.item, "verified": c.verified, "detail": c.detail}
+                            for c in comp_result2.checklist
+                        ]
+        except Exception as e:
+            logger.debug("CompletionGate skipped: %s", e)
+
+        decision["_completion_gate"] = {
+            "status": _completion_status,
+            "checklist": _completion_checklist,
+        }
+
         # ── Action bridge: fire webhooks for recommended actions ──
         action_results = []
         try:
@@ -178,6 +227,7 @@ class OperatorAgent(BaseAgent):
                 "action_results": action_results,
                 "semantic_gate_status": _gate_status,
                 "semantic_violations": len(_gate_violations),
+                "completion_gate_status": _completion_status,
             },
         )
 
