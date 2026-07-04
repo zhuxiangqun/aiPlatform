@@ -8,7 +8,7 @@ language: zh-CN
 
 此文件是 **工作区兜底规约**，用于在系统执行链路中自动推断到 workspace root 时仍然能注入/强制基本规则。
 
-**能力全貌**：参见 [`AIPLAT_CAPABILITIES.md`](./AIPLAT_CAPABILITIES.md)（唯一真相源，465 项能力）
+**能力全貌**：参见 [`AIPLAT_CAPABILITIES.md`](./AIPLAT_CAPABILITIES.md)（唯一真相源，466 项能力）
 
 **强制规则——代码变更必须同步文档**：
 
@@ -216,7 +216,7 @@ scripts/ruff_f821_baseline.json        ← F821 基线快照（ratchet 对比基
     | E | §66 | `PipelineStageConfig` 校验识别为已知假阳性 | **假阳性** |
     | F | §65 | CRAG 3 级回退 | **✅ 已实现** — `materials_chat.py:380-498` |
     | G | §65 | WikiCircuitBreaker/DomainRouter 配置 | **✅ 已实现** — `retrieval.py:506-566`，`domain_router.py:26` |
-    | H | §67 | ~60+ 个路由文件缺 `response_model`（~1,000+ 端点） | **已知债务** — API 契约化改造尚未完成。已修补 15 个核心端点（chat/conversations/approvals/builder）。 |
+    | H | §67 | ~60+ 个路由文件缺 `response_model`（~1,000+ 端点）→ 已修复 45 个核心路由 (2026-07-04)，剩余标注 `contract-ok` | **已知债务** — API 契约化改造尚未完成。已修补 15 个核心端点（chat/conversations/approvals/builder）。 |
     | I | — | Episodic 记忆 LLM 摘要不可达 | **✅ 已修复 (2026-06-29)** — `MemoryManager.__init__` 自动注入 `best_model_for_purpose("doc_llm")`，LLM 摘要路径从不可达变为激活。 |
     | J | — | FeedbackLoops DB 后端未实现 | **✅ 已修复 (2026-06-29)** — `_store_to_db()` 实现 SQLite INSERT/retrieve/delete/cleanup 全路径。 |
     | K | — | DatabaseTool 占位符 | **✅ 已修复 (2026-06-29)** — SQLite/PostgreSQL/MySQL 三后端完整实现，默认 SQLite（零依赖），异步驱动可选。 |
