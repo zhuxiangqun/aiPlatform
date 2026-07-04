@@ -592,6 +592,14 @@ class MaterialsChatAgent(BaseAgent):
                         except Exception as e:
                             logging.debug(str(e), exc_info=True)
 
+                        # Phase 15: Completion checklist for RAG answers
+                        try:
+                            from core.harness.infrastructure.gates.completion_gate import CompletionChecklistGate
+                            gate = CompletionChecklistGate(llm_threshold=99)
+                            comp = gate.verify({"answer": answer}, question=question)
+                            _comp_status = comp.status
+                        except Exception:
+                            _comp_status = "unavailable"
                         return AgentResult(
                             success=True,
                             output={"answer": answer, "citations": citations, "items": [],
@@ -601,9 +609,11 @@ class MaterialsChatAgent(BaseAgent):
                                     "retrieval_policy": retrieval_policy, "answer_strategy": answer_strategy,
                                     "reasoning_path": reasoning_path,
                                     "pipeline_trace": pipeline_trace,
-                                    "quality": quality, "hallucination_risk": hallucination_risk},
+                                    "quality": quality, "hallucination_risk": hallucination_risk,
+                                    "_completion_gate_status": _comp_status},
                             metadata={"intent": intent, "strategy": "direct_retrieve", "doc_count": len(doc_ids),
-                                       "hallucination_risk": hallucination_risk},
+                                       "hallucination_risk": hallucination_risk,
+                                       "completion_gate_status": _comp_status},
                         )
                 except Exception as e:
                     logging.debug(str(e), exc_info=True)
@@ -676,6 +686,15 @@ class MaterialsChatAgent(BaseAgent):
                 except Exception:
                     import logging; logging.getLogger(__name__).debug("Semantic cache write skipped", exc_info=True)
 
+            # Phase 15: Completion checklist for skill-path RAG answers
+            try:
+                from core.harness.infrastructure.gates.completion_gate import CompletionChecklistGate
+                gate = CompletionChecklistGate(llm_threshold=99)
+                comp = gate.verify({"answer": answer}, question=question)
+                _comp_status = comp.status
+            except Exception:
+                _comp_status = "unavailable"
+
             return AgentResult(
                 success=True,
                 output={
@@ -694,6 +713,7 @@ class MaterialsChatAgent(BaseAgent):
                     "reasoning_path": reasoning_path,
                     "pipeline_trace": pipeline_trace,
                     "quality": self_review(answer, citations, reasoning_path),
+                    "_completion_gate_status": _comp_status,
                 },
                 metadata={
                     "intent": intent,
@@ -704,6 +724,7 @@ class MaterialsChatAgent(BaseAgent):
                     "retrieval_policy": retrieval_policy,
                     "answer_strategy": answer_strategy,
                     "doc_count": len(doc_ids),
+                    "completion_gate_status": _comp_status,
                     # Phase C6: latency baseline + routing cost breakdown
                     "latency_ms": int((time.time() - _t0) * 1000),
                     "cost_routing": {
