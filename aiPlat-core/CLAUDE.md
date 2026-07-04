@@ -2153,6 +2153,79 @@ SubAgent_B → decode(向量+摘要) → 注入 prompt 上下文
 **改动文件**: `operator_agent.py` (+145), `base.py` (+2), `prompt_loader.py` (+50), `AGENT.md` (+55)
 
 
+### 5.100 Wiki 内容质量监控 (Gap 2, 2026-07)
+
+LLM 驱动的 Wiki 页面内容保真度检查——对比 Wiki 页面与其 `source_articles` 原始文档，评估信息完整性、准确性和综合质量。
+
+**核心模块**: `core/harness/knowledge/wiki_quality_monitor.py` (319 行)
+
+**3 维度评估**:
+| 维度 | 含义 | 检测方式 |
+|------|------|---------|
+| completeness | 原始文档的关键信息在 Wiki 页面中保留了多少 | LLM 对比评估 |
+| accuracy | Wiki 页面是否有与原文矛盾的陈述 | LLM 事实核查 |
+| overall | completeness × 0.6 + accuracy × 0.4 | 加权计算 |
+
+**分段抽样**: 源文档 > 3000 字符时取前/中/后各 1000 字符，均匀覆盖
+
+**触发方式**: 按需 API (`force=true`) / 事件驱动 (≥50 次 wiki 变更) / 定时 (每天 3AM)
+
+**存储**: `wiki_quality_alerts` + `wiki_quality_trends` 双表，浮点评分支持趋势追踪
+
+**集成**: `_inc_change_counter` 钩子 / HealthCheckRegistry / `GET /diagnostics/wiki-quality`
+
+**改动文件**: `wiki_quality_monitor.py` (+319), `wiki_engine.py` (+15), `diagnostics.py` (+35), `server.py` (+6)
+
+
+### 5.101 主动综合 — Active Synthesis (Gap 1, 2026-07)
+
+STORM 式主动知识生成——从被动响应升级为主动发现知识缺口 → 研究 → 起草 Wiki 页面 → 提交 Proposal。
+
+**核心模块**: `core/harness/knowledge/active_synthesis.py` (310 行)
+
+**5 步管道**:
+1. `detect_synthesis_gaps()` — 复用 knowledge_gap_detector，优先 no_instance 缺口
+2. `generate_research_questions()` — LLM 生成 3-5 个聚焦研究问题，API key 缺失时优雅降级
+3. `retrieve_source_documents()` — 从 kb_elements + wiki search 获取原始资料
+4. `synthesize_wiki_page()` — LLM 起草含 title/body/tags/confidence 的 Markdown 页面
+5. `submit_as_proposal()` — 封装为 save_proposal() 提交人工审核
+
+**质量门控**: min_confidence 阈值(默认 0.3) / 源文档存在性检查 / LLM 不可用时回退问题
+
+**触发**: POST /wiki/active-synthesis / 事件驱动 (via _inc_change_counter) / `AIPLAT_ACTIVE_SYNTHESIS_ENABLED=false` 默认关闭
+
+**改动文件**: `active_synthesis.py` (+310), `wiki_engine.py` (+5), `wiki.py` (+30)
+
+
+### 5.102 答案生成管道 (2026-07)
+
+统一的 LLM 调用 + 答案提取，消除 MaterialsChatAgent 中 3 处重复的答案生成代码。
+
+**核心模块**: `core/harness/generation/answer_generator.py`
+
+**函数**:
+| 函数 | 用途 |
+|------|------|
+| `generate_answer()` | 非流式 sys_llm_generate + 答案验证 + trace 信息返回 |
+| `generate_stream_answer()` | 流式 sys_llm_generate_stream + chunk 收集 + queue 推送 |
+| `build_rag_user_message()` | RAG 用户消息构建 (可自定义模板) |
+
+**改动文件**: `answer_generator.py` (+108), `materials_chat.py` 3 处调用点替换
+
+
+### 5.103 Action 闭环桥接 (2026-07)
+
+OperatorAgent 决策 JSON → Action Type 匹配 → webhook 通知 → 外部系统执行。
+
+**核心模块**: `core/harness/actions/action_bridge.py`
+
+**函数**: `execute_decision_actions(decision, context, webhook_url)` — 遍历 recommended_actions, 构建 webhook payload, 异步 POST, 返回执行结果列表
+
+**OperatorAgent 集成**: 决策生成后自动调用 action_bridge, metadata 记录 actions_fired + action_results
+
+**改动文件**: `action_bridge.py` (+106), `operator_agent.py` (+15)
+
+
 ---
 
 ## 6) 输出要求（每次提交给用户的结果必须包含）
