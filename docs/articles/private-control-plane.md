@@ -1,3 +1,48 @@
+## 精华版（~1500 字）
+
+*适合微信公众号/即刻/Threads 等碎片阅读场景*
+
+### 你的 AI 系统越跑越笨？不是模型的问题
+
+如果你长期用 AI Agent 做生产级任务，你一定遇到过：第一个月精确可靠，第三个月开始走捷径、跳过校验、删除规则。你换了无数模型，每次都短期见效然后继续退化。
+
+这不是模型变懒了。这是**自发性熵增**——任何把执行和决策绑在一起的系统，必然随时间退化。
+
+###
+
+对抗熵增的方式不是换模型，是建一套**私有控制平面**——独立于任何模型、在 LLM 调用外围形成多层防御的架构。
+
+aiPlat 的 `core/harness/` 层就是一个这样的控制平面。13 个模块，~4,500 行代码，130 项测试。
+
+### 四层防御
+
+**第一层·准入**：PolicyGate 是唯一权限入口。所有 syscall 执行前先过 ApprovalGate（24 条危险操作规则）和 SkillsGuard（79 个威胁模式，Skill 注册前扫描）。问题："这个操作能做吗？"
+
+**第二层·恢复**：ErrorTranslator 用 7 级流水线把 LLM 错误分类为 15 种根因，每种带 4 个恢复标志（重试？压缩？换凭证？换提供商？）。调用方不需要重新判断。问题："失败了怎么恢复？"
+
+**第三层·趋势**：TrendDetector 每 10 分钟扫描过去 1 小时的错误率波动，对比 7 天同时段基线。4 态消抖机保证"单次波动不报，持续恶化必升级"。问题："系统是不是在悄悄变差？"
+
+**第四层·底座**：统一 SQLite 连接层把 89 处裸连接收敛，84% 缺 `busy_timeout` 的并发炸问题全量修复。问题："基础设施自己不要成为瓶颈。"
+
+### 核心原则
+
+1. **决策与执行分离**：ErrorTranslator 的标志是"做好的决定"，调用方只读标志不重新判断
+2. **唯一入口**：所有 syscall 走同一个 PolicyGate，不上游查一遍下游再查一遍
+3. **热路径不阻塞**：实时检查都在失败路径（ErrorTranslator）或低频路径（SkillsGuard/TrendDetector）上，正常调用零新增延迟
+4. **从失败中学习**：错误分类→趋势检测→状态机升级→触发 Autoreview，形成闭环
+
+### 大模型是租来的，这一层才是自己的
+
+模型智商是大厂可以租借的商品，今天这个强明天那个强，你永远追不上。但能对抗熵增、维持长程决策一致性的私有架构，才是你真正拿不走的思想资产。
+
+---
+
+*代码仓库：[github.com/zhuxiangqun/aiPlatform](https://github.com/zhuxiangqun/aiPlatform)*
+
+*最后更新：2026-07-04 · 460 项能力 · 202 项测试通过 · 架构守卫 §1-§76 PASS*
+
+---
+
 # 私有控制平面：为什么你的 AI 系统越跑越笨，以及如何对抗
 
 > 不是模型变懒了，是你的系统在自发熵增。
@@ -6,7 +51,6 @@
 > 所有模块、数字、代码位置均可验证。
 
 ---
-
 ## 一、那条绕不开的退化曲线
 
 如果你长期用 AI Agent 做生产级任务，你一定遇到这个场景：
@@ -266,7 +310,13 @@ with _lock:                        # threading.Lock 保护并发写
        │     ├─ RBAC 权限                                      │
        │     ├─ 架构边界                                        │
        │     └─ 租户策略                                        │
-       │   → ALLOW / DENY / APPROVAL_REQUIRED                  │
+       │   → ALLOW / DENY / APPROVAL_REQUIRED
+       │
+       │  FeedbackTranslator（PolicyGate 自然语言反馈）
+       │   DENY → "操作被拒绝：权限不足"
+       │   APPROVAL_REQUIRED → "需要管理员审批，已生成审批单 #A-{approval_id}"
+       │   Agent 收到自然语言反馈后决策：等待审批 / 放弃 / 换方案
+       │                  │
        │                                                        │
        ├─► Layer 2 · 恢复（仅失败时）                           │
        │   ErrorTranslator.classify_api_error()                │
@@ -346,11 +396,51 @@ with _lock:                        # threading.Lock 保护并发写
 
 ---
 
+---
+
+## 六附、配置清单
+
+以下环境变量控制各模块的运行时行为。全部有默认值，零配置即可启动。
+
+| 环境变量 | 默认值 | 模块 | 说明 |
+| :--- | :--- | :--- | :--- |
+| `AIPLAT_ENTROPY_INTERVAL` | 600 | TrendDetector | 分析间隔（秒） |
+| `AIPLAT_ENTROPY_MIN_CALLS` | 50 | TrendDetector | 低流量门禁（1 小时内最少调用数） |
+| `AIPLAT_ENTROPY_COLD_START_THRESHOLD` | 0.05 | TrendDetector | 冷启动硬阈值（错误率标准差） |
+| `AIPLAT_ENTROPY_BASELINE_HOURS` | 168 | TrendDetector | 基线窗口（小时 = 7 天） |
+| `AIPLAT_APPROVAL_GATE_DISABLED` | false | ApprovalGate | 完全关闭危险命令检测 |
+| `AIPLAT_APPROVAL_CACHE_TTL` | 300 | ApprovalGate | Session 内审批缓存时间（秒） |
+| `AIPLAT_APPROVAL_WHITELIST_USERS` | — | ApprovalGate | 逗号分隔的免审批用户列表 |
+| `AIPLAT_SKILLS_GUARD_DISABLED` | — | SkillsGuard | 关闭威胁扫描（可设为 `all` 或按类别如 `code_injection`） |
+| `AIPLAT_PROCESS_HEALTH_INTERVAL` | 30 | ProcessRegistry | 健康检查间隔（秒） |
+| `AIPLAT_PROCESS_HEARTBEAT_TIMEOUT` | 60 | ProcessRegistry | 心跳超时阈值（秒） |
+| `AIPLAT_DELEGATE_DISABLED` | false | DelegateTool | 关闭子 Agent 委托 |
+| `AIPLAT_MEMORY_BACKEND` | memory | Providers | 记忆后端选择（memory/sqlite/redis/postgres） |
+| `AIPLAT_MEMORY_CLEANUP_INTERVAL` | 86400 | MemoryManager | 记忆后台清理间隔（秒 = 1 天） |
+| `AIPLAT_FEISHU_WEBHOOK` | — | MessagingGateway | 飞书机器人 Webhook URL |
+| `AIPLAT_WECOM_WEBHOOK` | — | MessagingGateway | 企业微信机器人 Webhook URL |
+| `AIPLAT_SLACK_BOT_TOKEN` | — | MessagingGateway | Slack Bot Token（xoxb-...） |
+| `AIPLAT_EXECUTION_DB_PATH` | `~/.aiplat/aiplat_executions.sqlite3` | db_utils | SQLite 数据文件路径 |
+| `AIPLAT_PROMPT_CACHE_ENABLED` | true | llm.py | 是否启用 prompt caching |
+
+所有环境变量均为可选——不设置时使用表内默认值。
+
+---
+
 ## 六、关于未来
 
 这篇文章讨论的是"对抗熵增"——在系统运行过程中保持稳定。但控制平面的下一个挑战是"从熵增中学习"。
 
-TrendDetector 已经可以通过 `HIGH_ALERT` 状态自动触发 Autoreview——当某个错误类型持续恶化时，系统会主动检查是不是上游配置过期了。这离"系统自己发现退化、自己修复"还差最后一步：
+TrendDetector 已经可以通过 `HIGH_ALERT` 状态自动触发 Autoreview——当某个错误类型持续恶化时，系统会主动检查是不是上游配置过期了。
+
+**Autoreview 的入参契约**：当 TrendDetector 升级为 `HIGH_ALERT` 时，它会自动构造一个 `AutoreviewSession`，包含：
+- `error_type` + 最近 6 个桶的 `rates` 序列（用于还原错误率曲线）
+- 当前生效的 `model_metadata`（max_tokens、context_window、pricing）
+- 过去 1 小时内该类错误的 `sample_trace_ids`（用于定位具体哪次调用触发了异常）
+
+Autoreview 基于这三项数据执行**假设驱动诊断**（例如："假设是 max_tokens 上限从 8192 降到了 4096，验证"），输出修复建议草稿。
+
+这离"系统自己发现退化、自己修复"还差最后一步：
 
 ```
 TrendDetector HIGH_ALERT
@@ -365,46 +455,3 @@ TrendDetector HIGH_ALERT
 那天到来时，`core/harness/` 就不是在"对抗"熵增了——它是在**利用**熵增让系统变得更强。
 
 ---
-
-## 精华版（~1500 字）
-
-*适合微信公众号/即刻/Threads 等碎片阅读场景*
-
-### 你的 AI 系统越跑越笨？不是模型的问题
-
-如果你长期用 AI Agent 做生产级任务，你一定遇到过：第一个月精确可靠，第三个月开始走捷径、跳过校验、删除规则。你换了无数模型，每次都短期见效然后继续退化。
-
-这不是模型变懒了。这是**自发性熵增**——任何把执行和决策绑在一起的系统，必然随时间退化。
-
-###
-
-对抗熵增的方式不是换模型，是建一套**私有控制平面**——独立于任何模型、在 LLM 调用外围形成多层防御的架构。
-
-aiPlat 的 `core/harness/` 层就是一个这样的控制平面。13 个模块，~4,500 行代码，130 项测试。
-
-### 四层防御
-
-**第一层·准入**：PolicyGate 是唯一权限入口。所有 syscall 执行前先过 ApprovalGate（24 条危险操作规则）和 SkillsGuard（79 个威胁模式，Skill 注册前扫描）。问题："这个操作能做吗？"
-
-**第二层·恢复**：ErrorTranslator 用 7 级流水线把 LLM 错误分类为 15 种根因，每种带 4 个恢复标志（重试？压缩？换凭证？换提供商？）。调用方不需要重新判断。问题："失败了怎么恢复？"
-
-**第三层·趋势**：TrendDetector 每 10 分钟扫描过去 1 小时的错误率波动，对比 7 天同时段基线。4 态消抖机保证"单次波动不报，持续恶化必升级"。问题："系统是不是在悄悄变差？"
-
-**第四层·底座**：统一 SQLite 连接层把 89 处裸连接收敛，84% 缺 `busy_timeout` 的并发炸问题全量修复。问题："基础设施自己不要成为瓶颈。"
-
-### 核心原则
-
-1. **决策与执行分离**：ErrorTranslator 的标志是"做好的决定"，调用方只读标志不重新判断
-2. **唯一入口**：所有 syscall 走同一个 PolicyGate，不上游查一遍下游再查一遍
-3. **热路径不阻塞**：实时检查都在失败路径（ErrorTranslator）或低频路径（SkillsGuard/TrendDetector）上，正常调用零新增延迟
-4. **从失败中学习**：错误分类→趋势检测→状态机升级→触发 Autoreview，形成闭环
-
-### 大模型是租来的，这一层才是自己的
-
-模型智商是大厂可以租借的商品，今天这个强明天那个强，你永远追不上。但能对抗熵增、维持长程决策一致性的私有架构，才是你真正拿不走的思想资产。
-
----
-
-*代码仓库：[github.com/zhuxiangqun/aiPlatform](https://github.com/zhuxiangqun/aiPlatform)*
-
-*最后更新：2026-07-04 · 460 项能力 · 202 项测试通过 · 架构守卫 §1-§76 PASS*
