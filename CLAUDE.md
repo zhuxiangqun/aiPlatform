@@ -8,7 +8,7 @@ language: zh-CN
 
 此文件是 **工作区兜底规约**，用于在系统执行链路中自动推断到 workspace root 时仍然能注入/强制基本规则。
 
-**能力全貌**：参见 [`AIPLAT_CAPABILITIES.md`](./AIPLAT_CAPABILITIES.md)（唯一真相源，443 项能力）
+**能力全貌**：参见 [`AIPLAT_CAPABILITIES.md`](./AIPLAT_CAPABILITIES.md)（唯一真相源，464 项能力）
 
 **强制规则——代码变更必须同步文档**：
 
@@ -18,8 +18,30 @@ language: zh-CN
 | 2 | 能力状态变化（⚠️→✅等） | `CAPABILITIES.md` 更新标记 + 评分统计 |
 | 3 | 评分维度改变 | `ROADMAP.md` 更新基线表 |
 | 4 | 已知债务新增/修复 | `CLAUDE.md` §16 更新 |
+| **5** | **技术文档/文章中的可验证声明** | **附带 grep 命中文件:行号 验证证据** |
 | **违反后果**：`phase_check.sh` Step 7 → `verify_doc_sync.sh` → **退出码 1 阻断** |
 | **自动修复**：`git commit` 时 pre-commit hook 自动运行 `auto_sync_docs.sh`，新模块自动生成条目并 stage |
+
+**规则 5 详解——技术文档声明必须代码验证（强制）**：
+
+技术文章、README、设计文档中的所有**可验证事实性声明**——
+  - "X 模块已实现 Y 功能"
+  - "系统支持 Z 种错误类型"
+  - "A 是唯一入口 / B 已被全量修复"
+  - 所有带数字的断言（"N 个模块"、"M 项测试"、"K 条规则"）
+
+——在定稿或 commit 前，必须附带至少一条代码交叉验证证据：
+
+```
+grep -rn '<声明关键词>' <搜索路径> --include='*.py'
+```
+
+**禁止**将设计目标或 Plan 阶段构思当作当前实现状态写入描述现状的章节。
+
+**示例**：
+  ✅ "ApprovalGate 集成到 PolicyGate" — 验证：`grep -rn 'get_approval_gate' policy_gate.py` → line 337
+  ❌ "FeedbackTranslator 提供自然语言反馈" — 验证：`grep -rn 'FeedbackTranslator' *` → 仅命中文章本身，代码中不存在
+  ❌ "84% 的 busy_timeout 缺失已被全量修复" — 验证：`grep -rn 'sqlite3.connect' --include='*.py' | grep -v timeout` → 仍有 70+ 处未迁移
 
 如果你的任务明确针对某个仓库，请优先遵守对应仓库根目录的更细化规约：
 - 后端引擎：`aiPlat-core/CLAUDE.md`
