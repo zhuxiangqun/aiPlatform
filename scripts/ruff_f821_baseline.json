@@ -1,6 +1,6 @@
 {
   "_comment": "ruff F821 baseline. Rebuild: bash scripts/ruff_f821_ratchet.sh --rebuild",
-  "_generated": "2026-07-04T07:12:42Z",
+  "_generated": "2026-07-04T10:49:09Z",
   "_total_files": 3,
   "_total_violations": 5,
   "files": {

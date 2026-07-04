@@ -163,14 +163,20 @@ async def pack_playbook(manifest: PlaybookManifest, output_path: str = "") -> st
                     import shutil
                     shutil.copy(src, ont_dir / f"{domain_id}.yaml")
 
-        # ── Pipelines (v1: function names) ──
+        # ── Pipelines (v2: topology JSON, v1: .txt fallback) ──
         if manifest.pipelines:
             pipe_dir = Path(export_dir) / "pipelines"
             pipe_dir.mkdir(parents=True, exist_ok=True)
             for pipe_name in manifest.pipelines:
                 try:
-                    from core.harness.execution.pipeline_engine import get_pipeline_builder
-                    if get_pipeline_builder(pipe_name):
+                    from core.harness.execution.pipeline_engine import pipeline_to_dict
+                    graph_def = pipeline_to_dict(pipe_name)
+                    if graph_def:
+                        (pipe_dir / f"{pipe_name}.json").write_text(
+                            json.dumps(graph_def, indent=2, ensure_ascii=False),
+                            encoding="utf-8",
+                        )
+                    else:
                         (pipe_dir / f"{pipe_name}.txt").write_text(pipe_name)
                 except Exception as e:
                     logger.warning("Failed to export pipeline '%s': %s", pipe_name, e)
@@ -291,16 +297,29 @@ async def unpack_playbook(archive_path: str, *,
                 shutil.copy(ont_dir / fname, dest)
                 imported["ontology"].append(domain_id)
 
-        # ── Import Pipelines (v1: function names) ──
+        # ── Import Pipelines (v2 JSON + v1 .txt fallback) ──
         pipe_dir = os.path.join(import_dir, "pipelines")
         if os.path.isdir(pipe_dir):
-            from core.harness.execution.pipeline_engine import get_pipeline_builder
-            for fname in os.listdir(pipe_dir):
-                name = fname.replace(".txt", "")
-                if get_pipeline_builder(name):
-                    imported["pipelines"].append(name)
-                else:
-                    skipped.append(f"pipeline:{name} (not registered)")
+            for fname in sorted(os.listdir(pipe_dir)):
+                if fname.endswith(".json"):
+                    try:
+                        graph_def = json.loads(Path(pipe_dir / fname).read_text(encoding="utf-8"))
+                        name = graph_def.get("name", fname.replace(".json", ""))
+                        # Namespace: {playbook_id}.{pipeline_name} unless overwrite
+                        target_name = f"{manifest.id}.{name}" if on_conflict != "overwrite" else name
+                        from core.harness.execution.pipeline_engine import register_pipeline_from_desc
+                        graph_def["name"] = target_name
+                        register_pipeline_from_desc(graph_def)
+                        imported["pipelines"].append(target_name)
+                    except Exception as e:
+                        skipped.append(f"pipeline:{fname}: {e}")
+                elif fname.endswith(".txt"):
+                    name = fname.replace(".txt", "")
+                    from core.harness.execution.pipeline_engine import get_pipeline_builder
+                    if get_pipeline_builder(name):
+                        imported["pipelines"].append(name)
+                    else:
+                        skipped.append(f"pipeline:{name} (not registered)")
 
         # ── Import Policies ──
         pol_dir = os.path.join(import_dir, "policies")

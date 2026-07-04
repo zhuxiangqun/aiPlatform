@@ -20,6 +20,55 @@ def get_pipeline_builder(name: str) -> Callable:
     """Get a registered pipeline builder by name."""
     return REGISTERED_PIPELINES.get(name)
 
+
+# ── Pipeline v2: Topology serialization for Playbook cross-environment migration ──
+_PIPELINE_TOPOLOGY: Dict[str, dict] = {}
+
+def register_pipeline_topology(name: str, topology: dict):
+    """Register a pipeline's topology description for v2 serialization."""
+    _PIPELINE_TOPOLOGY[name] = topology
+
+def pipeline_to_dict(name: str) -> Optional[dict]:
+    """Export a registered pipeline's topology as a JSON-safe dict (v2)."""
+    topo = _PIPELINE_TOPOLOGY.get(name)
+    if topo:
+        return {**topo, "graph_serialization_version": "2.0.0",
+                "langgraph_min_version": "0.2.0"}
+    # v1 fallback: return None
+    return None
+
+def register_pipeline_from_desc(topo: dict) -> str:
+    """Register a pipeline from a serialized topology description (v2)."""
+    import importlib.metadata as _meta
+    name = topo.get("name", "")
+    if not name:
+        raise ValueError("Pipeline definition missing 'name'")
+    # Version check
+    try:
+        lg_ver = _meta.version("langgraph")
+        min_ver = topo.get("langgraph_min_version", "0.2.0")
+        if _version_lt(lg_ver, min_ver):
+            raise ValueError(f"langgraph {min_ver}+ required, found {lg_ver}")
+    except Exception:
+        pass
+    _PIPELINE_TOPOLOGY[name] = topo
+    # Also register as a builder that raises informative error (v2: needs source code to execute)
+    REGISTERED_PIPELINES[name] = lambda: (_ for _ in ()).throw(
+        NotImplementedError(f"Pipeline '{name}' imported from Playbook — needs source code"))
+    return name
+
+
+def _version_lt(a: str, b: str) -> bool:
+    """Compare semantic versions: True if a < b."""
+    try:
+        pa = [int(x) for x in a.split(".")]
+        pb = [int(x) for x in b.split(".")]
+        while len(pa) < len(pb): pa.append(0)
+        while len(pb) < len(pa): pb.append(0)
+        return pa < pb
+    except Exception:
+        return False
+
 import asyncio
 import hashlib
 import json

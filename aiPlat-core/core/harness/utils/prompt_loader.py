@@ -1164,3 +1164,55 @@ ${task_full}
 """,
     category="learning",
     variables=["task", "task_full", "trajectory", "max_edits"])
+
+_register("ontology-generator", """TASK: Convert a natural-language description of a business domain
+into a valid aiPlat ontology YAML definition.
+
+DOMAIN DESCRIPTION:
+${description}
+
+DOMAIN ID: ${domain_id}
+
+## YAML FORMAT REQUIREMENTS
+
+Your output MUST be valid YAML with this exact structure:
+
+```yaml
+name: ${domain_id}
+description: (one-sentence summary)
+namespace: http://aiplat.local/ontology/${domain_id}/
+version: 1.0.0
+
+classes:
+  ClassName:
+    label: 中文标签
+    description: 一句话描述
+    required_fields: [name, description]
+    optional_fields: []
+    categories: [domain-category]
+    fields:
+      - name: field_name
+        type: enum
+        values: [value1, value2]
+
+object_properties:
+  - name: relation_name
+    label: 中文标签
+    domain: [SourceClass]
+    range: [TargetClass]
+```
+
+## RULES
+- Class names MUST be English CamelCase (e.g. InsuranceType, ClaimProcess)
+- EVERY class MUST have at least name + description in required_fields
+- Object properties MUST specify both domain (source) and range (target) as lists
+- Enumerated fields MUST include `values: [...]`
+- Keep classes focused: 3-8 per domain initially
+- Use categories field to group related classes
+- All labels and descriptions in Chinese
+
+OUTPUT: Pure YAML only. No markdown code fences, no explanatory text.
+If uncertain, include a `# FIXME:` comment.
+""",
+    category="ontology",
+    variables=["description", "domain_id"])

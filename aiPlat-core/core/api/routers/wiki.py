@@ -1526,6 +1526,113 @@ async def list_ontology_classes():
 
 # ── Domain Ontology API (YAML-based) ─────────────────────────────
 
+def _generate_from_vault(scan_dir: str, domain_id: str, name: str, keywords: str, sample_limit: int) -> str:
+    """Generate a basic ontology YAML from vault file scanning."""
+    import os as _os, yaml as _yaml
+    from pathlib import Path as _Path
+
+    # Collect file types from vault
+    files = []
+    try:
+        for root, dirs, fnames in _os.walk(scan_dir):
+            for fn in fnames[:sample_limit]:
+                files.append(_os.path.join(root, fn))
+    except Exception:
+        pass
+
+    # Generate basic template
+    yaml_data = {
+        "name": domain_id,
+        "description": name or f"Auto-generated from vault: {keywords}",
+        "namespace": f"http://aiplat.local/ontology/{domain_id}/",
+        "version": "1.0.0",
+        "classes": {
+            "Document": {
+                "label": "文档",
+                "description": f"Auto-generated from {len(files)} vault files",
+                "required_fields": ["name", "description"],
+                "categories": ["generated"],
+            }
+        },
+        "object_properties": [],
+    }
+    return _yaml.dump(yaml_data, allow_unicode=True, sort_keys=False)
+
+
+@router.post("/ontology/domains/generate", response_model=Dict[str, Any])
+async def generate_ontology_domain(
+    domain_id: str = "", description: str = "",
+    id: str = "", name: str = "", vault_subdir: str = "", keywords: str = "",
+    sample_limit: int = 20,
+):
+    """
+    AI-assisted ontology generation from natural-language description AND/OR vault scanning.
+
+    Backward-compatible with existing frontend (id/name/vault_subdir/keywords/sample_limit).
+    New mode: domain_id + description → LLM generates YAML from natural language.
+    """
+    _id = domain_id or id
+    _desc = description or keywords or ""
+    if not _id:
+        raise HTTPException(status_code=400, detail="domain_id or id is required")
+
+    try:
+        yaml_raw = ""
+
+        # Mode A: Vault-scanning generation (existing frontend path)
+        if vault_subdir:
+            import os as _os, yaml as _yaml
+            from pathlib import Path as _Path
+            vault_root = _Path(_os.getenv("AIPLAT_VAULT_ROOT", _Path.home() / ".aiplat" / "vault"))
+            scan_dir = vault_root / vault_subdir
+            yaml_raw = _generate_from_vault(str(scan_dir), _id, name, keywords or "", sample_limit)
+
+        # Mode B: Natural-language LLM generation (new)
+        elif _desc:
+            from core.harness.utils.prompt_loader import _sync_resolve
+            from core.harness.syscalls.llm import sys_llm_generate
+            prompt_text = _sync_resolve("ontology-generator", description=_desc[:2000], domain_id=_id)
+            result = await sys_llm_generate(
+                model=None, prompt=[{"role": "user", "content": prompt_text}],
+                model_name="deepseek-v4-pro", temperature=0.3, max_tokens=4000,
+            )
+            yaml_raw = getattr(result, "content", "") or ""
+            import re
+            yaml_raw = re.sub(r'^```ya?ml?\s*\n?', '', yaml_raw)
+            yaml_raw = re.sub(r'\n?```\s*$', '', yaml_raw)
+
+        if not yaml_raw:
+            raise HTTPException(status_code=400, detail="Could not generate YAML. Provide a description or vault subdirectory.")
+
+        from core.harness.knowledge.ontology_loader import validate_ontology_yaml
+        validation = validate_ontology_yaml(yaml_raw)
+        return {"yaml": yaml_raw, "yaml_preview": yaml_raw,
+                "classes_n": validation["classes_n"],
+                "properties_n": validation["properties_n"],
+                "valid": validation["valid"], "errors": validation["errors"],
+                "stats": {"classes_generated": validation["classes_n"],
+                          "relations_found": validation["properties_n"]}}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/ontology/domains/save", response_model=Dict[str, Any])
+async def save_ontology_domain(domain_id: str = "", yaml_content: str = ""):
+    """Save a validated ontology YAML to disk (auto-aligns name with domain_id)."""
+    if not domain_id or not yaml_content:
+        raise HTTPException(status_code=400, detail="domain_id and yaml_content are required")
+    try:
+        from core.harness.knowledge.ontology_loader import validate_ontology_yaml, save_domain_yaml
+        validation = validate_ontology_yaml(yaml_content)
+        if not validation["valid"]:
+            raise HTTPException(status_code=400, detail=f"Validation failed: {validation['errors']}")
+        dest_path = save_domain_yaml(domain_id, yaml_content)
+        return {"saved": True, "path": dest_path, "domain_id": domain_id,
+                "classes_n": validation["classes_n"], "properties_n": validation["properties_n"]}
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
 @router.get("/ontology/domains", response_model=Dict[str, Any])
 async def list_ontology_domains():
     """List available domain ontology files."""

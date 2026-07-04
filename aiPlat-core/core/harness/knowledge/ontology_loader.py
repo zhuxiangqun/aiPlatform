@@ -151,3 +151,59 @@ def load_all_domains(base_dir: str = "") -> Dict[str, OntologyDomain]:
         except Exception as e:
             logging.debug(str(e), exc_info=True)
     return domains
+
+
+# ════════════════════════════════════════════════════════════
+# Schema-Guided Editor helpers (Issue 1)
+# ════════════════════════════════════════════════════════════
+
+def validate_ontology_yaml(yaml_text: str) -> dict:
+    """
+    Validate a YAML string against the ontology domain format.
+    Returns: {valid, errors, classes_n, properties_n}
+    """
+    import yaml as _yaml
+    errors = []
+    try:
+        data = _yaml.safe_load(yaml_text)
+    except _yaml.YAMLError as e:
+        return {"valid": False, "errors": [f"YAML parse error: {e}"], "classes_n": 0, "properties_n": 0}
+
+    if not isinstance(data, dict):
+        return {"valid": False, "errors": ["Root must be a dict"], "classes_n": 0, "properties_n": 0}
+
+    for field in ["name", "namespace", "version"]:
+        if field not in data:
+            errors.append(f"Missing required field: {field}")
+
+    classes = data.get("classes", {})
+    if not classes or not isinstance(classes, dict):
+        errors.append("classes must be a non-empty dict")
+
+    props = data.get("object_properties", [])
+    if not isinstance(props, list):
+        errors.append("object_properties must be a list")
+
+    return {
+        "valid": len(errors) == 0,
+        "errors": errors,
+        "classes_n": len(classes) if isinstance(classes, dict) else 0,
+        "properties_n": len(props) if isinstance(props, list) else 0,
+    }
+
+
+def save_domain_yaml(domain_id: str, yaml_text: str) -> str:
+    """Write validated YAML to ~/.aiplat/ontologies/{domain_id}.yaml. Auto-aligns YAML name field."""
+    import os as _os, yaml as _yaml
+    from pathlib import Path as _Path
+
+    # Align YAML name with domain_id
+    data = _yaml.safe_load(yaml_text)
+    data["name"] = domain_id
+    yaml_text = _yaml.dump(data, allow_unicode=True, sort_keys=False)
+
+    dest_dir = _Path(_os.getenv("AIPLAT_HOME", _Path.home() / ".aiplat")) / "ontologies"
+    dest_dir.mkdir(parents=True, exist_ok=True)
+    dest_path = dest_dir / f"{domain_id}.yaml"
+    dest_path.write_text(yaml_text, encoding="utf-8")
+    return str(dest_path)
