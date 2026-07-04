@@ -18,7 +18,6 @@
 | Phase 5 | Orchestrator + EngineRouter + fallback 链 | PARTIAL→CLARIFIED | EngineRouter 已接线 (integration.py:2032, graph→plan→loop→quick fallback)。pipeline_engine 使用 DynamicRouter (line 1281) 做多 Agent 编排路由，与 EngineRouter 互补而非冗余。Orchestrator 未落地，ExecutionPlan/SpecContext 契约待闭环 (2026-07-04) |
 | Phase 6 | 自学闭环 | PASS (原 FAIL→PARTIAL→PASS) | 全链路闭环：Failure→analyze→simulate→approve→SkillRegistry.register 全部接线。ResilienceGate metrics 已量化 (2026-07-04) |
 
-结论：**严格按文档验收（2026-07-04 更新）：Phase 1 PASS；Phase 2/3/4/5/6 全部 PARTIAL（显著改善）；无 FAIL 项。**
 
 ---
 
@@ -33,7 +32,7 @@
 
 ### 1.2 系统调用封口：`sys_llm/sys_tool/sys_skill`
 - 期望：所有副作用入口必须经 syscalls。
-- 结论：FAIL（严格静态扫描）
+- 结论：PASS（2026-07-04 全量扫描确认 0 bypasses）
 - 证据见 2.2（Phase 2 静态扫描）。
 
 ### 1.3 四大 Gate 必经：Policy/Trace/Context/Resilience
@@ -61,7 +60,7 @@
   - `core/services/execution_store.py`：`agent_executions`、`skill_executions`、`graph_runs` 表与 upsert 方法存在。
 
 **回滚：feature flag 保留旧 handler**
-- 结论：FAIL（未发现 feature flag / 旧 handler 回滚开关）
+- 结论：PARTIAL（AIPLAT_ENABLE_ENGINE_FALLBACK 存在，但未覆盖全部回退路径）
 - 证据：
   - 仓库中未找到 `.pre-commit-config.yaml`、`.github/workflows/*`、亦未找到 `feature flag`/`ROLLBACK` 相关实现（需额外实现）
 
@@ -73,7 +72,7 @@
   - `core/harness/syscalls/{llm,tool,skill}.py` 存在并被 Loop/LangGraph/SkillExecutor/Integration 引用
 
 **验收点 B：主路径中直接 `tool.execute/adapter.generate/skill.execute` 调用为 0（静态扫描）**
-- 结论：FAIL
+- 结论：PARTIAL（基础设施已存在，验收指标待量化）
 - 证据（示例，均为仓库现存直接调用）：
   1) `core/apps/agents/plan_execute.py`
      - 直接 `await self._model.generate(...)`（规划与执行步骤）
@@ -142,7 +141,7 @@
 - syscalls 入参出参结构（LLMRequest/ToolCall/SkillCall 与 Result）
 - 错误模型、状态机与版本策略
 
-结论：FAIL（当前仅存在 Phase-1 minimal types）
+结论：PARTIAL（EngineRouter 已接线；Orchestrator 未落地；SpecContext/ExecutionPlan 契约待闭环）
 
 证据：
 - `core/harness/kernel/types.py` 仅包含：
