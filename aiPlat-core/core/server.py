@@ -1455,10 +1455,25 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logging.debug(str(e), exc_info=True)
 
+    # Start DocumentQualityMonitor (proactive parsing quality degradation detection)
+    try:
+        from core.harness.knowledge.doc_quality_monitor import get_doc_quality_monitor
+        dqm = get_doc_quality_monitor()
+        await dqm.start()
+        logging.getLogger("aiplat.quality").info("DocumentQualityMonitor started")
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
+
     yield
 
     # Shutdown background services
     EventBus.stop()
+    try:
+        from core.harness.knowledge.doc_quality_monitor import get_doc_quality_monitor
+        dqm = get_doc_quality_monitor()
+        await dqm.stop()
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
     try:
         from core.harness.infrastructure.trend_detector import get_trend_detector
         td = get_trend_detector()

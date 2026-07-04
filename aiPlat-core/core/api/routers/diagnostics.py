@@ -461,6 +461,24 @@ async def _check_doc_sync():
         return {"status": "unavailable", "score": 0, "signals": {"error": str(e)[:100]}}
 
 
+async def _check_doc_quality():
+    """Check document quality monitor status."""
+    try:
+        from core.harness.knowledge.doc_quality_monitor import get_doc_quality_monitor
+        dqm = get_doc_quality_monitor()
+        stats = dqm.get_stats()
+        alerts = dqm.get_alerts(limit=5)
+        alert_count = len(alerts)
+        return {
+            "status": "degraded" if alert_count > 3 else "pass",
+            "signals": stats,
+            "items": [{"check": "文档质量", "result": "⚠️" if alert_count > 0 else "✅",
+                        "detail": f"{alert_count} alerts today" if alert_count else "No quality alerts"}],
+        }
+    except Exception:
+        return {"status": "unavailable", "score": 0}
+
+
 def _register_health_checks():
     try:
         from core.harness.health.registry import HealthCheckRegistry, get_registry, Severity
@@ -492,6 +510,7 @@ def _register_health_checks():
         # Runtime check — _check_core_runtime is at module level (verified).
         reg.register(SimpleHealthCheck("runtime", _check_core_runtime, Severity.CRITICAL))
         reg.register(SimpleHealthCheck("doc_sync", _check_doc_sync, Severity.HIGH))
+        reg.register(SimpleHealthCheck("doc_quality", _check_doc_quality, Severity.MEDIUM))
 
         # Additional health checks are registered in run_all_diagnostics()
 
@@ -1310,6 +1329,27 @@ async def get_tenant_usage_summary(
         }
     except Exception as e:
         return {"error": str(e)[:200], "total_tokens": 0, "total_calls": 0, "by_day": []}
+
+
+# ── Document Quality Monitor ────────────────────────────────────────────────
+
+@router.get("/diagnostics/doc-quality", response_model=Dict[str, Any])
+async def get_doc_quality(limit: int = 20):
+    """
+    Returns document quality baseline, alerts, and per-doc health status.
+
+    Response: { "baseline": {...}, "alerts": [...], "doc_health": [...], "stats": {...} }
+    """
+    try:
+        from core.harness.knowledge.doc_quality_monitor import get_doc_quality_monitor
+        dqm = get_doc_quality_monitor()
+        return {
+            "alerts": dqm.get_alerts(limit=limit),
+            "doc_health": dqm.get_doc_health(),
+            "stats": dqm.get_stats(),
+        }
+    except Exception as e:
+        return {"alerts": [], "doc_health": [], "stats": {}, "error": str(e)[:200]}
 
 
 # ── Entropy Trend Awareness ──────────────────────────────────────────────────
