@@ -706,6 +706,11 @@ class MaterialsChatAgent(BaseAgent):
                         except Exception as e:
                             logging.debug(str(e), exc_info=True)
 
+                        # ── Phase 3.1: hallucination risk → Self-RAG reroute ──
+                        if hallucination_risk > 0.7:
+                            quality = "low_evidence"
+                            _trace("幻觉闭环", f"risk={hallucination_risk:.2f} → quality=low_evidence", risk=hallucination_risk)
+
                         # ── Phase 0.3: Semantic cache write ──
                         try:
                             from core.harness.knowledge.semantic_cache import get_semantic_cache
