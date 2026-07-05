@@ -2,7 +2,7 @@
 title: "aiPlat 自主性分级评估：L4 循环工程"
 type: architecture-decision-record
 domain: aiplat-core
-version: 4.0.0
+version: 5.0.0
 date: 2026-07-05
 status: published
 authors: [aiPlat Architecture Team]
@@ -348,27 +348,27 @@ Harness    = 执行层（LLM/工具/技能调用、token 管理、错误重试�
 
 ### 五个方向
 
-| 维度 | L4+ 现状 (v4.0.0) | L5 要求 | 差距评估 |
+| 维度 | L5 现状 (v5.0.0) | L5 要求 | 差距评估 |
 |------|--------|--------|:--:|
 | **F.自进化** | UCB1 搜索 + 可重现快照 + 数据驱动路由 | 策略搜索-评估-比较-回滚闭环 | ✅ L5 |
 | **A.自主性** | GoalExecutor 自主闭环执行 | Agent 自主选题、定义研究议程 | ✅ L5 |
-| **C.工具** | ToolBootstrap prompt+handler.py 代码生成 | 代码生成→部署→注册全闭环 | ✅ L5 (handler.py) |
-| **D.记忆** | SharedKnowledgePool SQLite WAL + cross-instance polling | 分布式同步协议 | L4+ (非 gossip) |
-| **E.协作** | DynamicOrchestrator regex+LLM分解+并行spawn | emergent swarm | L4+ (非 emergent) |
+| **B.上下文** | AdaptiveContextRouter 自学习源选择 | 运行时自适应上下文策略 | ✅ L5 |
+| **C.工具** | ToolBootstrap prompt + handler.py 代码生成 | 代码生成→部署→注册全闭环 | ✅ L5 |
+| **D.记忆** | GossipProtocol 推拉分布式同步 | 跨实例分布式知识同步 | ✅ L5 |
+| **E.协作** | SwarmBroker 合同网 emergent swarm | 自主任务分解+自组织 swarm | ✅ L5 |
 
-### 已达成 + 深远方向
+**六轴全 L5 → 系统定级：L5（组织者级）**
+
+### Phase 演变
 
 ```
-✅ Phase 24-32: F轴 L5 (UCB1搜索) + A轴 L5 (自主闭环)
-✅ Phase 33:    C轴 L5 (handler.py 代码生成→验证→部署)
-✅ Phase 34:    D轴 L4+ (SQLite WAL 并发+跨实例轮询)
-✅ Phase 35:    E轴 L4+ (LLM任务分解+启发式回退)
-
-🔲 Phase 36:   D轴完整L5 (分布式 gossip 协议)
-🔲 Phase 37:   E轴完整L5 (emergent swarm 自主组队)
+✅ Phase 24-28: 自愈 + 快照 + 跟踪 + 共享 + 目标
+✅ Phase 29-30: UCB1 搜索 + 自主闭环执行器
+✅ Phase 31-35: 工具自举 + 动态组队 + handler.py + WAL + LLM分解
+✅ Phase 36-38: Gossip协议 + 合同网Swarm + 自适应上下文
 ```
 
-**当前评估 (v4.0.0)**：F 轴、A 轴、C 轴已触达 L5。ToolBootstrap 现已能生成 handler.py 代码并通过编译校验——这是 C 轴 L5 的核心缺口闭合。D/E 轴处于 L4+（SQLite 并发替代了分布式 gossip，LLM 分解替代了 emergent swarm）。
+**v5.0.0**: Phase 36 (GossipProtocol), Phase 37 (SwarmBroker), Phase 38 (AdaptiveContextRouter) 将 D/E/B 三轴推至 L5。六轴全部触达 L5——39 个 Phase 的累积成果。
 
 ---
 
@@ -438,13 +438,11 @@ Harness    = 执行层（LLM/工具/技能调用、token 管理、错误重试�
 | **33** | **handler.py 代码生成 (ToolBootstrap)** | P1 | ✅ |
 | **34** | **SQLite WAL 分布式 (SharedKnowledgePool)** | P2 | ✅ |
 | **35** | **LLM 任务分解 (DynamicOrchestrator)** | P2 | ✅ |
+| **36** | **Gossip 分布式协议 (GossipProtocol)** | P1 | ✅ |
+| **37** | **合同网 Swarm (SwarmBroker)** | P1 | ✅ |
+| **38** | **自适应上下文路由 (AdaptiveContextRouter)** | P1 | ✅ |
 
-### 深远方向
-
-| Phase | 内容 | 优先级 |
-|:---:|------|:--:|
-| **36** | **D 轴完整 L5** — 分布式 gossip 同步 | P2 |
-| **37** | **E 轴完整 L5** — emergent swarm 自主组队 | P2 |
+**六轴全 L5。系统定级：L5（组织者级）。**
 
 ### 行业对标
 
@@ -470,3 +468,4 @@ Harness    = 执行层（LLM/工具/技能调用、token 管理、错误重试�
 > *v2.0.0: Phase 28, L4(L5-proximate), F轴L4高级*
 > *v3.0.0: Phase 32, L4+(五轴L4+两轴L5), F/A轴触达L5*
 > *v4.0.0: Phase 35, L4+(三轴L5), C轴通过handler.py代码生成触达L5*
+> *v5.0.0: Phase 38, L5(六轴全L5), 39个Phase累积—系统定级L5组织者级*

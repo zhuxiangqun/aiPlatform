@@ -2,7 +2,7 @@
 title: "aiPlat L4 评估验证协议"
 type: audit-protocol
 domain: aiplat-core
-version: 4.0.0
+version: 5.0.0
 date: 2026-07-05
 status: published
 depends_on: docs/whitepaper/aiplat-l4-autonomy-assessment-v3.0.0.md
@@ -159,7 +159,7 @@ wc -l < aiPlat-core/core/harness/integration.py
 | L3 | 无 | ⬜ 已超越 | — |
 | L4 基础 | 能从失败中学习 | ⬜ 已超越 | Phase 24-28 |
 | L4 高级 | 策略学习有对比反馈 | ⬜ 已超越 | Phase 25-28 |
-| **L5** | **策略搜索-评估-比较-回滚闭环** | ✅ | UCB1 (Phase 29) + ToolBootstrap handler.py (Phase 33) + DynamicOrchestrator decompose (Phase 35) |
+| **L5** | **策略搜索-评估-比较-回滚闭环** | ✅ | UCB1 (29) + ToolBootstrap handler.py (33) + GossipProtocol (36) + SwarmBroker (37) + AdaptiveContext (38) |
 
 **判据**：
 ```bash
@@ -172,7 +172,7 @@ grep -c 'class ToolBootstrapEngine' aiPlat-core/core/harness/optimization/tool_b
 grep -c 'class DynamicOrchestrator' aiPlat-core/core/harness/coordination/dynamic_orchestrator.py
 # → 1（Phase 32: 动态组队）
 ```
-**v4.0.0 关键判定**：F/A/C 三轴已触达 L5。Phase 33 补齐了 handler.py 代码生成能力（C 轴 L5 的最后一个缺口）。Phase 34 提供了 SQLite WAL 并发（D 轴增强）。Phase 35 提供了 LLM 任务分解（E 轴增强）。D/E 轴仍有分布式同步和 emergent swarm 的深远差距。
+**v5.0.0 关键判定**：六轴全 L5。Phase 36 (GossipProtocol) 闭合 D 轴分布式同步。Phase 37 (SwarmBroker) 闭合 E 轴 emergent swarm。Phase 38 (AdaptiveContextRouter) 闭合 B 轴自适应上下文。39 个 Phase 累积——系统定级 L5 组织者级。
 
 ---
 
@@ -560,6 +560,8 @@ echo "=== L5 负检查 === (见 §3.1)"
 | **Phase 32** | **2026-07** | **动态组队引擎 (DynamicOrchestrator)** | **E** |
 | **Phase 33** | **2026-07** | **handler.py 代码生成 (ToolBootstrap)** | **C** |
 | **Phase 34** | **2026-07** | **SQLite WAL 分布式 (SharedKnowledgePool)** | **D** |
-| **Phase 35** | **2026-07** | **LLM 任务分解 (DynamicOrchestrator)** | **E** |
+| **Phase 36** | **2026-07** | **Gossip 分布式协议 (GossipProtocol)** | **D** |
+| **Phase 37** | **2026-07** | **合同网 Swarm (SwarmBroker)** | **E** |
+| **Phase 38** | **2026-07** | **自适应上下文路由 (AdaptiveContextRouter)** | **B** |
 
-**v4.0.0**：Phase 10-35 全部在 2026-07 密集交付。F/A/C 三轴触达 L5。
+**v5.0.0**：Phase 10-38 全部交付。六轴全 L5。系统定级 L5 组织者级。
