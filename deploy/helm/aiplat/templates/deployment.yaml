@@ -1,0 +1,55 @@
+{{- range $name, $svc := .Values }}
+{{- if and (kindIs "map" $svc) (hasKey $svc "enabled") }}
+{{- if $svc.enabled }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "aiplat.fullname" $ }}-{{ $name }}
+  labels:
+    {{- include "aiplat.labels" $ | nindent 4 }}
+    app.kubernetes.io/component: {{ $name }}
+spec:
+  {{- if not (hasKey $svc "autoscaling") }}
+  replicas: {{ $svc.replicaCount | default 1 }}
+  {{- end }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ include "aiplat.name" $ }}
+      app.kubernetes.io/component: {{ $name }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ include "aiplat.name" $ }}
+        app.kubernetes.io/component: {{ $name }}
+    spec:
+      containers:
+        - name: {{ $name }}
+          image: "{{ $svc.image.repository }}:{{ $svc.image.tag | default $.Values.global.imageTag }}"
+          imagePullPolicy: {{ $.Values.global.imagePullPolicy }}
+          ports:
+            - containerPort: {{ $svc.service.port }}
+          {{- if hasKey $svc "health" }}
+          livenessProbe:
+            httpGet:
+              path: {{ $svc.health.livenessProbe.path }}
+              port: {{ $svc.service.port }}
+            initialDelaySeconds: {{ $svc.health.livenessProbe.initialDelay }}
+            periodSeconds: {{ $svc.health.livenessProbe.period }}
+          readinessProbe:
+            httpGet:
+              path: {{ $svc.health.readinessProbe.path }}
+              port: {{ $svc.service.port }}
+            initialDelaySeconds: {{ $svc.health.readinessProbe.initialDelay }}
+            periodSeconds: {{ $svc.health.readinessProbe.period }}
+          {{- end }}
+          resources:
+            {{- toYaml $svc.resources | nindent 12 }}
+          env:
+            {{- range $key, $val := $.Values.env }}
+            - name: {{ $key }}
+              value: {{ $val | quote }}
+            {{- end }}
+{{- end }}
+{{- end }}
+{{- end }}

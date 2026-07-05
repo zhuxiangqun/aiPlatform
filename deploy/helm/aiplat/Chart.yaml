@@ -1,0 +1,17 @@
+apiVersion: v2
+name: aiplat
+description: AI Platform — enterprise-grade Agent framework
+type: application
+version: 0.1.0
+appVersion: "2026-07-05"
+keywords:
+  - ai
+  - agent
+  - llm
+  - mcp
+  - rag
+home: https://github.com/zhuxiangqun/aiPlatform
+sources:
+  - https://github.com/zhuxiangqun/aiPlatform
+maintainers:
+  - name: aiPlat Team

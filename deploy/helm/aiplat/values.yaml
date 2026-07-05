@@ -1,0 +1,156 @@
+# Default values for aiplat Helm chart
+
+global:
+  imagePullPolicy: IfNotPresent
+  imageTag: "latest"
+
+# ── Infra (Layer 0) ──
+infra:
+  enabled: true
+  replicaCount: 1
+  image:
+    repository: aiplat-infra
+    tag: latest
+  service:
+    type: ClusterIP
+    port: 8001
+  resources:
+    limits:
+      memory: 512Mi
+      cpu: 500m
+    requests:
+      memory: 256Mi
+      cpu: 100m
+  health:
+    livenessProbe:
+      path: /health
+      initialDelay: 10
+      period: 10
+    readinessProbe:
+      path: /health
+      initialDelay: 5
+      period: 5
+
+# ── Core (Layer 1) ──
+core:
+  enabled: true
+  replicaCount: 2
+  image:
+    repository: aiplat-core
+    tag: latest
+  service:
+    type: ClusterIP
+    port: 8002
+  resources:
+    limits:
+      memory: 1Gi
+      cpu: 1000m
+    requests:
+      memory: 512Mi
+      cpu: 200m
+  health:
+    livenessProbe:
+      path: /api/core/health
+      initialDelay: 30
+      period: 15
+    readinessProbe:
+      path: /api/core/health
+      initialDelay: 15
+      period: 10
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 10
+    targetCPUUtilizationPercentage: 70
+
+# ── Platform (Layer 2) ──
+platform:
+  enabled: true
+  replicaCount: 1
+  image:
+    repository: aiplat-platform
+    tag: latest
+  service:
+    type: ClusterIP
+    port: 8003
+  resources:
+    limits:
+      memory: 512Mi
+      cpu: 500m
+    requests:
+      memory: 256Mi
+      cpu: 100m
+  health:
+    livenessProbe:
+      path: /health
+      initialDelay: 10
+      period: 10
+
+# ── Management (API gateway) ──
+management:
+  enabled: true
+  replicaCount: 1
+  image:
+    repository: aiplat-management
+    tag: latest
+  service:
+    type: LoadBalancer
+    port: 8000
+  resources:
+    limits:
+      memory: 512Mi
+      cpu: 500m
+    requests:
+      memory: 256Mi
+      cpu: 100m
+  health:
+    livenessProbe:
+      path: /health
+      initialDelay: 10
+      period: 10
+  ingress:
+    enabled: false
+    className: nginx
+    host: aiplat.local
+
+# ── App (Layer 3) ──
+app:
+  enabled: false
+  replicaCount: 1
+  image:
+    repository: aiplat-app
+    tag: latest
+  service:
+    type: ClusterIP
+    port: 3000
+
+# ── Observability ──
+prometheus:
+  enabled: true
+  service:
+    port: 9090
+
+grafana:
+  enabled: true
+  service:
+    port: 3000
+
+jaeger:
+  enabled: true
+  service:
+    port: 16686
+
+# ── Storage ──
+persistence:
+  enabled: true
+  storageClass: standard
+  size: 10Gi
+  accessMode: ReadWriteOnce
+
+# ── Environment ──
+env:
+  AIPLAT_LLM_PROVIDER: deepseek
+  AIPLAT_OTEL_ENABLED: "true"
+  AIPLAT_PROMETHEUS_ENABLED: "true"
+  AIPLAT_GOSSIP_PEERS: ""
+  AIPLAT_AUTO_EXECUTE_ENABLED: "false"
