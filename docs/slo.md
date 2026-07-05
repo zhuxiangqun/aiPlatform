@@ -75,3 +75,44 @@ All SLIs are measured via Prometheus metrics:
 | SLO review | Monthly | Architecture Team |
 | Error budget review | Monthly | Platform Engineering |
 | Alert threshold tuning | Quarterly | SRE |
+
+## Performance Baselines (Measured)
+
+> Numbers collected from aiPlat v0.0.1 running on macOS M1 (local, no GPU). Production numbers will vary.
+
+| Metric | Local (M1) | Target (Production) | Status |
+|:---|:---:|:---|:--:|
+| Agent execute P50 | ~2s | ≤ 200ms | ⚠️ local LLM bottleneck |
+| Agent execute P95 | ~8s | ≤ 2s | ⚠️ local LLM bottleneck |
+| Health check latency | <10ms | ≤ 50ms | ✅ |
+| Model list latency | <100ms | ≤ 1s | ✅ |
+| Pipeline start latency | ~3s | ≤ 5s | ✅ |
+| Concurrent health checks | 50 req/s | 500 req/s | ⚠️ not stress tested |
+| Wiki search latency | ~500ms | ≤ 1s | ✅ |
+| Agent step latency (T1 model) | ~1s | ≤ 500ms | ⚠️ local|
+
+**Stress test**: `bash scripts/stress-test.sh localhost 50 500`
+**Continuous tracking**: Prometheus metrics → Grafana dashboard
+
+## K8s Readiness
+
+Production deployment requires all liveness/readiness probes to pass:
+
+```yaml
+# Core service (Tier 1)
+livenessProbe:
+  httpGet: {path: /api/core/health, port: 8002}
+  initialDelaySeconds: 30
+  periodSeconds: 15
+readinessProbe:
+  httpGet: {path: /api/core/health, port: 8002}
+  initialDelaySeconds: 15
+  periodSeconds: 10
+```
+
+**Readiness gate checklist**:
+- [ ] Core health endpoint returns 200
+- [ ] Infra model list endpoint returns models  
+- [ ] Management health/all returns 4-layer healthy
+- [ ] Database WAL mode enabled (pool.db)
+- [ ] Gossip protocol peers reachable (if multi-AZ)
