@@ -412,6 +412,10 @@
 | prompt_optimizer | `harness/optimization/prompt_optimizer.py` | ✅ | 自动同步 | 已合入 |
 | strategy_tracker | `harness/optimization/strategy_tracker.py` | ✅ | 自动同步 | 已合入 |
 | goal_generator | `harness/optimization/goal_generator.py` | ✅ | 自动同步 | 已合入 |
+| search_engine | `harness/optimization/search_engine.py` | ✅ | 自动同步 | 已合入 |
+| goal_executor | `harness/optimization/goal_executor.py` | ✅ | 自动同步 | 已合入 |
+| tool_bootstrap | `harness/optimization/tool_bootstrap.py` | ✅ | 自动同步 | 已合入 |
+| dynamic_orchestrator | `harness/coordination/dynamic_orchestrator.py` | ✅ | 自动同步 | 已合入 |
 |------|------|:---:|------|------|
 | ExperienceVector | `harness/learning/experience_vector.py` | ✅ | PipelineTrace→Embedding→语义检索 | 已合入 |
 | ToolDriftDetector | `harness/learning/tool_drift_detector.py` | ✅ | 4类漂移检测(struct/field/latency/error) + 重放校验自适应 | 已合入 |
@@ -782,7 +786,7 @@
 | 编排系统 | 4 | 0 | 4 |
 | 管理 & 质量 | 21 | 0 | 21 |
 | 编排层 | 17 | 0 | 17 |
-| **总计** | **535** | **0** | **535** |
+| **总计** | **539** | **0** | **539** |
 
 ---
 
