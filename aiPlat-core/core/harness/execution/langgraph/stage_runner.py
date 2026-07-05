@@ -188,6 +188,25 @@ class StageRunner:
             except Exception as e:
                 logging.warning(str(e), exc_info=True)
 
+        # Phase 32: Dynamic orchestration — detect capability gaps and spawn sub-agents
+        try:
+            reasoning_raw = result.final_state.context.get("reasoning", "") or ""
+            if reasoning_raw and len(reasoning_raw) > 50:
+                from core.harness.coordination.dynamic_orchestrator import get_dynamic_orchestrator
+                orch = get_dynamic_orchestrator()
+                gap = await orch.sense_gap(reasoning_raw, str(s.agent_id or s.id) if s else "react")
+                if gap:
+                    asyncio.create_task(
+                        orch.spawn(
+                            gap["capability"],
+                            f"Task context: {reasoning_raw[:500]}",
+                            state.get("session_id", ""),
+                            source_agent_id=str(s.agent_id or s.id) if s else "react",
+                        )
+                    )
+        except Exception as e:
+            logging.debug("dynamic_orchestrator skipped: %s", e)
+
         # Extract best output: prefer reasoning (LLM output) > DONE output > observation > action_result
         # reasoning is the actual LLM response; observation is often "No action to execute" filler.
         ctx = result.final_state.context

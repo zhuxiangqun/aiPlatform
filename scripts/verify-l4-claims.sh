@@ -157,8 +157,8 @@ check "L5: 搜索算法(多臂/贝叶斯)不存在" "$_l5a" 0 "-le"
 _l5b=$(grep -rn 'tool_factory\|skill_factory\|auto_tool' "$REPO/aiPlat-core/core/harness/" --include='*.py' 2>/dev/null | grep -v __pycache__ | grep -v ':0$' | wc -l || true)
 check "L5: 自举工具代码工厂不存在" "$_l5b" 0 "-le"
 
-_l5c=$(grep -rn 'swarm_memory\|shared_memory_bus\|memory_gossip\|knowledge_replicat' "$REPO/aiPlat-core/core/harness/" --include='*.py' 2>/dev/null | grep -v __pycache__ | grep -v ':0$' | wc -l || true)
-check "L5: 蜂群共享记忆不存在" "$_l5c" 0 "-le"
+_l5c=$(grep -rn 'swarm_memory\|shared_memory_bus\|memory_gossip\|knowledge_replicat\|dynamic_group\|self_assembly' "$REPO/aiPlat-core/core/harness/" --include='*.py' 2>/dev/null | grep -v __pycache__ | grep -v ':0$' | wc -l || true)
+check "L5: 蜂群分布式记忆/动态组队不存在" "$_l5c" 0 "-le"
 
 
 echo ""

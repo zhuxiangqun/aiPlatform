@@ -606,6 +606,12 @@ def _register_health_checks():
                         bootstrap_stats = get_tool_bootstrap().stats()
                     except Exception:
                         bootstrap_stats = {}
+                    # Phase 32: Dynamic orchestrator stats
+                    try:
+                        from core.harness.coordination.dynamic_orchestrator import get_dynamic_orchestrator
+                        orch_stats = get_dynamic_orchestrator().stats()
+                    except Exception:
+                        orch_stats = {}
                 except Exception:
                     pass
                 try:
@@ -628,7 +634,8 @@ def _register_health_checks():
                              "goal_generator": str(goal_stats),
                              "search_engine": str(search_stats),
                              "goal_executor": executor_stats,
-                             "tool_bootstrap": bootstrap_stats}
+                             "tool_bootstrap": bootstrap_stats,
+                             "dynamic_orchestrator": orch_stats}
                 )
         reg.register(HealingHealthCheck())
     except Exception as e:
