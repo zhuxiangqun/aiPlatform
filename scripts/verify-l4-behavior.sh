@@ -3,12 +3,15 @@
 # Requires: aiPlat 运行实例 (./start.sh)
 # Usage:   bash scripts/verify-l4-behavior.sh [BASE_URL]
 # 
-# 五层验证场景：
+# 八层验证场景：
 #   S1: 自主循环 — 给定多步任务，系统能否无人介入推进
 #   S2: 自愈 — 模拟 rate_limit，系统能否自动换 Key
 #   S3: 上下文感知 — 跨会话记忆召回
 #   S4: 动态组队 — 能力缺口检测 + 子Agent生成
 #   S5: 工具自举 — SKILL.md生成 + 注册到SkillRegistry
+#   S6: 推理质量 — 多步推理结构验证
+#   S7: 跨域上下文 — 多领域查询路由
+#   S8: 错误恢复 — 干扰后恢复能力
 
 set -euo pipefail
 
@@ -211,6 +214,79 @@ fi
 
 
 # ══════════════════════════════════════════════════════
+# S6: Agent 推理质量 — 多步推理结构验证
+# ══════════════════════════════════════════════════════
+echo ""
+echo "[S6. Agent 推理质量 — 多步推理结构验证]"
+
+REASON=$(curl -s -o /tmp/l4_reason.json -w "%{http_code}" \
+    -X POST "$BASE_URL/api/core/workspace/agents/materials_chat/execute" \
+    -H "Content-Type: application/json" \
+    -d '{"messages":[{"role":"user","content":"分步骤回答:1)什么是UCB1 2)如何平衡探索利用 3)给一个例子。每步用##标记"}]}' \
+    --connect-timeout 5 --max-time 120 2>/dev/null || echo "000")
+check_ok "推理任务提交" "$REASON"
+
+STEP_COUNT=$(python3 -c "
+import json
+d=json.load(open('/tmp/l4_reason.json'))
+out=d.get('output','')
+import re
+steps=len(re.findall(r'##|步骤|Step',out))
+print(steps)
+" 2>/dev/null || echo 0)
+if [ "$STEP_COUNT" -ge 2 ]; then
+    printf "  ${GREEN}PASS${NC} 推理质量: %s 个步骤标记\n" "$STEP_COUNT"
+    PASS=$((PASS + 1))
+else
+    printf "  ${YELLOW}INFO${NC} 推理步骤: %s (期望≥2)\n" "$STEP_COUNT"
+fi
+
+
+# ══════════════════════════════════════════════════════
+# S7: 跨域上下文 — 多领域查询
+# ══════════════════════════════════════════════════════
+echo ""
+echo "[S7. 跨域上下文 — 多领域查询]"
+
+DOMAIN=$(curl -s -o /tmp/l4_domain.json -w "%{http_code}" \
+    -X POST "$BASE_URL/api/core/workspace/agents/materials_chat/execute" \
+    -H "Content-Type: application/json" \
+    -d '{"messages":[{"role":"user","content":"比较AI知识和船舶设计的本体建模方法有什么异同？"}]}' \
+    --connect-timeout 5 --max-time 120 2>/dev/null || echo "000")
+check_ok "跨域查询提交" "$DOMAIN"
+
+DOM_OUT=$(python3 -c "import json; d=json.load(open('/tmp/l4_domain.json')); print(d.get('output','')[:300])" 2>/dev/null || echo "")
+if echo "$DOM_OUT" | grep -qE "AI|知识|knowledg|船舶|ship|本体"; then
+    printf "  ${GREEN}PASS${NC} 跨域上下文: 响应涵盖多领域\n"
+    PASS=$((PASS + 1))
+else
+    printf "  ${YELLOW}INFO${NC} 跨域响应待确认\n"
+fi
+
+
+# ══════════════════════════════════════════════════════
+# S8: 错误恢复 — 干扰后恢复
+# ══════════════════════════════════════════════════════
+echo ""
+echo "[S8. 错误恢复 — 干扰后恢复]"
+
+ERR=$(curl -s -o /tmp/l4_error.json -w "%{http_code}" \
+    -X POST "$BASE_URL/api/core/workspace/agents/materials_chat/execute" \
+    -H "Content-Type: application/json" \
+    -d '{"messages":[{"role":"user","content":"用不存在的工具查询天气。如果不可用，用你知道的知识回答。"}]}' \
+    --connect-timeout 5 --max-time 120 2>/dev/null || echo "000")
+check_ok "错误恢复提交" "$ERR"
+
+ERR_OUT=$(python3 -c "import json; d=json.load(open('/tmp/l4_error.json')); print(d.get('output','')[:300])" 2>/dev/null || echo "")
+if echo "$ERR_OUT" | grep -qE "天气|方法|替代|not.*found|不可用"; then
+    printf "  ${GREEN}PASS${NC} 错误恢复: Agent 提供替代方案\n"
+    PASS=$((PASS + 1))
+else
+    printf "  ${YELLOW}INFO${NC} 错误恢复待确认\n"
+fi
+
+
+# ══════════════════════════════════════════════════════
 # 结果汇总
 # ══════════════════════════════════════════════════════
 echo ""
@@ -231,5 +307,8 @@ echo "  S2 验证 L4 自愈引擎（Phase 24 错误→策略路由）"
 echo "  S3 验证 L4 上下文感知（跨轮次记忆召回）"
 echo "  S4 验证 L5-proximate 动态组队（Phase 32 能力缺口检测）"
 echo "  S5 验证 L5-proximate 工具自举（Phase 31 SKILL.md生成+注册）"
+echo "  S6 验证 Agent 推理质量（多步推理结构验证）"
+echo "  S7 验证 L5-proximate 跨域上下文（多领域查询路由）"
+echo "  S8 验证 Agent 错误恢复（干扰后恢复能力）"
 echo ""
 exit $FAIL

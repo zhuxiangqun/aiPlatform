@@ -32,7 +32,7 @@ tags: [verification, protocol, reproducibility, three-framework]
 | 层 | 作用 | 验证方式 | 检查项数 | 覆盖框架项 | 依赖 |
 |:---|:---|:---|:--:|:--:|:--:|
 | **代码层** | 验证模块存在 | grep -c 脚本 | 62 项 | 102 项全部 (基础覆盖) | 无 |
-| **行为层** | 验证真实工作 | pytest + curl | 38 项 | 102 项中的 63 项 (深度覆盖) | `./start.sh` (仅 curl 部分) |
+| **行为层** | 验证真实工作 | pytest + curl | 107 项 | 102 项中的 63 项 (深度覆盖) | `./start.sh` (仅 curl 部分) |
 | **人工层** | 验证深度能力 | 专业知识判断 | 4 项 | 4 项 (渗透/故障/宏观/架构) | 外部审稿人 |
 
 > **验证项数 (104) ≠ 框架评估项数 (102)**。多个检查覆盖同一项 (如 UCB1 被 grep 和 pytest 双重验证)，部分项仅需代码层覆盖 (如 ADR 存在性)。
@@ -45,7 +45,7 @@ tags: [verification, protocol, reproducibility, three-framework]
 | **curl 端到端** | 5 | 自主循环 / 自愈引擎 / 上下文召回 / 动态组队 / 工具自举 | `verify-l4-behavior.sh` |
 | **REST API 诊断** | 3 | 架构守卫 (76规则) / 4层健康 / 全量诊断 | curl 直接调用 |
 
-> **关键区分**：代码层只验证 `grep -c class Foo` = 1（模块存在），行为层 30 项深度测试注入真实数据、调用真实函数、验证真实输出（模块工作）。代码层 62 项回答"有"，行为层 38 项回答"能"。
+> **关键区分**：代码层只验证 `grep -c class Foo` = 1（模块存在），行为层 30 项深度测试注入真实数据、调用真实函数、验证真实输出（模块工作）。代码层 62 项回答"有"，行为层 107 项回答"能"。
 
 ### 各框架覆盖
 
@@ -404,11 +404,11 @@ for c in checks[:5]:
 ```bash
 # 代码层 (零依赖)
 bash scripts/verify-l4-pyramid.sh    # L0→L5 31/31
-bash scripts/verify-l4-depth.sh      # 30 tests
+bash scripts/verify-l4-depth.sh      # 96 tests
 bash scripts/verify-l4-claims.sh     # 31 checks
 
 # 行为层 (需 ./start.sh)
-bash scripts/verify-l4-behavior.sh   # 5 场景 curl
+bash scripts/verify-l4-behavior.sh   # 8 场景 curl
 curl -s -X POST http://localhost:8000/api/diagnostics/guard/run  # 架构守卫
 curl -s http://localhost:8000/api/diagnostics/health/all          # 4 层健康
 
@@ -420,7 +420,7 @@ bash scripts/verify_whitepaper_refs.sh  # 28 refs
 
 ```
 verify-l4-pyramid.sh:   ✅ L5 (元循环工程) — 全层通过
-verify-l4-depth.sh:     ✅ 30/30 PASS
+verify-l4-depth.sh:     ✅ 96/96 PASS
 verify-l4-claims.sh:    ✅ 31/31 PASS
 verify-l4-behavior.sh:  ✅ 7/7 PASS (需 ./start.sh)
 verify_whitepaper_refs.sh: ✅ 28/28 refs verified

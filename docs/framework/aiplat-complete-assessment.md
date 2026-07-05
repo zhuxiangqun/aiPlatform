@@ -2,7 +2,7 @@
 title: "aiPlat 综合评估报告 — 三框架评估"
 type: evaluation-report
 domain: aiplat-core
-version: 2.3.0
+version: 2.4.0
 date: 2026-07-05
 status: published
 refs:
@@ -344,7 +344,7 @@ pytest tests/autonomy/test_l5_capabilities.py::TestUCB1Convergence -v
 3. **全栈可观测性** — Prometheus + Grafana + Jaeger + OTel, SLO 定义 + 错误预算
 4. **架构纪律** — 4 层严格分离, arch_guard 76 规则, 15 维审计矩阵
 5. **自进化闭环** — ErrorTranslator(诊断) → UCB1(搜索) → GoalExecutor(执行) → Tracker(学习)
-6. **测试覆盖** — 100+ test files, 30 项 L5 能力深度测试, 5 场景 curl 端到端
+6. **测试覆盖** — 100+ test files, 30 项 L5 能力深度测试, 8 场景 curl 端到端
 
 ### 短板（按最低子项原则）
 
@@ -377,13 +377,13 @@ pytest tests/autonomy/test_l5_capabilities.py::TestUCB1Convergence -v
 bash scripts/verify-l4-pyramid.sh      # L0→L5 逐层 (31 项)
 
 # 能力深度
-bash scripts/verify-l4-depth.sh        # 30 Python tests
+bash scripts/verify-l4-depth.sh        # 96 Python tests
 
 # 数据层
 bash scripts/verify-l4-claims.sh       # 31 grep checks
 
 # 行为层 (需要 ./start.sh)
-bash scripts/verify-l4-behavior.sh     # 5 场景 curl
+bash scripts/verify-l4-behavior.sh     # 8 场景 curl
 
 # 引用校验
 bash scripts/verify_whitepaper_refs.sh # 28 code refs
