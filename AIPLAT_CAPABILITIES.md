@@ -62,6 +62,7 @@
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
 | migrate_semantic | `harness/memory/migrate_semantic.py` | ✅ | 自动同步 | 已合入 |
 | shared_pool | `harness/memory/shared_pool.py` | ✅ | 自动同步 | 已合入 |
+| gossip_protocol | `harness/memory/gossip_protocol.py` | ✅ | 自动同步 | 已合入 |
 |------|------|:---:|------|------|
 | 四层记忆架构 | `harness/memory/manager.py` | ✅ | Working(Hot) → Episodic(Warm) → Semantic(Cold) → TaskSkills(External) | 已合入 |
 | WorkingMemory | `harness/memory/working.py:22` | ✅ | deque滑动窗口，30K token，20条消息 | 已合入 |
@@ -153,6 +154,7 @@
 | wiki_quality_monitor | `harness/knowledge/wiki_quality_monitor.py` | ✅ | 自动同步 | 已合入 |
 | active_synthesis | `harness/knowledge/active_synthesis.py` | ✅ | 自动同步 | 已合入 |
 | code_entropy_detector | `harness/knowledge/code_entropy_detector.py` | ✅ | 自动同步 | 已合入 |
+| adaptive_context | `harness/knowledge/adaptive_context.py` | ✅ | 自动同步 | 已合入 |
 |------|------|:---:|------|------|
 | 统一知识检索 | `harness/syscalls/retrieval.py:569` | ✅ | 并行 Wiki + KB，RRF 三路融合 | 已合入 |
 | KB 文档检索 | `harness/syscalls/retrieval.py:39` | ✅ | hybrid: LIKE + FTS5 + FAISS 向量 | 已合入 |
@@ -416,6 +418,7 @@
 | goal_executor | `harness/optimization/goal_executor.py` | ✅ | 自动同步 | 已合入 |
 | tool_bootstrap | `harness/optimization/tool_bootstrap.py` | ✅ | 自动同步 | 已合入 |
 | dynamic_orchestrator | `harness/coordination/dynamic_orchestrator.py` | ✅ | 自动同步 | 已合入 |
+| swarm_broker | `harness/coordination/swarm_broker.py` | ✅ | 自动同步 | 已合入 |
 |------|------|:---:|------|------|
 | ExperienceVector | `harness/learning/experience_vector.py` | ✅ | PipelineTrace→Embedding→语义检索 | 已合入 |
 | ToolDriftDetector | `harness/learning/tool_drift_detector.py` | ✅ | 4类漂移检测(struct/field/latency/error) + 重放校验自适应 | 已合入 |
@@ -786,7 +789,7 @@
 | 编排系统 | 4 | 0 | 4 |
 | 管理 & 质量 | 21 | 0 | 21 |
 | 编排层 | 17 | 0 | 17 |
-| **总计** | **539** | **0** | **539** |
+| **总计** | **542** | **0** | **542** |
 
 ---
 
