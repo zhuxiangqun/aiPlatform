@@ -557,6 +557,28 @@ def _register_health_checks():
                     status=Status.HEALTHY if r.verdict.value == "pass" else Status.DEGRADED,
                     severity=Severity.MEDIUM, message="schema validation functional")
         reg.register(SchemaGateCheck())
+
+        # Phase 24: Self-healing metrics
+        class HealingHealthCheck(HealthCheck):
+            module = "self_healing"
+            severity = Severity.MEDIUM
+            async def run(self) -> HealthResult:
+                from core.harness.execution.pipeline_engine import PipelineEngine
+                stats = getattr(PipelineEngine, '_healing_stats', {})
+                attempts = stats.get("attempts", 0)
+                successes = stats.get("successes", 0)
+                skips = stats.get("skips", 0)
+                escalations = stats.get("escalations", 0)
+                rate = (successes / attempts * 100) if attempts > 0 else 100
+                status = Status.HEALTHY if rate > 50 or attempts == 0 else Status.DEGRADED
+                return HealthResult(
+                    module="self_healing", status=status, severity=Severity.MEDIUM,
+                    message=f"{rate:.0f}% success ({successes}/{attempts} heals, {skips} skips, {escalations} escalations)",
+                    details={"attempts": attempts, "successes": successes,
+                             "skips": skips, "escalations": escalations,
+                             "success_rate_pct": round(rate, 1), "approx": True}
+                )
+        reg.register(HealingHealthCheck())
     except Exception as e:
         logging.warning(str(e), exc_info=True)
 

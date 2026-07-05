@@ -2690,6 +2690,23 @@ Output format: JSON array of {{"rank": 1, "score": 0.95, "content": "..."}}"""
             state["tokens_used"] = state.get("tokens_used", 0) + int(stage_tokens or 0)
             state.pop("_stage_tokens_used", None)
         except Exception as e:
+            # Phase 24: Save raw exception for _meta_optimize
+            state["_last_error"] = e
+            state["_last_error_stage"] = stage.id
+            # Phase 24: Classify via ErrorTranslator → recovery hints for Harness
+            try:
+                from core.harness.infrastructure.gates.error_translator import classify_api_error
+                classed = classify_api_error(e, provider="", model=stage_model or "")
+                state["_last_classified_error"] = {
+                    "reason": classed.reason.value,
+                    "retryable": classed.retryable,
+                    "should_compress": classed.should_compress,
+                    "should_rotate_credential": classed.should_rotate_credential,
+                    "should_fallback": classed.should_fallback,
+                    "retry_after_seconds": getattr(classed, "retry_after_seconds", None) or 0,
+                }
+            except Exception:
+                state["_last_classified_error"] = None
             # Classify failure and record constraint metadata for observability
             import os as _os
             if _os.getenv("AIPLAT_ENABLE_FAILURE_CLASSIFICATION", "1").lower() not in ("0", "false", "no"):
@@ -3269,6 +3286,11 @@ Evaluate pass/fail based on pass_rate and configured dimension thresholds.""")
             if attempt >= 3 and isinstance(report, dict) and report.get("recommendation") == "REJECTED":
                 optimized = await self._meta_optimize(stage, report, state)
                 if optimized is None:
+                    if state.get(f"_stage_{stage.id}_skipped"):
+                        # Phase 24: intentional skip by self-healing, not a failure
+                        state["phase"] = BuilderSessionPhase.done.value
+                        state["_last_action_reason"] = "stage_skipped_by_healing"
+                        break
                     state["error"] = "meta_optimize_failed"
                     state["phase"] = BuilderSessionPhase.failed.value
                     state["_last_action_reason"] = "meta_optimize_failed"
@@ -4390,15 +4412,158 @@ JSON format: {{"artifact": {{}},"confidence": "HIGH","issues": [{{"severity": "P
             result_lines.append(f"[RTK: compressed {len(lines)} lines → {len(result_lines)} lines]")
         return "\n".join(result_lines)
 
+    # ══════════════════════════════════════════════════════════════
+    # Phase 24: Self-healing strategy methods (ErrorTranslator → Action)
+    # ══════════════════════════════════════════════════════════════
+
+    async def _strategy_rotate_credential(self, stage, state):
+        """rate_limit / auth → rotate API key via infra CredentialPool."""
+        self._inc_healing_stat("attempts")
+        try:
+            from infra.management.model.credential_pool import get_credential_pool
+            provider = os.getenv("AIPLAT_LLM_PROVIDER", "deepseek")
+            pool = get_credential_pool(provider)
+            pool.next()
+            if pool.key_count > 1:
+                state["_meta_diagnosis"] = f"credential_rotated:{provider}({pool.key_count} keys)"
+                state["_meta_optimized"] = True
+                self._inc_healing_stat("successes")
+                logger.warning("[healing] rotated credential: provider=%s keys=%d", provider, pool.key_count)
+                return stage
+            else:
+                logger.warning("[healing] cannot rotate: only 1 key for %s", provider)
+        except Exception as e:
+            logger.warning("[healing] credential rotation failed: %s", e)
+        return None
+
+    async def _strategy_compress_retry(self, stage, state):
+        """context_overflow / payload_too_large → flag compression, retry."""
+        self._inc_healing_stat("attempts")
+        state["_meta_diagnosis"] = "context_overflow: retry with compression"
+        state["_meta_optimized"] = True
+        state["_force_context_compression"] = True
+        self._inc_healing_stat("successes")
+        return stage
+
+    async def _strategy_backoff_retry(self, stage, state):
+        """timeout / overloaded → exponential backoff + retry."""
+        self._inc_healing_stat("attempts")
+        retry_count = state.get("_auto_retry_count", 0)
+        classed = state.get("_last_classified_error", {})
+        retry_after = classed.get("retry_after_seconds", 0) if classed else 0
+        wait = max(2 ** retry_count, retry_after) if retry_after > 0 else 2 ** retry_count
+        wait = min(wait, 60)
+        state["_meta_diagnosis"] = f"backoff:{wait}s(retry_count={retry_count})"
+        state["_meta_optimized"] = True
+        self._inc_healing_stat("successes")
+        await asyncio.sleep(wait)
+        return stage
+
+    async def _strategy_skip_stage(self, stage, state):
+        """billing / model_not_found / server_error → skip this stage.
+
+        Returns None (not stage!) to signal "done with this stage".
+        _retry_loop checks _stage_{id}_skipped before setting error.
+        """
+        self._inc_healing_stat("attempts")
+        failure_strategy = getattr(stage, 'failure_strategy', None) or ''
+        if failure_strategy == 'skip_stage':
+            state["_meta_diagnosis"] = f"skip_stage:{stage.id}"
+            state["_meta_optimized"] = True
+            state[f"_stage_{stage.id}_done"] = True
+            state[f"_stage_{stage.id}_skipped"] = True
+            self._inc_healing_stat("skips")
+            logger.warning("[healing] skipping stage %s: %s", stage.id, failure_strategy)
+        else:
+            self._inc_healing_stat("escalations")
+            logger.warning("[healing] cannot skip: stage %s failure_strategy=%s", stage.id, failure_strategy)
+        return None
+
+    async def _strategy_escalate(self, stage, state):
+        """unknown / unresolvable → human approval via PolicyGate."""
+        self._inc_healing_stat("attempts")
+        try:
+            from core.harness.infrastructure.gates.policy_gate import PolicyGate
+            gate = PolicyGate()
+            result = await gate.check_agent(
+                user_id=state.get("user_id", "system"),
+                agent_id="pipeline_engine",
+                agent_args={
+                    "_approval_required": True,
+                    "_escalation": True,
+                    "_error_stage": stage.id,
+                    "_error_reason": state.get("_last_classified_error", {}).get("reason", "unknown"),
+                    "_tenant_id": state.get("tenant_id", ""),
+                },
+            )
+            if getattr(result, 'decision', None) and str(result.decision) in ("APPROVAL_REQUIRED",):
+                state["_meta_diagnosis"] = f"escalated:approval_id={getattr(result, 'approval_request_id', '')}"
+                state["_meta_optimized"] = True
+                state["phase"] = BuilderSessionPhase.paused.value
+                state["_paused_for_approval"] = True
+                state["_approval_request_id"] = getattr(result, "approval_request_id", "")
+                self._inc_healing_stat("escalations")
+                return None
+        except Exception as e:
+            logger.warning("[healing] escalation failed: %s", e)
+        return None
+
+    @staticmethod
+    def _inc_healing_stat(key):
+        stats = getattr(PipelineEngine, '_healing_stats', None)
+        if stats is None:
+            PipelineEngine._healing_stats = {}
+            stats = PipelineEngine._healing_stats
+        stats[key] = stats.get(key, 0) + 1
+
     async def _meta_optimize(self, stage: PipelineStageConfig, report: Dict, state: PipelineState) -> Optional[PipelineStageConfig]:
         """Invoke lightweight Meta-Agent to diagnose and suggest config changes.
 
         Called by _retry_loop after 3+ retries still REJECTED.
         Modifies stage in-place; returns None if optimization failed.
+
+        Phase 24: Checks _last_classified_error first — if ErrorTranslator has
+        classified the failure, uses a specialized strategy instead of generic
+        Meta-Agent LLM call. Unclassified errors fall through to original logic.
         """
+        # Phase 24: Read and immediately clear error signature (prevents stale data)
+        classed = state.pop("_last_classified_error", None)
+        state.pop("_last_error", None)
+
+        if classed:
+            reason = classed.get("reason", "unknown")
+            if reason in ("rate_limit", "auth", "auth_permanent"):
+                if classed.get("should_rotate_credential"):
+                    return await self._strategy_rotate_credential(stage, state)
+            if reason in ("context_overflow", "payload_too_large"):
+                if classed.get("should_compress"):
+                    return await self._strategy_compress_retry(stage, state)
+            if reason in ("timeout", "overloaded"):
+                if classed.get("retryable"):
+                    return await self._strategy_backoff_retry(stage, state)
+            if reason in ("billing", "model_not_found", "server_error"):
+                return await self._strategy_skip_stage(stage, state)
+            if reason == "unknown":
+                pass  # fall through to Meta-Agent LLM
+            else:
+                return await self._strategy_escalate(stage, state)
+
         score = report.get("score", {})
         issues = report.get("issues", [])[:5]
         history = state.get("_score_history", [])
+
+        # Phase 24: Inject error classification into Meta-Agent prompt (fallback path only)
+        error_hint = ""
+        if classed:
+            error_hint = (
+                f"\nKnown failure type: {classed['reason']} "
+                f"(retryable={classed['retryable']}, "
+                f"compress={classed['should_compress']})"
+            )
+        else:
+            err = state.get("_last_error")
+            if err:
+                error_hint = f"\nLast error: {type(err).__name__}: {str(err)[:200]}"
 
         diagnosis_prompt = f"""Stage {stage.id} (agent={stage.agent_id}) REJECTED after multiple retries.
 Current: agent_type={getattr(stage, 'agent_type', 'react')}, prompt_extra={json.dumps(str(getattr(stage, 'prompt_extra', ''))[:300])}
@@ -4406,6 +4571,7 @@ Evaluation: overall={score.get('overall', '?')}, pass_rate={report.get('pass_rat
 Dimension scores: {json.dumps({k: v for k, v in score.items() if k != 'overall'})}
 Issues: {json.dumps(issues, ensure_ascii=False)}
 Score history: {json.dumps([h.get('overall', 0) for h in history[-5:]]) if history else 'none'}
+{error_hint}
 Output ONLY this JSON (no preamble): {{"diagnosis":"<1 sentence>","suggested_prompt_extra":"<追加内容>","suggested_agent_type":"react|plan|reflection","enable_test_plan":false}}"""
 
         try:
