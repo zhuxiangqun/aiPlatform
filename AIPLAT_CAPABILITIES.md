@@ -60,6 +60,7 @@
 ## 二、记忆子系统
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| migrate_semantic | `harness/memory/migrate_semantic.py` | ✅ | 自动同步 | 已合入 |
 |------|------|:---:|------|------|
 | 四层记忆架构 | `harness/memory/manager.py` | ✅ | Working(Hot) → Episodic(Warm) → Semantic(Cold) → TaskSkills(External) | 已合入 |
 | WorkingMemory | `harness/memory/working.py:22` | ✅ | deque滑动窗口，30K token，20条消息 | 已合入 |
@@ -79,6 +80,10 @@
 | Episodic 预评分 | `harness/memory/episodic.py:55` | ✅ | 写入时后台 LLM 打分，压缩时零延迟 | 已合入 |
 | 关键决策永保 | `harness/memory/episodic.py:124` | ✅ | critical_episodes >0.8分，永不参与常规压缩 | 已合入 |
 | MemoryProvider (可插拔ABC) | `harness/memory/providers.py` | ✅ | SQLite/Redis/Postgres/Memory 可插拔后端 + 工厂模式 | 已合入 |
+| 物理分区存储 | `harness/memory/semantic.py` + `migrate_semantic.py` | ✅ | per-tenant SQLite文件 (memory_semantic_{tid}.sqlite3) + 存量迁移 | Phase 18.4 |
+| 检索预算机制 | `harness/memory/manager.py` | ✅ | build_context(retrieval_budget=): full→minimal→working_only 3级 | Phase 18.1 |
+| 计划性遗忘 | `harness/memory/episodic.py` | ✅ | 同topic 2x降权→3x归档(status=archived) + 索引比较(非is引用) | Phase 18.5 |
+| 结构化压缩 | `harness/memory/compression.py` | ✅ | LLM工具输出→JSON(completed/pending/preference) + 自由文本回退 | Phase 18.3 |
 
 ---
 
@@ -115,6 +120,7 @@
 | RunContext 三层合并 | `apps/agents/materials_chat.py` | ✅ | caller>realtime>graph优先级规则 + constraints合并去重 | Phase 10.2 |
 | 主动综合 (Active Synthesis) | `harness/knowledge/active_synthesis.py` | ✅ | STORM式5步管道: detect_gaps→research_questions→retrieve→synthesize→proposal | 缺口一 |
 | Wiki 内容质量监控 | `harness/knowledge/wiki_quality_monitor.py` | ✅ | LLM评估Wiki页面vs原始文档保真度(completeness/accuracy/overall) | 缺口二 |
+| 文档新鲜度警告 | `harness/knowledge/wiki_engine.py` | ✅ | 过期文档(>30天)在检索返回时自动追加交互式警告前缀(所有Agent受益) | Phase 18.2 |
 
 ---
 
@@ -764,12 +770,12 @@
 | 编排系统 | 4 | 0 | 4 |
 | 管理 & 质量 | 21 | 0 | 21 |
 | 编排层 | 17 | 0 | 17 |
-| **总计** | **517** | **0** | **517** |
+| **总计** | **518** | **0** | **518** |
 
 ---
 
 *最后更新: 2026-07-04*
-*版本: 12.5 · 28章 · 517项能力 · 517✅ · P0-P3 hermès-agent全量吸收+SQLite连接池化+TrendDetector*
+*版本: 12.5 · 28章 · 523项能力 · 523✅ · P0-P3 hermès-agent全量吸收+SQLite连接池化+TrendDetector*
 
 **自检命令**：
 ```bash
