@@ -214,3 +214,92 @@ class DAG:
                         "context_isolation": n.context_isolation} for n in self.nodes],
             "metadata": self.metadata,
         }
+
+    @classmethod
+    def from_dict(cls, data: Dict) -> DAG:
+        return cls(
+            explain=data.get("explain", ""),
+            created_at=data.get("created_at", ""),
+            nodes=[DAGNode(**n) for n in data.get("nodes", [])],
+            metadata=data.get("metadata", {}),
+        )
+
+
+# ── Phase 20: Audit Trail types ──────────────────────────────────
+
+@dataclass
+class EvidenceFingerprint:
+    """Locked evidence snapshot — immune to source document updates."""
+    source_id: str = ""              # Document ID / sensor ID / API endpoint
+    source_version: str = ""         # Document version number
+    source_type: str = ""            # "wiki_page" | "kb_document" | "api_response" | "sensor_reading"
+    snippet_hash: str = ""           # SHA256 hash for tamper-proof verification
+    snippet_preview: str = ""        # First 100 chars for human inspection
+    retrieved_at: str = ""           # ISO 8601 timestamp
+    expiry_status: str = "valid"     # "valid" | "expired_30d" | "expired_90d" | "unknown"
+
+
+@dataclass
+class AuditStep:
+    """Standardized reasoning step audit record — domain-agnostic."""
+    step_id: int = 0
+    parent_step_id: Optional[int] = None  # Parent step for recursive causal tracing
+
+    # Provenance
+    timestamp: str = ""              # ISO 8601
+    agent: str = ""                  # Which Agent produced this
+    domain: str = ""                 # Ontology domain
+    session_id: str = ""
+    tenant_id: str = ""
+
+    # Reasoning
+    trigger: str = ""                # Trigger condition (human-readable)
+    rule_ref: str = ""               # Rule ID ("factory-ops.temperature.threshold")
+    evidence: List[EvidenceFingerprint] = field(default_factory=list)
+
+    # Conclusion
+    conclusion: str = ""             # Inferred conclusion
+    confidence: float = 0.0
+
+    # Action
+    action_triggered: str = ""       # Triggered operation
+    action_target: str = ""          # Operation target
+    action_result: str = ""          # "success" | "failed" | "pending"
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "step_id": self.step_id,
+            "parent_step_id": self.parent_step_id,
+            "timestamp": self.timestamp, "agent": self.agent, "domain": self.domain,
+            "session_id": self.session_id, "tenant_id": self.tenant_id,
+            "trigger": self.trigger, "rule_ref": self.rule_ref,
+            "evidence": [{"source_id": e.source_id, "source_version": e.source_version,
+                          "source_type": e.source_type, "snippet_hash": e.snippet_hash,
+                          "snippet_preview": e.snippet_preview, "retrieved_at": e.retrieved_at,
+                          "expiry_status": e.expiry_status} for e in self.evidence],
+            "conclusion": self.conclusion, "confidence": self.confidence,
+            "action_triggered": self.action_triggered, "action_target": self.action_target,
+            "action_result": self.action_result,
+        }
+
+
+def _normalize_reasoning_path(raw: Any) -> List[Dict[str, Any]]:
+    """Normalize heterogeneous Agent reasoning_path into uniform dict list.
+
+    Supports: List[Dict] (standard), List[str], str, JSON string, None.
+    """
+    import json as _json
+
+    if isinstance(raw, list) and all(isinstance(x, dict) for x in raw):
+        return raw
+    if isinstance(raw, list) and all(isinstance(x, str) for x in raw):
+        return [{"step": i + 1, "thought": x} for i, x in enumerate(raw)]
+    if isinstance(raw, str):
+        try:
+            parsed = _json.loads(raw)
+            return _normalize_reasoning_path(parsed)
+        except (_json.JSONDecodeError, TypeError):
+            return [{"step": 1, "thought": raw}]
+    if raw is None:
+        return []
+    return [{"step": 1, "thought": str(raw)}]

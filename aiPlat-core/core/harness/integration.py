@@ -2339,6 +2339,21 @@ class HarnessIntegration:
                         await mm.save_interaction(question=q, answer=str(answer), success=result.success)
             except Exception:
                 pass
+            # Phase 20: Audit trail — capture reasoning paths for compliance audit
+            try:
+                from core.harness.infrastructure.gates.audit_trail_gate import AuditTrailGate
+                audit_gate = AuditTrailGate()
+                audit_steps = audit_gate.capture(
+                    result, domain_id=agent_id, agent_id=agent_id,
+                    tenant_id=str(payload.get("tenant_id", "default")) if isinstance(payload, dict) else "default",
+                    session_id=str(payload.get("session_id", "default")) if isinstance(payload, dict) else "default",
+                )
+                if audit_steps:
+                    meta.setdefault("audit_steps", len(audit_steps))
+                    meta.setdefault("audit_rules_matched",
+                                    len([s for s in audit_steps if s.rule_ref]))
+            except Exception:
+                pass
             # Post-generation: Action bridge (fire webhooks for recommended_actions)
             try:
                 out = getattr(result, "output", {}) if hasattr(result, "output") else {}

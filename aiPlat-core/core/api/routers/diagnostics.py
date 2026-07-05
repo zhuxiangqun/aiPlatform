@@ -1866,3 +1866,96 @@ def _build_markdown_report(data: dict, collection: str, days: int = 30) -> str:
 
     return "\n".join(lines)
 
+
+# ── Phase 20: Audit trail API ──
+
+@router.get("/diagnostics/audit-trail", response_model=Dict[str, Any])
+async def get_audit_trail(
+    domain: str = "",
+    agent: str = "",
+    limit: int = 100,
+    days: int = 30,
+):
+    """List audit trail steps, filterable by domain and agent."""
+    import os as _os
+    import sqlite3 as _sq
+    import json as _json
+
+    db_path = _os.path.expanduser(
+        _os.getenv("AIPLAT_EXECUTION_DB_PATH", "~/.aiplat/aiplat_executions.sqlite3")
+    )
+    if not _os.path.exists(db_path):
+        return {"steps": [], "total": 0}
+
+    conn = _sq.connect(db_path)
+    conn.row_factory = _sq.Row
+    try:
+        cutoff = time.time() - days * 86400
+        rows = conn.execute(
+            "SELECT payload, created_at FROM execution_events WHERE event_type=? "
+            "AND created_at >= ? ORDER BY created_at DESC LIMIT ?",
+            ("audit_trail", cutoff, limit * 2),
+        ).fetchall()
+        steps = []
+        for r in rows:
+            try:
+                step = _json.loads(r["payload"] or "{}")
+                if domain and step.get("domain", "") != domain:
+                    continue
+                if agent and step.get("agent", "") != agent:
+                    continue
+                steps.append(step)
+                if len(steps) >= limit:
+                    break
+            except Exception:
+                pass
+        return {"steps": steps, "total": len(steps)}
+    finally:
+        conn.close()
+
+
+@router.get("/diagnostics/audit-trail/{step_id}/tree", response_model=Dict[str, Any])
+async def get_audit_tree(step_id: int, days: int = 30):
+    """Recursively build complete reasoning tree from a root step."""
+    import os as _os
+    import sqlite3 as _sq
+    import json as _json
+
+    db_path = _os.path.expanduser(
+        _os.getenv("AIPLAT_EXECUTION_DB_PATH", "~/.aiplat/aiplat_executions.sqlite3")
+    )
+    if not _os.path.exists(db_path):
+        return {"tree": {}, "error": "db_not_found"}
+
+    conn = _sq.connect(db_path)
+    conn.row_factory = _sq.Row
+    try:
+        cutoff = time.time() - days * 86400
+        rows = conn.execute(
+            "SELECT payload FROM execution_events WHERE event_type=? AND created_at >= ?",
+            ("audit_trail", cutoff),
+        ).fetchall()
+        all_steps: List[dict] = []
+        for r in rows:
+            try:
+                all_steps.append(_json.loads(r["payload"] or "{}"))
+            except Exception:
+                pass
+
+        tree = _build_audit_tree(step_id, all_steps)
+        return {"tree": tree, "total_steps": len(all_steps)}
+    finally:
+        conn.close()
+
+
+def _build_audit_tree(step_id: int, all_steps: List[dict]) -> dict:
+    """Recursively build a reasoning tree from flat audit steps."""
+    step = next((s for s in all_steps if s.get("step_id") == step_id), None)
+    if not step:
+        return {}
+    children = [s for s in all_steps if s.get("parent_step_id") == step_id]
+    return {
+        "step": step,
+        "children": [_build_audit_tree(c["step_id"], all_steps) for c in children],
+    }
+
