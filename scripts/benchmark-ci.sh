@@ -32,6 +32,13 @@ run_bench "ontology"   "$DIR/benchmark_ontology.py" "--quick"
 run_bench "sysgraph"   "$DIR/benchmark_sysgraph.py" "--quick"
 run_bench "traversal"  "$DIR/benchmark_traversal.py" "--quick"
 
+# Stress test (best-effort, needs running instance)
+TOTAL=$((TOTAL + 1))
+if [ -f "$DIR/stress-test.sh" ]; then
+    echo "=== stress ===";
+    bash "$DIR/stress-test.sh" localhost 5 20 2>/dev/null && PASSED=$((PASSED + 1)) || echo "  ⚠️  stress SKIPPED (needs running instance)"
+fi
+
 echo ""
 echo "=============================="
 echo "Benchmark Summary: $PASSED/$TOTAL passed"

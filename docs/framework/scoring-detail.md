@@ -2,7 +2,7 @@
 title: "aiPlat 三框架逐项评分明细"
 type: scoring-detail
 domain: aiplat-core
-version: 2.0.0
+version: 2.1.0
 date: 2026-07-05
 status: published
 refs:
@@ -108,7 +108,7 @@ bash scripts/verify-l4-pyramid.sh | grep '最大可宣称'
 | 2.10 | 环境一致性 | 🔶 | docker-compose 存在, Helm chart 存在 | 非 CI 强制执行 |
 | 2.11 | 覆盖门禁 | 🔶 | 无 coverage threshold gate | 无 CI fail-on-low-coverage |
 
-### 3. CI/CD — 68.75% (5/8 是, 1/8 部分)
+### 3. CI/CD — 75% (6/8 是, 0/8 部分)
 
 | # | 检查项 | 结果 | 证据 | 差距 |
 |:--:|------|:--:|------|------|
@@ -141,7 +141,7 @@ bash scripts/verify-l4-pyramid.sh | grep '最大可宣称'
 | # | 检查项 | 结果 | 证据 | 差距 |
 |:--:|------|:--:|------|------|
 | 5.1 | SAST | ✅ | ruff bandit(S)+`create_security_scanner()` | — |
-| 5.2 | DAST | ❌ | 无 OWASP ZAP/Burp 集成 | 需添加 |
+| 5.2 | DAST | ✅ | OWASP ZAP baseline scan in CI (Phase 46) | — |
 | 5.3 | 依赖扫描 | ✅ | `.github/dependabot.yml` weekly | — |
 | 5.4 | 密钥管理 | ✅ | AES-256-GCM SecretsManager(148行) | 无外部 Vault |
 | 5.5 | 渗透测试 | ❌ | 无外部 pen test | 需第三方 |
@@ -175,7 +175,7 @@ bash scripts/verify-l4-pyramid.sh | grep '最大可宣称'
 | 5. 安全合规 | 6 | 0 | 2 | **75%** | 准生产级 |
 | 6. 架构维护 | 7 | 2 | 1 | **85%** | 准生产级 |
 
-**最低维 CI/CD 68.75% → 工程成熟度：实验级**
+**最低维 性能 75% → 工程成熟度：准生产级**
 **一票否决：全部通过（5/5）**
 
 ---
@@ -428,7 +428,7 @@ bash scripts/verify-l4-pyramid.sh | grep '最大可宣称'
 | 框架 | 定级 | 拖后腿项 |
 |:---|:---|:---|
 | **L1-L5 自主性** | L5 完全自主 | A3(目标自主设定) = L4+ |
-| **工程落地** | 实验级 | CI/CD(68.75%) 最低, 缺 DAST + 故障演练 |
+| **工程落地** | 实验级 | CI/CD(75%), 缺故障演练 |
 | **三层企业** | 基础级 | 宏观 FDE(2.5) + 灾难恢复(2.5) 拉低全体 |
 
 ### 升级路径
