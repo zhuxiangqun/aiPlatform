@@ -211,9 +211,9 @@ pytest tests/autonomy/test_l5_capabilities.py::TestUCB1Convergence -v
 
 | # | 检查项 | 结果 | 证据 |
 |:--:|------|:--:|------|
-| 5.1 | SAST | 部分 | `create_security_scanner()` 存在, 无 bandit/CodeQL |
+| 5.1 | SAST | **是** | ruff bandit (S-rule) + `create_security_scanner()` (Phase 42) |
 | 5.2 | DAST | 否 | — |
-| 5.3 | 依赖扫描 | 否 | 无 dependabot |
+| 5.3 | 依赖扫描 | **是** | dependabot.yml weekly pip + GHA (Phase 42) |
 | 5.4 | 密钥管理 | **是** | AES-256-GCM SecretsManager (148行) |
 | 5.5 | 渗透测试 | 否 | 无外部 pen test 记录 |
 | 5.6 | 变更合规 | **是** | `change_control.py` + 审批 flow |
@@ -243,7 +243,7 @@ pytest tests/autonomy/test_l5_capabilities.py::TestUCB1Convergence -v
 | 测试验证 | 60% |
 | CI/CD | 31.25% |
 | 可观测性 | 75% |
-| 安全合规 | 50% |
+| 安全合规 | 62.5% |
 | 架构维护 | 70% |
 
 **工程成熟度：实验级（最低维 CI/CD 31.25%）**
@@ -359,8 +359,8 @@ pytest tests/autonomy/test_l5_capabilities.py::TestUCB1Convergence -v
 ```
 Phase 39: GitHub Actions CI/CD (.github/workflows/)        ← P0
 Phase 40: ruff + mypy + pre-commit strict mode              ← P1
-Phase 41: K8s Helm charts + GitOps                          ← P1
-Phase 42: dependabot + bandit + CodeQL                      ← P2
+Phase 41: K8s Helm charts ✅ (deploy/helm/aiplat/)          ← P1
+Phase 42: dependabot + bandit ✅ (security 50→62.5%)        ← P2
 ```
 
 ### 一句话总结
