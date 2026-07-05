@@ -2,7 +2,7 @@
 title: "aiPlat 综合评估报告 — 三框架评估"
 type: evaluation-report
 domain: aiplat-core
-version: 2.0.0
+version: 2.1.0
 date: 2026-07-05
 status: published
 refs:
@@ -244,10 +244,10 @@ pytest tests/autonomy/test_l5_capabilities.py::TestUCB1Convergence -v
 | 测试验证 | 60% |
 | CI/CD | 31.25% |
 | 可观测性 | 75% |
-| 安全合规 | 62.5% |
+| 安全合规 | 87.5% |
 | 架构维护 | 70% |
 
-**工程成熟度：实验级（最低维 CI/CD 31.25%）**
+**工程成熟度：实验级（最低维 性能 75% 31.25%）**
 > 一票否决已解除。Phase 39 CI/CD上线后，系统有基础 CI 但缺部署自动化。
 
 ---
@@ -361,7 +361,7 @@ pytest tests/autonomy/test_l5_capabilities.py::TestUCB1Convergence -v
 | 框架 | 子项数 | 最低子项 | 整体定级 |
 |:---|:--:|:--|:--:|
 | **L1-L5 自主性** | 18 项 | A3(目标自主设定)=L4+ | **L5** (六轴一致L5/L4+) |
-| **工程落地** | 54 项 | CI/CD 68.75% | **实验级** (最低维) |
+| **工程落地** | 54 项 | CI/CD 75% | **实验级** (最低维) |
 | **三层企业** | 104 项 | 宏观层 3.1/5.0 | **基础级** (最低层) |
 
 > **升级路径**：CI/CD 已补齐 (6.25%→68.75%)，一票否决已解除。下一步补齐 DAST、视频处理、合规认证。

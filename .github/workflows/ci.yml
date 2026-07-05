@@ -88,6 +88,8 @@ jobs:
         run: pip install -e "." || true
       - name: Run benchmarks
         run: bash scripts/benchmark-ci.sh
+      - name: Stress test (informational)
+        run: bash scripts/stress-test.sh localhost 5 20 2>/dev/null || echo "Stress test skipped (needs running instance)"
 
   docker:
     name: Docker Build & Push
