@@ -85,7 +85,7 @@
 | 计划性遗忘 | `harness/memory/episodic.py` | ✅ | 同topic 2x降权→3x归档(status=archived) + 索引比较(非is引用) | Phase 18.5 |
 | 结构化压缩 | `harness/memory/compression.py` | ✅ | LLM工具输出→JSON(completed/pending/preference) + 自由文本回退 | Phase 18.3 |
 | 统一知识库健康仪表盘 | `api/routers/diagnostics.py` | ✅ | 6模块聚合+5维成熟度评分(L0-L5)+Markdown中文报告(四步框架语境) | Phase 19 |
-| 通用推理链审计框架 | `infrastructure/gates/audit_trail_gate.py` + `ontology_engine/audit_rules.py` | ✅ | 域无关+6操作符引擎+证据指纹锁存+parent_step_id因果追溯 | Phase 20 |
+| 通用推理链审计框架 | `harness/infrastructure/gates/audit_trail_gate.py` + `harness/ontology_engine/audit_rules.py` | ✅ | 域无关+6操作符引擎+证据指纹锁存+parent_step_id因果追溯 | Phase 20 |
 
 ---
 
