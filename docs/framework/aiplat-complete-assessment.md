@@ -141,26 +141,26 @@ pytest tests/autonomy/test_l5_capabilities.py::TestUCB1Convergence -v
 
 | # | 条件 | 结果 | 证据 |
 |:--:|------|:--:|------|
-| 1 | 无 CI/CD 流水线 | **❌ 触发** | 无 `.github/workflows/`、无 GitLab CI、无 Jenkinsfile |
+| 1 | 无 CI/CD 流水线 | **✅ 已修复** | `.github/workflows/` 含 3 个 workflow (Phase 39) |
 | 2 | 无自动化测试 | ✅ | 6 repos, 100+ test files, pytest + coverage 配置 |
 | 3 | 无可观测性基础设施 | ✅ | Prometheus + Grafana + Jaeger + OTel + 全链健康检查 |
 | 4 | 无安全扫描 | ⚠️ | custom `create_security_scanner()` 存在, 无 bandit/CodeQL |
 | 5 | 无架构决策记录 | ✅ | 10+ 架构文档 + `arch_guard_rules.yaml` (2353 行) |
 
-**一票否决触发 → 工程成熟度直接定为"原型级"**
+**一票否决结果：✅ 全部通过（CI/CD 已由 Phase 39 补齐）**
 
 ### 3.2 逐维评分
 
-#### 1. 代码质量与规范 — 12.5% (0/8 是, 2/8 部分)
+#### 1. 代码质量与规范 — 56.25% (4/8 是, 1/8 部分)
 
 | # | 检查项 | 结果 | 证据 |
 |:--:|------|:--:|------|
-| 1.1 | 统一代码规范 | 部分 | `arch_guard_rules.yaml` (2353行), 非标准 linter |
-| 1.2 | CI 强制检查 | 否 | 无 CI |
+| 1.1 | 统一代码规范 | **是** | ruff + mypy config in pyproject.toml (Phase 40) |
+| 1.2 | CI 强制检查 | **是** | CI workflow runs ruff + mypy on push |
 | 1.3 | Code Review | 部分 | pre-commit hook 存在, 无强制 PR 审批 |
 | 1.4 | 审查标准 | 否 | 无审查模板文档 |
-| 1.5 | 类型检查 | 部分 | Python type hints 广泛使用, 无 mypy config |
-| 1.6 | 自动格式化 | 否 | 无 black/ruff config |
+| 1.5 | 类型检查 | **是** | mypy in CI + pre-commit (Phase 40) |
+| 1.6 | 自动格式化 | **是** | ruff-format in pre-commit (Phase 40) |
 | 1.7 | Commit 规范 | 否 | 无 commitlint |
 | 1.8 | 复杂度检查 | 否 | 无 radon/sonar |
 
@@ -179,13 +179,13 @@ pytest tests/autonomy/test_l5_capabilities.py::TestUCB1Convergence -v
 | 2.9 | 测试数据管理 | 部分 | fixtures 存在, 跨测试数据隔离有已知问题 |
 | 2.10 | 环境一致性 | 部分 | docker-compose 存在, 非强制 |
 
-#### 3. CI/CD — 6.25% (0/8 是, 1/8 部分)
+#### 3. CI/CD — 31.25% (2/8 是, 1/8 部分)
 
 | # | 检查项 | 结果 | 证据 |
 |:--:|------|:--:|------|
-| 3.1 | CI/CD 流水线 | **否** | 无任何 CI config |
-| 3.2 | 自动构建 | 否 | — |
-| 3.3 | 自动部署测试环境 | 否 | — |
+| 3.1 | CI/CD 流水线 | **是** | 3 workflow files: ci.yml, arch-guard.yml, verification.yml |
+| 3.2 | 自动构建 | **是** | CI runs lint + test + depth on push/PR |
+| 3.3 | 自动部署测试环境 | 部分 | CI runs tests, deploy is manual |
 | 3.4 | 生产审批 | 否 | — |
 | 3.5 | 一键回滚 | 否 | — |
 | 3.6 | 产物版本管理 | 否 | — |
@@ -239,14 +239,15 @@ pytest tests/autonomy/test_l5_capabilities.py::TestUCB1Convergence -v
 
 | 维度 | 完成度 |
 |:---|:--:|
-| 代码质量 | 12.5% |
+| 代码质量 | 56.25% |
 | 测试验证 | 60% |
-| **CI/CD** | **6.25%** ← 一票否决触发 |
+| CI/CD | 31.25% |
 | 可观测性 | 75% |
 | 安全合规 | 50% |
 | 架构维护 | 70% |
 
-**工程成熟度：原型级（因 CI/CD 一票否决）**
+**工程成熟度：实验级（最低维 CI/CD 31.25%）**
+> 一票否决已解除。Phase 39 CI/CD上线后，系统有基础 CI 但缺部署自动化。
 
 ---
 
