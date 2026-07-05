@@ -197,6 +197,37 @@ class StrategySearchEngine:
             "converge_window": CONVERGE_WINDOW,
         }
 
+    def explain_decision(self, error_type: str) -> Dict[str, Any]:
+        """Phase 54: Explain why a specific strategy was selected (model interpretability).
+
+        Returns per-strategy breakdown: Q(exploitation), U(exploration), UCB score.
+        """
+        arms = self._get_arms(error_type)
+        total = sum(a.attempts for a in arms)
+        scoring = []
+        for a in arms:
+            ucb = a.ucb_score(total) if a.attempts > 0 else 0.0
+            scoring.append({
+                "strategy": a.strategy_name,
+                "attempts": a.attempts,
+                "successes": a.successes,
+                "success_rate": round(a.q, 3),
+                "exploration_term": round(ucb - a.q, 3) if a.attempts > 0 else 0.0,
+                "ucb_score": round(ucb, 3),
+            })
+        scoring.sort(key=lambda x: -x["ucb_score"])
+        return {
+            "error_type": error_type,
+            "total_attempts": total,
+            "converged": error_type in self._converged,
+            "frozen_strategy": self._converged.get(error_type),
+            "scoring": scoring,
+            "selection_reason": (
+                f"Converged to {self._converged[error_type]}" if error_type in self._converged
+                else f"UCB1 selected {scoring[0]['strategy']} (score={scoring[0]['ucb_score']:.3f})"
+            ),
+        }
+
 
 # ── Singleton ──
 

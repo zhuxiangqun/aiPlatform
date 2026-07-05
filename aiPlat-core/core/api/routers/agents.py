@@ -820,3 +820,38 @@ async def resolve_pipeline_hitl(pipeline_id: str, request: dict):
         raise
     except Exception as e:
         return {"status": "error", "error": str(e)[:300]}
+
+# ── Phase 54: Runtime Pipeline Stage Adjustment ──
+
+@router.post("/pipelines/{pipeline_id}/stages/adjust", response_model=Dict[str, Any])
+async def adjust_pipeline_stage(pipeline_id: str, request: dict):
+    """Runtime modification of pipeline stage configuration.
+    
+    Body: {"stage_id":"...","action":"modify_prompt|skip|change_agent",
+           "prompt_extra":"...","agent_type":"react|plan|reflection"}
+    """
+    stage_id = str(request.get("stage_id", ""))
+    action = str(request.get("action", "modify_prompt"))
+    try:
+        from core.services.builder_project_service import get_running_pipeline
+        engine = await get_running_pipeline(pipeline_id)
+        if not engine:
+            raise HTTPException(status_code=404, detail="pipeline_not_found")
+        matched = None
+        for s in engine._config.stages:
+            if s.id == stage_id:
+                matched = s; break
+        if not matched:
+            raise HTTPException(status_code=404, detail=f"stage_not_found:{stage_id}")
+        changes = {}
+        if action == "modify_prompt":
+            extra = str(request.get("prompt_extra", "")); old = matched.prompt_extra or ""
+            if extra: matched.prompt_extra = old + "\n" + extra; changes["prompt"] = extra[:100]
+        elif action == "skip":
+            engine._state[f"_stage_{stage_id}_skipped"] = True
+            engine._state[f"_stage_{stage_id}_done"] = True; changes["skipped"] = True
+        elif action == "change_agent":
+            t = str(request.get("agent_type","")); matched.agent_type = t; changes["agent"] = t
+        return {"status":"adjusted","stage_id":stage_id,"action":action,"changes":changes}
+    except HTTPException: raise
+    except Exception as e: raise HTTPException(status_code=500, detail=str(e)[:200])
