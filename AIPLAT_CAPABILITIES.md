@@ -453,7 +453,7 @@
 | 工具白名单 | `llm_profile.yaml` + `model_tier_router.py` + `integration.py` | ✅ | T1-T5每层max_tools限缩, 低复杂度→少工具 | Phase 16 |
 | 代码熵检测器 | `harness/knowledge/code_entropy_detector.py` | ✅ | 文件长度/函数数/TODO标记 3维度评分, GET /diagnostics/code-entropy | Phase 17 |
 | 本体感知路由 | `harness/execution/router.py` | ✅ | _ontology_routing_hint: 实体名匹配→邻居计数→graph/loop抉择 | Phase 11.1 |
-| CrossValidationGate | `harness/infrastructure/gates/cross_validation_gate.py` | ⚠️ | 设备↔工艺↔质量三层联动(框架占位, 等待≥50跨域连接) | Phase 11.3 |
+| CrossValidationGate | `harness/infrastructure/gates/cross_validation_gate.py` | ✅ | 3层跨域验证(设备↔工艺↔质量) + 52/50跨域连接已达标 | Phase 11.3 |
 
 ---
 
@@ -764,12 +764,12 @@
 | 编排系统 | 4 | 0 | 4 |
 | 管理 & 质量 | 21 | 0 | 21 |
 | 编排层 | 17 | 0 | 17 |
-| **总计** | **516** | **1** | **517** |
+| **总计** | **517** | **0** | **517** |
 
 ---
 
 *最后更新: 2026-07-04*
-*版本: 12.5 · 28章 · 516项能力 · 515✅ · P0-P3 hermès-agent全量吸收+SQLite连接池化+TrendDetector*
+*版本: 12.5 · 28章 · 517项能力 · 517✅ · P0-P3 hermès-agent全量吸收+SQLite连接池化+TrendDetector*
 
 **自检命令**：
 ```bash
