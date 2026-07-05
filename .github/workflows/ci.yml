@@ -25,8 +25,10 @@ jobs:
         run: ruff check core/ --ignore F821
       - name: MyPy type check
         run: mypy core/ --ignore-missing-imports || true
-      - name: Radon complexity
-        run: radon cc core/ -a -nc | tail -20 || true
+       - name: Radon complexity
+         run: radon cc core/ -a -nc | tail -20 || true
+       - name: Commitlint check (last commit)
+         run: npx --yes commitlint --from HEAD~1 --to HEAD --config .commitlintrc.yaml 2>/dev/null || echo "commitlint skipped"
 
   test:
     name: Test (pytest)
@@ -46,7 +48,7 @@ jobs:
       - name: Install dependencies
         run: pip install -e ".[dev]" || pip install pytest pytest-cov
       - name: Run tests
-        run: python -m pytest tests/ -v --tb=short -q --cov=. --cov-report=xml
+        run: python -m pytest tests/ -v --tb=short -q --cov=. --cov-report=xml --cov-fail-under=60
       - name: Run regression tests
         run: python -m pytest tests/ -v --tb=short -q -m regression 2>/dev/null || echo "No regression tests defined (informational)"
       - name: Upload coverage
