@@ -2,7 +2,7 @@
 title: "aiPlat 综合评估报告 — 三框架评估"
 type: evaluation-report
 domain: aiplat-core
-version: 2.1.0
+version: 2.2.0
 date: 2026-07-05
 status: published
 refs:
@@ -327,14 +327,14 @@ pytest tests/autonomy/test_l5_capabilities.py::TestUCB1Convergence -v
          L1-L5 自主性               工程落地              三层企业
          "多聪明"                  "能不能持续"           "多好"
          ─────────                ──────────             ─────
-         L5 完全自主               实验级                 基础级
+         L5 完全自主               逼近生产级             基础级
               │                      │                      │
               │     ┌────────────────┼────────────────┐     │
               │     │                │                │     │
               ▼     ▼                ▼                ▼     ▼
-         六轴全 L5           CI/CD 已补齐 (50%→69%)   微观层 4.0 (优秀)
-         自主性最强           测试维度 80%               宏观层 3.1 (待补)
-         UCB1收敛闭环         代码质量 87.5%             部署运维待提升
+         六轴全 L5           CI/CD 87.5% (已补齐)   微观层 4.0 (优秀)
+         自主性最强           测试维度 90%               宏观层 3.1 (待补)
+         UCB1收敛闭环         代码质量 87.5% (准生产)             部署运维待提升
 ```
 
 ### 优势
