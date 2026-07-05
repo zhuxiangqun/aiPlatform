@@ -87,6 +87,7 @@
 | 统一知识库健康仪表盘 | `api/routers/diagnostics.py` | ✅ | 6模块聚合+5维成熟度评分(L0-L5)+Markdown中文报告(四步框架语境) | Phase 19 |
 | 通用推理链审计框架 | `harness/infrastructure/gates/audit_trail_gate.py` + `harness/ontology_engine/audit_rules.py` | ✅ | 域无关+6操作符引擎+证据指纹锁存+parent_step_id因果追溯 | Phase 20 |
 | Prompt迭代优化编排器 | `harness/optimization/prompt_optimizer.py` | ✅ | Champion-challenger自循环+5零件串联(ReActLoop+DarwinArena+prompt_optimize+PipelineEngine+EvolutionRunner) | Phase 21 |
+| 关键决策人工确认 | `apps/agents/operator_agent.py` + `api/routers/agents.py` | ✅ | 3道防线(L1静默/L2确认/L3全量)+审批approve/reject+超时自动拒绝 | Phase 22 |
 
 ---
 
@@ -776,12 +777,12 @@
 | 编排系统 | 4 | 0 | 4 |
 | 管理 & 质量 | 21 | 0 | 21 |
 | 编排层 | 17 | 0 | 17 |
-| **总计** | **528** | **0** | **528** |
+| **总计** | **529** | **0** | **529** |
 
 ---
 
 *最后更新: 2026-07-04*
-*版本: 12.5 · 28章 · 529项能力 · 523✅ · P0-P3 hermès-agent全量吸收+SQLite连接池化+TrendDetector*
+*版本: 12.5 · 28章 · 530项能力 · 523✅ · P0-P3 hermès-agent全量吸收+SQLite连接池化+TrendDetector*
 
 **自检命令**：
 ```bash
