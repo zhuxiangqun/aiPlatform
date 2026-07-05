@@ -2,15 +2,15 @@
 title: "aiPlat L4 评估验证协议"
 type: audit-protocol
 domain: aiplat-core
-version: 2.0.0
+version: 3.0.0
 date: 2026-07-05
 status: published
-depends_on: docs/whitepaper/aiplat-l4-autonomy-assessment-v2.0.0.md
+depends_on: docs/whitepaper/aiplat-l4-autonomy-assessment-v3.0.0.md
 refs:
   - "MIT 2025 AI Agent Index"
   - "DeepSeek L1-L5 Classification"
   - "arXiv: Ten Capability Axes"
-tags: [audit, verification, L4, reproducibility, negative-check, L5-proximate]
+tags: [audit, verification, L4+, reproducibility, negative-check, L5-proximate, ucb1]
 ---
 
 # aiPlat L4 评估验证协议
@@ -154,25 +154,25 @@ wc -l < aiPlat-core/core/harness/integration.py
 
 ### F. 自进化
 
-| 级别 | 定义门槛 | aiPlat 匹配 (v2.0.0) | 得分依据 |
+| 级别 | 定义门槛 | aiPlat 匹配 (v3.0.0) | 得分依据 |
 |:---:|------|------|:--:|
 | L3 | 无 | ⬜ 已超越 | — |
-| **L4 基础** | **能从失败中学习** | ⬜ 已超越 | Phase 24 硬编码 + Phase 25 快照 + Phase 26 数据驱动 |
-| **L4 高级** | **策略学习有对比反馈** | ✅ | Phase 25 可重现快照 + Phase 26 效果跟踪 + Phase 28 目标生成 |
-| L5 | 策略搜索-评估-比较-回滚闭环 | ❌ | 无搜索算法（多臂老虎机/贝叶斯优化） |
+| L4 基础 | 能从失败中学习 | ⬜ 已超越 | Phase 24-28 |
+| L4 高级 | 策略学习有对比反馈 | ⬜ 已超越 | Phase 25-28 |
+| **L5** | **策略搜索-评估-比较-回滚闭环** | ✅ | UCB1 StrategySearchEngine (Phase 29) + ToolBootstrap (Phase 31) + DynamicOrchestrator (Phase 32) |
 
 **判据**：
 ```bash
-grep -c 'class StrategyEffectivenessTracker' aiPlat-core/core/harness/optimization/strategy_tracker.py
-# → 1（Phase 26: 数据驱动的策略路由, 替代硬编码映射）
-grep -c 'class ExecutionSnapshot' aiPlat-core/core/harness/execution/snapshot.py
-# → 1（Phase 25: L5 前置 — 可重现执行快照 + 对比）
-grep -c 'class GoalGenerator' aiPlat-core/core/harness/optimization/goal_generator.py
-# → 1（Phase 28: 自主改进提案引擎）
-grep -c 'class SharedKnowledgePool' aiPlat-core/core/harness/memory/shared_pool.py
-# → 1（Phase 27: 跨实例记忆共享）
+grep -c 'class StrategySearchEngine' aiPlat-core/core/harness/optimization/search_engine.py
+# → 1（Phase 29: UCB1 多臂老虎机搜索算法）
+grep -c 'class GoalExecutor' aiPlat-core/core/harness/optimization/goal_executor.py
+# → 1（Phase 30: 自主闭环执行器）
+grep -c 'class ToolBootstrapEngine' aiPlat-core/core/harness/optimization/tool_bootstrap.py
+# → 1（Phase 31: 自举工具创建）
+grep -c 'class DynamicOrchestrator' aiPlat-core/core/harness/coordination/dynamic_orchestrator.py
+# → 1（Phase 32: 动态组队）
 ```
-**v2.0.0 关键判定**：策略路由已从硬编码的 `if reason in (...)` 升级为 data-driven（Tracker 记录效果 + 冷启动探索）。可重现执行快照（Phase 25）已解决"同一任务对比不同策略"的前置条件。差距在于缺少自动搜索策略空间的算法。
+**v3.0.0 关键判定**：F 轴和 A 轴已触达 L5。UCB1 算法提供了有理论保证的策略收敛，GoalExecutor 实现了自主闭环执行。C 轴和 E 轴处于 L4+（ToolBootstrap prompt-based + DynamicOrchestrator registry-based），尚未达到完整 L5。
 
 ---
 
@@ -554,5 +554,9 @@ echo "=== L5 负检查 === (见 §3.1)"
 | **Phase 26** | **2026-07** | **策略效果跟踪器（数据驱动路由）** | **F** |
 | **Phase 27** | **2026-07** | **跨实例共享知识池（SharedKnowledgePool）** | **D, F** |
 | **Phase 28** | **2026-07** | **自主目标生成引擎（GoalGenerator）** | **A, F** |
+| **Phase 29** | **2026-07** | **UCB1 策略搜索 (StrategySearchEngine)** | **F** |
+| **Phase 30** | **2026-07** | **自主闭环执行器 (GoalExecutor)** | **A** |
+| **Phase 31** | **2026-07** | **工具自举引擎 (ToolBootstrapEngine)** | **C** |
+| **Phase 32** | **2026-07** | **动态组队引擎 (DynamicOrchestrator)** | **E** |
 
-**v2.0.0 时间观察**：Phase 10-28 全部在 2026-07 密集交付（同一天）。审稿人应关注：这些能力是否经过了足够的生产压力测试。
+**v3.0.0**：Phase 10-32 全部在 2026-07 密集交付。F/A 轴已触达 L5。

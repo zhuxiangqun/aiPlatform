@@ -105,6 +105,11 @@ check_ref "ExecutionSnapshot" "aiPlat-core/core/harness/execution/snapshot.py" 1
 check_ref "StrategyTracker" "aiPlat-core/core/harness/optimization/strategy_tracker.py" 100 "class StrategyEffectivenessTracker"
 check_ref "SharedKnowledgePool" "aiPlat-core/core/harness/memory/shared_pool.py" 100 "class SharedKnowledgePool"
 check_ref "GoalGenerator" "aiPlat-core/core/harness/optimization/goal_generator.py" 100 "class GoalGenerator"
+# Phase 29-32
+check_ref "SearchEngine" "aiPlat-core/core/harness/optimization/search_engine.py" 100 "class StrategySearchEngine"
+check_ref "GoalExecutor" "aiPlat-core/core/harness/optimization/goal_executor.py" 50 "class GoalExecutor"
+check_ref "ToolBootstrap" "aiPlat-core/core/harness/optimization/tool_bootstrap.py" 100 "class ToolBootstrapEngine"
+check_ref "DynamicOrchestrator" "aiPlat-core/core/harness/coordination/dynamic_orchestrator.py" 100 "class DynamicOrchestrator"
 echo ""
 
 # ── Summary ──

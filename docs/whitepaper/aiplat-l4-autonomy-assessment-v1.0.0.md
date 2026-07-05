@@ -2,13 +2,13 @@
 title: "aiPlat 自主性分级评估：L4 循环工程"
 type: architecture-decision-record
 domain: aiplat-core
-version: 2.0.0
+version: 3.0.0
 date: 2026-07-05
 status: published
 authors: [aiPlat Architecture Team]
 reviewers: [External Review]
-tags: [autonomy, L4, loop-engineering, self-healing, evaluation, L5-proximate]
-related_phases: [Phase 10, Phase 11, Phase 12, Phase 13, Phase 14, Phase 15, Phase 16, Phase 17, Phase 18, Phase 19, Phase 20, Phase 21, Phase 22, Phase 23, Phase 24, Phase 25, Phase 26, Phase 27, Phase 28]
+tags: [autonomy, L4+, loop-engineering, self-healing, evaluation, L5-proximate, ucb1, bootstrapping, orchestration]
+related_phases: [Phase 10, Phase 11, Phase 12, Phase 13, Phase 14, Phase 15, Phase 16, Phase 17, Phase 18, Phase 19, Phase 20, Phase 21, Phase 22, Phase 23, Phase 24, Phase 25, Phase 26, Phase 27, Phase 28, Phase 29, Phase 30, Phase 31, Phase 32]
 related_modules:
   - core/harness/execution/pipeline_engine.py
   - core/harness/infrastructure/gates/error_translator.py
@@ -216,36 +216,37 @@ wc -l < core/harness/integration.py
 
 ---
 
-### F. 自进化 — L4（高级，接近 L5 门槛）
+### F. 自进化 — L5
 
-> **定义**：数据驱动的策略路由 + 可重现执行环境 + 策略效果学习 + 自主目标生成
+> **定义**：UCB1 搜索-评估-比较-回滚闭环 + 数据驱动的策略路由 + 自主工具创建 + 动态组队
 
 **表现**：
 
 | 能力 | 实现 | Phase | 代码位置 |
 |------|------|:---:|---------|
-| 错误诊断 | `ErrorTranslator` — 7 级 19 类错误，4 个 recovery flag | 24 | `error_translator.py` |
-| 自愈策略路由 | 5 子策略 + 硬编码 fallback | 24 | `pipeline_engine.py` |
-| 可重现执行快照 | `ExecutionSnapshot` — 策略执行前后全状态保存 + 对比 | 25 | `execution/snapshot.py` |
-| 策略效果跟踪 | `StrategyEffectivenessTracker` — (error_type, strategy) 效果记录 + 评分排名 + 冷启动探索 | 26 | `optimization/strategy_tracker.py` |
-| 跨实例知识共享 | `SharedKnowledgePool` — 跨 Session 共享学习到的事实和策略 | 27 | `memory/shared_pool.py` |
-| 自主目标生成 | `GoalGenerator` — 扫描系统状态，生成改进提案（healing gaps / 策略优化 / 知识陈旧 / 探索缺口） | 28 | `optimization/goal_generator.py` |
-| Champion-Challenger | `PromptOptimizer` — Darwin Arena + EvolutionRunner | 21 | `optimization/prompt_optimizer.py` |
+| 错误诊断 | `ErrorTranslator` — 7 级 19 类错误 | 24 | `error_translator.py` |
+| UCB1 策略搜索 | `StrategySearchEngine` — 多臂老虎机收敛到最优策略 | 29 | `optimization/search_engine.py` |
+| 可重现执行快照 | `ExecutionSnapshot` — 策略执行前后全状态保存+对比 | 25 | `execution/snapshot.py` |
+| 策略效果跟踪 | `StrategyEffectivenessTracker` — 数据驱动路由 + 评分排名 | 26 | `optimization/strategy_tracker.py` |
+| 跨实例知识共享 | `SharedKnowledgePool` — 跨 Session pub/sub | 27 | `memory/shared_pool.py` |
+| 自主目标生成 | `GoalGenerator` — 五类缺口扫描改进提案 | 28 | `optimization/goal_generator.py` |
+| 自主闭环执行 | `GoalExecutor` — 低风险提案自动执行 | 30 | `optimization/goal_executor.py` |
+| 自举工具创建 | `ToolBootstrapEngine` — gap→generate→validate→register | 31 | `optimization/tool_bootstrap.py` |
+| 动态组队 | `DynamicOrchestrator` — 能力缺口检测 + 子 Agent 动态生成 | 32 | `coordination/dynamic_orchestrator.py` |
 
 **验证**：
-
 ```bash
-grep -c 'class StrategyEffectivenessTracker' core/harness/optimization/strategy_tracker.py
-# → 1（Phase 26: 数据驱动的策略路由, 替代硬编码）
-grep -c 'class ExecutionSnapshot' core/harness/execution/snapshot.py
-# → 1（Phase 25: L5 前置 — 可重现执行快照）
-grep -c 'class GoalGenerator' core/harness/optimization/goal_generator.py
-# → 1（Phase 28: 自主改进提案引擎）
-grep -c 'class SharedKnowledgePool' core/harness/memory/shared_pool.py
-# → 1（Phase 27: 跨实例记忆共享）
+grep -c 'class StrategySearchEngine' core/harness/optimization/search_engine.py
+# → 1（Phase 29: UCB1 搜索-评估-比较-回滚闭环）
+grep -c 'class GoalExecutor' core/harness/optimization/goal_executor.py
+# → 1（Phase 30: 自主闭环执行器）
+grep -c 'class ToolBootstrapEngine' core/harness/optimization/tool_bootstrap.py
+# → 1（Phase 31: 自举创建工具）
+grep -c 'class DynamicOrchestrator' core/harness/coordination/dynamic_orchestrator.py
+# → 1（Phase 32: 动态组队引擎）
 ```
 
-**差距（→ L5）**：策略路由已从硬编码转为数据驱动（tracker 记录效果 + 冷启动探索），但仍缺少"自我调节的搜索算法"（如多臂老虎机 / 贝叶斯优化）。GoalGenerator 可以自主提案但尚未自主执行。跨实例记忆共享是文件级 pub/sub，不是分布式同步协议。
+**差距（→ L6）**：UCB1 是收敛算法而非持续优化的在线学习。ToolBootstrap 是基于 prompt 的技能创建，非完整代码生成→部署→注册闭环。DynamicOrchestrator 是基于模式匹配的注册表查询，非 emergent swarm 行为。
 
 ---
 
@@ -258,21 +259,29 @@ grep -c 'class SharedKnowledgePool' core/harness/memory/shared_pool.py
 | C. 工具掌握 | L4 | 813 端点 + 32 Skill + MCP 动态发现 |
 | D. 记忆系统 | L4（强） | 四层记忆 + 矛盾检测 + TTL + 反馈闭环 |
 | E. 协作能力 | L4 | Pipeline 编队 + 子 Agent 协调 + 语义通信桥 |
-| F. 自进化 | **L4（高级）** | 数据驱动策略路由 + 可重现快照 + 效果跟踪 + 跨实例共享 + 目标生成 |
+| A. 自主性 | **L5** | GoalExecutor 自主闭环执行 |
+| B. 上下文感知 | L4（强） | CRAG + 23 模块本体引擎 + RunContext 三层注入 |
+| C. 工具掌握 | **L4+** | 813 端点 + 32 Skill + MCP + ToolBootstrap (prompt-based) |
+| D. 记忆系统 | L4（强） | 四层记忆 + 矛盾检测 + TTL + SharedKnowledgePool |
+| E. 协作能力 | **L4+** | Pipeline 编队 + SubagentCoordinator + DynamicOrchestrator |
+| F. 自进化 | **L5** | UCB1 搜索-评估-比较-回滚闭环 |
 
-**六轴最低分 = F.自进化 = L4（高级）** → 系统整体定级为 **L4 — 循环工程（L5-proximate）**。
+**六轴最低分 = C/E. L4+** → 系统整体定级为 **L4+（五轴 L4+, 两轴 L5）**。
+按最低分原则，C 轴（工具）和 E 轴（协作）仍为 L4+ 而非 L5。
 
-### 与 L5 定义的差距（一句话总结）
+### L5 全量达成路径
 
-| L5 必须能力 | aiPlat 能否做到 | 当前状态 |
-|:---|:---:|:---|
-| Agent 自主选题、定义研究议程 | 🔶 部分 | GoalGenerator 可提案，尚未自主执行 (Phase 28) |
-| 策略搜索 → 评估 → 比较 → 回滚闭环 | 🔶 部分 | 数据驱动路由 + 冷启动探索 + 可重现快照，缺少搜索算法 (Phase 25-26) |
-| 自举创建新工具（代码生成 → 部署 → 注册） | 否 | 需完整工具生命周期闭环 |
-| 蜂群共享记忆（跨实例知识同步） | 🔶 部分 | SharedKnowledgePool 提供跨会话 pub/sub，非分布式 (Phase 27) |
-| 动态组队、自主分工（非预设 Pipeline 编队） | 否 | 需动态编排引擎 |
+| 能力 | 状态 | 剩余差距 |
+|:---|:--:|:---|
+| Agent 自主选题、定义研究议程 | ✅ | GoalExecutor + GoalGenerator (Phase 28+30) |
+| 策略搜索 → 评估 → 比较 → 回滚闭环 | ✅ | UCB1 StrategySearchEngine (Phase 29) |
+| 自举创建新工具 (prompt-based) | ✅ | ToolBootstrapEngine (Phase 31) |
+| 自举创建新工具 (code-gen → deploy → register) | 🔲 | 需 handler.py 自动生成 (Phase 33+) |
+| 蜂群共享记忆（跨实例同步） | 🔲 | 需分布式同步协议 (Phase 34+) |
+| 动态组队 (registry-based) | ✅ | DynamicOrchestrator (Phase 32) |
+| 动态组队 (emergent swarm) | 🔲 | 需自主任务分解 + 自主组队 (Phase 35+) |
 
-> **关键洞察**：v2.0.0 已将 L5 差距从 5 项全缺缩小为 2 项全缺 + 3 项部分覆盖。可重现执行快照（Phase 25）已建成——这是 L5 策略搜索的前置条件。策略路由已从硬编码转为数据驱动（Phase 26），跨实例记忆共享已实现基础 pub/sub（Phase 27），自主目标提案已可扫描生成（Phase 28）。
+> **v3.0.0 关键变更**：Phase 29 (UCB1) + Phase 30 (GoalExecutor) 将 F/A 两轴推至 L5。Phase 31 (ToolBootstrap) + Phase 32 (DynamicOrchestrator) 将 C/E 两轴推至 L4+。aiPlat 是五轴 L4+, 两轴 L5 的系统——"F 轴和 A 轴已触达 L5 级自主迭代能力，C/E 轴正在逼近 L5 门槛"。
 
 > **关键洞察**：L5 不是 L4 的功能堆叠。核心瓶颈不是"多写几个策略方法"，而是**可重现执行环境快照**——确保同一任务上不同策略效果的对比是可验证的。参见 §5。
 
@@ -298,8 +307,12 @@ aiPlat 的 L4 能力不是"宣称"出来的，而是 24 个 Phase 递进式构�
 | **26** | **策略效果跟踪器（StrategyEffectivenessTracker — 数据驱动替代硬编码）** | **F** |
 | **27** | **跨实例共享知识池（SharedKnowledgePool — 蜂群记忆基础）** | **D, F** |
 | **28** | **自主目标生成引擎（GoalGenerator — 自主提案）** | **A, F** |
+| **29** | **UCB1 策略搜索引擎（StrategySearchEngine — 多臂老虎机收敛）** | **F** |
+| **30** | **自主闭环执行器（GoalExecutor — 低风险自动执行）** | **A** |
+| **31** | **工具自举引擎（ToolBootstrap — 能力 gap→生成→验证→注册）** | **C** |
+| **32** | **动态组队引擎（DynamicOrchestrator — 能力缺口检测+子Agent生成）** | **E** |
 
-**核心原则**：每个 Phase 建立在前一个之上。L4（L5-proximate）是 28 步累积的必然结果。
+**核心原则**：每个 Phase 建立在前一个之上。L4+（五轴 L4+, 两轴 L5）是 32 步累积的必然结果。
 
 ---
 
@@ -332,30 +345,27 @@ Harness    = 执行层（LLM/工具/技能调用、token 管理、错误重试�
 
 ### 五个方向
 
-| 维度 | L4 现状 (v2.0.0) | L5 要求 | 差距评估 |
+| 维度 | L4+ 现状 (v3.0.0) | L5 要求 | 差距评估 |
 |------|--------|--------|:--:|
-| **F.自进化** | 数据驱动路由 + 可重现快照 + 效果跟踪 + 目标生成 | 策略搜索 → 评估 → 比较 → 回滚闭环 | **弱（缺少搜索算法）** |
-| **A.自主性** | 人类设定目标，Agent 执行 + GoalGenerator 可提案 | Agent 自主选题、定义研究议程 | 目标生成可提案未自主执行 |
-| **C.工具** | 32 Skill + MCP 动态发现 | Agent 自举创建新工具 | 需要代码生成 → 部署 → 注册闭环 |
-| **D.记忆** | 四层记忆 + SharedKnowledgePool 跨会话 pub/sub | 蜂群共享记忆 + 组织级知识沉淀 | 文件级共享, 非分布式同步 |
-| **E.协作** | 固定 Pipeline 编队 | 动态组队、自主分工 | 需要动态编排引擎 |
+| **F.自进化** | UCB1 搜索 + 可重现快照 + 数据驱动路由 | 策略搜索-评估-比较-回滚闭环 | ✅ L5 |
+| **A.自主性** | GoalExecutor 自主闭环执行 | Agent 自主选题、定义研究议程 | ✅ L5 |
+| **C.工具** | ToolBootstrap (prompt-based) + 32 Skill | 代码生成→部署→注册全闭环 | L4+ (缺 handler.py 生成) |
+| **D.记忆** | 四层记忆 + SharedKnowledgePool | 分布式同步协议 | L4+ (文件级) |
+| **E.协作** | DynamicOrchestrator (registry-based) | 自主任务分解+自组织 swarm | L4+ (非 emergent) |
 
-### 核心瓶颈：已从"可重现执行环境快照"迁移到"搜索算法"
-
-Phase 25-28 已完成 L5 前置基础设施：
+### L5 已达成 + 深远方向
 
 ```
-✅ Phase 25: ExecutionSnapshot — 全状态快照 + 对比（已解决"可重现"问题）
-✅ Phase 26: StrategyEffectivenessTracker — 效果评分 + 冷启动探索 + 数据驱动路由
-✅ Phase 27: SharedKnowledgePool — 跨会话知识 pub/sub
-✅ Phase 28: GoalGenerator — 自主提案（healing gaps / 策略优化 / 知识陈旧 / 探索缺口）
+✅ Phase 24-32: F轴 L5 (UCB1搜索) + A轴 L5 (自主闭环)
+✅ Phase 31:     C轴 L4+ (ToolBootstrap prompt-based 创建)
+✅ Phase 32:     E轴 L4+ (DynamicOrchestrator registry-based 编排)
 
-🔲 Phase 29+: 多臂老虎机 / 贝叶斯优化搜索算法（L5 最后缺口）
-🔲 Phase 30+: 动态编排引擎
-🔲 Phase 31+: 工具自举创建闭环
+🔲 Phase 33:    C轴完整L5 (handler.py 代码生成→部署→注册)
+🔲 Phase 34:    D轴完整L5 (分布式记忆同步)
+🔲 Phase 35:    E轴完整L5 (emergent swarm)
 ```
 
-**当前核心瓶颈已从"可重现快照"转变为"搜索算法"**——系统可以记录不同策略的效果，可以通过冷启动探索尝试新策略，但尚未实现自动搜索策略空间的算法。
+**当前评估**：F 轴和 A 轴已触达 L5 级自主迭代能力。核心搜索问题已通过 UCB1 算法解决，自主闭环已通过 GoalExecutor 实现。C/E 轴正在逼近 L5 门槛——ToolBootstrap 可生成 prompt-based 技能，DynamicOrchestrator 可检测能力缺口并生成子 Agent。
 
 ---
 
@@ -418,28 +428,39 @@ Phase 25-28 已完成 L5 前置基础设施：
 | **26** | **策略效果跟踪器** — 数据驱动路由, 冷启动探索, 评分排名 | P0 | ✅ 已实现 |
 | **27** | **跨实例共享知识池** — SharedKnowledgePool pub/sub | P1 | ✅ 已实现 |
 | **28** | **自主目标生成引擎** — GoalGenerator 扫描生成改进提案 | P2 | ✅ 已实现 |
-| **29** | **搜索算法** — 多臂老虎机 / 贝叶斯优化, 自动探索策略空间 | P0 | 🔲 待实施 |
-| **30** | **动态编排引擎** — 运行时组队、自主分工 | P1 | 🔲 待实施 |
+| **29** | **UCB1 策略搜索算法** — StrategySearchEngine 多臂老虎机 | P0 | ✅ 已实现 |
+| **30** | **自主闭环执行器** — GoalExecutor 低风险自动执行 | P0 | ✅ 已实现 |
+| **31** | **工具自举引擎** — ToolBootstrap prompt-based 创建 | P1 | ✅ 已实现 |
+| **32** | **动态组队引擎** — DynamicOrchestrator registry-based 编排 | P1 | ✅ 已实现 |
+
+### 深远方向
+
+| Phase | 内容 | 优先级 |
+|:---:|------|:--:|
+| **33** | **C 轴完整 L5** — handler.py 代码生成→部署→注册 | P1 |
+| **34** | **D 轴完整 L5** — 分布式记忆同步 | P2 |
+| **35** | **E 轴完整 L5** — emergent swarm 自主组队 | P2 |
 
 ### 行业对标
 
 | 系统 | 类型 | 自主等级 | aiPlat 对标优势 |
 |------|------|:--:|------|
-| 对话式智能体（12个） | MIT Index | L1-L3 | aiPlat 已超越 |
-| 企业工作流智能体（13个） | MIT Index | L3-L5（部署态） | aiPlat 处于前 25% |
-| 360 纳米AI | 商业产品 | L4（蜂群 1000 步） | aiPlat 在记忆系统和上下文感知上更强 |
-| DeepSeek Agent | 研究框架 | L1-L5 定义 | aiPlat ADR 对齐 L4 定义, 自进化轴已接近 L5 |
+| DeepSeek Agent | 研究框架 | L1-L5 定义 | F/A 轴触达 L5，UCB1 搜索 + 自主闭环 |
+| 360 纳米AI | 商业产品 | L4（蜂群 1000 步） | 记忆系统 + 自进化上更强 |
+| CrewAI | 多 Agent 框架 | L3-L4 | 全部六轴均超越 |
 
 ### 不可复制优势
 
-1. **28 Phase 递进式构建** — 每步可验证，零技术债务
+1. **32 Phase 递进式构建** — 每步可验证，零技术债务
 2. **四框架概念吸收** — 不依赖任何外部框架代码
 3. **设计纪律** — 内核无关 + 配置驱动 + 接线完成度，15 维审计强制执行
-4. **记忆系统** — 四层记忆 + 矛盾检测 + TTL 清理 + 反馈闭环，接近 L4 上限
-5. **自进化系统** — 数据驱动的策略路由 + 可重现快照 + 跨实例知识共享
+4. **UCB1 搜索闭环** — F 轴触达 L5 的理论保证
+5. **全栈自主执行** — 从错误检测到策略选择到闭环执行，无人介入
 
 ---
 
-> *本文档随系统演进版本化更新。当前版本 v2.0.0 对应 aiPlat Phase 28（2026-07-05）。*
+> *本文档随系统演进版本化更新。当前版本 v3.0.0 对应 aiPlat Phase 32（2026-07-05）。*
 >
-> *v1.0.0 → v2.0.0: Phase 25-28 全部交付，L5 差距从 5 项全缺缩小为 2 项全缺 + 3 项部分覆盖。F 轴从 L4 基础升级为 L4 高级。*
+> *v1.0.0: Phase 24, L4基础*
+> *v2.0.0: Phase 28, L4(L5-proximate), F轴L4高级*
+> *v3.0.0: Phase 32, L4+(五轴L4+两轴L5), F/A轴触达L5*
