@@ -142,6 +142,19 @@ class EpisodicMemory:
 
     # ── Phase 18.5: Planned forgetting with topic-based overwrites ──
 
+    # ── Phase 23.2 G1: Episodic TTL cleanup ──
+
+    def cleanup_expired(self) -> int:
+        """Remove episodic entries older than _ttl_seconds. Returns count removed."""
+        import time as _time
+        now = _time.time()
+        cutoff = now - self._ttl_seconds
+        removed = 0
+        while self._full_messages and float(self._full_messages[0].get("timestamp", now)) < cutoff:
+            self._full_messages.pop(0)
+            removed += 1
+        return removed
+
     def _apply_topic_overwrites(self, newly_scored_indices: List[int]) -> None:
         """For each newly scored interaction, override older same-topic messages.
 

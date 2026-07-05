@@ -2354,6 +2354,36 @@ class HarnessIntegration:
                                     len([s for s in audit_steps if s.rule_ref]))
             except Exception:
                 pass
+            # Phase 23.3 G4: Retrieval precision feedback loop
+            try:
+                ctx = (payload.get("context") or {}) if isinstance(payload, dict) else {}
+                feedback_action = payload.get("_feedback_action") if isinstance(payload, dict) else None
+                if not feedback_action and isinstance(ctx, dict):
+                    feedback_action = ctx.get("_feedback_action")
+                if feedback_action in ("regenerate", "ignore"):
+                    semantic_keys = (meta or {}).get("_semantic_keys_used", [])
+                    if semantic_keys:
+                        import os as _os, sqlite3 as _sq
+                        db_path = _os.path.expanduser(
+                            _os.getenv("AIPLAT_MEMORY_SEMANTIC_DB",
+                                       "~/.aiplat/memory_semantic.sqlite3"))
+                        if _os.path.exists(db_path):
+                            conn = _sq.connect(db_path)
+                            try:
+                                for key in semantic_keys[:10]:
+                                    conn.execute(
+                                        "UPDATE semantic_memories SET access_count = access_count + 1 "
+                                        "WHERE key = ? AND is_deleted = 0", (str(key),)
+                                    )
+                                conn.commit()
+                            except Exception:
+                                pass
+                            finally:
+                                conn.close()
+                        logger.debug("[FEEDBACK] %s → decay signal for %d keys",
+                                     feedback_action, len(semantic_keys))
+            except Exception:
+                pass
             # Post-generation: Action bridge (fire webhooks for recommended_actions)
             try:
                 out = getattr(result, "output", {}) if hasattr(result, "output") else {}

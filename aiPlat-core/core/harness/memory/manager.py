@@ -148,6 +148,7 @@ class MemoryManager:
         )
         self._compression = ContextCompression()
         self._reminders = get_system_reminders() if self._config.enable_reminders else None
+        self._episodic_cleanup_counter = 0  # Phase 23.2 G1
         self._cleanup_task: Optional[asyncio.Task] = None
         self._cleanup_interval = int(os.getenv("AIPLAT_MEMORY_CLEANUP_INTERVAL", str(86400)))
 
@@ -316,6 +317,13 @@ class MemoryManager:
         # Add current query
         messages.append({"role": "user", "content": current_query})
         
+        # Phase 23.2 G1: Episodic TTL cleanup (every 10 calls)
+        self._episodic_cleanup_counter += 1
+        if self._episodic_cleanup_counter % 10 == 0:
+            removed = self._episodic.cleanup_expired()
+            if removed:
+                logging.debug("[TTL] Cleaned %d expired episodic entries", removed)
+
         # 5. Check compression
         total_tokens = sum(self._estimate_tokens(str(m.get("content", ""))) for m in messages)
         state = ContextState(

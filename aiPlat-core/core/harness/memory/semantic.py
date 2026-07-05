@@ -99,6 +99,22 @@ class SemanticMemory:
         expires_at: Optional[datetime] = None,
     ) -> MemoryItem:
         """Store a memory item"""
+        metadata = metadata or {}
+
+        # Phase 23.1 G2: Semantic fact contradiction detection
+        topic = metadata.get("topic", "")
+        if topic and self._store_type == "sqlite":
+            try:
+                existing = self._find_by_topic(topic)
+                if existing:
+                    result = self._resolve_semantic_conflict(content, metadata, existing)
+                    if result == "skip":
+                        return None
+                    elif result in ("overwrite", "downweight"):
+                        self._decay_existing(existing[0], metadata)
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
+
         item = MemoryItem(
             id=key,
             content=content,
@@ -322,6 +338,81 @@ class SemanticMemory:
             "total_accesses": sum(item.access_count for item in self._items.values()),
             "avg_access_count": sum(item.access_count for item in self._items.values()) / max(1, len(self._items)),
         }
+
+    # ── Phase 23.1 G2: Semantic conflict detection helpers ──
+
+    def _find_by_topic(self, topic: str, limit: int = 3) -> list:
+        """Query SQLite for existing entries with same topic tag."""
+        import json as _json
+        if not hasattr(self, "_conn"):
+            return []
+        rows = self._conn.execute(
+            "SELECT key, content, metadata_json FROM semantic_memories "
+            "WHERE json_extract(metadata_json, '$.topic') = ? "
+            "AND is_deleted = 0 ORDER BY json_extract(metadata_json, '$.timestamp') DESC LIMIT ?",
+            (topic, limit),
+        ).fetchall()
+        return [{"key": r[0], "content": r[1], "metadata": _json.loads(r[2] or "{}")} for r in rows]
+
+    def _resolve_semantic_conflict(self, new_content: str, new_meta: dict,
+                                    existing: list) -> str:
+        """Conflict engine: overwrite/downweight/append/retain based on 5 dimensions."""
+        old = existing[0]
+        old_meta = old.get("metadata", old)
+
+        # Dimension 1: version
+        new_ver = self._parse_version(new_meta.get("version", "0"))
+        old_ver = self._parse_version(old_meta.get("version", "0") if isinstance(old_meta, dict) else "0")
+        # Dimension 2: timestamp
+        new_ts = float(new_meta.get("timestamp", 0) or 0)
+        old_ts = float(old_meta.get("timestamp", 0) or 0) if isinstance(old_meta, dict) else 0
+        # Dimension 3: confidence
+        new_conf = float(new_meta.get("confidence", 0.5) or 0.5)
+        old_conf = float(old_meta.get("confidence", 0.5) or 0.5) if isinstance(old_meta, dict) else 0.5
+        # Dimension 4: content similarity (Jaccard)
+        old_content = old.get("content", "")
+        sim = self._text_similarity(new_content, old_content)
+
+        if new_ver > old_ver and new_ts > old_ts:
+            return "overwrite"
+        if new_conf > old_conf + 0.2 and sim > 0.7:
+            return "overwrite"
+        if new_conf > old_conf and sim > 0.5:
+            return "downweight"
+        if sim < 0.3:
+            return "append"
+        if new_ts > old_ts + 86400 * 30 and new_conf > 0.5:
+            return "overwrite"
+        return "retain"
+
+    def _decay_existing(self, entry: dict, new_meta: dict) -> None:
+        """Soft-delete old entry (preserves audit trail)."""
+        if hasattr(self, "_conn"):
+            self._conn.execute(
+                "UPDATE semantic_memories SET is_deleted=1 WHERE key=?",
+                (entry["key"],),
+            )
+            self._conn.commit()
+
+    @staticmethod
+    def _parse_version(v: str) -> int:
+        """Parse semantic version string to comparable int (e.g. v2.0 → 20)."""
+        try:
+            parts = v.replace("v", "").split(".")
+            return int(parts[0]) * 10 + int(parts[1]) if len(parts) >= 2 else int(parts[0]) * 10
+        except (ValueError, IndexError, AttributeError):
+            return 0
+
+    @staticmethod
+    def _text_similarity(a: str, b: str) -> float:
+        """Jaccard similarity — zero dependency, fast for short texts."""
+        if not a.strip() or not b.strip():
+            return 0.0
+        sa = set(a.lower().split())
+        sb = set(b.lower().split())
+        if not sa or not sb:
+            return 0.0
+        return len(sa & sb) / len(sa | sb)
 
 
 __all__ = ["SemanticMemory", "MemoryItem"]
