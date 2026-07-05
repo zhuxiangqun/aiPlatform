@@ -7,6 +7,7 @@ import os
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 import yaml
 from pathlib import Path
 from typing import Dict, Any
@@ -263,7 +264,13 @@ def create_app() -> FastAPI:
                 }
             }
         }
-    
+
+    # Phase 58: System overview dashboard + Getting Started
+    import os as _os
+    _static_dir = _os.path.join(_os.path.dirname(__file__), "static")
+    if _os.path.isdir(_static_dir):
+        app.mount("/overview", StaticFiles(directory=_static_dir, html=True), name="static")
+
     return app
 
 
