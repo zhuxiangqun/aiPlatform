@@ -630,6 +630,12 @@ def _register_health_checks():
                         adaptive_stats = get_adaptive_context_router().stats()
                     except Exception:
                         adaptive_stats = {}
+                    # Phase 56: Cost tracker stats
+                    try:
+                        from core.harness.optimization.cost_tracker import get_cost_tracker
+                        cost_stats = get_cost_tracker().stats()
+                    except Exception:
+                        cost_stats = {}
                 except Exception:
                     pass
                 try:
@@ -654,6 +660,7 @@ def _register_health_checks():
                              "goal_executor": executor_stats,
                              "tool_bootstrap": bootstrap_stats,
                              "dynamic_orchestrator": orch_stats,
+                             "cost_tracker": cost_stats,
                              "gossip_protocol": gossip_stats,
                              "swarm_broker": swarm_stats,
                              "adaptive_context": adaptive_stats}
