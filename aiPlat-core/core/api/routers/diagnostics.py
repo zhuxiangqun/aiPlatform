@@ -1959,3 +1959,21 @@ def _build_audit_tree(step_id: int, all_steps: List[dict]) -> dict:
         "children": [_build_audit_tree(c["step_id"], all_steps) for c in children],
     }
 
+
+# ── Phase 21: PromptOptimizer API ──
+
+@router.post("/optimizations/{agent_id}/start", response_model=Dict[str, Any])
+async def start_optimization(agent_id: str):
+    """Start iterative prompt optimization for an agent.
+
+    Loads config from ~/.aiplat/optimizations/{agent_id}.yaml
+    and runs the champion-challenger loop autonomously.
+    """
+    try:
+        from core.harness.optimization.prompt_optimizer import PromptOptimizer
+        optimizer = PromptOptimizer(agent_id=agent_id)
+        result = await optimizer.execute()
+        return {"status": "completed", **result}
+    except Exception as e:
+        return {"status": "failed", "error": str(e)[:300]}
+

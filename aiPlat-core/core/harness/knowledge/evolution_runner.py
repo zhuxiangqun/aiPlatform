@@ -600,3 +600,49 @@ class EvolutionRunner:
         _os.makedirs(_os.path.dirname(path), exist_ok=True)
         _json.dump(history[-50:], open(path, "w"), indent=2, ensure_ascii=False)
         logger.info(f"Generation {entry['id']} recorded: {verdict} (delta={delta})")
+
+
+# ── Phase 21: Champion management + accept/reject ──────────────────
+
+def get_current_champion(agent_id: str) -> Optional[str]:
+    """Return champion prompt from latest generation record."""
+    record = _load_latest_generation(agent_id)
+    return record.get("champion_prompt") if record else None
+
+
+def get_champion_score(agent_id: str) -> float:
+    """Return champion score from latest generation record."""
+    record = _load_latest_generation(agent_id)
+    return float(record.get("champion_score", 0)) if record else 0.0
+
+
+def accept_or_reject(
+    *,
+    challenger_score: float,
+    champion_score: float,
+    train_val_split: float = 1.0,
+) -> str:
+    """Determine if challenger should replace champion.
+
+    When train_val_split < 1.0, this is a placeholder — full train/val
+    separation requires per-split score tracking in a future update.
+    For now, applies a stricter threshold when split is enabled to
+    prevent reward hacking via overfitting.
+    """
+    if train_val_split == 1.0:
+        return "accept" if challenger_score > champion_score else "reject"
+
+    # With train_val_split enabled, require 2% margin to prevent overfitting
+    margin = 0.02
+    return "accept" if challenger_score > champion_score + margin else "reject"
+
+
+def _load_latest_generation(agent_id: str) -> Optional[Dict]:
+    """Load the latest generation record for an agent."""
+    import os as _os
+    import json as _json
+    path = _os.path.expanduser(f"~/.aiplat/evolution/{agent_id}_generations.json")
+    if not _os.path.exists(path):
+        return None
+    history = _json.load(open(path))
+    return history[-1] if history else None
