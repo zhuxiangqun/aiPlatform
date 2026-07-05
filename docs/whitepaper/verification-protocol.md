@@ -5,7 +5,7 @@ domain: aiplat-core
 version: 5.0.0
 date: 2026-07-05
 status: published
-depends_on: docs/whitepaper/aiplat-l4-autonomy-assessment-v3.0.0.md
+depends_on: docs/framework/aiplat-autonomy-framework.md
 refs:
   - "MIT 2025 AI Agent Index"
   - "DeepSeek L1-L5 Classification"

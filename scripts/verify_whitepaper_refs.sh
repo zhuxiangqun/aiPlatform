@@ -5,7 +5,7 @@
 
 set -euo pipefail
 
-WP="${1:-docs/whitepaper/aiplat-l4-autonomy-assessment-v1.0.0.md}"
+WP="${1:-docs/framework/aiplat-autonomy-framework.md}"
 if [ ! -f "$WP" ]; then
     echo "ERROR: whitepaper not found: $WP"
     exit 1
