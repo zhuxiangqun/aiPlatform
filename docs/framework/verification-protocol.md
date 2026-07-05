@@ -327,18 +327,78 @@ bash scripts/verify-l4-behavior.sh [BASE_URL]
 | S4 动态组队 | 固定流程 | 检测→生成子Agent→执行 |
 | S5 工具自举 | 人工写工具 | 自动生成+注册 SKILL.md |
 
+### 5.9 诊断面板（管理系统内置 REST API）
+
+aiPlat 管理系统内置了运行时诊断能力，可直接通过 REST API 验证架构合规性。
+
+#### 架构守卫 (76 条规则)
+
+```bash
+# 运行全部架构守卫规则
+curl -s -X POST http://localhost:8000/api/diagnostics/guard/run | python3 -c "
+import sys,json
+d=json.load(sys.stdin)
+print(f'Status: {d.get(\"status\")}')
+print(f'Guards: {d.get(\"summary\",{}).get(\"total_checks\",0)}')
+print(f'Violations: {len(d.get(\"violations\",[]))}')
+"
+```
+**预期**：`status=ok`，violations 仅包含已知例外（CLAUDE.md §16 记录的 9 条）。
+
+#### 4 层健康检查
+
+```bash
+# 全层健康
+curl -s http://localhost:8000/api/diagnostics/health/all | python3 -c "
+import sys,json
+d=json.load(sys.stdin)
+for layer in ['infra','core','platform','app']:
+    h=d.get(layer,{})
+    print(f'{layer}: {h.get(\"status\",\"?\")}')
+"
+```
+**预期**：4 层全部返回 `healthy` 或 `degraded`。连续多轮 `unhealthy` 表示故障。
+
+#### 全量诊断
+
+```bash
+# 包含架构守卫 + 健康检查 + 深度诊断
+curl -s -X POST http://localhost:8000/api/diagnostics/run-all | python3 -c "
+import sys,json
+d=json.load(sys.stdin)
+print(f'Status: {d.get(\"status\",\"?\")}')
+checks=d.get('checks',[])
+print(f'Checks: {len(checks)}')
+for c in checks[:5]:
+    print(f'  {c.get(\"module\",\"?\")}: {c.get(\"status\",\"?\")}')
+"
+```
+
+#### CLI vs REST API
+
+| 方式 | 何时用 | 依赖 | 类型 |
+|:---|:---|:---|:---|
+| `scripts/architecture_guard.sh` | 本地开发 / CI | 无 | 代码层 |
+| `POST /diagnostics/guard/run` | 运行时 / 管理系统 | `./start.sh` | 行为层 |
+| `scripts/verify-l4-pyramid.sh` | 逐层评级 | 无 | 代码层 |
+| `scripts/verify-l4-behavior.sh` | 端到端场景 | `./start.sh` | 行为层 |
+
+> **组合使用**：CLI 脚本验证代码质量（CI 阶段），REST API 验证运行时状态（部署后），两者互补。
+
 ---
 
 ## 6. 一键验证
 
 ```bash
-# 代码层
+# 代码层 (零依赖)
 bash scripts/verify-l4-pyramid.sh    # L0→L5 31/31
 bash scripts/verify-l4-depth.sh      # 30 tests
 bash scripts/verify-l4-claims.sh     # 31 checks
 
 # 行为层 (需 ./start.sh)
-bash scripts/verify-l4-behavior.sh   # 5 场景
+bash scripts/verify-l4-behavior.sh   # 5 场景 curl
+curl -s -X POST http://localhost:8000/api/diagnostics/guard/run  # 架构守卫
+curl -s http://localhost:8000/api/diagnostics/health/all          # 4 层健康
 
 # 引用校验
 bash scripts/verify_whitepaper_refs.sh  # 28 refs
