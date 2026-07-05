@@ -20,7 +20,7 @@
 
 ```
 Repo                Files       Python   TypeScript   Symbols    Avg Degree
-aiPlat-core           537   (42.7%)   537        0       6,487        6.3
+aiPlat-core           530   (42.7%)   530        0       6,487        6.3
 aiPlat-management     305   (24.2%)    49      253       2,281        3.7
 aiPlat-infra          174   (13.8%)   174        0       1,747        3.9
 aiPlat-app            155   (12.3%)   146        9         444        2.6

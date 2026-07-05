@@ -791,3 +791,32 @@ async def override_autoreview(agent_id: str, body: Dict[str, Any]):
     except Exception as e:
         from fastapi import HTTPException
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# ── Phase 22 G2: Pipeline HITL REST endpoint ──
+
+@router.post("/pipelines/{pipeline_id}/hitl-resolve", response_model=Dict[str, Any])
+async def resolve_pipeline_hitl(pipeline_id: str, request: dict):
+    """Approve or reject a paused pipeline stage.
+
+    Body: {"action": "approve"|"reject", "feedback": "optional comment"}
+    """
+    action = str(request.get("action", "approve")).lower()
+    feedback = str(request.get("feedback", ""))
+    try:
+        from core.services.builder_project_service import get_running_pipeline
+        engine = await get_running_pipeline(pipeline_id)
+        if not engine:
+            raise HTTPException(status_code=404, detail="pipeline_not_found")
+        if action == "approve":
+            await engine.approve(engine._state)
+            return {"status": "approved", "pipeline_id": pipeline_id}
+        elif action == "reject":
+            await engine.reject(engine._state)
+            return {"status": "rejected", "pipeline_id": pipeline_id, "feedback": feedback}
+        else:
+            raise HTTPException(status_code=400, detail=f"unknown action: {action}")
+    except HTTPException:
+        raise
+    except Exception as e:
+        return {"status": "error", "error": str(e)[:300]}
