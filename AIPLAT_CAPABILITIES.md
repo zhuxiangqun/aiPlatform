@@ -85,6 +85,7 @@
 | 计划性遗忘 | `harness/memory/episodic.py` | ✅ | 同topic 2x降权→3x归档(status=archived) + 索引比较(非is引用) | Phase 18.5 |
 | 结构化压缩 | `harness/memory/compression.py` | ✅ | LLM工具输出→JSON(completed/pending/preference) + 自由文本回退 | Phase 18.3 |
 | 统一知识库健康仪表盘 | `api/routers/diagnostics.py` | ✅ | 6模块聚合+5维成熟度评分(L0-L5)+Markdown中文报告(四步框架语境) | Phase 19 |
+| 通用推理链审计框架 | `infrastructure/gates/audit_trail_gate.py` + `ontology_engine/audit_rules.py` | ✅ | 域无关+6操作符引擎+证据指纹锁存+parent_step_id因果追溯 | Phase 20 |
 
 ---
 
@@ -93,6 +94,7 @@
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
 | knowledge_gap_detector | `harness/ontology_engine/knowledge_gap_detector.py` | ✅ | 自动同步 | 已合入 |
 | graph_importer | `harness/ontology_engine/graph_importer.py` | ✅ | 自动同步 | 已合入 |
+| audit_rules | `harness/ontology_engine/audit_rules.py` | ✅ | 自动同步 | 已合入 |
 |------|------|:---:|------|------|
 | 13步本体管线 | `harness/ontology_engine/engine.py:94` | ✅ | 3Phase: Classify→Extract并行→Validate串行 | 已合入 |
 | ClassMapper（零LLM） | `harness/ontology_engine/class_mapper.py:18` | ✅ | 关键词倒排索引 → T-Box 类映射 | 已合入 |
@@ -269,6 +271,7 @@
 | semantic_gate | `harness/infrastructure/gates/semantic_gate.py` | ✅ | 自动同步 | 已合入 |
 | cross_validation_gate | `harness/infrastructure/gates/cross_validation_gate.py` | ✅ | 自动同步 | 已合入 |
 | completion_gate | `harness/infrastructure/gates/completion_gate.py` | ✅ | 自动同步 | 已合入 |
+| audit_trail_gate | `harness/infrastructure/gates/audit_trail_gate.py` | ✅ | 自动同步 | 已合入 |
 |------|------|:---:|------|------|
 | PolicyGate | `harness/infrastructure/gates/policy_gate.py` | ✅ | 统一权限检查 + 架构边界实时拦截 | 已合入 |
 | ApprovalGate | `harness/infrastructure/approval/manager.py` | ✅ | approve/deny/pending，双门禁 | 已合入 |
@@ -771,12 +774,12 @@
 | 编排系统 | 4 | 0 | 4 |
 | 管理 & 质量 | 21 | 0 | 21 |
 | 编排层 | 17 | 0 | 17 |
-| **总计** | **523** | **0** | **523** |
+| **总计** | **526** | **0** | **526** |
 
 ---
 
 *最后更新: 2026-07-04*
-*版本: 12.5 · 28章 · 524项能力 · 523✅ · P0-P3 hermès-agent全量吸收+SQLite连接池化+TrendDetector*
+*版本: 12.5 · 28章 · 527项能力 · 523✅ · P0-P3 hermès-agent全量吸收+SQLite连接池化+TrendDetector*
 
 **自检命令**：
 ```bash
