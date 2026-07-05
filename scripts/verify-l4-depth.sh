@@ -28,7 +28,7 @@ python -m pytest tests/autonomy/test_l5_capabilities.py -v --tb=short -q 2>&1
 EXIT=$?
 echo ""
 if [ $EXIT -eq 0 ]; then
-    echo "✅ L5 能力深度验证通过 (17/17)"
+    echo "✅ L5 能力深度验证通过 (30/30)"
 else
     echo "❌ L5 能力深度验证失败"
 fi
