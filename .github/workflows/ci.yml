@@ -26,7 +26,7 @@ jobs:
       - name: MyPy type check
         run: mypy core/ --ignore-missing-imports || true
        - name: Radon complexity
-         run: radon cc core/ -a -nc | tail -20 || true
+         run: radon cc core/ -a -n C -e core/tests/*,__pycache__ 2>/dev/null | awk '/^[[:space:]]*C/ || /^[[:space:]]*D/ || /^[[:space:]]*E/ || /^[[:space:]]*F/ {print; c++} END {if(c>0){print c,"high-complexity blocks found"; exit 1}}' || true
        - name: Commitlint check (last commit)
          run: npx --yes commitlint --from HEAD~1 --to HEAD --config .commitlintrc.yaml 2>/dev/null || echo "commitlint skipped"
 
