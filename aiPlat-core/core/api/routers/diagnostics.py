@@ -588,6 +588,18 @@ def _register_health_checks():
                         goal_stats = get_goal_generator().stats()
                     except Exception:
                         goal_stats = {}
+                    # Phase 29: Search engine stats
+                    try:
+                        from core.harness.optimization.search_engine import get_search_engine
+                        search_stats = get_search_engine().stats()
+                    except Exception:
+                        search_stats = {}
+                    # Phase 30: Goal executor stats
+                    try:
+                        from core.harness.optimization.goal_executor import get_goal_executor
+                        executor_stats = get_goal_executor().stats()
+                    except Exception:
+                        executor_stats = {}
                 except Exception:
                     pass
                 try:
@@ -607,7 +619,9 @@ def _register_health_checks():
                              "snapshots_stored": snap_total,
                              "strategy_tracker": str(tracker_stats),
                              "shared_knowledge": shared_pool_stats,
-                             "goal_generator": str(goal_stats)}
+                             "goal_generator": str(goal_stats),
+                             "search_engine": str(search_stats),
+                             "goal_executor": executor_stats}
                 )
         reg.register(HealingHealthCheck())
     except Exception as e:

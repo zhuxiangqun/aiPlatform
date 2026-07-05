@@ -4446,15 +4446,16 @@ JSON format: {{"artifact": {{}},"confidence": "HIGH","issues": [{{"severity": "P
         self._record_strategy_outcome(error_type, strategy_name, success)
 
     def _resolve_best_strategy(self, error_type, classed=None):
-        """Phase 26: Look up best historically-successful strategy for this error type."""
+        """Phase 29: UCB1-based strategy selection (replaces Phase 26 greedy lookup)."""
         try:
-            from core.harness.optimization.strategy_tracker import get_strategy_tracker
-            tracker = get_strategy_tracker()
-            best = tracker.best_strategy(error_type)
+            from core.harness.optimization.search_engine import get_search_engine
+            engine = get_search_engine()
+            best = engine.select_best(error_type)
             if best:
                 return best
-            explore = tracker.explore_strategy(error_type)
-            return explore
+            # Cold start: fallback to Phase 26 tracker exploration
+            from core.harness.optimization.strategy_tracker import get_strategy_tracker
+            return get_strategy_tracker().explore_strategy(error_type)
         except Exception:
             return None
 
