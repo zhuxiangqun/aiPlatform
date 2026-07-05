@@ -86,6 +86,7 @@
 | 结构化压缩 | `harness/memory/compression.py` | ✅ | LLM工具输出→JSON(completed/pending/preference) + 自由文本回退 | Phase 18.3 |
 | 统一知识库健康仪表盘 | `api/routers/diagnostics.py` | ✅ | 6模块聚合+5维成熟度评分(L0-L5)+Markdown中文报告(四步框架语境) | Phase 19 |
 | 通用推理链审计框架 | `harness/infrastructure/gates/audit_trail_gate.py` + `harness/ontology_engine/audit_rules.py` | ✅ | 域无关+6操作符引擎+证据指纹锁存+parent_step_id因果追溯 | Phase 20 |
+| Prompt迭代优化编排器 | `harness/optimization/prompt_optimizer.py` | ✅ | Champion-challenger自循环+5零件串联(ReActLoop+DarwinArena+prompt_optimize+PipelineEngine+EvolutionRunner) | Phase 21 |
 
 ---
 
@@ -404,6 +405,7 @@
 | action_bridge | `harness/actions/action_bridge.py` | ✅ | 自动同步 | 已合入 |
 | answer_generator | `harness/generation/answer_generator.py` | ✅ | 自动同步 | 已合入 |
 | model_tier_router | `harness/routing/model_tier_router.py` | ✅ | 自动同步 | 已合入 |
+| prompt_optimizer | `harness/optimization/prompt_optimizer.py` | ✅ | 自动同步 | 已合入 |
 |------|------|:---:|------|------|
 | ExperienceVector | `harness/learning/experience_vector.py` | ✅ | PipelineTrace→Embedding→语义检索 | 已合入 |
 | ToolDriftDetector | `harness/learning/tool_drift_detector.py` | ✅ | 4类漂移检测(struct/field/latency/error) + 重放校验自适应 | 已合入 |
@@ -774,12 +776,12 @@
 | 编排系统 | 4 | 0 | 4 |
 | 管理 & 质量 | 21 | 0 | 21 |
 | 编排层 | 17 | 0 | 17 |
-| **总计** | **526** | **0** | **526** |
+| **总计** | **528** | **0** | **528** |
 
 ---
 
 *最后更新: 2026-07-04*
-*版本: 12.5 · 28章 · 527项能力 · 523✅ · P0-P3 hermès-agent全量吸收+SQLite连接池化+TrendDetector*
+*版本: 12.5 · 28章 · 529项能力 · 523✅ · P0-P3 hermès-agent全量吸收+SQLite连接池化+TrendDetector*
 
 **自检命令**：
 ```bash

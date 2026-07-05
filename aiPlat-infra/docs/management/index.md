@@ -872,7 +872,7 @@ class NodeManager(ManagementBase):
 ```python
 NodeManager({
     "kubernetes_api": "https://k8s-api.example.com",
-    "driver_versions": ["535.54.03", "535.104.05"],
+    "driver_versions": ["（参见 AIPLAT_CAPABILITIES.md 当前计数）.54.03", "535.104.05"],
     "auto_drain_before_upgrade": True
 })
 ```
