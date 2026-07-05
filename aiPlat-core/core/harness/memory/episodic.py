@@ -98,25 +98,29 @@ class EpisodicMemory:
                 lines.append(f"[{i}] User: {str(m.get('user', ''))[:200]}")
                 lines.append(f"[{i}] Assistant: {str(m.get('assistant', ''))[:200]}")
             prompt = (
-                "Score each interaction below for decision importance (0-1).\n"
+                "Score each interaction below for importance (0-1) AND assign a topic tag.\n"
                 "> 0.8 = critical decision/pipeline output/approval result\n"
                 "0.3-0.8 = regular work/status updates\n"
                 "< 0.3 = casual chat/greetings/weather checks\n\n"
                 + "\n".join(lines)
-                + "\n\nReturn JSON array: [{\"i\": <index>, \"score\": <0-1>}, ...]"
+                + "\n\nReturn JSON array: [{\"i\": <index>, \"score\": <0-1>, \"topic\": \"<short topic>\"}, ...]"
             )
             response = await llm_callable(prompt)
             import json
             text = str(response) if not isinstance(response, dict) else json.dumps(response)
             start = text.find("[")
             end = text.rfind("]")
+            scored_indices = []
             if start >= 0 and end > start:
                 scores = json.loads(text[start:end + 1])
                 for entry in scores:
                     idx = entry.get("i", -1)
                     score = float(entry.get("score", 0.5))
+                    topic = entry.get("topic", "")
                     if 0 <= idx < len(unscored):
                         unscored[idx]["importance_score"] = score
+                        unscored[idx]["topic"] = topic
+                        scored_indices.append(idx)
                         if score > 0.8:
                             self._critical_episodes.append(unscored[idx])
                             try:
@@ -124,12 +128,54 @@ class EpisodicMemory:
                                 inc_critical_promoted()
                             except Exception as e:
                                 logging.debug(str(e), exc_info=True)
+            # Phase 18.5: Apply topic-based overwrites (planned forgetting)
+            if scored_indices:
+                self._apply_topic_overwrites(scored_indices)
         except Exception as e:
             logging.debug(str(e), exc_info=True)
 
     def get_critical_episodes(self, limit: int = 10) -> List[Dict]:
-        """Get critical episodes for injection into context (never compressed)."""
-        return self._critical_episodes[-limit:]
+        """Get critical episodes for injection into context (never compressed).
+        Phase 18.5: archived episodes are excluded."""
+        active = [ep for ep in self._critical_episodes if ep.get("status") != "archived"]
+        return active[-limit:]
+
+    # ── Phase 18.5: Planned forgetting with topic-based overwrites ──
+
+    def _apply_topic_overwrites(self, newly_scored_indices: List[int]) -> None:
+        """For each newly scored interaction, override older same-topic messages.
+
+        Uses INDEX comparison (not object identity), eliminating the `is` reference trap.
+        When >=2 older messages share the same topic, the oldest is archived.
+        All older same-topic messages get importance score downgraded.
+        """
+        import time as _time
+        for new_idx in newly_scored_indices:
+            new_item = self._full_messages[new_idx]
+            topic = new_item.get("topic", "")
+            if not topic:
+                continue
+            # Find all older messages with same topic
+            same_topic = [
+                (i, m) for i, m in enumerate(self._full_messages)
+                if m.get("topic") == topic and i != new_idx
+            ]
+            if not same_topic:
+                continue
+            # If >=2 old messages share this topic, archive the earliest
+            if len(same_topic) >= 2:
+                oldest_idx, oldest_item = same_topic[0]
+                oldest_item["status"] = "archived"
+                logging.info(
+                    "[ARCHIVE] topic='%s' archived — %d prior occurrences",
+                    topic, len(same_topic)
+                )
+            # Downgrade all older same-topic messages
+            for i, m in same_topic:
+                m["importance_score"] = max(
+                    0.1, m.get("importance_score", 0.5) * 0.3
+                )
+                m["overwritten_at"] = _time.time()
     
     async def should_update(self) -> bool:
         """Check if summary should be updated"""

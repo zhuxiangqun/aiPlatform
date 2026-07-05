@@ -37,6 +37,27 @@ FRONTMATTER_FIELDS = {
     "department": "", "owner": "",
 }
 
+# ── Phase 18.2: Document freshness warning ──
+def _get_doc_freshness_warning(page: Dict[str, Any], threshold_days: int = 30) -> str:
+    """Check if a wiki page's expiry_date has passed, return interactive warning."""
+    from datetime import datetime, timezone
+    expiry = str(page.get("expiry_date", "") or "")
+    if not expiry:
+        return ""
+    try:
+        exp_date = datetime.strptime(expiry, "%Y-%m-%d").replace(tzinfo=timezone.utc)
+        now = datetime.now(timezone.utc)
+        days_ago = int((now - exp_date).total_seconds() / 86400)
+        if days_ago > threshold_days:
+            return (
+                f"[!!! ⚠️ 此文档最后更新于 {days_ago} 天前（{expiry}），"
+                f"内容可能已过期。如需最新信息，可以主动问我是否联网确认]\n\n"
+            )
+    except (ValueError, TypeError):
+        pass
+    return ""
+
+
 # ── Wiki quality monitor trigger ──
 _wiki_change_counter: int = 0
 _WIKI_CHANGE_THRESHOLD = int(os.getenv("AIPLAT_WIKI_QUALITY_CHANGE_THRESHOLD", "50"))
@@ -1507,6 +1528,11 @@ def search_pages(query: str = "", *, tags: List[str] = None, category: str = "",
             page = read_page(md_file.stem, category=cat_dir.name, collection_id=collection_id)
             if not page:
                 continue
+
+            # Phase 18.2: inject freshness warning for expired documents
+            freshness_warning = _get_doc_freshness_warning(page)
+            if freshness_warning:
+                page["body"] = freshness_warning + page.get("body", "")
 
             # Filter by tags
             if tags:

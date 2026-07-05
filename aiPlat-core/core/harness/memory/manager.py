@@ -143,7 +143,8 @@ class MemoryManager:
             update_interval=self._config.episodic_update_interval
         )
         self._semantic = SemanticMemory(
-            store_type=self._config.vector_store_type
+            store_type=self._config.vector_store_type,
+            tenant_id=self._tenant_id or "default",
         )
         self._compression = ContextCompression()
         self._reminders = get_system_reminders() if self._config.enable_reminders else None
@@ -191,12 +192,18 @@ class MemoryManager:
         system_prompt: str,
         *,
         skip_system_messages: bool = False,
+        retrieval_budget: str = "full",
     ) -> BuildContextResult:
         """Build complete context from all memory layers.
 
         When skip_system_messages=True, the caller handles system-level injection
         (CLAUDE.md, project context) separately — only memory-layer context
         (working/episodic/semantic) is assembled here.
+
+        retrieval_budget: "full" | "minimal" | "working_only"
+          - full:       full semantic + episodic + working
+          - minimal:    semantic top_k=1 + working (skip episodic)
+          - working_only: working memory only (skip all retrieval)
         """
         # P0-1: 检测审计模式——autoreview 审查时只保留 Working Memory
         audit_mode = False
@@ -208,16 +215,31 @@ class MemoryManager:
         except Exception:
             pass
 
-        # 1. Retrieve relevant semantic memories
+        # 1. Retrieve relevant semantic memories (Phase 18.1: budget-gated)
         relevant_memories = []
-        if not audit_mode:
-            relevant_memories = await self._semantic.retrieve(
-                current_query, tenant_id=self._tenant_id, session_id=self._session_id)
+        if not audit_mode and retrieval_budget != "working_only":
+            if retrieval_budget == "minimal":
+                relevant_memories = await self._semantic.retrieve(
+                    current_query, tenant_id=self._tenant_id, session_id=self._session_id, top_k=1)
+            else:
+                relevant_memories = await self._semantic.retrieve(
+                    current_query, tenant_id=self._tenant_id, session_id=self._session_id)
         
-        # 2. Get episodic summary
+        # 2. Get episodic summary (Phase 18.1: budget-gated)
         episodic_summary = ""
-        if not audit_mode:
+        if not audit_mode and retrieval_budget == "full":
             episodic_summary = self._episodic.get_summary()
+
+        # Phase 18.1: Budget log — track token savings
+        if retrieval_budget != "full":
+            try:
+                saved_episodic = self._estimate_tokens(episodic_summary) if episodic_summary else 0
+                logging.getLogger("aiplat.memory").info(
+                    "[BUDGET] %s bypass, saved ~%d tokens, query=%s",
+                    retrieval_budget, saved_episodic, current_query[:80]
+                )
+            except Exception:
+                pass
         
         # 3. Get working memory context
         working_context = (

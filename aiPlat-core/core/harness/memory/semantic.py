@@ -29,8 +29,9 @@ class MemoryItem:
 class SemanticMemory:
     """Semantic memory - long-term knowledge storage"""
 
-    def __init__(self, store_type: str = "simple"):
+    def __init__(self, store_type: str = "simple", tenant_id: str = "default"):
         self._store_type = store_type
+        self._tenant_id = tenant_id or "default"
         self._items: Dict[str, MemoryItem] = {}
         if store_type == "sqlite":
             self._init_sqlite()
@@ -38,7 +39,12 @@ class SemanticMemory:
     def _init_sqlite(self) -> None:
         import sqlite3
         import os
-        db_path = os.path.expanduser("~/.aiplat/memory_semantic.sqlite3")
+        base = os.path.expanduser("~/.aiplat")
+        tid = getattr(self, '_tenant_id', 'default') or 'default'
+        if tid != "default":
+            db_path = os.path.join(base, f"memory_semantic_{tid}.sqlite3")
+        else:
+            db_path = os.path.join(base, "memory_semantic.sqlite3")
         os.makedirs(os.path.dirname(db_path), exist_ok=True)
         self._conn = sqlite3.connect(db_path)
         self._conn.execute("""

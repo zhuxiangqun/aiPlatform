@@ -192,9 +192,9 @@ class ContextCompression:
     @staticmethod
     def _summarize_tool_msg(msg: Dict, idx: int) -> str:
         """Generate a per-tool-type informed summary preserving actionable info."""
+        import json as _json
         content = str(msg.get("content", ""))
         name = msg.get("name", "") or msg.get("tool_name", "") or msg.get("tool_call_id", "") or "tool"
-        # Extract first meaningful line (skip empty/whitespace prefixes)
         snippet = ""
         for line in content.split("\n"):
             stripped = line.strip()
@@ -204,7 +204,7 @@ class ContextCompression:
         if not snippet:
             snippet = content[:100].replace("\n", " ").strip()
         if snippet:
-            return f"[{name}] {snippet}"
+            return _json.dumps({"tool": name, "snippet": snippet}, ensure_ascii=False)
         return f"[{name}] executed"
 
     async def _replace_old_outputs(self, context: List[Dict], protected_roles: Optional[List[str]] = None) -> List[Dict]:
@@ -388,8 +388,13 @@ async def _llm_summarize_tool_output(tool_name: str, raw_output: str) -> str:
             raise RuntimeError("no LLM model configured for tool summarization")
 
         prompt = (
-            f"工具 [{tool_name}] 返回了以下输出。请生成一个简短的结构化摘要，"
-            f"保留关键数据（文件路径、错误码、返回值、关键数字），忽略冗余内容。\n\n"
+            f"工具 [{tool_name}] 返回了以下输出。请输出 JSON：\n"
+            '{{"summary":"<50字摘要>",'
+            '"completed":["已完成事项"],'
+            '"pending":["待办/未确认事项"],'
+            '"user_preference":"从输出中提练的用户偏好(无则空)",'
+            '"numbers":{{"key":"value"}},'
+            '"actionable":true/false}}\n\n'
             f"输出({len(raw_output)}字符):\n{raw_output[:3000]}"
         )
         result = await adapter.chat_complete(
@@ -398,7 +403,21 @@ async def _llm_summarize_tool_output(tool_name: str, raw_output: str) -> str:
             max_tokens=500,
         )
         content = getattr(result, "content", str(result))
-        return f"[摘要] {content.strip()}" if content else raw_output[:1000]
+        content_str = content.strip() if content else ""
+        # Parse JSON; fallback to free text if parsing fails
+        try:
+            import json as _json
+            parsed = _json.loads(content_str)
+            lines = [f"[摘要] {parsed.get('summary', '')}"]
+            if parsed.get('completed'):
+                lines.append(f"✅ {'; '.join(parsed['completed'][:3])}")
+            if parsed.get('pending'):
+                lines.append(f"⏳ {'; '.join(parsed['pending'][:3])}")
+            if parsed.get('user_preference'):
+                lines.append(f"💡 {parsed['user_preference']}")
+            return " | ".join(lines)
+        except (json.JSONDecodeError, KeyError, TypeError):
+            return f"[摘要] {content_str}" if content_str else raw_output[:1000]
     except Exception:
         raise
 
