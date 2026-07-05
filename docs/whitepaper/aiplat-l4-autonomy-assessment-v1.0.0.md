@@ -98,7 +98,7 @@ grep -c 'AIPLAT_OPERATOR_CONFIRMATION_LEVEL' core/apps/agents/operator_agent.py
 
 ---
 
-### B. 上下文感知 — L4（强，超出多数 L4）
+### B. 上下文感知 — L4（强）
 
 > **定义**：全量上下文 + 跨轮次状态 + 跨域知识图谱
 
@@ -249,13 +249,25 @@ grep -c 'class PromptOptimizer' core/harness/optimization/prompt_optimizer.py
 | 能力轴 | 级别 | 状态 |
 |:---|---:|:--:|
 | A. 自主性 | L4（高） | 6 种退出条件的自主循环 + 分级 HITL |
-| B. 上下文感知 | L4（强） | CRAG + 23 模块本体引擎 + RunContext 三层注入，超出多数 L4 |
+| B. 上下文感知 | L4（强） | CRAG + 23 模块本体引擎 + RunContext 三层注入 |
 | C. 工具掌握 | L4 | 813 端点 + 32 Skill + MCP 动态发现 |
 | D. 记忆系统 | L4（强） | 四层记忆 + 矛盾检测 + TTL + 反馈闭环 |
 | E. 协作能力 | L4 | Pipeline 编队 + 子 Agent 协调 + 语义通信桥 |
 | F. 自进化 | **L4（基础）** | 策略硬编码，未达策略搜索闭环 |
 
 **六轴最低分 = F.自进化 = L4** → 系统整体定级为 **L4 — 循环工程**。
+
+### 与 L5 定义的差距（一句话总结）
+
+| L5 必须能力 | aiPlat 能否做到 | 差距本质 |
+|:---|:---:|:---|
+| Agent 自主选题、定义研究议程 | 否 | 需目标生成引擎 |
+| 策略搜索 → 评估 → 比较 → 回滚闭环 | **否** | **最大差距**（需 Phase 25 可重现快照 + Phase 26 搜索） |
+| 自举创建新工具（代码生成 → 部署 → 注册） | 否 | 需完整工具生命周期闭环 |
+| 蜂群共享记忆（跨实例知识同步） | 否 | 需跨实例记忆同步协议 |
+| 动态组队、自主分工（非预设 Pipeline 编队） | 否 | 需动态编排引擎 |
+
+> **关键洞察**：L5 不是 L4 的功能堆叠。核心瓶颈不是"多写几个策略方法"，而是**可重现执行环境快照**——确保同一任务上不同策略效果的对比是可验证的。参见 §5。
 
 ---
 
@@ -341,7 +353,33 @@ L5 的完整自进化闭环是：
 
 ---
 
-## 6. 架构决策记录（ADR）
+## 6. 如何验证 L4 定位
+
+以下验证链让读者**自行复现本白皮书的评估结论**。每条命令均可直接运行，不依赖白皮书中的叙述性内容。
+
+| 验证项 | 命令 | 预期结果 | 对应能力轴 |
+|:---|:---|:---|:---|
+| 自主循环存在 | `grep -c '_retry_loop' aiPlat-core/core/harness/execution/pipeline_engine.py` | ≥ 1 | A |
+| 自愈策略路由 | `grep -cn 'async def _strategy_' aiPlat-core/core/harness/execution/pipeline_engine.py` | = 5 | A, F |
+| HITL 分级可配置 | `grep -c 'AIPLAT_OPERATOR_CONFIRMATION_LEVEL' aiPlat-core/core/apps/agents/operator_agent.py` | ≥ 1 | A |
+| 本体引擎模块数 | `find aiPlat-core/core/harness/ontology_engine/ -name '*.py' \| wc -l` | ≥ 23 | B |
+| CRAG 3 级回退 | `grep -c 'CRAG' aiPlat-core/core/apps/agents/materials_chat.py` | ≥ 1 | B |
+| RunContext 存在 | `grep -c 'class RunContext' aiPlat-core/core/harness/kernel/types.py` | = 1 | B |
+| 领域路由器 | `grep -c 'class DomainRouter' aiPlat-core/core/harness/knowledge/domain_router.py` | = 1 | B |
+| 记忆四层文件数 | `find aiPlat-core/core/harness/memory/ -name 'working.py' -o -name 'episodic.py' -o -name 'semantic.py' -o -name 'manager.py' \| wc -l` | = 4 | D |
+| Semantic 冲突检测 | `grep -c '_resolve_semantic_conflict' aiPlat-core/core/harness/memory/semantic.py` | ≥ 1 | D |
+| Episodic TTL 清理 | `grep -c 'cleanup_expired' aiPlat-core/core/harness/memory/episodic.py` | ≥ 1 | D |
+| Memory OS Agent | `test -f ~/.aiplat/agents/memory_os/AGENT.md && echo 1 \|\| echo 0` | 1 | D |
+| 8 Gate 统一出口 | `wc -l < aiPlat-core/core/harness/integration.py` | ≥ 3000 | A, C, E |
+| PromptOptimizer | `grep -c 'class PromptOptimizer' aiPlat-core/core/harness/optimization/prompt_optimizer.py` | = 1 | F |
+| ErrorTranslator | `grep -c 'class FailoverReason' aiPlat-core/core/harness/infrastructure/gates/error_translator.py` | = 1 | F |
+| 未声明 L5 能力 | `grep -rcn 'strategy_search\|dynamic_orchestrator\|tool_bootstrap' aiPlat-core/core/harness/ 2>/dev/null \| grep -v ':0$' \| wc -l` | = 0 | L5~L4 边界 |
+
+> **运行全部**：`bash scripts/verify_whitepaper_refs.sh`（包含以上 20 条检查，一键验证）
+
+---
+
+## 7. 架构决策记录（ADR）
 
 | # | ADR | 说明 | 规约引用 |
 |---|-----|------|---------|
@@ -356,7 +394,7 @@ L5 的完整自进化闭环是：
 
 ---
 
-## 7. 结论与路线图
+## 8. 结论与路线图
 
 ### 当前定位
 
