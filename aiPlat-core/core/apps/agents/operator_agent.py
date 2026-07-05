@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import time
 from typing import Any, Dict, List, Optional
 
@@ -147,6 +148,79 @@ class OperatorAgent(BaseAgent):
                     _retried = True
         except Exception as e:
             logger.debug("Retry skipped: %s", e)
+
+        # Phase 22: Human confirmation for critical decisions
+        _confirmation_level = os.getenv("AIPLAT_OPERATOR_CONFIRMATION_LEVEL", "critical")
+        _paused_for_confirmation = False
+        _approval_id = None
+        _exec_id = ""
+
+        if _confirmation_level != "none":
+            should_pause = (_confirmation_level == "all")
+            if not should_pause and _confirmation_level == "critical":
+                should_pause = (
+                    decision.get("severity", "") == "critical"
+                    or decision.get("can_continue") == False
+                    or decision.get("confidence", 1.0) < 0.5
+                )
+            if should_pause:
+                _exec_id = str(vars0.get("_run_id") or "") or f"op-{int(time.time())}-{session_id[:8]}"
+                try:
+                    from core.harness.infrastructure.gates.policy_gate import PolicyGate
+                    gate = PolicyGate()
+                    pr = await gate.check_agent(
+                        user_id=user_id,
+                        agent_id="operator_agent",
+                        agent_args={
+                            "_tenant_id": vars0.get("tenant_id", "default"),
+                            "_approval_required": True,
+                        },
+                    )
+                    _approval_id = pr.approval_request_id if hasattr(pr, "approval_request_id") else None
+                except Exception:
+                    _approval_id = None
+
+                # Cache execution state for resume
+                try:
+                    from datetime import datetime, timezone
+                    from core.api.routers.agents import _paused_agent_executions
+                    _paused_agent_executions[_exec_id] = {
+                        "agent_id": "operator_agent",
+                        "request": dict(vars0),
+                        "user_id": user_id,
+                        "session_id": session_id,
+                        "approval_request_id": _approval_id,
+                        "_decision_snapshot": decision,
+                        "_original_question": question,
+                        "_paused_phase": "operator_confirmation",
+                        "ttl_seconds": int(os.getenv("AIPLAT_OPERATOR_APPROVAL_TIMEOUT", "3600")),
+                        "created_at": datetime.now(timezone.utc).isoformat(),
+                    }
+                    _paused_for_confirmation = True
+                except Exception:
+                    _paused_for_confirmation = False
+
+        if _paused_for_confirmation:
+            return AgentResult(
+                success=False,
+                error="approval_required",
+                output=answer,
+                metadata={
+                    "phase": "operator_decision",
+                    "decision": decision,
+                    "elapsed_ms": int((time.time() - _t0) * 1000),
+                    "approval_required": True,
+                    "approval_reason": (
+                        f"Severity={decision.get('severity')}, "
+                        f"can_continue={decision.get('can_continue')}, "
+                        f"confidence={decision.get('confidence')}"
+                    ),
+                    "approval_request_id": _approval_id,
+                    "execution_id": _exec_id,
+                    "resume_endpoint": f"/api/core/agents/executions/{_exec_id}/resume",
+                    "retried": _retried,
+                },
+            )
 
         elapsed_ms = int((time.time() - _t0) * 1000)
         return AgentResult(

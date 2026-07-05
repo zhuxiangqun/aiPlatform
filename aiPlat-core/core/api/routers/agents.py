@@ -518,6 +518,59 @@ async def resume_agent_execution(execution_id: str, request: dict, rt: RuntimeDe
                 ),
             )
 
+    # Phase 22: OperatorAgent decision confirmation (approve/reject)
+    paused_phase = (paused or {}).get("_paused_phase")
+    if paused_phase == "operator_confirmation":
+        # Timeout check
+        created_at_str = str((paused or {}).get("created_at", ""))
+        ttl = int((paused or {}).get("ttl_seconds", 3600))
+        try:
+            from datetime import datetime, timezone
+            created_at = datetime.fromisoformat(created_at_str.replace("Z", "+00:00"))
+            if (datetime.now(timezone.utc) - created_at.replace(tzinfo=timezone.utc)).total_seconds() > ttl:
+                _paused_agent_executions.pop(execution_id, None)
+                return {"status": "timeout", "message": f"审批超时 ({ttl}s)，已自动拒绝"}
+        except Exception:
+            pass
+
+        action = str(((request or {}) if isinstance(request, dict) else {}).get("action", "approve"))
+        decision = (paused or {}).get("_decision_snapshot")
+        original_question = str((paused or {}).get("_original_question", ""))
+
+        if action == "approve" and decision:
+            try:
+                from core.harness.actions.action_bridge import execute_decision_actions
+                ctx = {
+                    "entity_id": str((paused.get("request", {}) or {}).get("entity", "")),
+                    "domain_id": str((paused.get("request", {}) or {}).get("domain_id", "default")),
+                    "timestamp": str(int(time.time())),
+                }
+                action_results = await execute_decision_actions(decision, context=ctx)
+                _paused_agent_executions.pop(execution_id, None)
+                return {"status": "approved", "action_results": action_results}
+            except Exception as e:
+                _paused_agent_executions.pop(execution_id, None)
+                return {"status": "approved", "error": f"action_bridge failed: {str(e)[:200]}"}
+
+        elif action == "reject":
+            feedback = str(((request or {}) if isinstance(request, dict) else {}).get("feedback", ""))
+            _paused_agent_executions.pop(execution_id, None)
+            exec_req = ExecutionRequest(
+                kind="agent",
+                target_id="operator_agent",
+                payload={
+                    "messages": [{"role": "user", "content": original_question}],
+                    "context": {"_reject_feedback": feedback or "决策被人工拒绝，请重新生成"},
+                    "session_id": paused.get("session_id", "default"),
+                    "user_id": paused.get("user_id", "system"),
+                },
+            )
+            result = await get_harness().execute(exec_req)
+            return {"status": "rejected_and_regenerated", "ok": result.ok}
+
+        else:
+            return {"status": "error", "message": f"未知操作: {action}，请传 action=approve 或 action=reject"}
+
     # Prefer checkpointed resume when available:
     loop_snapshot = None
     try:
