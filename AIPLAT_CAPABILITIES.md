@@ -419,6 +419,7 @@
 | tool_bootstrap | `harness/optimization/tool_bootstrap.py` | ✅ | 自动同步 | 已合入 |
 | dynamic_orchestrator | `harness/coordination/dynamic_orchestrator.py` | ✅ | 自动同步 | 已合入 |
 | swarm_broker | `harness/coordination/swarm_broker.py` | ✅ | 自动同步 | 已合入 |
+| cost_tracker | `harness/optimization/cost_tracker.py` | ✅ | 自动同步 | 已合入 |
 |------|------|:---:|------|------|
 | ExperienceVector | `harness/learning/experience_vector.py` | ✅ | PipelineTrace→Embedding→语义检索 | 已合入 |
 | ToolDriftDetector | `harness/learning/tool_drift_detector.py` | ✅ | 4类漂移检测(struct/field/latency/error) + 重放校验自适应 | 已合入 |
@@ -789,7 +790,7 @@
 | 编排系统 | 4 | 0 | 4 |
 | 管理 & 质量 | 21 | 0 | 21 |
 | 编排层 | 17 | 0 | 17 |
-| **总计** | **542** | **0** | **542** |
+| **总计** | **543** | **0** | **543** |
 
 ---
 
