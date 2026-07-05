@@ -138,21 +138,32 @@ def _check_protected_paths(filepath: str) -> str:
 class PolicyGate:
     def __init__(self) -> None:
         # Dev escape hatch: disable approvals entirely.
-        # This keeps RBAC checks, but bypasses approval_required gating.
         self._disable_approvals = os.getenv("AIPLAT_APPROVALS_DISABLED", "false").lower() in (
-            "1",
-            "true",
-            "yes",
-            "y",
+            "1", "true", "yes", "y",
         )
-        # Default: do NOT enforce approval in syscall yet to avoid double approval.
-        # Phase 4+: we will move approval fully into sys_tool and remove loop-level checks.
-        self._enforce_approval = os.getenv("AIPLAT_SYSCALL_ENFORCE_APPROVAL", "false").lower() in (  # noqa: planned-phase4
-            "1",
-            "true",
-            "yes",
-            "y",
+        self._enforce_approval = os.getenv("AIPLAT_SYSCALL_ENFORCE_APPROVAL", "false").lower() in (
+            "1", "true",
         )
+        # Phase 22 G3: Admin deny override whitelist
+        self._deny_override_users = set(
+            u.strip() for u in os.getenv("AIPLAT_DENY_OVERRIDE_USERS", "").split(",") if u.strip()
+        )
+
+    def _maybe_override_deny(self, user_id: str, reason: str) -> Optional[PolicyResult]:
+        """Phase 22 G3: Allow admin users to override DENY decisions.
+
+        When user is in AIPLAT_DENY_OVERRIDE_USERS whitelist, DENY is
+        downgraded to APPROVAL_REQUIRED (pause instead of terminal fail),
+        giving the admin a chance to review and approve.
+        """
+        if self._deny_override_users and (user_id in self._deny_override_users or "*" in self._deny_override_users):
+            logger.warning("[DENY_OVERRIDE] user=%s overrides deny: %s", user_id, reason)
+            return PolicyResult(
+                decision=PolicyDecision.APPROVAL_REQUIRED,
+                reason=f"deny_overridden_by_admin: {reason}",
+                tenant_id=None,
+            )
+        return None
 
     @staticmethod
     def check_route_access(path: str, role: str) -> bool:
@@ -375,11 +386,19 @@ class PolicyGate:
             if not self._match_tool_rule(rule, tool_name, tool_args):
                 continue
             if rule["action"] == "deny":
+                override = self._maybe_override_deny(user_id, rule.get("reason", "denied by policy"))
+                if override:
+                    return override
                 return PolicyResult(decision=PolicyDecision.DENY, reason=rule.get("reason", "denied by policy"))
             if rule["action"] == "ask":
                 return PolicyResult(decision=PolicyDecision.ASK, reason=rule.get("reason", "requires approval"))
 
         if not perm_mgr.check_permission(user_id, tool_name, Permission.EXECUTE):
+            override = self._maybe_override_deny(
+                user_id, f"User '{user_id}' lacks EXECUTE permission for tool '{tool_name}'"
+            )
+            if override:
+                return override
             return PolicyResult(
                 decision=PolicyDecision.DENY,
                 reason=f"User '{user_id}' lacks EXECUTE permission for tool '{tool_name}'",
@@ -391,6 +410,9 @@ class PolicyGate:
             if path and isinstance(path, str):
                 arch_violation = _check_arch_boundary(path, tool_name)
                 if arch_violation:
+                    override = self._maybe_override_deny(user_id, arch_violation)
+                    if override:
+                        return override
                     return PolicyResult(
                         decision=PolicyDecision.DENY,
                         reason=arch_violation,
@@ -398,6 +420,9 @@ class PolicyGate:
                 # Protected paths check: deny writes to security-critical directories
                 protected_violation = _check_protected_paths(path)
                 if protected_violation:
+                    override = self._maybe_override_deny(user_id, f"protected_path: {protected_violation}")
+                    if override:
+                        return override
                     return PolicyResult(
                         decision=PolicyDecision.DENY,
                         reason=f"protected_path: {protected_violation}",

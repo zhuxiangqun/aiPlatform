@@ -1512,6 +1512,11 @@ class ReActLoop(BaseLoop):
                         state.context["policy"] = getattr(result, "metadata", {}) or {}
                         state.metadata["pause_requested"] = True
                         result_output = "POLICY_DENIED"
+                    # Phase 22 G4: Step-by-step confirmation mode
+                    elif os.getenv("AIPLAT_STEP_CONFIRM_ENABLED", "").lower() in ("true", "1", "yes"):
+                        state.metadata["pause_requested"] = True
+                        state.metadata["step_confirm_tool"] = tool_name
+                        result_output = f"[STEP CONFIRM] Tool '{tool_name}' requires human confirmation"
                     else:
                         result_output = result.output if hasattr(result, 'output') else str(result)
                 except Exception as e:
