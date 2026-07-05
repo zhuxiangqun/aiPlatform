@@ -64,6 +64,7 @@ markers = [
     "slow: heavy integration self-test (runs real full-repo scripts; skipped in fast guard, run via -m slow)",
     "regression: mark test as regression test (covers historical defects)",
     "benchmark: mark test as performance benchmark (measures timing/cost)",
+    "agent_intelligence: mark test as Agent cognitive intelligence verification",
 ]
 
 [tool.coverage.run]
