@@ -27,11 +27,21 @@ tags: [verification, protocol, reproducibility, three-framework]
 
 ## 1. 验证总览
 
-| 框架 | 评估范围 | 验证脚本 | 预期 |
-|:---|:---|:---|:--:|
-| L1-L5 自主性 | 18 项 (六轴×3) | `verify-l4-pyramid.sh` + `verify-l4-depth.sh` | L5 逐层通过 + 30 tests PASS |
-| 工程落地 | 54 项 (六维) | `verify-l4-claims.sh` | 31/31 PASS |
-| 三层企业 | 30 项 (3层) | `verify_whitepaper_refs.sh` + 手动对照 | 28/28 refs + 人工复核 |
+### 三层验证
+
+| 层 | 作用 | 验证方式 | 项目数 | 依赖 |
+|:---|:---|:---|:--:|:--:|
+| **代码层** | 验证模块存在 | grep -c / pytest | 48 项 | 无 (零依赖) |
+| **行为层** | 验证真实运行 | curl → 运行实例 | 5 场景 | `./start.sh` |
+| **人工层** | 验证深度能力 | 专业知识判断 | 4 项 | 外部审稿人 |
+
+### 各框架覆盖
+
+| 框架 | 代码层 | 行为层 | 人工层 |
+|:---|:--:|:--:|:--:|
+| L1-L5 自主性 | `pyramid.sh` + `depth.sh` | S1-S5 全覆盖 | — |
+| 工程落地 | `claims.sh` | S2(自愈) S5(工具) | — |
+| 三层企业 | `verify_whitepaper_refs.sh` | S1(自主) S4(协作) | 宏观评分 + 架构评分 |
 
 ---
 
@@ -217,19 +227,121 @@ grep -c 'class SwarmBroker\|class DynamicOrchestrator' aiPlat-core/core/harness/
 
 ---
 
-## 5. 一键验证
+## 5. 运行时行为验证 (需 ./start.sh)
+
+代码层验证了"存在"，行为层验证了"能跑"。以下 5 个场景通过 curl 对运行中的 aiPlat 实例做端到端测试。
+
+### 5.1 场景一览
+
+| 场景 | 验证内容 | 对应框架 | 对应轴 |
+|:---|:---|:---|:--:|
+| **S1** | 多步任务无人介入自主推进 | L1-L5 A轴 + 三层企业 | 自主循环 + E2E |
+| **S2** | ErrorTranslator→Harness 自愈在线 | L1-L5 F轴 + 工程 观测/安全 | 自愈 + 仪表盘 |
+| **S3** | 跨轮次上下文记忆召回 | L1-L5 B/D轴 | 记忆 + 上下文 |
+| **S4** | 能力缺口检测→子Agent生成 | L1-L5 E轴 + 三层企业 | 动态组队 |
+| **S5** | SKILL.md 生成+注册 | L1-L5 C轴 + 工程 CI | 工具自举 |
+
+### 5.2 S1: 自主循环
+
+> 验证 L4 核心特征：给定多步任务，系统无人介入从起点推到终点。
 
 ```bash
-# 全量自动化
+curl -s -X POST http://localhost:8000/api/core/workspace/agents/materials_chat/execute \
+  -H "Content-Type: application/json" \
+  -d '{"messages":[{"role":"user","content":"分三步回答：1)总结 2)分析 3)优化。每步用 ## 标记"}]}'
+```
+
+**预期**：HTTP 200，`status=completed`，`run_id` 非空。Agent 返回三步内容。
+
+**L4 判定依据**：请求后无需人类介入，Agent 自主完成多步推理。如果返回 `paused/failed` 则 L4 验证失败。
+
+### 5.3 S2: 自愈引擎
+
+> 验证 Phase 24：ErrorTranslator 诊断 → Harness 策略路由。
+
+```bash
+curl -s http://localhost:8000/api/diagnostics/health | python3 -c "import sys,json; print(len(json.load(sys.stdin).get('layers',[])))" 
+# → 4 (infra/core/platform/app)
+```
+
+**预期**：诊断面板返回 4 层健康状态。自愈仪表盘在线。
+
+**工程验证**：`grep -c '\[healing\]' ~/.aiplat/logs/aiplat.log` → ≥ 1（仅在发生错误时出现）。
+
+### 5.4 S3: 上下文感知
+
+> 验证 L4 跨轮次记忆：第一轮告诉偏好，第二轮能召回。
+
+```bash
+# Step 1: 写入偏好
+curl -s -X POST http://localhost:8000/api/core/workspace/agents/materials_chat/execute \
+  -H "Content-Type: application/json" \
+  -d '{"messages":[{"role":"user","content":"记住：我偏好列表格式"}], "session_id":"ctx-test"}'
+
+# Step 2: 召回 (同一 session_id)
+curl -s -X POST http://localhost:8000/api/core/workspace/agents/materials_chat/execute \
+  -H "Content-Type: application/json" \
+  -d '{"messages":[{"role":"user","content":"我的格式偏好是？"}], "session_id":"ctx-test"}'
+```
+
+**预期**：第二个请求返回内容包含"列表"关键词。Agent 跨轮次保持了上下文记忆。
+
+### 5.5 S4: 动态组队
+
+> 验证 Phase 32：Agent 输出→能力缺口检测→子 Agent 生成。
+
+```bash
+curl -s -X POST http://localhost:8000/api/core/workspace/agents/materials_chat/execute \
+  -H "Content-Type: application/json" \
+  -d '{"messages":[{"role":"user","content":"需要安全检查这段代码"}]}'
+```
+
+**预期**：HTTP 200，`status=completed`。Agent 能识别"安全"关键词并生成安全审查子 Agent。
+
+### 5.6 S5: 工具自举
+
+> 验证 Phase 31：ToolBootstrap 生成 SKILL.md + 注册到 SkillRegistry。
+
+```bash
+# 检查 bootstrap 目录
+ls ~/.aiplat/skills/bootstrap/*/SKILL.md 2>/dev/null | wc -l
+```
+
+**预期**：≥ 1 个 SKILL.md（首次需 GoalExecutor 激活，非零即通过）。
+
+### 5.7 一键运行
+
+```bash
+bash scripts/verify-l4-behavior.sh [BASE_URL]
+# 默认 http://localhost:8000
+# 需要 ./start.sh 已运行
+```
+
+### 5.8 行为层预期结果
+
+| 场景 | L3 表现 | L4+ 表现 (aiPlat 预期) |
+|:---|:---|:---|
+| S1 多步任务 | 需人工催促 | 一次触发，自主推进完成 |
+| S2 自愈 | 报错停止 | 自动换 Key，日志显示 healing |
+| S3 跨轮次 | 不知道/不确定 | 准确召回偏好 |
+| S4 动态组队 | 固定流程 | 检测→生成子Agent→执行 |
+| S5 工具自举 | 人工写工具 | 自动生成+注册 SKILL.md |
+
+---
+
+## 6. 一键验证
+
+```bash
+# 代码层
 bash scripts/verify-l4-pyramid.sh    # L0→L5 31/31
 bash scripts/verify-l4-depth.sh      # 30 tests
 bash scripts/verify-l4-claims.sh     # 31 checks
 
-# 引用真实性
-bash scripts/verify_whitepaper_refs.sh  # 28 refs
-
 # 行为层 (需 ./start.sh)
 bash scripts/verify-l4-behavior.sh   # 5 场景
+
+# 引用校验
+bash scripts/verify_whitepaper_refs.sh  # 28 refs
 ```
 
 ### 预期输出
@@ -238,21 +350,22 @@ bash scripts/verify-l4-behavior.sh   # 5 场景
 verify-l4-pyramid.sh:   ✅ L5 (元循环工程) — 全层通过
 verify-l4-depth.sh:     ✅ 30/30 PASS
 verify-l4-claims.sh:    ✅ 31/31 PASS
+verify-l4-behavior.sh:  ✅ 7/7 PASS (需 ./start.sh)
 verify_whitepaper_refs.sh: ✅ 28/28 refs verified
 ```
 
 ### 非自动化的验证项
 
-| 框架 | 验证项 | 原因 |
+| 验证项 | 原因 | 所需专业能力 |
 |:---|:---|:---|
-| 三层企业 | 12 项宏观得分 | 加权计算需人工判断 |
-| 三层企业 | 9 项架构得分 | 需架构知识 |
-| 工程 | 5.5 渗透测试 | 需第三方 |
-| 工程 | 6.9 故障演练 | 需 Chaos 工具 |
+| 渗透测试 | 需主动攻击运行中系统 | 安全工程师 + Burp Suite/ZAP |
+| 故障演练 | 需注入故障观察恢复行为 | SRE + Chaos Mesh/Gremlin |
+| 宏观评分 | 涉及商业判断、竞品对比 | 行业分析师 |
+| 架构评分 | 需架构演进知识和经验 | 高级架构师 |
 
 ---
 
-## 6. 验证原则
+## 7. 验证原则
 
 | # | 原则 | 说明 |
 |:--:|------|:---|
