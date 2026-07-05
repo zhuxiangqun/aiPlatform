@@ -1,0 +1,27 @@
+# ArgoCD Application — aiPlat Stack
+# Auto-deploys from Helm chart on git push to main
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: aiplat
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/zhuxiangqun/aiPlatform.git
+    targetRevision: main
+    path: deploy/helm/aiplat
+    helm:
+      valueFiles:
+        - values.yaml
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: aiplat
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
