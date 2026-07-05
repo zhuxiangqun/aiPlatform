@@ -571,12 +571,23 @@ def _register_health_checks():
                 escalations = stats.get("escalations", 0)
                 rate = (successes / attempts * 100) if attempts > 0 else 100
                 status = Status.HEALTHY if rate > 50 or attempts == 0 else Status.DEGRADED
+                # Phase 25: Snapshot counts
+                snap_total = 0
+                try:
+                    from core.harness.execution.snapshot import SNAPSHOT_ROOT
+                    import os as _os_snap
+                    if _os_snap.path.isdir(SNAPSHOT_ROOT):
+                        snap_total = sum(1 for _ in _os_snap.listdir(SNAPSHOT_ROOT)
+                                         if _.endswith('.json'))
+                except Exception:
+                    pass
                 return HealthResult(
                     module="self_healing", status=status, severity=Severity.MEDIUM,
                     message=f"{rate:.0f}% success ({successes}/{attempts} heals, {skips} skips, {escalations} escalations)",
                     details={"attempts": attempts, "successes": successes,
                              "skips": skips, "escalations": escalations,
-                             "success_rate_pct": round(rate, 1), "approx": True}
+                             "success_rate_pct": round(rate, 1), "approx": True,
+                             "snapshots_stored": snap_total}
                 )
         reg.register(HealingHealthCheck())
     except Exception as e:

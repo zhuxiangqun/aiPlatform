@@ -4416,6 +4416,31 @@ JSON format: {{"artifact": {{}},"confidence": "HIGH","issues": [{{"severity": "P
     # Phase 24: Self-healing strategy methods (ErrorTranslator → Action)
     # ══════════════════════════════════════════════════════════════
 
+    def _healing_pre_snapshot(self, state, strategy_name):
+        """Phase 25: Snapshot execution context before self-healing attempt."""
+        try:
+            from core.harness.execution.snapshot import save_execution_snapshot
+            pre_id = save_execution_snapshot(
+                state, f"pre_{strategy_name}",
+                session_id=state.get("session_id", ""),
+                stage_id=state.get("_last_error_stage", ""),
+            )
+            state["_last_snapshot_id"] = pre_id
+        except Exception:
+            pass
+
+    def _healing_post_snapshot(self, state, strategy_name):
+        """Phase 25: Snapshot execution context after self-healing."""
+        try:
+            from core.harness.execution.snapshot import snapshot_after_heal
+            snapshot_after_heal(
+                state, strategy_name,
+                session_id=state.get("session_id", ""),
+                stage_id=state.get("_last_error_stage", ""),
+            )
+        except Exception:
+            pass
+
     async def _strategy_rotate_credential(self, stage, state):
         """rate_limit / auth → rotate API key via infra CredentialPool."""
         self._inc_healing_stat("attempts")
@@ -4429,11 +4454,13 @@ JSON format: {{"artifact": {{}},"confidence": "HIGH","issues": [{{"severity": "P
                 state["_meta_optimized"] = True
                 self._inc_healing_stat("successes")
                 logger.warning("[healing] rotated credential: provider=%s keys=%d", provider, pool.key_count)
+                self._healing_post_snapshot(state, "rotate_credential")
                 return stage
             else:
                 logger.warning("[healing] cannot rotate: only 1 key for %s", provider)
         except Exception as e:
             logger.warning("[healing] credential rotation failed: %s", e)
+        self._healing_post_snapshot(state, "rotate_credential")
         return None
 
     async def _strategy_compress_retry(self, stage, state):
@@ -4443,6 +4470,7 @@ JSON format: {{"artifact": {{}},"confidence": "HIGH","issues": [{{"severity": "P
         state["_meta_optimized"] = True
         state["_force_context_compression"] = True
         self._inc_healing_stat("successes")
+        self._healing_post_snapshot(state, "compress_retry")
         return stage
 
     async def _strategy_backoff_retry(self, stage, state):
@@ -4457,6 +4485,7 @@ JSON format: {{"artifact": {{}},"confidence": "HIGH","issues": [{{"severity": "P
         state["_meta_optimized"] = True
         self._inc_healing_stat("successes")
         await asyncio.sleep(wait)
+        self._healing_post_snapshot(state, "backoff_retry")
         return stage
 
     async def _strategy_skip_stage(self, stage, state):
@@ -4477,6 +4506,7 @@ JSON format: {{"artifact": {{}},"confidence": "HIGH","issues": [{{"severity": "P
         else:
             self._inc_healing_stat("escalations")
             logger.warning("[healing] cannot skip: stage %s failure_strategy=%s", stage.id, failure_strategy)
+        self._healing_post_snapshot(state, "skip_stage")
         return None
 
     async def _strategy_escalate(self, stage, state):
@@ -4503,9 +4533,11 @@ JSON format: {{"artifact": {{}},"confidence": "HIGH","issues": [{{"severity": "P
                 state["_paused_for_approval"] = True
                 state["_approval_request_id"] = getattr(result, "approval_request_id", "")
                 self._inc_healing_stat("escalations")
+                self._healing_post_snapshot(state, "escalate")
                 return None
         except Exception as e:
             logger.warning("[healing] escalation failed: %s", e)
+        self._healing_post_snapshot(state, "escalate")
         return None
 
     @staticmethod
@@ -4532,6 +4564,8 @@ JSON format: {{"artifact": {{}},"confidence": "HIGH","issues": [{{"severity": "P
 
         if classed:
             reason = classed.get("reason", "unknown")
+            # Phase 25: Snapshot execution context before self-healing attempt
+            self._healing_pre_snapshot(state, reason)
             if reason in ("rate_limit", "auth", "auth_permanent"):
                 if classed.get("should_rotate_credential"):
                     return await self._strategy_rotate_credential(stage, state)
