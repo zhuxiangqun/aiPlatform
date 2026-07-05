@@ -2,7 +2,7 @@
 title: "aiPlat 三框架逐项评分明细"
 type: scoring-detail
 domain: aiplat-core
-version: 2.2.0
+version: 2.3.0
 date: 2026-07-05
 status: published
 refs:
@@ -108,13 +108,13 @@ bash scripts/verify-l4-pyramid.sh | grep '最大可宣称'
 | 2.10 | 环境一致性 | 🔶 | docker-compose 存在, Helm chart 存在 | 非 CI 强制执行 |
 | 2.11 | 覆盖门禁 | 🔶 | 无 coverage threshold gate | 无 CI fail-on-low-coverage |
 
-### 3. CI/CD — 87.5% (7/8 是, 0/8 部分)
+### 3. CI/CD — 93.75% (7/8 是, 1/8 部分)
 
 | # | 检查项 | 结果 | 证据 | 差距 |
 |:--:|------|:--:|------|------|
 | 3.1 | CI/CD 流水线 | ✅ | 3 workflow files | — |
 | 3.2 | 自动构建 | ✅ | CI runs lint+test+depth+benchmark | — |
-| 3.3 | 自动部署测试 | 🔶 | Docker build + deploy step (disabled) | 需 K8s 集群启用 |
+| 3.3 | 自动部署测试 | 🔶 | Docker build + deploy step (documented) | 需 K8s 集群执行 |
 | 3.4 | 生产审批 | ❌ | 无审批门禁 | 需 PR required reviewers + deploy approval |
 | 3.5 | 一键回滚 | ✅ | `scripts/rollback.sh` (kubectl + Helm) | — |
 | 3.6 | 产物版本管理 | ✅ | git tag + `:sha` Docker tags | — |

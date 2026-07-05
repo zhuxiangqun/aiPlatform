@@ -2,7 +2,7 @@
 title: "aiPlat 综合评估报告 — 三框架评估"
 type: evaluation-report
 domain: aiplat-core
-version: 2.2.0
+version: 2.3.0
 date: 2026-07-05
 status: published
 refs:
@@ -333,8 +333,8 @@ pytest tests/autonomy/test_l5_capabilities.py::TestUCB1Convergence -v
               │     │                │                │     │
               ▼     ▼                ▼                ▼     ▼
          六轴全 L5           CI/CD 87.5% (已补齐)   微观层 4.0 (优秀)
-         自主性最强           测试维度 90%               宏观层 3.1 (待补)
-         UCB1收敛闭环         代码质量 87.5% (准生产)             部署运维待提升
+         自主性最强           测试维度 90%               宏观层 3.2 (逼近)
+         UCB1收敛闭环         代码质量 87.5% (准生产)             部署文档完善
 ```
 
 ### 优势
