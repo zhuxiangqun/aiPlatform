@@ -575,9 +575,13 @@ def _register_health_checks():
                 snap_total = 0
                 # Phase 26: Strategy tracker stats
                 tracker_stats = {}
+                # Phase 27: Shared knowledge pool stats
+                shared_pool_stats = {}
                 try:
                     from core.harness.optimization.strategy_tracker import get_strategy_tracker
                     tracker_stats = get_strategy_tracker().stats()
+                    from core.harness.memory.shared_pool import get_shared_knowledge_pool
+                    shared_pool_stats = get_shared_knowledge_pool().stats()
                 except Exception:
                     pass
                 try:
@@ -595,7 +599,8 @@ def _register_health_checks():
                              "skips": skips, "escalations": escalations,
                              "success_rate_pct": round(rate, 1), "approx": True,
                              "snapshots_stored": snap_total,
-                             "strategy_tracker": str(tracker_stats)}
+                             "strategy_tracker": str(tracker_stats),
+                             "shared_knowledge": shared_pool_stats}
                 )
         reg.register(HealingHealthCheck())
     except Exception as e:

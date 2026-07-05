@@ -346,6 +346,31 @@ class MemoryManager:
         if self._config.enable_compression and self._compression.should_trigger_compression(state):
             messages = await self._compression.compress(messages, state)
         
+        # 8. Phase 27: Inject cross-instance shared knowledge
+        if not audit_mode and current_query:
+            try:
+                from core.harness.memory.shared_pool import get_shared_knowledge_pool
+                pool = get_shared_knowledge_pool()
+                shared = pool.query(current_query, limit=3, min_confidence=0.6)
+                if shared:
+                    facts_text = "\n".join(
+                        f"- [{f.topic}] {f.content[:200]} (confidence={f.confidence:.2f})"
+                        for f in shared
+                    )
+                    messages.append({
+                        "role": "system",
+                        "content": (
+                            "## Shared Knowledge (Cross-Session)\n"
+                            "The following facts were learned from other sessions. "
+                            "Treat them as medium-confidence collaborative knowledge:\n"
+                            f"{facts_text}"
+                        ),
+                        "meta": {"role": "shared_knowledge"},
+                    })
+                    total_tokens += len(facts_text.split()) * 1.3
+            except Exception:
+                pass
+
         return BuildContextResult(
             messages=messages,
             token_count=int(total_tokens),

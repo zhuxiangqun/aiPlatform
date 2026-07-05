@@ -127,17 +127,51 @@ class StrategyEffectivenessTracker:
         rec = self._get_or_create(error_type, strategy_name)
         if success:
             rec.record_success(tokens_used)
-            logger.info(
-                "[strategy_tracker] %s + %s = SUCCESS (rate=%.0f%%)",
-                error_type, strategy_name, rec.success_rate * 100,
-            )
         else:
             rec.record_failure(tokens_used)
-            logger.info(
-                "[strategy_tracker] %s + %s = FAIL (rate=%.0f%%)",
-                error_type, strategy_name, rec.success_rate * 100,
-            )
         self._total_attempts += 1
+
+        # Phase 27: Share proven strategies to cross-instance knowledge pool
+        if rec.attempts >= 3 and rec.success_rate >= 0.7:
+            self._share_to_pool(error_type, strategy_name, rec)
+
+    def _share_to_pool(
+        self, error_type: str, strategy_name: str, rec: StrategyRecord
+    ) -> None:
+        """Phase 27: Publish proven strategy to shared knowledge pool."""
+        try:
+            from core.harness.memory.shared_pool import get_shared_knowledge_pool
+            pool = get_shared_knowledge_pool()
+            content = (
+                f"For '{error_type}' errors, '{strategy_name}' strategy has "
+                f"{rec.success_rate:.0%} success rate over {rec.attempts} attempts"
+            )
+            pool.publish(
+                topic=f"healing:{error_type}",
+                content=content,
+                source="strategy",
+                confidence=rec.success_rate,
+                metadata={
+                    "error_type": error_type,
+                    "strategy_name": strategy_name,
+                    "attempts": rec.attempts,
+                    "successes": rec.successes,
+                    "avg_tokens": round(rec.avg_tokens, 1),
+                },
+            )
+        except Exception as e:
+            logger.debug("strategy share skipped: %s", e)
+
+    def share_top_strategies(self) -> int:
+        """Phase 27: Share all proven strategies to shared pool. Returns count published."""
+        count = 0
+        for (error_type, strategy_name), rec in self._records.items():
+            if rec.attempts >= 3 and rec.success_rate >= 0.7:
+                self._share_to_pool(error_type, strategy_name, rec)
+                count += 1
+        if count:
+            logger.info("[strategy_tracker] shared %d proven strategies to pool", count)
+        return count
 
     def record_from_snapshot_pair(
         self,
