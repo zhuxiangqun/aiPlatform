@@ -4440,6 +4440,45 @@ JSON format: {{"artifact": {{}},"confidence": "HIGH","issues": [{{"severity": "P
             )
         except Exception:
             pass
+        # Phase 26: Record strategy outcome in effectiveness tracker
+        success = state.pop("_meta_optimized", False)
+        error_type = state.get("_last_healing_reason", "unknown")
+        self._record_strategy_outcome(error_type, strategy_name, success)
+
+    def _resolve_best_strategy(self, error_type, classed=None):
+        """Phase 26: Look up best historically-successful strategy for this error type."""
+        try:
+            from core.harness.optimization.strategy_tracker import get_strategy_tracker
+            tracker = get_strategy_tracker()
+            best = tracker.best_strategy(error_type)
+            if best:
+                return best
+            explore = tracker.explore_strategy(error_type)
+            return explore
+        except Exception:
+            return None
+
+    async def _dispatch_strategy(self, strategy_name, stage, state, classed=None):
+        """Phase 26: Dispatch to strategy by name (replaces if/elif chain)."""
+        strategy_map = {
+            "rotate_credential": self._strategy_rotate_credential,
+            "compress_retry": self._strategy_compress_retry,
+            "backoff_retry": self._strategy_backoff_retry,
+            "skip_stage": self._strategy_skip_stage,
+        }
+        handler = strategy_map.get(strategy_name)
+        if handler:
+            return await handler(stage, state)
+        return None
+
+    def _record_strategy_outcome(self, error_type, strategy_name, success):
+        """Phase 26: Record strategy effectiveness after execution."""
+        try:
+            from core.harness.optimization.strategy_tracker import get_strategy_tracker
+            tracker = get_strategy_tracker()
+            tracker.record(error_type, strategy_name, success=success, tokens_used=0)
+        except Exception:
+            pass
 
     async def _strategy_rotate_credential(self, stage, state):
         """rate_limit / auth → rotate API key via infra CredentialPool."""
@@ -4564,8 +4603,19 @@ JSON format: {{"artifact": {{}},"confidence": "HIGH","issues": [{{"severity": "P
 
         if classed:
             reason = classed.get("reason", "unknown")
+            state["_last_healing_reason"] = reason  # Phase 26: preserve for outcome recording
             # Phase 25: Snapshot execution context before self-healing attempt
             self._healing_pre_snapshot(state, reason)
+
+            # Phase 26: Strategy effectiveness tracker — data-driven routing
+            best = self._resolve_best_strategy(reason, classed)
+            if best:
+                state["_meta_strategy_source"] = "tracker"
+                logger.info("[strategy] tracker-selected: %s for %s", best, reason)
+                return await self._dispatch_strategy(best, stage, state, classed)
+
+            # Fallback: hardcoded mapping (backward compat + cold start)
+            state["_meta_strategy_source"] = "hardcoded"
             if reason in ("rate_limit", "auth", "auth_permanent"):
                 if classed.get("should_rotate_credential"):
                     return await self._strategy_rotate_credential(stage, state)

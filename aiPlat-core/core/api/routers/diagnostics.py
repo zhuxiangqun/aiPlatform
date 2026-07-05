@@ -573,6 +573,13 @@ def _register_health_checks():
                 status = Status.HEALTHY if rate > 50 or attempts == 0 else Status.DEGRADED
                 # Phase 25: Snapshot counts
                 snap_total = 0
+                # Phase 26: Strategy tracker stats
+                tracker_stats = {}
+                try:
+                    from core.harness.optimization.strategy_tracker import get_strategy_tracker
+                    tracker_stats = get_strategy_tracker().stats()
+                except Exception:
+                    pass
                 try:
                     from core.harness.execution.snapshot import SNAPSHOT_ROOT
                     import os as _os_snap
@@ -587,7 +594,8 @@ def _register_health_checks():
                     details={"attempts": attempts, "successes": successes,
                              "skips": skips, "escalations": escalations,
                              "success_rate_pct": round(rate, 1), "approx": True,
-                             "snapshots_stored": snap_total}
+                             "snapshots_stored": snap_total,
+                             "strategy_tracker": str(tracker_stats)}
                 )
         reg.register(HealingHealthCheck())
     except Exception as e:
