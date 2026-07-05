@@ -1,0 +1,68 @@
+version: 2
+updates:
+  # Python dependencies — aiPlat-core
+  - package-ecosystem: "pip"
+    directory: "/aiPlat-core"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "pip"
+    reviewers:
+      - "zhuxiangqun"
+
+  # Python dependencies — aiPlat-infra
+  - package-ecosystem: "pip"
+    directory: "/aiPlat-infra"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 3
+    labels:
+      - "dependencies"
+      - "pip"
+
+  # Python dependencies — aiPlat-platform
+  - package-ecosystem: "pip"
+    directory: "/aiPlat-platform"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 3
+    labels:
+      - "dependencies"
+      - "pip"
+
+  # Python dependencies — aiPlat-management
+  - package-ecosystem: "pip"
+    directory: "/aiPlat-management"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 3
+    labels:
+      - "dependencies"
+      - "pip"
+
+  # Python dependencies — aiPlat-app
+  - package-ecosystem: "pip"
+    directory: "/aiPlat-app"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 2
+    labels:
+      - "dependencies"
+      - "pip"
+
+  # GitHub Actions
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    labels:
+      - "dependencies"
+      - "ci"

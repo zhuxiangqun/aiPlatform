@@ -11,6 +11,7 @@ select = [
     "N",   # pep8-naming
     "UP",  # pyupgrade
     "B",   # flake8-bugbear
+    "S",   # flake8-bandit (security)
 ]
 ignore = [
     "F821",    # undefined-name (false positives in eval/exec)
