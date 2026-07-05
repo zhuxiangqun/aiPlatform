@@ -84,6 +84,7 @@
 | 检索预算机制 | `harness/memory/manager.py` | ✅ | build_context(retrieval_budget=): full→minimal→working_only 3级 | Phase 18.1 |
 | 计划性遗忘 | `harness/memory/episodic.py` | ✅ | 同topic 2x降权→3x归档(status=archived) + 索引比较(非is引用) | Phase 18.5 |
 | 结构化压缩 | `harness/memory/compression.py` | ✅ | LLM工具输出→JSON(completed/pending/preference) + 自由文本回退 | Phase 18.3 |
+| 统一知识库健康仪表盘 | `api/routers/diagnostics.py` | ✅ | 6模块聚合+5维成熟度评分(L0-L5)+Markdown中文报告(四步框架语境) | Phase 19 |
 
 ---
 
@@ -770,12 +771,12 @@
 | 编排系统 | 4 | 0 | 4 |
 | 管理 & 质量 | 21 | 0 | 21 |
 | 编排层 | 17 | 0 | 17 |
-| **总计** | **518** | **0** | **518** |
+| **总计** | **523** | **0** | **523** |
 
 ---
 
 *最后更新: 2026-07-04*
-*版本: 12.5 · 28章 · 523项能力 · 523✅ · P0-P3 hermès-agent全量吸收+SQLite连接池化+TrendDetector*
+*版本: 12.5 · 28章 · 524项能力 · 523✅ · P0-P3 hermès-agent全量吸收+SQLite连接池化+TrendDetector*
 
 **自检命令**：
 ```bash
