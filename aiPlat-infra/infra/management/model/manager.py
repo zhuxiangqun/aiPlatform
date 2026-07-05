@@ -640,7 +640,39 @@ class ModelManager:
         if not model:
             return None
         return self._providers.get(model.provider)
-    
+
+    def retire_stale_models(self, inactivity_days: int = 30) -> int:
+        """Phase 51: Auto-retire models unused for N days.
+
+        Models from local_models or external_models that have zero usage
+        and were added more than inactivity_days ago are marked as DEPRECATED.
+        Config models (YAML) are never auto-retired.
+
+        Returns count of retired models.
+        """
+        cutoff = datetime.now(timezone.utc).timestamp() - (inactivity_days * 86400)
+        retired = 0
+        for model in list(self._models.values()):
+            if model.source == ModelSource.CONFIG:
+                continue  # config models never auto-retire
+            if model.status == ModelStatus.AVAILABLE:
+                created = getattr(model, 'created_at', None)
+                if isinstance(created, (int, float)):
+                    created = datetime.fromtimestamp(created, tz=timezone.utc).timestamp()
+                elif isinstance(created, datetime):
+                    created = created.timestamp()
+                else:
+                    continue
+                if created < cutoff:
+                    model.status = ModelStatus.DEPRECATED
+                    model.metadata["retired_reason"] = f"inactive {inactivity_days}+ days"
+                    retired += 1
+        if retired:
+            logging.getLogger("infra.model").info(
+                "Auto-retired %d stale models (inactive ≥%d days)", retired, inactivity_days
+            )
+        return retired
+
     async def get_status(self) -> Status:
         """获取状态"""
         available_count = sum(1 for m in self._models.values() if m.status == ModelStatus.AVAILABLE)

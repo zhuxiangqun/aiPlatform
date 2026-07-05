@@ -6,6 +6,7 @@ Connects to external MCP servers and provides tool access.
 
 import asyncio
 import logging
+import time
 from typing import Any, Dict, List, Optional
 
 from .types import (
@@ -26,6 +27,46 @@ from .protocol import (
 logger = logging.getLogger(__name__)
 
 
+class MCPCircuitBreaker:
+    """Phase 51: Circuit breaker for MCP server fault tolerance.
+
+    Three states: CLOSED (normal) → OPEN (fuse blown) → HALF_OPEN (probing).
+    After `failure_threshold` consecutive failures, opens for `recovery_timeout` seconds.
+    """
+    def __init__(self, failure_threshold: int = 3, recovery_timeout: float = 30.0):
+        self.failure_threshold = failure_threshold
+        self.recovery_timeout = recovery_timeout
+        self._failures = 0
+        self._last_failure = 0.0
+        self._tripped = False
+
+    @property
+    def is_open(self) -> bool:
+        if not self._tripped:
+            return False
+        if time.time() - self._last_failure > self.recovery_timeout:
+            self._tripped = False
+            self._failures = 0
+            logger.info("[mcp] circuit breaker reset (recovery timeout)")
+            return False
+        return True
+
+    def record_failure(self) -> None:
+        self._failures += 1
+        self._last_failure = time.time()
+        if self._failures >= self.failure_threshold:
+            self._tripped = True
+            logger.warning(
+                "[mcp] circuit breaker OPEN (%d consecutive failures)", self._failures
+            )
+
+    def record_success(self) -> None:
+        if self._failures > 0:
+            logger.info("[mcp] circuit breaker: failure streak reset")
+        self._failures = 0
+        self._tripped = False
+
+
 class MCPClient:
     """MCP Client - connects to external MCP servers"""
     
@@ -34,6 +75,7 @@ class MCPClient:
         self._protocol = MCPProtocolHandler()
         self._transport: Optional[SSEHandler | StdioHandler] = None
         self._connected = False
+        self._breaker = MCPCircuitBreaker()  # Phase 51
         self._capabilities: Optional[MCPServerCapabilities] = None
         self._server_info: Dict[str, str] = {}
         self._tools: Dict[str, MCPTool] = {}
@@ -187,6 +229,8 @@ class MCPClient:
         arguments: Optional[Dict[str, Any]] = None
     ) -> MCPToolResult:
         """Call a tool on the MCP server"""
+        if self._breaker.is_open:
+            raise RuntimeError(f"MCP circuit breaker open for '{self._config.server_url}'")
         if not self._connected:
             raise RuntimeError("Not connected to MCP server")
             
@@ -232,6 +276,7 @@ class MCPClient:
         )
         
         if response.is_error:
+            self._breaker.record_failure()
             return MCPToolResult(
                 content=str(response.error),
                 is_error=True
@@ -241,8 +286,10 @@ class MCPClient:
         content = response.result.get("content", [])
         if content and isinstance(content[0], dict):
             text = content[0].get("text", "")
+            self._breaker.record_success()
             return MCPToolResult(content=text, is_error=False)
-            
+        
+        self._breaker.record_success()
         return MCPToolResult(content=str(response.result), is_error=False)
         
     async def disconnect(self) -> None:

@@ -87,13 +87,7 @@ jobs:
       - name: Install dependencies
         run: pip install -e "." || true
       - name: Run benchmarks
-        run: |
-          for bench in benchmark_ontology.py benchmark_traversal.py; do
-            if [ -f "$bench" ]; then
-              echo "=== Running $bench ==="
-              python "$bench" --ci 2>/dev/null || echo "$bench: skipped"
-            fi
-          done
+        run: bash scripts/benchmark-ci.sh
 
   docker:
     name: Docker Build & Push
