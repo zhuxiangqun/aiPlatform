@@ -31,17 +31,27 @@ tags: [verification, protocol, reproducibility, three-framework]
 
 | 层 | 作用 | 验证方式 | 项目数 | 依赖 |
 |:---|:---|:---|:--:|:--:|
-| **代码层** | 验证模块存在 | grep -c / pytest | 48 项 | 无 (零依赖) |
-| **行为层** | 验证真实运行 | curl → 运行实例 | 5 场景 | `./start.sh` |
+| **代码层** | 验证模块存在 (grep -c) | 命令行脚本 | 62 项 | 无 (零依赖) |
+| **行为层** | 验证真实工作 (函数调用 / curl) | pytest + curl | **38 项** | `./start.sh` (仅 curl) |
 | **人工层** | 验证深度能力 | 专业知识判断 | 4 项 | 外部审稿人 |
+
+### 行为层细分
+
+| 子类型 | 项数 | 验证内容 | 脚本 |
+|:---|:--:|:---|:---|
+| **Python 深度测试** | 30 | UCB1收敛 / GoalExecutor闭环 / SwarmBroker竞标 / GossipProtocol去重 / ToolBootstrap注册 / AdaptiveContext路由 / 策略跟踪集成 | `verify-l4-depth.sh` |
+| **curl 端到端** | 5 | 自主循环 / 自愈引擎 / 上下文召回 / 动态组队 / 工具自举 | `verify-l4-behavior.sh` |
+| **REST API 诊断** | 3 | 架构守卫 (76规则) / 4层健康 / 全量诊断 | curl 直接调用 |
+
+> **关键区分**：代码层只验证 `grep -c class Foo` = 1（模块存在），行为层 30 项深度测试注入真实数据、调用真实函数、验证真实输出（模块工作）。代码层 62 项回答"有"，行为层 38 项回答"能"。
 
 ### 各框架覆盖
 
-| 框架 | 代码层 | 行为层 | 人工层 |
-|:---|:--:|:--:|:--:|
-| L1-L5 自主性 | `pyramid.sh` + `depth.sh` | S1-S5 全覆盖 | — |
-| 工程落地 | `claims.sh` | S2(自愈) S5(工具) | — |
-| 三层企业 | `verify_whitepaper_refs.sh` | S1(自主) S4(协作) | 宏观评分 + 架构评分 |
+| 框架 | 代码层 | 行为层 (深度测试) | 行为层 (curl) | 人工层 |
+|:---|:--:|:--:|:--:|:--:|
+| L1-L5 自主性 (18项) | 15 轴证据 | 12 (UCB1/Goal/Swarm/Bootstrap/Gossip/Adaptive) | S1-S5 全覆盖 | — |
+| 工程落地 (54项) | 25 逐维检查 | 6 (Tracker/Snapshot/Healing/Security) | S2 S5 + REST API | — |
+| 三层企业 (30项) | 8 能力存在 | — | S1 S4 | 宏观评分 + 架构评分 |
 
 ---
 
@@ -417,6 +427,20 @@ verify_whitepaper_refs.sh: ✅ 28/28 refs verified
 ### 非自动化的验证项
 
 | 验证项 | 原因 | 所需专业能力 |
+### 非自动化验证项
+
+#### 只能通过代码验证
+
+| 类别 | 项数 | 原因 | 示例 |
+|:---|:--:|:---|:---|
+| 架构决策记录格式 | 3 | ADR 文件存在性是 grep 可查的 | `find docs -name '*.md' \| wc -l` |
+| 安全策略文档 | 2 | SECURITY.md / SLO 文档存在性 | `test -f SECURITY.md` |
+| 技术债清单 | 1 | CLAUDE.md 中技术债记录 | `grep -c '已知例外' CLAUDE.md` |
+| CI 配置文件 | 5 | YAML 文件存在性 | `ls .github/workflows/` |
+
+#### 只能通过人工判断
+
+| 验证项 | 原因 | 所需专业能力 |
 |:---|:---|:---|
 | 渗透测试 | 需主动攻击运行中系统 | 安全工程师 + Burp Suite/ZAP |
 | 故障演练 | 需注入故障观察恢复行为 | SRE + Chaos Mesh/Gremlin |
@@ -429,7 +453,8 @@ verify_whitepaper_refs.sh: ✅ 28/28 refs verified
 
 | # | 原则 | 说明 |
 |:--:|------|:---|
-| 1 | **代码为唯一定论** | 设计文档不算数，`grep -c` 返回值 = 唯一证据 |
+| 1 | **代码为唯一定论** | 设计文档不算数，代码存在性(`grep -c`)和代码行为(pytest) = 唯一证据 |
+| 2 | **存在≠工作** | `grep -c class Foo` = 1 证明模块存在，深度测试证明模块工作。两者缺一不可 |
 | 2 | **必须有负检查** | "有 X 能力"必须伴随"没有 Y 能力"的反证 |
 | 3 | **必须可复现** | 所有命令可在任何克隆 repo 中运行 |
 | 4 | **最低分原则** | 系统等级由最薄弱环节决定 |
