@@ -1,0 +1,45 @@
+name: L5 Verification Suite
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: "0 6 * * *"  # daily at 6 AM UTC
+
+jobs:
+  pyramid:
+    name: Level Pyramid (L0→L5)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run pyramid verification
+        run: bash scripts/verify-l4-pyramid.sh
+
+  depth:
+    name: Depth Tests (30 tests)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Run depth verification
+        run: bash scripts/verify-l4-depth.sh
+
+  claims:
+    name: Data Claims (31 checks)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run claims verification
+        run: bash scripts/verify-l4-claims.sh
+
+  references:
+    name: Code References (28 refs)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run reference verification
+        run: bash scripts/verify_whitepaper_refs.sh

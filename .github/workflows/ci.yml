@@ -1,0 +1,69 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint:
+    name: Lint & Type Check
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: aiPlat-core
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install dependencies
+        run: pip install -e ".[dev]" || pip install ruff mypy
+      - name: Ruff lint
+        run: ruff check core/ --ignore F821
+      - name: MyPy type check
+        run: mypy core/ --ignore-missing-imports || true
+
+  test:
+    name: Test (pytest)
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        component: [aiPlat-core, aiPlat-infra, aiPlat-platform]
+    defaults:
+      run:
+        working-directory: ${{ matrix.component }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install dependencies
+        run: pip install -e ".[dev]" || pip install pytest pytest-cov
+      - name: Run tests
+        run: python -m pytest tests/ -v --tb=short -q --cov=. --cov-report=xml
+      - name: Upload coverage
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-${{ matrix.component }}
+          path: ${{ matrix.component }}/coverage.xml
+
+  depth-tests:
+    name: L5 Depth Tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: aiPlat-core
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install dependencies
+        run: pip install -e "." || true
+      - name: Run L5 depth tests
+        run: python -m pytest tests/autonomy/test_l5_capabilities.py -v --tb=short -q

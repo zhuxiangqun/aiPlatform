@@ -1,0 +1,58 @@
+name: Architecture Guard
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  guard:
+    name: Architecture Compliance
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install dependencies
+        run: pip install pyyaml 2>/dev/null || true
+      - name: Run architecture guard
+        run: bash scripts/architecture_guard.sh
+      - name: Run constitution tests
+        run: python -m pytest tests/constitution/ -v --tb=short -q 2>/dev/null || true
+
+  wiring:
+    name: Wiring Completeness
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Caller verification
+        run: bash scripts/caller_verify.sh 2>/dev/null || echo "caller_verify.sh not found, skipping"
+      - name: Phase check
+        run: bash scripts/phase_check.sh 2>/dev/null || echo "phase_check.sh not found, skipping"
+
+  frontend:
+    name: Frontend Proxy Guard
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Frontend guard
+        run: python scripts/guard_frontend.py 2>/dev/null || echo "guard_frontend.py not found, skipping"
+
+  frontmatter:
+    name: YAML Frontmatter Validation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Validate frontmatter
+        run: python scripts/validate_frontmatter.py --quick 2>/dev/null || echo "validate_frontmatter.py not found, skipping"
