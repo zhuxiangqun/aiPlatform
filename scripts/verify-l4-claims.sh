@@ -144,12 +144,37 @@ check "ErrorTranslator 行数 (≥ 600)" "$_et" 600
 _po=$(grep -c 'class PromptOptimizer' "$REPO/aiPlat-core/core/harness/optimization/prompt_optimizer.py" 2>/dev/null || echo 0)
 check "PromptOptimizer" "$_po" 1
 
+# Phase 25-32: L5-proximate 正向检查
+_snap=$(grep -c 'class ExecutionSnapshot' "$REPO/aiPlat-core/core/harness/execution/snapshot.py" 2>/dev/null || echo 0)
+check "ExecutionSnapshot (Phase 25)" "$_snap" 1
+
+_tracker=$(grep -c 'class StrategyEffectivenessTracker' "$REPO/aiPlat-core/core/harness/optimization/strategy_tracker.py" 2>/dev/null || echo 0)
+check "StrategyEffectivenessTracker (Phase 26)" "$_tracker" 1
+
+_spool=$(grep -c 'class SharedKnowledgePool' "$REPO/aiPlat-core/core/harness/memory/shared_pool.py" 2>/dev/null || echo 0)
+check "SharedKnowledgePool (Phase 27)" "$_spool" 1
+
+_ggen=$(grep -c 'class GoalGenerator' "$REPO/aiPlat-core/core/harness/optimization/goal_generator.py" 2>/dev/null || echo 0)
+check "GoalGenerator (Phase 28)" "$_ggen" 1
+
+_search=$(grep -c 'class StrategySearchEngine' "$REPO/aiPlat-core/core/harness/optimization/search_engine.py" 2>/dev/null || echo 0)
+check "StrategySearchEngine (Phase 29)" "$_search" 1
+
+_gexec=$(grep -c 'class GoalExecutor' "$REPO/aiPlat-core/core/harness/optimization/goal_executor.py" 2>/dev/null || echo 0)
+check "GoalExecutor (Phase 30)" "$_gexec" 1
+
+_tb=$(grep -c 'class ToolBootstrapEngine' "$REPO/aiPlat-core/core/harness/optimization/tool_bootstrap.py" 2>/dev/null || echo 0)
+check "ToolBootstrapEngine (Phase 31)" "$_tb" 1
+
+_dorc=$(grep -c 'class DynamicOrchestrator' "$REPO/aiPlat-core/core/harness/coordination/dynamic_orchestrator.py" 2>/dev/null || echo 0)
+check "DynamicOrchestrator (Phase 32)" "$_dorc" 1
+
 
 # ══════════════════════════════════════════════════════
 # L5 负检查
 # ══════════════════════════════════════════════════════
 echo ""
-echo "[L5 负检查: L5 独有特征应不存在]"
+echo "[L5 负检查: L5 完整特征应不存在（Phase 25-32 已在正向检查中）]"
 
 _l5a=$(grep -rn 'strategy_search\|strategy_explore\|policy_search\|multi_armed_bandit\|bayesian_opt' "$REPO/aiPlat-core/core/harness/" --include='*.py' 2>/dev/null | grep -v __pycache__ | grep -v ':0$' | wc -l || true)
 check "L5: 搜索算法(多臂/贝叶斯)不存在" "$_l5a" 0 "-le"
