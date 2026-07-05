@@ -129,5 +129,21 @@ jobs:
             -n aiplat --record
       - name: Notify release
         run: |
-          bash scripts/notify-release.sh deployed "aiplat-core ${{ github.sha }}"
+           bash scripts/notify-release.sh deployed "aiplat-core ${{ github.sha }}"
+
+  dast:
+    name: DAST Security Scan
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    needs: [lint, test]
+    steps:
+      - uses: actions/checkout@v4
+      - name: ZAP Baseline Scan
+        uses: zaproxy/action-baseline@v0.12.0
+        with:
+          target: https://aiplat.local
+          rules_file_name: .zap/rules.tsv
+          cmd_options: "-a -j -T 3"
+          issue_title: "OWASP ZAP DAST Baseline"
+        continue-on-error: true
 

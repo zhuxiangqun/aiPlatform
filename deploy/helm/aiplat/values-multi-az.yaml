@@ -1,0 +1,40 @@
+# Multi-AZ deployment values for aiPlat Helm chart
+# Usage: helm install aiplat . -f values.yaml -f values-multi-az.yaml
+
+global:
+  replicaCount: 2
+
+# ── Cross-AZ HA ──
+core:
+  replicaCount: 3  # 3 replicas across AZs
+  autoscaling:
+    minReplicas: 3
+    maxReplicas: 10
+  podAntiAffinity:
+    enabled: true
+    topologyKey: topology.kubernetes.io/zone
+
+management:
+  replicaCount: 2
+  podAntiAffinity:
+    enabled: true
+
+infra:
+  replicaCount: 2
+  podAntiAffinity:
+    enabled: true
+
+# ── Disaster Recovery ──
+persistence:
+  storageClass: standard-rwo  # zone-specific storage
+
+# Recovery Point Objective (RPO): 5 minutes
+# Recovery Time Objective (RTO): 30 minutes
+# Defined in docs/slo.md
+
+# ── Cross-AZ Networking ──
+gossip:
+  peers:
+    - aiplat-core-az-a:8000
+    - aiplat-core-az-b:8000
+    - aiplat-core-az-c:8000
