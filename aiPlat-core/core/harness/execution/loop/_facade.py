@@ -438,7 +438,7 @@ class ReActLoop(BaseLoop):
     # ── DELEGATED to inference.py (extracted for SRP per §5.75) ──
     async def _reason(self, state: LoopState):
         """Delegate to inference.reason — extracted from loop.py."""
-        return await reason(state, self._model, self._config, self._skills, self._tools)
+        return await reason(state, self._model, self._config, self._skills, self._tools, loop=self)
     # ── DELEGATED to state_mgr.py (extracted for SRP per §5.75) ──
     async def _load_run_state_for_prompt(self, state: LoopState):
         """Delegate to state_mgr.load_run_state_for_prompt — extracted from loop.py."""
@@ -488,7 +488,7 @@ class ReActLoop(BaseLoop):
     # ── DELEGATED to compressor.py (extracted for SRP per §5.75) ──
     async def _apply_context_shaping_pipeline(self, state: LoopState):
         """Delegate to compressor.apply_context_shaping — extracted from loop.py."""
-        return await apply_context_shaping(state, self._config)
+        return await apply_context_shaping(state, self._config, loop=self)
     async def _try_save_interaction(self, state: LoopState, user_msg: str, assistant_msg: str) -> None:
         """Persist interaction to MemoryManager for cross-turn context building."""
         try:
@@ -847,7 +847,7 @@ class ReActLoop(BaseLoop):
     # ── DELEGATED to compressor.py (extracted for SRP per §5.75) ──
     async def _maybe_compact_messages(self, state: LoopState):
         """Delegate to compressor.compact_messages — extracted from loop.py."""
-        return await compact_messages(state, self._config)
+        return await compact_messages(state, self._config, loop=self)
     def _build_compaction_prompt(self, ids_list: list, head: list) -> str:
         """Build compaction prompt from template (§8: engine code must not contain business SOP)."""
         from core.harness.assembly.compaction_prompt import get_compaction_prompt

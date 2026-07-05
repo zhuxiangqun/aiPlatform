@@ -1556,6 +1556,9 @@ async def _execute_workspace_agent_background(
         error_msg = str(e) or repr(e) or type(e).__name__
         _log = __import__('logging').getLogger(__name__)
         _log.error(f"Agent {agent_id} execution failed (run_id={run_id}): {error_msg}", exc_info=True)
+        # Phase 25 diagnostic: capture full traceback for debugging
+        import traceback as _tb
+        state["_error_traceback"] = _tb.format_exc()
     finally:
         if ws_token is not None:
             try:
@@ -1668,6 +1671,9 @@ async def _execute_workspace_agent_background(
     resp = {"ok": not is_error, "status": status if not is_error else "failed",
             "output": result_text if not is_error else None, "error": error_msg if is_error else None, "run_id": run_id, "execution_id": run_id,
             "duration_ms": _duration_ms, "trace_id": trace_id or ""}
+    _tb = state.get("_error_traceback", "")
+    if _tb:
+        resp["traceback"] = _tb[-3000:]  # last 3000 chars of traceback
     if tokens:
         resp["tokens"] = tokens
     # Include step count and engine metadata for observability
