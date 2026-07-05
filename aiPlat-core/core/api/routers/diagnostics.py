@@ -582,6 +582,12 @@ def _register_health_checks():
                     tracker_stats = get_strategy_tracker().stats()
                     from core.harness.memory.shared_pool import get_shared_knowledge_pool
                     shared_pool_stats = get_shared_knowledge_pool().stats()
+                    # Phase 28: Goal generator stats
+                    try:
+                        from core.harness.optimization.goal_generator import get_goal_generator
+                        goal_stats = get_goal_generator().stats()
+                    except Exception:
+                        goal_stats = {}
                 except Exception:
                     pass
                 try:
@@ -600,7 +606,8 @@ def _register_health_checks():
                              "success_rate_pct": round(rate, 1), "approx": True,
                              "snapshots_stored": snap_total,
                              "strategy_tracker": str(tracker_stats),
-                             "shared_knowledge": shared_pool_stats}
+                             "shared_knowledge": shared_pool_stats,
+                             "goal_generator": str(goal_stats)}
                 )
         reg.register(HealingHealthCheck())
     except Exception as e:
