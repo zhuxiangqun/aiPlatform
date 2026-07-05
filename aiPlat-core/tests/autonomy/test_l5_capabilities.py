@@ -222,12 +222,16 @@ class TestSharedKnowledgePool:
 
     def test_publish_and_query(self):
         """Publishing a fact must be retrievable by another session."""
-        from core.harness.memory.shared_pool import SharedKnowledgePool, POOL_FILE
+        from core.harness.memory.shared_pool import SharedKnowledgePool, POOL_FILE, POOL_DB
 
         pool = SharedKnowledgePool()
         pool._facts.clear()
         if os.path.exists(POOL_FILE):
             os.remove(POOL_FILE)
+        if os.path.exists(POOL_DB):
+            os.remove(POOL_DB)
+            pool._db_conn = None
+            pool._loaded = False
 
         # Use unique topic to avoid contamination
         uid = uuid.uuid4().hex[:8]
@@ -268,12 +272,17 @@ class TestSharedKnowledgePool:
 
     def test_stats(self):
         """Stats must report topic distribution."""
-        from core.harness.memory.shared_pool import SharedKnowledgePool, POOL_FILE
+        from core.harness.memory.shared_pool import SharedKnowledgePool, POOL_FILE, POOL_DB
 
         pool = SharedKnowledgePool()
         pool._facts.clear()
         if os.path.exists(POOL_FILE):
             os.remove(POOL_FILE)
+        # Phase 34: also clear SQLite
+        if os.path.exists(POOL_DB):
+            os.remove(POOL_DB)
+            pool._db_conn = None  # force re-init
+            pool._loaded = False
 
         pool.publish('l5ta', 'data a')
         pool.publish('l5tb', 'data b')

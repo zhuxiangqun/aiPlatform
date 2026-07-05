@@ -230,6 +230,126 @@ class DynamicOrchestrator:
         """List all registered capabilities and their available agents."""
         return dict(self.CAPABILITY_MAP)
 
+    async def decompose_task(
+        self, complex_output: str, source_agent_id: str
+    ) -> List[Dict[str, str]]:
+        """Phase 35: LLM-based task decomposition.
+
+        When agent output is complex (multi-domain), use LLM to break it into
+        subtasks that can be handled by different sub-agents.
+
+        Returns list of {capability, task_description} dicts.
+        """
+        if not complex_output or len(complex_output) < 20:
+            return []
+
+        try:
+            from core.harness.syscalls import sys_llm_generate
+            from core.harness.utils.model_injection import best_model_for_purpose, create_selected_adapter
+
+            capabilities_str = ", ".join(self.CAPABILITY_MAP.keys())
+            prompt = f"""Break down the following agent output into subtasks that require
+different capabilities. Available capabilities: {capabilities_str}.
+
+Agent output:
+{complex_output[:2000]}
+
+For each subtask, output a JSON object:
+{{"capability": "review|refactor|analysis|security|test", "task": "<subtask description>"}}
+
+Return ONLY a JSON array of these objects. Maximum 5 subtasks."""
+
+            model_name = best_model_for_purpose("code-gen")
+            adapter = create_selected_adapter(model_name=model_name)
+            if not adapter:
+                return await self._heuristic_decompose(complex_output)
+
+            result = await sys_llm_generate(
+                adapter, prompt,
+                trace_context={"source": "task_decompose", "agent": source_agent_id},
+            )
+            content = getattr(result, "content", str(result)) if result else ""
+
+            # Parse JSON array from output
+            import re as _re
+            json_match = _re.search(r'\[.*\]', content, _re.DOTALL)
+            if json_match:
+                subtasks = json.loads(json_match.group())
+                if isinstance(subtasks, list) and len(subtasks) > 0:
+                    logger.info(
+                        "[orchestrator] decomposed into %d subtasks", len(subtasks)
+                    )
+                    return subtasks
+
+            return await self._heuristic_decompose(complex_output)
+        except Exception as e:
+            logger.debug("task decomposition failed: %s, falling back to heuristic", e)
+            return await self._heuristic_decompose(complex_output)
+
+    async def _heuristic_decompose(self, text: str) -> List[Dict[str, str]]:
+        """Fallback: keyword-based decomposition without LLM."""
+        subtasks = []
+        lower = text.lower()
+
+        # Simple keyword dispatch
+        kw_map = {
+            'review': r'review|审查|检查|审核',
+            'refactor': r'refactor|重构|优化|改进',
+            'analysis': r'analyz|分析|诊断|排查|investigat',
+            'security': r'secur|安全|威胁|漏洞|vulnerab',
+            'test': r'test|测试|验证|validate|verify',
+        }
+
+        for cap, pattern in kw_map.items():
+            if re.search(pattern, lower):
+                subtasks.append({
+                    "capability": cap,
+                    "task": f"Handle {cap} aspects of: {text[:200]}",
+                })
+
+        return subtasks[:3]  # max 3 heuristic subtasks
+
+    async def execute_complex_task(
+        self,
+        complex_output: str,
+        session_id: str,
+        *,
+        source_agent_id: str = "",
+        max_concurrent: int = 3,
+    ) -> List[Dict[str, Any]]:
+        """Phase 35: Full pipeline — decompose + spawn + aggregate.
+
+        Returns list of {capability, target_agent, result, status} per subtask.
+        """
+        subtasks = await self.decompose_task(complex_output, source_agent_id)
+        if not subtasks:
+            return []
+
+        tasks = [
+            {"capability": s["capability"], "task": s["task"]}
+            for s in subtasks
+        ]
+        results = await self.spawn_parallel(
+            tasks, session_id, source_agent_id=source_agent_id,
+            max_concurrent=max_concurrent,
+        )
+
+        aggregated = []
+        for i, r in enumerate(results):
+            if r:
+                aggregated.append({
+                    "capability": subtasks[i]["capability"] if i < len(subtasks) else "unknown",
+                    "target_agent": r.get("target_agent", ""),
+                    "result": r.get("result_text", "")[:500],
+                    "status": r.get("status", "failed"),
+                })
+
+        logger.info(
+            "[orchestrator] complex task: %d subtasks → %d completed",
+            len(subtasks), len(aggregated),
+        )
+        return aggregated
+
     def stats(self) -> Dict[str, Any]:
         """Orchestration statistics."""
         return {
