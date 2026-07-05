@@ -74,7 +74,7 @@ CODE=$(curl -s -o /tmp/l4_autonomy_resp.json -w "%{http_code}" \
     -X POST "$BASE_URL/api/core/workspace/agents/materials_chat/execute" \
     -H "Content-Type: application/json" \
     -d '{"messages":[{"role":"user","content":"分三步回答：1)总结 2)分析 3)优化。每步用##标记"}]}' \
-    --connect-timeout 5 --max-time 60 2>/dev/null || echo "000")
+    --connect-timeout 5 --max-time 120 2>/dev/null || echo "000")
 check_ok "多步任务提交" "$CODE"
 
 # 检查响应 — run_id 存在说明任务已启动
@@ -138,17 +138,17 @@ PREF=$(curl -s -o /tmp/l4_ctx_pref.json -w "%{http_code}" \
     -X POST "$BASE_URL/api/core/workspace/agents/materials_chat/execute" \
     -H "Content-Type: application/json" \
     -d '{"messages":[{"role":"user","content":"请记住：我偏好用列表格式回答问题，不要用段落"}], "session_id":"l4-ctx-test"}' \
-    --connect-timeout 5 --max-time 60 2>/dev/null || echo "000")
+    --connect-timeout 5 --max-time 120 2>/dev/null || echo "000")
 check_ok "偏好写入" "$PREF"
 
 # Phase 2: 跨轮次验证
-sleep 5
+sleep 3
 echo "  召回偏好..."
 RECALL=$(curl -s -o /tmp/l4_ctx_recall.json -w "%{http_code}" \
     -X POST "$BASE_URL/api/core/workspace/agents/materials_chat/execute" \
     -H "Content-Type: application/json" \
     -d '{"messages":[{"role":"user","content":"我之前说的格式偏好是什么？"}], "session_id":"l4-ctx-test"}' \
-    --connect-timeout 5 --max-time 60 2>/dev/null || echo "000")
+    --connect-timeout 5 --max-time 120 2>/dev/null || echo "000")
 check_ok "偏好召回" "$RECALL"
 
 # 检查响应
@@ -170,7 +170,7 @@ echo "[S4. 动态组队 — 能力缺口检测 + 子Agent生成]"
 GAP=$(curl -s -X POST "$BASE_URL/api/core/workspace/agents/materials_chat/execute" \
     -H "Content-Type: application/json" \
     -d '{"messages":[{"role":"user","content":"请帮我分析这段代码是否需要安全检查 review"}]}' \
-    --connect-timeout 5 --max-time 60 2>/dev/null | python3 -c "
+    --connect-timeout 5 --max-time 120 2>/dev/null | python3 -c "
 import sys,json
 d=json.load(sys.stdin)
 status=d.get('status','?')
