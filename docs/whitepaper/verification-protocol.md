@@ -2,7 +2,7 @@
 title: "aiPlat L4 评估验证协议"
 type: audit-protocol
 domain: aiplat-core
-version: 3.0.0
+version: 4.0.0
 date: 2026-07-05
 status: published
 depends_on: docs/whitepaper/aiplat-l4-autonomy-assessment-v3.0.0.md
@@ -159,7 +159,7 @@ wc -l < aiPlat-core/core/harness/integration.py
 | L3 | 无 | ⬜ 已超越 | — |
 | L4 基础 | 能从失败中学习 | ⬜ 已超越 | Phase 24-28 |
 | L4 高级 | 策略学习有对比反馈 | ⬜ 已超越 | Phase 25-28 |
-| **L5** | **策略搜索-评估-比较-回滚闭环** | ✅ | UCB1 StrategySearchEngine (Phase 29) + ToolBootstrap (Phase 31) + DynamicOrchestrator (Phase 32) |
+| **L5** | **策略搜索-评估-比较-回滚闭环** | ✅ | UCB1 (Phase 29) + ToolBootstrap handler.py (Phase 33) + DynamicOrchestrator decompose (Phase 35) |
 
 **判据**：
 ```bash
@@ -172,7 +172,7 @@ grep -c 'class ToolBootstrapEngine' aiPlat-core/core/harness/optimization/tool_b
 grep -c 'class DynamicOrchestrator' aiPlat-core/core/harness/coordination/dynamic_orchestrator.py
 # → 1（Phase 32: 动态组队）
 ```
-**v3.0.0 关键判定**：F 轴和 A 轴已触达 L5。UCB1 算法提供了有理论保证的策略收敛，GoalExecutor 实现了自主闭环执行。C 轴和 E 轴处于 L4+（ToolBootstrap prompt-based + DynamicOrchestrator registry-based），尚未达到完整 L5。
+**v4.0.0 关键判定**：F/A/C 三轴已触达 L5。Phase 33 补齐了 handler.py 代码生成能力（C 轴 L5 的最后一个缺口）。Phase 34 提供了 SQLite WAL 并发（D 轴增强）。Phase 35 提供了 LLM 任务分解（E 轴增强）。D/E 轴仍有分布式同步和 emergent swarm 的深远差距。
 
 ---
 
@@ -558,5 +558,8 @@ echo "=== L5 负检查 === (见 §3.1)"
 | **Phase 30** | **2026-07** | **自主闭环执行器 (GoalExecutor)** | **A** |
 | **Phase 31** | **2026-07** | **工具自举引擎 (ToolBootstrapEngine)** | **C** |
 | **Phase 32** | **2026-07** | **动态组队引擎 (DynamicOrchestrator)** | **E** |
+| **Phase 33** | **2026-07** | **handler.py 代码生成 (ToolBootstrap)** | **C** |
+| **Phase 34** | **2026-07** | **SQLite WAL 分布式 (SharedKnowledgePool)** | **D** |
+| **Phase 35** | **2026-07** | **LLM 任务分解 (DynamicOrchestrator)** | **E** |
 
-**v3.0.0**：Phase 10-32 全部在 2026-07 密集交付。F/A 轴已触达 L5。
+**v4.0.0**：Phase 10-35 全部在 2026-07 密集交付。F/A/C 三轴触达 L5。

@@ -2,13 +2,13 @@
 title: "aiPlat 自主性分级评估：L4 循环工程"
 type: architecture-decision-record
 domain: aiplat-core
-version: 3.0.0
+version: 4.0.0
 date: 2026-07-05
 status: published
 authors: [aiPlat Architecture Team]
 reviewers: [External Review]
-tags: [autonomy, L4+, loop-engineering, self-healing, evaluation, L5-proximate, ucb1, bootstrapping, orchestration]
-related_phases: [Phase 10, Phase 11, Phase 12, Phase 13, Phase 14, Phase 15, Phase 16, Phase 17, Phase 18, Phase 19, Phase 20, Phase 21, Phase 22, Phase 23, Phase 24, Phase 25, Phase 26, Phase 27, Phase 28, Phase 29, Phase 30, Phase 31, Phase 32]
+tags: [autonomy, L4+, L5, loop-engineering, self-healing, evaluation, ucb1, bootstrapping, orchestration, handler-codegen]
+related_phases: [Phase 10, Phase 11, Phase 12, Phase 13, Phase 14, Phase 15, Phase 16, Phase 17, Phase 18, Phase 19, Phase 20, Phase 21, Phase 22, Phase 23, Phase 24, Phase 25, Phase 26, Phase 27, Phase 28, Phase 29, Phase 30, Phase 31, Phase 32, Phase 33, Phase 34, Phase 35]
 related_modules:
   - core/harness/execution/pipeline_engine.py
   - core/harness/infrastructure/gates/error_translator.py
@@ -311,8 +311,11 @@ aiPlat 的 L4 能力不是"宣称"出来的，而是 24 个 Phase 递进式构�
 | **30** | **自主闭环执行器（GoalExecutor — 低风险自动执行）** | **A** |
 | **31** | **工具自举引擎（ToolBootstrap — 能力 gap→生成→验证→注册）** | **C** |
 | **32** | **动态组队引擎（DynamicOrchestrator — 能力缺口检测+子Agent生成）** | **E** |
+| **33** | **handler.py 代码生成（ToolBootstrap — LLM生成+编译校验+沙箱部署）** | **C** |
+| **34** | **SQLite WAL 分布式（SharedKnowledgePool — 并发读写+跨实例轮询）** | **D** |
+| **35** | **LLM 任务分解（DynamicOrchestrator — decompose→spawn→aggregate）** | **E** |
 
-**核心原则**：每个 Phase 建立在前一个之上。L4+（五轴 L4+, 两轴 L5）是 32 步累积的必然结果。
+**核心原则**：每个 Phase 建立在前一个之上。L4+（五轴 L4+, 两轴 L5）是 35 步累积的必然结果。
 
 ---
 
@@ -345,27 +348,27 @@ Harness    = 执行层（LLM/工具/技能调用、token 管理、错误重试�
 
 ### 五个方向
 
-| 维度 | L4+ 现状 (v3.0.0) | L5 要求 | 差距评估 |
+| 维度 | L4+ 现状 (v4.0.0) | L5 要求 | 差距评估 |
 |------|--------|--------|:--:|
 | **F.自进化** | UCB1 搜索 + 可重现快照 + 数据驱动路由 | 策略搜索-评估-比较-回滚闭环 | ✅ L5 |
 | **A.自主性** | GoalExecutor 自主闭环执行 | Agent 自主选题、定义研究议程 | ✅ L5 |
-| **C.工具** | ToolBootstrap (prompt-based) + 32 Skill | 代码生成→部署→注册全闭环 | L4+ (缺 handler.py 生成) |
-| **D.记忆** | 四层记忆 + SharedKnowledgePool | 分布式同步协议 | L4+ (文件级) |
-| **E.协作** | DynamicOrchestrator (registry-based) | 自主任务分解+自组织 swarm | L4+ (非 emergent) |
+| **C.工具** | ToolBootstrap prompt+handler.py 代码生成 | 代码生成→部署→注册全闭环 | ✅ L5 (handler.py) |
+| **D.记忆** | SharedKnowledgePool SQLite WAL + cross-instance polling | 分布式同步协议 | L4+ (非 gossip) |
+| **E.协作** | DynamicOrchestrator regex+LLM分解+并行spawn | emergent swarm | L4+ (非 emergent) |
 
-### L5 已达成 + 深远方向
+### 已达成 + 深远方向
 
 ```
 ✅ Phase 24-32: F轴 L5 (UCB1搜索) + A轴 L5 (自主闭环)
-✅ Phase 31:     C轴 L4+ (ToolBootstrap prompt-based 创建)
-✅ Phase 32:     E轴 L4+ (DynamicOrchestrator registry-based 编排)
+✅ Phase 33:    C轴 L5 (handler.py 代码生成→验证→部署)
+✅ Phase 34:    D轴 L4+ (SQLite WAL 并发+跨实例轮询)
+✅ Phase 35:    E轴 L4+ (LLM任务分解+启发式回退)
 
-🔲 Phase 33:    C轴完整L5 (handler.py 代码生成→部署→注册)
-🔲 Phase 34:    D轴完整L5 (分布式记忆同步)
-🔲 Phase 35:    E轴完整L5 (emergent swarm)
+🔲 Phase 36:   D轴完整L5 (分布式 gossip 协议)
+🔲 Phase 37:   E轴完整L5 (emergent swarm 自主组队)
 ```
 
-**当前评估**：F 轴和 A 轴已触达 L5 级自主迭代能力。核心搜索问题已通过 UCB1 算法解决，自主闭环已通过 GoalExecutor 实现。C/E 轴正在逼近 L5 门槛——ToolBootstrap 可生成 prompt-based 技能，DynamicOrchestrator 可检测能力缺口并生成子 Agent。
+**当前评估 (v4.0.0)**：F 轴、A 轴、C 轴已触达 L5。ToolBootstrap 现已能生成 handler.py 代码并通过编译校验——这是 C 轴 L5 的核心缺口闭合。D/E 轴处于 L4+（SQLite 并发替代了分布式 gossip，LLM 分解替代了 emergent swarm）。
 
 ---
 
@@ -431,15 +434,17 @@ Harness    = 执行层（LLM/工具/技能调用、token 管理、错误重试�
 | **29** | **UCB1 策略搜索算法** — StrategySearchEngine 多臂老虎机 | P0 | ✅ 已实现 |
 | **30** | **自主闭环执行器** — GoalExecutor 低风险自动执行 | P0 | ✅ 已实现 |
 | **31** | **工具自举引擎** — ToolBootstrap prompt-based 创建 | P1 | ✅ 已实现 |
-| **32** | **动态组队引擎** — DynamicOrchestrator registry-based 编排 | P1 | ✅ 已实现 |
+| **32** | **动态组队引擎 (registry-based)** | P1 | ✅ |
+| **33** | **handler.py 代码生成 (ToolBootstrap)** | P1 | ✅ |
+| **34** | **SQLite WAL 分布式 (SharedKnowledgePool)** | P2 | ✅ |
+| **35** | **LLM 任务分解 (DynamicOrchestrator)** | P2 | ✅ |
 
 ### 深远方向
 
 | Phase | 内容 | 优先级 |
 |:---:|------|:--:|
-| **33** | **C 轴完整 L5** — handler.py 代码生成→部署→注册 | P1 |
-| **34** | **D 轴完整 L5** — 分布式记忆同步 | P2 |
-| **35** | **E 轴完整 L5** — emergent swarm 自主组队 | P2 |
+| **36** | **D 轴完整 L5** — 分布式 gossip 同步 | P2 |
+| **37** | **E 轴完整 L5** — emergent swarm 自主组队 | P2 |
 
 ### 行业对标
 
@@ -464,3 +469,4 @@ Harness    = 执行层（LLM/工具/技能调用、token 管理、错误重试�
 > *v1.0.0: Phase 24, L4基础*
 > *v2.0.0: Phase 28, L4(L5-proximate), F轴L4高级*
 > *v3.0.0: Phase 32, L4+(五轴L4+两轴L5), F/A轴触达L5*
+> *v4.0.0: Phase 35, L4+(三轴L5), C轴通过handler.py代码生成触达L5*
