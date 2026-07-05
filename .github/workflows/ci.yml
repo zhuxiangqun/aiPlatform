@@ -118,5 +118,16 @@ jobs:
           tags: |
             ghcr.io/${{ github.repository }}/aiplat-core:latest
             ghcr.io/${{ github.repository }}/aiplat-core:${{ github.sha }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+           cache-from: type=gha
+           cache-to: type=gha,mode=max
+      - name: Deploy to staging
+        if: false  # Enable when K8s cluster is available
+        run: |
+          echo "Deploying to staging..."
+          kubectl set image deployment/aiplat-core \
+            aiplat-core=ghcr.io/${{ github.repository }}/aiplat-core:${{ github.sha }} \
+            -n aiplat --record
+      - name: Notify release
+        run: |
+          bash scripts/notify-release.sh deployed "aiplat-core ${{ github.sha }}"
+
