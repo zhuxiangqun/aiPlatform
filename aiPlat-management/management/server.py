@@ -221,8 +221,9 @@ def create_app() -> FastAPI:
                 "infra": "/api/infra",
                 "core": "/api/core",
                 "alerting": "/api/alerting",
-                "alerts": "/api/alerts",  # 别名
+                "alerts": "/api/alerts",
                 "diagnostics": "/api/diagnostics",
+                "overview": "/overview/overview.html",
             }
         }
     
