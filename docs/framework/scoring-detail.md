@@ -2,7 +2,7 @@
 title: "aiPlat 三框架逐项评分明细"
 type: scoring-detail
 domain: aiplat-core
-version: 2.4.0
+version: 2.5.0
 date: 2026-07-05
 status: published
 refs:
@@ -192,7 +192,7 @@ bash scripts/verify-l4-pyramid.sh | grep '最大可宣称'
 | 4 | 系统集成 | 10% | 3.5 | MCP协议 + Workflow编排 + API网关 |
 | 5 | 智能体核心 | 10% | 4.5 | L5 Agent + PipelineEngine(5050行) + UCB1搜索 |
 | 6 | 知识治理 | 7% | 4.0 | 本体引擎23模块 + CRAG + 知识全生命周期 |
-| 7 | 开发效率 | 8% | 3.0 | 代码驱动, 无低代码UI, 无文档平台 |
+| 7 | 开发效率 | 8% | 4.0 | 完整Web UI(115路由) + AI自动填充 + 拖拽Workflow + 25诊断面板 |
 | 8 | 可观测性 | 6% | 4.0 | Prometheus + Grafana + Jaeger + OTel |
 | 9 | 生态扩展 | 5% | 3.5 | MCP多Server + Skill注册表 + 插件架构 |
 | 10 | 成本经济性 | 8% | 3.0 | T1-T5分层路由, 无成本Dashboard |
@@ -256,8 +256,8 @@ bash scripts/verify-l4-pyramid.sh | grep '最大可宣称'
 |:--:|------|:--:|------|:--:|
 | T2.6 | SDK 质量 | 3.5 | aiplat-sdk/ — Agent SDK (3行代码创建Agent), 无多语言 | 部分 |
 | T2.7 | API 一致性 | 4.0 | 813 端点 + OpenAPI/Swagger 全层 + RESTful 设计 | 是 |
-| T2.8 | 文档完整性 | 3.0 | 架构文档 (10+ docs/), 无 API Reference, 无快速入门 | 部分 |
-| T2.9 | 上手难度 | 3.0 | 代码驱动, 需要 Python 3.11 + pip, 无 Web UI 向导 | 部分 |
+| T2.8 | 文档完整性 | 4.0 | 架构文档 + API Reference + Getting Started + Swagger UI (115路由) | 是 |
+| T2.9 | 上手难度 | 4.0 | Web UI + OnboardingWizard(7步) + 4种Agent模板 + AI自动填充 | 是 |
 
 #### 3. Skill 系统 (5项, 权重 10%)
 
@@ -378,7 +378,7 @@ bash scripts/verify-l4-pyramid.sh | grep '最大可宣称'
 | 多模态能力 | 4 | 3.13 | 4.0 | 1.0 |
 | Agent 框架 | 6 | 4.42 | 4.5 | 4.0 |
 | Agent 智能性 | 5 | 4.40 | 4.5 | 4.0 |
-| 开发者体验 (DX) | 4 | 3.38 | 4.0 | 3.0 |
+| 开发者体验 (DX) | 4 | 4.00 | 4.0 | 4.0 |
 | Skill 系统 | 5 | 3.90 | 4.5 | 3.5 |
 | MCP 协议 | 6 | 3.75 | 4.5 | 3.0 |
 | Workflow | 7 | 4.14 | 4.5 | 3.0 |

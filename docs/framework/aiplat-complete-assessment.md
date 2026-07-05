@@ -2,7 +2,7 @@
 title: "aiPlat 综合评估报告 — 三框架评估"
 type: evaluation-report
 domain: aiplat-core
-version: 2.4.0
+version: 2.5.0
 date: 2026-07-05
 status: published
 refs:
@@ -254,7 +254,7 @@ pytest tests/autonomy/test_l5_capabilities.py::TestUCB1Convergence -v
 
 ## 4. 框架三：三层企业评估（12-9-9）
 
-### 4.1 宏观业务层 — 3.2/5.0（基础级上限）
+### 4.1 宏观业务层 — 3.4/5.0（基础级上限）
 
 | # | 维度 | 权重 | 得分 | 关键依据 |
 |:--:|------|:--:|:--:|------|
@@ -310,7 +310,7 @@ pytest tests/autonomy/test_l5_capabilities.py::TestUCB1Convergence -v
 
 | 层级 | 得分 | 等级 |
 |:---|:--:|:---|
-| 宏观业务层 | 3.2 | 基础级上限 |
+| 宏观业务层 | 3.4 | 基础级上限 |
 | 微观技术层 | 4.0 | 优秀级 |
 | 架构底座层 | 3.75 | 基础级上限 |
 | **综合** | **3.1** | **基础级** |
