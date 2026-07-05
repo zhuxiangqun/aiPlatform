@@ -2,7 +2,7 @@
 title: "aiPlat 三框架逐项评分明细"
 type: scoring-detail
 domain: aiplat-core
-version: 1.0.0
+version: 2.0.0
 date: 2026-07-05
 status: published
 refs:

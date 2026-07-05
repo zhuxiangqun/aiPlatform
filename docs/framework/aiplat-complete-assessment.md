@@ -2,16 +2,17 @@
 title: "aiPlat 综合评估报告 — 三框架评估"
 type: evaluation-report
 domain: aiplat-core
-version: 1.0.0
+version: 2.0.0
 date: 2026-07-05
 status: published
 refs:
   - docs/framework/aiplat-autonomy-framework.md
-  - docs/whitepaper/verification-protocol.md
+  - docs/framework/scoring-detail.md
+  - docs/framework/verification-protocol.md
 frameworks:
-  - L1-L5 Autonomy Rating
+  - L1-L5 Autonomy Rating (18 items)
   - Engineering Maturity (54 items)
-  - Enterprise Three-Layer (12-9-9)
+  - Enterprise Three-Layer (12+83+9 = 104 items)
 tags: [evaluation, L5, engineering-maturity, enterprise-assessment]
 ---
 
@@ -326,53 +327,44 @@ pytest tests/autonomy/test_l5_capabilities.py::TestUCB1Convergence -v
          L1-L5 自主性               工程落地              三层企业
          "多聪明"                  "能不能持续"           "多好"
          ─────────                ──────────             ─────
-         L5 完全自主               原型级                 基础级
+         L5 完全自主               实验级                 基础级
               │                      │                      │
               │     ┌────────────────┼────────────────┐     │
               │     │                │                │     │
               ▼     ▼                ▼                ▼     ▼
-         微观技术极强    ← 鸿沟 →    工程保障缺失    ← 鸿沟 →  商业化不足
-         
-         Agent 能自我进化           一键发布做不到            用户自己配
-         策略能自主选择             测试不自动跑              没有控制台
-         知识能跨实例同步           代码没有 CI               全靠命令行
+         六轴全 L5           CI/CD 已补齐 (50%→69%)   微观层 4.0 (优秀)
+         自主性最强           测试维度 80%               宏观层 3.1 (待补)
+         UCB1收敛闭环         代码质量 87.5%             部署运维待提升
 ```
 
-### 优势（微观技术层 4.1）
+### 优势
 
-1. **L5 级自主性** — UCB1 策略搜索 + GoalExecutor 闭环 + ToolBootstrap 代码生成
-2. **全栈可观测性** — Prometheus + Grafana + Jaeger + OTel, 健康检查全覆盖
-3. **架构纪律** — 4 层依赖方向强制执行, arch_guard 76 规则, 15 维审计矩阵
-4. **测试覆盖** — 100+ test files, 17→30 项 L5 能力深度测试
-5. **39 Phase 递进** — 每个 Phase 建立在前一个之上, 零技术债务
+1. **L5 级自主性** — 六轴全 L5, UCB1 策略搜索有理论保证的收敛
+2. **智能体体系完整** — ReAct/Plan/Reflection 等 8 种 agent_type + PipelineEngine 5050 行
+3. **全栈可观测性** — Prometheus + Grafana + Jaeger + OTel, SLO 定义 + 错误预算
+4. **架构纪律** — 4 层严格分离, arch_guard 76 规则, 15 维审计矩阵
+5. **自进化闭环** — ErrorTranslator(诊断) → UCB1(搜索) → GoalExecutor(执行) → Tracker(学习)
+6. **测试覆盖** — 100+ test files, 30 项 L5 能力深度测试, 5 场景 curl 端到端
 
-### 缺口（按优先级）
+### 短板（按最低子项原则）
 
-| 优先级 | 框架 | 维度 | 缺失项 | 影响 |
-|:---:|:---|:---|------|------|
-| **P0** | 工程 | 3.1 | **CI/CD 流水线** | 一票否决, 拉死全局 |
-| P1 | 工程 | 1.1 | 标准 linter (ruff/mypy) | 代码规范不可检验 |
-| P1 | 三层/宏观 | 11 | 多区域部署 + RTO/RPO | 灾难恢复不可靠 |
-| P1 | 三层/架构 | 5 | K8s/Helm/GitOps | 生产部署无编排 |
-| P2 | 工程 | 5.3 | dependabot/依赖扫描 | 供应链安全风险 |
-| P2 | 三层/宏观 | 2 | EU AI Act 合规计划 | 2026.8 全面适用 |
-| P2 | 三层/宏观 | 7 | 低代码 UI + 文档平台 | 非技术用户不可用 |
+| 优先级 | 框架 | 维度 | 当前 | 目标 | 预估工作量 |
+|:---:|:---|:---|:--:|:--:|:--:|
+| P0 | 三层/宏观 | 合规伦理 | 2.5 | 3.0 | 需法务 (EU AI Act) |
+| P1 | 微观 | 多模态-视频 | 1.0 | 2.0 | 视频解析集成 |
+| P1 | 工程 | DAST (5.2) | ❌ | ✅ | OWASP ZAP CI |
+| P2 | 微观 | 性能基线 | 3.25 | 3.5 | 压力测试自动化 |
+| P2 | 微观 | 开发者体验 | 3.38 | 3.5 | API Reference + 快速入门 |
 
-### 升级路径
+### 各框架定级（最低子项原则）
 
-```
-Phase 39: GitHub Actions CI/CD (.github/workflows/)        ← P0
-Phase 40: ruff + mypy + pre-commit strict mode              ← P1
-Phase 41: K8s Helm charts ✅ (deploy/helm/aiplat/)          ← P1
-Phase 42: dependabot + bandit ✅ (security 50→62.5%)        ← P2
-```
+| 框架 | 子项数 | 最低子项 | 整体定级 |
+|:---|:--:|:--|:--:|
+| **L1-L5 自主性** | 18 项 | A3(目标自主设定)=L4+ | **L5** (六轴一致L5/L4+) |
+| **工程落地** | 54 项 | CI/CD 68.75% | **实验级** (最低维) |
+| **三层企业** | 104 项 | 宏观层 3.1/5.0 | **基础级** (最低层) |
 
-### 一句话总结
-
-> **aiPlat 是一个 L5 级 Agent 大脑搭载在原型级工程底座上。**
-> 微观技术能力全球领先（自主性 L5、可观测性 75%、架构 70%），但缺失 CI/CD
-> 导致工程评估一票否决。补齐 CI/CD（Phase 39）是当前最高优先级。
-> 商业化需要补齐低代码 UI、多区域部署、合规认证。
+> **升级路径**：CI/CD 已补齐 (6.25%→68.75%)，一票否决已解除。下一步补齐 DAST、视频处理、合规认证。
 
 ---
 
