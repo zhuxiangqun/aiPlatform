@@ -20,11 +20,13 @@ jobs:
           python-version: "3.11"
           cache: pip
       - name: Install dependencies
-        run: pip install -e ".[dev]" || pip install ruff mypy
+        run: pip install -e ".[dev]" || pip install ruff mypy radon
       - name: Ruff lint
         run: ruff check core/ --ignore F821
       - name: MyPy type check
         run: mypy core/ --ignore-missing-imports || true
+      - name: Radon complexity
+        run: radon cc core/ -a -nc | tail -20 || true
 
   test:
     name: Test (pytest)
