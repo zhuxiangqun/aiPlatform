@@ -2906,5 +2906,76 @@ __all__ = [
     "write_atom", "write_atoms_batch", "atomize_document",
     "detect_contradicting_atoms", "build_contradiction_page",
     "create_collection", "delete_collection", "list_collections",
-    "update_page", "delete_page", "delete_all_pages",
+    "update_page",     "delete_page", "delete_all_pages",
+    "classify_page", "DATA_CLASSIFICATION",
 ]
+
+# ── Phase 53: Data Classification ──
+
+DATA_CLASSIFICATION = {
+    "public":       {"level": 0, "label": "公开",     "desc": "可对外发布"},
+    "internal":     {"level": 1, "label": "内部",     "desc": "仅限组织内部"},
+    "confidential": {"level": 2, "label": "保密",     "desc": "受限访问"},
+    "sensitive_pii":{"level": 3, "label": "敏感(PII)","desc": "含个人身份信息"},
+    "restricted":   {"level": 4, "label": "受限",     "desc": "最高安全级别"},
+}
+
+_PII_PATTERNS = [
+    (r"\b\d{3}-\d{2}-\d{4}\b", "SSN"),          # SSN-like
+    (r"\b\d{16,19}\b", "payment_card"),           # credit card
+    (r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b", "email"),
+    (r"\b1[3-9]\d{9}\b", "cn_phone"),             # Chinese phone
+]
+
+
+def classify_page(title: str = "", body: str = "", *, collection_id: str = "default") -> Dict[str, Any]:
+    """Phase 53: Auto-classify wiki page based on content patterns.
+
+    Returns {level, classification, pii_detected, reasons}.
+    Tries to read existing marking from page frontmatter first.
+    """
+    # Check existing frontmatter
+    existing_marking = "public"
+    if title:
+        page = read_page(title, collection_id=collection_id)
+        if page:
+            existing_marking = page.get("marking", "public")
+
+    text = (body or "").lower()
+    reasons = []
+    pii_hits = []
+    classification = "public"
+    level = 0
+
+    # PII detection
+    for pattern, label in _PII_PATTERNS:
+        if re.search(pattern, body or ""):
+            pii_hits.append(label)
+    if pii_hits:
+        classification = "sensitive_pii"
+        level = 3
+        reasons.append(f"pii_detected: {pii_hits}")
+
+    # Confidential keywords
+    conf_kw = ["password", "secret", "token", "api_key", "private_key", "credential",
+               "加密密钥", "凭证", "密码", "令牌"]
+    if not pii_hits and any(kw in text for kw in conf_kw):
+        classification = "confidential"
+        level = 2
+        reasons.append("confidential_keywords")
+
+    # Respect explicit marking
+    if existing_marking != "public":
+        classification = existing_marking
+        level = DATA_CLASSIFICATION.get(existing_marking, {}).get("level", 0)
+        reasons.insert(0, f"explicit_marking:{existing_marking}")
+
+    return {
+        "classification": classification,
+        "level": level,
+        "label": DATA_CLASSIFICATION.get(classification, {}).get("label", ""),
+        "pii_detected": bool(pii_hits),
+        "pii_hits": pii_hits,
+        "reasons": reasons,
+        "marking": existing_marking,
+    }

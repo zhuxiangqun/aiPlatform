@@ -7,6 +7,7 @@ Handles JSON-RPC protocol parsing and message processing for MCP.
 import asyncio
 import json
 import sys
+import time
 from typing import Any, AsyncGenerator, Callable, Optional
 import aiohttp
 
@@ -85,6 +86,30 @@ class MCPProtocolHandler:
             result=result,
             error=error,
             id=request_id
+        )
+
+    def create_sampling_request(
+        self,
+        messages: list[dict],
+        *,
+        max_tokens: int = 500,
+        model_preferences: Optional[dict] = None,
+        request_id: Optional[int] = None,
+    ) -> JSONRPCRequest:
+        """Phase 53: Create a sampling/createMessage request (MCP Sampling).
+
+        Allows the MCP server to request LLM completion from the client.
+        """
+        params = {
+            "messages": messages,
+            "maxTokens": max_tokens,
+        }
+        if model_preferences:
+            params["modelPreferences"] = model_preferences
+        return self.create_request(
+            method="sampling/createMessage",
+            params=params,
+            request_id=request_id or int(time.time() * 1000),
         )
 
 
