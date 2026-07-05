@@ -271,9 +271,9 @@ pytest tests/autonomy/test_l5_capabilities.py::TestUCB1Convergence -v
 | 12 | 实施落地(FDE) | 8% | 2.5 | 无 CI/CD, 无容器编排, 无 GitOps |
 | **加权** | | **100%** | **3.1** | |
 
-### 4.2 微观技术层 — 4.2/5.0（优秀级，58 项）
+### 4.2 微观技术层 — 4.0/5.0（优秀级，83 项）
 
-> 详细 58 项逐项评分见 `docs/framework/scoring-detail.md` §微观技术层。
+> 详细 83 项逐项评分见 `docs/framework/scoring-detail.md` §微观技术层。
 
 | 组件 | 项数 | 平均分 | 最高 | 最低 |
 |:---|:--:|:--:|:--:|:--:|
@@ -310,7 +310,7 @@ pytest tests/autonomy/test_l5_capabilities.py::TestUCB1Convergence -v
 | 层级 | 得分 | 等级 |
 |:---|:--:|:---|
 | 宏观业务层 | 3.1 | 基础级 |
-| 微观技术层 | 4.2 | 优秀级 |
+| 微观技术层 | 4.0 | 优秀级 |
 | 架构底座层 | 3.5 | 基础级 |
 | **综合** | **3.1** | **基础级** |
 

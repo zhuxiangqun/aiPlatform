@@ -220,6 +220,15 @@ bash scripts/verify-l4-pyramid.sh | grep '最大可宣称'
 | T0.8 | 动态注入 | 4.5 | RunContext 三层注入 (caller→DataSource→GraphIndex) | 是 |
 | T0.9 | 跨域路由 | 4.5 | DomainRouter 3层级联 + 本体YAML驱动 + CRAG 3级回退 | 是 |
 
+#### 0.9. 多模态能力 (4项, 权重 6%)
+
+| # | 评估项 | 得分 | 证据 | 一级 |
+|:--:|------|:--:|------|:--:|
+| T0.10 | 图片处理 | 3.5 | InfraOCRAdapter (Tesseract/PaddleOCR) + DocumentParser(5格式) | 部分 |
+| T0.11 | 音频处理 | 4.0 | InfraAudioAdapter (Whisper/faster_whisper) + transcriber.py | 是 |
+| T0.12 | 视频处理 | 1.0 | 无视频解析能力 | 否 |
+| T0.13 | 多格式文档 | 4.0 | DocumentParser — MD/HTML/TXT/PDF/DOCX 5格式 | 是 |
+
 #### 1. Agent 框架与运行时 (6项, 权重 12%)
 
 | # | 评估项 | 得分 | 证据 | 一级 |
@@ -240,6 +249,15 @@ bash scripts/verify-l4-pyramid.sh | grep '最大可宣称'
 | T2.3 | 自我反思与修正 | 4.5 | _meta_optimize + GoalExecutor + completion_gate | 是 |
 | T2.4 | 长期记忆管理 | 4.5 | 四层记忆 (Working/Episodic/Semantic/TaskSkills) | 是 |
 | T2.5 | 规划执行效率 | 4.0 | T1-T5 模型降级 + token_budget 管理 | 是 |
+
+#### 2.5. 开发者体验 DX (4项, 权重 7%)
+
+| # | 评估项 | 得分 | 证据 | 一级 |
+|:--:|------|:--:|------|:--:|
+| T2.6 | SDK 质量 | 3.5 | aiplat-sdk/ — Agent SDK (3行代码创建Agent), 无多语言 | 部分 |
+| T2.7 | API 一致性 | 4.0 | 813 端点 + OpenAPI/Swagger 全层 + RESTful 设计 | 是 |
+| T2.8 | 文档完整性 | 3.0 | 架构文档 (10+ docs/), 无 API Reference, 无快速入门 | 部分 |
+| T2.9 | 上手难度 | 3.0 | 代码驱动, 需要 Python 3.11 + pip, 无 Web UI 向导 | 部分 |
 
 #### 3. Skill 系统 (5项, 权重 10%)
 
@@ -274,6 +292,34 @@ bash scripts/verify-l4-pyramid.sh | grep '最大可宣称'
 | T5.6 | 断点续执行 | 4.5 | _checkpoints + _load_checkpoints_from_disk + _snapshot | 是 |
 | T5.7 | 运行时动态调整 | 3.0 | _meta_optimize 修改 stage, 无 real-time canvas | 部分 |
 
+#### 5.5. 部署与交付 (5项, 权重 8%)
+
+| # | 评估项 | 得分 | 证据 | 一级 |
+|:--:|------|:--:|------|:--:|
+| T5.8 | 容器化 | 4.0 | docker-compose (5服务) + Dockerfile + .dockerignore | 是 |
+| T5.9 | CI/CD 成熟度 | 3.5 | 3 GitHub Actions workflows (ci/guard/verification), 无 K8s 自动部署 | 部分 |
+| T5.10 | 回滚能力 | 4.0 | scripts/rollback.sh (kubectl undo + Helm rollback) | 是 |
+| T5.11 | 多环境支持 | 3.5 | env var 驱动 + docker-compose profile + Helm values.yaml | 部分 |
+| T5.12 | 健康检查 | 4.5 | 每层 /health 端点 + Docker HEALTHCHECK + K8s liveness/readiness | 是 |
+
+#### 5.7. 性能基线 (4项, 权重 6%)
+
+| # | 评估项 | 得分 | 证据 | 一级 |
+|:--:|------|:--:|------|:--:|
+| T5.13 | 吞吐量基线 | 3.0 | benchmark_ontology.py + benchmark_traversal.py, 未持续跟踪 | 部分 |
+| T5.14 | P95 延迟 | 3.5 | Prometheus histogram + Grafana 面板, 无自动化基线告警 | 部分 |
+| T5.15 | 并发上限 | 3.0 | HPA 2-10 副本定义, 未做压力测试 | 部分 |
+| T5.16 | 资源消耗 | 3.5 | K8s requests/limits + Docker stats, 无 profile 分析 | 部分 |
+
+#### 5.8. 可靠性 (4项, 权重 6%)
+
+| # | 评估项 | 得分 | 证据 | 一级 |
+|:--:|------|:--:|------|:--:|
+| T5.17 | 崩溃恢复 | 4.5 | _checkpoint + _snapshot + crash restore + graph_snapshots | 是 |
+| T5.18 | 数据一致性 | 4.0 | SHA-256 audit hash chain + 强一致性检查 | 是 |
+| T5.19 | 长时运行稳定性 | 3.5 | _retry_loop 6种退出 + _stagnation检测, 无压力测试验证 | 部分 |
+| T5.20 | checkpoint 恢复 | 4.5 | _load_checkpoints_from_disk + restore_execution_snapshot | 是 |
+
 #### 6. 记忆系统 (6项, 权重 10%)
 
 | # | 评估项 | 得分 | 证据 | 一级 |
@@ -294,6 +340,15 @@ bash scripts/verify-l4-pyramid.sh | grep '最大可宣称'
 | T7.3 | 自愈闭环 | 4.5 | 诊断(ErrorTranslator)→路由(Phase24)→快照(25)→学习(26) | 是 |
 | T7.4 | 知识晶体化 | 4.0 | Skill Draft → Docker沙盒 → 人工审批 → SkillRegistry | 是 |
 | T7.5 | A/B 实验 | 3.0 | PromptOptimizer champion-challenger, 无多臂对照 | 部分 |
+
+#### 7.5. 成本效率 (4项, 权重 6%)
+
+| # | 评估项 | 得分 | 证据 | 一级 |
+|:--:|------|:--:|------|:--:|
+| T7.6 | 单任务成本 | 3.5 | T1-T5 分层路由 + best_model_for_purpose, 无实时成本 Dashboard | 部分 |
+| T7.7 | Token 消耗优化 | 4.0 | 5级压缩 + 温度感知剪枝 + token_budget + 预算重分配 | 是 |
+| T7.8 | T1-T5 路由 | 4.5 | ModelTierRouter 5级分层 + cheapest capable model 选择 | 是 |
+| T7.9 | 性价比 | 3.0 | 路由降级 + CostEstimate, 无跨模型对比报告 | 部分 |
 
 #### 8. 模型治理 (5项, 权重 11%)
 
@@ -320,18 +375,26 @@ bash scripts/verify-l4-pyramid.sh | grep '最大可宣称'
 |:---|:--:|:--:|:--:|:--:|
 | 提示词工程 | 4 | 4.25 | 4.5 | 4.0 |
 | 上下文工程 | 5 | 4.40 | 4.5 | 4.0 |
+| 多模态能力 | 4 | 3.13 | 4.0 | 1.0 |
 | Agent 框架 | 6 | 4.42 | 4.5 | 4.0 |
 | Agent 智能性 | 5 | 4.40 | 4.5 | 4.0 |
+| 开发者体验 (DX) | 4 | 3.38 | 4.0 | 3.0 |
 | Skill 系统 | 5 | 3.90 | 4.5 | 3.5 |
 | MCP 协议 | 6 | 3.75 | 4.5 | 3.0 |
 | Workflow | 7 | 4.14 | 4.5 | 3.0 |
+| 部署与交付 | 5 | 3.90 | 4.5 | 3.5 |
+| 性能基线 | 4 | 3.25 | 3.5 | 3.0 |
+| 可靠性 | 4 | 4.13 | 4.5 | 3.5 |
 | 记忆系统 | 6 | 4.42 | 4.5 | 4.0 |
 | 自学习 | 5 | 4.20 | **5.0** | 3.0 |
+| 成本效率 | 4 | 3.75 | 4.5 | 3.0 |
 | 模型治理 | 5 | 3.50 | 4.0 | 3.0 |
 | 数据治理 | 4 | 3.75 | 4.0 | 3.0 |
-| **加权总分** | **58** | **4.16** | — | — |
+| **加权总分** | **83** | **3.99** | — | — |
 
-**微观技术层：4.2/5.0（优秀级）**
+**微观技术层：4.0/5.0（优秀级）**
+
+> 新增 6 组件 (多模态/DX/部署/性能/可靠性/成本) 后，最低分拉低平均。多模态(视频 1.0)和性能基线(3.25)是主要短板。
 
 ### 架构底座层 — 3.5/5.0（基础级）
 
@@ -377,6 +440,29 @@ bash scripts/verify-l4-pyramid.sh | grep '最大可宣称'
 | P1 | 工程 | 3.3 K8s 部署 | 启用 CI deploy step | 中(需集群) |
 | P2 | 工程 | 6.9 故障演练 | Chaos Mesh/Gremlin | 高 |
 | P2 | 三层/宏观 | 2 合规 | EU AI Act 合规评估 | 高(需法务) |
+
+### 三框架重叠项标注
+
+以下能力在**多个框架中重复出现**，审稿人应注意不重复加分/扣分：
+
+| 能力 | 框架1 (L1-L5) | 框架2 (工程) | 框架3 (三层) | 说明 |
+|:---|:--:|:--:|:--:|:---|
+| 安全 | — | 5.1-5.8 (8项) | 宏观1 (16%) + 架构8 (10%) | 工程层检查存在性(是/否)，三层检查深度(0-5分)。同一能力，不同粒度 |
+| 可观测 | — | 4.1-4.10 (10项) | 宏观8 (6%) | 同上——工程层检查基础设施存在性，三层检查业务覆盖度 |
+| 自进化 | F轴 (3项) | — | 微观7 (11%) | L1-L5 和三层都评估自学习能力，侧重点不同 |
+| CI/CD | — | 3.1-3.8 (8项) | 架构5 (12%) | 工程检查流程存在性，架构检查部署架构合理性 |
+
+### 权重来源说明
+
+| 框架 | 权重来源 | 依据 |
+|:---|:---|:---|
+| L1-L5 | 等权, 六轴取最低 | MIT《2025 AI Agent Index》+ DeepSeek L1-L5 分级 |
+| 工程 54 项 | 各维等权, 维内等权, 一票否决 + 最低维 | 自定义 (行业无统一工程成熟度标准) |
+| 三层企业 | 宏观层 Gartner(16%安全) + IDC(10%集成) 加权 | Gartner 魔力象限 + IDC MarketScape + Forrester Wave |
+| 三层企业 | 微观层 自定义权重 | 信通院"可信AI"能力域 + CLEAR 框架 |
+| 三层企业 | 架构层 自定义权重 | SOLID + ISO/IEC 42001架构要求 |
+
+> **优先级**：L1-L5 评级用于技术前沿展示，工程落地用于内部改进驱动，三层企业用于商业对标。三者权重独立，互不叠加。
 
 ---
 
