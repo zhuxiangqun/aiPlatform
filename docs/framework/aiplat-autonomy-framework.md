@@ -6,7 +6,7 @@ version: 1.0.0
 date: 2026-07-05
 status: published
 authors: [aiPlat Architecture Team]
-integration: docs/whitepaper/verification-protocol.md
+integration: docs/framework/verification-protocol.md
 refs:
   - "MIT 2025 AI Agent Index"
   - "DeepSeek L1-L5 Autonomy Classification"
@@ -303,5 +303,5 @@ bash scripts/verify_whitepaper_refs.sh # 引用校验 (28 项)
 
 > *框架版本 v1.0.0。工程化命名体系。泛用于任何 AI Agent 系统的自我评估。*
 > 
-> *验证协议：`docs/whitepaper/verification-protocol.md`*
+> *验证协议：`docs/framework/verification-protocol.md`*
 > *aiPlat 评估结论已通过 4 层验证（结构 31 项 + 深度 30 项 + 数据 31 项 + 行为 5 场景）。*
