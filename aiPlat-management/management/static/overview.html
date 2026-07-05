@@ -1,82 +1,96 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>aiPlat 系统概览</title>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>aiPlat 控制台</title>
 <style>
 :root{--bg:#0d1117;--card:#161b22;--border:#30363d;--text:#c9d1d9;--green:#3fb950;--yellow:#d2991d;--red:#f85149;--blue:#58a6ff}
 *{margin:0;padding:0;box-sizing:border-box}
-body{font-family:-apple-system,BlinkMacSystemFont,system-ui,sans-serif;background:var(--bg);color:var(--text);padding:24px}
-h1{font-size:24px;margin-bottom:8px}h2{font-size:18px;margin:24px 0 12px}
-.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
-.card{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:16px}
-.card h3{font-size:14px;color:var(--text);opacity:0.7;margin-bottom:8px}
-.card .val{font-size:28px;font-weight:700}
+body{font-family:-apple-system,system-ui,sans-serif;background:var(--bg);color:var(--text);padding:20px;max-width:1200px;margin:0 auto}
+h1{font-size:22px;margin-bottom:4px}h2{font-size:16px;margin:16px 0 8px;opacity:.8}
+a{color:var(--blue);text-decoration:none}a:hover{text-decoration:underline}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:6px;padding:14px}
+.card h3{font-size:12px;opacity:.6;margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px}
+.card .val{font-size:24px;font-weight:600}.card .sub{font-size:12px;opacity:.5;margin-top:4px}
 .green{color:var(--green)}.yellow{color:var(--yellow)}.red{color:var(--red)}.blue{color:var(--blue)}
-.status{display:inline-block;padding:2px 8px;border-radius:12px;font-size:12px;font-weight:600}
-.status.healthy{background:var(--green);color:#000}.status.degraded{background:var(--yellow);color:#000}.status.unhealthy{background:var(--red);color:#fff}
-.loading{text-align:center;padding:40px;opacity:0.5}
-.refresh{background:var(--blue);color:#fff;border:none;padding:8px 16px;border-radius:6px;cursor:pointer;font-size:14px}
-table{width:100%;border-collapse:collapse}
-th,td{padding:8px 12px;text-align:left;border-bottom:1px solid var(--border)}
-th{opacity:0.7;font-weight:600}
-#errors{color:var(--red);font-size:14px}
+.status{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600}
+.healthy{background:var(--green);color:#000}.degraded{background:var(--yellow);color:#000}.unhealthy{background:var(--red);color:#fff}
+.loading{text-align:center;padding:60px;opacity:.3;font-size:18px}
+.btn{background:var(--blue);color:#fff;border:none;padding:6px 14px;border-radius:5px;cursor:pointer;font-size:13px;margin-right:8px}
+.links{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.links a{background:var(--card);border:1px solid var(--border);padding:6px 12px;border-radius:4px;font-size:12px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{padding:6px 10px;text-align:left;border-bottom:1px solid var(--border)}
+th{opacity:.6;font-weight:600}
+#err{color:var(--red);font-size:13px;margin-top:8px}
 </style>
 </head>
 <body>
-<h1>🤖 aiPlat 系统概览</h1>
-<p style="opacity:.5">实时状态 · 自动刷新 30s</p>
-<button class="refresh" onclick="load()">🔄 刷新</button>
+<h1>🤖 aiPlat 控制台</h1>
+<p style="opacity:.4;font-size:13px">L5 元循环工程 · 实时状态 · 30s 刷新</p>
+<div style="margin:10px 0"><button class="btn" onclick="refresh()">🔄 刷新</button></div>
 
-<div id="content" class="loading">加载中...</div>
-<div id="errors"></div>
+<div class="links">
+<a href="/docs" target="_blank">📖 Swagger API</a>
+<a href="/api/diagnostics/health/all" target="_blank">🏥 健康检查</a>
+<a href="../docs/getting-started.md" target="_blank">🚀 快速入门</a>
+<a href="../docs/api-reference.md" target="_blank">📋 API 参考</a>
+<a href="../docs/framework/aiplat-complete-assessment.md" target="_blank">📊 评估报告</a>
+</div>
+
+<div id="main" class="loading">⏳ 连接 aiPlat ...</div>
+<div id="err"></div>
 
 <script>
 const API='http://localhost:8000';
+async function refresh(){
+  const m=document.getElementById('main'),e=document.getElementById('err');e.textContent='';
+  try{
+    const[hl,di]=await Promise.all([
+      fetch(API+'/api/diagnostics/health/all').then(r=>r.json()).catch(()=>null),
+      fetch(API+'/api/diagnostics/guard/run',{method:'POST'}).then(r=>r.json()).catch(()=>null),
+    ]);
 
-async function load(){
-    const el=document.getElementById('content');
-    const err=document.getElementById('errors');
-    err.textContent='';
+    let html='<h2>🏥 四层健康</h2><div class="grid">';
+    let allHealthy=true;
+    if(hl){for(const[l,h]of Object.entries(hl)){
+      const s=h.status||'?';if(s!=='healthy')allHealthy=false;
+      html+=`<div class="card"><h3>${l}</h3><div class="val ${s==='healthy'?'green':s==='degraded'?'yellow':'red'}">${s}</div></div>`;
+    }}
+    html+='</div>';
+
+    // Cost summary
+    html+=`<h2>💰 成本概览</h2><div class="grid">`;
     try{
-        const [hl,di]=await Promise.all([
-            fetch(API+'/api/diagnostics/health/all').then(r=>r.json()).catch(()=>null),
-            fetch(API+'/api/diagnostics/guard/run',{method:'POST'}).then(r=>r.json()).catch(()=>null),
-        ]);
+      const ct=await fetch(API+'/api/core/diagnostics/run-all',{method:'POST'}).then(r=>r.json()).catch(()=>null);
+      if(ct?.checks){for(const c of ct.checks){if(c.module==='self_healing'&&c.details){
+        const d=c.details;html+=`<div class="card"><h3>总请求</h3><div class="val blue">${d.attempts||0}</div></div>`;
+        html+=`<div class="card"><h3>快照</h3><div class="val">${d.snapshots_stored||0}</div></div>`;
+        html+=`<div class="card"><h3>成功率</h3><div class="val ${(d.success_rate_pct||0)>70?'green':'yellow'}">${d.success_rate_pct||0}%</div></div>`;
+        break;
+      }}}
+    }catch(x){}
+    html+='</div>';
 
-        let html='<h2>🏥 四层健康</h2><div class="grid">';
-        if(hl){
-            for(const [layer,h] of Object.entries(hl)){
-                const s=h.status||'unknown';
-                html+=`<div class="card"><h3>${layer}</h3><div class="val ${s==='healthy'?'green':s==='degraded'?'yellow':'red'}">${s}</div></div>`;
-            }
-        }
-        html+='</div>';
-
-        // Verification pyramid
-        html+='<h2>📊 L0-L5 自主性</h2><table>';
-        html+='<tr><th>等级</th><th>名称</th><th>状态</th></tr>';
-        const levels=[{l:'L5',n:'元循环工程',s:true},{l:'L4',n:'循环工程',s:true},{l:'L3',n:'驾驭工程',s:true},{l:'L2',n:'上下文工程',s:true},{l:'L1',n:'提示词工程',s:true},{l:'L0',n:'基础可执行',s:true}];
-        levels.forEach(lv=>{html+=`<tr><td>${lv.l}</td><td>${lv.n}</td><td><span class="status ${lv.s?'healthy':'degraded'}">${lv.s?'✅':'⚠️'}</span></td></tr>`});
-        html+='</table>';
-
-        // Architecture guard
-        if(di){
-            const v=di.violations||[];
-            html+=`<h2>🔒 架构守卫</h2>`;
-            html+=`<div class="card"><h3>规则检查</h3><div class="val ${v.length===0?'green':'yellow'}">${v.length===0?'全部通过':'⚠️'+v.length+' 违规'}</div></div>`;
-            html+=`<p style="margin-top:8px;opacity:.7">总计 ${di.summary?.total_checks||'?'} 条规则</p>`;
-        }
-
-        el.innerHTML=html;
-    }catch(e){
-        el.innerHTML='<div class="loading">无法连接 aiPlat (8000 端口未启动?)</div>';
-        err.textContent=e.message;
+    // Architecture guard
+    if(di){const v=di.violations||[];const tc=di.summary?.total_checks||0;
+      html+=`<h2>🔒 架构守卫</h2><div class="grid">`;
+      html+=`<div class="card"><h3>检查规则</h3><div class="val blue">${tc}</div></div>`;
+      html+=`<div class="card"><h3>违规</h3><div class="val ${v.length===0?'green':'red'}">${v.length}</div><div class="sub">${v.length===0?'全部通过':v.slice(0,3).map(x=>x.section||x.rule||'').join(', ')}</div></div>`;
+      html+=`</div>`;
     }
-}
-load();
-setInterval(load,30000);
+
+    html+=`<h2>📊 L0-L5 自主性</h2><table>`;
+    html+=`<tr><th>等级</th><th>层面</th><th>状态</th></tr>`;
+    [['L5','元循环工程 (Meta-Loop)'],['L4','循环工程 (Loop)'],['L3','驾驭工程 (Harness)'],['L2','上下文工程 (Context)'],['L1','提示词工程 (Prompt)'],['L0','基础可执行 (Script)']].forEach(([l,n])=>{
+      html+=`<tr><td>${l}</td><td>${n}</td><td><span class="status healthy">✅</span></td></tr>`;
+    });
+    html+='</table>';
+
+    m.innerHTML=html;
+  }catch(x){m.innerHTML='<div class="loading">❌ 无法连接 (8000 端口未启动?)</div>';e.textContent=x.message;}
+}refresh();setInterval(refresh,30000);
 </script>
 </body>
 </html>
