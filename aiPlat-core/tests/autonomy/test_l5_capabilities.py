@@ -2,16 +2,17 @@
 L5 capability depth tests — verifies that Phase 25-32 modules do real work,
 not just exist as classes.
 
-Each test imports the module, injects data, exercises the core logic,
-and verifies behavioral output — not just grep -c existence.
+All tests are marked as @pytest.mark.regression — they protect core L5 autonomy.
 """
 
 import sys
 import os
-import pytest
+import pytest  # noqa: F401 — used by @pytest.mark
 import asyncio
 import tempfile
 import uuid
+
+pytestmark = pytest.mark.regression  # All L5 tests are regression-critical
 
 
 # ══════════════════════════════════════════════════════════
