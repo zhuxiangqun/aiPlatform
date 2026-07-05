@@ -600,6 +600,12 @@ def _register_health_checks():
                         executor_stats = get_goal_executor().stats()
                     except Exception:
                         executor_stats = {}
+                    # Phase 31: Tool bootstrap stats
+                    try:
+                        from core.harness.optimization.tool_bootstrap import get_tool_bootstrap
+                        bootstrap_stats = get_tool_bootstrap().stats()
+                    except Exception:
+                        bootstrap_stats = {}
                 except Exception:
                     pass
                 try:
@@ -621,7 +627,8 @@ def _register_health_checks():
                              "shared_knowledge": shared_pool_stats,
                              "goal_generator": str(goal_stats),
                              "search_engine": str(search_stats),
-                             "goal_executor": executor_stats}
+                             "goal_executor": executor_stats,
+                             "tool_bootstrap": bootstrap_stats}
                 )
         reg.register(HealingHealthCheck())
     except Exception as e:

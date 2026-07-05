@@ -71,6 +71,7 @@ class GoalExecutor:
         self._task: Optional[asyncio.Task] = None
         self._history: List[ExecutionRecord] = []
         self._last_scan_ts: float = 0.0
+        self._bootstrapped: set = set()  # Phase 31 debounce
 
     @property
     def enabled(self) -> bool:
@@ -121,7 +122,7 @@ class GoalExecutor:
 
         executed = 0
         for goal in goals[:self._max_per_scan]:
-            success = self._execute_goal(goal)
+            success = await self._execute_goal(goal)
             executed += 1
             self._history.append(ExecutionRecord(
                 goal_id=goal.goal_id,
@@ -137,7 +138,11 @@ class GoalExecutor:
                 len(goals), executed,
             )
 
-    def _execute_goal(self, goal) -> bool:
+    def _has_bootstrapped(self, error_type: str) -> bool:
+        """Phase 31: Check if we've already bootstrapped this error type."""
+        return error_type in self._bootstrapped
+
+    async def _execute_goal(self, goal) -> bool:
         """Execute a single auto-executable goal. Returns success."""
         try:
             if goal.goal_type.value == "strategy_optimize":
@@ -175,6 +180,28 @@ class GoalExecutor:
             elif goal.goal_type.value == "healing_gap":
                 # Not auto-executed (requires real error trigger)
                 pass
+
+            elif goal.goal_type.value == "tool_gap":
+                # Phase 31: Auto-bootstrap tools for recurring patterns
+                # Debounce: only bootstrap once per session
+                evidence = goal.source_evidence
+                error_type = evidence.get("error_type", "")
+                if error_type and not self._has_bootstrapped(error_type):
+                    from core.harness.optimization.tool_bootstrap import get_tool_bootstrap
+                    engine = get_tool_bootstrap()
+                    safe_name = f"{error_type}_diagnostics"
+                    description = f"Automated diagnostic tool for {error_type} errors"
+                    result = await engine.bootstrap(
+                        capability_name=safe_name,
+                        description=description,
+                        auto_approve=True,
+                    )
+                    self._bootstrapped.add(error_type)
+                    logger.info(
+                        "[goal_executor] bootstrapped tool: %s → %s",
+                        safe_name, result.status,
+                    )
+                    return result.status == "registered"
 
         except Exception as e:
             logger.warning("[goal_executor] execution failed for %s: %s", goal.goal_id, e)

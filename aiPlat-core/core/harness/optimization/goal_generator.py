@@ -33,6 +33,7 @@ class GoalType(Enum):
     KNOWLEDGE_STALE = "knowledge_stale"
     SNAPSHOT_DEGRADATION = "snapshot_degradation"
     EXPLORATION_GAP = "exploration_gap"
+    TOOL_GAP = "tool_gap"
 
 
 class Priority(Enum):
@@ -81,6 +82,7 @@ class GoalGenerator:
         goals.extend(self._scan_strategy_optimization())
         goals.extend(self._scan_knowledge_staleness())
         goals.extend(self._scan_exploration_gaps())
+        goals.extend(self._scan_tool_gaps())
         goals.sort(key=lambda g: (g.priority.value, -g.generated_at), reverse=True)
         return goals
 
@@ -219,6 +221,80 @@ class GoalGenerator:
             return goals
         except Exception as e:
             logger.debug("exploration gap scan skipped: %s", e)
+            return []
+
+    def _scan_tool_gaps(self) -> List[Goal]:
+        """Phase 31: Scan for capability gaps that could be filled by bootstrapping tools."""
+        try:
+            from core.harness.memory.shared_pool import get_shared_knowledge_pool
+            pool = get_shared_knowledge_pool()
+            # Check for error patterns that recur but have no dedicated tool
+            error_facts = pool.query("error", limit=10, min_confidence=0.5)
+            error_types = set()
+            for f in error_facts:
+                meta = f.metadata
+                if isinstance(meta, dict) and "error_type" in meta:
+                    error_types.add(meta["error_type"])
+
+            goals = []
+            # If we have multiple error types but no bootstrap tools
+            try:
+                from core.harness.optimization.tool_bootstrap import ToolBootstrapEngine
+                import os as _os
+                bootstrap_dir = ToolBootstrapEngine.SKILLS_DIR
+                existing = len([f for f in _os.listdir(bootstrap_dir)
+                                if _os.path.isdir(_os.path.join(bootstrap_dir, f))
+                                and not f.startswith("_")]) if _os.path.isdir(bootstrap_dir) else 0
+            except Exception:
+                existing = 0
+
+            if len(error_types) >= 3 and existing == 0:
+                goals.append(Goal(
+                    goal_id="tool-gap-bootstrap",
+                    title="Bootstrap initial set of diagnostic tools",
+                    description=f"{len(error_types)} error types detected with no dedicated tools. "
+                                 "Consider bootstrapping diagnostic tools for common errors.",
+                    goal_type=GoalType.TOOL_GAP,
+                    priority=Priority.MEDIUM,
+                    estimated_impact="Increases system resilience with dedicated diagnostic tools",
+                    auto_executable=True,
+                    suggested_action="Run ToolBootstrapEngine for top error types",
+                    source_evidence={"error_types": list(error_types)[:5], "existing_tools": existing},
+                ))
+
+            # Scan for high-frequency queries without matching skills
+            try:
+                from core.harness.optimization.strategy_tracker import get_strategy_tracker
+                tracker = get_strategy_tracker()
+                high_freq = []
+                for (error_type, strategy), rec in tracker._records.items():
+                    if rec.attempts >= 10:
+                        high_freq.append(error_type)
+                # If there's a recurring pattern with no bootstrap skill
+                for et in set(high_freq):
+                    skill_path = os.path.join(
+                        os.path.expanduser("~/.aiplat/skills/bootstrap"),
+                        f"{et.replace(' ', '_')}/SKILL.md"
+                    )
+                    if not os.path.exists(skill_path):
+                        goals.append(Goal(
+                            goal_id=f"tool-gap-{et}",
+                            title=f"Bootstrap tool for '{et}' problems",
+                            description=f"Error type '{et}' occurs frequently ({tracker._records[(et, list(tracker._records.keys())[0][1] if tracker._records else 'unknown')].attempts if tracker._records else 0}x). "
+                                         "Consider auto-bootstrapping a diagnostic Skill.",
+                            goal_type=GoalType.TOOL_GAP,
+                            priority=Priority.MEDIUM,
+                            estimated_impact="Provides automated diagnostics for recurring error patterns",
+                            auto_executable=True,
+                            suggested_action=f"Auto-bootstrap tool: {et}_diagnostics",
+                            source_evidence={"error_type": et, "frequency": "high"},
+                        ))
+            except Exception:
+                pass
+
+            return goals
+        except Exception as e:
+            logger.debug("tool gap scan skipped: %s", e)
             return []
 
     def stats(self) -> Dict[str, Any]:
