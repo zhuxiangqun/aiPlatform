@@ -199,9 +199,28 @@ bash scripts/verify-l4-pyramid.sh | grep '最大可宣称'
 | 11 | 灾难恢复 | 6% | 2.5 | 无多区域部署, RTO/RPO未验证 |
 | 12 | 实施落地(FDE) | 8% | 2.5 | 无 K8s 自动部署, 无 GitOps |
 
-### 微观技术层 — 4.2/5.0（优秀级，49 项）
+### 微观技术层 — 4.1/5.0（优秀级，58 项）
 
-#### 1. Agent 框架与运行时 (6项, 权重 14%)
+#### 0. 提示词工程 (4项, 权重 8%)
+
+| # | 评估项 | 得分 | 证据 | 一级 |
+|:--:|------|:--:|------|:--:|
+| T0.1 | 模板管理 | 4.5 | prompt_loader.py `_register()` + `_sync_resolve()` | 是 |
+| T0.2 | 模板版本化 | 4.0 | `id@version` 语法 + `get_versions()` / `get_latest_version()` | 是 |
+| T0.3 | 动态注入 | 4.0 | `_try_inject_claude_md` + `_try_inject_arch_rules` + system reminders | 是 |
+| T0.4 | Prompt 优化 | 4.5 | PromptOptimizer (champion-challenger) + Darwin Arena | 是 |
+
+#### 0.5. 上下文工程 (5项, 权重 8%)
+
+| # | 评估项 | 得分 | 证据 | 一级 |
+|:--:|------|:--:|------|:--:|
+| T0.5 | RAG 检索 | 4.5 | WikiPageRetriever + KnowledgeRetriever + VectorStoreRetriever | 是 |
+| T0.6 | 上下文组装 | 4.5 | MemoryManager.build_context() + ContextAssembler (assembly/) | 是 |
+| T0.7 | 信息降噪 | 4.0 | 5级压缩 + 温度感知剪枝 + 语义排序 (P0-3) | 是 |
+| T0.8 | 动态注入 | 4.5 | RunContext 三层注入 (caller→DataSource→GraphIndex) | 是 |
+| T0.9 | 跨域路由 | 4.5 | DomainRouter 3层级联 + 本体YAML驱动 + CRAG 3级回退 | 是 |
+
+#### 1. Agent 框架与运行时 (6项, 权重 12%)
 
 | # | 评估项 | 得分 | 证据 | 一级 |
 |:--:|------|:--:|------|:--:|
@@ -299,6 +318,8 @@ bash scripts/verify-l4-pyramid.sh | grep '最大可宣称'
 
 | 组件 | 项数 | 平均分 | 最高 | 最低 |
 |:---|:--:|:--:|:--:|:--:|
+| 提示词工程 | 4 | 4.25 | 4.5 | 4.0 |
+| 上下文工程 | 5 | 4.40 | 4.5 | 4.0 |
 | Agent 框架 | 6 | 4.42 | 4.5 | 4.0 |
 | Agent 智能性 | 5 | 4.40 | 4.5 | 4.0 |
 | Skill 系统 | 5 | 3.90 | 4.5 | 3.5 |
@@ -308,7 +329,7 @@ bash scripts/verify-l4-pyramid.sh | grep '最大可宣称'
 | 自学习 | 5 | 4.20 | **5.0** | 3.0 |
 | 模型治理 | 5 | 3.50 | 4.0 | 3.0 |
 | 数据治理 | 4 | 3.75 | 4.0 | 3.0 |
-| **加权总分** | **49** | **4.18** | — | — |
+| **加权总分** | **58** | **4.16** | — | — |
 
 **微观技术层：4.2/5.0（优秀级）**
 
