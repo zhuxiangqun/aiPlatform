@@ -1,5 +1,8 @@
 # aiPlat 部署手册
 
+> **新用户？** [15 分钟快速入门 →](docs/getting-started.md)
+> **开发者？** [API Reference →](docs/api-reference.md) | [评估报告 →](docs/framework/aiplat-complete-assessment.md)
+
 ## 系统要求
 
 - **操作系统**: macOS (Intel/Apple Silicon) 或 Linux (x86_64)
