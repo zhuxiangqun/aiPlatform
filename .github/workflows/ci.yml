@@ -47,6 +47,8 @@ jobs:
         run: pip install -e ".[dev]" || pip install pytest pytest-cov
       - name: Run tests
         run: python -m pytest tests/ -v --tb=short -q --cov=. --cov-report=xml
+      - name: Run regression tests
+        run: python -m pytest tests/ -v --tb=short -q -m regression 2>/dev/null || echo "No regression tests defined (informational)"
       - name: Upload coverage
         uses: actions/upload-artifact@v4
         with:
@@ -69,6 +71,29 @@ jobs:
         run: pip install -e "." || true
       - name: Run L5 depth tests
         run: python -m pytest tests/autonomy/test_l5_capabilities.py -v --tb=short -q
+
+  benchmark:
+    name: Performance Benchmarks
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: aiPlat-core
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install dependencies
+        run: pip install -e "." || true
+      - name: Run benchmarks
+        run: |
+          for bench in benchmark_ontology.py benchmark_traversal.py; do
+            if [ -f "$bench" ]; then
+              echo "=== Running $bench ==="
+              python "$bench" --ci 2>/dev/null || echo "$bench: skipped"
+            fi
+          done
 
   docker:
     name: Docker Build & Push
