@@ -123,6 +123,58 @@ class PromptOptimizer:
             "status": "completed",
         }
 
+    # ── Phase 52: A/B experiment comparison ──
+
+    @staticmethod
+    def compare_ab(run_a: Dict[str, Any], run_b: Dict[str, Any]) -> Dict[str, Any]:
+        """Compare two optimization runs (A/B experiment) and return winner.
+
+        Returns:
+            {
+                "winner": "A" | "B" | "tie",
+                "a_score": float,
+                "b_score": float,
+                "a_rounds": int,
+                "b_rounds": int,
+                "recommendation": str,
+            }
+        """
+        a_score = run_a.get("final_score", 0) or 0
+        b_score = run_b.get("final_score", 0) or 0
+        a_rounds = run_a.get("total_rounds", 0) or 0
+        b_rounds = run_b.get("total_rounds", 0) or 0
+
+        # Efficiency bonus: fewer rounds to achieve similar score is better
+        a_efficiency = a_score / max(1, a_rounds)
+        b_efficiency = b_score / max(1, b_rounds)
+
+        if a_score > b_score:
+            winner = "A"
+            rec = f"A wins by score ({a_score:.2f} > {b_score:.2f})"
+        elif b_score > a_score:
+            winner = "B"
+            rec = f"B wins by score ({b_score:.2f} > {a_score:.2f})"
+        elif a_efficiency > b_efficiency:
+            winner = "A"
+            rec = f"A wins by efficiency ({a_rounds} rounds vs {b_rounds})"
+        elif b_efficiency > a_efficiency:
+            winner = "B"
+            rec = f"B wins by efficiency ({b_rounds} rounds vs {a_rounds})"
+        else:
+            winner = "tie"
+            rec = "Tie — identical results"
+
+        return {
+            "winner": winner,
+            "a_score": round(a_score, 3),
+            "b_score": round(b_score, 3),
+            "a_rounds": a_rounds,
+            "b_rounds": b_rounds,
+            "a_efficiency": round(a_efficiency, 3),
+            "b_efficiency": round(b_efficiency, 3),
+            "recommendation": rec,
+        }
+
     # ── Private helpers ──────────────────────────────────────────
 
     def _build_loop(self, champion_score: float, round_num: int):

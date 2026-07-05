@@ -112,6 +112,9 @@ class SkillRegistry:
         self._lock = threading.RLock()
         # Cached SKILL.md body content (keyed by skill name)
         self._body_cache: Dict[str, str] = {}
+        # Phase 52: embedding cache for semantic skill search
+        self._embedding_cache: Dict[str, List[float]] = {}
+        self._embedding_adapter = None
         # Adaptive skill routing (SkillRouter: arXiv:2603.22455)
         self.SKILL_EMBED_THRESHOLD = 500
         self._body_vectors: Dict[str, List[float]] = {}
@@ -550,6 +553,17 @@ class SkillRegistry:
                 })
 
         results.sort(key=lambda x: x["score"], reverse=True)
+
+        # Phase 52: Embedding-based semantic reranking (best-effort)
+        embed_scores = self._embedding_rerank(query, results)
+        if embed_scores:
+            for i, r in enumerate(results):
+                if i < len(embed_scores):
+                    boost = int(embed_scores[i] * 30)  # 0-30 bonus
+                    r["score"] = min(100, r["score"] + boost)
+                    r["matched_terms"].append(f"embed:{embed_scores[i]:.2f}")
+            results.sort(key=lambda x: x["score"], reverse=True)
+
         total = len(results)
         limited = results[:limit]
 
@@ -560,6 +574,50 @@ class SkillRegistry:
                 r["returned"] = len(limited)
 
         return limited
+
+    def _embedding_rerank(self, query: str, results: list) -> Optional[List[float]]:
+        """Phase 52: Rerank search results via embedding cosine similarity.
+
+        Uses InfraEmbeddingAdapter (lazy init). Returns similarity scores per result.
+        Returns None if embedding adapter is unavailable.
+        """
+        if not results:
+            return None
+        try:
+            if self._embedding_adapter is None:
+                from core.harness.utils.model_injection import create_selected_adapter
+                self._embedding_adapter = create_selected_adapter(model_name="embedding")
+            if self._embedding_adapter is None:
+                return None
+            query_vec = self._embedding_adapter.encode(query)
+            if query_vec is None:
+                return None
+            scores = []
+            for r in results:
+                name = r["name"]
+                if name not in self._embedding_cache:
+                    desc = r.get("description_snippet", "")
+                    body = self._body_cache.get(name, "")
+                    text = f"{name} {desc} {body[:200]}"
+                    try:
+                        vec = self._embedding_adapter.encode(text)
+                        self._embedding_cache[name] = vec if vec else [0]
+                    except Exception:
+                        self._embedding_cache[name] = [0]
+                cached = self._embedding_cache.get(name, [0])
+                if sum(abs(v) for v in cached) == 0:
+                    scores.append(0.0)
+                else:
+                    dot = sum(a * b for a, b in zip(query_vec, cached))
+                    na = (sum(a * a for a in query_vec) ** 0.5)
+                    nb = (sum(b * b for b in cached) ** 0.5)
+                    if na == 0 or nb == 0:
+                        scores.append(0.0)
+                    else:
+                        scores.append(max(0.0, min(1.0, dot / (na * nb))))
+            return scores
+        except Exception:
+            return None
 
     def inspect_corpus(self, ref: str) -> Optional[Dict[str, Any]]:
         u"""Agentic inspect: return full metadata (NOT body) for a candidate.
