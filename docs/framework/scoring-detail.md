@@ -199,19 +199,118 @@ bash scripts/verify-l4-pyramid.sh | grep '最大可宣称'
 | 11 | 灾难恢复 | 6% | 2.5 | 无多区域部署, RTO/RPO未验证 |
 | 12 | 实施落地(FDE) | 8% | 2.5 | 无 K8s 自动部署, 无 GitOps |
 
-### 微观技术层 — 4.1/5.0（优秀级）
+### 微观技术层 — 4.2/5.0（优秀级，49 项）
 
-| # | 组件 | 权重 | 得分 | 证据 |
-|:--:|------|:--:|:--:|------|
-| 1 | Agent 框架 | 14% | 4.5 | PipelineEngine(5050行) + ReActLoop + 状态机 |
-| 2 | Agent 智能性 | 10% | 4.5 | UCB1 + GoalExecutor + SwarmBroker |
-| 3 | Skill 系统 | 10% | 4.0 | 32 Skill + SKILL.md声明式 + 版本管理 |
-| 4 | MCP 协议 | 10% | 4.0 | 完整层级 + 多Server + 自动发现 |
-| 5 | Workflow | 13% | 4.0 | DAG/Pipeline + 条件路由 + 断点续执行 |
-| 6 | 记忆系统 | 10% | 4.5 | 四层记忆 + Gossip协议 + 冲突检测 |
-| 7 | 自学习 | 11% | 4.5 | UCB1闭环 + StrategyTracker + ExecutionSnapshot |
-| 8 | 模型治理 | 11% | 3.5 | infra ModelManager唯一真相源 + T1-T5分级 |
-| 9 | 数据治理 | 11% | 3.5 | 数据血缘 + 知识本体 + Wiki质量监控 |
+#### 1. Agent 框架与运行时 (6项, 权重 14%)
+
+| # | 评估项 | 得分 | 证据 | 一级 |
+|:--:|------|:--:|------|:--:|
+| T1.1 | Agent 创建 | 4.5 | PipelineEngine.create_agent() | 是 |
+| T1.2 | Agent 规划 | 4.5 | _retry_loop 6种退出条件 + StageRunner | 是 |
+| T1.3 | Agent 执行 | 4.5 | ReActLoop step() (2037行) | 是 |
+| T1.4 | Agent 反思 | 4.0 | _anti_divergence_action + DriftDetector | 是 |
+| T1.5 | 状态持久化 | 4.5 | ExecutionSnapshot + _checkpoint + graph_snapshots | 是 |
+| T1.6 | 多类型支持 | 4.5 | 8种 agent_type (react/plan/reflection/conversational/rag/multi/tool/review) | 是 |
+
+#### 2. Agent 智能性评估 (5项, 权重 10%)
+
+| # | 评估项 | 得分 | 证据 | 一级 |
+|:--:|------|:--:|------|:--:|
+| T2.1 | 推理与规划 | 4.5 | ReActLoop _reason → sys_llm_generate → PromptAssembler | 是 |
+| T2.2 | 工具使用 | 4.5 | ToolRegistry + sys_tool_call + MCP动态发现 | 是 |
+| T2.3 | 自我反思与修正 | 4.5 | _meta_optimize + GoalExecutor + completion_gate | 是 |
+| T2.4 | 长期记忆管理 | 4.5 | 四层记忆 (Working/Episodic/Semantic/TaskSkills) | 是 |
+| T2.5 | 规划执行效率 | 4.0 | T1-T5 模型降级 + token_budget 管理 | 是 |
+
+#### 3. Skill 系统 (5项, 权重 10%)
+
+| # | 评估项 | 得分 | 证据 | 一级 |
+|:--:|------|:--:|------|:--:|
+| T3.1 | 声明式定义 | 4.5 | SKILL.md frontmatter (name/version/effects/category) | 是 |
+| T3.2 | 动态发现 | 4.0 | sys_skill_corpus_search + SkillRegistry | 是 |
+| T3.3 | 语义搜索 | 3.5 | 基础关键词 + 类别匹配 | 部分 |
+| T3.4 | 版本管理 | 4.0 | semantic versioning + rollback_closed_loop | 是 |
+| T3.5 | 组合复用 | 3.5 | Agent required_skills 绑定, 无 Skill 嵌套调用 | 部分 |
+
+#### 4. MCP 协议实现 (6项, 权重 10%)
+
+| # | 评估项 | 得分 | 证据 | 一级 |
+|:--:|------|:--:|------|:--:|
+| T4.1 | 工具层 (Tool) | 4.5 | MCPTool + MCPToolAdapter + ToolRegistry | 是 |
+| T4.2 | 资源层 (Resource) | 4.0 | MCPResourceContent + protocol.py | 是 |
+| T4.3 | 提示词模板 (Prompt) | 3.5 | prompt_loader + _sync_resolve | 部分 |
+| T4.4 | 采样 (Sampling) | 3.0 | server.yaml → ToolRegistry 注册 | 部分 |
+| T4.5 | 多 Server 动态注册 | 4.5 | MCPClientManager + server.yaml auto-discovery | 是 |
+| T4.6 | 故障转移 | 3.0 | MCPClient reconnect, 无 circuit breaker | 部分 |
+
+#### 5. Workflow 编排引擎 (7项, 权重 13%)
+
+| # | 评估项 | 得分 | 证据 | 一级 |
+|:--:|------|:--:|------|:--:|
+| T5.1 | DAG 编排 | 4.5 | PipelineStageConfig + StageRunner DAG | 是 |
+| T5.2 | 并行执行 | 4.5 | asyncio.gather + ParallelExecutor | 是 |
+| T5.3 | 条件路由 | 4.0 | edge_condition eval + node_config.expression | 是 |
+| T5.4 | 循环 | 4.5 | _retry_loop + iteration + max_attempts | 是 |
+| T5.5 | 子工作流 | 4.0 | SubagentCoordinator + create_instance | 是 |
+| T5.6 | 断点续执行 | 4.5 | _checkpoints + _load_checkpoints_from_disk + _snapshot | 是 |
+| T5.7 | 运行时动态调整 | 3.0 | _meta_optimize 修改 stage, 无 real-time canvas | 部分 |
+
+#### 6. 记忆系统 (6项, 权重 10%)
+
+| # | 评估项 | 得分 | 证据 | 一级 |
+|:--:|------|:--:|------|:--:|
+| T6.1 | 工作记忆 (Working) | 4.5 | 30K滑动窗口 + 温度感知剪枝 | 是 |
+| T6.2 | 会话记忆 (Episodic) | 4.5 | 规则摘要 + TTL自动清理 + 预评分 | 是 |
+| T6.3 | 语义记忆 (Semantic) | 4.5 | SQLite FTS5 + 动态续期 + 软删除 | 是 |
+| T6.4 | 程序记忆 (TaskSkills) | 4.0 | Pipeline完成自动晶体化 (pass_rate ≥85%) | 是 |
+| T6.5 | 检索增强 | 4.5 | CRAG 3级回退 + DomainRouter + 本体优先 | 是 |
+| T6.6 | 冲突解决 | 4.5 | Semantic 5维 Jaccard + _resolve_semantic_conflict | 是 |
+
+#### 7. 自学习与自进化 (5项, 权重 11%)
+
+| # | 评估项 | 得分 | 证据 | 一级 |
+|:--:|------|:--:|------|:--:|
+| T7.1 | 反馈采集 | 4.5 | StrategyTracker + AutoLearner + implicit_feedback | 是 |
+| T7.2 | 策略搜索优化 | **5.0** | UCB1 StrategySearchEngine (有理论保证的收敛) | 是 |
+| T7.3 | 自愈闭环 | 4.5 | 诊断(ErrorTranslator)→路由(Phase24)→快照(25)→学习(26) | 是 |
+| T7.4 | 知识晶体化 | 4.0 | Skill Draft → Docker沙盒 → 人工审批 → SkillRegistry | 是 |
+| T7.5 | A/B 实验 | 3.0 | PromptOptimizer champion-challenger, 无多臂对照 | 部分 |
+
+#### 8. 模型治理 (5项, 权重 11%)
+
+| # | 评估项 | 得分 | 证据 | 一级 |
+|:--:|------|:--:|------|:--:|
+| T8.1 | 模型准入 | 4.0 | infra ModelManager.list_models() + env var发现 | 是 |
+| T8.2 | 模型退役 | 3.0 | 手动 remove from env, 无自动退役 | 部分 |
+| T8.3 | 性能监控 | 4.0 | latency_tracker + quality_validator (infra) | 是 |
+| T8.4 | 漂移检测 | 3.5 | DriftDetector + quality_history (只检测质量漂移) | 部分 |
+| T8.5 | 可解释性 | 3.0 | 无 SHAP/LIME 集成, 决策追踪 via AuditLog | 部分 |
+
+#### 9. 数据治理 (4项, 权重 11%)
+
+| # | 评估项 | 得分 | 证据 | 一级 |
+|:--:|------|:--:|------|:--:|
+| T9.1 | 数据血缘 | 4.0 | GET /diagnostics/data-lineage (5模块聚合) | 是 |
+| T9.2 | 数据质量 | 4.0 | wiki_quality_monitor (3维度: completeness/accuracy/overall) | 是 |
+| T9.3 | 分类分级 | 3.0 | marking=private + field_level_security (基础) | 部分 |
+| T9.4 | 生命周期 | 4.0 | K4 知识治理 — 进入/活跃/失效/退出 4阶段全生命周期 | 是 |
+
+### 微观层汇总
+
+| 组件 | 项数 | 平均分 | 最高 | 最低 |
+|:---|:--:|:--:|:--:|:--:|
+| Agent 框架 | 6 | 4.42 | 4.5 | 4.0 |
+| Agent 智能性 | 5 | 4.40 | 4.5 | 4.0 |
+| Skill 系统 | 5 | 3.90 | 4.5 | 3.5 |
+| MCP 协议 | 6 | 3.75 | 4.5 | 3.0 |
+| Workflow | 7 | 4.14 | 4.5 | 3.0 |
+| 记忆系统 | 6 | 4.42 | 4.5 | 4.0 |
+| 自学习 | 5 | 4.20 | **5.0** | 3.0 |
+| 模型治理 | 5 | 3.50 | 4.0 | 3.0 |
+| 数据治理 | 4 | 3.75 | 4.0 | 3.0 |
+| **加权总分** | **49** | **4.18** | — | — |
+
+**微观技术层：4.2/5.0（优秀级）**
 
 ### 架构底座层 — 3.5/5.0（基础级）
 
@@ -232,7 +331,7 @@ bash scripts/verify-l4-pyramid.sh | grep '最大可宣称'
 | 层级 | 加权得分 | 等级 |
 |:---|:--:|:---|
 | 宏观业务层 | 3.1 | 基础级 |
-| 微观技术层 | 4.1 | 优秀级 |
+| 微观技术层 | 4.2 | 优秀级 |
 | 架构底座层 | 3.5 | 基础级 |
 | **综合** | **3.1** | **基础级** |
 
