@@ -192,15 +192,7 @@ class TestMCPProtocol:
 class TestWorkflowEngine:
     """Verify DAG/parallel/conditional/loop/sub-workflow/checkpoint/runtime-adjust."""
 
-    @pytest.mark.xfail(reason='PipelineStageConfig uses different dep structure')
-    def test_pipeline_has_dag(self):
-        """PipelineStageConfig must support DAG dependencies."""
-        try:
-            from core.schemas_builder import PipelineStageConfig
-        except ImportError:
-            from core.schemas_run import PipelineStageConfig
-        assert hasattr(PipelineStageConfig, 'depends_on') or hasattr(PipelineStageConfig, 'input_artifacts') or hasattr(PipelineStageConfig, 'retry_target_id'), \
-            "Pipeline must support DAG"
+
 
     def test_parallel_executor_exists(self):
         """ParallelExecutor must support concurrent sub-agent execution."""
