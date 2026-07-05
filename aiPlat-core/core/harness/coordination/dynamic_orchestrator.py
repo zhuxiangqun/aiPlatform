@@ -316,11 +316,24 @@ Return ONLY a JSON array of these objects. Maximum 5 subtasks."""
         *,
         source_agent_id: str = "",
         max_concurrent: int = 3,
+        swarm_mode: bool = False,  # Phase 37: Contract Net swarm
     ) -> List[Dict[str, Any]]:
-        """Phase 35: Full pipeline — decompose + spawn + aggregate.
+        """Full pipeline — decompose + spawn + aggregate.
 
         Returns list of {capability, target_agent, result, status} per subtask.
+        When swarm_mode=True, uses Contract Net Protocol (Phase 37).
         """
+        if swarm_mode:
+            try:
+                from core.harness.coordination.swarm_broker import get_swarm_broker
+                broker = get_swarm_broker()
+                result = await broker.execute_swarm(
+                    complex_output, session_id, source_agent_id=source_agent_id,
+                )
+                return [result] if result else []
+            except Exception:
+                pass  # fall through to standard decomposition
+
         subtasks = await self.decompose_task(complex_output, source_agent_id)
         if not subtasks:
             return []

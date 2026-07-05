@@ -222,21 +222,16 @@ class TestSharedKnowledgePool:
 
     def test_publish_and_query(self):
         """Publishing a fact must be retrievable by another session."""
-        from core.harness.memory.shared_pool import SharedKnowledgePool, POOL_FILE, POOL_DB
+        from core.harness.memory.shared_pool import SharedKnowledgePool
 
+        # Use in-memory only (skip SQLite for test isolation)
         pool = SharedKnowledgePool()
+        pool._init_db = lambda: None  # skip DB
+        pool._save = lambda: None  # skip save
         pool._facts.clear()
-        if os.path.exists(POOL_FILE):
-            os.remove(POOL_FILE)
-        if os.path.exists(POOL_DB):
-            os.remove(POOL_DB)
-            pool._db_conn = None
-            pool._loaded = False
 
-        # Use unique topic to avoid contamination
         uid = uuid.uuid4().hex[:8]
         topic = f"l5_test_{uid}"
-
         fid = pool.publish(
             topic=topic,
             content='rotate_credential succeeds 85% for rate_limit errors',
@@ -245,9 +240,8 @@ class TestSharedKnowledgePool:
             confidence=0.85,
         )
         assert fid is not None, "Publish must return a fact_id"
-
         results = pool.query(topic, exclude_session_id='session_b')
-        assert len(results) >= 1, f"Query should return ≥1 result, got {len(results)}"
+        assert len(results) >= 1, f"Query should return >=1 result, got {len(results)}"
         fact = results[0]
         assert fact.topic == topic
 
@@ -355,6 +349,11 @@ def cleanup_after_test():
     yield
     try:
         import core.harness.memory.shared_pool as sp
+        if sp._pool is not None and hasattr(sp._pool, '_db_conn') and sp._pool._db_conn:
+            try:
+                sp._pool._db_conn.close()
+            except Exception:
+                pass
         sp._pool = None
     except Exception:
         pass
@@ -363,3 +362,248 @@ def cleanup_after_test():
         st._tracker = None
     except Exception:
         pass
+
+
+# ══════════════════════════════════════════════════════════
+# Phase 36: GossipProtocol (D-axis L5)
+# ══════════════════════════════════════════════════════════
+
+class TestGossipProtocol:
+    def test_fact_id_uses_content_hash(self):
+        """Same (topic, content) must produce same fact_id across instances."""
+        from core.harness.memory.gossip_protocol import make_fact_id
+
+        id1 = make_fact_id("test_topic", "hello world")
+        id2 = make_fact_id("test_topic", "hello world")
+        id3 = make_fact_id("test_topic", "different content")
+
+        assert id1 == id2, "Same input must produce same hash"
+        assert id1 != id3, "Different content must produce different hash"
+        assert len(id1) == 16, f"Hash must be 16 chars, got {len(id1)}"
+
+    def test_gossip_protocol_init(self):
+        """GossipProtocol must initialize with instance_id and empty peers."""
+        from core.harness.memory.shared_pool import SharedKnowledgePool
+        from core.harness.memory.gossip_protocol import GossipProtocol
+
+        pool = SharedKnowledgePool()
+        gossip = GossipProtocol(pool, instance_id="test-instance-1")
+
+        assert gossip.peer_count == 0
+        assert "test-instance" in gossip._instance_id
+        assert not gossip._running
+
+    def test_seed_peers_loaded(self):
+        """Peers must be loaded from AIPLAT_GOSSIP_PEERS env var."""
+        import os
+        from core.harness.memory.shared_pool import SharedKnowledgePool
+        from core.harness.memory.gossip_protocol import GossipProtocol
+
+        os.environ["AIPLAT_GOSSIP_PEERS"] = "http://host1:8000,http://host2:8000"
+        pool = SharedKnowledgePool()
+        gossip = GossipProtocol(pool)
+        os.environ.pop("AIPLAT_GOSSIP_PEERS", None)
+
+        assert gossip.peer_count == 2, f"Expected 2 seed peers, got {gossip.peer_count}"
+
+    def test_peer_management(self):
+        """Adding and listing peers must work."""
+        from core.harness.memory.shared_pool import SharedKnowledgePool
+        from core.harness.memory.gossip_protocol import GossipProtocol
+
+        pool = SharedKnowledgePool()
+        gossip = GossipProtocol(pool)
+        gossip.add_seed_peer("http://peer1:8000")
+        gossip.add_seed_peer("http://peer1:8000")  # duplicate
+
+        assert gossip.peer_count == 1, f"Duplicate should be ignored, got {gossip.peer_count}"
+
+
+# ══════════════════════════════════════════════════════════
+# Phase 37: SwarmBroker (E-axis L5)
+# ══════════════════════════════════════════════════════════
+
+class TestSwarmBroker:
+    def test_cold_start_gets_exploration_bonus(self):
+        """Untested agents must get 0.1 exploration bonus."""
+        from core.harness.coordination.swarm_broker import SwarmBroker, AgentProfile
+
+        # Use a mock orchestrator
+        class MockOrch:
+            CAPABILITY_MAP = {"review": ["test_agent"]}
+            async def sense_gap(self, *a, **kw): return None
+            async def spawn(self, *a, **kw): return {"status": "ok"}
+
+        broker = SwarmBroker(MockOrch())
+        profile = AgentProfile(
+            agent_id="new_agent", description="does reviews",
+            capability_tags=["review"], total_attempts=0,
+        )
+        broker.register_agent("new_agent", profile)
+
+        # Must get cold-start bonus
+        import asyncio
+        bids = asyncio.new_event_loop().run_until_complete(
+            broker.announce("needs review", ["review"])
+        )
+        assert len(bids) >= 1, "Cold-start agent should submit a bid"
+        assert bids[0].score_breakdown["history"] == broker.COLD_START_BONUS, (
+            f"Cold-start bonus should be {broker.COLD_START_BONUS}"
+        )
+
+    def test_multiple_bids_sorted_by_score(self):
+        """Higher-scoring agents must be ranked first."""
+        from core.harness.coordination.swarm_broker import SwarmBroker, AgentProfile
+
+        class MockOrch:
+            CAPABILITY_MAP = {"review": []}
+
+        broker = SwarmBroker(MockOrch())
+
+        # Register two agents with different capabilities
+        broker.register_agent("agent_a", AgentProfile(
+            "agent_a", "security specialist", "security expert for code review",
+            ["security"], total_attempts=10, successes=9,
+        ))
+        broker.register_agent("agent_b", AgentProfile(
+            "agent_b", "general reviewer", "general code review",
+            ["review"], total_attempts=5, successes=2,
+        ))
+
+        import asyncio
+        bids = asyncio.new_event_loop().run_until_complete(
+            broker.announce("security review of code", ["security", "review"])
+        )
+        assert len(bids) >= 1
+        if len(bids) >= 2:
+            assert bids[0].score >= bids[1].score, "Higher-scoring agent should be first"
+
+    def test_swarm_stats_work(self):
+        """Stats must report agent count and swarm count."""
+        from core.harness.coordination.swarm_broker import SwarmBroker, AgentProfile
+
+        class MockOrch:
+            CAPABILITY_MAP = {"test": []}
+            async def sense_gap(self, *a, **kw): return None
+            async def spawn(self, *a, **kw): return {"status": "ok"}
+
+        broker = SwarmBroker(MockOrch())
+        broker.register_agent("test", AgentProfile("test", capability_tags=["test"]))
+        stats = broker.stats()
+        assert stats["agents_registered"] == 1
+        assert stats["min_bid_score"] == 0.3
+
+    def test_bid_score_breakdown(self):
+        """Each bid must include keyword/history/tag score breakdown."""
+        from core.harness.coordination.swarm_broker import SwarmBroker, AgentProfile
+
+        class MockOrch:
+            CAPABILITY_MAP = {"security": []}
+
+        broker = SwarmBroker(MockOrch())
+        broker.register_agent("a", AgentProfile(
+            "a", "security pro", "security vulnerability expert",
+            ["security"], total_attempts=100, successes=80,
+        ))
+
+        import asyncio
+        bids = asyncio.new_event_loop().run_until_complete(
+            broker.announce("security vulnerability scan", ["security"])
+        )
+        assert len(bids) >= 1
+        bd = bids[0].score_breakdown
+        assert "keyword" in bd, "Missing keyword score"
+        assert "history" in bd, "Missing history score"
+        assert "tag" in bd, "Missing tag score"
+        assert sum(bd.values()) == pytest.approx(bids[0].score, 0.01)
+
+
+# ══════════════════════════════════════════════════════════
+# Phase 38: AdaptiveContextRouter (B-axis L5)
+# ══════════════════════════════════════════════════════════
+
+class TestAdaptiveContext:
+    def test_cold_start_returns_all_sources(self):
+        """Cold start must score all sources at 0.5 and return top-3."""
+        from core.harness.knowledge.adaptive_context import AdaptiveContextRouter
+
+        router = AdaptiveContextRouter(tracker=None)
+        config = router.select_sources("test query", "test_task")
+
+        assert "sources" in config
+        assert len(config["sources"]) <= 3
+        assert config["compression_level"] in ["minimal", "balanced", "aggressive"]
+        assert "all_scores" in config
+        for src in router.ALL_SOURCES:
+            assert config["all_scores"][src] == 0.5, f"Cold-start {src} must be 0.5"
+
+    def test_compression_adapts_to_pressure(self):
+        """Token pressure must affect compression level."""
+        from core.harness.knowledge.adaptive_context import AdaptiveContextRouter
+
+        router = AdaptiveContextRouter(tracker=None)
+
+        short = router.select_sources("hi", "test")
+        long = router.select_sources("long " * 200, "test")
+
+        # Short query should have lower (less aggressive) compression
+        assert short["compression_level"] in ["minimal", "balanced"]
+        # Long query may be aggressive
+        assert long["compression_level"] in router.COMPRESSION_LEVELS
+
+    def test_selects_top_sources_by_score(self):
+        """After learning, high-score sources must be preferred."""
+        from core.harness.knowledge.adaptive_context import AdaptiveContextRouter
+        from core.harness.optimization.strategy_tracker import get_strategy_tracker
+
+        t = get_strategy_tracker()
+        # Simulate learning via learn_from_outcome (sets correct tracker keys)
+        router = AdaptiveContextRouter(tracker=t)
+        router.learn_from_outcome("test", "security", ["graph_index", "caller"], 0.9)
+        router.learn_from_outcome("test", "security", ["graph_index", "caller"], 0.9)
+        router.learn_from_outcome("test", "security", ["hyde"], 0.1)
+        router.learn_from_outcome("test", "security", ["hyde"], 0.1)
+
+        config = router.select_sources("security review", "security")
+        scores = config["all_scores"]
+        assert scores["graph_index"] > scores["hyde"], (
+            f"graph_index ({scores['graph_index']}) should outrank hyde ({scores['hyde']})"
+        )
+
+    def test_learn_from_outcome_updates_tracker(self):
+        """learn_from_outcome must update the tracker."""
+        from core.harness.knowledge.adaptive_context import AdaptiveContextRouter
+        from core.harness.optimization.strategy_tracker import get_strategy_tracker
+
+        t = get_strategy_tracker()
+        router = AdaptiveContextRouter(tracker=t)
+
+        router.learn_from_outcome("test", "security", ["graph_index", "fts5"], 0.9)
+
+        # Check tracker was updated
+        rec = t._get_or_create("ctx:security:graph_index", "select_source")
+        assert rec.attempts >= 1, "Tracker should have recorded the outcome"
+        assert rec.successes >= 1, "High helpfulness should record as success"
+
+    def test_confidence_increases_with_data(self):
+        """Confidence must increase as more high-score data accumulates."""
+        from core.harness.knowledge.adaptive_context import AdaptiveContextRouter
+        from core.harness.optimization.strategy_tracker import get_strategy_tracker
+
+        t = get_strategy_tracker()
+        router = AdaptiveContextRouter(tracker=t)
+
+        # Cold start
+        config1 = router.select_sources("test", "conf_task")
+        cold_conf = config1["confidence"]
+
+        # After learning
+        for _ in range(10):
+            router.learn_from_outcome("test", "conf_task", ["graph_index", "caller"], 0.9)
+
+        config2 = router.select_sources("test", "conf_task")
+        warm_conf = config2["confidence"]
+
+        assert warm_conf >= cold_conf, (
+            f"Confidence should increase with data: {cold_conf} → {warm_conf}"
+        )

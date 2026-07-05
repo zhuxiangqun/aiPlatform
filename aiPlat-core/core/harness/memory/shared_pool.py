@@ -78,29 +78,58 @@ class SharedKnowledgePool:
         if self._db_conn is not None:
             return
         import sqlite3
-        self._db_conn = sqlite3.connect(POOL_DB, check_same_thread=False)
-        self._db_conn.execute("PRAGMA journal_mode=WAL;")
-        self._db_conn.execute("PRAGMA synchronous=NORMAL;")
-        self._db_conn.execute("""
-            CREATE TABLE IF NOT EXISTS shared_facts (
-                fact_id TEXT PRIMARY KEY,
-                session_id TEXT,
-                agent_id TEXT,
-                topic TEXT,
-                content TEXT,
-                confidence REAL,
-                source TEXT,
-                timestamp REAL,
-                metadata_json TEXT
+        try:
+            self._db_conn = sqlite3.connect(POOL_DB, check_same_thread=False, timeout=10)
+            self._db_conn.execute("PRAGMA journal_mode=WAL;")
+            self._db_conn.execute("PRAGMA synchronous=NORMAL;")
+            self._db_conn.execute("""
+                CREATE TABLE IF NOT EXISTS shared_facts (
+                    fact_id TEXT PRIMARY KEY,
+                    session_id TEXT,
+                    agent_id TEXT,
+                    topic TEXT,
+                    content TEXT,
+                    confidence REAL,
+                    source TEXT,
+                    timestamp REAL,
+                    metadata_json TEXT
+                )
+            """)
+            self._db_conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_shared_facts_topic ON shared_facts(topic);"
             )
-        """)
-        self._db_conn.execute(
-            "CREATE INDEX IF NOT EXISTS idx_shared_facts_topic ON shared_facts(topic);"
-        )
-        self._db_conn.execute(
-            "CREATE INDEX IF NOT EXISTS idx_shared_facts_timestamp ON shared_facts(timestamp);"
-        )
-        self._db_conn.commit()
+            self._db_conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_shared_facts_timestamp ON shared_facts(timestamp);"
+            )
+            self._db_conn.commit()
+        except sqlite3.OperationalError:
+            # Corrupted DB — recreate
+            try:
+                self._db_conn.close()
+            except Exception:
+                pass
+            self._db_conn = None
+            try:
+                os.remove(POOL_DB)
+            except OSError:
+                pass
+            self._db_conn = sqlite3.connect(POOL_DB, check_same_thread=False)
+            self._db_conn.execute("PRAGMA journal_mode=WAL;")
+            self._db_conn.execute("PRAGMA synchronous=NORMAL;")
+            self._db_conn.execute("""
+                CREATE TABLE IF NOT EXISTS shared_facts (
+                    fact_id TEXT PRIMARY KEY,
+                    session_id TEXT,
+                    agent_id TEXT,
+                    topic TEXT,
+                    content TEXT,
+                    confidence REAL,
+                    source TEXT,
+                    timestamp REAL,
+                    metadata_json TEXT
+                )
+            """)
+            self._db_conn.commit()
 
     def _load(self) -> None:
         if self._loaded:
@@ -205,6 +234,13 @@ class SharedKnowledgePool:
         except Exception as e:
             logger.debug("sync_from_db failed: %s", e)
             return 0
+
+    def query_since(self, timestamp: float, limit: int = 100) -> List[SharedFact]:
+        """Phase 36: Return facts newer than timestamp for Gossip sync."""
+        self._load()
+        newer = [f for f in self._facts if f.timestamp > timestamp]
+        newer.sort(key=lambda f: f.timestamp, reverse=True)
+        return newer[:limit]
 
     def publish(
         self,

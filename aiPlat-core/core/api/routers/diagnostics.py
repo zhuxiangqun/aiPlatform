@@ -612,6 +612,24 @@ def _register_health_checks():
                         orch_stats = get_dynamic_orchestrator().stats()
                     except Exception:
                         orch_stats = {}
+                    # Phase 36: Gossip protocol stats
+                    try:
+                        from core.harness.memory.gossip_protocol import get_gossip_protocol
+                        gossip_stats = get_gossip_protocol().stats()
+                    except Exception:
+                        gossip_stats = {}
+                    # Phase 37: Swarm broker stats
+                    try:
+                        from core.harness.coordination.swarm_broker import get_swarm_broker
+                        swarm_stats = get_swarm_broker().stats()
+                    except Exception:
+                        swarm_stats = {}
+                    # Phase 38: Adaptive context router stats
+                    try:
+                        from core.harness.knowledge.adaptive_context import get_adaptive_context_router
+                        adaptive_stats = get_adaptive_context_router().stats()
+                    except Exception:
+                        adaptive_stats = {}
                 except Exception:
                     pass
                 try:
@@ -635,7 +653,10 @@ def _register_health_checks():
                              "search_engine": str(search_stats),
                              "goal_executor": executor_stats,
                              "tool_bootstrap": bootstrap_stats,
-                             "dynamic_orchestrator": orch_stats}
+                             "dynamic_orchestrator": orch_stats,
+                             "gossip_protocol": gossip_stats,
+                             "swarm_broker": swarm_stats,
+                             "adaptive_context": adaptive_stats}
                 )
         reg.register(HealingHealthCheck())
     except Exception as e:
