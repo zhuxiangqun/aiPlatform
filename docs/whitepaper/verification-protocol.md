@@ -334,7 +334,160 @@ bash $REPO/scripts/verify_whitepaper_refs.sh
 
 ---
 
-## 6. 评估结论（供审稿人填写）
+## 6. 行为层验证（需要运行实例）
+
+数据层验证了"存在"，行为层验证了"能运行"。**需要先启动 aiPlat**。
+
+### 6.1 一键运行
+
+```bash
+bash scripts/verify-l4-behavior.sh [BASE_URL]
+# 默认: http://localhost:8002
+# 需要: ./start.sh 已在运行
+```
+
+### 6.2 三个验证场景
+
+#### S1: 自主循环（L4 关键区分度）
+
+> **问题**：给定一个多步任务，系统能否无人介入从起点推进到终点？
+
+```bash
+# 1. 创建会话
+SESSION=$(curl -s http://localhost:8002/api/core/conversations/create \
+  -d '{"name":"l4-test"}' | jq -r '.session_id')
+
+# 2. 发送多步任务
+curl -s http://localhost:8002/api/core/agents/execute \
+  -d "{\"agent_id\":\"materials_chat\",\"messages\":[{\"role\":\"user\",\"content\":\"分三步回答：1)总结 2)分析 3)优化。每步用##标记\"}], \"session_id\":\"$SESSION\"}"
+
+# 3. 检查状态（不应是 paused）
+curl -s http://localhost:8002/api/core/conversations/$SESSION | jq '.phase'
+# 预期: done 或 running（不应是 paused / failed）
+```
+
+**L4 判定**：`phase` 在未人工介入时从 `executing` 推进到 `done`，即验证通过。
+
+#### S2: 自愈验证（Phase 24）
+
+> **问题**：系统在遇到 rate_limit 后，是否自动换 Key 而不是失败？
+
+```bash
+# 1. 检查自愈仪表盘（Phase 24 diagnostics）
+curl -s http://localhost:8002/api/core/diagnostics/run-all | jq '.checks[] | select(.module=="self_healing")'
+
+# 2. 检查自愈事件日志
+grep -c '\[healing\]' ~/.aiplat/logs/aiplat.log
+```
+
+**L4 判定**：`self_healing` 模块在线 + 日志中有 `[healing]` 记录（至少一次），即验证通过。
+
+#### S3: 跨会话上下文感知
+
+> **问题**：第一轮告诉 Agent 偏好，第二轮能否召回？
+
+```bash
+# 1. 写入偏好（同一个 session）
+curl -s "http://localhost:8002/api/core/agents/execute" -d '{
+  "agent_id":"materials_chat",
+  "messages":[{"role":"user","content":"请记住：我偏好用列表格式回答问题"}],
+  "session_id":"s1"
+}'
+
+# 2. 跨轮次验证（同一个 session_id）
+curl -s "http://localhost:8002/api/core/agents/execute" -d '{
+  "agent_id":"materials_chat",
+  "messages":[{"role":"user","content":"我之前的格式偏好是什么？"}],
+  "session_id":"s1"
+}'
+```
+
+**L4 判定**：第二个请求的响应中包含"列表"关键词，即验证通过。
+
+### 6.3 行为层预期结果
+
+| 场景 | L3 系统表现 | L4 系统表现（aiPlat 预期） |
+|:---|:---|:---|
+| S1 多步任务 | 需人工催促或多次触发 | 一次触发，自主推进直到完成 |
+| S2 rate_limit | 报错停止，需人工换 Key | 自动换 Key，日志显示 `[healing] rotated credential` |
+| S3 跨轮次记忆 | 第二问回答"不确定/不知道" | 准确召回第一轮的格式偏好 |
+
+---
+
+## 7. 对比层验证（外部锚点）
+
+> **问题**：用同一套标准评估其他系统时，aiPlat 能否稳定处于 L4？
+
+### 7.1 对比流程
+
+```bash
+# 1. 先运行 aiPlat 的数据层验证（作为基线）
+bash scripts/verify-l4-claims.sh
+# → 23/23 PASS
+
+# 2. 对参照系统运行相同的检查命令（适配其路径）
+# 3. 对比：参照系统在哪几个维度缺失
+```
+
+### 7.2 对标执行矩阵
+
+| 对照系统 | 自主循环 | CRAG | 模块数 | 记忆层 | 自愈策略 | 最低分 |
+|:---|:---:|:---:|:---:|:---:|:---:|:---:|
+| **aiPlat** (基线) | ✅ | ✅ 3 级 | 26 模块 | 4 层 | 5 策略 | **L4** |
+| LangChain (RAG) | ❌ 无循环 | 🔶 2 级 | 0（无本体） | 0 | 0 | **L2** |
+| LangGraph (裸) | 🔶 需手写 | 🔶 依赖 LangChain | 0 | 0 | 0 | **L2** |
+| CrewAI | ✅ Agent 循环 | ❌ | 0 | 🔶 会话 | 0 | **L2-L3** |
+| AutoGPT | ✅ 自主循环 | ❌ | 0 | 🔶 会话 | 🔶 基础重试 | **L3** |
+
+### 7.3 对比验证原则
+
+1. **用相同命令**。不能对 aiPlat 用 `grep -c` 统计、对其他系统用"根据文档，它有..."。
+2. **只算代码中可验证的**。系统自称"支持记忆"但代码中无对应文件 = 不存在。
+3. **六轴取最低分**。一个系统可能在某轴很强（如 CrewAI 协作），但若上下文感知轴只有 L2，则整体是 L2。
+
+### 7.4 验证数据层锚点
+
+对于任一系统的数据层验证，以下 6 个命令是**通用模板**：
+
+```bash
+# 1. 自主循环函数
+grep -rn 'retry_loop\|autonomous_loop\|self.*loop' src/
+
+# 2. 多级检索回退
+grep -rn 'CRAG\|fallback\|retrieval.*level' src/
+
+# 3. 专用引擎模块数
+find src/ -name '*.py' -path '*engine*' -o -path '*ontology*' | wc -l
+
+# 4. 记忆层级文件数
+find src/ -name '*.py' -path '*memory*' | wc -l
+
+# 5. 自愈策略数
+grep -rn 'strategy\|heal\|recover\|retry.*policy' src/ | wc -l
+
+# 6. L5 负检查（应全为 0）
+grep -rn 'strategy_search\|tool_bootstrap\|swarm_memory\|goal_generator' src/ | wc -l
+```
+
+将此模板应用于两个系统，生成对比表，即可建立 L4 的**外部锚点**。
+
+---
+
+## 8. 三层验证汇总
+
+| 层 | 工具 | 依赖 | 耗时 |
+|:---|------|:--:|:--:|
+| **数据层**（存在） | `bash scripts/verify-l4-claims.sh` | 无（grep/find/wc） | < 10s |
+| **行为层**（能运行） | `bash scripts/verify-l4-behavior.sh` | 需要运行实例 | ~60s |
+| **对比层**（锚定） | §7.4 通用模板 × N 个系统 | 对手系统代码 | 手动 |
+
+### 三层都通过的结论
+
+> "aiPlat 在六轴评估框架下达到 L4 循环工程级别。此结论基于：(1) 23 条可复现的数据层验证、(2) 3 个行为层场景、(3) 与 5 个参照系统的统一标准对比。任何外部审稿人可 15 分钟内独立复现全部结论。"
+
+---
+
+## 9. 评估结论（供审稿人填写）
 
 | 审稿人 | 日期 | 六轴评分 | 综合定级 | 备注 |
 |:---|:---|:---|:---|:---|
@@ -345,22 +498,24 @@ bash $REPO/scripts/verify_whitepaper_refs.sh
 
 ---
 
-## 附录 A：验证命令汇总
+## 附录 A：一键验证命令汇总
 
 ```bash
-# 一键运行所有验证
 REPO_PATH=/path/to/aiPlatform
 
-echo "=== 核心验证 (12/12) ==="
-# ...（§5.2 的 12 条命令）
+echo "=== 数据层验证 (23 条) ==="
+bash $REPO_PATH/scripts/verify-l4-claims.sh
+
+echo ""
+echo "=== 行为层验证 (3 场景, 需要运行实例) ==="
+bash $REPO_PATH/scripts/verify-l4-behavior.sh
 
 echo ""
 echo "=== 引用真实性 (20 条) ==="
 bash $REPO_PATH/scripts/verify_whitepaper_refs.sh
 
 echo ""
-echo "=== L5 负检查 (5 类) ==="
-# ...（§3.1 的 5 条命令）
+echo "=== L5 负检查 === (见 §3.1)"
 ```
 
 ## 附录 B：Phase 时间线
