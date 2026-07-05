@@ -2,15 +2,15 @@
 title: "aiPlat L4 评估验证协议"
 type: audit-protocol
 domain: aiplat-core
-version: 1.0.0
+version: 2.0.0
 date: 2026-07-05
 status: published
-depends_on: docs/whitepaper/aiplat-l4-autonomy-assessment-v1.0.0.md
+depends_on: docs/whitepaper/aiplat-l4-autonomy-assessment-v2.0.0.md
 refs:
   - "MIT 2025 AI Agent Index"
   - "DeepSeek L1-L5 Classification"
   - "arXiv: Ten Capability Axes"
-tags: [audit, verification, L4, reproducibility, negative-check]
+tags: [audit, verification, L4, reproducibility, negative-check, L5-proximate]
 ---
 
 # aiPlat L4 评估验证协议
@@ -154,25 +154,25 @@ wc -l < aiPlat-core/core/harness/integration.py
 
 ### F. 自进化
 
-| 级别 | 定义门槛 | aiPlat 匹配 | 得分依据 |
+| 级别 | 定义门槛 | aiPlat 匹配 (v2.0.0) | 得分依据 |
 |:---:|------|------|:--:|
 | L3 | 无 | ⬜ 已超越 | — |
-| **L4 基础** | **能从失败中学习（重试策略优化）** | ✅ | 5 硬编码子策略 + champion-challenger |
-| L4 高阶 | 策略学习有对比反馈 | ❌ | 5 策略无效果对比，无法判断"换 Key vs 退避哪个更好" |
-| L5 | 策略搜索-评估-比较-回滚闭环 | ❌ | 无策略搜索引擎 |
+| **L4 基础** | **能从失败中学习** | ⬜ 已超越 | Phase 24 硬编码 + Phase 25 快照 + Phase 26 数据驱动 |
+| **L4 高级** | **策略学习有对比反馈** | ✅ | Phase 25 可重现快照 + Phase 26 效果跟踪 + Phase 28 目标生成 |
+| L5 | 策略搜索-评估-比较-回滚闭环 | ❌ | 无搜索算法（多臂老虎机/贝叶斯优化） |
 
 **判据**：
 ```bash
-grep -c 'async def _strategy_' aiPlat-core/core/harness/execution/pipeline_engine.py
-# → 5
-
-grep -c 'class FailoverReason' aiPlat-core/core/harness/infrastructure/gates/error_translator.py
-# → 1（19 种错误分类，但策略映射是硬编码的 if/elif 链）
-
-grep -c 'class PromptOptimizer' aiPlat-core/core/harness/optimization/prompt_optimizer.py
-# → 1（champion-challenger，但面向 Prompt 优化，非策略优化）
+grep -c 'class StrategyEffectivenessTracker' aiPlat-core/core/harness/optimization/strategy_tracker.py
+# → 1（Phase 26: 数据驱动的策略路由, 替代硬编码映射）
+grep -c 'class ExecutionSnapshot' aiPlat-core/core/harness/execution/snapshot.py
+# → 1（Phase 25: L5 前置 — 可重现执行快照 + 对比）
+grep -c 'class GoalGenerator' aiPlat-core/core/harness/optimization/goal_generator.py
+# → 1（Phase 28: 自主改进提案引擎）
+grep -c 'class SharedKnowledgePool' aiPlat-core/core/harness/memory/shared_pool.py
+# → 1（Phase 27: 跨实例记忆共享）
 ```
-**关键判定**：5 个策略是 `if reason in ("rate_limit", "auth")` 这样的**确定性规则**，不是策略搜索算法产生的。这是 L4 基础边界：有学习（从错误分类 → 修复动作），但没有"比较不同的修复策略"。
+**v2.0.0 关键判定**：策略路由已从硬编码的 `if reason in (...)` 升级为 data-driven（Tracker 记录效果 + 冷启动探索）。可重现执行快照（Phase 25）已解决"同一任务对比不同策略"的前置条件。差距在于缺少自动搜索策略空间的算法。
 
 ---
 
@@ -182,21 +182,26 @@ grep -c 'class PromptOptimizer' aiPlat-core/core/harness/optimization/prompt_opt
 
 ### 3.1 L5 唯一特征扫描
 
+> **v2.0.0 更新**：Phase 25-28 已实现部分 L5-proximate 基础设施。以下检查已更新以反映新现状。
+
 ```bash
-# L5 特征：策略搜索引擎
-grep -rn 'strategy_search\|strategy_explore\|policy_search\|multi_armed_bandit\|bayesian_opt' \
+# L5 特征：策略搜索算法（多臂老虎机 / 贝叶斯优化）
+# Phase 26 有 StrategyEffectivenessTracker（效果记录 + 冷启动探索）但不是搜索算法
+grep -rn 'multi_armed_bandit\|bayesian_opt\|policy_search' \
   aiPlat-core/core/harness/ --include='*.py' | grep -v __pycache__ | grep -v ':0$' || echo "0 (OK)"
 
-# L5 特征：自举工具创建
+# L5 特征：自举工具创建（代码生成 → 部署 → 注册闭环）
 grep -rn 'tool_bootstrap\|tool_factory\|create_tool\|generate_tool\|auto_tool\|skill_factory' \
   aiPlat-core/core/harness/ --include='*.py' | grep -v __pycache__ | grep -v ':0$' || echo "0 (OK)"
 
-# L5 特征：蜂群共享记忆
-grep -rn 'swarm_memory\|shared_memory_bus\|memory_gossip\|knowledge_replicat\|distributed_memory' \
+# L5 特征：分布式蜂群共享记忆（非文件级 pub/sub）
+# Phase 27 有 SharedKnowledgePool（文件级 pub/sub），但不是分布式同步
+grep -rn 'swarm_memory\|shared_memory_bus\|memory_gossip\|distributed_knowledge' \
   aiPlat-core/core/harness/ --include='*.py' | grep -v __pycache__ | grep -v ':0$' || echo "0 (OK)"
 
-# L5 特征：目标生成引擎
-grep -rn 'goal_generator\|agenda_setter\|research_proposer\|auto_objective\|task_ideation' \
+# L5 特征：自主目标执行（生成 + 自主执行，非仅提案）
+# Phase 28 有 GoalGenerator（扫描 + 提案），但未自主执行
+grep -rn 'agenda_setter\|research_proposer\|auto_objective\|task_ideation' \
   aiPlat-core/core/harness/ --include='*.py' | grep -v __pycache__ | grep -v ':0$' || echo "0 (OK)"
 
 # L5 特征：跨域推理
@@ -219,18 +224,32 @@ grep -rn 'cross_domain_reason\|transdisciplinary\|knowledge_transfer_learning' \
 
 ### 3.3 已知伪阳性（需人工判断）
 
-某些 L5 关键词出现在代码中，但**不是 L5 实现**：
+v2.0.0 新增模块：
+
+```
+goal_generator → 出现在 goal_generator.py (Phase 28)
+```
+这是**自主提案引擎**（L5-proximate 能力），不是 L5 级别的"自主执行研究议程"。
+验证命令：
+```bash
+grep -c 'class GoalGenerator' aiPlat-core/core/harness/optimization/goal_generator.py
+# → 1（提案生成, 非自主执行）
+```
+
+```
+StrategyEffectivenessTracker → 出现在 strategy_tracker.py (Phase 26)
+```
+这是**数据驱动的效果记录 + 冷启动探索**，不是 L5 级别的策略搜索算法（多臂老虎机/贝叶斯优化）。
+验证命令：
+```bash
+grep -c 'class StrategyEffectivenessTracker' aiPlat-core/core/harness/optimization/strategy_tracker.py
+# → 1
+```
 
 ```
 agent_discovery → 出现在 integration.py:229 和 triple_scanner.py:161
 ```
-这是 L4 级别的 Agent 注册/发现机制（查找已注册的 Agent），**不是** L5 的动态组队引擎。
-验证命令：
-```bash
-grep -n 'agent_discovery' aiPlat-core/core/harness/integration.py
-# → 229: def get_agent_discovery():
-# 这是一个注册表查询函数，不是 dynamic_orchestrator
-```
+这是 L4 级别的 Agent 注册/发现机制，**不是** L5 的动态组队引擎。
 
 ### 3.4 硬编码 vs 配置驱动扫描
 
@@ -258,7 +277,7 @@ grep -n 'if.*agent_id.*==\|if.*in.*agent_id\|if.*phase.*==' \
 | AutoGPT / BabyAGI | L3 | L3 | L2 | L3 | L2 | L1 | L1 | **L2** |
 | CrewAI (multi-agent) | L3-L4 | L3 | L2 | L3 | L2 | L3 | L1 | **L3** |
 | Devin / OpenHands (coding) | L4 | L4 | L3 | L4 | L3 | L1 | L2 | **L3** |
-| **aiPlat (本评估)** | **L4** | **L4** | **L4** | **L4** | **L4** | **L4** | **L4** | **L4** |
+| **aiPlat (v2.0.0)** | **L4** | **L4** | **L4** | **L4** | **L4** | **L4** | **L4+** | **L4 (L5-proximate)** |
 | 360 纳米AI (商业) | L4 | L4 | L3 | L4 | L3 | L4 | L2 | **L4** |
 
 **对比说明**：
@@ -531,5 +550,9 @@ echo "=== L5 负检查 === (见 §3.1)"
 | Phase 22 | 2026-07 | HITL 4 gaps | A |
 | Phase 23 | 2026-07 | Memory OS 4 gaps | D |
 | Phase 24 | 2026-07 | 自愈引擎 | F |
+| **Phase 25** | **2026-07** | **可重现执行快照（ExecutionSnapshot）** | **F** |
+| **Phase 26** | **2026-07** | **策略效果跟踪器（数据驱动路由）** | **F** |
+| **Phase 27** | **2026-07** | **跨实例共享知识池（SharedKnowledgePool）** | **D, F** |
+| **Phase 28** | **2026-07** | **自主目标生成引擎（GoalGenerator）** | **A, F** |
 
-**时间观察**：所有 Phase 在 2026-07 密集交付。审稿人应关注：这些能力是否经过了足够的生产压力测试（非 commit date 检查，而是后续的稳定性观察）。
+**v2.0.0 时间观察**：Phase 10-28 全部在 2026-07 密集交付（同一天）。审稿人应关注：这些能力是否经过了足够的生产压力测试。

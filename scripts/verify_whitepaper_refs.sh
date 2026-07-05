@@ -100,6 +100,11 @@ check_ref "FailoverReason" "aiPlat-core/core/harness/infrastructure/gates/error_
 check_ref "Healing strategies" "aiPlat-core/core/harness/execution/pipeline_engine.py" 100 "async def _strategy_rotate_credential"
 check_ref "PromptOptimizer" "aiPlat-core/core/harness/optimization/prompt_optimizer.py" 50 "class PromptOptimizer"
 check_ref "CredentialPool" "aiPlat-infra/infra/management/model/credential_pool.py" 100 "class CredentialPool"
+# Phase 25-28
+check_ref "ExecutionSnapshot" "aiPlat-core/core/harness/execution/snapshot.py" 100 "class ExecutionSnapshot"
+check_ref "StrategyTracker" "aiPlat-core/core/harness/optimization/strategy_tracker.py" 100 "class StrategyEffectivenessTracker"
+check_ref "SharedKnowledgePool" "aiPlat-core/core/harness/memory/shared_pool.py" 100 "class SharedKnowledgePool"
+check_ref "GoalGenerator" "aiPlat-core/core/harness/optimization/goal_generator.py" 100 "class GoalGenerator"
 echo ""
 
 # ── Summary ──
