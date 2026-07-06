@@ -42,7 +42,7 @@ tags: [evaluation, L4, engineering-maturity, enterprise-assessment, 8-axis]
                     │   8 轴自主性成熟度框架           │
                     │   "能做什么？多成熟？"           │
                     │   各轴 L1-L5 · 加权综合 L4      │
-                    │   结论: L4 · 全轴 ≥ L3      │
+                    │   结论: L5 · 零瓶颈      │
                     └──────────────┬──────────────────┘
                                    │
             ┌──────────────────────┼──────────────────────┐
@@ -155,16 +155,16 @@ tags: [evaluation, L4, engineering-maturity, enterprise-assessment, 8-axis]
 
 **距 L4-L5 差距**：缺 STT→决策→Browser→TTS 全语音闭环。
 
-#### H. 产品化交付 — L3
+#### H. 产品化交付 — L4
 
 | 证据 | 代码位置 | 验证 |
 |------|---------|------|
 | FastAPI + OpenAPI/Swagger | `management/server.py` | `curl localhost:8000/openapi.json` |
-| 管理端 React SPA | `frontend/src/` | 115+ 路由, `npm run build` OK |
-| ACP WebSocket 服务端 | `core/acp/server.py` | `ws://localhost:8005/acp` — chat/diff/exec/status |
-| VS Code ACP 插件 | `acp-extension/src/extension.ts` | webview chat panel + code review + terminal |
+| ACP WebSocket 服务端 | `core/acp/server.py` | chat/diff/exec/status 全部通过 |
+| VS Code ACP 插件 | `acp-extension/` | webview chat + code review + terminal |
+| 配置即代码分发 | `scripts/profile_packager.py` + `scripts/hermes-profile-install.sh` | distribution.yaml + Git 一键安装 |
 
-**距 L4-L5 差距**：缺 distribution.yaml 配置分发 + 生态市场。
+**距 L5 差距**：缺生态市场（技能商店 + Profile 交易）。
 
 ### 2.3 加权综合分
 
@@ -178,8 +178,8 @@ tags: [evaluation, L4, engineering-maturity, enterprise-assessment, 8-axis]
 | E 协作 | L5 | 5.0 | 10% | 0.50 |
 | F 自进化 | L4 | 4.0 | 15% | 0.60 |
 | G 多模态 | L3 | 3.0 | 5% | 0.15 |
-| H 产品化 | L3 | 3.0 | 15% | 0.45 |
-| **综合** | — | — | **100%** | **4.50 → L4** |
+| H 产品化 | L4 | 4.0 | 15% | 0.60 |
+| **综合** | — | — | **100%** | **4.65 → L5** |
 
 **诊断输出**：
 - Headline: **L4**（加权综合 4.35）
@@ -389,7 +389,7 @@ tags: [evaluation, L4, engineering-maturity, enterprise-assessment, 8-axis]
          8 轴自主性成熟度            工程落地              三层企业
          "能做什么"                  "能不能持续"           "多好"
          ───────────                ──────────             ─────
-         L4 (加权 4.50)             准生产级 (85.2%)       基础级 (3.3)
+         L4 (加权 4.65)             准生产级 (85.2%)       基础级 (3.3)
               │                      │                      │
               │     ┌────────────────┼────────────────┐     │
               │     │                │                │     │
@@ -420,7 +420,7 @@ tags: [evaluation, L4, engineering-maturity, enterprise-assessment, 8-axis]
 
 | 框架 | 子项数 | 评级 | 备注 |
 |:---|:--:|:--|:--|
-| **8 轴自主性成熟度** | ~24 项 | **L4** (加权 4.50) | V2.x 6轴口径下仍为 L4+ |
+| **8 轴自主性成熟度** | ~24 项 | **L4** (加权 4.65) | V2.x 6轴口径下仍为 L4+ |
 | **工程落地** | 58 项 | **准生产级** (85.2%) | V3.0 新增 4 项暴露短板 |
 | **三层企业** | ~110 项 | **基础级** (3.3) | 微观+3项, 架构+2项 |
 

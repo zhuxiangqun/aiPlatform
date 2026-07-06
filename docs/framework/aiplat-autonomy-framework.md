@@ -182,7 +182,7 @@ tags: [framework, 8-axis, L1-L5, maturity]
 | E 协作 | **L5** | `core/harness/coordination/swarm_broker.py:1` — `class SwarmBroker`；`core/harness/coordination/dynamic_orchestrator.py:1` — `class DynamicOrchestrator` | — |
 | F 自进化 | **L4** | `core/harness/learning/__init__.py` — `AutoLearner.analyze_failure/success()` 每次交互自动生成 SkillDraft；`core/harness/evolution_engine.py` 夜间 13 步自动审批；`core/harness/knowledge/active_synthesis.py` 知识缺口→Wiki（需 `AIPLAT_ACTIVE_SYNTHESIS_ENABLED=true`）；`core/harness/optimization/search_engine.py` — UCB1 收敛 | 缺 WIKI_PATH 自动索引 + Execution→GraphIndex 反馈 (L5) |
 | G 多模态 | **L3** | `core/harness/multimodal/integrator.py` — MultimodalIntegrator 统一桥接 AudioAdapter + BrowserTestEngine + VideoParser → Agent 上下文；`core/harness/syscalls/multimodal.py` — `sys_multimodal_process` syscall 可被 Agent 通过标准门禁调用 | 缺语音全闭环 (STT→决策→Browser→TTS) (L4-L5) |
-| H 产品化 | **L3** | `aiPlat-core/core/acp/server.py` — FastAPI WebSocket ACP server (chat/diff/exec/status)；`aiPlat-management/acp-extension/` — VS Code extension (webview chat + code review + terminal) | 缺 distribution.yaml 配置分发 (L4-L5) |
+| H 产品化 | **L4** | `core/acp/server.py` — ACP WebSocket 服务端 + VS Code 插件；`scripts/profile_packager.py` — 配置打包为 distribution.yaml；`scripts/hermes-profile-install.sh` — Git 一键安装 | 缺生态市场 (L5) |
 
 ### 4.1 加权综合分计算
 
@@ -196,14 +196,14 @@ tags: [framework, 8-axis, L1-L5, maturity]
 | E 协作能力 | L5 | 5.0 | 10% | 0.50 |
 | F 自进化 | L4 | 4.0 | 15% | 0.60 |
 | G 多模态 | L3 | 3.0 | 5% | 0.15 |
-| H 产品化 | L3 | 3.0 | 15% | 0.45 |
-| **加权综合** | — | — | **100%** | **4.50 → L4** |
+| H 产品化 | L4 | 4.0 | 15% | 0.60 |
+| **加权综合** | — | — | **100%** | **4.65 → L5** |
 
 ### 4.2 诊断输出
 
 | 输出 | 値 | 用途 |
 |------|:--:|------|
-| Headline 评级 | **L4**（加权综合 4.50） | 对外沟通、横向对比 |
+| Headline 评级 | **L5**（加权综合 4.65） | 对外沟通、横向对比 |
 | 瓶颈轴 | —（全部 ≥ L3） | 无单点瓶颈 |
 | 最强轴 | B, D, E 均为 L5 | 技术护城河识别 |
 
