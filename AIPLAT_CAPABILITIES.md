@@ -156,6 +156,7 @@
 | code_entropy_detector | `harness/knowledge/code_entropy_detector.py` | ✅ | 自动同步 | 已合入 |
 | adaptive_context | `harness/knowledge/adaptive_context.py` | ✅ | 自动同步 | 已合入 |
 | wiki_indexer | `harness/knowledge/wiki_indexer.py` | ✅ | 自动同步 | 已合入 |
+| skill_marketplace | `harness/knowledge/skill_marketplace.py` | ✅ | 自动同步 | 已合入 |
 |------|------|:---:|------|------|
 | 统一知识检索 | `harness/syscalls/retrieval.py:569` | ✅ | 并行 Wiki + KB，RRF 三路融合 | 已合入 |
 | KB 文档检索 | `harness/syscalls/retrieval.py:39` | ✅ | hybrid: LIKE + FTS5 + FAISS 向量 | 已合入 |
@@ -425,6 +426,7 @@
 | kanban_engine | `harness/coordination/kanban_engine.py` | ✅ | 自动同步 | 已合入 |
 | wake_agent | `harness/monitoring/wake_agent.py` | ✅ | 自动同步 | 已合入 |
 | tool_evolution | `harness/optimization/tool_evolution.py` | ✅ | 自动同步 | 已合入 |
+| voice_loop | `harness/multimodal/voice_loop.py` | ✅ | 自动同步 | 已合入 |
 |------|------|:---:|------|------|
 | ExperienceVector | `harness/learning/experience_vector.py` | ✅ | PipelineTrace→Embedding→语义检索 | 已合入 |
 | ToolDriftDetector | `harness/learning/tool_drift_detector.py` | ✅ | 4类漂移检测(struct/field/latency/error) + 重放校验自适应 | 已合入 |
@@ -795,7 +797,7 @@
 | 编排系统 | 4 | 0 | 4 |
 | 管理 & 质量 | 21 | 0 | 21 |
 | 编排层 | 17 | 0 | 17 |
-| **总计** | **548** | **0** | **548** |
+| **总计** | **550** | **0** | **550** |
 
 ---
 

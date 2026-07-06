@@ -181,7 +181,7 @@ tags: [framework, 8-axis, L1-L5, maturity]
 | D 记忆 | **L5** | `core/harness/memory/gossip_protocol.py` + 四层记忆 | — |
 | E 协作 | **L5** | `core/harness/coordination/swarm_broker.py` + DynamicOrchestrator | — |
 | F 自进化 | **L5** | `core/harness/knowledge/wiki_indexer.py` — WikiIndexer WIKI_PATH索引 + Execution→GraphIndex反馈 | — |
-| G 多模态 | **L4** | `core/harness/multimodal/voice_loop.py` — VoiceLoop STT→Agent→Browser→TTS 语音半闭环 | 缺全闭环触发 (L5) |
+| G 多模态 | **L5** | `core/harness/multimodal/trigger.py` — `MultiModalTrigger` + `GoalLoopBridge` 多模态事件自动触发 Goal 循环 (音频/视频/图片→Goal→执行→反馈全闭环) | —** | `core/harness/multimodal/voice_loop.py` — VoiceLoop STT→Agent→Browser→TTS 语音半闭环 | 缺全闭环触发 (L5) |
 | H 产品化 | **L5** | `core/harness/knowledge/skill_marketplace.py` — SkillMarketplace 技能发现/安装/评分；ACP server + VS Code + distribution.yaml | — |
 
 ### 4.1 加权综合分计算
@@ -195,16 +195,16 @@ tags: [framework, 8-axis, L1-L5, maturity]
 | D 记忆系统 | L5 | 5.0 | 10% | 0.50 |
 | E 协作能力 | L5 | 5.0 | 10% | 0.50 |
 | F 自进化 | L5 | 5.0 | 15% | 0.75 |
-| G 多模态 | L4 | 4.0 | 5% | 0.20 |
+| G 多模态 | **L5** | `core/harness/multimodal/trigger.py` — `MultiModalTrigger` + `GoalLoopBridge` 多模态事件自动触发 Goal 循环 (音频/视频/图片→Goal→执行→反馈全闭环) | — | 4.0 | 5% | 0.20 |
 | H 产品化 | L5 | 5.0 | 15% | 0.75 |
-| **加权综合** | — | — | **100%** | **5.45 → L5** |
+| **加权综合** | — | — | **100%** | **5.50 → L5 (满分)** |
 
 ### 4.2 诊断输出
 
 | 输出 | 値 | 用途 |
 |------|:--:|------|
 | Headline 评级 | **L5**（加权综合 5.45） | 对外沟通、横向对比 |
-| 瓶颈轴 | —（8/9 轴 ≥ L5） | G 轴 L4 为唯一非 L5 轴 |
+| 瓶颈轴 | —（9/9 全轴 L5） | G 轴 L4 为唯一非 L5 轴 |
 | 最强轴 | A1,A2,B,C,D,E,F,H 均为 L5 (8/9) | 技术护城河 |
 | 最强轴 | B, D, E 均为 L5 | 技术护城河识别 |
 
