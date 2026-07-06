@@ -656,6 +656,8 @@ async def sys_tool_call(
                     reset_active_trace_context(trace_token)
                 except Exception as e:
                     logging.warning(str(e), exc_info=True)
+        # P0-2: enrich failed results with structured error diagnostics for Agent self-healing
+        result = _enrich_tool_error(result)
         end_ts = time.time()
         await trace_gate.end(span, success=bool(getattr(result, "success", True)))
         runtime = get_kernel_runtime()
@@ -725,6 +727,19 @@ async def sys_tool_call(
             )
         except Exception:
             pass
+        # ToolEvolutionEngine: record call for auto-improvement/deprecation (C4)
+        try:
+            from core.harness.optimization.tool_evolution import get_tool_evolution
+            te = get_tool_evolution()
+            te.record_call(
+                tool_name=tool_name or "<unknown>",
+                success=bool(getattr(result, "success", True)),
+                latency_ms=(end_ts - start_ts) * 1000.0,
+                error_type=getattr(result, "error_type", "") or "",
+                error_message=str(getattr(result, "error", "") or "")[:500],
+            )
+        except Exception:
+            pass
         return result
     except Exception:
         end_ts = time.time()
@@ -767,6 +782,54 @@ async def sys_tool_call(
             except Exception as e:
                 logging.warning(str(e), exc_info=True)
         raise
+
+
+def _enrich_tool_error(result: Any) -> Any:
+    """Populate structured error diagnostics on a failed ToolResult.
+
+    Gives the Agent machine-readable self-healing signals (error_type / recovery_hint /
+    exit_code / stderr) via the shared ErrorTranslator classification, instead of an
+    opaque ``error`` string (Hermes Layer 2 self-healing loop). No-op for successes or
+    results that already carry a classification. Never raises.
+    """
+    try:
+        if result is None or getattr(result, "success", True):
+            return result
+        if getattr(result, "error_type", None):
+            return result
+        from core.harness.infrastructure.gates.error_translator import (
+            classify_api_error, recovery_hint_for,
+        )
+        err_msg = str(getattr(result, "error", "") or "")
+        out = getattr(result, "output", None)
+        exit_code = None
+        stderr = None
+        if isinstance(out, dict):
+            exit_code = out.get("exit_code", out.get("returncode"))
+            stderr = out.get("stderr")
+        # Route the tool error string to the exception TYPE the LLM-tuned classifier
+        # understands (timeout/connection are matched by type, not message text).
+        _low = (err_msg or str(stderr or "")).lower()
+        if any(k in _low for k in ("timed out", "timeout")):
+            probe: Exception = TimeoutError(err_msg or "timeout")
+        elif any(k in _low for k in ("connection refused", "connection reset",
+                                     "connection aborted", "connection error")):
+            probe = ConnectionError(err_msg or "connection error")
+        else:
+            probe = RuntimeError(err_msg or (str(stderr or "")))
+        classified = classify_api_error(probe)
+        try:
+            result.error_type = classified.reason.value
+            result.recovery_hint = recovery_hint_for(classified.reason)
+            if getattr(result, "exit_code", None) is None and exit_code is not None:
+                result.exit_code = int(exit_code)
+            if getattr(result, "stderr", None) is None and stderr:
+                result.stderr = str(stderr)[:2000]
+        except Exception:
+            pass
+    except Exception:
+        return result
+    return result
 
 
 def _sanitize_tool_output_for_syscall_event(*, tool_name: str, output: Any) -> Any:

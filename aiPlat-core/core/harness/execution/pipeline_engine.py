@@ -1282,6 +1282,12 @@ Output format: JSON array of {{"rank": 1, "score": 0.95, "content": "..."}}"""
             await self._crystallize_skill(state)
         except Exception as e:
             logging.warning(str(e), exc_info=True)
+        # Feed execution into knowledge graph (F5: ops→知识自动索引)
+        try:
+            import asyncio
+            asyncio.create_task(self._feed_execution_to_graph(state))
+        except Exception:
+            pass
         # Notify PushManager on pipeline completion
         try:
             from core.harness.feedback_loops.push import get_push_manager
@@ -4411,6 +4417,41 @@ JSON format: {{"artifact": {{}},"confidence": "HIGH","issues": [{{"severity": "P
         if len(lines) - len(result_lines) > 10:
             result_lines.append(f"[RTK: compressed {len(lines)} lines → {len(result_lines)} lines]")
         return "\n".join(result_lines)
+
+    async def _feed_execution_to_graph(self, state: PipelineState) -> None:
+        """Feed pipeline completion into knowledge graph (F5: 操作→知识自动索引).
+
+        Bridges execution traces → GraphIndex so successful patterns become
+        searchable knowledge. Fire-and-forget — failure never blocks the pipeline.
+        """
+        try:
+            run_id = state.get("_run_id", "")
+            agent_seq = [s.agent_id or s.id for s in self._config.stages if s.agent_id or s.id]
+            if not run_id or not agent_seq:
+                return
+            from core.harness.knowledge.wiki_indexer import GraphFeedbackBridge
+            try:
+                Bridge = GraphFeedbackBridge
+            except (ImportError, AttributeError):
+                import os as _os1
+                repo = _os1.path.dirname(_os1.path.dirname(
+                    _os1.path.dirname(_os1.path.dirname(_os1.path.abspath(__file__)))))
+                wiki_path = _os1.path.join(repo, "wiki", "collections", "default")
+                bridge = GraphFeedbackBridge(wiki_path=wiki_path) if GraphFeedbackBridge else None
+            else:
+                import os as _os2
+                repo = _os2.path.dirname(_os2.path.dirname(
+                    _os2.path.dirname(_os2.path.dirname(_os2.path.abspath(__file__)))))
+                wiki_path = _os2.path.join(repo, "wiki", "collections", "default")
+                bridge = GraphFeedbackBridge(wiki_path=wiki_path)
+            if bridge:
+                for agent in agent_seq[:3]:  # top-3 agents only
+                    await bridge.feed_execution_to_graph(
+                        execution_id=run_id, node_type="pipeline_agent",
+                        node_value=agent, relation="executed_in",
+                        confidence=0.6 if "done" in str(state.get("phase", "")) else 0.4)
+        except Exception:
+            pass
 
     # ══════════════════════════════════════════════════════════════
     # Phase 24: Self-healing strategy methods (ErrorTranslator → Action)

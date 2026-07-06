@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-07-07T01:46:30",
+  "generated_at": "2026-07-07T01:53:29",
   "spec_version": "1.0.0",
   "frameworks": {
     "framework_one": {
@@ -235,10 +235,16 @@
             },
             {
               "id": "C4",
-              "desc": "从使用反馈自动改进/弃用工具 — 未实现",
-              "declared_level": null,
-              "source": "gap",
-              "verification_status": "no-data"
+              "desc": "工具自动改进/弃用(record_call+AutoToolRegenerator+CronScheduler)",
+              "declared_level": "L3",
+              "source": "file_check",
+              "evidence": {
+                "command": "grep -c 'get_tool_evolution\\|record_call' aiPlat-core/core/harness/syscalls/tool.py",
+                "op": "-ge",
+                "expected": 1
+              },
+              "verification_status": "pass",
+              "actual": 4
             }
           ]
         },
@@ -407,10 +413,16 @@
             },
             {
               "id": "F5",
-              "desc": "操作→知识自动索引 — 未实现",
-              "declared_level": null,
-              "source": "gap",
-              "verification_status": "no-data"
+              "desc": "操作→知识自动索引(_feed_execution_to_graph+feed_execution_to_graph)",
+              "declared_level": "L3",
+              "source": "file_check",
+              "evidence": {
+                "command": "(grep -c '_feed_execution_to_graph' aiPlat-core/core/harness/execution/pipeline_engine.py || echo 0) && (grep -c 'feed_execution_to_graph' aiPlat-core/core/harness/knowledge/wiki_indexer.py || echo 0)",
+                "op": "-ge",
+                "expected": 1
+              },
+              "verification_status": "pass",
+              "actual": 1
             }
           ]
         },
@@ -463,10 +475,16 @@
             },
             {
               "id": "G4",
-              "desc": "多模态输入作为Goal循环触发源 — 未实现",
-              "declared_level": null,
-              "source": "gap",
-              "verification_status": "no-data"
+              "desc": "多模态Goal触发(GoalLoopBridge+MultiModalTrigger)",
+              "declared_level": "L3",
+              "source": "file_check",
+              "evidence": {
+                "command": "grep -c 'class GoalLoopBridge\\|class MultiModalTrigger' aiPlat-core/core/harness/multimodal/trigger.py",
+                "op": "-ge",
+                "expected": 2
+              },
+              "verification_status": "pass",
+              "actual": 2
             }
           ]
         },
@@ -2049,39 +2067,6 @@
       "source_evidence": {
         "framework": "framework_one",
         "item": "A1.4"
-      },
-      "auto_executable": false
-    },
-    {
-      "goal_id": "assess-gap-C4",
-      "title": "实现缺口能力: 从使用反馈自动改进/弃用工具 — 未实现",
-      "goal_type": "capability_gap",
-      "priority": "medium",
-      "source_evidence": {
-        "framework": "framework_one",
-        "item": "C4"
-      },
-      "auto_executable": false
-    },
-    {
-      "goal_id": "assess-gap-F5",
-      "title": "实现缺口能力: 操作→知识自动索引 — 未实现",
-      "goal_type": "capability_gap",
-      "priority": "medium",
-      "source_evidence": {
-        "framework": "framework_one",
-        "item": "F5"
-      },
-      "auto_executable": false
-    },
-    {
-      "goal_id": "assess-gap-G4",
-      "title": "实现缺口能力: 多模态输入作为Goal循环触发源 — 未实现",
-      "goal_type": "capability_gap",
-      "priority": "medium",
-      "source_evidence": {
-        "framework": "framework_one",
-        "item": "G4"
       },
       "auto_executable": false
     },

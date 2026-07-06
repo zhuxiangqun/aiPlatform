@@ -90,4 +90,18 @@ def load_cron_from_profile(home_dir: str = "") -> int:
         registered += 1
         logger.debug("cron_loader: registered '%s' (every %ds, goal=%s)", name, interval, goal)
 
+    # Built-in: Tool auto-improvement/deprecation check (C4) — runs daily
+    try:
+        async def _tool_evolution_handler():
+            from core.harness.optimization.tool_evolution import get_regenerator
+            regen = get_regenerator()
+            improved = await regen.regenerate_underperforming()
+            if improved:
+                logger.info("ToolEvolution: %d changes — %s", len(improved), improved[:3])
+        scheduler.register("tool_regeneration", 86400, _tool_evolution_handler,
+                          description="Daily tool auto-improvement/deprecation check (C4)")
+        registered += 1
+    except Exception as e:
+        logger.debug("tool_regeneration cron registration skipped: %s", e)
+
     return registered

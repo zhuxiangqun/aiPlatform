@@ -82,7 +82,8 @@ frameworks:
              evidence: {command: "grep -c 'class MCPServer' aiPlat-core/core/apps/mcp/server.py", op: "-ge", expected: 1}}
           - {id: C3, desc: "工具自举(ToolBootstrapEngine)", declared_level: L4, source: script,
              evidence: {command: "grep -c 'class ToolBootstrapEngine' aiPlat-core/core/harness/optimization/tool_bootstrap.py", op: "-ge", expected: 1}}
-          - {id: C4, desc: "从使用反馈自动改进/弃用工具 — 未实现", declared_level: null, source: gap}
+          - {id: C4, desc: "工具自动改进/弃用(record_call+AutoToolRegenerator+CronScheduler)", declared_level: L3, source: file_check,
+             evidence: {command: "grep -c 'get_tool_evolution\\|record_call' aiPlat-core/core/harness/syscalls/tool.py", op: "-ge", expected: 1}}
       - id: D
         name: "记忆系统"
         declared_level: L5
@@ -119,7 +120,8 @@ frameworks:
              evidence: {command: "grep -c 'class EvolutionEngine' aiPlat-core/core/harness/evolution_engine.py", op: "-ge", expected: 1}}
           - {id: F4, desc: "知识自动合成(active_synthesis)", declared_level: L4, source: file_check,
              evidence: {command: "test -f aiPlat-core/core/harness/knowledge/active_synthesis.py && echo 1 || echo 0", op: "-ge", expected: 1}}
-          - {id: F5, desc: "操作→知识自动索引 — 未实现", declared_level: null, source: gap}
+          - {id: F5, desc: "操作→知识自动索引(_feed_execution_to_graph+feed_execution_to_graph)", declared_level: L3, source: file_check,
+             evidence: {command: "(grep -c '_feed_execution_to_graph' aiPlat-core/core/harness/execution/pipeline_engine.py || echo 0) && (grep -c 'feed_execution_to_graph' aiPlat-core/core/harness/knowledge/wiki_indexer.py || echo 0)", op: "-ge", expected: 1}}
       - id: G
         name: "多模态交互"
         declared_level: L2
@@ -131,7 +133,8 @@ frameworks:
              evidence: {command: "grep -rl 'InfraAudioAdapter' aiPlat-core/core --include=*.py | wc -l", op: "-ge", expected: 1}}
           - {id: G3, desc: "浏览器操控(BrowserTestEngine)", declared_level: L3, source: script,
              evidence: {command: "grep -rl 'BrowserTestEngine' aiPlat-core/core --include=*.py | wc -l", op: "-ge", expected: 1}}
-          - {id: G4, desc: "多模态输入作为Goal循环触发源 — 未实现", declared_level: null, source: gap}
+          - {id: G4, desc: "多模态Goal触发(GoalLoopBridge+MultiModalTrigger)", declared_level: L3, source: file_check,
+             evidence: {command: "grep -c 'class GoalLoopBridge\\|class MultiModalTrigger' aiPlat-core/core/harness/multimodal/trigger.py", op: "-ge", expected: 2}}
       - id: H
         name: "产品化交付"
         # 陷阱3: scoring-detail.md 标题(:96)写 L2, 加权表(:117)写 L3 — 取加权表值 L3, 待 review 确认
