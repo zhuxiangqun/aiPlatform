@@ -4,13 +4,22 @@
     "uid": "aiplat-overview",
     "timezone": "browser",
     "refresh": "10s",
-    "tags": ["aiplat", "llm", "observability"],
+    "tags": [
+      "aiplat",
+      "llm",
+      "observability"
+    ],
     "panels": [
       {
         "id": 1,
         "title": "LLM QPS (requests/sec)",
         "type": "timeseries",
-        "gridPos": {"x": 0, "y": 0, "w": 12, "h": 8},
+        "gridPos": {
+          "x": 0,
+          "y": 0,
+          "w": 12,
+          "h": 8
+        },
         "targets": [
           {
             "expr": "rate(http_requests_total{handler=~\".*llm.*\"}(${__rate_interval}))",
@@ -20,7 +29,10 @@
         "fieldConfig": {
           "defaults": {
             "unit": "reqps",
-            "custom": {"lineWidth": 2, "fillOpacity": 10}
+            "custom": {
+              "lineWidth": 2,
+              "fillOpacity": 10
+            }
           }
         }
       },
@@ -28,7 +40,12 @@
         "id": 2,
         "title": "LLM Latency P95 (seconds)",
         "type": "timeseries",
-        "gridPos": {"x": 12, "y": 0, "w": 12, "h": 8},
+        "gridPos": {
+          "x": 12,
+          "y": 0,
+          "w": 12,
+          "h": 8
+        },
         "targets": [
           {
             "expr": "histogram_quantile(0.95, rate(http_request_duration_seconds_bucket{handler=~\".*llm.*\"}(${__rate_interval})))",
@@ -42,7 +59,9 @@
         "fieldConfig": {
           "defaults": {
             "unit": "s",
-            "custom": {"lineWidth": 2}
+            "custom": {
+              "lineWidth": 2
+            }
           }
         }
       },
@@ -50,7 +69,12 @@
         "id": 3,
         "title": "LLM Error Rate (%)",
         "type": "timeseries",
-        "gridPos": {"x": 0, "y": 8, "w": 8, "h": 8},
+        "gridPos": {
+          "x": 0,
+          "y": 8,
+          "w": 8,
+          "h": 8
+        },
         "targets": [
           {
             "expr": "rate(http_requests_total{handler=~\".*llm.*\",status=~\"5..\"}(${__rate_interval})) / rate(http_requests_total{handler=~\".*llm.*\"}(${__rate_interval})) * 100",
@@ -63,9 +87,18 @@
             "thresholds": {
               "mode": "absolute",
               "steps": [
-                {"value": null, "color": "green"},
-                {"value": 5, "color": "orange"},
-                {"value": 15, "color": "red"}
+                {
+                  "value": null,
+                  "color": "green"
+                },
+                {
+                  "value": 5,
+                  "color": "orange"
+                },
+                {
+                  "value": 15,
+                  "color": "red"
+                }
               ]
             }
           }
@@ -75,7 +108,12 @@
         "id": 4,
         "title": "HTTP Request Rate (all endpoints)",
         "type": "timeseries",
-        "gridPos": {"x": 8, "y": 8, "w": 8, "h": 8},
+        "gridPos": {
+          "x": 8,
+          "y": 8,
+          "w": 8,
+          "h": 8
+        },
         "targets": [
           {
             "expr": "rate(http_requests_total(${__rate_interval}))",
@@ -85,7 +123,9 @@
         "fieldConfig": {
           "defaults": {
             "unit": "reqps",
-            "custom": {"lineWidth": 1}
+            "custom": {
+              "lineWidth": 1
+            }
           }
         }
       },
@@ -93,7 +133,12 @@
         "id": 5,
         "title": "HTTP Status Codes",
         "type": "timeseries",
-        "gridPos": {"x": 16, "y": 8, "w": 8, "h": 8},
+        "gridPos": {
+          "x": 16,
+          "y": 8,
+          "w": 8,
+          "h": 8
+        },
         "targets": [
           {
             "expr": "sum(rate(http_requests_total(${__rate_interval})) by (status))",
@@ -105,7 +150,12 @@
         "id": 6,
         "title": "Pipeline Stage Execution Count",
         "type": "bargauge",
-        "gridPos": {"x": 0, "y": 16, "w": 8, "h": 8},
+        "gridPos": {
+          "x": 0,
+          "y": 16,
+          "w": 8,
+          "h": 8
+        },
         "targets": [
           {
             "expr": "aiplat_skill_calls_total",
@@ -122,7 +172,12 @@
         "id": 7,
         "title": "Pipeline Stage Latency P95 (seconds)",
         "type": "timeseries",
-        "gridPos": {"x": 8, "y": 16, "w": 16, "h": 8},
+        "gridPos": {
+          "x": 8,
+          "y": 16,
+          "w": 16,
+          "h": 8
+        },
         "targets": [
           {
             "expr": "histogram_quantile(0.95, rate(http_request_duration_seconds_bucket{handler=~\".*execute.*|.*pipeline.*\"}(${__rate_interval})))",
@@ -139,7 +194,12 @@
         "id": 8,
         "title": "Cache Hit Ratio",
         "type": "stat",
-        "gridPos": {"x": 0, "y": 24, "w": 4, "h": 6},
+        "gridPos": {
+          "x": 0,
+          "y": 24,
+          "w": 4,
+          "h": 6
+        },
         "targets": [
           {
             "expr": "aiplat_cache_version_total or vector(0)",
@@ -149,11 +209,16 @@
         "fieldConfig": {
           "defaults": {
             "unit": "short",
-            "color": {"mode": "thresholds"},
+            "color": {
+              "mode": "thresholds"
+            },
             "thresholds": {
               "mode": "absolute",
               "steps": [
-                {"value": null, "color": "blue"}
+                {
+                  "value": null,
+                  "color": "blue"
+                }
               ]
             }
           }
@@ -163,7 +228,12 @@
         "id": 9,
         "title": "Skill Decay Rate",
         "type": "stat",
-        "gridPos": {"x": 4, "y": 24, "w": 4, "h": 6},
+        "gridPos": {
+          "x": 4,
+          "y": 24,
+          "w": 4,
+          "h": 6
+        },
         "targets": [
           {
             "expr": "aiplat_skill_decay_total or vector(0)",
@@ -175,7 +245,12 @@
         "id": 10,
         "title": "Episodic Memory Pre-Score",
         "type": "stat",
-        "gridPos": {"x": 8, "y": 24, "w": 4, "h": 6},
+        "gridPos": {
+          "x": 8,
+          "y": 24,
+          "w": 4,
+          "h": 6
+        },
         "targets": [
           {
             "expr": "aiplat_episodic_prescore_total or vector(0)",
@@ -187,7 +262,12 @@
         "id": 11,
         "title": "Open Spans / Orphan Rate",
         "type": "gauge",
-        "gridPos": {"x": 12, "y": 24, "w": 6, "h": 6},
+        "gridPos": {
+          "x": 12,
+          "y": 24,
+          "w": 6,
+          "h": 6
+        },
         "targets": [
           {
             "expr": "aiplat_tool_truncate_total or vector(0)",
@@ -200,9 +280,18 @@
             "thresholds": {
               "mode": "absolute",
               "steps": [
-                {"value": null, "color": "green"},
-                {"value": 10, "color": "orange"},
-                {"value": 50, "color": "red"}
+                {
+                  "value": null,
+                  "color": "green"
+                },
+                {
+                  "value": 10,
+                  "color": "orange"
+                },
+                {
+                  "value": 50,
+                  "color": "red"
+                }
               ]
             }
           }
@@ -212,7 +301,12 @@
         "id": 12,
         "title": "Semantic Memory Expiry",
         "type": "stat",
-        "gridPos": {"x": 18, "y": 24, "w": 4, "h": 6},
+        "gridPos": {
+          "x": 18,
+          "y": 24,
+          "w": 4,
+          "h": 6
+        },
         "targets": [
           {
             "expr": "aiplat_semantic_expiry_total or vector(0)",
@@ -224,7 +318,12 @@
         "id": 13,
         "title": "RRF Latency (seconds)",
         "type": "timeseries",
-        "gridPos": {"x": 0, "y": 30, "w": 12, "h": 6},
+        "gridPos": {
+          "x": 0,
+          "y": 30,
+          "w": 12,
+          "h": 6
+        },
         "targets": [
           {
             "expr": "aiplat_rrf_latency_seconds or vector(0)",
@@ -232,20 +331,119 @@
           }
         ],
         "fieldConfig": {
-          "defaults": {"unit": "s"}
+          "defaults": {
+            "unit": "s"
+          }
         }
       },
       {
         "id": 14,
         "title": "Tool Truncation Events",
         "type": "timeseries",
-        "gridPos": {"x": 12, "y": 30, "w": 12, "h": 6},
+        "gridPos": {
+          "x": 12,
+          "y": 30,
+          "w": 12,
+          "h": 6
+        },
         "targets": [
           {
             "expr": "rate(aiplat_tool_truncate_total(${__rate_interval})) or vector(0)",
             "legendFormat": "Truncations/s"
           }
         ]
+      },
+      {
+        "id": 15,
+        "title": "Tenant QPS Distribution",
+        "type": "bargauge",
+        "gridPos": {
+          "h": 4,
+          "w": 12,
+          "x": 0,
+          "y": 28
+        },
+        "targets": [
+          {
+            "expr": "sum by(tenant) (rate(aiplat_http_requests_total{job=\"aiplat-core\"}[5m])) or vector(0)",
+            "legendFormat": "{{tenant}}"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "reqps"
+          }
+        }
+      },
+      {
+        "id": 16,
+        "title": "Pipeline Success Rate",
+        "type": "bargauge",
+        "gridPos": {
+          "h": 4,
+          "w": 12,
+          "x": 12,
+          "y": 28
+        },
+        "targets": [
+          {
+            "expr": "sum(rate(aiplat_pipeline_completed_total{status=\"success\"}[5m])) / clamp_min(sum(rate(aiplat_pipeline_completed_total[5m])), 1)",
+            "legendFormat": "Success Rate"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percentunit",
+            "max": 1,
+            "min": 0
+          }
+        }
+      },
+      {
+        "id": 17,
+        "title": "Monthly LLM Cost Estimate",
+        "type": "stat",
+        "gridPos": {
+          "h": 4,
+          "w": 8,
+          "x": 0,
+          "y": 32
+        },
+        "targets": [
+          {
+            "expr": "sum(increase(aiplat_llm_tokens_total[30d])) * 0.002 / 1000 or vector(0)",
+            "legendFormat": "USD"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "currencyUSD"
+          }
+        }
+      },
+      {
+        "id": 18,
+        "title": "SLA Compliance Rate",
+        "type": "stat",
+        "gridPos": {
+          "h": 4,
+          "w": 8,
+          "x": 8,
+          "y": 32
+        },
+        "targets": [
+          {
+            "expr": "clamp_max((1 - (aiplat_vuln_sla_breaches_total / clamp_min(aiplat_vuln_total, 1))) or vector(1), 1)",
+            "legendFormat": "SLA percent"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percentunit",
+            "max": 1,
+            "min": 0
+          }
+        }
       }
     ],
     "templating": {
@@ -254,7 +452,9 @@
           "name": "__rate_interval",
           "type": "interval",
           "query": "1m,5m,15m,30m,1h",
-          "current": {"value": "5m"}
+          "current": {
+            "value": "5m"
+          }
         }
       ]
     },
@@ -262,6 +462,6 @@
       "from": "now-1h",
       "to": "now"
     },
-    "version": 1
+    "version": 2
   }
 }

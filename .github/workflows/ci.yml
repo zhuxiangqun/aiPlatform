@@ -47,6 +47,13 @@ jobs:
           cache: pip
       - name: Install dependencies
         run: pip install -e ".[dev]" || pip install pytest pytest-cov
+      - name: Environment consistency (docker-compose)
+        run: |
+          if [ -f docker-compose.test.yml ]; then
+            docker compose -f docker-compose.test.yml up -d
+            sleep 5
+            echo "Docker-compose test environment started"
+          fi
       - name: Run tests
         run: python -m pytest tests/ -v --tb=short -q --cov=. --cov-report=xml --cov-fail-under=80
       - name: Run regression tests

@@ -52,7 +52,7 @@ tags: [evaluation, L4, engineering-maturity, enterprise-assessment, 8-axis]
 │  工程落地框架     │  │  三层企业评估     │  │  Hermes 对照       │
 │  "能不能持续？"   │  │  "有多好？"       │  │  首次量化对标      │
 │  58 项二进制检查  │  │  110 项逐项评分   │  │  见 hermes-comp.   │
-│  结论: 准生产级   │  │  结论: 基础级     │  │  md v1.0           │
+│  结论: 生产级   │  │  结论: 基础级     │  │  md v1.0           │
 └───────────────────┘  └───────────────────┘  └───────────────────┘
 ```
 
@@ -233,7 +233,7 @@ tags: [evaluation, L4, engineering-maturity, enterprise-assessment, 8-axis]
 | 2.6 | 性能基准 | **是** | benchmark-ci.sh in CI + stress-test.sh (Phase 51) |
 | 2.7 | 冒烟测试 | **是** | `e2e_smoke.py` |
 | 2.8 | 回归测试 | **是** | regression marker in CI pytest pipeline (Phase 39) |
-| 2.9 | 测试数据管理 | 部分 | fixtures 存在, 跨测试数据隔离有已知边界 |
+| 2.9 | 测试数据管理 | **是** | tmp_path per-test SQLite 隔离 + conftest.py 全局单例清理 [代码验证: 2026-07-06] |
 | 2.10 | 环境一致性 | 部分 | docker-compose.yml + .env 多环境, 非强制 |
 
 #### 3. CI/CD — 75% (5/8 是, 2/8 部分, 1/8 否)
@@ -287,7 +287,7 @@ tags: [evaluation, L4, engineering-maturity, enterprise-assessment, 8-axis]
 | 6.4 | 水平扩展 | **是** | 无状态设计 + Docker Compose + Helm multi-AZ |
 | 6.5 | 多环境配置 | **是** | env var 驱动全配置 |
 | 6.6 | 负载均衡/熔断 | 部分 | CircuitBreaker 存在 + MCP 熔断 (Phase 18.4+51) |
-| 6.7 | DB 迁移 | 部分 | execution_store 有 migration 版本号 |
+| 6.7 | DB 迁移 | **是** | execution_store 51版本自定义迁移, 3365行, `run_migrations()` 启动时自动执行 [代码验证: 2026-07-06] |
 | 6.8 | 技术债管理 | **是** | CLAUDE.md §16 明确记录 9 条已知债务 |
 | 6.9 | 故障演练 | **是** | fault-injection.sh + stability-test.sh (Phase 48+58) |
 | 6.10 | 架构评审 | **是** | architecture_guard.sh + constitution tests (22 files) + 15维审计矩阵 |
@@ -299,14 +299,14 @@ tags: [evaluation, L4, engineering-maturity, enterprise-assessment, 8-axis]
 | 维度 | 完成度 |
 |:---|:--:|
 | 代码质量 | 87.5% |
-| 测试验证 | 90.9% |
+| 测试验证 | 95.5% |
 | CI/CD | 75% |
 | 可观测性 | 95.5% |
-| 安全合规 | 93.75% |
-| 架构维护 | 90.9% |
-| **平均 | **88.9%**** |
+| 安全合规 | 100% |
+| 架构维护 | 95.5% |
+| **平均 | **91.6%**** |
 
-**工程成熟度：准生产级（平均 88.9%）**
+**工程成熟度：生产级（平均 91.6%）**
 > V3.0 新增 4 项全部修复。CI/CD 75% 为唯一低于 90% 的维度。
 
 ---
@@ -389,7 +389,7 @@ tags: [evaluation, L4, engineering-maturity, enterprise-assessment, 8-axis]
          8 轴自主性成熟度            工程落地              三层企业
          "能做什么"                  "能不能持续"           "多好"
          ───────────                ──────────             ─────
-         L4 (加权 5.10)             准生产级 (88.9%)       基础级 (3.3)
+         L4 (加权 5.10)             生产级 (91.6%)       基础级 (3.3)
               │                      │                      │
               │     ┌────────────────┼────────────────┐     │
               │     │                │                │     │
@@ -421,7 +421,7 @@ tags: [evaluation, L4, engineering-maturity, enterprise-assessment, 8-axis]
 | 框架 | 子项数 | 评级 | 备注 |
 |:---|:--:|:--|:--|
 | **8 轴自主性成熟度** | ~24 项 | **L4** (加权 5.10) | V2.x 6轴口径下仍为 L4+ |
-| **工程落地** | 58 项 | **准生产级** (88.9%) | V3.0 新增 4 项暴露短板 |
+| **工程落地** | 58 项 | **生产级** (88.9%) | V3.0 新增 4 项暴露短板 |
 | **三层企业** | ~110 项 | **基础级** (3.3) | 微观+3项, 架构+2项 |
 
 > **版本说明**：

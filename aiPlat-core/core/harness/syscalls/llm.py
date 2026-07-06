@@ -25,6 +25,40 @@ from core.harness.infrastructure.gates import TraceGate, ContextGate, Resilience
 from core.harness.kernel.runtime import get_kernel_runtime
 from core.harness.kernel.execution_context import get_active_release_context, get_active_request_context, record_prompt_revision_application
 
+# ── LLM Circuit Breaker (Gap 6.6) ──
+class LLMCircuitBreaker:
+    """Lightweight circuit breaker for LLM calls. Prevents cascading failures."""
+    def __init__(self, failure_threshold=5, recovery_timeout=30):
+        self.threshold = failure_threshold
+        self.timeout = recovery_timeout
+        self._failures = 0
+        self._last_failure_ts = 0.0
+        self._open_ts = 0.0
+        self._state = "closed"
+
+    def allow_request(self) -> bool:
+        if self._state == "open":
+            if time.time() - self._open_ts > self.timeout:
+                self._state = "half_open"
+                return True
+            return False
+        return True
+
+    def record_success(self):
+        self._failures = 0
+        self._state = "closed"
+
+    def record_failure(self):
+        self._failures += 1
+        self._last_failure_ts = time.time()
+        if self._failures >= self.threshold and self._state != "open":
+            self._state = "open"
+            self._open_ts = time.time()
+            logging.warning(f"[LLM CB] Circuit OPEN after {self._failures} consecutive failures")
+
+_llm_cb = LLMCircuitBreaker(failure_threshold=5, recovery_timeout=30)
+# ── End LLM Circuit Breaker ──
+
 
 Message = Dict[str, Any]
 
@@ -532,6 +566,10 @@ async def sys_llm_generate(
         max_tokens: Optional override for max tokens.
         response_format: Optional response format (e.g. json_schema).
     """
+    # Gap 6.6: Circuit breaker guard — reject when circuit is open
+    if not _llm_cb.allow_request():
+        raise RuntimeError("LLM circuit breaker OPEN — too many consecutive failures. Retry after 30s.")
+
     # P0-1: 将 extra_context 合并到 ExecutionContext，确保异步调用链中标记不丢失
     if extra_context:
         try:
@@ -851,8 +889,9 @@ async def sys_llm_generate(
                         await _asyncio.sleep(wait)
 
                     result = await model.generate(prepared)  # type: ignore[misc]
-                    # Successful call — reset rate limit state
+                    # Successful call — reset rate limit state + circuit breaker
                     await _rt_success(model_name or "deepseek-v4-pro")
+                    _llm_cb.record_success()
                     break
                 except ClassifiedError as ce:
                     # 1. Rate limit — record and backoff
@@ -882,6 +921,7 @@ async def sys_llm_generate(
                     # 5. Non-retryable → fail fast
                     raise
                 except BaseException:
+                    _llm_cb.record_failure()
                     raise  # non-LLM errors pass through
             # PII unmask: restore original values if role permits
             if message_guard_stats and message_guard_stats.get("pii_mappings"):
