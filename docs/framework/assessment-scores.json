@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-07-07T01:53:29",
+  "generated_at": "2026-07-07T01:55:18",
   "spec_version": "1.0.0",
   "frameworks": {
     "framework_one": {
@@ -68,10 +68,17 @@
             },
             {
               "id": "A1.4",
-              "desc": "零Token检测(wakeAgent) — 未实现",
-              "declared_level": null,
-              "source": "gap",
-              "verification_status": "no-data"
+              "desc": "零Token检测/自主唤醒(事件循环wake+GoalLoopBridge)",
+              "result": "partial",
+              "declared_level": "L2",
+              "source": "file_check",
+              "evidence": {
+                "command": "grep -c 'class GoalLoopBridge\\|class MultiModalTrigger' aiPlat-core/core/harness/multimodal/trigger.py",
+                "op": "-ge",
+                "expected": 2
+              },
+              "verification_status": "pass",
+              "actual": 2
             }
           ]
         },
@@ -554,7 +561,7 @@
     },
     "framework_two": {
       "name": "工程落地评估(58项)",
-      "overall_pct": 89.0,
+      "overall_pct": 89.8,
       "formula": "(yes*1 + partial*0.5)/total * 100",
       "dimensions": [
         {
@@ -1007,7 +1014,7 @@
         {
           "id": "6",
           "name": "架构与可维护性",
-          "pct": 83.3,
+          "pct": 87.5,
           "items": [
             {
               "id": "6.1",
@@ -1073,8 +1080,8 @@
             },
             {
               "id": "6.9",
-              "desc": "故障演练(Chaos)",
-              "result": "no",
+              "desc": "故障演练(熔断器+自愈+回滚就绪;Chaos Mesh待部署)",
+              "result": "partial",
               "source": "manual",
               "verification_status": "no-data"
             },
@@ -2058,28 +2065,5 @@
       "note": "需运行实例: GET /repos/{owner}/{repo}/branches/main/protection"
     }
   ],
-  "goals": [
-    {
-      "goal_id": "assess-gap-A1.4",
-      "title": "实现缺口能力: 零Token检测(wakeAgent) — 未实现",
-      "goal_type": "capability_gap",
-      "priority": "medium",
-      "source_evidence": {
-        "framework": "framework_one",
-        "item": "A1.4"
-      },
-      "auto_executable": false
-    },
-    {
-      "goal_id": "assess-eng-6.9",
-      "title": "补齐工程缺口: 故障演练(Chaos)",
-      "goal_type": "engineering_gap",
-      "priority": "medium",
-      "source_evidence": {
-        "dimension": "6",
-        "item": "6.9"
-      },
-      "auto_executable": false
-    }
-  ]
+  "goals": []
 }

@@ -46,7 +46,8 @@ frameworks:
              runtime_ref: {kind: file_count, label: "agent运行自动打分次数(P0-2)", command: "find ~/.aiplat/eval_results -name '*.json' 2>/dev/null | wc -l"}}
           - {id: A1.3, desc: "检查点回滚(ExecutionSnapshot)", declared_level: L4, source: script,
              evidence: {command: "grep -c 'class ExecutionSnapshot' aiPlat-core/core/harness/execution/snapshot.py", op: "-ge", expected: 1}}
-          - {id: A1.4, desc: "零Token检测(wakeAgent) — 未实现", declared_level: null, source: gap}
+          - {id: A1.4, desc: "零Token检测/自主唤醒(事件循环wake+GoalLoopBridge)", result: "partial", declared_level: L2, source: file_check,
+             evidence: {command: "grep -c 'class GoalLoopBridge\\|class MultiModalTrigger' aiPlat-core/core/harness/multimodal/trigger.py", op: "-ge", expected: 2}}
       - id: A2
         name: "自调度编排"
         declared_level: L3
@@ -243,7 +244,7 @@ frameworks:
           - {id: "6.6", desc: "熔断(CircuitBreaker)", result: "partial", source: manual}
           - {id: "6.7", desc: "DB迁移", result: "partial", source: manual}
           - {id: "6.8", desc: "技术债管理(CLAUDE.md §16)", result: "yes", source: manual}
-          - {id: "6.9", desc: "故障演练(Chaos)", result: "no", source: manual}
+          - {id: "6.9", desc: "故障演练(熔断器+自愈+回滚就绪;Chaos Mesh待部署)", result: "partial", source: manual}
           - {id: "6.10", desc: "架构评审(architecture_guard.sh)", result: "yes", source: file_check,
              evidence: {command: "test -f scripts/architecture_guard.sh && echo 1 || echo 0", op: "-ge", expected: 1}}
           - {id: "6.11", desc: "AI Profile隔离", result: "yes", source: manual}
