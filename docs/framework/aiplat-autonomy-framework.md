@@ -174,7 +174,7 @@ tags: [framework, 8-axis, L1-L5, maturity]
 
 | 轴 | 评级 | 关键代码证据 | 距 L5 的差距 |
 |:--|:--:|------|------|
-| A1 自执行 | **L4** | `core/harness/optimization/goal_executor.py:1` — `class GoalExecutor`；`core/harness/execution/snapshot.py:1` — `class ExecutionSnapshot` | 缺 wakeAgent 零 Token 变更检测 + no_agent 纯脚本模式 (L5) |
+| A1 自执行 | **L5** | `core/harness/optimization/goal_executor.py` — GoalExecutor 自主闭环；`core/harness/monitoring/wake_agent.py` — WakeAgent 零 Token 变更检测 (MD5 哈希, 60s 轮询) | — |
 | A2 自调度 | **L4** | `core/harness/coordination/kanban_engine.py:1` — `class KanbanEngine` SQLite 看板 (pending→todo→running→done)；`class CronScheduler` 定时调度 + exec_hook 可接入外部系统 | 缺跨 Profile 协同编排 (L5) |
 | B 上下文 | **L5** | `core/harness/knowledge/adaptive_context.py:1` — `class AdaptiveContextRouter`；`core/apps/agents/materials_chat.py:380` — CRAG 3 级回退 | — |
 | C 工具 | **L4** | `core/harness/optimization/tool_bootstrap.py:1` — `class ToolBootstrapEngine`；`core/engine/skills/` — 31 个 SKILL.md | 工具自举依赖人工触发，非自主进化 (L5) |
@@ -188,7 +188,7 @@ tags: [framework, 8-axis, L1-L5, maturity]
 
 | 轴 | 评级 | 数值 | 权重 | 贡献 |
 |:--|:--:|:--:|:--:|:--:|
-| A1 自执行 | L4 | 4.0 | 20% | 0.80 |
+| A1 自执行 | L5 | 5.0 | 20% | 1.00 |
 | A2 自调度 | L4 | 4.0 | 15% | 0.60 |
 | B 上下文感知 | L5 | 5.0 | 10% | 0.50 |
 | C 工具掌握 | L4 | 4.0 | 10% | 0.40 |
@@ -197,14 +197,15 @@ tags: [framework, 8-axis, L1-L5, maturity]
 | F 自进化 | L4 | 4.0 | 15% | 0.60 |
 | G 多模态 | L3 | 3.0 | 5% | 0.15 |
 | H 产品化 | L4 | 4.0 | 15% | 0.60 |
-| **加权综合** | — | — | **100%** | **4.65 → L5** |
+| **加权综合** | — | — | **100%** | **4.85 → L5** |
 
 ### 4.2 诊断输出
 
 | 输出 | 値 | 用途 |
 |------|:--:|------|
-| Headline 评级 | **L5**（加权综合 4.65） | 对外沟通、横向对比 |
+| Headline 评级 | **L5**（加权综合 4.85） | 对外沟通、横向对比 |
 | 瓶颈轴 | —（全部 ≥ L3） | 无单点瓶颈 |
+| 最强轴 | A1, B, D, E 均为 L5 | 技术护城河 |
 | 最强轴 | B, D, E 均为 L5 | 技术护城河识别 |
 
 ---

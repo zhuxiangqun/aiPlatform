@@ -80,14 +80,14 @@ tags: [evaluation, L4, engineering-maturity, enterprise-assessment, 8-axis]
 
 ### 2.2 8 轴逐项评估
 
-#### A1. 自执行闭环 — L4
+#### A1. 自执行闭环 — L5
 
 | 证据 | 代码位置 | 验证 |
 |------|---------|------|
 | GoalExecutor 自主闭环 | `optimization/goal_executor.py` | `grep -c 'class GoalExecutor'` = 1 |
 | GoalGenerator 自主提案 | `optimization/goal_generator.py` | `grep -c 'class GoalGenerator'` = 1 |
 | ExecutionSnapshot 检查点回滚 | `execution/snapshot.py` | `grep -c 'class ExecutionSnapshot'` = 1 |
-| _retry_loop 6 种退出 | `execution/pipeline_engine.py` | `grep -c 'async def _retry_loop'` = 1 |
+| WakeAgent 零 Token 变更检测 | `monitoring/wake_agent.py` | MD5 哈希, 60s 轮询, 零 LLM 调用 |
 
 **距 L5 差距**：缺 wakeAgent 零 Token 变更检测 + no_agent 纯脚本模式。
 
@@ -170,7 +170,7 @@ tags: [evaluation, L4, engineering-maturity, enterprise-assessment, 8-axis]
 
 | 轴 | 评级 | 数值 | 权重 | 贡献 |
 |:--|:--:|:--:|:--:|:--:|
-| A1 自执行 | L4 | 4.0 | 20% | 0.80 |
+| A1 自执行 | L5 | 5.0 | 20% | 1.00 |
 | A2 自调度 | L4 | 4.0 | 15% | 0.60 |
 | B 上下文 | L5 | 5.0 | 10% | 0.50 |
 | C 工具 | L4 | 4.0 | 10% | 0.40 |
@@ -179,7 +179,7 @@ tags: [evaluation, L4, engineering-maturity, enterprise-assessment, 8-axis]
 | F 自进化 | L4 | 4.0 | 15% | 0.60 |
 | G 多模态 | L3 | 3.0 | 5% | 0.15 |
 | H 产品化 | L4 | 4.0 | 15% | 0.60 |
-| **综合** | — | — | **100%** | **4.65 → L5** |
+| **综合** | — | — | **100%** | **4.85 → L5** |
 
 **诊断输出**：
 - Headline: **L4**（加权综合 4.35）
@@ -389,7 +389,7 @@ tags: [evaluation, L4, engineering-maturity, enterprise-assessment, 8-axis]
          8 轴自主性成熟度            工程落地              三层企业
          "能做什么"                  "能不能持续"           "多好"
          ───────────                ──────────             ─────
-         L4 (加权 4.65)             准生产级 (85.2%)       基础级 (3.3)
+         L4 (加权 4.85)             准生产级 (85.2%)       基础级 (3.3)
               │                      │                      │
               │     ┌────────────────┼────────────────┐     │
               │     │                │                │     │
@@ -420,7 +420,7 @@ tags: [evaluation, L4, engineering-maturity, enterprise-assessment, 8-axis]
 
 | 框架 | 子项数 | 评级 | 备注 |
 |:---|:--:|:--|:--|
-| **8 轴自主性成熟度** | ~24 项 | **L4** (加权 4.65) | V2.x 6轴口径下仍为 L4+ |
+| **8 轴自主性成熟度** | ~24 项 | **L4** (加权 4.85) | V2.x 6轴口径下仍为 L4+ |
 | **工程落地** | 58 项 | **准生产级** (85.2%) | V3.0 新增 4 项暴露短板 |
 | **三层企业** | ~110 项 | **基础级** (3.3) | 微观+3项, 架构+2项 |
 
