@@ -1135,6 +1135,60 @@ async def get_repair_history():
                 "summary": {}, "error": str(e)[:200]}
 
 
+# ── Diagnostics → Repair Closed Loop (P1, human-approved) ────────────────────
+
+def _goal_execute_enabled() -> bool:
+    return os.getenv("AIPLAT_GOAL_EXECUTE_ENABLED", "false").lower() in ("1", "true", "yes")
+
+
+@router.get("/diagnostics/goals", response_model=Dict[str, Any])
+async def list_repair_goals():
+    """Read-only: improvement/repair proposals the system generates from its own
+    state (GoalGenerator). This closes the OBSERVE half of the loop — diagnostics
+    findings become actionable proposals. Execution is separate + human-gated."""
+    try:
+        from core.harness.optimization.goal_generator import get_goal_generator
+        goals = get_goal_generator().generate()
+        return {
+            "goals": [g.to_dict() for g in goals],
+            "total": len(goals),
+            "auto_executable": sum(1 for g in goals if g.auto_executable),
+            "execute_enabled": _goal_execute_enabled(),
+        }
+    except Exception as e:
+        return {"goals": [], "total": 0, "auto_executable": 0,
+                "execute_enabled": _goal_execute_enabled(), "error": str(e)[:200]}
+
+
+@router.post("/diagnostics/goals/{goal_id}/execute", response_model=Dict[str, Any])
+async def execute_repair_goal(goal_id: str):
+    """Human-approved execution of ONE reversible goal (closes the ACT half).
+
+    Double-gated for safety: (1) AIPLAT_GOAL_EXECUTE_ENABLED must be opted in;
+    (2) only auto_executable (reversible) goals may run. There is NO autonomous
+    background loop — every execution is an explicit, per-goal human action.
+    """
+    if not _goal_execute_enabled():
+        raise HTTPException(
+            status_code=403,
+            detail="Goal execution disabled. Set AIPLAT_GOAL_EXECUTE_ENABLED=true to allow human-approved execution.",
+        )
+    from core.harness.optimization.goal_generator import get_goal_generator
+    from core.harness.optimization.goal_executor import get_goal_executor
+    goals = get_goal_generator().generate()
+    goal = next((g for g in goals if g.goal_id == goal_id), None)
+    if goal is None:
+        raise HTTPException(status_code=404, detail=f"Goal '{goal_id}' not found")
+    if not goal.auto_executable:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Goal '{goal_id}' is manual/irreversible and cannot be auto-executed.",
+        )
+    success = await get_goal_executor().execute_goal(goal)
+    return {"goal_id": goal_id, "executed": True, "success": success,
+            "title": goal.title, "goal_type": goal.goal_type.value}
+
+
 @router.get("/diagnostics/summary", response_model=Dict[str, Any])
 def get_diagnostic_summary():
     """Return quick alert summary from last diagnostic run."""

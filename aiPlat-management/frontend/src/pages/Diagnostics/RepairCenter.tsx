@@ -20,6 +20,30 @@ const RepairCenter: React.FC = () => {
     } catch { }
   };
 
+  const [goals, setGoals] = useState<any>(null);
+  const [executingGoal, setExecutingGoal] = useState<string | null>(null);
+
+  const fetchGoals = async () => {
+    try {
+      const r = await fetch('/api/core/diagnostics/goals');
+      setGoals(await r.json());
+    } catch { }
+  };
+
+  const executeGoal = async (id: string) => {
+    setExecutingGoal(id);
+    try {
+      const r = await fetch(`/api/core/diagnostics/goals/${id}/execute`, { method: 'POST' });
+      if (!r.ok) {
+        const err = await r.json().catch(() => ({}));
+        alert(err.detail || '执行失败');
+      }
+      fetchGoals();
+      fetchHistory();
+    } catch { }
+    finally { setExecutingGoal(null); }
+  };
+
   const fetchRepairs = async () => {
     setLoading(true);
     try {
@@ -38,9 +62,9 @@ const RepairCenter: React.FC = () => {
     finally { setLoading(false); }
   };
 
-  useEffect(() => { fetchRepairs(); fetchHistory(); }, []);
+  useEffect(() => { fetchRepairs(); fetchHistory(); fetchGoals(); }, []);
   useEffect(() => {
-    const onFocus = () => { fetchRepairs(); fetchHistory(); };
+    const onFocus = () => { fetchRepairs(); fetchHistory(); fetchGoals(); };
     window.addEventListener('focus', onFocus);
     return () => window.removeEventListener('focus', onFocus);
   }, []);
@@ -128,6 +152,44 @@ const RepairCenter: React.FC = () => {
                 ))}
               </div>
             )}
+          </CardContent>
+        </Card>
+      )}
+
+      {goals && Array.isArray(goals.goals) && goals.goals.length > 0 && (
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <Wrench className="w-4 h-4 text-amber-400" />
+              <span className="text-sm font-medium text-gray-100">系统建议修复（诊断→修复闭环）</span>
+              <span className="text-[10px] text-gray-500">
+                {goals.auto_executable ?? 0} 项可执行 ·
+                {goals.execute_enabled ? ' 已开启人工审批执行' : ' 执行未开启（AIPLAT_GOAL_EXECUTE_ENABLED=true）'}
+              </span>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-1">
+              {goals.goals.slice(0, 10).map((g: any) => (
+                <div key={g.goal_id} className="flex items-center justify-between text-xs py-1.5 border-b border-gray-800/50">
+                  <div className="min-w-0 flex-1">
+                    <div className="text-gray-200 truncate">{g.title}</div>
+                    <div className="text-[10px] text-gray-500">{g.goal_type} · {g.estimated_impact}</div>
+                  </div>
+                  <div className="flex items-center gap-2 ml-2 shrink-0">
+                    {g.auto_executable
+                      ? <span className="px-1.5 py-0.5 rounded text-[10px] bg-emerald-500/20 text-emerald-300">可执行</span>
+                      : <span className="px-1.5 py-0.5 rounded text-[10px] bg-gray-600/30 text-gray-400">需人工</span>}
+                    {g.auto_executable && goals.execute_enabled && (
+                      <Button variant="ghost" size="sm" loading={executingGoal === g.goal_id}
+                        onClick={() => executeGoal(g.goal_id)}>
+                        <Play className="w-3 h-3 mr-1" />执行
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
           </CardContent>
         </Card>
       )}

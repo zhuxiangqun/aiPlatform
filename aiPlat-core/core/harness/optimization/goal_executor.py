@@ -142,6 +142,23 @@ class GoalExecutor:
         """Phase 31: Check if we've already bootstrapped this error type."""
         return error_type in self._bootstrapped
 
+    async def execute_goal(self, goal) -> bool:
+        """Execute a single goal ON DEMAND (human-approved path). Records history.
+
+        Unlike the autonomous loop, this does NOT require enabled=True or start();
+        it is the entry point for the diagnostics→propose→human-approve→execute
+        closed loop. Callers MUST gate this (auto_executable check + opt-in flag).
+        """
+        success = await self._execute_goal(goal)
+        self._history.append(ExecutionRecord(
+            goal_id=goal.goal_id,
+            goal_type=goal.goal_type.value,
+            executed_at=time.time(),
+            success=success,
+            description=goal.title,
+        ))
+        return success
+
     async def _execute_goal(self, goal) -> bool:
         """Execute a single auto-executable goal. Returns success."""
         try:
