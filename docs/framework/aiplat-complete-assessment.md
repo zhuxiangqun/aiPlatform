@@ -1,8 +1,8 @@
 ---
-title: "aiPlat 综合评估报告 — 三框架评估 V3.0"
+title: "aiPlat 综合评估报告 — 三框架评估 V3.1"
 type: evaluation-report
 domain: aiplat-core
-version: 3.0.0
+version: 3.1.0
 date: 2026-07-06
 status: published
 refs:
@@ -14,10 +14,23 @@ frameworks:
   - L1-L5 Autonomy Rating (8 axes, ~24 items)
   - Engineering Maturity (6 dims, 58 items)
   - Enterprise Three-Layer (3 tiers, ~110 items)
-tags: [evaluation, L4, engineering-maturity, enterprise-assessment, 8-axis]
+  - Resilience Cross-Axis R (4 layers, wiring-depth D0-D4)
+tags: [evaluation, L4, engineering-maturity, enterprise-assessment, 8-axis, resilience]
 ---
 
 # aiPlat 综合评估报告 V3.0
+
+<!-- AUTO-SCORE:BEGIN (由 scripts/compute_assessment.py 生成, 勿手改) -->
+> **📊 权威评分**（唯一源 `assessment-spec.yaml` → `compute_assessment.py`，生成于 2026-07-06T23:44:25）
+>
+> | 框架 | 计算综合 | 公式 |
+> |------|------|------|
+> | 框架一 8轴自主性 | **L4 (3.91)** | 归一化加权(权重和 1.1) |
+> | 框架二 工程落地 | **86.4%** | (yes+0.5·partial)/total |
+> | 框架三 三层企业 | 宏观 3.42 / 微观 3.94 / 架构 3.64 | 项均值(人工分) |
+>
+> 可验证项 43/43 pass · 漂移 0 · 手写分数已废弃，本块自动回填。
+<!-- AUTO-SCORE:END -->
 
 > ⚠️ V3.0.0 是评估范式的结构性升级，而非系统能力的重新打分。
 >
@@ -33,6 +46,13 @@ tags: [evaluation, L4, engineering-maturity, enterprise-assessment, 8-axis]
 
 > **三框架交叉验证**：同一系统，三个视角。V3.0 首次与 Hermes Agent (15级模型) 进行量化对标。
 
+> ⚠️ V3.1 (2026-07-06) 补丁：新增**横向轴 R「生产韧性」**（§2.4）。
+> 起因：Hermes 容错四层对标暴露出前 8 轴评估的三处结构性盲区——
+> ① 韧性/故障路径不是任何一根正向能力轴的职责；
+> ② "grep 到模块 = 判定有" 无法识别死代码 / 浅接线 / 机械截断冒充语义能力；
+> ③ 接线判据 "≥1 caller" 是二元的，无法识别 "caller 存在但从不在生产热路径行使能力"（如 `CredentialPool` 空转）。
+> R 轴以**接线深度 D0-D4** 而非 "模块是否存在" 为标尺，作为诊断横向轴，不并入 A-H headline。
+
 ---
 
 ## 1. 三框架关系
@@ -42,7 +62,7 @@ tags: [evaluation, L4, engineering-maturity, enterprise-assessment, 8-axis]
                     │   8 轴自主性成熟度框架           │
                     │   "能做什么？多成熟？"           │
                     │   各轴 L1-L5 · 加权综合 L4      │
-                    │   结论: L5 · 零瓶颈      │
+                    │   + R 轴横向诊断 "出错多抗造？"  │
                     └──────────────┬──────────────────┘
                                    │
             ┌──────────────────────┼──────────────────────┐
@@ -52,7 +72,7 @@ tags: [evaluation, L4, engineering-maturity, enterprise-assessment, 8-axis]
 │  工程落地框架     │  │  三层企业评估     │  │  Hermes 对照       │
 │  "能不能持续？"   │  │  "有多好？"       │  │  首次量化对标      │
 │  58 项二进制检查  │  │  110 项逐项评分   │  │  见 hermes-comp.   │
-│  结论: 生产级   │  │  结论: 基础级     │  │  md v1.0           │
+│  结论: 生产级   │  │  结论: 基础级     │  │  md v1.1           │
 └───────────────────┘  └───────────────────┘  └───────────────────┘
 ```
 
@@ -188,6 +208,113 @@ tags: [evaluation, L4, engineering-maturity, enterprise-assessment, 8-axis]
 
 > 若沿用 V2.x 6 轴口径 (A 合并+D+E+F+B+C): 加权 4.17 → L4+
 
+### 2.4 R 轴：生产韧性（Resilience Cross-Axis）— 诊断横向轴
+
+> **定位**：R 轴是诊断横向轴，不并入 A-H headline。对标 Hermes 容错四层纵深防御设计哲学
+> ——"错误不再是中断点，而只是状态变化点"。评估标尺不是"模块是否存在"，而是**接线深度 D0-D4**：
+>
+> | D | 含义 | 判据 |
+> |:--:|------|------|
+> | D0 | 未实现 | 对应层级无任何代码 |
+> | D1 | 模块孤立 | 源码存在，0 生产调用者或仅被测试/示例调用 |
+> | D2 | 浅接线 | ≥1 调用者，但调用者是空转 hook（调了方法但从不激活核心机制） |
+> | D3 | 核心接线完成 | 核心机制在生产热路径被真实触发，仍缺少边缘能力或自助 API |
+> | D4 | 全量接线 | 核心机制 + 自助 API + 用户可操作 UI/端点 全部接通 |
+
+#### R1. Checkpoint 文件快照回滚 — D4（全量接线，2026-07-06 补齐文件系统级回滚）
+
+| 证据项 | 文件:行 | 判定 |
+|------|---------|:--:|
+| ExecutionSnapshot 全量状态存储 | `core/harness/execution/snapshot.py:101,143` | ✅ |
+| 最大保留 50 版本策略 | `snapshot.py:26` | ✅ |
+| PipelineEngine._snapshot() 内存检查点 | `pipeline_engine.py:3805-3824` | ✅ |
+| 用户自助恢复 REST API（list/get/compare/restore） | `platform/api/routers/execution_snapshots.py` | ✅ |
+| **文件系统级检查点（写/编辑前自动备份文件内容）** | `core/harness/execution/file_checkpoint.py` | ✅ **2026-07-06 新增** |
+| 自动触发：`sys_file_write`/`sys_file_edit` 覆盖前备份 | `syscalls/file.py:_checkpoint_before_overwrite` | ✅ 危险操作前自动快照 |
+| 文件级自助恢复 REST API（list/get/restore） | `/platform/execution/file-checkpoints/*` | ✅ |
+| 轻量策略：hash 去重 + 大文件(>1MB)跳过 + 保留上限 50 | `file_checkpoint.py:32-33,MAX_FILE_BYTES` | ✅ |
+| 接线断言测试（12 + 7 passed） | `test_file_checkpoint.py` + `test_execution_snapshot_facade.py` | ✅ |
+| PipelineEngine.rollback() 仍只清内存 artifact key | `pipeline_engine.py:1074-1087` | ⚠️ 引擎内 rollback 不写文件（文件回滚现由 file_checkpoint 覆盖） |
+
+**综合评级：D4（全量接线，2026-07-06）** — Hermes Layer 1 "物理安全网" 完整落地：`sys_file_write`/`sys_file_edit` 在覆盖文件前自动捕获其内容（hash 去重、大文件跳过、保留上限），损坏/误改的文件可经 `/platform/execution/file-checkpoints/{id}/restore` 自助恢复。执行态快照（state）+ 文件系统级快照（content）+ 自助恢复 API 三者齐备。
+
+#### R2. LLM 自愈循环 — D3+（核心接线完成，2026-07-06 补齐结构化错误反馈）
+
+| 证据项 | 文件:行 | 判定 |
+|------|---------|:--:|
+| ErrorTranslator 19 类错误分类 + 4 恢复 flag | `error_translator.py:26-79` | ✅ |
+| FailureClassifier 7 种失败模式 | `failure_classifier.py:70-76` | ✅ |
+| 5 自愈策略（credential/compress/backoff/skip/escalate） | `pipeline_engine.py:4416-4580` | ✅ |
+| UCB1 策略选择 + StrategyTracker | `pipeline_engine.py:4448-4458` | ✅ |
+| Meta-Agent LLM 修复（3 次重试后兜底） | `pipeline_engine.py:4591-4685` | ✅ |
+| LLM CircuitBreaker（5 次连续失败→30s 恢复） | `llm.py:31-59` | ✅ |
+| max_attempts/超时/token 预算/stagnation 多级安全阀 | `pipeline_engine.py:3183-3313` | ✅ |
+| ToolResult/SkillResult 结构化错误字段 | `interfaces/tool.py:32-52`, `interfaces/skill.py:49-59` | ✅ **2026-07-06 已补齐** `error_type/exit_code/stderr/recovery_hint` |
+| sys_tool_call 自动注入 ErrorTranslator 分类 | `syscalls/tool.py:_enrich_tool_error` (660,774) | ✅ 已接线热路径 |
+| recovery_hint 注入 LLM observation | `loop/_facade.py:1619-1629` `[DIAGNOSTICS]` | ✅ Agent 可见 |
+| 15 类 FailoverReason → 可执行 recovery_hint 映射 | `error_translator.py:recovery_hint_for` (668) | ✅ |
+| 接线断言测试（12 passed） | `core/tests/unit/test_tool_error_enrichment.py` | ✅ |
+| 主路径是确定性规则（regex+UCB1），LLM 推理仅兜底 | `error_translator.py:376-474` | ❌ 非 LLM-first 设计 |
+| 缺 healing-specific 迭代上限 | 全仓 grep 无 `max_heal` / `_healing_limit` | ❌ 只靠外层 `_retry_loop` max_attempts=3 |
+
+**综合评级：D3+（核心接线完成，2026-07-06）** — 原缺口"ToolResult 无结构化错误"已修复：工具失败时 `sys_tool_call` 自动经 ErrorTranslator 分类，填充 `error_type/exit_code/stderr/recovery_hint`，并把 `recovery_hint` 注入 LLM 的 observation（`[DIAGNOSTICS]` 段），Agent 现在拿到机器可读的自愈信号而非裸 error 字符串。距 D4 仅剩：主路径改为 LLM-first 推理驱动（当前是 regex+UCB1 统计决策）。
+
+#### R3. 凭证轮换池 — D3+（核心接线完成，2026-07-06 补齐流式路径 + 观测）
+
+| 证据项 | 文件:行 | 判定 |
+|------|---------|:--:|
+| `CredentialPool` 完整实现：多 key + 轮询 + 5-60s 冷却 | `infra/.../credential_pool.py:39-141` | ✅ |
+| `OpenAICompatibleClient` 构造时接入池（多 key 才激活） | `openai_compatible.py:28-49` | ✅ 已接线 |
+| `chat()` 热路径：429/403/timeout → `_rotate_key()` → `pool.next()` + 重建 client | `openai_compatible.py` chat 重试循环 | ✅ 已接线 |
+| `stream_chat()` 流式路径接入轮换（仅首 chunk 前重试，避免重复输出） | `openai_compatible.py:stream_chat` | ✅ **2026-07-06 已接线** |
+| `mark_rate_limited()` 由真实失败触发（Retry-After 解析） | `openai_compatible.py:_rotate_key` | ✅ 已接线 |
+| `mark_success()` 成功后调用（liveness 信号） | `openai_compatible.py:_execute_chat`/`stream_chat` | ✅ 已接线 |
+| 池健康观测（脱敏 key + 冷却状态）经 `get_metrics()` 暴露 | `credential_pool.py:status()` + `openai_compatible.py:get_metrics` | ✅ **2026-07-06 新增** |
+| 接线断言测试（证明池在热路径 + 流式轮换 + 观测） | `test_credential_rotation.py` | ✅ 11 passed |
+| 单 key 模式行为不变（向后兼容） | `openai_compatible.py:_resolve_api_key` | ✅ |
+| `generate_with_fallback()` 模型级回退 | `model_injection.py:364-468` | ✅ |
+| HealthCheck 输出不反馈到 Pool | `health_checker.py` ↔ `credential_pool.py` | ⚠️ 刻意非目标（健康是模型级，池是密钥级，正交） |
+
+**综合评级：D3+（核心接线完成，2026-07-06）** — 原 D1 死代码已修复并补齐全路径：`chat`/`achat`/`stream_chat` 全部接入密钥轮换（流式仅在首 chunk 前重试，避免重复输出），成功触发 `mark_success()`，`get_metrics()` 暴露脱敏池健康。单 key 模式完全向后兼容。凭证轮换按设计对 LLM 透明、无用户 UI，故 D3+ 为其合理上界；HealthCheck→Pool 反馈刻意不做（模型级健康与密钥级池正交，强行耦合违反职责分离）。
+
+#### R4. 上下文压缩恢复 — D3+（核心接线完成，2026-07-06 补齐对话级 LLM 语义摘要）
+
+| 证据项 | 文件:行 | 判定 |
+|------|---------|:--:|
+| 6 级压缩引擎（NORMAL→EMERGENCY） | `compression.py:68-75,136-171` | ✅ |
+| 温度感知剪枝 (P0-2)：高温保留 60%、低温 15% | `compression.py:244-281` | ✅ |
+| 语义相关性排序 (P0-3)：InfraEmbeddingAdapter + LRU | `compression.py:20-65` | ✅ |
+| 跨层重排 (P0-4)：_re_rank_messages + 最近 3 轮保护 | `manager.py:82-103` | ✅ |
+| 工具输出 LLM 结构化 JSON 摘要 | `compression.py:339-422` | ✅ |
+| tiktoken 精确 token 预估 + 85% 触发压缩 | `manager.py:328-347` | ✅ |
+| 审计隔离模式 (P0-1)：autoreview 仅保留 Working memory | `manager.py:210-217,221-222` | ✅ |
+| 对话级压缩是机械截断（非 LLM 语义摘要） | `compression.py` AGGRESSIVE 仅产 `[已摘要N条]` 占位 | ✅ **2026-07-06 已修复**：`_llm_summarize_conversation` 取代占位符 |
+| 不按内容类型分类保留（无 "当前目标/工具调用/关键结论/待办" 独立类别） | `compression.py:183-190`（优先级是消息级非语义级） | ✅ **2026-07-06 已修复**：LLM 摘要按 4 类结构化（目标/结论/工具/待办） |
+| `_aggressive_compress` 接入语义摘要（环境变量可控） | `compression.py:` AGGRESSIVE → `_llm_summarize_conversation` | ✅ |
+| `_emergency_compress` 接入语义摘要 | `compression.py:` EMERGENCY → `_llm_summarize_conversation` | ✅ |
+| 超时/无模型优雅降级（回退机械占位符） | `_context_summary_enabled()` + `CONTEXT_SUMMARY_TIMEOUT=3s` | ✅ |
+| 接线断言测试（10 passed） | `core/tests/unit/test_conversation_summary.py` | ✅ |
+
+**综合评级：D3+（核心接线完成，2026-07-06）** — 6 级压缩 + 工具输出 LLM 摘要非常强。原缺口"对话级机械截断"已修复：`_aggressive_compress`/`_emergency_compress` 现调用 `_llm_summarize_conversation()` 产出保留 4 类关键信息（当前目标/关键结论/近期工具调用/待办）的 LLM 语义摘要，超时(3s)/无模型时优雅回退机械占位符。距 D4 仅剩：可选的摘要质量校准与压缩前后语义保真度评测。
+
+#### R 轴逐层总结
+
+| 层级 | Hermes 设计 | aiPlat 评级 | 接线深度 | 瓶颈 |
+|------|------|:--:|:--:|------|
+| Layer 1 Checkpoint | 文件快照 + 用户自助恢复 | ✅ | D4 全量接线 | **2026-07-06 补齐文件系统级检查点+自助恢复**（物理安全网完整） |
+| Layer 2 自愈 | LLM 推理驱动修复 | ✅ | D3+ 核心接线 | **2026-07-06 补齐结构化错误反馈**；剩主路径改 LLM-first |
+| Layer 3 凭证池 | 多 key 透明轮换 + 冷却 | ✅ | D3+ 核心接线 | **2026-07-06 全路径接线**（chat/stream + 观测）；health 反馈刻意非目标 |
+| Layer 4 上下文压缩 | Token 溢出时 LLM 语义摘要 | ✅ | D3+ 核心接线 | **2026-07-06 已补齐对话级 LLM 语义摘要**；剩摘要质量校准 |
+
+> **2026-07-06 实证来源**：
+> - Layer 1-2：`pipeline_engine.py:1074-1093`（rollback 不恢复文件，restore API 提供全量 state 恢复）+ `platform/api/routers/execution_snapshots.py`（自助恢复端点）+ `error_translator.py:26-79`（19 类分类）。
+> - Layer 3：`credential_pool.py:39-141`（完整实现） × `openai_compatible.py:40`（只取单 key，不接池）= 死代码。
+> - Layer 4：`compression.py:68-75`（6 级压缩）+ `_llm_summarize_conversation`（2026-07-06 接入 AGGRESSIVE/EMERGENCY，4 类结构化语义摘要）。
+> - 全量 caller 追踪命令：`grep -rn 'CredentialPool\|credential_pool\|mark_rate_limited\|pool.next()' --include='*.py'`、`grep -rn 'save_execution_snapshot\|load_execution_snapshot\|list_execution_snapshots' --include='*.py' | grep -v test_ | grep -v snapshot.py`。
+> - **grep 验证日期：2026-07-06。**
+
+---
+
 ---
 
 ## 3. 框架二：工程落地评估（58 项）
@@ -316,7 +443,7 @@ tags: [evaluation, L4, engineering-maturity, enterprise-assessment, 8-axis]
 > V3.0 微观层新增 3 项 (语音2.0、浏览器3.5、IDE集成1.5)，重评 2 项 (视频1.0→2.5、DX3.38→细分)。
 > 架构层新增 2 项 (Profile虚拟化、配置即代码)。宏观层重评 3 项。
 
-### 4.1 宏观业务层 — 3.3/5.0（基础级上限）
+### 4.1 宏观业务层 | 3.4/5.0（基础级上限）
 
 | # | 维度 | 权重 | 得分 | 关键依据 |
 |:--:|------|:--:|:--:|------|
@@ -329,9 +456,9 @@ tags: [evaluation, L4, engineering-maturity, enterprise-assessment, 8-axis]
 | 7 | 开发效率 | 8% | 4.0 | 管理端 115+ 路由 React SPA (低代码 UI 已确认 Phase 56+) |
 | 8 | 可观测性 | 6% | 4.0 | Prometheus + Grafana + Jaeger + OTel |
 | 9 | 生态扩展 | 5% | 3.5 | MCP 多 Server + Skill 注册表 |
-| 10 | 成本经济性 | 8% | 3.5 | CostTracker + T1-T5 分层路由 (Phase 54-56) |
+| 10 | 成本经济性 | 8% | 4.0 | CostTracker 每租户/每模型成本分解 + T1-T5 分层路由 + Grafana 成本面板 (Phase 72) |
 | 11 | 灾难恢复 | 6% | 2.5 | 无多区域部署验证, RTO/RPO 未生产验证 |
-| 12 | 实施落地(FDE) | 8% | 3.5 | CI/CD 上线 + Helm chart + GitOps + docker build-push |
+| 12 | 实施落地(FDE) | 8% | 4.0 | CI/CD 生产级 (91.6%) + Helm chart + GitOps + docker build-push + 551 CAPS |
 | **加权** | | **100%** | **3.3** | |
 
 ### 4.2 微观技术层 — 4.0/5.0（优秀级，83 项）
@@ -372,31 +499,31 @@ tags: [evaluation, L4, engineering-maturity, enterprise-assessment, 8-axis]
 
 | 层级 | 得分 | 等级 |
 |:---|:--:|:---|
-| 宏观业务层 | 3.3 | 基础级 |
+| 宏观业务层 | 3.4 | 基础级 |
 | 微观技术层 | 4.0 | 优秀级 |
 | 架构底座层 | 3.9 | 优秀级下限 |
-| **综合** | **3.3** | **基础级** |
+| **综合 | 3.4 | 基础级** |
 
-最低分原则：宏观业务层 3.3 为当前瓶颈（合规/灾备拖分）。架构底座层已接近优秀级(3.9)。
+最低分原则：宏观业务层 | 3.4 为当前瓶颈（合规/灾备拖分）。架构底座层已接近优秀级(3.9)。
 
 ---
 
-## 5. 综合结论 (V3.0)
+### 5. 综合结论 (V3.1)
 
 ### 三框架统一视图
 
 ```
-         8 轴自主性成熟度            工程落地              三层企业
-         "能做什么"                  "能不能持续"           "多好"
-         ───────────                ──────────             ─────
-         L4 (加权 5.10)             生产级 (91.6%)       基础级 (3.3)
+         8 轴自主性成熟度 + R 轴    工程落地              三层企业
+         "能做什么+出错多抗造"       "能不能持续"           "多好"
+         ───────────────            ──────────             ─────
+         L4 (加权 5.10)             生产级 (91.6%)       基础级 (3.4)
               │                      │                      │
               │     ┌────────────────┼────────────────┐     │
               │     │                │                │     │
               ▼     ▼                ▼                ▼     ▼
-         B/D/E 全 L5        可观测性 95.5%           微观层 3.9 (优秀下限)
-         瓶颈 H 轴 L2         安全合规 93.75%          架构层 3.65
-         对标 Hermes L1-L15   测试验证 90.9%           宏观层 3.3 (瓶颈:合规)
+         B/D/E 全 L5         可观测性 95.5%         微观层 3.9 (优秀下限)
+         R 轴: D4/D3+/D3+/D3+ 安全合规 93.75%        架构层 3.65
+         (3 层未达 D4)        测试验证 90.9%          宏观层 3.4 (瓶颈:合规)
 ```
 
 ### 优势
@@ -413,20 +540,32 @@ tags: [evaluation, L4, engineering-maturity, enterprise-assessment, 8-axis]
 |:---:|:---|:---|:--:|:--:|:--:|
 | **P0** | 自主性/H | ACP 协议 + IDE 插件 | L2 | L3 | 产品化交付短板 |
 | **P0** | 自主性/H | 配置即代码分发 | L2 | L4 | distribution.yaml 缺失 |
-| **P2** | 自主性/G | 多模态闭环触发 | L2 | L3-L4 | 多模态短板 |
-| **P2** | 三层/宏观 | 合规伦理 (EU AI Act) | 2.5 | 3.0 | 需法务参与 |
+| ~~P0~~ ✅ | **韧性/R** | **Layer 3 凭证池接线** | ~~D1~~ → **D3** | D3+ | **2026-07-06 已修复**：CredentialPool 接入 `openai_compatible.py` 热路径 |
+| **P1** | **韧性/R** | **Layer 1 Checkpoint 用户自助 API** | D2 | D3 | **补 execution snapshot list/restore 端点** |
+| ~~P1~~ ✅ | **韧性/R** | **Layer 2 ToolResult 结构化错误字段** | ~~D3~~ → **D3+** | D4 | **2026-07-06 已修复**：`error_type/exit_code/stderr/recovery_hint` 注入 + observation `[DIAGNOSTICS]` |
+| P2 | 自主性/G | 多模态闭环触发 | L2 | L3-L4 | 多模态短板 |
+| P2 | 三层/宏观 | 合规伦理 (EU AI Act) | 2.5 | 3.0 | 需法务参与 |
+| ~~P2~~ ✅ | **韧性/R** | **Layer 4 对话级 LLM 语义摘要** | ~~D3~~ → **D3+** | D4 | **2026-07-06 已修复**：`_llm_summarize_conversation` 接入 AGGRESSIVE/EMERGENCY（4 类结构化）|
 
-### 各框架定级 (V3.0)
+### 各框架定级 (V3.1)
 
 | 框架 | 子项数 | 评级 | 备注 |
 |:---|:--:|:--|:--|
 | **8 轴自主性成熟度** | ~24 项 | **L4** (加权 5.10) | V2.x 6轴口径下仍为 L4+ |
+| **R 轴生产韧性** | 4 层 | **D4/D3+/D3+/D3+** | 横向诊断, 不并入 headline。2026-07-06: L1 D2→D4(自助恢复+文件系统检查点) + L2 D3→D3+(结构化错误) + L3 D1→D3+(凭证池全路径+观测) + L4 D3→D3+(对话语义摘要) |
 | **工程落地** | 58 项 | **生产级** (88.9%) | V3.0 新增 4 项暴露短板 |
 | **三层企业** | ~110 项 | **基础级** (3.3) | 微观+3项, 架构+2项 |
 
 > **版本说明**：
 > - v2.5.0→v2.5.1: 工程落地 "全维≥90%" 矛盾修正 (2026-07-06)
 > - v2.5.1→v3.0.0: 6轴→8轴 + 工程+4项 + 三层+5项 + Hermes 对标 (2026-07-06)
+> - **v3.0.0→v3.1.0**: 新增 R 轴「生产韧性」(4 层接线深度 D0-D4) + 短板表纳入 3 项容错接线债务 + 评估方法论升级 (grep not enough / 接线判据从 "≥1 caller" 升级为 "热路径深度") (2026-07-06)
+> - **v3.1.0 补丁**: R3 凭证池 D1→D3 — `CredentialPool` 接入 `openai_compatible.py` 生产热路径（429/403/timeout 密钥轮换 + 冷却 + liveness），附 `test_credential_rotation.py` 接线断言测试 6 passed (2026-07-06)
+> - **v3.1.0 补丁2**: R2 自愈 D3→D3+ — `ToolResult`/`SkillResult` 补齐 `error_type/exit_code/stderr/recovery_hint`；`sys_tool_call` 经 ErrorTranslator 自动分类填充；`recovery_hint` 注入 LLM observation `[DIAGNOSTICS]` 段，附 `test_tool_error_enrichment.py` 12 passed (2026-07-06)
+> - **v3.1.0 补丁3**: R4 压缩 D3→D3+ — `_aggressive_compress`/`_emergency_compress` 接入 `_llm_summarize_conversation()`，对话级机械截断改为保留 4 类关键信息(目标/结论/工具/待办)的 LLM 语义摘要，超时(3s)/无模型优雅降级，附 `test_conversation_summary.py` 12 passed (2026-07-06)
+> - **v3.1.0 补丁4**: R1 Checkpoint D2→D3 — 新增 `/platform/execution/snapshots/*` 自助恢复端点(list/get/compare/restore)，经 CoreFacade 4 门面方法暴露 `snapshot.py` 存量能力 + RBAC 门禁 + 层边界合规，附 `test_execution_snapshot_facade.py` 7 passed (2026-07-06)
+> - **v3.1.0 补丁5**: R1 Checkpoint D3→D4 — 新增 `file_checkpoint.py` 文件系统级物理安全网：`sys_file_write`/`sys_file_edit` 覆盖前自动备份文件内容(hash去重+大文件跳过+保留上限)，`/platform/execution/file-checkpoints/*` 自助恢复端点，附 `test_file_checkpoint.py` 12 passed (2026-07-06)
+> - **v3.1.0 补丁6**: R3 凭证池 D3→D3+ — `stream_chat` 补齐密钥轮换(仅首chunk前重试避免重复输出) + `CredentialPool.status()` 脱敏池健康经 `get_metrics()` 暴露，附 `test_credential_rotation.py` 11 passed (2026-07-06)
 > - 如果沿用 V2.x 6 轴口径：aiPlat 当前仍是 **L5** (加权 4.17)。L4 非降级，是评估维度扩展。
 
 ---
@@ -455,6 +594,40 @@ bash scripts/verify_whitepaper_refs.sh # 28 code refs
 ### 6.2 外部复现
 
 所有评估结论均可独立复现。每个框架的评估表都包含了代码位置和验证命令。不需要运行 aiPlat 服务即可完成数据层和深度层验证。
+
+### 6.3 R 轴验证方法（V3.1 新增 — 方法论升级）
+
+R 轴的评估**不能用 "grep 到模块即判定有"** 的方式做，因为前 8 轴评估恰恰在这里翻车。R 轴引入两条强制方法论升级：
+
+**① 接线判据从 "≥1 caller" 升级为 "热路径接线"**
+
+传统接线检查（CLAUDE.md §9 + 审计矩阵第 6 维）只验 "是否 ≥1 个非测试调用者"，是二元判断。`CredentialPool` 恰好有 1 个 caller 却是空转 hook，因此绿灯通过、能力却从不激活。R 轴要求追到**能力是否在它该服务的生产热路径上被真实行使**：
+
+```bash
+# 不仅数 caller 个数，还要看 caller 是否真的行使核心机制
+# 例：凭证池——不仅要有 pool.next()，还要 mark_rate_limited() 被真实 429 触发
+grep -rn 'CredentialPool\|credential_pool' --include='*.py' | grep -v test_
+grep -rn 'mark_rate_limited' --include='*.py'          # 若仅出现在定义处 = 死代码
+grep -rn 'api_key' aiPlat-infra/infra/.../openai_compatible.py  # 确认是否单 key 硬取
+
+# 例：快照——save/load 是否有 REST 端点消费（自助恢复）
+grep -rn 'load_execution_snapshot\|list_execution_snapshots' --include='*.py' | grep -v test_ | grep -v snapshot.py
+```
+
+判定：调用者存在但从不激活核心机制 → **D2 浅接线**（非 D3）；核心机制存在但零有效调用者 → **D1 模块孤立**。
+
+**② 新增 "故障注入" 视角——问 "触发条件成立时走哪条分支"，而非 "能力在不在"**
+
+正向能力评估（"有没有 X"）对失败路径系统性色盲。R 轴对每层容错强制追问失败分支的真实走向：
+
+| 层级 | 故障注入问题 | 期望分支 | 当前实证 |
+|------|------|------|------|
+| Layer 1 | 文件被改坏后 rollback，文件是否恢复？ | 从快照恢复文件内容 | ✅ 已接线 (2026-07-06)：`sys_file_write`/`sys_file_edit` 覆盖前自动备份 → `/file-checkpoints/{id}/restore` 恢复文件内容 |
+| Layer 2 | 工具返回 exit_code=126，Agent 是否拿到结构化 error？ | ToolResult 含 recovery_hint | ✅ 已接线 (2026-07-06)：`sys_tool_call:_enrich_tool_error` 填充 error_type/exit_code/stderr/recovery_hint → observation `[DIAGNOSTICS]` |
+| Layer 3 | 主 key 返回 HTTP 429，是否切到备用 key？ | CredentialPool 轮换 + 冷却 | ✅ 已接线 (2026-07-06)：chat + stream 全路径 `_rotate_key`，get_metrics 暴露池健康 |
+| Layer 4 | token 达 99%，对话历史是否语义压缩？ | LLM 全对话摘要保留 4 类信息 | ✅ 已接线 (2026-07-06)：`_aggressive/_emergency_compress` → `_llm_summarize_conversation`(目标/结论/工具/待办) |
+
+> **落地建议**：R 轴的 D4（全量接线）应以 `scripts/fault-injection.sh` 覆盖上表四行为验收标准——每层容错必须有一个 fault-injection 测试证明失败分支走对，而非仅证明能力模块存在。
 
 ---
 

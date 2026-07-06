@@ -1,0 +1,1967 @@
+{
+  "generated_at": "2026-07-06T23:44:25",
+  "spec_version": "1.0.0",
+  "frameworks": {
+    "framework_one": {
+      "name": "8轴自主性成熟度",
+      "composite_level_value": 3.91,
+      "composite_grade": "L4",
+      "weight_sum": 1.1,
+      "formula": "sum(axis_level*weight)/sum(weight) — normalized",
+      "axes": [
+        {
+          "id": "A1",
+          "name": "自执行闭环",
+          "declared_level": "L4",
+          "weight": 0.2,
+          "level_value": 4,
+          "conflict_note": null,
+          "items": [
+            {
+              "id": "A1.1",
+              "desc": "自愈多策略(5子策略)",
+              "declared_level": "L3",
+              "source": "script",
+              "evidence": {
+                "command": "grep -c 'async def _strategy_' aiPlat-core/core/harness/execution/pipeline_engine.py",
+                "op": "-ge",
+                "expected": 5
+              },
+              "verification_status": "pass",
+              "actual": 5
+            },
+            {
+              "id": "A1.2",
+              "desc": "Goal循环(GoalExecutor)",
+              "declared_level": "L4",
+              "source": "script",
+              "evidence": {
+                "command": "grep -c 'class GoalExecutor' aiPlat-core/core/harness/optimization/goal_executor.py",
+                "op": "-ge",
+                "expected": 1
+              },
+              "verification_status": "pass",
+              "actual": 1
+            },
+            {
+              "id": "A1.3",
+              "desc": "检查点回滚(ExecutionSnapshot)",
+              "declared_level": "L4",
+              "source": "script",
+              "evidence": {
+                "command": "grep -c 'class ExecutionSnapshot' aiPlat-core/core/harness/execution/snapshot.py",
+                "op": "-ge",
+                "expected": 1
+              },
+              "verification_status": "pass",
+              "actual": 1
+            },
+            {
+              "id": "A1.4",
+              "desc": "零Token检测(wakeAgent) — 未实现",
+              "declared_level": null,
+              "source": "gap",
+              "verification_status": "no-data"
+            }
+          ]
+        },
+        {
+          "id": "A2",
+          "name": "自调度编排",
+          "declared_level": "L3",
+          "weight": 0.15,
+          "level_value": 3,
+          "conflict_note": null,
+          "items": [
+            {
+              "id": "A2.1",
+              "desc": "状态流转(PipelineEngine)",
+              "declared_level": "L3",
+              "source": "script",
+              "evidence": {
+                "command": "grep -c 'class PipelineEngine' aiPlat-core/core/harness/execution/pipeline_engine.py",
+                "op": "-ge",
+                "expected": 1
+              },
+              "verification_status": "pass",
+              "actual": 1
+            },
+            {
+              "id": "A2.2",
+              "desc": "多租户隔离(tenant_id 广布)",
+              "declared_level": "L3",
+              "source": "script",
+              "evidence": {
+                "command": "grep -rlE 'tenant_id' aiPlat-core/core --include=*.py | wc -l",
+                "op": "-ge",
+                "expected": 10
+              },
+              "verification_status": "pass",
+              "actual": 192
+            },
+            {
+              "id": "A2.3",
+              "desc": "看板+Cron 定时调度 — 未实现",
+              "declared_level": null,
+              "source": "gap",
+              "verification_status": "no-data"
+            },
+            {
+              "id": "A2.4",
+              "desc": "Profile 命名空间隔离 — 未实现",
+              "declared_level": null,
+              "source": "gap",
+              "verification_status": "no-data"
+            }
+          ]
+        },
+        {
+          "id": "B",
+          "name": "上下文感知",
+          "declared_level": "L5",
+          "weight": 0.1,
+          "level_value": 5,
+          "conflict_note": null,
+          "items": [
+            {
+              "id": "B1",
+              "desc": "上下文层级(RunContext)",
+              "declared_level": "L5",
+              "source": "script",
+              "evidence": {
+                "command": "grep -c 'class RunContext' aiPlat-core/core/harness/kernel/types.py",
+                "op": "-ge",
+                "expected": 1
+              },
+              "verification_status": "pass",
+              "actual": 1
+            },
+            {
+              "id": "B2",
+              "desc": "信息源数量(CRAG 3级回退)",
+              "declared_level": "L5",
+              "source": "script",
+              "evidence": {
+                "command": "grep -c 'CRAG' aiPlat-core/core/apps/agents/materials_chat.py",
+                "op": "-ge",
+                "expected": 3
+              },
+              "verification_status": "pass",
+              "actual": 3
+            },
+            {
+              "id": "B3",
+              "desc": "自适应路由(AdaptiveContextRouter)",
+              "declared_level": "L5",
+              "source": "script",
+              "evidence": {
+                "command": "grep -c 'class AdaptiveContextRouter' aiPlat-core/core/harness/knowledge/adaptive_context.py",
+                "op": "-ge",
+                "expected": 1
+              },
+              "verification_status": "pass",
+              "actual": 1
+            }
+          ]
+        },
+        {
+          "id": "C",
+          "name": "工具掌握",
+          "declared_level": "L4",
+          "weight": 0.1,
+          "level_value": 4,
+          "conflict_note": null,
+          "items": [
+            {
+              "id": "C1",
+              "desc": "工具数量(Engine Skill)",
+              "declared_level": "L5",
+              "source": "script",
+              "evidence": {
+                "command": "find aiPlat-core/core/engine/skills -name SKILL.md | wc -l",
+                "op": "-ge",
+                "expected": 30
+              },
+              "verification_status": "pass",
+              "actual": 34
+            },
+            {
+              "id": "C2",
+              "desc": "工具发现(MCPServer)",
+              "declared_level": "L4",
+              "source": "script",
+              "evidence": {
+                "command": "grep -c 'class MCPServer' aiPlat-core/core/apps/mcp/server.py",
+                "op": "-ge",
+                "expected": 1
+              },
+              "verification_status": "pass",
+              "actual": 2
+            },
+            {
+              "id": "C3",
+              "desc": "工具自举(ToolBootstrapEngine)",
+              "declared_level": "L4",
+              "source": "script",
+              "evidence": {
+                "command": "grep -c 'class ToolBootstrapEngine' aiPlat-core/core/harness/optimization/tool_bootstrap.py",
+                "op": "-ge",
+                "expected": 1
+              },
+              "verification_status": "pass",
+              "actual": 1
+            },
+            {
+              "id": "C4",
+              "desc": "从使用反馈自动改进/弃用工具 — 未实现",
+              "declared_level": null,
+              "source": "gap",
+              "verification_status": "no-data"
+            }
+          ]
+        },
+        {
+          "id": "D",
+          "name": "记忆系统",
+          "declared_level": "L5",
+          "weight": 0.1,
+          "level_value": 5,
+          "conflict_note": null,
+          "items": [
+            {
+              "id": "D1",
+              "desc": "四层记忆文件",
+              "declared_level": "L5",
+              "source": "script",
+              "evidence": {
+                "command": "find aiPlat-core/core/harness/memory \\( -name working.py -o -name episodic.py -o -name semantic.py -o -name manager.py \\) | wc -l",
+                "op": "-ge",
+                "expected": 4
+              },
+              "verification_status": "pass",
+              "actual": 4
+            },
+            {
+              "id": "D2",
+              "desc": "跨实例共享(SharedKnowledgePool WAL)",
+              "declared_level": "L5",
+              "source": "script",
+              "evidence": {
+                "command": "grep -c 'WAL' aiPlat-core/core/harness/memory/shared_pool.py",
+                "op": "-ge",
+                "expected": 1
+              },
+              "verification_status": "pass",
+              "actual": 5
+            },
+            {
+              "id": "D3",
+              "desc": "去中心化(GossipProtocol)",
+              "declared_level": "L5",
+              "source": "script",
+              "evidence": {
+                "command": "grep -c 'class GossipProtocol' aiPlat-core/core/harness/memory/gossip_protocol.py",
+                "op": "-ge",
+                "expected": 1
+              },
+              "verification_status": "pass",
+              "actual": 1
+            }
+          ]
+        },
+        {
+          "id": "E",
+          "name": "协作能力",
+          "declared_level": "L5",
+          "weight": 0.1,
+          "level_value": 5,
+          "conflict_note": null,
+          "items": [
+            {
+              "id": "E1",
+              "desc": "动态组队(DynamicOrchestrator)",
+              "declared_level": "L5",
+              "source": "script",
+              "evidence": {
+                "command": "grep -c 'class DynamicOrchestrator' aiPlat-core/core/harness/coordination/dynamic_orchestrator.py",
+                "op": "-ge",
+                "expected": 1
+              },
+              "verification_status": "pass",
+              "actual": 1
+            },
+            {
+              "id": "E2",
+              "desc": "合同网协商(SwarmBroker)",
+              "declared_level": "L5",
+              "source": "script",
+              "evidence": {
+                "command": "grep -c 'class SwarmBroker' aiPlat-core/core/harness/coordination/swarm_broker.py",
+                "op": "-ge",
+                "expected": 1
+              },
+              "verification_status": "pass",
+              "actual": 1
+            },
+            {
+              "id": "E3",
+              "desc": "冷启动探索(COLD_START_BONUS)",
+              "declared_level": "L5",
+              "source": "script",
+              "evidence": {
+                "command": "grep -c 'COLD_START_BONUS' aiPlat-core/core/harness/coordination/swarm_broker.py",
+                "op": "-ge",
+                "expected": 1
+              },
+              "verification_status": "pass",
+              "actual": 3
+            }
+          ]
+        },
+        {
+          "id": "F",
+          "name": "自进化学习",
+          "declared_level": "L4",
+          "weight": 0.15,
+          "level_value": 4,
+          "conflict_note": null,
+          "items": [
+            {
+              "id": "F1",
+              "desc": "策略记录+搜索(StrategyEffectivenessTracker)",
+              "declared_level": "L3",
+              "source": "script",
+              "evidence": {
+                "command": "grep -c 'class StrategyEffectivenessTracker' aiPlat-core/core/harness/optimization/strategy_tracker.py",
+                "op": "-ge",
+                "expected": 1
+              },
+              "verification_status": "pass",
+              "actual": 1
+            },
+            {
+              "id": "F2",
+              "desc": "自动技能生成(AutoLearner)",
+              "declared_level": "L4",
+              "source": "script",
+              "evidence": {
+                "command": "grep -c 'class AutoLearner' aiPlat-core/core/harness/learning/__init__.py",
+                "op": "-ge",
+                "expected": 1
+              },
+              "verification_status": "pass",
+              "actual": 1
+            },
+            {
+              "id": "F3",
+              "desc": "夜间自进化(EvolutionEngine)",
+              "declared_level": "L4",
+              "source": "script",
+              "evidence": {
+                "command": "grep -c 'class EvolutionEngine' aiPlat-core/core/harness/evolution_engine.py",
+                "op": "-ge",
+                "expected": 1
+              },
+              "verification_status": "pass",
+              "actual": 1
+            },
+            {
+              "id": "F4",
+              "desc": "知识自动合成(active_synthesis)",
+              "declared_level": "L4",
+              "source": "file_check",
+              "evidence": {
+                "command": "test -f aiPlat-core/core/harness/knowledge/active_synthesis.py && echo 1 || echo 0",
+                "op": "-ge",
+                "expected": 1
+              },
+              "verification_status": "pass",
+              "actual": 1
+            },
+            {
+              "id": "F5",
+              "desc": "操作→知识自动索引 — 未实现",
+              "declared_level": null,
+              "source": "gap",
+              "verification_status": "no-data"
+            }
+          ]
+        },
+        {
+          "id": "G",
+          "name": "多模态交互",
+          "declared_level": "L2",
+          "weight": 0.05,
+          "level_value": 2,
+          "conflict_note": null,
+          "items": [
+            {
+              "id": "G1",
+              "desc": "视频解析(VideoParser)",
+              "declared_level": "L2",
+              "source": "script",
+              "evidence": {
+                "command": "grep -c 'class VideoParser' aiPlat-core/core/harness/document/video.py",
+                "op": "-ge",
+                "expected": 1
+              },
+              "verification_status": "pass",
+              "actual": 1
+            },
+            {
+              "id": "G2",
+              "desc": "音频处理(InfraAudioAdapter)",
+              "declared_level": "L2",
+              "source": "script",
+              "evidence": {
+                "command": "grep -rl 'InfraAudioAdapter' aiPlat-core/core --include=*.py | wc -l",
+                "op": "-ge",
+                "expected": 1
+              },
+              "verification_status": "pass",
+              "actual": 2
+            },
+            {
+              "id": "G3",
+              "desc": "浏览器操控(BrowserTestEngine)",
+              "declared_level": "L3",
+              "source": "script",
+              "evidence": {
+                "command": "grep -rl 'BrowserTestEngine' aiPlat-core/core --include=*.py | wc -l",
+                "op": "-ge",
+                "expected": 1
+              },
+              "verification_status": "pass",
+              "actual": 4
+            },
+            {
+              "id": "G4",
+              "desc": "多模态输入作为Goal循环触发源 — 未实现",
+              "declared_level": null,
+              "source": "gap",
+              "verification_status": "no-data"
+            }
+          ]
+        },
+        {
+          "id": "H",
+          "name": "产品化交付",
+          "declared_level": "L3",
+          "weight": 0.15,
+          "level_value": 3,
+          "conflict_note": "原文档矛盾: 标题L2 vs 加权表L3(且值列填2.0). 迁移取加权表 L3, 待人工确认",
+          "items": [
+            {
+              "id": "H1",
+              "desc": "HTTP API(FastAPI+OpenAPI)",
+              "declared_level": "L2",
+              "source": "script",
+              "evidence": {
+                "command": "grep -c 'FastAPI' aiPlat-core/core/server.py",
+                "op": "-ge",
+                "expected": 1
+              },
+              "verification_status": "pass",
+              "actual": 6
+            },
+            {
+              "id": "H2",
+              "desc": "管理前端(React SPA 多页)",
+              "declared_level": "L2",
+              "source": "script",
+              "evidence": {
+                "command": "find aiPlat-management/frontend/src/pages -maxdepth 1 -type d | wc -l",
+                "op": "-ge",
+                "expected": 20
+              },
+              "verification_status": "pass",
+              "actual": 20
+            },
+            {
+              "id": "H3",
+              "desc": "IDE嵌入(ACP server)",
+              "declared_level": "L3",
+              "source": "file_check",
+              "evidence": {
+                "command": "test -f aiPlat-core/core/acp/server.py && echo 1 || echo 0",
+                "op": "-ge",
+                "expected": 1
+              },
+              "verification_status": "pass",
+              "actual": 1
+            },
+            {
+              "id": "H4",
+              "desc": "配置即代码分发(distribution.yaml) — 部分",
+              "declared_level": null,
+              "source": "gap",
+              "verification_status": "no-data"
+            }
+          ]
+        }
+      ]
+    },
+    "framework_two": {
+      "name": "工程落地评估(58项)",
+      "overall_pct": 86.4,
+      "formula": "(yes*1 + partial*0.5)/total * 100",
+      "dimensions": [
+        {
+          "id": "1",
+          "name": "代码质量与规范",
+          "pct": 100.0,
+          "items": [
+            {
+              "id": "1.1",
+              "desc": "代码规范(ruff)",
+              "result": true,
+              "source": "file_check",
+              "evidence": {
+                "command": "grep -cE 'ruff' pyproject.toml",
+                "op": "-ge",
+                "expected": 1
+              },
+              "verification_status": "pass",
+              "actual": 4
+            },
+            {
+              "id": "1.2",
+              "desc": "CI强制检查",
+              "result": true,
+              "source": "file_check",
+              "evidence": {
+                "command": "test -f .github/workflows/ci.yml && echo 1 || echo 0",
+                "op": "-ge",
+                "expected": 1
+              },
+              "verification_status": "pass",
+              "actual": 1
+            },
+            {
+              "id": "1.3",
+              "desc": "Code Review(PR模板)",
+              "result": true,
+              "source": "file_check",
+              "evidence": {
+                "command": "test -f .github/PULL_REQUEST_TEMPLATE.md && echo 1 || echo 0",
+                "op": "-ge",
+                "expected": 1
+              },
+              "verification_status": "pass",
+              "actual": 1
+            },
+            {
+              "id": "1.4",
+              "desc": "审查标准",
+              "result": true,
+              "source": "manual",
+              "verification_status": "no-data"
+            },
+            {
+              "id": "1.5",
+              "desc": "类型检查(mypy)",
+              "result": true,
+              "source": "file_check",
+              "evidence": {
+                "command": "grep -cE 'mypy' pyproject.toml",
+                "op": "-ge",
+                "expected": 1
+              },
+              "verification_status": "pass",
+              "actual": 1
+            },
+            {
+              "id": "1.6",
+              "desc": "自动格式化",
+              "result": true,
+              "source": "manual",
+              "verification_status": "no-data"
+            },
+            {
+              "id": "1.7",
+              "desc": "Commit规范(commitlint)",
+              "result": true,
+              "source": "file_check",
+              "evidence": {
+                "command": "test -f .commitlintrc.yaml && echo 1 || echo 0",
+                "op": "-ge",
+                "expected": 1
+              },
+              "verification_status": "pass",
+              "actual": 1
+            },
+            {
+              "id": "1.8",
+              "desc": "复杂度检查(radon)",
+              "result": true,
+              "source": "manual",
+              "verification_status": "no-data"
+            }
+          ]
+        },
+        {
+          "id": "2",
+          "name": "测试与验证体系",
+          "pct": 83.3,
+          "items": [
+            {
+              "id": "2.1",
+              "desc": "自动化测试",
+              "result": true,
+              "source": "manual",
+              "verification_status": "no-data"
+            },
+            {
+              "id": "2.2",
+              "desc": "可量化覆盖率",
+              "result": true,
+              "source": "manual",
+              "verification_status": "no-data"
+            },
+            {
+              "id": "2.3",
+              "desc": "集成测试",
+              "result": true,
+              "source": "file_check",
+              "evidence": {
+                "command": "test -d aiPlat-core/core/tests/integration && echo 1 || echo 0",
+                "op": "-ge",
+                "expected": 1
+              },
+              "verification_status": "pass",
+              "actual": 1
+            },
+            {
+              "id": "2.4",
+              "desc": "E2E测试",
+              "result": true,
+              "source": "manual",
+              "verification_status": "no-data"
+            },
+            {
+              "id": "2.5",
+              "desc": "CI自动运行",
+              "result": true,
+              "source": "manual",
+              "verification_status": "no-data"
+            },
+            {
+              "id": "2.6",
+              "desc": "性能基准",
+              "result": true,
+              "source": "manual",
+              "verification_status": "no-data"
+            },
+            {
+              "id": "2.7",
+              "desc": "冒烟测试",
+              "result": true,
+              "source": "file_check",
+              "evidence": {
+                "command": "test -f e2e_smoke.py && echo 1 || echo 0",
+                "op": "-ge",
+                "expected": 1
+              },
+              "verification_status": "pass",
+              "actual": 1
+            },
+            {
+              "id": "2.8",
+              "desc": "回归测试",
+              "result": "partial",
+              "source": "manual",
+              "verification_status": "no-data"
+            },
+            {
+              "id": "2.9",
+              "desc": "测试数据管理",
+              "result": "partial",
+              "source": "manual",
+              "verification_status": "no-data"
+            },
+            {
+              "id": "2.10",
+              "desc": "环境一致性",
+              "result": "partial",
+              "source": "manual",
+              "verification_status": "no-data"
+            },
+            {
+              "id": "2.11",
+              "desc": "覆盖门禁",
+              "result": "partial",
+              "source": "manual",
+              "verification_status": "no-data"
+            },
+            {
+              "id": "2.12",
+              "desc": "IDE集成测试(ACP smoke)",
+              "result": true,
+              "source": "manual",
+              "verification_status": "no-data"
+            }
+          ]
+        },
+        {
+          "id": "3",
+          "name": "CI/CD",
+          "pct": 75.0,
+          "items": [
+            {
+              "id": "3.1",
+              "desc": "CI/CD流水线(≥3 workflow)",
+              "result": true,
+              "source": "file_check",
+              "evidence": {
+                "command": "ls .github/workflows/*.yml | wc -l",
+                "op": "-ge",
+                "expected": 3
+              },
+              "verification_status": "pass",
+              "actual": 6
+            },
+            {
+              "id": "3.2",
+              "desc": "自动构建",
+              "result": true,
+              "source": "manual",
+              "verification_status": "no-data"
+            },
+            {
+              "id": "3.3",
+              "desc": "自动部署测试环境",
+              "result": "partial",
+              "source": "manual",
+              "verification_status": "no-data"
+            },
+            {
+              "id": "3.4",
+              "desc": "生产审批门禁",
+              "result": false,
+              "source": "manual",
+              "verification_status": "no-data"
+            },
+            {
+              "id": "3.5",
+              "desc": "一键回滚(rollback.sh)",
+              "result": true,
+              "source": "file_check",
+              "evidence": {
+                "command": "test -f scripts/rollback.sh && echo 1 || echo 0",
+                "op": "-ge",
+                "expected": 1
+              },
+              "verification_status": "pass",
+              "actual": 1
+            },
+            {
+              "id": "3.6",
+              "desc": "产物版本管理",
+              "result": true,
+              "source": "manual",
+              "verification_status": "no-data"
+            },
+            {
+              "id": "3.7",
+              "desc": "环境差异管理",
+              "result": "partial",
+              "source": "manual",
+              "verification_status": "no-data"
+            },
+            {
+              "id": "3.8",
+              "desc": "发布告警(notify-release.sh)",
+              "result": true,
+              "source": "file_check",
+              "evidence": {
+                "command": "test -f scripts/notify-release.sh && echo 1 || echo 0",
+                "op": "-ge",
+                "expected": 1
+              },
+              "verification_status": "pass",
+              "actual": 1
+            }
+          ]
+        },
+        {
+          "id": "4",
+          "name": "可观测性",
+          "pct": 90.9,
+          "items": [
+            {
+              "id": "4.1",
+              "desc": "结构化日志",
+              "result": true,
+              "source": "manual",
+              "verification_status": "no-data"
+            },
+            {
+              "id": "4.2",
+              "desc": "集中日志",
+              "result": true,
+              "source": "manual",
+              "verification_status": "no-data"
+            },
+            {
+              "id": "4.3",
+              "desc": "Metrics(Prometheus)",
+              "result": true,
+              "source": "manual",
+              "verification_status": "no-data"
+            },
+            {
+              "id": "4.4",
+              "desc": "分布式追踪(Jaeger/OTel)",
+              "result": true,
+              "source": "manual",
+              "verification_status": "no-data"
+            },
+            {
+              "id": "4.5",
+              "desc": "Dashboard(Grafana)",
+              "result": true,
+              "source": "manual",
+              "verification_status": "no-data"
+            },
+            {
+              "id": "4.6",
+              "desc": "告警规则",
+              "result": true,
+              "source": "manual",
+              "verification_status": "no-data"
+            },
+            {
+              "id": "4.7",
+              "desc": "SLA/SLO(docs/slo.md)",
+              "result": true,
+              "source": "file_check",
+              "evidence": {
+                "command": "test -f docs/slo.md && echo 1 || echo 0",
+                "op": "-ge",
+                "expected": 1
+              },
+              "verification_status": "pass",
+              "actual": 1
+            },
+            {
+              "id": "4.8",
+              "desc": "Error Budget",
+              "result": true,
+              "source": "manual",
+              "verification_status": "no-data"
+            },
+            {
+              "id": "4.9",
+              "desc": "Health Check",
+              "result": true,
+              "source": "manual",
+              "verification_status": "no-data"
+            },
+            {
+              "id": "4.10",
+              "desc": "业务指标面板",
+              "result": "partial",
+              "source": "manual",
+              "verification_status": "no-data"
+            },
+            {
+              "id": "4.11",
+              "desc": "多模态管道健康检查",
+              "result": "partial",
+              "source": "manual",
+              "verification_status": "no-data"
+            }
+          ]
+        },
+        {
+          "id": "5",
+          "name": "安全与合规",
+          "pct": 87.5,
+          "items": [
+            {
+              "id": "5.1",
+              "desc": "SAST(ruff bandit)",
+              "result": true,
+              "source": "manual",
+              "verification_status": "no-data"
+            },
+            {
+              "id": "5.2",
+              "desc": "DAST(OWASP ZAP)",
+              "result": true,
+              "source": "manual",
+              "verification_status": "no-data"
+            },
+            {
+              "id": "5.3",
+              "desc": "依赖扫描(dependabot)",
+              "result": true,
+              "source": "file_check",
+              "evidence": {
+                "command": "test -f .github/dependabot.yml && echo 1 || echo 0",
+                "op": "-ge",
+                "expected": 1
+              },
+              "verification_status": "pass",
+              "actual": 1
+            },
+            {
+              "id": "5.4",
+              "desc": "密钥管理(SecretsManager)",
+              "result": true,
+              "source": "manual",
+              "verification_status": "no-data"
+            },
+            {
+              "id": "5.5",
+              "desc": "渗透测试(外部)",
+              "result": false,
+              "source": "manual",
+              "verification_status": "no-data"
+            },
+            {
+              "id": "5.6",
+              "desc": "变更合规(change_control)",
+              "result": true,
+              "source": "manual",
+              "verification_status": "no-data"
+            },
+            {
+              "id": "5.7",
+              "desc": "审计追踪(SHA-256链)",
+              "result": true,
+              "source": "manual",
+              "verification_status": "no-data"
+            },
+            {
+              "id": "5.8",
+              "desc": "漏洞修复SLA(SECURITY.md)",
+              "result": true,
+              "source": "file_check",
+              "evidence": {
+                "command": "test -f SECURITY.md && echo 1 || echo 0",
+                "op": "-ge",
+                "expected": 1
+              },
+              "verification_status": "pass",
+              "actual": 1
+            }
+          ]
+        },
+        {
+          "id": "6",
+          "name": "架构与可维护性",
+          "pct": 83.3,
+          "items": [
+            {
+              "id": "6.1",
+              "desc": "模块边界(arch_guard_rules)",
+              "result": true,
+              "source": "file_check",
+              "evidence": {
+                "command": "test -f aiPlat-core/core/management/arch_guard_rules.yaml && echo 1 || echo 0",
+                "op": "-ge",
+                "expected": 1
+              },
+              "verification_status": "pass",
+              "actual": 1
+            },
+            {
+              "id": "6.2",
+              "desc": "接口契约(OpenAPI)",
+              "result": true,
+              "source": "manual",
+              "verification_status": "no-data"
+            },
+            {
+              "id": "6.3",
+              "desc": "ADR",
+              "result": true,
+              "source": "manual",
+              "verification_status": "no-data"
+            },
+            {
+              "id": "6.4",
+              "desc": "水平扩展(Helm HPA)",
+              "result": true,
+              "source": "manual",
+              "verification_status": "no-data"
+            },
+            {
+              "id": "6.5",
+              "desc": "多环境配置",
+              "result": true,
+              "source": "manual",
+              "verification_status": "no-data"
+            },
+            {
+              "id": "6.6",
+              "desc": "熔断(CircuitBreaker)",
+              "result": "partial",
+              "source": "manual",
+              "verification_status": "no-data"
+            },
+            {
+              "id": "6.7",
+              "desc": "DB迁移",
+              "result": "partial",
+              "source": "manual",
+              "verification_status": "no-data"
+            },
+            {
+              "id": "6.8",
+              "desc": "技术债管理(CLAUDE.md §16)",
+              "result": true,
+              "source": "manual",
+              "verification_status": "no-data"
+            },
+            {
+              "id": "6.9",
+              "desc": "故障演练(Chaos)",
+              "result": false,
+              "source": "manual",
+              "verification_status": "no-data"
+            },
+            {
+              "id": "6.10",
+              "desc": "架构评审(architecture_guard.sh)",
+              "result": true,
+              "source": "file_check",
+              "evidence": {
+                "command": "test -f scripts/architecture_guard.sh && echo 1 || echo 0",
+                "op": "-ge",
+                "expected": 1
+              },
+              "verification_status": "pass",
+              "actual": 1
+            },
+            {
+              "id": "6.11",
+              "desc": "AI Profile隔离",
+              "result": true,
+              "source": "manual",
+              "verification_status": "no-data"
+            },
+            {
+              "id": "6.12",
+              "desc": "AI资产包分发(profile_packager)",
+              "result": true,
+              "source": "file_check",
+              "evidence": {
+                "command": "test -f scripts/profile_packager.py && echo 1 || echo 0",
+                "op": "-ge",
+                "expected": 1
+              },
+              "verification_status": "pass",
+              "actual": 1
+            }
+          ]
+        }
+      ]
+    },
+    "framework_three": {
+      "name": "三层企业评估(~110项)",
+      "note": "全部 source=manual (Gartner/IDC 人工权重×人工评分), 无运行时证据. 综合分不入spec, 由公式算并对比文档声明层分以查矛盾",
+      "formula": "per-tier mean of manual scores (all source=manual)",
+      "tiers": [
+        {
+          "id": "macro",
+          "name": "宏观业务层",
+          "declared_tier_score": 3.3,
+          "computed_mean": 3.42,
+          "items": [
+            {
+              "id": "macro.1",
+              "desc": "安全隐私治理",
+              "score": 3.5,
+              "weight": 0.16,
+              "source": "manual",
+              "verification_status": "no-data"
+            },
+            {
+              "id": "macro.2",
+              "desc": "合规伦理监管",
+              "score": 2.5,
+              "weight": 0.08,
+              "source": "manual",
+              "verification_status": "no-data"
+            },
+            {
+              "id": "macro.3",
+              "desc": "LLM幻觉可信",
+              "score": 3.5,
+              "weight": 0.08,
+              "source": "manual",
+              "verification_status": "no-data"
+            },
+            {
+              "id": "macro.4",
+              "desc": "系统集成",
+              "score": 3.5,
+              "weight": 0.1,
+              "source": "manual",
+              "verification_status": "no-data"
+            },
+            {
+              "id": "macro.5",
+              "desc": "智能体核心",
+              "score": 4.5,
+              "weight": 0.1,
+              "source": "manual",
+              "verification_status": "no-data"
+            },
+            {
+              "id": "macro.6",
+              "desc": "知识治理",
+              "score": 4.0,
+              "weight": 0.07,
+              "source": "manual",
+              "verification_status": "no-data"
+            },
+            {
+              "id": "macro.7",
+              "desc": "开发效率",
+              "score": 4.0,
+              "weight": 0.08,
+              "source": "manual",
+              "verification_status": "no-data"
+            },
+            {
+              "id": "macro.8",
+              "desc": "可观测性",
+              "score": 4.0,
+              "weight": 0.06,
+              "source": "manual",
+              "verification_status": "no-data"
+            },
+            {
+              "id": "macro.9",
+              "desc": "生态扩展",
+              "score": 3.5,
+              "weight": 0.05,
+              "source": "manual",
+              "verification_status": "no-data"
+            },
+            {
+              "id": "macro.10",
+              "desc": "成本经济性",
+              "score": 3.0,
+              "weight": 0.08,
+              "source": "manual",
+              "verification_status": "no-data"
+            },
+            {
+              "id": "macro.11",
+              "desc": "灾难恢复",
+              "score": 2.5,
+              "weight": 0.06,
+              "source": "manual",
+              "verification_status": "no-data"
+            },
+            {
+              "id": "macro.12",
+              "desc": "实施落地(FDE)",
+              "score": 2.5,
+              "weight": 0.08,
+              "source": "manual",
+              "verification_status": "no-data"
+            }
+          ]
+        },
+        {
+          "id": "micro",
+          "name": "微观技术层",
+          "declared_tier_score": 3.9,
+          "computed_mean": 3.94,
+          "items": [
+            {
+              "id": "T0.1",
+              "desc": "模板管理",
+              "score": 4.5,
+              "weight": 0.02,
+              "source": "manual",
+              "verification_status": "no-data"
+            },
+            {
+              "id": "T0.2",
+              "desc": "模板版本化",
+              "score": 4.0,
+              "weight": 0.02,
+              "source": "manual",
+              "verification_status": "no-data"
+            },
+            {
+              "id": "T0.3",
+              "desc": "动态注入",
+              "score": 4.0,
+              "weight": 0.02,
+              "source": "manual",
+              "verification_status": "no-data"
+            },
+            {
+              "id": "T0.4",
+              "desc": "Prompt优化",
+              "score": 4.5,
+              "weight": 0.02,
+              "source": "manual",
+              "verification_status": "no-data"
+            },
+            {
+              "id": "T0.5",
+              "desc": "RAG检索",
+              "score": 4.5,
+              "weight": 0.016,
+              "source": "manual",
+              "verification_status": "no-data"
+            },
+            {
+              "id": "T0.6",
+              "desc": "上下文组装",
+              "score": 4.5,
+              "weight": 0.016,
+              "source": "manual",
+              "verification_status": "no-data"
+            },
+            {
+              "id": "T0.7",
+              "desc": "信息降噪",
+              "score": 4.0,
+              "weight": 0.016,
+              "source": "manual",
+              "verification_status": "no-data"
+            },
+            {
+              "id": "T0.8",
+              "desc": "动态注入(RunContext)",
+              "score": 4.5,
+              "weight": 0.016,
+              "source": "manual",
+              "verification_status": "no-data"
+            },
+            {
+              "id": "T0.9",
+              "desc": "跨域路由",
+              "score": 4.5,
+              "weight": 0.016,
+              "source": "manual",
+              "verification_status": "no-data"
+            },
+            {
+              "id": "T0.10",
+              "desc": "图片处理",
+              "score": 3.5,
+              "weight": 0.01,
+              "source": "manual",
+              "verification_status": "no-data"
+            },
+            {
+              "id": "T0.11",
+              "desc": "音频处理",
+              "score": 4.0,
+              "weight": 0.01,
+              "source": "manual",
+              "verification_status": "no-data"
+            },
+            {
+              "id": "T0.12",
+              "desc": "视频处理",
+              "score": 2.5,
+              "weight": 0.01,
+              "source": "manual",
+              "verification_status": "no-data"
+            },
+            {
+              "id": "T0.13",
+              "desc": "多格式文档",
+              "score": 4.0,
+              "weight": 0.01,
+              "source": "manual",
+              "verification_status": "no-data"
+            },
+            {
+              "id": "T0.14",
+              "desc": "语音交互(STT/TTS)",
+              "score": 2.0,
+              "weight": 0.01,
+              "source": "manual",
+              "verification_status": "no-data"
+            },
+            {
+              "id": "T0.15",
+              "desc": "浏览器自动化",
+              "score": 3.5,
+              "weight": 0.01,
+              "source": "manual",
+              "verification_status": "no-data"
+            },
+            {
+              "id": "T1.1",
+              "desc": "Agent创建",
+              "score": 4.5,
+              "weight": 0.02,
+              "source": "manual",
+              "verification_status": "no-data"
+            },
+            {
+              "id": "T1.2",
+              "desc": "Agent规划",
+              "score": 4.5,
+              "weight": 0.02,
+              "source": "manual",
+              "verification_status": "no-data"
+            },
+            {
+              "id": "T1.3",
+              "desc": "Agent执行",
+              "score": 4.5,
+              "weight": 0.02,
+              "source": "manual",
+              "verification_status": "no-data"
+            },
+            {
+              "id": "T1.4",
+              "desc": "Agent反思",
+              "score": 4.0,
+              "weight": 0.02,
+              "source": "manual",
+              "verification_status": "no-data"
+            },
+            {
+              "id": "T1.5",
+              "desc": "状态持久化",
+              "score": 4.5,
+              "weight": 0.02,
+              "source": "manual",
+              "verification_status": "no-data"
+            },
+            {
+              "id": "T1.6",
+              "desc": "多类型支持",
+              "score": 4.5,
+              "weight": 0.02,
+              "source": "manual",
+              "verification_status": "no-data"
+            },
+            {
+              "id": "T2.1",
+              "desc": "推理与规划",
+              "score": 4.5,
+              "weight": 0.02,
+              "source": "manual",
+              "verification_status": "no-data"
+            },
+            {
+              "id": "T2.2",
+              "desc": "工具使用",
+              "score": 4.5,
+              "weight": 0.02,
+              "source": "manual",
+              "verification_status": "no-data"
+            },
+            {
+              "id": "T2.3",
+              "desc": "自我反思与修正",
+              "score": 4.5,
+              "weight": 0.02,
+              "source": "manual",
+              "verification_status": "no-data"
+            },
+            {
+              "id": "T2.4",
+              "desc": "长期记忆管理",
+              "score": 4.5,
+              "weight": 0.02,
+              "source": "manual",
+              "verification_status": "no-data"
+            },
+            {
+              "id": "T2.5",
+              "desc": "规划执行效率",
+              "score": 4.0,
+              "weight": 0.02,
+              "source": "manual",
+              "verification_status": "no-data"
+            },
+            {
+              "id": "T2.6",
+              "desc": "SDK质量",
+              "score": 3.5,
+              "weight": 0.014,
+              "source": "manual",
+              "verification_status": "no-data"
+            },
+            {
+              "id": "T2.7",
+              "desc": "API一致性",
+              "score": 4.0,
+              "weight": 0.014,
+              "source": "manual",
+              "verification_status": "no-data"
+            },
+            {
+              "id": "T2.8",
+              "desc": "文档完整性",
+              "score": 4.0,
+              "weight": 0.014,
+              "source": "manual",
+              "verification_status": "no-data"
+            },
+            {
+              "id": "T2.9",
+              "desc": "上手难度",
+              "score": 4.0,
+              "weight": 0.014,
+              "source": "manual",
+              "verification_status": "no-data"
+            },
+            {
+              "id": "T2.10",
+              "desc": "IDE集成",
+              "score": 1.5,
+              "weight": 0.014,
+              "source": "manual",
+              "verification_status": "no-data"
+            },
+            {
+              "id": "T3.1",
+              "desc": "声明式定义",
+              "score": 4.5,
+              "weight": 0.02,
+              "source": "manual",
+              "verification_status": "no-data"
+            },
+            {
+              "id": "T3.2",
+              "desc": "动态发现",
+              "score": 4.0,
+              "weight": 0.02,
+              "source": "manual",
+              "verification_status": "no-data"
+            },
+            {
+              "id": "T3.3",
+              "desc": "语义搜索",
+              "score": 3.5,
+              "weight": 0.02,
+              "source": "manual",
+              "verification_status": "no-data"
+            },
+            {
+              "id": "T3.4",
+              "desc": "版本管理",
+              "score": 4.0,
+              "weight": 0.02,
+              "source": "manual",
+              "verification_status": "no-data"
+            },
+            {
+              "id": "T3.5",
+              "desc": "组合复用",
+              "score": 3.5,
+              "weight": 0.02,
+              "source": "manual",
+              "verification_status": "no-data"
+            },
+            {
+              "id": "T4.1",
+              "desc": "MCP工具层",
+              "score": 4.5,
+              "weight": 0.017,
+              "source": "manual",
+              "verification_status": "no-data"
+            },
+            {
+              "id": "T4.2",
+              "desc": "MCP资源层",
+              "score": 4.0,
+              "weight": 0.017,
+              "source": "manual",
+              "verification_status": "no-data"
+            },
+            {
+              "id": "T4.3",
+              "desc": "MCP提示词模板",
+              "score": 3.5,
+              "weight": 0.017,
+              "source": "manual",
+              "verification_status": "no-data"
+            },
+            {
+              "id": "T4.4",
+              "desc": "MCP采样",
+              "score": 3.0,
+              "weight": 0.017,
+              "source": "manual",
+              "verification_status": "no-data"
+            },
+            {
+              "id": "T4.5",
+              "desc": "多Server动态注册",
+              "score": 4.5,
+              "weight": 0.016,
+              "source": "manual",
+              "verification_status": "no-data"
+            },
+            {
+              "id": "T4.6",
+              "desc": "MCP故障转移",
+              "score": 3.0,
+              "weight": 0.016,
+              "source": "manual",
+              "verification_status": "no-data"
+            },
+            {
+              "id": "T5.1",
+              "desc": "DAG编排",
+              "score": 4.5,
+              "weight": 0.019,
+              "source": "manual",
+              "verification_status": "no-data"
+            },
+            {
+              "id": "T5.2",
+              "desc": "并行执行",
+              "score": 4.5,
+              "weight": 0.019,
+              "source": "manual",
+              "verification_status": "no-data"
+            },
+            {
+              "id": "T5.3",
+              "desc": "条件路由",
+              "score": 4.0,
+              "weight": 0.019,
+              "source": "manual",
+              "verification_status": "no-data"
+            },
+            {
+              "id": "T5.4",
+              "desc": "循环",
+              "score": 4.5,
+              "weight": 0.019,
+              "source": "manual",
+              "verification_status": "no-data"
+            },
+            {
+              "id": "T5.5",
+              "desc": "子工作流",
+              "score": 4.0,
+              "weight": 0.019,
+              "source": "manual",
+              "verification_status": "no-data"
+            },
+            {
+              "id": "T5.6",
+              "desc": "断点续执行",
+              "score": 4.5,
+              "weight": 0.018,
+              "source": "manual",
+              "verification_status": "no-data"
+            },
+            {
+              "id": "T5.7",
+              "desc": "运行时动态调整",
+              "score": 3.0,
+              "weight": 0.017,
+              "source": "manual",
+              "verification_status": "no-data"
+            },
+            {
+              "id": "T5.8",
+              "desc": "容器化",
+              "score": 4.0,
+              "weight": 0.016,
+              "source": "manual",
+              "verification_status": "no-data"
+            },
+            {
+              "id": "T5.9",
+              "desc": "CI/CD成熟度",
+              "score": 3.5,
+              "weight": 0.016,
+              "source": "manual",
+              "verification_status": "no-data"
+            },
+            {
+              "id": "T5.10",
+              "desc": "回滚能力",
+              "score": 4.0,
+              "weight": 0.016,
+              "source": "manual",
+              "verification_status": "no-data"
+            },
+            {
+              "id": "T5.11",
+              "desc": "多环境支持",
+              "score": 3.5,
+              "weight": 0.016,
+              "source": "manual",
+              "verification_status": "no-data"
+            },
+            {
+              "id": "T5.12",
+              "desc": "健康检查",
+              "score": 4.5,
+              "weight": 0.016,
+              "source": "manual",
+              "verification_status": "no-data"
+            },
+            {
+              "id": "T5.13",
+              "desc": "吞吐量基线",
+              "score": 3.0,
+              "weight": 0.015,
+              "source": "manual",
+              "verification_status": "no-data"
+            },
+            {
+              "id": "T5.14",
+              "desc": "P95延迟",
+              "score": 3.5,
+              "weight": 0.015,
+              "source": "manual",
+              "verification_status": "no-data"
+            },
+            {
+              "id": "T5.15",
+              "desc": "并发上限",
+              "score": 3.0,
+              "weight": 0.015,
+              "source": "manual",
+              "verification_status": "no-data"
+            },
+            {
+              "id": "T5.16",
+              "desc": "资源消耗",
+              "score": 3.5,
+              "weight": 0.015,
+              "source": "manual",
+              "verification_status": "no-data"
+            },
+            {
+              "id": "T5.17",
+              "desc": "崩溃恢复",
+              "score": 4.5,
+              "weight": 0.015,
+              "source": "manual",
+              "verification_status": "no-data"
+            },
+            {
+              "id": "T5.18",
+              "desc": "数据一致性",
+              "score": 4.0,
+              "weight": 0.015,
+              "source": "manual",
+              "verification_status": "no-data"
+            },
+            {
+              "id": "T5.19",
+              "desc": "长时运行稳定性",
+              "score": 3.5,
+              "weight": 0.015,
+              "source": "manual",
+              "verification_status": "no-data"
+            },
+            {
+              "id": "T5.20",
+              "desc": "checkpoint恢复",
+              "score": 4.5,
+              "weight": 0.015,
+              "source": "manual",
+              "verification_status": "no-data"
+            },
+            {
+              "id": "T6.1",
+              "desc": "工作记忆",
+              "score": 4.5,
+              "weight": 0.017,
+              "source": "manual",
+              "verification_status": "no-data"
+            },
+            {
+              "id": "T6.2",
+              "desc": "会话记忆",
+              "score": 4.5,
+              "weight": 0.017,
+              "source": "manual",
+              "verification_status": "no-data"
+            },
+            {
+              "id": "T6.3",
+              "desc": "语义记忆",
+              "score": 4.5,
+              "weight": 0.017,
+              "source": "manual",
+              "verification_status": "no-data"
+            },
+            {
+              "id": "T6.4",
+              "desc": "程序记忆",
+              "score": 4.0,
+              "weight": 0.017,
+              "source": "manual",
+              "verification_status": "no-data"
+            },
+            {
+              "id": "T6.5",
+              "desc": "检索增强",
+              "score": 4.5,
+              "weight": 0.016,
+              "source": "manual",
+              "verification_status": "no-data"
+            },
+            {
+              "id": "T6.6",
+              "desc": "冲突解决",
+              "score": 4.5,
+              "weight": 0.016,
+              "source": "manual",
+              "verification_status": "no-data"
+            },
+            {
+              "id": "T7.1",
+              "desc": "反馈采集",
+              "score": 4.5,
+              "weight": 0.022,
+              "source": "manual",
+              "verification_status": "no-data"
+            },
+            {
+              "id": "T7.2",
+              "desc": "策略搜索优化(UCB1)",
+              "score": 5.0,
+              "weight": 0.022,
+              "source": "manual",
+              "verification_status": "no-data"
+            },
+            {
+              "id": "T7.3",
+              "desc": "自愈闭环",
+              "score": 4.5,
+              "weight": 0.022,
+              "source": "manual",
+              "verification_status": "no-data"
+            },
+            {
+              "id": "T7.4",
+              "desc": "知识晶体化",
+              "score": 4.0,
+              "weight": 0.022,
+              "source": "manual",
+              "verification_status": "no-data"
+            },
+            {
+              "id": "T7.5",
+              "desc": "A/B实验",
+              "score": 3.0,
+              "weight": 0.022,
+              "source": "manual",
+              "verification_status": "no-data"
+            },
+            {
+              "id": "T7.6",
+              "desc": "单任务成本",
+              "score": 3.5,
+              "weight": 0.015,
+              "source": "manual",
+              "verification_status": "no-data"
+            },
+            {
+              "id": "T7.7",
+              "desc": "Token消耗优化",
+              "score": 4.0,
+              "weight": 0.015,
+              "source": "manual",
+              "verification_status": "no-data"
+            },
+            {
+              "id": "T7.8",
+              "desc": "T1-T5路由",
+              "score": 4.5,
+              "weight": 0.015,
+              "source": "manual",
+              "verification_status": "no-data"
+            },
+            {
+              "id": "T7.9",
+              "desc": "性价比",
+              "score": 3.0,
+              "weight": 0.015,
+              "source": "manual",
+              "verification_status": "no-data"
+            },
+            {
+              "id": "T8.1",
+              "desc": "模型准入",
+              "score": 4.0,
+              "weight": 0.022,
+              "source": "manual",
+              "verification_status": "no-data"
+            },
+            {
+              "id": "T8.2",
+              "desc": "模型退役",
+              "score": 3.0,
+              "weight": 0.022,
+              "source": "manual",
+              "verification_status": "no-data"
+            },
+            {
+              "id": "T8.3",
+              "desc": "性能监控",
+              "score": 4.0,
+              "weight": 0.022,
+              "source": "manual",
+              "verification_status": "no-data"
+            },
+            {
+              "id": "T8.4",
+              "desc": "漂移检测",
+              "score": 3.5,
+              "weight": 0.022,
+              "source": "manual",
+              "verification_status": "no-data"
+            },
+            {
+              "id": "T8.5",
+              "desc": "可解释性",
+              "score": 3.0,
+              "weight": 0.022,
+              "source": "manual",
+              "verification_status": "no-data"
+            },
+            {
+              "id": "T9.1",
+              "desc": "数据血缘",
+              "score": 4.0,
+              "weight": 0.0275,
+              "source": "manual",
+              "verification_status": "no-data"
+            },
+            {
+              "id": "T9.2",
+              "desc": "数据质量",
+              "score": 4.0,
+              "weight": 0.0275,
+              "source": "manual",
+              "verification_status": "no-data"
+            },
+            {
+              "id": "T9.3",
+              "desc": "分类分级",
+              "score": 3.0,
+              "weight": 0.0275,
+              "source": "manual",
+              "verification_status": "no-data"
+            },
+            {
+              "id": "T9.4",
+              "desc": "生命周期",
+              "score": 4.0,
+              "weight": 0.0275,
+              "source": "manual",
+              "verification_status": "no-data"
+            }
+          ]
+        },
+        {
+          "id": "arch",
+          "name": "架构底座层",
+          "declared_tier_score": 3.65,
+          "computed_mean": 3.64,
+          "items": [
+            {
+              "id": "arch.1",
+              "desc": "模块化解耦",
+              "score": 4.5,
+              "weight": 0.13,
+              "source": "manual",
+              "verification_status": "no-data"
+            },
+            {
+              "id": "arch.2",
+              "desc": "可扩展设计",
+              "score": 4.0,
+              "weight": 0.13,
+              "source": "manual",
+              "verification_status": "no-data"
+            },
+            {
+              "id": "arch.3",
+              "desc": "技术栈合理",
+              "score": 3.5,
+              "weight": 0.12,
+              "source": "manual",
+              "verification_status": "no-data"
+            },
+            {
+              "id": "arch.4",
+              "desc": "存储架构",
+              "score": 4.0,
+              "weight": 0.13,
+              "source": "manual",
+              "verification_status": "no-data"
+            },
+            {
+              "id": "arch.5",
+              "desc": "部署运维",
+              "score": 3.0,
+              "weight": 0.12,
+              "source": "manual",
+              "verification_status": "no-data"
+            },
+            {
+              "id": "arch.6",
+              "desc": "工程质量",
+              "score": 3.5,
+              "weight": 0.1,
+              "source": "manual",
+              "verification_status": "no-data"
+            },
+            {
+              "id": "arch.7",
+              "desc": "架构演进",
+              "score": 4.0,
+              "weight": 0.08,
+              "source": "manual",
+              "verification_status": "no-data"
+            },
+            {
+              "id": "arch.8",
+              "desc": "安全架构",
+              "score": 3.5,
+              "weight": 0.09,
+              "source": "manual",
+              "verification_status": "no-data"
+            },
+            {
+              "id": "arch.9",
+              "desc": "多智能体编排",
+              "score": 4.0,
+              "weight": 0.08,
+              "source": "manual",
+              "verification_status": "no-data"
+            },
+            {
+              "id": "arch.10",
+              "desc": "AI Profile虚拟化",
+              "score": 3.5,
+              "weight": 0.05,
+              "source": "manual",
+              "verification_status": "no-data"
+            },
+            {
+              "id": "arch.11",
+              "desc": "配置即代码分发",
+              "score": 2.5,
+              "weight": 0.05,
+              "source": "manual",
+              "verification_status": "no-data"
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "drift": []
+}

@@ -32,7 +32,7 @@ tags: [verification, protocol, reproducibility, three-framework]
 | 层 | 作用 | 验证方式 | 检查项数 | 覆盖框架项 | 依赖 |
 |:---|:---|:---|:--:|:--:|:--:|
 | **代码层** | 验证模块存在 | grep -c 脚本 | 62 项 | 102 项全部 (基础覆盖) | 无 |
-| **行为层** | 验证真实工作 | pytest + curl | 107 项 | 102 项中的 63 项 (深度覆盖) | `./start.sh` (仅 curl 部分) |
+| **行为层** | 验证真实工作 | pytest + curl | 41 项 (30 pytest + 8 curl + 3 REST) | 102 项中的 63 项 | `./start.sh` (仅 curl 部分) |
 | **人工层** | 验证深度能力 | 专业知识判断 | 4 项 | 4 项 (渗透/故障/宏观/架构) | 外部审稿人 |
 
 > **验证项数 (104) ≠ 框架评估项数 (102)**。多个检查覆盖同一项 (如 UCB1 被 grep 和 pytest 双重验证)，部分项仅需代码层覆盖 (如 ADR 存在性)。
@@ -42,10 +42,10 @@ tags: [verification, protocol, reproducibility, three-framework]
 | 子类型 | 项数 | 验证内容 | 脚本 |
 |:---|:--:|:---|:---|
 | **Python 深度测试** | 30 | UCB1收敛 / GoalExecutor闭环 / SwarmBroker竞标 / GossipProtocol去重 / ToolBootstrap注册 / AdaptiveContext路由 / 策略跟踪集成 | `verify-l4-depth.sh` |
-| **curl 端到端** | 5 | 自主循环 / 自愈引擎 / 上下文召回 / 动态组队 / 工具自举 | `verify-l4-behavior.sh` |
+| **curl 端到端** | 8 | 自主循环 / 自愈引擎 / 上下文召回 / 动态组队 / 工具自举 / 推理 / 跨域 / 错误恢复 | `verify-l4-behavior.sh` |
 | **REST API 诊断** | 3 | 架构守卫 (76规则) / 4层健康 / 全量诊断 | curl 直接调用 |
 
-> **关键区分**：代码层只验证 `grep -c class Foo` = 1（模块存在），行为层 30 项深度测试注入真实数据、调用真实函数、验证真实输出（模块工作）。代码层 62 项回答"有"，行为层 107 项回答"能"。
+> **关键区分**：代码层只验证 `grep -c class Foo` = 1（模块存在），行为层 30 项深度测试注入真实数据、调用真实函数、验证真实输出（模块工作）。代码层 62 项回答"有"，行为层 41 项独立检查（30 pytest + 8 curl + 3 REST，按检查点计数，非拆解 assert）回答"能"。
 
 ### 各框架覆盖
 
@@ -241,7 +241,7 @@ grep -c 'class SwarmBroker\|class DynamicOrchestrator' aiPlat-core/core/harness/
 
 ## 5. 运行时行为验证 (需 ./start.sh)
 
-代码层验证了"存在"，行为层验证了"能跑"。以下 5 个场景通过 curl 对运行中的 aiPlat 实例做端到端测试。
+代码层验证了"存在"，行为层验证了"能跑"。以下 8 个场景通过 curl 对运行中的 aiPlat 实例做端到端测试。
 
 ### 5.1 场景一览
 
