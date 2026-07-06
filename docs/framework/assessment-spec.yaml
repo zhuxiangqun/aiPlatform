@@ -83,7 +83,7 @@ frameworks:
              evidence: {command: "grep -c 'class MCPServer' aiPlat-core/core/apps/mcp/server.py", op: "-ge", expected: 1}}
           - {id: C3, desc: "工具自举(ToolBootstrapEngine)", declared_level: L4, source: script,
              evidence: {command: "grep -c 'class ToolBootstrapEngine' aiPlat-core/core/harness/optimization/tool_bootstrap.py", op: "-ge", expected: 1}}
-          - {id: C4, desc: "工具自动改进/弃用(record_call+AutoToolRegenerator+CronScheduler)", declared_level: L3, source: file_check,
+          - {id: C4, desc: "工具自动改进/弃用(record_call+AutoToolRegenerator+CronScheduler)", declared_level: L4, source: file_check,
              evidence: {command: "grep -c 'get_tool_evolution\\|record_call' aiPlat-core/core/harness/syscalls/tool.py", op: "-ge", expected: 1}}
       - id: D
         name: "记忆系统"
@@ -112,7 +112,7 @@ frameworks:
         declared_level: L4
         weight: 0.10
         items:
-          - {id: F1, desc: "策略记录+搜索(StrategyEffectivenessTracker)", declared_level: L3, source: script,
+          - {id: F1, desc: "策略记录+搜索(StrategyEffectivenessTracker)", declared_level: L4, source: script,
              evidence: {command: "grep -c 'class StrategyEffectivenessTracker' aiPlat-core/core/harness/optimization/strategy_tracker.py", op: "-ge", expected: 1}}
           - {id: F2, desc: "自动技能生成(AutoLearner)", declared_level: L4, source: script,
              evidence: {command: "grep -c 'class AutoLearner' aiPlat-core/core/harness/learning/__init__.py", op: "-ge", expected: 1},
@@ -125,12 +125,12 @@ frameworks:
              evidence: {command: "(grep -c '_feed_execution_to_graph' aiPlat-core/core/harness/execution/pipeline_engine.py || echo 0) && (grep -c 'feed_execution_to_graph' aiPlat-core/core/harness/knowledge/wiki_indexer.py || echo 0)", op: "-ge", expected: 1}}
       - id: G
         name: "多模态交互"
-        declared_level: L2
+        declared_level: L3
         weight: 0.05
         items:
           - {id: G1, desc: "视频解析(VideoParser)", declared_level: L2, source: script,
              evidence: {command: "grep -c 'class VideoParser' aiPlat-core/core/harness/document/video.py", op: "-ge", expected: 1}}
-          - {id: G2, desc: "音频处理(InfraAudioAdapter)", declared_level: L2, source: script,
+          - {id: G2, desc: "音频处理(InfraAudioAdapter)", declared_level: L3, source: script,
              evidence: {command: "grep -rl 'InfraAudioAdapter' aiPlat-core/core --include=*.py | wc -l", op: "-ge", expected: 1}}
           - {id: G3, desc: "浏览器操控(BrowserTestEngine)", declared_level: L3, source: script,
              evidence: {command: "grep -rl 'BrowserTestEngine' aiPlat-core/core --include=*.py | wc -l", op: "-ge", expected: 1}}
@@ -304,7 +304,7 @@ frameworks:
           - {id: "T2.7", desc: "API一致性", score: 4.0, weight: 0.014, source: manual}
           - {id: "T2.8", desc: "文档完整性", score: 4.0, weight: 0.014, source: manual}
           - {id: "T2.9", desc: "上手难度", score: 4.0, weight: 0.014, source: manual}
-          - {id: "T2.10", desc: "IDE集成", score: 1.5, weight: 0.014, source: manual}
+          - {id: "T2.10", desc: "IDE集成", score: 3.0, weight: 0.014, source: manual}
           - {id: "T3.1", desc: "声明式定义", score: 4.5, weight: 0.02, source: manual}
           - {id: "T3.2", desc: "动态发现", score: 4.0, weight: 0.02, source: manual}
           - {id: "T3.3", desc: "语义搜索", score: 3.5, weight: 0.02, source: manual}

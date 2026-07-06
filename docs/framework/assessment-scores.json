@@ -1,10 +1,10 @@
 {
-  "generated_at": "2026-07-07T02:12:06",
+  "generated_at": "2026-07-07T02:15:31",
   "spec_version": "1.0.0",
   "frameworks": {
     "framework_one": {
       "name": "8轴自主性成熟度",
-      "composite_level_value": 4.1,
+      "composite_level_value": 4.15,
       "composite_grade": "L4",
       "weight_sum": 1.0,
       "formula": "sum(axis_level*weight)/sum(weight) — normalized",
@@ -243,7 +243,7 @@
             {
               "id": "C4",
               "desc": "工具自动改进/弃用(record_call+AutoToolRegenerator+CronScheduler)",
-              "declared_level": "L3",
+              "declared_level": "L4",
               "source": "file_check",
               "evidence": {
                 "command": "grep -c 'get_tool_evolution\\|record_call' aiPlat-core/core/harness/syscalls/tool.py",
@@ -364,7 +364,7 @@
             {
               "id": "F1",
               "desc": "策略记录+搜索(StrategyEffectivenessTracker)",
-              "declared_level": "L3",
+              "declared_level": "L4",
               "source": "script",
               "evidence": {
                 "command": "grep -c 'class StrategyEffectivenessTracker' aiPlat-core/core/harness/optimization/strategy_tracker.py",
@@ -436,9 +436,9 @@
         {
           "id": "G",
           "name": "多模态交互",
-          "declared_level": "L2",
+          "declared_level": "L3",
           "weight": 0.05,
-          "level_value": 2,
+          "level_value": 3,
           "conflict_note": null,
           "items": [
             {
@@ -457,7 +457,7 @@
             {
               "id": "G2",
               "desc": "音频处理(InfraAudioAdapter)",
-              "declared_level": "L2",
+              "declared_level": "L3",
               "source": "script",
               "evidence": {
                 "command": "grep -rl 'InfraAudioAdapter' aiPlat-core/core --include=*.py | wc -l",
@@ -1235,7 +1235,7 @@
           "id": "micro",
           "name": "微观技术层",
           "declared_tier_score": 3.9,
-          "computed_mean": 3.94,
+          "computed_mean": 3.96,
           "items": [
             {
               "id": "T0.1",
@@ -1480,7 +1480,7 @@
             {
               "id": "T2.10",
               "desc": "IDE集成",
-              "score": 1.5,
+              "score": 3.0,
               "weight": 0.014,
               "source": "manual",
               "verification_status": "no-data"
