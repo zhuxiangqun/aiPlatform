@@ -34,6 +34,7 @@ class GoalType(Enum):
     SNAPSHOT_DEGRADATION = "snapshot_degradation"
     EXPLORATION_GAP = "exploration_gap"
     TOOL_GAP = "tool_gap"
+    DOC_HEALTH = "doc_health"
 
 
 class Priority(Enum):
@@ -83,6 +84,7 @@ class GoalGenerator:
         goals.extend(self._scan_knowledge_staleness())
         goals.extend(self._scan_exploration_gaps())
         goals.extend(self._scan_tool_gaps())
+        goals.extend(self._scan_doc_health())
         goals.sort(key=lambda g: (g.priority.value, -g.generated_at), reverse=True)
         return goals
 
@@ -295,6 +297,81 @@ class GoalGenerator:
             return goals
         except Exception as e:
             logger.debug("tool gap scan skipped: %s", e)
+            return []
+
+    def _scan_doc_health(self) -> List[Goal]:
+        """Deterministic documentation-health monitor (doc governance stage 2).
+
+        Watches for the "只加不减" regression the doc-slimming cleanup fixed:
+          - CLAUDE.md creeping back over its budget
+          - any Markdown file growing oversized (>500 lines)
+        All doc goals are human-approved (auto_executable=False) — doc edits
+        must not be auto-applied. Cheap, LLM-free indicators only.
+        """
+        try:
+            import os
+            from pathlib import Path
+
+            here = Path(__file__).resolve()
+            core_root = here.parents[3]        # aiPlat-core/
+            workspace = here.parents[4]        # repo root
+            claude_md = core_root / "CLAUDE.md"
+
+            goals: List[Goal] = []
+
+            # Indicator 1: CLAUDE.md size budget (rules-only doc should stay lean)
+            claude_budget = int(os.getenv("AIPLAT_CLAUDE_MD_MAX_LINES", "2000"))
+            if claude_md.exists():
+                claude_lines = sum(1 for _ in claude_md.open(encoding="utf-8", errors="ignore"))
+                if claude_lines > claude_budget:
+                    goals.append(Goal(
+                        goal_id="doc-health-claude-oversized",
+                        title=f"CLAUDE.md 超预算 ({claude_lines} > {claude_budget} 行)",
+                        description="CLAUDE.md 应聚焦耐久规则；状态快照迁往 docs/PHASE_STATUS.md。"
+                                     "运行 scripts/extract_status_sections.py 生成瘦身草稿。",
+                        goal_type=GoalType.DOC_HEALTH,
+                        priority=Priority.MEDIUM,
+                        estimated_impact="降低 CLAUDE.md 上下文注入成本，防止规则被状态淹没",
+                        auto_executable=False,
+                        suggested_action="python3 scripts/extract_status_sections.py（人工审阅 diff 后应用）",
+                        source_evidence={"file": "aiPlat-core/CLAUDE.md",
+                                          "lines": claude_lines, "budget": claude_budget},
+                    ))
+
+            # Indicator 2: oversized Markdown files (>500 lines)
+            oversized_limit = int(os.getenv("AIPLAT_MD_MAX_LINES", "500"))
+            skip_dirs = {"node_modules", ".venv", ".git", "__pycache__", "download", "archive"}
+            oversized: List[Dict[str, Any]] = []
+            for root, dirs, files in os.walk(workspace):
+                dirs[:] = [d for d in dirs if d not in skip_dirs]
+                for fn in files:
+                    if not fn.endswith(".md"):
+                        continue
+                    fp = os.path.join(root, fn)
+                    try:
+                        n = sum(1 for _ in open(fp, encoding="utf-8", errors="ignore"))
+                    except Exception:
+                        continue
+                    if n > oversized_limit:
+                        oversized.append({"file": os.path.relpath(fp, workspace), "lines": n})
+            if len(oversized) >= 5:
+                oversized.sort(key=lambda x: x["lines"], reverse=True)
+                goals.append(Goal(
+                    goal_id="doc-health-oversized-md",
+                    title=f"{len(oversized)} 个 Markdown 文件超 {oversized_limit} 行",
+                    description="过大文档降低可维护性；考虑拆分或用指针替换正文。"
+                                 f"最大：{', '.join(o['file'] for o in oversized[:3])}",
+                    goal_type=GoalType.DOC_HEALTH,
+                    priority=Priority.LOW,
+                    estimated_impact="提升文档可维护性，抑制文档沙堆增长",
+                    auto_executable=False,
+                    suggested_action="拆分或归档 top 超大文档（人工）",
+                    source_evidence={"oversized_count": len(oversized),
+                                     "limit": oversized_limit, "top": oversized[:5]},
+                ))
+            return goals
+        except Exception as e:
+            logger.debug("doc health scan skipped: %s", e)
             return []
 
     def stats(self) -> Dict[str, Any]:
