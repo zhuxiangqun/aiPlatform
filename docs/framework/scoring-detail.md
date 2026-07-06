@@ -141,8 +141,8 @@ bash scripts/verify-l4-pyramid.sh | grep '最大可宣称'
 | 1.4 | 审查标准 | ✅ | PR template: Design/Testing/Verification/CodeQuality/Docs | — |
 | 1.5 | 类型检查 | ✅ | mypy in CI + pre-commit | — |
 | 1.6 | 自动格式化 | ✅ | ruff-format in pre-commit | — |
-| 1.7 | Commit 规范 | ✅ | `.commitlintrc.yaml` conventional commits | 非 CI 强制执行 |
-| 1.8 | 复杂度检查 | ✅ | radon cc in CI | 仅 informational, 未 fail-on-high |
+| 1.7 | Commit 规范 | ✅ | `.commitlintrc.yaml` conventional commits, CI 强制执行 (Phase 69) | — |
+| 1.8 | 复杂度检查 | ✅ | radon cc in CI, 已移除 `|| true` (Phase 69) | — |
 
 ### 2. 测试与验证体系 — 80% (6/10 是, 4/10 部分)
 
@@ -231,9 +231,9 @@ bash scripts/verify-l4-pyramid.sh | grep '最大可宣称'
 | 5. 安全合规 | 8 | 0 | 0 | **100%** | 生产级 |
 | 6. 架构维护 | 9 | 2 | 1 | **87.5%** | 准生产级 |
 
-**平均 88.6% → 工程成熟度：准生产级**
+**平均 88.9% → 工程成熟度：准生产级**
 **一票否决：全部通过（5/5）**
-> V3.0 新增 4 项全部修复。
+> V3.0 新增 4 项全部修复。CI/CD 75% 为唯一低于 90% 的维度。
 
 ---
 
@@ -489,7 +489,7 @@ bash scripts/verify-l4-pyramid.sh | grep '最大可宣称'
 | 框架 | 定级 | 拖后腿项 |
 |:---|:---|:---|
 | **L1-L5 自主性 (V3.0)** | L4 (加权 4.15) | G:L2(多模态), H:L2(产品化) |
-| **工程落地** | 准生产级 (88.6% 均分) | — |
+| **工程落地** | 准生产级 (88.9% 均分) | CI/CD 75% |
 | **三层企业** | 基础级 (3.3) | 宏观合规(2.5), 灾备(2.5), 架构分发(2.5) |
 
 ### 升级路径
