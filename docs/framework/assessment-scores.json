@@ -1,12 +1,12 @@
 {
-  "generated_at": "2026-07-07T01:55:18",
+  "generated_at": "2026-07-07T01:57:09",
   "spec_version": "1.0.0",
   "frameworks": {
     "framework_one": {
       "name": "8轴自主性成熟度",
-      "composite_level_value": 3.91,
+      "composite_level_value": 3.95,
       "composite_grade": "L4",
-      "weight_sum": 1.1,
+      "weight_sum": 1.0,
       "formula": "sum(axis_level*weight)/sum(weight) — normalized",
       "axes": [
         {
@@ -86,7 +86,7 @@
           "id": "A2",
           "name": "自调度编排",
           "declared_level": "L3",
-          "weight": 0.15,
+          "weight": 0.1,
           "level_value": 3,
           "conflict_note": null,
           "items": [
@@ -357,7 +357,7 @@
           "id": "F",
           "name": "自进化学习",
           "declared_level": "L4",
-          "weight": 0.15,
+          "weight": 0.1,
           "level_value": 4,
           "conflict_note": null,
           "items": [

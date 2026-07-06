@@ -51,7 +51,7 @@ frameworks:
       - id: A2
         name: "自调度编排"
         declared_level: L3
-        weight: 0.15
+        weight: 0.10
         items:
           - {id: A2.1, desc: "状态流转(PipelineEngine)", declared_level: L3, source: script,
              evidence: {command: "grep -c 'class PipelineEngine' aiPlat-core/core/harness/execution/pipeline_engine.py", op: "-ge", expected: 1}}
@@ -110,7 +110,7 @@ frameworks:
       - id: F
         name: "自进化学习"
         declared_level: L4
-        weight: 0.15
+        weight: 0.10
         items:
           - {id: F1, desc: "策略记录+搜索(StrategyEffectivenessTracker)", declared_level: L3, source: script,
              evidence: {command: "grep -c 'class StrategyEffectivenessTracker' aiPlat-core/core/harness/optimization/strategy_tracker.py", op: "-ge", expected: 1}}
