@@ -124,6 +124,9 @@ const menuItems: (MenuItem | { divider: boolean } | MenuGroup)[] = [
     { key: '/approval', icon: Package, label: '资产审批' },
     { key: '/core/approvals', icon: Shield, label: '运行时审批' },
   ]},
+  { group: 'security', label: '安全测试', items: [
+    { key: '/pentest', icon: Shield, label: '渗透测试' },
+  ]},
   { group: 'user', label: '终端使用', items: [
     { key: '/workbench', icon: Monitor, label: '工作台' },
   ]},

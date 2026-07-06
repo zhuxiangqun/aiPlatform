@@ -475,4 +475,14 @@ export const monitoringApi = {
   },
 };
 
+// Pentest API
+export const pentestApi = {
+  dryRun: async () => apiClient.get<any>('/pentest/dry-run'),
+  startScan: async (payload: { target_url: string; mode: string; use_llm: boolean }) =>
+    apiClient.post<any>('/pentest/scan', payload),
+  getScanStatus: async (scanId: string) => apiClient.get<any>(`/pentest/scan/${scanId}`),
+  getReports: async () => apiClient.get<any[]>('/pentest/reports'),
+  getReport: async (reportFile: string) => apiClient.get<any>(`/pentest/reports/${reportFile}`),
+};
+
 export default apiClient;

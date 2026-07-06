@@ -120,6 +120,7 @@ const UserWorkbench = lazy(() => import('./pages/ValueCenter/UserWorkbench'));
 const TrainingMonitor = lazy(() => import('./pages/ValueCenter/TrainingMonitor'));
 const SpecDetailPage = lazy(() => import('./pages/ValueCenter/SpecDetail'));
 const StudioPage = lazy(() => import('./pages/Studio/StudioPage'));
+const PentestPage = lazy(() => import('./pages/Pentest/Pentest'));
 
 const router = createBrowserRouter([
   {
@@ -235,6 +236,7 @@ const router = createBrowserRouter([
       { path: 'diagnostics/safety', element: withSuspense(SafetyPanel) },
       { path: 'diagnostics/eval', element: withSuspense(DiagnosticsEvalDashboard) },
       { path: 'studio', element: withSuspense(StudioPage) },
+      { path: 'pentest', element: withSuspense(PentestPage) },
     ],
   },
 ]);
