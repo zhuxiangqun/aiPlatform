@@ -3,7 +3,7 @@
 > 本文档存档 aiPlat "评估—诊断—告警—修复" 全链路的当前真实架构，含代码交叉验证证据（file:line）。
 > 遵循根 `CLAUDE.md` §规则5：所有事实性声明附带 grep/file:line 证据。
 
-last_synced: 2026-07-06
+last_synced: 2026-07-07
 status: as-is
 owner: harness/observability + evaluation
 ---
@@ -138,10 +138,36 @@ owner: harness/observability + evaluation
 | `8f0e22b` | P1 诊断→修复闭环（安全默认） |
 | `da34086` | 评估框架统一事实源 + 验证引擎（P0.1/0.2/0.3） |
 | `af52ed5` | 评估-运行时桥接 + 框架发现→修复Goal（P1/P2） |
+| `28f81bd` | 成熟度评估孤岛接入诊断中心/告警/修复闭环（3接线点） |
 
 ---
 
-## 附录 A：证据索引（可复现）
+## 7. 评估→诊断→告警→修复 统一拓扑（`28f81bd`）
+
+此前 `compute_assessment` 是三座孤岛之外的第四座——诊断中心不知道成熟度、告警不含漂移、修复goals不合并。
+
+```text
+compute_assessment.py → assessment-scores.json（唯一源）
+                              ↓ 三点纯文件读取 (_read_assessment_json)
+┌─────────────────────────────────────────────────────────────────┐
+│ B 诊断中心(第33维) │ C 告警中心(漂移源) │ 修复闭环(10项goal) │
+│ 300s自动诊断含评估 │ 框架漂移→告警      │ 与GoalGenerator并列 │
+│ pass | L4 | 86.4%  │ maturity_assessment │ 同一人工审批闭环    │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**接线证据**（`diagnostics.py`，提交 `28f81bd`）：
+| # | 接线点 | 位置/函数 | 作用 |
+|---|--------|-----------|------|
+| 1 | 诊断维度 #33 | `_check_assessment` + `_LABELS` + `_register_health_checks` | 成熟度评估进入300s自动诊断 |
+| 2 | 告警源 #6 | `aggregate_all_alerts` 新增 `maturity_assessment` | 框架漂移进入告警中心 |
+| 3 | goals合并 | `list_repair_goals` 合并 `assessment-scores.json` 的 `goals[]` | 框架缺口进入修复中心闭环 |
+
+共用：`_read_assessment_json()` — 纯文件读，零耦合，三点共享。
+
+---
+
+## 8. 本轮提交记录
 
 ```bash
 # 系统成熟度评估引擎 (§1.5)
@@ -151,6 +177,12 @@ python3 scripts/compute_assessment.py --render      # 回填三文档 AUTO-SCORE
 python3 scripts/compute_assessment.py --bridge      # 能 vs 做过
 python3 scripts/compute_assessment.py --goals       # 框架发现→修复提案(10项)
 grep -c "AUTO-SCORE:BEGIN" docs/framework/aiplat-complete-assessment.md docs/framework/scoring-detail.md docs/framework/aiplat-autonomy-framework.md  # 各=1
+
+# 评估孤岛→诊断/告警/修复 接线 (§7, 28f81bd)
+grep -n "_read_assessment_json\|_check_assessment\|assessment.*:.*成熟度" aiPlat-core/core/api/routers/diagnostics.py
+grep -n "maturity_assessment" aiPlat-core/core/api/routers/diagnostics.py
+grep -n 'origin.*assessment\|assess-' aiPlat-core/core/api/routers/diagnostics.py   # P3 goals合并
+# 2026-07-07 验证: 三接线点端到端通过 (P1诊断含L4/86.4%, P2告警源已接, P3修复goals含10项assess-*)
 
 # 告警聚合
 grep -n "aggregate_all_alerts\|get_all_alerts" aiPlat-core/core/api/routers/diagnostics.py
