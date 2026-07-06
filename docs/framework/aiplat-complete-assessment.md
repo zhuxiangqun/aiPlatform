@@ -91,14 +91,15 @@ tags: [evaluation, L4, engineering-maturity, enterprise-assessment, 8-axis]
 
 **距 L5 差距**：缺 wakeAgent 零 Token 变更检测 + no_agent 纯脚本模式。
 
-#### A2. 自调度编排 — L3
+#### A2. 自调度编排 — L4
 
 | 证据 | 代码位置 | 验证 |
 |------|---------|------|
-| PipelineEngine 状态流转 | `execution/pipeline_engine.py` | 5050 行完整引擎 |
-| 多租户架构 | `harness/` + PolicyGate | `grep -c 'tenant_id'` ≥ 10 |
+| KanbanEngine SQLite 看板 | `coordination/kanban_engine.py` | pending→todo→running→blocked→done→archived 状态机 |
+| CronScheduler 定时调度 | `coordination/kanban_engine.py` | asyncio 60s 轮询 + exec_hook |
+| 多租户架构 + PipelineEngine | `execution/pipeline_engine.py` + PolicyGate | `grep -c 'tenant_id'` ≥ 10 |
 
-**距 L4 差距**：缺 SQLite 看板（状态流转+依赖链）+ Cron 定时调度器 + Profile 级隔离。
+**距 L5 差距**：缺跨 Profile 协同编排。
 
 #### B. 上下文感知 — L5
 
@@ -170,7 +171,7 @@ tags: [evaluation, L4, engineering-maturity, enterprise-assessment, 8-axis]
 | 轴 | 评级 | 数值 | 权重 | 贡献 |
 |:--|:--:|:--:|:--:|:--:|
 | A1 自执行 | L4 | 4.0 | 20% | 0.80 |
-| A2 自调度 | L3 | 3.0 | 15% | 0.45 |
+| A2 自调度 | L4 | 4.0 | 15% | 0.60 |
 | B 上下文 | L5 | 5.0 | 10% | 0.50 |
 | C 工具 | L4 | 4.0 | 10% | 0.40 |
 | D 记忆 | L5 | 5.0 | 10% | 0.50 |
@@ -178,7 +179,7 @@ tags: [evaluation, L4, engineering-maturity, enterprise-assessment, 8-axis]
 | F 自进化 | L4 | 4.0 | 15% | 0.60 |
 | G 多模态 | L3 | 3.0 | 5% | 0.15 |
 | H 产品化 | L3 | 3.0 | 15% | 0.45 |
-| **综合** | — | — | **100%** | **4.35 → L4** |
+| **综合** | — | — | **100%** | **4.50 → L4** |
 
 **诊断输出**：
 - Headline: **L4**（加权综合 4.35）
@@ -388,7 +389,7 @@ tags: [evaluation, L4, engineering-maturity, enterprise-assessment, 8-axis]
          8 轴自主性成熟度            工程落地              三层企业
          "能做什么"                  "能不能持续"           "多好"
          ───────────                ──────────             ─────
-         L4 (加权 4.35)             准生产级 (85.2%)       基础级 (3.3)
+         L4 (加权 4.50)             准生产级 (85.2%)       基础级 (3.3)
               │                      │                      │
               │     ┌────────────────┼────────────────┐     │
               │     │                │                │     │
@@ -412,7 +413,6 @@ tags: [evaluation, L4, engineering-maturity, enterprise-assessment, 8-axis]
 |:---:|:---|:---|:--:|:--:|:--:|
 | **P0** | 自主性/H | ACP 协议 + IDE 插件 | L2 | L3 | 产品化交付短板 |
 | **P0** | 自主性/H | 配置即代码分发 | L2 | L4 | distribution.yaml 缺失 |
-| **P1** | 自主性/A2 | SQLite 看板 + Cron 调度 | L3 | L4 | 调度编排短板 |
 | **P2** | 自主性/G | 多模态闭环触发 | L2 | L3-L4 | 多模态短板 |
 | **P2** | 三层/宏观 | 合规伦理 (EU AI Act) | 2.5 | 3.0 | 需法务参与 |
 
@@ -420,7 +420,7 @@ tags: [evaluation, L4, engineering-maturity, enterprise-assessment, 8-axis]
 
 | 框架 | 子项数 | 评级 | 备注 |
 |:---|:--:|:--|:--|
-| **8 轴自主性成熟度** | ~24 项 | **L4** (加权 4.35) | V2.x 6轴口径下仍为 L4+ |
+| **8 轴自主性成熟度** | ~24 项 | **L4** (加权 4.50) | V2.x 6轴口径下仍为 L4+ |
 | **工程落地** | 58 项 | **准生产级** (85.2%) | V3.0 新增 4 项暴露短板 |
 | **三层企业** | ~110 项 | **基础级** (3.3) | 微观+3项, 架构+2项 |
 

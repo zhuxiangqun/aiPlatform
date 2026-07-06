@@ -175,7 +175,7 @@ tags: [framework, 8-axis, L1-L5, maturity]
 | 轴 | 评级 | 关键代码证据 | 距 L5 的差距 |
 |:--|:--:|------|------|
 | A1 自执行 | **L4** | `core/harness/optimization/goal_executor.py:1` — `class GoalExecutor`；`core/harness/execution/snapshot.py:1` — `class ExecutionSnapshot` | 缺 wakeAgent 零 Token 变更检测 + no_agent 纯脚本模式 (L5) |
-| A2 自调度 | **L3** | `core/harness/execution/pipeline_engine.py:1` — 状态流转 + 多租户 | 缺 SQLite 看板 + Cron 定时调度器 (L4-L5) |
+| A2 自调度 | **L4** | `core/harness/coordination/kanban_engine.py:1` — `class KanbanEngine` SQLite 看板 (pending→todo→running→done)；`class CronScheduler` 定时调度 + exec_hook 可接入外部系统 | 缺跨 Profile 协同编排 (L5) |
 | B 上下文 | **L5** | `core/harness/knowledge/adaptive_context.py:1` — `class AdaptiveContextRouter`；`core/apps/agents/materials_chat.py:380` — CRAG 3 级回退 | — |
 | C 工具 | **L4** | `core/harness/optimization/tool_bootstrap.py:1` — `class ToolBootstrapEngine`；`core/engine/skills/` — 31 个 SKILL.md | 工具自举依赖人工触发，非自主进化 (L5) |
 | D 记忆 | **L5** | `core/harness/memory/gossip_protocol.py:1` — `class GossipProtocol`；`core/harness/memory/semantic.py` — `_resolve_semantic_conflict` | — |
@@ -189,7 +189,7 @@ tags: [framework, 8-axis, L1-L5, maturity]
 | 轴 | 评级 | 数值 | 权重 | 贡献 |
 |:--|:--:|:--:|:--:|:--:|
 | A1 自执行 | L4 | 4.0 | 20% | 0.80 |
-| A2 自调度 | L3 | 3.0 | 15% | 0.45 |
+| A2 自调度 | L4 | 4.0 | 15% | 0.60 |
 | B 上下文感知 | L5 | 5.0 | 10% | 0.50 |
 | C 工具掌握 | L4 | 4.0 | 10% | 0.40 |
 | D 记忆系统 | L5 | 5.0 | 10% | 0.50 |
@@ -197,13 +197,13 @@ tags: [framework, 8-axis, L1-L5, maturity]
 | F 自进化 | L4 | 4.0 | 15% | 0.60 |
 | G 多模态 | L3 | 3.0 | 5% | 0.15 |
 | H 产品化 | L3 | 3.0 | 15% | 0.45 |
-| **加权综合** | — | — | **100%** | **4.35 → L4** |
+| **加权综合** | — | — | **100%** | **4.50 → L4** |
 
 ### 4.2 诊断输出
 
 | 输出 | 値 | 用途 |
 |------|:--:|------|
-| Headline 评级 | **L4**（加权综合 4.35） | 对外沟通、横向对比 |
+| Headline 评级 | **L4**（加权综合 4.50） | 对外沟通、横向对比 |
 | 瓶颈轴 | —（全部 ≥ L3） | 无单点瓶颈 |
 | 最强轴 | B, D, E 均为 L5 | 技术护城河识别 |
 
