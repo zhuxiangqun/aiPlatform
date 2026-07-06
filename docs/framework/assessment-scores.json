@@ -1,10 +1,10 @@
 {
-  "generated_at": "2026-07-07T02:22:30",
+  "generated_at": "2026-07-07T02:28:24",
   "spec_version": "1.0.0",
   "frameworks": {
     "framework_one": {
       "name": "8轴自主性成熟度",
-      "composite_level_value": 4.15,
+      "composite_level_value": 4.25,
       "composite_grade": "L4",
       "weight_sum": 1.0,
       "formula": "sum(axis_level*weight)/sum(weight) — normalized",
@@ -85,15 +85,15 @@
         {
           "id": "A2",
           "name": "自调度编排",
-          "declared_level": "L3",
+          "declared_level": "L4",
           "weight": 0.1,
-          "level_value": 3,
+          "level_value": 4,
           "conflict_note": null,
           "items": [
             {
               "id": "A2.1",
               "desc": "状态流转(PipelineEngine)",
-              "declared_level": "L3",
+              "declared_level": "L4",
               "source": "script",
               "evidence": {
                 "command": "grep -c 'class PipelineEngine' aiPlat-core/core/harness/execution/pipeline_engine.py",
@@ -106,7 +106,7 @@
             {
               "id": "A2.2",
               "desc": "多租户隔离(tenant_id 广布)",
-              "declared_level": "L3",
+              "declared_level": "L4",
               "source": "script",
               "evidence": {
                 "command": "grep -rlE 'tenant_id' aiPlat-core/core --include=*.py | wc -l",
@@ -1131,7 +1131,7 @@
           "id": "macro",
           "name": "宏观业务层",
           "declared_tier_score": 3.3,
-          "computed_mean": 3.5,
+          "computed_mean": 3.54,
           "items": [
             {
               "id": "macro.1",
@@ -1144,7 +1144,7 @@
             {
               "id": "macro.2",
               "desc": "合规伦理监管",
-              "score": 2.5,
+              "score": 3.0,
               "weight": 0.08,
               "source": "manual",
               "verification_status": "no-data"

@@ -50,12 +50,12 @@ frameworks:
              evidence: {command: "grep -c 'class GoalLoopBridge\\|class MultiModalTrigger' aiPlat-core/core/harness/multimodal/trigger.py", op: "-ge", expected: 2}}
       - id: A2
         name: "自调度编排"
-        declared_level: L3
+        declared_level: L4
         weight: 0.10
         items:
-          - {id: A2.1, desc: "状态流转(PipelineEngine)", declared_level: L3, source: script,
+          - {id: A2.1, desc: "状态流转(PipelineEngine)", declared_level: L4, source: script,
              evidence: {command: "grep -c 'class PipelineEngine' aiPlat-core/core/harness/execution/pipeline_engine.py", op: "-ge", expected: 1}}
-          - {id: A2.2, desc: "多租户隔离(tenant_id 广布)", declared_level: L3, source: script,
+          - {id: A2.2, desc: "多租户隔离(tenant_id 广布)", declared_level: L4, source: script,
              evidence: {command: "grep -rlE 'tenant_id' aiPlat-core/core --include=*.py | wc -l", op: "-ge", expected: 10}}
           - {id: A2.3, desc: "看板+Cron 定时调度(KanbanEngine+CronScheduler)", declared_level: L3, source: file_check,
              evidence: {command: "test -f aiPlat-core/core/harness/coordination/kanban_engine.py && test -f aiPlat-core/core/harness/scheduler/cron.py && test -f aiPlat-core/core/harness/scheduler/cron_loader.py && echo 3 || echo 0", op: "-ge", expected: 1}}
@@ -259,7 +259,7 @@ frameworks:
         declared_tier_score: 3.3
         items:
           - {id: "macro.1", desc: "安全隐私治理", score: 3.5, weight: 0.16, source: manual}
-          - {id: "macro.2", desc: "合规伦理监管", score: 2.5, weight: 0.08, source: manual}
+          - {id: "macro.2", desc: "合规伦理监管", score: 3.0, weight: 0.08, source: manual}
           - {id: "macro.3", desc: "LLM幻觉可信", score: 3.5, weight: 0.08, source: manual}
           - {id: "macro.4", desc: "系统集成", score: 3.5, weight: 0.10, source: manual}
           - {id: "macro.5", desc: "智能体核心", score: 4.5, weight: 0.10, source: manual}
