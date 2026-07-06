@@ -114,7 +114,7 @@ refs:
 | E 协作 | L5 | 5.0 | 10% | 0.50 |
 | F 自进化 | L4 | 4.0 | 15% | 0.60 |
 | G 多模态 | L2 | 2.0 | 5% | 0.10 |
-| H 产品化 | L2 | 2.0 | 15% | 0.30 |
+| H 产品化 | **L3** | `aiPlat-core/core/acp/server.py` — FastAPI WebSocket ACP server + VS Code extension | 缺 distribution.yaml 配置分发 (L4) | 2.0 | 15% | 0.30 |
 | **综合** | — | — | **100%** | **4.15 → L4** |
 
 > 瓶颈标记：G:L2, H:L2。若沿用 V2.x 6 轴口径（A-E+F），加权综合 = 4.17 → L4+。

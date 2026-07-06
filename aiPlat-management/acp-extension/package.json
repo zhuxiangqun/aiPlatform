@@ -1,0 +1,58 @@
+{
+  "name": "aiplat-acp",
+  "displayName": "aiPlat ACP - Agent Chat Panel",
+  "description": "AI-powered agent chat panel for VS Code using aiPlat ACP protocol",
+  "version": "1.0.0",
+  "publisher": "aiplat",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.80.0"
+  },
+  "categories": ["Chat", "AI"],
+  "keywords": ["ai", "agent", "chat", "copilot"],
+  "activationEvents": [],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "aiplat-acp.openChat",
+        "title": "aiPlat: Open Agent Chat"
+      },
+      {
+        "command": "aiplat-acp.reviewCode",
+        "title": "aiPlat: Review Selected Code"
+      },
+      {
+        "command": "aiplat-acp.executeCommand",
+        "title": "aiPlat: Execute Terminal Command"
+      }
+    ],
+    "configuration": {
+      "title": "aiPlat ACP",
+      "properties": {
+        "aiplat-acp.serverUrl": {
+          "type": "string",
+          "default": "ws://localhost:8005/acp",
+          "description": "WebSocket URL of the aiPlat ACP server"
+        },
+        "aiplat-acp.autoReconnect": {
+          "type": "boolean",
+          "default": true,
+          "description": "Auto-reconnect on disconnection"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "package": "vsce package"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.80.0",
+    "@types/node": "^18.0.0",
+    "typescript": "^5.0.0",
+    "vsce": "^2.0.0"
+  }
+}

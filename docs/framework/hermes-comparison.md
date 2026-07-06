@@ -119,7 +119,7 @@ radar
 
 | 轴 | aiPlat | Hermes (估) | 差距 | 优先级 |
 |:--|:--:|:--:|------|:--:|
-| **H 产品化** | L2 | L5 | ACP 协议 + IDE 插件 + distribution.yaml 分发 | **P0** |
+| **H 产品化 | **L3** | `aiPlat-core/core/acp/server.py` — FastAPI WebSocket ACP server + VS Code extension | 缺 distribution.yaml 配置分发 (L4) | L5 | ACP 协议 + IDE 插件 + distribution.yaml 分发 | **P0** |
 | **F 自进化** | L4 | L5 | WIKI_PATH 自动索引 + Exec→GraphIndex 反馈 | **P2** |
 | **A2 自调度** | L3 | L4 | SQLite 看板 + Cron 定时 + Profile 隔离 | **P1** |
 | **G 多模态** | L2 | L5 | 语音/浏览器融入 Agent 决策闭环 | **P2** |
