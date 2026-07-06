@@ -58,7 +58,8 @@ frameworks:
              evidence: {command: "grep -rlE 'tenant_id' aiPlat-core/core --include=*.py | wc -l", op: "-ge", expected: 10}}
           - {id: A2.3, desc: "看板+Cron 定时调度(KanbanEngine+CronScheduler)", declared_level: L3, source: file_check,
              evidence: {command: "test -f aiPlat-core/core/harness/coordination/kanban_engine.py && test -f aiPlat-core/core/harness/scheduler/cron.py && test -f aiPlat-core/core/harness/scheduler/cron_loader.py && echo 3 || echo 0", op: "-ge", expected: 1}}
-          - {id: A2.4, desc: "Profile 命名空间隔离 — 未实现", declared_level: null, source: gap}
+          - {id: A2.4, desc: "Profile命名空间隔离(MemoryManager namespace + Profile + skills workspace)", declared_level: L3, source: file_check,
+             evidence: {command: "test -f aiPlat-core/core/harness/kernel/profile.py && grep -c 'namespace' aiPlat-core/core/harness/memory/manager.py", op: "-ge", expected: 1}}
       - id: B
         name: "上下文感知"
         declared_level: L5
@@ -191,7 +192,8 @@ frameworks:
              evidence: {command: "ls .github/workflows/*.yml | wc -l", op: "-ge", expected: 3}}
           - {id: "3.2", desc: "自动构建", result: "yes", source: manual}
           - {id: "3.3", desc: "自动部署测试环境", result: "partial", source: manual}
-          - {id: "3.4", desc: "生产审批门禁", result: "no", source: manual}
+          - {id: "3.4", desc: "生产审批门禁(GitHub branch protection)", result: "yes", source: manual,
+             runtime_ref: {kind: live, label: "PR 审批门禁状态", endpoint: "GET /repos/{owner}/{repo}/branches/main/protection"}}
           - {id: "3.5", desc: "一键回滚(rollback.sh)", result: "yes", source: file_check,
              evidence: {command: "test -f scripts/rollback.sh && echo 1 || echo 0", op: "-ge", expected: 1}}
           - {id: "3.6", desc: "产物版本管理", result: "yes", source: manual}
@@ -221,7 +223,7 @@ frameworks:
           - {id: "5.3", desc: "依赖扫描(dependabot)", result: "yes", source: file_check,
              evidence: {command: "test -f .github/dependabot.yml && echo 1 || echo 0", op: "-ge", expected: 1}}
           - {id: "5.4", desc: "密钥管理(SecretsManager)", result: "yes", source: manual}
-          - {id: "5.5", desc: "渗透测试(外部)", result: "no", source: manual}
+          - {id: "5.5", desc: "渗透测试(ZAP DAST in CI + AI pentest; 缺第三方外部)", result: "partial", source: manual}
           - {id: "5.6", desc: "变更合规(change_control)", result: "yes", source: manual}
           - {id: "5.7", desc: "审计追踪(SHA-256链)", result: "yes", source: manual}
           - {id: "5.8", desc: "漏洞修复SLA(SECURITY.md)", result: "yes", source: file_check,

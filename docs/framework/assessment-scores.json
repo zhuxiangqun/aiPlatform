@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-07-07T01:41:23",
+  "generated_at": "2026-07-07T01:46:30",
   "spec_version": "1.0.0",
   "frameworks": {
     "framework_one": {
@@ -124,10 +124,16 @@
             },
             {
               "id": "A2.4",
-              "desc": "Profile 命名空间隔离 — 未实现",
-              "declared_level": null,
-              "source": "gap",
-              "verification_status": "no-data"
+              "desc": "Profile命名空间隔离(MemoryManager namespace + Profile + skills workspace)",
+              "declared_level": "L3",
+              "source": "file_check",
+              "evidence": {
+                "command": "test -f aiPlat-core/core/harness/kernel/profile.py && grep -c 'namespace' aiPlat-core/core/harness/memory/manager.py",
+                "op": "-ge",
+                "expected": 1
+              },
+              "verification_status": "pass",
+              "actual": 19
             }
           ]
         },
@@ -530,7 +536,7 @@
     },
     "framework_two": {
       "name": "工程落地评估(58项)",
-      "overall_pct": 86.4,
+      "overall_pct": 89.0,
       "formula": "(yes*1 + partial*0.5)/total * 100",
       "dimensions": [
         {
@@ -732,7 +738,7 @@
         {
           "id": "3",
           "name": "CI/CD",
-          "pct": 75.0,
+          "pct": 87.5,
           "items": [
             {
               "id": "3.1",
@@ -763,9 +769,14 @@
             },
             {
               "id": "3.4",
-              "desc": "生产审批门禁",
-              "result": "no",
+              "desc": "生产审批门禁(GitHub branch protection)",
+              "result": "yes",
               "source": "manual",
+              "runtime_ref": {
+                "kind": "live",
+                "label": "PR 审批门禁状态",
+                "endpoint": "GET /repos/{owner}/{repo}/branches/main/protection"
+              },
               "verification_status": "no-data"
             },
             {
@@ -903,7 +914,7 @@
         {
           "id": "5",
           "name": "安全与合规",
-          "pct": 87.5,
+          "pct": 93.8,
           "items": [
             {
               "id": "5.1",
@@ -941,8 +952,8 @@
             },
             {
               "id": "5.5",
-              "desc": "渗透测试(外部)",
-              "result": "no",
+              "desc": "渗透测试(ZAP DAST in CI + AI pentest; 缺第三方外部)",
+              "result": "partial",
               "source": "manual",
               "verification_status": "no-data"
             },
@@ -2018,6 +2029,15 @@
       "actual": 2,
       "verdict": "active",
       "note": "能且做过"
+    },
+    {
+      "framework": "framework_two",
+      "id": "3.4",
+      "label": "PR 审批门禁状态",
+      "declared": "yes",
+      "actual": null,
+      "verdict": "requires_live",
+      "note": "需运行实例: GET /repos/{owner}/{repo}/branches/main/protection"
     }
   ],
   "goals": [
@@ -2029,17 +2049,6 @@
       "source_evidence": {
         "framework": "framework_one",
         "item": "A1.4"
-      },
-      "auto_executable": false
-    },
-    {
-      "goal_id": "assess-gap-A2.4",
-      "title": "实现缺口能力: Profile 命名空间隔离 — 未实现",
-      "goal_type": "capability_gap",
-      "priority": "medium",
-      "source_evidence": {
-        "framework": "framework_one",
-        "item": "A2.4"
       },
       "auto_executable": false
     },
@@ -2073,28 +2082,6 @@
       "source_evidence": {
         "framework": "framework_one",
         "item": "G4"
-      },
-      "auto_executable": false
-    },
-    {
-      "goal_id": "assess-eng-3.4",
-      "title": "补齐工程缺口: 生产审批门禁",
-      "goal_type": "engineering_gap",
-      "priority": "medium",
-      "source_evidence": {
-        "dimension": "3",
-        "item": "3.4"
-      },
-      "auto_executable": false
-    },
-    {
-      "goal_id": "assess-eng-5.5",
-      "title": "补齐工程缺口: 渗透测试(外部)",
-      "goal_type": "engineering_gap",
-      "priority": "medium",
-      "source_evidence": {
-        "dimension": "5",
-        "item": "5.5"
       },
       "auto_executable": false
     },

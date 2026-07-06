@@ -1,0 +1,113 @@
+"""Profile — resource isolation boundary (A2.4 A2-axis L3→L4 enabler).
+
+Bundles a MemoryManager namespace + skills workspace subdirectory + MCP server
+list under a named profile, enabling per-team/per-project isolation without
+full multi-tenant overhead.
+
+MemoryManager namespace isolation already exists (manager.py:113 namespace param).
+This module provides the declarative config layer to wire the three resource types
+together under one profile name.
+"""
+from __future__ import annotations
+
+import logging
+import os
+from dataclasses import dataclass, field
+from typing import Any, Dict, List, Optional
+
+logger = logging.getLogger("aiplat.profile")
+
+
+@dataclass
+class ProfileConfig:
+    """Minimal resource-isolation profile.
+
+    Loaded from ~/.aiplat/profiles/{name}.yaml by ProfileManager.
+    Each profile gets its own MemoryManager namespace, skills workspace,
+    and (future) MCP server list."""
+
+    name: str
+    description: str = ""
+    namespace: str = ""
+    skills_dir: str = ""
+    mcp_servers: List[str] = field(default_factory=list)
+    default: bool = False
+    metadata: Dict[str, Any] = field(default_factory=dict)
+
+    @classmethod
+    def from_yaml(cls, path: str) -> Optional["ProfileConfig"]:
+        try:
+            import yaml
+            with open(path) as f:
+                data = yaml.safe_load(f) or {}
+            if not data.get("name"):
+                return None
+            return cls(
+                name=data["name"],
+                description=data.get("description", ""),
+                namespace=data.get("namespace", data["name"]),
+                skills_dir=data.get("skills_dir", f"profiles/{data['name']}/skills"),
+                mcp_servers=data.get("mcp_servers", []),
+                default=data.get("default", False),
+                metadata=data.get("metadata", {}),
+            )
+        except Exception:
+            return None
+
+
+class ProfileManager:
+    """Scans ~/.aiplat/profiles/*.yaml and provides profile lookup.
+
+    Usage:
+        pm = ProfileManager()
+        profile = pm.get("ops")  # → ProfileConfig
+        mm = get_memory_manager(namespace=profile.namespace)
+    """
+
+    def __init__(self, home_dir: str = ""):
+        h = home_dir or os.path.expanduser(os.environ.get("AIPLAT_HOME", "~/.aiplat"))
+        self._profiles_dir = os.path.join(h, "profiles")
+        self._profiles: Dict[str, ProfileConfig] = {}
+        self._loaded = False
+
+    def _ensure_loaded(self):
+        if self._loaded:
+            return
+        self._loaded = True
+        if not os.path.isdir(self._profiles_dir):
+            return
+        for entry in sorted(os.listdir(self._profiles_dir)):
+            if not entry.endswith(".yaml") or entry == ".registry.yaml":
+                continue
+            fp = os.path.join(self._profiles_dir, entry)
+            cfg = ProfileConfig.from_yaml(fp)
+            if cfg:
+                self._profiles[cfg.name] = cfg
+
+    def get(self, name: str) -> Optional[ProfileConfig]:
+        self._ensure_loaded()
+        return self._profiles.get(name)
+
+    def get_default(self) -> ProfileConfig:
+        self._ensure_loaded()
+        for cfg in self._profiles.values():
+            if cfg.default:
+                return cfg
+        # Fallback: implicit default profile with @default namespace
+        return ProfileConfig(name="default", namespace="default",
+                             description="Implicit default profile")
+
+    def list_all(self) -> List[ProfileConfig]:
+        self._ensure_loaded()
+        return list(self._profiles.values())
+
+
+# Singleton
+_profile_manager: Optional[ProfileManager] = None
+
+
+def get_profile_manager() -> ProfileManager:
+    global _profile_manager
+    if _profile_manager is None:
+        _profile_manager = ProfileManager()
+    return _profile_manager
