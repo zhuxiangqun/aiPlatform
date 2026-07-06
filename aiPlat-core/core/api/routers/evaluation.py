@@ -225,60 +225,9 @@ async def run_eval_set_api(set_id: str, req: EvalRunRequest = EvalRunRequest()):
         dry_run=req.dry_run,
     )
 
-    # Persist result
-    data = {
-        "agent_id": result.agent_id,
-        "eval_set_id": result.eval_set_id,
-        "eval_time": result.eval_time,
-        "total_tasks": result.total_tasks,
-        "composite_score": round(result.composite_score, 1),
-        "grade": result.grade,
-        "task_completion": {
-            "level": result.task_completion.level.value if result.task_completion else "unknown",
-            "score": result.task_completion.score if result.task_completion else 0,
-            "complete": result.task_completion.complete_count if result.task_completion else 0,
-            "partial": result.task_completion.partial_count if result.task_completion else 0,
-            "correct_failure": result.task_completion.correct_failure_count if result.task_completion else 0,
-            "error_failure": result.task_completion.error_failure_count if result.task_completion else 0,
-            "reliability": round(result.task_completion.reliability_rate * 100, 1) if result.task_completion else 0,
-        },
-        "tool_quality": {
-            "overall": round(result.tool_quality.overall_score * 100, 1) if result.tool_quality else 0,
-            "selection_rate": round(result.tool_quality.selection_rate * 100, 1) if result.tool_quality else 0,
-            "param_rate": round(result.tool_quality.param_rate * 100, 1) if result.tool_quality else 0,
-            "violations": result.tool_quality.high_risk_violations if result.tool_quality else 0,
-        },
-        "step_efficiency": {
-            "avg_steps": round(result.step_efficiency.avg_steps, 1) if result.step_efficiency else 0,
-            "invalid_call_rate": round(result.step_efficiency.invalid_call_rate * 100, 1) if result.step_efficiency else 0,
-            "repeat_call_rate": round(result.step_efficiency.repeat_call_rate * 100, 1) if result.step_efficiency else 0,
-            "score": round(result.step_efficiency.overall_score * 100, 1) if result.step_efficiency else 0,
-        },
-        "error_recovery": {
-            "rate": round(result.error_recovery.recovery_rate * 100, 1) if result.error_recovery else 0,
-            "total_failures": result.error_recovery.total_failures if result.error_recovery else 0,
-            "correct_recoveries": result.error_recovery.correct_recoveries if result.error_recovery else 0,
-        },
-        "safety": {
-            "score": round(result.safety.overall_score * 100, 1) if result.safety else 0,
-            "violations": result.safety.high_risk_pre_confirm_violations if result.safety else 0,
-            "bypass_attempts": result.safety.permission_bypass_attempts if result.safety else 0,
-            "info_leaks": result.safety.sensitive_info_leaks if result.safety else 0,
-        },
-        "cost": {
-            "tokens_per_task": result.cost.tokens_per_task if result.cost else 0,
-            "calls_per_task": round(result.cost.calls_per_task, 1) if result.cost else 0,
-            "avg_duration_ms": round(result.cost.avg_duration_ms, 0) if result.cost else 0,
-        },
-        "task_results": [
-            {
-                "task_id": tr.task_id, "agent_id": tr.agent_id, "run_id": tr.run_id,
-                "level": tr.level.value, "reasoning": tr.reasoning,
-                "steps": tr.steps, "duration_ms": tr.duration_ms,
-            }
-            for tr in result.task_results
-        ],
-    }
+    # Persist result (shared serializer — single source of truth, §10)
+    from core.harness.evaluation.eval_runner import serialize_eval_result
+    data = serialize_eval_result(result)
     _save_result(result.agent_id, data)
 
     return data

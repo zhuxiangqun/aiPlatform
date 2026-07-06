@@ -176,13 +176,23 @@ def create_app() -> FastAPI:
         while True:
             try:
                 await asyncio.sleep(60)
+                merged: Dict[str, Any] = {}
+                # Layer-metric threshold alerts (management-native)
                 if app.state.collectors:
                     metrics = []
                     for c in app.state.collectors.values():
                         metrics.append(await c.collect())
                     triggered = await app.state.alert_engine.evaluate(metrics)
-                    if triggered:
-                        app.state.active_alerts = {a.get("id", ""): a for a in triggered}
+                    for a in (triggered or []):
+                        merged[f"mgmt:{a.get('id', '')}"] = {**a, "source": a.get("source", "layer_metrics")}
+                # Core-internal alerts (entropy/doc/wiki/drift/AlertManager) — P0-1
+                try:
+                    core_feed = await app.state.core_client.get_core_alerts()
+                    for a in (core_feed.get("alerts") or []):
+                        merged[f"core:{a.get('id', '')}"] = a
+                except Exception as e:
+                    logging.debug("core alert fetch skipped: %s", e)
+                app.state.active_alerts = merged
             except Exception as e:
                 logging.debug(str(e), exc_info=True)
     import asyncio as _asyncio

@@ -1537,6 +1537,109 @@ async def get_entropy_alerts(limit: int = 20):
         return {"alerts": [], "total": 0, "error": str(e)[:200]}
 
 
+# ── Unified Alert Aggregation (P0-1) ─────────────────────────────────────────
+
+def _norm_severity(raw: Any) -> str:
+    """Normalize heterogeneous severity labels to critical / warning / info."""
+    s = str(raw or "").lower()
+    if any(k in s for k in ("critical", "high_alert", "fatal", "error")):
+        return "critical"
+    if any(k in s for k in ("warn", "alerting", "high", "medium", "degraded")):
+        return "warning"
+    return "info"
+
+
+async def aggregate_all_alerts() -> Dict[str, Any]:
+    """Aggregate every core-internal alert source into one unified feed so the
+    management Alert Center surfaces them (P0-1). Read-only; each source is
+    isolated in try/except and degrades independently. Reuses existing getters
+    — no new alert logic (CLAUDE.md §5.6 / §10)."""
+    alerts: List[Dict[str, Any]] = []
+
+    def _add(id_, severity, name, source, message, ts=None, component="", status="firing"):
+        alerts.append({
+            "id": id_, "severity": _norm_severity(severity), "name": name,
+            "source": source, "layer": "core", "component": component,
+            "status": status, "timestamp": ts, "message": message,
+        })
+
+    # 1. AlertManager active alerts
+    try:
+        from core.harness.observability.alerts import get_alert_manager
+        for a in get_alert_manager().get_active_alerts():
+            _add(f"alertmgr:{a.id}", getattr(a.severity, "value", a.severity),
+                 getattr(a.rule, "name", "alert"), "alert_manager", a.message,
+                 ts=a.timestamp.isoformat() if hasattr(a.timestamp, "isoformat") else str(a.timestamp),
+                 status="firing")
+    except Exception as e:
+        logging.debug("alertmgr aggregate skipped: %s", e)
+
+    # 2. Entropy trend active alerts
+    try:
+        from core.harness.infrastructure.trend_detector import get_trend_detector
+        trends = get_trend_detector().get_trends()
+        for a in (trends.get("active_alerts") or []):
+            et = a.get("error_type", "unknown")
+            _add(f"entropy:{et}", a.get("state", "alerting"),
+                 f"熵异常: {et}", "entropy_trend",
+                 f"error-rate volatility state={a.get('state')}", component=et)
+    except Exception as e:
+        logging.debug("entropy aggregate skipped: %s", e)
+
+    # 3. Document quality alerts
+    try:
+        from core.harness.knowledge.doc_quality_monitor import get_doc_quality_monitor
+        for a in get_doc_quality_monitor().get_alerts(limit=20):
+            _add(f"docq:{a.get('doc_id','?')}:{a.get('created_at','')}", a.get("severity"),
+                 a.get("alert_type", "doc_quality"), "doc_quality",
+                 f"doc={a.get('doc_id')} {a.get('alert_type','')}",
+                 ts=a.get("created_at"), component=str(a.get("doc_id", "")))
+    except Exception as e:
+        logging.debug("doc_quality aggregate skipped: %s", e)
+
+    # 4. Wiki content quality alerts
+    try:
+        from core.harness.knowledge.wiki_quality_monitor import get_wiki_quality_monitor
+        for a in get_wiki_quality_monitor().get_alerts(limit=20, collection_id="default"):
+            _add(f"wikiq:{a.get('page_id', a.get('id','?'))}", a.get("severity"),
+                 a.get("alert_type", "wiki_quality"), "wiki_quality",
+                 str(a.get("message") or a.get("alert_type", "wiki quality")),
+                 ts=a.get("created_at"))
+    except Exception as e:
+        logging.debug("wiki_quality aggregate skipped: %s", e)
+
+    # 5. Tool drift anomalies (best-effort — shape-tolerant)
+    try:
+        from core.harness.learning.tool_drift_detector import get_drift_detector
+        rt = get_drift_detector().get_realtime_stats() or {}
+        for a in (rt.get("alerts") or rt.get("anomalies") or []):
+            if isinstance(a, dict):
+                _add(f"drift:{a.get('tool_name','?')}:{a.get('anomaly_type','')}",
+                     a.get("severity", "warning"),
+                     f"工具漂移: {a.get('tool_name','?')}", "tool_drift",
+                     str(a.get("detail") or a.get("message") or a.get("anomaly_type", "")),
+                     component=str(a.get("tool_name", "")))
+    except Exception as e:
+        logging.debug("tool_drift aggregate skipped: %s", e)
+
+    by_severity = {"critical": 0, "warning": 0, "info": 0}
+    for a in alerts:
+        by_severity[a["severity"]] = by_severity.get(a["severity"], 0) + 1
+    order = {"critical": 0, "warning": 1, "info": 2}
+    alerts.sort(key=lambda a: (order.get(a["severity"], 3), str(a.get("timestamp") or "")))
+    return {"total": len(alerts), "by_severity": by_severity, "alerts": alerts}
+
+
+@router.get("/diagnostics/alerts/all", response_model=Dict[str, Any])
+async def get_all_alerts():
+    """Unified feed of all core-internal alerts (AlertManager, entropy trend,
+    doc/wiki quality, tool drift). Consumed by the management Alert Center."""
+    try:
+        return await aggregate_all_alerts()
+    except Exception as e:
+        return {"total": 0, "by_severity": {}, "alerts": [], "error": str(e)[:200]}
+
+
 # ── Phase 14: Model tier status + cost + health dashboard ──
 
 @router.get("/diagnostics/model-tier", response_model=Dict[str, Any])

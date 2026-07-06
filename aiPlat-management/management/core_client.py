@@ -208,6 +208,11 @@ class CoreAPIClient:
             params["kind"] = kind
         return await self._request("GET", "/api/core/syscalls/stats", params=params)
 
+    async def get_core_alerts(self) -> Dict[str, Any]:
+        """Unified feed of all core-internal alerts (AlertManager, entropy trend,
+        doc/wiki quality, tool drift) for the management Alert Center (P0-1)."""
+        return await self._request("GET", "/api/core/diagnostics/alerts/all")
+
     # ===== Change Control (derived) =====
 
     async def list_change_controls(self, *, limit: int = 50, offset: int = 0, tenant_id: Optional[str] = None) -> Dict[str, Any]:

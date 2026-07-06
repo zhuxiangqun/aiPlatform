@@ -181,6 +181,14 @@ class BaseLoop(ILoop):
             elif self._current_state.current == LoopStateEnum.ERROR:
                 error = self._current_state.context.get("error") or "error"
 
+            # Fire-and-forget: auto-score this run with the 6-dim evaluator so the
+            # Agent Evaluation dashboard reflects real runtime quality (P0-2).
+            try:
+                import asyncio as _asyncio_sc
+                _asyncio_sc.ensure_future(self._try_auto_score_run(self._current_state, stop_reason))
+            except Exception:
+                pass
+
             return LoopResult(
                 success=self._current_state.current == LoopStateEnum.FINISHED,
                 final_state=self._current_state,
@@ -211,6 +219,61 @@ class BaseLoop(ILoop):
                 error=str(e),
                 metadata={"exception": type(e).__name__}
             )
+
+    async def _try_auto_score_run(self, state: LoopState, stop_reason: str) -> None:
+        """Score a completed production run with the 6-dimension EvalMetricsEngine
+        and persist it, so Agent Evaluation reflects real runtime quality without
+        manual eval sets (P0-2). Fire-and-forget — never raises into the loop.
+
+        Skips internal/eval/autoreview runs to avoid noise and recursion. All 5
+        behavioural dimensions (tool/step/error/safety/cost) come from the run's
+        real syscall_events; task_completion comes from the final loop state.
+        """
+        try:
+            import os
+            if os.getenv("AIPLAT_AUTO_SCORE_ENABLED", "true").lower() in ("0", "false", "no"):
+                return
+            ctx = state.context or {}
+            agent_id = str(ctx.get("_agent_id") or ctx.get("agent_id") or "").strip()
+            run_id = str(ctx.get("_run_id") or ctx.get("run_id") or "").strip()
+            if not agent_id or not run_id:
+                return
+            # Recursion/noise guard: skip eval + autoreview + internal runs
+            if run_id.startswith(("eval-", "auto-")):
+                return
+            if str(ctx.get("_active_skill") or "") == "autoreview":
+                return
+
+            from core.services.execution_store import get_execution_store
+            store = get_execution_store()
+            events = await store.list_syscall_events(run_id=run_id, limit=200)
+            if not events:
+                return
+
+            from core.harness.evaluation.eval_types import SingleTaskResult, TaskResultLevel
+            from core.harness.evaluation.eval_metrics import EvalMetricsEngine
+            from core.harness.evaluation.eval_runner import serialize_eval_result, persist_runtime_eval
+
+            cur = getattr(state.current, "value", str(state.current))
+            level = (
+                TaskResultLevel.COMPLETE if cur == "finished"
+                else TaskResultLevel.CORRECT_FAILURE if cur == "paused"
+                else TaskResultLevel.ERROR_FAILURE
+            )
+            output = str(ctx.get("output") or "")
+            tr = SingleTaskResult(
+                task_id=run_id, agent_id=agent_id, run_id=run_id, level=level,
+                reasoning=f"auto-runtime:{stop_reason}", evidence=output[:500],
+                steps=int(getattr(state, "step_count", 0) or 0),
+            )
+            result = EvalMetricsEngine().compute_all(
+                agent_id=agent_id, task_results=[tr], syscall_events=events,
+                eval_set_id="auto-runtime",
+            )
+            keep = int(os.getenv("AIPLAT_AUTO_SCORE_KEEP", "50"))
+            persist_runtime_eval(agent_id, serialize_eval_result(result), keep=keep)
+        except Exception as e:
+            logging.debug("auto-score skipped: %s", e)
 
     def should_continue(self, state: LoopState) -> bool:
         """Determine if loop should continue"""

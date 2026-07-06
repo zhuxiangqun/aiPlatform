@@ -110,6 +110,93 @@ def delete_eval_set(set_id: str) -> bool:
     return False
 
 
+# ── Eval Result Serialization + Persistence (shared by router + runtime auto-score) ──
+
+def _eval_results_dir() -> Path:
+    home = os.getenv("AIPLAT_HOME", os.path.expanduser("~/.aiplat"))
+    d = Path(home) / "eval_results"
+    d.mkdir(parents=True, exist_ok=True)
+    return d
+
+
+def serialize_eval_result(result: AgentEvalResult) -> Dict[str, Any]:
+    """Serialize a 6-dimension AgentEvalResult into the canonical persisted dict.
+
+    `composite_score` / `grade` are properties (not fields), so they are added
+    explicitly. Single source of truth — used by both the eval-set API and the
+    runtime auto-scorer (CLAUDE.md §10 API 入口唯一 / §5.6 复用优先).
+    """
+    return {
+        "agent_id": result.agent_id,
+        "eval_set_id": result.eval_set_id,
+        "eval_time": result.eval_time,
+        "total_tasks": result.total_tasks,
+        "composite_score": round(result.composite_score, 1),
+        "grade": result.grade,
+        "task_completion": {
+            "level": result.task_completion.level.value if result.task_completion else "unknown",
+            "score": result.task_completion.score if result.task_completion else 0,
+            "complete": result.task_completion.complete_count if result.task_completion else 0,
+            "partial": result.task_completion.partial_count if result.task_completion else 0,
+            "correct_failure": result.task_completion.correct_failure_count if result.task_completion else 0,
+            "error_failure": result.task_completion.error_failure_count if result.task_completion else 0,
+            "reliability": round(result.task_completion.reliability_rate * 100, 1) if result.task_completion else 0,
+        },
+        "tool_quality": {
+            "overall": round(result.tool_quality.overall_score * 100, 1) if result.tool_quality else 0,
+            "selection_rate": round(result.tool_quality.selection_rate * 100, 1) if result.tool_quality else 0,
+            "param_rate": round(result.tool_quality.param_rate * 100, 1) if result.tool_quality else 0,
+            "violations": result.tool_quality.high_risk_violations if result.tool_quality else 0,
+        },
+        "step_efficiency": {
+            "avg_steps": round(result.step_efficiency.avg_steps, 1) if result.step_efficiency else 0,
+            "invalid_call_rate": round(result.step_efficiency.invalid_call_rate * 100, 1) if result.step_efficiency else 0,
+            "repeat_call_rate": round(result.step_efficiency.repeat_call_rate * 100, 1) if result.step_efficiency else 0,
+            "score": round(result.step_efficiency.overall_score * 100, 1) if result.step_efficiency else 0,
+        },
+        "error_recovery": {
+            "rate": round(result.error_recovery.recovery_rate * 100, 1) if result.error_recovery else 0,
+            "total_failures": result.error_recovery.total_failures if result.error_recovery else 0,
+            "correct_recoveries": result.error_recovery.correct_recoveries if result.error_recovery else 0,
+        },
+        "safety": {
+            "score": round(result.safety.overall_score * 100, 1) if result.safety else 0,
+            "violations": result.safety.high_risk_pre_confirm_violations if result.safety else 0,
+            "bypass_attempts": result.safety.permission_bypass_attempts if result.safety else 0,
+            "info_leaks": result.safety.sensitive_info_leaks if result.safety else 0,
+        },
+        "cost": {
+            "tokens_per_task": result.cost.tokens_per_task if result.cost else 0,
+            "calls_per_task": round(result.cost.calls_per_task, 1) if result.cost else 0,
+            "avg_duration_ms": round(result.cost.avg_duration_ms, 0) if result.cost else 0,
+        },
+        "task_results": [
+            {
+                "task_id": tr.task_id, "agent_id": tr.agent_id, "run_id": tr.run_id,
+                "level": tr.level.value, "reasoning": tr.reasoning,
+                "steps": tr.steps, "duration_ms": tr.duration_ms,
+            }
+            for tr in result.task_results
+        ],
+    }
+
+
+def persist_runtime_eval(agent_id: str, data: Dict[str, Any], keep: int = 50) -> str:
+    """Write an eval-result dict to the eval_results dir, pruning to the newest
+    `keep` files per agent to bound disk growth from runtime auto-scoring."""
+    d = _eval_results_dir()
+    ts = int(time.time())
+    path = d / f"{agent_id}_{ts}.json"
+    path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+    try:
+        files = sorted(d.glob(f"{agent_id}_*.json"), reverse=True)
+        for old in files[keep:]:
+            old.unlink()
+    except Exception:
+        pass
+    return str(path)
+
+
 # ── Eval Runner ─────────────────────────────────────────────────────────────
 
 class EvalRunner:
