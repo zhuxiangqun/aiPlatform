@@ -318,7 +318,7 @@ class SkillRegistry:
         import logging
         import os
         logger = logging.getLogger("aiplat.skills")
-        strict = os.getenv("AIPLAT_SKILL_STRICT_VALIDATION", "false").lower() in ("1", "true", "yes")
+        strict = os.getenv("AIPLAT_SKILL_STRICT_VALIDATION", "true").lower() in ("1", "true", "yes")
 
         def _fail(msg: str):
             if strict:

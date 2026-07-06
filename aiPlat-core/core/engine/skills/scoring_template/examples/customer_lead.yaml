@@ -1,0 +1,17 @@
+name: "客户商机评分"
+dimensions:
+  - name: "预算匹配度"
+    weight: 0.35
+    thresholds: {high: 80, medium: 50, low: 30}
+  - name: "决策链完整度"
+    weight: 0.25
+    thresholds: {high: 90, medium: 60}
+  - name: "竞品替代风险"
+    weight: 0.20
+    type: reverse
+  - name: "历史成交率"
+    weight: 0.20
+verdict:
+  pass: {min: 70}
+  warn: {min: 50}
+  fail: {max: 49}
