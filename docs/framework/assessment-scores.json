@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-07-07T00:01:25",
+  "generated_at": "2026-07-07T01:22:56",
   "spec_version": "1.0.0",
   "frameworks": {
     "framework_one": {
@@ -518,13 +518,13 @@
     },
     "framework_two": {
       "name": "工程落地评估(58项)",
-      "overall_pct": 8.5,
+      "overall_pct": 86.4,
       "formula": "(yes*1 + partial*0.5)/total * 100",
       "dimensions": [
         {
           "id": "1",
           "name": "代码质量与规范",
-          "pct": 0.0,
+          "pct": 100.0,
           "items": [
             {
               "id": "1.1",
@@ -617,7 +617,7 @@
         {
           "id": "2",
           "name": "测试与验证体系",
-          "pct": 16.7,
+          "pct": 83.3,
           "items": [
             {
               "id": "2.1",
@@ -720,7 +720,7 @@
         {
           "id": "3",
           "name": "CI/CD",
-          "pct": 12.5,
+          "pct": 75.0,
           "items": [
             {
               "id": "3.1",
@@ -801,7 +801,7 @@
         {
           "id": "4",
           "name": "可观测性",
-          "pct": 9.1,
+          "pct": 90.9,
           "items": [
             {
               "id": "4.1",
@@ -891,7 +891,7 @@
         {
           "id": "5",
           "name": "安全与合规",
-          "pct": 0.0,
+          "pct": 87.5,
           "items": [
             {
               "id": "5.1",
@@ -966,7 +966,7 @@
         {
           "id": "6",
           "name": "架构与可维护性",
-          "pct": 8.3,
+          "pct": 83.3,
           "items": [
             {
               "id": "6.1",

@@ -461,6 +461,44 @@ async def _check_doc_sync():
         return {"status": "unavailable", "score": 0, "signals": {"error": str(e)[:100]}}
 
 
+def _read_assessment_json() -> Optional[Dict[str, Any]]:
+    """Read compute_assessment.py output (成熟度评估唯一事实源). Returns None on any
+    failure — callers must degrade gracefully (CLAUDE.md §5.6 复用优先, 零耦合文件读)."""
+    try:
+        from pathlib import Path
+        p = Path(__file__).resolve().parents[4] / "docs" / "framework" / "assessment-scores.json"
+        if p.exists():
+            return json.loads(p.read_text(encoding="utf-8"))
+    except Exception as e:
+        logging.debug("assessment json read skipped: %s", e)
+    return None
+
+
+async def _check_assessment():
+    """成熟度评估维度 (框架一/二/三) — 只读 assessment-scores.json, 接入诊断中心第33维."""
+    data = _read_assessment_json()
+    if not data:
+        return {"status": "unavailable", "score": 0,
+                "items": [{"check": "成熟度评估", "result": "—",
+                            "detail": "assessment-scores.json 未生成 — 运行 scripts/compute_assessment.py"}]}
+    f1 = data["frameworks"]["framework_one"]
+    f2 = data["frameworks"]["framework_two"]
+    drift = len(data.get("drift", []))
+    return {
+        "status": "degraded" if drift > 0 else "pass",
+        "score": f1.get("composite_level_value", 0),
+        "signals": {"framework_one": f1.get("composite_grade"),
+                    "framework_two_pct": f2.get("overall_pct"),
+                    "drift": drift, "generated_at": data.get("generated_at")},
+        "items": [
+            {"check": "框架一 8轴自主性", "result": "✅",
+             "detail": f"{f1.get('composite_grade')} ({f1.get('composite_level_value')})"},
+            {"check": "框架二 工程落地", "result": "✅", "detail": f"{f2.get('overall_pct')}%"},
+            {"check": "评估漂移", "result": "⚠️" if drift else "✅", "detail": f"{drift} 项漂移"},
+        ],
+    }
+
+
 async def _check_doc_quality():
     """Check document quality monitor status."""
     try:
@@ -530,6 +568,7 @@ def _register_health_checks():
         reg.register(SimpleHealthCheck("doc_sync", _check_doc_sync, Severity.HIGH))
         reg.register(SimpleHealthCheck("doc_quality", _check_doc_quality, Severity.MEDIUM))
         reg.register(SimpleHealthCheck("wiki_content_quality", _check_wiki_content_quality, Severity.MEDIUM))
+        reg.register(SimpleHealthCheck("assessment", _check_assessment, Severity.LOW))
 
         # Additional health checks are registered in run_all_diagnostics()
 
@@ -1149,10 +1188,23 @@ async def list_repair_goals():
     try:
         from core.harness.optimization.goal_generator import get_goal_generator
         goals = get_goal_generator().generate()
+        merged = [g.to_dict() for g in goals]
+        # 合并 compute_assessment --goals 的框架发现提案 (只读 JSON, 零耦合)
+        adata = _read_assessment_json()
+        for g in (adata.get("goals") or []) if adata else []:
+            merged.append({
+                "goal_id": g.get("goal_id"),
+                "title": g.get("title"),
+                "goal_type": g.get("goal_type", "assessment_gap"),
+                "priority": g.get("priority", "medium"),
+                "auto_executable": bool(g.get("auto_executable", False)),
+                "source_evidence": g.get("source_evidence", {}),
+                "origin": "assessment",
+            })
         return {
-            "goals": [g.to_dict() for g in goals],
-            "total": len(goals),
-            "auto_executable": sum(1 for g in goals if g.auto_executable),
+            "goals": merged,
+            "total": len(merged),
+            "auto_executable": sum(1 for g in merged if g.get("auto_executable")),
             "execute_enabled": _goal_execute_enabled(),
         }
     except Exception as e:
@@ -1243,6 +1295,7 @@ _LABELS = {
     "e2e_smoke": "冒烟测试", "doctor": "Doctor", "overview_issues": "概览问题",
     "symbol_health": "符号健康", "lsp": "LSP 诊断", "security": "安全扫描",
     "full_stack": "全域测试",
+    "assessment": "成熟度评估",
 }
 
 
@@ -1754,6 +1807,18 @@ async def aggregate_all_alerts() -> Dict[str, Any]:
                      component=str(a.get("tool_name", "")))
     except Exception as e:
         logging.debug("tool_drift aggregate skipped: %s", e)
+
+    # 6. Maturity-assessment drift (框架 declared-vs-evidence, 来自 compute_assessment.py)
+    try:
+        adata = _read_assessment_json()
+        for d in (adata.get("drift") or []) if adata else []:
+            _add(f"assess:{d.get('id','?')}", "warning",
+                 f"评估漂移: {d.get('id','')} {d.get('evidence_status','')}",
+                 "maturity_assessment",
+                 f"declared={d.get('declared')} actual={d.get('actual')} — {d.get('note','')}",
+                 component="maturity")
+    except Exception as e:
+        logging.debug("assessment alerts aggregate skipped: %s", e)
 
     by_severity = {"critical": 0, "warning": 0, "info": 0}
     for a in alerts:

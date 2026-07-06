@@ -21,8 +21,8 @@ weighting:
     method: weighted_avg_normalized          # sum(level*weight)/sum(weight)
     level_map: {L1: 1, L2: 2, L3: 3, L4: 4, L5: 5}
   framework_two:
-    method: percentage                        # (yes*1 + partial*0.5)/total * 100
-    result_map: {yes: 1.0, partial: 0.5, no: 0.0}
+    method: percentage                        # ("yes"*1 + "partial"*0.5)/total * 100
+    result_map: {"yes": 1.0, "partial": 0.5, "no": 0.0}
   framework_three:
     method: mean_per_tier                     # 每层项分均值; 同时对比文档声明层分 → 查矛盾
     score_range: [0, 5]
@@ -152,95 +152,95 @@ frameworks:
       - id: "1"
         name: "代码质量与规范"
         items:
-          - {id: "1.1", desc: "代码规范(ruff)", result: yes, source: file_check,
+          - {id: "1.1", desc: "代码规范(ruff)", result: "yes", source: file_check,
              evidence: {command: "grep -cE 'ruff' pyproject.toml", op: "-ge", expected: 1}}
-          - {id: "1.2", desc: "CI强制检查", result: yes, source: file_check,
+          - {id: "1.2", desc: "CI强制检查", result: "yes", source: file_check,
              evidence: {command: "test -f .github/workflows/ci.yml && echo 1 || echo 0", op: "-ge", expected: 1}}
-          - {id: "1.3", desc: "Code Review(PR模板)", result: yes, source: file_check,
+          - {id: "1.3", desc: "Code Review(PR模板)", result: "yes", source: file_check,
              evidence: {command: "test -f .github/PULL_REQUEST_TEMPLATE.md && echo 1 || echo 0", op: "-ge", expected: 1}}
-          - {id: "1.4", desc: "审查标准", result: yes, source: manual}
-          - {id: "1.5", desc: "类型检查(mypy)", result: yes, source: file_check,
+          - {id: "1.4", desc: "审查标准", result: "yes", source: manual}
+          - {id: "1.5", desc: "类型检查(mypy)", result: "yes", source: file_check,
              evidence: {command: "grep -cE 'mypy' pyproject.toml", op: "-ge", expected: 1}}
-          - {id: "1.6", desc: "自动格式化", result: yes, source: manual}
-          - {id: "1.7", desc: "Commit规范(commitlint)", result: yes, source: file_check,
+          - {id: "1.6", desc: "自动格式化", result: "yes", source: manual}
+          - {id: "1.7", desc: "Commit规范(commitlint)", result: "yes", source: file_check,
              evidence: {command: "test -f .commitlintrc.yaml && echo 1 || echo 0", op: "-ge", expected: 1}}
-          - {id: "1.8", desc: "复杂度检查(radon)", result: yes, source: manual}
+          - {id: "1.8", desc: "复杂度检查(radon)", result: "yes", source: manual}
       - id: "2"
         name: "测试与验证体系"
         items:
-          - {id: "2.1", desc: "自动化测试", result: yes, source: manual}
-          - {id: "2.2", desc: "可量化覆盖率", result: yes, source: manual}
-          - {id: "2.3", desc: "集成测试", result: yes, source: file_check,
+          - {id: "2.1", desc: "自动化测试", result: "yes", source: manual}
+          - {id: "2.2", desc: "可量化覆盖率", result: "yes", source: manual}
+          - {id: "2.3", desc: "集成测试", result: "yes", source: file_check,
              evidence: {command: "test -d aiPlat-core/core/tests/integration && echo 1 || echo 0", op: "-ge", expected: 1}}
-          - {id: "2.4", desc: "E2E测试", result: yes, source: manual}
-          - {id: "2.5", desc: "CI自动运行", result: yes, source: manual}
-          - {id: "2.6", desc: "性能基准", result: yes, source: manual}
-          - {id: "2.7", desc: "冒烟测试", result: yes, source: file_check,
+          - {id: "2.4", desc: "E2E测试", result: "yes", source: manual}
+          - {id: "2.5", desc: "CI自动运行", result: "yes", source: manual}
+          - {id: "2.6", desc: "性能基准", result: "yes", source: manual}
+          - {id: "2.7", desc: "冒烟测试", result: "yes", source: file_check,
              evidence: {command: "test -f e2e_smoke.py && echo 1 || echo 0", op: "-ge", expected: 1}}
-          - {id: "2.8", desc: "回归测试", result: partial, source: manual}
-          - {id: "2.9", desc: "测试数据管理", result: partial, source: manual}
-          - {id: "2.10", desc: "环境一致性", result: partial, source: manual}
-          - {id: "2.11", desc: "覆盖门禁", result: partial, source: manual}
-          - {id: "2.12", desc: "IDE集成测试(ACP smoke)", result: yes, source: manual}
+          - {id: "2.8", desc: "回归测试", result: "partial", source: manual}
+          - {id: "2.9", desc: "测试数据管理", result: "partial", source: manual}
+          - {id: "2.10", desc: "环境一致性", result: "partial", source: manual}
+          - {id: "2.11", desc: "覆盖门禁", result: "partial", source: manual}
+          - {id: "2.12", desc: "IDE集成测试(ACP smoke)", result: "yes", source: manual}
       - id: "3"
         name: "CI/CD"
         items:
-          - {id: "3.1", desc: "CI/CD流水线(≥3 workflow)", result: yes, source: file_check,
+          - {id: "3.1", desc: "CI/CD流水线(≥3 workflow)", result: "yes", source: file_check,
              evidence: {command: "ls .github/workflows/*.yml | wc -l", op: "-ge", expected: 3}}
-          - {id: "3.2", desc: "自动构建", result: yes, source: manual}
-          - {id: "3.3", desc: "自动部署测试环境", result: partial, source: manual}
-          - {id: "3.4", desc: "生产审批门禁", result: no, source: manual}
-          - {id: "3.5", desc: "一键回滚(rollback.sh)", result: yes, source: file_check,
+          - {id: "3.2", desc: "自动构建", result: "yes", source: manual}
+          - {id: "3.3", desc: "自动部署测试环境", result: "partial", source: manual}
+          - {id: "3.4", desc: "生产审批门禁", result: "no", source: manual}
+          - {id: "3.5", desc: "一键回滚(rollback.sh)", result: "yes", source: file_check,
              evidence: {command: "test -f scripts/rollback.sh && echo 1 || echo 0", op: "-ge", expected: 1}}
-          - {id: "3.6", desc: "产物版本管理", result: yes, source: manual}
-          - {id: "3.7", desc: "环境差异管理", result: partial, source: manual}
-          - {id: "3.8", desc: "发布告警(notify-release.sh)", result: yes, source: file_check,
+          - {id: "3.6", desc: "产物版本管理", result: "yes", source: manual}
+          - {id: "3.7", desc: "环境差异管理", result: "partial", source: manual}
+          - {id: "3.8", desc: "发布告警(notify-release.sh)", result: "yes", source: file_check,
              evidence: {command: "test -f scripts/notify-release.sh && echo 1 || echo 0", op: "-ge", expected: 1}}
       - id: "4"
         name: "可观测性"
         items:
-          - {id: "4.1", desc: "结构化日志", result: yes, source: manual}
-          - {id: "4.2", desc: "集中日志", result: yes, source: manual}
-          - {id: "4.3", desc: "Metrics(Prometheus)", result: yes, source: manual}
-          - {id: "4.4", desc: "分布式追踪(Jaeger/OTel)", result: yes, source: manual}
-          - {id: "4.5", desc: "Dashboard(Grafana)", result: yes, source: manual}
-          - {id: "4.6", desc: "告警规则", result: yes, source: manual}
-          - {id: "4.7", desc: "SLA/SLO(docs/slo.md)", result: yes, source: file_check,
+          - {id: "4.1", desc: "结构化日志", result: "yes", source: manual}
+          - {id: "4.2", desc: "集中日志", result: "yes", source: manual}
+          - {id: "4.3", desc: "Metrics(Prometheus)", result: "yes", source: manual}
+          - {id: "4.4", desc: "分布式追踪(Jaeger/OTel)", result: "yes", source: manual}
+          - {id: "4.5", desc: "Dashboard(Grafana)", result: "yes", source: manual}
+          - {id: "4.6", desc: "告警规则", result: "yes", source: manual}
+          - {id: "4.7", desc: "SLA/SLO(docs/slo.md)", result: "yes", source: file_check,
              evidence: {command: "test -f docs/slo.md && echo 1 || echo 0", op: "-ge", expected: 1}}
-          - {id: "4.8", desc: "Error Budget", result: yes, source: manual}
-          - {id: "4.9", desc: "Health Check", result: yes, source: manual}
-          - {id: "4.10", desc: "业务指标面板", result: partial, source: manual}
-          - {id: "4.11", desc: "多模态管道健康检查", result: partial, source: manual}
+          - {id: "4.8", desc: "Error Budget", result: "yes", source: manual}
+          - {id: "4.9", desc: "Health Check", result: "yes", source: manual}
+          - {id: "4.10", desc: "业务指标面板", result: "partial", source: manual}
+          - {id: "4.11", desc: "多模态管道健康检查", result: "partial", source: manual}
       - id: "5"
         name: "安全与合规"
         items:
-          - {id: "5.1", desc: "SAST(ruff bandit)", result: yes, source: manual}
-          - {id: "5.2", desc: "DAST(OWASP ZAP)", result: yes, source: manual}
-          - {id: "5.3", desc: "依赖扫描(dependabot)", result: yes, source: file_check,
+          - {id: "5.1", desc: "SAST(ruff bandit)", result: "yes", source: manual}
+          - {id: "5.2", desc: "DAST(OWASP ZAP)", result: "yes", source: manual}
+          - {id: "5.3", desc: "依赖扫描(dependabot)", result: "yes", source: file_check,
              evidence: {command: "test -f .github/dependabot.yml && echo 1 || echo 0", op: "-ge", expected: 1}}
-          - {id: "5.4", desc: "密钥管理(SecretsManager)", result: yes, source: manual}
-          - {id: "5.5", desc: "渗透测试(外部)", result: no, source: manual}
-          - {id: "5.6", desc: "变更合规(change_control)", result: yes, source: manual}
-          - {id: "5.7", desc: "审计追踪(SHA-256链)", result: yes, source: manual}
-          - {id: "5.8", desc: "漏洞修复SLA(SECURITY.md)", result: yes, source: file_check,
+          - {id: "5.4", desc: "密钥管理(SecretsManager)", result: "yes", source: manual}
+          - {id: "5.5", desc: "渗透测试(外部)", result: "no", source: manual}
+          - {id: "5.6", desc: "变更合规(change_control)", result: "yes", source: manual}
+          - {id: "5.7", desc: "审计追踪(SHA-256链)", result: "yes", source: manual}
+          - {id: "5.8", desc: "漏洞修复SLA(SECURITY.md)", result: "yes", source: file_check,
              evidence: {command: "test -f SECURITY.md && echo 1 || echo 0", op: "-ge", expected: 1}}
       - id: "6"
         name: "架构与可维护性"
         items:
-          - {id: "6.1", desc: "模块边界(arch_guard_rules)", result: yes, source: file_check,
+          - {id: "6.1", desc: "模块边界(arch_guard_rules)", result: "yes", source: file_check,
              evidence: {command: "test -f aiPlat-core/core/management/arch_guard_rules.yaml && echo 1 || echo 0", op: "-ge", expected: 1}}
-          - {id: "6.2", desc: "接口契约(OpenAPI)", result: yes, source: manual}
-          - {id: "6.3", desc: "ADR", result: yes, source: manual}
-          - {id: "6.4", desc: "水平扩展(Helm HPA)", result: yes, source: manual}
-          - {id: "6.5", desc: "多环境配置", result: yes, source: manual}
-          - {id: "6.6", desc: "熔断(CircuitBreaker)", result: partial, source: manual}
-          - {id: "6.7", desc: "DB迁移", result: partial, source: manual}
-          - {id: "6.8", desc: "技术债管理(CLAUDE.md §16)", result: yes, source: manual}
-          - {id: "6.9", desc: "故障演练(Chaos)", result: no, source: manual}
-          - {id: "6.10", desc: "架构评审(architecture_guard.sh)", result: yes, source: file_check,
+          - {id: "6.2", desc: "接口契约(OpenAPI)", result: "yes", source: manual}
+          - {id: "6.3", desc: "ADR", result: "yes", source: manual}
+          - {id: "6.4", desc: "水平扩展(Helm HPA)", result: "yes", source: manual}
+          - {id: "6.5", desc: "多环境配置", result: "yes", source: manual}
+          - {id: "6.6", desc: "熔断(CircuitBreaker)", result: "partial", source: manual}
+          - {id: "6.7", desc: "DB迁移", result: "partial", source: manual}
+          - {id: "6.8", desc: "技术债管理(CLAUDE.md §16)", result: "yes", source: manual}
+          - {id: "6.9", desc: "故障演练(Chaos)", result: "no", source: manual}
+          - {id: "6.10", desc: "架构评审(architecture_guard.sh)", result: "yes", source: file_check,
              evidence: {command: "test -f scripts/architecture_guard.sh && echo 1 || echo 0", op: "-ge", expected: 1}}
-          - {id: "6.11", desc: "AI Profile隔离", result: yes, source: manual}
-          - {id: "6.12", desc: "AI资产包分发(profile_packager)", result: yes, source: file_check,
+          - {id: "6.11", desc: "AI Profile隔离", result: "yes", source: manual}
+          - {id: "6.12", desc: "AI资产包分发(profile_packager)", result: "yes", source: file_check,
              evidence: {command: "test -f scripts/profile_packager.py && echo 1 || echo 0", op: "-ge", expected: 1}}
 
   # ═══════════════════════════════════════════════════════════

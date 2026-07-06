@@ -134,9 +134,7 @@ def compute(spec: dict) -> dict:
     all_num = all_tot = 0
     for d in f2["dimensions"]:
         _verify_items(d["items"], drift, f"framework_two/{d['id']}")
-        for it in d["items"]:
-            it["result"] = _norm_result(it.get("result", "no"))
-        s = sum(rm.get(_norm_result(it.get("result", "no")), 0) for it in d["items"])
+        s = sum(rm.get(it.get("result", "no"), 0) for it in d["items"])
         t = len(d["items"])
         all_num += s
         all_tot += t
@@ -320,7 +318,7 @@ def compute_goals(r: dict, bridge: list) -> list:
     # 3. 框架二 'no' 项 → 补齐工程项
     for d in r["frameworks"]["framework_two"]["dimensions"]:
         for it in d["items"]:
-            if _norm_result(it.get("result")) == "no":
+            if it.get("result") == "no":
                 add(f"assess-eng-{it['id']}", f"补齐工程缺口: {it.get('desc','')}",
                     "engineering_gap", "medium", {"dimension": d["id"], "item": it["id"]})
     # 4. bridge idle → 能力闲置, 验证或激励
