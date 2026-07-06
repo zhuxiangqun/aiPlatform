@@ -74,14 +74,15 @@ refs:
 | E2 | 合同网协商 | L5 | SwarmBroker announce→bid→award, 能力自评 | `grep -c 'class SwarmBroker' swarm_broker.py` = 1 |
 | E3 | 冷启动探索 | L5 | COLD_START_BONUS 0.1 + keyword 0.3+history 0.3+tag 0.4 | `grep -c 'COLD_START_BONUS' swarm_broker.py` = 1 |
 
-### F 轴 — 自进化学习（重评）：L3
+### F 轴 — 自进化学习（重评）：L4
 
 | # | 评估项 | 得分 | 证据 | 验证 |
 |:--:|------|:--:|------|------|
-| F1 | 策略记录 | L3 | StrategyEffectivenessTracker 全量 (error_type, strategy) | `grep -c 'class StrategyEffectivenessTracker' strategy_tracker.py` = 1 |
-| F2 | 算法优化 | L3 | UCB1 收敛 + explain_decision | `pytest -k test_ucb1 -q` → 3 passed |
-| F3 | 反馈学习 | — | 缺 Feedback→参数自动调整→微调触发管道 | — (L4 缺失) |
-| F4 | 操作→知识 | — | 缺 /learn 操作轨迹→SKILL.md→知识库索引闭环 | — (L5 缺失) |
+| F1 | 策略记录+搜索 | L3 | StrategyEffectivenessTracker + UCB1 收敛算法 | `pytest -k test_ucb1 -q` → 3 passed |
+| F2 | 自动技能生成 | L4 | AutoLearner.analyze_failure/success() — 每次交互自动生成 SkillDraft | `grep -c 'class AutoLearner' learning/__init__.py` ≥ 1 |
+| F3 | 夜间自进化 | L4 | EvolutionEngine 13步 (审批+优化+跨租户扫描) — 凌晨3点自动 | `grep -c 'class EvolutionEngine' evolution_engine.py` = 1 |
+| F4 | 知识自动合成 | L4 | Active Synthesis 5步 pipeline (缺口→研究→文档→Wiki→提案) — 需 `AIPLAT_ACTIVE_SYNTHESIS_ENABLED=true` | `grep -c 'class ActiveSynthesis' active_synthesis.py` ≥ 1 |
+| F5 | 操作→知识 | — | 缺 WIKI_PATH 自动索引 + Execution→GraphIndex 反馈 | — (L5 缺失) |
 
 ### G 轴 — 多模态交互（新增）：L2
 
@@ -111,17 +112,17 @@ refs:
 | C 工具 | L4 | 4.0 | 10% | 0.40 |
 | D 记忆 | L5 | 5.0 | 10% | 0.50 |
 | E 协作 | L5 | 5.0 | 10% | 0.50 |
-| F 自进化 | L3 | 3.0 | 15% | 0.45 |
+| F 自进化 | L4 | 4.0 | 15% | 0.60 |
 | G 多模态 | L2 | 2.0 | 5% | 0.10 |
 | H 产品化 | L2 | 2.0 | 15% | 0.30 |
-| **综合** | — | — | **100%** | **4.00 → L4** |
+| **综合** | — | — | **100%** | **4.15 → L4** |
 
 > 瓶颈标记：G:L2, H:L2。若沿用 V2.x 6 轴口径（A-E+F），加权综合 = 4.17 → L4+。
 
 ```bash
 # 一键验证
 bash scripts/verify-l4-pyramid.sh | grep '最大可宣称'
-# → L4 (加权综合 4.00，8 轴)
+# → L4 (加权综合 4.15，8 轴)
 ```
 
 ---
@@ -487,7 +488,7 @@ bash scripts/verify-l4-pyramid.sh | grep '最大可宣称'
 
 | 框架 | 定级 | 拖后腿项 |
 |:---|:---|:---|
-| **L1-L5 自主性 (V3.0)** | L4 (加权 4.00) | G:L2(多模态), H:L2(产品化) |
+| **L1-L5 自主性 (V3.0)** | L4 (加权 4.15) | G:L2(多模态), H:L2(产品化) |
 | **工程落地** | 准生产级 (87.9% 均分) | 2.12 IDE测试❌, 6.12 AI资产包❌ |
 | **三层企业** | 基础级 (3.3) | 宏观合规(2.5), 灾备(2.5), 架构分发(2.5) |
 
@@ -497,7 +498,6 @@ bash scripts/verify-l4-pyramid.sh | grep '最大可宣称'
 |:--:|:---|:---|:--:|:--:|------|
 | P0 | 自主性/H | ACP 协议 + IDE 插件 | L2 | L3 | 2-3 周 |
 | P0 | 自主性/H | 配置即代码分发 | L2 | L4 | 1-2 周 |
-| P1 | 自主性/F | /learn 操作→知识闭环 | L3 | L4 | 4-6 周 |
 | P1 | 自主性/A2 | SQLite 看板 + Cron 调度 | L3 | L4 | 2-3 周 |
 | P2 | 自主性/G | 语音+浏览器决策闭环 | L2 | L3-L4 | 4-8 周 |
 | P2 | 三层/宏观 | 合规伦理 (EU AI Act) | 2.5 | 3.0 | 需法务 |

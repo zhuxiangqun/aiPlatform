@@ -64,7 +64,7 @@ tags: [hermes, comparison, L1-L15, 8-axis, radar]
 | L6 | 子 Agent 引擎 | E | E:L5 | ✅ **超越** (SwarmBroker 合同网 > 简单 delegate) |
 | L7 | 自主循环 | A1 | A1:L4 | ⚠️ **接近** (差 wakeAgent + no_agent 模式) |
 | L8 | 多 Profile | A2 | A2:L3 | ⚠️ **落后** (多租户 vs 真 Profile 隔离) |
-| L9 | 自进化 /learn | F | F:L3 | ⚠️ **落后** (缺操作→知识自动闭环) |
+| L9 | 自进化 /learn | F | F:L4 | ✅ **持平** (AutoLearner + EvolutionEngine + ActiveSynthesis 已构建闭环) |
 | L10 | 看板工作流 | A2 | A2:L3 | ⚠️ **落后** (缺 SQLite 看板+定时调度) |
 | L11 | 语音网关 | G | G:L2 | ❌ **显著落后** (模块存在但未闭环) |
 | L12 | 浏览器引擎 | G | G:L2 | ❌ **显著落后** (模块存在但未闭环) |
@@ -90,7 +90,7 @@ radar
   axis G("G 多模态 [5%]")
   axis H("H 产品化 [15%]")
 
-  "aiPlat V3.0": 4, 3, 5, 4, 5, 5, 3, 2, 2
+  "aiPlat V3.0": 4, 3, 5, 4, 5, 5, 4, 2, 2
   "Hermes (映射估算)": 5, 4, 3, 4, 3, 3, 5, 5, 5
 ```
 
@@ -120,7 +120,7 @@ radar
 | 轴 | aiPlat | Hermes (估) | 差距 | 优先级 |
 |:--|:--:|:--:|------|:--:|
 | **H 产品化** | L2 | L5 | ACP 协议 + IDE 插件 + distribution.yaml 分发 | **P0** |
-| **F 自进化** | L3 | L5 | /learn 操作→知识自动闭环 | **P1** |
+| **F 自进化** | L4 | L5 | WIKI_PATH 自动索引 + Exec→GraphIndex 反馈 | **P2** |
 | **A2 自调度** | L3 | L4 | SQLite 看板 + Cron 定时 + Profile 隔离 | **P1** |
 | **G 多模态** | L2 | L5 | 语音/浏览器融入 Agent 决策闭环 | **P2** |
 
@@ -132,7 +132,6 @@ radar
 |:--:|------|:--:|------|:--:|
 | **P0** | ACP 协议服务端 + VS Code 插件 | H | `acp_server.py` + VS Code extension | 2-3 周 |
 | **P0** | distribution.yaml 配置打包 + Git 安装 | H | `scripts/hermes-profile-install.sh` + 模板 | 1-2 周 |
-| **P1** | /learn 操作→知识自动闭环 | F | 操作轨迹采集器 → SKILL.md 生成管道 → WIKI_PATH 索引更新 | 4-6 周 |
 | **P1** | SQLite 看板引擎 | A2 | `harness/coordination/kanban_engine.py` + Cron 调度器 + 依赖链 | 2-3 周 |
 | **P1** | 真正 Profile 隔离 | A2 | memory/skills/mcp 按 Profile 命名空间隔离 | 1-2 周 |
 | **P2** | 语音 + 浏览器的 Agent 决策闭环 | G | 语音触发 → Goal 循环 → Browser 操作 → TTS 反馈 全链路 | 4-8 周 |

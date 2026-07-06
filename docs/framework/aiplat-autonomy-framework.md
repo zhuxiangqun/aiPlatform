@@ -180,7 +180,7 @@ tags: [framework, 8-axis, L1-L5, maturity]
 | C 工具 | **L4** | `core/harness/optimization/tool_bootstrap.py:1` — `class ToolBootstrapEngine`；`core/engine/skills/` — 31 个 SKILL.md | 工具自举依赖人工触发，非自主进化 (L5) |
 | D 记忆 | **L5** | `core/harness/memory/gossip_protocol.py:1` — `class GossipProtocol`；`core/harness/memory/semantic.py` — `_resolve_semantic_conflict` | — |
 | E 协作 | **L5** | `core/harness/coordination/swarm_broker.py:1` — `class SwarmBroker`；`core/harness/coordination/dynamic_orchestrator.py:1` — `class DynamicOrchestrator` | — |
-| F 自进化 | **L3** | `core/harness/optimization/search_engine.py:1` — UCB1 收敛算法 | 缺 /learn 操作→知识自动闭环 (L4-L5) |
+| F 自进化 | **L4** | `core/harness/learning/__init__.py` — `AutoLearner.analyze_failure/success()` 每次交互自动生成 SkillDraft；`core/harness/evolution_engine.py` 夜间 13 步自动审批；`core/harness/knowledge/active_synthesis.py` 知识缺口→Wiki（需 `AIPLAT_ACTIVE_SYNTHESIS_ENABLED=true`）；`core/harness/optimization/search_engine.py` — UCB1 收敛 | 缺 WIKI_PATH 自动索引 + Execution→GraphIndex 反馈 (L5) |
 | G 多模态 | **L2** | `core/apps/document_intelligence/video_parser.py` (Phase 45)；`core/harness/infrastructure/infra_audio_adapter.py`；`core/apps/testing/browser_test_engine.py` (Phase 64) | 模块被动调用未形成决策闭环 (L3-L5) |
 | H 产品化 | **L2** | `aiPlat-management/management/server.py` — FastAPI + Swagger | 缺 ACP 协议 + IDE 插件 + 配置分发 (L3-L5) |
 
@@ -194,17 +194,17 @@ tags: [framework, 8-axis, L1-L5, maturity]
 | C 工具掌握 | L4 | 4.0 | 10% | 0.40 |
 | D 记忆系统 | L5 | 5.0 | 10% | 0.50 |
 | E 协作能力 | L5 | 5.0 | 10% | 0.50 |
-| F 自进化 | L3 | 3.0 | 15% | 0.45 |
+| F 自进化 | L4 | 4.0 | 15% | 0.60 |
 | G 多模态 | L2 | 2.0 | 5% | 0.10 |
 | H 产品化 | L2 | 2.0 | 15% | 0.30 |
-| **加权综合** | — | — | **100%** | **4.00 → L4** |
+| **加权综合** | — | — | **100%** | **4.15 → L4** |
 
 ### 4.2 诊断输出
 
 | 输出 | 值 | 用途 |
 |------|:--:|------|
-| Headline 评级 | **L4**（加权综合 4.00） | 对外沟通、横向对比 |
-| 瓶颈轴 | G:L2, H:L2, F:L3, A2:L3 | 内部路线图优先级排序 |
+| Headline 评级 | **L4**（加权综合 4.15） | 对外沟通、横向对比 |
+| 瓶颈轴 | G:L2, H:L2, A2:L3 | 内部路线图优先级排序 |
 | 最强轴 | B, D, E 均为 L5 | 技术护城河识别 |
 
 ---

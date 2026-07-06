@@ -131,14 +131,18 @@ tags: [evaluation, L4, engineering-maturity, enterprise-assessment, 8-axis]
 | SwarmBroker 合同网 | `coordination/swarm_broker.py` | `grep -c 'class SwarmBroker'` = 1 |
 | DynamicOrchestrator 组队 | `coordination/dynamic_orchestrator.py` | `grep -c 'class DynamicOrchestrator'` = 1 |
 
-#### F. 自进化学习 — L3
+#### F. 自进化学习 — L4
 
 | 证据 | 代码位置 | 验证 |
 |------|---------|------|
-| UCB1 收敛算法 | `optimization/search_engine.py` | test_converges_on_clean_data PASSED |
-| StrategyTracker 效果记录 | `optimization/strategy_tracker.py` | 记录 (error_type, strategy) |
+| AutoLearner 自动生成 SkillDraft | `harness/learning/__init__.py:117` | `analyze_failure/success()` 每次交互自动触发 |
+| PatternAccumulator + ExperienceVector | `_facade.py:671-683` | 每次交互自动提取模式指纹 |
+| ToolBootstrapEngine 自动工具自举 | `optimization/tool_bootstrap.py` | GoalExecutor 检测缺口→自动生成 handler.py |
+| EvolutionEngine 夜间 13 步 | `evolution_engine.py:74` | 凌晨 3 点自动审批 + 自优化 |
+| Active Synthesis 知识自动生成 | `knowledge/active_synthesis.py:326` | 需 `AIPLAT_ACTIVE_SYNTHESIS_ENABLED=true` |
+| GoalGenerator 5 域扫描 | `optimization/goal_generator.py:78` | healing/strategy/staleness/exploration/tool |
 
-**距 L4-L5 差距**：缺 /learn 操作轨迹→SKILL.md→知识库索引自动闭环。
+**距 L5 差距**：缺 WIKI_PATH 自动索引 + Execution→GraphIndex 自动反馈。
 
 #### G. 多模态交互 — L2
 
@@ -169,13 +173,13 @@ tags: [evaluation, L4, engineering-maturity, enterprise-assessment, 8-axis]
 | C 工具 | L4 | 4.0 | 10% | 0.40 |
 | D 记忆 | L5 | 5.0 | 10% | 0.50 |
 | E 协作 | L5 | 5.0 | 10% | 0.50 |
-| F 自进化 | L3 | 3.0 | 15% | 0.45 |
+| F 自进化 | L4 | 4.0 | 15% | 0.60 |
 | G 多模态 | L2 | 2.0 | 5% | 0.10 |
 | H 产品化 | L2 | 2.0 | 15% | 0.30 |
-| **综合** | — | — | **100%** | **L4 加权 4.00 → L4** |
+| **综合** | — | — | **100%** | **4.15 → L4** |
 
 **诊断输出**：
-- Headline: **L4**（加权综合 4.00）
+- Headline: **L4**（加权综合 4.15）
 - 瓶颈轴: G:L2, H:L2（优先提升)
 - 最强轴: B, D, E 均为 L5（技术护城河）
 
@@ -382,7 +386,7 @@ tags: [evaluation, L4, engineering-maturity, enterprise-assessment, 8-axis]
          8 轴自主性成熟度            工程落地              三层企业
          "能做什么"                  "能不能持续"           "多好"
          ───────────                ──────────             ─────
-         L4 (加权 4.00)             准生产级 (85.2%)       基础级 (3.3)
+         L4 (加权 4.15)             准生产级 (85.2%)       基础级 (3.3)
               │                      │                      │
               │     ┌────────────────┼────────────────┐     │
               │     │                │                │     │
@@ -406,7 +410,6 @@ tags: [evaluation, L4, engineering-maturity, enterprise-assessment, 8-axis]
 |:---:|:---|:---|:--:|:--:|:--:|
 | **P0** | 自主性/H | ACP 协议 + IDE 插件 | L2 | L3 | 产品化交付短板 |
 | **P0** | 自主性/H | 配置即代码分发 | L2 | L4 | distribution.yaml 缺失 |
-| **P1** | 自主性/F | /learn 操作→知识闭环 | L3 | L4 | 自进化能力短板 |
 | **P1** | 自主性/A2 | SQLite 看板 + Cron 调度 | L3 | L4 | 调度编排短板 |
 | **P2** | 自主性/G | 多模态闭环触发 | L2 | L3-L4 | 多模态短板 |
 | **P2** | 三层/宏观 | 合规伦理 (EU AI Act) | 2.5 | 3.0 | 需法务参与 |
@@ -415,7 +418,7 @@ tags: [evaluation, L4, engineering-maturity, enterprise-assessment, 8-axis]
 
 | 框架 | 子项数 | 评级 | 备注 |
 |:---|:--:|:--|:--|
-| **8 轴自主性成熟度** | ~24 项 | **L4** (加权 4.00) | V2.x 6轴口径下仍为 L4+ |
+| **8 轴自主性成熟度** | ~24 项 | **L4** (加权 4.15) | V2.x 6轴口径下仍为 L4+ |
 | **工程落地** | 58 项 | **准生产级** (85.2%) | V3.0 新增 4 项暴露短板 |
 | **三层企业** | ~110 项 | **基础级** (3.3) | 微观+3项, 架构+2项 |
 
