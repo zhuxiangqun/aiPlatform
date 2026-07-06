@@ -42,7 +42,7 @@ tags: [evaluation, L4, engineering-maturity, enterprise-assessment, 8-axis]
                     │   8 轴自主性成熟度框架           │
                     │   "能做什么？多成熟？"           │
                     │   各轴 L1-L5 · 加权综合 L4      │
-                    │   结论: L4 · 瓶颈 G 轴 L2      │
+                    │   结论: L4 · 全轴 ≥ L3      │
                     └──────────────┬──────────────────┘
                                    │
             ┌──────────────────────┼──────────────────────┐
@@ -144,15 +144,15 @@ tags: [evaluation, L4, engineering-maturity, enterprise-assessment, 8-axis]
 
 **距 L5 差距**：缺 WIKI_PATH 自动索引 + Execution→GraphIndex 自动反馈。
 
-#### G. 多模态交互 — L2
+#### G. 多模态交互 — L3
 
 | 证据 | 代码位置 | 验证 |
 |------|---------|------|
-| VideoParser | `apps/document_intelligence/video_parser.py` | Phase 45 |
-| InfraAudioAdapter | `harness/infrastructure/infra_audio_adapter.py` | STT/TTS 适配 |
-| BrowserTestEngine | `apps/testing/browser_test_engine.py` | 5 action |
+| MultimodalIntegrator 统一桥接 | `harness/multimodal/integrator.py` | AudioAdapter + BrowserTestEngine + VideoParser → Agent 上下文 |
+| sys_multimodal_process syscall | `harness/syscalls/multimodal.py` | Agent 通过标准门禁调用多模态处理 |
+| BrowserTestEngine 5 action | `apps/testing/browser_test_engine.py` | navigate/click/screenshot/hover/upload |
 
-**距 L3 差距**：模块被动调用，未形成 Agent 决策闭环。
+**距 L4-L5 差距**：缺 STT→决策→Browser→TTS 全语音闭环。
 
 #### H. 产品化交付 — L3
 
@@ -176,13 +176,13 @@ tags: [evaluation, L4, engineering-maturity, enterprise-assessment, 8-axis]
 | D 记忆 | L5 | 5.0 | 10% | 0.50 |
 | E 协作 | L5 | 5.0 | 10% | 0.50 |
 | F 自进化 | L4 | 4.0 | 15% | 0.60 |
-| G 多模态 | L2 | 2.0 | 5% | 0.10 |
+| G 多模态 | L3 | 3.0 | 5% | 0.15 |
 | H 产品化 | L3 | 3.0 | 15% | 0.45 |
-| **综合** | — | — | **100%** | **4.30 → L4** |
+| **综合** | — | — | **100%** | **4.35 → L4** |
 
 **诊断输出**：
-- Headline: **L4**（加权综合 4.30）
-- 瓶颈轴: G:L2（优先提升)
+- Headline: **L4**（加权综合 4.35）
+- 瓶颈轴: —（全部 ≥ L3）
 - 最强轴: B, D, E 均为 L5（技术护城河）
 
 > 若沿用 V2.x 6 轴口径 (A 合并+D+E+F+B+C): 加权 4.17 → L4+
@@ -388,7 +388,7 @@ tags: [evaluation, L4, engineering-maturity, enterprise-assessment, 8-axis]
          8 轴自主性成熟度            工程落地              三层企业
          "能做什么"                  "能不能持续"           "多好"
          ───────────                ──────────             ─────
-         L4 (加权 4.30)             准生产级 (85.2%)       基础级 (3.3)
+         L4 (加权 4.35)             准生产级 (85.2%)       基础级 (3.3)
               │                      │                      │
               │     ┌────────────────┼────────────────┐     │
               │     │                │                │     │
@@ -420,7 +420,7 @@ tags: [evaluation, L4, engineering-maturity, enterprise-assessment, 8-axis]
 
 | 框架 | 子项数 | 评级 | 备注 |
 |:---|:--:|:--|:--|
-| **8 轴自主性成熟度** | ~24 项 | **L4** (加权 4.30) | V2.x 6轴口径下仍为 L4+ |
+| **8 轴自主性成熟度** | ~24 项 | **L4** (加权 4.35) | V2.x 6轴口径下仍为 L4+ |
 | **工程落地** | 58 项 | **准生产级** (85.2%) | V3.0 新增 4 项暴露短板 |
 | **三层企业** | ~110 项 | **基础级** (3.3) | 微观+3项, 架构+2项 |
 
