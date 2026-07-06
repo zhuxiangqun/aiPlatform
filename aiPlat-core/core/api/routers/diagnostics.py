@@ -1056,6 +1056,85 @@ async def get_latest_repairs():
     return {"cached": False, "needs_diagnostics": True, "summary": {"total_issues": 0}}
 
 
+async def aggregate_repair_history() -> Dict[str, Any]:
+    """Unified view of AUTONOMOUS repair activity across the system (P1) — so the
+    Repair Center shows the full picture, not just deterministic lint/shell fixes.
+    Read-only aggregation of three already-running repair paths; each isolated in
+    try/except (CLAUDE.md §5.6 复用优先)."""
+    result: Dict[str, Any] = {
+        "self_healing": {"strategies": {}, "total": 0},
+        "auto_learned_skills": [],
+        "code_reviews": {},
+        "summary": {},
+    }
+
+    # 1. Pipeline self-healing counters (in-process)
+    try:
+        from core.harness.execution.pipeline_engine import PipelineEngine
+        stats = dict(getattr(PipelineEngine, "_healing_stats", {}) or {})
+        result["self_healing"] = {
+            "strategies": stats,
+            "attempts": stats.get("attempts", 0),
+            "successes": stats.get("successes", 0),
+            "skips": stats.get("skips", 0),
+            "escalations": stats.get("escalations", 0),
+            "total": sum(v for k, v in stats.items() if isinstance(v, int)),
+        }
+    except Exception as e:
+        logging.debug("healing history skipped: %s", e)
+
+    # 2. AutoLearner skill drafts (draft/pending_review/approved/rejected)
+    try:
+        import os as _os
+        import glob as _glob
+        home = _os.getenv("AIPLAT_HOME", _os.path.expanduser("~/.aiplat"))
+        draft_dir = _os.path.join(home, "skill_drafts")
+        drafts = []
+        for fp in sorted(_glob.glob(_os.path.join(draft_dir, "*.yaml")), reverse=True)[:50]:
+            try:
+                import yaml as _yaml
+                with open(fp, encoding="utf-8") as f:
+                    d = _yaml.safe_load(f) or {}
+                drafts.append({
+                    "name": d.get("name", _os.path.basename(fp)[:-5]),
+                    "status": d.get("status", "draft"),
+                    "confidence": d.get("confidence"),
+                    "source": d.get("source", ""),
+                    "simulation_pass_rate": d.get("simulation_pass_rate"),
+                })
+            except Exception:
+                continue
+        result["auto_learned_skills"] = drafts
+    except Exception as e:
+        logging.debug("draft history skipped: %s", e)
+
+    # 3. Autoreview auto-fix / review history (reuse existing helper)
+    try:
+        result["code_reviews"] = await _get_autoreview_summary()
+    except Exception as e:
+        logging.debug("review history skipped: %s", e)
+
+    drafts = result["auto_learned_skills"]
+    result["summary"] = {
+        "healing_actions": result["self_healing"].get("total", 0),
+        "drafts_total": len(drafts),
+        "drafts_pending": sum(1 for d in drafts if d.get("status") == "pending_review"),
+        "reviews_run": result["code_reviews"].get("total_runs", 0),
+    }
+    return result
+
+
+@router.get("/diagnostics/repairs/history", response_model=Dict[str, Any])
+async def get_repair_history():
+    """Unified autonomous-repair history (self-healing + auto-learned skills +
+    code reviews) for the Repair Center full-picture panel."""
+    try:
+        return await aggregate_repair_history()
+    except Exception as e:
+        return {"self_healing": {}, "auto_learned_skills": [], "code_reviews": {},
+                "summary": {}, "error": str(e)[:200]}
+
+
 @router.get("/diagnostics/summary", response_model=Dict[str, Any])
 def get_diagnostic_summary():
     """Return quick alert summary from last diagnostic run."""

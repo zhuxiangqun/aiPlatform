@@ -11,6 +11,14 @@ const RepairCenter: React.FC = () => {
   const [expandedSkill, setExpandedSkill] = useState(false);
   const [expandedPreview, setExpandedPreview] = useState<string | null>(null);
   const [previewCode, setPreviewCode] = useState<Record<string, string>>({});
+  const [history, setHistory] = useState<any>(null);
+
+  const fetchHistory = async () => {
+    try {
+      const r = await fetch('/api/core/diagnostics/repairs/history');
+      setHistory(await r.json());
+    } catch { }
+  };
 
   const fetchRepairs = async () => {
     setLoading(true);
@@ -30,9 +38,9 @@ const RepairCenter: React.FC = () => {
     finally { setLoading(false); }
   };
 
-  useEffect(() => { fetchRepairs(); }, []);
+  useEffect(() => { fetchRepairs(); fetchHistory(); }, []);
   useEffect(() => {
-    const onFocus = () => { fetchRepairs(); };
+    const onFocus = () => { fetchRepairs(); fetchHistory(); };
     window.addEventListener('focus', onFocus);
     return () => window.removeEventListener('focus', onFocus);
   }, []);
@@ -81,6 +89,48 @@ const RepairCenter: React.FC = () => {
       <Link to="/diagnostics" className="inline-flex items-center gap-1 text-sm text-gray-400 hover:text-gray-200 transition-colors mb-4">
         <ArrowLeft className="w-3 h-3" />返回诊断中心
       </Link>
+
+      {history && history.summary && (
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <Zap className="w-4 h-4 text-emerald-400" />
+              <span className="text-sm font-medium text-gray-100">自主修复历史</span>
+              <span className="text-[10px] text-gray-500">系统自动执行 · 只读</span>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-3 gap-3 mb-3">
+              <div className="rounded-md bg-gray-800/40 p-2 text-center">
+                <div className="text-lg font-semibold text-emerald-400">{history.summary.healing_actions ?? 0}</div>
+                <div className="text-[11px] text-gray-500">流水线自愈动作</div>
+              </div>
+              <div className="rounded-md bg-gray-800/40 p-2 text-center">
+                <div className="text-lg font-semibold text-violet-400">{history.summary.drafts_total ?? 0}</div>
+                <div className="text-[11px] text-gray-500">自学习草稿 · 待审 {history.summary.drafts_pending ?? 0}</div>
+              </div>
+              <div className="rounded-md bg-gray-800/40 p-2 text-center">
+                <div className="text-lg font-semibold text-blue-400">{history.summary.reviews_run ?? 0}</div>
+                <div className="text-[11px] text-gray-500">代码审查 · clean {history.code_reviews?.clean_rate ?? '—'}</div>
+              </div>
+            </div>
+            {Array.isArray(history.auto_learned_skills) && history.auto_learned_skills.length > 0 && (
+              <div className="space-y-1">
+                <div className="text-[11px] text-gray-500 mb-1">最近自学习草稿</div>
+                {history.auto_learned_skills.slice(0, 6).map((d: any, i: number) => (
+                  <div key={i} className="flex items-center justify-between text-xs py-1 border-b border-gray-800/50">
+                    <span className="text-gray-300 truncate">{d.name}</span>
+                    <span className="flex items-center gap-2">
+                      {d.confidence != null && <span className="text-gray-500">conf {Number(d.confidence).toFixed(2)}</span>}
+                      <span className={`px-1.5 py-0.5 rounded text-[10px] ${d.status === 'pending_review' ? 'bg-yellow-500/20 text-yellow-300' : d.status === 'approved' ? 'bg-emerald-500/20 text-emerald-300' : d.status === 'rejected' ? 'bg-red-500/20 text-red-300' : 'bg-gray-600/30 text-gray-400'}`}>{d.status}</span>
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {summary.needs_diagnostics && (
         <Card className="border-primary/30 bg-primary/5">
