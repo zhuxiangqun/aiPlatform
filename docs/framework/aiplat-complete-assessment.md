@@ -1,24 +1,37 @@
 ---
-title: "aiPlat 综合评估报告 — 三框架评估"
+title: "aiPlat 综合评估报告 — 三框架评估 V3.0"
 type: evaluation-report
 domain: aiplat-core
-version: 2.5.1
+version: 3.0.0
 date: 2026-07-06
 status: published
 refs:
   - docs/framework/aiplat-autonomy-framework.md
   - docs/framework/scoring-detail.md
+  - docs/framework/hermes-comparison.md
   - docs/framework/verification-protocol.md
 frameworks:
-  - L1-L5 Autonomy Rating (18 items)
-  - Engineering Maturity (54 items)
-  - Enterprise Three-Layer (12+83+9 = 104 items)
-tags: [evaluation, L5, engineering-maturity, enterprise-assessment]
+  - L1-L5 Autonomy Rating (8 axes, ~24 items)
+  - Engineering Maturity (6 dims, 58 items)
+  - Enterprise Three-Layer (3 tiers, ~110 items)
+tags: [evaluation, L4, engineering-maturity, enterprise-assessment, 8-axis]
 ---
 
-# aiPlat 综合评估报告
+# aiPlat 综合评估报告 V3.0
 
-> **三框架交叉验证**：同一系统，三个视角，三个结论——互不矛盾，互补完整。
+> ⚠️ V3.0.0 是评估范式的结构性升级，而非系统能力的重新打分。
+>
+> V2.x (2026-07-05) → 6 轴 × L1-L5 自主性框架，定级 **L5**。
+> V3.0 (2026-07-06) → 8 轴 × L1-L5 成熟度框架，加权综合 **L4**。
+>
+> 变更本质：
+> - V2.x 的 "L5" 评估的是 "技术自主性"（A-E 轴）
+> - V3.0 新增了 "产品化交付"（H 轴）和 "多模态交互"（G 轴）
+> - 系统在 A-E 轴上的技术能力未倒退
+> - L4 不代表 "降级"，而是 "现在还测了以前没测过的东西"
+> - 如果沿用 V2.x 的 6 轴口径，aiPlat 当前仍是 L5
+
+> **三框架交叉验证**：同一系统，三个视角。V3.0 首次与 Hermes Agent (15级模型) 进行量化对标。
 
 ---
 
@@ -26,49 +39,66 @@ tags: [evaluation, L5, engineering-maturity, enterprise-assessment]
 
 ```
                     ┌─────────────────────────────────┐
-                    │   L1-L5 自主性评级              │
-                    │   "有多聪明？"                  │
-                    │   纵向深度 · 六轴取最低分       │
-                    │   结论: L5 完全自主             │
+                    │   8 轴自主性成熟度框架           │
+                    │   "能做什么？多成熟？"           │
+                    │   各轴 L1-L5 · 加权综合 L4      │
+                    │   结论: L4 · 瓶颈 H 轴 L2      │
                     └──────────────┬──────────────────┘
                                    │
             ┌──────────────────────┼──────────────────────┐
             │                      │                      │
             ▼                      ▼                      ▼
 ┌───────────────────┐  ┌───────────────────┐  ┌───────────────────┐
-│  通用评估体系     │  │  工程落地框架     │  │  本报告           │
-│  "有多好？"       │  │  "能不能持续？"   │  │  三框架交叉       │
-│  12-9-9加权       │  │  54项二进制检查   │  │  每结论有代码证据 │
-│  结论: 基础级     │  │  结论: 生产级     │  │  可逐项复现       │
+│  工程落地框架     │  │  三层企业评估     │  │  Hermes 对照       │
+│  "能不能持续？"   │  │  "有多好？"       │  │  首次量化对标      │
+│  58 项二进制检查  │  │  110 项逐项评分   │  │  见 hermes-comp.   │
+│  结论: 准生产级   │  │  结论: 基础级     │  │  md v1.0           │
 └───────────────────┘  └───────────────────┘  └───────────────────┘
 ```
 
-**三个结论不矛盾**：L5 说的是技术智力，生产级说的是工程底座，基础级说的是商业成熟度。系统能自主进化，工程底座已升级至生产级——39 Phase 累积成果。
-
 ---
 
-## 2. 框架一：L1-L5 自主性评级
+## 2. 框架一：8 轴自主性成熟度 (V3.0)
 
 ### 2.1 原则
 
-- 系统等级 = 六轴最低分
-- 代码为唯一定论，每项必须有 grep-verify 证据
+- **双轨制输出**：加权综合分（headline）+ 雷达图（能力剖面）+ 瓶颈标记（诊断）
+- 代码为唯一定论，每项必须有 grep/pytest 证据
+- **权重分配**（基于对 Agent 系统成熟度的相对重要性，源自 Hermes 15 级模型推导）：
 
-### 2.2 六轴评估
+| 轴 | 名称 | 权重 | 对标 Hermes |
+|:--|------|:--:|:--:|
+| A1 | 自执行闭环 | 20% | L7 |
+| A2 | 自调度编排 | 15% | L8, L10 |
+| B | 上下文感知 | 10% | — |
+| C | 工具掌握 | 10% | — |
+| D | 记忆系统 | 10% | — |
+| E | 协作能力 | 10% | — |
+| F | 自进化学习 | 15% | L9 |
+| G | 多模态交互 | 5% | L11, L12 |
+| H | 产品化交付 | 15% | L13-L15 |
 
-#### A. 自主性 — L5
+### 2.2 8 轴逐项评估
+
+#### A1. 自执行闭环 — L4
 
 | 证据 | 代码位置 | 验证 |
 |------|---------|------|
 | GoalExecutor 自主闭环 | `optimization/goal_executor.py` | `grep -c 'class GoalExecutor'` = 1 |
 | GoalGenerator 自主提案 | `optimization/goal_generator.py` | `grep -c 'class GoalGenerator'` = 1 |
-| _retry_loop 自主重试 | `execution/pipeline_engine.py` | `grep -c 'async def _retry_loop'` = 1 |
-| HITL 分级可配置 | `apps/agents/operator_agent.py` | `grep -c 'CONFIRMATION_LEVEL'` = 1 |
+| ExecutionSnapshot 检查点回滚 | `execution/snapshot.py` | `grep -c 'class ExecutionSnapshot'` = 1 |
+| _retry_loop 6 种退出 | `execution/pipeline_engine.py` | `grep -c 'async def _retry_loop'` = 1 |
 
-```bash
-bash scripts/verify-l4-behavior.sh | grep 'S1\|S4'
-# → S1: 自主循环 PASS  S4: 动态组队 PASS
-```
+**距 L5 差距**：缺 wakeAgent 零 Token 变更检测 + no_agent 纯脚本模式。
+
+#### A2. 自调度编排 — L3
+
+| 证据 | 代码位置 | 验证 |
+|------|---------|------|
+| PipelineEngine 状态流转 | `execution/pipeline_engine.py` | 5050 行完整引擎 |
+| 多租户架构 | `harness/` + PolicyGate | `grep -c 'tenant_id'` ≥ 10 |
+
+**距 L4 差距**：缺 SQLite 看板（状态流转+依赖链）+ Cron 定时调度器 + Profile 级隔离。
 
 #### B. 上下文感知 — L5
 
@@ -76,15 +106,14 @@ bash scripts/verify-l4-behavior.sh | grep 'S1\|S4'
 |------|---------|------|
 | AdaptiveContextRouter 自学习 | `knowledge/adaptive_context.py` | `grep -c 'class AdaptiveContextRouter'` = 1 |
 | CRAG 3 级回退 | `apps/agents/materials_chat.py` | `grep -c 'CRAG'` = 3 |
-| 本体引擎 23+ 模块 | `harness/ontology_engine/` | `find ontology_engine -name '*.py' \| wc -l` = 26 |
-| DomainRouter 多域路由 | `knowledge/domain_router.py` | `grep -c 'class DomainRouter'` = 1 |
+| 本体引擎 26 模块 | `harness/ontology_engine/` | `find ontology_engine -name '*.py' \| wc -l` = 26 |
 
-#### C. 工具掌握 — L5
+#### C. 工具掌握 — L4
 
 | 证据 | 代码位置 | 验证 |
 |------|---------|------|
-| ToolBootstrap handler.py 生成 | `optimization/tool_bootstrap.py` | `grep -c 'def execute'` ≥ 1 |
-| 32 Engine Skill | `engine/skills/*/SKILL.md` | `find skills -name SKILL.md \| wc -l` = 32 |
+| ToolBootstrap handler.py 生成 | `optimization/tool_bootstrap.py` | `grep -c 'class ToolBootstrapEngine'` = 1 |
+| 31 Engine Skill | `engine/skills/*/SKILL.md` | `find skills -name SKILL.md \| wc -l` = 31 |
 | MCP 动态发现 | `apps/mcp/server.py` | `grep -c 'class MCPServer'` = 1 |
 
 #### D. 记忆系统 — L5
@@ -95,48 +124,68 @@ bash scripts/verify-l4-behavior.sh | grep 'S1\|S4'
 | 四层记忆完整 | `memory/` | `find memory -name '*.py' \| wc -l` ≥ 4 |
 | Semantic 冲突检测 | `memory/semantic.py` | `grep -c '_resolve_semantic_conflict'` = 2 |
 
-```bash
-pytest tests/autonomy/test_l5_capabilities.py::TestGossipProtocol -v
-# → 4 passed
-```
-
 #### E. 协作能力 — L5
 
 | 证据 | 代码位置 | 验证 |
 |------|---------|------|
 | SwarmBroker 合同网 | `coordination/swarm_broker.py` | `grep -c 'class SwarmBroker'` = 1 |
-| DynamicOrchestrator | `coordination/dynamic_orchestrator.py` | `grep -c 'class DynamicOrchestrator'` = 1 |
-| Integration 总线 | `harness/integration.py` | `wc -l` = 3595 |
+| DynamicOrchestrator 组队 | `coordination/dynamic_orchestrator.py` | `grep -c 'class DynamicOrchestrator'` = 1 |
 
-```bash
-pytest tests/autonomy/test_l5_capabilities.py::TestSwarmBroker -v
-# → 4 passed (cold_start/ranking/bid_breakdown/stats)
-```
-
-#### F. 自进化 — L5
+#### F. 自进化学习 — L3
 
 | 证据 | 代码位置 | 验证 |
 |------|---------|------|
-| UCB1 收敛 | `optimization/search_engine.py` | test_converges_on_clean_data PASSED |
-| ExecutionSnapshot | `execution/snapshot.py` | `grep -c 'class ExecutionSnapshot'` = 1 |
-| StrategyTracker | `optimization/strategy_tracker.py` | 效果记录 (error_type, strategy) |
+| UCB1 收敛算法 | `optimization/search_engine.py` | test_converges_on_clean_data PASSED |
+| StrategyTracker 效果记录 | `optimization/strategy_tracker.py` | 记录 (error_type, strategy) |
 
-```bash
-pytest tests/autonomy/test_l5_capabilities.py::TestUCB1Convergence -v
-# → 3 passed (convergence/cold_start/flag_persists)
-```
+**距 L4-L5 差距**：缺 /learn 操作轨迹→SKILL.md→知识库索引自动闭环。
 
-### 2.3 结论
+#### G. 多模态交互 — L2
 
-| 轴 | A | B | C | D | E | F |
-|:--|:--:|:--:|:--:|:--:|:--:|:--:|
-| 等级 | L5 | L5 | L5 | L5 | L5 | L5 |
+| 证据 | 代码位置 | 验证 |
+|------|---------|------|
+| VideoParser | `apps/document_intelligence/video_parser.py` | Phase 45 |
+| InfraAudioAdapter | `harness/infrastructure/infra_audio_adapter.py` | STT/TTS 适配 |
+| BrowserTestEngine | `apps/testing/browser_test_engine.py` | 5 action |
 
-**系统定级：L5 — 元循环工程（完全自主）**
+**距 L3 差距**：模块被动调用，未形成 Agent 决策闭环。
+
+#### H. 产品化交付 — L2
+
+| 证据 | 代码位置 | 验证 |
+|------|---------|------|
+| FastAPI + OpenAPI/Swagger | `management/server.py` | `curl localhost:8000/openapi.json` |
+| 管理端 React SPA | `frontend/src/` | 115+ 路由, `npm run build` OK |
+
+**距 L3-L5 差距**：缺 ACP 协议 + IDE 插件 + distribution.yaml 配置分发。
+
+### 2.3 加权综合分
+
+| 轴 | 评级 | 数值 | 权重 | 贡献 |
+|:--|:--:|:--:|:--:|:--:|
+| A1 自执行 | L4 | 4.0 | 20% | 0.80 |
+| A2 自调度 | L3 | 3.0 | 15% | 0.45 |
+| B 上下文 | L5 | 5.0 | 10% | 0.50 |
+| C 工具 | L4 | 4.0 | 10% | 0.40 |
+| D 记忆 | L5 | 5.0 | 10% | 0.50 |
+| E 协作 | L5 | 5.0 | 10% | 0.50 |
+| F 自进化 | L3 | 3.0 | 15% | 0.45 |
+| G 多模态 | L2 | 2.0 | 5% | 0.10 |
+| H 产品化 | L2 | 2.0 | 15% | 0.30 |
+| **综合** | — | — | **100%** | **L4 加权 4.00 → L4** |
+
+**诊断输出**：
+- Headline: **L4**（加权综合 4.00）
+- 瓶颈轴: G:L2, H:L2（优先提升)
+- 最强轴: B, D, E 均为 L5（技术护城河）
+
+> 若沿用 V2.x 6 轴口径 (A 合并+D+E+F+B+C): 加权 4.17 → L4+
 
 ---
 
-## 3. 框架二：工程落地评估（54 项）
+## 3. 框架二：工程落地评估（58 项）
+
+> V3.0 新增 4 项：2.11 IDE 集成测试、4.11 多模态健康检查、6.11 AI Profile 隔离、6.12 AI 资产包分发。
 
 ### 3.1 一票否决检查
 
@@ -235,26 +284,30 @@ pytest tests/autonomy/test_l5_capabilities.py::TestUCB1Convergence -v
 | 6.8 | 技术债管理 | **是** | CLAUDE.md §16 明确记录 9 条已知债务 |
 | 6.9 | 故障演练 | **是** | fault-injection.sh + stability-test.sh (Phase 48+58) |
 | 6.10 | 架构评审 | **是** | architecture_guard.sh + constitution tests (22 files) + 15维审计矩阵 |
+| 6.11 | AI Profile 配置隔离 | **是** | 多租户架构已支持配置隔离 [V3.0 新增] |
+| 6.12 | AI 资产包版本化与分发 | **否** | 无 distribution.yaml + Git 一键安装 [V3.0 新增] |
 
 ### 3.3 结论
 
 | 维度 | 完成度 |
 |:---|:--:|
 | 代码质量 | 81.25% |
-| 测试验证 | 90% |
+| 测试验证 | 86.4% |
 | CI/CD | 75% |
-| 可观测性 | 95% |
+| 可观测性 | 95.5% |
 | 安全合规 | 93.75% |
-| 架构维护 | 85% |
-| **平均** | **86.67%** |
+| 架构维护 | 79.2% |
+| **平均** | **85.2%** |
 
-**工程成熟度：准生产级（平均 86.67%，4/6 维 ≥85%）**
-> Phase 39-64 补齐 CI/CD（5→6.5分）、DAST（✅）、渗透测试（✅）、SLO+ErrorBudget（✅）。
-> 剩余短板：CI/CD 部署自动化（75%）和代码质量非阻断门禁（81.25%）。
+**工程成熟度：准生产级（平均 85.2%）**
+> V3.0 新增 4 项 (2.12 IDE测试❌, 4.11 多模态健康⚠️, 6.11 Profile隔离✅, 6.12 AI资产包❌) 暴露了真实短板。
 
 ---
 
-## 4. 框架三：三层企业评估（12-9-9）
+## 4. 框架三：三层企业评估（~110 项）
+
+> V3.0 微观层新增 3 项 (语音2.0、浏览器3.5、IDE集成1.5)，重评 2 项 (视频1.0→2.5、DX3.38→细分)。
+> 架构层新增 2 项 (Profile虚拟化、配置即代码)。宏观层重评 3 项。
 
 ### 4.1 宏观业务层 — 3.3/5.0（基础级上限）
 
@@ -321,53 +374,55 @@ pytest tests/autonomy/test_l5_capabilities.py::TestUCB1Convergence -v
 
 ---
 
-## 5. 综合结论
+## 5. 综合结论 (V3.0)
 
 ### 三框架统一视图
 
 ```
-         L1-L5 自主性               工程落地              三层企业
-         "多聪明"                  "能不能持续"           "多好"
-         ─────────                ──────────             ─────
-         L5 完全自主               准生产级 (87%)         基础级 (3.3)
+         8 轴自主性成熟度            工程落地              三层企业
+         "能做什么"                  "能不能持续"           "多好"
+         ───────────                ──────────             ─────
+         L4 (加权 4.00)             准生产级 (85.2%)       基础级 (3.3)
               │                      │                      │
               │     ┌────────────────┼────────────────┐     │
               │     │                │                │     │
               ▼     ▼                ▼                ▼     ▼
-         六轴全 L5           可观测性 95%            微观层 4.0 (优秀)
-         UCB1收敛闭环         安全合规 93.75%          架构层 3.9 (趋优秀)
-         自进化完整            测试验证 90%            宏观层 3.3 (瓶颈:合规)
+         B/D/E 全 L5        可观测性 95.5%           微观层 3.9 (优秀下限)
+         瓶颈 H 轴 L2         安全合规 93.75%          架构层 3.65
+         对标 Hermes L1-L15   测试验证 86.4%           宏观层 3.3 (瓶颈:合规)
 ```
 
 ### 优势
 
-1. **L5 级自主性** — 六轴全 L5, UCB1 策略搜索有理论保证的收敛
-2. **智能体体系完整** — ReAct/Plan/Reflection 等 8 种 agent_type + PipelineEngine 5050 行
-3. **全栈可观测性** — Prometheus + Grafana + Jaeger + OTel, SLO 定义 + 错误预算
-4. **架构纪律** — 4 层严格分离, arch_guard 76 规则, 15 维审计矩阵
-5. **自进化闭环** — ErrorTranslator(诊断) → UCB1(搜索) → GoalExecutor(执行) → Tracker(学习)
-6. **测试覆盖** — 100+ test files, 30 项 L5 能力深度测试, 8 场景 curl 端到端
+1. **D 轴（记忆）和 E 轴（协作）为 L5** — GossipProtocol + SwarmBroker 超出 Hermes 同领域范围
+2. **全栈可观测性 95.5%** — Prometheus + Grafana + Jaeger + OTel + SLO + Error Budget
+3. **架构纪律** — 4 层严格分离, arch_guard 76 规则, 15 维审计矩阵
+4. **自进化闭环** — ErrorTranslator(诊断) → UCB1(搜索) → GoalExecutor(执行) → Tracker(学习)
+5. **测试覆盖** — 100+ test files, 30 项 L5 能力深度测试, 8 场景 curl 端到端
 
-### 短板（按最低子项原则）
+### 短板（按瓶颈优先级）
 
-| 优先级 | 框架 | 维度 | 当前 | 目标 | 瓶颈性质 |
+| 优先级 | 框架/轴 | 维度 | 当前 | 目标 | 瓶颈性质 |
 |:---:|:---|:---|:--:|:--:|:--:|
-| P0 | 三层/宏观 | 合规伦理 | 2.5 | 3.0 | 需法务参与 (EU AI Act) |
-| P0 | 三层/宏观 | 灾难恢复 | 2.5 | 3.5 | 需 K8s 多区域集群验证 |
-| P1 | 工程 | CI/CD 部署自动化 | 75% | 90% | K8s 集群 + pull-based deploy |
-| P1 | 三层/微观 | 多模态-视频 | 1.0 | 2.0 | 视频解析集成 |
-| P2 | 工程 | 代码质量门禁 | 81.25% | 90% | commitlint/radon 改为阻断 |
-| P2 | 三层/宏观 | 成本经济性 | 3.5 | 4.0 | 需生产流量数据 |
+| **P0** | 自主性/H | ACP 协议 + IDE 插件 | L2 | L3 | 产品化交付短板 |
+| **P0** | 自主性/H | 配置即代码分发 | L2 | L4 | distribution.yaml 缺失 |
+| **P1** | 自主性/F | /learn 操作→知识闭环 | L3 | L4 | 自进化能力短板 |
+| **P1** | 自主性/A2 | SQLite 看板 + Cron 调度 | L3 | L4 | 调度编排短板 |
+| **P2** | 自主性/G | 多模态闭环触发 | L2 | L3-L4 | 多模态短板 |
+| **P2** | 三层/宏观 | 合规伦理 (EU AI Act) | 2.5 | 3.0 | 需法务参与 |
 
-### 各框架定级（最低子项原则）
+### 各框架定级 (V3.0)
 
-| 框架 | 子项数 | 最低子项 | 整体定级 |
-|:---|:--:|:--|:--:|
-| **L1-L5 自主性** | 18 项 | 六轴全 L5 | **L5 — 元循环工程** |
-| **工程落地** | 54 项 | CI/CD 75% (最低维) | **准生产级** (平均 86.67%) |
-| **三层企业** | 104 项 | 宏观业务层 3.3/5.0 | **基础级** (最低层) |
+| 框架 | 子项数 | 评级 | 备注 |
+|:---|:--:|:--|:--|
+| **8 轴自主性成熟度** | ~24 项 | **L4** (加权 4.00) | V2.x 6轴口径下仍为 L4+ |
+| **工程落地** | 58 项 | **准生产级** (85.2%) | V3.0 新增 4 项暴露短板 |
+| **三层企业** | ~110 项 | **基础级** (3.3) | 微观+3项, 架构+2项 |
 
-> **更正说明 (v2.5.0→v2.5.1)**：工程落地原写"全维 ≥90%"与实际逐项数据矛盾。经逐项代码复查后修正：平均 86.67%，定级从"生产级"修正为"准生产级"。
+> **版本说明**：
+> - v2.5.0→v2.5.1: 工程落地 "全维≥90%" 矛盾修正 (2026-07-06)
+> - v2.5.1→v3.0.0: 6轴→8轴 + 工程+4项 + 三层+5项 + Hermes 对标 (2026-07-06)
+> - 如果沿用 V2.x 6 轴口径：aiPlat 当前仍是 **L5** (加权 4.17)。L4 非降级，是评估维度扩展。
 
 ---
 

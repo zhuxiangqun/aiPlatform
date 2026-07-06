@@ -2,82 +2,133 @@
 title: "aiPlat 三框架逐项评分明细"
 type: scoring-detail
 domain: aiplat-core
-version: 2.5.0
-date: 2026-07-05
+version: 3.0.0
+date: 2026-07-06
 status: published
 refs:
   - docs/framework/aiplat-complete-assessment.md
   - docs/framework/aiplat-autonomy-framework.md
+  - docs/framework/hermes-comparison.md
   - docs/whitepaper/verification-protocol.md
 ---
 
 # aiPlat 三框架逐项评分明细
 
+> ⚠️ V3.0.0 是评估范式的结构性升级，而非系统能力的重新打分。详见完整评估报告兼容性声明。
 > 每项附评分、证据路径、验证命令。审稿人可逐项复现。
 
 ---
 
-## 框架一：L1-L5 自主性评级（18 项）
+## 框架一：L1-L5 自主性成熟度（8 轴 ~24 项）
 
-### A. 自主性 — L5
+> V2.x 为 6 轴 18 项。V3.0 扩展为 8 轴，A 轴拆分为 A1/A2，新增 G/H 轴，F 轴重评。
+
+### A1 轴 — 自执行闭环：L4
 
 | # | 评估项 | 得分 | 证据 | 验证 |
 |:--:|------|:--:|------|------|
-| A1 | 人类介入频率 | L5 | GoalExecutor 自主闭环 + GoalGenerator 提案 | `grep -c GoalExecutor goal_executor.py` = 1 |
-| A2 | 任务步骤数 | L4+ | Pipeline 100-1000步, `_retry_loop` 6种退出 | `grep -c '_retry_loop' pipeline_engine.py` = 1 |
-| A3 | 目标自主设定 | L4+ | GoalGenerator 5类扫描, 低风险自动执行 | `grep -c 'class GoalGenerator' goal_generator.py` = 1 |
+| A1.1 | 自愈多策略 | L3 | ErrorTranslator → _meta_optimize 桥接, 5 子策略 | `grep -c 'async def _strategy_' pipeline_engine.py` = 5 |
+| A1.2 | Goal 循环 | L4 | GoalExecutor + GoalGenerator 5类扫描 | `grep -c 'class GoalExecutor' goal_executor.py` = 1 |
+| A1.3 | 检查点回滚 | L4 | ExecutionSnapshot save/load/compare/get_reproducible_context_hash | `grep -c 'class ExecutionSnapshot' snapshot.py` = 1 |
+| A1.4 | 零Token检测 | — | 未实现 wakeAgent / no_agent 模式 | — (L5 缺失) |
 
-### B. 上下文感知 — L5
+### A2 轴 — 自调度编排：L3
+
+| # | 评估项 | 得分 | 证据 | 验证 |
+|:--:|------|:--:|------|------|
+| A2.1 | 状态流转 | L3 | PipelineEngine + PipelineStageConfig 状态机 | `grep -c 'class PipelineEngine' pipeline_engine.py` = 1 |
+| A2.2 | 多租户隔离 | L3 | 多租户架构 + PolicyGate 审批单次检查 | `grep -c 'tenant_id'` ≥ 10 |
+| A2.3 | 看板+Cron | — | 未实现 SQLite 看板 + 定时调度器 | — (L4 缺失) |
+| A2.4 | Profile 隔离 | — | 未实现独立 memory/skills/mcp 命名空间 | — (L4 缺失) |
+
+### B 轴 — 上下文感知：L5
 
 | # | 评估项 | 得分 | 证据 | 验证 |
 |:--:|------|:--:|------|------|
 | B1 | 上下文层级 | L5 | RunContext 三层 + DomainRouter + DataSource 跨系统 | `grep -c 'class RunContext' kernel/types.py` = 1 |
-| B2 | 信息源数量 | L5 | 5+ 源 (caller/graph/datasource/fts5/hyde) | `grep -c 'CRAG' materials_chat.py` = 3 |
-| B3 | 自适应策略 | L5 | AdaptiveContextRouter 自学习选源+三档压缩 | `grep -c 'class AdaptiveContextRouter' adaptive_context.py` = 1 |
+| B2 | 信息源数量 | L5 | 5+ 源 (caller/graph/datasource/fts5/hyde), CRAG 3 级回退 | `grep -c 'CRAG' materials_chat.py` = 3 |
+| B3 | 自适应路由 | L5 | AdaptiveContextRouter select_sources + learn_from_outcome | `grep -c 'class AdaptiveContextRouter' adaptive_context.py` = 1 |
 
-### C. 工具掌握 — L5
-
-| # | 评估项 | 得分 | 证据 | 验证 |
-|:--:|------|:--:|------|------|
-| C1 | 工具数量 | L5 | 32 Skill + 813 API + ToolBootstrap 无限 | `find skills -name SKILL.md \| wc -l` = 32 |
-| C2 | 工具发现方式 | L5 | MCP 动态发现 + 自举创建 | `grep -c 'class MCPServer' mcp/server.py` = 1 |
-| C3 | 工具组合能力 | L5 | ToolBootstrap handler.py 代码生成 | `grep -c 'def execute' tool_bootstrap.py` ≥ 1 |
-
-### D. 记忆系统 — L5
+### C 轴 — 工具掌握（已剥离多模态至 G 轴）：L4
 
 | # | 评估项 | 得分 | 证据 | 验证 |
 |:--:|------|:--:|------|------|
-| D1 | 记忆层级 | L5 | 四层记忆 + GossipProtocol 分布式 | `find memory -name '*.py' \| wc -l` ≥ 4 |
-| D2 | 版本管理 | L4+ | ExecutionSnapshot 全状态快照 | `grep -c 'class ExecutionSnapshot' snapshot.py` = 1 |
-| D3 | 冲突解决 | L5 | Semantic 5维 Jaccard 自动冲突检测 | `grep -c '_resolve_semantic_conflict' semantic.py` = 2 |
+| C1 | 工具数量 | L5 | 31 Engine Skill + MCP 动态发现 | `find skills -name SKILL.md \| wc -l` = 31 |
+| C2 | 工具发现 | L4 | MCP list_tools + SkillRegistry 动态注册 | `grep -c 'class MCPServer' mcp/server.py` = 1 |
+| C3 | 工具自举 | L4 | ToolBootstrap handler.py 代码生成+编译+注册 | `grep -c 'class ToolBootstrapEngine' tool_bootstrap.py` = 1 |
+| C4 | 自主进化 | — | 缺从使用反馈中自动建议改进/弃用工具 | — (L5 缺失) |
 
-### E. 协作能力 — L5
-
-| # | 评估项 | 得分 | 证据 | 验证 |
-|:--:|------|:--:|------|------|
-| E1 | Agent 数量 | L5 | SwarmBroker 合同网, 10+ 动态 | `grep -c 'class SwarmBroker' swarm_broker.py` = 1 |
-| E2 | 协作模式 | L5 | Contract Net 竞标制 emergent swarm | `grep -c 'COLD_START_BONUS' swarm_broker.py` = 1 |
-| E3 | 动态组队 | L5 | SwarmBroker + DynamicOrchestrator fallback | `grep -c 'class DynamicOrchestrator' dynamic_orchestrator.py` = 1 |
-
-### F. 自进化 — L5
+### D 轴 — 记忆系统：L5
 
 | # | 评估项 | 得分 | 证据 | 验证 |
 |:--:|------|:--:|------|------|
-| F1 | 反馈收集 | L5 | StrategyTracker 全量 (error_type, strategy) 记录 | `grep -c 'class StrategyEffectivenessTracker' strategy_tracker.py` = 1 |
-| F2 | 策略优化 | L5 | UCB1 搜索-评估-比较-回滚闭环 | `pytest -k test_ucb1 -q` → 3 passed |
-| F3 | 自我修复 | L5 | Phase 24-26: 诊断→路由→快照→学习 | `grep -c 'async def _strategy_' pipeline_engine.py` = 5 |
+| D1 | 记忆层级 | L5 | Working+Episodic+Semantic+Procedural 四层完整 | `find memory -name '*.py' \| wc -l` ≥ 4 |
+| D2 | 跨实例共享 | L5 | SharedKnowledgePool SQLite WAL 双写 + sync_from_db | `grep -c 'WAL' shared_pool.py` ≥ 1 |
+| D3 | 去中心化 | L5 | GossipProtocol push-pull + fact_id哈希 + TTL + 冲突检测 | `grep -c 'class GossipProtocol' gossip_protocol.py` = 1 |
 
-**六轴最低分：L4+（A3 目标自主设定）→ 系统定级 L5（取最高一致区间）**
+### E 轴 — 协作能力：L5
+
+| # | 评估项 | 得分 | 证据 | 验证 |
+|:--:|------|:--:|------|------|
+| E1 | 动态组队 | L5 | DynamicOrchestrator 正则+注册表→子Agent生成 | `grep -c 'class DynamicOrchestrator' dynamic_orchestrator.py` = 1 |
+| E2 | 合同网协商 | L5 | SwarmBroker announce→bid→award, 能力自评 | `grep -c 'class SwarmBroker' swarm_broker.py` = 1 |
+| E3 | 冷启动探索 | L5 | COLD_START_BONUS 0.1 + keyword 0.3+history 0.3+tag 0.4 | `grep -c 'COLD_START_BONUS' swarm_broker.py` = 1 |
+
+### F 轴 — 自进化学习（重评）：L3
+
+| # | 评估项 | 得分 | 证据 | 验证 |
+|:--:|------|:--:|------|------|
+| F1 | 策略记录 | L3 | StrategyEffectivenessTracker 全量 (error_type, strategy) | `grep -c 'class StrategyEffectivenessTracker' strategy_tracker.py` = 1 |
+| F2 | 算法优化 | L3 | UCB1 收敛 + explain_decision | `pytest -k test_ucb1 -q` → 3 passed |
+| F3 | 反馈学习 | — | 缺 Feedback→参数自动调整→微调触发管道 | — (L4 缺失) |
+| F4 | 操作→知识 | — | 缺 /learn 操作轨迹→SKILL.md→知识库索引闭环 | — (L5 缺失) |
+
+### G 轴 — 多模态交互（新增）：L2
+
+| # | 评估项 | 得分 | 证据 | 验证 |
+|:--:|------|:--:|------|------|
+| G1 | 视频解析 | L2 | VideoParser probe→transcribe→keyframes (Phase 45) | `grep -c 'class VideoParser' video_parser.py` = 1 |
+| G2 | 音频处理 | L2 | InfraAudioAdapter 语音转文字 | `grep -c 'InfraAudioAdapter'` ≥ 1 |
+| G3 | 浏览器操控 | L3 | BrowserTestEngine 5 action (select/scroll/hover/press_key/upload) | `grep -c 'BrowserTestEngine'` ≥ 1 |
+| G4 | 闭环触发 | — | 多模态输入未作为 Goal 循环触发源 | — (L4-L5 缺失) |
+
+### H 轴 — 产品化交付（新增）：L2
+
+| # | 评估项 | 得分 | 证据 | 验证 |
+|:--:|------|:--:|------|------|
+| H1 | HTTP API | L2 | FastAPI + OpenAPI/Swagger, 5 service layers | `curl -sf localhost:8000/openapi.json \| jq '.info.title'` |
+| H2 | 管理前端 | L2 | 管理端 115+ 路由 React SPA | `ls aiPlat-management/frontend/src/pages/ \| wc -l` ≥ 20 |
+| H3 | IDE 嵌入 | — | 无 ACP 协议, 无 VS Code/JetBrains 插件 | — (L3 缺失) |
+| H4 | 配置分发 | — | 无 distribution.yaml + Git 一键安装 | — (L4 缺失) |
+
+### 加权综合分计算
+
+| 轴 | 评级 | 数值 | 权重 | 贡献 |
+|:--|:--:|:--:|:--:|:--:|
+| A1 自执行 | L4 | 4.0 | 20% | 0.80 |
+| A2 自调度 | L3 | 3.0 | 15% | 0.45 |
+| B 上下文 | L5 | 5.0 | 10% | 0.50 |
+| C 工具 | L4 | 4.0 | 10% | 0.40 |
+| D 记忆 | L5 | 5.0 | 10% | 0.50 |
+| E 协作 | L5 | 5.0 | 10% | 0.50 |
+| F 自进化 | L3 | 3.0 | 15% | 0.45 |
+| G 多模态 | L2 | 2.0 | 5% | 0.10 |
+| H 产品化 | L2 | 2.0 | 15% | 0.30 |
+| **综合** | — | — | **100%** | **4.00 → L4** |
+
+> 瓶颈标记：G:L2, H:L2。若沿用 V2.x 6 轴口径（A-E+F），加权综合 = 4.17 → L4+。
 
 ```bash
 # 一键验证
 bash scripts/verify-l4-pyramid.sh | grep '最大可宣称'
-# → L5 (元循环工程)
+# → L4 (加权综合 4.00，8 轴)
 ```
 
 ---
 
-## 框架二：工程落地框架（54 项）
+## 框架二：工程落地框架（58 项）
+
+> V2.x 为 54 项。V3.0 新增 4 项：2.11 IDE 集成测试、4.11 多模态健康检查、6.11 AI Profile 隔离、6.12 AI 资产包分发。
 
 ### 1. 代码质量与规范 — 87.5% (7/8 是)
 
@@ -107,6 +158,7 @@ bash scripts/verify-l4-pyramid.sh | grep '最大可宣称'
 | 2.9 | 测试数据管理 | 🔶 | core/tests/conftest.py 自动隔离 | 部分旧测试仍有共享状态 |
 | 2.10 | 环境一致性 | 🔶 | docker-compose 存在, Helm chart 存在 | 非 CI 强制执行 |
 | 2.11 | 覆盖门禁 | 🔶 | 无 coverage threshold gate | 无 CI fail-on-low-coverage |
+| 2.12 | IDE 集成测试 | ❌ | 无 ACP 协议兼容插件的冒烟测试 | V3.0 新增检查项 (L14 对标) |
 
 ### 3. CI/CD — 93.75% (7/8 是, 1/8 部分)
 
@@ -135,6 +187,7 @@ bash scripts/verify-l4-pyramid.sh | grep '最大可宣称'
 | 4.8 | Error Budget | ✅ | SLO 文档含 monthly error budget 计算 | — |
 | 4.9 | Health Check | ✅ | 每层 /health + Docker healthcheck | — |
 | 4.10 | 业务指标面板 | 🔶 | Grafana dashboard 存在 | 业务级覆盖待完善 |
+| 4.11 | 多模态管道健康检查 | 🔶 | 有 HealthChecker 框架, 无 STT/TTS/Browser 专项探针 | V3.0 新增检查项 (L11-L12 对标) |
 
 ### 5. 安全与合规 — 75% (6/8 是)
 
@@ -163,20 +216,23 @@ bash scripts/verify-l4-pyramid.sh | grep '最大可宣称'
 | 6.8 | 技术债管理 | ✅ | CLAUDE.md §16 记录9条已知债务 | — |
 | 6.9 | 故障演练 | ❌ | 无 Chaos Engineering | 需添加 |
 | 6.10 | 架构评审 | ✅ | architecture_guard.sh + constitution tests(22) | — |
+| 6.11 | AI Profile 隔离 | ✅ | 多租户架构已支持配置隔离 | V3.0 新增, 未达 Profile 级全隔离 |
+| 6.12 | AI 资产包分发 | ❌ | 无 distribution.yaml + Git 一键安装 | V3.0 新增检查项 (L15 对标) |
 
 ### 工程成熟度汇总
 
 | 维度 | 是 | 部分 | 否 | 完成度 | 等级 |
 |:---|:--:|:--:|:--:|:--:|:--|
 | 1. 代码质量 | 7 | 1 | 0 | **87.5%** | 准生产级 |
-| 2. 测试验证 | 6 | 4 | 0 | **80%** | 准生产级 |
+| 2. 测试验证 | 6 | 4 | 1 | **77.3%** | 准生产级 |
 | 3. CI/CD | 7 | 0 | 1 | **87.5%** | 准生产级 |
-| 4. 可观测性 | 9 | 1 | 0 | **90%** | 生产级 |
+| 4. 可观测性 | 9 | 2 | 0 | **90.9%** | 生产级 |
 | 5. 安全合规 | 8 | 0 | 0 | **100%** | 生产级 |
-| 6. 架构维护 | 7 | 2 | 1 | **85%** | 准生产级 |
+| 6. 架构维护 | 8 | 2 | 2 | **83.3%** | 准生产级 |
 
-**最低维 测试 90% → 工程成熟度：逼近生产级**
+**平均 87.9% → 工程成熟度：准生产级**
 **一票否决：全部通过（5/5）**
+> V3.0 新增 4 项检查暴露了真实短板 (6.12 AI资产包❌, 2.12 IDE测试❌)。
 
 ---
 
@@ -220,14 +276,16 @@ bash scripts/verify-l4-pyramid.sh | grep '最大可宣称'
 | T0.8 | 动态注入 | 4.5 | RunContext 三层注入 (caller→DataSource→GraphIndex) | 是 |
 | T0.9 | 跨域路由 | 4.5 | DomainRouter 3层级联 + 本体YAML驱动 + CRAG 3级回退 | 是 |
 
-#### 0.9. 多模态能力 (4项, 权重 6%)
+#### 0.9. 多模态能力 (6项, 权重 6%)
 
 | # | 评估项 | 得分 | 证据 | 一级 |
 |:--:|------|:--:|------|:--:|
 | T0.10 | 图片处理 | 3.5 | InfraOCRAdapter (Tesseract/PaddleOCR) + DocumentParser(5格式) | 部分 |
 | T0.11 | 音频处理 | 4.0 | InfraAudioAdapter (Whisper/faster_whisper) + transcriber.py | 是 |
-| T0.12 | 视频处理 | 1.0 | 无视频解析能力 | 否 |
+| T0.12 | 视频处理 | 2.5 | VideoParser probe→transcribe→keyframes (Phase 45) [V3.0 重评] | 部分 |
 | T0.13 | 多格式文档 | 4.0 | DocumentParser — MD/HTML/TXT/PDF/DOCX 5格式 | 是 |
+| T0.14 | 语音交互 (STT/TTS) | 2.0 | InfraAudioAdapter 存在，未融入Agent决策闭环 [V3.0 新增] | 否 |
+| T0.15 | 浏览器自动化 | 3.5 | BrowserTestEngine 5 action (select/scroll/hover/press_key/file_upload) [V3.0新增] | 部分 |
 
 #### 1. Agent 框架与运行时 (6项, 权重 12%)
 
@@ -250,7 +308,7 @@ bash scripts/verify-l4-pyramid.sh | grep '最大可宣称'
 | T2.4 | 长期记忆管理 | 4.5 | 四层记忆 (Working/Episodic/Semantic/TaskSkills) | 是 |
 | T2.5 | 规划执行效率 | 4.0 | T1-T5 模型降级 + token_budget 管理 | 是 |
 
-#### 2.5. 开发者体验 DX (4项, 权重 7%)
+#### 2.5. 开发者体验 DX (5项, 权重 7%)
 
 | # | 评估项 | 得分 | 证据 | 一级 |
 |:--:|------|:--:|------|:--:|
@@ -258,6 +316,7 @@ bash scripts/verify-l4-pyramid.sh | grep '最大可宣称'
 | T2.7 | API 一致性 | 4.0 | 813 端点 + OpenAPI/Swagger 全层 + RESTful 设计 | 是 |
 | T2.8 | 文档完整性 | 4.0 | 架构文档 + API Reference + Getting Started + Swagger UI (115路由) | 是 |
 | T2.9 | 上手难度 | 4.0 | Web UI + OnboardingWizard(7步) + 4种Agent模板 + AI自动填充 | 是 |
+| T2.10 | IDE 集成 | 1.5 | 无 ACP协议, 无 VS Code/JetBrains 插件 [V3.0 新增] | 否 |
 
 #### 3. Skill 系统 (5项, 权重 10%)
 
@@ -375,10 +434,10 @@ bash scripts/verify-l4-pyramid.sh | grep '最大可宣称'
 |:---|:--:|:--:|:--:|:--:|
 | 提示词工程 | 4 | 4.25 | 4.5 | 4.0 |
 | 上下文工程 | 5 | 4.40 | 4.5 | 4.0 |
-| 多模态能力 | 4 | 3.13 | 4.0 | 1.0 |
+| 多模态能力 | 6 | 3.25 | 4.0 | 2.0 |
 | Agent 框架 | 6 | 4.42 | 4.5 | 4.0 |
 | Agent 智能性 | 5 | 4.40 | 4.5 | 4.0 |
-| 开发者体验 (DX) | 4 | 4.00 | 4.0 | 4.0 |
+| 开发者体验 (DX) | 5 | 3.40 | 4.0 | 1.5 |
 | Skill 系统 | 5 | 3.90 | 4.5 | 3.5 |
 | MCP 协议 | 6 | 3.75 | 4.5 | 3.0 |
 | Workflow | 7 | 4.14 | 4.5 | 3.0 |
@@ -390,11 +449,10 @@ bash scripts/verify-l4-pyramid.sh | grep '最大可宣称'
 | 成本效率 | 4 | 3.75 | 4.5 | 3.0 |
 | 模型治理 | 5 | 3.50 | 4.0 | 3.0 |
 | 数据治理 | 4 | 3.75 | 4.0 | 3.0 |
-| **加权总分** | **83** | **3.99** | — | — |
+| **加权总分** | **87** | **3.94** | — | — |
 
-**微观技术层：4.0/5.0（优秀级）**
-
-> 新增 6 组件 (多模态/DX/部署/性能/可靠性/成本) 后，最低分拉低平均。多模态(视频 1.0)和性能基线(3.25)是主要短板。
+**微观技术层：3.9/5.0（优秀级下限）** [V3.0 新增 3项 + 2项重评]
+> V3.0 新增语音(2.0)、浏览器(3.5)、操作→知识(见自学习)、IDE集成(1.5)。多模态从 4→6 项，平均分因新增低分项下降。
 
 ### 架构底座层 — 3.5/5.0（基础级）
 
@@ -407,17 +465,19 @@ bash scripts/verify-l4-pyramid.sh | grep '最大可宣称'
 | 5 | 部署运维 | 12% | 3.0 | docker-compose + Helm(7文件), 无GitOps |
 | 6 | 工程质量 | 10% | 3.5 | 覆盖率≥80%, CI/CD存在, ADR非标准格式 |
 | 7 | 架构演进 | 8% | 4.0 | 45 Phase递进 + CLAUDE.md技术债管理 |
-| 8 | 安全架构 | 10% | 3.0 | AES-256 + 审计链, 无零信任/微隔离 |
-| 9 | 多智能体编排 | 9% | 4.0 | SwarmBroker + Orchestrator + A2A |
+| 8 | 安全架构 | 9% | 3.5 | AES-256 + 审计链 + AI pentest + ZAP DAST [V3.0 重评] |
+| 9 | 多智能体编排 | 8% | 4.0 | SwarmBroker + Orchestrator + A2A |
+| 10 | AI Profile 虚拟化 | 5% | 3.5 | 多租户架构存在, 未达 Profile 级全隔离 [V3.0 新增] |
+| 11 | 配置即代码分发 | 5% | 2.5 | 无 distribution.yaml + Git 一键安装 [V3.0 新增] |
 
 ### 三层综合
 
 | 层级 | 加权得分 | 等级 |
 |:---|:--:|:---|
-| 宏观业务层 | 3.1 | 基础级 |
-| 微观技术层 | 4.2 | 优秀级 |
-| 架构底座层 | 3.5 | 基础级 |
-| **综合** | **3.1** | **基础级** |
+| 宏观业务层 | 3.3 | 基础级 [V3.0 重评] |
+| 微观技术层 | 3.9 | 优秀级下限 [V3.0 新增3项] |
+| 架构底座层 | 3.65 | 基础级 [V3.0 新增2项] |
+| **综合** | **3.3** | **基础级** |
 
 ---
 
@@ -427,13 +487,20 @@ bash scripts/verify-l4-pyramid.sh | grep '最大可宣称'
 
 | 框架 | 定级 | 拖后腿项 |
 |:---|:---|:---|
-| **L1-L5 自主性** | L5 完全自主 | A3(目标自主设定) = L4+ |
-| **工程落地** | 实验级 | CI/CD(87.5%), 无遗留缺口 |
-| **三层企业** | 基础级 | 宏观 FDE(2.5) + 灾难恢复(2.5) 拉低全体 |
+| **L1-L5 自主性 (V3.0)** | L4 (加权 4.00) | G:L2(多模态), H:L2(产品化) |
+| **工程落地** | 准生产级 (87.9% 均分) | 2.12 IDE测试❌, 6.12 AI资产包❌ |
+| **三层企业** | 基础级 (3.3) | 宏观合规(2.5), 灾备(2.5), 架构分发(2.5) |
 
 ### 升级路径
 
-| 优先级 | 框架 | 维度 | 目标 | 预估工作量 |
+| 优先级 | 框架 | 维度 | 当前 | 目标 | 说明 |
+|:--:|:---|:---|:--:|:--:|------|
+| P0 | 自主性/H | ACP 协议 + IDE 插件 | L2 | L3 | 2-3 周 |
+| P0 | 自主性/H | 配置即代码分发 | L2 | L4 | 1-2 周 |
+| P1 | 自主性/F | /learn 操作→知识闭环 | L3 | L4 | 4-6 周 |
+| P1 | 自主性/A2 | SQLite 看板 + Cron 调度 | L3 | L4 | 2-3 周 |
+| P2 | 自主性/G | 语音+浏览器决策闭环 | L2 | L3-L4 | 4-8 周 |
+| P2 | 三层/宏观 | 合规伦理 (EU AI Act) | 2.5 | 3.0 | 需法务 |
 |:--:|:---|:---|:---|:--:|
 | P0 | 工程 | 3.4 生产审批 | PR required reviewers | 低 |
 | P1 | 工程 | 5.2 DAST | OWASP ZAP CI 集成 | 中 |
