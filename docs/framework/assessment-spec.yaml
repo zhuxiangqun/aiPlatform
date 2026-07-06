@@ -134,7 +134,7 @@ frameworks:
              evidence: {command: "grep -rl 'InfraAudioAdapter' aiPlat-core/core --include=*.py | wc -l", op: "-ge", expected: 1}}
           - {id: G3, desc: "浏览器操控(BrowserTestEngine)", declared_level: L3, source: script,
              evidence: {command: "grep -rl 'BrowserTestEngine' aiPlat-core/core --include=*.py | wc -l", op: "-ge", expected: 1}}
-          - {id: G4, desc: "多模态Goal触发(GoalLoopBridge+MultiModalTrigger)", declared_level: L3, source: file_check,
+          - {id: G4, desc: "多模态Goal触发(GoalLoopBridge+MultiModalTrigger)", declared_level: L4, source: file_check,
              evidence: {command: "grep -c 'class GoalLoopBridge\\|class MultiModalTrigger' aiPlat-core/core/harness/multimodal/trigger.py", op: "-ge", expected: 2}}
       - id: H
         name: "产品化交付"
@@ -268,8 +268,8 @@ frameworks:
           - {id: "macro.8", desc: "可观测性", score: 4.0, weight: 0.06, source: manual}
           - {id: "macro.9", desc: "生态扩展", score: 3.5, weight: 0.05, source: manual}
           - {id: "macro.10", desc: "成本经济性", score: 3.0, weight: 0.08, source: manual}
-          - {id: "macro.11", desc: "灾难恢复", score: 2.5, weight: 0.06, source: manual}
-          - {id: "macro.12", desc: "实施落地(FDE)", score: 2.5, weight: 0.08, source: manual}
+          - {id: "macro.11", desc: "灾难恢复", score: 3.0, weight: 0.06, source: manual}
+          - {id: "macro.12", desc: "实施落地(FDE)", score: 3.0, weight: 0.08, source: manual}
       - id: micro
         name: "微观技术层"
         declared_tier_score: 3.9
