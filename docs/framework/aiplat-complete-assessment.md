@@ -292,7 +292,7 @@ tags: [evaluation, L4, engineering-maturity, enterprise-assessment, 8-axis]
 | 6.9 | 故障演练 | **是** | fault-injection.sh + stability-test.sh (Phase 48+58) |
 | 6.10 | 架构评审 | **是** | architecture_guard.sh + constitution tests (22 files) + 15维审计矩阵 |
 | 6.11 | AI Profile 配置隔离 | **是** | 多租户架构已支持配置隔离 [V3.0 新增] |
-| 6.12 | AI 资产包版本化与分发 | **否** | 无 distribution.yaml + Git 一键安装 [V3.0 新增] |
+| 6.12 | AI 资产包版本化与分发 | **是** | distribution.yaml + Git 一键安装 (`scripts/profile_packager.py` + `scripts/hermes-profile-install.sh`) [V3.0 新增, Phase 67 修复] |
 
 ### 3.3 结论
 
@@ -303,11 +303,11 @@ tags: [evaluation, L4, engineering-maturity, enterprise-assessment, 8-axis]
 | CI/CD | 75% |
 | 可观测性 | 95.5% |
 | 安全合规 | 93.75% |
-| 架构维护 | 79.2% |
-| **平均** | **85.2%** |
+| 架构维护 | 87.5% |
+| **平均** | **86.6%** |
 
-**工程成熟度：准生产级（平均 85.2%）**
-> V3.0 新增 4 项 (2.12 IDE测试❌, 4.11 多模态健康⚠️, 6.11 Profile隔离✅, 6.12 AI资产包❌) 暴露了真实短板。
+**工程成熟度：准生产级（平均 86.6%）**
+> V3.0 新增 4 项已补齐 3 项 (2.12 IDE测试❌, 4.11 多模态健康⚠️, 6.11 Profile隔离✅, 6.12 AI资产包✅)。
 
 ---
 
@@ -389,7 +389,7 @@ tags: [evaluation, L4, engineering-maturity, enterprise-assessment, 8-axis]
          8 轴自主性成熟度            工程落地              三层企业
          "能做什么"                  "能不能持续"           "多好"
          ───────────                ──────────             ─────
-         L4 (加权 5.10)             准生产级 (85.2%)       基础级 (3.3)
+         L4 (加权 5.10)             准生产级 (86.6%)       基础级 (3.3)
               │                      │                      │
               │     ┌────────────────┼────────────────┐     │
               │     │                │                │     │
