@@ -73,6 +73,8 @@ jobs:
         run: pip install -e "." || true
       - name: Run L5 depth tests
         run: python -m pytest tests/autonomy/test_l5_capabilities.py -v --tb=short -q
+      - name: ACP Smoke Test (IDE integration)
+        run: bash scripts/test-acp-smoke.sh || echo "ACP smoke skipped (informational)"
 
   benchmark:
     name: Performance Benchmarks
