@@ -23,6 +23,13 @@ interface EvalOverview {
   eval_sets: number;
   agents_evaluated: number;
   agents: EvalAgent[];
+  production_success?: {
+    success_rate: number;
+    total_runs: number;
+    avg_score: number;
+    trend: 'up' | 'down' | 'stable';
+    window: number;
+  };
 }
 
 interface AgentScore {
@@ -151,7 +158,7 @@ const EvalDashboard: React.FC = () => {
       </Link>
 
       {/* Stats Row */}
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-5 gap-4">
         <Card className="bg-dark-card border-dark-border">
           <CardContent className="p-4 text-center">
             <div className="text-2xl font-bold text-green-400">{overview?.agents_evaluated ?? 0}</div>
@@ -180,6 +187,19 @@ const EvalDashboard: React.FC = () => {
             <div className="text-xs text-gray-500 mt-1">平均分</div>
           </CardContent>
         </Card>
+        {overview?.production_success ? (
+          <Card className="bg-dark-card border-dark-border">
+            <CardContent className="p-4 text-center">
+              <div className="text-2xl font-bold text-emerald-400">{overview.production_success.success_rate}%</div>
+              <div className="text-xs text-gray-500 mt-1">
+                生产成功率 · {overview.production_success.total_runs ?? 0} 次
+                <span className={`ml-1 ${overview.production_success.trend === 'up' ? 'text-emerald-400' : overview.production_success.trend === 'down' ? 'text-red-400' : 'text-gray-500'}`}>
+                  {overview.production_success.trend === 'up' ? '↑' : overview.production_success.trend === 'down' ? '↓' : '–'}
+                </span>
+              </div>
+            </CardContent>
+          </Card>
+        ) : null}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">

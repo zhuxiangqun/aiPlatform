@@ -124,11 +124,46 @@ async def get_evaluation_overview():
             "trend": trend,
         })
 
+    # Production task success rate — from auto-runtime scores written on every
+    # real agent run (P0-2). This is the continuous "真实水平" signal, distinct
+    # from synthetic eval-set scores. (P2)
+    runtime = [r for r in all_results if r.get("eval_set_id") == "auto-runtime"]
+    prod_total = len(runtime)
+    prod_complete = sum(
+        1 for r in runtime
+        if (r.get("task_completion") or {}).get("level") == "complete"
+    )
+    prod_avg = (sum(r.get("composite_score", 0) for r in runtime) / prod_total) if prod_total else 0
+    # Trend: newest 20 vs the 20 before them (results are newest-first)
+    recent = runtime[:20]
+    prior = runtime[20:40]
+
+    def _rate(rows: List[Dict[str, Any]]) -> float:
+        if not rows:
+            return 0.0
+        c = sum(1 for r in rows if (r.get("task_completion") or {}).get("level") == "complete")
+        return c / len(rows)
+
+    recent_rate = _rate(recent)
+    prior_rate = _rate(prior)
+    prod_trend = (
+        "up" if recent_rate > prior_rate + 0.05
+        else "down" if recent_rate < prior_rate - 0.05
+        else "stable"
+    )
+
     return {
         "total_evals": len(all_results),
         "eval_sets": len(eval_sets),
         "agents_evaluated": len(agent_scores),
         "agents": agents,
+        "production_success": {
+            "total_runs": prod_total,
+            "success_rate": round(prod_complete / prod_total * 100, 1) if prod_total else 0,
+            "avg_score": round(prod_avg, 1),
+            "trend": prod_trend,
+            "window": len(recent),
+        },
     }
 
 
