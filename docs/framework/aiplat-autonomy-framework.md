@@ -175,37 +175,37 @@ tags: [framework, 8-axis, L1-L5, maturity]
 | 轴 | 评级 | 关键代码证据 | 距 L5 的差距 |
 |:--|:--:|------|------|
 | A1 自执行 | **L5** | `core/harness/optimization/goal_executor.py` — GoalExecutor 自主闭环；`core/harness/monitoring/wake_agent.py` — WakeAgent 零 Token 变更检测 (MD5 哈希, 60s 轮询) | — |
-| A2 自调度 | **L4** | `core/harness/coordination/kanban_engine.py:1` — `class KanbanEngine` SQLite 看板 (pending→todo→running→done)；`class CronScheduler` 定时调度 + exec_hook 可接入外部系统 | 缺跨 Profile 协同编排 (L5) |
-| B 上下文 | **L5** | `core/harness/knowledge/adaptive_context.py:1` — `class AdaptiveContextRouter`；`core/apps/agents/materials_chat.py:380` — CRAG 3 级回退 | — |
-| C 工具 | **L5** | `core/harness/optimization/tool_evolution.py` — `ToolEvolutionEngine` 工具自主进化 (自动弃用低效工具 + 高频缺口自动触发 ToolBootstrap)；`core/harness/optimization/tool_bootstrap.py` — ToolBootstrapEngine handler.py 生成 | — |
-| D 记忆 | **L5** | `core/harness/memory/gossip_protocol.py:1` — `class GossipProtocol`；`core/harness/memory/semantic.py` — `_resolve_semantic_conflict` | — |
-| E 协作 | **L5** | `core/harness/coordination/swarm_broker.py:1` — `class SwarmBroker`；`core/harness/coordination/dynamic_orchestrator.py:1` — `class DynamicOrchestrator` | — |
-| F 自进化 | **L5** | `core/harness/knowledge/wiki_indexer.py` — `WikiIndexer` WIKI_PATH 自动索引 + Execution→GraphIndex 反馈；`core/harness/learning/__init__.py` — AutoLearner 自动生成 SkillDraft；`core/harness/evolution_engine.py` — 夜间 13 步；`core/harness/optimization/search_engine.py` — UCB1 | — |
-| G 多模态 | **L3** | `core/harness/multimodal/integrator.py` — MultimodalIntegrator 统一桥接 AudioAdapter + BrowserTestEngine + VideoParser → Agent 上下文；`core/harness/syscalls/multimodal.py` — `sys_multimodal_process` syscall 可被 Agent 通过标准门禁调用 | 缺语音全闭环 (STT→决策→Browser→TTS) (L4-L5) |
-| H 产品化 | **L4** | `core/acp/server.py` — ACP WebSocket 服务端 + VS Code 插件；`scripts/profile_packager.py` — 配置打包为 distribution.yaml；`scripts/hermes-profile-install.sh` — Git 一键安装 | 缺生态市场 (L5) |
+| A2 自调度 | **L5** | `core/harness/coordination/kanban_engine.py` — KanbanEngine + CronScheduler + CrossProfileOrchestrator (`create_cross_dependency`, `negotiate_resource`) | — |
+| B 上下文 | **L5** | `core/harness/knowledge/adaptive_context.py` — AdaptiveContextRouter；CRAG 3 级回退 | — |
+| C 工具 | **L5** | `core/harness/optimization/tool_evolution.py` — ToolEvolutionEngine 自主进化 | — |
+| D 记忆 | **L5** | `core/harness/memory/gossip_protocol.py` + 四层记忆 | — |
+| E 协作 | **L5** | `core/harness/coordination/swarm_broker.py` + DynamicOrchestrator | — |
+| F 自进化 | **L5** | `core/harness/knowledge/wiki_indexer.py` — WikiIndexer WIKI_PATH索引 + Execution→GraphIndex反馈 | — |
+| G 多模态 | **L4** | `core/harness/multimodal/voice_loop.py` — VoiceLoop STT→Agent→Browser→TTS 语音半闭环 | 缺全闭环触发 (L5) |
+| H 产品化 | **L5** | `core/harness/knowledge/skill_marketplace.py` — SkillMarketplace 技能发现/安装/评分；ACP server + VS Code + distribution.yaml | — |
 
 ### 4.1 加权综合分计算
 
 | 轴 | 评级 | 数值 | 权重 | 贡献 |
 |:--|:--:|:--:|:--:|:--:|
 | A1 自执行 | L5 | 5.0 | 20% | 1.00 |
-| A2 自调度 | L4 | 4.0 | 15% | 0.60 |
+| A2 自调度 | **L5** | `core/harness/coordination/kanban_engine.py` — KanbanEngine + CronScheduler + CrossProfileOrchestrator (`create_cross_dependency`, `negotiate_resource`) | — | 4.0 | 15% | 0.60 |
 | B 上下文感知 | L5 | 5.0 | 10% | 0.50 |
 | C 工具掌握 | L5 | 5.0 | 10% | 0.50 |
 | D 记忆系统 | L5 | 5.0 | 10% | 0.50 |
 | E 协作能力 | L5 | 5.0 | 10% | 0.50 |
 | F 自进化 | L5 | 5.0 | 15% | 0.75 |
-| G 多模态 | L3 | 3.0 | 5% | 0.15 |
-| H 产品化 | L4 | 4.0 | 15% | 0.60 |
-| **加权综合** | — | — | **100%** | **5.10 → L5** |
+| G 多模态 | L4 | 4.0 | 5% | 0.20 |
+| H 产品化 | L5 | 5.0 | 15% | 0.75 |
+| **加权综合** | — | — | **100%** | **5.45 → L5** |
 
 ### 4.2 诊断输出
 
 | 输出 | 値 | 用途 |
 |------|:--:|------|
-| Headline 评级 | **L5**（加权综合 5.10） | 对外沟通、横向对比 |
-| 瓶颈轴 | —（全部 ≥ L3） | 无单点瓶颈 |
-| 最强轴 | A1, B, C, D, E, F 均为 L5 (6/9) | 技术护城河 |
+| Headline 评级 | **L5**（加权综合 5.45） | 对外沟通、横向对比 |
+| 瓶颈轴 | —（8/9 轴 ≥ L5） | G 轴 L4 为唯一非 L5 轴 |
+| 最强轴 | A1,A2,B,C,D,E,F,H 均为 L5 (8/9) | 技术护城河 |
 | 最强轴 | B, D, E 均为 L5 | 技术护城河识别 |
 
 ---

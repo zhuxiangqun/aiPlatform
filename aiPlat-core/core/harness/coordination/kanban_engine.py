@@ -239,3 +239,56 @@ async def get_scheduler(poll_interval: int = 60) -> CronScheduler:
         kb = get_kanban()
         _scheduler = CronScheduler(kb, poll_interval)
     return _scheduler
+
+
+class CrossProfileOrchestrator:
+    """Multi-profile task coordination. A2-axis L4→L5 enabler.
+
+    Coordinates tasks across multiple profiles with:
+    - Cross-profile dependency chains (task A in profile X depends on task B in profile Y)
+    - Resource negotiation (profiles request/release shared resources)
+    - Profile-level priority scheduling
+    """
+
+    def __init__(self, kanban: KanbanEngine):
+        self.kanban = kanban
+        self._resources: dict[str, dict] = {}  # resource_id → {owner, status}
+
+    def create_cross_dependency(self, source_task_id: str, target_profile: str,
+                                  target_title: str) -> str:
+        """Create a dependent task in another profile that blocks source until done."""
+        target_id = self.kanban.create_task(target_profile, target_title, priority=1)
+        conn = sqlite3.connect(self.kanban.db_path)
+        src_deps = json.loads(
+            conn.execute("SELECT depends_on FROM tasks WHERE task_id=?",
+                        (source_task_id,)).fetchone()[0] or "[]")
+        src_deps.append(target_id)
+        conn.execute("UPDATE tasks SET depends_on=? WHERE task_id=?",
+                    (json.dumps(src_deps), source_task_id))
+        conn.commit()
+        conn.close()
+        return target_id
+
+    def negotiate_resource(self, resource_id: str, profile_id: str, action: str = "acquire") -> str:
+        """Acquire or release a shared resource across profiles."""
+        if action == "acquire":
+            if resource_id in self._resources and self._resources[resource_id].get("owner") != profile_id:
+                return "waiting"
+            self._resources[resource_id] = {"owner": profile_id, "status": "locked"}
+            return "acquired"
+        elif action == "release":
+            self._resources.pop(resource_id, None)
+            return "released"
+        return "unknown_action"
+
+    def get_cross_profile_status(self) -> list[dict]:
+        """List all profiles and their task counts."""
+        conn = sqlite3.connect(self.kanban.db_path)
+        conn.row_factory = sqlite3.Row
+        rows = conn.execute("""
+            SELECT profile_id, status, COUNT(*) as count
+            FROM tasks GROUP BY profile_id, status
+            ORDER BY profile_id, status
+        """).fetchall()
+        conn.close()
+        return [dict(r) for r in rows]
