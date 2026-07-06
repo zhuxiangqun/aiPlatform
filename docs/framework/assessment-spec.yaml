@@ -39,9 +39,11 @@ frameworks:
         weight: 0.20
         items:
           - {id: A1.1, desc: "自愈多策略(5子策略)", declared_level: L3, source: script,
-             evidence: {command: "grep -c 'async def _strategy_' aiPlat-core/core/harness/execution/pipeline_engine.py", op: "-ge", expected: 5}}
+             evidence: {command: "grep -c 'async def _strategy_' aiPlat-core/core/harness/execution/pipeline_engine.py", op: "-ge", expected: 5},
+             runtime_ref: {kind: live, label: "流水线自愈实际动作数", endpoint: "/diagnostics/repairs/history"}}
           - {id: A1.2, desc: "Goal循环(GoalExecutor)", declared_level: L4, source: script,
-             evidence: {command: "grep -c 'class GoalExecutor' aiPlat-core/core/harness/optimization/goal_executor.py", op: "-ge", expected: 1}}
+             evidence: {command: "grep -c 'class GoalExecutor' aiPlat-core/core/harness/optimization/goal_executor.py", op: "-ge", expected: 1},
+             runtime_ref: {kind: file_count, label: "agent运行自动打分次数(P0-2)", command: "find ~/.aiplat/eval_results -name '*.json' 2>/dev/null | wc -l"}}
           - {id: A1.3, desc: "检查点回滚(ExecutionSnapshot)", declared_level: L4, source: script,
              evidence: {command: "grep -c 'class ExecutionSnapshot' aiPlat-core/core/harness/execution/snapshot.py", op: "-ge", expected: 1}}
           - {id: A1.4, desc: "零Token检测(wakeAgent) — 未实现", declared_level: null, source: gap}
@@ -109,7 +111,8 @@ frameworks:
           - {id: F1, desc: "策略记录+搜索(StrategyEffectivenessTracker)", declared_level: L3, source: script,
              evidence: {command: "grep -c 'class StrategyEffectivenessTracker' aiPlat-core/core/harness/optimization/strategy_tracker.py", op: "-ge", expected: 1}}
           - {id: F2, desc: "自动技能生成(AutoLearner)", declared_level: L4, source: script,
-             evidence: {command: "grep -c 'class AutoLearner' aiPlat-core/core/harness/learning/__init__.py", op: "-ge", expected: 1}}
+             evidence: {command: "grep -c 'class AutoLearner' aiPlat-core/core/harness/learning/__init__.py", op: "-ge", expected: 1},
+             runtime_ref: {kind: file_count, label: "AutoLearner草稿实际生成数", command: "find ~/.aiplat/skill_drafts -name '*.yaml' 2>/dev/null | wc -l"}}
           - {id: F3, desc: "夜间自进化(EvolutionEngine)", declared_level: L4, source: script,
              evidence: {command: "grep -c 'class EvolutionEngine' aiPlat-core/core/harness/evolution_engine.py", op: "-ge", expected: 1}}
           - {id: F4, desc: "知识自动合成(active_synthesis)", declared_level: L4, source: file_check,

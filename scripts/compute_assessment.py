@@ -60,6 +60,15 @@ def _run_evidence(ev: dict) -> tuple:
     return ("pass" if ok else "fail"), actual
 
 
+def _norm_result(v) -> str:
+    """YAML parses unquoted yes/no as booleans — normalize back to strings."""
+    if v is True:
+        return "yes"
+    if v is False:
+        return "no"
+    return str(v)
+
+
 def _verify_items(items: list, drift: list, ctx: str) -> None:
     """Attach verification_status to each item; record drift on FAIL."""
     for it in items:
@@ -125,7 +134,9 @@ def compute(spec: dict) -> dict:
     all_num = all_tot = 0
     for d in f2["dimensions"]:
         _verify_items(d["items"], drift, f"framework_two/{d['id']}")
-        s = sum(rm.get(it.get("result", "no"), 0) for it in d["items"])
+        for it in d["items"]:
+            it["result"] = _norm_result(it.get("result", "no"))
+        s = sum(rm.get(_norm_result(it.get("result", "no")), 0) for it in d["items"])
         t = len(d["items"])
         all_num += s
         all_tot += t
@@ -254,17 +265,97 @@ def render_docs(r: dict) -> None:
         print(f"  ✓ rendered AUTO-SCORE → {rel}")
 
 
+def _all_items(r: dict):
+    """Yield (framework, group_id, item) across all frameworks."""
+    for fw, node in r["frameworks"].items():
+        for g in (node.get("axes") or node.get("dimensions") or node.get("tiers") or []):
+            for it in g["items"]:
+                yield fw, g.get("id"), it
+
+
+def compute_bridge(r: dict) -> list:
+    """P1: 桥接框架'能'(declared) vs 运行时'做过'(telemetry).
+    对有 runtime_ref 的项跑运行时信号; 能但零动作=idle(盲区); 能且有动作=active."""
+    bridge = []
+    for fw, gid, it in _all_items(r):
+        ref = it.get("runtime_ref")
+        if not ref:
+            continue
+        entry = {"framework": fw, "id": it.get("id"), "label": ref.get("label"),
+                 "declared": it.get("declared_level") or it.get("result")}
+        if ref.get("kind") == "file_count":
+            status, actual = _run_evidence({"command": ref["command"], "op": "-ge", "expected": 0})
+            entry["actual"] = actual if status != "error" else None
+            entry["verdict"] = (
+                "active" if isinstance(actual, int) and actual > 0
+                else "idle" if actual == 0 else "unknown")
+            entry["note"] = "能且做过" if entry["verdict"] == "active" else (
+                "能但运行时零动作 — 潜力/实际盲区" if entry["verdict"] == "idle" else "无数据")
+        else:  # live
+            entry["actual"] = None
+            entry["verdict"] = "requires_live"
+            entry["note"] = f"需运行实例: {ref.get('endpoint','')}"
+        bridge.append(entry)
+    return bridge
+
+
+def compute_goals(r: dict, bridge: list) -> list:
+    """P2: 从框架发现自动生成修复 Goal 提案 (喂 GoalGenerator / 修复中心)."""
+    goals = []
+
+    def add(gid, title, gtype, priority, evidence):
+        goals.append({"goal_id": gid, "title": title, "goal_type": gtype,
+                      "priority": priority, "source_evidence": evidence,
+                      "auto_executable": False})
+
+    # 1. 缺口项 (declared 未实现) → 实现提案
+    for fw, gid, it in _all_items(r):
+        if it.get("source") == "gap":
+            add(f"assess-gap-{it['id']}", f"实现缺口能力: {it.get('desc','')}",
+                "capability_gap", "medium", {"framework": fw, "item": it["id"]})
+    # 2. 漂移项 → 修证据/更新声明
+    for d in r.get("drift", []):
+        add(f"assess-drift-{d['id']}", f"修复评估漂移: {d['id']} ({d['evidence_status']})",
+            "assessment_drift", "high", {"where": d["where"], "note": d["note"]})
+    # 3. 框架二 'no' 项 → 补齐工程项
+    for d in r["frameworks"]["framework_two"]["dimensions"]:
+        for it in d["items"]:
+            if _norm_result(it.get("result")) == "no":
+                add(f"assess-eng-{it['id']}", f"补齐工程缺口: {it.get('desc','')}",
+                    "engineering_gap", "medium", {"dimension": d["id"], "item": it["id"]})
+    # 4. bridge idle → 能力闲置, 验证或激励
+    for b in bridge:
+        if b.get("verdict") == "idle":
+            add(f"assess-idle-{b['id']}", f"能力闲置: {b.get('label','')} 运行时零动作",
+                "capability_idle", "low", {"id": b["id"], "actual": b.get("actual")})
+    return goals
+
+
 def main() -> int:
     spec = yaml.safe_load(SPEC.read_text(encoding="utf-8"))
     r = compute(spec)
+    bridge = compute_bridge(r)
+    r["bridge"] = bridge
+    r["goals"] = compute_goals(r, bridge)
     if "--drift-only" not in sys.argv:
         OUT.write_text(json.dumps(r, ensure_ascii=False, indent=2), encoding="utf-8")
     if "--render" in sys.argv:
         render_docs(r)
     if "--quiet" not in sys.argv:
-        print_summary(r)
-        if "--drift-only" not in sys.argv:
-            print(f"\n→ {OUT.relative_to(REPO)}")
+        if "--goals" in sys.argv:
+            print("\n===== 框架发现 → 修复 Goal 提案 (P2) =====")
+            for g in r["goals"]:
+                print(f"  [{g['priority']}] {g['goal_type']}: {g['title']}")
+            print(f"  共 {len(r['goals'])} 项 (auto_executable=False, 需人工审批)")
+        elif "--bridge" in sys.argv:
+            print("\n===== 能(declared) vs 做过(runtime) 桥接 (P1) =====")
+            for b in bridge:
+                print(f"  [{b['verdict']}] {b['id']} {b.get('label','')}: "
+                      f"declared={b['declared']} actual={b.get('actual')} — {b['note']}")
+        else:
+            print_summary(r)
+            if "--drift-only" not in sys.argv:
+                print(f"\n→ {OUT.relative_to(REPO)}")
     return 1 if r["drift"] else 0
 
 
