@@ -60,6 +60,33 @@ def pack_profile(output_path: str = "distribution.yaml", profile_name: str = "de
         with open(mcp_path) as f:
             dist["mcp"] = json.load(f)
 
+    # Collect cron job entries (H4 — configuration-as-code distribution)
+    cron_dir = os.path.join(config_dir, "cron")
+    if os.path.isdir(cron_dir):
+        for entry in os.listdir(cron_dir):
+            ep = os.path.join(cron_dir, entry)
+            if ep.endswith(".yaml") or ep.endswith(".json"):
+                try:
+                    with open(ep) as f:
+                        cron_data = yaml.safe_load(f) if ep.endswith(".yaml") else json.load(f)
+                    if cron_data and isinstance(cron_data, dict):
+                        dist["cron"].append(cron_data)
+                except Exception:
+                    pass
+
+    # Collect profile list (H4 — .registry.yaml and individual profiles)
+    profiles_dir = os.path.join(config_dir, "profiles")
+    if os.path.isdir(profiles_dir):
+        for entry in sorted(os.listdir(profiles_dir)):
+            ep = os.path.join(profiles_dir, entry)
+            if ep.endswith(".yaml") and entry != ".registry.yaml":
+                try:
+                    with open(ep) as f:
+                        pdata = yaml.safe_load(f)
+                    dist.setdefault("profiles", []).append({"name": entry[:-5], **(pdata if isinstance(pdata, dict) else {})})
+                except Exception:
+                    pass
+
     # Try YAML-safe dump
     try:
         import yaml

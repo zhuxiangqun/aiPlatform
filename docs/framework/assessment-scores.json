@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-07-07T01:22:56",
+  "generated_at": "2026-07-07T01:41:23",
   "spec_version": "1.0.0",
   "frameworks": {
     "framework_one": {
@@ -111,10 +111,16 @@
             },
             {
               "id": "A2.3",
-              "desc": "看板+Cron 定时调度 — 未实现",
-              "declared_level": null,
-              "source": "gap",
-              "verification_status": "no-data"
+              "desc": "看板+Cron 定时调度(KanbanEngine+CronScheduler)",
+              "declared_level": "L3",
+              "source": "file_check",
+              "evidence": {
+                "command": "test -f aiPlat-core/core/harness/coordination/kanban_engine.py && test -f aiPlat-core/core/harness/scheduler/cron.py && test -f aiPlat-core/core/harness/scheduler/cron_loader.py && echo 3 || echo 0",
+                "op": "-ge",
+                "expected": 1
+              },
+              "verification_status": "pass",
+              "actual": 3
             },
             {
               "id": "A2.4",
@@ -507,10 +513,16 @@
             },
             {
               "id": "H4",
-              "desc": "配置即代码分发(distribution.yaml) — 部分",
-              "declared_level": null,
-              "source": "gap",
-              "verification_status": "no-data"
+              "desc": "配置即代码分发(distribution.yaml + install + registry)",
+              "declared_level": "L3",
+              "source": "file_check",
+              "evidence": {
+                "command": "test -f scripts/profile_packager.py && test -f scripts/hermes-profile-install.sh && echo 3 || echo 0",
+                "op": "-ge",
+                "expected": 1
+              },
+              "verification_status": "pass",
+              "actual": 3
             }
           ]
         }
@@ -2021,17 +2033,6 @@
       "auto_executable": false
     },
     {
-      "goal_id": "assess-gap-A2.3",
-      "title": "实现缺口能力: 看板+Cron 定时调度 — 未实现",
-      "goal_type": "capability_gap",
-      "priority": "medium",
-      "source_evidence": {
-        "framework": "framework_one",
-        "item": "A2.3"
-      },
-      "auto_executable": false
-    },
-    {
       "goal_id": "assess-gap-A2.4",
       "title": "实现缺口能力: Profile 命名空间隔离 — 未实现",
       "goal_type": "capability_gap",
@@ -2072,17 +2073,6 @@
       "source_evidence": {
         "framework": "framework_one",
         "item": "G4"
-      },
-      "auto_executable": false
-    },
-    {
-      "goal_id": "assess-gap-H4",
-      "title": "实现缺口能力: 配置即代码分发(distribution.yaml) — 部分",
-      "goal_type": "capability_gap",
-      "priority": "medium",
-      "source_evidence": {
-        "framework": "framework_one",
-        "item": "H4"
       },
       "auto_executable": false
     },

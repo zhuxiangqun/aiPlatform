@@ -1373,6 +1373,13 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logging.debug(str(e), exc_info=True)
 
+    # Cron loader: scan ~/.aiplat/cron/*.yaml and register jobs (A2.3 kanban+cron)
+    try:
+        from core.harness.scheduler.cron_loader import load_cron_from_profile
+        load_cron_from_profile()
+    except Exception as e:
+        logging.debug("Cron loader skipped: %s", e)
+
     from core.harness.observation.event_bus import EventBus
     EventBus.start()
 
@@ -2079,6 +2086,13 @@ async def quota_usage(
 
 
 app.include_router(api_router)
+
+# Kanban task board (A2.3 看板+Cron)
+try:
+    from core.api.routers.kanban import router as kanban_router
+    api_router.include_router(kanban_router)
+except Exception as e:
+    logging.debug("Kanban router: %s", e)
 
 # A2A Protocol — Google Agent-to-Agent standard (external agent interoperability)
 try:

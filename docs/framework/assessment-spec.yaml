@@ -56,7 +56,8 @@ frameworks:
              evidence: {command: "grep -c 'class PipelineEngine' aiPlat-core/core/harness/execution/pipeline_engine.py", op: "-ge", expected: 1}}
           - {id: A2.2, desc: "多租户隔离(tenant_id 广布)", declared_level: L3, source: script,
              evidence: {command: "grep -rlE 'tenant_id' aiPlat-core/core --include=*.py | wc -l", op: "-ge", expected: 10}}
-          - {id: A2.3, desc: "看板+Cron 定时调度 — 未实现", declared_level: null, source: gap}
+          - {id: A2.3, desc: "看板+Cron 定时调度(KanbanEngine+CronScheduler)", declared_level: L3, source: file_check,
+             evidence: {command: "test -f aiPlat-core/core/harness/coordination/kanban_engine.py && test -f aiPlat-core/core/harness/scheduler/cron.py && test -f aiPlat-core/core/harness/scheduler/cron_loader.py && echo 3 || echo 0", op: "-ge", expected: 1}}
           - {id: A2.4, desc: "Profile 命名空间隔离 — 未实现", declared_level: null, source: gap}
       - id: B
         name: "上下文感知"
@@ -143,7 +144,8 @@ frameworks:
              evidence: {command: "find aiPlat-management/frontend/src/pages -maxdepth 1 -type d | wc -l", op: "-ge", expected: 20}}
           - {id: H3, desc: "IDE嵌入(ACP server)", declared_level: L3, source: file_check,
              evidence: {command: "test -f aiPlat-core/core/acp/server.py && echo 1 || echo 0", op: "-ge", expected: 1}}
-          - {id: H4, desc: "配置即代码分发(distribution.yaml) — 部分", declared_level: null, source: gap}
+          - {id: H4, desc: "配置即代码分发(distribution.yaml + install + registry)", declared_level: L3, source: file_check,
+             evidence: {command: "test -f scripts/profile_packager.py && test -f scripts/hermes-profile-install.sh && echo 3 || echo 0", op: "-ge", expected: 1}}
 
   # ═══════════════════════════════════════════════════════════
   framework_two:
