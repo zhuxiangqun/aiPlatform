@@ -1112,7 +1112,7 @@ class HarnessIntegration:
         msgs = build_auto_eval_prompt(run=fake_run, events=[], extra=extra, browser_evidence=browser_evidence if isinstance(browser_evidence, dict) else None)
         try:
             from core.harness.syscalls.llm import sys_llm_generate
-            resp = await sys_llm_generate(llm, msgs, trace_context={"trace_id": trace_id, "run_id": run_id})
+            resp = await sys_llm_generate(llm, msgs, temperature=0.0, trace_context={"trace_id": trace_id, "run_id": run_id})
             text = getattr(resp, "content", "") or ""
         except Exception as e:
             return self._fail(code="AUTO_EVAL_FAILED", message=f"auto_eval_failed:{e}", http_status=500, trace_id=trace_id, run_id=run_id)

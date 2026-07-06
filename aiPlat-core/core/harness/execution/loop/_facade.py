@@ -114,6 +114,66 @@ class ReActLoop(BaseLoop):
             logging.warning(str(e), exc_info=True)
         return "continue"
 
+    def _acceptance_gate(self, state: LoopState) -> Optional[str]:
+        """Deterministic acceptance veto over an LLM 'done' claim (Hermes Phase Gate).
+
+        Reuses the ActiveChangeContract captured from the last coding skill
+        (`syscalls/skill.py` → `set_active_change_contract`). If the agent claims
+        completion but the artifacts it promised do not exist on disk, the claim
+        is vetoed and the loop continues. Returns a veto reason, or None to allow.
+
+        Design (CLAUDE.md §5.16: Harness owns protocol-level completion checks):
+        - Only *file-verifiable* promises are checked (changed_files + path-like
+          acceptance_criteria). Free-text criteria are NOT vetoed → no false
+          positives. Runs with no active contract are unaffected (backward compat).
+        - `AIPLAT_ACCEPTANCE_GATE_ENABLED=false` disables the gate entirely.
+        """
+        if os.getenv("AIPLAT_ACCEPTANCE_GATE_ENABLED", "true").lower() in ("0", "false", "no"):
+            return None
+        # Fail-open after 2 vetoes to avoid burning the whole step budget on an
+        # unsatisfiable criterion (max_steps in should_continue is the hard cap).
+        if int(state.context.get("_acceptance_veto_count", 0) or 0) >= 2:
+            return None
+        try:
+            from core.harness.kernel.execution_context import get_active_change_contract
+            contract = get_active_change_contract()
+        except Exception:
+            return None
+        if not contract:
+            return None
+
+        import re as _re
+        missing: List[str] = []
+        for f in (contract.changed_files or []):
+            p = str(f).strip()
+            if p and not os.path.exists(p):
+                missing.append(p)
+        for c in (contract.acceptance_criteria or []):
+            s = str(c).strip()
+            # Only treat a criterion as a file check when it is a single path
+            # token (has a separator or file extension, no embedded spaces).
+            if s and " " not in s and ("/" in s or _re.match(r"^\S+\.\w+$", s)):
+                if not os.path.exists(s) and s not in missing:
+                    missing.append(s)
+        if missing:
+            return "promised artifacts not found: " + ", ".join(missing[:5])
+        return None
+
+    def _apply_acceptance_veto(self, state: LoopState, reason: str) -> None:
+        """Veto a premature completion: keep the loop RUNNING and tell the agent
+        what is missing so it can act (Hermes: code veto overrides LLM 'done')."""
+        count = int(state.context.get("_acceptance_veto_count", 0) or 0) + 1
+        state.context["_acceptance_veto_count"] = count
+        state.context["_acceptance_veto"] = reason
+        note = (
+            "[ACCEPTANCE GATE] Your completion was rejected by a deterministic check: "
+            f"{reason}. Do not declare done yet — produce the missing artifacts, "
+            "then finish."
+        )
+        state.context.setdefault("messages", []).append({"role": "user", "content": note})
+        # Non-terminal state so should_continue() keeps looping (max_steps is the cap).
+        state.current = LoopStateEnum.REASONING
+
     def set_model(self, model: Any) -> None:
         self._model = model
 
@@ -307,6 +367,10 @@ class ReActLoop(BaseLoop):
                                 await self._persist_run_state(state, source="auto_complete_on_done", extra={"todo_id": cur_id})
                 except Exception as e:
                     logging.warning(str(e), exc_info=True)
+                _veto = self._acceptance_gate(state)
+                if _veto:
+                    self._apply_acceptance_veto(state, _veto)
+                    return state
                 state.current = LoopStateEnum.FINISHED
                 return state
         except Exception as e:
@@ -332,6 +396,10 @@ class ReActLoop(BaseLoop):
                 })
             except Exception as e:
                 logging.warning(str(e), exc_info=True)
+            _veto = self._acceptance_gate(state)
+            if _veto:
+                self._apply_acceptance_veto(state, _veto)
+                return state
             state.current = LoopStateEnum.FINISHED
             return state
         if parsed and parsed.kind == "none" and len(str(reasoning or "").strip()) > 200:
@@ -1608,6 +1676,25 @@ class ReActLoop(BaseLoop):
                     else:
                         result_output = result.output if hasattr(result, 'output') else str(result)
                         ok = bool(getattr(result, "success", True))
+                        if not ok:
+                            # P0-2: surface structured error diagnostics so the LLM can
+                            # reason about self-healing (Hermes Layer 2), not just see a
+                            # bare error string.
+                            diag = []
+                            etype = getattr(result, "error_type", None)
+                            ecode = getattr(result, "exit_code", None)
+                            estderr = getattr(result, "stderr", None)
+                            ehint = getattr(result, "recovery_hint", None)
+                            if etype:
+                                diag.append(f"error_type={etype}")
+                            if ecode is not None:
+                                diag.append(f"exit_code={ecode}")
+                            if estderr:
+                                diag.append(f"stderr={str(estderr)[:300]}")
+                            if ehint:
+                                diag.append(f"recovery_hint={ehint}")
+                            if diag:
+                                result_output = f"{result_output}\n[DIAGNOSTICS] " + " | ".join(diag)
                 except Exception as e:
                     result_output = f"Tool error: {e}"
                     ok = False

@@ -72,7 +72,16 @@ def create_compiled_react_graph(
     async def reason(state: Dict[str, Any]) -> NodeResult:
         prompt = _build_reason_prompt(state)
         if model:
-            response = await sys_llm_generate(model, prompt, trace_context={"source": "compiled_react"})
+            # Optional per-run temperature override (e.g. evaluator judges set 0.0
+            # for deterministic verdicts). Absent → model default, unchanged behavior.
+            _temp = None
+            _ctx = state.get("context")
+            if isinstance(_ctx, dict):
+                _temp = _ctx.get("_llm_temperature")
+            response = await sys_llm_generate(
+                model, prompt, temperature=_temp,
+                trace_context={"source": "compiled_react"},
+            )
             reasoning = response.content
         else:
             reasoning = "No model available"

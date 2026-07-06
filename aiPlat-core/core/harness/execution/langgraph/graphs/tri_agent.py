@@ -43,7 +43,12 @@ class EvaluationResult:
 
 @dataclass
 class EvaluationMetrics:
-    """Metrics for evaluator evaluation."""
+    """Metrics for evaluator evaluation.
+
+    `measured` records which dimensions have real evidence backing them.
+    Dimensions absent from `measured` MUST NOT be scored (CLAUDE.md §5.70:
+    no fabricated pass/fail without evidence).
+    """
     test_pass_rate: float = 0.0
     response_time_ms: float = 0.0
     throughput: float = 0.0
@@ -51,6 +56,7 @@ class EvaluationMetrics:
     code_duplication: float = 0.0
     vulnerabilities: int = 0
     permission_issues: int = 0
+    measured: set = field(default_factory=set)
 
 
 @dataclass
@@ -206,7 +212,7 @@ class TriAgentGraph:
 
     async def _evaluator_wrapper(self, state: TriAgentState) -> Dict[str, Any]:
         """Evaluator wrapper - validates results and creates feedback (feedback.md)"""
-        metrics = self._extract_metrics_from_generated(state.generated)
+        metrics = self._extract_metrics_from_generated(state.generated, getattr(state, "context", None))
         
         import os
         eval_template = os.getenv("AIPLAT_EVAL_TRIAGENT_TEMPLATE",
@@ -233,68 +239,113 @@ Respond with APPROVED if all criteria pass, or REJECTED: <reason> with specific 
             if os.getenv("AIPLAT_ENABLE_PROMPT_ASSEMBLER", "true").lower() in ("1", "true", "yes", "y")
             else [{"role": "user", "content": eval_prompt}]
         )
-        result = await self._evaluator.run({"messages": messages, "context": state.context})
+        # Evaluator judge runs at temperature 0.0 for deterministic verdicts
+        # (Hermes LLM-as-Judge principle). Planner/generator keep model default.
+        _eval_ctx = {**(getattr(state, "context", None) or {}), "_llm_temperature": 0.0}
+        result = await self._evaluator.run({"messages": messages, "context": _eval_ctx})
         
         evaluation = result.observation if hasattr(result, 'observation') else ""
         approved = "APPROVED" in evaluation.upper()
         
         evaluation_results = self._evaluate_dimensions(metrics)
-        
+
         return {
             "evaluation": evaluation,
             "approved": approved,
             "evaluation_results": evaluation_results,
+            "evaluation_report": self._to_evaluation_report(approved, evaluation, evaluation_results),
             "feedback": [evaluation] if not approved else []
         }
 
-    def _extract_metrics_from_generated(self, generated: str) -> EvaluationMetrics:
-        """Extract metrics from generated output (placeholder implementation)."""
-        return EvaluationMetrics(
-            test_pass_rate=0.85,
-            response_time_ms=100.0,
-            throughput=1000.0,
-            code_complexity=0.3,
-            code_duplication=0.1,
-            vulnerabilities=0,
-            permission_issues=0
-        )
+    def _to_evaluation_report(
+        self, approved: bool, evaluation: str, results: List[EvaluationResult],
+    ) -> Dict[str, Any]:
+        """Adapt tri-agent verdict to the canonical EvaluationReport schema.
+
+        Converges tri_agent output onto the same {pass, score, issues} shape
+        validated by `harness.evaluation.workbench.validate_report` (CLAUDE.md §10).
+        Only measured dimensions contribute to score; an unapproved verdict with
+        no measured dimension still surfaces as a single issue.
+        """
+        score: Dict[str, float] = {}
+        for r in results:
+            score[r.dimension.value] = round(float(r.score), 3)
+        if score:
+            score["overall"] = round(sum(score.values()) / len(score) * 10.0, 2)
+        issues = []
+        for r in results:
+            if not r.passed:
+                issues.append({
+                    "severity": "P1",
+                    "title": f"{r.dimension.value} below threshold",
+                    "expected": f"{r.dimension.value} >= {r.threshold}",
+                    "actual": r.details,
+                })
+        if not approved and not issues:
+            issues.append({"severity": "P1", "title": "evaluator rejected", "actual": evaluation[:200]})
+        return {"pass": bool(approved), "score": score, "issues": issues, "evaluator": "tri_agent"}
+
+    def _extract_metrics_from_generated(
+        self, generated: str, context: Optional[Dict[str, Any]] = None,
+    ) -> EvaluationMetrics:
+        """Extract evaluation metrics from real signals only.
+
+        Honest extraction (CLAUDE.md §5.70): only dimensions with actual
+        evidence (run_events test results, recorded security findings) are
+        added to `measured`. Unmeasured dimensions are left at neutral defaults
+        and are skipped by `_evaluate_dimensions` — we never fabricate a pass.
+        """
+        metrics = EvaluationMetrics()
+        ctx = context or {}
+
+        # correctness ← test results recorded in run_events
+        events = ctx.get("run_events") or ctx.get("_run_events") or []
+        if isinstance(events, list) and events:
+            passed = sum(1 for e in events if isinstance(e, dict) and e.get("type") in ("test_pass", "test_passed"))
+            failed = sum(1 for e in events if isinstance(e, dict) and e.get("type") in ("test_fail", "test_failed"))
+            total = passed + failed
+            if total > 0:
+                metrics.test_pass_rate = passed / total
+                metrics.measured.add(EvaluationDimension.CORRECTNESS)
+
+        # security ← findings already surfaced upstream (e.g. autoreview P0)
+        sec = ctx.get("security_findings")
+        if isinstance(sec, dict):
+            metrics.vulnerabilities = int(sec.get("vulnerabilities", 0) or 0)
+            metrics.permission_issues = int(sec.get("permission_issues", 0) or 0)
+            metrics.measured.add(EvaluationDimension.SECURITY)
+
+        return metrics
 
     def _evaluate_dimensions(self, metrics: EvaluationMetrics) -> List[EvaluationResult]:
-        """Evaluate all dimensions and return results."""
+        """Evaluate dimensions that have real evidence.
+
+        Only dimensions present in `metrics.measured` are scored. Dimensions
+        without evidence are omitted entirely rather than reported as a
+        fabricated pass (CLAUDE.md §5.70). The approve/continue decision is
+        driven by the LLM evaluator's APPROVED/REJECTED verdict; these metrics
+        are supplementary evidence, so an empty list is a valid honest result.
+        """
         results = []
-        
-        results.append(EvaluationResult(
-            dimension=EvaluationDimension.CORRECTNESS,
-            passed=metrics.test_pass_rate >= self._get_threshold(EvaluationDimension.CORRECTNESS),
-            score=metrics.test_pass_rate,
-            threshold=self._get_threshold(EvaluationDimension.CORRECTNESS),
-            details=f"Test pass rate: {metrics.test_pass_rate*100}%"
-        ))
-        
-        results.append(EvaluationResult(
-            dimension=EvaluationDimension.PERFORMANCE,
-            passed=metrics.response_time_ms < 1000,
-            score=1.0 - (metrics.response_time_ms / 2000),
-            threshold=self._get_threshold(EvaluationDimension.PERFORMANCE),
-            details=f"Response time: {metrics.response_time_ms}ms"
-        ))
-        
-        results.append(EvaluationResult(
-            dimension=EvaluationDimension.MAINTAINABILITY,
-            passed=metrics.code_complexity < 0.5 and metrics.code_duplication < 0.3,
-            score=1.0 - metrics.code_complexity - metrics.code_duplication,
-            threshold=self._get_threshold(EvaluationDimension.MAINTAINABILITY),
-            details=f"Complexity: {metrics.code_complexity}, Duplication: {metrics.code_duplication}"
-        ))
-        
-        results.append(EvaluationResult(
-            dimension=EvaluationDimension.SECURITY,
-            passed=metrics.vulnerabilities == 0 and metrics.permission_issues == 0,
-            score=1.0 if metrics.vulnerabilities == 0 else 0.0,
-            threshold=self._get_threshold(EvaluationDimension.SECURITY),
-            details=f"Vulnerabilities: {metrics.vulnerabilities}, Permission issues: {metrics.permission_issues}"
-        ))
-        
+
+        if EvaluationDimension.CORRECTNESS in metrics.measured:
+            results.append(EvaluationResult(
+                dimension=EvaluationDimension.CORRECTNESS,
+                passed=metrics.test_pass_rate >= self._get_threshold(EvaluationDimension.CORRECTNESS),
+                score=metrics.test_pass_rate,
+                threshold=self._get_threshold(EvaluationDimension.CORRECTNESS),
+                details=f"Test pass rate: {metrics.test_pass_rate*100:.1f}%"
+            ))
+
+        if EvaluationDimension.SECURITY in metrics.measured:
+            results.append(EvaluationResult(
+                dimension=EvaluationDimension.SECURITY,
+                passed=metrics.vulnerabilities == 0 and metrics.permission_issues == 0,
+                score=1.0 if metrics.vulnerabilities == 0 else 0.0,
+                threshold=self._get_threshold(EvaluationDimension.SECURITY),
+                details=f"Vulnerabilities: {metrics.vulnerabilities}, Permission issues: {metrics.permission_issues}"
+            ))
+
         return results
     
     def _should_continue(self, state: TriAgentState) -> str:
@@ -358,7 +409,7 @@ Respond with APPROVED if all criteria pass, or REJECTED: <reason> with specific 
                 if os.getenv("AIPLAT_ENABLE_PROMPT_ASSEMBLER", "true").lower() in ("1", "true", "yes", "y")
                 else [{"role": "user", "content": eval_prompt}]
             )
-            evaluator_result = await self._evaluator.run({"messages": eval_messages})
+            evaluator_result = await self._evaluator.run({"messages": eval_messages, "context": {"_llm_temperature": 0.0}})
             state.evaluation = evaluator_result.observation if hasattr(evaluator_result, 'observation') else ""
             state.approved = "APPROVED" in state.evaluation.upper()
             
@@ -366,7 +417,7 @@ Respond with APPROVED if all criteria pass, or REJECTED: <reason> with specific 
                 state.feedback.append(state.evaluation)
             
             state.evaluation_results = self._evaluate_dimensions(
-                self._extract_metrics_from_generated(state.generated)
+                self._extract_metrics_from_generated(state.generated, getattr(state, "context", None))
             )
         
         if not state.final_result:

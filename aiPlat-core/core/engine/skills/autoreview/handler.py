@@ -385,6 +385,7 @@ async def _persist_review(rpt, target: str, focus: str, mode: str,
                 "p2": rpt.p2_count,
                 "engines_used": engines_used or [],
                 "evidence_cards": rpt.evidence_cards,
+                "evaluation_report": rpt.to_evaluation_report(),
                 "timestamp": rpt.reviewed_at or __import__("time").time(),
             },
         )

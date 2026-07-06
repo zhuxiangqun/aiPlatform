@@ -218,6 +218,31 @@ class ReviewReport:
 
     # ── serialization ──
 
+    def to_evaluation_report(self) -> Dict[str, Any]:
+        """Adapt to the canonical EvaluationReport schema (CLAUDE.md §10).
+
+        Converges autoreview output onto the same {pass, score, issues} shape
+        that `harness.evaluation.workbench.validate_report` validates, so all
+        three evaluators share one downstream contract.
+        """
+        return {
+            "pass": self.is_clean(),
+            "score": {"overall": round(self.score / 10.0, 2)},
+            "issues": [
+                {
+                    "severity": i.severity,
+                    "title": (i.description or "")[:80],
+                    "category": i.category,
+                    "file": i.file,
+                    "line": i.line,
+                    "description": i.description,
+                    "suggested_fix": i.fix_suggestion,
+                }
+                for i in self.issues
+            ],
+            "evaluator": "autoreview",
+        }
+
     def to_dict(self) -> Dict[str, Any]:
         return {
             "score": self.score, "clean": self.is_clean(),
