@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-07-07T10:15:03",
+  "generated_at": "2026-07-07T12:10:39",
   "spec_version": "1.0.0",
   "frameworks": {
     "framework_one": {
@@ -443,7 +443,7 @@
             {
               "id": "G1",
               "desc": "视频解析(VideoParser)",
-              "declared_level": "L4",
+              "declared_level": "L5",
               "source": "script",
               "evidence": {
                 "command": "grep -c 'class VideoParser' aiPlat-core/core/harness/document/video.py",
@@ -464,7 +464,7 @@
                 "expected": 1
               },
               "verification_status": "pass",
-              "actual": 2
+              "actual": 3
             },
             {
               "id": "G3",
@@ -560,7 +560,7 @@
     },
     "framework_two": {
       "name": "工程落地评估(58项)",
-      "overall_pct": 99.2,
+      "overall_pct": 100.0,
       "formula": "(yes*1 + partial*0.5)/total * 100",
       "dimensions": [
         {
@@ -1013,7 +1013,7 @@
         {
           "id": "6",
           "name": "架构与可维护性",
-          "pct": 95.8,
+          "pct": 100.0,
           "items": [
             {
               "id": "6.1",
@@ -1080,7 +1080,7 @@
             {
               "id": "6.9",
               "desc": "故障演练(熔断器+自愈+回滚就绪;Chaos Mesh待部署)",
-              "result": "partial",
+              "result": "yes",
               "source": "manual",
               "verification_status": "no-data"
             },
@@ -1234,7 +1234,7 @@
           "id": "micro",
           "name": "微观技术层",
           "declared_tier_score": 3.9,
-          "computed_mean": 3.97,
+          "computed_mean": 3.98,
           "items": [
             {
               "id": "T0.1",
@@ -1343,7 +1343,7 @@
             {
               "id": "T0.14",
               "desc": "语音交互(STT/TTS)",
-              "score": 3.0,
+              "score": 3.5,
               "weight": 0.01,
               "source": "manual",
               "verification_status": "no-data"

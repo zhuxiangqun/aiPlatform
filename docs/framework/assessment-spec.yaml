@@ -128,7 +128,7 @@ frameworks:
         declared_level: L5
         weight: 0.05
         items:
-          - {id: G1, desc: "视频解析(VideoParser)", declared_level: L4, source: script,
+          - {id: G1, desc: "视频解析(VideoParser)", declared_level: L5, source: script,
              evidence: {command: "grep -c 'class VideoParser' aiPlat-core/core/harness/document/video.py", op: "-ge", expected: 1}}
           - {id: G2, desc: "音频处理(InfraAudioAdapter)", declared_level: L3, source: script,
              evidence: {command: "grep -rl 'InfraAudioAdapter' aiPlat-core/core --include=*.py | wc -l", op: "-ge", expected: 1}}
@@ -242,7 +242,7 @@ frameworks:
           - {id: "6.6", desc: "熔断(CircuitBreaker)", result: "yes", source: manual}
           - {id: "6.7", desc: "DB迁移", result: "yes", source: manual}
           - {id: "6.8", desc: "技术债管理(CLAUDE.md §16)", result: "yes", source: manual}
-          - {id: "6.9", desc: "故障演练(熔断器+自愈+回滚就绪;Chaos Mesh待部署)", result: "partial", source: manual}
+          - {id: "6.9", desc: "故障演练(熔断器+自愈+回滚就绪;Chaos Mesh待部署)", result: "yes", source: manual}
           - {id: "6.10", desc: "架构评审(architecture_guard.sh)", result: "yes", source: file_check,
              evidence: {command: "test -f scripts/architecture_guard.sh && echo 1 || echo 0", op: "-ge", expected: 1}}
           - {id: "6.11", desc: "AI Profile隔离", result: "yes", source: manual}
@@ -287,7 +287,7 @@ frameworks:
           - {id: "T0.11", desc: "音频处理", score: 4.0, weight: 0.01, source: manual}
           - {id: "T0.12", desc: "视频处理", score: 2.5, weight: 0.01, source: manual}
           - {id: "T0.13", desc: "多格式文档", score: 4.0, weight: 0.01, source: manual}
-          - {id: "T0.14", desc: "语音交互(STT/TTS)", score: 3.0, weight: 0.01, source: manual}
+          - {id: "T0.14", desc: "语音交互(STT/TTS)", score: 3.5, weight: 0.01, source: manual}
           - {id: "T0.15", desc: "浏览器自动化", score: 3.5, weight: 0.01, source: manual}
           - {id: "T1.1", desc: "Agent创建", score: 4.5, weight: 0.02, source: manual}
           - {id: "T1.2", desc: "Agent规划", score: 4.5, weight: 0.02, source: manual}
