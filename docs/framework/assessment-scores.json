@@ -1,10 +1,10 @@
 {
-  "generated_at": "2026-07-07T12:32:44",
+  "generated_at": "2026-07-07T12:49:32",
   "spec_version": "1.0.0",
   "frameworks": {
     "framework_one": {
       "name": "8轴自主性成熟度",
-      "composite_level_value": 4.58,
+      "composite_level_value": 4.86,
       "composite_grade": "L5",
       "weight_sum": 1.0,
       "formula": "sum(axis_level*weight)/sum(weight) — normalized",
@@ -195,9 +195,9 @@
         {
           "id": "C",
           "name": "工具掌握",
-          "declared_level": "L4",
+          "declared_level": "L5",
           "weight": 0.1,
-          "level_value": 4,
+          "level_value": 5,
           "conflict_note": null,
           "items": [
             {
@@ -216,7 +216,7 @@
             {
               "id": "C2",
               "desc": "工具发现(MCPServer)",
-              "declared_level": "L4",
+              "declared_level": "L5",
               "source": "script",
               "evidence": {
                 "command": "grep -c 'class MCPServer' aiPlat-core/core/apps/mcp/server.py",
@@ -229,7 +229,7 @@
             {
               "id": "C3",
               "desc": "工具自举(ToolBootstrapEngine)",
-              "declared_level": "L4",
+              "declared_level": "L5",
               "source": "script",
               "evidence": {
                 "command": "grep -c 'class ToolBootstrapEngine' aiPlat-core/core/harness/optimization/tool_bootstrap.py",
@@ -355,9 +355,9 @@
         {
           "id": "F",
           "name": "自进化学习",
-          "declared_level": "L4",
+          "declared_level": "L5",
           "weight": 0.08,
-          "level_value": 4,
+          "level_value": 5,
           "conflict_note": null,
           "items": [
             {
@@ -420,7 +420,7 @@
             {
               "id": "F5",
               "desc": "操作→知识自动索引(_feed_execution_to_graph+feed_execution_to_graph)",
-              "declared_level": "L3",
+              "declared_level": "L4",
               "source": "file_check",
               "evidence": {
                 "command": "(grep -c '_feed_execution_to_graph' aiPlat-core/core/harness/execution/pipeline_engine.py || echo 0) && (grep -c 'feed_execution_to_graph' aiPlat-core/core/harness/knowledge/wiki_indexer.py || echo 0)",
@@ -497,15 +497,15 @@
         {
           "id": "H",
           "name": "产品化交付",
-          "declared_level": "L4",
+          "declared_level": "L5",
           "weight": 0.1,
-          "level_value": 4,
+          "level_value": 5,
           "conflict_note": null,
           "items": [
             {
               "id": "H1",
               "desc": "HTTP API(FastAPI+OpenAPI 813端点)",
-              "declared_level": "L4",
+              "declared_level": "L5",
               "source": "script",
               "evidence": {
                 "command": "grep -c 'FastAPI' aiPlat-core/core/server.py",
@@ -518,7 +518,7 @@
             {
               "id": "H2",
               "desc": "管理前端(React SPA 115路由)",
-              "declared_level": "L4",
+              "declared_level": "L5",
               "source": "script",
               "evidence": {
                 "command": "find aiPlat-management/frontend/src/pages -maxdepth 1 -type d | wc -l",
@@ -531,7 +531,7 @@
             {
               "id": "H3",
               "desc": "IDE嵌入(ACP WebSocket server)",
-              "declared_level": "L4",
+              "declared_level": "L5",
               "source": "file_check",
               "evidence": {
                 "command": "test -f aiPlat-core/core/acp/server.py && echo 1 || echo 0",
@@ -544,7 +544,7 @@
             {
               "id": "H4",
               "desc": "配置即代码分发(distribution.yaml + install + registry)",
-              "declared_level": "L4",
+              "declared_level": "L5",
               "source": "file_check",
               "evidence": {
                 "command": "test -f scripts/profile_packager.py && test -f scripts/hermes-profile-install.sh && echo 3 || echo 0",
