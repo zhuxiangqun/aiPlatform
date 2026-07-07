@@ -107,8 +107,8 @@ verification: `python3 scripts/compute_assessment.py`
 
 | 维度 | 评估 |
 |------|------|
-| **核心价值** | "让 AI 系统自己进化 + 上前线"——不是让更多人用 AI，而是让 AI 系统能自主运行、自愈、自进化，并由 FDE 带到客户现场交付 |
-| **独特优势** | L5 自主性（9 轴 4.86，全球唯一）+ 100% 工程就绪 + 本体引擎 26 模块 + FDE 全套工具箱（离线部署/客户诊断/多客户管理/现场反馈闭环）+ 可复现确定性自评引擎 + React Flow 可视化工作流 + AI Agent/Skill 自动填充 |
+| **核心价值** | "追求 Agent 运行时极致确定性的自进化前线部署平台"——三层递进：① 每次 Agent 执行都确定、可验证、韧性强（预门禁+验收否决+temp=0.0 评估器+迭代上限+解析保护）→ ② 系统自己发现问题、自己修复、自己升级（AutoLearner+GoalGenerator+EvolutionEngine）→ ③ 打成包、飞到客户现场、离线运行（FDE Toolkit） |
+| **独特优势** | L5 自主性（9 轴 4.86，全球唯一）+ 100% 工程就绪 + Agent 运行时确定性约束（基于 Hermes 设计思想的自主实现：预门禁+验收否决+评估器 temp=0.0+Howl 停滞检测+迭代硬上限+解析保护）+ 本体引擎 26 模块 + FDE 全套工具箱（离线部署/客户诊断/多客户管理/现场反馈闭环）+ 可复现确定性自评引擎 + React Flow 可视化工作流 + AI Agent/Skill 自动填充 |
 | **典型用户** | FDE（前线部署工程师）、开发者、数据专家 |
 | **局限** | 单开发者（企业级 ≈3.7 是诚实天花板，合规/灾备/多区域部署依赖外部资源）；无 SaaS 多租户（ProfileManager 逻辑隔离但无计费/配额管理）；无 IDE 插件生态（有 ACP WebSocket 但无 VS Code/JetBrains 插件）；无外部插件市场（有 MCP 协议但无社区生态）；Python 非 Rust（在线程安全和性能上有语言级差距） |
 | **在竞品矩阵中的位置** | 自主性=Hermes 同级（综合分更高）；知识工程=唯一有本体引擎；FDE=唯一有完整前线部署工具箱；工程评估=唯一有确定性自评体系。**不是 Dify/Coze 的替代品（不追求低代码市场），也不是 ChatGPT/Claude 的替代品（不追求消费者/IDE市场）** |
@@ -142,6 +142,7 @@ verification: `python3 scripts/compute_assessment.py`
 | **Gossip 四层记忆** | Dify/Coze 的"记忆"= 会话存储。aiPlat 的四层记忆（Working/Episodic/Semantic/Procedural）+ 跨实例 GossipProtocol 同步，对标的是分布式数据库的一致性设计 |
 | **FDE 完整工具箱** | 离线部署包 + 多客户诊断 + 现场反馈闭环 + ModelManager 自动发现模型——这是"把 AI 平台做成可前线部署的产品"，不是 SaaS 功能 |
 | **可复现的确定性评估** | 没有其他系统有 `compute_assessment.py` 这种"所有分数一条命令可重算"的自评引擎。Dify/Hermes 最多有 GitHub Stars 做间接度量 |
+| **Agent 运行时确定性约束体系** | 基于 Hermes 设计思想的自主实现——预门禁（`_acceptance_gate` 检查验收标准）+ 验收否决（`workbench.apply_threshold_gate` 代码否决 LLM 的 done）+ 独立评估器（温度=0.0）+ Howl 停滞检测（4 触发/3 策略）+ 迭代硬上限（1000 步安全帽）+ 解析保护（连续失败→策略切换）。Hermes 有完整的六层原生 Rust 实现，但 aiPlat 是唯一将其完整工程化到 Python 平台生态中的系统 |
 
 ---
 
@@ -209,7 +210,7 @@ verification: `python3 scripts/compute_assessment.py`
 
 ### 一句话定位
 
-> **aiPlat = 为 FDE、开发者、数据专家打造的"AI 前线部署与自进化平台"——集 Hermes 的自主性 + Dify 的可视化 + Coze 的多模态 + 独有的本体引擎/FDE工具箱/确定性评估，面向企业 AI 在真实客户现场的最后一公里落地。**
+> **aiPlat = 为 FDE、开发者、数据专家打造的"自进化 Agent 运行时与前线部署平台"——集 Hermes 的运行时确定性约束 + Dify 的可视化 + Coze 的多模态 + 独有的本体引擎/FDE工具箱/确定性评估，面向企业 AI 在真实客户现场的最后一公里落地。**
 
 ### 能力覆盖对比（功能矩阵）
 
@@ -222,11 +223,12 @@ verification: `python3 scripts/compute_assessment.py`
 | 可复现确定性自评（compute_assessment引擎） | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | **✅** |
 | 模型自主发现/导出（ModelManager+export_models） | ❌ | ⚠️ | ❌ | ❌ | ⚠️ | ❌ | **✅** |
 | 现场反馈→产品迭代闭环（FDE Feedback→GoalGenerator） | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | **✅** |
+| **Agent 运行时确定性约束**（预门禁+否决+评估器+停滞检测+上限+解析保护） | ❌ | ❌ | ❌ | ❌ | **✅** | ❌ | **✅** |
 | 可视化工作流（React Flow画布） | ❌ | ✅ | ✅ | ❌ | ❌ | ❌ | **✅** |
 | AI Agent/Skill 自动填充 | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | **✅** |
 | 四层记忆（Gossip+WAL+TTL+PreScore） | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | **✅** |
 
-> ⚠️ = 部分支持或有限实现。例：Dify/360/DeepSeek 支持离线安装 Docker 镜像，但无 aiPlat FDE 工具箱的全套能力（自动模型发现/导出、客户诊断 Skill、多客户仪表盘、现场反馈闭环）。aiPlat 在 10 项中有 7 项为唯一 ✅，3 项为少数 ✅ 之一。Hermes 在自主性上最接近（3 项 ✅），Dify 在可视化/部署上部分覆盖。
+> ⚠️ = 部分支持或有限实现。例：Dify/360/DeepSeek 支持离线安装 Docker 镜像，但无 aiPlat FDE 工具箱的全套能力（自动模型发现/导出、客户诊断 Skill、多客户仪表盘、现场反馈闭环）。aiPlat 在 11 项中有 8 项为唯一 ✅，3 项为少数 ✅ 之一。Hermes 在自主性和运行时确定性约束上最接近（3 项 ✅），Dify 在可视化/部署上部分覆盖。
 
 ---
 
