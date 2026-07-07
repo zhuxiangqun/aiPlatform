@@ -8,7 +8,7 @@ const ROLE_MENUS: Record<string, string[]> = {
   developer: ["infra", "core", "workspace", "app", "value", "user", "diagnostics"],
   business:  ["value", "user"],
   user:      ["user", "app"],
-  approver:  ["approval", "user"],
+  fde:       ["diagnostics", "infra", "core", "value"],
 };
 
 function getRole(): string {
@@ -20,7 +20,7 @@ function canSee(group: string): boolean {
 
 const ROLE_LABELS: Record<string, string> = {
   admin: '管理员', developer: '开发者', business: '业务负责人',
-  user: '终端用户', approver: '审批人',
+  user: '终端用户', approver: '审批人', fde: 'FDE 工程师',
 };
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -51,6 +51,7 @@ const menuItems: (MenuItem | { divider: boolean } | MenuGroup)[] = [
   { key: '/diagnostics', icon: Activity, label: '诊断中心' },
   { key: '/diagnostics/repairs', icon: Activity, label: '修复中心' },
   { key: '/diagnostics/eval', icon: BarChart3, label: 'Agent 评估' },
+  { key: '/diagnostics/fde', icon: Wrench, label: 'FDE 工作台' },
   { key: '/system-graph', icon: Activity, label: '系统图谱' },
   { key: '/onboarding', icon: Settings, label: '初始化向导' },
   { divider: true },

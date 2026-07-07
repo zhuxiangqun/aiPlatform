@@ -10,6 +10,7 @@ Manages AI models from three sources:
 import asyncio
 import logging
 import os
+import subprocess
 from typing import Dict, List, Optional, Any
 from datetime import datetime, timezone
 
@@ -207,7 +208,6 @@ class ModelManager:
 
         Covers all 9 purposes for centralized, env-driven model selection.
         """
-        import os
         purpose_env_map = {
             "agent":       ("AIPLAT_AGENT_MODEL", "AIPLAT_DEFAULT_AGENT_MODEL"),
             "reasoning":   ("AIPLAT_AGENT_MODEL", "AIPLAT_DEFAULT_AGENT_MODEL"),
@@ -705,3 +705,26 @@ class ModelManager:
                 "unhealthy": issues
             }
         )
+
+    def export_models(self, output_dir: str) -> dict:
+        """Export all locally-packable models for offline deployment (FDE Toolkit A).
+
+        Ollama models → ollama save → {output_dir}/{name}.gguf.
+        Remote API models (openai/deepseek/anthropic) → metadata only (FDE configures
+        API keys at customer site). Returns a manifest with three sections."""
+        manifests = {"local": [], "remote": [], "errors": []}
+        os.makedirs(output_dir, exist_ok=True)
+        for model in self._models.values():
+            if model.provider == "ollama" and model.source == "local":
+                out = os.path.join(output_dir, f"{model.model_name}.gguf")
+                try:
+                    subprocess.run(
+                        ["ollama", "save", model.model_name, "-o", out],
+                        check=True, timeout=120, capture_output=True,
+                    )
+                    manifests["local"].append({"name": model.model_name, "file": out})
+                except Exception as e:
+                    manifests["errors"].append({"name": model.model_name, "error": str(e)[:200]})
+            elif model.provider in ("openai", "deepseek", "anthropic"):
+                manifests["remote"].append({"name": model.model_name, "provider": model.provider})
+        return manifests

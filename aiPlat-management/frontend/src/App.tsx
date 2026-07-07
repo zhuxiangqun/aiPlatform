@@ -103,6 +103,7 @@ const DiagnosticsWorkflows = lazy(() => import('./pages/Diagnostics/Workflows'))
 const DiagnosticsCodeIntel = lazy(() => import('./pages/Diagnostics/CodeIntel/CodeIntel'));
 const DiagnosticsCapabilityGraph = lazy(() => import('./pages/Diagnostics/CapabilityGraph/CapabilityGraph'));
 const RepairCenter = lazy(() => import('./pages/Diagnostics/RepairCenter'));
+const FdeDashboard = lazy(() => import('./pages/Diagnostics/FdeDashboard'));
 const ObservabilityDashboard = lazy(() => import('./pages/Diagnostics/ObservabilityDashboard'));
 const RunComparison = lazy(() => import('./pages/Diagnostics/RunComparison'));
 const ModelPlayground = lazy(() => import('./pages/Diagnostics/ModelPlayground'));
@@ -229,6 +230,7 @@ const router = createBrowserRouter([
       { path: 'diagnostics/code-intel', element: withSuspense(DiagnosticsCodeIntel) },
       { path: 'diagnostics/capability-graph', element: withSuspense(DiagnosticsCapabilityGraph) },
       { path: 'diagnostics/repairs', element: withSuspense(RepairCenter) },
+      { path: 'diagnostics/fde', element: withSuspense(FdeDashboard) },
       { path: 'diagnostics/observability', element: withSuspense(ObservabilityDashboard) },
       { path: 'diagnostics/run-comparison', element: withSuspense(RunComparison) },
       { path: 'diagnostics/model-playground', element: withSuspense(ModelPlayground) },

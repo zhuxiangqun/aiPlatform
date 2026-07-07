@@ -2104,6 +2104,13 @@ try:
 except Exception as e:
     logging.debug("Kanban router: %s", e)
 
+# FDE Toolkit (Field Deployment Engineer — unified entry point, 方向一)
+try:
+    from core.api.routers.fde import router as fde_router
+    api_router.include_router(fde_router)
+except Exception as e:
+    logging.debug("FDE router: %s", e)
+
 # A2A Protocol — Google Agent-to-Agent standard (external agent interoperability)
 try:
     from core.apps.a2a import a2a_router
