@@ -184,7 +184,7 @@ def print_summary(r: dict) -> None:
     f2 = r["frameworks"]["framework_two"]
     f3 = r["frameworks"]["framework_three"]
     print("\n===== 评估综合分 (确定性计算, 全库唯一) =====")
-    print(f"  框架一 8轴自主性: {f1['composite_level_value']} → {f1['composite_grade']} "
+    print(f"  框架一 10轴自主性: {f1['composite_level_value']} → {f1['composite_grade']} "
           f"(权重和={f1['weight_sum']})")
     print(f"  框架二 工程落地:   {f2['overall_pct']}%")
     for t in f3["tiers"]:
@@ -231,7 +231,7 @@ def build_score_block(r: dict) -> str:
         ">",
         "> | 框架 | 计算综合 | 公式 |",
         "> |------|------|------|",
-        f"> | 框架一 8轴自主性 | **{f1['composite_grade']} ({f1['composite_level_value']})** | 归一化加权(权重和 {f1['weight_sum']}) |",
+        f"> | 框架一 10轴自主性 | **{f1['composite_grade']} ({f1['composite_level_value']})** | 归一化加权(权重和 {f1['weight_sum']}) |",
         f"> | 框架二 工程落地 | **{f2['overall_pct']}%** | (yes+0.5·partial)/total |",
         f"> | 框架三 三层企业 | {tiers} | 项均值(人工分) |",
         ">",

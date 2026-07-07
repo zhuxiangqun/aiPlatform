@@ -153,7 +153,7 @@ frameworks:
   # ═══════════════════════════════════════════════════════════
       - id: K
         name: "知识工程"
-        declared_level: L4
+        declared_level: L5
         weight: 0.14
         items:
           - {id: K1, desc: "知识摄取与解析(DocumentParser 5格式+StructuredTable+QAPair)", declared_level: L5, source: file_check,
@@ -162,9 +162,9 @@ frameworks:
              evidence: {command: "find aiPlat-core/core/harness/ontology_engine -name '*.py' ! -name '__init__.py' | wc -l", op: "-ge", expected: 20}}
           - {id: K3, desc: "知识检索与增强(CRAG/HyDE 3级回退+DomainRouter+多路融合RRF+本体优先)", declared_level: L5, source: file_check,
              evidence: {command: "grep -c 'CRAG' aiPlat-core/core/apps/agents/materials_chat.py", op: "-ge", expected: 3}}
-          - {id: K4, desc: "知识全生命周期(K4进入/活跃/失效/退出+StateMachine+动态续期+软删除)", declared_level: L4, source: file_check,
+          - {id: K4, desc: "知识全生命周期(K4进入/活跃/失效/退出+StateMachine+动态续期+软删除)", declared_level: L5, source: file_check,
              evidence: {command: "grep -c 'class StateMachine' aiPlat-core/core/harness/ontology_engine/state_machine.py", op: "-ge", expected: 1}}
-          - {id: K5, desc: "知识质量与可信(WikiQuality+HallucinationTracker+Provenance+ActiveSynthesis)", declared_level: L4, source: file_check,
+          - {id: K5, desc: "知识质量与可信(WikiQuality+HallucinationTracker+Provenance+ActiveSynthesis)", declared_level: L5, source: file_check,
              evidence: {command: "grep -c 'class WikiQuality' aiPlat-core/core/harness/knowledge/wiki_quality_monitor.py", op: "-ge", expected: 1}}
 
   # ═══════════════════════════════════════════════════════════
@@ -304,7 +304,7 @@ frameworks:
           - {id: "T0.11", desc: "音频处理", score: 4.0, weight: 0.01, source: manual}
           - {id: "T0.12", desc: "视频处理", score: 2.5, weight: 0.01, source: manual}
           - {id: "T0.13", desc: "多格式文档", score: 4.0, weight: 0.01, source: manual}
-          - {id: "T0.14", desc: "语音交互(STT/TTS)", score: 3.5, weight: 0.01, source: manual}
+          - {id: "T0.14", desc: "语音交互(STT/TTS)", score: 4.0, weight: 0.01, source: manual}
           - {id: "T0.15", desc: "浏览器自动化", score: 3.5, weight: 0.01, source: manual}
           - {id: "T1.1", desc: "Agent创建", score: 4.5, weight: 0.02, source: manual}
           - {id: "T1.2", desc: "Agent规划", score: 4.5, weight: 0.02, source: manual}

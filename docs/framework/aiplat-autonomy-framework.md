@@ -15,11 +15,11 @@ tags: [framework, 8-axis, L1-L5, maturity]
 # aiPlat 自主性成熟度框架 v2.0
 
 <!-- AUTO-SCORE:BEGIN (由 scripts/compute_assessment.py 生成, 勿手改) -->
-> **📊 权威评分**（唯一源 `assessment-spec.yaml` → `compute_assessment.py`，生成于 2026-07-07T12:49:31）
+> **📊 权威评分**（唯一源 `assessment-spec.yaml` → `compute_assessment.py`，生成于 2026-07-07T16:54:28）
 >
 > | 框架 | 计算综合 | 公式 |
 > |------|------|------|
-> | 框架一 8轴自主性 | **L5 (4.86)** | 归一化加权(权重和 1.0) |
+> | 框架一 10轴自主性 | **L5 (5.0)** | 归一化加权(权重和 1.0) |
 > | 框架二 工程落地 | **100.0%** | (yes+0.5·partial)/total |
 > | 框架三 三层企业 | 宏观 3.54 / 微观 3.98 / 架构 3.77 | 项均值(人工分) |
 >
