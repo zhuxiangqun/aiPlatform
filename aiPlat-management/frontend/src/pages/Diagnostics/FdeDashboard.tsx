@@ -1,12 +1,13 @@
 /**
  * FdeDashboard — FDE 工作台 (Field Deployment Engineer Toolkit, 方向一)
  *
- * 5 Tab 统一入口:
+ * 6 Tab 统一入口:
  *   Tab 1: 系统进化 (Evolution 监控 — 迁移自 workbench FDE Dashboard)
  *   Tab 2: 部署管理 (离线部署包 打包/下载)
  *   Tab 3: 客户诊断 (field_assessment Skill → 报告)
  *   Tab 4: 客户列表 (多客户视图 + 健康摘要)
  *   Tab 5: 现场反馈 (结构化提交 + 历史)
+ *   Tab 6: POC 工具箱 (行业模板加载 + 数据注入 + 快速验证)
  */
 import React, { useEffect, useState, useCallback } from 'react';
 import { Card, CardContent, CardHeader, Button } from '../../components/ui';
@@ -21,6 +22,7 @@ const TABS = [
   { key: 'assess',    label: '客户诊断', icon: FileText },
   { key: 'customers', label: '客户列表', icon: Users },
   { key: 'feedback',  label: '现场反馈', icon: Clipboard },
+  { key: 'poc',       label: 'POC 工具箱', icon: Wrench },
 ] as const;
 
 type TabKey = typeof TABS[number]['key'];
@@ -51,6 +53,7 @@ const FdeDashboard: React.FC = () => {
       {tab === 'assess'    && <AssessTab />}
       {tab === 'customers' && <CustomersTab />}
       {tab === 'feedback'  && <FeedbackTab />}
+      {tab === 'poc'       && <PocTab />}
     </div>
   );
 };
@@ -338,6 +341,102 @@ const FeedbackTab: React.FC = () => {
           </CardContent>
         </Card>
       )}
+    </div>
+  );
+};
+
+// ═══════════════════════════════════════════════════════════
+// Tab 6: POC 工具箱
+// ═══════════════════════════════════════════════════════════
+const PocTab: React.FC = () => {
+  const [profile, setProfile] = useState('');
+  const [injectResult, setInjectResult] = useState<any>(null);
+  const [loading, setLoading] = useState(false);
+
+  const industries = [
+    { key: 'manufacturing', label: '制造业', desc: '质检+设备运维' },
+    { key: 'finance',       label: '金融业', desc: '合规+风险' },
+    { key: 'retail',        label: '零售业', desc: '客服+选品' },
+    { key: 'general',       label: '通用',   desc: '知识问答' },
+  ];
+
+  const loadTemplate = async (industry: string) => {
+    setLoading(true);
+    try {
+      await fetch(API(`/switch-profile/poc-${industry}`), { method: 'POST' });
+      setProfile(industry);
+    } catch {}
+    setLoading(false);
+  };
+
+  const quickInject = async () => {
+    setLoading(true);
+    try {
+      const r = await fetch('/api/core/skills/poc_data_inject/execute', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ file_paths: [] }),
+      });
+      setInjectResult(await r.json());
+    } catch {}
+    setLoading(false);
+  };
+
+  return (
+    <div className="space-y-4">
+      <Card>
+        <CardHeader><span className="text-sm font-medium">加载行业模板</span></CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-4 gap-2">
+            {industries.map(ind => (
+              <button key={ind.key}
+                onClick={() => loadTemplate(ind.key)}
+                disabled={loading}
+                className={`p-3 rounded-md border text-left text-xs transition-colors ${
+                  profile === ind.key ? 'border-blue-500 bg-blue-500/10' : 'border-gray-700 hover:border-gray-500'
+                }`}>
+                <div className="text-gray-200 font-medium">{ind.label}</div>
+                <div className="text-gray-500">{ind.desc}</div>
+              </button>
+            ))}
+          </div>
+          {profile && <p className="text-xs text-green-400 mt-2">✓ 当前 Profile: poc-{profile}</p>}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader><span className="text-sm font-medium">注入客户数据</span></CardHeader>
+        <CardContent className="space-y-2">
+          <p className="text-xs text-gray-500">
+            支持 PDF、CSV、Excel、TXT、Markdown — 拖入文件后自动解析注入 kb/poc 知识库
+          </p>
+          <Button variant="default" size="sm" onClick={quickInject} loading={loading}>
+            <Send className="w-3.5 h-3.5 mr-1" />执行数据注入
+          </Button>
+          {injectResult && (
+            <div className="text-xs space-y-1 mt-2">
+              <p className="text-gray-300">
+                状态: {injectResult.status} | 文件: {injectResult.total_files || 0} | 记录: {injectResult.records || 0}
+              </p>
+              {(injectResult.errors || []).length > 0 && (
+                <div className="text-red-400">错误: {(injectResult.errors || []).slice(0, 3).join('; ')}</div>
+              )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader><span className="text-sm font-medium">POC 操作手册</span></CardHeader>
+        <CardContent>
+          <div className="text-xs text-gray-400 space-y-1">
+            <p>1. 加载行业模板 → 系统自动配置 Agent</p>
+            <p>2. 注入客户数据 (PDF/Excel/CSV/TXT) → kb/poc 可检索</p>
+            <p>3. 打开 Agent 对话 → 问"我们的X数据如何？" → AI 即时回答</p>
+            <p>4. 如需离线部署 → Tab 2 "部署管理" → 打包 → 客户现场安装</p>
+            <p className="text-gray-600 mt-1">详见 docs/fde/fde-poc-playbook.md</p>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 };
