@@ -21,11 +21,11 @@ tags: [evaluation, L4, engineering-maturity, enterprise-assessment, 8-axis, resi
 # aiPlat 综合评估报告 V3.0
 
 <!-- AUTO-SCORE:BEGIN (由 scripts/compute_assessment.py 生成, 勿手改) -->
-> **📊 权威评分**（唯一源 `assessment-spec.yaml` → `compute_assessment.py`，生成于 2026-07-07T10:00:40）
+> **📊 权威评分**（唯一源 `assessment-spec.yaml` → `compute_assessment.py`，生成于 2026-07-07T10:15:03）
 >
 > | 框架 | 计算综合 | 公式 |
 > |------|------|------|
-> | 框架一 8轴自主性 | **L4 (4.35)** | 归一化加权(权重和 1.0) |
+> | 框架一 8轴自主性 | **L5 (4.65)** | 归一化加权(权重和 1.0) |
 > | 框架二 工程落地 | **99.2%** | (yes+0.5·partial)/total |
 > | 框架三 三层企业 | 宏观 3.54 / 微观 3.97 / 架构 3.77 | 项均值(人工分) |
 >

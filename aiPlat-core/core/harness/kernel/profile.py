@@ -93,9 +93,21 @@ class ProfileManager:
         for cfg in self._profiles.values():
             if cfg.default:
                 return cfg
-        # Fallback: implicit default profile with @default namespace
         return ProfileConfig(name="default", namespace="default",
                              description="Implicit default profile")
+
+    def get_mcp_servers(self, name: str) -> List[str]:
+        """Return MCP server IDs scoped to a profile (per-profile MCP isolation, A2.4 L3→L4).
+        Falls back to all registered servers if profile has no explicit mcp_servers list."""
+        cfg = self.get(name)
+        if cfg and cfg.mcp_servers:
+            return cfg.mcp_servers
+        # backward compat: empty list = all servers
+        try:
+            from core.apps.mcp.client import get_mcp_client_manager
+            return get_mcp_client_manager().list_servers()
+        except Exception:
+            return []
 
     def list_all(self) -> List[ProfileConfig]:
         self._ensure_loaded()

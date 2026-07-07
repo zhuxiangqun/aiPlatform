@@ -35,7 +35,7 @@ frameworks:
     axes:
       - id: A1
         name: "自执行闭环"
-        declared_level: L4
+        declared_level: L5
         weight: 0.20
         items:
           - {id: A1.1, desc: "自愈多策略(5子策略, 全线投产)", declared_level: L4, source: script,
@@ -46,11 +46,11 @@ frameworks:
              runtime_ref: {kind: file_count, label: "agent运行自动打分次数(P0-2)", command: "find ~/.aiplat/eval_results -name '*.json' 2>/dev/null | wc -l"}}
           - {id: A1.3, desc: "检查点回滚(ExecutionSnapshot)", declared_level: L4, source: script,
              evidence: {command: "grep -c 'class ExecutionSnapshot' aiPlat-core/core/harness/execution/snapshot.py", op: "-ge", expected: 1}}
-          - {id: A1.4, desc: "零Token检测/自主唤醒(WakeScheduler+mark_interaction)", declared_level: L3, source: file_check,
+          - {id: A1.4, desc: "零Token检测/自主唤醒(WakeScheduler+mark_interaction)", declared_level: L4, source: file_check,
              evidence: {command: "grep -c 'class GoalLoopBridge\\|class MultiModalTrigger' aiPlat-core/core/harness/multimodal/trigger.py", op: "-ge", expected: 2}}
       - id: A2
         name: "自调度编排"
-        declared_level: L4
+        declared_level: L5
         weight: 0.10
         items:
           - {id: A2.1, desc: "状态流转(PipelineEngine)", declared_level: L4, source: script,
@@ -59,7 +59,7 @@ frameworks:
              evidence: {command: "grep -rlE 'tenant_id' aiPlat-core/core --include=*.py | wc -l", op: "-ge", expected: 10}}
           - {id: A2.3, desc: "看板+Cron 定时调度(KanbanEngine+CronScheduler)", declared_level: L3, source: file_check,
              evidence: {command: "test -f aiPlat-core/core/harness/coordination/kanban_engine.py && test -f aiPlat-core/core/harness/scheduler/cron.py && test -f aiPlat-core/core/harness/scheduler/cron_loader.py && echo 3 || echo 0", op: "-ge", expected: 1}}
-          - {id: A2.4, desc: "Profile命名空间隔离(MemoryManager namespace + Profile + skills workspace)", declared_level: L3, source: file_check,
+          - {id: A2.4, desc: "Profile命名空间隔离(MemoryManager namespace + Profile + skills workspace)", declared_level: L4, source: file_check,
              evidence: {command: "test -f aiPlat-core/core/harness/kernel/profile.py && grep -c 'namespace' aiPlat-core/core/harness/memory/manager.py", op: "-ge", expected: 1}}
       - id: B
         name: "上下文感知"

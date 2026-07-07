@@ -1,20 +1,20 @@
 {
-  "generated_at": "2026-07-07T10:00:41",
+  "generated_at": "2026-07-07T10:15:03",
   "spec_version": "1.0.0",
   "frameworks": {
     "framework_one": {
       "name": "8轴自主性成熟度",
-      "composite_level_value": 4.35,
-      "composite_grade": "L4",
+      "composite_level_value": 4.65,
+      "composite_grade": "L5",
       "weight_sum": 1.0,
       "formula": "sum(axis_level*weight)/sum(weight) — normalized",
       "axes": [
         {
           "id": "A1",
           "name": "自执行闭环",
-          "declared_level": "L4",
+          "declared_level": "L5",
           "weight": 0.2,
-          "level_value": 4,
+          "level_value": 5,
           "conflict_note": null,
           "items": [
             {
@@ -69,7 +69,7 @@
             {
               "id": "A1.4",
               "desc": "零Token检测/自主唤醒(WakeScheduler+mark_interaction)",
-              "declared_level": "L3",
+              "declared_level": "L4",
               "source": "file_check",
               "evidence": {
                 "command": "grep -c 'class GoalLoopBridge\\|class MultiModalTrigger' aiPlat-core/core/harness/multimodal/trigger.py",
@@ -84,9 +84,9 @@
         {
           "id": "A2",
           "name": "自调度编排",
-          "declared_level": "L4",
+          "declared_level": "L5",
           "weight": 0.1,
-          "level_value": 4,
+          "level_value": 5,
           "conflict_note": null,
           "items": [
             {
@@ -131,7 +131,7 @@
             {
               "id": "A2.4",
               "desc": "Profile命名空间隔离(MemoryManager namespace + Profile + skills workspace)",
-              "declared_level": "L3",
+              "declared_level": "L4",
               "source": "file_check",
               "evidence": {
                 "command": "test -f aiPlat-core/core/harness/kernel/profile.py && grep -c 'namespace' aiPlat-core/core/harness/memory/manager.py",
