@@ -43,7 +43,7 @@ verification: `python3 scripts/compute_assessment.py`
 | **核心价值** | "让每个人都能构建 AI 应用"——开源、可视化、低代码的 LLM 应用开发平台 |
 | **独特优势** | React Flow 可视化工作流、RAG 管道（开箱即用）、开源社区（GitHub 50K+ Stars）、多模型接入 |
 | **典型用户** | 非开发者、产品经理、中小企业 |
-| **局限** | 自主性 L2-L3（无自愈/自进化/自主调度）、记忆仅会话级、知识仅 RAG（无本体）、无 FDE 现场部署能力 |
+| **局限** | 自主性 L2-L3（有工作流调度，无自愈/自进化）、记忆仅会话级、知识仅 RAG（无本体引擎）、无 FDE 现场部署闭环
 
 **对 aiPlat 的借鉴**：✅ 已借鉴——React Flow 可视化工作流画布、RAG 多路融合。❌ 不追求——低代码非开发者市场。
 
@@ -56,7 +56,7 @@ verification: `python3 scripts/compute_assessment.py`
 | **核心价值** | "AI Bot 即服务"——字节生态内的快速 Bot 构建+多端发布（抖音/飞书/微信） |
 | **独特优势** | 插件市场（字节生态数百个）、多端发布、语音/图片/视频多模态、SaaS 运维零成本 |
 | **典型用户** | 企业 Bot 开发者、字节生态用户 |
-| **局限** | 自主性 L2-L3（无自愈/自进化）、仅 SaaS、数据不出字节云、知识仅知识库、无 FDE 现场部署 |
+| **局限** | 自主性 L2-L3（无自愈/自进化）、仅 SaaS、数据不透明（企业版可私有化部署但数据管理权限受限、依赖字节生态）、知识仅知识库、无 FDE 现场部署闭环 |
 
 **对 aiPlat 的借鉴**：✅ 已借鉴——多模态整合（语音/视频/浏览器）。❌ 不追求——字节生态绑定、SaaS Only。
 
@@ -69,7 +69,7 @@ verification: `python3 scripts/compute_assessment.py`
 | **核心价值** | "自主 Agent 引擎"——不追求做平台，而是做"最精的 Agent 运行时" |
 | **独特优势** | Rust 原生引擎、六层确定性约束（预门禁/评估器/验收门禁/目标连续性/迭代上限/解析保护）、容错四层全接线、原生 CLI（/model /goal /rollback /learn） |
 | **典型用户** | 自主 Agent 研究者、追求极致控制的开发者 |
-| **局限** | 无知识工程维度、无 FDE（不自带部署和现场支持）、无工程成熟度评估框架、无管理 UI、社区小 |
+| **局限** | 有基础知识管理（三文档记忆+MCP+Vector Store）但无本体引擎和跨域推理、无 FDE（不自带部署和现场支持）、无工程成熟度评估框架、无管理 UI、社区小 |
 
 **对 aiPlat 的借鉴**：✅ 已借鉴——Phase Gate 验收否决、容错四层接线、wakeAgent 概念。❌ 不追求——Rust 引擎（Python 对 aiPlat 目标足够）。
 
@@ -82,7 +82,7 @@ verification: `python3 scripts/compute_assessment.py`
 | **核心价值** | "探索 AI 自主性的前沿"——基座模型+Agent 能力的紧密结合 |
 | **独特优势** | 自研基座模型（DeepSeek-V3/R1）、MoE 架构成本优势、开源权重、研究级 Agent 自主性 L4 |
 | **典型用户** | AI 研究者、学术机构 |
-| **局限** | 工程成熟度实验级、无企业评估框架、无 FDE/离线部署、无知识工程维度 |
+| **局限** | 工程成熟度实验级、无企业评估框架、无 FDE/离线部署、有基础知识管理（RAG）无本体引擎和跨域推理 |
 
 **对 aiPlat 的借鉴**：✅ 已借鉴——通过 infra ModelManager 接入 DeepSeek 作为推理模型。❌ 不追求——自研基座模型。
 
@@ -115,7 +115,9 @@ verification: `python3 scripts/compute_assessment.py`
 | **DeepSeek** | 推理模型接入 | infra ModelManager → DeepSeek-V3 作为 reasoning 模型 |
 | **ChatGPT** | API 设计规范 | 813 REST 端点 + OpenAPI/Swagger 全层 |
 
-### 2.2 aiPlat 独有的（任何可比系统都不具备的）
+### 2.2 aiPlat 独有的能力（截至 2026-07，经过对标以下系统公开文档和代码未发现等价实现）
+
+> 对标范围：Hermes Agent (GitHub)、Dify (GitHub/官方文档)、Coze (官方文档/公开 API)、Claude Code (Anthropic 官方文档)、DeepSeek (论文/GitHub)、360 纳米AI (公开产品页)。以下 5 项能力在上述系统的**公开资料**中未发现等价实现。如有新发现请修正。
 
 | 独有能力 | 为什么只有 aiPlat 有 |
 |------|------|
@@ -190,14 +192,22 @@ verification: `python3 scripts/compute_assessment.py`
 
 > **aiPlat = 为 FDE、开发者、数据专家打造的"AI 前线部署与自进化平台"——集 Hermes 的自主性 + Dify 的可视化 + Coze 的多模态 + 独有的本体引擎/FDE工具箱/确定性评估，面向企业 AI 在真实客户现场的最后一公里落地。**
 
-### 与竞品的本质差异
+### 能力覆盖对比（功能矩阵）
 
-| 竞品 | 它们卖什么 | aiPlat 卖什么 |
-|------|------|------|
-| ChatGPT/Dify/Coze | "用 AI 做 X"（AI 是消费品） | "让 AI 自己进化 + 上前线"（AI 是生产力系统） |
-| Claude Code | "AI 帮你写代码"（AI 是工具） | "AI 帮你管理 AI"（AI 是平台） |
-| Hermes | "最精的 Agent 引擎"（AI 是引擎） | "最全的 Agent 工程平台"（AI 是生产线） |
-| 360/DeepSeek | 基座模型 + 行业方案 | 模型无关 + 前线部署 + 自进化 |
+| 能力维度 | ChatGPT | Dify | Coze | Claude | Hermes | 360/DeepSeek | **aiPlat** |
+|:---|:--:|:--:|:--:|:--:|:--:|:--:|:--:|
+| 自主执行闭环（自愈+Goal循环+wakeAgent） | ❌ | ⚠️ | ⚠️ | ⚠️ | ✅ | ✅ | **✅** |
+| 多Agent对等协作（合同网协议） | ❌ | ❌ | ⚠️ | ❌ | ⚠️ | ❌ | **✅** |
+| 本体引擎+知识图谱（26模块+全生命周期） | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | **✅** |
+| FDE离线部署工具箱（打包+诊断+多客户+反馈闭环） | ❌ | ⚠️ | ❌ | ❌ | ❌ | ⚠️ | **✅** |
+| 可复现确定性自评（compute_assessment引擎） | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | **✅** |
+| 模型自主发现/导出（ModelManager+export_models） | ❌ | ⚠️ | ❌ | ❌ | ⚠️ | ❌ | **✅** |
+| 现场反馈→产品迭代闭环（FDE Feedback→GoalGenerator） | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | **✅** |
+| 可视化工作流（React Flow画布） | ❌ | ✅ | ✅ | ❌ | ❌ | ❌ | **✅** |
+| AI Agent/Skill 自动填充 | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | **✅** |
+| 四层记忆（Gossip+WAL+TTL+PreScore） | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | **✅** |
+
+> ⚠️ = 部分支持或有限实现。aiPlat 在 10 项中有 7 项为唯一 ✅，3 项为少数 ✅ 之一。Hermes 在自主性上最接近（3 项 ✅），Dify 在可视化/部署上部分覆盖。
 
 ---
 
