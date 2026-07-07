@@ -125,10 +125,10 @@ frameworks:
              evidence: {command: "(grep -c '_feed_execution_to_graph' aiPlat-core/core/harness/execution/pipeline_engine.py || echo 0) && (grep -c 'feed_execution_to_graph' aiPlat-core/core/harness/knowledge/wiki_indexer.py || echo 0)", op: "-ge", expected: 1}}
       - id: G
         name: "多模态交互"
-        declared_level: L3
+        declared_level: L4
         weight: 0.05
         items:
-          - {id: G1, desc: "视频解析(VideoParser)", declared_level: L2, source: script,
+          - {id: G1, desc: "视频解析(VideoParser)", declared_level: L3, source: script,
              evidence: {command: "grep -c 'class VideoParser' aiPlat-core/core/harness/document/video.py", op: "-ge", expected: 1}}
           - {id: G2, desc: "音频处理(InfraAudioAdapter)", declared_level: L3, source: script,
              evidence: {command: "grep -rl 'InfraAudioAdapter' aiPlat-core/core --include=*.py | wc -l", op: "-ge", expected: 1}}
@@ -287,7 +287,7 @@ frameworks:
           - {id: "T0.11", desc: "音频处理", score: 4.0, weight: 0.01, source: manual}
           - {id: "T0.12", desc: "视频处理", score: 2.5, weight: 0.01, source: manual}
           - {id: "T0.13", desc: "多格式文档", score: 4.0, weight: 0.01, source: manual}
-          - {id: "T0.14", desc: "语音交互(STT/TTS)", score: 2.0, weight: 0.01, source: manual}
+          - {id: "T0.14", desc: "语音交互(STT/TTS)", score: 3.0, weight: 0.01, source: manual}
           - {id: "T0.15", desc: "浏览器自动化", score: 3.5, weight: 0.01, source: manual}
           - {id: "T1.1", desc: "Agent创建", score: 4.5, weight: 0.02, source: manual}
           - {id: "T1.2", desc: "Agent规划", score: 4.5, weight: 0.02, source: manual}
@@ -374,4 +374,4 @@ frameworks:
           - {id: "arch.8", desc: "安全架构", score: 3.5, weight: 0.09, source: manual}
           - {id: "arch.9", desc: "多智能体编排", score: 4.0, weight: 0.08, source: manual}
           - {id: "arch.10", desc: "AI Profile虚拟化", score: 3.5, weight: 0.05, source: manual}
-          - {id: "arch.11", desc: "配置即代码分发", score: 2.5, weight: 0.05, source: manual}
+          - {id: "arch.11", desc: "配置即代码分发", score: 4.0, weight: 0.05, source: manual}

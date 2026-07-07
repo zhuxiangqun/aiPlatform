@@ -1,10 +1,10 @@
 {
-  "generated_at": "2026-07-07T02:28:24",
+  "generated_at": "2026-07-07T08:22:55",
   "spec_version": "1.0.0",
   "frameworks": {
     "framework_one": {
       "name": "8轴自主性成熟度",
-      "composite_level_value": 4.25,
+      "composite_level_value": 4.3,
       "composite_grade": "L4",
       "weight_sum": 1.0,
       "formula": "sum(axis_level*weight)/sum(weight) — normalized",
@@ -436,15 +436,15 @@
         {
           "id": "G",
           "name": "多模态交互",
-          "declared_level": "L3",
+          "declared_level": "L4",
           "weight": 0.05,
-          "level_value": 3,
+          "level_value": 4,
           "conflict_note": null,
           "items": [
             {
               "id": "G1",
               "desc": "视频解析(VideoParser)",
-              "declared_level": "L2",
+              "declared_level": "L3",
               "source": "script",
               "evidence": {
                 "command": "grep -c 'class VideoParser' aiPlat-core/core/harness/document/video.py",
@@ -1235,7 +1235,7 @@
           "id": "micro",
           "name": "微观技术层",
           "declared_tier_score": 3.9,
-          "computed_mean": 3.96,
+          "computed_mean": 3.97,
           "items": [
             {
               "id": "T0.1",
@@ -1344,7 +1344,7 @@
             {
               "id": "T0.14",
               "desc": "语音交互(STT/TTS)",
-              "score": 2.0,
+              "score": 3.0,
               "weight": 0.01,
               "source": "manual",
               "verification_status": "no-data"
@@ -1931,7 +1931,7 @@
           "id": "arch",
           "name": "架构底座层",
           "declared_tier_score": 3.65,
-          "computed_mean": 3.64,
+          "computed_mean": 3.77,
           "items": [
             {
               "id": "arch.1",
@@ -2016,7 +2016,7 @@
             {
               "id": "arch.11",
               "desc": "配置即代码分发",
-              "score": 2.5,
+              "score": 4.0,
               "weight": 0.05,
               "source": "manual",
               "verification_status": "no-data"
