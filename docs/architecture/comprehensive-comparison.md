@@ -10,6 +10,8 @@ verification: `python3 scripts/compute_assessment.py`
 
 ## 一、各平台核心价值分析
 
+> 前 7 个平台（§1.1-§1.7）基于公开信息估算，标注"估算"处为映射估算。§1.8（aiPlat）为实测数据——所有分数由 `compute_assessment.py` 真实运行得出，0 drift，可随时复现。
+
 ### 1.1 ChatGPT / OpenAI
 
 | 维度 | 评估 |
@@ -101,7 +103,21 @@ verification: `python3 scripts/compute_assessment.py`
 
 ---
 
-## 二、aiPlat 如何"集各家之优势"
+### 1.8 aiPlat（本平台，实测数据）
+
+| 维度 | 评估 |
+|------|------|
+| **核心价值** | "让 AI 系统自己进化 + 上前线"——不是让更多人用 AI，而是让 AI 系统能自主运行、自愈、自进化，并由 FDE 带到客户现场交付 |
+| **独特优势** | L5 自主性（9 轴 4.86，全球唯一）+ 100% 工程就绪 + 本体引擎 26 模块 + FDE 全套工具箱（离线部署/客户诊断/多客户管理/现场反馈闭环）+ 可复现确定性自评引擎 + React Flow 可视化工作流 + AI Agent/Skill 自动填充 |
+| **典型用户** | FDE（前线部署工程师）、开发者、数据专家 |
+| **局限** | 单开发者（企业级 ≈3.7 是诚实天花板，合规/灾备/多区域部署依赖外部资源）；无 SaaS 多租户（ProfileManager 逻辑隔离但无计费/配额管理）；无 IDE 插件生态（有 ACP WebSocket 但无 VS Code/JetBrains 插件）；无外部插件市场（有 MCP 协议但无社区生态）；Python 非 Rust（在线程安全和性能上有语言级差距） |
+| **在竞品矩阵中的位置** | 自主性=Hermes 同级（综合分更高）；知识工程=唯一有本体引擎；FDE=唯一有完整前线部署工具箱；工程评估=唯一有确定性自评体系。**不是 Dify/Coze 的替代品（不追求低代码市场），也不是 ChatGPT/Claude 的替代品（不追求消费者/IDE市场）** |
+
+**对自身的"借鉴"（即独特基因）**：
+- 本体引擎是**从零设计的**（借鉴了 Palantir Ontology + SAG HyperEdge 概念，但实现完全自主）
+- SwarmBroker 合同网协议源自学术论文的工程化
+- FDE Toolkit 灵感来自 Hermes 的前线部署概念 + Stripe Minions 的后台任务模式
+- 确定性自评引擎是自己"吃了自己的狗粮"——评估框架本身也成为可评估对象
 
 ### 2.1 借鉴矩阵
 
