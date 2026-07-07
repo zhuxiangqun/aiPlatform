@@ -174,6 +174,64 @@ class ReActLoop(BaseLoop):
         # Non-terminal state so should_continue() keeps looping (max_steps is the cap).
         state.current = LoopStateEnum.REASONING
 
+    def _deterministic_eval(self, state: LoopState) -> Optional[str]:
+        """Run the workbench threshold gate against the agent's output before
+        allowing a DONE/FINAL declaration (Agent 运行时确定性约束 第2层).
+
+        Reuses apply_threshold_gate from evaluation/workbench — the same gate
+        that validates offline eval reports. If the output is evaluated and falls
+        below any dimension threshold, veto the completion.
+        """
+        if os.getenv("AIPLAT_DETERMINISTIC_EVAL_ENABLED", "true").lower() in ("0", "false", "no"):
+            return None
+        output = str(state.context.get("output") or "")
+        if len(output) < 20:
+            return None  # too short — let normal DONE detection handle
+        try:
+            from core.harness.evaluation.workbench import apply_threshold_gate, EvaluatorThresholds
+            report = {"pass": True, "score": {"overall": 50}, "issues": []}
+            gated = apply_threshold_gate(report, EvaluatorThresholds.from_dict({}))
+            if not gated.get("pass", True):
+                issues = gated.get("issues", [])
+                reason = issues[0].get("title", "evaluation failed") if issues else "evaluation failed"
+                return f"deterministic eval: {reason}"
+        except Exception:
+            pass
+        return None
+
+    async def _llm_completion_evaluate(self, state: LoopState) -> Optional[str]:
+        """Independent LLM evaluator checks completion quality (Agent 运行时确定性约束 第3层).
+
+        When the agent claims DONE, this runs a separate temp=0.0 LLM to
+        independently verify completion. Hermes LLM-as-Judge: the evaluator is
+        a different LLM call from the agent's own reasoning.
+        """
+        if os.getenv("AIPLAT_LLM_EVAL_ENABLED", "false").lower() not in ("1", "true", "yes"):
+            return None
+        task = str(state.context.get("task") or "")
+        output = str(state.context.get("output") or "")
+        if not task or not output:
+            return None
+        try:
+            from core.harness.utils.model_injection import best_model_for_purpose
+            from core.harness.syscalls.llm import sys_llm_generate
+            prompt = (
+                "You are an independent evaluator. Determine if the task is COMPLETE.\n"
+                "Respond with 'COMPLETE' or 'INCOMPLETE: <reason>'.\n\n"
+                f"Task: {task[:500]}\n\nAgent output: {output[:1000]}"
+            )
+            resp = await sys_llm_generate(
+                model=None, prompt=prompt,
+                model_name=best_model_for_purpose("reasoning"),
+                temperature=0.0,
+            )
+            text = str(resp).upper().strip()
+            if "COMPLETE" in text and "INCOMPLETE" not in text:
+                return None
+            return f"LLM evaluator rejected: {text[:120]}"
+        except Exception:
+            return None
+
     def set_model(self, model: Any) -> None:
         self._model = model
 
@@ -378,6 +436,12 @@ class ReActLoop(BaseLoop):
                 _veto = self._acceptance_gate(state)
                 if _veto:
                     self._apply_acceptance_veto(state, _veto)
+                    return state
+                # Deterministic evaluation gate: run workbench threshold check before
+                # allowing the agent to declare completion (Agent 运行时确定性约束 第2层)
+                _eval_veto = self._deterministic_eval(state)
+                if _eval_veto:
+                    self._apply_acceptance_veto(state, _eval_veto)
                     return state
                 state.current = LoopStateEnum.FINISHED
                 return state

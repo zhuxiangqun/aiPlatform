@@ -74,6 +74,21 @@ class BaseLoop(ILoop):
         agent_id = str(state.context.get("_agent_id") or state.context.get("agent_id") or "")
         task_type = _infer_task_type(task, agent_id)
         state.context["task_type"] = task_type
+
+        # Target continuity: detect if user input is continuation of prior task
+        # or a new task (Agent运行时确定性约束 第4层 — Hermes inspired)
+        try:
+            if os.getenv("AIPLAT_CONTINUITY_ENABLED", "true").lower() not in ("0", "false", "no"):
+                last_task = str(state.context.get("_last_task") or "")
+                if last_task and task and last_task != task:
+                    from core.harness.execution.loop.target_continuity import TargetContinuity
+                    continuity = TargetContinuity().decide(last_task, task)
+                    state.context["_continuity"] = continuity
+                    if not continuity["same_task"]:
+                        state.context["_continuity_new_task"] = True
+                state.context["_last_task"] = task
+        except Exception:
+            pass
         
         # PraxisRecorder — session-level execution recording
         try:
