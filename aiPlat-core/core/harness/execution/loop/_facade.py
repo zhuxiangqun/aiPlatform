@@ -235,6 +235,14 @@ class ReActLoop(BaseLoop):
         """Execute single ReAct step: reason -> act -> observe."""
         state.step_count += 1
 
+        # Feed WakeScheduler idle monitor (A1.4 — only on step 1, actual user msg)
+        if state.step_count == 1:
+            try:
+                from core.harness.scheduler.wake_scheduler import get_wake_scheduler
+                get_wake_scheduler().mark_interaction()
+            except Exception:
+                pass
+
         # Emit step_start + context_snapshot (first step only) for zero-black-box tree
         try:
             from core.services.execution_store import get_execution_store

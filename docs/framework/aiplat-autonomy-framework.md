@@ -15,7 +15,7 @@ tags: [framework, 8-axis, L1-L5, maturity]
 # aiPlat 自主性成熟度框架 v2.0
 
 <!-- AUTO-SCORE:BEGIN (由 scripts/compute_assessment.py 生成, 勿手改) -->
-> **📊 权威评分**（唯一源 `assessment-spec.yaml` → `compute_assessment.py`，生成于 2026-07-07T08:22:54）
+> **📊 权威评分**（唯一源 `assessment-spec.yaml` → `compute_assessment.py`，生成于 2026-07-07T08:36:52）
 >
 > | 框架 | 计算综合 | 公式 |
 > |------|------|------|

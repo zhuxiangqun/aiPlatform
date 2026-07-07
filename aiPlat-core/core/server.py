@@ -1380,6 +1380,16 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logging.debug("Cron loader skipped: %s", e)
 
+    # Wake scheduler: autonomous idle-wake trigger (A1.4 zero-token)
+    try:
+        from core.harness.scheduler.wake_scheduler import get_wake_scheduler
+        ws = get_wake_scheduler()
+        if ws.enabled:
+            asyncio.create_task(ws.start())
+            logger.info("Wake scheduler started (idle=%ds)", ws._WakeScheduler__idle_seconds)
+    except Exception as e:
+        logging.debug("Wake scheduler skipped: %s", e)
+
     from core.harness.observation.event_bus import EventBus
     EventBus.start()
 

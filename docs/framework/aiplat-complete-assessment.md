@@ -21,7 +21,7 @@ tags: [evaluation, L4, engineering-maturity, enterprise-assessment, 8-axis, resi
 # aiPlat 综合评估报告 V3.0
 
 <!-- AUTO-SCORE:BEGIN (由 scripts/compute_assessment.py 生成, 勿手改) -->
-> **📊 权威评分**（唯一源 `assessment-spec.yaml` → `compute_assessment.py`，生成于 2026-07-07T08:22:54）
+> **📊 权威评分**（唯一源 `assessment-spec.yaml` → `compute_assessment.py`，生成于 2026-07-07T08:36:52）
 >
 > | 框架 | 计算综合 | 公式 |
 > |------|------|------|

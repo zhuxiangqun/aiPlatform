@@ -46,7 +46,7 @@ frameworks:
              runtime_ref: {kind: file_count, label: "agent运行自动打分次数(P0-2)", command: "find ~/.aiplat/eval_results -name '*.json' 2>/dev/null | wc -l"}}
           - {id: A1.3, desc: "检查点回滚(ExecutionSnapshot)", declared_level: L4, source: script,
              evidence: {command: "grep -c 'class ExecutionSnapshot' aiPlat-core/core/harness/execution/snapshot.py", op: "-ge", expected: 1}}
-          - {id: A1.4, desc: "零Token检测/自主唤醒(事件循环wake+GoalLoopBridge)", result: "partial", declared_level: L2, source: file_check,
+          - {id: A1.4, desc: "零Token检测/自主唤醒(WakeScheduler+mark_interaction)", declared_level: L3, source: file_check,
              evidence: {command: "grep -c 'class GoalLoopBridge\\|class MultiModalTrigger' aiPlat-core/core/harness/multimodal/trigger.py", op: "-ge", expected: 2}}
       - id: A2
         name: "自调度编排"
