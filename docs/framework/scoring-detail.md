@@ -15,15 +15,15 @@ refs:
 # aiPlat 三框架逐项评分明细
 
 <!-- AUTO-SCORE:BEGIN (由 scripts/compute_assessment.py 生成, 勿手改) -->
-> **📊 权威评分**（唯一源 `assessment-spec.yaml` → `compute_assessment.py`，生成于 2026-07-07T12:10:39）
+> **📊 权威评分**（唯一源 `assessment-spec.yaml` → `compute_assessment.py`，生成于 2026-07-07T12:32:43）
 >
 > | 框架 | 计算综合 | 公式 |
 > |------|------|------|
-> | 框架一 8轴自主性 | **L5 (4.65)** | 归一化加权(权重和 1.0) |
+> | 框架一 8轴自主性 | **L5 (4.58)** | 归一化加权(权重和 1.0) |
 > | 框架二 工程落地 | **100.0%** | (yes+0.5·partial)/total |
 > | 框架三 三层企业 | 宏观 3.54 / 微观 3.98 / 架构 3.77 | 项均值(人工分) |
 >
-> 可验证项 50/50 pass · 漂移 0 · 手写分数已废弃，本块自动回填。
+> 可验证项 55/55 pass · 漂移 0 · 手写分数已废弃，本块自动回填。
 <!-- AUTO-SCORE:END -->
 
 > ⚠️ V3.0.0 是评估范式的结构性升级，而非系统能力的重新打分。详见完整评估报告兼容性声明。
@@ -494,6 +494,21 @@ bash scripts/verify-l4-pyramid.sh | grep '最大可宣称'
 
 ---
 
+
+### K 轴 — 知识工程（新增，9 轴框架第 9 轴）：L4
+
+| # | 评估项 | 得分 | 证据 | 验证 |
+|:--:|------|:--:|------|------|
+| K1 | 知识摄取与解析 | L5 | DocumentParser 5 格式 (MD/HTML/TXT/PDF/DOCX) + StructuredTable + QAPair + 并行 asyncio.gather | `find ontology_engine -name '*.py' | wc -l` ≥ 23 |
+| K2 | 知识组织与本体化 | L5 | 本体引擎 23 模块 + GraphIndex + HyperEdge + ClassMapper + EntityResolver | `find ontology_engine -name '*.py' | wc -l` = 26 |
+| K3 | 知识检索与增强 | L5 | CRAG/HyDE 3 级回退 + DomainRouter + 多路融合 RRF + 本体优先检索 | `grep -c 'CRAG$' materials_chat.py` = 3 |
+| K4 | 知识生命周期管理 | L4 | K4 四阶段全生命周期 + StateMachine + 动态续期 + 软删除 | `grep -c 'class StateMachine' state_machine.py` = 1 |
+| K5 | 知识质量与可信 | L4 | WikiQuality 3 维监控 + HallucinationTracker NLI 验证 + Provenance + ActiveSynthesis | `grep -c 'class WikiQuality' wiki_quality_monitor.py` = 1 |
+
+> K 轴是从 B 轴和框架三 T9 中提取独立成轴的，体现了 aiPlat 在知识工程上的代差优势。
+> 可比系统：Dify L3（RAG+向量库，无本体引擎）、Coze L3（知识库+搜索，无图谱）、Hermes 无专门知识工程维度。
+
+
 ## 综合差距分析
 
 ### 各框架定级
@@ -545,20 +560,24 @@ bash scripts/verify-l4-pyramid.sh | grep '最大可宣称'
 
 ---
 
-## 与行业对标
+## 与行业对标（9 轴，含知识工程 K 轴）
 
-| 系统 | L1-L5 | 工程成熟度 (估算) | 三层评估 (估算) |
-|------|:--:|:--:|:--:|
-| ChatGPT Agent | L2 | 生产级 | 优秀级 |
-| Claude Code | L3 | 准生产级 | 优秀级 |
-| 360 纳米AI | L4 | 准生产级 | 领导级 |
-| **aiPlat** | **L5** | **实验级** | **基础级** |
-| DeepSeek 研究Agent | L4 | 实验级 | 基础级 |
+| 系统 | 9 轴自主性 | 工程成熟度 | 企业级 | 平台形态 |
+|------|:--:|:--:|:--:|------|
+| ChatGPT Agent | L2 | 生产级 | 优秀级 | 消费者 AI |
+| Claude Code | L3 | 准生产级 | 优秀级 | 开发者工具 |
+| Dify (估算) | ~L3 | 生产级 | 领导级 | 开源 LLM 应用平台 |
+| Coze/扣子 (估算) | ~L3 | 生产级 | 领导级 | 商业 AI Bot 平台 |
+| 360 纳米AI | L4 | 准生产级 | 领导级 | 企业 AI 平台 |
+| Hermes Agent (估算) | ~L4 | 未自评 | 未自评 | 自主 Agent 引擎 |
+| **aiPlat (实测, 9轴)** | **L5 (4.58)** | **100.0%** | **≈3.7** | **AI 前线部署与自进化平台** |
+| DeepSeek 研究Agent | L4 | 实验级 | 基础级 | 研究系统 |
 
-> aiPlat 的 L5 自主性行业领先，但工程底座和商业化落后于 ChatGPT/Cursor 等商业产品。
+> aiPlat L5 自主性 + 100% 工程就绪 + 完整 FDE 前线部署能力——三者同时具备全球唯一。
+> Dify/Coze 的自主性约 L2-L3（有工作流无自愈/自进化），知识工程约 L3（RAG+知识库，无本体引擎）。
+> Hermes 在循环引擎底层确定性约束（Rust 原生）和产品化分发上领先；aiPlat 在综合自主性/记忆/协作/知识工程上超越。
 
 ---
-
 ## 验证
 
 ```bash

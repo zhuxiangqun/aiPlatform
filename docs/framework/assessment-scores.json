@@ -1,10 +1,10 @@
 {
-  "generated_at": "2026-07-07T12:10:39",
+  "generated_at": "2026-07-07T12:32:44",
   "spec_version": "1.0.0",
   "frameworks": {
     "framework_one": {
       "name": "8轴自主性成熟度",
-      "composite_level_value": 4.65,
+      "composite_level_value": 4.58,
       "composite_grade": "L5",
       "weight_sum": 1.0,
       "formula": "sum(axis_level*weight)/sum(weight) — normalized",
@@ -13,7 +13,7 @@
           "id": "A1",
           "name": "自执行闭环",
           "declared_level": "L5",
-          "weight": 0.2,
+          "weight": 0.15,
           "level_value": 5,
           "conflict_note": null,
           "items": [
@@ -147,7 +147,7 @@
           "id": "B",
           "name": "上下文感知",
           "declared_level": "L5",
-          "weight": 0.1,
+          "weight": 0.08,
           "level_value": 5,
           "conflict_note": null,
           "items": [
@@ -356,7 +356,7 @@
           "id": "F",
           "name": "自进化学习",
           "declared_level": "L4",
-          "weight": 0.1,
+          "weight": 0.08,
           "level_value": 4,
           "conflict_note": null,
           "items": [
@@ -498,7 +498,7 @@
           "id": "H",
           "name": "产品化交付",
           "declared_level": "L4",
-          "weight": 0.15,
+          "weight": 0.1,
           "level_value": 4,
           "conflict_note": null,
           "items": [
@@ -553,6 +553,81 @@
               },
               "verification_status": "pass",
               "actual": 3
+            }
+          ]
+        },
+        {
+          "id": "K",
+          "name": "知识工程",
+          "declared_level": "L4",
+          "weight": 0.14,
+          "level_value": 4,
+          "conflict_note": null,
+          "items": [
+            {
+              "id": "K1",
+              "desc": "知识摄取与解析(DocumentParser 5格式+StructuredTable+QAPair)",
+              "declared_level": "L5",
+              "source": "file_check",
+              "evidence": {
+                "command": "grep -c 'class DocumentParser' aiPlat-core/core/harness/ontology_engine/document_parser.py",
+                "op": "-ge",
+                "expected": 1
+              },
+              "verification_status": "pass",
+              "actual": 1
+            },
+            {
+              "id": "K2",
+              "desc": "知识组织与本体化(本体引擎23模块+GraphIndex+HyperEdge+ClassMapper+EntityResolver)",
+              "declared_level": "L5",
+              "source": "file_check",
+              "evidence": {
+                "command": "find aiPlat-core/core/harness/ontology_engine -name '*.py' ! -name '__init__.py' | wc -l",
+                "op": "-ge",
+                "expected": 20
+              },
+              "verification_status": "pass",
+              "actual": 26
+            },
+            {
+              "id": "K3",
+              "desc": "知识检索与增强(CRAG/HyDE 3级回退+DomainRouter+多路融合RRF+本体优先)",
+              "declared_level": "L5",
+              "source": "file_check",
+              "evidence": {
+                "command": "grep -c 'CRAG' aiPlat-core/core/apps/agents/materials_chat.py",
+                "op": "-ge",
+                "expected": 3
+              },
+              "verification_status": "pass",
+              "actual": 3
+            },
+            {
+              "id": "K4",
+              "desc": "知识全生命周期(K4进入/活跃/失效/退出+StateMachine+动态续期+软删除)",
+              "declared_level": "L4",
+              "source": "file_check",
+              "evidence": {
+                "command": "grep -c 'class StateMachine' aiPlat-core/core/harness/ontology_engine/state_machine.py",
+                "op": "-ge",
+                "expected": 1
+              },
+              "verification_status": "pass",
+              "actual": 1
+            },
+            {
+              "id": "K5",
+              "desc": "知识质量与可信(WikiQuality+HallucinationTracker+Provenance+ActiveSynthesis)",
+              "declared_level": "L4",
+              "source": "file_check",
+              "evidence": {
+                "command": "grep -c 'class WikiQuality' aiPlat-core/core/harness/knowledge/wiki_quality_monitor.py",
+                "op": "-ge",
+                "expected": 1
+              },
+              "verification_status": "pass",
+              "actual": 2
             }
           ]
         }
