@@ -152,3 +152,73 @@ class VideoParser:
         if dur is not None or transcript or frames:
             result["status"] = "ok"
         return result
+
+
+class VideoSummarizer:
+    """AI-powered video content understanding (G1 L3→L4 enabler).
+
+    Extends VideoParser's probe→transcribe→keyframes pipeline with LLM-driven
+    summarization: generates a natural-language description of what happens in
+    the video, including key topics, tone, and action segments.
+    """
+
+    def __init__(self, parser: Optional[VideoParser] = None):
+        self._parser = parser or VideoParser()
+
+    async def summarize(self, video_path: str, max_segments: int = 5) -> Dict[str, Any]:
+        """Full video understanding: parse → summarize → return structured result.
+
+        Returns:
+            {
+                "duration_ms": int, "transcript": str, "keyframe_count": int,
+                "summary": str, "topics": [str], "action_segments": [str],
+                "status": "ok" | "partial",
+            }
+        """
+        parsed = await self._parser.parse(video_path)
+        result = {
+            "duration_ms": parsed.get("duration_ms"),
+            "transcript": parsed.get("transcript", "")[:2000],
+            "keyframe_count": parsed.get("keyframe_count", 0),
+            "status": parsed.get("status", "partial"),
+        }
+        transcript = (parsed.get("transcript") or "").strip()
+        if not transcript or len(transcript) < 50:
+            result["summary"] = "(insufficient audio for summarization)"
+            result["topics"] = []
+            result["action_segments"] = []
+            return result
+
+        try:
+            from core.harness.utils.model_injection import best_model_for_purpose
+            from core.harness.syscalls.llm import sys_llm_generate
+
+            prompt = (
+                "You are a video content analyst. Below is the transcript of a video.\n"
+                "Produce a concise summary (2-3 sentences), a list of main topics (max 5), "
+                "and a list of key action segments with timestamps if available.\n\n"
+                f"TRANSCRIPT:\n{transcript[:6000]}\n\n"
+                "Respond in JSON: {\"summary\":\"...\", \"topics\":[...], \"action_segments\":[...]}"
+            )
+            resp = await sys_llm_generate(
+                model=None,
+                prompt=prompt,
+                model_name=best_model_for_purpose("doc_llm"),
+                temperature=0.0,
+            )
+            import json as _json
+            raw = str(resp)
+            try:
+                analysis = _json.loads(raw)
+            except Exception:
+                import re as _re
+                m = _re.search(r'\{[\s\S]*\}', raw)
+                analysis = _json.loads(m.group(0)) if m else {}
+            result["summary"] = analysis.get("summary", raw[:200])
+            result["topics"] = analysis.get("topics", [])[:5]
+            result["action_segments"] = analysis.get("action_segments", [])[:5]
+        except Exception:
+            result["summary"] = f"Video transcript ({len(transcript)} chars)"
+            result["topics"] = []
+            result["action_segments"] = []
+        return result

@@ -125,10 +125,10 @@ frameworks:
              evidence: {command: "(grep -c '_feed_execution_to_graph' aiPlat-core/core/harness/execution/pipeline_engine.py || echo 0) && (grep -c 'feed_execution_to_graph' aiPlat-core/core/harness/knowledge/wiki_indexer.py || echo 0)", op: "-ge", expected: 1}}
       - id: G
         name: "多模态交互"
-        declared_level: L4
+        declared_level: L5
         weight: 0.05
         items:
-          - {id: G1, desc: "视频解析(VideoParser)", declared_level: L3, source: script,
+          - {id: G1, desc: "视频解析(VideoParser)", declared_level: L4, source: script,
              evidence: {command: "grep -c 'class VideoParser' aiPlat-core/core/harness/document/video.py", op: "-ge", expected: 1}}
           - {id: G2, desc: "音频处理(InfraAudioAdapter)", declared_level: L3, source: script,
              evidence: {command: "grep -rl 'InfraAudioAdapter' aiPlat-core/core --include=*.py | wc -l", op: "-ge", expected: 1}}

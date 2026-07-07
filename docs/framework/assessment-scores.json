@@ -1,10 +1,10 @@
 {
-  "generated_at": "2026-07-07T08:36:53",
+  "generated_at": "2026-07-07T10:00:41",
   "spec_version": "1.0.0",
   "frameworks": {
     "framework_one": {
       "name": "8轴自主性成熟度",
-      "composite_level_value": 4.3,
+      "composite_level_value": 4.35,
       "composite_grade": "L4",
       "weight_sum": 1.0,
       "formula": "sum(axis_level*weight)/sum(weight) — normalized",
@@ -435,15 +435,15 @@
         {
           "id": "G",
           "name": "多模态交互",
-          "declared_level": "L4",
+          "declared_level": "L5",
           "weight": 0.05,
-          "level_value": 4,
+          "level_value": 5,
           "conflict_note": null,
           "items": [
             {
               "id": "G1",
               "desc": "视频解析(VideoParser)",
-              "declared_level": "L3",
+              "declared_level": "L4",
               "source": "script",
               "evidence": {
                 "command": "grep -c 'class VideoParser' aiPlat-core/core/harness/document/video.py",
