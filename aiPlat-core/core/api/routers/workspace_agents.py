@@ -750,11 +750,24 @@ async def _do_auto_fill(req: AgentAutoFillRequest) -> AgentAutoFillResponse:
 
     # ── Call LLM (simplified: only agent_type + system_prompt + memory + triggers) ──
     from core.harness.utils.prompt_loader import _async_prompt_resolve
-    prompt = await _async_prompt_resolve("agent-auto-fill",
-        name=req.name or '(待填写)', description=req.description or '(无)',
-        role_section=role_section,
-        role_phrase="和已确认的角色定义" if role_section else "",
+    # Build skill catalog summary for LLM to directly suggest matching skill names
+    skill_catalog = _scan_skills_direct()
+    skills_text = "\n".join([
+        f"- {s['name']}: {s.get('description','')[:80]}"
+        for s in skill_catalog
+    ])
+    # Build inline prompt (bypass DB template for skills — ensures fresh kargs)
+    inline_prompt = (
+        f"你是AI平台配置专家。从可用技能列表挑选2-3个最匹配的技能。只输出JSON。\n\n"
+        f"Agent名称: {req.name or '(待填写)'}\n"
+        f"描述: {req.description or '(无)'}\n"
+        f"{role_section}\n\n"
+        f"可用技能列表:\n{skills_text}\n\n"
+        f'输出JSON: {{"agent_type":"react","skills":["技能名1","技能名2"],'
+        f'"memory_config":{{}},"reasoning":"..."}}\n'
+        f"技能名必须与以上列表完全一致。"
     )
+    prompt = inline_prompt
 
     try:
         from core.harness.utils.model_injection import create_selected_adapter, best_model_for_purpose
@@ -787,10 +800,18 @@ async def _do_auto_fill(req: AgentAutoFillRequest) -> AgentAutoFillResponse:
     agent_type = str(data.get("agent_type", "react"))[:20]
     config = data.get("config", {}) if isinstance(data.get("config"), dict) else {}
 
-    # ── Backend mapping: capabilities → skills, tools always empty ──
+    # ── Skill matching: LLM direct suggestion > capability mapping > empty ──
     skill_catalog = _scan_skills_direct()
-    capabilities = list((rd or {}).get("required_capabilities", []) or [])
-    skills = _map_capabilities_to_skills(capabilities, skill_catalog) if capabilities else []
+    skills = []
+    # Priority 1: LLM directly suggested skill names (validate against catalog)
+    llm_skills = data.get("skills", [])
+    if isinstance(llm_skills, list) and llm_skills:
+        catalog_names = {s["name"] for s in skill_catalog}
+        skills = [s for s in llm_skills if isinstance(s, str) and s in catalog_names][:5]
+    # Priority 2: Capability-based mapping (fallback)
+    if not skills:
+        capabilities = list((rd or {}).get("required_capabilities", []) or [])
+        skills = _map_capabilities_to_skills(capabilities, skill_catalog) if capabilities else []
     tools = []  # Tools are never auto-selected — capabilities drive skill selection
 
     # ── Generate SOP from role definition ──

@@ -425,7 +425,7 @@ _APP_DEFAULTS = [
     ("graph-system-role", "图查询系统角色", "", "", "", "你是代码库专家。只输出JSON。", ""),
     ("graph-architect-role", "架构师角色", "", "", "", "你是代码库架构师。", ""),
     ("graph-chat-stream", "代码专家(SSE)", "", "", "You are a codebase expert.\nCode context: ${context}\n\nQuestion: ${question}\nAnswer concisely in Chinese.", "", ""),
-    ("agent-auto-fill", "Agent自动配置", "", "agent,配置,AI", "你是AI平台配置专家。只输出JSON。", "你是一个AI平台配置专家。用户正在创建一个新的AI Agent：\n\n名称：${name}\n描述：${description}\n${role_section}\n\n可用技能：\n${skills_catalog}\n\n可用工具：\n${tools_catalog}\n\n可用MCP：${mcp_catalog}\n子Agent：${agent_catalog}\nWorkflow：${wf_catalog}\n\n推荐最优配置，输出严格JSON。", ""),
+    ("agent-auto-fill", "Agent自动配置", "", "agent,配置,AI", "你是AI平台配置专家。从可用技能列表中挑选最匹配的2-3个skill填入JSON的skills数组（技能名必须与列表完全一致）。只输出JSON。", "你是一个AI平台配置专家。用户正在创建一个新的AI Agent：\n\n名称：${name}\n描述：${description}\n${role_section}\n\n可用技能列表：\n${skills_catalog}\n\n从以上列表挑2-3个最匹配的技能名填入JSON。输出JSON：{\"agent_type\":\"...\",\"skills\":[\"技能1\",\"技能2\"],\"memory_config\":{},\"reasoning\":\"...\"}", ""),
     ("agent-role-definition", "角色定义生成", "", "", "你是AI角色定义专家。名称：${name}\n描述：${description}\n\n生成结构化角色定义JSON。", "只输出JSON。", ""),
     ("agent-role-system", "角色定义系统角色", "", "", "", "你是AI角色定义专家。只输出JSON。", ""),
     ("agent-auto-fill-batch", "批量Agent配置", "", "", "你是AI平台配置专家。为${count}个Agent推荐配置。\n${agent_list}\n\n输出JSON。", "只输出JSON。", ""),
