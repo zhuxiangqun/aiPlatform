@@ -6,6 +6,7 @@ Migration plan: move to platform/api/routers/.
 """
 from __future__ import annotations
 import logging
+import os
 
 from typing import Any, Dict, List
 
@@ -186,17 +187,27 @@ async def export_workspace_package(data: Dict[str, Any]):
             copied += 1
 
         if copied == 0:
-            raise HTTPException(status_code=400, detail="No resources were found in workspace")
+            raise HTTPException(status_code=400, detail=f"No resources were found in workspace. Looked in {workspace_root}")
 
-        # Create zip
-        zip_path = Path(tmpdir) / f"{name}.zip"
+        # Create zip — after make_archive, find the actual zip file in tmpdir
+        import glob as _glob
+        zip_stem = os.path.join(tmpdir, name)
         shutil.make_archive(
-            str(zip_path.with_suffix("")), "zip",
+            zip_stem, "zip",
             root_dir=str(pkg_dir.parent), base_dir=name
         )
-
+        zips = sorted(_glob.glob(os.path.join(tmpdir, "*.zip")))
+        if not zips:
+            raise FileNotFoundError(f"No zip created in {tmpdir}")
+        zip_path = zips[0]
         return FileResponse(
             zip_path,
+            media_type="application/zip",
+            filename=f"{name}.zip",
+            headers={"X-Resources-Copied": str(copied)},
+        )
+        return FileResponse(
+            str(zip_path),
             media_type="application/zip",
             filename=f"{name}.zip",
             headers={"X-Resources-Copied": str(copied)},
@@ -204,12 +215,9 @@ async def export_workspace_package(data: Dict[str, Any]):
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-    finally:
-        try:
-            shutil.rmtree(tmpdir, ignore_errors=True)
-        except Exception as e:
-            logging.warning(str(e), exc_info=True)
+        import traceback, logging
+        logging.getLogger("aiplat.packages").error("export failed: %s\n%s", e, traceback.format_exc())
+        raise HTTPException(status_code=500, detail=f"{type(e).__name__}: {e}")
 
 
 @router.post("/workspace/packages", response_model=Dict[str, Any])
