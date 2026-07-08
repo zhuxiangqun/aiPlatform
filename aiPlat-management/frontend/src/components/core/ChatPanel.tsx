@@ -130,7 +130,15 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ agent, onClose }) => {
                   ? 'bg-amber-500/10 text-amber-200 rounded-bl-sm'
                   : 'bg-dark-bg border border-dark-border text-gray-300 rounded-bl-sm'
               }`}>
-                <div className="whitespace-pre-wrap break-words">{msg.content?.slice(0, 2000)}</div>
+                <div className="whitespace-pre-wrap break-words">
+                  {msg.content
+                    ? msg.content.split(/(\[技能调用\]|\[工具调用\])/g).map((part, i) =>
+                        part === '[技能调用]' || part === '[工具调用]'
+                          ? <span key={i} className="inline-flex items-center gap-1 px-1.5 py-0.5 mx-0.5 rounded text-[11px] bg-blue-500/20 text-blue-300">🔧 {part.replace(/[\[\]]/g, '')}</span>
+                          : part?.slice(0, 2000)
+                      )
+                    : null}
+                </div>
                 {msg.steps !== undefined && msg.steps > 0 && (
                   <div className="flex items-center gap-2 mt-1 pt-1 border-t border-dark-border/50">
                     <span className="text-[10px] text-gray-500">{msg.steps}步 · {msg.model} · {msg.duration}ms</span>

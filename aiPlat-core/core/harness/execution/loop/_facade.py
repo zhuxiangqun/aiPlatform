@@ -535,6 +535,10 @@ class ReActLoop(BaseLoop):
         state.current = LoopStateEnum.OBSERVING
         await self._trigger_hook(HookPhase.PRE_OBSERVE, state.context)
         observation = await self._observe(state)
+        # Clean internal markers + raw JSON from observation before it reaches the UI
+        import re as _re_clean
+        observation = _re_clean.sub(r'TODO_DONE:\d+\s*', '', str(observation or ''))
+        observation = _re_clean.sub(r'\{[^{}]*"type"\s*:\s*"skill_call"[^}]*\}', '[技能调用]', observation)
         state.context["observation"] = observation
         state.context.setdefault("_observations", []).append(observation)
         await self._trigger_hook(HookPhase.POST_OBSERVE, state.context)
