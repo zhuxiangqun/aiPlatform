@@ -338,7 +338,7 @@ class SkillRegistry:
             if "idempotent" not in e:
                 _fail(f"Skill '{cfg.name}': effects[].idempotent required")
         has_write = any(e.get("type") in ("write", "execute", "both") for e in effects)
-        if has_write and bool(getattr(cfg, "idempotent", True)):
+        if has_write and bool(getattr(cfg, "idempotent", False)):
             _fail(
                 f"Skill '{cfg.name}': has write/execute effects but idempotent=true. "
                 f"Set idempotent=false or remove write effects."

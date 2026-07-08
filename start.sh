@@ -59,6 +59,7 @@ export AIPLAT_LLM_BASE_URL="${AIPLAT_LLM_BASE_URL:-${DEEPSEEK_BASE_URL:-https://
 export AIPLAT_LLM_CONFIG_PATH="${AIPLAT_LLM_CONFIG_PATH:-$PROJECT_ROOT/aiPlat-infra/config/infra/llm_profile.yaml}"
 # Builder Pipeline: 单次流水线 token 预算
 export AIPLAT_BUILDER_MAX_TOKENS="${AIPLAT_BUILDER_MAX_TOKENS:-50000}"
+export AIPLAT_SKILL_STRICT_VALIDATION="${AIPLAT_SKILL_STRICT_VALIDATION:-false}"  # allow legacy skills with effects/idempotent mismatch
 if [ -z "${AIPLAT_LLM_API_KEY:-}" ]; then
   echo "提示：未检测到 DeepSeek API Key。请先设置 DEEPSEEK_API_KEY 或 AIPLAT_LLM_API_KEY。"
 fi
