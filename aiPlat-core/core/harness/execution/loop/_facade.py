@@ -536,9 +536,31 @@ class ReActLoop(BaseLoop):
         await self._trigger_hook(HookPhase.PRE_OBSERVE, state.context)
         observation = await self._observe(state)
         # Clean internal markers + raw JSON from observation before it reaches the UI
-        import re as _re_clean
+        import re as _re_clean, json as _json_clean
         observation = _re_clean.sub(r'TODO_DONE:\d+\s*', '', str(observation or ''))
-        observation = _re_clean.sub(r'\{[^{}]*"type"\s*:\s*"skill_call"[^}]*\}', '[技能调用]', observation)
+        # Strip skill_call/tool_call JSON blocks (handles nested braces via JSONDecoder)
+        text = observation
+        result_parts = []
+        idx = 0
+        while idx < len(text):
+            brace = text.find('{', idx)
+            if brace < 0:
+                result_parts.append(text[idx:])
+                break
+            result_parts.append(text[idx:brace])
+            try:
+                obj, end = _json_clean.JSONDecoder().raw_decode(text, brace)
+                if isinstance(obj, dict) and obj.get("type") in ("skill_call", "tool_call"):
+                    skill_name = obj.get("skill", obj.get("tool", ""))
+                    tag = f'[🔧 {skill_name}]' if skill_name else '[🔧 技能调用]'
+                    result_parts.append(tag)
+                else:
+                    result_parts.append(text[brace:brace + end - brace])
+                idx = brace + end
+            except (_json_clean.JSONDecodeError, ValueError):
+                result_parts.append(text[brace])
+                idx = brace + 1
+        observation = ''.join(result_parts)
         state.context["observation"] = observation
         state.context.setdefault("_observations", []).append(observation)
         await self._trigger_hook(HookPhase.POST_OBSERVE, state.context)
