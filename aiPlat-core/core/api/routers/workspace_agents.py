@@ -362,30 +362,34 @@ async def generate_role_definition(req: AgentAutoFillRequest) -> Any:
         ]
         resp = await model.generate(messages, config=kLlmConfig)
         content = resp.content if hasattr(resp, 'content') else str(resp)
+
+        clean = content.strip()
+        if clean.startswith("```"):
+            clean = _re.sub(r'^```\w*\n?', '', clean)
+            clean = _re.sub(r'\n?```$', '', clean)
+        match = _re.search(r'\{[\s\S]*\}', clean)
+        if match:
+            try:
+                data = _json.loads(match.group(0))
+            except _json.JSONDecodeError:
+                raise HTTPException(status_code=422, detail="LLM 返回格式异常，请重试。如持续失败，可手动绑定 skills/tools")
+        else:
+            raise HTTPException(status_code=422, detail="LLM 未返回有效的 JSON 格式，请重试")
+
+        return RoleDefinitionResponse(
+            role_name=str(data.get("role_name", ""))[:20],
+            responsibilities=list(data.get("responsibilities", []))[:8],
+            scenarios=list(data.get("scenarios", []))[:5],
+            required_capabilities=list(data.get("required_capabilities", []))[:8],
+            workflow_hint=str(data.get("workflow_hint", ""))[:500],
+            reasoning=str(data.get("reasoning", ""))[:500],
+        ).model_dump()
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=503, detail=f"LLM unavailable: {e}")
-
-    clean = content.strip()
-    if clean.startswith("```"):
-        clean = _re.sub(r'^```\w*\n?', '', clean)
-        clean = _re.sub(r'\n?```$', '', clean)
-    match = _re.search(r'\{[\s\S]*\}', clean)
-    if match:
-        try:
-            data = _json.loads(match.group(0))
-        except _json.JSONDecodeError:
-            raise HTTPException(status_code=422, detail="LLM 返回格式异常，请重试。如持续失败，可手动绑定 skills/tools")
-    else:
-        raise HTTPException(status_code=422, detail="LLM 未返回有效的 JSON 格式，请重试")
-
-    return RoleDefinitionResponse(
-        role_name=str(data.get("role_name", ""))[:20],
-        responsibilities=list(data.get("responsibilities", []))[:8],
-        scenarios=list(data.get("scenarios", []))[:5],
-        required_capabilities=list(data.get("required_capabilities", []))[:8],
-        workflow_hint=str(data.get("workflow_hint", ""))[:500],
-        reasoning=str(data.get("reasoning", ""))[:500],
-    )
+        import traceback, logging
+        logging.getLogger("auto-fill").error("generate_role_definition crashed: %s\n%s", e, traceback.format_exc())
+        raise HTTPException(status_code=500, detail=f"{type(e).__name__}: {e}")
 
 
 def _extract_json_fallback(clean: str, raw_content: str, _re, _json, _log) -> dict | None:
@@ -751,21 +755,30 @@ async def _do_auto_fill(req: AgentAutoFillRequest) -> AgentAutoFillResponse:
     # ── Call LLM (simplified: only agent_type + system_prompt + memory + triggers) ──
     from core.harness.utils.prompt_loader import _async_prompt_resolve
     # Build skill catalog summary for LLM to directly suggest matching skill names
+    # (P1: include id so LLM returns the id the frontend MultiSelect expects)
     skill_catalog = _scan_skills_direct()
-    skills_text = "\n".join([
-        f"- {s['name']}: {s.get('description','')[:80]}"
-        for s in skill_catalog
-    ])
-    # Build inline prompt (bypass DB template for skills — ensures fresh kargs)
+    _name_to_id = {}
+    skills_text_lines = []
+    for s in skill_catalog:
+        sid = s.get("id", s["name"])
+        _name_to_id[s["name"]] = sid
+        skills_text_lines.append(f"- {sid}: {s.get('description','')[:60]}")
+    skills_text = "\n".join(skills_text_lines)
+
+    # Build inline prompt — LLM generates skills + config + SOP in one pass
+    role_hint = ""
+    if rd and isinstance(rd, dict):
+        role_hint = f"\n角色: {rd.get('role_name','')}. 职责: {', '.join(rd.get('responsibilities',[])[:3])}"
     inline_prompt = (
-        f"你是AI平台配置专家。从可用技能列表挑选2-3个最匹配的技能。只输出JSON。\n\n"
+        f"你是AI平台配置专家。为以下Agent推荐最佳配置。只输出JSON。\n\n"
         f"Agent名称: {req.name or '(待填写)'}\n"
         f"描述: {req.description or '(无)'}\n"
-        f"{role_section}\n\n"
-        f"可用技能列表:\n{skills_text}\n\n"
-        f'输出JSON: {{"agent_type":"react","skills":["技能名1","技能名2"],'
+        f"{role_hint}\n\n"
+        f"可用技能(请从列表选择2-3个最匹配的id):\n{skills_text}\n\n"
+        f'输出JSON: {{"agent_type":"react",'
+        f'"skills":["skill-id1","skill-id2"],"sop_text":"1. x\\n2. y\\n3. z",'
         f'"memory_config":{{}},"reasoning":"..."}}\n'
-        f"技能名必须与以上列表完全一致。"
+        f"skills必须使用以上列表的id。sop_text定义Agent的工作流程。"
     )
     prompt = inline_prompt
 
@@ -800,23 +813,27 @@ async def _do_auto_fill(req: AgentAutoFillRequest) -> AgentAutoFillResponse:
     agent_type = str(data.get("agent_type", "react"))[:20]
     config = data.get("config", {}) if isinstance(data.get("config"), dict) else {}
 
-    # ── Skill matching: LLM direct suggestion > capability mapping > empty ──
+    # ── Skill matching: LLM ids > LLM names→ids > capability map > empty ──
     skill_catalog = _scan_skills_direct()
+    catalog_ids = {s.get("id", s["name"]) for s in skill_catalog}
+    # Rebuild name→id map (P1 fix: return IDs, not names)
+    _name_to_id = {}
+    for s in skill_catalog:
+        _name_to_id[s["name"]] = s.get("id", s["name"])
     skills = []
-    # Priority 1: LLM directly suggested skill names (validate against catalog)
     llm_skills = data.get("skills", [])
     if isinstance(llm_skills, list) and llm_skills:
-        catalog_names = {s["name"] for s in skill_catalog}
-        skills = [s for s in llm_skills if isinstance(s, str) and s in catalog_names][:5]
-    # Priority 2: Capability-based mapping (fallback)
+        # convert any names to ids, then filter to valid ids
+        mapped = [_name_to_id.get(s, s) for s in llm_skills if isinstance(s, str)]
+        skills = [s for s in mapped if s in catalog_ids][:5]
     if not skills:
         capabilities = list((rd or {}).get("required_capabilities", []) or [])
         skills = _map_capabilities_to_skills(capabilities, skill_catalog) if capabilities else []
-    tools = []  # Tools are never auto-selected — capabilities drive skill selection
+    tools = []
 
-    # ── Generate SOP from role definition ──
-    sop_text = ""
-    if rd and isinstance(rd, dict):
+    # ── SOP: LLM-generated > role-definition-derived > empty ──
+    sop_text = data.get("sop_text", "")
+    if not sop_text and rd and isinstance(rd, dict):
         sop_text = _generate_sop_from_role(rd, skills)
 
     return AgentAutoFillResponse(
