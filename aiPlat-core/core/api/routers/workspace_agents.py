@@ -721,7 +721,15 @@ async def agent_auto_fill(req: AgentAutoFillRequest) -> AgentAutoFillResponse:
         _asyncio.create_task(_run_auto_fill_task(tid, req))
         return {"task_id": tid, "status": "processing", "agent_type": "", "skills": [], "tools": [], "reasoning": "后台处理中..."}
 
-    return await _do_auto_fill(req)
+    try:
+        result = await _do_auto_fill(req)
+        return result.model_dump()
+    except HTTPException:
+        raise
+    except Exception as e:
+        import traceback, logging
+        logging.getLogger("auto-fill").error("agent_auto_fill crashed: %s\n%s", e, traceback.format_exc())
+        raise HTTPException(status_code=500, detail=f"{type(e).__name__}: {e}")
 async def _do_auto_fill(req: AgentAutoFillRequest) -> AgentAutoFillResponse:
     """Sync auto-fill — LLM generates role, backend maps skills/tools/SOP."""
     import json as _json, re as _re
@@ -803,7 +811,7 @@ async def _do_auto_fill(req: AgentAutoFillRequest) -> AgentAutoFillResponse:
         workflow_ids=[],
         trigger_conditions=list(data.get("trigger_conditions", []))[:20],
         template_id="",
-        stages=list(data.get("stages", []))[:20],    # v4.0: pipeline stages from LLM
+        stages=list(data.get("stages", []))[:20],
     )
 
 
