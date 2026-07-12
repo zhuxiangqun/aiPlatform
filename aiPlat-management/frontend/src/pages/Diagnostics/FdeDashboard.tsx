@@ -195,6 +195,7 @@ const AssessTab: React.FC = () => {
   const [dialogQuestion, setDialogQuestion] = useState('');
   const [dialogOptions, setDialogOptions] = useState<string[]>([]);
   const [dialogReady, setDialogReady] = useState(false);
+  const [dialogFinished, setDialogFinished] = useState(false);
   const [dialogLoading, setDialogLoading] = useState(false);
   const [dialogInput, setDialogInput] = useState('');
 
@@ -293,6 +294,23 @@ const AssessTab: React.FC = () => {
         ...(answer ? [{ role: 'user', content: answer }] : []),
         { role: 'assistant', content: data.question },
       ]);
+
+      // ── Handle "finished" flag: close dialog + generate diagnosis ──
+      if (data.finished) {
+        setDialogFinished(true);
+        setTimeout(() => {
+          setDialogOpen(false);
+          // Write back collected context to form
+          setForm(prev => ({
+            ...prev,
+            ...(data.context?.company_name ? { company_name: data.context.company_name } : {}),
+            ...(data.context?.pain_points ? { pain_points: data.context.pain_points } : {}),
+            ...(data.context?.team_size ? { team_size: data.context.team_size } : {}),
+            ...(data.context?.budget ? { budget_range: data.context.budget } : {}),
+          }));
+          setTimeout(() => submit(), 100);
+        }, 500); // brief delay so user sees the "finished" message
+      }
     } catch { setDialogQuestion('网络错误，请重试'); }
     setDialogLoading(false);
   };
@@ -744,22 +762,8 @@ const FeedbackTab: React.FC = () => {
                   ))}
                 </div>
               )}
-              {dialogReady && (
-                <Button variant="default" size="sm" className="w-full" onClick={() => {
-                  setDialogOpen(false);
-                  // Write back collected context to form
-                  setForm(prev => ({
-                    ...prev,
-                    ...(dialogContext.company_name ? { company_name: dialogContext.company_name } : {}),
-                    ...(dialogContext.pain_points ? { pain_points: dialogContext.pain_points } : {}),
-                    ...(dialogContext.team_size ? { team_size: dialogContext.team_size } : {}),
-                    ...(dialogContext.budget ? { budget_range: dialogContext.budget } : {}),
-                  }));
-                  setTimeout(() => submit(), 100); // let form update before submit
-                }}>生成诊断报告</Button>
-              )}
               <div className="flex gap-1">
-                <input className="flex-1 h-8 px-3 bg-dark-bg border border-dark-border rounded text-xs text-gray-200" placeholder="输入回复..."
+                <input className="flex-1 h-8 px-3 bg-dark-bg border border-dark-border rounded text-xs text-gray-200" placeholder="输入回复...输入「结束」可结束澄清"
                   value={dialogInput} onChange={e => setDialogInput(e.target.value)}
                   onKeyDown={e => { if (e.key === 'Enter') { dialogCall(dialogInput); setDialogInput(''); }}} />
                 <Button variant="ghost" size="sm" onClick={() => { dialogCall(dialogInput); setDialogInput(''); }}

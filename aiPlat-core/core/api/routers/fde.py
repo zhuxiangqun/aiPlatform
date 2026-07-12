@@ -1763,13 +1763,22 @@ async def fde_assess_dialog(req: FdeDialogRequest):
     score, gaps = _compute_readiness(context)
     can_finalize = score >= _READINESS_THRESHOLD
 
+    # ── Detect "结束澄清" command in answer ──
+    finished = False
+    answer_lower = req.answer.strip().lower() if turn > 1 else ""
+    if answer_lower in ("结束澄清", "结束", "finish", "done", "生成报告", "生成诊断"):
+        finished = True
+
     # ── Generate next question ──
     question = ""
     options = []
     hint = ""
     next_gap = ""
 
-    if not can_finalize and gaps:
+    if finished or (can_finalize and not gaps):
+        question = "澄清已完成。请回复「生成报告」来生成诊断报告，或继续补充其他信息。"
+        options = ["生成报告", "继续补充"]
+    elif not can_finalize and gaps:
         next_gap = gaps[0]
         gq = _GAP_QUESTIONS.get(next_gap, {
             "q": f"请补充以下信息：{next_gap}",
@@ -1778,9 +1787,6 @@ async def fde_assess_dialog(req: FdeDialogRequest):
         question = gq.get("q", "")
         options = gq.get("options", [])
         hint = gq.get("hint", "")
-    elif can_finalize:
-        question = f"信息已足够（就绪度 {score}%）。是否现在生成诊断报告？"
-        options = ["生成诊断", "继续补充"]
 
     return {
         "turn": turn + 1,
@@ -1789,6 +1795,7 @@ async def fde_assess_dialog(req: FdeDialogRequest):
         "options": options,
         "hint": hint,
         "can_finalize": can_finalize,
+        "finished": finished,
         "gaps": gaps,
         "context": context,
     }
