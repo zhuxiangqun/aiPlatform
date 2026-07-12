@@ -302,23 +302,20 @@ const AssessTab: React.FC = () => {
 
         if (isFollowUp) {
           // ── §8 follow-up: collect Q&A into pendingFeedback ──
-          setDialogHistory(prev => {
-            const qaPairs = [];
-            for (let i = 1; i < prev.length - 1; i++) {
-              const msg = prev[i];
-              if (msg.role === 'assistant' && msg.content !== prev[0]?.content) {
-                const nextMsg = prev[i + 1];
-                if (nextMsg?.role === 'user') {
-                  qaPairs.push(`Q: ${msg.content}\nA: ${nextMsg.content}`);
-                }
+          const qaPairs: string[] = [];
+          for (let i = 1; i < dialogHistory.length - 1; i++) {
+            const msg = dialogHistory[i];
+            if (msg.role === 'assistant' && msg.content !== dialogHistory[0]?.content) {
+              const nextMsg = dialogHistory[i + 1];
+              if (nextMsg?.role === 'user') {
+                qaPairs.push(`Q: ${msg.content}\nA: ${nextMsg.content}`);
               }
             }
-            const qaText = qaPairs.join('\n\n');
-            setPendingFeedback(pf => {
-              const parts = [pf.trim(), '--- 澄清对话记录 ---', qaText].filter(Boolean);
-              return parts.join('\n\n');
-            });
-            return prev;
+          }
+          const qaText = qaPairs.join('\n\n');
+          setPendingFeedback((pf: string) => {
+            const parts = [pf.trim(), '--- 澄清对话记录 ---', qaText].filter(Boolean);
+            return parts.join('\n\n');
           });
           setTimeout(() => {
             closeDialog();
