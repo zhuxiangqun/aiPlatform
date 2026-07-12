@@ -747,7 +747,15 @@ const FeedbackTab: React.FC = () => {
               {dialogReady && (
                 <Button variant="default" size="sm" className="w-full" onClick={() => {
                   setDialogOpen(false);
-                  submit();
+                  // Write back collected context to form
+                  setForm(prev => ({
+                    ...prev,
+                    ...(dialogContext.company_name ? { company_name: dialogContext.company_name } : {}),
+                    ...(dialogContext.pain_points ? { pain_points: dialogContext.pain_points } : {}),
+                    ...(dialogContext.team_size ? { team_size: dialogContext.team_size } : {}),
+                    ...(dialogContext.budget ? { budget_range: dialogContext.budget } : {}),
+                  }));
+                  setTimeout(() => submit(), 100); // let form update before submit
                 }}>生成诊断报告</Button>
               )}
               <div className="flex gap-1">
