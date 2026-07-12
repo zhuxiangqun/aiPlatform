@@ -198,6 +198,7 @@ const AssessTab: React.FC = () => {
   const [dialogFinished, setDialogFinished] = useState(false);
   const [dialogLoading, setDialogLoading] = useState(false);
   const [dialogInput, setDialogInput] = useState('');
+  const [dialogSessionId, setDialogSessionId] = useState('');
 
   useEffect(() => {
     try {
@@ -276,6 +277,7 @@ const AssessTab: React.FC = () => {
         body: JSON.stringify({
           turn: turn ?? dialogTurn,
           answer: answer || '',
+          session_id: dialogSessionId || '',
           industry: form.industry || dialogContext.industry || '',
           company_name: form.company_name || dialogContext.company_name || '',
           pain_points: form.pain_points || dialogContext.pain_points || '',
@@ -315,12 +317,13 @@ const AssessTab: React.FC = () => {
     setDialogLoading(false);
   };
 
-  const openDialog = () => {
+  const openDialog = (sessionId?: string) => {
     setDialogOpen(true);
     setDialogTurn(1);
     setDialogHistory([{ role: 'assistant', content: '你好！我是 AI 诊断助手。我会根据你的回答逐轮澄清客户信息，信息充分后自动生成诊断报告。\n\n让我们开始吧——请问客户公司的名称是？' }]);
     setDialogReady(false);
     setDialogContext({});
+    setDialogSessionId(sessionId || '');
     dialogCall(undefined, 1);
   };
 
@@ -611,6 +614,9 @@ const AssessTab: React.FC = () => {
                   setUpdating(false);
                 }}>
                   🔄 更新诊断
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => openDialog()}>
+                  ⚡ 继续澄清
                 </Button>
               </CardContent>
             </Card>

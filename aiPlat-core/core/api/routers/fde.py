@@ -1706,16 +1706,32 @@ async def fde_ask(req: FdeAskRequest):
 
 _READINESS_THRESHOLD = 60  # 就绪度 ≥ 60 建议生成报告
 
-# ── Gap name (Chinese) → context key (English) mapping ──
-_GAP_TO_KEY = {
-    "公司名称": "company_name",
-    "行业": "industry",
-    "痛点": "pain_points",
-}
+
+def _extract_pending_questions(session_id: str) -> list:
+    """从诊断报告提取待确认问题清单"""
+    import re
+    try:
+        from core.harness.ontology_engine.graph_index import GraphIndex
+        import json as _json_pq
+        fd = GraphIndex.load("fde-delivery")
+        sn = fd.get_node(session_id) or fd.find_by_name(session_id)
+        if sn:
+            sid = getattr(sn, "entity_id", session_id)
+            for n in fd.get_neighbors(sid, direction="outgoing"):
+                if getattr(n, "class_name", "") == "SessionMeta":
+                    md = _json_pq.loads(n.entity_name)
+                    pts = md.get("pain_points", "")
+                    matches = re.findall(r'\d+[\.\s]+(.+?)(?:\?|？|$)', pts, re.MULTILINE)
+                    return [m.strip() for m in matches if len(m) > 5][:5]
+    except Exception:
+        pass
+    return []
+
 
 class FdeDialogRequest(_PydanticBaseModel):
     turn: int = 1
     answer: str = ""
+    session_id: str = ""
     industry: str = ""
     company_name: str = ""
     pain_points: str = ""
@@ -1723,32 +1739,19 @@ class FdeDialogRequest(_PydanticBaseModel):
     budget: str = ""
 
 
-# ── Gap → question map ──
-_GAP_QUESTIONS = {
-    "公司名称": {
-        "q": "请提供客户公司的名称。",
-        "hint": "例如：'某省政务服务中心'或'华东精密制造有限公司'",
-    },
-    "行业": {
-        "q": "请确认客户所属的行业。",
-        "options": ["政务", "金融", "制造", "医疗", "零售", "教育", "其他"],
-    },
-    "痛点": {
-        "q": "请描述客户当前面临的核心业务痛点。可以多选或自由描述。",
-        "hint": "例如：'围标串标行为难以发现'或'招标信息检索效率低'",
-    },
-}
-
-
 @router.post("/assess/dialog", response_model=dict)
 async def fde_assess_dialog(req: FdeDialogRequest):
-    """Multi-turn clarification dialogue before diagnosis.
-
-    Turn 1: initiate dialogue, ask first question based on gaps.
-    Turn N: process answer, update context, ask next question or signal ready.
+    """LLM-driven multi-turn clarification dialogue.
+    
+    Uses LLM to: (1) extract fields from natural language answers,
+    (2) generate context-aware questions based on form gaps + §8 pending items.
     """
     from core.apps.skills.registry import _compute_readiness
+    from core.harness.syscalls.llm import sys_llm_generate
+    from core.harness.utils.model_injection import best_model_for_purpose
+    import json as _json_dg
 
+    model = best_model_for_purpose("skill_execution")
     turn = req.turn
     context = {
         "company_name": req.company_name.strip(),
@@ -1758,49 +1761,82 @@ async def fde_assess_dialog(req: FdeDialogRequest):
         "budget": req.budget.strip(),
     }
 
-    # ── Merge answer from previous turn into context ──
+    # ── LLM extract: parse fields from user answer ──
     if turn > 1 and req.answer.strip():
-        score, gaps = _compute_readiness(context)
-        for gap_name in gaps:
-            key = _GAP_TO_KEY.get(gap_name, gap_name)
-            if not context.get(key):
-                context[key] = req.answer.strip()
-                break
+        try:
+            extract_prompt = (
+                f'从以下回答中提取客户信息字段，以JSON返回。\n'
+                f'回答: "{req.answer}"\n'
+                f'当前已知: {_json_dg.dumps(context, ensure_ascii=False)}\n'
+                f'提取规则: company_name(公司名), industry(行业), pain_points(痛点), team_size(人数), budget(预算)\n'
+                f'例如用户说"我们南京明图，做政务系统集成的，大概50人"'
+                f' → {{"company_name":"南京明图","industry":"政务","team_size":"50"}}\n'
+                f'仅返回JSON，无其他文字。'
+            )
+            resp = await sys_llm_generate(model, [{"role":"user","content":extract_prompt}],
+                                          max_tokens=150, temperature=0.1)
+            try:
+                extracted = _json_dg.loads(str(getattr(resp, "content", "") or "{}"))
+                for k, v in extracted.items():
+                    if v and isinstance(v, str) and k in context:
+                        context[k] = v
+            except Exception:
+                pass
+        except Exception:
+            pass
 
     score, gaps = _compute_readiness(context)
     can_finalize = score >= _READINESS_THRESHOLD
 
-    # ── Detect "结束澄清" command in answer ──
-    finished = False
-    answer_lower = req.answer.strip().lower() if turn > 1 else ""
-    if answer_lower in ("结束澄清", "结束", "finish", "done", "生成报告", "生成诊断"):
-        finished = True
+    # ── Detect "结束澄清" command ──
+    finished = (req.answer.strip().lower() if turn > 1 else "") in (
+        "结束澄清", "结束", "finish", "done", "生成报告", "生成诊断"
+    )
 
-    # ── Generate next question ──
-    question = ""
-    options = []
-    hint = ""
-    next_gap = ""
+    # ── Extract §8 pending questions if session_id provided ──
+    pending_qs = _extract_pending_questions(req.session_id) if req.session_id else []
 
-    if finished or (can_finalize and not gaps):
+    # ── LLM generate: next question or finalize ──
+    question, options = "", []
+    if finished or (can_finalize and not gaps and not pending_qs):
         question = "澄清已完成。请回复「生成报告」来生成诊断报告，或继续补充其他信息。"
         options = ["生成报告", "继续补充"]
-    elif not can_finalize and gaps:
-        next_gap = gaps[0]
-        gq = _GAP_QUESTIONS.get(next_gap, {
-            "q": f"请补充以下信息：{next_gap}",
-            "hint": "请自由描述",
-        })
-        question = gq.get("q", "")
-        options = gq.get("options", [])
-        hint = gq.get("hint", "")
+    else:
+        try:
+            extra = f"\n诊断报告中的待确认问题: {pending_qs}" if pending_qs else ""
+            gen_prompt = (
+                f'你是FDE诊断澄清助手。\n'
+                f'客户已知: {_json_dg.dumps(context, ensure_ascii=False)}\n'
+                f'缺失维度: {gaps}{extra}\n\n'
+                f'基于以上，选择一项操作，以JSON返回:\n'
+                f'1. 信息充分(至少行业+公司名+痛点) → {{"action":"generate"}}\n'
+                f'2. 追问缺失基础信息或§8待确认问题 → {{"action":"ask","question":"...","options":[...]}}\n\n'
+                f'要求: 问题有行业上下文。options最多4个，留一个"其他"。\n'
+                f'仅返回JSON，无其他文字。'
+            )
+            resp = await sys_llm_generate(model, [{"role":"user","content":gen_prompt}],
+                                          max_tokens=200, temperature=0.3)
+            try:
+                result = _json_dg.loads(str(getattr(resp, "content", "") or "{}"))
+                if result.get("action") == "generate":
+                    finished = True
+                    question = "澄清已完成。请回复「生成报告」来生成诊断报告，或继续补充其他信息。"
+                    options = ["生成报告", "继续补充"]
+                else:
+                    question = result.get("question", "请描述客户的核心业务痛点")
+                    options = result.get("options", [])
+            except Exception:
+                question = "请描述客户的核心业务痛点"
+                options = []
+        except Exception:
+            question = "请描述客户的核心业务痛点"
+            options = []
 
     return {
         "turn": turn + 1,
         "readiness": score,
         "question": question,
         "options": options,
-        "hint": hint,
         "can_finalize": can_finalize,
         "finished": finished,
         "gaps": gaps,
