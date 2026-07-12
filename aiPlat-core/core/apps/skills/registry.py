@@ -1714,7 +1714,23 @@ class _GenericSkill(BaseSkill):
                                     for gap in gaps[:5]:
                                         name = gap["concept"][:100]
                                         tid = f"term_{did}_{gap['concept'].replace(' ', '_')[:60]}"
+
+                                        # Cross-domain dedup: check for existing similar term
+                                        existing_id = None
+                                        for eid, enode in list(tg._nodes.items()):
+                                            if getattr(enode, "class_name", "") == "Term":
+                                                e_name = enode.entity_name.lower()
+                                                if name.lower() in e_name or e_name in name.lower():
+                                                    existing_id = eid
+                                                    break
+
                                         tg.add_entity(tid, name, "Term", source_doc_id=params.get("_run_id", ""))
+
+                                        # Link to existing term across domains
+                                        if existing_id and existing_id != tid:
+                                            tg.add_relation(tid, existing_id, "similar_to",
+                                                           relation_label="跨域同名概念", confidence=0.85)
+
                                         definition = _generate_term_definition(name)
                                         if definition:
                                             def_id = f"def_{tid}"
