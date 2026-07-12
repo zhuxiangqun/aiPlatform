@@ -22,10 +22,44 @@ log = logging.getLogger("aiplat.system")
 
 @router.get("/overview", response_model=dict)
 async def system_overview():
-    """System-level self-description — not gated behind FDE."""
+    """System-level self-description with live metrics — not gated behind FDE."""
+    # Collect live metrics
+    live = {}
+    try:
+        import json, os
+        path = os.path.expanduser("~/.aiplat/ontologies/registry.json")
+        with open(path) as f:
+            live["domains"] = len(json.load(f).get("domains", {}))
+    except Exception:
+        live["domains"] = 0
+
+    try:
+        from core.harness.knowledge.seci_engine import get_seci_engine
+        se = get_seci_engine()
+        live["knowledge_atoms"] = se.get_atom_count()
+        live["knowledge_links"] = se.get_link_count()
+    except Exception:
+        live["knowledge_atoms"] = 0
+        live["knowledge_links"] = 0
+
+    try:
+        from core.harness.ontology_engine.graph_index import GraphIndex
+        fd = GraphIndex.load("fde-delivery")
+        sessions = sum(1 for _, n in fd._nodes.items() if getattr(n, "class_name", "") == "DiagnosisSession")
+        tg = GraphIndex.load("enterprise-terms")
+        terms = sum(1 for _, n in tg._nodes.items() if getattr(n, "class_name", "") == "Term")
+        live["diagnosis_sessions"] = sessions
+        live["enterprise_terms"] = terms
+    except Exception:
+        live["diagnosis_sessions"] = 0
+        live["enterprise_terms"] = 0
+
+    live["self_evolution_phase"] = "四阶段竣工 (POST_LOOP每10次自动诊断)"
+
     return {
         "system": "本体智能平台 — AI时代的企业大脑原型",
         "philosophy": "用确定性的本体包住不确定性的大模型。LLM做推理，Ontology做业务世界建模。",
+        "live": live,
         "architecture": {
             "buses": {
                 "seci": "知识创造螺旋 (POST_LOOP → atom → convergence → adjust)",
