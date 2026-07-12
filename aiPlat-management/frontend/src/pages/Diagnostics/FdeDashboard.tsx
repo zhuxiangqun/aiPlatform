@@ -522,8 +522,8 @@ const AssessTab: React.FC = () => {
             })}
           </div>
            <div className="flex items-center gap-2">
-             <Button variant="outline" size="sm" onClick={() => openDialog()}>
-              ⚡ 智能澄清
+              <Button variant="outline" size="sm" onClick={() => openDialog(diagnosisSessionId)}>
+               ⚡ 智能澄清
             </Button>
             <Button variant="default" size="sm" onClick={() => submit()} loading={loading}>
               <FileText className="w-3.5 h-3.5 mr-1" />提交诊断
@@ -643,6 +643,11 @@ const AssessTab: React.FC = () => {
                   <Button variant="outline" size="sm" onClick={generateManual} loading={manualLoading}>
                     📋 生成交付手册
                   </Button>
+                  {diagnosisSessionId && (
+                    <Button variant="outline" size="sm" onClick={() => openDialog(diagnosisSessionId)}>
+                      ⚡ 继续澄清
+                    </Button>
+                  )}
                 </div>
               </div>
             </CardHeader>
@@ -682,9 +687,6 @@ const AssessTab: React.FC = () => {
                   setUpdating(false);
                 }}>
                   🔄 更新诊断
-                </Button>
-                <Button variant="outline" size="sm" onClick={() => openDialog(diagnosisSessionId)}>
-                  ⚡ 继续澄清
                 </Button>
               </CardContent>
             </Card>
