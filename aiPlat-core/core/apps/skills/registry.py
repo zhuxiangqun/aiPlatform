@@ -1780,7 +1780,6 @@ class _GenericSkill(BaseSkill):
                                     pass
 
                         # O: Evidence entity binding + SessionMeta persistence
-                        company = (params.get("company_name") or "").strip()
                         sid = meta.get("session_id", "")
                         if sid and evidence_map:
                             try:
@@ -1793,10 +1792,12 @@ class _GenericSkill(BaseSkill):
                                     "readiness_score": 0, "industry": params.get("industry", ""),
                                     "pain_points": (params.get("pain_points") or "")[:200],
                                 }
-                                mid = f"meta_{sid}"
-                                fd_g.add_entity(mid, _json_pg.dumps(md_blob, ensure_ascii=False)[:8000],
-                                                "SessionMeta", entity_id=sid)
-                                fd_g.add_relation(sid if company else mid, mid, "has_meta", relation_label="诊断元数据", confidence=1.0)
+                                fd_g.add_entity(sid, _json_pg.dumps(md_blob, ensure_ascii=False)[:8000],
+                                                "SessionMeta")
+                                for ei, ev in enumerate(evidence_map):
+                                    ev_id = f"evidence_{sid}_{ei}"
+                                    ev_name = f"{ev.get('ai_opportunity', '')[:60]} | {ev.get('source', '')[:40]}"
+                                    fd_g.add_entity(ev_id, ev_name, "Evidence", source_doc_id=sid)
                             except Exception:
                                 pass
                     except Exception:
