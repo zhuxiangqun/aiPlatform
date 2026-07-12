@@ -199,6 +199,7 @@ const AssessTab: React.FC = () => {
   const [dialogFinished, setDialogFinished] = useState(false);
   const [dialogLoading, setDialogLoading] = useState(false);
   const [dialogInput, setDialogInput] = useState('');
+  const [dialogComposing, setDialogComposing] = useState(false);
   const [dialogSessionId, setDialogSessionId] = useState('');
 
   useEffect(() => {
@@ -704,8 +705,10 @@ const AssessTab: React.FC = () => {
               {dialogOptions.length > 0 && (
                 <div className="flex flex-wrap gap-1.5">
                   {dialogOptions.map(opt => (
-                    <button key={opt} className="px-3 py-1.5 text-sm rounded-full bg-blue-500/15 text-blue-300 border border-blue-500/25 hover:bg-blue-500/25 transition-colors"
+                    <button key={opt} className={`px-3 py-1.5 text-sm rounded-full bg-blue-500/15 text-blue-300 border border-blue-500/25 transition-colors ${dialogLoading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-blue-500/25'}`}
+                      disabled={dialogLoading}
                       onClick={() => {
+                        if (dialogLoading) return;
                         setDialogHistory(prev => [...prev, { role: 'user', content: opt }]);
                         dialogCall(opt);
                       }}>{opt}</button>
@@ -716,8 +719,10 @@ const AssessTab: React.FC = () => {
                 <input className="flex-1 h-9 px-3 bg-gray-800 border border-gray-600 rounded-lg text-sm text-gray-200 placeholder-gray-500 focus:outline-none focus:border-blue-500/50"
                   placeholder="输入你的回答..."
                   value={dialogInput} onChange={e => setDialogInput(e.target.value)}
-                  onKeyDown={e => { if (e.key === 'Enter' && dialogInput.trim()) { dialogCall(dialogInput.trim()); setDialogInput(''); }}} />
-                <Button variant="ghost" size="sm" className="px-3" onClick={() => { if (dialogInput.trim()) { dialogCall(dialogInput.trim()); setDialogInput(''); }}} disabled={!dialogInput.trim()}>
+                  onCompositionStart={() => setDialogComposing(true)}
+                  onCompositionEnd={() => setDialogComposing(false)}
+                  onKeyDown={e => { if (e.key === 'Enter' && !dialogComposing && dialogInput.trim()) { e.preventDefault(); dialogCall(dialogInput.trim()); setDialogInput(''); }}} />
+                <Button variant="ghost" size="sm" className="px-3" onClick={() => { if (dialogInput.trim()) { dialogCall(dialogInput.trim()); setDialogInput(''); }}} disabled={!dialogInput.trim() || dialogLoading}>
                   <Send className="w-4 h-4" />
                 </Button>
               </div>
