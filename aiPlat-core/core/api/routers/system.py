@@ -247,6 +247,14 @@ async def _scheduler_loop(interval_seconds: int = 3600):
             if diag.get("overall_confidence", 0) >= 0.9:
                 SystemHealer().auto_heal(diag)
             SystemEvolver().evolve()
+            try:
+                from core.harness.knowledge.skill_curator import SkillCurator
+                cr = SkillCurator().curate()
+                if not cr.get("skipped") and (cr.get("stale") or cr.get("archived")):
+                    log.info("SkillCurator: %d stale, %d archived",
+                             len(cr.get("stale", [])), len(cr.get("archived", [])))
+            except Exception:
+                pass
 
             if warnings:
                 log.info("Background self-check: %d warnings, health=%s",
@@ -341,3 +349,24 @@ async def system_status():
 
     status["elapsed_ms"] = round((_t_ss.time() - t0) * 1000)
     return status
+
+
+# ════════════════════════════════════════════════════════════
+# Skill Curator — lifecycle management endpoint
+# ════════════════════════════════════════════════════════════
+
+@router.get("/curate-skills", response_model=dict)
+async def system_curate_skills():
+    """Run skill lifecycle curation manually.
+
+    Returns stale, archived, merge_suggestions per-skill report.
+    """
+    try:
+        from core.harness.knowledge.skill_curator import SkillCurator
+        import time as _t_cs
+        t0 = _t_cs.time()
+        result = SkillCurator().curate()
+        result["elapsed_ms"] = round((_t_cs.time() - t0) * 1000)
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e)[:300])

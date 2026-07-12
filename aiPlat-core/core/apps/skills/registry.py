@@ -81,6 +81,7 @@ class SkillBindingStats:
     # ── Decay tracking (方案五) ──
     recent_results: Any = field(default_factory=lambda: __import__('collections').deque(maxlen=20))
     decayed_at: Optional[float] = None   # timestamp when skill was auto-downgraded
+    last_executed_at: Optional[int] = None  # timestamp of last execution (SkillCurator)
 
     @property
     def recent_pass_rate(self) -> float:
@@ -1093,6 +1094,8 @@ class SkillRegistry:
             if name in self._binding_stats:
                 stats = self._binding_stats[name]
                 stats.total_executions += 1
+                import time as _time_re
+                stats.last_executed_at = int(_time_re.time())
                 if success:
                     stats.success_count += 1
                 else:

@@ -2,7 +2,7 @@
 
 > 原则：代码即真相。每个条目必须有可验证的代码位置。
 > 更新：任何能力变更时同步更新本文档。
-> 评分：98/100（2026-07-12 — 541✅, 企业大脑竣工+三子系统接入(Agent对话+Pipeline+Memory全部OS诊断化)）
+> 评分：98/100（2026-07-12 — 542✅, 企业大脑竣工+技能生命周期管理(Hermes Agent式Curator→自动审查归档)）
 
 ---
 
@@ -199,6 +199,7 @@
 | Agent对话质量诊断 | `system_diagnostician.py:476-508` | ✅ | agent_quality_decline规则→7天原子产出<3告警→Agent/Pipeline/Memory全接入OS诊断(A) | 2026-07-12 |
 | Pipeline阶段健康 | `pipeline_engine.py:1954-1964` + `system_diagnostician.py:212-245` | ✅ | pt_快照持久化→pipeline_stage_failing规则→24h内同阶段失败≥3告警(B) | 2026-07-12 |
 | Memory压缩健康 | `compression.py:120-123` + `system_diagnostician.py:747-761` | ✅ | compression_stats属性暴露→compression_ineffective规则→压缩比<30%告警+agent↔compress关联(C) | 2026-07-12 |
+| 技能生命周期管理 | `skill_curator.py` + `registry.py:84` + `system.py:249-256,357-371` | ✅ | Hermes Agent式Curator→每7天审查(30d stale/90d archive/重叠合并)→GET /system/curate-skills | 2026-07-12 |
 | 多子系统上下文 | `harness/knowledge/context_bus.py:345-405` | ✅ | assemble_agent/skill/pipeline_context()→Agent(3层)/Skill(2层)/Pipeline(3层)各自轻量注入→总线覆盖全系统 | 2026-07-12 |
 | Agent领域上下文 | `harness/knowledge/context_bus.py:408-452` | ✅ | SESSION_START hook→所有Agent启动时自动注入术语字典+数字员工→领域知识全局可用 | 2026-07-12 |
 | 质量总线 | `api/routers/fde.py:4176-4270` | ✅ | GET /fde/quality-summary — 跨子系统质量聚合(FDE/SECI/Convergence/ContextBus四维评分)→统一0-100评分 | 2026-07-12 |
@@ -860,7 +861,7 @@
 |------|:---:|:---:|:---:|------|
 | Harness 执行引擎 | 31 | 0 | 31 |
 | 记忆子系统 | 18 | 0 | 18 |
-| 知识引擎（本体） | 94 | 0 | 94 |
+| 知识引擎（本体） | 95 | 0 | 95 |
 | RAG 检索 | 27 | 0 | 27 |
 | 知识基础设施 | 28 | 0 | 28 |
 | Agent 系统 | 12 | 0 | 12 |
@@ -886,12 +887,12 @@
 | 编排系统 | 4 | 0 | 4 |
 | 管理 & 质量 | 21 | 0 | 21 |
 | 编排层 | 17 | 0 | 17 |
-| **总计** | **639** | **0** | **639** |
+| **总计** | **640** | **0** | **640** |
 
 ---
 
 *最后更新: 2026-07-11*
-*版本: 18.3 · 28章 · 639项能力 · 541✅ · 企业大脑竣工+三子系统OS接入*
+*版本: 18.4 · 28章 · 640项能力 · 542✅ · 企业大脑竣工+技能生命周期管理*
 
 **自检命令**：
 ```bash
