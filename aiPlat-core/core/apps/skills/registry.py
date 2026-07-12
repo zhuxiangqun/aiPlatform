@@ -1720,6 +1720,22 @@ class _GenericSkill(BaseSkill):
                 sid = f"session_{company}_{ts}" if company else f"session_diag_{ts}"
                 meta = {"model": getattr(response, "model", None), "skill": self._config.name, "session_id": sid}
                 report_text = str(getattr(response, "content", "") or "")
+
+                # ── SessionMeta persistence (independent of report processing) ──
+                sid = meta.get("session_id", "")
+                if sid and report_text:
+                    try:
+                        import json as _json_sm
+                        from core.harness.ontology_engine.graph_index import GraphIndex
+                        fd_g = GraphIndex.load("fde-delivery")
+                        fd_g.add_entity(sid, _json_sm.dumps(
+                            {"report_text": report_text[:8000],
+                             "readiness_score": 0, "industry": params.get("industry", ""),
+                             "pain_points": (params.get("pain_points") or "")[:200]},
+                            ensure_ascii=False)[:8000], "SessionMeta")
+                    except Exception as e:
+                        import logging as _log_sm
+                        _log_sm.warning(f"SessionMeta persist failed: {e}")
                 if report_text:
                     try:
                         import re as _re_pg, json as _json_pg, os as _os_pg
@@ -1797,21 +1813,10 @@ class _GenericSkill(BaseSkill):
                                 except Exception:
                                     pass
 
-                        # O: Evidence entity binding + SessionMeta persistence
-                        sid = meta.get("session_id", "")
-                        if sid:
+                        # O: Evidence entity binding
+                        if sid and evidence_map:
                             try:
                                 fd_g = GraphIndex.load("fde-delivery")
-                                # Persist report text for §8 extraction
-                                md_blob = {
-                                    "report_text": report_text[:8000],
-                                    "evidence_map": evidence_map,
-                                    "knowledge_gaps": meta.get("knowledge_gaps", []),
-                                    "readiness_score": 0, "industry": params.get("industry", ""),
-                                    "pain_points": (params.get("pain_points") or "")[:200],
-                                }
-                                fd_g.add_entity(sid, _json_pg.dumps(md_blob, ensure_ascii=False)[:8000],
-                                                "SessionMeta")
                                 for ei, ev in enumerate(evidence_map):
                                     ev_id = f"evidence_{sid}_{ei}"
                                     ev_name = f"{ev.get('ai_opportunity', '')[:60]} | {ev.get('source', '')[:40]}"
