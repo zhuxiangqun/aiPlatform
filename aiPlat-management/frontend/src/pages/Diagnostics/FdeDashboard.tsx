@@ -330,22 +330,30 @@ const AssessTab: React.FC = () => {
         } else {
           setTimeout(() => {
             closeDialog();
-            // Write back collected context to form (all 11 fields)
-            setForm(prev => ({
-              ...prev,
-              ...(data.context?.company_name ? { company_name: data.context.company_name } : {}),
-              ...(data.context?.industry ? { industry: data.context.industry } : {}),
-              ...(data.context?.pain_points ? { pain_points: data.context.pain_points } : {}),
-              ...(data.context?.team_size ? { team_size: data.context.team_size } : {}),
-              ...(data.context?.budget ? { budget_range: data.context.budget } : {}),
-              ...(data.context?.existing_tech_stack ? { existing_tech_stack: data.context.existing_tech_stack } : {}),
-              ...(data.context?.internal_data_sources ? { internal_data_sources: data.context.internal_data_sources } : {}),
-              ...(data.context?.external_data_sources ? { external_data_sources: data.context.external_data_sources } : {}),
-              ...(data.context?.compliance_requirements ? { compliance_requirements: data.context.compliance_requirements } : {}),
-              ...(data.context?.poc_timeline ? { poc_timeline: data.context.poc_timeline } : {}),
-              ...(data.context?.production_timeline ? { production_timeline: data.context.production_timeline } : {}),
+            // Build extraInput from dialog context for immediate submit
+            const ctx = data.context || {};
+            const extra: Record<string, any> = {};
+            for (const [k, v] of Object.entries(ctx)) {
+              if (v) {
+                // Map dialog context keys to form keys
+                if (k === 'budget') extra.budget_range = v;
+                else extra[k] = v;
+              }
+            }
+            // Write back to form for UI display
+            setForm(prev => ({ ...prev, ...extra,
+              ...(ctx.company_name ? { company_name: ctx.company_name } : {}),
+              ...(ctx.pain_points ? { pain_points: ctx.pain_points } : {}),
+              ...(ctx.team_size ? { team_size: ctx.team_size } : {}),
+              ...(ctx.budget ? { budget_range: ctx.budget } : {}),
+              ...(ctx.existing_tech_stack ? { existing_tech_stack: ctx.existing_tech_stack } : {}),
+              ...(ctx.internal_data_sources ? { internal_data_sources: ctx.internal_data_sources } : {}),
+              ...(ctx.external_data_sources ? { external_data_sources: ctx.external_data_sources } : {}),
+              ...(ctx.compliance_requirements ? { compliance_requirements: ctx.compliance_requirements } : {}),
+              ...(ctx.poc_timeline ? { poc_timeline: ctx.poc_timeline } : {}),
+              ...(ctx.production_timeline ? { production_timeline: ctx.production_timeline } : {}),
             }));
-            setTimeout(() => submit(), 100);
+            submit(extra);  // ← pass directly, bypass setForm async delay
           }, 500);
         }
       }
@@ -632,6 +640,9 @@ const AssessTab: React.FC = () => {
                   >
                     💾 保存为模板
                   </button>
+                  <Button variant="outline" size="sm" onClick={generateManual} loading={manualLoading}>
+                    📋 生成交付手册
+                  </Button>
                 </div>
               </div>
             </CardHeader>
@@ -674,9 +685,6 @@ const AssessTab: React.FC = () => {
                 </Button>
                 <Button variant="outline" size="sm" onClick={() => openDialog(diagnosisSessionId)}>
                   ⚡ 继续澄清
-                </Button>
-                <Button variant="outline" size="sm" onClick={generateManual} loading={manualLoading}>
-                  📋 生成交付手册
                 </Button>
               </CardContent>
             </Card>
