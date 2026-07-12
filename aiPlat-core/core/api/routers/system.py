@@ -187,3 +187,17 @@ def run_auto_check() -> dict:
         return {"auto_check": True, "health": diag.get("overall_health", "unknown"), "warnings": len(warnings)}
     except Exception:
         return {}
+
+
+# ════════════════════════════════════════════════════════════
+# System Health — comprehensive component status
+# ════════════════════════════════════════════════════════════
+
+@router.get("/health", response_model=dict)
+async def system_health():
+    """System-level comprehensive health check — mirrors /fde/health."""
+    try:
+        from core.api.routers.fde import fde_health
+        return await fde_health()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e)[:300])
