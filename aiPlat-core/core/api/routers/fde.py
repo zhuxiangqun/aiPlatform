@@ -1707,6 +1707,80 @@ async def fde_ask(req: FdeAskRequest):
 _READINESS_THRESHOLD = 60  # 就绪度 ≥ 60 建议生成报告
 
 
+def _simple_extract_fields(answer: str, context: dict) -> dict:
+    """Keyword-based extraction when LLM is unavailable."""
+    updated = {}
+    a = answer.strip()
+    if not a:
+        return updated
+
+    # Industry keywords
+    industry_kw = ["政务", "医疗", "金融", "制造", "零售", "教育", "物流", "农业",
+                   "能源", "交通", "地产", "保险", "通信", "互联网", "软件", "游戏"]
+    for kw in industry_kw:
+        if kw in a and not context.get("industry"):
+            updated["industry"] = kw
+            break
+
+    # Company name: contains 公司/集团/有限公司/科技 or pattern like "叫XXX"
+    company_patterns = ["公司", "集团", "有限公司", "科技"]
+    has_company = any(p in a for p in company_patterns)
+    if has_company and not context.get("company_name"):
+        import re as _re_cn
+        # "我们公司叫南京明图" → extract "南京明图"
+        m = _re_cn.search(r'(?:叫|是|为)\s*([^\s，,。.叫是为]{2,20})(?:\s*(?:公司|集团|有限公司|科技))?', a)
+        if not m:
+            # "南京明图科技有限公司" → extract "南京明图"
+            m = _re_cn.search(r'([^\s，,。.叫是为]{2,20})\s*(?:公司|集团|有限公司|科技)', a)
+        if m:
+            name = m.group(1).strip("，,。. ")
+            if len(name) >= 2 and name not in ("我们", "这个", "那个", "一家", "一个"):
+                updated["company_name"] = name
+        if not updated.get("company_name"):
+            for sent in a.replace("，", "。").split("。"):
+                if any(p in sent for p in company_patterns):
+                    cs = sent.strip()
+                    for p in company_patterns:
+                        if p in cs:
+                            name = cs[:cs.index(p)].strip()
+                            if len(name) >= 2:
+                                updated["company_name"] = name[:40]
+                                break
+                    break
+
+    # Team size: number near 人/团队
+    import re as _re_ts
+    m = _re_ts.search(r'(\d+)[\s~到至-]*(\d*)\s*(?:人|个?人|员工|团队)', a)
+    if m and not context.get("team_size"):
+        if m.group(2):
+            updated["team_size"] = f'{m.group(1)}-{m.group(2)}人'
+        else:
+            updated["team_size"] = f'{m.group(1)}人'
+
+    # Budget: number near 万/千/元/预算
+    m = _re_ts.search(r'(\d+)\s*(?:万|k|w)\s*(?:预算|元|块|以内|左右)?', a)
+    if m and not context.get("budget"):
+        updated["budget"] = f'{m.group(1)}万'
+
+    # Pain points: anything remaining with pain keywords, or entire answer
+    pain_kw = ["痛点", "问题", "困难", "效率低", "不准确", "人工", "手动", "无法",
+               "串标", "围标", "检测", "检索", "识别", "分析", "预测", "优化"]
+    if any(kw in a for kw in pain_kw) and not context.get("pain_points"):
+        updated["pain_points"] = a[:200]
+
+    return updated
+
+
+def _rotate_default_question(gaps: list, pending_qs: list, turn: int) -> str:
+    """Generate a rotating default question when LLM is unavailable."""
+    if pending_qs and turn <= len(pending_qs):
+        return f"请确认以下问题：{pending_qs[turn - 1]}"
+    if gaps:
+        g = gaps[(turn - 1) % len(gaps)]
+        return f"请提供「{g}」的相关信息。"
+    return "请提供更多关于客户业务的信息。"
+
+
 def _extract_pending_questions(session_id: str) -> list:
     """从SessionMeta诊断报告中提取§8待确认问题清单"""
     import re
@@ -1790,35 +1864,39 @@ async def fde_assess_dialog(req: FdeDialogRequest):
         "budget": req.budget.strip(),
     }
 
-    # ── LLM extract: parse fields from user answer ──
-    if turn > 1 and req.answer.strip() and llm_available:
-        try:
-            extract_prompt = (
-                f'从以下回答中提取客户信息字段，以JSON返回。\n'
-                f'回答: "{req.answer}"\n'
-                f'当前已知: {_json_dg.dumps(context, ensure_ascii=False)}\n'
-                f'提取规则: company_name(公司名), industry(行业), pain_points(痛点), team_size(人数), budget(预算)\n'
-                f'例如用户说"我们南京明图，做政务系统集成的，大概50人"'
-                f' → {{"company_name":"南京明图","industry":"政务","team_size":"50"}}\n'
-                f'仅返回JSON，无其他文字。'
-            )
-            import logging as _log_extract
-            resp = await sys_llm_generate(None, [{"role":"user","content":extract_prompt}],
-                                          model_name=model_name, max_tokens=150, temperature=0.1)
-            content_raw = str(getattr(resp, "content", "") or "")
+    # ── Extract fields from user answer ──
+    if turn > 1 and req.answer.strip():
+        # Always run keyword extraction (works without LLM)
+        kw_extracted = _simple_extract_fields(req.answer, context)
+        for k, v in kw_extracted.items():
+            if v and k in context:
+                context[k] = v
+        # Enhance with LLM extraction if available
+        if llm_available:
             try:
-                extracted = _json_dg.loads(content_raw)
-                for k, v in extracted.items():
-                    if v and isinstance(v, str) and k in context:
-                        context[k] = str(v).strip()
+                extract_prompt = (
+                    f'从以下回答中提取客户信息字段，以JSON返回。\n'
+                    f'回答: "{req.answer}"\n'
+                    f'当前已知: {_json_dg.dumps(context, ensure_ascii=False)}\n'
+                    f'提取规则: company_name(公司名), industry(行业), pain_points(痛点), team_size(人数), budget(预算)\n'
+                    f'例如用户说"我们南京明图，做政务系统集成的，大概50人"'
+                    f' → {{"company_name":"南京明图","industry":"政务","team_size":"50"}}\n'
+                    f'仅返回JSON，无其他文字。'
+                )
+                resp = await sys_llm_generate(None, [{"role":"user","content":extract_prompt}],
+                                              model_name=model_name, max_tokens=150, temperature=0.1)
+                content_raw = str(getattr(resp, "content", "") or "")
+                try:
+                    extracted = _json_dg.loads(content_raw)
+                    for k, v in extracted.items():
+                        if v and isinstance(v, str) and k in context:
+                            context[k] = str(v).strip()
+                except Exception as e:
+                    import logging as _log_extract
+                    _log_extract.warning(f"dialog extract JSON parse failed: {e}, raw={content_raw[:120]}")
             except Exception as e:
-                _log_extract.warning(f"dialog extract JSON parse failed: {e}, raw={content_raw[:120]}")
-        except Exception as e:
-            import logging as _log_extract2
-            _log_extract2.warning(f"dialog extract LLM call failed: {e}")
-            # ── Fallback: use answer as pain_points if extraction fails ──
-            if req.answer.strip() and not context.get("pain_points"):
-                context["pain_points"] = req.answer.strip()[:200]
+                import logging as _log_extract2
+                _log_extract2.warning(f"dialog extract LLM call failed: {e}")
 
     score, gaps = _compute_readiness(context)
     can_finalize = score >= _READINESS_THRESHOLD
@@ -1838,13 +1916,13 @@ async def fde_assess_dialog(req: FdeDialogRequest):
         options = ["生成报告", "继续补充"]
     else:
         if not llm_available:
-            # ── Static fallback (no LLM) ──
+            # ── Static fallback (no LLM): rotate through gaps ──
             if pending_qs:
-                q = pending_qs[0]
+                q = pending_qs[turn % len(pending_qs)]
                 question = f"请确认以下问题：{q}"
                 options = ["是", "否", "部分是", "其他"]
             elif gaps:
-                g = gaps[0]
+                g = gaps[(turn - 1) % len(gaps)]
                 question = f"请提供「{g}」的相关信息。"
                 options = []
             else:
@@ -1876,17 +1954,17 @@ async def fde_assess_dialog(req: FdeDialogRequest):
                         question = "澄清已完成。请回复「生成报告」来生成诊断报告，或继续补充其他信息。"
                         options = ["生成报告", "继续补充"]
                     else:
-                        question = result.get("question", "请描述客户的核心业务痛点")
+                        question = result.get("question", _rotate_default_question(gaps, pending_qs, turn))
                         options = result.get("options", [])
                 except Exception as e:
                     import logging as _log_gen_json
                     _log_gen_json.warning(f"dialog gen JSON parse failed: {e}")
-                    question = "请描述客户的核心业务痛点"
+                    question = _rotate_default_question(gaps, pending_qs, turn)
                     options = []
             except Exception as e:
                 import logging as _log_gen_llm
                 _log_gen_llm.warning(f"dialog gen LLM call failed: {e}")
-                question = "请描述客户的核心业务痛点"
+                question = _rotate_default_question(gaps, pending_qs, turn)
                 options = []
 
     return {
