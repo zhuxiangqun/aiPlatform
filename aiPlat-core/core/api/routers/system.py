@@ -60,12 +60,17 @@ async def system_overview():
     except Exception:
         live["pipeline"] = "unknown"
 
-    live["self_evolution_phase"] = "四阶段竣工 (POST_LOOP每10次自动诊断)"
+    live["self_evolution_phase"] = "四阶段竣工 (POST_LOOP每10次 + 后台每小时)"
 
     return {
         "system": "本体智能平台 — AI时代的企业大脑原型",
         "philosophy": "用确定性的本体包住不确定性的大模型。LLM做推理，Ontology做业务世界建模。",
         "live": live,
+        "scheduler": {
+            "active": _scheduler_started,
+            "interval_seconds": 3600,
+            "mode": "diagnose→heal→evolve (zero token)",
+        },
         "architecture": {
             "buses": {
                 "seci": "知识创造螺旋 (POST_LOOP → atom → convergence → adjust)",
