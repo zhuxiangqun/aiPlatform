@@ -717,8 +717,8 @@ const FeedbackTab: React.FC = () => {
       )}
       {/* ── 智能澄清 Dialog ── */}
       {dialogOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="bg-gray-900 border border-gray-700 rounded-lg w-full max-w-md mx-4 shadow-2xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setDialogOpen(false)}>
+          <div className="bg-gray-900 border border-gray-700 rounded-lg w-full max-w-md mx-4 shadow-2xl" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between px-4 py-3 border-b border-gray-700">
               <span className="text-sm font-medium text-gray-200">⚡ 智能澄清</span>
               <button onClick={() => setDialogOpen(false)} className="text-gray-500 hover:text-gray-300 text-lg">&times;</button>
@@ -765,6 +765,7 @@ const FeedbackTab: React.FC = () => {
                 <Button variant="ghost" size="sm" onClick={() => { dialogCall(dialogInput); setDialogInput(''); }}
                   disabled={!dialogInput.trim()}>发送</Button>
               </div>
+              <Button variant="ghost" size="sm" className="w-full text-gray-500" onClick={() => setDialogOpen(false)}>取消</Button>
             </div>
           </div>
         </div>
