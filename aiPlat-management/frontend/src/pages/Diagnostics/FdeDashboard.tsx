@@ -180,6 +180,7 @@ const AssessTab: React.FC = () => {
   const [report, setReport] = useState('');
   const [loading, setLoading] = useState(false);
   const [manual, setManual] = useState<any>(null);
+  const [manualLoading, setManualLoading] = useState(false);
   const [reportExpanded, setReportExpanded] = useState(false);
   const [diagnosisSessionId, setDiagnosisSessionId] = useState('');
   const [pendingFeedback, setPendingFeedback] = useState('');
@@ -281,7 +282,13 @@ const AssessTab: React.FC = () => {
         + `"company_name":"${esc(form.company_name || dialogContext.company_name || '')}",`
         + `"pain_points":"${esc(form.pain_points || dialogContext.pain_points || '')}",`
         + `"team_size":"${esc(form.team_size || dialogContext.team_size || '')}",`
-        + `"budget":"${esc(form.budget_range || dialogContext.budget || '')}"`
+        + `"budget":"${esc(form.budget_range || dialogContext.budget || '')}",`
+        + `"existing_tech_stack":"${esc(form.existing_tech_stack || dialogContext.existing_tech_stack || '')}",`
+        + `"internal_data_sources":"${esc(form.internal_data_sources || dialogContext.internal_data_sources || '')}",`
+        + `"external_data_sources":"${esc(form.external_data_sources || dialogContext.external_data_sources || '')}",`
+        + `"compliance_requirements":"${esc(form.compliance_requirements || dialogContext.compliance_requirements || '')}",`
+        + `"poc_timeline":"${esc(form.poc_timeline || dialogContext.poc_timeline || '')}",`
+        + `"production_timeline":"${esc(form.production_timeline || dialogContext.production_timeline || '')}"`
         + `}`;
       const r = await fetch('/api/core/fde/assess/dialog', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -323,7 +330,7 @@ const AssessTab: React.FC = () => {
         } else {
           setTimeout(() => {
             closeDialog();
-            // Write back collected context to form
+            // Write back collected context to form (all 11 fields)
             setForm(prev => ({
               ...prev,
               ...(data.context?.company_name ? { company_name: data.context.company_name } : {}),
@@ -331,6 +338,12 @@ const AssessTab: React.FC = () => {
               ...(data.context?.pain_points ? { pain_points: data.context.pain_points } : {}),
               ...(data.context?.team_size ? { team_size: data.context.team_size } : {}),
               ...(data.context?.budget ? { budget_range: data.context.budget } : {}),
+              ...(data.context?.existing_tech_stack ? { existing_tech_stack: data.context.existing_tech_stack } : {}),
+              ...(data.context?.internal_data_sources ? { internal_data_sources: data.context.internal_data_sources } : {}),
+              ...(data.context?.external_data_sources ? { external_data_sources: data.context.external_data_sources } : {}),
+              ...(data.context?.compliance_requirements ? { compliance_requirements: data.context.compliance_requirements } : {}),
+              ...(data.context?.poc_timeline ? { poc_timeline: data.context.poc_timeline } : {}),
+              ...(data.context?.production_timeline ? { production_timeline: data.context.production_timeline } : {}),
             }));
             setTimeout(() => submit(), 100);
           }, 500);
@@ -394,39 +407,47 @@ const AssessTab: React.FC = () => {
         if (data.metadata?.session_id) {
           setDiagnosisSessionId(data.metadata.session_id);
         }
-
-        // 仅诊断成功时自动生成交付手册草稿
-        const projectLabel = form.company_name || (form.industry ? form.industry + 'AI落地项目' : 'AI落地项目');
-        const parts = [projectLabel];
-        if (form.industry) parts.push(form.industry + '行业AI落地');
-        if (form.pain_points) parts.push('痛点：' + form.pain_points);
-        if (form.existing_tech_stack) parts.push('现有技术栈：' + form.existing_tech_stack);
-        if (form.internal_data_sources || form.external_data_sources) {
-          const parts_s = [];
-          if (form.internal_data_sources) parts_s.push('内部数据源：' + form.internal_data_sources);
-          if (form.external_data_sources) parts_s.push('外部数据源：' + form.external_data_sources);
-          parts.push(parts_s.join('，'));
-        }
-        if (form.compliance_requirements) parts.push('合规要求：' + form.compliance_requirements);
-        if (form.budget_range) parts.push('预算：' + form.budget_range);
-        if (form.poc_timeline || form.production_timeline) {
-          const parts_t = [];
-          if (form.poc_timeline) parts_t.push('POC：' + form.poc_timeline);
-          if (form.production_timeline) parts_t.push('上线：' + form.production_timeline);
-          parts.push(parts_t.join('，'));
-        }
-        if (form.team_size) parts.push('团队：' + form.team_size + '人');
-        const reqStr = parts.join('，');
-        try {
-          const diagSummary = outputText ? outputText.replace(/```[\s\S]*?```/g, '').replace(/`{1,2}([^`]+)`{1,2}/g, '$1').trim() : '';
-          const specId = generateSpecId(form.industry || '通用');
-          const mr = await fetch(API(`/manual/generate?requirements=${encodeURIComponent(reqStr)}&industry=${encodeURIComponent(form.industry || '通用')}&agent_guide=1&workflow_guide=1&spec_id=${encodeURIComponent(specId)}&diagnosis_report=${encodeURIComponent(diagSummary)}`));
-          const md = await mr.json();
-          setManual(md);
-        } catch {}
       }
+
+      setLoading(false);
+    } catch (e: any) {
+      setReport('__ERROR__:' + (e?.message || '请求失败'));
+      setLoading(false);
+    }
+  };
+
+  const generateManual = async () => {
+    if (!report || report.startsWith('__ERROR__:')) return;
+    setManualLoading(true);
+    try {
+      const projectLabel = form.company_name || (form.industry ? form.industry + 'AI落地项目' : 'AI落地项目');
+      const parts = [projectLabel];
+      if (form.industry) parts.push(form.industry + '行业AI落地');
+      if (form.pain_points) parts.push('痛点：' + form.pain_points);
+      if (form.existing_tech_stack) parts.push('现有技术栈：' + form.existing_tech_stack);
+      if (form.internal_data_sources || form.external_data_sources) {
+        const parts_s = [];
+        if (form.internal_data_sources) parts_s.push('内部数据源：' + form.internal_data_sources);
+        if (form.external_data_sources) parts_s.push('外部数据源：' + form.external_data_sources);
+        parts.push(parts_s.join('，'));
+      }
+      if (form.compliance_requirements) parts.push('合规要求：' + form.compliance_requirements);
+      if (form.budget_range) parts.push('预算：' + form.budget_range);
+      if (form.poc_timeline || form.production_timeline) {
+        const parts_t = [];
+        if (form.poc_timeline) parts_t.push('POC：' + form.poc_timeline);
+        if (form.production_timeline) parts_t.push('上线：' + form.production_timeline);
+        parts.push(parts_t.join('，'));
+      }
+      if (form.team_size) parts.push('团队：' + form.team_size + '人');
+      const reqStr = parts.join('，');
+      const diagSummary = report.replace(/```[\s\S]*?```/g, '').replace(/`{1,2}([^`]+)`{1,2}/g, '$1').trim();
+      const specId = generateSpecId(form.industry || '通用');
+      const mr = await fetch(API(`/manual/generate?requirements=${encodeURIComponent(reqStr)}&industry=${encodeURIComponent(form.industry || '通用')}&agent_guide=1&workflow_guide=1&spec_id=${encodeURIComponent(specId)}&diagnosis_report=${encodeURIComponent(diagSummary)}`));
+      const md = await mr.json();
+      setManual(md);
     } catch {}
-    setLoading(false);
+    setManualLoading(false);
   };
 
   return (
@@ -653,6 +674,9 @@ const AssessTab: React.FC = () => {
                 </Button>
                 <Button variant="outline" size="sm" onClick={() => openDialog(diagnosisSessionId)}>
                   ⚡ 继续澄清
+                </Button>
+                <Button variant="outline" size="sm" onClick={generateManual} loading={manualLoading}>
+                  📋 生成交付手册
                 </Button>
               </CardContent>
             </Card>

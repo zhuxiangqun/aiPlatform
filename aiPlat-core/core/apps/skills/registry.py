@@ -1263,20 +1263,35 @@ def _generate_term_definition(concept: str) -> str:
 
 
 def _compute_readiness(params: dict) -> tuple:
-    """Compute FDE readiness score (0-100) based on form completeness."""
+    """Compute FDE readiness score (0-100) based on form completeness.
+    
+    Two-tier threshold:
+      ≥ 40: core ready — can generate initial diagnosis
+      ≥ 80: fully ready — can generate complete delivery manual
+    """
     score = 0
     gaps = []
-    if params.get('company_name'): score += 10
+    # ── Core fields (required for diagnosis) ──
+    if params.get('company_name'): score += 15
     else: gaps.append('公司名称')
-    if params.get('industry'): score += 10
+    if params.get('industry'): score += 15
     else: gaps.append('行业')
-    if params.get('pain_points'): score += 20
+    if params.get('pain_points'): score += 25
     else: gaps.append('痛点')
+    # ── Supplementary fields (enhance delivery manual quality) ──
     if params.get('team_size'): score += 5
-    if params.get('tech_stack'): score += 5
+    else: gaps.append('团队规模')
+    if params.get('existing_tech_stack') or params.get('tech_stack'): score += 5
+    else: gaps.append('现有技术栈')
     if params.get('budget'): score += 5
-    if params.get('contact'): score += 5
-    return min(score + 30, 100), gaps
+    else: gaps.append('预算范围')
+    if params.get('internal_data_sources') or params.get('external_data_sources') or params.get('data_sources'): score += 5
+    else: gaps.append('数据源')
+    if params.get('compliance_requirements'): score += 5
+    else: gaps.append('合规要求')
+    if params.get('poc_timeline') or params.get('production_timeline') or params.get('timeline'): score += 5
+    else: gaps.append('时间线')
+    return min(score + 15, 100), gaps
 
 
 def _dedup_table_rows(text: str) -> str:
@@ -1784,7 +1799,7 @@ class _GenericSkill(BaseSkill):
 
                         # O: Evidence entity binding + SessionMeta persistence
                         sid = meta.get("session_id", "")
-                        if sid and evidence_map:
+                        if sid:
                             try:
                                 fd_g = GraphIndex.load("fde-delivery")
                                 # Persist report text for §8 extraction

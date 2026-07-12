@@ -60,7 +60,6 @@ _PAIN_POINT_KEYWORDS = [
 _EVIDENCE_SOURCE_LLM = "LLM推测"
 _EVIDENCE_SOURCE_INDUSTRY = "行业普遍痛点"
 # ── Dialog constants ──
-_READINESS_THRESHOLD = 60
 _FINISH_COMMANDS = {"结束澄清", "结束", "finish", "done", "生成报告", "生成诊断"}
 _DIALOG_COMPLETION_MSG = "澄清已完成。请回复「生成报告」来生成诊断报告，或继续补充其他信息。"
 _DIALOG_COMPLETION_OPTS = ["生成报告", "继续补充"]
@@ -1782,6 +1781,18 @@ def _simple_extract_fields(answer: str, context: dict) -> dict:
     if any(kw in a for kw in _PAIN_POINT_KEYWORDS) and not context.get("pain_points"):
         updated["pain_points"] = a[:200]
 
+    # Supplementary field keywords
+    tech_kw = ["Java", "Python", "Go", "MySQL", "PostgreSQL", "Oracle", "Docker",
+               "K8s", "Kubernetes", "React", "Vue", "Angular", "Spring", "Flask",
+               "ERP", "OA", "CRM", "Hadoop", "Spark", "云服务", "私有云", "公有云"]
+    if not context.get("existing_tech_stack"):
+        found = [kw for kw in tech_kw if kw.lower() in a.lower()]
+        if found:
+            updated["existing_tech_stack"] = ", ".join(found[:5])
+
+    if "等保" in a and not context.get("compliance_requirements"):
+        updated["compliance_requirements"] = "等保"
+
     return updated
 
 
@@ -1791,7 +1802,20 @@ def _rotate_default_question(gaps: list, pending_qs: list, turn: int) -> str:
         return _sync_resolve("fde-dialog-pending-q", question=pending_qs[turn - 1])
     if gaps:
         g = gaps[(turn - 1) % len(gaps)]
-        return _sync_resolve("fde-dialog-gap-q", gap=g)
+        # Gap-specific templates for better UX
+        gap_templates = {
+            "公司名称": "fde-dialog-gap-q",
+            "行业": "fde-dialog-gap-q",
+            "痛点": "fde-dialog-gap-q",
+            "团队规模": "fde-dialog-gap-q",
+            "现有技术栈": "fde-dialog-gap-q",
+            "预算范围": "fde-dialog-gap-q",
+            "数据源": "fde-dialog-gap-q",
+            "合规要求": "fde-dialog-gap-q",
+            "时间线": "fde-dialog-gap-q",
+        }
+        tmpl = gap_templates.get(g, "fde-dialog-gap-q")
+        return _sync_resolve(tmpl, gap=g)
     return _DIALOG_DEFAULT_MSG
 
 
@@ -1852,6 +1876,12 @@ class FdeDialogRequest(_PydanticBaseModel):
     pain_points: str = ""
     team_size: str = ""
     budget: str = ""
+    existing_tech_stack: str = ""
+    internal_data_sources: str = ""
+    external_data_sources: str = ""
+    compliance_requirements: str = ""
+    poc_timeline: str = ""
+    production_timeline: str = ""
 
 
 @router.post("/assess/dialog", response_model=dict)
@@ -1876,6 +1906,12 @@ async def fde_assess_dialog(req: FdeDialogRequest):
         "pain_points": req.pain_points.strip(),
         "team_size": req.team_size.strip(),
         "budget": req.budget.strip(),
+        "existing_tech_stack": req.existing_tech_stack.strip(),
+        "internal_data_sources": req.internal_data_sources.strip(),
+        "external_data_sources": req.external_data_sources.strip(),
+        "compliance_requirements": req.compliance_requirements.strip(),
+        "poc_timeline": req.poc_timeline.strip(),
+        "production_timeline": req.production_timeline.strip(),
     }
 
     # ── Extract fields from user answer ──
@@ -1906,7 +1942,8 @@ async def fde_assess_dialog(req: FdeDialogRequest):
                 _log_extract2.warning(f"dialog extract LLM call failed: {e}")
 
     score, gaps = _compute_readiness(context)
-    can_finalize = score >= _READINESS_THRESHOLD
+    core_ready = score >= 40 and not any(g in gaps for g in ['公司名称', '行业', '痛点'])
+    fully_ready = score >= 80
 
     # ── Detect "结束澄清" command ──
     finished = (req.answer.strip().lower() if turn > 1 else "") in _FINISH_COMMANDS
@@ -1916,9 +1953,12 @@ async def fde_assess_dialog(req: FdeDialogRequest):
 
     # ── LLM generate: next question or finalize ──
     question, options = "", []
-    if finished or (can_finalize and not gaps and not pending_qs):
-        question = _DIALOG_COMPLETION_MSG
-        options = list(_DIALOG_COMPLETION_OPTS)
+    if finished or (fully_ready and not gaps and not pending_qs):
+        question = "所有信息已收集完毕。请回复「生成报告」来生成完整的FDE交付手册。"
+        options = ["生成报告", "继续补充"]
+    elif core_ready:
+        question = "基础信息已充分，可以生成初步诊断报告。建议继续提供更多信息以获得完整的交付手册。请回复「生成报告」，或继续提供信息。"
+        options = ["生成报告", "继续补充"]
     else:
         if not llm_available:
             # ── Static fallback (no LLM): rotate through gaps ──
@@ -1932,8 +1972,8 @@ async def fde_assess_dialog(req: FdeDialogRequest):
                 options = []
             else:
                 finished = True
-                question = _DIALOG_COMPLETION_MSG
-                options = list(_DIALOG_COMPLETION_OPTS)
+                question = "所有信息已收集完毕。请回复「生成报告」来生成完整的FDE交付手册。"
+                options = ["生成报告", "继续补充"]
         else:
             try:
                 extra = f"\n诊断报告中的待确认问题: {pending_qs}" if pending_qs else ""
@@ -1947,8 +1987,8 @@ async def fde_assess_dialog(req: FdeDialogRequest):
                     result = _json_dg.loads(str(getattr(resp, "content", "") or "{}"))
                     if result.get("action") == "generate":
                         finished = True
-                        question = _DIALOG_COMPLETION_MSG
-                        options = list(_DIALOG_COMPLETION_OPTS)
+                        question = "所有信息已收集完毕。请回复「生成报告」来生成完整的FDE交付手册。"
+                        options = ["生成报告", "继续补充"]
                     else:
                         question = result.get("question", _rotate_default_question(gaps, pending_qs, turn))
                         options = result.get("options", [])
@@ -1968,7 +2008,8 @@ async def fde_assess_dialog(req: FdeDialogRequest):
         "readiness": score,
         "question": question,
         "options": options,
-        "can_finalize": can_finalize,
+        "fully_ready": fully_ready,
+        "core_ready": core_ready,
         "finished": finished,
         "gaps": gaps,
         "context": context,
