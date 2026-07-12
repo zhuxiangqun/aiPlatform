@@ -193,9 +193,7 @@ const AssessTab: React.FC = () => {
   const [dialogTurn, setDialogTurn] = useState(1);
   const [dialogContext, setDialogContext] = useState<Record<string, string>>({});
   const [dialogHistory, setDialogHistory] = useState<Array<{role: string; content: string}>>([]);
-  const [dialogQuestion, setDialogQuestion] = useState('');
   const [dialogOptions, setDialogOptions] = useState<string[]>([]);
-  const [dialogReady, setDialogReady] = useState(false);
   const [dialogLoading, setDialogLoading] = useState(false);
   const [dialogInput, setDialogInput] = useState('');
   const [dialogComposing, setDialogComposing] = useState(false);
@@ -288,14 +286,12 @@ const AssessTab: React.FC = () => {
       });
       const data = await r.json();
       setDialogContext(data.context || {});
-      setDialogReady(data.can_finalize);
-      setDialogQuestion(data.question || '');
       setDialogOptions(data.options || []);
       setDialogTurn(data.turn || 2);
       setDialogHistory(prev => [
         ...prev,
         ...(answer ? [{ role: 'user', content: answer }] : []),
-        { role: 'assistant', content: data.question },
+        { role: 'assistant', content: data.question || '' },
       ]);
 
       // ── Handle "finished" flag: close dialog + generate diagnosis ──
@@ -337,7 +333,7 @@ const AssessTab: React.FC = () => {
           }, 500);
         }
       }
-    } catch { setDialogQuestion('网络错误，请重试'); }
+    } catch { setDialogHistory(prev => [...prev, { role: 'assistant', content: '抱歉，网络错误。请重试或关闭对话框。' }]); }
     setDialogLoading(false);
   };
 
@@ -345,7 +341,6 @@ const AssessTab: React.FC = () => {
     setDialogOpen(true);
     setDialogTurn(1);
     setDialogHistory([{ role: 'assistant', content: '你好！我是 AI 诊断助手。让我先了解一下你的情况……' }]);
-    setDialogReady(false);
     setDialogContext({});
     setDialogSessionId(sessionId || '');
     dialogCall(undefined, 1, sessionId);
