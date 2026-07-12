@@ -71,11 +71,11 @@ def _ensure_di():
                 get_tool_registry_fn=get_tool_registry,
             )
 
-        def _skill_permission_resolver_factory():
+        def _skill_permission_resolver_factory(_di=None):
             from core.apps.tools.skill_tools import resolve_skill_permission, resolve_executable_skill_permission  # noqa
             return {"resolve": resolve_skill_permission, "resolve_exec": resolve_executable_skill_permission}
 
-        def _skill_curator_factory():
+        def _skill_curator_factory(_di=None):
             from core.apps.skills.curator import get_skill_curator  # noqa
             return get_skill_curator()
 
@@ -2915,6 +2915,7 @@ class HarnessIntegration:
                 "status": execution.status,
                 "input": execution.input_data,
                 "output": execution.output_data,
+                "metadata": execution.metadata if isinstance(getattr(execution, "metadata", None), dict) else {},
                 "error": self._normalize_error(
                     error=execution.error,
                     metadata={

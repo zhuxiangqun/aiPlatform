@@ -327,6 +327,7 @@ const AssessTab: React.FC = () => {
             setForm(prev => ({
               ...prev,
               ...(data.context?.company_name ? { company_name: data.context.company_name } : {}),
+              ...(data.context?.industry ? { industry: data.context.industry } : {}),
               ...(data.context?.pain_points ? { pain_points: data.context.pain_points } : {}),
               ...(data.context?.team_size ? { team_size: data.context.team_size } : {}),
               ...(data.context?.budget ? { budget_range: data.context.budget } : {}),
