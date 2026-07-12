@@ -11,7 +11,7 @@
  *   Tab 7: 灰度发布 (Canary status + 一键回滚)
  *   Tab 8: 验证验收 (Checklist + 签收 + 移交 + 归档 + 首月护航)
  */
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { Card, CardContent, CardHeader, Button } from '../../components/ui';
 import { Wrench, RefreshCw, Package, Download, Users, FileText, Target, Activity, AlertTriangle, Send, Clipboard, TrendingUp, CheckCircle, UserCheck, BookOpen } from 'lucide-react';
 
@@ -189,6 +189,7 @@ const AssessTab: React.FC = () => {
   }>>([]);
   const [showTemplates, setShowTemplates] = useState(false);
   // ── Clarification dialog state ──
+  const dialogLockRef = useRef(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogTurn, setDialogTurn] = useState(1);
   const [dialogContext, setDialogContext] = useState<Record<string, string>>({});
@@ -316,11 +317,11 @@ const AssessTab: React.FC = () => {
             return parts.join('\n\n');
           });
           setTimeout(() => {
-            setDialogOpen(false);
+            closeDialog();
           }, 200);
         } else {
           setTimeout(() => {
-            setDialogOpen(false);
+            closeDialog();
             // Write back collected context to form
             setForm(prev => ({
               ...prev,
@@ -333,11 +334,21 @@ const AssessTab: React.FC = () => {
           }, 500);
         }
       }
-    } catch { setDialogHistory(prev => [...prev, { role: 'assistant', content: '抱歉，网络错误。请重试或关闭对话框。' }]); }
+    } catch (e: any) {
+      const detail = e?.message || String(e || '');
+      setDialogHistory(prev => [...prev, { role: 'assistant', content: `抱歉，连接失败${detail ? ` (${detail.slice(0, 80)})` : ''}。请确认后端服务已启动。` }]);
+    }
     setDialogLoading(false);
   };
 
+  const closeDialog = () => {
+    dialogLockRef.current = false;
+    closeDialog();
+  };
+
   const openDialog = (sessionId?: string) => {
+    if (dialogLockRef.current) return;
+    dialogLockRef.current = true;
     setDialogOpen(true);
     setDialogTurn(1);
     setDialogHistory([{ role: 'assistant', content: '你好！我是 AI 诊断助手。让我先了解一下你的情况……' }]);
@@ -668,14 +679,14 @@ const AssessTab: React.FC = () => {
       )}
       {/* ── 智能澄清 Dialog ── */}
       {dialogOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setDialogOpen(false)}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => closeDialog()}>
           <div className="bg-gray-900 border border-gray-700 rounded-xl w-full max-w-md mx-4 shadow-2xl flex flex-col" style={{height: '480px'}} onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between px-4 py-3 border-b border-gray-700 shrink-0">
               <div className="flex items-center gap-2">
                 <span className="w-6 h-6 rounded-full bg-blue-500/20 flex items-center justify-center text-xs">🤖</span>
                 <span className="text-sm font-medium text-gray-200">AI 诊断助手</span>
               </div>
-              <button onClick={() => setDialogOpen(false)} className="text-gray-500 hover:text-gray-300 text-lg">&times;</button>
+              <button onClick={() => closeDialog()} className="text-gray-500 hover:text-gray-300 text-lg">&times;</button>
             </div>
             <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
               {dialogHistory.map((msg, i) => (
@@ -726,7 +737,7 @@ const AssessTab: React.FC = () => {
                   <Send className="w-4 h-4" />
                 </Button>
               </div>
-              <button className="w-full text-xs text-gray-500 hover:text-gray-400 py-1" onClick={() => setDialogOpen(false)}>结束对话</button>
+              <button className="w-full text-xs text-gray-500 hover:text-gray-400 py-1" onClick={() => closeDialog()}>结束对话</button>
             </div>
           </div>
         </div>
