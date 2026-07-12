@@ -46,6 +46,27 @@ _dash_cache: Dict[str, Any] = {}
 _dash_cache_ts = 0.0
 _DASH_CACHE_TTL = 30.0
 
+# ── Domain extraction keywords (business data, not code logic) ──
+_INDUSTRY_KEYWORDS = [
+    "政务", "医疗", "金融", "制造", "零售", "教育", "物流", "农业",
+    "能源", "交通", "地产", "保险", "通信", "互联网", "软件", "游戏",
+]
+_COMPANY_SUFFIXES = ["公司", "集团", "有限公司", "科技"]
+_PAIN_POINT_KEYWORDS = [
+    "痛点", "问题", "困难", "效率低", "不准确", "人工", "手动", "无法",
+    "串标", "围标", "检测", "检索", "识别", "分析", "预测", "优化",
+]
+# ── Evidence source labels ──
+_EVIDENCE_SOURCE_LLM = "LLM推测"
+_EVIDENCE_SOURCE_INDUSTRY = "行业普遍痛点"
+# ── Dialog constants ──
+_READINESS_THRESHOLD = 60
+_FINISH_COMMANDS = {"结束澄清", "结束", "finish", "done", "生成报告", "生成诊断"}
+_DIALOG_COMPLETION_MSG = "澄清已完成。请回复「生成报告」来生成诊断报告，或继续补充其他信息。"
+_DIALOG_COMPLETION_OPTS = ["生成报告", "继续补充"]
+_DIALOG_FALLBACK_OPTS = ["是", "否", "部分是", "其他"]
+_DIALOG_DEFAULT_MSG = "请提供更多关于客户业务的信息。"
+
 
 # ════════════════════════════════════════════════════════════
 # Tab 1: 系统进化 (migrated from workbench.py)
@@ -1650,7 +1671,7 @@ async def fde_ask(req: FdeAskRequest):
                                 if em:
                                     lines = ["该诊断报告的结论溯源："]
                                     for item in em[:5]:
-                                        level = "本体实例支撑" if item.get("source") and item["source"] not in ("", "LLM推测", "行业普遍痛点") else "LLM推测" if not item.get("source") or item["source"] == "LLM推测" else "历史案例参考"
+                                        level = "本体实例支撑" if item.get("source") and item["source"] not in ("", _EVIDENCE_SOURCE_LLM, _EVIDENCE_SOURCE_INDUSTRY) else _EVIDENCE_SOURCE_LLM if not item.get("source") or item["source"] == _EVIDENCE_SOURCE_LLM else "历史案例参考"
                                         lines.append(f"  · {item.get('ai_opportunity','')} → {level} → 来源：{item.get('source','未标注')}")
                                     evidence_context = "\n".join(lines)
             except Exception:
@@ -1704,8 +1725,6 @@ async def fde_ask(req: FdeAskRequest):
 # Assess Dialog — multi-turn clarification before diagnosis
 # ════════════════════════════════════════════════════════════
 
-_READINESS_THRESHOLD = 60  # 就绪度 ≥ 60 建议生成报告
-
 
 def _simple_extract_fields(answer: str, context: dict) -> dict:
     """Keyword-based extraction when LLM is unavailable."""
@@ -1715,16 +1734,13 @@ def _simple_extract_fields(answer: str, context: dict) -> dict:
         return updated
 
     # Industry keywords
-    industry_kw = ["政务", "医疗", "金融", "制造", "零售", "教育", "物流", "农业",
-                   "能源", "交通", "地产", "保险", "通信", "互联网", "软件", "游戏"]
-    for kw in industry_kw:
+    for kw in _INDUSTRY_KEYWORDS:
         if kw in a and not context.get("industry"):
             updated["industry"] = kw
             break
 
-    # Company name: contains 公司/集团/有限公司/科技 or pattern like "叫XXX"
-    company_patterns = ["公司", "集团", "有限公司", "科技"]
-    has_company = any(p in a for p in company_patterns)
+    # Company name: contains company suffix like 公司/集团
+    has_company = any(p in a for p in _COMPANY_SUFFIXES)
     if has_company and not context.get("company_name"):
         import re as _re_cn
         # "我们公司叫南京明图" → extract "南京明图"
@@ -1738,9 +1754,9 @@ def _simple_extract_fields(answer: str, context: dict) -> dict:
                 updated["company_name"] = name
         if not updated.get("company_name"):
             for sent in a.replace("，", "。").split("。"):
-                if any(p in sent for p in company_patterns):
+                if any(p in sent for p in _COMPANY_SUFFIXES):
                     cs = sent.strip()
-                    for p in company_patterns:
+                    for p in _COMPANY_SUFFIXES:
                         if p in cs:
                             name = cs[:cs.index(p)].strip()
                             if len(name) >= 2:
@@ -1763,9 +1779,7 @@ def _simple_extract_fields(answer: str, context: dict) -> dict:
         updated["budget"] = f'{m.group(1)}万'
 
     # Pain points: anything remaining with pain keywords, or entire answer
-    pain_kw = ["痛点", "问题", "困难", "效率低", "不准确", "人工", "手动", "无法",
-               "串标", "围标", "检测", "检索", "识别", "分析", "预测", "优化"]
-    if any(kw in a for kw in pain_kw) and not context.get("pain_points"):
+    if any(kw in a for kw in _PAIN_POINT_KEYWORDS) and not context.get("pain_points"):
         updated["pain_points"] = a[:200]
 
     return updated
@@ -1778,7 +1792,7 @@ def _rotate_default_question(gaps: list, pending_qs: list, turn: int) -> str:
     if gaps:
         g = gaps[(turn - 1) % len(gaps)]
         return f"请提供「{g}」的相关信息。"
-    return "请提供更多关于客户业务的信息。"
+    return _DIALOG_DEFAULT_MSG
 
 
 def _extract_pending_questions(session_id: str) -> list:
@@ -1895,9 +1909,7 @@ async def fde_assess_dialog(req: FdeDialogRequest):
     can_finalize = score >= _READINESS_THRESHOLD
 
     # ── Detect "结束澄清" command ──
-    finished = (req.answer.strip().lower() if turn > 1 else "") in (
-        "结束澄清", "结束", "finish", "done", "生成报告", "生成诊断"
-    )
+    finished = (req.answer.strip().lower() if turn > 1 else "") in _FINISH_COMMANDS
 
     # ── Extract §8 pending questions if session_id provided ──
     pending_qs = _extract_pending_questions(req.session_id) if req.session_id else []
@@ -1905,23 +1917,23 @@ async def fde_assess_dialog(req: FdeDialogRequest):
     # ── LLM generate: next question or finalize ──
     question, options = "", []
     if finished or (can_finalize and not gaps and not pending_qs):
-        question = "澄清已完成。请回复「生成报告」来生成诊断报告，或继续补充其他信息。"
-        options = ["生成报告", "继续补充"]
+        question = _DIALOG_COMPLETION_MSG
+        options = list(_DIALOG_COMPLETION_OPTS)
     else:
         if not llm_available:
             # ── Static fallback (no LLM): rotate through gaps ──
             if pending_qs:
                 q = pending_qs[turn % len(pending_qs)]
                 question = f"请确认以下问题：{q}"
-                options = ["是", "否", "部分是", "其他"]
+                options = list(_DIALOG_FALLBACK_OPTS)
             elif gaps:
                 g = gaps[(turn - 1) % len(gaps)]
                 question = f"请提供「{g}」的相关信息。"
                 options = []
             else:
                 finished = True
-                question = "澄清已完成。请回复「生成报告」来生成诊断报告，或继续补充其他信息。"
-                options = ["生成报告", "继续补充"]
+                question = _DIALOG_COMPLETION_MSG
+                options = list(_DIALOG_COMPLETION_OPTS)
         else:
             try:
                 extra = f"\n诊断报告中的待确认问题: {pending_qs}" if pending_qs else ""
@@ -1935,8 +1947,8 @@ async def fde_assess_dialog(req: FdeDialogRequest):
                     result = _json_dg.loads(str(getattr(resp, "content", "") or "{}"))
                     if result.get("action") == "generate":
                         finished = True
-                        question = "澄清已完成。请回复「生成报告」来生成诊断报告，或继续补充其他信息。"
-                        options = ["生成报告", "继续补充"]
+                        question = _DIALOG_COMPLETION_MSG
+                        options = list(_DIALOG_COMPLETION_OPTS)
                     else:
                         question = result.get("question", _rotate_default_question(gaps, pending_qs, turn))
                         options = result.get("options", [])
@@ -2720,11 +2732,11 @@ async def fde_session_detail(session_id: str):
             "total_opportunities": len(result.get("evidence_map", [])),
             "ontology_backed": sum(
                 1 for e in result.get("evidence_map", [])
-                if e.get("source", "") and e["source"] not in ("", "LLM推测", "行业普遍痛点")
+                if e.get("source", "") and e["source"] not in ("", _EVIDENCE_SOURCE_LLM, _EVIDENCE_SOURCE_INDUSTRY)
             ),
             "llm_inferred": sum(
                 1 for e in result.get("evidence_map", [])
-                if not e.get("source") or e.get("source", "") in ("", "LLM推测")
+                if not e.get("source") or e.get("source", "") in ("", _EVIDENCE_SOURCE_LLM)
             ),
             "gap_count": len(result.get("knowledge_gaps", [])),
         }
@@ -3061,7 +3073,7 @@ async def fde_session_quality(session_id: str):
                         md = _json_v.loads(mn.entity_name)
                         em = md.get("evidence_map", [])
                         tot = len(em)
-                        ev_cnt = sum(1 for x in em if x.get("source") and x["source"] not in ("", "LLM推测", "行业普遍痛点"))
+                        ev_cnt = sum(1 for x in em if x.get("source") and x["source"] not in ("", _EVIDENCE_SOURCE_LLM, _EVIDENCE_SOURCE_INDUSTRY))
                     except Exception:
                         pass
         dims["evidence"] = round(ev_cnt / max(tot, 1) * 100) if tot > 0 else 0
@@ -3184,7 +3196,7 @@ async def fde_alerts(
                         try:
                             md = _json_w.loads(mn.entity_name)
                             em = md.get("evidence_map", [])
-                            ev = sum(1 for x in em if x.get("source") and x["source"] not in ("", "LLM推测", "行业普遍痛点"))
+                            ev = sum(1 for x in em if x.get("source") and x["source"] not in ("", _EVIDENCE_SOURCE_LLM, _EVIDENCE_SOURCE_INDUSTRY))
                             kg = len(md.get("knowledge_gaps", []))
                             if em and ev == 0:
                                 session_alerts.append({
@@ -3433,9 +3445,9 @@ async def fde_ontology_coverage(session_id: str):
                         total_conclusions = len(em)
                         for item in em:
                             src = (item.get("source") or "").strip()
-                            if src and src not in ("LLM推测", "行业普遍痛点"):
+                            if src and src not in (_EVIDENCE_SOURCE_LLM, _EVIDENCE_SOURCE_INDUSTRY):
                                 ontology_count += 1
-                            elif src == "LLM推测":
+                            elif src == _EVIDENCE_SOURCE_LLM:
                                 llm_count += 1
                             else:
                                 # Check evidence entities for history backing
@@ -3565,9 +3577,9 @@ async def fde_improve_suggestions(session_id: str):
                         for item in em:
                             src = (item.get("source") or "").strip()
                             opp = item.get("ai_opportunity", "")
-                            if src and src not in ("", "LLM推测", "行业普遍痛点"):
+                            if src and src not in ("", _EVIDENCE_SOURCE_LLM, _EVIDENCE_SOURCE_INDUSTRY):
                                 ontology_count += 1
-                            elif src == "LLM推测" and opp:
+                            elif src == _EVIDENCE_SOURCE_LLM and opp:
                                 suggestions.append({
                                     "type": "add_ontology_class",
                                     "priority": "high",
@@ -4443,7 +4455,7 @@ async def fde_compare_sessions(
             # Evidence coverage
             em = data.get("evidence_map", [])
             if em:
-                backed = sum(1 for x in em if x.get("source") and x["source"] not in ("", "LLM推测", "行业普遍痛点"))
+                backed = sum(1 for x in em if x.get("source") and x["source"] not in ("", _EVIDENCE_SOURCE_LLM, _EVIDENCE_SOURCE_INDUSTRY))
                 data["evidence_backed"] = backed
                 data["evidence_total"] = len(em)
                 data["coverage_rate"] = round(backed / max(len(em), 1) * 100)
