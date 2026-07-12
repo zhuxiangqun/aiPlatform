@@ -1775,11 +1775,20 @@ async def fde_assess_dialog(req: FdeDialogRequest):
     """
     from core.apps.skills.registry import _compute_readiness
     from core.harness.syscalls.llm import sys_llm_generate
-    from core.harness.utils.model_injection import best_model_for_purpose
+    from core.harness.utils.model_injection import best_model_for_purpose, create_selected_adapter
     import json as _json_dg
 
-    model = best_model_for_purpose("skill_execution")
-    llm_available = model is not None
+    model_name = best_model_for_purpose("skill_execution")
+    llm_available = model_name is not None
+    # Resolve model adapter object for sys_llm_generate
+    model = None
+    if model_name:
+        try:
+            model = create_selected_adapter(model_name=model_name)
+        except Exception as e:
+            import logging as _log_model
+            _log_model.info(f"dialog LLM unavailable ({e}), using static fallback")
+    llm_available = model is not None and hasattr(model, "generate")
 
     turn = req.turn
     context = {
