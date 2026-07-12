@@ -1630,6 +1630,30 @@ async def fde_ask(req: FdeAskRequest):
 
         context = "\n".join(context_blocks)
 
+        # ── Inject evidence_map from session for traceable answers ──
+        evidence_context = ""
+        if req.session_id:
+            try:
+                fd_session = GraphIndex.load("fde-delivery")
+                sn = fd_session.get_node(req.session_id) or fd_session.find_by_name(req.session_id)
+                if sn:
+                    sid = getattr(sn, "entity_id", req.session_id)
+                    for nid, e in fd_session.get_neighbors(sid, direction="outgoing"):
+                        if e.relation_name == "has_meta":
+                            mn = fd_session.get_node(nid)
+                            if mn:
+                                import json as _json_ask
+                                md = _json_ask.loads(mn.entity_name)
+                                em = md.get("evidence_map", [])
+                                if em:
+                                    lines = ["该诊断报告的结论溯源："]
+                                    for item in em[:5]:
+                                        level = "本体实例支撑" if item.get("source") and item["source"] not in ("", "LLM推测", "行业普遍痛点") else "LLM推测" if not item.get("source") or item["source"] == "LLM推测" else "历史案例参考"
+                                        lines.append(f"  · {item.get('ai_opportunity','')} → {level} → 来源：{item.get('source','未标注')}")
+                                    evidence_context = "\n".join(lines)
+            except Exception:
+                pass
+
         # ── Build prompt and call LLM ──
         from core.harness.syscalls.llm import sys_llm_generate
         from core.harness.utils.model_injection import best_model_for_purpose
@@ -1640,7 +1664,8 @@ async def fde_ask(req: FdeAskRequest):
                 "role": "system",
                 "content": (
                     f"你是AI落地诊断专家。以下是客户画像相关的领域上下文。\n\n{context}\n\n"
-                    "请基于以上上下文回答用户问题。要求：简洁（300字内），引用具体来源。"
+                    + (f"{evidence_context}\n\n" if evidence_context else "")
+                    + "请基于以上上下文回答用户问题。回答时优先引用证据溯源中的信息。要求：简洁（300字内），引用具体来源。"
                 ),
             },
             {
