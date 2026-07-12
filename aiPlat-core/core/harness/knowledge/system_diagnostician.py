@@ -244,30 +244,6 @@ class SystemDiagnostician:
                 }
         return None
 
-        try:
-            first = snapshots[0]
-            last = snapshots[-1]
-            first_delivery = first.get("components", {}).get("delivery", {}).get("delivery_rate", 0)
-            last_delivery = last.get("components", {}).get("delivery", {}).get("delivery_rate", 0)
-            delivery_decline = first_delivery - last_delivery if first_delivery and last_delivery else 0
-
-            first_layers = first.get("components", {}).get("context_bus", {}).get("layers_ok", 0)
-            last_layers = last.get("components", {}).get("context_bus", {}).get("layers_ok", 0)
-            layers_growth = last_layers - first_layers if first_layers and last_layers else 0
-
-            if layers_growth > 2 and delivery_decline > 10:
-                return {
-                    "rule": "knowledge_gap", "severity": "warning",
-                    "finding": f"Pipeline 健康度增长 +{layers_growth}，但交付率下降 {delivery_decline}%——知识在产出但未转化为交付",
-                    "confidence": 0.75, "insufficient_data": False, "auto_fixable": True,
-                    "suggested_action": "检查交付流程是否正常、客户反馈是否及时录入、FDE诊断后是否有行动项跟进",
-                    "metrics": {"layers_growth": layers_growth, "delivery_decline": delivery_decline},
-                }
-        except Exception as e:
-            logger.debug("Knowledge gap check skipped: %s", str(e))
-
-        return None
-
     # ═══════════════════════════════════════════════════════════════
     # Rule 5: Convergence failure
     # ═══════════════════════════════════════════════════════════════
