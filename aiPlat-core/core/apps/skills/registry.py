@@ -1696,7 +1696,11 @@ class _GenericSkill(BaseSkill):
             )
             # ── Post-generation: field-assessment metadata extraction ──
             if self._config.name == "field-assessment":
-                meta = {"model": getattr(response, "model", None), "skill": self._config.name}
+                import time as _time_sid
+                company = (params.get("company_name") or "").strip()
+                ts = int(_time_sid.time())
+                sid = f"session_{company}_{ts}" if company else f"session_diag_{ts}"
+                meta = {"model": getattr(response, "model", None), "skill": self._config.name, "session_id": sid}
                 report_text = str(getattr(response, "content", "") or "")
                 if report_text:
                     try:
@@ -1777,36 +1781,22 @@ class _GenericSkill(BaseSkill):
 
                         # O: Evidence entity binding + SessionMeta persistence
                         company = (params.get("company_name") or "").strip()
-                        if company and evidence_map:
+                        sid = meta.get("session_id", "")
+                        if sid and evidence_map:
                             try:
                                 fd_g = GraphIndex.load("fde-delivery")
-                                best_sid, best_ts = "", 0
-                                for nid, node in list(fd_g._nodes.items()):
-                                    if getattr(node, "class_name", "") == "DiagnosisSession" and company in node.entity_name:
-                                        try:
-                                            ts = int(nid.rsplit("_", 1)[-1])
-                                            if ts > best_ts:
-                                                best_ts = ts
-                                                best_sid = nid
-                                        except ValueError:
-                                            pass
-                                if best_sid:
-                                    md_blob = {
-                                        "evidence_map": evidence_map,
-                                        "knowledge_gaps": meta.get("knowledge_gaps", []),
-                                        "readiness_score": 0, "industry": params.get("industry", ""),
-                                        "pain_points": (params.get("pain_points") or "")[:200],
-                                    }
-                                    mid = f"meta_{best_sid}"
-                                    fd_g.add_entity(mid, _json_pg.dumps(md_blob, ensure_ascii=False)[:8000],
-                                                    "SessionMeta", source_doc_id=best_sid)
-                                    fd_g.add_relation(best_sid, mid, "has_meta", relation_label="诊断元数据", confidence=1.0)
-                                    # O: Evidence entities
-                                    for ei, ev in enumerate(evidence_map):
-                                        ev_id = f"evidence_{best_sid}_{ei}"
-                                        ev_name = f"{ev.get('ai_opportunity', '')[:60]} | {ev.get('source', '')[:40]}"
-                                        fd_g.add_entity(ev_id, ev_name, "Evidence", source_doc_id=best_sid)
-                                        fd_g.add_relation(best_sid, ev_id, "has_evidence", relation_label="证据", confidence=0.85)
+                                # Persist report text for §8 extraction
+                                md_blob = {
+                                    "report_text": report_text[:8000],
+                                    "evidence_map": evidence_map,
+                                    "knowledge_gaps": meta.get("knowledge_gaps", []),
+                                    "readiness_score": 0, "industry": params.get("industry", ""),
+                                    "pain_points": (params.get("pain_points") or "")[:200],
+                                }
+                                mid = f"meta_{sid}"
+                                fd_g.add_entity(mid, _json_pg.dumps(md_blob, ensure_ascii=False)[:8000],
+                                                "SessionMeta", entity_id=sid)
+                                fd_g.add_relation(sid if company else mid, mid, "has_meta", relation_label="诊断元数据", confidence=1.0)
                             except Exception:
                                 pass
                     except Exception:

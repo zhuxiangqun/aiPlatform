@@ -1708,21 +1708,21 @@ _READINESS_THRESHOLD = 60  # 就绪度 ≥ 60 建议生成报告
 
 
 def _extract_pending_questions(session_id: str) -> list:
-    """从诊断报告提取待确认问题清单"""
+    """从SessionMeta诊断报告中提取§8待确认问题清单"""
     import re
     try:
         from core.harness.ontology_engine.graph_index import GraphIndex
         import json as _json_pq
         fd = GraphIndex.load("fde-delivery")
-        sn = fd.get_node(session_id) or fd.find_by_name(session_id)
-        if sn:
-            sid = getattr(sn, "entity_id", session_id)
-            for n in fd.get_neighbors(sid, direction="outgoing"):
-                if getattr(n, "class_name", "") == "SessionMeta":
-                    md = _json_pq.loads(n.entity_name)
-                    pts = md.get("pain_points", "")
-                    matches = re.findall(r'\d+[\.\s]+(.+?)(?:\?|？|$)', pts, re.MULTILINE)
-                    return [m.strip() for m in matches if len(m) > 5][:5]
+        for nid, node in list(fd._nodes.items()):
+            if getattr(node, "class_name", "") == "SessionMeta" and getattr(node, "entity_id", "") == session_id:
+                try:
+                    md = _json_pq.loads(node.entity_name)
+                except Exception:
+                    md = {}
+                rpt = md.get("report_text", "") or md.get("pain_points", "")
+                matches = re.findall(r'\d+[\.\s]+(.+?)(?:\?|？|$)', rpt, re.MULTILINE)
+                return [m.strip() for m in matches if len(m) > 5][:5]
     except Exception:
         pass
     return []

@@ -181,6 +181,7 @@ const AssessTab: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [manual, setManual] = useState<any>(null);
   const [reportExpanded, setReportExpanded] = useState(false);
+  const [diagnosisSessionId, setDiagnosisSessionId] = useState('');
   const [pendingFeedback, setPendingFeedback] = useState('');
   const [updating, setUpdating] = useState(false);
   const [templates, setTemplates] = useState<Array<{
@@ -269,7 +270,7 @@ const AssessTab: React.FC = () => {
   const [editingReport, setEditingReport] = useState(false);
 
   // ── Clarification dialog: initiate or continue ──
-  const dialogCall = async (answer?: string, turn?: number) => {
+  const dialogCall = async (answer?: string, turn?: number, sessionId?: string) => {
     setDialogLoading(true);
     try {
       const r = await fetch('/api/core/fde/assess/dialog', {
@@ -277,7 +278,7 @@ const AssessTab: React.FC = () => {
         body: JSON.stringify({
           turn: turn ?? dialogTurn,
           answer: answer || '',
-          session_id: dialogSessionId || '',
+          session_id: (sessionId || dialogSessionId) || '',
           industry: form.industry || dialogContext.industry || '',
           company_name: form.company_name || dialogContext.company_name || '',
           pain_points: form.pain_points || dialogContext.pain_points || '',
@@ -324,7 +325,7 @@ const AssessTab: React.FC = () => {
     setDialogReady(false);
     setDialogContext({});
     setDialogSessionId(sessionId || '');
-    dialogCall(undefined, 1);
+    dialogCall(undefined, 1, sessionId);
   };
 
   const submit = async (extraInput?: Record<string, any>) => {
@@ -358,6 +359,10 @@ const AssessTab: React.FC = () => {
         const outputText = typeof rawOutput === 'string' ? rawOutput
           : (rawOutput && typeof rawOutput === 'object' ? (rawOutput.text || rawOutput.output || JSON.stringify(rawOutput, null, 2)) : JSON.stringify(data, null, 2));
         setReport(outputText);
+        // Capture session_id for §8 follow-up
+        if (data.metadata?.session_id) {
+          setDiagnosisSessionId(data.metadata.session_id);
+        }
 
         // 仅诊断成功时自动生成交付手册草稿
         const projectLabel = form.company_name || (form.industry ? form.industry + 'AI落地项目' : 'AI落地项目');
@@ -615,7 +620,7 @@ const AssessTab: React.FC = () => {
                 }}>
                   🔄 更新诊断
                 </Button>
-                <Button variant="outline" size="sm" onClick={() => openDialog()}>
+                <Button variant="outline" size="sm" onClick={() => openDialog(diagnosisSessionId)}>
                   ⚡ 继续澄清
                 </Button>
               </CardContent>
