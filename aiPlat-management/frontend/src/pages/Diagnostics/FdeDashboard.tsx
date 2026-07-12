@@ -522,7 +522,7 @@ const AssessTab: React.FC = () => {
             })}
           </div>
            <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={openDialog}>
+             <Button variant="outline" size="sm" onClick={() => openDialog()}>
               ⚡ 智能澄清
             </Button>
             <Button variant="default" size="sm" onClick={() => submit()} loading={loading}>
