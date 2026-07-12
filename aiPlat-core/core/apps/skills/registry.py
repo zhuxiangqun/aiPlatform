@@ -1541,7 +1541,7 @@ class _GenericSkill(BaseSkill):
             prompt = str(self._config.description) + "\nInput: " + str(params) if params else ""
 
         # Organization-level coding policy profile (Phase-1).
-        coding_profile = str((params or {}).get("_coding_policy_profile") or "").strip().lower()
+        coding_profile = str((params or {}).get("_coding_policy_profile") or "karpathy_v1").strip().lower()
         policy_block = ""
         if coding_profile == "karpathy_v1":
             policy_block = (

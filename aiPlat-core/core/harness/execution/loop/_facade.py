@@ -450,6 +450,24 @@ class ReActLoop(BaseLoop):
 
         # Auto-detect final output / stagnation
         parsed = parse_action_call(reasoning) if reasoning else None
+        # Extract text from chitchat-style JSON (e.g. {"type":"chitchat","input":"..."})
+        # Used by Qwen-family models. Handles both raw JSON and fenced code blocks.
+        if not parsed and reasoning:
+            try:
+                _raw = str(reasoning).strip()
+                # Strip markdown code fences (```json ... ``` or ``` ... ```)
+                _fenced = re.sub(r'^```(?:json\s*)?\n?', '', _raw)
+                _fenced = re.sub(r'\n?```\s*$', '', _fenced)
+                _t = json.loads(_fenced) if _fenced != _raw else json.loads(_raw)
+                if isinstance(_t, dict) and _t.get("type") == "chitchat":
+                    reasoning = str(_t.get("input") or _t.get("text") or reasoning)
+            except Exception:
+                try:
+                    _t = json.loads(reasoning)
+                    if isinstance(_t, dict) and _t.get("type") == "chitchat":
+                        reasoning = str(_t.get("input") or _t.get("text") or reasoning)
+                except Exception:
+                    pass
         # If LLM returns text answer (no tool/skill call) → treat as final output
         if not parsed and len(str(reasoning or "").strip()) > 0:
             state.context["output"] = reasoning
@@ -600,7 +618,7 @@ class ReActLoop(BaseLoop):
     # ── DELEGATED to state_mgr.py (extracted for SRP per §5.75) ──
     async def _apply_todo_done_markers(self, state: LoopState, text: str, *, source: str):
         """Delegate to state_mgr.apply_todo_done_markers — extracted from loop.py."""
-        return await apply_todo_done_markers(state, text, source=source)
+        return await apply_todo_done_markers(state, text=text, source=source)
     # ── DELEGATED to inference.py (extracted for SRP per §5.75) ──
     async def _reason(self, state: LoopState):
         """Delegate to inference.reason — extracted from loop.py."""
@@ -969,16 +987,17 @@ class ReActLoop(BaseLoop):
         """
         import re, logging
         try:
+            user_msg_str = str(user_msg) if not isinstance(user_msg, str) else user_msg
             facts = {}
-            budget_match = re.search(r'预算[是为:：]\s*(\d+)\s*万?', user_msg)
+            budget_match = re.search(r'预算[是为:：]\s*(\d+)\s*万?', user_msg_str)
             if budget_match:
                 facts["budget"] = int(budget_match.group(1))
 
-            name_match = re.search(r'(?:我|本人)[叫是称呼为]\s*([\u4e00-\u9fa5a-zA-Z]{2,10})', user_msg)
+            name_match = re.search(r'(?:我|本人)[叫是称呼为]\s*([\u4e00-\u9fa5a-zA-Z]{2,10})', user_msg_str)
             if name_match:
                 facts["name"] = name_match.group(1)
 
-            goal_match = re.search(r'(?:目标|想|要)[是]?\s*(.{5,50})', user_msg)
+            goal_match = re.search(r'(?:目标|想|要)[是]?\s*(.{5,50})', user_msg_str)
             if goal_match and len(goal_match.group(1)) > 3:
                 facts["goals"] = goal_match.group(1).strip()
 
@@ -1702,7 +1721,7 @@ class ReActLoop(BaseLoop):
         tool_name = parsed.name
         tool_args = parsed.args
         state.context["tool_call"] = {"tool": tool_name, "args": tool_args, "format": parsed.format}
-        state.context["_coding_policy_profile"] = "off"
+        state.context["_coding_policy_profile"] = "karpathy_v1"
         await self._emit_routing_decision(state, routing_decision_id, "tool", str(tool_name))
         top = await self._emit_skill_candidates_snapshot(state, routing_decision_id, "tool", str(tool_name))
         await self._emit_routing_strict_eval(state, routing_decision_id, "tool", str(tool_name), top)

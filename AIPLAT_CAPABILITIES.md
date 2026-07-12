@@ -2,7 +2,7 @@
 
 > 原则：代码即真相。每个条目必须有可验证的代码位置。
 > 更新：任何能力变更时同步更新本文档。
-> 评分：98/100（2026-07-12 — 534✅, 企业大脑竣工+项目化手册(创建→编辑→再生成→版本管理全生命周期)）
+> 评分：98/100（2026-07-12 — 535✅, 企业大脑竣工+全局编码宪法(karpathy_v1默认→4原则全自动注入)）
 
 ---
 
@@ -192,6 +192,7 @@
 | 系统自主演化 | `harness/knowledge/system_evolver.py` + `api/routers/fde.py:4622-4638` | ✅ | SystemEvolver(4条演化规则→术语自动发布/方案草稿审批)→GET /fde/evolve | 2026-07-12 |
 | 系统自演进路由 | `api/routers/system.py` + `harness/knowledge/seci_engine.py:523-528` | ✅ | GET /system/overview/diagnose/evolve+POST /system/heal/self-check →POST_LOOP每10次自动诊断 | 2026-07-12 |
 | 项目化手册生成 | `api/routers/fde.py:4738-5011` | ✅ | POST /fde/manuals(创建)+GET/PUT/regenerate/versions(生命周期)→项目专属手册+3个CUSTOM_SECTION+非破坏性再生成 | 2026-07-12 |
+| 全局编码宪法 | `_facade.py:1724` + `registry.py:1544` + `executor.py:369` | ✅ | karpathy_v1从可选开关→全局默认→所有Skill执行自动遵循4原则(编码前思考/简洁优先/精准修改/目标驱动) | 2026-07-12 |
 | 多子系统上下文 | `harness/knowledge/context_bus.py:345-405` | ✅ | assemble_agent/skill/pipeline_context()→Agent(3层)/Skill(2层)/Pipeline(3层)各自轻量注入→总线覆盖全系统 | 2026-07-12 |
 | Agent领域上下文 | `harness/knowledge/context_bus.py:408-452` | ✅ | SESSION_START hook→所有Agent启动时自动注入术语字典+数字员工→领域知识全局可用 | 2026-07-12 |
 | 质量总线 | `api/routers/fde.py:4176-4270` | ✅ | GET /fde/quality-summary — 跨子系统质量聚合(FDE/SECI/Convergence/ContextBus四维评分)→统一0-100评分 | 2026-07-12 |
@@ -853,7 +854,7 @@
 |------|:---:|:---:|:---:|------|
 | Harness 执行引擎 | 31 | 0 | 31 |
 | 记忆子系统 | 18 | 0 | 18 |
-| 知识引擎（本体） | 87 | 0 | 87 |
+| 知识引擎（本体） | 88 | 0 | 88 |
 | RAG 检索 | 27 | 0 | 27 |
 | 知识基础设施 | 28 | 0 | 28 |
 | Agent 系统 | 12 | 0 | 12 |
@@ -879,12 +880,12 @@
 | 编排系统 | 4 | 0 | 4 |
 | 管理 & 质量 | 21 | 0 | 21 |
 | 编排层 | 17 | 0 | 17 |
-| **总计** | **632** | **0** | **632** |
+| **总计** | **633** | **0** | **633** |
 
 ---
 
 *最后更新: 2026-07-11*
-*版本: 18.0 · 28章 · 632项能力 · 534✅ · 企业大脑竣工+项目化手册生成*
+*版本: 18.1 · 28章 · 633项能力 · 535✅ · 企业大脑竣工+全局编码宪法*
 
 **自检命令**：
 ```bash

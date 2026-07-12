@@ -366,7 +366,7 @@ class SkillExecutor:
                     sop_text = ""
 
                 sop_block = sop_text if sop_text else f"Skill: {skill_name}\n{config.description}"
-                coding_profile = str((params or {}).get("_coding_policy_profile") or "").strip().lower()
+                coding_profile = str((params or {}).get("_coding_policy_profile") or "karpathy_v1").strip().lower()
                 policy_block = ""
                 if coding_profile == "karpathy_v1":
                     policy_block = (
