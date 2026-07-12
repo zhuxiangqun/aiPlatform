@@ -1819,13 +1819,24 @@ def _rotate_default_question(gaps: list, pending_qs: list, turn: int) -> str:
     return _DIALOG_DEFAULT_MSG
 
 
-def _extract_pending_questions(session_id: str) -> list:
-    """从SessionMeta诊断报告中提取§8待确认问题清单"""
-    import re
+# ── Pending questions cache per request (avoids duplicate LLM calls) ──
+_pending_qs_cache: dict = {}
+
+async def _extract_pending_questions(session_id: str) -> list:
+    """LLM-based extraction: reads the diagnosis report and identifies
+    all questions that require customer confirmation. Returns question strings."""
+    if not session_id:
+        return []
+
+    # Return cached result for this request
+    if session_id in _pending_qs_cache:
+        return _pending_qs_cache[session_id]
+
+    import json as _json_pq
     try:
         from core.harness.ontology_engine.graph_index import GraphIndex
-        import json as _json_pq
         fd = GraphIndex.load("fde-delivery")
+        rpt = ""
         for nid, node in list(fd._nodes.items()):
             if getattr(node, "class_name", "") == "SessionMeta" and getattr(node, "entity_id", "") == session_id:
                 try:
@@ -1833,38 +1844,43 @@ def _extract_pending_questions(session_id: str) -> list:
                 except Exception:
                     md = {}
                 rpt = md.get("report_text", "") or md.get("pain_points", "")
+                break
 
-                # Strategy 1: extract from §8 table rows (| P0 | question？| ...)
-                questions = []
-                for line in rpt.split("\n"):
-                    stripped = line.strip()
-                    if stripped.startswith("|") and "|" in stripped[2:]:
-                        cols = [c.strip() for c in stripped.split("|")]
-                        for c in cols:
-                            c = c.strip()
-                            if (c.endswith("?") or c.endswith("？")) and len(c) > 5 and c not in questions:
-                                questions.append(c)
-                                break
+        if not rpt or len(rpt) < 200:
+            _pending_qs_cache[session_id] = []
+            return []
 
-                # Strategy 2: extract from numbered list items ending with ?/？
-                if not questions:
-                    matches = re.findall(r'\d+[\.\s]+(.+?)(?:\?|？|$)', rpt, re.MULTILINE)
-                    questions = [m.strip() for m in matches if len(m) > 5][:5]
+        # Use LLM to extract confirmation questions
+        from core.harness.syscalls.llm import sys_llm_generate
+        from core.harness.utils.model_injection import best_model_for_purpose
+        model_name = best_model_for_purpose("skill_execution")
+        if not model_name:
+            _pending_qs_cache[session_id] = []
+            return []
 
-                # Strategy 3: extract from "待确认问题" column in data-maturity tables
-                if not questions:
-                    for line in rpt.split("\n"):
-                        stripped = line.strip()
-                        if stripped.startswith("|") and "|" in stripped[2:]:
-                            cols = [c.strip() for c in stripped.split("|")]
-                            for c in cols:
-                                if (c.endswith("?") or c.endswith("？")) and len(c) > 5 and c not in questions:
-                                    questions.append(c)
+        extract_prompt = (
+            f'从以下诊断报告中提取所有需要客户确认的问题，以JSON返回。\n\n'
+            f'报告内容:\n{rpt[:8000]}\n\n'
+            f'返回格式: {{"questions": ["完整的问题文本1", "完整的问题文本2", ...]}}\n'
+            f'每条应该是完整的一句话，不要截断。不要包含报告中的建议或可选方案，只提取问题本身。\n'
+            f'仅返回JSON，无其他文字。'
+        )
+        try:
+            resp = await sys_llm_generate(None, [{"role":"user","content":extract_prompt}],
+                                          model_name=model_name, max_tokens=300, temperature=0.1)
+            content = str(getattr(resp, "content", "") or "{}")
+            result = _json_pq.loads(content)
+            questions = result.get("questions", [])
+            # Filter out clearly non-question items
+            questions = [q.strip() for q in questions if isinstance(q, str) and len(q.strip()) > 10 and ("？" in q or "?" in q or "如何" in q or "是否" in q or "能否" in q or "怎样" in q)]
+        except Exception:
+            questions = []
 
-                return questions[:5]
+        _pending_qs_cache[session_id] = questions
+        return questions
     except Exception:
-        pass
-    return []
+        _pending_qs_cache[session_id] = []
+        return []
 
 
 class FdeDialogRequest(_PydanticBaseModel):
@@ -1949,7 +1965,7 @@ async def fde_assess_dialog(req: FdeDialogRequest):
     finished = (req.answer.strip().lower() if turn > 1 else "") in _FINISH_COMMANDS
 
     # ── Extract §8 pending questions if session_id provided ──
-    pending_qs = _extract_pending_questions(req.session_id) if req.session_id else []
+    pending_qs = await _extract_pending_questions(req.session_id) if req.session_id else []
 
     # ── LLM generate: next question or finalize ──
     question, options = "", []
