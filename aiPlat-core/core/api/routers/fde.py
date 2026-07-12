@@ -1852,8 +1852,12 @@ async def _extract_pending_questions(session_id: str) -> list:
 
         # Use LLM to extract confirmation questions
         from core.harness.syscalls.llm import sys_llm_generate
+        # Pass messages to best_model_for_purpose so complexity router
+        # can detect this is a simple extraction and select a small model (T1-T2)
+        # instead of defaulting to the heavy 32B general-purpose model.
         from core.harness.utils.model_injection import best_model_for_purpose
-        model_name = best_model_for_purpose("skill_execution")
+        model_name = best_model_for_purpose("skill_execution",
+            messages=[{"role":"user","content":extract_prompt[:500]}])
         if not model_name:
             _pending_qs_cache[session_id] = []
             return []
