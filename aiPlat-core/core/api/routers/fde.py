@@ -5011,6 +5011,55 @@ async def fde_manual_versions(project_id: str):
     return {"project_id": project_id, "versions": sorted(versions, key=lambda v: v["modified"], reverse=True)}
 
 
+_MANUAL_META = os.path.join(_MANUALS_DIR, "meta.json")
+
+
+def _load_manual_meta() -> dict:
+    try:
+        with open(_MANUAL_META) as f:
+            import json
+            return json.load(f)
+    except Exception:
+        return {}
+
+
+def _save_manual_meta(meta: dict):
+    import json
+    with open(_MANUAL_META, "w") as f:
+        json.dump(meta, f, ensure_ascii=False, indent=2)
+
+
+@router.get("/manuals", response_model=dict)
+async def fde_list_manuals():
+    """List all project manuals with their status."""
+    meta = _load_manual_meta()
+    manuals = []
+    for fname in sorted(os.listdir(_MANUALS_DIR)):
+        if fname.endswith("-current.md"):
+            pid = fname.replace("-current.md", "")
+            mtime = os.path.getmtime(os.path.join(_MANUALS_DIR, fname))
+            manuals.append({
+                "project_id": pid,
+                "status": meta.get(pid, {}).get("status", "active"),
+                "modified": datetime.fromtimestamp(mtime, tz=timezone.utc).isoformat(),
+                "versions": len([v for v in os.listdir(_MANUALS_DIR) if v.startswith(pid) and not v.endswith("-current.md")]),
+            })
+    return {"total": len(manuals), "manuals": sorted(manuals, key=lambda m: m["modified"], reverse=True)}
+
+
+@router.patch("/manuals/{project_id}", response_model=dict)
+async def fde_update_manual_status(project_id: str, status: str = "active"):
+    """Update a manual's status: draft | active | archived."""
+    path = _get_manual_path(project_id)
+    if not os.path.exists(path):
+        raise HTTPException(status_code=404, detail=f"Manual not found for {project_id}")
+    meta = _load_manual_meta()
+    meta.setdefault(project_id, {})
+    meta[project_id]["status"] = status
+    _save_manual_meta(meta)
+    return {"project_id": project_id, "status": status}
+
+
 @router.post("/manuals/{project_id}/start-delivery", response_model=dict)
 async def fde_manual_start_delivery(project_id: str):
     """Create a delivery tracking session from a project manual.
