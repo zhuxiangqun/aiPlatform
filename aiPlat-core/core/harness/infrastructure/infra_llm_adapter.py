@@ -49,6 +49,8 @@ class InfraLLMAdapter(ILLMAdapter):
             provider=self._provider,
         )
         self.model_name = model or ""
+        # sys_llm_generate compatibility: provides ._config for per-call overrides
+        self._config = LLMConfig(model=model or "default", temperature=0.7, max_tokens=4096)
 
     @property
     def metadata(self) -> AdapterMetadata:
@@ -69,6 +71,7 @@ class InfraLLMAdapter(ILLMAdapter):
         messages: List[Dict[str, str]],
         config: Optional[LLMConfig] = None,
     ) -> LLMResponse:
+        config = config or self._config
         infra_messages = [
             Message(role=m.get("role", "user"), content=m.get("content", ""))
             for m in messages
@@ -76,8 +79,8 @@ class InfraLLMAdapter(ILLMAdapter):
         req = ChatRequest(
             model=self._model,
             messages=infra_messages,
-            temperature=0.7,
-            max_tokens=4096,
+            temperature=config.temperature or 0.7,
+            max_tokens=config.max_tokens or 4096,
         )
         if config:
             if config.temperature is not None:

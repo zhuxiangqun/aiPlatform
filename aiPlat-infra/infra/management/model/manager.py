@@ -14,6 +14,13 @@ import subprocess
 from typing import Dict, List, Optional, Any
 from datetime import datetime, timezone
 
+try:
+    import psutil
+    _psutil_available = True
+except ImportError:
+    psutil = None
+    _psutil_available = False
+
 from .schemas import ModelInfo, ModelType, ModelSource, ModelStatus, ModelConfig
 from ..base import Status, HealthStatus
 from .storage import ExternalModelStorage
@@ -77,15 +84,19 @@ class ModelManager:
     
     def _load_all_models(self):
         """加载所有模型"""
-        # 1. 加载配置文件模型
+        # 1. 加载适配器 + 环境变量发现的模型
         config_models = self._config_loader.load()
+        seen_names = set()
         for model in config_models:
             self._models[model.id] = model
+            seen_names.add(model.name)
         
-        # 2. 加载用户添加的外部模型
+        # 2. 加载用户添加的外部模型（跳过同名模型——适配器发现优先）
         external_models = self._storage.load()
         for model in external_models:
-            self._models[model.id] = model
+            if model.name not in seen_names:
+                self._models[model.id] = model
+                seen_names.add(model.name)
         
         # 3. 扫描本地 Ollama / LM Studio / vLLM 模型
         try:
@@ -118,6 +129,7 @@ class ModelManager:
                     existing = self._models[model.id]
                     if existing.source == ModelSource.LOCAL:
                         existing.status = model.status
+                        existing.size = getattr(model, 'size', None)
                         existing.config.base_url = model.config.base_url
         except Exception as e:
             logging.debug(str(e), exc_info=True)
@@ -277,6 +289,14 @@ class ModelManager:
         chat_models = [m for m in self._models.values()
                        if hasattr(m, 'type') and m.type.value == "chat" and m.enabled]
 
+        # Collect system resource data for resource-aware scoring
+        available_ram_bytes = 0
+        if _psutil_available:
+            try:
+                available_ram_bytes = psutil.virtual_memory().available
+            except Exception:
+                pass
+
         scored = []
         for m in chat_models:
             caps = set(m.capabilities or ["chat"]) | set(m.tags or [])
@@ -287,9 +307,9 @@ class ModelManager:
                 continue
             if any(c in caps for c in profile.get("avoid", [])):
                 continue
-            # Hard require: model MUST have these capabilities (capabilities field only, not tags)
+            # Hard require: model MUST have these capabilities (check merged caps including provider)
             require = profile.get("require", {}).get("capabilities", [])
-            if require and not all(c in (set(m.capabilities or []) if m.capabilities else ["chat"]) for c in require):
+            if require and not all(c in caps for c in require):
                 continue
 
             # Phase 12.1: complexity-based filtering via model_capabilities.routing_rules
@@ -304,7 +324,28 @@ class ModelManager:
                 if c_num < min_c or c_num > max_c:
                     continue  # model doesn't match this complexity tier
 
+            # Inject capabilities from llm_profile.yaml model_capabilities into scoring
+            prof_model_caps = profile_data.get("model_capabilities", {}).get(m.name, {})
+            if prof_model_caps.get("reasoning_quality", 0) >= 3:
+                caps.add("reasoning")
+            if "code_generation" in prof_model_caps.get("strength_areas", []):
+                caps.add("code")
+
             score = 0
+
+            # Resource-aware scoring: penalize models too large for available RAM
+            if available_ram_bytes > 0 and hasattr(m, 'size') and m.size:
+                model_bytes = m.size
+                usage_ratio = model_bytes / available_ram_bytes
+                if usage_ratio > 1.0:
+                    score -= 200  # model larger than free RAM — may not load
+                elif usage_ratio > 0.8:
+                    score -= 100  # very tight fit
+                elif usage_ratio > 0.5:
+                    score -= 30   # moderate pressure
+                elif usage_ratio > 0.3:
+                    score -= 10   # slight pressure
+
             if profile.get("prefer_local"):
                 if m.source.value == "local":
                     score += 120
@@ -421,9 +462,16 @@ class ModelManager:
         if not name:
             return None
         # Search by name first (user-friendly), then by ID
+        # Prefer LOCAL models over EXTERNAL (faster, no API key needed)
+        best = None
         for m in self._models.values():
             if m.name == name:
-                return m
+                if m.source == ModelSource.LOCAL:
+                    return m
+                if best is None:
+                    best = m
+        if best is not None:
+            return best
         return self._models.get(name)
 
     # ===== 管理接口 =====
@@ -480,14 +528,18 @@ class ModelManager:
         for key, value in updates.items():
             if key == "config" and isinstance(value, dict):
                 for cfg_key, cfg_value in value.items():
-                    if hasattr(model.config, cfg_key):
-                        setattr(model.config, cfg_key, cfg_value)
+                    # Map camelCase frontend keys to snake_case model fields
+                    mapped = {"adapterId": "adapter_id", "apiKeyEnv": "api_key_env",
+                              "maxTokens": "max_tokens", "topP": "top_p",
+                              "baseUrl": "base_url", "apiKey": "api_key"}.get(cfg_key, cfg_key)
+                    if hasattr(model.config, mapped):
+                        setattr(model.config, mapped, cfg_value)
             elif hasattr(model, key):
                 setattr(model, key, value)
         
         model.updated_at = datetime.now(timezone.utc)
         
-        if model.source == ModelSource.EXTERNAL:
+        if model.source in (ModelSource.EXTERNAL, ModelSource.CONFIG):
             self._storage.save(list(self._models.values()))
         
         return model
@@ -706,25 +758,35 @@ class ModelManager:
             }
         )
 
-    def export_models(self, output_dir: str) -> dict:
-        """Export all locally-packable models for offline deployment (FDE Toolkit A).
-
-        Ollama models → ollama save → {output_dir}/{name}.gguf.
-        Remote API models (openai/deepseek/anthropic) → metadata only (FDE configures
-        API keys at customer site). Returns a manifest with three sections."""
-        manifests = {"local": [], "remote": [], "errors": []}
+    def export_models(self, output_dir: str, progress_cb=None) -> dict:
+        """Export model manifest for offline deployment (FDE Toolkit A).
+        
+        Generates a models_manifest.json listing all models (name, provider, source).
+        Does NOT export model files (GGUF) — ollama models are re-pulled at customer site.
+        Remote API models export as metadata only (FDE configures API keys at customer site).
+        
+        Args:
+            output_dir: Target directory for manifest
+            progress_cb: Optional callback(i, total, model_name) for progress tracking
+        """
+        manifests = {"local": [], "remote": [], "skipped": []}
         os.makedirs(output_dir, exist_ok=True)
-        for model in self._models.values():
-            if model.provider == "ollama" and model.source == "local":
-                out = os.path.join(output_dir, f"{model.model_name}.gguf")
-                try:
-                    subprocess.run(
-                        ["ollama", "save", model.model_name, "-o", out],
-                        check=True, timeout=120, capture_output=True,
-                    )
-                    manifests["local"].append({"name": model.model_name, "file": out})
-                except Exception as e:
-                    manifests["errors"].append({"name": model.model_name, "error": str(e)[:200]})
+        models = list(self._models.values())
+        total = len(models)
+        for i, model in enumerate(models):
+            if progress_cb:
+                progress_cb(i, total, model.name)
+            entry = {"name": model.name, "provider": model.provider,
+                     "source": model.source.value if hasattr(model.source, 'value') else str(model.source)}
+            if model.provider == "ollama" and model.source in (ModelSource.LOCAL, "local"):
+                manifests["local"].append(entry)
             elif model.provider in ("openai", "deepseek", "anthropic"):
-                manifests["remote"].append({"name": model.model_name, "provider": model.provider})
+                manifests["remote"].append(entry)
+            else:
+                manifests["skipped"].append(entry)
+        # Write manifest
+        import json as _json
+        manifest_path = os.path.join(output_dir, "models_manifest.json")
+        with open(manifest_path, "w") as fh:
+            _json.dump(manifests, fh, indent=2, ensure_ascii=False)
         return manifests
