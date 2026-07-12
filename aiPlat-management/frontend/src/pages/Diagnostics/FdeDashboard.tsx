@@ -343,8 +343,8 @@ const AssessTab: React.FC = () => {
   };
 
   const closeDialog = () => {
+    setDialogOpen(false);
     dialogLockRef.current = false;
-    closeDialog();
   };
 
   const openDialog = (sessionId?: string) => {
