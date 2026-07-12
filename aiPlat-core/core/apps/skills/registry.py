@@ -1256,6 +1256,39 @@ def _generate_term_definition(concept: str) -> str:
     return ""
 
 
+def _compute_readiness(params: dict) -> tuple:
+    """Compute FDE readiness score (0-100) based on form completeness."""
+    score = 0
+    gaps = []
+    if params.get('company_name'): score += 10
+    else: gaps.append('公司名称')
+    if params.get('industry'): score += 10
+    else: gaps.append('行业')
+    if params.get('pain_points'): score += 20
+    else: gaps.append('痛点')
+    if params.get('team_size'): score += 5
+    if params.get('tech_stack'): score += 5
+    if params.get('budget'): score += 5
+    if params.get('contact'): score += 5
+    return min(score + 30, 100), gaps
+
+
+def _dedup_table_rows(text: str) -> str:
+    """Deduplicate rows in markdown tables."""
+    import re
+    lines = text.split('\n')
+    seen = set()
+    result = []
+    for line in lines:
+        stripped = line.strip()
+        if stripped.startswith('|') and not stripped.startswith('| :---'):
+            if stripped in seen:
+                continue
+            seen.add(stripped)
+        result.append(line)
+    return '\n'.join(result)
+
+
 def _tokenize(text: str) -> List[str]:
     """Tokenize text into lowercase alphanumeric tokens."""
     import re
