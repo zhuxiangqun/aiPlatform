@@ -527,6 +527,27 @@ def register_seci_hook() -> bool:
             except Exception:
                 pass
 
+            # 7. Quality snapshot: record per-conversation metrics for Quality Bus
+            try:
+                from core.harness.ontology_engine.graph_index import GraphIndex
+                import json as _json_qs, time as _time_qs
+
+                kg = GraphIndex.load("knowledge-atom")
+                atom_count = engine.get_atom_count()
+                link_count = engine.get_link_count()
+                qs_id = f"qs_{int(_time_qs.time())}"
+                qs_data = {
+                    "session": session_id[:40],
+                    "atoms_this_cycle": len(atom_ids),
+                    "total_atoms": atom_count,
+                    "total_links": link_count,
+                    "high_scored_entries": len(high_scored),
+                }
+                kg.add_entity(qs_id, _json_qs.dumps(qs_data, ensure_ascii=False)[:2000],
+                              "SystemSnapshot", source_doc_id=str(int(_time_qs.time())))
+            except Exception:
+                pass
+
             logger.info(
                 "SECI hook: POST_LOOP captured %d atoms from %d high-scored entries (session=%s)",
                 len(atom_ids), len(high_scored), session_id[:40]
