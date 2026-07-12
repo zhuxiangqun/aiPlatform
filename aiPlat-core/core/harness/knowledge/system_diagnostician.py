@@ -501,9 +501,16 @@ class SystemHealer:
                         "error": str(e)[:200],
                     })
 
+        # P3: Check for rollback-worthy findings (rule already fixed but recurred)
+        rollbacks = []
+        for f in findings:
+            if self._should_rollback(f) and not f.get("auto_fixable"):
+                rollbacks.append({"rule": f["rule"], "result": self._do_rollback(f)})
+
         return {
             "auto_fixed": auto_fixed,
             "actions": actions,
+            "rollbacks": rollbacks,
             "confidence": confidence,
             "philosophy": "可回滚、可审计、有验证",
         }

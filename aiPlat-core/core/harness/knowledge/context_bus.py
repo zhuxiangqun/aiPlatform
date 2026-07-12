@@ -283,6 +283,28 @@ def _inject_self_optimization(parts: List[str]):
             else:
                 hint = f"历史交付率偏低={rate}%（{action_count}/{len(sessions)}）。§1 置信度一律标注为「中」或「低」。§6 仅推荐低风险方案。§7 必须包含 3 个以上阶段性验证节点。"
             parts.append(f"## 诊断自优化 ({len(sessions)}条历史)\n{hint}")
+
+            # P2: Knowledge freshness check
+            try:
+                from core.harness.ontology_engine.graph_index import GraphIndex
+                from datetime import timezone as _tz, timedelta as _td
+                import time as _time_fresh
+                kg = GraphIndex.load("knowledge-atom")
+                stale = 0
+                cutoff = int(_time_fresh.time()) - 90 * 86400
+                for _, n in kg._nodes.items():
+                    if getattr(n, "class_name", "") != "SECI知识原子":
+                        continue
+                    try:
+                        ts = int(getattr(n, "source_doc_id", "0"))
+                        if 0 < ts < cutoff:
+                            stale += 1
+                    except ValueError:
+                        continue
+                if stale >= 5:
+                    parts.append(f"## 知识新鲜度提醒\n{stale} 个知识原子超过 90 天未更新，可能影响诊断准确性。建议重新诊断对应客户或检查知识原子。")
+            except Exception:
+                pass
     except Exception:
         pass
 
