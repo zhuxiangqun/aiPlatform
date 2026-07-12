@@ -1305,3 +1305,13 @@ _register("fde-dialog-generation", """你是FDE诊断澄清助手。
 仅返回JSON，无其他文字。""",
     category="fde",
     variables=["context_json", "gaps", "has_pending", "pending_extra"])
+
+# ── FDE dialog question templates ──
+
+_register("fde-dialog-gap-q", "请提供「${gap}」的相关信息。",
+    category="fde",
+    variables=["gap"])
+
+_register("fde-dialog-pending-q", "请确认以下问题：${question}",
+    category="fde",
+    variables=["question"])

@@ -1788,10 +1788,10 @@ def _simple_extract_fields(answer: str, context: dict) -> dict:
 def _rotate_default_question(gaps: list, pending_qs: list, turn: int) -> str:
     """Generate a rotating default question when LLM is unavailable."""
     if pending_qs and turn <= len(pending_qs):
-        return f"请确认以下问题：{pending_qs[turn - 1]}"
+        return _sync_resolve("fde-dialog-pending-q", question=pending_qs[turn - 1])
     if gaps:
         g = gaps[(turn - 1) % len(gaps)]
-        return f"请提供「{g}」的相关信息。"
+        return _sync_resolve("fde-dialog-gap-q", gap=g)
     return _DIALOG_DEFAULT_MSG
 
 
