@@ -61,6 +61,7 @@ async def system_overview():
         live["pipeline"] = "unknown"
 
     live["self_evolution_phase"] = "四阶段竣工 (POST_LOOP每10次 + 后台每小时)"
+    live["coding_constitution"] = "karpathy_v1 (全局默认 → 编码前思考+简洁优先+精准修改+目标驱动)"
 
     return {
         "system": "本体智能平台 — AI时代的企业大脑原型",
