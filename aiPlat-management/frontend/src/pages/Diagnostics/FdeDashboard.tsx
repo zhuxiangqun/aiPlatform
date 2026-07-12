@@ -637,6 +637,43 @@ const AssessTab: React.FC = () => {
           </CardContent>
         </Card>
       )}
+      {/* ── 智能澄清 Dialog ── */}
+      {dialogOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setDialogOpen(false)}>
+          <div className="bg-gray-900 border border-gray-700 rounded-lg w-full max-w-md mx-4 shadow-2xl" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-700">
+              <span className="text-sm font-medium text-gray-200">⚡ 智能澄清</span>
+              <button onClick={() => setDialogOpen(false)} className="text-gray-500 hover:text-gray-300 text-lg">&times;</button>
+            </div>
+            <div className="max-h-64 overflow-y-auto px-4 py-3 space-y-2">
+              {dialogHistory.map((msg, i) => (
+                <div key={i} className={`text-xs leading-relaxed ${msg.role === 'user' ? 'text-blue-300' : 'text-gray-300'}`}>
+                  <span className="font-medium text-gray-500">{msg.role === 'user' ? '你' : '系统'}</span>
+                  <p className="mt-0.5">{msg.content}</p>
+                </div>
+              ))}
+              {dialogLoading && <p className="text-xs text-gray-500">分析中...</p>}
+            </div>
+            <div className="px-4 py-3 border-t border-gray-700 space-y-2">
+              {dialogOptions.length > 0 && (
+                <div className="flex flex-wrap gap-1">
+                  {dialogOptions.map(opt => (
+                    <button key={opt} className="px-2 py-1 text-xs rounded bg-blue-500/15 text-blue-300 border border-blue-500/25 hover:bg-blue-500/25"
+                      onClick={() => { setDialogHistory(prev => [...prev, { role: 'user', content: opt }]); dialogCall(opt); }}>{opt}</button>
+                  ))}
+                </div>
+              )}
+              <div className="flex gap-1">
+                <input className="flex-1 h-8 px-3 bg-dark-bg border border-dark-border rounded text-xs text-gray-200" placeholder="输入回复...输入「结束」可结束澄清"
+                  value={dialogInput} onChange={e => setDialogInput(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') { dialogCall(dialogInput); setDialogInput(''); }}} />
+                <Button variant="ghost" size="sm" onClick={() => { dialogCall(dialogInput); setDialogInput(''); }} disabled={!dialogInput.trim()}>发送</Button>
+              </div>
+              <Button variant="ghost" size="sm" className="w-full text-gray-500" onClick={() => setDialogOpen(false)}>取消</Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
@@ -732,47 +769,6 @@ const FeedbackTab: React.FC = () => {
                 ) : (
                   <input className="w-full bg-gray-800 border border-gray-700 rounded px-2 py-1 text-sm text-gray-200"
                          value={form[f.key] || ''} onChange={e => setForm({...form, [f.key]: e.target.value})} />
-      )}
-      {/* ── 智能澄清 Dialog ── */}
-      {dialogOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setDialogOpen(false)}>
-          <div className="bg-gray-900 border border-gray-700 rounded-lg w-full max-w-md mx-4 shadow-2xl" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-700">
-              <span className="text-sm font-medium text-gray-200">⚡ 智能澄清</span>
-              <button onClick={() => setDialogOpen(false)} className="text-gray-500 hover:text-gray-300 text-lg">&times;</button>
-            </div>
-            <div className="max-h-64 overflow-y-auto px-4 py-3 space-y-2">
-              {dialogHistory.map((msg, i) => (
-                <div key={i} className={`text-xs leading-relaxed ${msg.role === 'user' ? 'text-blue-300' : 'text-gray-300'}`}>
-                  <span className="font-medium text-gray-500">{msg.role === 'user' ? '你' : '系统'}</span>
-                  <p className="mt-0.5">{msg.content}</p>
-                </div>
-              ))}
-              {dialogLoading && <p className="text-xs text-gray-500">分析中...</p>}
-            </div>
-            <div className="px-4 py-3 border-t border-gray-700 space-y-2">
-              {dialogOptions.length > 0 && (
-                <div className="flex flex-wrap gap-1">
-                  {dialogOptions.map(opt => (
-                    <button key={opt} className="px-2 py-1 text-xs rounded bg-blue-500/15 text-blue-300 border border-blue-500/25 hover:bg-blue-500/25"
-                      onClick={() => {
-                        setDialogHistory(prev => [...prev, { role: 'user', content: opt }]);
-                        dialogCall(opt);
-                      }}>{opt}</button>
-                  ))}
-                </div>
-              )}
-              <div className="flex gap-1">
-                <input className="flex-1 h-8 px-3 bg-dark-bg border border-dark-border rounded text-xs text-gray-200" placeholder="输入回复...输入「结束」可结束澄清"
-                  value={dialogInput} onChange={e => setDialogInput(e.target.value)}
-                  onKeyDown={e => { if (e.key === 'Enter') { dialogCall(dialogInput); setDialogInput(''); }}} />
-                <Button variant="ghost" size="sm" onClick={() => { dialogCall(dialogInput); setDialogInput(''); }}
-                  disabled={!dialogInput.trim()}>发送</Button>
-              </div>
-              <Button variant="ghost" size="sm" className="w-full text-gray-500" onClick={() => setDialogOpen(false)}>取消</Button>
-            </div>
-          </div>
-        </div>
       )}
     </div>
             ))}
