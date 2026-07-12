@@ -1701,6 +1701,100 @@ async def fde_ask(req: FdeAskRequest):
 
 
 # ════════════════════════════════════════════════════════════
+# Assess Dialog — multi-turn clarification before diagnosis
+# ════════════════════════════════════════════════════════════
+
+_READINESS_THRESHOLD = 60  # 就绪度 ≥ 60 建议生成报告
+
+class FdeDialogRequest(_PydanticBaseModel):
+    turn: int = 1
+    answer: str = ""
+    industry: str = ""
+    company_name: str = ""
+    pain_points: str = ""
+    team_size: str = ""
+    budget: str = ""
+
+
+# ── Gap → question map ──
+_GAP_QUESTIONS = {
+    "公司名称": {
+        "q": "请提供客户公司的名称。",
+        "hint": "例如：'某省政务服务中心'或'华东精密制造有限公司'",
+    },
+    "行业": {
+        "q": "请确认客户所属的行业。",
+        "options": ["政务", "金融", "制造", "医疗", "零售", "教育", "其他"],
+    },
+    "痛点": {
+        "q": "请描述客户当前面临的核心业务痛点。可以多选或自由描述。",
+        "hint": "例如：'围标串标行为难以发现'或'招标信息检索效率低'",
+    },
+}
+
+
+@router.post("/assess/dialog", response_model=dict)
+async def fde_assess_dialog(req: FdeDialogRequest):
+    """Multi-turn clarification dialogue before diagnosis.
+
+    Turn 1: initiate dialogue, ask first question based on gaps.
+    Turn N: process answer, update context, ask next question or signal ready.
+    """
+    from core.apps.skills.registry import _compute_readiness
+
+    turn = req.turn
+    context = {
+        "company_name": req.company_name.strip(),
+        "industry": req.industry.strip(),
+        "pain_points": req.pain_points.strip(),
+        "team_size": req.team_size.strip(),
+        "budget": req.budget.strip(),
+    }
+
+    # ── Merge answer from previous turn into context ──
+    if turn > 1 and req.answer.strip():
+        score, gaps = _compute_readiness(context)
+        # Find the most likely gap being answered and fill it
+        for gap_name in gaps:
+            if gap_name not in context or not context[gap_name]:
+                context[gap_name] = req.answer.strip()
+                break
+
+    score, gaps = _compute_readiness(context)
+    can_finalize = score >= _READINESS_THRESHOLD
+
+    # ── Generate next question ──
+    question = ""
+    options = []
+    hint = ""
+    next_gap = ""
+
+    if not can_finalize and gaps:
+        next_gap = gaps[0]
+        gq = _GAP_QUESTIONS.get(next_gap, {
+            "q": f"请补充以下信息：{next_gap}",
+            "hint": "请自由描述",
+        })
+        question = gq.get("q", "")
+        options = gq.get("options", [])
+        hint = gq.get("hint", "")
+    elif can_finalize:
+        question = f"信息已足够（就绪度 {score}%）。是否现在生成诊断报告？"
+        options = ["生成诊断", "继续补充"]
+
+    return {
+        "turn": turn + 1,
+        "readiness": score,
+        "question": question,
+        "options": options,
+        "hint": hint,
+        "can_finalize": can_finalize,
+        "gaps": gaps,
+        "context": context,
+    }
+
+
+# ════════════════════════════════════════════════════════════
 # D: FDE 交付反馈 — 标记行动状态，触发 ROI 重新计算
 # ════════════════════════════════════════════════════════════
 
