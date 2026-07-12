@@ -301,18 +301,35 @@ const AssessTab: React.FC = () => {
       // ── Handle "finished" flag: close dialog + generate diagnosis ──
       if (data.finished) {
         setDialogFinished(true);
-        setTimeout(() => {
-          setDialogOpen(false);
-          // Write back collected context to form
-          setForm(prev => ({
-            ...prev,
-            ...(data.context?.company_name ? { company_name: data.context.company_name } : {}),
-            ...(data.context?.pain_points ? { pain_points: data.context.pain_points } : {}),
-            ...(data.context?.team_size ? { team_size: data.context.team_size } : {}),
-            ...(data.context?.budget ? { budget_range: data.context.budget } : {}),
-          }));
-          setTimeout(() => submit(), 100);
-        }, 500); // brief delay so user sees the "finished" message
+        const isFollowUp = !!diagnosisSessionId;
+
+        if (isFollowUp) {
+          // ── §8 follow-up: collect Q&A into pendingFeedback ──
+          const qaText = dialogHistory
+            .filter(m => m.role === 'assistant' && m.content !== dialogHistory[0]?.content)
+            .map((m, i) => `Q${i + 1}: ${m.content}`)
+            .join('\n');
+          setPendingFeedback(prev => {
+            const parts = [prev.trim(), '--- 澄清对话记录 ---', qaText].filter(Boolean);
+            return parts.join('\n\n');
+          });
+          setTimeout(() => {
+            setDialogOpen(false);
+          }, 200);
+        } else {
+          setTimeout(() => {
+            setDialogOpen(false);
+            // Write back collected context to form
+            setForm(prev => ({
+              ...prev,
+              ...(data.context?.company_name ? { company_name: data.context.company_name } : {}),
+              ...(data.context?.pain_points ? { pain_points: data.context.pain_points } : {}),
+              ...(data.context?.team_size ? { team_size: data.context.team_size } : {}),
+              ...(data.context?.budget ? { budget_range: data.context.budget } : {}),
+            }));
+            setTimeout(() => submit(), 100);
+          }, 500);
+        }
       }
     } catch { setDialogQuestion('网络错误，请重试'); }
     setDialogLoading(false);

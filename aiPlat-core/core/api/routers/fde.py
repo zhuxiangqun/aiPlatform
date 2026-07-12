@@ -1721,8 +1721,35 @@ def _extract_pending_questions(session_id: str) -> list:
                 except Exception:
                     md = {}
                 rpt = md.get("report_text", "") or md.get("pain_points", "")
-                matches = re.findall(r'\d+[\.\s]+(.+?)(?:\?|？|$)', rpt, re.MULTILINE)
-                return [m.strip() for m in matches if len(m) > 5][:5]
+
+                # Strategy 1: extract from §8 table rows (| P0 | question？| ...)
+                questions = []
+                for line in rpt.split("\n"):
+                    stripped = line.strip()
+                    if stripped.startswith("|") and "|" in stripped[2:]:
+                        cols = [c.strip() for c in stripped.split("|")]
+                        for c in cols:
+                            c = c.strip()
+                            if (c.endswith("?") or c.endswith("？")) and len(c) > 5 and c not in questions:
+                                questions.append(c)
+                                break
+
+                # Strategy 2: extract from numbered list items ending with ?/？
+                if not questions:
+                    matches = re.findall(r'\d+[\.\s]+(.+?)(?:\?|？|$)', rpt, re.MULTILINE)
+                    questions = [m.strip() for m in matches if len(m) > 5][:5]
+
+                # Strategy 3: extract from "待确认问题" column in data-maturity tables
+                if not questions:
+                    for line in rpt.split("\n"):
+                        stripped = line.strip()
+                        if stripped.startswith("|") and "|" in stripped[2:]:
+                            cols = [c.strip() for c in stripped.split("|")]
+                            for c in cols:
+                                if (c.endswith("?") or c.endswith("？")) and len(c) > 5 and c not in questions:
+                                    questions.append(c)
+
+                return questions[:5]
     except Exception:
         pass
     return []
