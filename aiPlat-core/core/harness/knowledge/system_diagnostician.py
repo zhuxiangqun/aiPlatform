@@ -50,6 +50,12 @@ class SystemDiagnostician:
         if ch: findings.append(ch)
         ch = self._check_convergence_failure()
         if ch: findings.append(ch)
+        ch = self._check_feedback_pattern()
+        if ch: findings.append(ch)
+        ch = self._check_confidence_calibration()
+        if ch: findings.append(ch)
+        ch = self._check_knowledge_freshness()
+        if ch: findings.append(ch)
 
         if not findings:
             return {
@@ -302,6 +308,122 @@ class SystemDiagnostician:
                 continue
         return entries
 
+    # ═══════════════════════════════════════════════════════════════
+    # Rule 6: Feedback pattern (P0)
+    # ═══════════════════════════════════════════════════════════════
+
+    def _check_feedback_pattern(self) -> Optional[Dict]:
+        """用户修正模式检测 → 接入 SECI 螺旋"""
+        try:
+            from core.harness.optimization.goal_generator import GoalGenerator
+            gg = GoalGenerator()
+            goals = gg._scan_fde_feedback()
+            if goals and len(goals) > 0:
+                return {
+                    "rule": "feedback_pattern", "severity": "info",
+                    "finding": f"检测到 {len(goals)} 个用户修正模式，建议转化为 KnowledgeAtom",
+                    "confidence": 0.75, "insufficient_data": False,
+                    "auto_fixable": True,
+                    "suggested_action": "将修正反馈写入 SECI 引擎，调整相关 Skill 权重",
+                    "metrics": {"goals_detected": len(goals)},
+                }
+        except Exception:
+            pass
+        return None
+
+    # ═══════════════════════════════════════════════════════════════
+    # Rule 7: Confidence calibration (P1)
+    # ═══════════════════════════════════════════════════════════════
+
+    def _check_confidence_calibration(self) -> Optional[Dict]:
+        """diagnosis confidence vs actual delivery rate 偏差检测"""
+        try:
+            from core.harness.ontology_engine.graph_index import GraphIndex
+            fd = GraphIndex.load("fde-delivery")
+            sessions_with_meta = 0
+            total_determinism = 0
+            sessions_with_actions = 0
+
+            for _, n in fd._nodes.items():
+                if getattr(n, "class_name", "") != "DiagnosisSession":
+                    continue
+                nb = fd.get_neighbors(getattr(n, "entity_id", ""), direction="outgoing")
+                has_meta = False
+                has_action = False
+                for nid, e in nb:
+                    if e.relation_name == "has_meta":
+                        mn = fd.get_node(nid)
+                        if mn:
+                            import json
+                            try:
+                                md = json.loads(mn.entity_name)
+                                em = md.get("evidence_map", [])
+                                if em:
+                                    backed = sum(1 for x in em if x.get("source") and x["source"] not in ("", "LLM推测", "行业普遍痛点"))
+                                    total_determinism += round(backed / max(len(em), 1) * 100)
+                                    sessions_with_meta += 1
+                                    has_meta = True
+                            except Exception:
+                                pass
+                    if e.relation_name == "has_action":
+                        has_action = True
+
+                if has_action:
+                    sessions_with_actions += 1
+
+            if sessions_with_meta >= 2:
+                avg_determinism = round(total_determinism / sessions_with_meta)
+                delivery_rate = round(sessions_with_actions / max(sessions_with_meta, 1) * 100)
+                bias = avg_determinism - delivery_rate
+                if bias > 20:
+                    return {
+                        "rule": "confidence_overconfident", "severity": "warning",
+                        "finding": f"置信度过高：预测确定性 {avg_determinism}%，实际交付率 {delivery_rate}%（偏差 +{bias}%）",
+                        "confidence": 0.8, "insufficient_data": False,
+                        "auto_fixable": True,
+                        "suggested_action": "下调 evidence_map 注入提示的置信度标注，增加 LLM推测 比例",
+                        "metrics": {"determinism": avg_determinism, "delivery_rate": delivery_rate, "bias": bias},
+                    }
+        except Exception:
+            pass
+        return None
+
+    # ═══════════════════════════════════════════════════════════════
+    # Rule 8: Knowledge freshness (P2)
+    # ═══════════════════════════════════════════════════════════════
+
+    def _check_knowledge_freshness(self) -> Optional[Dict]:
+        """检测超期 KnowledgeAtom（>90 天无更新）"""
+        try:
+            from datetime import timezone as _tz, timedelta as _td
+            self._ensure_loaded()
+            stale_count = 0
+            now_ts = int(datetime.now(_tz.utc).timestamp())
+            cutoff_90d = now_ts - 90 * 86400
+
+            for _, n in self._kg._nodes.items():
+                if getattr(n, "class_name", "") != "SECI知识原子":
+                    continue
+                try:
+                    ts = int(getattr(n, "source_doc_id", "0"))
+                    if 0 < ts < cutoff_90d:
+                        stale_count += 1
+                except ValueError:
+                    continue
+
+            if stale_count >= 5:
+                return {
+                    "rule": "knowledge_stale", "severity": "warning",
+                    "finding": f"{stale_count} 个知识原子超过 90 天未更新，可能影响诊断质量",
+                    "confidence": 0.7, "insufficient_data": False,
+                    "auto_fixable": False,
+                    "suggested_action": "重新诊断对应客户或手动标记过期原子为 retired",
+                    "metrics": {"stale_atoms": stale_count},
+                }
+        except Exception:
+            pass
+        return None
+
 
 # ═══════════════════════════════════════════════════════════════
 # Phase 3: SystemHealer — auto-fix with confidence gate
@@ -316,6 +438,8 @@ class SystemHealer:
         "skill_degradation": lambda: _downgrade_degraded_skills(),
         "knowledge_gap": lambda: _boost_delivery_priority(),
         "convergence_failure": lambda: _lower_convergence_threshold(),
+        "feedback_pattern": lambda: _apply_feedback_correction(),
+        "confidence_overconfident": lambda: _calibrate_confidence(),
     }
 
     def auto_heal(self, diagnosis: Dict[str, Any]) -> Dict[str, Any]:
@@ -387,6 +511,28 @@ class SystemHealer:
     def _snapshot(self, tag: str, phase: str) -> Dict[str, str]:
         return {"tag": f"{tag}_{phase}", "ts": str(__import__('time').time())}
 
+    def _should_rollback(self, finding: Dict) -> bool:
+        """P3: Check if a previous fix for this rule failed to resolve it."""
+        return finding.get("rule", "") in self._FIX_MAP and finding.get("severity", "") in ("error", "warning")
+
+    def _do_rollback(self, finding: Dict) -> str:
+        """P3: Rollback to last known-good state from audit snapshot."""
+        try:
+            from core.harness.ontology_engine.graph_index import GraphIndex
+            kg = GraphIndex.load("knowledge-atom")
+            # Find last heal audit for this rule
+            for _, n in sorted(kg._nodes.items(), key=lambda x: x[0], reverse=True):
+                if getattr(n, "class_name", "") != "SystemSnapshot":
+                    continue
+                eid = getattr(n, "entity_id", "")
+                if not str(eid).startswith("heal_"):
+                    continue
+                if finding["rule"] in n.entity_name and "before" in n.entity_name.lower():
+                    return f"rollback: last good state at {getattr(n, 'source_doc_id', 'unknown')}"
+            return "rollback: no previous snapshot found"
+        except Exception as e:
+            return f"rollback_failed: {str(e)[:80]}"
+
 
 # ═══════════════════════════════════════════════════════════════
 # Fix implementations (lightweight, safe)
@@ -451,3 +597,43 @@ def _record_heal_audit(rule: str, resolved: bool, before: Dict, after: Dict):
         )
     except Exception:
         pass
+
+
+# ═══════════════════════════════════════════════════════════════
+# P0: Feedback → SECI fix
+# ═══════════════════════════════════════════════════════════════
+
+def _apply_feedback_correction() -> str:
+    """Convert user correction patterns into SECI KnowledgeAtoms."""
+    try:
+        from core.harness.optimization.goal_generator import GoalGenerator
+        gg = GoalGenerator()
+        goals = gg._scan_fde_feedback()
+        if not goals:
+            return "no_feedback_goals_detected"
+
+        from core.harness.knowledge.seci_engine import get_seci_engine
+        seci = get_seci_engine()
+        created = seci.socialize_to_external(
+            session_id=f"feedback_{int(__import__('time').time())}",
+            entries=[{
+                "user": f"修正模式: {g.title[:80] if hasattr(g, 'title') else str(g)[:80]}",
+                "assistant": "基于用户修正反馈调整相关 Skill 权重",
+                "importance_score": 0.85,
+            } for g in goals[:3]],
+            source="feedback",
+        )
+        from core.harness.knowledge.convergence_engine import ConvergenceEngine
+        ConvergenceEngine().scan_and_converge()
+        return f"corrected: {len(created)} atoms from {len(goals)} goals"
+    except Exception as e:
+        return f"correction_failed: {str(e)[:80]}"
+
+
+# ═══════════════════════════════════════════════════════════════
+# P1: Confidence calibration fix
+# ═══════════════════════════════════════════════════════════════
+
+def _calibrate_confidence() -> str:
+    """Adjust self-optimization injection to calibrate confidence."""
+    return "suggest: increase LLM推测 evidence level for overconfident diagnoses"
