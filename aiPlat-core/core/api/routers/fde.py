@@ -1956,17 +1956,22 @@ async def fde_assess_dialog(req: FdeDialogRequest):
     if finished or (fully_ready and not gaps and not pending_qs):
         question = "所有信息已收集完毕。请回复「生成报告」来生成完整的FDE交付手册。"
         options = ["生成报告", "继续补充"]
+    elif pending_qs:
+        # §8 questions take priority — ask them even if core_ready
+        if not llm_available:
+            q = pending_qs[turn % len(pending_qs)]
+            question = f"请确认以下问题：{q}"
+            options = list(_DIALOG_FALLBACK_OPTS)
+        else:
+            question = _rotate_default_question(gaps, pending_qs, turn)
+            options = list(_DIALOG_FALLBACK_OPTS)
     elif core_ready:
         question = "基础信息已充分，可以生成初步诊断报告。建议继续提供更多信息以获得完整的交付手册。请回复「生成报告」，或继续提供信息。"
         options = ["生成报告", "继续补充"]
     else:
         if not llm_available:
             # ── Static fallback (no LLM): rotate through gaps ──
-            if pending_qs:
-                q = pending_qs[turn % len(pending_qs)]
-                question = f"请确认以下问题：{q}"
-                options = list(_DIALOG_FALLBACK_OPTS)
-            elif gaps:
+            if gaps:
                 g = gaps[(turn - 1) % len(gaps)]
                 question = f"请提供「{g}」的相关信息。"
                 options = []
