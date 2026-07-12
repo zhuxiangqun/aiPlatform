@@ -304,10 +304,17 @@ const AssessTab: React.FC = () => {
 
         if (isFollowUp) {
           // ── §8 follow-up: collect Q&A into pendingFeedback ──
-          const qaText = dialogHistory
-            .filter(m => m.role === 'assistant' && m.content !== dialogHistory[0]?.content)
-            .map((m, i) => `Q${i + 1}: ${m.content}`)
-            .join('\n');
+          const qaPairs = [];
+          for (let i = 1; i < dialogHistory.length - 1; i++) {
+            const msg = dialogHistory[i];
+            if (msg.role === 'assistant' && msg.content !== dialogHistory[0]?.content) {
+              const nextMsg = dialogHistory[i + 1];
+              if (nextMsg?.role === 'user') {
+                qaPairs.push(`Q: ${msg.content}\nA: ${nextMsg.content}`);
+              }
+            }
+          }
+          const qaText = qaPairs.join('\n\n');
           setPendingFeedback(prev => {
             const parts = [prev.trim(), '--- 澄清对话记录 ---', qaText].filter(Boolean);
             return parts.join('\n\n');
@@ -337,7 +344,7 @@ const AssessTab: React.FC = () => {
   const openDialog = (sessionId?: string) => {
     setDialogOpen(true);
     setDialogTurn(1);
-    setDialogHistory([{ role: 'assistant', content: '你好！我是 AI 诊断助手。我会根据你的回答逐轮澄清客户信息，信息充分后自动生成诊断报告。\n\n让我们开始吧——请问客户公司的名称是？' }]);
+    setDialogHistory([{ role: 'assistant', content: '你好！我是 AI 诊断助手。让我先了解一下你的情况……' }]);
     setDialogReady(false);
     setDialogContext({});
     setDialogSessionId(sessionId || '');
