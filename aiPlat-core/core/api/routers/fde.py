@@ -1831,13 +1831,16 @@ async def fde_assess_dialog(req: FdeDialogRequest):
     else:
         try:
             extra = f"\n诊断报告中的待确认问题: {pending_qs}" if pending_qs else ""
+            has_pending = "true" if pending_qs else "false"
             gen_prompt = (
                 f'你是FDE诊断澄清助手。\n'
                 f'客户已知: {_json_dg.dumps(context, ensure_ascii=False)}\n'
-                f'缺失维度: {gaps}{extra}\n\n'
-                f'基于以上，选择一项操作，以JSON返回:\n'
-                f'1. 信息充分(至少行业+公司名+痛点) → {{"action":"generate"}}\n'
-                f'2. 追问缺失基础信息或§8待确认问题 → {{"action":"ask","question":"...","options":[...]}}\n\n'
+                f'缺失维度: {gaps}\n'
+                f'有待确认问题: {has_pending}{extra}\n\n'
+                f'操作规则(按优先级):\n'
+                f'1. 如果有"待确认问题": 逐一追问，完成后再判断信息充分性 → {{"action":"ask","question":"...","options":[...]}}\n'
+                f'2. 如果缺失基础信息(公司名/行业/痛点): 优先追问 → {{"action":"ask","question":"...","options":[...]}}\n'
+                f'3. 基础信息全+无待确认问题 → {{"action":"generate"}}\n\n'
                 f'要求: 问题有行业上下文。options最多4个，留一个"其他"。\n'
                 f'仅返回JSON，无其他文字。'
             )
