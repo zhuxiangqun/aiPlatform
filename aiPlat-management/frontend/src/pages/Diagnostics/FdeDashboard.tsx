@@ -291,30 +291,32 @@ const AssessTab: React.FC = () => {
       setDialogTurn(data.turn || 2);
       setDialogHistory(prev => [
         ...prev,
-        ...(answer ? [{ role: 'user', content: answer }] : []),
         { role: 'assistant', content: data.question || '' },
       ]);
 
-      // ── Handle "finished" flag: close dialog + generate diagnosis ──
+      // ── Handle "finished" flag ──
       if (data.finished) {
         const isFollowUp = !!diagnosisSessionId;
 
         if (isFollowUp) {
           // ── §8 follow-up: collect Q&A into pendingFeedback ──
-          const qaPairs = [];
-          for (let i = 1; i < dialogHistory.length - 1; i++) {
-            const msg = dialogHistory[i];
-            if (msg.role === 'assistant' && msg.content !== dialogHistory[0]?.content) {
-              const nextMsg = dialogHistory[i + 1];
-              if (nextMsg?.role === 'user') {
-                qaPairs.push(`Q: ${msg.content}\nA: ${nextMsg.content}`);
+          setDialogHistory(prev => {
+            const qaPairs = [];
+            for (let i = 1; i < prev.length - 1; i++) {
+              const msg = prev[i];
+              if (msg.role === 'assistant' && msg.content !== prev[0]?.content) {
+                const nextMsg = prev[i + 1];
+                if (nextMsg?.role === 'user') {
+                  qaPairs.push(`Q: ${msg.content}\nA: ${nextMsg.content}`);
+                }
               }
             }
-          }
-          const qaText = qaPairs.join('\n\n');
-          setPendingFeedback(prev => {
-            const parts = [prev.trim(), '--- 澄清对话记录 ---', qaText].filter(Boolean);
-            return parts.join('\n\n');
+            const qaText = qaPairs.join('\n\n');
+            setPendingFeedback(pf => {
+              const parts = [pf.trim(), '--- 澄清对话记录 ---', qaText].filter(Boolean);
+              return parts.join('\n\n');
+            });
+            return prev;
           });
           setTimeout(() => {
             closeDialog();
@@ -732,8 +734,8 @@ const AssessTab: React.FC = () => {
                   value={dialogInput} onChange={e => setDialogInput(e.target.value)}
                   onCompositionStart={() => setDialogComposing(true)}
                   onCompositionEnd={() => setDialogComposing(false)}
-                  onKeyDown={e => { if (e.key === 'Enter' && !dialogComposing && dialogInput.trim()) { e.preventDefault(); dialogCall(dialogInput.trim()); setDialogInput(''); }}} />
-                <Button variant="ghost" size="sm" className="px-3" onClick={() => { if (dialogInput.trim()) { dialogCall(dialogInput.trim()); setDialogInput(''); }}} disabled={!dialogInput.trim() || dialogLoading}>
+                  onKeyDown={e => { if (e.key === 'Enter' && !dialogComposing && dialogInput.trim()) { e.preventDefault(); const msg = dialogInput.trim(); setDialogInput(''); setDialogHistory(prev => [...prev, { role: 'user', content: msg }]); dialogCall(msg); }}} />
+                <Button variant="ghost" size="sm" className="px-3" onClick={() => { if (dialogInput.trim()) { const msg = dialogInput.trim(); setDialogInput(''); setDialogHistory(prev => [...prev, { role: 'user', content: msg }]); dialogCall(msg); }}} disabled={!dialogInput.trim() || dialogLoading}>
                   <Send className="w-4 h-4" />
                 </Button>
               </div>
