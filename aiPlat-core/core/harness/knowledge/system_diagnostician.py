@@ -56,6 +56,12 @@ class SystemDiagnostician:
         if ch: findings.append(ch)
         ch = self._check_knowledge_freshness()
         if ch: findings.append(ch)
+        ch = self._check_agent_quality()
+        if ch: findings.append(ch)
+        ch = self._check_pipeline_health()
+        if ch: findings.append(ch)
+        ch = _check_memory_compression()
+        if ch: findings.append(ch)
 
         if not findings:
             return {
@@ -199,6 +205,45 @@ class SystemDiagnostician:
         if len(snapshots) < 4:
             return None
 
+    # ═══════════════════════════════════════════════════════════════
+    # Rule 10: Pipeline stage health (B)
+    # ═══════════════════════════════════════════════════════════════
+
+    def _check_pipeline_health(self) -> Optional[Dict]:
+        """Pipeline阶段健康：同一阶段24h内失败次数"""
+        self._ensure_loaded()
+        from collections import Counter
+        import json
+        from datetime import timezone as _tz, timedelta as _td
+        failures = Counter()
+        cutoff = int((datetime.now(_tz.utc) - _td(hours=24)).timestamp())
+        for _, n in self._kg._nodes.items():
+            if getattr(n, "class_name", "") != "SystemSnapshot":
+                continue
+            eid = getattr(n, "entity_id", "")
+            if not str(eid).startswith("pt_"):
+                continue
+            try:
+                ts = int(getattr(n, "source_doc_id", "0"))
+                if ts < cutoff:
+                    continue
+                data = json.loads(n.entity_name)
+                if data.get("status") == "failed":
+                    failures[data.get("stage", "unknown")] += 1
+            except Exception:
+                continue
+        if failures:
+            worst = failures.most_common(1)[0]
+            if worst[1] >= 3:
+                return {
+                    "rule": "pipeline_stage_failing", "severity": "error",
+                    "finding": f"阶段'{worst[0]}'在24h内失败了{worst[1]}次",
+                    "confidence": 0.8, "insufficient_data": False, "auto_fixable": False,
+                    "suggested_action": "检查该阶段的配置、依赖服务或回退到前一个稳定版本",
+                    "metrics": {"stage": worst[0], "failures": worst[1]},
+                }
+        return None
+
         try:
             first = snapshots[0]
             last = snapshots[-1]
@@ -279,6 +324,17 @@ class SystemDiagnostician:
                 "name": "data_quality_degradation",
                 "description": "证据退化 + 知识断层 → 数据质量系统性下降。建议批量补充术语定义和本体类。",
                 "involved_rules": ["evidence_decline", "knowledge_gap"],
+                "priority": "high",
+            })
+
+        # agent_quality_decline + compression_ineffective → context overflow
+        has_aq = any(f["rule"] == "agent_quality_decline" for f in findings)
+        has_ci = any(f["rule"] == "compression_ineffective" for f in findings)
+        if has_aq and has_ci:
+            correlations.append({
+                "name": "context_overflow_degrading_agent",
+                "description": "Agent对话质量下降 + Memory压缩失效 → 上下文溢出可能导致Agent决策质量下降。优先检查压缩配置。",
+                "involved_rules": ["agent_quality_decline", "compression_ineffective"],
                 "priority": "high",
             })
 
@@ -422,6 +478,46 @@ class SystemDiagnostician:
                 }
         except Exception:
             pass
+        return None
+
+    # ═══════════════════════════════════════════════════════════════
+    # Rule 9: Agent conversation quality (A)
+    # ═══════════════════════════════════════════════════════════════
+
+    def _check_agent_quality(self) -> Optional[Dict]:
+        """Agent对话质量：最近7天产生的知识原子数量"""
+        self._ensure_loaded()
+        from datetime import timezone as _tz, timedelta as _td
+        import json
+        now = datetime.now(_tz.utc)
+        cutoff = int((now - _td(days=7)).timestamp())
+        atoms_7d = 0
+        sessions_7d = 0
+        for _, n in self._kg._nodes.items():
+            if getattr(n, "class_name", "") != "SystemSnapshot":
+                continue
+            eid = getattr(n, "entity_id", "")
+            if not str(eid).startswith("qs_"):
+                continue
+            try:
+                ts = int(getattr(n, "source_doc_id", "0"))
+                if ts < cutoff:
+                    continue
+                data = json.loads(n.entity_name)
+                atoms_7d += data.get("atoms_this_cycle", 0)
+                sessions_7d += 1
+            except Exception:
+                continue
+        total_atoms = sum(1 for _, n in self._kg._nodes.items()
+                         if getattr(n, "class_name", "") == "SECI知识原子")
+        if total_atoms > 10 and atoms_7d < 3:
+            return {
+                "rule": "agent_quality_decline", "severity": "warning",
+                "finding": f"最近7天仅产生 {atoms_7d} 个新原子（{sessions_7d}次对话）——Agent对话质量可能下降",
+                "confidence": 0.65, "insufficient_data": False, "auto_fixable": False,
+                "suggested_action": "检查 Agent system_prompt 或 MemoryManager 是否正常运行",
+                "metrics": {"atoms_7d": atoms_7d, "sessions_7d": sessions_7d},
+            }
         return None
 
 
@@ -644,3 +740,33 @@ def _apply_feedback_correction() -> str:
 def _calibrate_confidence() -> str:
     """Adjust self-optimization injection to calibrate confidence."""
     return "suggest: increase LLM推测 evidence level for overconfident diagnoses"
+
+
+# ═══════════════════════════════════════════════════════════════
+# Rule 11: Memory compression health (C)
+# ═══════════════════════════════════════════════════════════════
+
+def _check_memory_compression() -> Optional[Dict]:
+    """Memory压缩健康：压缩比持续低于30%"""
+    try:
+        from core.harness.memory.manager import get_memory_manager
+        mm = get_memory_manager()
+        comp = getattr(mm, '_compression', None)
+        if not comp or not hasattr(comp, 'compression_stats'):
+            return None
+        stats = comp.compression_stats
+        if len(stats) < 2:
+            return None
+        savings = [(b - a) / max(b, 1) for b, a in stats[-2:]]
+        avg = sum(savings) / len(savings)
+        if all(s < 0.30 for s in savings):
+            return {
+                "rule": "compression_ineffective", "severity": "warning",
+                "finding": f"最近压缩比仅{avg:.0%}——上下文可能溢出，影响Agent决策质量",
+                "confidence": 0.6, "insufficient_data": False, "auto_fixable": False,
+                "suggested_action": "检查压缩阈值设置，或增加低优先级内容的裁剪策略",
+                "metrics": {"compression_ratio": round(avg, 2), "samples": len(stats)},
+            }
+    except Exception:
+        pass
+    return None

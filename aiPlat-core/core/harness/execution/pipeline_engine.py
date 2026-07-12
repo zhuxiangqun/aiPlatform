@@ -1952,6 +1952,17 @@ Output format: JSON array of {{"rank": 1, "score": 0.95, "content": "..."}}"""
 
         if local_state.get("phase") == BuilderSessionPhase.failed.value:
             graph_trace.append({"node": stage.id, "status": "failed", "reason": "phase_failed", "ts": time.time()})
+            # Write pt_ snapshot for SystemDiagnostician (B)
+            try:
+                from core.harness.ontology_engine.graph_index import GraphIndex
+                import json as _json_pt
+                kg = GraphIndex.load("knowledge-atom")
+                pt_id = f"pt_{stage.id}_{int(time.time())}"
+                kg.add_entity(pt_id, _json_pt.dumps({
+                    "stage": str(stage.id), "status": "failed",
+                }, ensure_ascii=False)[:500], "SystemSnapshot", source_doc_id=str(int(time.time())))
+            except Exception:
+                pass
             return local_state, True
 
         # Phase 10: declarative review gate (replaces old hitl/hitl_after_execute if/elif)

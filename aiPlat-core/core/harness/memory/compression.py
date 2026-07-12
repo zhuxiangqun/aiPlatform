@@ -115,6 +115,11 @@ class ContextCompression:
         self._config = config or {}
         self._thresholds = self._init_thresholds()
         self._compression_stats: List[Tuple[int, int]] = []  # (before, after) msg counts
+
+    @property
+    def compression_stats(self) -> List[Tuple[int, int]]:
+        """公开只读访问最近3次压缩统计，供SystemDiagnostician使用。"""
+        return list(self._compression_stats)
         self._prev_summary: Optional[str] = None
         # P0-2: temperature-aware pruning
         self._last_temperature: float = 0.3
@@ -297,8 +302,17 @@ class ContextCompression:
                     break
 
         recent = rest[-2:] if len(rest) > 2 else rest
-        summarized_count = max(0, len(rest) - len(recent))
-        if prev_summary_content:
+        dropped = rest[:len(rest) - len(recent)]
+        summarized_count = len(dropped)
+
+        # P1-1: prefer a real LLM semantic summary over the mechanical placeholder.
+        llm_summary = ""
+        if summarized_count > 0 and _context_summary_enabled():
+            llm_summary = await _llm_summarize_conversation(dropped, prev_summary_content or "")
+
+        if llm_summary:
+            summary_msg = {"role": "system", "content": llm_summary}
+        elif prev_summary_content:
             summary_msg = {
                 "role": "system",
                 "content": (
@@ -316,13 +330,27 @@ class ContextCompression:
         return system_msgs + high + [summary_msg] + recent
 
     async def _emergency_compress(self, context: List[Dict]) -> List[Dict]:
-        """Emergency compression — keep system + all high-priority + last message (§5.21)."""
+        """Emergency compression — keep system + all high-priority + last message (§5.21).
+
+        P1-1: even at this extreme level, preserve conversational continuity via a
+        compact LLM semantic summary of the dropped messages (falls back to nothing
+        on timeout/no-model, so it is never worse than pure truncation).
+        """
         system_msgs = [m for m in context if m.get("role") == "system"]
         non_system = [m for m in context if m.get("role") != "system"]
         high = [m for m in non_system if self._priority_order(m) == 0]
         rest = [m for m in non_system if self._priority_order(m) != 0]
-        keep = high + (rest[-1:] if rest else [])
-        return system_msgs + keep
+        keep = rest[-1:] if rest else []
+        dropped = rest[:len(rest) - len(keep)]
+
+        summary_msgs: List[Dict] = []
+        if dropped and _context_summary_enabled():
+            llm_summary = await _llm_summarize_conversation(dropped, self._prev_summary or "")
+            if llm_summary:
+                self._prev_summary = llm_summary
+                summary_msgs = [{"role": "system", "content": llm_summary}]
+
+        return system_msgs + high + summary_msgs + keep
 
     def should_trigger_compression(self, state: ContextState) -> bool:
         """Check if compression should be triggered"""
@@ -380,10 +408,10 @@ async def _background_tool_summarize(
 async def _llm_summarize_tool_output(tool_name: str, raw_output: str) -> str:
     """Call LLM to generate structured summary of tool output."""
     try:
-        from core.harness.infrastructure.infra_llm_adapter import InfraLLMAdapter
-        from core.harness.utils.model_injection import best_model_for_purpose
+        from core.harness.utils.model_injection import best_model_for_purpose, create_selected_adapter
+        from core.adapters.llm.base import LLMConfig
         model_name = best_model_for_purpose("doc_llm") or ""
-        adapter = InfraLLMAdapter(model_name=model_name) if model_name else None
+        adapter = create_selected_adapter(model_name=model_name) if model_name else None
         if adapter is None:
             raise RuntimeError("no LLM model configured for tool summarization")
 
@@ -397,12 +425,11 @@ async def _llm_summarize_tool_output(tool_name: str, raw_output: str) -> str:
             '"actionable":true/false}}\n\n'
             f"输出({len(raw_output)}字符):\n{raw_output[:3000]}"
         )
-        result = await adapter.chat_complete(
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0.0,
-            max_tokens=500,
+        result = await adapter.generate(
+            [{"role": "user", "content": prompt}],
+            LLMConfig(model=model_name, temperature=0.0, max_tokens=500),
         )
-        content = getattr(result, "content", str(result))
+        content = getattr(result, "content", "") or ""
         content_str = content.strip() if content else ""
         # Parse JSON; fallback to free text if parsing fails
         try:
@@ -420,6 +447,95 @@ async def _llm_summarize_tool_output(tool_name: str, raw_output: str) -> str:
             return f"[摘要] {content_str}" if content_str else raw_output[:1000]
     except Exception:
         raise
+
+
+# ── P1-1: Conversation-level LLM semantic summary (Hermes Layer 4) ──
+# Replaces the mechanical "[Previous N messages summarized]" placeholder at
+# AGGRESSIVE/EMERGENCY levels with a real LLM summary that preserves 4 key
+# categories: current goal / key conclusions / recent tool calls / todos.
+
+CONTEXT_SUMMARY_TIMEOUT = 3.0  # seconds — fallback to mechanical placeholder
+
+
+def _context_summary_enabled() -> bool:
+    return os.getenv("AIPLAT_LLM_CONTEXT_SUMMARY_ENABLED", "true").lower() not in ("0", "false", "no")
+
+
+async def _llm_summarize_conversation(messages: List[Dict], prev_summary: str = "") -> str:
+    """LLM 语义摘要：把将被丢弃的对话历史压缩为保留 4 类关键信息的结构化摘要。
+
+    保留类别（Hermes Layer 4）：当前目标 / 关键结论 / 近期工具调用及结果 / 待办事项。
+    超时/无模型/异常时返回空串，调用方回退到机械占位符——保证行为绝不劣于原实现。
+    """
+    if not messages:
+        return ""
+    try:
+        return await asyncio.wait_for(
+            _do_llm_conversation_summary(messages, prev_summary),
+            timeout=CONTEXT_SUMMARY_TIMEOUT,
+        )
+    except Exception:
+        return ""
+
+
+async def _do_llm_conversation_summary(messages: List[Dict], prev_summary: str) -> str:
+    from core.harness.utils.model_injection import best_model_for_purpose, create_selected_adapter
+    from core.adapters.llm.base import LLMConfig
+
+    model_name = best_model_for_purpose("doc_llm") or ""
+    if not model_name:
+        return ""
+    adapter = create_selected_adapter(model_name=model_name)
+    if adapter is None:
+        return ""
+
+    convo_lines = []
+    for m in messages[-40:]:
+        role = str(m.get("role", "?"))
+        content = str(m.get("content", ""))[:800]
+        if content:
+            convo_lines.append(f"{role}: {content}")
+    convo_text = "\n".join(convo_lines)[:6000]
+    if not convo_text:
+        return ""
+    prev = f"\n已有摘要(需合并保留其信息):\n{prev_summary[:1000]}\n" if prev_summary else ""
+
+    prompt = (
+        "将以下对话历史压缩为结构化摘要，严格保留 4 类关键信息，用 JSON 输出：\n"
+        '{"current_goal":"<当前任务目标>",'
+        '"key_conclusions":["关键中间结论"],'
+        '"recent_tools":["近期工具调用及结果"],'
+        '"todos":["待办/未完成事项"]}\n'
+        f"{prev}\n对话历史:\n{convo_text}"
+    )
+    result = await adapter.generate(
+        [{"role": "user", "content": prompt}],
+        LLMConfig(model=model_name, temperature=0.0, max_tokens=600),
+    )
+    content = getattr(result, "content", "") or ""
+    content_str = content.strip() if content else ""
+    if not content_str:
+        return ""
+    try:
+        import json as _json
+        s = content_str
+        start = s.find("{")
+        end = s.rfind("}")
+        if start < 0 or end <= start:
+            return f"CONTEXT_SUMMARY:\n{content_str[:800]}"
+        parsed = _json.loads(s[start:end + 1])
+        lines = ["CONTEXT_SUMMARY (LLM semantic):"]
+        if parsed.get("current_goal"):
+            lines.append(f"🎯 目标: {parsed['current_goal']}")
+        if parsed.get("key_conclusions"):
+            lines.append(f"📌 结论: {'; '.join(str(x) for x in parsed['key_conclusions'][:5])}")
+        if parsed.get("recent_tools"):
+            lines.append(f"🔧 工具: {'; '.join(str(x) for x in parsed['recent_tools'][:5])}")
+        if parsed.get("todos"):
+            lines.append(f"⏳ 待办: {'; '.join(str(x) for x in parsed['todos'][:5])}")
+        return "\n".join(lines) if len(lines) > 1 else f"CONTEXT_SUMMARY:\n{content_str[:800]}"
+    except Exception:
+        return f"CONTEXT_SUMMARY:\n{content_str[:800]}"
 
 
 __all__ = [
