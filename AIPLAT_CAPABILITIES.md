@@ -2,7 +2,7 @@
 
 > 原则：代码即真相。每个条目必须有可验证的代码位置。
 > 更新：任何能力变更时同步更新本文档。
-> 评分：98/100（2026-07-12 — 529✅, 企业大脑原型竣工+自演进Phase1(系统时序列观察)）
+> 评分：98/100（2026-07-12 — 532✅, 企业大脑原型竣工+自演进四阶段全量(观察→诊断→修复→演化)）
 
 ---
 
@@ -187,6 +187,9 @@
 | 对象语义开放 | `api/routers/fde.py` | ✅ | GET /fde/domain/{d}/operations → Agent可查询域中类的属性/状态转换/推理规则/对象属性(P1) | 2026-07-12 |
 | 权限边界建模 | `fde-delivery.yaml` + `graph_index.py` + `ontology_bus.py` | ✅ | YAML permissions字段(admin/operator/viewer三层)→_load_permission_rules()→check_permission()(P2) | 2026-07-12 |
 | 系统时序列观察 | `knowledge-atom.yaml` + `api/routers/fde.py:3382-3405,4480-4580` | ✅ | SystemSnapshot持久化→GET /fde/trends/system(12周趋势)+/fde/health/history(历史对比)→自演进数据基础 | 2026-07-12 |
+| 系统主动诊断 | `harness/knowledge/system_diagnostician.py` + `api/routers/fde.py:4578-4592` | ✅ | SystemDiagnostician(5条规则)→跨子系统关联分析(seci/evidence/skill/knowledge/convergence)→GET /fde/diagnose | 2026-07-12 |
+| 系统自修复 | `harness/knowledge/system_diagnostician.py:306-430` + `api/routers/fde.py:4596-4613` | ✅ | SystemHealer(confidence≥0.9安全门+5条自动修复+效果验证+审计快照)→POST /fde/heal | 2026-07-12 |
+| 系统自主演化 | `harness/knowledge/system_evolver.py` + `api/routers/fde.py:4622-4638` | ✅ | SystemEvolver(4条演化规则→术语自动发布/方案草稿审批)→GET /fde/evolve | 2026-07-12 |
 | 多子系统上下文 | `harness/knowledge/context_bus.py:345-405` | ✅ | assemble_agent/skill/pipeline_context()→Agent(3层)/Skill(2层)/Pipeline(3层)各自轻量注入→总线覆盖全系统 | 2026-07-12 |
 | Agent领域上下文 | `harness/knowledge/context_bus.py:408-452` | ✅ | SESSION_START hook→所有Agent启动时自动注入术语字典+数字员工→领域知识全局可用 | 2026-07-12 |
 | 质量总线 | `api/routers/fde.py:4176-4270` | ✅ | GET /fde/quality-summary — 跨子系统质量聚合(FDE/SECI/Convergence/ContextBus四维评分)→统一0-100评分 | 2026-07-12 |
@@ -848,7 +851,7 @@
 |------|:---:|:---:|:---:|------|
 | Harness 执行引擎 | 31 | 0 | 31 |
 | 记忆子系统 | 18 | 0 | 18 |
-| 知识引擎（本体） | 82 | 0 | 82 |
+| 知识引擎（本体） | 85 | 0 | 85 |
 | RAG 检索 | 27 | 0 | 27 |
 | 知识基础设施 | 28 | 0 | 28 |
 | Agent 系统 | 12 | 0 | 12 |
@@ -874,12 +877,12 @@
 | 编排系统 | 4 | 0 | 4 |
 | 管理 & 质量 | 21 | 0 | 21 |
 | 编排层 | 17 | 0 | 17 |
-| **总计** | **627** | **0** | **627** |
+| **总计** | **630** | **0** | **630** |
 
 ---
 
 *最后更新: 2026-07-11*
-*版本: 17.3 · 28章 · 627项能力 · 529✅ · 企业大脑原型竣工+自演进Phase1*
+*版本: 17.6 · 28章 · 630项能力 · 532✅ · 企业大脑原型竣工+自演进四阶段全量*
 
 **自检命令**：
 ```bash

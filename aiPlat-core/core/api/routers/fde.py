@@ -4572,3 +4572,68 @@ async def fde_health_history(
         "returned": len(entries),
         "history": entries,
     }
+
+
+# ════════════════════════════════════════════════════════════
+# Phase 2: System Diagnostician — proactive cross-subsystem analysis
+# ════════════════════════════════════════════════════════════
+
+@router.get("/diagnose", response_model=dict)
+async def fde_diagnose():
+    """Run proactive system diagnostics across all subsystems.
+
+    Cross-references SECI, FDE, Skill, and Convergence data to identify
+    systemic issues. Returns findings, correlations, and overall health.
+    """
+    try:
+        from core.harness.knowledge.system_diagnostician import SystemDiagnostician
+        sd = SystemDiagnostician()
+        return sd.diagnose()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Diagnosis failed: {str(e)[:300]}")
+
+
+# ════════════════════════════════════════════════════════════
+# Phase 3: System Healer — auto-fix with verification
+# ════════════════════════════════════════════════════════════
+
+@router.post("/heal", response_model=dict)
+async def fde_heal():
+    """Auto-heal known diagnostic patterns with safety gate and verification.
+
+    Requires diagnosis confidence >= 0.9 before applying fixes.
+    All actions are audited via SystemSnapshot entities.
+    """
+    try:
+        from core.harness.knowledge.system_diagnostician import SystemDiagnostician, SystemHealer
+        sd = SystemDiagnostician()
+        diagnosis = sd.diagnose()
+        healer = SystemHealer()
+        result = healer.auto_heal(diagnosis)
+        return {
+            "diagnosis_health": diagnosis.get("overall_health", "unknown"),
+            "diagnosis_confidence": diagnosis.get("overall_confidence", 0),
+            "heal_result": result,
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Heal failed: {str(e)[:300]}")
+
+
+# ════════════════════════════════════════════════════════════
+# Phase 4: System Evolver — pattern detection → capability generation
+# ════════════════════════════════════════════════════════════
+
+@router.get("/evolve", response_model=dict)
+async def fde_evolve():
+    """Run an evolution cycle: detect patterns → generate capabilities → publish/draft.
+
+    Terms auto-publish when score ≥ 0.7.
+    SolutionArchetypes are drafted for human approval.
+    Skills are not auto-registered.
+    """
+    try:
+        from core.harness.knowledge.system_evolver import SystemEvolver
+        evolver = SystemEvolver()
+        return evolver.evolve()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Evolution failed: {str(e)[:300]}")
