@@ -196,7 +196,6 @@ const AssessTab: React.FC = () => {
   const [dialogQuestion, setDialogQuestion] = useState('');
   const [dialogOptions, setDialogOptions] = useState<string[]>([]);
   const [dialogReady, setDialogReady] = useState(false);
-  const [dialogFinished, setDialogFinished] = useState(false);
   const [dialogLoading, setDialogLoading] = useState(false);
   const [dialogInput, setDialogInput] = useState('');
   const [dialogComposing, setDialogComposing] = useState(false);
@@ -301,7 +300,6 @@ const AssessTab: React.FC = () => {
 
       // ── Handle "finished" flag: close dialog + generate diagnosis ──
       if (data.finished) {
-        setDialogFinished(true);
         const isFollowUp = !!diagnosisSessionId;
 
         if (isFollowUp) {
