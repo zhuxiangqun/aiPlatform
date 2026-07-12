@@ -3436,6 +3436,19 @@ def _get_evolution_stats() -> dict:
         return {"health_snapshots": 0, "heal_actions": 0, "knowledge_atoms": 0}
 
 
+def _get_manual_stats() -> dict:
+    """Quick project manual stats for dashboard."""
+    try:
+        import os as _os_ms
+        manuals_dir = _os_ms.path.expanduser("~/.aiplat/fde-manuals")
+        manuals = [f for f in _os_ms.listdir(manuals_dir) if f.endswith("-current.md")]
+        meta = _load_manual_meta() if _os_ms.path.exists(_os_ms.path.join(manuals_dir, "meta.json")) else {}
+        active = sum(1 for m in manuals if meta.get(m.replace("-current.md", ""), {}).get("status", "active") != "archived")
+        return {"total": len(manuals), "active": active, "archived": len(manuals) - active}
+    except Exception:
+        return {"total": 0, "active": 0, "archived": 0}
+
+
 # ════════════════════════════════════════════════════════════
 # SECI Status Dashboard — knowledge creation engine visibility
 # ════════════════════════════════════════════════════════════
@@ -4014,6 +4027,7 @@ async def fde_dashboard():
         "pipeline_health": _get_pipeline_health(),
         "quality_score": _get_quick_quality_score(status, governance),
         "self_evolution": _get_evolution_stats(),
+        "manuals": _get_manual_stats(),
     }
 
     # Recent activity (last 5 sessions)
