@@ -520,10 +520,13 @@ def register_seci_hook() -> bool:
                 except Exception:
                     pass
 
-            # 6. System auto-check: lightweight diagnose every 10 conversations
+            # 6. Full self-check: diagnose→heal→evolve every 10 conversations
             try:
                 from core.api.routers.system import run_auto_check
-                run_auto_check()
+                result = run_auto_check()
+                if result:
+                    logger.info("SECI auto-check: health=%s warnings=%d",
+                                result.get("health", "?"), result.get("warnings", 0))
             except Exception:
                 pass
 

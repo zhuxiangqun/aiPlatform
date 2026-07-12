@@ -163,15 +163,18 @@ async def system_self_check():
 
 
 # ════════════════════════════════════════════════════════════
-# Lightweight auto-check — for periodic hooks
+# Auto-check + Background Scheduler — self-evolving OS engine
 # ════════════════════════════════════════════════════════════
 
 _auto_check_counter: int = 0
+_scheduler_started: bool = False
+
 
 def run_auto_check() -> dict:
-    """Lightweight auto-check for POST_LOOP hook integration.
+    """Full self-check for POST_LOOP hook: diagnose→heal→evolve.
 
-    Runs every 10th call. Returns quick status or empty dict.
+    Runs every 10th conversation. Returns status or empty dict.
+    Zero LLM/token cost — all operations are GraphIndex reads/writes.
     """
     global _auto_check_counter
     _auto_check_counter += 1
@@ -179,14 +182,86 @@ def run_auto_check() -> dict:
         return {}
 
     try:
-        from core.harness.knowledge.system_diagnostician import SystemDiagnostician
+        from core.harness.knowledge.system_diagnostician import SystemDiagnostician, SystemHealer
+
+        # Diagnose
         diag = SystemDiagnostician().diagnose()
-        warnings = [f for f in diag.get("findings", []) if f.get("severity") in ("warning", "error") and not f.get("insufficient_data")]
+        warnings = [f for f in diag.get("findings", [])
+                    if f.get("severity") in ("warning", "error") and not f.get("insufficient_data")]
+
+        # Heal (only if confidence >= 0.9)
+        heal_result = {}
+        if diag.get("overall_confidence", 0) >= 0.9:
+            try:
+                heal_result = SystemHealer().auto_heal(diag)
+            except Exception:
+                pass
+
+        # Evolve
+        evolve_result = {}
+        try:
+            from core.harness.knowledge.system_evolver import SystemEvolver
+            evolve_result = SystemEvolver().evolve()
+        except Exception:
+            pass
+
         if warnings:
-            log.warning("Auto-check: %d warnings detected", len(warnings))
-        return {"auto_check": True, "health": diag.get("overall_health", "unknown"), "warnings": len(warnings)}
+            log.warning("Auto-check: %d warnings, healed=%s, evolved=%s",
+                        len(warnings),
+                        heal_result.get("auto_fixed", "?"),
+                        evolve_result.get("evolved", "?"))
+
+        return {
+            "auto_check": True,
+            "health": diag.get("overall_health", "unknown"),
+            "warnings": len(warnings),
+            "auto_fixed": heal_result.get("auto_fixed", 0) if heal_result else 0,
+            "evolved": evolve_result.get("evolved", 0) if evolve_result else 0,
+        }
     except Exception:
         return {}
+
+
+async def _scheduler_loop(interval_seconds: int = 3600):
+    """Background scheduler: run full self-check every interval_seconds.
+
+    Zero token cost — all operations are read-only GraphIndex + memory.
+    """
+    import asyncio as _asyncio
+    while True:
+        await _asyncio.sleep(interval_seconds)
+        try:
+            from core.harness.knowledge.system_diagnostician import SystemDiagnostician, SystemHealer
+            from core.harness.knowledge.system_evolver import SystemEvolver
+
+            diag = SystemDiagnostician().diagnose()
+            warnings = [f for f in diag.get("findings", [])
+                        if f.get("severity") in ("warning", "error") and not f.get("insufficient_data")]
+
+            if diag.get("overall_confidence", 0) >= 0.9:
+                SystemHealer().auto_heal(diag)
+            SystemEvolver().evolve()
+
+            if warnings:
+                log.info("Background self-check: %d warnings, health=%s",
+                         len(warnings), diag.get("overall_health", "?"))
+        except Exception as e:
+            log.debug("Background self-check skip: %s", str(e))
+
+
+def start_background_scheduler(interval_seconds: int = 3600):
+    """Start the self-evolution background scheduler. Idempotent."""
+    global _scheduler_started
+    if _scheduler_started:
+        return
+    import asyncio as _asyncio
+    try:
+        loop = _asyncio.get_running_loop()
+        loop.create_task(_scheduler_loop(interval_seconds))
+        _scheduler_started = True
+        log.info("Self-evolution scheduler started (interval=%ds)", interval_seconds)
+    except RuntimeError:
+        log.debug("No running event loop — scheduler deferred")
 
 
 # ════════════════════════════════════════════════════════════

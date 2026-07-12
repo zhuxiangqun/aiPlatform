@@ -2142,8 +2142,11 @@ except Exception as e:
 try:
     from core.api.routers.system import router as system_router
     api_router.include_router(system_router)
+    # Start the self-evolution background scheduler (zero token cost)
+    from core.api.routers.system import start_background_scheduler
+    start_background_scheduler(interval_seconds=3600)
 except Exception as e:
-    logging.debug("FDE router: %s", e)
+    logging.debug("System router: %s", e)
 
 # A2A Protocol — Google Agent-to-Agent standard (external agent interoperability)
 try:
