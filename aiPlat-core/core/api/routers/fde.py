@@ -3418,6 +3418,24 @@ def _get_quick_quality_score(status: dict, governance: dict) -> dict:
     return {"overall": overall, "by_subsystem": scores}
 
 
+def _get_evolution_stats() -> dict:
+    """Quick evolution cycle stats for dashboard."""
+    try:
+        from core.harness.ontology_engine.graph_index import GraphIndex
+        kg = GraphIndex.load("knowledge-atom")
+        snaps = sum(1 for _, n in kg._nodes.items() if getattr(n, "class_name", "") == "SystemSnapshot" and str(getattr(n, "entity_id", "")).startswith("heal_"))
+        total_snaps = sum(1 for _, n in kg._nodes.items() if getattr(n, "class_name", "") == "SystemSnapshot" and str(getattr(n, "entity_id", "")).startswith("snap_"))
+        from core.harness.knowledge.seci_engine import get_seci_engine
+        sec = get_seci_engine()
+        return {
+            "health_snapshots": total_snaps,
+            "heal_actions": snaps,
+            "knowledge_atoms": sec.get_atom_count(),
+        }
+    except Exception:
+        return {"health_snapshots": 0, "heal_actions": 0, "knowledge_atoms": 0}
+
+
 # ════════════════════════════════════════════════════════════
 # SECI Status Dashboard — knowledge creation engine visibility
 # ════════════════════════════════════════════════════════════
@@ -3995,6 +4013,7 @@ async def fde_dashboard():
         "convergence_triggers": governance.get("applied_triggers", 0),
         "pipeline_health": _get_pipeline_health(),
         "quality_score": _get_quick_quality_score(status, governance),
+        "self_evolution": _get_evolution_stats(),
     }
 
     # Recent activity (last 5 sessions)
@@ -4637,3 +4656,46 @@ async def fde_evolve():
         return evolver.evolve()
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Evolution failed: {str(e)[:300]}")
+
+
+# ════════════════════════════════════════════════════════════
+# Self-Check — one-stop system self-maintenance cycle
+# ════════════════════════════════════════════════════════════
+
+@router.post("/self-check", response_model=dict)
+async def fde_self_check():
+    """Run a complete self-maintenance cycle: diagnose → heal → evolve.
+
+    Single endpoint for autonomous system health management.
+    """
+    import time as _t_sc
+    t0 = _t_sc.time()
+    results = {}
+
+    # Step 1: Diagnose
+    try:
+        from core.harness.knowledge.system_diagnostician import SystemDiagnostician
+        sd = SystemDiagnostician()
+        results["diagnosis"] = sd.diagnose()
+    except Exception as e:
+        results["diagnosis"] = {"error": str(e)[:100]}
+
+    # Step 2: Heal (guarded by confidence)
+    try:
+        from core.harness.knowledge.system_diagnostician import SystemHealer
+        healer = SystemHealer()
+        results["heal"] = healer.auto_heal(results.get("diagnosis", {}))
+    except Exception as e:
+        results["heal"] = {"error": str(e)[:100]}
+
+    # Step 3: Evolve
+    try:
+        from core.harness.knowledge.system_evolver import SystemEvolver
+        results["evolution"] = SystemEvolver().evolve()
+    except Exception as e:
+        results["evolution"] = {"error": str(e)[:100]}
+
+    results["elapsed_ms"] = round((_t_sc.time() - t0) * 1000)
+    results["cycle"] = "diagnose→heal→evolve 完成"
+
+    return results
