@@ -54,6 +54,12 @@ async def system_overview():
         live["diagnosis_sessions"] = 0
         live["enterprise_terms"] = 0
 
+    try:
+        from core.api.routers.fde import _get_pipeline_health
+        live["pipeline"] = _get_pipeline_health()
+    except Exception:
+        live["pipeline"] = "unknown"
+
     live["self_evolution_phase"] = "四阶段竣工 (POST_LOOP每10次自动诊断)"
 
     return {
