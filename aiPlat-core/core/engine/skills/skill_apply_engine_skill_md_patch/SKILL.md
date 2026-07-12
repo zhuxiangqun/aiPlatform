@@ -7,6 +7,7 @@ category: execution
 version: 1.0.0
 status: enabled
 protected: true
+idempotent: false
 completion_criterion: |
   1. 每个改动都有明确的验收标准（可验证的 pass/fail 条件）
   2. 如存在相关测试，修改后所有测试通过或明确标注预期失败
@@ -23,8 +24,8 @@ effects:
 - type: write
   resources:
   - filesystem:~/.aiplat
-  idempotent: true
-  rollback_available: false
+  idempotent: false
+  rollback_available: true
 input_schema:
   skill_id:
     type: string

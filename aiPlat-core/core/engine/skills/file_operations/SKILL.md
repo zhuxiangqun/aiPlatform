@@ -20,7 +20,7 @@ effects:
   resources:
   - filesystem:~
   idempotent: false
-  rollback_available: false
+  rollback_available: true
 input_schema:
   path:
     type: string

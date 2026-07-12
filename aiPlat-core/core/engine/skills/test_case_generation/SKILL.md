@@ -18,7 +18,7 @@ effects:
 - type: write
   resources:
   - filesystem:/tmp
-  idempotent: true
+  idempotent: false
   rollback_available: true
 input_schema:
   prd:
@@ -63,6 +63,7 @@ sop_flow:
   - "[ ] 输出格式符合规范"
   - "[ ] 正确处理错误和边界条件"
 protected: true
+idempotent: false
 completion_criterion: |
   1. 每个 acceptance_criteria 至少有一个可执行的验证步骤
   2. 测试覆盖 happy path + 至少一个边界 case

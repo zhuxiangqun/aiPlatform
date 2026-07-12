@@ -8,6 +8,7 @@ uses_file_output: true
 version: 1.0.0
 status: enabled
 protected: true
+idempotent: false
 completion_criterion: |
   1. 输出符合 ## FILE: 格式规范
   2. 每个文件包含完整可运行代码
@@ -27,7 +28,7 @@ effects:
   resources:
   - filesystem:~
   idempotent: false
-  rollback_available: false
+  rollback_available: true
 input_schema:
   requirement:
     type: string

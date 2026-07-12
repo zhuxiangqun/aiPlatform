@@ -32,7 +32,7 @@ effects:
   - type: read
     resources: [filesystem:workspace]
     idempotent: true
-    rollback_available: false
+    rollback_available: true
   - type: write
     resources: [filesystem:workspace]
     idempotent: false

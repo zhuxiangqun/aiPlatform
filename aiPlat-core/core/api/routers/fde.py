@@ -1802,17 +1802,23 @@ async def fde_assess_dialog(req: FdeDialogRequest):
                 f' → {{"company_name":"南京明图","industry":"政务","team_size":"50"}}\n'
                 f'仅返回JSON，无其他文字。'
             )
+            import logging as _log_extract
             resp = await sys_llm_generate(model, [{"role":"user","content":extract_prompt}],
                                           max_tokens=150, temperature=0.1)
+            content_raw = str(getattr(resp, "content", "") or "")
             try:
-                extracted = _json_dg.loads(str(getattr(resp, "content", "") or "{}"))
+                extracted = _json_dg.loads(content_raw)
                 for k, v in extracted.items():
                     if v and isinstance(v, str) and k in context:
-                        context[k] = v
-            except Exception:
-                pass
-        except Exception:
-            pass
+                        context[k] = str(v).strip()
+            except Exception as e:
+                _log_extract.warning(f"dialog extract JSON parse failed: {e}, raw={content_raw[:120]}")
+        except Exception as e:
+            import logging as _log_extract2
+            _log_extract2.warning(f"dialog extract LLM call failed: {e}")
+            # ── Fallback: use answer as pain_points if extraction fails ──
+            if req.answer.strip() and not context.get("pain_points"):
+                context["pain_points"] = req.answer.strip()[:200]
 
     score, gaps = _compute_readiness(context)
     can_finalize = score >= _READINESS_THRESHOLD
@@ -1872,10 +1878,14 @@ async def fde_assess_dialog(req: FdeDialogRequest):
                     else:
                         question = result.get("question", "请描述客户的核心业务痛点")
                         options = result.get("options", [])
-                except Exception:
+                except Exception as e:
+                    import logging as _log_gen_json
+                    _log_gen_json.warning(f"dialog gen JSON parse failed: {e}")
                     question = "请描述客户的核心业务痛点"
                     options = []
-            except Exception:
+            except Exception as e:
+                import logging as _log_gen_llm
+                _log_gen_llm.warning(f"dialog gen LLM call failed: {e}")
                 question = "请描述客户的核心业务痛点"
                 options = []
 

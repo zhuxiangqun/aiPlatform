@@ -285,6 +285,9 @@ class SkillRegistry:
                         if effects:
                             cfg.effects = effects
                             cfg.metadata["effects"] = effects
+                            # Re-derive idempotent: __post_init__ ran before effects were injected
+                            if any(isinstance(e, dict) and not bool(e.get("idempotent", True)) for e in effects):
+                                cfg.idempotent = False
                         if submission_criteria:
                             cfg.submission_criteria = submission_criteria
                             cfg.metadata["submission_criteria"] = submission_criteria
