@@ -1775,20 +1775,11 @@ async def fde_assess_dialog(req: FdeDialogRequest):
     """
     from core.apps.skills.registry import _compute_readiness
     from core.harness.syscalls.llm import sys_llm_generate
-    from core.harness.utils.model_injection import best_model_for_purpose, create_selected_adapter
+    from core.harness.utils.model_injection import best_model_for_purpose
     import json as _json_dg
 
     model_name = best_model_for_purpose("skill_execution")
     llm_available = model_name is not None
-    # Resolve model adapter object for sys_llm_generate
-    model = None
-    if model_name:
-        try:
-            model = create_selected_adapter(model_name=model_name)
-        except Exception as e:
-            import logging as _log_model
-            _log_model.info(f"dialog LLM unavailable ({e}), using static fallback")
-    llm_available = model is not None and hasattr(model, "generate")
 
     turn = req.turn
     context = {
@@ -1812,8 +1803,8 @@ async def fde_assess_dialog(req: FdeDialogRequest):
                 f'仅返回JSON，无其他文字。'
             )
             import logging as _log_extract
-            resp = await sys_llm_generate(model, [{"role":"user","content":extract_prompt}],
-                                          max_tokens=150, temperature=0.1)
+            resp = await sys_llm_generate(None, [{"role":"user","content":extract_prompt}],
+                                          model_name=model_name, max_tokens=150, temperature=0.1)
             content_raw = str(getattr(resp, "content", "") or "")
             try:
                 extracted = _json_dg.loads(content_raw)
@@ -1876,8 +1867,8 @@ async def fde_assess_dialog(req: FdeDialogRequest):
                     f'要求: 问题有行业上下文。options最多4个，留一个"其他"。\n'
                     f'仅返回JSON，无其他文字。'
                 )
-                resp = await sys_llm_generate(model, [{"role":"user","content":gen_prompt}],
-                                              max_tokens=200, temperature=0.3)
+                resp = await sys_llm_generate(None, [{"role":"user","content":gen_prompt}],
+                                              model_name=model_name, max_tokens=200, temperature=0.3)
                 try:
                     result = _json_dg.loads(str(getattr(resp, "content", "") or "{}"))
                     if result.get("action") == "generate":

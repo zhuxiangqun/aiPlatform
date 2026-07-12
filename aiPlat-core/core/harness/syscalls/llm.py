@@ -157,7 +157,7 @@ def _wrap_llm_result(raw: Any, model_name: str = "") -> LLMResult:
         error_action=error_action,
     )
 
-def _guard_messages(messages: List[Message]) -> tuple[List[Message], Dict[str, Any]]:
+def _guard_messages(messages: List[Message], trace_context: Optional[Dict[str, Any]] = None) -> tuple[List[Message], Dict[str, Any]]:
     """
     Guard + repair a chat transcript to reduce provider rejection and "orphan tool result" issues.
 
@@ -296,7 +296,7 @@ def _guard_messages(messages: List[Message]) -> tuple[List[Message], Dict[str, A
         except Exception:
             pass
     # §5.24: Read CLAUDE.md from disk on every call — it is never compressed away.
-    _try_inject_claude_md(out)
+    _try_inject_claude_md(out, trace_context)
     stats["output_count"] = len(out)
     return out, stats
 
@@ -332,16 +332,21 @@ def _try_inject_governance_rules(messages) -> str:
 
 
 # ── Project config injection (consolidated — duplicate removed in P2 cleanup) ──
-def _try_inject_claude_md(messages: List[Message]) -> None:
+def _try_inject_claude_md(messages: List[Message], trace_context: Optional[Dict[str, Any]] = None) -> None:
     """Read CLAUDE.md from disk and inject as a system message header.
-
+    
     Idempotent: skips injection if CLAUDE.md content already appears in messages
     (prevents double injection when caller also injects via ReActLoop._reason).
-
+    
     Task-aware: extracts task keywords from messages and injects only relevant
     sections of aiPlat-core/CLAUDE.md (the 56K-char rules file). Root CLAUDE.md
     and SOUL.md are always injected in full.
+    
+    Opt-out: set trace_context["skip_claude_md"] = True to suppress injection
+    (used by prompt-type skills that operate on their own SOP, not project rules).
     """
+    if (trace_context or {}).get("skip_claude_md") in (True, "1", "true"):
+        return
     try:
         from pathlib import Path
         project_root = os.getenv("AIPLAT_PROJECT_ROOT") or os.getcwd()
@@ -580,10 +585,11 @@ async def sys_llm_generate(
         except Exception:
             pass
 
-    # Model routing: auto-detect model_name and resolve via model_injection (canonical path)
+    # Model routing: auto-detect model_name and resolve via model_injection (canonical path).
+    # Only re-create if caller hasn't already passed a valid adapter object (has .generate()).
     if not model_name:
         model_name = getattr(model, 'model_name', '') or getattr(model, '_model_name', '') or ''
-    if model_name:
+    if model_name and (model is None or not hasattr(model, "generate")):
         try:
             from core.harness.utils.model_injection import create_selected_adapter
             model = create_selected_adapter(model_name=model_name)
@@ -682,7 +688,7 @@ async def sys_llm_generate(
 
     message_guard_stats: Optional[Dict[str, Any]] = None
     try:
-        prepared, message_guard_stats = _guard_messages(prepared)
+        prepared, message_guard_stats = _guard_messages(prepared, trace_context)
         # §5.18: safety audit for injection alerts
         if message_guard_stats and message_guard_stats.get("injection_alerts", 0) > 0:
             try:
@@ -1087,7 +1093,7 @@ async def sys_llm_generate(
         # ── TrendDetector: record successful call ──
         try:
             from core.harness.infrastructure.gates.error_translator import _record_classification
-            _record_classification("__total__")
+            await _record_classification("__total__")
         except Exception:
             pass
         return _wrap_llm_result(result, model_name or "")
@@ -1098,8 +1104,8 @@ async def sys_llm_generate(
             _exc_type, _exc_value, _tb = sys.exc_info()
             from core.harness.infrastructure.gates.error_translator import _record_classification, ClassifiedError
             if _exc_value is not None and isinstance(_exc_value, ClassifiedError):
-                _record_classification(_exc_value.reason.value)
-            _record_classification("__total__")
+                await _record_classification(_exc_value.reason.value)
+            await _record_classification("__total__")
         except Exception:
             pass
         end_ts = time.time()
