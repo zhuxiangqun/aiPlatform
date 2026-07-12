@@ -1706,6 +1706,13 @@ async def fde_ask(req: FdeAskRequest):
 
 _READINESS_THRESHOLD = 60  # 就绪度 ≥ 60 建议生成报告
 
+# ── Gap name (Chinese) → context key (English) mapping ──
+_GAP_TO_KEY = {
+    "公司名称": "company_name",
+    "行业": "industry",
+    "痛点": "pain_points",
+}
+
 class FdeDialogRequest(_PydanticBaseModel):
     turn: int = 1
     answer: str = ""
@@ -1754,10 +1761,10 @@ async def fde_assess_dialog(req: FdeDialogRequest):
     # ── Merge answer from previous turn into context ──
     if turn > 1 and req.answer.strip():
         score, gaps = _compute_readiness(context)
-        # Find the most likely gap being answered and fill it
         for gap_name in gaps:
-            if gap_name not in context or not context[gap_name]:
-                context[gap_name] = req.answer.strip()
+            key = _GAP_TO_KEY.get(gap_name, gap_name)
+            if not context.get(key):
+                context[key] = req.answer.strip()
                 break
 
     score, gaps = _compute_readiness(context)
