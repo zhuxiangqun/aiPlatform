@@ -93,6 +93,16 @@ class SkillBindingStats:
         """Skill has been auto-downgraded due to low success rate."""
         return self.decayed_at is not None
 
+    def adjust_weight(self, delta: float, *, damping: float = 0.3,
+                      clamp_min: float = 0.05, clamp_max: float = 0.95) -> float:
+        actual = delta * damping
+        current = self.recent_pass_rate
+        target = current + actual
+        clamped = max(clamp_min, min(clamp_max, target))
+        effective = clamped - current
+        self.recent_results.append(effective > 0)
+        return round(effective, 4)
+
 
 class SkillRegistry:
     """
@@ -1050,6 +1060,20 @@ class SkillRegistry:
         """Get binding statistics for a skill"""
         return self._binding_stats.get(name)
 
+    def apply_convergence(self, skill_name: str, delta: float,
+                          *, damping: float = 0.3) -> Dict[str, Any]:
+        stats = self._binding_stats.get(skill_name)
+        if not stats:
+            return {"skill": skill_name, "error": "not_found"}
+        old_rate = stats.recent_pass_rate
+        effective = stats.adjust_weight(delta, damping=damping)
+        return {
+            "skill": skill_name,
+            "old_pass_rate": round(old_rate, 4),
+            "new_pass_rate": round(stats.recent_pass_rate, 4),
+            "effective_delta": effective,
+        }
+
     def get_bound_agents(self, name: str) -> List[str]:
         """Get agents bound to a skill"""
         stats = self._binding_stats.get(name)
@@ -1201,6 +1225,27 @@ class SkillRegistry:
             scores.append((name, dot))
         scores.sort(key=lambda x: -x[1])
         return [s[0] for s in scores[:limit]]
+
+
+_TERM_DEFINITIONS = {
+    "文本相似": "基于NLP技术比较文本内容相似程度的方法，常用于文档对比、抄袭检测、语义匹配",
+    "相似度": "两个对象在特定维度上的相似程度度量指标",
+    "关联图谱": "通过实体间关系构建的可视化知识网络，用于发现隐藏的业务关联",
+    "知识图谱": "以图结构组织实体、属性和关系的知识表示方法，支持语义推理",
+    "异常检测": "通过统计模型或机器学习识别数据中偏离正常模式的异常行为",
+    "风险预警": "基于预设阈值和历史数据，在风险事件发生前自动发出警报",
+    "流程自动化": "使用软件机器人自动执行重复性业务操作，减少人工干预",
+    "合规审查": "根据法律法规和行业标准对业务流程进行合规性检查",
+    "预测分析": "基于历史数据和统计模型预测未来趋势和结果的分析方法",
+    "数据标准化": "将不同来源的数据转换为统一格式和规范的过程",
+}
+
+
+def _generate_term_definition(concept: str) -> str:
+    for keyword, definition in _TERM_DEFINITIONS.items():
+        if keyword in concept.lower():
+            return definition
+    return ""
 
 
 def _tokenize(text: str) -> List[str]:
@@ -1583,6 +1628,20 @@ class _GenericSkill(BaseSkill):
             run_id = ((getattr(context, "variables", {}) or {}).get("_run_id")
                       or getattr(context, "session_id", ""))
             parent_span_id = (getattr(context, "metadata", {}) or {}).get("_span_id")
+
+            # ContextBus: inject 10-layer domain knowledge for field-assessment
+            if self._config.name == "field-assessment":
+                try:
+                    from core.harness.knowledge.context_bus import assemble_field_assessment
+                    system_parts, diag = assemble_field_assessment(params, system_parts)
+                    failed = [k for k, v in diag.items() if v != "ok" and not k.startswith("_")]
+                    if failed:
+                        __import__("logging").getLogger(__name__).warning(
+                            "ContextBus layers degraded: %s", ", ".join(f"{k}={v}" for k, v in diag.items() if v != "ok")
+                        )
+                except Exception:
+                    pass
+
             response = await sys_llm_generate(
                 self._model,
                 [
@@ -1591,6 +1650,110 @@ class _GenericSkill(BaseSkill):
                 ],
                 trace_context={"run_id": run_id, "parent_span_id": parent_span_id},
             )
+            # ── Post-generation: field-assessment metadata extraction ──
+            if self._config.name == "field-assessment":
+                meta = {"model": getattr(response, "model", None), "skill": self._config.name}
+                report_text = str(getattr(response, "content", "") or "")
+                if report_text:
+                    try:
+                        import re as _re_pg, json as _json_pg, os as _os_pg
+                        from core.harness.knowledge.domain_router import DomainRouter
+                        from core.harness.ontology_engine.graph_index import GraphIndex
+
+                        did = DomainRouter().classify(
+                            (params.get("industry") or params.get("company_name") or "").strip()
+                        ) if (params.get("industry") or params.get("company_name")) else ""
+
+                        # C0: evidence_map extraction
+                        rows = _re_pg.findall(
+                            r'^\|\s*([^|]+?)\s*\|\s*([^|]+?)\s*\|\s*([^|]+?)\s*\|\s*([^|]+?)\s*\|\s*([^|]+?)\s*\|\s*(?:本体实例|历史案例|LLM推测)\s*\|',
+                            report_text, _re_pg.MULTILINE
+                        )
+                        evidence_map = []
+                        for i, r in enumerate(rows):
+                            if len(r) >= 5:
+                                evidence_map.append({
+                                    "index": i, "pain_point": r[0].strip(),
+                                    "ai_opportunity": r[1].strip(), "confidence": r[2].strip(),
+                                    "dependency": r[3].strip(), "source": r[4].strip(),
+                                })
+                        if evidence_map:
+                            meta["evidence_map"] = evidence_map
+
+                        # G: knowledge_gaps + S: term auto-seeding
+                        opps = _re_pg.findall(r'\|\s*[^|]+\|\s*([^|]+)\|\s*[^|]+\|\s*[^|]+\|\s*[^|]+', report_text)
+                        gaps = []
+                        if did:
+                            known_labels = set()
+                            onto_path = _os_pg.path.expanduser(f"~/.aiplat/ontologies/{did}.yaml")
+                            if _os_pg.path.exists(onto_path):
+                                from core.harness.knowledge.ontology_loader import load_ontology_from_yaml
+                                dom = load_ontology_from_yaml(onto_path)
+                                for cls in dom.classes:
+                                    known_labels.add(cls.label.lower())
+                            for opp in opps:
+                                name = opp.strip()[:100]
+                                if not name or len(name) < 6:
+                                    continue
+                                matched = any(kl in name.lower() for kl in known_labels if len(kl) > 2)
+                                if not matched:
+                                    gaps.append({"concept": name, "domain": did})
+                            if gaps:
+                                meta["knowledge_gaps"] = gaps
+                                # S: term auto-seeding
+                                try:
+                                    tg = GraphIndex.load("enterprise-terms")
+                                    for gap in gaps[:5]:
+                                        name = gap["concept"][:100]
+                                        tid = f"term_{did}_{gap['concept'].replace(' ', '_')[:60]}"
+                                        tg.add_entity(tid, name, "Term", source_doc_id=params.get("_run_id", ""))
+                                        definition = _generate_term_definition(name)
+                                        if definition:
+                                            def_id = f"def_{tid}"
+                                            tg.add_entity(def_id, definition[:500], "Term", source_doc_id=tid)
+                                            tg.add_relation(tid, def_id, "derived_from", relation_label="定义", confidence=0.7)
+                                except Exception:
+                                    pass
+
+                        # O: Evidence entity binding + SessionMeta persistence
+                        company = (params.get("company_name") or "").strip()
+                        if company and evidence_map:
+                            try:
+                                fd_g = GraphIndex.load("fde-delivery")
+                                best_sid, best_ts = "", 0
+                                for nid, node in list(fd_g._nodes.items()):
+                                    if getattr(node, "class_name", "") == "DiagnosisSession" and company in node.entity_name:
+                                        try:
+                                            ts = int(nid.rsplit("_", 1)[-1])
+                                            if ts > best_ts:
+                                                best_ts = ts
+                                                best_sid = nid
+                                        except ValueError:
+                                            pass
+                                if best_sid:
+                                    md_blob = {
+                                        "evidence_map": evidence_map,
+                                        "knowledge_gaps": meta.get("knowledge_gaps", []),
+                                        "readiness_score": 0, "industry": params.get("industry", ""),
+                                        "pain_points": (params.get("pain_points") or "")[:200],
+                                    }
+                                    mid = f"meta_{best_sid}"
+                                    fd_g.add_entity(mid, _json_pg.dumps(md_blob, ensure_ascii=False)[:8000],
+                                                    "SessionMeta", source_doc_id=best_sid)
+                                    fd_g.add_relation(best_sid, mid, "has_meta", relation_label="诊断元数据", confidence=1.0)
+                                    # O: Evidence entities
+                                    for ei, ev in enumerate(evidence_map):
+                                        ev_id = f"evidence_{best_sid}_{ei}"
+                                        ev_name = f"{ev.get('ai_opportunity', '')[:60]} | {ev.get('source', '')[:40]}"
+                                        fd_g.add_entity(ev_id, ev_name, "Evidence", source_doc_id=best_sid)
+                                        fd_g.add_relation(best_sid, ev_id, "has_evidence", relation_label="证据", confidence=0.85)
+                            except Exception:
+                                pass
+                    except Exception:
+                        pass
+
+                return SkillResult(success=True, output={"text": report_text}, metadata=meta)
+
             if isinstance(out_schema, dict) and out_schema:
                 parsed = parse_json(str(getattr(response, "content", "") or ""))
                 if isinstance(parsed, dict):

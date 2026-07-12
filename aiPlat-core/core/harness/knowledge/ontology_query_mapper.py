@@ -389,3 +389,72 @@ def rewrite_with_llm_pseudo_answer(query: str) -> str:
         f"请用一段专业、正式的语言(50-100字)，描述以下问题的核心概念和可能的答案方向。"
         f"这个描述将用于检索文档，所以请使用文档中可能出现的术语。\n\n问题: {query}"
     )
+
+
+def discover_cross_domain_analogs(
+    concept: str,
+    *,
+    domains: List[str] = None,
+    threshold: float = 0.7,
+) -> Dict[str, List[Dict[str, Any]]]:
+    u"""Discover semantically similar classes across all domain ontologies.
+
+    For a given concept (e.g. "围标串标"), scans all loaded domains and returns
+    classes whose labels/descriptions are semantically similar, along with their
+    key properties for cross-domain diagnosis enrichment.
+
+    Args:
+        concept: The concept name to search for across domains
+        domains: Optional domain filter (defaults to all registered domains)
+        threshold: Cosine similarity threshold (default 0.7)
+
+    Returns:
+        {domain_id: [{class_label, uri, score, key_properties, description}]}
+
+    callers: FDE diagnosis enrichment, cross-domain ontology context injection
+    """
+    import os
+
+    import numpy as np
+
+    from core.harness.knowledge.domain_router import DomainRouter
+    from core.harness.knowledge.ontology_loader import load_ontology_from_yaml
+    from core.harness.knowledge.embedder import embed_text_semantic
+
+    router = DomainRouter()
+    target_domains = domains or router.list_domains()
+
+    concept_vec = embed_text_semantic(concept)
+    if concept_vec is None:
+        return {}
+    concept_arr = np.array(concept_vec, dtype=np.float32)
+    concept_arr = concept_arr / (np.linalg.norm(concept_arr) + 1e-8)
+
+    results: Dict[str, List[Dict[str, Any]]] = {}
+    for did in target_domains:
+        path = os.path.expanduser(f"~/.aiplat/ontologies/{did}.yaml")
+        if not os.path.exists(path):
+            continue
+        domain = load_ontology_from_yaml(path)
+        matches: List[Dict[str, Any]] = []
+        for cls in domain.classes:
+            text = f"{cls.label} {getattr(cls, 'description', '')}"
+            cls_vec = embed_text_semantic(text)
+            if cls_vec is None:
+                continue
+            cls_arr = np.array(cls_vec, dtype=np.float32)
+            cls_arr = cls_arr / (np.linalg.norm(cls_arr) + 1e-8)
+            score = float(np.dot(concept_arr, cls_arr))
+            if score >= threshold:
+                fields = getattr(cls, 'required_fields', []) or []
+                matches.append({
+                    "class_label": cls.label,
+                    "uri": cls.uri,
+                    "score": round(score, 3),
+                    "key_properties": list(fields)[:3],
+                    "description": (getattr(cls, 'description', '') or "")[:200],
+                })
+        if matches:
+            results[did] = sorted(matches, key=lambda x: x["score"], reverse=True)
+
+    return results

@@ -32,6 +32,31 @@ class KBIngestTool(BaseTool):
         if not file_path:
             return ToolResult(success=False, error="file_path_required")
 
+        # Auto-detect domain for ingested document (HMESI Step 2: knowledge auto-classification)
+        if collection_id == "default":
+            try:
+                import os as _os_ingest
+                from core.harness.knowledge.domain_router import DomainRouter
+
+                content_sample = ""
+                if _os_ingest.isfile(file_path):
+                    try:
+                        with open(file_path, "r", encoding="utf-8", errors="ignore") as _f:
+                            content_sample = _f.read(2000)
+                    except Exception:
+                        pass
+
+                if content_sample.strip():
+                    detected = DomainRouter().classify(content_sample)
+                    if detected and detected != collection_id:
+                        collection_id = detected
+                        params["collection_id"] = detected
+                        __import__("logging").getLogger(__name__).info(
+                            "Auto-detected domain '%s' for %s", detected, file_path[:80]
+                        )
+            except Exception:
+                pass
+
         try:
             from core.apps.document_intelligence.kb_provider import get_kb_enqueue_ingest_fn
             enqueue = get_kb_enqueue_ingest_fn()

@@ -137,11 +137,24 @@ class GraphIndex:
 
     def add_entity(self, entity_id: str, entity_name: str, class_name: str, *, source_doc_id: str = "") -> GraphNode:
         """Register a node (idempotent — returns existing if present).
+
+        Q: Validates class_name against domain YAML — unknown classes log a warning.
         
         Args:
             source_doc_id: KB document ID for traceability (Phase E1)
         """
         if entity_id not in self._nodes:
+            # Q: Schema validation — check class exists in domain YAML
+            known = self._load_class_labels()
+            if known and class_name and class_name not in known:
+                logging.warning(
+                    "GraphIndex[%s]: entity '%s' uses unknown class '%s'. "
+                    "Known classes: %s. Add this class to %s.yaml or correct the class_name.",
+                    self.domain_id, entity_name[:60], class_name,
+                    ", ".join(sorted(list(known))[:10]),
+                    self.domain_id,
+                )
+
             self._nodes[entity_id] = GraphNode(
                 entity_id=entity_id,
                 entity_name=entity_name,
@@ -172,9 +185,32 @@ class GraphIndex:
     ) -> None:
         """Add a directed edge. Creates out_edge on source and in_edge on target.
         Writes to SQLite incrementally.
+
+        Validates domain/range constraints from the domain YAML's object_properties.
+        Relations violating constraints get confidence reduced to 0.3.
         """
         if source_id not in self._nodes or target_id not in self._nodes:
             return
+
+        src_class = self._nodes[source_id].class_name
+        tgt_class = self._nodes[target_id].class_name
+
+        # N: Relation domain/range constraint validation
+        if src_class and tgt_class:
+            constraints = self._load_property_constraints()
+            if relation_name in constraints:
+                allowed_src = constraints[relation_name]["domain"]
+                allowed_tgt = constraints[relation_name]["range"]
+                src_ok = not allowed_src or src_class in allowed_src
+                tgt_ok = not allowed_tgt or tgt_class in allowed_tgt
+                if not (src_ok and tgt_ok):
+                    logging.warning(
+                        "Relation constraint violation: %s(%s→%s) not in domain[%s]×range[%s]. "
+                        "Confidence reduced to 0.3.",
+                        relation_name, src_class, tgt_class,
+                        ",".join(allowed_src or []), ",".join(allowed_tgt or []),
+                    )
+                    confidence = min(confidence, 0.3)
 
         self._add_edge_internal(
             source_id, target_id, relation_name,
@@ -628,6 +664,64 @@ class GraphIndex:
             "edge_count": edge_count,
             "avg_degree": round(edge_count / node_count, 2) if node_count else 0,
         }
+
+    # ── N: Relation domain/range constraint loader ──────────────────
+
+    def _load_property_constraints(self) -> Dict[str, Dict[str, List[str]]]:
+        """Load domain/range constraints from the domain YAML's object_properties.
+
+        Returns: {relation_name: {"domain": [...], "range": [...]}}
+        Cached per instance for performance.
+        """
+        if hasattr(self, '_prop_constraints_cache'):
+            return getattr(self, '_prop_constraints_cache')
+
+        constraints = {}
+        try:
+            import os
+            path = os.path.expanduser(f"~/.aiplat/ontologies/{self.domain_id}.yaml")
+            if os.path.exists(path):
+                from core.harness.knowledge.ontology_loader import load_ontology_from_yaml
+                dom = load_ontology_from_yaml(path)
+                for prop in dom.object_properties:
+                    uri = getattr(prop, 'uri', '') or ''
+                    name = uri.rsplit('/', 1)[-1] if '/' in uri else uri
+                    domain = list(getattr(prop, 'domain', []) or [])
+                    # Resolve domain/range URIs to short class names
+                    domain_short = [d.rsplit('/', 1)[-1] for d in domain if '/' in d]
+                    range_uri = list(getattr(prop, 'range', []) or [])
+                    range_short = [r.rsplit('/', 1)[-1] for r in range_uri if '/' in r]
+                    if name and (domain_short or range_short):
+                        constraints[name] = {"domain": domain_short, "range": range_short}
+        except Exception:
+            pass
+
+        setattr(self, '_prop_constraints_cache', constraints)
+        return constraints
+
+    def _load_class_labels(self) -> set:
+        """Load known class labels from the domain YAML for schema validation. (Q)
+
+        Returns: set of class label strings or empty set if YAML unavailable.
+        Cached per instance.
+        """
+        if hasattr(self, '_class_labels_cache'):
+            return getattr(self, '_class_labels_cache')
+
+        labels = set()
+        try:
+            import os
+            path = os.path.expanduser(f"~/.aiplat/ontologies/{self.domain_id}.yaml")
+            if os.path.exists(path):
+                from core.harness.knowledge.ontology_loader import load_ontology_from_yaml
+                dom = load_ontology_from_yaml(path)
+                for cls in dom.classes:
+                    labels.add(cls.label)
+        except Exception:
+            pass
+
+        setattr(self, '_class_labels_cache', labels)
+        return labels
 
     def _invalidate_cache(self):
         """Invalidate traversal cache on graph mutation."""

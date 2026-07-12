@@ -242,3 +242,48 @@ def get_all_weights() -> Dict[str, float]:
     """Get all learned routing weights (copy)."""
     return dict(_skill_weights)
 
+
+# ═══════════════════════════════════════════════════════════════
+# SECI I→S: Canary feedback → KnowledgeAtom (Phase 3)
+# ═══════════════════════════════════════════════════════════════
+
+def report_canary_to_seci(
+    skill_name: str,
+    success: bool,
+    *,
+    metrics: Dict[str, Any] = None,
+    user_feedback: str = "",
+) -> Dict[str, Any]:
+    """Feed Canary execution results into the SECI knowledge cycle.
+
+    Called after a Canary/A-B test completes. Writes a KnowledgeAtom
+    so future executions benefit from the outcome.
+
+    Args:
+        skill_name: the skill being tested
+        success: whether the Canary test passed
+        metrics: optional performance metrics
+        user_feedback: optional user-provided feedback text
+
+    Returns:
+        {atom_id, success, error (if any)}
+    """
+    try:
+        from core.harness.knowledge.seci_engine import get_seci_engine
+        engine = get_seci_engine()
+        result = engine.internal_to_socialize(
+            skill_name,
+            canary_result={
+                "success": success,
+                "metrics": metrics or {},
+                "user_feedback": user_feedback,
+            },
+        )
+        return {"atom_id": result.get("atom_id", ""), "success": True}
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).debug(
+            "SECI I→S: Canary report failed for skill '%s': %s", skill_name, str(e)
+        )
+        return {"atom_id": "", "success": False, "error": str(e)[:200]}
+

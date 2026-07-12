@@ -69,6 +69,69 @@ class EntityResolver:
             return self._resolve_lazy(instances, doc_type)
         return self._resolve_strict(instances, doc_type, heading_context)
 
+    # ── P: Entity normalization — same-domain strong + cross-domain weak ──
+
+    _NORM_SUFFIXES = [
+        "有限公司", "有限责任公司", "集团", "股份", "公司", "中心", "部门",
+        "系统", "平台", "模块", "工具", "引擎", "服务", "组件",
+        "流程", "制度", "规范", "标准", "指南", "手册",
+    ]
+
+    def normalize_term(self, raw_name: str, *, class_name: str = "",
+                       domain_id: str = "") -> str:
+        """Normalize an entity term to its canonical form.
+
+        Same-domain (strong): strip suffixes, normalize spacing, lowercase.
+        Cross-domain (weak): preserve domain prefix for disambiguation.
+
+        Args:
+            raw_name: raw entity name from extraction
+            class_name: entity class for context-aware normalization
+            domain_id: domain for cross-domain disambiguation
+
+        Returns:
+            Canonical normalized form
+        """
+        import re as _re_norm
+
+        name = raw_name.strip()
+        # Fullwidth → halfwidth
+        name = name.translate(self._FW_MAP)
+        # Collapse whitespace
+        name = _re_norm.sub(r'\s+', ' ', name)
+        # Strip common suffixes (same-domain strong normalization)
+        for suffix in sorted(self._NORM_SUFFIXES, key=len, reverse=True):
+            if name.endswith(suffix) and len(name) > len(suffix) + 1:
+                name = name[:-len(suffix)].strip()
+                break
+        # Normalize brackets and separators
+        name = name.replace("（", "(").replace("）", ")")
+        name = name.replace("【", "[").replace("】", "]")
+        name = _re_norm.sub(r'[()（）\[\]【】]', '', name).strip()
+
+        if not name:
+            return raw_name.strip()
+
+        # Cross-domain: prefix with domain_id for disambiguation
+        if domain_id and not name.startswith(f"{domain_id}:"):
+            return f"{domain_id}:{name.lower()}"
+        return name.lower()
+
+    def build_alias_index(self, instances: List[Dict[str, Any]],
+                          *, domain_id: str = "") -> Dict[str, str]:
+        """Build alias → canonical_id index from extracted instances.
+
+        Maps normalized entity names to their canonical ID for fast dedup.
+        """
+        index: Dict[str, str] = {}
+        for inst in instances:
+            raw = str(inst.get("entity_text", "") or inst.get("entity_name", ""))
+            if not raw:
+                continue
+            canonical = self.normalize_term(raw, domain_id=domain_id)
+            index[canonical] = inst.get("entity_id", canonical)
+        return index
+
     def _resolve_strict(
         self,
         instances: List[Dict[str, Any]],
