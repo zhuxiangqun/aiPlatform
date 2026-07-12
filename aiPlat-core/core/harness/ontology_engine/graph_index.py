@@ -723,6 +723,45 @@ class GraphIndex:
         setattr(self, '_class_labels_cache', labels)
         return labels
 
+    # ── P2: Permission boundary modeling ──────────────────────────
+
+    def _load_permission_rules(self) -> Dict[str, List[Dict[str, Any]]]:
+        """Load permission rules for this domain (delegates to ontology_bus).
+
+        Returns {class_name: [{role, actions, scope}]}. Cached per instance.
+        """
+        if hasattr(self, '_perm_rules_cache'):
+            return getattr(self, '_perm_rules_cache')
+
+        try:
+            from core.harness.knowledge.ontology_bus import load_domain_permissions
+            rules = load_domain_permissions(f"{self.domain_id}.yaml")
+        except Exception:
+            rules = {}
+
+        setattr(self, '_perm_rules_cache', rules)
+        return rules
+
+    def check_permission(self, entity_id: str, action: str,
+                         role: str = "operator") -> bool:
+        """Check if a role can perform an action on an entity.
+
+        Args:
+            entity_id: the target entity
+            action: view | edit | execute
+            role: admin | operator | viewer
+
+        # TODO: enforce scope (all/team/own) — currently checks role+action only.
+        """
+        node = self._nodes.get(entity_id)
+        if not node:
+            return False
+        rules = self._load_permission_rules().get(node.class_name, [])
+        for r in rules:
+            if r.get("role") == role and action in r.get("actions", []):
+                return True
+        return False
+
     def _invalidate_cache(self):
         """Invalidate traversal cache on graph mutation."""
         try:

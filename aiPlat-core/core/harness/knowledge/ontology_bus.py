@@ -175,7 +175,9 @@ def render_digital_employee_table(roles: List[Dict[str, Any]] = None) -> str:
         kw = r.get("keywords", "")
         name = r.get("role_name", "")
         ability = r.get("role_ability", "")
-        lines.append(f"| {kw} | {name} | {ability} |")
+        skill_count = len(r.get("skills", []))
+        label = f"{name} ({skill_count} skills)" if skill_count > 0 else name
+        lines.append(f"| {kw} | {label} | {ability} |")
 
     lines.extend([
         "",
@@ -184,3 +186,45 @@ def render_digital_employee_table(roles: List[Dict[str, Any]] = None) -> str:
     ])
 
     return "\n".join(lines)
+
+
+def load_role_skills(role_name: str) -> List[str]:
+    """Return skill names bound to a digital employee role."""
+    roles = load_digital_employees()
+    for r in roles:
+        if r.get("role_name") == role_name:
+            return r.get("skills", [])
+    return []
+
+
+def get_role_by_keyword(keyword: str) -> Optional[Dict[str, Any]]:
+    """Find the first role matching a keyword (substring match)."""
+    roles = load_digital_employees()
+    for r in roles:
+        if keyword in r.get("keywords", ""):
+            return r
+    return None
+
+
+def load_domain_permissions(domain_file: str) -> Dict[str, List[Dict[str, Any]]]:
+    """Load permission rules from a domain YAML file.
+
+    Returns {class_name: [{role, actions, scope}]}.
+    This is the single source of truth — graph_index delegates here.
+    """
+    import os as _os_perm
+    path = _os_perm.path.join(_ONTOLOGY_DIR, domain_file)
+    if not _os_perm.path.exists(path):
+        return {}
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            raw = yaml.safe_load(f)
+        classes = raw.get("classes", {})
+        perms = {}
+        for cls_name, cls_def in classes.items():
+            if isinstance(cls_def, dict) and "permissions" in cls_def:
+                perms[cls_def.get("label", cls_name)] = cls_def["permissions"]
+        return perms
+    except Exception as e:
+        logger.debug("load_domain_permissions failed for %s: %s", domain_file, str(e))
+        return {}

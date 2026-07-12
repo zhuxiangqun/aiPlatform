@@ -1074,6 +1074,14 @@ class SkillRegistry:
             "effective_delta": effective,
         }
 
+    def filter_by_role(self, role_name: str) -> List[str]:
+        """Return enabled skill names matching a digital employee role."""
+        try:
+            from core.harness.knowledge.ontology_bus import load_role_skills
+            return [s for s in load_role_skills(role_name) if s in self._skills]
+        except Exception:
+            return []
+
     def get_bound_agents(self, name: str) -> List[str]:
         """Get agents bound to a skill"""
         stats = self._binding_stats.get(name)
