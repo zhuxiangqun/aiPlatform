@@ -32,6 +32,8 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
+from core.harness.utils.prompt_loader import _sync_resolve
+
 from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import PlainTextResponse
 
@@ -1659,14 +1661,12 @@ async def fde_ask(req: FdeAskRequest):
         from core.harness.utils.model_injection import best_model_for_purpose
 
         model = best_model_for_purpose("skill_execution")
+        evidence_block = f"{evidence_context}\n\n" if evidence_context else ""
+        system_content = _sync_resolve("fde-ask-system", context=context, evidence_block=evidence_block)
         messages = [
             {
                 "role": "system",
-                "content": (
-                    f"你是AI落地诊断专家。以下是客户画像相关的领域上下文。\n\n{context}\n\n"
-                    + (f"{evidence_context}\n\n" if evidence_context else "")
-                    + "请基于以上上下文回答用户问题。回答时优先引用证据溯源中的信息。要求：简洁（300字内），引用具体来源。"
-                ),
+                "content": system_content,
             },
             {
                 "role": "user",
@@ -1874,15 +1874,8 @@ async def fde_assess_dialog(req: FdeDialogRequest):
         # Enhance with LLM extraction if available
         if llm_available:
             try:
-                extract_prompt = (
-                    f'从以下回答中提取客户信息字段，以JSON返回。\n'
-                    f'回答: "{req.answer}"\n'
-                    f'当前已知: {_json_dg.dumps(context, ensure_ascii=False)}\n'
-                    f'提取规则: company_name(公司名), industry(行业), pain_points(痛点), team_size(人数), budget(预算)\n'
-                    f'例如用户说"我们南京明图，做政务系统集成的，大概50人"'
-                    f' → {{"company_name":"南京明图","industry":"政务","team_size":"50"}}\n'
-                    f'仅返回JSON，无其他文字。'
-                )
+                extract_prompt = _sync_resolve("fde-field-extract",
+                    answer=req.answer, context_json=_json_dg.dumps(context, ensure_ascii=False))
                 resp = await sys_llm_generate(None, [{"role":"user","content":extract_prompt}],
                                               model_name=model_name, max_tokens=150, temperature=0.1)
                 content_raw = str(getattr(resp, "content", "") or "")
@@ -1933,18 +1926,9 @@ async def fde_assess_dialog(req: FdeDialogRequest):
             try:
                 extra = f"\n诊断报告中的待确认问题: {pending_qs}" if pending_qs else ""
                 has_pending = "true" if pending_qs else "false"
-                gen_prompt = (
-                    f'你是FDE诊断澄清助手。\n'
-                    f'客户已知: {_json_dg.dumps(context, ensure_ascii=False)}\n'
-                    f'缺失维度: {gaps}\n'
-                    f'有待确认问题: {has_pending}{extra}\n\n'
-                    f'操作规则(按优先级):\n'
-                    f'1. 如果有"待确认问题": 逐一追问，完成后再判断信息充分性 → {{"action":"ask","question":"...","options":[...]}}\n'
-                    f'2. 如果缺失基础信息(公司名/行业/痛点): 优先追问 → {{"action":"ask","question":"...","options":[...]}}\n'
-                    f'3. 基础信息全+无待确认问题 → {{"action":"generate"}}\n\n'
-                    f'要求: 问题有行业上下文。options最多4个，留一个"其他"。\n'
-                    f'仅返回JSON，无其他文字。'
-                )
+                gen_prompt = _sync_resolve("fde-dialog-generation",
+                    context_json=_json_dg.dumps(context, ensure_ascii=False),
+                    gaps=str(gaps), has_pending=has_pending, pending_extra=extra)
                 resp = await sys_llm_generate(None, [{"role":"user","content":gen_prompt}],
                                               model_name=model_name, max_tokens=200, temperature=0.3)
                 try:

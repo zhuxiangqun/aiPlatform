@@ -916,7 +916,17 @@ _register("skill-executor-fork", """执行以下技能操作规范(SOP)：${sop}
     category="skills",
     variables=["sop"])
 
-_register("skill-executor-inline", """内联执行技能SOP：${sop}""",
+_register("skill-executor-inline", """你是 AI 助手。请严格按照下方的 SOP 指令执行任务。
+
+**绝对不能输出以下内容：**
+- 任何推理过程、思考过程
+- "步骤1/步骤2/步骤3/步骤4"
+- "分析关键约束和隐含条件"
+- "列出可能的解决方案"
+- "比较各方案的优劣"
+- "选择最优方案"
+
+直接输出报告正文。第一个字就应该是报告内容。不要用任何方式解释你做了什么或为什么这么做。\n\n${sop}""",
     category="skills",
     variables=["sop"])
 
@@ -1008,7 +1018,7 @@ _register("skill-executor-json-override", """【最高优先级 — 覆盖 SOP �
     category="skills",
     variables=["keys"])
 
-_register("agent-auto-fill-system-role", """你是一个 AI Agent 配置专家。只输出 JSON，不要加任何解释或 markdown 标记。""",
+_register("agent-auto-fill-system-role", """你是一个 AI Agent 配置专家。只输出 JSON，不要加任何解释或 markdown 标记。skills 字段只能使用提示词中列出的 id，禁止编造不存在的 id。如果无匹配项，skills 留空 []。""",
     category="agent",
     variables=[])
 
@@ -1260,3 +1270,38 @@ If uncertain, include a `# FIXME:` comment.
 """,
     category="ontology",
     variables=["description", "domain_id"])
+
+# ── FDE dialog prompts ──
+
+_register("fde-ask-system", """你是AI落地诊断专家。以下是客户画像相关的领域上下文。
+
+${context}
+
+${evidence_block}
+请基于以上上下文回答用户问题。回答时优先引用证据溯源中的信息。要求：简洁（300字内），引用具体来源。""",
+    category="fde",
+    variables=["context", "evidence_block"])
+
+_register("fde-field-extract", """从以下回答中提取客户信息字段，以JSON返回。
+回答: "${answer}"
+当前已知: ${context_json}
+提取规则: company_name(公司名), industry(行业), pain_points(痛点), team_size(人数), budget(预算)
+例如用户说"我们南京明图，做政务系统集成的，大概50人" → {"company_name":"南京明图","industry":"政务","team_size":"50"}
+仅返回JSON，无其他文字。""",
+    category="fde",
+    variables=["answer", "context_json"])
+
+_register("fde-dialog-generation", """你是FDE诊断澄清助手。
+客户已知: ${context_json}
+缺失维度: ${gaps}
+有待确认问题: ${has_pending}${pending_extra}
+
+操作规则(按优先级):
+1. 如果有"待确认问题": 逐一追问，完成后再判断信息充分性 → {"action":"ask","question":"...","options":[...]}
+2. 如果缺失基础信息(公司名/行业/痛点): 优先追问 → {"action":"ask","question":"...","options":[...]}
+3. 基础信息全+无待确认问题 → {"action":"generate"}
+
+要求: 问题有行业上下文。options最多4个，留一个"其他"。
+仅返回JSON，无其他文字。""",
+    category="fde",
+    variables=["context_json", "gaps", "has_pending", "pending_extra"])
