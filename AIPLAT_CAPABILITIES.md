@@ -2,7 +2,7 @@
 
 > 原则：代码即真相。每个条目必须有可验证的代码位置。
 > 更新：任何能力变更时同步更新本文档。
-> 评分：98/100（2026-07-12 — 532✅, 企业大脑原型竣工+自演进四阶段全量(观察→诊断→修复→演化)）
+> 评分：98/100（2026-07-12 — 533✅, 企业大脑升级为自演进操作系统(核心系统能力→FDE/Agent/Skill/Pipeline全域受益)）
 
 ---
 
@@ -190,6 +190,7 @@
 | 系统主动诊断 | `harness/knowledge/system_diagnostician.py` + `api/routers/fde.py:4578-4592` | ✅ | SystemDiagnostician(5条规则)→跨子系统关联分析(seci/evidence/skill/knowledge/convergence)→GET /fde/diagnose | 2026-07-12 |
 | 系统自修复 | `harness/knowledge/system_diagnostician.py:306-430` + `api/routers/fde.py:4596-4613` | ✅ | SystemHealer(confidence≥0.9安全门+5条自动修复+效果验证+审计快照)→POST /fde/heal | 2026-07-12 |
 | 系统自主演化 | `harness/knowledge/system_evolver.py` + `api/routers/fde.py:4622-4638` | ✅ | SystemEvolver(4条演化规则→术语自动发布/方案草稿审批)→GET /fde/evolve | 2026-07-12 |
+| 系统自演进路由 | `api/routers/system.py` + `harness/knowledge/seci_engine.py:523-528` | ✅ | GET /system/overview/diagnose/evolve+POST /system/heal/self-check →POST_LOOP每10次自动诊断 | 2026-07-12 |
 | 多子系统上下文 | `harness/knowledge/context_bus.py:345-405` | ✅ | assemble_agent/skill/pipeline_context()→Agent(3层)/Skill(2层)/Pipeline(3层)各自轻量注入→总线覆盖全系统 | 2026-07-12 |
 | Agent领域上下文 | `harness/knowledge/context_bus.py:408-452` | ✅ | SESSION_START hook→所有Agent启动时自动注入术语字典+数字员工→领域知识全局可用 | 2026-07-12 |
 | 质量总线 | `api/routers/fde.py:4176-4270` | ✅ | GET /fde/quality-summary — 跨子系统质量聚合(FDE/SECI/Convergence/ContextBus四维评分)→统一0-100评分 | 2026-07-12 |
@@ -851,7 +852,7 @@
 |------|:---:|:---:|:---:|------|
 | Harness 执行引擎 | 31 | 0 | 31 |
 | 记忆子系统 | 18 | 0 | 18 |
-| 知识引擎（本体） | 85 | 0 | 85 |
+| 知识引擎（本体） | 86 | 0 | 86 |
 | RAG 检索 | 27 | 0 | 27 |
 | 知识基础设施 | 28 | 0 | 28 |
 | Agent 系统 | 12 | 0 | 12 |
@@ -877,12 +878,12 @@
 | 编排系统 | 4 | 0 | 4 |
 | 管理 & 质量 | 21 | 0 | 21 |
 | 编排层 | 17 | 0 | 17 |
-| **总计** | **630** | **0** | **630** |
+| **总计** | **631** | **0** | **631** |
 
 ---
 
 *最后更新: 2026-07-11*
-*版本: 17.6 · 28章 · 630项能力 · 532✅ · 企业大脑原型竣工+自演进四阶段全量*
+*版本: 17.7 · 28章 · 631项能力 · 533✅ · 企业大脑升级为自演进操作系统*
 
 **自检命令**：
 ```bash

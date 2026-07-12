@@ -520,6 +520,13 @@ def register_seci_hook() -> bool:
                 except Exception:
                     pass
 
+            # 6. System auto-check: lightweight diagnose every 10 conversations
+            try:
+                from core.api.routers.system import run_auto_check
+                run_auto_check()
+            except Exception:
+                pass
+
             logger.info(
                 "SECI hook: POST_LOOP captured %d atoms from %d high-scored entries (session=%s)",
                 len(atom_ids), len(high_scored), session_id[:40]

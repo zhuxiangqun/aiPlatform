@@ -40,6 +40,25 @@ from core.apps.skills import get_skill_registry
 from core.apps.plugins.manager import PluginManager
 from core.services import get_execution_store
 from core.services.trace_service import TraceService, TraceServiceTracer
+
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.responses import JSONResponse
+
+# Server readiness flag: set to True after all startup initialization completes.
+# Any request arriving before this point gets 503 with Retry-After header.
+_server_ready = False
+
+
+class ServerReadinessMiddleware(BaseHTTPMiddleware):
+    """Reject all requests until the server has finished startup initialization."""
+    async def dispatch(self, request, call_next):
+        if not _server_ready:
+            return JSONResponse(
+                status_code=503,
+                content={"detail": "Server starting, please retry in a few seconds"},
+                headers={"Retry-After": "3"},
+            )
+        return await call_next(request)
 from core.harness.integration import get_harness, KernelRuntime
 from core.harness.utils.model_injection import best_model_for_purpose
 import uuid
@@ -1489,8 +1508,13 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logging.debug(str(e), exc_info=True)
 
+    global _server_ready
+    _server_ready = True
+    logging.getLogger(__name__).info("Server ready — accepting requests")
+
     yield
 
+    _server_ready = False
     # Shutdown background services
     EventBus.stop()
     try:
@@ -1571,6 +1595,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Reject requests before server is fully initialized
+app.add_middleware(ServerReadinessMiddleware)
 
 # ── OpenTelemetry + Prometheus (Phase 0.2) ────────────────────────────
 # Lazy-load to avoid import overhead when disabled.
@@ -2108,6 +2135,13 @@ except Exception as e:
 try:
     from core.api.routers.fde import router as fde_router
     api_router.include_router(fde_router)
+except Exception as e:
+    logging.warning(str(e), exc_info=True)
+
+# System self-evolution (core capability, not FDE-specific)
+try:
+    from core.api.routers.system import router as system_router
+    api_router.include_router(system_router)
 except Exception as e:
     logging.debug("FDE router: %s", e)
 
