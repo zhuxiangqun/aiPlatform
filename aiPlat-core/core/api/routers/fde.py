@@ -1779,6 +1779,8 @@ async def fde_assess_dialog(req: FdeDialogRequest):
     import json as _json_dg
 
     model = best_model_for_purpose("skill_execution")
+    llm_available = model is not None
+
     turn = req.turn
     context = {
         "company_name": req.company_name.strip(),
@@ -1789,7 +1791,7 @@ async def fde_assess_dialog(req: FdeDialogRequest):
     }
 
     # ── LLM extract: parse fields from user answer ──
-    if turn > 1 and req.answer.strip():
+    if turn > 1 and req.answer.strip() and llm_available:
         try:
             extract_prompt = (
                 f'从以下回答中提取客户信息字段，以JSON返回。\n'
@@ -1829,38 +1831,53 @@ async def fde_assess_dialog(req: FdeDialogRequest):
         question = "澄清已完成。请回复「生成报告」来生成诊断报告，或继续补充其他信息。"
         options = ["生成报告", "继续补充"]
     else:
-        try:
-            extra = f"\n诊断报告中的待确认问题: {pending_qs}" if pending_qs else ""
-            has_pending = "true" if pending_qs else "false"
-            gen_prompt = (
-                f'你是FDE诊断澄清助手。\n'
-                f'客户已知: {_json_dg.dumps(context, ensure_ascii=False)}\n'
-                f'缺失维度: {gaps}\n'
-                f'有待确认问题: {has_pending}{extra}\n\n'
-                f'操作规则(按优先级):\n'
-                f'1. 如果有"待确认问题": 逐一追问，完成后再判断信息充分性 → {{"action":"ask","question":"...","options":[...]}}\n'
-                f'2. 如果缺失基础信息(公司名/行业/痛点): 优先追问 → {{"action":"ask","question":"...","options":[...]}}\n'
-                f'3. 基础信息全+无待确认问题 → {{"action":"generate"}}\n\n'
-                f'要求: 问题有行业上下文。options最多4个，留一个"其他"。\n'
-                f'仅返回JSON，无其他文字。'
-            )
-            resp = await sys_llm_generate(model, [{"role":"user","content":gen_prompt}],
-                                          max_tokens=200, temperature=0.3)
+        if not llm_available:
+            # ── Static fallback (no LLM) ──
+            if pending_qs:
+                q = pending_qs[0]
+                question = f"请确认以下问题：{q}"
+                options = ["是", "否", "部分是", "其他"]
+            elif gaps:
+                g = gaps[0]
+                question = f"请提供「{g}」的相关信息。"
+                options = []
+            else:
+                finished = True
+                question = "澄清已完成。请回复「生成报告」来生成诊断报告，或继续补充其他信息。"
+                options = ["生成报告", "继续补充"]
+        else:
             try:
-                result = _json_dg.loads(str(getattr(resp, "content", "") or "{}"))
-                if result.get("action") == "generate":
-                    finished = True
-                    question = "澄清已完成。请回复「生成报告」来生成诊断报告，或继续补充其他信息。"
-                    options = ["生成报告", "继续补充"]
-                else:
-                    question = result.get("question", "请描述客户的核心业务痛点")
-                    options = result.get("options", [])
+                extra = f"\n诊断报告中的待确认问题: {pending_qs}" if pending_qs else ""
+                has_pending = "true" if pending_qs else "false"
+                gen_prompt = (
+                    f'你是FDE诊断澄清助手。\n'
+                    f'客户已知: {_json_dg.dumps(context, ensure_ascii=False)}\n'
+                    f'缺失维度: {gaps}\n'
+                    f'有待确认问题: {has_pending}{extra}\n\n'
+                    f'操作规则(按优先级):\n'
+                    f'1. 如果有"待确认问题": 逐一追问，完成后再判断信息充分性 → {{"action":"ask","question":"...","options":[...]}}\n'
+                    f'2. 如果缺失基础信息(公司名/行业/痛点): 优先追问 → {{"action":"ask","question":"...","options":[...]}}\n'
+                    f'3. 基础信息全+无待确认问题 → {{"action":"generate"}}\n\n'
+                    f'要求: 问题有行业上下文。options最多4个，留一个"其他"。\n'
+                    f'仅返回JSON，无其他文字。'
+                )
+                resp = await sys_llm_generate(model, [{"role":"user","content":gen_prompt}],
+                                              max_tokens=200, temperature=0.3)
+                try:
+                    result = _json_dg.loads(str(getattr(resp, "content", "") or "{}"))
+                    if result.get("action") == "generate":
+                        finished = True
+                        question = "澄清已完成。请回复「生成报告」来生成诊断报告，或继续补充其他信息。"
+                        options = ["生成报告", "继续补充"]
+                    else:
+                        question = result.get("question", "请描述客户的核心业务痛点")
+                        options = result.get("options", [])
+                except Exception:
+                    question = "请描述客户的核心业务痛点"
+                    options = []
             except Exception:
                 question = "请描述客户的核心业务痛点"
                 options = []
-        except Exception:
-            question = "请描述客户的核心业务痛点"
-            options = []
 
     return {
         "turn": turn + 1,
