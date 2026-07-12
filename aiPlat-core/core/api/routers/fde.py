@@ -5009,3 +5009,92 @@ async def fde_manual_versions(project_id: str):
             mtime = os.path.getmtime(fpath)
             versions.append({"file": fname, "modified": datetime.fromtimestamp(mtime, tz=timezone.utc).isoformat()})
     return {"project_id": project_id, "versions": sorted(versions, key=lambda v: v["modified"], reverse=True)}
+
+
+@router.post("/manuals/{project_id}/start-delivery", response_model=dict)
+async def fde_manual_start_delivery(project_id: str):
+    """Create a delivery tracking session from a project manual.
+
+    Reads the manual's project config, creates a DiagnosisSession
+    in fde-delivery GraphIndex with DeliveryActions for each solution archetype.
+    Closes the manual→delivery loop.
+    """
+    path = _get_manual_path(project_id)
+    if not os.path.exists(path):
+        raise HTTPException(status_code=404, detail=f"Manual not found for {project_id}")
+
+    with open(path, "r", encoding="utf-8") as f:
+        content = f.read()
+
+    # Extract project info from manual (only from project overview table)
+    ind, co, pains = "", "", ""
+    for line in content.split("\n")[:50]:  # Stop after overview table
+        line = line.strip()
+        if not line.startswith("|") or "| :---" in line:
+            continue
+        parts = [p.strip() for p in line.split("|")]
+        if len(parts) < 3:
+            continue
+        key, val = parts[1], parts[2]
+        if key == "行业":
+            ind = val
+        elif key == "客户":
+            co = val
+        elif key == "痛点":
+            pains = val
+
+    if not co:
+        co = project_id.replace("_", " ")
+
+    import time as _t_sd, json as _json_sd
+    from core.harness.ontology_engine.graph_index import GraphIndex
+
+    fd = GraphIndex.load("fde-delivery")
+    ts = str(int(_t_sd.time()))
+    sid = f"session_{co.replace(' ', '_')}_{ts}"
+    fd.add_entity(sid, co, "DiagnosisSession", source_doc_id=project_id)
+
+    # Extract solution archetypes from manual as DeliveryActions
+    actions_created = 0
+    for line in content.split("\n"):
+        if line.startswith("| ") and "≥" in line and "|" in line[2:]:
+            parts = [p.strip() for p in line.split("|")]
+            if len(parts) >= 2:
+                sol_name = parts[1]
+                if sol_name and sol_name != "方案类别" and len(sol_name) > 3:
+                    aid = f"{sid}_action_{actions_created}"
+                    fd.add_entity(aid, sol_name, "DeliveryAction", source_doc_id=sid)
+                    fd.add_relation(sid, aid, "has_action", relation_label="手册方案", confidence=0.85)
+                    ev_id = f"evidence_{sid}_{actions_created}"
+                    fd.add_entity(ev_id, f"{sol_name} | {ind}域(手册)", "Evidence", source_doc_id=sid)
+                    fd.add_relation(sid, ev_id, "has_evidence", relation_label="证据", confidence=0.85)
+                    actions_created += 1
+
+    # SessionMeta
+    meta_blob = {
+        "evidence_map": [],
+        "knowledge_gaps": [],
+        "readiness_score": min(len(pains.split(",")) * 10 + 40, 100) if pains else 50,
+        "industry": ind, "pain_points": pains,
+    }
+    mid = f"meta_{sid}"
+    fd.add_entity(mid, _json_sd.dumps(meta_blob, ensure_ascii=False)[:8000], "SessionMeta", source_doc_id=sid)
+    fd.add_relation(sid, mid, "has_meta", relation_label="元数据", confidence=1.0)
+
+    # StateTransition
+    tid = f"trans_{sid}_{ts}"
+    fd.add_entity(tid, "Session → generated (from manual)", "StateTransition", source_doc_id=sid)
+    fd.add_relation(sid, tid, "has_transition", relation_label="状态变更", confidence=1.0)
+
+    return {
+        "project_id": project_id,
+        "session_id": sid,
+        "company": co,
+        "industry": ind,
+        "actions_created": actions_created,
+        "next_steps": [
+            f"GET /fde/sessions/{sid} — 查看交付详情",
+            f"GET /fde/sessions/{sid}/timeline — 查看时间线",
+            f"POST /fde/delivery/feedback — 更新交付状态",
+        ],
+    }
