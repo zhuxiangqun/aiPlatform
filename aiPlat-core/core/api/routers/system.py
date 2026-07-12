@@ -282,3 +282,62 @@ async def system_health():
         return await fde_health()
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)[:300])
+
+
+@router.get("/status", response_model=dict)
+async def system_status():
+    """Comprehensive system status — all key metrics in one call."""
+    import time as _t_ss
+    t0 = _t_ss.time()
+
+    status = {
+        "coding_constitution": "karpathy_v1 (active, global default)",
+    }
+
+    # Scheduler
+    status["scheduler"] = {"active": _scheduler_started, "interval_seconds": 3600}
+
+    # SECI
+    try:
+        from core.harness.knowledge.seci_engine import get_seci_engine
+        se = get_seci_engine()
+        status["seci"] = {"atoms": se.get_atom_count(), "links": se.get_link_count()}
+    except Exception:
+        status["seci"] = {"error": "unavailable"}
+
+    # Convergence
+    try:
+        from core.harness.knowledge.convergence_engine import ConvergenceEngine
+        ce = ConvergenceEngine()
+        status["convergence"] = ce.get_status()
+    except Exception:
+        status["convergence"] = {"error": "unavailable"}
+
+    # Delivery
+    try:
+        from core.harness.ontology_engine.graph_index import GraphIndex
+        fd = GraphIndex.load("fde-delivery")
+        sessions = sum(1 for _, n in fd._nodes.items() if getattr(n, "class_name", "") == "DiagnosisSession")
+        actions = sum(1 for _, n in fd._nodes.items() if getattr(n, "class_name", "") == "DeliveryAction")
+        status["delivery"] = {"sessions": sessions, "actions": actions}
+    except Exception:
+        status["delivery"] = {"error": "unavailable"}
+
+    # Manuals
+    try:
+        import os as _os_ss
+        mdir = _os_ss.path.expanduser("~/.aiplat/fde-manuals")
+        manuals = [f for f in _os_ss.listdir(mdir) if f.endswith("-current.md")] if _os_ss.path.exists(mdir) else []
+        status["manuals"] = {"count": len(manuals)}
+    except Exception:
+        status["manuals"] = {"count": 0}
+
+    # Pipeline
+    try:
+        from core.api.routers.fde import _get_pipeline_health
+        status["pipeline"] = _get_pipeline_health()
+    except Exception:
+        status["pipeline"] = "unknown"
+
+    status["elapsed_ms"] = round((_t_ss.time() - t0) * 1000)
+    return status
