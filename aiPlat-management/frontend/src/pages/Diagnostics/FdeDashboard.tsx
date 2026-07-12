@@ -272,18 +272,20 @@ const AssessTab: React.FC = () => {
   const dialogCall = async (answer?: string, turn?: number, sessionId?: string) => {
     setDialogLoading(true);
     try {
+      const esc = (v: unknown) => JSON.stringify(String(v ?? '')).slice(1, -1);
+      const body = `{`
+        + `"turn":${Number(turn ?? dialogTurn)},`
+        + `"answer":"${esc(answer || '')}",`
+        + `"session_id":"${esc((sessionId || dialogSessionId) || '')}",`
+        + `"industry":"${esc(form.industry || dialogContext.industry || '')}",`
+        + `"company_name":"${esc(form.company_name || dialogContext.company_name || '')}",`
+        + `"pain_points":"${esc(form.pain_points || dialogContext.pain_points || '')}",`
+        + `"team_size":"${esc(form.team_size || dialogContext.team_size || '')}",`
+        + `"budget":"${esc(form.budget_range || dialogContext.budget || '')}"`
+        + `}`;
       const r = await fetch('/api/core/fde/assess/dialog', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          turn: turn ?? dialogTurn,
-          answer: answer || '',
-          session_id: (sessionId || dialogSessionId) || '',
-          industry: form.industry || dialogContext.industry || '',
-          company_name: form.company_name || dialogContext.company_name || '',
-          pain_points: form.pain_points || dialogContext.pain_points || '',
-          team_size: form.team_size || dialogContext.team_size || '',
-          budget: form.budget_range || dialogContext.budget || '',
-        }),
+        body,
       });
       const data = await r.json();
       setDialogContext(data.context || {});
