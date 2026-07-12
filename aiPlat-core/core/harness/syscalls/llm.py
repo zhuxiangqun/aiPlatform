@@ -557,6 +557,7 @@ async def sys_llm_generate(
     max_tokens: Optional[int] = None,
     response_format: Optional[Dict[str, Any]] = None,
     extra_context: Optional[Dict[str, Any]] = None,
+    gate_mode: str = "full",
 ) -> Any:
     """
     Execute a model generation call.
@@ -567,6 +568,9 @@ async def sys_llm_generate(
         trace_context: Reserved for future tracing integration.
         model_name: Model name for Router deployment selection. If empty,
                     auto-extracted from adapter's model_name attribute.
+        gate_mode: "full" (default) — all gates: ContextGate, CLAUDE.md, prompt
+                   assembly, guards. "minimal" — only security guards (injection
+                   detection, PII masking) + trace, skips ReActLoop-specific assembly.
         temperature: Optional override for generation temperature.
         max_tokens: Optional override for max tokens.
         response_format: Optional response format (e.g. json_schema).
@@ -761,61 +765,62 @@ async def sys_llm_generate(
             severity = message_guard_stats["crisis_alerts"][0].get("severity", "high")
         raise RuntimeError(f"LLM call rejected: crisis detected (severity={severity})")
 
-    # Phase 4 (optional): central prompt assembly + prompt_version for replay/audit.
-    prompt_version = None
-    prompt_meta: Dict[str, Any] = {}
-    applied_prompt_revision_ids: List[str] = []
-    prompt_revision_conflicts: List[Dict[str, Any]] = []
-    ignored_prompt_revision_ids: List[str] = []
-    if os.getenv("AIPLAT_ENABLE_PROMPT_ASSEMBLER", "true").lower() in ("1", "true", "yes", "y"):
-        try:
-            from core.harness.assembly import PromptAssembler
-            # Phase 6.8 (optional): apply published prompt revisions (behavior change, gated).
-            if os.getenv("AIPLAT_APPLY_PROMPT_REVISIONS", "true").lower() in ("1", "true", "yes", "y"):
-                try:
-                    runtime = get_kernel_runtime()
-                    store = getattr(runtime, "execution_store", None) if runtime else None
-                    ctx = get_active_release_context()
-                    if store is not None and ctx is not None:
-                        from core.learning.apply import LearningApplier
+    if gate_mode != "minimal":
+        # Phase 4 (optional): central prompt assembly + prompt_version for replay/audit.
+        prompt_version = None
+        prompt_meta: Dict[str, Any] = {}
+        applied_prompt_revision_ids: List[str] = []
+        prompt_revision_conflicts: List[Dict[str, Any]] = []
+        ignored_prompt_revision_ids: List[str] = []
+        if os.getenv("AIPLAT_ENABLE_PROMPT_ASSEMBLER", "true").lower() in ("1", "true", "yes", "y"):
+            try:
+                from core.harness.assembly import PromptAssembler
+                # Phase 6.8 (optional): apply published prompt revisions (behavior change, gated).
+                if os.getenv("AIPLAT_APPLY_PROMPT_REVISIONS", "true").lower() in ("1", "true", "yes", "y"):
+                    try:
+                        runtime = get_kernel_runtime()
+                        store = getattr(runtime, "execution_store", None) if runtime else None
+                        ctx = get_active_release_context()
+                        if store is not None and ctx is not None:
+                            from core.learning.apply import LearningApplier
 
-                        applier = LearningApplier(store)
-                        resolved = await applier.resolve_prompt_revision_patch(
-                            target_type=ctx.target_type,
-                            target_id=ctx.target_id,
-                        )
-                        patch = resolved.get("patch") if isinstance(resolved, dict) else {}
-                        applied_prompt_revision_ids = resolved.get("artifact_ids") or []
-                        prompt_revision_conflicts = resolved.get("conflicts") or []
-                        ignored_prompt_revision_ids = resolved.get("ignored_artifact_ids") or []
-                        if isinstance(patch, dict) and patch:
-                            prepared = _apply_prompt_patch(prepared, patch)
+                            applier = LearningApplier(store)
+                            resolved = await applier.resolve_prompt_revision_patch(
+                                target_type=ctx.target_type,
+                                target_id=ctx.target_id,
+                            )
+                            patch = resolved.get("patch") if isinstance(resolved, dict) else {}
+                            applied_prompt_revision_ids = resolved.get("artifact_ids") or []
+                            prompt_revision_conflicts = resolved.get("conflicts") or []
+                            ignored_prompt_revision_ids = resolved.get("ignored_artifact_ids") or []
+                            if isinstance(patch, dict) and patch:
+                                prepared = _apply_prompt_patch(prepared, patch)
+                    except Exception:
+                        logging.getLogger("llm").warning("best-effort skipped", exc_info=True)
+                # Phase 6.12: aggregate audit info for the whole execution (best-effort).
+                try:
+                    record_prompt_revision_application(
+                        applied_ids=applied_prompt_revision_ids,
+                        ignored_ids=ignored_prompt_revision_ids,
+                        conflicts=prompt_revision_conflicts,
+                    )
                 except Exception:
                     logging.getLogger("llm").warning("best-effort skipped", exc_info=True)
-            # Phase 6.12: aggregate audit info for the whole execution (best-effort).
-            try:
-                record_prompt_revision_application(
-                    applied_ids=applied_prompt_revision_ids,
-                    ignored_ids=ignored_prompt_revision_ids,
-                    conflicts=prompt_revision_conflicts,
-                )
-            except Exception:
-                logging.getLogger("llm").warning("best-effort skipped", exc_info=True)
 
-            # Provide target identity for prompt caching keys (Roadmap-1).
-            _ctx = get_active_release_context()
-            assembled = PromptAssembler().assemble(
-                prepared,
-                metadata={
-                    "target_type": _ctx.target_type if _ctx else None,
-                    "target_id": _ctx.target_id if _ctx else None,
-                },
-            )
-            prepared = assembled.messages
-            prompt_version = assembled.prompt_version
-            prompt_meta = assembled.metadata or {}
-        except Exception:
-            prompt_version = None
+                # Provide target identity for prompt caching keys (Roadmap-1).
+                _ctx = get_active_release_context()
+                assembled = PromptAssembler().assemble(
+                    prepared,
+                    metadata={
+                        "target_type": _ctx.target_type if _ctx else None,
+                        "target_id": _ctx.target_id if _ctx else None,
+                    },
+                )
+                prepared = assembled.messages
+                prompt_version = assembled.prompt_version
+                prompt_meta = assembled.metadata or {}
+            except Exception:
+                prompt_version = None
     _ar = get_active_release_context()
     # Enrich span attributes after we know prompt_version / release context.
     try:

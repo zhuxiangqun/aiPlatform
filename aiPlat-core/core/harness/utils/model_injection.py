@@ -39,6 +39,7 @@ from core.adapters.llm.base import create_adapter
 
 # ── Cached ModelManager singleton (avoids 8s Ollama re-scan per call) ──
 _model_manager_cache: Any = None
+_adapter_models_injected: bool = False
 
 
 def _get_cached_model_manager() -> Any:
@@ -49,6 +50,129 @@ def _get_cached_model_manager() -> Any:
     from infra.management.model.manager import ModelManager
     _model_manager_cache = ModelManager()
     return _model_manager_cache
+
+
+def _ensure_adapter_models_injected(mgr: Any) -> None:
+    """Lazily inject adapter-based models (called before model selection, not at init)."""
+    global _adapter_models_injected
+    if _adapter_models_injected:
+        return
+    try:
+        logging.info("Injecting adapter models into ModelManager...")
+        count = _do_inject_adapter_models(mgr)
+        if count > 0:
+            logging.info("Adapter injection complete: %d models injected", count)
+            _adapter_models_injected = True  # succeeded, no need to retry
+    except Exception as e:
+        logging.info("Adapter injection attempt failed: %s", e)
+
+
+def _do_inject_adapter_models(mgr: Any) -> int:
+    """Inject models from ExecutionStore adapters table into infra ModelManager.
+    Returns the number of models injected."""
+    injected = 0
+    try:
+        import json as _json
+
+        # Resolve execution DB path from multiple sources
+        db_path = None
+        # Priority 1: kernel runtime (most reliable in server process)
+        try:
+            from core.harness.kernel.runtime import get_kernel_runtime
+            runtime = get_kernel_runtime()
+            store = getattr(runtime, "execution_store", None) if runtime else None
+            db_path = getattr(getattr(store, "_config", None), "db_path", None)
+        except Exception:
+            pass
+        # Priority 2: env var
+        if not db_path or not os.path.isfile(db_path):
+            db_path = os.getenv("AIPLAT_EXECUTION_DB_PATH") or ""
+            if db_path and not os.path.isfile(db_path):
+                db_path = ""
+        # Priority 3: known paths
+        if not db_path:
+            for candidate in [
+                os.path.join(os.getenv("AIPLAT_HOME", os.path.expanduser("~/.aiplat")),
+                            "data", "aiplat_executions.sqlite3"),
+            ]:
+                if os.path.isfile(candidate):
+                    db_path = candidate
+                    break
+
+        if not db_path or not os.path.isfile(db_path):
+            logging.info("Adapter injection: no DB path found, skipping")
+            return 0
+
+        logging.info("Adapter injection: using DB %s", db_path)
+        from infra.management.schemas import ModelInfo, ModelType, ModelSource, ModelStatus, ModelConfig
+
+        conn = sqlite3.connect(str(db_path), timeout=5.0)
+        conn.row_factory = sqlite3.Row
+        try:
+            rows = conn.execute(
+                "SELECT adapter_id, name, provider, api_base_url, models_json "
+                "FROM adapters WHERE status='active' "
+                "AND ((api_key IS NOT NULL AND api_key != '') OR (api_key_enc IS NOT NULL AND api_key_enc != '')) "
+                "ORDER BY updated_at DESC"
+            ).fetchall()
+            for row in rows:
+                d = dict(row)
+                provider = (d.get("provider") or "").strip().lower()
+                base_url = (d.get("api_base_url") or "").strip()
+                adapter_id = d.get("adapter_id") or ""
+                models_json = d.get("models_json") or "[]"
+
+                if not provider or not adapter_id:
+                    continue
+
+                try:
+                    models = _json.loads(models_json) if isinstance(models_json, str) else models_json
+                except Exception:
+                    models = []
+
+                model_name = ""
+                if isinstance(models, list) and models:
+                    first = models[0]
+                    if isinstance(first, dict):
+                        model_name = str(first.get("name") or first.get("model") or "")
+                    elif isinstance(first, str):
+                        model_name = first
+                if not model_name:
+                    model_name = f"{provider}-chat"
+
+                if model_name in seen_names:
+                    continue
+                seen_names.add(model_name)
+
+                provider_caps = {"chat"}
+                if provider in ("deepseek", "openai"):
+                    provider_caps = {"chat", "reasoning"}
+
+                mi = ModelInfo(
+                    id=f"adapter:{adapter_id}:{model_name}",
+                    name=model_name,
+                    type=ModelType.CHAT,
+                    provider=provider,
+                    source=ModelSource.EXTERNAL,
+                    enabled=True,
+                    status=ModelStatus.AVAILABLE,
+                    config=ModelConfig(
+                        adapter_id=adapter_id,
+                        base_url=base_url or None,
+                    ),
+                    capabilities=list(provider_caps),
+                )
+                mgr._models[model_name] = mi
+                injected += 1
+                logging.info(
+                    "Injected adapter model: %s (provider=%s, adapter=%s)",
+                    model_name, provider, adapter_id,
+                )
+        finally:
+            conn.close()
+    except Exception as e:
+        logging.info("Adapter model injection failed: %s", e)
+    return injected
 
 
 def _log_model_selection(purpose: str, selected: str, entry: str = "best_model_for_purpose",
@@ -116,7 +240,7 @@ def _load_default_llm_from_store() -> Optional[dict]:
         db_path = getattr(getattr(store, "_config", None), "db_path", None)
         if not db_path:
             return None
-        conn = sqlite3.connect(str(db_path, timeout=5.0))
+        conn = sqlite3.connect(str(db_path), timeout=5.0)
         try:
             row = conn.execute("SELECT value_json FROM global_settings WHERE key='default_llm' LIMIT 1;").fetchone()
             if not row or not row[0]:
@@ -140,8 +264,10 @@ def _load_adapter_from_store(adapter_id: str) -> Optional[dict]:
         store = getattr(runtime, "execution_store", None) if runtime else None
         db_path = getattr(getattr(store, "_config", None), "db_path", None)
         if not db_path:
+            db_path = os.getenv("AIPLAT_EXECUTION_DB_PATH")
+        if not db_path or not os.path.isfile(str(db_path or "")):
             return None
-        conn = sqlite3.connect(str(db_path, timeout=5.0))
+        conn = sqlite3.connect(str(db_path), timeout=5.0)
         conn.row_factory = sqlite3.Row
         try:
             r = conn.execute("SELECT * FROM adapters WHERE adapter_id=? LIMIT 1;", (str(adapter_id),)).fetchone()
@@ -202,16 +328,26 @@ def create_selected_adapter(*, model_name: str) -> Any:
             if base_url and not base_url.rstrip("/").endswith("/v1"):
                 base_url = base_url.rstrip("/") + "/v1"
 
-    # Env var overrides (highest priority, but local model base_url wins)
+        # Adapter-based API key resolution (management UI → adapters table)
+        if needs_api_key and not api_key and model_info and model_info.config:
+            adapter_id = getattr(model_info.config, "adapter_id", None)
+            if adapter_id:
+                ad = _load_adapter_from_store(str(adapter_id))
+                if ad:
+                    api_key = str(ad.get("api_key") or "")
+                    if not base_url:
+                        base_url = str(ad.get("api_base_url") or "")
+
+    # Env var overrides (fallback only — adapter-based key takes priority)
     provider_env = os.getenv("AIPLAT_LLM_PROVIDER", "").strip()
     base_url_env = os.getenv("AIPLAT_LLM_BASE_URL", "").strip()
     api_key_env = (os.getenv("AIPLAT_LLM_API_KEY") or "").strip()
 
-    if provider_env:
+    if provider_env and not provider:
         provider = _norm_provider(provider_env)
-    if base_url_env and needs_api_key:
+    if base_url_env and needs_api_key and not base_url:
         base_url = base_url_env
-    if api_key_env and needs_api_key:
+    if api_key_env and needs_api_key and not api_key:
         api_key = api_key_env
 
     # If model not found in registry, fall back to env var resolution
@@ -416,8 +552,11 @@ async def generate_with_fallback(purpose: str,
                     continue
                 try:
                     adapter = create_selected_adapter(model_name=model_name)
+                    from core.harness.syscalls.llm import sys_llm_generate
                     resp = await _asyncio.wait_for(
-                        adapter.generate(messages, config=config),
+                        sys_llm_generate(adapter, messages,
+                                         model_name=model_name,
+                                         gate_mode="minimal"),
                         timeout=per_model_timeout
                     )
                     _fb_log.info(f"'{purpose}' completed with '{model_name}' "
@@ -525,6 +664,93 @@ async def _record_quality_and_metrics_async(purpose: str, model_name: str, resp,
         _route_metrics["recent_logs"] = _route_metrics["recent_logs"][-50:]
 
 
+import asyncio as _asyncio
+
+def _adapter_key_exists(adapter_id: str) -> bool:
+    """Check if adapter has a valid key in the adapters table."""
+    try:
+        from core.harness.kernel.runtime import get_kernel_runtime
+        from core.harness.infrastructure.crypto.secretbox import decrypt_str, is_configured
+        runtime = get_kernel_runtime()
+        store = getattr(runtime, "execution_store", None) if runtime else None
+        db_path = getattr(getattr(store, "_config", None), "db_path", None)
+        if not db_path:
+            db_path = os.getenv("AIPLAT_EXECUTION_DB_PATH")
+        if not db_path or not os.path.isfile(str(db_path)):
+            return None
+        conn = sqlite3.connect(str(db_path), timeout=5.0)
+        try:
+            row = conn.execute(
+                "SELECT api_key, api_key_enc FROM adapters WHERE adapter_id=? LIMIT 1",
+                (adapter_id,)
+            ).fetchone()
+            if not row:
+                return False
+            if row[1] and is_configured():
+                return bool(decrypt_str(row[1]).strip())
+            return bool((row[0] or "").strip())
+        finally:
+            conn.close()
+    except Exception:
+        return False
+
+
+def _is_local_model(model_name: str, mgr) -> bool:
+    """Check if a model has a local variant (Ollama, etc.) — check ALL models with this name."""
+    for v in mgr._models.values():
+        if v.name == model_name:
+            source = getattr(v, 'source', None)
+            if source and hasattr(source, 'value') and source.value == 'local':
+                return True
+    return False
+
+
+def _model_is_usable(model_name: str, mgr, _local_names: set = None) -> bool:
+    """Check if a model is usable.
+    
+    For models with adapter_id → checks adapters table for valid key.
+    For local models → always usable.
+    For external without credentials → not usable.
+    _local_names: pre-computed set of model names that have local variants.
+    """
+    from infra.management.model.manager import ModelSource
+    
+    mi = mgr._models.get(model_name)
+    if mi is None:
+        for v in mgr._models.values():
+            if v.name == model_name:
+                mi = v
+                break
+    if mi is None:
+        return True
+
+    source = getattr(mi, 'source', None)
+    is_local = source and hasattr(source, 'value') and source.value == "local"
+    if is_local:
+        return True
+
+    cfg = getattr(mi, 'config', None)
+    if cfg:
+        adapter_id = getattr(cfg, 'adapter_id', None)
+        if adapter_id and _adapter_key_exists(adapter_id):
+            return True
+        env_name = getattr(cfg, 'api_key_env', None)
+        if env_name and os.getenv(env_name, "").strip():
+            return True
+    
+    # Check local variant
+    if _local_names and model_name in _local_names:
+        return True
+    if _local_names is None:
+        for v in mgr._models.values():
+            if v.name == model_name:
+                vs = getattr(v, 'source', None)
+                if vs and hasattr(vs, 'value') and vs.value == "local":
+                    return True
+    
+    return False
+
+
 def best_model_for_purpose(purpose: str, messages: list = None) -> str:
     """Select the best LLM model for a given task purpose.
 
@@ -584,16 +810,72 @@ def best_model_for_purpose(purpose: str, messages: list = None) -> str:
 
     # 1b. Capability-based auto-selection with complexity filtering (infra)
     try:
-        from infra.management.model.manager import ModelManager
+        from infra.management.model.manager import ModelManager, ModelSource
         mgr = _get_cached_model_manager()
-        if complexity:
-            selected = mgr.select_by_purpose(purpose, complexity=complexity)
-        else:
-            selected = mgr.select_by_purpose(purpose)
-        if selected:
-            _log_model_selection(purpose, selected, entry="best_model_for_purpose",
-                                 source="infra_select_by_purpose")
-            return selected
+        _ensure_adapter_models_injected(mgr)
+        candidates = mgr.select_by_purpose_list(purpose, complexity=complexity if complexity else None)
+        if candidates:
+            # Find model objects by iterating _models (keys are IDs, candidates are names)
+            def _find_model(name):
+                for v in mgr._models.values():
+                    if getattr(v, 'name', '') == name:
+                        return v
+                return None
+
+            # Separate local vs non-local — pre-compute local names for performance
+            local_names = {v.name for v in mgr._models.values()
+                          if getattr(getattr(v, 'source', None), 'value', None) == 'local'}
+            local_candidates = []
+            all_usable = []
+            for c in candidates:
+                mi = _find_model(c)
+                is_local = (mi and hasattr(mi, 'source') and
+                            hasattr(mi.source, 'value') and mi.source.value == "local")
+                if _model_is_usable(c, mgr, local_names):
+                    all_usable.append(c)
+                    if is_local:
+                        local_candidates.append(c)
+
+            # Quality-gated: prefer local if quality is acceptable AND profile prefers local
+            # Skip quality gate when profile explicitly prefers external
+            prefer_external = False
+            try:
+                import yaml as _yaml
+                _cfg_path = os.getenv("AIPLAT_LLM_CONFIG_PATH",
+                    os.path.join(os.path.dirname(__file__), "..", "..", "..", "..",
+                                 "aiPlat-infra", "config", "infra", "llm_profile.yaml"))
+                _pd = _yaml.safe_load(open(_cfg_path)) if os.path.isfile(_cfg_path) else {}
+                profiles = _pd.get("purpose_profiles", {})
+                pc = profiles.get(purpose, {})
+                prefer_external = pc.get("prefer_external", False)
+            except Exception:
+                pass
+            
+            if local_candidates and not prefer_external:
+                from infra.management.model.quality_validator import get_quality_tracker
+                qt = get_quality_tracker()
+                best_local = local_candidates[0]
+                local_quality = qt.get(best_local, purpose)
+                if local_quality >= -0.2:
+                    _log_model_selection(purpose, best_local, entry="best_model_for_purpose",
+                                         source="infra_select_by_purpose")
+                    return best_local
+
+            # Fall through: all candidates
+            # When prefer_external, prioritize external models over local ones
+            if prefer_external:
+                usable_external = [c for c in all_usable if not _is_local_model(c, mgr)]
+                if usable_external:
+                    candidate = usable_external[0]
+                    _log_model_selection(purpose, candidate, entry="best_model_for_purpose",
+                                         source="infra_select_by_purpose")
+                    return candidate
+            if all_usable:
+                candidate = all_usable[0]
+                _log_model_selection(purpose, candidate, entry="best_model_for_purpose",
+                                     source="infra_select_by_purpose")
+                return candidate
+            logging.warning("best_model_for_purpose: all infra candidates unusable for purpose=%s", purpose)
     except Exception as e:
         logging.warning(str(e), exc_info=True)
 
