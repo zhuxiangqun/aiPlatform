@@ -268,13 +268,13 @@ const AssessTab: React.FC = () => {
   const [editingReport, setEditingReport] = useState(false);
 
   // ── Clarification dialog: initiate or continue ──
-  const dialogCall = async (answer?: string) => {
+  const dialogCall = async (answer?: string, turn?: number) => {
     setDialogLoading(true);
     try {
       const r = await fetch('/api/core/fde/assess/dialog', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          turn: dialogTurn,
+          turn: turn ?? dialogTurn,
           answer: answer || '',
           industry: form.industry || dialogContext.industry || '',
           company_name: form.company_name || dialogContext.company_name || '',
@@ -321,7 +321,7 @@ const AssessTab: React.FC = () => {
     setDialogHistory([]);
     setDialogReady(false);
     setDialogContext({});
-    dialogCall();
+    dialogCall(undefined, 1);  // turn=1 explicitly, bypass stale state
   };
 
   const submit = async (extraInput?: Record<string, any>) => {
