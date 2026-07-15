@@ -661,7 +661,7 @@ AGENT.md 瘦身到核心内容（<100 行）。超过 100 行时，拆分为：
 **当前状态**：
 - `MemoryManager.build_context()` 已注入 Working+Episodic → loop 上下文 ✅
 - `save_interaction` 已通 ✅
-- Episodic LLM 摘要升级（当前规则匹配，可进一步优化）
+- Episodic LLM 摘要升级 ✅ (MemoryConfig.use_llm_summary=True 默认开启，自动注入 best_model_for_purpose("doc_llm"))
 
 > 设计参考（Hermes Agent 记忆诊断）：记忆问题的根因往往是"放错层"——不要让 MEMORY.md 扛所有事。aiPlat 的四层（Hot→Warm→Cold→External）与 Hermes 完全对应。当前系统通过 `_try_inject_claude_md()`（每次重读，永不压缩），优先保证稳定性而非容量。
 

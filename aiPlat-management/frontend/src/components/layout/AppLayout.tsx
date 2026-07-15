@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 
 // ── Role-based sidebar visibility ──────────────────────────────────────
@@ -6,9 +6,12 @@ import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 const ROLE_MENUS: Record<string, string[]> = {
   admin:     ["infra", "core", "platform", "workspace", "app", "value", "user", "prompts", "approval"],
   developer: ["infra", "core", "workspace", "app", "value", "user", "diagnostics"],
+  operator:  ["diagnostics", "infra", "platform"],
   business:  ["value", "user"],
   user:      ["user", "app"],
-  fde:       ["diagnostics", "infra", "core", "value"],
+  approver:  ["approval"],
+  fde:       ["diagnostics", "infra", "core", "workspace", "value"],
+  viewer:    ["value", "user"],
 };
 
 function getRole(): string {
@@ -19,8 +22,9 @@ function canSee(group: string): boolean {
 }
 
 const ROLE_LABELS: Record<string, string> = {
-  admin: '管理员', developer: '开发者', business: '业务负责人',
-  user: '终端用户', approver: '审批人', fde: 'FDE 工程师',
+  admin: '管理员', developer: '开发者', operator: '运维',
+  business: '业务负责人', user: '终端用户', approver: '审批人', fde: 'FDE 工程师',
+  viewer: '只读视图',
 };
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -124,6 +128,7 @@ const menuItems: (MenuItem | { divider: boolean } | MenuGroup)[] = [
   { group: 'approval', label: '审批中心', items: [
     { key: '/approval', icon: Package, label: '资产审批' },
     { key: '/core/approvals', icon: Shield, label: '运行时审批' },
+    { key: '/approval/history', icon: FileText, label: '审批记录' },
   ]},
   { group: 'security', label: '安全测试', items: [
     { key: '/pentest', icon: Shield, label: '渗透测试' },
@@ -145,6 +150,19 @@ const AppLayout: React.FC = () => {
   const [collapsed, setCollapsed] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [roleMenuOpen, setRoleMenuOpen] = useState(false);
+
+  // Role-based default landing page redirect
+  useEffect(() => {
+    const role = getRole();
+    const path = location.pathname;
+    if (path === '/' || path === '') {
+      if (role === 'fde') {
+        navigate('/diagnostics/fde', { replace: true });
+      } else if (role === 'approver') {
+        navigate('/approval', { replace: true });
+      }
+    }
+  }, []);
 
   const isActive = (path: string) => location.pathname === path;
 
@@ -227,8 +245,14 @@ const AppLayout: React.FC = () => {
                 );
                }
 
-              // Individual menu items — admin only
-              if (getRole() !== 'admin') return null;
+              // Individual menu items — admin-only, except diagnostics sub-pages
+              // which are gated by ROLE_MENUS (Phase 2 fix)
+              if (getRole() !== 'admin') {
+                const path = item.key;
+                if (!path.startsWith('/diagnostics') || !canSee('diagnostics')) {
+                  return null;
+                }
+              }
               const active = isActive(item.key);
               return (
                 <button

@@ -1,0 +1,34 @@
+# Capability Contract: Arch Guard Registry (架构守卫)
+domain: ai-devops
+capability: arch_guard
+description: "架构守卫——架构合规检查规则的注册和执行引擎"
+owner: core-devops
+version: "1.0.0"
+updated: "2026-07-13"
+
+authoritative:
+  path: aiPlat-core/core/management/arch_guard_base.py
+  entry_point: get_arch_registry
+  class: ArchRegistry
+  factory: get_arch_registry
+  public_symbols:
+    - ArchRegistry
+    - get_arch_registry
+
+methods:
+  - name: register
+    signature: "(rule_id, check_fn) -> None"
+    purpose: "注册架构检查规则"
+  - name: run_all
+    signature: "() -> List[ArchIssue]"
+    purpose: "执行所有已注册检查"
+  - name: get_arch_registry
+    signature: "() -> ArchRegistry"
+    purpose: "获取全局架构守卫注册表单例"
+
+consumer_patterns:
+  - "harness/syscalls/"
+  - "management/"
+  - "api/routers/diagnostics"
+  - "harness/knowledge/diagnostics"
+  - "scripts/"

@@ -57,7 +57,7 @@ async def optimize_prompt(req: PromptOptimizeRequest):
         resp = await sys_llm_generate(model, [
             {"role": "system", "content": await _async_prompt_resolve("prompt-optimize-system-role")},
             {"role": "user", "content": optimize_prompt},
-        ], config=None)
+        ])
 
         content = resp.content if hasattr(resp, 'content') else str(resp)
         match = _re.search(r'\{[\s\S]*\}', content.strip())

@@ -42,6 +42,22 @@ def _is_outside_workspace(absolute_path: str, workspace_root: str) -> bool:
     return not absolute_path.startswith(workspace_root)
 
 
+def _checkpoint_before_overwrite(abs_path: str, trace_context: Optional[Dict[str, Any]], reason: str) -> None:
+    """Best-effort physical safety net: back up a file's content before it is
+    overwritten by a mutating syscall (Hermes Layer 1). Never blocks the write."""
+    try:
+        if not os.path.isfile(abs_path):
+            return
+        session_id = ""
+        if isinstance(trace_context, dict):
+            session_id = str(trace_context.get("session_id") or trace_context.get("run_id") or "")
+        from core.harness.execution.file_checkpoint import checkpoint_file
+        checkpoint_file(abs_path, session_id=session_id, reason=reason)
+    except Exception as e:
+        logging.debug("file checkpoint skipped: %s", e)
+
+
+
 async def sys_file_read(
     path: str,
     *,
@@ -115,6 +131,7 @@ async def sys_file_write(
             return {"success": False, "error": "Access denied: path outside workspace", "path": path}
 
         os.makedirs(os.path.dirname(resolved), exist_ok=True)
+        _checkpoint_before_overwrite(resolved, trace_context, reason="sys_file_write")
         with open(resolved, "w", encoding="utf-8") as f:
             f.write(content)
 
@@ -158,6 +175,7 @@ async def sys_file_edit(
         if replaced == original:
             return {"success": False, "error": "old_string not found in file", "path": path}
 
+        _checkpoint_before_overwrite(resolved, trace_context, reason="sys_file_edit")
         with open(resolved, "w", encoding="utf-8") as f:
             f.write(replaced)
 

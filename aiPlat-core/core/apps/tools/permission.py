@@ -8,13 +8,7 @@ which users/agents can access which tools.
 import threading
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Set
-from enum import Enum
-
-
-class Permission(Enum):
-    READ = "read"
-    WRITE = "write"
-    EXECUTE = "execute"
+from core.harness.interfaces.types import Permission  # canonical location
 
 
 @dataclass

@@ -15,7 +15,7 @@ import os
 router = APIRouter(prefix="/value", tags=["value"])
 
 
-@router.get("/{tenant_id}", response_model=Dict[str, Any])  # noqa: contract-ok
+@router.get("/{tenant_id}", response_model=StrategyStatusResponse)
 async def get_value_dashboard(
     tenant_id: str, month: str = "", audience: str = "ceo",
 ) -> Dict[str, Any]:
@@ -32,7 +32,13 @@ async def get_value_dashboard(
         raise HTTPException(status_code=500, detail=str(e)[:200])
 
 
-@router.get("/{tenant_id}/goals", response_model=Dict[str, Any])  # noqa: contract-ok
+from core.schemas_common import ListResponse, DeleteResponse
+from core.schemas_value import (
+    BusinessGoalItem, BusinessGoalCreateResponse, BusinessGoalUpdateResponse,
+    BusinessGoalTrendResponse, StrategyStatusResponse, GoalSourceResponse,
+)
+
+@router.get("/{tenant_id}/goals", response_model=ListResponse[BusinessGoalItem])
 async def get_business_goals(tenant_id: str) -> List[Dict[str, Any]]:
     """Get all business goals for a tenant."""
     try:
@@ -50,7 +56,7 @@ async def get_business_goals(tenant_id: str) -> List[Dict[str, Any]]:
         raise HTTPException(status_code=500, detail=str(e)[:200])
 
 
-@router.post("/{tenant_id}/goals", response_model=Dict[str, Any])  # noqa: contract-ok
+@router.post("/{tenant_id}/goals", response_model=BusinessGoalCreateResponse)
 async def create_business_goal(tenant_id: str, body: Dict[str, Any]) -> Dict[str, Any]:
     """Register a new business goal."""
     try:
@@ -77,7 +83,7 @@ async def create_business_goal(tenant_id: str, body: Dict[str, Any]) -> Dict[str
         raise HTTPException(status_code=500, detail=str(e)[:200])
 
 
-@router.put("/{tenant_id}/goals/{goal_id}", response_model=Dict[str, Any])  # noqa: contract-ok
+@router.put("/{tenant_id}/goals/{goal_id}", response_model=BusinessGoalUpdateResponse)
 async def update_business_goal(
     tenant_id: str, goal_id: str, body: Dict[str, Any],
 ) -> Dict[str, Any]:
@@ -99,7 +105,8 @@ async def update_business_goal(
         raise HTTPException(status_code=500, detail=str(e)[:200])
 
 
-@router.delete("/{tenant_id}/goals/{goal_id}", response_model=Dict[str, Any])  # noqa: contract-ok
+
+@router.delete("/{tenant_id}/goals/{goal_id}", response_model=DeleteResponse)
 async def delete_business_goal(tenant_id: str, goal_id: str) -> Dict[str, Any]:
     """Delete a business goal."""
     try:
@@ -116,7 +123,7 @@ async def delete_business_goal(tenant_id: str, goal_id: str) -> Dict[str, Any]:
         raise HTTPException(status_code=500, detail=str(e)[:200])
 
 
-@router.get("/{tenant_id}/strategy", response_model=Dict[str, Any])  # noqa: contract-ok
+@router.get("/{tenant_id}/strategy", response_model=StrategyStatusResponse)
 async def get_strategy_status(tenant_id: str) -> Dict[str, Any]:
     """Get current routing strategy status (from GoalAwareRouter)."""
     try:
@@ -135,7 +142,7 @@ async def get_strategy_status(tenant_id: str) -> Dict[str, Any]:
         raise HTTPException(status_code=500, detail=str(e)[:200])
 
 
-@router.get("/{tenant_id}/goals/{goal_id}/trend", response_model=Dict[str, Any])  # noqa: contract-ok
+@router.get("/{tenant_id}/goals/{goal_id}/trend", response_model=BusinessGoalTrendResponse)
 async def get_goal_trend(tenant_id: str, goal_id: str) -> Dict[str, Any]:
     """Get historical trend data for a business goal (sparkline chart)."""
     try:
@@ -165,7 +172,7 @@ async def get_goal_trend(tenant_id: str, goal_id: str) -> Dict[str, Any]:
         raise HTTPException(status_code=500, detail=str(e)[:200])
 
 
-@router.put("/{tenant_id}/goals/{goal_id}/source", response_model=Dict[str, Any])  # noqa: contract-ok
+@router.put("/{tenant_id}/goals/{goal_id}/source", response_model=GoalSourceResponse)
 async def configure_goal_source(
     tenant_id: str, goal_id: str, body: Dict[str, Any],
 ) -> Dict[str, Any]:

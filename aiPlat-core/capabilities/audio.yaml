@@ -1,0 +1,33 @@
+# Capability Contract: Audio (音频处理)
+domain: ai-runtime
+capability: audio
+description: "音频处理——语音转文字(Whisper/STT)、音频转录"
+owner: core-infra
+version: "1.0.0"
+updated: "2026-07-13"
+
+authoritative:
+  path: aiPlat-core/core/harness/infrastructure/infra_audio_adapter.py
+  entry_point: create_infra_audio_adapter
+  class: InfraAudioAdapter
+  factory: create_infra_audio_adapter
+  public_symbols:
+    - InfraAudioAdapter
+    - create_infra_audio_adapter
+
+forbidden_direct_imports:
+  - faster_whisper
+  - whisper
+
+methods:
+  - name: transcribe
+    signature: "(audio_path: str) -> str"
+    purpose: "音频文件→文字转录"
+  - name: create_infra_audio_adapter
+    signature: "(**kwargs) -> InfraAudioAdapter"
+    purpose: "获取全局音频适配器实例"
+
+consumer_patterns:
+  - "harness/multimodal/"
+  - "harness/infrastructure/"
+  - "harness/document/transcriber"

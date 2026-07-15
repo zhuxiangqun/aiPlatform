@@ -30,6 +30,7 @@ class QualityValidator:
     VALIDATORS = {
         "ontology_gen": "_validate_ontology_result",
         "chat": "_validate_chat_result",
+        "clarify": "_validate_clarify_result",
     }
 
     @classmethod
@@ -122,6 +123,48 @@ class QualityValidator:
 
         return QualityResult(ok=True, score_delta=delta,
                             details={"length": length})
+
+    @staticmethod
+    def _validate_clarify_result(response_text: str, context: dict) -> QualityResult:
+        """Validate clarify output — check for structured JSON or useful narrative.
+        
+        Rewards well-structured JSON with clear follow-up questions.
+        Punishes empty/irrelevant responses.
+        """
+        text = response_text.strip()
+        if not text or len(text) < 10:
+            return QualityResult(ok=False, score_delta=-0.06,
+                                details={"reason": "empty_or_too_short"})
+
+        # Check for well-structured JSON with questions field
+        if _re.search(r'\{"questions"\s*:\s*\[.*?\],\s*"next"', text, _re.DOTALL):
+            return QualityResult(ok=True, score_delta=0.04,
+                                details={"reason": "well_structured_json"})
+
+        # Check for any valid JSON object
+        bs, be = text.find('{'), text.rfind('}')
+        if bs >= 0 and be > bs:
+            try:
+                _json.loads(text[bs:be + 1])
+                return QualityResult(ok=True, score_delta=0.02,
+                                    details={"reason": "has_valid_json"})
+            except Exception:
+                pass
+
+        # Natural language — check if it's useful (non-trivial length, contains clarifying keywords)
+        clarify_keywords = ['追问', '问题', '建议', '步骤', '分析', '确认', '检查', '评估',
+                            'fde', '客户', '流程', '需求', '方案', '补充', '解决', '处理']
+        match_count = sum(1 for kw in clarify_keywords if kw in text)
+        if len(text) > 100 and match_count >= 2:
+            return QualityResult(ok=True, score_delta=0.01,
+                                details={"reason": "useful_narrative", "keyword_hits": match_count})
+
+        if len(text) > 50 and match_count >= 1:
+            return QualityResult(ok=True, score_delta=0.005,
+                                details={"reason": "acceptable_narrative"})
+
+        return QualityResult(ok=True, score_delta=-0.01,
+                            details={"reason": "too_short_or_irrelevant"})
 
 
 # ── Quality score storage with EWMA ─────────────────────────────────

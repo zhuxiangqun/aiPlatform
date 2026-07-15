@@ -1,0 +1,64 @@
+# ── Module Contract: FDE SessionMeta ──
+# Producer (registry.py) writes SessionMeta JSON to GraphIndex.
+# Consumer (fde.py) reads it to extract pending questions.
+
+id: fde-session-meta
+version: "1.0.0"
+updated: "2026-07-13"
+
+# ── Producer ──
+producer:
+  module: aiPlat-core/core/apps/skills/registry.py
+  function: _execute_impl
+  writes_to:
+    store: GraphIndex("fde-delivery")
+    entity_type: SessionMeta
+    format: json
+    fields:
+      - name: report_text
+        type: str
+        max_length: 8000
+        invariant: "must be valid JSON (no truncation mid-string)"
+      - name: readiness_score
+        type: int
+      - name: industry
+        type: str
+      - name: pain_points
+        type: str
+        max_length: 200
+
+# ── Consumer ──
+consumer:
+  module: aiPlat-core/core/api/routers/fde.py
+  function: _extract_pending_questions
+  reads_from:
+    store: GraphIndex("fde-delivery")
+    entity_type: SessionMeta
+    lookup_key: entity_id == session_id
+  expects:
+    - "report_text is valid JSON"
+    - "len(report_text) >= 200"
+    - "report_text contains §8 待确认问题清单 table"
+  cache_behavior:
+    has_cache: true
+    cache_name: _pending_qs_cache
+    ttl: 300  # seconds
+    must_not_cache: "empty results (allow retry on transient failures)"
+
+# ── Verification Rules ──
+verification:
+  - rule: no_json_truncation
+    check: "producer must not apply outer [:N] truncation that cuts JSON mid-string"
+    detect: "search for _json_sm.dumps(...)[:N] pattern where N < ~15000"
+    severity: error
+  - rule: cache_ttl
+    check: "consumer cache must expire (no permanent negative caching)"
+    detect: "search for _pending_qs_cache without TTL/expiration"
+    severity: error
+  - rule: null_safety
+    check: "consumer must handle json.loads failure gracefully"
+    detect: "search for try/except around json.loads in consumer function"
+    severity: info
+  - rule: report_minimum_length
+    check: "report_text must be at least 200 chars to be useful"
+    severity: info

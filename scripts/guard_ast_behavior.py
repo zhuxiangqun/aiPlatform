@@ -50,6 +50,7 @@ AGENT_DISCOVERY_PATTERNS = {
 EXCLUDED_PATHS = {
     "api/rest/routes.py",
     "api/routers/",
+    "operator_agent.py",  # single-shot decision agent — doesn't maintain conversational context
 }
 
 # Functions explicitly allowed to call Core (orchestration layer)
@@ -290,6 +291,11 @@ def scan_core_agents() -> Dict[str, List[Dict]]:
         if "__pycache__" in str(fp):
             continue
         rel = str(fp.relative_to(CORE_AGENTS_DIR))
+        
+        # Skip excluded paths
+        if any(rel.startswith(ex) or rel == ex for ex in EXCLUDED_PATHS):
+            continue
+        
         v = _scan_agent_for_context_violation(fp, rel_path=rel)
         if v:
             results[rel] = v

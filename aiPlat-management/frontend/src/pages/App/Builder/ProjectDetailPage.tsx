@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import { CheckCircle, ArrowLeft, BarChart3, Play, Eye, Pencil, X, Rocket, TestTube, Clock, Sparkles, RefreshCw } from 'lucide-react';
 import { projectApi, type ProjectItem, type ProjectRun, type BuilderSession } from '../../../services';
 import { BuilderPipeline } from '../../../components/Builder/BuilderPipeline';
-import { ChatWidget } from '../../../components/ui/ChatWidget';
+import { ChatWidget } from '../../../components/ui';
 import { Card, CardHeader, CardContent, Button, toast } from '../../../components/ui';
 import { toastGateError } from '../../../components/ui';
 

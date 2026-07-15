@@ -689,6 +689,7 @@ class AgentManager:
         if tags:
             agents = [a for a in agents if any(t in a.tags for t in tags)]
 
+        agents.sort(key=lambda a: a.created_at, reverse=True)
         return agents[offset:offset + limit]
 
     def get_agent_ids(self) -> List[str]:

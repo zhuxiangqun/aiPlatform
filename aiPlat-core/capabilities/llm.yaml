@@ -1,0 +1,65 @@
+# ── Capability Contract: LLM (大语言模型调用) ──
+# All LLM calls must go through sys_llm_generate.
+# Must pass through MemoryManager.build_context() for context compression.
+
+domain: ai-runtime
+capability: llm
+description: "大语言模型调用——所有 LLM 推理请求的唯一通道"
+owner: core-harness
+version: "1.0.0"
+updated: "2026-07-13"
+
+# ── 权威入口 ──
+authoritative:
+  path: aiPlat-core/core/harness/syscalls/llm.py
+  entry_function: sys_llm_generate
+  class: N/A (function-based)
+  public_symbols:
+    - sys_llm_generate
+
+# ── 禁止直接接触的库 ──
+forbidden_direct_imports:
+  - openai
+  - anthropic
+  - deepseek
+  - sentence_transformers
+
+# ── 上下文压缩要求 ──
+context_requirement:
+  must_call_before: MemoryManager.build_context
+  module: aiPlat-core/core/harness/memory/manager.py
+  check: "caller must contain MemoryManager or build_context"
+
+# ── 提供的能力 ──
+methods:
+  - name: sys_llm_generate
+    signature: "(model, messages, *, model_name=None, ...) -> LLMResponse"
+    purpose: "统一的 LLM 推理调用，包含注入检测、PII 脱敏、CLAUDE.md 注入、上下文压缩"
+
+# ── 消费者 ──
+consumers:
+  - path: aiPlat-core/core/harness/execution/loop/_facade.py
+    uses: sys_llm_generate
+    note: "ReActLoop 推理阶段 → _reason() → sys_llm_generate"
+  - path: aiPlat-core/core/harness/execution/loop/inference.py
+    uses: sys_llm_generate
+    note: "推理节点"
+  - path: aiPlat-core/core/harness/generation/answer_generator.py
+    uses: sys_llm_generate
+    note: "答案生成"
+  - path: aiPlat-core/core/apps/agents/materials_chat.py
+    uses: sys_llm_generate
+    via: core.harness.generation.answer_generator.generate_answer
+    note: "通过 generate_answer/stream_answer 间接调用"
+  - path: aiPlat-core/core/apps/agents/operator_agent.py
+    uses: sys_llm_generate
+    note: "运营决策 Agent"
+
+# ── 已知例外 ──
+known_exceptions:
+  - path: aiPlat-core/core/apps/agents/operator_agent.py
+    reason: "单次决策 Agent，不维护会话上下文，不需要 MemoryManager.build_context()"
+    context_requirement_waived: true
+
+# ── 历史违规 ──
+legacy_fixes: []

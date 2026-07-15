@@ -1,0 +1,36 @@
+# Capability Contract: Provenance Tracking (声明级溯源)
+domain: ai-quality
+capability: provenance
+description: "声明级溯源——追踪知识生成链路，支持 fact→source 追溯"
+owner: core-quality
+version: "1.0.0"
+updated: "2026-07-13"
+
+authoritative:
+  path: aiPlat-core/core/harness/learning/provenance.py
+  entry_point: get_provenance_tracker
+  class: ProvenanceTracker
+  factory: get_provenance_tracker
+  public_symbols:
+    - ProvenanceTracker
+    - get_provenance_tracker
+
+methods:
+  - name: track
+    signature: "(fact_id, source_ids, confidence) -> None"
+    purpose: "记录知识声明的来源链"
+  - name: get_chain
+    signature: "(fact_id) -> ProvenanceChain"
+    purpose: "获取完整来源追溯链"
+  - name: get_provenance_tracker
+    signature: "() -> ProvenanceTracker"
+    purpose: "获取全局溯源追踪器单例"
+
+consumer_patterns:
+  - "harness/learning/"
+  - "harness/knowledge/"
+  - "harness/evaluation/"
+  - "harness/syscalls/"
+  - "apps/agents/"
+  - "api/routers/wiki"
+  - "services/"

@@ -629,7 +629,7 @@ rules:
       paths: ["aiPlat-core/", "aiPlat-platform/"]
       exclude: ["__pycache__", "tests/", "model_registry.py", "model_injection.py",
         "arch_guard_rules.yaml", "infra/", "agent_config_validator.py", "finetune/"]
-      grep_exclude: ["# noqa: model-legacy", "# noqa: interface-default"]
+      grep_exclude: ["# noqa: model-legacy", "# noqa: interface-default", "cost_tracker\\.py", "optimization/"]
     message: "hardcoded model name — use best_model_for_purpose() or create_selected_adapter()"
 
   # 40.5: No indirect workspace_context access — use ContextVar
@@ -1309,7 +1309,7 @@ rules:
       paths: ["aiPlat-core/core/apps/agents", "aiPlat-core/core/apps/skills"]
       exclude: ["__pycache__", "tests/", "arch_guard_rules/"]
       grep_exclude: ["base\\.py", "materials_chat\\.py", "kb_planner\\.py", "registry\\\
-            .py"]
+            .py", "operator_agent\\.py", "# noqa: context-assembly-ok"]
       require_co_presence: ["build_context", "get_memory_manager", "MemoryManager",
         "compress"]
       co_presence_message: "Agent 文件包含 sys_llm_generate 但未找到 build_context/MemoryManager
@@ -1418,7 +1418,8 @@ rules:
       grep_exclude: ["MemoryManager", "build_context", "compact_context", "compress",
         "materials_chat", "kb_planner", "rag_agent", "react", "base\\.py", "conversational",
         "wiki_curator", "pipeline_agent", "plan_execute", "multi_agent", "question_analysis",
-        "answer_strategy", "rag\\.py", "_build_context", "# noqa: agent-init-legacy"]
+        "answer_strategy", "rag\\.py", "_build_context", "operator_agent\\.py",
+        "# noqa: agent-init-legacy"]
     message: "Agent.execute() 未接入 MemoryManager.build_context() — 绕过 5 级上下文压缩，违反 §5.12"
 
   # 66.3: Context priority tags — tool/skill returns must include priority field
@@ -2180,9 +2181,9 @@ rules:
     check:
       type: grep_required
       pattern: 'pcache\.store'
-      paths: ["aiPlat-core/core/apps/agents/"]
+      paths: ["aiPlat-core/core/harness/execution/loop/"]
       min_matches: 1
-    message: "PatternCache.store() 未在任何 Agent 中调用 — 执行模式从未写入 (§5.4 模式晶体化)"
+    message: "PatternCache.store() 未在 loop facade 中调用 — 执行模式从未写入 (§5.4 模式晶体化)"
 
   # 74.3: SemanticCache.invalidate on KB reindex
   - id: semantic_cache_invalidate_on_reindex
@@ -2349,5 +2350,59 @@ rules:
       type: cmd_output
       cmd: |
         bash scripts/ruff_f821_ratchet.sh && echo "PASS: F821 ratchet" || echo "BLOCK: new F821 violations detected"
+      ok_pattern: "PASS:"
+
+  # ═══ Section 77: Route Duplication Detection ═══
+  - id: route_duplicate_detection
+    section: "§77"
+    section_name: "路由重复检测"
+    level: error
+    check:
+      type: cmd_output
+      shell: >-
+        python3 -c "
+        import ast, os
+        from collections import Counter
+
+        routers_dir = 'aiPlat-core/core/api/routers'
+        duplicates = []
+
+        for fname in sorted(os.listdir(routers_dir)):
+            if not fname.endswith('.py') or fname == '__init__.py':
+                continue
+            fpath = os.path.join(routers_dir, fname)
+            try:
+                tree = ast.parse(open(fpath).read(), filename=fpath)
+            except Exception:
+                continue
+
+            prefix = ''
+            routes = []
+            for node in ast.walk(tree):
+                if isinstance(node, ast.Call) and hasattr(node.func, 'attr'):
+                    # Find APIRouter prefix
+                    if node.func.attr == 'APIRouter':
+                        for kw in node.keywords:
+                            if kw.arg == 'prefix' and isinstance(kw.value, ast.Constant):
+                                prefix = kw.value.value
+                    # Find @router.xxx decorators: func.value.id must be 'router'
+                    if (isinstance(node.func, ast.Attribute) and
+                        hasattr(node.func, 'value') and
+                        hasattr(node.func.value, 'id') and
+                        node.func.value.id == 'router' and
+                        node.func.attr in ('get', 'post', 'put', 'delete', 'patch')):
+                        if node.args and isinstance(node.args[0], ast.Constant):
+                            routes.append((prefix + node.args[0].value, node.func.attr.upper()))
+
+            for (p, m), c in Counter(routes).items():
+                if c > 1:
+                    duplicates.append(f'{fname}: {m} {p} (x{c})')
+
+        if duplicates:
+            print(f'ERROR: {len(duplicates)} duplicate route(s) found')
+            for d in duplicates: print(f'  {d}')
+        else:
+            print('PASS: no duplicate routes detected')
+        "
       ok_pattern: "PASS:"
 

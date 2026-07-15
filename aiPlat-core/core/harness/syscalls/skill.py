@@ -842,6 +842,27 @@ async def sys_skill_call(
             except Exception as e:
                 logging.warning("SchemaGate validation failed: %s", e, exc_info=True)
 
+        # ── Write skill execution record for domain maturity tracking (Phase B2, 2026-07) ──
+        try:
+            from core.apps.skills.skill_execution_record import SkillExecutionRecord, SkillExecutionStore
+            cfg = getattr(skill, "_config", None)
+            meta = getattr(cfg, "metadata", None) if cfg else None
+            domain_id = str((meta or {}).get("domain_id", ""))
+            record = SkillExecutionRecord(
+                execution_id=span.trace_id or f"skill_{int(start_ts)}",
+                skill_name=skill_name,
+                domain_id=domain_id,
+                success=getattr(result, "success", True) if result else True,
+                adopted=False,
+                execution_time_ms=(time.time() - start_ts) * 1000.0,
+            )
+            store_path = os.path.expanduser(os.getenv("AIPLAT_HOME", "~/.aiplat")) + "/data/execution_store.db"
+            os.makedirs(os.path.dirname(store_path), exist_ok=True)
+            SkillExecutionStore.ensure_table(store_path)
+            SkillExecutionStore.insert(store_path, record)
+        except Exception:
+            pass
+
         return result
     except Exception:
         end_ts = time.time()

@@ -1,0 +1,40 @@
+{
+  "_instructions": "填写后通过 FDE 工作台上传。带 * 为必填项。不填的项删除或留空，AI 将按行业默认值推断。",
+  "_version": "2.0",
+
+  "company_name": "",
+
+  "industry*": "",
+  "industry_options": ["政务", "金融", "制造", "医疗", "能源", "教育", "交通", "其他"],
+
+  "custom_industry": "",
+  "team_size": 0,
+
+  "stakeholders": {
+    "business_owner": {"name": "", "role": "业务负责人"},
+    "it_contact": {"name": "", "role": "IT 对接人"},
+    "compliance_owner": {"name": "", "role": "合规负责人"}
+  },
+
+  "pain_points*": [
+    "示例：招投标围标串标现象频发，缺乏有效监管手段"
+  ],
+
+  "existing_tech_stack": [
+    "示例：Python, PostgreSQL, Docker"
+  ],
+
+  "internal_data_sources": [
+    "示例：Oracle（投标人信息表）、文件服务器（历史标书PDF）"
+  ],
+  "external_data_sources": [
+    "示例：公共资源交易平台公告（公开API）"
+  ],
+
+  "compliance_requirements": [],
+  "compliance_options": ["等保二级", "等保三级", "GDPR", "数据不出境", "信创适配"],
+
+  "budget_range": "",
+  "poc_timeline": "示例：3个月",
+  "production_timeline": "示例：6个月"
+}

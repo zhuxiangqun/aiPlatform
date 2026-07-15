@@ -73,6 +73,7 @@ class OllamaScanner:
                             description=details.get("family", ""),
                             tags=["ollama", "local", details.get("family", "")] if details.get("family") else ["ollama", "local"],
                             capabilities=self._get_capabilities(details),
+                            size=item.get("size"),
                             created_at=datetime.now(timezone.utc),
                             updated_at=datetime.now(timezone.utc),
                         )

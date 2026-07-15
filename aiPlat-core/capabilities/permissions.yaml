@@ -1,0 +1,44 @@
+# Capability Contract: Permissions (权限管理)
+domain: ai-security
+capability: permissions
+description: "权限管理——PolicyGate 驱动的 RBAC 权限检查与审批流"
+owner: core-security
+version: "1.0.0"
+updated: "2026-07-13"
+
+authoritative:
+  path: aiPlat-core/core/harness/infrastructure/gates/policy_gate.py
+  entry_point: get_permission_manager
+  class: PolicyGate
+  factory: get_permission_manager
+  public_symbols:
+    - PolicyGate
+    - get_permission_manager
+    - get_skill_permission_resolver
+    - get_exec_skill_permission_resolver
+
+methods:
+  - name: check_tool
+    signature: "(tool_name, params, user_id) -> PermissionResult"
+    purpose: "工具调用权限检查"
+  - name: check_agent
+    signature: "(user_id, agent_id, agent_args) -> PermissionResult"
+    purpose: "Agent 执行权限检查"
+  - name: get_permission_manager
+    signature: "() -> PermissionManager"
+    purpose: "获取全局权限管理器单例"
+  - name: get_skill_permission_resolver
+    signature: "() -> SkillPermissionResolver"
+    purpose: "Skill 权限解析"
+
+consumer_patterns:
+  - "harness/infrastructure/"
+  - "harness/execution/"
+  - "harness/integration"
+  - "harness/security/"
+  - "harness/syscalls/"
+  - "api/"
+  - "apps/"
+  - "management/"
+  - "server"
+  - "platform/"

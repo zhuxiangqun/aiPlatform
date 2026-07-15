@@ -36,8 +36,107 @@ from core.harness.utils.prompt_loader import _sync_resolve
 
 from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import PlainTextResponse
+from pydantic import BaseModel as _PydanticBaseModel
 
 router = APIRouter(prefix="/fde", tags=["fde"])
+
+# Include sub-module routers (incremental migration, 2026-07)
+try:
+    from core.api.routers.fde_quality_summary import router as _quality_summ_router
+    router.include_router(_quality_summ_router)
+except ImportError:
+    pass
+try:
+    from core.api.routers.fde_trends import router as _trends_router
+    router.include_router(_trends_router)
+except ImportError:
+    pass
+try:
+    from core.api.routers.fde_maintenance import router as _maintenance_router
+    router.include_router(_maintenance_router)
+except ImportError:
+    pass
+try:
+    from core.api.routers.fde_overview import router as _overview_router
+    router.include_router(_overview_router)
+except ImportError:
+    pass
+try:
+    from core.api.routers.fde_governance import router as _governance_router
+    router.include_router(_governance_router)
+except ImportError:
+    pass
+try:
+    from core.api.routers.fde_dashboard_v2 import router as _dashboard_v2_router
+    router.include_router(_dashboard_v2_router)
+except ImportError:
+    pass
+try:
+    from core.api.routers.fde_domain_ops import router as _domain_ops_router
+    router.include_router(_domain_ops_router)
+except ImportError:
+    pass
+try:
+    from core.api.routers.fde_sessions_compare import router as _sessions_com_router
+    router.include_router(_sessions_com_router)
+except ImportError:
+    pass
+try:
+    from core.api.routers.fde_pipeline import router as _pipeline_router
+    router.include_router(_pipeline_router)
+except ImportError:
+    pass
+try:
+    from core.api.routers.fde_bootstrap import router as _bootstrap_router
+    router.include_router(_bootstrap_router)
+except ImportError:
+    pass
+try:
+    from core.api.routers.fde_manuals import router as _manuals_router
+    router.include_router(_manuals_router)
+except ImportError:
+    pass
+try:
+    from core.api.routers.fde_acceptance import router as _acceptance_router
+    router.include_router(_acceptance_router)
+except ImportError:
+    pass
+try:
+    from core.api.routers.fde_handover_v2 import router as _handover_v2_router
+    router.include_router(_handover_v2_router)
+except ImportError:
+    pass
+try:
+    from core.api.routers.fde_delivery import router as _delivery_router
+    router.include_router(_delivery_router)
+except ImportError:
+    pass
+try:
+    from core.api.routers.fde_sessions_v2 import router as _sessions_v2_router
+    router.include_router(_sessions_v2_router)
+except ImportError:
+    pass
+try:
+    from core.api.routers.fde_reports import router as _reports_router
+    router.include_router(_reports_router)
+except ImportError:
+    pass
+try:
+    from core.api.routers.fde_ask import router as _ask_router
+    router.include_router(_ask_router)
+except ImportError:
+    pass
+try:
+    from core.api.routers.fde_validate import router as _validate_router
+    router.include_router(_validate_router)
+except ImportError:
+    pass
+try:
+    from core.api.routers.fde_diagnostics_v2 import router as _diag_v2_router
+    router.include_router(_diag_v2_router)
+except ImportError:
+    pass
+
 
 log = logging.getLogger("aiplat.fde")
 
@@ -418,16 +517,110 @@ async def list_customers():
         pm = get_profile_manager()
         customers = []
         for cfg in pm.list_all():
-            health = await _quick_customer_health(cfg.namespace)
+            if cfg.profile_type == "template":
+                continue
             customers.append({
                 "name": cfg.name, "namespace": cfg.namespace,
                 "default": cfg.default, "mcp_servers": cfg.mcp_servers,
                 "description": cfg.description,
-                "health": health,
+                "profile_type": cfg.profile_type,
+                "deployment_mode": cfg.metadata.get("deployment_mode", "online"),
             })
         return {"customers": customers, "total": len(customers)}
     except Exception as e:
         return {"customers": [], "total": 0, "error": str(e)[:200]}
+
+
+@router.get("/templates", response_model=Dict[str, Any])
+async def list_templates():
+    """List POC template profiles."""
+    try:
+        from core.harness.kernel.profile import get_profile_manager
+        pm = get_profile_manager()
+        templates = []
+        for cfg in pm.list_all():
+            if cfg.profile_type != "template":
+                continue
+            templates.append({
+                "key": cfg.namespace.replace("poc-", ""),
+                "name": cfg.name,
+                "description": cfg.description,
+                "namespace": cfg.namespace,
+            })
+        return {"templates": templates, "total": len(templates)}
+    except Exception as e:
+        return {"templates": [], "total": 0, "error": str(e)[:200]}
+
+
+@router.post("/customers", response_model=Dict[str, Any])
+async def create_customer(body: Dict[str, Any]):
+    """Create a new customer profile."""
+    try:
+        name = str(body.get("name", "")).strip()
+        namespace = str(body.get("namespace", "")).strip()
+        industry = str(body.get("industry", "")).strip()
+        if not name:
+            return {"status": "error", "message": "name is required"}
+        if not namespace:
+            namespace = name.lower().replace(" ", "-").replace("_", "-")
+        
+        from core.harness.kernel.profile import get_profile_manager
+        pm = get_profile_manager()
+        existing = pm.get(namespace)
+        if existing:
+            return {"status": "error", "message": f"Profile '{namespace}' already exists"}
+        
+        cfg = pm.create(name=name, namespace=namespace, 
+                        description=body.get("description", ""),
+                        industry=industry,
+                        deployment_mode=str(body.get("deployment_mode", "online")))
+        return {"status": "ok", "profile": {"name": cfg.name, "namespace": cfg.namespace,
+                "description": cfg.description, "default": cfg.default}}
+    except Exception as e:
+        return {"status": "error", "message": str(e)[:200]}
+
+
+@router.put("/customers/{profile_id}", response_model=Dict[str, Any])
+async def update_customer(profile_id: str, body: Dict[str, Any]):
+    """Update a customer profile."""
+    try:
+        from core.harness.kernel.profile import get_profile_manager
+        pm = get_profile_manager()
+        cfg = pm.update(
+            namespace=profile_id,
+            name=str(body.get("name", "")).strip(),
+            description=str(body.get("description", "")).strip(),
+            deployment_mode=str(body.get("deployment_mode", "")).strip(),
+            industry=str(body.get("industry", "")).strip(),
+        )
+        if not cfg:
+            return {"status": "error", "message": f"Profile '{profile_id}' not found"}
+        return {"status": "ok", "profile": {"name": cfg.name, "namespace": cfg.namespace,
+                "description": cfg.description, "profile_type": cfg.profile_type}}
+    except Exception as e:
+        return {"status": "error", "message": str(e)[:200]}
+
+
+@router.delete("/customers/{profile_id}", response_model=Dict[str, Any])
+async def delete_customer(profile_id: str):
+    """Delete a customer profile."""
+    try:
+        from core.harness.kernel.profile import get_profile_manager
+        pm = get_profile_manager()
+        cfg = pm.get(profile_id)
+        if not cfg:
+            # Try by namespace
+            for c in pm.list_all():
+                if c.namespace == profile_id:
+                    profile_id = c.namespace
+                    cfg = c
+                    break
+            else:
+                return {"status": "error", "message": f"Profile '{profile_id}' not found"}
+        ok = pm.delete(cfg.namespace)
+        return {"status": "ok" if ok else "error", "message": "deleted" if ok else "failed to delete"}
+    except Exception as e:
+        return {"status": "error", "message": str(e)[:200]}
 
 
 @router.get("/customers/{profile_id}/health", response_model=Dict[str, Any])
@@ -439,15 +632,297 @@ async def customer_health(profile_id: str):
         return {"profile_id": profile_id, "diagnostics": result}
     except Exception as e:
         return {"profile_id": profile_id, "error": str(e)[:200]}
+# ── Clarify Engine (通用多轮对话澄清，所有场景共用) ──
+
+_CLARIFY_CONTEXTS = {
+    "feedback": {
+        "role": "FDE辅导助手",
+        "guidance": "FDE在提交现场反馈。追问方向：问题具体表现、阻塞在哪个步骤、影响面多大、是否影响验收。",
+    },
+    "diagnosis": {
+        "role": "问题重构助手",
+        "guidance": "FDE在做客户问题诊断。追问方向：客户表层需求 vs 深层问题、组织关系、业务约束、替代方案。",
+    },
+    "poc": {
+        "role": "POC排查助手",
+        "guidance": "FDE在排查POC验证问题。追问方向：失败步骤、数据质量、模板匹配度、预期偏差。",
+    },
+}
+
+_DEFAULT_CLARIFY = {
+    "role": "澄清助手",
+    "guidance": "帮FDE澄清问题。追问方向：问题具体表现、影响范围、是否有已知根因。",
+}
+
+# ── FDE Pipeline Steps (每个步骤的产出/消费定义，单一真相源) ──
+
+FDE_PIPELINE_STEPS = {
+    "customers": {
+        "label": "① 业务认知",
+        "produces": {
+            "customer_name": {"label": "客户名称", "type": "string"},
+            "customer_namespace": {"label": "命名空间", "type": "string"},
+            "customer_industry": {"label": "所在行业", "type": "string"},
+            "customer_desc": {"label": "业务模式描述", "type": "string"},
+            "customer_deploy": {"label": "部署模式", "type": "enum(online|airgap|hybrid)"},
+        },
+        "consumes": {},
+    },
+    "capability": {
+        "label": "② 评估域",
+        "produces": {
+            "domain_id": {"label": "业务域ID", "type": "string"},
+            "domain_maturity": {"label": "域成熟度", "type": "enum(seeding|building|stable|production-ready)"},
+            "domain_skills": {"label": "可用Skill数", "type": "int"},
+        },
+        "consumes": {
+            "customer_industry": "从①获取，用于行业→域推荐映射",
+        },
+    },
+    "assess": {
+        "label": "③ 问题重构",
+        "produces": {
+            "diagnosis_deep_problem": {"label": "深层问题", "type": "string"},
+            "diagnosis_domain": {"label": "推荐本体域", "type": "string"},
+        },
+        "consumes": {
+            "customer_desc": "从①获取，预填'当前流程'字段",
+            "customer_name": "从①获取，预填'企业名称'字段",
+            "customer_industry": "从①获取，自动选中'行业'下拉",
+            "domain_id": "从②获取，预填'业务领域'字段",
+        },
+    },
+    "poc": {
+        "label": "④ 验证价值",
+        "produces": {
+            "poc_profile": {"label": "POC模板名称", "type": "string"},
+        },
+        "consumes": {
+            "domain_id": "从②获取，提示当前域可用Skill",
+        },
+    },
+    "deploy": {
+        "label": "⑤ 快速构建",
+        "produces": {
+            "deploy_version": {"label": "部署版本号", "type": "string"},
+        },
+        "consumes": {
+            "poc_profile": "从④获取，标注打包针对的模板",
+        },
+    },
+    "canary": {
+        "label": "⑥ 评测护栏",
+        "produces": {
+            "canary_passed": {"label": "灰度是否通过", "type": "bool"},
+            "canary_score": {"label": "质量评分", "type": "float"},
+        },
+        "consumes": {
+            "deploy_version": "从⑤获取，灰度发布针对的版本",
+        },
+    },
+    "accept": {
+        "label": "⑦ 验收移交",
+        "produces": {
+            "adopted": {"label": "是否已验收", "type": "bool"},
+        },
+        "consumes": {
+            "canary_passed": "从⑥获取，灰度通过才可验收",
+            "diagnosis_deep_problem": "从③获取，预填交付手册 requirements",
+        },
+    },
+    "evolution": {
+        "label": "⑧ 运营监控",
+        "produces": {},
+        "consumes": {
+            "customer_namespace": "从①获取，按客户过滤监控面板",
+        },
+    },
+}
 
 
-async def _quick_customer_health(namespace: str) -> Dict[str, Any]:
-    """轻量健康摘要 (不跑完整诊断, 复用已有指标)。"""
-    return {
-        "agents": {"total": 0, "healthy": 0},
-        "skills": {"total": 0},
-        "namespace": namespace,
+def _build_collected_vs_expected(step: str, pipeline_state: dict) -> str:
+    """Compare pipeline state against what this step and its predecessors should have produced."""
+    step_def = FDE_PIPELINE_STEPS.get(step)
+    if not step_def:
+        return ""
+
+    collected_lines = []
+    missing_lines = []
+
+    for key, desc in step_def.get("consumes", {}).items():
+        val = pipeline_state.get(key)
+        if val:
+            collected_lines.append(f"{desc}: ✓({val})")
+        else:
+            missing_lines.append(desc)
+
+    produces = step_def.get("produces", {})
+    self_missing = []
+    for key, info in produces.items():
+        if not pipeline_state.get(key):
+            self_missing.append(info["label"])
+
+    parts = [f"FDE当前在{step_def['label']}。"]
+    if collected_lines:
+        parts.append(f"前置已收集：{'；'.join(collected_lines)}。")
+    if missing_lines:
+        parts.append(f"前置缺失：{'；'.join(missing_lines)}。请优先追问缺失项。")
+    if self_missing:
+        parts.append(f"本步骤待填：{'；'.join(self_missing)}。检查FDE已提供的与应提供的差距。")
+    return "\n".join(parts)
+
+
+def _build_from_workflow(workflow_stages: list, current_agent_id: str,
+                          pipeline_state: dict) -> str:
+    """Dynamically compare pipeline state against workflow stage definitions."""
+    current = next((s for s in workflow_stages if s.get("agent_id") == current_agent_id), None)
+    if not current:
+        return ""
+
+    consumed = current.get("input_artifacts", [])
+    collected, missing = [], []
+
+    for key in consumed:
+        val = pipeline_state.get(key)
+        if val:
+            collected.append(f"{key}: ✓")
+        else:
+            missing.append(key)
+
+    parts = [f"Agent: {current.get('agent_name', current_agent_id)}"]
+    if collected:
+        parts.append(f"上游已交付：{'；'.join(collected)}")
+    if missing:
+        parts.append(f"等待上游产出：{'；'.join(missing)}。请确保前置Agent已完成。")
+
+    produces = current.get("output_artifact", "")
+    val = pipeline_state.get(produces)
+    if val:
+        parts.insert(1, f"当前产物：{produces}: ✓({str(val)[:100]}...)")
+
+    return "\n".join(parts)
+
+async def _clarify(context: str, text: str, history: list,
+                    extra: dict = None) -> dict:
+    """Generic multi-turn clarification engine. Used by all contexts."""
+    import json as _json, re as _re
+
+    cfg = _CLARIFY_CONTEXTS.get(context, _DEFAULT_CLARIFY)
+    step = (extra or {}).get("_step", "")
+    step_label = (extra or {}).get("_step_label", "")
+    pipeline_state_raw = (extra or {}).get("_pipeline_state", "{}")
+    try:
+        pipeline_state = _json.loads(pipeline_state_raw) if isinstance(pipeline_state_raw, str) else pipeline_state_raw
+    except Exception:
+        pipeline_state = {}
+    # Use workflow-driven comparison when available, fallback to hardcoded
+    workflow_stages_raw = (extra or {}).get("_workflow_stages", [])
+    agent_id = (extra or {}).get("_agent_id", step)
+    if workflow_stages_raw and agent_id:
+        collected_vs_expected = _build_from_workflow(workflow_stages_raw, agent_id, pipeline_state)
+    else:
+        collected_vs_expected = _build_collected_vs_expected(step, pipeline_state)
+
+    collected = _json.dumps({k: v for k, v in (extra or {}).items() if not k.startswith("_")},
+                           ensure_ascii=False) if extra else "无"
+    system_msg = (
+        f"你是{cfg['role']}。{cfg['guidance']}\n"
+        f"已收集的信息：{collected}\n"
+        + (f"{collected_vs_expected}\n\n" if collected_vs_expected else "\n")
+        + "通过1-3轮追问帮助FDE澄清问题根因。追问时引用FDE已提供的信息，不要凭空猜测。\n"
+        "每轮最多问2个具体问题。当问题已经足够清楚时输出最终摘要。\n"
+        "用中文。\n\n"
+        "只输出以下JSON格式，不要任何解释、不要markdown、不要代码块：\n"
+        '{"questions": ["问题1", "问题2"], "next": "ask|done", '
+        '"summary": null|"摘要文字", '
+        '"structured": {"type": "", "root_cause": "", "severity": "low|medium|high"}}'
+    )
+
+    messages = [{"role": "system", "content": system_msg}]
+    for h in history[-6:]:
+        messages.append({"role": h["role"], "content": h["content"]})
+    if not history:
+        messages.append({"role": "user", "content": f"FDE输入：{text}"})
+
+    try:
+        from core.harness.utils.model_injection import best_model_for_purpose
+        from core.harness.syscalls.llm import sys_llm_generate
+        model_name = best_model_for_purpose("clarify", messages=messages)
+        result = await sys_llm_generate(None, messages,
+            model_name=model_name, max_tokens=800, temperature=0.3)
+        content = getattr(result, "content", "") or ""
+        if not content and isinstance(result, dict):
+            content = result.get("content", "") or ""
+        if not content:
+            content = str(result)
+        # Clean markdown code blocks and extract JSON
+        content = content.replace("```json", "").replace("```", "").strip()
+        # Try strict JSON parse first (handles nested braces that regex can't)
+        try:
+            parsed = _json.loads(content)
+            return parsed
+        except _json.JSONDecodeError:
+            pass
+        # Fallback: regex extraction for loose JSON in natural language
+        json_match = _re.search(r'\{[\s\S]*"questions"[\s\S]*\}', content)
+        if not json_match:
+            json_match = _re.search(r'\{[\s\S]*\}', content)
+        if json_match:
+            try:
+                return _json.loads(json_match.group(0))
+            except _json.JSONDecodeError:
+                pass
+        # Model returned natural language — wrap as done summary
+        if content and len(content) > 20:
+            return {"questions": [], "next": "done",
+                    "summary": content[:800],
+                    "structured": {"type": "feedback", "root_cause": "",
+                                   "severity": "medium"}}
+    except Exception:
+        pass
+
+    # LLM unavailable or parse failed — skip remaining rounds
+    return {"questions": [], "next": "done",
+            "summary": text[:120] if text else "无", "structured": {
+                "type": "pending", "root_cause": "", "severity": "medium"}}
+
+
+@router.post("/clarify", response_model=Dict[str, Any])
+async def clarify(body: Dict[str, Any]):
+    """Generic multi-turn clarification. context=feedback|diagnosis|poc."""
+    result = await _clarify(
+        context=str(body.get("context", "")),
+        text=str(body.get("text", "")),
+        history=list(body.get("history", [])),
+        extra=body.get("extra", {}) or {},
+    )
+    return result
+
+
+@router.post("/feedback/submit", response_model=Dict[str, Any])
+async def submit_clarified_feedback(body: Dict[str, Any]):
+    """Store clarified feedback conversation + summary with pipeline context."""
+    import json as _json
+    fd = os.path.expanduser(os.environ.get("AIPLAT_FEEDBACK_DIR",
+        "~/.aiplat/field_feedback"))
+    os.makedirs(fd, exist_ok=True)
+    fid = f"fb-{int(time.time())}-{uuid.uuid4().hex[:8]}"
+    record = {
+        "id": fid, "created_at": datetime.now(timezone.utc).isoformat(),
+        "step": body.get("step"), "step_label": body.get("step_label"),
+        "customer_name": body.get("customer_name", ""),
+        "customer_namespace": body.get("customer_namespace", ""),
+        "customer_deploy": body.get("customer_deploy", ""),
+        "customer_industry": body.get("customer_industry", ""),
+        "domain_id": body.get("domain_id", ""),
+        "pipeline_state": body.get("pipeline_state", {}),
+        "conversation": body.get("conversation", []),
+        "summary": body.get("summary", ""),
+        "structured": body.get("structured", {}),
     }
+    with open(os.path.join(fd, f"{fid}.json"), "w") as fh:
+        _json.dump(record, fh, indent=2, ensure_ascii=False)
+    return {"feedback_id": fid, "status": "stored"}
 
 
 @router.post("/switch-profile/{profile_id}", response_model=Dict[str, Any])
@@ -495,18 +970,29 @@ def _fallback_submit(data: dict) -> str:
 
 
 @router.get("/feedback/history", response_model=Dict[str, Any])
-async def fde_feedback_history(limit: int = Query(20)):
-    """返回最近 N 条现场反馈。"""
+async def fde_feedback_history(
+    limit: int = Query(20),
+    customer: str = Query("", description="Filter by customer_name"),
+    step: str = Query("", description="Filter by pipeline step"),
+):
+    """返回最近 N 条现场反馈，支持按客户/步骤筛选。"""
     fd = os.path.expanduser(os.environ.get("AIPLAT_FEEDBACK_DIR", "~/.aiplat/field_feedback"))
     if not os.path.isdir(fd):
         return {"feedback": [], "total": 0}
     try:
         import json
-        files = sorted([f for f in os.listdir(fd) if f.endswith(".json")], reverse=True)[:limit]
+        files = sorted([f for f in os.listdir(fd) if f.endswith(".json")], reverse=True)
         items = []
         for fn in files:
             with open(os.path.join(fd, fn)) as fh:
-                items.append(json.load(fh))
+                record = json.load(fh)
+            if customer and record.get("customer_name", "") != customer:
+                continue
+            if step and record.get("step", "") != step:
+                continue
+            items.append(record)
+            if len(items) >= limit:
+                break
         return {"feedback": items, "total": len(items)}
     except Exception:
         return {"feedback": [], "total": 0}
@@ -591,589 +1077,10 @@ async def canary_rollback(body: Dict[str, Any]):
 # Tab 8: 验证验收 (Acceptance & Verification)
 # ════════════════════════════════════════════════════════════
 
-_acceptance_records: Dict[str, dict] = {}
-
-
-@router.get("/acceptance/checklist", response_model=Dict[str, Any])
-async def acceptance_checklist(spec_id: str = Query("")):
-    """生成交付验收 Checklist。
-
-    聚合 KPI 达标情况 + 用户反馈统计 + SLA 指标，
-    返回结构化的验收清单供 FDE 逐项确认。
-    """
-    checklist = []
-
-    # 1) KPI check — from ValueDashboard KPI data
-    try:
-        from core.harness.learning.kpi_tracker import get_kpi_tracker
-        tracker = get_kpi_tracker()
-        kpis = tracker.get_all(spec_id=spec_id) if spec_id else tracker.get_all()
-        kpi_met = sum(1 for k in (kpis or []) if k.get("met", False))
-        kpi_total = len(kpis) if kpis else 0
-        checklist.append({
-            "id": "kpi",
-            "label": "KPI 达标检查",
-            "status": "pass" if kpi_met >= kpi_total > 0 else ("pending" if kpi_total == 0 else "fail"),
-            "detail": f"{kpi_met}/{kpi_total} KPI 达标" if kpi_total > 0 else "无 KPI 配置",
-        })
-    except Exception:
-        checklist.append({"id": "kpi", "label": "KPI 达标检查", "status": "pending",
-                         "detail": "KPI tracker 不可用"})
-
-    # 2) NPS / user feedback
-    try:
-        fd = os.path.expanduser(os.environ.get("AIPLAT_FEEDBACK_DIR", "~/.aiplat/field_feedback"))
-        if os.path.isdir(fd):
-            import json as _json
-            files = sorted([f for f in os.listdir(fd) if f.endswith(".json")], reverse=True)[:50]
-            positive = 0
-            total = len(files)
-            for fn in files:
-                with open(os.path.join(fd, fn)) as fh:
-                    rec = _json.load(fh)
-                    if rec.get("issue", {}).get("category") in ("usability", "integration"):
-                        positive += 1
-            checklist.append({
-                "id": "feedback",
-                "label": "用户反馈质量",
-                "status": "pass" if total == 0 or positive / max(total, 1) >= 0.7 else "fail",
-                "detail": f"正向反馈 {positive}/{total}" if total > 0 else "无反馈记录",
-            })
-        else:
-            checklist.append({"id": "feedback", "label": "用户反馈质量", "status": "pending", "detail": "无反馈记录"})
-    except Exception:
-        checklist.append({"id": "feedback", "label": "用户反馈质量", "status": "pending", "detail": "反馈读取失败"})
-
-    # 3) SLA — check diagnostics summary
-    try:
-        from core.api.routers.diagnostics import run_all_diagnostics
-        diag = await run_all_diagnostics()
-        error_count = diag.get("errors", 0) if isinstance(diag, dict) else 0
-        checklist.append({
-            "id": "sla",
-            "label": "系统健康 (SLA)",
-            "status": "pass" if error_count == 0 else "fail",
-            "detail": f"诊断错误: {error_count}" if error_count else "所有检查通过",
-        })
-    except Exception:
-        checklist.append({"id": "sla", "label": "系统健康 (SLA)", "status": "pending", "detail": "诊断不可用"})
-
-    # 4) Training completion
-    checklist.append({
-        "id": "training",
-        "label": "客户培训完成",
-        "status": "pending",
-        "detail": "需人工确认：客户团队已完成操作演练",
-    })
-
-    passed = sum(1 for c in checklist if c["status"] == "pass")
-    ready = passed == len(checklist)
-
-    return {
-        "checklist": checklist,
-        "passed": passed,
-        "total": len(checklist),
-        "ready_for_signoff": ready,
-        "timestamp": datetime.now(timezone.utc).isoformat(),
-    }
-
-
-@router.post("/acceptance/signoff", response_model=Dict[str, Any])
-async def acceptance_signoff(body: Dict[str, Any]):
-    """记录交付验收签收。
-
-    Body: {"spec_id": "...", "signed_by": "fde_name", "notes": "..."}
-    """
-    spec_id = str(body.get("spec_id") or "unknown").strip()
-    signed_by = str(body.get("signed_by") or "fde").strip()
-    notes = str(body.get("notes") or "").strip()
-
-    record = {
-        "spec_id": spec_id,
-        "signed_by": signed_by,
-        "notes": notes,
-        "signed_at": datetime.now(timezone.utc).isoformat(),
-        "checklist": (await acceptance_checklist(spec_id)) if spec_id != "unknown" else {},
-    }
-
-    # Persist to file
-    ad = os.path.expanduser(os.environ.get("AIPLAT_ACCEPTANCE_DIR", "~/.aiplat/acceptance"))
-    os.makedirs(ad, exist_ok=True)
-    import json as _json
-    fid = f"{spec_id}-{int(time.time())}"
-    with open(os.path.join(ad, f"{fid}.json"), "w") as fh:
-        _json.dump(record, fh, indent=2, ensure_ascii=False)
-
-    _acceptance_records[spec_id] = record
-    return {"status": "signed_off", "record_id": fid, **record}
-
-
-# ════════════════════════════════════════════════════════════
-# Phase H: 正式移交 (Handover)
-# ════════════════════════════════════════════════════════════
-
-_handover_records: Dict[str, dict] = {}
-
-
-@router.post("/handover/transfer", response_model=Dict[str, Any])
-async def handover_transfer(body: Dict[str, Any]):
-    """移交管理员权限 + 撤销 FDE 访问。
-
-    Body: {"spec_id": "...", "client_admin": "username", "notes": "..."}
-    """
-    spec_id = str(body.get("spec_id") or "").strip()
-    client_admin = str(body.get("client_admin") or "").strip()
-    notes = str(body.get("notes") or "").strip()
-
-    if not spec_id:
-        raise HTTPException(400, "spec_id is required")
-    if not client_admin:
-        raise HTTPException(400, "client_admin (username) is required")
-
-    steps = []
-
-    # 1) Switch profile ownership — mark client_admin as owner
-    try:
-        from core.harness.kernel.profile import get_profile_manager
-        pm = get_profile_manager()
-        cfg = pm.get(spec_id) if hasattr(pm, "get") else None
-        if cfg:
-            steps.append({"step": "ownership", "status": "ok",
-                         "detail": f"Profile '{spec_id}' ownership → {client_admin}"})
-        else:
-            steps.append({"step": "ownership", "status": "warning",
-                         "detail": f"Profile '{spec_id}' not found, skipping profile transfer"})
-    except Exception as e:
-        steps.append({"step": "ownership", "status": "warning",
-                     "detail": f"Profile transfer skipped: {str(e)[:100]}"})
-
-    # 2) Record handover
-    hd = os.path.expanduser("~/.aiplat/handovers")
-    os.makedirs(hd, exist_ok=True)
-    import json as _json
-    record = {
-        "spec_id": spec_id,
-        "client_admin": client_admin,
-        "notes": notes,
-        "transferred_at": datetime.now(timezone.utc).isoformat(),
-        "steps": steps,
-    }
-    fid = f"{spec_id}-{int(time.time())}"
-    with open(os.path.join(hd, f"{fid}.json"), "w") as fh:
-        _json.dump(record, fh, indent=2, ensure_ascii=False)
-
-    _handover_records[spec_id] = record
-    steps.append({"step": "recorded", "status": "ok", "detail": f"Handover record saved: {fid}"})
-
-    return {"status": "transferred", "spec_id": spec_id, "client_admin": client_admin,
-            "record_id": fid, "steps": steps}
-
-
-@router.post("/handover/close", response_model=Dict[str, Any])
-async def handover_close(body: Dict[str, Any]):
-    """关闭项目 + 归档。
-
-    将 FDE 项目标记为 closed, 记录交付时间线到 ~/.aiplat/archive/。
-    Body: {"spec_id": "...", "summary": "delivery summary", "fde_name": "..."}
-    """
-    spec_id = str(body.get("spec_id") or "").strip()
-    summary = str(body.get("summary") or "").strip()
-    fde_name = str(body.get("fde_name") or "fde").strip()
-
-    if not spec_id:
-        raise HTTPException(400, "spec_id is required")
-
-    # Archive
-    ar = os.path.expanduser("~/.aiplat/archive")
-    os.makedirs(ar, exist_ok=True)
-    import json as _json
-    archive_record = {
-        "spec_id": spec_id,
-        "fde_name": fde_name,
-        "summary": summary,
-        "closed_at": datetime.now(timezone.utc).isoformat(),
-        "acceptance": _acceptance_records.get(spec_id, {}),
-        "handover": _handover_records.get(spec_id, {}),
-        "timeline": [
-            {"phase": "accepted", "at": (_acceptance_records.get(spec_id) or {}).get("signed_at", "")},
-            {"phase": "transferred", "at": (_handover_records.get(spec_id) or {}).get("transferred_at", "")},
-            {"phase": "closed", "at": datetime.now(timezone.utc).isoformat()},
-        ],
-    }
-    fid = f"project-{spec_id}-{int(time.time())}"
-    with open(os.path.join(ar, f"{fid}.json"), "w") as fh:
-        _json.dump(archive_record, fh, indent=2, ensure_ascii=False)
-
-    # Cleanup
-    _handover_records.pop(spec_id, None)
-    _acceptance_records.pop(spec_id, None)
-
-    return {"status": "closed", "spec_id": spec_id, "archive_id": fid,
-            "fde_name": fde_name, "closed_at": datetime.now(timezone.utc).isoformat()}
-
-
-# ════════════════════════════════════════════════════════════
-# P1: 验收报告 PDF / 培训材料 / SLA Runbook
-# ════════════════════════════════════════════════════════════
-
-@router.get("/report/generate", response_model=Dict[str, Any])
-async def generate_report(spec_id: str = Query(""), download: bool = Query(False)):
-    """生成验收报告 (Markdown → 前端可预览/下载)。
-
-    聚合 KPI 数据 + 反馈统计 + Checklist 结果，
-    输出可直接用于客户汇报的结构化报告。
-    """
-    # Gather data
-    kpi_text = "无 KPI 数据"
-    try:
-        from core.harness.learning.kpi_tracker import get_kpi_tracker
-        tracker = get_kpi_tracker()
-        kpis = tracker.get_all(spec_id=spec_id) if spec_id else tracker.get_all()
-        if kpis:
-            lines = []
-            for k in kpis:
-                status = "✅" if k.get("met") else "❌"
-                lines.append(f"| {k.get('name','?')} | {k.get('target','')} | {k.get('actual','')} | {status} |")
-            kpi_text = "| 指标 | 目标 | 实际 | 达标 |\n|---|---|---|---|\n" + "\n".join(lines)
-    except Exception:
-        pass
-
-    feedback_count = 0
-    try:
-        fd = os.path.expanduser(os.environ.get("AIPLAT_FEEDBACK_DIR", "~/.aiplat/field_feedback"))
-        if os.path.isdir(fd):
-            feedback_count = len([f for f in os.listdir(fd) if f.endswith(".json")])
-    except Exception:
-        pass
-
-    checklist_data = (await acceptance_checklist(spec_id)) if spec_id else {}
-
-    report_md = f"""# 交付验收报告
-
-**项目**: {spec_id or "未指定"}
-**生成时间**: {datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")}
-**FDE**: {os.getenv("AIPLAT_FDE_NAME", "FDE")}
-
----
-
-## 1. KPI 达标情况
-
-{kpi_text}
-
-## 2. 用户反馈统计
-
-- 反馈总数: {feedback_count}
-- Checklist 评分: {checklist_data.get("passed", 0)}/{checklist_data.get("total", 0)} 通过
-
-## 3. 验收清单结果
-
-"""
-    for c in checklist_data.get("checklist", []):
-        icon = "✅" if c["status"] == "pass" else ("❌" if c["status"] == "fail" else "⏳")
-        report_md += f"- {icon} {c['label']}: {c['detail']}\n"
-
-    report_md += f"""
-## 4. 交付结论
-
-{'**判定**: 可移交 ✅' if checklist_data.get('ready_for_signoff') else '**判定**: 尚不可移交 ⚠️ — 有未达标项需解决'}
-
----
-*由 aiPlat FDE 工作台自动生成*
-"""
-
-    if download:
-        return PlainTextResponse(report_md, media_type="text/markdown",
-                                 headers={"Content-Disposition": f"attachment; filename=acceptance-report-{spec_id or 'project'}.md"})
-    return {"report": report_md, "format": "markdown", "spec_id": spec_id,
-            "generated_at": datetime.now(timezone.utc).isoformat()}
-
-
-@router.get("/training/materials", response_model=Dict[str, Any])
-async def generate_training_materials(spec_id: str = Query(""), download: bool = Query(False)):
-    """自动生成客户培训材料。
-
-    基于当前 Agent 配置 + Skills + KPI 生成 Markdown 用户手册。
-    """
-    materials = []
-
-    # Agent overview
-    try:
-        agents_dir = os.path.expanduser("~/.aiplat/agents")
-        if os.path.isdir(agents_dir):
-            agent_count = len([d for d in os.listdir(agents_dir)
-                              if os.path.isdir(os.path.join(agents_dir, d))])
-            materials.append(f"## 配置的 Agent\n\n系统共配置 **{agent_count}** 个 Agent。")
-
-            for d in sorted(os.listdir(agents_dir)):
-                ad = os.path.join(agents_dir, d)
-                if not os.path.isdir(ad):
-                    continue
-                md_path = os.path.join(ad, "AGENT.md")
-                if os.path.isfile(md_path):
-                    with open(md_path, "r") as fh:
-                        body = fh.read()
-                    parts = body.split("---", 2)
-                    sop = parts[2].strip()[:300] if len(parts) >= 3 else body[:300]
-                    materials.append(f"### {d}\n\n{sop}\n")
-    except Exception:
-        materials.append("## Agent 配置\n\n无法读取 Agent 配置。")
-
-    # Skills overview
-    try:
-        skills_dir = os.path.expanduser("~/.aiplat/skills")
-        if os.path.isdir(skills_dir):
-            skill_count = len([d for d in os.listdir(skills_dir)
-                              if os.path.isdir(os.path.join(skills_dir, d))])
-            materials.append(f"## 已配置 Skill\n\n共 **{skill_count}** 个 Skill 可用。")
-    except Exception:
-        pass
-
-    # Quick start guide
-    quick_start = """
-## 快速上手指南
-
-1. 登录系统 → 进入"终端使用"页面
-2. 选择 Agent → 输入你的问题 → 按回车发送
-3. Agent 会自动分析你的需求并给出答案
-4. 如需帮助，输入 `/help` 或联系技术支持
-
-## 常见问题
-
-**Q: Agent 不回答怎么办？**
-A: 确认网络连接正常，检查是否选中了正确的 Agent。
-
-**Q: 如何切换 Agent？**
-A: 左上角 Agent 选择器可以切换不同角色。
-
-**Q: 如何查看历史对话？**
-A: 左侧面板 > 会话历史中可查看所有对话记录。
-"""
-    materials.append(quick_start)
-
-    manual = "\n\n".join(materials)
-    if download:
-        return PlainTextResponse(manual, media_type="text/markdown",
-                                 headers={"Content-Disposition": f"attachment; filename=training-manual-{spec_id or 'project'}.md"})
-    return {"manual": manual, "format": "markdown", "spec_id": spec_id,
-            "generated_at": datetime.now(timezone.utc).isoformat()}
-
-
-@router.get("/handover/runbook", response_model=Dict[str, Any])
-async def generate_runbook(spec_id: str = Query(""), download: bool = Query(False)):
-    """生成 SLA 运维 Runbook。
-
-    基于已部署架构 + 告警规则 + 应急流程生成 Markdown 手册。
-    """
-    runbook = f"""# 运维 Runbook — {spec_id or "未指定项目"}
-
-> 生成时间: {datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")}
-
----
-
-## 1. 系统架构概述
-
-本系统基于 aiPlat 平台部署，采用分层架构:
-
-- **应用层 (port 8004)**: 业务应用接口
-- **平台层 (port 8003)**: API 编排 + 认证
-- **核心层 (port 8002)**: Agent/Skill/Tool 引擎
-- **基础设施层 (port 8001)**: 模型管理 + 数据处理
-
-## 2. 关键进程监控
-
-| 组件 | 端口 | 健康检查 |
-|------|:---:|------|
-| aiplat-core | 8002 | `GET /health` |
-| aiplat-platform | 8003 | `GET /health` |
-| aiplat-app | 8004 | `GET /health` |
-| Ollama | 11434 | `GET /api/tags` |
-
-## 3. 告警规则
-
-| 条件 | 严重度 | 动作 |
-|------|:---:|------|
-| 任一进程不可达 | P0 | 立即通知技术负责人 |
-| Token 使用 > 80% | P1 | 检查模型配额 |
-| Agent 失败率 > 10% | P2 | 检查日志 + 重启服务 |
-| 磁盘使用 > 90% | P1 | 清理临时文件 |
-
-## 4. 常见应急流程
-
-### 服务重启
-```bash
-cd /opt/aiplat && bash start.sh
-```
-
-### 模型不可用
-```bash
-# 检查 Ollama
-ollama list
-# 如需要，重新拉取模型
-ollama pull qwen2.5:3b
-```
-
-### 数据库故障
-```bash
-# 数据库文件位于 ~/.aiplat/
-# 备份操作
-cp ~/.aiplat/data.sqlite ~/.aiplat/data.sqlite.bak
-```
-
-## 5. 联系人
-
-| 角色 | 联系方式 |
-|------|------|
-| 技术支持 | support@aiplat.local |
-| 紧急联系 | 通过内部 IM 工作群 |
-
----
-
-*由 aiPlat FDE 工作台自动生成*
-"""
-    if download:
-        return PlainTextResponse(runbook, media_type="text/markdown",
-                                 headers={"Content-Disposition": f"attachment; filename=sla-runbook-{spec_id or 'project'}.md"})
-    return {"runbook": runbook, "format": "markdown", "spec_id": spec_id,
-            "generated_at": datetime.now(timezone.utc).isoformat()}
 
 
 # ════════════════════════════════════════════════════════════
 # P2: 首月护航 (30天健康检查) + 沙盒培训环境
-# ════════════════════════════════════════════════════════════
-
-_health_schedules: Dict[str, dict] = {}
-_training_sandboxes: Dict[str, dict] = {}
-
-
-@router.post("/handover/schedule-health", response_model=Dict[str, Any])
-async def schedule_post_health(body: Dict[str, Any]):
-    """安排移交后 30 天健康检查。
-
-    Body: {"spec_id": "...", "notify_email": "..."}
-    自动在 30 天后触发诊断检查，结果写入 ~/.aiplat/post_health/。
-    """
-    spec_id = str(body.get("spec_id") or "").strip()
-    notify_email = str(body.get("notify_email") or "").strip()
-
-    if not spec_id:
-        raise HTTPException(400, "spec_id is required")
-
-    scheduled_at = datetime.now(timezone.utc)
-    due_at_ts = int(time.time()) + 30 * 86400
-
-    schedule = {
-        "spec_id": spec_id,
-        "scheduled_at": scheduled_at.isoformat(),
-        "due_at": datetime.fromtimestamp(due_at_ts, tz=timezone.utc).isoformat(),
-        "notify_email": notify_email,
-        "status": "scheduled",
-        "checks": ["diagnostics_full", "agent_health", "model_availability", "kpi_review"],
-    }
-
-    # Persist
-    sd = os.path.expanduser("~/.aiplat/post_health")
-    os.makedirs(sd, exist_ok=True)
-    import json as _json
-    fid = f"health-{spec_id}-{int(time.time())}"
-    with open(os.path.join(sd, f"{fid}.json"), "w") as fh:
-        _json.dump(schedule, fh, indent=2, ensure_ascii=False)
-
-    _health_schedules[spec_id] = schedule
-    return {"status": "scheduled", "schedule_id": fid, **schedule}
-
-
-@router.get("/handover/schedule-health", response_model=Dict[str, Any])
-async def list_health_schedules(spec_id: str = Query("")):
-    """查看已安排的健康检查。"""
-    results = []
-    for sid, s in _health_schedules.items():
-        if not spec_id or sid == spec_id:
-            results.append(s)
-
-    sd = os.path.expanduser("~/.aiplat/post_health")
-    if os.path.isdir(sd):
-        import json as _json
-        for fn in sorted(os.listdir(sd), reverse=True)[:20]:
-            if fn.endswith(".json"):
-                try:
-                    with open(os.path.join(sd, fn)) as fh:
-                        rec = _json.load(fh)
-                        if not spec_id or rec.get("spec_id") == spec_id:
-                            if rec.get("id") not in [r.get("id") for r in results]:
-                                results.append(rec)
-                except Exception:
-                    pass
-
-    return {"schedules": results, "total": len(results)}
-
-
-@router.post("/training/sandbox", response_model=Dict[str, Any])
-async def create_training_sandbox(body: Dict[str, Any]):
-    """创建隔离的培训沙盒环境。
-
-    Body: {"spec_id": "...", "trainee_count": 5}
-    创建独立的 training profile，用户操作不影响生产数据。
-    """
-    spec_id = str(body.get("spec_id") or "default").strip()
-    trainee_count = max(1, min(50, int(body.get("trainee_count") or 5)))
-
-    sandbox_id = f"training-{spec_id}"
-    sandbox = {
-        "id": sandbox_id,
-        "spec_id": spec_id,
-        "created_at": datetime.now(timezone.utc).isoformat(),
-        "trainee_count": trainee_count,
-        "status": "active",
-        "features": {
-            "isolated_data": True,
-            "no_production_impact": True,
-            "preloaded_templates": ["行业模板", "POC 模拟数据"],
-            "reset_available": True,
-        },
-        "access": {
-            "url": f"/app?profile={sandbox_id}",
-            "expires_in": "72h",
-            "max_sessions": trainee_count,
-        },
-    }
-
-    # Persist
-    sd = os.path.expanduser("~/.aiplat/training")
-    os.makedirs(sd, exist_ok=True)
-    import json as _json
-    with open(os.path.join(sd, f"{sandbox_id}.json"), "w") as fh:
-        _json.dump(sandbox, fh, indent=2, ensure_ascii=False)
-
-    # Try to create isolated Profile
-    try:
-        from core.harness.kernel.profile import get_profile_manager
-        pm = get_profile_manager()
-    except Exception:
-        pass
-
-    _training_sandboxes[sandbox_id] = sandbox
-    return {"status": "created", **sandbox}
-
-
-@router.get("/training/sandbox", response_model=Dict[str, Any])
-async def list_training_sandboxes():
-    """列出活跃的培训沙盒。"""
-    results = list(_training_sandboxes.values())
-    sd = os.path.expanduser("~/.aiplat/training")
-    if os.path.isdir(sd):
-        import json as _json
-        for fn in sorted(os.listdir(sd), reverse=True)[:10]:
-            if fn.endswith(".json"):
-                try:
-                    with open(os.path.join(sd, fn)) as fh:
-                        rec = _json.load(fh)
-                        if rec.get("id") not in [r.get("id") for r in results]:
-                            results.append(rec)
-                except Exception:
-                    pass
-    return {"sandboxes": results, "total": len(results)}
-
-
 # ════════════════════════════════════════════════════════════
 # 标准交付手册生成 (Template-based Project Manual)
 # ════════════════════════════════════════════════════════════
@@ -1576,151 +1483,6 @@ async def generate_delivery_manual(
     }
 
 
-# ════════════════════════════════════════════════════════════
-# B0: FDE 追问端点 — 基于诊断上下文回答后续问题
-# ════════════════════════════════════════════════════════════
-
-from pydantic import BaseModel as _PydanticBaseModel
-
-
-class FdeAskRequest(_PydanticBaseModel):
-    question: str
-    session_id: str = ""
-    industry: str = ""
-    company_name: str = ""
-    pain_points: str = ""
-
-
-@router.post("/ask", response_model=dict)
-async def fde_ask(req: FdeAskRequest):
-    """回答关于 FDE 诊断报告的追问（B0: 交互式追问）。
-
-    基于 session_id 加载历史诊断上下文，或基于 industry/company/pain_points
-    构建域上下文，然后回答用户的问题。
-
-    Returns:
-        {answer: str, sources: [{type, label, detail}]}
-    """
-    question = req.question.strip()
-    if not question:
-        raise HTTPException(status_code=400, detail="question is required")
-
-    industry = req.industry.strip()
-    company = req.company_name.strip()
-    domain_hint = industry or company
-
-    try:
-        # ── Build domain context ──
-        from core.harness.knowledge.domain_router import DomainRouter
-        from core.harness.ontology_engine.graph_index import GraphIndex
-
-        did = DomainRouter().classify(domain_hint) if domain_hint else "ai-knowledge"
-
-        context_blocks = [f"领域：{did}", f"行业：{industry}", f"公司：{company}"]
-
-        # Load graph context
-        try:
-            g = GraphIndex.load(did)
-            gstats = g.stats()
-            context_blocks.append(f"知识图谱：{gstats['node_count']} 实体，{gstats['edge_count']} 关系")
-        except Exception:
-            context_blocks.append("知识图谱：不可用")
-
-        # Load delivery tracking history
-        try:
-            fd = GraphIndex.load("fde-delivery")
-            sessions = 0
-            for nid, node in list(fd._nodes.items())[:50]:
-                if getattr(node, "class_name", "") == "DiagnosisSession":
-                    sessions += 1
-            if sessions > 0:
-                context_blocks.append(f"历史诊断：{sessions} 次")
-        except Exception:
-            pass
-
-        # Load solution prototypes
-        try:
-            import os as _os_ask
-            from core.harness.knowledge.ontology_loader import load_ontology_from_yaml
-            sol_path = _os_ask.path.expanduser("~/.aiplat/ontologies/ai-solution.yaml")
-            if _os_ask.path.exists(sol_path):
-                sol = load_ontology_from_yaml(sol_path)
-                arch_count = sum(1 for c in sol.classes if getattr(c, 'label', '') == '方案原型')
-                context_blocks.append(f"AI方案原型：{arch_count} 类")
-        except Exception:
-            pass
-
-        context = "\n".join(context_blocks)
-
-        # ── Inject evidence_map from session for traceable answers ──
-        evidence_context = ""
-        if req.session_id:
-            try:
-                fd_session = GraphIndex.load("fde-delivery")
-                sn = fd_session.get_node(req.session_id) or fd_session.find_by_name(req.session_id)
-                if sn:
-                    sid = getattr(sn, "entity_id", req.session_id)
-                    for nid, e in fd_session.get_neighbors(sid, direction="outgoing"):
-                        if e.relation_name == "has_meta":
-                            mn = fd_session.get_node(nid)
-                            if mn:
-                                import json as _json_ask
-                                md = _json_ask.loads(mn.entity_name)
-                                em = md.get("evidence_map", [])
-                                if em:
-                                    lines = ["该诊断报告的结论溯源："]
-                                    for item in em[:5]:
-                                        level = "本体实例支撑" if item.get("source") and item["source"] not in ("", _EVIDENCE_SOURCE_LLM, _EVIDENCE_SOURCE_INDUSTRY) else _EVIDENCE_SOURCE_LLM if not item.get("source") or item["source"] == _EVIDENCE_SOURCE_LLM else "历史案例参考"
-                                        lines.append(f"  · {item.get('ai_opportunity','')} → {level} → 来源：{item.get('source','未标注')}")
-                                    evidence_context = "\n".join(lines)
-            except Exception:
-                pass
-
-        # ── Build prompt and call LLM ──
-        from core.harness.syscalls.llm import sys_llm_generate
-        from core.harness.utils.model_injection import best_model_for_purpose
-
-        model = best_model_for_purpose("skill_execution")
-        evidence_block = f"{evidence_context}\n\n" if evidence_context else ""
-        system_content = _sync_resolve("fde-ask-system", context=context, evidence_block=evidence_block)
-        messages = [
-            {
-                "role": "system",
-                "content": system_content,
-            },
-            {
-                "role": "user",
-                "content": f"客户痛点：{req.pain_points}\n\n追问问题：{question}",
-            },
-        ]
-
-        resp = await sys_llm_generate(model, messages, max_tokens=600, temperature=0.4)
-        answer = str(getattr(resp, "content", "") or "")
-
-        # ── Extract sources from answer for traceability ──
-        sources = []
-        import re
-        # Match patterns like "在xxx域中" or "根据xxx类" or "参考xxx"
-        for pattern, label in [
-            (r'[^\s]*域', '域引用'),
-            (r'[^\s]*类', '本体类'),
-            (r'[^\s]*方案', '方案原型'),
-        ]:
-            matches = re.findall(pattern, answer)
-            for m in matches[:3]:
-                sources.append({"type": "domain", "label": label, "detail": m})
-
-        return {
-            "answer": answer,
-            "sources": sources,
-            "domain": did,
-            "context_summary": context,
-        }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"FDE ask failed: {str(e)[:300]}")
-
-
-# ════════════════════════════════════════════════════════════
 # Assess Dialog — multi-turn clarification before diagnosis
 # ════════════════════════════════════════════════════════════
 
@@ -2044,136 +1806,6 @@ async def fde_assess_dialog(req: FdeDialogRequest):
 # ════════════════════════════════════════════════════════════
 # D: FDE 交付反馈 — 标记行动状态，触发 ROI 重新计算
 # ════════════════════════════════════════════════════════════
-
-class FdeDeliveryFeedbackRequest(_PydanticBaseModel):
-    session_id: str
-    status: str = ""       # delivered | in_progress | completed | blocked | abandoned
-    action_name: str = ""  # optional: target a specific DeliveryAction
-
-
-@router.post("/delivery/feedback", response_model=dict)
-async def fde_delivery_feedback(req: FdeDeliveryFeedbackRequest):
-    """Mark delivery status for a diagnosis session or its actions. (L: Action bridge)
-
-    Creates StateTransition entities to track the full lifecycle.
-    Returns updated session stats + transition timeline.
-    """
-    import time as _time_df
-
-    sid = req.session_id.strip()
-    if not sid:
-        raise HTTPException(status_code=400, detail="session_id is required")
-
-    status = req.status.strip().lower()
-    action_name = req.action_name.strip()
-
-    try:
-        from core.harness.ontology_engine.graph_index import GraphIndex
-
-        fd = GraphIndex.load("fde-delivery")
-        session_node = fd.get_node(sid) or fd.find_by_name(sid)
-        if not session_node:
-            for nid, node in list(fd._nodes.items()):
-                if sid in nid or sid in node.entity_name:
-                    session_node = node
-                    sid = nid
-                    break
-        if not session_node:
-            raise HTTPException(status_code=404, detail=f"Session {sid} not found")
-
-        ts = str(int(_time_df.time()))
-        transitions = []
-
-        if action_name:
-            # Target a specific action
-            neighbors = fd.get_neighbors(sid, direction="outgoing")
-            targeted = False
-            for neighbor_id, edge in neighbors:
-                if edge.relation_name == "has_action":
-                    action_node = fd.get_node(neighbor_id)
-                    if action_node and action_name.lower() in action_node.entity_name.lower():
-                        targeted = True
-                        # L: Create state transition entity
-                        tid = f"trans_{sid}_{ts}_{neighbor_id[:8]}"
-                        fd.add_entity(tid,
-                            f"{action_node.entity_name[:60]} → {status}",
-                            "StateTransition",
-                            source_doc_id=sid)
-                        fd.add_relation(neighbor_id, tid, "has_transition",
-                                       relation_label="状态变更",
-                                       confidence=1.0)
-                        transitions.append({
-                            "target": "action",
-                            "entity": action_node.entity_name[:60],
-                            "from_state": "previous",
-                            "to_state": status,
-                            "transition_id": tid,
-                        })
-            if not targeted:
-                raise HTTPException(status_code=404,
-                    detail=f"Action '{action_name}' not found in session {sid}")
-        else:
-            # Session-level status change
-            tid = f"trans_{sid}_{ts}"
-            fd.add_entity(tid,
-                f"Session → {status}",
-                "StateTransition",
-                source_doc_id=sid)
-            fd.add_relation(sid, tid, "has_transition",
-                           relation_label="状态变更",
-                           confidence=1.0)
-            transitions.append({
-                "target": "session",
-                "entity": session_node.entity_name,
-                "from_state": "previous",
-                "to_state": status,
-                "transition_id": tid,
-            })
-
-            # Cascade to all actions
-            neighbors = fd.get_neighbors(sid, direction="outgoing")
-            for neighbor_id, edge in neighbors:
-                if edge.relation_name == "has_action":
-                    atid = f"trans_{sid}_{ts}_{neighbor_id[:8]}"
-                    fd.add_entity(atid,
-                        f"Action → {status} (session cascade)",
-                        "StateTransition",
-                        source_doc_id=sid)
-                    fd.add_relation(neighbor_id, atid, "has_transition",
-                                   relation_label="状态变更(级联)",
-                                   confidence=0.9)
-
-        # ── Compute updated stats ──
-        total_sessions = sum(1 for _, n in fd._nodes.items()
-                            if getattr(n, "class_name", "") == "DiagnosisSession")
-        completed = sum(1 for _, n in fd._nodes.items()
-                       if getattr(n, "class_name", "") == "DiagnosisSession"
-                       and any(e.relation_name == "has_action" for _, e in
-                              fd.get_neighbors(getattr(n, "entity_id", "") or "", direction="outgoing")))
-
-        # Count transitions for this session
-        session_transitions = sum(1 for _, n in fd._nodes.items()
-                                 if getattr(n, "class_name", "") == "StateTransition"
-                                 and sid in getattr(n, "source_doc_id", ""))
-
-        return {
-            "session_id": sid,
-            "status": status,
-            "transitions": transitions,
-            "total_transitions_for_session": session_transitions,
-            "stats": {
-                "total_sessions": total_sessions,
-                "sessions_with_actions": completed,
-                "delivery_rate": round(completed / total_sessions * 100) if total_sessions else 0,
-            },
-        }
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Delivery feedback failed: {str(e)[:300]}")
-
-
-# ════════════════════════════════════════════════════════════
 # H: FDE Health Check — pipeline component status
 # ════════════════════════════════════════════════════════════
 
@@ -2303,1014 +1935,10 @@ async def fde_health():
     return result
 
 
-# ════════════════════════════════════════════════════════════
-# I: FDE E2E Validation — quick component connectivity test
-# ════════════════════════════════════════════════════════════
 
-@router.get("/validate", response_model=dict)
-async def fde_validate():
-    """Quick E2E validation of FDE pipeline component connectivity.
 
-    Returns per-component pass/fail status. All checks use try/catch
-    so a single failure doesn't block the rest.
-    """
-    checks = {}
-    passed = 0
-    total = 0
 
-    def _check(key: str, fn):
-        nonlocal passed, total
-        total += 1
-        try:
-            v = fn()
-            checks[key] = "pass" if v else "fail"
-            passed += int(bool(v))
-        except Exception as e:
-            checks[key] = f"fail: {str(e)[:80]}"
 
-    # 1. Domain registry load
-    def _ck_domains():
-        import json
-        with open(os.path.expanduser("~/.aiplat/ontologies/registry.json")) as f:
-            r = json.load(f)
-        return len(r.get("domains", {})) >= 2
-
-    # 2. Domain router classify
-    def _ck_router():
-        from core.harness.knowledge.domain_router import DomainRouter
-        r = DomainRouter()
-        return bool(r.classify("政务招标围标串标检测"))
-
-    # 3. GraphIndex load
-    def _ck_graph():
-        from core.harness.ontology_engine.graph_index import GraphIndex
-        g = GraphIndex.load("ai-knowledge")
-        return g.stats().get("node_count", 0) >= 0
-
-    # 4. Delivery graph
-    def _ck_delivery():
-        from core.harness.ontology_engine.graph_index import GraphIndex
-        GraphIndex.load("fde-delivery")
-        return True
-
-    # 5. Ontology YAML load
-    def _ck_ontology():
-        from core.harness.knowledge.ontology_loader import load_ontology_from_yaml
-        path = os.path.expanduser("~/.aiplat/ontologies/ai-knowledge.yaml")
-        dom = load_ontology_from_yaml(path)
-        return len(dom.classes) > 0
-
-    # 6. Solution YAML load
-    def _ck_solution():
-        from core.harness.knowledge.ontology_loader import load_ontology_from_yaml
-        path = os.path.expanduser("~/.aiplat/ontologies/ai-solution.yaml")
-        dom = load_ontology_from_yaml(path)
-        return len(dom.classes) > 0
-
-    # 7. Consistency gate import
-    def _ck_consistency():
-        from core.harness.knowledge.consistency_gate import check_cross_stage_consistency
-        warnings = check_cross_stage_consistency("## 2. Data Maturity\nmaturity=1\n## 6. Config\nUse GPT-4 large model")
-        return len(warnings) > 0  # Should detect contradiction
-
-    # 8. Cross-domain analog
-    def _ck_cross_domain():
-        from core.harness.knowledge.ontology_query_mapper import discover_cross_domain_analogs
-        result = discover_cross_domain_analogs("AI技术")
-        return isinstance(result, dict)
-
-    _check("domains", _ck_domains)
-    _check("router", _ck_router)
-    _check("graph_index", _ck_graph)
-    _check("delivery_tracking", _ck_delivery)
-    _check("ontology_yaml", _ck_ontology)
-    _check("solution_yaml", _ck_solution)
-    _check("consistency_gate", _ck_consistency)
-    _check("cross_domain_analog", _ck_cross_domain)
-
-    return {
-        "passed": passed,
-        "total": total,
-        "status": "healthy" if passed == total else "degraded",
-        "checks": checks,
-    }
-
-
-# ════════════════════════════════════════════════════════════
-# J: FDE Session History — list past diagnoses with delivery status
-# ════════════════════════════════════════════════════════════
-
-@router.get("/sessions", response_model=dict)
-async def fde_sessions(
-    industry: str = Query("", description="Filter by industry keyword"),
-    company: str = Query("", description="Filter by company name"),
-    status: str = Query("", description="Filter by delivery status (delivered/in_progress/completed/abandoned)"),
-    limit: int = Query(20, ge=1, le=100, description="Max results"),
-):
-    """List past FDE diagnosis sessions with delivery tracking status.
-
-    Returns sessions from fde-delivery GraphIndex, ordered by recency.
-    Each session includes company, industry hint, action count, and delivery stats.
-    """
-    try:
-        from core.harness.ontology_engine.graph_index import GraphIndex
-
-        fd = GraphIndex.load("fde-delivery")
-        sessions = []
-        industry_lower = industry.strip().lower()
-        company_lower = company.strip().lower()
-        status_filter = status.strip().lower()
-
-        for nid, node in list(fd._nodes.items()):
-            if getattr(node, "class_name", "") != "DiagnosisSession":
-                continue
-
-            name = node.entity_name
-            if industry_lower and industry_lower not in name.lower():
-                continue
-            if company_lower and company_lower not in name.lower():
-                continue
-
-            # Count actions and infer status
-            neighbors = fd.get_neighbors(nid, direction="outgoing")
-            actions = []
-            session_status = "generated"
-            for neighbor_id, edge in neighbors:
-                if edge.relation_name == "has_action":
-                    action_node = fd.get_node(neighbor_id)
-                    if action_node:
-                        actions.append(action_node.entity_name)
-                        session_status = "in_progress"
-
-            if status_filter:
-                # Simple status matching
-                if status_filter == "active" and session_status not in ("in_progress", "delivered"):
-                    continue
-                if status_filter not in ("", "active") and status_filter not in session_status:
-                    continue
-
-            # Extract timestamp from session_id (format: session_{company}_{timestamp})
-            ts_str = nid.rsplit("_", 1)[-1]
-            try:
-                ts = int(ts_str)
-                from datetime import datetime, timezone
-                generated_at = datetime.fromtimestamp(ts, tz=timezone.utc).isoformat()
-            except (ValueError, OSError):
-                generated_at = ""
-
-            sessions.append({
-                "session_id": nid,
-                "company": name,
-                "industry_hint": name.split("_")[0] if "_" in name else "",
-                "generated_at": generated_at,
-                "status": session_status,
-                "action_count": len(actions),
-                "actions": actions[:5],
-            })
-
-        # Sort by recency (most recent first)
-        sessions.sort(key=lambda s: s["generated_at"], reverse=True)
-        sessions = sessions[:limit]
-
-        # Compute aggregate stats
-        total = sum(1 for _, n in fd._nodes.items()
-                    if getattr(n, "class_name", "") == "DiagnosisSession")
-        with_actions = sum(1 for s in [dict()] if False)  # placeholder
-        with_actions = sum(1 for s in sessions if s["action_count"] > 0)
-
-        return {
-            "sessions": sessions,
-            "total": total,
-            "returned": len(sessions),
-            "limit": limit,
-            "filters": {"industry": industry, "company": company, "status": status},
-        }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Session list failed: {str(e)[:300]}")
-
-
-# ════════════════════════════════════════════════════════════
-# K: FDE Industry Benchmark — aggregated stats across all sessions
-# ════════════════════════════════════════════════════════════
-
-@router.get("/benchmark", response_model=dict)
-async def fde_benchmark():
-    """Aggregated statistics across all FDE diagnosis sessions.
-
-    Returns per-industry breakdown: session count, action count, delivery rate,
-    most common recommendations, and readiness score distribution.
-    """
-    try:
-        from core.harness.ontology_engine.graph_index import GraphIndex
-        import re as _re_bm
-
-        fd = GraphIndex.load("fde-delivery")
-        industries: dict = {}
-        total_sessions = 0
-        total_actions = 0
-        all_actions: list = []
-
-        for nid, node in list(fd._nodes.items()):
-            if getattr(node, "class_name", "") != "DiagnosisSession":
-                continue
-            total_sessions += 1
-            name = node.entity_name
-
-            # Infer industry from session metadata (stored in entity_name as "{industry}_{company}")
-            parts = name.split("_", 1)
-            ind = parts[0].lower() if parts else "unknown"
-            if len(ind) < 2 or len(ind) > 20:
-                ind = "unknown"
-
-            if ind not in industries:
-                industries[ind] = {"sessions": 0, "actions": 0, "delivered": 0, "top_actions": []}
-
-            industries[ind]["sessions"] += 1
-            neighbors = fd.get_neighbors(nid, direction="outgoing")
-            has_actions = False
-            for neighbor_id, edge in neighbors:
-                if edge.relation_name == "has_action":
-                    has_actions = True
-                    action_node = fd.get_node(neighbor_id)
-                    if action_node:
-                        aname = action_node.entity_name[:80]
-                        industries[ind]["actions"] += 1
-                        all_actions.append({"industry": ind, "action": aname})
-            if has_actions:
-                industries[ind]["delivered"] += 1
-
-        # Compute per-industry delivery rate and top actions
-        for ind, data in industries.items():
-            data["delivery_rate"] = (
-                round(data["delivered"] / data["sessions"] * 100)
-                if data["sessions"] else 0
-            )
-            # Top actions for this industry
-            ind_actions = [a["action"] for a in all_actions if a["industry"] == ind]
-            from collections import Counter
-            data["top_actions"] = [a[0] for a in Counter(ind_actions).most_common(5)]
-
-        # Global top actions
-        from collections import Counter as _Counter
-        global_actions = [a["action"] for a in all_actions]
-        top_global = [a[0] for a in _Counter(global_actions).most_common(10)]
-
-        # Delivery rate trend (recent vs overall)
-        overall_rate = round(
-            sum(d["delivered"] for d in industries.values()) /
-            max(total_sessions, 1) * 100
-        )
-
-        return {
-            "total_sessions": total_sessions,
-            "total_actions": sum(d["actions"] for d in industries.values()),
-            "overall_delivery_rate": overall_rate,
-            "industries": {
-                ind: {
-                    "sessions": d["sessions"],
-                    "actions": d["actions"],
-                    "delivery_rate": d["delivery_rate"],
-                    "top_actions": d["top_actions"],
-                }
-                for ind, d in sorted(industries.items(),
-                                    key=lambda x: x[1]["sessions"], reverse=True)
-            },
-            "top_recommendations": top_global,
-        }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Benchmark failed: {str(e)[:300]}")
-
-
-# ════════════════════════════════════════════════════════════
-# L: Session Timeline — state transition history (action bridge)
-# ════════════════════════════════════════════════════════════
-
-@router.get("/sessions/{session_id}/timeline", response_model=dict)
-async def fde_session_timeline(session_id: str):
-    """Return the state transition timeline for a diagnosis session.
-
-    Part of the action bridge (L): traces every status change
-    from diagnosis generation through delivery to completion.
-    """
-    sid = session_id.strip()
-    if not sid:
-        raise HTTPException(status_code=400, detail="session_id is required")
-
-    try:
-        from core.harness.ontology_engine.graph_index import GraphIndex
-        import time as _time_tl
-
-        fd = GraphIndex.load("fde-delivery")
-        session_node = fd.get_node(sid) or fd.find_by_name(sid)
-        if not session_node:
-            for nid, node in list(fd._nodes.items()):
-                if sid in nid or sid in node.entity_name:
-                    session_node = node
-                    sid = nid
-                    break
-        if not session_node:
-            raise HTTPException(status_code=404, detail=f"Session {sid} not found")
-
-        # Collect all StateTransition entities linked to this session or its actions
-        tl_entries = []
-        seen_action_ids = set()
-
-        # Session-level transitions
-        session_neighbors = fd.get_neighbors(sid, direction="outgoing")
-        for neighbor_id, edge in session_neighbors:
-            if edge.relation_name == "has_transition":
-                tnode = fd.get_node(neighbor_id)
-                if tnode:
-                    ts_str = neighbor_id.rsplit("_", 1)[-1]
-                    try:
-                        t = int(ts_str)
-                        from datetime import datetime, timezone
-                        ts_iso = datetime.fromtimestamp(t, tz=timezone.utc).isoformat()
-                    except (ValueError, OSError):
-                        ts_iso = ""
-                    tl_entries.append({
-                        "type": "session",
-                        "description": tnode.entity_name,
-                        "timestamp": ts_iso,
-                        "transition_id": neighbor_id,
-                    })
-
-            # Action-level transitions
-            if edge.relation_name == "has_action":
-                aid = neighbor_id
-                if aid in seen_action_ids:
-                    continue
-                seen_action_ids.add(aid)
-                action_node = fd.get_node(aid)
-                action_name = action_node.entity_name if action_node else "unknown"
-                action_transitions = fd.get_neighbors(aid, direction="outgoing")
-                for atid, aedge in action_transitions:
-                    if aedge.relation_name == "has_transition":
-                        atnode = fd.get_node(atid)
-                        if atnode:
-                            ts_str2 = atid.rsplit("_", 1)[-1]
-                            try:
-                                t2 = int(ts_str2)
-                                from datetime import datetime, timezone
-                                ats_iso = datetime.fromtimestamp(t2, tz=timezone.utc).isoformat()
-                            except (ValueError, OSError):
-                                ats_iso = ""
-                            tl_entries.append({
-                                "type": "action",
-                                "action": action_name[:80],
-                                "description": atnode.entity_name,
-                                "timestamp": ats_iso,
-                                "transition_id": atid,
-                            })
-
-        # Sort by timestamp descending (most recent first)
-        tl_entries.sort(key=lambda e: e.get("timestamp", ""), reverse=True)
-
-        # Count action completion
-        actions_completed = sum(
-            1 for e in tl_entries
-            if e["type"] == "action" and "→" in e.get("description", "")
-            and ("complet" in e["description"].lower() or "blocked" in e["description"].lower())
-        )
-
-        return {
-            "session_id": sid,
-            "company": session_node.entity_name,
-            "total_transitions": len(tl_entries),
-            "actions_with_transitions": len(seen_action_ids),
-            "actions_completed_or_blocked": actions_completed,
-            "timeline": tl_entries,
-        }
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Timeline failed: {str(e)[:300]}")
-
-
-# ════════════════════════════════════════════════════════════
-# M: Session Detail — aggregated single-session view
-# ════════════════════════════════════════════════════════════
-
-@router.get("/sessions/{session_id}", response_model=dict)
-async def fde_session_detail(session_id: str):
-    """Get aggregated detail for a single diagnosis session.
-
-    Aggregates: session summary, evidence_map, knowledge_gaps,
-    delivery timeline, and related sessions in the same industry.
-    Single-request full view for the FDE dashboard detail page.
-    """
-    sid = session_id.strip()
-    if not sid:
-        raise HTTPException(status_code=400, detail="session_id is required")
-
-    try:
-        from core.harness.ontology_engine.graph_index import GraphIndex
-        import json as _json_md
-
-        fd = GraphIndex.load("fde-delivery")
-        session_node = fd.get_node(sid) or fd.find_by_name(sid)
-        if not session_node:
-            for nid, node in list(fd._nodes.items()):
-                if sid in nid or sid in node.entity_name:
-                    session_node = node
-                    sid = nid
-                    break
-        if not session_node:
-            raise HTTPException(status_code=404, detail=f"Session {sid} not found")
-
-        result = {
-            "session_id": sid,
-            "company": session_node.entity_name,
-        }
-
-        # 1. Session metadata (evidence_map + knowledge_gaps + readiness)
-        neighbors = fd.get_neighbors(sid, direction="outgoing")
-        for neighbor_id, edge in neighbors:
-            if edge.relation_name == "has_meta":
-                meta_node = fd.get_node(neighbor_id)
-                if meta_node:
-                    try:
-                        md = _json_md.loads(meta_node.entity_name)
-                        result["evidence_map"] = md.get("evidence_map", [])
-                        result["knowledge_gaps"] = md.get("knowledge_gaps", [])
-                        result["readiness_score"] = md.get("readiness_score", 0)
-                        result["industry"] = md.get("industry", "")
-                        result["pain_points"] = md.get("pain_points", "")
-                    except _json_md.JSONDecodeError:
-                        pass
-
-        # 2. Actions and delivery status
-        actions = []
-        delivery_status = "generated"
-        transition_count = 0
-        for neighbor_id, edge in sorted(neighbors, key=lambda x: abs(hash(x[0]))):
-            if edge.relation_name == "has_action":
-                action_node = fd.get_node(neighbor_id)
-                if action_node:
-                    # Get action transitions
-                    action_transitions = fd.get_neighbors(neighbor_id, direction="outgoing")
-                    latest_status = "pending"
-                    for atid, aedge in action_transitions:
-                        if aedge.relation_name == "has_transition":
-                            transition_count += 1
-                            atnode = fd.get_node(atid)
-                            if atnode and "→" in atnode.entity_name:
-                                latest_status = atnode.entity_name.split("→")[-1].strip().split(")")[0].strip()
-                    actions.append({
-                        "name": action_node.entity_name[:100],
-                        "status": latest_status,
-                    })
-
-            if edge.relation_name == "has_transition":
-                transition_count += 1
-
-        # Infer delivery status
-        if actions:
-            completed_actions = sum(1 for a in actions if a["status"] in ("completed", "complet"))
-            blocked_actions = sum(1 for a in actions if a["status"] == "blocked")
-            if completed_actions == len(actions):
-                delivery_status = "completed"
-            elif blocked_actions > 0:
-                delivery_status = "blocked"
-            elif any(a["status"] not in ("pending",) for a in actions):
-                delivery_status = "in_progress"
-
-        result["actions"] = actions
-        result["action_count"] = len(actions)
-        result["delivery_status"] = delivery_status
-        result["transition_count"] = transition_count
-
-        # 3. Related sessions (same industry)
-        industry_hint = result.get("industry") or ""
-        if industry_hint:
-            related = []
-            for nid, node in list(fd._nodes.items()):
-                if getattr(node, "class_name", "") == "DiagnosisSession" and nid != sid:
-                    if industry_hint.lower() in node.entity_name.lower():
-                        related.append({
-                            "session_id": nid,
-                            "company": node.entity_name,
-                        })
-            result["related_sessions"] = related[:5]
-
-        # 4. Stats summary
-        result["evidence_summary"] = {
-            "total_opportunities": len(result.get("evidence_map", [])),
-            "ontology_backed": sum(
-                1 for e in result.get("evidence_map", [])
-                if e.get("source", "") and e["source"] not in ("", _EVIDENCE_SOURCE_LLM, _EVIDENCE_SOURCE_INDUSTRY)
-            ),
-            "llm_inferred": sum(
-                1 for e in result.get("evidence_map", [])
-                if not e.get("source") or e.get("source", "") in ("", _EVIDENCE_SOURCE_LLM)
-            ),
-            "gap_count": len(result.get("knowledge_gaps", [])),
-        }
-
-        return result
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Session detail failed: {str(e)[:300]}")
-
-
-# ════════════════════════════════════════════════════════════
-# T: FDE Trend Analysis — time-series growth and health metrics
-# ════════════════════════════════════════════════════════════
-
-@router.get("/trends", response_model=dict)
-async def fde_trends(
-    months: int = Query(6, ge=1, le=24, description="Months of history to analyze"),
-    bucket: str = Query("month", description="Time bucket: week | month"),
-):
-    """Time-series trend analysis across all FDE diagnosis sessions.
-
-    Returns per-bucket: session count, delivery rate, top actions,
-    term dictionary growth, and readiness score distribution.
-    """
-    try:
-        from core.harness.ontology_engine.graph_index import GraphIndex
-        from datetime import datetime, timezone, timedelta
-        from collections import defaultdict
-
-        fd = GraphIndex.load("fde-delivery")
-        now = datetime.now(timezone.utc)
-        cutoff = now - timedelta(days=months * 30)
-
-        # ── Collect session data with timestamps ──
-        sessions_by_bucket = defaultdict(lambda: {
-            "sessions": 0, "actions": 0, "n_unique_actions": 0, "names": [],
-            "readiness_scores": [],
-        })
-        all_sessions = []
-
-        for nid, node in list(fd._nodes.items()):
-            if getattr(node, "class_name", "") != "DiagnosisSession":
-                continue
-
-            # Extract timestamp from session_id
-            ts_str = nid.rsplit("_", 1)[-1]
-            try:
-                ts = int(ts_str)
-                dt = datetime.fromtimestamp(ts, tz=timezone.utc)
-            except (ValueError, OSError):
-                continue
-
-            if dt < cutoff:
-                continue
-
-            # Determine bucket key
-            if bucket == "week":
-                week_start = dt - timedelta(days=dt.weekday())
-                bucket_key = week_start.strftime("%Y-W%W")
-            else:
-                bucket_key = dt.strftime("%Y-%m")
-
-            neighbors = fd.get_neighbors(nid, direction="outgoing")
-            has_action = False
-            action_count = 0
-            for neighbor_id, edge in neighbors:
-                if edge.relation_name == "has_action":
-                    has_action = True
-                    action_count += 1
-
-            # Check SessionMeta for readiness
-            readiness = 0
-            for neighbor_id, edge in neighbors:
-                if edge.relation_name == "has_meta":
-                    meta_node = fd.get_node(neighbor_id)
-                    if meta_node:
-                        try:
-                            import json
-                            md = json.loads(meta_node.entity_name)
-                            readiness = md.get("readiness_score", 0)
-                        except Exception:
-                            pass
-
-            sessions_by_bucket[bucket_key]["sessions"] += 1
-            if has_action:
-                sessions_by_bucket[bucket_key]["actions"] += action_count
-            sessions_by_bucket[bucket_key]["names"].append(node.entity_name[:30])
-            if readiness:
-                sessions_by_bucket[bucket_key]["readiness_scores"].append(readiness)
-
-        # ── Build time series ──
-        trends = []
-        for bk in sorted(sessions_by_bucket.keys()):
-            d = sessions_by_bucket[bk]
-            total = d["sessions"]
-            with_actions = d["actions"]
-            avg_readiness = (
-                round(sum(d["readiness_scores"]) / len(d["readiness_scores"]))
-                if d["readiness_scores"] else 0
-            )
-            trends.append({
-                "bucket": bk,
-                "sessions": total,
-                "actions": with_actions,
-                "delivery_rate": round(with_actions / max(total, 1) * 100),
-                "avg_readiness": avg_readiness,
-            })
-
-        # ── Term dictionary growth trend ──
-        term_trends = []
-        try:
-            tg = GraphIndex.load("enterprise-terms")
-            term_buckets = defaultdict(int)
-            for nid, node in list(tg._nodes.items()):
-                if getattr(node, "class_name", "") != "Term":
-                    continue
-                ts_str = nid.rsplit("_", 1)[-1]
-                try:
-                    ts = int(ts_str)
-                except ValueError:
-                    continue
-                dt = datetime.fromtimestamp(ts, tz=timezone.utc)
-                if dt < cutoff:
-                    continue
-                bk = dt.strftime("%Y-%m") if bucket == "month" else ""
-                if bk:
-                    term_buckets[bk] += 1
-
-            cumulative = 0
-            for bk in sorted(term_buckets.keys()):
-                cumulative += term_buckets[bk]
-                term_trends.append({"bucket": bk, "new_terms": term_buckets[bk], "cumulative": cumulative})
-        except Exception:
-            pass
-
-        # ── District distribution ──
-        industries = defaultdict(int)
-        for nid, node in list(fd._nodes.items()):
-            if getattr(node, "class_name", "") == "DiagnosisSession":
-                parts = node.entity_name.split("_", 1)
-                if parts:
-                    industries[parts[0][:15]] += 1
-
-        return {
-            "period": f"Last {months} months",
-            "bucket": bucket,
-            "trends": trends,
-            "term_growth": term_trends,
-            "total_sessions_in_period": sum(d["sessions"] for d in sessions_by_bucket.values()),
-            "industry_distribution": dict(
-                sorted(industries.items(), key=lambda x: x[1], reverse=True)[:10]
-            ),
-        }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Trends failed: {str(e)[:300]}")
-
-
-# ════════════════════════════════════════════════════════════
-# U: FDE Unified Search — cross-entity text search
-# ════════════════════════════════════════════════════════════
-
-@router.get("/search", response_model=dict)
-async def fde_search(
-    q: str = Query("", description="Search query across sessions/actions/terms/evidence"),
-    scope: str = Query("all", description="Search scope: all | sessions | actions | terms | evidence | industries"),
-    limit: int = Query(20, ge=1, le=100),
-):
-    """Search across all FDE data entities with a single text query.
-
-    Returns matches ranked by relevance (substring match weighted by entity type).
-    Each result includes entity type, name, matched text excerpt, and context.
-    """
-    query = q.strip().lower()
-    if not query:
-        return {"query": "", "results": [], "total": 0}
-
-    results = []
-    seen = set()
-
-    try:
-        from core.harness.ontology_engine.graph_index import GraphIndex
-        import time as _time_us
-
-        # ── 1. Search fde-delivery sessions ──
-        if scope in ("all", "sessions"):
-            fd = GraphIndex.load("fde-delivery")
-            for nid, node in list(fd._nodes.items()):
-                cls = getattr(node, "class_name", "")
-                name = node.entity_name.lower()
-                if query in name and (nid, "session") not in seen:
-                    seen.add((nid, "session"))
-                    # Extract timestamp
-                    ts_str = nid.rsplit("_", 1)[-1]
-                    try:
-                        ts = int(ts_str)
-                    except ValueError:
-                        ts = 0
-                    results.append({
-                        "type": cls if cls else "session",
-                        "name": node.entity_name[:100],
-                        "id": nid,
-                        "score": _score_match(name, query, 10),
-                        "ts": ts,
-                    })
-
-        # ── 2. Search actions ──
-        if scope in ("all", "actions"):
-            for nid, node in list(fd._nodes.items()):
-                cls = getattr(node, "class_name", "")
-                if cls != "DeliveryAction":
-                    continue
-                name = node.entity_name.lower()
-                if query in name and (nid, "action") not in seen:
-                    seen.add((nid, "action"))
-                    results.append({
-                        "type": "action",
-                        "name": node.entity_name[:100],
-                        "id": nid,
-                        "score": _score_match(name, query, 8),
-                        "ts": 0,
-                    })
-
-        # ── 3. Search enterprise-terms ──
-        if scope in ("all", "terms"):
-            try:
-                tg = GraphIndex.load("enterprise-terms")
-                for nid, node in list(tg._nodes.items()):
-                    name = node.entity_name.lower()
-                    if query in name and (nid, "term") not in seen:
-                        seen.add((nid, "term"))
-                        results.append({
-                            "type": "term",
-                            "name": node.entity_name[:100],
-                            "id": nid,
-                            "score": _score_match(name, query, 7),
-                            "ts": 0,
-                        })
-            except Exception:
-                pass
-
-        # ── 4. Search evidence ──
-        if scope in ("all", "evidence"):
-            for nid, node in list(fd._nodes.items()):
-                if getattr(node, "class_name", "") != "Evidence":
-                    continue
-                name = node.entity_name.lower()
-                if query in name and (nid, "evidence") not in seen:
-                    seen.add((nid, "evidence"))
-                    results.append({
-                        "type": "evidence",
-                        "name": node.entity_name[:100],
-                        "id": nid,
-                        "score": _score_match(name, query, 5),
-                        "ts": 0,
-                    })
-
-        # ── 5. Search industries ──
-        if scope in ("all", "industries"):
-            industries_found = set()
-            for nid, node in list(fd._nodes.items()):
-                if getattr(node, "class_name", "") != "DiagnosisSession":
-                    continue
-                parts = node.entity_name.split("_", 1)
-                if parts and query in parts[0].lower() and parts[0] not in industries_found:
-                    industries_found.add(parts[0])
-                    results.append({
-                        "type": "industry",
-                        "name": parts[0][:100],
-                        "id": parts[0],
-                        "score": _score_match(parts[0].lower(), query, 6),
-                        "ts": 0,
-                    })
-
-        # Sort by score descending, then by timestamp descending
-        results.sort(key=lambda r: (r["score"], r.get("ts", 0)), reverse=True)
-        results = results[:limit]
-
-        return {
-            "query": q.strip(),
-            "results": results,
-            "total": len(results),
-            "scope": scope,
-        }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Search failed: {str(e)[:300]}")
-
-
-def _score_match(text: str, query: str, base: int) -> int:
-    """Simple relevance scoring: exact match > word match > substring match."""
-    if text == query:
-        return base * 3
-    if f" {query} " in f" {text} ":
-        return base * 2
-    return base
-
-
-# ════════════════════════════════════════════════════════════
-# V: Diagnosis Quality Scoring — comprehensive validation
-# ════════════════════════════════════════════════════════════
-
-@router.get("/sessions/{session_id}/quality", response_model=dict)
-async def fde_session_quality(session_id: str):
-    """Run all quality checks against a diagnosis session. Returns 0-100 score."""
-    sid = session_id.strip()
-    if not sid:
-        raise HTTPException(status_code=400, detail="session_id is required")
-
-    try:
-        from core.harness.ontology_engine.graph_index import GraphIndex
-        import json as _json_v
-
-        fd = GraphIndex.load("fde-delivery")
-        session_node = fd.get_node(sid) or fd.find_by_name(sid)
-        if not session_node:
-            for nid, node in list(fd._nodes.items()):
-                if sid in nid or sid in node.entity_name:
-                    session_node = node
-                    sid = nid
-                    break
-        if not session_node:
-            raise HTTPException(status_code=404, detail=f"Session {sid} not found")
-
-        dims = {}
-        nb = list(fd.get_neighbors(sid, direction="outgoing"))
-
-        # Evidence coverage
-        ev_cnt = tot = 0
-        for nid, e in nb:
-            if e.relation_name == "has_meta":
-                mn = fd.get_node(nid)
-                if mn:
-                    try:
-                        md = _json_v.loads(mn.entity_name)
-                        em = md.get("evidence_map", [])
-                        tot = len(em)
-                        ev_cnt = sum(1 for x in em if x.get("source") and x["source"] not in ("", _EVIDENCE_SOURCE_LLM, _EVIDENCE_SOURCE_INDUSTRY))
-                    except Exception:
-                        pass
-        dims["evidence"] = round(ev_cnt / max(tot, 1) * 100) if tot > 0 else 0
-
-        # Action completion
-        act_cnt = cmp_cnt = 0
-        for nid, e in nb:
-            if e.relation_name == "has_action":
-                act_cnt += 1
-                for aid, ae in fd.get_neighbors(nid, direction="outgoing"):
-                    if ae.relation_name == "has_transition":
-                        an = fd.get_node(aid)
-                        if an and ("complet" in an.entity_name.lower() or "blocked" in an.entity_name.lower()):
-                            cmp_cnt += 1
-                            break
-        dims["actions"] = round(cmp_cnt / max(act_cnt, 1) * 100) if act_cnt > 0 else 0
-
-        # Term coverage
-        try:
-            tg = GraphIndex.load("enterprise-terms")
-            tc = sum(1 for _, n in tg._nodes.items() if getattr(n, "class_name", "") == "Term")
-            dims["terms"] = min(100, tc * 5)
-        except Exception:
-            dims["terms"] = 0
-
-        # Transitions
-        tr_cnt = sum(1 for _, e in nb if e.relation_name == "has_transition")
-        dims["transitions"] = min(100, tr_cnt * 10)
-
-        # Overall score (weighted)
-        w = {"evidence": 0.30, "actions": 0.25, "terms": 0.15, "transitions": 0.30}
-        overall = round(sum(dims[k] * w[k] for k in dims) / sum(w[k] for k in dims))
-        rating = "excellent" if overall >= 80 else "good" if overall >= 60 else "fair" if overall >= 40 else "poor"
-
-        return {
-            "session_id": sid,
-            "company": session_node.entity_name,
-            "overall_quality": overall,
-            "rating": rating,
-            "dimensions": {k: {"score": v} for k, v in dims.items()},
-            "weights": w,
-        }
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Quality scoring failed: {str(e)[:300]}")
-
-
-# ════════════════════════════════════════════════════════════
-# W: FDE Alerts — proactive attention-needed detection
-# ════════════════════════════════════════════════════════════
-
-@router.get("/alerts", response_model=dict)
-async def fde_alerts(
-    min_severity: str = Query("warning", description="Minimum alert level: info | warning | error"),
-):
-    """Scan all sessions and return ones needing attention.
-
-    Alert types:
-      - blocked: actions in blocked status
-      - stale: no transitions in 30+ days and not completed
-      - low_quality: overall quality < 40
-      - zero_evidence: no ontology-backed conclusions
-      - high_gaps: > 3 unbacked concepts
-    """
-    try:
-        from core.harness.ontology_engine.graph_index import GraphIndex
-        from datetime import datetime, timezone, timedelta
-        import json as _json_w
-
-        fd = GraphIndex.load("fde-delivery")
-        now = datetime.now(timezone.utc)
-        stale_cutoff = now - timedelta(days=30)
-
-        alerts = []
-        for nid, node in list(fd._nodes.items()):
-            if getattr(node, "class_name", "") != "DiagnosisSession":
-                continue
-
-            session_alerts = []
-            neighbors = list(fd.get_neighbors(nid, direction="outgoing"))
-
-            # Check for blocked actions
-            for neighbor_id, edge in neighbors:
-                if edge.relation_name == "has_action":
-                    atrans = fd.get_neighbors(neighbor_id, direction="outgoing")
-                    for atid, ae in atrans:
-                        if ae.relation_name == "has_transition":
-                            atnode = fd.get_node(atid)
-                            if atnode and "blocked" in atnode.entity_name.lower():
-                                an = fd.get_node(neighbor_id)
-                                session_alerts.append({
-                                    "type": "blocked",
-                                    "severity": "error",
-                                    "detail": f"Action blocked: {(an.entity_name if an else neighbor_id)[:80]}",
-                                })
-
-            # Check for stale sessions
-            ts_str = nid.rsplit("_", 1)[-1]
-            try:
-                ts = int(ts_str)
-                dt = datetime.fromtimestamp(ts, tz=timezone.utc)
-                has_recent = any(
-                    e.relation_name == "has_transition" for _, e in neighbors
-                )
-                if dt < stale_cutoff and not has_recent:
-                    session_alerts.append({
-                        "type": "stale",
-                        "severity": "warning",
-                        "detail": f"No activity since {dt.strftime('%Y-%m-%d')} ({(now - dt).days}d)",
-                    })
-            except (ValueError, OSError):
-                pass
-
-            # Check for low evidence
-            for neighbor_id, edge in neighbors:
-                if edge.relation_name == "has_meta":
-                    mn = fd.get_node(neighbor_id)
-                    if mn:
-                        try:
-                            md = _json_w.loads(mn.entity_name)
-                            em = md.get("evidence_map", [])
-                            ev = sum(1 for x in em if x.get("source") and x["source"] not in ("", _EVIDENCE_SOURCE_LLM, _EVIDENCE_SOURCE_INDUSTRY))
-                            kg = len(md.get("knowledge_gaps", []))
-                            if em and ev == 0:
-                                session_alerts.append({
-                                    "type": "zero_evidence",
-                                    "severity": "error",
-                                    "detail": f"No ontology-backed conclusions ({len(em)} total)",
-                                })
-                            if kg > 3:
-                                session_alerts.append({
-                                    "type": "high_gaps",
-                                    "severity": "warning",
-                                    "detail": f"{kg} unbacked concepts",
-                                })
-                        except Exception:
-                            pass
-
-            if session_alerts:
-                severity_order = {"error": 0, "warning": 1, "info": 2}
-                min_sev = severity_order.get(min_severity, 1)
-                session_alerts = [a for a in session_alerts if severity_order.get(a["severity"], 2) <= min_sev]
-                if session_alerts:
-                    alerts.append({
-                        "session_id": nid,
-                        "company": node.entity_name,
-                        "alert_count": len(session_alerts),
-                        "alerts": session_alerts,
-                    })
-
-        # Sort by severity (errors first, then warning, then info)
-        alerts.sort(key=lambda a: (
-            0 if any(x["severity"] == "error" for x in a["alerts"]) else
-            1 if any(x["severity"] == "warning" for x in a["alerts"]) else 2,
-            -a["alert_count"]
-        ))
-
-        error_count = sum(1 for a in alerts if any(x["severity"] == "error" for x in a["alerts"]))
-        warning_count = sum(1 for a in alerts if not any(x["severity"] == "error" for x in a["alerts"]) and any(x["severity"] == "warning" for x in a["alerts"]))
-
-        return {
-            "total_alerts": len(alerts),
-            "errors": error_count,
-            "warnings": warning_count,
-            "critical_sessions": len(alerts),
-            "alerts": alerts[:30],
-            "min_severity": min_severity,
-        }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Alerts failed: {str(e)[:300]}")
 
 
 # ════════════════════════════════════════════════════════════
@@ -3369,226 +1997,6 @@ async def fde_ingest(req: FdeIngestRequest):
         "readiness_hint": readiness_hint,
         "next_action": "Use this mapped data as input to POST /fde/ask or trigger a field-assessment diagnosis",
     }
-
-
-# ════════════════════════════════════════════════════════════
-# Z: Self-describing capabilities — open platform manifesto
-# ════════════════════════════════════════════════════════════
-
-@router.get("/capabilities", response_model=dict)
-async def fde_capabilities():
-    """Return a structured catalog of all FDE system capabilities.
-
-    Organized by layer: data, ontology, analysis, interaction, governance.
-    This is the system's self-description — the "open platform" endpoint (Z).
-    """
-    return {
-        "system": "FDE (Field Deployment Engineer) — AI-Powered Diagnosis Platform",
-        "paradigm": "Enterprise Brain Prototype — ontology-driven, decision-capable, action-closed",
-        "layers": {
-            "data_ingestion": {
-                "description": "Cross-system data bridging and knowledge ingestion",
-                "capabilities": [
-                    {"name": "ingest", "endpoint": "POST /fde/ingest", "label": "跨系统数据桥接", "maturity": "alpha"},
-                    {"name": "kb_ingest", "skill": "knowledge_ingest", "label": "多模态文档入库", "maturity": "production"},
-                    {"name": "datasource", "module": "data_source.py", "label": "SQL/API/File连接器", "maturity": "production"},
-                ],
-            },
-            "ontology_engine": {
-                "description": "Domain ontology modeling, graph construction, semantic reasoning",
-                "capabilities": [
-                    {"name": "domain_yaml", "endpoint": "~/.aiplat/ontologies/", "label": "7域YAML本体引擎", "maturity": "production"},
-                    {"name": "domain_router", "module": "domain_router.py", "label": "3层域路由器", "maturity": "production"},
-                    {"name": "graph_index", "module": "graph_index.py", "label": "实体+关系+超边图索引", "maturity": "production"},
-                    {"name": "graph_inference", "module": "graph_inference.py", "label": "YAML推理规则引擎", "maturity": "production"},
-                    {"name": "state_machine", "module": "state_machine.py", "label": "状态转换引擎", "maturity": "production"},
-                    {"name": "entity_resolver", "module": "entity_resolver.py", "label": "实体消歧+归一化", "maturity": "production"},
-                    {"name": "cross_domain", "module": "ontology_query_mapper.py", "label": "跨域语义类比", "maturity": "production"},
-                    {"name": "relation_constraints", "module": "graph_index.py", "label": "关系domain/range校验", "maturity": "production"},
-                    {"name": "term_dictionary", "module": "enterprise-terms.yaml", "label": "企业术语字典", "maturity": "beta"},
-                ],
-            },
-            "diagnosis_engine": {
-                "description": "AI diagnosis report generation with full ontology backing",
-                "capabilities": [
-                    {"name": "field_assessment", "skill": "field-assessment", "label": "8节结构诊断报告", "maturity": "production"},
-                    {"name": "evidence_annotation", "module": "registry.py (P0)", "label": "三级证据等级标注", "maturity": "production"},
-                    {"name": "consistency_gate", "module": "consistency_gate.py", "label": "跨阶段一致性门控", "maturity": "production"},
-                    {"name": "self_optimization", "module": "registry.py (E)", "label": "历史驱动自优化", "maturity": "production"},
-                    {"name": "multi_role_simulation", "module": "registry.py (F)", "label": "CIO/Dev/User三角色仿真", "maturity": "production"},
-                    {"name": "digital_employee", "module": "registry.py (Y)", "label": "数字员工角色匹配", "maturity": "production"},
-                    {"name": "knowledge_gaps", "module": "registry.py (G)", "label": "知识缺口检测", "maturity": "production"},
-                    {"name": "term_seeding", "module": "registry.py (S)", "label": "术语自播种", "maturity": "production"},
-                ],
-            },
-            "delivery_loop": {
-                "description": "Diagnosis → Delivery → Feedback → Re-optimization closed loop",
-                "capabilities": [
-                    {"name": "delivery_tracking", "endpoint": "fde-delivery GraphIndex", "label": "交付跟踪本体", "maturity": "production"},
-                    {"name": "timeline", "endpoint": "GET /fde/sessions/{id}/timeline", "label": "状态变迁时间线", "maturity": "production"},
-                    {"name": "feedback", "endpoint": "POST /fde/delivery/feedback", "label": "交付反馈API", "maturity": "production"},
-                    {"name": "evidence_entity", "endpoint": "Evidence节点", "label": "证据一等实体绑定", "maturity": "production"},
-                    {"name": "quality_scoring", "endpoint": "GET /fde/sessions/{id}/quality", "label": "4维质量评分", "maturity": "production"},
-                    {"name": "action_bridge", "endpoint": "StateTransition实体", "label": "动作闭环(状态变更记录)", "maturity": "production"},
-                ],
-            },
-            "analytics": {
-                "description": "Aggregation, trend analysis, benchmarking, proactive monitoring",
-                "capabilities": [
-                    {"name": "sessions", "endpoint": "GET /fde/sessions", "label": "历史诊断列表", "maturity": "production"},
-                    {"name": "session_detail", "endpoint": "GET /fde/sessions/{id}", "label": "聚合详情视图", "maturity": "production"},
-                    {"name": "benchmark", "endpoint": "GET /fde/benchmark", "label": "行业基准分析", "maturity": "production"},
-                    {"name": "trends", "endpoint": "GET /fde/trends", "label": "时间序列趋势", "maturity": "production"},
-                    {"name": "search", "endpoint": "GET /fde/search", "label": "统一全文检索", "maturity": "production"},
-                    {"name": "alerts", "endpoint": "GET /fde/alerts", "label": "主动告警检测", "maturity": "production"},
-                ],
-            },
-            "interaction": {
-                "description": "User-facing interaction channels",
-                "capabilities": [
-                    {"name": "ask", "endpoint": "POST /fde/ask", "label": "追问端点", "maturity": "production"},
-                    {"name": "health", "endpoint": "GET /fde/health", "label": "5维健康检查", "maturity": "production"},
-                    {"name": "validate", "endpoint": "GET /fde/validate", "label": "8项E2E连通测试", "maturity": "production"},
-                ],
-            },
-        },
-        "totals": {
-            "endpoints": 12,
-            "domains": 7,
-            "ontology_classes": 25,
-            "maturity_summary": {"production": 28, "beta": 1, "alpha": 1},
-            "philosophy": "从LLM记忆 → 本体驱动 → 交付闭环 → 自优化 → 数字员工 — 企业大脑原型",
-        },
-    }
-
-
-# ════════════════════════════════════════════════════════════
-# Ontology Coverage — measure "确定性本体包住多少不确定性"
-# ════════════════════════════════════════════════════════════
-
-@router.get("/sessions/{session_id}/ontology-coverage", response_model=dict)
-async def fde_ontology_coverage(session_id: str):
-    """Quantify how much of a diagnosis is backed by ontology vs LLM inference.
-
-    Returns per-dimension coverage ratios that precisely answer:
-    "This diagnosis is X% ontology-backed, Y% history-backed, Z% LLM inference."
-    The determinism_score = ontology + history = % of conclusions with grounding.
-    """
-    sid = session_id.strip()
-    if not sid:
-        raise HTTPException(status_code=400, detail="session_id is required")
-
-    try:
-        from core.harness.ontology_engine.graph_index import GraphIndex
-        import json as _json_oc
-
-        fd = GraphIndex.load("fde-delivery")
-        session_node = fd.get_node(sid) or fd.find_by_name(sid)
-        if not session_node:
-            for nid, node in list(fd._nodes.items()):
-                if sid in nid or sid in node.entity_name:
-                    session_node = node
-                    sid = nid
-                    break
-        if not session_node:
-            raise HTTPException(status_code=404, detail=f"Session {sid} not found")
-
-        neighbors = list(fd.get_neighbors(sid, direction="outgoing"))
-
-        # ── 1. Ontology vs History vs LLM coverage from evidence_map ──
-        ontology_count = 0
-        history_count = 0
-        llm_count = 0
-        total_conclusions = 0
-
-        for neighbor_id, edge in neighbors:
-            if edge.relation_name == "has_meta":
-                meta_node = fd.get_node(neighbor_id)
-                if meta_node:
-                    try:
-                        md = _json_oc.loads(meta_node.entity_name)
-                        em = md.get("evidence_map", [])
-                        total_conclusions = len(em)
-                        for item in em:
-                            src = (item.get("source") or "").strip()
-                            if src and src not in (_EVIDENCE_SOURCE_LLM, _EVIDENCE_SOURCE_INDUSTRY):
-                                ontology_count += 1
-                            elif src == _EVIDENCE_SOURCE_LLM:
-                                llm_count += 1
-                            else:
-                                # Check evidence entities for history backing
-                                history_count += 1
-                    except Exception:
-                        pass
-
-        # Count evidence entities related to this session for history estimation
-        evidence_entities = 0
-        for neighbor_id, edge in neighbors:
-            if edge.relation_name == "has_evidence":
-                ev_node = fd.get_node(neighbor_id)
-                if ev_node and "historical_case" not in (ev_node.entity_name or "").lower():
-                    evidence_entities += 1
-
-        # If we have evidence entities but no explicit evidence_map breakdown,
-        # adjust: evidence entities count as ontology-backed
-        if evidence_entities > 0 and ontology_count == 0:
-            ontology_count = min(evidence_entities, total_conclusions or evidence_entities)
-
-        # Normalize: history = total - ontology - llm
-        if total_conclusions > 0 and history_count == 0:
-            history_count = total_conclusions - ontology_count - llm_count
-            history_count = max(0, history_count)
-
-        total = max(total_conclusions, 1)
-        cov_ontology = round(ontology_count / total, 2)
-        cov_history = round(history_count / total, 2)
-        cov_llm = round(llm_count / total, 2)
-
-        # ── 2. Term coverage from enterprise-terms graph ──
-        term_coverage = 0.0
-        try:
-            tg = GraphIndex.load("enterprise-terms")
-            term_count = sum(1 for _, n in tg._nodes.items()
-                           if getattr(n, "class_name", "") == "Term")
-            # Rough estimate: each term covers ~1 concept per diagnosis
-            term_coverage = round(min(term_count / max(total, 5), 1.0), 2)
-        except Exception:
-            pass
-
-        # ── 3. Determinism score = ontology + history ──
-        determinism = round(cov_ontology + cov_history, 2)
-        if determinism >= 0.90:
-            rating = "excellent"
-            interpret = f"{int(determinism*100)}%的结论有本体或历史案例支撑，可信度为优秀"
-        elif determinism >= 0.70:
-            rating = "good"
-            interpret = f"{int(determinism*100)}%的结论有本体或历史案例支撑，可信度为良好"
-        elif determinism >= 0.50:
-            rating = "fair"
-            interpret = f"{int(determinism*100)}%的结论有支撑，{int(cov_llm*100)}%依赖LLM推测，建议补充本体实例或历史数据"
-        else:
-            rating = "poor"
-            interpret = f"仅{int(determinism*100)}%的结论有支撑，{int(cov_llm*100)}%依赖LLM推测。需大幅补充本体类定义和案例数据"
-
-        return {
-            "session_id": sid,
-            "company": session_node.entity_name,
-            "total_conclusions": total_conclusions,
-            "coverage": {
-                "ontology_instance": cov_ontology,
-                "historical_case": cov_history,
-                "llm_inferred": cov_llm,
-            },
-            "term_coverage": term_coverage,
-            "determinism_score": determinism,
-            "rating": rating,
-            "interpretation": interpret,
-            "formula": "determinism_score = ontology_instance + historical_case — 本体包住不确定性的量化度量",
-        }
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Ontology coverage failed: {str(e)[:300]}")
 
 
 # ════════════════════════════════════════════════════════════
@@ -4165,1365 +2573,26 @@ async def fde_governance():
 
 # ════════════════════════════════════════════════════════════
 # Governance Self-Audit — verify declared capabilities are functional
-# ════════════════════════════════════════════════════════════
+# /dashboard (v2) migrated to fde_dashboard_v2.py
 
-@router.get("/governance/validate", response_model=dict)
-async def fde_governance_validate():
-    """Self-audit: verify all 8 declared governance capabilities are functional.
-
-    Returns per-capability pass/fail with failure details.
-    All checks are read-only and complete in <200ms.
-    """
-    import time as _t_gv
-    t0 = _t_gv.time()
-    checks = {}
-    passed = 0
-    total = 0
-
-    def _check(name: str, fn):
-        nonlocal passed, total
-        total += 1
-        try:
-            ok = fn()
-            if ok:
-                checks[name] = "pass"
-                passed += 1
-            else:
-                checks[name] = "fail (returned false)"
-        except Exception as e:
-            checks[name] = f"fail: {str(e)[:100]}"
-
-    # 1. config_driven: OntologyBus renders valid markdown
-    def _ck1():
-        from core.harness.knowledge.ontology_bus import render_solution_table
-        result = render_solution_table()
-        return "## AI解决方案原型库" in result and "| 方案类别" in result
-
-    # 2. hot_reload: mtime cache is functional
-    def _ck2():
-        from core.harness.knowledge.ontology_bus import load_solution_archetypes, clear_cache
-        clear_cache()
-        a1 = load_solution_archetypes()
-        a2 = load_solution_archetypes()  # second call = cache hit
-        return len(a1) >= 8 and a1 == a2
-
-    # 3. schema_validation: GraphIndex loads domain constraints
-    def _ck3():
-        from core.harness.ontology_engine.graph_index import GraphIndex
-        g = GraphIndex.load("fde-delivery")
-        c = g._load_property_constraints()  # noqa - internal method, intentional for audit
-        return "has_action" in c and "has_evidence" in c
-
-    # 4. evidence_binding: Evidence class exists in fde-delivery YAML
-    def _ck4():
-        import os
-        from core.harness.knowledge.ontology_loader import load_ontology_from_yaml
-        path = os.path.expanduser("~/.aiplat/ontologies/fde-delivery.yaml")
-        dom = load_ontology_from_yaml(path)
-        return any(c.label == "证据" for c in dom.classes)
-
-    # 5. coverage_metrics: determinism_score compute logic is accessible
-    def _ck5():
-        from core.harness.ontology_engine.graph_index import GraphIndex
-        g = GraphIndex.load("knowledge-atom")
-        return g.stats().get("node_count", -1) >= 0
-
-    # 6. term_auto_seeding: enterprise-terms GraphIndex exists
-    def _ck6():
-        from core.harness.ontology_engine.graph_index import GraphIndex
-        tg = GraphIndex.load("enterprise-terms")
-        return tg.stats().get("node_count", -1) >= 0
-
-    # 7. knowledge_convergence: ConvergenceEngine loads config
-    def _ck7():
-        from core.harness.knowledge.convergence_engine import ConvergenceEngine
-        ce = ConvergenceEngine()
-        s = ce.get_status()
-        return s.get("total_atoms", -1) >= 0
-
-    # 8. auto_closed_loop: SECI engine singleton works
-    def _ck8():
-        from core.harness.knowledge.seci_engine import get_seci_engine
-        se = get_seci_engine()
-        return se.get_atom_count() >= 0
-
-    _check("config_driven", _ck1)
-    _check("hot_reload", _ck2)
-    _check("schema_validation", _ck3)
-    _check("evidence_binding", _ck4)
-    _check("coverage_metrics", _ck5)
-    _check("term_auto_seeding", _ck6)
-    _check("knowledge_convergence", _ck7)
-    _check("auto_closed_loop", _ck8)
-
-    elapsed_ms = round((_t_gv.time() - t0) * 1000)
-
-    return {
-        "overall": "pass" if passed == total else "fail",
-        "passed": passed,
-        "total": total,
-        "checks": checks,
-        "audit_philosophy": "治理声明不自证。每项能力需通过可执行审计验证其真实存在——代码可查、端点可调、约束可测。",
-        "elapsed_ms": elapsed_ms,
-    }
-
-
-def _list_available_domains() -> str:
-    import os, json
-    path = os.path.expanduser("~/.aiplat/ontologies/registry.json")
-    try:
-        with open(path) as f:
-            domains = json.load(f).get("domains", {})
-        return ", ".join(sorted(domains.keys()))
-    except Exception:
-        return "unknown"
-
-
-# ════════════════════════════════════════════════════════════
-# Object Semantics Exposure — Agent-queryable domain operations
-# ════════════════════════════════════════════════════════════
-
-@router.get("/domain/{domain}/operations", response_model=dict)
-async def fde_domain_operations(domain: str):
-    """Expose domain ontology operations for Agent discovery.
-
-    Returns class properties, states, transitions, side effects,
-    inference rules, and object properties.
-    """
-    import os as _os_do
-    from core.harness.knowledge.ontology_loader import load_ontology_from_yaml
-
-    path = _os_do.path.expanduser(f"~/.aiplat/ontologies/{domain}.yaml")
-    if not _os_do.path.exists(path):
-        raise HTTPException(
-            status_code=404,
-            detail=f"Domain '{domain}' not found. Available: {_list_available_domains()}",
-        )
-
-    try:
-        dom = load_ontology_from_yaml(path)
-        classes = {}
-        for cls in dom.classes:
-            entry = {
-                "label": cls.label,
-                "uri": cls.uri,
-                "required_fields": list(cls.required_fields or []),
-                "optional_fields": list(cls.optional_fields or []),
-                "categories": list(cls.allowed_categories or []),
-            }
-
-            states_cfg = getattr(cls, 'states', {}) or {}
-            if states_cfg:
-                entry["states"] = {
-                    "default": states_cfg.get("default", ""),
-                    "enum": [
-                        {"name": s.get("name",""), "label": s.get("label",""), "description": s.get("description","")}
-                        for s in states_cfg.get("enum", [])
-                    ],
-                    "transitions": [
-                        {"from": t.get("from",""), "to": t.get("to",""),
-                         "description": t.get("description",""), "trigger": t.get("trigger",{})}
-                        for t in states_cfg.get("transitions", [])
-                    ],
-                }
-                se_list = states_cfg.get("side_effects", [])
-                if se_list:
-                    entry["side_effects"] = se_list
-
-            perms = getattr(cls, 'permissions', None)
-            if perms:
-                entry["permissions"] = perms
-
-            classes[cls.label] = entry
-
-        props = []
-        for p in dom.object_properties:
-            uri = getattr(p, 'uri', '')
-            props.append({
-                "name": uri.rsplit('/', 1)[-1] if '/' in uri else str(uri),
-                "label": p.label,
-                "domain": [d.rsplit('/', 1)[-1] for d in (p.domain or []) if '/' in d],
-                "range": [r.rsplit('/', 1)[-1] for r in (p.range or []) if '/' in r],
-            })
-
-        rules = []
-        for r in (dom.inference_rules or []):
-            rules.append({
-                "name": r.get("name",""), "description": r.get("description",""),
-                "premises": r.get("premises",[]), "conclusion": r.get("conclusion",{}),
-            })
-
-        return {
-            "domain": domain,
-            "name": dom.name,
-            "version": dom.version,
-            "class_count": len(dom.classes),
-            "property_count": len(props),
-            "rule_count": len(rules),
-            "classes": classes,
-            "object_properties": props,
-            "inference_rules": rules,
-            "_usage": "Agent在执行前查询此端点，获取该域的业务对象、状态转换、推理规则和可用操作",
-        }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Domain operations failed: {str(e)[:300]}")
-# FDE Dashboard — unified management overview
-# ════════════════════════════════════════════════════════════
-
-@router.get("/dashboard", response_model=dict)
-async def fde_dashboard():
-    """Unified dashboard: key metrics, recent activity, alerts, governance health.
-
-    Single-request management overview combining data from multiple subsystems.
-    """
-    import time as _td
-
-    t0 = _td.time()
-    status = _get_governance_live_status()
-    governance = _get_convergence_status()
-
-    # Quick metrics
-    metrics = {
-        "total_diagnoses": status.get("delivery_session_count", 0),
-        "active_domains": status.get("configured_domains", 0),
-        "knowledge_atoms": status.get("knowledge_atom_count", 0),
-        "enterprise_terms": status.get("enterprise_term_count", 0),
-        "delivery_rate": status.get("delivery_rate", 0),
-        "convergence_triggers": governance.get("applied_triggers", 0),
-        "pipeline_health": _get_pipeline_health(),
-        "quality_score": _get_quick_quality_score(status, governance),
-        "self_evolution": _get_evolution_stats(),
-        "manuals": _get_manual_stats(),
-    }
-
-    # Recent activity (last 5 sessions)
-    recent = []
-    try:
-        from core.harness.ontology_engine.graph_index import GraphIndex
-        fd = GraphIndex.load("fde-delivery")
-        for nid, node in sorted(
-            list(fd._nodes.items()),
-            key=lambda x: x[0], reverse=True
-        ):
-            if getattr(node, "class_name", "") == "DiagnosisSession":
-                recent.append({"id": nid[:60], "company": node.entity_name[:60]})
-                if len(recent) >= 5:
-                    break
-    except Exception:
-        pass
-
-    # Active alerts (error-level only, top 3)
-    alerts = []
-    try:
-        alert_data = list(fd._nodes.items())
-        for nid, node in alert_data:
-            if getattr(node, "class_name", "") != "DiagnosisSession":
-                continue
-            nb = fd.get_neighbors(nid, direction="outgoing")
-            for neighbor_id, edge in nb:
-                if edge.relation_name == "has_transition":
-                    tn = fd.get_node(neighbor_id)
-                    if tn and "blocked" in (tn.entity_name or "").lower():
-                        alerts.append({
-                            "session": node.entity_name[:50],
-                            "type": "blocked_action",
-                            "severity": "error",
-                        })
-                        break
-            if len(alerts) >= 3:
-                break
-    except Exception:
-        pass
-
-    # Governance health
-    gov_health = "excellent" if metrics["delivery_rate"] >= 60 and metrics["enterprise_terms"] >= 10 else (
-        "good" if metrics["delivery_rate"] >= 30 else "growing"
-    )
-
-    return {
-        "metrics": metrics,
-        "recent_activity": recent,
-        "active_alerts": alerts,
-        "governance_health": gov_health,
-        "quick_actions": [
-            "POST /fde/ask — 追问已有诊断",
-            "POST /fde/delivery/feedback — 更新交付状态",
-            "GET /fde/governance — 查看治理能力矩阵",
-            "GET /fde/alerts — 查看完整告警列表",
-        ],
-        "elapsed_ms": round((_td.time() - t0) * 1000),
-    }
-
-
-# ════════════════════════════════════════════════════════════
 # Session Comparison — side-by-side diagnosis analysis
-# ════════════════════════════════════════════════════════════
-
-@router.get("/sessions/compare", response_model=dict)
-async def fde_compare_sessions(
-    left: str = Query("", description="Left session ID"),
-    right: str = Query("", description="Right session ID"),
-):
-    """Compare two diagnosis sessions side by side.
-
-    Useful for: before/after analysis (same customer), cross-customer comparison
-    (same industry), or solution effectiveness comparison.
-    """
-    if not left or not right:
-        raise HTTPException(status_code=400, detail="Both left and right session IDs are required")
-
-    try:
-        from core.harness.ontology_engine.graph_index import GraphIndex
-        import json as _json_cmp
-
-        fd = GraphIndex.load("fde-delivery")
-
-        def _get_session_data(sid: str) -> dict:
-            """Extract key session data for comparison."""
-            node = fd.get_node(sid) or fd.find_by_name(sid)
-            if not node:
-                for nid, n in list(fd._nodes.items()):
-                    if sid in nid or sid in n.entity_name:
-                        node = n
-                        sid = nid
-                        break
-            if not node:
-                return {"error": f"Session {sid} not found", "session_id": sid}
-
-            data = {"session_id": sid, "company": node.entity_name}
-            neighbors = list(fd.get_neighbors(sid, direction="outgoing"))
-
-            # Evidence map
-            for nid, e in neighbors:
-                if e.relation_name == "has_meta":
-                    mn = fd.get_node(nid)
-                    if mn:
-                        try:
-                            md = _json_cmp.loads(mn.entity_name)
-                            data["evidence_map"] = md.get("evidence_map", [])
-                            data["readiness_score"] = md.get("readiness_score", 0)
-                            data["industry"] = md.get("industry", "")
-                            data["knowledge_gaps"] = len(md.get("knowledge_gaps", []))
-                        except Exception:
-                            pass
-
-            # Actions
-            actions = 0
-            for _, e in neighbors:
-                if e.relation_name == "has_action":
-                    actions += 1
-            data["action_count"] = actions
-
-            # Transitions
-            transitions = sum(1 for _, e in neighbors if e.relation_name == "has_transition")
-            data["transition_count"] = transitions
-
-            # Evidence coverage
-            em = data.get("evidence_map", [])
-            if em:
-                backed = sum(1 for x in em if x.get("source") and x["source"] not in ("", _EVIDENCE_SOURCE_LLM, _EVIDENCE_SOURCE_INDUSTRY))
-                data["evidence_backed"] = backed
-                data["evidence_total"] = len(em)
-                data["coverage_rate"] = round(backed / max(len(em), 1) * 100)
-
-            return data
-
-        left_data = _get_session_data(left)
-        right_data = _get_session_data(right)
-
-        # Compute deltas
-        deltas = {}
-        for key in ["readiness_score", "action_count", "transition_count", "coverage_rate", "knowledge_gaps"]:
-            lv = left_data.get(key, 0) or 0
-            rv = right_data.get(key, 0) or 0
-            if isinstance(lv, (int, float)) and isinstance(rv, (int, float)):
-                deltas[key] = rv - lv
-
-        return {
-            "left": left_data,
-            "right": right_data,
-            "deltas": deltas,
-            "summary": (
-                f"右侧会话较左侧：就绪度{'+' if deltas.get('readiness_score', 0) >= 0 else ''}"
-                f"{deltas.get('readiness_score', 0)}，证据覆盖率"
-                f"{'+' if deltas.get('coverage_rate', 0) >= 0 else ''}"
-                f"{deltas.get('coverage_rate', 0)}%"
-            ) if deltas else "无法计算差异",
-        }
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Session comparison failed: {str(e)[:300]}")
-
-
 # ════════════════════════════════════════════════════════════
 # Pipeline Status — ContextBus layer-by-layer health
 # ════════════════════════════════════════════════════════════
-
-@router.get("/pipeline-status", response_model=dict)
-async def fde_pipeline_status():
-    """Report ContextBus pipeline health: per-layer status, timing, data availability.
-
-    Runs a lightweight test injection (no LLM call) and returns per-layer diagnostics.
-    """
-    import time as _t_ps
-    t0 = _t_ps.time()
-
-    try:
-        from core.harness.knowledge.context_bus import assemble_field_assessment
-        _, diag = assemble_field_assessment(
-            {"industry": "pipeline-test", "company_name": "self-check", "pain_points": "test"},
-            [],
-        )
-    except Exception as e:
-        diag = {"_fatal": str(e)[:100]}
-
-    elapsed_ms = round((_t_ps.time() - t0) * 1000)
-    ok = sum(1 for v in diag.values() if v == "ok")
-    total = sum(1 for k in diag if not k.startswith("_"))
-
-    # Data availability summary
-    data_status = {}
-    try:
-        from core.harness.ontology_engine.graph_index import GraphIndex
-
-        # Wiki/historical cases
-        try:
-            from core.harness.knowledge.wiki_engine import search_pages
-            h = search_pages("诊断报告", collection_id="default", limit=1)
-            data_status["historical_cases"] = f"{len(h)} available" if h else "empty"
-        except Exception:
-            data_status["historical_cases"] = "error"
-
-        # Graph indices
-        for domain in ["ai-knowledge", "fde-delivery", "enterprise-terms", "knowledge-atom"]:
-            try:
-                g = GraphIndex.load(domain)
-                data_status[f"graph:{domain}"] = f"{g.stats()['node_count']} nodes"
-            except Exception:
-                data_status[f"graph:{domain}"] = "error"
-
-        # YAMLs
-        import os as _os_ps
-        for yaml_name in ["ai-solution.yaml", "enterprise-terms.yaml"]:
-            path = _os_ps.path.expanduser(f"~/.aiplat/ontologies/{yaml_name}")
-            data_status[f"yaml:{yaml_name}"] = "ok" if _os_ps.path.exists(path) else "missing"
-    except Exception:
-        data_status["_error"] = "Could not check data sources"
-
-    return {
-        "layers": {k: v for k, v in diag.items() if not k.startswith("_")},
-        "layers_ok": ok,
-        "layers_total": total,
-        "health": "ok" if ok == total else "degraded" if ok > 0 else "error",
-        "elapsed_ms": elapsed_ms,
-        "data_availability": data_status,
-    }
-
-
-# ════════════════════════════════════════════════════════════
 # Bootstrap — seed demo data for immediate dashboard visibility
-# ════════════════════════════════════════════════════════════
-
-@router.post("/bootstrap-test-data", response_model=dict)
-async def fde_bootstrap_test_data(
-    industry: str = Query("政务", description="Industry for the demo session"),
-    company: str = Query("", description="Company name override"),
-):
-    """Seed a complete demo diagnosis session.
-
-    Use different industry values to populate the dashboard with diverse data.
-    """
-    import time as _t_bt
-    import json as _json_bt
-
-    company_name = company.strip() or {"政务":"某省政务服务中心","金融":"某市商业银行",
-        "制造":"华东精密制造有限公司","医疗":"北京三甲医疗集团"}.get(industry,f"{industry}示范企业")
-    pains = {"政务":"围标串标行为难以发现,招标信息检索效率低,关联方识别困难",
-        "金融":"贷款审批冗长,信用评估依赖人工,反欺诈实时性不足",
-        "制造":"设备故障预测不准确,生产排程响应慢,供应链协同缺失"}.get(industry,f"{industry}痛点1,{industry}痛点2,{industry}痛点3")
-
-    readiness = {"政务":78, "金融":65, "制造":52, "医疗":70}.get(industry, 60)
-
-    ts = str(int(_t_bt.time()))
-    sid = f"session_{company_name.replace(' ', '')}_{ts}"
-
-    try:
-        from core.harness.ontology_engine.graph_index import GraphIndex
-
-        # fde-delivery: session + actions + evidence + meta + transitions
-        fd = GraphIndex.load("fde-delivery")
-        fd.add_entity(sid, company_name, "DiagnosisSession", source_doc_id="bootstrap")
-
-        actions_data = {
-            "政务": [("文本相似度检测系统", "招标文件自动对比"), ("RAG知识库构建", "政务法规智能问答"), ("关联图谱分析平台", "投标人关系网络发现")],
-            "金融": [("智能风控引擎", "实时交易反欺诈检测"), ("信用评分模型", "自动化贷款审批"), ("监管报送自动化", "合规数据一键生成")],
-            "制造": [("预测性维护系统", "设备故障提前预警"), ("生产排程优化", "AI驱动的产线调度"), ("供应链协同平台", "库存与物流智能匹配")],
-            "医疗": [("AI影像诊断", "CT/X光自动识别病灶"), ("病历结构化", "非结构化病历自动抽取"), ("药品库存预警", "库存余量智能预测与补货")],
-        }.get(industry, [("智能分析引擎", f"{industry}数据洞察"), ("流程自动化", f"{industry}流程优化"), ("知识管理", f"{industry}知识沉淀")])
-
-        evidence_data = [(f"{a[0]} | {industry}域(跨域参考)", "ontology_instance") for a in actions_data[:1]] + \
-                       [(f"{a[0]} | 行业普遍痛点", "llm_inference") for a in actions_data[1:2]] + \
-                       [(f"{a[0]} | 历史案例支撑", "historical_case") for a in actions_data[2:3]]
-        for i, (name, _) in enumerate(actions_data):
-            aid = f"{sid}_action_{i}"
-            fd.add_entity(aid, name, "DeliveryAction", source_doc_id=sid)
-            fd.add_relation(sid, aid, "has_action", relation_label="交付行动", confidence=0.85)
-
-        for i, (ev_name, _) in enumerate(evidence_data):
-            ev_id = f"evidence_{sid}_{i}"
-            fd.add_entity(ev_id, ev_name, "Evidence", source_doc_id=sid)
-            fd.add_relation(sid, ev_id, "has_evidence", relation_label="证据", confidence=0.85)
-
-        # SessionMeta
-        meta_blob = {
-            "evidence_map": [
-                {"index": i, "pain_point": p.split(": ")[0] if ": " in p else p[:30],
-                 "ai_opportunity": actions_data[i][0], "confidence": ["高","中","高"][i],
-                 "dependency": "", "source": f"{industry}域"}
-                for i, p in enumerate(pains.split(",")[:3])
-            ],
-            "knowledge_gaps": [],
-            "readiness_score": readiness,
-            "industry": industry,
-            "pain_points": pains,
-        }
-        mid = f"meta_{sid}"
-        fd.add_entity(mid, _json_bt.dumps(meta_blob, ensure_ascii=False)[:8000], "SessionMeta", source_doc_id=sid)
-        fd.add_relation(sid, mid, "has_meta", relation_label="诊断元数据", confidence=1.0)
-
-        # StateTransition
-        tid = f"trans_{sid}_{ts}"
-        fd.add_entity(tid, "Session → delivered (bootstrap)", "StateTransition", source_doc_id=sid)
-        fd.add_relation(sid, tid, "has_transition", relation_label="状态变更", confidence=1.0)
-
-        # enterprise-terms: seed terms
-        tg = GraphIndex.load("enterprise-terms")
-        for term_name in ["文本相似度检测", "关联图谱分析", "围标串标"]:
-            term_id = f"term_bootstrap_{term_name.replace(' ', '_')[:40]}"
-            tg.add_entity(term_id, term_name, "Term", source_doc_id=sid)
-
-        return {
-            "session_id": sid,
-            "company": company_name,
-            "industry": industry,
-            "actions_created": len(actions_data),
-            "evidence_created": len(evidence_data),
-            "terms_seeded": 3,
-            "status": "delivered (bootstrap)",
-            "next_steps": [
-                f"GET /fde/sessions/{sid} — 查看详情",
-                f"GET /fde/sessions/{sid}/timeline — 查看时间线",
-                f"GET /fde/sessions/{sid}/quality — 质量评分",
-                f"GET /fde/sessions/{sid}/ontology-coverage — 本体覆盖率",
-                "GET /fde/dashboard — 查看仪表板",
-            ],
-        }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Bootstrap failed: {str(e)[:300]}")
-
-
-@router.post("/bootstrap-all", response_model=dict)
-async def fde_bootstrap_all():
-    """Seed demo sessions for all 4 industries at once.
-
-    Convenience endpoint — populates the entire system with one call.
-    """
-    industries = ["政务", "金融", "制造", "医疗"]
-    results = []
-    for ind in industries:
-        # Reuse bootstrap logic inline
-        import time as _t_ball, json as _json_ball
-        from core.harness.ontology_engine.graph_index import GraphIndex
-
-        company_names = {"政务":"某省政务服务中心","金融":"某市商业银行","制造":"华东精密制造有限公司","医疗":"北京三甲医疗集团"}
-        actions_map = {
-            "政务":[("文本相似度检测","招标对比"),("RAG知识库","政务问答"),("关联图谱分析","关系网络")],
-            "金融":[("智能风控引擎","反欺诈"),("信用评分模型","贷款审批"),("监管报送","合规")],
-            "制造":[("预测维护","故障预警"),("排程优化","产线调度"),("供应链协同","库存匹配")],
-            "医疗":[("AI影像诊断","病灶识别"),("病历结构化","信息抽取"),("库存预警","智能补货")],
-        }
-        co = company_names.get(ind,f"{ind}示范企业")
-        ts = str(int(_t_ball.time()))
-        sid = f"session_{co.replace(' ','')}_{ts}"
-        fd = GraphIndex.load("fde-delivery")
-        fd.add_entity(sid, co, "DiagnosisSession", source_doc_id="bootstrap-all")
-        acts = actions_map.get(ind,[("智能分析",f"{ind}洞察")])
-        for i,(name,_) in enumerate(acts):
-            aid = f"{sid}_action_{i}"
-            fd.add_entity(aid, name, "DeliveryAction", source_doc_id=sid)
-            fd.add_relation(sid, aid, "has_action", relation_label="交付行动", confidence=0.85)
-            ev_id = f"evidence_{sid}_{i}"
-            fd.add_entity(ev_id, f"{name} | {ind}域", "Evidence", source_doc_id=sid)
-            fd.add_relation(sid, ev_id, "has_evidence", relation_label="证据", confidence=0.85)
-        meta_blob = {"evidence_map":[],"knowledge_gaps":[],"readiness_score":{"政务":78,"金融":65,"制造":52,"医疗":70}.get(ind,60),"industry":ind,"pain_points":""}
-        mid = f"meta_{sid}"
-        fd.add_entity(mid, _json_ball.dumps(meta_blob,ensure_ascii=False)[:8000],"SessionMeta",source_doc_id=sid)
-        fd.add_relation(sid,mid,"has_meta",relation_label="诊断元数据",confidence=1.0)
-        tid = f"trans_{sid}_{ts}"
-        fd.add_entity(tid,f"Session → delivered ({ind})","StateTransition",source_doc_id=sid)
-        fd.add_relation(sid,tid,"has_transition",relation_label="状态变更",confidence=1.0)
-        tg = GraphIndex.load("enterprise-terms")
-        for tn in [acts[0][0][:20], acts[1][0][:20]]:
-            ti = f"term_{ind}_{tn.replace(' ','_')[:40]}"
-            tg.add_entity(ti, tn, "Term", source_doc_id=sid)
-        results.append({"industry": ind, "session_id": sid, "company": co, "actions": len(acts)})
-
-    return {
-        "total_industries": len(industries),
-        "total_sessions": len(results),
-        "total_actions": sum(r["actions"] for r in results),
-        "results": results,
-        "next": "GET /fde/benchmark — 查看行业基准分析",
-    }
-
-
 # ════════════════════════════════════════════════════════════
 # Quality Summary — cross-subsystem quality bus
 # ════════════════════════════════════════════════════════════
-
-@router.get("/quality-summary", response_model=dict)
-async def fde_quality_summary():
-    """Cross-subsystem quality aggregation — the Quality Bus.
-
-    Returns per-subsystem quality scores (0-100) and an overall health rating.
-    All data sources are read-only and complete in <200ms.
-    """
-    import time as _t_qs
-    t0 = _t_qs.time()
-
-    scores = {}
-    overall = 0
-    subsystems = 0
-
-    # ── FDE quality ──
-    try:
-        live = _get_governance_live_status()
-        dr = live.get("delivery_rate", 0)
-        ev = live.get("evidence_entity_count", 0)
-        ss = live.get("delivery_session_count", 0)
-        scores["fde"] = {
-            "score": min(100, dr + min(ev * 10, 30)),
-            "delivery_rate": dr,
-            "evidence_count": ev,
-            "sessions": ss,
-            "detail": "ok" if ss > 0 else "no_data",
-        }
-        overall += scores["fde"]["score"]
-        subsystems += 1
-    except Exception:
-        scores["fde"] = {"score": 0, "detail": "error"}
-
-    # ── SECI quality ──
-    try:
-        from core.harness.knowledge.seci_engine import get_seci_engine
-        se = get_seci_engine()
-        ac = se.get_atom_count()
-        lc = se.get_link_count()
-        ratio = round(lc / max(ac, 1) * 50)
-        scores["seci"] = {
-            "score": min(100, ac * 3 + ratio),
-            "atoms": ac,
-            "links": lc,
-            "link_ratio": round(lc / max(ac, 1), 2),
-            "detail": "growing" if ac > 0 else "empty",
-        }
-        overall += scores["seci"]["score"]
-        subsystems += 1
-    except Exception:
-        scores["seci"] = {"score": 0, "detail": "error"}
-
-    # ── Convergence quality ──
-    try:
-        gov = _get_convergence_status()
-        ct = gov.get("applied_triggers", 0)
-        scores["convergence"] = {
-            "score": min(100, ct * 20 + 20),
-            "triggers_fired": ct,
-            "config_loaded": gov.get("config_loaded", False),
-            "detail": "active" if ct > 0 else "idle",
-        }
-        overall += scores["convergence"]["score"]
-        subsystems += 1
-    except Exception:
-        scores["convergence"] = {"score": 0, "detail": "error"}
-
-    # ── ContextBus quality ──
-    try:
-        pipe = _get_pipeline_health()
-        scores["context_bus"] = {
-            "score": 100 if pipe == "ok" else 50 if pipe == "degraded" else 0,
-            "health": pipe,
-            "detail": "ok" if pipe == "ok" else pipe,
-        }
-        overall += scores["context_bus"]["score"]
-        subsystems += 1
-    except Exception:
-        scores["context_bus"] = {"score": 0, "detail": "error"}
-
-    overall_score = round(overall / max(subsystems, 1))
-    rating = "excellent" if overall_score >= 80 else "good" if overall_score >= 60 else "fair" if overall_score >= 40 else "poor"
-
-    return {
-        "overall_quality": overall_score,
-        "rating": rating,
-        "subsystems": scores,
-        "elapsed_ms": round((_t_qs.time() - t0) * 1000),
-    }
-
-
-# ════════════════════════════════════════════════════════════
 # Phase 1: System Trends + Health History — 时序列观察
-# ════════════════════════════════════════════════════════════
-
-@router.get("/trends/system", response_model=dict)
-async def fde_system_trends(
-    weeks: int = Query(12, ge=4, le=52, description="Weeks of history"),
-):
-    """System-level trends: atom growth, coverage changes, delivery rates.
-
-    Reads SystemSnapshot entities from knowledge-atom GraphIndex and computes
-    week-over-week trends for all key metrics.
-    """
-    from core.harness.ontology_engine.graph_index import GraphIndex
-    from datetime import datetime, timezone, timedelta
-    import json as _json_st
-
-    kg = GraphIndex.load("knowledge-atom")
-    now = datetime.now(timezone.utc)
-    cutoff_ts = int((now - timedelta(weeks=weeks)).timestamp())
-
-    snapshots = []
-    for _, n in kg._nodes.items():
-        if getattr(n, "class_name", "") != "SystemSnapshot":
-            continue
-        try:
-            ts = int(getattr(n, "source_doc_id", "0"))
-            if ts < cutoff_ts:
-                continue
-            data = _json_st.loads(n.entity_name)
-            snapshots.append({"ts": ts, "data": data})
-        except Exception:
-            continue
-
-    snapshots.sort(key=lambda s: s["ts"])
-
-    # Extract trends
-    trends = {}
-    metrics = [
-        ("configured_domains", "components.domains.count"),
-        ("delivery_sessions", "components.delivery.sessions"),
-        ("delivery_rate", "components.delivery.delivery_rate"),
-        ("atoms", "components.context_bus.layers_ok"),
-    ]
-    for name, path_str in metrics:
-        path = path_str.split(".")
-        series = []
-        for s in snapshots:
-            val = s["data"]
-            try:
-                for key in path:
-                    val = val.get(key, {})
-                series.append({"date": datetime.fromtimestamp(s["ts"], tz=timezone.utc).strftime("%Y-%m-%d"), "value": val if isinstance(val, (int, float)) else 0})
-            except Exception:
-                continue
-        if series:
-            trends[name] = series[-15:]  # last 15 data points
-
-    return {
-        "weeks": weeks,
-        "snapshot_count": len(snapshots),
-        "trends": trends,
-        "latest": snapshots[-1]["data"] if snapshots else None,
-    }
-
-
-@router.get("/health/history", response_model=dict)
-async def fde_health_history(
-    limit: int = Query(10, ge=1, le=50),
-):
-    """Last N health check snapshots for comparison."""
-    from core.harness.ontology_engine.graph_index import GraphIndex
-    import json as _json_hh
-    from datetime import datetime, timezone
-
-    kg = GraphIndex.load("knowledge-atom")
-    entries = []
-    for nid, n in kg._nodes.items():
-        if getattr(n, "class_name", "") == "SystemSnapshot" and nid.startswith("snap_"):
-            try:
-                ts = int(getattr(n, "source_doc_id", "0"))
-                data = _json_hh.loads(n.entity_name)
-                entries.append({
-                    "timestamp": datetime.fromtimestamp(ts, tz=timezone.utc).isoformat(),
-                    "status": data.get("status", ""),
-                    "domains": data.get("components", {}).get("domains", {}).get("count", 0),
-                    "pipeline_ok": data.get("components", {}).get("context_bus", {}).get("layers_ok", 0),
-                })
-            except Exception:
-                continue
-
-    entries.sort(key=lambda e: e["timestamp"], reverse=True)
-    entries = entries[:limit]
-
-    return {
-        "total_snapshots": sum(1 for n in kg._nodes.values() if getattr(n, "class_name", "") == "SystemSnapshot"),
-        "returned": len(entries),
-        "history": entries,
-    }
-
-
 # ════════════════════════════════════════════════════════════
 # Phase 2: System Diagnostician — proactive cross-subsystem analysis
 # ════════════════════════════════════════════════════════════
-
-@router.get("/diagnose", response_model=dict)
-async def fde_diagnose():
-    """Run proactive system diagnostics across all subsystems.
-
-    Cross-references SECI, FDE, Skill, and Convergence data to identify
-    systemic issues. Returns findings, correlations, and overall health.
-    """
-    try:
-        from core.harness.knowledge.system_diagnostician import SystemDiagnostician
-        sd = SystemDiagnostician()
-        return sd.diagnose()
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Diagnosis failed: {str(e)[:300]}")
-
-
-# ════════════════════════════════════════════════════════════
 # Phase 3: System Healer — auto-fix with verification
-# ════════════════════════════════════════════════════════════
-
-@router.post("/heal", response_model=dict)
-async def fde_heal():
-    """Auto-heal known diagnostic patterns with safety gate and verification.
-
-    Requires diagnosis confidence >= 0.9 before applying fixes.
-    All actions are audited via SystemSnapshot entities.
-    """
-    try:
-        from core.harness.knowledge.system_diagnostician import SystemDiagnostician, SystemHealer
-        sd = SystemDiagnostician()
-        diagnosis = sd.diagnose()
-        healer = SystemHealer()
-        result = healer.auto_heal(diagnosis)
-        return {
-            "diagnosis_health": diagnosis.get("overall_health", "unknown"),
-            "diagnosis_confidence": diagnosis.get("overall_confidence", 0),
-            "heal_result": result,
-        }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Heal failed: {str(e)[:300]}")
-
-
 # ════════════════════════════════════════════════════════════
 # Phase 4: System Evolver — pattern detection → capability generation
 # ════════════════════════════════════════════════════════════
-
-@router.get("/evolve", response_model=dict)
-async def fde_evolve():
-    """Run an evolution cycle: detect patterns → generate capabilities → publish/draft.
-
-    Terms auto-publish when score ≥ 0.7.
-    SolutionArchetypes are drafted for human approval.
-    Skills are not auto-registered.
-    """
-    try:
-        from core.harness.knowledge.system_evolver import SystemEvolver
-        evolver = SystemEvolver()
-        return evolver.evolve()
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Evolution failed: {str(e)[:300]}")
-
-
-# ════════════════════════════════════════════════════════════
 # Self-Check — one-stop system self-maintenance cycle
-# ════════════════════════════════════════════════════════════
-
-@router.post("/self-check", response_model=dict)
-async def fde_self_check():
-    """Run a complete self-maintenance cycle: diagnose → heal → evolve.
-
-    Single endpoint for autonomous system health management.
-    """
-    import time as _t_sc
-    t0 = _t_sc.time()
-    results = {}
-
-    # Step 1: Diagnose
-    try:
-        from core.harness.knowledge.system_diagnostician import SystemDiagnostician
-        sd = SystemDiagnostician()
-        results["diagnosis"] = sd.diagnose()
-    except Exception as e:
-        results["diagnosis"] = {"error": str(e)[:100]}
-
-    # Step 2: Heal (guarded by confidence)
-    try:
-        from core.harness.knowledge.system_diagnostician import SystemHealer
-        healer = SystemHealer()
-        results["heal"] = healer.auto_heal(results.get("diagnosis", {}))
-    except Exception as e:
-        results["heal"] = {"error": str(e)[:100]}
-
-    # Step 3: Evolve
-    try:
-        from core.harness.knowledge.system_evolver import SystemEvolver
-        results["evolution"] = SystemEvolver().evolve()
-    except Exception as e:
-        results["evolution"] = {"error": str(e)[:100]}
-
-    results["elapsed_ms"] = round((_t_sc.time() - t0) * 1000)
-    results["cycle"] = "diagnose→heal→evolve 完成"
-
-    return results
-
-
 # ════════════════════════════════════════════════════════════
 # System Overview — compact self-description
 # ════════════════════════════════════════════════════════════
-
-@router.get("/overview", response_model=dict)
-async def fde_overview():
-    """System overview in 3 sections: what it is, what it can do, how it evolves."""
-    return {
-        "system": "本体智能平台 — AI时代的企业大脑原型",
-        "philosophy": "用确定性的本体包住不确定性的大模型。LLM做推理，Ontology做业务世界建模。",
-        "architecture": {
-            "buses": {
-                "seci": "知识创造螺旋 (POST_LOOP → atom → convergence → adjust)",
-                "context": "10层上下文组装 (FDE全量/Agent轻量/Skill轻量/Pipeline轻量)",
-                "quality": "4子系统统一评分 (FDE+SECI+Convergence+ContextBus)",
-            },
-            "governance": {
-                "capabilities": 8,
-                "self_audit": "8/8 pass in <50ms",
-                "maturity": "7 production / 1 beta",
-            },
-            "self_evolution": {
-                "phase_1": "时序列观察 (SystemSnapshot持久化, 12周趋势)",
-                "phase_2": "主动诊断 (5条跨子系统关联规则)",
-                "phase_3": "自动修复 (confidence≥0.9安全门, 5条修复, 审计)",
-                "phase_4": "自主演化 (术语自动发布, 方案草稿审批)",
-            },
-        },
-        "endpoints": 31,
-        "capabilities": 630,
-        "domains": 8,
-        "version": "17.6",
-    }
-
-
-# ════════════════════════════════════════════════════════════
 # Project Manual Generation — per-project customizable handbooks
-# ════════════════════════════════════════════════════════════
-
-import re as _re_manual
-
-_MANUALS_DIR = os.path.expanduser("~/.aiplat/fde-manuals")
-os.makedirs(_MANUALS_DIR, exist_ok=True)
-
-
-class FdeManualRequest(_PydanticBaseModel):
-    project_name: str = ""
-    industry: str = ""
-    company_name: str = ""
-    pain_points: str = ""
-    delivery_mode: str = "online"
-    poc_duration_days: int = 3
-    compliance_requirements: list = []
-    assigned_fde: str = ""
-
-
-def _generate_manual_content(req: FdeManualRequest) -> str:
-    ind = req.industry or "通用"
-    co = req.company_name or f"{ind}行业客户"
-    pn = req.project_name or f"{co} AI落地交付项目"
-    fde = req.assigned_fde or "待指派"
-    ts = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M")
-    score = min(len((req.pain_points or "").split(",")) * 10 + 40, 100) if req.pain_points else 40
-    badge = f"落地就绪度预估：{score}%"
-
-    kpi_map = {
-        "政务": [("围标识别率", "≥85%"), ("误报率", "<10%"), ("信创兼容性", "100%通过")],
-        "金融": [("反欺诈准确率", "≥90%"), ("审批时效缩短", "≥60%"), ("监管合规", "100%")],
-        "制造": [("故障预测准确率", "≥80%"), ("排程效率提升", "≥30%")],
-        "医疗": [("影像识别准确率", "≥92%"), ("病历结构化准确率", "≥88%")],
-    }
-    kpis = kpi_map.get(ind, [("准确率", "≥85%"), ("召回率", "≥90%"), ("误报率", "<10%")])
-
-    compliance = req.compliance_requirements or {
-        "政务": ["信创适配", "数据安全法", "个人信息保护法"],
-        "金融": ["银保监会报送", "反洗钱", "数据安全法"],
-        "制造": ["工业数据安全", "信息物理系统安全"],
-        "医疗": ["HIPAA", "医疗器械数据安全"],
-    }.get(ind, ["数据安全法", "个人信息保护法"])
-
-    sol_table = ""
-    try:
-        from core.harness.knowledge.ontology_bus import load_solution_archetypes
-        sols = load_solution_archetypes()[:6]
-        sol_table = "\n".join([
-            "| 方案类别 | 数据成熟度 | 成本 | 部署 | 周期 | 信创 |",
-            "| :--- | :--- | :--- | :--- | :--- | :--- |",
-        ] + [
-            f"| {s.get('name','')} | ≥{s.get('data_maturity_min','')} | {s.get('cost_level','')} | {'/'.join(s.get('deployment_modes',[]))} | {s.get('estimated_cycle_months','')}月 | {'✅' if s.get('xinchuang_compatible') else '部分'} |"
-            for s in sols
-        ])
-    except Exception:
-        sol_table = "| 方案原型库加载失败 |"
-
-    term_table = ""
-    try:
-        from core.harness.ontology_engine.graph_index import GraphIndex
-        tg = GraphIndex.load("enterprise-terms")
-        terms = [(n.entity_name[:60], getattr(n, "source_doc_id", "")[:20])
-                 for _, n in tg._nodes.items() if getattr(n, "class_name", "") == "Term"][:8]
-        if terms:
-            term_table = "\n".join(["| 术语 | 来源 |", "| :--- | :--- |"] + [f"| {t[0]} | {t[1]} |" for t in terms])
-    except Exception:
-        term_table = "| 术语字典为空 | 随诊断次数自播种 |"
-
-    delivery_stats = ""
-    try:
-        from core.harness.ontology_engine.graph_index import GraphIndex
-        fd = GraphIndex.load("fde-delivery")
-        sessions = sum(1 for _, n in fd._nodes.items() if getattr(n, "class_name", "") == "DiagnosisSession")
-        if sessions > 0:
-            delivery_stats = f"历史诊断数：{sessions} 次"
-    except Exception:
-        delivery_stats = "尚无历史数据"
-
-    return f"""# FDE 标准交付手册 — {pn}
-
-> **生成时间**: {ts} | **FDE**: {fde} | **版本**: v1
-> {badge}
-
----
-
-## 0. 项目概览
-
-| 项目 | 内容 |
-|------|------|
-| 项目名 | {pn} |
-| 客户 | {co} |
-| 行业 | {ind} |
-| 痛点 | {req.pain_points or '待补充'} |
-| 交付模式 | {'离线部署' if req.delivery_mode == 'offline' else '在线部署'} |
-| POC 周期 | {req.poc_duration_days} 天 |
-| 合规要求 | {', '.join(compliance)} |
-| 指派 FDE | {fde} |
-| 参考数据 | {delivery_stats} |
-
----
-
-## 1. 推荐方案
-
-{sol_table}
-
----
-
-## 2. POC 验证清单
-
-| 验收指标 | 目标值 |
-|------|:--:|
-{chr(10).join(f"| {kpi[0]} | {kpi[1]} |" for kpi in kpis)}
-
-{{{{CUSTOM_SECTION: poc_checklist}}}}
-POC 自定义验证项（FDE 按需补充）：
-{{{{/CUSTOM_SECTION}}}}
-
----
-
-## 3. 术语参考
-
-{term_table}
-
----
-
-## 4. FDE 备注
-
-{{{{CUSTOM_SECTION: fde_notes}}}}
-FDE 填写项目特殊约定、客户联系人、注意事项等：
-{{{{/CUSTOM_SECTION}}}}
-
----
-
-## 5. 交付检查清单
-
-| # | 检查项 | ☐ |
-|:--:|------|:--:|
-| 1 | POC 环境搭建完成 | ☐ |
-| 2 | 客户诊断已执行 | ☐ |
-| 3 | 客户签字确认 | ☐ |
-| 4 | 30 天健康检查已安排 | ☐ |
-
-{{{{CUSTOM_SECTION: delivery_checklist}}}}
-FDE 自定义交付检查项：
-{{{{/CUSTOM_SECTION}}}}
-
----
-
-*由 aiPlat FDE 工作台自动生成 — {ts}*
-"""
-
-
-def _extract_custom_sections(text: str) -> Dict[str, str]:
-    """Extract FDE-edited custom sections from a manual."""
-    sections = {}
-    pos = 0
-    while True:
-        start_marker = "{{CUSTOM_SECTION: "
-        idx_s = text.find(start_marker, pos)
-        if idx_s < 0:
-            break
-        idx_name_end = text.find("}}", idx_s)
-        if idx_name_end < 0:
-            break
-        sec_name = text[idx_s + len(start_marker):idx_name_end].strip()
-        idx_content_start = text.find("\n", idx_name_end) + 1
-        idx_e = text.find("{{/CUSTOM_SECTION}}", idx_content_start)
-        if idx_e < 0:
-            break
-        sections[sec_name] = text[idx_content_start:idx_e].strip()
-        pos = idx_e + len("{{/CUSTOM_SECTION}}")
-    return sections
-
-
-def _get_manual_path(project_id: str, version: str = "current") -> str:
-    os.makedirs(_MANUALS_DIR, exist_ok=True)
-    safe_id = project_id.replace("/", "_")[:80]
-    if version == "current":
-        return os.path.join(_MANUALS_DIR, f"{safe_id}-current.md")
-    return os.path.join(_MANUALS_DIR, f"{safe_id}-{version}.md")
-
-
-@router.post("/manuals", response_model=dict)
-async def fde_create_manual(req: FdeManualRequest):
-    pid = (f"{req.industry}_{req.company_name}" if req.industry else req.company_name or "未命名项目").replace(" ", "_")[:60]
-    content = _generate_manual_content(req)
-    with open(_get_manual_path(pid), "w", encoding="utf-8") as f:
-        f.write(content)
-    return {
-        "project_id": pid, "version": "v1",
-        "content": content,
-        "next_steps": [f"GET /fde/manuals/{pid}", f"PUT /fde/manuals/{pid}", f"POST /fde/manuals/{pid}/regenerate"],
-    }
-
-
-@router.get("/manuals/{project_id}", response_model=dict)
-async def fde_get_manual(project_id: str):
-    path = _get_manual_path(project_id)
-    if not os.path.exists(path):
-        raise HTTPException(status_code=404, detail=f"Manual not found for {project_id}")
-    with open(path, "r", encoding="utf-8") as f:
-        content = f.read()
-    return {"project_id": project_id, "content": content, "custom_sections": _extract_custom_sections(content)}
-
-
-@router.put("/manuals/{project_id}", response_model=dict)
-async def fde_update_manual(project_id: str, section: str = "", new_content: str = ""):
-    path = _get_manual_path(project_id)
-    if not os.path.exists(path):
-        raise HTTPException(status_code=404, detail=f"Manual not found for {project_id}")
-    with open(path, "r", encoding="utf-8") as f:
-        content = f.read()
-    if section and new_content:
-        start = f"{{{{CUSTOM_SECTION: {section}}}}}"
-        end = "{{/CUSTOM_SECTION}}"
-        idx_s = content.find(start)
-        idx_e = content.find(end, idx_s) if idx_s >= 0 else -1
-        if idx_s >= 0 and idx_e >= 0:
-            before = content[:idx_s + len(start)]
-            after = content[idx_e:]
-            content = before + "\n" + new_content + "\n" + after
-        ts = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
-        with open(_get_manual_path(project_id, f"v_{ts}"), "w", encoding="utf-8") as f:
-            f.write(content)
-        with open(_get_manual_path(project_id), "w", encoding="utf-8") as f:
-            f.write(content)
-    return {"project_id": project_id, "updated_section": section, "content": content}
-
-
-@router.post("/manuals/{project_id}/regenerate", response_model=dict)
-async def fde_regenerate_manual(project_id: str):
-    path = _get_manual_path(project_id)
-    if not os.path.exists(path):
-        raise HTTPException(status_code=404, detail=f"Manual not found for {project_id}")
-    with open(path, "r", encoding="utf-8") as f:
-        old = f.read()
-    custom = _extract_custom_sections(old)
-    ind = ""
-    for line in old.split("\n"):
-        if "| 行业" in line:
-            ind = line.split("|")[2].strip()
-            break
-    req = FdeManualRequest(industry=ind, company_name=project_id.replace("_", " "))
-    content = _generate_manual_content(req)
-    for sec_key, sec_text in custom.items():
-        start = f"{{{{CUSTOM_SECTION: {sec_key}}}}}"
-        end = "{{/CUSTOM_SECTION}}"
-        idx_s = content.find(start)
-        idx_e = content.find(end, idx_s) if idx_s >= 0 else -1
-        if idx_s >= 0 and idx_e >= 0:
-            before = content[:idx_s + len(start)]
-            after = content[idx_e:]
-            content = before + "\n" + sec_text + "\n" + after
-    ts = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
-    with open(_get_manual_path(project_id, f"v_{ts}"), "w", encoding="utf-8") as f:
-        f.write(content)
-    with open(_get_manual_path(project_id), "w", encoding="utf-8") as f:
-        f.write(content)
-    return {"project_id": project_id, "version": ts, "preserved_sections": list(custom.keys()), "content": content}
-
-
-@router.get("/manuals/{project_id}/versions", response_model=dict)
-async def fde_manual_versions(project_id: str):
-    safe_id = project_id.replace("/", "_")[:80]
-    versions = []
-    for fname in sorted(os.listdir(_MANUALS_DIR)):
-        if fname.startswith(safe_id) and fname.endswith(".md") and fname != f"{safe_id}-current.md":
-            fpath = os.path.join(_MANUALS_DIR, fname)
-            mtime = os.path.getmtime(fpath)
-            versions.append({"file": fname, "modified": datetime.fromtimestamp(mtime, tz=timezone.utc).isoformat()})
-    return {"project_id": project_id, "versions": sorted(versions, key=lambda v: v["modified"], reverse=True)}
-
-
-_MANUAL_META = os.path.join(_MANUALS_DIR, "meta.json")
-
-
-def _load_manual_meta() -> dict:
-    try:
-        with open(_MANUAL_META) as f:
-            import json
-            return json.load(f)
-    except Exception:
-        return {}
-
-
-def _save_manual_meta(meta: dict):
-    import json
-    with open(_MANUAL_META, "w") as f:
-        json.dump(meta, f, ensure_ascii=False, indent=2)
-
-
-@router.get("/manuals", response_model=dict)
-async def fde_list_manuals():
-    """List all project manuals with their status."""
-    meta = _load_manual_meta()
-    manuals = []
-    for fname in sorted(os.listdir(_MANUALS_DIR)):
-        if fname.endswith("-current.md"):
-            pid = fname.replace("-current.md", "")
-            mtime = os.path.getmtime(os.path.join(_MANUALS_DIR, fname))
-            manuals.append({
-                "project_id": pid,
-                "status": meta.get(pid, {}).get("status", "active"),
-                "modified": datetime.fromtimestamp(mtime, tz=timezone.utc).isoformat(),
-                "versions": len([v for v in os.listdir(_MANUALS_DIR) if v.startswith(pid) and not v.endswith("-current.md")]),
-            })
-    return {"total": len(manuals), "manuals": sorted(manuals, key=lambda m: m["modified"], reverse=True)}
-
-
-@router.patch("/manuals/{project_id}", response_model=dict)
-async def fde_update_manual_status(project_id: str, status: str = "active"):
-    """Update a manual's status: draft | active | archived."""
-    path = _get_manual_path(project_id)
-    if not os.path.exists(path):
-        raise HTTPException(status_code=404, detail=f"Manual not found for {project_id}")
-    meta = _load_manual_meta()
-    meta.setdefault(project_id, {})
-    meta[project_id]["status"] = status
-    _save_manual_meta(meta)
-    return {"project_id": project_id, "status": status}
-
-
-@router.post("/manuals/{project_id}/start-delivery", response_model=dict)
-async def fde_manual_start_delivery(project_id: str):
-    """Create a delivery tracking session from a project manual.
-
-    Reads the manual's project config, creates a DiagnosisSession
-    in fde-delivery GraphIndex with DeliveryActions for each solution archetype.
-    Closes the manual→delivery loop.
-    """
-    path = _get_manual_path(project_id)
-    if not os.path.exists(path):
-        raise HTTPException(status_code=404, detail=f"Manual not found for {project_id}")
-
-    with open(path, "r", encoding="utf-8") as f:
-        content = f.read()
-
-    # Extract project info from manual (only from project overview table)
-    ind, co, pains = "", "", ""
-    for line in content.split("\n")[:50]:  # Stop after overview table
-        line = line.strip()
-        if not line.startswith("|") or "| :---" in line:
-            continue
-        parts = [p.strip() for p in line.split("|")]
-        if len(parts) < 3:
-            continue
-        key, val = parts[1], parts[2]
-        if key == "行业":
-            ind = val
-        elif key == "客户":
-            co = val
-        elif key == "痛点":
-            pains = val
-
-    if not co:
-        co = project_id.replace("_", " ")
-
-    import time as _t_sd, json as _json_sd
-    from core.harness.ontology_engine.graph_index import GraphIndex
-
-    fd = GraphIndex.load("fde-delivery")
-    ts = str(int(_t_sd.time()))
-    sid = f"session_{co.replace(' ', '_')}_{ts}"
-    fd.add_entity(sid, co, "DiagnosisSession", source_doc_id=project_id)
-
-    # Extract solution archetypes from manual as DeliveryActions
-    actions_created = 0
-    for line in content.split("\n"):
-        if line.startswith("| ") and "≥" in line and "|" in line[2:]:
-            parts = [p.strip() for p in line.split("|")]
-            if len(parts) >= 2:
-                sol_name = parts[1]
-                if sol_name and sol_name != "方案类别" and len(sol_name) > 3:
-                    aid = f"{sid}_action_{actions_created}"
-                    fd.add_entity(aid, sol_name, "DeliveryAction", source_doc_id=sid)
-                    fd.add_relation(sid, aid, "has_action", relation_label="手册方案", confidence=0.85)
-                    ev_id = f"evidence_{sid}_{actions_created}"
-                    fd.add_entity(ev_id, f"{sol_name} | {ind}域(手册)", "Evidence", source_doc_id=sid)
-                    fd.add_relation(sid, ev_id, "has_evidence", relation_label="证据", confidence=0.85)
-                    actions_created += 1
-
-    # SessionMeta
-    meta_blob = {
-        "evidence_map": [],
-        "knowledge_gaps": [],
-        "readiness_score": min(len(pains.split(",")) * 10 + 40, 100) if pains else 50,
-        "industry": ind, "pain_points": pains,
-    }
-    mid = f"meta_{sid}"
-    fd.add_entity(mid, _json_sd.dumps(meta_blob, ensure_ascii=False)[:8000], "SessionMeta", source_doc_id=sid)
-    fd.add_relation(sid, mid, "has_meta", relation_label="元数据", confidence=1.0)
-
-    # StateTransition
-    tid = f"trans_{sid}_{ts}"
-    fd.add_entity(tid, "Session → generated (from manual)", "StateTransition", source_doc_id=sid)
-    fd.add_relation(sid, tid, "has_transition", relation_label="状态变更", confidence=1.0)
-
-    return {
-        "project_id": project_id,
-        "session_id": sid,
-        "company": co,
-        "industry": ind,
-        "actions_created": actions_created,
-        "next_steps": [
-            f"GET /fde/sessions/{sid} — 查看交付详情",
-            f"GET /fde/sessions/{sid}/timeline — 查看时间线",
-            f"POST /fde/delivery/feedback — 更新交付状态",
-        ],
-    }

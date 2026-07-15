@@ -24,6 +24,8 @@ class AgentMessageType(Enum):
     CANCEL = "cancel"
     REQUEST = "request"
     RESPONSE = "response"
+    GRAPH_DELTA = "graph_delta"
+    GRAPH_CONFLICT = "graph_conflict"
 
 
 @dataclass
@@ -95,7 +97,7 @@ class AgentMessageBus:
         self,
         target_agent: str,
         sender_agent: str,
-        # noqa: known-debt — pipeline Agent-to-Agent request/response protocol (Phase 8)
+        # Pipeline Agent-to-Agent request/response protocol
         msg_type: str = "request",
         payload: Optional[Dict[str, Any]] = None,
         timeout: float = 30.0,

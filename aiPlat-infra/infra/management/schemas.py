@@ -247,7 +247,8 @@ class ModelConfig:
     frequency_penalty: float = 0.0
     presence_penalty: float = 0.0
     stop: List[str] = None
-    api_key_env: str = None
+    api_key_env: str = None       # [deprecated] 使用 adapter_id 替代
+    adapter_id: Optional[str] = None  # FK → core adapters.adapter_id
     base_url: str = None
     headers: Dict[str, str] = None
     
@@ -289,6 +290,7 @@ class ModelInfo:
     description: str = ""
     tags: List[str] = None
     capabilities: List[str] = None
+    size: Optional[int] = None  # model file size in bytes (for resource-aware scoring)
     created_at: datetime = None
     updated_at: datetime = None
     

@@ -8,6 +8,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
+from starlette.middleware.base import BaseHTTPMiddleware
 import yaml
 from pathlib import Path
 from typing import Dict, Any
@@ -22,6 +23,21 @@ from management.alerting import AlertEngine
 from management.config import ConfigManager
 from management.infra_client import InfraAPIClient, InfraAPIClientConfig
 from management.core_client import CoreAPIClient, CoreAPIClientConfig, CoreAPIError
+
+# Server readiness flag: set to True after core service is confirmed reachable.
+_management_ready = False
+
+
+class ServerReadinessMiddleware(BaseHTTPMiddleware):
+    """Reject requests until core service is confirmed reachable."""
+    async def dispatch(self, request, call_next):
+        if not _management_ready:
+            return JSONResponse(
+                status_code=503,
+                content={"detail": "Backend services starting, please retry in a few seconds"},
+                headers={"Retry-After": "3"},
+            )
+        return await call_next(request)
 
 
 def load_config() -> Dict[str, Any]:
@@ -108,6 +124,9 @@ def create_app() -> FastAPI:
             allow_headers=["*"],
         )
     
+    # Reject requests until core is ready
+    app.add_middleware(ServerReadinessMiddleware)
+
     # 注册 API 路由
     api_prefix = config.get("server", {}).get("api", {}).get("prefix", "/api")
     app.include_router(dashboard.router, prefix=api_prefix)
@@ -282,6 +301,26 @@ def create_app() -> FastAPI:
     _static_dir = _os.path.join(_os.path.dirname(__file__), "static")
     if _os.path.isdir(_static_dir):
         app.mount("/overview", StaticFiles(directory=_static_dir, html=True), name="static")
+
+    # Startup: wait for core service to be ready before accepting requests
+    @app.on_event("startup")
+    async def wait_for_core():
+        global _management_ready
+        import asyncio as _asyncio, logging as _logging
+        _log = _logging.getLogger(__name__)
+        for i in range(20):  # up to ~2 minutes
+            try:
+                r = await app.state.core_client._request("GET", "/api/core/health")
+                if r and isinstance(r, dict):
+                    _management_ready = True
+                    _log.info("Core service reachable — accepting requests")
+                    return
+            except Exception:
+                pass
+            _log.info("Waiting for core service... (%d/20)", i + 1)
+            await _asyncio.sleep(6)
+        _log.warning("Core service not reachable after 2 minutes — accepting requests anyway")
+        _management_ready = True
 
     return app
 

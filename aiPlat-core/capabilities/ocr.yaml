@@ -1,0 +1,88 @@
+# ── Capability Contract: OCR (文字识别) ──
+# All OCR in the system must flow through the authoritative entry below.
+# Direct `import pytesseract` or `import paddleocr` outside this file is forbidden.
+
+domain: ai-knowledge
+capability: ocr
+description: "文字识别——将图片/PDF/视频帧中的文字提取为文本"
+owner: core-infra
+version: "2.0.0"
+updated: "2026-07-13"
+
+# ── 权威入口：整个系统 OCR 的唯一实现者 ──
+authoritative:
+  path: aiPlat-core/core/harness/infrastructure/infra_ocr_adapter.py
+  factory: create_infra_ocr_adapter
+  class: InfraOCRAdapter
+  public_symbols:
+    - InfraOCRAdapter
+    - create_infra_ocr_adapter
+    - OCRToken
+    - BBox
+
+# ── 禁止直接接触的库 ──
+forbidden_direct_imports:
+  - pytesseract
+  - paddleocr
+  - paddleocr.PaddleOCR
+
+# ── 提供的能力方法 ──
+methods:
+  - name: ocr_text
+    signature: "(image_path: str) -> str"
+    purpose: "单张图片 -> 纯文本"
+  - name: ocr_structured
+    signature: "(image_path: str) -> List[OCRToken]"
+    purpose: "单张图片 -> 结构化结果（含 bbox + confidence）"
+  - name: ocr_pdf
+    signature: "(pdf_path: str, *, dpi: int = 200) -> str"
+    purpose: "PDF -> 文本（自动处理数字 PDF 和扫描件）"
+  - name: ocr_frames
+    signature: "(frames: List[Dict]) -> List[Dict]"
+    purpose: "批量帧处理（视频关键帧）"
+
+# ── 已注册的消费者 ──
+consumers:
+  - path: aiPlat-core/core/harness/document/ocr.py
+    uses: ocr_frames
+    note: "通过 create_adapter('ocr') 间接调用"
+  - path: aiPlat-core/core/harness/document/converters/_image.py
+    uses: ocr_frames
+    via: core.harness.document.ocr.ocr_keyframes
+    note: "ImageConverter -> ocr_keyframes() -> create_adapter('ocr') 间接调用"
+  - path: aiPlat-core/core/harness/ontology_engine/document_parser.py
+    uses: ocr_text
+    note: "parse_image() -> create_infra_ocr_adapter() -> ocr_text()"
+  - path: aiPlat-core/core/engine/skills/poc_data_inject/handler.py
+    uses: ocr_pdf
+    note: "_inject_pdf() -> create_infra_ocr_adapter() + PyMuPDF"
+  - path: aiPlat-platform/kb/video.py
+    uses: ocr_frames
+    via: core.api.core_facade.kb_ocr_keyframes
+    note: "平台通过 CoreFacade 调用"
+  - path: aiPlat-platform/kb/poc/ocr.py
+    uses: ocr_structured
+    role: delegate
+    note: "委托层 — ocr_image() -> InfraOCRAdapter.ocr_structured()"
+  - path: aiPlat-platform/kb/poc/types.py
+    uses: N/A
+    role: provider
+    note: "从 InfraOCRAdapter 重导出 OCRToken / BBox"
+
+# ── 能力缺口（已知缺失，待补充） ──
+known_gaps: []
+
+# ── 历史违规（已修复） ──
+legacy_fixes:
+  - path: aiPlat-platform/kb/poc/ocr.py
+    reason: "2026-07-13 从直接 import paddleocr/pytesseract 改为委托 InfraOCRAdapter"
+    fixed_at: "2026-07-13"
+  - path: aiPlat-core/core/harness/ontology_engine/document_parser.py
+    reason: "2026-07-13 parse_image() 从直接 import pytesseract 改为 adapter"
+    fixed_at: "2026-07-13"
+  - path: aiPlat-core/core/harness/document/ocr.py
+    reason: "2026-07-13 删除遗留 pytesseract fallback"
+    fixed_at: "2026-07-13"
+  - path: aiPlat-core/core/engine/skills/poc_data_inject/handler.py
+    reason: "2026-07-13 从跨层 import platform 改为纯 core OCR 实现"
+    fixed_at: "2026-07-13"

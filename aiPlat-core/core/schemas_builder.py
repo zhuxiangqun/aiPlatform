@@ -446,3 +446,115 @@ class ProjectHealthReport(BaseModel):
     stages: List[StageHealthReport] = Field(default_factory=list)
     trend: List[Dict[str, Any]] = Field(default_factory=list)  # [{run_id, score, timestamp}]
     updated_at: str = ""
+
+# ═══════════════════════════════════════════════════════════════
+# Spec lifecycle response models (migrated from Dict[str,Any] 2026-07-13)
+# ═══════════════════════════════════════════════════════════════
+
+class SpecVersionSummary(BaseModel):
+    version: str
+    status: str = ""
+    trigger: str = ""
+    trigger_detail: str = ""
+    created_at: str = ""
+
+class SpecHistoryResponse(BaseModel):
+    spec_id: str
+    versions: List[SpecVersionSummary] = Field(default_factory=list)
+    total: int = 0
+    error: Optional[str] = None
+
+class SpecRevisionResponse(BaseModel):
+    spec_id: str
+    version: str
+    status: str = ""
+    affected_stages: List[str] = Field(default_factory=list)
+    trigger: str = ""
+    trigger_detail: str = ""
+    re_execute: bool = False
+    run_id: Optional[str] = None
+    re_execution_triggered: Optional[bool] = None
+    re_execution_error: Optional[str] = None
+
+class SpecCreatedResponse(BaseModel):
+    spec_id: str
+    version: str
+    status: str = ""
+    source: Optional[str] = None
+    source_version: Optional[str] = None
+
+class SpecMarkStableResponse(BaseModel):
+    spec_id: str
+    status: str  # "stable" or "unchanged"
+    version: str = ""
+    reason: Optional[str] = None
+
+class SpecRadarSuggestion(BaseModel):
+    type: str = ""
+    severity: str = ""
+    detail: str = ""
+    suggested_action: str = ""
+    evidence_count: int = 0
+
+class SpecRadarResponse(BaseModel):
+    spec_id: str
+    suggestions: List[SpecRadarSuggestion] = Field(default_factory=list)
+    total: int = 0
+    error: Optional[str] = None
+
+class SpecTraceResponse(BaseModel):
+    spec_id: str
+    version: str = ""
+    status: str = ""
+    total_steps: int = 0
+    agent_call_order: List[str] = Field(default_factory=list)
+    hesitation_count: int = 0
+    repeat_count: int = 0
+    decision_chain: List[Dict[str, Any]] = Field(default_factory=list)
+    anomaly_report: List[Dict[str, Any]] = Field(default_factory=list)
+    spec_suggestions: List[Dict[str, Any]] = Field(default_factory=list)
+    anomalies: List[Dict[str, Any]] = Field(default_factory=list)
+    raw_steps: List[Dict[str, Any]] = Field(default_factory=list)
+    error: Optional[str] = None
+
+class VersionInfo(BaseModel):
+    version: str
+    status: str = ""
+    content: Dict[str, Any] = Field(default_factory=dict)
+
+class FieldChange(BaseModel):
+    field: str
+    before: Any = None
+    after: Any = None
+
+class SpecDiffResponse(BaseModel):
+    spec_id: str
+    source: VersionInfo = Field(default_factory=VersionInfo)
+    target: VersionInfo = Field(default_factory=VersionInfo)
+    changes: List[FieldChange] = Field(default_factory=list)
+    total_changes: int = 0
+
+class SpecListItem(BaseModel):
+    spec_id: str
+    version: str = ""
+    status: str = ""
+    industry: str = ""
+    created_at: str = ""
+
+class SpecsListResponse(BaseModel):
+    specs: List[SpecListItem] = Field(default_factory=list)
+    total: int = 0
+    error: Optional[str] = None
+
+class TaskStatusResponse(BaseModel):
+    run_id: str
+    status: str = ""
+    spec_id: str = ""
+    stages: List[Dict[str, Any]] = Field(default_factory=list)
+    error: Optional[str] = None
+
+class PromotionResponse(BaseModel):
+    spec_id: str
+    scope: str = ""
+    promotion_status: str = ""
+    reviewer: Optional[str] = None

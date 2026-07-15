@@ -1,0 +1,41 @@
+# Capability Contract: Experience Cache (经验缓存)
+domain: ai-runtime
+capability: experience
+description: "经验缓存——存储交互历史供 AutoLearner 语义检索（'上次类似任务怎么做的'）"
+owner: core-learning
+version: "1.0.0"
+updated: "2026-07-13"
+
+# Distinct from pattern_cache:
+# - experience_cache: semantic memory for AutoLearner retrieval
+#   (what did we do? how did it go?)
+# - pattern_cache: execution path for Pipeline skip-stage optimization
+#   (which stages to skip? which tools/strategies to use?)
+# Both write in _facade.py::_try_feed_learning_pipeline() with different purposes.
+authoritative:
+  path: aiPlat-core/core/harness/learning/experience_vector.py
+  entry_point: get_experience_cache
+  class: ExperienceVector
+  factory: get_experience_cache
+  public_symbols:
+    - ExperienceVector
+    - get_experience_cache
+
+methods:
+  - name: store
+    signature: "(run_id, summary, label) -> None"
+    purpose: "存储交互经验（success/failure 标签）"
+  - name: search
+    signature: "(query, k) -> List[Experience]"
+    purpose: "语义检索相关历史经验"
+  - name: get_experience_cache
+    signature: "() -> ExperienceVector"
+    purpose: "获取全局经验缓存单例"
+
+consumer_patterns:
+  - "harness/"
+  - "api/"
+
+cross_references:
+  - capability: pattern_cache
+    note: "这两个缓存在 _try_feed_learning_pipeline() 中同时写入。experience_cache 存储语义记忆供 AutoLearner，pattern_cache 存储执行模式供 Pipeline 跳阶段。职责不同，合同互补。"

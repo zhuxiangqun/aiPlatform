@@ -1,0 +1,36 @@
+# Capability Contract: Code Intelligence (代码智能)
+domain: ai-dev
+capability: code_intel
+description: "代码智能——代码图查询、影响半径分析、代码搜索"
+owner: core-harness
+version: "1.0.0"
+updated: "2026-07-13"
+
+authoritative:
+  path: aiPlat-core/core/harness/knowledge/code_graph.py
+  entry_point: sys_code_intel_context
+  class: code_graph
+  public_symbols:
+    - sys_code_intel_context
+    - sys_code_intel_blast
+    - sys_code_search
+    - build_graph
+    - CodeGraph
+
+methods:
+  - name: sys_code_intel_context
+    signature: "(task_description) -> str"
+    purpose: "获取与任务相关的代码文件上下文"
+  - name: sys_code_intel_blast
+    signature: "(file_path) -> List[str]"
+    purpose: "分析文件的影响半径（被哪些文件依赖）"
+  - name: sys_code_search
+    signature: "(pattern) -> List[str]"
+    purpose: "代码模式搜索"
+
+consumer_patterns:
+  - "harness/"
+  - "apps/"
+  - "api/"
+  - "management/"
+  - "server"

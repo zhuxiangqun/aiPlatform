@@ -63,32 +63,49 @@ class SecurityScanner:
         ],
     }
 
-    SEVERITY_MAP = {
-        VulnerabilityType.API_KEY: VulnerabilitySeverity.HIGH,
-        VulnerabilityType.CREDENTIALS: VulnerabilitySeverity.CRITICAL,
-        VulnerabilityType.PATH_TRAVERSAL: VulnerabilitySeverity.HIGH,
-        VulnerabilityType.SQL_INJECTION: VulnerabilitySeverity.CRITICAL,
-        VulnerabilityType.COMMAND_INJECTION: VulnerabilitySeverity.CRITICAL,
-        VulnerabilityType.SECRET: VulnerabilitySeverity.HIGH,
-        VulnerabilityType.PII: VulnerabilitySeverity.MEDIUM,
-    }
+SEVERITY_MAP = {
+    VulnerabilityType.API_KEY: VulnerabilitySeverity.HIGH,
+    VulnerabilityType.CREDENTIALS: VulnerabilitySeverity.CRITICAL,
+    VulnerabilityType.PATH_TRAVERSAL: VulnerabilitySeverity.HIGH,
+    VulnerabilityType.SQL_INJECTION: VulnerabilitySeverity.CRITICAL,
+    VulnerabilityType.COMMAND_INJECTION: VulnerabilitySeverity.CRITICAL,
+    VulnerabilityType.SECRET: VulnerabilitySeverity.HIGH,
+    VulnerabilityType.PII: VulnerabilitySeverity.MEDIUM,
+}
 
-    _SEVERITY_RANK = {
-        VulnerabilitySeverity.LOW.value: 1,
-        VulnerabilitySeverity.MEDIUM.value: 2,
-        VulnerabilitySeverity.HIGH.value: 3,
-        VulnerabilitySeverity.CRITICAL.value: 4,
-    }
+_SEVERITY_RANK = {
+    VulnerabilitySeverity.LOW.value: 1,
+    VulnerabilitySeverity.MEDIUM.value: 2,
+    VulnerabilitySeverity.HIGH.value: 3,
+    VulnerabilitySeverity.CRITICAL.value: 4,
+}
 
-    SUGGESTIONS = {
-        VulnerabilityType.API_KEY: "Move API keys to environment variables or secrets manager",
-        VulnerabilityType.CREDENTIALS: "Remove hardcoded credentials, use secure secret management",
-        VulnerabilityType.PATH_TRAVERSAL: "Validate and sanitize file paths, use allowlist",
-        VulnerabilityType.SQL_INJECTION: "Use parameterized queries or ORM, validate input",
-        VulnerabilityType.COMMAND_INJECTION: "Avoid shell execution, use subprocess with args",
-        VulnerabilityType.SECRET: "Store secrets in secure vault, never commit to version control",
-        VulnerabilityType.PII: "Remove or mask PII, implement data protection policies",
-    }
+SUGGESTIONS: dict = {
+    VulnerabilityType.API_KEY: "Move API keys to environment variables or secrets manager",
+    VulnerabilityType.CREDENTIALS: "Remove hardcoded credentials, use secure secret management",
+    VulnerabilityType.PATH_TRAVERSAL: "Use path sanitization libraries, never concatenate user input to file paths",
+    VulnerabilityType.SQL_INJECTION: "Use parameterized queries or ORM instead of string formatting",
+    VulnerabilityType.COMMAND_INJECTION: "Use subprocess with shell=False and argument lists",
+    VulnerabilityType.SECRET: "Move secret to environment variable or secrets manager",
+    VulnerabilityType.PII: "Use data masking before logging/storing",
+}
+
+# Load overrides from YAML config (if available) — allows customization without code changes
+try:
+    import yaml as _yaml  # type: ignore
+    yaml_path = os.path.join(
+        os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))),
+        "config", "vulnerability_severity.yaml"
+    )
+    with open(yaml_path) as f:
+        _sev_yaml = _yaml.safe_load(f) or {}
+    if _sev_yaml.get("suggestions"):
+        for k, v in _sev_yaml["suggestions"].items():
+            vt = getattr(VulnerabilityType, k, None)
+            if vt and v:
+                SUGGESTIONS[vt] = v
+except Exception:
+    pass  # YAML not available — use inline defaults
 
     def __init__(
         self,

@@ -57,34 +57,23 @@ class DomainRouter:
 
         # ── Tier 2: Embedding cosine similarity (~50ms) ──
         qvec = self._embed(query)
-        if qvec is None:
-            did = self._llm_classify(query)
-        if self._route_stats["total"] % 10 == 0:  # Log every 10 classifications
-            import logging as _logging; _logging.warning(
-                "route_stats: T1=%.0f%% T2=%.0f%% T3=%.0f%% (total=%d, LLM calls avoided=%d)",
-                self._route_stats["t1_hits"]*100/max(self._route_stats["total"],1),
-                self._route_stats["t2_hits"]*100/max(self._route_stats["total"],1), 
-                self._route_stats["t3_hits"]*100/max(self._route_stats["total"],1),
-                self._route_stats["total"],
-                self._route_stats["t1_hits"] + self._route_stats["t2_hits"], file=_sys.stderr)
-        return did
+        if qvec is not None:
+            best_did, best_score, runner_up = None, 0.0, 0.0
+            for did, dvec in self._domain_vectors.items():
+                norm = np.linalg.norm(qvec) * np.linalg.norm(dvec)
+                score = float(np.dot(qvec, dvec) / (norm + 1e-8))
+                if score > best_score:
+                    runner_up = best_score
+                    best_score = score
+                    best_did = did
 
-        best_did, best_score, runner_up = None, 0.0, 0.0
-        for did, dvec in self._domain_vectors.items():
-            norm = np.linalg.norm(qvec) * np.linalg.norm(dvec)
-            score = float(np.dot(qvec, dvec) / (norm + 1e-8))
-            if score > best_score:
-                runner_up = best_score
-                best_score = score
-                best_did = did
+            routing_cfg = self._load_registry().get("routing", {}).get("embedding", {})
+            min_conf = routing_cfg.get("min_confidence", 0.4)
+            min_margin = routing_cfg.get("min_margin", 0.08)
 
-        routing_cfg = self._load_registry().get("routing", {}).get("embedding", {})
-        min_conf = routing_cfg.get("min_confidence", 0.4)
-        min_margin = routing_cfg.get("min_margin", 0.08)
-
-        if best_did and best_score >= min_conf and (best_score - runner_up) >= min_margin:
-            self._route_stats["t2_hits"] += 1; self._route_stats["total"] += 1
-            return best_did
+            if best_did and best_score >= min_conf and (best_score - runner_up) >= min_margin:
+                self._route_stats["t2_hits"] += 1; self._route_stats["total"] += 1
+                return best_did
 
         # ── Tier 3: LLM classification (~300ms, rare) ──
         self._route_stats["t3_hits"] += 1; self._route_stats["total"] += 1
@@ -93,7 +82,7 @@ class DomainRouter:
             import logging as _logging; _logging.warning(
                 "route_stats: T1=%.0f%% T2=%.0f%% T3=%.0f%% (total=%d, LLM calls avoided=%d)",
                 self._route_stats["t1_hits"]*100/max(self._route_stats["total"],1),
-                self._route_stats["t2_hits"]*100/max(self._route_stats["total"],1), 
+                self._route_stats["t2_hits"]*100/max(self._route_stats["total"],1),
                 self._route_stats["t3_hits"]*100/max(self._route_stats["total"],1),
                 self._route_stats["total"],
                 self._route_stats["t1_hits"] + self._route_stats["t2_hits"], file=_sys.stderr)

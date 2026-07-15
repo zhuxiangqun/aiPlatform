@@ -13,7 +13,7 @@ dependencies:
 known_debt:
   - file: "execution_store.py"
     issue: "单体 9000+ 行文件，需要按域拆分（runs/memory/config/jobs）"
-    status: "planned"
+    status: "planned (2026-07 — integration.py split completed as precedent; execution_store split pending)"
   - file: "execution_store.py"
     issue: "Tenant CRUD 已完全移除 ✅ (2026-Q2)"
     target: "aiPlat-platform/storage/sqlite.py"

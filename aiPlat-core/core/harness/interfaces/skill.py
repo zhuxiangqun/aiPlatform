@@ -54,6 +54,9 @@ class SkillResult:
     error: Optional[str] = None
     metadata: Dict[str, Any] = field(default_factory=dict)
     priority: str = "medium"
+    # ── Structured error diagnostics (parity with ToolResult; Hermes Layer 2) ──
+    error_type: Optional[str] = None      # Classified FailoverReason value
+    recovery_hint: Optional[str] = None   # Actionable, LLM-readable recovery suggestion
 
 
 @dataclass

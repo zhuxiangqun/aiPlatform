@@ -1,50 +1,138 @@
 /**
  * FdeDashboard — FDE 工作台 (Field Deployment Engineer Toolkit, 方向一)
- *
- * 8 Tab 统一入口:
- *   Tab 1: 系统进化 (Evolution 监控)
- *   Tab 2: 部署管理 (离线部署包 打包/下载 + 执行日志)
- *   Tab 3: 客户诊断 (field_assessment Skill → 报告)
- *   Tab 4: 客户列表 (多客户视图 + 健康摘要)
- *   Tab 5: 现场反馈 (结构化提交 + 历史)
- *   Tab 6: POC 工具箱 (行业模板 + 数据注入)
- *   Tab 7: 灰度发布 (Canary status + 一键回滚)
- *   Tab 8: 验证验收 (Checklist + 签收 + 移交 + 归档 + 首月护航)
- */
+  *
+  * FDE 流程步骤 (按 FDE 七项能力流程排列):
+  *   ① 业务认知 → ② 评估域 → ③ 问题重构 → ④ 验证价值 →
+  *   ⑤ 快速构建 → ⑥ 评测护栏 → ⑦ 验收移交 → ⑧ 运营监控
+  */
 import React, { useEffect, useState, useCallback, useRef } from 'react';
-import { Card, CardContent, CardHeader, Button } from '../../components/ui';
-import { Wrench, RefreshCw, Package, Download, Users, FileText, Target, Activity, AlertTriangle, Send, Clipboard, TrendingUp, CheckCircle, UserCheck, BookOpen } from 'lucide-react';
+import { Card, CardContent, CardHeader, Button, toast } from '../../components/ui';
+import { Wrench, RefreshCw, Package, Download, Users, FileText, Target, Activity, AlertTriangle, Send, Clipboard, TrendingUp, CheckCircle, UserCheck, BookOpen, Plus, ChevronDown, ChevronRight, X, ArrowRightLeft, Trash2, Pencil } from 'lucide-react';
+import CapabilityBoundary from './CapabilityBoundary';
+import FloatingFeedback from './FloatingFeedback';
 
 const API = (path: string) => `/api/core/fde${path}`;
 
-// ── Tab labels ──
-const TABS = [
-  { key: 'evolution', label: '系统进化', icon: Activity },
-  { key: 'deploy',    label: '部署管理', icon: Package },
-  { key: 'assess',    label: '客户诊断', icon: FileText },
-  { key: 'customers', label: '客户列表', icon: Users },
-  { key: 'feedback',  label: '现场反馈', icon: Clipboard },
-  { key: 'poc',       label: 'POC 工具箱', icon: Wrench },
-  { key: 'canary',    label: '灰度发布', icon: TrendingUp },
-  { key: 'accept',    label: '验证验收', icon: CheckCircle },
+// ── 工作流状态类型 (append-only pipeline, 每个 Tab 只写 1 个 key) ──
+interface CustomerInfo {
+  name: string;
+  namespace: string;
+  industry?: string;
+  description?: string;
+  deployment_mode?: string;
+}
+interface DomainInfo {
+  id: string;
+  maturity: string;
+  skillsAvailable: number;
+}
+interface DiagnosisInfo {
+  deepProblem: string;
+  recommendedDomain: string;
+  reportText: string;
+}
+interface CanaryResult {
+  passed: boolean;
+  qualityScore: number;
+}
+
+// ── 行业 → 域推荐映射 ──
+const INDUSTRY_DOMAIN_MAP: Record<string, string[]> = {
+  'manufacturing': ['supply-chain', 'ship-design', 'it-ops'],
+  'finance': ['finance', 'procurement-mvo'],
+  'retail': ['supply-chain', 'procurement-mvo'],
+  'general': ['ai-knowledge', 'default'],
+};
+
+// ── FDE 流程步骤 (按 FDE 七项能力 → 运营监控) ──
+const FDE_STEPS = [
+  { key: 'customers',  label: '① 业务认知', icon: Users,      hint: '了解客户业务模式、痛点、关键流程' },
+  { key: 'capability', label: '② 评估域',   icon: Target,      hint: '查看各域数据成熟度、可用Skill、已知缺口' },
+  { key: 'assess',     label: '③ 问题重构', icon: FileText,    hint: 'field_assessment 诊断 → 表层需求翻译为真实问题' },
+  { key: 'poc',        label: '④ 验证价值', icon: Wrench,      hint: '行业模板 + 数据注入 → 快速POC验证 ROI' },
+  { key: 'deploy',     label: '⑤ 快速构建', icon: Package,     hint: '打包部署到客户环境，先跑通核心链路' },
+  { key: 'canary',     label: '⑥ 评测护栏', icon: TrendingUp,  hint: '灰度发布 + 质量门禁 + 回滚预案' },
+  { key: 'accept',     label: '⑦ 验收移交', icon: CheckCircle, hint: '签收 + 移交 + 首月护航' },
+  { key: 'evolution',  label: '⑧ 运营监控', icon: Activity,    hint: '运营指标 + 反馈闭环 + 资产沉淀' },
 ] as const;
 
-type TabKey = typeof TABS[number]['key'];
+type TabKey = typeof FDE_STEPS[number]['key'];
 
 // ── Dashboard ──
 const FdeDashboard: React.FC = () => {
-  const [tab, setTab] = useState<TabKey>('evolution');
+  const [tab, setTab] = useState<TabKey>('customers');
+  const [customer, setCustomer] = useState<CustomerInfo | null>(null);
+  const [domain, setDomain] = useState<DomainInfo | null>(null);
+  const [diagnosis, setDiagnosis] = useState<DiagnosisInfo | null>(null);
+  const [pocProfile, setPocProfile] = useState<string | null>(null);
+  const [deployVersion, setDeployVersion] = useState<string | null>(null);
+  const [canaryResult, setCanaryResult] = useState<CanaryResult | null>(null);
+  const [adopted, setAdopted] = useState(false);
+  const [workflowStages, setWorkflowStages] = useState<any[]>([]);
+  const [workflowState, setWorkflowState] = useState<Record<string, any>>({});
+  const [workflowName, setWorkflowName] = useState('');
+
+  const loadWorkflow = async (name: string) => {
+    if (!name) { setWorkflowStages([]); setWorkflowName(''); return; }
+    try {
+      const r = await fetch(`/api/core/workflow/templates/${name}`);
+      const d = await r.json();
+      setWorkflowStages(d.stages || []);
+      setWorkflowName(d.name || name);
+    } catch { setWorkflowStages([]); }
+  };
+
+  const progressItems = React.useMemo(() => {
+    if (workflowStages.length > 0) {
+      return workflowStages.map(s => ({
+        key: s.agent_id,
+        label: (s.agent_name || s.id || '').replace('FDE', '').trim() || s.id,
+        done: !!workflowState[s.output_artifact],
+      }));
+    }
+    return [
+      { key: 'customers',  label: '客户', done: !!customer },
+      { key: 'capability', label: '域',   done: !!domain },
+      { key: 'assess',     label: '诊断',  done: !!diagnosis },
+      { key: 'poc',        label: 'POC',  done: !!pocProfile },
+      { key: 'deploy',     label: '部署',  done: !!deployVersion },
+      { key: 'canary',     label: '灰度',  done: !!canaryResult?.passed },
+      { key: 'accept',     label: '验收',  done: adopted },
+    ];
+  }, [workflowStages, workflowState, customer, domain, diagnosis, pocProfile, deployVersion, canaryResult, adopted]);
+
   return (
     <div className="space-y-4 p-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-lg font-semibold text-gray-100">FDE 工作台</h1>
+       <div className="flex items-center justify-between">
+         <h1 className="text-lg font-semibold text-gray-100">FDE 工作台
+           {workflowName && <span className="text-xs text-blue-400 ml-2 font-normal">{workflowName}</span>}
+         </h1>
+         <select onChange={e => loadWorkflow(e.target.value)} defaultValue=""
+           className="text-xs bg-gray-800 border border-gray-700 rounded px-2 py-1 text-gray-400">
+           <option value="" disabled>加载工作流…</option>
+           <option value="fde_delivery_v1">FDE 标准交付 v1</option>
+           <option value="">取消（自由模式）</option>
+         </select>
+       </div>
+      {/* ── 流程进度指示 ── */}
+      <div className="flex items-center gap-1.5 text-xs text-gray-500">
+        <span className="mr-1">进度：</span>
+        {progressItems.map((p, i) => (
+          <span key={p.key} className="flex items-center gap-1">
+            <span className={tab === p.key ? 'text-blue-400 font-semibold' : p.done ? 'text-green-400' : 'text-gray-600'}>
+              {p.done ? `${p.label} ✓` : p.label}
+            </span>
+            {i < progressItems.length - 1 && <span className="text-gray-700">→</span>}
+          </span>
+        ))}
       </div>
       <div className="flex gap-1 border-b border-gray-700/50 pb-0">
-        {TABS.map(t => (
+        {FDE_STEPS.map(t => (
           <button
             key={t.key}
             onClick={() => setTab(t.key)}
-            className={`flex items-center gap-1.5 px-3 py-2 text-sm border-b-2 transition-colors ${
+            title={t.hint}
+            className={`flex items-center gap-1.5 px-3 py-2 text-sm border-b-2 whitespace-nowrap transition-colors ${
               tab === t.key ? 'border-blue-500 text-white' : 'border-transparent text-gray-500 hover:text-gray-300'
             }`}
           >
@@ -52,24 +140,37 @@ const FdeDashboard: React.FC = () => {
           </button>
         ))}
       </div>
-      {tab === 'evolution' && <EvolutionTab />}
-      {tab === 'deploy'    && <DeployTab />}
-      {tab === 'assess'    && <AssessTab />}
-      {tab === 'customers' && <CustomersTab />}
-      {tab === 'feedback'  && <FeedbackTab />}
-      {tab === 'poc'       && <PocTab />}
-      {tab === 'canary'    && <CanaryTab />}
-      {tab === 'accept'    && <AcceptTab />}
+      {tab === 'customers'  && <CustomersTab onSelect={setCustomer} diagnosis={diagnosis} />}
+      {tab === 'capability' && <CapabilityBoundary industry={customer?.industry} onSelect={setDomain} />}
+      {tab === 'assess'     && <AssessTab domain={domain?.id ?? null} customerDesc={customer?.description || ''} customerName={customer?.name || ''} customerIndustry={customer?.industry || ''} onReport={setDiagnosis} />}
+      {tab === 'poc'        && <PocTab domain={domain} onProfileSet={setPocProfile} />}
+      {tab === 'deploy'     && <DeployTab profile={pocProfile} onDeployed={setDeployVersion} />}
+      {tab === 'canary'     && <CanaryTab deployVersion={deployVersion} onResult={setCanaryResult} />}
+      {tab === 'accept'     && <AcceptTab canaryResult={canaryResult} diagnosisReport={diagnosis?.reportText || ''} onAdopted={() => setAdopted(true)} />}
+      {tab === 'evolution'  && <EvolutionTab namespace={customer?.namespace ?? null} />}
+      <FloatingFeedback currentStep={tab} autoValues={{
+        customer: customer?.name || '',
+        customer_desc: customer?.description || '',
+        customer_deploy: customer?.deployment_mode || '',
+        customer_ns: customer?.namespace || '',
+        customer_industry: customer?.industry || '',
+        domain: domain?.id || '',
+        diagnosis: diagnosis?.deepProblem?.slice(0, 80) || '',
+        template: pocProfile || '',
+        version: deployVersion || '',
+        _workflow_stages: workflowStages,
+        _agent_id: tab,
+      }} />
     </div>
   );
 };
 
 // ═══════════════════════════════════════════════════════════
-// Tab 1: 系统进化 (原 workbench FDE Dashboard)
+// ⑧ 运营监控 — 系统进化 (原 workbench FDE Dashboard)
 // ═══════════════════════════════════════════════════════════
-const EvolutionTab: React.FC = () => {
+const EvolutionTab: React.FC<{ readonly namespace: string | null }> = ({ namespace }) => {
   const [data, setData] = useState<any>(null);
-  useEffect(() => { fetch(API('/dashboard')).then(r => r.json()).then(setData); }, []);
+  useEffect(() => { fetch(API('/dashboard') + (namespace ? `?namespace=${namespace}` : '')).then(r => r.json()).then(setData); }, []);
   if (!data) return <div className="text-gray-500 text-sm p-4">加载中…</div>;
   const cards = [
     { label: '待处理决策', value: data.pending_decisions?.length ?? 0, color: 'text-yellow-400' },
@@ -104,9 +205,9 @@ const EvolutionTab: React.FC = () => {
 };
 
 // ═══════════════════════════════════════════════════════════
-// Tab 2: 部署管理
+// ⑤ 快速构建 — 部署管理
 // ═══════════════════════════════════════════════════════════
-const DeployTab: React.FC = () => {
+const DeployTab: React.FC<{ readonly profile: string | null; readonly onDeployed: (taskId: string) => void }> = ({ profile, onDeployed }) => {
   const [taskId, setTaskId] = useState<string | null>(null);
   const [status, setStatus] = useState<any>(null);
   const [loading, setLoading] = useState(false);
@@ -126,6 +227,7 @@ const DeployTab: React.FC = () => {
       if (!r.ok) throw new Error(`HTTP ${r.status}`);
       const { task_id } = await r.json();
       setTaskId(task_id);
+      onDeployed(task_id);
       poll(task_id);
     } catch (e: any) {
       setStatus({ status: 'error', progress: 0, detail: `启动失败: ${e.message || '未知错误'}`, log: [{ icon: 'error', msg: '无法连接到打包服务，请重试' }] });
@@ -173,12 +275,19 @@ const DeployTab: React.FC = () => {
   );
 };
 // ═══════════════════════════════════════════════════════════
-// Tab 3: 客户诊断
+// ③ 问题重构 — 客户诊断
 // ═══════════════════════════════════════════════════════════
-const AssessTab: React.FC = () => {
+const AssessTab: React.FC<{ readonly domain: string | null; readonly customerDesc: string; readonly customerName: string; readonly customerIndustry: string; readonly onReport: (diagnosis: DiagnosisInfo) => void }> = ({ domain, customerDesc, customerName, customerIndustry, onReport }) => {
   const [form, setForm] = useState<Record<string, string>>({});
   const [report, setReport] = useState('');
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (domain) setForm(prev => ({ ...prev, domain }));
+    if (customerDesc) setForm(prev => ({ ...prev, current_flow: customerDesc }));
+    if (customerName) setForm(prev => ({ ...prev, company_name: customerName }));
+    if (customerIndustry) setForm(prev => ({ ...prev, industry: customerIndustry }));
+  }, [domain, customerDesc, customerName, customerIndustry]);
   const [manual, setManual] = useState<any>(null);
   const [manualLoading, setManualLoading] = useState(false);
   const [reportExpanded, setReportExpanded] = useState(false);
@@ -214,7 +323,7 @@ const AssessTab: React.FC = () => {
       options: ['政务', '金融', '制造', '医疗', '能源', '教育', '交通', '零售', '科技', '其他'] },
     { key: 'custom_industry', label: '自定义行业 (选填)', placeholder: '例如：新能源、物流', desc: '仅当行业选了「其他」或需更细分时填写' },
     { key: 'team_size', label: '团队规模 (选填)', placeholder: '例如：50', desc: '客户企业中与 AI 落地相关的技术/业务团队人数，不填则默认中等规模' },
-    { key: 'pain_points', label: '痛点', placeholder: '例如：客服效率低、数据孤岛、合规成本高 (逗号分隔)', desc: '客户核心业务痛点，最多 5 个；最关键的放前面', required: true },
+    { key: 'pain_points', label: '痛点', type: 'textarea', placeholder: '每行输入一个痛点，例如：\n客服效率低，客户等待时间过长，影响满意度\n数据孤岛严重，各部门系统不互通\n合规成本高', desc: '客户核心业务痛点，每行一个；最关键的放前面', required: true },
     { key: 'existing_tech_stack', label: '现有技术栈 (选填)', placeholder: '例如：Python, PostgreSQL, Kubernetes, Kafka (逗号分隔)', desc: '客户已有的技术基础；不填则按行业典型方案推荐' },
     { key: 'internal_data_sources', label: '内部数据源 (选填)', placeholder: '例如：Oracle（投标人信息表）, 文件服务器（标书PDF）(逗号分隔)', desc: '客户内部已有的数据存储系统' },
     { key: 'external_data_sources', label: '外部可接入数据源 (选填)', placeholder: '例如：公共资源交易平台API, 企业信用公示系统 (逗号分隔)', desc: '可通过接口或爬虫获取的外部数据' },
@@ -244,7 +353,7 @@ const AssessTab: React.FC = () => {
         if (typeof data.industry === 'string') mapped.industry = data.industry;
         if (typeof data.custom_industry === 'string') mapped.custom_industry = data.custom_industry;
         if (data.team_size !== undefined && data.team_size !== null) mapped.team_size = String(data.team_size);
-        if (Array.isArray(data.pain_points)) mapped.pain_points = data.pain_points.join(', ');
+        if (Array.isArray(data.pain_points)) mapped.pain_points = data.pain_points.join('\n');
         if (Array.isArray(data.existing_tech_stack)) mapped.existing_tech_stack = data.existing_tech_stack.join(', ');
         // v2 fields: internal/external data sources (preserve as-is for form split)
         if (Array.isArray(data.internal_data_sources)) mapped.internal_data_sources = data.internal_data_sources.join(', ');
@@ -273,23 +382,22 @@ const AssessTab: React.FC = () => {
   const dialogCall = async (answer?: string, turn?: number, sessionId?: string) => {
     setDialogLoading(true);
     try {
-      const esc = (v: unknown) => JSON.stringify(String(v ?? '')).slice(1, -1);
-      const body = `{`
-        + `"turn":${Number(turn ?? dialogTurn)},`
-        + `"answer":"${esc(answer || '')}",`
-        + `"session_id":"${esc((sessionId || dialogSessionId) || '')}",`
-        + `"industry":"${esc(form.industry || dialogContext.industry || '')}",`
-        + `"company_name":"${esc(form.company_name || dialogContext.company_name || '')}",`
-        + `"pain_points":"${esc(form.pain_points || dialogContext.pain_points || '')}",`
-        + `"team_size":"${esc(form.team_size || dialogContext.team_size || '')}",`
-        + `"budget":"${esc(form.budget_range || dialogContext.budget || '')}",`
-        + `"existing_tech_stack":"${esc(form.existing_tech_stack || dialogContext.existing_tech_stack || '')}",`
-        + `"internal_data_sources":"${esc(form.internal_data_sources || dialogContext.internal_data_sources || '')}",`
-        + `"external_data_sources":"${esc(form.external_data_sources || dialogContext.external_data_sources || '')}",`
-        + `"compliance_requirements":"${esc(form.compliance_requirements || dialogContext.compliance_requirements || '')}",`
-        + `"poc_timeline":"${esc(form.poc_timeline || dialogContext.poc_timeline || '')}",`
-        + `"production_timeline":"${esc(form.production_timeline || dialogContext.production_timeline || '')}"`
-        + `}`;
+      const body = JSON.stringify({
+        turn: Number(turn ?? dialogTurn),
+        answer: answer || '',
+        session_id: sessionId || dialogSessionId || '',
+        industry: form.industry || dialogContext.industry || '',
+        company_name: form.company_name || dialogContext.company_name || '',
+        pain_points: form.pain_points || dialogContext.pain_points || '',
+        team_size: form.team_size || dialogContext.team_size || '',
+        budget: form.budget_range || dialogContext.budget || '',
+        existing_tech_stack: form.existing_tech_stack || dialogContext.existing_tech_stack || '',
+        internal_data_sources: form.internal_data_sources || dialogContext.internal_data_sources || '',
+        external_data_sources: form.external_data_sources || dialogContext.external_data_sources || '',
+        compliance_requirements: form.compliance_requirements || dialogContext.compliance_requirements || '',
+        poc_timeline: form.poc_timeline || dialogContext.poc_timeline || '',
+        production_timeline: form.production_timeline || dialogContext.production_timeline || '',
+      });
       const r = await fetch('/api/core/fde/assess/dialog', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body,
@@ -388,7 +496,7 @@ const AssessTab: React.FC = () => {
         industry: form.industry || '',
         custom_industry: form.custom_industry || '',
         team_size: parseInt(form.team_size) || 0,
-        pain_points: (form.pain_points || '').split(',').map(s => s.trim()).filter(Boolean),
+        pain_points: (form.pain_points || '').split('\n').map(s => s.trim()).filter(Boolean),
         existing_tech_stack: (form.existing_tech_stack || '').split(',').map(s => s.trim()).filter(Boolean),
         internal_data_sources: (form.internal_data_sources || '').split(',').map(s => s.trim()).filter(Boolean),
         external_data_sources: (form.external_data_sources || '').split(',').map(s => s.trim()).filter(Boolean),
@@ -415,6 +523,14 @@ const AssessTab: React.FC = () => {
         if (data.metadata?.session_id) {
           setDiagnosisSessionId(data.metadata.session_id);
         }
+        // Fire pipeline event: report ready
+        const deepMatch = outputText.match(/深层问题[：:]\s*(.+)/);
+        const domainMatch = outputText.match(/推荐本体域[：:]\s*(\S+)/);
+        onReport({
+          deepProblem: deepMatch?.[1]?.trim() || outputText.slice(0, 120),
+          recommendedDomain: domainMatch?.[1]?.trim() || form.domain || '',
+          reportText: outputText,
+        });
       }
 
       setLoading(false);
@@ -472,7 +588,7 @@ const AssessTab: React.FC = () => {
               const isRequired = (f as any).required;
               const fieldType = (f as any).type as string || 'input';
               return (
-                <div key={f.key}>
+                <div key={f.key} className={fieldType === 'textarea' ? 'col-span-2' : ''}>
                   <label className="text-xs text-gray-400">
                     {f.label}
                     {isRequired && <span className="text-red-400 ml-0.5 font-bold">*</span>}
@@ -508,6 +624,14 @@ const AssessTab: React.FC = () => {
                         );
                       })}
                     </div>
+                  ) : fieldType === 'textarea' ? (
+                    <textarea
+                      className={`w-full bg-gray-800 border rounded px-2 py-1.5 text-sm text-gray-200 resize-y ${isRequired && !form[f.key] ? 'border-red-700' : 'border-gray-700'}`}
+                      placeholder={(f as any).placeholder || ''}
+                      rows={4}
+                      value={form[f.key] || ''}
+                      onChange={e => setForm({...form, [f.key]: e.target.value})}
+                    />
                   ) : (
                     <input
                       className={`w-full bg-gray-800 border rounded px-2 py-1 text-sm text-gray-200 ${isRequired && !form[f.key] ? 'border-red-700' : 'border-gray-700'}`}
@@ -783,142 +907,262 @@ const AssessTab: React.FC = () => {
 };
 
 // ═══════════════════════════════════════════════════════════
-// Tab 4: 客户列表
+// ① 业务认知 — 客户列表 (with create modal + expandable cards)
 // ═══════════════════════════════════════════════════════════
-const CustomersTab: React.FC = () => {
+const CustomersTab: React.FC<{ readonly onSelect: (c: CustomerInfo) => void; readonly diagnosis: Readonly<DiagnosisInfo> | null }> = ({ onSelect, diagnosis }) => {
   const [customers, setCustomers] = useState<any[]>([]);
+  const [expanded, setExpanded] = useState<string[]>([]);
+  const [showCreate, setShowCreate] = useState(false);
+  const [createForm, setCreateForm] = useState<Record<string, string>>({});
+  const [createLoading, setCreateLoading] = useState(false);
+  const [showEdit, setShowEdit] = useState(false);
+  const [editForm, setEditForm] = useState<Record<string, string>>({});
+  const [editId, setEditId] = useState('');
+  const [editLoading, setEditLoading] = useState(false);
+
   const load = () => fetch(API('/customers')).then(r => r.json()).then(d => setCustomers(d.customers || []));
   useEffect(() => { load(); }, []);
+
   const switchProfile = async (name: string) => {
     await fetch(API(`/switch-profile/${name}`), { method: 'POST' });
+    toast?.success?.('已切换至 ' + name) || console.log('已切换至', name);
+    load();
   };
+
+  const deleteProfile = async (namespace: string) => {
+    await fetch(API(`/customers/${namespace}`), { method: 'DELETE' });
+    setExpanded(prev => prev.filter(x => x !== namespace));
+    load();
+  };
+
+  const startEdit = (c: any) => {
+    const id = displayId(c);
+    setEditId(id);
+    setEditForm({ name: c.name || '', namespace: c.namespace || '', description: c.description || '', deployment_mode: c.deployment_mode || 'online' });
+    setShowEdit(true);
+  };
+
+  const handleEdit = async () => {
+    if (!editForm.name?.trim()) return;
+    setEditLoading(true);
+    try {
+      await fetch(API(`/customers/${editId}`), {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(editForm),
+      });
+      setShowEdit(false);
+      load();
+    } catch {}
+    setEditLoading(false);
+  };
+
+  const toggleExpand = async (id: string) => {
+    setExpanded(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+  };
+
+  const handleCreate = async () => {
+    if (!createForm.name?.trim()) return;
+    setCreateLoading(true);
+    try {
+      await fetch(API('/customers'), {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(createForm),
+      });
+      setShowCreate(false);
+      setCreateForm({});
+      load();
+    } catch {}
+    setCreateLoading(false);
+  };
+
+  // Deduplicate by namespace (prefer namespace as key)
+  const displayId = (c: any) => c.namespace || c.name;
+  const labelText = (c: any) => c.namespace && c.namespace !== c.name ? `${c.name} @ ${c.namespace}` : c.name;
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <span className="text-xs text-gray-500">共 {customers.length} 个客户 Profile</span>
-        <Button variant="ghost" size="sm" onClick={load}><RefreshCw className="w-3 h-3" /></Button>
+        <div className="flex items-center gap-2">
+          <Button variant="ghost" size="sm" onClick={load}><RefreshCw className="w-3 h-3" /></Button>
+          <Button variant="default" size="sm" onClick={() => { setShowCreate(true); setCreateForm({}); }}>
+            <Plus className="w-3 h-3 mr-1" />新建
+          </Button>
+        </div>
       </div>
       <div className="grid grid-cols-3 gap-3">
-        {customers.map(c => (
-          <Card key={c.name} className="cursor-pointer hover:border-gray-600" onClick={() => switchProfile(c.name)}>
-            <CardContent className="p-3 space-y-1">
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium text-gray-200">{c.name}</span>
-                {c.default && <span className="text-[10px] bg-blue-500/20 text-blue-300 px-1 rounded">默认</span>}
+        {customers.map(c => {
+          const id = displayId(c);
+          const isExpanded = expanded.includes(id);
+          return (
+            <Card key={id} className="border-gray-700/50 hover:border-gray-600 transition-colors">
+              <div className="p-3 cursor-pointer" onClick={() => { toggleExpand(id); onSelect({ name: c.name, namespace: c.namespace, industry: c.health?.industry, description: c.description, deployment_mode: c.deployment_mode }); }}>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5">
+                    {isExpanded ? <ChevronDown className="w-3 h-3 text-gray-500" /> : <ChevronRight className="w-3 h-3 text-gray-500" />}
+                    <span className="text-sm font-medium text-gray-200">{labelText(c)}</span>
+                    {c.default && <span className="text-[10px] bg-blue-500/20 text-blue-300 px-1 rounded">默认</span>}
+                  </div>
+                  <button onClick={e => { e.stopPropagation(); switchProfile(c.name); }}
+                    className="text-[10px] text-gray-500 hover:text-blue-400 flex items-center gap-0.5"
+                    title="切换至此 Profile">
+                    <ArrowRightLeft className="w-3 h-3" />切换
+                  </button>
+                </div>
+                <div className="text-[11px] text-gray-500 mt-0.5">
+                  {c.description || c.namespace || ''}
+                </div>
               </div>
-              <div className="text-[11px] text-gray-500">{c.namespace}</div>
-              {c.mcp_servers?.length > 0 && <div className="text-[10px] text-gray-600">MCP: {c.mcp_servers.length}</div>}
-            </CardContent>
-          </Card>
-        ))}
+              {isExpanded && (
+                <div className="px-3 pb-3 border-t border-gray-700/50 space-y-2 pt-2">
+                  <div className="text-xs text-gray-500">
+                    {c.description || c.namespace || ''}
+                  </div>
+                  {diagnosis && (
+                    <div className="text-xs p-2 rounded bg-blue-500/10 border border-blue-500/20">
+                      <div className="text-blue-400 font-medium">最近诊断</div>
+                      <div className="text-blue-300 mt-0.5">{diagnosis.deepProblem.slice(0, 100)}</div>
+                      {diagnosis.recommendedDomain && <div className="text-blue-500 mt-0.5">推荐域：{diagnosis.recommendedDomain}</div>}
+                    </div>
+                  )}
+                  <div className="flex gap-2">
+                    <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); switchProfile(c.name); }}>
+                      <ArrowRightLeft className="w-3 h-3 mr-1" />切换至此
+                    </Button>
+                    <Button variant="ghost" size="sm" className="text-red-400 hover:text-red-300"
+                      onClick={e => { e.stopPropagation(); if (confirm(`确认删除客户 "${labelText(c)}"?`)) deleteProfile(id); }}>
+                      <Trash2 className="w-3 h-3 mr-1" />删除
+                    </Button>
+                    <Button variant="ghost" size="sm"
+                      onClick={e => { e.stopPropagation(); startEdit(c); }}>
+                      <Pencil className="w-3 h-3 mr-1" />编辑
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </Card>
+          );
+        })}
       </div>
-    </div>
-  );
-};
 
-// ═══════════════════════════════════════════════════════════
-// Tab 5: 现场反馈
-// ═══════════════════════════════════════════════════════════
-const FeedbackTab: React.FC = () => {
-  const [form, setForm] = useState<Record<string, string>>({});
-  const [history, setHistory] = useState<any[]>([]);
-  const [loading, setLoading] = useState(false);
-  const loadHistory = () => fetch(API('/feedback/history')).then(r => r.json()).then(d => setHistory(d.feedback || []));
-  useEffect(() => { loadHistory(); }, []);
-
-  const submit = async () => {
-    setLoading(true);
-    await fetch(API('/feedback'), {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        fde_id: localStorage.getItem('aiplat_role') || 'fde',
-        customer_profile_id: form.customer || 'unknown',
-        environment: { deployment_mode: form.mode || 'online', aiplat_version: '', python_version: '', os: '' },
-        issue: { category: form.category || 'bug', description: form.description || '',
-                 affected_component: form.component || '', reproduction_steps: form.steps || '' },
-        workaround: { description: form.workaround || '', code_snippet: '', deployed_to_customer: false },
-        suggested_improvement: { description: form.suggestion || '', priority: form.priority || 'medium' },
-      }),
-    });
-    setLoading(false);
-    setForm({});
-    loadHistory();
-  };
-
-  const fbFields = [
-    { key: 'customer', label: '客户 Profile' },
-    { key: 'category', label: '问题类别 (bug/missing_feature/performance/usability/integration)' },
-    { key: 'component', label: '影响组件 (agent/skill/pipeline/mcp/frontend/core)' },
-    { key: 'description', label: '问题描述' },
-    { key: 'steps', label: '复现步骤 (可选)' },
-    { key: 'workaround', label: '临时方案' },
-    { key: 'suggestion', label: '建议改进' },
-    { key: 'priority', label: '优先级 (high/medium/low)' },
-    { key: 'mode', label: '部署模式 (airgap/online/hybrid)' },
-  ];
-
-  return (
-    <div className="space-y-4">
-      <Card>
-        <CardHeader><span className="text-sm font-medium">提交现场反馈</span></CardHeader>
-        <CardContent className="space-y-2">
-          <div className="grid grid-cols-2 gap-2">
-            {fbFields.map(f => (
-              <div key={f.key} className={f.key === 'description' || f.key === 'workaround' || f.key === 'suggestion' ? 'col-span-2' : ''}>
-                <label className="text-xs text-gray-400">{f.label}</label>
-                {f.key === 'description' || f.key === 'workaround' || f.key === 'suggestion' ? (
-                  <textarea className="w-full bg-gray-800 border border-gray-700 rounded px-2 py-1 text-sm text-gray-200 h-16"
-                            value={form[f.key] || ''} onChange={e => setForm({...form, [f.key]: e.target.value})} />
-                ) : (
-                  <input className="w-full bg-gray-800 border border-gray-700 rounded px-2 py-1 text-sm text-gray-200"
-                         value={form[f.key] || ''} onChange={e => setForm({...form, [f.key]: e.target.value})} />
-      )}
-    </div>
-            ))}
-          </div>
-          <Button variant="default" size="sm" onClick={submit} loading={loading}>
-            <Send className="w-3.5 h-3.5 mr-1" />提交反馈
-          </Button>
-        </CardContent>
-      </Card>
-      {history.length > 0 && (
-        <Card>
-          <CardHeader><span className="text-sm font-medium">最近反馈 ({history.length})</span></CardHeader>
-          <CardContent className="space-y-1 max-h-64 overflow-y-auto">
-            {history.filter((f): f is any => f).map((f: any, i: number) => (
-              <div key={f.id || i} className="flex justify-between text-xs py-1 border-b border-gray-800/50">
-                <span className="text-gray-300 truncate">{(f.issue?.description || '').slice(0, 60)}</span>
-                <span className="text-gray-500">{f.created_at?.slice(0, 10) || ''}</span>
+      {/* Create modal */}
+      {showCreate && (
+        <div className="fixed inset-0 z-50 flex items-start justify-center pt-[10vh] bg-black/60">
+          <div className="bg-gray-900 border border-gray-700 rounded-xl w-full max-w-sm mx-4 p-5 space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-gray-200">新建客户 Profile</h3>
+              <button onClick={() => setShowCreate(false)} className="text-gray-500 hover:text-gray-300"><X className="w-4 h-4" /></button>
+            </div>
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs text-gray-400">客户名称 *</label>
+                <input className="w-full bg-gray-800 border border-gray-700 rounded px-2 py-1.5 text-sm text-gray-200"
+                  value={createForm.name || ''} onChange={e => setCreateForm({ ...createForm, name: e.target.value })}
+                  placeholder="例如：某省政务云中心" />
               </div>
-            ))}
-          </CardContent>
-        </Card>
+              <div>
+                <label className="text-xs text-gray-400">命名空间</label>
+                <input className="w-full bg-gray-800 border border-gray-700 rounded px-2 py-1.5 text-sm text-gray-200"
+                  value={createForm.namespace || ''} onChange={e => setCreateForm({ ...createForm, namespace: e.target.value })}
+                  placeholder="默认根据名称生成" />
+              </div>
+              <div>
+                <label className="text-xs text-gray-400">描述</label>
+                <textarea className="w-full bg-gray-800 border border-gray-700 rounded px-2 py-1.5 text-sm text-gray-200 h-16 resize-none"
+                  value={createForm.description || ''} onChange={e => setCreateForm({ ...createForm, description: e.target.value })}
+                  placeholder="客户业务模式、行业、关键需求等" />
+              </div>
+              <div>
+                <label className="text-xs text-gray-400">部署模式</label>
+                <select className="w-full bg-gray-800 border border-gray-700 rounded px-2 py-1.5 text-sm text-gray-200"
+                  value={createForm.deployment_mode || 'online'}
+                  onChange={e => setCreateForm({ ...createForm, deployment_mode: e.target.value })}>
+                  <option value="online">online</option>
+                  <option value="airgap">airgap（离线）</option>
+                  <option value="hybrid">hybrid（混合）</option>
+                </select>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <button onClick={() => setShowCreate(false)} className="flex-1 px-3 py-1.5 text-sm rounded-lg border border-gray-700 text-gray-400 hover:text-white">取消</button>
+              <button onClick={handleCreate} disabled={createLoading || !createForm.name?.trim()}
+                className="flex-1 px-3 py-1.5 text-sm rounded-lg bg-blue-600 hover:bg-blue-500 text-white disabled:opacity-50">
+                {createLoading ? '创建中…' : '创建'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showEdit && (
+        <div className="fixed inset-0 z-50 flex items-start justify-center pt-[10vh] bg-black/60">
+          <div className="bg-gray-900 border border-gray-700 rounded-xl w-full max-w-sm mx-4 p-5 space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-gray-200">编辑客户 Profile</h3>
+              <button onClick={() => setShowEdit(false)} className="text-gray-500 hover:text-gray-300"><X className="w-4 h-4" /></button>
+            </div>
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs text-gray-400">客户名称 *</label>
+                <input className="w-full bg-gray-800 border border-gray-700 rounded px-2 py-1.5 text-sm text-gray-200"
+                  value={editForm.name || ''} onChange={e => setEditForm({ ...editForm, name: e.target.value })} />
+              </div>
+              <div>
+                <label className="text-xs text-gray-400">命名空间</label>
+                <input className="w-full bg-gray-800 border border-gray-700 rounded px-2 py-1.5 text-sm text-gray-200"
+                  value={editForm.namespace || ''} onChange={e => setEditForm({ ...editForm, namespace: e.target.value })} />
+              </div>
+              <div>
+                <label className="text-xs text-gray-400">描述</label>
+                <textarea className="w-full bg-gray-800 border border-gray-700 rounded px-2 py-1.5 text-sm text-gray-200 h-16 resize-none"
+                  value={editForm.description || ''} onChange={e => setEditForm({ ...editForm, description: e.target.value })} />
+              </div>
+              <div>
+                <label className="text-xs text-gray-400">部署模式</label>
+                <select className="w-full bg-gray-800 border border-gray-700 rounded px-2 py-1.5 text-sm text-gray-200"
+                  value={editForm.deployment_mode || 'online'}
+                  onChange={e => setEditForm({ ...editForm, deployment_mode: e.target.value })}>
+                  <option value="online">online</option>
+                  <option value="airgap">airgap（离线）</option>
+                  <option value="hybrid">hybrid（混合）</option>
+                </select>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <button onClick={() => setShowEdit(false)} className="flex-1 px-3 py-1.5 text-sm rounded-lg border border-gray-700 text-gray-400 hover:text-white">取消</button>
+              <button onClick={handleEdit} disabled={editLoading || !editForm.name?.trim()}
+                className="flex-1 px-3 py-1.5 text-sm rounded-lg bg-blue-600 hover:bg-blue-500 text-white disabled:opacity-50">
+                {editLoading ? '保存中…' : '保存'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
 };
 
 // ═══════════════════════════════════════════════════════════
+
 // Tab 6: POC 工具箱
 // ═══════════════════════════════════════════════════════════
-const PocTab: React.FC = () => {
+const PocTab: React.FC<{ readonly domain: Readonly<DomainInfo> | null; readonly onProfileSet: (profileKey: string) => void }> = ({ domain, onProfileSet }) => {
   const [profile, setProfile] = useState('');
   const [injectResult, setInjectResult] = useState<any>(null);
   const [loading, setLoading] = useState(false);
+  const [templates, setTemplates] = useState<any[]>([]);
 
-  const industries = [
-    { key: 'manufacturing', label: '制造业', desc: '质检+设备运维' },
-    { key: 'finance',       label: '金融业', desc: '合规+风险' },
-    { key: 'retail',        label: '零售业', desc: '客服+选品' },
-    { key: 'general',       label: '通用',   desc: '知识问答' },
-  ];
+  useEffect(() => {
+    fetch(API('/templates')).then(r => r.json()).then(d => setTemplates(d.templates || []));
+  }, []);
 
-  const loadTemplate = async (industry: string) => {
+  const loadTemplate = async (key: string) => {
     setLoading(true);
     try {
-      await fetch(API(`/switch-profile/poc-${industry}`), { method: 'POST' });
-      setProfile(industry);
+      const t = templates.find(tp => tp.key === key);
+      await fetch(API(`/switch-profile/${t?.namespace || `poc-${key}`}`), { method: 'POST' });
+      setProfile(key);
+      onProfileSet?.(key);
     } catch {}
     setLoading(false);
   };
@@ -941,15 +1185,15 @@ const PocTab: React.FC = () => {
         <CardHeader><span className="text-sm font-medium">加载行业模板</span></CardHeader>
         <CardContent>
           <div className="grid grid-cols-4 gap-2">
-            {industries.map(ind => (
-              <button key={ind.key}
-                onClick={() => loadTemplate(ind.key)}
+            {templates.map(t => (
+              <button key={t.key}
+                onClick={() => loadTemplate(t.key)}
                 disabled={loading}
                 className={`p-3 rounded-md border text-left text-xs transition-colors ${
-                  profile === ind.key ? 'border-blue-500 bg-blue-500/10' : 'border-gray-700 hover:border-gray-500'
+                  profile === t.key ? 'border-blue-500 bg-blue-500/10' : 'border-gray-700 hover:border-gray-500'
                 }`}>
-                <div className="text-gray-200 font-medium">{ind.label}</div>
-                <div className="text-gray-500">{ind.desc}</div>
+                <div className="text-gray-200 font-medium">{t.key.replace('poc-', '')}</div>
+                <div className="text-gray-500">{t.description?.slice(0, 40)}</div>
               </button>
             ))}
           </div>
@@ -996,9 +1240,9 @@ const PocTab: React.FC = () => {
 };
 
 // ═══════════════════════════════════════════════════════════
-// Tab 7: 灰度发布 (Canary Release)
+// ⑥ 评测护栏 — 灰度发布 (Canary Release)
 // ═══════════════════════════════════════════════════════════
-const CanaryTab: React.FC = () => {
+const CanaryTab: React.FC<{ readonly deployVersion: string | null; readonly onResult: (result: CanaryResult) => void }> = ({ deployVersion, onResult }) => {
   const [status, setStatus] = useState<any>(null);
   const [rollbackSpec, setRollbackSpec] = useState('');
   const [rollbackResult, setRollbackResult] = useState<any>(null);
@@ -1006,7 +1250,11 @@ const CanaryTab: React.FC = () => {
 
   const load = async () => {
     const r = await fetch(API('/canary/status'));
-    setStatus(await r.json());
+    const data = await r.json();
+    setStatus(data);
+    if (data?.passed !== undefined) {
+      onResult({ passed: !!data.passed, qualityScore: data.quality_score ?? data.score ?? 0 });
+    }
   };
   useEffect(() => { load(); }, []);
 
@@ -1022,6 +1270,7 @@ const CanaryTab: React.FC = () => {
 
   return (
     <div className="space-y-4">
+      {deployVersion && <div className="text-xs text-blue-400 mb-1">部署版本: {deployVersion} — 可用作回滚目标</div>}
       <Card><CardHeader><div className="flex items-center justify-between"><span className="text-sm font-medium">灰度发布状态</span><Button variant="ghost" size="sm" onClick={load}><RefreshCw className="w-3 h-3" /></Button></div></CardHeader>
         <CardContent>
           {!status ? <div className="text-gray-500 text-sm">加载中…</div> : (
@@ -1049,9 +1298,9 @@ const CanaryTab: React.FC = () => {
 };
 
 // ═══════════════════════════════════════════════════════════
-// Tab 8: 验证验收 + 移交 + 归档
+// ⑦ 验收移交 — 验证验收 + 移交 + 归档
 // ═══════════════════════════════════════════════════════════
-const AcceptTab: React.FC = () => {
+const AcceptTab: React.FC<{ readonly canaryResult: Readonly<CanaryResult> | null; readonly diagnosisReport: string; readonly onAdopted: () => void }> = ({ canaryResult, diagnosisReport, onAdopted }) => {
   const [specId, setSpecId] = useState('');
   const [requirements, setRequirements] = useState('');
   const [needAgent, setNeedAgent] = useState(true);
@@ -1074,6 +1323,12 @@ const AcceptTab: React.FC = () => {
     }, 300);
     return () => clearTimeout(timer);
   }, [requirements]);
+
+  useEffect(() => {
+    if (diagnosisReport && !requirements) {
+      setRequirements(diagnosisReport);
+    }
+  }, [diagnosisReport]);
 
   const loadChecklist = async () => { setLoading(true); try { const q = specId ? `?spec_id=${encodeURIComponent(specId)}` : ''; const r = await fetch(API(`/acceptance/checklist${q}`)); setChecklist(await r.json()); } catch {} finally { setLoading(false); } };
   const doSignoff = async () => { setLoading(true); try { const r = await fetch(API('/acceptance/signoff'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ spec_id: specId, signed_by: fdeName }) }); setSignoffResult(await r.json()); } catch {} finally { setLoading(false); } };

@@ -177,3 +177,126 @@ wiki_engine → wiki_health_rules
 wiki_engine → wiki_structured_query
 workspace_agents -> workspace_skills
 workspace_agents → workspace_skills
+
+__init__ → _facade → skill_routing → seci_engine → system → fde → diagnostics → prompt_optimizer
+__init__ → hook_manager → on_error_reflector → __init__ → registry → react
+__init__ → prompt_assembler → engine → manager → skill → integration → core_facade → conversational → base → pipeline_agent → pipeline_engine → intents → manager → profile_builder → __init__ → _facade
+__init__ → prompt_assembler → engine → manager → skill → integration → core_facade → conversational → base → pipeline_agent → pipeline_engine → intents → manager → profile_builder → __init__ → _facade → base
+__init__ → prompt_assembler → engine → manager → skill → integration → core_facade → conversational → base → pipeline_agent → pipeline_engine → intents → manager → profile_builder → __init__ → _facade → inference
+__init__ → syscall_mixin → event_bus
+base → model_injection
+base → pipeline_agent → pipeline_engine → intents → manager → profile_builder → __init__ → _facade → base → __init__ → hook_manager → on_error_reflector → __init__ → registry → react
+core_facade → conversational → base → pipeline_agent → pipeline_engine → intents
+core_facade → conversational → base → pipeline_agent → pipeline_engine → intents → manager → profile_builder → __init__ → _facade
+core_facade → conversational → base → pipeline_agent → pipeline_engine → intents → manager → profile_builder → __init__ → _facade → base → eval_runner
+core_facade → conversational → base → pipeline_agent → pipeline_engine → intents → manager → profile_builder → __init__ → _facade → skill_routing → seci_engine → system → fde → diagnostics → dynamic_orchestrator → coordinator
+core_facade → conversational → base → pipeline_agent → pipeline_engine → policy_gate
+dynamic_orchestrator → swarm_broker
+embedder → retriever → hyde_expander → retrieval
+embedder → retriever → hyde_expander → retrieval → knowledge_abox_builder → knowledge_ontology
+embedder → retriever → hyde_expander → retrieval → knowledge_abox_builder → knowledge_ontology → knowledge_evolution_llm
+embedder → retriever → hyde_expander → retrieval → knowledge_abox_builder → knowledge_ontology → knowledge_validator → wiki_engine
+embedder → retriever → hyde_expander → retrieval → knowledge_abox_builder → knowledge_ontology → knowledge_validator → wiki_engine → active_synthesis → knowledge_gap_detector → ontology_query_mapper
+embedder → retriever → hyde_expander → retrieval → knowledge_abox_builder → knowledge_ontology → knowledge_validator → wiki_engine → active_synthesis → knowledge_gap_detector → ontology_query_mapper → domain_router
+embedder → retriever → hyde_expander → retrieval → knowledge_abox_builder → knowledge_ontology → knowledge_validator → wiki_engine → semantic_cache
+embedder → retriever → hyde_expander → retrieval → knowledge_abox_builder → knowledge_ontology → knowledge_validator → wiki_engine → wiki_health_rules
+embedder → retriever → hyde_expander → retrieval → sqlite_retriever
+embedder → retriever → hyde_expander → retrieval → wiki_retriever
+engine → manager → skill → integration → core_facade → conversational → base → pipeline_agent → pipeline_engine → intents → manager → profile_builder → __init__ → _facade → skill_routing → seci_engine → system → fde → diagnostics
+hook_manager → on_error_reflector → __init__ → registry → context_bus
+integration → __init__ → parallel_executor → materials_chat → server → hot_reload → capability_graph
+integration → core_facade
+integration → core_facade → conversational → base → pipeline_agent → pipeline_engine
+integration → core_facade → conversational → base → pipeline_agent → pipeline_engine → intents → manager
+integration → core_facade → conversational → base → pipeline_agent → pipeline_engine → intents → manager → profile_builder → __init__ → _facade
+integration → core_facade → conversational → base → pipeline_agent → pipeline_engine → intents → manager → profile_builder → __init__ → _facade → pattern_accumulator
+integration → core_facade → conversational → base → pipeline_agent → pipeline_engine → intents → manager → profile_builder → __init__ → _facade → pattern_accumulator → cmm_graduation
+integration → core_facade → conversational → base → pipeline_agent → pipeline_engine → intents → manager → profile_builder → __init__ → _facade → skill_routing → seci_engine → system → fde → diagnostics
+integration → core_facade → conversational → base → pipeline_agent → pipeline_engine → intents → manager → profile_builder → __init__ → _facade → skill_routing → seci_engine → system → fde → diagnostics → goal_executor → goal_generator → tool_bootstrap
+integration → core_facade → conversational → base → pipeline_agent → pipeline_engine → intents → manager → profile_builder → __init__ → _facade → skill_routing → seci_engine → system → fde → diagnostics → tool_drift_detector → skill_evolver
+integration → core_facade → conversational → base → pipeline_agent → pipeline_engine → policy_gate
+integration → core_facade → conversational → base → pipeline_agent → pipeline_engine → stage_runner
+integration → core_facade → conversational → base → pipeline_agent → pipeline_engine → tool
+knowledge_ontology → knowledge_validator → wiki_engine → active_synthesis → knowledge_gap_detector → ontology_query_mapper
+knowledge_ontology → knowledge_validator → wiki_engine → active_synthesis → knowledge_gap_detector → ontology_query_mapper → domain_router → ontology_loader
+knowledge_ontology → knowledge_validator → wiki_engine → engine → approval → knowledge_action
+knowledge_ontology → knowledge_validator → wiki_engine → engine → class_mapper
+knowledge_ontology → knowledge_validator → wiki_engine → engine → property_extractor
+knowledge_ontology → knowledge_validator → wiki_engine → knowledge_growth
+knowledge_ontology → knowledge_validator → wiki_engine → wiki_health_rules
+knowledge_validator → wiki_engine → _bg_tasks
+knowledge_validator → wiki_engine → engine → approval → knowledge_action
+llm → __init__ → prompt_assembler → engine → manager → experience_vector → embedder → retriever → hyde_expander
+llm → __init__ → prompt_assembler → engine → manager → experience_vector → embedder → retriever → hyde_expander → retrieval → graph
+llm → __init__ → prompt_assembler → engine → manager → experience_vector → embedder → retriever → hyde_expander → retrieval → knowledge_abox_builder → knowledge_ontology → knowledge_evolution_llm
+llm → __init__ → prompt_assembler → engine → manager → experience_vector → embedder → retriever → hyde_expander → retrieval → knowledge_abox_builder → knowledge_ontology → knowledge_validator → wiki_engine → active_synthesis
+llm → __init__ → prompt_assembler → engine → manager → experience_vector → embedder → retriever → hyde_expander → retrieval → knowledge_abox_builder → knowledge_ontology → knowledge_validator → wiki_engine → active_synthesis → knowledge_gap_detector → ontology_query_mapper → domain_router
+llm → __init__ → prompt_assembler → engine → manager → experience_vector → embedder → retriever → hyde_expander → retrieval → knowledge_abox_builder → knowledge_ontology → knowledge_validator → wiki_engine → wiki_quality_monitor
+llm → __init__ → prompt_assembler → engine → manager → skill → integration → __init__ → parallel_executor → materials_chat → answer_generator
+llm → __init__ → prompt_assembler → engine → manager → skill → integration → completion_gate
+llm → __init__ → prompt_assembler → engine → manager → skill → integration → core_facade
+llm → __init__ → prompt_assembler → engine → manager → skill → integration → core_facade → chat_service
+llm → __init__ → prompt_assembler → engine → manager → skill → integration → core_facade → conversational → base
+llm → __init__ → prompt_assembler → engine → manager → skill → integration → core_facade → conversational → base → pipeline_agent → pipeline_engine
+llm → __init__ → prompt_assembler → engine → manager → skill → integration → core_facade → conversational → base → pipeline_agent → pipeline_engine → dynamic_router
+llm → __init__ → prompt_assembler → engine → manager → skill → integration → core_facade → conversational → base → pipeline_agent → pipeline_engine → intents → manager
+llm → __init__ → prompt_assembler → engine → manager → skill → integration → core_facade → conversational → base → pipeline_agent → pipeline_engine → intents → manager → profile_builder → __init__ → _facade
+llm → __init__ → prompt_assembler → engine → manager → skill → integration → core_facade → conversational → base → pipeline_agent → pipeline_engine → intents → manager → profile_builder → __init__ → _facade → base → __init__ → hook_manager → devil_advocate
+llm → __init__ → prompt_assembler → engine → manager → skill → integration → core_facade → conversational → base → pipeline_agent → pipeline_engine → intents → manager → profile_builder → __init__ → _facade → base → __init__ → hook_manager → on_error_reflector
+llm → __init__ → prompt_assembler → engine → manager → skill → integration → core_facade → conversational → base → pipeline_agent → pipeline_engine → intents → manager → profile_builder → __init__ → _facade → base → __init__ → hook_manager → on_error_reflector → __init__ → auto_trigger → trajectory_scorer
+llm → __init__ → prompt_assembler → engine → manager → skill → integration → core_facade → conversational → base → pipeline_agent → pipeline_engine → intents → manager → profile_builder → __init__ → _facade → base → __init__ → hook_manager → on_error_reflector → __init__ → registry
+llm → __init__ → prompt_assembler → engine → manager → skill → integration → core_facade → conversational → base → pipeline_agent → pipeline_engine → intents → manager → profile_builder → __init__ → _facade → base → __init__ → hook_manager → on_error_reflector → __init__ → registry → base
+llm → __init__ → prompt_assembler → engine → manager → skill → integration → core_facade → conversational → base → pipeline_agent → pipeline_engine → intents → manager → profile_builder → __init__ → _facade → base → target_continuity
+llm → __init__ → prompt_assembler → engine → manager → skill → integration → core_facade → conversational → base → pipeline_agent → pipeline_engine → intents → manager → profile_builder → __init__ → _facade → compressor
+llm → __init__ → prompt_assembler → engine → manager → skill → integration → core_facade → conversational → base → pipeline_agent → pipeline_engine → intents → manager → profile_builder → __init__ → _facade → inference → query_rewriter
+llm → __init__ → prompt_assembler → engine → manager → skill → integration → core_facade → conversational → base → pipeline_agent → pipeline_engine → intents → manager → profile_builder → __init__ → _facade → skill_routing → seci_engine → system → fde
+llm → __init__ → prompt_assembler → engine → manager → skill → integration → core_facade → conversational → base → pipeline_agent → pipeline_engine → intents → manager → profile_builder → __init__ → _facade → skill_routing → seci_engine → system → fde → diagnostics
+llm → __init__ → prompt_assembler → engine → manager → skill → integration → core_facade → conversational → base → pipeline_agent → pipeline_engine → intents → manager → profile_builder → __init__ → _facade → skill_routing → seci_engine → system → fde → diagnostics → handler
+llm → __init__ → prompt_assembler → engine → manager → skill → integration → core_facade → conversational → base → pipeline_agent → pipeline_engine → intents → manager → profile_builder → __init__ → _facade → skill_routing → seci_engine → system → fde → diagnostics → handler → auto_fixer
+llm → __init__ → prompt_assembler → engine → manager → skill → integration → core_facade → conversational → base → pipeline_agent → pipeline_engine → intents → manager → profile_builder → __init__ → _facade → skill_routing → seci_engine → system → fde → diagnostics → tool_drift_detector
+llm → __init__ → prompt_assembler → engine → manager → skill → integration → core_facade → conversational → base → pipeline_agent → pipeline_engine → rag_evaluator
+llm → __init__ → prompt_assembler → engine → manager → skill → integration → core_facade → conversational → base → pipeline_agent → pipeline_engine → tool
+llm → __init__ → prompt_assembler → engine → manager → skill → integration → core_facade → kb_facade → llm_client
+llm → __init__ → prompt_assembler → engine → manager → skill → integration → core_facade → kb_facade → parsers → protocol → _video → video
+llm → __init__ → prompt_assembler → engine → manager → skill → integration → core_facade → learning_assessment
+llm → __init__ → prompt_assembler → engine → manager → skill → integration → core_facade → learning_assessment → learning_paths
+llm → base → model_injection
+manager → profile_builder → __init__ → _facade
+manager → profile_builder → __init__ → _facade → compressor
+manager → profile_builder → __init__ → _facade → graph_injector
+manager → profile_builder → __init__ → _facade → inference
+manager → profile_builder → __init__ → _facade → skill_routing → seci_engine
+manager → profile_builder → __init__ → _facade → skill_routing → seci_engine → system → fde → system_diagnostician
+manager → skill → integration → core_facade → conversational → base → pipeline_agent → pipeline_engine → intents → manager → profile_builder → __init__ → _facade → workbench → __init__
+manager → skill → integration → core_facade → conversational → base → pipeline_agent → pipeline_engine → intents → manager → profile_builder → __init__ → _facade → workbench → autorollback
+manager → skill → integration → core_facade → learning_releases
+manager → skill → integration → core_facade → learning_releases → release
+pattern_accumulator → cmm_graduation
+pipeline_engine → intents → manager → profile_builder → __init__ → _facade → skill_routing → seci_engine → system → fde → diagnostics
+prompt_assembler → engine → manager → skill → integration → core_facade → conversational → base → pipeline_agent → pipeline_engine → intents → manager → profile_builder → __init__ → _facade → skill_routing → seci_engine → system → fde → diagnostics
+protocol → _audio
+protocol → _csv
+protocol → _docx
+protocol → _eml
+protocol → _html
+protocol → _image
+protocol → _json
+protocol → _markdown
+protocol → _pdf
+protocol → _pptx
+protocol → _text
+protocol → _video
+protocol → _xlsx
+retrieval → knowledge_abox_builder → knowledge_ontology → knowledge_validator
+retrieval → knowledge_abox_builder → knowledge_ontology → knowledge_validator → wiki_engine → active_synthesis
+retriever → hyde_expander → retrieval → sqlite_retriever
+retriever → hyde_expander → retrieval → wiki_retriever
+seci_engine → system
+seci_engine → system → fde
+seci_engine → system → fde → convergence_engine
+seci_engine → system → fde → system_diagnostician
+skill → integration → core_facade → conversational → base → pipeline_agent → pipeline_engine → intents → manager → profile_builder → __init__ → _facade → skill_routing → seci_engine → system → fde → canary
+skill_routing → seci_engine → system → fde
+wiki_engine → active_synthesis
+wiki_engine → wiki_fts
+wiki_engine → wiki_quality_monitor

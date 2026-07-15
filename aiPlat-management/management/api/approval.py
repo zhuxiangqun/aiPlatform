@@ -254,3 +254,39 @@ async def deprecate_item(id: str = Query(...), type: str = Query("agent")):
     path = _update_path(id, type)
     await _core_put(path, {"status": "deprecated"})
     return {"ok": True, "id": id, "type": type, "status": "deprecated"}
+
+
+@router.get("/approval/history")
+async def approval_history(limit: int = Query(50)):
+    """审批操作记录 — approver 可查看自己的审批历史。"""
+    items = []
+    # Agents
+    try:
+        data = await _core_get("/workspace/agents?limit=200")
+        agents = data.get("agents", []) if isinstance(data, dict) else []
+        for a in agents:
+            st = a.get("status", "")
+            if st in ("published", "listed", "deprecated"):
+                items.append({
+                    "id": a.get("id", ""), "name": a.get("display_name", "") or a.get("name", ""),
+                    "type": "agent", "status": st,
+                    "description": a.get("description", "")[:100],
+                })
+    except Exception:
+        pass
+    # Skills
+    try:
+        data = await _core_get("/workspace/skills?limit=200")
+        skills = data.get("skills", []) if isinstance(data, dict) else []
+        for s in skills:
+            st = s.get("status", "")
+            if st in ("published", "listed", "deprecated"):
+                items.append({
+                    "id": s.get("id", ""), "name": s.get("name", ""),
+                    "type": "skill", "status": st,
+                    "description": s.get("description", "")[:100],
+                })
+    except Exception:
+        pass
+    items.sort(key=lambda x: x.get("status", ""), reverse=True)
+    return {"items": items[:limit], "total": len(items)}

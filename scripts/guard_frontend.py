@@ -294,6 +294,8 @@ def _build_mount_prefixes() -> dict[str, str]:
     prefix_map: dict[str, str] = {}
     server_files = list(WORKSPACE_ROOT.glob("aiPlat-core/core/server.py"))
     server_files += list(WORKSPACE_ROOT.glob("aiPlat-platform/*/server.py"))
+    server_files += list(WORKSPACE_ROOT.glob("aiPlat-platform/*/routes.py"))
+    server_files += list(WORKSPACE_ROOT.glob("aiPlat-platform/api/rest/routes.py"))
 
     for sf in server_files:
         if not sf.exists():
@@ -321,6 +323,7 @@ def _build_mount_prefixes() -> dict[str, str]:
                 continue
 
             # Find the import: from path import router as child_var
+            import_name = ""
             for im in re.finditer(
                 rf"(?:from\s+(\S+)\s+import\s+router\s+as\s+{re.escape(child_var)}\b"
                 rf"|from\s+(\S+)\s+import\s+.*\b{re.escape(child_var)}\b"
@@ -337,6 +340,29 @@ def _build_mount_prefixes() -> dict[str, str]:
                     prefix_map[basename] = effective_prefix
                 # Also try the full module path
                 prefix_map[import_name] = effective_prefix
+        
+        # ── Auto-discovery detection: pkgutil.iter_modules pattern ──
+        # server.py uses dynamic import for all routers under core/api/routers/:
+        #   api_router = APIRouter(prefix="/api/core")
+        #   pkgutil.iter_modules(_routers_pkg_path)
+        #   api_router.include_router(_router)
+        # This pattern is not regex-detectable by the explicit import scan above.
+        if re.search(r'pkgutil\.iter_modules.*routers', content):
+            # Find the effective prefix for this api_router
+            auto_prefix = ""
+            for var, prefix in router_prefixes.items():
+                # api_router and _api are the two common patterns
+                if 'api' in var.lower() and 'prefix' not in var.lower():
+                    auto_prefix = prefix
+                    break
+            if not auto_prefix:
+                auto_prefix = "/api/core"  # default for core server
+            
+            # Enumerate all router files
+            routers_dir = WORKSPACE_ROOT / "aiPlat-core" / "core" / "api" / "routers"
+            if routers_dir.is_dir():
+                for rf in routers_dir.glob("*.py"):
+                    prefix_map[rf.name] = auto_prefix
     return prefix_map
 
 
@@ -351,10 +377,14 @@ def _extract_backend_routes() -> list[dict]:
         WORKSPACE_ROOT / "aiPlat-management",
     ]
     route_patterns = [
-        # Note: [^'"]* (not +) so empty-path collection roots `@router.get("")` are captured.
-        (re.compile(r"@api_router\s*\.\s*(get|post|put|delete|patch)\s*\(\s*['\"]([^'\"]*)['\"]"), "method"),
-        (re.compile(r"@(?:app|router)\s*\.\s*(get|post|put|delete|patch)\s*\(\s*['\"]([^'\"]*)['\"]"), "method"),
+        # Standard decorator: @router.get("/path"), @app.post("/path")
+        (re.compile(r"@(?:api_router|router|app)\s*\.\s*(get|post|put|delete|patch)\s*\(\s*['\"]([^'\"]*)['\"]"), "method"),
+        # Flask-style: @app.route("/path")
         (re.compile(r"@(?:app|router)\s*\.\s*route\s*\(\s*['\"]([^'\"]+)['\"]"), "flask_route"),
+        # Dynamic registration: router.route("path", method, ...)
+        (re.compile(r"(?:api_router|router|app)\s*\.\s*route\s*\(\s*['\"]([^'\"]+)['\"]"), "dynamic_route"),
+        # add_api_route: router.add_api_route("/path", handler, methods=["GET"])
+        (re.compile(r"(?:api_router|router|app)\s*\.\s*add_api_route\s*\(\s*['\"]([^'\"]+)['\"]"), "api_route"),
     ]
     for base_dir in backend_dirs:
         if not base_dir.exists():
@@ -384,12 +414,21 @@ def _extract_backend_routes() -> list[dict]:
                         if candidate in mount_prefixes:
                             mount_prefix = mount_prefixes[candidate]
                             break
+                # Default mount prefixes for known layers
+                if not mount_prefix:
+                    if "aiPlat-core" in str(fp):
+                        mount_prefix = "/api/core"
+                    elif "aiPlat-platform" in str(fp):
+                        mount_prefix = "/api/platform"
+                    elif "aiPlat-infra" in str(fp):
+                        mount_prefix = "/api/infra"
                 effective_prefix = mount_prefix + router_self_prefix
 
                 for pattern, pat_type in route_patterns:
                     for m in pattern.finditer(content):
-                        if pat_type == "flask_route":
-                            method, path = "ALL", m.group(1)
+                        if pat_type in ("flask_route", "dynamic_route", "api_route"):
+                            method = "ALL"  # dynamic/flask routes serve all methods
+                            path = m.group(1)
                         else:
                             method, path = m.group(1).upper(), m.group(2)
                         # Apply effective prefix for router-based routes (not top-level @app routes)

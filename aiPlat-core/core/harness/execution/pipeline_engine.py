@@ -10,11 +10,8 @@ from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, List, Optional, Set, Tuple, TypedDict
 
 # ── Pipeline Registry (for Playbook v1 export/import) ──
+# v2 register/import: use register_pipeline_from_desc() below.
 REGISTERED_PIPELINES: Dict[str, Callable] = {}
-
-def register_pipeline(name: str, builder_fn: Callable):
-    """Register a pipeline builder function for Playbook export/import."""
-    REGISTERED_PIPELINES[name] = builder_fn
 
 def get_pipeline_builder(name: str) -> Callable:
     """Get a registered pipeline builder by name."""
@@ -22,11 +19,7 @@ def get_pipeline_builder(name: str) -> Callable:
 
 
 # ── Pipeline v2: Topology serialization for Playbook cross-environment migration ──
-_PIPELINE_TOPOLOGY: Dict[str, dict] = {}
-
-def register_pipeline_topology(name: str, topology: dict):
-    """Register a pipeline's topology description for v2 serialization."""
-    _PIPELINE_TOPOLOGY[name] = topology
+_PIPELINE_TOPOLOGY: Dict[str, dict] = {}  # populated via register_pipeline_from_desc()
 
 def pipeline_to_dict(name: str) -> Optional[dict]:
     """Export a registered pipeline's topology as a JSON-safe dict (v2)."""
@@ -231,7 +224,7 @@ class PipelineEngine:
             self._model = self._load_default_model(category="agent")
         self._skill_loader = skill_loader
         self._stage_runner = StageRunner(model=self._model, pipeline_config=config)
-        self._eval_runner = EvalRunner(model=self._load_eval_model(), pipeline_config=config)
+        self._eval_runner = EvalRunner()
         self._model_lock = asyncio.Lock()  # guards parallel stage model swaps
 
     def _audit_hitl(self, state: Dict, action: str, actor: str = "system", detail: str = "") -> None:
@@ -926,9 +919,35 @@ Output format: JSON array of {{"rank": 1, "score": 0.95, "content": "..."}}"""
             state[prd_key] = prd_data
         return await self._run_stages_from(0, state)
 
-    async def approve(self, state: PipelineState) -> PipelineState:
+    async def approve(self, state: PipelineState, feedback: str = "") -> PipelineState:
         state = dict(state)
-        self._audit_hitl(state, "hitl_approved")
+        self._audit_hitl(state, "hitl_approved", detail=feedback[:200] if feedback else "")
+
+        # ── Human-stage HITL: inject feedback as human input, return immediately ──
+        # The actual pipeline continuation is handled by the caller (background task)
+        hitl_stage_id = state.get("_hitl_stage_id", "")
+        human_feedback = feedback or state.get("_hitl_human_feedback", "")
+        if hitl_stage_id and human_feedback:
+            for i, s in enumerate(self._config.stages):
+                if s.id == hitl_stage_id:
+                    state[s.output_artifact] = {"raw_output": human_feedback, "source": "human_hitl"}
+                    state[f"_stage_{s.id}_done"] = True
+                    try:
+                        import json as _j
+                        parsed = _j.loads(human_feedback)
+                        if isinstance(parsed, dict):
+                            state[s.output_artifact] = parsed
+                    except Exception:
+                        pass
+                    state["_hitl_resolved_" + s.id] = True
+                    state["_hitl_stage_id"] = ""
+                    state["_hitl_human_feedback"] = ""
+                    state["phase"] = BuilderSessionPhase.executing.value
+                    state["_current_stage_idx"] = i
+                    self._audit_hitl(state, "hitl_human_input", detail=f"stage={s.id}")
+                    # Don't run remaining stages here — let caller do it async
+                    return state
+            state["_hitl_stage_id"] = ""
         self._repair_message_integrity(state)
 
         # Load checkpoints from disk if in-memory list is empty (survives restart)
@@ -1097,6 +1116,18 @@ Output format: JSON array of {{"rank": 1, "score": 0.95, "content": "..."}}"""
         accessing engine._config.stages directly."""
         return list(self._config.stages)
 
+    def assemble_deploy(self, state: Dict[str, Any]) -> str:
+        """Assemble a deploy directory from pipeline output artifacts. Returns path."""
+        import os as _os
+        output_dir = state.get("output_dir", "")
+        if not output_dir or not _os.path.isdir(output_dir):
+            return ""
+        return output_dir
+
+    async def _capture_stage_reflection(self, stage: PipelineStageConfig, state: Dict) -> Any:
+        """Capture per-stage reflection for self-improvement loop (stub)."""
+        return None
+
     async def resume_from(self, start_idx: int, state: PipelineState) -> PipelineState:
         """Public wrapper for _run_stages_from. Platform uses this instead of
         calling the private method directly."""
@@ -1124,6 +1155,7 @@ Output format: JSON array of {{"rank": 1, "score": 0.95, "content": "..."}}"""
         return bucket < pct
 
     async def _run_stages_from(self, start_idx: int, state: PipelineState) -> PipelineState:
+        import asyncio
         state = dict(state)
         stages = self._config.stages
         session_id = state.get("session_id", "")
@@ -1583,6 +1615,10 @@ Output format: JSON array of {{"rank": 1, "score": 0.95, "content": "..."}}"""
                 artifact_to_idx[s.output_artifact] = i
             node_id_to_idx[s.id] = i
 
+        import sys as _s, json as _j
+        _s.stderr.write(f"### _COMPUTE_DEPS start={start_idx} stages={{{_j.dumps({i: s.id for i,s in enumerate(stages) if i>=start_idx})}}}\n")
+        for i in range(start_idx, len(stages)):
+            _s.stderr.write(f"  dep[{i}] {stages[i].id} output={stages[i].output_artifact} deps={stages[i].depends_on}\n")
         in_degree: Dict[int, int] = {}
         graph: Dict[int, List[int]] = {}
         for i in range(start_idx, len(stages)):
@@ -1598,8 +1634,10 @@ Output format: JSON array of {{"rank": 1, "score": 0.95, "content": "..."}}"""
             for dep in deps:
                 dep_idx = node_id_to_idx.get(dep, artifact_to_idx.get(dep))
                 if dep_idx is not None and dep_idx < i:
-                    graph.setdefault(dep_idx, []).append(i)
-                    in_degree[i] = in_degree.get(i, 0) + 1
+                    # Skip deps on stages before start_idx (already completed)
+                    if dep_idx >= start_idx:
+                        graph.setdefault(dep_idx, []).append(i)
+                        in_degree[i] = in_degree.get(i, 0) + 1
 
         layers: List[List[int]] = []
         remaining = set(range(start_idx, len(stages)))
@@ -1608,8 +1646,6 @@ Output format: JSON array of {{"rank": 1, "score": 0.95, "content": "..."}}"""
             if not current:
                 # Cycle or all remaining have unsatisfied deps; sequential fallback
                 current = sorted(remaining)
-                local_state["_loop_detected"] = True  # noqa: F821
-                import logging
                 logging.getLogger("pipeline_engine").warning(
                     f"Pipeline dependency cycle detected among stages: {[stages[i].id for i in sorted(remaining)]}"
                 )
@@ -1806,6 +1842,7 @@ Output format: JSON array of {{"rank": 1, "score": 0.95, "content": "..."}}"""
         graph_trace: List[Dict] = []
         local_state.setdefault("_graph_trace", [])
         local_state["_graph_trace"] = list(local_state["_graph_trace"])  # shallow copy for parallel safety
+        local_state["_shared_state_board"] = list(local_state.get("_shared_state_board", []))  # same for board
 
         # Compute input hash for incremental execution
         # Uses configured input_hash_keys or falls back to all upstream state keys
@@ -1815,10 +1852,10 @@ Output format: JSON array of {{"rank": 1, "score": 0.95, "content": "..."}}"""
             if idx > 0 else []
         )
         if input_hash_keys:
-            import hashlib, json
+            import hashlib, json as _jhash
             input_snapshot = {k: str(local_state.get(k, ""))[:500] for k in input_hash_keys}
             current_hash = hashlib.sha256(
-                json.dumps(input_snapshot, sort_keys=True).encode()
+                _jhash.dumps(input_snapshot, sort_keys=True).encode()
             ).hexdigest()[:16]
             stored_hash = local_state.get(f"_input_hash_{stage.id}", "")
             if stored_hash and stored_hash != current_hash:
@@ -1880,7 +1917,7 @@ Output format: JSON array of {{"rank": 1, "score": 0.95, "content": "..."}}"""
             local_state["error"] = ""
             constraint_retries += 1
             local_state["_constraint_retry_count"] = constraint_retries
-            local_state = await self._dispatch_execute(stage, local_state)
+        local_state = await self._dispatch_execute(stage, local_state)
         t_end = time.time()
         local_state[f"_stage_{stage.id}_done"] = True
         # Cache result for future runs with identical inputs
@@ -2687,7 +2724,12 @@ Output format: JSON array of {{"rank": 1, "score": 0.95, "content": "..."}}"""
         async with self._model_lock:
             original_model = self._stage_runner._model
             stage_model = original_model
-            if not getattr(stage, 'model', None):
+            stage_cfg_model = getattr(stage, 'model', None)
+            if stage_cfg_model:
+                from core.harness.utils.model_injection import create_selected_adapter
+                stage_model = create_selected_adapter(model_name=stage_cfg_model)
+                self._stage_runner._model = stage_model
+            else:
                 has_errors = bool(state.get("issues") or state.get("_quick_check_issues"))
                 is_short = len(str(state.get("description", ""))) < 200
                 is_first_run = state.get("iteration", 0) <= 2
@@ -2699,6 +2741,16 @@ Output format: JSON array of {{"rank": 1, "score": 0.95, "content": "..."}}"""
                         "stage": stage.id, "agent": stage.agent_id,
                         "model": simple_model, "reason": "simple_task_downgrade",
                     })
+
+        # ── Pre-stage HITL: pause for human input (human stages only) ──
+        node_type = getattr(stage, 'node_type', None) or 'agent'
+        if stage.hitl and node_type == 'human' and not state.get(f"_hitl_resolved_{stage.id}"):
+            state["phase"] = BuilderSessionPhase.paused.value
+            state["_hitl_phase_name"] = stage.hitl_phase or f"{stage.id}_human_input"
+            state["_hitl_stage_id"] = stage.id
+            self._audit_hitl(state, "hitl_paused", detail=f"pre_stage:{stage.id}")
+            self._snapshot(state, f"stage_{stage.id}_hitl_pause")
+            return state
 
         try:
             result_text = await self._run_stage_core(stage, state, prompt, agent_type, stage_model)
@@ -2767,16 +2819,6 @@ Output format: JSON array of {{"rank": 1, "score": 0.95, "content": "..."}}"""
                             except Exception as e:
                                 logging.warning(str(e), exc_info=True)
 
-        # Agentic Skill Router: tell Agent it can search disabled skills
-        skill_corpus_context = (
-            "[SKILL CORPUS: If you need a capability not found in the enabled skills above, "
-            "you can search disabled skills via:\n"
-            "  1. sys_skill_corpus_search(query, limit=10) → candidate list with ref/name/score\n"
-            "  2. sys_skill_corpus_inspect(ref) → full metadata (NOT body) for a candidate\n"
-            "  3. sys_skill_corpus_select(ref, query, reason, confidence) → returns body + records audit\n"
-            "Remember: inspect before select. Never select without checking metadata first.]\n"
-        )
-
         state["step_count"] = state.get("step_count", 0)  # carried from stage_runner via shared state dict
         parsed = self._parse_output(result_text)
         if stage.uses_file_output:
@@ -2816,6 +2858,9 @@ Output format: JSON array of {{"rank": 1, "score": 0.95, "content": "..."}}"""
                     state["_last_action_reason"] = "schema_validation_failed"
                     return state
         self._snapshot(state, f"stage_{stage.id}_output")
+        # ── Cross-stage validation ──
+        state.setdefault("_cross_validations", {})
+        self._validate_cross_stage(stage, state)
         if artifact:
             await asyncio.to_thread(self._persist_files, artifact, state.get("output_dir", ""))
         if parsed.decision == AgentDecision.NEEDS_CLARIFICATION:
@@ -3043,8 +3088,7 @@ Evaluate pass/fail based on pass_rate and configured dimension thresholds.""")
         eval_runner = self._eval_runner
         stage_eval_model = getattr(stage, 'eval_model', '') or ''
         if stage_eval_model:
-            eval_model = self._load_default_model(model_name=stage_eval_model, category="eval")
-            eval_runner = EvalRunner(model=eval_model, pipeline_config=self._config)
+            eval_runner = EvalRunner()
         result_text = await eval_runner.run(eval_prompt, state)
         report = {}
         json_str = self._extract_json(result_text)
@@ -3336,6 +3380,14 @@ Evaluate pass/fail based on pass_rate and configured dimension thresholds.""")
         return state
 
     def _build_prompt(self, stage: PipelineStageConfig, state: PipelineState) -> str:
+        skill_corpus_context = (
+            "[SKILL CORPUS: If you need a capability not found in the enabled skills above, "
+            "you can search disabled skills via:\n"
+            "  1. sys_skill_corpus_search(query, limit=10) → candidate list with ref/name/score\n"
+            "  2. sys_skill_corpus_inspect(ref) → full metadata (NOT body) for a candidate\n"
+            "  3. sys_skill_corpus_select(ref, query, reason, confidence) → returns body + records audit\n"
+            "Remember: inspect before select. Never select without checking metadata first.]\n"
+        )
         feedback = state.get("_reject_feedback", "")
         fb = f"\n## Reject Feedback\n{feedback}" if feedback else ""
         ctx = {}
@@ -3398,9 +3450,8 @@ Evaluate pass/fail based on pass_rate and configured dimension thresholds.""")
         previous_notes = ""
         try:
             import os as _os, glob as _glob
-            output_root = _os.path.expanduser(
-                _os.path.join(_os.getenv("AIPLAT_HOME", "~/.aiplat"), "output")
-            )
+            from core.utils.paths import get_aiplat_data_dir
+            output_root = get_aiplat_data_dir("output")
             note_files = sorted(
                 _glob.glob(_os.path.join(output_root, "*", "SESSION_NOTES.md")),
                 key=_os.path.getmtime, reverse=True,
@@ -3851,7 +3902,7 @@ JSON format: {{"artifact": {{}},"confidence": "HIGH","issues": [{{"severity": "P
         Default: _graph_trace, _checkpoints, messages always append.
         """
         # Default append keys (engine-level guarantees)
-        default_append = {"_graph_trace", "_checkpoints", "messages", "trace", "sub_agent_results"}
+        default_append = {"_graph_trace", "_checkpoints", "messages", "trace", "sub_agent_results", "_shared_state_board"}
         strategies = {}
         if stage and hasattr(stage, "merge_strategies") and stage.merge_strategies:
             strategies = stage.merge_strategies
@@ -4363,6 +4414,73 @@ JSON format: {{"artifact": {{}},"confidence": "HIGH","issues": [{{"severity": "P
         if empty_list_fields and not list_fields:
             issues.append(f"Stage '{getattr(stage, 'id', '?')}': list fields found empty: {empty_list_fields}")
         return issues
+
+    def _validate_cross_stage(self, stage: PipelineStageConfig, state: PipelineState) -> None:
+        """Cross-stage validation: check downstream outputs reference upstream artifacts."""
+        validations = state.get("_cross_validations", {})
+        # C1: SA → BA consistency
+        if stage.output_artifact == "solution_design":
+            cp = state.get("customer_profile") or {}
+            sd = state.get("solution_design") or {}
+            score = 100; checks = []
+            cp_text = str(cp).lower()
+            sd_text = str(sd).lower()
+            if len(cp_text) > 10:
+                overlap = sum(1 for w in ["制造", "零售", "金融", "医疗", "教育", "政府"] if w in cp_text and w in sd_text)
+                if overlap == 0:
+                    checks.append("no industry keyword overlap with customer_profile"); score -= 20
+                else:
+                    checks.append(f"{overlap} industry keyword matches with customer_profile")
+                pain_points = cp.get("pain_points", []) if isinstance(cp, dict) else []
+                ref = sum(1 for p in pain_points if str(p)[:10] in sd_text)
+                if pain_points and ref == 0:
+                    checks.append("no pain_points addressed"); score -= 25
+                elif pain_points:
+                    checks.append(f"{ref}/{len(pain_points)} pain points addressed")
+            validations["sa_ba_consistency"] = {"score": score, "checks": checks}
+        # C2: DE → SA coverage
+        if stage.output_artifact == "deployment_package":
+            sd = state.get("solution_design") or {}
+            dp = state.get("deployment_package") or {}
+            score = 100; checks = []
+            sol_comps = sd.get("components", []) if isinstance(sd, dict) else []
+            dep_comps = dp.get("components", []) if isinstance(dp, dict) else []
+            if sol_comps:
+                dep_names = [str(c.get("name","")).lower() for c in dep_comps if isinstance(c, dict)]
+                covered = sum(1 for c in sol_comps if isinstance(c,dict) and str(c.get("name","")).lower() in dep_names)
+                cov = covered / len(sol_comps) if sol_comps else 1
+                checks.append(f"component coverage: {covered}/{len(sol_comps)}")
+                if cov < 0.5: score -= 30; checks.append("coverage < 50%")
+                elif cov < 1.0: score -= 15
+            risks = dp.get("risk_matrix",[]) if isinstance(dp, dict) else []
+            if sd.get("gap_analysis") and not risks:
+                score -= 20; checks.append("no risk_matrix despite gap_analysis")
+            validations["de_sa_coverage"] = {"score": score, "checks": checks}
+        # C3: DM → DE acceptance
+        if stage.output_artifact == "acceptance_report":
+            dp = state.get("deployment_package") or {}
+            ar = state.get("acceptance_report") or {}
+            score = 100; checks = []
+            test_plan = dp.get("test_plan",[]) if isinstance(dp, dict) else []
+            risk_matrix = dp.get("risk_matrix",[]) if isinstance(dp, dict) else []
+            ar_text = str(ar).lower()
+            if test_plan:
+                ref = sum(1 for t in test_plan if isinstance(t,dict) and str(t.get("test",""))[:20].lower() in ar_text)
+                if ref == 0: score -= 25; checks.append("no test_plan references")
+                else: checks.append(f"{ref}/{len(test_plan)} tests covered")
+            if risk_matrix:
+                ref = sum(1 for r in risk_matrix if isinstance(r,dict) and str(r.get("risk",""))[:20].lower() in ar_text)
+                if ref == 0: score -= 25; checks.append("no risk_matrix references")
+                else: checks.append(f"{ref}/{len(risk_matrix)} risks covered")
+            validations["dm_de_acceptance"] = {"score": score, "checks": checks}
+        # C4: Quality gate
+        scores = [v["score"] for v in validations.values()]
+        if scores:
+            overall = sum(scores) // len(scores)
+            validations["_quality_score"] = overall
+            if overall < 50:
+                state["_quality_warning"] = f"cross-stage quality {overall}/100 < 50"
+        state["_cross_validations"] = validations
 
     @staticmethod
     def _verify_stage_behavior(stage: PipelineStageConfig, artifact: Any, output_dir: str = "") -> Dict[str, Any]:
@@ -5010,8 +5128,9 @@ def _write_pipeline_event(run_id: str, event_type: str, node_id: str,
         logging.warning(str(e), exc_info=True)
 
 
-def _update_workflow_run_phase(project_id: str, phase: str) -> None:
+def _update_workflow_run_phase(project_id: str, phase: str, graph_trace: list = None) -> None:
     """Update workflow_runs phase in platform SQLite. Self-contained in core."""
+    graph_trace = graph_trace or []
     try:
         import sqlite3
         conn = sqlite3.connect(_PLATFORM_DB_PATH)

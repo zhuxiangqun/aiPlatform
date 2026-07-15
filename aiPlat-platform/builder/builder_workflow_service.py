@@ -6,6 +6,8 @@ Backward-compatible: falls back to platform SQLite if WorkflowManager is unavail
 from __future__ import annotations
 
 import logging
+from storage.sqlite import list_workflow_runs
+from typing import Any, Dict, List, Optional
 from typing import Any, Dict, List, Optional
 
 from core.utils.ids import new_prefixed_id
@@ -122,6 +124,15 @@ class WorkflowService:
             d = n.get("data", {}) or {}
             cfg = d.get("config", {}) or {}
             nt = d.get("type", "agent")
+            # Load agent frontmatter for model/agent_type
+            agent_fm = {}
+            agent_id = cfg.get("agentId", "")
+            if agent_id:
+                try:
+                    from core.api.core_facade import get_agent_frontmatter
+                    agent_fm = get_agent_frontmatter(agent_id) or {}
+                except Exception:
+                    pass
             # Inject Start node's test inputs into stage config
             if nt == 'start':
                 inputs = d.get("start_inputs", [])
@@ -143,7 +154,13 @@ class WorkflowService:
                 "config": cfg,
                 "node_type": nt,
                 "node_config": cfg,
-                "output_artifact": out_map.get(nt, "stage_output"),
+                "output_artifact": cfg.get("outputArtifact") or out_map.get(nt, "stage_output"),
+                "input_artifacts": cfg.get("inputArtifacts", []),
+                "hitl": cfg.get("hitl", False),
+                "hitl_phase": cfg.get("hitlPhase", ""),
+                "model": agent_fm.get("model", ""),
+                "agent_type": agent_fm.get("agent_type", "react"),
+                "review_gate": cfg.get("reviewGate", "quick"),
             })
         # Attach per-node input_variables to node_config so the engine can resolve them
         for s in stages:
@@ -178,10 +195,9 @@ class WorkflowService:
                 stages = [stage_map[sid] for sid in ordered]
                 for i, s in enumerate(stages):
                     s["order"] = i
-        from builder.builder_project_service import BuilderProjectService
-        from builder.builder_team_service import BuilderTeamService
+        from builder.builder_project_service import _get_project_service
         from core.schemas_builder import ProjectCreateRequest
-        svc = BuilderProjectService(team_service=BuilderTeamService())
+        svc = _get_project_service()
         proj = await svc.create_project(ProjectCreateRequest(
             name=launch_name or wf_dict.get("name", "workflow"),
             description=wf_dict.get("description", ""),
@@ -189,11 +205,10 @@ class WorkflowService:
         ))
         from storage.sqlite import record_workflow_run
         record_workflow_run(workflow_id, proj.project_id, launch_name or wf_dict.get("name", ""))
-        # Background execution via dedicated thread — API returns immediately.
-        # PipelineEventBus writes progress to SQLite pipeline_events → frontend polls.
-        import asyncio as _asyncio, concurrent.futures as _cf
-        _cf.ThreadPoolExecutor(max_workers=1).submit(
-            _asyncio.run, svc.start_pipeline(proj.project_id)).result(timeout=300)
+        # Fire pipeline in background — API returns immediately, frontend polls /runs
+        import sys
+        print("### start_pipeline_background called for", proj.project_id, file=sys.stderr)
+        svc.start_pipeline_background(proj.project_id)
         return {"project_id": proj.project_id, "workflow_id": workflow_id, "run_id": proj.project_id}
 
     async def list_runs(self, workflow_id: str) -> list:

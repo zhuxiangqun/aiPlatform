@@ -1,0 +1,37 @@
+# Capability Contract: Agent Registry (Agent 注册发现)
+domain: ai-runtime
+capability: agent
+description: "Agent 管理——Agent 发现、注册、编译和类型解析"
+owner: core-runtime
+version: "1.0.0"
+updated: "2026-07-13"
+
+authoritative:
+  path: aiPlat-core/core/apps/agents/discovery.py
+  entry_point: get_agent_registry
+  class: AgentRegistry
+  factory: get_agent_registry
+  public_symbols:
+    - AgentRegistry
+    - get_agent_registry
+
+methods:
+  - name: discover_agents
+    signature: "() -> List[AgentConfig]"
+    purpose: "发现所有已注册 Agent"
+  - name: get_agent
+    signature: "(agent_id) -> Optional[AgentConfig]"
+    purpose: "按 ID 获取 Agent 配置"
+  - name: get_agent_registry
+    signature: "() -> AgentRegistry"
+    purpose: "获取全局 Agent 注册表单例"
+
+consumer_patterns:
+  - "harness/syscalls/"
+  - "harness/execution/"
+  - "harness/integration"
+  - "apps/agents/"
+  - "api/"
+  - "management/"
+  - "harness/coordination/"
+  - "server\\.py"

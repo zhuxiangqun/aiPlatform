@@ -1,0 +1,32 @@
+# Capability Contract: Reranker (重排序)
+domain: ai-runtime
+capability: reranker
+description: "重排序——对检索结果按语义相关性重新排序(CrossEncoder)"
+owner: core-infra
+version: "1.0.0"
+updated: "2026-07-13"
+
+authoritative:
+  path: aiPlat-core/core/harness/infrastructure/infra_reranker_adapter.py
+  entry_point: create_infra_reranker_adapter
+  class: InfraRerankerAdapter
+  factory: create_infra_reranker_adapter
+  public_symbols:
+    - InfraRerankerAdapter
+    - create_infra_reranker_adapter
+
+forbidden_direct_imports:
+  - sentence_transformers.CrossEncoder
+  - transformers.AutoModelForSequenceClassification
+
+methods:
+  - name: rerank
+    signature: "(query, documents) -> List[Document]"
+    purpose: "对检索结果按相关性重新排序"
+  - name: create_infra_reranker_adapter
+    signature: "(**kwargs) -> InfraRerankerAdapter"
+    purpose: "获取全局重排序适配器实例"
+
+consumer_patterns:
+  - "harness/infrastructure/"
+  - "harness/syscalls/retrieval"

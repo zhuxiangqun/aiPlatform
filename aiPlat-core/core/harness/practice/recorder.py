@@ -42,6 +42,18 @@ class PraxisSession:
     metadata: Dict[str, Any] = field(default_factory=dict)
     status: str = "recording"
 
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "session_id": self.session_id,
+            "run_id": self.run_id,
+            "agent_id": self.agent_id,
+            "task": self.task,
+            "started_at": self.started_at,
+            "finished_at": self.finished_at,
+            "step_count": len(self.steps),
+            "status": self.status,
+        }
+
 
 class PraxisRecorder:
     """

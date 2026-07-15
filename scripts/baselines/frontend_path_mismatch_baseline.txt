@@ -1,1 +1,12 @@
-
+GET /api/core/diagnostics/playground/models
+GET /api/platform/onboarding/agent-templates
+GET /api/platform/onboarding/model-recommendations
+GET /api/platform/onboarding/progress
+GET /api/platform/onboarding/readiness-check
+POST /api/core/diagnostics/playground/chat
+POST /api/core/diagnostics/playground/compare
+POST /api/core/diagnostics/repairs
+POST /api/core/workbench/fde-dashboard
+POST /api/platform/onboarding/activate
+POST /api/platform/onboarding/agent/create-from-template
+POST /api/platform/onboarding/tools/connect

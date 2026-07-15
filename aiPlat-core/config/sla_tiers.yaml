@@ -1,0 +1,22 @@
+# SLA tiers for vulnerability fix deadlines (from SECURITY.md).
+# Migrated from hardcoded dict in sla_tracker.py 2026-07-13.
+
+critical:
+  cvss_min: 9.0
+  ack_hours: 4
+  fix_hours: 24
+
+high:
+  cvss_min: 7.0
+  ack_hours: 24
+  fix_hours: 168
+
+medium:
+  cvss_min: 4.0
+  ack_hours: 48
+  fix_hours: 720
+
+low:
+  cvss_min: 0.0
+  ack_hours: 168
+  fix_hours: 2160

@@ -41,6 +41,13 @@ class ToolResult:
     # ── Structured retry info for Agent semantic-level decisions ──
     retried: bool = False       # Was this tool call retried at the infrastructure level?
     retry_count: int = 0        # How many times was it retried?
+    # ── Structured error diagnostics (populated by sys_tool_call via ErrorTranslator) ──
+    # Give the Agent machine-readable recovery signals instead of an opaque error string,
+    # so the LLM can reason about how to self-heal (Hermes Layer 2 self-healing loop).
+    error_type: Optional[str] = None      # Classified FailoverReason value (e.g. "timeout", "auth")
+    exit_code: Optional[int] = None       # Process exit code for command/sandbox tools
+    stderr: Optional[str] = None          # Captured stderr for command/sandbox tools
+    recovery_hint: Optional[str] = None   # Actionable, LLM-readable recovery suggestion
     # Browser Use compatible fields
     extracted_content: Optional[str] = None  # Structured extracted data for agent reasoning
     long_term_memory: Optional[str] = None   # Info to remember across steps

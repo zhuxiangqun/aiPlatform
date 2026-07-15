@@ -25,7 +25,7 @@ const AddModelModal: React.FC<AddModelModalProps> = ({ open, onClose, onSuccess,
   const [capabilities, setCapabilities] = useState<string[]>([]);
 
   const [baseUrl, setBaseUrl] = useState('');
-  const [apiKeyEnv, setApiKeyEnv] = useState('');
+  const [apiKey, setApiKey] = useState('');
   const [temperature, setTemperature] = useState('0.7');
   const [maxTokens, setMaxTokens] = useState('2048');
   const [topP, setTopP] = useState('1.0');
@@ -39,12 +39,12 @@ const AddModelModal: React.FC<AddModelModalProps> = ({ open, onClose, onSuccess,
   const selectedProviderInfo = useMemo(() => providers.find((p) => p.id === provider), [providers, provider]);
 
   // Provider-level base config
-  const PROVIDER_BASE: Record<string, { baseUrl: string; apiKeyEnv: string }> = {
-    deepseek: { baseUrl: 'https://api.deepseek.com/v1', apiKeyEnv: 'AIPLAT_LLM_API_KEY' },
-    openai_compatible: { baseUrl: 'https://api.deepseek.com/v1', apiKeyEnv: 'DEEPSEEK_API_KEY' },
-    openai: { baseUrl: 'https://api.openai.com/v1', apiKeyEnv: 'OPENAI_API_KEY' },
-    anthropic: { baseUrl: 'https://api.anthropic.com/v1', apiKeyEnv: 'ANTHROPIC_API_KEY' },
-    local: { baseUrl: 'http://localhost:11434/v1', apiKeyEnv: '' },
+  const PROVIDER_BASE: Record<string, { baseUrl: string }> = {
+    deepseek: { baseUrl: 'https://api.deepseek.com/v1' },
+    openai_compatible: { baseUrl: 'https://api.deepseek.com/v1' },
+    openai: { baseUrl: 'https://api.openai.com/v1' },
+    anthropic: { baseUrl: 'https://api.anthropic.com/v1' },
+    local: { baseUrl: 'http://localhost:11434/v1' },
   };
 
   // Dynamic model catalog from backend
@@ -70,7 +70,8 @@ const AddModelModal: React.FC<AddModelModalProps> = ({ open, onClose, onSuccess,
     if (editingModel) {
       const catalogModels = providerModels[editingModel.provider || ''] || [];
       const catalog = catalogModels.find((m) => m.name === editingModel.name);
-      setProvider(editingModel.provider || '');
+      const p = editingModel.provider || '';
+      setProvider(p === 'openai' || p === 'openai_compatible' ? 'deepseek' : p);
       setSelectedModel(catalog ? catalog.name : (editingModel.name || ''));
       setName(catalog ? catalog.name : (editingModel.name || ''));
       setDisplayName(catalog ? catalog.display : (editingModel.displayName || ''));
@@ -79,7 +80,7 @@ const AddModelModal: React.FC<AddModelModalProps> = ({ open, onClose, onSuccess,
       setTags((editingModel.tags || []).join(', '));
       setCapabilities(editingModel.capabilities || []);
       setBaseUrl(editingModel.config?.baseUrl || PROVIDER_BASE[editingModel.provider || '']?.baseUrl || '');
-      setApiKeyEnv(editingModel.config?.apiKeyEnv || PROVIDER_BASE[editingModel.provider || '']?.apiKeyEnv || '');
+      setApiKey(''); // 密钥不预填，用户可重新输入
       setTemperature(String(catalog?.temperature ?? editingModel.config?.temperature ?? 0.7));
       setMaxTokens(String(catalog?.max_tokens ?? editingModel.config?.maxTokens ?? 2048));
       setTopP(String(catalog?.top_p ?? editingModel.config?.topP ?? 1.0));
@@ -96,7 +97,7 @@ const AddModelModal: React.FC<AddModelModalProps> = ({ open, onClose, onSuccess,
     setTags('');
     setCapabilities([]);
     setBaseUrl('');
-    setApiKeyEnv('');
+    setApiKey('');
     setTemperature('0.7');
     setMaxTokens('2048');
     setTopP('1.0');
@@ -107,7 +108,6 @@ const AddModelModal: React.FC<AddModelModalProps> = ({ open, onClose, onSuccess,
     const base = PROVIDER_BASE[provider];
     if (base) {
       setBaseUrl(base.baseUrl);
-      setApiKeyEnv(base.apiKeyEnv);
     }
     const models = modelsForProvider;
     if (models.length > 0 && !selectedModel) {
@@ -147,24 +147,40 @@ const AddModelModal: React.FC<AddModelModalProps> = ({ open, onClose, onSuccess,
     if (!name.trim()) return toast.error('请输入模型 name');
     if (!displayName.trim()) return toast.error('请输入模型 displayName');
     if (!baseUrl.trim()) return toast.error('请输入 baseUrl');
-    if (selectedProviderInfo?.requires_api_key && !apiKeyEnv.trim()) return toast.error('该 Provider 需要 apiKeyEnv');
+    if (selectedProviderInfo?.requires_api_key && !apiKey.trim()) return toast.error('该 Provider 需要填写 API Key');
 
     setLoading(true);
     try {
+      // Auto-create adapter if API key provided
+      let resolvedAdapterId = '';
+      const key = apiKey.trim();
+      if (key) {
+        try {
+          const ar = await modelApi.createAdapter({
+            name: name.trim(),
+            provider: provider,
+            api_key: key,
+            api_base_url: baseUrl.trim(),
+          });
+          resolvedAdapterId = ar.adapter_id;
+        } catch (e: any) {
+          toast.error('创建 Adapter 失败: ' + (e?.message || String(e)));
+          setLoading(false);
+          return;
+        }
+      }
+
       const modelData = {
         name: name.trim(),
         displayName: displayName.trim(),
         type,
         provider,
         description,
-        tags: tags
-          .split(',')
-          .map((t) => t.trim())
-          .filter(Boolean),
+        tags: tags.split(',').map((t) => t.trim()).filter(Boolean),
         capabilities,
         config: {
           baseUrl: baseUrl.trim(),
-          apiKeyEnv: apiKeyEnv.trim(),
+          adapterId: resolvedAdapterId || undefined,
           temperature: Number(temperature),
           maxTokens: Number(maxTokens),
           topP: Number(topP),
@@ -202,7 +218,7 @@ const AddModelModal: React.FC<AddModelModalProps> = ({ open, onClose, onSuccess,
 
         {selectedProviderInfo && (
           <Alert type="info" title={selectedProviderInfo.name}>
-            {selectedProviderInfo.requires_api_key ? '该 Provider 需要配置 API Key 环境变量（apiKeyEnv）' : '该 Provider 不需要 API Key'}
+            {selectedProviderInfo.requires_api_key ? '该 Provider 需要 API Key。在下方填写即可自动创建并绑定 Adapter。' : '该 Provider 不需要 API Key'}
           </Alert>
         )}
 
@@ -253,27 +269,24 @@ const AddModelModal: React.FC<AddModelModalProps> = ({ open, onClose, onSuccess,
             )}
           </div>
 
-          <Input
-            label="apiKeyEnv"
-            value={apiKeyEnv}
-            onChange={(e: any) => setApiKeyEnv(e.target.value)}
-            placeholder="例如: OPENAI_API_KEY"
-          />
-
-          <Input
-            label="API Key"
-            value={apiKeyEnv}
-            onChange={(e: any) => setApiKeyEnv(e.target.value)}
-            placeholder="输入 API Key 值 (以 sk- 开头)"
-            type="password"
-          />
-          <div className="text-xs mt-1 ml-1">
-            {apiKeyEnv.trim() ? (
-              <span className="text-green-400">✅ 已输入新 Key — 保存后将写入本地环境配置</span>
-            ) : (
-              <span className="text-yellow-400">⚠️ 未输入 — 将使用系统已有的环境变量</span>
-            )}
-          </div>
+          {selectedProviderInfo?.requires_api_key && (
+            <>
+              <Input
+                label="API Key（填写后自动创建 Adapter 并绑定）"
+                value={apiKey}
+                onChange={(e: any) => setApiKey(e.target.value)}
+                placeholder="sk-..."
+                type="password"
+              />
+              <div className="text-xs ml-1 -mt-1">
+                {apiKey.trim() ? (
+                  <span className="text-green-400">✅ 保存时将自动创建 Adapter</span>
+                ) : (
+                  <span className="text-gray-500">💡 API Key 将安全存储在 Adapter 中</span>
+                )}
+              </div>
+            </>
+          )}
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <Input label="temperature" type="number" value={temperature} onChange={(e: any) => setTemperature(e.target.value)} disabled={isConfigModel} />

@@ -1,0 +1,45 @@
+# Capability Contract: Pattern Cache (执行模式缓存)
+domain: ai-runtime
+capability: pattern_cache
+description: "执行模式缓存——缓存执行路径（领域/任务类型/策略），使 Pipeline 可跳阶段"
+owner: core-runtime
+version: "2.0.0"
+updated: "2026-07-13"
+
+# Distinct from experience_cache:
+# - experience_cache: semantic memory for AutoLearner (semantic similarity search)
+# - pattern_cache: execution path for Pipeline optimization (exact/fuzzy match, skip stages)
+# Both write in _facade.py::_try_feed_learning_pipeline().
+authoritative:
+  path: aiPlat-core/core/harness/execution/pattern_cache.py
+  entry_point: get_pattern_cache
+  class: PatternCache
+  factory: get_pattern_cache
+  public_symbols:
+    - PatternCache
+    - get_pattern_cache
+    - ExecutionPattern
+
+methods:
+  - name: store
+    signature: "(domain_id, query, execution_path, success=True) -> None"
+    purpose: "存储执行模式（领域+任务类型+策略）"
+  - name: match
+    signature: "(domain_id, query) -> Optional[ExecutionPattern]"
+    purpose: "精确匹配缓存模式（hit_count >= 3）"
+  - name: fuzzy_match
+    signature: "(domain_id, query) -> Optional[ExecutionPattern]"
+    purpose: "模糊匹配缓存模式（同域+同类型降级）"
+  - name: prune_low_success
+    signature: "() -> int"
+    purpose: "清理低成功率模式（EvolutionEngine nightly）"
+  - name: get_pattern_cache
+    signature: "() -> PatternCache"
+    purpose: "获取全局模式缓存单例"
+
+consumer_patterns:
+  - "harness/"
+
+cross_references:
+  - capability: experience
+    note: "experience_cache 和 pattern_cache 都在 _try_feed_learning_pipeline() 中写入。职责互补，不可相互替代。"

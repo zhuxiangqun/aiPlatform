@@ -106,8 +106,8 @@ class ProdFeedbackStore:
             return await self._retrieve_from_file(session_id, feedback_type, limit)
         elif self.config.storage_backend == StorageBackend.DATABASE:
             return await self._retrieve_from_db(session_id, feedback_type, limit)
-        # S3: not yet implemented — return empty
-        return []
+        # S3: use file-based fallback (S3 integration requires boto3 dependency)
+        return await self._retrieve_from_file(session_id, feedback_type, limit)
 
     async def delete(self, feedback_id: str) -> bool:
         if self.config.storage_backend == StorageBackend.MEMORY:

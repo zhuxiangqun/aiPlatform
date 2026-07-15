@@ -67,6 +67,8 @@ async def sys_graph_query(
             return await _query_path(graph, domain_id, query)
         elif operation == "search":
             return await _query_search(graph, domain_id, query, top_k)
+        elif operation == "explore":
+            return await _query_explore(graph, domain_id, query, max_hops=top_k)
         else:
             return _result(False, f"Unknown operation: {operation}", domain_id, operation)
 
@@ -262,3 +264,102 @@ def _extract_two_names(query: str) -> list:
     # Fallback: split by "and", take last two capitalized words
     words = [w for w in query.split() if w[0].isupper()]
     return words[-2:] if len(words) >= 2 else []
+
+async def _query_explore(graph, domain_id: str, query: str, *, max_hops: int = 5) -> Dict[str, Any]:
+    """BFS explore: from an entity, discover all reachable entities and paths."""
+    import re
+    from collections import deque
+
+    # Extract entity name from query
+    entity_name = _extract_single_name(query)
+    if not entity_name:
+        return _result(False, "Could not extract entity name from query", domain_id, "explore")
+
+    # Find starting entity
+    start_node = None
+    for node in graph._nodes.values():
+        if entity_name.lower() in node.entity_name.lower() or entity_name.lower() == node.entity_id.lower():
+            start_node = node
+            break
+    if not start_node:
+        return _result(False, f"Entity not found: {entity_name}", domain_id, "explore")
+
+    max_hops = min(max_hops or 5, 10)  # Hard cap at 10
+
+    # BFS to find all reachable paths
+    paths = []
+    edges_data = []
+    visited = {start_node.entity_id}
+    queue = deque([(start_node.entity_id, [start_node.entity_id], [])])
+
+    while queue and len(visited) < 100:  # Safety cap
+        current_id, path_nodes, path_edges = queue.popleft()
+        if len(path_nodes) > max_hops + 1:
+            continue
+
+        current = graph._nodes.get(current_id)
+        if not current:
+            continue
+
+        for edge in current.out_edges:
+            next_id = edge.target_id
+            next_node = graph._nodes.get(next_id)
+            if not next_node:
+                continue
+
+            new_path = path_nodes + [next_id]
+            new_edges = path_edges + [{
+                "source": edge.source_id,
+                "target": edge.target_id,
+                "relation": edge.relation_name,
+                "confidence": edge.confidence,
+                "source_doc": next_node.source_doc_id or "",
+                "created_by": getattr(edge, "created_by", ""),
+            }]
+
+            if next_id not in visited:
+                visited.add(next_id)
+                queue.append((next_id, new_path, new_edges))
+
+            if len(new_path) >= 2:
+                paths.append({
+                    "nodes": new_path,
+                    "edges": new_edges,
+                    "length": len(new_path) - 1,
+                })
+
+    # Terminal entities (leaf nodes or risk-related)
+    terminal_entities = []
+    for p in paths:
+        last_node_id = p["nodes"][-1]
+        last_node = graph._nodes.get(last_node_id)
+        if last_node:
+            terminal_entities.append({
+                "entity_id": last_node.entity_id,
+                "entity_name": last_node.entity_name,
+                "class_name": last_node.class_name,
+                "path_length": p["length"],
+                "path_confidence": round(
+                    sum(e["confidence"] for e in p["edges"]) / max(len(p["edges"]), 1), 3
+                ) if p["edges"] else 0,
+            })
+
+    result_text = (
+        f"Explored from '{entity_name}' ({start_node.class_name}):\n"
+        f"  • {len(paths)} reachable paths found (max {max_hops} hops)\n"
+        f"  • {len(terminal_entities)} terminal entities\n"
+    )
+    if terminal_entities:
+        result_text += "  • Terminal entities: " + ", ".join(
+            f"{t['entity_name']}({t['class_name']}, confidence={t['path_confidence']})"
+            for t in terminal_entities[:10]
+        )
+
+    return _result(True, result_text, domain_id, "explore",
+                   data={
+                       "paths_count": len(paths),
+                       "terminal_entities": terminal_entities[:20],
+                       "paths": paths[:30],
+                       "max_hops": max_hops,
+                       "start_entity": entity_name,
+                   })

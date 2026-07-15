@@ -23,9 +23,9 @@ from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
-_SHARED_DIR = _os.path.expanduser(
-    _os.path.join(_os.getenv("AIPLAT_HOME", "~/.aiplat"), "memory", "shared")
-)
+from core.utils.paths import get_aiplat_data_dir
+
+_SHARED_DIR = get_aiplat_data_dir("memory/shared")
 _LEARNINGS_PATH = _os.path.join(_SHARED_DIR, "learnings.json")
 
 

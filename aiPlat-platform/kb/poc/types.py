@@ -3,15 +3,10 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Tuple
 
+from core.harness.infrastructure.infra_ocr_adapter import BBox, OCRToken
 
-BBox = Tuple[int, int, int, int]  # x1,y1,x2,y2 in pixels
-
-
-@dataclass
-class OCRToken:
-    text: str
-    bbox: BBox
-    conf: float = 0.0
+# ── Re-exports from InfraOCRAdapter (single model authority §5.31) ──
+__all__ = ["BBox", "OCRToken", "ExtractedNumber", "IngestResult", "Citation", "QAResult"]
 
 
 @dataclass

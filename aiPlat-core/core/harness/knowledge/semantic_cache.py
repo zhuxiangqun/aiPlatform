@@ -1,3 +1,7 @@
+from __future__ import annotations
+
+from core.utils.math_utils import cosine_similarity
+from core.utils.math_utils import cosine_similarity
 """
 Semantic Cache — 多级缓存系统降低 LLM API 成本。
 
@@ -18,7 +22,6 @@ Usage:
     await cache.set(query, domain_id, result)
 """
 
-from __future__ import annotations
 import logging
 
 import asyncio

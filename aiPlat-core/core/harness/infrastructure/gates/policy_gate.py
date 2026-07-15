@@ -166,17 +166,30 @@ class PolicyGate:
         return None
 
     @staticmethod
-    def check_route_access(path: str, role: str) -> bool:
+    def check_route_access(path: str, role: str, method: str = "GET") -> bool:
         """Route-level access control — check if role can access this path.
 
         Matches path against ROUTE_PERMISSIONS using prefix matching.
         Each route entry defines which roles are allowed.
+        If METHOD_RESTRICTIONS is configured for the role, only allowed
+        HTTP methods are permitted (e.g., viewer GET-only).
         """
-        from core.schemas_policy import ROUTE_PERMISSIONS
+        from core.schemas_policy import ROUTE_PERMISSIONS, METHOD_RESTRICTIONS
         for route_prefix, allowed_roles in ROUTE_PERMISSIONS.items():
             if path.startswith(route_prefix):
-                return role in allowed_roles
-        # No matching route → allow (backward compatibility)
+                if role not in allowed_roles:
+                    return False
+                # Check method restrictions for this role
+                role_methods = METHOD_RESTRICTIONS.get(role, {})
+                if role_methods:
+                    allowed_methods = role_methods.get(route_prefix, [])
+                    if allowed_methods:
+                        return method.upper() in (m.upper() for m in allowed_methods)
+                return True
+        # No matching route → allow (backward compatibility, unless method-restricted)
+        role_methods = METHOD_RESTRICTIONS.get(role, {})
+        if role_methods:
+            return method.upper() in ("GET", "HEAD", "OPTIONS")
         return True
 
     @staticmethod

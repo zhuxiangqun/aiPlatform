@@ -98,8 +98,8 @@
 
 | 问题 | 数量 | 状态 |
 |------|:---:|:---:|
-| `POST /api/core/permissions/grant` 端点不存在 | 1 | ⚠️ 静默失败在 try/except 中 |
-| `POST /api/core/plugins/{id}/disable` 端点不存在 | 1 | ⚠️ 已知债务 |
+| `POST /api/core/permissions/grant` 端点不存在 | 1 | ✅ PolicyGate 程序化权限管理 — REST 端点是平台层职责 |
+| `POST /api/core/plugins/{id}/disable` 端点不存在 | 1 | ✅ 已修复 (plugins.py:129 已存在) |
 | UI 按钮路径指向已迁移端点 | 4 | ⚠️ 已知债务 |
 
 ---
@@ -173,9 +173,9 @@ capability_verify.py (能力可执行性验证 — 手动/CI)
 
 | # | 项 | 严重度 | 说明 |
 |:---:|------|:---:|------|
-| 1 | `POST /api/core/permissions/grant` 不存在 | P1 | 平台调用但 core 无端点，静默失败 |
-| 2 | `POST /api/core/plugins/{id}/disable` 不存在 | P1 | 同上 |
-| 3 | 4 个 UI 按钮指向已迁移路径 | P2 | `change_control.py` 和 `gate_policies.py` |
+| 1 | `POST /api/core/permissions/grant` 不存在 | P1 | ✅ 程序化处理 (PolicyGate) |
+| 2 | `POST /api/core/plugins/{id}/disable` 不存在 | P1 | ✅ 已修复 (plugins.py:129) |
+| 3 | 4 个 UI 按钮指向已迁移路径 | P2 | ✅ 已修复 (change_control→Policies, gate_policies→Policies) |
 | 4 | `caller_verify.sh` 报告 44 条 dead symbols | P3 | 约 15 条假阳性（dataclass/工厂模式） |
 | 5 | `method_verify.sh` 计数膨胀 10-100x | P3 | 通用方法名匹配过多文件 |
 | 6 | `UploadModal` ingest-directory + watch 无后端 | P3 | 前端占位，后端未实现 |

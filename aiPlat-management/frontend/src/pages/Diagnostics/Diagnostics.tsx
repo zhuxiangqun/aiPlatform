@@ -72,6 +72,15 @@ const Diagnostics: React.FC = () => {
   // 防止手动运行后 useEffect 中 latest 覆盖结果
   const manualRunRef = useRef(false);
 
+  // RAG quality summary
+  const [ragQuality, setRagQuality] = useState<any>(null);
+  useEffect(() => {
+    fetch('/api/core/diagnostics/rag-quality?hours=24')
+      .then(r => r.json())
+      .then(d => setRagQuality(d))
+      .catch(() => {});
+  }, []);
+
   const runGuard = async () => {
     setGuardRunning(true); setGuardResult(null);
     try {
@@ -234,12 +243,14 @@ const Diagnostics: React.FC = () => {
     { title: 'Change Control', desc: '变更控制台（change_id / gates / approvals）', href: '/diagnostics/change-control', icon: GitBranch },
     { title: 'E2E Smoke', desc: '生产级全链路冒烟（自动清理）', href: '/diagnostics/smoke', icon: Zap },
     { title: 'Ops', desc: '导出（CSV）/ DLQ / 配额用量', href: '/diagnostics/ops', icon: Wrench },
+    { title: '能力边界', desc: '各业务域的数据成熟度、可用Skill、Golden Query通过率', href: '/diagnostics/capability-boundary', icon: BarChart3 },
     { title: 'Observability', desc: 'LLM 调用 / 延迟 / Token 消耗 / 错误率', href: '/diagnostics/observability', icon: BarChart3 },
     { title: 'Run 对比', desc: '并排对比两次执行的差异', href: '/diagnostics/run-comparison', icon: ArrowLeftRight },
     { title: 'Model Playground', desc: '同一 Prompt 并发多模型输出对比', href: '/diagnostics/model-playground', icon: Zap },
     { title: 'Model Audit', desc: 'LLM 指纹溯源与身份验证', href: '/diagnostics/model-audit', icon: Fingerprint },
     { title: 'Safety', desc: '对话危机检测与情感安全监控', href: '/diagnostics/safety', icon: Heart },
     { title: 'Eval Dashboard', desc: '统一评估：Arena排名、AB评分、进化适应度、Token效率', href: '/diagnostics/eval', icon: BarChart3 },
+    { title: 'RAG 质量', desc: 'RAG检索+生成质量仪表盘（忠实度/检索通过率/用户信号）', href: '/diagnostics/rag-quality', icon: BarChart3 },
   ], []);
 
   // Count unhealthy/degraded layers
@@ -567,6 +578,44 @@ const Diagnostics: React.FC = () => {
             </div>
           </CardContent>
         </Card>
+      )}
+
+      {ragQuality?.metrics && (
+      <Card className="border-green-500/30 bg-green-500/5">
+        <CardHeader>
+          <div className="flex items-center gap-2 text-sm font-semibold text-gray-200">
+            <BarChart3 className="w-4 h-4 text-green-400" />
+            RAG 质量概览（过去24h）
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-5 gap-3 text-center text-xs">
+            {[
+              { label: '忠实度', value: ragQuality.metrics.faithfulness_score ?? '-', unit: '' },
+              { label: '回答相关度', value: ragQuality.metrics.answer_relevancy_score ?? '-', unit: '' },
+              { label: '检索精度', value: ragQuality.metrics.retrieval_precision ?? '-', unit: '' },
+              { label: '会话数', value: ragQuality.metrics.total_sessions ?? 0, unit: '' },
+              { label: '重试率', value: ragQuality.metrics.retry_rate ?? '-', unit: '%' },
+            ].map(m => (
+              <div key={m.label}>
+                <div className="text-gray-500">{m.label}</div>
+                <div className={`text-lg font-bold ${
+                  typeof m.value === 'number' && m.label !== '会话数' && m.label !== '重试率'
+                    ? m.value >= 0.8 ? 'text-green-400' : m.value >= 0.6 ? 'text-yellow-400' : 'text-red-400'
+                    : 'text-gray-200'
+                }`}>
+                  {m.value}{m.unit}
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="mt-2 text-right">
+            <Link to="/diagnostics/?tab=rag" className="text-blue-400 hover:text-blue-300 text-xs">
+              查看趋势 →
+            </Link>
+          </div>
+        </CardContent>
+      </Card>
       )}
 
         </div>

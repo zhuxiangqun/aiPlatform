@@ -103,6 +103,14 @@ class TestMethodWired:
         assert has_production_caller("get_stats", "implicit_feedback.py")
 
 
+class TestMethodsNeedingWiring:
+    """待接线方法 — xfail 标记表示已知无 caller，接线后移除 xfail。"""
+
+    @pytest.mark.xfail(reason="待接线: map_reduce 实现了但无生产代码 caller")
+    def test_map_reduce_wired(self):
+        assert has_production_caller("map_reduce", "parallel_executor.py")
+
+
 class TestMethodRegression:
     """回归检测：已接线模块的方法不应突然失去 caller。"""
 

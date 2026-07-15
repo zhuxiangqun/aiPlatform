@@ -81,19 +81,22 @@ class DynamicOrchestrator:
         (r"需要.*test|需要.*测试|需要.*验证|需要.*校验|needs?\s+test", "test"),
     ]
 
-    # Known capabilities → agent mappings (extensible via registry)
-    CAPABILITY_MAP: Dict[str, List[str]] = {
-        "review": ["autoreview_reviewer", "reviewer"],
-        "refactor": ["programmer_agent"],
-        "analysis": ["architect_agent", "analyst"],
-        "security": ["security_reviewer"],
-        "test": ["qa_agent"],
-    }
+    # Known capabilities → agent mappings (config-driven via AIPLAT_ROLE_AGENT_MAP env var).
+    # Format: {"review": ["agent1", "agent2"], "analysis": ["agent3"], ...}
+    # Falls back to empty dict if not configured — no agent IDs hardcoded in engine.
+    _capability_map: Dict[str, List[str]] = field(default_factory=dict)
 
     def __init__(self):
+        import json as _json_om, os as _os_om
         self._history: List[OrchestrationEvent] = []
         self._spawned_count: int = 0
         self._active_tasks: Dict[str, asyncio.Task] = {}
+        raw = _os_om.getenv("AIPLAT_ROLE_AGENT_MAP", "")
+        if raw:
+            try:
+                self._capability_map = _json_om.loads(raw)
+            except Exception:
+                self._capability_map = {}
 
     async def sense_gap(
         self, agent_output: str, source_agent_id: str
@@ -111,7 +114,7 @@ class DynamicOrchestrator:
             match = re.search(pattern, text)
             if match:
                 cap = capability
-                candidates = self.CAPABILITY_MAP.get(cap, [])
+                candidates = self._capability_map.get(cap, [])
                 if candidates:
                     logger.debug(
                         "[orchestrator] sensed gap: %s → %s (agents: %s)",
@@ -142,7 +145,7 @@ class DynamicOrchestrator:
         import uuid
 
         t0 = time.time()
-        candidates = self.CAPABILITY_MAP.get(capability, [])
+        candidates = self._capability_map.get(capability, [])
         if not candidates:
             return None
 
@@ -228,7 +231,7 @@ class DynamicOrchestrator:
 
     def get_capabilities(self) -> Dict[str, List[str]]:
         """List all registered capabilities and their available agents."""
-        return dict(self.CAPABILITY_MAP)
+        return dict(self._capability_map)
 
     async def decompose_task(
         self, complex_output: str, source_agent_id: str
@@ -247,7 +250,7 @@ class DynamicOrchestrator:
             from core.harness.syscalls import sys_llm_generate
             from core.harness.utils.model_injection import best_model_for_purpose, create_selected_adapter
 
-            capabilities_str = ", ".join(self.CAPABILITY_MAP.keys())
+            capabilities_str = ", ".join(self._capability_map.keys())
             prompt = f"""Break down the following agent output into subtasks that require
 different capabilities. Available capabilities: {capabilities_str}.
 
@@ -368,7 +371,7 @@ Return ONLY a JSON array of these objects. Maximum 5 subtasks."""
         return {
             "total_spawned": self._spawned_count,
             "total_events": len(self._history),
-            "capabilities_registered": len(self.CAPABILITY_MAP),
+            "capabilities_registered": len(self._capability_map),
             "recent_events": [e.to_dict() for e in self._history[-5:]],
             "capability_map": self.get_capabilities(),
         }

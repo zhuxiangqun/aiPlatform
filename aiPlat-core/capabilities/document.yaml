@@ -1,0 +1,64 @@
+# ── Capability Contract: 文件解析 ──
+# Document parsing must go through ConverterRegistry (via protocol.py).
+
+domain: ai-knowledge
+capability: document
+description: "文件解析——将 PDF/DOCX/PPTX/XLSX/HTML/Image 等格式转为结构化 DocumentElement"
+owner: core-harness
+version: "1.0.0"
+updated: "2026-07-13"
+
+authoritative:
+  path: aiPlat-core/core/harness/document/protocol.py
+  entry_point: get_document_registry
+  class: ConverterRegistry
+  public_symbols:
+    - ConverterRegistry
+    - get_document_registry
+    - DocumentConverter
+    - DocumentElement
+    - StreamInfo
+
+forbidden_direct_imports: []
+forbidden_patterns:
+  - "direct use of converters without registry"
+
+methods:
+  - name: find_converter
+    signature: "(stream_info: StreamInfo) -> Optional[DocumentConverter]"
+    purpose: "根据文件类型查找可用转换器"
+  - name: convert_with_fallback
+    signature: "(file_stream, stream_info, **kwargs) -> List[DocumentElement]"
+    purpose: "转换文件（含完整 fallback 链）"
+  - name: get_document_registry
+    signature: "() -> ConverterRegistry"
+    purpose: "获取全局 ConverterRegistry 单例"
+  - name: get_supported_categories
+    signature: "() -> List[str]"
+    purpose: "获取所支持的文件类别列表"
+
+consumers:
+  - path: aiPlat-core/core/api/core_facade.py
+    uses: get_document_registry
+    note: "通过 registry 查找转换器"
+  - path: aiPlat-core/core/api/facades/kb_facade.py
+    uses: get_document_registry
+  - path: aiPlat-platform/kb/service.py
+    uses: convert_with_fallback
+    via: core.api.core_facade
+  - path: aiPlat-core/core/harness/document/converters/_pdf.py
+    uses: N/A
+    role: provider
+    note: "PdfConverter 是注册到 registry 的提供者，不是消费者"
+  - path: aiPlat-core/core/harness/document/converters/_docx.py
+    uses: N/A
+    role: provider
+  - path: aiPlat-core/core/harness/document/converters/_pptx.py
+    uses: N/A
+    role: provider
+  - path: aiPlat-core/core/harness/document/parsers.py
+    uses: get_document_registry
+  - path: aiPlat-core/core/harness/ontology_engine/document_parser.py
+    uses: get_document_registry
+
+legacy_fixes: []

@@ -724,24 +724,28 @@ class DocumentParser:
         return pairs
 
     def parse_image(self, file_path: str) -> Dict[str, Any]:
-        """Multi-modal: extract image metadata and OCR text (soft dependency: PIL/Pillow)."""
+        """Multi-modal: extract image metadata and OCR text via InfraOCRAdapter."""
         result = {"file": file_path, "format": "image", "text": "", "metadata": {}}
         try:
             from PIL import Image
-            img = Image.open(file_path)
-            result["metadata"] = {
-                "width": img.width, "height": img.height,
-                "mode": img.mode, "format_name": img.format,
-            }
-            try:
-                import pytesseract
-                result["text"] = pytesseract.image_to_string(img)[:2000]
-                result["ocr_available"] = True
-            except ImportError:
-                result["ocr_available"] = False
-                result["text"] = f"[Image: {img.width}x{img.height} {img.mode}]"
+            with Image.open(file_path) as img:
+                result["metadata"] = {
+                    "width": img.width, "height": img.height,
+                    "mode": img.mode, "format_name": img.format,
+                }
         except ImportError:
             result["text"] = f"[Image: {file_path} — PIL not available]"
+            return result
+
+        try:
+            from core.harness.infrastructure.infra_ocr_adapter import create_infra_ocr_adapter
+            ocr = create_infra_ocr_adapter()
+            result["text"] = ocr.ocr_text(image_path=file_path)[:2000]
+            result["ocr_available"] = True
+        except Exception:
+            result["ocr_available"] = False
+            meta = result.get("metadata", {})
+            result["text"] = f"[Image: {meta.get('width', '?')}x{meta.get('height', '?')} {meta.get('mode', '?')}]"
         except Exception as e:
             result["error"] = str(e)
         return result

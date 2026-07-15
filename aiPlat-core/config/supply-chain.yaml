@@ -1,0 +1,115 @@
+# 供应链知识图谱域本体
+name: "供应链知识图谱"
+namespace: "http://aiplat.local/ontology/supply-chain/"
+version: "1.0.0"
+description: "供应商-物料-产线-物流-库存-订单 域本体 — 多Agent协作建图演示域"
+
+classes:
+  Supplier:
+    label: 供应商
+    required_fields: [name, country, tier]
+    optional_fields: [capacity, lead_time_days, certifications, risk_level, compliance_score]
+    categories: [supply-chain]
+    confidence_threshold: 0.7
+
+  Material:
+    label: 物料
+    required_fields: [name, category]
+    optional_fields: [specification, min_order_qty, lead_time_variance]
+    categories: [supply-chain]
+
+  Product:
+    label: 产品
+    required_fields: [name, sku]
+    optional_fields: [bom_version, assembly_line, tier]
+    categories: [supply-chain]
+
+  ProductionLine:
+    label: 产线
+    required_fields: [name, factory_location]
+    optional_fields: [capacity_per_day, status]
+    categories: [supply-chain]
+
+  LogisticsRoute:
+    label: 物流路线
+    required_fields: [name, origin, destination, transport_mode]
+    optional_fields: [avg_transit_days, risk_score, alternative_routes]
+    categories: [supply-chain]
+
+  Order:
+    label: 订单
+    required_fields: [order_id, customer]
+    optional_fields: [status, priority, delivery_deadline]
+    categories: [supply-chain]
+
+  Warehouse:
+    label: 仓库
+    required_fields: [name, location]
+    optional_fields: [capacity, inventory_level, safety_stock_level]
+    categories: [supply-chain]
+
+  RiskEvent:
+    label: 风险事件
+    required_fields: [name, severity]
+    optional_fields: [probability, impact_scope, occurrence_date, mitigation_plan]
+    categories: [supply-chain]
+
+object_properties:
+  - name: supplies
+    label: 供应
+    domain: [Supplier]
+    range: [Material]
+  - name: composed_of
+    label: 组成
+    domain: [Product]
+    range: [Material]
+  - name: produced_at
+    label: 生产于
+    domain: [Product]
+    range: [ProductionLine]
+  - name: ships_via
+    label: 经由物流
+    domain: [Product, Material]
+    range: [LogisticsRoute]
+  - name: stored_at
+    label: 存储于
+    domain: [Product, Material]
+    range: [Warehouse]
+  - name: contains
+    label: 包含
+    domain: [Order]
+    range: [Product]
+  - name: affected_by
+    label: 受影响于
+    domain: [Supplier, LogisticsRoute, ProductionLine, Product, Material, Order]
+    range: [RiskEvent]
+  - name: depends_on
+    label: 依赖
+    domain: [Supplier]
+    range: [Supplier]
+
+inference_rules:
+  - name: supply_chain_risk_propagation
+    description: "产品物料供应商受风险影响 → 产品也受影响"
+    premises:
+      - relation: composed_of
+        direction: outgoing
+      - relation: supplies
+        direction: incoming
+      - relation: affected_by
+        direction: outgoing
+    conclusion:
+      relation: affected_by
+      label: "受风险传播影响"
+      confidence: 0.8
+  - name: logistics_disruption_impact
+    description: "物流路线受风险影响 → 关联产品存在库存风险"
+    premises:
+      - relation: ships_via
+        direction: outgoing
+      - relation: affected_by
+        direction: outgoing
+    conclusion:
+      relation: affected_by
+      label: "物流中断→库存风险"
+      confidence: 0.9

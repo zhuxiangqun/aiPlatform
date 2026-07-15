@@ -501,7 +501,7 @@ def _map_capabilities_to_skills(capabilities: list, skill_catalog: list) -> list
     scored = []
     for skill in skill_catalog:
         desc = (skill.get('description','') or '').lower()
-        trigs = ' '.join(skill.get('triggers',[]) or []).lower()
+        trigs = ' '.join(str(t) for t in (skill.get('triggers') or [])).lower()
         cat = (skill.get('category','') or '').lower()
         name = (skill.get('name','') or '').lower()
         disp = (skill.get('display_name','') or '').lower()
@@ -568,6 +568,38 @@ def _ensure_memory_config(raw) -> dict:
     if isinstance(raw, dict) and raw:
         return raw
     return {"type": "short_term", "recall_count": 5}
+
+
+def _suggest_skill_name(capability: str) -> str:
+    """Suggest a Skill name for a given capability."""
+    # Map common capability keywords to Chinese Skill names
+    _name_map = {
+        "诊断": "客户诊断", "分析": "数据分析", "检索": "知识检索",
+        "文档": "文档处理", "代码": "代码生成", "测试": "测试执行",
+        "审查": "内容审查", "监控": "监控告警", "报告": "报告生成",
+        "安全": "安全检查", "合规": "合规审核", "检测": "异常检测",
+        "图谱": "关联图谱", "问答": "智能问答", "摘要": "文本摘要",
+    }
+    for kw, name in _name_map.items():
+        if kw in capability:
+            return name
+    return capability[:8]
+
+
+def _infer_missing_tools_for_skills(skills: list) -> list:
+    """Infer tool needs from matched skills."""
+    _skill_tool_map = {
+        "field-assessment": [{"tool": "file_read", "reason": "诊断需要读取客户提供的配置文件或样例数据"}],
+        "knowledge_retrieval": [{"tool": "database_query", "reason": "知识检索需要查询数据库获取文档"}],
+        "document_analysis": [{"tool": "file_read", "reason": "文档分析需要读取PDF/Word文件"}],
+        "code_generation": [{"tool": "code_execution", "reason": "代码生成后需要执行验证"}],
+    }
+    tools = []
+    for skill in skills:
+        for item in _skill_tool_map.get(skill, []):
+            if item not in tools:
+                tools.append(item)
+    return tools
 
 # ── Shared file-based async task store (workers=2 compatible) ──────────────
 
@@ -774,11 +806,11 @@ async def _do_auto_fill(req: AgentAutoFillRequest) -> AgentAutoFillResponse:
         f"Agent名称: {req.name or '(待填写)'}\n"
         f"描述: {req.description or '(无)'}\n"
         f"{role_hint}\n\n"
-        f"可用技能(请从列表选择2-3个最匹配的id):\n{skills_text}\n\n"
+        f"可用技能列表（必须从中选择，禁止使用不存在于列表中的id）:\n{skills_text}\n\n"
         f'输出JSON: {{"agent_type":"react",'
         f'"skills":["skill-id1","skill-id2"],"sop_text":"1. x\\n2. y\\n3. z",'
         f'"memory_config":{{}},"reasoning":"..."}}\n'
-        f"skills必须使用以上列表的id。sop_text定义Agent的工作流程。"
+        f"skills必须严格从以上列表选取。若无匹配项skills留空[]。sop_text中禁止引用你未选的技能。"
     )
     prompt = inline_prompt
 
@@ -821,20 +853,86 @@ async def _do_auto_fill(req: AgentAutoFillRequest) -> AgentAutoFillResponse:
     for s in skill_catalog:
         _name_to_id[s["name"]] = s.get("id", s["name"])
     skills = []
+    missing_skills = []
     llm_skills = data.get("skills", [])
     if isinstance(llm_skills, list) and llm_skills:
-        # convert any names to ids, then filter to valid ids
-        mapped = [_name_to_id.get(s, s) for s in llm_skills if isinstance(s, str)]
-        skills = [s for s in mapped if s in catalog_ids][:5]
-    if not skills:
-        capabilities = list((rd or {}).get("required_capabilities", []) or [])
-        skills = _map_capabilities_to_skills(capabilities, skill_catalog) if capabilities else []
+        unknown_skills = []
+        mapped = []
+        for s in llm_skills:
+            if not isinstance(s, str): continue
+            sid = _name_to_id.get(s, s)
+            if sid in catalog_ids:
+                mapped.append(sid)
+            else:
+                unknown_skills.append(s)
+        skills = mapped[:5]
+        for s in unknown_skills[:5]:
+            missing_skills.append({
+                "capability": s,
+                "suggested_name": s,
+                "how_to_create": f"Skill库 → 新建 → 名称'{s}' → 编辑SOP → 保存 → 回到本页重新AI填充",
+            })
     tools = []
+
+    # ── Detect missing assets and provide actionable guidance ──
+    capabilities = list((rd or {}).get("required_capabilities", []) or [])
+    # If no role definition, infer capabilities from description keywords
+    if not capabilities:
+        desc = str(getattr(req, "description", "") or "").strip()
+        _desc_caps = []
+        for kw, cap in [("诊断", "诊断分析"), ("检测", "异常检测"), ("分析", "数据分析"),
+                         ("文档", "文档处理"), ("检索", "知识检索"), ("图谱", "关联图谱"),
+                         ("代码", "代码生成"), ("安全", "安全检查"), ("监控", "监控告警")]:
+            if kw in desc: _desc_caps.append(cap)
+        capabilities = _desc_caps[:5]
+    if not skills:
+        skills = _map_capabilities_to_skills(capabilities, skill_catalog) if capabilities else []
+    else:
+        # Supplement: also map capabilities to skills (LLM may miss some)
+        extra = _map_capabilities_to_skills(capabilities, skill_catalog) if capabilities else []
+        for s in extra:
+            if s not in skills:
+                skills.append(s)
+    if not skills and capabilities:
+        for cap in capabilities[:5]:
+            missing_skills.append({
+                "capability": cap,
+                "suggested_name": _suggest_skill_name(cap),
+                "how_to_create": f"Skill库 → 新建 → 名称'{_suggest_skill_name(cap)}' → 编辑SOP → 保存 → 回到本页重新AI填充",
+            })
+
+    # If everything is empty, provide a generic guidance
+    if not skills and not missing_skills:
+        missing_skills.append({
+            "capability": "诊断分析",
+            "suggested_name": "field-assessment",
+            "how_to_create": "Skill库 → 新建 → 名称'field-assessment' → 粘贴下方SOP → 保存 → 回到本页重新AI填充",
+        })
+
+    missing_tools = []
+    if not tools and skills:
+        missing_tools = _infer_missing_tools_for_skills(skills)
+
+    missing_mcps: list = []
+    desc = getattr(req, "description", "") or ""
+    if desc and any(kw in str(desc) for kw in ("对接", "外部", "API", "数据库", "IM", "飞书", "企微")):
+        missing_mcps = [{
+            "type": "external_api",
+            "description": "Agent描述涉及外部系统对接，建议配置MCP连接",
+            "how_to_create": "应用能力层 → MCP库 → 新建 → 配置连接参数 → 测试连通 → 回到本页重新AI填充",
+        }]
 
     # ── SOP: LLM-generated > role-definition-derived > empty ──
     sop_text = data.get("sop_text", "")
     if not sop_text and rd and isinstance(rd, dict):
         sop_text = _generate_sop_from_role(rd, skills)
+
+    # Auto-sync system_prompt from sop_text if missing
+    if (not config.get("system_prompt") or not str(config.get("system_prompt", "")).strip()) and sop_text:
+        lines = sop_text.strip().split('\n')
+        first = [l.strip() for l in lines if l.strip() and not l.strip().startswith('#')]
+        if first:
+            config["system_prompt"] = first[0][:200]
 
     return AgentAutoFillResponse(
         agent_type=agent_type,
@@ -842,6 +940,9 @@ async def _do_auto_fill(req: AgentAutoFillRequest) -> AgentAutoFillResponse:
         skills=skills,
         tools=tools,
         mcp_ids=[],
+        missing_skills=missing_skills,
+        missing_tools=missing_tools,
+        missing_mcps=missing_mcps,
         agent_ids=[],
         memory_config=_ensure_memory_config(data.get("memory_config")),
         sop_text=sop_text,
@@ -2431,7 +2532,7 @@ class AgentAuditResponse(BaseModel):
     summary: Dict[str, Any]
 
 
-@router.post("/workspace/agents/{agent_id}/audit", response_model=Dict[str, Any])
+@router.post("/workspace/agents/{agent_id}/audit", response_model=AgentAuditResponse)
 async def audit_agent_config(agent_id: str) -> AgentAuditResponse:
     u"""AI 审核：检查 Agent 配置的问题点及建议。规则驱动，毫秒返回，无需 LLM。
 

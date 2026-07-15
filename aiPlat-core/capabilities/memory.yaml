@@ -1,0 +1,67 @@
+# ── Capability Contract: Memory (记忆系统) ──
+# All memory operations must go through MemoryManager.
+
+domain: ai-runtime
+capability: memory
+description: "记忆系统——四层记忆架构（Working/Episodic/Semantic/Task Skills）"
+owner: core-memory
+version: "1.0.0"
+updated: "2026-07-13"
+
+authoritative:
+  path: aiPlat-core/core/harness/memory/manager.py
+  entry_point: get_memory_manager
+  class: MemoryManager
+  factory: get_memory_manager
+  public_symbols:
+    - MemoryManager
+    - get_memory_manager
+    - build_context
+
+forbidden_direct_imports: []
+forbidden_patterns:
+  - "LLM call bypassing MemoryManager.build_context()"
+
+context_requirement:
+  must_call_before: build_context
+  reason: "5 级上下文压缩体系 §5.12"
+
+methods:
+  - name: get_memory_manager
+    signature: "() -> MemoryManager"
+    purpose: "获取全局记忆管理单例"
+  - name: build_context
+    signature: "(messages, **kwargs) -> List[Message]"
+    purpose: "构建包含记忆层的完整上下文"
+  - name: save_interaction
+    signature: "(role, content, **meta) -> None"
+    purpose: "保存交互到 Episodic 记忆"
+
+consumers:
+  - path: aiPlat-core/core/harness/execution/loop/_facade.py
+    uses: build_context
+  - path: aiPlat-core/core/harness/execution/loop/compressor.py
+    uses: get_memory_manager
+  - path: aiPlat-core/core/api/routers/memory.py
+    uses: get_memory_manager
+  - path: aiPlat-core/core/api/intents.py
+    uses: get_memory_manager
+  - path: aiPlat-core/core/api/facades/runtime_facade.py
+    uses: get_memory_manager
+  - path: aiPlat-core/core/apps/a2a/server.py
+    uses: get_memory_manager
+
+consumer_patterns:
+  - "harness/execution/"
+  - "harness/integration"
+  - "harness/kernel/"
+  - "harness/knowledge/"
+  - "harness/syscalls/skill"
+  - "management/"
+  - "builder/"
+  - "api/"
+  - "app/"
+  - "infra/"
+  - "server\\.py"
+
+legacy_fixes: []

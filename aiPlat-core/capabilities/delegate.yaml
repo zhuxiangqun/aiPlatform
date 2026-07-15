@@ -1,0 +1,26 @@
+# Capability Contract: Delegate Manager (委托管理)
+domain: ai-runtime
+capability: delegate
+description: "委托管理——跨 Agent 任务委派和服务委托的统一入口"
+owner: core-runtime
+version: "1.0.0"
+updated: "2026-07-13"
+
+authoritative:
+  path: aiPlat-core/core/harness/infrastructure/delegate_tool.py
+  entry_point: get_delegate_manager
+  class: DelegateManager
+  factory: get_delegate_manager
+  public_symbols:
+    - DelegateManager
+    - get_delegate_manager
+
+methods:
+  - name: get_delegate_manager
+    signature: "() -> DelegateManager"
+    purpose: "获取全局委托管理器单例"
+
+consumer_patterns:
+  - "harness/"
+  - "apps/"
+  - "api/"

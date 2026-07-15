@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-07-07T16:54:29",
+  "generated_at": "2026-07-08T09:51:09",
   "spec_version": "1.0.0",
   "frameworks": {
     "framework_one": {
@@ -2116,7 +2116,7 @@
       "id": "A1.2",
       "label": "agent运行自动打分次数(P0-2)",
       "declared": "L4",
-      "actual": 66,
+      "actual": 67,
       "verdict": "active",
       "note": "能且做过"
     },

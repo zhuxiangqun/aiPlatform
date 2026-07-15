@@ -1,6 +1,6 @@
 # aiPlat-management 实施状态（As-Is vs To-Be）
 
-日期：2026-04-16  
+日期：2026-04-16 (updated 2026-07-13)  
 适用范围：`aiPlat-management/`（管理平面）
 
 > 本文件用于**澄清“设计正确（To‑Be）”与“当前实现（As‑Is）”**的差异，避免把原型代码误认为已完成的生产实现。
@@ -16,12 +16,12 @@
 
 | 模块 | To‑Be（设计目标） | As‑Is（当前代码） | 主要差距/风险 |
 |---|---|---|---|
-| API Gateway（统一入口） | 所有管理动作统一从 management 入口进入；向下游转发/聚合；鉴权与审计在此落点 | `management/api/infra.py`、`management/api/core.py` 已有 HTTP client 转发；鉴权/审计缺失 | 缺少 authn/authz；部分功能绕开 app.state 形成重复实例 |
-| Dashboard（总览） | 聚合四层 status/metrics/health；数据来自各层 API；统一计算 overall_status | `DashboardAggregator` 存在；但 `dashboard/infra_adapter.py` 走本机探测，core/platform/app 多为 stub | 违反边界；数据口径不统一；配置不生效风险 |
-| Monitoring（采集） | 定时采集 metrics 写入时序存储（InfluxDB 等）；对外提供图表查询 | collector 框架存在；存储/调度未形成闭环 | “指标采集→存储→查询”断裂 |
-| Alerting（告警） | 规则持久化 + 生命周期 + 去重/抑制 + 通知通道 + 历史查询 | `AlertEngine`/`active_alerts` 纯内存原型 | 重启丢失；无通知；无历史/审计 |
-| Diagnostics（诊断） | 诊断逻辑在各层；management 聚合/标准化输出；支持 trace/logs 链接 | `api/diagnostics.py` 存在；`diagnostics/*` 大量 mock；`trace` 接口未实现 | 诊断结果不可信；tracing/logging 断裂 |
-| Config（配置） | 版本控制/发布/回滚；配置落库；对各层下发并记录审计 | `ConfigManager` 内存版本链；无下发 | 重启丢失；无法治理；与文档承诺不符 |
+| API Gateway（统一入口） | 所有管理动作统一从 management 入口进入；向下游转发/聚合；鉴权与审计在此落点 | `management/api/infra.py`、`management/api/core.py` 已有 HTTP client 转发；鉴权/审计缺失 | ✅ RBAC 已完成 (policy_gate.py + permissions.yaml)；JWT 透传已实现 (X-AIPLAT-*) |
+| Dashboard（总览） | 聚合四层 status/metrics/health；数据来自各层 API；统一计算 overall_status | `DashboardAggregator` 存在；但 `dashboard/infra_adapter.py` 走本机探测，core/platform/app 多为 stub | ⚠️ 部分完成 — core diagnostics 端点已接线 (24类检查)；infra 本机探测仍存在 |
+| Monitoring（采集） | 定时采集 metrics 写入时序存储（InfluxDB 等）；对外提供图表查询 | collector 框架存在；存储/调度未形成闭环 | ⚠️ OpenTelemetry + Prometheus /metrics 已接线 (Phase 0.2)；时序存储未入 |
+| Alerting（告警） | 规则持久化 + 生命周期 + 去重/抑制 + 通知通道 + 历史查询 | `AlertEngine`/`active_alerts` 纯内存原型 | ⚠️ 配置已落库 (config/*.yaml)；通知通道未完成 |
+| Diagnostics（诊断） | 诊断逻辑在各层；management 聚合/标准化输出；支持 trace/logs 链接 | `api/diagnostics.py` 存在；`diagnostics/*` 大量 mock；`trace` 接口未实现 | ⚠️ trace_id/span_id 全链路追踪已实现 (Phase 0.2)；诊断 mock 已减少 |
+| Config（配置） | 版本控制/发布/回滚；配置落库；对各层下发并记录审计 | `ConfigManager` 内存版本链；无下发 | ⚠️ 配置已迁移到 YAML (config/*.yaml)；版本控制/下发未完成 |
 
 ## 2.1 已落地能力补充（As-Is，2026-04-23）
 
@@ -41,7 +41,7 @@
 
 ## 3. 推荐里程碑（从 As‑Is 迁移到 To‑Be）
 
-**M0（P0）**：统一依赖注入（所有 API 使用 `app.state`），移除路由模块的重复实例。  
-**M1（P0）**：Dashboard/Diagnostics 全部改为 HTTP 数据源（各层 status/metrics/health），移除 management 本机探测与 mock。  
-**M2（P1）**：Config/Alerting 最小落库（SQLite 即可）+ 审计字段（author/trace_id）+ 回滚能力。  
-**M3（P1/P2）**：鉴权与审计打通；tracing/logs 在 UI 与 API 中可见并可关联到 core 的 trace/run/checkpoint。
+**M0（P0）**：统一依赖注入（所有 API 使用 `app.state`），移除路由模块的重复实例。 ✅ 部分完成 — core Phase 9 DI 12/18 服务转换完成, management 侧仍需 DI 统一。  
+**M1（P0）**：Dashboard/Diagnostics 全部改为 HTTP 数据源（各层 status/metrics/health），移除 management 本机探测与 mock。 ⚠️ core diagnostics 已通过 HTTP API 提供；infra 本机探测仍存在。  
+**M2（P1）**：Config/Alerting 最小落库（SQLite 即可）+ 审计字段（author/trace_id）+ 回滚能力。 ⚠️ config YAML 已落地；alert 持久化 + 回滚未完成。  
+**M3（P1/P2）**：鉴权与审计打通；tracing/logs 在 UI 与 API 中可见并可关联到 core 的 trace/run/checkpoint。 ⚠️ trace_id/span_id 已实现；UI 关联未完成。

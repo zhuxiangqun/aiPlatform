@@ -27,44 +27,19 @@ from .protocol import (
 logger = logging.getLogger(__name__)
 
 
-class MCPCircuitBreaker:
+from core.harness.infrastructure.circuit_breaker import BaseCircuitBreaker
+
+class MCPCircuitBreaker(BaseCircuitBreaker):
     """Phase 51: Circuit breaker for MCP server fault tolerance.
 
-    Three states: CLOSED (normal) → OPEN (fuse blown) → HALF_OPEN (probing).
-    After `failure_threshold` consecutive failures, opens for `recovery_timeout` seconds.
+    Inherits the standard closed/open/half_open state machine from BaseCircuitBreaker.
     """
     def __init__(self, failure_threshold: int = 3, recovery_timeout: float = 30.0):
-        self.failure_threshold = failure_threshold
-        self.recovery_timeout = recovery_timeout
-        self._failures = 0
-        self._last_failure = 0.0
-        self._tripped = False
-
-    @property
-    def is_open(self) -> bool:
-        if not self._tripped:
-            return False
-        if time.time() - self._last_failure > self.recovery_timeout:
-            self._tripped = False
-            self._failures = 0
-            logger.info("[mcp] circuit breaker reset (recovery timeout)")
-            return False
-        return True
-
-    def record_failure(self) -> None:
-        self._failures += 1
-        self._last_failure = time.time()
-        if self._failures >= self.failure_threshold:
-            self._tripped = True
-            logger.warning(
-                "[mcp] circuit breaker OPEN (%d consecutive failures)", self._failures
-            )
-
-    def record_success(self) -> None:
-        if self._failures > 0:
-            logger.info("[mcp] circuit breaker: failure streak reset")
-        self._failures = 0
-        self._tripped = False
+        super().__init__(
+            failure_threshold=failure_threshold,
+            recovery_timeout=recovery_timeout,
+            name="mcp",
+        )
 
 
 class MCPClient:

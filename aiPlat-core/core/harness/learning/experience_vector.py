@@ -1,3 +1,5 @@
+from __future__ import annotations
+from core.utils.math_utils import cosine_similarity
 """
 Experience Vector Cache — 经验向量存储与检索 (Phase 5.1)
 
@@ -16,7 +18,6 @@ Usage:
     context = await cache.enrich_skill_draft(error_description)
 """
 
-from __future__ import annotations
 import logging
 
 import json

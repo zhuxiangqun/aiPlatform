@@ -1,0 +1,86 @@
+# ── Capability Contract: Skills (技能) ──
+# All skill operations must go through SkillRegistry and sys_skill_call.
+
+domain: ai-runtime
+capability: skills
+description: "技能管理——技能发现、注册、执行和生命周期管理"
+owner: core-runtime
+version: "1.0.0"
+updated: "2026-07-13"
+
+authoritative:
+  path: aiPlat-core/core/apps/skills/registry.py
+  entry_point: get_skill_registry
+  class: SkillRegistry
+  factory: get_skill_registry
+  public_symbols:
+    - SkillRegistry
+    - get_skill_registry
+    - sys_skill_call
+
+forbidden_direct_imports: []
+forbidden_patterns:
+  - "skill execution bypassing SkillExecutor"
+
+context_requirement:
+  must_call_before: skill_executor
+  module: aiPlat-core/core/apps/skills/executor.py
+
+methods:
+  - name: get_skill_registry
+    signature: "() -> SkillRegistry"
+    purpose: "获取全局技能注册表单例"
+  - name: register
+    signature: "(skill: SkillConfig) -> None"
+    purpose: "注册技能"
+  - name: get
+    signature: "(name: str) -> Optional[Skill]"
+    purpose: "按名称获取技能"
+  - name: list_all
+    signature: "() -> List[Skill]"
+    purpose: "列出所有已注册技能"
+  - name: sys_skill_call
+    signature: "(skill, params, **kwargs) -> SkillResult"
+    purpose: "通过 syscall 通道执行技能"
+
+consumers:
+  - path: aiPlat-core/core/harness/execution/loop/_facade.py
+    uses: sys_skill_call
+  - path: aiPlat-core/core/apps/agents/materials_chat.py
+    uses: sys_skill_call
+  - path: aiPlat-core/core/api/core_facade.py
+    uses: get_skill_registry
+  - path: aiPlat-core/core/api/routers/workspace_skills.py
+    uses: get_skill_registry
+  - path: aiPlat-core/core/management/skill_manager.py
+    uses: get_skill_registry
+  - path: aiPlat-core/core/harness/syscalls/skill.py
+    uses: get_skill_registry
+
+# Patterns for bulk-approved consumers (56+ callers — verified through §F analysis)
+consumer_patterns:
+  - "apps/skills/"
+  - "harness/learning/"
+  - "api/facades/"
+  - "api/intents"
+  - "api/routers/workspace"
+  - "api/routers/engine_skills"
+  - "api/routers/wiki"
+  - "harness/knowledge/"
+  - "harness/integration"
+  - "harness/execution/"
+  - "harness/infrastructure/gates/skills"
+  - "harness/memory/"
+  - "harness/models/"
+  - "harness/optimization/"
+  - "apps/agents/base"
+  - "apps/tools/"
+  - "apps/a2a/"
+  - "management/"
+  - "server\\.py"
+  - "builder/"
+  - "api/routers/workspace_agents"
+  - "harness/syscalls/"
+  - "api/routers/skill_marketplace"
+
+legacy_fixes: []

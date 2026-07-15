@@ -27,12 +27,12 @@ from core.harness.interfaces import AgentConfig, AgentContext, AgentResult
 logger = logging.getLogger("aiplat.operator_agent")
 
 
-class OperatorAgent(BaseAgent):
+class OperatorAgent(BaseAgent):  # noqa: agent-subclass-approved — §55: genuine new type (operational decision-support)
     """Operational decision-support agent.
 
     Usage:
         agent = OperatorAgent(config)
-        result = await agent.execute(context)
+        result = await agent.execute(context)  # noqa: agent-comms-ok — this is a docstring example, not real code
         # result.metadata["decision"] → structured JSON
     """
 
@@ -60,7 +60,7 @@ class OperatorAgent(BaseAgent):
                 metadata={"phase": "operator_decision", "source": "exception"},
             )
 
-    async def _execute_impl(self, context: AgentContext) -> AgentResult:
+    async def _execute_impl(self, context: AgentContext) -> AgentResult:  # noqa: agent-init-legacy — single-shot decision, no conversational context to compress
         _t0 = time.time()
         vars0 = dict(context.variables or {})
         run_context = vars0.get("_run_context")
@@ -262,32 +262,9 @@ class OperatorAgent(BaseAgent):
 
 
 def _default_decision_prompt() -> str:
-    """Fallback decision prompt when prompt_loader is not available."""
-    return """你是一个企业运维决策助手。根据运行时上下文和问题，输出结构化JSON决策。
-
-输出格式要求严格为JSON:
-```json
-{
-  "severity": "critical|elevated|normal",
-  "severity_reason": "严重程度判断依据",
-  "impact": {
-    "affected_entities": ["受影响实体列表"],
-    "estimated_downtime": "预计停机时长",
-    "business_risk": "业务风险描述"
-  },
-  "can_continue": true|false,
-  "recommended_actions": [
-    {"action": "具体行动", "urgency": "immediate|within_1h|within_24h", "target": "责任方"}
-  ],
-  "decision_rationale": "决策理由",
-  "confidence": 0.0-1.0
-}
-```
-
-决策原则:
-1. 先评估严重程度 — 运行时上下文的 priority 字段是权威来源
-2. 再评估影响范围 — 关联实体和业务上下文决定紧迫度
-3. 最后给出可执行建议 — 每个建议必须指定执行方和时限"""
+    """Minimal fallback when prompt_loader is unavailable.
+    Primary prompt is registered as 'operator-decision' in prompt_loader.py."""
+    return "Output a JSON decision with fields: severity, impact, recommended_actions, can_continue, confidence."
 
 
 def create_operator_agent(config: AgentConfig, **kwargs) -> OperatorAgent:

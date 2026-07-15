@@ -504,60 +504,38 @@ def _sync_wiki_retrieve(query: str, wiki_titles: List[str] = None,
 class WikiCircuitBreaker:
     u"""Circuit breaker for Wiki retrieval — prevents cascading failures.
 
-    States: CLOSED (normal) → OPEN (after failures) → HALF_OPEN (probe) → CLOSED/OPEN
-    
-    Isolated per (domain_id, tenant_id) to prevent one tenant's failure from affecting others.
+    Isolated per (domain_id, tenant_id) using BaseCircuitBreaker instances
+    to prevent one tenant's failure from affecting others.
     """
-    STATE_CLOSED = "closed"
-    STATE_OPEN = "open"
-    STATE_HALF_OPEN = "half_open"
-
+    
     def __init__(self, failure_threshold: int = 3, recovery_timeout: float = 60.0):
+        import threading
+        from core.harness.infrastructure.circuit_breaker import BaseCircuitBreaker
         self.failure_threshold = failure_threshold
         self.recovery_timeout = recovery_timeout
-        import threading
         self._lock = threading.Lock()
-        self._breakers: dict = {}  # {(domain_id, tenant_id): {'state', 'failures', 'last_failure'}}
+        self._breakers: dict = {}
 
-    def _get(self, domain_id: str = "default", tenant_id: str = "default") -> dict:
+    def _get(self, domain_id: str = "default", tenant_id: str = "default"):
+        from core.harness.infrastructure.circuit_breaker import BaseCircuitBreaker
         key = f"{domain_id}:{tenant_id}"
         with self._lock:
             if key not in self._breakers:
-                self._breakers[key] = {
-                    "state": self.STATE_CLOSED,
-                    "failures": 0,
-                    "last_failure": 0.0,
-                }
+                self._breakers[key] = BaseCircuitBreaker(
+                    failure_threshold=self.failure_threshold,
+                    recovery_timeout=self.recovery_timeout,
+                    name=f"wiki:{key}",
+                )
             return self._breakers[key]
 
     def allow_request(self, domain_id: str = "default", tenant_id: str = "default") -> bool:
-        u"""Check if a wiki request should be attempted."""
-        import time
-        b = self._get(domain_id, tenant_id)
-        with self._lock:
-            if b["state"] == self.STATE_CLOSED:
-                return True
-            if b["state"] == self.STATE_OPEN:
-                if time.time() - b["last_failure"] >= self.recovery_timeout:
-                    b["state"] = self.STATE_HALF_OPEN
-                    return True
-                return False
-            return True  # HALF_OPEN
+        return self._get(domain_id, tenant_id).allow()
 
     def record_success(self, domain_id: str = "default", tenant_id: str = "default"):
-        b = self._get(domain_id, tenant_id)
-        with self._lock:
-            b["failures"] = 0
-            b["state"] = self.STATE_CLOSED
+        self._get(domain_id, tenant_id).success()
 
     def record_failure(self, domain_id: str = "default", tenant_id: str = "default"):
-        import time
-        b = self._get(domain_id, tenant_id)
-        with self._lock:
-            b["failures"] += 1
-            b["last_failure"] = time.time()
-            if b["failures"] >= self.failure_threshold:
-                b["state"] = self.STATE_OPEN
+        self._get(domain_id, tenant_id).failure()
 
 
 # Global wiki circuit breaker — isolated per (domain, tenant)

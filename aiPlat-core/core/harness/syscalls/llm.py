@@ -547,6 +547,17 @@ def _validate_response(response: Any) -> Optional[str]:
     return None
 
 
+
+async def _save_interaction_bg(prompt: str, response: str) -> None:
+    """Save interaction to memory in background (best-effort)."""
+    try:
+        from core.harness.memory.manager import get_memory_manager
+        mgr = get_memory_manager()
+        if mgr:
+            await mgr.save_interaction(user_message=prompt, assistant_message=response)
+    except Exception:
+        pass
+
 async def sys_llm_generate(
     model: Any,
     prompt: Union[str, List[Message]],
@@ -558,6 +569,7 @@ async def sys_llm_generate(
     response_format: Optional[Dict[str, Any]] = None,
     extra_context: Optional[Dict[str, Any]] = None,
     gate_mode: str = "full",
+    inject_context: bool = True,
 ) -> Any:
     """
     Execute a model generation call.
@@ -973,6 +985,24 @@ async def sys_llm_generate(
                     logging.warning(str(e), exc_info=True)
         end_ts = time.time()
         await trace_gate.end(span, success=True)
+
+        # ── FeedbackLoop hook ──
+        if inject_context:
+            try:
+                from core.harness.feedback_loops.local import get_local_feedback, FeedbackLevel, FeedbackType
+                fb = get_local_feedback()
+                if fb:
+                    t = (prepared[-1].get("content", "") if isinstance(prepared, list) and prepared else str(prepared))[:200]
+                    r = getattr(result, "content", str(result))[:200]
+                    fb.emit(FeedbackLevel.INFO, FeedbackType.LLM_RESPONSE,
+                            source="sys_llm_generate", content={"prompt": t, "output": r})
+                    with open("/tmp/sl_hook.log", "a") as _fh:
+                        _fh.write(f"HIT: prompt_len={len(t)} output_len={len(r)} source=sys_llm_generate\n")
+            except Exception as _eh:
+                with open("/tmp/sl_hook.log", "a") as _fh:
+                    import traceback as _tb
+                    _fh.write(f"MISS: {_eh}\n{_tb.format_exc()}\n")
+
         runtime = get_kernel_runtime()
         store = getattr(runtime, "execution_store", None) if runtime else None
         if store is not None:

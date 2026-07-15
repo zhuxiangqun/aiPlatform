@@ -8,13 +8,31 @@ import os, sqlite3, threading, time
 from datetime import datetime, timezone, timedelta
 from typing import Optional
 
-# SLA tiers from SECURITY.md
-SLA_TIERS = {
-    "critical": {"cvss_min": 9.0, "ack_hours": 4, "fix_hours": 24},
-    "high":     {"cvss_min": 7.0, "ack_hours": 24, "fix_hours": 168},   # 7 days
-    "medium":   {"cvss_min": 4.0, "ack_hours": 48, "fix_hours": 720},    # 30 days
-    "low":      {"cvss_min": 0.0, "ack_hours": 168, "fix_hours": 2160},  # 90 days
-}
+def _load_sla_tiers() -> dict:
+    """Load SLA tiers from config/sla_tiers.yaml, fallback to inline defaults."""
+    yaml_path = os.path.join(
+        os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
+        "config", "sla_tiers.yaml"
+    )
+    try:
+        import yaml as _yaml  # type: ignore
+        with open(yaml_path) as f:
+            data = _yaml.safe_load(f)
+        if isinstance(data, dict):
+            return dict(data)
+    except Exception:
+        pass
+    
+    # Fallback inline defaults
+    return {
+        "critical": {"cvss_min": 9.0, "ack_hours": 4, "fix_hours": 24},
+        "high":     {"cvss_min": 7.0, "ack_hours": 24, "fix_hours": 168},
+        "medium":   {"cvss_min": 4.0, "ack_hours": 48, "fix_hours": 720},
+        "low":      {"cvss_min": 0.0, "ack_hours": 168, "fix_hours": 2160},
+    }
+
+# SLA tiers from SECURITY.md (config/sla_tiers.yaml)
+SLA_TIERS = _load_sla_tiers()
 
 
 class VulnerabilitySLATracker:

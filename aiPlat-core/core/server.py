@@ -18,6 +18,7 @@ from pathlib import Path
 import uvicorn
 
 from core.utils.ids import new_prefixed_id
+from core.utils.paths import get_aiplat_data_dir
 from core.security.rbac import check_permission as rbac_check_permission, should_enforce as rbac_should_enforce
 from core.api.deps.rbac import actor_from_http as _actor_from_http_dep, rbac_guard as _rbac_guard_dep
 from core.api.utils import governance as _gov
@@ -635,7 +636,7 @@ async def lifespan(app: FastAPI):
 
         # Use same DB path as platform
         _kb_db_path = _os2.path.expanduser(
-            _os2.getenv("AIPLAT_KB_DB_PATH", "~/.aiplat/data/kb/aiplat_knowledge.sqlite3"))
+            get_aiplat_data_dir("data/kb/aiplat_knowledge.sqlite3"))
         _os2.makedirs(_os2.path.dirname(_kb_db_path), exist_ok=True)
 
         # Minimal SQLite-backed KB provider
@@ -1320,7 +1321,7 @@ async def lifespan(app: FastAPI):
         # Core execution store
         ensure_wal_enabled()
         # Knowledge bases (tenant-specific paths will be handled on first access)
-        kb_base = os.path.expanduser(os.getenv("AIPLAT_KB_TENANTS_DIR", "~/.aiplat/kb/tenants"))
+        kb_base = get_aiplat_data_dir("kb/tenants")
         for root, dirs, files in os.walk(kb_base):
             for f in files:
                 if f.endswith(".sqlite3"):

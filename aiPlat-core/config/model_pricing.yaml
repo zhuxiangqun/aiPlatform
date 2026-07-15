@@ -1,0 +1,35 @@
+# Model pricing per 1M tokens (USD).
+# Overridable via AIPLAT_MODEL_PRICING env var (JSON format).
+# Source: cost_tracker.py — migrated from hardcoded dict 2026-07-13.
+
+deepseek-v4-pro:
+  input: 0.55
+  output: 2.19
+
+deepseek-chat:
+  input: 0.14
+  output: 0.28
+
+deepseek-coder:
+  input: 0.14
+  output: 0.28
+
+qwen2.5-coder:7b:
+  input: 0.0
+  output: 0.0
+
+qwen2.5:3b:
+  input: 0.0
+  output: 0.0
+
+gpt-4o:
+  input: 2.50
+  output: 10.00
+
+gpt-4o-mini:
+  input: 0.15
+  output: 0.60
+
+claude-3.5-sonnet:
+  input: 3.00
+  output: 15.00

@@ -1,3 +1,4 @@
+from core.utils.math_utils import cosine_similarity
 """
 Long-term Memory - 长期记忆
 """

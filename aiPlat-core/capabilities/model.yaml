@@ -1,0 +1,55 @@
+# ── Capability Contract: 模型选择 ──
+# Model selection must go through best_model_for_purpose() or create_selected_adapter().
+
+domain: ai-runtime
+capability: model
+description: "模型选择——发现、路由、选择最合适的模型"
+owner: core-infra
+version: "1.0.0"
+updated: "2026-07-13"
+
+authoritative:
+  path: aiPlat-core/core/harness/utils/model_injection.py
+  entry_function: best_model_for_purpose
+  factory: create_selected_adapter
+  public_symbols:
+    - best_model_for_purpose
+    - create_selected_adapter
+    - get_default_model
+
+forbidden_direct_imports: []
+forbidden_patterns:
+  - "os.getenv(\\\"AIPLAT_.*MODEL"
+  - "hardcoded_model_name"
+
+methods:
+  - name: best_model_for_purpose
+    signature: "(purpose: str, *, messages: List = None) -> Optional[str]"
+    purpose: "根据用途自动选择最合适的模型"
+  - name: create_selected_adapter
+    signature: "(capability: str, **kwargs) -> BaseModelAdapter"
+    purpose: "创建选定的模型适配器"
+
+consumers:
+  - path: aiPlat-core/core/harness/syscalls/llm.py
+    uses: best_model_for_purpose
+  - path: aiPlat-core/core/harness/memory/manager.py
+    uses: best_model_for_purpose
+  - path: aiPlat-core/core/harness/routing/model_tier_router.py
+    uses: N/A
+    role: provider
+    note: "T1-T5 分层路由器 — 被 best_model_for_purpose 调用，不是消费者"
+  - path: aiPlat-core/core/api/routers/fde.py
+    uses: best_model_for_purpose
+    note: "FDE 诊断对话框"
+
+# ── 已知例外 ──
+known_exceptions:
+  - path: aiPlat-core/core/harness/optimization/cost_tracker.py
+    reason: "定价配置，不是模型选择。AIPLAT_MODEL_PRICING 是定价数据不是模型名"
+    env_read_ok: true
+
+legacy_fixes:
+  - path: aiPlat-core/core/harness/optimization/cost_tracker.py
+    reason: "2026-07-13 添加 noqa: env-legacy / model-legacy 标记"
+    fixed_at: "2026-07-13"

@@ -46,13 +46,14 @@ class Agent:
         name: str = "",
         model: str = "",
         config: Optional[Config] = None,
+        session_id: str = "",   # 共享 Web UI 会话
+        run_id: str = "",        # 共享 Pipeline run
     ):
         self._config = config or get_config()
         self._name = name or f"agent-{uuid.uuid4().hex[:8]}"
         self._model = model or self._config.default_model
-        self._skills: List[str] = []
-        self._tools: List[str] = []
-        self._session_id: str = f"sdk-{uuid.uuid4().hex[:12]}"
+        self._session_id: str = session_id or f"sdk-{uuid.uuid4().hex[:12]}"
+        self._run_id: str = run_id or ""
         self._messages: List[Dict[str, str]] = []
         self._agent_id: Optional[str] = None
         self._created = False
@@ -104,7 +105,7 @@ class Agent:
         async with httpx.AsyncClient(timeout=self._config.stream_timeout) as client:
             body = {
                 "input": {"text": prompt},
-                "context": {"tenant_id": self._config.tenant_id},
+                "context": {"tenant_id": self._config.tenant_id, "_run_id": self._run_id},
                 "user_id": "sdk-user",
                 "session_id": self._session_id,
                 "config": {"model": self._model},
@@ -205,7 +206,7 @@ class Agent:
         async with httpx.AsyncClient(timeout=self._config.timeout) as client:
             body = {
                 "input": {"text": prompt},
-                "context": {"tenant_id": self._config.tenant_id},
+                "context": {"tenant_id": self._config.tenant_id, "_run_id": self._run_id},
                 "user_id": "sdk-user",
                 "session_id": self._session_id,
                 "config": kwargs.pop("config", {"model": self._model}),

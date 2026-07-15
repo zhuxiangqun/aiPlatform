@@ -1,8 +1,13 @@
 """
 Role-based access control — route-level permissions.
 
-5 system roles with per-route access defined by management screen.
+8 system roles with per-route access defined by management screen.
 Role resolution: X-AIPLAT-ROLE header (from Gateway) → env var → default.
+
+METHOD RESTRICTION: ROUTE_PERMISSIONS does NOT differentiate HTTP methods.
+When adding read-only roles (viewer), only assign paths whose ALL endpoints
+are safe for that role. Do NOT assign routes containing POST/PUT/DELETE
+endpoints unless protected by an additional middleware layer.
 """
 from __future__ import annotations
 
@@ -13,9 +18,12 @@ from typing import Dict, List
 class SystemRole(str, Enum):
     ADMIN = "admin"
     DEVELOPER = "developer"
+    OPERATOR = "operator"
     BUSINESS = "business"
     USER = "user"
     APPROVER = "approver"
+    FDE = "fde"
+    VIEWER = "viewer"
 
 
 # Route permissions: path prefix → allowed roles
@@ -24,23 +32,27 @@ ROUTE_PERMISSIONS: Dict[str, List[str]] = {
     "/system-overview":          ["admin"],
     "/onboarding":               ["admin"],
     "/value-center/roles":       ["admin"],
-    "/value-center":             ["admin", "business"],  # ValueDashboard shared
+    "/value-center":             ["admin", "business", "fde"],  # ValueDashboard shared
     "/value-center/kpis":        ["admin", "business"],
     "/value-center/goals":       ["admin", "business"],
-    "/platform":                 ["admin"],
 
     # Admin + Developer
     "/value-center/strategy":    ["admin", "developer"],
     "/value-center/training":    ["admin", "developer"],
-    "/diagnostics":              ["admin", "developer"],
+
+    # Admin + Developer + Operator + FDE
+    "/diagnostics":              ["admin", "developer", "operator", "fde"],
     "/finetune":                 ["admin", "developer"],
-    "/infra":                    ["admin", "developer"],
-    "/core":                     ["admin", "developer"],
+    "/infra":                    ["admin", "developer", "operator"],
+    "/core":                     ["admin", "developer", "fde"],
     "/workspace":                ["admin", "developer"],
     "/api/core":                 ["admin", "developer"],  # API access
 
-    # All roles (differ by operation)
-    "/workbench":               ["admin", "developer", "business", "user"],
+    # Admin + Operator
+    "/platform":                 ["admin", "operator"],
+
+    # All roles
+    "/workbench":               ["admin", "developer", "operator", "business", "user", "fde", "viewer"],
     "/value-center/spec":       ["admin", "developer", "business", "approver"],
 
     # User
@@ -64,10 +76,34 @@ SIDEBAR_MENUS: Dict[str, List[str]] = {
     "business": [
         "value", "workbench",
     ],
+    "operator": [
+        "diagnostics", "infra", "platform", "workbench",
+    ],
     "user": [
         "workbench", "app",
     ],
     "approver": [
         "approval", "workbench",
     ],
+    "fde": [
+        "diagnostics", "infra", "core", "workspace", "value",
+    ],
+    "viewer": [
+        "workbench",
+    ],
+}
+
+# Per-role HTTP method restrictions.
+# For roles not listed here, all methods are allowed on permitted routes.
+# For listed roles, only the specified methods are allowed.
+METHOD_RESTRICTIONS: Dict[str, Dict[str, List[str]]] = {
+    "viewer": {},
+    # Example future use:
+    # "viewer": {
+    #     "/workbench": ["GET", "HEAD", "OPTIONS"],
+    #     "/api/v1/agents": ["GET"],
+    # },
+    # "operator": {
+    #     "/core/agents": ["GET"],
+    # },
 }

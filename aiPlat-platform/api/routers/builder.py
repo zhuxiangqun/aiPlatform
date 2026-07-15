@@ -19,8 +19,8 @@ _svc = None
 def _get_svc():
     global _svc
     if _svc is None:
-        from builder.builder_project_service import BuilderProjectService
-        _svc = BuilderProjectService(team_service=_team_svc)
+        from builder.builder_project_service import _get_project_service
+        _svc = _get_project_service()
     return _svc
 
 _log = logging.getLogger(__name__)
@@ -135,8 +135,9 @@ async def project_start(project_id: str, _auth: str = Depends(require_builder_ac
     return await _get_svc().start_pipeline(project_id)
 
 @router.post("/projects/{project_id}/approve", response_model=Dict[str, Any])
-async def project_approve(project_id: str, _auth: str = Depends(require_builder_access)):
-    return await _get_svc().approve_stage(project_id)
+async def project_approve(project_id: str, body: Dict[str, Any] = {}, _auth: str = Depends(require_builder_access)):
+    feedback = str(body.get("feedback", "") or "")
+    return await _get_svc().approve_stage(project_id, feedback=feedback)
 
 @router.post("/projects/{project_id}/reject", response_model=Dict[str, Any])
 async def project_reject(project_id: str, body: Dict[str, Any] = {}, _auth: str = Depends(require_builder_access)):

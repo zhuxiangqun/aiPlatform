@@ -5,12 +5,17 @@
 
 model_overrides:
   chat: qwen2.5:3b
-  agent_creation: qwen2.5:3b
+  clarify: qwen2.5-coder:14b
+  agent_creation: deepseek-chat
+  skill_execution: deepseek-chat
   ontology_gen: qwen2.5-coder:7b
   embedding: mxbai-embed-large:latest
 
 purpose_profiles:
   chat:
+    prefer: ["chat"]
+    prefer_local: true
+  clarify:
     prefer: ["chat"]
     prefer_local: true
   agent_creation:
@@ -21,16 +26,43 @@ purpose_profiles:
   reasoning:
     prefer: ["chat", "reasoning"]
     prefer_external: true
+  skill_execution:
+    prefer: ["chat"]
+    prefer_external: true
   ontology_gen:
     prefer: ["chat"]
     prefer_local: true
 
 fallback:
-  ultimate_model: minicpm-v:8b
+  ultimate_model: qwen2.5-coder:32b
 
 # ── Model capability profiles (P2: structured registration) ──
 # Used by ModelManager.select(purpose, complexity, input_tokens) for intelligent routing.
 model_capabilities:
+  deepseek-chat:
+    context_window: 131072
+    effective_utilization: 0.85
+    input_token_budget: 80000
+    semantic_understanding: 5
+    reasoning_quality: 5
+    hallucination_rate: 0.04
+    strength_areas: ["instruction_following", "long_form_summary", "multi_doc_synthesis"]
+    weakness_areas: []
+    routing_rules:
+      min_complexity: 2
+      max_complexity: 5
+  deepseek-reasoner:
+    context_window: 65536
+    effective_utilization: 0.90
+    input_token_budget: 50000
+    semantic_understanding: 5
+    reasoning_quality: 2
+    hallucination_rate: 0.03
+    strength_areas: ["reasoning"]
+    weakness_areas: ["long_form_summary", "instruction_following"]
+    routing_rules:
+      min_complexity: 3
+      max_complexity: 5
   qwen2.5-coder:7b:
     context_window: 32768
     effective_utilization: 0.75
@@ -43,6 +75,30 @@ model_capabilities:
     routing_rules:
       min_complexity: 0
       max_complexity: 2
+  qwen2.5-coder:32b:
+    context_window: 32768
+    effective_utilization: 0.80
+    input_token_budget: 24000
+    semantic_understanding: 4
+    reasoning_quality: 4
+    hallucination_rate: 0.05
+    strength_areas: ["fact_lookup", "code_generation", "multi_doc_synthesis"]
+    weakness_areas: []
+    routing_rules:
+      min_complexity: 1
+      max_complexity: 4
+  qwen2.5-coder:14b:
+    context_window: 32768
+    effective_utilization: 0.78
+    input_token_budget: 22000
+    semantic_understanding: 4
+    reasoning_quality: 3
+    hallucination_rate: 0.05
+    strength_areas: ["fact_lookup", "code_generation"]
+    weakness_areas: ["long_form_summary"]
+    routing_rules:
+      min_complexity: 0
+      max_complexity: 3
   deepseek-v4-pro:
     context_window: 131072
     effective_utilization: 0.85

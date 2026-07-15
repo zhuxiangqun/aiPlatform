@@ -51,6 +51,19 @@ export AIPLAT_EXECUTION_DB_VACUUM_ON_PRUNE="${AIPLAT_EXECUTION_DB_VACUUM_ON_PRUN
 # Self-learning: enable evolution engine + A/B prompt optimization
 export AIPLAT_RECORD_LEARNING_ARTIFACTS="${AIPLAT_RECORD_LEARNING_ARTIFACTS:-true}"
 
+# ── Capability contract injection for aiPlat's own AI Agents (opencode parity) ──
+# 'always' = inject ALL 24 capability contracts on every sys_llm_generate call.
+#   Each contract lists the authoritative entry point + forbidden direct imports.
+#   This is equivalent to what opencode sees from CAPABILITY.md (capability index).
+# 'keyword' = inject only when message keywords match a capability domain.
+export AIPLAT_CAPABILITY_INJECT_MODE="${AIPLAT_CAPABILITY_INJECT_MODE:-always}"
+
+# Governance + coding-contract injection for code-generation tasks.
+# 'all' = inject coding-contract (6 architecture guard rules + layer boundaries)
+#   on every LLM call. ~500 tokens overhead.
+# 'coding' = inject only when code_generation/code_review/refactor skills are active.
+export AIPLAT_GOVERNANCE_INJECT_MODE="${AIPLAT_GOVERNANCE_INJECT_MODE:-all}"
+
 # LLM 配置 — 由 infra ModelManager 统一管理。
 # 模型选择策略编辑: aiPlat-infra/config/infra/llm_profile.yaml
 # API key 和 base URL 从这里注入:
@@ -74,7 +87,10 @@ export MKL_NUM_THREADS="${MKL_NUM_THREADS:-1}"
 export AIPLAT_APPROVALS_DISABLED="${AIPLAT_APPROVALS_DISABLED:-1}"
 # Auto-evaluation: score every agent execution for the evaluation dashboard
 export AIPLAT_ENABLE_AUTO_EVAL="${AIPLAT_ENABLE_AUTO_EVAL:-true}"
-export AIPLAT_ENABLE_ORCHESTRATOR="${AIPLAT_ENABLE_ORCHESTRATOR:-false}"
+export AIPLAT_ENABLE_ORCHESTRATOR="${AIPLAT_ENABLE_ORCHESTRATOR:-true}"
+export AIPLAT_SEMANTIC_CACHE_ENABLED="${AIPLAT_SEMANTIC_CACHE_ENABLED:-true}"
+export AIPLAT_WIKI_INFERENCE_ENABLED="${AIPLAT_WIKI_INFERENCE_ENABLED:-true}"
+export AIPLAT_EXECUTION_AUDIT="${AIPLAT_EXECUTION_AUDIT:-true}"
 export PYTHONUNBUFFERED=1
 
 # Model loading: force offline mode so sentence-transformers / transformers don't
@@ -310,6 +326,10 @@ if [ -f "$_EXEC_DB" ]; then
   fi
 fi
 
+# ExecutionStore DB 路径 — 需要在此设定，以便 infra/core 进程都能从 adapters 表发现模型
+export AIPLAT_EXECUTION_DB_PATH="${AIPLAT_EXECUTION_DB_PATH:-$PROJECT_ROOT/aiPlat-core/core/data/aiplat_executions.sqlite3}"
+mkdir -p "$(dirname "$AIPLAT_EXECUTION_DB_PATH")"
+
 # ===== Step 1: aiPlat-infra =====
 echo "============================================================"
 echo "  Step 1/6: 启动 aiPlat-infra (端口 8001)"
@@ -345,10 +365,6 @@ export AIPLAT_EMBEDDING_BACKEND="${AIPLAT_EMBEDDING_BACKEND:-hash}"
 export HF_HUB_OFFLINE="${HF_HUB_OFFLINE:-1}"
 
 cd "$PROJECT_ROOT/aiPlat-core/core"
-# 确保 ExecutionStore DB 路径稳定（用于 learning_artifacts / approvals 等管理功能）
-export AIPLAT_EXECUTION_DB_PATH="${AIPLAT_EXECUTION_DB_PATH:-$PROJECT_ROOT/aiPlat-core/core/data/aiplat_executions.sqlite3}"
-mkdir -p "$(dirname "$AIPLAT_EXECUTION_DB_PATH")"
-echo "Execution DB: $AIPLAT_EXECUTION_DB_PATH"
 PYTHONPATH="$PROJECT_ROOT/aiPlat-core" nohup "$PY" -m uvicorn server:app --host 0.0.0.0 --port 8002 --workers 1 > "$AIPLAT_HOME/logs/core.log" 2>&1 &
 CORE_PID=$!
 echo "PID: $CORE_PID"

@@ -209,10 +209,10 @@
 
 | 层级 | 管理系统覆盖 | 实施状态 |
 |------|-------------|---------|
-| **Layer 0 - 基础设施层** | 完整运维能力 | ✅ 已实施 |
-| **Layer 1 - 核心能力层** | 预留管理接口 | 🔜 待实施 |
-| **Layer 2 - 平台服务层** | 预留管理接口 | 🔜 待实施 |
-| **Layer 3 - 应用接入层** | 预留管理接口 | 🔜 待实施 |
+| **Layer 0 - 基础设施层** | 完整运维能力 | ✅ 基础就绪 |
+| **Layer 1 - 核心能力层** | 预留管理接口 | ⚠️ 通过 core API 代理可达 |
+| **Layer 2 - 平台服务层** | 预留管理接口 | ⚠️ 通过 core API 代理可达 |
+| **Layer 3 - 应用接入层** | 预留管理接口 | ⚠️ 通过 core API 代理可达 |
 
 ---
 
@@ -223,30 +223,30 @@
 | **节点管理** | GET/POST/DELETE /nodes | ✅ 已实现 |
 | | POST /nodes/{name}/drain | ✅ 已实现 |
 | | POST /nodes/{name}/restart | ✅ 已实现 |
-| | GET/POST /drivers | 🔜待实现 |
+| | GET/POST /drivers | 🔜待实现 (design spec, no backend yet) |
 | **模型管理** | GET/POST /models | ✅ 已实现 |
 | | PUT/DELETE /models/{id} | ✅ 已实现 |
 | | POST /models/{id}/enable/disable | ✅ 已实现 |
 | | POST /models/{id}/test/*| ✅ 已实现 |
 | **服务管理** | GET/POST/DELETE /services | ✅ 已实现 |
 | | POST /services/{name}/scale| ✅ 已实现 |
-| | GET /services/{name}/logs | 🔜 待实现 |
-| | GET /services/{name}/events | 🔜 待实现 |
-| | GET/POST /images | 🔜 待实现 |
+| | GET /services/{name}/logs | ⚠️ 通过 core API diagnostics 可用 |
+| | GET /services/{name}/events | ⚠️ 通过 core API diagnostics 可用 |
+| | GET/POST /images | 🔜 待实现 (design spec) |
 | **算力调度** | GET /scheduler/quotas | ✅ 已实现 |
-| | POST/PUT/DELETE /scheduler/quotas | 🔜 待实现 |
+| | POST/PUT/DELETE /scheduler/quotas | ⚠️ GET 已实现, 写操作待定 |
 | | GET /scheduler/tasks | ✅ 已实现 |
-| | POST/DELETE /scheduler/tasks | 🔜 待实现 |
+| | POST/DELETE /scheduler/tasks | ⚠️ GET 已实现, 写操作待定 |
 | **存储管理** | GET /storage/pvcs | ✅ 已实现 |
 | | GET /storage/collections | ✅ 已实现 |
-| | POST /storage/pvc | 🔜 待实现 |
-| | POST /storage/vector/collections | 🔜 待实现 |
+| | POST /storage/pvc | 🔜 待实现 (design spec) |
+| | POST /storage/vector/collections | ⚠️ 通过 KB service API 间接可用 |
 | **网络管理** | GET /network/services | ✅ 已实现 |
 | | GET /network/ingresses | ✅ 已实现 |
-| | POST /network/*| 🔜 待实现 |
-| **监控告警** | GET /monitoring/metrics | ✅ 已实现 |
+| | POST /network/*| 🔜 待实现 (design spec) |
+| **监控告警** | GET /monitoring/metrics | ✅ 已实现 (Prometheus /metrics) |
 | | GET/POST /alerts/rules | ✅ 已实现 |
-| | GET /audit/logs | 🔜 待实现 |
+| | GET /audit/logs | ⚠️ 通过 diagnostics/audit 端点可用 |
 
 ### 5.2 前端实现状态
 

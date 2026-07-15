@@ -29,9 +29,53 @@ def _save_as_document(file_path: str, content: str, fmt: str = "text") -> str:
 
 
 def _inject_pdf(file_path: str) -> dict:
-    from kb.poc.ingest import ingest_scanned_pdf
-    result = ingest_scanned_pdf(file_path)
-    return {"status": "success", "doc_id": result.doc_id, "pages": len(result.page_images), "method": "ocr"}
+    """PDF → text using core's existing OCR infrastructure.
+    
+    Dual-path: native text extraction (fast, digital PDFs) → OCR fallback
+    (render pages as images, then Tesseract/PaddleOCR via InfraOCRAdapter).
+    All dependencies are already in core — zero cross-layer imports.
+    """
+    import os as _os, tempfile as _tempfile
+
+    try:
+        import fitz  # type: ignore  # PyMuPDF — already in core (parsers.py:205)
+    except ImportError:
+        return {"status": "error", "error": "PyMuPDF not available", "pages": 0, "method": "unavailable"}
+
+    doc = fitz.open(file_path)
+    page_count = doc.page_count
+
+    # ── Fast path: native text for digital PDFs ──
+    native_texts = [p.get_text().strip() for p in doc]
+    if any(t for t in native_texts):
+        full_text = "\n\n".join(native_texts)
+        doc.close()
+        did = _save_as_document(file_path, full_text, fmt="pdf_text")
+        return {"status": "success", "doc_id": did, "pages": page_count, "method": "pdf_text"}
+
+    # ── Scanned PDF: render pages as images → OCR ──
+    try:
+        from core.harness.infrastructure.infra_ocr_adapter import create_infra_ocr_adapter
+        ocr = create_infra_ocr_adapter()
+    except Exception:
+        ocr = None
+
+    with _tempfile.TemporaryDirectory() as tmpdir:
+        texts = []
+        for i, page in enumerate(doc):
+            pix = page.get_pixmap(dpi=200)
+            img_path = _os.path.join(tmpdir, f"p{i:04d}.png")
+            pix.save(img_path)
+            try:
+                t = ocr.ocr_frame(img_path) if ocr else ""
+            except Exception:
+                t = ""
+            texts.append(t.strip())
+        doc.close()
+        full_text = "\n\n".join(texts)
+
+    did = _save_as_document(file_path, full_text or "[scanned_pdf_no_text]", fmt="ocr")
+    return {"status": "success", "doc_id": did, "pages": page_count, "method": "ocr"}
 
 
 def _inject_csv(file_path: str) -> dict:

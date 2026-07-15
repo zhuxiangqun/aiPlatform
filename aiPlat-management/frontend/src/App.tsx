@@ -89,6 +89,7 @@ const DiagnosticsBrowserTest = lazy(() => import('./pages/Diagnostics/BrowserTes
 const DiagnosticsEvalDashboard = lazy(() => import('./pages/Diagnostics/EvalDashboard'));
 const ReleasesPage = lazy(() => import('./pages/Releases/ReleasesPage'));
 const ApprovalCenter = lazy(() => import('./pages/Management/ApprovalCenter'));
+const ApprovalHistory = lazy(() => import('./pages/Management/ApprovalHistory'));
 const DiagnosticsOps = lazy(() => import('./pages/Diagnostics/Ops'));
 const DiagnosticsRepo = lazy(() => import('./pages/Diagnostics/Repo'));
 const DiagnosticsChangeControl = lazy(() => import('./pages/Diagnostics/ChangeControl'));
@@ -98,6 +99,8 @@ const DiagnosticsRoutingDashboard = lazy(() => import('./pages/Diagnostics/Routi
 const DiagnosticsPolicyDebug = lazy(() => import('./pages/Diagnostics/PolicyDebug'));
 const DiagnosticsContext = lazy(() => import('./pages/Diagnostics/Context'));
 const DiagnosticsCapabilityPolicy = lazy(() => import('./pages/Diagnostics/CapabilityPolicy'));
+const DiagnosticsCapabilityBoundary = lazy(() => import('./pages/Diagnostics/CapabilityBoundary'));
+const DiagnosticsRAGQuality = lazy(() => import('./pages/Diagnostics/RAGQuality'));
 const DiagnosticsExecBackends = lazy(() => import('./pages/Diagnostics/ExecBackends'));
 const DiagnosticsWorkflows = lazy(() => import('./pages/Diagnostics/Workflows'));
 const DiagnosticsCodeIntel = lazy(() => import('./pages/Diagnostics/CodeIntel/CodeIntel'));
@@ -222,9 +225,12 @@ const router = createBrowserRouter([
       { path: 'diagnostics/browser-test', element: withSuspense(DiagnosticsBrowserTest) },
       { path: 'releases', element: withSuspense(ReleasesPage) },
       { path: 'approval', element: withSuspense(ApprovalCenter) },
+      { path: 'approval/history', element: withSuspense(ApprovalHistory) },
       { path: 'diagnostics/ops', element: withSuspense(DiagnosticsOps) },
       { path: 'diagnostics/context', element: withSuspense(DiagnosticsContext) },
       { path: 'diagnostics/capability-policy', element: withSuspense(DiagnosticsCapabilityPolicy) },
+      { path: 'diagnostics/capability-boundary', element: withSuspense(DiagnosticsCapabilityBoundary) },
+      { path: 'diagnostics/rag-quality', element: withSuspense(DiagnosticsRAGQuality) },
       { path: 'diagnostics/exec-backends', element: withSuspense(DiagnosticsExecBackends) },
       { path: 'diagnostics/workflows', element: withSuspense(DiagnosticsWorkflows) },
       { path: 'diagnostics/code-intel', element: withSuspense(DiagnosticsCodeIntel) },

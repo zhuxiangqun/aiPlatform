@@ -1,0 +1,56 @@
+# ── Capability Contract: 检索 ──
+# All knowledge retrieval must go through CRAG 3-level fallback chain.
+
+domain: ai-knowledge
+capability: retrieval
+description: "知识检索——多路检索融合与 CRAG 三级回退链"
+owner: core-harness
+version: "1.0.0"
+updated: "2026-07-13"
+
+authoritative:
+  path: aiPlat-core/core/harness/syscalls/retrieval.py
+  entry_function: sys_knowledge_retrieve
+  class: sys_knowledge_retrieve  # entry function doubles as class identifier
+  public_symbols:
+    - sys_knowledge_retrieve
+    - sys_wiki_retrieve
+    - sys_graph_query
+
+forbidden_direct_imports: []
+
+context_requirement:
+  must_pass: domain_id or collection_id
+  reason: "多租户隔离 §5.62"
+
+methods:
+  - name: sys_knowledge_retrieve
+    signature: "(query, *, domain_id=None, collection_id=None, top_k=8) -> List[Dict]"
+    purpose: "统一检索入口 → CRAG 3 级回退链"
+
+consumers:
+  - path: aiPlat-core/core/apps/agents/materials_chat.py
+    uses: sys_knowledge_retrieve
+  - path: aiPlat-core/core/harness/knowledge/retriever.py
+    uses: N/A
+    role: provider
+    note: "检索层实现"
+  - path: aiPlat-core/core/harness/knowledge/hyde_expander.py
+    uses: N/A
+    role: provider
+    note: "HyDE 生成器，被检索链调用"
+  - path: aiPlat-core/core/harness/knowledge/active_synthesis.py
+    uses: sys_knowledge_retrieve
+  - path: aiPlat-core/core/harness/knowledge/knowledge_validator.py
+    uses: sys_knowledge_retrieve
+  - path: aiPlat-core/core/harness/knowledge/orchestrated_retrieval.py
+    uses: sys_knowledge_retrieve
+  - path: aiPlat-core/core/harness/knowledge/post_retrieval_governor.py
+    uses: sys_knowledge_retrieve
+  - path: aiPlat-core/core/harness/execution/loop/graph_injector.py
+    uses: sys_knowledge_retrieve
+  - path: aiPlat-platform/api/routers/conversations.py
+    uses: sys_knowledge_retrieve
+    note: "平台对话 API"
+
+legacy_fixes: []

@@ -86,7 +86,7 @@ def _models_from_env(api_key_env: str, provider: str, model_type: str,
             caps.append("json_mode")
         models.append(ModelInfo(
             id=safe_id, name=name, provider=provider,
-            type=ModelType(model_type), source=ModelSource.CONFIG,
+            type=ModelType(model_type), source=ModelSource.EXTERNAL,
             display_name=name, enabled=True,
             description=f"Remote model ({provider}) — from env",
             tags=tags[:], capabilities=caps,
@@ -216,6 +216,79 @@ def _detect_system_capability_models() -> List[ModelInfo]:
     return models
 
 
+def _load_adapter_models() -> List[ModelInfo]:
+    """Discover models from adapters table (API keys configured via management UI)."""
+    import json as _json
+    import sqlite3
+    models: List[ModelInfo] = []
+    db_path = os.getenv("AIPLAT_EXECUTION_DB_PATH", "")
+    if not db_path or not os.path.isfile(db_path):
+        return models
+    try:
+        conn = sqlite3.connect(db_path, timeout=5.0)
+        conn.row_factory = sqlite3.Row
+        try:
+            rows = conn.execute(
+                "SELECT adapter_id, name, provider, api_base_url, models_json "
+                "FROM adapters WHERE status='active' "
+                "AND ((api_key IS NOT NULL AND api_key != '') OR (api_key_enc IS NOT NULL AND api_key_enc != '')) "
+                "ORDER BY updated_at DESC"
+            ).fetchall()
+            seen_names: set = set()
+            providers_with_reasoning = {"deepseek", "openai"}
+            for row in rows:
+                d = dict(row)
+                provider = (d.get("provider") or "").strip().lower()
+                base_url = (d.get("api_base_url") or "").strip()
+                # Map OpenAI-compatible adapters to their actual provider
+                if provider in ("openai", "openai_compatible"):
+                    if base_url and "deepseek" in base_url.lower():
+                        provider = "deepseek"
+                    elif base_url and "openai" in base_url.lower():
+                        provider = "openai"
+                adapter_id = d.get("adapter_id") or ""
+                models_json = d.get("models_json") or "[]"
+                if not provider or not adapter_id:
+                    continue
+                try:
+                    model_list = _json.loads(models_json) if isinstance(models_json, str) else models_json
+                except Exception:
+                    model_list = []
+                if not isinstance(model_list, list) or not model_list or not any(
+                    (isinstance(e, dict) and e.get("name")) or (isinstance(e, str) and e.strip())
+                    for e in model_list
+                ):
+                    adapter_name = (d.get("name") or "").strip()
+                    model_list = [{"name": adapter_name or f"{provider}-chat"}]
+                for entry in model_list:
+                    name = entry.get("name") if isinstance(entry, dict) else str(entry)
+                    if not name or name in seen_names or "," in name:
+                        continue
+                    seen_names.add(name)
+                    caps = ["chat"]
+                    if provider in providers_with_reasoning:
+                        caps.append("reasoning")
+                    caps.append("function_call")
+                    caps.append("json_mode")
+                    safe_id = f"adapter:{adapter_id}:{name}"
+                    models.append(ModelInfo(
+                        id=safe_id, name=name, provider=provider,
+                        type=ModelType.CHAT, source=ModelSource.EXTERNAL,
+                        display_name=name, enabled=True,
+                        description=f"Remote model — from adapter {adapter_id[:12]}",
+                        tags=[provider, "chat"], capabilities=caps,
+                        status=ModelStatus.AVAILABLE,
+                        config=ModelConfig(adapter_id=adapter_id, base_url=base_url or None),
+                        stats=ModelStats(),
+                        created_at=datetime.now(timezone.utc), updated_at=datetime.now(timezone.utc),
+                    ))
+        finally:
+            conn.close()
+    except Exception:
+        pass
+    return models
+
+
 class ConfigLoader:
     """Model discovery loader — env vars + YAML config."""
 
@@ -255,20 +328,28 @@ class ConfigLoader:
         """Discover models: env vars first, then YAML model_discovery, then local_embedding."""
         models: List[ModelInfo] = []
 
-        # 1. Remote chat models from environment variables (primary source)
-        models.extend(_load_env_models())
+        # 1. Adapter-based models (API keys from management UI, no env var needed)
+        adapter_models = _load_adapter_models()
+        adapter_names = {m.name for m in adapter_models}
+        models.extend(adapter_models)
 
-        # 2. Non-API models from env vars (embedding, reranker, whisper)
-        models.extend(_load_non_api_models())
+        # 2. Remote chat models from environment variables (fallback for env-var configured)
+        env_models = [m for m in _load_env_models() if m.name not in adapter_names]
+        env_names = {m.name for m in env_models}
+        models.extend(env_models)
 
-        # 3. System capability models (OCR, doc-parser, default embedder)
+        # 3. Non-API models from env vars (embedding, reranker, whisper)
+        non_api = _load_non_api_models()
+        models.extend(non_api)
+
+        # 4. System capability models (OCR, doc-parser, default embedder)
         existing_names = {m.name for m in models}
         for cap_model in _detect_system_capability_models():
             if cap_model.name not in existing_names:
                 models.append(cap_model)
                 existing_names.add(cap_model.name)
 
-        # 2. YAML model_discovery section (fallback if env not set)
+        # 5. YAML model_discovery section (fallback if env not set)
         config = self._load_config()
         discovery_cfg = config.get("model_discovery", {}).get("env_models", [])
         existing_names = {m.name for m in models}
@@ -289,9 +370,7 @@ class ConfigLoader:
             safe_id = f"{provider}:{re.sub(r'[^a-zA-Z0-9_-]', '-', model_name.lower())}"
             models.append(ModelInfo(
                 id=safe_id, name=model_name, provider=provider,
-                type=ModelType(mtype), source=ModelSource.CONFIG,
-                display_name=model_name.title(), enabled=True,
-                description=f"Remote model ({provider})",
+                type=ModelType(mtype), source=ModelSource.EXTERNAL,
                 tags=[provider, mtype], capabilities=[cap],
                 status=ModelStatus.AVAILABLE,
                 config=ModelConfig(api_key_env=env_key, base_url=base_url),

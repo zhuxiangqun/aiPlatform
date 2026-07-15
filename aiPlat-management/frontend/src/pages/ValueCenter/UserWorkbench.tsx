@@ -698,7 +698,7 @@ const FilterBar: React.FC<{
       { key: 'anomalies', label: `有异常${anomalyCount > 0 ? ` ${anomalyCount}` : ''}`, color: '#f59e0b' },
     ].map(f => (
       <button key={f.key} onClick={() => onFilter(f.key)} style={{
-        padding: '4px 12px', borderRadius: 14, border: 'none', cursor: 'pointer',
+        padding: '4px 12px', borderRadius: 14, cursor: 'pointer',
         fontSize: 11, fontWeight: 600,
         background: filter === f.key ? (f.color || '#3b82f6') + '20' : '#0f172a',
         color: filter === f.key ? f.color || '#3b82f6' : '#64748b',

@@ -1,11 +1,13 @@
 #!/usr/bin/env bash
 # ============================================================================
-# method_verify.sh — 方法级接线验证
+# method_verify.sh — 方法级接线验证 (v2: 自动扫描所有公共符号)
 #
-# 对每个 key module，提取其公开方法，逐一检查是否有外部 caller。
-# 检测"类被 import 了但关键方法未被调用"的问题。
+# Usage:
+#   bash scripts/method_verify.sh              # 全量扫描（默认）
+#   bash scripts/method_verify.sh --staged     # 只检查 staged 文件
+#   bash scripts/method_verify.sh --quiet      # 静默模式（只输出 DEAD）
+#   bash scripts/method_verify.sh --staged --quiet  # pre-commit 模式
 #
-# Usage: bash scripts/method_verify.sh
 # Integrated into phase_check.sh as Step 2.5
 # ============================================================================
 set -euo pipefail
@@ -18,88 +20,252 @@ YELLOW='\033[1;33m'
 NC='\033[0m'
 
 WARNINGS=0
+STAGED_MODE=false
+QUIET_MODE=false
+AUTO_SCAN=false
 
-# ── Key modules with their must-have methods ──────────────────
+# ── Parse flags ──
+for arg in "$@"; do
+    case "$arg" in
+        --staged) STAGED_MODE=true ;;
+        --quiet) QUIET_MODE=true ;;
+        --auto) AUTO_SCAN=true ;;
+        *) ;;
+    esac
+done
 
-# Format: module_path | method_name | description
-# Methods that appear in comments/docstrings may have false positives.
-# Add methods that are truly critical (not internal helpers).
-declare -a KEY_METHODS=(
-    # OnErrorReflector
-    "aiPlat-core/core/harness/infrastructure/hooks/on_error_reflector.py|on_post_observe|反思钩子回调"
-    # HallucinationTracker
-    "aiPlat-core/core/harness/evaluation/hallucination_tracker.py|evaluate|事实核查"
-    "aiPlat-core/core/harness/evaluation/hallucination_tracker.py|get_dashboard|仪表盘"
-    "aiPlat-core/core/harness/evaluation/hallucination_tracker.py|get_recent_reports|最近报告"
-    # ParallelExecutor
-    "aiPlat-core/core/apps/agents/parallel_executor.py|map|Map FanOut"
-    "aiPlat-core/core/apps/agents/parallel_executor.py|map_reduce|Map-Reduce"
-    "aiPlat-core/core/apps/agents/parallel_executor.py|parallel_analyze|便利FanOut"
-    # SemanticCache
-    "aiPlat-core/core/harness/knowledge/semantic_cache.py|invalidate_domain|缓存失效"
-    # EnterpriseGateway
-    "aiPlat-core/core/gateway/__init__.py|send_message|消息推送"
-    "aiPlat-core/core/gateway/__init__.py|register|适配器注册"
-    # ImplicitFeedback
-    "aiPlat-core/core/services/implicit_feedback.py|record|信号记录"
-    "aiPlat-core/core/services/implicit_feedback.py|get_stats|统计查询"
-    # PII Detector
-    "aiPlat-core/core/services/pii_detector.py|mask|PII脱敏"
-    # Code Auditor
-    "aiPlat-core/core/harness/security/code_auditor.py|audit|安全审计"
-)
-
-echo ""
-echo "═══════════════════════════════════════════════════════════════"
-echo "  Method Verification — Key Method Caller Detection"
-echo "═══════════════════════════════════════════════════════════════"
-echo ""
-
-for entry in "${KEY_METHODS[@]}"; do
-    IFS='|' read -r file_path method_name description <<< "$entry"
-    full_path="$WORKSPACE/$file_path"
-    [ -f "$full_path" ] || continue
-
-    basename="$(basename "$file_path")"
+# ── Auto-scan: discover all public symbols from harness + management ──
+auto_discover_symbols() {
+    local TMPFILE
+    TMPFILE=$(mktemp)
+    trap 'rm -f "$TMPFILE"' RETURN
     
-    # Check if method has callers outside its own file and test dirs
-    # Use grep with --include for performance
-    hits=$(grep -rl "$method_name" "$(dirname "$full_path")/../.." \
+    # Scan harness and management for top-level defs and class defs
+    find "$WORKSPACE/aiPlat-core/core/harness" "$WORKSPACE/aiPlat-core/core/management" \
+        -name '*.py' -not -path '*__pycache__*' -not -path '*/tests/*' \
+        -not -name 'conftest.py' 2>/dev/null | while read -r f; do
+        
+        local rel_path="${f#$WORKSPACE/}"
+        local basename="$(basename "$f")"
+        
+        # Extract public symbols using AST (faster than multiple greps)
+        python3 -c "
+import ast, sys
+try:
+    tree = ast.parse(open('$f').read())
+except:
+    sys.exit(0)
+
+# Skip abstract/base/__init__ files
+filename = '$basename'
+if any(k in filename for k in ['base.py', 'protocol.py', 'interface.py', '__init__']):
+    # Still extract concrete classes/functions from __init__.py
+    pass if filename != '__init__.py' else None
+
+symbols = []
+for node in ast.walk(tree):
+    if isinstance(node, ast.FunctionDef):
+        if not node.name.startswith('_'):
+            symbols.append(('func', node.name, node.lineno))
+    elif isinstance(node, ast.AsyncFunctionDef):
+        if not node.name.startswith('_'):
+            symbols.append(('async_func', node.name, node.lineno))
+    elif isinstance(node, ast.ClassDef):
+        if not node.name.startswith('_'):
+            # Skip abstract bases, ABCs, protocols
+            bases = [b.attr if isinstance(b, ast.Attribute) else b.id if isinstance(b, ast.Name) else '' for b in node.bases]
+            is_abstract = any(k in str(b).lower() for k in ['abc', 'protocol'])
+            if not is_abstract:
+                symbols.append(('class', node.name, node.lineno))
+
+for stype, name, lineno in symbols:
+    # Skip Python builtins and common names
+    if name in ['run', 'main', 'load', 'save', 'execute', 'router', 'app', 'model', 'config']:
+        continue
+    print(f'{rel_path}|{name}|{stype}')
+" 2>/dev/null
+    done | sort -u > "$TMPFILE"
+    
+    cat "$TMPFILE"
+}
+
+# ── Check if a symbol has production callers ──
+has_caller() {
+    local file_path="$1"
+    local method_name="$2"
+    local basename="$(basename "$file_path")"
+    
+    # Search in all production code (excluding self and tests)
+    local hits
+    hits=$(grep -rl "$method_name" "$WORKSPACE/aiPlat-core" \
         --include='*.py' 2>/dev/null \
         | grep -v "$basename" \
         | grep -v '__pycache__' \
         | grep -v '/tests/' \
-        | sort -u || true)
+        | grep -v 'conftest.py' \
+        | sort -u 2>/dev/null || true)
     
     if [ -z "$hits" ]; then
-        # Try wider search (whole aiPlat-core)
-        hits_wide=$(grep -rl "$method_name" "$WORKSPACE/aiPlat-core" \
-            --include='*.py' 2>/dev/null \
-            | grep -v "$basename" \
-            | grep -v '__pycache__' \
-            | grep -v '/tests/' \
-            | sort -u || true)
-        
-        if [ -z "$hits_wide" ]; then
-            echo -e "  ${RED}DEAD${NC}  | $method_name in $basename — ${description}"
-            WARNINGS=$((WARNINGS + 1))
-        else
-            echo -e "  ${GREEN}OK${NC}    | $method_name in $basename — ${description}"
-        fi
-    else
-        count=$(echo "$hits" | wc -l | tr -d ' ')
-        echo -e "  ${GREEN}OK${NC}    | $method_name in $basename — ${description} (${count} caller(s))"
+        return 1
     fi
-done
+    
+    # Verify at least one hit is a real caller (not just a string match)
+    local found=0
+    while IFS= read -r hit_file; do
+        [ -z "$hit_file" ] && continue
+        # Check for import, call, attribute access, or type hint patterns
+        if grep -qE "(import.*\b${method_name}\b|from.*\b${method_name}\b|${method_name}\s*\(|=\s*${method_name}\b|:\s*${method_name}\b)" "$hit_file" 2>/dev/null; then
+            found=1
+            break
+        fi
+    done <<< "$hits"
+    
+    return $((1 - found))
+}
+
+# ── Check staged files only ──
+check_staged() {
+    local staged_files
+    staged_files=$(git diff --cached --name-only --diff-filter=ACM 2>/dev/null \
+        | grep -E 'harness/|management/|infrastructure/|execution/|evaluation/|coordination/|memory/|knowledge/|syscalls/|context/|routing/|learning/|scheduler/|training/|monitoring/' \
+        | grep '\.py$' \
+        | grep -v __pycache__ || true)
+    
+    if [ -z "$staged_files" ]; then
+        return 0
+    fi
+    
+    local verified=0
+    while IFS= read -r rel_path; do
+        [ -z "$rel_path" ] && continue
+        local full_path="$WORKSPACE/$rel_path"
+        local basename="$(basename "$rel_path")"
+        
+        # Extract new symbols from staged file
+        local new_symbols
+        new_symbols=$(python3 -c "
+import ast
+try:
+    tree = ast.parse(open('$full_path').read())
+except:
+    import sys; sys.exit(0)
+
+# Only flag NEW functions/classes not in HEAD (simplified: check all public)
+for node in ast.walk(tree):
+    if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+        if not node.name.startswith('_') and node.name not in ['get','post','put','delete','patch']:
+            print(f'{node.name}')
+    elif isinstance(node, ast.ClassDef):
+        if not node.name.startswith('_'):
+            bases = [b.attr if isinstance(b, ast.Attribute) else b.id if isinstance(b, ast.Name) else '' for b in node.bases]
+            if not any(k in str(b).lower() for k in ['abc', 'protocol']):
+                print(f'{node.name}')
+" 2>/dev/null)
+        
+        [ -z "$new_symbols" ] && continue
+        
+        while IFS= read -r sym; do
+            [ -z "$sym" ] && continue
+            verified=$((verified + 1))
+            if ! has_caller "$full_path" "$sym"; then
+                echo -e "  ${RED}DEAD${NC}  | $sym in $basename — no production caller"
+                WARNINGS=$((WARNINGS + 1))
+            elif [ "$QUIET_MODE" != true ]; then
+                echo -e "  ${GREEN}OK${NC}    | $sym in $basename"
+            fi
+        done <<< "$new_symbols"
+    done <<< "$staged_files"
+    
+    if [ "$verified" -eq 0 ]; then
+        return 0
+    fi
+}
+
+# ── Key methods (fast path, always checked) ──
+check_key_methods() {
+    declare -a KEY_METHODS=(
+        "core/harness/infrastructure/hooks/on_error_reflector.py|on_post_observe|反思钩子回调"
+        "core/harness/evaluation/hallucination_tracker.py|evaluate|事实核查"
+        "core/harness/evaluation/hallucination_tracker.py|get_dashboard|仪表盘"
+        "core/harness/evaluation/hallucination_tracker.py|get_recent_reports|最近报告"
+        "core/apps/agents/parallel_executor.py|map|Map FanOut"
+        "core/apps/agents/parallel_executor.py|map_reduce|Map-Reduce"
+        "core/apps/agents/parallel_executor.py|parallel_analyze|FanOut"
+        "core/harness/knowledge/semantic_cache.py|invalidate_domain|缓存失效"
+        "core/gateway/__init__.py|send_message|消息推送"
+        "core/gateway/__init__.py|register|适配器注册"
+        "core/services/implicit_feedback.py|record|信号记录"
+        "core/services/implicit_feedback.py|get_stats|统计查询"
+        "core/services/pii_detector.py|mask|PII脱敏"
+        "core/harness/security/code_auditor.py|audit|安全审计"
+    )
+    
+    for entry in "${KEY_METHODS[@]}"; do
+        IFS='|' read -r file_path method_name description <<< "$entry"
+        local full_path="$WORKSPACE/aiPlat-core/$file_path"
+        [ -f "$full_path" ] || continue
+        local basename="$(basename "$file_path")"
+        
+        if ! has_caller "$full_path" "$method_name"; then
+            echo -e "  ${RED}DEAD${NC}  | $method_name in $basename — $description"
+            WARNINGS=$((WARNINGS + 1))
+        elif [ "$QUIET_MODE" != true ]; then
+            echo -e "  ${GREEN}OK${NC}    | $method_name in $basename — $description"
+        fi
+    done
+}
+
+# ── Auto scan (full) ──
+check_auto_scan() {
+    ! $AUTO_SCAN && return 0
+    
+    echo ""
+    echo "  Auto-scanning harness + management public symbols..."
+    local symbols
+    symbols=$(auto_discover_symbols)
+    local total=0
+    
+    while IFS='|' read -r file_path method_name stype; do
+        [ -z "$file_path" ] && continue
+        total=$((total + 1))
+        local full_path="$WORKSPACE/$file_path"
+        [ -f "$full_path" ] || continue
+        
+        if ! has_caller "$full_path" "$method_name"; then
+            echo -e "  ${RED}DEAD${NC}  | $method_name in $(basename "$file_path") ($stype)"
+            WARNINGS=$((WARNINGS + 1))
+        fi
+    done <<< "$symbols"
+    
+    [ "$QUIET_MODE" != true ] && echo "  Scanned $total symbols"
+}
+
+# ── Main ──
+if [ "$QUIET_MODE" != true ]; then
+    echo ""
+    echo "═══════════════════════════════════════════════════════════════"
+    echo "  Method Verification — Caller Detection (v2 auto-scan)"
+    echo "═══════════════════════════════════════════════════════════════"
+    echo ""
+fi
+
+if $STAGED_MODE; then
+    check_staged
+    check_key_methods
+else
+    check_key_methods
+    check_auto_scan
+fi
 
 echo ""
 echo "═══════════════════════════════════════════════════════════════"
 if [ "$WARNINGS" -gt 0 ]; then
-    echo -e "${YELLOW}═══ METHOD VERIFY: $WARNINGS unwired method(s) ═══${NC}"
+    echo -e "${RED}═══ METHOD VERIFY FAILED: $WARNINGS unwired method(s) ═══${NC}"
     echo ""
-    echo "  These methods have no external callers. Wire or add xfail."
+    echo "  These methods have no external production callers."
+    echo "  Wire them or add @pytest.mark.xfail to tests/wiring/."
     exit 1
 else
-    echo -e "${GREEN}═══ METHOD VERIFY PASSED — all key methods have callers ═══${NC}"
+    echo -e "${GREEN}═══ METHOD VERIFY PASSED — all methods have callers ═══${NC}"
     exit 0
 fi

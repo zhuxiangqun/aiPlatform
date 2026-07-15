@@ -19,6 +19,9 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({ open, agent, onClose, o
   const [smartFillLoading, setSmartFillLoading] = useState(false);
   const [auditLoading, setAuditLoading] = useState(false);
   const [auditResult, setAuditResult] = useState<any>(null);
+  const [missingSkills, setMissingSkills] = useState<any[]>([]);
+  const [missingTools, setMissingTools] = useState<any[]>([]);
+  const [missingMcps, setMissingMcps] = useState<any[]>([]);
   // Role definition flow
   const [roleDefinition, setRoleDefinition] = useState<{
     role_name: string; responsibilities: string[]; scenarios: string[];
@@ -249,6 +252,9 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({ open, agent, onClose, o
       if (result.sop_text) setSopText(result.sop_text);
       if (result.trigger_conditions !== undefined) setTriggerText(result.trigger_conditions.join('\n'));
       if (result.workflow_ids !== undefined) setWorkflowIds([...result.workflow_ids]);
+      setMissingSkills(result.missing_skills || []);
+      setMissingTools(result.missing_tools || []);
+      setMissingMcps(result.missing_mcps || []);
     };
 
     try {
@@ -283,7 +289,6 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({ open, agent, onClose, o
           applyResult(pollRes.result);
           if (roleDef) setRoleDefinition(roleDef);
           toast.success('AI 智能填充完成', pollRes.result?.reasoning || '已自动推荐 skills/tools/MCP/SOP');
-          setTimeout(() => handleAudit(), 500);
           return;
         }
         if (pollRes.status === 'failed') {
@@ -372,9 +377,8 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({ open, agent, onClose, o
             if (result.trigger_conditions !== undefined) setTriggerText(result.trigger_conditions.join('\n'));
             if (result.workflow_ids !== undefined) setWorkflowIds([...result.workflow_ids]);
             toast.success('AI 智能填充完成', result.reasoning || '已自动推荐 skills/tools/MCP/SOP');
-            setTimeout(() => handleAudit(), 500);
+            return;
           }
-          return;
         }
         if (pollRes.status === 'failed') {
           toast.error('智能填充失败', pollRes.error || 'LLM 服务繁忙');
@@ -552,7 +556,7 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({ open, agent, onClose, o
       footer={
         <>
           <Button variant="secondary" onClick={handleSmartFill} loading={smartFillLoading}>
-            🤖 AI 智能填充
+            🤖 一键生成全部
           </Button>
           <Button variant="secondary" onClick={handleAudit} loading={auditLoading}>
             🔍 AI 审核
@@ -759,15 +763,52 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({ open, agent, onClose, o
         {showRolePreview && roleDefinition && (
           <div className="flex items-end justify-end">
             <Button variant="primary" onClick={handleAutoFillWithRole} loading={autoFillLoading}>
-              ✨ AI 智能填充
+              ✨ 更新推荐配置
             </Button>
           </div>
         )}
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <MultiSelect label="绑定技能" options={skillOptions} selected={skills} onChange={setSkills} />
-          <MultiSelect label="绑定工具" options={toolOptions} selected={tools} onChange={setTools} />
+          <div>
+            <MultiSelect label="绑定技能" options={skillOptions} selected={skills} onChange={setSkills} />
+            {missingSkills.length > 0 && (
+              <div className="text-yellow-400 text-xs bg-yellow-900/20 border border-yellow-800 rounded px-3 py-2 mt-1 space-y-1">
+                <p className="font-medium">⚠️ AI 检测到以下能力需求，但 Skill 库中未找到匹配项：</p>
+                {missingSkills.map((m: any, i: number) => (
+                  <div key={i} className="ml-2 border-l-2 border-yellow-700 pl-2">
+                    <p>需要能力：<b>{m.capability}</b> → 建议创建：<code>{m.suggested_name}</code></p>
+                    <p className="text-gray-400">{m.how_to_create}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+          <div>
+            <MultiSelect label="绑定工具" options={toolOptions} selected={tools} onChange={setTools} />
+            {missingTools.length > 0 && (
+              <div className="text-yellow-400 text-xs bg-yellow-900/20 border border-yellow-800 rounded px-3 py-2 mt-1 space-y-1">
+                <p className="font-medium">⚠️ 未自动匹配工具，根据已绑定 Skill 建议添加：</p>
+                {missingTools.map((m: any, i: number) => (
+                  <div key={i} className="ml-2 border-l-2 border-yellow-700 pl-2">
+                    <p>工具：<b>{m.tool}</b> — {m.reason}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
+
+        {missingMcps.length > 0 && (
+          <div className="text-yellow-400 text-xs bg-yellow-900/20 border border-yellow-800 rounded px-3 py-2 space-y-1">
+            <p className="font-medium">⚠️ Agent 描述涉及外部系统对接，建议配置 MCP 连接：</p>
+            {missingMcps.map((m: any, i: number) => (
+              <div key={i} className="ml-2 border-l-2 border-yellow-700 pl-2">
+                <p>{m.description}</p>
+                <p className="text-gray-400">{m.how_to_create}</p>
+              </div>
+            ))}
+          </div>
+        )}
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {mcpOptions.length > 0 && <MultiSelect label="绑定 MCP" options={mcpOptions} selected={mcpIds} onChange={setMcpIds} />}
@@ -837,7 +878,10 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({ open, agent, onClose, o
           const cfg = configText?.trim() ? JSON.parse(configText) : {};
           cfg.system_prompt = optimized;
           setConfigText(JSON.stringify(cfg, null, 2));
-          toast.success('已应用优化');
+          if (agent) {
+            workspaceAgentApi.update(agent.id as string, { config: cfg }).catch(() => {});
+          }
+          toast.success('已应用并保存优化');
         } catch { toast.error('应用失败'); }
       }}
     />

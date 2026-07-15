@@ -718,10 +718,13 @@ class ReActLoop(BaseLoop):
                 logging.warning(str(e), exc_info=True)
             # Feed interaction into local feedback loop (P1-7 wiring)
             try:
-                from core.harness.feedback_loops.local import get_local_feedback
+                from core.harness.feedback_loops.local import get_local_feedback, FeedbackLevel, FeedbackType
                 fb = get_local_feedback()
                 if fb:
-                    fb.emit("interaction", {"user": user_msg[:500], "assistant": assistant_msg[:500], "stability": stability})
+                    fb.emit(
+                        FeedbackLevel.INFO, FeedbackType.STATE_CHANGE,
+                        source="save_interaction",
+                        content={"user": user_msg[:500], "assistant": assistant_msg[:500], "stability": stability})
             except Exception as e:
                 logging.warning(str(e), exc_info=True)
             # §5.94: Emotion tracking — cross-session emotional state analysis
@@ -976,6 +979,23 @@ class ReActLoop(BaseLoop):
             from core.harness.memory.pattern_accumulator import get_pattern_accumulator
             pa = get_pattern_accumulator()
             await pa.compare_success_failure(intent=agent_id)
+        except Exception:
+            pass
+
+        # ── PatternCache: store execution pattern for future skip-stage optimization ──
+        try:
+            from core.harness.execution.pattern_cache import get_pattern_cache
+            pcache = get_pattern_cache()
+            task_type = str(state.context.get("task_type") or "")
+            await pcache.store(
+                domain_id=agent_id,
+                query=user_msg,
+                execution_path={
+                    "task_type": task_type,
+                    "stability": stability,
+                },
+                success=(stability != "low"),
+            )
         except Exception:
             pass
 
@@ -1289,8 +1309,8 @@ class ReActLoop(BaseLoop):
                 return "off"
             scope = str(state.context.get("skill_scope") or "engine").lower()
             if scope == "workspace":
-                return os.getenv("AIPLAT_CODING_POLICY_PROFILE_WORKSPACE", "off").strip().lower()
-            return os.getenv("AIPLAT_CODING_POLICY_PROFILE_ENGINE", "off").strip().lower()
+                return os.getenv("AIPLAT_CODING_POLICY_PROFILE_WORKSPACE", "karpathy_v1").strip().lower()
+            return os.getenv("AIPLAT_CODING_POLICY_PROFILE_ENGINE", "karpathy_v1").strip().lower()
         except Exception:
             return "off"
 

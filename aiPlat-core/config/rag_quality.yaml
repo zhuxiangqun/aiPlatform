@@ -1,0 +1,10 @@
+# RAG quality thresholds — used by RAGDiagnosticsCollector and diagnose_rag_quality().
+# All values are configurable. Restart core server to apply changes.
+
+thresholds:
+  pass_score: 70          # overall_score >= 70 → healthy
+  warn_score: 50          # overall_score >= 50 → degraded
+  faithfulness_warn: 0.7  # avg_faithfulness < 0.7 → anomaly
+  gate_rate_warn: 0.8     # quality_gate_pass_rate < 0.8 → anomaly
+  abandon_rate_warn: 0.1  # abandon_rate > 10% → anomaly
+  repeat_rate_warn: 0.15  # repeat_query_rate > 15% → anomaly

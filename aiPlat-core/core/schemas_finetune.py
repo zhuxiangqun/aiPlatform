@@ -154,3 +154,58 @@ class ProviderInfo(BaseModel):
 
 class ProviderListResponse(BaseModel):
     providers: List[ProviderInfo]
+
+# ═══════════════════════════════════════════════════════════════
+# Training job models (migrated from Dict[str,Any] 2026-07-13)
+# ═══════════════════════════════════════════════════════════════
+
+class TrainingJobResponse(BaseModel):
+    job_id: str
+    status: str = "running"
+    iterations: int = 0
+    episodes: int = 0
+    avg_reward: float = 0.0
+    avg_loss: float = 0.0
+    error: Optional[str] = None
+
+class TrainingJobListResponse(BaseModel):
+    jobs: List[Dict[str, Any]] = Field(default_factory=list)
+    total: int = 0
+    error: Optional[str] = None
+
+class ModelListItem(BaseModel):
+    name: str
+    display_name: str = ""
+    provider_name: str = ""
+    purpose: str = ""
+    capability_score: float = 0.0
+    available: bool = True
+
+class ModelListResponse(BaseModel):
+    models: List[ModelListItem] = Field(default_factory=list)
+    total: int = 0
+    error: Optional[str] = None
+
+# ═══════════════════════════════════════════════════════════════
+# Union types for dynamic backend endpoints (2026-07-13)
+# ═══════════════════════════════════════════════════════════════
+
+from typing import Union as _Union
+
+class JobStatusResponse(BaseModel):
+    """Generic job status — backend-dependent fields."""
+    job_id: str
+    status: str = ""
+    model_config = {"extra": "allow"}  # allow backend-specific extra fields
+
+class JobStatusErrorResponse(BaseModel):
+    job_id: str
+    status: str = "error"
+    error: str = ""
+
+DistillJobResult = _Union[JobStatusResponse, JobStatusErrorResponse]
+ScratchJobResult = _Union[JobStatusResponse, JobStatusErrorResponse]
+
+class TrainingJobCreatedResponse(BaseModel):
+    job_id: str
+    status: str = "running"

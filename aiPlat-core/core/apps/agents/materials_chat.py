@@ -30,6 +30,7 @@ from core.harness.ontology_engine.run_context_builder import (
 )
 from core.harness.data_source.realtime_context import fetch_realtime_context
 from core.harness.evaluation.self_review import self_review
+from core.harness.evaluation.rag_diagnosis import diagnose_rag_quality
 
 
 def _enforce_scope(collection_id: str, domain_id: str) -> bool:
@@ -299,7 +300,9 @@ class MaterialsChatAgent(BaseAgent):
             # ── Ontology-aware retrieval: detect target class from question ──
             ontology_class_uri: str = ""
             ontology_mapping: Dict[str, Any] = {}
-            try:
+            _TARGET_DOMAINS = ("supply-chain", "procurement-mvo", "ship-design")
+            if domain_id in _TARGET_DOMAINS:
+                # Target domain: mandatory ontology mapping, failure propagates
                 from core.harness.knowledge.ontology_query_mapper import map_query_to_ontology
                 onto_mapping = map_query_to_ontology(enhanced_question, domain_id=domain_id, collection_id=collection_id)
                 if onto_mapping:
@@ -307,8 +310,20 @@ class MaterialsChatAgent(BaseAgent):
                     matched = onto_mapping.get("matched_classes") or []
                     if matched and matched[0].get("score", 0) >= 0.8:
                         ontology_class_uri = matched[0].get("uri", "")
-            except Exception as e:
-                logging.debug(str(e), exc_info=True)
+                else:
+                    logging.debug(f"ontology_query_mapper returned empty for domain={domain_id}, question={enhanced_question[:80]}")
+            else:
+                # Non-target domain: backward-compatible try/except
+                try:
+                    from core.harness.knowledge.ontology_query_mapper import map_query_to_ontology
+                    onto_mapping = map_query_to_ontology(enhanced_question, domain_id=domain_id, collection_id=collection_id)
+                    if onto_mapping:
+                        ontology_mapping = onto_mapping
+                        matched = onto_mapping.get("matched_classes") or []
+                        if matched and matched[0].get("score", 0) >= 0.8:
+                            ontology_class_uri = matched[0].get("uri", "")
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
             _trace("本体感知", f"匹配类: {', '.join((m.get('label','') for m in (ontology_mapping.get('matched_classes',[]) if ontology_mapping else [])[:3])) or '无'}",
                    matched_count=len(ontology_mapping.get("matched_classes", [])) if ontology_mapping else 0)
 
@@ -485,6 +500,79 @@ class MaterialsChatAgent(BaseAgent):
                 model_name = best_model_for_purpose("chat")
                 retrieved_docs = compress_retrieved_docs(retrieved_docs, model_name=model_name)
 
+            # ── Hallucination check helper (lazy-import, best-effort) ──
+            async def _check_hallucination(answer_text: str, current_quality: str):
+                """Run HallucinationTracker.evaluate() to fact-check answer against citations.
+                Returns (updated_quality, hallucination_meta_dict). Never fails the main path."""
+                try:
+                    from core.harness.evaluation.hallucination_tracker import get_hallucination_tracker
+                    tracker = get_hallucination_tracker()
+                    report = await tracker.evaluate(
+                        question=enhanced_question,
+                        answer=str(answer_text)[:5000],
+                        retrieved_context=[{"text": c.get("text", str(c)[:300])} for c in (citations or [])[:10]],
+                        run_id=str(run_id or ""),
+                        domain_id=str(domain_id or "default"),
+                    )
+                    meta = {
+                        "hallucination_risk": round(report.hallucination_risk, 3),
+                        "faithfulness": round(report.faithfulness_score, 3),
+                        "claims_supported": f"{report.supported_claims}/{report.total_claims}",
+                        "quality_flag": report.quality_flag,
+                    }
+                    if report.hallucination_risk > 0.5:
+                        return "low_evidence", meta
+                    elif report.hallucination_risk > 0.2 and current_quality == "ok":
+                        return "needs_review", meta
+                    return current_quality, meta
+                except Exception:
+                    return current_quality, {}
+
+            # ── Path A: Domain Skill execution (target domains with ontology mapping) ──
+            _TARGET_SKILL_DOMAINS = ("supply-chain", "procurement-mvo")
+            if retrieved_docs and ontology_mapping and domain_id in _TARGET_SKILL_DOMAINS:
+                from core.apps.skills.registry import get_skill_registry
+                registry = get_skill_registry()
+                domain_skills = [s for s in registry.list_all()
+                                 if s.metadata.get("domain_id") == domain_id]
+                if domain_skills:
+                    skill_name = domain_skills[0].name
+                    skill = registry.get(skill_name)
+                    if skill:
+                        skill_params["_domain_context"] = json.dumps(
+                            {"domain_id": domain_id, "ontology_mapping": ontology_mapping,
+                             "matched_classes": ontology_mapping.get("matched_classes", [])[:3]},
+                            ensure_ascii=False)
+                        response = await sys_skill_call(skill, skill_params, user_id=user_id, session_id=session_id)
+                        if response.success:
+                            out = dict(response.output or {})
+                            answer = str(out.get("answer") or "").strip()
+                            if answer:
+                                citations = list(out.get("citations") or [])
+                                turn_summary = _build_turn_summary(question, answer)
+                                strategy, skills_used = _resolve_strategy(
+                                    doc_count=len(doc_ids), intent=intent,
+                                    route=str(retrieval_policy.get("route") or ""),
+                                    default_skill=skill_name)
+                                quality = self_review(answer, citations, reasoning_path)
+                                quality, hallucination_meta = await _check_hallucination(answer, quality)
+                                rag_diagnosis = diagnose_rag_quality(
+                                    faithfulness=hallucination_meta.get("faithfulness", 0),
+                                    hallucination_risk=hallucination_meta.get("hallucination_risk", 0),
+                                    quality=quality, retrieved_count=len(citations))
+                                return AgentResult(
+                                    success=True,
+                                    output={"answer": answer, "citations": citations, "items": [],
+                                            "scope_applied": scope, "strategy": "domain_skill",
+                                            "skills_used": [skill_name], "turn_summary": turn_summary,
+                                            "intent": intent, "mode": "", "analysis": analysis,
+                                            "retrieval_policy": retrieval_policy, "answer_strategy": answer_strategy,
+                                            "reasoning_path": reasoning_path, "pipeline_trace": pipeline_trace,
+                                            "quality": quality, "hallucination": hallucination_meta,
+                                            "rag_diagnosis": rag_diagnosis},
+                                    metadata={"intent": intent, "strategy": "domain_skill", "domain": domain_id,
+                                              "skill": skill_name, "doc_count": len(doc_ids)})
+
             # ── Direct answer: if doc_content retrieved, use LLM (with streaming if available) ──
             if retrieved_docs:
                 try:
@@ -536,6 +624,14 @@ class MaterialsChatAgent(BaseAgent):
                         quality = self_review(answer, citations, reasoning_path)
                         _trace("质量评估", f"Self-RAG: {quality}", quality=quality)
 
+                        quality, hallucination_meta = await _check_hallucination(answer, quality)
+                        rag_diagnosis = diagnose_rag_quality(
+                            faithfulness=hallucination_meta.get("faithfulness", 0),
+                            hallucination_risk=hallucination_meta.get("hallucination_risk", 0),
+                            quality=quality,
+                            retrieved_count=len(citations),
+                        )
+
                         return AgentResult(
                             success=True,
                             output={"answer": answer, "citations": citations, "items": [],
@@ -545,7 +641,9 @@ class MaterialsChatAgent(BaseAgent):
                                     "retrieval_policy": retrieval_policy, "answer_strategy": answer_strategy,
                                     "reasoning_path": reasoning_path,
                                     "pipeline_trace": pipeline_trace,
-                                    "quality": quality},
+                                    "quality": quality,
+                                    "hallucination": hallucination_meta,
+                                    "rag_diagnosis": rag_diagnosis},
                             metadata={"intent": intent, "strategy": "direct_retrieve", "doc_count": len(doc_ids)},
                         )
                 except Exception as e:
@@ -582,6 +680,15 @@ class MaterialsChatAgent(BaseAgent):
                 default_skill=skill_name,
             )
 
+            quality = self_review(answer, citations, reasoning_path)
+            quality, hallucination_meta = await _check_hallucination(answer, quality)
+            rag_diagnosis = diagnose_rag_quality(
+                faithfulness=hallucination_meta.get("faithfulness", 0),
+                hallucination_risk=hallucination_meta.get("hallucination_risk", 0),
+                quality=quality,
+                retrieved_count=len(citations),
+            )
+
             return AgentResult(
                 success=True,
                 output={
@@ -599,7 +706,9 @@ class MaterialsChatAgent(BaseAgent):
                     "answer_strategy": answer_strategy,
                     "reasoning_path": reasoning_path,
                     "pipeline_trace": pipeline_trace,
-                    "quality": self_review(answer, citations, reasoning_path),
+                    "quality": quality,
+                    "hallucination": hallucination_meta,
+                    "rag_diagnosis": rag_diagnosis,
                 },
                 metadata={
                     "intent": intent,

@@ -1,0 +1,41 @@
+# Capability Contract: Semantic Cache (语义缓存)
+domain: ai-runtime
+capability: semantic_cache
+description: "语义缓存——基于语义相似度的 L1(精确)/L2(语义)/L3(向量)多级缓存"
+owner: core-runtime
+version: "1.0.0"
+updated: "2026-07-13"
+
+authoritative:
+  path: aiPlat-core/core/harness/knowledge/semantic_cache.py
+  entry_point: get_semantic_cache
+  class: SemanticCache
+  factory: get_semantic_cache
+  public_symbols:
+    - SemanticCache
+    - get_semantic_cache
+
+methods:
+  - name: get
+    signature: "(key, query) -> Optional[Any]"
+    purpose: "从缓存获取（L1→L2→L3 逐级查找）"
+  - name: set
+    signature: "(key, query, value, ttl=None) -> None"
+    purpose: "写入缓存（L1+L2+L3 三级写入）"
+  - name: invalidate_domain
+    signature: "(domain_id) -> None"
+    purpose: "域名空间缓存失效"
+  - name: get_semantic_cache
+    signature: "() -> SemanticCache"
+    purpose: "获取全局语义缓存单例"
+
+consumer_patterns:
+  - "harness/syscalls/"
+  - "harness/knowledge/"
+  - "harness/execution/"
+  - "harness/memory/"
+  - "apps/agents/"
+  - "api/"
+  - "harness/integration"
+  - "harness/optimization/"
+  - "management/"

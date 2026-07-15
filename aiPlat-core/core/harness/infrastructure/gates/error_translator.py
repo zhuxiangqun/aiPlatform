@@ -78,6 +78,9 @@ class ClassifiedError(Exception):
     fix_kwargs: Optional[Dict[str, Any]] = field(default=None)
     retry_after_seconds: float = 0.0
 
+    def __post_init__(self):
+        super().__init__(self.message)
+
 
 # ══════════════════════════════════════════════════════════════
 # 3. Pattern tables (hermes-aligned, 6 groups)
@@ -632,11 +635,44 @@ def set_trend_recorder(fn):
     _TREND_RECORDER = fn
 
 
-def _record_classification(key: str) -> None:
+async def _record_classification(key: str) -> None:
     """Record a classification event for TrendDetector. Non-blocking, no-op if unset."""
     fn = _TREND_RECORDER
     if fn is not None:
         try:
-            fn(key)
+            await fn(key)
         except Exception:
             pass
+
+
+# ══════════════════════════════════════════════════════════════
+# Recovery hints — machine-classification → actionable Agent guidance
+# ══════════════════════════════════════════════════════════════
+
+_RECOVERY_HINTS: Dict[FailoverReason, str] = {
+    FailoverReason.auth: "认证失败(401/403)：检查凭证/权限，或改用有权限的工具后重试。",
+    FailoverReason.auth_permanent: "认证永久失败：凭证无效，需人工更换密钥，勿盲目重试。",
+    FailoverReason.billing: "额度耗尽(402)：切换账号/密钥或联系管理员充值。",
+    FailoverReason.rate_limit: "触发限流(429)：稍后退避重试，或切换到备用密钥/模型。",
+    FailoverReason.overloaded: "服务过载(503/529)：指数退避后重试，或切换到备用提供商。",
+    FailoverReason.server_error: "服务端错误(500/502)：退避重试；持续失败则切换提供商。",
+    FailoverReason.timeout: "超时：缩小请求规模或增大超时时间后重试。",
+    FailoverReason.context_overflow: "上下文超限：压缩上下文/裁剪输入后重试。",
+    FailoverReason.payload_too_large: "负载过大(413)：拆分输入或压缩后重试。",
+    FailoverReason.model_not_found: "模型不存在(404)：更换有效模型名，勿重试原模型。",
+    FailoverReason.format_error: "请求格式错误(400)：修正参数结构后重试。",
+    FailoverReason.param_out_of_range: "参数越界：调整 max_tokens/temperature 等到合法范围。",
+    FailoverReason.thinking_signature: "thinking 签名错误：移除/修正 thinking 块后重试。",
+    FailoverReason.long_context_tier: "长上下文等级限制：缩短上下文或申请更高等级。",
+    FailoverReason.unknown: "未知错误：检查 stderr/exit_code 定位根因，修正参数或换用替代工具后重试。",
+}
+
+
+def recovery_hint_for(reason: FailoverReason) -> str:
+    """Map a classified FailoverReason to an actionable, LLM-readable recovery hint.
+
+    Consumed by sys_tool_call to populate ToolResult.recovery_hint, giving the
+    Agent structured guidance instead of an opaque error string.
+    """
+    return _RECOVERY_HINTS.get(reason, _RECOVERY_HINTS[FailoverReason.unknown])
+

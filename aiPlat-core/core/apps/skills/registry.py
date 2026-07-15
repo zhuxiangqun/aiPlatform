@@ -206,6 +206,7 @@ class SkillRegistry:
                             skill_chain = fm.get("skill_chain") or []
                             skip_conditions = fm.get("skip_when") or fm.get("skip_conditions") or []
                             triggers = fm.get("triggers") or []
+                            domain_id = str(fm.get("domain_id", ""))
                             body = parts[2].strip()
                         except Exception as e:
                             logging.debug(str(e), exc_info=True)
@@ -297,6 +298,8 @@ class SkillRegistry:
                         if perm_config:
                             cfg.permissions = perm_config
                             cfg.metadata["permissions_config"] = perm_config
+                        if domain_id:
+                            cfg.metadata["domain_id"] = domain_id
                         cfg.metadata["filesystem"] = {"skill_md": skill_md}
                     self.register(skill)
                 else:
@@ -1147,6 +1150,38 @@ class SkillRegistry:
             }
         return result
 
+    def get_domain_skills(self, domain_id: str) -> List[Dict[str, Any]]:
+        """Return all skills bound to a domain with their pass rates."""
+        result = []
+        for name, skill in self._skills.items():
+            cfg = getattr(skill, "_config", None)
+            meta = getattr(cfg, "metadata", None) if cfg else None
+            skill_domain = str((meta or {}).get("domain_id", ""))
+            if skill_domain != domain_id:
+                continue
+            stats = self._binding_stats.get(name)
+            result.append({
+                "name": name,
+                "display_name": str(getattr(cfg, "display_name", name) if cfg else name),
+                "execution_type": str((meta or {}).get("execution_type", "prompt")),
+                "triggers": list((meta or {}).get("triggers", [])),
+                "pass_rate": round(stats.recent_pass_rate, 3) if stats else 0.0,
+                "total_executions": stats.total_executions if stats else 0,
+                "last_executed_at": stats.last_executed_at.isoformat() if stats and stats.last_executed_at else None,
+            })
+        return result
+
+    def get_domain_adopted_count(self, domain_id: str) -> int:
+        """Return adopted_count from execution_store for a domain."""
+        try:
+            import os as _os
+            from core.apps.skills.skill_execution_record import SkillExecutionStore
+            store_path = _os.path.expanduser(
+                _os.getenv("AIPLAT_HOME", "~/.aiplat")) + "/data/execution_store.db"
+            return SkillExecutionStore.get_adopted_count(store_path, domain_id)
+        except Exception:
+            return 0
+
 
     # ── Adaptive Skill Routing (SkillRouter-style, §5.4) ─────────────────
 
@@ -1728,11 +1763,14 @@ class _GenericSkill(BaseSkill):
                         import json as _json_sm
                         from core.harness.ontology_engine.graph_index import GraphIndex
                         fd_g = GraphIndex.load("fde-delivery")
+                        # NOTE: inner report_text truncated to 8000 chars.
+                        # Outer [:8000] was removed because it corrupts the JSON
+                        # when wrapper overhead pushes total > 8000 (mid-string cut).
                         fd_g.add_entity(sid, _json_sm.dumps(
                             {"report_text": report_text[:8000],
                              "readiness_score": 0, "industry": params.get("industry", ""),
                              "pain_points": (params.get("pain_points") or "")[:200]},
-                            ensure_ascii=False)[:8000], "SessionMeta")
+                            ensure_ascii=False), "SessionMeta")
                     except Exception as e:
                         import logging as _log_sm
                         _log_sm.warning(f"SessionMeta persist failed: {e}")

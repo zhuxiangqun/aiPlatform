@@ -1,3 +1,4 @@
+from core.utils.math_utils import cosine_similarity
 """
 Knowledge Retriever Module
 

@@ -46,7 +46,10 @@ ROLE_DEFAULTS = {
 }
 
 
-@router.get("/agents", response_model=Dict[str, Any])  # noqa: contract-ok
+from core.schemas_common import ListResponse
+from core.schemas_roles import RoleAgentItem, RoleAgentUpdateResponse, RoleMetricsResponse, RoleStrategyOverrideResponse
+
+@router.get("/agents", response_model=ListResponse[RoleAgentItem])
 async def get_role_agents() -> List[Dict[str, Any]]:
     """List all agents with current role assignments and config."""
     import os
@@ -86,7 +89,7 @@ async def get_role_agents() -> List[Dict[str, Any]]:
     return agents
 
 
-@router.put("/agents/{agent_id}", response_model=Dict[str, Any])  # noqa: contract-ok
+@router.put("/agents/{agent_id}", response_model=RoleAgentUpdateResponse)
 async def update_agent_role(agent_id: str, body: Dict[str, Any]) -> Dict[str, Any]:
     """Configure an agent's role and parameters."""
     role = body.get("role", "employee")
@@ -103,7 +106,7 @@ async def update_agent_role(agent_id: str, body: Dict[str, Any]) -> Dict[str, An
     return {"agent_id": agent_id, **config}
 
 
-@router.get("/metrics", response_model=Dict[str, Any])  # noqa: contract-ok
+@router.get("/metrics", response_model=RoleMetricsResponse)
 async def get_role_metrics() -> Dict[str, Any]:
     """Realtime role-specific performance metrics."""
     from core.harness.finance.value_calculator import get_value_calculator
@@ -118,7 +121,7 @@ async def get_role_metrics() -> Dict[str, Any]:
     return metrics
 
 
-@router.post("/strategy/override", response_model=Dict[str, Any])  # noqa: contract-ok
+@router.post("/strategy/override", response_model=RoleStrategyOverrideResponse)
 async def override_strategy(body: Dict[str, Any]) -> Dict[str, Any]:
     """Manually override routing strategy for specific agents."""
     agent_id = body.get("agent_id", "")

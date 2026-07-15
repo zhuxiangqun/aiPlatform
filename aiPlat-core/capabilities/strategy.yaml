@@ -1,0 +1,37 @@
+# Capability Contract: Strategy Tracking (策略追踪)
+domain: ai-runtime
+capability: strategy
+description: "策略追踪——跟踪查询分析、检索策略、回答策略的选择效果"
+owner: core-runtime
+version: "1.0.0"
+updated: "2026-07-13"
+
+authoritative:
+  path: aiPlat-core/core/harness/optimization/strategy_tracker.py
+  entry_point: get_strategy_tracker
+  class: StrategyEffectivenessTracker
+  factory: get_strategy_tracker
+  public_symbols:
+    - StrategyEffectivenessTracker
+    - get_strategy_tracker
+
+methods:
+  - name: record_strategy
+    signature: "(strategy_name, success, latency_ms, metadata) -> None"
+    purpose: "记录策略效果"
+  - name: get_effectiveness
+    signature: "(strategy_name) -> float"
+    purpose: "获取策略有效性评分"
+  - name: get_strategy_tracker
+    signature: "() -> StrategyEffectivenessTracker"
+    purpose: "获取全局策略追踪器单例"
+
+consumer_patterns:
+  - "harness/syscalls/"
+  - "harness/optimization/"
+  - "harness/execution/"
+  - "harness/knowledge/"
+  - "harness/memory/"
+  - "apps/agents/"
+  - "api/"
+  - "harness/integration"

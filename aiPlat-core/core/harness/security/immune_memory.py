@@ -1,3 +1,5 @@
+from __future__ import annotations
+from core.utils.math_utils import cosine_similarity
 """
 ImmuneMemory — 对抗性输入免疫积累 (L4 Security Layer)
 ========================================================
@@ -14,7 +16,6 @@ ImmuneMemory — 对抗性输入免疫积累 (L4 Security Layer)
   - immunize(): syscalls/llm.py _guard_messages() 检测到注入后
   - scan():     syscalls/llm.py sys_llm_generate() 入口处
 """
-from __future__ import annotations
 
 import hashlib
 import json

@@ -64,7 +64,9 @@ def _require_auth(request: Request) -> str:
 router = APIRouter(prefix="/workbench", tags=["workbench"], dependencies=[Depends(_require_auth)])
 
 
-@router.get("/capabilities", response_model=Dict[str, Any])  # noqa: contract-ok
+from core.schemas_common import ListResponse
+
+@router.get("/capabilities", response_model=ListResponse[CapabilityItem])
 async def get_capabilities() -> List[Dict[str, str]]:
     """List available agent capabilities for the workbench."""
     return [
@@ -76,7 +78,7 @@ async def get_capabilities() -> List[Dict[str, str]]:
     ]
 
 
-@router.post("/submit", response_model=Dict[str, Any])  # noqa: contract-ok
+@router.post("/submit", response_model=TaskSubmitResponse)
 async def submit_task(body: Dict[str, Any]) -> Dict[str, Any]:
     """Submit a new task to the AI agent. Optionally link to a Spec for lifecycle tracking."""
     import uuid, time
@@ -188,7 +190,7 @@ async def _simulate_task_completion(run_id: str, spec_id: str = "") -> None:
             pass
 
 
-@router.get("/tasks/{run_id}", response_model=Dict[str, Any])  # noqa: contract-ok
+@router.get("/tasks/{run_id}", response_model=TaskStatusResponse)
 async def get_task_status(run_id: str) -> Dict[str, Any]:
     """Get task execution status and progress."""
     entry = _tasks.get(run_id)
@@ -210,7 +212,11 @@ async def get_task_status(run_id: str) -> Dict[str, Any]:
     return entry
 
 
-@router.get("/tasks", response_model=Dict[str, Any])  # noqa: contract-ok
+from core.schemas_common import ListResponse, PaginatedResponse
+from core.schemas_workbench import CapabilityItem, TaskSubmitResponse, TaskFeedbackResponse, TrainingStatusResponse, SkillInstallResponse, SeedDemoResponse, BatchMarkStableResponse
+from core.schemas_builder import SpecHistoryResponse, SpecRevisionResponse, SpecCreatedResponse, SpecMarkStableResponse, SpecRadarResponse, SpecTraceResponse, SpecDiffResponse, SpecsListResponse, TaskStatusResponse, PromotionResponse
+
+@router.get("/tasks", response_model=PaginatedResponse[dict])
 async def get_user_tasks(limit: int = 20) -> Dict[str, Any]:
     """Get user's historical task list."""
     items = sorted(_tasks.values(), key=lambda x: x.get("created_at", ""), reverse=True)[:limit]
@@ -225,7 +231,7 @@ async def get_user_tasks(limit: int = 20) -> Dict[str, Any]:
     return {"items": items, "total": len(items)}
 
 
-@router.post("/tasks/{run_id}/feedback", response_model=Dict[str, Any])  # noqa: contract-ok
+@router.post("/tasks/{run_id}/feedback", response_model=TaskFeedbackResponse)
 async def submit_feedback(run_id: str, body: Dict[str, Any]) -> Dict[str, Any]:
     """Submit user feedback for a completed task."""
     rating = body.get("rating", 0)
@@ -249,7 +255,7 @@ async def submit_feedback(run_id: str, body: Dict[str, Any]) -> Dict[str, Any]:
 
 # ── SpecLifecycle endpoints (Andrew Ng 三层 Loop 传动轴) ──
 
-@router.get("/specs", response_model=Dict[str, Any])  # noqa: contract-ok
+@router.get("/specs", response_model=SpecsListResponse)
 async def list_specs() -> Dict[str, Any]:
     """List all active (non-archived) Specs with latest status."""
     try:
@@ -261,7 +267,7 @@ async def list_specs() -> Dict[str, Any]:
         return {"specs": [], "total": 0, "error": str(e)}
 
 
-@router.get("/spec/{spec_id}/history", response_model=Dict[str, Any])  # noqa: contract-ok
+@router.get("/spec/{spec_id}/history", response_model=SpecHistoryResponse)
 async def get_spec_history(spec_id: str) -> Dict[str, Any]:
     """Get full version history for a Spec."""
     try:
@@ -286,7 +292,7 @@ async def get_spec_history(spec_id: str) -> Dict[str, Any]:
         return {"spec_id": spec_id, "versions": [], "total": 0, "error": str(e)}
 
 
-@router.post("/spec/{spec_id}/revise", response_model=Dict[str, Any])  # noqa: contract-ok
+@router.post("/spec/{spec_id}/revise", response_model=SpecRevisionResponse)
 async def revise_spec(spec_id: str, body: Dict[str, Any]) -> Dict[str, Any]:
     """Revise Spec + optionally trigger re-execution.
 
@@ -388,7 +394,7 @@ async def _trigger_spec_re_execution(spec_id: str, sv: Any, agent_id: str) -> st
     return run_id
 
 
-@router.get("/spec/{spec_id}/radar", response_model=Dict[str, Any])  # noqa: contract-ok
+@router.get("/spec/{spec_id}/radar", response_model=SpecRadarResponse)
 async def get_feedback_radar(spec_id: str) -> Dict[str, Any]:
     """Get FeedbackRadar analysis for a Spec.
 
@@ -413,7 +419,7 @@ async def get_feedback_radar(spec_id: str) -> Dict[str, Any]:
         return {"spec_id": spec_id, "suggestions": [], "total": 0, "error": str(e)}
 
 
-@router.get("/spec/{spec_id}/trace", response_model=Dict[str, Any])  # noqa: contract-ok
+@router.get("/spec/{spec_id}/trace", response_model=SpecTraceResponse)
 async def get_spec_trace(spec_id: str) -> Dict[str, Any]:
     """Get the latest execution trace for a Spec (Agent 决策痕迹可视化).
 
@@ -463,7 +469,7 @@ async def get_spec_trace(spec_id: str) -> Dict[str, Any]:
         return {"spec_id": spec_id, "trace": None, "error": str(e)}
 
 
-@router.get("/training/status", response_model=Dict[str, Any])  # noqa: contract-ok
+@router.get("/training/status", response_model=TrainingStatusResponse)
 async def get_training_status() -> Dict[str, Any]:
     """Get SFT/RL auto-training pipeline status (LoRAAutoTrigger monitoring)."""
     try:
@@ -513,7 +519,7 @@ async def get_fde_dashboard():
 
 
 
-@router.post("/spec/{spec_id}/mark-stable", response_model=Dict[str, Any])  # noqa: contract-ok
+@router.post("/spec/{spec_id}/mark-stable", response_model=SpecMarkStableResponse)
 async def mark_spec_stable(spec_id: str) -> Dict[str, Any]:
     """Quick action: mark a REVIEW Spec as STABLE (one-click approve)."""
     try:
@@ -527,7 +533,7 @@ async def mark_spec_stable(spec_id: str) -> Dict[str, Any]:
         return {"spec_id": spec_id, "error": str(e)}
 
 
-@router.post("/spec/create", response_model=Dict[str, Any])  # noqa: contract-ok
+@router.post("/spec/create", response_model=SpecCreatedResponse)
 async def create_spec(body: Dict[str, Any]) -> Dict[str, Any]:
     """Create a new Spec from scratch (manual Spec creation)."""
     try:
@@ -547,7 +553,7 @@ async def create_spec(body: Dict[str, Any]) -> Dict[str, Any]:
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/seed-demo", response_model=Dict[str, Any])  # noqa: contract-ok
+@router.post("/seed-demo", response_model=SeedDemoResponse)
 async def seed_demo_data() -> Dict[str, Any]:
     """一键种子数据: 创建 2 个 Spec + 提交任务 → 仪表板立即可用。
 
@@ -587,7 +593,7 @@ async def seed_demo_data() -> Dict[str, Any]:
             "note": "任务正在后台执行，约 5 秒后仪表板将显示数据"}
 
 
-@router.post("/skill/install", response_model=Dict[str, Any])  # noqa: contract-ok
+@router.post("/skill/install", response_model=SkillInstallResponse)
 async def install_skill_from_url(body: Dict[str, Any]) -> Dict[str, Any]:
     """Install a skill from an agentskills.io URL / git repo / zip URL.
 
@@ -643,7 +649,7 @@ async def install_skill_from_url(body: Dict[str, Any]) -> Dict[str, Any]:
         raise HTTPException(status_code=500, detail=str(e)[:200])
 
 
-@router.post("/spec/{spec_id}/duplicate", response_model=Dict[str, Any])  # noqa: contract-ok
+@router.post("/spec/{spec_id}/duplicate", response_model=SpecCreatedResponse)  # share SpecCreatedResponse
 async def duplicate_spec(spec_id: str, body: Dict[str, Any]) -> Dict[str, Any]:
     """Duplicate an existing Spec as a new one (FDE productivity shortcut).
 
@@ -671,7 +677,7 @@ async def duplicate_spec(spec_id: str, body: Dict[str, Any]) -> Dict[str, Any]:
         raise HTTPException(status_code=500, detail=str(e)[:200])
 
 
-@router.get("/spec/{spec_id}/diff", response_model=Dict[str, Any])  # noqa: contract-ok
+@router.get("/spec/{spec_id}/diff", response_model=SpecDiffResponse)
 async def diff_spec_versions(spec_id: str, v1: int = 0, v2: int = 0) -> Dict[str, Any]:
     """Compare two Spec versions side by side (FDE troubleshooting tool).
 
@@ -730,7 +736,7 @@ async def diff_spec_versions(spec_id: str, v1: int = 0, v2: int = 0) -> Dict[str
         raise HTTPException(status_code=500, detail=str(e)[:200])
 
 
-@router.post("/spec/batch-mark-stable", response_model=Dict[str, Any])  # noqa: contract-ok
+@router.post("/spec/batch-mark-stable", response_model=BatchMarkStableResponse)
 async def batch_mark_stable(body: Dict[str, Any]) -> Dict[str, Any]:
     """Batch operation: mark multiple REVIEW specs as STABLE at once.
 
@@ -760,7 +766,7 @@ async def batch_mark_stable(body: Dict[str, Any]) -> Dict[str, Any]:
 
 # ── Platform Promotion (Palantir 碎石路→高速公路) ──
 
-@router.post("/spec/{spec_id}/promote", response_model=Dict[str, Any])  # noqa: contract-ok
+@router.post("/spec/{spec_id}/promote", response_model=PromotionResponse)
 async def promote_to_platform(spec_id: str, body: Dict[str, Any]) -> Dict[str, Any]:
     """Request Spec promotion to platform scope."""
     try:
@@ -780,7 +786,7 @@ async def promote_to_platform(spec_id: str, body: Dict[str, Any]) -> Dict[str, A
         raise HTTPException(status_code=500, detail=str(e)[:200])
 
 
-@router.post("/spec/{spec_id}/promote/approve", response_model=Dict[str, Any])  # noqa: contract-ok
+@router.post("/spec/{spec_id}/promote/approve", response_model=PromotionResponse)  # share PromotionResponse
 async def approve_promotion(spec_id: str, body: Dict[str, Any]) -> Dict[str, Any]:
     """Approve platform promotion (reviewer action)."""
     try:
@@ -801,7 +807,7 @@ async def approve_promotion(spec_id: str, body: Dict[str, Any]) -> Dict[str, Any
         raise HTTPException(status_code=500, detail=str(e)[:200])
 
 
-@router.post("/spec/{spec_id}/promote/reject", response_model=Dict[str, Any])  # noqa: contract-ok
+@router.post("/spec/{spec_id}/promote/reject", response_model=PromotionResponse)  # share PromotionResponse
 async def reject_promotion(spec_id: str, body: Dict[str, Any]) -> Dict[str, Any]:
     """Reject platform promotion (reviewer action)."""
     try:
@@ -821,7 +827,7 @@ async def reject_promotion(spec_id: str, body: Dict[str, Any]) -> Dict[str, Any]
         raise HTTPException(status_code=500, detail=str(e)[:200])
 
 
-@router.get("/promotion-queue", response_model=Dict[str, Any])  # noqa: contract-ok
+@router.get("/promotion-queue", response_model=PaginatedResponse[dict])
 async def get_promotion_queue() -> Dict[str, Any]:
     """List all Specs awaiting platform promotion review."""
     try:

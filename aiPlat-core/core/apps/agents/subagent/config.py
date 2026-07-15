@@ -47,6 +47,7 @@ class SubagentConfig:
     
     # Metadata
     metadata: Dict[str, Any] = field(default_factory=dict)
+    graph_domain_id: Optional[str] = None  # ReconSubgraph domain for agent writes
     
     def can_use_tool(self, tool: str) -> bool:
         """Check if tool is allowed"""

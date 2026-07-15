@@ -479,11 +479,12 @@ class PipelineSession:
 
     async def start(self, project_id: str, requirement: str, prd_data: Any = None) -> Dict[str, Any]:
         """Start pipeline execution. Returns initial state snapshot."""
-        return await self._engine.initialize(project_id, requirement, prd_data=prd_data)
+        result = await self._engine.initialize(project_id, requirement, prd_data=prd_data)
+        return result
 
-    async def approve(self, state: Dict[str, Any]) -> Dict[str, Any]:
+    async def approve(self, state: Dict[str, Any], feedback: str = "") -> Dict[str, Any]:
         """HITL approval: resume pipeline from current HITL pause."""
-        return await self._engine.approve(dict(state))
+        return await self._engine.approve(dict(state), feedback=feedback)
 
     async def reject(self, state: Dict[str, Any], feedback: str = "") -> Dict[str, Any]:
         """HITL rejection: provide feedback and resume pipeline."""
@@ -667,9 +668,13 @@ def record_changeset(
     core.governance.changeset directly."""
     from core.governance.changeset import record_changeset as _fn
     return _fn(
-        resource_type=resource_type, resource_id=resource_id,
-        action=action, before=before, after=after,
-        tenant_id=tenant_id, actor_id=actor_id, metadata=metadata,
+        store=None,
+        name=action,
+        target_type=resource_type,
+        target_id=resource_id,
+        status="success",
+        args=metadata,
+        user_id=actor_id or "admin",
     )
 
 
@@ -708,6 +713,85 @@ def evaluate_tool_policy_snapshot(policy: Dict[str, Any], *, tool_name: str) -> 
     from core.policy.engine directly."""
     from core.policy.engine import evaluate_tool_policy_snapshot as _fn
     return _fn(policy, tool_name=tool_name)
+
+
+# ── Execution snapshot self-service facade (P1-2: user-facing checkpoint recovery) ──
+
+def list_execution_snapshots(session_id: str) -> List[Dict[str, Any]]:
+    """List all execution snapshots for a session (newest first).
+
+    Exposes the on-disk checkpoint headers so users/tools can self-service
+    inspect and recover pipeline execution state (Hermes Layer 1 checkpoint).
+    """
+    from core.harness.execution.snapshot import list_execution_snapshots as _fn
+    return _fn(session_id)
+
+
+def get_execution_snapshot(snapshot_id: str, session_id: str) -> Optional[Dict[str, Any]]:
+    """Load a single execution snapshot header + full state for recovery.
+
+    Returns None if not found. The ``full_state`` field is the recoverable
+    pipeline state dict (the restore payload).
+    """
+    from core.harness.execution.snapshot import load_execution_snapshot as _fn
+    snap = _fn(snapshot_id, session_id)
+    if snap is None:
+        return None
+    out = snap.to_dict()
+    out["full_state"] = snap.full_state
+    return out
+
+
+def compare_execution_snapshots(snapshot_a_id: str, snapshot_b_id: str, session_id: str) -> Dict[str, Any]:
+    """Diff two execution snapshots (before/after strategy effect)."""
+    from core.harness.execution.snapshot import compare_execution_snapshots as _fn
+    return _fn(snapshot_a_id, snapshot_b_id, session_id)
+
+
+def restore_execution_snapshot(snapshot_id: str, session_id: str) -> Optional[Dict[str, Any]]:
+    """Return the recoverable full state of a snapshot as the restore payload.
+
+    This is the self-service recovery entry point: the caller obtains the
+    historical pipeline state captured at checkpoint time and can resume/inspect
+    from it. Returns None if the snapshot or its full state is unavailable.
+    """
+    from core.harness.execution.snapshot import load_execution_snapshot as _fn
+    snap = _fn(snapshot_id, session_id)
+    if snap is None:
+        return None
+    state = snap.full_state
+    if state is None:
+        return None
+    return {
+        "snapshot_id": snap.snapshot_id,
+        "session_id": snap.session_id,
+        "stage_id": snap.stage_id,
+        "strategy_name": snap.strategy_name,
+        "phase": snap.phase,
+        "restored_state": state,
+    }
+
+
+# ── File checkpoint self-service facade (Hermes Layer 1: physical safety net) ──
+
+def list_file_checkpoints(*, session_id: str = "", path: str = "") -> List[Dict[str, Any]]:
+    """List filesystem checkpoints captured before file write/edit overwrites."""
+    from core.harness.execution.file_checkpoint import list_file_checkpoints as _fn
+    return _fn(session_id=session_id, path=path)
+
+
+def get_file_checkpoint(checkpoint_id: str, session_id: str = "") -> Optional[Dict[str, Any]]:
+    """Return a file checkpoint header + its stored content."""
+    from core.harness.execution.file_checkpoint import get_file_checkpoint as _fn
+    return _fn(checkpoint_id, session_id)
+
+
+def restore_file_checkpoint(checkpoint_id: str, session_id: str = "") -> Dict[str, Any]:
+    """Restore a file to the content captured in the given checkpoint (writes it back)."""
+    from core.harness.execution.file_checkpoint import restore_file_checkpoint as _fn
+    return _fn(checkpoint_id, session_id)
+
+
 
 
 def publish_learning_release(release_id: str) -> Dict[str, Any]:

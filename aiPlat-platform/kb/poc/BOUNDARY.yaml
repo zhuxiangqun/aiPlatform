@@ -1,11 +1,16 @@
 layer: platform
+ttl: "2026-09-01"  # ← 豁免过期日，过期后 architecture_guard 升级为 ERROR
 rationale: |
-  POC（概念验证）目录 — 非生产代码。包含早期原型和实验性功能：
-  - ocr.py: 多引擎 OCR（PaddleOCR + tesseract fallback）
-  - 其他 POC 模块
-
-  此目录的代码不参与 CI 架构守卫检查（已在 EXCEPT_10A 豁免）。
-  生产路径应使用 core/harness/document/ocr.py。
+  POC（概念验证）目录。
+  
+  OCR 已于 2026-07 统一到 InfraOCRAdapter：
+  - ocr.py → 薄壳委托层，调用 InfraOCRAdapter.ocr_structured()
+  - types.py → 从 InfraOCRAdapter 重导出 OCRToken / BBox
+  - 不再直接 import paddleocr 或 pytesseract（§5.31）
+  
+  生产路径应使用：
+  - Core: create_infra_ocr_adapter() → ocr_text / ocr_structured / ocr_pdf
+  - Platform (via CoreFacade): kb_ocr_keyframes() 用于视频 OCR
 notes: |
-  - ocr.py 中的 import pytesseract 是已知豁免（guard EXCEPT_10A）
-  - POC 代码目标是验证可行性后正式迁移到 Core 层
+  - EXCEPT_10A 豁免现在仅适用于 POC 原型代码（非 OCR 相关）
+  - OCR 的 import 豁免已不再需要（已全部通过 InfraOCRAdapter）

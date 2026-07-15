@@ -33,6 +33,7 @@ class ProfileConfig:
     mcp_servers: List[str] = field(default_factory=list)
     default: bool = False
     metadata: Dict[str, Any] = field(default_factory=dict)
+    profile_type: str = "customer"  # "customer" | "template"
 
     @classmethod
     def from_yaml(cls, path: str) -> Optional["ProfileConfig"]:
@@ -42,6 +43,11 @@ class ProfileConfig:
                 data = yaml.safe_load(f) or {}
             if not data.get("name"):
                 return None
+            md = data.get("metadata", {}) or {}
+            if "deployment_mode" in data and "deployment_mode" not in md:
+                md["deployment_mode"] = data["deployment_mode"]
+            if "industry" in data and "industry" not in md:
+                md["industry"] = data["industry"]
             return cls(
                 name=data["name"],
                 description=data.get("description", ""),
@@ -49,7 +55,8 @@ class ProfileConfig:
                 skills_dir=data.get("skills_dir", f"profiles/{data['name']}/skills"),
                 mcp_servers=data.get("mcp_servers", []),
                 default=data.get("default", False),
-                metadata=data.get("metadata", {}),
+                metadata=md,
+                profile_type=data.get("profile_type", "customer"),
             )
         except Exception:
             return None
@@ -112,6 +119,79 @@ class ProfileManager:
     def list_all(self) -> List[ProfileConfig]:
         self._ensure_loaded()
         return list(self._profiles.values())
+
+    def create(self, name: str, namespace: str = "", description: str = "",
+               industry: str = "", deployment_mode: str = "online",
+               profile_type: str = "customer") -> ProfileConfig:
+        """Create a new profile and persist to ~/.aiplat/profiles/{namespace}.yaml."""
+        import yaml
+        ns = namespace or name.lower().replace(" ", "-")
+        os.makedirs(self._profiles_dir, exist_ok=True)
+        fp = os.path.join(self._profiles_dir, f"{ns}.yaml")
+        data = {
+            "name": name,
+            "namespace": ns,
+            "description": description or name,
+            "industry": industry,
+            "deployment_mode": deployment_mode,
+            "profile_type": profile_type,
+            "mcp_servers": [],
+            "default": False,
+        }
+        with open(fp, "w", encoding="utf-8") as f:
+            yaml.dump(data, f, allow_unicode=True, sort_keys=False)
+        cfg = ProfileConfig(
+            name=name, namespace=ns,
+            description=description or name,
+            default=False, mcp_servers=[],
+            metadata={"industry": industry, "deployment_mode": deployment_mode},
+            profile_type=profile_type,
+        )
+        self._profiles[cfg.name] = cfg
+        self._profiles[ns] = cfg
+        return cfg
+
+    def delete(self, namespace: str) -> bool:
+        """Delete a profile YAML file and remove from cache."""
+        fp = os.path.join(self._profiles_dir, f"{namespace}.yaml")
+        if os.path.isfile(fp):
+            try:
+                os.remove(fp)
+                self._profiles.pop(namespace, None)
+                self._loaded = False
+                self._ensure_loaded()
+                return True
+            except OSError:
+                return False
+        return False
+
+    def update(self, namespace: str, name: str = "", description: str = "",
+               deployment_mode: str = "", industry: str = "") -> Optional[ProfileConfig]:
+        """Update an existing profile's fields and rewrite YAML."""
+        fp = os.path.join(self._profiles_dir, f"{namespace}.yaml")
+        cfg = self.get(namespace)
+        if not cfg or not os.path.isfile(fp):
+            # Try by name
+            for c in self.list_all():
+                if c.name == namespace:
+                    cfg = c
+                    fp = os.path.join(self._profiles_dir, f"{c.namespace}.yaml")
+                    break
+            if not cfg:
+                return None
+        import yaml
+        with open(fp, encoding="utf-8") as f:
+            data = yaml.safe_load(f) or {}
+        if name: data["name"] = name
+        if description: data["description"] = description
+        if deployment_mode: data["deployment_mode"] = deployment_mode
+        if industry: data["industry"] = industry
+        with open(fp, "w", encoding="utf-8") as f:
+            yaml.dump(data, f, allow_unicode=True, sort_keys=False)
+        self._loaded = False
+        self._ensure_loaded()
+        return self.get(cfg.namespace)
+        return False
 
 
 # Singleton

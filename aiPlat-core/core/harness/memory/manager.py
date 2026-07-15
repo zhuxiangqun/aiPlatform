@@ -132,7 +132,7 @@ class MemoryManager:
         # scoped (build_context auto-applies the S1 filter; capture stamps metadata).
         self._tenant_id = tenant_id
         self._session_id = session_id
-        self._persist_callback = None  # injected by service layer for SQLite persistence  # noqa: pending-wire
+        self._persist_callback = None  # wiring: active — wired by get_memory_manager() → _wire_persist_callback()
 
         # Initialize layers
         self._working = WorkingMemory(

@@ -1,8 +1,30 @@
-# aiPlat 系统能力清单
+# aiPlat — 三层知识系统
 
-> 原则：代码即真相。每个条目必须有可验证的代码位置。
+> **aiPlat 不是一个功能列表，而是一个会持续生长的知识系统。**
+
+## 系统架构：三层 + 三循环
+
+### 三层结构
+
+| 层级 | 作用 | 实现 |
+|:---|:---|:---|
+| **Raw Sources（原始资料层）** | 论文、报告、合同、网页、传感器数据——只读、可追溯，是事实来源 | `DataSource` 抽象层（SQL/API/File） + `DocumentParser` + 13 步 `OntologyEngine` 管道 |
+| **Wiki（知识层）** | 实体页、概念页、关系页、主题综述——LLM 持续编译，通过链接和引用形成知识网络 | `GraphIndex` + `KnowledgeSynthesizer` → Markdown Wiki + `vectors.json` 向量缓存 + FTS5 全文索引 |
+| **Schema（规则层）** | 域本体（YAML）、命名规范、更新流程——让知识库不会失控 | `ontology_loader.py` → `OntologyDomain` + `KnowledgeValidator`（6 种 axiom 验证） + `AGENTS.md` |
+
+### 三个持续循环
+
+| 循环 | 动作 | 实现 |
+|:---|:---|:---|
+| **Ingest（摄入循环）** | 新资料进入 → 自动提取实体 → 生成 Wiki → 更新关联页面 → 向量化 | 13 步管道（`ClassMapper` → `PropertyExtractor` → `RelationMapper` → `GraphIndex` → `KnowledgeSynthesizer` → Wiki → Vector） |
+| **Query（查询循环）** | 多 Agent 从 Wiki + Graph + Vector 三路检索 → CRAG 三级回退 → 回答带来源 → 在线验证 | `DomainRouter`（3 层级联） + `sys_knowledge_retrieve`（RRF 融合） + `MaterialsChatAgent`（Self-RAG） + `HallucinationTracker` |
+| **Lint（自检循环）** | 在线验证边一致性 → 离线检查过期/矛盾/孤立/无来源 → 发现问题自动触发增量更新 | `sys_graph_validate`（在线） + `KnowledgeValidator`（离线） + `EvolutionEngine`（夜间） + Lint-to-Ingest 回路 |
+
+### 核心原则
+
+> 代码即真相。每个条目必须有可验证的代码位置。
 > 更新：任何能力变更时同步更新本文档。
-> 评分：98/100（2026-07-12 — 543✅, 企业大脑竣工+智能澄清对话(多轮追问→就绪度驱动→自动触发诊断)）
+> 评分：98/100（2026-07-13 — 543✅）
 
 ---
 
@@ -427,9 +449,13 @@
 | InfraEmbeddingAdapter | `harness/infrastructure/infra_embedding_adapter.py` | ✅ | SentenceTransformer | 已合入 |
 | InfraRerankerAdapter | `harness/infrastructure/infra_reranker_adapter.py` | ✅ | CrossEncoder | 已合入 |
 | InfraAudioAdapter | `harness/document/transcriber.py` | ✅ | faster-whisper + openai-whisper | 已合入 |
-| InfraOCRAdapter | `harness/infrastructure/infra_ocr_adapter.py` | ✅ | Tesseract/PaddleOCR | 已合入 |
+| InfraOCRAdapter | `harness/infrastructure/infra_ocr_adapter.py` | ✅ | 统一OCR入口 (Tesseract/PaddleOCR, text/structured/pdf) | 已合入 |
+| BaseCircuitBreaker | `harness/infrastructure/circuit_breaker.py` | ✅ | 统一熔断器基类 (closed/open/half_open) — LLM/Wiki/MCP 共用 | 已合入 |
 | 模型解析集中化 | `harness/utils/model_injection.py` | ✅ | get_default_model(purpose) 统一入口 | 已合入 |
 | 模型发现 | infra ModelManager | ✅ | 远程API + 本地(Ollama/LM Studio/vLLM) | 已合入 |
+| 路径工具 | `core/utils/paths.py` | ✅ | 统一 AIPLAT_HOME 路径解析 + 子目录捷径 | 已合入 |
+| 常量定义 | `core/utils/constants.py` | ✅ | 截断/token/超时/domain 公共常量 | 已合入 |
+| HTTP错误工具 | `core/api/http_errors.py` | ✅ | HTTPException 标准化构造器 | 已合入 |
 | 视频转写 | `harness/document/transcriber.py` + platform/kb/video.py | ✅ | ffmpeg→Whisper→OCR→embed | 已合入 |
 | 模型路由 | `harness/utils/model_injection.py` → infra `ModelManager.select()` | ✅ | model_router.py 已删除，create_selected_adapter 为唯一路径 | 已合入 |
 | T1-T5 分层路由 | `harness/routing/model_tier_router.py` + `llm_profile.yaml` | ✅ | complexity→tier→cheapest capable model, 5级可配置 | Phase 12 |
@@ -744,6 +770,42 @@
 | roles | `api/routers/roles.py` | ✅ | 自动同步 | 已合入 |
 | workspace_packages | `api/routers/workspace_packages.py` | ✅ | 自动同步 | 已合入 |
 | workspace_agents | `api/routers/workspace_agents.py` | ✅ | 自动同步 | 已合入 |
+| wiki_ontology_patterns | `api/routers/wiki_ontology_patterns.py` | ✅ | 自动同步 | 已合入 |
+| wiki_ontology_domains | `api/routers/wiki_ontology_domains.py` | ✅ | 自动同步 | 已合入 |
+| fde_domain_ops | `api/routers/fde_domain_ops.py` | ✅ | 自动同步 | 已合入 |
+| fde_pipeline | `api/routers/fde_pipeline.py` | ✅ | 自动同步 | 已合入 |
+| fde_handover_v2 | `api/routers/fde_handover_v2.py` | ✅ | 自动同步 | 已合入 |
+| fde_sessions_compare | `api/routers/fde_sessions_compare.py` | ✅ | 自动同步 | 已合入 |
+| mcp_admin | `api/routers/mcp_admin.py` | ✅ | 自动同步 | 已合入 |
+| fde_sessions_v2 | `api/routers/fde_sessions_v2.py` | ✅ | 自动同步 | 已合入 |
+| wiki_ontology_sql | `api/routers/wiki_ontology_sql.py` | ✅ | 自动同步 | 已合入 |
+| fde_diagnostics_v2 | `api/routers/fde_diagnostics_v2.py` | ✅ | 自动同步 | 已合入 |
+| wiki_proposals | `api/routers/wiki_proposals.py` | ✅ | 自动同步 | 已合入 |
+| fde_overview | `api/routers/fde_overview.py` | ✅ | 自动同步 | 已合入 |
+| fde_validate | `api/routers/fde_validate.py` | ✅ | 自动同步 | 已合入 |
+| wiki_markings | `api/routers/wiki_markings.py` | ✅ | 自动同步 | 已合入 |
+| wiki_ontology_engine | `api/routers/wiki_ontology_engine.py` | ✅ | 自动同步 | 已合入 |
+| fde_quality_summary | `api/routers/fde_quality_summary.py` | ✅ | 自动同步 | 已合入 |
+| wiki_field_security | `api/routers/wiki_field_security.py` | ✅ | 自动同步 | 已合入 |
+| fde_acceptance | `api/routers/fde_acceptance.py` | ✅ | 自动同步 | 已合入 |
+| wiki_health_quality | `api/routers/wiki_health_quality.py` | ✅ | 自动同步 | 已合入 |
+| wiki_writeback | `api/routers/wiki_writeback.py` | ✅ | 自动同步 | 已合入 |
+| fde_trends | `api/routers/fde_trends.py` | ✅ | 自动同步 | 已合入 |
+| fde_bootstrap | `api/routers/fde_bootstrap.py` | ✅ | 自动同步 | 已合入 |
+| wiki_evidence | `api/routers/wiki_evidence.py` | ✅ | 自动同步 | 已合入 |
+| fde_manuals | `api/routers/fde_manuals.py` | ✅ | 自动同步 | 已合入 |
+| wiki_semantic_suggestions | `api/routers/wiki_semantic_suggestions.py` | ✅ | 自动同步 | 已合入 |
+| wiki_ontology_export | `api/routers/wiki_ontology_export.py` | ✅ | 自动同步 | 已合入 |
+| wiki_learning | `api/routers/wiki_learning.py` | ✅ | 自动同步 | 已合入 |
+| fde_delivery | `api/routers/fde_delivery.py` | ✅ | 自动同步 | 已合入 |
+| fde_governance | `api/routers/fde_governance.py` | ✅ | 自动同步 | 已合入 |
+| fde_ask | `api/routers/fde_ask.py` | ✅ | 自动同步 | 已合入 |
+| fde_maintenance | `api/routers/fde_maintenance.py` | ✅ | 自动同步 | 已合入 |
+| fde_reports | `api/routers/fde_reports.py` | ✅ | 自动同步 | 已合入 |
+| wiki_loop_triggers | `api/routers/wiki_loop_triggers.py` | ✅ | 自动同步 | 已合入 |
+| wiki_scenes | `api/routers/wiki_scenes.py` | ✅ | 自动同步 | 已合入 |
+| diagnostics_capability | `api/routers/diagnostics_capability.py` | ✅ | 自动同步 | 已合入 |
+| fde_dashboard_v2 | `api/routers/fde_dashboard_v2.py` | ✅ | 自动同步 | 已合入 |
 |------|------|:---:|------|------|
 | Change Control | `platform/api/routers/change_control.py` | ✅ | 变更请求跟踪/审计/autosmoke强制执行 | 已合入 |
 | Tenant Onboarding | `platform/api/routers/onboarding.py` | ✅ | 租户引导：LLM配置/执行后端/密钥迁移/信任密钥 | 已合入 |
@@ -789,7 +851,7 @@
 | CoreFacade | `core/api/core_facade.py` | ✅ | 统一门面，84K行暴露所有核心能力 | 已合入 |
 | ContextService | `core/services/context_service.py` | ✅ | 完整对话上下文管理 + 记忆集成 | 已合入 |
 | ConfigRegistry | `core/services/config_registry_store.py` | ✅ | 版本化/哈希校验的配置注册中心 | 已合入 |
-| ExecutionStore | `core/services/execution_store.py` | ✅ | 综合执行/审计存储 + Schema管理 | 已合入 |
+| ExecutionStore | `core/services/execution_store/` | ✅ | 综合执行/审计存储 + Schema管理 | 已合入 |
 
 ---
 
@@ -888,7 +950,7 @@
 | 编排系统 | 4 | 0 | 4 |
 | 管理 & 质量 | 21 | 0 | 21 |
 | 编排层 | 17 | 0 | 17 |
-| **总计** | **641** | **0** | **641** |
+| **总计** | **681** | **0** | **681** |
 
 ---
 

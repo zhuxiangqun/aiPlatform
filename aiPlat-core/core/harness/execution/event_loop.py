@@ -25,9 +25,9 @@ from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
-_TRIGGERS_PATH = _os.path.expanduser(
-    _os.path.join(_os.getenv("AIPLAT_HOME", "~/.aiplat"), "loop", "triggers.json")
-)
+from core.utils.paths import get_aiplat_data_dir
+
+_TRIGGERS_PATH = get_aiplat_data_dir("loop/triggers.json")
 _RUNNING: List[asyncio.Task] = []
 
 

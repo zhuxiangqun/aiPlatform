@@ -1106,7 +1106,8 @@ class SkillManager:
             skills = [s for s in skills if s.type == skill_type]
         if status:
             skills = [s for s in skills if s.status == status]
-        
+
+        skills.sort(key=lambda s: s.created_at, reverse=True)
         return skills[offset:offset + limit]
     
     async def update_skill(
@@ -1651,7 +1652,11 @@ class SkillManager:
                     model = create_selected_adapter(model_name=best_model_for_purpose("skill_execution"))
                     skill.set_model(model)
                 except Exception as e:
-                    logging.debug(str(e), exc_info=True)
+                    duration_ms = (datetime.now(timezone.utc) - now).total_seconds() * 1000
+                    await self.fail_execution(execution_id,
+                        f"Failed to configure LLM adapter for skill '{skill_id}': {e}", duration_ms)
+                    updated = await self.get_execution(execution_id)
+                    return updated if updated else execution
             
             skill_tools = context.get("tools", []) if context else []
             # Propagate user_id from active request context when not explicitly provided in payload.context.
@@ -1688,7 +1693,36 @@ class SkillManager:
             if result.success:
                 await self.complete_execution(execution_id, result.output or {}, duration_ms, metadata=res_meta)
             else:
-                await self.fail_execution(execution_id, result.error or "Unknown error", duration_ms, metadata=res_meta)
+                error_msg = result.error or f"Skill '{skill_id}' execution failed (no error detail)"
+                logging.warning("Skill execution failed: skill=%s error=%s", skill_id, error_msg)
+                await self.fail_execution(execution_id, error_msg, duration_ms, metadata=res_meta)
+
+            # Report quality signal to infra quality tracker for auto model selection improvement
+            try:
+                if hasattr(skill, '_model') and hasattr(skill._model, 'model_name'):
+                    used_model = str(skill._model.model_name)
+                    output_text = ''
+                    if isinstance(result.output, dict):
+                        output_text = str(result.output.get('text', result.output.get('output', '')))
+                    elif result.output:
+                        output_text = str(result.output)
+                    olen = len(output_text)
+                    if olen > 2000:
+                        delta = 0.15
+                    elif olen > 1000:
+                        delta = 0.10
+                    elif olen > 500:
+                        delta = 0.05
+                    elif olen > 200:
+                        delta = 0.0
+                    elif result.success:
+                        delta = -0.05
+                    else:
+                        delta = -0.15
+                    from infra.management.model.quality_validator import get_quality_tracker
+                    get_quality_tracker().update(used_model, 'skill_execution', delta)
+            except Exception:
+                pass
             
         except Exception as e:
             duration_ms = (datetime.now(timezone.utc) - now).total_seconds() * 1000

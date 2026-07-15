@@ -1,0 +1,65 @@
+# ── Capability Contract: Embedding (文本嵌入) ──
+# All embedding operations must go through InfraEmbeddingAdapter.
+
+domain: ai-runtime
+capability: embedding
+description: "文本嵌入——将文本转换为向量，用于语义搜索和相似度计算"
+owner: core-infra
+version: "1.0.0"
+updated: "2026-07-13"
+
+# ── 权威入口 ──
+authoritative:
+  path: aiPlat-core/core/harness/infrastructure/infra_embedding_adapter.py
+  factory: create_adapter
+  factory_arg: "embedding"
+  class: InfraEmbeddingAdapter
+  public_symbols:
+    - InfraEmbeddingAdapter
+    - create_infra_embedding_adapter
+    - create_adapter
+
+# ── 禁止直接接触的库 ──
+forbidden_direct_imports:
+  - sentence_transformers
+  - SentenceTransformer
+  - sentence_transformers.SentenceTransformer
+
+# ── 提供的能力 ──
+methods:
+  - name: encode
+    signature: "(texts: List[str]) -> List[ndarray]"
+    purpose: "文本 → 向量"
+  - name: embed_query
+    signature: "(query: str) -> ndarray"
+    purpose: "查询文本 → 向量"
+
+# ── 消费者 ──
+consumers:
+  - path: aiPlat-core/core/harness/knowledge/embedder.py
+    uses: encode
+    note: "通过 create_adapter('embedding')"
+  - path: aiPlat-core/core/harness/memory/compression.py
+    uses: encode
+    via: core.harness.infrastructure.infra_embedding_adapter.get_embedding
+    note: "语义相关性排序"
+  - path: aiPlat-core/core/harness/syscalls/retrieval.py
+    uses: encode
+    via: core.harness.knowledge.embedder
+  - path: aiPlat-core/core/harness/memory/embedding.py
+    uses: encode
+  - path: aiPlat-core/core/harness/knowledge/domain_router.py
+    uses: encode
+    note: "T2 向量路由 — 域分类"
+  - path: aiPlat-core/core/harness/knowledge/wiki_engine.py
+    uses: encode
+  - path: aiPlat-core/core/harness/knowledge/wiki_retriever.py
+    uses: encode
+  - path: aiPlat-core/core/harness/knowledge/doc_quality_monitor.py
+    uses: encode
+  - path: aiPlat-core/core/apps/skills/registry.py
+    uses: encode
+    note: "field-assessment skill 执行时语义注入"
+
+# ── 历史违规 ──
+legacy_fixes: []

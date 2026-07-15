@@ -1,0 +1,37 @@
+# Capability Contract: File Operations (文件操作)
+domain: ai-runtime
+capability: file_ops
+description: "文件操作——安全的文件读写、编辑、搜索"
+owner: core-harness
+version: "1.0.0"
+updated: "2026-07-13"
+
+authoritative:
+  path: aiPlat-core/core/harness/syscalls/file.py
+  entry_point: sys_file_read
+  class: file_syscalls
+  public_symbols:
+    - sys_file_read
+    - sys_file_write
+    - sys_file_edit
+    - sys_glob
+
+methods:
+  - name: sys_file_read
+    signature: "(path) -> str"
+    purpose: "安全读取文件内容"
+  - name: sys_file_write
+    signature: "(path, content) -> None"
+    purpose: "安全写入文件"
+  - name: sys_file_edit
+    signature: "(path, old_str, new_str) -> None"
+    purpose: "安全修改文件"
+  - name: sys_glob
+    signature: "(pattern) -> List[str]"
+    purpose: "文件模式搜索"
+
+consumer_patterns:
+  - "harness/syscalls/"
+  - "harness/execution/"
+  - "apps/"
+  - "api/"

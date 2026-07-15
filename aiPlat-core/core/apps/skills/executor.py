@@ -7,6 +7,7 @@ timeout control, and execution tracking.
 """
 
 import asyncio
+import json
 import os
 import time
 import uuid
@@ -132,6 +133,35 @@ class SkillExecutor:
                         error=f"Permission denied. Required roles: {allowed_roles}",
                         error_code="PERMISSION_DENIED",
                     )
+
+        # ── P2: Domain context injection ──
+        domain_id = str(meta.get("domain_id", "") or "").strip()
+        if domain_id:
+            try:
+                from core.harness.knowledge.ontology_loader import load_ontology_from_yaml
+                from core.harness.utils.prompt_loader import _sync_resolve
+                import os as _os
+
+                domain_ctx = {"domain_id": domain_id}
+                # Load ontology class schema
+                yaml_path = _os.path.expanduser(f"~/.aiplat/ontologies/{domain_id}.yaml")
+                if _os.path.isfile(yaml_path):
+                    onto = load_ontology_from_yaml(yaml_path)
+                    domain_ctx["classes"] = [
+                        {"name": c.label, "id": c.uri if hasattr(c, 'uri') else c.name if hasattr(c, 'name') else k,
+                         "required_fields": getattr(c, 'required_fields', [])}
+                        for k, c in onto.classes.items()
+                    ]
+                # Load domain prompt
+                try:
+                    prompt = _sync_resolve(f"domain-prompt-{domain_id}")
+                    domain_ctx["prompt"] = prompt
+                except Exception:
+                    pass
+                # Inject into params as _domain_context
+                params = {**params, "_domain_context": json.dumps(domain_ctx, ensure_ascii=False)}
+            except Exception:
+                pass
 
         execution_id = new_prefixed_id("run")
         record = ExecutionRecord(

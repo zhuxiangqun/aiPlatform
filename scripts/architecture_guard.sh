@@ -110,6 +110,14 @@ echo ""; sep; echo "  CONSTITUTION TESTS: prompt_loading + skill_config + agent_
                   aiPlat-core/core/tests/unit/test_agent_md_config.py \
                   aiPlat-core/core/tests/unit/test_core_module_deps.py -q --tb=short || FAIL=1
 
+# ── Capability Convergence Guard (能力收敛) ──
+echo ""; sep; echo "  CAPABILITY GUARD: capability convergence (authoritative entry points)"; sep
+bash "$WORKSPACE_ROOT/scripts/capability_guard.sh" || FAIL=1
+
+# ── Contract Guard (模块契约) ──
+echo ""; sep; echo "  CONTRACT GUARD: cross-module data contracts"; sep
+bash "$WORKSPACE_ROOT/scripts/contract_guard.sh" || FAIL=1
+
 # ── Phase check (dead code + wiring tests + self-annotated) ──
 echo ""; sep; echo "  PHASE CHECK: dead code + wiring tests + self-annotated"; sep
 bash scripts/phase_check.sh || FAIL=1

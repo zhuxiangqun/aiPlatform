@@ -1,0 +1,40 @@
+# Capability Contract: Hallucination Tracking (幻觉检测)
+domain: ai-quality
+capability: hallucination
+description: "幻觉检测——基于 NLI 的事实核查，评估回答与检索上下文的一致性"
+owner: core-quality
+version: "1.0.0"
+updated: "2026-07-13"
+
+authoritative:
+  path: aiPlat-core/core/harness/evaluation/hallucination_tracker.py
+  entry_point: get_hallucination_tracker
+  class: HallucinationTracker
+  factory: get_hallucination_tracker
+  public_symbols:
+    - HallucinationTracker
+    - get_hallucination_tracker
+    - HallucinationReport
+
+methods:
+  - name: evaluate
+    signature: "(question, answer, retrieved_context, run_id, domain_id) -> HallucinationReport"
+    purpose: "评估回答的幻觉风险（提取声明→验证→评分→标记）"
+  - name: get_dashboard
+    signature: "() -> Dict"
+    purpose: "获取幻觉检测仪表盘数据"
+  - name: get_recent_reports
+    signature: "(limit) -> List[HallucinationReport]"
+    purpose: "获取最近的检测报告"
+  - name: get_hallucination_tracker
+    signature: "() -> HallucinationTracker"
+    purpose: "获取全局幻觉追踪器单例"
+
+consumer_patterns:
+  - "harness/evaluation/"
+  - "harness/integration"
+  - "harness/syscalls/llm"
+  - "apps/agents/"
+  - "api/"
+  - "management/"
+  - "engine/skills/evidence_chain"

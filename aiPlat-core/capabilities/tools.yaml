@@ -1,0 +1,59 @@
+# ── Capability Contract: Tools (工具) ──
+# All tool operations must go through ToolRegistry and sys_tool_call.
+
+domain: ai-runtime
+capability: tools
+description: "工具管理——工具注册、发现、权限控制和 syscall 调用"
+owner: core-runtime
+version: "1.0.0"
+updated: "2026-07-13"
+
+authoritative:
+  path: aiPlat-core/core/apps/tools/registry.py
+  entry_point: get_tool_registry
+  class: ToolRegistry
+  factory: get_tool_registry
+  public_symbols:
+    - ToolRegistry
+    - get_tool_registry
+    - sys_tool_call
+    - BaseTool
+
+forbidden_direct_imports: []
+forbidden_patterns:
+  - "tool execution bypassing PolicyGate"
+
+context_requirement:
+  must_pass: PolicyGate.check_tool
+  module: aiPlat-core/core/harness/infrastructure/gates/policy_gate.py
+
+methods:
+  - name: get_tool_registry
+    signature: "() -> ToolRegistry"
+    purpose: "获取全局工具注册表单例"
+  - name: register
+    signature: "(tool: BaseTool) -> None"
+    purpose: "注册工具"
+  - name: sys_tool_call
+    signature: "(name: str, params: dict) -> ToolResult"
+    purpose: "通过 syscall 通道调用工具"
+
+consumers:
+  - path: aiPlat-core/core/harness/execution/loop/_facade.py
+    uses: sys_tool_call
+  - path: aiPlat-core/core/harness/syscalls/tool.py
+    uses: sys_tool_call
+  - path: aiPlat-core/core/api/core_facade.py
+    uses: get_tool_registry
+  - path: aiPlat-core/core/api/routers/tools.py
+    uses: get_tool_registry
+
+consumer_patterns:
+  - "harness/"
+  - "api/"
+  - "apps/"
+  - "management/"
+  - "mcp/"
+  - "server"
+
+legacy_fixes: []

@@ -129,6 +129,14 @@ export const modelApi = {
   }>> }> => {
     return apiClient.get('/infra/models/provider-models');
   },
+
+  listAdapters: async (): Promise<{ adapters: Array<{ adapter_id: string; name: string; provider: string; status: string }>; total: number }> => {
+    return apiClient.get('/core/adapters');
+  },
+
+  createAdapter: async (data: { name: string; provider: string; api_key: string; api_base_url: string }): Promise<{ adapter_id: string; status: string }> => {
+    return apiClient.post('/core/adapters', data);
+  },
 };
 
 export default modelApi;

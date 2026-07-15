@@ -35,6 +35,8 @@ class GraphEdge:
     inferred_confidence: float = 1.0
     context_description: str = ""  # Natural language description of this relationship
     embedding: Optional[List[float]] = None  # Per-relation embedding vector
+    created_by: str = ""           # Agent ID that created this edge
+    created_in_run: str = ""       # run_id context for traceability
 
 
 @dataclass
@@ -45,6 +47,7 @@ class GraphNode:
     source_doc_id: str = ""           # KB document ID this entity was extracted from
     out_edges: List[GraphEdge] = field(default_factory=list)
     in_edges: List[GraphEdge] = field(default_factory=list)
+    metadata: Dict[str, Any] = field(default_factory=dict)  # uncertainty, provenance, audit
 
 
 @dataclass
@@ -129,6 +132,18 @@ class GraphIndex:
             pass
         try:
             conn.execute("ALTER TABLE graph_edges ADD COLUMN embedding TEXT NOT NULL DEFAULT ''")
+        except _sqlite3.OperationalError:
+            pass
+        try:
+            conn.execute("ALTER TABLE graph_edges ADD COLUMN created_by TEXT NOT NULL DEFAULT ''")
+        except _sqlite3.OperationalError:
+            pass
+        try:
+            conn.execute("ALTER TABLE graph_edges ADD COLUMN created_in_run TEXT NOT NULL DEFAULT ''")
+        except _sqlite3.OperationalError:
+            pass
+        try:
+            conn.execute("ALTER TABLE graph_nodes ADD COLUMN metadata TEXT NOT NULL DEFAULT '{}'")
         except _sqlite3.OperationalError:
             pass
         conn.commit()
@@ -241,12 +256,15 @@ class GraphIndex:
         conn = self._get_conn()
         conn.execute(
             """INSERT INTO graph_edges(domain_id, source_id, target_id, relation_name,
-               relation_label, confidence, inferred, rule_name, inferred_confidence, context_desc, embedding)
-               VALUES (?,?,?,?,?,?,?,?,?,?,?)""",
+               relation_label, confidence, inferred, rule_name, inferred_confidence, context_desc, embedding,
+               created_by, created_in_run)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)""",
             (self.domain_id, src, tgt, rname, relation_label or rname,
              confidence, int(inferred), rule_name, confidence,
              getattr(edge, 'context_description', ''),
-             _json.dumps(getattr(edge, 'embedding', None) or [])),
+             _json.dumps(getattr(edge, 'embedding', None) or []),
+             getattr(edge, 'created_by', ''),
+             getattr(edge, 'created_in_run', '')),
         )
         conn.commit()
         self._invalidate_cache()

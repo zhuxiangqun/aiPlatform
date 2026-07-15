@@ -5,11 +5,54 @@ Performs connectivity and response tests for models.
 """
 
 import os
+import sqlite3
 import aiohttp
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 from datetime import datetime, timezone
 
 from .schemas import ModelInfo, ModelStatus
+
+
+def _resolve_adapter_api_key(adapter_id: str) -> Optional[str]:
+    """Resolve API key from adapters table (management UI configured)."""
+    if not adapter_id:
+        return None
+    db_path = os.getenv("AIPLAT_EXECUTION_DB_PATH", "")
+    if not db_path or not os.path.isfile(db_path):
+        return None
+    try:
+        conn = sqlite3.connect(db_path, timeout=5.0)
+        try:
+            row = conn.execute(
+                "SELECT api_key, api_key_enc FROM adapters WHERE adapter_id=? LIMIT 1",
+                (adapter_id,)
+            ).fetchone()
+            if not row:
+                return None
+            if row[1]:
+                # Inline Fernet decrypt — avoids cross-layer import from core
+                key = (os.getenv("AIPLAT_SECRET_KEY") or "").strip()
+                if key:
+                    from cryptography.fernet import Fernet
+                    try:
+                        return Fernet(key.encode("utf-8")).decrypt(
+                            row[1].encode("utf-8")).decode("utf-8") or None
+                    except Exception:
+                        return None
+            return (row[0] or "").strip() or None
+        finally:
+            conn.close()
+    except Exception:
+        return None
+
+
+def _resolve_api_key(model: ModelInfo) -> str:
+    """Resolve API key from adapter table (management UI configured)."""
+    if model.config.adapter_id:
+        key = _resolve_adapter_api_key(model.config.adapter_id)
+        if key:
+            return key
+    return ""
 
 
 class HealthChecker:
@@ -150,9 +193,8 @@ class HealthChecker:
     async def _check_openai_response(self, model: ModelInfo) -> Dict[str, Any]:
         """检查 OpenAI 响应"""
         import time
-        import os
         
-        api_key = os.environ.get(model.config.api_key_env or "OPENAI_API_KEY", "")
+        api_key = _resolve_api_key(model)
         if not api_key:
             return {"success": False, "error": "API key not configured"}
         
@@ -209,7 +251,7 @@ class HealthChecker:
         import time
         import os
         
-        api_key = os.environ.get(model.config.api_key_env or "ANTHROPIC_API_KEY", "")
+        api_key = _resolve_api_key(model)
         if not api_key:
             return {"success": False, "error": "API key not configured"}
         
@@ -247,10 +289,8 @@ class HealthChecker:
                 return {"success": False, "error": error_data.get("error", {}).get("message", f"HTTP {resp.status}"), "latency_ms": latency_ms}
     
     async def _check_deepseek_connectivity(self, model: ModelInfo) -> Dict[str, Any]:
-        """检查 DeepSeek 连通性（服务器可达即可，不要求 /v1/models 端点存在）"""
-        import os
-        
-        api_key = os.environ.get(model.config.api_key_env or "DEEPSEEK_API_KEY", "")
+        """检查 DeepSeek 连通性"""
+        api_key = _resolve_api_key(model)
         base_url = model.config.base_url or "https://api.deepseek.com"
         base = base_url.rstrip('/')
         url = f"{base}/models" if base.endswith('/v1') else f"{base}/v1/models"
@@ -268,9 +308,8 @@ class HealthChecker:
     async def _check_deepseek_response(self, model: ModelInfo) -> Dict[str, Any]:
         """检查 DeepSeek 响应"""
         import time
-        import os
         
-        api_key = os.environ.get(model.config.api_key_env or "DEEPSEEK_API_KEY", "")
+        api_key = _resolve_api_key(model)
         if not api_key:
             return {"success": False, "error": "API key not configured"}
         
@@ -393,7 +432,7 @@ class HealthChecker:
         if not base_url:
             return {"success": False, "error": "Base URL not configured"}
         
-        api_key = os.environ.get(model.config.api_key_env or "", "")
+        api_key = _resolve_api_key(model)
         headers = model.config.headers or {}
         if api_key:
             headers["Authorization"] = f"Bearer {api_key}"
@@ -428,17 +467,12 @@ class HealthChecker:
                 return {"success": False, "error": error_data.get("error", {}).get("message", f"HTTP {resp.status}"), "latency_ms": latency_ms}
     
     def _get_auth_headers(self, model: ModelInfo) -> Dict[str, str]:
-        """获取认证头"""
-        import os
-        
+        """获取认证头 — adapter_id 优先于 api_key_env"""
         headers = {"Content-Type": "application/json"}
-        
-        if model.config.api_key_env:
-            api_key = os.environ.get(model.config.api_key_env, "")
-            if api_key:
-                if model.provider.lower() == "anthropic":
-                    headers["x-api-key"] = api_key
-                else:
-                    headers["Authorization"] = f"Bearer {api_key}"
-        
+        api_key = _resolve_api_key(model)
+        if api_key:
+            if model.provider.lower() == "anthropic":
+                headers["x-api-key"] = api_key
+            else:
+                headers["Authorization"] = f"Bearer {api_key}"
         return headers

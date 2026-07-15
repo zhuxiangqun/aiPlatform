@@ -17,14 +17,7 @@ from enum import Enum
 import uuid
 import time
 
-
-class SpanStatus(Enum):
-    """Span status enumeration."""
-    STARTED = "started"
-    RUNNING = "running"
-    SUCCESS = "success"
-    FAILED = "failed"
-    TIMEOUT = "timeout"
+from core.harness.interfaces.types import SpanStatus  # canonical location
 
 
 class DecayType(Enum):

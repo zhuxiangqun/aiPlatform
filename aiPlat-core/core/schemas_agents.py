@@ -75,6 +75,9 @@ class AgentAutoFillResponse(BaseModel):
     skills: List[str] = Field(default_factory=list)
     tools: List[str] = Field(default_factory=list)
     mcp_ids: List[str] = Field(default_factory=list)
+    missing_skills: List[Dict[str, str]] = Field(default_factory=list)
+    missing_tools: List[Dict[str, str]] = Field(default_factory=list)
+    missing_mcps: List[Dict[str, str]] = Field(default_factory=list)
     agent_ids: List[str] = Field(default_factory=list)
     memory_config: Dict[str, Any] = Field(default_factory=dict)
     sop_text: str = ""

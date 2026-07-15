@@ -458,7 +458,7 @@ class SearchTool(BaseTool):
                 )
                 
                 if response.status_code != 200:
-                    return self._mock_results(query, num_results)
+                    return self._search_error(query, f"HTTP {response.status_code}")
                 
                 from html.parser import HTMLParser
                 import urllib.parse
@@ -520,20 +520,19 @@ class SearchTool(BaseTool):
                 
         except Exception:
             if os.getenv("AIPLAT_MOCK_SEARCH_ENABLED", "false").lower() in ("1", "true", "yes"):
-                return self._mock_results(query, num_results)
+                return self._search_error(query, "search engine exception")
             return [{"title": f"Search failed for '{query}'", "url": "", "snippet": "Search failed and mock fallback is disabled. Set AIPLAT_MOCK_SEARCH_ENABLED=true to enable mock.", "source": "error"}]
 
-    def _mock_results(self, query: str, num_results: int) -> List[Dict[str, Any]]:
-        """Fallback mock results"""
-        return [
-            {
-                "title": f"Result {i+1} for {query}",
-                "url": f"https://example.com/{i}",
-                "snippet": f"This is a mock result for query: {query}",
-                "source": "mock"
-            }
-            for i in range(num_results)
-        ]
+    def _search_error(self, query: str, reason: str) -> List[Dict[str, Any]]:
+        """Return error result when search fails — no mock data."""
+        import logging
+        logging.getLogger("aiplat.tools.search").warning("Search failed for '%s': %s", query[:100], reason)
+        return [{
+            "title": f"Search unavailable",
+            "url": "",
+            "snippet": f"Search engine returned an error: {reason}. Try again or refine your query.",
+            "source": "error"
+        }]
 
 
 class FileOperationsTool(BaseTool):

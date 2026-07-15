@@ -880,6 +880,7 @@ def create_app(manager=None) -> FastAPI:
                             "stop": m.config.stop,
                             "baseUrl": m.config.base_url,
                             "apiKeyEnv": m.config.api_key_env,
+                            "adapterId": m.config.adapter_id,
                         },
                         "stats": {
                             "requestsTotal": m.stats.requests_total,
@@ -982,7 +983,7 @@ def create_app(manager=None) -> FastAPI:
                     "stop": model.config.stop,
                     "baseUrl": model.config.base_url,
                     "apiKeyEnv": model.config.api_key_env,
-                    "headers": model.config.headers,
+                    "adapterId": model.config.adapter_id,
                 },
                 "description": model.description,
                 "tags": model.tags,
@@ -1014,6 +1015,7 @@ def create_app(manager=None) -> FastAPI:
         id: Optional[str] = None
         base_url: Optional[str] = None
         api_key_env: Optional[str] = None
+        adapter_id: Optional[str] = None
         enabled: Optional[bool] = None
     
     @app.post("/api/infra/models")
@@ -1033,6 +1035,8 @@ def create_app(manager=None) -> FastAPI:
                 config_data["base_url"] = request.base_url
             if request.api_key_env:
                 config_data["api_key_env"] = request.api_key_env
+            if request.adapter_id:
+                config_data["adapter_id"] = request.adapter_id
             
             # Auto-generate id if not provided
             model_id = request.id or f"external:{request.provider}:{re.sub(r'[^a-zA-Z0-9_-]', '-', request.name.lower())}--{uuid.uuid4().hex[:8]}"
@@ -1054,6 +1058,7 @@ def create_app(manager=None) -> FastAPI:
                     presence_penalty=config_data.get("presencePenalty", config_data.get("presence_penalty", 0.0)),
                     stop=config_data.get("stop", []),
                     api_key_env=config_data.get("apiKeyEnv", config_data.get("api_key_env")),
+                    adapter_id=config_data.get("adapterId", config_data.get("adapter_id")),
                     base_url=config_data.get("baseUrl", config_data.get("base_url")),
                     headers=config_data.get("headers", {}),
                 ),

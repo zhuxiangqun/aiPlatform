@@ -499,6 +499,29 @@ async def _check_assessment():
     }
 
 
+
+async def _check_rag_quality():
+    try:
+        from core.harness.evaluation.rag_diagnostics_collector import RAGDiagnosticsCollector
+        collector = RAGDiagnosticsCollector()
+        dash = await collector.collect_quality_dashboard(lookback_hours=24)
+        ov = dash.overview
+        score = ov.get("overall_score", 0)
+        status = "pass" if score >= 70 else "warn" if score >= 50 else "fail"
+        return {"status": status, "score": score, "signals": {
+            "faithfulness": dash.hallucination.get("avg_faithfulness", 0),
+            "relevancy": dash.hallucination.get("avg_relevancy_proxy", 0),
+            "quality_gate_rate": dash.retrieval.get("quality_gate_pass_rate", 0),
+            "abandon_rate": dash.signals.get("abandon_rate", 0),
+            "anomaly_count": len(dash.anomalies),
+        }, "items": [
+            {"check": "忠实度", "result": "合格" if dash.hallucination.get("avg_faithfulness", 0) >= 0.7 else "偏低", "detail": str(round(dash.hallucination.get("avg_faithfulness", 0), 2))},
+            {"check": "检索质量门通过率", "result": "合格" if dash.retrieval.get("quality_gate_pass_rate", 0) >= 0.8 else "偏低", "detail": f"{dash.retrieval.get("quality_gate_pass_rate", 0):.0%}"},
+            {"check": "用户放弃率", "result": "正常" if dash.signals.get("abandon_rate", 0) <= 0.1 else "偏高", "detail": f"{dash.signals.get("abandon_rate", 0):.0%}"},
+        ]}
+    except Exception:
+        return {"status": "unavailable", "score": 0, "items": [{"check": "RAG 质量", "result": "—", "detail": "RAGDiagnosticsCollector 不可用"}]}
+
 async def _check_doc_quality():
     """Check document quality monitor status."""
     try:
@@ -568,6 +591,7 @@ def _register_health_checks():
         reg.register(SimpleHealthCheck("doc_sync", _check_doc_sync, Severity.HIGH))
         reg.register(SimpleHealthCheck("doc_quality", _check_doc_quality, Severity.MEDIUM))
         reg.register(SimpleHealthCheck("wiki_content_quality", _check_wiki_content_quality, Severity.MEDIUM))
+        reg.register(SimpleHealthCheck("rag_quality", _check_rag_quality, Severity.MEDIUM))
         reg.register(SimpleHealthCheck("assessment", _check_assessment, Severity.LOW))
 
         # Additional health checks are registered in run_all_diagnostics()
@@ -719,6 +743,25 @@ def _rt():
 def _store():
     rt = _rt()
     return getattr(rt, "execution_store", None) if rt else None
+
+
+@router.post("/diagnostics/run-single", response_model=Dict[str, Any], include_in_schema=False)
+async def run_single_diagnostic(request: Dict[str, Any]):
+    """Run a single diagnostic category by key. Frontend integration endpoint."""
+    category = str(request.get("category", "")).strip()
+    if not category:
+        return {"status": "error", "error": "category is required"}
+    try:
+        # Run diagnostics for specific category via health check registry
+        import logging as _log
+        from core.harness.health.registry import HealthCheckRegistry
+        registry = HealthCheckRegistry()
+        results = await registry.run_category(category)
+        return {"status": "ok", "run_id": f"diag-{category}", "result": results if results else {}}
+    except Exception as e:
+        _log = __import__('logging').getLogger(__name__)
+        _log.warning(f"[diagnostics] run-single failed for category={category}: {e}")
+        return {"status": "error", "error": str(e)[:200]}
 
 
 @router.post("/diagnostics/e2e/smoke", response_model=Dict[str, Any])
@@ -1709,6 +1752,7 @@ async def get_entropy_trends():
 
 
 @router.get("/diagnostics/entropy/alerts", response_model=Dict[str, Any])
+@router.get("/diagnostics/observability/alerts", response_model=Dict[str, Any], include_in_schema=False)
 async def get_entropy_alerts(limit: int = 20):
     """
     Returns recent entropy alert records from SQLite.
@@ -1721,6 +1765,19 @@ async def get_entropy_alerts(limit: int = 20):
         return td.get_alert_history(limit=limit)
     except Exception as e:
         return {"alerts": [], "total": 0, "error": str(e)[:200]}
+
+
+@router.put("/diagnostics/observability/alerts", response_model=Dict[str, Any], include_in_schema=False)
+async def put_observability_alerts(body: dict):
+    """Save alert configuration (observability dashboard)."""
+    try:
+        from core.harness.observability.alerts import get_alert_manager
+        mgr = get_alert_manager()
+        alerts = body.get("alerts", [])
+        mgr.save_alerts(alerts)
+        return {"status": "ok", "saved": len(alerts)}
+    except Exception as e:
+        return {"status": "error", "error": str(e)[:200]}
 
 
 # ── Unified Alert Aggregation (P0-1) ─────────────────────────────────────────
@@ -2549,4 +2606,11 @@ def _get_latest_hallucination_risk(entity: str) -> float:
             conn.close()
     except (_sq.OperationalError, _sq.DatabaseError):
         return 0.0
+
+# ── Include sub-module routers ──
+try:
+    from core.api.routers.diagnostics_capability import router as _cap_router
+    router.include_router(_cap_router)
+except ImportError:
+    pass
 

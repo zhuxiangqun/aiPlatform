@@ -705,7 +705,6 @@ async def list_mcp_server_tools(server_name: str, timeout_seconds: int = 25):
 
 
 @router.post("/workspace/mcp/servers/{server_name}/test-invoke", response_model=Dict[str, Any])
-@router.post("/workspace/mcp/servers/{server_name}/test-invoke", response_model=Dict[str, Any])
 async def test_invoke_mcp_server(server_name: str, data: dict = None):
     """Test an MCP server — connect, list tools, invoke a tool. Set sync=true for inline result."""
     import uuid

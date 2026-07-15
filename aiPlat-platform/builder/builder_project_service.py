@@ -120,11 +120,13 @@ class BuilderProjectService:
     def __init__(self, model: Any = None, team_service: Optional[BuilderTeamService] = None):
         self._model = model  # None = lazy init on first use
         self._team_service = team_service or BuilderTeamService(None)
-        self._seed_registries()
         self._projects: Dict[str, Dict[str, Any]] = {}
         self._sessions: Dict[str, Dict[str, Any]] = {}
         self._pipeline_sessions: Dict[str, Any] = {}
         self._runs: Dict[str, Dict[str, Any]] = {}
+        self._phases: Dict[str, str] = {}  # dialogue | executing
+        self._load_projects()
+        self._seed_registries()
 
     @property
     def model(self) -> Any:
@@ -133,8 +135,6 @@ class BuilderProjectService:
             from core.api.facades.service_facade import get_default_model
             self._model = get_default_model()
         return self._model
-        self._phases: Dict[str, str] = {}  # dialogue | executing
-        self._load_projects()
 
     @staticmethod
     def _seed_registries() -> None:
@@ -659,6 +659,29 @@ class BuilderProjectService:
             prd["target_state"] = target_state.strip()[:500]
         return prd if prd.get("title") else {}
 
+    def start_pipeline_background(self, project_id: str) -> None:
+        """Start pipeline in a dedicated daemon thread. Returns immediately."""
+        import sys
+        print("### inside start_pipeline_background for", project_id, file=sys.stderr)
+        import asyncio as _asyncio
+        import threading as _threading
+        def _run():
+            try:
+                print("### thread running start_pipeline for", project_id, file=sys.stderr)
+                loop = _asyncio.new_event_loop()
+                _asyncio.set_event_loop(loop)
+                loop.run_until_complete(self.start_pipeline(project_id))
+                print("### thread DONE start_pipeline for", project_id, file=sys.stderr)
+            except Exception as e:
+                print(f"### thread FAILED: {e}", file=sys.stderr)
+                import traceback
+                traceback.print_exc()
+            finally:
+                loop.close()
+        t = _threading.Thread(target=_run, daemon=True)
+        t.start()
+        print("### thread launched for", project_id, file=sys.stderr)
+
     async def start_pipeline(self, project_id: str) -> Dict[str, Any]:
         proj = self._projects.get(project_id)
         if not proj:
@@ -723,7 +746,14 @@ class BuilderProjectService:
                 _log.warning("Auto team recommend failed for %s: %s", project_id, e)
 
         if not stages:
+            import sys
+            print(f"### start_pipeline: stages EMPTY for {project_id}", file=sys.stderr)
             raise ValueError("No team stages configured. Unable to auto-recommend a team. Please click 'AI 推荐团队' first.")
+        
+        import sys
+        print(f"### start_pipeline: {len(stages)} stages, creating PipelineConfig for {project_id}", file=sys.stderr)
+        for s in stages:
+            print(f"###   stage: {getattr(s, 'id', '?')} type={getattr(s, 'node_type', '?')} agent={getattr(s, 'agent_id', '?')} output={getattr(s, 'output_artifact', '?')}", file=sys.stderr)
 
         max_tokens = int(os.getenv("AIPLAT_BUILDER_MAX_TOKENS", "100000"))
         max_retry = int(os.getenv("AIPLAT_BUILDER_MAX_RETRY", "3"))
@@ -738,15 +768,16 @@ class BuilderProjectService:
                 prd_data = chat_session.get("prd")
 
         pipeline_session = create_pipeline_session(config=config, model=self.model, skill_loader=_create_skill_loader())
+        import sys
+        print(f"### start_pipeline: session created, calling start for {project_id}", file=sys.stderr)
         self._pipeline_sessions[project_id] = pipeline_session
 
-        # Register event bus listener — writes pipeline state to singleton _runs for frontend polling
+        # Register event bus listener — writes pipeline state to local _runs for frontend polling
         from core.api.facades.runtime_facade import get_event_bus
-        from api.routers.builder import _svc as builder_singleton
-        _runs_singleton = builder_singleton._runs
+        _runs_dict: dict = {}
         def _on_event(pid: str, evt: str, data: dict):
             if pid == project_id:
-                _runs_singleton[pid] = dict(data.get("state", data))
+                _runs_dict[pid] = dict(data.get("state", data))
         get_event_bus().on(_on_event)
 
         # Run synchronously — proxy timeout is 600s, Architect takes 20-60s.
@@ -763,7 +794,7 @@ class BuilderProjectService:
 
         state = {"phase": "executing"}
         try:
-            state = await pipeline_session.start(project_id, requirement, prd_data=prd_data, project_name=proj.get("name", ""))
+            state = await pipeline_session.start(project_id, requirement, prd_data=prd_data)
             # Config-driven: use stage.test_result_key (default "test_report" for backward compat)
             test_key = "test_report"
             for s in (proj.get("team_stages") or []):
@@ -837,12 +868,13 @@ class BuilderProjectService:
         try:
             from core.api.core_facade import record_changeset
             await record_changeset(
-                name="start_pipeline",
-                target_type="project",
-                target_id=project_id,
-                status=state.get("phase", "executing"),
-                args={"run_id": run_id, "team_id": team_id, "stage_count": len(stages)},
-                user_id="admin",
+                resource_type="project",
+                resource_id=project_id,
+                action="start_pipeline",
+                metadata={"phase": state.get("phase", "executing"),
+                           "run_id": run_id, "team_id": team_id,
+                           "stage_count": len(stages)},
+                actor_id="admin",
             )
         except Exception:
             _log.warning(f"Failed to record start_pipeline changeset for {project_id}", exc_info=True)
@@ -877,7 +909,7 @@ class BuilderProjectService:
                     self._projects.setdefault(project_id, {})["deploy_dir"] = deploy_dir
                     self._save_projects()
 
-    async def approve_stage(self, project_id: str) -> Dict[str, Any]:
+    async def approve_stage(self, project_id: str, feedback: str = "") -> Dict[str, Any]:
         session = self._pipeline_sessions.get(project_id)
         if not session:
             session = self._rebuild_session(project_id)
@@ -888,9 +920,37 @@ class BuilderProjectService:
             state = self._load_pipeline_state(project_id)
             if not state:
                 raise ValueError("no pipeline state")
-        state = await session.approve(dict(state))
+        state = await session.approve(dict(state), feedback=feedback)
+        self._runs[project_id] = state
         await self._save_state(project_id, state)
+        # Run remaining pipeline in background thread (same pattern as start_pipeline_background)
+        if state.get("phase") == "executing":
+            idx = state.get("_current_stage_idx", 0) + 1
+            if idx < len(session.get_stages()):
+                import threading, asyncio as _asyncio
+                svc = self
+                def _bg_run():
+                    try:
+                        loop = _asyncio.new_event_loop()
+                        _asyncio.set_event_loop(loop)
+                        result = loop.run_until_complete(session._engine._run_stages_from(idx, dict(state)))
+                        svc._runs[project_id] = dict(result)
+                        loop.run_until_complete(svc._save_state(project_id, dict(result)))
+                        loop.close()
+                    except Exception:
+                        pass
+                t = threading.Thread(target=_bg_run, daemon=True)
+                t.start()
         return {"project_id": project_id, "phase": state.get("phase", "executing")}
+
+    async def _bg_run_stages(self, project_id: str, session, state: Dict, start_idx: int):
+        """Run remaining pipeline stages, updating state periodically."""
+        try:
+            result = await session._engine._run_stages_from(start_idx, state)
+            self._runs[project_id] = dict(result)
+            await self._save_state(project_id, dict(result))
+        except Exception as e:
+            self._runs[project_id] = {"phase": "failed", "error": str(e)[:200]}
 
     async def start_fix(self, project_id: str) -> Dict[str, Any]:
         session = self._pipeline_sessions.get(project_id)
@@ -1352,3 +1412,13 @@ def _get_agent_insight_for(agent_id: str, projects: dict) -> dict:
         "total_runs": total_runs,
         "output_completeness": 1.0,
     }
+
+# ── Module-level singleton (shared between workflow executor and builder router) ──
+_project_service_singleton = None
+
+def _get_project_service():
+    global _project_service_singleton
+    if _project_service_singleton is None:
+        from builder.builder_team_service import BuilderTeamService
+        _project_service_singleton = BuilderProjectService(team_service=BuilderTeamService())
+    return _project_service_singleton

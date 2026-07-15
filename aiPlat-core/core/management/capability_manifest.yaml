@@ -27,7 +27,7 @@ capabilities:
     depends_on:
       - module: "aiPlat-core/core/harness/execution/langgraph/"
         via: "LangGraph StateGraph构建"
-      - module: "aiPlat-core/core/harness/execution/loop.py"
+      - module: "aiPlat-core/core/harness/execution/loop/__init__.py"
         via: "StageRunner→ReActLoop"
 
   - id: langgraph_orchestration
@@ -48,9 +48,9 @@ capabilities:
     declared_in: "ARCHITECTURE_REPORT §2.1"
     name: "ReActLoop — Reason→Act→Observe执行循环"
     description: "每阶段执行循环，14 Hook拦截点，Token预算100K/60K，5级压缩"
-    entry_points: ["aiPlat-core/core/harness/execution/loop.py"]
+    entry_points: ["aiPlat-core/core/harness/execution/loop/__init__.py"]
     provided_by:
-      - module: "aiPlat-core/core/harness/execution/loop.py"
+      - module: "aiPlat-core/core/harness/execution/loop/__init__.py"
         key_methods: ["run", "_reason", "_act", "_observe"]
     depends_on:
       - module: "aiPlat-core/core/harness/syscalls/llm.py"
@@ -63,7 +63,7 @@ capabilities:
     declared_in: "ARCHITECTURE_REPORT §2.1"
     name: "Syscall强制边界(LLM/Tool/Skill)"
     description: "所有LLM调用/工具执行/技能调用必须经过syscall边界，不可绕过"
-    entry_points: ["aiPlat-core/core/harness/execution/loop.py"]
+    entry_points: ["aiPlat-core/core/harness/execution/loop/__init__.py"]
     provided_by:
       - module: "aiPlat-core/core/harness/syscalls/llm.py"
         key_methods: ["sys_llm_generate"]
@@ -80,7 +80,7 @@ capabilities:
     declared_in: "ARCHITECTURE_REPORT §2.1"
     name: "14-Point Hook拦截系统"
     description: "PreLoop→...→PostObserve→Stop等14个拦截点，零Token成本，支持自定义Hook"
-    entry_points: ["aiPlat-core/core/harness/execution/loop.py"]
+    entry_points: ["aiPlat-core/core/harness/execution/loop/__init__.py"]
     provided_by:
       - module: "aiPlat-core/core/harness/infrastructure/hooks/hook_manager.py"
         key_methods: ["register", "trigger"]
@@ -92,7 +92,7 @@ capabilities:
     declared_in: "ARCHITECTURE_REPORT §2.1, §8.1"
     name: "5级Token压缩+优先级标签"
     description: "NORMAL(70%)→REPLACE(80%)→PRUNE(85%)→AGGRESSIVE(90%)→EMERGENCY(99%)。CLAUDE.md永不压缩。"
-    entry_points: ["aiPlat-core/core/harness/execution/loop.py"]
+    entry_points: ["aiPlat-core/core/harness/execution/loop/__init__.py"]
     provided_by:
       - module: "aiPlat-core/core/harness/memory/manager.py"
         key_methods: ["build_context", "compact"]

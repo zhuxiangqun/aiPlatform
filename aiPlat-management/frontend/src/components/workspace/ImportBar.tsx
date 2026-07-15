@@ -151,13 +151,21 @@ const ImportBar: React.FC<ImportBarProps> = ({ onImported, assetType, alsoScan }
     if (!localPath.trim()) return;
     setInstalling(true);
     try {
-      const res = await fetch('/api/core/wiki/skills/install-from-directory', {
+      // Use asset-type-specific endpoint for workflows; skills keep their dedicated endpoint
+      const ep = assetType === 'workflows'
+        ? ENDPOINTS.workflows.install
+        : '/api/core/wiki/skills/install-from-directory';
+      const body = assetType === 'workflows'
+        ? JSON.stringify({ source_type: 'path', path: localPath, auto_detect_subdir: false, allow_overwrite: false })
+        : JSON.stringify({ search_path: localPath });
+      const res = await fetch(ep, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ search_path: localPath }),
+        body,
       });
       const d = await res.json();
       if (!res.ok) { toast.error(`导入失败：${d.detail || res.statusText}`); return; }
-      toast.success(`已从本地目录导入 ${d.installed} 个技能`);
+      const label = assetType === 'workflows' ? '工作流' : '技能';
+      toast.success(`已从本地目录导入 ${d.total || d.installed || 1} 个${label}`);
       setOpen(false); setPlan(null);
       onImported();
     } catch (e: any) { toast.error(`导入失败：${e?.message || e}`); }

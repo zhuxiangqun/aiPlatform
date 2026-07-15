@@ -1040,10 +1040,14 @@ def export_to_owl_rdf(format: str = "turtle") -> str:
             lines.append(f"{s} {p} {o} .")
 
     else:
-        lines.append(f"# RDF export in {format} format not yet implemented.")
-        lines.append(f"# Triples available: {len(onto.triples)}")
-        lines.append(f"# Classes: {len(onto.classes)}")
-        lines.append(f"# Use format=turtle or format=ntriples")
+        # Fallback: export as N-Triples (subset of Turtle)
+        lines.append(f"# RDF export: {format} format not directly supported, using N-Triples fallback")
+        lines.append(f"# {len(onto.triples)} triples, {len(onto.classes)} classes")
+        for t in onto.triples:
+            s = _turtle_id(t.subject)
+            p = _turtle_id(t.predicate)
+            o = _turtle_id(t.object) if not t.object.startswith('"') else t.object
+            lines.append(f"{s} {p} {o} .")
 
     return "\n".join(lines)
 

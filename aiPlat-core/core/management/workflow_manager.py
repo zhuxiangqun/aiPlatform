@@ -328,7 +328,9 @@ class WorkflowManager:
     # ==================== CRUD ====================
 
     def list_workflows(self) -> List[WorkflowInfo]:
-        return list(self._workflows.values())
+        workflows = list(self._workflows.values())
+        workflows.sort(key=lambda w: w.created_at, reverse=True)
+        return workflows
 
     def get_workflow(self, workflow_id: str) -> Optional[WorkflowInfo]:
         return self._workflows.get(workflow_id)

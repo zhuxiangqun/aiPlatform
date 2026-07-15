@@ -73,7 +73,7 @@ const Onboarding: React.FC = () => {
     provider: 'OpenAI',
     api_base_url: 'https://api.deepseek.com',
     api_key: '',
-    models: 'deepseek-reasoner,deepseek-chat',
+    models: 'deepseek-v4-pro',
   });
   const [adapterLoading, setAdapterLoading] = useState(false);
   const [adapterResult, setAdapterResult] = useState<any>(null);

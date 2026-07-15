@@ -1,0 +1,48 @@
+# FDE skill descriptions — used in the FDE workbench skill table.
+# Migrated from hardcoded dict in fde.py 2026-07-13.
+# Each entry: [title, input_description, output_description]
+
+field-assessment:
+  - "客户AI落地诊断"
+  - "行业/痛点/技术栈等客户画像"
+  - "8节结构化诊断报告"
+
+knowledge_retrieval:
+  - "知识库检索"
+  - "自然语言查询"
+  - "相关文档片段"
+
+document_analysis:
+  - "文档分析"
+  - "PDF/Word/扫描件"
+  - "结构化信息提取"
+
+code_generation:
+  - "代码生成"
+  - "需求描述"
+  - "可运行代码"
+
+text_generation:
+  - "文本生成"
+  - "主题/大纲"
+  - "结构化文本"
+
+data_insight:
+  - "数据分析"
+  - "数据集/查询"
+  - "洞察报告"
+
+compliance_check:
+  - "合规检查"
+  - "文档/规则"
+  - "合规报告"
+
+contract_review:
+  - "合同审核"
+  - "合同文本"
+  - "风险条款标注"
+
+risk_analysis:
+  - "风险分析"
+  - "场景描述"
+  - "风险评估矩阵"

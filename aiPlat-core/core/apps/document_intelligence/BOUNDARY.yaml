@@ -11,7 +11,7 @@ capabilities:
   - classify_document     # 文档自动分类
   - kb_provider           # KB 回调桥接（依赖倒置）
 known_debt:
-  - file: "summarizer.py"
-    issue: "summarize_document 仍在 platform/kb/intelligence/summarize.py"
-    target: "core/apps/document_intelligence/summarizer.py"
-    status: "planned"
+  - file: "summarize.py"
+    issue: "summarize_document — legacy wrapper in platform/kb/intelligence/summarize.py"
+    target: "core/apps/document_intelligence/ (via kb_facade)"
+    status: "done (2026-07) — summarize.py now delegates to core.api.facades.kb_facade.kb_summarize_document"

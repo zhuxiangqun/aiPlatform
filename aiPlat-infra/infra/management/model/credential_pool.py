@@ -127,6 +127,25 @@ class CredentialPool:
         now = time.time()
         return sum(1 for ks in self._keys if ks.cooldown_until <= now)
 
+    def status(self) -> Dict[str, object]:
+        """Masked pool health for observability (keys are never exposed in full)."""
+        now = time.time()
+        return {
+            "provider": self.provider,
+            "key_count": len(self._keys),
+            "available_count": self.available_count,
+            "keys": [
+                {
+                    "suffix": ks.key[-4:] if len(ks.key) >= 4 else "****",
+                    "in_cooldown": ks.cooldown_until > now,
+                    "cooldown_remaining": max(0.0, round(ks.cooldown_until - now, 1)),
+                    "total_requests": ks.total_requests,
+                    "total_errors": ks.total_errors,
+                }
+                for ks in self._keys
+            ],
+        }
+
 
 # ── Process-wide singleton cache ──
 

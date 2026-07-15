@@ -97,6 +97,7 @@ async def _scan_ollama(endpoint: str) -> List[ModelInfo]:
                             status=ModelStatus.AVAILABLE,
                             config=ModelConfig(base_url=endpoint),
                             stats=ModelStats(), created_at=datetime.now(timezone.utc), updated_at=datetime.now(timezone.utc),
+                            size=item.get("size"),
                         ))
     except Exception as e:
         logging.debug(str(e), exc_info=True)

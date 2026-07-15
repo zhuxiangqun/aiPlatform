@@ -21,6 +21,15 @@ output_schema:
     status: {type: string, enum: [success, partial, error]}
     records: {type: integer, description: 成功注入的记录/页数}
     errors: {type: array, items: {type: string}}
+effects:
+  - type: write
+    resources: ["filesystem:~/.aiplat/kb/poc"]
+    idempotent: false
+    rollback_available: true
+  - type: read
+    resources: ["filesystem:~/.aiplat/kb/poc"]
+    idempotent: true
+    rollback_available: false
 ---
 
 # POC 数据注入
@@ -29,7 +38,7 @@ output_schema:
 
 | 格式 | 解析器 | 说明 |
 |:---|:---|:---|
-| .pdf / .png / .jpg / .jpeg | kb.poc.ingest.ingest_scanned_pdf | OCR 解析 (已有) |
+| .pdf / .png / .jpg / .jpeg | InfraOCRAdapter (Tesseract/PaddleOCR) + PyMuPDF rendering | OCR 解析 (纯 core) |
 | .csv | 内置 CSV 解析 | pandas.read_csv → 结构化文本 |
 | .xlsx / .xls | 内置 Excel 解析 | pandas.read_excel → 结构化文本 |
 | .txt / .md | 内置文本解析 | 直接读取 → 存储到 kb/poc |

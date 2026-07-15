@@ -2,6 +2,7 @@
 name: evidence-chain-template
 version: 1.0.0
 category: validation
+description: 基于证据链YAML配置对结论进行溯源验证，输出证据链完整性报告
 effects:
   - type: read
     resources: [filesystem:~/.aiplat/evidence, database:logs]
