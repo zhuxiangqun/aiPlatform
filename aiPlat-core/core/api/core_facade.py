@@ -1516,6 +1516,17 @@ async def _execute_workspace_agent_background(
         state["_routing_entities"] = _routing.entities
         state["_routing_suggested_skills"] = _routing.suggested_skill_ids
         state["_routing_suggested_tools"] = _routing.suggested_tool_ids
+        # Auto-select skill subset when classifier has high confidence (v2.4)
+        if _routing.confidence >= 0.80 and _routing.suggested_skill_ids and \
+           meta.get("auto_select_skills", True):
+            auto_skills = [s for s in _routing.suggested_skill_ids if s in _agent_skills]
+            if auto_skills and len(auto_skills) < len(_agent_skills):
+                state["_auto_skill_filter"] = auto_skills
+                logging.info("auto_skill_select_state", extra={
+                    "agent": agent_id, "intent": _routing.intent.value,
+                    "confidence": round(_routing.confidence, 2),
+                    "selected_skills": auto_skills,
+                })
         # Augment task context with routing hints
         if _routing.confidence >= 0.5 and _routing.intent.value != "unknown":
             routing_hint = (

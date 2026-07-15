@@ -15,11 +15,8 @@ _acceptance_records: Dict[str, dict] = {}
 
 @router.get("/acceptance/checklist", response_model=Dict[str, Any])
 async def acceptance_checklist(spec_id: str = Query("")):
-    """生成交付验收 Checklist。
-
-    聚合 KPI 达标情况 + 用户反馈统计 + SLA 指标，
-    返回结构化的验收清单供 FDE 逐项确认。
-    """
+    """生成交付验收 Checklist。聚合 KPI + 反馈 + SLA，
+    可选 Agent 驱动验收分析 (v2.4: fde_delivery_manager)."""
     checklist = []
 
     # 1) KPI check — from ValueDashboard KPI data
@@ -29,15 +26,17 @@ async def acceptance_checklist(spec_id: str = Query("")):
         kpis = tracker.get_all(spec_id=spec_id) if spec_id else tracker.get_all()
         kpi_met = sum(1 for k in (kpis or []) if k.get("met", False))
         kpi_total = len(kpis) if kpis else 0
+        kpi_detail = f"{kpi_met}/{kpi_total} KPI 达标" if kpi_total > 0 else "无 KPI 配置"
         checklist.append({
             "id": "kpi",
             "label": "KPI 达标检查",
             "status": "pass" if kpi_met >= kpi_total > 0 else ("pending" if kpi_total == 0 else "fail"),
-            "detail": f"{kpi_met}/{kpi_total} KPI 达标" if kpi_total > 0 else "无 KPI 配置",
+            "detail": kpi_detail,
         })
     except Exception:
+        kpi_detail = "KPI tracker 不可用"
         checklist.append({"id": "kpi", "label": "KPI 达标检查", "status": "pending",
-                         "detail": "KPI tracker 不可用"})
+                         "detail": kpi_detail})
 
     # 2) NPS / user feedback
     try:
@@ -88,11 +87,33 @@ async def acceptance_checklist(spec_id: str = Query("")):
     passed = sum(1 for c in checklist if c["status"] == "pass")
     ready = passed == len(checklist)
 
+    # Agent-driven acceptance analysis (v2.4): fde_delivery_manager
+    agent_analysis = None
+    try:
+        import json as _json_acc
+        from core.api.routers.fde import _run_fde_agent_one_shot
+        summary = _json_acc.dumps({
+            "spec_id": spec_id, "kpi": kpi_detail,
+            "checklist_status": {"passed": passed, "total": len(checklist), "ready": ready},
+        }, ensure_ascii=False)
+        agent_result = await _run_fde_agent_one_shot(
+            agent_id="fde_delivery_manager",
+            skill_filter=["acceptance_checker"],
+            user_message=f"验收分析：\n{summary}",
+        )
+        if agent_result and agent_result.get("success"):
+            agent_analysis = agent_result["output"]
+    except ImportError:
+        pass
+    except Exception:
+        pass
+
     return {
         "checklist": checklist,
         "passed": passed,
         "total": len(checklist),
         "ready_for_signoff": ready,
+        "agent_analysis": agent_analysis,
         "timestamp": datetime.now(timezone.utc).isoformat(),
     }
 

@@ -161,6 +161,12 @@ class WorkflowService:
                 "model": agent_fm.get("model", ""),
                 "agent_type": agent_fm.get("agent_type", "react"),
                 "review_gate": cfg.get("reviewGate", "quick"),
+                "required_skills": cfg.get("requiredSkills", []),
+                # v2.4: StageRunner._resolve_skills() picks up required_skills from 
+                # PipelineStageConfig and filters accordingly. Agent system_prompt is 
+                # loaded from AGENT.md by the engine when agent_id is present.
+                # TODO: wire _run_fde_agent_one_shot() for type:"llm" nodes with agentId
+                # to replace direct LLM calls with Agent→ReActLoop→Skill execution.
             })
         # Attach per-node input_variables to node_config so the engine can resolve them
         for s in stages:

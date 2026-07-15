@@ -849,7 +849,8 @@ async def _clarify(context: str, text: str, history: list,
         from core.harness.syscalls.llm import sys_llm_generate
         model_name = best_model_for_purpose("clarify", messages=messages)
         result = await sys_llm_generate(None, messages,
-            model_name=model_name, max_tokens=800, temperature=0.3)
+            model_name=model_name, max_tokens=800, temperature=0.3,
+            trace_context={"skip_claude_md": True})
         content = getattr(result, "content", "") or ""
         if not content and isinstance(result, dict):
             content = result.get("content", "") or ""
@@ -885,6 +886,91 @@ async def _clarify(context: str, text: str, history: list,
     return {"questions": [], "next": "done",
             "summary": text[:120] if text else "无", "structured": {
                 "type": "pending", "root_cause": "", "severity": "medium"}}
+
+
+async def _run_fde_agent_one_shot(
+    agent_id: str,
+    skill_filter: list,
+    user_message: str,
+    extra_context: dict = None,
+) -> Optional[dict]:
+    """Execute an FDE Agent in one-shot mode with skill subset filtering.
+    
+    Uses the Agent's own _skills list (set at creation time) rather than 
+    context.skills (merge semantics), to avoid interference with other 
+    applications that depend on the existing merge behavior (e.g. intents.py).
+
+    Returns None if Agent system is unavailable → caller falls back to 
+    direct Skill/API execution.
+    """
+    _t0 = time.time()
+    try:
+        from core.apps.agents.base import BaseAgent
+        from core.harness.interfaces.agent import AgentContext, AgentConfig
+        from core.management.agent_manager import get_agent_manager
+        from core.apps.skills import get_skill_registry
+
+        mgr = get_agent_manager()
+        agent_info = mgr.get_agent(agent_id)
+        if not agent_info:
+            logging.warning("fde_agent_missing", extra={"agent_id": agent_id})
+            return None
+
+        config = AgentConfig(
+            name=agent_id,
+            model=agent_info.model or "",
+            temperature=0.3,
+            max_tokens=2048,
+            timeout=60,
+        )
+        agent = BaseAgent(config)
+        skill_registry = get_skill_registry()
+        resolved = []
+        for sn in skill_filter:
+            sk = skill_registry.get(sn)
+            if sk:
+                resolved.append(sk)
+            else:
+                logging.warning("fde_skill_not_found", extra={"skill": sn, "agent_id": agent_id})
+        agent._skills = resolved
+
+        context = AgentContext(
+            session_id=f"fde-{agent_id}-{int(_t0)}",
+            user_id="fde",
+            messages=[{"role": "user", "content": user_message}],
+            metadata=extra_context or {},
+        )
+        result = await agent.execute(context)
+        elapsed_ms = int((time.time() - _t0) * 1000)
+
+        logging.info("fde_agent_execute", extra={
+            "agent_id": agent_id,
+            "skill_filter": skill_filter,
+            "success": result.success,
+            "elapsed_ms": elapsed_ms,
+        })
+
+        if not result.success:
+            return None
+
+        output = result.output
+        if isinstance(output, (dict, list)):
+            output = json.dumps(output, ensure_ascii=False, indent=2)
+
+        return {
+            "success": True,
+            "output": str(output)[:8000],
+            "agent_id": agent_id,
+            "skills_used": skill_filter,
+            "elapsed_ms": elapsed_ms,
+            "token_usage": result.token_usage,
+        }
+    except ImportError:
+        logging.warning("fde_agent_import_error", extra={"agent_id": agent_id})
+        return None
+    except Exception:
+        logging.error("fde_agent_failed", exc_info=True, extra={"agent_id": agent_id})
+        return None
 
 
 @router.post("/clarify", response_model=Dict[str, Any])
@@ -1071,6 +1157,73 @@ async def canary_rollback(body: Dict[str, Any]):
         return {"status": "timeout", "spec_id": spec_id, "detail": "rollback.sh exceeded 60s"}
     except Exception as e:
         return {"status": "error", "spec_id": spec_id, "detail": str(e)[:200]}
+
+
+# ════════════════════════════════════════════════════════════
+# Agent-driven endpoints (v2.4): FDE Agent one-shot integration
+# ════════════════════════════════════════════════════════════
+
+@router.post("/poc/inject", response_model=Dict[str, Any])
+async def fde_poc_inject(body: Dict[str, Any]):
+    """④ 验证价值: POC 数据注入 (via fde_delivery_engineer Agent)."""
+    domain = str(body.get("domain", "") or body.get("domain_id", ""))
+    template = str(body.get("template", ""))
+    profile = str(body.get("profile", ""))
+    msg_parts = [f"为以下域注入 POC 种子数据并验证核心流程：\n域：{domain}"]
+    if template:
+        msg_parts.append(f"行业模板：{template}")
+    if profile:
+        msg_parts.append(f"客户 Profile：{profile}")
+    
+    result = await _run_fde_agent_one_shot(
+        agent_id="fde_delivery_engineer",
+        skill_filter=["poc_data_inject"],
+        user_message="\n".join(msg_parts),
+    )
+    if result and result.get("success"):
+        return {"status": "ok", "output": result["output"],
+                "agent_used": result["agent_id"]}
+    return {"status": "fallback", "message": "Agent unavailable; use Skill execution API instead"}
+
+
+@router.get("/canary/insight", response_model=Dict[str, Any])
+async def canary_insight():
+    """⑥ 评测护栏: Agent 驱动的灰度质量分析 (via fde_delivery_engineer)."""
+    try:
+        from core.harness.deployment.canary import get_skill_router
+        router_ = get_skill_router()
+        rollout = router_.get_rollout_status()
+    except Exception:
+        rollout = []
+    
+    result = await _run_fde_agent_one_shot(
+        agent_id="fde_delivery_engineer",
+        skill_filter=["canary_runner"],
+        user_message=f"分析当前灰度发布状态并给出质量建议：\n{json.dumps(rollout, ensure_ascii=False)[:4000]}",
+    )
+    if result and result.get("success"):
+        return {"rollout": rollout, "insight": result["output"],
+                "agent_used": result["agent_id"]}
+    return {"rollout": rollout, "insight": None,
+            "note": "Agent unavailable; raw rollout data returned"}
+
+
+@router.post("/customers/profile/assist", response_model=Dict[str, Any])
+async def assist_customer_profile(body: Dict[str, Any]):
+    """① 业务认知: AI 辅助生成客户 Profile (via fde_business_analyst Agent)."""
+    notes = str(body.get("notes", "") or body.get("interview_notes", ""))
+    if not notes or len(notes) < 10:
+        return {"status": "error", "message": "请提供至少10个字的访谈记录"}
+    
+    result = await _run_fde_agent_one_shot(
+        agent_id="fde_business_analyst",
+        skill_filter=["customer_profile_creator"],
+        user_message=f"根据以下客户访谈记录生成结构化客户 Profile：\n{notes}",
+    )
+    if result and result.get("success"):
+        return {"status": "ok", "profile": result["output"],
+                "agent_used": result["agent_id"]}
+    return {"status": "fallback", "message": "Agent unavailable; please fill Profile manually"}
 
 
 # ════════════════════════════════════════════════════════════
@@ -1672,11 +1825,36 @@ async def fde_assess_dialog(req: FdeDialogRequest):
     
     Uses LLM to: (1) extract fields from natural language answers,
     (2) generate context-aware questions based on form gaps + §8 pending items.
+    Supports Agent-based diagnosis via _run_fde_agent_one_shot.
     """
+    import json as _json_dg
+
+    # Agent-driven diagnosis path (v2.4): triggered on "运行诊断" or finished=true
+    trigger_diagnosis = req.answer.strip() in ("运行诊断", "开始诊断", "run diagnosis") 
+    if trigger_diagnosis or getattr(req, 'run_diagnosis', False):
+        agent_result = await _run_fde_agent_one_shot(
+            agent_id="fde_solution_architect",
+            skill_filter=["field_assessment"],
+            user_message=(f"客户名称：{req.company_name}\n行业：{req.industry}\n"
+                         f"痛点：{req.pain_points}\n团队规模：{req.team_size}\n"
+                         f"技术栈：{req.existing_tech_stack}\n"
+                         f"数据源：内部-{req.internal_data_sources} 外部-{req.external_data_sources}\n"
+                         f"合规要求：{req.compliance_requirements}"),
+        )
+        if agent_result and agent_result.get("success"):
+            return {
+                "turn": req.turn + 1,
+                "diagnosis": agent_result["output"],
+                "fully_ready": True, "core_ready": True, "finished": True,
+                "agent_used": agent_result["agent_id"],
+                "skills_used": agent_result["skills_used"],
+                "gaps": [], "readiness": 100,
+            }
+        # Fallback: continue with legacy LLM path
+
     from core.apps.skills.registry import _compute_readiness
     from core.harness.syscalls.llm import sys_llm_generate
     from core.harness.utils.model_injection import best_model_for_purpose
-    import json as _json_dg
 
     model_name = best_model_for_purpose("skill_execution")
     llm_available = model_name is not None

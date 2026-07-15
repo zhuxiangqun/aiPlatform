@@ -300,9 +300,9 @@ class MaterialsChatAgent(BaseAgent):
             # ── Ontology-aware retrieval: detect target class from question ──
             ontology_class_uri: str = ""
             ontology_mapping: Dict[str, Any] = {}
-            _TARGET_DOMAINS = ("supply-chain", "procurement-mvo", "ship-design")
-            if domain_id in _TARGET_DOMAINS:
-                # Target domain: mandatory ontology mapping, failure propagates
+            ontology_mapping_mode = domain_config.get("ontology_mapping", "best_effort")
+            if ontology_mapping_mode == "mandatory":
+                # Mandatory ontology mapping (config-driven), failure propagates
                 from core.harness.knowledge.ontology_query_mapper import map_query_to_ontology
                 onto_mapping = map_query_to_ontology(enhanced_question, domain_id=domain_id, collection_id=collection_id)
                 if onto_mapping:
@@ -528,9 +528,9 @@ class MaterialsChatAgent(BaseAgent):
                 except Exception:
                     return current_quality, {}
 
-            # ── Path A: Domain Skill execution (target domains with ontology mapping) ──
-            _TARGET_SKILL_DOMAINS = ("supply-chain", "procurement-mvo")
-            if retrieved_docs and ontology_mapping and domain_id in _TARGET_SKILL_DOMAINS:
+            # ── Path A: Domain Skill execution (config-driven, opt-in per domain) ──
+            if (retrieved_docs and ontology_mapping
+                and domain_config.get("domain_skill_enabled", False)):
                 from core.apps.skills.registry import get_skill_registry
                 registry = get_skill_registry()
                 domain_skills = [s for s in registry.list_all()

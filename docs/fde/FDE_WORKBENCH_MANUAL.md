@@ -1,9 +1,9 @@
-# FDE 工作台操作手册 v2.3
+# FDE 工作台操作手册 v2.4
 
 > **适用角色**：Field Deployment Engineer（FDE）  
 > **前置条件**：系统已通过 `./start.sh` 启动全部 6 个服务  
 > **访问地址**：`http://localhost:5173/diagnostics` → 点击 "FDE Dashboard"
-> **版本更新**：v2.3 (2026-07-15) — 新增多 Agent 工作流模式（4 角色协作）
+> **版本更新**：v2.4 (2026-07-15) — 反馈系统 6 项强化：跳过澄清二次确认、提交记录客户上下文、回复截断修复、LLM hallucination 修复、JSON 泄露修复、反馈历史筛选
 
 ---
 
@@ -20,28 +20,28 @@ FDE 工作台是 Field Deployment Engineer 的核心操作界面。它按 **FDE 
     传给 ② ⑧          传给 ③ ④            回显到 ①
 ```
 
-**核心机制**：八个 Tab 通过 Append-only Pipeline 串联。每个 Tab 只写入一个 key，读取上游 key 时不可修改。Tab 栏上方有流程进度指示条——已完成步骤显示绿色 ✓，当前所在步骤蓝色高亮，未开始为灰色。
+**核心机制**：八个 Tab 通过 Append-only Pipeline 串联。每个 Tab 只写入一个 key，读取上游 key 时不可修改。Tab 栏上方有流程进度指示条——各步骤标注 Tab 编号（`客户 ① → 域 ② → … → 监控 ⑧`），已完成显示绿色 ✓，当前所在蓝色高亮，未开始为灰色。
 
-| 步骤 | Tab 名称 | 写入 | 读取上游 | 对应 FDE 能力 |
-|:---:|------|:---|:---|:---|
-| ① | 业务认知 | `customer` | — | ⑤ 业务认知 |
-| ② | 评估域 | `domain` | `customer.industry` | ⑤ 业务认知 |
-| ③ | 问题重构 | `diagnosis` | `domain.id` | ② 问题重构 |
-| ④ | 验证价值 | `pocProfile` | `domain` | ① 价值嗅觉 |
-| ⑤ | 快速构建 | `deployVersion` | `pocProfile` | ③ 快速构建 |
-| ⑥ | 评测护栏 | `canaryResult` | `deployVersion` | ④ 评测和护栏 |
-| ⑦ | 验收移交 | `adopted` | `canaryResult` | ⑥ 组织推动 |
-| ⑧ | 运营监控 | — | `customer.namespace` | — |
+| 步骤 | Tab 名称 | 进度条 | Agent | 启用的 Skill | 写入 | 读取上游 |
+|:---:|------|:---:|------|------|:---|:---|
+| ① | 业务认知 | `客户 ①` | 业务分析师 | `customer_profile_creator` | `customer` | — |
+| ② | 评估域 | `域 ②` | —（展示层） | — | `domain` | `customer.industry` |
+| ③ | 问题重构 | `诊断 ③` | 方案架构师 | `field_assessment` | `diagnosis` | `domain.id` |
+| ④ | 验证价值 | `POC ④` | 交付工程师 | `poc_data_inject` | `pocProfile` | `domain` |
+| ⑤ | 快速构建 | `部署 ⑤` | 交付工程师 | `package_builder` | `deployVersion` | `pocProfile` |
+| ⑥ | 评测护栏 | `灰度 ⑥` | 交付工程师 | `canary_runner` | `canaryResult` | `deployVersion` |
+| ⑦ | 验收移交 | `验收 ⑦` | 交付经理 | `acceptance_checker`, `manual_generator` | `adopted` | `canaryResult` |
+| ⑧ | 运营监控 | `监控 ⑧` | —（展示层） | — | — | `customer.namespace` |
 
 ### 贯穿能力
 
 - **🟡 反馈按钮**（右下角浮动）：在任意步骤中点击，即时提交现场反馈。反馈自动关联当前步骤，汇总到运营监控面板。
-- **🔄 双模式支持**：FDE 工作台支持两种工作模式——
+- **🔄 双模式支持**：FDE 工作台支持两种工作模式——标题栏显示当前模式名称，右侧下拉切换。
 
-| 模式 | 如何切换 | 适合场景 |
-|:---|:---|:---|
-| **自由模式**（默认） | 不加载工作流即可 | 非标交付，FDE 按需在 8 个 Tab 间自由切换 |
-| **工作流模式**（新增） | 标题右侧下拉 → "FDE 标准交付 v1" | 标准交付，4 个 Agent 按 DAG 顺序自动流转 |
+| 模式 | 如何切换 | 标题显示 | 进度条格式 | 适合场景 |
+|:---|:---|:---|:---|:---|
+| **自由模式**（默认） | 下拉选择 "自由模式（默认）" | `FDE 工作台 自由模式` | `客户 ① → 域 ② → … → 监控 ⑧`（8 步） | 非标交付，FDE 按需在 8 个 Tab 间自由切换 |
+| **工作流模式** | 下拉选择 "FDE 标准交付 v1" | `FDE 工作台 FDE标准交付流程` | `业务分析师 ① → 方案架构师 ②③ → 交付工程师 ④⑤⑥ → 交付经理 ⑦⑧`（4 步） | 标准交付，4 个 Agent 按 DAG 顺序自动流转 |
 
 详见本文档第八章"工作流模式"。
 
@@ -462,7 +462,7 @@ AI 追问（根据当前步骤有不同追问方向）
     ↓
 AI 输出摘要 + 阻塞类型 + 根因 + 严重程度
     ↓
-[提交反馈] → 存入 field_feedback/
+[提交澄清结果] → 存入 field_feedback/
 ```
 
 ### 各步骤 AI 追问方向
@@ -480,7 +480,56 @@ AI 输出摘要 + 阻塞类型 + 根因 + 严重程度
 
 ### 跳过澄清
 
-如果不需要 AI 追问，可以在第一轮直接点击 [跳过澄清，直接提交]——原始文本直接存储，不经过 LLM 澄清。
+如果不需要 AI 追问，可以点击 [跳过澄清，直接提交]：
+
+1. 点击后弹出确认提示："**提交空反馈仅记录上下文，确认？**"
+2. 点击 [确认] → 系统以 `"（跳过澄清，仅记录上下文）"` 作为内容提交，并自动附带当前客户上下文（客户名称、命名空间、部署模式、当前步骤等）
+3. 点击 [取消] → 回到输入界面，可手动输入问题描述
+4. 如果输入框中已有文字，跳过时会使用输入框内容作为提交摘要
+
+### 提交按钮说明
+
+澄清完成后，提交区域显示：
+- **提示文字**："AI 已澄清完成，确认后保存到反馈记录"
+- **按钮文案**："提交澄清结果"
+- 点击后对话记录（含 AI 摘要 + 根因 + 严重度）写入 `~/.aiplat/field_feedback/`
+
+### 反馈记录内容
+
+每条反馈记录包含以下字段：
+
+| 字段 | 说明 | 示例 |
+|:---|:---|:---|
+| `customer_name` | 提交时的当前客户 | `江苏锁安` |
+| `customer_namespace` | 客户命名空间 | `江苏锁安` |
+| `customer_deploy` | 客户部署模式 | `airgap` |
+| `customer_industry` | 客户行业 | `制造业` |
+| `domain_id` | 当前步骤关联的域 | `supply-chain` |
+| `step` / `step_label` | 提交时所在的步骤 | `customers` / `① 业务认知` |
+| `conversation` | 完整对话记录 | `[{role: "user", content: "..."}, ...]` |
+| `summary` | AI 摘要或跳过时的占位文本 | |
+| `structured` | 结构化分类 (type/root_cause/severity) | `{type: "skipped", severity: "low"}` |
+
+### 反馈历史筛选
+
+通过 API 可按客户和步骤筛选历史反馈：
+
+```bash
+# 查看江苏锁安在业务认知步骤的所有反馈
+curl "http://localhost:8000/api/core/fde/feedback/history?customer=江苏锁安&step=customers" | jq .
+
+# 查看最近 50 条反馈
+curl "http://localhost:8000/api/core/fde/feedback/history?limit=50" | jq .
+```
+
+### 性能与质量保证（v2.4 新增）
+
+| 改进项 | 说明 |
+|:---|:---|
+| **回复不截断** | LLM 输出 token 上限从 300 提升至 800，不再出现半截回答 |
+| **JSON 解析鲁棒** | 优先使用严格 JSON 解析，支持嵌套花括号；失败时回退到宽松正则 |
+| **不污染 AI 上下文** | 澄清对话使用 `skip_claude_md`，LLM 不会看到 20K 字的架构规范文档，回答聚焦于实际业务问题而非平台规则 |
+| **弹窗标签干净** | 反馈弹窗顶部不再显示 `_pipeline_state` 等内部 JSON 字符串 |
 
 ### 反馈数据流向
 
@@ -489,8 +538,8 @@ FDE 提交反馈 → feedback_store
                     ↓
          ┌──────────┴──────────┐
          ↓                     ↓
-  运营监控面板            资产复利面板
-  (⑧ 追踪异常)          (沉淀为 FAQ)
+   运营监控面板            资产复利面板
+   (⑧ 追踪异常)          (沉淀为 FAQ)
 ```
 
 ---
@@ -528,9 +577,9 @@ FDE 提交反馈 → feedback_store
 
 ---
 
-> **最后更新**：2026-07-15 (v2.3)  
+> **最后更新**：2026-07-15 (v2.4)  
 > **维护者**：aiPlat FDE Team
-> **变更**：v2.3 新增多 Agent 工作流模式（4 角色协作）、双模式选择指南
+> **变更**：v2.4 反馈系统 6 项强化 (跳过澄清二次确认/提交记录客户上下文/回复截断修复/LLM hallucination 修复/JSON 泄露修复/反馈历史筛选)；v2.3 新增多 Agent 工作流模式（4 角色协作）、双模式选择指南
 
 ## 八、工作流模式（多 Agent 协作）
 
@@ -549,9 +598,17 @@ FDE 提交反馈 → feedback_store
 
 ### 如何启动工作流模式
 
-1. FDE 工作台标题右侧下拉菜单 → 选择 **"FDE 标准交付 v1"**
+1. FDE 工作台标题右侧下拉菜单 → 选择 **"FDE 标准交付 v1"**（自由模式下显示"自由模式（默认）"）
+2. 标题栏变为 `FDE 工作台 FDE标准交付流程`，进度条自动切换为 4 步
 2. 进度条自动切换为 4 步：BA → SA → DE → DM
-3. 每个 Tab 顶部显示当前 Agent 名称 + 产物预览
+3. 进度条颜色语义：
+
+| 颜色 | 含义 | 触发条件 |
+|:---|:---|:---|
+| <span style="color:#1d4ed8">**蓝色**</span> | 当前步骤 | 第一个未完成的 Agent（如 BA 尚未提交时高亮 BA） |
+| <span style="color:#4ade80">**绿色 ✓**</span> | 已完成 | 该 Agent 的 output_artifact 已写入 pipeline_state（如 ① Tab 选中客户后 BA 变绿） |
+| <span style="color:#6b7280">**灰色**</span> | 未开始 | 上游未完成，当前不可操作 |
+
 4. Agent 按 `depends_on` 顺序自动流转，上游完成 → 下游自动解锁
 
 ### 工作流执行规则
@@ -563,6 +620,198 @@ FDE 提交反馈 → feedback_store
 - **审批关卡**（BA、SA、DM）：关键产出需要上级或客户确认后才能进入下一步。点击"通过"继续，点击"驳回"退回修改。
 - **产出物传递**：每步完成后，产出自动传递给下一步——BA 的客户 Profile → SA 的方案设计 → DE 的部署包 → DM 的验收报告。
 
+### 逐步骤操作指南
+
+以下是在工作流模式下 FDE 的实际操作步骤。**注意**：加载工作流后 8 个 Tab 仍可见，你可以在任意 Tab 间自由切换，但进度条会根据 Agent 产出自动更新。
+
+---
+
+#### Step 1：BA — 收集客户信息（人工节点）
+
+**目标**：完成客户业务认知，产出结构化的客户 Profile。
+
+**操作**：
+
+1. 加载 "FDE 标准交付 v1" 后，进度条显示 `BA → SA → DE → DM`，当前高亮 BA
+2. 在 **① 业务认知** Tab 中操作（与自由模式完全相同）：
+   - 新建客户 Profile：填写客户名称、命名空间、描述、部署模式
+   - 或选择已有的客户 Profile → 点击卡片将其写入 pipeline
+3. 使用 `customer_profile_creator` Skill 辅助整理访谈信息（通过 Agent 对话或 Tab 表单）
+4. 确认五类客户信息已覆盖：身份 / 业务模式 / 痛点 / 技术基础 / 组织与合规
+5. 完成后，系统自动触发 **审批关卡** `customer_profile_review`：客户方负责人确认 Profile 无误
+
+**UI 对照**：
+
+| 操作 | 在哪做 | 自由模式对应 |
+|:---|:---|:---:|
+| 创建/选择客户 | ① 业务认知 Tab → 卡片网格 | 同 |
+| 查看客户详情 | 点击卡片展开 → 健康数据 / 诊断摘要 | 同 |
+| 编辑客户信息 | 展开面板 → [编辑] 按钮 | 同 |
+| 查看产出状态 | 进度条 BA 节点：未开始(灰) / 已提交(黄) / 已完成(绿✓) | 仅工作流模式 |
+
+**Pipeline 产出**：
+
+```
+BA 提交 customer_profile
+├→ 进度条 BA 变绿 ✓
+├→ SA 节点自动解锁（可以开始执行）
+└→ pipeline_state["customer_profile"] = {name, industry, deployment_mode, ...}
+```
+
+**判断标准**：
+
+| ✅ BA 完成了吗？ | 信号 |
+|:---|:---|
+| 五类客户信息齐全 | 缺的已标 [待补充]，有追问记录 |
+| 客户方确认 | customer_profile_review 审批通过 |
+| 进度条更新 | BA 节点显示绿色 ✓，SA 节点从灰变蓝 |
+
+**典型耗时**：进场后 0.5–1 天（含客户现场访谈）
+
+---
+
+#### Step 2：SA — 诊断 + 方案设计（AI 自动节点）
+
+**目标**：系统自动运行域评估和深层诊断，产出方案设计。FDE 审核结果。
+
+**操作**：
+
+1. BA 完成后，SA 节点自动变为**蓝色（执行中）**
+2. 系统自动调用 `domain_assessor` → `field_assessment` 两个 Skill：
+   - 域评估：根据客户行业匹配最佳业务域（如制造业 → supply-chain）
+   - 深层诊断：将客户表层需求翻译为深层业务问题
+3. SA 执行完成后，产出 `solution_design` 写入 pipeline_state
+4. FDE 在 **③ 问题重构** Tab 中查看诊断报告，确认方案合理
+5. 触发 **审批关卡** `solution_review`：技术负责人评审方案可行性 → 通过 / 驳回
+
+**UI 对照**：
+
+| 操作 | 在哪做 | 自由模式对应 |
+|:---|:---|:---:|
+| 查看诊断报告 | ③ 问题重构 Tab → 右侧面板 | 同 |
+| 查看域评估结果 | ② 评估域 Tab → 推荐域高亮 | 同 |
+| 审批方案 | 进度条 SA 节点 → 弹出审批面板 | 仅工作流模式 |
+
+**Pipeline 产出**：
+
+```
+SA 输出 solution_design
+├→ 进度条 SA 变绿 ✓（审批通过后）
+├→ DE 节点自动解锁
+├→ ③ Tab 回显诊断摘要
+└→ ① 客户卡片显示蓝色诊断 badge
+```
+
+**判断标准**：
+
+| ✅ SA 完成了吗？ | 信号 |
+|:---|:---|
+| 域匹配合理 | 推荐域与客户行业/痛点高度相关，有 confidence 评分 |
+| 深层问题被认可 | 诊断报告的深层问题与客户最初说的"我想要XX"不一样 |
+| 技术审批通过 | solution_review 审批通过 |
+
+**典型耗时**：15–30 分钟（AI 自动执行 + FDE 审核）
+
+---
+
+#### Step 3：DE — POC + 打包 + 灰度（AI 自动节点）
+
+**目标**：系统自动执行完整的部署流水线：POC 验证 → 构建部署包 → 灰度发布。**本步无需审批**，FDE 只需监控。
+
+**操作**：
+
+1. SA 审批通过后，DE 节点自动变为**蓝色（执行中）**
+2. 系统按顺序自动执行：
+
+| 阶段 | Skill | 产出 |
+|:---|:---|:---|
+| POC 验证 | `poc_data_inject` | 种子数据 + 测试通过/失败记录 |
+| 构建部署包 | `package_builder` | 离线 .zip 包（含模型/配置/数据/Skill） |
+| 灰度发布 | `canary_runner` | 灰度报告 + 质量评分 + 回滚决策 |
+
+3. FDE 在以下 Tab 中查看进度和结果：
+   - **④ 验证价值** Tab → POC 测试结果
+   - **⑤ 快速构建** Tab → 部署包下载链接
+   - **⑥ 评测护栏** Tab → 灰度质量指标
+4. DE 完成后无审批，自动解锁 DM 节点
+
+**Pipeline 产出**：
+
+```
+DE 输出 deployment_package
+├→ 进度条 DE 变绿 ✓
+├→ DM 节点自动解锁
+├→ ⑤ Tab 提供下载链接
+└→ ⑥ Tab 显示灰度通过率
+```
+
+**判断标准**：
+
+| ✅ DE 完成了吗？ | 信号 |
+|:---|:---|
+| POC 验证通过 | 至少 2/3 典型问题回答正确 |
+| 部署包生成成功 | ⑤ Tab 有下载链接，无报错 |
+| 灰度发布完成 | 灰度报告评分 ≥ 阈值，无回滚触发 |
+
+**典型耗时**：30 分钟–2 小时（取决于灰度阶段数和部署包大小，airgap 比 online 慢约 1 小时）
+
+---
+
+#### Step 4：DM — 验收 + 签字（人工节点）
+
+**目标**：逐项验收、交付手册、客户签收、启动首月护航。
+
+**操作**：
+
+1. DE 完成后，DM 节点自动变为**蓝色（当前步骤）**
+2. 在 **⑦ 验收移交** Tab 中操作（与自由模式完全相同）：
+   - 逐项检查验收 Checklist（功能 / KPI / 数据一致性 / SLA / 培训）
+   - 生成交付手册（包含项目背景、技术方案、运维指南、扩展指引）
+3. 触发 **审批关卡** `signoff_approval`：客户正式签字确认
+4. 点击 [首月护航] → 启动 30 天自动健康检查调度
+5. `acceptance_report` 写入 pipeline_state，整个工作流完成
+
+**UI 对照**：
+
+| 操作 | 在哪做 | 自由模式对应 |
+|:---|:---|:---:|
+| 验收 Checklist | ⑦ 验收移交 Tab → 逐项勾选 | 同 |
+| 生成交付手册 | ⑦ Tab → [移交归档] 按钮 | 同 |
+| 首月护航 | ⑦ Tab → [首月护航] 按钮 | 同 |
+| 查看验收报告 | ⑧ 运营监控 Tab → 交付归档 | 同 |
+
+**Pipeline 产出**：
+
+```
+DM 输出 acceptance_report
+├→ 进度条 DM 变绿 ✓
+├→ 全程 4 步全部绿色 ✓ → 工作流完成
+├→ 交付归档写入 GraphIndex
+└→ ⑧ Tab 启动运营监控
+```
+
+**判断标准**：
+
+| ✅ DM 完成了吗？ | 信号 |
+|:---|:---|
+| Checklist 全部通过 | 所有框打勾，无 FAIL |
+| 客户签收 | 签字单已签字，signoff_approval 审批通过 |
+| 首月护航启动 | 护航计划被调度器激活，⑧ Tab 可查 |
+
+**典型耗时**：签字 30 分钟，首月护航持续 4 周
+
+---
+
+### 工作流模式决策矩阵
+
+| 卡在哪步 | 原因 | 处理 |
+|:---|:---|:---|
+| BA → SA 不流转 | BA 产出未保存或客户未审批 | ① Tab 确认客户选好了，检查 customer_profile_review 审批状态 |
+| SA → DE 不流转 | SA 审批未通过或方案不完整 | ③ Tab 检查方案，确认 solution_review 审批通过 |
+| DE → DM 不流转 | DE 灰度失败或构建报错 | ⑤/⑥ Tab 检查部署日志和灰度报告 |
+| DM 无法签字 | checklist 有 FAIL 项 | ⑦ Tab 逐项补完，修复后重新验收 |
+| 任一 Agent 产出为空 | 上游输入缺失 | 检查上游 pipeline_state 是否正常写入 |
+
 ### 反馈澄清
 
 在工作流模式下，每个 Agent 都有澄清能力。点击浮动反馈按钮时：
@@ -572,15 +821,18 @@ FDE 提交反馈 → feedback_store
 - DE 阶段：AI 检查"deployment_mode 是否正确"
 - DM 阶段：AI 检查"灰度是否已通过、签字是否完成"
 
+澄清对话在两种模式下都会**自动跳过架构规则注入**（`skip_claude_md`），AI 回答聚焦于实际业务问题而非平台架构规范。详见第五章"反馈机制"。
+
 ### 自由模式 vs 工作流模式
 
 | | 自由模式 | 工作流模式 |
 |:---|:---|:---|
 | 步骤数 | 8 步（全部手动切换） | 4 步（按 DAG 自动流转） |
-| 进度条 | 需手动在每个 Tab 操作后才更新 | 自动检测 Agent 产出状态 |
+| 进度条格式 | `客户 ① → 域 ② → … → 监控 ⑧` | `业务分析师 ① → 方案架构师 ②③ → 交付工程师 ④⑤⑥ → 交付经理 ⑦⑧` |
+| 进度条更新 | 需手动在每个 Tab 操作后才更新 | 自动检测 Agent 产出状态 |
 | Agent 参与 | 仅 ③ 诊断阶段（field_assessment） | 全流程 4 个 Agent 协作 |
 | 适用场景 | 非标项目、自由探索 | 标准交付、团队分工 |
-| 如何启动 | 默认 | 下拉 "FDE 标准交付 v1" |
+| 如何启动 | 默认，下拉显示 "自由模式（默认）" | 下拉选择 "FDE 标准交付 v1" |
 
 ### 创建自定义工作流
 
@@ -666,6 +918,7 @@ FDE 提交反馈 → feedback_store
 | `model` | `qwen2.5-coder:14b` | 使用本地 14B 模型 |
 | `node_type`（工作流中） | `human` | 人工节点——需 FDE 手动操作 |
 | `required_skills` | `customer_profile_creator`, `clarify` | 客户 Profile 创建 + 智能澄清 |
+| `required_tools` | `search`, `file_operations` | 搜索 + 文件操作 |
 | `output_artifact` | `customer_profile` | 产出写入 pipeline_state["customer_profile"] |
 | `input_artifacts` | `[]` | 第一步，不依赖上游 |
 | `hitl` | `true` | 收集完成后需客户负责人确认 |
@@ -697,9 +950,10 @@ FDE 提交反馈 → feedback_store
 | 字段 | 值 | 说明 |
 |:---|:---|:---|
 | `agent_type` | `conversational` | 对话式 |
-| `model` | `qwen2.5-coder:14b` | 本地 14B 模型 |
+| `model` | `qwen2.5-coder:7b` | 本地 7B 模型 |
 | `node_type`（工作流中） | `agent` | AI 节点——自动调用 field_assessment |
 | `required_skills` | `domain_assessor`, `field_assessment`, `clarify` | 域评估 + 诊断 + 澄清 |
+| `required_tools` | `search`, `file_operations`, `information_search` | 搜索 + 文件操作 + 信息检索 |
 | `output_artifact` | `solution_design` | 包含域匹配、深层问题、方案设计 |
 | `input_artifacts` | `["customer_profile"]` | 读取 BA 的客户 Profile |
 | `hitl` | `true` | 方案需技术负责人评审 |
@@ -729,9 +983,10 @@ FDE 提交反馈 → feedback_store
 | 字段 | 值 | 说明 |
 |:---|:---|:---|
 | `agent_type` | `conversational` | 对话式 |
-| `model` | `qwen2.5-coder:14b` | 本地 14B 模型 |
+| `model` | `qwen2.5-coder:7b` | 本地 7B 模型 |
 | `node_type`（工作流中） | `agent` | AI 节点——自动执行部署流程 |
 | `required_skills` | `poc_data_inject`, `package_builder`, `canary_runner`, `clarify` | POC+打包+灰度+澄清 |
+| `required_tools` | `search`, `file_operations`, `code_execution` | 搜索 + 文件操作 + 代码执行 |
 | `output_artifact` | `deployment_package` | 部署包信息 + 灰度报告 |
 | `input_artifacts` | `["customer_profile", "solution_design"]` | 读取 BA 客户信息 + SA 方案 |
 | `hitl` | `false` | 全自动执行，不需要审批 |
@@ -764,6 +1019,7 @@ FDE 提交反馈 → feedback_store
 | `model` | `qwen2.5-coder:14b` | 本地 14B 模型 |
 | `node_type`（工作流中） | `human` | 人工节点——需签字 + 移交 |
 | `required_skills` | `acceptance_checker`, `manual_generator`, `clarify` | 验收+手册+澄清 |
+| `required_tools` | `search`, `file_operations` | 搜索 + 文件操作 |
 | `output_artifact` | `acceptance_report` | 签字状态 + 交付手册 + 培训计划 |
 | `input_artifacts` | `["deployment_package", "customer_profile"]` | 读取部署包 + 客户信息 |
 | `hitl` | `true` | 签字确认 |
@@ -801,11 +1057,25 @@ FDE 提交反馈 → feedback_store
 #### 前置确认
 
 ```bash
-# 确认 4 个 Agent 已注册
-tail -50 ~/.aiplat/logs/core.log | grep "fde_business_analyst\|fde_solution_architect\|fde_delivery_engineer\|fde_delivery_manager"
+# 确认 4 个 Agent 已注册（搜索完整日志，不限制行数）
+grep "fde_business_analyst\|fde_solution_architect\|fde_delivery_engineer\|fde_delivery_manager" ~/.aiplat/logs/core.log
+
+# 期望输出：每个 Agent 至少有 1 行命中（含 WARNING 级别也可接受，表示已加载）
+# 示例：
+#   WARNING:server:[workspace agents] fde_business_analyst: No tools bound — agent cannot perform actions
+#   （有 WARNING 说明 Agent 已被系统识别并加载，可正常使用）
 
 # 确认 4 个 Skill 已注册
-tail -50 ~/.aiplat/logs/core.log | grep "customer_profile_creator\|domain_assessor\|package_builder\|acceptance_checker"
+grep "customer_profile_creator\|domain_assessor\|package_builder\|acceptance_checker" ~/.aiplat/logs/core.log
+
+# 期望输出：每个 Skill 至少有 1 行命中
+# 注：Engine 内置 Skill 在启动时静默加载，可能无单独日志输出。
+#     确认文件存在即可：
+ls ~/.aiplat/ontologies/ 2>/dev/null && echo "域本体目录就绪"
+ls aiPlat-core/core/engine/skills/customer_profile_creator/SKILL.md \
+   aiPlat-core/core/engine/skills/domain_assessor/SKILL.md \
+   aiPlat-core/core/engine/skills/package_builder/SKILL.md \
+   aiPlat-core/core/engine/skills/acceptance_checker/SKILL.md
 ```
 
 #### 步骤 1：打开 Workflow 画布
@@ -880,8 +1150,56 @@ tail -50 ~/.aiplat/logs/core.log | grep "customer_profile_creator\|domain_assess
 | 问题 | 原因 | 解决 |
 |:---|:---|:---|
 | 下拉菜单没有我的 Workflow | 未发布或审批未通过 | 回到 Workflow 列表页检查状态 |
-| Agent 下拉选不到 FDE Agent | Agent 未注册 | 重启 core，检查日志确认 `_load_directory_agents` 执行 |
+| Agent 下拉选不到 FDE Agent | Agent 未注册或注册不完整 | 先确认 Agent 文件存在于 `~/.aiplat/agents/`；再 `grep fde_ ~/.aiplat/logs/core.log` 查注册日志；如有 "Missing" 警告检查 AGENT.md frontmatter 完整性；重启 core 服务后重新加载 |
 | 进度条不更新 | 上一步的产出物还未保存 | 确认上一步 Agent 已完成并提交了产出 |
+| 验证命令无输出 | `tail -50` 太短、日志在启动时写入 | 去掉 `tail` 直接 `grep ... ~/.aiplat/logs/core.log` 搜索完整日志 |
+| Agent 日志显示 "No tools bound" | AGENT.md 缺少 `required_tools` 字段 | 在 YAML frontmatter 中添加 `required_tools: [search, file_operations]`，重启 core |
+
+---
+
+## 九、Agent 与 Skill 的关系
+
+### 同一个 Agent，不同步骤启用不同 Skill
+
+从 v2.4 开始，每个 Agent 可以**按需启用技能子集**。例如 `fde_delivery_engineer` 拥有 4 个 Skill，但在不同阶段只启用需要的：
+
+| 步骤 | 启用的 Skill | 说明 |
+|:---:|------|------|
+| ④ 验证价值 | `poc_data_inject` | 只注入种子数据、验证核心流程，不构建部署包 |
+| ⑤ 快速构建 | `package_builder` | 只生成部署包，不执行灰度发布 |
+| ⑥ 评测护栏 | `canary_runner` | 只跑灰度评测和质量打分 |
+
+这通过 `_run_fde_agent_one_shot(agent_id, skill_filter=[...])` 实现——创建 Agent 实例时直接设置 `agent._skills` 为指定子集，而不是用 Agent 的完整 `required_skills`。
+
+### 技术机制
+
+```
+调用方 → _run_fde_agent_one_shot(agent_id="fde_delivery_engineer", skill_filter=["poc_data_inject"])
+           ↓
+        BaseAgent(config) → agent._skills = [poc_data_inject_obj]
+           ↓
+        Agent.execute() → ReActLoop._skills = [poc_data_inject]
+           ↓
+        LLM 只能看到/调用 poc_data_inject 这一个 Skill
+```
+
+### 降级机制
+
+当 Agent 系统不可用（模型离线、注册表异常）时，`_run_fde_agent_one_shot()` 返回 `None`，调用方自动回退到原有的直接 Skill/API 调用路径，保证业务连续性。
+
+### 工作流模式下的 Agent 调用
+
+工作流模式下，PipelineStageConfig 的 `required_skills` 字段控制每个阶段启用的 Skill 子集。该字段可通过 workflow JSON 模板的 `requiredSkills` 配置，也可在画布属性面板中手动设置。
+
+### 新增 API 端点
+
+| 端点 | Agent | 用途 |
+|------|------|------|
+| `POST /fde/poc/inject` | fde_delivery_engineer | POC 种子数据注入 |
+| `GET /fde/canary/insight` | fde_delivery_engineer | Agent 灰度质量分析 |
+| `POST /fde/customers/profile/assist` | fde_business_analyst | AI 辅助生成客户 Profile |
+| `GET /fde/acceptance/checklist` | fde_delivery_manager | 验收分析（agent_analysis 字段） |
+| `POST /fde/assess/dialog` | fde_solution_architect | 触发 "运行诊断" 时走 Agent 路径 |
 
 ---
 

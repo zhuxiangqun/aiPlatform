@@ -238,11 +238,33 @@ async def core_chat(ctx: ChatContext) -> ChatResult:
         if required:
             skills_used = [s for s in required if isinstance(s, str)]
         elif not system_prompt.strip():
-            # Fallback: load from SkillRegistry directly when AGENT.md is missing
-            # (agent may still benefit from universally available skills)
             pass
     except Exception as e:
         logging.debug(str(e), exc_info=True)
+
+    # Auto-select skill subset via intent classification (v2.4)
+    if skills_used and frontmatter.get("auto_select_skills", True):
+        try:
+            from core.harness.routing.classifier import classify
+            from core.schemas_routing import RoutingContext as _Rctx
+            _rctx = _Rctx(
+                user_message=ctx.user_input or "",
+                agent_id=ctx.agent_name,
+                agent_name=ctx.agent_name,
+                available_skills=list(skills_used),
+            )
+            _routing = classify(_rctx)
+            if _routing.confidence >= 0.80 and _routing.suggested_skill_ids:
+                auto_skills = [s for s in _routing.suggested_skill_ids if s in skills_used]
+                if auto_skills and len(auto_skills) < len(skills_used):
+                    skills_used = auto_skills
+                    logging.info("auto_skill_select", extra={
+                        "agent": ctx.agent_name, "intent": _routing.intent.value,
+                        "confidence": round(_routing.confidence, 2),
+                        "selected_skills": skills_used,
+                    })
+        except Exception:
+            pass  # auto-select failure must not break execution
 
     # ── 4. Create and execute agent ──
     from core.harness.interfaces.agent import AgentConfig, AgentContext

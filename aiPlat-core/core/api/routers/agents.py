@@ -809,7 +809,7 @@ async def resolve_pipeline_hitl(pipeline_id: str, request: dict):
         if not engine:
             raise HTTPException(status_code=404, detail="pipeline_not_found")
         if action == "approve":
-            await engine.approve(engine._state)
+            await engine.approve(engine._state, feedback=feedback)
             return {"status": "approved", "pipeline_id": pipeline_id}
         elif action == "reject":
             await engine.reject(engine._state)

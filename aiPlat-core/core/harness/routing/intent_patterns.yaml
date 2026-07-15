@@ -35,6 +35,14 @@ intent_patterns:
     - [ "(?:招聘|面试|hire|JD|简历)", "RECRUITMENT", 0.78]
     - [ "(?:翻译|translate|英译中|中译英|convert.*language)", "TRANSLATION", 0.68]
     - [ "(?:闲聊|天气|笑话|兴趣|爱好|你好)", "CHITCHAT", 0.60]
+    # ── FDE 场景 ──
+    - [ "(?:诊断|问题重构|深层问题|客户诊断|field.?assessment|现场评估)", "APPLICABILITY_ANALYSIS", 0.88]
+    - [ "(?:注入.*数据|POC.*验证|种子数据|快速验证|接入验证|验证.*价值|跑通.*链路)", "APPLICABILITY_ANALYSIS", 0.85]
+    - [ "(?:打包|构建.*部署|部署包|离线包|package.*build|生成.*部署)", "DEPLOYMENT", 0.88]
+    - [ "(?:灰度|金丝雀|canary|流量.*切换|分批.*发布|回滚)", "MONITORING", 0.85]
+    - [ "(?:验收|签字|签收|checklist|交付.*检查|首月护航|移交)", "COMPLIANCE_CHECK", 0.85]
+    - [ "(?:澄清|追问|多轮.*对话|帮我.*梳理|资料.*齐全|信息.*充足|资料.*够)", "FOLLOW_UP", 0.82]
+    - [ "(?:客户.*画像|客户.*profile|客户.*背景|客户.*信息|业务.*认知)", "APPLICABILITY_ANALYSIS", 0.80]
 
   # ── Suggested agent display names per intent category ─────
   # Used for UI hints: "建议使用 {agent_name}"
@@ -65,6 +73,11 @@ intent_patterns:
     RECRUITMENT: "智能 HR Agent"
     TRANSLATION: "翻译 Agent"
     CHITCHAT: "对话助手"
+    APPLICABILITY_ANALYSIS: "交付工程师 Agent"
+    MONITORING: "交付工程师 Agent"
+    COMPLIANCE_CHECK: "交付经理 Agent"
+    DEPLOYMENT: "交付工程师 Agent"
+    FOLLOW_UP: "业务分析师 Agent"
 
   # ── Agent tags for category-based matching ─────────────────
   category_to_tags:

@@ -84,48 +84,121 @@ const FdeDashboard: React.FC = () => {
 
   const progressItems = React.useMemo(() => {
     if (workflowStages.length > 0) {
-      return workflowStages.map(s => ({
-        key: s.agent_id,
+      const stateMap: Record<string, boolean> = {
+        customer_profile: !!customer,
+        solution_design: !!(diagnosis || domain),
+        deployment_package: !!(deployVersion || canaryResult?.passed),
+        acceptance_report: adopted,
+      };
+      const tabMap: Record<string, string> = {
+        customer_profile: '①',
+        solution_design: '②③',
+        deployment_package: '④⑤⑥',
+        acceptance_report: '⑦⑧',
+      };
+      const stageTab: Record<string, TabKey> = {
+        customer_profile: 'customers',
+        solution_design: 'capability',
+        deployment_package: 'poc',
+        acceptance_report: 'accept',
+      };
+      const stages = workflowStages.map(s => ({
+        key: s.output_artifact,
         label: (s.agent_name || s.id || '').replace('FDE', '').trim() || s.id,
-        done: !!workflowState[s.output_artifact],
+        tabs: tabMap[s.output_artifact] || '',
+        tabKey: stageTab[s.output_artifact],
+        done: stateMap[s.output_artifact] || false,
+        active: false,
       }));
+      const currentIdx = stages.findIndex(s => !s.done);
+      if (currentIdx !== -1) stages[currentIdx].active = true;
+      return stages;
     }
     return [
-      { key: 'customers',  label: '客户', done: !!customer },
-      { key: 'capability', label: '域',   done: !!domain },
-      { key: 'assess',     label: '诊断',  done: !!diagnosis },
-      { key: 'poc',        label: 'POC',  done: !!pocProfile },
-      { key: 'deploy',     label: '部署',  done: !!deployVersion },
-      { key: 'canary',     label: '灰度',  done: !!canaryResult?.passed },
-      { key: 'accept',     label: '验收',  done: adopted },
+      { key: 'customers',  label: '客户', tabs: '①', tabKey: 'customers',  done: !!customer, active: tab === 'customers' },
+      { key: 'capability', label: '域',   tabs: '②', tabKey: 'capability', done: !!domain, active: tab === 'capability' },
+      { key: 'assess',     label: '诊断',  tabs: '③', tabKey: 'assess',     done: !!diagnosis, active: tab === 'assess' },
+      { key: 'poc',        label: 'POC',  tabs: '④', tabKey: 'poc',        done: !!pocProfile, active: tab === 'poc' },
+      { key: 'deploy',     label: '部署',  tabs: '⑤', tabKey: 'deploy',     done: !!deployVersion, active: tab === 'deploy' },
+      { key: 'canary',     label: '灰度',  tabs: '⑥', tabKey: 'canary',     done: !!canaryResult?.passed, active: tab === 'canary' },
+      { key: 'accept',     label: '验收',  tabs: '⑦', tabKey: 'accept',     done: adopted, active: tab === 'accept' },
+      { key: 'evolution',  label: '监控',  tabs: '⑧', tabKey: 'evolution',  done: adopted, active: tab === 'evolution' },
     ];
-  }, [workflowStages, workflowState, customer, domain, diagnosis, pocProfile, deployVersion, canaryResult, adopted]);
+  }, [workflowStages, customer, domain, diagnosis, pocProfile, deployVersion, canaryResult, adopted, tab]);
+
+  const nextStepHint = React.useMemo(() => {
+    const isWorkflow = workflowStages.length > 0;
+    if (!customer) return { 
+      text: isWorkflow ? '请先完成 ① 业务认知：选择或创建客户 Profile → BA 完成后自动流转' : '请先在 ① 业务认知 中选择或创建客户',
+      tab: 'customers' as TabKey
+    };
+    if (!domain) return {
+      text: isWorkflow ? '✅ BA 已完成。请前往 ② 评估域 选择业务领域 → SA 自动匹配方案' : '✅ 客户已就绪，请前往 ② 评估域 选择业务领域',
+      tab: 'capability' as TabKey
+    };
+    if (!diagnosis) return {
+      text: isWorkflow ? '✅ 域已匹配，SA 已启动诊断。请前往 ③ 问题重构 查看方案设计' : '✅ 域已匹配，请前往 ③ 问题重构 运行诊断',
+      tab: 'assess' as TabKey
+    };
+    if (!pocProfile) return {
+      text: '✅ 诊断完成，请前往 ④ 验证价值 加载 POC 模板',
+      tab: 'poc' as TabKey
+    };
+    if (!deployVersion) return {
+      text: isWorkflow ? '✅ POC 已通过，DE 正在构建部署包。请前往 ⑤ 快速构建 查看进度' : '✅ POC 验证通过，请前往 ⑤ 快速构建 打包部署',
+      tab: 'deploy' as TabKey
+    };
+    if (!canaryResult?.passed) return {
+      text: isWorkflow ? '✅ 部署包已生成，DE 正在灰度发布。请前往 ⑥ 评测护栏 查看质量指标' : '✅ 部署完成，请前往 ⑥ 评测护栏 灰度发布',
+      tab: 'canary' as TabKey
+    };
+    if (!adopted) return {
+      text: isWorkflow ? '✅ 灰度已通过，请前往 ⑦ 验收移交 签字确认 → DM 完成后项目移交' : '✅ 灰度通过，请前往 ⑦ 验收移交 签字确认',
+      tab: 'accept' as TabKey
+    };
+    return {
+      text: isWorkflow ? '🎉 工作流全部完成！请前往 ⑧ 运营监控 查看运行状态' : '🎉 所有步骤已完成，⑧ 运营监控 查看运行状态',
+      tab: 'evolution' as TabKey
+    };
+  }, [workflowStages.length, customer, domain, diagnosis, pocProfile, deployVersion, canaryResult, adopted]);
 
   return (
     <div className="space-y-4 p-4">
-       <div className="flex items-center justify-between">
-         <h1 className="text-lg font-semibold text-gray-100">FDE 工作台
-           {workflowName && <span className="text-xs text-blue-400 ml-2 font-normal">{workflowName}</span>}
-         </h1>
-         <select onChange={e => loadWorkflow(e.target.value)} defaultValue=""
-           className="text-xs bg-gray-800 border border-gray-700 rounded px-2 py-1 text-gray-400">
-           <option value="" disabled>加载工作流…</option>
-           <option value="fde_delivery_v1">FDE 标准交付 v1</option>
-           <option value="">取消（自由模式）</option>
-         </select>
+        <div className="flex items-center justify-between">
+          <h1 className="text-lg font-semibold text-gray-100">FDE 工作台
+            <span className="text-xs text-gray-500 ml-2 font-normal">
+              {workflowName || '自由模式'}
+            </span>
+          </h1>
+          <select onChange={e => loadWorkflow(e.target.value)} value={workflowName ? 'fde_delivery_v1' : ''}
+            className="text-xs bg-gray-800 border border-gray-700 rounded px-2 py-1 text-gray-400">
+            <option value="">自由模式（默认）</option>
+            <option value="fde_delivery_v1">FDE 标准交付 v1</option>
+          </select>
        </div>
       {/* ── 流程进度指示 ── */}
-      <div className="flex items-center gap-1.5 text-xs text-gray-500">
+      <div className="flex items-center gap-1.5 text-xs text-gray-500 flex-wrap">
         <span className="mr-1">进度：</span>
         {progressItems.map((p, i) => (
           <span key={p.key} className="flex items-center gap-1">
-            <span className={tab === p.key ? 'text-blue-400 font-semibold' : p.done ? 'text-green-400' : 'text-gray-600'}>
+            <span onClick={() => p.tabKey && setTab(p.tabKey)}
+              className={p.active ? 'text-blue-400 font-semibold cursor-pointer hover:underline' : p.done ? 'text-green-400 cursor-pointer hover:underline' : 'text-gray-600 cursor-pointer hover:text-gray-400'}>
               {p.done ? `${p.label} ✓` : p.label}
             </span>
+            {p.tabs && <span className="text-[10px] opacity-70">{p.tabs}</span>}
             {i < progressItems.length - 1 && <span className="text-gray-700">→</span>}
           </span>
         ))}
       </div>
+      {nextStepHint && (
+        <div className="flex items-center gap-2 px-3 py-2 rounded bg-blue-500/10 border border-blue-500/20 text-xs">
+          <span className="text-blue-300">{nextStepHint.text}</span>
+          <button onClick={() => setTab(nextStepHint.tab)}
+            className="px-2 py-0.5 rounded bg-blue-600 hover:bg-blue-500 text-white text-xs font-medium shrink-0">
+            前往 →
+          </button>
+        </div>
+      )}
       <div className="flex gap-1 border-b border-gray-700/50 pb-0">
         {FDE_STEPS.map(t => (
           <button

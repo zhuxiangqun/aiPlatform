@@ -310,6 +310,8 @@ class DomainRouter:
                 "expand_subclasses": True,
                 "system_prompt_id": f"domain-prompt-{did}",
                 "min_cross_results": 3,
+                "ontology_mapping": "best_effort",   # safe default; set "mandatory" for target domains
+                "domain_skill_enabled": False,       # opt-in per domain
             }
         return {
             "version": "1.0.0",

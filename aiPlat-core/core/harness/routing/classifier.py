@@ -247,6 +247,15 @@ def _map_intent_to_skills(intent: IntentCategory, ctx: RoutingContext) -> List[s
         IntentCategory.TEST_GENERATION: ["test_case_generation"],
         IntentCategory.E2E_TEST: ["site_tester"],
         IntentCategory.RESEARCH: ["information_search", "multi_doc_query"],
+        IntentCategory.ARCHITECTURE_DESIGN: ["architecture_design", "solution_design"],
+        IntentCategory.TECH_CONSULT: ["knowledge_retrieve", "domain_assessor"],
+        IntentCategory.FACT_LOOKUP: ["information_search", "wiki_retrieve"],
+        IntentCategory.COMPARE: ["multi_doc_query", "domain_assessor"],
+        IntentCategory.EVIDENCE_TRACE: ["evidence_chain"],
+        IntentCategory.APPLICABILITY_ANALYSIS: ["poc_data_inject", "field_assessment"],
+        IntentCategory.COMPLIANCE_CHECK: ["compliance_checker", "acceptance_checker"],
+        IntentCategory.MONITORING: ["canary_runner", "sla_tracker"],
+        IntentCategory.FOLLOW_UP: ["clarify"],
     }.get(intent, [])
     return [s for s in extras if s not in existing]
 

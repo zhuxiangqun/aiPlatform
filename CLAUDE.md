@@ -8,7 +8,7 @@ language: zh-CN
 
 此文件是 **工作区兜底规约**，用于在系统执行链路中自动推断到 workspace root 时仍然能注入/强制基本规则。
 
-**能力全貌**：参见 [`AIPLAT_CAPABILITIES.md`](./AIPLAT_CAPABILITIES.md)（唯一真相源，640 项能力）
+**能力全貌**：参见 [`AIPLAT_CAPABILITIES.md`](./AIPLAT_CAPABILITIES.md)（唯一真相源，681 项能力）
 
 **架构定位**：企业大脑 — 从"工具集合"到"自演进操作系统"的 8 层架构：
 
@@ -24,6 +24,17 @@ language: zh-CN
 | 8 | 编码宪法 | 内核约束 — 所有操作必须遵守的基本法则 | karpathy_v1 全局默认注入(编码前思考/简洁优先/精准修改/目标驱动) |
 
 **编码宪法豁免机制（设计预留）**：Skill 执行时默认注入 karpathy_v1 规则。若某个 Skill 需临时豁免，可在其 metadata 中声明 `override_karpathy: true`，注入逻辑检查该字段后跳过宪法注入。当前阶段保持全局强制，后续按需开放。
+
+**编码宪法默认启用（v2.4+）**：自 2026-07 起，`karpathy_v1` 编码宪法（编码前思考 / 简洁优先 / 精准修改 / 目标驱动）**全局默认启用**，通过 `_facade.py:_coding_policy_profile()` 中 `AIPLAT_CODING_POLICY_PROFILE_ENGINE` 和 `AIPLAT_CODING_POLICY_PROFILE_WORKSPACE` 环境变量控制，默认值为 `"karpathy_v1"`。此变更影响所有 workspace 和 engine Agent 的代码生成 Skill 执行。临时禁用：`export AIPLAT_CODING_POLICY_PROFILE_WORKSPACE=off`。按需覆盖：`export AIPLAT_CODING_POLICY_PROFILE_WORKSPACE=my_profile`。
+
+**skip_claude_md 使用规范（v2.4+）**：`trace_context["skip_claude_md"] = True` 用于 LLM 调用时跳过 CLAUDE.md + 架构规则注入（~20K 字）。使用场景约束：
+
+| 场景 | 是否允许 | 原因 |
+|:---|:---:|:---|
+| FDE 澄清对话 (`_clarify()`) | ✅ | 澄清场景聚焦业务问题，架构规则导致 hallucination |
+| Prompt-type Skill 执行 | ✅ | Skill 自带 SOP，架构上下文为噪音 |
+| Agent ReActLoop / 代码生成 | ❌ | 需要架构规则和编码宪法做决策引导 |
+| 检索生成 (RAG) / 材料问答 | ❌ | 需要知识治理和引用规则 |
 
 **强制规则——代码变更必须同步文档**：
 
