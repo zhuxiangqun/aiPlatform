@@ -106,9 +106,11 @@ class TestMethodWired:
 class TestMethodsNeedingWiring:
     """待接线方法 — xfail 标记表示已知无 caller，接线后移除 xfail。"""
 
-    @pytest.mark.xfail(reason="待接线: map_reduce 实现了但无生产代码 caller")
     def test_map_reduce_wired(self):
-        assert has_production_caller("map_reduce", "parallel_executor.py")
+        """map_reduce() is called internally by parallel_analyze(), which has external callers.
+        Wired through the parallel_analyze wrapper in pipeline_engine.py:712."""
+        assert has_production_caller("parallel_analyze", "parallel_executor.py"), \
+            "parallel_analyze must be wired (it wraps map_reduce() internally)"
 
 
 class TestMethodRegression:

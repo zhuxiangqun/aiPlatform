@@ -1,9 +1,1 @@
-platform→core internal import: harness.infrastructure.crypto (5 files, pre-existing)
-platform→core internal import: harness.kernel.runtime (4 files, pre-existing)
-platform→core internal import: harness.integration (1 file, pre-existing)
-platform→core pattern: from core\.apps\. (100+ instances, pre-existing)
-platform→core pattern: from core\.harness\. (100+ instances, pre-existing)
-ROUTE_PERMISSIONS in core — transitional re-export shell (v2.2 cleanup)
-SIDEBAR_MENUS in core — transitional re-export shell (v2.2 cleanup)
-METHOD_RESTRICTIONS in core — transitional re-export shell (v2.2 cleanup)
-SystemRole in core — transitional re-export shell (v2.2 cleanup)
+# All 9 entries resolved — cleared v2.5
