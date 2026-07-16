@@ -2141,19 +2141,19 @@ except Exception as e:
     logging.debug("Kanban router: %s", e)
 
 # FDE Toolkit (Field Deployment Engineer — unified entry point, 方向一)
-# v2.5 Transition: also registered at /api/platform/apps/fde/ (platform/apps/fde/api/router.py)
-# v2.5: adds Deprecation header; v2.6: 301 redirect to new path
+# v2.5: 301 redirect to new platform path
 try:
+    from fastapi.responses import RedirectResponse
+    
+    @api_router.get("/fde/{rest_of_path:path}", include_in_schema=False)
+    @api_router.post("/fde/{rest_of_path:path}", include_in_schema=False)
+    @api_router.put("/fde/{rest_of_path:path}", include_in_schema=False)
+    @api_router.delete("/fde/{rest_of_path:path}", include_in_schema=False)
+    async def _fde_redirect(rest_of_path: str, request: Request):
+        new_url = f"/api/platform/apps/fde/{rest_of_path}"
+        return RedirectResponse(url=new_url, status_code=301)
+    
     from core.api.routers.fde import router as fde_router
-    
-    @fde_router.middleware("http")  # noqa: F811
-    async def _fde_deprecation_header(request, call_next):
-        response = await call_next(request)
-        response.headers["Deprecation"] = "true"
-        response.headers["Sunset"] = "Sat, 01 Aug 2026 00:00:00 GMT"
-        response.headers["Link"] = '</api/platform/apps/fde>; rel="deprecation"'
-        return response
-    
     api_router.include_router(fde_router)
 except Exception as e:
     logging.warning(str(e), exc_info=True)

@@ -1,4 +1,4 @@
-"""Value center API router — platform-layer re-export (v2.5 transitional)."""
+"""Value center API router — platform-layer re-export (v2.5 canonical)."""
 from fastapi import APIRouter
 
 router = APIRouter(tags=["value-platform"])

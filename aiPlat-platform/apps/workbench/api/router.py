@@ -1,4 +1,4 @@
-"""Workbench API router — platform-layer re-export (v2.5 transitional)."""
+"""Workbench API router — platform-layer re-export (v2.5 canonical)."""
 from fastapi import APIRouter
 
 router = APIRouter(tags=["workbench-platform"])
