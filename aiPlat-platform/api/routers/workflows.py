@@ -20,7 +20,7 @@ _log = logging.getLogger(__name__)
 
 def _get_wf_mgr():
     try:
-        from core.management.workflow_manager import WorkflowManager
+        from core.api.core_facade import WorkflowManager  # v2.5
         return WorkflowManager(scope="workspace")
     except Exception:
         return None

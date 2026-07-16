@@ -572,7 +572,7 @@ async def apply_gate_policy_change(change_id: str, request: dict, http_request: 
     if require_approval:
         # Ensure approved
         mgr = _approval_mgr(rt)
-        from core.security.skill_signature_gate import is_approval_resolved_approved
+        from core.api.core_facade import is_approval_resolved_approved  # v2.5
 
         if not is_approval_resolved_approved(mgr, str(approval_request_id)):
             links = governance_links(change_id=str(change_id), approval_request_id=str(approval_request_id))

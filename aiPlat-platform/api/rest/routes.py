@@ -1280,7 +1280,7 @@ async def kb_ingest_url(request: Request):
     result = ingest_url(tenant_id=identity.tenant_id, collection_id=collection_id, url=url, name=name)
     try:
         from core.api.core_facade import get_semantic_cache  # v2.5: CoreFacade
-        from core.harness.utils.async_utils import _run_coro_blocking
+        from core.api.core_facade import _run_coro_blocking  # v2.5
         cache = get_semantic_cache()
         if cache.enabled:
             _run_coro_blocking(cache.invalidate_domain(collection_id))
@@ -1376,7 +1376,7 @@ async def kb_reingest_document(doc_id: str, request: Request):
         logging.getLogger("platform.routes").debug("Ontology re-process skipped: %s", e)
     try:
         from core.api.core_facade import get_semantic_cache  # v2.5: CoreFacade
-        from core.harness.utils.async_utils import _run_coro_blocking
+        from core.api.core_facade import _run_coro_blocking  # v2.5
         cache = get_semantic_cache()
         if cache.enabled:
             _run_coro_blocking(cache.invalidate_domain(collection_id))
@@ -3276,8 +3276,8 @@ async def kb_create_with_ai(request: Request):
         raise HTTPException(status_code=400, detail="prompt_required")
     try:
         from core.api.facades.service_facade import llm_generate
-        from core.harness.utils.prompt_loader import _async_prompt_resolve
-        from core.harness.utils.model_injection import best_model_for_purpose
+        from core.api.core_facade import _sync_resolve as _async_prompt_resolve  # v2.5
+        from core.api.core_facade import best_model_for_purpose  # v2.5
         sp = await _async_prompt_resolve("kb-doc-writer", title=title, prompt=prompt)
         resp = await llm_generate(None, [
             {"role": "user", "content": sp},

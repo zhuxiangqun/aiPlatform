@@ -281,10 +281,10 @@ async def apply_engine_skill_md_patch(change_id: str, http_request: Request, _au
     try:
         from pathlib import Path
 
-        from core.api.routers.code_intel import blast as _code_intel_blast  # type: ignore
-        from core.api.routers.code_intel import default_roots as _code_intel_default_roots  # type: ignore
-        from core.api.routers.code_intel import code_intel_scan as _code_intel_get_scan  # type: ignore
-        from core.api.routers.code_intel import repo_root as _code_intel_repo_root  # type: ignore
+        from core.api.routers.code_intel import blast as _code_intel_blast  # type: ignore  # noqa: boundary
+        from core.api.routers.code_intel import default_roots as _code_intel_default_roots  # type: ignore  # noqa: boundary
+        from core.api.routers.code_intel import code_intel_scan as _code_intel_get_scan  # type: ignore  # noqa: boundary
+        from core.api.routers.code_intel import repo_root as _code_intel_repo_root  # type: ignore  # noqa: boundary
 
         raw_path = proposed_result.get("path")
         raw_path = str(raw_path) if isinstance(raw_path, str) else ""
@@ -861,8 +861,8 @@ async def apply_engine_skill_md_patch(change_id: str, http_request: Request, _au
         else:
             try:
                 from core.api.core_facade import scan_security
-                from core.apps.quality.scanner import create_security_scanner
-                from core.apps.quality.types import VulnerabilitySeverity
+                from core.api.core_facade import create_security_scanner  # v2.5
+                from core.api.core_facade import VulnerabilitySeverity  # v2.5
 
                 scanner = create_security_scanner(severity_threshold=VulnerabilitySeverity.MEDIUM)
                 updated_raw = proposed_result.get("updated_raw") if isinstance(proposed_result, dict) else None

@@ -16,7 +16,7 @@ from core.api.utils.run_contract import wrap_execution_result_as_run_summary
 from core.api.facades.runtime_facade import KernelRuntime, ExecutionRequest, get_kernel_runtime
 from core.api.facades.service_facade import create_conversation_service
 from core.api.facades.service_facade import normalize_conversation_scope
-from core.harness.utils.model_injection import best_model_for_purpose
+from core.api.core_facade import best_model_for_purpose  # v2.5
 from core.schemas_conversations import (
     ConversationCreateRequest,
     ConversationQueryRequest,
@@ -44,9 +44,9 @@ def _ensure_runtime() -> None:
 def _init_platform_runtime() -> None:
     """Bootstrap a minimal KernelRuntime in the platform process."""
     import os
-    from core.management.agent_manager import AgentManager
-    from core.management.skill_manager import SkillManager
-    from core.services.execution_store import ExecutionStore, ExecutionStoreConfig
+    from core.api.core_facade import AgentManager  # v2.5
+    from core.api.core_facade import SkillManager  # v2.5
+    from core.api.core_facade import ExecutionStore, ExecutionStoreConfig  # v2.5
     from core.api.core_facade import AgentDiscovery, AgentLoader, AgentRegistry, get_agent_registry_facade as get_agent_registry
 
     db_path = os.path.expanduser(os.getenv("AIPLAT_EXECUTION_DB_PATH", "~/.aiplat/data/execution.db"))
@@ -235,7 +235,7 @@ async def query_conversation_stream(session_id: str, request: ConversationQueryR
     domain_id = "default"
     domain_name = ""
     try:
-        from core.harness.knowledge.domain_router import DomainRouter
+        from core.api.core_facade import DomainRouter  # v2.5
         router = DomainRouter()
         domain_id = router.classify(question)
         domain_cfg = router.domain_config(domain_id)
@@ -250,7 +250,7 @@ async def query_conversation_stream(session_id: str, request: ConversationQueryR
     # Retrieve content via unified retrieval (Wiki-first + CRAG fallback + domain routing)
     doc_content = ""
     try:
-        from core.harness.syscalls.retrieval import sys_knowledge_retrieve
+        from core.api.core_facade import sys_knowledge_retrieve  # v2.5
         retrieval_kwargs: dict = {
             "query": question, "top_k": 8, "wiki_first": True,
             "collection_id": collection_id, "tenant_id": tenant_id,
@@ -275,7 +275,7 @@ async def query_conversation_stream(session_id: str, request: ConversationQueryR
         try:
             from core.api.core_facade import llm_generate_stream
             full_answer = []
-            from core.harness.utils.prompt_loader import _sync_resolve
+            from core.api.core_facade import _sync_resolve  # v2.5
             system_prompt = _sync_resolve("kb-chat-system-role")
             async for chunk in llm_generate_stream(
                 None,
@@ -313,7 +313,7 @@ async def query_conversation_stream(session_id: str, request: ConversationQueryR
 def _best_max_tokens(model_name: str = "") -> int:
     """Get optimal max_tokens based on model context window size."""
     try:
-        from core.harness.knowledge.doc_compressor import get_model_max_completion
+        from core.api.core_facade import get_model_max_completion  # v2.5
         return get_model_max_completion(model_name)
     except Exception:
         return 2000

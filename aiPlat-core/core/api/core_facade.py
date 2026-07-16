@@ -2150,17 +2150,17 @@ def check_kb_entity_access(
 from core.harness.integration import KernelRuntime, get_harness
 from core.harness.knowledge.db import get_knowledge_db
 
-from core.harness.knowledge.wiki_engine import search_pages  # v2.5: platform→CoreFacade
-from core.harness.knowledge.semantic_cache import get_semantic_cache  # v2.5
-from core.harness.knowledge.knowledge_ontology import validate_page_against_schema  # v2.5
-from core.harness.infrastructure.infra_ocr_adapter import BBox, OCRToken  # v2.5
-from core.harness.models.spec_lifecycle import get_spec_lifecycle, RevisionTrigger  # v2.5
-from core.harness.ontology_engine.triple_store import get_triple_store  # v2.5
-from core.harness.ontology_engine.triple_scanner import scan_and_populate  # v2.5
-from core.harness.ontology_engine.cleanup import cleanup_stale_entities_by_doc  # v2.5
-from core.harness.learning.skill_simulator import SkillSimulator  # v2.5
-from core.services.execution_store import get_execution_store  # v2.5
-from core.harness.knowledge.wiki_engine import delete_page, read_page  # v2.5
+from core.harness.knowledge.wiki_engine import search_pages  # v2.5: platform→CoreFacade  # noqa: boundary — CoreFacade canonical re-export
+from core.harness.knowledge.semantic_cache import get_semantic_cache  # v2.5  # noqa: boundary — CoreFacade canonical re-export
+from core.harness.knowledge.knowledge_ontology import validate_page_against_schema  # v2.5  # noqa: boundary — CoreFacade canonical re-export
+from core.harness.infrastructure.infra_ocr_adapter import BBox, OCRToken  # v2.5  # noqa: boundary — CoreFacade canonical re-export
+from core.harness.models.spec_lifecycle import get_spec_lifecycle, RevisionTrigger  # v2.5  # noqa: boundary — CoreFacade canonical re-export
+from core.harness.ontology_engine.triple_store import get_triple_store  # v2.5  # noqa: boundary — CoreFacade canonical re-export
+from core.harness.ontology_engine.triple_scanner import scan_and_populate  # v2.5  # noqa: boundary — CoreFacade canonical re-export
+from core.harness.ontology_engine.cleanup import cleanup_stale_entities_by_doc  # v2.5  # noqa: boundary — CoreFacade canonical re-export
+from core.harness.learning.skill_simulator import SkillSimulator  # v2.5  # noqa: boundary — CoreFacade canonical re-export
+from core.services.execution_store import get_execution_store  # v2.5  # noqa: boundary — CoreFacade canonical re-export
+from core.harness.knowledge.wiki_engine import delete_page, read_page  # v2.5  # noqa: boundary — CoreFacade canonical re-export
 
 from core.harness.utils.prompt_loader import _sync_resolve
 from core.harness.utils.model_injection import best_model_for_purpose
@@ -2285,3 +2285,19 @@ from core.harness.knowledge.wiki_engine import read_page  # v2.5
 from core.harness.knowledge.knowledge_ontology import validate_page_against_schema  # v2.5
 from core.harness.infrastructure.infra_ocr_adapter import BBox, OCRToken  # v2.5
 from core.harness.models.spec_lifecycle import get_spec_lifecycle, RevisionTrigger  # v2.5
+
+from core.harness.utils.async_utils import _run_coro_blocking  # v2.5
+from core.harness.knowledge.domain_router import DomainRouter  # v2.5
+from core.harness.syscalls.retrieval import sys_knowledge_retrieve  # v2.5
+from core.harness.knowledge.doc_compressor import get_model_max_completion  # v2.5
+from core.management.workflow_manager import WorkflowManager  # v2.5  # noqa: boundary — CoreFacade canonical re-export
+from core.apps.quality.scanner import create_security_scanner  # v2.5  # noqa: boundary — CoreFacade canonical re-export
+from core.apps.quality.types import VulnerabilitySeverity  # v2.5  # noqa: boundary — CoreFacade canonical re-export
+
+from core.management.agent_manager import AgentManager  # v2.5  # noqa: boundary — CoreFacade canonical re-export
+from core.management.skill_manager import SkillManager  # v2.5  # noqa: boundary — CoreFacade canonical re-export
+from core.services.execution_store import ExecutionStore, ExecutionStoreConfig  # v2.5  # noqa: boundary — CoreFacade canonical re-export
+
+from core.apps.fde.agent import run_fde_agent_one_shot  # v2.5  # noqa: boundary — CoreFacade canonical re-export
+
+from core.security.skill_signature_gate import is_approval_resolved_approved, get_trusted_skill_pubkeys_map  # v2.5

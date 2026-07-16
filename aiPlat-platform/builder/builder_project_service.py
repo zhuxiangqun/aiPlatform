@@ -829,7 +829,7 @@ class BuilderProjectService:
             proj_dir = os.path.join(_PROJECTS_DIR, project_id)
             manifest_path = os.path.join(proj_dir, "PROJECT.manifest.json")
             if os.path.exists(manifest_path):
-                from core.security.skill_signature_gate import get_trusted_skill_pubkeys_map
+                from core.api.core_facade import get_trusted_skill_pubkeys_map  # v2.5
                 import asyncio as _asyncio
 
                 # Compute integrity from per-project JSON

@@ -22,7 +22,7 @@ def _get_wf_mgr():
     global _wf_mgr
     if _wf_mgr is None:
         try:
-            from core.management.workflow_manager import WorkflowManager
+            from core.api.core_facade import WorkflowManager  # v2.5
             _wf_mgr = WorkflowManager(scope="workspace")
         except Exception as e:
             _logger.debug("WorkflowManager not available, falling back to SQLite: %s", e)
@@ -34,7 +34,7 @@ def _verify_workflow_signature(mgr, wf) -> None:
     """Best-effort signature verification for governed workflows (logs warning on failure)."""
     try:
         import asyncio
-        from core.security.skill_signature_gate import get_trusted_skill_pubkeys_map
+        from core.api.core_facade import get_trusted_skill_pubkeys_map  # v2.5
         from core.api.core_facade import get_kernel_runtime  # v2.5: canonical path
         rt = get_kernel_runtime()
         store = getattr(rt, "execution_store", None) if rt else None
@@ -231,7 +231,7 @@ async def _execute_agent_node(node_config: dict, pipeline_state: dict) -> Option
         return None
     
     try:
-        from core.apps.fde.agent import run_fde_agent_one_shot
+        from core.api.core_facade import run_fde_agent_one_shot  # v2.5
         
         return await run_fde_agent_one_shot(
             agent_id=agent_id,

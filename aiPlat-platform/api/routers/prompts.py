@@ -23,7 +23,7 @@ async def run_template(request: dict, _auth: str = Depends(require_auth)):
         template_id = request.get("template_id", "")
         instance_id = request.get("instance_id", "")
         variables = request.get("variables", {})
-        from core.harness.utils.model_injection import best_model_for_purpose
+        from core.api.core_facade import best_model_for_purpose  # v2.5
         model = request.get("model") or best_model_for_purpose("chat")
 
         if not template_id and not instance_id:
