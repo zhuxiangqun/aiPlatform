@@ -1762,9 +1762,15 @@ class _GenericSkill(BaseSkill):
                     try:
                         import json as _json_sm
                         from core.harness.ontology_engine.graph_index import GraphIndex
-                        fd_g = GraphIndex.load("fde-delivery")
-                        # NOTE: inner report_text truncated to 8000 chars.
-                        # Outer [:8000] was removed because it corrupts the JSON
+                        from core.harness.knowledge.domain_router import DomainRouter
+                        domains = DomainRouter().list_domains()
+                        for domain_id in domains:
+                            try:
+                                fd_g = GraphIndex.load(domain_id)
+                            except Exception:
+                                continue
+                            # NOTE: inner report_text truncated to 8000 chars.
+                            # Outer [:8000] was removed because it corrupts the JSON
                         # when wrapper overhead pushes total > 8000 (mid-string cut).
                         fd_g.add_entity(sid, _json_sm.dumps(
                             {"report_text": report_text[:8000],
@@ -1854,7 +1860,13 @@ class _GenericSkill(BaseSkill):
                         # O: Evidence entity binding
                         if sid and evidence_map:
                             try:
-                                fd_g = GraphIndex.load("fde-delivery")
+                                from core.harness.knowledge.domain_router import DomainRouter
+                                domains = DomainRouter().list_domains()
+                                for domain_id in domains:
+                                    try:
+                                        fd_g = GraphIndex.load(domain_id)
+                                    except Exception:
+                                        continue
                                 for ei, ev in enumerate(evidence_map):
                                     ev_id = f"evidence_{sid}_{ei}"
                                     ev_name = f"{ev.get('ai_opportunity', '')[:60]} | {ev.get('source', '')[:40]}"
