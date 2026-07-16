@@ -231,15 +231,9 @@ async def _execute_agent_node(node_config: dict, pipeline_state: dict) -> Option
         return None
     
     try:
-        from core.api.routers.fde import _run_fde_agent_one_shot
+        from core.apps.fde.agent import run_fde_agent_one_shot
         
-        summary_parts = [f"工作流阶段：{node_config.get('label', agent_id)}"]
-        for key in node_config.get("inputArtifacts", []):
-            val = pipeline_state.get(key)
-            if val:
-                summary_parts.append(f"\n## {key}\n{str(val)[:2000]}")
-        
-        return await _run_fde_agent_one_shot(
+        return await run_fde_agent_one_shot(
             agent_id=agent_id,
             skill_filter=list(skills),
             user_message="\n".join(summary_parts),

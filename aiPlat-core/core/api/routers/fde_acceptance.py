@@ -91,7 +91,7 @@ async def acceptance_checklist(spec_id: str = Query("")):
     agent_analysis = None
     try:
         import json as _json_acc
-        from core.api.routers.fde import _run_fde_agent_one_shot
+        from core.apps.fde.agent import run_fde_agent_one_shot as _run_fde_agent_one_shot
         summary = _json_acc.dumps({
             "spec_id": spec_id, "kpi": kpi_detail,
             "checklist_status": {"passed": passed, "total": len(checklist), "ready": ready},
