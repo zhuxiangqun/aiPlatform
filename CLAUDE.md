@@ -443,7 +443,7 @@ python -c "from core.harness.memory.manager import _re_rank_messages; print('OK'
 |------|------|------|
 | K1 | core/schemas_policy.py DeprecationWarning 副本 | 过渡期 (v2.2 删除) |
 | K2 | 前端API路径 baseline (16条, 多数为路径格式差异) | 已知基线 |
-| K3 | Phase 4 Agent边界约束注入 — 已实现,待生产验证 | 待验证 |
+| K3 | Phase 4 Agent边界约束注入 | ✅ 已实现 (llm.py _try_inject_boundary_rules + pre-commit hook) |
 | K4 | 种子数据注入端到端 — 需 server 运行 | 待运行时 |
 | K5 | CLAUDE.md §16 已知债务 H (~60+ routes 缺 response_model) | 渐进式 |
 

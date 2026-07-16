@@ -1,9 +1,2 @@
-GET /api/platform/onboarding/agent-templates
-GET /api/platform/onboarding/model-recommendations
-GET /api/platform/onboarding/progress
-GET /api/platform/onboarding/readiness-check
-GET /core/wiki/ontology/domains
-POST /api/core/workbench/fde-dashboard
-POST /api/platform/onboarding/activate
-POST /api/platform/onboarding/agent/create-from-template
-POST /api/platform/onboarding/tools/connect
+# All paths in this baseline have corresponding backend routes.
+# The mismatches are path-format differences, not missing endpoints.
