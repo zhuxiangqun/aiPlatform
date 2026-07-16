@@ -110,8 +110,9 @@ class RoutingResult(BaseModel):
     clarification_prompt: str = Field(default="", description="追问话术")
 
     # ── 能力级 hints ──
-    suggested_skill_ids: List[str] = Field(default_factory=list, description="建议绑定的 Skill IDs")
+    suggested_skill_ids: List[str] = Field(default_factory=list, description="建议绑定的 Skill IDs (增量)")
     suggested_tool_ids: List[str] = Field(default_factory=list, description="建议绑定的 Tool IDs")
+    auto_filter_skill_ids: List[str] = Field(default_factory=list, description="自动选择的 Skill IDs (子集过滤，仅包含Agent已有的)")
 
 
 class RoutingContext(BaseModel):

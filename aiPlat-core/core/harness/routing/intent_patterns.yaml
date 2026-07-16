@@ -37,12 +37,16 @@ intent_patterns:
     - [ "(?:闲聊|天气|笑话|兴趣|爱好|你好)", "CHITCHAT", 0.60]
     # ── FDE 场景 ──
     - [ "(?:诊断|问题重构|深层问题|客户诊断|field.?assessment|现场评估)", "APPLICABILITY_ANALYSIS", 0.88]
-    - [ "(?:注入.*数据|POC.*验证|种子数据|快速验证|接入验证|验证.*价值|跑通.*链路)", "APPLICABILITY_ANALYSIS", 0.85]
+    - [ "(?:注入.*数据|POC.*验证|验证.*POC|验证.*数据|验证.*种子|种子数据|快速验证|接入验证|验证.*价值|跑通.*链路)", "APPLICABILITY_ANALYSIS", 0.85]
     - [ "(?:打包|构建.*部署|部署包|离线包|package.*build|生成.*部署)", "DEPLOYMENT", 0.88]
     - [ "(?:灰度|金丝雀|canary|流量.*切换|分批.*发布|回滚)", "MONITORING", 0.85]
     - [ "(?:验收|签字|签收|checklist|交付.*检查|首月护航|移交)", "COMPLIANCE_CHECK", 0.85]
     - [ "(?:澄清|追问|多轮.*对话|帮我.*梳理|资料.*齐全|信息.*充足|资料.*够)", "FOLLOW_UP", 0.82]
-    - [ "(?:客户.*画像|客户.*profile|客户.*背景|客户.*信息|业务.*认知)", "APPLICABILITY_ANALYSIS", 0.80]
+    - [ "(?:客户.*画像|客户.*profile|客户.*背景|客户.*信息|业务.*认知|收集.*客户|了解.*客户)", "APPLICABILITY_ANALYSIS", 0.80]
+    - [ "(?:帮我.*诊断|帮我.*分析.*问题|现场.*评估|现场.*诊断|需求.*诊断)", "APPLICABILITY_ANALYSIS", 0.85]
+    - [ "(?:构建.*部署|生成.*部署包|打包.*离线|创建.*部署包)", "APPLICABILITY_ANALYSIS", 0.85]
+    - [ "(?:灰度.*发布|灰度.*上线|灰度.*测试|灰度.*验证|检查.*灰度|灰度.*状态)", "MONITORING", 0.85]
+    - [ "(?:帮我.*验收|验收.*报告|验收.*检查|验收.*清单|提交.*验收)", "COMPLIANCE_CHECK", 0.85]
 
   # ── Suggested agent display names per intent category ─────
   # Used for UI hints: "建议使用 {agent_name}"

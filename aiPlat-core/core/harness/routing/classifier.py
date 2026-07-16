@@ -175,6 +175,7 @@ def classify(ctx: RoutingContext) -> RoutingResult:
         clarification_prompt=clarify_prompt,
         suggested_skill_ids=_map_intent_to_skills(best_intent, ctx),
         suggested_tool_ids=_map_intent_to_tools(best_intent, ctx),
+        auto_filter_skill_ids=_map_intent_to_skills(best_intent, ctx, mode="filter"),
     )
 
 
@@ -235,8 +236,12 @@ def _build_suggested_routes(intent: IntentCategory, ctx: RoutingContext) -> List
     return routes
 
 
-def _map_intent_to_skills(intent: IntentCategory, ctx: RoutingContext) -> List[str]:
-    """Suggest incremental skills — only those NOT already bound to the agent."""
+def _map_intent_to_skills(intent: IntentCategory, ctx: RoutingContext,
+                          mode: str = "incremental") -> List[str]:
+    """Map intent to suggested skills. Two modes:
+    - "incremental" (default): return skills NOT already bound (add-suggestion)
+    - "filter": return skills already bound that match the intent (auto-subset)
+    """
     existing = set(ctx.available_skills)
     extras = {
         IntentCategory.CODE_REVIEW: ["code_review", "code-hygiene"],
@@ -252,11 +257,13 @@ def _map_intent_to_skills(intent: IntentCategory, ctx: RoutingContext) -> List[s
         IntentCategory.FACT_LOOKUP: ["information_search", "wiki_retrieve"],
         IntentCategory.COMPARE: ["multi_doc_query", "domain_assessor"],
         IntentCategory.EVIDENCE_TRACE: ["evidence_chain"],
-        IntentCategory.APPLICABILITY_ANALYSIS: ["poc_data_inject", "field_assessment"],
+        IntentCategory.APPLICABILITY_ANALYSIS: ["poc_data_inject", "field_assessment", "package_builder", "customer_profile_creator"],
         IntentCategory.COMPLIANCE_CHECK: ["compliance_checker", "acceptance_checker"],
         IntentCategory.MONITORING: ["canary_runner", "sla_tracker"],
         IntentCategory.FOLLOW_UP: ["clarify"],
     }.get(intent, [])
+    if mode == "filter":
+        return [s for s in extras if s in existing]
     return [s for s in extras if s not in existing]
 
 
@@ -351,6 +358,7 @@ async def classify_with_llm(ctx: RoutingContext) -> RoutingResult:
                 # Update skills/tools suggestions
                 result.suggested_skill_ids = _map_intent_to_skills(new_intent, ctx)
                 result.suggested_tool_ids = _map_intent_to_tools(new_intent, ctx)
+                result.auto_filter_skill_ids = _map_intent_to_skills(new_intent, ctx, mode="filter")
             except ValueError:
                 pass  # Keep rule-based result
     except Exception as e:

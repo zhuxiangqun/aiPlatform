@@ -254,8 +254,8 @@ async def core_chat(ctx: ChatContext) -> ChatResult:
                 available_skills=list(skills_used),
             )
             _routing = classify(_rctx)
-            if _routing.confidence >= 0.80 and _routing.suggested_skill_ids:
-                auto_skills = [s for s in _routing.suggested_skill_ids if s in skills_used]
+            if _routing.confidence >= 0.80 and _routing.auto_filter_skill_ids:
+                auto_skills = _routing.auto_filter_skill_ids
                 if auto_skills and len(auto_skills) < len(skills_used):
                     skills_used = auto_skills
                     logging.info("auto_skill_select", extra={
