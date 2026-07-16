@@ -1173,6 +1173,19 @@ aiPlat 中的**业务域**是一套完整的"知识 + 能力"体系。一个域�
    - **已知缺口**：标红的是需要优先填补的
 3. 点击任意域卡片展开详情——查看完整的 8 维度指标面板
 
+当前系统内置的域（含自建域）：
+
+| 域 ID | 名称 | 种子数据 | 适用行业 |
+|------|------|:---:|------|
+| `supply-chain` | 供应链 | ✅ 有模板 | 制造业、零售 |
+| `procurement-mvo` | 采购管理 | ✅ 有模板 | 金融、零售、政务 |
+| `ship-design` | 船舶设计 | ✅ 有模板 | 船舶、重工 |
+| `lock-service` | 智能锁安装维保 | ✅ 已建 | 安装服务、智能硬件（江苏锁安定制） |
+| `ai-knowledge` | AI 知识 | ❌ 无需种子 | 通用 |
+| `it-ops` | IT 运维 | ❌ 无模板 | 企业内部 IT |
+
+**lock-service 建域示例**：江苏锁安（智能锁安装替换业务）在系统内置域中没有完美匹配——制造业的 supply-chain 不匹配安装服务场景。FDE 按照 §10.5 流程从零创建了 `lock-service` 域，包含 6 个核心类（设备型号/安装工单/故障类型/维修记录/安装师傅/客户现场）和 18 条种子数据。
+
 **行业推荐**：如果 ① 已选中客户并填写了行业，匹配的域会自动高亮绿色边框 + 🟢"推荐"标签。例如制造业客户会高亮 `supply-chain`（供应链）。
 
 ---
@@ -1206,7 +1219,7 @@ python3 scripts/seed_wiki.py --domain supply-chain
 python3 scripts/seed_wiki.py --all
 ```
 
-当前有种子模板的域：`supply-chain`、`procurement-mvo`、`ship-design`。
+当前有种子模板的域：`supply-chain`、`procurement-mvo`、`ship-design`。自建域（如 `lock-service`）的种子数据按 §10.5 手动创建。
 没有模板的域需要手动准备种子数据（结构见 CLI 参考 §1.4）。
 
 #### Step 2：注入到引擎
