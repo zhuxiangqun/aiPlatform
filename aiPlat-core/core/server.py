@@ -2142,9 +2142,18 @@ except Exception as e:
 
 # FDE Toolkit (Field Deployment Engineer — unified entry point, 方向一)
 # v2.5 Transition: also registered at /api/platform/apps/fde/ (platform/apps/fde/api/router.py)
-# Old paths retained for backward compatibility; 301 redirect planned for v2.6
+# v2.5: adds Deprecation header; v2.6: 301 redirect to new path
 try:
     from core.api.routers.fde import router as fde_router
+    
+    @fde_router.middleware("http")  # noqa: F811
+    async def _fde_deprecation_header(request, call_next):
+        response = await call_next(request)
+        response.headers["Deprecation"] = "true"
+        response.headers["Sunset"] = "Sat, 01 Aug 2026 00:00:00 GMT"
+        response.headers["Link"] = '</api/platform/apps/fde>; rel="deprecation"'
+        return response
+    
     api_router.include_router(fde_router)
 except Exception as e:
     logging.warning(str(e), exc_info=True)

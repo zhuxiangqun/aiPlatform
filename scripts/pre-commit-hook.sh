@@ -184,3 +184,13 @@ fi
 echo "  ✓ pre-commit checks passed"
 echo ""
 exit 0
+
+# ── Step 1.9: Detect new routes missing response_model ──
+NEW_ROUTES_WITHOUT_MODEL=$(git diff --cached -U0 | grep -E '^\+.*@router\.(get|post|put|delete)' | grep -v "response_model" | grep -v "#\|__pycache__" || true)
+if [ -n "$NEW_ROUTES_WITHOUT_MODEL" ]; then
+    echo ""
+    echo "  ⚠️  New route(s) added without response_model:"
+    echo "$NEW_ROUTES_WITHOUT_MODEL" | head -5 | while read line; do echo "    $line"; done
+    echo "  Per §5.76, add response_model=Dict[str, Any] or specific Pydantic model."
+    echo ""
+fi
