@@ -176,7 +176,7 @@ async def sign_workflow(workflow_id: str, req: Dict[str, Any] = {}, _auth: str =
         raise HTTPException(status_code=400, detail="private_key is required")
 
     try:
-        from core.harness.infrastructure.crypto.signature import sign_skill as sign_wf
+        from core.api.core_facade import sign_skill as sign_wf  # v2.5: canonical path
 
         wf_dir = Path(wf.metadata.get("filesystem", {}).get("server_dir") or "")
         if not wf_dir or not wf_dir.exists():

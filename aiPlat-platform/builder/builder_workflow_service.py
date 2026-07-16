@@ -35,7 +35,7 @@ def _verify_workflow_signature(mgr, wf) -> None:
     try:
         import asyncio
         from core.security.skill_signature_gate import get_trusted_skill_pubkeys_map
-        from core.harness.kernel.runtime import get_kernel_runtime
+        from core.api.core_facade import get_kernel_runtime  # v2.5: canonical path
         rt = get_kernel_runtime()
         store = getattr(rt, "execution_store", None) if rt else None
         import concurrent.futures as _cf

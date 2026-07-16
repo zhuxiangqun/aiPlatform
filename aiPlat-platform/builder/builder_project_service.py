@@ -844,8 +844,8 @@ class BuilderProjectService:
                         manifest = json.load(f)
                     sig = manifest.get("signature")
                     if sig:
-                        from core.harness.infrastructure.crypto.signature import verify_skill_signature
-                        from core.harness.kernel.runtime import get_kernel_runtime
+                        from core.api.core_facade import verify_skill_signature  # v2.5: canonical path
+                        from core.api.core_facade import get_kernel_runtime  # v2.5: canonical path
                         rt = get_kernel_runtime()
                         store = getattr(rt, "execution_store", None) if rt else None
                         import concurrent.futures as _cf2

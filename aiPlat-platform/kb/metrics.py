@@ -60,7 +60,7 @@ def get_kb_metrics(window_hours: int = 168, tenant_id: str = "") -> Dict[str, An
     metrics = KBMetrics(window_hours=window_hours)
 
     try:
-        from core.harness.kernel.runtime import get_kernel_runtime
+        from core.api.core_facade import get_kernel_runtime  # v2.5: canonical path
         rt = get_kernel_runtime()
         store = getattr(rt, "execution_store", None) if rt else None
         if store:

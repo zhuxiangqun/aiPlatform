@@ -232,7 +232,7 @@ async def deploy_project_to_app(project_id: str, _auth: str = Depends(require_bu
         proj = _get_svc()._projects.get(project_id)
         if proj and proj.get("metadata", {}).get("provenance", {}).get("signature"):
             import os, json as _json, hashlib as _hashlib
-            from core.harness.infrastructure.crypto.signature import verify_skill_signature
+            from core.api.core_facade import verify_skill_signature  # v2.5: canonical path
             proj_dir = os.path.join(os.environ.get("AIPLAT_HOME", str(Path.home() / ".aiplat")), "projects", project_id)
             manifest_path = os.path.join(proj_dir, "PROJECT.manifest.json")
             proj_json = os.path.join(proj_dir, "project.json")
@@ -300,7 +300,7 @@ async def sign_project(project_id: str, req: Dict[str, Any], _auth: str = Depend
         raise HTTPException(status_code=404, detail="project not found")
 
     try:
-        from core.harness.infrastructure.crypto.signature import sign_skill as sign_proj
+        from core.api.core_facade import sign_skill as sign_proj  # v2.5: canonical path
         import hashlib
 
         # Compute project integrity from the per-project JSON

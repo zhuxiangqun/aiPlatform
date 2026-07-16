@@ -706,7 +706,7 @@ async def set_trusted_skill_keys(request: OnboardingTrustedSkillKeysRequest, _au
 
 @router.post("/onboarding/generate-skill-key", response_model=Dict[str, Any])
 async def generate_skill_key(request: OnboardingGenerateSkillKeyRequest, _auth: str = Depends(require_auth)):
-    from core.harness.infrastructure.crypto.signature import generate_ed25519_key_pair, key_id_for_public_key
+    from core.api.core_facade import generate_ed25519_key_pair, key_id_for_public_key  # v2.5: canonical path
 
     sk_pem, pk_pem = generate_ed25519_key_pair()
     kid = key_id_for_public_key(pk_pem)

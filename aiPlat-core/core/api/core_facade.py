@@ -2148,11 +2148,11 @@ def check_kb_entity_access(
 # ── Backward-compatible re-exports (platform imports these from CoreFacade) ──
 
 from core.harness.integration import KernelRuntime, get_harness
-from core.harness.kernel.runtime import get_kernel_runtime
+from core.harness.kernel.runtime import get_kernel_runtime, set_kernel_runtime
 from core.harness.kernel.types import ExecutionRequest
 from core.harness.infrastructure.approval.types import ApprovalContext, ApprovalRule, RequestStatus, RuleType
 from core.harness.infrastructure.crypto.secretbox import is_configured
-from core.harness.infrastructure.crypto.signature import key_id_for_public_key
+from core.harness.infrastructure.crypto.signature import key_id_for_public_key, generate_ed25519_key_pair, sign_skill, verify_skill_signature
 from core.harness.memory.manager import get_memory_manager
 from core.harness.knowledge.utils import element_source, extract_keywords, score_text
 from core.harness.knowledge.db import set_knowledge_db
