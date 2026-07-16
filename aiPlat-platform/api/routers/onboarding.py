@@ -1057,7 +1057,7 @@ ONBOARDING_STEPS = [
 _onboarding_state: Dict[str, Dict[str, bool]] = {}
 
 
-@router.get("/progress")
+@router.get("/progress", response_model=Dict[str, Any])
 async def get_onboarding_progress(_auth: str = Depends(require_auth)):
     """Get current onboarding progress for the authenticated tenant."""
     tenant_id = _auth  # simplified; real implementation extracts from JWT
@@ -1083,7 +1083,7 @@ def _estimate_completion(steps: list) -> str:
     return f"约 {len(undone)*3} 分钟 (剩余: {'、'.join(names)})"
 
 
-@router.post("/progress/{step_key}")
+@router.post("/progress/{step_key}", response_model=Dict[str, Any])
 async def mark_onboarding_step(step_key: str, _auth: str = Depends(require_auth)):
     """Mark an onboarding step as completed."""
     tenant_id = _auth
@@ -1094,7 +1094,7 @@ async def mark_onboarding_step(step_key: str, _auth: str = Depends(require_auth)
     return {"step": step_key, "done": True, "total_done": done, "total": len(ONBOARDING_STEPS)}
 
 
-@router.get("/model-recommendations")
+@router.get("/model-recommendations", response_model=Dict[str, Any])
 async def get_model_recommendations():
     """Get model recommendations by purpose with cost estimates."""
     return [
@@ -1105,7 +1105,7 @@ async def get_model_recommendations():
     ]
 
 
-@router.post("/tools/connect")
+@router.post("/tools/connect", response_model=Dict[str, Any])
 async def connect_tool(body: Dict[str, Any], _auth: str = Depends(require_auth)):
     """Self-service tool connection — fill API key + test."""
     tool_name = body.get("tool_name", "")
@@ -1117,7 +1117,7 @@ async def connect_tool(body: Dict[str, Any], _auth: str = Depends(require_auth))
             "message": f"Tool {tool_name} connected and tested successfully"}
 
 
-@router.get("/agent-templates")
+@router.get("/agent-templates", response_model=Dict[str, Any])
 async def get_agent_templates():
     """Get pre-built agent templates for one-click creation."""
     return [
@@ -1136,7 +1136,7 @@ async def get_agent_templates():
     ]
 
 
-@router.post("/agent/create-from-template")
+@router.post("/agent/create-from-template", response_model=Dict[str, Any])
 async def create_agent_from_template(body: Dict[str, Any], _auth: str = Depends(require_auth)):
     """Create an agent from a pre-built template."""
     template_id = body.get("template_id", "")
@@ -1152,7 +1152,7 @@ async def create_agent_from_template(body: Dict[str, Any], _auth: str = Depends(
     }
 
 
-@router.get("/readiness-check")
+@router.get("/readiness-check", response_model=Dict[str, Any])
 async def readiness_check(_auth: str = Depends(require_auth)):
     """Deployment readiness check — returns what's missing."""
     tenant_id = _auth
@@ -1174,7 +1174,7 @@ async def readiness_check(_auth: str = Depends(require_auth)):
     }
 
 
-@router.post("/activate")
+@router.post("/activate", response_model=Dict[str, Any])
 async def activate_tenant(_auth: str = Depends(require_auth)):
     """Activate tenant after all readiness checks pass."""
     tenant_id = _auth
