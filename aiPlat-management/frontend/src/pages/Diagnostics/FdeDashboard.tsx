@@ -41,6 +41,7 @@ const INDUSTRY_DOMAIN_MAP: Record<string, string[]> = {
   'manufacturing': ['supply-chain', 'ship-design', 'it-ops'],
   'finance': ['finance', 'procurement-mvo'],
   'retail': ['supply-chain', 'procurement-mvo'],
+  'installation': ['lock-service', 'it-ops'],
   'general': ['ai-knowledge', 'default'],
 };
 
@@ -457,7 +458,7 @@ const AssessTab: React.FC<{ readonly domain: string | null; readonly customerDes
   const fields = [
     { key: 'company_name', label: '企业名称 (选填)', placeholder: '例如：XX科技有限公司', desc: '客户企业的完整注册名称' },
     { key: 'industry', label: '行业', type: 'select', desc: '选择客户所属行业，不在清单则选「其他」并在下方填写', required: true,
-      options: ['政务', '金融', '制造', '医疗', '能源', '教育', '交通', '零售', '科技', '其他'] },
+      options: ['政务', '金融', '制造', '医疗', '能源', '教育', '交通', '零售', '科技', '安装服务', '其他'] },
     { key: 'custom_industry', label: '自定义行业 (选填)', placeholder: '例如：新能源、物流', desc: '仅当行业选了「其他」或需更细分时填写' },
     { key: 'team_size', label: '团队规模 (选填)', placeholder: '例如：50', desc: '客户企业中与 AI 落地相关的技术/业务团队人数，不填则默认中等规模' },
     { key: 'pain_points', label: '痛点', type: 'textarea', placeholder: '每行输入一个痛点，例如：\n客服效率低，客户等待时间过长，影响满意度\n数据孤岛严重，各部门系统不互通\n合规成本高', desc: '客户核心业务痛点，每行一个；最关键的放前面', required: true },

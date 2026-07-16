@@ -77,6 +77,8 @@ const INDUSTRY_RECOMMENDED: Record<string, string[]> = {
   'manufacturing': ['supply-chain', 'ship-design', 'it-ops'],
   'finance': ['finance', 'procurement-mvo'],
   'retail': ['supply-chain', 'procurement-mvo'],
+  'installation': ['lock-service', 'it-ops'],
+  '安装服务': ['lock-service', 'it-ops'],
   'general': ['ai-knowledge', 'default'],
 };
 
