@@ -43,9 +43,9 @@ ROUTE_PERMISSIONS: Dict[str, List[str]] = {
     # Admin + Developer + Operator + FDE
     "/diagnostics":              ["admin", "developer", "operator", "fde"],
     "/finetune":                 ["admin", "developer"],
-    "/infra":                    ["admin", "developer", "operator"],
+    "/infra":                    ["admin", "developer", "operator", "fde"],
     "/core":                     ["admin", "developer", "fde"],
-    "/workspace":                ["admin", "developer"],
+    "/workspace":                ["admin", "developer", "fde"],
     "/api/core":                 ["admin", "developer"],  # API access
 
     # Admin + Operator

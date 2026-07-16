@@ -69,6 +69,7 @@ const menuItems: (MenuItem | { divider: boolean } | MenuGroup)[] = [
     { key: '/infra/network', icon: Network, label: '网络管理' },
     { key: '/infra/monitoring', icon: Monitor, label: '监控告警' },
     { key: '/infra/llm-stats', icon: Monitor, label: 'LLM 路由监控' },
+    { key: '/infra/ontology', icon: Share2, label: '本体管理' },
   ]},
   { divider: true },
   { group: 'core', label: '核心能力层', items: [
@@ -101,7 +102,6 @@ const menuItems: (MenuItem | { divider: boolean } | MenuGroup)[] = [
   { divider: true },
   { group: 'platform', label: '平台服务层', items: [
     { key: '/platform/kb', icon: Database, label: '知识库管理' },
-    { key: '/infra/ontology', icon: Share2, label: '本体管理' },
     { key: '/platform/gateway', icon: Network, label: 'API网关' },
     { key: '/platform/auth', icon: Shield, label: '认证鉴权' },
     { key: '/platform/tenant', icon: Users, label: '多租户' },

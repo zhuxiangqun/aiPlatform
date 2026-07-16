@@ -71,6 +71,22 @@ const FdeDashboard: React.FC = () => {
   const [workflowStages, setWorkflowStages] = useState<any[]>([]);
   const [workflowState, setWorkflowState] = useState<Record<string, any>>({});
   const [workflowName, setWorkflowName] = useState('');
+  const [domainStats, setDomainStats] = useState<Record<string, number>>({});
+  const [showDomainStats, setShowDomainStats] = useState(true);
+
+  useEffect(() => {
+    fetch('/api/core/diagnostics/capability-boundary')
+      .then(r => r.json())
+      .then(d => {
+        const stats: Record<string, number> = {};
+        for (const [, v] of Object.entries(d.data || d || {})) {
+          const m = (v as any)?.maturity || 'unknown';
+          stats[m] = (stats[m] || 0) + 1;
+        }
+        setDomainStats(stats);
+      })
+      .catch(() => {});
+  }, []);
 
   const loadWorkflow = async (name: string) => {
     if (!name) { setWorkflowStages([]); setWorkflowName(''); return; }
@@ -197,6 +213,24 @@ const FdeDashboard: React.FC = () => {
             className="px-2 py-0.5 rounded bg-blue-600 hover:bg-blue-500 text-white text-xs font-medium shrink-0">
             前往 →
           </button>
+        </div>
+      )}
+      {Object.keys(domainStats).length > 0 && showDomainStats && (
+        <div className="flex items-center gap-2 px-3 py-1.5 rounded bg-gray-800/50 border border-gray-700/50 text-xs text-gray-400">
+          <span className="text-gray-500">域健康：</span>
+          {(['production-ready', 'stable', 'building', 'seeding'] as string[]).map(m => {
+            const cnt = domainStats[m] || 0;
+            if (!cnt) return null;
+            const colors: Record<string, string> = {
+              'production-ready': 'text-green-400', 'stable': 'text-blue-400',
+              'building': 'text-yellow-400', 'seeding': 'text-gray-500',
+            };
+            const labels: Record<string, string> = {
+              'production-ready': '生产', 'stable': '稳定', 'building': '构建中', 'seeding': '播种',
+            };
+            return <span key={m} className={colors[m] || ''}>{labels[m]} {cnt}</span>;
+          })}
+          <button onClick={() => setShowDomainStats(false)} className="text-gray-600 hover:text-gray-400 ml-1">✕</button>
         </div>
       )}
       <div className="flex gap-1 border-b border-gray-700/50 pb-0">

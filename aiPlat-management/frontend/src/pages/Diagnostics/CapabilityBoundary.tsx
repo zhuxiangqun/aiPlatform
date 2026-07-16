@@ -134,12 +134,16 @@ const CapabilityBoundary: React.FC<CapabilityBoundaryProps> = ({ industry, onSel
         <div className="text-sm text-gray-400 max-w-md">
           系统中还没有业务域数据。首次进场时所有域都处于播种阶段——这是正常状态。
         </div>
-        <div className="text-xs text-gray-500 max-w-md">
-          下一步：选择与客户行业最接近的域，运行
-          <code className="text-blue-400 mx-1 bg-gray-800 px-1 rounded">python scripts/seed_wiki.py --domain 域ID</code>
-          和
-          <code className="text-blue-400 mx-1 bg-gray-800 px-1 rounded">python scripts/ingest_seed.py --domain 域ID</code>
-          注入种子数据。创建域 Skill 后，这里会显示"构建中"状态。
+        <div className="text-xs text-gray-500 max-w-md space-y-2">
+          <p>
+            下一步：打开侧边栏「基础设施层」→「本体管理」，
+            选择与客户行业最接近的域，注入种子数据。
+          </p>
+          <p>
+            💻 或通过终端：<code className="text-blue-400 bg-gray-800 px-1 rounded">seed_wiki.py</code> + <code className="text-blue-400 bg-gray-800 px-1 rounded">ingest_seed.py</code>
+            （详见 CLI 参考文档）。
+          </p>
+          <p>创建域 Skill 后，这里会显示"构建中"状态。</p>
         </div>
       </div>
     );
