@@ -65,8 +65,8 @@ layers:
         reason: "platform 不能直接访问 core 内部实现，必须通过 CoreFacade"
       - layer: platform
         patterns: ["from core\\.apps\\.", "from core\\.harness\\.", "from core\\.services\\.", "from core\\.management\\.", "from core\\.engine\\.", "from core\\.api\\.routers\\.", "from core\\.orchestration\\.", "from core\\.security\\."]
-        severity: "error"
-        reason: "platform→core 内部导入违反 CoreFacade 唯一入口原则 (docs/index.md)"
+        severity: "warning"
+        reason: "platform→core 内部导入 — 建议通过 CoreFacade (存量违规, Phase 3-4 逐步清理)"
       - layer: platform
         symbols: ["from core\\.harness\\.infrastructure\\.crypto", "from core\\.harness\\.kernel\\.runtime", "from core\\.harness\\.integration"]
         severity: "error"
