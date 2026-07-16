@@ -297,8 +297,85 @@ def _guard_messages(messages: List[Message], trace_context: Optional[Dict[str, A
             pass
     # §5.24: Read CLAUDE.md from disk on every call — it is never compressed away.
     _try_inject_claude_md(out, trace_context)
+    # §5.24.3: Auto-inject layer boundary constraints (v2.5, Phase 4)
+    _try_inject_boundary_rules(out, trace_context)
     stats["output_count"] = len(out)
     return out, stats
+
+
+def _try_inject_boundary_rules(messages: List[Message], trace_context: Optional[Dict[str, Any]] = None) -> None:
+    """Inject architecture boundary constraints when coding intent detected.
+    
+    Only triggers for file-write coding operations (write_file, edit_file,
+    create_skill, etc.). Reads boundary_rules.yaml and injects constraints
+    specific to the file's architecture layer.
+    """
+    if not _is_file_write_operation(trace_context):
+        return
+    modified_file = (trace_context or {}).get("modified_file", "")
+    layer = _detect_layer(modified_file)
+    if not layer:
+        return
+    try:
+        import yaml
+        from pathlib import Path
+        
+        rules_path = Path(os.getenv("AIPLAT_PROJECT_ROOT", os.getcwd())) / "architecture" / "boundary_rules.yaml"
+        if not rules_path.exists():
+            return
+        
+        rules = yaml.safe_load(rules_path.read_text(encoding="utf-8"))
+        layer_cfg = (rules or {}).get("layers", {}).get(layer, {})
+        constraints = layer_cfg.get("forbidden_in", [])
+        if not constraints:
+            return
+        
+        lines = [f"\n\n## 架构边界约束 — 当前层: {layer} ({layer_cfg.get('role', '')})"]
+        lines.append("以下内容禁止出现在本层代码中：")
+        for c in constraints:
+            target = c.get("layer", "?")
+            symbols = ", ".join(c.get("symbols", [])[:5])
+            reason = c.get("reason", "")
+            if symbols:
+                lines.append(f"- ❌ {symbols} → 应归属 {target} 层: {reason}")
+        
+        guard = "\n".join(lines)
+        if messages and len(messages) > 0 and messages[0].get("role") == "system":
+            messages[0]["content"] = str(messages[0].get("content") or "") + guard
+    except Exception:
+        pass  # boundary injection must not block execution
+
+
+def _detect_layer(file_path: str) -> str:
+    """Detect architecture layer from file path (robust to abs/rel/irregular paths)."""
+    if not file_path:
+        return ""
+    from pathlib import Path
+    try:
+        parts = set(Path(file_path).resolve().parts)
+    except Exception:
+        return ""
+    
+    for layer, dirs in {
+        "core":    ["aiPlat-core", "aiplat-core"],
+        "platform":["aiPlat-platform", "aiplat-platform"],
+        "infra":   ["aiPlat-infra", "aiplat-infra"],
+        "management":["aiPlat-management", "aiplat-management"],
+    }.items():
+        if parts & set(dirs):
+            return layer
+    return ""
+
+
+def _is_file_write_operation(trace_context: Optional[Dict[str, Any]] = None) -> bool:
+    """Check if current operation is a file write / code generation operation."""
+    if not trace_context:
+        return False
+    op = str(trace_context.get("operation") or trace_context.get("action") or "")
+    return op in (
+        "write_file", "edit_file", "create_skill", "create_agent",
+        "create_tool", "edit_skill", "edit_agent", "code_generation",
+    )
 
 
 # ── Injection pattern classification ──
