@@ -2141,6 +2141,8 @@ except Exception as e:
     logging.debug("Kanban router: %s", e)
 
 # FDE Toolkit (Field Deployment Engineer — unified entry point, 方向一)
+# v2.5 Transition: also registered at /api/platform/apps/fde/ (platform/apps/fde/api/router.py)
+# Old paths retained for backward compatibility; 301 redirect planned for v2.6
 try:
     from core.api.routers.fde import router as fde_router
     api_router.include_router(fde_router)

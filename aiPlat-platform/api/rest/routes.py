@@ -3538,3 +3538,6 @@ if __name__ == "__main__":
     import uvicorn
 
     uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("AIPLAT_PLATFORM_PORT", "8003")))
+# ── FDE module (v2.5) ──
+from apps.fde.api.router import router as fde_platform_router  # noqa: E402
+app.include_router(fde_platform_router, prefix="/api/platform/apps")
