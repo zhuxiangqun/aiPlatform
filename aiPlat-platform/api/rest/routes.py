@@ -3541,3 +3541,7 @@ if __name__ == "__main__":
 # ── FDE module (v2.5) ──
 from apps.fde.api.router import router as fde_platform_router  # noqa: E402
 app.include_router(fde_platform_router, prefix="/api/platform/apps")
+
+# ── Workbench module (v2.5) ──
+from apps.workbench.api.router import router as workbench_platform_router  # noqa: E402
+app.include_router(workbench_platform_router, prefix="/api/platform/apps")
