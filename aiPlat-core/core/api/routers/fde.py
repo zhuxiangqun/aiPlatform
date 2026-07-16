@@ -998,22 +998,16 @@ async def infer_industry(body: Dict[str, Any]):
     try:
         from core.harness.syscalls.llm import sys_llm_generate
         from core.harness.utils.model_injection import best_model_for_purpose
+        from core.harness.utils.prompt_loader import _sync_resolve
         
-        prompt = (
-            "根据以下企业信息判断行业分类，选择最匹配的一个：\n\n"
-            f"企业名称：{name}\n"
-            f"业务描述：{desc}\n\n"
-            "可选行业：manufacturing(制造), installation(安装服务), finance(金融), "
-            "retail(零售), healthcare(医疗), education(教育), logistics(物流), "
-            "government(政务), technology(科技), general(通用)\n\n"
-            "只返回JSON，不要其他文字："
-            '{"industry": "industry_key", "confidence": 0.0-1.0, "reason": "一句话理由"}'
-        )
+        system_prompt = _sync_resolve("fde-infer-industry-system")
+        user_prompt = _sync_resolve("fde-infer-industry-user",
+            company_name=name, description=desc)
         
         model_name = best_model_for_purpose("classify")
         result = await sys_llm_generate(None, [
-            {"role": "system", "content": "你是企业行业分类助手。只返回JSON。"},
-            {"role": "user", "content": prompt},
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt},
         ], model_name=model_name, max_tokens=150, temperature=0.1)
         
         content = getattr(result, "content", "") or ""

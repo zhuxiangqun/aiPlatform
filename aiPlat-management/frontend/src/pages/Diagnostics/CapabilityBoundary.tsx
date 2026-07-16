@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { BarChart3, ChevronDown, ChevronRight, AlertTriangle, CheckCircle, X, Circle, Zap, BookOpen, Database } from 'lucide-react';
+import { INDUSTRY_DOMAIN_MAP } from './FdeDashboard';
 
 type Maturity = 'seeding' | 'building' | 'stable' | 'production-ready';
 
@@ -71,15 +72,6 @@ const SEVERITY_CONFIG: Record<string, { icon: any; color: string }> = {
   high: { icon: AlertTriangle, color: 'text-orange-400 bg-orange-500/10' },
   medium: { icon: Circle, color: 'text-yellow-400 bg-yellow-500/10' },
   low: { icon: Circle, color: 'text-blue-400 bg-blue-500/10' },
-};
-
-const INDUSTRY_RECOMMENDED: Record<string, string[]> = {
-  'manufacturing': ['supply-chain', 'ship-design', 'it-ops'],
-  'finance': ['finance', 'procurement-mvo'],
-  'retail': ['supply-chain', 'procurement-mvo'],
-  'installation': ['lock-service', 'it-ops'],
-  '安装服务': ['lock-service', 'it-ops'],
-  'general': ['ai-knowledge', 'default'],
 };
 
 interface CapabilityBoundaryProps {
@@ -170,7 +162,7 @@ const CapabilityBoundary: React.FC<CapabilityBoundaryProps> = ({ industry, onSel
          {sortedDomains.map(([id, domain]) => {
            const mc = MATURITY_CONFIG[domain.maturity];
            const isExpanded = expanded[id] ?? false;
-           const isRecommended = !!industry && INDUSTRY_RECOMMENDED[industry.toLowerCase()]?.includes(id);
+           const isRecommended = !!industry && INDUSTRY_DOMAIN_MAP[industry.toLowerCase()]?.includes(id);
 
            return (
              <div key={id} className={`rounded-lg bg-gray-800/50 border overflow-hidden ${isRecommended ? 'border-green-500/50' : 'border-gray-700/50'}`}>

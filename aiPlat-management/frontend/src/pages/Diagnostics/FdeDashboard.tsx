@@ -36,12 +36,13 @@ interface CanaryResult {
   qualityScore: number;
 }
 
-// ── 行业 → 域推荐映射 ──
-const INDUSTRY_DOMAIN_MAP: Record<string, string[]> = {
+// ── 行业 → 域推荐映射（共享常量，CapabilityBoundary 也使用）──
+export const INDUSTRY_DOMAIN_MAP: Record<string, string[]> = {
   'manufacturing': ['supply-chain', 'ship-design', 'it-ops'],
   'finance': ['finance', 'procurement-mvo'],
   'retail': ['supply-chain', 'procurement-mvo'],
   'installation': ['lock-service', 'it-ops'],
+  '安装服务': ['lock-service', 'it-ops'],
   'general': ['ai-knowledge', 'default'],
 };
 

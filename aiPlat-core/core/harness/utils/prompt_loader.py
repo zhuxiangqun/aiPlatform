@@ -1363,3 +1363,17 @@ _register("fde-dialog-gap-q", "请提供「${gap}」的相关信息。",
 _register("fde-dialog-pending-q", "请确认以下问题：${question}",
     category="fde",
     variables=["question"])
+
+_register("fde-infer-industry-system", "你是企业行业分类助手。只返回JSON。",
+    category="fde")
+
+_register("fde-infer-industry-user", """根据以下企业信息判断行业分类，选择最匹配的一个：
+
+企业名称：${company_name}
+业务描述：${description}
+
+可选行业：manufacturing(制造), installation(安装服务), finance(金融), retail(零售), healthcare(医疗), education(教育), logistics(物流), government(政务), technology(科技), general(通用)
+
+只返回JSON，不要其他文字：{"industry": "industry_key", "confidence": 0.0-1.0, "reason": "一句话理由"}""",
+    category="fde",
+    variables=["company_name", "description"])

@@ -70,7 +70,7 @@ FDE 工作台是 Field Deployment Engineer 的核心操作界面。它按 **FDE 
 5. **切换 Profile**：点击 [切换至此] → 系统切换当前工作上下文，后续所有操作自动带上该 Profile
 6. **删除 Profile**：点击 [删除] → 确认弹窗 → 调用 DELETE API。模板 Profile（POC 预设）不出现在客户列表中，不会被误删。
 7. **编辑 Profile**：展开后点击 [编辑] → 弹窗可修改名称、描述、部署模式 → 调用 PUT API
-8. **Pipeline 输出**：点击客户卡片时自动将客户信息（name / namespace / industry）写入 pipeline，传递给 ② 评估域
+8. **Pipeline 输出**：点击客户卡片时自动将客户信息（name / namespace / industry）写入 pipeline，传递给 ② 评估域。**v2.5+：选中客户后，系统自动通过 LLM 推断企业行业**（如"智能锁安装" → 安装服务），无需手动填写。
 
 **Pipeline 连接**：
 
