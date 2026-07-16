@@ -1,0 +1,118 @@
+# architecture/boundary_rules.yaml
+#
+# Single source of truth for layer-boundary architecture constraints.
+# 
+# Field reference:
+#   symbols:     Exact symbol names → generates `grep -w` (word boundary match)
+#   patterns:    Regex patterns    → generates `grep -E` (extended regex match)
+#   severity:    "error" (blocks commit) | "warning" (advisory only)
+#
+# After modifying this file, run:
+#   python3 scripts/generate_guard_rules.py
+# to sync architecture_guard.sh and CLAUDE.md §8 self-check table.
+
+version: "1.0.0"
+
+layers:
+  # ── Layer 2: Platform Service Layer ──
+  platform:
+    label: "平台服务层 (Layer 2)"
+    role: "API网关 + 身份权限权威"
+    doc_ref: "docs/architecture/system-architecture-contract.md §2"
+    owns:
+      - type: "权限配置"
+        symbols: [SYSTEMROLE, ROUTE_PERMISSIONS, SIDEBAR_MENUS, METHOD_RESTRICTIONS]
+        reason: "platform 是身份与权限的唯一权威 (CLAUDE.md §5.2)"
+      - type: "角色定义"
+        symbols: [SystemRole, Role]
+        reason: "角色定义属于身份管理范畴"
+      - type: "API路由"
+        patterns: ["@router\\.(get|post|put|delete|patch)"]
+        reason: "API 端点定义属于网关层"
+      - type: "身份认证"
+        symbols: [JWT, oauth, authenticator, identity_provider]
+        reason: "platform 是唯一身份解析/签发方"
+    forbidden_in:
+      - layer: core
+        symbols: [ROUTE_PERMISSIONS, SIDEBAR_MENUS, METHOD_RESTRICTIONS, SystemRole]
+        severity: "error"
+        reason: "权限/路由/角色配置属于平台层唯一权威"
+      - layer: infra
+        symbols: [ROUTE_PERMISSIONS, SystemRole, ROUTE, MENU]
+        severity: "error"
+        reason: "infra 完全独立，不含应用层概念"
+
+  # ── Layer 1: AI Core Layer ──
+  core:
+    label: "AI核心层 (Layer 1)"
+    role: "AI运行时与核心能力"
+    doc_ref: "docs/architecture/system-architecture-contract.md §1"
+    owns:
+      - type: "Agent系统"
+        symbols: [ReActLoop, sys_llm_generate, sys_skill_call, sys_tool_call]
+      - type: "Skill系统"
+        symbols: [SkillRegistry, SkillExecutor]
+      - type: "Harness内核"
+        patterns: ["class PipelineEngine", "class StageRunner", "class BaseLoop"]
+    forbidden_in:
+      - layer: infra
+        symbols: [agent_name, business_role, customer_name, fde_]
+        severity: "error"
+        reason: "infra 必须内核无关 (CLAUDE.md §5.29)"
+      - layer: platform
+        symbols: [sys_llm_generate, ReActLoop, PipelineEngine, SkillRegistry]
+        severity: "error"
+        reason: "platform 不能直接访问 core 内部实现，必须通过 CoreFacade"
+
+  # ── Layer 0: Infrastructure Layer ──
+  infra:
+    label: "基础设施层 (Layer 0)"
+    role: "基础设施抽象"
+    doc_ref: "docs/architecture/system-architecture-contract.md §0"
+    owns:
+      - type: "模型管理"
+        symbols: [ModelManager, LLMClient, EmbeddingClient]
+      - type: "存储"
+        patterns: ["create_database", "vector_store", "cache"]
+    forbidden_in:
+      - layer: core
+        symbols: [model_registry, load_model]
+        severity: "error"
+        reason: "模型发现必须走 infra ModelManager (CLAUDE.md §5.31)"
+
+  # ── Management Plane (Cross-cutting) ──
+  management:
+    label: "管理平面 (横切)"
+    role: "运维/诊断/告警"
+    doc_ref: "docs/architecture/system-architecture-contract.md §M"
+    owns:
+      - type: "侧边栏UI"
+        symbols: [ROLE_MENUS]
+        reason: "侧边栏可见性属于管理端 UI 定义"
+    forbidden_in: []
+
+# ── Global Rules (apply to multiple layers) ──
+global_rules:
+  - name: "内核无关 (kernel_agnostic)"
+    applies_to: [core, infra]
+    check: "no_hardcoded_business_concepts"
+    patterns:
+      - "domain_id\\s*==\\s*['\"]"
+      - "agent_id\\s*==\\s*['\"]"
+      - "_TARGET_"
+    severity: "error"
+
+  - name: "配置驱动 (config_driven)"
+    applies_to: [core]
+    check: "no_magic_string_branching"
+    patterns:
+      - "if agent_id\\s*==\\s*['\"].*['\"]"
+      - "if domain_id\\s+in\\s*\\("
+    severity: "error"
+
+  - name: "内容归属 (content_attribution)"
+    applies_to: [core, platform, infra]
+    check: "single_source_of_truth"
+    description: >
+      SOP in AGENT.md, output format in SKILL.md, domain data in registry.json,
+      prompt templates in prompt_loader, permission config in platform layer.

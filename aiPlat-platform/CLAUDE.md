@@ -67,6 +67,7 @@ platform 是**唯一权威**的身份与权限解析/签发方。
 
 - JWT / API key → tenant / actor / scopes 的解析只在 platform 层发生
 - 下游（core/app）只消费 platform 注入的身份信息，不得推断或自行扩权
+- 权限配置数据（`ROUTE_PERMISSIONS`、`SIDEBAR_MENUS`、`METHOD_RESTRICTIONS`、`SystemRole`）必须在 platform 层定义
 - 调用下游服务时 MUST 注入标准透传 headers：
   - `X-AIPLAT-REQUEST-ID`
   - `X-AIPLAT-TENANT-ID`

@@ -1,29 +1,15 @@
 """
-DEPRECATED — Permission config has moved to platform layer.
+Role-based access control — route-level permissions.
 
-Platform is the sole authority for identity and permission (CLAUDE.md §5.2,
-docs/architecture/system-architecture-contract.md). The canonical copy of
-ROUTE_PERMISSIONS, SystemRole, SIDEBAR_MENUS, and METHOD_RESTRICTIONS now
-lives in:
+Platform layer is the SOLE AUTHORITY for identity and permission
+parsing/issuing (docs/architecture/system-architecture-contract.md).
+All route permissions, role definitions, and sidebar menu visibility
+belong here — NOT in core.
 
-    aiPlat-platform/auth/schemas_policy.py
-
-This module provides a temporary duplicate for backward compatibility during
-the v2.0→v2.1 transition. New code MUST import from the platform copy.
-
-This module will be removed in v2.1 (scheduled: 2026-08).
+8 system roles with per-route access defined by management screen.
+Role resolution: X-AIPLAT-ROLE header (from Gateway) → env var → default.
 """
 from __future__ import annotations
-
-import warnings
-
-warnings.warn(
-    "Import from 'core.schemas_policy' is deprecated. "
-    "Use 'platform.auth.schemas_policy' instead. "
-    "This module will be removed in v2.1 (2026-08).",
-    DeprecationWarning,
-    stacklevel=2,
-)
 
 from enum import Enum
 from typing import Dict, List
@@ -40,28 +26,43 @@ class SystemRole(str, Enum):
     VIEWER = "viewer"
 
 
+# Route permissions: path prefix → allowed roles
 ROUTE_PERMISSIONS: Dict[str, List[str]] = {
+    # Admin-only
     "/system-overview":          ["admin"],
     "/onboarding":               ["admin"],
     "/value-center/roles":       ["admin"],
-    "/value-center":             ["admin", "business", "fde"],
+    "/value-center":             ["admin", "business", "fde"],  # ValueDashboard shared
     "/value-center/kpis":        ["admin", "business"],
     "/value-center/goals":       ["admin", "business"],
+
+    # Admin + Developer
     "/value-center/strategy":    ["admin", "developer"],
     "/value-center/training":    ["admin", "developer"],
+
+    # Admin + Developer + Operator + FDE
     "/diagnostics":              ["admin", "developer", "operator", "fde"],
     "/finetune":                 ["admin", "developer"],
     "/infra":                    ["admin", "developer", "operator", "fde"],
     "/core":                     ["admin", "developer", "fde"],
     "/workspace":                ["admin", "developer", "fde"],
-    "/api/core":                 ["admin", "developer"],
+    "/api/core":                 ["admin", "developer"],  # API access
+
+    # Admin + Operator
     "/platform":                 ["admin", "operator"],
+
+    # All roles
     "/workbench":               ["admin", "developer", "operator", "business", "user", "fde", "viewer"],
     "/value-center/spec":       ["admin", "developer", "business", "approver"],
+
+    # User
     "/app":                     ["admin", "user"],
+
+    # Approver
     "/approval-center":         ["admin", "approver"],
 }
 
+# Sidebar visibility: what menu groups each role sees
 SIDEBAR_MENUS: Dict[str, List[str]] = {
     "admin": [
         "system-overview", "diagnostics", "onboarding",
@@ -72,16 +73,37 @@ SIDEBAR_MENUS: Dict[str, List[str]] = {
         "workbench", "value", "finetune",
         "core", "workspace", "diagnostics",
     ],
-    "business": ["value", "workbench"],
-    "operator": ["diagnostics", "infra", "platform", "workbench"],
-    "user": ["workbench", "app"],
-    "approver": ["approval", "workbench"],
-    "fde": ["diagnostics", "infra", "core", "workspace", "value"],
-    "viewer": ["workbench"],
+    "business": [
+        "value", "workbench",
+    ],
+    "operator": [
+        "diagnostics", "infra", "platform", "workbench",
+    ],
+    "user": [
+        "workbench", "app",
+    ],
+    "approver": [
+        "approval", "workbench",
+    ],
+    "fde": [
+        "diagnostics", "infra", "core", "workspace", "value",
+    ],
+    "viewer": [
+        "workbench",
+    ],
 }
 
+# Per-role HTTP method restrictions.
+# For roles not listed here, all methods are allowed on permitted routes.
+# For listed roles, only the specified methods are allowed.
 METHOD_RESTRICTIONS: Dict[str, Dict[str, List[str]]] = {
     "viewer": {},
+    # Example future use:
+    # "viewer": {
+    #     "/workbench": ["GET", "HEAD", "OPTIONS"],
+    #     "/api/v1/agents": ["GET"],
+    # },
+    # "operator": {
+    #     "/core/agents": ["GET"],
+    # },
 }
-
-__all__ = ["SystemRole", "ROUTE_PERMISSIONS", "SIDEBAR_MENUS", "METHOD_RESTRICTIONS"]

@@ -11,6 +11,10 @@ class Role(str, Enum):
     ADMIN = "admin"
     OPERATOR = "operator"
     DEVELOPER = "developer"
+    BUSINESS = "business"
+    USER = "user"
+    APPROVER = "approver"
+    FDE = "fde"
     VIEWER = "viewer"
 
 
