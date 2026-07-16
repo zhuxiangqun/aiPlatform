@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from typing import List, Literal, Optional
 
-from core.harness.infrastructure.infra_ocr_adapter import (
+from core.api.core_facade import (  # v2.5: CoreFacade
     BBox,
     OCRToken,
     create_infra_ocr_adapter,

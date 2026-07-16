@@ -329,7 +329,7 @@ def ingest_url(
 
     # Parse HTML to plain text
     try:
-        from core.harness.document.parsers import parse_html as _parse_html
+        from core.api.core_facade import parse_html as _parse_html  # v2.5: CoreFacade
         text = _parse_html(html_text)
     except (ImportError, AttributeError):
         text = re.sub(r"<[^>]+>", " ", html_text)
@@ -1060,7 +1060,7 @@ def preview_document(
             # Probe extracted audio duration for coverage diagnostics
             audio_dur_ms = 0
             try:
-                from core.harness.document.video import probe_duration_ms
+                from core.api.core_facade import probe_duration_ms  # v2.5: CoreFacade
                 audio_dur_ms = probe_duration_ms(audio_path)
             except Exception as e:
                 logging.debug(str(e), exc_info=True)
@@ -1444,8 +1444,8 @@ async def vault_to_wiki(*, file_path: str, label: str = "", collection_id: str =
         # V1: Schema validation after conversion
         schema_ok = None
         try:
-            from core.harness.knowledge.wiki_engine import read_page
-            from core.harness.knowledge.knowledge_ontology import validate_page_against_schema
+            from core.api.core_facade import read_page  # v2.5: CoreFacade
+            from core.api.core_facade import validate_page_against_schema  # v2.5: CoreFacade
             saved = read_page(title, collection_id=collection_id, category=category)
             if saved:
                 val = validate_page_against_schema(saved, collection_id=collection_id, mode="warning")

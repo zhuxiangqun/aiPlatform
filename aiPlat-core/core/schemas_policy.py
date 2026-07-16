@@ -24,7 +24,7 @@ if _platform_dir not in _sys.path:
     _sys.path.insert(0, _platform_dir)
 
 from auth.schemas_policy import (  # noqa: E402
-    SystemRole, ROUTE_PERMISSIONS, SIDEBAR_MENUS, METHOD_RESTRICTIONS,
+    SystemRole, ROUTE_PERMISSIONS, SIDEBAR_MENUS, METHOD_RESTRICTIONS,  # noqa: boundary — transitional re-export
 )
 
-__all__ = ["SystemRole", "ROUTE_PERMISSIONS", "SIDEBAR_MENUS", "METHOD_RESTRICTIONS"]
+__all__ = ["SystemRole", "ROUTE_PERMISSIONS", "SIDEBAR_MENUS", "METHOD_RESTRICTIONS"]  # noqa: boundary — transitional re-export

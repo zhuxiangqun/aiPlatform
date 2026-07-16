@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Tuple
 
-from core.harness.infrastructure.infra_ocr_adapter import BBox, OCRToken
+from core.api.core_facade import BBox, OCRToken  # v2.5: CoreFacade
 
 # ── Re-exports from InfraOCRAdapter (single model authority §5.31) ──
 __all__ = ["BBox", "OCRToken", "ExtractedNumber", "IngestResult", "Citation", "QAResult"]

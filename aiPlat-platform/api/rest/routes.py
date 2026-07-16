@@ -1242,7 +1242,7 @@ async def kb_delete_document(doc_id: str, request: Request):
         logging.warning(str(e), exc_info=True)
     # best-effort delete associated wiki pages (prevent orphans)
     try:
-        from core.harness.knowledge.wiki_engine import search_pages, delete_page
+        from core.api.core_facade import search_pages, delete_page  # v2.5: CoreFacade
         pages = search_pages(limit=10000)
         source_tag = f"kb:{doc_id}"
         for p in pages:
@@ -1255,7 +1255,7 @@ async def kb_delete_document(doc_id: str, request: Request):
         logging.warning(str(e), exc_info=True)
     # Phase E3: best-effort cleanup of ontology graph entities tied to this doc
     try:
-        from core.harness.ontology_engine.cleanup import cleanup_stale_entities_by_doc
+        from core.api.core_facade import cleanup_stale_entities_by_doc  # v2.5: CoreFacade
         cleanup_stale_entities_by_doc(doc_id=doc_id, dry_run=False)
     except Exception as e:
         logging.getLogger("platform.routes").debug("Ontology cleanup skipped: %s", e)
@@ -1279,7 +1279,7 @@ async def kb_ingest_url(request: Request):
     from kb.service import ingest_url
     result = ingest_url(tenant_id=identity.tenant_id, collection_id=collection_id, url=url, name=name)
     try:
-        from core.harness.knowledge.semantic_cache import get_semantic_cache
+        from core.api.core_facade import get_semantic_cache  # v2.5: CoreFacade
         from core.harness.utils.async_utils import _run_coro_blocking
         cache = get_semantic_cache()
         if cache.enabled:
@@ -1370,12 +1370,12 @@ async def kb_reingest_document(doc_id: str, request: Request):
     core_resp = await _core_request("POST", f"/api/core/skills/knowledge_ingest/execute", identity=identity, json_body=payload)
     # Phase E2: best-effort ontology re-process — clean old entities, trigger re-extraction
     try:
-        from core.harness.ontology_engine.cleanup import cleanup_stale_entities_by_doc
+        from core.api.core_facade import cleanup_stale_entities_by_doc  # v2.5: CoreFacade
         cleanup_stale_entities_by_doc(doc_id=doc_id, dry_run=False)
     except Exception as e:
         logging.getLogger("platform.routes").debug("Ontology re-process skipped: %s", e)
     try:
-        from core.harness.knowledge.semantic_cache import get_semantic_cache
+        from core.api.core_facade import get_semantic_cache  # v2.5: CoreFacade
         from core.harness.utils.async_utils import _run_coro_blocking
         cache = get_semantic_cache()
         if cache.enabled:
@@ -2508,7 +2508,7 @@ async def gateway_execute(body: Dict[str, Any], request: Request):
     try:
         run_id = result.get("run_id") if isinstance(result, dict) else None
         status = "success" if (isinstance(result, dict) and result.get("ok")) else "failure"
-        from core.services.execution_store import get_execution_store
+        from core.api.core_facade import get_execution_store  # v2.5: CoreFacade
         store = get_execution_store()
         await store.add_audit_log(
             action="gateway_execute",
@@ -2963,7 +2963,7 @@ async def marketplace_publish(request: Request):
     # Run SkillSimulator pre-check
     test_result = None
     try:
-        from core.harness.learning.skill_simulator import SkillSimulator
+        from core.api.core_facade import SkillSimulator  # v2.5: CoreFacade
         sim = SkillSimulator()
         test_result = await sim.run(skill_id)
     except Exception:
@@ -2990,7 +2990,7 @@ async def ontology_impact(urn: str, direction: str = "downstream", depth: int = 
         direction: downstream（影响谁）/ upstream（被谁影响）
         depth: 遍历深度（默认 3）
     """
-    from core.harness.ontology_engine.triple_store import get_triple_store
+    from core.api.core_facade import get_triple_store  # v2.5: CoreFacade
     store = get_triple_store()
     if direction == "downstream":
         results = store.get_downstream(urn, depth=depth)
@@ -3003,7 +3003,7 @@ async def ontology_impact(urn: str, direction: str = "downstream", depth: int = 
 @app.get("/ontology/triples/{predicate}")
 async def ontology_triples_by_predicate(predicate: str):
     """按关系类型查询所有三元组。"""
-    from core.harness.ontology_engine.triple_store import get_triple_store
+    from core.api.core_facade import get_triple_store  # v2.5: CoreFacade
     store = get_triple_store()
     return {"predicate": predicate, "results": store.get_by_predicate(predicate)}
 
@@ -3011,7 +3011,7 @@ async def ontology_triples_by_predicate(predicate: str):
 @app.post("/ontology/scan")
 async def ontology_rescan(request: Request):
     """手动触发全量跨域依赖扫描。"""
-    from core.harness.ontology_engine.triple_scanner import scan_and_populate
+    from core.api.core_facade import scan_and_populate  # v2.5: CoreFacade
     stats = await scan_and_populate()
     return {"status": "scanned", "stats": stats}
 
@@ -3482,7 +3482,7 @@ async def vault_send_to_wiki(body: dict):
 
 @app.get("/platform/kb/vault/wiki/backlinks")
 async def vault_wiki_backlinks(doc_id: str):
-    from core.harness.knowledge.wiki_engine import search_pages
+    from core.api.core_facade import search_pages  # v2.5: CoreFacade
     pages = search_pages(limit=1000)
     backlinks = []
     for p in pages:

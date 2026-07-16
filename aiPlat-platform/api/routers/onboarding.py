@@ -1186,7 +1186,7 @@ async def activate_tenant(_auth: str = Depends(require_auth)):
 
     # ── SpecLifecycle: 创建 DRAFT 版本 ──
     try:
-        from core.harness.models.spec_lifecycle import get_spec_lifecycle, RevisionTrigger
+        from core.api.core_facade import get_spec_lifecycle, RevisionTrigger  # v2.5: CoreFacade
         sl = get_spec_lifecycle()
         agent_config = state.get("agent", {})
         agent_id = agent_config.get("agent_id", tenant_id) if isinstance(agent_config, dict) else tenant_id

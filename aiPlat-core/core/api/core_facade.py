@@ -2149,6 +2149,19 @@ def check_kb_entity_access(
 
 from core.harness.integration import KernelRuntime, get_harness
 from core.harness.knowledge.db import get_knowledge_db
+
+from core.harness.knowledge.wiki_engine import search_pages  # v2.5: platform→CoreFacade
+from core.harness.knowledge.semantic_cache import get_semantic_cache  # v2.5
+from core.harness.knowledge.knowledge_ontology import validate_page_against_schema  # v2.5
+from core.harness.infrastructure.infra_ocr_adapter import BBox, OCRToken  # v2.5
+from core.harness.models.spec_lifecycle import get_spec_lifecycle, RevisionTrigger  # v2.5
+from core.harness.ontology_engine.triple_store import get_triple_store  # v2.5
+from core.harness.ontology_engine.triple_scanner import scan_and_populate  # v2.5
+from core.harness.ontology_engine.cleanup import cleanup_stale_entities_by_doc  # v2.5
+from core.harness.learning.skill_simulator import SkillSimulator  # v2.5
+from core.services.execution_store import get_execution_store  # v2.5
+from core.harness.knowledge.wiki_engine import delete_page, read_page  # v2.5
+
 from core.harness.utils.prompt_loader import _sync_resolve
 from core.harness.utils.model_injection import best_model_for_purpose
 from core.services.pii_detector import get_pii_detector
@@ -2264,3 +2277,11 @@ def set_knowledge_providers(*args: Any, **kwargs: Any) -> None:
     """Set knowledge providers for the runtime. Delegates to kb_facade."""
     from core.api.facades.kb_facade import set_knowledge_providers as _impl
     _impl(*args, **kwargs)
+
+
+from core.harness.document.parsers import parse_html  # v2.5: platform→CoreFacade
+from core.harness.document.video import probe_duration_ms  # v2.5
+from core.harness.knowledge.wiki_engine import read_page  # v2.5
+from core.harness.knowledge.knowledge_ontology import validate_page_against_schema  # v2.5
+from core.harness.infrastructure.infra_ocr_adapter import BBox, OCRToken  # v2.5
+from core.harness.models.spec_lifecycle import get_spec_lifecycle, RevisionTrigger  # v2.5
