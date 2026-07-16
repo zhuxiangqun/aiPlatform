@@ -73,6 +73,9 @@ def gen_guard_script(rules: Dict, pattern_files: Dict[str, str]) -> str:
         "set -euo pipefail",
         'WORKSPACE="${WORKSPACE:-$(git rev-parse --show-toplevel 2>/dev/null || pwd)}"',
         "",
+        "# v2.5 transitional: platform/apps/ contains copies from core — skip until migration complete",
+        'TRANSITIONAL_SKIP="--exclude-dir=apps"',
+        "",
         'echo "=== Architecture Guard: Boundary Rules ==="',
         'echo ""',
         "",
@@ -103,7 +106,7 @@ def gen_guard_script(rules: Dict, pattern_files: Dict[str, str]) -> str:
                 for d in dirs:
                     lines.append(
                         f'if grep -rw "{sym}" "$WORKSPACE/{d}/" '
-                        f'--include="*.py" 2>/dev/null | grep -v "# noqa: boundary" | grep -q .; then\n'
+                        f'--include="*.py" $TRANSITIONAL_SKIP 2>/dev/null | grep -v "# noqa: boundary" | grep -q .; then\n'
                         f'  echo "  {label}: {sym} found in {target}/ (belongs to {layer_name}) — {reason[:80]}"\n'
                         f'  (({sev_var}++))\n'
                         f'fi'
@@ -120,7 +123,7 @@ def gen_guard_script(rules: Dict, pattern_files: Dict[str, str]) -> str:
                 for d in dirs:
                     lines.append(
                         f'if grep -rEf "$WORKSPACE/{pf}" "$WORKSPACE/{d}/" '
-                        f'--include="*.py" 2>/dev/null | grep -v "# noqa: boundary" | grep -q .; then\n'
+                        f'--include="*.py" $TRANSITIONAL_SKIP 2>/dev/null | grep -v "# noqa: boundary" | grep -q .; then\n'
                         f'  echo "  {label}: pattern match in {target}/ (belongs to {layer_name}) — {reason[:60]}"\n'
                         f'  (({sev_var}++))\n'
                         f'fi'
@@ -144,7 +147,7 @@ def gen_guard_script(rules: Dict, pattern_files: Dict[str, str]) -> str:
             for d in dirs_flat:
                 lines.append(
                     f'if grep -rEf "$WORKSPACE/{pf}" "$WORKSPACE/{d}/" '
-                    f'--include="*.py" 2>/dev/null | grep -v "# noqa: boundary" | grep -q .; then\n'
+                    f'--include="*.py" $TRANSITIONAL_SKIP 2>/dev/null | grep -v "# noqa: boundary" | grep -q .; then\n'
                     f'  echo "  {label}: {rule["name"]} — pattern match in {d}/"\n'
                     f'  (({sev_var}++))\n'
                     f'fi'

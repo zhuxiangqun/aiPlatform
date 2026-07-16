@@ -1,0 +1,113 @@
+# platform/registry/apps.yaml
+# 
+# Application module registry — single source of truth for module discovery.
+# Core loads this file at startup to discover registered modules instead of
+# hardcoding module names in code (CLAUDE.md §5.29).
+#
+# Per app-module-layout.md, each module declares:
+#   - api_prefix: REST endpoint path prefix (Platform layer)
+#   - api_module:  Python module path for API routers
+#   - service:     Python module path for business logic (Core layer)
+#   - prompts:     Python module path for LLM prompt templates
+#   - domains:     Domain IDs used by this application
+#   - agents:      Agent IDs belonging to this application
+#   - skills:      Skill IDs used by this application
+
+version: "1.0.0"
+
+modules:
+  fde:
+    name: "FDE 现场交付引擎"
+    description: "Field Deployment Engineer — 客户诊断与交付工作台"
+    enabled: true
+    api_prefix: "/api/platform/apps/fde"
+    api_module: "apps.fde.api.router"
+    service_module: "core.apps.fde.agent"
+    prompts_module: "core.apps.fde.prompts"
+    domains: ["fde-delivery", "lock-service"]
+    agents:
+      - fde_business_analyst
+      - fde_solution_architect
+      - fde_delivery_engineer
+      - fde_delivery_manager
+    skills:
+      - customer_profile_creator
+      - domain_assessor
+      - field_assessment
+      - package_builder
+      - acceptance_checker
+      - poc_data_inject
+      - canary_runner
+      - clarify
+
+  workbench:
+    name: "用户工作台"
+    description: "用户工作台、系统概览、看板视图"
+    enabled: true
+    api_prefix: "/api/platform/apps/workbench"
+    api_module: "apps.workbench.api.router"
+    service_module: null
+    prompts_module: null
+    domains: []
+    agents: []
+    skills: []
+
+  value:
+    name: "价值中心"
+    description: "价值看板、KPI管理、角色定义、安全策略"
+    enabled: true
+    api_prefix: "/api/platform/apps/value"
+    api_module: "apps.value.api.router"
+    service_module: null
+    prompts_module: null
+    domains: []
+    agents: []
+    skills: []
+
+  learning:
+    name: "学习引擎"
+    description: "发布管理、自动捕获、学习杂项"
+    enabled: true
+    api_prefix: "/api/platform/apps/learning"
+    api_module: "apps.learning.api.router"
+    service_module: null
+    prompts_module: null
+    domains: []
+    agents: []
+    skills: []
+
+  prompt:
+    name: "Prompt 工具"
+    description: "模板管理、应用编辑、优化工具"
+    enabled: true
+    api_prefix: "/api/platform/apps/prompt"
+    api_module: "apps.prompt.api.router"
+    service_module: null
+    prompts_module: null
+    domains: []
+    agents: []
+    skills: []
+
+  eval:
+    name: "评估中心"
+    description: "Skill评估、执行评估、KB评估、Prompt评估"
+    enabled: true
+    api_prefix: "/api/platform/apps/eval"
+    api_module: "apps.eval.api.router"
+    service_module: null
+    prompts_module: null
+    domains: []
+    agents: []
+    skills: []
+
+  misc:
+    name: "其他工具"
+    description: "微调、浏览器测试、代码智能、角色管理、组件目录、剧本、自动化测试"
+    enabled: true
+    api_prefix: "/api/platform/apps/misc"
+    api_module: "apps.misc.api.router"
+    service_module: null
+    prompts_module: null
+    domains: []
+    agents: []
+    skills: []
