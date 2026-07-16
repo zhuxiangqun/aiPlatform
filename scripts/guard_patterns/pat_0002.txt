@@ -1,1 +1,1 @@
-agent_id\s*==\s*['"]
+agent_id\s*==\s*["'\w]

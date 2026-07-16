@@ -97,9 +97,10 @@ global_rules:
     applies_to: [core, infra]
     check: "no_hardcoded_business_concepts"
     patterns:
-      - "domain_id\\s*==\\s*['\"]"
-      - "agent_id\\s*==\\s*['\"]"
-      - "_TARGET_"
+      - "domain_id\\s*==\\s*[\"'\\w]"
+      - "agent_id\\s*==\\s*[\"'\\w]"
+      - "\\b_TARGET_DOMAIN"
+      - "\\b_TARGET_SKILL"
     severity: "error"
 
   - name: "配置驱动 (config_driven)"

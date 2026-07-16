@@ -35,6 +35,7 @@ from typing import Any, Dict, List, Optional
 from core.harness.utils.prompt_loader import _sync_resolve
 
 from fastapi import APIRouter, HTTPException, Query
+from core.api.http_errors import not_found, bad_request
 from fastapi.responses import PlainTextResponse
 from pydantic import BaseModel as _PydanticBaseModel
 
@@ -2138,7 +2139,7 @@ async def fde_ingest(req: FdeIngestRequest):
     """
     raw = req.raw_data
     if not raw:
-        raise HTTPException(status_code=400, detail="raw_data is required")
+        raise not_found("raw_data is required")
 
     # Cross-system field mapping (ontology as semantic bridge)
     field_map = {

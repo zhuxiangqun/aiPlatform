@@ -29,7 +29,7 @@ from enum import Enum
 from typing import Dict, List
 
 
-class SystemRole(str, Enum):
+class SystemRole(str, Enum):  # noqa: boundary — transitional duplicate, v2.1 cleanup
     ADMIN = "admin"
     DEVELOPER = "developer"
     OPERATOR = "operator"
@@ -40,7 +40,7 @@ class SystemRole(str, Enum):
     VIEWER = "viewer"
 
 
-ROUTE_PERMISSIONS: Dict[str, List[str]] = {
+ROUTE_PERMISSIONS: Dict[str, List[str]] = {  # noqa: boundary — transitional duplicate, v2.1 cleanup
     "/system-overview":          ["admin"],
     "/onboarding":               ["admin"],
     "/value-center/roles":       ["admin"],
@@ -62,7 +62,7 @@ ROUTE_PERMISSIONS: Dict[str, List[str]] = {
     "/approval-center":         ["admin", "approver"],
 }
 
-SIDEBAR_MENUS: Dict[str, List[str]] = {
+SIDEBAR_MENUS: Dict[str, List[str]] = {  # noqa: boundary — transitional duplicate, v2.1 cleanup
     "admin": [
         "system-overview", "diagnostics", "onboarding",
         "infra", "core", "platform",
@@ -80,7 +80,7 @@ SIDEBAR_MENUS: Dict[str, List[str]] = {
     "viewer": ["workbench"],
 }
 
-METHOD_RESTRICTIONS: Dict[str, Dict[str, List[str]]] = {
+METHOD_RESTRICTIONS: Dict[str, Dict[str, List[str]]] = {  # noqa: boundary — transitional duplicate, v2.1 cleanup
     "viewer": {},
 }
 

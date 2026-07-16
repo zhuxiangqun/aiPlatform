@@ -52,68 +52,15 @@ def transcribe_audio(
     if diagnostics is None:
         diagnostics = {}
     whisper_language = _normalize_language(language)
-    device = os.getenv("AIPLAT_WHISPER_DEVICE", "cpu")
-    compute_type = os.getenv("AIPLAT_WHISPER_COMPUTE_TYPE", "int8")
 
-    # Prefer InfraAudioAdapter (unified model loading)
-    try:
-        from core.harness.infrastructure.base_model_adapter import create_adapter, resolve_model_name
-        adapter = create_adapter("audio")
-        diagnostics["model_name"] = resolve_model_name("audio")
-        diagnostics["backend"] = "infra_audio_adapter"
-        result = adapter.transcribe(audio_path, language)
-        _fill_diagnostics(diagnostics, result)
-        return result
-    except Exception as e:
-        logging.debug(str(e), exc_info=True)
-
-    model_name = resolve_model_name("audio")
-
-    try:
-        from faster_whisper import WhisperModel
-
-        diagnostics["model_name"] = model_name
-        diagnostics["backend"] = "faster-whisper"
-        model = WhisperModel(model_name, device=device, compute_type=compute_type)
-        segs, _info = model.transcribe(audio_path, language=whisper_language, vad_filter=True)
-        out: List[Dict[str, Any]] = []
-        for s in segs:
-            txt = str(getattr(s, "text", "") or "").strip()
-            if not txt:
-                continue
-            out.append({
-                "start_ms": int(float(getattr(s, "start", 0.0)) * 1000),
-                "end_ms": int(float(getattr(s, "end", 0.0)) * 1000),
-                "text": txt,
-            })
-        _fill_diagnostics(diagnostics, out)
-        return out
-    except Exception as e:
-        logging.debug(str(e), exc_info=True)
-
-    try:
-        import whisper
-
-        diagnostics["model_name"] = model_name
-        diagnostics["backend"] = "openai-whisper"
-        model = whisper.load_model(model_name)
-        result = model.transcribe(audio_path, language=whisper_language, verbose=False)
-        out: List[Dict[str, Any]] = []
-        for s in list((result or {}).get("segments") or []):
-            txt = str(s.get("text") or "").strip()
-            if not txt:
-                continue
-            out.append({
-                "start_ms": int(float(s.get("start") or 0.0) * 1000),
-                "end_ms": int(float(s.get("end") or 0.0) * 1000),
-                "text": txt,
-            })
-        _fill_diagnostics(diagnostics, out)
-        return out
-    except Exception as e:
-        logging.debug(str(e), exc_info=True)
-
-    raise RuntimeError("whisper_not_installed")
+    # Use InfraAudioAdapter as canonical path (CLAUDE.md §5.31, §14)
+    from core.harness.infrastructure.base_model_adapter import create_adapter, resolve_model_name
+    adapter = create_adapter("audio")
+    diagnostics["model_name"] = resolve_model_name("audio")
+    diagnostics["backend"] = "infra_audio_adapter"
+    result = adapter.transcribe(audio_path, language)
+    _fill_diagnostics(diagnostics, result)
+    return result
 
 
 def transcribe_audio_chunked(

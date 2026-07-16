@@ -1,1 +1,1 @@
-domain_id\s*==\s*['"]
+domain_id\s*==\s*["'\w]

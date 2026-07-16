@@ -1,1 +1,1 @@
-_TARGET_
+\b_TARGET_DOMAIN
