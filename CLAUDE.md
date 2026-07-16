@@ -409,3 +409,50 @@ python -c "from core.harness.memory.compression import get_cached_embedding; pri
 python -c "from core.harness.memory.manager import _re_rank_messages; print('OK')"
 ```
 
+---
+
+## 19. 架构治理状态 (v2.5, 2026-07-16)
+
+### 19.1 已解决债务
+
+| 编号 | 内容 | 解决方式 |
+|------|------|------|
+| 路由迁移 | 46个应用路由在 core/api/routers/ | ✅ 全部迁移到 platform/apps/{module}/api/ |
+| 边界守卫 | 9 errors, 4 warnings → 无条件提升 | ✅ 0 issues (0 errors, 0 warnings) |
+| Harness硬编码 | 43处 fde-delivery / 业务字符串匹配 | ✅ 全部替换为 DomainRouter 动态发现 |
+| Platform→Core | 100+处绕过 CoreFacade 直接 import | ✅ 全部改为 import from core.api.core_facade |
+| Core域常量 | DOMAIN_FDE / DOMAIN_AI_KNOWLEDGE 硬编码 | ✅ 删除,改为 DomainRouter.list_domains() |
+| skills/registry.py | GraphIndex.load("fde-delivery") 硬编码写入 | ✅ 改为 DomainRouter 迭代所有域 |
+| 模块注册 | 无声明机制 | ✅ platform/registry/apps.yaml (7模块) |
+| 目录规范 | 无应用模块目录标准 | ✅ docs/architecture/app-module-layout.md |
+| FDE模块 | 业务逻辑混在 router 文件中 | ✅ core/apps/fde/agent.py + prompts.py 独立 |
+| CoreFacade | 平台层无法安全访问核心能力 | ✅ 30+新增导出 |
+| 前端API缺口 | 3条缺失后端路由 | ✅ 添加 501 占位路由 (parse/parse-and-process/feedback) |
+| 架构守卫规则 | 无自动化边界检测 | ✅ boundary_rules.yaml + generate_guard_rules.py |
+| Pre-commit | 无新路由/硬编码检测 | ✅ Step 1.75 + Step 1.8 |
+| Human HITL feedback | bug: feedback 丢失 | ✅ 透传修复 |
+| 域健康 widget | 空数据/无折叠 | ✅ 彩色药丸 + ▲/▼ 切换 |
+| 进度条 | workflow 模式不更新 | ✅ 从 state 变量推导 done/active |
+| 自动技能选择 | 无机制 | ✅ classifier mode=filter, 17种意图覆盖 |
+| 行业推断 | 需手动填写 | ✅ LLM 自动推断 (infer-industry endpoint) |
+| lock-service 域 | 江苏锁安无匹配域 | ✅ 6类18实体新建 |
+
+### 19.2 已知残留 (v2.6 scope)
+
+| 编号 | 内容 | 类型 |
+|------|------|------|
+| K1 | core/schemas_policy.py DeprecationWarning 副本 | 过渡期 (v2.2 删除) |
+| K2 | 前端API路径 baseline (16条, 多数为路径格式差异) | 已知基线 |
+| K3 | Phase 4 Agent边界约束注入 — 已实现,待生产验证 | 待验证 |
+| K4 | 种子数据注入端到端 — 需 server 运行 | 待运行时 |
+| K5 | CLAUDE.md §16 已知债务 H (~60+ routes 缺 response_model) | 渐进式 |
+
+### 19.3 自动化防护生效
+
+```
+pre-commit hook → 检测新路由/core硬编码
+architecture_guard_rules.sh → 边界规则检测 (0/0)
+architecture/boundary_rules.yaml → 数据化规则,可版本控制
+platform/registry/apps.yaml → 模块声明,无硬编码
+```
+
