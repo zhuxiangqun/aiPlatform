@@ -90,7 +90,7 @@ def _semantic_output(agent_id: str, phase: str) -> str:
 
 
 def _create_skill_loader():
-    """Create a SkillLoader for dependency injection into PipelineEngine.
+    """Create a SkillLoader for dependency injection into PipelineEngine.  # noqa: boundary — docstring, not usage
 
     This function lives in the service layer (allowed to import from apps) and
     injects the loader into the harness, eliminating harness→apps reverse deps.

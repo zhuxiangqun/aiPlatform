@@ -23,7 +23,7 @@ class TestBuilderImports:
         assert BuilderProjectService is not None
 
     def test_create_pipeline_session_used(self):
-        """Builder must use create_pipeline_session, not direct PipelineEngine."""
+        """Builder must use create_pipeline_session, not direct PipelineEngine."""  # noqa: boundary — test enforcing the rule
         import builder.builder_team_service as bts
         import builder.builder_session as bs
         import builder.builder_project_service as bps
@@ -32,9 +32,10 @@ class TestBuilderImports:
         for mod_path in [bts.__file__, bs.__file__, bps.__file__]:
             with open(mod_path) as f:
                 source = f.read()
-            # Must NOT import PipelineEngine directly
-            assert "from core.harness.execution.pipeline_engine import PipelineEngine" not in source, \
-                f"{mod_path} imports PipelineEngine directly"
+            # Must NOT import PipelineEngine directly  # noqa: boundary
+            # noqa: boundary — test enforcing the rule, not using engine
+            msg = f"{mod_path} imports PipelineEngine directly"  # noqa: boundary
+            assert "from core.harness.execution.pipeline_engine import PipelineEngine" not in source, msg  # noqa: boundary
             # Must use CoreFacade
             assert "create_pipeline_session" in source, \
                 f"{mod_path} does not reference create_pipeline_session"

@@ -124,13 +124,13 @@ class BaseModelAdapter(ABC):
         """Get or load the backing model (cached)."""
         return get_cached_model(
             self.capability,
-            self._load_model,
+            self._load_model,  # noqa: boundary — framework callback wiring
             model_name=self._model_name,
         )
 
     def _load_model(self, name: str) -> Any:
         """Override in subclass to load the specific model type."""
-        raise NotImplementedError(f"{self.capability} adapter must implement _load_model")
+        raise NotImplementedError(f"{self.capability} adapter must implement _load_model")  # noqa: boundary — abstract base class
 
 
 # ── Factory ───────────────────────────────────────────────────

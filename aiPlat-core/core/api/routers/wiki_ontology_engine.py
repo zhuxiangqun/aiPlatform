@@ -1405,4 +1405,24 @@ def _write_domain_yaml(domain_id: str, data: dict) -> None:
     file_path.write_text(f"# {data.get('name', domain_id)} 领域本体模型\n{content}", encoding="utf-8")
 
 
+# ── Placeholder endpoints for frontend-contracted features (v2.4) ──
+
+@router.post("/engine/parse", response_model=Dict[str, Any])
+async def ontology_engine_parse(body: Dict[str, Any]):
+    """Parse raw text/document into structured ontology entities (planned)."""
+    raise HTTPException(status_code=501, detail="Not implemented — parse pipeline in development")
+
+
+@router.post("/engine/parse-and-process", response_model=Dict[str, Any])
+async def ontology_engine_parse_and_process(body: Dict[str, Any]):
+    """Parse and immediately process into GraphIndex (planned)."""
+    raise HTTPException(status_code=501, detail="Not implemented — parse-and-process pipeline in development")
+
+
+@router.post("/engine/feedback", response_model=Dict[str, Any])
+async def ontology_engine_feedback(body: Dict[str, Any]):
+    """Receive ontology feedback from UI interactions (planned)."""
+    raise HTTPException(status_code=501, detail="Not implemented — feedback collection in development")
+
+
 

@@ -3,7 +3,7 @@ DEPRECATED — Permission config has moved to platform layer.
 
 Platform is the sole authority for identity and permission (CLAUDE.md §5.2,
 docs/architecture/system-architecture-contract.md). The canonical copy of
-ROUTE_PERMISSIONS, SystemRole, SIDEBAR_MENUS, and METHOD_RESTRICTIONS now
+ROUTE_PERMISSIONS, SystemRole, SIDEBAR_MENUS, and METHOD_RESTRICTIONS now  # noqa: boundary
 lives in:
 
     aiPlat-platform/auth/schemas_policy.py
@@ -84,4 +84,4 @@ METHOD_RESTRICTIONS: Dict[str, Dict[str, List[str]]] = {  # noqa: boundary — t
     "viewer": {},
 }
 
-__all__ = ["SystemRole", "ROUTE_PERMISSIONS", "SIDEBAR_MENUS", "METHOD_RESTRICTIONS"]
+__all__ = ["SystemRole", "ROUTE_PERMISSIONS", "SIDEBAR_MENUS", "METHOD_RESTRICTIONS"]  # noqa: boundary — transitional re-export

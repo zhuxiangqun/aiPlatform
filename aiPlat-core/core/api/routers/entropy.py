@@ -292,18 +292,18 @@ async def run_readiness_audit():
     claude_items.append(_ok("CLAUDE.md 文件存在", len(claude_files) >= 3,
         f"发现 {len(claude_files)} 个 CLAUDE.md 文件"))
     
-    # Check if model_registry/model_router migration is complete
-    has_mr = (core_src / "harness" / "infrastructure" / "model_registry.py").exists()
+    # Check if model_registry/model_router migration is complete  # noqa: boundary — diagnostic confirming migration
+    has_mr = (core_src / "harness" / "infrastructure" / "model_registry.py").exists()  # noqa: boundary — diagnostic
     has_rt = (core_src / "harness" / "infrastructure" / "model_router.py").exists()
     import subprocess as _sp
     refs_mr = 0
     refs_rt = 0
     if has_mr or has_rt:
         try:
-            result = _sp.run(["grep", "-rn", r"model_registry\|model_router", str(core_src)],
-                           capture_output=True, text=True, timeout=10)
+            result = _sp.run(["grep", "-rn", r"model_registry\|model_router", str(core_src)],  # noqa: boundary
+                            capture_output=True, text=True, timeout=10)
             for line in result.stdout.split("\n"):
-                if "model_registry" in line and "model_registry.py" not in line:
+                if "model_registry" in line and "model_registry.py" not in line:  # noqa: boundary — diagnostic scan
                     refs_mr += 1
                 if "model_router" in line and "model_router.py" not in line:
                     refs_rt += 1
@@ -311,11 +311,11 @@ async def run_readiness_audit():
             logging.warning(str(e), exc_info=True)
     migrating = (has_mr or has_rt) and (refs_mr > 0 or refs_rt > 0)
     verdict = not (has_mr or has_rt)
-    detail = ("Migration complete — model_registry.py and model_router.py deleted. "
+    detail = ("Migration complete — model_registry.py and model_router.py deleted. "  # noqa: boundary
               "model_injection.py is the canonical path via infra ModelManager.select()."
               if not (has_mr or has_rt) else
               f"Migration in progress ({refs_mr}+{refs_rt} references remain).")
-    claude_items.append(_ok("model_registry/model_router deprecated", verdict, detail))
+    claude_items.append(_ok("model_registry/model_router deprecated", verdict, detail))  # noqa: boundary — diagnostic
 
     # Summaries
     ready_score = sum(1 for i in readiness if i["result"] == "✅")

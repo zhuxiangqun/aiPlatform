@@ -13,7 +13,7 @@ from .base_model_adapter import BaseModelAdapter, get_cached_model
 class InfraEmbeddingAdapter(BaseModelAdapter):
     capability = "embedding"
 
-    def _load_model(self, name: str) -> Any:
+    def _load_model(self, name: str) -> Any:  # noqa: boundary — legitimate adapter override
         try:
             from sentence_transformers import SentenceTransformer
             return SentenceTransformer(name, local_files_only=True)

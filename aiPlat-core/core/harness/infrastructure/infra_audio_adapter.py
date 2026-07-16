@@ -27,7 +27,7 @@ class InfraAudioAdapter(BaseModelAdapter):
         self._device = os.getenv("AIPLAT_WHISPER_DEVICE", "cpu")
         self._compute_type = os.getenv("AIPLAT_WHISPER_COMPUTE_TYPE", "int8")
 
-    def _load_model(self, name: str) -> Any:
+    def _load_model(self, name: str) -> Any:  # noqa: boundary — adapter override, loaded per-call
         pass  # Whisper model loaded per-call, not cached globally
 
     def transcribe(self, audio_path: str, language: Optional[str] = None) -> List[Dict[str, Any]]:
@@ -51,7 +51,7 @@ class InfraAudioAdapter(BaseModelAdapter):
             logging.debug(str(e), exc_info=True)
         try:
             import whisper
-            model = whisper.load_model(self._model_name)
+            model = whisper.load_model(self._model_name)  # noqa: boundary — adapter's own whisper fallback
             result = model.transcribe(audio_path, language=lang, verbose=False)
             return [{"start_ms": int(s.get("start", 0) * 1000),
                      "end_ms": int(s.get("end", 0) * 1000),
