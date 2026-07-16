@@ -134,6 +134,14 @@ class StageRunner:
         if tokens_bonus > 0:
             max_tokens += tokens_bonus
         skills = self._resolve_skills(stage=s)
+        # Auto-skill filter from routing classifier (v2.4): restrict to high-confidence suggestions
+        auto_filter = state.get("_auto_skill_filter")
+        if auto_filter and isinstance(auto_filter, list) and len(auto_filter) > 0:
+            prev_count = len(skills)
+            skills = [sk for sk in skills if getattr(sk, 'name', str(sk)) in auto_filter]
+            logging.info("auto_skill_filter_applied", extra={
+                "filtered_from": prev_count, "filtered_to": len(skills), "filter": auto_filter,
+            })
         tools = self._resolve_tools_selective(prompt)
         loop = ReActLoop(
             config=LoopConfig(

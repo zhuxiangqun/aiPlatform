@@ -36,6 +36,28 @@ language: zh-CN
 | Agent ReActLoop / 代码生成 | ❌ | 需要架构规则和编码宪法做决策引导 |
 | 检索生成 (RAG) / 材料问答 | ❌ | 需要知识治理和引用规则 |
 
+**内容归属规范（v2.5+）**：每段知识在系统中有且仅有唯一归属。同一份 SOP / 输出格式 / 域参考数据禁止出现在两个地方。
+
+| 内容类型 | 唯一归属 | 反例（禁止） |
+|---------|------|------|
+| Agent 的执行步骤与决策逻辑 | `AGENT.md` 的 `system_prompt` + SOP body | workflow JSON 的 `config.prompt` |
+| Skill 的输出格式 / 反模式 / 输入约束 | `SKILL.md` 的 SOP + 输出格式 / 反模式章节 | Agent 的 AGENT.md |
+| 域级配置数据（通过率、可用域列表、成熟度） | `registry.json` → DomainRouter 运行时读取 | 硬编码在 prompt / 代码字符串中 |
+| 运行时上下文（客户信息、部署模式、上游产出物） | `pipeline_state` 透传 | 模板变量 `{{placeholder}}` |
+| Workflow 阶段级附加指令 | `PipelineStageConfig.prompt_extra` | JSON 的 `config.prompt` |
+| LLM prompt 模板正文 | `prompt_loader._register("id", "...")` | 代码或 JSON 中内嵌 >1 行 prompt 字符串 |
+
+**核心系统修改自检规则（v2.5+）**：修改 `core/harness/`、`core/apps/`、`core/schemas_`、`core/api/core_facade.py` 等共享模块时，必须在 diff 阶段执行以下自检：
+
+| # | 检查项 | 验证方法 |
+|---|------|------|
+| 1 | 新逻辑是否硬编码了业务概念（域名/Agent名/角色名）？ | `grep -n 'domain_id ==\|agent_id ==\|_TARGET' <changed_files>` → 应为空 |
+| 2 | 新行为是否可用已有 `PipelineStageConfig` 字段驱动？ | 检查是否引入了新的 `if/elif` 条件链 |
+| 3 | 修改是否改变了共享接口的签名或语义？ | `git diff` 检查所有 `def`/`async def` 的函数签名 |
+| 4 | 是否需要更新本规范的对应章节？ | 对照上方 "内容归属规范" 表格逐项核对 |
+| 5 | 降级/回退路径是否保留？ | 新增路径应保留原有路径作为 `except` 或 `if None` 的 fallback |
+| **违反后果**：PR review 阶段发现违反 → 退回修改；合并后发现违反 → `architecture_guard.sh` 记录为违规 |
+
 **强制规则——代码变更必须同步文档**：
 
 | # | 代码变更类型 | 必须更新的文档 |
