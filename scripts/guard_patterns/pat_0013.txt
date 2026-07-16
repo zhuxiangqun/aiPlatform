@@ -1,1 +1,1 @@
-if agent_id\s*==\s*['"].*['"]
+\b_TARGET_SKILL

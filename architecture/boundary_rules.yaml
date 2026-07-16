@@ -99,6 +99,46 @@ layers:
         reason: "侧边栏可见性属于管理端 UI 定义"
     forbidden_in: []
 
+  # ── Application Modules (v2.5) ──
+  app-modules:
+    label: "业务应用模块"
+    role: "各业务应用 (FDE/Builder/Workbench/Value/Learning/Prompt/Eval/Misc)"
+    doc_ref: "docs/architecture/app-module-layout.md"
+    owns:
+      - type: "REST端点"
+        patterns: ["@router\\.(get|post|put|delete)"]
+        reason: "应用模块的API路由定义在 platform/apps/{module}/api/"
+      - type: "业务逻辑"
+        patterns: ["class.*Service|class.*Manager|class.*Controller"]
+        reason: "应用模块的非HTTP业务逻辑在 core/apps/{module}/service/"
+    forbidden_in:
+      - layer: core
+        patterns: ["core/api/routers/.*router"]  
+        severity: "warning"
+        reason: "应用模块不应在 core/api/routers/ 下定义路由 — 应放在 platform/apps/{module}/api/"
+    modules:
+      fde:
+        name: "FDE 现场交付引擎"
+        api_path: "/api/platform/apps/fde"
+      workbench:
+        name: "用户工作台"
+        api_path: "/api/platform/apps/workbench"
+      value:
+        name: "价值中心"  
+        api_path: "/api/platform/apps/value"
+      learning:
+        name: "学习引擎"
+        api_path: "/api/platform/apps/learning"
+      prompt:
+        name: "Prompt 工具"
+        api_path: "/api/platform/apps/prompt"
+      eval:
+        name: "评估中心"
+        api_path: "/api/platform/apps/eval"
+      misc:
+        name: "其他工具"
+        api_path: "/api/platform/apps/misc"
+
 # ── Global Rules (apply to multiple layers) ──
 global_rules:
   - name: "内核无关 (kernel_agnostic)"
