@@ -5,6 +5,14 @@ Provides REST API endpoints for agent, skill, tool, memory, knowledge, and harne
 Runs on port 8002.
 """
 
+import os as _os
+import sys as _sys
+# Ensure aiPlat-platform modules can be imported (avoids name collision with stdlib platform)
+_aiplat_root = _os.path.dirname(_os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))))
+_aiplat_platform = _os.path.join(_aiplat_root, 'aiPlat-platform')
+if _aiplat_platform not in _sys.path:
+    _sys.path.insert(0, _aiplat_platform)
+
 from fastapi import FastAPI, HTTPException, APIRouter, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse

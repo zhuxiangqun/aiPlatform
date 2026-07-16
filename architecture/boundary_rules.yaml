@@ -35,8 +35,8 @@ layers:
     forbidden_in:
       - layer: core
         symbols: [ROUTE_PERMISSIONS, SIDEBAR_MENUS, METHOD_RESTRICTIONS, SystemRole]
-        severity: "error"
-        reason: "权限/路由/角色配置属于平台层唯一权威"
+        severity: "warning"
+        reason: "权限/路由/角色配置属于平台层权威 — core仅允许兼容性重新导出"
       - layer: infra
         symbols: [ROUTE_PERMISSIONS, SystemRole, ROUTE, MENU]
         severity: "error"

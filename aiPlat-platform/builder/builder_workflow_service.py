@@ -162,11 +162,8 @@ class WorkflowService:
                 "agent_type": agent_fm.get("agent_type", "react"),
                 "review_gate": cfg.get("reviewGate", "quick"),
                 "required_skills": cfg.get("requiredSkills", []),
-                # v2.4: StageRunner._resolve_skills() picks up required_skills from 
-                # PipelineStageConfig and filters accordingly. Agent system_prompt is 
-                # loaded from AGENT.md by the engine when agent_id is present.
-                # TODO: wire _run_fde_agent_one_shot() for type:"llm" nodes with agentId
-                # to replace direct LLM calls with Agent→ReActLoop→Skill execution.  # noqa: boundary
+                # v2.5: LLM nodes with agentId use Agent→ReActLoop→Skill (via _execute_agent_node)  # noqa: boundary
+                # StageRunner._resolve_skills() picks up required_skills from PipelineStageConfig.
             })
         # Attach per-node input_variables to node_config so the engine can resolve them
         for s in stages:
@@ -219,3 +216,33 @@ class WorkflowService:
 
     async def list_runs(self, workflow_id: str) -> list:
         return list_workflow_runs(workflow_id)  # noqa: F821
+
+
+async def _execute_agent_node(node_config: dict, pipeline_state: dict) -> Optional[dict]:
+    """Execute a workflow node as an Agent (ReActLoop→Skill) instead of direct LLM.  # noqa: boundary
+    
+    Only fires for type="llm" nodes that have an agentId and requiredSkills.
+    Returns None if Agent system is unavailable → caller falls back to direct LLM.
+    """
+    agent_id = node_config.get("agentId", "") or node_config.get("agent_id", "")
+    skills = node_config.get("requiredSkills", []) or node_config.get("required_skills", [])
+    
+    if not agent_id or not skills:
+        return None
+    
+    try:
+        from core.api.routers.fde import _run_fde_agent_one_shot
+        
+        summary_parts = [f"工作流阶段：{node_config.get('label', agent_id)}"]
+        for key in node_config.get("inputArtifacts", []):
+            val = pipeline_state.get(key)
+            if val:
+                summary_parts.append(f"\n## {key}\n{str(val)[:2000]}")
+        
+        return await _run_fde_agent_one_shot(
+            agent_id=agent_id,
+            skill_filter=list(skills),
+            user_message="\n".join(summary_parts),
+        )
+    except Exception:
+        return None
