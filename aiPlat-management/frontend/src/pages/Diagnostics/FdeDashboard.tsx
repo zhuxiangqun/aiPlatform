@@ -79,13 +79,14 @@ const FdeDashboard: React.FC = () => {
       .then(r => r.json())
       .then(d => {
         const stats: Record<string, number> = {};
-        for (const [, v] of Object.entries(d.data || d || {})) {
+        const domains = d.domains || d.data || d || {};
+        for (const [, v] of Object.entries(domains)) {
           const m = (v as any)?.maturity || 'unknown';
           stats[m] = (stats[m] || 0) + 1;
         }
         setDomainStats(stats);
       })
-      .catch(() => {});
+      .catch(() => setDomainStats({ error: 1 }));
   }, []);
 
   const loadWorkflow = async (name: string) => {
@@ -230,6 +231,11 @@ const FdeDashboard: React.FC = () => {
             };
             return <span key={m} className={colors[m] || ''}>{labels[m]} {cnt}</span>;
           })}
+          {Object.values(domainStats).every(v => v === 0 || v === undefined) ? (
+            <span className="text-gray-600">无数据</span>
+          ) : domainStats.error ? (
+            <span className="text-red-500">API 不可达</span>
+          ) : null}
           <button onClick={() => setShowDomainStats(false)} className="text-gray-600 hover:text-gray-400 ml-1">✕</button>
         </div>
       )}
