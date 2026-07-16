@@ -3545,3 +3545,17 @@ app.include_router(fde_platform_router, prefix="/api/platform/apps")
 # ── Workbench module (v2.5) ──
 from apps.workbench.api.router import router as workbench_platform_router  # noqa: E402
 app.include_router(workbench_platform_router, prefix="/api/platform/apps")
+
+# ── Value module (v2.5) ──
+from apps.value.api.router import router as value_platform_router  # noqa: E402
+app.include_router(value_platform_router, prefix="/api/platform/apps")
+
+# ── Batch E-H modules (v2.5) ──
+from apps.learning.api.router import router as learning_platform_router  # noqa: E402
+from apps.prompt.api.router import router as prompt_platform_router  # noqa: E402
+from apps.eval.api.router import router as eval_platform_router  # noqa: E402
+from apps.misc.api.router import router as misc_platform_router  # noqa: E402
+app.include_router(learning_platform_router, prefix="/api/platform/apps")
+app.include_router(prompt_platform_router, prefix="/api/platform/apps")
+app.include_router(eval_platform_router, prefix="/api/platform/apps")
+app.include_router(misc_platform_router, prefix="/api/platform/apps")
