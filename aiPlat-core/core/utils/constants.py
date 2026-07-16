@@ -43,10 +43,7 @@ DEFAULT_COLLECTION = "default"
 DEFAULT_SESSION = "default"
 
 
-# ── Domain / GraphIndex identifiers ──
-
-DOMAIN_FDE = "fde-delivery"
-DOMAIN_AI_KNOWLEDGE = "ai-knowledge"
+# ── Domain / GraphIndex identifiers — use DomainRouter.list_domains() at runtime ──
 
 
 __all__ = [
@@ -56,5 +53,4 @@ __all__ = [
     "EXTRACTION_MAX_TOKENS",
     "DEFAULT_TIMEOUT", "LONG_TIMEOUT", "FAST_TIMEOUT",
     "DEFAULT_TENANT", "DEFAULT_COLLECTION", "DEFAULT_SESSION",
-    "DOMAIN_FDE", "DOMAIN_AI_KNOWLEDGE",
 ]

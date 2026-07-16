@@ -48,8 +48,6 @@ class Agents:
 # ── GraphIndex / Domain IDs ──
 
 class Domains:
-    FDE_DELIVERY = "fde-delivery"
-    AI_KNOWLEDGE = "ai-knowledge"
     DEFAULT = "default"
 
 

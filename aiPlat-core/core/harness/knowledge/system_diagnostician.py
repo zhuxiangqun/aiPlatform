@@ -130,24 +130,31 @@ class SystemDiagnostician:
         """最近 3 次诊断的 ontology_coverage 下降 > 15%"""
         try:
             from core.harness.ontology_engine.graph_index import GraphIndex
-            fd = GraphIndex.load("fde-delivery")
+            from core.harness.knowledge.domain_router import DomainRouter
+            router = DomainRouter()
+            domains = router.list_domains()
             sessions = []
-            for _, n in fd._nodes.items():
-                if getattr(n, "class_name", "") == "DiagnosisSession":
-                    nb = fd.get_neighbors(getattr(n, "entity_id", ""), direction="outgoing")
-                    for nid, e in nb:
-                        if e.relation_name == "has_meta":
-                            mn = fd.get_node(nid)
-                            if mn:
-                                import json
-                                try:
-                                    md = json.loads(mn.entity_name)
-                                    ev = md.get("evidence_map", [])
-                                    if ev:
-                                        backed = sum(1 for x in ev if x.get("source") and x["source"] not in ("", "LLM推测", "行业普遍痛点"))
-                                        sessions.append({"coverage": round(backed / max(len(ev), 1) * 100)})
-                                except Exception:
-                                    pass
+            for domain_id in domains:
+                try:
+                    fd = GraphIndex.load(domain_id)
+                except Exception:
+                    continue
+                for _, n in fd._nodes.items():
+                    if getattr(n, "class_name", "") == "DiagnosisSession":
+                        nb = fd.get_neighbors(getattr(n, "entity_id", ""), direction="outgoing")
+                        for nid, e in nb:
+                            if e.relation_name == "has_meta":
+                                mn = fd.get_node(nid)
+                                if mn:
+                                    import json
+                                    try:
+                                        md = json.loads(mn.entity_name)
+                                        ev = md.get("evidence_map", [])
+                                        if ev:
+                                            backed = sum(1 for x in ev if x.get("source") and x["source"] not in ("", "LLM推测", "行业普遍痛点"))
+                                            sessions.append({"coverage": round(backed / max(len(ev), 1) * 100)})
+                                    except Exception:
+                                        pass
 
             if len(sessions) < 3:
                 return {"rule": "evidence_decline", "severity": "info",
@@ -371,7 +378,9 @@ class SystemDiagnostician:
         """diagnosis confidence vs actual delivery rate 偏差检测"""
         try:
             from core.harness.ontology_engine.graph_index import GraphIndex
-            fd = GraphIndex.load("fde-delivery")
+            from core.harness.knowledge.domain_router import DomainRouter
+            router = DomainRouter()
+            domains = router.list_domains()
             sessions_with_meta = 0
             total_determinism = 0
             sessions_with_actions = 0

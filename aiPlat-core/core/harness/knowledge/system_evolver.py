@@ -101,20 +101,28 @@ class SystemEvolver:
         """Rule 1: Same concept appears ≥3 times in knowledge_gaps → Term."""
         try:
             from core.harness.ontology_engine.graph_index import GraphIndex
-            fd = GraphIndex.load("fde-delivery")
+            from core.harness.ontology_engine.graph_index import GraphIndex
+            from core.harness.knowledge.domain_router import DomainRouter
+            router = DomainRouter()
+            domains = router.list_domains()
             gap_counter = Counter()
 
-            for _, n in fd._nodes.items():
-                if getattr(n, "class_name", "") != "SessionMeta":
-                    continue
-                import json
+            for domain_id in domains:
                 try:
-                    md = json.loads(n.entity_name)
-                    for g in md.get("knowledge_gaps", []):
-                        gap_counter[g.get("concept", "")[:80]] += 1
+                    fd = GraphIndex.load(domain_id)
                 except Exception:
                     continue
-
+            for _, n in fd._nodes.items():
+                    if getattr(n, "class_name", "") != "SessionMeta":
+                        continue
+                    import json
+                    try:
+                        md = json.loads(n.entity_name)
+                        for g in md.get("knowledge_gaps", []):
+                            gap_counter[g.get("concept", "")[:80]] += 1
+                    except Exception:
+                        continue
+    
             return [
                 {"name": f"term:{concept}", "type": "term", "frequency": count,
                  "concept": concept, "source": "knowledge_gaps"}
@@ -135,12 +143,8 @@ class SystemEvolver:
                 continue
             sid = getattr(n, "source_doc_id", "")
             domain = "unknown"
-            if "fde" in sid.lower():
-                domain = "fde"
-            elif "skill" in sid.lower():
-                domain = "skill"
-            elif "canary" in sid.lower():
-                domain = "canary"
+            # Derive domain grouping from source identifier (config-driven)
+            domain = sid.rsplit("/", 1)[0] if "/" in sid else sid[:8]
             domain_atoms[domain] += 1
 
         total = sum(domain_atoms.values())
@@ -165,19 +169,28 @@ class SystemEvolver:
         """Rule 4: delivery_rate in specific industry ≥80% → mark evidence_strength."""
         try:
             from core.harness.ontology_engine.graph_index import GraphIndex
-            fd = GraphIndex.load("fde-delivery")
+            from core.harness.knowledge.domain_router import DomainRouter
+            router = DomainRouter()
+            domains = router.list_domains()
+
+            industry_stats = defaultdict(lambda: {"sessions": 0, "with_actions": 0})
             industry_stats = defaultdict(lambda: {"sessions": 0, "with_actions": 0})
 
-            for _, n in fd._nodes.items():
-                if getattr(n, "class_name", "") != "DiagnosisSession":
+            for domain_id in domains:
+                try:
+                    fd = GraphIndex.load(domain_id)
+                except Exception:
                     continue
-                parts = n.entity_name.split("_", 1) if "_" in n.entity_name else [n.entity_name]
-                ind = parts[0]
-                industry_stats[ind]["sessions"] += 1
-                nb = fd.get_neighbors(getattr(n, "entity_id", ""), direction="outgoing")
-                if any(e.relation_name == "has_action" for _, e in nb):
-                    industry_stats[ind]["with_actions"] += 1
-
+            for _, n in fd._nodes.items():
+                    if getattr(n, "class_name", "") != "DiagnosisSession":
+                        continue
+                    parts = n.entity_name.split("_", 1) if "_" in n.entity_name else [n.entity_name]
+                    ind = parts[0]
+                    industry_stats[ind]["sessions"] += 1
+                    nb = fd.get_neighbors(getattr(n, "entity_id", ""), direction="outgoing")
+                    if any(e.relation_name == "has_action" for _, e in nb):
+                        industry_stats[ind]["with_actions"] += 1
+    
             strong = []
             for ind, stats in industry_stats.items():
                 if stats["sessions"] >= 3:

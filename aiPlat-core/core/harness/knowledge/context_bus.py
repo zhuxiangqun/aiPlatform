@@ -233,7 +233,9 @@ def _inject_delivery_history(parts: List[str], params: Dict):
 
     try:
         from core.harness.ontology_engine.graph_index import GraphIndex
-        fd = GraphIndex.load("fde-delivery")
+        from core.harness.knowledge.domain_router import DomainRouter
+        router = DomainRouter()
+        domains = router.list_domains()
         delivered = total_sessions = industry_sessions = 0
         industry_lower = (params.get("industry") or "").strip().lower()
 
@@ -265,7 +267,10 @@ def _inject_self_optimization(parts: List[str]):
     """Layer 7: History-driven self-optimization hints (E)."""
     try:
         from core.harness.ontology_engine.graph_index import GraphIndex
-        fd = GraphIndex.load("fde-delivery")
+        from core.harness.knowledge.domain_router import DomainRouter
+        router = DomainRouter()
+        domains = router.list_domains()
+        sessions = []
         sessions = []
         for _, node in list(fd._nodes.items())[:200]:
             if getattr(node, "class_name", "") == "DiagnosisSession":

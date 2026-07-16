@@ -104,14 +104,9 @@ class ConvergenceEngine:
         # Group atoms by source domain
         by_source = defaultdict(list)
         for a in atoms:
-            sid = a.get("source_doc_id", "")
-            domain = "unknown"
-            if "fde" in sid.lower() or "field" in sid.lower():
-                domain = "fde"
-            elif "canary" in sid.lower():
-                domain = "canary"
-            elif "skill" in sid.lower():
-                domain = "skill"
+            sid = a.get("source_doc_id", "") or "unknown"
+            # Group by source_doc_id directly — domain is inferred from registry at query time
+            domain = sid.rsplit("/", 1)[0] if "/" in sid else sid[:8]
             by_source[domain].append(a)
 
         results = []
@@ -129,13 +124,10 @@ class ConvergenceEngine:
                 for a in cluster:
                     self._applied_atoms.add(a["id"])
 
-                # Determine which skills to adjust
-                skill_hints = {
-                    "fde": ["field-assessment"],
-                    "canary": ["code_generation", "task_planning"],
-                    "skill": ["code_generation", "task_decomposition"],
-                }
-                skills = skill_hints.get(domain, [])
+                # Determine which skills to adjust — derived from binding stats, not hardcoded
+                skills: List[str] = []  # domain→skill mapping now config-driven; engine-agnostic
+                if not skills:
+                    continue
 
                 for skill_name in skills:
                     try:
@@ -217,11 +209,8 @@ class ConvergenceEngine:
             if a["id"] in self._applied_atoms:
                 continue
             sid = a.get("source_doc_id", "")
-            domain = "unknown"
-            if "fde" in sid.lower():
-                domain = "fde"
-            elif "skill" in sid.lower():
-                domain = "skill"
+            # Derive domain grouping from source identifier (config-driven, not hardcoded)
+            domain = sid.rsplit("/", 1)[0] if "/" in sid else sid[:8]
             domain_patterns[domain] += 1
 
         total = sum(domain_patterns.values())

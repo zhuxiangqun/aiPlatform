@@ -1,1 +1,1 @@
-\b_TARGET_DOMAIN
+from core\.services\.

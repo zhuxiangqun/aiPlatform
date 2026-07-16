@@ -58,6 +58,16 @@ language: zh-CN
 | 5 | 降级/回退路径是否保留？ | 新增路径应保留原有路径作为 `except` 或 `if None` 的 fallback |
 | **违反后果**：PR review 阶段发现违反 → 退回修改；合并后发现违反 → `architecture_guard.sh` 记录为违规 |
 
+**业务应用模块目录规范（v2.5+）**：每个业务应用模块（FDE/Builder/Workbench/Value/Learning 等）有且仅有唯一的目录归属。详见 `docs/architecture/app-module-layout.md`。
+
+| 文件类型 | 正确目录 | 禁止位置 |
+|---------|------|------|
+| REST 端点 (`@router.get/post`) | `aiPlat-platform/apps/{module}/api/` | `core/api/routers/` |
+| 无 HTTP 依赖的业务逻辑 | `aiPlat-core/core/apps/{module}/service/` | `core/harness/` |
+| 模块 Prompt 模板 | `aiPlat-core/core/apps/{module}/prompts/` | `core/harness/utils/prompt_loader.py` |
+| Harness 层代码硬编码模块名 | ❌ 禁止 | 应通过 `DomainRouter` 动态发现 |
+| 新模块注册 | `aiPlat-platform/registry/apps.yaml` | 不应在代码中硬编码模块列表 |
+
 **强制规则——代码变更必须同步文档**：
 
 | # | 代码变更类型 | 必须更新的文档 |

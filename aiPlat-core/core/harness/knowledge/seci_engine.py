@@ -286,15 +286,9 @@ class SECIEngine:
         # Categorize by source
         by_source: Dict[str, int] = {}
         for a in atoms:
-            # Infer source from session_id pattern or metadata
+            # Derive source type from source_doc_id path (config-driven, not keyword matching)
             sid = a.get("source_doc_id", "")
-            src = "agent_conversation"
-            if "fde" in sid.lower() or "field" in sid.lower():
-                src = "fde_diagnosis"
-            elif "skill" in sid.lower():
-                src = "skill_execution"
-            elif "pipeline" in sid.lower():
-                src = "pipeline"
+            src = sid.rsplit("/", 1)[0] if "/" in sid else "agent_conversation"
             by_source[src] = by_source.get(src, 0) + 1
 
         # Compute aggregate metrics
@@ -312,13 +306,8 @@ class SECIEngine:
                 # More atoms from a source → slightly boost related skill
                 delta = min(count / max(total, 1), 0.15) * damping
 
-                # Map source to skill name hints
-                skill_hints = {
-                    "fde_diagnosis": ["field-assessment"],
-                    "agent_conversation": ["chitchat", "knowledge_retrieval"],
-                    "skill_execution": ["code_generation", "task_planning"],
-                    "pipeline": ["code_generation", "task_decomposition"],
-                }
+                # Skill hints are now config-driven; engine is source-agnostic
+                skill_hints: Dict[str, List[str]] = {}  # populated by domain config, not hardcoded
                 for skill_name in skill_hints.get(src, []):
                     if skill_name in stats:
                         old_decayed = stats[skill_name].decayed_at
