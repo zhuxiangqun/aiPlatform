@@ -74,6 +74,15 @@ const FdeDashboard: React.FC = () => {
   const [domainStats, setDomainStats] = useState<Record<string, number>>({});
   const [domainStatsExpanded, setDomainStatsExpanded] = useState(true);
 
+  const MATURITY_COLORS: Record<string, string> = {
+    'production-ready': 'text-green-400', 'stable': 'text-blue-400',
+    'building': 'text-yellow-400', 'seeding': 'text-gray-500',
+  };
+  const MATURITY_LABELS: Record<string, string> = {
+    'production-ready': '生产', 'stable': '稳定', 'building': '构建中', 'seeding': '播种',
+  };
+  const MATURITY_ORDER = ['production-ready', 'stable', 'building', 'seeding'] as const;
+
   useEffect(() => {
     fetch('/api/core/diagnostics/capability-boundary')
       .then(r => r.json())
@@ -221,36 +230,26 @@ const FdeDashboard: React.FC = () => {
           <span className="text-gray-500">域健康：</span>
           {domainStatsExpanded ? (
             <>
-              {(['production-ready', 'stable', 'building', 'seeding'] as string[]).map(m => {
+              {MATURITY_ORDER.map(m => {
                 const cnt = domainStats[m] || 0;
                 if (!cnt) return null;
-                const cs: Record<string, string> = {
-                  'production-ready': 'text-green-400', 'stable': 'text-blue-400',
-                  'building': 'text-yellow-400', 'seeding': 'text-gray-500',
-                };
-                const lb: Record<string, string> = {
-                  'production-ready': '生产', 'stable': '稳定', 'building': '构建中', 'seeding': '播种',
-                };
-                return <span key={m} className={cs[m] || ''}>{lb[m]} {cnt}</span>;
+                return <span key={m} className={MATURITY_COLORS[m] || ''}>{MATURITY_LABELS[m]} {cnt}</span>;
               })}
-              {Object.values(domainStats).every(v => v === 0 || v === undefined) ? (
-                <span className="text-gray-600">无数据</span>
-              ) : domainStats.error ? (
-                <span className="text-red-500">API 不可达</span>
-              ) : null}
+              {Object.values(domainStats).every(v => v === 0 || v === undefined)
+                ? <span className="text-gray-600">无数据</span>
+                : domainStats.error ? <span className="text-red-500">API 不可达</span> : null}
               <button onClick={() => setDomainStatsExpanded(false)}
                 className="text-gray-600 hover:text-gray-400 ml-1">▲</button>
             </>
           ) : (
             <>
-            <span className="text-gray-500">
-              {['production-ready','stable','building','seeding'].filter(m => domainStats[m]).map(m => {
-                const lb: Record<string,string> = {'production-ready':'生产','stable':'稳定','building':'构建中','seeding':'播种'};
-                return `${lb[m]} ${domainStats[m]}`;
-              }).join('  ') || '无数据'}
-            </span>
-            <button onClick={() => setDomainStatsExpanded(true)}
-              className="text-gray-600 hover:text-gray-400 ml-1">▼</button>
+              <span className="text-gray-500">
+                {MATURITY_ORDER.filter(m => domainStats[m]).map(m =>
+                  `${MATURITY_LABELS[m]} ${domainStats[m]}`
+                ).join('  ') || '无数据'}
+              </span>
+              <button onClick={() => setDomainStatsExpanded(true)}
+                className="text-gray-600 hover:text-gray-400 ml-1">▼</button>
             </>
           )}
         </div>
