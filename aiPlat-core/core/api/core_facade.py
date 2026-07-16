@@ -2145,7 +2145,12 @@ def check_kb_entity_access(
     ))
 
 
-# ── Backward-compatible re-exports (platform imports these from CoreFacade) ──
+# ═══════════════════════════════════════════════════════════════
+# Platform-facing re-exports (v2.5)
+# These are the canonical imports for platform code.
+# All platform→core imports MUST go through CoreFacade.
+# See: architecture/boundary_rules.yaml
+# ═══════════════════════════════════════════════════════════════
 
 from core.harness.integration import KernelRuntime, get_harness
 from core.harness.knowledge.db import get_knowledge_db
