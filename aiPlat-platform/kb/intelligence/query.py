@@ -40,7 +40,7 @@ async def query_elements(
     if not collection_id:
         collection_id = "default"
     st = get_tenant_storage(tenant_id)
-    from core.harness.knowledge.db import get_knowledge_db
+    from core.api.core_facade import get_knowledge_db  # v2.5: canonical path (via CoreFacade re-export)
     db = get_knowledge_db()
     db.ensure_schema()
     keywords = _get_keywords(question)
