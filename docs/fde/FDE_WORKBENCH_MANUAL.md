@@ -1248,4 +1248,267 @@ LLM 只看到这 2 个 Skill → 自然选择正确的
 
 ---
 
+## 十、业务域数据建设指南
+
+### 10.1 什么是业务域
+
+aiPlat 中的**业务域**是一套完整的"知识 + 能力"体系，包含四个部分：
+
+```
+~/.aiplat/ontologies/
+  ├── {domain_id}.yaml          ← 域本体定义（类、属性、状态机）
+  ├── registry.json             ← 域注册表（成熟度、映射模式）
+  └── seed_data/
+      └── {domain_id}.json      ← 种子数据（实体和关系）
+```
+
+一个域从无到有分为 3 个阶段：
+
+| 阶段 | 状态 | 含义 | 能做什么 |
+|------|:---:|------|------|
+| **播种** (Seeding) | 空或无数据 | 本体 YAML 已定义，但还没有数据 | 不能检索、不能诊断 |
+| **构建中** (Building) | 数据 < 预期量 | 已注入种子数据，实体在增长 | 可以检索，但召回率和准确率低 |
+| **生产就绪** (Production) | 数据 >= 预期量 | 实体充足，通过率 >= 80% | 完整可用：检索、诊断、POC |
+
+**首次进场的正常状态**：所有域都处于播种阶段。FDE 的第一项工作就是选择一个与客户行业最接近的域，注入种子数据，把它推进到"构建中"甚至"生产就绪"。
+
+---
+
+### 10.2 查看已有域
+
+```bash
+# 查看所有可用域
+ls ~/.aiplat/ontologies/*.yaml
+
+# 查看域注册表（成熟度 + 可用状态）
+cat ~/.aiplat/ontologies/registry.json | python3 -m json.tool
+
+# 查看某个域的 GraphIndex 状态
+curl http://localhost:8000/api/core/ontology/engine/graph-stats/supply-chain | python3 -m json.tool
+```
+
+当前系统内置的域：
+
+| 域 ID | 名称 | 种子数据 | 适用行业 |
+|------|------|:---:|------|
+| `supply-chain` | 供应链 | ✅ 有模板 | 制造业、零售 |
+| `procurement-mvo` | 采购管理 | ✅ 有模板 | 金融、零售、政务 |
+| `ship-design` | 船舶设计 | ✅ 有模板 | 船舶、重工 |
+| `ai-knowledge` | AI 知识 | ❌ 无需种子 | 通用 |
+| `it-ops` | IT 运维 | ❌ 无模板 | 企业内部 IT |
+| `ai-solution` | AI 解决方案库 | ❌ 无模板 | 售前方案 |
+| `enterprise-terms` | 企业术语字典 | ❌ 无模板 | 术语标准化 |
+
+---
+
+### 10.3 快速诊断：哪些域缺数据
+
+```bash
+# 生成种子数据（不注入，只生成 JSON 文件到 ~/.aiplat/seed_data/）
+python3 scripts/seed_wiki.py --all
+
+# 检查各域的 GraphIndex 是否为空
+for domain in supply-chain procurement-mvo ship-design it-ops; do
+  echo -n "$domain: "
+  curl -s "http://localhost:8000/api/core/ontology/engine/graph-stats/$domain" \
+    | python3 -c "import json,sys; d=json.load(sys.stdin); print(f'{d.get(\"entity_count\",0)} entities, {d.get(\"relation_count\",0)} relations')" 2>/dev/null || echo "(不可达)"
+done
+```
+
+---
+
+### 10.4 种子数据注入（完整流程）
+
+以 `supply-chain` 域为例：
+
+#### Step 1：生成种子数据
+
+```bash
+# 生成单个域的种子数据 JSON
+python3 scripts/seed_wiki.py --domain supply-chain
+
+# 或一次生成所有有模板的域
+python3 scripts/seed_wiki.py --all
+```
+
+生成的文件在 `~/.aiplat/seed_data/supply-chain.json`。内容包含该域的核心实体（供应商、物料、产线等）和关系。
+
+#### Step 2：注入种子数据到引擎
+
+```bash
+# 确认 core 服务在运行
+curl http://localhost:8000/api/core/health | python3 -m json.tool
+
+# 注入单个域
+python3 scripts/ingest_seed.py --domain supply-chain
+
+# 或一次注入所有
+python3 scripts/ingest_seed.py --all
+```
+
+这一步会调用引擎的 `POST /ontology/engine/ingest-seed` 端点，将种子 JSON 中的实体和关系写入 `GraphIndex` 和 `Wiki` 数据库。
+
+#### Step 3：验证注入结果
+
+```bash
+# 检查实体和关系数量
+curl http://localhost:8000/api/core/ontology/engine/graph-stats/supply-chain \
+  | python3 -m json.tool
+
+# 期望输出示例：
+# {
+#   "domain_id": "supply-chain",
+#   "entity_count": 42,
+#   "relation_count": 38,
+#   "wiki_pages": 15,
+#   "status": "building"
+# }
+
+# 测试检索
+curl -X POST http://localhost:8000/api/core/wiki/retrieve \
+  -H "Content-Type: application/json" \
+  -d '{"query": "有哪些供应商","collection_id":"supply-chain","top_k": 5}' \
+  | python3 -c "import json,sys; d=json.load(sys.stdin); print(f'检索到 {len(d.get(\"results\",[]))} 条结果')"
+```
+
+#### Step 4：运行诊断
+
+在 FDE 工作台 ③ 问题重构 Tab 中，选择已注入种子数据的域，点击"运行诊断"。如果通过率 >= 80%，域标记为"生产就绪"。
+
+---
+
+### 10.5 创建新域
+
+如果客户行业与现有任何域都不匹配，需要从零创建新域。
+
+#### 文件清单
+
+| 文件 | 作用 | 必需？ |
+|------|------|:---:|
+| `~/.aiplat/ontologies/{domain_id}.yaml` | 域本体定义 | ✅ 必须 |
+| `~/.aiplat/ontologies/registry.json` | 域注册（成熟度、映射模式等） | ✅ 必须 |
+| `~/.aiplat/seed_data/{domain_id}.json` | 种子数据 | ✅ 必须（否则域无法使用） |
+| `aiPlat-core/core/engine/skills/{skill_name}/SKILL.md` | 域专用 Skill | 推荐（提升诊断精度） |
+| `~/.aiplat/agents/{agent_name}/AGENT.md` | 域专用 Agent | 可选 |
+
+#### Step 1：编写域本体 YAML
+
+```bash
+vim ~/.aiplat/ontologies/my-domain.yaml
+```
+
+最小模板：
+
+```yaml
+name: "我的业务域"
+namespace: "http://aiplat.local/ontology/my-domain/"
+version: "1.0.0"
+description: "描述这个域的业务范围"
+
+classes:
+  MyEntity:
+    label: 实体名称
+    required_fields: [name, description]
+    optional_fields: [category, tags]
+    categories: [my-domain]
+```
+
+完整模板可参考 `supply-chain.yaml` 或 `procurement-mvo.yaml`（含状态机和推理规则）。
+
+#### Step 2：注册域
+
+编辑 `~/.aiplat/ontologies/registry.json`，在 `domains` 对象中新增一条：
+
+```jsonc
+"my-domain": {
+  "name": "我的业务域",
+  "description": "描述",
+  "ontology_file": "my-domain.yaml",
+  "collection_id": "my-domain",
+  "namespace": "http://aiplat.local/ontology/my-domain/",
+  "min_wiki_score": 0.3,
+  "expand_subclasses": false,
+  "system_prompt_id": "domain-prompt-my-domain",
+  "min_cross_results": 3
+}
+```
+
+重启 core 服务或调用热加载 API：
+
+```bash
+curl -X POST http://localhost:8000/api/core/ontology/domains \
+  -H "Content-Type: application/json" \
+  -d '{"id":"my-domain","name":"我的业务域","namespace":"http://aiplat.local/ontology/my-domain/","ontology_file":"my-domain.yaml"}'
+```
+
+#### Step 3：准备种子数据
+
+创建 `~/.aiplat/seed_data/my-domain.json`：
+
+```json
+{
+  "domain_id": "my-domain",
+  "entities": [
+    {
+      "class": "MyEntity",
+      "name": "示例实体",
+      "description": "这是一个示例",
+      "properties": {}
+    }
+  ],
+  "relations": []
+}
+```
+
+#### Step 4：注入种子数据
+
+```bash
+# 一次注入（不经过 seed_wiki 模板生成，直接调引擎 API）
+curl -X POST http://localhost:8000/api/core/ontology/engine/ingest-seed \
+  -H "Content-Type: application/json" \
+  -d @~/.aiplat/seed_data/my-domain.json
+```
+
+#### Step 5：验证
+
+同 §10.4 Step 3。
+
+#### Step 6（推荐）：创建域 Skill
+
+在 `aiPlat-core/core/engine/skills/` 下创建域专用 Skill，让诊断 Agent 在分析该域时能使用领域知识。
+
+---
+
+### 10.6 域成熟度提升
+
+| 当前阶段 | 操作 | 下一步阶段 |
+|------|------|:---:|
+| 播种 | 注入种子数据 → 验证 GraphIndex 非空 | 构建中 |
+| 构建中 | 补充实体 + 运行诊断 → 通过率 >= 80% | 生产就绪 |
+| 生产就绪 | 持续注入 + 定期重诊 → 通过率维持 >= 80% | 持续就绪 |
+| 通过率 < 80% | 检查实体缺失类型 → 补充种子数据 → 重诊 | 回到构建中 |
+
+**快速提升通过率的方法**：
+
+1. **补全核心实体**：检查 `graph-stats` 中每个类的实例数，少于 5 个的类需要补数据
+2. **增加关系**：实体之间的 `object_properties` 关系越多，检索召回率越高
+3. **添加 Wiki 页面**：`seed_wiki.py` 生成的 JSON 包含 Wiki 页面内容，注入后可大幅提升检索质量
+4. **写域 Skill**：域专用 Skill 告诉 LLM 该领域的术语、常见问题模式、答案结构
+
+---
+
+### 10.7 常见问题
+
+| 问题 | 可能原因 | 排查方法 |
+|------|------|------|
+| `ingest_seed.py` 报 "Connection refused" | core 服务未启动 | `curl http://localhost:8000/api/core/health` |
+| 注入后 entity_count = 0 | 种子 JSON 格式不对或域 ID 不匹配 | `cat ~/.aiplat/seed_data/{domain}.json \| python3 -m json.tool` 验证 JSON 合法性 |
+| 没有 seed template | 该域不在 seed_wiki.py 支持的模板列表中 | 按 §10.5 手动创建种子 JSON |
+| 检索结果为空 | Wiki 页面未注入 | 确认 `seed_wiki.py --domain {id}` 输出中包含 wiki_pages |
+| 域在 ② Tab 不显示 | registry.json 未注册或字段不完整 | 对照 `supply-chain` 条目检查必填字段 |
+| 通过率始终 < 80% | 核心类实例不足或缺少关系 | `graph-stats` 检查每个类的 entity_count |
+| 种子数据重复注入 | 无害（引擎自动去重），但会增加处理时间 | 每个域只用注入一次 |
+
+---
+
 
