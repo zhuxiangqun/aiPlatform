@@ -233,7 +233,7 @@ const FdeDashboard: React.FC = () => {
               {MATURITY_ORDER.map(m => {
                 const cnt = domainStats[m] || 0;
                 if (!cnt) return null;
-                return <span key={m} className={MATURITY_COLORS[m] || ''}>{MATURITY_LABELS[m]} {cnt}</span>;
+                return <span key={m} className={`px-1.5 py-0.5 rounded ${MATURITY_COLORS[m] || ''} bg-gray-700/30`}>{MATURITY_LABELS[m]} {cnt}</span>;
               })}
               {Object.values(domainStats).every(v => v === 0 || v === undefined)
                 ? <span className="text-gray-600">无数据</span>
