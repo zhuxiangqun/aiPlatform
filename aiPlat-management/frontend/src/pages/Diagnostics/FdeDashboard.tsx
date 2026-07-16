@@ -158,6 +158,15 @@ const FdeDashboard: React.FC = () => {
       text: isWorkflow ? '请先完成 ① 业务认知：选择或创建客户 Profile → BA 完成后自动流转' : '请先在 ① 业务认知 中选择或创建客户',
       tab: 'customers' as TabKey
     };
+    // 客户已选但所有域都是播种状态 → 先去 ③ 诊断，根据报告再建域
+    const allSeeding = Object.keys(domainStats).length > 0 &&
+      Object.keys(domainStats).every(k => k === 'seeding' || k === 'error' || k === 'unknown');
+    if (!domain && allSeeding && !isWorkflow) {
+      return {
+        text: '⚠️ 没有匹配的业务域（全部播种中）。建议先去 ③ 问题重构 运行诊断 → 根据报告决定建什么域',
+        tab: 'assess' as TabKey
+      };
+    }
     if (!domain) return {
       text: isWorkflow ? '✅ BA 已完成。请前往 ② 评估域 选择业务领域 → SA 自动匹配方案' : '✅ 客户已就绪，请前往 ② 评估域 选择业务领域',
       tab: 'capability' as TabKey
@@ -186,7 +195,7 @@ const FdeDashboard: React.FC = () => {
       text: isWorkflow ? '🎉 工作流全部完成！请前往 ⑧ 运营监控 查看运行状态' : '🎉 所有步骤已完成，⑧ 运营监控 查看运行状态',
       tab: 'evolution' as TabKey
     };
-  }, [workflowStages.length, customer, domain, diagnosis, pocProfile, deployVersion, canaryResult, adopted]);
+  }, [workflowStages.length, customer, domain, diagnosis, pocProfile, deployVersion, canaryResult, adopted, domainStats]);
 
   return (
     <div className="space-y-4 p-4">
