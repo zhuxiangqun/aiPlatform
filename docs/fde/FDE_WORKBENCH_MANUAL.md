@@ -144,7 +144,7 @@ FDE 工作台是 Field Deployment Engineer 的核心操作界面。它按 **FDE 
 | 场景 | 动作 |
 |:---|:---|
 | 客户需求与已有域高度匹配（如 supply-chain 的 `building` 级别） | 直接进入 ③ 问题重构 |
-| 客户需求与已有域部分匹配，但通过率 <80% | 先加固域数据（运行 `ingest_seed.py`），再进入 ③ |
+| 客户需求与已有域部分匹配，但通过率 <80% | 先加固域数据（切换到本体管理页面 → 点击 "🔧 修复" 检查缺失类型），再进入 ③ |
 | 客户需求无匹配域 | 需要新建域本体 → 注种子数据 → 建域 Skill。预计额外 2–3 天 |
 
 **判断标准**：
@@ -257,7 +257,7 @@ FDE 工作台是 Field Deployment Engineer 的核心操作界面。它按 **FDE 
 
 **注意事项**：
 - 如果客户是 airgap 环境（无外网），打包时需要包含 LLM 模型文件
-- 打包前确认种子数据已经注入（`python scripts/ingest_seed.py --domain {id}`）
+- 打包前确认种子数据已注入（在 ② 评估域 Tab 中确认对应域状态为"构建中"或"生产就绪"）
 - 如果打包失败，检查部署日志中的错误信息
 
 **判断标准**：
@@ -399,7 +399,7 @@ FDE 工作台是 Field Deployment Engineer 的核心操作界面。它按 **FDE 
 | ② 评估域 | 没有匹配的域高亮 | 确认 ① 中客户行业已正确设置 |
 | ③ 问题重构 | "业务领域"未预填 | 确认 ② 中已点击选中域卡片 |
 | ③ 问题重构 | 诊断报告未回显到 ① | 诊断完成后切回 ① → 展开客户看蓝色 badge |
-| ④ 验证价值 | POC 回答准确率低 | ② 加固域数据（运行 `ingest_seed.py`） |
+| ④ 验证价值 | POC 回答准确率低 | ② 加固域数据（本体管理 → "🔧 修复" → 补充种子） |
 | ④ 验证价值 | 客户不认可方案方向 | ③ 重新诊断 |
 | ⑤ 快速构建 | 客户是 airgap 环境 | 确认打包清单包含模型文件 |
 | ⑥ 评测护栏 | 质量指标下降 | 回滚到 deployVersion |
@@ -408,38 +408,22 @@ FDE 工作台是 Field Deployment Engineer 的核心操作界面。它按 **FDE 
 
 ---
 
-## 四、常用命令参考
+## 四、命令行参考
 
-FDE 在终端中可能需要执行的命令：
+> 部分操作需要终端执行。操作手册中标注 💻 的命令详见：  
+> **`docs/ops/fde-cli-reference.md`**（FDE 命令行参考）
 
-```bash
-# 种子数据注入（给某个域注入预置的实体和关系）
-python scripts/ingest_seed.py --domain supply-chain
-python scripts/ingest_seed.py --domain procurement-mvo
-python scripts/ingest_seed.py --all
+常用场景速查：
 
-# 生成种子数据 JSON（在注入之前）
-python scripts/seed_wiki.py --all
-
-# Golden Query 评测（验证域的检索质量）
-curl -X POST http://localhost:8000/api/core/wiki/golden-queries/run \
-  -H 'Content-Type: application/json' \
-  -d '{"domain":"supply-chain"}'
-
-# 检查域的 GraphIndex 状态
-curl http://localhost:8000/api/core/ontology/engine/graph-stats/supply-chain | jq .
-
-# 检查能力边界（评估域成熟度）
-curl http://localhost:8000/api/core/diagnostics/capability-boundary?domain=supply-chain | jq .
-
-# 运行架构守卫
-bash scripts/architecture_guard.sh
-bash scripts/phase_check.sh
-
-# 打包部署
-# 在 FDE 工作台 ⑤ 快速构建 Tab 中操作，或通过 API：
-curl -X POST http://localhost:8000/api/core/fde/package
-```
+| 场景 | 操作方式 | 位置 |
+|------|:---:|------|
+| 管理页面操作（创建域、编辑配置、查看成熟度、POC 注入） | 🖥 管理画面 | 本文第二章、第十章 |
+| 种子数据生成和注入 | 💻 终端 | CLI 参考 §1 |
+| Agent 注册确认 | 💻 终端 | CLI 参考 §3 |
+| 域诊断与查询 | 🖥 管理画面 | ② 评估域 Tab |
+| Golden Query 评测 | 💻 终端 | CLI 参考 §2 |
+| 打包部署 | 🖥 管理画面（⑤ Tab）或 💻 终端 | CLI 参考 §4 |
+| 创建新域（含 YAML） | 🖥 管理画面（本体管理）或 💻 终端 | CLI 参考 §5 |
 
 ---
 
@@ -510,17 +494,9 @@ AI 输出摘要 + 阻塞类型 + 根因 + 严重程度
 | `summary` | AI 摘要或跳过时的占位文本 | |
 | `structured` | 结构化分类 (type/root_cause/severity) | `{type: "skipped", severity: "low"}` |
 
-### 反馈历史筛选
+### 反馈历史查看
 
-通过 API 可按客户和步骤筛选历史反馈：
-
-```bash
-# 查看江苏锁安在业务认知步骤的所有反馈
-curl "http://localhost:8000/api/core/fde/feedback/history?customer=江苏锁安&step=customers" | jq .
-
-# 查看最近 50 条反馈
-curl "http://localhost:8000/api/core/fde/feedback/history?limit=50" | jq .
-```
+反馈记录可通过管理端的 **运营监控**（⑧ Tab）面板查看，支持按客户和步骤筛选。终端查询方式详见 `docs/ops/fde-cli-reference.md`。
 
 ### 性能与质量保证（v2.4 新增）
 
@@ -846,65 +822,7 @@ DM 输出 acceptance_report
 
 ### Workflow 模板配置
 
-`fde_delivery_v1.json` — 标准交付流程模板。路径：`~/.aiplat/workflow_templates/fde_delivery_v1.json`
-
-```json
-{
-  "name": "FDE标准交付流程",
-  "description": "四角色标准交付：业务分析师→方案架构师→交付工程师→交付经理",
-  "version": "1.0.0",
-  "pipeline_mode": "chain",
-  "stages": [
-    {
-      "id": "fde_business_analyst",
-      "agent_id": "fde_business_analyst",
-      "agent_name": "FDE业务分析师",
-      "node_type": "human",
-      "order": 0,
-      "depends_on": [],
-      "output_artifact": "customer_profile",
-      "input_artifacts": [],
-      "hitl": true,
-      "hitl_phase": "customer_profile_review"
-    },
-    {
-      "id": "fde_solution_architect",
-      "agent_id": "fde_solution_architect",
-      "agent_name": "FDE方案架构师",
-      "node_type": "agent",
-      "order": 1,
-      "depends_on": ["fde_business_analyst"],
-      "output_artifact": "solution_design",
-      "input_artifacts": ["customer_profile"],
-      "hitl": true,
-      "hitl_phase": "solution_review"
-    },
-    {
-      "id": "fde_delivery_engineer",
-      "agent_id": "fde_delivery_engineer",
-      "agent_name": "FDE交付工程师",
-      "node_type": "agent",
-      "order": 2,
-      "depends_on": ["fde_business_analyst", "fde_solution_architect"],
-      "output_artifact": "deployment_package",
-      "input_artifacts": ["customer_profile", "solution_design"],
-      "hitl": false
-    },
-    {
-      "id": "fde_delivery_manager",
-      "agent_id": "fde_delivery_manager",
-      "agent_name": "FDE交付经理",
-      "node_type": "human",
-      "order": 3,
-      "depends_on": ["fde_delivery_engineer"],
-      "output_artifact": "acceptance_report",
-      "input_artifacts": ["deployment_package", "customer_profile"],
-      "hitl": true,
-      "hitl_phase": "signoff_approval"
-    }
-  ]
-}
-```
+`fde_delivery_v1.json` — 标准交付流程模板。Workflow 配置在管理端的 Workflow 画布中通过拖拽节点和连线完成，无需直接编辑 JSON。完整模板配置见 `~/.aiplat/workflow_templates/fde_delivery_v1.json`。
 
 ### Agent 详细配置
 
@@ -1056,27 +974,9 @@ DM 输出 acceptance_report
 
 #### 前置确认
 
-```bash
-# 确认 4 个 Agent 已注册（搜索完整日志，不限制行数）
-grep "fde_business_analyst\|fde_solution_architect\|fde_delivery_engineer\|fde_delivery_manager" ~/.aiplat/logs/core.log
+FDE 工作台 → 标题右侧下拉选择 "FDE 标准交付 v1" → 进度条正常显示 4 步即表示 Agent 和 Skill 已正确注册。
 
-# 期望输出：每个 Agent 至少有 1 行命中（含 WARNING 级别也可接受，表示已加载）
-# 示例：
-#   WARNING:server:[workspace agents] fde_business_analyst: No tools bound — agent cannot perform actions
-#   （有 WARNING 说明 Agent 已被系统识别并加载，可正常使用）
-
-# 确认 4 个 Skill 已注册
-grep "customer_profile_creator\|domain_assessor\|package_builder\|acceptance_checker" ~/.aiplat/logs/core.log
-
-# 期望输出：每个 Skill 至少有 1 行命中
-# 注：Engine 内置 Skill 在启动时静默加载，可能无单独日志输出。
-#     确认文件存在即可：
-ls ~/.aiplat/ontologies/ 2>/dev/null && echo "域本体目录就绪"
-ls aiPlat-core/core/engine/skills/customer_profile_creator/SKILL.md \
-   aiPlat-core/core/engine/skills/domain_assessor/SKILL.md \
-   aiPlat-core/core/engine/skills/package_builder/SKILL.md \
-   aiPlat-core/core/engine/skills/acceptance_checker/SKILL.md
-```
+如需命令行确认，详见 `docs/ops/fde-cli-reference.md` §3。
 
 #### 步骤 1：打开 Workflow 画布
 
@@ -1252,262 +1152,135 @@ LLM 只看到这 2 个 Skill → 自然选择正确的
 
 ### 10.1 什么是业务域
 
-aiPlat 中的**业务域**是一套完整的"知识 + 能力"体系，包含四个部分：
+aiPlat 中的**业务域**是一套完整的"知识 + 能力"体系。一个域从无到有分为 3 个阶段：
 
-```
-~/.aiplat/ontologies/
-  ├── {domain_id}.yaml          ← 域本体定义（类、属性、状态机）
-  ├── registry.json             ← 域注册表（成熟度、映射模式）
-  └── seed_data/
-      └── {domain_id}.json      ← 种子数据（实体和关系）
-```
-
-一个域从无到有分为 3 个阶段：
-
-| 阶段 | 状态 | 含义 | 能做什么 |
-|------|:---:|------|------|
-| **播种** (Seeding) | 空或无数据 | 本体 YAML 已定义，但还没有数据 | 不能检索、不能诊断 |
-| **构建中** (Building) | 数据 < 预期量 | 已注入种子数据，实体在增长 | 可以检索，但召回率和准确率低 |
-| **生产就绪** (Production) | 数据 >= 预期量 | 实体充足，通过率 >= 80% | 完整可用：检索、诊断、POC |
+| 阶段 | 含义 | 能做什么 |
+|------|------|------|
+| **播种** (Seeding) | 域本体已定义，但还没有数据 | 不能检索、不能诊断 |
+| **构建中** (Building) | 已注入种子数据，实体在增长 | 可以检索，但召回率和准确率低 |
+| **生产就绪** (Production) | 实体充足，通过率 >= 80% | 完整可用：检索、诊断、POC |
 
 **首次进场的正常状态**：所有域都处于播种阶段。FDE 的第一项工作就是选择一个与客户行业最接近的域，注入种子数据，把它推进到"构建中"甚至"生产就绪"。
 
 ---
 
-### 10.2 查看已有域
+### 10.2 🖥 在管理画面中查看已有域
 
-```bash
-# 查看所有可用域
-ls ~/.aiplat/ontologies/*.yaml
+1. 打开 FDE 工作台 → **② 评估域** Tab
+2. 查看系统内置的域卡片：
+   - **成熟度**：播种 / 构建中 / 生产就绪
+   - **核心指标**：实体数、关系数、Skill 数、通过率
+   - **已知缺口**：标红的是需要优先填补的
+3. 点击任意域卡片展开详情——查看完整的 8 维度指标面板
 
-# 查看域注册表（成熟度 + 可用状态）
-cat ~/.aiplat/ontologies/registry.json | python3 -m json.tool
-
-# 查看某个域的 GraphIndex 状态
-curl http://localhost:8000/api/core/ontology/engine/graph-stats/supply-chain | python3 -m json.tool
-```
-
-当前系统内置的域：
-
-| 域 ID | 名称 | 种子数据 | 适用行业 |
-|------|------|:---:|------|
-| `supply-chain` | 供应链 | ✅ 有模板 | 制造业、零售 |
-| `procurement-mvo` | 采购管理 | ✅ 有模板 | 金融、零售、政务 |
-| `ship-design` | 船舶设计 | ✅ 有模板 | 船舶、重工 |
-| `ai-knowledge` | AI 知识 | ❌ 无需种子 | 通用 |
-| `it-ops` | IT 运维 | ❌ 无模板 | 企业内部 IT |
-| `ai-solution` | AI 解决方案库 | ❌ 无模板 | 售前方案 |
-| `enterprise-terms` | 企业术语字典 | ❌ 无模板 | 术语标准化 |
+**行业推荐**：如果 ① 已选中客户并填写了行业，匹配的域会自动高亮绿色边框 + 🟢"推荐"标签。例如制造业客户会高亮 `supply-chain`（供应链）。
 
 ---
 
-### 10.3 快速诊断：哪些域缺数据
+### 10.3 🖥 在管理画面中创建新域
 
-```bash
-# 生成种子数据（不注入，只生成 JSON 文件到 ~/.aiplat/seed_data/）
-python3 scripts/seed_wiki.py --all
-
-# 检查各域的 GraphIndex 是否为空
-for domain in supply-chain procurement-mvo ship-design it-ops; do
-  echo -n "$domain: "
-  curl -s "http://localhost:8000/api/core/ontology/engine/graph-stats/$domain" \
-    | python3 -c "import json,sys; d=json.load(sys.stdin); print(f'{d.get(\"entity_count\",0)} entities, {d.get(\"relation_count\",0)} relations')" 2>/dev/null || echo "(不可达)"
-done
-```
+1. 管理端导航 → **本体管理**（`/infra/ontology`）
+2. 点击 **"新建域"** 按钮：
+   - 填写域 ID（英文，如 `retail-ops`）
+   - 填写域名称（中文，如 "零售运营"）
+   - 填写描述
+3. 新域创建后，在本体管理页面中：
+   - 点击 **"+ 类"** 添加实体类型（如供应商、物料、订单）
+   - 点击 **"+ 关系"** 添加对象属性（如 "供应商 → 提供 → 物料"）
+4. 域自动注册到系统，无需手动编辑配置文件
+5. 切回 FDE 工作台 ② Tab → 刷新 → 新域出现在域卡片列表中
 
 ---
 
-### 10.4 种子数据注入（完整流程）
+### 10.4 💻 注入种子数据（需要终端）
 
-以 `supply-chain` 域为例：
+> **为什么需要终端**：种子数据的生成和注入目前只能通过命令行脚本完成，管理画面暂不支持。
 
 #### Step 1：生成种子数据
 
 ```bash
-# 生成单个域的种子数据 JSON
+# 生成单个域的种子数据
 python3 scripts/seed_wiki.py --domain supply-chain
 
-# 或一次生成所有有模板的域
+# 一次生成所有有模板的域
 python3 scripts/seed_wiki.py --all
 ```
 
-生成的文件在 `~/.aiplat/seed_data/supply-chain.json`。内容包含该域的核心实体（供应商、物料、产线等）和关系。
+当前有种子模板的域：`supply-chain`、`procurement-mvo`、`ship-design`。
+没有模板的域需要手动准备种子数据（结构见 CLI 参考 §1.4）。
 
-#### Step 2：注入种子数据到引擎
+#### Step 2：注入到引擎
 
 ```bash
 # 确认 core 服务在运行
-curl http://localhost:8000/api/core/health | python3 -m json.tool
+curl http://localhost:8000/api/core/health
 
-# 注入单个域
+# 注入
 python3 scripts/ingest_seed.py --domain supply-chain
-
-# 或一次注入所有
-python3 scripts/ingest_seed.py --all
 ```
 
-这一步会调用引擎的 `POST /ontology/engine/ingest-seed` 端点，将种子 JSON 中的实体和关系写入 `GraphIndex` 和 `Wiki` 数据库。
+#### Step 3：回到管理画面验证
 
-#### Step 3：验证注入结果
-
-```bash
-# 检查实体和关系数量
-curl http://localhost:8000/api/core/ontology/engine/graph-stats/supply-chain \
-  | python3 -m json.tool
-
-# 期望输出示例：
-# {
-#   "domain_id": "supply-chain",
-#   "entity_count": 42,
-#   "relation_count": 38,
-#   "wiki_pages": 15,
-#   "status": "building"
-# }
-
-# 测试检索
-curl -X POST http://localhost:8000/api/core/wiki/retrieve \
-  -H "Content-Type: application/json" \
-  -d '{"query": "有哪些供应商","collection_id":"supply-chain","top_k": 5}' \
-  | python3 -c "import json,sys; d=json.load(sys.stdin); print(f'检索到 {len(d.get(\"results\",[]))} 条结果')"
-```
-
-#### Step 4：运行诊断
-
-在 FDE 工作台 ③ 问题重构 Tab 中，选择已注入种子数据的域，点击"运行诊断"。如果通过率 >= 80%，域标记为"生产就绪"。
+1. 切回 FDE 工作台 → **② 评估域** Tab
+2. 刷新页面 → 对应域的状态从"播种"变为"构建中"
+3. 展开域卡片 → 实体数和关系数不再是 0
 
 ---
 
-### 10.5 创建新域
+### 10.5 🖥 在管理画面中编辑域配置
 
-如果客户行业与现有任何域都不匹配，需要从零创建新域。
+所有域配置操作都在 **本体管理** 页面（`/infra/ontology`）中完成：
 
-#### 文件清单
-
-| 文件 | 作用 | 必需？ |
-|------|------|:---:|
-| `~/.aiplat/ontologies/{domain_id}.yaml` | 域本体定义 | ✅ 必须 |
-| `~/.aiplat/ontologies/registry.json` | 域注册（成熟度、映射模式等） | ✅ 必须 |
-| `~/.aiplat/seed_data/{domain_id}.json` | 种子数据 | ✅ 必须（否则域无法使用） |
-| `aiPlat-core/core/engine/skills/{skill_name}/SKILL.md` | 域专用 Skill | 推荐（提升诊断精度） |
-| `~/.aiplat/agents/{agent_name}/AGENT.md` | 域专用 Agent | 可选 |
-
-#### Step 1：编写域本体 YAML
-
-```bash
-vim ~/.aiplat/ontologies/my-domain.yaml
-```
-
-最小模板：
-
-```yaml
-name: "我的业务域"
-namespace: "http://aiplat.local/ontology/my-domain/"
-version: "1.0.0"
-description: "描述这个域的业务范围"
-
-classes:
-  MyEntity:
-    label: 实体名称
-    required_fields: [name, description]
-    optional_fields: [category, tags]
-    categories: [my-domain]
-```
-
-完整模板可参考 `supply-chain.yaml` 或 `procurement-mvo.yaml`（含状态机和推理规则）。
-
-#### Step 2：注册域
-
-编辑 `~/.aiplat/ontologies/registry.json`，在 `domains` 对象中新增一条：
-
-```jsonc
-"my-domain": {
-  "name": "我的业务域",
-  "description": "描述",
-  "ontology_file": "my-domain.yaml",
-  "collection_id": "my-domain",
-  "namespace": "http://aiplat.local/ontology/my-domain/",
-  "min_wiki_score": 0.3,
-  "expand_subclasses": false,
-  "system_prompt_id": "domain-prompt-my-domain",
-  "min_cross_results": 3
-}
-```
-
-重启 core 服务或调用热加载 API：
-
-```bash
-curl -X POST http://localhost:8000/api/core/ontology/domains \
-  -H "Content-Type: application/json" \
-  -d '{"id":"my-domain","name":"我的业务域","namespace":"http://aiplat.local/ontology/my-domain/","ontology_file":"my-domain.yaml"}'
-```
-
-#### Step 3：准备种子数据
-
-创建 `~/.aiplat/seed_data/my-domain.json`：
-
-```json
-{
-  "domain_id": "my-domain",
-  "entities": [
-    {
-      "class": "MyEntity",
-      "name": "示例实体",
-      "description": "这是一个示例",
-      "properties": {}
-    }
-  ],
-  "relations": []
-}
-```
-
-#### Step 4：注入种子数据
-
-```bash
-# 一次注入（不经过 seed_wiki 模板生成，直接调引擎 API）
-curl -X POST http://localhost:8000/api/core/ontology/engine/ingest-seed \
-  -H "Content-Type: application/json" \
-  -d @~/.aiplat/seed_data/my-domain.json
-```
-
-#### Step 5：验证
-
-同 §10.4 Step 3。
-
-#### Step 6（推荐）：创建域 Skill
-
-在 `aiPlat-core/core/engine/skills/` 下创建域专用 Skill，让诊断 Agent 在分析该域时能使用领域知识。
+| 操作 | 操作方式 |
+|------|------|
+| 编辑域名称/描述 | 点击 ✏️ 编辑按钮 |
+| 添加/删除类 | 点击 "+ 类" / 垃圾桶图标 |
+| 添加/删除关系 | 点击 "+ 关系" / 垃圾桶图标 |
+| 调整检索权重 | 展开 "检索权重" 面板 → 拖动 5 个滑块 |
+| 修复域本体 | 点击 "🔧 修复" → 自动检测缺失的类/字段/同义词 |
+| 进化域本体 | 点击 "🔄 进化" → 分析新文件 → 建议新增类 |
 
 ---
 
-### 10.6 域成熟度提升
+### 10.6 🖥 运行域诊断
+
+| 操作 | 在哪做 | 产出 |
+|------|------|------|
+| 查看域成熟度 | ② 评估域 Tab | 成熟度仪表盘 + 缺口列表 |
+| 运行域验证 | 本体管理 → 选中域 → "🔍 验证" | 分类统计 + GraphIndex 问题 |
+| 运行推理 | 本体管理 → 选中域 → "🧠 推理" | 推断关系 |
+| 知识合成 | 本体管理 → 选中域 → "🧬 合成" | 合成 Wiki 页面 |
+| 客户诊断 | ③ 问题重构 Tab → 填写表单 → 运行诊断 | 深层问题 + 方案建议 |
+
+---
+
+### 10.7 域成熟度提升
 
 | 当前阶段 | 操作 | 下一步阶段 |
 |------|------|:---:|
-| 播种 | 注入种子数据 → 验证 GraphIndex 非空 | 构建中 |
-| 构建中 | 补充实体 + 运行诊断 → 通过率 >= 80% | 生产就绪 |
-| 生产就绪 | 持续注入 + 定期重诊 → 通过率维持 >= 80% | 持续就绪 |
-| 通过率 < 80% | 检查实体缺失类型 → 补充种子数据 → 重诊 | 回到构建中 |
+| 播种 | 💻 注入种子数据 → 🖥 ② Tab 验证 GraphIndex 非空 | 构建中 |
+| 构建中 | 🖥 补充实体 + 运行诊断 → 通过率 >= 80% | 生产就绪 |
+| 通过率 < 80% | 🖥 本体管理 → "🔧 修复" 检查缺失 → 💻 补充种子数据 → 重诊 | 回到构建中 |
 
-**快速提升通过率的方法**：
+**快速提升通过率**：
 
-1. **补全核心实体**：检查 `graph-stats` 中每个类的实例数，少于 5 个的类需要补数据
-2. **增加关系**：实体之间的 `object_properties` 关系越多，检索召回率越高
-3. **添加 Wiki 页面**：`seed_wiki.py` 生成的 JSON 包含 Wiki 页面内容，注入后可大幅提升检索质量
-4. **写域 Skill**：域专用 Skill 告诉 LLM 该领域的术语、常见问题模式、答案结构
+1. 🖥 本体管理 → "🔧 修复" → 查看哪些类缺失实例
+2. 💻 补充对应实体到种子 JSON → 重新注入
+3. 🖥 本体管理 → 检查关系数 → 实体之间关系越多检索越准
+4. 🖥 本体管理 → "🧬 合成" → 生成 Wiki 页面提升检索质量
 
 ---
 
-### 10.7 常见问题
+### 10.8 常见问题
 
-| 问题 | 可能原因 | 排查方法 |
+| 问题 | 可能原因 | 解决方式 |
 |------|------|------|
-| `ingest_seed.py` 报 "Connection refused" | core 服务未启动 | `curl http://localhost:8000/api/core/health` |
-| 注入后 entity_count = 0 | 种子 JSON 格式不对或域 ID 不匹配 | `cat ~/.aiplat/seed_data/{domain}.json \| python3 -m json.tool` 验证 JSON 合法性 |
-| 没有 seed template | 该域不在 seed_wiki.py 支持的模板列表中 | 按 §10.5 手动创建种子 JSON |
-| 检索结果为空 | Wiki 页面未注入 | 确认 `seed_wiki.py --domain {id}` 输出中包含 wiki_pages |
-| 域在 ② Tab 不显示 | registry.json 未注册或字段不完整 | 对照 `supply-chain` 条目检查必填字段 |
-| 通过率始终 < 80% | 核心类实例不足或缺少关系 | `graph-stats` 检查每个类的 entity_count |
-| 种子数据重复注入 | 无害（引擎自动去重），但会增加处理时间 | 每个域只用注入一次 |
+| ② Tab 看不到某个域 | registry.json 未注册或本体管理页面未创建 | 🖥 本体管理 → 新建域 |
+| 实体数显示 0 | 种子数据尚未注入 | 💻 执行 `seed_wiki.py` + `ingest_seed.py` |
+| 通过率始终 < 80% | 核心类实例不足或缺少关系 | 🖥 本体管理 → "🔧 修复" + 💻 补充种子数据 |
+| 检索返回空结果 | Wiki 页面未生成或无种子数据 | 💻 确认 `ingest_seed.py` 已执行，🖥 本体管理 → "🧬 合成" |
+| 注入报 "Connection refused" | core 服务未启动 | 💻 `curl http://localhost:8000/api/core/health` 确认 |
+| 种子数据重复注入 | 无害（引擎自动去重），无需处理 | 每个域只需要注入一次 |
 
 ---
 
