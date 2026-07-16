@@ -99,6 +99,23 @@ const FdeDashboard: React.FC = () => {
       .catch(() => setDomainStats({ error: 1 }));
   }, []);
 
+  const handleCustomerSelect = async (c: CustomerInfo) => {
+    setCustomer(c);
+    if (!c.industry && (c.name || c.description)) {
+      try {
+        const r = await fetch('/api/core/fde/infer-industry', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: c.name, description: c.description }),
+        });
+        const d = await r.json();
+        if (d.confidence >= 0.70) {
+          setCustomer(prev => prev ? { ...prev, industry: d.industry } : prev);
+        }
+      } catch {}
+    }
+  };
+
   const loadWorkflow = async (name: string) => {
     if (!name) { setWorkflowStages([]); setWorkflowName(''); return; }
     try {
@@ -278,7 +295,7 @@ const FdeDashboard: React.FC = () => {
           </button>
         ))}
       </div>
-      {tab === 'customers'  && <CustomersTab onSelect={setCustomer} diagnosis={diagnosis} />}
+      {tab === 'customers'  && <CustomersTab onSelect={handleCustomerSelect} diagnosis={diagnosis} />}
       {tab === 'capability' && <CapabilityBoundary industry={customer?.industry} onSelect={setDomain} />}
       {tab === 'assess'     && <AssessTab domain={domain?.id ?? null} customerDesc={customer?.description || ''} customerName={customer?.name || ''} customerIndustry={customer?.industry || ''} onReport={setDiagnosis} />}
       {tab === 'poc'        && <PocTab domain={domain} onProfileSet={setPocProfile} />}

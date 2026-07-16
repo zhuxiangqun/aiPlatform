@@ -986,6 +986,55 @@ async def clarify(body: Dict[str, Any]):
     return result
 
 
+@router.post("/infer-industry", response_model=Dict[str, Any])
+async def infer_industry(body: Dict[str, Any]):
+    """LLM-based industry classification from company name + description."""
+    name = str(body.get("name", "") or body.get("company_name", ""))
+    desc = str(body.get("description", "") or body.get("customer_desc", ""))
+    
+    if not name and not desc:
+        return {"industry": "general", "confidence": 0, "method": "empty", "reason": "无企业信息"}
+    
+    try:
+        from core.harness.syscalls.llm import sys_llm_generate
+        from core.harness.utils.model_injection import best_model_for_purpose
+        
+        prompt = (
+            "根据以下企业信息判断行业分类，选择最匹配的一个：\n\n"
+            f"企业名称：{name}\n"
+            f"业务描述：{desc}\n\n"
+            "可选行业：manufacturing(制造), installation(安装服务), finance(金融), "
+            "retail(零售), healthcare(医疗), education(教育), logistics(物流), "
+            "government(政务), technology(科技), general(通用)\n\n"
+            "只返回JSON，不要其他文字："
+            '{"industry": "industry_key", "confidence": 0.0-1.0, "reason": "一句话理由"}'
+        )
+        
+        model_name = best_model_for_purpose("classify")
+        result = await sys_llm_generate(None, [
+            {"role": "system", "content": "你是企业行业分类助手。只返回JSON。"},
+            {"role": "user", "content": prompt},
+        ], model_name=model_name, max_tokens=150, temperature=0.1)
+        
+        content = getattr(result, "content", "") or ""
+        if isinstance(result, dict):
+            content = result.get("content", "") or ""
+        if not content:
+            content = str(result)
+        
+        import json as _j, re as _re
+        content = content.replace("```json", "").replace("```", "").strip()
+        jm = _re.search(r'\{.*\}', content, _re.DOTALL)
+        if jm:
+            parsed = _j.loads(jm.group(0))
+            parsed["method"] = "llm"
+            return parsed
+    except Exception:
+        pass
+    
+    return {"industry": "general", "confidence": 0, "method": "fallback", "reason": "LLM 不可用"}
+
+
 @router.post("/feedback/submit", response_model=Dict[str, Any])
 async def submit_clarified_feedback(body: Dict[str, Any]):
     """Store clarified feedback conversation + summary with pipeline context."""
