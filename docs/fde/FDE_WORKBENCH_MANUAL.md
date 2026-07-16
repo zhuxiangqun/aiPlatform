@@ -1201,6 +1201,51 @@ ls aiPlat-core/core/engine/skills/customer_profile_creator/SKILL.md \
 | `GET /fde/acceptance/checklist` | fde_delivery_manager | 验收分析（agent_analysis 字段） |
 | `POST /fde/assess/dialog` | fde_solution_architect | 触发 "运行诊断" 时走 Agent 路径 |
 
+### 自动技能选择机制
+
+从 v2.4 开始，所有 Agent（不限于 FDE）在执行时**自动根据用户意图选择最相关的技能子集**，无需手动配置。
+
+**工作原理**：
+
+```
+用户输入 "帮我验证 POC 数据"
+    ↓
+路由分类器 (classifier.py)
+    ├─ 关键词匹配 → intent=APPLICABILITY_ANALYSIS (置信度 85%)
+    ├─ _map_intent_to_skills(mode="filter") → [poc_data_inject, package_builder]
+    └─ 置信度 ≥80% → 自动绑定
+    ↓
+Agent 只启用 poc_data_inject + package_builder
+    ↓
+LLM 只看到这 2 个 Skill → 自然选择正确的
+```
+
+**已覆盖的意图**（17 种）：
+
+| 用户说 | 自动选择的 Skill |
+|------|------|
+| 验证 POC / 注入数据 | `poc_data_inject` |
+| 运行诊断 / 分析问题 | `field_assessment` |
+| 生成部署包 / 打包 | `package_builder` |
+| 灰度发布 / 检查灰度 | `canary_runner` |
+| 验收 / 签字 | `acceptance_checker` |
+| 收集客户信息 | `customer_profile_creator` |
+| 审查代码 / code review | `code_review` |
+| 写代码 / 实现功能 | `code_generation` |
+| 修 bug / 修复异常 | `root_cause_analysis` |
+| 设计架构 | `architecture_design` |
+| 技术咨询 | `knowledge_retrieve` |
+| 查询事实 | `information_search` |
+| 对比分析 | `multi_doc_query` |
+| 安全扫描 | `security-auditor` |
+| 总结摘要 | `summarize` |
+| 端到端测试 | `site_tester` |
+| 澄清追问 | `clarify` |
+
+**置信度不足时**（< 80%）：不使用自动选择，Agent 拥有全量 Skill，LLM 自行判断调用哪个。
+
+**关闭自动选择**：在 AGENT.md 中设置 `auto_select_skills: false`，该 Agent 将始终使用完整技能列表。
+
 ---
 
 
