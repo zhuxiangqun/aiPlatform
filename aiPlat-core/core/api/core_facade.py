@@ -2148,6 +2148,9 @@ def check_kb_entity_access(
 # ── Backward-compatible re-exports (platform imports these from CoreFacade) ──
 
 from core.harness.integration import KernelRuntime, get_harness
+from core.harness.utils.prompt_loader import _sync_resolve
+from core.harness.utils.model_injection import best_model_for_purpose
+from core.services.pii_detector import get_pii_detector
 from core.harness.kernel.runtime import get_kernel_runtime, set_kernel_runtime
 from core.harness.kernel.types import ExecutionRequest
 from core.harness.infrastructure.approval.types import ApprovalContext, ApprovalRule, RequestStatus, RuleType

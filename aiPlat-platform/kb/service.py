@@ -953,7 +953,7 @@ def load_doc_kinds(*, tenant_id: str, doc_ids: List[str]) -> List[str]:
 def _mask_pii(text: str) -> str:
     """Mask PII in text before storing in KB. Safe fallback on import error."""
     try:
-        from core.services.pii_detector import get_pii_detector
+        from core.api.core_facade import get_pii_detector  # v2.5: canonical path
         return get_pii_detector().mask(text)
     except Exception:
         return text

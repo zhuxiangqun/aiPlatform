@@ -204,7 +204,7 @@ async def query_elements(
                 ctx_lines.append(
                     f"[{i}] doc={it.get('doc_id')} page={it.get('page_idx')} snippet={it.get('snippet')}"
                 )
-            from core.harness.utils.prompt_loader import _sync_resolve
+            from core.api.core_facade import _sync_resolve  # v2.5: canonical path
             system_prompt = _sync_resolve("kb-doc-qa",
                 passages="\n".join(ctx_lines), question=question,
             )

@@ -40,8 +40,8 @@ async def kb_slack_query(request: Request):
         results = kb_retrieve(query=question, doc_ids=doc_ids, top_k=3)
         doc_content = "\n\n---\n\n".join(r["text"][:500] for r in results[:3]) if results else ""
 
-        from core.harness.utils.prompt_loader import _async_prompt_resolve
-        from core.harness.utils.model_injection import best_model_for_purpose
+        from core.api.core_facade import _sync_resolve as _async_prompt_resolve  # v2.5: canonical path (sync wrapper for async)
+        from core.api.core_facade import best_model_for_purpose  # v2.5: canonical path
         sp = await _async_prompt_resolve("kb-qa", scenario="widget", documents=doc_content, question=question)
         resp = await llm_generate(
             None,
