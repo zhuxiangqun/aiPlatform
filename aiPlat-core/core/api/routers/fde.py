@@ -495,7 +495,7 @@ async def package_status(task_id: str):
     return _package_tasks.get(task_id, {"status": "not_found"})
 
 
-@router.get("/package/{task_id}/download")
+@router.get("/package/{task_id}/download", response_model=Dict[str, Any])
 async def package_download(task_id: str):
     """下载打包完成的 tar.gz 文件。"""
     from fastapi.responses import FileResponse
