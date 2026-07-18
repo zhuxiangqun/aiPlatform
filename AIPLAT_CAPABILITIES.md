@@ -163,6 +163,17 @@
 | AI方案原型库 | `~/.aiplat/ontologies/ai-solution.yaml` + `apps/skills/registry.py:1712-1750` | ✅ | 12类标准化AI方案原型(含数据成熟度/成本/周期/部署/信创约束)→§6推荐时自动注入约束规则 | 2026-07-11 |
 | FDE图查询接线 | `apps/skills/registry.py` | ✅ | 诊断前查询域GraphIndex→traverse痛点头实体→注入图谱遍历路径→§1来源列引用图谱关系 | 2026-07-11 |
 | FDE推理验证接线 | `apps/skills/registry.py` | ✅ | 诊断后运行GraphInference.infer()→检查推理规则与AI机会匹配度→不匹配降置信度标注 | 2026-07-11 |
+| **yaml_serializer** | `harness/knowledge/yaml_serializer.py` | ✅ | OntologyDomain↔YAML↔JSON 双向序列化，本体编辑器后端核心 | 2026-07-19 |
+| **term_resolver** | `harness/knowledge/term_resolver.py` | ✅ | 跨域术语消歧：同名异义检测 + 同义异名 embedding 匹配 + persist | 2026-07-19 |
+| **role_view** | `harness/knowledge/role_view.py` | ✅ | 职责维度：角色视图继承+覆盖、术语定义、类/字段可见性过滤 | 2026-07-19 |
+| **sla_monitor** | `harness/knowledge/sla_monitor.py` | ✅ | 时序触发器后台监控：定时扫描 state_history，time_elapsed 超时自动升级 | 2026-07-19 |
+| **process_orchestrator** | `harness/knowledge/process_orchestrator.py` | ✅ | 跨实体流程编排：YAML processes + auto_create + on_failure + step 追踪 | 2026-07-19 |
+| **process_monitor** | `harness/knowledge/process_monitor.py` | ✅ | 流程监控：复用 state_history 做 state_distribution + bottleneck + SLA violations + trends | 2026-07-19 |
+| **ontology_importer** | `harness/knowledge/ontology_importer.py` | ✅ | 外部本体联邦导入：OWL/SKOS/JSON-LD → aiPlat YAML，readonly 标记 | 2026-07-19 |
+| **semantic_gateway** | `harness/infrastructure/semantic_gateway.py` | ✅ | Agent数据网关：DomainRouter→PolicyGate→TermResolver→Strategy 统一路由 | 2026-07-19 |
+| **usage_tracker** | `harness/observability/usage_tracker.py` | ✅ | 计量引擎：SQLite 事件记录 + 日聚合 + syscall wrapper 拦截 4 类调用 | 2026-07-19 |
+| **ontology_editor (API)** | `platform/apps/ontology_editor/api/` | ✅ | 21 REST 端点：domain CRUD + class CRUD + views CRUD + monitor | 2026-07-19 |
+| **ontology_editor (UI)** | `frontend/src/pages/OntologyEditor/` | ✅ | 本体编辑器前端：域列表 + 类详情 + 编辑表单 + NL→YAML + 监控面板 | 2026-07-19 |
 | FDE图谱回写接线 | `apps/skills/registry.py` | ✅ | 诊断完成后自动注册DiagnosisSubject实体+has_opportunity关系→下一次诊断可遍历跨报告关联 | 2026-07-11 |
 | FDE交付跟踪本体 | `~/.aiplat/ontologies/fde-delivery.yaml` + `apps/skills/registry.py:1789-1825,1979-2025` | ✅ | DiagnosisSession+DeliveryAction类定义→诊断后自动创建跟踪实例→下次诊断注入交付率统计(§4.6ROI数据驱动) | 2026-07-11 |
 | FDE追问端点 | `platform/apps/fde/api/fde.py` + `apps/skills/registry.py:1896-1914` | ✅ | POST /fde/ask — 基于诊断上下文回答后续问题，复用域图谱+历史+方案原型全链路(HMESI B0) | 2026-07-11 |
@@ -996,12 +1007,12 @@
 | 编排系统 | 4 | 0 | 4 |
 | 管理 & 质量 | 21 | 0 | 21 |
 | 编排层 | 17 | 0 | 17 |
-| **总计** | **725** | **0** | **725** |
+| **总计** | **737** | **0** | **737** |
 
 ---
 
-*最后更新: 2026-07-11*
-*版本: 18.5 · 28章 · 686项能力 · 686✅ · 企业大脑竣工+智能澄清对话*
+*最后更新: 2026-07-19*
+*版本: 19.0 · 28章 · 737项能力 · 737✅ · 五维本体增强+编辑器+网关+计量*
 
 **自检命令**：
 ```bash

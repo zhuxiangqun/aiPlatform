@@ -456,7 +456,7 @@ python -c "from core.harness.memory.manager import _re_rank_messages; print('OK'
 | 行业推断 | 需手动填写 | ✅ LLM 自动推断 (infer-industry endpoint) |
 | lock-service 域 | 江苏锁安无匹配域 | ✅ 6类18实体新建 |
 
-### 19.2 已知残留 (v2.6 scope)
+### 19.2 已知残留 (v2.7 scope, 2026-07-19 更新)
 
 | 编号 | 内容 | 类型 |
 |------|------|------|
@@ -464,7 +464,10 @@ python -c "from core.harness.memory.manager import _re_rank_messages; print('OK'
 | K2 | 前端API路径 baseline (16条, 多数为路径格式差异) | 已知基线 |
 | K3 | Phase 4 Agent边界约束注入 | ✅ 已实现 (llm.py _try_inject_boundary_rules + pre-commit hook) |
 | K4 | 种子数据注入端到端 — 需 server 运行 | 待运行时 |
-| K5 | CLAUDE.md §16 已知债务 H (~60+ routes 缺 response_model) | **✅ 已修复 (2026-07-18)** — 全量 typed 化完成，§16 H 已闭环 |
+| K5 | CLAUDE.md §16 已知债务 H (~60+ routes 缺 response_model) | **✅ 已修复 (2026-07-18)** — 全量 typed 化完成 |
+| K6 | sla_monitor 后台线程未调用 start() — server.py 启动时需接线 | 待接线 (v2.7) |
+| K7 | process_orchestrator.check_step_completion() 未在 engine.py 侧作用完成后接入 | 待接线 (v2.7) |
+| K8 | 跨域流程编排 (processes.domains) 预留设计但未实现 | 路线图 (v2.8) |
 
 ### 19.3 自动化防护生效
 
