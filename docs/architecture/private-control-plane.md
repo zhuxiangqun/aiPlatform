@@ -1,5 +1,7 @@
 # Private Control Plane — 内部治理平面
 
+> **本文档为 PolicyGate/ApprovalGate 的权威参考入口。** 相关内容参见：`governance.md`、`eu-ai-act-compliance.md`、`private-control-plane.md`
+
 > 本文档为架构治理中 PolicyGate / ApprovalGate / 审计日志等组件的权威参考入口。
 
 ## 核心组件

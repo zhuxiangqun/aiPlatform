@@ -1,5 +1,7 @@
 # aiPlat 治理体系
 
+> **PolicyGate 实现参考**：[private-control-plane.md](./private-control-plane.md)
+
 ## 1 治理是什么
 
 > 治理 = **签名 + 权限 + 审批**，贯穿实体从"创建"到"退役"全生命周期。

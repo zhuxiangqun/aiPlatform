@@ -1,5 +1,7 @@
 # EU AI Act 合规自评（初稿）
 
+> **PolicyGate 实现参考**：[private-control-plane.md](./private-control-plane.md)
+
 > 框架三 macro.2 合规伦理 2.5→3.0 baseline。本文件证明 aiPlat 具备基本的 AI 合规意识与内建护栏——**非正式合规审计**，而是工程能力清单。
 
 last_synced: 2026-07-07
