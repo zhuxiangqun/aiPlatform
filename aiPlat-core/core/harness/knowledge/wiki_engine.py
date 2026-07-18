@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import os
 import re
+import uuid
 import json as _json
 import time
 import logging
@@ -30,7 +31,7 @@ FRONTMATTER_FIELDS = {
     "title": "", "category": "entities", "tags": [], "related": [],
     "contradictions": [], "source_articles": [], "last_updated": "",
     "summary": "", "version": "1", "stale_references": [], "images": [],
-    "status": "draft", "marking": "public",
+    "status": "draft", "marking": "public", "page_id": "",
     # K4: temporal validity
     "effective_date": "", "expiry_date": "",
     # K4: organizational ownership
@@ -258,7 +259,7 @@ def _parse_frontmatter(text: str) -> Tuple[Dict[str, Any], str]:
 
 
 def read_page(title_or_path: str, *, category: str = "entities", collection_id: str = "default") -> Optional[Dict[str, Any]]:
-    """Read a wiki page. Returns {title, category, tags, body, fm, path} or None."""
+    """Read a wiki page by title or path. Returns {title, page_id, category, tags, body, fm, path} or None."""
     _ensure_dirs(collection_id)
     root = _wiki_root(collection_id)
     name = re.sub(r"[<>:\"/\\|?*]", "_", title_or_path)[:120]
@@ -268,7 +269,8 @@ def read_page(title_or_path: str, *, category: str = "entities", collection_id: 
         if p.exists():
             text = p.read_text(encoding="utf-8")
             fm, body = _parse_frontmatter(text)
-            return {"title": fm.get("title", name), "category": cat, "tags": fm.get("tags", []),
+            return {"title": fm.get("title", name), "page_id": fm.get("page_id", ""),
+                    "category": cat, "tags": fm.get("tags", []),
                     "related": fm.get("related", []), "contradictions": fm.get("contradictions", []),
                     "source_articles": fm.get("source_articles", []),
                     "stale_references": fm.get("stale_references", []),
@@ -277,6 +279,36 @@ def read_page(title_or_path: str, *, category: str = "entities", collection_id: 
                     "marking": fm.get("marking", "public"),
                     "last_updated": fm.get("last_updated", ""), "summary": fm.get("summary", ""),
                     "body": body, "fm": fm, "path": str(p)}
+    return None
+
+
+def read_page_by_id(page_id: str, *, collection_id: str = "default") -> Optional[Dict[str, Any]]:
+    """Read a wiki page by its stable page_id (UUID). Survives title renames."""
+    if not page_id:
+        return None
+    _ensure_dirs(collection_id)
+    root = _wiki_root(collection_id)
+    for cat in ["entities", "topics", "contradictions", "atoms"]:
+        cat_dir = root / cat
+        if not cat_dir.exists():
+            continue
+        for md_file in cat_dir.glob("*.md"):
+            try:
+                text = md_file.read_text(encoding="utf-8")
+                fm, body = _parse_frontmatter(text)
+                if fm.get("page_id") == page_id:
+                    return {"title": fm.get("title", md_file.stem), "page_id": page_id,
+                            "category": cat, "tags": fm.get("tags", []),
+                            "related": fm.get("related", []), "contradictions": fm.get("contradictions", []),
+                            "source_articles": fm.get("source_articles", []),
+                            "stale_references": fm.get("stale_references", []),
+                            "relationships": fm.get("relationships", []),
+                            "status": fm.get("status", "draft"),
+                            "marking": fm.get("marking", "public"),
+                            "last_updated": fm.get("last_updated", ""), "summary": fm.get("summary", ""),
+                            "body": body, "fm": fm, "path": str(md_file)}
+            except Exception:
+                continue
     return None
 
 
@@ -305,8 +337,14 @@ def write_page(title: str, body: str, *, category: str = "entities", tags: List[
                relationships: List[Dict[str, str]] = None,
                images: List[Dict[str, str]] = None,
                version: str = "1", summary: str = "", status: str = "",
-               marking: str = "", collection_id: str = "default") -> str:
-    """Create or update a wiki page. Returns the file path."""
+               marking: str = "", page_id: str = "", collection_id: str = "default") -> str:
+    """Create or update a wiki page. Returns the file path.
+
+    Args:
+        page_id: Stable identifier for the page (UUID). Auto-generated on first creation.
+                 On updates, the existing page_id is preserved. Use this for stable
+                 cross-page references that survive title renames.
+    """
     import re as _re
 
     _ensure_dirs(collection_id)
@@ -377,6 +415,19 @@ def write_page(title: str, body: str, *, category: str = "entities", tags: List[
         )
 
     name = re.sub(r"[<>:\"/\\|?*]", "_", title)[:120]
+
+    # ── Stable page_id: generate or preserve ──
+    if existing:
+        resolved_page_id = existing.get("page_id") or page_id or str(uuid.uuid4())
+        old_name = re.sub(r"[<>:\"/\\|?*]", "_", existing.get("title", ""))[:120]
+        old_cat = existing.get("category", "")
+        # If title changed (rename), clean up old file (same-category rename)
+        if old_name and old_name != name and old_cat == category:
+            old_p = root / old_cat / f"{old_name}.md"
+            if old_p.exists():
+                old_p.unlink()
+    else:
+        resolved_page_id = page_id or str(uuid.uuid4())
     now = datetime.now(timezone.utc).isoformat()
 
     # Merge with existing if updating
@@ -422,6 +473,7 @@ def write_page(title: str, body: str, *, category: str = "entities", tags: List[
 
     fm_lines = [
         f"title: {title}",
+        f"page_id: {resolved_page_id}",
         f"category: {category}",
         f"tags: [{', '.join(tags or [])}]",
         f"related: [{', '.join(related or [])}]",

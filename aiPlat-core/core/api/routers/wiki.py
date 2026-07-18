@@ -1482,6 +1482,21 @@ async def wiki_rollback(title: str, index: int = -1, collection: str = "default"
     return {"status": "rolled_back", "title": title, "index": index}
 
 
+@router.get("/wiki/page/{page_id}", response_model=Dict[str, Any])
+async def wiki_page_by_id(page_id: str, collection: str = "default"):
+    """Get a wiki page by its stable page_id (UUID). Survives title renames."""
+    try:
+        from core.harness.knowledge.wiki_engine import read_page_by_id
+        page = read_page_by_id(page_id, collection_id=collection)
+        if not page:
+            raise HTTPException(status_code=404, detail=f"Page not found: {page_id}")
+        return {"status": "ok", "page": page}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Page lookup failed: {e}")
+
+
 @router.get("/wiki/duplicates", response_model=Dict[str, Any])
 async def detect_wiki_duplicates(collection: str = "default"):
     """Detect potentially duplicate wiki pages using embedding similarity."""
