@@ -167,9 +167,55 @@ FDE 提供两种执行方式，适应不同的交付场景：
 ⑧ 监控过滤         ③④ 表单预填   ① 回显 badge   ⑤ 打包输入
 ```
 
----
+### 3.4 生态集成层 — 插件化数据源接入
 
-## 四、实施流程
+FDE 交付现场的第三方系统（ERP/CRM/MES/IM）对接通过标准化集成插件完成。生态伙伴可独立开发插件并提交到生态市场。
+
+**集成插件规范**：
+
+| 要求 | 说明 |
+|------|------|
+| 目录结构 | `{name}/plugin.yaml` + `{name}/adapter.py` |
+| plugin.yaml | name, version, source_system (ERP/CRM/MES), config_schema |
+| adapter.py | 继承 `BaseIntegrationAdapter`，实现 `ingest()` 和 `sync()` |
+| 测试 | 附带 `test_adapter.py`，覆盖 connect/ingest/error 三条路径 |
+
+**已有集成能力**：
+
+| 集成类型 | 状态 | 入口 |
+|:---|:---:|------|
+| SSO/OIDC | ✅ 已实现 | 管理端 → 认证鉴权 → 新增 OIDC Provider（Keycloak/Azure AD/Okta） |
+| REST API 集成 | ✅ 已实现 | 渠道管理 → 新建 API 渠道 → 生成 Key → 测试连通 |
+| 数据源直连 | ✅ 已实现 | `POST /fde/ingest` — ERP/CRM/MES 字段映射 → 标准 FDE 输入 |
+| 企业 IM Webhook | ⚠️ 已预留 | MCP 管理 → Webhook 适配器（飞书/企微/Slack） |
+| RBAC 角色同步 | ✅ 已实现 | `permissions.yaml` + JWT 透传 |
+| 数据库连接器 | ✅ 已实现 | 平台存储 → 新建连接 → JDBC 自动生成 CRUD 端点 |
+
+> **集成健康监控**：`GET /fde/health` 已包含组件级健康检查。集成插件通过数据源连通性（`curl` 可达）+ 数据新鲜度（最后同步 <24h）+ 错误率（<5%）三项指标上报状态。
+
+### 3.5 客户自助层 — 从委托到自主
+
+客户使用 aiPlat 的方式分三个阶段演进：
+
+| 阶段 | 模式 | 客户角色 | 当前状态 |
+|:---:|------|------|:---:|
+| **1. 委托模式** | FDE 全权交付 | 客户仅使用，不参与配置 | ✅ **当前** |
+| **2. 协作模式** | 客户通过 Builder 对话式调整 Agent 配置 | 客户提议，FDE 审核上线 | ⚠️ v2.8 目标 |
+| **3. 自助模式** | 客户在租户空间内自主创建/调整/下线 Agent | 客户自主，平台保障 | vNext |
+
+**当前可用能力**（阶段 1）：
+
+| 能力 | 入口 | 说明 |
+|:---|:---|------|
+| 终端使用 → 工作台 | `POST /workbench/submit` | 客户可直接提交 AI 任务，无需 FDE 介入 |
+| 能力浏览 | `GET /workbench/capabilities` | 客户可见 5 种通用能力 + 行业定制能力 |
+| Spec 修订 | `POST /workbench/spec/{id}/revise` | 客户可提出修订请求，系统自动重执行 |
+| 效果反馈 | `POST /workbench/tasks/{id}/feedback` | 打分 + 行为信号（复制/重查/放弃）→ FeedbackRadar |
+| KPI 仪表板 | Value → KPI 管理 | 客户可自行设定和查看 KPI |
+
+> **协作模式路线图**（v2.8）：客户通过 Builder 对话式修改 Agent SOP（如增加质检行业规则），系统生成修订 Spec → FDE 审核 → 一键上线。详见 `04-fde-admin.md`。
+
+---
 
 ### 步骤 ①：业务认知
 
