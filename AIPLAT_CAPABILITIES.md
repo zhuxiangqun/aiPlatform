@@ -63,6 +63,7 @@
 | Plan-Execute 循环 | `harness/execution/loop/_facade.py` | ✅ | 先规划后执行模式 | 已合入 |
 | 20 Hook 阶段 | `harness/infrastructure/hooks/hook_manager.py:15` | ✅ | PRE/POST_LOOP, REASONING, ACT, OBSERVE, TOOL_USE, SKILL_USE, STOP, CONTRACT_CHECK, APPROVAL 等 | 已合入 |
 | Pipeline 引擎 | `harness/execution/pipeline_engine.py:162` | ✅ | 多阶段调度、HITL 暂停/恢复、重试、snapshot | 已合入 |
+| **PipelinePhase** | `harness/execution/phase.py` | ✅ | 通用 Pipeline 阶段常量 — 替代 BuilderSessionPhase 业务枚举 | 2026-07-18 |
 | LangGraph 编排层 | `harness/execution/langgraph/core.py:54` | ✅ | 图节点拓扑、条件边路由、checkpoint | 已合入 |
 | 8 种图构建 | `harness/execution/langgraph/graphs/` | ✅ | Pipeline/ReAct/PlanExecute/MultiAgent/TriAgent/Reflection | 已合入 |
 | EngineRouter 回退链 | `harness/execution/router.py` | ✅ | graph→loop→quick 三引擎 | 已合入 |
@@ -381,6 +382,7 @@
 | **register_fde_prompts** | `apps/fde/prompts.py` | ✅ | FDE域prompt自动注册（7个），启动时回调注册 | 2026-07-18 |
 | **模块 Prompt 管理系统** | `apps/{module}/prompts.py`（6 模块） | ✅ | prompt_loader 域 prompt 迁移至各模块：fde(8)/builder(8)/skills(4)/eval(2)/knowledge(5)/workbench(4) | 2026-07-18 |
 | **finetune 模块搬迁** | `apps/finetune/` | ✅ | 从 harness/finetune/ + schemas_finetune.py 搬迁至标准模块目录结构 | 2026-07-18 |
+| **common_schemas** | `apps/common_schemas.py` | ✅ | 平台层通用响应模型（StatusResponse/ListResponse/ItemResponse）— 替换全系统 response_model=dict | 2026-07-18 |
 
 ---
 
@@ -503,6 +505,7 @@
 | ProcessRegistry | `harness/infrastructure/process_registry.py` | ✅ | 进程生命周期管理 + 异步健康监控 + 优雅关闭 | 已合入 |
 | **fde_project_freeze** | `platform/apps/fde/api/fde.py` | ✅ | POST /fde/project/freeze — 中止项目冻结归档（§7.4） | 2026-07-18 |
 | **security_preflight** | `scripts/security_preflight.sh` | ✅ | FDE 安全行前检查脚本（§1.4） | 2026-07-18 |
+| **email_notifier** | `harness/infrastructure/email_notifier.py` | ✅ | FDE 邮件通知器 — smtplib零依赖，TLS/认证，dev模式console降级 | 2026-07-18 |
 | **sanitize_logs** | `scripts/sanitize_logs.sh` | ✅ | FDE 日志脱敏脚本（§1.4） | 2026-07-18 |
 | DB Utils (SQLite连接池) | `harness/infrastructure/db_utils.py` | ✅ | 统一WAL+busy_timeout连接层，冷路径context manager + 热路径persistent conn | 已合入 |
 

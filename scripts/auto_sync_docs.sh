@@ -60,7 +60,8 @@ NEW_MODULES=""
 for root in "aiPlat-core/core/harness" "aiPlat-core/core/engine/skills" \
     "aiPlat-core/core/api/routers" "aiPlat-core/core/services" \
     "aiPlat-core/core/management" \
-    "aiPlat-platform/auth" "aiPlat-platform/storage" "aiPlat-platform/kb"; do
+    "aiPlat-platform/auth" "aiPlat-platform/storage" "aiPlat-platform/kb" \
+    "aiPlat-platform/apps"; do
     if [ ! -d "$WORKSPACE/$root" ]; then continue; fi
     while IFS= read -r f; do
         basename="${f##*/}"
