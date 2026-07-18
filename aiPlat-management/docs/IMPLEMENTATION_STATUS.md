@@ -43,5 +43,5 @@
 
 **M0（P0）**：统一依赖注入（所有 API 使用 `app.state`），移除路由模块的重复实例。 ✅ core Phase 9 DI 12/18 服务转换完成。  
 **M1（P0）**：Dashboard/Diagnostics 全部改为 HTTP 数据源（各层 status/metrics/health），移除 management 本机探测与 mock。 ✅ 已完成 — 各层通过 HTTP adapter 转发 (2026-07-18)。  
-**M2（P1）**：Config/Alerting 最小落库（SQLite 即可）+ 审计字段（author/trace_id）+ 回滚能力。 ⚠️ config YAML 已落地；alert 持久化 + 回滚未完成。  
-**M3（P1/P2）**：鉴权与审计打通；tracing/logs 在 UI 与 API 中可见并可关联到 core 的 trace/run/checkpoint。 ⚠️ trace_id/span_id 已实现；UI 关联未完成。
+**M2（P1）**：Config/Alerting 最小落库（SQLite 即可）+ 审计字段（author/trace_id）+ 回滚能力。 ✅ Alerting SQLite 持久化已完成 (2026-07-18)；Config YAML 已落地；回滚能力未完成。  
+**M3（P1/P2）**：鉴权与审计打通；tracing/logs 在 UI 与 API 中可见并可关联到 core 的 trace/run/checkpoint。 ✅ trace_id/span_id 全链路已实现；TraceFlowGraph.tsx 前端可视化已上线 (2026-07-18)。
