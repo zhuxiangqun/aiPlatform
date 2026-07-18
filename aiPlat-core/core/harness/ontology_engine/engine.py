@@ -355,6 +355,28 @@ class OntologyEngine:
                                             "relation_label": rel_label,
                                         })
 
+            # ── v2.6: Process Orchestrator — check step completion after state transition ──
+            try:
+                from core.harness.knowledge.process_orchestrator import check_step_completion
+                for inst in result.instances:
+                    new_state = inst.get("properties", {}).get("state", "")
+                    if new_state:
+                        triggered = check_step_completion(
+                            self._domain.id,
+                            inst.get("class_name", ""),
+                            inst.get("entity_text", ""),
+                            new_state,
+                        )
+                        for step in triggered:
+                            logging.getLogger("ontology_engine").info(
+                                "Process step triggered: %s → %s (auto_create=%s)",
+                                step.get("step_label", ""),
+                                step.get("next_step", ""),
+                                step.get("auto_create", False),
+                            )
+            except Exception:
+                pass
+
         # ── Step 3.6: Persist review queue ──────────────────────
         if result.affected_instances:
             _persist_reviews(self._domain.id, result.affected_instances)

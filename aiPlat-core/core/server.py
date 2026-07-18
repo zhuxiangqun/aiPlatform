@@ -1367,6 +1367,14 @@ async def lifespan(app: FastAPI):
         except Exception as e:
             logging.debug(str(e), exc_info=True)
 
+    # SLA Monitor: background thread scans state_history for time_elapsed triggers
+    try:
+        from core.harness.knowledge.sla_monitor import start as start_sla_monitor
+        start_sla_monitor()
+        log.info("SLA monitor started (background thread)")
+    except Exception as e:
+        logging.debug("SLA monitor startup skipped: %s", e)
+
     # Cross-graph ontology bridge: scan AGENT.md/SKILL.md for dependency triples
     try:
         async def _bootstrap_ontology_triples():
