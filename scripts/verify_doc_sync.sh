@@ -157,6 +157,54 @@ check_downstream_numeric_sync() {
 }
 check_downstream_numeric_sync
 
+# ══════════════════════════════════════════════════════════════
+# Rule 5: management/docs claims vs code reality
+# ══════════════════════════════════════════════════════════════
+check_management_docs() {
+    echo ""
+    echo "━━━ Rule 5: management/docs claims vs code ━━━"
+
+    # 5a: Layer 2 — docs say "预留" but platform has endpoints
+    local plat_endpoints
+    plat_endpoints=$(grep -r '@router\.\(get\|post\|put\|delete\|patch\)' "$WORKSPACE/aiPlat-platform/apps/" --include='*.py' 2>/dev/null | wc -l | tr -d ' ')
+    for doc in "$WORKSPACE/aiPlat-management/docs/core/index.md" "$WORKSPACE/aiPlat-management/docs/infra/index.md"; do
+        [ ! -f "$doc" ] && continue
+        if grep -q 'Layer 2.*预留\|Layer 2.*待实施' "$doc" 2>/dev/null; then
+            echo -e "  ${RED}⚠${NC} $(basename $doc): Layer 2 标注为'预留/待实施', 但 platform 有 $plat_endpoints 个端点"
+            VIOLATIONS=$((VIOLATIONS + 1))
+        fi
+    done
+
+    # 5b: Tech stack — PostgreSQL+Redis claimed but SQLite is primary
+    local sqlite_refs
+    sqlite_refs=$(grep -r 'sqlite3\|SQLite\|aqlite\|sqlite_' "$WORKSPACE/aiPlat-core/core/" --include='*.py' 2>/dev/null | wc -l | tr -d ' ')
+    local pg_refs
+    pg_refs=$(grep -r 'psycopg2\|PostgreSQL\|postgresql' "$WORKSPACE/aiPlat-core/core/" --include='*.py' 2>/dev/null | wc -l | tr -d ' ')
+    local index_doc="$WORKSPACE/aiPlat-management/docs/index.md"
+    if [ -f "$index_doc" ]; then
+        if grep -q 'PostgreSQL.*Redis' "$index_doc" 2>/dev/null && ! grep -q 'SQLite\|sqlite' "$index_doc" 2>/dev/null; then
+            echo -e "  ${YELLOW}⚠${NC} index.md: 标注 PostgreSQL+Redis 为存储 (未提 SQLite), 但代码中 SQLite=$sqlite_refs 处, PostgreSQL=$pg_refs 处"
+            VIOLATIONS=$((VIOLATIONS + 1))
+        fi
+    fi
+
+    # 5c: overview — "reserved" status vs actual endpoints
+    local overview="$WORKSPACE/aiPlat-management/docs/overview.md"
+    if [ -f "$overview" ]; then
+        if grep -q '"platform".*"reserved"' "$overview" 2>/dev/null && [ "$plat_endpoints" -gt 10 ]; then
+            echo -e "  ${RED}⚠${NC} overview.md: platform status='reserved', 但实际有 $plat_endpoints 个端点"
+            VIOLATIONS=$((VIOLATIONS + 1))
+        fi
+        local core_endpoints
+        core_endpoints=$(grep -r '@router\.\(get\|post\|put\|delete\|patch\)' "$WORKSPACE/aiPlat-core/core/api/routers/" --include='*.py' 2>/dev/null | wc -l | tr -d ' ')
+        if grep -q '"core".*"reserved"' "$overview" 2>/dev/null && [ "$core_endpoints" -gt 10 ]; then
+            echo -e "  ${RED}⚠${NC} overview.md: core status='reserved', 但实际有 $core_endpoints 个端点"
+            VIOLATIONS=$((VIOLATIONS + 1))
+        fi
+    fi
+}
+check_management_docs
+
 echo ""
 echo "═══════════════════════════════════════════════════════════════"
 if [ "$VIOLATIONS" -eq 0 ]; then
