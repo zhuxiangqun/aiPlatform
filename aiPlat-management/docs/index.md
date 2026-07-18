@@ -366,7 +366,7 @@ AI平台管理系统是 AI Platform 的独立运维平台，提供从基础设�
 |------|--------|
 | 前端 | React 18 + Tailwind CSS + Framer Motion + Lucide |
 | 后端 | FastAPI + Kubernetes Python Client |
-| 存储 | PostgreSQL + Redis |
+| 存储 | SQLite (开发环境) / PostgreSQL + Redis (生产目标) |
 | 监控 | Prometheus + Grafana |
 | 容器编排 | Kubernetes |
 

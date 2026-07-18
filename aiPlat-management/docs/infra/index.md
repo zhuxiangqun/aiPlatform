@@ -210,9 +210,9 @@
 | 层级 | 管理系统覆盖 | 实施状态 |
 |------|-------------|---------|
 | **Layer 0 - 基础设施层** | 完整运维能力 | ✅ 基础就绪 |
-| **Layer 1 - 核心能力层** | 预留管理接口 | ⚠️ 通过 core API 代理可达 |
-| **Layer 2 - 平台服务层** | 预留管理接口 | ⚠️ 通过 core API 代理可达 |
-| **Layer 3 - 应用接入层** | 预留管理接口 | ⚠️ 通过 core API 代理可达 |
+| **Layer 1 - 核心能力层** | Harness/Agents/Skills/Memory/Knowledge 已上线 | ✅ 已实现 |
+| **Layer 2 - 平台服务层** | FDE 等6模块已迁移，262个活跃端点 | ✅ 已实现 |
+| **Layer 3 - 应用接入层** | channels/cli/workbench/events 部分可用 | ⚠️ 部分实现 |
 
 ---
 

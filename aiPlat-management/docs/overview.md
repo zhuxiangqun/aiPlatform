@@ -151,9 +151,9 @@ GET /api/dashboard/metrics
         "vector": {"status": "healthy"}
       }
     },
-    "core": {"status": "reserved", "score": 0},
-    "platform": {"status": "reserved", "score": 0},
-    "app": {"status": "reserved", "score": 0}
+    "core": {"status": "active", "score": 90},
+    "platform": {"status": "active", "score": 85},
+    "app": {"status": "partial", "score": 40}
   },
   "overall_status": "healthy"
 }
