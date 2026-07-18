@@ -4,14 +4,14 @@ import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 // ── Role-based sidebar visibility ──────────────────────────────────────
 
 const ROLE_MENUS: Record<string, string[]> = {
-  admin:     ["infra", "core", "platform", "workspace", "app", "value", "user", "prompts", "approval"],
-  developer: ["infra", "core", "workspace", "app", "value", "user", "diagnostics"],
-  operator:  ["diagnostics", "infra", "platform"],
-  business:  ["value", "user"],
-  user:      ["user", "app"],
-  approver:  ["approval"],
-  fde:       ["diagnostics", "infra", "core", "workspace", "value"],
-  viewer:    ["value", "user"],
+  admin:     ["overview","knowledge","ai","diagnostics","infra","platform","value","approval"],
+  developer: ["overview","knowledge","ai","diagnostics","infra","platform","value"],
+  operator:  ["overview","diagnostics","knowledge","infra","platform"],
+  business:  ["overview","value"],
+  user:      ["overview","platform"],
+  approver:  ["overview","approval"],
+  fde:       ["overview","knowledge","ai","diagnostics","infra","value"],
+  viewer:    ["overview","value"],
 };
 
 function getRole(): string {
@@ -28,10 +28,11 @@ const ROLE_LABELS: Record<string, string> = {
 };
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Activity, BarChart3, Bell, Bot, Box, Brain, ChevronDown, ChevronLeft,
+  Activity, BarChart3, Bell, BookOpen, Bot, Box, Brain, ChevronDown, ChevronLeft,
   ChevronRight, Cpu, Database, FileText, Flag, FolderOpen, GitBranch, HardDrive, Key,
   LogOut, MessageSquare, Monitor, Network, Package, PenTool, Plug,
-  Rocket, Server, Settings, Share2, Shield, ShoppingBag, Sliders, Sparkles, Target, User, Users, Wrench,
+  Rocket, Search, Server, Settings, Share2, Shield, ShoppingBag, Sliders, Sparkles,
+  Target, TrendingUp, User, Users, Wrench,
   type LucideIcon,
 } from 'lucide-react';
 import { NotificationBellButton, NotificationProvider, ToastProvider } from '../ui';
@@ -49,17 +50,58 @@ interface MenuGroup {
 }
 
 const menuItems: (MenuItem | { divider: boolean } | MenuGroup)[] = [
-  { key: '/system-overview', icon: Activity, label: '系统概览' },
-  { key: '/alerts', icon: Bell, label: '告警中心' },
-  { key: '/releases', icon: Rocket, label: '版本管理' },
-  { key: '/diagnostics', icon: Activity, label: '诊断中心' },
-  { key: '/diagnostics/repairs', icon: Activity, label: '修复中心' },
-  { key: '/diagnostics/eval', icon: BarChart3, label: 'Agent 评估' },
-  { key: '/diagnostics/fde', icon: Wrench, label: 'FDE 工作台' },
-  { key: '/system-graph', icon: Activity, label: '系统图谱' },
-  { key: '/onboarding', icon: Settings, label: '初始化向导' },
+  { group: 'overview', label: '总览', items: [
+    { key: '/system-overview', icon: Activity, label: '系统概览' },
+    { key: '/alerts', icon: Bell, label: '告警中心' },
+    { key: '/system-graph', icon: Share2, label: '系统图谱' },
+    { key: '/docs', icon: BookOpen, label: '文档系统' },
+  ]},
   { divider: true },
-  { group: 'infra', label: '基础设施层', items: [
+  { group: 'knowledge', label: '知识中心', items: [
+    { key: '/knowledge/overview', icon: Share2, label: '管线总览' },
+    { key: '/platform/kb?tab=vault', icon: FileText, label: '原始资料' },
+    { key: '/infra/ontology', icon: Box, label: '本体模型' },
+    { key: '/platform/kb?tab=documents', icon: Database, label: '向量知识库' },
+    { key: '/platform/kb?tab=wiki', icon: BookOpen, label: 'LLM Wiki' },
+    { key: '/platform/kb?tab=eval', icon: Search, label: 'RAG 检索' },
+    { key: '/platform/kb?tab=quality', icon: TrendingUp, label: '质量反馈' },
+  ]},
+  { divider: true },
+  { group: 'ai', label: 'AI 能力', items: [
+    // ── Engine 管理 ──
+    { key: '/core/agents', icon: Bot, label: 'Agent 管理' },
+    { key: '/core/skills', icon: Sparkles, label: 'Skill 管理' },
+    { key: '/core/tools', icon: Wrench, label: 'Tool 管理' },
+    { key: '/core/mcp', icon: Plug, label: 'MCP 管理' },
+    { key: '/core/workflows', icon: GitBranch, label: 'Workflow 管理' },
+    { key: '/core/memory', icon: Brain, label: 'Memory 管理' },
+    // ── 配置与模板 ──
+    { key: '/core/prompts', icon: FileText, label: '系统 Prompt' },
+    { key: '/prompts/app', icon: FileText, label: '提示词模板' },
+    { key: '/core/variables', icon: PenTool, label: '变量管理' },
+    { key: '/core/credentials', icon: Key, label: '凭证管理' },
+    // ── 应用市场 ──
+    { key: '/workspace/agents', icon: Bot, label: 'Agent 市场' },
+    { key: '/workspace/skills', icon: Sparkles, label: 'Skill 市场' },
+    { key: '/workspace/tools', icon: Wrench, label: 'Tool 市场' },
+    { key: '/workspace/mcp', icon: Plug, label: 'MCP 市场' },
+    { key: '/workspace/teams', icon: Users, label: '团队组装' },
+    { key: '/workspace/marketplace', icon: ShoppingBag, label: '商城' },
+    { key: '/core/skill-packs', icon: Package, label: '包管理' },
+    { key: '/plugins', icon: Box, label: '插件管理' },
+    // ── 分析 ──
+    { key: '/core/agent-insight', icon: BarChart3, label: 'Agent 能力' },
+    { key: '/diagnostics/eval', icon: BarChart3, label: 'Agent 评估' },
+  ]},
+  { divider: true },
+  { group: 'diagnostics', label: '诊断与修复', items: [
+    { key: '/diagnostics', icon: Activity, label: '诊断中心' },
+    { key: '/diagnostics/repairs', icon: Wrench, label: '修复中心' },
+    { key: '/diagnostics/fde', icon: Wrench, label: 'FDE 工作台' },
+    { key: '/diagnostics/llm-review', icon: Search, label: 'LLM 审查' },
+  ]},
+  { divider: true },
+  { group: 'infra', label: '基础设施', items: [
     { key: '/infra/nodes', icon: Server, label: '节点管理' },
     { key: '/infra/models', icon: Cpu, label: '模型管理' },
     { key: '/infra/finetune', icon: Wrench, label: '模型微调' },
@@ -69,56 +111,27 @@ const menuItems: (MenuItem | { divider: boolean } | MenuGroup)[] = [
     { key: '/infra/network', icon: Network, label: '网络管理' },
     { key: '/infra/monitoring', icon: Monitor, label: '监控告警' },
     { key: '/infra/llm-stats', icon: Monitor, label: 'LLM 路由监控' },
-    { key: '/infra/ontology', icon: Share2, label: '本体管理' },
   ]},
   { divider: true },
-  { group: 'core', label: '核心能力层', items: [
-    { key: '/core/agents', icon: Bot, label: 'Agent管理' },
-    { key: '/core/skills', icon: Sparkles, label: 'Skill管理' },
-    { key: '/core/tools', icon: Wrench, label: 'Tool管理' },
-    { key: '/core/mcp', icon: Plug, label: 'MCP管理' },
-    { key: '/core/variables', icon: PenTool, label: '变量管理' },
-    { key: '/core/credentials', icon: Key, label: '凭证管理' },
-    { key: '/core/memory', icon: Brain, label: 'Memory管理' },
-    { key: '/core/prompts', icon: FileText, label: '系统Prompt' },
-    { key: '/core/agent-insight', icon: BarChart3, label: 'Agent能力' },
-  ]},
-  { divider: true },
-  { group: 'prompts', label: '提示词工程', items: [
-    { key: '/prompts/app', icon: FileText, label: '应用模板' },
-  ]},
-  { divider: true },
-  { group: 'workspace', label: '应用能力层', items: [
-    { key: '/workspace/agents', icon: Bot, label: 'Agent库' },
-    { key: '/workspace/skills', icon: Sparkles, label: 'Skill库' },
-    { key: '/workspace/tools', icon: Wrench, label: 'Tool库' },
-    { key: '/core/workflows', icon: GitBranch, label: 'Workflow库' },
-    { key: '/workspace/marketplace', icon: ShoppingBag, label: '商城' },
-    { key: '/core/skill-packs', icon: Package, label: '包管理' },
-    { key: '/workspace/mcp', icon: Plug, label: 'MCP库' },
-    { key: '/workspace/teams', icon: Users, label: '团队组装' },
-    { key: '/plugins', icon: Box, label: '插件管理' },
-  ]},
-  { divider: true },
-  { group: 'platform', label: '平台服务层', items: [
-    { key: '/platform/kb', icon: Database, label: '知识库管理' },
-    { key: '/platform/gateway', icon: Network, label: 'API网关' },
+  { group: 'platform', label: '平台管理', items: [
+    { key: '/platform/gateway', icon: Network, label: 'API 网关' },
     { key: '/platform/auth', icon: Shield, label: '认证鉴权' },
     { key: '/platform/tenant', icon: Users, label: '多租户' },
-  ]},
-  { divider: true },
-  { group: 'app', label: '应用接入层', items: [
     { key: '/app/channels', icon: MessageSquare, label: '渠道管理' },
     { key: '/app/sessions', icon: MessageSquare, label: '会话管理' },
     { key: '/app/builder', icon: FolderOpen, label: '项目构建' },
     { key: '/app/diagrams', icon: PenTool, label: '图表工作室' },
     { key: '/app/apps', icon: Rocket, label: '已部署应用' },
-  { key: '/studio', icon: Sparkles, label: 'App Studio' },
+    { key: '/studio', icon: Sparkles, label: 'App Studio' },
+    { key: '/releases', icon: Rocket, label: '版本管理' },
+    { key: '/onboarding', icon: Settings, label: '初始化向导' },
+    { key: '/pentest', icon: Shield, label: '渗透测试' },
+    { key: '/workbench', icon: Monitor, label: '终端工作台' },
   ]},
   { divider: true },
   { group: 'value', label: '价值中心', items: [
     { key: '/value-center', icon: BarChart3, label: '价值看板' },
-    { key: '/value-center/kpis', icon: Target, label: 'KPI管理' },
+    { key: '/value-center/kpis', icon: Target, label: 'KPI 管理' },
     { key: '/value-center/goals', icon: Flag, label: '目标追踪' },
     { key: '/value-center/roles', icon: Users, label: '角色管理' },
     { key: '/value-center/strategy', icon: Sliders, label: '策略控制' },
@@ -129,12 +142,6 @@ const menuItems: (MenuItem | { divider: boolean } | MenuGroup)[] = [
     { key: '/approval', icon: Package, label: '资产审批' },
     { key: '/core/approvals', icon: Shield, label: '运行时审批' },
     { key: '/approval/history', icon: FileText, label: '审批记录' },
-  ]},
-  { group: 'security', label: '安全测试', items: [
-    { key: '/pentest', icon: Shield, label: '渗透测试' },
-  ]},
-  { group: 'user', label: '终端使用', items: [
-    { key: '/workbench', icon: Monitor, label: '工作台' },
   ]},
 ];
 

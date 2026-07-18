@@ -14,6 +14,137 @@ import os
 
 router = APIRouter(prefix="/value", tags=["value"])
 
+from core.schemas_common import ListResponse, DeleteResponse
+from core.schemas_value import (
+    StrategyStatusResponse, BusinessGoalTrendResponse, GoalSourceResponse,
+    BusinessGoalItem, BusinessGoalCreateResponse, BusinessGoalUpdateResponse,
+    GoalCreateRequest, GoalUpdateRequest, GoalSourceConfigRequest,
+)
+
+
+# ── Cross-tenant routes (/value/all/...) — MUST come before /{tenant_id} routes ──
+
+@router.get("/all/goals", response_model=ListResponse[BusinessGoalItem])
+async def get_all_goals() -> List[Dict[str, Any]]:
+    """Get all business goals across all tenants."""
+    try:
+        from core.harness.finance.value_calculator import get_value_calculator
+        calc = get_value_calculator()
+        goals = calc.goal_tracker.get_all()
+        return {"items": [{
+            "goal_id": g.goal_id, "description": g.description,
+            "target_metric": g.target_metric,
+            "baseline_value": g.baseline_value, "target_value": g.target_value,
+            "current_value": g.current_value, "progress_pct": g.progress_pct,
+            "achieved": g.achieved, "owner": g.owner, "period": g.period,
+        } for g in goals]}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e)[:200])
+
+
+@router.post("/all/goals", response_model=BusinessGoalCreateResponse)
+async def create_goal_all(body: GoalCreateRequest) -> Dict[str, Any]:
+    """Register a new business goal across all tenants."""
+    try:
+        from core.harness.finance.value_calculator import get_value_calculator, BusinessGoal
+        calc = get_value_calculator()
+        goal = BusinessGoal(
+            goal_id=body.goal_id, description=body.description,
+            target_metric=body.target_metric,
+            baseline_value=body.baseline_value,
+            target_value=body.target_value,
+            owner=body.owner, period=body.period,
+        )
+        calc.goal_tracker.register(goal)
+        return {"goal_id": goal.goal_id, "status": "created"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e)[:200])
+
+
+@router.put("/all/goals/{goal_id}", response_model=BusinessGoalUpdateResponse)
+async def update_goal_all(goal_id: str, body: GoalUpdateRequest) -> Dict[str, Any]:
+    """Update a business goal progress across all tenants."""
+    try:
+        from core.harness.finance.value_calculator import get_value_calculator
+        calc = get_value_calculator()
+        g = calc.goal_tracker.update(goal_id, body.current_value)
+        if not g:
+            raise HTTPException(status_code=404, detail=f"goal {goal_id} not found")
+        return {"goal_id": goal_id, "current_value": g.current_value,
+                "progress_pct": g.progress_pct, "achieved": g.achieved}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e)[:200])
+
+
+@router.delete("/all/goals/{goal_id}", response_model=DeleteResponse)
+async def delete_goal_all(goal_id: str) -> Dict[str, Any]:
+    """Delete a business goal across all tenants."""
+    try:
+        from core.harness.finance.value_calculator import get_value_calculator
+        calc = get_value_calculator()
+        if goal_id in calc.goal_tracker._goals:
+            del calc.goal_tracker._goals[goal_id]
+            calc.goal_tracker._save()
+            return {"goal_id": goal_id, "deleted": True}
+        raise HTTPException(status_code=404, detail=f"goal {goal_id} not found")
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e)[:200])
+
+
+@router.get("/all/strategy", response_model=StrategyStatusResponse)
+async def get_strategy_all() -> Dict[str, Any]:
+    """Get routing strategy status across all tenants."""
+    try:
+        from core.harness.finance.value_calculator import get_value_calculator
+        from core.harness.execution.dynamic_router import GoalAwareRouter
+        calc = get_value_calculator()
+        router = GoalAwareRouter(goal_tracker=calc.goal_tracker)
+        result = router.adjust()
+        return {"params": result["params"], "context": result["context"],
+                "goals_count": len(calc.goal_tracker.get_all())}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e)[:200])
+
+
+@router.get("/all/goals/{goal_id}/trend", response_model=BusinessGoalTrendResponse)
+async def get_goal_trend_all(goal_id: str) -> Dict[str, Any]:
+    """Get historical trend for a business goal."""
+    try:
+        from core.harness.finance.value_calculator import get_value_calculator
+        calc = get_value_calculator()
+        goal = calc.goal_tracker.get(goal_id)
+        if not goal:
+            raise HTTPException(status_code=404, detail=f"Goal {goal_id} not found")
+        import json as _j
+        report_path = os.path.expanduser("~/.aiplat/value/monthly.jsonl")
+        trend = []
+        if os.path.exists(report_path):
+            with open(report_path) as f:
+                for line in f:
+                    try: entry = _j.loads(line)
+                    except Exception: continue
+                    trend.append({"month": entry.get("month", ""),
+                                  "total_value_cny": entry.get("total_value_cny", 0),
+                                  "total_runs": entry.get("total_runs", 0)})
+        return {"goal_id": goal_id, "trend": trend[-12:], "current_progress_pct": goal.progress_pct}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e)[:200])
+
+
+# ── Per-tenant routes (/value/{tenant_id}/...) ──
+
 
 @router.get("/{tenant_id}", response_model=StrategyStatusResponse)
 async def get_value_dashboard(
@@ -28,15 +159,11 @@ async def get_value_dashboard(
         calc = get_value_calculator()
         report = await calc.compute_monthly(tenant_id=tenant_id, month=month)
         return calc.translate_for(report, audience)
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)[:200])
 
-
-from core.schemas_common import ListResponse, DeleteResponse
-from core.schemas_value import (
-    BusinessGoalItem, BusinessGoalCreateResponse, BusinessGoalUpdateResponse,
-    BusinessGoalTrendResponse, StrategyStatusResponse, GoalSourceResponse,
-)
 
 @router.get("/{tenant_id}/goals", response_model=ListResponse[BusinessGoalItem])
 async def get_business_goals(tenant_id: str) -> List[Dict[str, Any]]:
@@ -45,19 +172,21 @@ async def get_business_goals(tenant_id: str) -> List[Dict[str, Any]]:
         from core.harness.finance.value_calculator import get_value_calculator
         calc = get_value_calculator()
         goals = calc.goal_tracker.get_all()
-        return [{
+        return {"items": [{
             "goal_id": g.goal_id, "description": g.description,
             "target_metric": g.target_metric,
             "baseline_value": g.baseline_value, "target_value": g.target_value,
             "current_value": g.current_value, "progress_pct": g.progress_pct,
             "achieved": g.achieved, "owner": g.owner, "period": g.period,
-        } for g in goals]
+        } for g in goals]}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)[:200])
 
 
 @router.post("/{tenant_id}/goals", response_model=BusinessGoalCreateResponse)
-async def create_business_goal(tenant_id: str, body: Dict[str, Any]) -> Dict[str, Any]:
+async def create_business_goal(tenant_id: str, body: GoalCreateRequest) -> Dict[str, Any]:
     """Register a new business goal."""
     try:
         from core.harness.finance.value_calculator import (
@@ -65,16 +194,14 @@ async def create_business_goal(tenant_id: str, body: Dict[str, Any]) -> Dict[str
         )
         calc = get_value_calculator()
         goal = BusinessGoal(
-            goal_id=body.get("goal_id", body.get("goal_id", "")),
-            description=body.get("description", ""),
-            target_metric=body.get("target_metric", ""),
-            baseline_value=float(body.get("baseline_value", 0)),
-            target_value=float(body.get("target_value", 0)),
-            owner=body.get("owner", ""),
-            period=body.get("period", ""),
+            goal_id=body.goal_id,
+            description=body.description,
+            target_metric=body.target_metric,
+            baseline_value=body.baseline_value,
+            target_value=body.target_value,
+            owner=body.owner,
+            period=body.period,
         )
-        if not goal.goal_id:
-            raise HTTPException(status_code=400, detail="goal_id is required")
         calc.goal_tracker.register(goal)
         return {"goal_id": goal.goal_id, "status": "created"}
     except HTTPException:
@@ -85,20 +212,17 @@ async def create_business_goal(tenant_id: str, body: Dict[str, Any]) -> Dict[str
 
 @router.put("/{tenant_id}/goals/{goal_id}", response_model=BusinessGoalUpdateResponse)
 async def update_business_goal(
-    tenant_id: str, goal_id: str, body: Dict[str, Any],
+    tenant_id: str, goal_id: str, body: GoalUpdateRequest,
 ) -> Dict[str, Any]:
     """Update a business goal (e.g., current_value)."""
     try:
         from core.harness.finance.value_calculator import get_value_calculator
         calc = get_value_calculator()
-        current = body.get("current_value")
-        if current is not None:
-            g = calc.goal_tracker.update(goal_id, float(current))
-            if not g:
-                raise HTTPException(status_code=404, detail=f"goal {goal_id} not found")
-            return {"goal_id": goal_id, "current_value": g.current_value,
-                    "progress_pct": g.progress_pct, "achieved": g.achieved}
-        raise HTTPException(status_code=400, detail="current_value is required")
+        g = calc.goal_tracker.update(goal_id, body.current_value)
+        if not g:
+            raise HTTPException(status_code=404, detail=f"goal {goal_id} not found")
+        return {"goal_id": goal_id, "current_value": g.current_value,
+                "progress_pct": g.progress_pct, "achieved": g.achieved}
     except HTTPException:
         raise
     except Exception as e:
@@ -138,6 +262,8 @@ async def get_strategy_status(tenant_id: str) -> Dict[str, Any]:
             "context": result["context"],
             "goals_count": len(tracker.get_all()),
         }
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)[:200])
 

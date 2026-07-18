@@ -53,6 +53,8 @@ async def export_playbook(
     try:
         path = await pack_playbook(manifest)
         return {"path": path, "manifest": manifest.to_dict(), "status": "exported"}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -75,6 +77,8 @@ async def import_playbook(
         return result
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     finally:

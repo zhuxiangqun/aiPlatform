@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 from typing import Any, Dict
+from apps.fde.schemas import FdeStatusResponse, FdeListResponse, FdeItemResponse
+
 
 from fastapi import APIRouter, HTTPException, Query
 
@@ -21,7 +23,7 @@ _acceptance_records: Dict[str, dict] = {}
 # ── /handover/transfer ──────────────────────────────────────
 
 
-@router.post("/handover/transfer", response_model=Dict[str, Any])
+@router.post("/handover/transfer", response_model=FdeStatusResponse)
 async def handover_transfer(body: Dict[str, Any]):
     """移交管理员权限 + 撤销 FDE 访问。
 
@@ -78,7 +80,7 @@ async def handover_transfer(body: Dict[str, Any]):
 # ── /handover/close ─────────────────────────────────────────
 
 
-@router.post("/handover/close", response_model=Dict[str, Any])
+@router.post("/handover/close", response_model=FdeStatusResponse)
 async def handover_close(body: Dict[str, Any]):
     """关闭项目 + 归档。
 
@@ -124,7 +126,7 @@ async def handover_close(body: Dict[str, Any]):
 # ── /handover/schedule-health ───────────────────────────────
 
 
-@router.post("/handover/schedule-health", response_model=Dict[str, Any])
+@router.post("/handover/schedule-health", response_model=FdeStatusResponse)
 async def schedule_post_health(body: Dict[str, Any]):
     """安排移交后 30 天健康检查。
 
@@ -161,7 +163,7 @@ async def schedule_post_health(body: Dict[str, Any]):
     return {"status": "scheduled", "schedule_id": fid, **schedule}
 
 
-@router.get("/handover/schedule-health", response_model=Dict[str, Any])
+@router.get("/handover/schedule-health", response_model=FdeItemResponse)
 async def list_health_schedules(spec_id: str = Query("")):
     """查看已安排的健康检查。"""
     results = []
@@ -189,7 +191,7 @@ async def list_health_schedules(spec_id: str = Query("")):
 # ── /training/sandbox ───────────────────────────────────────
 
 
-@router.post("/training/sandbox", response_model=Dict[str, Any])
+@router.post("/training/sandbox", response_model=FdeStatusResponse)
 async def create_training_sandbox(body: Dict[str, Any]):
     """创建隔离的培训沙盒环境。
 
@@ -237,7 +239,7 @@ async def create_training_sandbox(body: Dict[str, Any]):
     return {"status": "created", **sandbox}
 
 
-@router.get("/training/sandbox", response_model=Dict[str, Any])
+@router.get("/training/sandbox", response_model=FdeItemResponse)
 async def list_training_sandboxes():
     """列出活跃的培训沙盒。"""
     results = list(_training_sandboxes.values())

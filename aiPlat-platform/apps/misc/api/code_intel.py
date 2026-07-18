@@ -1,4 +1,5 @@
 from __future__ import annotations
+from apps.common_schemas import StatusResponse, ListResponse, ItemResponse
 
 import os
 import re
@@ -536,7 +537,7 @@ async def code_intel_scan(rt, roots: List[str]) -> ScanResult:
     return ScanResult(created_at=time.time(), roots_key=roots_key, stats=stats, nodes=nodes, edges=edges, issues=issues, health=health)
 
 
-@router.get("/diagnostics/code-intel/scan", response_model=Dict[str, Any])
+@router.get("/diagnostics/code-intel/scan", response_model=ItemResponse)
 async def scan_code_intel(
     request: Request,
     roots: Optional[str] = None,
@@ -638,21 +639,21 @@ async def scan_code_intel(
     }
 
 
-@router.get("/diagnostics/code-intel/hubs", response_model=Dict[str, Any])
+@router.get("/diagnostics/code-intel/hubs", response_model=ItemResponse)
 async def code_intel_hubs(roots: Optional[str] = None, limit: int = 30, rt=Depends(get_kernel_runtime)):
     root_list = [x.strip() for x in (roots.split(",") if roots else default_roots()) if x.strip()]
     res = await code_intel_scan(rt, root_list)
     return {"status": "ok", "roots": root_list, "hubs": _top_hubs(nodes=res.nodes, issues=res.issues, limit=int(limit or 30), compute_blast_for_top=15)}
 
 
-@router.get("/diagnostics/code-intel/cycles", response_model=Dict[str, Any])
+@router.get("/diagnostics/code-intel/cycles", response_model=ItemResponse)
 async def code_intel_cycles(roots: Optional[str] = None, limit: int = 30, rt=Depends(get_kernel_runtime)):
     root_list = [x.strip() for x in (roots.split(",") if roots else default_roots()) if x.strip()]
     res = await code_intel_scan(rt, root_list)
     return {"status": "ok", "roots": root_list, "cycles": _top_cycles(nodes=res.nodes, edges=res.edges, limit=int(limit or 30))}
 
 
-@router.get("/diagnostics/code-intel/blast", response_model=Dict[str, Any])
+@router.get("/diagnostics/code-intel/blast", response_model=ItemResponse)
 async def blast_radius(
     file: str,
     roots: Optional[str] = None,
@@ -665,7 +666,7 @@ async def blast_radius(
     return {"status": "ok", "file": start, "affected": out, "count": len(out)}
 
 
-@router.get("/diagnostics/code-intel/export", response_model=Dict[str, Any])
+@router.get("/diagnostics/code-intel/export", response_model=ItemResponse)
 async def export_code_graph(rt=Depends(get_kernel_runtime)):
     """Export the full code graph as committable JSON for team onboarding."""
     import time as _t
@@ -694,7 +695,7 @@ async def export_code_graph(rt=Depends(get_kernel_runtime)):
     }
 
 
-@router.get("/diagnostics/code-intel/tour", response_model=Dict[str, Any])
+@router.get("/diagnostics/code-intel/tour", response_model=ItemResponse)
 async def guided_tour(limit: int = 30, rt=Depends(get_kernel_runtime)):
     """Return dependency-sorted file list for guided architecture tour."""
     root_list = default_roots()
@@ -722,7 +723,7 @@ async def guided_tour(limit: int = 30, rt=Depends(get_kernel_runtime)):
     return {"tour": tour, "total": len(res.nodes)}
 
 
-@router.get("/diagnostics/code-intel/domain-view", response_model=Dict[str, Any])
+@router.get("/diagnostics/code-intel/domain-view", response_model=ItemResponse)
 async def domain_view(rt=Depends(get_kernel_runtime)):
     """Aggregate code graph into business domains."""
     root_list = default_roots()

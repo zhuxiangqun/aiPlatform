@@ -22,6 +22,7 @@ from fastapi.responses import FileResponse
 
 from core.harness.kernel.runtime import get_kernel_runtime
 from core.apps.tools.browser_test_engine import register_engine, unregister_engine, get_active_engine
+from apps.common_schemas import StatusResponse, ListResponse, ItemResponse
 
 router = APIRouter()
 
@@ -33,7 +34,7 @@ _case_executor_ref: Optional[Any] = None
 _case_task: Optional[asyncio.Task] = None
 
 
-@router.post("/browser/test/start", response_model=Dict[str, Any])
+@router.post("/browser/test/start", response_model=StatusResponse)
 async def start_test(request: dict):
     global _active_task
     with _lock:
@@ -94,7 +95,7 @@ async def start_test(request: dict):
     }
 
 
-@router.get("/browser/test/status", response_model=Dict[str, Any])
+@router.get("/browser/test/status", response_model=ItemResponse)
 async def test_status():
     global _active_task
     if _active_task is None:
@@ -122,7 +123,7 @@ async def test_status():
     }
 
 
-@router.get("/browser/test/report", response_model=Dict[str, Any])
+@router.get("/browser/test/report", response_model=ItemResponse)
 async def test_report(detail: bool = False):
     engine = get_active_engine()
     if engine is None:
@@ -181,7 +182,7 @@ async def test_report(detail: bool = False):
     }
 
 
-@router.post("/browser/test/stop", response_model=Dict[str, Any])
+@router.post("/browser/test/stop", response_model=StatusResponse)
 async def stop_test():
     global _active_task
     engine = get_active_engine()
@@ -208,7 +209,7 @@ async def stop_test():
     return {"ok": True, "message": "Test stopped", "summary": summary}
 
 
-@router.post("/browser/test/generate-cases", response_model=Dict[str, Any])
+@router.post("/browser/test/generate-cases", response_model=StatusResponse)
 async def generate_cases(request: dict):
     """页面分析 → 生成测试用例 Excel。"""
     global _case_executor_ref
@@ -252,7 +253,7 @@ async def generate_cases(request: dict):
     }
 
 
-@router.post("/browser/test/upload-cases", response_model=Dict[str, Any])
+@router.post("/browser/test/upload-cases", response_model=StatusResponse)
 async def upload_cases(file: UploadFile = File(...)):
     """上传编辑后的 xlsx 文件，保存到临时目录并返回路径。"""
     if not file.filename or not file.filename.endswith('.xlsx'):
@@ -265,7 +266,7 @@ async def upload_cases(file: UploadFile = File(...)):
     return {"ok": True, "path": dest, "filename": file.filename}
 
 
-@router.get("/browser/test/download", response_model=Dict[str, Any])
+@router.get("/browser/test/download", response_model=ItemResponse)
 async def download_file(path: str = ""):
     """下载生成的 xlsx 文件。"""
     if not path or not os.path.exists(path):
@@ -274,7 +275,7 @@ async def download_file(path: str = ""):
     return FileResponse(path, filename=filename, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 
 
-@router.post("/browser/test/execute-cases", response_model=Dict[str, Any])
+@router.post("/browser/test/execute-cases", response_model=StatusResponse)
 async def execute_cases(request: dict):
     """从 Excel 读取 approved 用例 → 执行。"""
     global _case_executor_ref, _case_task
@@ -304,7 +305,7 @@ async def execute_cases(request: dict):
     return {"ok": True, "message": "Case execution started"}
 
 
-@router.post("/browser/test/execute-cases/stop", response_model=Dict[str, Any])
+@router.post("/browser/test/execute-cases/stop", response_model=StatusResponse)
 async def stop_case_execution():
     global _case_executor_ref, _case_task
     if _case_executor_ref:
@@ -315,7 +316,7 @@ async def stop_case_execution():
     return {"ok": True, "message": "Case execution stopped"}
 
 
-@router.get("/browser/test/execute-cases/status", response_model=Dict[str, Any])
+@router.get("/browser/test/execute-cases/status", response_model=ItemResponse)
 async def case_execution_status():
     global _case_task, _case_executor_ref
     if not _case_task:

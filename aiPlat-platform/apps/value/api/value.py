@@ -14,6 +14,12 @@ import os
 
 router = APIRouter(prefix="/value", tags=["value"])
 
+from core.schemas_common import ListResponse, DeleteResponse
+from core.schemas_value import (
+    StrategyStatusResponse,
+    BusinessGoalTrendResponse, GoalSourceResponse,
+)
+
 
 @router.get("/{tenant_id}", response_model=StrategyStatusResponse)
 async def get_value_dashboard(
@@ -28,14 +34,15 @@ async def get_value_dashboard(
         calc = get_value_calculator()
         report = await calc.compute_monthly(tenant_id=tenant_id, month=month)
         return calc.translate_for(report, audience)
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)[:200])
 
 
-from core.schemas_common import ListResponse, DeleteResponse
 from core.schemas_value import (
     BusinessGoalItem, BusinessGoalCreateResponse, BusinessGoalUpdateResponse,
-    BusinessGoalTrendResponse, StrategyStatusResponse, GoalSourceResponse,
+    BusinessGoalTrendResponse, GoalSourceResponse,
 )
 
 @router.get("/{tenant_id}/goals", response_model=ListResponse[BusinessGoalItem])
@@ -52,6 +59,8 @@ async def get_business_goals(tenant_id: str) -> List[Dict[str, Any]]:
             "current_value": g.current_value, "progress_pct": g.progress_pct,
             "achieved": g.achieved, "owner": g.owner, "period": g.period,
         } for g in goals]
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)[:200])
 
@@ -79,6 +88,8 @@ async def create_business_goal(tenant_id: str, body: Dict[str, Any]) -> Dict[str
         return {"goal_id": goal.goal_id, "status": "created"}
     except HTTPException:
         raise
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)[:200])
 
@@ -101,6 +112,8 @@ async def update_business_goal(
         raise HTTPException(status_code=400, detail="current_value is required")
     except HTTPException:
         raise
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)[:200])
 
@@ -117,6 +130,8 @@ async def delete_business_goal(tenant_id: str, goal_id: str) -> Dict[str, Any]:
             calc.goal_tracker._save()
             return {"goal_id": goal_id, "deleted": True}
         raise HTTPException(status_code=404, detail=f"goal {goal_id} not found")
+    except HTTPException:
+        raise
     except HTTPException:
         raise
     except Exception as e:
@@ -138,6 +153,8 @@ async def get_strategy_status(tenant_id: str) -> Dict[str, Any]:
             "context": result["context"],
             "goals_count": len(tracker.get_all()),
         }
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)[:200])
 
@@ -168,6 +185,8 @@ async def get_goal_trend(tenant_id: str, goal_id: str) -> Dict[str, Any]:
                 "current_progress_pct": goal.progress_pct}
     except HTTPException:
         raise
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)[:200])
 
@@ -188,6 +207,8 @@ async def configure_goal_source(
         category = body.get("category", "efficiency")
         return {"goal_id": goal_id, "collection_method": source,
                 "linked_agent": agent_id, "category": category, "status": "configured"}
+    except HTTPException:
+        raise
     except HTTPException:
         raise
     except Exception as e:

@@ -1692,6 +1692,8 @@ async def sign_workspace_skill(skill_id: str, request: Dict[str, Any], http_requ
         raise
     except ValueError as e:
         raise HTTPException(status_code=400, detail=f"Invalid private key: {str(e)}")
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Signing failed: {str(e)}")
 
@@ -2403,6 +2405,8 @@ async def submit_skill_for_review(skill_id: str, rt: RuntimeDep = None):
                 },
             },
         )
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to update skill status: {e}")
 
@@ -2475,6 +2479,8 @@ async def install_skill_seed(seed_id: str, rt: RuntimeDep = None):
     try:
         workspace_dir.mkdir(parents=True, exist_ok=True)
         _shutil.copytree(seed_dir, dst)
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to install seed: {str(e)}")
 
@@ -2641,8 +2647,9 @@ async def skill_auto_fill(request: Dict[str, Any], rt: RuntimeDep = None):
             "output_schema": fm.get("output_schema", {}),
             "sop": sop or fm.get("sop_body", ""),
         }
-    except Exception as e:
-        return {"error": f"Auto-fill failed: {str(e)}"}
+    except HTTPException:
+        raise
+        raise HTTPException(status_code=500, detail=str(e)[:200])
 
 
 # ==================== Skill Import Detection (AI) ====================
@@ -2677,8 +2684,9 @@ async def detect_skill_import(request: Dict[str, Any], rt: RuntimeDep = None):
                         if name.endswith(".md"):
                             sop_body = zf.read(name).decode("utf-8", errors="ignore")
                             break
-        except Exception as e:
-            return {"error": f"Failed to download/parse URL: {str(e)}"}
+        except HTTPException:
+            raise
+            raise HTTPException(status_code=500, detail=str(e)[:200])
     elif file_content:
         # base64 encoded zip
         try:
@@ -2768,8 +2776,9 @@ async def detect_skill_import(request: Dict[str, Any], rt: RuntimeDep = None):
             config["tools_available"] = config.get("tools", [])
             config["tools_missing"] = []
         return config
-    except Exception as e:
-        return {"error": f"AI detection failed: {str(e)}"}
+    except HTTPException:
+        raise
+        raise HTTPException(status_code=500, detail=str(e)[:200])
 
 
 def _load_tool_mapping() -> dict:

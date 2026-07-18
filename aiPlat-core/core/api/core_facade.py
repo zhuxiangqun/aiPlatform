@@ -2158,7 +2158,7 @@ from core.harness.knowledge.db import get_knowledge_db
 from core.harness.knowledge.wiki_engine import search_pages  # v2.5: platform→CoreFacade  # noqa: boundary — CoreFacade canonical re-export
 from core.harness.knowledge.semantic_cache import get_semantic_cache  # v2.5  # noqa: boundary — CoreFacade canonical re-export
 from core.harness.knowledge.knowledge_ontology import validate_page_against_schema  # v2.5  # noqa: boundary — CoreFacade canonical re-export
-from core.harness.infrastructure.infra_ocr_adapter import BBox, OCRToken  # v2.5  # noqa: boundary — CoreFacade canonical re-export
+from core.harness.infrastructure.infra_ocr_adapter import BBox, OCRToken, create_infra_ocr_adapter  # v2.5  # noqa: boundary — CoreFacade canonical re-export
 from core.harness.models.spec_lifecycle import get_spec_lifecycle, RevisionTrigger  # v2.5  # noqa: boundary — CoreFacade canonical re-export
 from core.harness.ontology_engine.triple_store import get_triple_store  # v2.5  # noqa: boundary — CoreFacade canonical re-export
 from core.harness.ontology_engine.triple_scanner import scan_and_populate  # v2.5  # noqa: boundary — CoreFacade canonical re-export
@@ -2288,11 +2288,13 @@ from core.harness.document.parsers import parse_html  # v2.5: platform→CoreFac
 from core.harness.document.video import probe_duration_ms  # v2.5
 from core.harness.knowledge.wiki_engine import read_page  # v2.5
 from core.harness.knowledge.knowledge_ontology import validate_page_against_schema  # v2.5
-from core.harness.infrastructure.infra_ocr_adapter import BBox, OCRToken  # v2.5
+from core.harness.infrastructure.infra_ocr_adapter import BBox, OCRToken, create_infra_ocr_adapter  # v2.5
 from core.harness.models.spec_lifecycle import get_spec_lifecycle, RevisionTrigger  # v2.5
 
 from core.harness.utils.async_utils import _run_coro_blocking  # v2.5
 from core.harness.knowledge.domain_router import DomainRouter  # v2.5
+from core.harness.knowledge.capability_health import capability_health_report  # v2.5 — canonical re-export
+from core.harness.knowledge.capability_graph import build_capability_graph  # v2.5 — canonical re-export
 from core.harness.syscalls.retrieval import sys_knowledge_retrieve  # v2.5
 from core.harness.knowledge.doc_compressor import get_model_max_completion  # v2.5
 from core.management.workflow_manager import WorkflowManager  # v2.5  # noqa: boundary — CoreFacade canonical re-export

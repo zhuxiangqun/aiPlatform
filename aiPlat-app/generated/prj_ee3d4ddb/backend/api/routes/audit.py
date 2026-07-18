@@ -15,6 +15,8 @@ def get_audit_logs(project_id: str):
         logger = AuditLogger(db)
         logs = logger.get_logs(project_id)
         return {"logs": logs}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     finally:

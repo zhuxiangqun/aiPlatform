@@ -4,6 +4,8 @@ from __future__ import annotations
 import os
 from datetime import datetime, timezone
 from typing import Any, Dict
+from apps.fde.schemas import FdeStatusResponse, FdeListResponse, FdeItemResponse
+
 
 from fastapi import APIRouter, Query
 from fastapi.responses import PlainTextResponse
@@ -15,7 +17,7 @@ router = APIRouter(tags=["fde-reports"])
 # ════════════════════════════════════════════════════════════
 
 
-@router.get("/report/generate", response_model=Dict[str, Any])
+@router.get("/report/generate", response_model=FdeItemResponse)
 async def generate_report(spec_id: str = Query(""), download: bool = Query(False)):
     """生成验收报告 (Markdown → 前端可预览/下载).
 
@@ -45,7 +47,7 @@ async def generate_report(spec_id: str = Query(""), download: bool = Query(False
     except Exception:
         pass
 
-    from core.api.routers.fde_acceptance import acceptance_checklist
+    from .fde_acceptance import acceptance_checklist
     checklist_data = (await acceptance_checklist(spec_id)) if spec_id else {}
 
     report_md = f"""# 交付验收报告
@@ -88,7 +90,7 @@ async def generate_report(spec_id: str = Query(""), download: bool = Query(False
             "generated_at": datetime.now(timezone.utc).isoformat()}
 
 
-@router.get("/training/materials", response_model=Dict[str, Any])
+@router.get("/training/materials", response_model=FdeItemResponse)
 async def generate_training_materials(spec_id: str = Query(""), download: bool = Query(False)):
     """自动生成客户培训材料.
 
@@ -158,7 +160,7 @@ A: 左侧面板 > 会话历史中可查看所有对话记录。
             "generated_at": datetime.now(timezone.utc).isoformat()}
 
 
-@router.get("/handover/runbook", response_model=Dict[str, Any])
+@router.get("/handover/runbook", response_model=FdeItemResponse)
 async def generate_runbook(spec_id: str = Query(""), download: bool = Query(False)):
     """生成 SLA 运维 Runbook.
 

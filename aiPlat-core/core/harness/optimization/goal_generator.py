@@ -35,7 +35,7 @@ class GoalType(Enum):
     EXPLORATION_GAP = "exploration_gap"
     TOOL_GAP = "tool_gap"
     DOC_HEALTH = "doc_health"
-    FDE_FEEDBACK = "fde_feedback"
+    DOMAIN_FEEDBACK = "domain_feedback"  # renamed from FDE_FEEDBACK — domain-agnostic
 
 
 class Priority(Enum):
@@ -86,7 +86,7 @@ class GoalGenerator:
         goals.extend(self._scan_exploration_gaps())
         goals.extend(self._scan_tool_gaps())
         goals.extend(self._scan_doc_health())
-        goals.extend(self._scan_fde_feedback())
+        goals.extend(self._scan_domain_feedback())
         goals.sort(key=lambda g: (g.priority.value, -g.generated_at), reverse=True)
         return goals
 
@@ -351,7 +351,8 @@ class GoalGenerator:
                         continue
                     fp = os.path.join(root, fn)
                     try:
-                        n = sum(1 for _ in open(fp, encoding="utf-8", errors="ignore"))
+                        with open(fp, encoding="utf-8", errors="ignore") as f:
+                            n = sum(1 for _ in f)
                     except Exception:
                         continue
                     if n > oversized_limit:
@@ -376,12 +377,12 @@ class GoalGenerator:
             logger.debug("doc health scan skipped: %s", e)
             return []
 
-    def _scan_fde_feedback(self) -> List[Goal]:
-        """FDE 现场反馈 → 生成改进提案 (FDE Toolkit D, P1 进阶版).
+    def _scan_domain_feedback(self) -> List[Goal]:
+        """Domain feedback → generate improvement proposals.
 
         Scans ~/.aiplat/field_feedback/*.json and generates a Goal for each
-        unresolved feedback entry, so FDE field findings drive product iteration
-        through the same GoalGenerator → GoalExecutor → Repair Center loop.
+        unresolved feedback entry, enabling field findings to drive product
+        iteration through the GoalGenerator → GoalExecutor → Repair Center loop.
         """
         try:
             from core.feedback.field_feedback import list_field_feedback
@@ -398,7 +399,7 @@ class GoalGenerator:
                     goal_id=f"fde-{fb.get('id','unknown')}",
                     title=f"FDE反馈: {fb.get('issue',{}).get('description','')[:60]}",
                     description="客户现场发现的问题, 应由总部团队审查并纳入产品迭代。",
-                    goal_type=GoalType.FDE_FEEDBACK,
+                    goal_type=GoalType.DOMAIN_FEEDBACK,
                     priority=priority,
                     estimated_impact=f"客户: {fb.get('customer_profile_id','')} | "
                                      f"组件: {fb.get('issue',{}).get('affected_component','')}",

@@ -241,6 +241,20 @@ infra 不依赖任何内部包
 
 **所有 18 个能力模块均已接线或预留桥接。** 测试覆盖完备。
 
+### 5.9 Infra 独立部署验收标准（强制）
+
+每次 Infra 层变更后必须运行以下验证，确认零应用名硬编码：
+
+```bash
+# 应用名泄漏检测 — 预期均为 0
+grep -rn 'aiPlat\|aiplat\|frontend\|management\|ai-prod' infra/ --include='*.py' --exclude-dir=__pycache__ | grep -v '# noqa: infra-generic' | wc -l
+
+# 端口硬编码检测 — 预期均为 0  
+grep -rn '8002\|5173\|8000\|5432' infra/ --include='*.py' | grep -v 'AIPLAT_PORT' | wc -l
+```
+
+> 违反上述任一检查 → CI 阻断，标记为架构违规。
+
 ---
 
 ## 6) 输出要求

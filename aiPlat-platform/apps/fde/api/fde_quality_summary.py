@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 from typing import Any, Dict, List
+from apps.fde.schemas import FdeStatusResponse, FdeListResponse, FdeItemResponse
+
 
 from fastapi import APIRouter, HTTPException, Query, Body
 
@@ -10,7 +12,7 @@ import json, asyncio, time, os, hashlib
 router = APIRouter(tags=["fde-quality-summary"])
 
 
-@router.get("/quality-summary", response_model=dict)
+@router.get("/quality-summary", response_model=FdeItemResponse)
 async def fde_quality_summary():
     """Cross-subsystem quality aggregation — the Quality Bus.
 
@@ -26,7 +28,7 @@ async def fde_quality_summary():
 
     # ── FDE quality ──
     try:
-        from core.api.routers.fde import _get_governance_live_status
+        from .fde import _get_governance_live_status
         live = _get_governance_live_status()
         dr = live.get("delivery_rate", 0)
         ev = live.get("evidence_entity_count", 0)
@@ -64,7 +66,7 @@ async def fde_quality_summary():
 
     # ── Convergence quality ──
     try:
-        from core.api.routers.fde import _get_convergence_status
+        from .fde import _get_convergence_status
         gov = _get_convergence_status()
         ct = gov.get("applied_triggers", 0)
         scores["convergence"] = {
@@ -80,7 +82,7 @@ async def fde_quality_summary():
 
     # ── ContextBus quality ──
     try:
-        from core.api.routers.fde import _get_pipeline_health
+        from .fde import _get_pipeline_health
         pipe = _get_pipeline_health()
         scores["context_bus"] = {
             "score": 100 if pipe == "ok" else 50 if pipe == "degraded" else 0,

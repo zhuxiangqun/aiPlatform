@@ -246,6 +246,27 @@ PY
   fi
 }
 
+verify_import () {
+  local service="$1"
+  local code="$2"
+  echo "  验证 $service 模块导入..."
+  # PYTHONPATH includes the project for multi-repo layout
+  local errfile="/tmp/aiplat-import-verify-$$.log"
+  if PYTHONPATH="$PROJECT_ROOT/aiPlat-core:$PROJECT_ROOT/aiPlat-infra:$PROJECT_ROOT/aiPlat-platform:$PROJECT_ROOT/aiPlat-app:$PROJECT_ROOT/aiPlat-management" \
+     "$PY" -c "$code" >/dev/null 2>"$errfile"; then
+    echo "  ✓ $service 模块导入验证通过"
+    return 0
+  else
+    echo "  ❌ $service 模块导入失败 — 可能存在缺失的依赖模块"
+    if [ -s "$errfile" ]; then
+      echo "     错误详情: $(head -1 "$errfile")"
+    fi
+    echo "     运行 python scripts/verify_imports.py 诊断"
+    rm -f "$errfile"
+    return 1
+  fi
+}
+
 kill_port_if_any () {
   port="$1"
   # Kill ALL processes tied to this port (LISTEN + ESTABLISHED workers)
@@ -336,6 +357,7 @@ echo "  Step 1/6: 启动 aiPlat-infra (端口 8001)"
 echo "============================================================"
 
 kill_port_if_any 8001
+verify_import "infra" "from infra.management.api.main import create_app"
 
 cd "$PROJECT_ROOT/aiPlat-infra"
 PYTHONPATH="$PROJECT_ROOT/aiPlat-infra" nohup "$PY" -m uvicorn infra.management.api.main:create_app --host 0.0.0.0 --port 8001 --factory > "$AIPLAT_HOME/logs/infra.log" 2>&1 &
@@ -359,6 +381,7 @@ echo "============================================================"
 find "$PROJECT_ROOT/aiPlat-core" -name "__pycache__" -type d -exec rm -rf {} + 2>/dev/null || true
 
 kill_port_if_any 8002
+verify_import "core" "import server"
 
 export AIPLAT_EMBED_BACKEND="${AIPLAT_EMBED_BACKEND:-hash}"
 export AIPLAT_EMBEDDING_BACKEND="${AIPLAT_EMBEDDING_BACKEND:-hash}"
@@ -402,6 +425,7 @@ echo "============================================================"
 find "$PROJECT_ROOT/aiPlat-platform" -name "__pycache__" -type d -exec rm -rf {} + 2>/dev/null || true
 
 kill_port_if_any 8003
+verify_import "platform" "from core.api.core_facade import create_infra_database_client"
 
 cd "$PROJECT_ROOT/aiPlat-platform"
 export AIPLAT_PLATFORM_DB_PATH="${AIPLAT_PLATFORM_DB_PATH:-$PROJECT_ROOT/aiPlat-platform/data/aiplat_platform.sqlite3}"
@@ -448,6 +472,7 @@ echo "  Step 4/6: 启动 aiPlat-app (端口 8004)"
 echo "============================================================"
 
 kill_port_if_any 8004
+verify_import "app" "import api.rest.routes"
 
 cd "$PROJECT_ROOT/aiPlat-app"
 export AIPLAT_APP_DB_PATH="${AIPLAT_APP_DB_PATH:-$PROJECT_ROOT/aiPlat-app/data/aiplat_app.sqlite3}"
@@ -505,6 +530,7 @@ echo "  Step 5/6: 启动 aiPlat-management (端口 8000)"
 echo "============================================================"
 
 kill_port_if_any 8000
+verify_import "management" "import management.server"
 
 cd "$PROJECT_ROOT/aiPlat-management"
 nohup "$PY" -m uvicorn management.server:create_app --host 0.0.0.0 --port 8000 --factory > "$AIPLAT_HOME/logs/management.log" 2>&1 &

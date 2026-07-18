@@ -1,0 +1,187 @@
+{
+  "$comment": "这是 template-escort-plan.json 的完整填充示例，基于中联汽配案例。",
+  "$example_for": "docs/manuals/fde/templates/template-escort-plan.json",
+
+  "meta": {
+    "plan_title": "首月护航计划",
+    "customer_name": "中联汽配制造有限公司",
+    "project_name": "中联汽配AI质检与供应链智能预警项目",
+    "signoff_id": "SIGNOFF-20260812-ZLQP",
+    "generated_at": "2026-08-12T14:30:00+08:00",
+    "fde_name": "张三",
+    "escort_start": "2026-08-12",
+    "escort_end": "2026-09-11",
+    "namespace": "zhonglian-qipei",
+    "description": "验收签收后的首月护航计划。仅内部使用。"
+  },
+
+  "health_check_schedule": {
+    "description": "自动化健康检查的调度配置",
+    "enabled": true,
+    "frequency": "daily",
+    "check_cron": "0 8 * * *",
+    "notifications": {
+      "email": "zs@aiplat.com",
+      "webhook": "https://hooks.enterprise.weixin.com/zlqp-alerts",
+      "channels": ["企业微信", "邮件"]
+    },
+    "checks": [
+      {
+        "id": "HC_HEALTH",
+        "name": "全组件健康检查",
+        "endpoint": "GET /fde/health",
+        "expected": "pipeline_health: ok, quality_score >= 60, atoms_growing: true",
+        "frequency": "daily",
+        "alert_on_failure": true
+      },
+      {
+        "id": "HC_ALERTS",
+        "name": "告警扫描",
+        "endpoint": "GET /fde/alerts?min_severity=warning&namespace=zhonglian-qipei",
+        "expected": "no new blocking alerts",
+        "frequency": "daily",
+        "alert_on_failure": true
+      }
+    ]
+  },
+
+  "alert_rules": {
+    "description": "需要立即通知 FDE 的告警类型",
+    "rules": [
+      {
+        "rule_id": "ALERT_BLOCKED",
+        "name": "阻塞行动告警",
+        "condition": "status == 'blocked'",
+        "severity": "high",
+        "notification": "zs@aiplat.com",
+        "action": "立即排查阻塞原因，检查上游依赖是否就绪"
+      },
+      {
+        "rule_id": "ALERT_STALE",
+        "name": "停滞告警",
+        "condition": "last_activity > 30 days",
+        "severity": "medium",
+        "notification": "zs@aiplat.com",
+        "action": "联系客户确认系统是否正常使用"
+      },
+      {
+        "rule_id": "ALERT_ZERO_EVIDENCE",
+        "name": "零本体支撑告警",
+        "condition": "ontology_evidence == 0",
+        "severity": "medium",
+        "notification": "zs@aiplat.com",
+        "action": "检查本体映射是否正确，补充关联数据"
+      },
+      {
+        "rule_id": "ALERT_HIGH_GAPS",
+        "name": "高缺口告警",
+        "condition": "unmatched_concepts > 3",
+        "severity": "medium",
+        "notification": "zs@aiplat.com",
+        "action": "收集未匹配概念，评估是否需要扩展本体"
+      },
+      {
+        "rule_id": "ALERT_LOW_QUALITY",
+        "name": "低质量告警",
+        "condition": "quality_score < 40",
+        "severity": "high",
+        "notification": "zs@aiplat.com",
+        "action": "检查 Golden Query 通过率，排查质量退化原因"
+      }
+    ]
+  },
+
+  "weekly_action_plan": {
+    "description": "FDE 在护航期内每周需执行的动作",
+    "weeks": [
+      {
+        "week": 1,
+        "label": "确认无阻塞问题（8/12-8/18）",
+        "actions": [
+          "联系刘经理确认系统可正常登录和使用",
+          "检查运营监控面板，确认无 blocking alerts",
+          "与王主管沟通，确认质检员操作无困难",
+          "记录首周反馈"
+        ],
+        "output": "周报_中联汽配制造有限公司_W1.md"
+      },
+      {
+        "week": 2,
+        "label": "检查运营监控面板（8/19-8/25）",
+        "actions": [
+          "检查质量评分趋势（期望 ≥ 60）",
+          "检查自演进知识原子数（期望持续增长）",
+          "检查告警历史，处理任何 medium+ 告警",
+          "确认质检报告持续注入，无停滞"
+        ],
+        "output": "周报_中联汽配制造有限公司_W2.md"
+      },
+      {
+        "week": 3,
+        "label": "收集客户反馈（8/26-9/1）",
+        "actions": [
+          "主动联系王主管收集使用反馈",
+          "记录改进建议和新需求（如 PDF 导出、供应商评价增加财务维度）",
+          "评估是否需要 Agent 微调",
+          "确认 SLA 达标情况"
+        ],
+        "output": "周报_中联汽配制造有限公司_W3.md"
+      },
+      {
+        "week": 4,
+        "label": "首月总结 → 进入稳定运营（9/2-9/11）",
+        "actions": [
+          "汇总 4 周运营数据，生成月度趋势分析",
+          "与陈总/王主管/刘经理回顾首月运行情况",
+          "制定后续运维计划（巡检频率降为每月）",
+          "确认首月护航目标达成，进入稳定运营",
+          "归档首月所有周报和月报"
+        ],
+        "output": "月报_中联汽配制造有限公司_2026年8月.md"
+      }
+    ]
+  },
+
+  "self_evolution_config": {
+    "description": "首月护航期内自演进系统的配置",
+    "enabled": true,
+    "observation": {
+      "snapshot_on_check": true,
+      "frequency": "every health check"
+    },
+    "diagnosis": {
+      "rules_count": 5,
+      "auto_diagnose": true
+    },
+    "repair": {
+      "auto_repair": true,
+      "min_confidence": 0.9,
+      "max_auto_repairs_per_day": 3
+    },
+    "evolution": {
+      "auto_discover_terms": true,
+      "auto_register_review": true
+    }
+  },
+
+  "escalation_contacts": {
+    "fde_primary": {
+      "name": "张三",
+      "role": "交付经理",
+      "contact": "zhangsan@aiplat.com / 13800001111",
+      "availability": "工作日 9:00-18:00，紧急情况随时"
+    },
+    "fde_backup": {
+      "name": "李四",
+      "role": "备选交付经理",
+      "contact": "lisi@aiplat.com / 13800002222",
+      "availability": "工作日 9:00-18:00"
+    },
+    "technical_support": {
+      "name": "刘经理",
+      "role": "客户方IT负责人",
+      "contact": "liujingli@zhonglian-qipei.com",
+      "availability": "工作日 8:30-17:30"
+    }
+  }
+}

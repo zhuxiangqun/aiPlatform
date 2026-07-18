@@ -163,6 +163,8 @@ def create_app(manager=None) -> FastAPI:
                 "status": "success",
                 "data": {name: s.value for name, s in status.items()}
             }
+        except HTTPException:
+            raise
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
     
@@ -183,6 +185,8 @@ def create_app(manager=None) -> FastAPI:
                     for name, h in health.items()
                 }
             }
+        except HTTPException:
+            raise
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
     
@@ -206,6 +210,8 @@ def create_app(manager=None) -> FastAPI:
                     for name, module_metrics in metrics.items()
                 }
             }
+        except HTTPException:
+            raise
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
     
@@ -218,6 +224,8 @@ def create_app(manager=None) -> FastAPI:
                 "status": "success",
                 "data": diagnosis
             }
+        except HTTPException:
+            raise
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
     
@@ -247,6 +255,8 @@ def create_app(manager=None) -> FastAPI:
             }
         except HTTPException:
             raise
+        except HTTPException:
+            raise
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
     
@@ -271,6 +281,8 @@ def create_app(manager=None) -> FastAPI:
                     }
                 }
             }
+        except HTTPException:
+            raise
         except HTTPException:
             raise
         except Exception as e:
@@ -302,6 +314,8 @@ def create_app(manager=None) -> FastAPI:
             }
         except HTTPException:
             raise
+        except HTTPException:
+            raise
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
     
@@ -323,6 +337,8 @@ def create_app(manager=None) -> FastAPI:
             }
         except HTTPException:
             raise
+        except HTTPException:
+            raise
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
     
@@ -339,6 +355,8 @@ def create_app(manager=None) -> FastAPI:
                 "status": "success",
                 "message": f"Configuration updated for {name}"
             }
+        except HTTPException:
+            raise
         except HTTPException:
             raise
         except Exception as e:
@@ -386,6 +404,8 @@ def create_app(manager=None) -> FastAPI:
             }
         except HTTPException:
             raise
+        except HTTPException:
+            raise
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
     
@@ -425,6 +445,8 @@ def create_app(manager=None) -> FastAPI:
             }
         except HTTPException:
             raise
+        except HTTPException:
+            raise
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
     
@@ -443,6 +465,8 @@ def create_app(manager=None) -> FastAPI:
             }
         except HTTPException:
             raise
+        except HTTPException:
+            raise
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
     
@@ -456,6 +480,8 @@ def create_app(manager=None) -> FastAPI:
             
             await node_mgr.remove_node(node_name)
             return {"name": node_name, "status": "deleted"}
+        except HTTPException:
+            raise
         except HTTPException:
             raise
         except Exception as e:
@@ -473,6 +499,8 @@ def create_app(manager=None) -> FastAPI:
             return {"name": node_name, "status": "draining"}
         except HTTPException:
             raise
+        except HTTPException:
+            raise
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
     
@@ -486,6 +514,8 @@ def create_app(manager=None) -> FastAPI:
             
             await node_mgr.restart_node(node_name)
             return {"name": node_name, "status": "restarting"}
+        except HTTPException:
+            raise
         except HTTPException:
             raise
         except Exception as e:
@@ -524,6 +554,8 @@ def create_app(manager=None) -> FastAPI:
             }
         except HTTPException:
             raise
+        except HTTPException:
+            raise
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
     
@@ -552,6 +584,8 @@ def create_app(manager=None) -> FastAPI:
             }
         except HTTPException:
             raise
+        except HTTPException:
+            raise
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
     
@@ -570,6 +604,8 @@ def create_app(manager=None) -> FastAPI:
             }
         except HTTPException:
             raise
+        except HTTPException:
+            raise
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
     
@@ -583,6 +619,8 @@ def create_app(manager=None) -> FastAPI:
             
             await service_mgr.delete_service(service_name)
             return {"name": service_name, "status": "deleted"}
+        except HTTPException:
+            raise
         except HTTPException:
             raise
         except Exception as e:
@@ -600,6 +638,8 @@ def create_app(manager=None) -> FastAPI:
             return {"name": service_name, "replicas": replicas}
         except HTTPException:
             raise
+        except HTTPException:
+            raise
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
     
@@ -613,6 +653,8 @@ def create_app(manager=None) -> FastAPI:
             
             await service_mgr.restart_service(service_name)
             return {"name": service_name, "status": "restarting"}
+        except HTTPException:
+            raise
         except HTTPException:
             raise
         except Exception as e:
@@ -642,6 +684,8 @@ def create_app(manager=None) -> FastAPI:
             ] if quotas else []
         except HTTPException:
             raise
+        except HTTPException:
+            raise
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
     
@@ -655,6 +699,8 @@ def create_app(manager=None) -> FastAPI:
             
             policies = await scheduler_mgr.list_policies()
             return policies if policies else []
+        except HTTPException:
+            raise
         except HTTPException:
             raise
         except Exception as e:
@@ -686,6 +732,8 @@ def create_app(manager=None) -> FastAPI:
             ] if tasks else []
         except HTTPException:
             raise
+        except HTTPException:
+            raise
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
     
@@ -712,6 +760,8 @@ def create_app(manager=None) -> FastAPI:
             ] if policies else []
         except HTTPException:
             raise
+        except HTTPException:
+            raise
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
     
@@ -729,6 +779,8 @@ def create_app(manager=None) -> FastAPI:
             return pvcs if pvcs else []
         except HTTPException:
             raise
+        except HTTPException:
+            raise
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
     
@@ -742,6 +794,8 @@ def create_app(manager=None) -> FastAPI:
             
             collections = await storage_mgr.list_collections()
             return collections if collections else []
+        except HTTPException:
+            raise
         except HTTPException:
             raise
         except Exception as e:
@@ -761,6 +815,8 @@ def create_app(manager=None) -> FastAPI:
             return ingresses if ingresses else []
         except HTTPException:
             raise
+        except HTTPException:
+            raise
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
     
@@ -776,6 +832,8 @@ def create_app(manager=None) -> FastAPI:
             return services if services else []
         except HTTPException:
             raise
+        except HTTPException:
+            raise
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
     
@@ -789,6 +847,8 @@ def create_app(manager=None) -> FastAPI:
             
             policies = await network_mgr.list_policies()
             return policies if policies else []
+        except HTTPException:
+            raise
         except HTTPException:
             raise
         except Exception as e:
@@ -808,6 +868,8 @@ def create_app(manager=None) -> FastAPI:
             return metrics if metrics else {}
         except HTTPException:
             raise
+        except HTTPException:
+            raise
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
     
@@ -823,6 +885,8 @@ def create_app(manager=None) -> FastAPI:
             return metrics if metrics else []
         except HTTPException:
             raise
+        except HTTPException:
+            raise
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
     
@@ -836,6 +900,8 @@ def create_app(manager=None) -> FastAPI:
             
             rules = await monitoring_mgr.list_alert_rules()
             return rules if rules else []
+        except HTTPException:
+            raise
         except HTTPException:
             raise
         except Exception as e:
@@ -898,6 +964,8 @@ def create_app(manager=None) -> FastAPI:
             }
         except HTTPException:
             raise
+        except HTTPException:
+            raise
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
     
@@ -911,6 +979,8 @@ def create_app(manager=None) -> FastAPI:
             
             providers = await model_mgr.get_providers()
             return {"providers": providers}
+        except HTTPException:
+            raise
         except HTTPException:
             raise
         except Exception as e:
@@ -948,6 +1018,8 @@ def create_app(manager=None) -> FastAPI:
                 ],
                 "total": len(models)
             }
+        except HTTPException:
+            raise
         except HTTPException:
             raise
         except Exception as e:
@@ -998,6 +1070,8 @@ def create_app(manager=None) -> FastAPI:
                 "createdAt": model.created_at.isoformat() if model.created_at else None,
                 "updatedAt": model.updated_at.isoformat() if model.updated_at else None,
             }
+        except HTTPException:
+            raise
         except HTTPException:
             raise
         except Exception as e:
@@ -1075,6 +1149,8 @@ def create_app(manager=None) -> FastAPI:
             }
         except HTTPException:
             raise
+        except HTTPException:
+            raise
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
     
@@ -1115,6 +1191,8 @@ def create_app(manager=None) -> FastAPI:
             return {"id": updated.id, "status": "updated"}
         except HTTPException:
             raise
+        except HTTPException:
+            raise
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
     
@@ -1131,6 +1209,8 @@ def create_app(manager=None) -> FastAPI:
                 raise HTTPException(status_code=404, detail="Model not found")
             
             return {"id": model_id, "status": "deleted"}
+        except HTTPException:
+            raise
         except HTTPException:
             raise
         except Exception as e:
@@ -1151,6 +1231,8 @@ def create_app(manager=None) -> FastAPI:
             return {"id": updated.id, "enabled": True}
         except HTTPException:
             raise
+        except HTTPException:
+            raise
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
     
@@ -1169,6 +1251,8 @@ def create_app(manager=None) -> FastAPI:
             return {"id": updated.id, "enabled": False}
         except HTTPException:
             raise
+        except HTTPException:
+            raise
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
     
@@ -1184,6 +1268,8 @@ def create_app(manager=None) -> FastAPI:
             return result
         except HTTPException:
             raise
+        except HTTPException:
+            raise
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
     
@@ -1197,6 +1283,8 @@ def create_app(manager=None) -> FastAPI:
             
             result = await model_mgr.test_response(model_id)
             return result
+        except HTTPException:
+            raise
         except HTTPException:
             raise
         except Exception as e:
@@ -1227,6 +1315,8 @@ def create_app(manager=None) -> FastAPI:
             }
         except HTTPException:
             raise
+        except HTTPException:
+            raise
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
     
@@ -1243,6 +1333,8 @@ def create_app(manager=None) -> FastAPI:
                 raise HTTPException(status_code=404, detail=f"Driver {driver_name} not found")
             
             return driver
+        except HTTPException:
+            raise
         except HTTPException:
             raise
         except Exception as e:
@@ -1264,6 +1356,8 @@ def create_app(manager=None) -> FastAPI:
             }
         except HTTPException:
             raise
+        except HTTPException:
+            raise
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
     
@@ -1281,6 +1375,8 @@ def create_app(manager=None) -> FastAPI:
                 "message": f"Driver rollback to {request.version} initiated",
                 "nodes": result
             }
+        except HTTPException:
+            raise
         except HTTPException:
             raise
         except Exception as e:
@@ -1308,6 +1404,8 @@ def create_app(manager=None) -> FastAPI:
             }
         except HTTPException:
             raise
+        except HTTPException:
+            raise
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
     
@@ -1325,6 +1423,8 @@ def create_app(manager=None) -> FastAPI:
                 "events": events,
                 "total": len(events) if events else 0
             }
+        except HTTPException:
+            raise
         except HTTPException:
             raise
         except Exception as e:
@@ -1354,6 +1454,8 @@ def create_app(manager=None) -> FastAPI:
             }
         except HTTPException:
             raise
+        except HTTPException:
+            raise
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
     
@@ -1370,6 +1472,8 @@ def create_app(manager=None) -> FastAPI:
                 raise HTTPException(status_code=404, detail=f"Image {image_id} not found")
             
             return image
+        except HTTPException:
+            raise
         except HTTPException:
             raise
         except Exception as e:
@@ -1395,6 +1499,8 @@ def create_app(manager=None) -> FastAPI:
                 "message": f"Image build initiated for {request.name}:{request.tag}",
                 "build_id": result.get("build_id")
             }
+        except HTTPException:
+            raise
         except HTTPException:
             raise
         except Exception as e:
@@ -1431,6 +1537,8 @@ def create_app(manager=None) -> FastAPI:
             }
         except HTTPException:
             raise
+        except HTTPException:
+            raise
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
     
@@ -1450,6 +1558,8 @@ def create_app(manager=None) -> FastAPI:
                 "name": quota.name,
                 "status": "created"
             }
+        except HTTPException:
+            raise
         except HTTPException:
             raise
         except Exception as e:
@@ -1474,6 +1584,8 @@ def create_app(manager=None) -> FastAPI:
             }
         except HTTPException:
             raise
+        except HTTPException:
+            raise
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
     
@@ -1490,6 +1602,8 @@ def create_app(manager=None) -> FastAPI:
                 raise HTTPException(status_code=404, detail=f"Quota {quota_id} not found")
             
             return {"id": quota_id, "status": "deleted"}
+        except HTTPException:
+            raise
         except HTTPException:
             raise
         except Exception as e:
@@ -1521,6 +1635,8 @@ def create_app(manager=None) -> FastAPI:
             }
         except HTTPException:
             raise
+        except HTTPException:
+            raise
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
     
@@ -1537,6 +1653,8 @@ def create_app(manager=None) -> FastAPI:
                 raise HTTPException(status_code=404, detail=f"Task {task_id} not found")
             
             return {"id": task_id, "status": "cancelled"}
+        except HTTPException:
+            raise
         except HTTPException:
             raise
         except Exception as e:
@@ -1566,6 +1684,8 @@ def create_app(manager=None) -> FastAPI:
             }
         except HTTPException:
             raise
+        except HTTPException:
+            raise
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
     
@@ -1586,6 +1706,8 @@ def create_app(manager=None) -> FastAPI:
                 "history": history,
                 "total": len(history) if history else 0
             }
+        except HTTPException:
+            raise
         except HTTPException:
             raise
         except Exception as e:
@@ -1620,6 +1742,8 @@ def create_app(manager=None) -> FastAPI:
             }
         except HTTPException:
             raise
+        except HTTPException:
+            raise
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
     
@@ -1637,6 +1761,8 @@ def create_app(manager=None) -> FastAPI:
                 "size": size,
                 "status": "resizing"
             }
+        except HTTPException:
+            raise
         except HTTPException:
             raise
         except Exception as e:
@@ -1658,6 +1784,8 @@ def create_app(manager=None) -> FastAPI:
             }
         except HTTPException:
             raise
+        except HTTPException:
+            raise
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
     
@@ -1671,6 +1799,8 @@ def create_app(manager=None) -> FastAPI:
             
             status = await storage_mgr.get_vector_status()
             return status
+        except HTTPException:
+            raise
         except HTTPException:
             raise
         except Exception as e:
@@ -1691,6 +1821,8 @@ def create_app(manager=None) -> FastAPI:
             }
         except HTTPException:
             raise
+        except HTTPException:
+            raise
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
     
@@ -1709,6 +1841,8 @@ def create_app(manager=None) -> FastAPI:
             return {"name": collection_name, "status": "deleted"}
         except HTTPException:
             raise
+        except HTTPException:
+            raise
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
     
@@ -1725,6 +1859,8 @@ def create_app(manager=None) -> FastAPI:
                 "models": models,
                 "total": len(models) if models else 0
             }
+        except HTTPException:
+            raise
         except HTTPException:
             raise
         except Exception as e:
@@ -1770,6 +1906,8 @@ def create_app(manager=None) -> FastAPI:
             }
         except HTTPException:
             raise
+        except HTTPException:
+            raise
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
     
@@ -1788,6 +1926,8 @@ def create_app(manager=None) -> FastAPI:
             }
         except HTTPException:
             raise
+        except HTTPException:
+            raise
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
     
@@ -1804,6 +1944,8 @@ def create_app(manager=None) -> FastAPI:
                 "name": policy.get("name"),
                 "status": "created"
             }
+        except HTTPException:
+            raise
         except HTTPException:
             raise
         except Exception as e:
@@ -1825,6 +1967,8 @@ def create_app(manager=None) -> FastAPI:
             return result
         except HTTPException:
             raise
+        except HTTPException:
+            raise
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
     
@@ -1842,6 +1986,8 @@ def create_app(manager=None) -> FastAPI:
             return overview
         except HTTPException:
             raise
+        except HTTPException:
+            raise
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
     
@@ -1857,6 +2003,8 @@ def create_app(manager=None) -> FastAPI:
             return metrics
         except HTTPException:
             raise
+        except HTTPException:
+            raise
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
     
@@ -1870,6 +2018,8 @@ def create_app(manager=None) -> FastAPI:
             
             metrics = await monitoring_mgr.get_service_metrics(service_name)
             return metrics
+        except HTTPException:
+            raise
         except HTTPException:
             raise
         except Exception as e:
@@ -1895,6 +2045,8 @@ def create_app(manager=None) -> FastAPI:
             }
         except HTTPException:
             raise
+        except HTTPException:
+            raise
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
 
@@ -1913,6 +2065,8 @@ def create_app(manager=None) -> FastAPI:
             return {"name": ingress_name, "status": "deleted"}
         except HTTPException:
             raise
+        except HTTPException:
+            raise
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
 
@@ -1929,6 +2083,8 @@ def create_app(manager=None) -> FastAPI:
             return {"name": policy_name, "status": "deleted"}
         except HTTPException:
             raise
+        except HTTPException:
+            raise
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
 
@@ -1943,6 +2099,8 @@ def create_app(manager=None) -> FastAPI:
             return {"id": policy_id, "status": "updated"}
         except HTTPException:
             raise
+        except HTTPException:
+            raise
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
 
@@ -1955,6 +2113,8 @@ def create_app(manager=None) -> FastAPI:
                 raise HTTPException(status_code=404, detail="Scheduler manager not found")
             await scheduler_mgr.delete_policy(policy_id)
             return {"id": policy_id, "status": "deleted"}
+        except HTTPException:
+            raise
         except HTTPException:
             raise
         except Exception as e:
@@ -1973,6 +2133,8 @@ def create_app(manager=None) -> FastAPI:
             return {"id": task_id, "status": "cancelled"}
         except HTTPException:
             raise
+        except HTTPException:
+            raise
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
 
@@ -1986,6 +2148,8 @@ def create_app(manager=None) -> FastAPI:
             version = request.get("version", "")
             await node_mgr.upgrade_driver(node_name, version)
             return {"name": node_name, "version": version, "status": "upgrading"}
+        except HTTPException:
+            raise
         except HTTPException:
             raise
         except Exception as e:
@@ -2004,6 +2168,8 @@ def create_app(manager=None) -> FastAPI:
             return {"name": pvc_name, "status": "deleted"}
         except HTTPException:
             raise
+        except HTTPException:
+            raise
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
 
@@ -2018,6 +2184,8 @@ def create_app(manager=None) -> FastAPI:
             if collection is None:
                 raise HTTPException(status_code=404, detail=f"Collection {name} not found")
             return collection
+        except HTTPException:
+            raise
         except HTTPException:
             raise
         except Exception as e:
@@ -2036,6 +2204,8 @@ def create_app(manager=None) -> FastAPI:
             return {"name": rule.name, "status": "created"}
         except HTTPException:
             raise
+        except HTTPException:
+            raise
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
 
@@ -2050,6 +2220,8 @@ def create_app(manager=None) -> FastAPI:
             if not success:
                 raise HTTPException(status_code=404, detail=f"Rule {rule_name} not found")
             return {"name": rule_name, "status": "updated"}
+        except HTTPException:
+            raise
         except HTTPException:
             raise
         except Exception as e:
@@ -2068,6 +2240,8 @@ def create_app(manager=None) -> FastAPI:
             return {"name": rule_name, "status": "deleted"}
         except HTTPException:
             raise
+        except HTTPException:
+            raise
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
 
@@ -2082,6 +2256,8 @@ def create_app(manager=None) -> FastAPI:
             if not success:
                 raise HTTPException(status_code=404, detail=f"Rule {rule_name} not found")
             return {"name": rule_name, "status": "enabled"}
+        except HTTPException:
+            raise
         except HTTPException:
             raise
         except Exception as e:
@@ -2100,6 +2276,8 @@ def create_app(manager=None) -> FastAPI:
             return {"name": rule_name, "status": "disabled"}
         except HTTPException:
             raise
+        except HTTPException:
+            raise
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
 
@@ -2116,6 +2294,8 @@ def create_app(manager=None) -> FastAPI:
             return {"id": alert_id, "status": "acknowledged"}
         except HTTPException:
             raise
+        except HTTPException:
+            raise
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
 
@@ -2128,6 +2308,8 @@ def create_app(manager=None) -> FastAPI:
                 raise HTTPException(status_code=404, detail="Monitoring manager not found")
             alerts = await monitoring_mgr.get_alerts(status, limit)
             return {"alerts": alerts, "total": len(alerts) if alerts else 0}
+        except HTTPException:
+            raise
         except HTTPException:
             raise
         except Exception as e:
@@ -2144,6 +2326,8 @@ def create_app(manager=None) -> FastAPI:
             return {"logs": logs, "total": len(logs) if logs else 0}
         except HTTPException:
             raise
+        except HTTPException:
+            raise
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
 
@@ -2158,6 +2342,8 @@ def create_app(manager=None) -> FastAPI:
             return {"gpus": gpus, "total": len(gpus) if gpus else 0}
         except HTTPException:
             raise
+        except HTTPException:
+            raise
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
 
@@ -2170,6 +2356,8 @@ def create_app(manager=None) -> FastAPI:
                 raise HTTPException(status_code=404, detail="Scheduler manager not found")
             policy = await scheduler_mgr.create_policy(request)
             return {"id": policy.id, "status": "created"}
+        except HTTPException:
+            raise
         except HTTPException:
             raise
         except Exception as e:
@@ -2188,6 +2376,8 @@ def create_app(manager=None) -> FastAPI:
             return {"id": policy_id, "status": "paused"}
         except HTTPException:
             raise
+        except HTTPException:
+            raise
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
 
@@ -2202,6 +2392,8 @@ def create_app(manager=None) -> FastAPI:
             if not success:
                 raise HTTPException(status_code=404, detail=f"Autoscaling policy {policy_id} not found")
             return {"id": policy_id, "status": "running"}
+        except HTTPException:
+            raise
         except HTTPException:
             raise
         except Exception as e:
@@ -2220,6 +2412,8 @@ def create_app(manager=None) -> FastAPI:
             return {"name": service_name, "status": "stopped"}
         except HTTPException:
             raise
+        except HTTPException:
+            raise
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
 
@@ -2234,6 +2428,8 @@ def create_app(manager=None) -> FastAPI:
             if service is None:
                 raise HTTPException(status_code=404, detail=f"Service {service_name} not found")
             return service
+        except HTTPException:
+            raise
         except HTTPException:
             raise
         except Exception as e:
@@ -2252,6 +2448,8 @@ def create_app(manager=None) -> FastAPI:
             return {"name": service_name, "status": "updated"}
         except HTTPException:
             raise
+        except HTTPException:
+            raise
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
 
@@ -2266,6 +2464,8 @@ def create_app(manager=None) -> FastAPI:
             if not success:
                 raise HTTPException(status_code=404, detail=f"Service {service_name} not found")
             return {"name": service_name, "status": "deleted"}
+        except HTTPException:
+            raise
         except HTTPException:
             raise
         except Exception as e:
@@ -2284,6 +2484,8 @@ def create_app(manager=None) -> FastAPI:
             return {"name": ingress_name, "status": "updated"}
         except HTTPException:
             raise
+        except HTTPException:
+            raise
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
 
@@ -2300,6 +2502,8 @@ def create_app(manager=None) -> FastAPI:
             return {"name": pvc.get("name"), "status": "created"}
         except HTTPException:
             raise
+        except HTTPException:
+            raise
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
 
@@ -2314,6 +2518,8 @@ def create_app(manager=None) -> FastAPI:
             return {"name": collection.get("name"), "status": "created"}
         except HTTPException:
             raise
+        except HTTPException:
+            raise
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
 
@@ -2326,6 +2532,8 @@ def create_app(manager=None) -> FastAPI:
                 raise HTTPException(status_code=404, detail="Network manager not found")
             ingress = await network_mgr.create_ingress(request.dict())
             return {"name": ingress.get("name"), "status": "created"}
+        except HTTPException:
+            raise
         except HTTPException:
             raise
         except Exception as e:
@@ -2355,6 +2563,8 @@ def create_app(manager=None) -> FastAPI:
             return model
         except HTTPException:
             raise
+        except HTTPException:
+            raise
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
 
@@ -2369,6 +2579,8 @@ def create_app(manager=None) -> FastAPI:
             if not success:
                 raise HTTPException(status_code=404, detail=f"Model {model_id} not found")
             return {"id": model_id, "status": "deleted"}
+        except HTTPException:
+            raise
         except HTTPException:
             raise
         except Exception as e:

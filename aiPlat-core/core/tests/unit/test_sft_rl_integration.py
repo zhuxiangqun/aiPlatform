@@ -18,7 +18,7 @@ class TestSftRlBridgeIntegration:
 
     def test_sft_signal_file_written(self):
         """_signal_sft_complete writes valid JSON to ~/.aiplat/sft_models/"""
-        from core.harness.finetune.job_manager import JobManager
+        from core.apps.finetune.job_manager import JobManager
         import tempfile, json, os
 
         # Simulate SFT completion signal

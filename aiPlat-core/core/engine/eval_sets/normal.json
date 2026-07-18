@@ -6,7 +6,7 @@
   "tasks": [
     {
       "task_id": "normal-001",
-      "agent_id": "programmer_agent",
+      "agent_id": "eval_target_codegen",
       "user_input": "用 Python 写一个函数 calculate_tax(amount, rate)，返回税额。只输出代码，不要解释。",
       "category": "normal",
       "expected_tools": [
@@ -27,7 +27,7 @@
     },
     {
       "task_id": "normal-002",
-      "agent_id": "qa_agent",
+      "agent_id": "eval_target_reviewer",
       "user_input": "检查以下代码，给出 3 条改进建议:\ndef add(a,b):\n  return a+b",
       "category": "normal",
       "expected_tools": [

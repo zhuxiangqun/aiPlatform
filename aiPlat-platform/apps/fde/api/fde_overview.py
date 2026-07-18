@@ -2,11 +2,13 @@
 from __future__ import annotations
 
 from fastapi import APIRouter
+from apps.fde.schemas import FdeStatusResponse, FdeListResponse, FdeItemResponse
+
 
 router = APIRouter(tags=["fde-overview"])
 
 
-@router.get("/overview", response_model=dict)
+@router.get("/overview", response_model=FdeItemResponse)
 async def fde_overview():
     """System overview in 3 sections: what it is, what it can do, how it evolves."""
     return {

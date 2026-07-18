@@ -247,6 +247,15 @@ async def get_context_config(request: Request) -> Dict[str, Any]:
     return await core_client.get_context_config()
 
 
+@router.get("/model-tier")
+async def get_model_tier(request: Request) -> Dict[str, Any]:
+    """Proxy model tier status to core server."""
+    core_client = getattr(request.app.state, "core_client", None)
+    if not core_client:
+        raise HTTPException(status_code=503, detail="core_client not initialized")
+    return await core_client.get_model_tier()
+
+
 @router.post("/prompt/assemble")
 async def diagnostics_prompt_assemble(request: Request, body: Dict[str, Any]) -> Dict[str, Any]:
     core_client = getattr(request.app.state, "core_client", None)

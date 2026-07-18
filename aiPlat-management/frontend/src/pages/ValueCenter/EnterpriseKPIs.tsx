@@ -42,8 +42,9 @@ const EnterpriseKPIs: React.FC = () => {
 
   const fetchKPIs = async () => {
     const res = await fetch('/api/core/value/all/goals');
+    if (!res.ok) return setLoading(false);
     const data = await res.json();
-    setKpis(data);
+    setKpis(data.items || data);
     setLoading(false);
   };
 

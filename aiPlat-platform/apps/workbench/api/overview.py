@@ -18,6 +18,7 @@ import time
 from pathlib import Path
 
 from fastapi import APIRouter, Query
+from apps.common_schemas import StatusResponse, ListResponse, ItemResponse
 
 router = APIRouter()
 
@@ -139,7 +140,7 @@ async def _get_real_llm_metrics() -> Dict[str, Any]:
         return {}
 
 
-@router.get("/diagnostics/llm/metrics", response_model=Dict[str, Any])
+@router.get("/diagnostics/llm/metrics", response_model=ItemResponse)
 async def get_llm_metrics():
     u"""Return comprehensive LLM usage metrics (24h window)."""
     return await _get_real_llm_metrics()
@@ -227,9 +228,9 @@ async def _scan_governance() -> Dict[str, Any]:
     }
 
 
-@router.get("/overview", response_model=Dict[str, Any])
+@router.get("/overview", response_model=ItemResponse)
 async def system_overview(refresh: bool = Query(False)) -> Dict[str, Any]:
-    u"""Aggregated system state organized by architecture layer."""
+    """## platform:allowed — Aggregated system state organized by architecture layer."""
     global _OV_CACHE, _OV_CACHE_TS
 
     # Force refresh — clear cache

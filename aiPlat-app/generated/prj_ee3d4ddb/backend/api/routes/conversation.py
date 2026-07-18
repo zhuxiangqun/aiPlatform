@@ -23,6 +23,8 @@ def handle_conversation(project_id: str, input_data: ConversationInput):
         service = ConversationService(db)
         result = service.process_message(project_id, input_data.message)
         return result
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     finally:

@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 from typing import Any, Dict, List
+from apps.fde.schemas import FdeStatusResponse, FdeListResponse, FdeItemResponse
+
 
 from fastapi import APIRouter, HTTPException
 
@@ -11,7 +13,7 @@ import os
 router = APIRouter(tags=["fde-pipeline"])
 
 
-@router.get("/pipeline-status", response_model=dict)
+@router.get("/pipeline-status", response_model=FdeItemResponse)
 async def fde_pipeline_status():
     """Report ContextBus pipeline health: per-layer status, timing, data availability.
 

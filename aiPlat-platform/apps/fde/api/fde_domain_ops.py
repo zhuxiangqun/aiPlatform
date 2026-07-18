@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 from typing import Any, Dict, List
+from apps.fde.schemas import FdeStatusResponse, FdeListResponse, FdeItemResponse
+
 
 from fastapi import APIRouter, HTTPException
 
@@ -10,7 +12,7 @@ import os
 router = APIRouter(tags=["fde-domain-ops"])
 
 
-@router.get("/domain/{domain}/operations", response_model=dict)
+@router.get("/domain/{domain}/operations", response_model=FdeItemResponse)
 async def fde_domain_operations(domain: str):
     """Expose domain ontology operations for Agent discovery.
 
@@ -19,7 +21,7 @@ async def fde_domain_operations(domain: str):
     """
     import os as _os_do
     from core.harness.knowledge.ontology_loader import load_ontology_from_yaml
-    from core.api.routers.fde_governance import _list_available_domains
+    from .fde_governance import _list_available_domains
 
     path = _os_do.path.expanduser(f"~/.aiplat/ontologies/{domain}.yaml")
     if not _os_do.path.exists(path):
@@ -93,5 +95,7 @@ async def fde_domain_operations(domain: str):
             "inference_rules": rules,
             "_usage": "Agent在执行前查询此端点，获取该域的业务对象、状态转换、推理规则和可用操作",
         }
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Domain operations failed: {str(e)[:300]}")

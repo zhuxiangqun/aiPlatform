@@ -100,7 +100,8 @@ def get_model_context_length(model_name: str) -> int:
         from pathlib import Path as _Path
         config_path = _os.getenv("AIPLAT_LLM_CONFIG_PATH",
             str(_Path(__file__).resolve().parents[4] / "aiPlat-infra" / "config" / "infra" / "llm_profile.yaml"))
-        profile = _yaml.safe_load(open(config_path))
+        with open(config_path) as f:
+            profile = _yaml.safe_load(f)
         caps = (profile.get("model_capabilities") or {}).get(model_name, {})
         window = caps.get("context_window", 200000)
         return int(window)

@@ -1,0 +1,29 @@
+repos:
+  - repo: local
+    hooks:
+      - id: bash-syntax
+        name: Bash Syntax Check
+        entry: bash -n
+        language: system
+        files: '\.sh$'
+
+      - id: skill-frontmatter
+        name: Validate SKILL.md Frontmatter
+        entry: python scripts/validate_frontmatter.py
+        language: python
+        files: '.*/SKILL\.md$'
+        pass_filenames: false
+
+      - id: architecture-guard
+        name: Run Architecture Guard
+        entry: bash scripts/architecture_guard.sh
+        language: system
+        files: '\.(py|yaml|sh)$'
+        pass_filenames: false
+
+      - id: import-integrity
+        name: Verify Import Integrity
+        entry: python scripts/verify_imports.py
+        language: python
+        files: '\.py$'
+        pass_filenames: false

@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 from typing import Any, Dict, List, Optional
+from apps.fde.schemas import FdeStatusResponse, FdeListResponse, FdeItemResponse
+
 
 from fastapi import APIRouter, HTTPException, Query
 
@@ -18,7 +20,7 @@ _EVIDENCE_SOURCE_LLM = "LLM推测"
 _EVIDENCE_SOURCE_INDUSTRY = "行业普遍痛点"
 
 
-@router.get("/sessions", response_model=dict)
+@router.get("/sessions", response_model=FdeListResponse)
 async def fde_sessions(
     industry: str = Query("", description="Filter by industry keyword"),
     company: str = Query("", description="Filter by company name"),
@@ -50,7 +52,7 @@ async def fde_sessions(
                 continue
 
             # Count actions and infer status
-            neighbors = fd.get_neighbors(nid, direction="outgoing")
+            neighbors = fd.get_neighbor_edges(nid, direction="outgoing")
             actions = []
             session_status = "generated"
             for neighbor_id, edge in neighbors:
@@ -103,11 +105,13 @@ async def fde_sessions(
             "limit": limit,
             "filters": {"industry": industry, "company": company, "status": status},
         }
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Session list failed: {str(e)[:300]}")
 
 
-@router.get("/sessions/{session_id}/timeline", response_model=dict)
+@router.get("/sessions/{session_id}/timeline", response_model=FdeListResponse)
 async def fde_session_timeline(session_id: str):
     """Return the state transition timeline for a diagnosis session.
 
@@ -137,7 +141,7 @@ async def fde_session_timeline(session_id: str):
         seen_action_ids = set()
 
         # Session-level transitions
-        session_neighbors = fd.get_neighbors(sid, direction="outgoing")
+        session_neighbors = fd.get_neighbor_edges(sid, direction="outgoing")
         for neighbor_id, edge in session_neighbors:
             if edge.relation_name == "has_transition":
                 tnode = fd.get_node(neighbor_id)
@@ -164,7 +168,7 @@ async def fde_session_timeline(session_id: str):
                 seen_action_ids.add(aid)
                 action_node = fd.get_node(aid)
                 action_name = action_node.entity_name if action_node else "unknown"
-                action_transitions = fd.get_neighbors(aid, direction="outgoing")
+                action_transitions = fd.get_neighbor_edges(aid, direction="outgoing")
                 for atid, aedge in action_transitions:
                     if aedge.relation_name == "has_transition":
                         atnode = fd.get_node(atid)
@@ -208,7 +212,7 @@ async def fde_session_timeline(session_id: str):
         raise HTTPException(status_code=500, detail=f"Timeline failed: {str(e)[:300]}")
 
 
-@router.get("/sessions/{session_id}", response_model=dict)
+@router.get("/sessions/{session_id}", response_model=FdeListResponse)
 async def fde_session_detail(session_id: str):
     """Get aggregated detail for a single diagnosis session.
 
@@ -240,7 +244,7 @@ async def fde_session_detail(session_id: str):
         }
 
         # 1. Session metadata (evidence_map + knowledge_gaps + readiness)
-        neighbors = fd.get_neighbors(sid, direction="outgoing")
+        neighbors = fd.get_neighbor_edges(sid, direction="outgoing")
         for neighbor_id, edge in neighbors:
             if edge.relation_name == "has_meta":
                 meta_node = fd.get_node(neighbor_id)
@@ -264,7 +268,7 @@ async def fde_session_detail(session_id: str):
                 action_node = fd.get_node(neighbor_id)
                 if action_node:
                     # Get action transitions
-                    action_transitions = fd.get_neighbors(neighbor_id, direction="outgoing")
+                    action_transitions = fd.get_neighbor_edges(neighbor_id, direction="outgoing")
                     latest_status = "pending"
                     for atid, aedge in action_transitions:
                         if aedge.relation_name == "has_transition":
@@ -330,7 +334,7 @@ async def fde_session_detail(session_id: str):
         raise HTTPException(status_code=500, detail=f"Session detail failed: {str(e)[:300]}")
 
 
-@router.get("/sessions/{session_id}/quality", response_model=dict)
+@router.get("/sessions/{session_id}/quality", response_model=FdeListResponse)
 async def fde_session_quality(session_id: str):
     """Run all quality checks against a diagnosis session. Returns 0-100 score."""
     sid = session_id.strip()
@@ -352,7 +356,7 @@ async def fde_session_quality(session_id: str):
             raise HTTPException(status_code=404, detail=f"Session {sid} not found")
 
         dims = {}
-        nb = list(fd.get_neighbors(sid, direction="outgoing"))
+        nb = list(fd.get_neighbor_edges(sid, direction="outgoing"))
 
         # Evidence coverage
         ev_cnt = tot = 0
@@ -374,7 +378,7 @@ async def fde_session_quality(session_id: str):
         for nid, e in nb:
             if e.relation_name == "has_action":
                 act_cnt += 1
-                for aid, ae in fd.get_neighbors(nid, direction="outgoing"):
+                for aid, ae in fd.get_neighbor_edges(nid, direction="outgoing"):
                     if ae.relation_name == "has_transition":
                         an = fd.get_node(aid)
                         if an and ("complet" in an.entity_name.lower() or "blocked" in an.entity_name.lower()):
@@ -413,7 +417,7 @@ async def fde_session_quality(session_id: str):
         raise HTTPException(status_code=500, detail=f"Quality scoring failed: {str(e)[:300]}")
 
 
-@router.get("/sessions/{session_id}/ontology-coverage", response_model=dict)
+@router.get("/sessions/{session_id}/ontology-coverage", response_model=FdeListResponse)
 async def fde_ontology_coverage(session_id: str):
     """Quantify how much of a diagnosis is backed by ontology vs LLM inference.
 
@@ -439,7 +443,7 @@ async def fde_ontology_coverage(session_id: str):
         if not session_node:
             raise HTTPException(status_code=404, detail=f"Session {sid} not found")
 
-        neighbors = list(fd.get_neighbors(sid, direction="outgoing"))
+        neighbors = list(fd.get_neighbor_edges(sid, direction="outgoing"))
 
         # ── 1. Ontology vs History vs LLM coverage from evidence_map ──
         ontology_count = 0

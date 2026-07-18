@@ -12,6 +12,7 @@ from fastapi import APIRouter, HTTPException
 from core.harness.kernel.runtime import get_kernel_runtime
 from core.harness.syscalls.llm import sys_llm_generate
 from core.schemas_prompt_app import PromptTestCaseCreate, PromptTestCaseUpdate, PromptEvalRunCreate
+from apps.common_schemas import StatusResponse, ListResponse, ItemResponse
 
 router = APIRouter()
 _log = logging.getLogger("aiplat.prompt_eval")
@@ -28,7 +29,7 @@ def _new_id() -> str:
 
 # ── Test Cases ──────────────────────────────────────────────────────
 
-@router.get("/prompts/eval/test-cases", response_model=Dict[str, Any])
+@router.get("/prompts/eval/test-cases", response_model=ItemResponse)
 async def list_test_cases(template_id: str = "", limit: int = 100, offset: int = 0):
     store = _store()
     if not store:
@@ -54,7 +55,7 @@ async def list_test_cases(template_id: str = "", limit: int = 100, offset: int =
     return await anyio.to_thread.run_sync(_sync)
 
 
-@router.post("/prompts/eval/test-cases", response_model=Dict[str, Any])
+@router.post("/prompts/eval/test-cases", response_model=StatusResponse)
 async def create_test_case(req: PromptTestCaseCreate):
     store = _store()
     if not store:
@@ -77,7 +78,7 @@ async def create_test_case(req: PromptTestCaseCreate):
     return await anyio.to_thread.run_sync(_sync)
 
 
-@router.put("/prompts/eval/test-cases/{case_id}", response_model=Dict[str, Any])
+@router.put("/prompts/eval/test-cases/{case_id}", response_model=StatusResponse)
 async def update_test_case(case_id: str, req: PromptTestCaseUpdate):
     store = _store()
     if not store:
@@ -102,7 +103,7 @@ async def update_test_case(case_id: str, req: PromptTestCaseUpdate):
     return await anyio.to_thread.run_sync(_sync)
 
 
-@router.delete("/prompts/eval/test-cases/{case_id}", response_model=Dict[str, Any])
+@router.delete("/prompts/eval/test-cases/{case_id}", response_model=StatusResponse)
 async def delete_test_case(case_id: str):
     store = _store()
     if not store:
@@ -121,7 +122,7 @@ async def delete_test_case(case_id: str):
 
 # ── Eval Runs ───────────────────────────────────────────────────────
 
-@router.post("/prompts/eval/runs", response_model=Dict[str, Any])
+@router.post("/prompts/eval/runs", response_model=StatusResponse)
 async def create_eval_run(req: PromptEvalRunCreate):
     store = _store()
     if not store:
@@ -176,13 +177,20 @@ async def create_eval_run(req: PromptEvalRunCreate):
     await anyio.to_thread.run_sync(_init_run)
 
     # Run evaluation in background
-    import asyncio
-    asyncio.create_task(_run_evaluation(run_id, req, case_rows, tpl, db_path))
+    import asyncio as _aio
+    async def _safe_eval():
+        try:
+            await _run_evaluation(run_id, req, case_rows, tpl, db_path)
+        except Exception:
+            import logging
+            logging.warning("Prompt evaluation failed for run %s", run_id, exc_info=True)
+    _aio.create_task(_safe_eval())
 
     return {"run_id": run_id, "status": "running", "total_cases": total}
 
 
 async def _run_evaluation(run_id: str, req: PromptEvalRunCreate, case_rows, tpl, db_path: str):
+    """## platform:allowed — LLM inference for prompt evaluation."""
     try:
         from core.harness.utils.model_injection import create_selected_adapter
         model = create_selected_adapter(model_name=req.model)
@@ -241,7 +249,7 @@ async def _run_evaluation(run_id: str, req: PromptEvalRunCreate, case_rows, tpl,
         _log.exception("Eval run failed: %s", run_id)
 
 
-@router.get("/prompts/eval/runs", response_model=Dict[str, Any])
+@router.get("/prompts/eval/runs", response_model=ItemResponse)
 async def list_eval_runs(template_id: str = "", limit: int = 20, offset: int = 0):
     store = _store()
     if not store:
@@ -264,7 +272,7 @@ async def list_eval_runs(template_id: str = "", limit: int = 20, offset: int = 0
     return await anyio.to_thread.run_sync(_sync)
 
 
-@router.get("/prompts/eval/runs/{run_id}", response_model=Dict[str, Any])
+@router.get("/prompts/eval/runs/{run_id}", response_model=ItemResponse)
 async def get_eval_run(run_id: str):
     store = _store()
     if not store:

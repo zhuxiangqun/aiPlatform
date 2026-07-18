@@ -378,6 +378,9 @@ class CoreAPIClient:
     async def diagnostics_prompt_assemble(self, body: Dict[str, Any]) -> Dict[str, Any]:
         return await self._request("POST", "/api/core/diagnostics/prompt/assemble", json=body or {})
 
+    async def get_model_tier(self) -> Dict[str, Any]:
+        return await self._request("GET", "/api/core/diagnostics/model-tier")
+
     # ===== Prompt Templates =====
 
     async def list_prompt_templates(self, *, limit: int = 100, offset: int = 0) -> Dict[str, Any]:

@@ -8,14 +8,15 @@ import logging
 from fastapi import APIRouter, HTTPException
 from core.schemas_prompt_app import PromptOptimizeRequest
 from core.harness.syscalls.llm import sys_llm_generate
+from apps.common_schemas import StatusResponse, ListResponse, ItemResponse
 
 router = APIRouter()
 _log = logging.getLogger("aiplat.prompt_optimize")
 
 
-@router.post("/prompts/optimize", response_model=Dict[str, Any])
+@router.post("/prompts/optimize", response_model=StatusResponse)
 async def optimize_prompt(req: PromptOptimizeRequest):
-    """Optimize a prompt template with context-aware analysis."""
+    """## platform:allowed — Optimize a prompt template with context-aware analysis."""
     if not req.prompt:
         raise HTTPException(status_code=400, detail="prompt is required")
 

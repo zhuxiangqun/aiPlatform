@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 from typing import Any, Dict, List
+from apps.fde.schemas import FdeStatusResponse, FdeListResponse, FdeItemResponse
+
 
 from fastapi import APIRouter, HTTPException, Query
 
@@ -14,7 +16,7 @@ _EVIDENCE_SOURCE_LLM = "LLM推测"
 _EVIDENCE_SOURCE_INDUSTRY = "行业普遍痛点"
 
 
-@router.get("/sessions/compare", response_model=dict)
+@router.get("/sessions/compare", response_model=FdeListResponse)
 async def fde_compare_sessions(
     left: str = Query("", description="Left session ID"),
     right: str = Query("", description="Right session ID"),
@@ -46,7 +48,7 @@ async def fde_compare_sessions(
                 return {"error": f"Session {sid} not found", "session_id": sid}
 
             data = {"session_id": sid, "company": node.entity_name}
-            neighbors = list(fd.get_neighbors(sid, direction="outgoing"))
+            neighbors = list(fd.get_neighbor_edges(sid, direction="outgoing"))
 
             # Evidence map
             for nid, e in neighbors:
@@ -105,6 +107,8 @@ async def fde_compare_sessions(
                 f"{deltas.get('coverage_rate', 0)}%"
             ) if deltas else "无法计算差异",
         }
+    except HTTPException:
+        raise
     except HTTPException:
         raise
     except Exception as e:

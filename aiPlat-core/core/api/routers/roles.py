@@ -47,7 +47,7 @@ ROLE_DEFAULTS = {
 
 
 from core.schemas_common import ListResponse
-from core.schemas_roles import RoleAgentItem, RoleAgentUpdateResponse, RoleMetricsResponse, RoleStrategyOverrideResponse
+from core.schemas_roles import RoleAgentItem, RoleAgentUpdateResponse, RoleMetricsResponse, RoleStrategyOverrideResponse, RoleAgentUpdateRequest, RoleStrategyOverrideRequest
 
 @router.get("/agents", response_model=ListResponse[RoleAgentItem])
 async def get_role_agents() -> List[Dict[str, Any]]:
@@ -86,19 +86,19 @@ async def get_role_agents() -> List[Dict[str, Any]]:
                     "reflection_enabled": False, "last_updated": "",
                     "agent_type": "system_service", "description": "策略调优：日常参数微调、异常响应"})
 
-    return agents
+    return {"items": agents}
 
 
 @router.put("/agents/{agent_id}", response_model=RoleAgentUpdateResponse)
-async def update_agent_role(agent_id: str, body: Dict[str, Any]) -> Dict[str, Any]:
+async def update_agent_role(agent_id: str, body: RoleAgentUpdateRequest) -> Dict[str, Any]:
     """Configure an agent's role and parameters."""
-    role = body.get("role", "employee")
+    role = body.role
     if role not in ("employee", "guard", "advisor"):
         raise HTTPException(status_code=400, detail=f"Invalid role: {role}")
 
     import time
     config = dict(ROLE_DEFAULTS.get(role, {}))
-    config.update(body.get("config", {}))
+    config.update(body.config)
     config["role"] = role
     config["last_updated"] = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
 
@@ -122,10 +122,10 @@ async def get_role_metrics() -> Dict[str, Any]:
 
 
 @router.post("/strategy/override", response_model=RoleStrategyOverrideResponse)
-async def override_strategy(body: Dict[str, Any]) -> Dict[str, Any]:
+async def override_strategy(body: RoleStrategyOverrideRequest) -> Dict[str, Any]:
     """Manually override routing strategy for specific agents."""
-    agent_id = body.get("agent_id", "")
-    mode = body.get("mode", "normal")  # normal / speed / quality / guard / pause
+    agent_id = body.agent_id
+    mode = body.mode  # normal / speed / quality / guard / pause
 
     if agent_id not in _role_configs:
         _role_configs[agent_id] = {}

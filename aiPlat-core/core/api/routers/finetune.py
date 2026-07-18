@@ -9,15 +9,16 @@ from typing import Any, Dict, List
 from fastapi import APIRouter, HTTPException, Request
 
 from core.schemas_common import PaginatedResponse
-from core.schemas_finetune import (
-    TrainingJobResponse, TrainingJobListResponse, ModelListItem, ModelListResponse, DistillJobResult, ScratchJobResult,
+from core.apps.finetune.schemas import (
+    TrainingJobResponse, TrainingJobListResponse, TrainingJobCreatedResponse,
+    ModelListItem, ModelListResponse, DistillJobResult, ScratchJobResult,
     DatasetCreateRequest, DatasetUpdateRequest, DatasetImportRequest,
     DatasetResponse, DatasetListResponse, DatasetPreviewResponse,
     JobCreateRequest, JobResponse, JobListResponse,
     ProviderInfo, ProviderListResponse, FineTuneProvider,
 )
-from core.harness.finetune.dataset_manager import DatasetManager
-from core.harness.finetune.job_manager import JobManager
+from core.apps.finetune.dataset_manager import DatasetManager
+from core.apps.finetune.job_manager import JobManager
 
 from fastapi import APIRouter, HTTPException, Request, Depends
 import os
@@ -161,7 +162,7 @@ async def cancel_job(job_id: str):
 
 @router.get("/providers", response_model=ProviderListResponse)
 async def list_providers():
-    from core.harness.finetune.providers.deepseek import DeepSeekFineTuneProvider
+    from core.apps.finetune.providers.deepseek import DeepSeekFineTuneProvider
     providers = []
     for prov_cls, name in [
         (DeepSeekFineTuneProvider, FineTuneProvider.DEEPSEEK),
@@ -221,6 +222,8 @@ async def start_training(body: Dict[str, Any]) -> Dict[str, Any]:
             "avg_reward": run.avg_reward,
             "avg_loss": getattr(run, "avg_loss", 0),
         }
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)[:200])
 
@@ -273,6 +276,8 @@ async def start_distillation(body: Dict[str, Any]) -> Dict[str, Any]:
             epochs=int(body.get("epochs", 3)),
         )
         return {"job_id": job_id, "status": "running"}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)[:200])
 
@@ -332,6 +337,8 @@ async def start_scratch_training(body: Dict[str, Any]) -> Dict[str, Any]:
         )
         job_id = await engine.train_from_scratch(config)
         return {"job_id": job_id, "status": "running"}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)[:200])
 
@@ -368,16 +375,16 @@ async def list_scratch_jobs() -> Dict[str, Any]:
 async def list_registered_models() -> Dict[str, Any]:
     """List all registered models from infra ModelManager."""
     try:
-        from aiPlat_infra.infra.management.model.manager import ModelManager
+        from infra.management.model.manager import ModelManager
         mgr = ModelManager()
         models = await mgr.list_models()
         return {"models": [{
-            "name": m.get("name", ""),
-            "display_name": m.get("display_name", m.get("name", "")),
-            "provider_name": m.get("provider_name", ""),
-            "purpose": m.get("purpose", "chat"),
-            "capability_score": m.get("capability_score", 0),
-            "available": m.get("available", True),
+            "name": getattr(m, "name", ""),
+            "display_name": getattr(m, "display_name", getattr(m, "name", "")),
+            "provider_name": getattr(m, "provider_name", ""),
+            "purpose": getattr(m, "purpose", "chat"),
+            "capability_score": getattr(m, "capability_score", 0),
+            "available": getattr(m, "available", True),
         } for m in (models or [])], "total": len(models or [])}
     except Exception as e:
         return {"models": [], "total": 0, "error": str(e)[:200]}
@@ -385,5 +392,5 @@ async def list_registered_models() -> Dict[str, Any]:
 
 def _local_provider():
     """Lazy load LocalFineTuneProvider class to avoid MLX import errors."""
-    from core.harness.finetune.providers.local import LocalFineTuneProvider
+    from core.apps.finetune.providers.local import LocalFineTuneProvider
     return LocalFineTuneProvider

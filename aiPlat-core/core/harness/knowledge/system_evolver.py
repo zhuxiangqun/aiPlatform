@@ -187,7 +187,7 @@ class SystemEvolver:
                     parts = n.entity_name.split("_", 1) if "_" in n.entity_name else [n.entity_name]
                     ind = parts[0]
                     industry_stats[ind]["sessions"] += 1
-                    nb = fd.get_neighbors(getattr(n, "entity_id", ""), direction="outgoing")
+                    nb = fd.get_neighbor_edges(getattr(n, "entity_id", ""), direction="outgoing")
                     if any(e.relation_name == "has_action" for _, e in nb):
                         industry_stats[ind]["with_actions"] += 1
     

@@ -20,7 +20,7 @@ import sqlite3 as _sqlite3
 import time as _time
 from dataclasses import dataclass, field
 from pathlib import Path as _Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 
 @dataclass
@@ -531,6 +531,37 @@ class GraphIndex:
         if direction in ("incoming", "both"):
             _collect(node.in_edges)
         return list(neighbors.values())
+
+    def get_neighbor_edges(
+        self, entity_id: str, *,
+        direction: str = "outgoing",
+        relation_filter: Optional[List[str]] = None,
+    ) -> List[Tuple[str, GraphEdge]]:
+        """Return (neighbor_id, edge) tuples. Use when callers need edge info (relation_name etc).
+        
+        Unlike get_neighbors() which returns bare GraphNode objects, this method preserves
+        the edge data so callers can check relation_name, confidence, and other edge fields.
+        """
+        node = self._nodes.get(entity_id)
+        if not node:
+            return []
+        results: List[Tuple[str, GraphEdge]] = []
+        seen: set = set()
+        def _collect(edges):
+            for e in edges:
+                if relation_filter and e.relation_name not in relation_filter:
+                    continue
+                nid = e.target_id if direction != "incoming" else e.source_id
+                if nid == entity_id:
+                    nid = e.source_id if direction == "incoming" else e.target_id
+                if nid in self._nodes and nid not in seen:
+                    seen.add(nid)
+                    results.append((nid, e))
+        if direction in ("outgoing", "both"):
+            _collect(node.out_edges)
+        if direction in ("incoming", "both"):
+            _collect(node.in_edges)
+        return results
 
     def get_inverse_relations(self, entity_id: str) -> List[GraphEdge]:
         node = self._nodes.get(entity_id)

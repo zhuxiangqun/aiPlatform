@@ -43,7 +43,7 @@ class BusinessGoalTrendResponse(BaseModel):
 
 class StrategyStatusResponse(BaseModel):
     params: Dict[str, Any] = Field(default_factory=dict)
-    context: Dict[str, Any] = Field(default_factory=dict)
+    context: str = ""
     goals_count: int = 0
 
 
@@ -53,3 +53,26 @@ class GoalSourceResponse(BaseModel):
     linked_agent: str = ""
     category: str = ""
     status: str = ""
+
+
+# ── Request models ──────────────────────────────────────────────────
+
+class GoalCreateRequest(BaseModel):
+    goal_id: str
+    description: str = ""
+    target_metric: str = ""
+    baseline_value: float = 0.0
+    target_value: float = 0.0
+    owner: str = ""
+    period: str = ""
+
+
+class GoalUpdateRequest(BaseModel):
+    current_value: float
+
+
+class GoalSourceConfigRequest(BaseModel):
+    goal_id: str
+    collection_method: str = "manual"
+    linked_agent: str = ""
+    category: str = ""

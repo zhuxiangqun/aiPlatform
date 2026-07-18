@@ -342,6 +342,8 @@ async def export_memory(rt: RuntimeDep = Depends(get_kernel_runtime)):
             "total_sessions": mm.get_session_count().get("total", 0),
         }
         return data
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"export_failed: {e}")
 
@@ -363,6 +365,8 @@ async def import_memory(request: dict, rt: RuntimeDep = Depends(get_kernel_runti
     try:
         summary = await mm.import_from(data, merge=merge)
         return {"status": "imported", "summary": summary}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"import_failed: {e}")
 
@@ -406,6 +410,8 @@ async def inspect_memory(namespace: str = "", rt: RuntimeDep = Depends(get_kerne
         raise HTTPException(status_code=503, detail="MemoryManager not initialized")
     try:
         return await mm.inspect(namespace=namespace)
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"inspect_failed: {e}")
 

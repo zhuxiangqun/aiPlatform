@@ -228,6 +228,8 @@ async def apply_routing_learning(rt: RuntimeDep = None):
         result = apply_learned_weights()
         result["weights"] = get_all_weights()
         return result
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Routing learning failed: {e}")
 

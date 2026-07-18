@@ -40,7 +40,7 @@ def _ensure_di():
 
         # Register lazy factories (not imports — only loaded when resolved)
         def _agent_registry_factory():
-            from core.apps.agents.registry import AgentRegistry  # noqa
+            from core.apps.agents import AgentRegistry  # noqa
             return AgentRegistry()
 
         def _skill_registry_factory():
@@ -52,7 +52,7 @@ def _ensure_di():
             return get_tool_registry()
 
         def _trace_service_factory():
-            from core.services.traces import TraceService  # noqa
+            from core.services.trace_service import TraceService  # noqa
             return TraceService()
 
         def _permission_factory():

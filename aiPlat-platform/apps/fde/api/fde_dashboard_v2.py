@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 from typing import Any, Dict, List
+from apps.fde.schemas import FdeStatusResponse, FdeListResponse, FdeItemResponse
+
 
 from fastapi import APIRouter, HTTPException
 
@@ -10,7 +12,7 @@ import time
 router = APIRouter(tags=["fde-dashboard-v2"])
 
 
-@router.get("/dashboard", response_model=dict)
+@router.get("/dashboard", response_model=FdeItemResponse)
 async def fde_dashboard():
     """Unified dashboard: key metrics, recent activity, alerts, governance health.
 
@@ -18,7 +20,7 @@ async def fde_dashboard():
     """
     import time as _td
 
-    from core.api.routers.fde import (
+    from .fde import (
         _get_governance_live_status,
         _get_convergence_status,
         _get_pipeline_health,
@@ -68,7 +70,7 @@ async def fde_dashboard():
         for nid, node in alert_data:
             if getattr(node, "class_name", "") != "DiagnosisSession":
                 continue
-            nb = fd.get_neighbors(nid, direction="outgoing")
+            nb = fd.get_neighbor_edges(nid, direction="outgoing")
             for neighbor_id, edge in nb:
                 if edge.relation_name == "has_transition":
                     tn = fd.get_node(neighbor_id)

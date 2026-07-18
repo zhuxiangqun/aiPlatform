@@ -146,8 +146,8 @@ class LoRAAutoTrigger:
     async def _auto_submit_job(self, train_path: str, val_path: str, timestamp: str) -> Optional[str]:
         """自动导入数据集并提交训练 Job"""
         try:
-            from core.harness.finetune.job_manager import JobManager
-            from core.schemas_finetune import JobCreateRequest, FineTuneProvider, FineTuneTemplate
+            from core.apps.finetune.job_manager import JobManager
+            from core.apps.finetune.schemas import JobCreateRequest, FineTuneProvider, FineTuneTemplate
             
             mgr = JobManager()
             provider = os.getenv("AIPLAT_SFT_PROVIDER", "local")

@@ -31,10 +31,12 @@ import time
 import uuid
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
+from apps.fde.schemas import FdeStatusResponse, FdeListResponse, FdeItemResponse
+
 
 from core.harness.utils.prompt_loader import _sync_resolve
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Body, HTTPException, Query
 from core.api.http_errors import not_found, bad_request
 from fastapi.responses import PlainTextResponse
 from pydantic import BaseModel as _PydanticBaseModel
@@ -43,97 +45,97 @@ router = APIRouter(prefix="/fde", tags=["fde"])
 
 # Include sub-module routers (incremental migration, 2026-07)
 try:
-    from core.api.routers.fde_quality_summary import router as _quality_summ_router
+    from .fde_quality_summary import router as _quality_summ_router
     router.include_router(_quality_summ_router)
 except ImportError:
     pass
 try:
-    from core.api.routers.fde_trends import router as _trends_router
+    from .fde_trends import router as _trends_router
     router.include_router(_trends_router)
 except ImportError:
     pass
 try:
-    from core.api.routers.fde_maintenance import router as _maintenance_router
+    from .fde_maintenance import router as _maintenance_router
     router.include_router(_maintenance_router)
 except ImportError:
     pass
 try:
-    from core.api.routers.fde_overview import router as _overview_router
+    from .fde_overview import router as _overview_router
     router.include_router(_overview_router)
 except ImportError:
     pass
 try:
-    from core.api.routers.fde_governance import router as _governance_router
+    from .fde_governance import router as _governance_router
     router.include_router(_governance_router)
 except ImportError:
     pass
 try:
-    from core.api.routers.fde_dashboard_v2 import router as _dashboard_v2_router
+    from .fde_dashboard_v2 import router as _dashboard_v2_router
     router.include_router(_dashboard_v2_router)
 except ImportError:
     pass
 try:
-    from core.api.routers.fde_domain_ops import router as _domain_ops_router
+    from .fde_domain_ops import router as _domain_ops_router
     router.include_router(_domain_ops_router)
 except ImportError:
     pass
 try:
-    from core.api.routers.fde_sessions_compare import router as _sessions_com_router
+    from .fde_sessions_compare import router as _sessions_com_router
     router.include_router(_sessions_com_router)
 except ImportError:
     pass
 try:
-    from core.api.routers.fde_pipeline import router as _pipeline_router
+    from .fde_pipeline import router as _pipeline_router
     router.include_router(_pipeline_router)
 except ImportError:
     pass
 try:
-    from core.api.routers.fde_bootstrap import router as _bootstrap_router
+    from .fde_bootstrap import router as _bootstrap_router
     router.include_router(_bootstrap_router)
 except ImportError:
     pass
 try:
-    from core.api.routers.fde_manuals import router as _manuals_router
+    from .fde_manuals import router as _manuals_router
     router.include_router(_manuals_router)
 except ImportError:
     pass
 try:
-    from core.api.routers.fde_acceptance import router as _acceptance_router
+    from .fde_acceptance import router as _acceptance_router
     router.include_router(_acceptance_router)
 except ImportError:
     pass
 try:
-    from core.api.routers.fde_handover_v2 import router as _handover_v2_router
+    from .fde_handover_v2 import router as _handover_v2_router
     router.include_router(_handover_v2_router)
 except ImportError:
     pass
 try:
-    from core.api.routers.fde_delivery import router as _delivery_router
+    from .fde_delivery import router as _delivery_router
     router.include_router(_delivery_router)
 except ImportError:
     pass
 try:
-    from core.api.routers.fde_sessions_v2 import router as _sessions_v2_router
+    from .fde_sessions_v2 import router as _sessions_v2_router
     router.include_router(_sessions_v2_router)
 except ImportError:
     pass
 try:
-    from core.api.routers.fde_reports import router as _reports_router
+    from .fde_reports import router as _reports_router
     router.include_router(_reports_router)
 except ImportError:
     pass
 try:
-    from core.api.routers.fde_ask import router as _ask_router
+    from .fde_ask import router as _ask_router
     router.include_router(_ask_router)
 except ImportError:
     pass
 try:
-    from core.api.routers.fde_validate import router as _validate_router
+    from .fde_validate import router as _validate_router
     router.include_router(_validate_router)
 except ImportError:
     pass
 try:
-    from core.api.routers.fde_diagnostics_v2 import router as _diag_v2_router
+    from .fde_diagnostics_v2 import router as _diag_v2_router
     router.include_router(_diag_v2_router)
 except ImportError:
     pass
@@ -171,7 +173,35 @@ _DIALOG_DEFAULT_MSG = "请提供更多关于客户业务的信息。"
 # Tab 1: 系统进化 (migrated from workbench.py)
 # ════════════════════════════════════════════════════════════
 
-@router.get("/dashboard", response_model=Dict[str, Any])
+
+# ════════════════ Typed response models ════════════════
+
+class FdeHealthResponse(_PydanticBaseModel):
+    """GET /fde/health — 全组件健康检查聚合"""
+    status: str = "healthy"
+    components: Dict[str, Any] = {}
+    warnings: List[str] = []
+    uptime_ms: int = 0
+
+
+class FdeFreezeResponse(_PydanticBaseModel):
+    """POST /fde/project/freeze — 项目中止冻结归档"""
+    status: str = "frozen"
+    archive_summary: Dict[str, Any] = {}
+    message: str = ""
+
+
+class FdeDashboardResponse(_PydanticBaseModel):
+    """GET /fde/dashboard — 四卡片 + 时间线聚合"""
+    pending_decisions: List[Dict[str, Any]] = []
+    signal_alerts: List[Dict[str, Any]] = []
+    trace_anomalies: List[Dict[str, Any]] = []
+    training: Dict[str, Any] = {}
+    timeline: List[Dict[str, Any]] = []
+    last_updated: str = ""
+
+
+@router.get("/dashboard", response_model=FdeDashboardResponse)
 async def get_fde_dashboard() -> Dict[str, Any]:
     """FDE 仪表板: 聚合四卡片数据 + 时间线。
 
@@ -480,22 +510,29 @@ bash install.sh
         _package_tasks[task_id] = {"status": "error", "detail": str(e)[:200], "log": log_entries}
 
 
-@router.post("/package", response_model=Dict[str, Any])
+@router.post("/package", response_model=FdeStatusResponse)
 async def start_package():
     """启动后台离线部署包打包 (异步)。返回 task_id 供轮询。"""
     task_id = uuid.uuid4().hex[:8]
     _package_tasks[task_id] = {"status": "running", "progress": 0, "detail": "排队中…"}
-    asyncio.create_task(_bg_package(task_id))
+    async def _safe_package():
+        try:
+            await _bg_package(task_id)
+        except Exception as e:
+            _package_tasks[task_id] = {"status": "failed", "error": str(e)[:200]}
+            import logging
+            logging.warning("Background packaging failed for task %s", task_id, exc_info=True)
+    asyncio.create_task(_safe_package())
     return {"task_id": task_id, "status": "running"}
 
 
-@router.get("/package/{task_id}", response_model=Dict[str, Any])
+@router.get("/package/{task_id}", response_model=FdeItemResponse)
 async def package_status(task_id: str):
     """查询打包进度。"""
     return _package_tasks.get(task_id, {"status": "not_found"})
 
 
-@router.get("/package/{task_id}/download")
+@router.get("/package/{task_id}/download", response_model=FdeItemResponse)
 async def package_download(task_id: str):
     """下载打包完成的 tar.gz 文件。"""
     from fastapi.responses import FileResponse
@@ -510,7 +547,7 @@ async def package_download(task_id: str):
 # Tab 4: 客户列表 (multi-customer dashboard via ProfileManager)
 # ════════════════════════════════════════════════════════════
 
-@router.get("/customers", response_model=Dict[str, Any])
+@router.get("/customers", response_model=FdeListResponse)
 async def list_customers():
     """客户列表 + 健康摘要 (复用 ProfileManager)。"""
     try:
@@ -528,11 +565,12 @@ async def list_customers():
                 "deployment_mode": cfg.metadata.get("deployment_mode", "online"),
             })
         return {"customers": customers, "total": len(customers)}
-    except Exception as e:
-        return {"customers": [], "total": 0, "error": str(e)[:200]}
+    except HTTPException:
+        raise
+        raise HTTPException(status_code=500, detail=str(e)[:200])
 
 
-@router.get("/templates", response_model=Dict[str, Any])
+@router.get("/templates", response_model=FdeListResponse)
 async def list_templates():
     """List POC template profiles."""
     try:
@@ -549,11 +587,12 @@ async def list_templates():
                 "namespace": cfg.namespace,
             })
         return {"templates": templates, "total": len(templates)}
-    except Exception as e:
-        return {"templates": [], "total": 0, "error": str(e)[:200]}
+    except HTTPException:
+        raise
+        raise HTTPException(status_code=500, detail=str(e)[:200])
 
 
-@router.post("/customers", response_model=Dict[str, Any])
+@router.post("/customers", response_model=FdeStatusResponse)
 async def create_customer(body: Dict[str, Any]):
     """Create a new customer profile."""
     try:
@@ -577,11 +616,12 @@ async def create_customer(body: Dict[str, Any]):
                         deployment_mode=str(body.get("deployment_mode", "online")))
         return {"status": "ok", "profile": {"name": cfg.name, "namespace": cfg.namespace,
                 "description": cfg.description, "default": cfg.default}}
-    except Exception as e:
-        return {"status": "error", "message": str(e)[:200]}
+    except HTTPException:
+        raise
+        raise HTTPException(status_code=500, detail=str(e)[:200])
 
 
-@router.put("/customers/{profile_id}", response_model=Dict[str, Any])
+@router.put("/customers/{profile_id}", response_model=FdeStatusResponse)
 async def update_customer(profile_id: str, body: Dict[str, Any]):
     """Update a customer profile."""
     try:
@@ -598,11 +638,12 @@ async def update_customer(profile_id: str, body: Dict[str, Any]):
             return {"status": "error", "message": f"Profile '{profile_id}' not found"}
         return {"status": "ok", "profile": {"name": cfg.name, "namespace": cfg.namespace,
                 "description": cfg.description, "profile_type": cfg.profile_type}}
-    except Exception as e:
-        return {"status": "error", "message": str(e)[:200]}
+    except HTTPException:
+        raise
+        raise HTTPException(status_code=500, detail=str(e)[:200])
 
 
-@router.delete("/customers/{profile_id}", response_model=Dict[str, Any])
+@router.delete("/customers/{profile_id}", response_model=FdeStatusResponse)
 async def delete_customer(profile_id: str):
     """Delete a customer profile."""
     try:
@@ -620,19 +661,21 @@ async def delete_customer(profile_id: str):
                 return {"status": "error", "message": f"Profile '{profile_id}' not found"}
         ok = pm.delete(cfg.namespace)
         return {"status": "ok" if ok else "error", "message": "deleted" if ok else "failed to delete"}
-    except Exception as e:
-        return {"status": "error", "message": str(e)[:200]}
+    except HTTPException:
+        raise
+        raise HTTPException(status_code=500, detail=str(e)[:200])
 
 
-@router.get("/customers/{profile_id}/health", response_model=Dict[str, Any])
+@router.get("/customers/{profile_id}/health", response_model=FdeListResponse)
 async def customer_health(profile_id: str):
     """单客户完整健康详情 (复用诊断中心 32 维)。"""
     try:
         from core.api.routers.diagnostics import run_all_diagnostics
         result = await run_all_diagnostics()
         return {"profile_id": profile_id, "diagnostics": result}
-    except Exception as e:
-        return {"profile_id": profile_id, "error": str(e)[:200]}
+    except HTTPException:
+        raise
+        raise HTTPException(status_code=500, detail=str(e)[:200])
 # ── Clarify Engine (通用多轮对话澄清，所有场景共用) ──
 
 _CLARIFY_CONTEXTS = {
@@ -697,6 +740,9 @@ FDE_PIPELINE_STEPS = {
         "label": "④ 验证价值",
         "produces": {
             "poc_profile": {"label": "POC模板名称", "type": "string"},
+            "poc_accuracy": {"label": "POC正确率(%)", "type": "float", "optional": True},
+            "poc_errors": {"label": "POC错误记录", "type": "string", "optional": True},
+            "poc_customer_approved": {"label": "客户是否确认", "type": "bool", "optional": True},
         },
         "consumes": {
             "domain_id": "从②获取，提示当前域可用Skill",
@@ -892,7 +938,7 @@ async def _clarify(context: str, text: str, history: list,
 from core.apps.fde.agent import run_fde_agent_one_shot as _run_fde_agent_one_shot  # v2.5: canonical location
 
 
-@router.post("/clarify", response_model=Dict[str, Any])
+@router.post("/clarify", response_model=FdeStatusResponse)
 async def clarify(body: Dict[str, Any]):
     """Generic multi-turn clarification. context=feedback|diagnosis|poc."""
     result = await _clarify(
@@ -904,7 +950,7 @@ async def clarify(body: Dict[str, Any]):
     return result
 
 
-@router.post("/infer-industry", response_model=Dict[str, Any])
+@router.post("/infer-industry", response_model=FdeStatusResponse)
 async def infer_industry(body: Dict[str, Any]):
     """LLM-based industry classification from company name + description."""
     name = str(body.get("name", "") or body.get("company_name", ""))
@@ -947,7 +993,7 @@ async def infer_industry(body: Dict[str, Any]):
     return {"industry": "general", "confidence": 0, "method": "fallback", "reason": "LLM 不可用"}
 
 
-@router.post("/feedback/submit", response_model=Dict[str, Any])
+@router.post("/feedback/submit", response_model=FdeStatusResponse)
 async def submit_clarified_feedback(body: Dict[str, Any]):
     """Store clarified feedback conversation + summary with pipeline context."""
     import json as _json
@@ -973,7 +1019,7 @@ async def submit_clarified_feedback(body: Dict[str, Any]):
     return {"feedback_id": fid, "status": "stored"}
 
 
-@router.post("/switch-profile/{profile_id}", response_model=Dict[str, Any])
+@router.post("/switch-profile/{profile_id}", response_model=FdeStatusResponse)
 async def switch_profile(profile_id: str):
     """切换当前工作 Profile (FDE 多客户上下文切换)。"""
     try:
@@ -985,15 +1031,16 @@ async def switch_profile(profile_id: str):
         return {"current_profile": profile_id, "namespace": cfg.namespace, "status": "ok"}
     except HTTPException:
         raise
-    except Exception as e:
-        return {"error": str(e)[:200], "status": "error"}
+    except HTTPException:
+        raise
+        raise HTTPException(status_code=500, detail=str(e)[:200])
 
 
 # ════════════════════════════════════════════════════════════
 # Tab 5: 现场反馈 (Field Feedback bridge)
 # ════════════════════════════════════════════════════════════
 
-@router.post("/feedback", response_model=Dict[str, Any])
+@router.post("/feedback", response_model=FdeStatusResponse)
 async def submit_fde_feedback(body: Dict[str, Any]):
     """FDE 提交现场反馈 (结构化 JSON → 存本地)。"""
     try:
@@ -1017,7 +1064,7 @@ def _fallback_submit(data: dict) -> str:
     return fid
 
 
-@router.get("/feedback/history", response_model=Dict[str, Any])
+@router.get("/feedback/history", response_model=FdeItemResponse)
 async def fde_feedback_history(
     limit: int = Query(20),
     customer: str = Query("", description="Filter by customer_name"),
@@ -1050,7 +1097,7 @@ async def fde_feedback_history(
 # Tab 7: 灰度发布 (Canary Release)
 # ════════════════════════════════════════════════════════════
 
-@router.get("/canary/status", response_model=Dict[str, Any])
+@router.get("/canary/status", response_model=FdeItemResponse)
 async def canary_status():
     """灰度发布当前状态: 各 Skill 的版本分流情况 + A/B 测试进度。"""
     try:
@@ -1066,11 +1113,12 @@ async def canary_status():
     except ImportError:
         return {"rollout": [], "total_skills": 0, "active_ab_tests": 0,
                 "note": "SkillRouter not available", "timestamp": datetime.now(timezone.utc).isoformat()}
-    except Exception as e:
-        return {"error": str(e)[:200], "rollout": [], "total_skills": 0}
+    except HTTPException:
+        raise
+        raise HTTPException(status_code=500, detail=str(e)[:200])
 
 
-@router.post("/canary/rollback", response_model=Dict[str, Any])
+@router.post("/canary/rollback", response_model=FdeStatusResponse)
 async def canary_rollback(body: Dict[str, Any]):
     """一键回滚: 对指定 spec 执行 rollback.sh。
 
@@ -1117,15 +1165,16 @@ async def canary_rollback(body: Dict[str, Any]):
                     "detail": f"rollback.sh not found at {script_path}"}
     except sp.TimeoutExpired:
         return {"status": "timeout", "spec_id": spec_id, "detail": "rollback.sh exceeded 60s"}
-    except Exception as e:
-        return {"status": "error", "spec_id": spec_id, "detail": str(e)[:200]}
+    except HTTPException:
+        raise
+        raise HTTPException(status_code=500, detail=str(e)[:200])
 
 
 # ════════════════════════════════════════════════════════════
 # Agent-driven endpoints (v2.4): FDE Agent one-shot integration
 # ════════════════════════════════════════════════════════════
 
-@router.post("/poc/inject", response_model=Dict[str, Any])
+@router.post("/poc/inject", response_model=FdeStatusResponse)
 async def fde_poc_inject(body: Dict[str, Any]):
     """④ 验证价值: POC 数据注入 (via fde_delivery_engineer Agent)."""
     domain = str(body.get("domain", "") or body.get("domain_id", ""))
@@ -1148,7 +1197,7 @@ async def fde_poc_inject(body: Dict[str, Any]):
     return {"status": "fallback", "message": "Agent unavailable; use Skill execution API instead"}
 
 
-@router.get("/canary/insight", response_model=Dict[str, Any])
+@router.get("/canary/insight", response_model=FdeItemResponse)
 async def canary_insight():
     """⑥ 评测护栏: Agent 驱动的灰度质量分析 (via fde_delivery_engineer)."""
     try:
@@ -1170,7 +1219,7 @@ async def canary_insight():
             "note": "Agent unavailable; raw rollout data returned"}
 
 
-@router.post("/customers/profile/assist", response_model=Dict[str, Any])
+@router.post("/customers/profile/assist", response_model=FdeStatusResponse)
 async def assist_customer_profile(body: Dict[str, Any]):
     """① 业务认知: AI 辅助生成客户 Profile (via fde_business_analyst Agent)."""
     notes = str(body.get("notes", "") or body.get("interview_notes", ""))
@@ -1425,7 +1474,7 @@ def _infer_description_from_industry(industry: str) -> str:
     return f"接收 {industry or '该'} 行业客户的画像信息（企业名称、行业、痛点、技术栈、数据源等），自动调用 AI 诊断能力，生成包含 8 节结构化分析的交付级诊断报告。"
 
 
-@router.get("/manual/generate", response_model=Dict[str, Any])
+@router.get("/manual/generate", response_model=FdeItemResponse)
 async def generate_delivery_manual(
     requirements: str = Query(""),
     spec_id: str = Query(""),
@@ -1781,7 +1830,7 @@ class FdeDialogRequest(_PydanticBaseModel):
     production_timeline: str = ""
 
 
-@router.post("/assess/dialog", response_model=dict)
+@router.post("/assess/dialog", response_model=FdeStatusResponse)
 async def fde_assess_dialog(req: FdeDialogRequest):
     """LLM-driven multi-turn clarification dialogue.
     
@@ -1949,7 +1998,7 @@ async def fde_assess_dialog(req: FdeDialogRequest):
 # H: FDE Health Check — pipeline component status
 # ════════════════════════════════════════════════════════════
 
-@router.get("/health", response_model=dict)
+@router.get("/health", response_model=FdeHealthResponse)
 async def fde_health():
     """Return health status of all FDE pipeline components.
 
@@ -2013,7 +2062,7 @@ async def fde_health():
             if getattr(node, "class_name", "") == "DiagnosisSession":
                 sessions += 1
                 recent_names.append(node.entity_name[:40])
-                neighbors = fd.get_neighbors(nid, direction="outgoing")
+                neighbors = fd.get_neighbor_edges(nid, direction="outgoing")
                 for _, edge in neighbors:
                     if edge.relation_name == "has_action":
                         actions += 1
@@ -2074,6 +2123,55 @@ async def fde_health():
     _record_health_snapshot(result)  # Phase 1: accumulate health history
     return result
 
+@router.post("/project/freeze", response_model=FdeFreezeResponse)
+async def project_freeze(
+    customer_name: str = Body(..., embed=True),
+    reason: str = Body("手动归档", embed=True),
+):
+    """Freeze a halted project — dump current pipeline state into a read-only archive.
+
+    Corresponds to docs §7.4 项目中止与归档.
+    Triggered when: POC retry ≥3 with <50% accuracy, budget/contract cancelled,
+    or customer-initiated exit.
+    """
+    import datetime as _dt
+
+    frozen = {
+        "customer_name": customer_name,
+        "frozen_at": _dt.datetime.now().isoformat(),
+        "reason": reason,
+        "status": "aborted",
+        "pipeline_state": {},
+    }
+
+    for step_id, step_def in FDE_PIPELINE_STEPS.items():
+        step_data = {}
+        for key in step_def.get("produces", []):
+            step_data[key] = "<state captured at freeze>"
+        if step_data:
+            frozen["pipeline_state"][step_id] = step_data
+
+    frozen["asset_cleanup_checklist"] = [
+        "删除客户环境中的所有临时账号",
+        "shred -vf logs/*",
+        "加密交付物移入内部长期存档",
+        f"输出项目中止告知函_{customer_name}.pdf",
+        "5 个工作日内完成 Retrospective 报告",
+    ]
+
+    frozen["next_steps"] = [
+        "1. 输出告知函 → DM 和客户负责人双方签字存档",
+        "2. 执行资产清理（参照 §1.4 安全规范）",
+        "3. 内部复盘 → Retrospective 报告归档",
+    ]
+
+    return {
+        "status": "frozen",
+        "archive_summary": frozen,
+        "message": f"项目 '{customer_name}' 已标记为 aborted。请按 asset_cleanup_checklist 执行资产清理。",
+    }
+
+
 
 
 
@@ -2090,7 +2188,7 @@ class FdeIngestRequest(_PydanticBaseModel):
     raw_data: Dict[str, Any] = {}
 
 
-@router.post("/ingest", response_model=dict)
+@router.post("/ingest", response_model=FdeStatusResponse)
 async def fde_ingest(req: FdeIngestRequest):
     """Bridge: map external system data to FDE diagnosis input fields.
 
@@ -2143,7 +2241,7 @@ async def fde_ingest(req: FdeIngestRequest):
 # Coverage Improvement — actionable steps to boost ontology backing
 # ════════════════════════════════════════════════════════════
 
-@router.get("/sessions/{session_id}/improve", response_model=dict)
+@router.get("/sessions/{session_id}/improve", response_model=FdeItemResponse)
 async def fde_improve_suggestions(session_id: str):
     """Generate actionable suggestions to improve a diagnosis's ontology coverage.
 
@@ -2172,7 +2270,7 @@ async def fde_improve_suggestions(session_id: str):
         if not session_node:
             raise HTTPException(status_code=404, detail=f"Session {sid} not found")
 
-        neighbors = list(fd.get_neighbors(sid, direction="outgoing"))
+        neighbors = list(fd.get_neighbor_edges(sid, direction="outgoing"))
         suggestions = []
         total = 0
         ontology_count = 0
@@ -2367,7 +2465,7 @@ def _get_manual_stats() -> dict:
 # SECI Status Dashboard — knowledge creation engine visibility
 # ════════════════════════════════════════════════════════════
 
-@router.get("/seci-status", response_model=dict)
+@router.get("/seci-status", response_model=FdeItemResponse)
 async def fde_seci_status():
     """Return the current state of the SECI knowledge creation engine.
 
@@ -2451,6 +2549,8 @@ async def fde_seci_status():
             "convergence": _get_convergence_status(),
             "seciphilosophy": "S→E: POST_LOOP捕获→E→C: 跨域类比→C→I: ConvergenceEngine自动触发→I→S: Canary回写",
         }
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"SECI status failed: {str(e)[:300]}")
 
@@ -2517,7 +2617,7 @@ def _get_governance_live_status() -> dict:
             cls = getattr(n, "class_name", "")
             if cls == "DiagnosisSession":
                 sessions += 1
-                nb = fd.get_neighbors(n.entity_id or "", direction="outgoing")
+                nb = fd.get_neighbor_edges(n.entity_id or "", direction="outgoing")
                 if any(e.relation_name == "has_action" for _, e in nb):
                     with_actions += 1
             elif cls == "Evidence":
@@ -2531,7 +2631,7 @@ def _get_governance_live_status() -> dict:
     return status
 
 
-@router.get("/governance", response_model=dict)
+@router.get("/governance", response_model=FdeItemResponse)
 async def fde_governance():
     """本体治理工程化能力声明 — 对行业六大趋势的系统性回答。
 

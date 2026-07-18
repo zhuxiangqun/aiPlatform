@@ -452,7 +452,7 @@ class ProjectHealthReport(BaseModel):
 # ═══════════════════════════════════════════════════════════════
 
 class SpecVersionSummary(BaseModel):
-    version: str
+    version: Any = ""
     status: str = ""
     trigger: str = ""
     trigger_detail: str = ""
@@ -466,7 +466,7 @@ class SpecHistoryResponse(BaseModel):
 
 class SpecRevisionResponse(BaseModel):
     spec_id: str
-    version: str
+    version: Any = ""
     status: str = ""
     affected_stages: List[str] = Field(default_factory=list)
     trigger: str = ""
@@ -478,7 +478,7 @@ class SpecRevisionResponse(BaseModel):
 
 class SpecCreatedResponse(BaseModel):
     spec_id: str
-    version: str
+    version: Any = ""
     status: str = ""
     source: Optional[str] = None
     source_version: Optional[str] = None
@@ -486,7 +486,7 @@ class SpecCreatedResponse(BaseModel):
 class SpecMarkStableResponse(BaseModel):
     spec_id: str
     status: str  # "stable" or "unchanged"
-    version: str = ""
+    version: Any = ""
     reason: Optional[str] = None
 
 class SpecRadarSuggestion(BaseModel):
@@ -504,21 +504,21 @@ class SpecRadarResponse(BaseModel):
 
 class SpecTraceResponse(BaseModel):
     spec_id: str
-    version: str = ""
+    version: Any = ""
     status: str = ""
     total_steps: int = 0
     agent_call_order: List[str] = Field(default_factory=list)
     hesitation_count: int = 0
     repeat_count: int = 0
-    decision_chain: List[Dict[str, Any]] = Field(default_factory=list)
-    anomaly_report: List[Dict[str, Any]] = Field(default_factory=list)
-    spec_suggestions: List[Dict[str, Any]] = Field(default_factory=list)
-    anomalies: List[Dict[str, Any]] = Field(default_factory=list)
+    decision_chain: str = ""
+    anomaly_report: str = ""
+    spec_suggestions: List[str] = Field(default_factory=list)
+    anomalies: List[str] = Field(default_factory=list)
     raw_steps: List[Dict[str, Any]] = Field(default_factory=list)
     error: Optional[str] = None
 
 class VersionInfo(BaseModel):
-    version: str
+    version: Any = ""
     status: str = ""
     content: Dict[str, Any] = Field(default_factory=dict)
 
@@ -536,7 +536,7 @@ class SpecDiffResponse(BaseModel):
 
 class SpecListItem(BaseModel):
     spec_id: str
-    version: str = ""
+    version: Any = ""
     status: str = ""
     industry: str = ""
     created_at: str = ""

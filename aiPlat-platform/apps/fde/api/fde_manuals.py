@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 from typing import Any, Dict, List
+from apps.fde.schemas import FdeStatusResponse, FdeListResponse, FdeItemResponse
+
 
 from fastapi import APIRouter, HTTPException, Query
 
@@ -192,7 +194,7 @@ def _get_manual_path(project_id: str, version: str = "current") -> str:
     return os.path.join(_MANUALS_DIR, f"{safe_id}-{version}.md")
 
 
-@router.post("/manuals", response_model=dict)
+@router.post("/manuals", response_model=FdeStatusResponse)
 async def fde_create_manual(req: FdeManualRequest):
     pid = (f"{req.industry}_{req.company_name}" if req.industry else req.company_name or "未命名项目").replace(" ", "_")[:60]
     content = _generate_manual_content(req)
@@ -205,7 +207,7 @@ async def fde_create_manual(req: FdeManualRequest):
     }
 
 
-@router.get("/manuals/{project_id}", response_model=dict)
+@router.get("/manuals/{project_id}", response_model=FdeItemResponse)
 async def fde_get_manual(project_id: str):
     path = _get_manual_path(project_id)
     if not os.path.exists(path):
@@ -215,7 +217,7 @@ async def fde_get_manual(project_id: str):
     return {"project_id": project_id, "content": content, "custom_sections": _extract_custom_sections(content)}
 
 
-@router.put("/manuals/{project_id}", response_model=dict)
+@router.put("/manuals/{project_id}", response_model=FdeStatusResponse)
 async def fde_update_manual(project_id: str, section: str = "", new_content: str = ""):
     path = _get_manual_path(project_id)
     if not os.path.exists(path):
@@ -239,7 +241,7 @@ async def fde_update_manual(project_id: str, section: str = "", new_content: str
     return {"project_id": project_id, "updated_section": section, "content": content}
 
 
-@router.post("/manuals/{project_id}/regenerate", response_model=dict)
+@router.post("/manuals/{project_id}/regenerate", response_model=FdeStatusResponse)
 async def fde_regenerate_manual(project_id: str):
     path = _get_manual_path(project_id)
     if not os.path.exists(path):
@@ -271,7 +273,7 @@ async def fde_regenerate_manual(project_id: str):
     return {"project_id": project_id, "version": ts, "preserved_sections": list(custom.keys()), "content": content}
 
 
-@router.get("/manuals/{project_id}/versions", response_model=dict)
+@router.get("/manuals/{project_id}/versions", response_model=FdeItemResponse)
 async def fde_manual_versions(project_id: str):
     safe_id = project_id.replace("/", "_")[:80]
     versions = []
@@ -301,7 +303,7 @@ def _save_manual_meta(meta: dict):
         json.dump(meta, f, ensure_ascii=False, indent=2)
 
 
-@router.get("/manuals", response_model=dict)
+@router.get("/manuals", response_model=FdeItemResponse)
 async def fde_list_manuals():
     """List all project manuals with their status."""
     meta = _load_manual_meta()
@@ -319,7 +321,7 @@ async def fde_list_manuals():
     return {"total": len(manuals), "manuals": sorted(manuals, key=lambda m: m["modified"], reverse=True)}
 
 
-@router.patch("/manuals/{project_id}", response_model=dict)
+@router.patch("/manuals/{project_id}", response_model=FdeStatusResponse)
 async def fde_update_manual_status(project_id: str, status: str = "active"):
     """Update a manual's status: draft | active | archived."""
     path = _get_manual_path(project_id)
@@ -332,7 +334,7 @@ async def fde_update_manual_status(project_id: str, status: str = "active"):
     return {"project_id": project_id, "status": status}
 
 
-@router.post("/manuals/{project_id}/start-delivery", response_model=dict)
+@router.post("/manuals/{project_id}/start-delivery", response_model=FdeStatusResponse)
 async def fde_manual_start_delivery(project_id: str):
     """Create a delivery tracking session from a project manual.
 

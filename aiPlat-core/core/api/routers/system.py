@@ -1,10 +1,20 @@
+from __future__ import annotations
+from pydantic import BaseModel
+
+class ItemResponse(BaseModel):
+    data: dict = {}
+
+
+class StatusResponse(BaseModel):
+    status: str = "ok"
+    message: str = ""
+
 """System-level self-evolution endpoints — core system capability, not FDE-specific.
 
 These provide the same diagnose/heal/evolve/self-check/overview capabilities
 as /fde/* but at the system level (/system/*), accessible without FDE context.
 """
 
-from __future__ import annotations
 
 import logging
 import time
@@ -20,7 +30,7 @@ log = logging.getLogger("aiplat.system")
 # System Overview
 # ════════════════════════════════════════════════════════════
 
-@router.get("/overview", response_model=dict)
+@router.get("/overview", response_model=ItemResponse)
 async def system_overview():
     """System-level self-description with live metrics — not gated behind FDE."""
     # Collect live metrics
@@ -55,7 +65,7 @@ async def system_overview():
         live["enterprise_terms"] = 0
 
     try:
-        from core.api.routers.fde import _get_pipeline_health
+        from apps.fde.api.fde import _get_pipeline_health  # migrated to platform
         live["pipeline"] = _get_pipeline_health()
     except Exception:
         live["pipeline"] = "unknown"
@@ -99,12 +109,14 @@ async def system_overview():
 # Diagnose
 # ════════════════════════════════════════════════════════════
 
-@router.get("/diagnose", response_model=dict)
+@router.get("/diagnose", response_model=ItemResponse)
 async def system_diagnose():
     """Proactive cross-subsystem health diagnosis."""
     try:
         from core.harness.knowledge.system_diagnostician import SystemDiagnostician
         return SystemDiagnostician().diagnose()
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Diagnosis failed: {str(e)[:300]}")
 
@@ -113,7 +125,7 @@ async def system_diagnose():
 # Heal
 # ════════════════════════════════════════════════════════════
 
-@router.post("/heal", response_model=dict)
+@router.post("/heal", response_model=StatusResponse)
 async def system_heal():
     """Auto-heal with confidence gate (>0.9) and audit trail."""
     try:
@@ -124,6 +136,8 @@ async def system_heal():
             "confidence": diag.get("overall_confidence", 0),
             "heal": SystemHealer().auto_heal(diag),
         }
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Heal failed: {str(e)[:300]}")
 
@@ -132,12 +146,14 @@ async def system_heal():
 # Evolve
 # ════════════════════════════════════════════════════════════
 
-@router.get("/evolve", response_model=dict)
+@router.get("/evolve", response_model=ItemResponse)
 async def system_evolve():
     """Run an evolution cycle: detect patterns → generate capabilities."""
     try:
         from core.harness.knowledge.system_evolver import SystemEvolver
         return SystemEvolver().evolve()
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Evolution failed: {str(e)[:300]}")
 
@@ -146,7 +162,7 @@ async def system_evolve():
 # Self-Check — combined cycle
 # ════════════════════════════════════════════════════════════
 
-@router.post("/self-check", response_model=dict)
+@router.post("/self-check", response_model=StatusResponse)
 async def system_self_check():
     """One-stop self-maintenance: diagnose → heal → evolve."""
     t0 = time.time()
@@ -282,17 +298,19 @@ def start_background_scheduler(interval_seconds: int = 3600):
 # System Health — comprehensive component status
 # ════════════════════════════════════════════════════════════
 
-@router.get("/health", response_model=dict)
+@router.get("/health", response_model=ItemResponse)
 async def system_health():
     """System-level comprehensive health check — mirrors /fde/health."""
     try:
-        from core.api.routers.fde import fde_health
+        from apps.fde.api.fde import fde_health  # migrated to platform
         return await fde_health()
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)[:300])
 
 
-@router.get("/status", response_model=dict)
+@router.get("/status", response_model=ItemResponse)
 async def system_status():
     """Comprehensive system status — all key metrics in one call."""
     import time as _t_ss
@@ -342,7 +360,7 @@ async def system_status():
 
     # Pipeline
     try:
-        from core.api.routers.fde import _get_pipeline_health
+        from apps.fde.api.fde import _get_pipeline_health  # migrated to platform
         status["pipeline"] = _get_pipeline_health()
     except Exception:
         status["pipeline"] = "unknown"
@@ -355,7 +373,7 @@ async def system_status():
 # Skill Curator — lifecycle management endpoint
 # ════════════════════════════════════════════════════════════
 
-@router.get("/curate-skills", response_model=dict)
+@router.get("/curate-skills", response_model=ItemResponse)
 async def system_curate_skills():
     """Run skill lifecycle curation manually.
 
@@ -368,5 +386,7 @@ async def system_curate_skills():
         result = SkillCurator().curate()
         result["elapsed_ms"] = round((_t_cs.time() - t0) * 1000)
         return result
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)[:300])

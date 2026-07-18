@@ -129,7 +129,7 @@ class TestSFTEndToEnd:
 
     def test_job_manager_register_model_checks_fields(self):
         """JobManager._register_model validates required fields before registration."""
-        from core.harness.finetune.job_manager import JobManager
+        from core.apps.finetune.job_manager import JobManager
         mgr = JobManager()
         entry = {
             "id": "test-job",

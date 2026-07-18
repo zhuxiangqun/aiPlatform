@@ -1,0 +1,197 @@
+{
+  "$comment": "这是 template-canary-report.json 的完整填充示例，基于中联汽配案例。",
+  "$example_for": "docs/manuals/fde/templates/template-canary-report.json",
+
+  "meta": {
+    "report_title": "灰度发布报告",
+    "customer_name": "中联汽配制造有限公司",
+    "deploy_version": "v1.0.0",
+    "generated_at": "2026-08-01T10:00:00+08:00",
+    "fde_name": "张三",
+    "deploy_mode": "hybrid",
+    "description": "中联汽配 v1.0.0 灰度发布过程记录。内部文档，不对客户公开。"
+  },
+
+  "pre_release_checklist": {
+    "description": "灰度发布前逐项确认",
+    "items": [
+      {
+        "check_id": "PRE_001",
+        "item": "部署包已在内部环境验证",
+        "status": "passed",
+        "verified_by": "王五(DE)",
+        "verified_at": "2026-08-01T09:30:00+08:00"
+      },
+      {
+        "check_id": "PRE_002",
+        "item": "回滚方案已就绪",
+        "status": "passed",
+        "verified_by": "王五(DE)",
+        "rollback_version": "v0.9.0-rc3"
+      },
+      {
+        "check_id": "PRE_003",
+        "item": "监控告警已配置",
+        "status": "passed",
+        "alert_channels": ["企业微信通知", "邮件(zs@aiplat.com)"]
+      },
+      {
+        "check_id": "PRE_004",
+        "item": "Golden Query 基线已建立",
+        "status": "passed",
+        "baseline_pass_rate": 88,
+        "golden_query_count": 30
+      }
+    ]
+  },
+
+  "canary_stages": {
+    "description": "分阶段灰度流量提升记录",
+    "stages": [
+      {
+        "stage": 1,
+        "traffic_percent": 5,
+        "duration_minutes": 20,
+        "observation": {
+          "error_rate": "0%",
+          "avg_response_time_ms": 3100,
+          "user_complaints": "0",
+          "golden_query_pass_rate": 88,
+          "new_bugs_found": "0"
+        },
+        "decision": "proceed",
+        "decision_note": "各项指标正常，无异常。继续放量到30%。"
+      },
+      {
+        "stage": 2,
+        "traffic_percent": 30,
+        "duration_minutes": 30,
+        "observation": {
+          "error_rate": "0%",
+          "avg_response_time_ms": 3250,
+          "user_complaints": "0",
+          "golden_query_pass_rate": 87,
+          "new_bugs_found": "0"
+        },
+        "decision": "proceed",
+        "decision_note": "Golden Query 通过率从88%→87%，降幅-1.1%，在阈值5%以内，正常波动。"
+      },
+      {
+        "stage": 3,
+        "traffic_percent": 50,
+        "duration_minutes": 30,
+        "observation": {
+          "error_rate": "0.5%",
+          "avg_response_time_ms": 3400,
+          "user_complaints": "0",
+          "golden_query_pass_rate": 87,
+          "new_bugs_found": "1（OCR对带盖章扫描件识别率偏低，属已知边缘case）"
+        },
+        "decision": "proceed",
+        "decision_note": "发现1个已知类型Bug（盖章遮挡OCR），不阻断发布，已记录v1.1.0修复。"
+      },
+      {
+        "stage": 4,
+        "traffic_percent": 100,
+        "duration_minutes": 60,
+        "observation": {
+          "error_rate": "0.3%",
+          "avg_response_time_ms": 3350,
+          "user_complaints": "0",
+          "golden_query_pass_rate": 87,
+          "new_bugs_found": "0"
+        },
+        "decision": "complete",
+        "decision_note": "全量运行60分钟稳定，无新增异常。灰度完成，进入步骤⑦验收移交。"
+      }
+    ]
+  },
+
+  "quality_metrics": {
+    "description": "灰度完成后与基线的质量对比",
+    "baseline": "v0.9.0-rc3",
+    "canary": "v1.0.0",
+    "dimensions": [
+      {
+        "name": "忠实度（幻觉率）",
+        "key": "faithfulness",
+        "baseline_value": 0.92,
+        "canary_value": 0.91,
+        "change": -0.01,
+        "change_percent": -1.1,
+        "threshold": "下降 <5%",
+        "pass": true
+      },
+      {
+        "name": "回答相关度",
+        "key": "relevance",
+        "baseline_value": 0.87,
+        "canary_value": 0.88,
+        "change": 0.01,
+        "change_percent": 1.1,
+        "threshold": "下降 <5%",
+        "pass": true
+      },
+      {
+        "name": "检索精度",
+        "key": "retrieval_precision",
+        "baseline_value": 0.85,
+        "canary_value": 0.84,
+        "change": -0.01,
+        "change_percent": -1.2,
+        "threshold": "下降 <5%",
+        "pass": true
+      }
+    ]
+  },
+
+  "rollback_records": {
+    "description": "灰度过程中触发回滚的记录",
+    "records": []
+  },
+
+  "post_canary_tasks": {
+    "tasks": [
+      {
+        "task_id": "POST_001",
+        "task": "旧版本资源清理",
+        "description": "确认旧版本 v0.9.0-rc3 不再需要回滚后，清理旧版本部署资源",
+        "status": "completed",
+        "owner": "王五(DE)"
+      },
+      {
+        "task_id": "POST_002",
+        "task": "监控基线更新",
+        "description": "将 v1.0.0 质量指标作为新的监控基线",
+        "status": "completed",
+        "owner": "王五(DE)"
+      },
+      {
+        "task_id": "POST_003",
+        "task": "灰度总结归档",
+        "description": "将灰度报告归档到项目文档",
+        "status": "completed",
+        "owner": "张三(DM)"
+      }
+    ]
+  },
+
+  "summary": {
+    "canary_passed": true,
+    "final_traffic_percent": 100,
+    "total_duration_minutes": 140,
+    "rollback_count": 0,
+    "quality_degradation": "无显著退化（各项指标变化幅度均在阈值内）",
+    "new_bugs_found": 1,
+    "decision": "灰度通过，进入步骤⑦验收移交",
+    "next_step": "步骤⑦ 验收移交 — 客户签收"
+  },
+
+  "quality_gate_thresholds": {
+    "error_rate_max": 5,
+    "p95_latency_max_ms": 20000,
+    "user_complaints_max_per_day": 2,
+    "golden_query_pass_rate_min": 80,
+    "quality_degradation_max_pct": 5
+  }
+}

@@ -15,6 +15,8 @@ def generate_code(project_id: str):
         generator = CodeGenerator(db)
         code_id = generator.generate_code(project_id)
         return {"code_id": code_id}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     finally:

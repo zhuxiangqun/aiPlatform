@@ -17,6 +17,7 @@ const mapStatus = (s: string): ExecutionNode['status'] => {
   if (s === 'pass' || s === 'ok') return 'completed';
   if (s === 'warn' || s === 'warning') return 'warning';
   if (s === 'fail' || s === 'error') return 'failed';
+  if (s === 'info' || s === 'timeout') return 'pending';
   return 'idle';
 };
 
@@ -150,6 +151,12 @@ const CategoryDetailPanel: React.FC<Props> = ({ open, runId: _runId, categoryKey
             running={running}
             height={300}
           />
+        ) : categoryResult?.status === 'info' && categoryResult?.items?.length > 0 ? (
+          <div className="text-center py-12 text-blue-400 text-sm space-y-2">
+            {categoryResult.items.map((item: any, i: number) => (
+              <p key={i} className="text-gray-400">{item.result} {item.detail}</p>
+            ))}
+          </div>
         ) : (
           <div className="text-center py-12 text-gray-500 text-sm">该类别暂无执行数据</div>
         )}
@@ -158,10 +165,14 @@ const CategoryDetailPanel: React.FC<Props> = ({ open, runId: _runId, categoryKey
           <div className="flex items-center gap-4 bg-dark-bg rounded-lg p-3 text-xs">
             <span className={
               categoryResult.status === 'pass' ? 'text-green-400' :
-              categoryResult.status === 'warn' ? 'text-yellow-400' : 'text-red-400'
+              categoryResult.status === 'warn' ? 'text-yellow-400' :
+              categoryResult.status === 'info' ? 'text-blue-400' :
+              categoryResult.status === 'timeout' ? 'text-gray-400' : 'text-red-400'
             }>
               {categoryResult.status === 'pass' ? '✅ 通过' :
-               categoryResult.status === 'warn' ? '⚠️ 警告' : '❌ 失败'}
+               categoryResult.status === 'warn' ? '⚠️ 警告' :
+               categoryResult.status === 'info' ? '📋 按需运行' :
+               categoryResult.status === 'timeout' ? '⏱ 超时' : '❌ 失败'}
             </span>
             {categoryResult.score != null && <span className="text-gray-300">评分: {categoryResult.score}</span>}
             {categoryResult.items && <span className="text-gray-500">{categoryResult.items.length} 检测项</span>}

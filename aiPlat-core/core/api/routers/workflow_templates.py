@@ -261,6 +261,8 @@ async def submit_workflow_for_review(template_name: str):
         raw["status"] = "ready"
         raw["_governance"] = {"status": "pending", "lint_result": lint_result, "submitted_at": _time.time()}
         json_path.write_text(_json.dumps(raw, ensure_ascii=False, indent=2), encoding="utf-8")
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to update workflow: {e}")
 

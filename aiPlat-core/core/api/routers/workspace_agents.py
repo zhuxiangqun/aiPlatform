@@ -5,7 +5,7 @@ import logging
 import os
 import tempfile
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Annotated, Dict, List, Optional
 from pydantic import BaseModel
@@ -319,7 +319,7 @@ async def create_workspace_agent(request: AgentCreateRequest, http_request: Requ
             # Get PermissionManager via the runtime's permission subsystem
             pm = getattr(rt, "permission_manager", None) if rt else None
             if pm is None:
-                from core.harness.infrastructure.permissions import get_permission_manager
+                from core.api.core_facade import get_permission_manager  # via facade — fixed incorrect path
                 pm = get_permission_manager()
             if pm and hasattr(pm, "grant_permission"):
                 pm.grant_permission(str(actor_id), str(agent.id), "execute", granted_by="auto_create")
@@ -1186,6 +1186,8 @@ async def install_agent_seed(seed_id: str):
     try:
         workspace_dir.mkdir(parents=True, exist_ok=True)
         _shutil.copytree(seed_dir, dst)
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to install seed: {str(e)}")
 
@@ -1774,6 +1776,8 @@ async def sign_workspace_agent(agent_id: str, request: Dict[str, Any], http_requ
         raise
     except ValueError as e:
         raise HTTPException(status_code=400, detail=f"Invalid private key: {str(e)}")
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Signing failed: {str(e)}")
 
@@ -1891,7 +1895,7 @@ async def enable_workspace_agent(agent_id: str, http_request: Request = None, rt
 
     # 3. Actually enable
     agent.enabled = True
-    agent.updated_at = datetime.now()
+    agent.updated_at = datetime.now(timezone.utc)
 
     # Audit
     if store:
@@ -2021,8 +2025,9 @@ async def detect_agent_import(request: Dict[str, Any], rt: RuntimeDep = None):
                         if name.endswith(".md"):
                             agmd_body = zf.read(name).decode("utf-8", errors="ignore")
                             break
-        except Exception as e:
-            return {"error": f"Failed to download/parse URL: {str(e)}"}
+        except HTTPException:
+            raise
+            raise HTTPException(status_code=500, detail=str(e)[:200])
     elif file_content:
         try:
             import base64
@@ -2136,8 +2141,9 @@ async def detect_agent_import(request: Dict[str, Any], rt: RuntimeDep = None):
             config["agents_available"] = config.get("agent_ids", [])
             config["agents_missing"] = []
         return config
-    except Exception as e:
-        return {"error": f"AI detection failed: {str(e)}"}
+    except HTTPException:
+        raise
+        raise HTTPException(status_code=500, detail=str(e)[:200])
 
 
 def _build_skills_catalog() -> str:
@@ -2322,6 +2328,8 @@ async def workspace_agents_installer_upload_plan(
         return {"status": "ok", **plan}
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"upload_plan_failed: {e}")
     finally:
@@ -2357,6 +2365,8 @@ async def workspace_agents_installer_upload_install(
         return {"status": "ok", **result}
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"upload_install_failed: {e}")
     finally:
@@ -2471,6 +2481,8 @@ async def submit_agent_for_review(agent_id: str, rt: RuntimeDep = None):
                 },
             },
         )
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to update agent status: {e}")
 

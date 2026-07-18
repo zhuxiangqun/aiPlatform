@@ -473,6 +473,45 @@ def check_new_public_api() -> None:
             break
 
 
+def check_claude_debt_verification() -> None:
+    """Verify every '✅ 已修复' claim in CLAUDE.md §16 has a grep verification command.
+
+    Per §0.4: marking as 'resolved' MUST include executable evidence (grep/bash/pytest).
+    """
+    claude_md = REPO_ROOT / "CLAUDE.md"
+    if not claude_md.exists():
+        errors.append("CLAUDE.md 不存在，无法验证 §16 债务条目")
+        return
+
+    content = claude_md.read_text(encoding="utf-8")
+
+    # Locate §16 section
+    m = re.search(r'(?:###?\s*)?16[.\s、].*已知例外.*债务', content)
+    if not m:
+        return
+
+    section_start = m.start()
+    next_sec = re.search(r'\n(?:##|#)\s+\d+[.\s、]', content[section_start + 1:])
+    section_text = content[section_start:section_start + 1 + (next_sec.start() if next_sec else 0)]
+
+    # Find all '✅ 已修复' rows
+    fixed = re.finditer(
+        r'\|\s*([A-Z]+)\s*\|[^|]*\|([^|]*)\|.*?✅\s*已修复',
+        section_text, re.MULTILINE
+    )
+    verify_pat = re.compile(r'验证[：:]\s*(?:grep|bash|pytest|python|find|ls)')
+
+    for match in fixed:
+        eid = match.group(1).strip()
+        desc = match.group(2).strip()[:60]
+        ctx = section_text[match.end():match.end() + 500]
+        if not verify_pat.search(ctx):
+            errors.append(
+                f"CLAUDE.md §16 条目 {eid}（{desc}）标记为 '✅ 已修复' "
+                f"但缺少 grep/验证命令（违反 §0.4）"
+            )
+
+
 def main():
     print(f"\U0001f50d 文档系统验证开始 (REPO_ROOT: {REPO_ROOT})")
     print("=" * 60)
@@ -488,6 +527,9 @@ def main():
     check_code_references()
     check_undocumented_env_vars()
     check_new_public_api()
+
+    # ── Rule 12: CLAUDE.md §16 debt verification (§0.4 mandatory grep evidence) ──
+    check_claude_debt_verification()
 
     print("=" * 60)
     if errors:

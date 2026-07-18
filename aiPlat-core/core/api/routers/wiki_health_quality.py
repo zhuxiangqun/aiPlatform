@@ -33,6 +33,8 @@ async def get_ontology_health_score(collection: str = "default"):
             "failed_axioms": len(report.failed_axioms),
             "total_triples": report.total_triples,
         }
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

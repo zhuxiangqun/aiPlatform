@@ -15,6 +15,8 @@ def fix_bugs(project_id: str):
         fixer = BugFixer(db)
         bug_id = fixer.fix_bugs(project_id)
         return {"bug_id": bug_id}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     finally:

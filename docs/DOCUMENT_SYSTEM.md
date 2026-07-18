@@ -18,13 +18,30 @@ language: zh-CN
 workspace-root/
 │
 ├── CLAUDE.md                          ← 工作区兜底规约（AI 编程行为约束）
-├── AIPLAT_CAPABILITIES.md            ← 唯一能力清单（当前 464 项，代码交叉验证）
+├── AIPLAT_CAPABILITIES.md            ← 唯一能力清单（当前 699 项，代码交叉验证）
 ├── AIPLAT_ROADMAP.md                 ← 商业化路线图（评分 + 基线）
 ├── README.md                         ← 部署手册
 │
 ├── docs/
 │   ├── DOCUMENT_SYSTEM.md            ← 本文档 — 文档系统治理框架
-│   ├── README.md                     ← 阅读导航（按角色 + 按主题）
+│   ├── README.md                     ← 唯一导航入口（合并原 index.md）
+│   │
+│   ├── project/                       ← 项目管理
+│   │   └── PHASE_STATUS.md           ← Phase 实施状态快照
+│   │
+│   ├── manuals/                      ← 🆕 统一操作手册目录（所有面向角色的手册入口）
+│   │   ├── README.md                  ← 手册目录索引（按角色推荐）
+│   │   ├── getting-started.md         ← 快速入门
+│   │   ├── management.md              ← 管理画面操作手册
+│   │   ├── ontology.md                ← 本体模型管理手册
+│   │   ├── deployment.md              ← 部署指南
+│   │   ├── development.md            ← 开发指南
+│   │   ├── testing.md                ← 测试指南
+│   │   ├── deploy-guide.md           ← 部署速查
+│   │   ├── engineering-quality.md    ← 工程质量
+│   │   ├── production-readiness.md   ← 生产就绪
+│   │   ├── wiki-fts5-analysis.md     ← Wiki 分析
+│   │   └── fde/                       ← FDE 交付体系（4 个手册 + 导航 + 模板 + 实例，旧版归档于 _archive）
 │   │
 │   ├── architecture/                 ← 架构设计
 │   │   ├── overview.md               ← 权威架构全景（唯一出处）
@@ -36,41 +53,69 @@ workspace-root/
 │   │       ├── evaluator_calibration.md
 │   │       └── tot_reserve.md
 │   │
-│   ├── guides/                       ← 操作指南（How-To）
-│   │   ├── DEPLOYMENT.md
-│   │   ├── DEVELOPMENT.md
-│   │   ├── TESTING_GUIDE.md
-│   │   └── PR_ARCHITECTURE_CHECKLIST.md
+│   ├── design/                       ← 设计文档（To-Be / Plan）
+│   │   ├── ontology-design.md         ← 本体框架设计
+│   │   ├── knowledge-ontology-plan.md ← 知识本体模型
+│   │   ├── model-management.md        ← 模型管理设计
+│   │   ├── ui-design.md               ← UI 设计规范
+│   │   └── ui-implementation-status.md ← UI 实施状态
 │   │
-│   ├── standards/                    ← 跨层规范（强制性）
-│   │   ├── session-id-spec.md
-│   │   ├── auth-identity-spec.md
-│   │   └── trace-id-spec.md
+│   ├── framework/                     ← 成熟度评估框架
+│   │   ├── aiplat-autonomy-framework.md
+│   │   ├── aiplat-complete-assessment.md
+│   │   ├── assessment-scores.json     ← 唯一评估分数源
+│   │   └── ...（8 个文件）
 │   │
-│   ├── policy/                       ← 安全/运维策略
+│   ├── security/                      ← 安全架构与测试
+│   │   ├── security-architecture.md
+│   │   ├── security-testing.md
+│   │   └── ...（4 个文件）
+│   │
+│   ├── API/                           ← API 协议与契约
+│   │   ├── api-reference.md
+│   │   └── AttributionSchema.md
+│   │
+│   ├── policy/                        ← 安全/运维策略
 │   │   ├── external-allowlist.md
 │   │   └── mcp-stdio-prod-allowlist.md
 │   │
-│   ├── design/                       ← 设计提案（非现状，是 Plan / To-Be）
-│   │   ├── ontology-design.md
-│   │   ├── knowledge-ontology-plan.md
-│   │   ├── model-management.md
-│   │   ├── ui-design.md
-│   │   └── ui-implementation-status.md
+│   ├── standards/                     ← 跨层规范（强制性）
+│   │   ├── 规范-core-run_id-trace_id-request_id.md
+│   │   ├── 规范-platform-鉴权与身份透传.md
+│   │   └── 规范-app-session_id与conversation_key.md
 │   │
-│   ├── research/                     ← 调研报告（不维护，留档用）
-│   │   └── effect-ts-di-research.md
+│   ├── agents/                        ← Agent 架构设计
+│   │   └── subagent.md
 │   │
-│   ├── operations/                   ← 运维参考
-│   │   └── management-manual.md
+│   ├── mcp/                           ← MCP 协议集成
+│   │   └── index.md
 │   │
-│   ├── reports/                      ← 生成报告（时间点快照，不手动编辑）
+│   ├── skills/                        ← Skill 动态进化
+│   │   └── evolution.md
+│   │
+│   ├── tools/                         ← 工具系统增强
+│   │   └── enhancement.md
+│   │
+│   ├── whitepaper/                    ← 白皮书
+│   │   ├── aiplat-l4-autonomy-assessment-v1.0.0.md
+│   │   └── verification-protocol.md
+│   │
+│   ├── strategy/                      ← 战略分析 / 竞品对比
+│   │   └── comparison-vs-vendors.md
+│   │
+│   ├── reports/                       ← 生成报告（不手动编辑）
 │   │   ├── README.md
 │   │   ├── AIPLAT_ARCHITECTURE_REPORT.md
 │   │   └── AIPLAT_DIAGNOSTIC_REPORT.md
 │   │
-│   ├── strategy/                      ← 战略分析 / 竞品对比（对外可发布）
-│   │   └── comparison-vs-vendors.md   ← aiPlat vs 图数据库厂商
+│   ├── harness/                       ← 跨仓库 Harness 索引
+│   │   └── README.md
+│   │
+│   ├── audit/                         ← 合规审计
+│   │   └── compliance-matrix.md
+│   │
+│   ├── compliance/                    ← 法规合规评估
+│   │   └── eu-ai-act-assessment.md
 │   │
 │   ├── articles/                     ← 技术文章（对外发布）
 │   │   └── private-control-plane.md
@@ -149,9 +194,9 @@ workspace-root/
 
 ### 3.1 规则
 
-1. **所有数字声明必须有单一出处**。例如能力数 `464` 的唯一出处是 `AIPLAT_CAPABILITIES.md`。
+1. **所有数字声明必须有单一出处**。例如能力数 `699` 的唯一出处是 `AIPLAT_CAPABILITIES.md`。
 
-2. **非出处文档必须引用出处**。例如 `ROADMAP.md` 写能力数时，不裸写数字，而是写 "见 AIPLAT_CAPABILITIES.md 当前计数"。
+2. **非出处文档必须引用出处**。例如 `AIPLAT_ROADMAP.md` 写能力数时，不裸写数字，而是写 "见 AIPLAT_CAPABILITIES.md 当前计数"。
 
 3. **标准引用格式**（Rule 12 的匹配目标）：
    ```
@@ -172,12 +217,13 @@ workspace-root/
 
 | 声明 | 出处 | 验证命令 | 当前值 |
 |------|------|---------|:--:|
-| 能力总数 | `AIPLAT_CAPABILITIES.md` | `grep -c '✅' AIPLAT_CAPABILITIES.md` | 464 |
-| Engine Skills | `engine/skills/*/SKILL.md` | `ls engine/skills/*/SKILL.md \| wc -l` | 32 |
+| 能力总数 | `AIPLAT_CAPABILITIES.md` | `grep -c '✅' AIPLAT_CAPABILITIES.md` | 699 |
+| Engine Skills | `engine/skills/*/SKILL.md` | `ls engine/skills/*/SKILL.md \| wc -l` | 44 |
 | HookPhase 枚举 | `hook_manager.py:15` | `grep -c '= "' hook_manager.py \| head -1` | 20 |
 | Arch Guard 规则 | `arch_guard_rules.yaml` | `grep -c '^  - id:' arch_guard_rules.yaml` | 172 |
 | 本体引擎模块 | `ontology_engine/*.py` | `ls ontology_engine/*.py \| wc -l` | 23 |
 | 本体引擎总行数 | `ontology_engine/*.py` | `wc -l ontology_engine/*.py` | ~6,800 |
+| 文档目录数 | `docs/` | `ls -d docs/*/ \| wc -l` | 23 |
 
 ---
 
@@ -193,7 +239,7 @@ workspace-root/
 | 身份/权限 | `aiPlat-platform/CLAUDE.md` | JWT → tenant/actor/scopes |
 | AI 编程规则 | 各层 `CLAUDE.md` | 文件存在 |
 | 路线图/评分 | `AIPLAT_ROADMAP.md` | 引用 CAPABILITIES 计数 |
-| 部署步骤 | `docs/guides/DEPLOYMENT.md` | 操作可复现 |
+| 部署步骤 | `docs/manuals/deployment.md` | 操作可复现 |
 | 废弃模块 | 根 `CLAUDE.md` §16 已知债务 | git log 确认删除 |
 
 ---
@@ -285,8 +331,19 @@ python scripts/verify_docs.py
 | 1 | Platform 文档 9 个骨架占位（已加 `draft_date` 生命周期） | 长期渐进补充内容 |
 | 2 | `docs/design/` 下部分文件未标注 `last_synced` | 渐进标注 |
 | 3 | `docs/architecture/` 4 个文件提及控制平面模块但未引用 PCP | 低优先级 — 这些是架构全景描述，非重复内容 |
+| 4 | `docs/index.md` 存在断链引用 | 已修复（2026-07-17） |
+| 5 | `docs/ops/` 与 `docs/operations/` 平行存在 | 已合并为 `manuals/`（2026-07-17） |
+
+### 8.1 自动化验证（新增）
+
+```bash
+# 验证文档目录树与 DOCUMENT_SYSTEM.md 一致
+python scripts/verify_doc_structure.py
+```
+
+每次新增 `docs/` 子目录时，**必须**在本文件 §一 中登记。CI 会检测新增目录是否已登记。未登记的目录 → **阻断**。
 
 ---
 
-*最后更新: 2026-07-04*
-*版本: 1.1*
+*最后更新: 2026-07-18*
+*版本: 2.1 · 文档入口简化 — index.md 并入 README.md，architecture/ 子目录化，project/ 目录新建*

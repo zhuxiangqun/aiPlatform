@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 from typing import Any, Dict
+from apps.fde.schemas import FdeStatusResponse, FdeListResponse, FdeItemResponse
+
 
 from fastapi import APIRouter, HTTPException
 
@@ -10,7 +12,7 @@ router = APIRouter(tags=["fde-maintenance"])
 
 # ── Phase 2: System Diagnostician — proactive cross-subsystem analysis ──
 
-@router.get("/diagnose", response_model=dict)
+@router.get("/diagnose", response_model=FdeItemResponse)
 async def fde_diagnose():
     """Run proactive system diagnostics across all subsystems.
 
@@ -21,13 +23,15 @@ async def fde_diagnose():
         from core.harness.knowledge.system_diagnostician import SystemDiagnostician
         sd = SystemDiagnostician()
         return sd.diagnose()
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Diagnosis failed: {str(e)[:300]}")
 
 
 # ── Phase 3: System Healer — auto-fix with verification ──
 
-@router.post("/heal", response_model=dict)
+@router.post("/heal", response_model=FdeStatusResponse)
 async def fde_heal():
     """Auto-heal known diagnostic patterns with safety gate and verification.
 
@@ -45,13 +49,15 @@ async def fde_heal():
             "diagnosis_confidence": diagnosis.get("overall_confidence", 0),
             "heal_result": result,
         }
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Heal failed: {str(e)[:300]}")
 
 
 # ── Phase 4: System Evolver — pattern detection → capability generation ──
 
-@router.get("/evolve", response_model=dict)
+@router.get("/evolve", response_model=FdeItemResponse)
 async def fde_evolve():
     """Run an evolution cycle: detect patterns → generate capabilities → publish/draft.
 
@@ -63,13 +69,15 @@ async def fde_evolve():
         from core.harness.knowledge.system_evolver import SystemEvolver
         evolver = SystemEvolver()
         return evolver.evolve()
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Evolution failed: {str(e)[:300]}")
 
 
 # ── Self-Check — one-stop system self-maintenance cycle ──
 
-@router.post("/self-check", response_model=dict)
+@router.post("/self-check", response_model=FdeStatusResponse)
 async def fde_self_check():
     """Run a complete self-maintenance cycle: diagnose -> heal -> evolve.
 

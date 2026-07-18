@@ -3,6 +3,8 @@ from __future__ import annotations
 
 import os
 from typing import Any, Dict
+from apps.fde.schemas import FdeStatusResponse, FdeListResponse, FdeItemResponse
+
 
 from fastapi import APIRouter, HTTPException
 
@@ -13,7 +15,7 @@ router = APIRouter(tags=["fde-validate"])
 # I: FDE E2E Validation — quick component connectivity test
 # ════════════════════════════════════════════════════════════
 
-@router.get("/validate", response_model=dict)
+@router.get("/validate", response_model=FdeItemResponse)
 async def fde_validate():
     """Quick E2E validation of FDE pipeline component connectivity.
 
@@ -106,7 +108,7 @@ async def fde_validate():
 # K: FDE Industry Benchmark — aggregated stats across all sessions
 # ════════════════════════════════════════════════════════════
 
-@router.get("/benchmark", response_model=dict)
+@router.get("/benchmark", response_model=FdeItemResponse)
 async def fde_benchmark():
     """Aggregated statistics across all FDE diagnosis sessions.
 
@@ -138,7 +140,7 @@ async def fde_benchmark():
                 industries[ind] = {"sessions": 0, "actions": 0, "delivered": 0, "top_actions": []}
 
             industries[ind]["sessions"] += 1
-            neighbors = fd.get_neighbors(nid, direction="outgoing")
+            neighbors = fd.get_neighbor_edges(nid, direction="outgoing")
             has_actions = False
             for neighbor_id, edge in neighbors:
                 if edge.relation_name == "has_action":
@@ -189,5 +191,7 @@ async def fde_benchmark():
             },
             "top_recommendations": top_global,
         }
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Benchmark failed: {str(e)[:300]}")

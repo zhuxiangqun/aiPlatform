@@ -35,6 +35,8 @@ async def generate_prd(
             content=prd.content,
             confirmed=prd.confirmed
         )
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -58,5 +60,7 @@ async def confirm_prd(
         db.commit()
         
         return PRDConfirmResponse(status="confirmed" if confirmed else "rejected")
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

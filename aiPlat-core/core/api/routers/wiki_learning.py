@@ -214,6 +214,8 @@ async def ask_learning_coach(
         )
         reply = result.get("content", "") if isinstance(result, dict) else str(result)
         return {"learner_id": learner_id, "reply": reply, "context": context}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

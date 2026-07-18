@@ -63,7 +63,9 @@ export default {
       },
     },
   },
-  plugins: [],
+  plugins: [
+    require('@tailwindcss/typography'),
+  ],
   safelist: [
     'bg-dark-bg',
     'bg-dark-card',

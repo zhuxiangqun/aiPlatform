@@ -15,6 +15,7 @@ from core.governance.changeset import record_changeset
 from core.harness.kernel.runtime import get_kernel_runtime
 from core.schemas_prompts import PromptTemplateRollbackRequest, PromptTemplateUpsertRequest
 import logging
+from apps.common_schemas import StatusResponse, ListResponse, ItemResponse
 
 router = APIRouter()
 
@@ -191,7 +192,7 @@ async def _record_changeset(
     )
 
 
-@router.get("/prompts", response_model=Dict[str, Any])
+@router.get("/prompts", response_model=ListResponse)
 async def list_prompt_templates(limit: int = 100, offset: int = 0):
     store = _store()
     if not store:
@@ -199,7 +200,7 @@ async def list_prompt_templates(limit: int = 100, offset: int = 0):
     return await store.list_prompt_templates(limit=int(limit), offset=int(offset))
 
 
-@router.post("/prompts/seed", response_model=Dict[str, Any])
+@router.post("/prompts/seed", response_model=StatusResponse)
 async def seed_prompt_templates():
     """Batch-import default templates from prompt_loader (idempotent)."""
     store = _store()
@@ -228,7 +229,7 @@ async def seed_prompt_templates():
     return {"seeded": seeded, "skipped": skipped, "total": len(seeded) + len(skipped)}
 
 
-@router.get("/prompts/{template_id}/variables", response_model=Dict[str, Any])
+@router.get("/prompts/{template_id}/variables", response_model=ListResponse)
 async def get_template_variables(template_id: str):
     """Return template metadata (variables, role, category)."""
     from core.harness.utils.prompt_loader import get_metadata as _meta
@@ -238,7 +239,7 @@ async def get_template_variables(template_id: str):
     return {"template_id": template_id, **meta}
 
 
-@router.get("/prompts/{template_id}", response_model=Dict[str, Any])
+@router.get("/prompts/{template_id}", response_model=ListResponse)
 async def get_prompt_template(template_id: str):
     store = _store()
     if not store:
@@ -249,7 +250,7 @@ async def get_prompt_template(template_id: str):
     return tpl
 
 
-@router.get("/prompts/{template_id}/resolve", response_model=Dict[str, Any])
+@router.get("/prompts/{template_id}/resolve", response_model=ListResponse)
 async def resolve_prompt_template(template_id: str, tenant_id: Optional[str] = None, user_id: Optional[str] = None, session_id: Optional[str] = None):
     """
     Resolve effective prompt version with optional release semantics (P1):
@@ -282,7 +283,7 @@ async def resolve_prompt_template(template_id: str, tenant_id: Optional[str] = N
     return out
 
 
-@router.post("/prompts/{template_id}/release", response_model=Dict[str, Any])
+@router.post("/prompts/{template_id}/release", response_model=StatusResponse)
 async def set_prompt_template_release(template_id: str, request: dict, http_request: Request):
     """
     P1: Prompt 发布/灰度语义（不修改 template 内容/版本，只修改 metadata.release）。
@@ -422,7 +423,7 @@ async def set_prompt_template_release(template_id: str, request: dict, http_requ
     return {"status": "updated", "change_id": change_id, "release": new_release, "links": governance_links(change_id=change_id)}
 
 
-@router.post("/prompts/{template_id}/release/rollback", response_model=Dict[str, Any])
+@router.post("/prompts/{template_id}/release/rollback", response_model=StatusResponse)
 async def rollback_prompt_template_release(template_id: str, request: dict, http_request: Request):
     """Rollback metadata.release to previous_release (best-effort)."""
     store = _store()
@@ -485,7 +486,7 @@ async def rollback_prompt_template_release(template_id: str, request: dict, http
     return {"status": "rolled_back", "change_id": change_id, "release": prev2, "links": governance_links(change_id=change_id)}
 
 
-@router.post("/prompts", response_model=Dict[str, Any])
+@router.post("/prompts", response_model=StatusResponse)
 async def upsert_prompt_template(request: PromptTemplateUpsertRequest, http_request: Request):
     store = _store()
     if not store:
@@ -708,7 +709,7 @@ async def upsert_prompt_template(request: PromptTemplateUpsertRequest, http_requ
     }
 
 
-@router.post("/prompts/{template_id}/rollback", response_model=Dict[str, Any])
+@router.post("/prompts/{template_id}/rollback", response_model=StatusResponse)
 async def rollback_prompt_template(template_id: str, request: PromptTemplateRollbackRequest, http_request: Request):
     store = _store()
     if not store:
@@ -880,7 +881,7 @@ async def rollback_prompt_template(template_id: str, request: PromptTemplateRoll
     }
 
 
-@router.get("/prompts/{template_id}/versions", response_model=Dict[str, Any])
+@router.get("/prompts/{template_id}/versions", response_model=ListResponse)
 async def list_prompt_template_versions(template_id: str, limit: int = 100, offset: int = 0):
     store = _store()
     if not store:
@@ -888,7 +889,7 @@ async def list_prompt_template_versions(template_id: str, limit: int = 100, offs
     return await store.list_prompt_template_versions(template_id=str(template_id), limit=int(limit), offset=int(offset))
 
 
-@router.get("/prompts/{template_id}/diff", response_model=Dict[str, Any])
+@router.get("/prompts/{template_id}/diff", response_model=ListResponse)
 async def diff_prompt_template(template_id: str, from_version: Optional[str] = None, to_version: Optional[str] = None):
     """
     Diff prompt template content between two versions.
@@ -960,7 +961,7 @@ async def diff_prompt_template(template_id: str, from_version: Optional[str] = N
     }
 
 
-@router.post("/prompts/{template_id}/auto-optimize", response_model=Dict[str, Any])
+@router.post("/prompts/{template_id}/auto-optimize", response_model=StatusResponse)
 async def auto_optimize_prompt_rollout(template_id: str):
     """
     Close the A/B testing loop: aggregate evaluation scores per version
@@ -989,6 +990,8 @@ async def auto_optimize_prompt_rollout(template_id: str):
         from core.harness.evaluation.ab_optimizer import EvalABOptimizer
         EvalABOptimizer.ensure_tables()
         new_rollout, report = EvalABOptimizer.compute_optimized_rollout(rollout, template_id)
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Optimizer failed: {e}")
     if new_rollout is None:
@@ -1004,6 +1007,8 @@ async def auto_optimize_prompt_rollout(template_id: str):
         await store.update_prompt_template_metadata(
             template_id=str(template_id), patch=patch, merge=True
         )
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to update metadata: {e}")
     return {
@@ -1013,7 +1018,7 @@ async def auto_optimize_prompt_rollout(template_id: str):
     }
 
 
-@router.delete("/prompts/{template_id}", response_model=Dict[str, Any])
+@router.delete("/prompts/{template_id}", response_model=StatusResponse)
 async def delete_prompt_template(
     template_id: str,
     http_request: Request,

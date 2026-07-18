@@ -10,8 +10,9 @@ import { Card, CardContent, CardHeader, Button, toast } from '../../components/u
 import { Wrench, RefreshCw, Package, Download, Users, FileText, Target, Activity, AlertTriangle, Send, Clipboard, TrendingUp, CheckCircle, UserCheck, BookOpen, Plus, ChevronDown, ChevronRight, X, ArrowRightLeft, Trash2, Pencil } from 'lucide-react';
 import CapabilityBoundary from './CapabilityBoundary';
 import FloatingFeedback from './FloatingFeedback';
+import WeeklyReport from './WeeklyReport';
 
-const API = (path: string) => `/api/core/fde${path}`;
+const API = (path: string) => `/api/platform/apps/fde${path}`;
 
 // ── 工作流状态类型 (append-only pipeline, 每个 Tab 只写 1 个 key) ──
 interface CustomerInfo {
@@ -104,7 +105,7 @@ const FdeDashboard: React.FC = () => {
     setCustomer(c);
     if (!c.industry && (c.name || c.description)) {
       try {
-        const r = await fetch('/api/core/fde/infer-industry', {
+        const r = await fetch(API('/infer-industry'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ name: c.name, description: c.description }),
@@ -419,7 +420,7 @@ const DeployTab: React.FC<{ readonly profile: string | null; readonly onDeployed
                 </div>
               )}
               {status.download_url && (
-                <a href={`/api/core/fde/package/${taskId}/download`} className="inline-flex items-center gap-1 text-blue-400 text-xs hover:underline">
+                <a href={API(`/package/${taskId}/download`)} className="inline-flex items-center gap-1 text-blue-400 text-xs hover:underline">
                   <Download className="w-3 h-3" />下载 ({status.size_display || `${status.size_mb || 0} MB`})
                 </a>
               )}
@@ -554,7 +555,7 @@ const AssessTab: React.FC<{ readonly domain: string | null; readonly customerDes
         poc_timeline: form.poc_timeline || dialogContext.poc_timeline || '',
         production_timeline: form.production_timeline || dialogContext.production_timeline || '',
       });
-      const r = await fetch('/api/core/fde/assess/dialog', {
+      const r = await fetch(API('/assess/dialog'), {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body,
       });
@@ -1580,7 +1581,9 @@ const AcceptTab: React.FC<{ readonly canaryResult: Readonly<CanaryResult> | null
       )}
       {handoverResult && (<Card><CardHeader><span className="text-sm font-medium">移交管理员</span></CardHeader><CardContent className="space-y-2"><div className="flex items-center gap-2"><UserCheck className="w-4 h-4 text-blue-400" /><span className="text-xs text-gray-400">将项目所有权转移给客户方管理员</span></div><div className="flex gap-2"><input className="flex-1 bg-gray-800 border border-gray-700 rounded px-2 py-1 text-sm text-gray-200" placeholder="客户管理员用户名" value={clientAdmin} onChange={e => setClientAdmin(e.target.value)} /><Button variant="default" size="sm" onClick={doTransfer} loading={loading} disabled={!clientAdmin}>执行移交</Button></div><pre className="text-xs text-gray-300 bg-gray-800 p-2 rounded max-h-32 overflow-y-auto">{JSON.stringify(handoverResult, null, 2)}</pre></CardContent></Card>)}
       {handoverResult && (<Card><CardHeader><span className="text-sm font-medium">项目归档</span></CardHeader><CardContent className="space-y-2"><textarea className="w-full bg-gray-800 border border-gray-700 rounded px-2 py-1 text-sm text-gray-200 h-16" placeholder="项目交付总结..." value={summary} onChange={e => setSummary(e.target.value)} /><Button variant="default" size="sm" onClick={doClose} loading={loading}>关闭项目并归档</Button>{closeResult && <div className="text-xs text-green-400 mt-1">✓ 项目已归档 — {closeResult.archive_id}</div>}</CardContent></Card>)}
-      {closeResult && (<Card><CardHeader><span className="text-sm font-medium">首月护航</span></CardHeader><CardContent className="space-y-3"><div className="space-y-2"><div className="flex items-center gap-2"><Activity className="w-4 h-4 text-green-400" /><span className="text-xs text-gray-400">安排 30 天后自动健康检查</span></div><div className="flex gap-2"><input className="flex-1 bg-gray-800 border border-gray-700 rounded px-2 py-1 text-sm text-gray-200" placeholder="通知邮箱 (可选)" onChange={e => (window as any).__health_email = e.target.value} /><Button variant="ghost" size="sm" onClick={async () => { const r = await fetch(API('/handover/schedule-health'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ spec_id: specId, notify_email: (window as any).__health_email || '' }) }); const d = await r.json(); setCloseResult((prev: any) => ({ ...prev, health: d })); }}>安排健康检查</Button></div>{closeResult?.health && <div className="text-xs text-green-400">✓ 已安排 — 将于 {closeResult.health.due_at?.slice(0,10)} 执行</div>}</div><div className="space-y-2 pt-2 border-t border-gray-700/50"><div className="flex items-center gap-2"><Users className="w-4 h-4 text-blue-400" /><span className="text-xs text-gray-400">创建培训沙盒环境</span></div><div className="flex gap-2"><select className="bg-gray-800 border border-gray-700 rounded px-2 py-1 text-sm text-gray-200" onChange={e => (window as any).__sandbox_count = parseInt(e.target.value)} defaultValue="5">{[1,3,5,10,20,50].map(n => <option key={n} value={n}>{n} 人</option>)}</select><Button variant="ghost" size="sm" onClick={async () => { const count = (window as any).__sandbox_count || 5; const r = await fetch(API('/training/sandbox'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ spec_id: specId, trainee_count: count }) }); const d = await r.json(); setCloseResult((prev: any) => ({ ...prev, sandbox: d })); }}>创建培训沙盒</Button></div>{closeResult?.sandbox && <div className="text-xs text-green-400">✓ 沙盒已创建 | {closeResult.sandbox.trainee_count} 人 | 有效期: {closeResult.sandbox.access?.expires_in}</div>}</div></CardContent></Card>)}
+      {closeResult && (<Card><CardHeader><span className="text-sm font-medium">首月护航</span></CardHeader><CardContent className="space-y-3"><div className="space-y-2"><div className="flex items-center gap-2"><Activity className="w-4 h-4 text-green-400" /><span className="text-xs text-gray-400">安排 30 天后自动健康检查</span></div><div className="flex gap-2"><input className="flex-1 bg-gray-800 border border-gray-700 rounded px-2 py-1 text-sm text-gray-200" placeholder="通知邮箱 (可选)" onChange={e => (window as any).__health_email = e.target.value} /><Button variant="ghost" size="sm" onClick={async () => { const r = await fetch(API('/handover/schedule-health'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ spec_id: specId, notify_email: (window as any).__health_email || '' }) }); const d = await r.json(); setCloseResult((prev: any) => ({ ...prev, health: d })); }}>安排健康检查</Button></div>{closeResult?.health && <div className="text-xs text-green-400">✓ 已安排 — 将于 {closeResult.health.due_at?.slice(0,10)} 执行</div>}</div><div className="space-y-2 pt-2 border-t border-gray-700/50"><div className="flex items-center gap-2"><Users className="w-4 h-4 text-blue-400" /><span className="text-xs text-gray-400">创建培训沙盒环境</span></div><div className="flex gap-2"><select className="bg-gray-800 border border-gray-700 rounded px-2 py-1 text-sm text-gray-200" onChange={e => (window as any).__sandbox_count = parseInt(e.target.value)} defaultValue="5">{[1,3,5,10,20,50].map(n => <option key={n} value={n}>{n} 人</option>)}</select><Button variant="ghost" size="sm" onClick={async () => { const count = (window as any).__sandbox_count || 5; const r = await fetch(API('/training/sandbox'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ spec_id: specId, trainee_count: count }) }); const d = await r.json(); setCloseResult((prev: any) => ({ ...prev, sandbox: d })); }}>创建培训沙盒</Button></div>{closeResult?.sandbox && <div className="text-xs text-green-400">✓ 沙盒已创建 | {closeResult.sandbox.trainee_count} 人 | 有效期: {closeResult.sandbox.access?.expires_in}</div>}</div></CardContent></Card>      )}
+      {/* ═══════════ 本周 FDE 周报（AI 生成 → FDE 审核 → 交付客户） ═══════ */}
+      <WeeklyReport />
     </div>
   );
 };

@@ -3,6 +3,8 @@ from __future__ import annotations
 
 import re
 from typing import Any, Dict, List
+from apps.fde.schemas import FdeStatusResponse, FdeListResponse, FdeItemResponse
+
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
@@ -27,7 +29,7 @@ class FdeAskRequest(BaseModel):
     pain_points: str = ""
 
 
-@router.post("/ask", response_model=dict)
+@router.post("/ask", response_model=FdeStatusResponse)
 async def fde_ask(req: FdeAskRequest):
     """回答关于 FDE 诊断报告的追问（B0: 交互式追问）.
 
@@ -96,7 +98,7 @@ async def fde_ask(req: FdeAskRequest):
                 sn = fd_session.get_node(req.session_id) or fd_session.find_by_name(req.session_id)
                 if sn:
                     sid = getattr(sn, "entity_id", req.session_id)
-                    for nid, e in fd_session.get_neighbors(sid, direction="outgoing"):
+                    for nid, e in fd_session.get_neighbor_edges(sid, direction="outgoing"):
                         if e.relation_name == "has_meta":
                             mn = fd_session.get_node(nid)
                             if mn:
@@ -151,5 +153,7 @@ async def fde_ask(req: FdeAskRequest):
             "domain": did,
             "context_summary": context,
         }
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"FDE ask failed: {str(e)[:300]}")

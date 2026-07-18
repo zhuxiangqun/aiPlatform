@@ -1,0 +1,188 @@
+{
+  "$schema": "https://aiplat.local/schemas/escort-plan-v1.json",
+  "$template": "首月护航计划模板 — docs/manuals/fde/templates/template-escort-plan.json",
+  "$example": "完整示例见 template-escort-plan.example.json（基于中联汽配案例）",
+  "step": "⑦ 验收移交",
+  "responsible_role": "DM（交付经理）",
+  "pipeline_key": "adopted",
+  "meta": {
+    "plan_title": "首月护航计划",
+    "customer_name": "{{CUSTOMER_NAME}}",
+    "project_name": "{{PROJECT_NAME}}",
+    "signoff_id": "{{SIGNOFF_ID}}",
+    "generated_at": "{{GENERATED_AT}}",
+    "fde_name": "{{FDE_NAME}}",
+    "escort_start": "{{ESCORT_START}}",
+    "escort_end": "{{ESCORT_END}}",
+    "namespace": "{{NAMESPACE}}",
+    "description": "验收签收后的首月护航计划，包含 4 周自动化健康检查调度。仅内部使用。"
+  },
+  "health_check_schedule": {
+    "description": "自动化健康检查的调度配置",
+    "enabled": true,
+    "frequency": "{{FREQUENCY}}",
+    "check_cron": "{{CHECK_CRON}}",
+    "notifications": {
+      "email": "{{NOTIFY_EMAIL}}",
+      "webhook": "{{NOTIFY_WEBHOOK}}",
+      "channels": [
+        "{{ALERT_CHANNEL_1}}",
+        "{{ALERT_CHANNEL_2}}"
+      ]
+    },
+    "checks": [
+      {
+        "id": "HC_HEALTH",
+        "name": "全组件健康检查",
+        "endpoint": "GET /fde/health",
+        "expected": "pipeline_health: ok, quality_score >= {{QUALITY_THRESHOLD}}, atoms_growing: true",
+        "frequency": "{{HC_HEALTH_FREQ}}",
+        "alert_on_failure": true
+      },
+      {
+        "id": "HC_ALERTS",
+        "name": "告警扫描",
+        "endpoint": "GET /fde/alerts?min_severity=warning&namespace={{NAMESPACE}}",
+        "expected": "no new blocking alerts",
+        "frequency": "{{HC_ALERTS_FREQ}}",
+        "alert_on_failure": true
+      }
+    ]
+  },
+  "alert_rules": {
+    "description": "需要立即通知 FDE 的告警类型",
+    "rules": [
+      {
+        "rule_id": "ALERT_BLOCKED",
+        "name": "阻塞行动告警",
+        "condition": "status == 'blocked'",
+        "severity": "high",
+        "notification": "{{NOTIFY_EMAIL}}",
+        "action": "立即排查阻塞原因，检查上游依赖是否就绪"
+      },
+      {
+        "rule_id": "ALERT_STALE",
+        "name": "停滞告警",
+        "condition": "last_activity > 30 days",
+        "severity": "medium",
+        "notification": "{{NOTIFY_EMAIL}}",
+        "action": "联系客户确认系统是否正常使用"
+      },
+      {
+        "rule_id": "ALERT_ZERO_EVIDENCE",
+        "name": "零本体支撑告警",
+        "condition": "ontology_evidence == 0",
+        "severity": "medium",
+        "notification": "{{NOTIFY_EMAIL}}",
+        "action": "检查本体映射是否正确，补充关联数据"
+      },
+      {
+        "rule_id": "ALERT_HIGH_GAPS",
+        "name": "高缺口告警",
+        "condition": "unmatched_concepts > 3",
+        "severity": "medium",
+        "notification": "{{NOTIFY_EMAIL}}",
+        "action": "收集未匹配概念，评估是否需要扩展本体"
+      },
+      {
+        "rule_id": "ALERT_LOW_QUALITY",
+        "name": "低质量告警",
+        "condition": "quality_score < {{LOW_QUALITY_THRESHOLD}}",
+        "severity": "high",
+        "notification": "{{NOTIFY_EMAIL}}",
+        "action": "检查 Golden Query 通过率，排查质量退化原因"
+      }
+    ]
+  },
+  "weekly_action_plan": {
+    "description": "FDE 在护航期内每周需执行的动作",
+    "weeks": [
+      {
+        "week": 1,
+        "label": "确认无阻塞问题",
+        "actions": [
+          "联系客户确认系统可正常登录和使用",
+          "检查运营监控面板，确认无 blocking alerts",
+          "与 Key User 沟通，确认无使用困难",
+          "记录客户首次反馈"
+        ],
+        "output": "周报_{{CUSTOMER_NAME}}_W1.md"
+      },
+      {
+        "week": 2,
+        "label": "检查运营监控面板",
+        "actions": [
+          "检查质量评分趋势（期望 ≥ {{QUALITY_THRESHOLD}}）",
+          "检查自演进知识原子数（期望持续增长）",
+          "检查告警历史，处理任何 medium+ 告警",
+          "确认数据持续注入，无停滞"
+        ],
+        "output": "周报_{{CUSTOMER_NAME}}_W2.md"
+      },
+      {
+        "week": 3,
+        "label": "收集客户反馈",
+        "actions": [
+          "主动联系客户收集使用反馈",
+          "记录改进建议和新需求",
+          "评估是否需要 Agent 微调或 Skill 扩展",
+          "确认 SLA 达标情况"
+        ],
+        "output": "周报_{{CUSTOMER_NAME}}_W3.md"
+      },
+      {
+        "week": 4,
+        "label": "首月总结 → 进入稳定运营",
+        "actions": [
+          "汇总 4 周运营数据，生成月度趋势分析",
+          "与客户回顾首月运行情况",
+          "制定后续运维计划（频率降低为每周检查）",
+          "确认首月护航目标达成，进入稳定运营阶段",
+          "归档首月所有周报和月报"
+        ],
+        "output": "月报_{{CUSTOMER_NAME}}_{{MONTH}}.md"
+      }
+    ]
+  },
+  "self_evolution_config": {
+    "description": "首月护航期内自演进系统的配置",
+    "enabled": true,
+    "observation": {
+      "snapshot_on_check": true,
+      "frequency": "every health check"
+    },
+    "diagnosis": {
+      "rules_count": 5,
+      "auto_diagnose": true
+    },
+    "repair": {
+      "auto_repair": true,
+      "min_confidence": 0.9,
+      "max_auto_repairs_per_day": 3
+    },
+    "evolution": {
+      "auto_discover_terms": true,
+      "auto_register_review": true
+    }
+  },
+  "escalation_contacts": {
+    "fde_primary": {
+      "name": "{{FDE_NAME}}",
+      "role": "交付经理",
+      "contact": "{{FDE_CONTACT}}",
+      "availability": "{{FDE_AVAILABILITY}}"
+    },
+    "fde_backup": {
+      "name": "{{BACKUP_FDE}}",
+      "role": "备选交付经理",
+      "contact": "{{BACKUP_CONTACT}}",
+      "availability": "{{BACKUP_AVAILABILITY}}"
+    },
+    "technical_support": {
+      "name": "{{TECH_SUPPORT}}",
+      "role": "技术支持",
+      "contact": "{{TECH_CONTACT}}",
+      "availability": "{{TECH_AVAILABILITY}}"
+    }
+  }
+}

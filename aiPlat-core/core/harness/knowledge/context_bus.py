@@ -242,7 +242,7 @@ def _inject_delivery_history(parts: List[str], params: Dict):
         for _, node in list(fd._nodes.items())[:100]:
             if getattr(node, "class_name", "") == "DiagnosisSession":
                 total_sessions += 1
-                nb = fd.get_neighbors(getattr(node, "entity_id", ""), direction="outgoing")
+                nb = fd.get_neighbor_edges(getattr(node, "entity_id", ""), direction="outgoing")
                 if any(e.relation_name == "has_action" for _, e in nb):
                     delivered += 1
                 if industry_lower and industry_lower in node.entity_name.lower():
@@ -274,7 +274,7 @@ def _inject_self_optimization(parts: List[str]):
         sessions = []
         for _, node in list(fd._nodes.items())[:200]:
             if getattr(node, "class_name", "") == "DiagnosisSession":
-                nb = fd.get_neighbors(getattr(node, "entity_id", ""), direction="outgoing")
+                nb = fd.get_neighbor_edges(getattr(node, "entity_id", ""), direction="outgoing")
                 has_action = any(e.relation_name == "has_action" for _, e in nb)
                 sessions.append({"name": node.entity_name, "has_actions": has_action})
 

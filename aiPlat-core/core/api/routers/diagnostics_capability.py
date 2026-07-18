@@ -233,7 +233,7 @@ async def build_capability_boundary(domain_filter: Optional[str] = None) -> dict
     }
 
 
-@router.get("/diagnostics/capability-boundary", response_model=dict)
+@router.get("/diagnostics/capability-boundary", response_model=ItemResponse)
 async def get_capability_boundary(
     domain: Optional[str] = Query(None),
     request: Any = None,
@@ -247,7 +247,7 @@ async def get_capability_boundary(
         raise HTTPException(status_code=500, detail=str(e)[:300])
 
 
-@router.get("/diagnostics/rag-quality", response_model=dict)
+@router.get("/diagnostics/rag-quality", response_model=ItemResponse)
 async def get_rag_quality(
     hours: Optional[int] = Query(24, ge=1, le=168),
     domain: Optional[str] = Query("default"),

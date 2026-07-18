@@ -42,5 +42,7 @@ async def generate_architecture(
             description=architecture.description,
             confirmed=architecture.confirmed
         )
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

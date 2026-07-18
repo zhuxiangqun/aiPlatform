@@ -290,6 +290,90 @@ python3 "$WORKSPACE/scripts/verify_docs.py" 2>&1 | grep "新增了.*但未在" |
 done
 echo "  ℹ️  Run 'python3 scripts/verify_docs.py' for full report"
 
+# ══════════════════════════════════════════════════════════════
+# Step 8: Generate FDE Pipeline Key mapping table from code
+# ══════════════════════════════════════════════════════════════
+echo ""
+echo "━━━ Step 8: Generate FDE Pipeline Key mapping ━━━"
+python3 - "$WORKSPACE" << 'PYEOF_PIPELINE'
+import sys, os, re, ast
+
+workspace = sys.argv[1]
+target = os.path.join(workspace, "docs/manuals/fde/05-fde-implementation-process.md")
+
+# Parse FDE_PIPELINE_STEPS from fde.py using AST (avoid import side-effects)
+fde_src = os.path.join(workspace, "aiPlat-core/core/api/routers/fde.py")
+try:
+    with open(fde_src) as f:
+        tree = ast.parse(f.read())
+except Exception as e:
+    print(f"  ⚠️  Failed to parse fde.py: {e}")
+    sys.exit(0)
+
+pipeline_steps = {}
+for node in ast.walk(tree):
+    if isinstance(node, ast.Assign):
+        for target in node.targets:
+            if hasattr(target, 'id') and target.id == 'FDE_PIPELINE_STEPS':
+                pipeline_steps = ast.literal_eval(node.value)
+
+if not pipeline_steps:
+    print("  ⚠️  Could not extract FDE_PIPELINE_STEPS, skipping")
+    sys.exit(0)
+
+# Build mapping table rows
+logical_map = {"①": "customer", "②": "domain", "③": "diagnosis",
+               "④": "pocProfile", "⑤": "deployVersion",
+               "⑥": "canaryResult", "⑦": "adopted", "⑧": "monitor"}
+rows = []
+for s_id, s_def in pipeline_steps.items():
+    label = s_def.get("label", s_id)
+    keys = sorted(s_def.get("produces", {}).keys())
+    key_str = ", ".join(f"`{k}`" for k in keys)
+    doc_name = next((v for k, v in logical_map.items() if label.startswith(k)), s_id)
+    remarks = "; ".join(
+        f"`{k}`={v.get('label','')[:30]}"
+        for k, v in s_def.get("produces", {}).items()
+    )[:120] or "—"
+    rows.append(f"| `{doc_name}` | {key_str} | {len(keys)} 个 | {remarks} |")
+
+new_block = (
+    "> 以下由 auto_sync_docs.sh Step 8 自动生成，请勿手动编辑。\n"
+    "> 每次运行 auto_sync_docs.sh 时，从 `FDE_PIPELINE_STEPS`（fde.py:673）重新生成。\n\n"
+    "| 文档逻辑名 | 代码物理 Key（蛇形） | 粒度 | 备注 |\n"
+    "|------|------|:---:|------|\n" + "\n".join(rows)
+)
+
+# Replace between sentinel markers (or first-run: wrap existing table)
+try:
+    with open(target, encoding="utf-8") as f:
+        content = f.read()
+except FileNotFoundError:
+    print("  ⚠️  Target file not found, skipping")
+    sys.exit(0)
+
+start_marker = "<!-- AUTO_GEN_PIPELINE_KEY_MAP_START -->"
+end_marker = "<!-- AUTO_GEN_PIPELINE_KEY_MAP_END -->"
+
+if start_marker in content:
+    content = re.sub(
+        re.escape(start_marker) + ".*?" + re.escape(end_marker),
+        start_marker + "\n" + new_block + "\n" + end_marker,
+        content, flags=re.DOTALL
+    )
+else:
+    # First run: find existing table paragraph and wrap in markers
+    pat = r'(> 以上为文档逻辑命名.*?\n\|[^\n]+\n\|[^\n]+\n(?:\|[^\n]*\n)+)'
+    m = re.search(pat, content)
+    if m:
+        content = (content[:m.start()] + start_marker + "\n" + new_block + "\n" + end_marker +
+                   content[m.end():])
+
+with open(target, "w", encoding="utf-8") as f:
+    f.write(content)
+print(f"  ✅ Pipeline Key mapping updated ({len(rows)} steps from FDE_PIPELINE_STEPS)")
+PYEOF_PIPELINE
+
 echo ""
 echo "═══════════════════════════════════════════════════════════════"
 echo "  Sync complete: $ADDED new entries, $SUM total (CAPS+ROADMAP+CLAUDE)"

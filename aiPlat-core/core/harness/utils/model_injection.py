@@ -185,7 +185,8 @@ def _log_model_selection(purpose: str, selected: str, entry: str = "best_model_f
             "wiki", "model_selection_log.json")
         samples = []
         if _log_os.path.exists(log_path):
-            samples = _log_json.loads(open(log_path).read())
+            with open(log_path) as f:
+                samples = _log_json.loads(f.read())
         record = {"ts": _log_time.time(), "purpose": purpose,
                   "selected": selected, "entry": entry}
         if candidates:
@@ -194,7 +195,8 @@ def _log_model_selection(purpose: str, selected: str, entry: str = "best_model_f
             record["extra"] = str(extra)[:200]
         samples.append(record)
         _log_os.makedirs(_log_os.path.dirname(log_path), exist_ok=True)
-        _log_json.dump(samples[-1000:], open(log_path, "w"))
+        with open(log_path, "w") as lf:
+            _log_json.dump(samples[-1000:], lf)
     except Exception as e:
         logging.warning(str(e), exc_info=True)
 
@@ -844,7 +846,11 @@ def best_model_for_purpose(purpose: str, messages: list = None) -> str:
                 _cfg_path = os.getenv("AIPLAT_LLM_CONFIG_PATH",
                     os.path.join(os.path.dirname(__file__), "..", "..", "..", "..",
                                  "aiPlat-infra", "config", "infra", "llm_profile.yaml"))
-                _pd = _yaml.safe_load(open(_cfg_path)) if os.path.isfile(_cfg_path) else {}
+                if os.path.isfile(_cfg_path):
+                    with open(_cfg_path) as _f:
+                        _pd = _yaml.safe_load(_f)
+                else:
+                    _pd = {}
                 profiles = _pd.get("purpose_profiles", {})
                 pc = profiles.get(purpose, {})
                 prefer_external = pc.get("prefer_external", False)

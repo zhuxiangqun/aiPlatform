@@ -8,6 +8,7 @@ import time
 import uuid
 from pathlib import Path
 from typing import Any, Dict, List, Optional
+from apps.common_schemas import StatusResponse, ListResponse, ItemResponse
 
 from fastapi import APIRouter, HTTPException
 from core.harness.kernel.runtime import get_kernel_runtime
@@ -68,7 +69,7 @@ def _new_id(prefix: str = "pt") -> str:
 
 # ── Template CRUD ──────────────────────────────────────────────────
 
-@router.get("/prompts/app/templates", response_model=Dict[str, Any])
+@router.get("/prompts/app/templates", response_model=ItemResponse)
 async def list_templates(category: str = "", status: str = "",
                          limit: int = 100, offset: int = 0):
     try:
@@ -84,7 +85,7 @@ async def list_templates(category: str = "", status: str = "",
         raise HTTPException(status_code=500, detail=str(e)[:300])
 
 
-@router.post("/prompts/app/templates", response_model=Dict[str, Any])
+@router.post("/prompts/app/templates", response_model=StatusResponse)
 async def create_template(req: PromptAppTemplateCreate):
     try:
         store = _store()
@@ -110,7 +111,7 @@ async def create_template(req: PromptAppTemplateCreate):
         raise HTTPException(status_code=500, detail=str(e)[:300])
 
 
-@router.get("/prompts/app/templates/{template_id}", response_model=Dict[str, Any])
+@router.get("/prompts/app/templates/{template_id}", response_model=ItemResponse)
 async def get_template(template_id: str):
     store = _store()
     if not store:
@@ -121,7 +122,7 @@ async def get_template(template_id: str):
     return tpl
 
 
-@router.put("/prompts/app/templates/{template_id}", response_model=Dict[str, Any])
+@router.put("/prompts/app/templates/{template_id}", response_model=StatusResponse)
 async def update_template(template_id: str, req: PromptAppTemplateUpdate):
     try:
         store = _store()
@@ -148,7 +149,7 @@ async def update_template(template_id: str, req: PromptAppTemplateUpdate):
         raise HTTPException(status_code=500, detail=f"Update template failed: {str(e)[:300]}")
 
 
-@router.post("/prompts/app/templates/{template_id}/publish", response_model=Dict[str, Any])
+@router.post("/prompts/app/templates/{template_id}/publish", response_model=StatusResponse)
 async def publish_template(template_id: str):
     """Publish a prompt app template with signature verification."""
     store = _store()
@@ -179,7 +180,7 @@ async def publish_template(template_id: str):
     return {"status": "published", "template_id": template_id}
 
 
-@router.delete("/prompts/app/templates/{template_id}", response_model=Dict[str, Any])
+@router.delete("/prompts/app/templates/{template_id}", response_model=StatusResponse)
 async def delete_template(template_id: str):
     store = _store()
     if not store:
@@ -190,7 +191,7 @@ async def delete_template(template_id: str):
     return {"status": "deleted"}
 
 
-@router.post("/prompts/app/templates/{template_id}/copy", response_model=Dict[str, Any])
+@router.post("/prompts/app/templates/{template_id}/copy", response_model=StatusResponse)
 async def copy_template(template_id: str):
     store = _store()
     if not store:
@@ -214,8 +215,9 @@ async def copy_template(template_id: str):
 
 # ── Preview ────────────────────────────────────────────────────────
 
-@router.post("/prompts/app/templates/{template_id}/preview", response_model=Dict[str, Any])
+@router.post("/prompts/app/templates/{template_id}/preview", response_model=StatusResponse)
 async def preview_template(template_id: str, req: PromptPreviewRequest):
+    """## platform:allowed — LLM-based template preview."""
     store = _store()
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
@@ -251,8 +253,9 @@ async def preview_template(template_id: str, req: PromptPreviewRequest):
 
 # ── Preview Text (raw prompt, no template_id needed) ─────────────
 
-@router.post("/prompts/app/preview-text", response_model=Dict[str, Any])
+@router.post("/prompts/app/preview-text", response_model=StatusResponse)
 async def preview_text(req: PromptPreviewTextRequest):
+    """## platform:allowed — LLM-based text preview."""
     sp = req.system_prompt or ""
     up = req.user_prompt or ""
     if not up:
@@ -278,9 +281,9 @@ async def preview_text(req: PromptPreviewTextRequest):
 
 # ── Run (template or instance → LLM output) ──────────────────────
 
-@router.post("/prompts/app/run", response_model=Dict[str, Any])
+@router.post("/prompts/app/run", response_model=StatusResponse)
 async def run_prompt(req: PromptRunRequest):
-    """Run a template or instance: render variables → LLM → return output."""
+    """## platform:allowed — Run a template or instance: render variables → LLM → return output."""
     store = _store()
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
@@ -321,9 +324,9 @@ async def run_prompt(req: PromptRunRequest):
 
 # ── Optimize ───────────────────────────────────────────────────────
 
-@router.post("/prompts/app/optimize", response_model=Dict[str, Any])
+@router.post("/prompts/app/optimize", response_model=StatusResponse)
 async def optimize_prompt(req: PromptOptimizeRequest):
-    """AI-optimize a prompt: returns improved version with suggestions."""
+    """## platform:allowed — AI-optimize a prompt: returns improved version with suggestions."""
     prompt_text = req.prompt
     try:
         store = _store()
@@ -384,7 +387,7 @@ async def optimize_prompt(req: PromptOptimizeRequest):
 
 # ── Categories ─────────────────────────────────────────────────────
 
-@router.get("/prompts/app/categories", response_model=Dict[str, Any])
+@router.get("/prompts/app/categories", response_model=ItemResponse)
 async def list_categories():
     store = _store()
     if not store:
@@ -392,7 +395,7 @@ async def list_categories():
     return await store.list_prompt_app_categories()
 
 
-@router.post("/prompts/app/categories", response_model=Dict[str, Any])
+@router.post("/prompts/app/categories", response_model=StatusResponse)
 async def create_category(req: PromptCategoryCreate):
     store = _store()
     if not store:
@@ -403,7 +406,7 @@ async def create_category(req: PromptCategoryCreate):
     return {"status": "created"}
 
 
-@router.delete("/prompts/app/categories/{name}", response_model=Dict[str, Any])
+@router.delete("/prompts/app/categories/{name}", response_model=StatusResponse)
 async def delete_category(name: str):
     store = _store()
     if not store:
@@ -475,7 +478,7 @@ _CONSTRAINTS = {
 }
 
 
-@router.post("/prompts/app/seed", response_model=Dict[str, Any])
+@router.post("/prompts/app/seed", response_model=StatusResponse)
 async def seed_app_templates():
     """Import 34 default app templates (idempotent)."""
     store = _store()
@@ -569,7 +572,7 @@ _TEMPLATE_SCENARIOS = {
 }
 
 
-@router.get("/prompts/app/scenario-tags", response_model=Dict[str, Any])
+@router.get("/prompts/app/scenario-tags", response_model=ItemResponse)
 async def list_scenario_tags():
     """Return all scenario tags, grouped by category."""
     store = _store()
@@ -595,7 +598,7 @@ async def list_scenario_tags():
     return await anyio.to_thread.run_sync(_sync)
 
 
-@router.post("/prompts/app/scenario-tags/seed", response_model=Dict[str, Any])
+@router.post("/prompts/app/scenario-tags/seed", response_model=StatusResponse)
 async def seed_scenario_tags():
     """Seed scenario tags (idempotent)."""
     store = _store()
@@ -623,7 +626,7 @@ async def seed_scenario_tags():
 
 # ── Instance CRUD ──────────────────────────────────────────────────
 
-@router.get("/prompts/app/instances", response_model=Dict[str, Any])
+@router.get("/prompts/app/instances", response_model=ItemResponse)
 async def list_instances(limit: int = 100, offset: int = 0):
     store = _store()
     if not store:
@@ -631,7 +634,7 @@ async def list_instances(limit: int = 100, offset: int = 0):
     return await store.list_prompt_app_instances(limit=limit, offset=offset)
 
 
-@router.post("/prompts/app/instances", response_model=Dict[str, Any])
+@router.post("/prompts/app/instances", response_model=StatusResponse)
 async def create_instance(req: PromptAppInstanceCreate):
     store = _store()
     if not store:
@@ -650,7 +653,7 @@ async def create_instance(req: PromptAppInstanceCreate):
     )
 
 
-@router.put("/prompts/app/instances/{instance_id}", response_model=Dict[str, Any])
+@router.put("/prompts/app/instances/{instance_id}", response_model=StatusResponse)
 async def update_instance(instance_id: str, req: PromptAppInstanceUpdate):
     store = _store()
     if not store:
@@ -670,7 +673,7 @@ async def update_instance(instance_id: str, req: PromptAppInstanceUpdate):
     )
 
 
-@router.delete("/prompts/app/instances/{instance_id}", response_model=Dict[str, Any])
+@router.delete("/prompts/app/instances/{instance_id}", response_model=StatusResponse)
 async def delete_instance(instance_id: str):
     store = _store()
     if not store:
@@ -679,7 +682,7 @@ async def delete_instance(instance_id: str):
     return {"status": "deleted"}
 
 
-@router.post("/prompts/app/templates/{template_id}/sign", response_model=Dict[str, Any])
+@router.post("/prompts/app/templates/{template_id}/sign", response_model=StatusResponse)
 async def sign_prompt_app_template(template_id: str, req: Dict[str, Any]):
     """Sign a prompt app template directory with Ed25519 key. Writes TEMPLATE.manifest.json."""
     private_key = str(req.get("private_key") or "").strip()

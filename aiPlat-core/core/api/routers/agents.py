@@ -818,8 +818,9 @@ async def resolve_pipeline_hitl(pipeline_id: str, request: dict):
             raise HTTPException(status_code=400, detail=f"unknown action: {action}")
     except HTTPException:
         raise
-    except Exception as e:
-        return {"status": "error", "error": str(e)[:300]}
+    except HTTPException:
+        raise
+        raise HTTPException(status_code=500, detail=str(e)[:200])
 
 # ── Phase 54: Runtime Pipeline Stage Adjustment ──
 

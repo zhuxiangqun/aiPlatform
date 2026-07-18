@@ -127,12 +127,20 @@ const Diagnostics: React.FC = () => {
         setDiagRunning(false);
         return;
       }
-      setDiagResult(data);
-      setDiagRunId(data.run_id || '');
+      // Background mode: poll /latest until complete
+      if (data.status === 'started') {
+        setDiagRunId(data.run_id || '');
+        toast.info('诊断已启动，正在运行中...');
+        await pollUntilComplete();
+      } else {
+        setDiagResult(data);
+        setDiagRunId(data.run_id || '');
+        setDiagRunning(false);
+      }
     } catch (e: any) {
       toast.error('诊断失败', e?.message || String(e));
-    } finally {
       setDiagRunning(false);
+    } finally {
       manualRunRef.current = false;
     }
   };
@@ -149,14 +157,51 @@ const Diagnostics: React.FC = () => {
         setQuickDiagRunning(false);
         return;
       }
-      setDiagResult(data);
-      setDiagRunId(data.run_id || '');
+      if (data.status === 'started') {
+        setDiagRunId(data.run_id || '');
+        toast.info('快速诊断已启动，正在运行中...');
+        await pollUntilComplete();
+      } else {
+        setDiagResult(data);
+        setDiagRunId(data.run_id || '');
+        setQuickDiagRunning(false);
+      }
     } catch (e: any) {
       toast.error('快速诊断失败', e?.message || String(e));
-    } finally {
       setQuickDiagRunning(false);
+    } finally {
       manualRunRef.current = false;
     }
+  };
+
+  const pollUntilComplete = async () => {
+    for (let i = 0; i < 120; i++) {
+      await new Promise(r => setTimeout(r, 1000));
+      try {
+        const res = await fetch('/api/core/diagnostics/latest');
+        if (!res.ok) continue;
+        const latest = await res.json();
+        if (latest.categories && Object.keys(latest.categories).length > 0 && !latest.status?.startsWith('running')) {
+          setDiagResult(latest);
+          setDiagRunning(false);
+          setQuickDiagRunning(false);
+          return;
+        }
+        // Show visible progress while diagnostic is running
+        if (latest.status?.startsWith('running')) {
+          const catCount = Object.keys(latest.categories || {}).length;
+          setDiagResult({
+            overall_score: '...', overall_grade: `运行中 (${catCount}/30)`,
+            categories: latest.categories,
+            pass: latest.pass || 0, warn: latest.warn || 0, fail: latest.fail || 0,
+            status: latest.status,
+          });
+        }
+      } catch { /* retry */ }
+    }
+    setDiagRunning(false);
+    setQuickDiagRunning(false);
+    toast.warning('诊断超时（120s），部分结果可能未完成');
   };
 
   const catLabels: Record<string, string> = {
@@ -182,6 +227,13 @@ const Diagnostics: React.FC = () => {
     governance: 'bg-amber-400', cross_lang: 'bg-gray-400', domain_coupling: 'bg-gray-400',
     fragile_base: 'bg-gray-400', route_coverage: 'bg-gray-400',
     full_stack: 'bg-sky-400', llm_review: 'bg-cyan-400',
+  };
+  
+  const ON_DEMAND_GUIDE: Record<string, {label: string; href: string; action: string}> = {
+    arch_guard:  { label: '架构守卫', href: '', action: 'runGuard' },
+    compliance:  { label: '架构守卫', href: '', action: 'runGuard' },
+    e2e_smoke:   { label: 'E2E Smoke', href: '/diagnostics/smoke', action: '' },
+    llm_review:  { label: 'LLM审查', href: '/diagnostics/llm-review', action: '' },
   };
   
   useEffect(() => {
@@ -214,8 +266,8 @@ const Diagnostics: React.FC = () => {
     fetch('/api/core/diagnostics/latest', { signal: ctrl.signal })
       .then(r => r.json())
       .then(data => {
-        // Discard stale cache if user triggered a manual run in the meantime
-        if (!manualRunRef.current && data.cached !== false && data.overall_score != null) {
+        // Only load completed diagnostics (not partial/incremental cache)
+        if (!manualRunRef.current && data.status === 'complete') {
           setDiagResult(data);
         }
       })
@@ -305,13 +357,16 @@ const Diagnostics: React.FC = () => {
               <Activity className="w-5 h-5 text-primary" />
               <span className="text-sm font-semibold text-gray-200">综合诊断报告</span>
               <span className="text-[10px] text-gray-500 bg-dark-bg px-1.5 py-0.5 rounded">
-                {diagResult ? Object.keys(diagResult.categories || {}).length : '—'} 类检查
+                {diagResult ? Object.keys(diagResult.categories || {}).filter(k => !['wiki_health','wiki_content_quality','rag_quality','compliance'].includes(k)).length : '—'} 类检查
               </span>
               {diagResult && (
                 <span className={`text-lg font-bold ${
+                  diagResult.status?.startsWith('running') ? 'text-blue-400' :
                   diagResult.overall_score >= 75 ? 'text-green-400' : diagResult.overall_score >= 50 ? 'text-yellow-400' : 'text-red-400'
                 }`}>
-                  {diagResult.overall_score} {diagResult.overall_grade}
+                  {diagResult.status?.startsWith('running')
+                    ? diagResult.overall_grade
+                    : `${diagResult.overall_score} ${diagResult.overall_grade}`}
                 </span>
               )}
             </div>
@@ -342,10 +397,61 @@ const Diagnostics: React.FC = () => {
             {/* Category cards */}
             <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
               {Object.entries(diagResult.categories || {})
-                .filter(([key]) => key !== 'llm_review')  // LLM审查 is standalone — ~150K tokens, run on demand
+                .filter(([key]) => !['wiki_health','wiki_content_quality','rag_quality','compliance'].includes(key))
                 .map(([key, cat]: [string, any]) => {
                 const s = cat?.status || 'unknown';
-                const bg = s === 'pass' ? 'bg-green-900/20 border-green-500/20' : s === 'warn' ? 'bg-yellow-900/20 border-yellow-500/20' : 'bg-red-900/20 border-red-500/20';
+                const bg = s === 'pass' ? 'bg-green-900/20 border-green-500/20'
+                  : s === 'warn' ? 'bg-yellow-900/20 border-yellow-500/20'
+                  : s === 'info' ? 'bg-blue-900/20 border-blue-500/20'
+                  : s === 'timeout' ? 'bg-gray-900/20 border-gray-500/20'
+                  : 'bg-red-900/20 border-red-500/20';
+                const guide = ON_DEMAND_GUIDE[key];
+                const handleGuideClick = (e: React.MouseEvent) => {
+                  e.stopPropagation();
+                  if (guide?.action === 'runGuard') {
+                    // Scroll to the guard section and trigger it, or call the API directly
+                    const section = document.getElementById('arch-guard-section');
+                    if (section) {
+                      section.scrollIntoView({ behavior: 'smooth' });
+                    }
+                    // Always trigger the guard run
+                    setGuardRunning(true); setGuardResult(null);
+                    fetch('/api/core/diagnostics/guard/run', { method: 'POST' })
+                      .then(r => r.json())
+                      .then(d => setGuardResult(d))
+                      .catch(e => toast.error('守卫检测失败', e?.message || e))
+                      .finally(() => setGuardRunning(false));
+                  } else if (guide?.href) {
+                    window.location.href = guide.href;
+                  }
+                };
+
+                // ── On-demand check: simplified one-button card ──
+                if (s === 'info' && guide) {
+                  return (
+                    <div key={key} className="border border-blue-500/20 rounded-lg overflow-hidden">
+                      <div className={`flex items-center gap-2 p-3 ${bg}`}>
+                        <div className={`w-2 h-2 rounded-full ${catColors[key] || 'bg-gray-400'}`} />
+                        <span className="text-sm text-gray-200 flex-1">
+                          {catLabels[key] || key}
+                          <span className="text-[10px] text-blue-400 ml-1">🏃 按需运行</span>
+                        </span>
+                      </div>
+                      <div className="p-3 bg-dark-bg/50 flex flex-col items-center gap-2">
+                        <p className="text-xs text-gray-500 text-center">
+                          {cat?.items?.[0]?.detail || '重量级检查，点击下方按钮单独运行'}
+                        </p>
+                        <Button variant="primary" size="sm" onClick={handleGuideClick}>
+                          {guide.label === '架构守卫' ? '🛡️ 运行架构守卫' :
+                           guide.label === 'E2E Smoke' ? '🚀 运行 E2E Smoke' :
+                           guide.label === 'LLM审查' ? '🤖 运行 LLM 审查' : `运行 ${guide.label}`}
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                }
+
+                // ── Normal check: expandable card ──
                 return (
                   <div key={key} className="border rounded-lg overflow-hidden">
                     <div
@@ -353,9 +459,16 @@ const Diagnostics: React.FC = () => {
                       className={`flex items-center gap-2 p-3 cursor-pointer hover:border-gray-500 ${bg}`}
                     >
                       <div className={`w-2 h-2 rounded-full ${catColors[key] || 'bg-gray-400'}`} />
-                      <span className="text-sm text-gray-200 flex-1">{catLabels[key] || key}</span>
-                      <span className={`text-sm font-bold ${s === 'pass' ? 'text-green-400' : s === 'warn' ? 'text-yellow-400' : 'text-red-400'}`}>
-                        {key === 'arch_guard' && cat?.violations != null ? `${cat.violations}违规` : cat?.score ?? '—'}
+                      <span className="text-sm text-gray-200 flex-1">
+                        {catLabels[key] || key}
+                        {s === 'info' && guide && (
+                          <span className="text-[10px] text-blue-400 ml-1 cursor-pointer hover:underline" onClick={handleGuideClick}>
+                            🏃 按需 → {guide.label}
+                          </span>
+                        )}
+                      </span>
+                      <span className={`text-sm font-bold ${s === 'pass' ? 'text-green-400' : s === 'warn' ? 'text-yellow-400' : s === 'info' ? 'text-blue-400' : s === 'timeout' ? 'text-gray-400' : 'text-red-400'}`}>
+                        {s === 'info' ? '→ 运行' : cat?.score ?? '—'}
                       </span>
                     </div>
                     <div className="flex justify-between items-center px-3 py-1.5 bg-dark-bg/50">
@@ -416,12 +529,16 @@ const Diagnostics: React.FC = () => {
             {diagResult.top_issues?.length > 0 && (
               <div className="mt-3 p-2 bg-red-900/10 rounded border border-red-500/20 text-xs">
                 <span className="text-yellow-400 font-medium">需关注：</span>
-                  {diagResult.top_issues.map((iss: any, i: number) => (
-                    <span key={i} className="ml-2 text-gray-400">
-                      {iss.label || `${catLabels[iss.category] || iss.category}(${iss.score})`}
+                  {diagResult.top_issues.map((iss: any, i: number) => {
+                    const isOnDemand = ON_DEMAND_GUIDE[iss.category];
+                    return (
+                    <span key={i} className={`ml-2 ${isOnDemand ? 'text-blue-400' : 'text-gray-400'}`}>
+                      {isOnDemand 
+                        ? `${iss.label || catLabels[iss.category]} → 点击${isOnDemand.label}单独运行`
+                        : iss.label || `${catLabels[iss.category] || iss.category}(${iss.score})`}
                       {i < diagResult.top_issues.length - 1 ? '、' : ''}
-                  </span>
-                ))}
+                    </span>
+                  )})}
               </div>
             )}
           </CardContent>
@@ -470,7 +587,7 @@ const Diagnostics: React.FC = () => {
       </div>
 
       {/* ═══════ Architecture Guard ═══ */}
-      <Card>
+      <Card id="arch-guard-section">
         <CardHeader>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -478,9 +595,9 @@ const Diagnostics: React.FC = () => {
               <span className="text-sm font-semibold text-gray-200">架构守卫</span>
               {guardResult && (
                 <span className={`text-xs px-2 py-0.5 rounded ${
-                  guardResult.violations === 0 ? 'bg-green-900/50 text-green-300' : 'bg-red-900/50 text-red-300'
+                  guardResult.summary.fail === 0 ? 'bg-green-900/50 text-green-300' : 'bg-red-900/50 text-red-300'
                 }`}>
-                  {guardResult.violations === 0 ? '✅ 通过' : `❌ ${guardResult.violations} 违规`}
+                  {guardResult.summary.fail === 0 ? '✅ 通过' : `❌ ${guardResult.summary.fail} 失败`}
                 </span>
               )}
             </div>
@@ -610,7 +727,7 @@ const Diagnostics: React.FC = () => {
             ))}
           </div>
           <div className="mt-2 text-right">
-            <Link to="/diagnostics/?tab=rag" className="text-blue-400 hover:text-blue-300 text-xs">
+            <Link to="/platform/kb?tab=eval" className="text-blue-400 hover:text-blue-300 text-xs">
               查看趋势 →
             </Link>
           </div>

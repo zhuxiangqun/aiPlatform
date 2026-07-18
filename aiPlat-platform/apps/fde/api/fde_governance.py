@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 from typing import Any, Dict, List
+from apps.fde.schemas import FdeStatusResponse, FdeListResponse, FdeItemResponse
+
 
 from fastapi import APIRouter, HTTPException
 
@@ -22,7 +24,7 @@ def _list_available_domains() -> str:
         return "unknown"
 
 
-@router.get("/governance/validate", response_model=dict)
+@router.get("/governance/validate", response_model=FdeItemResponse)
 async def fde_governance_validate():
     """Self-audit: verify all 8 declared governance capabilities are functional.
 

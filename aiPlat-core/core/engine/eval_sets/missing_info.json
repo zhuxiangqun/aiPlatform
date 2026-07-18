@@ -6,7 +6,7 @@
   "tasks": [
     {
       "task_id": "miss-001",
-      "agent_id": "programmer_agent",
+      "agent_id": "eval_target_codegen",
       "user_input": "帮我修一下那个 bug",
       "category": "missing_info",
       "expected_tools": [],
@@ -24,7 +24,7 @@
     },
     {
       "task_id": "miss-002",
-      "agent_id": "pm_agent",
+      "agent_id": "eval_target_planner",
       "user_input": "帮我做个电商系统",
       "category": "missing_info",
       "expected_tools": [],

@@ -10,6 +10,7 @@ from core.harness.kernel.runtime import get_kernel_runtime
 from core.learning.pipeline import summarize_syscall_events
 from core.learning.workspace_target import ensure_workspace_target
 import logging
+from apps.common_schemas import StatusResponse, ListResponse, ItemResponse
 
 router = APIRouter()
 
@@ -33,7 +34,7 @@ def _managers():
     }
 
 
-@router.post("/learning/autocapture", response_model=Dict[str, Any])
+@router.post("/learning/autocapture", response_model=StatusResponse)
 async def autocapture_learning_suggestion(request: dict, http_request: Request):
     """
     Roadmap-4 (minimal): create a reviewable learning artifact from one execution.
@@ -125,7 +126,7 @@ async def autocapture_learning_suggestion(request: dict, http_request: Request):
     return await store.get_learning_artifact(artifact.artifact_id)
 
 
-@router.post("/learning/autocapture/to_prompt_revision", response_model=Dict[str, Any])
+@router.post("/learning/autocapture/to_prompt_revision", response_model=StatusResponse)
 async def autocapture_to_prompt_revision(request: dict, http_request: Request):
     """
     Convert a feedback_summary artifact into a draft prompt_revision,
@@ -233,7 +234,7 @@ async def autocapture_to_prompt_revision(request: dict, http_request: Request):
     return out
 
 
-@router.post("/learning/autocapture/to_skill_evolution", response_model=Dict[str, Any])
+@router.post("/learning/autocapture/to_skill_evolution", response_model=StatusResponse)
 async def autocapture_to_skill_evolution(request: dict, http_request: Request):
     """
     Convert a feedback_summary into a draft skill_evolution suggestion artifact.
@@ -328,7 +329,7 @@ async def autocapture_to_skill_evolution(request: dict, http_request: Request):
     return out
 
 
-@router.post("/learning/feedback", response_model=Dict[str, Any])
+@router.post("/learning/feedback", response_model=StatusResponse)
 async def record_learning_feedback(request: dict, http_request: Request):
     """
     Minimal feedback loop (M1):

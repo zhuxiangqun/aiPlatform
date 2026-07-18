@@ -20,6 +20,8 @@ def create_architecture(project_id: str):
         designer = ArchitectureDesigner(db)
         architecture_id = designer.generate_architecture(project_id)
         return {"architecture_id": architecture_id}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     finally:

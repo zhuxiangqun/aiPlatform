@@ -12,11 +12,12 @@ from __future__ import annotations
 
 from typing import Any, Dict, Optional
 from fastapi import APIRouter, Query
+from apps.common_schemas import StatusResponse, ListResponse, ItemResponse
 
 router = APIRouter(prefix="/safety", tags=["safety"])
 
 
-@router.post("/crisis-check", response_model=Dict[str, Any])
+@router.post("/crisis-check", response_model=StatusResponse)
 async def crisis_check(body: Dict[str, Any]):
     """Check a single message for crisis signals."""
     text = body.get("text", "") or body.get("message", "")
@@ -33,7 +34,7 @@ async def crisis_check(body: Dict[str, Any]):
         return {"error": str(e)}
 
 
-@router.post("/session-check", response_model=Dict[str, Any])
+@router.post("/session-check", response_model=StatusResponse)
 async def session_check(body: Dict[str, Any]):
     """Check an entire conversation session for crisis signals."""
     messages = body.get("messages", [])
@@ -70,7 +71,7 @@ async def session_check(body: Dict[str, Any]):
         return {"error": str(e)}
 
 
-@router.post("/emotion-state", response_model=Dict[str, Any])
+@router.post("/emotion-state", response_model=StatusResponse)
 async def emotion_state(body: Dict[str, Any]):
     """Get emotional state for a session after tracking."""
     session_id = body.get("session_id", "")
@@ -89,7 +90,7 @@ async def emotion_state(body: Dict[str, Any]):
         return {"error": str(e)}
 
 
-@router.post("/dependency-check", response_model=Dict[str, Any])
+@router.post("/dependency-check", response_model=StatusResponse)
 async def dependency_check(body: Dict[str, Any]):
     """Check over-dependency risk for a user/session."""
     session_id = body.get("session_id", "")
@@ -117,7 +118,7 @@ async def dependency_check(body: Dict[str, Any]):
         return {"error": str(e)}
 
 
-@router.get("/flagged-sessions", response_model=Dict[str, Any])
+@router.get("/flagged-sessions", response_model=ItemResponse)
 async def flagged_sessions(tenant_id: str = Query("default")):
     """List all safety-flagged sessions."""
     try:
@@ -133,7 +134,7 @@ async def flagged_sessions(tenant_id: str = Query("default")):
         return {"error": str(e)}
 
 
-@router.post("/track-emotion", response_model=Dict[str, Any])
+@router.post("/track-emotion", response_model=StatusResponse)
 async def track_emotion(body: Dict[str, Any]):
     """Track emotion from a completed conversation session."""
     session_id = body.get("session_id", "")

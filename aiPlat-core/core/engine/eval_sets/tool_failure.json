@@ -6,7 +6,7 @@
   "tasks": [
     {
       "task_id": "fail-001",
-      "agent_id": "programmer_agent",
+      "agent_id": "eval_target_codegen",
       "user_input": "读取 /nonexistent/config.yaml 并分析配置",
       "category": "tool_failure",
       "expected_tools": [],

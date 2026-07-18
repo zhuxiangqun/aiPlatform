@@ -516,8 +516,8 @@ async def _check_rag_quality():
             "anomaly_count": len(dash.anomalies),
         }, "items": [
             {"check": "忠实度", "result": "合格" if dash.hallucination.get("avg_faithfulness", 0) >= 0.7 else "偏低", "detail": str(round(dash.hallucination.get("avg_faithfulness", 0), 2))},
-            {"check": "检索质量门通过率", "result": "合格" if dash.retrieval.get("quality_gate_pass_rate", 0) >= 0.8 else "偏低", "detail": f"{dash.retrieval.get("quality_gate_pass_rate", 0):.0%}"},
-            {"check": "用户放弃率", "result": "正常" if dash.signals.get("abandon_rate", 0) <= 0.1 else "偏高", "detail": f"{dash.signals.get("abandon_rate", 0):.0%}"},
+            {"check": "检索质量门通过率", "result": "合格" if dash.retrieval.get("quality_gate_pass_rate", 0) >= 0.8 else "偏低", "detail": f"{dash.retrieval.get('quality_gate_pass_rate', 0):.0%}"},
+            {"check": "用户放弃率", "result": "正常" if dash.signals.get("abandon_rate", 0) <= 0.1 else "偏高", "detail": f"{dash.signals.get('abandon_rate', 0):.0%}"},
         ]}
     except Exception:
         return {"status": "unavailable", "score": 0, "items": [{"check": "RAG 质量", "result": "—", "detail": "RAGDiagnosticsCollector 不可用"}]}

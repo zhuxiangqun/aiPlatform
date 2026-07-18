@@ -305,5 +305,7 @@ async def set_model_override_endpoint(request: dict):
         else:
             clear_model_override(session_id)
             return {"status": "override_cleared", "session_id": session_id}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

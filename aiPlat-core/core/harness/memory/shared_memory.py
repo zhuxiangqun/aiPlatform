@@ -67,7 +67,8 @@ def _load_all() -> List[SharedLearning]:
     if not _os.path.exists(_LEARNINGS_PATH):
         return []
     try:
-        data = _json.load(open(_LEARNINGS_PATH, "r", encoding="utf-8"))
+        with open(_LEARNINGS_PATH, "r", encoding="utf-8") as f:
+            data = _json.load(f)
         return [SharedLearning.from_dict(e) for e in data.get("entries", [])]
     except Exception:
         return []

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Plus, Trash2, RefreshCw, Eye, EyeOff, ArrowRight } from 'lucide-react';
 import { Button, Modal, toast, Input } from '../../../components/ui';
 import OntologyGraph from '../../../components/wiki/OntologyGraph';
+import WikiHealthDashboard from '../../../components/wiki/WikiHealthDashboard';
 
 const WIKI_API = '/api/core/wiki/ontology';
 
@@ -372,6 +373,9 @@ const OntologyManager: React.FC = () => {
           <Button variant="secondary" icon={<RefreshCw className="w-4 h-4" />} onClick={() => fetchDomains()}>刷新</Button>
         </div>
       </div>
+
+      {/* ═══════════ Wiki 知识库健康概览 ═══════ */}
+      <WikiHealthDashboard />
 
       {/* ── Domain List ── */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

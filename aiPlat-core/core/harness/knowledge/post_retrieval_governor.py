@@ -65,6 +65,14 @@ class GovernorConfig:
     dedup_threshold: float = 0.92    # Cosine above this → merge
     min_keep_chunks: int = 3         # minimum chunks to keep after cutoff
     credibility_weights: Dict[str, float] = field(default_factory=lambda: DEFAULT_CREDIBILITY.copy())
+    # Composite scoring weights: per-domain configurable via domain YAML or registry.json
+    # Defaults favor raw relevance (0.55) with equal freshness/credibility/density (0.15 each)
+    composite_weights: Dict[str, float] = field(default_factory=lambda: {
+        "raw_score": 0.55,
+        "freshness": 0.15,
+        "credibility": 0.15,
+        "density": 0.15,
+    })
 
 
 # ── Data structures ──
@@ -286,14 +294,15 @@ class PostRetrievalGovernor:
             if r["_density"] < self.config.min_density_score:
                 stats.density_filtered += 1
 
-        # ── ④ Composite scoring ──
+        # ── ④ Composite scoring (per-domain configurable weights) ──
+        w = self.config.composite_weights
         for r in results:
             raw_score = r.get("score", 0.5)
             r["_composite"] = (
-                raw_score * 0.55
-                + r.get("_freshness", 0.5) * 0.15
-                + r.get("_credibility", 0.5) * 0.15
-                + r.get("_density", 0.3) * 0.15
+                raw_score * w.get("raw_score", 0.55)
+                + r.get("_freshness", 0.5) * w.get("freshness", 0.15)
+                + r.get("_credibility", 0.5) * w.get("credibility", 0.15)
+                + r.get("_density", 0.3) * w.get("density", 0.15)
             )
 
         # ── ⑤ Conflict detection ──

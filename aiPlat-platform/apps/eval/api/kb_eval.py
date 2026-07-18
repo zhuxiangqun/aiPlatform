@@ -10,6 +10,7 @@ import time
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, File, HTTPException, Query, Request, UploadFile
+from apps.common_schemas import StatusResponse, ListResponse, ItemResponse
 
 router = APIRouter(prefix="/kb-eval", tags=["kb-eval"])
 
@@ -28,7 +29,7 @@ def _connect():
 
 # ── Golden Dataset CRUD ──
 
-@router.get("/samples", response_model=Dict[str, Any])
+@router.get("/samples", response_model=ItemResponse)
 async def list_samples(limit: int = 100, offset: int = 0, tag: Optional[str] = None):
     conn = _connect()
     try:
@@ -52,7 +53,7 @@ async def list_samples(limit: int = 100, offset: int = 0, tag: Optional[str] = N
         conn.close()
 
 
-@router.post("/samples", response_model=Dict[str, Any])
+@router.post("/samples", response_model=StatusResponse)
 async def create_sample(body: Dict[str, Any]):
     conn = _connect()
     try:
@@ -68,7 +69,7 @@ async def create_sample(body: Dict[str, Any]):
         conn.close()
 
 
-@router.delete("/samples/{sample_id}", response_model=Dict[str, Any])
+@router.delete("/samples/{sample_id}", response_model=StatusResponse)
 async def delete_sample(sample_id: str):
     conn = _connect()
     try:
@@ -81,7 +82,7 @@ async def delete_sample(sample_id: str):
 
 # ── Evaluation Execution ──
 
-@router.post("/run", response_model=Dict[str, Any])
+@router.post("/run", response_model=StatusResponse)
 async def run_evaluation(body: Dict[str, Any]):
     sample_ids = body.get("sample_ids") or []
     tag = body.get("tag")
@@ -140,7 +141,7 @@ async def run_evaluation(body: Dict[str, Any]):
         conn.close()
 
 
-@router.get("/reports", response_model=Dict[str, Any])
+@router.get("/reports", response_model=ItemResponse)
 async def list_reports(limit: int = 50, offset: int = 0):
     conn = _connect()
     try:
@@ -163,7 +164,7 @@ async def list_reports(limit: int = 50, offset: int = 0):
 
 # ── Bulk Import ──
 
-@router.post("/samples/import", response_model=Dict[str, Any])
+@router.post("/samples/import", response_model=StatusResponse)
 async def import_samples_csv(file: UploadFile = File(...)):
     """Import evaluation samples from CSV (columns: question,ground_truth,doc_ids,tags)."""
     content = await file.read()
@@ -200,7 +201,7 @@ async def import_samples_csv(file: UploadFile = File(...)):
 
 # ── Time-series aggregation ──
 
-@router.get("/reports/series", response_model=Dict[str, Any])
+@router.get("/reports/series", response_model=ItemResponse)
 async def reports_time_series(days: int = 30):
     """Aggregate evaluation reports into daily buckets for time-series charts."""
     conn = _connect()
@@ -242,7 +243,7 @@ async def reports_time_series(days: int = 30):
 
 # ── Regression comparison ──
 
-@router.get("/reports/compare", response_model=Dict[str, Any])
+@router.get("/reports/compare", response_model=ItemResponse)
 async def compare_reports(session_a: str = "", session_b: str = ""):
     """Compare two evaluation sessions (by day) side-by-side."""
     conn = _connect()

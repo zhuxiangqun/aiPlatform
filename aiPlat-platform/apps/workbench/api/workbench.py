@@ -64,18 +64,21 @@ def _require_auth(request: Request) -> str:
 router = APIRouter(prefix="/workbench", tags=["workbench"], dependencies=[Depends(_require_auth)])
 
 
-from core.schemas_common import ListResponse
+from core.schemas_common import ListResponse, PaginatedResponse
+from apps.common_schemas import ItemResponse
+from core.schemas_workbench import CapabilityItem, TaskSubmitResponse, TaskFeedbackResponse, TrainingStatusResponse, SkillInstallResponse, SeedDemoResponse, BatchMarkStableResponse
+from core.schemas_builder import SpecHistoryResponse, SpecRevisionResponse, SpecCreatedResponse, SpecMarkStableResponse, SpecRadarResponse, SpecTraceResponse, SpecDiffResponse, SpecsListResponse, TaskStatusResponse, PromotionResponse
 
 @router.get("/capabilities", response_model=ListResponse[CapabilityItem])
 async def get_capabilities() -> List[Dict[str, str]]:
     """List available agent capabilities for the workbench."""
-    return [
+    return {"items": [
         {"id": "contract_review", "name": "合同审核", "desc": "自动审核合同条款、价格、合规性", "icon": "📋"},
         {"id": "report_gen", "name": "报表生成", "desc": "根据数据自动生成分析报表", "icon": "📊"},
         {"id": "qa", "name": "客服问答", "desc": "内部知识库智能问答", "icon": "💬"},
         {"id": "code_review", "name": "代码审查", "desc": "自动检查代码质量和安全", "icon": "🔍"},
         {"id": "general", "name": "通用任务", "desc": "自由描述任意AI任务", "icon": "🤖"},
-    ]
+    ], "total": 5}
 
 
 @router.post("/submit", response_model=TaskSubmitResponse)
@@ -119,7 +122,13 @@ async def submit_task(body: Dict[str, Any]) -> Dict[str, Any]:
 
     # Fire-and-forget: simulate task completion
     import asyncio as _aio
-    _aio.ensure_future(_simulate_task_completion(run_id, spec_id))
+    async def _safe_simulate():
+        try:
+            await _simulate_task_completion(run_id, spec_id)
+        except Exception:
+            import logging
+            logging.warning("Task simulation failed for run %s", run_id, exc_info=True)
+    _aio.ensure_future(_safe_simulate())
 
     return {"run_id": run_id, "status": "accepted", "spec_id": spec_id}
 
@@ -139,7 +148,29 @@ async def _simulate_task_completion(run_id: str, spec_id: str = "") -> None:
             steps[step_idx + 1]["status"] = "running"
         progress["current_step"] = step_idx + 2
         entry["progress"] = progress
-        _tasks[run_id] = entry
+    _tasks[run_id] = entry
+
+    # ── Dynamic capability: delegate to Builder for unknown capabilities ──
+    known_ids = {"contract_review", "report_gen", "qa", "code_review", "general"}
+    if capability not in known_ids:
+        try:
+            from builder.builder_project_service import _get_project_service
+            from core.schemas_builder import ProjectCreateRequest
+            svc = _get_project_service()
+            proj = await svc.create_project(ProjectCreateRequest(
+                name=f"WB-{capability}-{run_id[:8]}",
+                description=task[:500],
+            ))
+            entry["status"] = "building"
+            entry["project_id"] = proj.id
+            entry["progress"]["steps"][0]["status"] = "completed"
+            entry["progress"]["steps"][1]["status"] = "running"
+            entry["progress"]["current_step"] = 1
+            entry["result"] = {"message": f"正在为「{capability}」自动构建 Agent，project_id: {proj.id}"}
+            return entry
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).warning(f"Builder delegation failed for '{capability}': {e}")
 
     # Final: mark complete
     entry = _tasks.get(run_id, {})
@@ -211,10 +242,6 @@ async def get_task_status(run_id: str) -> Dict[str, Any]:
         }
     return entry
 
-
-from core.schemas_common import ListResponse, PaginatedResponse
-from core.schemas_workbench import CapabilityItem, TaskSubmitResponse, TaskFeedbackResponse, TrainingStatusResponse, SkillInstallResponse, SeedDemoResponse, BatchMarkStableResponse
-from core.schemas_builder import SpecHistoryResponse, SpecRevisionResponse, SpecCreatedResponse, SpecMarkStableResponse, SpecRadarResponse, SpecTraceResponse, SpecDiffResponse, SpecsListResponse, TaskStatusResponse, PromotionResponse
 
 @router.get("/tasks", response_model=PaginatedResponse[dict])
 async def get_user_tasks(limit: int = 20) -> Dict[str, Any]:
@@ -357,6 +384,8 @@ async def revise_spec(spec_id: str, body: Dict[str, Any]) -> Dict[str, Any]:
                 response["re_execution_error"] = str(e)
 
         return response
+    except HTTPException:
+        raise
     except HTTPException:
         raise
     except Exception as e:
@@ -506,14 +535,14 @@ async def get_training_status() -> Dict[str, Any]:
 
 # ── FDE Dashboard (proxy — logic migrated to core.api.routers.fde) ──────
 
-@router.get("/fde-dashboard", response_model=Dict[str, Any])
+@router.get("/fde-dashboard", response_model=ItemResponse)
 async def get_fde_dashboard():
     """Proxy to unified FDE Router. Logic migrated to fde.py (方向一).
 
     Kept to avoid breaking existing callers (ValueCenter/UserWorkbench.tsx, 7 refs).
     Remove this proxy once frontend migration is complete.
     """
-    from core.api.routers.fde import get_fde_dashboard as _fde_dashboard
+    from apps.fde.api.fde import get_fde_dashboard as _fde_dashboard  # migrated to platform
     return await _fde_dashboard()
 
 
@@ -547,6 +576,8 @@ async def create_spec(body: Dict[str, Any]) -> Dict[str, Any]:
         sv = sl.create_draft(spec_id, content, created_by=created_by,
                               trigger_detail="Manual creation from Workbench")
         return {"spec_id": sv.spec_id, "version": sv.version, "status": sv.status.value}
+    except HTTPException:
+        raise
     except HTTPException:
         raise
     except Exception as e:
@@ -645,6 +676,8 @@ async def install_skill_from_url(body: Dict[str, Any]) -> Dict[str, Any]:
             raise HTTPException(status_code=400, detail="unsupported URL format")
     except HTTPException:
         raise
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)[:200])
 
@@ -671,6 +704,8 @@ async def duplicate_spec(spec_id: str, body: Dict[str, Any]) -> Dict[str, Any]:
         )
         return {"spec_id": sv.spec_id, "version": sv.version, "status": sv.status.value,
                 "source": spec_id, "source_version": source.version}
+    except HTTPException:
+        raise
     except HTTPException:
         raise
     except Exception as e:
@@ -732,6 +767,8 @@ async def diff_spec_versions(spec_id: str, v1: int = 0, v2: int = 0) -> Dict[str
         }
     except HTTPException:
         raise
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)[:200])
 
@@ -782,6 +819,8 @@ async def promote_to_platform(spec_id: str, body: Dict[str, Any]) -> Dict[str, A
         return {"spec_id": spec_id, "scope": "platform", "promotion_status": "pending"}
     except HTTPException:
         raise
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)[:200])
 
@@ -801,6 +840,8 @@ async def approve_promotion(spec_id: str, body: Dict[str, Any]) -> Dict[str, Any
             raise HTTPException(status_code=400, detail="Cannot approve: spec not in pending promotion")
         return {"spec_id": spec_id, "scope": "platform", "promotion_status": "approved",
                 "reviewer": result.promotion_reviewer}
+    except HTTPException:
+        raise
     except HTTPException:
         raise
     except Exception as e:
@@ -823,6 +864,8 @@ async def reject_promotion(spec_id: str, body: Dict[str, Any]) -> Dict[str, Any]
         return {"spec_id": spec_id, "scope": "tenant", "promotion_status": "rejected"}
     except HTTPException:
         raise
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)[:200])
 
@@ -843,3 +886,4 @@ async def get_promotion_queue() -> Dict[str, Any]:
 
 # Local helper for _trigger_spec_re_execution
 from core.harness.models.spec_lifecycle import get_spec_lifecycle
+from apps.common_schemas import StatusResponse, ListResponse, ItemResponse

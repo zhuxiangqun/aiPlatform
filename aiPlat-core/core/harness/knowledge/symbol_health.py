@@ -53,7 +53,9 @@ def is_excluded_from_dead_code(nid: str) -> bool:
         return True
 
     # 5. Builder files — exclude only DI-called/infrastructure files
-    if '/builder/' in nid and ('builder_session' in nid or 'builder_roles' in nid):
+    # Protected paths — configurable, defaults to known application modules
+    _protected = ["/builder/", "/fde/"]
+    if any(p in nid for p in _protected) and ('builder_session' in nid or 'builder_roles' in nid):
         return True
 
     # 6. Specific management tool scripts (loaded dynamically by registries)

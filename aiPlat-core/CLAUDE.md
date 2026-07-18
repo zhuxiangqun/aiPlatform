@@ -151,7 +151,7 @@ language: zh-CN
 | 3 | `agent_manager.py` | 写回 AGENT.md 时保留该字段（`fm["字段名"] = ...`） |
 | 4 | `engine.py` | 将引擎中对应的硬编码替换为新字段 |
 
-### 5.5 通用引擎原则（设计基础，来自 `docs/index.md` 设计原则）
+### 5.5 通用引擎原则（设计基础，来自 `docs/README.md` 设计原则）
 
 `core/harness/execution/` 是**通用流水线引擎**，它不属于任何特定业务团队。它的职责是——
 
@@ -165,7 +165,7 @@ language: zh-CN
 **判断标准**：如果一段逻辑的修改需要让团队 A 了解团队 B 的业务概念（如"architect 应该输出 JSON 格式"、"programmer 应该用 FILE 格式"），这段逻辑就不该在引擎层。
 
 **设计文档依据**：
-- `docs/index.md` §设计原则「配置驱动原则」「单向依赖原则」
+- `docs/README.md` §设计原则「配置驱动原则」「单向依赖原则」
 - `aiPlat-core/docs/contracts/01-architecture-contract.md`「Harness 职责是 how tasks execute，不是 how to answer in a business context」
 
 ### 5.6 复用优先，禁止重复建设
@@ -181,7 +181,7 @@ language: zh-CN
 
 **原则**：PipelineStageConfig 字段是引擎与业务之间的**唯一约定接口**。任何新增的行为分叉，第一反应不是"在引擎里加 if"，而是"这个判断能不能用已有的配置字段表达"。
 
-### 5.7 单向依赖与门面模式（来自 `docs/index.md` 架构决策）
+### 5.7 单向依赖与门面模式（来自 `docs/README.md` 架构决策）
 
 **依赖方向**：`app → platform → core → infra`，严格单向，禁止反向或跨层。
 
@@ -193,8 +193,8 @@ language: zh-CN
 **门面模式**：Core 对外暴露 `CoreFacade`（或等价 service），引擎内部的 PipelineEngine / PipelineConfig 等类不应被 router 或管理端直接实例化。
 
 **设计文档依据**：
-- `docs/index.md` §依赖规则「app → platform → core → infra（允许）；app → core / app → infra / platform → infra（禁止）」
-- `docs/index.md` §模块边界「core 对外入口：CoreFacade；其他模块不可直接导入 Agent、Skill 具体类」
+- `docs/README.md` §依赖规则「app → platform → core → infra（允许）；app → core / app → infra / platform → infra（禁止）」
+- `docs/README.md` §模块边界「core 对外入口：CoreFacade；其他模块不可直接导入 Agent、Skill 具体类」
 
 ### 5.8 Harness 职责上界与执行契约（来自 `harness/index.md`、`harness/execution.md`、`contracts/02`）
 

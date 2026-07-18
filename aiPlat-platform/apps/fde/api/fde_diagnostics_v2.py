@@ -5,6 +5,8 @@ import json
 from datetime import datetime, timezone, timedelta
 from collections import defaultdict
 from typing import Any, Dict, List
+from apps.fde.schemas import FdeStatusResponse, FdeListResponse, FdeItemResponse
+
 
 from fastapi import APIRouter, HTTPException, Query
 
@@ -18,7 +20,7 @@ _EVIDENCE_SOURCE_INDUSTRY = "行业普遍痛点"
 # T: FDE Trend Analysis — time-series growth and health metrics
 # ════════════════════════════════════════════════════════════
 
-@router.get("/trends", response_model=dict)
+@router.get("/trends", response_model=FdeItemResponse)
 async def fde_trends(
     months: int = Query(6, ge=1, le=24, description="Months of history to analyze"),
     bucket: str = Query("month", description="Time bucket: week | month"),
@@ -64,7 +66,7 @@ async def fde_trends(
             else:
                 bucket_key = dt.strftime("%Y-%m")
 
-            neighbors = fd.get_neighbors(nid, direction="outgoing")
+            neighbors = fd.get_neighbor_edges(nid, direction="outgoing")
             has_action = False
             action_count = 0
             for neighbor_id, edge in neighbors:
@@ -154,6 +156,8 @@ async def fde_trends(
                 sorted(industries.items(), key=lambda x: x[1], reverse=True)[:10]
             ),
         }
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Trends failed: {str(e)[:300]}")
 
@@ -162,7 +166,7 @@ async def fde_trends(
 # U: FDE Unified Search — cross-entity text search
 # ════════════════════════════════════════════════════════════
 
-@router.get("/search", response_model=dict)
+@router.get("/search", response_model=FdeItemResponse)
 async def fde_search(
     q: str = Query("", description="Search query across sessions/actions/terms/evidence"),
     scope: str = Query("all", description="Search scope: all | sessions | actions | terms | evidence | industries"),
@@ -284,6 +288,8 @@ async def fde_search(
             "total": len(results),
             "scope": scope,
         }
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Search failed: {str(e)[:300]}")
 
@@ -301,7 +307,7 @@ def _score_match(text: str, query: str, base: int) -> int:
 # W: FDE Alerts — proactive attention-needed detection
 # ════════════════════════════════════════════════════════════
 
-@router.get("/alerts", response_model=dict)
+@router.get("/alerts", response_model=FdeItemResponse)
 async def fde_alerts(
     min_severity: str = Query("warning", description="Minimum alert level: info | warning | error"),
 ):
@@ -327,12 +333,12 @@ async def fde_alerts(
                 continue
 
             session_alerts = []
-            neighbors = list(fd.get_neighbors(nid, direction="outgoing"))
+            neighbors = list(fd.get_neighbor_edges(nid, direction="outgoing"))
 
             # Check for blocked actions
             for neighbor_id, edge in neighbors:
                 if edge.relation_name == "has_action":
-                    atrans = fd.get_neighbors(neighbor_id, direction="outgoing")
+                    atrans = fd.get_neighbor_edges(neighbor_id, direction="outgoing")
                     for atid, ae in atrans:
                         if ae.relation_name == "has_transition":
                             atnode = fd.get_node(atid)
@@ -416,6 +422,8 @@ async def fde_alerts(
             "alerts": alerts[:30],
             "min_severity": min_severity,
         }
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Alerts failed: {str(e)[:300]}")
 
@@ -424,7 +432,7 @@ async def fde_alerts(
 # Z: Self-describing capabilities — open platform manifesto
 # ════════════════════════════════════════════════════════════
 
-@router.get("/capabilities", response_model=dict)
+@router.get("/capabilities", response_model=FdeItemResponse)
 async def fde_capabilities():
     """Return a structured catalog of all FDE system capabilities.
 

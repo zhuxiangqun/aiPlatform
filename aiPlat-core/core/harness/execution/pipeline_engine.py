@@ -43,7 +43,8 @@ def register_pipeline_from_desc(topo: dict) -> str:
         if _version_lt(lg_ver, min_ver):
             raise ValueError(f"langgraph {min_ver}+ required, found {lg_ver}")
     except Exception:
-        pass
+        import logging
+        logging.debug("langgraph version check skipped (langgraph may not be installed)", exc_info=True)
     _PIPELINE_TOPOLOGY[name] = topo
     # Also register as a builder that raises informative error (v2: needs source code to execute)
     REGISTERED_PIPELINES[name] = lambda: (_ for _ in ()).throw(
@@ -73,8 +74,8 @@ import re
 import time
 from datetime import datetime, timezone
 
+from core.harness.execution.phase import PipelinePhase
 from core.schemas_builder import (
-    BuilderSessionPhase,
     AgentConfidence,
     AgentDecision,
     IssueSeverity,
@@ -271,7 +272,7 @@ class PipelineEngine:
             except Exception:
                 return False
         if action == "escalate_to_hitl":
-            state["phase"] = BuilderSessionPhase.awaiting_hitl.value
+            state["phase"] = "awaiting_hitl"
             state["_last_action_reason"] = f"constraint_escalate_hitl:{ftype}"
             return False
         if action == "strict_format_retry":
@@ -899,7 +900,7 @@ Output format: JSON array of {{"rank": 1, "score": 0.95, "content": "..."}}"""
         state: PipelineState = {
             "session_id": project_id,
             "_run_id": project_id,
-            "phase": BuilderSessionPhase.executing.value,
+            "phase": PipelinePhase.EXECUTING,
             "description": requirement,
             "iteration": 0, "qa_retry": 0, "max_iterations": 100,
             "tokens_used": 0, "tokens_budget": self._config.max_tokens_per_run,
@@ -942,7 +943,7 @@ Output format: JSON array of {{"rank": 1, "score": 0.95, "content": "..."}}"""
                     state["_hitl_resolved_" + s.id] = True
                     state["_hitl_stage_id"] = ""
                     state["_hitl_human_feedback"] = ""
-                    state["phase"] = BuilderSessionPhase.executing.value
+                    state["phase"] = PipelinePhase.EXECUTING
                     state["_current_stage_idx"] = i
                     self._audit_hitl(state, "hitl_human_input", detail=f"stage={s.id}")
                     # Don't run remaining stages here — let caller do it async
@@ -956,13 +957,13 @@ Output format: JSON array of {{"rank": 1, "score": 0.95, "content": "..."}}"""
 
         # Wake recovery: if current state has errors, fallback to last healthy checkpoint.
         # Makes harness "cattle" — restartable from event log without losing progress.
-        if state.get("error") or state.get("phase") == BuilderSessionPhase.failed.value:
+        if state.get("error") or state.get("phase") == PipelinePhase.FAILED:
             checkpoints = state.get("_checkpoints", [])
             healthy = [c for c in checkpoints if isinstance(c, dict) and not c.get("error")]
             if healthy:
                 last = healthy[-1]
                 state["error"] = ""
-                state["phase"] = BuilderSessionPhase.executing.value
+                state["phase"] = PipelinePhase.EXECUTING
                 state["_current_stage_idx"] = last.get("stage_idx", state.get("_current_stage_idx", 0))
                 state["tokens_used"] = last.get("tokens_used", state.get("tokens_used", 0))
                 state["tokens_budget"] = last.get("tokens_budget", state.get("tokens_budget", 0))
@@ -970,11 +971,11 @@ Output format: JSON array of {{"rank": 1, "score": 0.95, "content": "..."}}"""
                 state["_wake_recovered"] = True
                 state["_wake_recovered_from"] = last.get("name", "unknown")
 
-        state["phase"] = BuilderSessionPhase.executing.value
+        state["phase"] = PipelinePhase.EXECUTING
         idx = state.get("_current_stage_idx", 0)
         # Guard: if idx is out of bounds (e.g., after stage removal), mark pipeline done
         if idx < 0 or idx >= len(self._config.stages):
-            state["phase"] = BuilderSessionPhase.done.value
+            state["phase"] = PipelinePhase.DONE
             state["_last_action_reason"] = "approve_out_of_bounds"
             return state
         # If current HITL stage has generate_test_plan, test plan means "same stage resume"
@@ -1082,7 +1083,7 @@ Output format: JSON array of {{"rank": 1, "score": 0.95, "content": "..."}}"""
             state.pop(f"_stage_{self._config.stages[i].id}_done", None)
             if self._config.stages[i].generate_test_plan:
                 state[self._config.stages[i].test_result_key] = None
-        state["phase"] = BuilderSessionPhase.executing.value
+        state["phase"] = PipelinePhase.EXECUTING
         state["qa_retry"] = 0
         state["_stagnation_count"] = 0
         state["tokens_used"] = 0
@@ -1104,7 +1105,7 @@ Output format: JSON array of {{"rank": 1, "score": 0.95, "content": "..."}}"""
             state.pop(f"_stage_{self._config.stages[i].id}_done", None)
             if self._config.stages[i].generate_test_plan:
                 state[self._config.stages[i].test_result_key] = None
-        state["phase"] = BuilderSessionPhase.executing.value
+        state["phase"] = PipelinePhase.EXECUTING
         state["_stagnation_count"] = 0
         state["qa_retry"] = 0
         state["tokens_used"] = 0
@@ -1179,12 +1180,12 @@ Output format: JSON array of {{"rank": 1, "score": 0.95, "content": "..."}}"""
             # Check cancel signal
             if _pipeline_cancels.get(state.get("session_id", "")):
                 state["error"] = "cancelled_by_user"
-                state["phase"] = BuilderSessionPhase.failed.value
+                state["phase"] = PipelinePhase.FAILED
                 state["_last_action_reason"] = "cancelled"
                 _pipeline_cancels.pop(state.get("session_id", ""), None)
                 break
             # Check if pipeline is already failed before executing layer
-            if state.get("phase") == BuilderSessionPhase.failed.value:
+            if state.get("phase") == PipelinePhase.FAILED:
                 state.setdefault("_last_action_reason", "phase_failed")
                 # Fire-and-forget: trigger AutoLearner on pipeline failure
                 try:
@@ -1259,7 +1260,7 @@ Output format: JSON array of {{"rank": 1, "score": 0.95, "content": "..."}}"""
                 })
             except asyncio.TimeoutError:
                 state["error"] = f"layer_timeout ({layer_timeout}s)"
-                state["phase"] = BuilderSessionPhase.failed.value
+                state["phase"] = PipelinePhase.FAILED
                 state["_last_action_reason"] = "layer_timeout"
                 break
             # Merge results and check for HITL
@@ -1303,8 +1304,8 @@ Output format: JSON array of {{"rank": 1, "score": 0.95, "content": "..."}}"""
             if paused:
                 return state
 
-        if state.get("phase") == BuilderSessionPhase.executing.value:
-            state["phase"] = BuilderSessionPhase.done.value
+        if state.get("phase") == PipelinePhase.EXECUTING:
+            state["phase"] = PipelinePhase.DONE
         try:
             self._snapshot(state, "final_state")
         except Exception as e:
@@ -1451,7 +1452,7 @@ Output format: JSON array of {{"rank": 1, "score": 0.95, "content": "..."}}"""
                 )
             except asyncio.TimeoutError:
                 state["error"] = f"dynamic_stage_timeout:{decision.agent_name}"
-                state["phase"] = BuilderSessionPhase.failed.value
+                state["phase"] = PipelinePhase.FAILED
                 break
 
             if isinstance(result, Exception):
@@ -1464,10 +1465,10 @@ Output format: JSON array of {{"rank": 1, "score": 0.95, "content": "..."}}"""
             done_indices.add(target_idx)
 
             if r_paused:
-                state["phase"] = BuilderSessionPhase.paused.value if hasattr(BuilderSessionPhase, "paused") else state.get("phase", "executing")
+                state["phase"] = PipelinePhase.PAUSED
                 return state
 
-            if state.get("phase") == BuilderSessionPhase.failed.value:
+            if state.get("phase") == PipelinePhase.FAILED:
                 break
 
             _event_bus.emit(state.get("session_id", ""), "layer_after", {"state": dict(state)})
@@ -1703,7 +1704,7 @@ Output format: JSON array of {{"rank": 1, "score": 0.95, "content": "..."}}"""
                 issues.extend(compile_issues)
             if issues:
                 state["_quick_check_issues"] = issues
-                state["phase"] = BuilderSessionPhase.failed.value
+                state["phase"] = PipelinePhase.FAILED
                 state["error"] = f"quick_review_failed: {len(issues)} issues"
                 state["_last_action_reason"] = "quick_review_failed"
         elif gate == "llm":
@@ -1738,14 +1739,14 @@ Output format: JSON array of {{"rank": 1, "score": 0.95, "content": "..."}}"""
                 if isinstance(review, dict) and review.get("verdict", "").upper() == "PASS":
                     state["_last_review"] = review  # store for traceability
                 else:
-                    state["phase"] = BuilderSessionPhase.failed.value
+                    state["phase"] = PipelinePhase.FAILED
                     state["error"] = f"llm_review_rejected: {review.get('suggestion', content[:200])}"
                     state["_last_action_reason"] = "llm_review_rejected"
                     state["_last_review"] = review
             except Exception:
                 logging.getLogger("pipeline_engine").debug("best-effort skipped", exc_info=True)
         elif gate == "hitl":
-            state["phase"] = BuilderSessionPhase.paused.value
+            state["phase"] = PipelinePhase.PAUSED
             state["_hitl_phase_name"] = getattr(stage, 'hitl_phase', '') or 'review'
             self._audit_hitl(state, "hitl_paused", detail=f"gate:{state['_hitl_phase_name']}")
         return state
@@ -1804,7 +1805,7 @@ Output format: JSON array of {{"rank": 1, "score": 0.95, "content": "..."}}"""
         for layer in layers:
             if not layer:
                 continue
-            if state.get("phase") == BuilderSessionPhase.failed.value:
+            if state.get("phase") == PipelinePhase.FAILED:
                 break
             # Execute all nodes in this layer in parallel
             tasks = []
@@ -1987,7 +1988,7 @@ Output format: JSON array of {{"rank": 1, "score": 0.95, "content": "..."}}"""
             "test_cases_count": len(artifact.get(tests_key, [])) if isinstance(artifact, dict) else 0,
         }})
 
-        if local_state.get("phase") == BuilderSessionPhase.failed.value:
+        if local_state.get("phase") == PipelinePhase.FAILED:
             graph_trace.append({"node": stage.id, "status": "failed", "reason": "phase_failed", "ts": time.time()})
             # Write pt_ snapshot for SystemDiagnostician (B)
             try:
@@ -2004,7 +2005,7 @@ Output format: JSON array of {{"rank": 1, "score": 0.95, "content": "..."}}"""
 
         # Phase 10: declarative review gate (replaces old hitl/hitl_after_execute if/elif)
         local_state = await self._apply_review_gate(stage, local_state)
-        if local_state.get("phase") == BuilderSessionPhase.paused.value:
+        if local_state.get("phase") == PipelinePhase.PAUSED:
             self._snapshot(local_state, f"stage_{stage.id}_done")
             return local_state, True
 
@@ -2361,7 +2362,7 @@ Output format: JSON array of {{"rank": 1, "score": 0.95, "content": "..."}}"""
                 if report.overall == "FAIL":
                     state["_stage_assess_failed"] = True
                     # Escalate to HITL — agent must not auto-fix
-                    state["phase"] = BuilderSessionPhase.paused.value
+                    state["phase"] = PipelinePhase.PAUSED
                     state["_hitl_phase_name"] = f"assess_failed:{stage.id}"
                     state["error"] = (
                         f"AssessAgent FAIL: {report.failed_count}/{report.passed_count + report.failed_count} "
@@ -2492,7 +2493,8 @@ Output format: JSON array of {{"rank": 1, "score": 0.95, "content": "..."}}"""
                     return data.get('criteria', data.get('expected_outcomes', []))
                 return data if isinstance(data, list) else []
             else:
-                data = _json.load(open(path, 'r'))
+                with open(path, 'r') as fh:
+                    data = _json.load(fh)
                 if isinstance(data, dict):
                     return data.get('criteria', data.get('expected_outcomes', []))
                 return data if isinstance(data, list) else []
@@ -2645,7 +2647,7 @@ Output format: JSON array of {{"rank": 1, "score": 0.95, "content": "..."}}"""
         if used >= budget:
             state["error"] = f"token_budget_exhausted ({used}/{budget})"
             state["_last_action_reason"] = "budget_exhausted"
-            state["phase"] = BuilderSessionPhase.failed.value
+            state["phase"] = PipelinePhase.FAILED
             return state
 
         # ── Degradation strategy (CLAUDE.md §5.17) ──
@@ -2677,7 +2679,7 @@ Output format: JSON array of {{"rank": 1, "score": 0.95, "content": "..."}}"""
         stage_start = state.get(f"_stage_ts_{stage.id}")
         if stage_start and time.time() - float(stage_start) > stage_timeout:
             state["error"] = f"stage_timeout ({int(time.time() - float(stage_start))}s > {stage_timeout}s)"
-            state["phase"] = BuilderSessionPhase.failed.value
+            state["phase"] = PipelinePhase.FAILED
             state["_last_action_reason"] = "stage_timeout"
             return state
 
@@ -2745,7 +2747,7 @@ Output format: JSON array of {{"rank": 1, "score": 0.95, "content": "..."}}"""
         # ── Pre-stage HITL: pause for human input (human stages only) ──
         node_type = getattr(stage, 'node_type', None) or 'agent'
         if stage.hitl and node_type == 'human' and not state.get(f"_hitl_resolved_{stage.id}"):
-            state["phase"] = BuilderSessionPhase.paused.value
+            state["phase"] = PipelinePhase.PAUSED
             state["_hitl_phase_name"] = stage.hitl_phase or f"{stage.id}_human_input"
             state["_hitl_stage_id"] = stage.id
             self._audit_hitl(state, "hitl_paused", detail=f"pre_stage:{stage.id}")
@@ -2853,7 +2855,7 @@ Output format: JSON array of {{"rank": 1, "score": 0.95, "content": "..."}}"""
                 state["_schema_valid"] = False
                 state["_schema_error"] = str(e)[:200]
                 if stage.failure_strategy == 'fail_pipeline':
-                    state["phase"] = BuilderSessionPhase.failed.value
+                    state["phase"] = PipelinePhase.FAILED
                     state["error"] = f"Schema validation failed: {e}"
                     state["_last_action_reason"] = "schema_validation_failed"
                     return state
@@ -2864,7 +2866,7 @@ Output format: JSON array of {{"rank": 1, "score": 0.95, "content": "..."}}"""
         if artifact:
             await asyncio.to_thread(self._persist_files, artifact, state.get("output_dir", ""))
         if parsed.decision == AgentDecision.NEEDS_CLARIFICATION:
-            state["phase"] = BuilderSessionPhase.failed.value
+            state["phase"] = PipelinePhase.FAILED
             state["error"] = f"Stage {stage.id} needs clarification"
             state["_last_action_reason"] = "needs_clarification"
             state["_consecutive_llm_failures"] = state.get("_consecutive_llm_failures", 0) + 1
@@ -3236,7 +3238,7 @@ Evaluate pass/fail based on pass_rate and configured dimension thresholds.""")
             artifact = {"test_cases": [], "pass_rate": 0, "recommendation": "REJECTED"}
             state[stage.output_artifact] = artifact
         if stage.hitl:
-            state["phase"] = BuilderSessionPhase.paused.value
+            state["phase"] = PipelinePhase.PAUSED
             state["_hitl_phase_name"] = stage.hitl_phase
             self._snapshot(state, f"stage_{stage.id}_test_plan")
         return state
@@ -3265,14 +3267,14 @@ Evaluate pass/fail based on pass_rate and configured dimension thresholds.""")
             elapsed = time.time() - loop_start
             if elapsed > stage_timeout:
                 state["error"] = f"stage_timeout ({elapsed:.0f}s > {stage_timeout}s)"
-                state["phase"] = BuilderSessionPhase.failed.value
+                state["phase"] = PipelinePhase.FAILED
                 state["_last_action_reason"] = "stage_timeout"
                 break
             state["qa_retry"] = state.get("qa_retry", 0) + 1
             b = state.get("tokens_budget") or cfg_budget or 100000
             if attempt > max_attempts:
                 state["error"] = f"max_retry_attempts ({max_attempts}) exceeded"
-                state["phase"] = BuilderSessionPhase.failed.value
+                state["phase"] = PipelinePhase.FAILED
                 state["_last_action_reason"] = "retry_max_attempts"
                 break
             # Convergence detection: score plateau for N consecutive iterations
@@ -3283,21 +3285,21 @@ Evaluate pass/fail based on pass_rate and configured dimension thresholds.""")
                 recent = [h.get("overall", 0) for h in history[-win:]]
                 if max(recent) - min(recent) < threshold:
                     state["error"] = "score plateaued — meta-optimization unable to improve"
-                    state["phase"] = BuilderSessionPhase.failed.value
+                    state["phase"] = PipelinePhase.FAILED
                     state["_last_action_reason"] = "score_converged"
                     break
             if _over_budget():
                 state["error"] = "token_budget_exhausted"
-                state["phase"] = BuilderSessionPhase.failed.value
+                state["phase"] = PipelinePhase.FAILED
                 state["_last_action_reason"] = "retry_budget_exhausted"
                 break
             if state.get("_stagnation_count", 0) >= max_stag:
                 state["error"] = f"stagnation ({state['_stagnation_count']} rounds unchanged)"
-                state["phase"] = BuilderSessionPhase.failed.value
+                state["phase"] = PipelinePhase.FAILED
                 state["_last_action_reason"] = "retry_stagnation"
                 break
             if self._check_done(stage, state):
-                state["phase"] = BuilderSessionPhase.done.value
+                state["phase"] = PipelinePhase.DONE
                 # OTel trace export (best-effort)
                 if os.getenv("AIPLAT_OTEL_EXPORT_ENABLED", "").lower() in ("true","1","yes"):
                     try:
@@ -3329,7 +3331,7 @@ Evaluate pass/fail based on pass_rate and configured dimension thresholds.""")
                 max_auto_retries = getattr(self._config, 'max_auto_retries', None) or 3
                 if auto_r > max_auto_retries:
                     state["error"] = f"auto_retry_exhausted ({max_auto_retries} evaluation rejections)"
-                    state["phase"] = BuilderSessionPhase.failed.value
+                    state["phase"] = PipelinePhase.FAILED
                     state["_last_action_reason"] = "evaluation_rejected_max_auto_retry"
                     # Git rollback to last passing tag
                     self._git_rollback_to_last_good(state)
@@ -3338,7 +3340,7 @@ Evaluate pass/fail based on pass_rate and configured dimension thresholds.""")
                 compare = report.get("_compare", {})
                 if isinstance(compare, dict) and compare.get("verdict") == "regressed":
                     state["error"] = "evaluation regressed"
-                    state["phase"] = BuilderSessionPhase.failed.value
+                    state["phase"] = PipelinePhase.FAILED
                     state["_last_action_reason"] = "evaluation_regressed"
                     self._git_rollback_to_last_good(state)
                     break
@@ -3349,28 +3351,28 @@ Evaluate pass/fail based on pass_rate and configured dimension thresholds.""")
                 if optimized is None:
                     if state.get(f"_stage_{stage.id}_skipped"):
                         # Phase 24: intentional skip by self-healing, not a failure
-                        state["phase"] = BuilderSessionPhase.done.value
+                        state["phase"] = PipelinePhase.DONE
                         state["_last_action_reason"] = "stage_skipped_by_healing"
                         break
                     state["error"] = "meta_optimize_failed"
-                    state["phase"] = BuilderSessionPhase.failed.value
+                    state["phase"] = PipelinePhase.FAILED
                     state["_last_action_reason"] = "meta_optimize_failed"
                     break
             eval_state = await self._exec_stage(stage, state)
             state.update(eval_state)
             if _over_budget() or self._check_done(stage, state):
-                state["phase"] = BuilderSessionPhase.done.value if self._check_done(stage, state) else state.get("phase", "")
+                state["phase"] = PipelinePhase.DONE if self._check_done(stage, state) else state.get("phase", "")
                 break
             target = self._resolve_retry_target(stage, state)
             if not target:
                 state["error"] = f"No retry target found for stage {stage.id}"
-                state["phase"] = BuilderSessionPhase.failed.value
+                state["phase"] = PipelinePhase.FAILED
                 break
             fix = await self._exec_fix_stage(target, stage, state)
             state.update(fix)
             if _over_budget():
                 state["error"] = "token_budget_exhausted"
-                state["phase"] = BuilderSessionPhase.failed.value
+                state["phase"] = PipelinePhase.FAILED
                 break
             eval_state = await self._exec_stage(stage, state)
             state.update(eval_state)
@@ -3459,7 +3461,8 @@ Evaluate pass/fail based on pass_rate and configured dimension thresholds.""")
             if note_files:
                 summaries = []
                 for f in note_files[:5]:
-                    text = open(f).read()
+                    with open(f) as fh:
+                        text = fh.read()
                     first_lines = "\n".join(text.split("\n")[:5])
                     summaries.append(f"## {_os.path.basename(_os.path.dirname(f))}\n{first_lines}")
                 previous_notes = "\n## Recent Session Context\n" + "\n---\n".join(summaries) + "\n"
@@ -4293,7 +4296,7 @@ JSON format: {{"artifact": {{}},"confidence": "HIGH","issues": [{{"severity": "P
         state["_stagnation_count"] = 0
         state["_auto_retry_count"] = 0
         state["error"] = ""
-        state["phase"] = BuilderSessionPhase.executing.value
+        state["phase"] = PipelinePhase.EXECUTING
         state["_last_action_reason"] = "rolled_back_to_plan"
         return state
 
@@ -4309,9 +4312,9 @@ JSON format: {{"artifact": {{}},"confidence": "HIGH","issues": [{{"severity": "P
         state = await self.initialize(project_id, requirement, prd_data)
         state = await self._accept_plan_stages(plan_stages, state)
         state["_auto_approve"] = True
-        state["phase"] = BuilderSessionPhase.executing.value
+        state["phase"] = PipelinePhase.EXECUTING
         state = await self._run_stages_from(0, state)
-        if state.get("error") and not state.get("phase") == BuilderSessionPhase.done.value:
+        if state.get("error") and not state.get("phase") == PipelinePhase.DONE:
             auto_retry_count = state.get("_auto_retry_count", 0)
             max_auto_retries = int(os.getenv("AIPLAT_AUTO_PIPELINE_MAX_RETRIES", "3"))
             if auto_retry_count >= max_auto_retries:
@@ -4323,7 +4326,7 @@ JSON format: {{"artifact": {{}},"confidence": "HIGH","issues": [{{"severity": "P
             if total > 0 and completed / total < rollback_threshold:
                 state["_auto_retry_count"] = auto_retry_count + 1
                 state = self._rollback_to_plan(state)
-                state["phase"] = BuilderSessionPhase.executing.value
+                state["phase"] = PipelinePhase.EXECUTING
                 state = await self._run_stages_from(0, state)
         return state
 
@@ -4739,7 +4742,7 @@ JSON format: {{"artifact": {{}},"confidence": "HIGH","issues": [{{"severity": "P
             if getattr(result, 'decision', None) and str(result.decision) in ("APPROVAL_REQUIRED",):
                 state["_meta_diagnosis"] = f"escalated:approval_id={getattr(result, 'approval_request_id', '')}"
                 state["_meta_optimized"] = True
-                state["phase"] = BuilderSessionPhase.paused.value
+                state["phase"] = PipelinePhase.PAUSED
                 state["_paused_for_approval"] = True
                 state["_approval_request_id"] = getattr(result, "approval_request_id", "")
                 self._inc_healing_stat("escalations")

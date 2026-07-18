@@ -114,6 +114,45 @@ echo ""; sep; echo "  CONSTITUTION TESTS: prompt_loading + skill_config + agent_
 echo ""; sep; echo "  CAPABILITY GUARD: capability convergence (authoritative entry points)"; sep
 bash "$WORKSPACE_ROOT/scripts/capability_guard.sh" || FAIL=1
 
+# ── Python Syntax Guard (部署版本兼容性) ──
+# 防止开发者用 Python 3.13 语法（如 PEP 701 f-string 嵌套引号）写代码
+# 但部署环境是 Python 3.11 导致 SyntaxError 静默吞错
+echo ""; sep; echo "  PYTHON SYNTAX GUARD: $GP_PY compatibility scan (core + management)"; sep
+FAIL_SYN=0
+for _dir in "aiPlat-core/core" "aiPlat-management/management"; do
+    if [ -d "$_dir" ]; then
+        echo "  → scanning $_dir"
+        _synerr="$("$GP_PY" - "$_dir" << 'PYEOF'
+import sys, os, py_compile
+target_dir = sys.argv[1]
+errs = []
+for root, dirs, files in os.walk(target_dir):
+    dirs[:] = [d for d in dirs if d not in ('.venv', '__pycache__', 'tests')]
+    for f in files:
+        if f.endswith('.py'):
+            path = os.path.join(root, f)
+            try:
+                py_compile.compile(path, doraise=True)
+            except py_compile.PyCompileError as e:
+                errs.append(str(e))
+if errs:
+    print('\n'.join(errs))
+    sys.exit(1)
+PYEOF
+        )"
+        if [ $? -ne 0 ] || [ -n "$_synerr" ]; then
+            echo "$_synerr" | sed 's/^/  /'
+            FAIL_SYN=1
+        fi
+    fi
+done
+if [ "$FAIL_SYN" -ne 0 ]; then
+    echo "  FAIL: Python syntax incompatibility with deployment version ($GP_PY)" >&2
+    FAIL=1
+else
+    echo "  PASS: all Python files compile with $GP_PY"
+fi
+
 # ── Contract Guard (模块契约) ──
 echo ""; sep; echo "  CONTRACT GUARD: cross-module data contracts"; sep
 bash "$WORKSPACE_ROOT/scripts/contract_guard.sh" || FAIL=1

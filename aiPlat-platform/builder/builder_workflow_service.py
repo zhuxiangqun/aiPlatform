@@ -102,6 +102,7 @@ class WorkflowService:
         return list_workflow_runs(workflow_id)
 
     async def execute(self, workflow_id: str, launch_name: str = "") -> Dict[str, Any]:
+        """## platform:allowed — Execute workflow with agent discovery."""
         # Resolve workflow from manager or SQLite
         mgr = _get_wf_mgr()
         if mgr:

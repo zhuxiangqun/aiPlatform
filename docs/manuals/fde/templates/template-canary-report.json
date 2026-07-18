@@ -1,0 +1,211 @@
+{
+  "$schema": "https://aiplat.local/schemas/canary-report-v1.json",
+  "$template": "灰度发布报告模板 — docs/manuals/fde/templates/template-canary-report.json",
+  "$example": "完整示例见 template-canary-report.example.json（基于中联汽配案例）",
+  "step": "⑥ 评测护栏",
+  "responsible_role": "DE（交付工程师）",
+  "pipeline_key": "canary_passed, canary_score",
+  "meta": {
+    "report_title": "灰度发布报告",
+    "customer_name": "{{CUSTOMER_NAME}}",
+    "deploy_version": "{{DEPLOY_VERSION}}",
+    "generated_at": "{{GENERATED_AT}}",
+    "fde_name": "{{FDE_NAME}}",
+    "deploy_mode": "{{DEPLOY_MODE}}",
+    "description": "灰度发布过程记录、质量指标、回滚记录。内部文档，不对客户公开。"
+  },
+  "pre_release_checklist": {
+    "description": "灰度发布前逐项确认",
+    "items": [
+      {
+        "check_id": "PRE_001",
+        "item": "部署包已在内部环境验证",
+        "status": "passed",
+        "verified_by": "{{VERIFIER}}",
+        "verified_at": "{{VERIFIED_AT}}"
+      },
+      {
+        "check_id": "PRE_002",
+        "item": "回滚方案已就绪",
+        "status": "passed",
+        "verified_by": "{{VERIFIER}}",
+        "rollback_version": "{{ROLLBACK_VERSION}}"
+      },
+      {
+        "check_id": "PRE_003",
+        "item": "监控告警已配置",
+        "status": "passed",
+        "alert_channels": [
+          "{{ALERT_CHANNEL_1}}",
+          "{{ALERT_CHANNEL_2}}"
+        ]
+      },
+      {
+        "check_id": "PRE_004",
+        "item": "Golden Query 基线已建立",
+        "status": "passed",
+        "baseline_pass_rate": "{{BASELINE_PASS_RATE}}",
+        "golden_query_count": "{{GOLDEN_QUERY_COUNT}}"
+      }
+    ]
+  },
+  "canary_stages": {
+    "description": "分阶段灰度流量提升记录。每个阶段观察一定时间后决定是否继续。",
+    "stages": [
+      {
+        "stage": 1,
+        "traffic_percent": 5,
+        "duration_minutes": "{{STAGE1_DURATION}}",
+        "observation": {
+          "error_rate": "{{STAGE1_ERROR_RATE}}",
+          "avg_response_time_ms": "{{STAGE1_AVG_RT}}",
+          "user_complaints": "{{STAGE1_COMPLAINTS}}",
+          "golden_query_pass_rate": "{{STAGE1_GOLDEN_PASS}}",
+          "new_bugs_found": "{{STAGE1_NEW_BUGS}}"
+        },
+        "decision": "proceed",
+        "decision_note": "{{STAGE1_DECISION_NOTE}}"
+      },
+      {
+        "stage": 2,
+        "traffic_percent": 30,
+        "duration_minutes": "{{STAGE2_DURATION}}",
+        "observation": {
+          "error_rate": "{{STAGE2_ERROR_RATE}}",
+          "avg_response_time_ms": "{{STAGE2_AVG_RT}}",
+          "user_complaints": "{{STAGE2_COMPLAINTS}}",
+          "golden_query_pass_rate": "{{STAGE2_GOLDEN_PASS}}",
+          "new_bugs_found": "{{STAGE2_NEW_BUGS}}"
+        },
+        "decision": "proceed",
+        "decision_note": "{{STAGE2_DECISION_NOTE}}"
+      },
+      {
+        "stage": 3,
+        "traffic_percent": 50,
+        "duration_minutes": "{{STAGE3_DURATION}}",
+        "observation": {
+          "error_rate": "{{STAGE3_ERROR_RATE}}",
+          "avg_response_time_ms": "{{STAGE3_AVG_RT}}",
+          "user_complaints": "{{STAGE3_COMPLAINTS}}",
+          "golden_query_pass_rate": "{{STAGE3_GOLDEN_PASS}}",
+          "new_bugs_found": "{{STAGE3_NEW_BUGS}}"
+        },
+        "decision": "proceed",
+        "decision_note": "{{STAGE3_DECISION_NOTE}}"
+      },
+      {
+        "stage": 4,
+        "traffic_percent": 100,
+        "duration_minutes": "{{STAGE4_DURATION}}",
+        "observation": {
+          "error_rate": "{{STAGE4_ERROR_RATE}}",
+          "avg_response_time_ms": "{{STAGE4_AVG_RT}}",
+          "user_complaints": "{{STAGE4_COMPLAINTS}}",
+          "golden_query_pass_rate": "{{STAGE4_GOLDEN_PASS}}",
+          "new_bugs_found": "{{STAGE4_NEW_BUGS}}"
+        },
+        "decision": "complete",
+        "decision_note": "{{STAGE4_DECISION_NOTE}}"
+      }
+    ]
+  },
+  "quality_metrics": {
+    "description": "灰度完成后与基线的质量对比",
+    "baseline": "{{BASELINE_VERSION}}",
+    "canary": "{{CANARY_VERSION}}",
+    "dimensions": [
+      {
+        "name": "忠实度（幻觉率）",
+        "key": "faithfulness",
+        "description": "回答是否基于检索到的文档，而非编造",
+        "baseline_value": "{{BASELINE_FAITHFULNESS}}",
+        "canary_value": "{{CANARY_FAITHFULNESS}}",
+        "change": "{{FAITHFULNESS_CHANGE}}",
+        "change_percent": "{{FAITHFULNESS_CHANGE_PCT}}",
+        "threshold": "下降 <5%",
+        "pass": "{{FAITHFULNESS_PASS}}"
+      },
+      {
+        "name": "回答相关度",
+        "key": "relevance",
+        "description": "回答与问题的语义距离",
+        "baseline_value": "{{BASELINE_RELEVANCE}}",
+        "canary_value": "{{CANARY_RELEVANCE}}",
+        "change": "{{RELEVANCE_CHANGE}}",
+        "change_percent": "{{RELEVANCE_CHANGE_PCT}}",
+        "threshold": "下降 <5%",
+        "pass": "{{RELEVANCE_PASS}}"
+      },
+      {
+        "name": "检索精度",
+        "key": "retrieval_precision",
+        "description": "检索到的文档与问题匹配度",
+        "baseline_value": "{{BASELINE_RETRIEVAL}}",
+        "canary_value": "{{CANARY_RETRIEVAL}}",
+        "change": "{{RETRIEVAL_CHANGE}}",
+        "change_percent": "{{RETRIEVAL_CHANGE_PCT}}",
+        "threshold": "下降 <5%",
+        "pass": "{{RETRIEVAL_PASS}}"
+      }
+    ]
+  },
+  "rollback_records": {
+    "description": "灰度过程中触发回滚的记录（无回滚时为空数组）",
+    "records": [
+      {
+        "triggered_at": "{{ROLLBACK_AT_1}}",
+        "reason": "{{ROLLBACK_REASON_1}}",
+        "from_version": "{{ROLLBACK_FROM_1}}",
+        "to_version": "{{ROLLBACK_TO_1}}",
+        "affected_users": "{{ROLLBACK_USERS_1}}",
+        "resolution": "{{ROLLBACK_RESOLUTION_1}}",
+        "resolved": "{{ROLLBACK_RESOLVED_1}}"
+      }
+    ]
+  },
+  "post_canary_tasks": {
+    "description": "灰度完成后需执行的后置任务",
+    "tasks": [
+      {
+        "task_id": "POST_001",
+        "task": "旧版本资源清理",
+        "description": "确认旧版本不再需要回滚后，清理旧版本的部署资源",
+        "status": "pending",
+        "owner": "DE"
+      },
+      {
+        "task_id": "POST_002",
+        "task": "监控基线更新",
+        "description": "将灰度版本的质量指标作为新的监控基线",
+        "status": "pending",
+        "owner": "DE"
+      },
+      {
+        "task_id": "POST_003",
+        "task": "灰度总结归档",
+        "description": "将灰度报告归档到项目文档",
+        "status": "pending",
+        "owner": "DM"
+      }
+    ]
+  },
+  "summary": {
+    "canary_passed": "{{CANARY_PASSED}}",
+    "final_traffic_percent": "{{FINAL_TRAFFIC}}",
+    "total_duration_minutes": "{{TOTAL_DURATION}}",
+    "rollback_count": "{{ROLLBACK_COUNT}}",
+    "quality_degradation": "{{QUALITY_DEGRADATION}}",
+    "new_bugs_found": "{{NEW_BUGS_TOTAL}}",
+    "decision": "{{CANARY_DECISION}}",
+    "next_step": "进入步骤⑦ 验收移交 或 修复后重新灰度"
+  },
+  "quality_gate_thresholds": {
+    "error_rate_max": 5,
+    "p95_latency_max_ms": 20000,
+    "user_complaints_max_per_day": 2,
+    "golden_query_pass_rate_min": 80,
+    "quality_degradation_max_pct": 5
+  },
+  "$comment": "pipeline_key 对应代码物理 Key（蛇形原子粒度），参见 05-fde-implementation-process.md §5.1 对照表"
+}

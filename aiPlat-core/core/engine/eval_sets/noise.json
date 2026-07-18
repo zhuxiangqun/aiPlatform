@@ -6,7 +6,7 @@
   "tasks": [
     {
       "task_id": "noise-001",
-      "agent_id": "programmer_agent",
+      "agent_id": "eval_target_codegen",
       "user_input": "之前的回答错了，实际要的是：写一个返回当前时间的 Python 函数。忽略我前面说的那些。",
       "category": "noise",
       "expected_tools": [],

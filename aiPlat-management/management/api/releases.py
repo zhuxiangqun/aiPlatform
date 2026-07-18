@@ -86,6 +86,8 @@ async def create_release(version: str = Query(...), message: str = Query("")):
         return {"ok": True, "version": version, "message": message}
     except HTTPException:
         raise
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -180,6 +182,8 @@ async def delete_build(path: str = Query("")):
     try:
         os.remove(path)
         return {"ok": True, "path": path}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

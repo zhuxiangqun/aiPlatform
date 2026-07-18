@@ -168,6 +168,8 @@ async def delete_workspace_tool(tool_name: str):
         manifest_path = tool_path.replace('.py', '.manifest.json') if tool_path else ''
         if manifest_path and os.path.exists(manifest_path):
             os.remove(manifest_path)
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to remove file: {str(e)}")
 
@@ -317,6 +319,8 @@ async def get_workspace_tool_source(tool_name: str):
 
     try:
         content = Path(tool_path).read_text(encoding='utf-8')
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to read source: {str(e)}")
 
@@ -360,6 +364,8 @@ async def update_workspace_tool_source(tool_name: str, request: dict):
     # Write source to file
     try:
         Path(tool_path).write_text(source, encoding='utf-8')
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to write source: {str(e)}")
 
@@ -389,6 +395,8 @@ async def update_workspace_tool_source(tool_name: str, request: dict):
                 meta['provenance'] = merged_prov  # merge manifest + in-memory provenance
                 setattr(new_tool._config, 'metadata', meta)
                 registry.register(new_tool)
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to re-register tool: {str(e)}")
 
@@ -438,6 +446,8 @@ async def reload_workspace_tool(tool_name: str):
                 meta['provenance'] = merged_prov
                 setattr(new_tool._config, 'metadata', meta)
                 registry.register(new_tool)
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to reload tool: {str(e)}")
 

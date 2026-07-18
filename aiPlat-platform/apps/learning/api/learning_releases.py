@@ -13,6 +13,7 @@ from core.governance.gating import autosmoke_enforce, gate_with_change_control, 
 from core.harness.kernel.runtime import get_kernel_runtime
 from core.learning.workspace_target import ensure_workspace_target
 import logging
+from apps.common_schemas import StatusResponse, ListResponse, ItemResponse
 
 
 router = APIRouter()
@@ -42,7 +43,7 @@ def _managers():
     }
 
 
-@router.post("/learning/releases/{candidate_id}/publish", response_model=Dict[str, Any])
+@router.post("/learning/releases/{candidate_id}/publish", response_model=StatusResponse)
 async def publish_release_candidate(candidate_id: str, request: dict, http_request: Request):
     """
     Publish a release_candidate (status transitions only).
@@ -435,7 +436,7 @@ async def publish_release_candidate(candidate_id: str, request: dict, http_reque
     return out
 
 
-@router.post("/learning/releases/{candidate_id}/rollback", response_model=Dict[str, Any])
+@router.post("/learning/releases/{candidate_id}/rollback", response_model=StatusResponse)
 async def rollback_release_candidate(candidate_id: str, request: dict, http_request: Request):
     """
     Rollback a release_candidate (status transitions only).

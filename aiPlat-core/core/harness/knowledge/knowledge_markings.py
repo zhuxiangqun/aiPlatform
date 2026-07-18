@@ -106,7 +106,8 @@ def load_markings_config(collection_id: str = "default") -> MarkingConfig:
         return config
 
     try:
-        data = _json.load(open(path, "r", encoding="utf-8"))
+        with open(path, "r", encoding="utf-8") as f:
+            data = _json.load(f)
         parsed: Dict[str, List[Marking]] = {}
         for uri_str, marking_list in data.get("markings", {}).items():
             parsed[uri_str] = []

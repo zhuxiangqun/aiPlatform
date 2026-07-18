@@ -31,6 +31,8 @@ async def export_ontology_rdf(format: str = "turtle", collection: str = "default
         }
         from fastapi.responses import PlainTextResponse
         return PlainTextResponse(rdf_text, media_type=content_types.get(format, "text/plain"))
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Export failed: {e}")
 
@@ -62,5 +64,7 @@ async def run_inference_engine(collection: str = "default"):
             "suggestions": suggestions,
             "total": len(suggestions),
         }
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Inference failed: {e}")

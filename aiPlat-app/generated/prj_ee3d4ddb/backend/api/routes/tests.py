@@ -15,6 +15,8 @@ def execute_tests(project_id: str):
         executor = TestExecutor(db)
         report_id = executor.execute_tests(project_id)
         return {"report_id": report_id}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     finally:

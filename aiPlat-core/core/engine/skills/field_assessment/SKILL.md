@@ -1,6 +1,7 @@
 ---
-name: field-assessment
+name: field_assessment
 version: 1.0.0
+status: enabled
 category: fde
 execution_type: prompt
 timeout: 600
@@ -20,6 +21,17 @@ input_schema:
     budget_range: {type: string, description: 预算范围}
     timeline: {type: string, description: 预期时间线}
     pending_feedback: {type: string, description: 客户对§8待确认问题的答复，用于更新诊断。如果提供，调整对应章节结论并根据反馈更新置信度}
+output_schema:
+  type: object
+  properties:
+    markdown:
+      type: string
+      description: 8节结构化诊断报告（Markdown格式）
+    diagnosis:
+      type: object
+      description: 结构化提取的诊断数据（深层问题/推荐域/缺口清单）
+  required:
+    - markdown
 effects:
   - type: read
     resources: ["llm"]

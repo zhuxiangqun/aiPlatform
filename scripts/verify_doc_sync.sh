@@ -132,6 +132,31 @@ check_new_modules
 check_stale_entries
 check_git_diff_sync
 
+# ══════════════════════════════════════════════════════════════
+# Rule 4: CAPABILITIES.md changed → downstream docs sync check
+# ══════════════════════════════════════════════════════════════
+check_downstream_numeric_sync() {
+    caps_count=$(grep -oE '[0-9]+(项能力)' "$CAPABILITIES" 2>/dev/null | grep -oE '[0-9]+' | head -1)
+    if [ -z "$caps_count" ]; then
+        echo -e "  ${YELLOW}⚠${NC} Cannot extract capability count from CAPABILITIES.md"
+        return
+    fi
+    downstream_files=(
+        "$WORKSPACE/docs/DOCUMENT_SYSTEM.md"
+        "$WORKSPACE/AIPLAT_ROADMAP.md"
+        "$WORKSPACE/CLAUDE.md"
+    )
+    for doc in "${downstream_files[@]}"; do
+        [ ! -f "$doc" ] && continue
+        doc_count=$(grep -oE '[0-9]+(项能力)' "$doc" 2>/dev/null | grep -oE '[0-9]+' | head -1)
+        if [ -n "$doc_count" ] && [ "$doc_count" != "$caps_count" ]; then
+            echo -e "  ${RED}⚠${NC} $(basename "$doc"): hardcoded count $doc_count ≠ CAPABILITIES.md actual $caps_count"
+            VIOLATIONS=$((VIOLATIONS + 1))
+        fi
+    done
+}
+check_downstream_numeric_sync
+
 echo ""
 echo "═══════════════════════════════════════════════════════════════"
 if [ "$VIOLATIONS" -eq 0 ]; then

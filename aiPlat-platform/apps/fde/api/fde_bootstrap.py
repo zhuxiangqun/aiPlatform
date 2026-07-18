@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 from typing import Any, Dict, List
+from apps.fde.schemas import FdeStatusResponse, FdeListResponse, FdeItemResponse
+
 
 from fastapi import APIRouter, HTTPException, Query
 
@@ -11,7 +13,7 @@ import json
 router = APIRouter(tags=["fde-bootstrap"])
 
 
-@router.post("/bootstrap-test-data", response_model=dict)
+@router.post("/bootstrap-test-data", response_model=FdeStatusResponse)
 async def fde_bootstrap_test_data(
     industry: str = Query("政务", description="Industry for the demo session"),
     company: str = Query("", description="Company name override"),
@@ -105,11 +107,13 @@ async def fde_bootstrap_test_data(
                 "GET /fde/dashboard — 查看仪表板",
             ],
         }
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Bootstrap failed: {str(e)[:300]}")
 
 
-@router.post("/bootstrap-all", response_model=dict)
+@router.post("/bootstrap-all", response_model=FdeStatusResponse)
 async def fde_bootstrap_all():
     """Seed demo sessions for all 4 industries at once.
 

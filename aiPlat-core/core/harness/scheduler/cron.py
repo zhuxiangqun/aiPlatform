@@ -167,6 +167,120 @@ async def register_builtin_jobs() -> None:
     sched.register("skill_optimization", 12 * 3600, _skill_optimization,
                    description="Scan skill usage statistics and suggest optimizations")
 
+    # ── evaluation_summary handler ──
+
+    async def _evaluation_summary():
+        """Generate weekly evaluation report by aggregating all quality subsystems.
+        Writes NL report draft to diagnostics._DIAG_CACHE for frontend consumption.
+        
+        Known Debt: FDE-specific prompt text should be loaded from
+        core/apps/fde/prompts.py once prompt_loader migration is complete.
+        """
+        import time as _time
+        import json as _json
+
+        report = {
+            "generated_at": _time.strftime("%Y-%m-%dT%H:%M:%SZ", _time.gmtime()),
+            "period": "7d",
+        }
+
+        # 1. RAG quality dashboard (7d lookback)
+        try:
+            from core.harness.evaluation.rag_diagnostics_collector import RAGDiagnosticsCollector
+            collector = RAGDiagnosticsCollector()
+            dash = await collector.collect_quality_dashboard(lookback_hours=168)
+            report["rag_quality"] = {
+                "avg_faithfulness": dash.hallucination.get("avg_faithfulness", 0),
+                "avg_relevancy": dash.hallucination.get("avg_relevancy_proxy", 0),
+                "quality_gate_pass_rate": dash.retrieval.get("quality_gate_pass_rate", 0),
+                "abandon_rate": dash.signals.get("abandon_rate", 0),
+                "repeat_query_rate": dash.signals.get("repeat_query_rate", 0),
+                "anomaly_count": len(dash.anomalies),
+            }
+        except Exception as e:
+            report["rag_quality"] = {"error": str(e)[:200]}
+
+        # 2. HallucinationTracker bad cases
+        try:
+            from core.harness.evaluation.hallucination_tracker import get_hallucination_tracker
+            tracker = get_hallucination_tracker()
+            recent = tracker.get_recent_reports(limit=50)
+            bad_cases = [r for r in recent if r.get("faithfulness", 1) < 0.7]
+            report["hallucination"] = {
+                "total_reports": len(recent),
+                "bad_case_count": len(bad_cases),
+                "bad_cases": bad_cases[:10],
+            }
+        except Exception as e:
+            report["hallucination"] = {"error": str(e)[:200]}
+
+        # 3. FeedbackRadar user signal patterns
+        try:
+            from core.harness.learning.feedback_radar import FeedbackRadar
+            radar = FeedbackRadar()
+            patterns = await radar.analyze_all_active()
+            report["user_signals"] = {
+                "pattern_count": sum(len(v) for v in patterns.values()),
+                "affected_specs": len(patterns),
+                "top_patterns": [
+                    {"spec_id": k, "suggestions": [
+                        {"type": s.suggestion_type, "severity": s.severity, "detail": s.detail[:200]}
+                        for s in v[:3]
+                    ]}
+                    for k, v in list(patterns.items())[:5]
+                ],
+            }
+        except Exception as e:
+            report["user_signals"] = {"error": str(e)[:200]}
+
+        # 4. Generate NL weekly report via LLM
+        try:
+            from core.harness.utils.model_injection import best_model_for_purpose
+            from core.harness.syscalls.llm import sys_llm_generate
+
+            data_json = _json.dumps(report, ensure_ascii=False, default=str)
+            prompt = (
+                "你是 AI 评估助。请基于以下数据生成一份本周质量评估报告草稿。"
+                # Known Debt: FDE-specific prompt should move to core/apps/fde/prompts.py
+                "\n\n数据：\n" + data_json + "\n\n"
+                "要求：\n"
+                "1. 用中文，分 3-4 段（总览、RAG 质量、幻觉检测、用户信号）\n"
+                "2. 每段 2-3 句话，保持客观，不夸大、不美化\n"
+                "3. 若某段数据为空、为 0、或仅有 error 字段，写\"本周无足够数据，建议保持默认配置。\"\n"
+                "4. 不要编造任何数据，只能基于上述 JSON 中的实际数值\n"
+                "5. 末尾标注数据来源：RAGDiagnosticsCollector(168h)、HallucinationTracker、FeedbackRadar"
+            )
+            nl_report = await sys_llm_generate(
+                model=best_model_for_purpose("doc_llm"),
+                messages=[{"role": "user", "content": prompt}],
+                max_tokens=800,
+                inject_agent_config=False,
+            )
+            report["nl_summary"] = nl_report
+        except Exception as e:
+            report["nl_summary"] = f"周报生成暂不可用: {str(e)[:200]}"
+
+        # 5. Write to diagnostics cache for frontend consumption
+        try:
+            import core.api.routers.diagnostics as diag
+            if diag._DIAG_CACHE is None:
+                diag._DIAG_CACHE = {}
+            diag._DIAG_CACHE["weekly_report"] = report
+            diag._DIAG_CACHE_TS = _time.time()
+            diag._save_diag_cache()
+        except Exception as e:
+            logger.warning(f"Weekly report cache write failed: {e}")
+
+        logger.info(
+            "evaluation_summary: rag_faithfulness=%s, bad_cases=%d, signal_patterns=%d",
+            report.get("rag_quality", {}).get("avg_faithfulness", "N/A"),
+            report.get("hallucination", {}).get("bad_case_count", 0),
+            report.get("user_signals", {}).get("pattern_count", 0),
+        )
+
+    sched.register("evaluation_summary", 7 * 24 * 3600, _evaluation_summary,
+                   description="Generate weekly evaluation report from quality subsystems")  # known debt: was FDE-specific
+
 
 __all__ = [
     "CronScheduler",

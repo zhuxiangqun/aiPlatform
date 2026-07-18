@@ -109,3 +109,6 @@ def __getattr__(name: str) -> Any:
 
 def __dir__() -> list[str]:
     return sorted(set(list(globals().keys()) + list(_LAZY_ATTRS.keys())))
+
+# Domain prompts registration (P1-1 migration)
+from . import prompts; prompts.register_skills_prompts()

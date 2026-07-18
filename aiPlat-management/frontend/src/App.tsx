@@ -108,6 +108,8 @@ const DiagnosticsCapabilityGraph = lazy(() => import('./pages/Diagnostics/Capabi
 const RepairCenter = lazy(() => import('./pages/Diagnostics/RepairCenter'));
 const FdeDashboard = lazy(() => import('./pages/Diagnostics/FdeDashboard'));
 const ObservabilityDashboard = lazy(() => import('./pages/Diagnostics/ObservabilityDashboard'));
+const KnowledgeOverview = lazy(() => import('./pages/Knowledge/KnowledgeOverview'));
+const DocsViewer = lazy(() => import('./pages/Docs/DocsViewer'));
 const RunComparison = lazy(() => import('./pages/Diagnostics/RunComparison'));
 const ModelPlayground = lazy(() => import('./pages/Diagnostics/ModelPlayground'));
 const ModelAuditPanel = lazy(() => import('./pages/Diagnostics/ModelAuditPanel'));
@@ -146,6 +148,8 @@ const router = createBrowserRouter([
       { path: 'value-center/training', element: withSuspense(TrainingMonitor) },
       { path: 'value-center/spec/:specId', element: withSuspense(SpecDetailPage) },
       { path: 'workbench', element: withSuspense(UserWorkbench) },
+      { path: 'knowledge/overview', element: withSuspense(KnowledgeOverview) },
+      { path: 'docs', element: withSuspense(DocsViewer) },
       { path: 'infra/nodes', element: withSuspense(InfraNodes) },
       { path: 'infra/models', element: withSuspense(InfraModels) },
       { path: 'infra/finetune', element: withSuspense(InfraFineTune) },

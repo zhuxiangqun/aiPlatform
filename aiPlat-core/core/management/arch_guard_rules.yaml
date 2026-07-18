@@ -2406,3 +2406,89 @@ rules:
         "
       ok_pattern: "PASS:"
 
+  # ═══ Section 80: Router Thin Proxy Detection ═══
+  - id: router_thin_proxy_detection
+    section: "§80"
+    section_name: "Router 薄代理检测"
+    level: error
+    check:
+      type: cmd_output
+      cmd: |
+        violations=0
+        for f in aiPlat-core/core/api/routers/fde_*.py 2>/dev/null; do
+          plat_dir="aiPlat-platform/apps/fde/api/"
+          if [ -d "$plat_dir" ]; then
+            if grep -q "from core.api.routers" "$plat_dir"/*.py 2>/dev/null; then
+              echo "ERROR: thin proxy detected in FDE module"
+              violations=$((violations + 1))
+            fi
+          fi
+        done
+        [ "$violations" -eq 0 ] && echo "PASS: no thin proxy violations" || exit 1
+      ok_pattern: "PASS:"
+
+  # ═══ Section 81: Harness Business Enum Import Detection ═══
+  - id: harness_business_enum_import
+    section: "§81"
+    section_name: "Harness 业务枚举导入检测"
+    level: error
+    check:
+      type: cmd_output
+      cmd: |
+        violations=0
+        for f in aiPlat-core/core/harness/**/*.py 2>/dev/null; do
+          if grep -q "from core.schemas_builder import BuilderSessionPhase" "$f" 2>/dev/null; then
+            echo "ERROR: $f imports builder-specific enum"
+            violations=$((violations + 1))
+          fi
+          if grep -q "from core.schemas_finetune import" "$f" 2>/dev/null; then
+            echo "ERROR: $f imports finetune-specific enum"
+            violations=$((violations + 1))
+          fi
+        done
+        [ "$violations" -eq 0 ] && echo "PASS: harness free of business enums" || exit 1
+      ok_pattern: "PASS:"
+
+  # ═══ Section 82: prompt_loader Domain Prompt Leak Detection ═══
+  - id: prompt_loader_domain_leak
+    section: "§82"
+    section_name: "prompt_loader 域 prompt 泄漏检测"
+    level: error
+    check:
+      type: cmd_output
+      cmd: |
+        f="aiPlat-core/core/harness/utils/prompt_loader.py"
+        if [ -f "$f" ]; then
+          if grep -qE 'category="(fde|builder|skill|eval|kb|workbench)"' "$f" 2>/dev/null; then
+            echo "ERROR: domain-specific prompts detected in harness prompt_loader.py"
+            grep -nE 'category="(fde|builder|skill|eval|kb|workbench)"' "$f"
+            exit 1
+          fi
+        fi
+        echo "PASS: prompt_loader free of domain leaks"
+      ok_pattern: "PASS:"
+
+  # ═══ Section 83: Untyped response_model Detection ═══
+  - id: untyped_response_model
+    section: "§83"
+    section_name: "response_model=dict 检测"
+    level: warning
+    check:
+      type: cmd_output
+      cmd: |
+        unt=0
+        for f in aiPlat-core/core/api/routers/*.py aiPlat-platform/apps/*/api/*.py; do
+          [ -f "$f" ] || continue
+          # Count response_model=dict or response_model=None patterns
+          count=$(grep -cE '@router\.\w+\(.*response_model\s*=\s*(dict|Dict|None|list|List)\b' "$f" 2>/dev/null || echo 0)
+          if [ "$count" -gt 0 ]; then
+            unt=$((unt + count))
+          fi
+        done
+        if [ "$unt" -eq 0 ]; then
+          echo "PASS: no untyped response_model"
+        else
+          echo "WARNING: $unt endpoint(s) use response_model=dict/None instead of typed schema (known debt H)"
+        fi
+      ok_pattern: "PASS:"
+

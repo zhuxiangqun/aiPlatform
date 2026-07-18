@@ -221,6 +221,8 @@ async def get_ontology_domain(domain_id: str):
                 "range": p.range,
             } for p in domain.data_properties],
         }
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to load domain '{domain_id}': {e}")
 
@@ -323,7 +325,8 @@ async def get_scoring_config(domain_id: str):
         config_path = os.getenv("AIPLAT_LLM_CONFIG_PATH",
             str(_Path(__file__).resolve().parent.parent.parent.parent.parent /
                 "aiPlat-infra" / "config" / "infra" / "llm_profile.yaml"))
-        profile = yaml.safe_load(open(config_path)) or {}
+        with open(config_path) as f:
+            profile = yaml.safe_load(f) or {}
         return profile.get("retrieval_scoring", {
             "semantic": 0.55, "fts_keyword": 0.15,
             "freshness": 0.10, "credibility": 0.10, "density": 0.10,
@@ -341,7 +344,8 @@ async def update_scoring_config(domain_id: str, config: dict):
         str(_Path(__file__).resolve().parent.parent.parent.parent.parent /
             "aiPlat-infra" / "config" / "infra" / "llm_profile.yaml"))
     try:
-        profile = yaml.safe_load(open(config_path)) or {}
+        with open(config_path) as f:
+            profile = yaml.safe_load(f) or {}
     except Exception:
         profile = {}
     allowed = {"semantic", "fts_keyword", "freshness", "credibility", "density"}

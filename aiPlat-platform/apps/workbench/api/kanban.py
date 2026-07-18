@@ -10,6 +10,7 @@ from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
+from apps.common_schemas import StatusResponse, ListResponse, ItemResponse
 
 router = APIRouter(tags=["kanban"])
 
@@ -29,7 +30,7 @@ class StatusUpdate(BaseModel):
     reason: str = ""
 
 
-@router.get("/kanban/tasks", response_model=Dict[str, Any])
+@router.get("/kanban/tasks", response_model=ItemResponse)
 async def get_kanban_tasks(profile: str = Query("default"), status: Optional[str] = None):
     """List tasks for a profile, optionally filtered by status. Returns tasks
     grouped by status for a kanban board view."""
@@ -48,7 +49,7 @@ async def get_kanban_tasks(profile: str = Query("default"), status: Optional[str
     return {"profile": profile, "total": len(tasks), "by_status": grouped, "tasks": tasks}
 
 
-@router.post("/kanban/tasks", response_model=Dict[str, Any])
+@router.post("/kanban/tasks", response_model=StatusResponse)
 async def create_kanban_task(body: TaskCreate):
     """Manually create a kanban task (for UI or admin debugging)."""
     from core.harness.coordination.kanban_engine import KanbanEngine
@@ -59,7 +60,7 @@ async def create_kanban_task(body: TaskCreate):
     return {"task_id": tid, "status": "pending", "profile": body.profile_id}
 
 
-@router.patch("/kanban/tasks/{task_id}/status", response_model=Dict[str, Any])
+@router.patch("/kanban/tasks/{task_id}/status", response_model=StatusResponse)
 async def update_kanban_task_status(task_id: str, body: StatusUpdate):
     """Transition a task to a new status (block/retry/close)."""
     from core.harness.coordination.kanban_engine import KanbanEngine
@@ -70,7 +71,7 @@ async def update_kanban_task_status(task_id: str, body: StatusUpdate):
     return {"task_id": task_id, "new_status": body.to_status}
 
 
-@router.get("/health/kanban", response_model=Dict[str, Any])
+@router.get("/health/kanban", response_model=ItemResponse)
 async def kanban_health(profile: str = Query("default")):
     """Kanban health summary: total/todo/blocked/overdue counts."""
     from core.harness.coordination.kanban_engine import KanbanEngine

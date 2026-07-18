@@ -10,6 +10,7 @@ from core.api.deps import actor_from_http, rbac_guard
 from core.harness.kernel.runtime import get_kernel_runtime
 from core.harness.integration import KernelRuntime
 from core.schemas_eval import EvidenceDiffRequest
+from apps.common_schemas import StatusResponse, ListResponse, ItemResponse
 
 router = APIRouter()
 
@@ -30,7 +31,7 @@ def _workspace_mcp_mgr(rt):
 # Evaluation endpoints (migrated from runs.py)
 # ════════════════════════════════════════════════════════════════════════
 
-@router.post("/runs/{run_id}/evaluate", response_model=Dict[str, Any])
+@router.post("/runs/{run_id}/evaluate", response_model=StatusResponse)
 async def submit_run_evaluation(run_id: str, request: dict, http_request: Request, rt: RuntimeDep = None):
     """Accept structured evaluator report JSON, apply threshold gate, persist."""
     store = _store(rt)
@@ -115,7 +116,7 @@ async def submit_run_evaluation(run_id: str, request: dict, http_request: Reques
     return {"status": "ok", "artifact_id": saved.get("artifact_id"), "report": gated_report}
 
 
-@router.post("/runs/{run_id}/evaluate/auto", response_model=Dict[str, Any])
+@router.post("/runs/{run_id}/evaluate/auto", response_model=StatusResponse)
 async def auto_evaluate_run(run_id: str, http_request: Request, rt: RuntimeDep = None):
     """Auto-collect latest evaluation summary for a run (reads existing data, no LLM)."""
     store = _store(rt)
@@ -165,7 +166,7 @@ async def auto_evaluate_run(run_id: str, http_request: Request, rt: RuntimeDep =
     }
 
 
-@router.get("/runs/{run_id}/evaluation/latest", response_model=Dict[str, Any])
+@router.get("/runs/{run_id}/evaluation/latest", response_model=ItemResponse)
 async def get_latest_run_evaluation(run_id: str, rt: RuntimeDep = None):
     store = _store(rt)
     if not store:
@@ -182,7 +183,7 @@ async def get_latest_run_evaluation(run_id: str, rt: RuntimeDep = None):
     return {"status": "ok", "item": items2[0]}
 
 
-@router.get("/runs/{run_id}/investigate/latest", response_model=Dict[str, Any])
+@router.get("/runs/{run_id}/investigate/latest", response_model=ItemResponse)
 async def get_latest_investigate_report(run_id: str, rt: RuntimeDep = None):
     store = _store(rt)
     if not store:
@@ -196,7 +197,7 @@ async def get_latest_investigate_report(run_id: str, rt: RuntimeDep = None):
     return {"status": "ok", "item": items2[0]}
 
 
-@router.post("/runs/{run_id}/investigate/auto", response_model=Dict[str, Any])
+@router.post("/runs/{run_id}/investigate/auto", response_model=StatusResponse)
 async def auto_investigate_run(run_id: str, http_request: Request, rt: RuntimeDep = None):
     store = _store(rt)
     if not store:
@@ -294,7 +295,7 @@ async def auto_investigate_run(run_id: str, http_request: Request, rt: RuntimeDe
     return {"status": "ok", "artifact_id": art.artifact_id, "report": payload}
 
 
-@router.get("/runs/{run_id}/state/latest", response_model=Dict[str, Any])
+@router.get("/runs/{run_id}/state/latest", response_model=ItemResponse)
 async def get_latest_run_state(run_id: str, rt: RuntimeDep = None):
     store = _store(rt)
     if not store:
@@ -312,7 +313,7 @@ async def get_latest_run_state(run_id: str, rt: RuntimeDep = None):
     return {"status": "ok", "item": items2[0]}
 
 
-@router.get("/runs/{run_id}/evidence_pack/latest", response_model=Dict[str, Any])
+@router.get("/runs/{run_id}/evidence_pack/latest", response_model=ItemResponse)
 async def get_latest_evidence_pack(run_id: str, rt: RuntimeDep = None):
     store = _store(rt)
     if not store:
@@ -329,7 +330,7 @@ async def get_latest_evidence_pack(run_id: str, rt: RuntimeDep = None):
     return {"status": "ok", "item": items2[0]}
 
 
-@router.post("/runs/{run_id}/evidence/diff", response_model=Dict[str, Any])
+@router.post("/runs/{run_id}/evidence/diff", response_model=StatusResponse)
 async def compute_run_evidence_diff(run_id: str, request: EvidenceDiffRequest, http_request: Request, rt: RuntimeDep = None):
     store = _store(rt)
     if not store:
@@ -369,7 +370,7 @@ async def compute_run_evidence_diff(run_id: str, request: EvidenceDiffRequest, h
     return {"status": "ok", "artifact_id": art.artifact_id, "diff": diff}
 
 
-@router.post("/runs/{run_id}/state", response_model=Dict[str, Any])
+@router.post("/runs/{run_id}/state", response_model=StatusResponse)
 async def upsert_run_state(run_id: str, request: dict, http_request: Request, rt: RuntimeDep = None):
     store = _store(rt)
     if not store:
@@ -409,7 +410,7 @@ async def upsert_run_state(run_id: str, request: dict, http_request: Request, rt
     return {"status": "ok", "artifact_id": art.artifact_id, "state": norm}
 
 
-@router.get("/runs/{run_id}/evidence", response_model=Dict[str, Any])
+@router.get("/runs/{run_id}/evidence", response_model=ItemResponse)
 async def get_run_evidence(run_id: str, rt: RuntimeDep = None):
     store = _store(rt)
     if not store:

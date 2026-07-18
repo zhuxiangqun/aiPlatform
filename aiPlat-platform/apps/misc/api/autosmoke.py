@@ -9,6 +9,7 @@ from core.api.utils.governance import ui_url
 from core.governance.verification import apply_autosmoke_result, autosmoke_job_id, get_resource_verification, mark_resource_pending
 from core.harness.kernel.runtime import get_kernel_runtime
 import logging
+from apps.common_schemas import StatusResponse, ListResponse, ItemResponse
 
 
 router = APIRouter()
@@ -37,7 +38,7 @@ def _workspace_managers():
     )
 
 
-@router.post("/autosmoke/run", response_model=Dict[str, Any])
+@router.post("/autosmoke/run", response_model=StatusResponse)
 async def run_autosmoke(request: Dict[str, Any], http_request: Request):
     """
     Productized wrapper: enqueue autosmoke for a resource and persist verification state updates.
@@ -96,7 +97,7 @@ async def run_autosmoke(request: Dict[str, Any], http_request: Request):
     return res
 
 
-@router.get("/autosmoke/runs", response_model=Dict[str, Any])
+@router.get("/autosmoke/runs", response_model=ItemResponse)
 async def list_autosmoke_runs(resource_type: str, resource_id: str, http_request: Request, limit: int = 50, offset: int = 0):
     store = _store()
     if not store:
@@ -124,7 +125,7 @@ async def list_autosmoke_runs(resource_type: str, resource_id: str, http_request
     return {**runs, "job_id": job_id, "resource": {"type": rtype, "id": rid}, "items": items}
 
 
-@router.get("/autosmoke/status", response_model=Dict[str, Any])
+@router.get("/autosmoke/status", response_model=ItemResponse)
 async def get_autosmoke_status(resource_type: str, resource_id: str, http_request: Request):
     store = _store()
     if not store:

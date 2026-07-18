@@ -220,6 +220,8 @@ async def sign_mcp_server(server_name: str, request: Dict[str, Any]):
         raise
     except ValueError as e:
         raise HTTPException(status_code=400, detail=f"Invalid private key: {str(e)}")
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Signing failed: {str(e)}")
 
@@ -507,8 +509,9 @@ async def mcp_auto_fill(request: dict):
             "auth": config.get("auth"),
             "metadata": config.get("metadata", {}),
         }
-    except Exception as e:
-        return {"error": f"Auto-fill failed: {str(e)}"}
+    except HTTPException:
+        raise
+        raise HTTPException(status_code=500, detail=str(e)[:200])
 
 
 @router.put("/workspace/mcp/servers/{server_name}", response_model=Dict[str, Any])
@@ -1090,6 +1093,8 @@ async def workspace_mcps_installer_upload_plan(
         return {"status": "ok", **plan}
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"upload_plan_failed: {e}")
     finally:
@@ -1122,6 +1127,8 @@ async def workspace_mcps_installer_upload_install(
         return {"status": "ok", **result}
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"upload_install_failed: {e}")
     finally:
@@ -1203,6 +1210,8 @@ async def submit_mcp_for_review(server_name: str):
             metadata=meta,
         )
         mgr.upsert_server(info)
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to update MCP server: {e}")
 
@@ -1264,6 +1273,8 @@ async def install_mcp_seed(seed_id: str):
     try:
         workspace_dir.mkdir(parents=True, exist_ok=True)
         _shutil.copytree(seed_dir, dst)
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to install seed: {str(e)}")
 

@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 from typing import Any
+from apps.fde.schemas import FdeStatusResponse, FdeListResponse, FdeItemResponse
+
 
 from fastapi import APIRouter, HTTPException
 
@@ -16,7 +18,7 @@ class FdeDeliveryFeedbackRequest(_PydanticBaseModel):
     action_name: str = ""  # optional: target a specific DeliveryAction
 
 
-@router.post("/delivery/feedback", response_model=dict)
+@router.post("/delivery/feedback", response_model=FdeStatusResponse)
 async def fde_delivery_feedback(req: FdeDeliveryFeedbackRequest):
     """Mark delivery status for a diagnosis session or its actions. (L: Action bridge)
 
@@ -51,7 +53,7 @@ async def fde_delivery_feedback(req: FdeDeliveryFeedbackRequest):
 
         if action_name:
             # Target a specific action
-            neighbors = fd.get_neighbors(sid, direction="outgoing")
+            neighbors = fd.get_neighbor_edges(sid, direction="outgoing")
             targeted = False
             for neighbor_id, edge in neighbors:
                 if edge.relation_name == "has_action":
@@ -96,7 +98,7 @@ async def fde_delivery_feedback(req: FdeDeliveryFeedbackRequest):
             })
 
             # Cascade to all actions
-            neighbors = fd.get_neighbors(sid, direction="outgoing")
+            neighbors = fd.get_neighbor_edges(sid, direction="outgoing")
             for neighbor_id, edge in neighbors:
                 if edge.relation_name == "has_action":
                     atid = f"trans_{sid}_{ts}_{neighbor_id[:8]}"
@@ -114,7 +116,7 @@ async def fde_delivery_feedback(req: FdeDeliveryFeedbackRequest):
         completed = sum(1 for _, n in fd._nodes.items()
                        if getattr(n, "class_name", "") == "DiagnosisSession"
                        and any(e.relation_name == "has_action" for _, e in
-                              fd.get_neighbors(getattr(n, "entity_id", "") or "", direction="outgoing")))
+                              fd.get_neighbor_edges(getattr(n, "entity_id", "") or "", direction="outgoing")))
 
         # Count transitions for this session
         session_transitions = sum(1 for _, n in fd._nodes.items()
@@ -132,6 +134,8 @@ async def fde_delivery_feedback(req: FdeDeliveryFeedbackRequest):
                 "delivery_rate": round(completed / total_sessions * 100) if total_sessions else 0,
             },
         }
+    except HTTPException:
+        raise
     except HTTPException:
         raise
     except Exception as e:

@@ -149,56 +149,74 @@ async def _scan_governance() -> Dict[str, Any]:
     """
     Shared governance scan — returns total/governed/unsigned/no_manifest/has_trusted_keys/score.
     Used by both system_overview() and diagnostics._check_governance().
+
+    Workspace entities (under ~/.aiplat/) have relaxed governance requirements:
+    - Missing manifest: -0.2 per entity (mild penalty, user-created entities)
+    - Engine built-in entities (under core/engine/): -2 per entity (strict, must be governed)
     """
     import json as _json
     home = os.environ.get("AIPLAT_HOME", os.path.expanduser("~/.aiplat"))
-    entity_globs = {
-        "skills": ("skills", "SKILL.manifest.json"),
-        "agents": ("agents", "AGENT.manifest.json"),
-        "mcps": ("mcps", "MCP.manifest.json"),
-        "workflows": ("workflows", "WORKFLOW.manifest.json"),
-        "projects": ("projects", "PROJECT.manifest.json"),
-        "prompt_apps": ("prompt-apps", "TEMPLATE.manifest.json"),
-    }
-    gov_total = 0
-    gov_governed = 0
-    gov_unsigned = 0
-    gov_no_manifest = 0
-
     engine_root = Path(__file__).resolve().parents[3] / "core" / "engine"
-    extra_paths = [
-        (engine_root / "skills", "SKILL.manifest.json"),
-        (engine_root / "agents", "AGENT.manifest.json"),
-        (engine_root / "mcps", "MCP.manifest.json"),
-    ]
 
-    all_dirs: list[tuple[Path, str]] = []
-    for ent_type, (subdir, mf_name) in entity_globs.items():
-        all_dirs.append((Path(home) / subdir, mf_name))
-    for p, mf_name in extra_paths:
-        if p.exists() and p.is_dir():
-            all_dirs.append((p, mf_name))
+    # ── Workspace entities ──
+    ws_dir_map = {
+        "skills": (Path(home) / "skills", "SKILL.manifest.json"),
+        "agents": (Path(home) / "agents", "AGENT.manifest.json"),
+        "mcps": (Path(home) / "mcps", "MCP.manifest.json"),
+        "workflows": (Path(home) / "workflows", "WORKFLOW.manifest.json"),
+        "projects": (Path(home) / "projects", "PROJECT.manifest.json"),
+        "prompt_apps": (Path(home) / "prompt-apps", "TEMPLATE.manifest.json"),
+    }
 
-    for base_dir, mf_name in all_dirs:
+    # ── Engine built-in entities ──
+    engine_dir_map = {
+        "engine_skills": (engine_root / "skills", "SKILL.manifest.json"),
+        "engine_agents": (engine_root / "agents", "AGENT.manifest.json"),
+        "engine_mcps": (engine_root / "mcps", "MCP.manifest.json"),
+    }
+
+    ws_total = 0
+    ws_governed = 0
+    ws_unsigned = 0
+    ws_no_manifest = 0
+    eng_total = 0
+    eng_governed = 0
+    eng_unsigned = 0
+    eng_no_manifest = 0
+
+    def _scan_dir(base_dir, mf_name):
+        total = 0
+        governed = 0
+        unsigned = 0
+        no_manifest = 0
         if not base_dir.is_dir():
-            continue
+            return total, governed, unsigned, no_manifest
         for edir in base_dir.iterdir():
             if not edir.is_dir() or edir.name.startswith("."):
                 continue
-            gov_total += 1
+            total += 1
             mf = edir / mf_name
             if not mf.exists():
-                gov_no_manifest += 1
+                no_manifest += 1
                 continue
             try:
                 with open(mf) as f:
                     mdata = _json.load(f)
                 if mdata.get("signature"):
-                    gov_governed += 1
+                    governed += 1
                 else:
-                    gov_unsigned += 1
+                    unsigned += 1
             except Exception:
-                gov_unsigned += 1
+                unsigned += 1
+        return total, governed, unsigned, no_manifest
+
+    for _name, (base, mf) in ws_dir_map.items():
+        t, g, u, nm = _scan_dir(base, mf)
+        ws_total += t; ws_governed += g; ws_unsigned += u; ws_no_manifest += nm
+
+    for _name, (base, mf) in engine_dir_map.items():
+        t, g, u, nm = _scan_dir(base, mf)
+        eng_total += t; eng_governed += g; eng_unsigned += u; eng_no_manifest += nm
 
     has_keys = False
     try:
@@ -212,17 +230,27 @@ async def _scan_governance() -> Dict[str, Any]:
     except Exception as e:
         logging.warning(str(e), exc_info=True)
 
+    total = ws_total + eng_total
+    governed = ws_governed + eng_governed
+    unsigned = ws_unsigned + eng_unsigned
+    no_manifest = ws_no_manifest + eng_no_manifest
+
+    # Scoring: engine entities are stricter; workspace entities are user-created
     score = 100
-    score -= gov_no_manifest * 2
-    score -= gov_unsigned * 0.5
-    # Only penalize missing keys when there are unsigned/unmanifested entities
-    if not has_keys and gov_total > 0 and (gov_no_manifest > 0 or gov_unsigned > 0):
-        score -= 20
-    score = max(0, score)
+    score -= eng_no_manifest * 2       # engine must have manifests
+    score -= eng_unsigned * 0.5
+    score -= ws_no_manifest * 0.2      # workspace: mild penalty for missing manifest
+    score -= ws_unsigned * 0.1
+
+    # Trusted keys penalty
+    if not has_keys and eng_no_manifest > 0:
+        score -= 5   # Dev mode: missing keys with unmanifested engine entities — mild penalty
+
+    score = max(0, min(100, score))
 
     return {
-        "total": gov_total, "governed": gov_governed,
-        "unsigned": gov_unsigned, "no_manifest": gov_no_manifest,
+        "total": total, "governed": governed,
+        "unsigned": unsigned, "no_manifest": no_manifest,
         "has_trusted_keys": has_keys, "score": score,
     }
 

@@ -6,6 +6,7 @@ from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, Depends, HTTPException
 
 from core.harness.kernel.runtime import get_kernel_runtime
+from apps.common_schemas import StatusResponse, ListResponse, ItemResponse
 
 router = APIRouter()
 
@@ -22,7 +23,7 @@ def _ws_skill_mgr(rt):
     return getattr(rt, "workspace_skill_manager", None) if rt else None
 
 
-@router.get("/catalog/skills", response_model=Dict[str, Any])
+@router.get("/catalog/skills", response_model=ItemResponse)
 async def list_skill_catalog(
     q: Optional[str] = None,
     scope: str = "all",  # all|engine|workspace

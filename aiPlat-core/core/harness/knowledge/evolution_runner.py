@@ -39,7 +39,8 @@ class EvolutionSnapshot:
         idx_path = _os.path.join(
             wiki_root, "wiki", "collections", self.collection_id, "index.json")
         if _os.path.exists(idx_path):
-            self.index_backup = _json.loads(open(idx_path).read())
+            with open(idx_path) as f:
+                self.index_backup = _json.loads(f.read())
         else:
             self.index_backup = {"pages": {}}
         logger.info(f"Evolution snapshot created for gen {self.generation_id}")
@@ -54,8 +55,8 @@ class EvolutionSnapshot:
         idx_path = _os.path.join(
             wiki_root, "wiki", "collections", self.collection_id, "index.json")
         _os.makedirs(_os.path.dirname(idx_path), exist_ok=True)
-        open(idx_path, "w").write(
-            _json.dumps(self.index_backup, indent=2, ensure_ascii=False))
+        with open(idx_path, "w") as f:
+            f.write(_json.dumps(self.index_backup, indent=2, ensure_ascii=False))
         # Rebuild A-Box
         try:
             from core.harness.knowledge.knowledge_ontology import reset_ontology
@@ -475,7 +476,8 @@ class EvolutionRunner:
         path = self._onto_state_path()
         if _os.path.exists(path):
             try:
-                return _json.loads(open(path).read())
+                with open(path) as f:
+                    return _json.loads(f.read())
             except Exception as e:
                 logging.debug(str(e), exc_info=True)
         return {}
@@ -483,7 +485,8 @@ class EvolutionRunner:
     def _save_onto_state(self, state: Dict):
         path = self._onto_state_path()
         _os.makedirs(_os.path.dirname(path), exist_ok=True)
-        _json.dump(state, open(path, "w"), indent=2, ensure_ascii=False)
+        with open(path, "w") as f:
+            _json.dump(state, f, indent=2, ensure_ascii=False)
 
     def auto_apply_previous_onto_mutations(self):
         """Re-apply auto-added classes/properties on startup (in-memory only)."""
@@ -553,7 +556,8 @@ class EvolutionRunner:
         path = self._history_path()
         if _os.path.exists(path):
             try:
-                history = _json.loads(open(path).read())
+                with open(path) as f:
+                    history = _json.loads(f.read())
                 if history:
                     return history[-1]
             except Exception as e:
@@ -564,7 +568,8 @@ class EvolutionRunner:
         path = self._history_path()
         if _os.path.exists(path):
             try:
-                history = _json.loads(open(path).read())
+                with open(path) as f:
+                    history = _json.loads(f.read())
                 if history:
                     return max(h.get("id", 0) for h in history) + 1
             except Exception as e:
@@ -577,7 +582,8 @@ class EvolutionRunner:
         path = self._history_path()
         history = []
         if _os.path.exists(path):
-            history = _json.loads(open(path).read())
+            with open(path) as f:
+                history = _json.loads(f.read())
 
         entry = {
             "id": self.generation_id - 1,
@@ -598,7 +604,8 @@ class EvolutionRunner:
         }
         history.append(entry)
         _os.makedirs(_os.path.dirname(path), exist_ok=True)
-        _json.dump(history[-50:], open(path, "w"), indent=2, ensure_ascii=False)
+        with open(path, "w") as f:
+            _json.dump(history[-50:], f, indent=2, ensure_ascii=False)
         logger.info(f"Generation {entry['id']} recorded: {verdict} (delta={delta})")
 
 
@@ -644,5 +651,6 @@ def _load_latest_generation(agent_id: str) -> Optional[Dict]:
     path = _os.path.expanduser(f"~/.aiplat/evolution/{agent_id}_generations.json")
     if not _os.path.exists(path):
         return None
-    history = _json.load(open(path))
+    with open(path) as f:
+        history = _json.load(f)
     return history[-1] if history else None

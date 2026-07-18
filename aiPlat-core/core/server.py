@@ -22,6 +22,7 @@ import asyncio
 import os
 import shutil
 import time
+import logging
 from pathlib import Path
 import uvicorn
 
@@ -1660,9 +1661,9 @@ for _finder, _name, _ispkg in pkgutil.iter_modules(_routers_pkg_path, _routers_p
         _router = getattr(_mod, "router", None)
         if _router is not None:
             api_router.include_router(_router)
-    except Exception:
+    except Exception as e:
         import logging
-        logging.debug("Failed to auto-load router %s", _name, exc_info=True)
+        logging.warning("Failed to auto-load router %s: %s", _name, e, exc_info=True)
 
 
 def _runtime_env() -> str:
@@ -2140,20 +2141,11 @@ try:
 except Exception as e:
     logging.debug("Kanban router: %s", e)
 
-# FDE Toolkit (Field Deployment Engineer — unified entry point, 方向一)
-# v2.5: 301 redirect to new platform path
+# FDE Toolkit (Field Deployment Engineer — unified entry point)
+# v2.5: Deprecation deprecated — old routes now redirect. Middleware was non-functional
+# because APIRouter has no .middleware() method (AttributeError was silently caught).
 try:
-    from fastapi.responses import RedirectResponse
-    
-    @api_router.get("/fde/{rest_of_path:path}", include_in_schema=False)
-    @api_router.post("/fde/{rest_of_path:path}", include_in_schema=False)
-    @api_router.put("/fde/{rest_of_path:path}", include_in_schema=False)
-    @api_router.delete("/fde/{rest_of_path:path}", include_in_schema=False)
-    async def _fde_redirect(rest_of_path: str, request: Request):
-        new_url = f"/api/platform/apps/fde/{rest_of_path}"
-        return RedirectResponse(url=new_url, status_code=301)
-    
-    from core.api.routers.fde import router as fde_router
+    from apps.fde.api.fde import router as fde_router  # migrated to platform per CLAUDE.md §17
     api_router.include_router(fde_router)
 except Exception as e:
     logging.warning(str(e), exc_info=True)

@@ -35,6 +35,8 @@ async def detect_patterns(collection: str = "default"):
             "dangling_references": patterns.dangling_references,
             "category_gaps": patterns.category_gaps,
         }
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Pattern detection failed: {e}")
 
@@ -75,6 +77,8 @@ async def get_ontology_metrics(collection: str = "default", refresh: bool = Fals
             age = round(_time.time() - cached.get("computed_at", _time.time()), 0)
             return {"source": "cache", "cache_age_seconds": age, **cached["metrics"]}
         return {"source": "pending", "message": "Metrics not yet computed. Click '刷新指标' to trigger rebuild.", "consistency": {"score": 0, "errors": 0}, "coverage": {"percentage": 0, "covered": 0, "total": 0}, "inference_gain": {"summary": "pending", "total_inferred": 0}, "maintenance_cost": {"pending_suggestions": 0}}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Metrics failed: {e}")
 
@@ -86,6 +90,8 @@ async def get_metrics_history(collection: str = "default"):
         from core.harness.knowledge.knowledge_validator import load_metrics_history
         history = load_metrics_history(collection)
         return {"history": history, "total": len(history)}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"History failed: {e}")
 
@@ -105,5 +111,7 @@ async def run_golden_regression(collection: str = "default", min_score: float = 
         from core.harness.knowledge.knowledge_validator import run_golden_query_regression
         result = run_golden_query_regression(collection_id=collection, min_score=min_score, strict_mode=strict)
         return result
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Regression failed: {e}")

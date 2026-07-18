@@ -487,6 +487,8 @@ async def run_self_harness_cycle():
 
         result = await run_self_harness_cycle(run_states)
         return result
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Self-Harness failed: {e}")
 
@@ -918,6 +920,8 @@ async def atomize_document(body: AtomizeRequest, collection: str = "default"):
             "contradiction_pages_created": result["contradiction_pages_created"],
             "error": result.get("error"),
         }
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Atomization failed: {e}")
 
@@ -1310,6 +1314,8 @@ async def regenerate_wiki_index(collection: str = "default"):
         content = generate_index_md(collection_id=collection)
         lines = content.count("\n") + 1 if content else 0
         return {"status": "ok", "lines": lines, "content": content[:500]}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Index generation failed: {e}")
 
@@ -1320,6 +1326,8 @@ async def get_wiki_health_trend():
     try:
         from core.harness.knowledge.wiki_health_rules import get_health_trend
         return get_health_trend()
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to get health trend: {e}")
 
@@ -1330,6 +1338,8 @@ async def seed_golden_queries():
     try:
         from core.harness.knowledge.wiki_structured_query import seed_golden_queries
         return {"status": seed_golden_queries()}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed: {e}")
 
@@ -1340,6 +1350,8 @@ async def run_golden_tests():
     try:
         from core.harness.knowledge.wiki_structured_query import run_golden_tests
         return run_golden_tests()
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Golden test failed: {e}")
 
@@ -1353,6 +1365,8 @@ async def wiki_structured_query(q: str = ""):
     try:
         from core.harness.knowledge.wiki_structured_query import structured_query
         return structured_query(q)
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Structured query failed: {e}")
 
@@ -1364,6 +1378,8 @@ async def ontology_rebuild(collection: str = "default"):
         from core.harness.knowledge.knowledge_abox_builder import rebuild_full
         onto = rebuild_full(collection_id=collection)
         return {"status": "rebuilt", "triples": len(onto.triples), "collection": collection}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Rebuild failed: {e}")
 
@@ -1391,6 +1407,8 @@ async def ontology_validate(collection: str = "default"):
             "has_errors": report.has_errors,
             "collection": collection,
         }
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Validation failed: {e}")
 
@@ -1405,6 +1423,8 @@ async def ontology_network(title: str, collection: str = "default"):
         # Ensure A-Box is built for this collection
         build_abox(collection_id=collection)
         return query_transitive_network(title)
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Network query failed: {e}")
 
@@ -1419,6 +1439,8 @@ async def ontology_source_impact(collection: str = "default"):
         # Ensure A-Box is built for this collection
         build_abox(collection_id=collection)
         return {"sources": query_source_impact()}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Impact query failed: {e}")
 
@@ -1439,6 +1461,8 @@ async def get_wiki_changelog(title: str = "", limit: int = 20, collection: str =
             entries = [e for e in entries if e.get("title") == title]
         entries.reverse()  # newest first
         return {"entries": entries[:limit], "total": len(entries)}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to read changelog: {e}")
 
@@ -1465,6 +1489,8 @@ async def detect_wiki_duplicates(collection: str = "default"):
         from core.harness.knowledge.wiki_engine import detect_duplicate_pages
         duplicates = detect_duplicate_pages(collection_id=collection)
         return {"duplicates": duplicates, "total": len(duplicates)}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Duplicate detection failed: {e}")
 
@@ -1478,6 +1504,8 @@ async def list_wiki_collections():
         from core.harness.knowledge.wiki_engine import list_collections
         cols = list_collections()
         return {"collections": cols, "total": len(cols)}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to list collections: {e}")
 
@@ -1491,6 +1519,8 @@ async def create_wiki_collection(body: CollectionCreate):
         if result["status"] == "exists":
             return {"status": "ok", "message": f"Collection '{result['collection_id']}' already exists"}
         return {"status": "ok", "message": f"Collection '{result['collection_id']}' created"}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to create collection: {e}")
 
@@ -1562,6 +1592,8 @@ async def get_wiki_schema(collection: str = "default", domain: str = ""):
             "has_extension": extension is not None,
             "extension_label": extension.get("label", "") if extension else None,
         }
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to load schemas: {e}")
 
@@ -1607,6 +1639,8 @@ async def list_ontology_classes():
                 "required_fields": getattr(cls, 'required_fields', []),
             })
         return {"classes": result, "total": len(result)}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to list classes: {e}")
 
@@ -2645,6 +2679,8 @@ async def list_inference_rules():
             "severity": r.severity,
         } for r in DEFAULT_RULES]
         return {"rules": rules, "total": len(rules)}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to list rules: {e}")
 
@@ -2691,6 +2727,8 @@ async def list_suggestions(status: str = "", collection: str = "default"):
         if status:
             suggestions = [s for s in suggestions if s.get("status") == status]
         return {"suggestions": suggestions, "total": len(suggestions)}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to list suggestions: {e}")
 
@@ -2703,6 +2741,8 @@ async def generate_suggestions(collection: str = "default"):
         suggestions = add_suggestions_from_patterns(collection_id=collection)
         pending = [s for s in suggestions if s.get("status") == "pending"]
         return {"status": "generated", "total": len(suggestions), "pending": len(pending)}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Suggestion generation failed: {e}")
 
@@ -2744,6 +2784,8 @@ async def generate_code(suggestion_id: str, collection: str = "default"):
         from core.harness.knowledge.knowledge_ontology import generate_code_for_suggestion
         result = generate_code_for_suggestion(suggestion_id, collection_id=collection)
         return result
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Code generation failed: {e}")
 
@@ -2758,6 +2800,8 @@ async def check_schema_readiness(collection: str = "default"):
     try:
         from core.harness.knowledge.knowledge_ontology import check_schema_readiness
         return check_schema_readiness(collection_id=collection)
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Readiness check failed: {e}")
 
@@ -2780,6 +2824,8 @@ async def clean_stale_references_endpoint(collection: str = "default"):
             "abox_rebuilt": result.get("abox_rebuilt", False),
             "details": result.get("details", []),
         }
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Cleanup failed: {e}")
 
@@ -2800,6 +2846,8 @@ async def seed_instances_endpoint(collection: str = "default"):
             "contradictions_created": result["contradictions_created"],
             "details": result.get("details", []),
         }
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Seeding failed: {e}")
 
@@ -2820,6 +2868,8 @@ async def backfill_evidence_endpoint(limit: int = 50, collection: str = "default
             "succeeded": result["succeeded"],
             "failed": result["failed"],
         }
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Backfill failed: {e}")
 
@@ -2852,6 +2902,8 @@ async def batch_atomize_endpoint(limit: int = 10, category: str = "topics", coll
                         created += 1
                 await asyncio.sleep(1.0)
         return {"status": "completed", "atoms_created": created, "scanned": min(limit, len(pages))}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Batch atomize failed: {e}")
 
@@ -2863,6 +2915,8 @@ async def rebuild_fts_index(collection: str = "default"):
         from core.harness.knowledge.wiki_fts import fts_index_pages
         count = fts_index_pages()
         return {"status": "completed", "indexed": count}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"FTS rebuild failed: {e}")
 
@@ -2893,6 +2947,8 @@ async def evolve_knowledge(collection: str = "default", generations: int = 1,
                 if not force:
                     break
         return {"generations": results, "collection": collection}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Evolution failed: {e}")
 
@@ -2907,8 +2963,11 @@ async def get_evolution_history(collection: str = "default"):
     if not _os.path.exists(hist_path):
         return {"generations": [], "total": 0}
     try:
-        history = _json.loads(open(hist_path).read())
+        with open(hist_path) as f:
+            history = _json.loads(f.read())
         return {"generations": history, "total": len(history)}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -2921,8 +2980,11 @@ async def get_model_selection_log():
         log_path = os.path.expanduser("~/.aiplat/wiki/model_selection_log.json")
         if not os.path.exists(log_path):
             return {"entries": [], "total": 0}
-        entries = json.loads(open(log_path).read())
+        with open(log_path) as f:
+            entries = json.loads(f.read())
         return {"entries": entries[-50:], "total": len(entries)}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -2952,6 +3014,8 @@ async def run_active_synthesis(
             auto_submit=auto_submit,
         )
         return {"status": "completed", **result}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)[:300])
 

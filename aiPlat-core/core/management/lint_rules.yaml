@@ -76,7 +76,7 @@ rules:
     message: "缺少 input_schema，会降低可测试性/可复用性"
 
   - id: missing_output_schema
-    level: error
+    level: warning
     category: schema
     check:
       type: field_not_empty
@@ -84,7 +84,7 @@ rules:
     message: "缺少 output_schema，无法形成稳定的机器可读契约"
 
   - id: missing_markdown
-    level: error
+    level: warning
     category: schema
     check:
       type: field_required

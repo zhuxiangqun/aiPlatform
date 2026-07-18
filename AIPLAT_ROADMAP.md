@@ -1,16 +1,16 @@
 # aiPlat 商业化演进终极作战手册
 
-> 基线：代码交叉验证 | 状态：464项能力,6/6 syntax,5/5服务健康,架构守卫0违规,全域诊断14项,路径标准化158条
+> 基线：代码交叉验证 | 状态：699项能力,6/6 syntax,5/5服务健康,架构守卫0违规,全域诊断14项,路径标准化158条
 > 对标：Hermes Agent · Claude Code · OpenClaw · Octo (明略科技)  
 > 定位：**企业级 FDE 操作系统**（Agent 协作网络 + Spec 生命周期管理）
 > 
 > **当前能力全貌**：参见 [`AIPLAT_CAPABILITIES.md`](./AIPLAT_CAPABILITIES.md)（当前计数见该文件）
 > 
-> **最新更新 (2026-07-04)**：P0-P3 hermès-agent 全量吸收 — CAPABILITIES 384→464。评分 90→99。
+> **最新更新 (2026-07-04)**：P0-P3 hermès-agent 全量吸收 — CAPABILITIES 384→699。评分 90→99。
 
 ---
 
-## 一、基线诊断（来自 `AIPLAT_CAPABILITIES.md` 代码交叉验证，681 项）
+## 一、基线诊断（来自 `AIPLAT_CAPABILITIES.md` 代码交叉验证，699 项）
 
 | 维度 | 评分 | 关键发现 |
 |------|:---:|------|
@@ -773,4 +773,6 @@ slack-bolt>=1.18               # Slack 适配器
 
 ---
 
-*版本: 6.2 · 203文件修复: 异常吞没清零+安全加固+模型迁移+Skill标准化+API契约化+Wiki清理+死代码接线+架构守卫0违规 | 2026-06-29*
+*版本: 6.2 · 203文件修复: 异常吞没清零+安全加固+模型迁移+Skill标准化+API契约化+Wiki清理+死代码接线+架构守卫0违规 | 2026-07-18*
+
+> **CAPABILITIES 互验证**：本文件中的能力数应与 `AIPLAT_CAPABILITIES.md` 保持同步。运行 `bash scripts/verify_doc_sync.sh` 自动检测数字漂移。此验证已集成到 pre-commit 和 CI。 

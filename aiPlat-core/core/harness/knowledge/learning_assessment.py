@@ -559,7 +559,8 @@ def _enqueue_pending_assessment(
         existing = []
         if _os.path.exists(path):
             try:
-                existing = _json.load(open(path, "r", encoding="utf-8"))
+                with open(path, "r", encoding="utf-8") as f:
+                    existing = _json.load(f)
             except Exception:
                 existing = []
 

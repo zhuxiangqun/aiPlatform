@@ -6,6 +6,7 @@ POST /playbook/import  → Load a .aipb archive into the system
 GET  /playbook/manifest → Read manifest from a .aipb without importing
 """
 from __future__ import annotations
+from apps.common_schemas import StatusResponse, ListResponse, ItemResponse
 
 from typing import Any, Dict, Optional
 from fastapi import APIRouter, HTTPException, UploadFile, File
@@ -16,7 +17,7 @@ from core.harness.learning.playbook import (
 router = APIRouter(prefix="/playbook", tags=["playbook"])
 
 
-@router.post("/export", response_model=Dict[str, Any])
+@router.post("/export", response_model=StatusResponse)
 async def export_playbook(
     id: str = "",
     name: str = "",
@@ -53,11 +54,13 @@ async def export_playbook(
     try:
         path = await pack_playbook(manifest)
         return {"path": path, "manifest": manifest.to_dict(), "status": "exported"}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/import", response_model=Dict[str, Any])
+@router.post("/import", response_model=StatusResponse)
 async def import_playbook(
     file: UploadFile = File(...),
     on_conflict: str = "skip",
@@ -75,13 +78,15 @@ async def import_playbook(
         return result
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     finally:
         os.unlink(tmp.name)
 
 
-@router.post("/manifest", response_model=Dict[str, Any])
+@router.post("/manifest", response_model=StatusResponse)
 async def read_playbook_manifest(
     file: UploadFile = File(...),
 ):

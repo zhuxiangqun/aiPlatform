@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 from typing import Any, Dict
+from apps.fde.schemas import FdeStatusResponse, FdeListResponse, FdeItemResponse
+
 
 from fastapi import APIRouter, Query
 
@@ -13,7 +15,7 @@ router = APIRouter(tags=["fde-acceptance"])
 _acceptance_records: Dict[str, dict] = {}
 
 
-@router.get("/acceptance/checklist", response_model=Dict[str, Any])
+@router.get("/acceptance/checklist", response_model=FdeListResponse)
 async def acceptance_checklist(spec_id: str = Query("")):
     """生成交付验收 Checklist。聚合 KPI + 反馈 + SLA，
     可选 Agent 驱动验收分析 (v2.4: fde_delivery_manager)."""
@@ -118,7 +120,7 @@ async def acceptance_checklist(spec_id: str = Query("")):
     }
 
 
-@router.post("/acceptance/signoff", response_model=Dict[str, Any])
+@router.post("/acceptance/signoff", response_model=FdeStatusResponse)
 async def acceptance_signoff(body: Dict[str, Any]):
     """记录交付验收签收。
 

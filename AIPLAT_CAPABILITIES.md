@@ -10,6 +10,7 @@
 |:---|:---|:---|
 | **Raw Sources（原始资料层）** | 论文、报告、合同、网页、传感器数据——只读、可追溯，是事实来源 | `DataSource` 抽象层（SQL/API/File） + `DocumentParser` + 13 步 `OntologyEngine` 管道 |
 | **Wiki（知识层）** | 实体页、概念页、关系页、主题综述——LLM 持续编译，通过链接和引用形成知识网络 | `GraphIndex` + `KnowledgeSynthesizer` → Markdown Wiki + `vectors.json` 向量缓存 + FTS5 全文索引 |
+| 诊断模型层级 | `management/api/diagnostics.py` | ✅ | `GET /model-tier` — 模型层级路由状态 | 2026-07-18 |
 | **Schema（规则层）** | 域本体（YAML）、命名规范、更新流程——让知识库不会失控 | `ontology_loader.py` → `OntologyDomain` + `KnowledgeValidator`（6 种 axiom 验证） + `AGENTS.md` |
 
 ### 三个持续循环
@@ -162,17 +163,17 @@
 | FDE推理验证接线 | `apps/skills/registry.py` | ✅ | 诊断后运行GraphInference.infer()→检查推理规则与AI机会匹配度→不匹配降置信度标注 | 2026-07-11 |
 | FDE图谱回写接线 | `apps/skills/registry.py` | ✅ | 诊断完成后自动注册DiagnosisSubject实体+has_opportunity关系→下一次诊断可遍历跨报告关联 | 2026-07-11 |
 | FDE交付跟踪本体 | `~/.aiplat/ontologies/fde-delivery.yaml` + `apps/skills/registry.py:1789-1825,1979-2025` | ✅ | DiagnosisSession+DeliveryAction类定义→诊断后自动创建跟踪实例→下次诊断注入交付率统计(§4.6ROI数据驱动) | 2026-07-11 |
-| FDE追问端点 | `api/routers/fde.py` + `apps/skills/registry.py:1896-1914` | ✅ | POST /fde/ask — 基于诊断上下文回答后续问题，复用域图谱+历史+方案原型全链路(HMESI B0) | 2026-07-11 |
+| FDE追问端点 | `platform/apps/fde/api/fde.py` + `apps/skills/registry.py:1896-1914` | ✅ | POST /fde/ask — 基于诊断上下文回答后续问题，复用域图谱+历史+方案原型全链路(HMESI B0) | 2026-07-11 |
 | FDE证据等级映射 | `apps/skills/registry.py:2053-2076` | ✅ | 诊断报告返回时附加evidence_map数组(每条§1结论的证据等级+来源)→前端可直接渲染颜色标签(HMESI C0) | 2026-07-11 |
-| FDE交付反馈API | `api/routers/fde.py` | ✅ | POST /fde/delivery/feedback — 标记Session+Action状态→更新交付率统计→触发§4.6ROI重新计算(HMESI D) | 2026-07-11 |
+| FDE交付反馈API | `platform/apps/fde/api/fde.py` | ✅ | POST /fde/delivery/feedback — 标记Session+Action状态→更新交付率统计→触发§4.6ROI重新计算(HMESI D) | 2026-07-11 |
 | FDE诊断自优化 | `apps/skills/registry.py:1827-1863` | ✅ | 基于历史交付率(≥60%/30-60%/<30%)自动调整§1置信度标注策略+§6方案推荐排序(HMESI E) | 2026-07-11 |
 | FDE多角色模拟 | `apps/skills/registry.py:1865-1881` | ✅ | 生成前注入CIO/开发者/终端用户三视角采纳风险评估表→§7标注各角色风险信号+降级规则(HMESI F) | 2026-07-11 |
 | FDE知识缺口检测 | `apps/skills/registry.py:2089-2132` | ✅ | 诊断后对比§1AI机会与域本体类+方案原型标签→无匹配标记为knowledge_gaps→反馈域本体扩展(HMESI G) | 2026-07-11 |
-| FDE健康检查 | `api/routers/fde.py:1772-1879` | ✅ | GET /fde/health — 5维组件状态(域注册/图索引/交付跟踪/本体YAML/模型可用性)+自动降级标记 | 2026-07-11 |
-| FDE完整性验证 | `api/routers/fde.py:1882-1960` | ✅ | GET /fde/validate — 8项E2E连通测试(域路由/图谱/交付/Ontology/一致性门/跨域类比)一次性全检 | 2026-07-11 |
-| FDE会话历史 | `api/routers/fde.py:1975-2060` | ✅ | GET /fde/sessions — 列表查询历史诊断会话(按行业/公司/状态过滤)→含交付行动数+时间线 | 2026-07-11 |
-| FDE行业基准 | `api/routers/fde.py:2068-2145` | ✅ | GET /fde/benchmark — 跨行业聚合统计(会话数/交付率/TOP推荐)+per-industry breakdown | 2026-07-11 |
-| FDE会话详情 | `api/routers/fde.py:2304-2428` + `apps/skills/registry.py:2154-2200` | ✅ | GET /fde/sessions/{id} — 聚合单次诊断全视图(evidence_map+knowledge_gaps+交付时间线+关联会话+证据统计) | 2026-07-11 |
+| FDE健康检查 | `platform/apps/fde/api/fde.py:1772-1879` | ✅ | GET /fde/health — 5维组件状态(域注册/图索引/交付跟踪/本体YAML/模型可用性)+自动降级标记 | 2026-07-11 |
+| FDE完整性验证 | `platform/apps/fde/api/fde.py:1882-1960` | ✅ | GET /fde/validate — 8项E2E连通测试(域路由/图谱/交付/Ontology/一致性门/跨域类比)一次性全检 | 2026-07-11 |
+| FDE会话历史 | `platform/apps/fde/api/fde.py:1975-2060` | ✅ | GET /fde/sessions — 列表查询历史诊断会话(按行业/公司/状态过滤)→含交付行动数+时间线 | 2026-07-11 |
+| FDE行业基准 | `platform/apps/fde/api/fde.py:2068-2145` | ✅ | GET /fde/benchmark — 跨行业聚合统计(会话数/交付率/TOP推荐)+per-industry breakdown | 2026-07-11 |
+| FDE会话详情 | `platform/apps/fde/api/fde.py:2304-2428` + `apps/skills/registry.py:2154-2200` | ✅ | GET /fde/sessions/{id} — 聚合单次诊断全视图(evidence_map+knowledge_gaps+交付时间线+关联会话+证据统计) | 2026-07-11 |
 | 关系类型约束 | `ontology_engine/graph_index.py:160-210` | ✅ | add_relation()增加domain/range校验→从域YAML object_properties读取约束→违规降置信度0.3(N) | 2026-07-11 |
 | 证据实体绑定 | `~/.aiplat/ontologies/fde-delivery.yaml` + `apps/skills/registry.py:2212-2225` | ✅ | Evidence实体类型+has_evidence关系→诊断回写时每条§1结论创建证据节点(O) | 2026-07-11 |
 | 实体归一 | `ontology_engine/entity_resolver.py:71-148` | ✅ | normalize_term()同域强归一(去后缀/全角转半角)+build_alias_index跨域弱关联(P) | 2026-07-11 |
@@ -180,40 +181,41 @@
 | 业务术语字典 | `~/.aiplat/ontologies/enterprise-terms.yaml` + `apps/skills/registry.py:1882-1896` | ✅ | Term实体类(名称+定义+域+本体类映射)+诊断时注入术语锚点(R) | 2026-07-11 |
 | 术语自播种 | `apps/skills/registry.py:2150-2165` | ✅ | 知识缺口检测后自动创建Term桩→随诊断次数增加术语字典自我丰富(S) | 2026-07-11 |
 | 数字员工角色匹配 | `apps/skills/registry.py:1898-1927` | ✅ | §6方案推荐时自动匹配数字员工角色(合规审查/关系挖掘/知识顾问等9类)→报告从技术方案升级为角色实体(Y) | 2026-07-11 |
-| 跨系统数据桥接 | `api/routers/fde.py:2930-2988` | ✅ | POST /fde/ingest — 接受ERP/CRM/MES原始数据→字段映射→标准FDE输入→展示本体作跨系统语义桥梁(X) | 2026-07-11 |
-| 能力自描述 | `api/routers/fde.py:2991-3090` | ✅ | GET /fde/capabilities — 结构化能力清单(6层/30+模块/12端点)→系统自我声明"企业大脑原型"(Z) | 2026-07-11 |
-| 本体覆盖率度量 | `api/routers/fde.py:3079-3190` | ✅ | GET /fde/sessions/{id}/ontology-coverage — 四维分解(本体实例%/历史案例%/LLM推测%/术语%)→量化"本体包住多少不确定性" | 2026-07-11 |
-| 覆盖率改进建议 | `api/routers/fde.py:3208-3330` | ✅ | GET /fde/sessions/{id}/improve — 基于覆盖率生成可执行改进(新增本体类/创建术语/补充历史案例)→度量→行动闭环 | 2026-07-11 |
+| 跨系统数据桥接 | `platform/apps/fde/api/fde.py:2930-2988` | ✅ | POST /fde/ingest — 接受ERP/CRM/MES原始数据→字段映射→标准FDE输入→展示本体作跨系统语义桥梁(X) | 2026-07-11 |
+| 能力自描述 | `platform/apps/fde/api/fde.py:2991-3090` | ✅ | GET /fde/capabilities — 结构化能力清单(6层/30+模块/12端点)→系统自我声明"企业大脑原型"(Z) | 2026-07-11 |
+| 本体覆盖率度量 | `platform/apps/fde/api/fde.py:3079-3190` | ✅ | GET /fde/sessions/{id}/ontology-coverage — 四维分解(本体实例%/历史案例%/LLM推测%/术语%)→量化"本体包住多少不确定性" | 2026-07-11 |
+| 覆盖率改进建议 | `platform/apps/fde/api/fde.py:3208-3330` | ✅ | GET /fde/sessions/{id}/improve — 基于覆盖率生成可执行改进(新增本体类/创建术语/补充历史案例)→度量→行动闭环 | 2026-07-11 |
 | SECI知识原子域 | `~/.aiplat/ontologies/knowledge-atom.yaml` | ✅ | KnowledgeAtom+KnowledgeLink类定义→atom_type(6类)+source(5源)+3种关系(SIMILAR_TO/DERIVED_FROM/CONFLICTS_WITH) | 2026-07-11 |
 | SECI Engine (S→E+E→C) | `harness/knowledge/seci_engine.py` | ✅ | socialize_to_external(记忆→原子)+external_to_combine(跨域关联→KnowledgeLink)→Phase 1完成 | 2026-07-11 |
 | SECI POST_LOOP Hook | `harness/knowledge/seci_engine.py:248-330` | ✅ | POST_LOOP自动捕获scored>0.8的对话→SECIEngine.socialize→atom→跨域关联→全自动S→E→C(Phase 2) | 2026-07-11 |
 | SECI C→I + I→S | `harness/knowledge/seci_engine.py:220-322` + `apps/skills/registry.py:101-121` + `harness/routing/skill_routing.py:247-285` | ✅ | combine_to_internal(阻尼调整Skill权重)+internal_to_socialize(Canary→原子→闭环)(Phase 3) | 2026-07-11 |
-| SECI状态面板 | `api/routers/fde.py:3333-3420` | ✅ | GET /fde/seci-status — 知识创造引擎实时状态(原子/关联/来源分布/权重/螺旋健康度) | 2026-07-11 |
+| SECI状态面板 | `platform/apps/fde/api/fde.py:3333-3420` | ✅ | GET /fde/seci-status — 知识创造引擎实时状态(原子/关联/来源分布/权重/螺旋健康度) | 2026-07-11 |
 | 收敛引擎 | `harness/knowledge/convergence_engine.py` + `knowledge-atom.yaml:150-165` | ✅ | scan_and_converge()四触发器(skill_weight/agent_prompt/pipeline_stage/correction_rollback)+版本链防循环+元闭环回写 | 2026-07-11 |
 | 收敛能力注册 | `apps/skills/registry.py:1091-1112` + `harness/knowledge/seci_engine.py:208-235` | ✅ | SkillRegistry.apply_convergence()+DEPRECATES关系检测→收敛建议→系统行为调整→元闭环 | 2026-07-11 |
 | POST_LOOP自动收敛 | `harness/knowledge/seci_engine.py:514-526` | ✅ | atom>5时POST_LOOP自动触发ConvergenceEngine.scan_and_converge()→SECI→Convergence全自动闭环 | 2026-07-11 |
 | 本体消费总线 | `harness/knowledge/ontology_bus.py` + `~/.aiplat/ontologies/ai-solution.yaml` | ✅ | OntologyBus动态加载YAML数据→方案原型表+数字员工映射从硬编码迁移为YAML驱动→新增方案零代码 | 2026-07-11 |
 | 术语动态注入 | `apps/skills/registry.py:1889-1919` | ✅ | 术语字典注入从静态字符串替换为GraphIndex动态加载→随自播种自动增长→零硬编码 | 2026-07-11 |
 | YAML热加载 | `harness/knowledge/ontology_bus.py:28-62` | ✅ | mtime缓存→YAML文件变更自动检测→零重启配置更新→新增方案原型实时生效 | 2026-07-11 |
-| 本体治理工程化声明 | `api/routers/fde.py:3440-3665` | ✅ | GET /fde/governance — 8项治理能力矩阵成熟度自评+对传统数据治理/睿治Agent行业对标+实时状态 | 2026-07-11 |
-| 治理自审计 | `api/routers/fde.py:3668-3760` | ✅ | GET /fde/governance/validate — 8项能力逐一可执行审计(代码可查/端点可调/约束可测)→8/8 pass in 50ms | 2026-07-11 |
+| 本体治理工程化声明 | `platform/apps/fde/api/fde.py:3440-3665` | ✅ | GET /fde/governance — 8项治理能力矩阵成熟度自评+对传统数据治理/睿治Agent行业对标+实时状态 | 2026-07-11 |
+| 治理自审计 | `platform/apps/fde/api/fde.py:3668-3760` | ✅ | GET /fde/governance/validate — 8项能力逐一可执行审计(代码可查/端点可调/约束可测)→8/8 pass in 50ms | 2026-07-11 |
 | 术语定义自动补全 | `apps/skills/registry.py:1331-1390,2200-2215` | ✅ | 术语自播种时关键词匹配生成定义(15个预置定义)→无LLM调用→零延迟→无匹配时留空待人工补全 | 2026-07-11 |
 | 跨域术语去重 | `apps/skills/registry.py:2217-2235` | ✅ | 术语播种前检测enterprise-terms中同名概念→已有则创建similar_to跨域关联→防止跨域术语碎片化 | 2026-07-11 |
-| FDE仪表板 | `api/routers/fde.py:3771-3838` | ✅ | GET /fde/dashboard — 单次请求聚合关键指标+最近活动+主动告警+治理健康度→前端首页即用 | 2026-07-11 |
-| 会话对比 | `api/routers/fde.py:3885-3980` | ✅ | GET /fde/sessions/compare?left=id1&right=id2 — 双会话并排对比(就绪度/证据覆盖率/行动数/知识缺口)→增量分析 | 2026-07-11 |
+| FDE仪表板 | `platform/apps/fde/api/fde.py:3771-3838` | ✅ | GET /fde/dashboard — 单次请求聚合关键指标+最近活动+主动告警+治理健康度→前端首页即用 | 2026-07-11 |
+| **文档系统下载** | `management/api/docs.py` + `DocsViewer.tsx` | ✅ | GET /api/docs/download?path=... — 文档系统支持文件下载（Content-Disposition attachment） | 2026-07-18 |
+| 会话对比 | `platform/apps/fde/api/fde.py:3885-3980` | ✅ | GET /fde/sessions/compare?left=id1&right=id2 — 双会话并排对比(就绪度/证据覆盖率/行动数/知识缺口)→增量分析 | 2026-07-11 |
 | 上下文总线 | `harness/knowledge/context_bus.py` | ✅ | assemble_field_assessment()统一10层上下文组装→registry.py从~350行注入缩减为~10行→各层可独立复用 | 2026-07-12 |
-| 管线状态 | `api/routers/fde.py:4005-4075` | ✅ | GET /fde/pipeline-status — ContextBus逐层健康诊断+数据可用性快照(graphs/YAMLs)→注入管线透明化 | 2026-07-12 |
-| 演示数据播种 | `api/routers/fde.py:4107-4202` | ✅ | POST /fde/bootstrap-test-data?industry=&company= — 支持4行业专属演示数据(actions/evidence/readiness差异化) | 2026-07-12 |
-| 全行业播种 | `api/routers/fde.py:4205-4250` | ✅ | POST /fde/bootstrap-all — 一键播种4行业(政务/金融/制造/医疗)完整演示数据→12 actions+8 terms | 2026-07-12 |
+| 管线状态 | `platform/apps/fde/api/fde.py:4005-4075` | ✅ | GET /fde/pipeline-status — ContextBus逐层健康诊断+数据可用性快照(graphs/YAMLs)→注入管线透明化 | 2026-07-12 |
+| 演示数据播种 | `platform/apps/fde/api/fde.py:4107-4202` | ✅ | POST /fde/bootstrap-test-data?industry=&company= — 支持4行业专属演示数据(actions/evidence/readiness差异化) | 2026-07-12 |
+| 全行业播种 | `platform/apps/fde/api/fde.py:4205-4250` | ✅ | POST /fde/bootstrap-all — 一键播种4行业(政务/金融/制造/医疗)完整演示数据→12 actions+8 terms | 2026-07-12 |
 | 场景化技能包 | `ai-solution.yaml` + `ontology_bus.py` + `apps/skills/registry.py` | ✅ | digital_employee_roles增加skills字段→load_role_skills()/get_role_by_keyword()/filter_by_role()→角色与Skill动态绑定 | 2026-07-12 |
-| 对象语义开放 | `api/routers/fde.py` | ✅ | GET /fde/domain/{d}/operations → Agent可查询域中类的属性/状态转换/推理规则/对象属性(P1) | 2026-07-12 |
+| 对象语义开放 | `platform/apps/fde/api/fde.py` | ✅ | GET /fde/domain/{d}/operations → Agent可查询域中类的属性/状态转换/推理规则/对象属性(P1) | 2026-07-12 |
 | 权限边界建模 | `fde-delivery.yaml` + `graph_index.py` + `ontology_bus.py` | ✅ | YAML permissions字段(admin/operator/viewer三层)→_load_permission_rules()→check_permission()(P2) | 2026-07-12 |
-| 系统时序列观察 | `knowledge-atom.yaml` + `api/routers/fde.py:3382-3405,4480-4580` | ✅ | SystemSnapshot持久化→GET /fde/trends/system(12周趋势)+/fde/health/history(历史对比)→自演进数据基础 | 2026-07-12 |
-| 系统主动诊断 | `harness/knowledge/system_diagnostician.py` + `api/routers/fde.py:4578-4592` | ✅ | SystemDiagnostician(5条规则)→跨子系统关联分析(seci/evidence/skill/knowledge/convergence)→GET /fde/diagnose | 2026-07-12 |
-| 系统自修复 | `harness/knowledge/system_diagnostician.py:306-430` + `api/routers/fde.py:4596-4613` | ✅ | SystemHealer(confidence≥0.9安全门+5条自动修复+效果验证+审计快照)→POST /fde/heal | 2026-07-12 |
-| 系统自主演化 | `harness/knowledge/system_evolver.py` + `api/routers/fde.py:4622-4638` | ✅ | SystemEvolver(4条演化规则→术语自动发布/方案草稿审批)→GET /fde/evolve | 2026-07-12 |
+| 系统时序列观察 | `knowledge-atom.yaml` + `platform/apps/fde/api/fde.py:3382-3405,4480-4580` | ✅ | SystemSnapshot持久化→GET /fde/trends/system(12周趋势)+/fde/health/history(历史对比)→自演进数据基础 | 2026-07-12 |
+| 系统主动诊断 | `harness/knowledge/system_diagnostician.py` + `platform/apps/fde/api/fde.py:4578-4592` | ✅ | SystemDiagnostician(5条规则)→跨子系统关联分析(seci/evidence/skill/knowledge/convergence)→GET /fde/diagnose | 2026-07-12 |
+| 系统自修复 | `harness/knowledge/system_diagnostician.py:306-430` + `platform/apps/fde/api/fde.py:4596-4613` | ✅ | SystemHealer(confidence≥0.9安全门+5条自动修复+效果验证+审计快照)→POST /fde/heal | 2026-07-12 |
+| 系统自主演化 | `harness/knowledge/system_evolver.py` + `platform/apps/fde/api/fde.py:4622-4638` | ✅ | SystemEvolver(4条演化规则→术语自动发布/方案草稿审批)→GET /fde/evolve | 2026-07-12 |
 | 系统自演进路由 | `api/routers/system.py` + `harness/knowledge/seci_engine.py:523-528` | ✅ | GET /system/overview/diagnose/evolve+POST /system/heal/self-check →POST_LOOP每10次自动诊断 | 2026-07-12 |
-| 项目化手册生成 | `api/routers/fde.py:4738-5011` | ✅ | POST /fde/manuals(创建)+GET/PUT/regenerate/versions(生命周期)→项目专属手册+3个CUSTOM_SECTION+非破坏性再生成 | 2026-07-12 |
+| 项目化手册生成 | `platform/apps/fde/api/fde.py:4738-5011` | ✅ | POST /fde/manuals(创建)+GET/PUT/regenerate/versions(生命周期)→项目专属手册+3个CUSTOM_SECTION+非破坏性再生成 | 2026-07-12 |
 | 全局编码宪法 | `_facade.py:1724` + `registry.py:1544` + `executor.py:369` | ✅ | karpathy_v1从可选开关→全局默认→所有Skill执行自动遵循4原则(编码前思考/简洁优先/精准修改/目标驱动) | 2026-07-12 |
 | 反馈→SECI接入 | `system_diagnostician.py` | ✅ | feedback_pattern诊断规则+_apply_feedback_correction修复→用户修正行为自动转化为KnowledgeAtom(P0) | 2026-07-12 |
 | 置信度校准 | `system_diagnostician.py` | ✅ | confidence_overconfident诊断规则→detminism_score vs delivery_rate偏差>20%告警(P1) | 2026-07-12 |
@@ -222,15 +224,15 @@
 | Pipeline阶段健康 | `pipeline_engine.py:1954-1964` + `system_diagnostician.py:212-245` | ✅ | pt_快照持久化→pipeline_stage_failing规则→24h内同阶段失败≥3告警(B) | 2026-07-12 |
 | Memory压缩健康 | `compression.py:120-123` + `system_diagnostician.py:747-761` | ✅ | compression_stats属性暴露→compression_ineffective规则→压缩比<30%告警+agent↔compress关联(C) | 2026-07-12 |
 | 技能生命周期管理 | `skill_curator.py` + `registry.py:84` + `system.py:249-256,357-371` | ✅ | Hermes Agent式Curator→每7天审查(30d stale/90d archive/重叠合并)→GET /system/curate-skills | 2026-07-12 |
-| 智能澄清对话 | `api/routers/fde.py` + `FdeDashboard.tsx` | ✅ | POST /fde/assess/dialog(多轮状态机)→_compute_readiness gaps驱动追问→就绪度≥60自动触发诊断+前端Dialog | 2026-07-12 |
+| 智能澄清对话 | `platform/apps/fde/api/fde.py` + `FdeDashboard.tsx` | ✅ | POST /fde/assess/dialog(多轮状态机)→_compute_readiness gaps驱动追问→就绪度≥60自动触发诊断+前端Dialog | 2026-07-12 |
 | 多子系统上下文 | `harness/knowledge/context_bus.py:345-405` | ✅ | assemble_agent/skill/pipeline_context()→Agent(3层)/Skill(2层)/Pipeline(3层)各自轻量注入→总线覆盖全系统 | 2026-07-12 |
 | Agent领域上下文 | `harness/knowledge/context_bus.py:408-452` | ✅ | SESSION_START hook→所有Agent启动时自动注入术语字典+数字员工→领域知识全局可用 | 2026-07-12 |
-| 质量总线 | `api/routers/fde.py:4176-4270` | ✅ | GET /fde/quality-summary — 跨子系统质量聚合(FDE/SECI/Convergence/ContextBus四维评分)→统一0-100评分 | 2026-07-12 |
-| FDE趋势分析 | `api/routers/fde.py:2431-2550` | ✅ | GET /fde/trends — 时间序列统计(会话数/交付率/就绪度趋势)+术语增长曲线+行业分布(T) | 2026-07-11 |
-| FDE统一搜索 | `api/routers/fde.py:2578-2710` | ✅ | GET /fde/search?q=&scope= — 跨实体全文检索(会话/行动/术语/证据/行业)合并排序(U) | 2026-07-11 |
-| FDE质量评分 | `api/routers/fde.py:2717-2820` | ✅ | GET /fde/sessions/{id}/quality — 四维加权评分(证据覆盖率+行动完成率+术语覆盖率+状态变迁)0-100(V) | 2026-07-11 |
-| FDE主动告警 | `api/routers/fde.py:2805-2920` | ✅ | GET /fde/alerts — 扫描所有会话检测blocked/stale/low_quality/zero_evidence/high_gaps五类告警(W) | 2026-07-11 |
-| FDE动作闭环 | `api/routers/fde.py:1688-1807,2198-2300` | ✅ | StateTransition实体化(每次状态变更创建记录)→has_transition关系→GET timeline查看完整生命周期(Palantir L4) | 2026-07-11 |
+| 质量总线 | `platform/apps/fde/api/fde.py:4176-4270` | ✅ | GET /fde/quality-summary — 跨子系统质量聚合(FDE/SECI/Convergence/ContextBus四维评分)→统一0-100评分 | 2026-07-12 |
+| FDE趋势分析 | `platform/apps/fde/api/fde.py:2431-2550` | ✅ | GET /fde/trends — 时间序列统计(会话数/交付率/就绪度趋势)+术语增长曲线+行业分布(T) | 2026-07-11 |
+| FDE统一搜索 | `platform/apps/fde/api/fde.py:2578-2710` | ✅ | GET /fde/search?q=&scope= — 跨实体全文检索(会话/行动/术语/证据/行业)合并排序(U) | 2026-07-11 |
+| FDE质量评分 | `platform/apps/fde/api/fde.py:2717-2820` | ✅ | GET /fde/sessions/{id}/quality — 四维加权评分(证据覆盖率+行动完成率+术语覆盖率+状态变迁)0-100(V) | 2026-07-11 |
+| FDE主动告警 | `platform/apps/fde/api/fde.py:2805-2920` | ✅ | GET /fde/alerts — 扫描所有会话检测blocked/stale/low_quality/zero_evidence/high_gaps五类告警(W) | 2026-07-11 |
+| FDE动作闭环 | `platform/apps/fde/api/fde.py:1688-1807,2198-2300` | ✅ | StateTransition实体化(每次状态变更创建记录)→has_transition关系→GET timeline查看完整生命周期(Palantir L4) | 2026-07-11 |
 
 ---
 
@@ -313,6 +315,7 @@
 | Evolution Runner | `harness/knowledge/evolution_runner.py` | ✅ | 知识进化执行 | 已合入 |
 | KB Callbacks | `harness/knowledge/callbacks.py` | ✅ | Ingest/Query/EnqueueIngest/LoadDocKinds 回调 | 已合入 |
 | Complexity Router | `harness/knowledge/complexity_router.py` | ✅ | 复杂查询路由 | 已合入 |
+| CandidateKnowledgePool | `harness/knowledge/candidate_pool.py` | ✅ | FDE 现场反馈候选池：去重 + 语义冲突检测(>100°) + N≥3 自动触发 ActiveSynthesis | 2026-07-17 |
 
 ---
 
@@ -373,6 +376,11 @@
 | Action Type 操作契约 | `harness/interfaces/skill.py` + `apps/skills/executor.py` | ✅ | submission_criteria前置校验 + permissions角色控制 + side_effects声明 + _evaluate_criterion()执行前拦截 | 已合入 |
 | field-assessment HMESI增强 | `apps/skills/registry.py:1651-1690` | ✅ | 诊断报告注入历史案例检索(search_pages)+跨域类比(discover_cross_domain_analogs)+§4.65预期干预效果表格(HMESI Step 3) | 2026-07-11 |
 | 诊断溯源（证据等级） | `apps/skills/registry.py:1318-1323` + `:1692-1710` | ✅ | §1表格新增证据等级列(本体实例/历史案例/LLM推测)+system prompt注入三级标注规则，至少50%行需有据可查 | 2026-07-11 |
+| **canary_runner** | `engine/skills/canary_runner/SKILL.md` | ✅ | 灰度发布执行器（prompt），调用 /fde/canary API | 2026-07-18 |
+| **manual_generator** | `engine/skills/manual_generator/SKILL.md` | ✅ | 交付手册生成器（prompt），调用 /fde/manual/generate | 2026-07-18 |
+| **register_fde_prompts** | `apps/fde/prompts.py` | ✅ | FDE域prompt自动注册（7个），启动时回调注册 | 2026-07-18 |
+| **模块 Prompt 管理系统** | `apps/{module}/prompts.py`（6 模块） | ✅ | prompt_loader 域 prompt 迁移至各模块：fde(8)/builder(8)/skills(4)/eval(2)/knowledge(5)/workbench(4) | 2026-07-18 |
+| **finetune 模块搬迁** | `apps/finetune/` | ✅ | 从 harness/finetune/ + schemas_finetune.py 搬迁至标准模块目录结构 | 2026-07-18 |
 
 ---
 
@@ -432,6 +440,8 @@
 | Prometheus 10 指标 | `harness/memory/metrics.py` | ✅ | tool_truncated/semantic_renewed/rrf_latency/early_exit/cache_version 等 | 已合入 |
 | 语义记忆后台清理 | `harness/memory/manager.py:111` | ✅ | 每日定时软删除过期低频记忆，AIPLAT_MEMORY_CLEANUP_INTERVAL 可配 | 已合入 |
 | TraceVisualizer | `harness/execution/trace_visualizer.py` | ✅ | 决策痕迹可视化: 犹豫检测/重复检测/异常预警→Spec调整建议 | 已合入 |
+| Evaluation Summary Cron | `harness/scheduler/cron.py` | ✅ | 每周自动生成 FDE 运营周报（聚合 RAGDiagnosticsCollector + HallucinationTracker + FeedbackRadar）→ LLM NL 草稿 → 写入 _DIAG_CACHE["weekly_report"] | 2026-07-17 |
+| FDE 周报前端 | `frontend/Diagnostics/WeeklyReport.tsx` | ✅ | 诊断中心新增"周报"卡片：NL 渲染 + 一键复制为客户简报 + FDE 批注修订 | 2026-07-17 |
 | FDE Dashboard | `api/routers/workbench.py:fde-dashboard` + `UserWorkbench.tsx` | ✅ | 4卡聚合(待决策/信号预警/执行异常/训练)+时间轴+Spec筛选联动 | 已合入 |
 | TrendDetector (熵增预警) | `harness/infrastructure/trend_detector.py` | ✅ | 6桶滑动窗口+双缓冲+状态机(NORMAL/ALERTING/HIGH_ALERT/RESOLVED)+7天基线 | 已合入 |
 
@@ -491,6 +501,9 @@
 | Wiki E2E 测试 | `scripts/e2e_wiki_test.sh` | ✅ | Wiki 后端 API + 前端集成端到端测试 | 已合入 |
 | 文档入库冒烟测试 | `scripts/smoke_documents_ingest.sh` | ✅ | 启动服务 → 入录 fixture → 轮询 job → 校验 elements | 已合入 |
 | ProcessRegistry | `harness/infrastructure/process_registry.py` | ✅ | 进程生命周期管理 + 异步健康监控 + 优雅关闭 | 已合入 |
+| **fde_project_freeze** | `platform/apps/fde/api/fde.py` | ✅ | POST /fde/project/freeze — 中止项目冻结归档（§7.4） | 2026-07-18 |
+| **security_preflight** | `scripts/security_preflight.sh` | ✅ | FDE 安全行前检查脚本（§1.4） | 2026-07-18 |
+| **sanitize_logs** | `scripts/sanitize_logs.sh` | ✅ | FDE 日志脱敏脚本（§1.4） | 2026-07-18 |
 | DB Utils (SQLite连接池) | `harness/infrastructure/db_utils.py` | ✅ | 统一WAL+busy_timeout连接层，冷路径context manager + 热路径persistent conn | 已合入 |
 
 ---
@@ -501,7 +514,7 @@
 | cmm_graduation | `harness/learning/cmm_graduation.py` | ✅ | 自动同步 | 已合入 |
 | integration | `harness/integration.py` | ✅ | 自动同步 | 已合入 |
 | toolsets | `harness/tools/toolsets.py` | ✅ | 自动同步 | 已合入 |
-| deepseek | `harness/finetune/providers/deepseek.py` | ✅ | 自动同步 | 已合入 |
+| deepseek | `apps/finetune/providers/deepseek.py` | ✅ | 自动同步 | 已合入 |
 | skill_lint_scan | `harness/maintenance/skill_lint_scan.py` | ✅ | 自动同步 | 已合入 |
 | model_feedback | `harness/routing/model_feedback.py` | ✅ | 自动同步 | 已合入 |
 | execution_context | `harness/kernel/execution_context.py` | ✅ | 自动同步 | 已合入 |
@@ -575,7 +588,10 @@
 | BusinessGoalTracker | `harness/finance/value_calculator.py` | ✅ | 目标设定→进度追踪→偏离预警, on_track/at_risk/behind 实时状态 | 已合入 |
 | GoalAwareRouter | `harness/execution/dynamic_router.py:GoalAwareRouter` | ✅ | 业务目标感知调度: Speed(提速)/Quality(反思)/Safety(HITL) 策略自动切换 | 已合入 |
 | KPIAgent 监控 | `harness/agents/kpi_agent.py` | ✅ | 自动追踪 KPI → 偏离预警 → strategy_suggest, EvolutionEngine Step12 触发 | 已合入 |
+| Value Center API | `core/api/routers/value.py` + `core/schemas_value.py` | ✅ | CRUD endpoints: `/all/goals`, `/all/goals/{id}`, `/all/goals/{id}/trend`, `/all/strategy`; Schemas: `GoalCreateRequest`, `GoalUpdateRequest`, `GoalSourceConfigRequest` | 已合入 |
+ `core/api/routers/value.py` | ✅ | `get_all_goals`, `create_goal_all`, `update_goal_all`, `delete_goal_all`, `create_business_goal`, `get_goal_trend_all`, `get_strategy_all` + 4 REST endpoints (`/all/goals`, `/all/strategy`, `/all/goals/{id}`, `/all/goals/{id}/trend`) | 已合入 |
 | Proposal 工作流 | `harness/learning/proposal_store.py` | ✅ | draft→pending_approval→approved→merged/rejected + branch/merge语义 (Palantir AIP对齐) | 已合入 |
+| FDEBuilderOrchestrator | `apps/fde/orchestration/builder.py` | ✅ | FDE 对话式 Agent 构建：_clarify()→DomainRouter→SkillRegistry→auto_fill→Builder.deploy_app() | 2026-07-17 |
 | Agent 可发现性 | `wiki.py:/ontology/{domain}/discover` | ✅ | Agent动态查询 ObjectTypes/Links/Actions/Interfaces，自主发现操作能力 | 已合入 |
 
 ---
@@ -767,7 +783,8 @@
 | pdf_render | `aiPlat-platform/kb/poc/pdf_render.py` | ✅ | 自动同步 | 已合入 |
 | prompt_app | `api/routers/prompt_app.py` | ✅ | 自动同步 | 已合入 |
 | entropy | `api/routers/entropy.py` | ✅ | 自动同步 | 已合入 |
-| roles | `api/routers/roles.py` | ✅ | 自动同步 | 已合入 |
+| roles | `api/routers/roles.py` | ✅ | 角色CRUD + `override_strategy` + `update_agent_role` | 已合入 |
+| Roles Schemas | `core/schemas_roles.py` | ✅ | `RoleAgentUpdateRequest` + `RoleStrategyOverrideRequest` | 2026-07-18 |
 | workspace_packages | `api/routers/workspace_packages.py` | ✅ | 自动同步 | 已合入 |
 | workspace_agents | `api/routers/workspace_agents.py` | ✅ | 自动同步 | 已合入 |
 | wiki_ontology_patterns | `api/routers/wiki_ontology_patterns.py` | ✅ | 自动同步 | 已合入 |
@@ -806,6 +823,12 @@
 | wiki_scenes | `api/routers/wiki_scenes.py` | ✅ | 自动同步 | 已合入 |
 | diagnostics_capability | `api/routers/diagnostics_capability.py` | ✅ | 自动同步 | 已合入 |
 | fde_dashboard_v2 | `api/routers/fde_dashboard_v2.py` | ✅ | 自动同步 | 已合入 |
+| schemas_policy | `aiPlat-platform/auth/schemas_policy.py` | ✅ | 自动同步 | 已合入 |
+| learning_releases | `api/routers/learning_releases.py` | ✅ | 自动同步 | 已合入 |
+| learning_misc | `api/routers/learning_misc.py` | ✅ | 自动同步 | 已合入 |
+| prompt_templates | `api/routers/prompt_templates.py` | ✅ | 自动同步 | 已合入 |
+| learning_autocapture | `api/routers/learning_autocapture.py` | ✅ | 自动同步 | 已合入 |
+| prompt_eval | `api/routers/prompt_eval.py` | ✅ | 自动同步 | 已合入 |
 |------|------|:---:|------|------|
 | Change Control | `platform/api/routers/change_control.py` | ✅ | 变更请求跟踪/审计/autosmoke强制执行 | 已合入 |
 | Tenant Onboarding | `platform/api/routers/onboarding.py` | ✅ | 租户引导：LLM配置/执行后端/密钥迁移/信任密钥 | 已合入 |
@@ -883,7 +906,7 @@
 | StructuredMerger | `coordination/merger.py` | ✅ | Map-Reduce 合稿：交叉引用验证+悬空引用检测+LLM合稿 | 已合入 |
 | FullStack 诊断 | `api/routers/diagnostics.py:_check_full_stack` | ✅ | 12项全域检查(入驻/知识/协作/学习/FDE日常 5条旅程) | 已合入 |
 | Spec 冒烟测试 | `scripts/smoke_spec_lifecycle.sh` | ✅ | 8阶段自动化: create→submit→poll→trace→dashboard→stable | 已合入 |
-| Demo 种子数据 | `api/routers/workbench.py:seed-demo` | ✅ | 一键创建2个Spec+提交任务→仪表板立即可用 | 已合入 |
+| Workbench API | `api/routers/workbench.py` + `core/schemas_workbench.py` | ✅ | Spec生命周期(`create_spec:SpecCreateRequest`, `revise_spec`, `approve:SpecApproveRequest`, `reject:SpecRejectRequest`, `promote:SpecPromotionRequest`) + Skill安装(`install_skill_from_url:SkillInstallRequest`) + `submit_task` + `submit_feedback` | 已合入 |
 | 合规审计 (ComplianceChecks) | `management/compliance_checks.py` | ✅ | 可扩展生产就绪审计: 任务规格/MemoryManager/PolicyGate/RBAC/CLAUDE.md检查 | 已合入 |
 | 架构守卫诊断集成 | `api/routers/diagnostics.py:_check_arch_guard` | ✅ | 架构守卫违规数自动检测→诊断卡片展示, 0违规=满分 | 已合入 |
 | Skill Lint 诊断 | `api/routers/diagnostics.py:_check_skill_lint` | ✅ | 全量 Skill Lint 扫描→error/warning 统计→诊断评分 | 已合入 |
@@ -922,19 +945,19 @@
 
 | 维度 | 已实现 | 部分实现 | 合计 |
 |------|:---:|:---:|:---:|------|
-| Harness 执行引擎 | 31 | 0 | 31 |
-| 记忆子系统 | 18 | 0 | 18 |
-| 知识引擎（本体） | 96 | 0 | 96 |
-| RAG 检索 | 27 | 0 | 27 |
-| 知识基础设施 | 28 | 0 | 28 |
-| Agent 系统 | 12 | 0 | 12 |
-| Skill 系统 | 22 | 0 | 22 |
-| 安全与治理 | 29 | 0 | 29 |
-| 可观测性 | 14 | 0 | 14 |
-| 模型基础设施 | 16 | 0 | 16 |
+| Harness 执行引擎 | 34 | 0 | 34 |
+| 记忆子系统 | 31 | 0 | 31 |
+| 知识引擎（本体） | 107 | 0 | 107 |
+| RAG 检索 | 40 | 0 | 40 |
+| 知识基础设施 | 29 | 0 | 29 |
+| Agent 系统 | 23 | 0 | 23 |
+| Skill 系统 | 23 | 0 | 23 |
+| 安全与治理 | 33 | 0 | 33 |
+| 可观测性 | 16 | 0 | 16 |
+| 模型基础设施 | 27 | 0 | 27 |
 | 部署与运维 | 17 | 0 | 17 |
-| 扩展与学习 | 56 | 0 | 56 |
-| Gate 系统 | 7 | 0 | 7 |
+| 扩展与学习 | 79 | 0 | 79 |
+| Gate 系统 | 17 | 0 | 17 |
 | 评估系统 | 13 | 0 | 13 |
 | MCP 协议 | 6 | 0 | 6 |
 | A2A 协议 | 7 | 0 | 7 |
@@ -944,18 +967,18 @@
 | 部署与灰度 | 4 | 0 | 4 |
 | 运行时干预 | 2 | 0 | 2 |
 | Arena & 调度 | 4 | 0 | 4 |
-| 平台治理 | 17 | 0 | 17 |
+| 平台治理 | 59 | 0 | 59 |
 | Infra 基础设施 | 11 | 0 | 11 |
 | 核心API统一入口 | 5 | 0 | 5 |
 | 编排系统 | 4 | 0 | 4 |
 | 管理 & 质量 | 21 | 0 | 21 |
 | 编排层 | 17 | 0 | 17 |
-| **总计** | **681** | **0** | **681** |
+| **总计** | **699** | **0** | **699** |
 
 ---
 
 *最后更新: 2026-07-11*
-*版本: 18.5 · 28章 · 641项能力 · 543✅ · 企业大脑竣工+智能澄清对话*
+*版本: 18.5 · 28章 · 686项能力 · 686✅ · 企业大脑竣工+智能澄清对话*
 
 **自检命令**：
 ```bash

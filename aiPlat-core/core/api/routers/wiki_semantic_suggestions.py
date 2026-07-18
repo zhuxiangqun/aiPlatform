@@ -45,6 +45,8 @@ async def generate_semantic_suggestions_endpoint(req: SemanticSuggestRequest = B
             confidence_threshold=req.confidence_threshold,
         )
         return {"suggestions": suggestions, "total": len(suggestions), "source": "llm"}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Semantic suggestion generation failed: {e}")
 

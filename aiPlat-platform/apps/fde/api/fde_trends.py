@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 from typing import Any, Dict, List
+from apps.fde.schemas import FdeStatusResponse, FdeListResponse, FdeItemResponse
+
 
 from fastapi import APIRouter, HTTPException, Query
 
@@ -10,7 +12,7 @@ import json, time, os
 router = APIRouter(tags=["fde-trends"])
 
 
-@router.get("/trends/system", response_model=dict)
+@router.get("/trends/system", response_model=FdeItemResponse)
 async def fde_system_trends(
     weeks: int = Query(12, ge=4, le=52, description="Weeks of history"),
 ):
@@ -72,7 +74,7 @@ async def fde_system_trends(
     }
 
 
-@router.get("/health/history", response_model=dict)
+@router.get("/health/history", response_model=FdeItemResponse)
 async def fde_health_history(
     limit: int = Query(10, ge=1, le=50),
 ):

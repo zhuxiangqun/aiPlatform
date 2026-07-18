@@ -61,35 +61,35 @@ def _require_auth(request: Request) -> str:
     request.state.role = role
     return tenant
 
+from core.schemas_common import ListResponse, PaginatedResponse
+from core.schemas_workbench import CapabilityItem, TaskSubmitResponse, TaskFeedbackResponse, TrainingStatusResponse, SkillInstallResponse, SeedDemoResponse, BatchMarkStableResponse, TaskSubmitRequest, TaskFeedbackRequest, SpecCreateRequest, SpecReviseRequest, SkillInstallRequest, SpecPromotionRequest, SpecApproveRequest, SpecRejectRequest
+from core.schemas_builder import TaskStatusResponse, SpecHistoryResponse, SpecRevisionResponse, SpecCreatedResponse, SpecMarkStableResponse, SpecRadarResponse, SpecTraceResponse, SpecDiffResponse, SpecsListResponse, PromotionResponse
+
 router = APIRouter(prefix="/workbench", tags=["workbench"], dependencies=[Depends(_require_auth)])
 
-
-from core.schemas_common import ListResponse
 
 @router.get("/capabilities", response_model=ListResponse[CapabilityItem])
 async def get_capabilities() -> List[Dict[str, str]]:
     """List available agent capabilities for the workbench."""
-    return [
+    return {"items": [
         {"id": "contract_review", "name": "合同审核", "desc": "自动审核合同条款、价格、合规性", "icon": "📋"},
         {"id": "report_gen", "name": "报表生成", "desc": "根据数据自动生成分析报表", "icon": "📊"},
         {"id": "qa", "name": "客服问答", "desc": "内部知识库智能问答", "icon": "💬"},
         {"id": "code_review", "name": "代码审查", "desc": "自动检查代码质量和安全", "icon": "🔍"},
         {"id": "general", "name": "通用任务", "desc": "自由描述任意AI任务", "icon": "🤖"},
-    ]
+    ], "total": 5}
 
 
 @router.post("/submit", response_model=TaskSubmitResponse)
-async def submit_task(body: Dict[str, Any]) -> Dict[str, Any]:
+async def submit_task(body: TaskSubmitRequest) -> Dict[str, Any]:
     """Submit a new task to the AI agent. Optionally link to a Spec for lifecycle tracking."""
     import uuid, time
 
-    task = body.get("description", "")
-    capability = body.get("capability", "general")
-    spec_id = body.get("spec_id", "")
-    if not task:
-        raise HTTPException(status_code=400, detail="description is required")
+    task = body.description
+    capability = body.capability
+    spec_id = body.spec_id
 
-    run_id = f"wb-{uuid.uuid4().hex[:8]}" if "run_id" not in body else body["run_id"]
+    run_id = f"wb-{uuid.uuid4().hex[:8]}" if not body.run_id else body.run_id
     entry = {
         "run_id": run_id,
         "capability": capability,
@@ -119,7 +119,13 @@ async def submit_task(body: Dict[str, Any]) -> Dict[str, Any]:
 
     # Fire-and-forget: simulate task completion
     import asyncio as _aio
-    _aio.ensure_future(_simulate_task_completion(run_id, spec_id))
+    async def _safe_simulate():
+        try:
+            await _simulate_task_completion(run_id, spec_id)
+        except Exception:
+            import logging
+            logging.warning("Task simulation failed for run %s", run_id, exc_info=True)
+    _aio.ensure_future(_safe_simulate())
 
     return {"run_id": run_id, "status": "accepted", "spec_id": spec_id}
 
@@ -212,8 +218,7 @@ async def get_task_status(run_id: str) -> Dict[str, Any]:
     return entry
 
 
-from core.schemas_common import ListResponse, PaginatedResponse
-from core.schemas_workbench import CapabilityItem, TaskSubmitResponse, TaskFeedbackResponse, TrainingStatusResponse, SkillInstallResponse, SeedDemoResponse, BatchMarkStableResponse
+from core.schemas_workbench import TrainingStatusResponse, SkillInstallResponse, SeedDemoResponse, BatchMarkStableResponse
 from core.schemas_builder import SpecHistoryResponse, SpecRevisionResponse, SpecCreatedResponse, SpecMarkStableResponse, SpecRadarResponse, SpecTraceResponse, SpecDiffResponse, SpecsListResponse, TaskStatusResponse, PromotionResponse
 
 @router.get("/tasks", response_model=PaginatedResponse[dict])
@@ -232,10 +237,10 @@ async def get_user_tasks(limit: int = 20) -> Dict[str, Any]:
 
 
 @router.post("/tasks/{run_id}/feedback", response_model=TaskFeedbackResponse)
-async def submit_feedback(run_id: str, body: Dict[str, Any]) -> Dict[str, Any]:
+async def submit_feedback(run_id: str, body: TaskFeedbackRequest) -> Dict[str, Any]:
     """Submit user feedback for a completed task."""
-    rating = body.get("rating", 0)
-    action = body.get("action", "useful")
+    rating = body.rating
+    action = body.action
 
     # Feed into ImplicitFeedbackCollector
     try:
@@ -263,8 +268,9 @@ async def list_specs() -> Dict[str, Any]:
         sl = get_spec_lifecycle()
         specs = sl.list_specs()
         return {"specs": specs, "total": len(specs)}
-    except Exception as e:
-        return {"specs": [], "total": 0, "error": str(e)}
+    except HTTPException:
+        raise
+        raise HTTPException(status_code=500, detail=str(e)[:200])
 
 
 @router.get("/spec/{spec_id}/history", response_model=SpecHistoryResponse)
@@ -288,12 +294,13 @@ async def get_spec_history(spec_id: str) -> Dict[str, Any]:
                 "execution_summary": (v.execution_result or {}).get("summary", ""),
             })
         return {"spec_id": spec_id, "versions": result, "total": len(result)}
-    except Exception as e:
-        return {"spec_id": spec_id, "versions": [], "total": 0, "error": str(e)}
+    except HTTPException:
+        raise
+        raise HTTPException(status_code=500, detail=str(e)[:200])
 
 
 @router.post("/spec/{spec_id}/revise", response_model=SpecRevisionResponse)
-async def revise_spec(spec_id: str, body: Dict[str, Any]) -> Dict[str, Any]:
+async def revise_spec(spec_id: str, body: SpecReviseRequest) -> Dict[str, Any]:
     """Revise Spec + optionally trigger re-execution.
 
     Body:
@@ -307,15 +314,15 @@ async def revise_spec(spec_id: str, body: Dict[str, Any]) -> Dict[str, Any]:
     try:
         from core.harness.models.spec_lifecycle import get_spec_lifecycle, RevisionTrigger
 
-        new_content = body.get("content", {})
+        new_content = body.content
         if not new_content:
             raise HTTPException(status_code=400, detail="content is required")
 
-        trigger = body.get("trigger", RevisionTrigger.MANUAL.value)
-        detail = body.get("trigger_detail", "Manual revision")
-        created_by = body.get("created_by", "developer")
-        affected_stages = body.get("affected_stages")
-        re_execute = body.get("re_execute", False)
+        trigger = body.trigger
+        detail = body.trigger_detail or "Manual revision"
+        created_by = body.created_by
+        affected_stages = body.affected_stages
+        re_execute = body.re_execute
 
         sl = get_spec_lifecycle()
         latest = sl.get_latest(spec_id)
@@ -415,8 +422,9 @@ async def get_feedback_radar(spec_id: str) -> Dict[str, Any]:
                 "evidence_count": len(s.evidence),
             })
         return {"spec_id": spec_id, "suggestions": result, "total": len(result)}
-    except Exception as e:
-        return {"spec_id": spec_id, "suggestions": [], "total": 0, "error": str(e)}
+    except HTTPException:
+        raise
+        raise HTTPException(status_code=500, detail=str(e)[:200])
 
 
 @router.get("/spec/{spec_id}/trace", response_model=SpecTraceResponse)
@@ -465,8 +473,9 @@ async def get_spec_trace(spec_id: str) -> Dict[str, Any]:
                 for s in summary.steps
             ],
         }
-    except Exception as e:
-        return {"spec_id": spec_id, "trace": None, "error": str(e)}
+    except HTTPException:
+        raise
+        raise HTTPException(status_code=500, detail=str(e)[:200])
 
 
 @router.get("/training/status", response_model=TrainingStatusResponse)
@@ -500,8 +509,9 @@ async def get_training_status() -> Dict[str, Any]:
             "latest_model_completed_at": model_info.get("completed_at", ""),
             "dataset_count": dataset_count,
         }
-    except Exception as e:
-        return {"enabled": False, "error": str(e)}
+    except HTTPException:
+        raise
+        raise HTTPException(status_code=500, detail=str(e)[:200])
 
 
 # ── FDE Dashboard (proxy — logic migrated to core.api.routers.fde) ──────
@@ -513,7 +523,7 @@ async def get_fde_dashboard():
     Kept to avoid breaking existing callers (ValueCenter/UserWorkbench.tsx, 7 refs).
     Remove this proxy once frontend migration is complete.
     """
-    from core.api.routers.fde import get_fde_dashboard as _fde_dashboard
+    from apps.fde.api.fde import get_fde_dashboard as _fde_dashboard  # migrated to platform
     return await _fde_dashboard()
 
 
@@ -529,20 +539,21 @@ async def mark_spec_stable(spec_id: str) -> Dict[str, Any]:
         if result:
             return {"spec_id": spec_id, "status": "stable", "version": result.version}
         return {"spec_id": spec_id, "status": "unchanged", "reason": "not in review"}
-    except Exception as e:
-        return {"spec_id": spec_id, "error": str(e)}
+    except HTTPException:
+        raise
+        raise HTTPException(status_code=500, detail=str(e)[:200])
 
 
 @router.post("/spec/create", response_model=SpecCreatedResponse)
-async def create_spec(body: Dict[str, Any]) -> Dict[str, Any]:
+async def create_spec(body: SpecCreateRequest) -> Dict[str, Any]:
     """Create a new Spec from scratch (manual Spec creation)."""
     try:
         from core.harness.models.spec_lifecycle import get_spec_lifecycle
-        spec_id = body.get("spec_id", "")
+        spec_id = body.spec_id
         if not spec_id:
             raise HTTPException(status_code=400, detail="spec_id is required")
-        content = body.get("content", {})
-        created_by = body.get("created_by", "developer")
+        content = body.content
+        created_by = body.created_by
         sl = get_spec_lifecycle()
         sv = sl.create_draft(spec_id, content, created_by=created_by,
                               trigger_detail="Manual creation from Workbench")
@@ -594,7 +605,7 @@ async def seed_demo_data() -> Dict[str, Any]:
 
 
 @router.post("/skill/install", response_model=SkillInstallResponse)
-async def install_skill_from_url(body: Dict[str, Any]) -> Dict[str, Any]:
+async def install_skill_from_url(body: SkillInstallRequest) -> Dict[str, Any]:
     """Install a skill from an agentskills.io URL / git repo / zip URL.
 
     Skill Marketplace (Competitor Gap Closure): wraps skill_installer to
@@ -602,7 +613,7 @@ async def install_skill_from_url(body: Dict[str, Any]) -> Dict[str, Any]:
 
     Body: {"url": "https://agentskills.io/skill/security-auditor" | git URL | zip URL}
     """
-    url = body.get("url", "")
+    url = body.url
     if not url:
         raise HTTPException(status_code=400, detail="url is required")
 
@@ -837,8 +848,9 @@ async def get_promotion_queue() -> Dict[str, Any]:
         items = [{"spec_id": s.spec_id, "version": s.version, "requester": s.promotion_requester,
                   "notes": s.promotion_notes, "created_at": s.created_at} for s in queue]
         return {"queue": items, "total": len(items)}
-    except Exception as e:
-        return {"queue": [], "total": 0, "error": str(e)}
+    except HTTPException:
+        raise
+        raise HTTPException(status_code=500, detail=str(e)[:200])
 
 
 # Local helper for _trigger_spec_re_execution

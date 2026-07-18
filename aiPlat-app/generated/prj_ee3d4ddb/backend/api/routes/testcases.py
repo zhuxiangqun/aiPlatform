@@ -15,6 +15,8 @@ def generate_testcases(project_id: str):
         generator = TestCaseGenerator(db)
         test_case_id = generator.generate_test_cases(project_id)
         return {"test_case_id": test_case_id}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     finally:

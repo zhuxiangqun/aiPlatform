@@ -11,7 +11,7 @@ router = APIRouter(prefix="/fde", tags=["fde", "fde-platform"])
 
 def _get_fde_router():
     """Lazy import the FDE router from its current location."""
-    from core.api.routers.fde import router as _fde_router
+    from .fde import router as _fde_router  # migrated to platform, no longer in core
     return _fde_router
 
 

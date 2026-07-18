@@ -220,7 +220,9 @@ def load_learner_profile(learner_id: str) -> Optional[LearnerProfile]:
     if not _os.path.exists(path):
         return None
     try:
-        return LearnerProfile.from_dict(_json.load(open(path, "r", encoding="utf-8")))
+        with open(path, "r", encoding="utf-8") as f:
+            data = _json.load(f)
+        return LearnerProfile.from_dict(data)
     except Exception:
         return None
 
@@ -237,7 +239,9 @@ def load_chapter_content(chapter_id: str) -> Optional[ChapterContent]:
     if not _os.path.exists(path):
         return None
     try:
-        return ChapterContent.from_dict(_json.load(open(path, "r", encoding="utf-8")))
+        with open(path, "r", encoding="utf-8") as f:
+            data = _json.load(f)
+        return ChapterContent.from_dict(data)
     except Exception:
         return None
 
@@ -254,7 +258,8 @@ def load_exercise_results(learner_id: str, chapter_id: str) -> List[ExerciseResu
     if not _os.path.exists(path):
         return []
     try:
-        data = _json.load(open(path, "r", encoding="utf-8"))
+        with open(path, "r", encoding="utf-8") as f:
+            data = _json.load(f)
         return [ExerciseResult(**r) for r in data]
     except Exception:
         return []

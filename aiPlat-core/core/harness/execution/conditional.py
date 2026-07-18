@@ -45,17 +45,17 @@ class PipelineCondition:
 
     @staticmethod
     def phase_check(state: PipelineState) -> str:
-        """Route based on current pipeline phase (enum-driven, not string matching).
-        
+        """Route based on current pipeline phase (string constants, no business enum).
+
         Returns: 'done' | 'failed' | 'paused' | 'executing'
         """
-        from core.schemas_builder import BuilderSessionPhase
-        phase = str(state.get("phase", BuilderSessionPhase.executing.value))
-        if phase == BuilderSessionPhase.done.value:
+        from core.harness.execution.phase import PipelinePhase
+        phase = str(state.get("phase", PipelinePhase.EXECUTING))
+        if phase == PipelinePhase.DONE:
             return "done"
-        if phase == BuilderSessionPhase.failed.value:
+        if phase == PipelinePhase.FAILED:
             return "failed"
-        if phase == BuilderSessionPhase.paused.value:
+        if phase == PipelinePhase.PAUSED:
             return "paused"
         return "executing"
 

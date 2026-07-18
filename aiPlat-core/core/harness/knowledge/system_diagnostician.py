@@ -141,7 +141,7 @@ class SystemDiagnostician:
                     continue
                 for _, n in fd._nodes.items():
                     if getattr(n, "class_name", "") == "DiagnosisSession":
-                        nb = fd.get_neighbors(getattr(n, "entity_id", ""), direction="outgoing")
+                        nb = fd.get_neighbor_edges(getattr(n, "entity_id", ""), direction="outgoing")
                         for nid, e in nb:
                             if e.relation_name == "has_meta":
                                 mn = fd.get_node(nid)
@@ -356,7 +356,7 @@ class SystemDiagnostician:
         try:
             from core.harness.optimization.goal_generator import GoalGenerator
             gg = GoalGenerator()
-            goals = gg._scan_fde_feedback()
+            goals = gg._scan_domain_feedback()
             if goals and len(goals) > 0:
                 return {
                     "rule": "feedback_pattern", "severity": "info",
@@ -388,7 +388,7 @@ class SystemDiagnostician:
             for _, n in fd._nodes.items():
                 if getattr(n, "class_name", "") != "DiagnosisSession":
                     continue
-                nb = fd.get_neighbors(getattr(n, "entity_id", ""), direction="outgoing")
+                nb = fd.get_neighbor_edges(getattr(n, "entity_id", ""), direction="outgoing")
                 has_meta = False
                 has_action = False
                 for nid, e in nb:
@@ -641,7 +641,7 @@ def _restart_seci_hook_check() -> str:
 
 def _trigger_improve_action() -> str:
     """Suggest improve action for evidence decline."""
-    return "suggest: run GET /fde/sessions/{id}/improve for recent sessions"
+    return "suggest: run GET /fde/sessions/{id}/improve for recent sessions"  # noqa: domain-ref — diagnostic API documented in FDE spec
 
 
 def _downgrade_degraded_skills() -> str:
@@ -696,7 +696,7 @@ def _apply_feedback_correction() -> str:
     try:
         from core.harness.optimization.goal_generator import GoalGenerator
         gg = GoalGenerator()
-        goals = gg._scan_fde_feedback()
+        goals = gg._scan_domain_feedback()
         if not goals:
             return "no_feedback_goals_detected"
 

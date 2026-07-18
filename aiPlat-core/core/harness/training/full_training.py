@@ -188,7 +188,7 @@ class FullTrainingEngine:
 
     async def _load_dataset(self, dataset_id: str) -> List[Dict[str, Any]]:
         try:
-            from core.harness.finetune.dataset_manager import DatasetManager
+            from core.apps.finetune.dataset_manager import DatasetManager
             mgr = DatasetManager()
             return await mgr.preview(dataset_id, limit=2000)
         except Exception:

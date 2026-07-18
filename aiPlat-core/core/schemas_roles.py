@@ -34,3 +34,15 @@ class RoleStrategyOverrideResponse(BaseModel):
     agent_id: str
     mode: str = ""
     config: Dict[str, Any] = Field(default_factory=dict)
+
+
+# ── Request models ──────────────────────────────────────────────────
+
+class RoleAgentUpdateRequest(BaseModel):
+    role: str = "employee"
+    config: Dict[str, Any] = Field(default_factory=dict)
+
+
+class RoleStrategyOverrideRequest(BaseModel):
+    agent_id: str = ""
+    mode: str = "normal"

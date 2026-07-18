@@ -9,18 +9,20 @@ from typing import Any, Dict, List
 from fastapi import APIRouter, HTTPException, Request
 
 from core.schemas_common import PaginatedResponse
-from core.schemas_finetune import (
-    TrainingJobResponse, TrainingJobListResponse, ModelListItem, ModelListResponse, DistillJobResult, ScratchJobResult,
+from core.apps.finetune.schemas import (
+    TrainingJobResponse, TrainingJobListResponse, TrainingJobCreatedResponse,
+    ModelListItem, ModelListResponse, DistillJobResult, ScratchJobResult,
     DatasetCreateRequest, DatasetUpdateRequest, DatasetImportRequest,
     DatasetResponse, DatasetListResponse, DatasetPreviewResponse,
     JobCreateRequest, JobResponse, JobListResponse,
     ProviderInfo, ProviderListResponse, FineTuneProvider,
 )
-from core.harness.finetune.dataset_manager import DatasetManager
-from core.harness.finetune.job_manager import JobManager
+from core.apps.finetune.dataset_manager import DatasetManager
+from core.apps.finetune.job_manager import JobManager
 
 from fastapi import APIRouter, HTTPException, Request, Depends
 import os
+from apps.common_schemas import StatusResponse, ListResponse, ItemResponse
 
 # ── Auth passthrough (shared with workbench) ──
 
@@ -102,7 +104,7 @@ async def update_dataset(dataset_id: str, req: DatasetUpdateRequest):
     return ds
 
 
-@router.delete("/datasets/{dataset_id}", response_model=Dict[str, Any])
+@router.delete("/datasets/{dataset_id}", response_model=StatusResponse)
 async def delete_dataset(dataset_id: str):
     ok = _get_dataset_mgr().delete(dataset_id)
     if not ok:
@@ -149,7 +151,7 @@ async def get_job(job_id: str):
     return job
 
 
-@router.delete("/jobs/{job_id}", response_model=Dict[str, Any])
+@router.delete("/jobs/{job_id}", response_model=StatusResponse)
 async def cancel_job(job_id: str):
     ok = _get_job_mgr().cancel(job_id)
     if not ok:
@@ -161,7 +163,7 @@ async def cancel_job(job_id: str):
 
 @router.get("/providers", response_model=ProviderListResponse)
 async def list_providers():
-    from core.harness.finetune.providers.deepseek import DeepSeekFineTuneProvider
+    from core.apps.finetune.providers.deepseek import DeepSeekFineTuneProvider
     providers = []
     for prov_cls, name in [
         (DeepSeekFineTuneProvider, FineTuneProvider.DEEPSEEK),
@@ -221,6 +223,8 @@ async def start_training(body: Dict[str, Any]) -> Dict[str, Any]:
             "avg_reward": run.avg_reward,
             "avg_loss": getattr(run, "avg_loss", 0),
         }
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)[:200])
 
@@ -273,11 +277,13 @@ async def start_distillation(body: Dict[str, Any]) -> Dict[str, Any]:
             epochs=int(body.get("epochs", 3)),
         )
         return {"job_id": job_id, "status": "running"}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)[:200])
 
 
-@router.get("/distill/{job_id}", response_model=Dict[str, Any])  # dynamic delegate output, keep Dict
+@router.get("/distill/{job_id}", response_model=ItemResponse)  # dynamic delegate output, keep Dict
 async def get_distillation_status(job_id: str) -> DistillJobResult:
     """Get knowledge distillation job status."""
     try:
@@ -332,11 +338,13 @@ async def start_scratch_training(body: Dict[str, Any]) -> Dict[str, Any]:
         )
         job_id = await engine.train_from_scratch(config)
         return {"job_id": job_id, "status": "running"}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)[:200])
 
 
-@router.get("/scratch/{job_id}", response_model=Dict[str, Any])  # dynamic delegate output, keep Dict
+@router.get("/scratch/{job_id}", response_model=ItemResponse)  # dynamic delegate output, keep Dict
 async def get_scratch_status(job_id: str) -> ScratchJobResult:
     """Get from-scratch training job status."""
     try:
@@ -385,5 +393,5 @@ async def list_registered_models() -> Dict[str, Any]:
 
 def _local_provider():
     """Lazy load LocalFineTuneProvider class to avoid MLX import errors."""
-    from core.harness.finetune.providers.local import LocalFineTuneProvider
+    from core.apps.finetune.providers.local import LocalFineTuneProvider
     return LocalFineTuneProvider

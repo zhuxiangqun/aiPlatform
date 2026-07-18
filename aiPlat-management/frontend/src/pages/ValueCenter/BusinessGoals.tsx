@@ -20,10 +20,10 @@ const BusinessGoals: React.FC = () => {
 
   useEffect(() => {
     Promise.all([
-      fetch('/api/core/value/all/goals').then(r => r.json()),
-      fetch('/api/core/value/all/strategy').then(r => r.json()),
+      fetch('/api/core/value/all/goals').then(r => r.ok ? r.json() : Promise.resolve({ items: [] })),
+      fetch('/api/core/value/all/strategy').then(r => r.ok ? r.json() : Promise.resolve({ params: {}, context: {}, goals_count: 0 })),
     ]).then(([g, s]) => {
-      setGoals(g);
+      setGoals(g.items || g);
       setStrategy(s);
       // Compute predictions
       const preds: Record<string, Prediction> = {};

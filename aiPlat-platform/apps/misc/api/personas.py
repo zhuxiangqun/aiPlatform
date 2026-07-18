@@ -10,6 +10,7 @@ from fastapi import APIRouter, HTTPException, Request
 
 from core.api.deps import actor_from_http, rbac_guard
 from core.harness.kernel.runtime import get_kernel_runtime
+from apps.common_schemas import StatusResponse, ListResponse, ItemResponse
 
 router = APIRouter()
 
@@ -86,7 +87,7 @@ def _extract_section(md_body: str, *, title_contains: str, max_chars: int = 4000
     return ("\n".join(out_lines)).strip()[:max_chars]
 
 
-@router.get("/personas", response_model=Dict[str, Any])
+@router.get("/personas", response_model=ItemResponse)
 async def list_personas(limit: int = 100, offset: int = 0, q: Optional[str] = None, category: Optional[str] = None, source: Optional[str] = None):
     """
     Read-only Personas list (stored in prompt_templates with metadata.type=persona).
@@ -146,7 +147,7 @@ async def list_personas(limit: int = 100, offset: int = 0, q: Optional[str] = No
     return {"items": out, "limit": int(limit), "offset": int(offset), "returned": len(out)}
 
 
-@router.get("/personas/{template_id}", response_model=Dict[str, Any])
+@router.get("/personas/{template_id}", response_model=ItemResponse)
 async def get_persona(template_id: str):
     store = _store()
     if not store:
@@ -164,7 +165,7 @@ async def get_persona(template_id: str):
     return out
 
 
-@router.post("/personas/import/agency-agents", response_model=Dict[str, Any])
+@router.post("/personas/import/agency-agents", response_model=StatusResponse)
 async def import_agency_agents(request: dict, http_request: Request):
     """
     Import agency-agents markdown personas into prompt_templates.
