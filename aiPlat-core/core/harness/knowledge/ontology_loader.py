@@ -55,6 +55,8 @@ class OntologyDomain:
     axioms: List[OntologyAxiom] = field(default_factory=list)
     inference_rules: List[Dict[str, Any]] = field(default_factory=list)
     interfaces: List[OntologyInterface] = field(default_factory=list)  # P1: Interface 原语
+    views: Dict[str, Any] = field(default_factory=dict)  # v2.6: role-based views
+    processes: List[Dict[str, Any]] = field(default_factory=list)  # v2.6: cross-entity processes
 
 
 # ── YAML Loader ──────────────────────────────────────────────────────
@@ -152,6 +154,12 @@ def load_ontology_from_yaml(file_path: str) -> OntologyDomain:
                 description=iface_def.get("description", ""),
                 properties=list(iface_def.get("properties", []) or []),
             ))
+
+    # ── Load role-based views (v2.6) ──
+    domain.views = dict(raw.get("views") or {})
+
+    # ── Load cross-entity processes (v2.6) ──
+    domain.processes = list(raw.get("processes") or [])
 
     return domain
 

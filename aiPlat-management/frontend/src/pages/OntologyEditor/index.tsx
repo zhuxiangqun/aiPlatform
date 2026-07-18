@@ -31,6 +31,9 @@ export default function OntologyEditor() {
   const [newDomainName, setNewDomainName] = useState('');
   const [nlDescription, setNlDescription] = useState('');
   const [generating, setGenerating] = useState(false);
+  const [monitorTab, setMonitorTab] = useState(false);
+  const [stateDist, setStateDist] = useState<any>(null);
+  const [bottlenecks, setBottlenecks] = useState<any>(null);
   const [editing, setEditing] = useState(false);
   const [editForm, setEditForm] = useState<any>({});
 
@@ -147,6 +150,22 @@ export default function OntologyEditor() {
     }
   };
 
+  const fetchMonitor = async () => {
+    if (!selectedDomain) return;
+    try {
+      const [sd, bo] = await Promise.all([
+        apiClient.get(api(`/domains/${selectedDomain}/monitor/state-distribution`)),
+        apiClient.get(api(`/domains/${selectedDomain}/monitor/bottlenecks`)),
+      ]);
+      setStateDist(sd.data);
+      setBottlenecks(bo.data);
+    } catch {}
+  };
+
+  useEffect(() => {
+    if (monitorTab && selectedDomain) fetchMonitor();
+  }, [monitorTab, selectedDomain]);
+
   const startNewClass = () => {
     setEditForm({
       label: '', description: '', required_fields: ['name', 'description'],
@@ -220,6 +239,10 @@ export default function OntologyEditor() {
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 10 }}>
                 <h3 style={{ margin: 0, fontSize: 14 }}>{schema?.name || selectedDomain} Classes</h3>
                 <div style={{ display: 'flex', gap: 4 }}>
+                  <button onClick={() => setMonitorTab(!monitorTab)}
+                    style={{ ...btnSecondaryStyle, fontSize: 11, padding: '3px 8px' }}>
+                    {monitorTab ? 'Classes' : 'Monitor'}
+                  </button>
                   <button onClick={startNewClass} style={iconBtnStyle} title="New class"><Plus size={15} /></button>
                   <button onClick={handlePublish} style={iconBtnStyle} title="Publish"><Save size={15} /></button>
                 </div>
@@ -255,6 +278,54 @@ export default function OntologyEditor() {
                 </div>
               ))}
             </div>
+
+            {/* Monitor panel */}
+            {monitorTab && (
+              <div style={{ flex: 1 }}>
+                <h4 style={{ margin: '0 0 12px', fontSize: 13, color: '#888' }}>State Distribution</h4>
+                {stateDist?.distribution?.length ? (
+                  <div style={{ maxHeight: 300, overflowY: 'auto' }}>
+                    {(() => {
+                      const grouped: Record<string, any[]> = {};
+                      stateDist.distribution.forEach((d: any) => {
+                        (grouped[d.class_name] = grouped[d.class_name] || []).push(d);
+                      });
+                      return Object.entries(grouped).map(([cls, items]) => (
+                        <div key={cls} style={{ marginBottom: 10 }}>
+                          <div style={{ fontWeight: 600, fontSize: 12, marginBottom: 4 }}>{cls}</div>
+                          {items.map((d: any, i: number) => (
+                            <span key={i} style={{
+                              display: 'inline-block', padding: '2px 8px', margin: 2,
+                              background: '#2a2a4a', borderRadius: 4, fontSize: 11,
+                            }}>
+                              {d.state_name}: {d.count}
+                            </span>
+                          ))}
+                        </div>
+                      ));
+                    })()}
+                  </div>
+                ) : (
+                  <div style={{ color: '#555', fontSize: 12 }}>No state data yet. Run the ontology engine to populate.</div>
+                )}
+                <h4 style={{ margin: '16px 0 12px', fontSize: 13, color: '#888' }}>Bottlenecks</h4>
+                {bottlenecks?.bottlenecks?.length ? (
+                  <div style={{ maxHeight: 200, overflowY: 'auto' }}>
+                    {bottlenecks.bottlenecks.map((b: any, i: number) => (
+                      <div key={i} style={{
+                        padding: '6px 10px', marginBottom: 4, borderRadius: 4,
+                        background: '#2a1a1a', fontSize: 11, display: 'flex', justifyContent: 'space-between',
+                      }}>
+                        <span>{b.entity_name} ({b.class_name}: {b.current_state})</span>
+                        <span style={{ color: '#f88' }}>{Math.round(b.stuck_seconds / 60)}m</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div style={{ color: '#555', fontSize: 12 }}>No bottlenecks detected.</div>
+                )}
+              </div>
+            )}
 
             {/* Class detail / edit panel */}
             <div style={{ flex: 1 }}>

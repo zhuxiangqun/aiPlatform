@@ -154,15 +154,18 @@ class StateMachine:
 
         for _ in range(max_iter):
             fired = None
+            # Pass 1: instant triggers (explicit business logic)
             for trans in transitions_cfg:
+                trigger = trans.get("trigger", {})
+                trigger_type = str(trigger.get("type", ""))
+                if trigger_type == "time_elapsed":
+                    continue  # skip, evaluated as fallback in pass 2
+
                 from_states = trans.get("from", [])
                 if isinstance(from_states, str):
                     from_states = [from_states]
                 if current not in from_states:
                     continue
-
-                trigger = trans.get("trigger", {})
-                trigger_type = str(trigger.get("type", ""))
 
                 if self._eval_trigger(trigger_type, trigger, instance, context):
                     to_state = trans.get("to", "")
@@ -189,7 +192,39 @@ class StateMachine:
                     break
 
             if not fired:
-                break
+                # Pass 2: time_elapsed fallback triggers (SLA escalation, timeout)
+                for trans in transitions_cfg:
+                    trigger = trans.get("trigger", {})
+                    if str(trigger.get("type", "")) != "time_elapsed":
+                        continue
+                    from_states = trans.get("from", [])
+                    if isinstance(from_states, str):
+                        from_states = [from_states]
+                    if current not in from_states:
+                        continue
+                    if self._eval_trigger("time_elapsed", trigger, instance, context):
+                        to_state = trans.get("to", "")
+                        if not to_state or to_state == current:
+                            continue
+                        triggered_effects = self._match_side_effects(side_effects_cfg, to_state)
+                        fired = StateTransitionResult(
+                            instance_title=(
+                                instance.get("properties", {}).get("title")
+                                or instance.get("properties", {}).get("name")
+                                or instance.get("entity_text", "unknown")
+                            ),
+                            class_name=class_name,
+                            from_state=current,
+                            to_state=to_state,
+                            trigger_type="time_elapsed",
+                            transition_desc=str(trans.get("description", "")),
+                            side_effects=triggered_effects,
+                        )
+                        current = to_state
+                        chain.append(fired)
+                        break
+                if not fired:
+                    break
 
         return chain
 
@@ -208,6 +243,8 @@ class StateMachine:
             return self._eval_property_condition(trigger, instance)
         elif trigger_type == "relation_exists":
             return self._eval_relation_exists(trigger, context)
+        elif trigger_type == "time_elapsed":
+            return self._eval_time_elapsed(trigger, instance, context)
         return False
 
     def _eval_relation_count(
@@ -250,9 +287,40 @@ class StateMachine:
           "true"/"false"       — boolean value
           ">= N", "> N", ...   — numeric threshold
           "in:a,b,c"           — string inclusion
+
+        v2.6: dynamic threshold — if trigger has 'threshold_from_property',
+              the numeric comparison target is read from the instance's own
+              properties at runtime. Falls back to static 'threshold' in condition.
         """
+        import logging as _logging
+        _state_log = _logging.getLogger("state_machine")
+
         field = str(trigger.get("field", ""))
         condition = str(trigger.get("condition", ""))
+
+        # Resolve dynamic threshold before evaluating numeric comparison
+        threshold_prop = trigger.get("threshold_from_property", "")
+        if threshold_prop:
+            props = instance.get("properties", {}) or {}
+            dynamic_val = props.get(threshold_prop)
+            if dynamic_val is None:
+                _state_log.warning(
+                    "threshold_from_property '%s' not found on instance '%s' — silent skip",
+                    threshold_prop, instance.get("entity_name", instance.get("entity_id", "?"))
+                )
+                return False
+            try:
+                dynamic_val = float(dynamic_val)
+            except (TypeError, ValueError):
+                _state_log.warning(
+                    "threshold_from_property '%s' value '%s' is non-numeric — silent skip",
+                    threshold_prop, dynamic_val
+                )
+                return False
+            # Rebuild condition string with resolved value: ">= {dynamic}" or "> {dynamic}" etc.
+            m_prefix = _re.match(r"^\s*(>=|<=|>|<|==)", condition)
+            if m_prefix:
+                condition = f"{m_prefix.group(1)} {dynamic_val}"
 
         props = instance.get("properties", {}) or {}
         value = props.get(field)
@@ -299,6 +367,54 @@ class StateMachine:
         if not target_class:
             return False
         return context.count_by_class(target_class) >= 2
+
+    def _eval_time_elapsed(
+        self,
+        trigger: Dict[str, Any],
+        instance: Dict[str, Any],
+        context: EvalContext,
+    ) -> bool:
+        u"""Check if instance has been in its current state longer than the threshold.
+
+        trigger:
+          type: time_elapsed
+          state_age_seconds: 14400   # 4 hours
+          state_age_days: 0          # or by days (mutually exclusive, seconds takes priority)
+        """
+        import time as _time
+        import sqlite3 as _sqlite3
+        import os as _os
+
+        threshold_seconds = float(trigger.get("state_age_seconds", 0))
+        threshold_days = float(trigger.get("state_age_days", 0))
+        if not threshold_seconds and not threshold_days:
+            return False
+        if threshold_days and not threshold_seconds:
+            threshold_seconds = threshold_days * 86400.0
+
+        entity_name = instance.get("entity_name", "") or instance.get("entity_id", "")
+        if not entity_name:
+            return False
+
+        domain_id = context.domain_id if hasattr(context, "domain_id") else ""
+        db_path = _os.path.expanduser("~/.aiplat/state_changes.db")
+        if not _os.path.exists(db_path):
+            return False
+
+        try:
+            conn = _sqlite3.connect(db_path, timeout=3.0)
+            row = conn.execute(
+                "SELECT timestamp FROM state_changes WHERE entity_name = ? AND domain_id = ? ORDER BY timestamp DESC LIMIT 1",
+                (entity_name, domain_id),
+            ).fetchone()
+            conn.close()
+            if not row:
+                return False
+            last_ts = float(row[0])
+            elapsed = _time.time() - last_ts
+            return elapsed >= threshold_seconds
+        except Exception:
+            return False
 
     # ── Helpers ───────────────────────────────────────────────────────
 

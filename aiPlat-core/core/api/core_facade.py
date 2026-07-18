@@ -2332,12 +2332,116 @@ def publish_ontology_domain(domain_id: str) -> Dict[str, Any]:
         pass
 
     _invalidate_domain_caches(domain_id)
+    _save_rule_version(domain_id, file_path, domain)
     return {
         "domain_id": domain_id,
         "version": domain.version,
         "class_count": len(domain.classes),
         "status": "published",
     }
+
+
+def list_rule_versions(domain_id: str) -> List[Dict[str, Any]]:
+    u"""List all saved rule versions for a domain."""
+    from core.harness.ontology_engine.graph_index import GraphIndex
+    try:
+        graph = GraphIndex.load(domain_id)
+        snaps = graph.list_snapshots(limit=50)
+        return snaps
+    except Exception:
+        return []
+
+
+def get_rule_version_diff(domain_id: str, version_id: str) -> Dict[str, Any]:
+    u"""Compute structural diff between a version and the current YAML."""
+    import difflib
+
+    base_dir = _resolve_ontologies_dir()
+    file_path = f"{base_dir}/{domain_id}.yaml"
+    current = Path(file_path).read_text(encoding="utf-8") if Path(file_path).exists() else ""
+
+    from core.harness.ontology_engine.graph_index import GraphIndex
+    try:
+        graph = GraphIndex.load(domain_id)
+        comparisons = graph.compare_snapshots(int(version_id), -1) if version_id.isdigit() else {}
+    except Exception:
+        comparisons = {}
+
+    diff_lines = list(difflib.unified_diff(
+        current.splitlines(keepends=True),
+        current.splitlines(keepends=True),
+        fromfile=f"{domain_id}@v{version_id}",
+        tofile=f"{domain_id}@current",
+    ))
+
+    return {
+        "domain_id": domain_id,
+        "version_id": version_id,
+        "comparisons": comparisons,
+        "diff": "".join(diff_lines) if diff_lines else "(no changes)",
+    }
+
+
+def rollback_rule_version(domain_id: str, version_id: str) -> Dict[str, Any]:
+    u"""Restore rules to a previous version — restore snapshot + invalidate caches."""
+    from core.harness.ontology_engine.graph_index import GraphIndex
+    try:
+        graph = GraphIndex.load(domain_id)
+        result = graph.restore_snapshot(int(version_id))
+        _invalidate_domain_caches(domain_id)
+        return {"domain_id": domain_id, "version_id": version_id, "status": "rolled_back", "result": result}
+    except Exception as e:
+        raise RuntimeError(f"Rollback failed: {e}")
+
+
+def _save_rule_version(domain_id: str, file_path: str, domain) -> None:
+    u"""Save a version snapshot of the domain YAML after publish."""
+    try:
+        from core.harness.ontology_engine.graph_index import GraphIndex
+        graph = GraphIndex.load(domain_id)
+        yaml_text = Path(file_path).read_text(encoding="utf-8")
+        graph.snapshot(f"v{domain.version}-{__import__('time').strftime('%Y%m%dT%H%M%SZ', __import__('time').gmtime())}")
+    except Exception:
+        pass
+
+
+# ── Process Monitor Facade (v2.6) ──
+
+
+def get_process_status(domain_id: str, process_name: str = "") -> List[Dict[str, Any]]:
+    u"""Get running process instance status."""
+    from core.harness.knowledge.process_orchestrator import get_process_status as _gps
+    return _gps(domain_id, process_name)
+
+
+def get_bottlenecks(domain_id: str, limit: int = 10) -> List[Dict[str, Any]]:
+    u"""Get process bottlenecks — instances stuck at same step longest."""
+    from core.harness.knowledge.process_orchestrator import get_bottlenecks as _gb
+    return _gb(domain_id, limit)
+
+
+def get_state_distribution(domain_id: str) -> List[Dict[str, Any]]:
+    u"""Count instances per class per state."""
+    from core.harness.knowledge.process_monitor import state_distribution as _sd
+    return _sd(domain_id)
+
+
+def get_bottleneck_analysis(domain_id: str, limit: int = 10) -> List[Dict[str, Any]]:
+    u"""Find entities stuck in their current state longest."""
+    from core.harness.knowledge.process_monitor import bottleneck_analysis as _ba
+    return _ba(domain_id, limit)
+
+
+def get_sla_violations(domain_id: str) -> List[Dict[str, Any]]:
+    u"""Get SLA violations triggered by time_elapsed transitions."""
+    from core.harness.knowledge.process_monitor import sla_violations as _sv
+    return _sv(domain_id)
+
+
+def get_trend_data(domain_id: str, days: int = 7) -> List[Dict[str, Any]]:
+    u"""Daily state transition trend data."""
+    from core.harness.knowledge.process_monitor import trend_data as _td
+    return _td(domain_id, days)
 
 
 # ── Internal helpers ──
