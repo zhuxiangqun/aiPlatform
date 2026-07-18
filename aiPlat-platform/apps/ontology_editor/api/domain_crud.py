@@ -146,8 +146,7 @@ async def publish_domain(domain_id: str):
 async def generate_from_description(domain_id: str, data: Dict[str, Any]):
     u"""NL→YAML: LLM generates ontology class draft from natural language description."""
     try:
-        from core.api.core_facade import get_ontology_domain_schema, best_model_for_purpose
-        from core.harness.utils.prompt_loader import _sync_resolve
+        from core.api.core_facade import get_ontology_domain_schema, best_model_for_purpose, resolve_prompt
 
         description = data.get("description", "")
         target_class = data.get("target_class_name", "")
@@ -158,7 +157,7 @@ async def generate_from_description(domain_id: str, data: Dict[str, Any]):
         domain_context = schema.get("name", domain_id)
         existing_classes = ", ".join(list(schema.get("classes", {}).keys())[:10])
 
-        prompt = _sync_resolve(
+        prompt = resolve_prompt(
             "nl-to-ontology-class",
             domain_context=domain_context,
             existing_classes=existing_classes,

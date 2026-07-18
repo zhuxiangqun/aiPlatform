@@ -2405,6 +2405,78 @@ def _save_rule_version(domain_id: str, file_path: str, domain) -> None:
         pass
 
 
+# ── Role View Facade (v2.6) ──
+
+
+def list_views_for_domain(domain_id: str) -> List[Dict[str, Any]]:
+    u"""List all role-based views for a domain."""
+    from core.harness.knowledge.role_view import load_views, list_roles
+    schema = get_ontology_domain_schema(domain_id)
+    compiled = load_views(schema)
+    return list_roles(compiled)
+
+
+def get_view_for_domain(domain_id: str, role: str) -> Dict[str, Any]:
+    u"""Get a single role view definition."""
+    from core.harness.knowledge.role_view import load_views
+    schema = get_ontology_domain_schema(domain_id)
+    compiled = load_views(schema)
+    view = compiled.get(role)
+    if not view:
+        raise LookupError(f"View not found for role: {role}")
+    return view
+
+
+def upsert_view_for_domain(domain_id: str, role: str, view_data: Dict[str, Any]) -> Dict[str, Any]:
+    u"""Create or update a role view in the domain YAML, writing back via yaml_serializer."""
+    import yaml
+    base_dir = _resolve_ontologies_dir()
+    file_path = f"{base_dir}/{domain_id}.yaml"
+    with open(file_path, "r", encoding="utf-8") as f:
+        raw = yaml.safe_load(f) or {}
+    raw.setdefault("views", {})
+    raw["views"][role] = view_data
+    from core.harness.knowledge.yaml_serializer import dict_to_yaml
+    Path(file_path).write_text(dict_to_yaml(raw), encoding="utf-8")
+    return {"domain_id": domain_id, "role": role, "status": "upserted"}
+
+
+def delete_view_for_domain(domain_id: str, role: str) -> Dict[str, Any]:
+    u"""Delete a role view from the domain YAML."""
+    import yaml
+    base_dir = _resolve_ontologies_dir()
+    file_path = f"{base_dir}/{domain_id}.yaml"
+    with open(file_path, "r", encoding="utf-8") as f:
+        raw = yaml.safe_load(f) or {}
+    raw.get("views", {}).pop(role, None)
+    from core.harness.knowledge.yaml_serializer import dict_to_yaml
+    Path(file_path).write_text(dict_to_yaml(raw), encoding="utf-8")
+    return {"domain_id": domain_id, "role": role, "status": "deleted"}
+
+
+def resolve_term_in_view(domain_id: str, role: str, term: str) -> Dict[str, Any]:
+    u"""Resolve a term's meaning for a specific role perspective."""
+    from core.harness.knowledge.role_view import load_views, resolve_term as _rt
+    schema = get_ontology_domain_schema(domain_id)
+    compiled = load_views(schema)
+    definition = _rt(term, role, compiled)
+    return {"domain_id": domain_id, "role": role, "term": term,
+            "definition": definition, "found": definition is not None}
+
+
+def validate_views_for_domain(domain_id: str) -> Dict[str, Any]:
+    u"""Validate role views for a domain."""
+    from core.harness.knowledge.role_view import validate_views as _vv
+    schema = get_ontology_domain_schema(domain_id)
+    return {"domain_id": domain_id, **_vv(schema)}
+
+
+def resolve_prompt(prompt_id: str, **variables) -> str:
+    u"""Synchronous prompt template resolution."""
+    from core.harness.utils.prompt_loader import _sync_resolve
+    return _sync_resolve(prompt_id, **variables)
+
+
 # ── Process Monitor Facade (v2.6) ──
 
 
