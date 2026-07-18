@@ -73,7 +73,7 @@ for root in "aiPlat-core/core/harness" "aiPlat-core/core/engine/skills" \
         if ! grep -qi "$mod" "$CAPS" 2>/dev/null; then
             NEW_MODULES="$NEW_MODULES $mod|$f"
         fi
-    done < <(find "$WORKSPACE/$root" -name "*.py" -newer "$CAPS" -mtime -7 2>/dev/null)
+    done < <(git -C "$WORKSPACE" log --diff-filter=AM --name-only --since="7 days ago" -- "$root/" 2>/dev/null | grep '\.py$' | sort -u)
 done
 
 if [ -z "$NEW_MODULES" ]; then
