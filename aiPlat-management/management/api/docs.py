@@ -75,13 +75,14 @@ _CATEGORY_RULES: List[tuple] = [
     (("architecture", "contracts", "harness", "agents", "skills",
       "kernel_orchestrator", "runtime", "services", "framework",
       "errors", "apps", "adapters", "evaluation", "interfaces",
-      "learning_loop", "decisions", "plans", "core", "assets", "diagrams", "ops"), "arch"),
+      "learning_loop", "decisions", "plans", "core", "assets", "diagrams", "ops",
+      "architecture-boundary", "overview"), "arch"),
     # ── Layer designs ──
     (("api", "auth", "gateway", "database", "cache", "compute",
       "llm", "http", "deployment", "storage", "network", "vector",
       "di", "config", "messaging", "billing", "observability",
       "monitoring", "logging", "tenants", "registry", "user", "utils",
-      "infra", "platform", "management"), "layers"),
+      "infra", "platform", "management", "app", "channels", "workbench", "events"), "layers"),
     # ── User manuals ──
     (("manuals", "guides", "getting-started",
       "examples", "bid-review", "onboarding"), "manuals"),
@@ -93,29 +94,40 @@ _CATEGORY_RULES: List[tuple] = [
     (("compliance", "security", "policy", "governance"), "compliance"),
     # ── Tools & frameworks ──
     (("tools", "testing", "mcp", "standards", "API",
-      "document_intelligence"), "tools"),
+      "document_intelligence", "cli", "doctor", "jobs",
+      "sysgraph-tools-api", "USAGE"), "tools"),
     # ── Reports & audit ──
     (("reports", "audit", "project", "archive", "strategy",
-      "articles", "whitepaper"), "reports"),
+      "articles", "whitepaper", "audit_checklist",
+      "ARCHITECTURE_STATUS", "IMPLEMENTATION_STATUS"), "reports"),
 ]
 
 
 def _classify(path: str, is_dir: bool) -> str:
     """Classify by upward path segment match. Files inherit parent dir category.
-    Top-level governance files get 'gov' category."""
+    Also tries matching without file extension (e.g., README.md → README)."""
     segments = path.split("/")
     for i in range(len(segments), 0, -1):
         prefix = segments[i - 1]
+        # Try exact match
         for prefixes, cat in _CATEGORY_RULES:
             if prefix in prefixes:
                 return cat
-    # Top-level governance files
+        # Try matching without .md extension
+        if not is_dir and prefix.endswith(".md"):
+            prefix_no_ext = prefix[:-3]
+            for prefixes, cat in _CATEGORY_RULES:
+                if prefix_no_ext in prefixes:
+                    return cat
+    # Top-level standalone files — fallback
     if len(segments) == 1 and not is_dir:
         name = segments[0]
         if name in ("CLAUDE.md", "DOCUMENT_SYSTEM.md", "README.md"):
             return "gov"
         if any(name.startswith(p) for p in ("AIPLAT_CAPABILITIES", "AIPLAT_ROADMAP")):
             return "gov"
+        if name in ("index.md",):
+            return "tools"
     return ""
 
 
