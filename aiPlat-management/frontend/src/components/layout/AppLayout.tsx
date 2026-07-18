@@ -61,6 +61,7 @@ const menuItems: (MenuItem | { divider: boolean } | MenuGroup)[] = [
     { key: '/knowledge/overview', icon: Share2, label: '管线总览' },
     { key: '/platform/kb?tab=vault', icon: FileText, label: '原始资料' },
     { key: '/infra/ontology', icon: Box, label: '本体模型' },
+    { key: '/ontology-editor', icon: PenTool, label: '本体编辑器' },
     { key: '/platform/kb?tab=documents', icon: Database, label: '向量知识库' },
     { key: '/platform/kb?tab=wiki', icon: BookOpen, label: 'LLM Wiki' },
     { key: '/platform/kb?tab=eval', icon: Search, label: 'RAG 检索' },

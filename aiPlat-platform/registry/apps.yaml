@@ -111,3 +111,15 @@ modules:
     domains: []
     agents: []
     skills: []
+
+  ontology-editor:
+    name: "本体编辑器"
+    description: "可视化本体建模 — CRUD domain/class/state/transition/side-effect"
+    enabled: true
+    api_prefix: "/api/platform/apps/ontology-editor"
+    api_module: "apps.ontology_editor.api.router"
+    service_module: null
+    prompts_module: null
+    domains: []
+    agents: []
+    skills: []

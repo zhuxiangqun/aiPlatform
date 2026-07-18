@@ -61,8 +61,54 @@ def __getattr__(name: str) -> Any:
     for mod_name, names in _LAZY_MODULES.items():
         if name in names:
             m = importlib.import_module(f"{__name__}.{mod_name}")
-            return getattr(m, name)
+            fn = getattr(m, name)
+            if callable(fn):
+                return _wrap_with_usage_tracking(name, fn)
+            return fn
     raise AttributeError(name)
+
+
+def _wrap_with_usage_tracking(name: str, fn):
+    u"""Wrap syscall functions with usage recording (non-intrusive, fail-safe)."""
+    import functools
+    import asyncio
+
+    @functools.wraps(fn)
+    async def wrapper(*args, **kwargs):
+        t0 = __import__('time').time()
+        result = await fn(*args, **kwargs)
+        latency = (__import__('time').time() - t0) * 1000
+        try:
+            from core.harness.observability.usage_tracker import record
+            event_type = name
+            if name == 'sys_llm_generate':
+                event_type = 'llm_generate'
+            elif name == 'sys_tool_call':
+                event_type = 'tool_call'
+            elif name == 'sys_skill_call':
+                event_type = 'skill_call'
+            elif name == 'sys_knowledge_retrieve':
+                event_type = 'knowledge_retrieve'
+            record(event_type, latency_ms=latency)
+        except Exception:
+            pass
+        return result
+
+    @functools.wraps(fn)
+    def sync_wrapper(*args, **kwargs):
+        t0 = __import__('time').time()
+        result = fn(*args, **kwargs)
+        latency = (__import__('time').time() - t0) * 1000
+        try:
+            from core.harness.observability.usage_tracker import record
+            record(name, latency_ms=latency)
+        except Exception:
+            pass
+        return result
+
+    if asyncio.iscoroutinefunction(fn):
+        return wrapper
+    return sync_wrapper
 
 
 def __dir__() -> list[str]:

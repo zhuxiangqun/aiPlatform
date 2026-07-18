@@ -1034,8 +1034,51 @@ If uncertain, include a `# FIXME:` comment.
     category="ontology",
     variables=["description", "domain_id"])
 
-# ── FDE dialog prompts ──
+_register("nl-to-ontology-class", """TASK: Convert a natural-language business description into a single aiPlat ontology class definition.
 
+DOMAIN CONTEXT: ${domain_context}
+EXISTING CLASSES: ${existing_classes}
+USER DESCRIPTION: ${description}
+TARGET CLASS NAME: ${target_class}
+
+OUTPUT FORMAT — valid JSON only (no markdown, no explanations):
+{
+  "class_name": "EnglishCamelCase",
+  "label": "中文标签",
+  "description": "一句话描述该类的业务含义",
+  "required_fields": ["name", "description"],
+  "optional_fields": [],
+  "categories": ["domain-category"],
+  "fields": [
+    {"name": "field_name", "type": "string", "description": "字段说明", "values": ["枚举值1"]}
+  ],
+  "states": {
+    "default": "initial",
+    "enum": [
+      {"name": "state1", "label": "中文标签", "description": "状态含义"}
+    ]
+  },
+  "transitions": [
+    {"from": ["state1"], "to": "state2", "description": "转换条件", "trigger": {"type": "property_condition", "field": "status", "condition": "eq:approved"}}
+  ],
+  "side_effects": [
+    {"when": "to == 'state_name'", "actions": [{"type": "add_tag", "tag": "tag_name"}]}
+  ],
+  "synonyms": ["同义词1"]
+}
+
+RULES:
+- Class name MUST be English CamelCase (e.g. ProcurementContract)
+- States MUST cover the complete lifecycle from user description
+- Infer transitions from described state changes
+- All labels and descriptions MUST be in Chinese
+- Fields MUST include type (string/number/date/enum) and description
+""",
+    category="ontology",
+    variables=["domain_context", "existing_classes", "description", "target_class"])
+
+
+# ── FDE dialog prompts ──
 
 
 # ── FDE dialog question templates ──

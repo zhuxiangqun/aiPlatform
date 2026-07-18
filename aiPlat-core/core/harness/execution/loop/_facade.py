@@ -36,7 +36,7 @@ from .state_mgr import (
     load_run_state_for_prompt, restate_and_persist_run_state,
 )
 from .compressor import compact_messages, apply_context_shaping
-from .graph_injector import inject_graph_context, inject_memory_reminders
+from .graph_injector import inject_graph_context, inject_memory_reminders, inject_ontology_context
 
 
 class ReActLoop(BaseLoop):
@@ -1049,6 +1049,10 @@ class ReActLoop(BaseLoop):
     async def _try_inject_memory_reminders(self, state: LoopState):
         """Delegate to graph_injector.inject_memory_reminders — extracted from loop.py."""
         return await inject_memory_reminders(state)
+
+    async def _try_inject_ontology_context(self, state: LoopState):
+        """Delegate to graph_injector.inject_ontology_context (v2.6)."""
+        return await inject_ontology_context(state)
     # ── DELEGATED to compressor.py (extracted for SRP per §5.75) ──
     async def _maybe_compact_messages(self, state: LoopState):
         """Delegate to compressor.compact_messages — extracted from loop.py."""

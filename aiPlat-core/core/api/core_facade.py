@@ -14,6 +14,7 @@ PipelineSession — the sole interface for pipeline execution.
 from __future__ import annotations
 
 import os
+from pathlib import Path
 from typing import Any, Dict, List, Optional
 import logging
 from core.harness.utils.llm_env import get_llm_api_key, get_llm_base_url
@@ -2142,7 +2143,249 @@ def check_kb_entity_access(
         actor_scopes=actor_scopes or [],
         actor_role=actor_role,
         collection_id=collection_id,
-    ))
+     ))
+
+
+# ── Ontology Editor Facade (v2.6) ─────────────────────────────────────
+
+
+def list_ontology_domains() -> List[Dict[str, Any]]:
+    u"""List all ontology domains with metadata (name, version, class count)."""
+    from core.harness.knowledge.ontology_loader import load_all_domains
+    domains = load_all_domains()
+    result = []
+    for dom_id, dom in sorted(domains.items()):
+        result.append({
+            "id": dom.id,
+            "name": dom.name,
+            "namespace": dom.namespace,
+            "description": dom.description,
+            "version": dom.version,
+            "class_count": len(dom.classes),
+            "property_count": len(dom.object_properties) + len(dom.data_properties),
+            "rule_count": len(dom.inference_rules or []),
+        })
+    return result
+
+
+def get_ontology_domain_schema(domain_id: str) -> Dict[str, Any]:
+    u"""Return full domain schema as JSON dict for the ontology editor UI."""
+    from core.harness.knowledge.ontology_loader import load_ontology_from_yaml
+    from core.harness.knowledge.yaml_serializer import domain_to_dict
+
+    base_dir = _resolve_ontologies_dir()
+    file_path = f"{base_dir}/{domain_id}.yaml"
+    if not Path(file_path).exists():
+        raise FileNotFoundError(f"Domain ontology not found: {file_path}")
+
+    domain = load_ontology_from_yaml(file_path)
+    return domain_to_dict(domain)
+
+
+def create_ontology_domain(
+    domain_id: str,
+    name: str,
+    *,
+    namespace: str = "",
+    description: str = "",
+    version: str = "1.0.0",
+) -> Dict[str, Any]:
+    u"""Create a new empty ontology domain YAML file."""
+    from core.harness.knowledge.yaml_serializer import dict_to_yaml
+
+    base_dir = _resolve_ontologies_dir()
+    file_path = f"{base_dir}/{domain_id}.yaml"
+    if Path(file_path).exists():
+        raise FileExistsError(f"Domain already exists: {domain_id}")
+
+    ns = namespace or f"http://aiplat.local/ontology/{domain_id}/"
+    data = {
+        "name": name,
+        "namespace": ns,
+        "description": description,
+        "version": version,
+        "classes": {},
+        "object_properties": [],
+        "data_properties": [],
+        "inference_rules": [],
+    }
+    yaml_str = dict_to_yaml(data)
+    Path(file_path).parent.mkdir(parents=True, exist_ok=True)
+    Path(file_path).write_text(yaml_str, encoding="utf-8")
+
+    _register_domain_in_registry(domain_id, name, description)
+    return {"id": domain_id, "name": name, "status": "created", "path": file_path}
+
+
+def update_ontology_domain_meta(
+    domain_id: str,
+    *,
+    name: str = "",
+    description: str = "",
+    version: str = "",
+    namespace: str = "",
+) -> Dict[str, Any]:
+    u"""Update domain metadata (name, description, version, namespace)."""
+    import yaml
+
+    base_dir = _resolve_ontologies_dir()
+    file_path = f"{base_dir}/{domain_id}.yaml"
+    if not Path(file_path).exists():
+        raise FileNotFoundError(f"Domain not found: {domain_id}")
+
+    with open(file_path, "r", encoding="utf-8") as f:
+        raw = yaml.safe_load(f) or {}
+
+    if name:
+        raw["name"] = name
+    if description:
+        raw["description"] = description
+    if version:
+        raw["version"] = version
+    if namespace:
+        raw["namespace"] = namespace
+
+    from core.harness.knowledge.yaml_serializer import dict_to_yaml
+    yaml_str = dict_to_yaml(raw)
+    Path(file_path).write_text(yaml_str, encoding="utf-8")
+
+    if name:
+        _register_domain_in_registry(domain_id, name, raw.get("description", ""))
+    return {"id": domain_id, "status": "updated"}
+
+
+def delete_ontology_domain(domain_id: str) -> Dict[str, Any]:
+    u"""Delete an ontology domain YAML and optionally its graph data."""
+    base_dir = _resolve_ontologies_dir()
+    file_path = f"{base_dir}/{domain_id}.yaml"
+    if not Path(file_path).exists():
+        raise FileNotFoundError(f"Domain not found: {domain_id}")
+
+    Path(file_path).unlink()
+    _remove_domain_from_registry(domain_id)
+    return {"id": domain_id, "status": "deleted"}
+
+
+def upsert_ontology_class(
+    domain_id: str,
+    class_name: str,
+    class_data: Dict[str, Any],
+) -> Dict[str, Any]:
+    u"""Create or update a class definition in a domain YAML."""
+    import yaml
+
+    base_dir = _resolve_ontologies_dir()
+    file_path = f"{base_dir}/{domain_id}.yaml"
+    if not Path(file_path).exists():
+        raise FileNotFoundError(f"Domain not found: {domain_id}")
+
+    with open(file_path, "r", encoding="utf-8") as f:
+        raw = yaml.safe_load(f) or {}
+
+    from core.harness.knowledge.yaml_serializer import merge_class_into_domain
+    merged = merge_class_into_domain(raw, class_name, class_data)
+
+    from core.harness.knowledge.yaml_serializer import dict_to_yaml
+    yaml_str = dict_to_yaml(merged)
+    Path(file_path).write_text(yaml_str, encoding="utf-8")
+
+    return {"domain_id": domain_id, "class_name": class_name, "status": "upserted"}
+
+
+def delete_ontology_class(domain_id: str, class_name: str) -> Dict[str, Any]:
+    u"""Remove a class from a domain YAML."""
+    import yaml
+
+    base_dir = _resolve_ontologies_dir()
+    file_path = f"{base_dir}/{domain_id}.yaml"
+    if not Path(file_path).exists():
+        raise FileNotFoundError(f"Domain not found: {domain_id}")
+
+    with open(file_path, "r", encoding="utf-8") as f:
+        raw = yaml.safe_load(f) or {}
+
+    from core.harness.knowledge.yaml_serializer import remove_class_from_domain
+    cleaned = remove_class_from_domain(raw, class_name)
+
+    from core.harness.knowledge.yaml_serializer import dict_to_yaml
+    yaml_str = dict_to_yaml(cleaned)
+    Path(file_path).write_text(yaml_str, encoding="utf-8")
+
+    return {"domain_id": domain_id, "class_name": class_name, "status": "deleted"}
+
+
+def publish_ontology_domain(domain_id: str) -> Dict[str, Any]:
+    u"""Validate and publish — write domain YAML + create graph snapshot."""
+    base_dir = _resolve_ontologies_dir()
+    file_path = f"{base_dir}/{domain_id}.yaml"
+    if not Path(file_path).exists():
+        raise FileNotFoundError(f"Domain not found: {domain_id}")
+
+    from core.harness.knowledge.ontology_loader import load_ontology_from_yaml
+    from core.harness.ontology_engine.graph_index import GraphIndex
+
+    domain = load_ontology_from_yaml(file_path)
+    try:
+        graph = GraphIndex.load(domain_id)
+        graph.snapshot(f"pre-publish-{domain.version}")
+    except Exception:
+        pass
+
+    _invalidate_domain_caches(domain_id)
+    return {
+        "domain_id": domain_id,
+        "version": domain.version,
+        "class_count": len(domain.classes),
+        "status": "published",
+    }
+
+
+# ── Internal helpers ──
+
+
+def _resolve_ontologies_dir() -> str:
+    import os as _os
+    return _os.path.expanduser(_os.getenv("AIPLAT_ONTOLOGY_DIR", "~/.aiplat/ontologies"))
+
+
+def _register_domain_in_registry(domain_id: str, name: str, description: str = "") -> None:
+    import json as _json
+    reg_path = Path(_resolve_ontologies_dir()) / "registry.json"
+    registry = {}
+    if reg_path.exists():
+        registry = _json.loads(reg_path.read_text(encoding="utf-8"))
+    registry.setdefault("domains", {})
+    registry["domains"].setdefault(domain_id, {})
+    registry["domains"][domain_id].update({
+        "name": name,
+        "description": description or registry["domains"][domain_id].get("description", ""),
+        "ontology_file": f"{domain_id}.yaml",
+    })
+    reg_path.write_text(_json.dumps(registry, indent=2, ensure_ascii=False))
+
+
+def _remove_domain_from_registry(domain_id: str) -> None:
+    import json as _json
+    reg_path = Path(_resolve_ontologies_dir()) / "registry.json"
+    if not reg_path.exists():
+        return
+    registry = _json.loads(reg_path.read_text(encoding="utf-8"))
+    registry.get("domains", {}).pop(domain_id, None)
+    reg_path.write_text(_json.dumps(registry, indent=2, ensure_ascii=False))
+
+
+def _invalidate_domain_caches(domain_id: str) -> None:
+    try:
+        from core.harness.knowledge.domain_router import DomainRouter
+        DomainRouter()._built = False
+    except Exception:
+        pass
+    try:
+        from core.harness.ontology_engine.graph_index import GraphIndex
+        graph = GraphIndex.load(domain_id)
+        graph._built = False
+    except Exception:
+        pass
 
 
 # ═══════════════════════════════════════════════════════════════

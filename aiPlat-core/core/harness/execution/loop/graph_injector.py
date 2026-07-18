@@ -127,6 +127,71 @@ async def inject_graph_context(state: LoopState) -> dict:
     return hints
 
 
+async def inject_ontology_context(state: LoopState) -> dict:
+    u"""注入域本体上下文到 Agent 决策循环 (v2.6).
+
+    DomainRouter 自动分类 → domain_id + 关键 class 列表 + 检索提示。
+    """
+    hints: Dict[str, Any] = {}
+    task = state.context.get("task", "") or state.context.get("_original_query", "")
+    if not task or state.context.get("_ontology_injected"):
+        return hints
+
+    try:
+        from core.harness.knowledge.domain_router import DomainRouter
+        router = DomainRouter()
+        classified = router.classify(task)
+        if not classified or not classified.get("domain_id"):
+            return hints
+
+        domain_id = classified["domain_id"]
+        config = classified.get("config", {})
+        domain_name = config.get("name", domain_id)
+        domain_desc = config.get("description", "")
+
+        onto_dir = os.path.expanduser(
+            os.getenv("AIPLAT_ONTOLOGY_DIR", "~/.aiplat/ontologies")
+        )
+        yaml_path = os.path.join(onto_dir, f"{domain_id}.yaml")
+        class_list = ""
+        if os.path.exists(yaml_path):
+            import yaml
+            with open(yaml_path, "r", encoding="utf-8") as f:
+                raw = yaml.safe_load(f) or {}
+            classes = raw.get("classes", {})
+            if classes:
+                top = list(classes.items())[:8]
+                class_list = "\n".join(
+                    f"    - {name}: {cls.get('label', name)}"
+                    for name, cls in top
+                )
+
+        hint_msg = (
+            f"[系统] 域本体上下文已注入:\n"
+            f"  当前域: {domain_name} ({domain_id})"
+        )
+        if domain_desc:
+            hint_msg += f" — {domain_desc[:120]}"
+        if class_list:
+            hint_msg += f"\n  关键本体类:\n{class_list}"
+        hint_msg += f"\n  检索时指定 domain_id='{domain_id}' 缩小范围。"
+
+        hints["ontology"] = {
+            "domain_id": domain_id,
+            "domain_name": domain_name,
+            "class_count": len(class_list.split("\n")) if class_list else 0,
+        }
+
+        state.context.setdefault("messages", []).insert(3, {
+            "role": "user",
+            "content": hint_msg,
+        })
+        state.context["_ontology_injected"] = True
+    except Exception as e:
+        logging.warning("Ontology context injection failed: %s", e)
+
+    return hints
+
 
 async def inject_memory_reminders(state: LoopState) -> None:
     """Original: _try_inject_memory_reminders (loop.py:1884)"""

@@ -101,6 +101,9 @@ async def reason(
     if graph_hints:
         state.context.setdefault("_graph_hints", graph_hints)
 
+    # Inject ontology domain context (v2.6 — DomainRouter classify + class list)
+    await loop._try_inject_ontology_context(state)
+
     # Inject memory context + bus messages into prompt assembly
     mem_hints = ""
     try:
