@@ -230,7 +230,7 @@ for dirpath, _, filenames in os.walk(doc_dir):
                     print(f"⚠️  {rel}:{lineno} → {method} {path}")
 
             # Pattern 2: bare METHOD /path (no backticks, not inside URLs)
-            for m in re.finditer(r'\b(GET|POST|PUT|DELETE|PATCH) (/[a-zA-Z0-9/_{}-]+)\b', line):
+            for m in re.finditer(r'\b(GET|POST|PUT|DELETE|PATCH) (/[a-zA-Z0-9/_{}-]+)(?=[^a-zA-Z0-9/_{}-]|$)', line):
                 method = m.group(1)
                 path = m.group(2)
                 if "http" in line[m.start()-5:m.start()]:  # skip URLs

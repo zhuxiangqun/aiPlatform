@@ -77,9 +77,9 @@ aiPlatform 的知识系统是一个 6 阶段管线，从原始资料进入，经
 
 | 类型 | 连接器 | 端点 |
 |------|--------|------|
-| SQL | SQLDataSource (PostgreSQL/MySQL/SQLite) | `POST /api/core/ontology/datasources` |
-| API | APIDataSource (REST) | `POST /api/core/ontology/datasources` |
-| File | FileDataSource (CSV/JSON/Excel) | `POST /api/core/ontology/datasources` |
+| SQL | SQLDataSource (PostgreSQL/MySQL/SQLite) | `GET /api/core/ontology/datasources` |
+| API | APIDataSource (REST) | `GET /api/core/ontology/datasources` |
+| File | FileDataSource (CSV/JSON/Excel) | `GET /api/core/ontology/datasources` |
 
 ### 2.2 上传方式
 
@@ -87,9 +87,9 @@ aiPlatform 的知识系统是一个 6 阶段管线，从原始资料进入，经
 |------|------|------|
 | 页面上传 | 知识中心 → 原始资料 | `POST /api/platform/apps/fde/ingest` |
 | Vault 文件浏览器 | 知识中心 → 原始资料 | VaultBrowser 组件 |
-| API 上传 | 外部系统 | `POST /api/core/kb/ingest` |
-| URL 导入 | 知识中心 | `POST /api/core/kb/ingest-url` |
-| 数据源连接 | 知识中心 → 本体模型 → 外部数据源 | `POST /api/core/ontology/datasources` |
+| API 上传 | 外部系统 | `POST /api/core/wiki/ingest` |
+| URL 导入 | 知识中心 | `POST /api/core/wiki/ingest` |
+| 数据源连接 | 知识中心 → 本体模型 → 外部数据源 | `GET /api/core/ontology/datasources` |
 
 ### 2.3 DocumentParser 输出
 

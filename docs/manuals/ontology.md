@@ -222,7 +222,7 @@ GraphIndex (SQLite 存储) + Wiki 页面
 - 对应 Wiki collection 的所有页面
 - 对应状态变更历史
 
-> ⚠️ 删除前建议先创建快照：`POST /api/core/ontology/engine/snapshot/{domain_id}`。
+> ⚠️ 删除前建议先创建快照：`POST /api/core/ontology/engine/snapshot/{domain_id}``。
 
 ---
 
@@ -372,8 +372,8 @@ UI 中的 **🔁 传播模拟** 功能：选择一个类 → 模拟新实例创�
 |------|------|---------|
 | **平台文档上传** | `POST /api/platform/apps/fde/ingest` | PDF/DOCX/PPTX/HTML/MD/TXT |
 | **引擎直接处理** | `POST /api/core/ontology/engine/parse-and-process` | 已有文本，直接跑引擎 |
-| **KB 批量导入** | `POST /api/core/kb/ingest-url` | 从 URL 拉取文档 |
-| **数据源连接** | `POST /api/core/ontology/datasources` | SQL/API 数据源 |
+| **KB 批量导入** | `POST /api/core/wiki/ingest` | 从 URL 拉取文档 |
+| **数据源连接** | `GET /api/core/ontology/datasources` | SQL/API 数据源 |
 
 ### 8.2 引擎管线流程
 
@@ -419,7 +419,7 @@ UI 中的 **🔁 传播模拟** 功能：选择一个类 → 模拟新实例创�
 1. `POST /domains/{id}/classify-all` — LLM 给所有未分类页面打类标签
 2. `POST /domains/{id}/build-instances` — 并行引擎处理（2 并发）
 3. `POST /domains/{id}/build-edges` — 构建跨页面图边
-4. `GET /api/core/ontology/domains/{domain_id}/verify` — 验证分类覆盖率和数据完整性
+4. `POST /api/core/ontology/domains/{domain_id}/verify` — 验证分类覆盖率和数据完整性
 
 ---
 
@@ -438,7 +438,7 @@ UI 中的 **🔁 传播模拟** 功能：选择一个类 → 模拟新实例创�
 | 操作 | 端点 | 说明 |
 |------|------|------|
 | 查看统计 | `GET /api/core/ontology/engine/graph-stats/{domain_id}` | 节点数、边数、推断边数 |
-| 快照 | `POST /api/core/ontology/engine/snapshot/{domain_id}` | 保存当前图状态 |
+| 快照 | `POST /api/core/ontology/engine/snapshot/{domain_id}`` | 保存当前图状态 |
 | 恢复 | `POST /engine/snapshot/{id}/restore` | 恢复到指定快照 |
 | 遍历 | `POST /engine/traverse` | 多跳路径查询 |
 | 推理 | `POST /engine/infer` | 运行推理规则生成新边 |
