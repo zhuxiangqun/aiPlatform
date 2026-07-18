@@ -70,7 +70,7 @@ _CATEGORY = {
 
 _CATEGORY_RULES: List[tuple] = [
     # ── Core governance ──
-    (("ws",), "gov"),
+    (("ws", "by-role"), "gov"),
     # ── Architecture design ──
     (("architecture", "contracts", "harness", "agents", "skills",
       "kernel_orchestrator", "runtime", "services", "framework",
@@ -83,7 +83,7 @@ _CATEGORY_RULES: List[tuple] = [
       "monitoring", "logging", "tenants", "registry", "user", "utils",
       "infra", "platform", "management"), "layers"),
     # ── User manuals ──
-    (("manuals", "by-role", "guides", "getting-started",
+    (("manuals", "guides", "getting-started",
       "examples", "bid-review", "onboarding"), "manuals"),
     # ── Design proposals ──
     (("design",), "design"),
@@ -112,7 +112,9 @@ def _classify(path: str, is_dir: bool) -> str:
     # Top-level governance files
     if len(segments) == 1 and not is_dir:
         name = segments[0]
-        if any(name.startswith(p) for p in ("CLAUDE.md", "CAPABILITIES", "ROADMAP", "DOCUMENT_SYSTEM", "README", "ARCHITECTURE_STATUS", "IMPLEMENTATION_STATUS")):
+        if name in ("CLAUDE.md", "DOCUMENT_SYSTEM.md", "README.md"):
+            return "gov"
+        if any(name.startswith(p) for p in ("AIPLAT_CAPABILITIES", "AIPLAT_ROADMAP")):
             return "gov"
     return ""
 
@@ -201,27 +203,13 @@ async def get_docs_tree(exclude_archive: bool = Query(True)) -> Dict[str, Any]:
     if exclude_archive:
         tree = [t for t in tree if t.get("name") != "archive"]
 
-    # ── Inject extra workspace-level docs as virtual directories ──
-    # Group by label to create sub-virtual-directories
-    from collections import defaultdict
-    grouped = defaultdict(list)
+    # ── Inject extra roots directly (no virtual directory nesting) ──
+    gov_items = []
     for er in _EXTRA_ROOTS:
         full = er["root"] / er["path"]
         if full.exists():
-            grouped[er["label"]].append({"name": er["name"], "path": er["path"], "type": "file"})
-
-    # Labels that belong in "📋 核心规约"
-    gov_labels = {"工作区规约", "能力清单", "路线图"}
-    gov_items = []
-    for label in gov_labels:
-        gov_items.extend(grouped.pop(label, []))
-
-    if gov_items:
-        tree.insert(0, {"name": "📋 核心规约", "path": "ws", "type": "directory", "children": gov_items, "category": "gov"})
-
-    # Remaining labels get their own virtual directories
-    for label, items in sorted(grouped.items()):
-        tree.insert(0, {"name": f"📋 {label}", "path": f"ws-{label}", "type": "directory", "children": items, "category": _classify(label, True)})
+            gov_items.append({"name": er["name"], "path": er["path"], "type": "file", "category": "gov"})
+    tree[0:0] = gov_items
 
     # ── Merge sub-repo docs into main tree ──
     for extra in _discover_doc_roots():
