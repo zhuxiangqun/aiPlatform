@@ -285,8 +285,8 @@ scripts/ruff_f821_baseline.json        ← F821 基线快照（ratchet 对比基
 
     | 编号 | 章节 | 内容 | 分类 |
     |------|------|------|------|
-    | A | §1 | `workflow_manager.py → `platform/storage/sqlite.py` 跨层导入 | **✅ 已修复** — 当前 `core/management/workflow_manager.py` 已无任何 platform 层 import。跨层导入链路已消除。 |
-    | A2 | — | `builder.py` 直导 `core.harness.knowledge.*`（2026-07-18 发现→修复） | **✅ 已修复 (2026-07-18)** — 3 处直导改为 `from core.api.core_facade import`：`DomainRouter`、`capability_health_report`、`build_capability_graph`。CoreFacade 已增加 canonical re-export。 |
+    | A | §1 | `workflow_manager.py → `platform/storage/sqlite.py` 跨层导入 | **✅ 已修复** — 当前 `core/management/workflow_manager.py` 已无任何 platform 层 import。跨层导入链路已消除。 （验证：grep -rn 'from.*platform.*import' aiPlat-core/core/management/ --include='*.py' → 空） |
+    | A2 | — | `builder.py` 直导 `core.harness.knowledge.*`（2026-07-18 发现→修复） | **✅ 已修复 (2026-07-18)** — 3 处直导改为 `from core.api.core_facade import`：`DomainRouter`、`capability_health_report`、`build_capability_graph`。CoreFacade 已增加 canonical re-export。 （验证：grep -rn 'from core.harness' aiPlat-platform/apps/fde/orchestration/builder.py → 0） |
     | B | §35 | 2 个 execute 端点（引擎 + 工作区）被标记为 WARNING | **永久告警** — 2 是正确数量，若增至 ≥3 升级为 ERROR |
     | C | §40 | 模型注册/路由迁移 | **✅ 已完成 (2026-06-29)** — `model_router.py` 已删除，`get_model_registry()` 重命名为 `get_model_manager()`，llm.py 和 base.py 迁移到 `model_injection.create_selected_adapter()`。infra `ModelManager.select()` 已确认存在。 |
     | D | §65 | 4 个检索函数缺 tenant_id | **✅ 已修复 (2026-07-01)** — `KnowledgeQuery` 增加 `tenant_id` 字段，`WikiPageRetriever.retrieve()` tenant_id 不匹配时返回空结果（WARNING→ERROR 阻断），非只读放行。 （验证：grep -rn "tenant_id" aiPlat-core/core/harness/knowledge/retrieval.py | wc -l → >0）  |
@@ -308,7 +308,7 @@ scripts/ruff_f821_baseline.json        ← F821 基线快照（ratchet 对比基
     | T | — | `set_knowledge_providers` no-op stub | **✅ 已修复 (2026-06-29)** — 真实实现：委托 kb_facade → kb_provider 的 4 个 setter 函数 (ingest_fn/query_fn/enqueue_fn/load_doc_kinds_fn)。 （验证：grep -rn "set_knowledge_providers\|kb_facade" aiPlat-core/core/api/core_facade.py | wc -l → >0）  |
     | U | §40 | `auto_trigger.py` 4 处直接读 `AIPLAT_SFT_*_MODEL` env var | **已知例外 (2026-07-01)** — SFT 训练的目标模型是运维决策。已加 `# noqa: env-legacy` 注释标记，与 arch_guard_rules.yaml §40.2 `grep_exclude` 一致。验证：`grep -c 'env-legacy' auto_trigger.py → 3。 （验证：grep -c 'env-legacy' auto_trigger.py → 3）  |
     | V | §76 | diagnostics.py 12 个 `_check_*` 函数引用在列表中但对应的嵌套函数已被移除 — 剩余 2 个模块级函数（`_check_core_runtime` + `_check_doc_sync`）正常通过 HealthCheckRegistry 注册。（2026-07-04 清理：移除 12 条死代码字符串引用。） （验证：grep -c '_check_前缀死代码引用' — 已全部清理） |
-    | W | — | workbench/prompt/learning 模块 router 残留（2026-07-18 发现） | **✅ 已修复 (2026-07-18)** — prompt 43→4 端点、learning 17→3 端点去重完成。workbench 0 重叠（routes 完全不同，各自独立）。 |
+    | W | — | workbench/prompt/learning 模块 router 残留（2026-07-18 发现） | **✅ 已修复 (2026-07-18)** — prompt 43→4 端点、learning 17→3 端点去重完成。workbench 0 重叠（routes 完全不同，各自独立）。 （验证：grep -c '@router\.' aiPlat-core/core/api/routers/prompt_*.py → 4, learning_*.py → 3） |
     | X | — | FDE 20 个 router 薄代理（2026-07-18 发现） | **✅ 已修复 (2026-07-18)** — 全量实迁移完成。20 个文件从 `core/api/routers/fde_*` 移至 `platform/apps/fde/api/`，core 文件已删除，`server.py`/`system.py`/`workbench.py` 引用路径已更新。arch_guard §80 现已 clean。 （验证：grep -rn 'from core.api.routers.fde' aiPlat-core/ aiPlat-platform/ --include=*.py | wc -l → 0） |
     | Y | — | 前端 FDE API 路径未更新（2026-07-18 发现） | **✅ 已修复 (2026-07-18)** — `FdeDashboard.tsx` 4 处 `/api/core/fde` 已全部统一为 `API('/path')` → `/api/platform/apps/fde`，server.py 同时保留 core 挂载向后兼容。 （验证：grep -c '/api/core/fde' FdeDashboard.tsx → 0） |
     | Z | — | Phase 0-4 6 个模块（2026-07-18 发现）：`on_error_reflector`(1 producer caller)、`hallucination_tracker`(9 callers)、`parallel_executor`(3 callers)、`gateway`(26 callers)、`implicit_feedback`(3 callers)、`semantic_cache`(11 callers) | **✅ 已修复 (2026-07-18)** — 验证：全部 6 模块有 ≥1 非测试生产调用者。原 xfail 标记为误报（搜索范围仅限 `sys_skill_call`，模块通过其他路径接入）。详见 Core CLAUDE.md §5.30 案例表 （验证：grep -rn 'sys_skill_call' core/ --include='*.py' → 模块通过其他路径接入） |
@@ -464,7 +464,7 @@ python -c "from core.harness.memory.manager import _re_rank_messages; print('OK'
 | K2 | 前端API路径 baseline (16条, 多数为路径格式差异) | 已知基线 |
 | K3 | Phase 4 Agent边界约束注入 | ✅ 已实现 (llm.py _try_inject_boundary_rules + pre-commit hook) |
 | K4 | 种子数据注入端到端 — 需 server 运行 | 待运行时 |
-| K5 | CLAUDE.md §16 已知债务 H (~60+ routes 缺 response_model) | 渐进式 |
+| K5 | CLAUDE.md §16 已知债务 H (~60+ routes 缺 response_model) | **✅ 已修复 (2026-07-18)** — 全量 typed 化完成，§16 H 已闭环 |
 
 ### 19.3 自动化防护生效
 
