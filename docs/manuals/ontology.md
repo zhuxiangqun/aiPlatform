@@ -1,9 +1,10 @@
 # 本体模型管理 — 使用手册
 
-> 版本: 1.1 · 2026-07-18  
-> 适用: aiPlatform v2.5+  
-> 入口: 知识中心 → 本体模型 (`/infra/ontology`)  
-> 📘 知识管线总览 → [knowledge-management.md](knowledge-management.md)
+> 版本: 1.2 · 2026-07-19  
+> 适用: aiPlatform v2.6+  
+> 入口: 知识中心 → 本体模型 (`/infra/ontology`) | 🆕 编辑器入口: `/ontology-editor`  
+> 📘 知识管线总览 → [knowledge-management.md](knowledge-management.md)  
+> 🆕 v2.6 新增: 本体编辑器 UI、角色视图、跨实体流程编排、时序 SLA 监控、动态阈值触发器、术语消歧
 
 ---
 

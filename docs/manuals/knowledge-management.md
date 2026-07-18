@@ -1,8 +1,9 @@
 # aiPlatform 知识管理 — 完整指南
 
-> 版本: 1.0 · 2026-07-18  
-> 适用: aiPlatform v2.5+  
-> 入口: 管理端 → 知识中心 → 管线总览（`/knowledge/overview`）
+> 版本: 1.1 · 2026-07-19  
+> 适用: aiPlatform v2.6+  
+> 入口: 管理端 → 知识中心 → 管线总览（`/knowledge/overview`）  
+> 🆕 v2.6: 本体编辑器 + 角色视图 + 流程编排 + SLA 监控 + 术语消歧
 
 ---
 
@@ -119,9 +120,14 @@ class StructuredChunk:
 | ClassMapper | `ontology_engine/class_mapper.py` | 关键词倒排索引 → T-Box 类标签（零 LLM） |
 | PropertyExtractor | `ontology_engine/property_extractor.py` | LLM 并行提取结构化属性 |
 | EntityResolver | `ontology_engine/entity_resolver.py` | 编辑距离 + 共现 + 结构上下文 → 消歧合并 |
-| StateMachine | `ontology_engine/state_machine.py` | YAML 配置驱动的状态评估 |
+| StateMachine | `ontology_engine/state_machine.py` | YAML 配置驱动的状态评估（v2.6: 动态阈值 + 时序触发器） |
 | GraphIndex | `ontology_engine/graph_index.py` | SQLite 实体-关系图存储 |
 | KnowledgeSynthesizer | `ontology_engine/knowledge_synthesis.py` | 图 → Wiki 页面合成 |
+| **Ontology Editor** 🆕 | `platform/apps/ontology_editor/` | 可视化本体 CRUD，低代码建模，NL→YAML 生成 |
+| **Role View** 🆕 | `harness/knowledge/role_view.py` | 职责维度：角色视角术语定义 + 字段/类可见性过滤 |
+| **Process Orchestrator** 🆕 | `harness/knowledge/process_orchestrator.py` | 跨实体业务流程编排 (Order→Picking→Shipment) |
+| **SLA Monitor** 🆕 | `harness/knowledge/sla_monitor.py` | 时序触发器后台监控，超时自动升级 |
+| **Term Resolver** 🆕 | `harness/knowledge/term_resolver.py` | 跨域术语消歧：同名异义 + 同义异名检测 |
 
 ### 3.3 本体建模流程
 
@@ -197,6 +203,24 @@ object_properties:
     domain: [InstallOrder]
     range: [Technician]
 ```
+
+### 3.7 Ontology Editor 可视化编辑 (v2.6 新增)
+
+管理端新增**本体编辑器**（`/ontology-editor`），支持：
+
+| 功能 | 说明 |
+|------|------|
+| 域 CRUD | 创建/编辑/删除域，写回 `~/.aiplat/ontologies/{id}.yaml` |
+| 类 CRUD | 可视化管理 classes、states、transitions、side_effects |
+| NL→YAML | 自然语言描述业务概念 → LLM 自动生成 class 定义草案 |
+| 角色视图 | 为不同岗位（计划员/仓管员）定义术语含义和字段可见性 |
+| 流程编排 | 跨实体业务流程定义（Order→Picking→Shipment→Invoice） |
+| 即时发布 | publish → YAML 写回 + 缓存失效 + 规则版本快照 |
+| 监控面板 | 状态分布、瓶颈分析、SLA 违约列表 |
+
+**对比手写 YAML**：
+- 手写：修改 `~/.aiplat/ontologies/{domain}.yaml` → 手动重启
+- 🆕 编辑器：UI 表单 → publish → 自动写回 + 热加载
 
 ---
 

@@ -155,11 +155,16 @@ FDE 在 ③ 问题重构 → 澄清对话中产生的知识缺口会自动入库
 
 ### 运维中的本体操作
 
-| 你想… | API |
-|------|-----|
+| 你想… | 方式 |
+|------|------|
+| 可视化编辑域本体 | 管理端 → 知识中心 → **本体编辑器** (`/ontology-editor`) |
 | 查看域健康 | `GET /wiki/health-trend` |
-| 重建本体 | `POST /ontology/rebuild` |
-| 验证本体 | `GET /ontology/validate` |
+| 验证域 YAML | `POST /ontology-editor/domains/{id}/publish`（含自动验证+快照） |
 | 查看本体覆盖 | `GET /fde/sessions/{id}/ontology-coverage` |
+| 查看状态分布 | `GET /ontology-editor/domains/{id}/monitor/state-distribution` |
+| 查看流程瓶颈 | `GET /ontology-editor/domains/{id}/monitor/bottlenecks` |
+| 规则版本管理 | `GET /ontology-editor/domains/{id}/rule-versions` |
+
+> 🆕 v2.6 新增：本体编辑器 + 角色视图 + 流程编排 + 流程监控。详见 [知识管理手册](../knowledge-management.md) §3.7。
 
 更多详情参见 [本体引擎手册](../ontology.md)。
