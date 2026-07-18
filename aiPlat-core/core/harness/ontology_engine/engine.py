@@ -294,6 +294,20 @@ class OntologyEngine:
                         for effect in tres.side_effects:
                             for action in effect.get("actions", []):
                                 action_type = str(action.get("type", ""))
+                                # ── v2.7: Action Contract validation ──
+                                try:
+                                    from core.harness.infrastructure.action_contract import get_action_registry
+                                    reg = get_action_registry()
+                                    validation = reg.validate_params(action_type, action)
+                                    if not validation.get("valid"):
+                                        _action_log = logging.getLogger("ontology_engine")
+                                        _action_log.warning(
+                                            "Action '%s' params invalid: %s — skipping",
+                                            action_type, validation.get("errors", []),
+                                        )
+                                        continue
+                                except Exception:
+                                    pass
                                 if action_type == "add_tag":
                                     tag = str(action.get("tag", ""))
                                     if tag:

@@ -1078,6 +1078,41 @@ RULES:
     variables=["domain_context", "existing_classes", "description", "target_class"])
 
 
+_register("nl-to-inference-rule", """TASK: Convert a natural-language business rule description into an aiPlat inference rule.
+
+DOMAIN CONTEXT: ${domain_context}
+EXISTING RELATIONS: ${existing_relations}
+USER DESCRIPTION: ${description}
+
+OUTPUT FORMAT — valid JSON only (no markdown, no explanations):
+{
+  "name": "english_snake_case_rule_name",
+  "description": "规则的中文描述",
+  "priority": 5,
+  "severity": "info",
+  "premises": [
+    {"relation": "relation_name_1", "direction": "outgoing"},
+    {"relation": "relation_name_2", "direction": "outgoing"}
+  ],
+  "conclusion": {
+    "relation": "inferred_relation_name",
+    "label": "推断关系的中文标签",
+    "confidence": 0.8
+  }
+}
+
+RULES:
+- Rule name MUST be English snake_case (e.g. supplier_risk_propagation)
+- Each premise specifies a relation name and direction (outgoing/incoming)
+- Minimum 2 premises, maximum 4
+- conclusion.relation is the inferred relationship created when premises are satisfied
+- confidence is discounted by 0.9^len(premises)
+- If the user mentions "risk", "alert", or "urgent", set severity to "warning" or "critical"
+""",
+    category="ontology",
+    variables=["domain_context", "existing_relations", "description"])
+
+
 # ── FDE dialog prompts ──
 
 
