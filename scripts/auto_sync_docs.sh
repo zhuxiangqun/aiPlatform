@@ -30,7 +30,7 @@ section_for() {
         *execution*|*loop*|*pipeline*|*langgraph*)    echo "## 一、Harness 执行引擎" ;;
         *memory*|*compression*|*episodic*|*semantic*)  echo "## 二、记忆子系统" ;;
         *ontology_engine*|*class_mapper*|*state_machine*|*graph_index*) echo "## 三、知识引擎（本体）" ;;
-        *knowledge*|*retrieval*|*rag*|*hyde*|*rrf*)   echo "## 四、RAG 检索" || echo "## 四附、知识基础设施（Knowledge）" ;;
+        *knowledge*|*retrieval*|*rag*|*hyde*|*rrf*|*term_resolver*|*role_view*|*sla_monitor*|*process_orchestrator*|*process_monitor*|*ontology_importer*|*yaml_serializer*|*active_synthesis*|*wiki_quality*) echo "## 三、知识引擎（本体）" ;;
         *agents*|*agent*)                               echo "## 五、Agent 系统" ;;
         *skills*|*skill*)                               echo "## 六、Skill 系统" ;;
         *engine/skills*)                                echo "## 六、Skill 系统" ;;
@@ -38,11 +38,13 @@ section_for() {
         *services*)                                     echo "## 一、Harness 执行引擎" ;;
         *management*)                                   echo "## 七、安全与治理" ;;
         *policy*|*gate*|*rbac*|*audit*|*pii*|*secrets*) echo "## 七、安全与治理" ;;
-        *observation*|*metrics*|*otel*|*health*)        echo "## 八、可观测性" ;;
+        *observation*|*observability*|*metrics*|*otel*|*health*|*usage_tracker*) echo "## 八、可观测性" ;;
+        *semantic_gateway*)                             echo "## 二十一、平台治理" ;;
         *infrastructure*|*adapter*|*model*)             echo "## 九、模型基础设施" ;;
         *deployment*|*scripts/ops*)                     echo "## 十、部署与运维" ;;
         *infra*)                                        echo "## 二十二、Infra 基础设施" ;;
         *platform*|*tenant*|*billing*|*governance*)     echo "## 二十一、平台治理" ;;
+        *apps/ontology_editor*)                         echo "## 二十一、平台治理" ;;
         *approval*)                                     echo "## 三、知识引擎（本体）" ;;
         *)                                              echo "## 十一、扩展与学习" ;;
     esac
@@ -57,23 +59,42 @@ echo "  AUTO SYNC DOCS — Detect + Fix CAPABILITIES.md gaps"
 echo "═══════════════════════════════════════════════════════════════"
 
 NEW_MODULES=""
-for root in "aiPlat-core/core/harness" "aiPlat-core/core/engine/skills" \
+for root in "aiPlat-core/core/harness" "aiPlat-core/core/harness/infrastructure" \
+    "aiPlat-core/core/harness/knowledge" "aiPlat-core/core/harness/observability" \
+    "aiPlat-core/core/harness/ontology_engine" "aiPlat-core/core/engine/skills" \
     "aiPlat-core/core/api/routers" "aiPlat-core/core/services" \
     "aiPlat-core/core/management" \
-    "aiPlat-platform/auth" "aiPlat-platform/storage" "aiPlat-platform/kb" \
     "aiPlat-platform/apps"; do
     if [ ! -d "$WORKSPACE/$root" ]; then continue; fi
+    # Pass 1: committed files (git log)
     while IFS= read -r f; do
         basename="${f##*/}"
         mod="${basename%.py}"
+        dirname="$(dirname "$f")"
         # Skip __init__, tests, pycache
         [[ "$basename" == __init__.py ]] && continue
         [[ "$f" == */tests/* ]] && continue
         [[ "$f" == */__pycache__/* ]] && continue
-        if ! grep -qi "$mod" "$CAPS" 2>/dev/null; then
+        # Check if module name OR parent directory is already registered
+        if ! grep -qi "$mod" "$CAPS" 2>/dev/null && ! grep -qi "$(basename "$dirname")" "$CAPS" 2>/dev/null; then
             NEW_MODULES="$NEW_MODULES $mod|$f"
         fi
     done < <(git -C "$WORKSPACE" log --diff-filter=AM --name-only --since="7 days ago" -- "$root/" 2>/dev/null | grep '\.py$' | sort -u)
+    # Pass 2: staged but uncommitted files (git diff --cached)
+    while IFS= read -r f; do
+        basename="${f##*/}"
+        mod="${basename%.py}"
+        dirname="$(dirname "$f")"
+        [[ "$basename" == __init__.py ]] && continue
+        [[ "$f" == */tests/* ]] && continue
+        [[ "$f" == */__pycache__/* ]] && continue
+        if ! grep -qi "$mod" "$CAPS" 2>/dev/null && ! grep -qi "$(basename "$dirname")" "$CAPS" 2>/dev/null; then
+            # Avoid duplicates from pass 1
+            if ! echo "$NEW_MODULES" | grep -q "$mod|"; then
+                NEW_MODULES="$NEW_MODULES $mod|$f"
+            fi
+        fi
+    done < <(git -C "$WORKSPACE" diff --cached --name-only 2>/dev/null | grep '\.py$' | sort -u)
 done
 
 if [ -z "$NEW_MODULES" ]; then
