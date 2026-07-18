@@ -120,7 +120,7 @@
 | 一、本周概要 | FDE 手工总结 | 每周 | ❌ |
 | 二、系统健康 | `GET /fde/dashboard` API | 自动采集 | ✅ |
 | 三、告警状况 | `GET /fde/alerts` API | 自动采集 | ✅ |
-| 四、自演进 | `GET /system/self-check` API | 自动采集 | ✅ |
+| 四、自演进 | `GET /api/core/system/diagnose` API | 自动采集 | ✅ |
 | 五、用户使用情况 | 运营监控面板 | 自动采集 | ✅ |
 | 六、客户反馈 | 浮动反馈按钮汇总 | 自动汇总 | ✅ |
 | 七、下周计划 | FDE 手工规划 | 每周 | ❌ |

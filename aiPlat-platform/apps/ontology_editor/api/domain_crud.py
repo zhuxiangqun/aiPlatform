@@ -9,6 +9,7 @@ Routes:
   DELETE /domains/{id}             — delete domain
   POST   /domains/{id}/classes     — upsert a class definition
   DELETE /domains/{id}/classes/{name} — delete a class
+  GET    /domains/{id}/rule-versions — list rule version snapshots
   POST   /domains/{id}/publish     — write YAML + invalidate caches
 """
 from fastapi import APIRouter, HTTPException
@@ -127,6 +128,17 @@ async def delete_class(domain_id: str, class_name: str):
         raise HTTPException(status_code=404, detail=f"Domain not found: {domain_id}")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to delete class: {e}")
+
+
+@router.get("/domains/{domain_id}/rule-versions", response_model=Dict[str, Any])
+async def list_rule_versions(domain_id: str):
+    u"""List saved rule version snapshots for a domain."""
+    try:
+        from core.api.core_facade import list_rule_versions
+        versions = list_rule_versions(domain_id)
+        return {"domain_id": domain_id, "versions": versions, "total": len(versions)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to list rule versions: {e}")
 
 
 @router.post("/domains/{domain_id}/publish", response_model=Dict[str, Any])

@@ -206,7 +206,7 @@ GraphIndex (SQLite 存储) + Wiki 页面
 - 对应 Wiki collection 的所有页面
 - 对应状态变更历史
 
-> ⚠️ 删除前建议先创建快照：`POST /engine/snapshot/{domain_id}`。
+> ⚠️ 删除前建议先创建快照：`POST /api/core/ontology/engine/snapshot/{domain_id}`。
 
 ---
 
@@ -354,10 +354,10 @@ UI 中的 **🔁 传播模拟** 功能：选择一个类 → 模拟新实例创�
 
 | 方式 | 路径 | 适用场景 |
 |------|------|---------|
-| **平台文档上传** | `POST /api/v1/documents/ingest` | PDF/DOCX/PPTX/HTML/MD/TXT |
-| **引擎直接处理** | `POST /ontology/engine/parse-and-process` | 已有文本，直接跑引擎 |
-| **KB 批量导入** | `POST /kb/ingest-url` | 从 URL 拉取文档 |
-| **数据源连接** | `POST /ontology/datasources` | SQL/API 数据源 |
+| **平台文档上传** | `POST /api/platform/apps/fde/ingest` | PDF/DOCX/PPTX/HTML/MD/TXT |
+| **引擎直接处理** | `POST /api/core/ontology/engine/parse-and-process` | 已有文本，直接跑引擎 |
+| **KB 批量导入** | `POST /api/core/kb/ingest-url` | 从 URL 拉取文档 |
+| **数据源连接** | `POST /api/core/ontology/datasources` | SQL/API 数据源 |
 
 ### 8.2 引擎管线流程
 
@@ -403,7 +403,7 @@ UI 中的 **🔁 传播模拟** 功能：选择一个类 → 模拟新实例创�
 1. `POST /domains/{id}/classify-all` — LLM 给所有未分类页面打类标签
 2. `POST /domains/{id}/build-instances` — 并行引擎处理（2 并发）
 3. `POST /domains/{id}/build-edges` — 构建跨页面图边
-4. `GET /domains/{id}/verify` — 验证分类覆盖率和数据完整性
+4. `GET /api/core/ontology/domains/{id}/verify` — 验证分类覆盖率和数据完整性
 
 ---
 
@@ -421,8 +421,8 @@ UI 中的 **🔁 传播模拟** 功能：选择一个类 → 模拟新实例创�
 
 | 操作 | 端点 | 说明 |
 |------|------|------|
-| 查看统计 | `GET /engine/graph-stats/{id}` | 节点数、边数、推断边数 |
-| 快照 | `POST /engine/snapshot/{id}` | 保存当前图状态 |
+| 查看统计 | `GET /api/core/ontology/engine/graph-stats/{id}` | 节点数、边数、推断边数 |
+| 快照 | `POST /api/core/ontology/engine/snapshot/{id}` | 保存当前图状态 |
 | 恢复 | `POST /engine/snapshot/{id}/restore` | 恢复到指定快照 |
 | 遍历 | `POST /engine/traverse` | 多跳路径查询 |
 | 推理 | `POST /engine/infer` | 运行推理规则生成新边 |
@@ -490,7 +490,7 @@ FDE 澄清对话 → 检测到缺失概念
 
 ### 11.3 主动推荐
 
-**📢 推荐** Tab（`GET /engine/recommend/{id}`）：
+**📢 推荐** Tab（`GET /api/core/ontology/engine/recommend/{id}`）：
 
 - 基于知识缺口自动生成补充建议
 - 优先级排序（高频缺口优先）
@@ -518,7 +518,7 @@ classes:
 ```
 
 1. 上传 YAML 配置文件
-2. `POST /sql/query` — 将 SPARQL-like 查询翻译为 SQL 执行
+2. `POST /api/core/ontology/sql/query` — 将 SPARQL-like 查询翻译为 SQL 执行
 3. 结果自动映射为本体实例
 
 ### 12.2 数据源连接器
@@ -535,7 +535,7 @@ classes:
 
 ### 12.3 SDK 导出
 
-`GET /sdk/{domain_id}` — 自动生成 Python/TypeScript 客户端代码，包含该域所有类的类型定义和 CRUD 方法。
+`GET /api/core/ontology/sdk/{domain_id}` — 自动生成 Python/TypeScript 客户端代码，包含该域所有类的类型定义和 CRUD 方法。
 
 ### 12.4 OWL/RDF 导出
 
@@ -606,7 +606,7 @@ FDE 现场交付工程师通过 8 步流程使用本体引擎：建域 → 注�
 **解决**：
 1. 检查 `_persist_reviews()` 文件（`~/.aiplat/ontology_reviews/{domain}.json`）中的 pending 条目
 2. 使用**传播模拟**手动验证 trigger 条件
-3. 检查关系是否真的存在于图数据中（`GET /engine/graph-stats/{id}`）
+3. 检查关系是否真的存在于图数据中（`GET /api/core/ontology/engine/graph-stats/{id}`）
 
 ---
 

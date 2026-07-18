@@ -163,7 +163,7 @@ FDE 在 ③ 问题重构 → 澄清对话中产生的知识缺口会自动入库
 | 查看本体覆盖 | `GET /fde/sessions/{id}/ontology-coverage` |
 | 查看状态分布 | `GET /ontology-editor/domains/{id}/monitor/state-distribution` |
 | 查看流程瓶颈 | `GET /ontology-editor/domains/{id}/monitor/bottlenecks` |
-| 规则版本管理 | `GET /ontology-editor/domains/{id}/rule-versions` |
+| 规则版本管理 | `GET /api/platform/apps/ontology-editor/domains/{id}/rule-versions` |
 
 > 🆕 v2.6 新增：本体编辑器 + 角色视图 + 流程编排 + 流程监控。详见 [知识管理手册](../knowledge-management.md) §3.7。
 
