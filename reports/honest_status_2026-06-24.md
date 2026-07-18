@@ -179,7 +179,7 @@ best-effort、§5.30 rule 8 警示批量风险）。正确收敛 = **机制化�
 
 | 前端调用 | 后端实际路由 | 分歧 | 修复 |
 |---|---|---|---|
-| `DELETE /infra/storage/collections/{name}` (`storageApi.ts:54`) | `DELETE /api/infra/storage/vector/collections/{name}` (`main.py:1691`) | 缺 `vector/` 段 | 前端改用 `vector/collections`；已验证 list(`734`)/delete(`1691`) 同走 `storage_mgr`，同一存储 |
+| `DELETE /infra/storage/collections/{name}` (`storageApi.ts:54`) | `DELETE /api/infra/storage/vector/collections/{name}` (`main.py:1691`) | 缺 `vector/` 段 | 前端改用 `vector/collections`；已验证 list(`（参见 AIPLAT_CAPABILITIES.md 当前计数）`)/delete(`1691`) 同走 `storage_mgr`，同一存储 |
 | `POST /infra/storage/pvcs/{name}/expand` (`storageApi.ts:81`) | `POST /api/infra/storage/pvc/{name}/resize` (`main.py:1620`) | 复数`pvcs`vs单数`pvc` + `expand`vs`resize` + `size`是Query非body | 前端改 `pvc/{name}/resize?size=`；`resize_pvc` 同走 `storage_mgr`，语义等价 |
 
 **验证证据**：`_compute_path_mismatches()` 21→**19**；基线 `--write-baseline` 重生成为 19 签名（`grep storage` 仅剩 models/pvcs 删除 2 个 B 类）；`apiClient.post(data?)` 可选参数→类型安全；`tsc -b` 无新增错误（storageApi.ts 零错误，其余为存量债务）；`npm run build` ✓ 通过(9.82s)。

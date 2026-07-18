@@ -58,6 +58,7 @@
 | graph_injector | `harness/execution/loop/graph_injector.py` | ✅ | 自动同步 | 已合入 |
 | tri_agent | `harness/execution/langgraph/graphs/tri_agent.py` | ✅ | 自动同步 | 已合入 |
 | target_continuity | `harness/execution/loop/target_continuity.py` | ✅ | 自动同步 | 已合入 |
+| trace_service | `services/trace_service.py` | ✅ | 自动同步 | 已合入 |
 |------|------|:---:|------|------|
 | ReAct 执行循环 | `harness/interfaces/loop.py:292` | ✅ | Reason→Act→Observe，集成 Hook/压缩/记忆 | 已合入 |
 | Plan-Execute 循环 | `harness/execution/loop/_facade.py` | ✅ | 先规划后执行模式 | 已合入 |
@@ -261,6 +262,7 @@
 | adaptive_context | `harness/knowledge/adaptive_context.py` | ✅ | 自动同步 | 已合入 |
 | wiki_indexer | `harness/knowledge/wiki_indexer.py` | ✅ | 自动同步 | 已合入 |
 | skill_marketplace | `harness/knowledge/skill_marketplace.py` | ✅ | 自动同步 | 已合入 |
+| recon_subgraph | `harness/knowledge/recon_subgraph.py` | ✅ | 自动同步 | 已合入 |
 |------|------|:---:|------|------|
 | 统一知识检索 | `harness/syscalls/retrieval.py:569` | ✅ | 并行 Wiki + KB，RRF 三路融合 | 已合入 |
 | KB 文档检索 | `harness/syscalls/retrieval.py:39` | ✅ | hybrid: LIKE + FTS5 + FAISS 向量 | 已合入 |
@@ -394,6 +396,9 @@
 | cross_validation_gate | `harness/infrastructure/gates/cross_validation_gate.py` | ✅ | 自动同步 | 已合入 |
 | completion_gate | `harness/infrastructure/gates/completion_gate.py` | ✅ | 自动同步 | 已合入 |
 | audit_trail_gate | `harness/infrastructure/gates/audit_trail_gate.py` | ✅ | 自动同步 | 已合入 |
+| agent_manager | `management/agent_manager.py` | ✅ | 自动同步 | 已合入 |
+| skill_manager | `management/skill_manager.py` | ✅ | 自动同步 | 已合入 |
+| workflow_manager | `management/workflow_manager.py` | ✅ | 自动同步 | 已合入 |
 |------|------|:---:|------|------|
 | PolicyGate | `harness/infrastructure/gates/policy_gate.py` | ✅ | 统一权限检查 + 架构边界实时拦截 | 已合入 |
 | ApprovalGate | `harness/infrastructure/approval/manager.py` | ✅ | approve/deny/pending，双门禁 | 已合入 |
@@ -554,6 +559,12 @@
 | sla_tracker | `harness/security/sla_tracker.py` | ✅ | 自动同步 | 已合入 |
 | cron_loader | `harness/scheduler/cron_loader.py` | ✅ | 自动同步 | 已合入 |
 | wake_scheduler | `harness/scheduler/wake_scheduler.py` | ✅ | 自动同步 | 已合入 |
+| graph_consensus | `harness/coordination/patterns/graph_consensus.py` | ✅ | 自动同步 | 已合入 |
+| rag_diagnosis | `harness/evaluation/rag_diagnosis.py` | ✅ | 自动同步 | 已合入 |
+| rag_diagnostics_collector | `harness/evaluation/rag_diagnostics_collector.py` | ✅ | 自动同步 | 已合入 |
+| recorder | `harness/practice/recorder.py` | ✅ | 自动同步 | 已合入 |
+| graph_extract | `harness/syscalls/graph_extract.py` | ✅ | 自动同步 | 已合入 |
+| async_utils | `harness/utils/async_utils.py` | ✅ | 自动同步 | 已合入 |
 |------|------|:---:|------|------|
 | ExperienceVector | `harness/learning/experience_vector.py` | ✅ | PipelineTrace→Embedding→语义检索 | 已合入 |
 | ToolDriftDetector | `harness/learning/tool_drift_detector.py` | ✅ | 4类漂移检测(struct/field/latency/error) + 重放校验自适应 | 已合入 |
@@ -832,6 +843,15 @@
 | prompt_templates | `api/routers/prompt_templates.py` | ✅ | 自动同步 | 已合入 |
 | learning_autocapture | `api/routers/learning_autocapture.py` | ✅ | 自动同步 | 已合入 |
 | prompt_eval | `api/routers/prompt_eval.py` | ✅ | 自动同步 | 已合入 |
+| routing_observability | `api/routers/routing_observability.py` | ✅ | 自动同步 | 已合入 |
+| workflow_templates | `api/routers/workflow_templates.py` | ✅ | 自动同步 | 已合入 |
+| workspace_skills | `api/routers/workspace_skills.py` | ✅ | 自动同步 | 已合入 |
+| workspace_tools | `api/routers/workspace_tools.py` | ✅ | 自动同步 | 已合入 |
+| kb_eval | `aiPlat-platform/apps/eval/api/kb_eval.py` | ✅ | 自动同步 | 已合入 |
+| runs_eval | `aiPlat-platform/apps/eval/api/runs_eval.py` | ✅ | 自动同步 | 已合入 |
+| skill_evals | `aiPlat-platform/apps/eval/api/skill_evals.py` | ✅ | 自动同步 | 已合入 |
+| catalog | `aiPlat-platform/apps/misc/api/catalog.py` | ✅ | 自动同步 | 已合入 |
+| personas | `aiPlat-platform/apps/misc/api/personas.py` | ✅ | 自动同步 | 已合入 |
 |------|------|:---:|------|------|
 | Change Control | `platform/api/routers/change_control.py` | ✅ | 变更请求跟踪/审计/autosmoke强制执行 | 已合入 |
 | Tenant Onboarding | `platform/api/routers/onboarding.py` | ✅ | 租户引导：LLM配置/执行后端/密钥迁移/信任密钥 | 已合入 |
@@ -976,7 +996,7 @@
 | 编排系统 | 4 | 0 | 4 |
 | 管理 & 质量 | 21 | 0 | 21 |
 | 编排层 | 17 | 0 | 17 |
-| **总计** | **702** | **0** | **702** |
+| **总计** | **725** | **0** | **725** |
 
 ---
 

@@ -122,6 +122,7 @@ class AlertManager:
         alert.fire_count = 1
 
         self._active_alerts[alert.id] = alert
+        self._persist_alert(alert)
 
         for handler in self._handlers:
             try:
@@ -149,6 +150,7 @@ class AlertManager:
             return False
         alert.status = AlertStatus.ACKNOWLEDGED
         alert.acknowledged_at = datetime.now(timezone.utc)
+        self._persist_alert(alert)
         return True
 
     def resolve(self, alert_id: str) -> bool:
@@ -157,6 +159,7 @@ class AlertManager:
             return False
         alert.status = AlertStatus.RESOLVED
         alert.resolved_at = datetime.now(timezone.utc)
+        self._persist_alert(alert)
         return True
 
     def suppress(self, rule_name: str, suppress: bool = True):
@@ -183,6 +186,75 @@ class AlertManager:
             "by_severity": {s.value: c for s, c in by_severity.items()},
             "by_status": {s.value: c for s, c in by_status.items()},
         }
+
+    # ── SQLite persistence (2026-07-18) ──
+    _db_path: Optional[str] = None
+
+    def _init_db(self) -> None:
+        import sqlite3, os
+        if self._db_path is not None:
+            return
+        db_dir = os.path.expanduser("~/.aiplat")
+        os.makedirs(db_dir, exist_ok=True)
+        self._db_path = os.path.join(db_dir, "alerts.db")
+        with sqlite3.connect(self._db_path) as conn:
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS alerts (
+                    id TEXT PRIMARY KEY, rule_name TEXT, severity TEXT,
+                    message TEXT, source TEXT, status TEXT,
+                    timestamp TEXT, acknowledged_at TEXT, resolved_at TEXT,
+                    fire_count INTEGER DEFAULT 1, metadata_json TEXT DEFAULT '{}'
+                )
+            """)
+        self._load_alerts()
+        _log.info(f"AlertEngine: SQLite persistence initialized ({self._db_path})")
+
+    def _persist_alert(self, alert: AlertInstance) -> None:
+        if self._db_path is None:
+            self._init_db()
+        import sqlite3, json
+        with sqlite3.connect(self._db_path) as conn:
+            conn.execute(
+                """INSERT OR REPLACE INTO alerts VALUES (?,?,?,?,?,?,?,?,?,?,?)""",
+                (alert.id, alert.rule.name, alert.severity.value, alert.message,
+                 alert.source, alert.status.value, alert.timestamp.isoformat(),
+                 alert.acknowledged_at.isoformat() if alert.acknowledged_at else None,
+                 alert.resolved_at.isoformat() if alert.resolved_at else None,
+                 alert.fire_count, json.dumps(alert.metadata, default=str))
+            )
+
+    def _load_alerts(self) -> None:
+        import sqlite3, json
+        if self._db_path is None:
+            return
+        with sqlite3.connect(self._db_path) as conn:
+            rows = conn.execute("SELECT * FROM alerts WHERE status != 'resolved'").fetchall()
+        for row in rows:
+            rule = self._rules.get(row[1]) or AlertRule(name=row[1], condition="", severity=AlertSeverity.WARNING)
+            alert = AlertInstance(
+                id=row[0], rule=rule, severity=AlertSeverity(row[2]),
+                message=row[3], source=row[4], timestamp=datetime.fromisoformat(row[6]),
+                status=AlertStatus(row[5]),
+                acknowledged_at=datetime.fromisoformat(row[7]) if row[7] else None,
+                resolved_at=datetime.fromisoformat(row[8]) if row[8] else None,
+                fire_count=row[9], metadata=json.loads(row[10]) if row[10] else {}
+            )
+            self._active_alerts[alert.id] = alert
+        if self._active_alerts:
+            _log.info(f"AlertEngine: restored {len(self._active_alerts)} active alerts from SQLite")
+
+    def _install_email_notifier(self) -> None:
+        try:
+            from core.harness.infrastructure.email_notifier import get_email_notifier
+            notifier = get_email_notifier()
+            async def _email_handler(alert: AlertInstance):
+                subject = f"[{alert.severity.value.upper()}] {alert.rule.name}"
+                body = f"Alert: {alert.message}\nSource: {alert.source}\nTime: {alert.timestamp}"
+                notifier.send(to="admin@aiplat.local", subject=subject, body=body)
+            self.register_handler(_email_handler)
+            _log.info("AlertEngine: EmailNotifier registered as notification channel")
+        except Exception as e:
+            _log.warning(f"AlertEngine: EmailNotifier reg skipped ({e})")
 
 
 class AlertNotification:
@@ -214,7 +286,10 @@ class AlertNotification:
 
 
 def create_alert_manager() -> AlertManager:
-    return AlertManager()
+    mgr = AlertManager()
+    mgr._init_db()
+    mgr._install_email_notifier()
+    return mgr
 
 
 alert_manager = AlertManager.get_instance()
