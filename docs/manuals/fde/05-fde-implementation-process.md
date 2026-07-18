@@ -171,7 +171,9 @@ FDE 提供两种执行方式，适应不同的交付场景：
 
 FDE 交付现场的第三方系统（ERP/CRM/MES/IM）对接通过标准化集成插件完成。生态伙伴可独立开发插件并提交到生态市场。
 
-**集成插件规范**：
+**集成插件规范**（v2.9 启动实现）：
+
+> ⚠️ `BaseIntegrationAdapter` 及插件 SDK 尚未实现。以下为设计规范，当前集成通过 `POST /fde/ingest` + REST API Channel 直接完成。
 
 | 要求 | 说明 |
 |------|------|
@@ -187,7 +189,7 @@ FDE 交付现场的第三方系统（ERP/CRM/MES/IM）对接通过标准化集�
 | SSO/OIDC | ✅ 已实现 | 管理端 → 认证鉴权 → 新增 OIDC Provider（Keycloak/Azure AD/Okta） |
 | REST API 集成 | ✅ 已实现 | 渠道管理 → 新建 API 渠道 → 生成 Key → 测试连通 |
 | 数据源直连 | ✅ 已实现 | `POST /fde/ingest` — ERP/CRM/MES 字段映射 → 标准 FDE 输入 |
-| 企业 IM Webhook | ⚠️ 已预留 | MCP 管理 → Webhook 适配器（飞书/企微/Slack） |
+| 企业 IM Webhook | 🔜 待实现 | MCP Webhook 适配器接口已定义（飞书/企微/Slack），代码实现待启动 |
 | RBAC 角色同步 | ✅ 已实现 | `permissions.yaml` + JWT 透传 |
 | 数据库连接器 | ✅ 已实现 | 平台存储 → 新建连接 → JDBC 自动生成 CRUD 端点 |
 
