@@ -34,6 +34,8 @@ export default function OntologyEditor() {
   const [monitorTab, setMonitorTab] = useState(false);
   const [stateDist, setStateDist] = useState<any>(null);
   const [bottlenecks, setBottlenecks] = useState<any>(null);
+  const [slaViolations, setSlaViolations] = useState<any>(null);
+  const [trends, setTrends] = useState<any>(null);
   const [editing, setEditing] = useState(false);
   const [editForm, setEditForm] = useState<any>({});
 
@@ -153,12 +155,16 @@ export default function OntologyEditor() {
   const fetchMonitor = async () => {
     if (!selectedDomain) return;
     try {
-      const [sd, bo] = await Promise.all([
+      const [sd, bo, sl, tr] = await Promise.all([
         apiClient.get(api(`/domains/${selectedDomain}/monitor/state-distribution`)),
         apiClient.get(api(`/domains/${selectedDomain}/monitor/bottlenecks`)),
+        apiClient.get(api(`/domains/${selectedDomain}/monitor/sla-violations`)),
+        apiClient.get(api(`/domains/${selectedDomain}/monitor/trends?days=7`)),
       ]);
       setStateDist(sd.data);
       setBottlenecks(bo.data);
+      setSlaViolations(sl.data);
+      setTrends(tr.data);
     } catch {}
   };
 
@@ -323,6 +329,45 @@ export default function OntologyEditor() {
                   </div>
                 ) : (
                   <div style={{ color: '#555', fontSize: 12 }}>No bottlenecks detected.</div>
+                )}
+                <h4 style={{ margin: '16px 0 12px', fontSize: 13, color: '#f88' }}>SLA Violations</h4>
+                {slaViolations?.violations?.length ? (
+                  <div style={{ maxHeight: 200, overflowY: 'auto' }}>
+                    {slaViolations.violations.map((v: any, i: number) => (
+                      <div key={i} style={{
+                        padding: '6px 10px', marginBottom: 4, borderRadius: 4,
+                        background: '#3a1a1a', fontSize: 11, display: 'flex', justifyContent: 'space-between',
+                      }}>
+                        <span>{v.entity_name} ({v.class_name}: {v.from_state} → {v.to_state})</span>
+                        <span style={{ color: '#faa' }}>{v.description || 'SLA breach'}</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div style={{ color: '#555', fontSize: 12 }}>No SLA violations.</div>
+                )}
+                <h4 style={{ margin: '16px 0 12px', fontSize: 13, color: '#888' }}>7-Day Trend</h4>
+                {trends?.trends?.length ? (
+                  <div style={{ fontSize: 11 }}>
+                    {trends.trends.map((d: any, i: number) => (
+                      <div key={i} style={{
+                        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                        padding: '4px 8px', marginBottom: 2, background: '#1a1a2e', borderRadius: 4,
+                      }}>
+                        <span style={{ color: '#888', width: 80 }}>{d.date.slice(5)}</span>
+                        <div style={{ flex: 1, height: 8, background: '#222', borderRadius: 4, margin: '0 8px', overflow: 'hidden' }}>
+                          <div style={{
+                            height: '100%', background: d.total > 0 ? '#4a4aff' : '#333',
+                            width: `${Math.min(100, (d.total || 0) * 5)}%`,
+                            borderRadius: 4, transition: 'width 0.3s',
+                          }} />
+                        </div>
+                        <span style={{ color: '#ccc', minWidth: 30, textAlign: 'right' }}>{d.total || 0}</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div style={{ color: '#555', fontSize: 12 }}>No trend data yet.</div>
                 )}
               </div>
             )}

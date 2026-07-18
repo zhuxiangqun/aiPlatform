@@ -160,6 +160,22 @@ GraphIndex (SQLite 存储) + Wiki 页面
 | **📋 复查** | 待 FDE 确认的关联审查 | 状态变更后 |
 | **📜 历史** | 状态变更的时间线 | 追踪实体演变 |
 
+### 3.9 本体编辑器 (v2.6) vs 手写 YAML
+
+| 操作 | 手写 YAML | 🆕 编辑器 |
+|------|------|------|
+| 创建域 | 建文件 → `~/.aiplat/ontologies/{id}.yaml` | 管理端 → 本体编辑器 → "+" → 填写表单 |
+| 编辑 class | 编辑 YAML 文本 | UI 表单：类名、标签、字段、枚举值 |
+| 添加状态机 | 手写 states/transitions | 状态机可视化表单：states 列表 → transitions 连线 |
+| 副作用配置 | 手写 YAML | 表单选择：add_tag / call_webhook / mark_related_for_review / inject_case_study |
+| 角色视图 🆕 | 不存在 | views YAML：术语定义 + 字段可见性 + 类过滤 |
+| 流程编排 🆕 | 不存在 | processes YAML：跨实体步骤 + auto_create + SLA |
+| NL→YAML 🆕 | 不可用 | 输入业务描述 → LLM 生成 class 定义草案 |
+| 发布与版本 🆕 | 手动替换文件 | publish → 写回 YAML + graph snapshot + 缓存失效 |
+| 监控 🆕 | 不可用 | Monitor tab：状态分布 + 瓶颈分析 + SLA 违约 |
+
+**入口**：管理端 → 知识中心 → 本体编辑器 (`/ontology-editor`)
+
 ---
 
 ## 四、域管理
@@ -403,7 +419,7 @@ UI 中的 **🔁 传播模拟** 功能：选择一个类 → 模拟新实例创�
 1. `POST /domains/{id}/classify-all` — LLM 给所有未分类页面打类标签
 2. `POST /domains/{id}/build-instances` — 并行引擎处理（2 并发）
 3. `POST /domains/{id}/build-edges` — 构建跨页面图边
-4. `GET /api/core/ontology/domains/{id}/verify` — 验证分类覆盖率和数据完整性
+4. `GET /api/core/ontology/domains/{domain_id}/verify` — 验证分类覆盖率和数据完整性
 
 ---
 
@@ -421,8 +437,8 @@ UI 中的 **🔁 传播模拟** 功能：选择一个类 → 模拟新实例创�
 
 | 操作 | 端点 | 说明 |
 |------|------|------|
-| 查看统计 | `GET /api/core/ontology/engine/graph-stats/{id}` | 节点数、边数、推断边数 |
-| 快照 | `POST /api/core/ontology/engine/snapshot/{id}` | 保存当前图状态 |
+| 查看统计 | `GET /api/core/ontology/engine/graph-stats/{domain_id}` | 节点数、边数、推断边数 |
+| 快照 | `POST /api/core/ontology/engine/snapshot/{domain_id}` | 保存当前图状态 |
 | 恢复 | `POST /engine/snapshot/{id}/restore` | 恢复到指定快照 |
 | 遍历 | `POST /engine/traverse` | 多跳路径查询 |
 | 推理 | `POST /engine/infer` | 运行推理规则生成新边 |
@@ -490,7 +506,7 @@ FDE 澄清对话 → 检测到缺失概念
 
 ### 11.3 主动推荐
 
-**📢 推荐** Tab（`GET /api/core/ontology/engine/recommend/{id}`）：
+**📢 推荐** Tab（`GET /api/core/ontology/engine/recommend/{domain_id}`）：
 
 - 基于知识缺口自动生成补充建议
 - 优先级排序（高频缺口优先）
@@ -606,7 +622,7 @@ FDE 现场交付工程师通过 8 步流程使用本体引擎：建域 → 注�
 **解决**：
 1. 检查 `_persist_reviews()` 文件（`~/.aiplat/ontology_reviews/{domain}.json`）中的 pending 条目
 2. 使用**传播模拟**手动验证 trigger 条件
-3. 检查关系是否真的存在于图数据中（`GET /api/core/ontology/engine/graph-stats/{id}`）
+3. 检查关系是否真的存在于图数据中（`GET /api/core/ontology/engine/graph-stats/{domain_id}`）
 
 ---
 

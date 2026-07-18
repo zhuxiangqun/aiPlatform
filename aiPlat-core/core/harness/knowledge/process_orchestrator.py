@@ -1,9 +1,16 @@
 u"""
-Process Orchestrator — 跨实体业务流程编排 (v2.6).
+Process Orchestrator — 跨实体 + 跨域业务流程编排 (v2.7).
 
-Loads `processes` key from domain YAML and orchestrates multi-entity business flows:
+Loads ``processes`` key from domain YAML and orchestrates multi-entity business flows:
   - order_fulfillment: Order → PickingTask → Shipment → Invoice
-  - Each step specifies: entity_class, target_state, depends_on, auto_create, on_failure
+
+Each step specifies: entity_class, target_state, depends_on, auto_create, on_failure.
+
+Cross-domain support:
+  - ``domains: [...]`` declares which domains the process spans.
+  - ``domain: xxx`` on individual steps overrides the default for per-step routing.
+  - Steps without ``domain`` use the first domain in the process's ``domains`` list.
+  - Cross-domain processes are loaded lazily from YAML files.
 
 Process instances tracked in SQLite (process_instances table) in state_changes.db.
 """
@@ -44,8 +51,30 @@ def _ensure_schema():
 
 
 def load_processes(domain_yaml_raw: Dict[str, Any]) -> List[Dict[str, Any]]:
-    u"""Load process definitions from domain YAML raw dict."""
-    return list(domain_yaml_raw.get("processes") or [])
+    u"""Load process definitions from domain YAML raw dict.
+
+    Each process has a ``domains`` list declaring which domains the process
+    spans. Each step gets a ``default_domain`` field set to the first domain
+    in the process's ``domains`` list. Steps that specify their own ``domain``
+    field override this default for cross-domain routing.
+
+    Steps without ``domain`` use the first domain in the process's
+    ``domains`` list.
+    """
+    raw_processes = domain_yaml_raw.get("processes", {})
+    if not isinstance(raw_processes, dict):
+        return []
+    result: List[Dict[str, Any]] = []
+    for pname, pdef in raw_processes.items():
+        pdef = dict(pdef)
+        pdef["name"] = pname
+        domains = pdef.get("domains", [])
+        default_domain = domains[0] if domains else ""
+        steps = pdef.get("steps", [])
+        for step in steps:
+            step["default_domain"] = default_domain
+        result.append(pdef)
+    return result
 
 
 def start_process(
@@ -75,64 +104,97 @@ def check_step_completion(
     entity_name: str,
     new_state: str,
 ) -> List[Dict[str, Any]]:
-    u"""Called after state_machine completes. Checks if this entity's new state triggers the next step in any running process.
+    u"""Called after state_machine completes.
 
-    Returns list of triggered next steps: [{process_instance_id, next_step_index, action}].
+    Checks if this entity's new state triggers the next step in any running
+    process, including cross-domain processes.
+
+    Cross-domain routing:
+      - Steps with a ``domain`` field matching the current ``domain_id`` are
+        processed.
+      - Steps without ``domain`` fall back to the process's first domain (from
+        its ``domains`` list), providing backward compatibility for
+        single-domain processes.
     """
     base = _os.path.expanduser(_os.getenv("AIPLAT_ONTOLOGY_DIR", "~/.aiplat/ontologies"))
-    yaml_path = os.path.join(base, f"{domain_id}.yaml")
-    if not os.path.exists(yaml_path):
-        return []
 
-    import yaml
-    with open(yaml_path, "r", encoding="utf-8") as f:
-        raw = yaml.safe_load(f) or {}
-
-    processes = raw.get("processes", {})
-    results = []
-
+    results: List[Dict[str, Any]] = []
     _ensure_schema()
     conn = _sqlite3.connect(_db_path(), timeout=5.0)
 
-    for pname, pdef in processes.items():
-        steps = pdef.get("steps", [])
-        if not steps:
+    if not _os.path.isdir(base):
+        conn.close()
+        return results
+
+    import yaml
+    for fname in sorted(_os.listdir(base)):
+        if not fname.endswith(".yaml"):
+            continue
+        yaml_path = _os.path.join(base, fname)
+        yaml_domain = fname[:-5]
+
+        try:
+            with open(yaml_path, "r", encoding="utf-8") as f:
+                raw = yaml.safe_load(f) or {}
+        except Exception:
             continue
 
-        cursor = conn.execute(
-            "SELECT id, current_step FROM process_instances WHERE process_name = ? AND domain_id = ? AND status = 'running'",
-            (pname, domain_id),
-        )
-        for row in cursor:
-            pid, current_step = row[0], row[1]
-            for idx, step in enumerate(steps):
-                if idx != current_step:
-                    continue
-                if step.get("entity_class") != entity_class:
-                    continue
+        processes = raw.get("processes", {})
+        for pname, pdef in processes.items():
+            steps = pdef.get("steps", [])
+            if not steps:
+                continue
 
-                target = step.get("target_state", "")
-                if target and target != new_state:
-                    continue
+            proc_domains = pdef.get("domains", [yaml_domain])
+            first_domain = proc_domains[0] if proc_domains else yaml_domain
 
-                next_step = steps[idx + 1] if idx + 1 < len(steps) else None
-                results.append({
-                    "process_id": pid,
-                    "process_name": pname,
-                    "step_label": step.get("label", ""),
-                    "next_step": next_step.get("label", "") if next_step else None,
-                    "auto_create": next_step.get("auto_create", False) if next_step else False,
-                    "next_entity_class": next_step.get("entity_class", "") if next_step else "",
-                    "new_step_index": idx + 1,
-                })
+            # Only process if at least one step targets this domain_id
+            any_step_relevant = any(
+                step.get("domain", first_domain) == domain_id
+                for step in steps
+            )
+            if not any_step_relevant:
+                continue
 
-                if next_step:
-                    conn.execute(
-                        "UPDATE process_instances SET current_step = ?, updated_at = ? WHERE id = ?",
-                        (idx + 1, _time.time(), pid),
-                    )
-                    if next_step.get("auto_create"):
-                        logger.info("Process %s: auto-create %s for next step", pname, next_step.get("entity_class", ""))
+            cursor = conn.execute(
+                "SELECT id, current_step FROM process_instances WHERE process_name = ? AND status = 'running'",
+                (pname,),
+            )
+            for row in cursor:
+                pid, current_step = row[0], row[1]
+                for idx, step in enumerate(steps):
+                    if idx != current_step:
+                        continue
+
+                    step_domain = step.get("domain", first_domain)
+                    if step_domain != domain_id:
+                        continue
+
+                    if step.get("entity_class") != entity_class:
+                        continue
+
+                    target = step.get("target_state", "")
+                    if target and target != new_state:
+                        continue
+
+                    next_step = steps[idx + 1] if idx + 1 < len(steps) else None
+                    results.append({
+                        "process_id": pid,
+                        "process_name": pname,
+                        "step_label": step.get("label", ""),
+                        "next_step": next_step.get("label", "") if next_step else None,
+                        "auto_create": next_step.get("auto_create", False) if next_step else False,
+                        "next_entity_class": next_step.get("entity_class", "") if next_step else "",
+                        "new_step_index": idx + 1,
+                    })
+
+                    if next_step:
+                        conn.execute(
+                            "UPDATE process_instances SET current_step = ?, updated_at = ? WHERE id = ?",
+                            (idx + 1, _time.time(), pid),
+                        )
+                        if next_step.get("auto_create"):
+                            logger.info("Process %s: auto-create %s for next step", pname, next_step.get("entity_class", ""))
 
     conn.commit()
     conn.close()
@@ -191,4 +253,46 @@ def get_bottlenecks(domain_id: str, limit: int = 10) -> List[Dict[str, Any]]:
         for row in rows
     ]
 
-import os as os
+
+def load_processes_cross_domain(ontologies_dir: str = "") -> Dict[str, Any]:
+    u"""Load all processes across all domains.
+
+    Scans all YAML files in the ontologies directory and returns processes
+    keyed by name with their definitions and domain associations.
+
+    Returns ``{process_name: {"definition": ..., "domains": [...], "source_domain": "..."}}``.
+
+    Cross-domain processes are loaded lazily from YAML files — no runtime
+    registration is needed. The ``domains`` field declares which domains the
+    process spans. Individual steps may override with their own ``domain``
+    field.
+    """
+    base = _os.path.expanduser(ontologies_dir or _os.getenv("AIPLAT_ONTOLOGY_DIR", "~/.aiplat/ontologies"))
+    result: Dict[str, Any] = {}
+
+    if not _os.path.isdir(base):
+        return result
+
+    import yaml
+    for fname in sorted(_os.listdir(base)):
+        if not fname.endswith(".yaml"):
+            continue
+        yaml_path = _os.path.join(base, fname)
+        try:
+            with open(yaml_path, "r", encoding="utf-8") as f:
+                raw = yaml.safe_load(f) or {}
+        except Exception:
+            continue
+
+        processes = raw.get("processes", {})
+        for pname, pdef in processes.items():
+            domains = pdef.get("domains", [])
+            if not domains:
+                domains = [fname[:-5]]
+            result[pname] = {
+                "definition": pdef,
+                "domains": domains,
+                "source_domain": fname[:-5],
+            }
+
+    return result
