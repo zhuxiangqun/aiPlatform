@@ -3,19 +3,28 @@
 > 生成时间：2026-07-19 | **不手动编辑** — 需要新数据时重新生成
 > 分析范围：aiPlat（代码级全量分析）
 > 架构守卫状态：0 ERROR, 0 WARNING（全已知, 已全量修复）
-> 合规状态：0 违规（shell agents 已修复, env-legacy 已标记）
+> 合规状态：0 违规
 >
-> **多系统对标已独立 → [`docs/architecture/comparison.md`](docs/architecture/comparison.md)** — 9 维度 vs Hermes/ClaudeCode/OpenClaw 深度对比 + 12 项体系性优势 + 竞品借鉴全部 ✅。本文档聚焦 aiPlat 内部架构分析。
+> **四平台深度对标 → [`docs/architecture/comparison.md`](docs/architecture/comparison.md)** — 12 维度 × aiPlat/Hermes/ClaudeCode/OpenClaw × 评分矩阵 × 借鉴建议。本文档聚焦 aiPlat 内部架构分析。
 
 ---
 
-## 一、四方案核心定位对比
+## 一、aiPlat 定位概述
 
-> **对标已移至** [`docs/architecture/comparison.md`](docs/architecture/comparison.md) §一。本文档此处仅保留 aiPlat 定位摘要。
+> **完整四平台对标（12 维度表 + 综合评分矩阵 + 可借鉴建议）→** [`docs/architecture/comparison.md`](docs/architecture/comparison.md)
 
-| aiPlat | Hermes | Claude Code | OpenClaw |
-|------|------|------|------|
-| 企业 FDE 操作系统 · 4层分层 · Python · 748✅ | 个人 AI 助手 · MIT 开源 · Python · 217k★ · 16,243 commits · MIT · 自学习闭环 + Skills Hub | 编程 Agent · 闭源引擎+开源插件 · Python 80% · 138k★ · Plugin 系统 + Custom Commands | 个人 AI 助手 · MIT 开源 · TS · 383k★ · 70,598 commits · 23 通道 |
+aiPlat 是**企业级 AI 操作系统**，定位为 `企业大脑`——从"工具集合"到"自演进操作系统"的 8 层架构。当前 v2.8，748 项能力已验证。
+
+| 层级 | 定位 | 核心实现 |
+|:--:|------|------|
+| 1 | 本体语义底座 | 8域YAML + GraphIndex + EntityResolver |
+| 2 | 知识创造引擎 | SECI Bus (POST_LOOP → atom → convergence) |
+| 3 | 上下文注入总线 | ContextBus (10层注入, 4子系统覆盖) |
+| 4 | 质量评分总线 | Quality Bus (4子系统统一评分 0-100) |
+| 5 | FDE诊断与交付闭环 | 诊断→证据映射→覆盖率→改进→交付手册→跟踪→评分 |
+| 6 | 治理工程化 | 8项治理能力 + 自审计 + 配置驱动 |
+| 7 | 自演进操作系统 | 四阶段全自动(观察/诊断/修复/演化) + cron调度 |
+| 8 | 编码宪法 | karpathy_v1 全局默认注入
 
 ---
 
