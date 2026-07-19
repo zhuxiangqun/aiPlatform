@@ -1,3 +1,5 @@
+> ⚠️ **已归档** — 本文档为历史版本，API 引用可能已过期。最新文档请参见 [FDE 交付手册](../fde-delivery-manual.md)。
+
 # Workflow 创建指南 — {{PROJECT_NAME}}
 
 > **配套交付手册**：`fde-delivery-manual.md` | **适用阶段**：行前准备 / Phase 2

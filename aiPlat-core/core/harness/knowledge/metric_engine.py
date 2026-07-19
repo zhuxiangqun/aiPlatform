@@ -83,17 +83,18 @@ def compute(
 ) -> Dict[str, Any]:
     u"""Compute a metric value from state_history.db + GraphIndex."""
     if not _os.path.exists(DB_PATH):
-        return {"value": None, "error": "state_changes.db not found"}
+        return {"value": None, "error": "state_changes.db not found", "metric_name": metric.name}
 
     cutoff = _time.time() - (time_window_days * 86400)
-    conn = _sqlite3.connect(DB_PATH, timeout=5.0)
-    conn.row_factory = _sqlite3.Row
-
-    # Get instances of the bound class
-    rows = conn.execute(
-        "SELECT DISTINCT entity_name FROM state_changes WHERE domain_id = ? AND class_name = ? AND timestamp >= ?",
-        (domain_id, metric.binds_to, cutoff),
-    ).fetchall()
+    try:
+        conn = _sqlite3.connect(DB_PATH, timeout=5.0)
+        conn.row_factory = _sqlite3.Row
+        rows = conn.execute(
+            "SELECT DISTINCT entity_name FROM state_changes WHERE domain_id = ? AND class_name = ? AND timestamp >= ?",
+            (domain_id, metric.binds_to, cutoff),
+        ).fetchall()
+    except _sqlite3.OperationalError as e:
+        return {"value": None, "error": str(e), "metric_name": metric.name}
 
     values = []
     for row in rows:

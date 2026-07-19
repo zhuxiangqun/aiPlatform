@@ -19,7 +19,7 @@ def audit_rules(domain_yaml_raw: Dict[str, Any]) -> Dict[str, Any]:
     """
     rules = domain_yaml_raw.get("inference_rules", [])
     if not rules:
-        return {"conflicts": [], "unreachable": [], "missing_transitions": [], "total_rules": 0}
+        return {"conflicts": [], "unreachable": [], "missing_transitions": [], "total_rules": 0, "has_issues": False, "issue_count": 0}
 
     result = {
         "conflicts": detect_conflicts(rules),
