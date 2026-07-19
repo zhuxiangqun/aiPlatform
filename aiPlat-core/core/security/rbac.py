@@ -22,7 +22,8 @@ def normalize_role(role: Optional[str]) -> str:
     r = str(role or "").strip().lower()
     if not r:
         return "viewer"
-    if r in {"admin", "operator", "developer", "viewer"}:
+    if r in {"admin", "operator", "developer", "viewer",
+             "ontology_modeler", "data_steward", "governance_admin", "business_owner"}:
         return r
     # 兼容历史/扩展角色：未知视为 viewer
     return "viewer"
@@ -76,6 +77,38 @@ def check_permission(*, actor_role: Optional[str], action: str, resource_type: s
     # tenant policy / governance writes
     if a in {"policy_upsert", "policy_delete"} and rt in {"tenant_policy", "policy"}:
         return RBACDecision(False, f"{role}_denied_policy_write")
+
+    # ── v2.8: Governance-specific permissions ──
+
+    # Ontology edit (ontology_modeler, governance_admin)
+    if a in {"ontology_edit", "ontology_validate", "ontology_draft"} and rt in {"ontology", "domain"}:
+        if role in {"ontology_modeler", "governance_admin", "admin"}:
+            return RBACDecision(True, f"{role}_allow_{a}")
+        return RBACDecision(False, f"{role}_denied_{a}")
+
+    # Ontology publish (governance_admin only)
+    if a in {"ontology_publish", "ontology_approve"} and rt in {"ontology", "domain"}:
+        if role in {"governance_admin", "admin"}:
+            return RBACDecision(True, f"{role}_allow_{a}")
+        return RBACDecision(False, f"{role}_denied_{a}")
+
+    # Governance operations (governance_admin only)
+    if a in {"governance_run", "governance_audit", "role_assign"} and rt in {"governance"}:
+        if role in {"governance_admin", "admin"}:
+            return RBACDecision(True, f"{role}_allow_{a}")
+        return RBACDecision(False, f"{role}_denied_{a}")
+
+    # Data steward operations
+    if a in {"data_validate", "mapping_audit", "quality_report"} and rt in {"data", "datasource"}:
+        if role in {"data_steward", "governance_admin", "admin"}:
+            return RBACDecision(True, f"{role}_allow_{a}")
+        return RBACDecision(False, f"{role}_denied_{a}")
+
+    # Business owner operations
+    if a in {"scenario_define", "priority_assign", "value_validate"} and rt in {"scenario"}:
+        if role in {"business_owner", "governance_admin", "admin"}:
+            return RBACDecision(True, f"{role}_allow_{a}")
+        return RBACDecision(False, f"{role}_denied_{a}")
 
     # fallback: operator/developer only read
     if a in {"read", "list", "get"}:
