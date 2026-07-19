@@ -215,15 +215,17 @@
 ## 四、从三平台可借鉴的能力
 
 | 来源 | 能力 | 借鉴价值 | 对 aiPlat 的建议 |
-|:---|------|:---:|------|
-| **Hermes** | agentskills.io Skill 开放标准 | 高 | 考虑兼容该标准，扩大 Skill 生态 |
-| **Hermes** | Subagent RPC 零上下文调用 | 高 | 避免 subagent 加载完整 context，降低 token 消耗 |
-| **Hermes** | 多终端后端（Modal/Daytona serverless） | 中 | 支持 serverless 部署模式 |
-| **Claude Code** | Plugin 系统（`.claude-plugin/`） | 中 | 考虑插件化扩展机制 |
-| **Claude Code** | Custom Commands（`.claude/commands/`） | 中 | 已有 Skill 系统，可增加快捷命令入口 |
-| **OpenClaw** | 23 通道消息网关 | 中 | FDE 可扩展多通道提醒（微信/钉钉） |
-| **OpenClaw** | Sandbox 隔离（Docker/SSH/OpenShell） | 高 | 增强 subagent 隔离能力 |
-| **OpenClaw** | Live Canvas（A2UI Agent 驱动画布） | 低 | 可考虑 FDE 可视化推理链展示 |
+|:---|------|:---:|------|:---:|
+| **Claude Code** | Custom Commands 斜杠命令 | 高 | AGENT.md `commands:` frontmatter + `command_parser.py` | ✅ 已实现 |
+| **OpenClaw** | FDE 消息通知接线 | 高 | `fde_notifier.py` → 飞书/企微/Slack | ✅ 已实现 |
+| **OpenClaw** | Sandbox 接线 PipelineEngine | 高 | `pipeline_engine.py` + `SandboxGate` 预检 | ✅ 已实现 |
+| **Hermes** | Subagent RPC 零上下文调用 | 高 | `multi_agent.py` `_build_task_context()` | ✅ 已实现 |
+| **OpenClaw** | Live Canvas（推理链可视化） | 高 | `ReasoningTracePanel.tsx` + FdeDashboard | ✅ 已实现 |
+| **Hermes** | agentskills.io Skill 开放标准 | 高 | 考虑兼容（当前格式更丰富，延迟评估） | P3 |
+| **Hermes** | 多终端后端（Modal/Daytona serverless） | 中 | 企业私有部署模型不适用 | P3 |
+| **Claude Code** | Plugin 系统（`.claude-plugin/`） | 中 | Skill+MCP+Tool+Hook 已覆盖，Plugin 为语法糖 | P2 |
+| **Claude Code** | Custom Commands（`.claude/commands/`） | 中 | 已通过 AGENT.md `commands:` 实现 | ✅ |
+| **OpenClaw** | 23 通道消息网关 | 中 | 已有 3 通道（飞书/企微/Slack），FDE 已接线 | ✅ | |
 
 ---
 
