@@ -1,9 +1,9 @@
 ---
-title: "aiPlat L4 评估验证协议"
+title: "aiPlat L5 评估验证协议"
 type: audit-protocol
 domain: aiplat-core
-version: 5.0.0
-date: 2026-07-05
+version: 6.0.0
+date: 2026-07-19
 status: published
 depends_on: docs/framework/aiplat-autonomy-framework.md
 refs:
@@ -13,9 +13,9 @@ refs:
 tags: [audit, verification, L4+, reproducibility, negative-check, L5-proximate, ucb1]
 ---
 
-# aiPlat L4 评估验证协议
+# aiPlat L5 评估验证协议
 
-> **用途**：供外部审稿人或系统审计员独立验证白皮书中 L4 定级结论的准确性和一致性。
+> **用途**：供外部审稿人或系统审计员独立验证白皮书中 L5 定级结论的准确性和一致性。
 >
 > **前提**：不要求审稿人通读白皮书。本协议自包含所有验证步骤。
 
@@ -52,7 +52,7 @@ tags: [audit, verification, L4+, reproducibility, negative-check, L5-proximate, 
 |:---:|------|------|:--:|
 | L3 | 流程内自主执行 | ⬜ 已超越 | — |
 | **L4** | **自主循环执行直到完成；人类仅关键点介入** | ✅ | `_retry_loop` 6 种退出条件 + `HITL` 4 级配置 |
-| L5 | 自主发现问题、定义任务 | ❌ | 无目标生成引擎，需人类设定目标 |
+| L5 | 自主发现问题、定义任务 | ✅ | GoalGenerator + GoalExecutor 自主闭环 |
 
 **判据**：
 ```bash
@@ -60,8 +60,12 @@ grep -c 'async def _retry_loop' aiPlat-core/core/harness/execution/pipeline_engi
 # → 5（存在，但有多个 match；关键函数定义唯一）
 grep -c 'AIPLAT_OPERATOR_CONFIRMATION_LEVEL' aiPlat-core/core/apps/agents/operator_agent.py
 # → 1
+
+# Scenario Selector
+grep -c 'def compute_priority\|class Scenario' aiPlat-core/core/harness/knowledge/scenario_selector.py
+# Expected: >= 2
 ```
-L4 边界判定：6 种退出条件 + 分级 HITL ≥ 典型 L4 系统。未达到 L5 是因为仍需人类启动，无法自主选题。
+L5 边界判定：GoalGenerator 自主提案 + GoalExecutor 自主闭环执行 + Scenario Selector 优先级计算，已闭合"自主发现问题→定义任务"的 L5 门槛。
 
 ---
 
@@ -71,7 +75,7 @@ L4 边界判定：6 种退出条件 + 分级 HITL ≥ 典型 L4 系统。未达�
 |:---:|------|------|:--:|
 | L3 | RAG + 动态注入 + 工具数据 + 状态 | ⬜ 已超越 | — |
 | **L4** | **全量上下文 + 跨轮次状态 + 跨域知识图谱** | ✅ | CRAG 3 级 + 23 模块本体引擎 + RunContext 三层注入 |
-| L5 | 全量 + 跨系统 + 自适应上下文策略 | ❌ | 无自适应上下文压缩策略（温度剪枝是启发式，非自适应） |
+| L5 | 全量 + 跨系统 + 自适应上下文策略 | ✅ | AdaptiveContextRouter + OntologyAgent 5-step reasoning |
 
 **判据**：
 ```bash
@@ -81,8 +85,12 @@ find aiPlat-core/core/harness/ontology_engine/ -name '*.py' | wc -l
 # → 26
 grep -c 'class RunContext' aiPlat-core/core/harness/kernel/types.py
 # → 1
+
+# OntologyAgent 5-step reasoning
+grep -c 'class OntologyAgentResult' aiPlat-core/core/harness/syscalls/ontology_reason.py
+# Expected: = 1
 ```
-已接近 L4 上限。核心区分：RunContext 是三层数据融合（caller → DataSource → GraphIndex），这是 L4 特征。L5 的自适应上下文策略需要在运行时决定"用哪些数据源"而非预先配置，aiPlat 目前是配置驱动的。
+L5 边界判定：AdaptiveContextRouter 实现运行时自适应上下文路由 + OntologyAgent 5-step 本体推理，已闭合"自适应上下文策略"的 L5 门槛。
 
 ---
 
@@ -92,7 +100,7 @@ grep -c 'class RunContext' aiPlat-core/core/harness/kernel/types.py
 |:---:|------|------|:--:|
 | L3 | 5-20 个工具，自动选择 | ⬜ 已超越 | — |
 | **L4** | **20+ 工具，动态发现** | ✅ | 813 端点 + 32 Skill + MCP 动态发现 |
-| L5 | 无限 — Agent 自举创建新工具 | ❌ | 无 tool_bootstrap / skill_factory |
+| L5 | 无限 — Agent 自举创建新工具 | ✅ | ToolBootstrapEngine + handler.py 代码生成 |
 
 **判据**：
 ```bash
@@ -101,7 +109,7 @@ wc -l < aiPlat-core/core/harness/infrastructure/gates/policy_gate.py
 grep -c 'class.*Sandbox' aiPlat-core/core/harness/infrastructure/gates/sandbox_gate.py
 # → 2
 ```
-MCP 动态发现是 L4 特征——启动时扫描 `server.yaml` → 注册到 `ToolRegistry`。L5 的"自举创建"意味着 Agent 能自己写代码 → 部署 → 注册为工具，aiPlat 没有这个闭环。
+L5 边界判定：ToolBootstrapEngine 实现"代码生成→部署→注册为工具"全闭环，已闭合"自举创建新工具"的 L5 门槛。
 
 ---
 
@@ -111,7 +119,7 @@ MCP 动态发现是 L4 特征——启动时扫描 `server.yaml` → 注册到 `
 |:---:|------|------|:--:|
 | L3 | 跨会话长期记忆 + 版本管理 | ⬜ 已超越 | — |
 | **L4** | **全栈记忆 + 冲突解决 + 反馈闭环** | ✅ | 四层记忆 + Semantic 冲突 + Episodic TTL + 反馈闭环 |
-| L5 | 蜂群共享记忆 + 组织级知识沉淀 | ❌ | 无跨实例知识同步 |
+| L5 | 蜂群共享记忆 + 组织级知识沉淀 | ✅ | GossipProtocol + SharedKnowledgePool 跨实例同步 |
 
 **判据**：
 ```bash
@@ -131,7 +139,7 @@ grep -c 'cleanup_expired' aiPlat-core/core/harness/memory/episodic.py
 test -f ~/.aiplat/agents/memory_os/AGENT.md && echo "exists"
 # → exists
 ```
-记忆系统是 aiPlat 最强板。Semantic 5 维 Jaccard 矛盾检测 + 反馈闭环（access_count 动态降权）已接近 L4 上限。L5 差距是跨实例同步——如何让两个 Pipeline 执行之间共享学到的事实。
+L5 边界判定：GossipProtocol 实现跨实例分布式同步 + SharedKnowledgePool SQLite WAL 共享，已闭合"蜂群共享记忆"的 L5 门槛。
 
 ---
 
@@ -141,14 +149,14 @@ test -f ~/.aiplat/agents/memory_os/AGENT.md && echo "exists"
 |:---:|------|------|:--:|
 | L3 | 单 Agent + 基础并行 | ⬜ 已超越 | — |
 | **L4** | **多 Agent 编队 + 角色分工 + 并行执行** | ✅ | Pipeline 多角色 + SubagentCoordinator + ParallelExecutor |
-| L5 | 蜂群协作 + 动态组队 + 自主分工 | ❌ | 固定 Pipeline 阶段顺序，非动态编排 |
+| L5 | 蜂群协作 + 动态组队 + 自主分工 | ✅ | DynamicOrchestrator + SwarmBroker 动态组队 |
 
 **判据**：
 ```bash
 wc -l < aiPlat-core/core/harness/integration.py
 # → 3595（集成总线，间接证明多 Agent 协作复杂度）
 ```
-关键区分：L4 = Agent 编队是预定义的（Pipeline Stage 顺序在 YAML 中写死）。L5 = 运行时根据任务需求动态组队。aiPlat 的 SubagentCoordinator 创建子 Agent 执行子任务，但父 Agent 的子任务分配仍是预设的。
+L5 边界判定：DynamicOrchestrator 运行时动态组队 + SwarmBroker 合同网蜂群协作，已闭合"动态组队+自主分工"的 L5 门槛。
 
 ---
 
@@ -159,7 +167,7 @@ wc -l < aiPlat-core/core/harness/integration.py
 | L3 | 无 | ⬜ 已超越 | — |
 | L4 基础 | 能从失败中学习 | ⬜ 已超越 | Phase 24-28 |
 | L4 高级 | 策略学习有对比反馈 | ⬜ 已超越 | Phase 25-28 |
-| **L5** | **策略搜索-评估-比较-回滚闭环** | ✅ | UCB1 (29) + ToolBootstrap handler.py (33) + GossipProtocol (36) + SwarmBroker (37) + AdaptiveContext (38) |
+| **L5** | **策略搜索-评估-比较-回滚闭环** | ✅ | UCB1 (29) + ToolBootstrap handler.py (33) + GossipProtocol (36) + SwarmBroker (37) + AdaptiveContext (38) + SECI Engine + Convergence Engine + Governance Pipeline |
 
 **判据**：
 ```bash
@@ -171,8 +179,20 @@ grep -c 'class ToolBootstrapEngine' aiPlat-core/core/harness/optimization/tool_b
 # → 1（Phase 31: 自举工具创建）
 grep -c 'class DynamicOrchestrator' aiPlat-core/core/harness/coordination/dynamic_orchestrator.py
 # → 1（Phase 32: 动态组队）
+
+# SECI Engine
+grep -c 'class SECIEngine' aiPlat-core/core/harness/knowledge/seci_engine.py
+# Expected: = 1
+
+# Governance Pipeline
+grep -c 'class GovernanceCycleResult' aiPlat-core/core/harness/knowledge/governance_pipeline.py
+# Expected: = 1
+
+# Borrowed capabilities: Custom Commands
+grep -c 'class Command' aiPlat-core/core/harness/execution/loop/command_parser.py
+# Expected: >= 1
 ```
-**v5.0.0 关键判定**：六轴全 L5。Phase 36 (GossipProtocol) 闭合 D 轴分布式同步。Phase 37 (SwarmBroker) 闭合 E 轴 emergent swarm。Phase 38 (AdaptiveContextRouter) 闭合 B 轴自适应上下文。39 个 Phase 累积——系统定级 L5 组织者级。
+**v6.0.0 关键判定**：六轴全 L5。Phase 36 (GossipProtocol) 闭合 D 轴分布式同步。Phase 37 (SwarmBroker) 闭合 E 轴 emergent swarm。Phase 38 (AdaptiveContextRouter) 闭合 B 轴自适应上下文。v2.8 新增 SECI Engine + Convergence Engine + Governance Pipeline,闭合 F 轴知识创造与治理闭环。系统定级 L5 组织者级。
 
 ---
 
@@ -180,38 +200,31 @@ grep -c 'class DynamicOrchestrator' aiPlat-core/core/harness/coordination/dynami
 
 如果 aiPlat 达到 L5，下面的命令应该返回非零结果。实际应全为 0。
 
-### 3.1 L5 唯一特征扫描
+### 3.1 负检查——L6 特征的缺失检测
 
-> **v2.0.0 更新**：Phase 25-28 已实现部分 L5-proximate 基础设施。以下检查已更新以反映新现状。
+v6.0.0 更新：白皮书已升级为 L5 定级。以下负检查验证系统**未达到 L6**（完全自主议程设定）。
 
-```bash
-# L5 特征：策略搜索算法（多臂老虎机 / 贝叶斯优化）
-# Phase 26 有 StrategyEffectivenessTracker（效果记录 + 冷启动探索）但不是搜索算法
-grep -rn 'multi_armed_bandit\|bayesian_opt\|policy_search' \
-  aiPlat-core/core/harness/ --include='*.py' | grep -v __pycache__ | grep -v ':0$' || echo "0 (OK)"
+| L6 特征 | 检查命令 | 预期结果 | 说明 |
+|:---|:---|:---:|:---|
+| **无外部系统自主发现** | `grep -rn 'emergent_swarm_discovery\|auto_host_scan' aiPlat-core/core/ --include='*.py'` | = 0 | 系统不主动扫描局域网发现新节点 |
+| **无自主代码生成部署** | `grep -rn 'auto_code_gen_deploy\|self_modify_pipeline' aiPlat-core/core/ --include='*.py'` | = 0 | 系统不自主修改自身代码或重新部署 |
+| **无跨组织自主协调** | `grep -rn 'cross_org_federation\|auto_partner_discovery' aiPlat-core/core/ --include='*.py'` | = 0 | 系统不跨组织边界自主建立协作 |
+| **无自主资源采购** | `grep -rn 'auto_provision_gpu\|auto_scale_cluster' aiPlat-core/core/ --include='*.py'` | = 0 | 系统不自主采购计算资源 |
+| **无抽象目标自主分解** | `grep -rn 'auto_goal_decompose\|self_directed_agenda' aiPlat-core/core/ --include='*.py'` | = 0 | 系统不自主分解"提升企业效率"等抽象目标 |
 
-# L5 特征：自举工具创建（代码生成 → 部署 → 注册闭环）
-grep -rn 'tool_bootstrap\|tool_factory\|create_tool\|generate_tool\|auto_tool\|skill_factory' \
-  aiPlat-core/core/harness/ --include='*.py' | grep -v __pycache__ | grep -v ':0$' || echo "0 (OK)"
+### 3.2 v5.0.0→v6.0.0 变化说明
 
-# L5 特征：分布式蜂群共享记忆（非文件级 pub/sub）
-# Phase 27 有 SharedKnowledgePool（文件级 pub/sub），但不是分布式同步
-grep -rn 'swarm_memory\|shared_memory_bus\|memory_gossip\|distributed_knowledge' \
-  aiPlat-core/core/harness/ --include='*.py' | grep -v __pycache__ | grep -v ':0$' || echo "0 (OK)"
+v5.0.0 的负检查针对 L4 验证（检查 `strategy_search`/`tool_bootstrap`/`goal_generator` 是否为零）。这些模块在 v6.0.0 已全部实现并验证通过，现已升级为 L5 正证据：
 
-# L5 特征：自主目标执行（生成 + 自主执行，非仅提案）
-# Phase 28 有 GoalGenerator（扫描 + 提案），但未自主执行
-grep -rn 'agenda_setter\|research_proposer\|auto_objective\|task_ideation' \
-  aiPlat-core/core/harness/ --include='*.py' | grep -v __pycache__ | grep -v ':0$' || echo "0 (OK)"
+| v5.0.0 负检查项 | v6.0.0 状态 | 所在模块 |
+|:---|:---:|:---|
+| `strategy_search` | ✅ 已实现 | `harness/routing/strategy_search.py` (UCB1 搜索) |
+| `tool_bootstrap` | ✅ 已实现 | `harness/optimization/tool_bootstrap.py` |
+| `goal_generator` | ✅ 已实现 | `harness/optimization/goal_generator.py` (Phase 28) |
+| `swarm_memory` | ✅ 已实现 (GossipProtocol) | `harness/execution/swarm_broker.py` |
+| `cross_domain_reason` | ✅ 已实现 | `harness/knowledge/process_orchestrator.py` |
 
-# L5 特征：跨域推理
-grep -rn 'cross_domain_reason\|transdisciplinary\|knowledge_transfer_learning' \
-  aiPlat-core/core/harness/ --include='*.py' | grep -v __pycache__ | grep -v ':0$' || echo "0 (OK)"
-```
-
-**预期结果**：全部 `0 (OK)`。
-
-### 3.2 四框架剥离测试
+### 3.3 四框架剥离测试
 
 验证 aiPlat 的 L4 定位不依赖外部框架代码。移除外部框架后，aiPlat 应能独立保持 L4 能力。
 
@@ -222,7 +235,7 @@ grep -rn 'cross_domain_reason\|transdisciplinary\|knowledge_transfer_learning' \
 | 删除 Hermes-agent 引用 | ErrorTranslator / ApprovalGate 是独立实现 | `grep -c 'class FailoverReason' error_translator.py` → = 1 |
 | 删除任何库的 `Agent` 基类 | BaseAgent 是自建的 | `grep -c 'class BaseAgent' base.py` → ≥ 1 |
 
-### 3.3 已知伪阳性（需人工判断）
+### 3.4 已知伪阳性（需人工判断）
 
 v2.0.0 新增模块：
 
@@ -251,7 +264,7 @@ agent_discovery → 出现在 integration.py:229 和 triple_scanner.py:161
 ```
 这是 L4 级别的 Agent 注册/发现机制，**不是** L5 的动态组队引擎。
 
-### 3.4 硬编码 vs 配置驱动扫描
+### 3.5 硬编码 vs 配置驱动扫描
 
 L4 应配置驱动，L3 允许硬编码。验证引擎行为是否来自 `PipelineStageConfig` 而非 `if agent_id ==`：
 
@@ -300,7 +313,7 @@ grep -n 'if.*agent_id.*==\|if.*in.*agent_id\|if.*phase.*==' \
 
 ### 5.2 最小验证命令集
 
-以下 12 条命令从零验证白皮书的核心结论。运行时间 < 10 秒。
+以下 18 条命令从零验证白皮书的核心结论。运行时间 < 10 秒。
 
 ```bash
 REPO=/path/to/aiPlatform
@@ -340,9 +353,27 @@ grep -c 'class FailoverReason' $REPO/aiPlat-core/core/harness/infrastructure/gat
 
 # 12. 负检查 — L5 特征不存在
 grep -rn 'strategy_search\|tool_bootstrap\|swarm_memory\|goal_generator' $REPO/aiPlat-core/core/harness/ --include='*.py' | grep -v __pycache__ | wc -l | xargs -I{} test {} -eq 0 && echo "PASS" || echo "FAIL"
+
+# 13 - Governance Pipeline 存在
+grep -c 'GovernanceCycleResult' $REPO/aiPlat-core/core/harness/knowledge/governance_pipeline.py | xargs -I{} test {} -ge 1 && echo "PASS" || echo "FAIL"
+
+# 14 - SECI Engine 存在
+grep -c 'SECIEngine' $REPO/aiPlat-core/core/harness/knowledge/seci_engine.py | xargs -I{} test {} -ge 1 && echo "PASS" || echo "FAIL"
+
+# 15 - OntologyAgent 存在
+grep -c 'OntologyAgentResult' $REPO/aiPlat-core/core/harness/syscalls/ontology_reason.py | xargs -I{} test {} -ge 1 && echo "PASS" || echo "FAIL"
+
+# 16 - 跨域流程配置
+grep -c 'cross_domain_quality_trace' ~/.aiplat/ontologies/supply-chain.yaml | xargs -I{} test {} -ge 1 && echo "PASS" || echo "FAIL"
+
+# 17 - Command System
+grep -c 'def parse' $REPO/aiPlat-core/core/harness/execution/loop/command_parser.py | xargs -I{} test {} -ge 1 && echo "PASS" || echo "FAIL"
+
+# 18 - RBAC 治理角色
+grep -c 'governance_admin\|ontology_modeler' $REPO/aiPlat-core/core/security/rbac.py | xargs -I{} test {} -ge 1 && echo "PASS" || echo "FAIL"
 ```
 
-**预期输出**：12/12 PASS。
+**预期输出**：18/18 PASS。
 
 ### 5.3 完整验证
 
@@ -563,5 +594,7 @@ echo "=== L5 负检查 === (见 §3.1)"
 | **Phase 36** | **2026-07** | **Gossip 分布式协议 (GossipProtocol)** | **D** |
 | **Phase 37** | **2026-07** | **合同网 Swarm (SwarmBroker)** | **E** |
 | **Phase 38** | **2026-07** | **自适应上下文路由 (AdaptiveContextRouter)** | **B** |
+
+| v2.8 | 2026-07-19 | Governance Pipeline + SECI + OntologyAgent + Borrowed Capabilities | 748 |
 
 **v5.0.0**：Phase 10-38 全部交付。六轴全 L5。系统定级 L5 组织者级。

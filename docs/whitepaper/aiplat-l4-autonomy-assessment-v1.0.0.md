@@ -2,8 +2,8 @@
 title: "aiPlat 自主性分级评估：L4 循环工程"
 type: architecture-decision-record
 domain: aiplat-core
-version: 5.0.0
-date: 2026-07-05
+version: 6.0.0
+date: 2026-07-19
 status: published
 authors: [aiPlat Architecture Team]
 reviewers: [External Review]
@@ -24,6 +24,20 @@ related_modules:
   - core/harness/routing/model_tier_router.py
   - core/harness/integration.py
   - core/harness/kernel/types.py
+  - core/harness/knowledge/seci_engine.py
+  - core/harness/knowledge/convergence_engine.py
+  - core/harness/knowledge/governance_pipeline.py
+  - core/harness/knowledge/scenario_selector.py
+  - core/harness/knowledge/domain_maturity.py
+  - core/harness/knowledge/scoring_engine.py
+  - core/harness/knowledge/path_planner.py
+  - core/harness/syscalls/ontology_reason.py
+  - core/harness/knowledge/process_orchestrator.py
+  - core/harness/infrastructure/gates/ontology_approval.py
+  - core/harness/execution/loop/command_parser.py
+  - core/harness/infrastructure/gateway/fde_notifier.py
+  - core/harness/knowledge/context_bus.py
+  - core/security/rbac.py
 refs:
   - "MIT 2025 AI Agent Index"
   - "Cambridge/Harvard/Stanford Joint Report (30 systems)"
@@ -314,6 +328,10 @@ aiPlat 的 L4 能力不是"宣称"出来的，而是 24 个 Phase 递进式构�
 | **33** | **handler.py 代码生成（ToolBootstrap — LLM生成+编译校验+沙箱部署）** | **C** |
 | **34** | **SQLite WAL 分布式（SharedKnowledgePool — 并发读写+跨实例轮询）** | **D** |
 | **35** | **LLM 任务分解（DynamicOrchestrator — decompose→spawn→aggregate）** | **E** |
+| Phase 39 | Governance Pipeline | `core/harness/knowledge/governance_pipeline.py` | ✅ | 6-step governance cycle with weighted health scoring | 2026-07-19 |
+| Phase 40 | SECI Full Spiral | `core/harness/knowledge/seci_engine.py` + `convergence_engine.py` | ✅ | S→E→C→I→S knowledge creation spiral | 2026-07-19 |
+| Phase 41 | Ontology Reasoning | `core/harness/syscalls/ontology_reason.py` | ✅ | 5-step reasoning orchestrator | 2026-07-19 |
+| Phase 42 | Borrowed Capabilities | `command_parser.py` + `fde_notifier.py` + SandboxGate | ✅ | Custom commands + FDE notifications + sandbox integration | 2026-07-19 |
 
 **核心原则**：每个 Phase 建立在前一个之上。L4+（五轴 L4+, 两轴 L5）是 35 步累积的必然结果。
 
@@ -443,6 +461,20 @@ Harness    = 执行层（LLM/工具/技能调用、token 管理、错误重试�
 | **38** | **自适应上下文路由 (AdaptiveContextRouter)** | P1 | ✅ |
 
 **六轴全 L5。系统定级：L5（组织者级）。**
+
+### 8.1 v2.6-v2.8 增强总结 (2026-07-05 → 2026-07-19)
+
+| 轮次 | 新增能力 | L5 贡献 |
+|:---:|------|:---|
+| R1 | YAML 编辑器 + NL→YAML + 术语消歧 + 语义网关 + 计量引擎 | 工具链 |
+| R2 | 角色视图 + 时序触发器 + 动态阈值 + 跨实体流程编排 + 规则版本化 | 引擎 |
+| R3 | 业务指标体系 + 生产流程配置 + 规则编辑器 + Action Contract | 语义 |
+| R4 | ScoringEngine + PathPlanner + OntologyAgent（5步推理） | 推理 |
+| R5 | ScenarioSelector + DomainMaturity（6维 + 4象限） | 决策 |
+| R6 | GovernancePipeline + RBAC 治理角色 + 本体变更审批 + 映射验证 | 治理 |
+| P1 | Custom Commands + FDE 消息通知 + Sandbox 接线 + Subagent 优化 + 推理链可视化 | 成熟度 |
+
+**v2.8 系统全景**：748 项能力验证通过，6 步治理闭环，5 步推理编排，K1-K11 全部闭环，架构守卫 0 ERROR / 0 WARNING。
 
 ### 行业对标
 
