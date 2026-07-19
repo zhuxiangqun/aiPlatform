@@ -118,6 +118,22 @@ const FdeDashboard: React.FC = () => {
       .catch(() => setScenarioLoading(false));
   }, []);
 
+  // v2.7: Enrich domain with maturity data when scenario recommendations load
+  useEffect(() => {
+    if (!domain || !scenarioRecommendations.length) return;
+    const match = scenarioRecommendations.find((r: any) => r.domain_id === domain.id);
+    if (match) {
+      setDomain({
+        ...domain,
+        maturityScore: match.maturity_score,
+        gapCostHours: match.gap_cost_hours,
+        industryMatchScore: match.priority_score,
+        scenarios: match.scenarios || [],
+        maturity: match.level || domain.maturity,
+      });
+    }
+  }, [scenarioRecommendations, domain?.id]);
+
   const handleCustomerSelect = async (c: CustomerInfo) => {
     setCustomer(c);
     if (!c.industry && (c.name || c.description)) {
@@ -342,7 +358,7 @@ const FdeDashboard: React.FC = () => {
       {tab === 'deploy'     && <DeployTab profile={pocProfile} onDeployed={setDeployVersion} />}
       {tab === 'canary'     && <CanaryTab deployVersion={deployVersion} onResult={setCanaryResult} />}
       {tab === 'accept'     && <AcceptTab canaryResult={canaryResult} diagnosisReport={diagnosis?.reportText || ''} onAdopted={() => setAdopted(true)} />}
-      {tab === 'evolution'  && <EvolutionTab namespace={customer?.namespace ?? null} />}
+      {tab === 'evolution'  && <EvolutionTab namespace={customer?.namespace ?? null} domainId={domain?.id} />}
       <FloatingFeedback currentStep={tab} autoValues={{
         customer: customer?.name || '',
         customer_desc: customer?.description || '',
@@ -363,9 +379,18 @@ const FdeDashboard: React.FC = () => {
 // ═══════════════════════════════════════════════════════════
 // ⑧ 运营监控 — 系统进化 (原 workbench FDE Dashboard)
 // ═══════════════════════════════════════════════════════════
-const EvolutionTab: React.FC<{ readonly namespace: string | null }> = ({ namespace }) => {
+const EvolutionTab: React.FC<{ readonly namespace: string | null; readonly domainId?: string }> = ({ namespace, domainId }) => {
   const [data, setData] = useState<any>(null);
+  const [scores, setScores] = useState<any>(null);
   useEffect(() => { fetch(API('/dashboard') + (namespace ? `?namespace=${namespace}` : '')).then(r => r.json()).then(setData); }, []);
+  // v2.7: Fetch scoring engine alerts for this domain
+  useEffect(() => {
+    if (!domainId) return;
+    fetch(`/api/platform/apps/ontology-editor/domains/${domainId}/monitor/sla-violations`)
+      .then(r => r.json())
+      .then(d => setScores(d))
+      .catch(() => {});
+  }, [domainId]);
   if (!data) return <div className="text-gray-500 text-sm p-4">加载中…</div>;
   const cards = [
     { label: '待处理决策', value: data.pending_decisions?.length ?? 0, color: 'text-yellow-400' },
@@ -373,13 +398,15 @@ const EvolutionTab: React.FC<{ readonly namespace: string | null }> = ({ namespa
     { label: '追踪异常',   value: data.trace_anomalies?.length ?? 0,   color: 'text-orange-400' },
     { label: '训练状态',   value: data.training?.ready_to_trigger ? '就绪' : '待命中', color: 'text-blue-400' },
   ];
-  // v2.7: Add scoring quality cards
-  if (data.quality_scores) {
+  // v2.7: Add scoring quality + process monitoring cards
+  if (scores?.violations?.length > 0) {
     cards.push(
-      { label: '质量评分', value: data.quality_scores.total || '?', color: 'text-green-400' },
-      { label: '风险告警', value: data.quality_scores.alerts || 0, color: 'text-red-400' },
+      { label: 'SLA违约', value: scores.violations.length, color: 'text-red-400' },
     );
   }
+  cards.push(
+    { label: '质量评分', value: scores?.total !== undefined ? scores.total : '—', color: 'text-green-400' },
+  );
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-4 gap-3">
