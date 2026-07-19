@@ -215,4 +215,32 @@ for ep in \
   code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 3 "http://localhost:8002$ep")
   echo "$ep: $code"
 done
+
+---
+
+## 十、v2.7 本体引擎集成
+
+### 10.1 域成熟度监控
+
+- 成熟度评分由 `domain_maturity.py` 自动计算（6 维：实体/Wiki/技能/通过率/密度/评测）
+- 查看路径：本体编辑器 → Scenarios tab → 域对比表
+- API: `GET /api/platform/apps/ontology-editor/scenarios/compare`
+
+### 10.2 场景优先级排序
+
+- `scenario_selector` 基于 5 条件 + 4 象限自动推荐域构建顺序
+- 查看路径：本体编辑器 → Scenarios tab → 推荐列表
+- API: `GET /api/platform/apps/ontology-editor/scenarios/recommend`
+
+### 10.3 评分引擎告警
+
+- `scoring_engine` 基于累加加权规则自动产生风险/机会告警
+- 查看路径：本体编辑器 → Monitor tab → SLA Violations + Scoring Alerts
+- API: `GET /api/platform/apps/ontology-editor/scoring-models/{name}/alerts`
+
+### 10.4 推理路径编排
+
+- `ontology_agent` 通过 `sys_ontology_reason` 执行 5 步推理流水线
+- 集成在 FDE field_assessment 和 domain_assessor 中（v2.7 handler 模式）
+- 输出包含 reasoning_trace 可审计推理链
 ```

@@ -5,7 +5,7 @@ description: 根据部署包和客户画像，生成验收报告，包含验收�
 version: 2.0.0
 category: fde
 status: enabled
-execution_type: prompt
+execution_type: handler
 effects:
   - type: read
     resources: ["filesystem:/tmp"]

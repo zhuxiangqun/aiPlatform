@@ -5,7 +5,7 @@ description: 基于客户画像和可用域列表，评估最佳匹配域并输�
 version: 2.0.0
 category: fde
 status: enabled
-execution_type: prompt
+execution_type: handler
 effects:
   - type: read
     resources: ["~/.aiplat/ontologies/"]

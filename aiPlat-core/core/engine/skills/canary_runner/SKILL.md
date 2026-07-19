@@ -3,7 +3,7 @@ id: canary_runner
 name: canary_runner
 display_name: 灰度发布执行器
 description: 调用 /fde/canary/status 和 /fde/canary/rollback 执行灰度操作，监控质量指标并决定是否推进流量
-execution_type: prompt
+execution_type: handler
 category: fde
 version: 1.0.0
 status: enabled

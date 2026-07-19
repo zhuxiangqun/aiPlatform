@@ -62,6 +62,24 @@ async def execute(params: Dict[str, Any]) -> Dict[str, Any]:
             logger.warning("Action contract validation failed: %s", e)
             contract_result = {"valid": False, "errors": [str(e)]}
 
+    # ── v2.7 N3: SLA monitoring — record acceptance deadline state ──
+    try:
+        from core.harness.ontology_engine.state_history import record_transition
+        import time
+        record_transition(
+            domain_id=domain_id,
+            entity_name=f"acceptance-{session_id}",
+            class_name="DiagnosisSession",
+            from_state="pending_signoff",
+            to_state="checking",
+            trigger_type="property_condition",
+            transition_desc="Acceptance check initiated (SLA: 72h from now)",
+            doc_id=session_id,
+            timestamp=time.time(),
+        )
+    except Exception:
+        pass
+
     # ── Assemble output ──
     accepted = kpi_pass and contract_result.get("valid", False)
 

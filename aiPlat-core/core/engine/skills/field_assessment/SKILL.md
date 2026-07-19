@@ -3,7 +3,7 @@ name: field_assessment
 version: 1.0.0
 status: enabled
 category: fde
-execution_type: prompt
+execution_type: handler
 timeout: 600
 temperature: 0.0
 description: 客户现场AI落地诊断——输入客户画像, 输出结构化分析报告 (FDE Toolkit B)

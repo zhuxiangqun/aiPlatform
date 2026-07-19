@@ -5,7 +5,7 @@ description: 根据客户访谈信息，生成结构化的客户Profile Markdown
 category: fde
 version: 1.0.0
 status: enabled
-execution_type: prompt
+execution_type: handler
 triggers: [客户信息, 客户Profile, 业务认知]
 effects:
   - type: read

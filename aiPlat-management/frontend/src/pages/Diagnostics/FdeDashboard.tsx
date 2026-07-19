@@ -32,6 +32,7 @@ interface DomainInfo {
   gapCostHours?: number;
   scenarios?: any[];
   industryMatchScore?: number;
+  ruleVersions?: number;
 }
 interface DiagnosisInfo {
   deepProblem: string;
@@ -316,9 +317,12 @@ const FdeDashboard: React.FC = () => {
             📝 本体编辑器
           </a>
         </div>
-      )}
-      <div className="flex gap-1 border-b border-gray-700/50 pb-0">
-        {FDE_STEPS.map(t => (
+       )}
+       {(domain as any)?.ruleVersions > 0 && (
+         <span className="text-xs text-gray-500">规则版本: {(domain as any).ruleVersions}</span>
+       )}
+       <div className="flex gap-1 border-b border-gray-700/50 pb-0">
+         {FDE_STEPS.map(t => (
           <button
             key={t.key}
             onClick={() => setTab(t.key)}
