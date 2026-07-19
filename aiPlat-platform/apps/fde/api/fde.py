@@ -851,7 +851,8 @@ def _build_from_workflow(workflow_stages: list, current_agent_id: str,
 
 async def _clarify(context: str, text: str, history: list,
                     extra: dict = None) -> dict:
-    """Generic multi-turn clarification engine. Used by all contexts."""
+    """## platform:allowed
+    Generic multi-turn clarification engine. Used by all contexts."""
     import json as _json, re as _re
 
     cfg = _CLARIFY_CONTEXTS.get(context, _DEFAULT_CLARIFY)
@@ -952,7 +953,8 @@ async def clarify(body: Dict[str, Any]):
 
 @router.post("/infer-industry", response_model=FdeStatusResponse)
 async def infer_industry(body: Dict[str, Any]):
-    """LLM-based industry classification from company name + description."""
+    """## platform:allowed
+    LLM-based industry classification from company name + description."""
     name = str(body.get("name", "") or body.get("company_name", ""))
     desc = str(body.get("description", "") or body.get("customer_desc", ""))
     
@@ -1749,7 +1751,8 @@ def _rotate_default_question(gaps: list, pending_qs: list, turn: int) -> str:
 _pending_qs_cache: dict = {}
 
 async def _extract_pending_questions(session_id: str) -> list:
-    """LLM-based extraction: reads the diagnosis report and identifies
+    """## platform:allowed
+    LLM-based extraction: reads the diagnosis report and identifies
     all questions that require customer confirmation. Returns question strings."""
     if not session_id:
         return []
@@ -1832,7 +1835,8 @@ class FdeDialogRequest(_PydanticBaseModel):
 
 @router.post("/assess/dialog", response_model=FdeStatusResponse)
 async def fde_assess_dialog(req: FdeDialogRequest):
-    """LLM-driven multi-turn clarification dialogue.
+    """## platform:allowed
+    LLM-driven multi-turn clarification dialogue.
     
     Uses LLM to: (1) extract fields from natural language answers,
     (2) generate context-aware questions based on form gaps + §8 pending items.

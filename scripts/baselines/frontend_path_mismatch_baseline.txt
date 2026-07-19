@@ -15,3 +15,4 @@ POST /api/platform/onboarding/agent/create-from-template
 POST /api/platform/onboarding/tools/connect
 POST /core/wiki/ontology/engine/parse
 POST /core/wiki/ontology/engine/parse-and-process
+GET /api/core/wiki/ontology/domains

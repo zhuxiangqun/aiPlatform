@@ -31,7 +31,8 @@ class FdeAskRequest(BaseModel):
 
 @router.post("/ask", response_model=FdeStatusResponse)
 async def fde_ask(req: FdeAskRequest):
-    """回答关于 FDE 诊断报告的追问（B0: 交互式追问）.
+    """## platform:allowed
+    回答关于 FDE 诊断报告的追问（B0: 交互式追问）.
 
     基于 session_id 加载历史诊断上下文，或基于 industry/company/pain_points
     构建域上下文，然后回答用户的问题。
