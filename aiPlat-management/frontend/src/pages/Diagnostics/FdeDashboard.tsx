@@ -26,6 +26,12 @@ interface DomainInfo {
   id: string;
   maturity: string;
   skillsAvailable: number;
+  // v2.7: computed maturity from domain_maturity.py
+  maturityScore?: number;
+  maturityDimensions?: Record<string, any>;
+  gapCostHours?: number;
+  scenarios?: any[];
+  industryMatchScore?: number;
 }
 interface DiagnosisInfo {
   deepProblem: string;
@@ -76,6 +82,9 @@ const FdeDashboard: React.FC = () => {
   const [workflowName, setWorkflowName] = useState('');
   const [domainStats, setDomainStats] = useState<Record<string, number>>({});
   const [domainStatsExpanded, setDomainStatsExpanded] = useState(true);
+  const [scenarioRecommendations, setScenarioRecommendations] = useState<any[]>([]);
+  const [scenarioLoading, setScenarioLoading] = useState(false);
+  const [qualityScorecard, setQualityScorecard] = useState<any>(null);
 
   const MATURITY_COLORS: Record<string, string> = {
     'production-ready': 'text-green-400', 'stable': 'text-blue-400',
@@ -99,6 +108,13 @@ const FdeDashboard: React.FC = () => {
         setDomainStats(stats);
       })
       .catch(() => setDomainStats({ error: 1 }));
+
+    // v2.7: Load scenario recommendations (data-driven domain ranking)
+    setScenarioLoading(true);
+    fetch('/api/platform/apps/ontology-editor/scenarios/recommend?mode=maturity')
+      .then(r => r.json())
+      .then(d => { setScenarioRecommendations(d.recommendations || []); setScenarioLoading(false); })
+      .catch(() => setScenarioLoading(false));
   }, []);
 
   const handleCustomerSelect = async (c: CustomerInfo) => {
@@ -281,6 +297,24 @@ const FdeDashboard: React.FC = () => {
                 className="text-gray-600 hover:text-gray-400 ml-1">▼</button>
             </>
           )}
+          {/* v2.7: Scenario-driven domain recommendations */}
+          {!scenarioLoading && scenarioRecommendations.length > 0 && (
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded bg-gray-800/50 border border-gray-700/50 text-xs">
+              <span className="text-gray-500">推荐：</span>
+              {scenarioRecommendations.slice(0, 3).map((r: any, i: number) => (
+                <span key={i} className={`px-1.5 py-0.5 rounded ${
+                  r.recommendation === 'build_first' ? 'bg-green-900/50 text-green-400' :
+                  r.recommendation === 'plan_second' ? 'bg-blue-900/50 text-blue-400' : 'bg-gray-700/30 text-gray-500'
+                }`}>
+                  {r.domain_id} {r.maturity_score || '?'}分
+                </span>
+              ))}
+            </div>
+          )}
+          {/* v2.7: YAML Editor link */}
+          <a href="/ontology-editor" target="_blank" className="flex items-center gap-1 px-3 py-1.5 rounded bg-gray-800/50 border border-gray-700/50 text-xs text-blue-400 hover:text-blue-300">
+            📝 本体编辑器
+          </a>
         </div>
       )}
       <div className="flex gap-1 border-b border-gray-700/50 pb-0">
@@ -335,6 +369,13 @@ const EvolutionTab: React.FC<{ readonly namespace: string | null }> = ({ namespa
     { label: '追踪异常',   value: data.trace_anomalies?.length ?? 0,   color: 'text-orange-400' },
     { label: '训练状态',   value: data.training?.ready_to_trigger ? '就绪' : '待命中', color: 'text-blue-400' },
   ];
+  // v2.7: Add scoring quality cards
+  if (data.quality_scores) {
+    cards.push(
+      { label: '质量评分', value: data.quality_scores.total || '?', color: 'text-green-400' },
+      { label: '风险告警', value: data.quality_scores.alerts || 0, color: 'text-red-400' },
+    );
+  }
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-4 gap-3">

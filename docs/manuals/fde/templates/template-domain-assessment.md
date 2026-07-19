@@ -1,5 +1,7 @@
 # 域评估报告 — {{客户名称}}
 
+> v2.7: maturity levels auto-computed by domain_maturity.py (6-dimension scoring)
+
 > ← [返回实施流程](../05-fde-implementation-process.md)
 
 > **生成时间**：{{GENERATED_AT}} | **FDE**：{{FDE_NAME}} | **Pipeline Key**：`domain_id`, `domain_maturity`, `domain_skills`
@@ -28,7 +30,7 @@
 | 域名称 | `{{DOMAIN_NAME}}` |
 | 域描述 | `{{DOMAIN_DESCRIPTION}}` |
 | 匹配度 | `{{CONFIDENCE}}`（0-1，1=完美匹配） |
-| 域成熟度 | `{{MATURITY_LEVEL}}`（seed / growing / building / production） |
+| 域成熟度 | `{{MATURITY_LEVEL}}`（seeding / growing / building / stable / production-ready） |
 | 通过率 | `{{PASS_RATE}}`%（实体覆盖率） |
 
 **匹配理由**：

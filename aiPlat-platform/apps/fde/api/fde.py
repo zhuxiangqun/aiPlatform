@@ -716,7 +716,18 @@ FDE_PIPELINE_STEPS = {
         "label": "② 评估域",
         "produces": {
             "domain_id": {"label": "业务域ID", "type": "string"},
-            "domain_maturity": {"label": "域成熟度", "type": "enum(seeding|building|stable|production-ready)"},
+            "domain_maturity": {
+                "label": "域成熟度 (v2.7 6维)",
+                "type": "dict",
+                "fields": {
+                    "score": {"label": "综合评分", "type": "float", "range": "0-100"},
+                    "level": {"label": "等级", "type": "enum(seeding|growing|building|stable|production-ready)"},
+                    "dimensions": {"label": "6维明细", "type": "dict"},
+                    "gap_cost_hours": {"label": "缺口修复工时", "type": "float"},
+                }
+            },
+            "recommended_scenarios": {"label": "推荐场景", "type": "list"},
+            "industry_match_score": {"label": "行业匹配度", "type": "float", "range": "0-1"},
             "domain_skills": {"label": "可用Skill数", "type": "int"},
         },
         "consumes": {

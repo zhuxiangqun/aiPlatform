@@ -9,6 +9,7 @@ from fastapi import APIRouter, HTTPException, Query
 
 import time
 import json
+import logging
 
 router = APIRouter(tags=["fde-bootstrap"])
 
@@ -91,6 +92,20 @@ async def fde_bootstrap_test_data(
             term_id = f"term_bootstrap_{term_name.replace(' ', '_')[:40]}"
             tg.add_entity(term_id, term_name, "Term", source_doc_id=sid)
 
+        # v2.7: Auto-compute domain maturity from real data
+        try:
+            from core.harness.knowledge.domain_maturity import compute_domain_maturity
+            from core.harness.knowledge.domain_router import DomainRouter
+            router = DomainRouter()
+            for domain_id in router.list_domains():
+                maturity = compute_domain_maturity(domain_id)
+                logging.getLogger("fde_bootstrap").info(
+                    "Domain %s maturity: %.1f (%s)", domain_id,
+                    maturity["maturity_score"], maturity["level"]
+                )
+        except Exception as e:
+            logging.debug("Domain maturity bootstrap skipped: %s", e)
+
         return {
             "session_id": sid,
             "company": company_name,
@@ -158,6 +173,20 @@ async def fde_bootstrap_all():
             ti = f"term_{ind}_{tn.replace(' ','_')[:40]}"
             tg.add_entity(ti, tn, "Term", source_doc_id=sid)
         results.append({"industry": ind, "session_id": sid, "company": co, "actions": len(acts)})
+
+    # v2.7: Auto-compute domain maturity from real data
+    try:
+        from core.harness.knowledge.domain_maturity import compute_domain_maturity
+        from core.harness.knowledge.domain_router import DomainRouter
+        router = DomainRouter()
+        for domain_id in router.list_domains():
+            maturity = compute_domain_maturity(domain_id)
+            logging.getLogger("fde_bootstrap").info(
+                "Domain %s maturity: %.1f (%s)", domain_id,
+                maturity["maturity_score"], maturity["level"]
+            )
+    except Exception as e:
+        logging.debug("Domain maturity bootstrap skipped: %s", e)
 
     return {
         "total_industries": len(industries),
