@@ -456,7 +456,7 @@ python -c "from core.harness.memory.manager import _re_rank_messages; print('OK'
 | 行业推断 | 需手动填写 | ✅ LLM 自动推断 (infer-industry endpoint) |
 | lock-service 域 | 江苏锁安无匹配域 | ✅ 6类18实体新建 |
 
-### 19.2 已知残留 (v2.7 scope, 2026-07-19 更新)
+### 19.2 已知残留 (v2.8 scope, 2026-07-19 更新)
 
 | 编号 | 内容 | 类型 |
 |------|------|------|
@@ -468,6 +468,8 @@ python -c "from core.harness.memory.manager import _re_rank_messages; print('OK'
 | K6 | sla_monitor 后台线程未调用 start() — server.py 启动时需接线 | **✅ 已修复 (2026-07-19)** — server.py:1370 startup lifecycle 中 start_sla_monitor()。 （验证：grep -rn 'start_sla_monitor' aiPlat-core/server.py → 1） |
 | K7 | process_orchestrator.check_step_completion() 未在 engine.py 侧作用完成后接入 | **✅ 已修复 (2026-07-19)** — engine.py:358 Step 3.5 StateMachine 后立即调用 check_step_completion。 （验证：grep -rn 'check_step_completion' aiPlat-core/core/harness/ontology_engine/engine.py → 1） |
 | K8 | 跨域流程编排 (processes.domains) 预留设计但未实现 | 路线图 (v2.8) |
+| K9 | registry.json 场景字段 (priority/maturity/scenarios/industries) 待填充 | 待接线 (v2.8) |
+| K10 | OntologyAgent 缺少 Golden Query 评测数据 (eval_score=None) | 数据待准备 (v2.8) |
 
 ### 19.3 自动化防护生效
 

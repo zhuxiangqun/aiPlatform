@@ -202,3 +202,132 @@ class TestRuleAuditor:
         result = audit_rules({})
         assert result['total_rules'] == 0
         assert result['has_issues'] is False
+
+
+# ── Round 4: Scoring Engine ──
+
+class TestScoringEngine:
+    def test_load_models(self):
+        from core.harness.knowledge.scoring_engine import load_models
+        yaml = {
+            'scoring_models': {
+                'churn': {
+                    'label': '流失风险', 'binds_to': 'Customer',
+                    'rules': [{
+                        'name': 'complaints', 'weight': 1,
+                        'condition': {'type': 'relation_count', 'relation': 'has_complaint', 'operator': '>=', 'threshold': 3},
+                        'score': 'weight * count'
+                    }],
+                    'thresholds': [{'level': 'high', 'min_score': 3, 'action': 'alert'}],
+                }
+            }
+        }
+        models = load_models(yaml)
+        assert len(models) == 1
+        m = models[0]
+        assert m.name == 'churn'
+        assert m.binds_to == 'Customer'
+        assert len(m.rules) == 1
+        assert m.rules[0].weight == 1
+
+    def test_calc_score_formula(self):
+        from core.harness.knowledge.scoring_engine import _calc_score
+        assert _calc_score('weight * 1', 2, 5) == 2.0
+        assert _calc_score('weight * count', 1, 3) == 3.0
+
+    def test_eval_condition(self):
+        from core.harness.knowledge.scoring_engine import _eval_condition
+        assert _eval_condition('>=', 3, 3)
+        assert not _eval_condition('>=', 3, 2)
+        assert _eval_condition('>', 2, 3)
+        assert _eval_condition('==', 5, 5)
+        assert _eval_condition('<', 10, 5)
+
+
+# ── Round 4: Path Planner ──
+
+class TestPathPlanner:
+    def test_load_paths(self):
+        from core.harness.knowledge.path_planner import load_paths
+        yaml = {
+            'reasoning_paths': {
+                'test_path': {
+                    'label': 'Test', 'start_class': 'Customer', 'target_class': 'Defect',
+                    'steps': [{'relation': 'has_ticket', 'direction': 'outgoing', 'target_class': 'Ticket'}],
+                    'metadata': {'confidence': 0.85, 'estimated_cost': 5},
+                }
+            }
+        }
+        paths = load_paths(yaml)
+        assert 'test_path' in paths
+        p = paths['test_path']
+        assert p.start_class == 'Customer'
+        assert len(p.steps) == 1
+
+    def test_compute_cost(self):
+        from core.harness.knowledge.path_planner import _compute_cost, ReasoningPath
+        p = ReasoningPath(name='t',label='t', steps=[{'relation':'r','direction':'outgoing'}],
+                           metadata={'confidence':0.9})
+        cost = _compute_cost(p)
+        assert cost > 0
+
+    def test_check_applicability(self):
+        from core.harness.knowledge.path_planner import _check_applicability, ReasoningPath
+        p = ReasoningPath(name='t', label='t')
+        assert _check_applicability(p, {})  # no conditions → always applicable
+        p2 = ReasoningPath(name='t2', label='t2', applicability={
+            'property_condition': {'field': 'customer_level', 'operator': '==', 'value': 'VIP'}
+        })
+        assert not _check_applicability(p2, {'filters': {'customer_level': '普通'}})
+
+
+# ── Round 5: Domain Maturity ──
+
+class TestDomainMaturity:
+    def test_score_from_mapping(self):
+        from core.harness.knowledge.domain_maturity import _score_from_mapping
+        m = {"0": 0, "10": 50, "50": 100}
+        assert _score_from_mapping(0, m) == 0
+        assert _score_from_mapping(10, m) == 50
+        assert _score_from_mapping(30, m) == 75  # interpolated
+        assert _score_from_mapping(100, m) == 100
+
+    def test_level_mapping(self):
+        from core.harness.knowledge.domain_maturity import LEVELS
+        assert len(LEVELS) == 5
+        assert LEVELS[0] == (80, "production-ready")
+        assert LEVELS[-1] == (0, "seeding")
+
+
+# ── Round 5: Scenario Selector ──
+
+class TestScenarioSelector:
+    def test_evaluate_5_criteria(self):
+        from core.harness.knowledge.scenario_selector import evaluate_scenario_5_criteria, Scenario
+        s = Scenario(name='test', impact='high', urgency='high',
+                      process_closure='clear', data_availability='available',
+                      value_verifiability='verifiable', semantic_asset_reuse='high')
+        result = evaluate_scenario_5_criteria(s)
+        assert result['total'] >= 80
+        assert result['recommendation'] == 'strongly_recommended'
+
+    def test_evaluate_weak_scenario(self):
+        from core.harness.knowledge.scenario_selector import evaluate_scenario_5_criteria, Scenario
+        s = Scenario(name='test', impact='low', urgency='low',
+                      process_closure='unknown', data_availability='unavailable',
+                      value_verifiability='unknown', semantic_asset_reuse='low')
+        result = evaluate_scenario_5_criteria(s)
+        assert result['total'] < 60
+        assert result['recommendation'] == 'defer'
+
+    def test_value_formula(self):
+        from core.harness.knowledge.scenario_selector import value_opportunity_formula, Scenario
+        s = Scenario(name='供应商评估', domain_id='supply-chain', pain='评审周期过长')
+        formula = value_opportunity_formula(s)
+        assert '供应商评估' in formula
+        assert 'supply-chain' in formula
+
+    def test_quadrant_labels(self):
+        from core.harness.knowledge.scenario_selector import QUADRANT_LABELS
+        assert QUADRANT_LABELS[('high', 'high')][0] == 'P0'
+        assert QUADRANT_LABELS[('low', 'low')][0] == 'P3'

@@ -172,6 +172,12 @@
 | **ontology_importer** | `harness/knowledge/ontology_importer.py` | ✅ | 外部本体联邦导入：OWL/SKOS/JSON-LD → aiPlat YAML，readonly 标记 | 2026-07-19 |
 | **semantic_gateway** | `harness/infrastructure/semantic_gateway.py` | ✅ | Agent数据网关：DomainRouter→PolicyGate→TermResolver→Strategy 统一路由 | 2026-07-19 |
 | **usage_tracker** | `harness/observability/usage_tracker.py` | ✅ | 计量引擎：SQLite 事件记录 + 日聚合 + syscall wrapper 拦截 4 类调用 | 2026-07-19 |
+| **scoring_engine** | `harness/knowledge/scoring_engine.py` | ✅ | 累加加权评分: via_path多跳+公式+阈值分级 | 2026-07-19 |
+| **path_planner** | `harness/knowledge/path_planner.py` | ✅ | 目标导向路径规划: 预定义模板+自动发现fallback+缓存 | 2026-07-19 |
+| **sys_ontology_reason** | `harness/syscalls/ontology_reason.py` | ✅ | 5步推理编排: 理解→规划→查询→评分→输出 | 2026-07-19 |
+| **domain_maturity** | `harness/knowledge/domain_maturity.py` | ✅ | 域成熟度6维聚合+跨域对比+缺口成本估算 | 2026-07-19 |
+| **scenario_selector** | `harness/knowledge/scenario_selector.py` | ✅ | 场景选择器: 5条件+4象限+价值机会点公式 | 2026-07-19 |
+| **scenario_crud** | `platform/apps/ontology_editor/api/scenario_crud.py` | ✅ | 场景选择 API: compare/recommend/report/refresh | 2026-07-19 |
 | **ontology_editor (API)** | `platform/apps/ontology_editor/api/` | ✅ | 21 REST 端点：domain CRUD + class CRUD + views CRUD + monitor | 2026-07-19 |
 | **ontology_editor (UI)** | `frontend/src/pages/OntologyEditor/` | ✅ | 本体编辑器前端：域列表 + 类详情 + 编辑表单 + NL→YAML + 监控面板 | 2026-07-19 |
 | FDE图谱回写接线 | `apps/skills/registry.py` | ✅ | 诊断完成后自动注册DiagnosisSubject实体+has_opportunity关系→下一次诊断可遍历跨报告关联 | 2026-07-11 |
@@ -981,7 +987,7 @@
 |------|:---:|:---:|:---:|------|
 | Harness 执行引擎 | 34 | 0 | 34 |
 | 记忆子系统 | 31 | 0 | 31 |
-| 知识引擎（本体） | 107 | 0 | 107 |
+| 知识引擎（本体） | 113 | 0 | 113 |
 | RAG 检索 | 40 | 0 | 40 |
 | 知识基础设施 | 29 | 0 | 29 |
 | Agent 系统 | 23 | 0 | 23 |
@@ -1007,12 +1013,12 @@
 | 编排系统 | 4 | 0 | 4 |
 | 管理 & 质量 | 21 | 0 | 21 |
 | 编排层 | 17 | 0 | 17 |
-| **总计** | **736** | **0** | **736** |
+| **总计** | **743** | **0** | **743** |
 
 ---
 
 *最后更新: 2026-07-19*
-*版本: 19.0 · 28章 · 737项能力 · 737✅ · 五维本体增强+编辑器+网关+计量*
+*版本: 20.0 · 743项能力 · 743✅*
 
 **自检命令**：
 ```bash
