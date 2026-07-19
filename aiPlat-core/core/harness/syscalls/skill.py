@@ -787,7 +787,7 @@ async def sys_skill_call(
             except Exception as e:
                 logging.warning(str(e), exc_info=True)
         # Audit: record execution realness when AIPLAT_EXECUTION_AUDIT is enabled
-        if os.getenv("AIPLAT_EXECUTION_AUDIT", "false").lower() in ("1", "true", "yes"):
+        if os.getenv("AIPLAT_EXECUTION_AUDIT", "true").lower() in ("1", "true", "yes"):
             try:
                 runtime = get_kernel_runtime()
                 store = getattr(runtime, "execution_store", None) if runtime else None

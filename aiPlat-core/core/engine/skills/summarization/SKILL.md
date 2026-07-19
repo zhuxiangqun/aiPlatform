@@ -11,7 +11,7 @@ completion_criterion: |
   2. 每个文件包含完整可运行代码
   3. 所有依赖项已声明，所有外部引用已校验
 execution_mode: prompt
-execution_type: prompt
+execution_type: handler
 triggers:
   - 总结
   - 摘要

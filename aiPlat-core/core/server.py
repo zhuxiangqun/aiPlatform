@@ -1372,11 +1372,16 @@ async def lifespan(app: FastAPI):
         from core.harness.knowledge.sla_monitor import start as start_sla_monitor
         start_sla_monitor()
         log.info("SLA monitor started (background thread)")
+
+        # v2.8: Auto-populate registry maturity fields on first startup
+        from core.harness.knowledge.domain_router import DomainRouter
+        DomainRouter().refresh_domain_maturity()
+        log.info("Domain maturity populated in registry")
     except Exception as e:
         logging.debug("SLA monitor startup skipped: %s", e)
 
     # Governance pipeline: scheduled governance cycle (v2.8)
-    governance_cron_hours = float(os.getenv("AIPLAT_GOVERNANCE_CRON_HOURS", "0") or "0")
+    governance_cron_hours = float(os.getenv("AIPLAT_GOVERNANCE_CRON_HOURS", "24") or "24")
     if governance_cron_hours > 0:
         async def _governance_cron_loop():
             await asyncio.sleep(120)  # delay initial run

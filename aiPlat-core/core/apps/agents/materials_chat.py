@@ -129,7 +129,7 @@ class MaterialsChatAgent(BaseAgent):
                    routing_mode=_routing_mode, cache_available=_cost.cache_saving > 0)
 
             # Phase 0.3: Semantic cache check — skip heavy retrieval if answer cached
-            if os.getenv("AIPLAT_SEMANTIC_CACHE_ENABLED", "false").lower() in ("true", "1", "yes"):
+            if os.getenv("AIPLAT_SEMANTIC_CACHE_ENABLED", "true").lower() in ("true", "1", "yes"):
                 try:
                     from core.harness.knowledge.semantic_cache_hook import try_cache_hit
                     collection_id_pre = str(scope.get("collection_id") or vars0.get("collection_id") or "default")

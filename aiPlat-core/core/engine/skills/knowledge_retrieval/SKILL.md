@@ -12,7 +12,7 @@ completion_criterion: |
   2. 信息不足时明确告知用户，绝不编造
   3. 回答结构清晰，用户无需追问即可执行下一步
 execution_mode: prompt
-execution_type: prompt
+execution_type: handler
 triggers:
   - 检索知识
   - 知识检索

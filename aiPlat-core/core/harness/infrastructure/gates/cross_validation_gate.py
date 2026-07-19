@@ -61,7 +61,7 @@ class CrossValidationGate:
     count reaches the activation threshold.
     """
 
-    _ACTIVATION_THRESHOLD = 50
+    _ACTIVATION_THRESHOLD = 20
 
     @classmethod
     def is_ready(cls) -> bool:

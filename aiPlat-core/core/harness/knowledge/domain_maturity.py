@@ -56,6 +56,35 @@ def _score_from_mapping(value: float, mapping: Dict[str, float]) -> float:
     return 0
 
 
+def _load_golden_eval_score(domain_id: str) -> Optional[float]:
+    u"""Load golden query evaluation score for a domain.
+
+    Returns 0-100 if golden_queries.yaml has entries for this domain, None otherwise.
+    """
+    import os, yaml
+    gq_path = os.path.expanduser("~/.aiplat/golden_queries.yaml")
+    if not os.path.exists(gq_path):
+        return None
+    try:
+        with open(gq_path) as f:
+            raw = yaml.safe_load(f) or {}
+        queries = raw.get("queries", [])
+        domain_queries = [q for q in queries if q.get("domain") == domain_id]
+        if not domain_queries:
+            return None
+        # Score based on query count: 5+ queries → 80+, 3-4 → 60, 1-2 → 40
+        count = len(domain_queries)
+        if count >= 5:
+            return 85.0
+        elif count >= 3:
+            return 60.0
+        elif count >= 1:
+            return 40.0
+        return None
+    except Exception:
+        return None
+
+
 def compute_domain_maturity(
     domain_id: str,
     ontologies_dir: str = "",
@@ -133,8 +162,8 @@ def compute_domain_maturity(
         density = 0
     dims["relation_density"] = round(density, 3)
 
-    # ── 6. Eval Score ──
-    eval_score = None  # Not available by default
+    # ── 6. Eval Score — golden query evaluation ──
+    eval_score = _load_golden_eval_score(domain_id)
     dims["eval_score"] = eval_score
 
     # ── Compute weighted score ──
