@@ -7,6 +7,7 @@
   */
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { Card, CardContent, CardHeader, Button, toast } from '../../components/ui';
+import ReasoningTracePanel from './ReasoningTracePanel';
 import { Wrench, RefreshCw, Package, Download, Users, FileText, Target, Activity, AlertTriangle, Send, Clipboard, TrendingUp, CheckCircle, UserCheck, BookOpen, Plus, ChevronDown, ChevronRight, X, ArrowRightLeft, Trash2, Pencil } from 'lucide-react';
 import CapabilityBoundary from './CapabilityBoundary';
 import FloatingFeedback from './FloatingFeedback';
@@ -38,6 +39,7 @@ interface DiagnosisInfo {
   deepProblem: string;
   recommendedDomain: string;
   reportText: string;
+  reasoningTrace?: any[];  // v2.8: reasoning trace from ontology_agent
 }
 interface CanaryResult {
   passed: boolean;
@@ -1252,6 +1254,11 @@ const CustomersTab: React.FC<{ readonly onSelect: (c: CustomerInfo) => void; rea
                       <div className="text-blue-400 font-medium">最近诊断</div>
                       <div className="text-blue-300 mt-0.5">{diagnosis.deepProblem.slice(0, 100)}</div>
                       {diagnosis.recommendedDomain && <div className="text-blue-500 mt-0.5">推荐域：{diagnosis.recommendedDomain}</div>}
+                      {diagnosis.reasoningTrace && diagnosis.reasoningTrace.length > 0 && (
+                        <ReasoningTracePanel trace={diagnosis.reasoningTrace} totalMs={
+                          diagnosis.reasoningTrace.reduce((s: number, t: any) => s + (t.duration_ms || 0), 0)
+                        } />
+                      )}
                     </div>
                   )}
                   <div className="flex gap-2">

@@ -9,6 +9,8 @@ from __future__ import annotations
 import logging
 from typing import Any, Dict, List
 
+from core.harness.infrastructure.gateway.fde_notifier import _notify_safe
+
 logger = logging.getLogger("canary_runner")
 
 
@@ -81,5 +83,7 @@ async def execute(params: Dict[str, Any]) -> Dict[str, Any]:
     logger.info("Canary check for %s: %s (%.1f/%.0f, maturity=%.0f)",
                  domain_id, "PASS" if passed else "FAIL",
                  total_score, max_score, maturity_score)
+
+    _notify_safe("灰度质量门禁", domain_id, {"passed": result["passed"], "score": result["total_score"]})
 
     return result

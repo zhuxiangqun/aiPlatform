@@ -2642,6 +2642,18 @@ Output format: JSON array of {{"rank": 1, "score": 0.95, "content": "..."}}"""
             return state
 
         state = dict(state)
+
+        # v2.8: Sandbox validation before stage execution
+        sandbox_mode = getattr(stage, 'sandbox_mode', 'none') or 'none'
+        if sandbox_mode != 'none':
+            try:
+                from core.harness.infrastructure.gates.sandbox_gate import SandboxGate
+                gate = SandboxGate()
+                if not gate.passes(stage):
+                    raise Exception(f"Stage '{getattr(stage, 'name', '?')}' blocked by sandbox gate")
+            except ImportError:
+                pass
+
         used = state.get("tokens_used", 0)
         budget = state.get("tokens_budget", self._config.max_tokens_per_run or 100000)
         if used >= budget:

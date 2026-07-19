@@ -144,6 +144,9 @@ def _scan_loop(interval: float) -> None:
             triggered = scan_once()
             if triggered:
                 logger.info("SLA monitor: %d timeout(s) detected", len(triggered))
+                for t in triggered:
+                    from core.harness.infrastructure.gateway.fde_notifier import _notify_safe
+                    _notify_safe("SLA 违约告警", t.get("domain_id", ""), t)
         except Exception as e:
             logger.warning("SLA monitor error: %s", e, exc_info=True)
         _time.sleep(interval)

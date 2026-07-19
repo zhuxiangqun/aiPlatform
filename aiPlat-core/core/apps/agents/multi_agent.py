@@ -135,6 +135,17 @@ class MultiAgent(ConfigurableAgent):
         
         return pattern
 
+    def _build_task_context(self, parent_state, task: str, required_tools: list = None, required_skills: list = None):
+        u"""Build lightweight task-only context — strips parent memory/compression/system-injections."""
+        return {
+            "task": task,
+            "messages": [{"role": "user", "content": task}],
+            "tools": [t for t in (parent_state.get("tools") or []) if not required_tools or t in required_tools],
+            "skills": [s for s in (parent_state.get("skills") or []) if not required_skills or s in required_skills],
+            "variables": {},
+            # Deliberately EXCLUDED: working_memory, episodic_memory, semantic_memory, compressed_context, claude_md, system_prompt
+        }
+
     async def execute(self, context: AgentContext) -> AgentResult:
         """Execute multi-agent coordination using Harness patterns.
 
@@ -153,19 +164,29 @@ class MultiAgent(ConfigurableAgent):
             if self._sub_agents and self._pattern:
                 # Build wrapper agents that work with the pattern interface
                 class _PatternAgentAdapter:
-                    def __init__(self, agent, ctx, msg_bus=None):
+                    def __init__(self, agent, ctx, msg_bus=None, outer=None):
                         self._agent = agent
                         self._ctx = ctx
                         self._bus = msg_bus
+                        self._outer = outer
                     
                     async def execute(self, task_input):
+                        task_ctx = self._outer._build_task_context(
+                            {"tools": self._ctx.tools, "skills": self._ctx.skills},
+                            str(task_input)
+                        ) if self._outer else {
+                            "messages": [{"role": "user", "content": str(task_input)}],
+                            "variables": self._ctx.variables.copy(),
+                            "tools": self._ctx.tools,
+                            "skills": self._ctx.skills,
+                        }
                         agent_ctx = AgentContext(
                             session_id=self._ctx.session_id,
                             user_id=self._ctx.user_id,
-                            messages=[{"role": "user", "content": str(task_input)}],
-                            variables=self._ctx.variables.copy(),
-                            tools=self._ctx.tools,
-                            skills=self._ctx.skills,
+                            messages=task_ctx["messages"],
+                            variables=task_ctx.get("variables", {}),
+                            tools=task_ctx.get("tools", self._ctx.tools),
+                            skills=task_ctx.get("skills", self._ctx.skills),
                         )
                         # AgentMessage protocol: send TASK_ASSIGN before execution
                         agent_id = getattr(self._agent, '_agent_id', 'unknown')
@@ -194,7 +215,7 @@ class MultiAgent(ConfigurableAgent):
                 
                 from core.harness.interfaces.messaging import get_message_bus
                 msg_bus = get_message_bus()
-                adapters = [_PatternAgentAdapter(a, context, msg_bus) for a in self._sub_agents]
+                adapters = [_PatternAgentAdapter(a, context, msg_bus, self) for a in self._sub_agents]
                 
                 coord_ctx = CoordinationContext(
                     task=task,
@@ -279,19 +300,29 @@ class MultiAgent(ConfigurableAgent):
         bus = msg_bus or get_message_bus()
 
         class _Adapter:
-            def __init__(self, a, ctx, b):
+            def __init__(self, a, ctx, b, outer=None):
                 self._agent = a
                 self._ctx = ctx
                 self._bus = b
+                self._outer = outer
 
             async def execute(self, task_input):
+                task_ctx = self._outer._build_task_context(
+                    {"tools": self._ctx.tools, "skills": self._ctx.skills},
+                    str(task_input)
+                ) if self._outer else {
+                    "messages": [{"role": "user", "content": str(task_input)}],
+                    "variables": self._ctx.variables.copy(),
+                    "tools": self._ctx.tools,
+                    "skills": self._ctx.skills,
+                }
                 agent_ctx = AgentContext(
                     session_id=self._ctx.session_id,
                     user_id=self._ctx.user_id,
-                    messages=[{"role": "user", "content": str(task_input)}],
-                    variables=self._ctx.variables.copy(),
-                    tools=self._ctx.tools,
-                    skills=self._ctx.skills,
+                    messages=task_ctx["messages"],
+                    variables=task_ctx.get("variables", {}),
+                    tools=task_ctx.get("tools", self._ctx.tools),
+                    skills=task_ctx.get("skills", self._ctx.skills),
                 )
                 import uuid
                 from core.harness.interfaces.messaging import AgentMessage, AgentMessageType
@@ -314,7 +345,7 @@ class MultiAgent(ConfigurableAgent):
                 ))
                 return result
 
-        return _Adapter(agent, context, bus), bus
+        return _Adapter(agent, context, bus, self), bus
 
     async def _execute_coordinated(self, context: AgentContext) -> AgentResult:
         """Delegate to SubagentCoordinator (P1-3 wiring)."""

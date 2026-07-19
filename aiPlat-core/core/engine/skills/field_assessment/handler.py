@@ -12,6 +12,8 @@ from __future__ import annotations
 import logging
 from typing import Any, Dict, List, Optional
 
+from core.harness.infrastructure.gateway.fde_notifier import _notify_safe
+
 logger = logging.getLogger("field_assessment")
 
 
@@ -80,6 +82,8 @@ async def execute(params: Dict[str, Any]) -> Dict[str, Any]:
         ),
         "confidence": _estimate_confidence(reasoning_result),
     }
+
+    _notify_safe("诊断报告生成", domain_id, {"issues_found": diagnosis.get("issues_found", 0)})
 
     return {
         "diagnosis": diagnosis,

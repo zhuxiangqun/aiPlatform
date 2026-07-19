@@ -9,6 +9,8 @@ from __future__ import annotations
 import logging
 from typing import Any, Dict, List
 
+from core.harness.infrastructure.gateway.fde_notifier import _notify_safe
+
 logger = logging.getLogger("acceptance_checker")
 
 
@@ -103,5 +105,7 @@ async def execute(params: Dict[str, Any]) -> Dict[str, Any]:
     logger.info("Acceptance check for %s/%s: %s (%.1f/%.0f)",
                  domain_id, session_id, "ACCEPTED" if accepted else "REJECTED",
                  total_score, max_score)
+
+    _notify_safe("验收检查完成", domain_id, {"score": total_score, "max_score": max_score, "passed": accepted})
 
     return result

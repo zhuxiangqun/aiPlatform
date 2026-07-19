@@ -96,6 +96,28 @@ async def reason(
     except Exception as e:
         logging.warning(str(e), exc_info=True)
 
+    # v2.8: Slash command routing — "/assess 金融" → skill invocation
+    task = state.context.get("task", "")
+    if task.startswith("/"):
+        try:
+            from core.harness.execution.loop.command_parser import parse as _parse_cmd
+            from core.harness.execution.loop.command_parser import get_agent_commands, resolve_skill
+            cmd = _parse_cmd(task)
+            if cmd:
+                agent_id = state.context.get("_agent_id", "") or "fde_solution_architect"
+                agent_cmds = get_agent_commands(agent_id)
+                resolved = resolve_skill(cmd, agent_cmds)
+                if resolved and resolved.skill_name:
+                    from core.harness.syscalls.skill import sys_skill_call
+                    result = await sys_skill_call(
+                        resolved.skill_name,
+                        params={"context": " ".join(cmd.args)},
+                        trace_context={"agent_id": agent_id, "command": cmd.name},
+                    )
+                    return str(result)
+        except Exception as e:
+            logging.debug("Command parsing skipped: %s", e)
+
     # Inject code graph context on first reasoning call (replaces grep/glob exploration)
     graph_hints = await loop._try_inject_graph_context(state)
     if graph_hints:
