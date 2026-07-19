@@ -29,6 +29,7 @@ __all__ = [
     "sys_file_read", "sys_file_write", "sys_file_edit",
     "sys_glob", "sys_code_search",
     "sys_graph_query",
+    "sys_ontology_reason",       # v2.7: Ontology Agent 5-step reasoning
 ]
 
 _LAZY_MODULES = {
@@ -52,6 +53,7 @@ _LAZY_MODULES = {
     "file": ["sys_file_read", "sys_file_write", "sys_file_edit"],
     "code": ["sys_glob", "sys_code_search"],
     "graph": ["sys_graph_query"],
+    "ontology_reason": ["sys_ontology_reason"],
 }
 
 
