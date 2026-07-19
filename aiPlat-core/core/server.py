@@ -1375,6 +1375,25 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logging.debug("SLA monitor startup skipped: %s", e)
 
+    # Governance pipeline: scheduled governance cycle (v2.8)
+    governance_cron_hours = float(os.getenv("AIPLAT_GOVERNANCE_CRON_HOURS", "0") or "0")
+    if governance_cron_hours > 0:
+        async def _governance_cron_loop():
+            await asyncio.sleep(120)  # delay initial run
+            while True:
+                try:
+                    from core.harness.knowledge.governance_pipeline import run_all_domains
+                    results = await run_all_domains()
+                    critical = [r for r in results if r.health_level == "critical"]
+                    if critical:
+                        log.warning("Governance cron: %d domain(s) in critical health", len(critical))
+                    log.info("Governance cron completed: %d domains checked", len(results))
+                except Exception as e:
+                    logging.debug("Governance cron error: %s", e)
+                await asyncio.sleep(governance_cron_hours * 3600)
+        asyncio.create_task(_governance_cron_loop())
+        log.info("Governance cron started (interval=%sh)", governance_cron_hours)
+
     # Cross-graph ontology bridge: scan AGENT.md/SKILL.md for dependency triples
     try:
         async def _bootstrap_ontology_triples():

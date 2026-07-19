@@ -331,3 +331,80 @@ class TestScenarioSelector:
         from core.harness.knowledge.scenario_selector import QUADRANT_LABELS
         assert QUADRANT_LABELS[('high', 'high')][0] == 'P0'
         assert QUADRANT_LABELS[('low', 'low')][0] == 'P3'
+
+
+# ── Round 6: Governance Pipeline ──
+
+class TestGovernancePipeline:
+    def test_step_result_defaults(self):
+        from core.harness.knowledge.governance_pipeline import StepResult
+        s = StepResult(step_index=1, step_name="scenario")
+        assert s.status == "completed"
+        assert s.warnings == []
+
+    def test_cycle_result_health(self):
+        from core.harness.knowledge.governance_pipeline import GovernanceCycleResult, StepResult
+        r = GovernanceCycleResult(
+            cycle_id="test-1", timestamp="2026-07-19", domain_id="test",
+            step_results=[
+                StepResult(step_index=1, step_name="scenario", status="completed"),
+                StepResult(step_index=2, step_name="modeling", status="completed"),
+                StepResult(step_index=3, step_name="mapping", status="warning", warnings=["low coverage"]),
+            ],
+            overall_health=75.0, health_level="warning",
+        )
+        assert r.overall_health == 75.0
+        assert r.health_level == "warning"
+
+
+# ── Round 6: Ontology Approval ──
+
+class TestOntologyApproval:
+    def test_submit_and_list(self):
+        from core.harness.infrastructure.gates.ontology_approval import submit, list_pending, approve
+        # Submit a test request
+        req = submit("test_domain", "class_add", requested_by="test_user", justification="test")
+        assert req.status == "pending"
+        assert req.domain_id == "test_domain"
+
+        # List pending
+        pending = list_pending("test_domain")
+        assert len(pending) >= 1
+
+        # Approve it
+        result = approve(req.id, "governance_admin")
+        assert result["success"]
+
+        # Clean up — delete test request
+        import sqlite3, os
+        db = os.path.expanduser("~/.aiplat/state_changes.db")
+        conn = sqlite3.connect(db, timeout=5.0)
+        conn.execute("DELETE FROM change_requests WHERE domain_id = 'test_domain'")
+        conn.commit()
+        conn.close()
+
+    def test_reject(self):
+        from core.harness.infrastructure.gates.ontology_approval import submit, reject
+        req = submit("test_domain2", "rule_edit", requested_by="test", justification="test")
+        result = reject(req.id, "governance_admin", "not needed")
+        assert result["success"]
+
+    def test_can_publish(self):
+        from core.harness.infrastructure.gates.ontology_approval import can_publish
+        assert can_publish("governance_admin")
+        assert can_publish("admin")
+        assert not can_publish("viewer")
+
+
+# ── Round 6: Mapping Validator ──
+
+class TestMappingValidator:
+    def test_validate_nonexistent_source(self):
+        from core.harness.knowledge.mapping_validator import validate_source
+        result = validate_source("nonexistent_ds_999")
+        assert result.status == "critical"
+
+    def test_generate_empty_report(self):
+        from core.harness.knowledge.mapping_validator import generate_mapping_report
+        report = generate_mapping_report(["nonexistent_ds_999"])
+        assert "No data sources" in report or "nonexistent" in report

@@ -178,6 +178,11 @@
 | **domain_maturity** | `harness/knowledge/domain_maturity.py` | ✅ | 域成熟度6维聚合+跨域对比+缺口成本估算 | 2026-07-19 |
 | **scenario_selector** | `harness/knowledge/scenario_selector.py` | ✅ | 场景选择器: 5条件+4象限+价值机会点公式 | 2026-07-19 |
 | **scenario_crud** | `platform/apps/ontology_editor/api/scenario_crud.py` | ✅ | 场景选择 API: compare/recommend/report/refresh | 2026-07-19 |
+| **governance_pipeline** | `harness/knowledge/governance_pipeline.py` | ✅ | 6步治理编排: 场景→建模→映射→质量→发布→反馈 | 2026-07-19 |
+| **ontology_approval** | `harness/infrastructure/gates/ontology_approval.py` | ✅ | 本体变更审批: submit/approve/reject + SQLite 表 | 2026-07-19 |
+| **mapping_validator** | `harness/knowledge/mapping_validator.py` | ✅ | 数据→语义映射验证: 类型/枚举/覆盖率检测 | 2026-07-19 |
+| **governance_dashboard** | `harness/knowledge/governance_dashboard.py` | ✅ | 治理仪表盘聚合: 健康+机制状态+审计摘要 | 2026-07-19 |
+| **governance_crud** | `platform/apps/ontology_editor/api/governance_crud.py` | ✅ | 治理 API: dashboard/run-cycle/approve/mapping-report | 2026-07-19 |
 | **ontology_editor (API)** | `platform/apps/ontology_editor/api/` | ✅ | 21 REST 端点：domain CRUD + class CRUD + views CRUD + monitor | 2026-07-19 |
 | **ontology_editor (UI)** | `frontend/src/pages/OntologyEditor/` | ✅ | 本体编辑器前端：域列表 + 类详情 + 编辑表单 + NL→YAML + 监控面板 | 2026-07-19 |
 | FDE图谱回写接线 | `apps/skills/registry.py` | ✅ | 诊断完成后自动注册DiagnosisSubject实体+has_opportunity关系→下一次诊断可遍历跨报告关联 | 2026-07-11 |
@@ -1013,12 +1018,12 @@
 | 编排系统 | 4 | 0 | 4 |
 | 管理 & 质量 | 21 | 0 | 21 |
 | 编排层 | 17 | 0 | 17 |
-| **总计** | **743** | **0** | **743** |
+| **总计** | **748** | **0** | **748** |
 
 ---
 
 *最后更新: 2026-07-19*
-*版本: 20.0 · 743项能力 · 743✅*
+*版本: 21.0 · 748项能力 · 748✅ · 治理体系+六轮闭环*
 
 **自检命令**：
 ```bash

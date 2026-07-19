@@ -470,6 +470,7 @@ python -c "from core.harness.memory.manager import _re_rank_messages; print('OK'
 | K8 | 跨域流程编排 (processes.domains) 预留设计但未实现 | 路线图 (v2.8) |
 | K9 | registry.json 场景字段 (priority/maturity/scenarios/industries) 待填充 | 待接线 (v2.8) |
 | K10 | OntologyAgent 缺少 Golden Query 评测数据 (eval_score=None) | 数据待准备 (v2.8) |
+| K11 | GovernancePipeline 调度未接入 server.py cron 定时任务 | 待接线 (v2.8) |
 
 ### 19.3 自动化防护生效
 
