@@ -10,9 +10,11 @@ from .view_crud import router as _view_router
 from .monitor_crud import router as _monitor_router
 from .metric_crud import router as _metric_router
 from .scoring_crud import router as _scoring_router
+from .scenario_crud import router as _scenario_router
 
 router.include_router(_domain_router, prefix="")
 router.include_router(_view_router, prefix="")
 router.include_router(_monitor_router, prefix="")
 router.include_router(_metric_router, prefix="")
 router.include_router(_scoring_router, prefix="")
+router.include_router(_scenario_router, prefix="")

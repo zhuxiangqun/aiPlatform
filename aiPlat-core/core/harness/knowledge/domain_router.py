@@ -185,6 +185,82 @@ class DomainRouter:
         self._registry_cache = registry
         self._built = False  # force rebuild on next classify
 
+    # ── v2.7: Scenario Selection ──
+
+    def rank_domains_by_scenario_fit(
+        self,
+        industry: str = "",
+        pain_points: str = "",
+        limit: int = 5,
+    ) -> List[Dict[str, Any]]:
+        u"""Rank domains by scenario suitability (data-driven, not LLM).
+
+        Uses scenario_selector.recommend_order() if available, otherwise falls back
+        to maturity-based ranking.
+        """
+        try:
+            from core.harness.knowledge.scenario_selector import recommend_order
+            return recommend_order(industry=industry, pain_points=pain_points, limit=limit)
+        except Exception:
+            pass
+
+        # Fallback: pure maturity ranking
+        try:
+            from core.harness.knowledge.domain_maturity import compare_domains
+            domains = compare_domains()
+            result = []
+            for d in domains[:limit]:
+                result.append({
+                    "domain_id": d["domain_id"],
+                    "maturity_score": d["maturity_score"],
+                    "level": d["level"],
+                    "recommendation": "build_first" if d["maturity_score"] >= 60 else "defer",
+                })
+            return result
+        except Exception:
+            return []
+
+    def list_domains_with_metadata(self) -> List[Dict[str, Any]]:
+        u"""List all domains with maturity metadata for comparison UI."""
+        try:
+            from core.harness.knowledge.domain_maturity import compare_domains
+            return compare_domains()
+        except Exception:
+            return [
+                {"domain_id": d, "name": d, "maturity_score": 0, "level": "unknown"}
+                for d in self.list_domains()
+            ]
+
+    def refresh_domain_maturity(self, domain_id: str = "") -> Dict[str, Any]:
+        u"""Refresh maturity scores for one or all domains, writing back to registry."""
+        import json as _json
+        registry = self._load_registry()
+
+        if domain_id:
+            from core.harness.knowledge.domain_maturity import compute_domain_maturity
+            maturity = compute_domain_maturity(domain_id)
+            if domain_id in registry.get("domains", {}):
+                registry["domains"][domain_id]["maturity"] = maturity["level"]
+                registry["domains"][domain_id]["maturity_score"] = maturity["maturity_score"]
+                registry["domains"][domain_id]["last_assessed_at"] = \
+                    __import__('time').strftime("%Y-%m-%dT%H:%M:%SZ", __import__('time').gmtime())
+        else:
+            from core.harness.knowledge.domain_maturity import compute_domain_maturity
+            for did in list(registry.get("domains", {}).keys()):
+                maturity = compute_domain_maturity(did)
+                registry["domains"].setdefault(did, {})
+                registry["domains"][did]["maturity"] = maturity["level"]
+                registry["domains"][did]["maturity_score"] = maturity["maturity_score"]
+                registry["domains"][did]["last_assessed_at"] = \
+                    __import__('time').strftime("%Y-%m-%dT%H:%M:%SZ", __import__('time').gmtime())
+
+        reg_path = os.path.expanduser("~/.aiplat/ontologies/registry.json")
+        with open(reg_path, "w", encoding="utf-8") as f:
+            _json.dump(registry, f, ensure_ascii=False, indent=2)
+        self._registry_cache = registry
+
+        return {"refreshed": domain_id or "all", "domains_updated": len(registry.get("domains", {}))}
+
     # ═══════════════════════════════════════════════════════════════
     # Internal
     # ═══════════════════════════════════════════════════════════════

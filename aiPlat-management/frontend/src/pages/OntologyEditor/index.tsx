@@ -32,10 +32,12 @@ export default function OntologyEditor() {
   const [nlDescription, setNlDescription] = useState('');
   const [generating, setGenerating] = useState(false);
   const [monitorTab, setMonitorTab] = useState(false);
+  const [scenarioTab, setScenarioTab] = useState(false);
   const [stateDist, setStateDist] = useState<any>(null);
   const [bottlenecks, setBottlenecks] = useState<any>(null);
   const [slaViolations, setSlaViolations] = useState<any>(null);
   const [trends, setTrends] = useState<any>(null);
+  const [scenarioData, setScenarioData] = useState<any>(null);
   const [editing, setEditing] = useState(false);
   const [editForm, setEditForm] = useState<any>({});
 
@@ -172,6 +174,17 @@ export default function OntologyEditor() {
     if (monitorTab && selectedDomain) fetchMonitor();
   }, [monitorTab, selectedDomain]);
 
+  const fetchScenario = async () => {
+    try {
+      const res = await apiClient.get('/api/platform/apps/ontology-editor/scenarios/recommend?mode=maturity');
+      setScenarioData(res.data);
+    } catch {}
+  };
+
+  useEffect(() => {
+    if (scenarioTab) fetchScenario();
+  }, [scenarioTab]);
+
   const startNewClass = () => {
     setEditForm({
       label: '', description: '', required_fields: ['name', 'description'],
@@ -245,7 +258,11 @@ export default function OntologyEditor() {
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 10 }}>
                 <h3 style={{ margin: 0, fontSize: 14 }}>{schema?.name || selectedDomain} Classes</h3>
                 <div style={{ display: 'flex', gap: 4 }}>
-                  <button onClick={() => setMonitorTab(!monitorTab)}
+                  <button onClick={() => { setMonitorTab(false); setScenarioTab(!scenarioTab); }}
+                    style={{ ...btnSecondaryStyle, fontSize: 11, padding: '3px 8px' }}>
+                    {scenarioTab ? 'Classes' : 'Scenarios'}
+                  </button>
+                  <button onClick={() => { setScenarioTab(false); setMonitorTab(!monitorTab); }}
                     style={{ ...btnSecondaryStyle, fontSize: 11, padding: '3px 8px' }}>
                     {monitorTab ? 'Classes' : 'Monitor'}
                   </button>
@@ -368,6 +385,57 @@ export default function OntologyEditor() {
                   </div>
                 ) : (
                   <div style={{ color: '#555', fontSize: 12 }}>No trend data yet.</div>
+                )}
+              </div>
+            )}
+
+            {/* Scenario selection panel */}
+            {scenarioTab && (
+              <div style={{ flex: 1 }}>
+                <h4 style={{ margin: '0 0 12px', fontSize: 13, color: '#888' }}>
+                  Domain Maturity — Build Priority
+                </h4>
+                {scenarioData?.recommendations?.length ? (
+                  <div style={{ maxHeight: 500, overflowY: 'auto' }}>
+                    {scenarioData.recommendations.map((r: any, i: number) => (
+                      <div key={i} style={{
+                        padding: '12px', marginBottom: 8, borderRadius: 6,
+                        background: r.recommendation === 'build_first' ? '#1a2a1a' : '#1a1a2e',
+                        border: r.recommendation === 'build_first' ? '1px solid #3a3' : '1px solid #333',
+                      }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                          <span style={{ fontWeight: 600, fontSize: 13 }}>
+                            {r.domain_id}
+                            <span style={{ color: '#888', marginLeft: 8, fontSize: 11 }}>
+                              ({r.level || r.maturity_score})
+                            </span>
+                          </span>
+                          <span style={{
+                            padding: '2px 8px', borderRadius: 4, fontSize: 11,
+                            background: r.recommendation === 'build_first' ? '#3a3' : '#666',
+                            color: '#fff',
+                          }}>
+                            {r.recommendation === 'build_first' ? 'P0 优先' : r.recommendation === 'plan_second' ? 'P1 计划' : '延后'}
+                          </span>
+                        </div>
+                        <div style={{ fontSize: 11, color: '#888' }}>
+                          Maturity: {r.maturity_score} | Gap: {r.gap_cost_hours || '?'} hours
+                        </div>
+                        {r.value_formula && (
+                          <div style={{
+                            marginTop: 8, padding: '6px 10px', background: '#111', borderRadius: 4,
+                            fontSize: 11, color: '#aaa', fontStyle: 'italic',
+                          }}>
+                            {r.value_formula}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div style={{ color: '#555', fontSize: 12 }}>
+                    No domains registered. Create domains first.
+                  </div>
                 )}
               </div>
             )}
