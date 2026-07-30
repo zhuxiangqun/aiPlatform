@@ -1,5 +1,5 @@
 ---
-total_capabilities: 910
+total_capabilities: 914
 last_updated: 2026-07-30
 version: "29.0"
 auto_sync: true
@@ -1225,6 +1225,16 @@ auto_sync: true
 
 ---
 
+## 四十一、Web 工具归并 (Firecrawl 对齐)
+
+| 能力 | 位置 | 状态 | 说明 | 实施状态 |
+|------|------|:---:|------|------|
+| WebSearchTool | apps/tools/web/web_search.py | ✅ | 统一搜索: DuckDuckGo HTML/JSON/浏览器三后端可选 | 2026-07-30 |
+| WebCrawlTool | apps/tools/web/web_crawl.py | ✅ | BFS全站抓取, 同源过滤, 深度限制 (对齐Firecrawl Crawl) | 2026-07-30 |
+| WebMapTool | apps/tools/web/web_crawl.py | ✅ | URL发现+标题提取 (对齐Firecrawl Map) | 2026-07-30 |
+| extract_text_from_html | harness/document/parsers.py | ✅ | HTML→纯文本统一入口, 替代4处重复实现 | 2026-07-30 |
+
+---
 ## 四十一、Skill 目录标准化与验收 (文章对齐)
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
@@ -1304,8 +1314,9 @@ auto_sync: true
 | 知识编译与OKF | 8 | 0 | 8 |
 | 对话→Wiki 自动管线 | 6 | 0 | 6 |
 | Skill 目录标准化 | 7 | 0 | 7 |
+| Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 11 | 0 | 11 |
-| **总计** | **910** | **0** | **910** |
+| **总计** | **914** | **0** | **914** |
 
 ---
 
