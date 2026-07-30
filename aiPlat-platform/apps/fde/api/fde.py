@@ -3575,6 +3575,101 @@ async def install_skill(payload: dict = Body(...)):
 
     return {"installed": True, "skill_name": skill_name, "path": target_dir}
 
+
+# ════════════════════════════════════════════════════════════
+# Voice Brainstorm — 语音漫谈 (Karpathy 对齐, Phase 56)
+# ════════════════════════════════════════════════════════════
+
+@router.post("/voice/brainstorm")
+async def voice_brainstorm(payload: dict = Body(...)):
+    """语音漫谈 → LLM 意图重构 → 结构化摘要.
+
+    接收 Whisper 转录文本 (可含"嗯/啊"、自我纠正、意识流),
+    LLM 自动提取核心意图、可执行步骤、待澄清模糊点。
+
+    Body:
+      - transcript: str (Whisper 转录的原始文本)
+      - duration_seconds: int (录音时长, 可选)
+    """
+    transcript = str(payload.get("transcript", "")).strip()
+    if len(transcript) < 20:
+        return {"success": False, "error": "转录文本过短 (需≥20字符)", "summary": {}}
+
+    duration = payload.get("duration_seconds", 0)
+
+    try:
+        from core.harness.utils.model_injection import best_model_for_purpose
+        from core.harness.syscalls.llm import sys_llm_generate
+
+        prompt = f"""以下是用户的一段语音漫谈转录 (约 {duration} 秒)。
+文本可能包含"嗯/啊"、自我纠正、跳跃话题、重复表达——这些是正常现象。
+
+请完成三项任务:
+1. 提取核心意图 (1-2句话概括用户真正想表达什么)
+2. 输出3个可执行步骤 (具体、可操作、用户下一步就能做的)
+3. 列出待澄清的模糊点 (哪些地方用户可能自己还没想清楚)
+
+语音转录:
+{transcript[:8000]}
+
+返回 JSON:
+{{
+  "core_intent": "核心意图概括",
+  "actionable_steps": ["步骤1", "步骤2", "步骤3"],
+  "fuzzy_points": ["模糊点1", "模糊点2"],
+  "tone": "思考型/焦虑型/探索型/决策型"
+}}
+
+只返回 JSON, 不要其他内容."""
+
+        result = await sys_llm_generate(
+            messages=[{"role": "user", "content": prompt}],
+            model=best_model_for_purpose("reasoning"),
+            temperature=0.3,
+            max_tokens=1500,
+        )
+        content = result.get("content", "") if isinstance(result, dict) else str(result)
+
+        # Parse JSON
+        import json as _json
+        data = {}
+        try:
+            if "```json" in content:
+                content = content.split("```json")[1].split("```")[0]
+            elif "```" in content:
+                parts = content.split("```")
+                for p in parts:
+                    if p.strip().startswith("{"):
+                        content = p
+                        break
+            start = content.find("{")
+            end = content.rfind("}")
+            if start >= 0 and end > start:
+                data = _json.loads(content[start:end + 1])
+        except Exception:
+            data = {"core_intent": content[:500], "actionable_steps": [], "fuzzy_points": []}
+
+        # Auto-trigger ConversationIngestor for valuable insights
+        try:
+            import asyncio
+            async def _ingest():
+                from core.harness.knowledge.conversation_ingestor import ConversationIngestor
+                ingestor = ConversationIngestor()
+                await ingestor.ingest_recent(hours=1, max_messages=5)
+            asyncio.ensure_future(_ingest())
+        except Exception:
+            pass
+
+        return {
+            "success": True,
+            "duration_seconds": duration,
+            "summary": data,
+        }
+
+    except Exception as e:
+        logging.getLogger("aiplat.voice").warning("brainstorm failed: %s", e)
+        return {"success": False, "error": str(e)[:200], "summary": {}}
+
 # Ontology Branching — branch/fork/diff/merge (Phase 43)
 # ════════════════════════════════════════════════════════════
 

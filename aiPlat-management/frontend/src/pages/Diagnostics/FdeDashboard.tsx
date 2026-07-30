@@ -8,7 +8,7 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { Card, CardContent, CardHeader, Button, toast } from '../../components/ui';
 import ReasoningTracePanel from './ReasoningTracePanel';
-import { Wrench, RefreshCw, Package, Download, Users, FileText, Target, Activity, AlertTriangle, Send, Clipboard, TrendingUp, CheckCircle, UserCheck, BookOpen, Plus, ChevronDown, ChevronRight, X, ArrowRightLeft, Trash2, Pencil, Zap, GitBranch, GitCommit, GitFork, FileText, Play, BookOpen } from 'lucide-react';
+import { Wrench, RefreshCw, Package, Download, Users, FileText, Target, Activity, AlertTriangle, Send, Clipboard, TrendingUp, CheckCircle, UserCheck, BookOpen, Plus, ChevronDown, ChevronRight, X, ArrowRightLeft, Trash2, Pencil, Zap, GitBranch, GitCommit, GitFork, FileText, Play, BookOpen, Mic } from 'lucide-react';
 import CapabilityBoundary from './CapabilityBoundary';
 import FloatingFeedback from './FloatingFeedback';
 import WeeklyReport from './WeeklyReport';
@@ -21,6 +21,7 @@ import BranchPanel from './BranchPanel';
 import AgentNetworkPanel from './AgentNetworkPanel';
 import TemplatePanel from './TemplatePanel';
 import RecordingPanel from './RecordingPanel';
+import VoiceBrainstormPanel from './VoiceBrainstormPanel';
 import CompilationDashboard from './CompilationDashboard';
 import EvoXPanel from './EvoXPanel';
 
@@ -269,6 +270,7 @@ const FdeDashboard: React.FC = () => {
   const [showEvoX, setShowEvoX] = useState(false);
   const [showTemplate, setShowTemplate] = useState(false);
   const [showRecording, setShowRecording] = useState(false);
+  const [showVoiceBrainstorm, setShowVoiceBrainstorm] = useState(false);
   const [showCompilation, setShowCompilation] = useState(false);
   const [showMore, setShowMore] = useState(false);
   const [showHealth, setShowHealth] = useState(true);
@@ -727,6 +729,13 @@ const FdeDashboard: React.FC = () => {
        {showRecording && (
          <div className="mt-4">
            <RecordingPanel />
+         </div>
+       )}
+
+       {/* ── 语音漫谈面板 ── */}
+       {showVoiceBrainstorm && (
+         <div className="mt-4">
+           <VoiceBrainstormPanel />
          </div>
        )}
 
