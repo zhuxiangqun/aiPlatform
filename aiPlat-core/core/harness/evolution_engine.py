@@ -238,10 +238,12 @@ class EvolutionEngine:
 
 
 
-        # Step 13: SpecLifecycle ageing + FeedbackRadar scan (三层 Loop 连接)
+         # Step 13: SpecLifecycle ageing + FeedbackRadar scan (三层 Loop 连接)
 
         run.steps.append(await self._step("spec_health", self._do_spec_health))
 
+        # Step 14: 三省六部早朝复盘 — AgentRefiner → AGENTS.md 优化建议
+        run.steps.append(await self._step("agent_refinement", self._do_agent_refinement))
 
 
         # Build report
@@ -788,6 +790,20 @@ class EvolutionEngine:
 
         return result
 
+
+    # ── Step 14: 三省六部早朝复盘 — Agent 优化建议 ────────────────────
+
+    async def _do_agent_refinement(self) -> Dict[str, Any]:
+        """第14步: 扫描所有 Agent → 生成 AGENTS.md 优化建议."""
+        try:
+            from core.harness.learning.agent_refiner import AgentRefiner
+            refiner = AgentRefiner()
+            result = refiner.run(lookback_days=7)
+            refined = result.get("refined", 0)
+            return {"status": "ok", "agents_refined": refined, "details": result.get("agents", {})}
+        except Exception as e:
+            logging.getLogger(__name__).debug("_do_agent_refinement failed", exc_info=True)
+            return {"status": "ok", "error": str(e)[:200]}
 
 
     # ── Infrastructure ──────────────────────────────────────────────────
