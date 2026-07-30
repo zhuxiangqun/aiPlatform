@@ -8,7 +8,7 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { Card, CardContent, CardHeader, Button, toast } from '../../components/ui';
 import ReasoningTracePanel from './ReasoningTracePanel';
-import { Wrench, RefreshCw, Package, Download, Users, FileText, Target, Activity, AlertTriangle, Send, Clipboard, TrendingUp, CheckCircle, UserCheck, BookOpen, Plus, ChevronDown, ChevronRight, X, ArrowRightLeft, Trash2, Pencil, Zap, GitBranch, GitCommit, GitFork, FileText, Play } from 'lucide-react';
+import { Wrench, RefreshCw, Package, Download, Users, FileText, Target, Activity, AlertTriangle, Send, Clipboard, TrendingUp, CheckCircle, UserCheck, BookOpen, Plus, ChevronDown, ChevronRight, X, ArrowRightLeft, Trash2, Pencil, Zap, GitBranch, GitCommit, GitFork, FileText, Play, BookOpen } from 'lucide-react';
 import CapabilityBoundary from './CapabilityBoundary';
 import FloatingFeedback from './FloatingFeedback';
 import WeeklyReport from './WeeklyReport';
@@ -21,6 +21,7 @@ import BranchPanel from './BranchPanel';
 import AgentNetworkPanel from './AgentNetworkPanel';
 import TemplatePanel from './TemplatePanel';
 import RecordingPanel from './RecordingPanel';
+import CompilationDashboard from './CompilationDashboard';
 import EvoXPanel from './EvoXPanel';
 
 const API = (path: string) => `/api/platform/apps/fde${path}`;
@@ -268,6 +269,7 @@ const FdeDashboard: React.FC = () => {
   const [showEvoX, setShowEvoX] = useState(false);
   const [showTemplate, setShowTemplate] = useState(false);
   const [showRecording, setShowRecording] = useState(false);
+  const [showCompilation, setShowCompilation] = useState(false);
 
   const MATURITY_COLORS: Record<string, string> = {
     'production-ready': 'text-green-400', 'stable': 'text-blue-400',
@@ -486,6 +488,10 @@ const FdeDashboard: React.FC = () => {
               className="text-[10px] text-gray-500 hover:text-red-400">
               <Play className="w-3 h-3 mr-1" />录制
             </Button>
+            <Button variant="ghost" size="sm" onClick={() => setShowCompilation(!showCompilation)}
+              className="text-[10px] text-gray-500 hover:text-purple-400">
+              <BookOpen className="w-3 h-3 mr-1" />编译
+            </Button>
             <PurposeContext />
           </div>
        </div>
@@ -632,6 +638,13 @@ const FdeDashboard: React.FC = () => {
        {showRecording && (
          <div className="mt-4">
            <RecordingPanel />
+         </div>
+       )}
+
+       {/* ── 知识编译面板 ── */}
+       {showCompilation && (
+         <div className="mt-4">
+           <CompilationDashboard />
          </div>
        )}
       <FloatingFeedback currentStep={tab} autoValues={{

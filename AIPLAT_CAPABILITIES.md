@@ -1,7 +1,7 @@
 ---
-total_capabilities: 877
+total_capabilities: 884
 last_updated: 2026-07-30
-version: "25.0"
+version: "26.0"
 auto_sync: true
 ---
 
@@ -1195,6 +1195,20 @@ auto_sync: true
 
 ---
 
+## 三十九、知识编译与 OKF 导出 (Karpathy LLM Wiki 对齐)
+
+| 能力 | 位置 | 状态 | 说明 | 实施状态 |
+|------|------|:---:|------|------|
+| OKFExporter | harness/knowledge/okf_exporter.py | ✅ | GraphIndex实体→OKF .okf.md 标准格式导出 (YAML Frontmatter + Markdown正文) | 2026-07-30 |
+| OKF 增量导出 | harness/knowledge/okf_exporter.py | ✅ | incremental模式仅导出变更实体，按last_export_ts筛选 | 2026-07-30 |
+| KnowledgeROI | harness/knowledge/knowledge_roi.py | ✅ | RAG vs Wiki Token对比追踪：knowledge_roi表(9字段)+累积节省+折合成本 | 2026-07-30 |
+| CompilationDashboard (UI) | frontend/Diagnostics/CompilationDashboard.tsx | ✅ | 三层可视化：总量→效率对比→ROI累积+日趋势+按域分解 | 2026-07-30 |
+| POST /knowledge/export-okf | platform/apps/fde/api/fde.py | ✅ | 导出域本体为OKF标准格式 | 2026-07-30 |
+| GET /knowledge/roi | platform/apps/fde/api/fde.py | ✅ | 获取知识编译ROI数据 (可设domain/days) | 2026-07-30 |
+| POST /knowledge/roi/record | platform/apps/fde/api/fde.py | ✅ | 记录查询ROI数据 | 2026-07-30 |
+
+---
+
 ## 统计
 
 <!-- AUTO-STATS -->
@@ -1240,7 +1254,8 @@ auto_sync: true
 | Global Branching | 10 | 0 | 10 |
 | EvoX 蜂群协作 | 16 | 0 | 16 |
 | 闭环执行层 | 17 | 0 | 17 |
-| **总计** | **877** | **0** | **877** |
+| 知识编译与OKF | 7 | 0 | 7 |
+| **总计** | **884** | **0** | **884** |
 
 ---
 

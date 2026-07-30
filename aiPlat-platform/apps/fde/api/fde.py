@@ -3291,6 +3291,59 @@ async def list_recordings(limit: int = Query(20)):
     return {"recordings": OperationRecorder.get().list_recordings(limit=limit)}
 
 
+
+# ════════════════════════════════════════════════════════════
+# Knowledge Compilation — OKF Export + ROI Tracking (Phase 46)
+# ════════════════════════════════════════════════════════════
+
+@router.post("/knowledge/export-okf")
+async def export_okf(payload: dict = Body(...)):
+    """导出域本体为 OKF 标准格式."""
+    from core.harness.knowledge.okf_exporter import OKFExporter
+    exporter = OKFExporter()
+    result = await exporter.export(
+        payload.get("domain_id", "ai-knowledge"),
+        incremental=payload.get("incremental", False),
+        output_dir=payload.get("output_dir", ""),
+    )
+    return result
+
+
+@router.get("/knowledge/roi")
+async def get_knowledge_roi(
+    domain_id: str = Query(""),
+    days: int = Query(30, ge=1, le=365),
+):
+    """获取知识编译 ROI 数据."""
+    from core.harness.knowledge.knowledge_roi import KnowledgeROI
+    roi = KnowledgeROI()
+    summary = roi.summary(domain_id=domain_id, days=days)
+    return {
+        "total_queries": summary.total_queries,
+        "total_rag_tokens": summary.total_rag_tokens,
+        "total_wiki_tokens": summary.total_wiki_tokens,
+        "total_saved_tokens": summary.total_saved_tokens,
+        "avg_saved_percent": summary.avg_saved_percent,
+        "estimated_cost_saved": summary.estimated_cost_saved,
+        "by_domain": summary.by_domain,
+        "trend": summary.trend,
+    }
+
+
+@router.post("/knowledge/roi/record")
+async def record_roi(payload: dict = Body(...)):
+    """记录一次查询的 ROI 数据."""
+    from core.harness.knowledge.knowledge_roi import KnowledgeROI
+    roi = KnowledgeROI()
+    qid = roi.record_from_syscall(
+        payload.get("query_text", ""),
+        payload.get("domain_id", "default"),
+        payload.get("rag_tokens", 0),
+        payload.get("wiki_tokens", 0),
+        cache_hit=payload.get("cache_hit", False),
+    )
+    return {"query_id": qid}
+
 # Ontology Branching — branch/fork/diff/merge (Phase 43)
 # ════════════════════════════════════════════════════════════
 
