@@ -8,7 +8,7 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { Card, CardContent, CardHeader, Button, toast } from '../../components/ui';
 import ReasoningTracePanel from './ReasoningTracePanel';
-import { Wrench, RefreshCw, Package, Download, Users, FileText, Target, Activity, AlertTriangle, Send, Clipboard, TrendingUp, CheckCircle, UserCheck, BookOpen, Plus, ChevronDown, ChevronRight, X, ArrowRightLeft, Trash2, Pencil, Zap, GitBranch, GitCommit, GitFork, FileText, Play, BookOpen, Mic } from 'lucide-react';
+import { Wrench, RefreshCw, Package, Download, Users, FileText, Target, Activity, AlertTriangle, Send, Clipboard, TrendingUp, CheckCircle, UserCheck, BookOpen, Plus, ChevronDown, ChevronRight, X, ArrowRightLeft, Trash2, Pencil, Zap, GitBranch, GitCommit, GitFork, FileText, Play, BookOpen, Mic, Shield } from 'lucide-react';
 import CapabilityBoundary from './CapabilityBoundary';
 import FloatingFeedback from './FloatingFeedback';
 import WeeklyReport from './WeeklyReport';
@@ -22,6 +22,7 @@ import AgentNetworkPanel from './AgentNetworkPanel';
 import TemplatePanel from './TemplatePanel';
 import RecordingPanel from './RecordingPanel';
 import VoiceBrainstormPanel from './VoiceBrainstormPanel';
+import CognitiveSafetyPanel from './CognitiveSafetyPanel';
 import CompilationDashboard from './CompilationDashboard';
 import EvoXPanel from './EvoXPanel';
 
@@ -271,6 +272,7 @@ const FdeDashboard: React.FC = () => {
   const [showTemplate, setShowTemplate] = useState(false);
   const [showRecording, setShowRecording] = useState(false);
   const [showVoiceBrainstorm, setShowVoiceBrainstorm] = useState(false);
+  const [showCognitiveSafety, setShowCognitiveSafety] = useState(false);
   const [showCompilation, setShowCompilation] = useState(false);
   const [showMore, setShowMore] = useState(false);
   const [showHealth, setShowHealth] = useState(true);
@@ -736,6 +738,13 @@ const FdeDashboard: React.FC = () => {
        {showVoiceBrainstorm && (
          <div className="mt-4">
            <VoiceBrainstormPanel />
+         </div>
+       )}
+
+       {/* ── 认知安全面板 ── */}
+       {showCognitiveSafety && (
+         <div className="mt-4">
+           <CognitiveSafetyPanel />
          </div>
        )}
 

@@ -3670,6 +3670,32 @@ async def voice_brainstorm(payload: dict = Body(...)):
         logging.getLogger("aiplat.voice").warning("brainstorm failed: %s", e)
         return {"success": False, "error": str(e)[:200], "summary": {}}
 
+
+# ════════════════════════════════════════════════════════════
+# Cognitive Safety — adversarial test + report (Phase 59)
+# ════════════════════════════════════════════════════════════
+
+@router.get("/security/adversarial/report")
+async def get_adversarial_report():
+    """获取最新认知安全对抗测试报告."""
+    from core.harness.evaluation.adversarial_test_suite import run_cognitive_robustness_check
+    return run_cognitive_robustness_check()
+
+
+@router.post("/security/adversarial/export")
+async def export_adversarial_training_data():
+    """手动导出对抗训练数据 (失败案例 → ShareGPT JSONL)."""
+    from core.harness.evaluation.adversarial_test_suite import AdversarialTestSuite
+    suite = AdversarialTestSuite()
+    report = suite.run()
+    path = suite.export_training_data(report)
+    return {
+        "exported": bool(path),
+        "path": path,
+        "sample_count": len(report.training_samples),
+        "robustness_score": report.robustness_score,
+    }
+
 # Ontology Branching — branch/fork/diff/merge (Phase 43)
 # ════════════════════════════════════════════════════════════
 
