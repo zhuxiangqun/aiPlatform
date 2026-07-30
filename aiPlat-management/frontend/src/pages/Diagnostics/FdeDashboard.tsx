@@ -564,16 +564,19 @@ const FdeDashboard: React.FC = () => {
                   Cron: () => {},
                 };
                 const onClick = toggleMap[name];
+                const msg = info?.msg || '';
+                const tip = onClick ? `${name}: ${msg} (点击打开)` : `${name}: ${msg}`;
                 return (
                   <span
                     key={name}
                     onClick={onClick}
-                    className={`px-2 py-0.5 rounded cursor-pointer hover:opacity-80 ${
+                    className={`px-2 py-0.5 rounded ${onClick ? 'cursor-pointer hover:opacity-80' : ''} ${
                       info?.ok ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'
                     } ${onClick ? 'hover:ring-1 ring-green-500/30' : ''}`}
-                    title={onClick ? `点击打开 ${name} 面板` : name}
+                    title={tip}
                   >
                     {info?.ok ? '✓' : '✗'} {name}
+                    {msg && <span className="ml-1 text-gray-600 hidden sm:inline">{msg.slice(0, 20)}</span>}
                   </span>
                 );
               })}
