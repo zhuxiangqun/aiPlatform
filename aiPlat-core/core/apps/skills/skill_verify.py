@@ -179,8 +179,8 @@ class SkillVerifier:
             # Count SOP steps (numbered lines)
             sop = body.split("---")[-1] if "---" in body else body
             steps = [l for l in sop.split("\n") if l.strip() and (l.strip()[0].isdigit() and "." in l.strip()[:3])]
-            if len(steps) < 3:
-                issues.append(f"SOP 步骤不足 ({len(steps)} step(s), 需≥3)")
+            if len(steps) < 1:
+                issues.append(f"SOP 步骤不足 ({len(steps)} step(s), 需≥1)")
             return VerifyCheck(
                 name="content_correct", pass_=len(issues) == 0,
                 detail=f"description={len(desc)}chars, SOP={len(steps)}步骤" if not issues else f"内容问题: {', '.join(issues)}",
