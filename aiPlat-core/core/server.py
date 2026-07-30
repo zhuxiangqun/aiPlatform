@@ -1616,23 +1616,53 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logging.debug(str(e), exc_info=True)
 
-    # Start EvolutionEngine nightly cron (Phase 5.5)
+    # Start EvolutionEngine nightly cron
     _evolution_task = None
     try:
         from core.harness.evolution_engine import get_evolution_engine
         engine = get_evolution_engine()
         _cron_hour = int(os.getenv("AIPLAT_EVOLUTION_CRON_HOUR", "3"))
+        _last_run_file = os.path.expanduser("~/.aiplat/evolution/last_run.json")
+
+        # Read last run date (YYYY-MM-DD) to prevent double-runs
+        _last_run_date = ""
+        try:
+            import json as _json
+            os.makedirs(os.path.dirname(_last_run_file), exist_ok=True)
+            if os.path.isfile(_last_run_file):
+                with open(_last_run_file) as f:
+                    data = _json.load(f)
+                _last_run_date = data.get("date", "")
+        except Exception:
+            pass
+
         async def _evolution_cron():
-            import time
+            import time, json as _json
+            nonlocal _last_run_date
             while True:
                 now = time.localtime()
-                if now.tm_hour == _cron_hour and now.tm_min == 0:
+                today = time.strftime("%Y-%m-%d")
+                # Wide window: hour >= cron_hour AND not already run today
+                if now.tm_hour >= _cron_hour and _last_run_date != today:
                     try:
-                        await engine.nightly_evolution()
+                        result = await engine.nightly_evolution()
+                        # Persist last run evidence
+                        _last_run_date = today
+                        with open(_last_run_file, "w") as f:
+                            _json.dump({
+                                "date": today,
+                                "run_id": getattr(result, "run_id", ""),
+                                "status": getattr(result, "status", ""),
+                                "step_count": len(getattr(result, "steps", [])),
+                            }, f)
+                        logging.getLogger("aiplat.evolution").info(
+                            "Evolution completed: %s (date=%s)", result.run_id if hasattr(result, 'run_id') else '?', today
+                        )
                     except Exception:
-                        logging.getLogger("aiplat.evolution").error("nightly_evolution failed", exc_info=True)
+                        logging.getLogger("aiplat.evolution").error("Evolution failed", exc_info=True)
                 await asyncio.sleep(60)
         _evolution_task = asyncio.create_task(_evolution_cron())
+        logging.getLogger("aiplat.server").info("EvolutionEngine cron started (hour=%d)", _cron_hour)
     except Exception as e:
         logging.debug(str(e), exc_info=True)
 
