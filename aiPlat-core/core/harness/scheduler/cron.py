@@ -281,6 +281,32 @@ async def register_builtin_jobs() -> None:
     sched.register("evaluation_summary", 7 * 24 * 3600, _evaluation_summary,
                    description="Generate weekly evaluation report from quality subsystems")  # known debt: was FDE-specific
 
+    # ── ConversationIngestor: 每5小时扫描对话 → Wiki (CodeAlmanac sync) ──
+    async def _conversation_ingest():
+        from core.harness.knowledge.conversation_ingestor import ConversationIngestor
+        ingestor = ConversationIngestor()
+        result = await ingestor.ingest_recent(hours=5, max_messages=30)
+        logger.info(
+            "ConversationIngestor: scanned=%d written=%d skipped=%d",
+            result.total_scanned, result.wiki_pages_created, result.skipped,
+        )
+
+    sched.register("conversation_ingest", 5 * 3600, _conversation_ingest,
+                   description="Scan recent AI conversations → extract knowledge → write Wiki pages")
+
+    # ── AutoGarden: 每天清理过期/重复/薄内容 (CodeAlmanac garden) ──
+    async def _auto_garden():
+        from core.harness.knowledge.auto_garden import AutoGarden
+        garden = AutoGarden()
+        result = garden.run(dry_run=False, hard_delete=False)
+        logger.info(
+            "AutoGarden: checked=%d, stale=%d, orphans=%d, health=%d",
+            result.total_checked, result.stale_marked, result.orphans_found, result.health_score,
+        )
+
+    sched.register("auto_garden", 24 * 3600, _auto_garden,
+                   description="Daily wiki cleanup: stale pages, duplicates, orphans, thin content")
+
 
 __all__ = [
     "CronScheduler",

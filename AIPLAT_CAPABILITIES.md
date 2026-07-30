@@ -1,7 +1,7 @@
 ---
-total_capabilities: 884
+total_capabilities: 893
 last_updated: 2026-07-30
-version: "26.0"
+version: "27.0"
 auto_sync: true
 ---
 
@@ -1209,6 +1209,19 @@ auto_sync: true
 
 ---
 
+## 四十、对话→Wiki 自动管线 (CodeAlmanac 对齐)
+
+| 能力 | 位置 | 状态 | 说明 | 实施状态 |
+|------|------|:---:|------|------|
+| ConversationIngestor | harness/knowledge/conversation_ingestor.py | ✅ | memory_messages→LLM判断价值→Wiki自动写入，含平台+repo双路径 | 2026-07-30 |
+| AutoGarden | harness/knowledge/auto_garden.py | ✅ | 自动Wiki花园：过期(软删除)/重复/孤立/薄内容清理+健康评分 | 2026-07-30 |
+| conversation_ingest cron | harness/scheduler/cron.py | ✅ | 每5小时自动扫描对话→Wiki (CodeAlmanac sync) | 2026-07-30 |
+| auto_garden cron | harness/scheduler/cron.py | ✅ | 每天自动清理过期/重复/孤立页面 (CodeAlmanac garden) | 2026-07-30 |
+| POST /ingest-conversations | platform/apps/fde/api/fde.py | ✅ | 手动触发对话摄入 | 2026-07-30 |
+| POST /garden | platform/apps/fde/api/fde.py | ✅ | 手动触发花园整理(dry_run/hard_delete) | 2026-07-30 |
+
+---
+
 ## 统计
 
 <!-- AUTO-STATS -->
@@ -1255,7 +1268,8 @@ auto_sync: true
 | EvoX 蜂群协作 | 16 | 0 | 16 |
 | 闭环执行层 | 17 | 0 | 17 |
 | 知识编译与OKF | 7 | 0 | 7 |
-| **总计** | **884** | **0** | **884** |
+| 对话→Wiki 自动管线 | 6 | 0 | 6 |
+| **总计** | **890** | **0** | **890** |
 
 ---
 

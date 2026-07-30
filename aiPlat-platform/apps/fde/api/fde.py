@@ -3344,6 +3344,56 @@ async def record_roi(payload: dict = Body(...)):
     )
     return {"query_id": qid}
 
+
+# ════════════════════════════════════════════════════════════
+# ConversationIngestor + AutoGarden (Phase 47)
+# ════════════════════════════════════════════════════════════
+
+@router.post("/knowledge/ingest-conversations")
+async def ingest_conversations(payload: dict = Body(...)):
+    """扫描对话记录 → 提取有价值知识 → 写入 Wiki."""
+    from core.harness.knowledge.conversation_ingestor import ConversationIngestor
+    ingestor = ConversationIngestor()
+    result = await ingestor.ingest_recent(
+        hours=payload.get("hours", 5),
+        max_messages=payload.get("max_messages", 50),
+        domain_id=payload.get("domain_id", ""),
+        target_dir=payload.get("target_dir", ""),
+    )
+    return result.to_dict()
+
+
+@router.post("/knowledge/garden")
+async def run_auto_garden(payload: dict = Body(...)):
+    """执行 Wiki 花园整理."""
+    from core.harness.knowledge.auto_garden import AutoGarden
+    garden = AutoGarden()
+    result = garden.run(
+        collection_id=payload.get("collection_id", ""),
+        dry_run=payload.get("dry_run", False),
+        hard_delete=payload.get("hard_delete", False),
+    )
+    return result.to_dict()
+
+
+@router.get("/knowledge/garden/reports")
+async def list_garden_reports(limit: int = Query(10)):
+    """列出花园整理报告."""
+    import os, json
+    wiki_root = os.path.expanduser(os.getenv("AIPLAT_HOME", "~/.aiplat")) + "/wiki"
+    reports_dir = os.path.join(wiki_root, "garden_reports")
+    if not os.path.isdir(reports_dir):
+        return {"reports": []}
+    files = sorted(os.listdir(reports_dir), reverse=True)[:limit]
+    results = []
+    for f in files:
+        try:
+            with open(os.path.join(reports_dir, f)) as fh:
+                results.append(json.load(fh))
+        except Exception:
+            continue
+    return {"reports": results}
+
 # Ontology Branching — branch/fork/diff/merge (Phase 43)
 # ════════════════════════════════════════════════════════════
 
