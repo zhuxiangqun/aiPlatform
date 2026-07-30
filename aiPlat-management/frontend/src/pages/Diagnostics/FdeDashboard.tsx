@@ -272,6 +272,7 @@ const FdeDashboard: React.FC = () => {
   const [showCompilation, setShowCompilation] = useState(false);
   const [showMore, setShowMore] = useState(false);
   const [showHealth, setShowHealth] = useState(true);
+  const [showHealthDetail, setShowHealthDetail] = useState(false);
   const [healthData, setHealthData] = useState<any>({});
 
   const MATURITY_COLORS: Record<string, string> = {
@@ -317,6 +318,7 @@ const FdeDashboard: React.FC = () => {
             overall: d?.overall_healthy ?? true,
             okCount: ok,
             totalCount: total,
+            subsystems: subs,
           });
         });
     };
@@ -533,16 +535,31 @@ const FdeDashboard: React.FC = () => {
        </div>
       {/* ── 系统健康状态条 ── */}
       {showHealth && (
-        <div className="flex items-center gap-3 text-[10px] text-gray-500 bg-gray-800/30 border border-gray-700/30 rounded px-3 py-1.5 flex-wrap">
-          <span className="text-gray-400 font-medium">系统</span>
-          <span title="能力数">⚡895 项</span>
-          <span className="text-gray-600">|</span>
-          <span title="子系统健康" className={healthData?.overall ? 'text-green-400' : 'text-red-400'}>
-            {healthData?.okCount ?? '?'}/{healthData?.totalCount ?? 7} 健康
-          </span>
-          <span className="text-gray-600">|</span>
-          <span title="30秒自动刷新" className="text-gray-600">↻30s</span>
-          <button onClick={() => setShowHealth(false)} className="text-gray-600 hover:text-gray-400 ml-1">×</button>
+        <div>
+          <button
+            onClick={() => setShowHealthDetail(!showHealthDetail)}
+            className="flex items-center gap-3 text-[10px] text-gray-500 bg-gray-800/30 border border-gray-700/30 rounded px-3 py-1.5 hover:bg-gray-800/50 transition-colors"
+          >
+            <span className="text-gray-400 font-medium">系统</span>
+            <span>⚡895项</span>
+            <span className="text-gray-600">|</span>
+            <span className={healthData?.overall ? 'text-green-400' : 'text-red-400'}>
+              {healthData?.okCount ?? '?'}/{healthData?.totalCount ?? 7} 健康
+            </span>
+            <span className="text-gray-600">|</span>
+            <span className="text-gray-600">↻30s</span>
+            <span className={`text-gray-600 transition-transform ${showHealthDetail ? 'rotate-180' : ''}`}>▼</span>
+            <button onClick={(e) => { e.stopPropagation(); setShowHealth(false); }} className="text-gray-600 hover:text-gray-400 ml-1">×</button>
+          </button>
+          {showHealthDetail && healthData?.subsystems && (
+            <div className="grid grid-cols-4 gap-1 mt-1 text-[9px]">
+              {Object.entries(healthData.subsystems).map(([name, info]: [string, any]) => (
+                <span key={name} className={`px-2 py-0.5 rounded ${info?.ok ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'}`}>
+                  {info?.ok ? '✓' : '✗'} {name}
+                </span>
+              ))}
+            </div>
+          )}
         </div>
       )}
       {/* ── 流程进度指示 ── */}
