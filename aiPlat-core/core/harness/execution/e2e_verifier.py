@@ -303,6 +303,24 @@ class E2EVerifier:
                 time_ms=0,
             ))
 
+        # ── ⑧ Cognitive Robustness (adversarial defense) ────────────────
+        t0 = _time.time()
+        try:
+            from core.harness.evaluation.adversarial_test_suite import run_cognitive_robustness_check
+            result = run_cognitive_robustness_check()
+            robustness = result.get("cognitive_robustness", 0)
+            subsystems.append(SubsystemResult(
+                name="CognitiveRobustness", pass_=robustness >= 50,
+                evidence=f"score={robustness:.0f}/100, passed={result.get('passed',0)}, missed={result.get('missed',0)}, fp={result.get('false_positives',0)}",
+                time_ms=(_time.time() - t0) * 1000,
+            ))
+        except Exception as e:
+            logger.warning("E2E adversarial check failed: %s", e)
+            subsystems.append(SubsystemResult(
+                name="CognitiveRobustness", pass_=False, error=str(e)[:200],
+                time_ms=(_time.time() - t0) * 1000,
+            ))
+
         # ── Finalize ────────────────────────────────────────────────────
         report.subsystems = subsystems
         report.total_time_ms = (_time.time() - start_time) * 1000
