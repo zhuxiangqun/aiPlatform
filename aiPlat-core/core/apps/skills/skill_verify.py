@@ -177,9 +177,10 @@ class SkillVerifier:
             if len(desc) < 20:
                 issues.append(f"description 过短 ({len(desc)} chars, 需≥20)")
             # Count SOP steps (numbered lines OR ## Step N: headings)
-            sop = body.split("---")[-1] if "---" in body else body
-            numbered = [l for l in sop.split("\n") if l.strip() and (l.strip()[0].isdigit() and "." in l.strip()[:3])]
-            heading_steps = [l for l in sop.split("\n") if "step" in l.lower() and "##" in l]
+            sop_parts = body.split("---", 2)
+            sop_body = sop_parts[2] if len(sop_parts) > 2 else (sop_parts[0] if sop_parts else body)
+            numbered = [l for l in sop_body.split("\n") if l.strip() and (l.strip()[0].isdigit() and "." in l.strip()[:3])]
+            heading_steps = [l for l in sop_body.split("\n") if "step" in l.lower() and "##" in l]
             all_steps = list(set(numbered + heading_steps))
             if len(all_steps) < 1:
                 issues.append(f"SOP 步骤不足 ({len(all_steps)} step(s), 需≥1)")
