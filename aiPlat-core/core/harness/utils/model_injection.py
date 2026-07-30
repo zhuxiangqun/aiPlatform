@@ -1624,6 +1624,7 @@ def best_model_for_purpose(purpose: str, messages: list = None) -> str:
 
     Resolution chain:
       0. Session-level override (/model command)
+      0.5 Non-LLM capability shortcuts (tts, stt, ocr)
       1. unified_pipeline: hard filter → soft filter → score → safe model
     """
     # Step 0: Session-level model override (/model command)
@@ -1632,6 +1633,14 @@ def best_model_for_purpose(purpose: str, messages: list = None) -> str:
         _log_model_selection(purpose, override, entry="best_model_for_purpose",
                              source="session_override")
         return override
+
+    # Step 0.5: Non-LLM capability shortcuts
+    if purpose == "tts":
+        profile = _load_llm_profile()
+        tts_config = profile.get("tts", {})
+        model = tts_config.get("default", "piper_zh_CN")
+        _log_model_selection(purpose, model, entry="best_model_for_purpose", source="tts_shortcut")
+        return model
 
     # Step 1: 构建偏好参数（env var 和 model_overrides 不再硬覆盖）
     preferences = _build_preferences(purpose)

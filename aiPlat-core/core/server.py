@@ -1020,6 +1020,8 @@ async def lifespan(app: FastAPI):
         ("core.apps.tools.sysgraph_tools", "SysGraphFindTool", {}),
         ("core.apps.tools.sysgraph_tools", "SysGraphChurnTool", {}),
         ("core.apps.tools.sysgraph_tools", "SysLspFixTool", {}),
+        # Phase 54: Local TTS (Piper) — zero network, zero API key
+        ("core.apps.tools.tts", "TTSTool", {}),
     ]
     for module_path, cls_name, kwargs in _tool_modules:
         try:

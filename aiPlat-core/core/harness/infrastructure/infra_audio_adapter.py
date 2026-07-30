@@ -61,6 +61,61 @@ class InfraAudioAdapter(BaseModelAdapter):
             logging.debug(str(e), exc_info=True)
         raise RuntimeError("No Whisper backend available (faster-whisper or openai-whisper)")
 
+    async def synthesize(self, text: str, *, voice: str = "huayan", output_dir: str = "") -> str:
+        """文本→语音 (Piper TTS 本地, 零网络零API Key).
+
+        通过 ModelManager.select("tts") 从 llm_profile.yaml 读取配置,
+        调用本地 piper 命令行生成 WAV 文件。
+
+        Returns:
+            生成的 WAV 文件路径
+        """
+        import uuid as _uuid, tempfile as _tempfile_
+
+        out = output_dir or _tempfile_.gettempdir()
+        output_path = f"{out}/tts_{_uuid.uuid4().hex[:8]}.wav"
+
+        try:
+            from core.harness.utils.model_injection import best_model_for_purpose
+            model_name = best_model_for_purpose("tts")
+        except Exception:
+            model_name = "piper_zh_CN"
+
+        model_path = os.path.expanduser("~/.aiplat/models/piper_zh_CN.onnx")
+        if not os.path.isfile(model_path):
+            # Try to resolve via ModelManager
+            try:
+                from core.harness.infrastructure.infra_bridge import get_infra_bridge
+                bridge = get_infra_bridge()
+                if bridge:
+                    mgr = bridge.get_model_manager()
+                    config = mgr.select("tts")
+                    model_path = os.path.expanduser(
+                        (config or {}).get("model_path", model_path)
+                    )
+            except Exception:
+                pass
+
+        cmd = [
+            "piper",
+            "--model", model_path,
+            "--output_file", output_path,
+        ]
+
+        proc = await __import__("asyncio").create_subprocess_exec(
+            *cmd,
+            stdin=__import__("asyncio").subprocess.PIPE,
+            stdout=__import__("asyncio").subprocess.PIPE,
+        )
+        stdout, _ = await proc.communicate(input=text.encode("utf-8"))
+
+        if proc.returncode == 0:
+            logging.info("TTS synthesized: %s (%d bytes)", output_path, len(stdout) if stdout else 0)
+            return output_path
+
+        err = stdout.decode("utf-8", errors="ignore") if stdout else ""
+        raise RuntimeError(f"Piper TTS failed (rc={proc.returncode}): {err[:200]}")
+
 
 def create_infra_audio_adapter(**kwargs) -> InfraAudioAdapter:
     return InfraAudioAdapter(**kwargs)

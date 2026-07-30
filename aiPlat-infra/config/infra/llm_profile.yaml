@@ -185,3 +185,16 @@ tiers:
     complexity_range: [4, 5]
     default_model: "deepseek/deepseek-v4-pro"
     max_tools: 64
+
+# ── TTS: 本地语音合成 (Piper TTS) ──
+tts:
+  default: piper_zh_CN
+  models:
+    - name: piper_zh_CN
+      capability: tts
+      provider: local
+      engine: piper
+      model_path: ~/.aiplat/models/piper_zh_CN.onnx
+      speaker: huayan
+      language: zh-CN
+      enabled: true
