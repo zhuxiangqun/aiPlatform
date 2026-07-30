@@ -1,5 +1,5 @@
 ---
-total_capabilities: 908
+total_capabilities: 910
 last_updated: 2026-07-30
 version: "29.0"
 auto_sync: true
@@ -1234,6 +1234,8 @@ auto_sync: true
 | GET /skills/{id}/verify | platform/apps/fde/api/fde.py | ✅ | Skill 验收报告端点 | 2026-07-30 |
 | GET /skills/{id}/extras | platform/apps/fde/api/fde.py | ✅ | Skill 子目录资源查询 | 2026-07-30 |
 | POST /skills/install | platform/apps/fde/api/fde.py | ✅ | 从URL或路径安装Skill | 2026-07-30 |
+| bug_report Skill | engine/skills/bug_report/SKILL.md | ✅ | 残缺Bug描述→结构化Bug单(6字段自动推断) | 2026-07-30 |
+| log_analyzer Skill | engine/skills/log_analyzer/SKILL.md | ✅ | 日志异常提取→归类→根因定位→回归范围建议 | 2026-07-30 |
 
 ---
 ## 四十一、E2E端到端验证
@@ -1301,9 +1303,9 @@ auto_sync: true
 | 闭环执行层 | 17 | 0 | 17 |
 | 知识编译与OKF | 8 | 0 | 8 |
 | 对话→Wiki 自动管线 | 6 | 0 | 6 |
-| Skill 目录标准化 | 5 | 0 | 5 |
+| Skill 目录标准化 | 7 | 0 | 7 |
 | E2E 端到端验证 | 11 | 0 | 11 |
-| **总计** | **908** | **0** | **908** |
+| **总计** | **910** | **0** | **910** |
 
 ---
 
