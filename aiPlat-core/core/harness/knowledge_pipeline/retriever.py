@@ -28,7 +28,7 @@ class GraphRAGRetriever:
     # ═══════════════════════════════════════════════════════
 
     async def retrieve(self, query: str, domain_id: str = "default",
-                       top_k: int = 10) -> Dict[str, Any]:
+                       top_k: int = 10, run_id: str = "") -> Dict[str, Any]:
         """Full GraphRAG retrieval pipeline."""
         # ── Layer 1: Entity extraction from query ──
         entities = await self._extract_query_entities(query, domain_id)
@@ -49,7 +49,7 @@ class GraphRAGRetriever:
                     "entities": entities, "note": "Entities found in query but not in graph"}
 
         # ── Layer 2: Subgraph extraction (2-hop) ──
-        subgraph = self._extract_subgraph(entity_nodes, domain_id, hops=2)
+        subgraph = self._extract_subgraph(entity_nodes, domain_id, hops=2, run_id=run_id)
 
         # ── Layer 3: Targeted vector retrieval ──
         doc_ids = self._get_doc_ids_from_subgraph(subgraph)
@@ -139,7 +139,7 @@ class GraphRAGRetriever:
     # ═══════════════════════════════════════════════════════
 
     def _extract_subgraph(self, seed_nodes: List[Dict], domain_id: str,
-                          hops: int = 2) -> Dict[str, Any]:
+                          hops: int = 2, run_id: str = "") -> Dict[str, Any]:
         """BFS from seed nodes up to `hops` hops, returning nodes + edges."""
         try:
             from core.harness.ontology_engine.graph_index import GraphIndex
@@ -177,6 +177,28 @@ class GraphRAGRetriever:
                 if target and target not in visited_nodes:
                     visited_nodes.add(target)
                     queue.append((target, depth + 1))
+
+                    # Phase 50: Record traversal step for reasoning evidence
+                    if run_id:
+                        try:
+                            from core.harness.infrastructure.lineage_store import LineageStore
+                            target_node = g._nodes.get(target)
+                            store = LineageStore.get()
+                            store.record_traversal_step(
+                                run_id=run_id,
+                                step_index=depth,
+                                from_entity=current_id,
+                                from_name=getattr(node, 'entity_name', current_id),
+                                to_entity=target,
+                                to_name=getattr(target_node, 'entity_name', target) if target_node else target,
+                                to_class=getattr(target_node, 'class_name', '') if target_node else '',
+                                relation=rel_label,
+                                relation_label=rel_label,
+                                confidence=1.0,
+                                hop=depth + 1,
+                            )
+                        except Exception:
+                            pass  # best-effort
 
             # Phase 1: Hyperedge traversal — expand via multi-entity hyperedges
             for he in g.get_hyperedges_for_entity(current_id):
