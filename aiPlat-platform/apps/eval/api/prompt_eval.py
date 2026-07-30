@@ -9,8 +9,8 @@ from core.harness.infrastructure.db_utils import get_db_connection
 
 
 from fastapi import APIRouter, HTTPException
-from core.harness.kernel.runtime import get_kernel_runtime
-from core.harness.syscalls.llm import sys_llm_generate
+from core.api.core_facade import get_kernel_runtime
+from core.api.core_facade import sys_llm_generate
 from core.schemas_prompt_app import PromptTestCaseCreate, PromptTestCaseUpdate, PromptEvalRunCreate
 from apps.common_schemas import StatusResponse, ListResponse, ItemResponse
 

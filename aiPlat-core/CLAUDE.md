@@ -943,6 +943,9 @@ grep -rn "TODO.*wire\|0 caller\|待接线\|FIXME.*wire" aiPlat-core/core/ --incl
 | `infra_llm_adapter.py` | 包装 infra LLMClient 为 core ILLMAdapter（**core 唯一 LLM 适配器**） | ✅ 合规 |
 | ~~`model_registry.py`~~ | 已删除 | ✅ 迁移完毕 |
 | ~~`model_router.py`~~ | 已删除 | ✅ 迁移完毕 |
+| `action_contract.py` | **Action Contract v3** — Pydantic v2 模型、实体约束、handler 安全沙箱、YAML 自助注册 | ✅ 已实施 (2026-07-29) |
+| `action_store.py` | **Action Store** — aiosqlite 审计持久化（action_audit + pending_approvals）、entity_snapshot 不可变证据 | ✅ 已实施 (2026-07-29) |
+| `entity_lock.py` | **Entity Lock** — mutex/stake 双语义锁（防并发执行 + 审批挂起），支持 AsyncioLock（单机）/ RedisLock（集群） | ✅ 已实施 (2026-07-29) |
 
 ### Core 侧：通用 Adapter，禁止 per-provider 类
 
@@ -1315,9 +1318,14 @@ inference_rules:
 | 删除域 | `DELETE /ontology/domains/{id}` | 级联删除对应 GraphIndex 和 Wiki 集合 |
 | 添加类 | `POST /ontology/domains/{id}/classes` | 新类自动可用于 ClassMapper |
 | 添加关系 | `POST /ontology/domains/{id}/properties` | 新关系自动可用于 RelationMapper |
+| 迁移分类 | `POST /ontology/domains/{id}/migrate-classify` | 类重命名后批量迁移 GraphIndex 节点（v2.9 实现） |
 | 重建本体 | `POST /ontology/rebuild` | 从 YAML 重新加载所有域，**不清除已有 Wiki 数据** |
 
-**版本迁移规则**：修改域 YAML 中的 `classes[].fields` 或 `states` 后，**必须**重新运行引擎管线以重新分类和提取现有文档。建议使用 `migrate-classify` API 批量重新分类。
+**版本迁移规则**：修改域 YAML 中的 `classes[].fields` 或 `states` 后，**必须**重新运行引擎管线以重新分类和提取现有文档。
+
+- **类重命名**：使用 `POST /ontology/domains/{id}/migrate-classify`（body: `{old_class_name, new_class_name}`）安全迁移 GraphIndex 节点，避免数据丢失。
+- **字段/状态变更**：使用 `POST /ontology/domains/{id}/build-instances` 触发全量引擎管线重跑。
+- **缓存刷新**：从 v2.9 起，所有本体 YAML 的 CRUD 操作（update/add/delete class/domain）自动失效 DomainRouter 缓存，下次 `classify()` 调用时重建索引。
 
 ### 5.56 数据生命周期规范（强制）
 
@@ -1608,7 +1616,25 @@ User Query → MaterialsChatAgent
 | `datetime.now()` 无时区 | `datetime.now(timezone.utc)` |
 | 捕获 `BaseException`（含 KeyboardInterrupt） | `except Exception` |
 
-**架构守卫**：`arch_guard_rules.yaml §25, §30, §31`
+**最小替代方案**：所有 `except` 块必须包含以下至少一项：
+
+| 优先级 | 做法 | 示例 |
+|:---:|---|---|
+| 1 | `logging.warning/error(exc_info=True)` | `logging.getLogger(__name__).warning("xxx failed, continuing", exc_info=True)` |
+| 2 | `raise` 重新抛出 | `except Exception: raise` |
+| 3 | `return/set 默认值 + logging.debug(exc_info=True)` | 显式降级并记录 |
+
+**合法裸 pass 例外**（需标注 `# noqa` 原因）：
+
+| 例外类型 | noqa 标注 | 场景 |
+|---------|----------|------|
+| `ImportError` | `# noqa: optional-dependency` | 可选依赖未安装 |
+| `asyncio.CancelledError` | `# noqa: normal-cancellation` | 任务正常取消 |
+| `sqlite3.OperationalError` | `# noqa: schema-idempotent` | 列/表已存在 |
+| `WebSocketDisconnect` | `# noqa: normal-disconnect` | 客户端主动断开 |
+| `OSError` (文件删除) | `# noqa: cleanup-best-effort` | 临时文件清理 |
+
+**架构守卫**：`arch_guard_rules.yaml §25, §30, §31`（检测 `except Exception: pass`，支持 `# noqa` 豁免）
 
 ### 5.69 子进程规范（强制）
 

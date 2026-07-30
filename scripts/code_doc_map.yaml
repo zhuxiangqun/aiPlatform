@@ -1,0 +1,364 @@
+# ─────────────────────────────────────────────────────────
+# code_doc_map.yaml — Code → Document Dependency Map
+#
+# Used by: scripts/check_doc_sync.sh (pre-commit hook)
+# Auto-generated: false — manually curated
+# Last synced: 2026-07-29
+# ─────────────────────────────────────────────────────────
+
+version: "1.0"
+
+# ═══════════════════════════════════════════════════════
+# 1. CODE → DOCS
+#    Directory-level: any file change triggers all docs
+#    File-level: specific high-impact files
+# ═══════════════════════════════════════════════════════
+
+code_to_docs:
+
+  # ── Core Engine ──────────────────────────────────
+  harness/execution/:
+    docs:
+      - AIPLAT_CAPABILITIES.md
+      - docs/architecture/overview.md
+      - docs/whitepaper/aiplat-l4-autonomy-assessment-v1.0.0.md
+      - docs/whitepaper/verification-protocol.md
+      - docs/architecture/boundary-standard.md
+    hint: "Pipeline 执行引擎变更"
+
+  harness/knowledge/:
+    docs:
+      - AIPLAT_CAPABILITIES.md
+      - docs/architecture/overview.md
+      - docs/manuals/knowledge-management.md
+      - docs/manuals/ontology.md
+      - docs/whitepaper/aiplat-l4-autonomy-assessment-v1.0.0.md
+      - docs/whitepaper/verification-protocol.md
+      - docs/framework/aiplat-autonomy-framework.md
+    hint: "知识子系统变更 → 检查知识库和本体操作手册"
+
+  harness/infrastructure/:
+    docs:
+      - AIPLAT_CAPABILITIES.md
+      - docs/architecture/governance.md
+      - docs/architecture/private-control-plane.md
+      - docs/architecture/boundary-standard.md
+      - docs/whitepaper/aiplat-l4-autonomy-assessment-v1.0.0.md
+    hint: "基础设施/Gate/Hook 变更 → 检查治理和安全文档"
+
+  harness/syscalls/:
+    docs:
+      - AIPLAT_CAPABILITIES.md
+      - docs/architecture/boundary-standard.md
+      - docs/security/security-testing.md
+      - docs/whitepaper/verification-protocol.md
+    hint: "Syscall 边界变更 → 影响安全模型，检查安全测试文档"
+
+  harness/memory/:
+    docs:
+      - AIPLAT_CAPABILITIES.md
+      - docs/architecture/overview.md
+      - docs/whitepaper/aiplat-l4-autonomy-assessment-v1.0.0.md
+      - docs/whitepaper/verification-protocol.md
+      - docs/framework/aiplat-autonomy-framework.md
+    hint: "记忆系统变更"
+
+  harness/ontology_engine/:
+    docs:
+      - AIPLAT_CAPABILITIES.md
+      - docs/manuals/ontology.md
+      - docs/whitepaper/aiplat-l4-autonomy-assessment-v1.0.0.md
+      - docs/framework/aiplat-complete-assessment.md
+    hint: "本体引擎变更 → 检查本体操作手册"
+
+  harness/meta/:
+    docs:
+      - AIPLAT_CAPABILITIES.md
+      - docs/manuals/management.md
+    hint: "控制层/元配置变更 → 检查能力登记和管理手册"
+
+  harness/document/:
+    docs:
+      - AIPLAT_CAPABILITIES.md
+      - docs/manuals/knowledge-management.md
+      - docs/architecture/boundary-standard.md
+    hint: "文档解析器变更 → 检查知识库操作手册"
+
+  harness/learning/:
+    docs:
+      - AIPLAT_CAPABILITIES.md
+      - docs/architecture/overview.md
+    hint: "学习/反馈系统变更"
+
+  harness/optimization/:
+    docs:
+      - AIPLAT_CAPABILITIES.md
+      - docs/framework/aiplat-autonomy-framework.md
+      - docs/whitepaper/verification-protocol.md
+    hint: "自优化/自演进系统变更"
+
+  harness/deployment/:
+    docs:
+      - AIPLAT_CAPABILITIES.md
+      - docs/manuals/deployment.md
+      - docs/whitepaper/verification-protocol.md
+    hint: "部署系统变更 → 检查部署手册"
+
+  harness/scheduler/:
+    docs:
+      - AIPLAT_CAPABILITIES.md
+    hint: "调度/Cron 变更"
+
+  harness/security/:
+    docs:
+      - AIPLAT_CAPABILITIES.md
+      - docs/security/security-architecture.md
+      - docs/architecture/overview.md
+    hint: "安全机制变更 → 检查安全架构文档"
+
+  harness/kernel/:
+    docs:
+      - AIPLAT_CAPABILITIES.md
+      - docs/architecture/overview.md
+      - docs/project/PHASE_STATUS.md
+    hint: "核心类型/RunContext 变更"
+
+  harness/coordination/:
+    docs:
+      - AIPLAT_CAPABILITIES.md
+      - docs/framework/aiplat-autonomy-framework.md
+    hint: "多 Agent 协调/编排变更"
+
+  harness/routing/:
+    docs:
+      - AIPLAT_CAPABILITIES.md
+      - docs/whitepaper/verification-protocol.md
+    hint: "模型路由变更"
+
+  harness/evaluation/:
+    docs:
+      - AIPLAT_CAPABILITIES.md
+    hint: "评估系统变更"
+
+  harness/observability/:
+    docs:
+      - AIPLAT_CAPABILITIES.md
+      - docs/manuals/management.md
+    hint: "可观测性变更 → 检查管理手册中的可观测性操作"
+
+  harness/generation/:
+    docs:
+      - AIPLAT_CAPABILITIES.md
+    hint: "答案生成管道变更"
+
+  harness/training/:
+    docs:
+      - AIPLAT_CAPABILITIES.md
+    hint: "训练/微调系统变更"
+
+  harness/interfaces/:
+    docs:
+      - AIPLAT_CAPABILITIES.md
+    hint: "接口契约变更"
+
+  harness/context/:
+    docs:
+      - AIPLAT_CAPABILITIES.md
+      - docs/manuals/knowledge-management.md
+    hint: "上下文注入变更"
+
+  harness/assembly/:
+    docs:
+      - AIPLAT_CAPABILITIES.md
+    hint: "Prompt 组装变更"
+
+  # ── Applications ─────────────────────────────────
+  apps/agents/:
+    docs:
+      - AIPLAT_CAPABILITIES.md
+      - docs/agents/subagent.md
+      - docs/architecture/overview.md
+      - docs/whitepaper/aiplat-l4-autonomy-assessment-v1.0.0.md
+    hint: "Agent 系统变更 → 检查 Agent 文档和架构概述"
+
+  apps/skills/:
+    docs:
+      - AIPLAT_CAPABILITIES.md
+      - docs/skills/evolution.md
+      - docs/architecture/overview.md
+    hint: "Skill 系统变更 → 检查 Skill 演进文档"
+
+  apps/tools/:
+    docs:
+      - AIPLAT_CAPABILITIES.md
+      - docs/tools/enhancement.md
+      - docs/architecture/overview.md
+    hint: "Tool 系统变更 → 检查 Tool 文档"
+
+  apps/mcp/:
+    docs:
+      - AIPLAT_CAPABILITIES.md
+      - docs/mcp/index.md
+      - docs/architecture/overview.md
+    hint: "MCP 协议变更 → 检查 MCP 文档"
+
+  apps/fde/:
+    docs:
+      - AIPLAT_CAPABILITIES.md
+      - docs/manuals/fde/01-fde-quickstart.md
+      - docs/manuals/fde/02-fde-delivery.md
+      - docs/manuals/fde/03-fde-operations.md
+      - docs/manuals/fde/04-fde-admin.md
+      - docs/manuals/fde/fde-delivery-manual.md
+      - docs/manuals/fde/README.md
+    hint: "FDE 工作台变更 → 更新所有 FDE 手册"
+
+  apps/document_intelligence/:
+    docs:
+      - AIPLAT_CAPABILITIES.md
+    hint: "文档智能变更"
+
+  engine/skills/:
+    docs:
+      - AIPLAT_CAPABILITIES.md
+      - docs/framework/aiplat-complete-assessment.md
+      - docs/DOCUMENT_SYSTEM.md
+    hint: "内置 Engine Skill 变更 → 检查技能计数"
+
+  # ── API ──────────────────────────────────────────
+  api/routers/diagnostics.py:
+    docs:
+      - AIPLAT_CAPABILITIES.md
+      - docs/manuals/management.md
+      - docs/API/api-reference.md
+    hint: "诊断端点变更 → 检查端点数 + 操作手册 + API 文档"
+
+  api/routers/:
+    docs:
+      - AIPLAT_CAPABILITIES.md
+      - docs/API/api-reference.md
+      - docs/architecture/governance.md
+    hint: "API 路由变更 → 登记新端点 + 更新 API 文档"
+
+  api/core_facade.py:
+    docs:
+      - AIPLAT_CAPABILITIES.md
+    hint: "CoreFacade 公共接口变更 → 登记新能力"
+
+  # ── Frontend ──────────────────────────────────────
+  aiPlat-management/frontend/src/components/layout/AppLayout.tsx:
+    docs:
+      - docs/manuals/management.md
+      - docs/manuals/fde/01-fde-quickstart.md
+      - docs/manuals/fde/02-fde-delivery.md
+      - docs/manuals/fde/03-fde-operations.md
+      - docs/manuals/fde/04-fde-admin.md
+      - docs/manuals/fde/fde-delivery-manual.md
+      - docs/manuals/knowledge-management.md
+      - docs/manuals/ontology.md
+    hint: "菜单结构变更 → 检查所有操作手册中的导航路径"
+
+
+# ═══════════════════════════════════════════════════════
+# 2. FRONTEND ROUTES → DOCS
+#    When route changes, check these docs
+# ═══════════════════════════════════════════════════════
+
+routes_to_docs:
+  /diagnostics:
+    docs: [docs/manuals/management.md, docs/API/api-reference.md]
+    hint: "诊断中心页面变更"
+  /diagnostics/fde:
+    docs: [docs/manuals/fde/01-fde-quickstart.md, docs/manuals/fde/02-fde-delivery.md, docs/manuals/fde/README.md]
+    hint: "FDE 工作台页面变更"
+  /workspace/agents:
+    docs: [docs/manuals/management.md, docs/architecture/governance.md]
+    hint: "Agent 市场页面变更"
+  /workspace/skills:
+    docs: [docs/manuals/management.md, docs/architecture/governance.md]
+    hint: "Skill 市场页面变更"
+  /infra/models:
+    docs: [docs/manuals/management.md, docs/design/model-management.md]
+    hint: "模型管理页面变更"
+  /platform/kb:
+    docs: [docs/manuals/knowledge-management.md, docs/manuals/management.md]
+    hint: "知识库页面变更"
+  /infra/ontology:
+    docs: [docs/manuals/ontology.md, docs/manuals/knowledge-management.md]
+    hint: "本体模型页面变更"
+  /ontology-editor:
+    docs: [docs/manuals/ontology.md, docs/manuals/knowledge-management.md]
+    hint: "本体编辑器页面变更"
+
+
+# ═══════════════════════════════════════════════════════
+# 3. SOURCE OF TRUTH
+#    When SOT changes, all referencing docs must sync
+# ═══════════════════════════════════════════════════════
+
+source_of_truth:
+  AIPLAT_CAPABILITIES.md:
+    description: "唯一能力清单"
+    downstream:
+      - CLAUDE.md
+      - AIPLAT_ROADMAP.md
+      - docs/README.md
+      - docs/DOCUMENT_SYSTEM.md
+      - docs/architecture/overview.md
+      - docs/reports/AIPLAT_ARCHITECTURE_REPORT.md
+      - docs/project/PHASE_STATUS.md
+      - docs/whitepaper/aiplat-l4-autonomy-assessment-v1.0.0.md
+      - docs/whitepaper/verification-protocol.md
+      - docs/matrix/capability-impact-matrix.md
+    sync_script: "bash scripts/auto_sync_docs.sh"
+
+
+# ═══════════════════════════════════════════════════════
+# 4. AUTO-GENERATED (DO NOT MANUALLY EDIT)
+# ═══════════════════════════════════════════════════════
+
+auto_generated:
+  - file: docs/matrix/capability-impact-matrix.md
+    source: aiPlat-core/core/capability_registry.yaml
+    regenerate: "python3 scripts/generate_capability_matrix.py"
+    note: "手动编辑会被下次生成覆盖"
+
+
+# ═══════════════════════════════════════════════════════
+# 5. DESIGN TARGETS (描述意图，非当前状态)
+#    Code changes should NOT trigger warnings for these
+# ═══════════════════════════════════════════════════════
+
+design_targets:
+  - docs/design/ui-design.md
+  - docs/design/ui-implementation-status.md
+  - docs/design/model-management.md
+  - docs/design/ontology-design.md
+  - docs/design/knowledge-ontology-plan.md
+
+
+# ═══════════════════════════════════════════════════════
+# 6. UNDOCUMENTED MODULES
+#    Zero doc references — listed for awareness only
+# ═══════════════════════════════════════════════════════
+
+undocumented:
+  harness:
+    - harness/arena/
+    - harness/artifacts/
+    - harness/canary/
+    - harness/data_source/
+    - harness/feedback_loops/
+    - harness/health/
+    - harness/integration/
+    - harness/intervention/
+    - harness/observation/
+    - harness/practice/
+    - harness/smoke/
+  apps:
+    - apps/a2a/
+    - apps/evaluation/
+    - apps/exec_drivers/
+    - apps/finetune/
+    - apps/misc/
+    - apps/ops/

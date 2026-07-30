@@ -265,7 +265,7 @@ async def query_conversation_stream(session_id: str, request: ConversationQueryR
                 for r in results
             )
     except ImportError:
-        pass
+        pass  # noqa: optional-dependency
 
     async def _stream():
         if not doc_content:
@@ -317,3 +317,4 @@ def _best_max_tokens(model_name: str = "") -> int:
         return get_model_max_completion(model_name)
     except Exception:
         return 2000
+

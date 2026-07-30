@@ -418,15 +418,15 @@ export const kbApi = {
 
   // Ontology engine
   ontologyEngineParse: async (data: { text: string; format?: string; domain_id?: string }) => {
-    return apiClient.post<any>('/core/wiki/ontology/engine/parse', data);
+    return apiClient.post<any>('/core/engine/parse', data);
   },
   ontologyEngineProcess: async (data: { text: string; domain_id?: string; auto_write?: boolean }) => {
-    return apiClient.post<any>('/core/wiki/ontology/engine/parse-and-process', data);
+    return apiClient.post<any>('/core/engine/parse-and-process', data);
   },
   ontologyEngineTrace: async (title: string) => {
-    return apiClient.get<any>(`/core/wiki/ontology/engine/traces/${encodeURIComponent(title)}`);
+    return apiClient.get<any>(`/core/engine/traces/${encodeURIComponent(title)}`);
   },
   listDomains: async () => {
-    return apiClient.get<{ domains: { id: string; name: string; collection_id: string; class_count: number }[]; total: number }>('/core/wiki/ontology/domains');
+    return apiClient.get('/core/domains');
   },
 };

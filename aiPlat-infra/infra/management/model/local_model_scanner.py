@@ -82,14 +82,16 @@ async def _scan_ollama(endpoint: str) -> List[ModelInfo]:
                         details = item.get("details", {})
                         safe_id = f"ollama:{re.sub(r'[^a-zA-Z0-9_-]', '-', name.lower())}"
                         caps = ["chat"]
-                        if details.get("embedding"):
+                        model_type = ModelType.CHAT
+                        if details.get("embedding") or "embedding" in item.get("capabilities", []):
                             caps.append("embedding")
+                            model_type = ModelType.EMBEDDING
                         if _ollama_supports_tool_calling(name):
                             caps.append("function_call")
                             caps.append("json_mode")
                         models.append(ModelInfo(
                             id=safe_id, name=name, provider="ollama",
-                            type=ModelType.CHAT, source=ModelSource.LOCAL,
+                            type=model_type, source=ModelSource.LOCAL,
                             display_name=name, enabled=True,
                             description=f"Ollama local model",
                             tags=["ollama", "local"] + ([details.get("family", "")] if details.get("family") else []),

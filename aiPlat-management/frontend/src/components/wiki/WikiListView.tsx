@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { BookOpen, Trash2 } from 'lucide-react';
+import { BookOpen, Trash2, PenSquare } from 'lucide-react';
 
 interface WikiPage {
   title: string;
@@ -9,16 +9,18 @@ interface WikiPage {
   contradictions: string[];
   summary: string;
   source_articles: string[];
+  body?: string;
 }
 
 interface WikiListViewProps {
   pages: WikiPage[];
   onSelect: (title: string) => void;
   onDelete: (title: string) => void;
+  onEdit?: (page: WikiPage) => void;
   sourceBadge: (cat: string) => string;
 }
 
-const WikiListView: React.FC<WikiListViewProps> = ({ pages, onSelect, onDelete, sourceBadge }) => {
+const WikiListView: React.FC<WikiListViewProps> = ({ pages, onSelect, onDelete, onEdit, sourceBadge }) => {
   const [mode, setMode] = useState<'flat' | 'group'>('group');
   const [deleting, setDeleting] = useState<string | null>(null);
 
@@ -55,6 +57,10 @@ const WikiListView: React.FC<WikiListViewProps> = ({ pages, onSelect, onDelete, 
               <span className={`text-[10px] px-1.5 py-0.5 rounded ${sourceBadge(p.category)}`}>{p.category}</span>
               {p.related?.length > 0 && <span className="text-[10px] text-blue-500">↗ {p.related.length} 关联</span>}
               <div className="flex-1" />
+              {onEdit && <button onClick={(e) => { e.stopPropagation(); onEdit(p); }}
+                className="text-gray-600 hover:text-yellow-400 transition-colors mr-1" title="编辑">
+                <PenSquare className="w-3 h-3" />
+              </button>}
               <button onClick={(e) => { e.stopPropagation(); handleDelete(p.title); }} disabled={!!deleting}
                 className="text-gray-600 hover:text-red-400 transition-colors disabled:opacity-40" title="删除">
                 <Trash2 className="w-3 h-3" />

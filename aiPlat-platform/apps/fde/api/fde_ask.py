@@ -3,13 +3,14 @@ from __future__ import annotations
 
 import re
 from typing import Any, Dict, List
-from apps.fde.schemas import FdeStatusResponse, FdeListResponse, FdeItemResponse
+from apps.fde.api.schemas import FdeStatusResponse, FdeListResponse, FdeItemResponse
 
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
-from core.harness.utils.prompt_loader import _sync_resolve
+from core.api.core_facade import _sync_resolve
+import logging
 
 router = APIRouter(tags=["fde-ask"])
 
@@ -50,8 +51,8 @@ async def fde_ask(req: FdeAskRequest):
 
     try:
         # ── Build domain context ──
-        from core.harness.knowledge.domain_router import DomainRouter
-        from core.harness.ontology_engine.graph_index import GraphIndex
+        from core.api.core_facade import DomainRouter
+        from core.api.core_facade import GraphIndex
 
         did = DomainRouter().classify(domain_hint) if domain_hint else "ai-knowledge"
 
@@ -75,19 +76,19 @@ async def fde_ask(req: FdeAskRequest):
             if sessions > 0:
                 context_blocks.append(f"历史诊断：{sessions} 次")
         except Exception:
-            pass
+            logging.getLogger(__name__).debug('fde_ask failed', exc_info=True)
 
         # Load solution prototypes
         try:
             import os as _os_ask
-            from core.harness.knowledge.ontology_loader import load_ontology_from_yaml
+            from core.api.core_facade import load_ontology_from_yaml
             sol_path = _os_ask.path.expanduser("~/.aiplat/ontologies/ai-solution.yaml")
             if _os_ask.path.exists(sol_path):
                 sol = load_ontology_from_yaml(sol_path)
                 arch_count = sum(1 for c in sol.classes if getattr(c, 'label', '') == '方案原型')
                 context_blocks.append(f"AI方案原型：{arch_count} 类")
         except Exception:
-            pass
+            logging.getLogger(__name__).debug('fde_ask failed', exc_info=True)
 
         context = "\n".join(context_blocks)
 
@@ -113,11 +114,11 @@ async def fde_ask(req: FdeAskRequest):
                                         lines.append(f"  · {item.get('ai_opportunity','')} → {level} → 来源：{item.get('source','未标注')}")
                                     evidence_context = "\n".join(lines)
             except Exception:
-                pass
+                logging.getLogger(__name__).debug('code failed', exc_info=True)
 
         # ── Build prompt and call LLM ──
-        from core.harness.syscalls.llm import sys_llm_generate
-        from core.harness.utils.model_injection import best_model_for_purpose
+        from core.api.core_facade import sys_llm_generate
+        from core.api.core_facade import best_model_for_purpose
 
         model = best_model_for_purpose("skill_execution")
         evidence_block = f"{evidence_context}\n\n" if evidence_context else ""

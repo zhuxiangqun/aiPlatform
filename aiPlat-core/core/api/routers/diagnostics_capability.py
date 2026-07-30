@@ -13,6 +13,7 @@ from fastapi import APIRouter, HTTPException, Query
 import yaml as _yaml
 
 from core.api.deps import actor_from_http
+from core.api.routers.system import ItemResponse
 from core.schemas_common import Dict
 
 router = APIRouter(tags=["diagnostics-capability"])
@@ -57,6 +58,8 @@ def _calculate_maturity(metrics: dict) -> str:
         return "stable"
     if e >= 15 and s >= 1:
         return "building"
+    if e >= 5:
+        return "growing"
     return "seeding"
 
 
@@ -88,19 +91,9 @@ def _build_recommend(domain_id: str, metrics: dict, skills: list, gaps: list) ->
 
 async def _get_wiki_entity_count(domain_id: str) -> int:
     try:
-        from core.harness.knowledge.wiki_engine import list_pages
-        pages = await list_pages(collection_id=domain_id, limit=1) if hasattr(list_pages, '__await__') else list_pages(collection_id=domain_id)
-        return pages.get("total", len(pages.get("pages", []))) if isinstance(pages, dict) else 0
-    except Exception:
-        return 0
-
-
-def _get_wiki_entity_count_sync(domain_id: str) -> int:
-    try:
-        from core.harness.knowledge.wiki_engine import list_pages
-        import asyncio
-        pages = asyncio.run(list_pages(collection_id=domain_id))
-        return pages.get("total", 0) if isinstance(pages, dict) else 0
+        from core.harness.knowledge.wiki_engine import list_all_pages
+        pages = list_all_pages(collection_id=domain_id)
+        return len(pages) if pages else 0
     except Exception:
         return 0
 
@@ -109,8 +102,9 @@ async def _get_graph_stats_sync(domain_id: str) -> dict:
     try:
         from core.harness.ontology_engine.graph_index import GraphIndex
         g = GraphIndex.load(domain_id)
+        edge_count = sum(len(n.out_edges) for n in g._nodes.values())
         return {
-            "edge_count": len(list(g._edges.keys())),
+            "edge_count": edge_count,
             "node_count": len(g._nodes),
         }
     except Exception:
@@ -154,11 +148,14 @@ async def build_capability_boundary(domain_filter: Optional[str] = None) -> dict
     domain_results = {}
     for domain_id, cfg in target_domains.items():
         # Metrics
-        wiki_entities = _get_wiki_entity_count_sync(domain_id)
+        wiki_entities = await _get_wiki_entity_count(domain_id)
         graph_stats = await _get_graph_stats_sync(domain_id)
         wiki_relations = graph_stats.get("edge_count", 0)
         domain_prompt_ready = _get_domain_prompt_ready(domain_id)
         seed_data_ready = _get_seed_data_ready(domain_id)
+
+        # Combine Wiki + GraphIndex entities for maturity calculation
+        total_entities = wiki_entities + graph_stats.get("node_count", 0)
 
         # Golden queries
         gq_list = domain_queries.get(domain_id, [])
@@ -175,7 +172,7 @@ async def build_capability_boundary(domain_filter: Optional[str] = None) -> dict
         adopted_count = skill_registry.get_domain_adopted_count(domain_id) if skill_registry else 0
 
         metrics = {
-            "wiki_entities": wiki_entities,
+            "wiki_entities": total_entities,
             "wiki_relations": wiki_relations,
             "skills_available": skills_available,
             "skills_enabled": skills_enabled,
@@ -203,7 +200,7 @@ async def build_capability_boundary(domain_filter: Optional[str] = None) -> dict
         }
 
     # Summary counts
-    maturity_counts = {"seeding": 0, "building": 0, "stable": 0, "production-ready": 0}
+    maturity_counts = {"seeding": 0, "growing": 0, "building": 0, "stable": 0, "production-ready": 0}
     for d in domain_results.values():
         maturity_counts[d["maturity"]] = maturity_counts.get(d["maturity"], 0) + 1
 
@@ -233,7 +230,7 @@ async def build_capability_boundary(domain_filter: Optional[str] = None) -> dict
     }
 
 
-@router.get("/diagnostics/capability-boundary", response_model=ItemResponse)
+@router.get("/diagnostics/capability-boundary")
 async def get_capability_boundary(
     domain: Optional[str] = Query(None),
     request: Any = None,

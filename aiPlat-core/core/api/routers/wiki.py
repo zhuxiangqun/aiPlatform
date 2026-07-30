@@ -24,77 +24,77 @@ try:
     from core.api.routers.wiki_learning import router as _learning_router
     router.include_router(_learning_router, prefix="/learning")
 except ImportError:
-    pass
+    pass  # noqa: optional-dependency
 try:
     from core.api.routers.wiki_loop_triggers import router as _loop_triggers_router
     router.include_router(_loop_triggers_router, prefix="/loop")
 except ImportError:
-    pass
+    pass  # noqa: optional-dependency
 try:
     from core.api.routers.wiki_ontology_sql import router as _ontology_sql_router
     router.include_router(_ontology_sql_router, prefix="/ontology/sql")
 except ImportError:
-    pass
+    pass  # noqa: optional-dependency
 try:
     from core.api.routers.wiki_markings import router as _markings_router
     router.include_router(_markings_router, prefix="/ontology")
 except ImportError:
-    pass
+    pass  # noqa: optional-dependency
 try:
     from core.api.routers.wiki_semantic_suggestions import router as _semantic_router
     router.include_router(_semantic_router, prefix="/ontology")
 except ImportError:
-    pass
+    pass  # noqa: optional-dependency
 try:
     from core.api.routers.wiki_health_quality import router as _health_router
     router.include_router(_health_router, prefix="/ontology")
 except ImportError:
-    pass
+    pass  # noqa: optional-dependency
 try:
     from core.api.routers.wiki_writeback import router as _writeback_router
     router.include_router(_writeback_router, prefix="/ontology")
 except ImportError:
-    pass
+    pass  # noqa: optional-dependency
 try:
     from core.api.routers.wiki_field_security import router as _field_security_router
     router.include_router(_field_security_router, prefix="/ontology")
 except ImportError:
-    pass
+    pass  # noqa: optional-dependency
 try:
     from core.api.routers.wiki_scenes import router as _scenes_router
     router.include_router(_scenes_router, prefix="/ontology")
 except ImportError:
-    pass
+    pass  # noqa: optional-dependency
 try:
     from core.api.routers.wiki_evidence import router as _evidence_router
     router.include_router(_evidence_router)
 except ImportError:
-    pass
+    pass  # noqa: optional-dependency
 try:
     from core.api.routers.wiki_proposals import router as _proposals_router
     router.include_router(_proposals_router)
 except ImportError:
-    pass
+    pass  # noqa: optional-dependency
 try:
     from core.api.routers.wiki_ontology_engine import router as _ontology_engine_router
     router.include_router(_ontology_engine_router, prefix="/ontology")
 except ImportError:
-    pass
+    pass  # noqa: optional-dependency
 try:
     from core.api.routers.wiki_ontology_domains import router as _ontology_domains_router
     router.include_router(_ontology_domains_router, prefix="/ontology")
 except ImportError:
-    pass
+    pass  # noqa: optional-dependency
 try:
     from core.api.routers.wiki_ontology_export import router as _ontology_export_router
     router.include_router(_ontology_export_router, prefix="/ontology")
 except ImportError:
-    pass
+    pass  # noqa: optional-dependency
 try:
     from core.api.routers.wiki_ontology_patterns import router as _ontology_patterns_router
     router.include_router(_ontology_patterns_router, prefix="/ontology")
 except ImportError:
-    pass
+    pass  # noqa: optional-dependency
 
 # ── Request Models ──────────────────────────────────────────────
 
@@ -847,12 +847,12 @@ async def ingest_text(body: WikiIngest):
         cache = SemanticCache()
         cache.invalidate_domain(body.collection if hasattr(body, 'collection') else "default")
     except Exception:
-        pass
+        logging.getLogger(__name__).debug('ingest_text failed', exc_info=True)
     try:
         from core.harness.knowledge.wiki_engine import invalidate_graph_cache
         invalidate_graph_cache(body.collection if hasattr(body, 'collection') else "default")
     except Exception:
-        pass
+        logging.getLogger(__name__).debug('ingest_text failed', exc_info=True)
     # ── Provenance: mark all answers referencing this source as stale ──
     try:
         from core.harness.knowledge.provenance import get_provenance_tracker, ProvenanceScanner
@@ -861,9 +861,68 @@ async def ingest_text(body: WikiIngest):
         import asyncio as _asyncio
         _asyncio.create_task(scanner.on_source_updated(sid, str(time.time())))
     except Exception:
-        pass
+        logging.getLogger(__name__).debug('ingest_text failed', exc_info=True)
     return {"source_id": sid, "status": "ingested",
             "message": "Text stored. Execute wiki_curator agent to process and update wiki pages."}
+
+
+@router.post("/ingest/url", response_model=Dict[str, Any])
+async def ingest_url(body: dict):
+    """Phase 42: One-click URL import — fetch URL, convert to Markdown, save to raw inbox.
+
+    Body: {"url": "https://...", "collection": "default", "tags": ["ai", "research"]}
+    """
+    import uuid, time, json as _json
+    url = str(body.get("url", "")).strip()
+    if not url:
+        raise HTTPException(status_code=400, detail="url is required")
+    collection = str(body.get("collection", "default"))
+    tags = body.get("tags", []) or []
+
+    # Fetch URL content
+    try:
+        import urllib.request as _urllib
+        req = _urllib.Request(url, headers={"User-Agent": "aiPlat-WikiIngest/1.0"})
+        resp = _urllib.urlopen(req, timeout=15)
+        content_type = resp.headers.get("Content-Type", "")
+        raw_html = resp.read().decode(resp.headers.get_content_charset() or "utf-8", errors="replace")
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Failed to fetch URL: {e}")
+
+    # Convert HTML to plain text (try markdownify if available, else strip HTML)
+    text = raw_html
+    title = url.rsplit("/", 1)[-1] or url
+    try:
+        import re as _re
+        title_match = _re.search(r"<title>(.*?)</title>", raw_html, _re.IGNORECASE | _re.DOTALL)
+        if title_match:
+            title = title_match.group(1).strip()[:200]
+        # Strip HTML tags for plain text storage
+        clean = _re.sub(r"<script[^>]*>.*?</script>", "", raw_html, flags=_re.IGNORECASE | _re.DOTALL)
+        clean = _re.sub(r"<style[^>]*>.*?</style>", "", clean, flags=_re.IGNORECASE | _re.DOTALL)
+        clean = _re.sub(r"<[^>]+>", " ", clean)
+        clean = _re.sub(r"\s+", " ", clean).strip()
+        if clean:
+            text = clean
+    except Exception:
+        logging.getLogger(__name__).debug('HTML text extraction failed, falling back to raw HTML', exc_info=True)
+
+    # Save to raw inbox
+    from core.harness.knowledge.wiki_engine import _wiki_root
+    source_dir = _wiki_root() / "_sources"
+    source_dir.mkdir(parents=True, exist_ok=True)
+    sid = f"src_{uuid.uuid4().hex[:8]}"
+    (source_dir / f"{sid}.json").write_text(_json.dumps({
+        "id": sid, "title": title, "text": text[:50000],
+        "url": url, "tags": tags,
+        "ingested_at": time.time(), "source": "url_import",
+    }, ensure_ascii=False))
+
+    return {
+        "source_id": sid, "status": "ingested", "title": title,
+        "chars": len(text), "collection": collection,
+        "message": f"URL content saved ({len(text)} chars). Auto-compile via /wiki/index-md.",
+    }
 
 
 @router.post("/ingest/reparse", response_model=Dict[str, Any])
@@ -926,6 +985,169 @@ async def atomize_document(body: AtomizeRequest, collection: str = "default"):
         raise HTTPException(status_code=500, detail=f"Atomization failed: {e}")
 
 
+@router.post("/import-docs-dir", response_model=Dict[str, Any])
+async def import_docs_directory(collection: str = "system_docs"):
+    """导入 docs/ 目录下所有 .md 文件到 Wiki 知识库。
+    
+    遍历项目 docs/ 目录，将每个 .md 文件作为 Wiki 页面写入指定集合。
+    已存在的页面会自动更新（upsert）。
+    """
+    import os
+    from pathlib import Path
+    from core.harness.knowledge.wiki_engine import write_page
+
+    project_root = Path(__file__).resolve().parent.parent.parent.parent.parent
+    docs_root = project_root / "docs"
+    if not docs_root.is_dir():
+        raise HTTPException(status_code=404, detail=f"docs dir not found: {docs_root}")
+
+    created = skipped = errors = 0
+    error_details = []
+    for md_file in docs_root.rglob("*.md"):
+        fp = str(md_file)
+        if ".venv" in fp or "node_modules" in fp or "__pycache__" in fp:
+            continue
+        try:
+            title = str(md_file.relative_to(docs_root)).replace("/", " / ").replace(".md", "")
+            body = md_file.read_text(encoding="utf-8")
+            write_page(
+                title=title, body=body[:200000],
+                category="system_docs",
+                tags=["documentation", md_file.parent.name],
+                collection_id=collection,
+                status="published",
+            )
+            created += 1
+        except Exception as e:
+            err_msg = str(e)
+            if "already exists" in err_msg.lower():
+                skipped += 1
+            else:
+                errors += 1
+                error_details.append({"file": fp.split("/docs/")[-1][:80], "error": err_msg[:200]})
+
+    return {
+        "created": created, "skipped": skipped, "errors": errors,
+        "error_details": error_details[:10],
+    }
+
+
+@router.post("/suggest-domain", response_model=Dict[str, Any])
+async def suggest_domain(body: Dict[str, Any]):
+    """推荐匹配的领域（用于数据源入库时选择目标领域）。
+    
+    返回 top-3 候选领域及余弦相似度。
+    即使未达路由阈值也返回，供用户手动选择。
+    """
+    query = str(body.get("query", "")).strip()
+    if not query:
+        return {"suggestions": [], "message": "query required"}
+
+    from core.harness.knowledge.domain_router import DomainRouter
+    router = DomainRouter()
+    suggestions = router.suggest(query, top_k=3)
+    return {
+        "suggestions": [{"domain_id": did, "similarity": round(s, 3)} for did, s in suggestions],
+        "query": query,
+    }
+
+
+@router.post("/generate-domain", response_model=Dict[str, Any])
+async def generate_domain(
+    collection: str = "system_docs",
+    domain_name: str = "",
+    domain_id: str = "aiplat-system",
+):
+    """从指定集合的实体中自动生成领域 YAML。
+    
+    读取集合中的 entities 和 topics，提取类定义、属性和关系，
+    输出到 ~/.aiplat/ontologies/{domain_id}.yaml。
+    """
+    import os, re, yaml, time, logging
+    from pathlib import Path
+    from core.harness.knowledge.wiki_engine import _wiki_root, list_all_pages
+
+    logger = logging.getLogger(__name__)
+    ont_dir = Path(os.path.expanduser("~/.aiplat/ontologies"))
+    ont_dir.mkdir(parents=True, exist_ok=True)
+
+    # 1. 收集该集合中所有页面
+    pages = list_all_pages(collection_id=collection)
+    if not pages:
+        return {"status": "error", "message": "集合中没有页面，请先导入文档"}
+
+    # 2. 按 category 分组，提取 entity 和 topic 信息
+    entities = [p for p in pages if p.get("category") == "entities"]
+    topics = [p for p in pages if p.get("category") == "topics"]
+    logger.info("generate-domain: collection=%s entities=%d topics=%d", collection, len(entities), len(topics))
+
+    # 3. 从实体中提取 class_name 聚类
+    class_map: dict = {}
+    for ep in entities:
+        class_name = ep.get("title", "") or "unknown"
+        tags = ep.get("tags", []) or []
+        summary = ep.get("summary", "")[:200]
+        # 尝试从标签推断有意义的类别名
+        clean_class = class_name[:60].strip()
+        if clean_class not in class_map:
+            class_map[clean_class] = {"entities": [], "tags": set(), "summaries": []}
+        class_map[clean_class]["entities"].append(class_name)
+        class_map[clean_class]["tags"].update(tags)
+        class_map[clean_class]["summaries"].append(summary)
+
+    # 4. 构建领域 YAML
+    domain_name = domain_name or f"{collection} 系统知识"
+    classes_yaml = {}
+    for cname, info in sorted(class_map.items()):
+        safe_key = re.sub(r"[<>:\"/\\|?*]", "_", cname)[:80]
+        classes_yaml[safe_key] = {
+            "label": cname,
+            "description": " | ".join(info["summaries"][:3]) or f"自动生成的{cname}类",
+            "required_fields": ["name", "description"],
+            "optional_fields": sorted(set(info["tags"]) - {"documentation", "manual"})[:10],
+            "categories": [safe_key.lower()],
+            "states": {
+                "default": "draft",
+                "enum": [
+                    {"name": "draft", "label": "草稿"},
+                    {"name": "published", "label": "已发布"},
+                ],
+            },
+        }
+
+    domain_yaml = {
+        "name": domain_name,
+        "namespace": f"http://aiplat.local/ontology/{domain_id}/",
+        "description": f"自动生成的 {collection} 集合领域本体 (v1.0.0)",
+        "version": "1.0.0",
+        "classes": classes_yaml,
+        "object_properties": [],
+        "inference_rules": [],
+    }
+
+    # 5. 写入文件
+    out_path = ont_dir / f"{domain_id}.yaml"
+    with open(out_path, "w", encoding="utf-8") as f:
+        yaml.safe_dump(domain_yaml, f, allow_unicode=True, default_flow_style=False, sort_keys=False)
+
+    # 6. 注册到 DomainRouter
+    try:
+        from core.harness.knowledge.domain_router import DomainRouter
+        DomainRouter().register_domain(domain_id, {"collection_id": collection, "label": domain_name})
+    except Exception:
+        logger.warning("DomainRouter registration skipped", exc_info=True)
+
+    return {
+        "status": "ok",
+        "domain_id": domain_id,
+        "domain_name": domain_name,
+        "classes": len(classes_yaml),
+        "entities": len(entities),
+        "topics": len(topics),
+        "written": str(out_path),
+    }
+
+
 @router.post("/convert-from-kb", response_model=Dict[str, Any])
 async def convert_from_kb(req: ConvertKbRequest = Body(default=None), collection: str = "default"):
     u"""Convert existing KB documents into Wiki pages.
@@ -962,8 +1184,8 @@ async def convert_from_kb(req: ConvertKbRequest = Body(default=None), collection
             # Read documents from 'documents' table
             if doc_ids and len(doc_ids) > 0:
                 placeholders = ','.join('?' * len(doc_ids))
-                sql = f"SELECT doc_id, source_uri, kind, status, meta_json, created_at FROM documents WHERE tenant_id=? AND collection_id=? AND doc_id IN ({placeholders}) ORDER BY created_at DESC LIMIT ?"
-                docs = conn.execute(sql, (tenant_id, collection_id, *doc_ids, limit)).fetchall()
+                sql = f"SELECT doc_id, source_uri, kind, status, meta_json, created_at FROM documents WHERE tenant_id=? AND doc_id IN ({placeholders}) ORDER BY created_at DESC LIMIT ?"
+                docs = conn.execute(sql, (tenant_id, *doc_ids, limit)).fetchall()
             else:
                 docs = conn.execute(
                     "SELECT doc_id, source_uri, kind, status, meta_json, created_at FROM documents WHERE tenant_id=? AND collection_id=? ORDER BY created_at DESC LIMIT ?",
@@ -1027,6 +1249,20 @@ async def convert_from_kb(req: ConvertKbRequest = Body(default=None), collection
                 keywords = re.findall(r'[\u4e00-\u9fff]{2,8}|[A-Z][a-zA-Z]{2,}', body[:5000])
                 tags = list(set(kw.lower() for kw in keywords[:8]))
                 summary = body[:300].replace("\n", " ")
+                # Auto-route: use DomainRouter to determine target collection
+                doc_collection = collection
+                try:
+                    from core.harness.knowledge.domain_router import DomainRouter
+                    router = DomainRouter()
+                    domain_id = router.classify(title)
+                    if domain_id:
+                        routed = router.resolve_collection(domain_id)
+                        if routed:
+                            doc_collection = routed
+                            logger.debug("convert-from-kb: '%s' → domain=%s collection=%s",
+                                       title[:60], domain_id, routed)
+                except Exception:
+                    logging.getLogger(__name__).debug('Domain routing failed, falling back to caller-provided collection', exc_info=True)
 
                 # Track keywords for cross-linking
                 for kw in tags[:5]:
@@ -1037,9 +1273,8 @@ async def convert_from_kb(req: ConvertKbRequest = Body(default=None), collection
                 # Create wiki page (fast, no LLM)
                 safe_title = re.sub(r"[<>:\"/\\|?*]", "_", title)[:120]
                 write_page(safe_title, body, category="entities", tags=tags, summary=summary,
-                          source_articles=[f"kb:{doc_id}"], collection_id=collection)
-                # Queue for parallel curation (deferred, batched LLM calls)
-                _curation_queue.append((doc_id, safe_title, body, tags, summary, collection, tenant_id, dict(doc)))
+                           source_articles=[f"kb:{doc_id}"], collection_id=doc_collection)
+                _curation_queue.append((doc_id, safe_title, body, tags, summary, doc_collection, tenant_id, dict(doc)))
                 docs_converted += 1
 
             # ── Parallel curation: batch LLM calls via asyncio.gather ──
@@ -2191,10 +2426,11 @@ async def _llm_step(prompt: str, domain_id: str, step_name: str, max_retries: in
 
     for attempt in range(max_retries):
         try:
-            resp = await model.generate(
+            resp = await sys_llm_generate(
+                model,
                 [{"role": "system", "content": system_content},
                  {"role": "user", "content": prompt}],
-                config=LLMConfig(model=model_name, timeout=60, max_tokens=2048),
+                trace_context={"source": "wiki_ontology", "phase": "suggest"},
             )
             content = resp.content if hasattr(resp, 'content') else str(resp)
             clean = content.strip()
@@ -2419,8 +2655,14 @@ async def update_ontology_domain(domain_id: str, req: OntologyDomainCreate):
             graph = GraphIndex.load(domain_id)
             sm = StateMachine(new_domain)
 
+            # Build label→class_name mapping (class_name is YAML key, label is human-readable)
+            label_to_class_name = {cls.label: cls.uri.split("#")[-1] for cls in new_domain.classes}
+
             for label in affected_labels:
-                nodes = [n for n in graph._nodes.values() if n.class_name == label]
+                actual_class_name = label_to_class_name.get(label, label)
+                nodes = [n for n in graph._nodes.values() if n.class_name == actual_class_name]
+                if not nodes:
+                    nodes = [n for n in graph._nodes.values() if n.class_name == label]
                 if not nodes:
                     continue
 
@@ -2550,7 +2792,26 @@ async def update_ontology_class(domain_id: str, class_name: str, req: OntologyCl
         existing["parent"] = req.parent
     raw["classes"] = classes
     _write_domain_yaml(domain_id, raw)
-    return {"status": "updated", "domain": domain_id, "class": class_name}
+
+    # v2.9: Report downstream impact
+    impact = {"graph_nodes_affected": 0}
+    try:
+        from core.harness.ontology_engine.graph_index import GraphIndex
+        graph = GraphIndex.load(domain_id)
+        affected = graph.get_entities_by_class(class_name)
+        impact["graph_nodes_affected"] = len(affected)
+    except Exception:
+        logging.getLogger(__name__).debug('update_ontology_class failed', exc_info=True)
+
+    return {
+        "status": "updated", "domain": domain_id, "class": class_name,
+        "downstream_impact": impact,
+        "warning": (
+            f"已修改类 '{class_name}'，但 {impact['graph_nodes_affected']} 个已有 GraphIndex 节点 "
+            f"不会被自动重新分类。如需全量重跑，调用 "
+            f"POST /ontology/domains/{domain_id}/build-instances"
+        ) if impact["graph_nodes_affected"] > 0 else None,
+    }
 
 
 @router.put("/ontology/domains/{domain_id}/properties/{prop_name}", response_model=Dict[str, Any])
@@ -2609,7 +2870,7 @@ async def delete_ontology_class(domain_id: str, class_name: str, force: bool = F
     try:
         from core.harness.ontology_engine.graph_index import GraphIndex
         g = GraphIndex.load(domain_id)
-        orphan_nodes = sum(1 for n in g._nodes.values() if n.class_name == class_label)
+        orphan_nodes = sum(1 for n in g._nodes.values() if n.class_name == class_name)
     except Exception as e:
         logging.warning(str(e), exc_info=True)
 
@@ -2628,7 +2889,7 @@ async def delete_ontology_class(domain_id: str, class_name: str, force: bool = F
         try:
             from core.harness.ontology_engine.graph_index import GraphIndex
             g = GraphIndex.load(domain_id)
-            to_remove = [n.entity_id for n in g._nodes.values() if n.class_name == class_label]
+            to_remove = [n.entity_id for n in g._nodes.values() if n.class_name == class_name]
             for eid in to_remove:
                 g.remove_entity(eid)
         except Exception as e:
@@ -2638,6 +2899,67 @@ async def delete_ontology_class(domain_id: str, class_name: str, force: bool = F
     raw["classes"] = classes
     _write_domain_yaml(domain_id, raw)
     return {"status": "deleted", "domain": domain_id, "class": class_name}
+
+
+class MigrateClassifyRequest(BaseModel):
+    old_class_name: str
+    new_class_name: str
+    migrate_graph: bool = True
+
+
+@router.post("/ontology/domains/{domain_id}/migrate-classify", response_model=Dict[str, Any])
+async def migrate_classify(domain_id: str, req: MigrateClassifyRequest):
+    """Migrate all GraphIndex nodes from old_class_name to new_class_name and update YAML.
+
+    Use this after renaming a class in the ontology YAML to preserve existing knowledge graph data.
+    Without this migration, old-class nodes become orphaned and invisible to state machines and
+    class-based retrieval.
+    """
+    from pathlib import Path as _Path
+    import os as _os
+    d = _Path(_os.getenv("AIPLAT_HOME", _Path("~").expanduser() / ".aiplat")) / "ontologies"
+    file_path = d / f"{domain_id}.yaml"
+    if not file_path.exists():
+        raise HTTPException(status_code=404, detail=f"Domain '{domain_id}' not found")
+    import yaml as _yaml
+    with open(file_path, "r", encoding="utf-8") as f:
+        raw = _yaml.safe_load(f)
+    classes = raw.get("classes", {}) or {}
+    if req.old_class_name not in classes:
+        raise HTTPException(status_code=404, detail=f"Class '{req.old_class_name}' not found in '{domain_id}'")
+    if req.new_class_name in classes and req.new_class_name != req.old_class_name:
+        raise HTTPException(status_code=409, detail=f"Class '{req.new_class_name}' already exists. Delete it first or choose a different name.")
+
+    old_label = str(classes[req.old_class_name].get("label", req.old_class_name))
+
+    # 1) Rename in YAML
+    classes[req.new_class_name] = classes.pop(req.old_class_name)
+    raw["classes"] = classes
+    _write_domain_yaml(domain_id, raw)
+
+    # 2) Migrate GraphIndex nodes
+    graph_migrated = 0
+    if req.migrate_graph:
+        try:
+            from core.harness.ontology_engine.graph_index import GraphIndex
+            graph = GraphIndex.load(domain_id)
+            graph_migrated = graph.migrate_class_nodes(req.old_class_name, req.new_class_name)
+            graph.save()
+        except Exception as e:
+            logging.warning("GraphIndex migration skipped: %s", e)
+
+    return {
+        "status": "migrated",
+        "domain": domain_id,
+        "old_class_name": req.old_class_name,
+        "new_class_name": req.new_class_name,
+        "old_label": old_label,
+        "graph_nodes_migrated": graph_migrated,
+        "next_steps": [
+            "本体编辑器 → 验证报告 → 检查分类覆盖率",
+            f"如需全量重新分类，调用 POST /ontology/domains/{domain_id}/build-instances",
+        ],
+    }
 
 
 @router.post("/ontology/domains/{domain_id}/properties", response_model=Dict[str, Any])
@@ -3037,3 +3359,4 @@ async def run_active_synthesis(
 # Proposal Workflow — migrated to wiki_proposals.py (include_router, no prefix)
 
 # SQL Ontology Bridge — migrated to wiki_ontology_sql.py, mounted via include_router below
+

@@ -31,7 +31,7 @@ import time
 import uuid
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
-from apps.fde.schemas import FdeStatusResponse, FdeListResponse, FdeItemResponse
+from apps.fde.api.schemas import FdeStatusResponse, FdeListResponse, FdeItemResponse
 
 
 from core.harness.utils.prompt_loader import _sync_resolve
@@ -48,97 +48,97 @@ try:
     from .fde_quality_summary import router as _quality_summ_router
     router.include_router(_quality_summ_router)
 except ImportError:
-    pass
+    pass  # noqa: optional-dependency
 try:
     from .fde_trends import router as _trends_router
     router.include_router(_trends_router)
 except ImportError:
-    pass
+    pass  # noqa: optional-dependency
 try:
     from .fde_maintenance import router as _maintenance_router
     router.include_router(_maintenance_router)
 except ImportError:
-    pass
+    pass  # noqa: optional-dependency
 try:
     from .fde_overview import router as _overview_router
     router.include_router(_overview_router)
 except ImportError:
-    pass
+    pass  # noqa: optional-dependency
 try:
     from .fde_governance import router as _governance_router
     router.include_router(_governance_router)
 except ImportError:
-    pass
+    pass  # noqa: optional-dependency
 try:
     from .fde_dashboard_v2 import router as _dashboard_v2_router
     router.include_router(_dashboard_v2_router)
 except ImportError:
-    pass
+    pass  # noqa: optional-dependency
 try:
     from .fde_domain_ops import router as _domain_ops_router
     router.include_router(_domain_ops_router)
 except ImportError:
-    pass
+    pass  # noqa: optional-dependency
 try:
     from .fde_sessions_compare import router as _sessions_com_router
     router.include_router(_sessions_com_router)
 except ImportError:
-    pass
+    pass  # noqa: optional-dependency
 try:
     from .fde_pipeline import router as _pipeline_router
     router.include_router(_pipeline_router)
 except ImportError:
-    pass
+    pass  # noqa: optional-dependency
 try:
     from .fde_bootstrap import router as _bootstrap_router
     router.include_router(_bootstrap_router)
 except ImportError:
-    pass
+    pass  # noqa: optional-dependency
 try:
     from .fde_manuals import router as _manuals_router
     router.include_router(_manuals_router)
 except ImportError:
-    pass
+    pass  # noqa: optional-dependency
 try:
     from .fde_acceptance import router as _acceptance_router
     router.include_router(_acceptance_router)
 except ImportError:
-    pass
+    pass  # noqa: optional-dependency
 try:
     from .fde_handover_v2 import router as _handover_v2_router
     router.include_router(_handover_v2_router)
 except ImportError:
-    pass
+    pass  # noqa: optional-dependency
 try:
     from .fde_delivery import router as _delivery_router
     router.include_router(_delivery_router)
 except ImportError:
-    pass
+    pass  # noqa: optional-dependency
 try:
     from .fde_sessions_v2 import router as _sessions_v2_router
     router.include_router(_sessions_v2_router)
 except ImportError:
-    pass
+    pass  # noqa: optional-dependency
 try:
     from .fde_reports import router as _reports_router
     router.include_router(_reports_router)
 except ImportError:
-    pass
+    pass  # noqa: optional-dependency
 try:
     from .fde_ask import router as _ask_router
     router.include_router(_ask_router)
 except ImportError:
-    pass
+    pass  # noqa: optional-dependency
 try:
     from .fde_validate import router as _validate_router
     router.include_router(_validate_router)
 except ImportError:
-    pass
+    pass  # noqa: optional-dependency
 try:
     from .fde_diagnostics_v2 import router as _diag_v2_router
     router.include_router(_diag_v2_router)
 except ImportError:
-    pass
+    pass  # noqa: optional-dependency
 
 
 log = logging.getLogger("aiplat.fde")
@@ -300,7 +300,7 @@ async def _bg_package(task_id: str) -> None:
             r = await _run_subprocess(["docker", "info"], capture_output=True, text=True, timeout=5)
             docker_ok = r.returncode == 0
         except Exception:
-            pass
+            logging.getLogger('fde').debug('_add_log failed', exc_info=True)
         _add_log("info", f"Docker 状态: {'可用' if docker_ok else '不可用 — 将跳过 Docker 镜像构建和导出'}")
 
         # 1) Export models
@@ -563,10 +563,12 @@ async def list_customers():
                 "description": cfg.description,
                 "profile_type": cfg.profile_type,
                 "deployment_mode": cfg.metadata.get("deployment_mode", "online"),
+                "industry": cfg.metadata.get("industry", ""),
             })
-        return {"customers": customers, "total": len(customers)}
+        return {"items": customers, "total": len(customers)}
     except HTTPException:
         raise
+    except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)[:200])
 
 
@@ -922,7 +924,7 @@ async def _clarify(context: str, text: str, history: list,
             parsed = _json.loads(content)
             return parsed
         except _json.JSONDecodeError:
-            pass
+            pass  # noqa: cleanup-best-effort
         # Fallback: regex extraction for loose JSON in natural language
         json_match = _re.search(r'\{[\s\S]*"questions"[\s\S]*\}', content)
         if not json_match:
@@ -931,7 +933,7 @@ async def _clarify(context: str, text: str, history: list,
             try:
                 return _json.loads(json_match.group(0))
             except _json.JSONDecodeError:
-                pass
+                pass  # noqa: cleanup-best-effort
         # Model returned natural language — wrap as done summary
         if content and len(content) > 20:
             return {"questions": [], "next": "done",
@@ -939,7 +941,7 @@ async def _clarify(context: str, text: str, history: list,
                     "structured": {"type": "feedback", "root_cause": "",
                                    "severity": "medium"}}
     except Exception:
-        pass
+        logging.getLogger('fde').debug('_clarify failed', exc_info=True)
 
     # LLM unavailable or parse failed — skip remaining rounds
     return {"questions": [], "next": "done",
@@ -947,7 +949,7 @@ async def _clarify(context: str, text: str, history: list,
                 "type": "pending", "root_cause": "", "severity": "medium"}}
 
 
-from core.apps.fde.agent import run_fde_agent_one_shot as _run_fde_agent_one_shot  # v2.5: canonical location
+from core.apps.fde.service.agent import run_fde_agent_one_shot as _run_fde_agent_one_shot  # v2.5: canonical location
 
 
 @router.post("/clarify", response_model=FdeStatusResponse)
@@ -982,6 +984,9 @@ async def infer_industry(body: Dict[str, Any]):
             company_name=name, description=desc)
         
         model_name = best_model_for_purpose("classify")
+        if not model_name:
+            return {"industry": "general", "confidence": 0, "method": "fallback", "reason": "无可用 classify 模型"}
+        
         result = await sys_llm_generate(None, [
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_prompt},
@@ -1000,8 +1005,8 @@ async def infer_industry(body: Dict[str, Any]):
             parsed = _j.loads(jm.group(0))
             parsed["method"] = "llm"
             return parsed
-    except Exception:
-        pass
+    except Exception as _exc:
+        logging.getLogger("fde").warning("infer-industry LLM failed: %s", str(_exc)[:200])
     
     return {"industry": "general", "confidence": 0, "method": "fallback", "reason": "LLM 不可用"}
 
@@ -1545,7 +1550,7 @@ async def generate_delivery_manual(
                 for k in kpis[:5]:
                     kpi_lines.append(f"| {k.get('name','?')} | {k.get('target','')} | {agent_name} |")
         except Exception:
-            pass
+            logging.getLogger('fde').debug('generate_delivery_manual failed', exc_info=True)
 
     if not kpi_lines:
         rows = _infer_kpi_defaults(industry)
@@ -2334,7 +2339,7 @@ async def fde_improve_suggestions(session_id: str):
                             })
 
                     except Exception:
-                        pass
+                        logging.getLogger('fde').debug('fde_improve_suggestions failed', exc_info=True)
 
         # ── Check term dictionary size ──
         try:
@@ -2349,7 +2354,7 @@ async def fde_improve_suggestions(session_id: str):
                     "action": "运行更多诊断以触发术语自播种，或手动编辑 enterprise-terms.yaml",
                 })
         except Exception:
-            pass
+            logging.getLogger('fde').debug('unknown failed', exc_info=True)
 
         # ── Summary ──
         by_type = {}
@@ -2426,7 +2431,7 @@ def _record_health_snapshot(result: dict):
             source_doc_id=str(ts),
         )
     except Exception:
-        pass
+        logging.getLogger('fde').debug('_record_health_snapshot failed', exc_info=True)
 
 
 def _get_quick_quality_score(status: dict, governance: dict) -> dict:
@@ -2595,7 +2600,7 @@ def _get_governance_live_status() -> dict:
             reg = _json_gov.load(f)
         status["configured_domains"] = len(reg.get("domains", {}))
     except Exception:
-        pass
+        logging.getLogger('fde').debug('_get_governance_live_status failed', exc_info=True)
 
     try:
         from core.harness.knowledge.seci_engine import get_seci_engine
@@ -2603,14 +2608,14 @@ def _get_governance_live_status() -> dict:
         status["knowledge_atom_count"] = se.get_atom_count()
         status["knowledge_link_count"] = se.get_link_count()
     except Exception:
-        pass
+        logging.getLogger('fde').debug('_get_governance_live_status failed', exc_info=True)
 
     try:
         from core.harness.knowledge.convergence_engine import ConvergenceEngine
         ce = ConvergenceEngine()
         status["convergence_triggers_fired"] = ce.get_status().get("applied_triggers", 0)
     except Exception:
-        pass
+        logging.getLogger('fde').debug('_get_governance_live_status failed', exc_info=True)
 
     try:
         from core.harness.ontology_engine.graph_index import GraphIndex
@@ -2620,7 +2625,7 @@ def _get_governance_live_status() -> dict:
             if getattr(n, "class_name", "") == "Term"
         )
     except Exception:
-        pass
+        logging.getLogger('fde').debug('_get_governance_live_status failed', exc_info=True)
 
     try:
         from core.harness.ontology_engine.graph_index import GraphIndex
@@ -2641,7 +2646,7 @@ def _get_governance_live_status() -> dict:
         status["delivery_session_count"] = sessions
         status["delivery_rate"] = round(with_actions / max(sessions, 1) * 100)
     except Exception:
-        pass
+        logging.getLogger('fde').debug('_get_governance_live_status failed', exc_info=True)
 
     return status
 
@@ -2827,6 +2832,534 @@ async def fde_governance():
 
 
 # ════════════════════════════════════════════════════════════
+# Scenario Simulation — multi-scenario sandbox execution & comparison (v4.0)
+# ════════════════════════════════════════════════════════════
+
+@router.post("/simulate")
+async def run_simulation(
+    payload: dict = Body(...),
+):
+    """执行多场景沙盒推演。
+
+    Body:
+      - seed_state: PipelineState dict (from snapshot or current run)
+      - scenarios: [{scenario_id, scenario_type, label, model_overrides?, skip_stages?, prompt_extra?, tool_whitelist?}]
+      - baseline_label?: str
+      - domain_id?: str
+      - scenario_count?: int (for param mutation mode)
+    """
+    from core.harness.execution.simulation import (
+        SimulationOrchestrator, ScenarioDefinition, ScenarioType
+    )
+
+    seed_state = payload.get("seed_state", {})
+    scenarios_raw = payload.get("scenarios", [])
+    baseline_label = payload.get("baseline_label", "基线 (当前配置)")
+    domain_id = payload.get("domain_id", "")
+    scenario_count = payload.get("scenario_count", 5)
+
+    # Build scenario definitions
+    scenarios = []
+    for sc in scenarios_raw:
+        sc_type = ScenarioType(sc.get("scenario_type", "model_variant"))
+        scenarios.append(ScenarioDefinition(
+            scenario_id=sc.get("scenario_id", f"sc_{len(scenarios)}"),
+            scenario_type=sc_type,
+            label=sc.get("label", sc.get("scenario_id", "")),
+            model_overrides=sc.get("model_overrides", {}),
+            prompt_extra=sc.get("prompt_extra", ""),
+            skip_stages=sc.get("skip_stages", []),
+            tool_whitelist=sc.get("tool_whitelist"),
+        ))
+
+    orch = SimulationOrchestrator(max_concurrent=3, timeout_per_scenario_s=300.0)
+
+    if not scenarios and seed_state:
+        # Param mutation mode: auto-generate scenarios from seed_params
+        report = await orch.run_parameter_mutations(
+            seed_params=seed_state,
+            scenario_count=scenario_count,
+        )
+    else:
+        report = await orch.run(
+            seed_state=seed_state,
+            scenarios=scenarios,
+            baseline_label=baseline_label,
+            domain_id=domain_id,
+        )
+
+    return {
+        "simulation_id": report.simulation_id,
+        "total_scenarios": report.total_scenarios,
+        "completed": report.completed,
+        "failed": report.failed,
+        "baseline_label": report.baseline_label,
+        "comparison": report.comparison,
+        "scenarios": [
+            {
+                "scenario_id": s.scenario_id,
+                "label": s.label,
+                "status": s.status,
+                "error": s.error,
+                "artifact_count": s.artifact_count,
+                "tokens_used": s.tokens_used,
+                "execution_time_ms": s.execution_time_ms,
+                "stages_completed": s.stages_completed,
+                "stages_total": s.stages_total,
+                "quality_score": s.quality_score,
+                "risk_level": s.risk_level,
+                "tool_calls": s.tool_calls,
+            }
+            for s in report.scenarios
+        ],
+        "risk_summary": report.risk_summary,
+        "deployment_readiness": report.deployment_readiness,
+        "recommendation": report.recommendation,
+        "created_at": report.created_at,
+        "total_tokens_used": report.total_tokens_used,
+        "total_execution_time_ms": report.total_execution_time_ms,
+    }
+
+
+@router.get("/simulations")
+async def list_simulations(limit: int = Query(20, ge=1, le=100)):
+    """列出最近的模拟报告。"""
+    from core.harness.execution.simulation import list_simulations
+    return {"simulations": list_simulations(limit=limit)}
+
+
+@router.get("/simulations/{simulation_id}")
+async def get_simulation(simulation_id: str):
+    """获取指定模拟报告的详细信息。"""
+    from core.harness.execution.simulation import load_simulation_report
+    report = load_simulation_report(simulation_id)
+    if not report:
+        raise HTTPException(status_code=404, detail=f"Simulation {simulation_id} not found")
+    return report
+
+
+@router.post("/simulate/quick")
+async def quick_simulate(
+    payload: dict = Body(...),
+):
+    """快速参数变异推演 (轻量, 不需要完整 Pipeline 运行)。
+
+    Body:
+      - seed_params: dict (e.g. {description, gross_demand, safety_stock, ...})
+      - scenario_count?: int (default 5)
+      - assessment_rubric?: [{field, constraint, expected}]
+    """
+    from core.harness.execution.simulation import SimulationOrchestrator
+
+    seed_params = payload.get("seed_params", {})
+    scenario_count = payload.get("scenario_count", 5)
+    rubric = payload.get("assessment_rubric")
+
+    orch = SimulationOrchestrator()
+    report = await orch.run_parameter_mutations(
+        seed_params=seed_params,
+        scenario_count=scenario_count,
+        assessment_rubric=rubric,
+    )
+
+    return {
+        "simulation_id": report.simulation_id,
+        "total_scenarios": report.total_scenarios,
+        "completed": report.completed,
+        "failed": report.failed,
+        "scenarios": [
+            {"scenario_id": s.scenario_id, "label": s.label, "status": s.status, "error": s.error}
+            for s in report.scenarios
+        ],
+        "deployment_readiness": report.deployment_readiness,
+        "recommendation": report.recommendation,
+    }
+
+
+# ════════════════════════════════════════════════════════════
+# Governance Self-Audit — verify declared capabilities are functional
+# ──────────────────────────────────────────────────────────────
+# Decision Lineage — agent decision trace & graph (Phase 41)
+# ════════════════════════════════════════════════════════════
+
+@router.get("/lineage/recent")
+async def list_lineage_runs(limit: int = Query(20, ge=1, le=100)):
+    """列出最近有决策记录的 run."""
+    from core.harness.infrastructure.lineage_store import LineageStore
+    store = LineageStore.get()
+    runs = store.list_recent_runs(limit=limit)
+    return {"runs": runs}
+
+
+@router.get("/lineage/{run_id}")
+async def get_lineage(run_id: str, limit: int = Query(100, ge=1, le=500)):
+    """获取某个 run 的所有决策记录."""
+    from core.harness.infrastructure.lineage_store import LineageStore
+    store = LineageStore.get()
+    decisions = store.get_by_run(run_id=run_id, limit=limit)
+    return {"run_id": run_id, "decisions": decisions, "total": len(decisions)}
+
+
+@router.get("/lineage/{run_id}/graph")
+async def get_lineage_graph(run_id: str):
+    """获取决策图谱 (nodes + edges 用于前端可视化)."""
+    from core.harness.infrastructure.lineage_store import LineageStore
+    store = LineageStore.get()
+    graph = store.get_decision_graph(run_id=run_id)
+    return graph
+
+
+# ════════════════════════════════════════════════════════════
+# Security 3D — Purpose Registry & Marking Levels (Phase 42)
+# ════════════════════════════════════════════════════════════
+
+@router.get("/security/purposes")
+async def list_purposes():
+    """列出所有已注册的 Purpose."""
+    from core.harness.infrastructure.gates.purpose_registry import PurposeRegistry
+    return {"purposes": PurposeRegistry.get().list_all()}
+
+
+@router.post("/security/check")
+async def check_security_3d(
+    payload: dict = Body(...),
+):
+    """三维权限检查 (dry-run)."""
+    from core.harness.infrastructure.gates.policy_gate import PolicyGate
+
+    gate = PolicyGate()
+    result = await gate.check_tool_3d(
+        user_id=payload.get("user_id", "system"),
+        tool_name=payload.get("tool_name", ""),
+        tool_args=payload.get("tool_args"),
+        purpose_id=payload.get("purpose_id", "general"),
+        role=payload.get("role", ""),
+        marking_level=payload.get("marking_level", 1),
+    )
+    return {
+        "decision": result.decision.value if hasattr(result.decision, "value") else str(result.decision),
+        "reason": result.reason,
+        "scope": result.scope.value if hasattr(result.scope, "value") else str(result.scope),
+    }
+
+
+@router.get("/security/markings/check")
+async def check_marking_level(
+    entity_uri: str = Query(""),
+    collection_id: str = Query("default"),
+):
+    """检查实体的标记级别."""
+    from core.harness.infrastructure.gates.marking_propagation import (
+        get_entity_max_marking_level, MARKING_LABELS,
+    )
+    level = get_entity_max_marking_level(entity_uri, collection_id=collection_id)
+    return {
+        "entity_uri": entity_uri,
+        "marking_level": level,
+        "marking_label": MARKING_LABELS.get(level, "UNKNOWN"),
+    }
+
+
+# ════════════════════════════════════════════════════════════
+
+# ════════════════════════════════════════════════════════════
+# EvoX Alignment — Atomic Splitter + Collector + Agent Network (Phase 44)
+# ════════════════════════════════════════════════════════════
+
+@router.post("/atomic/split")
+async def split_atomic_tasks(payload: dict = Body(...)):
+    """将复杂任务拆分为原子子任务."""
+    from core.harness.execution.atomic_splitter import AtomicTaskSplitter
+    splitter = AtomicTaskSplitter()
+    result = await splitter.split(
+        payload.get("task", ""),
+        max_atoms=payload.get("max_atoms", 30),
+        domain_hint=payload.get("domain_hint", ""),
+    )
+    return {
+        "atom_count": result.atom_count,
+        "coverage_verified": result.coverage_verified,
+        "atoms": [a.to_dict() for a in result.atoms],
+        "uncovered_gaps": result.uncovered_gaps,
+        "total_estimated_tokens": result.total_estimated_tokens,
+    }
+
+
+@router.post("/atomic/validate")
+async def validate_atoms(payload: dict = Body(...)):
+    """验证原子任务列表的质量."""
+    from core.harness.execution.atomic_splitter import AtomicTaskSplitter, AtomicTaskDefinition
+    atoms = [AtomicTaskDefinition(**a) for a in payload.get("atoms", [])]
+    splitter = AtomicTaskSplitter()
+    return splitter.validate(atoms)
+
+
+
+@router.post("/evo/execute")
+async def run_evox_swarm(payload: dict = Body(...)):
+    """执行 EvoX 蜂群流水线: 拆分→并行执行→程序化汇合→损耗检测."""
+    from core.harness.execution.evox_executor import EvoXExecutor
+    executor = EvoXExecutor(parallel_limit=payload.get("parallel_limit", 10))
+    result = await executor.run(
+        payload.get("task", ""),
+        max_atoms=payload.get("max_atoms", 0),
+        domain_hint=payload.get("domain_hint", ""),
+    )
+    return {
+        "task": result.task,
+        "atom_count": result.atom_count,
+        "coverage_verified": result.coverage_verified,
+        "atoms_executed": result.atoms_executed,
+        "atoms_failed": result.atoms_failed,
+        "collected_count": result.collected_count,
+        "loss_analysis": {
+            "total_correct_in_atoms": result.total_correct_in_atoms,
+            "total_correct_in_final": result.total_correct_in_final,
+            "loss_count": result.loss_count,
+            "loss_rate": result.loss_rate,
+            "retention_rate": result.retention_rate,
+            "root_causes": result.loss_root_causes,
+        },
+        "summary": result.summary,
+        "total_time_ms": result.total_time_ms,
+    }
+@router.post("/collect")
+async def collect_and_detect(payload: dict = Body(...)):
+    """程序化收集 + 损耗检测."""
+    from core.harness.execution.programmatic_collector import ProgrammaticCollector
+    collector = ProgrammaticCollector()
+    collect_result, loss_report = collector.collect_and_detect(
+        payload.get("state", {}),
+        payload.get("atom_definitions", []),
+        payload.get("final_output"),
+    )
+    result = {
+        "collected_atoms": collect_result.collected_atoms,
+        "total_atoms": collect_result.total_atoms,
+        "missed_atoms": collect_result.missed_atoms,
+    }
+    if loss_report:
+        result["loss_analysis"] = {
+            "total_correct_in_atoms": loss_report.total_correct_in_atoms,
+            "total_correct_in_final": loss_report.total_correct_in_final,
+            "loss_count": loss_report.loss_count,
+            "loss_rate": loss_report.loss_rate,
+            "retention_rate": loss_report.retention_rate,
+            "root_causes": loss_report.root_causes,
+        }
+    return result
+
+
+@router.get("/network/analyze")
+async def analyze_agent_network(
+    agent_ids: str = Query(""),
+    lookback_hours: float = Query(168.0),
+):
+    """分析 Agent 关系网络."""
+    from core.harness.learning.agent_network import AgentNetwork
+    ids = [a.strip() for a in agent_ids.split(",") if a.strip()]
+    net = AgentNetwork()
+    nodes = await net.analyze(ids, lookback_hours=lookback_hours)
+    return {"nodes": [n.to_dict() for n in nodes]}
+
+
+@router.get("/network/snapshots")
+async def get_network_snapshots():
+    """获取历史网络快照."""
+    from core.harness.learning.agent_network import AgentNetwork
+    return {"snapshots": AgentNetwork().load_snapshots()}
+
+
+@router.post("/network/evolve")
+async def evolve_agent_network(payload: dict = Body(...)):
+    """触发网络演化追踪."""
+    from core.harness.learning.agent_network import AgentNetwork
+    agent_ids = payload.get("agent_ids", [])
+    net = AgentNetwork()
+    snapshots = await net.evolution_tracking(
+        agent_ids,
+        interval_hours=payload.get("interval_hours", 24.0),
+        count=payload.get("count", 10),
+    )
+    return {"snapshots": [s.to_dict() for s in snapshots]}
+
+
+@router.post("/partners/select")
+async def select_partners(payload: dict = Body(...)):
+    """选择协作伙伴."""
+    from core.harness.learning.partner_selector import PartnerSelector
+    selector = PartnerSelector()
+    partners = await selector.select(
+        payload.get("agent_id", ""),
+        payload.get("candidates", []),
+        mode=payload.get("mode", "capability"),
+        count=payload.get("count", 3),
+    )
+    return {"agent_id": payload.get("agent_id"), "partners": partners}
+
+
+
+# ════════════════════════════════════════════════════════════
+# Template Engine + Operation Recording (Phase 45)
+# ════════════════════════════════════════════════════════════
+
+@router.post("/templates/register")
+async def register_template(payload: dict = Body(...)):
+    """注册文档模板."""
+    from core.harness.document.template_engine import TemplateRegistry
+    registry = TemplateRegistry.get()
+    template = registry.register(
+        payload.get("template_id", ""),
+        payload.get("path", ""),
+        description=payload.get("description", ""),
+    )
+    return template.to_dict()
+
+
+@router.get("/templates")
+async def list_templates():
+    """列出所有模板."""
+    from core.harness.document.template_engine import TemplateRegistry
+    return {"templates": TemplateRegistry.get().list_all()}
+
+
+@router.post("/templates/render")
+async def render_template(payload: dict = Body(...)):
+    """渲染模板."""
+    from core.harness.document.template_engine import TemplateRenderer
+    renderer = TemplateRenderer()
+    result = renderer.render(
+        payload.get("template_id", ""),
+        payload.get("data", {}),
+        output_path=payload.get("output_path", ""),
+    )
+    return result
+
+
+@router.post("/recording/start")
+async def start_recording(payload: dict = Body(...)):
+    """开始录制操作."""
+    from core.harness.learning.operation_recorder import OperationRecorder
+    rid = OperationRecorder.get().start(description=payload.get("description", ""))
+    return {"recording_id": rid, "status": "recording"}
+
+
+@router.post("/recording/stop")
+async def stop_recording():
+    """停止录制."""
+    from core.harness.learning.operation_recorder import OperationRecorder
+    recording = OperationRecorder.get().stop()
+    if recording:
+        OperationRecorder.get().save(recording)
+        return recording.to_dict()
+    return {"status": "idle", "message": "No active recording"}
+
+
+@router.post("/recording/generate")
+async def generate_skill_from_recording(payload: dict = Body(...)):
+    """从录制生成 SKILL.md."""
+    from core.harness.learning.operation_recorder import OperationRecorder
+    from core.harness.learning.skill_generator import SkillGenerator
+    recording = OperationRecorder.get().load(payload.get("recording_id", ""))
+    if not recording:
+        raise HTTPException(status_code=404, detail="Recording not found")
+    gen = SkillGenerator()
+    skill_md = await gen.generate(
+        recording.get("steps", []),
+        feedback=payload.get("feedback", ""),
+    )
+    validation = gen.validate(skill_md)
+    return {"skill_md": skill_md, "validation": {"valid": validation.valid, "score": validation.score, "issues": validation.issues}}
+
+
+@router.post("/recording/register")
+async def register_skill_from_generation(payload: dict = Body(...)):
+    """注册生成的 SKILL.md."""
+    from core.harness.learning.skill_generator import SkillGenerator
+    gen = SkillGenerator()
+    path = gen.register(
+        payload.get("skill_md", ""),
+        payload.get("skill_name", "generated_skill"),
+    )
+    return {"path": path, "skill_name": payload.get("skill_name")}
+
+
+@router.get("/recordings")
+async def list_recordings(limit: int = Query(20)):
+    """列出最近的录制."""
+    from core.harness.learning.operation_recorder import OperationRecorder
+    return {"recordings": OperationRecorder.get().list_recordings(limit=limit)}
+
+
+# Ontology Branching — branch/fork/diff/merge (Phase 43)
+# ════════════════════════════════════════════════════════════
+
+@router.get("/branches/{domain_id}")
+async def list_branches(domain_id: str):
+    """列出域的所有分支."""
+    from core.harness.ontology_engine.ontology_branch import OntologyBranchManager
+    return {"domain_id": domain_id, "branches": [b.to_dict() for b in OntologyBranchManager.get().list_branches(domain_id)]}
+
+
+@router.post("/branches/{domain_id}/fork")
+async def fork_branch(domain_id: str, payload: dict = Body(...)):
+    """从 main 分支派生新分支."""
+    from core.harness.ontology_engine.ontology_branch import OntologyBranchManager
+    info = OntologyBranchManager.get().fork(domain_id, payload.get("branch_name", ""), description=payload.get("description", ""))
+    return info.to_dict()
+
+
+@router.delete("/branches/{domain_id}/{branch_name}")
+async def delete_branch(domain_id: str, branch_name: str):
+    """删除分支."""
+    from core.harness.ontology_engine.ontology_branch import OntologyBranchManager
+    OntologyBranchManager.get().delete_branch(domain_id, branch_name)
+    return {"deleted": True, "branch": branch_name}
+
+
+@router.get("/branches/{domain_id}/diff")
+async def diff_branches(domain_id: str, source: str = Query("main"), target: str = Query("main")):
+    """对比两个分支的差异."""
+    from core.harness.ontology_engine.ontology_branch import OntologyBranchManager
+    diff = OntologyBranchManager.get().diff(domain_id, source, target)
+    return {"merge_level": diff.merge_level.value, "diff_summary": diff.diff_summary,
+            "added_entities": diff.added_entities, "removed_entities": diff.removed_entities,
+            "modified_entities": diff.modified_entities, "added_relations": diff.added_relations,
+            "removed_relations": diff.removed_relations, "conflicts": diff.conflicts}
+
+
+@router.post("/branches/{domain_id}/merge")
+async def merge_branches(domain_id: str, payload: dict = Body(...)):
+    """合并分支."""
+    from core.harness.ontology_engine.ontology_branch import OntologyBranchManager
+    result = OntologyBranchManager.get().merge(domain_id, payload.get("source", ""), payload.get("target", "main"),
+                                                auto_apply=payload.get("auto_apply", False))
+    return {"success": result.success, "merge_level": result.merge_level.value,
+            "summary": result.summary, "conflict_details": result.conflict_details}
+
+
+# ════════════════════════════════════════════════════════════
+
+@router.post("/simulate/evox-scenarios")
+async def simulate_evox_scenarios(payload: dict = Body(...)):
+    """EvoX 蜂群场景推演: 对比不同拆分策略."""
+    from core.harness.execution.simulation import SimulationOrchestrator
+    orch = SimulationOrchestrator()
+    report = await orch.run_evox_scenarios(
+        payload.get("task", ""),
+        max_atoms=payload.get("max_atoms", 30),
+    )
+    return {
+        "simulation_id": report.simulation_id,
+        "scenarios": [
+            {"scenario_id": s.scenario_id, "label": s.label, "status": s.status, "quality_score": s.quality_score}
+            for s in report.scenarios
+        ],
+        "comparison": report.comparison,
+        "risk_summary": report.risk_summary,
+        "recommendation": report.recommendation,
+    }
+
 # Governance Self-Audit — verify declared capabilities are functional
 # /dashboard (v2) migrated to fde_dashboard_v2.py
 
@@ -2851,3 +3384,4 @@ async def fde_governance():
 # System Overview — compact self-description
 # ════════════════════════════════════════════════════════════
 # Project Manual Generation — per-project customizable handbooks
+

@@ -17,7 +17,7 @@ const FloatingFeedback: React.FC<FloatingFeedbackProps> = ({ currentStep, autoVa
   const [open, setOpen] = useState(false);
 
   const handleSubmit = async (result: { conversation: any[]; summary: string; structured: any }) => {
-    await fetch('/api/core/fde/feedback/submit', {
+    await fetch('/api/platform/apps/fde/feedback/submit', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         step: currentStep,

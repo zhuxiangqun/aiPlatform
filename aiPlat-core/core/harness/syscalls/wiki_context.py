@@ -62,7 +62,7 @@ def sys_wiki_context(question: str, *, wiki_titles: List[str] = None,
         from core.harness.knowledge.wiki_fts import fts_search
         fts5_matches = [r["title"] for r in fts_search(question, limit=5)]
     except ImportError:
-        pass
+        pass  # noqa: optional-dependency
 
     # Semantic search via wiki retriever
     results = sys_wiki_retrieve(question, wiki_titles=wiki_titles, top_k=top_k,
@@ -250,3 +250,4 @@ def _apply_field_level_security(
         return results
     except Exception:
         return items
+

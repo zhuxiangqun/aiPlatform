@@ -117,7 +117,7 @@ async def stream_events(run_id: str):
                             logging.warning(str(e), exc_info=True)
                     yield f"data: {_json.dumps({'type': 'heartbeat'})}\n\n"
         except asyncio.CancelledError:
-            pass
+            pass  # noqa: normal-cancellation
         finally:
             EventBus.unsubscribe(run_id)
 
@@ -130,3 +130,4 @@ async def stream_events(run_id: str):
             "X-Accel-Buffering": "no",
         },
     )
+

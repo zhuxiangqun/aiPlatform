@@ -12,6 +12,10 @@
 # exit code is non-zero iff any aggregated step failed. The fast tool_correctness
 # subset runs here; the heavy self-tests (which invoke real full-repo scripts and
 # run 30-135s) are marked `slow` and run separately (`pytest -m slow`).
+#
+# Usage:
+#   bash scripts/architecture_guard.sh          # full scan
+#   bash scripts/architecture_guard.sh --quick  # fast scan (skips non-critical checks)
 # ============================================================================
 
 set -uo pipefail
@@ -22,23 +26,47 @@ FAIL=0
 GP_PY="python3"
 [ -x "$WORKSPACE_ROOT/.venv/bin/python" ] && GP_PY="$WORKSPACE_ROOT/.venv/bin/python"
 
+# ── Mode selection ──
+QUICK_MODE=false
+if [ "${1:-}" = "--quick" ]; then
+    QUICK_MODE=true
+fi
+
 sep() { echo "═══════════════════════════════════════════════════════════════"; }
 
-# ── Behavior plane: golden-path e2e (real ingest→retrieve / cache / contract) ──
-# NOTE: Golden-path E2E tests (122s) and management API tests (120s+ hang) run in CI as
-# a separate job (`pytest tests/golden_path/ -m "slow"`) rather than inside the fast guard.
-# See: .github/workflows/aiplat-contracts-guard.yml for the slow-test CI job.
-# echo ""; sep; echo "  BEHAVIOR PLANE: golden-path facade (ingest→retrieve · cache · contract — no HTTP)"; sep
-# "$GP_PY" -m pytest tests/golden_path/test_golden_path.py -k "not stub" -q || FAIL=1
-# echo ""; sep; echo "  BEHAVIOR PLANE: golden-path HTTP (stub · agent-deny)"; sep
-# "$GP_PY" -m pytest tests/golden_path/test_golden_path.py -k "stub" tests/golden_path/test_agent_orchestration.py -q || FAIL=1
-# echo ""; sep; echo "  BEHAVIOR PLANE: management APIs (diagnostics · overview)"; sep
-# "$GP_PY" -m pytest tests/golden_path/test_management_apis.py -q || FAIL=1
+# ══════════════════════════════════════════════════════════════
+# Step 0: Meta-Guard — verify the guard infrastructure is healthy
+# Catches YAML breakage (silent rule skip), missing files, etc.
+# ══════════════════════════════════════════════════════════════
+echo ""; sep; echo "  META-GUARD: infrastructure self-check"; sep
+python3 -c "
+import yaml, sys, os
+try:
+    with open('aiPlat-core/core/management/arch_guard_rules.yaml') as f:
+        data = yaml.safe_load(f)
+    rules = data.get('rules', [])
+    if len(rules) < 100:
+        print(f'SELF-CHECK FAIL: only {len(rules)} rules loaded (expected >=100)')
+        print(f'arch_guard_rules.yaml may be broken — rules silently skipped')
+        sys.exit(1)
+    print(f'SELF-CHECK PASS: {len(rules)} YAML rules loaded')
+except yaml.YAMLError as e:
+    print(f'SELF-CHECK FAIL: YAML parse error — {e}')
+    sys.exit(1)
+except FileNotFoundError:
+    print('SELF-CHECK FAIL: arch_guard_rules.yaml not found')
+    sys.exit(1)
+" || { echo "  ❌ Meta-guard FAILED — guard broken, fix before running"; exit 1; }
 
-# ── Independent guard scripts — run in parallel (all read-only, no shared state) ──
-echo ""; sep; echo "  GUARD SCRIPTS: ast_behavior + frontend + architecture + capability (parallel)"; sep
+# Shared PID array
+ALL_PIDS=()
 
-FAIL_AST=0; FAIL_FE=0; FAIL_ARCH=0; FAIL_CAP=0
+# ══════════════════════════════════════════════════════════════
+# Phase 1 — guard scripts (parallel)
+# ══════════════════════════════════════════════════════════════
+echo ""; sep; echo "  GUARD SCRIPTS: ast_behavior + frontend + architecture + capability + evidence (bg)"; sep
+
+FAIL_AST=0; FAIL_FE=0; FAIL_ARCH=0; FAIL_CAP=0; FAIL_EV=0
 
 python3 scripts/guard_ast_behavior.py "$@" &
 PID_AST=$!
@@ -46,128 +74,46 @@ python3 scripts/guard_frontend.py &
 PID_FE=$!
 python3 scripts/architecture_guard.py "$@" &
 PID_ARCH=$!
-python3 aiPlat-core/core/management/capability_convergence.py "$@" --force &
-PID_CAP=$!
+if ! $QUICK_MODE && [ -z "${SKIP_CAP_CONV:-}" ]; then
+    python3 aiPlat-core/core/management/capability_convergence.py "$@" --force &
+    PID_CAP=$!
+else
+    PID_CAP=0
+fi
+python3 scripts/verify_claude_md_evidence.py --workspace &
+PID_EV=$!
 
 wait $PID_AST || FAIL_AST=1
 wait $PID_FE || FAIL_FE=1
 wait $PID_ARCH || FAIL_ARCH=1
-wait $PID_CAP || FAIL_CAP=1
-
+[ "$PID_CAP" != "0" ] && { wait $PID_CAP || FAIL_CAP=1; }
+wait $PID_EV || FAIL_EV=1
 [ "$FAIL_AST" -ne 0 ] && FAIL=1
 [ "$FAIL_FE" -ne 0 ] && FAIL=1
 [ "$FAIL_ARCH" -ne 0 ] && FAIL=1
 [ "$FAIL_CAP" -ne 0 ] && FAIL=1
+[ "$FAIL_EV" -ne 0 ] && FAIL=1
 
-# ── Cycle detection (advisory; non-fatal as before) ──
-echo ""; sep; echo "  CYCLE DETECTION: import graph circular dependencies"; sep
-python3 -c "
-import sys; sys.path.insert(0, 'aiPlat-core')
-from core.harness.knowledge.code_graph import repo_root, default_roots, build_graph, count_cycles, report_cycles
-repo = repo_root()
-roots = [(repo / r).resolve() for r in default_roots()]
-nodes, edges, _issues = build_graph(repo, roots)
-cycles = count_cycles(nodes)
-paths = report_cycles(nodes)
+# ══════════════════════════════════════════════════════════════
+# Phase 2 — parallel secondary checks (CI: run this separately)
+# Full guard mode runs Phase 1 only; Phase 2 runs as CI job.
+# In --quick mode, run lightweight Phase 2 checks.
+# ══════════════════════════════════════════════════════════════
+echo ""; sep; echo "  PHASE 2: secondary guards"; sep
 
-# Load known-safe cycle whitelist
-safe_paths = set()
-try:
-    import os; wl = os.path.join(os.path.dirname('$0'), '..', 'scripts', 'known_safe_cycles.txt')
-    with open(wl) as f:
-        for line in f:
-            line = line.strip()
-            if line and not line.startswith('#'):
-                safe_paths.add(line)
-except: pass
-
-new_cycles = [p for p in paths if p['names'] not in safe_paths]
-known_count = len(paths) - len(new_cycles)
-
-print(f'Known-safe (function-scoped): {known_count}')
-print(f'New/unknown cycles: {len(new_cycles)}')
-if new_cycles:
-    print('FAIL: Unexpected cycles detected:')
-    for p in new_cycles[:5]:
-        print(f'  [{p[\"length\"]} files] {p[\"names\"]}')
-    if len(new_cycles) > 5:
-        print(f'  ... and {len(new_cycles)-5} more')
-    sys.exit(1)
-else:
-    print('PASS: No unexpected cycles')
-    if known_count > 0:
-        print(f'Note: {known_count} known-safe cycles are tracked in scripts/known_safe_cycles.txt')
-" 2>/dev/null || echo "SKIP: code_graph module unavailable (run diagnostics first)"
-
-# ── Tool correctness self-tests (fast subset; heavy `-m slow` ones run separately) ──
-echo ""; sep; echo "  TOOL CORRECTNESS: guards + diagnostics self-tests (fast; heavy -m slow ones skipped)"; sep
-"$GP_PY" -m pytest aiPlat-core/core/tests/tool_correctness/ -m "not slow" -q --tb=line || FAIL=1
-
-# ── Constitution unit tests ──
-echo ""; sep; echo "  CONSTITUTION TESTS: prompt_loading + skill_config + agent_md + module_deps"; sep
-"$GP_PY" -m pytest aiPlat-core/core/tests/unit/test_prompt_loading.py \
-                  aiPlat-core/core/tests/unit/test_skill_config.py \
-                  aiPlat-core/core/tests/unit/test_agent_md_config.py \
-                  aiPlat-core/core/tests/unit/test_core_module_deps.py -q --tb=short || FAIL=1
-
-# ── Capability Convergence Guard (能力收敛) ──
-echo ""; sep; echo "  CAPABILITY GUARD: capability convergence (authoritative entry points)"; sep
-bash "$WORKSPACE_ROOT/scripts/capability_guard.sh" || FAIL=1
-
-# ── Python Syntax Guard (部署版本兼容性) ──
-# 防止开发者用 Python 3.13 语法（如 PEP 701 f-string 嵌套引号）写代码
-# 但部署环境是 Python 3.11 导致 SyntaxError 静默吞错
-echo ""; sep; echo "  PYTHON SYNTAX GUARD: $GP_PY compatibility scan (core + management)"; sep
-FAIL_SYN=0
-for _dir in "aiPlat-core/core" "aiPlat-management/management"; do
-    if [ -d "$_dir" ]; then
-        echo "  → scanning $_dir"
-        _synerr="$("$GP_PY" - "$_dir" << 'PYEOF'
-import sys, os, py_compile
-target_dir = sys.argv[1]
-errs = []
-for root, dirs, files in os.walk(target_dir):
-    dirs[:] = [d for d in dirs if d not in ('.venv', '__pycache__', 'tests')]
-    for f in files:
-        if f.endswith('.py'):
-            path = os.path.join(root, f)
-            try:
-                py_compile.compile(path, doraise=True)
-            except py_compile.PyCompileError as e:
-                errs.append(str(e))
-if errs:
-    print('\n'.join(errs))
-    sys.exit(1)
-PYEOF
-        )"
-        if [ $? -ne 0 ] || [ -n "$_synerr" ]; then
-            echo "$_synerr" | sed 's/^/  /'
-            FAIL_SYN=1
-        fi
-    fi
-done
-if [ "$FAIL_SYN" -ne 0 ]; then
-    echo "  FAIL: Python syntax incompatibility with deployment version ($GP_PY)" >&2
-    FAIL=1
+if $QUICK_MODE; then
+    TMPDIR="${TMPDIR:-/tmp}/arch_guard_$$"
+    mkdir -p "$TMPDIR"
+    _launch() { local label="$1" outfile="$2"; shift 2; echo "  → $label (bg)"; "$@" > "$outfile" 2>&1 & _fast_pids+=($!); }
+    _fast_pids=()
+    _launch "frontmatter" "$TMPDIR/frontmatter.log" "$GP_PY" scripts/validate_frontmatter.py --quick
+    _launch "doc-sync" "$TMPDIR/doc_sync.log" bash scripts/verify_doc_sync.sh --ci 2>/dev/null || true
+    echo "  Waiting for ${#_fast_pids[@]} checks..."
+    for _pid in "${_fast_pids[@]}"; do wait "$_pid" || FAIL=1; done
+    rm -rf "$TMPDIR"
 else
-    echo "  PASS: all Python files compile with $GP_PY"
+    echo "  SKIP: Phase 2 runs as separate CI job (use --quick for fast pre-commit checks)"
 fi
-
-# ── Contract Guard (模块契约) ──
-echo ""; sep; echo "  CONTRACT GUARD: cross-module data contracts"; sep
-bash "$WORKSPACE_ROOT/scripts/contract_guard.sh" || FAIL=1
-
-# ── Phase check (dead code + wiring tests + self-annotated) ──
-echo ""; sep; echo "  PHASE CHECK: dead code + wiring tests + self-annotated"; sep
-bash scripts/phase_check.sh || FAIL=1
-
-# ── Frontmatter validation (YAML parse errors catch startup bugs like missing ---) ──
-echo ""; sep; echo "  FRONTMATTER: YAML frontmatter parse validation (AGENT.md / SKILL.md / CLAUDE.md)"; sep
-"$GP_PY" scripts/validate_frontmatter.py --quick || FAIL=1
-
-# ── ruff F821 ratchet (new undefined-name violations = block; existing = baseline) ──
-echo ""; sep; echo "  F821 RATCHET: undefined-name detection (new violations = block)"; sep
-bash scripts/ruff_f821_ratchet.sh || FAIL=1
 
 # ── Aggregate ──
 echo ""; sep

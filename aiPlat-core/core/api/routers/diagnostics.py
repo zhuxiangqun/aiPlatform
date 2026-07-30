@@ -81,7 +81,7 @@ def _llm_sync_progress(run_id: str, **kwargs):
                          (run_id, val))
         conn.commit()
     except Exception:
-        pass
+        logging.getLogger(__name__).debug('_llm_sync_progress failed', exc_info=True)
     finally:
         conn.close()
 
@@ -117,7 +117,7 @@ def _llm_cleanup_old(max_keep: int = 10):
         """)
         conn.commit()
     except Exception:
-        pass
+        logging.getLogger(__name__).debug('_llm_cleanup_old failed', exc_info=True)
     finally:
         conn.close()
 
@@ -172,7 +172,7 @@ def _select_llm_review_targets(max_files: int = 15) -> List[tuple]:
                         if lines > 500:
                             candidates.add((fpath, lines))
                     except Exception:
-                        pass
+                        logging.getLogger(__name__).debug('_select_llm_review_targets failed', exc_info=True)
 
     # Rule 2: Core engine files regardless of size
     core_patterns = ["harness/execution/", "harness/knowledge/", "harness/syscalls/",
@@ -188,7 +188,7 @@ def _select_llm_review_targets(max_files: int = 15) -> List[tuple]:
                         lines = len(open(fpath).readlines())
                         candidates.add((fpath, lines))
                     except Exception:
-                        pass
+                        logging.getLogger(__name__).debug('_select_llm_review_targets failed', exc_info=True)
 
     # Sort by line count desc, take top N
     result = sorted(candidates, key=lambda x: -x[1])[:max_files]
@@ -395,8 +395,8 @@ def _append_diag_history(result):
         logging.warning(str(e), exc_info=True)
 
 
-# Load persisted cache on module init — DISABLED: always rebuild fresh
-# _load_diag_cache()
+# Load persisted cache on module init — now enabled for trend continuity
+_load_diag_cache()
 
 router = APIRouter()
 
@@ -700,7 +700,7 @@ def _register_health_checks():
                     except Exception:
                         cost_stats = {}
                 except Exception:
-                    pass
+                    logging.getLogger(__name__).debug('run failed', exc_info=True)
                 try:
                     from core.harness.execution.snapshot import SNAPSHOT_ROOT
                     import os as _os_snap
@@ -708,7 +708,7 @@ def _register_health_checks():
                         snap_total = sum(1 for _ in _os_snap.listdir(SNAPSHOT_ROOT)
                                          if _.endswith('.json'))
                 except Exception:
-                    pass
+                    logging.getLogger(__name__).debug('code failed', exc_info=True)
                 return HealthResult(
                     module="self_healing", status=status, severity=Severity.MEDIUM,
                     message=f"{rate:.0f}% success ({successes}/{attempts} heals, {skips} skips, {escalations} escalations)",
@@ -1107,6 +1107,64 @@ async def run_architecture_guard():
         "summary": report.summary,
         "violations": report.violations,
     }
+
+
+# ── Auto-diagnostic scheduler entry point ─────────────────────
+
+async def run_all_diagnostics() -> Dict[str, Any]:
+    """Run all diagnostic checks, persist cache + append to history.
+
+    Called by server.py auto-diagnostic scheduler (every 300s).
+    Results are persisted to disk so trend charts survive restarts.
+    """
+    import time as _time, uuid as _uuid, os as _os
+
+    repo_root = _os.path.dirname(_os.path.dirname(_os.path.dirname(
+        _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))))))
+
+    global _DIAG_CACHE, _DIAG_CACHE_TS
+
+    start = _time.time()
+    run_id = f"diag-{_uuid.uuid4().hex[:12]}"
+
+    # Run all registered health checks
+    try:
+        from core.harness.health.registry import get_registry
+        reg = get_registry()
+        report = await reg.run_all(repo_root)
+    except Exception:
+        # Fallback: run the architecture guard
+        try:
+            from core.management.arch_guard_base import get_arch_registry
+            reg = get_arch_registry()
+            report = reg.run_all(repo_root)
+        except Exception as e:
+            return {"run_id": run_id, "error": str(e)[:200]}
+
+    elapsed_ms = int((_time.time() - start) * 1000)
+
+    # Build result
+    result = {
+        "run_id": run_id,
+        "started_at": _time.strftime("%Y-%m-%dT%H:%M:%SZ", _time.gmtime(start)),
+        "overall_score": getattr(report, "overall_score", 0),
+        "overall_grade": getattr(report, "overall_grade", "?"),
+        "duration_ms": elapsed_ms,
+        "pass": getattr(report, "pass", 0),
+        "warn": getattr(report, "warn", 0),
+        "fail": getattr(report, "fail", 0),
+        "categories": getattr(report, "categories", {}),
+    }
+
+    # Persist to cache (for /diagnostics/latest + /diagnostics/summary)
+    _DIAG_CACHE = result
+    _DIAG_CACHE_TS = _time.time()
+    _save_diag_cache()
+
+    # Append to rolling history (for /diagnostics/history trend chart)
+    _append_diag_history(result)
+
+    return result
 
 
 @router.get("/diagnostics/latest", response_model=Dict[str, Any])
@@ -1729,6 +1787,67 @@ async def get_wiki_content_quality(limit: int = 20, collection: str = "default")
         return {"alerts": [], "trends": [], "stats": {}, "error": str(e)[:200]}
 
 
+@router.get("/diagnostics/doc-sync-status", response_model=Dict[str, Any])
+async def get_doc_sync_status():
+    """
+    综合文档同步检查：verify_docs.py 12 条规则 + check_doc_sync.sh 依赖映射。
+
+    Returns: { "verify_docs": {...}, "code_doc_map": {...}, "capability_gap": {...} }
+    """
+    import subprocess, sys, os as _os, re
+
+    workspace = _os.path.dirname(_os.path.dirname(_os.path.dirname(
+        _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))))))
+
+    result = {"verify_docs": {}, "code_doc_map": {}, "capability_gap": {}}
+
+    # 1. verify_docs.py — 12 rules comprehensive check
+    try:
+        r = subprocess.run(
+            [sys.executable, _os.path.join(workspace, "scripts", "verify_docs.py")],
+            capture_output=True, text=True, timeout=30,
+        )
+        output = r.stdout + r.stderr
+        errors = re.search(r'阻断性错误:\s*(\d+)', output)
+        warnings = re.search(r'告警:\s*(\d+)', output)
+        result["verify_docs"] = {
+            "exit_code": r.returncode,
+            "errors": int(errors.group(1)) if errors else 0,
+            "warnings": int(warnings.group(1)) if warnings else 0,
+            "status": "PASS" if r.returncode == 0 else "FAIL",
+        }
+    except Exception as e:
+        result["verify_docs"] = {"error": str(e)[:200]}
+
+    # 2. check_doc_sync.sh — code→doc dependency mapping
+    try:
+        r2 = subprocess.run(
+            ["bash", _os.path.join(workspace, "scripts", "check_doc_sync.sh")],
+            capture_output=True, text=True, timeout=15,
+        )
+        result["code_doc_map"] = {
+            "output": r2.stdout[:3000],
+            "has_hits": "需要检查文档同步" in r2.stdout,
+        }
+    except Exception as e:
+        result["code_doc_map"] = {"error": str(e)[:200]}
+
+    # 3. verify_capability_consistency.py — stats table vs section counts
+    try:
+        r3 = subprocess.run(
+            [sys.executable, _os.path.join(workspace, "scripts", "verify_capability_consistency.py")],
+            capture_output=True, text=True, timeout=15,
+        )
+        result["capability_gap"] = {
+            "consistent": r3.returncode == 0,
+            "output": r3.stdout[:500],
+        }
+    except Exception as e:
+        result["capability_gap"] = {"error": str(e)[:200]}
+
+    return result
+
+
 # ── Entropy Trend Awareness ──────────────────────────────────────────────────
 
 @router.get("/diagnostics/entropy/trends", response_model=Dict[str, Any])
@@ -1939,7 +2058,7 @@ async def get_model_tier_status():
             result["status"]["override_active"] = True
             result["status"]["overridden_model"] = _model_overrides["_global"]
     except Exception:
-        pass
+        logging.getLogger(__name__).debug('get_model_tier_status failed', exc_info=True)
 
     # ── Phase 14 B/C: Cost estimates + health metrics per tier ──
     result["cost"] = {}
@@ -1995,13 +2114,55 @@ async def get_model_tier_status():
                             "degraded" if fail_rate <= 0.5 else "critical"
                         )
                     except Exception:
-                        pass
+                        logging.getLogger(__name__).debug('code failed', exc_info=True)
         except Exception:
-            pass  # infra health tracker unavailable
+            logging.getLogger(__name__).debug('Infra health tracker unavailable', exc_info=True)
     except Exception:
-        pass  # YAML config unreadable
+        logging.getLogger(__name__).debug('YAML config unreadable', exc_info=True)
 
     return result
+
+
+# ── PR #4: ControlProfile status ──
+
+@router.get("/diagnostics/profile/status", response_model=Dict[str, Any])
+async def get_profile_status():
+    """Return current ControlProfile active status + preset list."""
+    try:
+        from core.harness.meta.profile_registry import (
+            ProfileRegistry, get_active_profile, list_profile_overrides,
+            get_last_failure_domain,
+        )
+        reg = ProfileRegistry.instance()
+        active = get_active_profile()
+        return {
+            "active": active.to_dict(),
+            "presets": reg.list_presets(),
+            "task_hints": reg._task_hints,
+            "session_override": list_profile_overrides(),
+            "last_failure_domain": get_last_failure_domain(),
+        }
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@router.post("/diagnostics/profile/switch", response_model=Dict[str, Any])
+async def switch_profile(name: str = "default"):
+    """Switch active ControlProfile at session level."""
+    try:
+        from core.harness.meta.profile_registry import (
+            ProfileRegistry, set_profile_override, clear_profile_override,
+        )
+        if name == "reset":
+            clear_profile_override()
+            return {"status": "reset"}
+        reg = ProfileRegistry.instance()
+        if reg.get_preset(name):
+            set_profile_override(name)
+            return {"status": "switched", "profile": name}
+        return {"error": f"Unknown profile '{name}'", "available": reg.list_presets()}
+    except Exception as e:
+        return {"error": str(e)}
 
 
 # ── Phase 17: Code entropy scan ──
@@ -2180,7 +2341,7 @@ def _get_recent_kb_queries(days: int = 30) -> List[str]:
                 if q and len(q) > 3:
                     queries.append(q)
             except Exception:
-                pass
+                logging.getLogger(__name__).debug('_get_recent_kb_queries failed', exc_info=True)
         return queries
     finally:
         conn.close()
@@ -2334,6 +2495,305 @@ def _build_markdown_report(data: dict, collection: str, days: int = 30) -> str:
     return "\n".join(lines)
 
 
+# ── v2.9: Knowledge Drift Status API ──
+
+@router.get("/diagnostics/drift-status", response_model=Dict[str, Any])
+async def get_drift_status(collection: str = "", refresh: bool = False):
+    """Knowledge drift scanner — reports which Wiki pages have stale source documents.
+
+    Returns per-collection drift ratio, stale page lists, and suggested actions.
+    Pass ?refresh=true to force a fresh scan (otherwise uses cached last result).
+    """
+    import time as _time
+    from core.harness.knowledge.staleness_monitor import StalenessMonitor
+
+    # Simple cache (5 min TTL)
+    if not refresh and _drift_cache["data"] and _time.time() - _drift_cache["ts"] < 300:
+        return _drift_cache["data"]
+
+    monitor = StalenessMonitor()
+    if collection:
+        report = monitor.scan_collection(collection)
+        reports = [report]
+    else:
+        reports = monitor.scan_all_collections()
+
+    stale_pages = []
+    total_stale = 0
+    total_scanned = 0
+    collections = {}
+
+    for r in reports:
+        total_stale += r.stale_count
+        total_scanned += r.scanned_pages
+        if r.stale_count > 0:
+            collections[r.collection_id] = r.stale_count
+        for page in r.affected_pages:
+            stale_pages.append({
+                "collection": r.collection_id,
+                "title": page["title"],
+                "stale_sources": page["stale_sources"],
+                "total_sources": page["total_sources"],
+            })
+
+    drift_ratio = round(total_stale / max(1, total_scanned), 3)
+    health = "good" if drift_ratio < 0.1 else ("warning" if drift_ratio < 0.3 else "critical")
+
+    result = {
+        "status": health,
+        "drift_ratio": drift_ratio,
+        "total_scanned": total_scanned,
+        "total_stale": total_stale,
+        "collections": collections,
+        "stale_pages": stale_pages[:20],
+        "suggested_actions": [
+            "POST /api/core/diagnostics/drift-rebuild — 自动重建所有 stale 页面",
+            "GET /diagnostics — 管理端漂移仪表盘查看详情",
+        ] if total_stale > 0 else [],
+        "checked_at": _time.time(),
+    }
+    _drift_cache["data"] = result
+    _drift_cache["ts"] = _time.time()
+    return result
+
+
+@router.post("/diagnostics/drift-rebuild", response_model=Dict[str, Any])
+async def trigger_drift_rebuild(max_pages: int = 10):
+    """Auto-rebuild stale pages by re-running the ontology engine on drifted sources.
+
+    Iterates stale pages, extracts their source KB doc_ids, and runs
+    auto_ontology_pipeline_for_doc on each. Limited to max_pages for safety.
+    """
+    from core.harness.knowledge.staleness_monitor import StalenessMonitor
+    from core.harness.knowledge.wiki_engine import read_page
+
+    monitor = StalenessMonitor()
+    reports = monitor.scan_all_collections()
+
+    rebuilt = 0
+    errors = 0
+    details = []
+
+    for report in reports:
+        for page in report.affected_pages[:max_pages]:
+            title = page["title"]
+            cid = report.collection_id or "default"
+
+            # Extract KB doc_ids from stale sources
+            stale_refs = page.get("stale_sources", [])
+            doc_ids = [s.replace("kb:", "") for s in stale_refs if s.startswith("kb:")]
+
+            # Find file path from KB database
+            for doc_id in doc_ids:
+                try:
+                    import sqlite3 as _sq
+                    kb_db = os.path.expanduser(os.getenv("AIPLAT_HOME", "~/.aiplat")) + "/kb/tenants/default/kb.sqlite3"
+                    conn = _sq.connect(kb_db)
+                    row = conn.execute("SELECT source_uri FROM documents WHERE doc_id=?", (doc_id,)).fetchone()
+                    conn.close()
+                    if row and row[0] and os.path.exists(row[0]):
+                        from core.api.core_facade import auto_ontology_pipeline_for_doc
+                        r = await auto_ontology_pipeline_for_doc(doc_id, row[0], cid)
+                        if r["status"] == "completed":
+                            rebuilt += 1
+                        else:
+                            errors += 1
+                        details.append({"title": title, "doc_id": doc_id, "status": r["status"]})
+                        break  # One source per page is enough
+                except Exception as e:
+                    errors += 1
+                    details.append({"title": title, "error": str(e)[:100]})
+
+    return {
+        "status": "completed",
+        "rebuilt": rebuilt,
+        "errors": errors,
+        "details": details[:20],
+    }
+
+
+_drift_cache: Dict[str, Any] = {"data": None, "ts": 0}
+
+
+# ── v2.9: Config Drift Detection ──
+
+@router.get("/diagnostics/config-drift", response_model=Dict[str, Any])
+async def get_config_drift():
+    """Agent config drift: compare AGENT.md declarations vs runtime behavior."""
+    from core.harness.evaluation.config_drift_detector import ConfigDriftDetector
+    detector = ConfigDriftDetector()
+    summary = detector.get_drift_summary()
+    entries = detector.scan_all_agents()
+    return {
+        "status": "completed",
+        "summary": summary,
+        "entries": [{"agent_id": e.agent_id, "type": e.drift_type,
+                     "declared": e.declared, "actual": e.actual,
+                     "severity": e.severity} for e in entries[:20]],
+    }
+
+
+# ── v2.9: System Health Index ──
+
+@router.get("/diagnostics/system-health", response_model=Dict[str, Any])
+async def get_system_health():
+    """Unified system health index: aggregates OntologyAudit, Staleness, ConfigDrift, EvalMetrics."""
+    from core.harness.evaluation.system_health import SystemHealthCalculator
+    calc = SystemHealthCalculator()
+    report = calc.compute()
+    knows = calc.knows_its_limits() if hasattr(calc, 'knows_its_limits') else {}
+    sh_available = False
+    sh_enabled = False
+    try:
+        from core.harness.evaluation.self_heal_gate import SelfHealGate
+        sh_available = True
+        gate = SelfHealGate()
+        sh_enabled = getattr(gate, 'enabled', False)
+    except Exception:
+        logging.getLogger(__name__).debug('get_system_health failed', exc_info=True)
+    return {
+        "status": "completed",
+        "health_index": report.health_index,
+        "grade": report.grade,
+        "trend": report.trend,
+        "trend_delta": report.trend_delta,
+        "sub_scores": {k: {"score": v.score, "label": v.label, "detail": v.detail}
+                       for k, v in report.sub_scores.items()},
+        "recommendations": report.recommendations,
+        "self_healing_available": sh_available,
+        "self_healing_enabled": sh_enabled,
+        "knows_its_limits": knows.get("within_capability_score", None),
+        "limit_assessment": knows.get("assessment", "Unknown"),
+    "checked_at": report.checked_at,
+}
+
+
+@router.get("/diagnostics/self-heal-log", response_model=Dict[str, Any])
+async def get_self_heal_log(limit: int = 20):
+    """Recent self-healing actions taken by the SelfHealGate."""
+    from core.harness.evaluation.self_heal_gate import SelfHealGate
+    gate = SelfHealGate()
+    logs = gate.get_heal_log(limit)
+    return {"status": "completed", "total": len(logs), "entries": logs}
+
+
+# ── v2.10: Awareness Log API ──
+
+@router.get("/diagnostics/awareness-log", response_model=Dict[str, Any])
+async def get_awareness_log(days: int = 7, severity: str = "all"):
+    """Signals that the system detected but chose not to auto-fix (SUGGEST/REJECT decisions)."""
+    from core.harness.evaluation.self_heal_gate import _get_awareness_logs
+    entries = _get_awareness_logs(days, severity)
+    return {"status": "completed", "total": len(entries), "entries": entries}  # noqa: F821 — endpoint defined above
+
+
+# ── v3.0: Self-Heal Pending Review API (Human-in-the-loop) ──
+
+@router.get("/diagnostics/self-heal/pending", response_model=Dict[str, Any])
+async def get_pending_heal_fixes():
+    """Pending self-heal fixes awaiting human approval (review-first mode)."""
+    from core.harness.evaluation.self_heal_gate import SelfHealGate
+    gate = SelfHealGate()
+    pending = gate.list_pending()
+    return {"status": "completed", "total": len(pending), "entries": pending,
+            "auto_mode": gate._auto_mode}
+
+
+@router.post("/diagnostics/self-heal/approve/{fix_id}", response_model=Dict[str, Any])
+async def approve_heal_fix(fix_id: str):
+    """Approve and execute a pending self-heal fix."""
+    from core.harness.evaluation.self_heal_gate import SelfHealGate
+    gate = SelfHealGate()
+    result = gate.approve_fix(fix_id)
+    return result
+
+
+@router.post("/diagnostics/self-heal/reject/{fix_id}", response_model=Dict[str, Any])
+async def reject_heal_fix(fix_id: str, reason: str = ""):
+    """Reject a pending self-heal fix with optional reason."""
+    from core.harness.evaluation.self_heal_gate import SelfHealGate
+    gate = SelfHealGate()
+    result = gate.reject_fix(fix_id, reason)
+    return result
+
+
+@router.get("/diagnostics/constraint-check", response_model=Dict[str, Any])
+async def get_constraint_check():
+    """Validate AGENT.md/YAML configurations for stale references."""
+    from core.harness.evaluation.constraint_validator import ConstraintValidator
+    validator = ConstraintValidator()
+    issues = validator.scan_all()
+    critical = [i for i in issues if i.level == "CRITICAL"]
+    high = [i for i in issues if i.level == "HIGH"]
+    warnings = [i for i in issues if i.level == "WARNING"]
+    return {
+        "status": "completed",
+        "total_issues": len(issues),
+        "critical_count": len(critical),
+        "high_count": len(high),
+        "warning_count": len(warnings),
+        "issues": [{"source": i.source, "type": i.issue_type, "level": i.level,
+                    "detail": i.detail, "suggestion": i.suggestion}
+                   for i in issues[:30]],
+    }
+
+
+# ── v2.9: Ontology Audit API ──
+
+@router.get("/diagnostics/adoption-metrics", response_model=Dict[str, Any])
+async def get_adoption_metrics():
+    """Employee adoption and AI platform engagement metrics.
+
+    Tracks agent usage, GrillingBridge engagement, HITL behavior,
+    and resistance hotspots for people-side governance.
+    """
+    from core.harness.evaluation.adoption_metrics import AdoptionTracker
+    tracker = AdoptionTracker()
+    report = tracker.compute_metrics()
+    return {
+        "status": "completed",
+        "report": {
+            "total_agent_calls": report.total_agent_calls,
+            "total_users": report.total_users,
+            "active_users_7d": report.active_users_7d,
+            "grill_trigger_rate": report.grill_trigger_rate,
+            "grill_completion_rate": report.grill_completion_rate,
+            "hitl_approval_rate": report.hitl_approval_rate,
+            "hitl_rejection_rate": report.hitl_rejection_rate,
+            "adoption_trend": report.adoption_trend,
+            "resistance_hotspots": report.resistance_hotspots,
+            "recommendations": report.recommendations,
+            "computed_at": report.computed_at,
+        },
+    }
+
+@router.get("/diagnostics/ontology-audit", response_model=Dict[str, Any])
+async def get_ontology_audit(domain_id: str = "ai-knowledge"):
+    """Ontology domain audit: class coverage, relation density, state machine activity."""
+    from core.harness.knowledge.ontology_audit import OntologyAuditor
+    auditor = OntologyAuditor()
+    if domain_id == "all":
+        reports = auditor.audit_all_domains()
+        return {"status": "completed", "domains": {r.domain_id: r.to_dict() for r in reports}}
+    report = auditor.audit_domain(domain_id)
+    return {"status": "completed", "domain": domain_id, "report": report.to_dict()}
+
+
+@router.get("/diagnostics/ontology-audit/summary", response_model=Dict[str, Any])
+async def get_ontology_audit_summary():
+    """Quick summary: top orphan classes, worst relation coverage across all domains."""
+    from core.harness.knowledge.ontology_audit import OntologyAuditor
+    auditor = OntologyAuditor()
+    reports = auditor.audit_all_domains()
+    total_orphans = sum(len(r.orphan_classes) for r in reports)
+    total_entities = sum(r.total_entities for r in reports)
+    worst = [{"domain": r.domain_id, "entities": r.total_entities, "orphans": len(r.orphan_classes),
+              "edge_count": r.total_edges, "warnings": r.warnings[:2]} for r in reports if r.orphan_classes or r.warnings]
+    worst.sort(key=lambda x: x["orphans"], reverse=True)
+    return {"status": "completed", "total_entities": total_entities, "total_orphans": total_orphans,
+            "domains_scanned": len(reports), "worst_domains": worst[:10]}
+
+
 # ── Phase 20: Audit trail API ──
 
 @router.get("/diagnostics/audit-trail", response_model=Dict[str, Any])
@@ -2375,7 +2835,7 @@ async def get_audit_trail(
                 if len(steps) >= limit:
                     break
             except Exception:
-                pass
+                logging.getLogger(__name__).debug('get_audit_trail failed', exc_info=True)
         return {"steps": steps, "total": len(steps)}
     finally:
         conn.close()
@@ -2407,7 +2867,7 @@ async def get_audit_tree(step_id: int, days: int = 30):
             try:
                 all_steps.append(_json.loads(r["payload"] or "{}"))
             except Exception:
-                pass
+                logging.getLogger(__name__).debug('get_audit_tree failed', exc_info=True)
 
         tree = _build_audit_tree(step_id, all_steps)
         return {"tree": tree, "total_steps": len(all_steps)}
@@ -2565,7 +3025,7 @@ def _query_audit_trail_for_entity(entity: str) -> List[dict]:
                             "evidence": step.get("evidence", [])[:3],
                         })
                 except Exception:
-                    pass
+                    logging.getLogger(__name__).debug('_query_audit_trail_for_entity failed', exc_info=True)
             return results[:10]
         finally:
             conn.close()
@@ -2600,7 +3060,7 @@ def _get_latest_hallucination_risk(entity: str) -> float:
                         if c:
                             confs.append(float(c))
                 except Exception:
-                    pass
+                    logging.getLogger(__name__).debug('_get_latest_hallucination_risk failed', exc_info=True)
             return round(1.0 - (sum(confs[-10:]) / max(len(confs[-10:]), 1)), 2) if confs else 0.0
         finally:
             conn.close()
@@ -2612,5 +3072,6 @@ try:
     from core.api.routers.diagnostics_capability import router as _cap_router
     router.include_router(_cap_router)
 except ImportError:
-    pass
+    pass  # noqa: optional-dependency
+
 

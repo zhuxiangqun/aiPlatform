@@ -71,7 +71,7 @@ FDE 工作台提供两种执行方式。**工作流模式即 FDE Builder**：选
 3. **展开详情**：点击卡片 → 查看健康数据、MCP 数量、[切换至此] / [删除]
 4. **切换 Profile**：后续所有操作自动带上该客户上下文
 5. **编辑 Profile**：展开后点击 [编辑] → 可修改名称、描述、部署模式
-6. **v2.5+**：选中客户后系统自动通过 LLM 推断行业（如"智能锁安装"→ 安装服务）
+6. 选中客户后系统自动通过 LLM 推断行业（如"智能锁安装"→ 安装服务）
 
 **Pipeline 连接**：
 
@@ -126,7 +126,7 @@ FDE 工作台提供两种执行方式。**工作流模式即 FDE Builder**：选
 | 场景 | 动作 |
 |:---|:---|
 | 客户需求与已有域高度匹配（如 supply-chain `building` 级别） | → 直接进入 ③ |
-| 部分匹配但通过率 <80% | 先加固域数据（知识中心 → 本体模型 → "🔧 修复"），再进入 ③ |
+| 部分匹配但通过率 <80% | 先加固域数据（打开 /infra/ontology（本体模型） → "🔧 修复"），再进入 ③ |
 | 无匹配域 | 新建域本体 → 种子数据 → 域 Skill（额外 2–3 天） |
 
 **判断标准**：
@@ -354,7 +354,7 @@ FDE 工作台提供两种执行方式。**工作流模式即 FDE Builder**：选
 | 没有匹配的域高亮 | 确认 ① 中客户行业已正确设置 |
 | "业务领域"未预填 | 确认 ② 中已点击选中域卡片 |
 | 诊断报告未回显到 ① | 诊断完成后切回 ① → 展开客户看蓝色 badge |
-| POC 回答准确率低 | ② 加固域数据（知识中心 → 本体模型 → "🔧 修复"） |
+| POC 回答准确率低 | ② 加固域数据（打开 /infra/ontology（本体模型） → "🔧 修复"） |
 | 客户不认可方案 | ③ 重新诊断 |
 | 客户是 airgap 环境 | 确认 ⑤ 打包清单包含模型文件 |
 | 质量指标下降 | ⑥ 回滚到上一版本 |
@@ -481,7 +481,7 @@ AI 输出摘要 + 阻塞类型 + 根因 + 严重程度
 | 离线部署包已打包 | Tab ⑤ → 打包 |
 | Agent 状态为 ready | 检查 AGENT.md frontmatter 语法 |
 | 依赖 Skill/Tool 已注册 | 联系开发团队创建或导入 |
-| Workflow 节点拓扑完整 | 用 AI 能力 → Workflow 管理创建 |
+| Workflow 节点拓扑完整 | 用 打开 /core/workflows（Workflow 管理页面）创建 |
 | 样例数据已准备 | ④ → POC 工具箱 → 注入模拟数据 |
 
 > 完整模板及动态占位符详见 [fde-delivery-manual.md](./fde-delivery-manual.md)。
@@ -511,11 +511,11 @@ FDE 八步流程中每个阶段产生标准化的输出文档。对应模板位�
 
 ### 查看已有域
 
-管理端 → 知识中心 → 本体模型 → 查看域卡片（实体数、通过率、Skill 绑定）
+管理端 → 打开 /infra/ontology（本体模型） → 查看域卡片（实体数、通过率、Skill 绑定）
 
 ### 创建新域
 
-1. 管理端 → 知识中心 → 本体模型 → **🤖 智能生成**
+1. 管理端 → 打开 /infra/ontology（本体模型） → **🤖 智能生成**
 2. 输入域名 + 关键词描述（如 `lock-service` + "智能锁 安装工单 故障类型"）
 3. AI 自动生成 YAML → **保存并注册**
 
@@ -525,12 +525,12 @@ FDE 八步流程中每个阶段产生标准化的输出文档。对应模板位�
 # 单个域
 # 通过 ④ POC Tab → 快速数据注入操作
 # 或通过 API 注入
-curl -X POST "http://localhost:8002/api/core/fde/poc/inject" \
+curl -X POST "http://localhost:8003/api/platform/apps/fde/poc/inject" \
   -H "Content-Type: application/json" \
   -d '{"domain": "supply-chain"}'
 
 # 所有域（通过多次 API 调用或 POC Tab 加载通用模板）
-curl -X POST "http://localhost:8002/api/core/fde/poc/inject" \
+curl -X POST "http://localhost:8003/api/platform/apps/fde/poc/inject" \
   -H "Content-Type: application/json" \
   -d '{"profile": "poc-general"}'
 ```

@@ -11,8 +11,8 @@ from typing import Any, Dict, List, Optional
 from apps.common_schemas import StatusResponse, ListResponse, ItemResponse
 
 from fastapi import APIRouter, HTTPException
-from core.harness.kernel.runtime import get_kernel_runtime
-from core.harness.syscalls.llm import sys_llm_generate
+from core.api.core_facade import get_kernel_runtime
+from core.api.core_facade import sys_llm_generate
 from core.schemas_prompt_app import (
     PromptAppTemplateCreate, PromptAppTemplateUpdate,
     PromptPreviewRequest, PromptPreviewTextRequest, PromptOptimizeRequest,
@@ -39,7 +39,7 @@ async def _record_changeset(store, name: str, target_id: str, status: str = "suc
 def _verify_template_signature(template_id: str) -> Optional[bool]:
     """Best-effort signature verification for prompt app templates."""
     try:
-        from core.management.prompt_app_manager import PromptAppManager
+        from core.api.core_facade import PromptAppManager
         from core.security.skill_signature_gate import get_trusted_skill_pubkeys_map
         import asyncio
         mgr = PromptAppManager()
@@ -235,7 +235,7 @@ async def preview_template(template_id: str, req: PromptPreviewRequest):
         up = up.replace(ph, str(v))
 
     try:
-        from core.harness.utils.model_injection import create_selected_adapter, best_model_for_purpose
+        from core.api.core_facade import best_model_for_purpose, create_selected_adapter
         model_name = req.model or best_model_for_purpose("default")
         model = create_selected_adapter(model_name=model_name)
         messages = []
@@ -265,7 +265,7 @@ async def preview_text(req: PromptPreviewTextRequest):
         up = up.replace("$" + "{" + k + "}", str(v))
 
     try:
-        from core.harness.utils.model_injection import create_selected_adapter, best_model_for_purpose
+        from core.api.core_facade import best_model_for_purpose, create_selected_adapter
         model_name = req.model or best_model_for_purpose("default")
         model = create_selected_adapter(model_name=model_name)
         messages = []
@@ -308,7 +308,7 @@ async def run_prompt(req: PromptRunRequest):
         up = up.replace("$" + "{" + k + "}", str(v))
 
     try:
-        from core.harness.utils.model_injection import create_selected_adapter, best_model_for_purpose
+        from core.api.core_facade import best_model_for_purpose, create_selected_adapter
         model_name = req.model or best_model_for_purpose("default")
         model = create_selected_adapter(model_name=model_name)
         messages = []
@@ -339,7 +339,7 @@ async def optimize_prompt(req: PromptOptimizeRequest):
         if not prompt_text:
             raise HTTPException(status_code=400, detail="No prompt text to optimize")
 
-        from core.harness.utils.model_injection import create_selected_adapter, best_model_for_purpose
+        from core.api.core_facade import best_model_for_purpose, create_selected_adapter
         from core.harness.utils.prompt_loader import _async_prompt_resolve
         model_name = req.model or best_model_for_purpose("default")
         model = create_selected_adapter(model_name=model_name)
@@ -691,7 +691,7 @@ async def sign_prompt_app_template(template_id: str, req: Dict[str, Any]):
         raise HTTPException(status_code=400, detail="private_key is required")
 
     try:
-        from core.management.prompt_app_manager import PromptAppManager
+        from core.api.core_facade import PromptAppManager
         mgr = PromptAppManager()
     except Exception:
         raise HTTPException(status_code=503, detail="PromptAppManager not available")

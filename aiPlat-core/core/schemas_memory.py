@@ -22,6 +22,12 @@ class LongTermMemorySearchRequest(BaseModel):
     limit: int = 10
 
 
+class LongTermMemoryUpdateRequest(BaseModel):
+    content: Optional[str] = None
+    key: Optional[str] = None
+    metadata: Optional[Dict[str, Any]] = None
+
+
 class MessageCreateRequest(BaseModel):
     role: str
     content: str

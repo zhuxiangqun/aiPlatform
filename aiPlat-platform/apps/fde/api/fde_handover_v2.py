@@ -2,13 +2,14 @@
 from __future__ import annotations
 
 from typing import Any, Dict
-from apps.fde.schemas import FdeStatusResponse, FdeListResponse, FdeItemResponse
+from apps.fde.api.schemas import FdeStatusResponse, FdeListResponse, FdeItemResponse
 
 
 from fastapi import APIRouter, HTTPException, Query
 
 import json, time, os
 from datetime import datetime, timezone
+import logging
 
 router = APIRouter(tags=["fde-handover-v2"])
 
@@ -42,7 +43,7 @@ async def handover_transfer(body: Dict[str, Any]):
 
     # 1) Switch profile ownership — mark client_admin as owner
     try:
-        from core.harness.kernel.profile import get_profile_manager
+        from core.api.core_facade import get_profile_manager
         pm = get_profile_manager()
         cfg = pm.get(spec_id) if hasattr(pm, "get") else None
         if cfg:
@@ -183,7 +184,7 @@ async def list_health_schedules(spec_id: str = Query("")):
                             if rec.get("id") not in [r.get("id") for r in results]:
                                 results.append(rec)
                 except Exception:
-                    pass
+                    logging.getLogger(__name__).debug('list_health_schedules failed', exc_info=True)
 
     return {"schedules": results, "total": len(results)}
 
@@ -230,10 +231,10 @@ async def create_training_sandbox(body: Dict[str, Any]):
 
     # Try to create isolated Profile
     try:
-        from core.harness.kernel.profile import get_profile_manager
+        from core.api.core_facade import get_profile_manager
         pm = get_profile_manager()
     except Exception:
-        pass
+        logging.getLogger(__name__).debug('create_training_sandbox failed', exc_info=True)
 
     _training_sandboxes[sandbox_id] = sandbox
     return {"status": "created", **sandbox}
@@ -254,5 +255,5 @@ async def list_training_sandboxes():
                         if rec.get("id") not in [r.get("id") for r in results]:
                             results.append(rec)
                 except Exception:
-                    pass
+                    logging.getLogger(__name__).debug('list_training_sandboxes failed', exc_info=True)
     return {"sandboxes": results, "total": len(results)}

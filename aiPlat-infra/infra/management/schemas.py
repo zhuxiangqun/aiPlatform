@@ -291,6 +291,9 @@ class ModelInfo:
     tags: List[str] = None
     capabilities: List[str] = None
     size: Optional[int] = None  # model file size in bytes (for resource-aware scoring)
+    quantization: Optional[str] = None  # "Q4_K_M" | "Q8_0" | "F16" | None (API 模型)
+    is_downloaded: bool = True  # 是否已下载到本地（API 模型永远 True）
+    supports_gpu: bool = False  # 是否支持当前平台 GPU 加速
     created_at: datetime = None
     updated_at: datetime = None
     

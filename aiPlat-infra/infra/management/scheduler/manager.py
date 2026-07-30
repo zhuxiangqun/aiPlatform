@@ -12,6 +12,7 @@ from ..base import ManagementBase, Status, HealthStatus, Metrics, DiagnosisResul
 from ..schemas import QuotaInfo, PolicyInfo, TaskInfo, AutoscalingPolicy
 from datetime import datetime, timezone, timezone
 import time
+import logging
 
 
 def get_real_gpu_info() -> Dict[str, Any]:
@@ -662,3 +663,60 @@ class SchedulerManager(ManagementBase):
             List[Dict]: Autoscaling history
         """
         return []
+
+    async def get_model_resources(self) -> Dict[str, Any]:
+        """获取当前模型资源占用详情（接入 ModelManager 和 Ollama 进程监控）。
+        
+        返回每个已注册模型的资源占用信息。
+        """
+        result = {
+            "models": [],
+            "total_models": 0,
+            "estimated_ram_used_bytes": 0,
+            "updated_at": datetime.now(timezone.utc).timestamp(),
+        }
+
+        try:
+            from infra.management.model.manager import ModelManager, collect_platform_resources
+            mgr = ModelManager()
+            mgr._load_all_models()
+            res = collect_platform_resources()
+
+            # 检测运行的 Ollama 进程
+            ollama_running = False
+            try:
+                import subprocess
+                r = subprocess.run(["pgrep", "-f", "llama-server"], capture_output=True, text=True, timeout=3)
+                ollama_running = bool(r.stdout.strip())
+            except Exception:
+                pass  # noqa: intentional — best-effort non-critical operation
+
+            for m in mgr._models.values():
+                if not hasattr(m, 'type') or m.type.value != "chat":
+                    continue
+                size_gb = m.size / 1e9 if m.size else 0
+                result["models"].append({
+                    "name": m.name,
+                    "provider": m.provider or "?",
+                    "source": m.source.value if hasattr(m, 'source') else "?",
+                    "enabled": m.enabled,
+                    "size_bytes": m.size or 0,
+                    "size_gb": round(size_gb, 1),
+                    "is_downloaded": getattr(m, 'is_downloaded', True),
+                    "supports_gpu": getattr(m, 'supports_gpu', False),
+                    "quantization": getattr(m, 'quantization', None) or "",
+                })
+
+            result["total_models"] = len(result["models"])
+            result["ollama_running"] = ollama_running
+            result["gpu_vendor"] = res.gpu_vendor or "none"
+            result["gpu_compatible"] = res.gpu_compatible
+            result["ram_bytes"] = res.ram_bytes
+            result["vram_bytes"] = res.vram_bytes
+            result["ram_gb"] = round(res.ram_bytes / 1e9, 1)
+            result["vram_gb"] = round(res.vram_bytes / 1e9, 1) if res.vram_bytes else 0
+
+        except Exception as e:
+            result["error"] = str(e)[:200]
+
+        return result

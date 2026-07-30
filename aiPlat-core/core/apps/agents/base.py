@@ -80,7 +80,30 @@ class BaseAgent(IAgent):
         """Execute agent with given context"""
         self._status = AgentStatus.RUNNING
         self._current_context = context
-        
+
+        # ── Semantic Gateway pre-intercept: unified validation for all agent interactions ──
+        try:
+            from core.harness.infrastructure.semantic_gateway import route, GatewayRequest
+            agent_task = str(getattr(context, 'task', '') or
+                           (getattr(context, 'messages', [{}]) or [{}])[-1].get('content', '') or
+                           getattr(context, 'user_input', ''))
+            if agent_task:
+                req = GatewayRequest(
+                    action="agent_execute",
+                    payload={"task": agent_task[:500]},
+                    context={"session_id": getattr(context, 'session_id', ''),
+                             "agent_type": type(self).__name__},
+                )
+                routing = await route(req)
+                if not routing.allowed:
+                    return AgentResult(
+                        success=False,
+                        output=f"Agent execution blocked by Semantic Gateway: {routing.reason}",
+                        metadata={"blocked": True, "gateway": "semantic_gateway"},
+                    )
+        except ImportError:
+            pass  # noqa: optional-dependency
+
         try:
             # Prepare initial state
             from ...harness.interfaces import LoopState, LoopStateEnum
@@ -405,3 +428,4 @@ def create_agent(
         return OperatorAgent(config=config, **kwargs)
     else:
         return BaseAgent(config=config, **kwargs)
+

@@ -25,4 +25,5 @@ try:
 
     __all__.extend(["LocalComputeManager", "KubernetesComputeManager"])
 except ImportError:
-    pass
+    pass  # noqa: optional-dependency
+

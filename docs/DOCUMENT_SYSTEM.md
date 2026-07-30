@@ -18,7 +18,7 @@ language: zh-CN
 workspace-root/
 │
 ├── CLAUDE.md                          ← 工作区兜底规约（AI 编程行为约束）
-├── AIPLAT_CAPABILITIES.md            ← 唯一能力清单（当前 699 项，代码交叉验证）
+├── AIPLAT_CAPABILITIES.md            ← 唯一能力清单（当前计数见该文件统计表）
 ├── AIPLAT_ROADMAP.md                 ← 商业化路线图（评分 + 基线）
 ├── README.md                         ← 部署手册
 │
@@ -194,7 +194,7 @@ workspace-root/
 
 ### 3.1 规则
 
-1. **所有数字声明必须有单一出处**。例如能力数 `699` 的唯一出处是 `AIPLAT_CAPABILITIES.md`。
+1. **所有数字声明必须有单一出处**。例如能力数（见 AIPLAT_CAPABILITIES.md 当前计数） 的唯一出处是 `AIPLAT_CAPABILITIES.md`。
 
 2. **非出处文档必须引用出处**。例如 `AIPLAT_ROADMAP.md` 写能力数时，不裸写数字，而是写 "见 AIPLAT_CAPABILITIES.md 当前计数"。
 
@@ -217,7 +217,7 @@ workspace-root/
 
 | 声明 | 出处 | 验证命令 | 当前值 |
 |------|------|---------|:--:|
-| 能力总数 | `AIPLAT_CAPABILITIES.md` | `grep -c '✅' AIPLAT_CAPABILITIES.md` | 699 |
+| 能力总数 | `AIPLAT_CAPABILITIES.md` | `grep -c '✅' AIPLAT_CAPABILITIES.md` | 当前计数见该文件 |
 | Engine Skills | `engine/skills/*/SKILL.md` | `ls engine/skills/*/SKILL.md \| wc -l` | 44 |
 | HookPhase 枚举 | `hook_manager.py:15` | `grep -c '= "' hook_manager.py \| head -1` | 20 |
 | Arch Guard 规则 | `arch_guard_rules.yaml` | `grep -c '^  - id:' arch_guard_rules.yaml` | 172 |

@@ -7,7 +7,7 @@ from fastapi import APIRouter, HTTPException, Request
 from core.api.deps import actor_from_http
 from core.api.utils.governance import ui_url
 from core.governance.verification import apply_autosmoke_result, autosmoke_job_id, get_resource_verification, mark_resource_pending
-from core.harness.kernel.runtime import get_kernel_runtime
+from core.api.core_facade import get_kernel_runtime
 import logging
 from apps.common_schemas import StatusResponse, ListResponse, ItemResponse
 
@@ -62,7 +62,7 @@ async def run_autosmoke(request: Dict[str, Any], http_request: Request):
     except Exception as e:
         logging.warning(str(e), exc_info=True)
 
-    from core.harness.smoke import enqueue_autosmoke
+    from core.api.core_facade import enqueue_autosmoke
 
     async def _on_complete(job_run: Dict[str, Any]):
         await apply_autosmoke_result(

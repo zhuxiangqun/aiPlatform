@@ -153,7 +153,7 @@ class RagEvaluator:
             from ragas.metrics import faithfulness, answer_relevancy, context_precision, context_recall  # noqa: F401
             self._ragas_available = True
         except ImportError:
-            pass
+            pass  # noqa: optional-dependency
 
     async def evaluate_sample(self, sample: EvalSample) -> EvalReport:
         """Evaluate a single sample: retrieve → generate → score."""
@@ -258,7 +258,7 @@ class RagEvaluator:
                 _llm = _DeepSeekChatOpenAI._get_cls()(model=_model, api_key=_api_key, base_url=_base_url, temperature=0.0, n=1)
                 _wrapped_llm = LangchainLLMWrapper(_llm)
             except ImportError:
-                pass
+                pass  # noqa: optional-dependency
 
         # Use local sentence-transformers model for embeddings (avoids OpenAI API dependency)
         _embeddings = _get_or_create_local_embeddings()
@@ -330,3 +330,4 @@ def get_rag_evaluator() -> RagEvaluator:
     if _evaluator is None:
         _evaluator = RagEvaluator()
     return _evaluator
+

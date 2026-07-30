@@ -109,7 +109,7 @@ async def update_agent_role(agent_id: str, body: Dict[str, Any]) -> Dict[str, An
 @router.get("/metrics", response_model=RoleMetricsResponse)
 async def get_role_metrics() -> Dict[str, Any]:
     """Realtime role-specific performance metrics."""
-    from core.harness.finance.value_calculator import get_value_calculator
+    from core.api.core_facade import get_value_calculator
     calc = get_value_calculator()
 
     metrics = {
@@ -189,7 +189,7 @@ def _get_advisor_metrics() -> Dict[str, Any]:
 def _get_orchestrator_metrics() -> Dict[str, Any]:
     """Strategy layer: goals, routing adjustments."""
     try:
-        from core.harness.finance.value_calculator import get_value_calculator
+        from core.api.core_facade import get_value_calculator
         calc = get_value_calculator()
         goals = calc.goal_tracker.get_all()
         lagging = sum(1 for g in goals if g.progress_pct < 0.8)

@@ -85,7 +85,7 @@ def _transcribe_video(video_path: str, up_dir: Path, file_hash: str) -> str:
     try:
         os.remove(audio_path)
     except OSError:
-        pass
+        pass  # noqa: cleanup-best-effort
     return text
 
 
@@ -171,7 +171,7 @@ def _extract_video_from_page_with_playwright(page_url: str, up_dir: Path, file_h
             try:
                 os.remove(audio_path)
             except OSError:
-                pass
+                pass  # noqa: cleanup-best-effort
         except Exception as e:
             logging.debug(str(e), exc_info=True)
 
@@ -282,7 +282,7 @@ def _download_url_to_tenant(tenant_id: str, url: str, prefer_kind: Optional[str]
                 try:
                     os.remove(video_path)
                 except OSError:
-                    pass
+                    pass  # noqa: cleanup-best-effort
             except Exception:
                 transcript_text = ""
 
@@ -600,3 +600,4 @@ def enqueue_doc_ingest(
     threading.Thread(target=_runner, name=f"doc_ingest_{job_id}", daemon=True).start()
 
     return {"tenant_id": st.tenant_id, "collection_id": collection_id, "doc_id": doc_id, "job_id": job_id, "cache_hit": cache_hit, "cache_known": cache_known}
+

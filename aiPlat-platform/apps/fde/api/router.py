@@ -6,7 +6,7 @@ Imports from local copies; core originals retained for backward compat.
 """
 from fastapi import APIRouter
 
-router = APIRouter(prefix="/fde", tags=["fde-platform"])
+router = APIRouter(tags=["fde-platform"])
 
 # ── Local imports (all 20 sub-routers) ──
 from .fde import router as _fde_router
@@ -29,6 +29,9 @@ from .fde_domain_ops import router as _domain_ops_router
 from .fde_maintenance import router as _maintenance_router
 from .fde_quality_summary import router as _quality_router
 from .fde_sessions_compare import router as _compare_router
+from .action_routes import router as _action_router
+from .extraction_routes import router as _extraction_router
+from .rapid_insight import router as _rapid_insight_router
 
 # ── Mount all ──
 router.include_router(_fde_router)
@@ -51,3 +54,6 @@ router.include_router(_domain_ops_router)
 router.include_router(_maintenance_router)
 router.include_router(_quality_router)
 router.include_router(_compare_router)
+router.include_router(_action_router)
+router.include_router(_extraction_router)
+router.include_router(_rapid_insight_router)

@@ -154,7 +154,7 @@ class SystemDiagnostician:
                                             backed = sum(1 for x in ev if x.get("source") and x["source"] not in ("", "LLM推测", "行业普遍痛点"))
                                             sessions.append({"coverage": round(backed / max(len(ev), 1) * 100)})
                                     except Exception:
-                                        pass
+                                        logging.getLogger(__name__).debug('_check_evidence_decline failed', exc_info=True)
 
             if len(sessions) < 3:
                 return {"rule": "evidence_decline", "severity": "info",
@@ -367,7 +367,7 @@ class SystemDiagnostician:
                     "metrics": {"goals_detected": len(goals)},
                 }
         except Exception:
-            pass
+            logging.getLogger(__name__).debug('_check_feedback_pattern failed', exc_info=True)
         return None
 
     # ═══════════════════════════════════════════════════════════════
@@ -405,7 +405,7 @@ class SystemDiagnostician:
                                     sessions_with_meta += 1
                                     has_meta = True
                             except Exception:
-                                pass
+                                logging.getLogger(__name__).debug('_check_confidence_calibration failed', exc_info=True)
                     if e.relation_name == "has_action":
                         has_action = True
 
@@ -426,7 +426,7 @@ class SystemDiagnostician:
                         "metrics": {"determinism": avg_determinism, "delivery_rate": delivery_rate, "bias": bias},
                     }
         except Exception:
-            pass
+            logging.getLogger(__name__).debug('_check_confidence_calibration failed', exc_info=True)
         return None
 
     # ═══════════════════════════════════════════════════════════════
@@ -462,7 +462,7 @@ class SystemDiagnostician:
                     "metrics": {"stale_atoms": stale_count},
                 }
         except Exception:
-            pass
+            logging.getLogger(__name__).debug('_check_knowledge_freshness failed', exc_info=True)
         return None
 
     # ═══════════════════════════════════════════════════════════════
@@ -572,6 +572,25 @@ class SystemHealer:
                     })
                     if resolved:
                         auto_fixed += 1
+                        # PR: SystemHealer → gateway push
+                        try:
+                            from core.gateway import get_enterprise_gateway
+                            import asyncio
+                            gw = get_enterprise_gateway()
+                            asyncio.create_task(gw.send_message("system",
+                                f"[auto-fixed] {fix_name}: 已自动修复 (confidence={confidence:.2f})"))
+                        except Exception:
+                            logging.getLogger(__name__).debug('auto_heal failed', exc_info=True)
+                        # Trigger verification pipeline after auto-fix
+                        try:
+                            from core.harness.ontology_engine.engine import trigger_pipeline
+                            import asyncio
+                            asyncio.create_task(trigger_pipeline("heal_verification", {
+                                "fix_name": fix_name,
+                                "confidence": confidence,
+                            }))
+                        except Exception:
+                            logging.getLogger(__name__).debug('auto_heal failed', exc_info=True)
 
                     # Audit record
                     _record_heal_audit(fix_name, resolved, before, after)
@@ -684,7 +703,7 @@ def _record_heal_audit(rule: str, resolved: bool, before: Dict, after: Dict):
             source_doc_id=str(ts),
         )
     except Exception:
-        pass
+        logging.getLogger(__name__).debug('_record_heal_audit failed', exc_info=True)
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -753,5 +772,5 @@ def _check_memory_compression() -> Optional[Dict]:
                 "metrics": {"compression_ratio": round(avg, 2), "samples": len(stats)},
             }
     except Exception:
-        pass
+        logging.getLogger(__name__).debug('_check_memory_compression failed', exc_info=True)
     return None

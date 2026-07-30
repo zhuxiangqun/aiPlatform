@@ -104,6 +104,45 @@ async def reason(
             from core.harness.execution.loop.command_parser import get_agent_commands, resolve_skill
             cmd = _parse_cmd(task)
             if cmd:
+                # PR #4: /profile command — session-level profile override
+                if cmd.name == "profile":
+                    profile_name = cmd.args[0] if cmd.args else "default"
+                    try:
+                        from core.harness.meta.profile_registry import (
+                            set_profile_override, ProfileRegistry, get_active_profile,
+                        )
+                        reg = ProfileRegistry.instance()
+                        if reg.get_preset(profile_name):
+                            set_profile_override(profile_name)
+                            return f"[Profile] Switched to '{profile_name}' — {reg.get_preset(profile_name).model_tier}"
+                        else:
+                            available = reg.list_presets()
+                            return f"[Profile] Unknown '{profile_name}'. Available: {', '.join(available)}"
+                    except Exception as e:
+                        return f"[Profile] Error: {e}"
+
+                if cmd.name == "profile_status":
+                    try:
+                        from core.harness.meta.profile_registry import (
+                            get_active_profile, list_profile_overrides,
+                        )
+                        profile = get_active_profile()
+                        lines = [
+                            f"**Active Profile**",
+                            f"- model_tier: {profile.model_tier}",
+                            f"- temperature: {profile.temperature}",
+                            f"- orchestration: {profile.orchestration_mode}",
+                            f"- compression_strictness: {profile.compression_strictness}",
+                            f"- gate_strictness: {profile.gate_strictness}",
+                            f"- episodic_injection: {profile.episodic_injection}",
+                        ]
+                        overrides = list_profile_overrides()
+                        if overrides:
+                            lines.append(f"- session_override: {overrides.get('_global', 'none')}")
+                        return "\n".join(lines)
+                    except Exception as e:
+                        return f"[Profile] Error: {e}"
+
                 agent_id = state.context.get("_agent_id", "") or "fde_solution_architect"
                 agent_cmds = get_agent_commands(agent_id)
                 resolved = resolve_skill(cmd, agent_cmds)

@@ -2,9 +2,18 @@
  * API 客户端
  * 
  * 统一的 API 请求客户端，支持所有后端接口
+ * 
+ * 返回约定：apiClient.get/post 直接返回服务端 JSON（raw response body）。
+ * 不包装 { data: T } 的 axios 风格。调用方请直接使用 res.xxx 而非 res.data.xxx。
  */
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
+
+// ── Branded response type: prevents accidental .data access ────────────
+// Accessing .data on a raw API response is a common axios-convention mistake.
+// This branded type ensures TypeScript catches it at compile time.
+declare const API_RAW: unique symbol;
+type ApiResult<T> = T & { readonly [API_RAW]: true };
 
 class ApiClient {
   private baseUrl: string;
@@ -16,7 +25,7 @@ class ApiClient {
   private async request<T>(
     endpoint: string,
     options: RequestInit = {}
-  ): Promise<T> {
+  ): Promise<ApiResult<T>> {
     const url = `${this.baseUrl}${endpoint}`;
     
     const defaultHeaders: HeadersInit = {
@@ -24,12 +33,12 @@ class ApiClient {
     };
     // PR-01: tenant/actor propagation (best-effort; platformization MVP)
     try {
-      const tenantId = localStorage.getItem('active_tenant_id') || '';
+      const tenantId = localStorage.getItem('active_tenant_id') || 'default';
       const actorId = localStorage.getItem('active_actor_id') || 'admin';
       const actorRole = localStorage.getItem('active_actor_role') || 'admin';
       const scopes = localStorage.getItem('active_scopes') || 'kb:read,kb:write';
       const releaseChannel = localStorage.getItem('active_release_channel') || '';
-      const apiKey = localStorage.getItem('active_api_key') || '';
+      const apiKey = localStorage.getItem('active_api_key') || 'apl_dev_local';
       if (tenantId.trim()) (defaultHeaders as any)['X-AIPLAT-TENANT-ID'] = tenantId.trim();
       if (actorId.trim()) (defaultHeaders as any)['X-AIPLAT-ACTOR-ID'] = actorId.trim();
       if (actorRole.trim()) (defaultHeaders as any)['X-AIPLAT-ACTOR-ROLE'] = actorRole.trim();
@@ -84,25 +93,25 @@ class ApiClient {
     }
   }
 
-  async get<T>(endpoint: string): Promise<T> {
+  async get<T>(endpoint: string): Promise<ApiResult<T>> {
     return this.request<T>(endpoint, { method: 'GET' });
   }
 
-  async post<T>(endpoint: string, data?: unknown): Promise<T> {
+  async post<T>(endpoint: string, data?: unknown): Promise<ApiResult<T>> {
     return this.request<T>(endpoint, {
       method: 'POST',
       body: data ? JSON.stringify(data) : undefined,
     });
   }
 
-  async put<T>(endpoint: string, data?: unknown): Promise<T> {
+  async put<T>(endpoint: string, data?: unknown): Promise<ApiResult<T>> {
     return this.request<T>(endpoint, {
       method: 'PUT',
       body: data ? JSON.stringify(data) : undefined,
     });
   }
 
-  async delete<T>(endpoint: string): Promise<T> {
+  async delete<T>(endpoint: string): Promise<ApiResult<T>> {
     return this.request<T>(endpoint, { method: 'DELETE' });
   }
 }
@@ -355,9 +364,9 @@ export const diagnosticsApi = {
     // best-effort identity headers (align apiClient.request)
     const headers: any = {};
     try {
-      const tenantId = localStorage.getItem('active_tenant_id') || '';
-      const actorId = localStorage.getItem('active_actor_id') || '';
-      const actorRole = localStorage.getItem('active_actor_role') || '';
+      const tenantId = localStorage.getItem('active_tenant_id') || 'default';
+      const actorId = localStorage.getItem('active_actor_id') || 'admin';
+      const actorRole = localStorage.getItem('active_actor_role') || 'admin';
       if (tenantId.trim()) headers['X-AIPLAT-TENANT-ID'] = tenantId.trim();
       if (actorId.trim()) headers['X-AIPLAT-ACTOR-ID'] = actorId.trim();
       if (actorRole.trim()) headers['X-AIPLAT-ACTOR-ROLE'] = actorRole.trim();

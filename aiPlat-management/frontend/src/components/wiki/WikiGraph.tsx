@@ -44,9 +44,10 @@ interface WikiGraphProps {
   onSelectPage: (title: string) => void;
   exploreTitles?: Set<string> | null;
   onExitExplore?: () => void;
+  collection?: string;
 }
 
-const WikiGraph: React.FC<WikiGraphProps> = ({ onSelectPage, exploreTitles, onExitExplore }) => {
+const WikiGraph: React.FC<WikiGraphProps> = ({ onSelectPage, exploreTitles, onExitExplore, collection }) => {
   const [data, setData] = useState<GraphData | null>(null);
   const [loading, setLoading] = useState(false);
   const [keyword, setKeyword] = useState('');
@@ -57,7 +58,7 @@ const WikiGraph: React.FC<WikiGraphProps> = ({ onSelectPage, exploreTitles, onEx
     setLoading(true);
     setError('');
     try {
-      let url = '/api/core/wiki/graph?max_nodes=400&source=kb';
+      let url = `/api/core/wiki/graph?max_nodes=400&collection=${collection || 'system_docs'}`;
       if (kw.trim()) url += `&keyword=${encodeURIComponent(kw.trim())}`;
       const res = await fetch(url);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);

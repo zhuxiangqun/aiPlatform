@@ -152,7 +152,7 @@ class StageSandbox:
             try:
                 os.unlink(input_file)
             except OSError:
-                pass
+                pass  # noqa: cleanup-best-effort
 
     def _write_worker(self) -> str:
         """Write sandbox worker script to a temp location and return path."""
@@ -337,7 +337,7 @@ class DockerSandbox(StageSandbox):
             try:
                 os.unlink(input_file)
             except OSError:
-                pass
+                pass  # noqa: cleanup-best-effort
 
 
 def create_sandbox(stage_config: Any, **kwargs) -> StageSandbox:
@@ -358,3 +358,4 @@ __all__ = [
     "SandboxResult",
     "create_sandbox",
 ]
+

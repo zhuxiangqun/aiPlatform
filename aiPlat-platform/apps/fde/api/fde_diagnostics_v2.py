@@ -5,10 +5,11 @@ import json
 from datetime import datetime, timezone, timedelta
 from collections import defaultdict
 from typing import Any, Dict, List
-from apps.fde.schemas import FdeStatusResponse, FdeListResponse, FdeItemResponse
+from apps.fde.api.schemas import FdeStatusResponse, FdeListResponse, FdeItemResponse
 
 
 from fastapi import APIRouter, HTTPException, Query
+import logging
 
 router = APIRouter(tags=["fde-diagnostics-v2"])
 
@@ -31,7 +32,7 @@ async def fde_trends(
     term dictionary growth, and readiness score distribution.
     """
     try:
-        from core.harness.ontology_engine.graph_index import GraphIndex
+        from core.api.core_facade import GraphIndex
 
         fd = GraphIndex.load("fde-delivery")
         now = datetime.now(timezone.utc)
@@ -84,7 +85,7 @@ async def fde_trends(
                             md = json.loads(meta_node.entity_name)
                             readiness = md.get("readiness_score", 0)
                         except Exception:
-                            pass
+                            logging.getLogger(__name__).debug('fde_trends failed', exc_info=True)
 
             sessions_by_bucket[bucket_key]["sessions"] += 1
             if has_action:
@@ -136,7 +137,7 @@ async def fde_trends(
                 cumulative += term_buckets[bk]
                 term_trends.append({"bucket": bk, "new_terms": term_buckets[bk], "cumulative": cumulative})
         except Exception:
-            pass
+            logging.getLogger(__name__).debug('code failed', exc_info=True)
 
         # ── District distribution ──
         industries = defaultdict(int)
@@ -185,7 +186,7 @@ async def fde_search(
     seen = set()
 
     try:
-        from core.harness.ontology_engine.graph_index import GraphIndex
+        from core.api.core_facade import GraphIndex
         import time as _time_us
 
         # ── 1. Search fde-delivery sessions ──
@@ -243,7 +244,7 @@ async def fde_search(
                             "ts": 0,
                         })
             except Exception:
-                pass
+                logging.getLogger(__name__).debug('fde_search failed', exc_info=True)
 
         # ── 4. Search evidence ──
         if scope in ("all", "evidence"):
@@ -321,7 +322,7 @@ async def fde_alerts(
       - high_gaps: > 3 unbacked concepts
     """
     try:
-        from core.harness.ontology_engine.graph_index import GraphIndex
+        from core.api.core_facade import GraphIndex
 
         fd = GraphIndex.load("fde-delivery")
         now = datetime.now(timezone.utc)
@@ -365,7 +366,7 @@ async def fde_alerts(
                         "detail": f"No activity since {dt.strftime('%Y-%m-%d')} ({(now - dt).days}d)",
                     })
             except (ValueError, OSError):
-                pass
+                pass  # noqa: cleanup-best-effort
 
             # Check for low evidence
             for neighbor_id, edge in neighbors:
@@ -390,7 +391,7 @@ async def fde_alerts(
                                     "detail": f"{kg} unbacked concepts",
                                 })
                         except Exception:
-                            pass
+                            logging.getLogger(__name__).debug('code failed', exc_info=True)
 
             if session_alerts:
                 severity_order = {"error": 0, "warning": 1, "info": 2}
@@ -508,12 +509,26 @@ async def fde_capabilities():
                     {"name": "validate", "endpoint": "GET /fde/validate", "label": "8项E2E连通测试", "maturity": "production"},
                 ],
             },
+            "l6_autonomy": {
+                "description": "L6 Autonomous Capabilities — goal decomposition, auto-deploy, external discovery",
+                "capabilities": [
+                    {"name": "abstract_goal_decomposer", "module": "abstract_goal_decomposer.py", "label": "模糊目标→LLM+Ontology拆解→子Goal→依赖规划→进度评估", "maturity": "production"},
+                    {"name": "goal_dependency_graph", "module": "goal_dependency_graph.py", "label": "子目标拓扑排序(复用PipelineEngine依赖层算法)", "maturity": "production"},
+                    {"name": "goal_progress_evaluator", "module": "goal_progress_evaluator.py", "label": "收敛检测+停滞自动replan", "maturity": "production"},
+                    {"name": "deploy_engine", "module": "deploy_engine.py", "label": "沙箱→灰度→push→构建→部署→验证→回滚全闭环", "maturity": "production"},
+                    {"name": "git_pusher", "module": "git_pusher.py", "label": "git push + Docker build + PR创建", "maturity": "production"},
+                    {"name": "discovery_listener", "module": "discovery_listener.py", "label": "外部DataSourceConfig自动发现+监听注册", "maturity": "production"},
+                    {"name": "auto_register", "module": "auto_register.py", "label": "连接测试+本体映射建议+PolicyGate审批", "maturity": "production"},
+                    {"name": "network_discovery", "module": "apps/discovery/", "label": "外部进程: socket扫描→服务指纹→YAML生成", "maturity": "production"},
+                ],
+            },
         },
         "totals": {
-            "endpoints": 12,
-            "domains": 7,
+            "endpoints": 14,
+            "domains": 8,
             "ontology_classes": 25,
-            "maturity_summary": {"production": 28, "beta": 1, "alpha": 1},
-            "philosophy": "从LLM记忆 → 本体驱动 → 交付闭环 → 自优化 → 数字员工 — 企业大脑原型",
+            "maturity_summary": {"production": 36, "beta": 1, "alpha": 1},
+            "philosophy": "从LLM记忆 → 本体驱动 → 交付闭环 → 自优化 → 数字员工 → L6自主能力 — 企业大脑原型",
         },
     }
+

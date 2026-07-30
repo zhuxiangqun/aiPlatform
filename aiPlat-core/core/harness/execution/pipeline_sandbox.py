@@ -249,3 +249,27 @@ def _validate_params(
 def is_deployment_blocked(report: SandboxReport) -> bool:
     u"""Quick check: should deployment be blocked based on sandbox results?"""
     return report.blocked
+
+
+def evaluate_canary_readiness(report: SandboxReport) -> Dict[str, Any]:
+    """Phase 40: Evaluate whether a sandbox report supports canary rollout.
+
+    Returns:
+        {"level": "ready"|"caution"|"blocked", "score": 0-100, "detail": "..."}
+    """
+    if report.total_scenarios == 0:
+        return {"level": "caution", "score": 50, "detail": "no scenarios"}
+    pass_rate = report.passed / report.total_scenarios
+    score = pass_rate * 100
+    if pass_rate >= 0.9:
+        level = "ready"
+    elif pass_rate >= 0.7:
+        level = "caution"
+    else:
+        level = "blocked"
+    return {
+        "level": level,
+        "score": round(score, 1),
+        "detail": f"{report.passed}/{report.total_scenarios} passed",
+        "blocked": report.blocked,
+    }

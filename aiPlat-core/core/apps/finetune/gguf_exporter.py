@@ -147,7 +147,7 @@ class GGUFExporter:
         try:
             os.remove(fp16_path)
         except OSError:
-            pass
+            pass  # noqa: cleanup-best-effort
 
         _logger.info(f"GGUF ready → {output_path}")
         return True
@@ -188,3 +188,4 @@ def _find_quantize(llama_cpp_dir: str) -> str:
     # Try PATH
     found = shutil.which("llama-quantize")
     return found or ""
+

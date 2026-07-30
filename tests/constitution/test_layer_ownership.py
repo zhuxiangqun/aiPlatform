@@ -220,13 +220,13 @@ class TestCoreResponsibilitiesNotInPlatform:
                 f"Found: {text[:200]}"
             )
 
-        # Check kb/poc/mineru_extract.py has boundary blur marker
+        # Check kb/poc/mineru_extract.py is deprecated — now delegates to core
         mineru = PLATFORM_DIR / "kb" / "poc" / "mineru_extract.py"
         if mineru.exists():
             text = _read_head(mineru, 20)
-            assert _has_boundary_marker(text, r"BOUNDARY BLUR"), (
-                f"Platform's MinerU parser must have BOUNDARY BLUR marker "
-                f"acknowledging it should delegate to core's document layer."
+            assert _has_boundary_marker(text, r"DEPRECATED|MIGRATED|BOUNDARY BLUR"), (
+                f"Platform's MinerU parser must have DEPRECATED/MIGRATED marker "
+                f"acknowledging migration to core.harness.document.converters._mineru."
             )
 
 

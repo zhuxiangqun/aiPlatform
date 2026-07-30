@@ -1,5 +1,6 @@
 import React, { useRef, useState } from 'react';
 import { Button, Input, toast } from '../ui';
+import GrillPanel from '../grilling/GrillPanel';
 
 interface ImportBarProps {
   /** Called after successful installation so the parent page can refresh its list. */
@@ -49,6 +50,7 @@ const ImportBar: React.FC<ImportBarProps> = ({ onImported, assetType, alsoScan }
   const [url, setUrl] = useState('');
   const [ref, setRef] = useState('main');
   const [zipFile, setZipFile] = useState<File | null>(null);
+  const [showGrill, setShowGrill] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [localPath, setLocalPath] = useState('~/agent-skills');
   const [loading, setLoading] = useState(false);
@@ -241,7 +243,13 @@ const ImportBar: React.FC<ImportBarProps> = ({ onImported, assetType, alsoScan }
             <div className="flex gap-2 mb-2">
               <Input placeholder="本地目录路径 如 ~/agent-skills" value={localPath} onChange={(e: any) => setLocalPath(e.target.value)}
                 className="flex-1" disabled={installing} />
+              <Button variant="ghost" size="sm" onClick={() => setShowGrill(true)} disabled={installing}>检查冲突</Button>
               <Button variant="primary" onClick={handleLocalInstall} loading={installing}>⬇ 导入</Button>
+            </div>
+          )}
+          {importMode === 'git' && (
+            <div className="flex gap-2 mb-2">
+              <Button variant="ghost" size="sm" onClick={() => setShowGrill(true)} disabled={installing}>检查冲突</Button>
             </div>
           )}
 
@@ -266,6 +274,26 @@ const ImportBar: React.FC<ImportBarProps> = ({ onImported, assetType, alsoScan }
             </div>
           )}
         </div>
+      )}
+
+      {/* v2.9: GrillingBridge — skill install conflict check */}
+      {showGrill && (
+        <GrillPanel
+          mode="modal"
+          entryPoint="skill_install"
+          title="安装前检查"
+          onComplete={(output) => {
+            setShowGrill(false);
+            const flat = output.answers as Record<string, string>;
+            const action = flat['重叠'] || '';
+            if (action === '覆盖安装') {
+              toast.info('将覆盖安装已有 skill');
+            } else if (action === '合并安装') {
+              toast.info('将合并安装已有 skill');
+            }
+          }}
+          onClose={() => setShowGrill(false)}
+        />
       )}
     </>
   );

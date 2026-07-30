@@ -22,14 +22,14 @@
 ### 1.2 健康检查
 
 ```bash
-curl http://localhost:8002/api/core/fde/health
+curl http://localhost:8003/api/platform/apps/fde/health
 ```
 返回 6 维组件状态。重点关注 `context_bus.health`（10 层注入是否正常）和 `model.available`。
 
 ### 1.3 告警扫描
 
 ```bash
-curl "http://localhost:8002/api/core/fde/alerts?min_severity=warning"
+curl "http://localhost:8003/api/platform/apps/fde/alerts?min_severity=warning"
 ```
 5 类告警：blocked（被阻塞）、stale（超 30 天无活动）、zero_evidence（零本体支撑）、high_gaps（超 3 个未匹配概念）、low_quality（质量分 < 40）。
 
@@ -75,7 +75,7 @@ curl "http://localhost:8002/api/core/fde/alerts?min_severity=warning"
 
 ## 三、自演进系统
 
-### 3.1 四层自动运转
+### 3.1 七层自动运转
 
 | 层 | 功能 | 触发方式 | 零 Token 成本 |
 |:--:|------|------|:---:|
@@ -83,6 +83,9 @@ curl "http://localhost:8002/api/core/fde/alerts?min_severity=warning"
 | **诊断层** | 5 条规则跨子系统分析 | 每 10 次 Agent 对话 + 后台每小时 | ✅ |
 | **修复层** | 对已知模式自动修复（confidence ≥ 0.9） | 诊断发现可修复问题后自动 | ✅ |
 | **演化层** | 从知识缺口发现新术语、新方案 | 后台每小时 | ✅ |
+| **目标分解层** | LLM+Ontology 拆解模糊目标→子Goal→依赖规划→分层执行 | WakeScheduler 检测到 `~/.aiplat/goals/pending/` 新文件时 | ❌ (LLM) |
+| **自主部署层** | ToolBootstrap生成Skill→沙箱→灰度→push→构建→部署→验证→回滚 | GoalExecutor 检测到 tool_gap 时自动触发 | ❌ (LLM+构建) |
+| **外部发现层** | socket扫描→服务指纹→DataSourceConfig→监听注册 | AIPLAT_DISCOVERY_ENABLED=true 时后台扫描 | ✅ |
 
 ### 3.2 数据积累预期
 
@@ -94,6 +97,9 @@ curl "http://localhost:8002/api/core/fde/alerts?min_severity=warning"
 | SECI 停滞检测 | 2 周 |
 | 证据退化检测 | ≥ 3 次诊断 |
 | 术语自动发布 | 同一概念 ≥ 3 次出现在知识缺口 |
+| 目标分解 | 首次提交模糊目标后即时生效 |
+| 自主部署 | ≥ 1 次成功 ToolBootstrap 后 |
+| 外部发现 | ≥ 1 次端口扫描后 |
 
 **不需要手动干预。** 系统自动积累，你只需确保服务在运行。
 
@@ -157,7 +163,7 @@ FDE 在 ③ 问题重构 → 澄清对话中产生的知识缺口会自动入库
 
 | 你想… | 方式 |
 |------|------|
-| 可视化编辑域本体 | 管理端 → 知识中心 → **本体编辑器** (`/ontology-editor`) |
+| 可视化编辑域本体 | 管理端 → 知识工厂 → **本体编辑器** (`/ontology-editor`) |
 | 查看域健康 | `GET /wiki/health-trend` |
 | 验证域 YAML | `POST /ontology-editor/domains/{id}/publish`（含自动验证+快照） |
 | 查看本体覆盖 | `GET /fde/sessions/{id}/ontology-coverage` |
@@ -165,6 +171,26 @@ FDE 在 ③ 问题重构 → 澄清对话中产生的知识缺口会自动入库
 | 查看流程瓶颈 | `GET /ontology-editor/domains/{id}/monitor/bottlenecks` |
 | 规则版本管理 | `GET /api/platform/apps/ontology-editor/domains/{id}/rule-versions` |
 
-> 🆕 v2.6 新增：本体编辑器 + 角色视图 + 流程编排 + 流程监控。详见 [知识管理手册](../knowledge-management.md) §3.7。
+> 本体编辑器 + 角色视图 + 流程编排 + 流程监控详见 [知识管理手册](../knowledge-management.md) §3.7。
 
 更多详情参见 [本体引擎手册](../ontology.md)。
+
+---
+
+## 五、能力增强与 FDE 工作流映射
+
+以下新增能力间接提升 FDE 工作流效率。映射到 8 步交付生命周期：
+
+| 新增能力 | 增强的步骤 | 效果 |
+|---------|:---:|------|
+| **抽象目标分解** (Phase 39) | ① 业务认知 → ③ 问题重构 | 模糊需求自动拆解为结构化子目标，预先暴露知识缺口 |
+| **自主部署流水线** (Phase 40) | ⑤ 快速构建 + ⑥ 评测护栏 | 沙箱→灰度5%→25%→100%→git push→部署→健康检查→回滚全自动 |
+| **外部系统发现** (Phase 41) | ② 评估域 | 自动扫描客户网络→发现SQL/API数据源→生成DataSourceConfig→人工点一次确认 |
+| **MoA 多模型推理** (Phase 42) | ③ 问题重构 | N参考引擎并行(高温)+1聚合器合成(低温), 诊断报告多视角交叉验证 |
+| **记忆规则引擎** | ⑧ 运营监控 | 寒暄不存 + 报错必记, 自动过滤低价值对话, 保留关键决策 |
+| **长期记忆CRUD** | ⑧ 运营监控 | 用户可直接查看/编辑/删除长期记忆, 白盒化冷存储 |
+| **品牌基础层注入** | 全流程 | voice/tone/forbidden_words规则自动注入Agent, 确保输出统一 |
+| **Wiki全局索引** | ② 评估域 | 一键生成 index.md, 按分类分组, 每条目含摘要+置信度 |
+| **上下文压缩增强** | 全流程 | 微压缩(micro_compress) + Transcript Guard角色归一化, 减少长会话token消耗 |
+
+当前能力总数见 [`AIPLAT_CAPABILITIES.md`](../../../AIPLAT_CAPABILITIES.md)。各能力启用方式见对应环境变量配置。

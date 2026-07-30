@@ -233,7 +233,7 @@ class StructuredMerger:
             try:
                 nums.append(float(s))
             except ValueError:
-                pass
+                pass  # noqa: cleanup-best-effort
 
         if nums and len(nums) >= 2:
             nums.sort()
@@ -279,3 +279,4 @@ class StructuredMerger:
             return "\n".join(
                 f"## {ch.section}. {ch.title}\n{ch.content}" for ch in chapters
             )
+

@@ -328,6 +328,32 @@ class HallucinationTracker:
             return 0.0
         return round(sum(values) / len(values), 3)
 
+    # ── v2.10: evaluate_text for non-dialog context (sys_file_write) ──
+
+    async def evaluate_text(self, text: str, source: str = "unknown",
+                            doc_id: str = "") -> Dict[str, Any]:
+        """Evaluate standalone text for hallucination. Used by sys_file_write."""
+        if not text or len(text) < 50:
+            return {"risk": "low", "detail": "Text too short"}
+        try:
+            from core.harness.evaluation.nli_engine import NLIEngine
+            engine = NLIEngine()
+            result = await engine.evaluate_claims(text[:2000])
+            risk = "high" if result.get("contradiction_score", 0) > 0.7 else \
+                   "medium" if result.get("contradiction_score", 0) > 0.4 else "low"
+            return {"risk": risk, "detail": str(result.get("summary", ""))[:100],
+                    "score": result.get("contradiction_score", 0)}
+        except Exception:
+            import re
+            patterns = [
+                r"(?i)\b(据不完全统计|权威人士透露|研究表明|数据表明)\b",
+                r"(?i)\b(all|every|always|never|none)\b.*\b(are|is|were)\b",
+            ]
+            matches = sum(1 for p in patterns if re.search(p, text))
+            if matches >= 2:
+                return {"risk": "medium", "detail": f"{matches} suspect patterns"}
+            return {"risk": "low", "detail": "Heuristic pass"}
+
 
 # ── Global singleton ─────────────────────────────────────────────────────────
 

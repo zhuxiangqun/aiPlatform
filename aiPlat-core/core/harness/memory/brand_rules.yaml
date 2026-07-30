@@ -1,0 +1,29 @@
+# Brand Foundation Rules — static voice/tone/format rules (Phase 42).
+# Read-only to AI agents. Human-editable.
+# Injected into Agent context via MemoryManager.build_context().
+# 
+# To activate: AIPLAT_BRAND_RULES_ENABLED=true
+
+voice:
+  style: "professional"
+  tone: "confident, helpful, concise"
+  persona: "expert consultant"
+
+forbidden_words:
+  - "I think"
+  - "maybe"
+  - "probably"
+  - "just"
+
+required_prefixes:
+  - ""
+
+format_rules:
+  prefer_bullets: true
+  max_sentence_length: 40
+  response_language: "zh-CN"
+
+# Optional: audience definition for personalization
+audience:
+  primary: "technical decision makers"
+  secondary: ""

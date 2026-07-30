@@ -84,12 +84,25 @@ const CapabilityBoundary: React.FC<CapabilityBoundaryProps> = ({ industry, onSel
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  const [l6Status, setL6Status] = useState<{[k: string]: boolean}>({});
 
   useEffect(() => {
     fetch('/api/core/diagnostics/capability-boundary')
       .then(r => r.json())
       .then(d => { setData(d); setLoading(false); })
       .catch(e => { setError(e.message); setLoading(false); });
+    // Phase 39-41: fetch L6 capability status from system overview
+    fetch('/api/core/system/overview')
+      .then(r => r.json())
+      .then(d => {
+        const live = d.live || {};
+        setL6Status({
+          goal_decomposition: live.goal_decomposition?.enabled ?? false,
+          deploy_engine: live.deploy_engine?.enabled ?? false,
+          discovery: live.discovery?.enabled ?? false,
+        });
+      })
+      .catch(() => {});
   }, []);
 
   const toggleExpand = (id: string) => {
@@ -156,6 +169,30 @@ const CapabilityBoundary: React.FC<CapabilityBoundaryProps> = ({ industry, onSel
           </div>
         ))}
       </div>
+
+      {/* Phase 39-41: L6 自主能力状态 */}
+      {(l6Status.goal_decomposition !== undefined || l6Status.deploy_engine !== undefined) && (
+        <div className="grid grid-cols-3 gap-3">
+          <div className={`rounded-lg p-3 border ${l6Status.goal_decomposition ? 'bg-purple-500/10 border-purple-500/30' : 'bg-gray-800/30 border-gray-700/30'}`}>
+            <div className={`text-sm font-bold ${l6Status.goal_decomposition ? 'text-purple-400' : 'text-gray-500'}`}>
+              {l6Status.goal_decomposition ? '已启用' : '未启用'}
+            </div>
+            <div className="text-xs text-gray-400 mt-1">目标分解</div>
+          </div>
+          <div className={`rounded-lg p-3 border ${l6Status.deploy_engine ? 'bg-purple-500/10 border-purple-500/30' : 'bg-gray-800/30 border-gray-700/30'}`}>
+            <div className={`text-sm font-bold ${l6Status.deploy_engine ? 'text-purple-400' : 'text-gray-500'}`}>
+              {l6Status.deploy_engine ? '已启用' : '未启用'}
+            </div>
+            <div className="text-xs text-gray-400 mt-1">自主部署</div>
+          </div>
+          <div className={`rounded-lg p-3 border ${l6Status.discovery ? 'bg-purple-500/10 border-purple-500/30' : 'bg-gray-800/30 border-gray-700/30'}`}>
+            <div className={`text-sm font-bold ${l6Status.discovery ? 'text-purple-400' : 'text-gray-500'}`}>
+              {l6Status.discovery ? '已启用' : '未启用'}
+            </div>
+            <div className="text-xs text-gray-400 mt-1">外部发现</div>
+          </div>
+        </div>
+      )}
 
       {/* Domain cards */}
       <div className="space-y-3">

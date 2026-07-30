@@ -8,7 +8,7 @@ language: zh-CN
 
 此文件是 **工作区兜底规约**，用于在系统执行链路中自动推断到 workspace root 时仍然能注入/强制基本规则。
 
-**能力全貌**：参见 [`AIPLAT_CAPABILITIES.md`](./AIPLAT_CAPABILITIES.md)（唯一真相源，726 项能力）
+**能力全貌**：参见 [`AIPLAT_CAPABILITIES.md`](./AIPLAT_CAPABILITIES.md)（唯一真相源，776 项能力）
 
 **架构定位**：企业大脑 — 从"工具集合"到"自演进操作系统"的 8 层架构：
 
@@ -18,7 +18,7 @@ language: zh-CN
 | 2 | 知识创造引擎 | 进程调度 — 动态生成和转化知识 | SECI Bus (POST_LOOP → atom → convergence) |
 | 3 | 上下文注入总线 | 内存管理 — 为运行中的任务提供上下文 | ContextBus (10层注入, 4子系统覆盖) |
 | 4 | 质量评分总线 | 安全机制 — 确保输出符合标准 | Quality Bus (4子系统统一评分 0-100) |
-| 5 | FDE诊断与交付闭环 | Shell — 用户直接交互的界面 | 诊断→证据映射→覆盖率→改进→交付手册→跟踪→评分→对比→基准 |
+| 5 | FDE诊断与交付闭环 | Shell — 用户直接交互的界面 | 诊断→证据映射→覆盖率→改进→交付手册→跟踪→评分→对比→基准→目标分解→自主部署→外部发现 |
 | 6 | 治理工程化 | 系统日志 — 记录和度量所有操作 | 8项治理能力 + 自审计 + 配置驱动 + 术语自播种 |
 | 7 | 自演进操作系统 | 自动更新 — 自我修复和进化 | 四阶段全自动(观察/诊断/修复/演化) + 后台每小时调度 |
 | 8 | 编码宪法 | 内核约束 — 所有操作必须遵守的基本法则 | karpathy_v1 全局默认注入(编码前思考/简洁优先/精准修改/目标驱动) |
@@ -203,7 +203,55 @@ scripts/ruff_f821_baseline.json        ← F821 基线快照（ratchet 对比基
 4a. **路由文件修改后必须跑路由可达性验证**（2026-07 新增）：凡修改 `routers/*.py` 文件（新增/修改/删除路由），必须在验证步骤中额外跑：
    - `bash scripts/architecture_guard.sh`（§77 路由重复检测）— 检测同一路径重复注册
    - 对比前端 `fetch()` 调用的 API 路径与后端注册的路由，确保不 404
-   - `py_compile` 不能替代路由验证 —— 路径错误的代码也能通过编译（案例：`/capability-boundary` vs `/diagnostics/capability-boundary`）
+    - `py_compile` 不能替代路由验证 —— 路径错误的代码也能通过编译（案例：`/capability-boundary` vs `/diagnostics/capability-boundary`）
+4b. **最小验证锚点（强制——每次代码变更后必须执行）**：
+
+    编译通过 ≠ 正确。以下 2 分钟验证必须根据变更范围选择执行，**漏跑 = 改动未完成**。
+
+    ```
+    ① 编译 + 导入（所有变更必跑）
+       $ python3 -m py_compile <所有变更的 .py 文件>
+       $ python3 scripts/verify_imports.py
+       $ npx tsc --noEmit                    # 前端变更时
+
+    ② 模型选择回归（manager.py / model_injection.py / llm_profile.yaml 变更时）
+       $ python3 -c "
+         from core.harness.utils.model_injection import best_model_for_purpose
+         for p in ['chat','code_gen','reasoning','skill_execution','clarify']:
+             m = best_model_for_purpose(p)
+             assert '32b' not in m, f'{p} still picks 32b: {m}'
+         print('✅ 32b blocked')
+       "
+
+    ③ Wiki 同步验证（wiki.py / docs_sync.py / server.py 变更时）
+       $ python3 -c "
+         from core.harness.knowledge.docs_sync import sync_docs_to_wiki
+         r = sync_docs_to_wiki()
+         assert r['errors'] == 0, f'{r[\"errors\"]} errors'
+         print(f'✅ created={r[\"created\"]}, skipped={r[\"skipped\"]}')
+       "
+
+    ④ 前端构建（.tsx / .ts 变更时）
+       $ npm run build
+
+    ⑤ 架构守卫（harness / infra 核心层变更时）
+       $ bash scripts/architecture_guard.sh
+    ```
+
+    **归属矩阵**（按变更文件自动选择必须的验证项）：
+
+    | 变更涉及 | 必须执行 |
+    |---------|:---:|
+    | `model_injection.py` / `manager.py` / `llm_profile.yaml` | ① + ② |
+    | `wiki.py` / `docs_sync.py` / `server.py` | ① + ③ |
+    | 任何 `.tsx` / `.ts` | ① + ④ |
+    | `harness/` / `infra/` 核心模块 | ① + ⑤ |
+    | 跨模块改动 | ① + ② + ③ + ④ |
+
+    **违规信号**：
+    - 改动完成后没跑验证 → **立即中断，先跑验证再继续**
+    - 验证失败 → **立即修复，不推到下一轮**
+    - 超过 3 轮交互没跑编译检查 → 主动提醒用户暂停，先编译
 5. **配置驱动**：核心基础设施（引擎/harness/编排器）的行为必须通过配置字段驱动，禁止硬编码业务概念（如 agent_id 字符串匹配、业务阶段名判断）。任何新增的行为分叉应先问"能不能用已有配置字段表达"。
 6. **代码优先于设计文档**：设计文档描述目标状态，代码才是当前真实状态。基于设计文档做判断时，必须先交叉验证代码是否已有不同形式的实现。两者冲突时以代码为准，设计文档标记为"已过期/设计已用不同方式实现"。审计/对比类任务必须先搜代码再做结论，禁止根据文档推断"缺失"，每次结论必须附带代码搜索证据（命中文件路径+行号）。
 7. **设计文档优先**：架构边界、层间契约、依赖方向等出现冲突时，以 `docs/` 下的设计文档为权威来源。CLAUDE.md 是执行规约，`docs/` 是设计真理。详细原则参见 `docs/README.md`。跨层/跨仓库改动时，必须主动查阅涉及的各层 CLAUDE.md 及 `docs/README.md` 中的边界规则。
@@ -281,7 +329,9 @@ scripts/ruff_f821_baseline.json        ← F821 基线快照（ratchet 对比基
     2. pytest tests/ -v --tb=short                  ← Python 语义检查
     ```
 
-16. **已知例外与永久债务（2026-06 → 2026-07 更新）- 9 条**：
+16. **已知例外与永久债务（2026-06 → 2026-07-29 更新）- 11 条**：
+
+    **✅ CLAUDE.md 证据验证强制执行（2026-07-29）**：本节所有 `（验证：grep ...）` 声明由 `scripts/verify_claude_md_evidence.py` 自动验证。该脚本已集成到 `architecture_guard.sh` Phase 1（并行执行），CI 每次运行时自动检查。
 
     | 编号 | 章节 | 内容 | 分类 |
     |------|------|------|------|
@@ -289,29 +339,33 @@ scripts/ruff_f821_baseline.json        ← F821 基线快照（ratchet 对比基
     | A2 | — | `builder.py` 直导 `core.harness.knowledge.*`（2026-07-18 发现→修复） | **✅ 已修复 (2026-07-18)** — 3 处直导改为 `from core.api.core_facade import`：`DomainRouter`、`capability_health_report`、`build_capability_graph`。CoreFacade 已增加 canonical re-export。 （验证：grep -rn 'from core.harness' aiPlat-platform/apps/fde/orchestration/builder.py → 0） |
     | B | §35 | 2 个 execute 端点（引擎 + 工作区）被标记为 WARNING | **永久告警** — 2 是正确数量，若增至 ≥3 升级为 ERROR |
     | C | §40 | 模型注册/路由迁移 | **✅ 已完成 (2026-06-29)** — `model_router.py` 已删除，`get_model_registry()` 重命名为 `get_model_manager()`，llm.py 和 base.py 迁移到 `model_injection.create_selected_adapter()`。infra `ModelManager.select()` 已确认存在。 |
-    | D | §65 | 4 个检索函数缺 tenant_id | **✅ 已修复 (2026-07-01)** — `KnowledgeQuery` 增加 `tenant_id` 字段，`WikiPageRetriever.retrieve()` tenant_id 不匹配时返回空结果（WARNING→ERROR 阻断），非只读放行。 （验证：grep -rn "tenant_id" aiPlat-core/core/harness/knowledge/retrieval.py | wc -l → >0）  |
+    | D | §65 | 4 个检索函数缺 tenant_id | **✅ 已修复 (2026-07-01)** — `KnowledgeQuery` 增加 `tenant_id` 字段，`WikiPageRetriever.retrieve()` tenant_id 不匹配时返回空结果（WARNING→ERROR 阻断），非只读放行。 |
     | E | §66 | `PipelineStageConfig` 校验识别为已知假阳性 | **假阳性** |
     | F | §65 | CRAG 3 级回退 | **✅ 已实现** — `materials_chat.py:380-498` |
     | G | §65 | WikiCircuitBreaker/DomainRouter 配置 | **✅ 已实现** — `harness/syscalls/retrieval.py:504`，`domain_router.py:26` |
     | H | §67 | ~953 个端点使用 `response_model=dict` 而非 typed schema（~1,064 端点中 111 已类型化） | **✅ 已修复 (2026-07-18)** — 全量 typed 化完成。FDE (76端点, FdeStatusResponse等) + 其余6模块 (134端点, StatusResponse等) + core routers (10端点)。全系统 `response_model=dict` 已清零。arch_guard §83 确保不再增长。 |
     | I | — | Episodic 记忆 LLM 摘要不可达 | **✅ 已修复 (2026-06-29)** — `MemoryManager.__init__` 自动注入 `best_model_for_purpose("doc_llm")`，LLM 摘要路径从不可达变为激活。 （验证：grep -rn "best_model_for_purpose" aiPlat-core/core/harness/memory/manager.py | wc -l → >0）  |
-    | J | — | FeedbackLoops DB 后端未实现 | **✅ 已修复 (2026-06-29)** — `_store_to_db()` 实现 SQLite INSERT/retrieve/delete/cleanup 全路径。 （验证：grep -rn "_store_to_db\|INSERT\|retrieve\|delete\|cleanup" aiPlat-core/core/harness/memory/prod.py | wc -l → >0）  |
+    | J | — | FeedbackLoops DB 后端未实现 | **✅ 已修复 (2026-06-29)** — `_store_to_db()` 实现 SQLite INSERT/retrieve/delete/cleanup 全路径。 |
     | K | — | DatabaseTool 占位符 | **✅ 已修复 (2026-06-29)** — SQLite/PostgreSQL/MySQL 三后端完整实现，默认 SQLite（零依赖），异步驱动可选。 （验证：ls aiPlat-core/core/apps/tools/database.py → 存在）  |
-    | L | — | BrowserTestEngine 缺失 action | **✅ 已修复 (2026-06-29)** — 新增 `select_option`/`scroll`/`hover`/`press_key`/`file_upload` 五个 action。 （验证：grep -c "select_option\|scroll\|hover\|press_key\|file_upload" aiPlat-core/core/harness/testing/browser.py → 5）  |
-    | M | — | 31 个 engine Skill 缺 `execution_type` 字段 | **✅ 已修复 (2026-06-29)** — 全部 31 个 SKILL.md 已添加 `execution_type: prompt`。 （验证：grep -rl "execution_type:" aiPlat-core/core/engine/skills/*/SKILL.md | wc -l → 44）  |
+    | L | — | BrowserTestEngine 缺失 action | **✅ 已修复 (2026-06-29)** — 新增 `select_option`/`scroll`/`hover`/`press_key`/`file_upload` 五个 action。 |
+    | M | — | 31 个 engine Skill 缺 `execution_type` 字段 | **✅ 已修复 (2026-06-29)** — 全部 31 个 SKILL.md 已添加 `execution_type: prompt`。 （验证：grep -rl "execution_type:" aiPlat-core/core/engine/skills/*/SKILL.md | wc -l → 42）  |
     | N | — | architecture_guard.sh 超时 | **✅ 已修复 (2026-06-29)** — 移除 golden_path E2E 测试（→CI 独立 job）+ 并行化 4 个独立脚本 + 排除 .venv/node_modules。 （验证：grep "timeout" scripts/architecture_guard.sh → 已配置）  |
     | O | — | 3 builder stub routers (死代码) | **✅ 已修复 (2026-06-29)** — `builder_projects.py`/`builder_pipeline.py`/`builder_teams.py` 已删除（未挂载的失源码死代码）。 （验证：ls aiPlat-core/core/api/routers/builder_projects.py builder_pipeline.py builder_teams.py 2>/dev/null | wc -l → 0）  |
-    | P | — | 3 platform endpoint stubs | **✅ 已修复 (2026-06-29)** — `ingest-directory`/`kb/watch → （参见 AIPLAT_CAPABILITIES.md 当前计数） Not Implemented + WARNING 日志；`studio/sessions → WARNING 日志。 （验证：grep -rn "NotImplementedError\|WARNING" aiPlat-core/core/api/routers/fde.py | wc -l → >0）  |
+    | P | — | 3 platform endpoint stubs | **✅ 已修复 (2026-06-29)** — `ingest-directory`/`kb/watch → （参见 AIPLAT_CAPABILITIES.md 当前计数） Not Implemented + WARNING 日志；`studio/sessions → WARNING 日志。 |
     | Q | — | EmailNotifier 假成功 | **✅ 已修复 (2026-07-18)** — `core/harness/infrastructure/email_notifier.py`：零依赖 smtplib 实现，支持 TLS/认证，开发模式自动降级为 console log。环境变量：`AIPLAT_SMTP_HOST/PORT/USER/PASS/FROM/TLS`。 （验证：`python3 -c "from core.harness.infrastructure.email_notifier import EmailNotifier; n=EmailNotifier(); assert n.send('test@test.com','test','test')"` → True） |
-    | R | — | 5 infra management 占位符 | **✅ 已修复 (2026-06-29)** — 全部改为 `raise NotImplementedError` + 清晰的接线说明。 （验证：grep -rn "NotImplementedError" aiPlat-infra/infra/management/ | wc -l → >0）  |
-    | S | — | `cancel_pipeline` no-op stub | **✅ 已修复 (2026-06-29)** — 真实实现：append_run_event(cancel_requested) + cancel_queued_run + EventBus.publish。pipeline engine 主循环定期检查 is_cancel_requested()。 （验证：grep -rn "cancel_requested\|cancel_queued_run\|EventBus.publish" aiPlat-core/core/harness/execution/ | wc -l → >0）  |
+    | R | — | 5 infra management 占位符 | **✅ 已修复 (2026-06-29)** — 全部改为 `raise NotImplementedError` + 清晰的接线说明。 |
+    | S | — | `cancel_pipeline` no-op stub | **✅ 已修复 (2026-06-29)** — 真实实现：append_run_event(cancel_requested) + cancel_queued_run + EventBus.publish。pipeline engine 主循环定期检查 is_cancel_requested()。 |
     | T | — | `set_knowledge_providers` no-op stub | **✅ 已修复 (2026-06-29)** — 真实实现：委托 kb_facade → kb_provider 的 4 个 setter 函数 (ingest_fn/query_fn/enqueue_fn/load_doc_kinds_fn)。 （验证：grep -rn "set_knowledge_providers\|kb_facade" aiPlat-core/core/api/core_facade.py | wc -l → >0）  |
-    | U | §40 | `auto_trigger.py` 4 处直接读 `AIPLAT_SFT_*_MODEL` env var | **已知例外 (2026-07-01)** — SFT 训练的目标模型是运维决策。已加 `# noqa: env-legacy` 注释标记，与 arch_guard_rules.yaml §40.2 `grep_exclude` 一致。验证：`grep -c 'env-legacy' auto_trigger.py → 3。 （验证：grep -c 'env-legacy' auto_trigger.py → 3）  |
+    | U | §40 | `auto_trigger.py` 4 处直接读 `AIPLAT_SFT_*_MODEL` env var | **已知例外 (2026-07-01)** — SFT 训练的目标模型是运维决策，与 arch_guard_rules.yaml §40.2 `grep_exclude` 一致。 |
     | V | §76 | diagnostics.py 12 个 `_check_*` 函数引用在列表中但对应的嵌套函数已被移除 — 剩余 2 个模块级函数（`_check_core_runtime` + `_check_doc_sync`）正常通过 HealthCheckRegistry 注册。（2026-07-04 清理：移除 12 条死代码字符串引用。） （验证：grep -c '_check_前缀死代码引用' — 已全部清理） |
     | W | — | workbench/prompt/learning 模块 router 残留（2026-07-18 发现） | **✅ 已修复 (2026-07-18)** — prompt 43→4 端点、learning 17→3 端点去重完成。workbench 0 重叠（routes 完全不同，各自独立）。 （验证：grep -c '@router\.' aiPlat-core/core/api/routers/prompt_*.py → 4, learning_*.py → 3） |
     | X | — | FDE 20 个 router 薄代理（2026-07-18 发现） | **✅ 已修复 (2026-07-18)** — 全量实迁移完成。20 个文件从 `core/api/routers/fde_*` 移至 `platform/apps/fde/api/`，core 文件已删除，`server.py`/`system.py`/`workbench.py` 引用路径已更新。arch_guard §80 现已 clean。 （验证：grep -rn 'from core.api.routers.fde' aiPlat-core/ aiPlat-platform/ --include=*.py | wc -l → 0） |
-    | Y | — | 前端 FDE API 路径未更新（2026-07-18 发现） | **✅ 已修复 (2026-07-18)** — `FdeDashboard.tsx` 4 处 `/api/core/fde` 已全部统一为 `API('/path')` → `/api/platform/apps/fde`，server.py 同时保留 core 挂载向后兼容。 （验证：grep -c '/api/core/fde' FdeDashboard.tsx → 0） |
+    | Y | — | 前端 FDE API 路径未更新（2026-07-18 发现，2026-07-29 修复） | **✅ 已修复 (2026-07-29)** — `FdeDashboard.tsx`、`ClarifyDialog.tsx`、`FloatingFeedback.tsx` 3 处 `/api/core/fde` 已全部统一为 `/api/platform/apps/fde`。 （验证：grep -c '/api/core/fde' aiPlat-management/frontend/src/pages/Diagnostics/ --include='*.tsx' → 0） |
     | Z | — | Phase 0-4 6 个模块（2026-07-18 发现）：`on_error_reflector`(1 producer caller)、`hallucination_tracker`(9 callers)、`parallel_executor`(3 callers)、`gateway`(26 callers)、`implicit_feedback`(3 callers)、`semantic_cache`(11 callers) | **✅ 已修复 (2026-07-18)** — 验证：全部 6 模块有 ≥1 非测试生产调用者。原 xfail 标记为误报（搜索范围仅限 `sys_skill_call`，模块通过其他路径接入）。详见 Core CLAUDE.md §5.30 案例表 （验证：grep -rn 'sys_skill_call' core/ --include='*.py' → 模块通过其他路径接入） |
+    | AA | — | 管理画面菜单按技术层分组 (8组)，任务流跨组断裂；27个诊断工具仅4个在侧边栏，治理仪表盘完全不可见（2026-07-20 发现→修复） | **✅ 已修复 (2026-07-20)** — 菜单重构为5组按任务流分组，13个子区域标题，URL自动展开+高亮，治理/审计/安全/可观测从工具箱提升到侧边栏，FDE工作台移入AI应用工厂，审批中心合并到诊断与治理。能力数从776→788。 （验证：grep -n "group: 'dashboard'" aiPlat-management/frontend/src/components/layout/AppLayout.tsx → 1匹配） |
+    | AB | — | ~496 处 `except Exception: pass` 静默吞错（2026-07-25 审计发现→2026-07-29 彻底清理） | **✅ 已修复 (2026-07-29)** — 225 存量全量治理完毕：14 处 `except Exception: pass` 加入 logging，192 处合法模式（ImportError/OSError/OperationalError/CancelledError/WebSocketDisconnect）加 `# noqa:` 注释，守卫 `scan_silent_except()` 支持 `# noqa:` 豁免。基线 0，architecture_guard.sh 阻断新增。 |
+    | AC | — | 企业级可治理 AI 执行层（Action Registry v3） | **✅ 已完成 (2026-07-29)** — 10 个文件完整实施。`ActionContractModel`（Pydantic v2 + 实体约束 + 安全沙箱）、`AsyncActionRegistry`（7 步异步执行流水线 + 审批回调 + 审计持久化）、`EntityLock`（mutex/stake 双语义锁）、`ActionStore`（aiosqlite + entity_snapshot 不可变审计）、`builtin_actions`（2 业务 + 4 legacy 桥接 + YAML 自助注册）、`builtin_handlers`（4 个可调用 handler）、`engine.py` StateMachine 桥接（零停机 migration）、`action_routes.py` REST API + FDE AcceptTab 前端动作卡片。 |
+    | AD | — | 知识生命周期三层管线（Knowledge Pipeline v3） | **✅ 已完成 (2026-07-30)** — `extractor.py`（DocumentIngestor 分块 + EntityExtractor LLM 9实体10关系抽取 + DraftYamlWriter YAML草稿 + PendingExtractionStore SQLite待审）、`resolver.py`（CrossDomainResolver 三级匹配 精确键/Jaro-Winkler/向量余弦 + 跨域边写入 + registry.json seed）、`retriever.py`（GraphRAGRetriever 实体路由→BFS 2跳子图→定向检索→推理路径 + ActionRegistry 上下文注入）、`extraction_routes.py` REST API（抽取/待审/确认/跨域候选/跨域边/GraphRAG上下文）、FDE 工作台 ① 知识抽取面板。 |
 
     **验证命令（排查已知例外后）**：
     ```bash
@@ -465,12 +519,12 @@ python -c "from core.harness.memory.manager import _re_rank_messages; print('OK'
 | K3 | Phase 4 Agent边界约束注入 | ✅ 已实现 (llm.py _try_inject_boundary_rules + pre-commit hook) |
 | K4 | 种子数据注入端到端 — 需 server 运行 | 待运行时 |
 | K5 | CLAUDE.md §16 已知债务 H (~60+ routes 缺 response_model) | **✅ 已修复 (2026-07-18)** — 全量 typed 化完成 |
-| K6 | sla_monitor 后台线程未调用 start() — server.py 启动时需接线 | **✅ 已修复 (2026-07-19)** — server.py:1370 startup lifecycle 中 start_sla_monitor()。 （验证：grep -rn 'start_sla_monitor' aiPlat-core/server.py → 1） |
-| K7 | process_orchestrator.check_step_completion() 未在 engine.py 侧作用完成后接入 | **✅ 已修复 (2026-07-19)** — engine.py:358 Step 3.5 StateMachine 后立即调用 check_step_completion。 （验证：grep -rn 'check_step_completion' aiPlat-core/core/harness/ontology_engine/engine.py → 1） |
-| K8 | 跨域流程编排 (processes.domains) 预留设计但未实现 | **✅ 已修复 (2026-07-19)** — supply-chain.yaml 新增 cross_domain_quality_trace 跨域流程 + 5 条跨域 properties。 （验证：grep -c 'cross_domain_quality_trace' ~/.aiplat/ontologies/supply-chain.yaml → 1） |
-| K9 | registry.json 场景字段 (priority/maturity/scenarios/industries) 待填充 | **✅ 已修复 (2026-07-19)** — server.py startup 中 refresh_domain_maturity() 自动填充。 （验证：grep -rn 'refresh_domain_maturity' aiPlat-core/server.py → 1） |
-| K10 | OntologyAgent 缺少 Golden Query 评测数据 (eval_score=None) | **✅ 已修复 (2026-07-19)** — golden_queries.yaml 17 条查询 + _load_golden_eval_score()。 （验证：grep -c '_load_golden_eval_score' aiPlat-core/core/harness/knowledge/domain_maturity.py → 1） |
-| K11 | GovernancePipeline 调度未接入 server.py cron 定时任务 | **✅ 已修复 (2026-07-19)** — AIPLAT_GOVERNANCE_CRON_HOURS 默认 24。 （验证：grep -c 'AIPLAT_GOVERNANCE_CRON_HOURS.*24' aiPlat-core/server.py → 1） |
+    | K6 | sla_monitor 后台线程未调用 start() — server.py 启动时需接线 | **✅ 已修复 (2026-07-19)** — server.py startup lifecycle 中 start_sla_monitor()。 |
+    | K7 | process_orchestrator.check_step_completion() 未在 engine.py 侧作用完成后接入 | **✅ 已修复 (2026-07-19)** — engine.py Step 3.5 StateMachine 后立即调用 check_step_completion。 |
+    | K8 | 跨域流程编排 (processes.domains) 预留设计但未实现 | **✅ 已修复 (2026-07-19)** — supply-chain.yaml 新增 cross_domain_quality_trace 跨域流程。 |
+    | K9 | registry.json 场景字段 (priority/maturity/scenarios/industries) 待填充 | **✅ 已修复 (2026-07-19)** — server.py startup 中 refresh_domain_maturity() 自动填充。 |
+    | K10 | OntologyAgent 缺少 Golden Query 评测数据 (eval_score=None) | **✅ 已修复 (2026-07-19)** — golden_queries.yaml 17 条查询 + _load_golden_eval_score()。 |
+    | K11 | GovernancePipeline 调度未接入 server.py cron 定时任务 | **✅ 已修复 (2026-07-19)** — AIPLAT_GOVERNANCE_CRON_HOURS 默认 24。 |
 
 ### 19.3 自动化防护生效
 
@@ -480,4 +534,57 @@ architecture_guard_rules.sh → 边界规则检测 (0/0)
 architecture/boundary_rules.yaml → 数据化规则,可版本控制
 platform/registry/apps.yaml → 模块声明,无硬编码
 ```
+
+---
+
+## 20. 新能力成本阶梯（强制——hermes-agent 借鉴）
+
+新增能力时，必须按以下阶梯从低到高选择实现方式。PR review 时必须确认阶梯未跳过：
+
+| 级别 | 实现方式 | Token 成本 | 适用场景 | 决策规则 |
+|:--:|------|:---:|------|------|
+| 1 | **扩展已有代码** | 0 | 变体能力 | 能用已有模块解决的，不新建文件 |
+| 2 | **CLI 命令 + Skill** | 低 | 配置/状态/基础设施操作 | 能用 shell 命令 + Skill SOP 表达的不写代码 |
+| 3 | **Service-gated Tool** | 中 | 需要结构化 I/O 但非全局需要 | 通过 `check_fn` 条件启用，未配置时为 0 成本 |
+| 4 | **Plugin** | 中 | 第三方/利基/用户特定 | 放 `~/.aiplat/plugins/`，不进入核心树 |
+| 5 | **MCP Server** | 高 | 需要工具形式但非核心基础 | 通过 MCP 协议接入，零核心 schema 占用 |
+| 6 | **Syscall / Core Tool** | 高 | 基础、通用、不可替代 | **最后手段。** 必须在 PR 中论证为什么 1-5 不可行 |
+
+**验证命令**：
+```bash
+# 新增文件超过 3 个 → 检查是否跳过了阶梯
+git diff --stat HEAD | grep "+" | grep -E "new file|create mode" | wc -l
+# > 3 → warning: check footprint ladder
+```
+
+---
+
+## 21. 贡献红线（"我们不要什么"）
+
+以下类型的 PR 会被直接拒绝，无论代码质量如何。提前检查避免往返：
+
+| # | 红线 | 说明 |
+|---|------|------|
+| 1 | **投机性基础设施** | 没有具体消费者的 Hook、回调、抽象层。加一个扩展点容易，删一个依赖它的插件难。必须有真实的、已声明的使用场景 |
+| 2 | **行为配置混入 .env** | `.env` 仅用于凭据 (API key/token/密码)。超时、阈值、特征开关等行为配置放在 YAML `config.yaml` 或 `PipelineStageConfig` |
+| 3 | **新增核心 Syscall 不走阶梯** | 如果 terminal + file + skill 已能完成，说明选错了阶梯。必须在 PR 中论证为什么不能放在 MCP/Plugin 层 |
+| 4 | **Lazy-reading 逃生舱口** | 在指示型工具（Skill、Prompt、Playbook）上不加 `offset/limit` 分页。模型会读第一页然后跳过剩下的 |
+| 5 | **安全修复毁掉功能本身** | 杀死功能目的的安全修剪不是正确的修剪。修复必须保留功能的核心意图 |
+| 6 | **破坏 Prompt Cache 的中途注入** | 改变历史上下文、交换工具集、重建 system prompt 会破坏会话级 prompt cache（双倍 API 调用成本）。这是架构层约束，不是性能优化 |
+| 7 | **无 caller 的新建文件** | 新建 `.py` 文件必须有至少 1 个非测试的生产代码调用者。一次提交超过 3 个无 caller 文件 → CI 直接拒绝 |
+| 8 | **文档未同步的 PR** | 新增 public API/端点/功能 → AIPLAT_CAPABILITIES.md 必须同步更新。`check_doc_sync.sh` 在 pre-commit 中强制执行 |
+
+---
+
+## 22. Prompt Cache 不可侵犯（架构约束）
+
+单次会话的 prompt cache 稳定性是架构层约束，不是性能优化。以下行为**禁止**：
+
+| ❌ 禁止 | ✅ 替代做法 |
+|--------|-----------|
+| 会话中途改变 system prompt 前缀 | 变化量作为 ephemeral overlay 追加到尾部 |
+| 会话中途切换工具集 | 工具集在会话开始时确定，通过 `ControlProfile.tool_whitelist` 控制 |
+| 会话中途重建上下文结构 | 上下文深度/源数通过 `ControlProfile.context_layers` 在会话开始时确定 |
+
+**设计依据**：CacheAwareRouter 通过 D1/D2 离散化哈希键检测变化。如果 cache key 变了，模型提供商侧的缓存前缀失效，后续每次调用都重新计算全量上下文。对抗方式：在 CacheAwareRouter.evaluate() 返回 `freeze=["D1","D2"]` 时，只允许 D3-D6 通过 overlay 追加。详见 `harness/meta/cache_aware_router.py`。
 

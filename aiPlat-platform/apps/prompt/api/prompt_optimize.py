@@ -7,7 +7,7 @@ import logging
 
 from fastapi import APIRouter, HTTPException
 from core.schemas_prompt_app import PromptOptimizeRequest
-from core.harness.syscalls.llm import sys_llm_generate
+from core.api.core_facade import sys_llm_generate
 from apps.common_schemas import StatusResponse, ListResponse, ItemResponse
 
 router = APIRouter()
@@ -23,7 +23,7 @@ async def optimize_prompt(req: PromptOptimizeRequest):
     # Load template context if available
     context_text = ""
     if req.template_id:
-        from core.harness.kernel.runtime import get_kernel_runtime
+        from core.api.core_facade import get_kernel_runtime
         rt = get_kernel_runtime()
         store = getattr(rt, "execution_store", None) if rt else None
         if store:
@@ -38,7 +38,7 @@ async def optimize_prompt(req: PromptOptimizeRequest):
                 logging.warning(str(e), exc_info=True)
 
     try:
-        from core.harness.utils.model_injection import create_selected_adapter, best_model_for_purpose
+        from core.api.core_facade import best_model_for_purpose, create_selected_adapter
         model_name = req.model or best_model_for_purpose("query_translation")
         if not model_name:
             return {"error": "无可用模型", "original": req.prompt[:500], "optimized": "", "changes": [], "analysis": ""}

@@ -12,7 +12,7 @@ from fastapi import APIRouter, HTTPException, Request
 from core.api.deps import actor_from_http
 from core.api.utils.governance import gate_error_envelope, governance_links, ui_url
 from core.governance.changeset import record_changeset
-from core.harness.kernel.runtime import get_kernel_runtime
+from core.api.core_facade import get_kernel_runtime
 from core.schemas_prompts import PromptTemplateRollbackRequest, PromptTemplateUpsertRequest
 import logging
 from apps.common_schemas import StatusResponse, ListResponse, ItemResponse
@@ -644,7 +644,7 @@ async def upsert_prompt_template(request: PromptTemplateUpsertRequest, http_requ
     try:
         js = _job_scheduler()
         if js is not None:
-            from core.harness.smoke import enqueue_autosmoke
+            from core.api.core_facade import enqueue_autosmoke
 
             await store.update_prompt_template_metadata(
                 template_id=str(request.template_id),
@@ -817,7 +817,7 @@ async def rollback_prompt_template(template_id: str, request: PromptTemplateRoll
     try:
         js = _job_scheduler()
         if js is not None:
-            from core.harness.smoke import enqueue_autosmoke
+            from core.api.core_facade import enqueue_autosmoke
 
             await store.update_prompt_template_metadata(
                 template_id=str(template_id),
@@ -1098,7 +1098,7 @@ async def delete_prompt_template(
     try:
         js = _job_scheduler()
         if ok and js is not None:
-            from core.harness.smoke import enqueue_autosmoke
+            from core.api.core_facade import enqueue_autosmoke
 
             tenant_id = http_request.headers.get("X-AIPLAT-TENANT-ID", "ops_smoke")
             actor_id = http_request.headers.get("X-AIPLAT-ACTOR-ID", "admin")

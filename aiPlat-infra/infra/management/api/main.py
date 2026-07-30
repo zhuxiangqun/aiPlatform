@@ -1016,7 +1016,8 @@ def create_app(manager=None) -> FastAPI:
                     }
                     for m in models
                 ],
-                "total": len(models)
+                "total": len(models),
+                "new_count": getattr(model_mgr, '_scan_new_count', 0)
             }
         except HTTPException:
             raise
@@ -1713,6 +1714,21 @@ def create_app(manager=None) -> FastAPI:
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
     
+
+    @app.get("/api/infra/scheduler/model-resources")
+    async def get_model_resources():
+        """获取当前模型资源占用详情（接入 ModelManager 实时数据）。"""
+        try:
+            scheduler_mgr = manager.get("scheduler")
+            if not scheduler_mgr:
+                raise HTTPException(status_code=404, detail="Scheduler manager not found")
+            result = await scheduler_mgr.get_model_resources()
+            return result
+        except HTTPException:
+            raise
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
+
     # ===== Storage CRUD =====
     
     class PVCCreateRequest(BaseModel):

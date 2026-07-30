@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from typing import Any
-from apps.fde.schemas import FdeStatusResponse, FdeListResponse, FdeItemResponse
+from apps.fde.api.schemas import FdeStatusResponse, FdeListResponse, FdeItemResponse
 
 
 from fastapi import APIRouter, HTTPException
@@ -35,7 +35,7 @@ async def fde_delivery_feedback(req: FdeDeliveryFeedbackRequest):
     action_name = req.action_name.strip()
 
     try:
-        from core.harness.ontology_engine.graph_index import GraphIndex
+        from core.api.core_facade import GraphIndex
 
         fd = GraphIndex.load("fde-delivery")
         session_node = fd.get_node(sid) or fd.find_by_name(sid)

@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from typing import Any, Dict, List
-from apps.fde.schemas import FdeStatusResponse, FdeListResponse, FdeItemResponse
+from apps.fde.api.schemas import FdeStatusResponse, FdeListResponse, FdeItemResponse
 
 
 from fastapi import APIRouter, HTTPException
@@ -66,7 +66,7 @@ async def fde_governance_validate():
 
     # 3. schema_validation: GraphIndex loads domain constraints
     def _ck3():
-        from core.harness.ontology_engine.graph_index import GraphIndex
+        from core.api.core_facade import GraphIndex
         g = GraphIndex.load("fde-delivery")
         c = g._load_property_constraints()  # noqa - internal method, intentional for audit
         return "has_action" in c and "has_evidence" in c
@@ -74,20 +74,20 @@ async def fde_governance_validate():
     # 4. evidence_binding: Evidence class exists in fde-delivery YAML
     def _ck4():
         import os
-        from core.harness.knowledge.ontology_loader import load_ontology_from_yaml
+        from core.api.core_facade import load_ontology_from_yaml
         path = os.path.expanduser("~/.aiplat/ontologies/fde-delivery.yaml")
         dom = load_ontology_from_yaml(path)
         return any(c.label == "证据" for c in dom.classes)
 
     # 5. coverage_metrics: determinism_score compute logic is accessible
     def _ck5():
-        from core.harness.ontology_engine.graph_index import GraphIndex
+        from core.api.core_facade import GraphIndex
         g = GraphIndex.load("knowledge-atom")
         return g.stats().get("node_count", -1) >= 0
 
     # 6. term_auto_seeding: enterprise-terms GraphIndex exists
     def _ck6():
-        from core.harness.ontology_engine.graph_index import GraphIndex
+        from core.api.core_facade import GraphIndex
         tg = GraphIndex.load("enterprise-terms")
         return tg.stats().get("node_count", -1) >= 0
 
@@ -100,7 +100,7 @@ async def fde_governance_validate():
 
     # 8. auto_closed_loop: SECI engine singleton works
     def _ck8():
-        from core.harness.knowledge.seci_engine import get_seci_engine
+        from core.api.core_facade import get_seci_engine
         se = get_seci_engine()
         return se.get_atom_count() >= 0
 

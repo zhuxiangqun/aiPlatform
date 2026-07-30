@@ -8,7 +8,7 @@ from core.api.deps import actor_from_http
 from core.harness.integration import KernelRuntime
 from core.harness.kernel.runtime import get_kernel_runtime
 from core.schemas_knowledge import SearchRequest
-from core.schemas_memory import LongTermMemoryAddRequest, LongTermMemorySearchRequest, MessageCreateRequest, SessionCreateRequest
+from core.schemas_memory import LongTermMemoryAddRequest, LongTermMemorySearchRequest, LongTermMemoryUpdateRequest, MessageCreateRequest, SessionCreateRequest
 
 router = APIRouter()
 
@@ -444,3 +444,113 @@ async def search_long_term_memory(request: LongTermMemorySearchRequest, rt: Runt
         limit=request.limit,
     )
     return {"items": items, "total": len(items)}
+
+
+@router.get("/memory/longterm", response_model=Dict[str, Any])
+async def list_long_term_memories(
+    user_id: str = "system", limit: int = 50, offset: int = 0,
+    source_tag: Optional[str] = None,
+    min_trust: Optional[float] = None,
+    date_from: Optional[float] = None,
+    date_to: Optional[float] = None,
+    rt: RuntimeDep = Depends(get_kernel_runtime),
+):
+    """Phase 40: List all long-term memories for a user.
+
+    Structured filters (no SQL injection risk):
+      - source_tag: filter by source label
+      - min_trust: filter by minimum trust_weight (0-1)
+      - date_from/date_to: timestamp range on created_at
+    """
+    store = _store(rt)
+    if not store:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+    items = await store.list_long_term_memories_filtered(
+        user_id=user_id, limit=limit, offset=offset,
+        source_tag=source_tag, min_trust=min_trust,
+        date_from=date_from, date_to=date_to,
+    )
+    return {"items": items, "total": len(items)}
+
+
+@router.put("/memory/longterm/{memory_id}", response_model=Dict[str, Any])
+async def update_long_term_memory(
+    memory_id: str, request: LongTermMemoryUpdateRequest,
+    rt: RuntimeDep = Depends(get_kernel_runtime),
+):
+    """Phase 40: Update a long-term memory entry."""
+    store = _store(rt)
+    if not store:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+    try:
+        return await store.update_long_term_memory(
+            memory_id=memory_id,
+            content=request.content,
+            key=request.key,
+            metadata=request.metadata,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
+@router.delete("/memory/longterm/{memory_id}", response_model=Dict[str, Any])
+async def delete_long_term_memory(
+    memory_id: str, rt: RuntimeDep = Depends(get_kernel_runtime),
+):
+    """Phase 40: Delete a long-term memory entry."""
+    store = _store(rt)
+    if not store:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+    ok = await store.delete_long_term_memory(memory_id=memory_id)
+    return {"deleted": ok, "memory_id": memory_id}
+
+
+# ==================== Semantic Memory ====================
+
+
+@router.delete("/memory/semantic/{key}", response_model=Dict[str, Any])
+async def forget_semantic(key: str, rt: RuntimeDep = Depends(get_kernel_runtime)):
+    """Phase 40: Soft-delete a semantic memory entry."""
+    mm = _memory_mgr(rt)
+    if not mm:
+        raise HTTPException(status_code=503, detail="MemoryManager not initialized")
+    ok = await mm.forget_semantic(key)
+    return {"deleted": ok, "key": key}
+
+
+@router.post("/memory/semantic/{key}/recover", response_model=Dict[str, Any])
+async def recover_semantic(key: str, rt: RuntimeDep = Depends(get_kernel_runtime)):
+    """Phase 40: Recover a soft-deleted semantic memory entry."""
+    mm = _memory_mgr(rt)
+    if not mm:
+        raise HTTPException(status_code=503, detail="MemoryManager not initialized")
+    ok = await mm.recover_semantic(key)
+    return {"recovered": ok, "key": key}
+
+
+@router.post("/memory/semantic/search", response_model=Dict[str, Any])
+async def search_semantic(request: SearchRequest, rt: RuntimeDep = Depends(get_kernel_runtime)):
+    """Phase 40: Search semantic memories with provenance fields."""
+    mm = _memory_mgr(rt)
+    if not mm:
+        raise HTTPException(status_code=503, detail="MemoryManager not initialized")
+    items = await mm.search_semantic(request.query, top_k=getattr(request, 'limit', 10))
+    return {"items": items, "total": len(items)}
+
+
+# ==================== Memory Rules ====================
+
+
+@router.get("/memory/rules", response_model=Dict[str, Any])
+async def get_memory_rules():
+    """Phase 40: Load user-configurable memory rules (ignore_greetings, capture_errors, etc.)."""
+    from core.harness.memory.manager import MemoryManager
+    return MemoryManager.load_memory_rules()
+
+
+@router.put("/memory/rules", response_model=Dict[str, Any])
+async def update_memory_rules(request: Dict[str, Any]):
+    """Phase 40: Save user memory rules. Accepts partial updates."""
+    from core.harness.memory.manager import MemoryManager
+    MemoryManager.save_memory_rules(request)
+    return MemoryManager.load_memory_rules()

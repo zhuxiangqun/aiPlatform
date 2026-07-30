@@ -197,7 +197,8 @@ class CoreAppsDirectoryCheck(ArchRule):
     section_name = "core/apps/ Directory Audit"
 
     _KNOWN_APPS = {"agents", "skills", "tools", "mcp", "evaluation", "plugins",
-                   "exec_drivers", "ops", "quality", "document_intelligence", "connectors"}
+                   "exec_drivers", "ops", "quality", "document_intelligence", "connectors",
+                   "finetune", "fde"}
     _CONCERN_PATTERNS = r"sqlite3\.connect|threading\.Thread|ThreadPool|job_queue|enqueue|tenant.*storage|video.*ingest|multimodal_kb|KBSqlite"
 
     def check(self, repo_root: Path) -> List[ArchIssue]:
@@ -540,7 +541,60 @@ class SkillDepsCheck(ArchRule):
                          for r in unknown if r.get('ref')]
                 return [ArchIssue(level=self.level, code=self.code,
                                  message="Agent→Skill references unresolved",
-                                 files=items, count=len(items))]
+                                  files=items, count=len(items))]
         except Exception as e:
             logging.debug(str(e), exc_info=True)
+        return []
+
+
+class L5ModuleCoreFacadeCheck(ArchRule):
+    """§84: L5/L6 modules must be wired through CoreFacade."""
+
+    code = "l5_module_not_in_core_facade"
+    level = "warning"
+    section_number = "§84"
+    section_name = "L5 Module — CoreFacade Wiring"
+
+    _L5_MODULES = {
+        "adaptive_context": "AdaptiveContextRouter",
+        "gossip_protocol": "GossipProtocol",
+        "swarm_broker": "SwarmBroker",
+        "moa_executor": "MoA Executor",
+        "abstract_goal_decomposer": "AbstractGoalDecomposer",
+        "goal_dependency_graph": "GoalDependencyGraph",
+        "goal_progress_evaluator": "GoalProgressEvaluator",
+        "deploy_engine": "DeployEngine",
+        "git_pusher": "GitPusher",
+        "discovery_listener": "DiscoveryListener",
+        "auto_register": "AutoRegisterEngine",
+        "seci_engine": "SECI Engine",
+        "convergence_engine": "Convergence Engine",
+        "governance_pipeline": "Governance Pipeline",
+        "ontology_reason": "OntologyAgent",
+        "pattern_accumulator": "PatternAccumulator",
+        "goal_executor": "GoalExecutor",
+        "search_engine": "StrategySearchEngine",
+        "dynamic_orchestrator": "DynamicOrchestrator",
+    }
+
+    def check(self, repo_root: Path) -> List[ArchIssue]:
+        core_facade = repo_root / "aiPlat-core/core/api/core_facade.py"
+        if not core_facade.is_file():
+            return []
+        try:
+            facade_content = core_facade.read_text()
+        except Exception:
+            return []
+        missing = []
+        for module_key, display_name in self._L5_MODULES.items():
+            if module_key not in facade_content:
+                found = list((repo_root / "aiPlat-core/core/harness").rglob(f"**/{module_key}.py"))
+                if found:
+                    rel = str(found[0].relative_to(repo_root))
+                    missing.append(f"{display_name}: {rel} — not in CoreFacade")
+        if missing:
+            return [ArchIssue(level=self.level, code=self.code,
+                message=f"L5/L6 modules not in CoreFacade: {len(missing)}. "
+                        f"Per §5.30 Rule 10, each capability needs a unique CoreFacade entry.",
+                files=missing, count=len(missing))]
         return []

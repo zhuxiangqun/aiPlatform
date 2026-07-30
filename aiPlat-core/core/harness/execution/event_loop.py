@@ -250,4 +250,5 @@ def start_loop_scheduler(interval: int = 60) -> None:
         task = loop.create_task(run_loop_scheduler(interval))
         _RUNNING.append(task)
     except RuntimeError:
-        pass
+        pass  # noqa: cleanup-best-effort
+

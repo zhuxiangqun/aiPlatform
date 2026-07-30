@@ -169,7 +169,7 @@ class KafkaClient(MessageClient):
                     print(f"Error processing message: {e}")
 
         except asyncio.CancelledError:
-            pass
+            pass  # noqa: normal-cancellation
 
     async def unsubscribe(self, topic: str) -> None:
         topic_name = self._get_topic_name(topic)

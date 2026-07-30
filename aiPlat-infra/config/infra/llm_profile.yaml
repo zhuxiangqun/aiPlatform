@@ -1,44 +1,79 @@
-# aiPlat LLM Profile — model overrides & purpose profiles
-# gemma4:12b produces empty output (known issue on Apple Silicon).
-# chat / agent_creation use conversational models; code_gen keeps coder.
-# To switch to cloud API: set DEEPSEEK_API_KEY and change overrides to deepseek-chat.
-
-model_overrides:
-  chat: qwen2.5:3b
-  clarify: qwen2.5-coder:14b
-  agent_creation: deepseek-chat
-  skill_execution: deepseek-chat
-  ontology_gen: qwen2.5-coder:7b
-  embedding: mxbai-embed-large:latest
+# aiPlat LLM Profile — purpose profiles & model capabilities
+# All purposes are auto-selected by the unified scoring pipeline (v2.1).
+# Selection is driven by model_capabilities + resource awareness, not manual overrides.
 
 purpose_profiles:
   chat:
     prefer: ["chat"]
     prefer_local: true
+    scoring_weights:
+      reasoning: 0.3
+      latency: -2.5
   clarify:
     prefer: ["chat"]
     prefer_local: true
+    scoring_weights:
+      reasoning: 0.1
+      latency: -3.0
+      quality: 0.5
   agent_creation:
     prefer: ["chat"]
     prefer_local: true
   code_gen:
     prefer: ["chat", "code"]
+    scoring_weights:
+      reasoning: 2.5
+      latency: -0.5
   reasoning:
     prefer: ["chat", "reasoning"]
     prefer_external: true
+    scoring_weights:
+      reasoning: 3.5
+      quality: 1.8
+      resource_pressure: 0.3
+      cost: -0.3
   skill_execution:
     prefer: ["chat"]
     prefer_external: true
+    scoring_weights:
+      resource_pressure: 1.5
+      reasoning: 1.2
   ontology_gen:
     prefer: ["chat"]
     prefer_local: true
 
 fallback:
-  ultimate_model: qwen2.5-coder:32b
+  safe_model: qwen2.5:3b
+  safe_model_alt: deepseek-chat
+  safe_model_ram_limit: 4
+
+# ── Scoring weights (v2.2 dynamic) ──
+default_scoring_weights:
+  source_bias: 1.0
+  resource_pressure: 1.0
+  gpu_compat: 1.0
+  reasoning: 1.0
+  quality: 1.0
+  latency: -1.0
+  concurrency: 1.0
+  cost: -1.0
+  api_credential: 3.0
 
 # ── Model capability profiles (P2: structured registration) ──
 # Used by ModelManager.select(purpose, complexity, input_tokens) for intelligent routing.
 model_capabilities:
+  qwen2.5:3b:
+    context_window: 32768
+    effective_utilization: 0.70
+    input_token_budget: 15000
+    semantic_understanding: 3
+    reasoning_quality: 1
+    hallucination_rate: 0.08
+    strength_areas: ["chat"]
+    weakness_areas: ["reasoning", "code_generation", "multi_doc_synthesis"]
+    routing_rules:
+      min_complexity: 0
+      max_complexity: 1
   deepseek-chat:
     context_window: 131072
     effective_utilization: 0.85

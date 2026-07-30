@@ -54,6 +54,8 @@ lookup_callers() {
         | cut -d'|' -f2 \
         | grep -v "$self_basename" \
         | grep -v '/tests/' \
+        | grep -v '/diagnostics' \
+        | grep -v '/management/arch_guard' \
         | sort -u \
         | wc -l | tr -d ' ')
     [ "${hits:-0}" -gt 0 ]

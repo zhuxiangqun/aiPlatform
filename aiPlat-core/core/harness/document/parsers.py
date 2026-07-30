@@ -195,7 +195,7 @@ def _extract_docx_images(file_path: str, out_dir: str) -> List[str]:
                     f.write(img_data)
                 extracted.append(img_path)
     except ImportError:
-        pass
+        pass  # noqa: optional-dependency
     return extracted
 
 
@@ -216,7 +216,7 @@ def _extract_pdf_images(file_path: str, out_dir: str) -> List[str]:
                 extracted.append(img_path)
         doc.close()
     except ImportError:
-        pass
+        pass  # noqa: optional-dependency
     return extracted
 
 
@@ -237,7 +237,7 @@ def _extract_pptx_images(file_path: str, out_dir: str) -> List[str]:
                         f.write(img.blob)
                     extracted.append(img_path)
     except ImportError:
-        pass
+        pass  # noqa: optional-dependency
     return extracted
 
 
@@ -285,3 +285,4 @@ async def describe_images(image_paths: List[str],
             results.append({"path": img_path, "description": "", "error": str(e)[:200]})
 
     return results
+

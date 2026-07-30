@@ -78,8 +78,8 @@ class GraphInference:
 
                 target_ids = self._match_premise_chain(source_id, premises)
                 for target_id in target_ids:
-                    # Build inferred edge
-                    conf = self._compute_confidence(premises, conclusion)
+                    # Build inferred edge with Adamic-Adar confidence
+                    conf = self._compute_confidence(premises, conclusion, source_id, target_id)
                     edge = GraphEdge(
                         source_id=source_id,
                         target_id=target_id,
@@ -146,13 +146,24 @@ class GraphInference:
         self,
         premises: List[Dict[str, Any]],
         conclusion: Dict[str, Any],
+        source_id: str = "",
+        target_id: str = "",
     ) -> float:
-        """Compute inferred edge confidence: product of hop confidences × conclusion factor."""
-        # Start with base
+        """Compute inferred edge confidence with Adamic-Adar graph similarity bonus.
+
+        Base: conclusion.confidence × 0.9^len(premises) (hop discount)
+        Bonus: +0.15 × adamic_adar(source, target) (shared neighbor quality)
+        """
         base_conf = float(conclusion.get("confidence", 0.7))
-        # Discount per hop (0.9^n)
         hop_discount = 0.9 ** len(premises)
-        return round(base_conf * hop_discount, 3)
+        conf = base_conf * hop_discount
+
+        # v2.9: Adamic-Adar bonus — entities sharing rare neighbors get confidence boost
+        if source_id and target_id:
+            aa = self._graph.adamic_adar_similarity(source_id, target_id)
+            conf += 0.15 * aa
+
+        return round(min(1.0, conf), 3)
 
     def apply_to_graph(self, result: InferenceResult) -> int:
         """Apply inferred edges to the graph via add_inferred_edge (SQL-backed)."""

@@ -87,6 +87,7 @@ const DiagnosticsSyscalls = lazy(() => import('./pages/Diagnostics/Syscalls'));
 const DiagnosticsSmoke = lazy(() => import('./pages/Diagnostics/Smoke/Smoke'));
 const DiagnosticsBrowserTest = lazy(() => import('./pages/Diagnostics/BrowserTest/BrowserTestPanel'));
 const DiagnosticsEvalDashboard = lazy(() => import('./pages/Diagnostics/EvalDashboard'));
+const BusinessValueReport = lazy(() => import('./pages/Diagnostics/BusinessValueReport'));
 const ReleasesPage = lazy(() => import('./pages/Releases/ReleasesPage'));
 const ApprovalCenter = lazy(() => import('./pages/Management/ApprovalCenter'));
 const ApprovalHistory = lazy(() => import('./pages/Management/ApprovalHistory'));
@@ -109,6 +110,7 @@ const RepairCenter = lazy(() => import('./pages/Diagnostics/RepairCenter'));
 const FdeDashboard = lazy(() => import('./pages/Diagnostics/FdeDashboard'));
 const ObservabilityDashboard = lazy(() => import('./pages/Diagnostics/ObservabilityDashboard'));
 const KnowledgeOverview = lazy(() => import('./pages/Knowledge/KnowledgeOverview'));
+const KnowledgeFactoryPage = lazy(() => import('./pages/KnowledgeFactory/KnowledgeFactoryPage'));
 const DocsViewer = lazy(() => import('./pages/Docs/DocsViewer'));
 const OntologyEditor = lazy(() => import('./pages/OntologyEditor'));
 const GovernanceDashboard = lazy(() => import('./pages/Governance'));
@@ -116,6 +118,7 @@ const RunComparison = lazy(() => import('./pages/Diagnostics/RunComparison'));
 const ModelPlayground = lazy(() => import('./pages/Diagnostics/ModelPlayground'));
 const ModelAuditPanel = lazy(() => import('./pages/Diagnostics/ModelAuditPanel'));
 const SafetyPanel = lazy(() => import('./pages/Diagnostics/SafetyPanel'));
+const ControlProfilePanel = lazy(() => import('./components/model/ControlProfilePanel'));
 const SystemGraph = lazy(() => import('./pages/SystemGraph'));
 const Onboarding = lazy(() => import('./pages/Onboarding/Onboarding'));
 const OnboardingWizard = lazy(() => import('./pages/Onboarding/OnboardingWizard'));
@@ -151,6 +154,7 @@ const router = createBrowserRouter([
       { path: 'value-center/spec/:specId', element: withSuspense(SpecDetailPage) },
       { path: 'workbench', element: withSuspense(UserWorkbench) },
       { path: 'knowledge/overview', element: withSuspense(KnowledgeOverview) },
+      { path: 'knowledge-factory', element: withSuspense(KnowledgeFactoryPage) },
       { path: 'docs', element: withSuspense(DocsViewer) },
       { path: 'ontology-editor', element: withSuspense(OntologyEditor) },
       { path: 'governance', element: withSuspense(GovernanceDashboard) },
@@ -202,6 +206,10 @@ const router = createBrowserRouter([
       { path: 'app/channels', element: withSuspense(AppChannels) },
       { path: 'app/sessions', element: withSuspense(AppSessions) },
       { path: 'platform/kb', element: withSuspense(AppKnowledgeBase) },
+      { path: 'platform/kb/wiki', element: withSuspense(AppKnowledgeBase) },
+      { path: 'platform/kb/eval', element: withSuspense(AppKnowledgeBase) },
+      { path: 'platform/kb/vault', element: withSuspense(AppKnowledgeBase) },
+      { path: 'platform/kb/health', element: withSuspense(AppKnowledgeBase) },
       { path: 'platform/kb/chat/:sessionId', element: withSuspense(AppMaterialsChat) },
       { path: 'app/builder/team', element: withSuspense(AppTeamAssembly) },
       { path: 'app/builder/projects', element: withSuspense(AppProjects) },
@@ -251,6 +259,10 @@ const router = createBrowserRouter([
       { path: 'diagnostics/model-audit', element: withSuspense(ModelAuditPanel) },
       { path: 'diagnostics/safety', element: withSuspense(SafetyPanel) },
       { path: 'diagnostics/eval', element: withSuspense(DiagnosticsEvalDashboard) },
+      { path: 'diagnostics/business-value', element: withSuspense(BusinessValueReport) },
+      { path: 'diagnostics/knowledge-health', element: withSuspense(DiagnosticsHome) },
+      { path: 'diagnostics/drift-status', element: withSuspense(DiagnosticsHome) },
+      { path: 'diagnostics/control-profile', element: withSuspense(ControlProfilePanel) },
       { path: 'studio', element: withSuspense(StudioPage) },
       { path: 'pentest', element: withSuspense(PentestPage) },
     ],

@@ -1,0 +1,1100 @@
+# aiPlat Capability Registry v1.0
+# Phase 43: Capability ripple tracking — single source of truth.
+# 
+# Maps every capability domain to its public symbols and expected consumers.
+# Auto-synced with AIPLAT_CAPABILITIES.md statistics table.
+# 
+# Verifiers: verify_capability_consumers.sh (pre-commit hook)
+# Generator: generate_impact_matrix.py → docs/matrix/capability-impact-matrix.md
+
+version: "1.0.0"
+generated_at: "2026-07-19"
+total_capability_domains: 32
+total_capabilities: 776
+
+domains:
+  # ══════════════════════════════════════════════════════════════
+  # 一、Harness 执行引擎 (34 caps)
+  # ══════════════════════════════════════════════════════════════
+  harness-execution-engine:
+    section: "一"
+    section_name: "Harness 执行引擎"
+    caps_count: 36
+    provides:
+      - symbol: "PipelineEngine"
+        type: "class"
+        signature: "_run_stages_from, _exec_stage, _retry_loop, _meta_optimize"
+        module: "core/harness/execution/pipeline_engine.py"
+      - symbol: "ReActLoop"
+        type: "class"
+        signature: "Reason→Act→Observe, integrate Hooks/compression/memory"
+        module: "core/harness/interfaces/loop.py"
+      - symbol: "PipelineStageConfig"
+        type: "pydantic_model"
+        signature: "routing_mode, moa_preset, debate_participants, etc."
+        module: "core/schemas_builder.py"
+      - symbol: "ContextCompression"
+        type: "class"
+        signature: "5-level: NORMAL→WARNING→REPLACE→PRUNE→AGGRESSIVE→EMERGENCY"
+        module: "core/harness/memory/compression.py"
+      - symbol: "FailureClassifier"
+        type: "class"
+        signature: "classify(error_message, exception_type)→failure_type"
+        module: "core/harness/execution/failure_classifier.py"
+    breaks: []
+    consumers_expected:
+      - module: "core/api/routers/builder_project_service.py"
+        reason: "PipelineEngine 调度入口"
+      - module: "core/harness/execution/pipeline_engine.py"
+        reason: "自身消费 PipelineStageConfig + StageRunner"
+      - module: "core/harness/interfaces/loop.py"
+        reason: "ReActLoop 运行时"
+      - module: "aiPlat-platform/apps/fde/api/fde_pipeline.py"
+        reason: "FDE Pipeline 状态查询"
+      - module: "aiPlat-platform/apps/fde/orchestration/builder.py"
+        reason: "FDEBuilderOrch 构建流水线"
+
+  # ══════════════════════════════════════════════════════════════
+  # 二、记忆子系统 (31 caps)
+  # ══════════════════════════════════════════════════════════════
+  memory-subsystem:
+    section: "二"
+    section_name: "记忆子系统"
+    caps_count: 31
+    provides:
+      - symbol: "MemoryManager"
+        type: "class"
+        signature: "build_context, save_interaction, save_task_skill"
+        module: "core/harness/memory/manager.py"
+      - symbol: "WorkingMemory"
+        type: "class"
+        signature: "deque sliding window, 30K tokens"
+        module: "core/harness/memory/working.py"
+      - symbol: "EpisodicMemory"
+        type: "class"
+        signature: "add_interaction, update_summary, _critical_episodes"
+        module: "core/harness/memory/episodic.py"
+      - symbol: "SemanticMemory"
+        type: "class"
+        signature: "store, retrieve, delete, recover_deleted"
+        module: "core/harness/memory/semantic.py"
+      - symbol: "MemoryEntry"
+        type: "dataclass"
+        signature: "source_tag, trust_weight, provenance, content"
+        module: "core/harness/memory/base.py"
+    breaks: []
+    consumers_expected:
+      - module: "core/harness/interfaces/loop.py"
+        reason: "build_context() + save_interaction() 调用"
+      - module: "core/harness/execution/pipeline_engine.py"
+        reason: "_crystallize_skill → save_task_skill"
+      - module: "core/api/routers/memory.py"
+        reason: "全量 REST 端点"
+      - module: "core/harness/syscalls/retrieval.py"
+        reason: "语义记忆检索"
+      - module: "aiPlat-platform/apps/fde/api/fde_dashboard_v2.py"
+        reason: "L6 记忆指标展示"
+
+  # ══════════════════════════════════════════════════════════════
+  # 三、知识引擎（本体）(113 caps)
+  # ══════════════════════════════════════════════════════════════
+  knowledge-engine-ontology:
+    section: "三"
+    section_name: "知识引擎（本体）"
+    caps_count: 130
+    provides:
+      - symbol: "GraphIndex"
+        type: "class"
+        signature: "add_entity, add_relation, add_hyperedge, traverse, snapshot"
+        module: "core/harness/ontology_engine/graph_index.py"
+      - symbol: "OntologyEngine"
+        type: "class"
+        signature: "process_chunks 13-step pipeline"
+        module: "core/harness/ontology_engine/engine.py"
+      - symbol: "WikiEngine"
+        type: "module"
+        signature: "write_page, search_pages, generate_index_md, list_all_pages, read_page"
+        module: "core/harness/knowledge/wiki_engine.py"
+      - symbol: "DomainRouter"
+        type: "class"
+        signature: "classify(query)→domain_id (T1 inverted/T2 vector/T3 LLM)"
+        module: "core/harness/knowledge/domain_router.py"
+      - symbol: "SECIEngine"
+        type: "class"
+        signature: "S→E→C→I→S knowledge creation spiral"
+        module: "core/harness/knowledge/seci_engine.py"
+    breaks: []
+    consumers_expected:
+      - module: "core/api/routers/wiki.py"
+        reason: "Wiki CRUD + index + ingest 端点"
+      - module: "core/api/routers/wiki_ontology_engine.py"
+        reason: "本体引擎 REST API"
+      - module: "core/harness/syscalls/retrieval.py"
+        reason: "GraphIndex 遍历检索"
+      - module: "core/harness/knowledge/context_bus.py"
+        reason: "10层上下文注入"
+      - module: "core/harness/knowledge/knowledge_synthesis.py"
+        reason: "KnowledgeSynthesizer 合成 Wiki 页"
+      - module: "aiPlat-platform/apps/fde/api/fde_diagnostics_v2.py"
+        reason: "FDE 能力自描述"
+      - module: "core/harness/knowledge/domain_maturity.py"
+        reason: "域成熟度评分"
+
+  # ══════════════════════════════════════════════════════════════
+  # 四、RAG 检索 (40 caps)
+  # ══════════════════════════════════════════════════════════════
+  rag-retrieval:
+    section: "四"
+    section_name: "RAG 检索"
+    caps_count: 41
+    provides:
+      - symbol: "WikiPageRetriever"
+        type: "class"
+        signature: "retrieve(query, domain_id, collection_id)→chunks"
+        module: "core/harness/knowledge/retrieval.py"
+      - symbol: "MaterialsChatAgent"
+        type: "class"
+        signature: "CRAG 3-level: ontology→FTS5→HyDE"
+        module: "core/apps/agents/materials_chat.py"
+      - symbol: "CRAG"
+        type: "pattern"
+        signature: "3-level fallback: ontology→FTS5→HyDE"
+        module: "core/apps/agents/materials_chat.py"
+      - symbol: "RRF"
+        type: "pattern"
+        signature: "Reciprocal Rank Fusion, multi-path dedup"
+        module: "core/harness/syscalls/retrieval.py"
+      - symbol: "HyDE"
+        type: "pattern"
+        signature: "Hypothetical Document Embedding, LLM generates hypothetical answer→re-search"
+        module: "core/apps/agents/materials_chat.py"
+    breaks: []
+    consumers_expected:
+      - module: "core/apps/agents/materials_chat.py"
+        reason: "CRAG + HyDE + RRF 自身"
+      - module: "core/harness/syscalls/retrieval.py"
+        reason: "检索路由 + 多路融合"
+      - module: "core/harness/knowledge/domain_router.py"
+        reason: "域分类 → 检索范围确定"
+      - module: "aiPlat-platform/apps/fde/api/fde_ask.py"
+        reason: "FDE 追问 → 检索增强"
+
+  # ══════════════════════════════════════════════════════════════
+  # 四附、知识基础设施 (29 caps)
+  # ══════════════════════════════════════════════════════════════
+  knowledge-infrastructure:
+    section: "四附"
+    section_name: "知识基础设施"
+    caps_count: 29
+    provides:
+      - symbol: "KnowledgeSynthesizer"
+        type: "class"
+        signature: "3 types: InferenceChain, FactCard, CrossDocConclusion"
+        module: "core/harness/knowledge/knowledge_synthesis.py"
+      - symbol: "ContextBus"
+        type: "class"
+        signature: "10-layer context injection"
+        module: "core/harness/knowledge/context_bus.py"
+      - symbol: "RunContext"
+        type: "class"
+        signature: "caller, graph, datasource context layers"
+        module: "core/harness/kernel/types.py"
+      - symbol: "DataSourceRegistry"
+        type: "class"
+        signature: "load_from_dir, get_source, map_to_ontology"
+        module: "core/harness/ontology_engine/data_source.py"
+    breaks: []
+    consumers_expected:
+      - module: "core/harness/knowledge/seci_engine.py"
+        reason: "SECI 消费 KnowledgeSynthesizer"
+      - module: "core/harness/memory/manager.py"
+        reason: "build_context 注入 ContextBus"
+      - module: "core/harness/execution/pipeline_engine.py"
+        reason: "RunContext 运行时上下文"
+
+  # ══════════════════════════════════════════════════════════════
+  # 五、Agent 系统 (23 caps)
+  # ══════════════════════════════════════════════════════════════
+  agent-system:
+    section: "五"
+    section_name: "Agent 系统"
+    caps_count: 23
+    provides:
+      - symbol: "BaseAgent"
+        type: "class"
+        signature: "execute(context)→AgentResult, 8 types"
+        module: "core/apps/agents/base.py"
+      - symbol: "SubagentCoordinator"
+        type: "class"
+        signature: "execute_single, parallel, sequential"
+        module: "core/apps/agents/subagent/coordinator.py"
+      - symbol: "ParallelExecutor"
+        type: "class"
+        signature: "Map-Reduce parallel + EmbeddingBridge"
+        module: "core/apps/agents/parallel_executor.py"
+      - symbol: "OperatorAgent"
+        type: "class"
+        signature: "decision-support: severity, impact, recommended_actions"
+        module: "core/apps/agents/operator_agent.py"
+    breaks: []
+    consumers_expected:
+      - module: "core/harness/execution/pipeline_engine.py"
+        reason: "Pipeline 调度 Agent"
+      - module: "core/apps/builder/builder_project_service.py"
+        reason: "Builder 创建 Agent"
+      - module: "core/api/routers/agents.py"
+        reason: "Agent REST 端点"
+
+  # ══════════════════════════════════════════════════════════════
+  # 六、Skill 系统 (23 caps)
+  # ══════════════════════════════════════════════════════════════
+  skill-system:
+    section: "六"
+    section_name: "Skill 系统"
+    caps_count: 29
+    provides:
+      - symbol: "SkillRegistry"
+        type: "class"
+        signature: "register, get, get_stub, list_skills, set_active_version, get_active_version"
+        module: "core/apps/skills/registry.py"
+      - symbol: "SkillManager"
+        type: "class"
+        signature: "update_skill, delete_skill, enable_skill, disable_skill"
+        module: "core/apps/skills/skill_manager.py"
+      - symbol: "BaseSkill"
+        type: "class"
+        signature: "execute(params)→result"
+        module: "core/apps/skills/base.py"
+      - symbol: "SkillExecutor"
+        type: "class"
+        signature: "execute(name, params)→result"
+        module: "core/apps/skills/executor.py"
+    breaks: []
+    consumers_expected:
+      - module: "core/harness/execution/pipeline_engine.py"
+        reason: "Pipeline 调用 Skill"
+      - module: "core/harness/syscalls/skill.py"
+        reason: "sys_skill_call"
+      - module: "core/harness/optimization/tool_bootstrap.py"
+        reason: "ToolBootstrap → SkillRegistry.register"
+      - module: "core/api/routers/engine_skills.py"
+        reason: "Skill REST 端点"
+      - module: "core/engine/skills/autoreview/handler.py"
+        reason: "autoreview Skill handler"
+
+  # ══════════════════════════════════════════════════════════════
+  # 七、安全与治理 (33 caps)
+  # ══════════════════════════════════════════════════════════════
+  security-and-governance:
+    section: "七"
+    section_name: "安全与治理"
+    caps_count: 36
+    provides:
+      - symbol: "PolicyGate"
+        type: "class"
+        signature: "check_tool, check_agent, _check_arch_boundary"
+        module: "core/harness/infrastructure/gates/policy_gate.py"
+      - symbol: "ApprovalGate"
+        type: "class"
+        signature: "dangerous command detection (CRITICAL/HIGH/MEDIUM/LOW)"
+        module: "core/harness/infrastructure/gates/approval_gate.py"
+      - symbol: "SandboxGate"
+        type: "class"
+        signature: "network whitelist + deployment gate"
+        module: "core/harness/infrastructure/gates/sandbox_gate.py"
+      - symbol: "PIIDetector"
+        type: "class"
+        signature: "mask/unmask, Presidio + built-in regex"
+        module: "core/harness/infrastructure/pii_detector.py"
+    breaks: []
+    consumers_expected:
+      - module: "core/harness/syscalls/tool.py"
+        reason: "sys_tool_call → PolicyGate.check_tool"
+      - module: "core/harness/syscalls/skill.py"
+        reason: "sys_skill_call → PolicyGate"
+      - module: "core/harness/execution/pipeline_engine.py"
+        reason: "HITL → PolicyGate + ApprovalGate"
+      - module: "core/harness/syscalls/llm.py"
+        reason: "_guard_messages → PII masking"
+
+  # ══════════════════════════════════════════════════════════════
+  # 八、可观测性 (16 caps)
+  # ══════════════════════════════════════════════════════════════
+  observability:
+    section: "八"
+    section_name: "可观测性"
+    caps_count: 16
+    provides:
+      - symbol: "EventBus"
+        type: "class"
+        signature: "start, publish, subscribe"
+        module: "core/harness/observation/event_bus.py"
+      - symbol: "MetricsAggregator"
+        type: "class"
+        signature: "aggregate metrics across layers"
+        module: "core/harness/observability/metrics/__init__.py"
+      - symbol: "AuditLog"
+        type: "class"
+        signature: "record tool/skill/gate events"
+        module: "core/harness/infrastructure/audit.py"
+    breaks: []
+    consumers_expected:
+      - module: "core/harness/execution/pipeline_engine.py"
+        reason: "Pipeline trace 事件"
+      - module: "core/harness/syscalls/tool.py"
+        reason: "工具调用审计"
+      - module: "aiPlat-management/frontend/src/pages/Diagnostics"
+        reason: "诊断仪表盘"
+
+  # ══════════════════════════════════════════════════════════════
+  # 九、模型基础设施 (27 caps)
+  # ══════════════════════════════════════════════════════════════
+  model-infrastructure:
+    section: "九"
+    section_name: "模型基础设施"
+    caps_count: 27
+    provides:
+      - symbol: "best_model_for_purpose"
+        type: "function"
+        signature: "(purpose, messages)→model_name"
+        module: "core/harness/utils/model_injection.py"
+      - symbol: "ModelTierRouter"
+        type: "class"
+        signature: "T1-T5 complexity-based routing"
+        module: "core/harness/routing/model_tier_router.py"
+      - symbol: "InfraLLMAdapter"
+        type: "class"
+        signature: "wrap infra LLMClient for core"
+        module: "core/harness/infrastructure/infra_llm_adapter.py"
+      - symbol: "create_selected_adapter"
+        type: "function"
+        signature: "(capability)→adapter instance"
+        module: "core/harness/utils/model_injection.py"
+      - symbol: "LLMClient"
+        type: "class"
+        signature: "generate(prompt, temperature, model, stream)"
+        module: "aiPlat-infra/infra/llm/base.py"
+    breaks: []
+    consumers_expected:
+      - module: "core/harness/syscalls/llm.py"
+        reason: "sys_llm_generate → best_model_for_purpose"
+      - module: "core/harness/optimization/tool_bootstrap.py"
+        reason: "ToolBootstrap 模型选择"
+      - module: "core/harness/syscalls/moa_executor.py"
+        reason: "MoA 引擎多模型路由"
+      - module: "core/harness/execution/pipeline_engine.py"
+        reason: "Pipeline 阶段模型选择"
+      - module: "aiPlat-management/frontend/src/components/model/ModelTierPanel.tsx"
+        reason: "T1-T5 前端展示"
+
+  # ══════════════════════════════════════════════════════════════
+  # 十、部署与运维 (17 caps)
+  # ══════════════════════════════════════════════════════════════
+  deploy-and-operations:
+    section: "十"
+    section_name: "部署与运维"
+    caps_count: 21
+    provides:
+      - symbol: "CronScheduler"
+        type: "class"
+        signature: "register(interval_seconds, handler)"
+        module: "core/harness/scheduler/cron.py"
+      - symbol: "EvolutionEngine"
+        type: "class"
+        signature: "nightly 13-step evolution pipeline"
+        module: "core/harness/evolution_engine.py"
+      - symbol: "WakeScheduler"
+        type: "class"
+        signature: "idle detection → GoalGenerator → GoalExecutor"
+        module: "core/harness/scheduler/wake_scheduler.py"
+    breaks: []
+    consumers_expected:
+      - module: "core/server.py"
+        reason: "启动时挂载 cron + WakeScheduler"
+      - module: "core/harness/evolution_engine.py"
+        reason: "self-harness cycle"
+
+  # ══════════════════════════════════════════════════════════════
+  # 十一、扩展与学习 (79 caps)
+  # ══════════════════════════════════════════════════════════════
+  extension-and-learning:
+    section: "十一"
+    section_name: "扩展与学习"
+    caps_count: 87
+    provides:
+      - symbol: "GoalGenerator"
+        type: "class"
+        signature: "generate→List[Goal] (9 scanners)"
+        module: "core/harness/optimization/goal_generator.py"
+      - symbol: "GoalExecutor"
+        type: "class"
+        signature: "start, stop, execute_goal, _run_loop"
+        module: "core/harness/optimization/goal_executor.py"
+      - symbol: "ToolBootstrapEngine"
+        type: "class"
+        signature: "bootstrap(capability_name, description)→BootstrapResult"
+        module: "core/harness/optimization/tool_bootstrap.py"
+      - symbol: "StrategySearchEngine"
+        type: "class"
+        signature: "UCB1 multi-armed bandit, convergence detection"
+        module: "core/harness/optimization/search_engine.py"
+      - symbol: "SharedKnowledgePool"
+        type: "class"
+        signature: "query, publish, cross-session knowledge"
+        module: "core/harness/memory/shared_pool.py"
+    breaks: []
+    consumers_expected:
+      - module: "core/harness/optimization/goal_executor.py"
+        reason: "GoalExecutor 启动 + 执行循环"
+      - module: "core/harness/optimization/tool_bootstrap.py"
+        reason: "ToolBootstrap 自举工具创建"
+      - module: "core/harness/execution/pipeline_engine.py"
+        reason: "Pipeline 故障→StrategySearchEngine"
+      - module: "core/server.py"
+        reason: "GoalExecutor + WakeScheduler 启动"
+      - module: "core/harness/memory/manager.py"
+        reason: "build_context → SharedKnowledgePool 注入"
+
+  # ══════════════════════════════════════════════════════════════
+  # 十二、Gate 系统 (17 caps)
+  # ══════════════════════════════════════════════════════════════
+  gate-system:
+    section: "十二"
+    section_name: "Gate 系统"
+    caps_count: 17
+    provides:
+      - symbol: "ErrorTranslator"
+        type: "class"
+        signature: "7-level 19-class error classification"
+        module: "core/harness/infrastructure/gates/error_translator.py"
+      - symbol: "CompletionChecklistGate"
+        type: "class"
+        signature: "verify stage completion checklist"
+        module: "core/harness/infrastructure/gates/completion_gate.py"
+      - symbol: "SemanticGate"
+        type: "class"
+        signature: "semantic compliance gating"
+        module: "core/harness/infrastructure/gates/semantic_gate.py"
+      - symbol: "ResilienceGate"
+        type: "class"
+        signature: "decorrelated jitter + golden-ratio hash"
+        module: "core/harness/infrastructure/gates/resilience_gate.py"
+    breaks: []
+    consumers_expected:
+      - module: "core/harness/execution/pipeline_engine.py"
+        reason: "Pipeline 阶段 Gate 检查"
+      - module: "core/harness/infrastructure/integration.py"
+        reason: "8 Gate 统一出口"
+
+  # ══════════════════════════════════════════════════════════════
+  # 十三、评估系统 (13 caps)
+  # ══════════════════════════════════════════════════════════════
+  evaluation-system:
+    section: "十三"
+    section_name: "评估系统"
+    caps_count: 13
+    provides:
+      - symbol: "eval_retrieval"
+        type: "module"
+        signature: "Recall@10, precision, F1 for RAG"
+        module: "core/harness/evaluation/eval_retrieval.py"
+      - symbol: "QualityScoring"
+        type: "pattern"
+        signature: "4-D scoring: FDE+SECI+Convergence+ContextBus"
+        module: "core/harness/knowledge/quality_bus.py"
+      - symbol: "BenchmarkRunner"
+        type: "class"
+        signature: "5 metrics: pipeline P95, graph P95, retrieval recall, state accuracy, calibration"
+        module: "core/harness/evaluation/benchmark.py"
+    breaks: []
+    consumers_expected:
+      - module: "core/harness/execution/pipeline_engine.py"
+        reason: "Pipeline 质量评分"
+      - module: "aiPlat-platform/apps/fde/api/fde_quality_summary.py"
+        reason: "FDE 质量摘要"
+
+  # ══════════════════════════════════════════════════════════════
+  # 十四、MCP 协议 (6 caps)
+  # ══════════════════════════════════════════════════════════════
+  mcp-protocol:
+    section: "十四"
+    section_name: "MCP 协议"
+    caps_count: 6
+    provides:
+      - symbol: "MCPRuntime"
+        type: "class"
+        signature: "sync_from_servers, search_and_register"
+        module: "core/apps/mcp/runtime.py"
+      - symbol: "MCPClientManager"
+        type: "class"
+        signature: "add_server, get_client, list_servers"
+        module: "core/apps/mcp/client.py"
+      - symbol: "MCPToolAdapter"
+        type: "class"
+        signature: "wrap MCP tool as BaseTool"
+        module: "core/apps/mcp/adapter.py"
+    breaks: []
+    consumers_expected:
+      - module: "core/apps/mcp/server.py"
+        reason: "MCP server lifecycle"
+      - module: "core/api/routers/mcp.py"
+        reason: "MCP REST 端点"
+
+  # ══════════════════════════════════════════════════════════════
+  # 十四附、A2A 协议 (7 caps)
+  # ══════════════════════════════════════════════════════════════
+  a2a-protocol:
+    section: "十四附"
+    section_name: "A2A 协议"
+    caps_count: 7
+    provides:
+      - symbol: "AgentDiscovery"
+        type: "class"
+        signature: "scan AGENT.md/SKILL.md for agent graph"
+        module: "core/harness/ontology_engine/triple_scanner.py"
+      - symbol: "AgentMessageBus"
+        type: "class"
+        signature: "TASK_ASSIGN/PROGRESS_UPDATE/RESULT/ERROR/CANCEL"
+        module: "core/apps/agents/message_bus.py"
+    breaks: []
+    consumers_expected:
+      - module: "core/apps/agents/multi_agent.py"
+        reason: "MultiAgent 通信"
+      - module: "core/harness/coordination/swarm_broker.py"
+        reason: "SwarmBroker agent discovery"
+
+  # ══════════════════════════════════════════════════════════════
+  # 十五、文档智能 (24 caps)
+  # ══════════════════════════════════════════════════════════════
+  document-intelligence:
+    section: "十五"
+    section_name: "文档智能"
+    caps_count: 24
+    provides:
+      - symbol: "DocumentParser"
+        type: "class"
+        signature: "parse→StructuredChunk[] + StructuredTable[]"
+        module: "core/harness/document/document_parser.py"
+      - symbol: "VideoParser"
+        type: "class"
+        signature: "ffmpeg extract audio + keyframes + LLM description"
+        module: "core/harness/document/video.py"
+      - symbol: "Transcriber"
+        type: "class"
+        signature: "transcribe_audio via Whisper"
+        module: "core/harness/document/transcriber.py"
+      - symbol: "OCREngine"
+        type: "class"
+        signature: "ocr_keyframes via Tesseract/PaddleOCR"
+        module: "core/harness/document/ocr.py"
+    breaks: []
+    consumers_expected:
+      - module: "core/harness/ontology_engine/engine.py"
+        reason: "OntologyEngine 文档输入"
+      - module: "core/api/routers/wiki.py"
+        reason: "Upload/ingest 端点"
+
+  # ══════════════════════════════════════════════════════════════
+  # 十六、工具生态 (21 caps)
+  # ══════════════════════════════════════════════════════════════
+  tool-ecosystem:
+    section: "十六"
+    section_name: "工具生态"
+    caps_count: 21
+    provides:
+      - symbol: "BaseTool"
+        type: "class"
+        signature: "execute(params)→ToolResult"
+        module: "core/apps/tools/base.py"
+      - symbol: "ToolRegistry"
+        type: "class"
+        signature: "register, get, list_tools"
+        module: "core/apps/tools/registry.py"
+      - symbol: "DatabaseTool"
+        type: "class"
+        signature: "SQLite/PostgreSQL/MySQL 三后端"
+        module: "core/apps/tools/database.py"
+    breaks: []
+    consumers_expected:
+      - module: "core/harness/syscalls/tool.py"
+        reason: "sys_tool_call → ToolRegistry"
+      - module: "core/apps/mcp/adapter.py"
+        reason: "MCPToolAdapter → BaseTool"
+
+  # ══════════════════════════════════════════════════════════════
+  # 十七、微调系统 (12 caps)
+  # ══════════════════════════════════════════════════════════════
+  fine-tuning-system:
+    section: "十七"
+    section_name: "微调系统"
+    caps_count: 12
+    provides:
+      - symbol: "LoRAAutoTrigger"
+        type: "class"
+        signature: "trigger()→stats on threshold"
+        module: "core/harness/training/auto_trigger.py"
+      - symbol: "RLTrainer"
+        type: "class"
+        signature: "train(num_iterations, episodes_per_iter)"
+        module: "core/harness/training/rl_trainer.py"
+    breaks: []
+    consumers_expected:
+      - module: "core/harness/evolution_engine.py"
+        reason: "nightly LoRA trigger"
+      - module: "core/harness/optimization/goal_generator.py"
+        reason: "微调缺口扫描"
+
+  # ══════════════════════════════════════════════════════════════
+  # 十八、部署与灰度 (4 caps)
+  # ══════════════════════════════════════════════════════════════
+  deploy-and-canary:
+    section: "十八"
+    section_name: "部署与灰度"
+    caps_count: 4
+    provides:
+      - symbol: "DeployEngine"
+        type: "class"
+        signature: "deploy(skill, version, effects_type)→DeployResult"
+        module: "core/harness/deployment/deploy_engine.py"
+      - symbol: "GitPusher"
+        type: "class"
+        signature: "push, build_image, rollback"
+        module: "core/harness/deployment/git_pusher.py"
+      - symbol: "SkillRouter"
+        type: "class"
+        signature: "register_version, route, auto_canary_rollout"
+        module: "core/harness/deployment/canary.py"
+    breaks: []
+    consumers_expected:
+      - module: "core/harness/optimization/goal_executor.py"
+        reason: "tool_gap → DeployEngine.deploy"
+      - module: "core/harness/optimization/tool_bootstrap.py"
+        reason: "_trigger_deploy"
+      - module: "aiPlat-platform/apps/fde/api/fde.py"
+        reason: "FDE canary 端点"
+
+  # ══════════════════════════════════════════════════════════════
+  # 十九、运行时干预 (2 caps)
+  # ══════════════════════════════════════════════════════════════
+  runtime-intervention:
+    section: "十九"
+    section_name: "运行时干预"
+    caps_count: 2
+    provides:
+      - symbol: "_model_overrides"
+        type: "dict"
+        signature: "session_id→model_name mapping"
+        module: "core/harness/utils/model_injection.py"
+      - symbol: "set_model_override / clear_model_override"
+        type: "function"
+        signature: "(model_name, session_id)"
+        module: "core/harness/utils/model_injection.py"
+    breaks: []
+    consumers_expected:
+      - module: "core/api/routers/adapters.py"
+        reason: "/model-override 端点"
+      - module: "core/harness/syscalls/llm.py"
+        reason: "最佳模型选择"
+
+  # ══════════════════════════════════════════════════════════════
+  # 二十、Arena & 调度 (4 caps)
+  # ══════════════════════════════════════════════════════════════
+  arena-and-scheduling:
+    section: "二十"
+    section_name: "Arena & 调度"
+    caps_count: 4
+    provides:
+      - symbol: "Swarm (Darwin Arena)"
+        type: "pattern"
+        signature: "N agents same task parallel → heuristic scoring → winner"
+        module: "core/harness/execution/swarm.py"
+      - symbol: "Debate"
+        type: "pattern"
+        signature: "adversarial multi-agent debate, convergence detection"
+        module: "core/harness/execution/debate.py"
+      - symbol: "Roundtable"
+        type: "pattern"
+        signature: "sequential round discussion, agreement convergence"
+        module: "core/harness/execution/roundtable.py"
+    breaks: []
+    consumers_expected:
+      - module: "core/harness/execution/pipeline_engine.py"
+        reason: "Pipeline routing_mode dispatch"
+      - module: "core/harness/coordination/swarm_broker.py"
+        reason: "SwarmBroker 蜂群协作"
+
+  # ══════════════════════════════════════════════════════════════
+  # 二十一、平台治理 (59 caps)
+  # ══════════════════════════════════════════════════════════════
+  platform-governance:
+    section: "二十一"
+    section_name: "平台治理"
+    caps_count: 74
+    provides:
+      - symbol: "GovernancePipeline"
+        type: "class"
+        signature: "6-step governance cycle, weighted health scoring"
+        module: "core/harness/knowledge/governance_pipeline.py"
+      - symbol: "ScoringEngine"
+        type: "class"
+        signature: "cumulative weighted scoring"
+        module: "core/harness/knowledge/scoring_engine.py"
+      - symbol: "PathPlanner"
+        type: "class"
+        signature: "BFS k-shortest path, cost ranking"
+        module: "core/harness/knowledge/path_planner.py"
+      - symbol: "ScenarioSelector"
+        type: "class"
+        signature: "5-criteria + 4-quadrant, value opportunity formula"
+        module: "core/harness/knowledge/scenario_selector.py"
+      - symbol: "DomainMaturity"
+        type: "class"
+        signature: "6-D maturity scoring, golden query eval"
+        module: "core/harness/knowledge/domain_maturity.py"
+    breaks: []
+    consumers_expected:
+      - module: "core/server.py"
+        reason: "Governance cron 定时任务"
+      - module: "core/harness/ontology_engine/engine.py"
+        reason: "本体引擎治理"
+      - module: "aiPlat-platform/apps/fde/api/fde_dashboard_v2.py"
+        reason: "仪表盘治理指标"
+
+  # ══════════════════════════════════════════════════════════════
+  # 二十二、Infra 基础设施 (11 caps)
+  # ══════════════════════════════════════════════════════════════
+  infra-infrastructure:
+    section: "二十二"
+    section_name: "Infra 基础设施"
+    caps_count: 11
+    provides:
+      - symbol: "ModelManager"
+        type: "class"
+        signature: "list_models, select, health_check"
+        module: "aiPlat-infra/infra/management/model/manager.py"
+      - symbol: "create_llm_client"
+        type: "function"
+        signature: "(config)→LLMClient"
+        module: "aiPlat-infra/infra/llm/factory.py"
+      - symbol: "InfraBridge"
+        type: "class"
+        signature: "core→infra bridge (ModelManager, Database, Vector)"
+        module: "core/harness/infrastructure/infra_bridge.py"
+    breaks: []
+    consumers_expected:
+      - module: "core/harness/infrastructure/infra_llm_adapter.py"
+        reason: "LLM 适配器 → infra"
+      - module: "core/harness/utils/model_injection.py"
+        reason: "ModelManager 缓存"
+      - module: "aiPlat-management/frontend/src/pages/Infra"
+        reason: "Infra 管理前端"
+
+  # ══════════════════════════════════════════════════════════════
+  # 二十三、核心API统一入口 (5 caps)
+  # ══════════════════════════════════════════════════════════════
+  core-api-unified-entry:
+    section: "二十三"
+    section_name: "核心API统一入口"
+    caps_count: 5
+    provides:
+      - symbol: "CoreFacade"
+        type: "class"
+        signature: "canonical re-export for platform layer"
+        module: "core/api/core_facade.py"
+      - symbol: "server.py"
+        type: "module"
+        signature: "FastAPI app lifecycle, startup/shutdown"
+        module: "core/server.py"
+    breaks: []
+    consumers_expected:
+      - module: "aiPlat-platform/apps/fde/api/router.py"
+        reason: "FDE 路由挂载"
+      - module: "aiPlat-platform/server.py"
+        reason: "Platform server 入口"
+
+  # ══════════════════════════════════════════════════════════════
+  # 二十四、编排系统 (4 caps)
+  # ══════════════════════════════════════════════════════════════
+  orchestration-system:
+    section: "二十四"
+    section_name: "编排系统"
+    caps_count: 4
+    provides:
+      - symbol: "IntentAnalyzer"
+        type: "class"
+        signature: "classify and decompose intent"
+        module: "core/harness/orchestration/intent_analyzer.py"
+      - symbol: "ChainPlanner"
+        type: "class"
+        signature: "execution chain topology"
+        module: "core/harness/orchestration/chain_planner.py"
+    breaks: []
+    consumers_expected:
+      - module: "core/harness/execution/pipeline_engine.py"
+        reason: "Pipeline 编排"
+      - module: "aiPlat-platform/apps/fde/orchestration/builder.py"
+        reason: "FDEBuilderOrch 编排"
+
+  # ══════════════════════════════════════════════════════════════
+  # 二十五、管理 & 质量 (21 caps)
+  # ══════════════════════════════════════════════════════════════
+  management-and-quality:
+    section: "二十五"
+    section_name: "管理 & 质量"
+    caps_count: 21
+    provides:
+      - symbol: "QualityBus"
+        type: "class"
+        signature: "4-subsystem unified scoring 0-100"
+        module: "core/harness/knowledge/quality_bus.py"
+      - symbol: "FeedbackLoops"
+        type: "module"
+        signature: "FeedbackTranslator, policy→natural language"
+        module: "core/harness/feedback/translator.py"
+      - symbol: "SpecLifecycle"
+        type: "class"
+        signature: "7d→stable, 90d→archived"
+        module: "core/harness/specs/lifecycle.py"
+    breaks: []
+    consumers_expected:
+      - module: "core/harness/execution/pipeline_engine.py"
+        reason: "Pipeline 质量评分"
+      - module: "aiPlat-management/frontend/src/pages/Diagnostics"
+        reason: "诊断仪表盘"
+
+  # ══════════════════════════════════════════════════════════════
+  # 二十六、编排层 (Orchestration) (17 caps)
+  # ══════════════════════════════════════════════════════════════
+  orchestration-layer:
+    section: "二十六"
+    section_name: "编排层"
+    caps_count: 17
+    provides:
+      - symbol: "DynamicOrchestrator"
+        type: "class"
+        signature: "decompose_task, execute_complex_task, spawn_parallel"
+        module: "core/harness/coordination/dynamic_orchestrator.py"
+      - symbol: "SwarmBroker"
+        type: "class"
+        signature: "Contract Net: announce→bid→award"
+        module: "core/harness/coordination/swarm_broker.py"
+      - symbol: "GossipProtocol"
+        type: "class"
+        signature: "push-pull distributed sync"
+        module: "core/harness/memory/gossip_protocol.py"
+      - symbol: "AdaptiveContextRouter"
+        type: "class"
+        signature: "self-learning source selection"
+        module: "core/harness/knowledge/adaptive_context.py"
+      - symbol: "SubagentCoordinator"
+        type: "class"
+        signature: "execute_single/parallel/sequential/fanout"
+        module: "core/apps/agents/subagent/coordinator.py"
+    breaks: []
+    consumers_expected:
+      - module: "core/harness/execution/pipeline_engine.py"
+        reason: "Pipeline → Swarm/Debate/Roundtable/MoA dispatch"
+      - module: "core/harness/coordination/swarm_broker.py"
+        reason: "动态组队"
+      - module: "core/harness/optimization/goal_executor.py"
+        reason: "Goal 分解后并行执行"
+
+  # ══════════════════════════════════════════════════════════════
+  # 二十七、L6 自主能力 (8 caps)
+  # ══════════════════════════════════════════════════════════════
+  l6-autonomy:
+    section: "二十七"
+    section_name: "L6 自主能力"
+    caps_count: 8
+    provides:
+      - symbol: "AbstractGoalDecomposer"
+        type: "class"
+        signature: "decompose(abstract_goal, domain_id)→DecomposeResult"
+        module: "core/harness/optimization/abstract_goal_decomposer.py"
+      - symbol: "GoalDependencyGraph"
+        type: "class"
+        signature: "add_goal, infer_dependencies, compute_execution_order"
+        module: "core/harness/optimization/goal_dependency_graph.py"
+      - symbol: "GoalProgressEvaluator"
+        type: "class"
+        signature: "evaluate(goal, completed, total)→ProgressReport"
+        module: "core/harness/optimization/goal_progress_evaluator.py"
+      - symbol: "DiscoveryListener"
+        type: "class"
+        signature: "watch auto_discovered/ dir, auto-register"
+        module: "core/harness/infrastructure/discovery_listener.py"
+      - symbol: "AutoRegisterEngine"
+        type: "class"
+        signature: "try_register, test_connection, suggest_mapping"
+        module: "core/harness/infrastructure/auto_register.py"
+    breaks: []
+    consumers_expected:
+      - module: "core/harness/optimization/goal_generator.py"
+        reason: "_scan_business_objectives"
+      - module: "core/harness/optimization/goal_executor.py"
+        reason: "_execute_business_objective"
+      - module: "core/harness/scheduler/wake_scheduler.py"
+        reason: "_try_decompose_pending"
+      - module: "core/server.py"
+        reason: "DiscoveryListener 启动"
+      - module: "aiPlat-platform/apps/fde/api/fde_dashboard_v2.py"
+        reason: "_get_goal_decomposition_stats"
+
+  # ══════════════════════════════════════════════════════════════
+  # 二十八、记忆系统白盒化 (7 caps)
+  # ══════════════════════════════════════════════════════════════
+  memory-white-boxing:
+    section: "二十八"
+    section_name: "记忆系统白盒化"
+    caps_count: 7
+    provides:
+      - symbol: "LongTermMemoryMixin"
+        type: "class"
+        signature: "list/update/delete/add/search long-term memories"
+        module: "core/services/execution_store/ltm_mixin.py"
+      - symbol: "Memory rules JSON"
+        type: "config_file"
+        signature: "~/.aiplat/memory_rules.json"
+        module: "core/harness/memory/manager.py"
+      - symbol: "LongTermMemoryModal"
+        type: "react_component"
+        signature: "browse/edit/delete long-term memories"
+        module: "aiPlat-management/frontend/src/components/core/LongTermMemoryModal.tsx"
+      - symbol: "UserProfileModal"
+        type: "react_component"
+        signature: "memory rules toggle: ignore_greetings, capture_errors"
+        module: "aiPlat-management/frontend/src/components/core/UserProfileModal.tsx"
+      - symbol: "SemanticMemoryModal"
+        type: "react_component"
+        signature: "search/soft-delete/recover semantic memories"
+        module: "aiPlat-management/frontend/src/components/core/SemanticMemoryModal.tsx"
+    breaks: []
+    consumers_expected:
+      - module: "core/api/routers/memory.py"
+        reason: "全量记忆 REST 端点"
+      - module: "aiPlat-management/frontend/src/pages/Core/Memory/Memory.tsx"
+        reason: "记忆管理页面"
+
+  # ══════════════════════════════════════════════════════════════
+  # 二十九、记忆运行时过滤 (2 caps)
+  # ══════════════════════════════════════════════════════════════
+  memory-runtime-filtering:
+    section: "二十九"
+    section_name: "记忆运行时过滤"
+    caps_count: 2
+    provides:
+      - symbol: "MemoryManager.load_memory_rules"
+        type: "classmethod"
+        signature: "()→dict{ignore_greetings, capture_errors, patterns}"
+        module: "core/harness/memory/manager.py"
+      - symbol: "MemoryManager.save_memory_rules"
+        type: "classmethod"
+        signature: "(rules)→None"
+        module: "core/harness/memory/manager.py"
+    breaks: []
+    consumers_expected:
+      - module: "core/harness/memory/manager.py"
+        reason: "save_interaction 过滤逻辑"
+      - module: "core/api/routers/memory.py"
+        reason: "GET/PUT /memory/rules"
+
+  # ══════════════════════════════════════════════════════════════
+  # 三十、MoA 多模型推理 (5 caps)
+  # ══════════════════════════════════════════════════════════════
+  moa-multi-model-reasoning:
+    section: "三十"
+    section_name: "MoA 多模型推理"
+    caps_count: 5
+    provides:
+      - symbol: "moa_executor.execute"
+        type: "async_function"
+        signature: "(query, preset, max_reference_models, session_id)→MoaResult"
+        module: "core/harness/syscalls/moa_executor.py"
+      - symbol: "MoaResult"
+        type: "dataclass"
+        signature: "query, preset, reference_outputs, final_answer, cost_usd"
+        module: "core/harness/syscalls/moa_executor.py"
+      - symbol: "moa_presets.yaml"
+        type: "config_file"
+        signature: "6 presets: general/creative/analysis/code_review/architecture/security"
+        module: "core/harness/syscalls/moa_presets.yaml"
+      - symbol: "/model-override/moa"
+        type: "api_endpoint"
+        signature: "POST {preset}→moa override"
+        module: "core/api/routers/adapters.py"
+      - symbol: "ModelTierPanel MoA card"
+        type: "react_component"
+        signature: "Brain icon + preset dropdown in model tier panel"
+        module: "aiPlat-management/frontend/src/components/model/ModelTierPanel.tsx"
+    breaks: []
+    consumers_expected:
+      - module: "core/harness/interfaces/loop.py"
+        reason: "ReActLoop MoA interception"
+      - module: "core/harness/execution/pipeline_engine.py"
+        reason: "_run_moa 路由模式"
+      - module: "core/harness/utils/model_injection.py"
+        reason: "is_moa_session/get_moa_preset + override filtering"
+      - module: "core/api/routers/adapters.py"
+        reason: "/model-override/moa 端点"
+      - module: "aiPlat-management/frontend/src/components/model/ModelTierPanel.tsx"
+        reason: "MoA 卡片交互"
+      - module: "core/harness/execution/loop/command_parser.py"
+        reason: "/moa --preset 命令解析"
+
+  # ══════════════════════════════════════════════════════════════
+  # 三十一、AI知识层增强 (3 caps)
+  # ══════════════════════════════════════════════════════════════
+  ai-knowledge-layer:
+    section: "三十一"
+    section_name: "AI知识层增强"
+    caps_count: 3
+    provides:
+      - symbol: "generate_index_md"
+        type: "function"
+        signature: "(collection_id)→str (global wiki index)"
+        module: "core/harness/knowledge/wiki_engine.py"
+      - symbol: "POST /ingest/url"
+        type: "api_endpoint"
+        signature: "{url, collection, tags}→{source_id, title, chars}"
+        module: "core/api/routers/wiki.py"
+      - symbol: "brand_rules.yaml"
+        type: "config_file"
+        signature: "voice/tone/forbidden_words/format_rules"
+        module: "core/harness/memory/brand_rules.yaml"
+    breaks: []
+    consumers_expected:
+      - module: "core/api/routers/wiki.py"
+        reason: "/wiki/index-md + /ingest/url 端点"
+      - module: "core/harness/memory/manager.py"
+        reason: "build_context 注入 brand_rules"
+
+  # ══════════════════════════════════════════════════════════════
+  # 三十二、Hermes压缩对标 (3 caps)
+  # ══════════════════════════════════════════════════════════════
+  hermes-compression:
+    section: "三十二"
+    section_name: "Hermes压缩对标"
+    caps_count: 3
+    provides:
+      - symbol: "_micro_compress"
+        type: "async_function"
+        signature: "fold consecutive short assistant/tool messages"
+        module: "core/harness/execution/loop/compressor.py"
+      - symbol: "normalize_roles"
+        type: "function"
+        signature: "(messages)→List[dict] — transcript guard"
+        module: "core/harness/memory/transcript_guard.py"
+      - symbol: "SystemReminders.check_and_inject"
+        type: "async_method"
+        signature: "(state)→Optional[dict{role, content}]"
+        module: "core/harness/memory/reminders.py"
+    breaks:
+      - "reminders.check_and_inject: 返回类型 Optional[str] → Optional[dict] (backward-compatible)"
+    consumers_expected:
+      - module: "core/harness/execution/loop/compressor.py"
+        reason: "5-stage compression pipeline → micro_compress"
+      - module: "core/harness/memory/manager.py"
+        reason: "build_context → normalize_roles + reminder dict injection"
+      - module: "core/harness/memory/reminders.py"
+        reason: "结构化返回 dict 而非裸字符串"
+class TestUnregisteredFeature:

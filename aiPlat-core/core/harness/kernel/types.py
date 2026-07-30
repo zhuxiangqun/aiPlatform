@@ -59,16 +59,33 @@ class RunContext:
     entity_type: str = ""
     situation: str = ""
     priority: str = ""
+    time_range: str = ""          # P1-B: "2024Q3", "2024", "last_quarter" (standardized)
+    current_page: str = ""        # UI page route, e.g. "/diagnostics/fde"
+    current_page_label: str = ""  # UI page label, e.g. "FDE 工作台"
+    current_page_group: str = ""  # UI sidebar group, e.g. "diagnostics"
     constraints: List[str] = field(default_factory=list)
     metadata: Dict[str, Any] = field(default_factory=dict)
 
     def to_compact(self) -> str:
         """Compact serialization for system prompt injection. Target: ≤100 tokens."""
-        parts = [f"当前{self.entity_type + ':' if self.entity_type else '实体:'} {self.entity}"]
+        parts = []
+        if self.current_page_label:
+            label_text = self.current_page_label
+            if self.current_page_group:
+                label_text = f"{label_text}"
+            parts.append(f"用户当前页面: {label_text}")
+        elif self.current_page:
+            parts.append(f"用户当前页面路径: {self.current_page}")
+        if self.entity:
+            parts.append(f"当前{self.entity_type + ':' if self.entity_type else '实体:'} {self.entity}")
+        elif self.entity_type and not self.current_page_label:
+            parts.append(f"当前{self.entity_type}")
         if self.situation:
             parts.append(f"概况: {self.situation}")
         if self.priority:
             parts.append(f"优先级: {self.priority}")
+        if self.time_range:
+            parts.append(f"时间: {self.time_range}")
         if self.constraints:
             parts.append(f"约束: {'; '.join(self.constraints)}")
         return " | ".join(parts)

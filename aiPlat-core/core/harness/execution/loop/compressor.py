@@ -116,8 +116,50 @@ async def apply_context_shaping(state: LoopState, config: LoopConfig, loop: Any 
             }
 
     async def _micro_compress():
-        """Micro compression triggered at >=90% context usage. Placeholder for future implementation."""
-        return
+        """Phase 42: Fold consecutive short assistant/tool messages into summaries.
+
+        At >=90% context pressure, many short tool acknowledgments and quick
+        assistant replies consume message slots without significant information.
+        This stage folds them into compact single-line summaries.
+        """
+        msgs = state.context.get("messages")
+        if not isinstance(msgs, list) or len(msgs) < 4:
+            return
+
+        result = []
+        buffer = []
+        for msg in msgs:
+            role = str(msg.get("role", ""))
+            content = str(msg.get("content", ""))
+            if role in ("assistant", "tool") and len(content) < 100 and "short responses" not in content:
+                buffer.append(content[:80])
+            else:
+                if buffer and len(buffer) >= 2:
+                    result.append({
+                        "role": "assistant",
+                        "content": f"[{len(buffer)} short responses]: " + "; ".join(buffer[-3:]),
+                        "meta": {"compressed": "micro_compress"},
+                    })
+                elif buffer:
+                    result.extend([dict(msg) for msg in msgs[msgs.index(msg)-len(buffer):msgs.index(msg)]])
+                buffer = []
+                result.append(dict(msg))
+        if buffer and len(buffer) >= 2:
+            result.append({
+                "role": "assistant",
+                "content": f"[{len(buffer)} short responses]: " + "; ".join(buffer[-3:]),
+                "meta": {"compressed": "micro_compress"},
+            })
+        elif buffer:
+            result.extend([dict(msg) for msg in msgs[-len(buffer):]])
+
+        if len(result) < len(msgs):
+            state.context["messages"] = result
+            state.metadata["micro_compress_stats"] = {
+                "before": len(msgs),
+                "after": len(result),
+                "saved": len(msgs) - len(result),
+            }
 
     async def _fold():
         """Merge consecutive same-role messages to reduce message count.

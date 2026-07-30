@@ -24,6 +24,9 @@ class MemoryItem:
     access_count: int = 0
     expires_at: Optional[datetime] = None       # 过期时间 (None = 永不过期)
     is_deleted: bool = False                     # 软删除标记
+    source_tag: str = ""                         # Phase 40: 来源标签
+    trust_weight: float = 1.0                    # Phase 40: 信任加权
+    provenance: str = ""                         # Phase 40: 溯源路径
 
 
 class SemanticMemory:
@@ -69,6 +72,16 @@ class SemanticMemory:
             self._conn.execute("ALTER TABLE semantic_memories ADD COLUMN is_deleted INTEGER DEFAULT 0")
         except Exception as e:
             logging.debug(str(e), exc_info=True)
+        # Phase 40: provenance columns
+        for col_def in (
+            "source_tag TEXT DEFAULT ''",
+            "trust_weight REAL DEFAULT 1.0",
+            "provenance TEXT DEFAULT ''",
+        ):
+            try:
+                self._conn.execute(f"ALTER TABLE semantic_memories ADD COLUMN {col_def}")
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
         self._conn.commit()
         self._load_from_sqlite()
 
@@ -77,7 +90,8 @@ class SemanticMemory:
         if not hasattr(self, "_conn"):
             return
         for row in self._conn.execute(
-            "SELECT key, content, metadata_json, embedding, access_count, expires_at, is_deleted "
+            "SELECT key, content, metadata_json, embedding, access_count, expires_at, is_deleted, "
+            "source_tag, trust_weight, provenance "
             "FROM semantic_memories WHERE is_deleted = 0"
         ):
             import json
@@ -87,6 +101,9 @@ class SemanticMemory:
             item = MemoryItem(
                 id=row[0], content=row[1], embedding=emb, metadata=meta,
                 access_count=row[4], expires_at=expires, is_deleted=bool(row[6]),
+                source_tag=row[7] or "",
+                trust_weight=float(row[8] or 0) or 1.0,
+                provenance=row[9] or "",
             )
             self._items[row[0]] = item
 
@@ -121,6 +138,9 @@ class SemanticMemory:
             embedding=embedding,
             metadata=metadata or {},
             expires_at=expires_at,
+            source_tag=str(metadata.get("source_tag", "") or ""),
+            trust_weight=float(metadata.get("trust_weight", 1.0) or 1.0),
+            provenance=str(metadata.get("provenance", "") or ""),
         )
         self._items[key] = item
 
@@ -130,8 +150,15 @@ class SemanticMemory:
             meta_json = json.dumps(metadata or {}, ensure_ascii=False)
             exp_str = expires_at.isoformat() if expires_at else None
             self._conn.execute(
-                "INSERT OR REPLACE INTO semantic_memories(key, content, metadata_json, embedding, created_at, accessed_at, access_count, expires_at, is_deleted) VALUES(?,?,?,?,?,?,?,?,?)",
-                (key, content, meta_json, emb_json, item.created_at.isoformat(), item.accessed_at.isoformat(), item.access_count, exp_str, int(item.is_deleted)),
+                "INSERT OR REPLACE INTO semantic_memories("
+                "key, content, metadata_json, embedding,"
+                "created_at, accessed_at, access_count, expires_at, is_deleted,"
+                "source_tag, trust_weight, provenance"
+                ") VALUES(?,?,?,?,?,?,?,?,?,?,?,?)",
+                (key, content, meta_json, emb_json,
+                 item.created_at.isoformat(), item.accessed_at.isoformat(),
+                 item.access_count, exp_str, int(item.is_deleted),
+                 item.source_tag, item.trust_weight, item.provenance),
             )
             self._conn.commit()
         return item
@@ -255,6 +282,21 @@ class SemanticMemory:
                 self._conn.commit()
             return True
         return False
+
+    async def increment_access_count(self, keys: list) -> None:
+        """Phase 46: Batch increment access_count for semantic memory keys."""
+        if not keys:
+            return
+        if self._store_type == "sqlite" and hasattr(self, "_conn"):
+            try:
+                for key in keys[:10]:
+                    self._conn.execute(
+                        "UPDATE semantic_memories SET access_count = access_count + 1 "
+                        "WHERE key = ? AND is_deleted = 0", (str(key),)
+                    )
+                self._conn.commit()
+            except Exception as e:
+                logging.debug("increment_access_count failed: %s", e)
 
     async def delete(self, key: str) -> bool:
         """Soft-delete a memory (sets is_deleted=1)."""

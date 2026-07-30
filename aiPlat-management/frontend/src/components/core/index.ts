@@ -14,3 +14,5 @@ export { default as CreateSessionModal } from './CreateSessionModal';
 export { default as SessionDetailModal } from './SessionDetailModal';
 export { default as SearchMemoryModal } from './SearchMemoryModal';
 export { default as LongTermMemoryModal } from './LongTermMemoryModal';
+export { default as UserProfileModal } from './UserProfileModal';
+export { default as SemanticMemoryModal } from './SemanticMemoryModal';

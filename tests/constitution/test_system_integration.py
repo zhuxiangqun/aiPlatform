@@ -269,7 +269,7 @@ def test_auto_classify_admin_templates():
 def test_prompt_app_defaults_count():
     """prompt_app.py must have >=34 seed templates."""
     try:
-        from core.api.routers.prompt_app import _APP_DEFAULTS
+        from apps.prompt.api.prompt_app import _APP_DEFAULTS
         assert len(_APP_DEFAULTS) >= 34, f"Expected >=34 app defaults, got {len(_APP_DEFAULTS)}"
         ids = [t[0] for t in _APP_DEFAULTS]
         assert "invitation-letter" in ids, "Missing user-visible template"
@@ -282,7 +282,7 @@ def test_prompt_app_defaults_count():
 def test_prompt_app_seed_has_scenario_tags():
     """Seed endpoint must include scenario tags for 15 user templates."""
     try:
-        from core.api.routers.prompt_app import _TEMPLATE_SCENARIOS, _SCENARIO_TAGS
+        from apps.prompt.api.prompt_app import _TEMPLATE_SCENARIOS, _SCENARIO_TAGS
         assert len(_TEMPLATE_SCENARIOS) >= 12, f"Expected >=12 template scenario mappings, got {len(_TEMPLATE_SCENARIOS)}"
         assert len(_SCENARIO_TAGS) >= 25, f"Expected >=25 scenario tags, got {len(_SCENARIO_TAGS)}"
         # Check tag categories exist

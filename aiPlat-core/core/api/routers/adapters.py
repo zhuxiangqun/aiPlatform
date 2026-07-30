@@ -1,6 +1,13 @@
 from __future__ import annotations
 
 import hashlib
+# === capability_dependencies (Phase 43: auto-verified) ===
+# depends_on:
+#   - moa-multi-model-reasoning:
+#       symbols: [/model-override/moa]
+#   - runtime-intervention:
+#       symbols: [set_model_override, clear_model_override]
+# === end ===
 from typing import Any, Dict, Optional
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -307,5 +314,27 @@ async def set_model_override_endpoint(request: dict):
             return {"status": "override_cleared", "session_id": session_id}
     except HTTPException:
         raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ── Phase 42: MoA session-level override ──
+
+@router.post("/model-override/moa", response_model=Dict[str, Any])
+async def set_moa_override(request: dict):
+    """Set MoA as the session model with a specific preset.
+
+    Body: {"preset": "general", "session_id": "_global"}
+    Valid presets: general, creative, analysis, code_review, architecture, security
+    """
+    preset = str(request.get("preset", "general")).strip()
+    session_id = str(request.get("session_id", "_global")).strip()
+    valid = {"general", "creative", "analysis", "code_review", "architecture", "security"}
+    if preset not in valid:
+        raise HTTPException(status_code=400, detail=f"Invalid preset: {preset}. Valid: {', '.join(sorted(valid))}")
+    try:
+        from core.harness.utils.model_injection import _model_overrides
+        _model_overrides[session_id] = f"moa:{preset}"
+        return {"status": "moa_override_set", "preset": preset, "session_id": session_id}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

@@ -9,4 +9,4 @@ Per app-module-layout.md:
 # v2.5 scaffold — business logic goes here
 
 # Domain prompts registration (P1-1 migration)
-from . import prompts; prompts.register_builder_prompts()
+from .prompts import register_builder_prompts; register_builder_prompts()

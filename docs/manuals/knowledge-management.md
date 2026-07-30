@@ -2,7 +2,7 @@
 
 > 版本: 1.1 · 2026-07-19  
 > 适用: aiPlatform v2.6+  
-> 入口: 管理端 → 知识中心 → 管线总览（`/knowledge/overview`）  
+> 入口: 管理端 → 知识工厂 → 管线总览（`/knowledge/overview`）  
 > 🆕 v2.6: 本体编辑器 + 角色视图 + 流程编排 + SLA 监控 + 术语消歧
 
 ---
@@ -85,11 +85,11 @@ aiPlatform 的知识系统是一个 6 阶段管线，从原始资料进入，经
 
 | 方式 | 入口 | 端点 |
 |------|------|------|
-| 页面上传 | 知识中心 → 原始资料 | `POST /api/platform/apps/fde/ingest` |
-| Vault 文件浏览器 | 知识中心 → 原始资料 | VaultBrowser 组件 |
+| 页面上传 | 知识工厂 → 原始资料 | `POST /api/platform/apps/fde/ingest` |
+| Vault 文件浏览器 | 知识工厂 → 原始资料 | VaultBrowser 组件 |
 | API 上传 | 外部系统 | `POST /api/core/wiki/ingest` |
 | URL 导入 | 知识中心 | `POST /api/core/wiki/ingest` |
-| 数据源连接 | 知识中心 → 本体模型 → 外部数据源 | `GET /api/core/ontology/datasources` |
+| 数据源连接 | 打开 /infra/ontology（本体模型） → 外部数据源 | `GET /api/core/ontology/datasources` |
 
 ### 2.3 DocumentParser 输出
 
@@ -110,7 +110,7 @@ class StructuredChunk:
 
 ### 3.1 位置
 
-**管理入口**：知识中心 → 本体模型（`/infra/ontology`）  
+**管理入口**：打开 /infra/ontology（本体模型）（`/infra/ontology`）  
 📗 详细的 CRUD 操作指南 → [本体模型管理使用手册](ontology.md)
 
 ### 3.2 核心组件
@@ -228,7 +228,7 @@ object_properties:
 
 ### 4.1 位置
 
-**查看入口**：知识中心 → 向量知识库（`/platform/kb?tab=documents`）
+**查看入口**：打开 /platform/kb?tab=documents（向量知识库）（`/platform/kb?tab=documents`）
 
 ### 4.2 组件
 
@@ -277,7 +277,7 @@ object_properties:
 
 ### 5.1 位置
 
-**编辑入口**：知识中心 → LLM Wiki（`/platform/kb?tab=wiki`）
+**编辑入口**：打开 /platform/kb?tab=wiki（LLM Wiki）（`/platform/kb?tab=wiki`）
 
 ### 5.2 Wiki 页面生成方式
 
@@ -324,7 +324,7 @@ Wiki 引擎提供健康报告：
 
 ### 6.1 位置
 
-**质量查看入口**：知识中心 → RAG 检索（`/platform/kb?tab=eval`）
+**质量查看入口**：知识工厂 → RAG 检索（`/platform/kb?tab=eval`）
 
 ### 6.2 检索路由
 
@@ -408,7 +408,7 @@ FDE 在现场澄清对话中发现的知识缺口自动进入候选池。详细�
 
 ### 8.1 创建第一个知识域（5 分钟）
 
-1. 打开知识中心 → 本体模型 → 点击 **🤖 智能生成**
+1. 打开打开 /infra/ontology（本体模型） → 点击 **🤖 智能生成**
 2. 填写域名和关键词描述（如：`lock-service` + "智能锁 安装工单 设备型号 故障类型"）
 3. AI 自动生成 YAML（类 + 关系 + 状态机）
 4. 点击 **💾 保存并注册**

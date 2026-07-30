@@ -559,10 +559,13 @@ async def graph_ask(req: Dict[str, Any]) -> Dict[str, Any]:
         from core.harness.utils.prompt_loader import _async_prompt_resolve
         prompt = await _async_prompt_resolve("graph-ask", question=question)
 
-        resp = await model.generate([
-            {"role": "system", "content": await _async_prompt_resolve("graph-system-role")},
-            {"role": "user", "content": prompt},
-        ], config=None)
+        from core.harness.syscalls.llm import sys_llm_generate
+        resp = await sys_llm_generate(
+            model,
+            [{"role": "system", "content": await _async_prompt_resolve("graph-system-role")},
+             {"role": "user", "content": prompt}],
+            trace_context={"source": "knowledge_graph", "phase": "qa"},
+        )
 
         content = resp.content if hasattr(resp, 'content') else str(resp)
         import re as _re, json as _json
@@ -599,10 +602,12 @@ async def graph_ask(req: Dict[str, Any]) -> Dict[str, Any]:
                     "graph-ask-translate", question=question, results_text=results_text
                 )
 
-                resp2 = await model.generate([
-                    {"role": "system", "content": await _async_prompt_resolve("graph-architect-role")},
-                    {"role": "user", "content": translate_prompt},
-                ], config=None)
+                resp2 = await sys_llm_generate(
+                    model,
+                    [{"role": "system", "content": await _async_prompt_resolve("graph-architect-role")},
+                     {"role": "user", "content": translate_prompt}],
+                    trace_context={"source": "knowledge_graph", "phase": "translate"},
+                )
                 answer = (resp2.content if hasattr(resp2, 'content') else str(resp2))[:800]
             except Exception as e:
                 logging.warning(str(e), exc_info=True)

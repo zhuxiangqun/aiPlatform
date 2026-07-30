@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from typing import Any, Dict, List, Optional
-from apps.fde.schemas import FdeStatusResponse, FdeListResponse, FdeItemResponse
+from apps.fde.api.schemas import FdeStatusResponse, FdeListResponse, FdeItemResponse
 
 
 from fastapi import APIRouter, HTTPException, Query
@@ -33,7 +33,7 @@ async def fde_sessions(
     Each session includes company, industry hint, action count, and delivery stats.
     """
     try:
-        from core.harness.ontology_engine.graph_index import GraphIndex
+        from core.api.core_facade import GraphIndex
 
         fd = GraphIndex.load("fde-delivery")
         sessions = []
@@ -123,7 +123,7 @@ async def fde_session_timeline(session_id: str):
         raise HTTPException(status_code=400, detail="session_id is required")
 
     try:
-        from core.harness.ontology_engine.graph_index import GraphIndex
+        from core.api.core_facade import GraphIndex
 
         fd = GraphIndex.load("fde-delivery")
         session_node = fd.get_node(sid) or fd.find_by_name(sid)
@@ -225,7 +225,7 @@ async def fde_session_detail(session_id: str):
         raise HTTPException(status_code=400, detail="session_id is required")
 
     try:
-        from core.harness.ontology_engine.graph_index import GraphIndex
+        from core.api.core_facade import GraphIndex
 
         fd = GraphIndex.load("fde-delivery")
         session_node = fd.get_node(sid) or fd.find_by_name(sid)
@@ -257,7 +257,7 @@ async def fde_session_detail(session_id: str):
                         result["industry"] = md.get("industry", "")
                         result["pain_points"] = md.get("pain_points", "")
                     except json.JSONDecodeError:
-                        pass
+                        pass  # noqa: cleanup-best-effort
 
         # 2. Actions and delivery status
         actions = []
@@ -342,7 +342,7 @@ async def fde_session_quality(session_id: str):
         raise HTTPException(status_code=400, detail="session_id is required")
 
     try:
-        from core.harness.ontology_engine.graph_index import GraphIndex
+        from core.api.core_facade import GraphIndex
 
         fd = GraphIndex.load("fde-delivery")
         session_node = fd.get_node(sid) or fd.find_by_name(sid)
@@ -370,7 +370,7 @@ async def fde_session_quality(session_id: str):
                         tot = len(em)
                         ev_cnt = sum(1 for x in em if x.get("source") and x["source"] not in ("", _EVIDENCE_SOURCE_LLM, _EVIDENCE_SOURCE_INDUSTRY))
                     except Exception:
-                        pass
+                        logging.getLogger(__name__).debug('fde_session_quality failed', exc_info=True)
         dims["evidence"] = round(ev_cnt / max(tot, 1) * 100) if tot > 0 else 0
 
         # Action completion
@@ -430,7 +430,7 @@ async def fde_ontology_coverage(session_id: str):
         raise HTTPException(status_code=400, detail="session_id is required")
 
     try:
-        from core.harness.ontology_engine.graph_index import GraphIndex
+        from core.api.core_facade import GraphIndex
 
         fd = GraphIndex.load("fde-delivery")
         session_node = fd.get_node(sid) or fd.find_by_name(sid)
@@ -469,7 +469,7 @@ async def fde_ontology_coverage(session_id: str):
                                 # Check evidence entities for history backing
                                 history_count += 1
                     except Exception:
-                        pass
+                        logging.getLogger(__name__).debug('fde_ontology_coverage failed', exc_info=True)
 
         # Count evidence entities related to this session for history estimation
         evidence_entities = 0
@@ -503,7 +503,7 @@ async def fde_ontology_coverage(session_id: str):
             # Rough estimate: each term covers ~1 concept per diagnosis
             term_coverage = round(min(term_count / max(total, 5), 1.0), 2)
         except Exception:
-            pass
+            logging.getLogger(__name__).debug('code failed', exc_info=True)
 
         # ── 3. Determinism score = ontology + history ──
         determinism = round(cov_ontology + cov_history, 2)
@@ -539,3 +539,4 @@ async def fde_ontology_coverage(session_id: str):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Ontology coverage failed: {str(e)[:300]}")
+

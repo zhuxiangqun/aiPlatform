@@ -1,13 +1,27 @@
 """FDE Dashboard V2 — unified management overview with metrics, activity, alerts, governance health (split from fde.py)."""
+# === capability_dependencies (Phase 43: auto-verified) ===
+# depends_on:
+#   - abstract-goal-decomposition:
+#       symbols: [get_abstract_goal_decomposer]
+#   - deploy-and-canary:
+#       symbols: [get_deploy_engine]
+#   - l6-autonomy:
+#       symbols: [get_discovery_listener]
+#   - memory-subsystem:
+#       symbols: [_get_governance_live_status]
+#   - knowledge-engine-ontology:
+#       symbols: [GraphIndex]
+# === end ===
 from __future__ import annotations
 
 from typing import Any, Dict, List
-from apps.fde.schemas import FdeStatusResponse, FdeListResponse, FdeItemResponse
+from apps.fde.api.schemas import FdeStatusResponse, FdeListResponse, FdeItemResponse
 
 
 from fastapi import APIRouter, HTTPException
 
 import time
+import logging
 
 router = APIRouter(tags=["fde-dashboard-v2"])
 
@@ -45,12 +59,16 @@ async def fde_dashboard():
         "quality_score": _get_quick_quality_score(status, governance),
         "self_evolution": _get_evolution_stats(),
         "manuals": _get_manual_stats(),
+        # Phase 39-41: L6 autonomous capabilities
+        "goal_decomposition": _get_goal_decomposition_stats(),
+        "deploy_engine": _get_deploy_engine_stats(),
+        "discovery": _get_discovery_stats(),
     }
 
     # Recent activity (last 5 sessions)
     recent = []
     try:
-        from core.harness.ontology_engine.graph_index import GraphIndex
+        from core.api.core_facade import GraphIndex
         fd = GraphIndex.load("fde-delivery")
         for nid, node in sorted(
             list(fd._nodes.items()),
@@ -61,7 +79,7 @@ async def fde_dashboard():
                 if len(recent) >= 5:
                     break
     except Exception:
-        pass
+        logging.getLogger(__name__).debug('fde_dashboard failed', exc_info=True)
 
     # Active alerts (error-level only, top 3)
     alerts = []
@@ -84,7 +102,7 @@ async def fde_dashboard():
             if len(alerts) >= 3:
                 break
     except Exception:
-        pass
+        logging.getLogger(__name__).debug('fde_dashboard failed', exc_info=True)
 
     # Governance health
     gov_health = "excellent" if metrics["delivery_rate"] >= 60 and metrics["enterprise_terms"] >= 10 else (
@@ -104,3 +122,31 @@ async def fde_dashboard():
         ],
         "elapsed_ms": round((_td.time() - t0) * 1000),
     }
+
+
+# ── Phase 39-41: L6 capability stats helpers ──
+def _get_goal_decomposition_stats() -> dict:
+    try:
+        from core.harness.optimization.abstract_goal_decomposer import get_abstract_goal_decomposer
+        d = get_abstract_goal_decomposer()
+        return {"enabled": d.enabled, "decompose_count": d._decompose_count}
+    except Exception:
+        return {"enabled": False, "decompose_count": 0, "error": "unavailable"}
+
+
+def _get_deploy_engine_stats() -> dict:
+    try:
+        from core.harness.deployment.deploy_engine import get_deploy_engine
+        e = get_deploy_engine()
+        return e.stats()
+    except Exception:
+        return {"enabled": False, "deploy_count": 0, "error": "unavailable"}
+
+
+def _get_discovery_stats() -> dict:
+    try:
+        from core.harness.infrastructure.discovery_listener import get_discovery_listener
+        d = get_discovery_listener()
+        return d.stats()
+    except Exception:
+        return {"enabled": False, "discovery_count": 0, "error": "unavailable"}

@@ -41,9 +41,13 @@ interface AgentScore {
   dimensions?: {
     task_completion: { score?: number; complete?: number; total?: number; reliability?: number };
     tool_quality: { overall?: number; selection_rate?: number; violations?: number };
+    trajectory: { matched?: boolean; score?: number; missing?: string[] };
+    text_quality: { coherence?: number; conciseness?: number; instruction_following?: number; overall?: number };
     step_efficiency: { avg_steps?: number; score?: number };
     error_recovery: { rate?: number; total_failures?: number };
     safety: { score?: number; violations?: number; bypass_attempts?: number };
+    content_safety: { harmful?: number; stereotype?: number; flagged?: string[] };
+    refusal: { is_refusal?: boolean; refusal_type?: string };
     cost: { tokens_per_task?: number; calls_per_task?: number };
   };
 }
@@ -370,6 +374,42 @@ const EvalDashboard: React.FC = () => {
                 </div>
                 <div className="text-gray-500">
                   {agentScore.dimensions.cost.tokens_per_task != null ? `${agentScore.dimensions.cost.tokens_per_task} tok` : ''}
+                </div>
+              </div>
+              {/* v2.9: New dimensions */}
+              <div className="text-center p-2 rounded bg-dark-hover">
+                <div className="text-gray-500 mb-1">轨迹匹配</div>
+                <div className={agentScore.dimensions.trajectory?.score != null ? 'text-teal-400 text-lg font-bold' : 'text-gray-500'}>
+                  {agentScore.dimensions.trajectory?.score != null ? `${(agentScore.dimensions.trajectory.score * 100).toFixed(0)}%` : '—'}
+                </div>
+                <div className="text-gray-500 text-xs">
+                  {agentScore.dimensions.trajectory?.matched ? '✅ 匹配' : '❌ 不匹配'}
+                </div>
+              </div>
+              <div className="text-center p-2 rounded bg-dark-hover col-span-2">
+                <div className="text-gray-500 mb-1">文本质量 (v2.9)</div>
+                <div className="flex gap-3 justify-center text-xs">
+                  <span className="text-cyan-400">连贯 {agentScore.dimensions.text_quality?.coherence != null ? (agentScore.dimensions.text_quality.coherence * 100).toFixed(0) : '—'}%</span>
+                  <span className="text-pink-400">简洁 {agentScore.dimensions.text_quality?.conciseness != null ? (agentScore.dimensions.text_quality.conciseness * 100).toFixed(0) : '—'}%</span>
+                  <span className="text-amber-400">指令 {agentScore.dimensions.text_quality?.instruction_following != null ? (agentScore.dimensions.text_quality.instruction_following * 100).toFixed(0) : '—'}%</span>
+                </div>
+              </div>
+              <div className="text-center p-2 rounded bg-dark-hover">
+                <div className="text-gray-500 mb-1">内容安全</div>
+                <div className={agentScore.dimensions.content_safety?.harmful != null ? 'text-green-400 text-lg font-bold' : 'text-gray-500'}>
+                  {agentScore.dimensions.content_safety?.harmful != null ? `${(agentScore.dimensions.content_safety.harmful * 100).toFixed(0)}%` : '—'}
+                </div>
+                <div className="text-gray-500 text-xs">
+                  {agentScore.dimensions.content_safety?.flagged?.length ? `${agentScore.dimensions.content_safety.flagged.length} 标记` : '清洁'}
+                </div>
+              </div>
+              <div className="text-center p-2 rounded bg-dark-hover">
+                <div className="text-gray-500 mb-1">拒答检测</div>
+                <div className={agentScore.dimensions.refusal?.is_refusal ? 'text-red-400 text-lg font-bold' : 'text-green-400 text-lg font-bold'}>
+                  {agentScore.dimensions.refusal?.is_refusal ? '是' : '否'}
+                </div>
+                <div className="text-gray-500 text-xs">
+                  {agentScore.dimensions.refusal?.refusal_type || '—'}
                 </div>
               </div>
             </div>

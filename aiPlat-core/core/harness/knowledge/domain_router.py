@@ -40,12 +40,14 @@ class DomainRouter:
     # Public API
     # ═══════════════════════════════════════════════════════════════
 
-    def classify(self, query: str) -> str:
-        u"""3-tier domain classification. Returns domain_id string."""
+    def classify(self, query: str) -> Optional[str]:
+        u"""3-tier domain classification. Returns domain_id or None if no match."""
         self._ensure_built()
         domains = self.list_domains()
         if len(domains) <= 1:
-            return domains[0] if domains else "ai-knowledge"
+            return domains[0] if domains else None
+
+        q = query.lower()
 
         q = query.lower()
 
@@ -86,7 +88,21 @@ class DomainRouter:
                 self._route_stats["t3_hits"]*100/max(self._route_stats["total"],1),
                 self._route_stats["total"],
                 self._route_stats["t1_hits"] + self._route_stats["t2_hits"], file=_sys.stderr)
-        return did
+        return did if did else None
+
+    def suggest(self, query: str, top_k: int = 3) -> List[tuple[str, float]]:
+        """返回 top-k 候选领域及相似度分数。即使未达路由阈值也返回，用于用户手动选择。"""
+        self._ensure_built()
+        qvec = self._embed(query)
+        if qvec is None:
+            return []
+        scores = []
+        for did, dvec in self._domain_vectors.items():
+            norm = np.linalg.norm(qvec) * np.linalg.norm(dvec)
+            score = float(np.dot(qvec, dvec) / (norm + 1e-8))
+            scores.append((did, score))
+        scores.sort(key=lambda x: x[1], reverse=True)
+        return scores[:top_k]
 
     def route_stats(self) -> Dict[str, Any]:
         """Return routing tier hit distribution and estimated LLM cost savings."""
@@ -174,16 +190,28 @@ class DomainRouter:
         u"""Supplementary domains for cross-domain fallback."""
         return self._load_registry().get("fallback_domains", ["default"])
 
-    def register_domain(self, domain_id: str, config: dict):
+    def register_domain(self, domain_id: str, config: dict, auto_rebuild: bool = True, tenant_id: str = "default"):
         u"""Hot-register a new domain at runtime (no restart)."""
         registry_path = os.path.expanduser("~/.aiplat/ontologies/registry.json")
         registry = self._load_registry()
+        config["tenant_id"] = tenant_id
         registry["domains"][domain_id] = config
         os.makedirs(os.path.dirname(registry_path), exist_ok=True)
         with open(registry_path, "w", encoding="utf-8") as f:
             json.dump(registry, f, ensure_ascii=False, indent=2)
         self._registry_cache = registry
         self._built = False  # force rebuild on next classify
+
+        if auto_rebuild:
+            try:
+                from core.harness.knowledge.knowledge_abox_builder import rebuild_full
+                collection_id = config.get("collection_id", domain_id)
+                import asyncio
+                asyncio.create_task(
+                    asyncio.to_thread(rebuild_full, collection_id=collection_id)
+                )
+            except Exception:
+                logging.getLogger(__name__).debug('Background rebuild failure does not block registration', exc_info=True)
 
     # ── v2.7: Scenario Selection ──
 
@@ -202,7 +230,7 @@ class DomainRouter:
             from core.harness.knowledge.scenario_selector import recommend_order
             return recommend_order(industry=industry, pain_points=pain_points, limit=limit)
         except Exception:
-            pass
+            logging.getLogger(__name__).debug('rank_domains_by_scenario_fit failed', exc_info=True)
 
         # Fallback: pure maturity ranking
         try:

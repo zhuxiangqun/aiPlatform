@@ -2,7 +2,7 @@
 
 > 生成时间：2026-07-19 | 对标范围：aiPlat △2026-07-19 × Hermes △v0.18.2 × Claude Code △latest × OpenClaw △latest
 >
-> 数据来源：aiPlat 内部代码（CAPABILITIES 748✅）+ 三平台开源仓库（GitHub README + 代码结构分析）
+> 数据来源：aiPlat 内部代码（能力计数见 AIPLAT_CAPABILITIES.md）+ 三平台开源仓库（GitHub README + 代码结构分析）
 
 ---
 
@@ -14,7 +14,7 @@
 | **语言** | Python | Python 82% + TS 16% | Python 80% + Shell 14% | TypeScript |
 | **GitHub** | 私有仓库 | 217k⭐ · 40.8k fork · 16,243 commits | 138k⭐ · 22.2k fork · 705 commits | 383k⭐ · 80.5k fork · 70,598 commits |
 | **协议** | 私有 | MIT | 闭源引擎 + 开源插件 | MIT |
-| **版本** | v2.8 (748✅) | v0.18.2 (2026.7.7) | latest | latest |
+| **版本** | v3.0 (详见 CAPABILITIES.md) | v0.18.2 (2026.7.7) | latest | latest |
 | **架构层级** | 8 层（本体语义→知识创造→上下文注入→质量评分→FDE诊断→治理→自演进→编码宪法） | 单体 Agent 结构 | 插件化 Agent（`.claude-plugin/`） | Gateway + Agent + Nodes 三层 |
 | **行业定位** | 企业 FDE 交付 + 行业解决方案 | 个人消费者 + 开发者工具 | 专业开发者编程辅助 | 个人消费者 + 社区驱动 |
 
@@ -179,7 +179,7 @@
 
 ---
 
-### 维度 12：治理体系（v2.8 新增）
+### 维度 12：治理体系（v3.0 新增）
 
 | 能力 | aiPlat | Hermes | Claude Code | OpenClaw |
 |:---|:---|:---|:---|:---|
@@ -249,5 +249,5 @@
 
 ---
 
-*对标基准日期：aiPlat 2026-07-19 (v2.8) · Hermes 2026-07-08 (v0.18.2) · Claude Code 2026-07 · OpenClaw 2026-07*
+*对标基准日期：aiPlat 2026-07-19 (v3.0) · Hermes 2026-07-08 (v0.18.2) · Claude Code 2026-07 · OpenClaw 2026-07*
 *权重：维度 1,2,3,5 各 10%；维度 6,7,8,11 各 8%；维度 4,9,10,12 各 7%*

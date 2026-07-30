@@ -403,7 +403,7 @@ class SkillRegistry:
         except ValueError:
             raise
         except Exception:
-            pass
+            logging.getLogger(__name__).debug("SkillRegistry.register failed", exc_info=True)
 
         with self._lock:
             cfg = skill.get_config()
@@ -1392,7 +1392,7 @@ def start_bg_curator(interval_hours: int = 6):
         loop = asyncio.get_running_loop()
         loop.create_task(_bg_curator_scan(interval_hours))
     except RuntimeError:
-        pass  # no event loop yet — will start when loop starts
+        pass  # no event loop yet — will start when loop starts  # noqa: cleanup-best-effort
 
 
 class _GenericSkill(BaseSkill):
@@ -1606,6 +1606,11 @@ class _GenericSkill(BaseSkill):
                 "2) 简洁优先：坚持最小可行实现；不要引入未经请求的抽象/架构/额外功能。\n"
                 "3) 精准修改：像外科手术一样，只改必须改的地方；避免无关格式化/无关文件改动。\n"
                 "4) 目标驱动：把任务转成可验证目标；在输出中给出验收标准（测试/复现步骤/检查清单）。\n"
+                "5) 错误可见：禁止 except Exception: pass 静默吞错。所有 except 块必须包含以下至少一项：\n"
+                "   a) logging.warning/error(exc_info=True) — 记录到日志\n"
+                "   b) raise — 重新抛出\n"
+                "   c) return/set 默认值 + logging.debug(exc_info=True) — 显式降级\n"
+                "   仅 ImportError/asyncio.CancelledError/sqlite3.OperationalError 可裸 pass 并标注 # noqa 原因。\n"
             )
         
         try:
@@ -1737,7 +1742,7 @@ class _GenericSkill(BaseSkill):
                             "ContextBus layers degraded: %s", ", ".join(f"{k}={v}" for k, v in diag.items() if v != "ok")
                         )
                 except Exception:
-                    pass
+                    logging.getLogger(__name__).debug("SkillRegistry.unknown failed", exc_info=True)
 
             response = await sys_llm_generate(
                 self._model,
@@ -1855,7 +1860,7 @@ class _GenericSkill(BaseSkill):
                                             tg.add_entity(def_id, definition[:500], "Term", source_doc_id=tid)
                                             tg.add_relation(tid, def_id, "derived_from", relation_label="定义", confidence=0.7)
                                 except Exception:
-                                    pass
+                                    logging.getLogger(__name__).debug("SkillRegistry.unknown failed", exc_info=True)
 
                         # O: Evidence entity binding
                         if sid and evidence_map:
@@ -1872,9 +1877,9 @@ class _GenericSkill(BaseSkill):
                                     ev_name = f"{ev.get('ai_opportunity', '')[:60]} | {ev.get('source', '')[:40]}"
                                     fd_g.add_entity(ev_id, ev_name, "Evidence", source_doc_id=sid)
                             except Exception:
-                                pass
+                                logging.getLogger(__name__).debug("SkillRegistry.unknown failed", exc_info=True)
                     except Exception:
-                        pass
+                        logging.getLogger(__name__).debug("SkillRegistry.unknown failed", exc_info=True)
 
                 return SkillResult(success=True, output={"text": report_text}, metadata=meta)
 
@@ -1890,4 +1895,5 @@ class _GenericSkill(BaseSkill):
             return SkillResult(success=True, output={"text": response.content}, metadata={"model": response.model, "skill": self._config.name})
         except Exception as e:
             return SkillResult(success=False, error=str(e))
+
 

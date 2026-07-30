@@ -44,7 +44,7 @@ class HealthCollector:
             try:
                 await self._task
             except asyncio.CancelledError:
-                pass
+                pass  # noqa: normal-cancellation
             self._task = None
         log.info("HealthCollector stopped")
 
@@ -91,3 +91,4 @@ class HealthCollector:
 
 
 __all__ = ["HealthCollector"]
+

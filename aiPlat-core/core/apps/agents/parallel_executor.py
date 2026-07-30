@@ -1,4 +1,5 @@
 """
+import logging
 Multi-Agent Parallel Executor — Map-Reduce 模式子任务并发执行。
 
 Usage:
@@ -150,7 +151,7 @@ class ParallelExecutor:
                     reduce_result["_merge_issues"] = [{"type": i.issue_type, "severity": i.severity, "desc": i.description[:200]} for i in merged.issues]
                 reduce_result["_merge_stats"] = merged.stats
             except Exception:
-                pass
+                logging.getLogger(__name__).debug('reduce failed', exc_info=True)
         reduce_result["_map_stats"] = {
             "total": map_result.get("total_tasks"),
             "successful": map_result.get("successful"),

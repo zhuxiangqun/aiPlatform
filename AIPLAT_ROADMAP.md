@@ -1,16 +1,16 @@
 # aiPlat 商业化演进终极作战手册
 
-> 基线：代码交叉验证 | 状态：699项能力,6/6 syntax,5/5服务健康,架构守卫0违规,全域诊断14项,路径标准化158条
+> 基线：代码交叉验证 | 能力计数见 AIPLAT_CAPABILITIES.md 统计表 | 6/6 syntax,5/5服务健康,架构守卫0违规,全域诊断14项,路径标准化158条
 > 对标：Hermes Agent · Claude Code · OpenClaw · Octo (明略科技)  
 > 定位：**企业级 FDE 操作系统**（Agent 协作网络 + Spec 生命周期管理）
 > 
 > **当前能力全貌**：参见 [`AIPLAT_CAPABILITIES.md`](./AIPLAT_CAPABILITIES.md)（当前计数见该文件）
 > 
-> **最新更新 (2026-07-04)**：P0-P3 hermès-agent 全量吸收 — CAPABILITIES 384→699。评分 90→99。
+> **最新更新 (2026-07-19)**：P0-P3 hermès-agent 全量吸收 + L6升级三步 + MoA多模型推理。当前计数见 AIPLAT_CAPABILITIES.md。
 
 ---
 
-## 一、基线诊断（来自 `AIPLAT_CAPABILITIES.md` 代码交叉验证，726 项）
+## 一、基线诊断（来自 `AIPLAT_CAPABILITIES.md` 代码交叉验证，当前计数见该文件统计表）
 
 | 维度 | 评分 | 关键发现 |
 |------|:---:|------|

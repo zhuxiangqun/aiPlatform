@@ -96,7 +96,7 @@ def _extract_json(text: str) -> Optional[Dict[str, Any]]:
         try:
             return json.loads(m.group(0))
         except json.JSONDecodeError:
-            pass
+            pass  # noqa: cleanup-best-effort
     return None
 
 
@@ -213,3 +213,4 @@ async def run_skill_review(state: Dict[str, Any]) -> Dict[str, Any]:
         return {"action": saved or updated or "no_action", "saved": bool(saved), "updated": bool(updated), "output_preview": output[:300]}
     except Exception:
         return {"action": "error"}
+

@@ -393,25 +393,19 @@ CORE_PID=$!
 echo "PID: $CORE_PID"
 
 sleep 3
-# Core 启动后有 10-15s 初始化窗口（code_graph 构建 + skill registry 校验），
-# 需要连续 3 次 /docs 返回 200 才算真正就绪。
+# 1 次 /api/core/health 返回 200 即就绪
 ready=0
 for i in $(seq 1 30); do
-    code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 8 http://localhost:8002/docs 2>/dev/null || echo "000")
+    code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 8 http://localhost:8002/api/core/health 2>/dev/null || echo "000")
     if [ "$code" = "200" ]; then
-        ready=$((ready + 1))
-        if [ $ready -ge 3 ]; then
-            echo "✓ aiPlat-core 启动成功 (8002)"
-            break
-        fi
-    else
-        ready=0
+        ready=1
+        echo "✓ aiPlat-core 启动成功 (8002)"
+        break
     fi
     echo "等待... ($i/30)"
     sleep 2
 done
-# If health check failed, report but continue - service may still be starting
-if [ $ready -lt 3 ]; then
+if [ $ready -lt 1 ]; then
     echo "⚠ aiPlat-core 健康检查超时 (可能仍需数秒完成初始化)"
 fi
 

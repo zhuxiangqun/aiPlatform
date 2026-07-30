@@ -10,7 +10,7 @@ from typing import Any, Dict, List, Optional, Set, Tuple
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 
-from core.harness.kernel.runtime import get_kernel_runtime
+from core.api.core_facade import get_kernel_runtime
 
 # Shared graph functions — extracted to harness layer (CLAUDE.md §5.x compliance)
 from core.harness.knowledge.code_graph import (

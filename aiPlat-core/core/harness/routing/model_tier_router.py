@@ -17,7 +17,10 @@ import logging
 import os
 import time
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from core.harness.meta.control_profile import ControlProfile
 
 logger = logging.getLogger("aiplat.model_tier_router")
 
@@ -107,17 +110,20 @@ class ModelTierRouter:
     # ── Health check ──────────────────────────────────────────
 
     def _is_model_available(self, model_name: str) -> bool:
-        """Cached health check (30s TTL)."""
+        """Cached health check (30s TTL). 使用 ModelManager 验证模型存在且已启用。"""
         now = time.time()
         cached = self._health_cache.get(model_name)
         if cached and now - cached[1] < self._health_cache_ttl:
             return cached[0]
 
+        healthy = False
         try:
             from infra.management.model.manager import ModelManager
-            healthy = ModelManager._instance is not None and ModelManager._instance._model_exists(model_name)
+            mgr = ModelManager()
+            model = mgr._find_model_by_name(model_name)
+            healthy = model is not None and model.enabled
         except Exception:
-            healthy = True  # can't check — assume available
+            healthy = False  # 无法检查 → 保守不可用
 
         self._health_cache[model_name] = (healthy, now)
         return healthy
@@ -166,6 +172,27 @@ class ModelTierRouter:
         )
         t1_config = self._tiers.get("T1")
         return t1_config.default_model if t1_config else None
+
+    def route_with_profile(
+        self,
+        purpose: str,
+        level: str,
+        confidence: float = 0.8,
+        profile: Optional["ControlProfile"] = None,
+    ) -> Optional[str]:
+        if profile is not None and profile.model_tier not in ("auto", "", "by_complexity"):
+            tier_id = profile.model_tier
+            config = self._tiers.get(tier_id)
+            if config:
+                tier_models = [config.default_model] + config.fallback_models
+                for model_name in tier_models:
+                    if model_name and self._is_model_available(model_name):
+                        logger.debug(
+                            "Routed by profile override: %s (tier=%s, purpose=%s)",
+                            model_name, tier_id, purpose,
+                        )
+                        return model_name
+        return self.route(purpose, level, confidence)
 
     def get_max_tools(self, tier_id: str) -> int:
         """Return max tools limit for a tier. Default 0 (unlimited)."""

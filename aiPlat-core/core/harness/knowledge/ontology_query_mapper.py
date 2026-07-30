@@ -160,8 +160,22 @@ def map_query_to_ontology(
                 "match_type": "object_property",
             })
 
+    # ── Phase 43: Formula/calculation decomposition ──
+    decomposition_results = _apply_decompositions(question, domain_id)
+
     # ── Rewrite query ──
     rewritten = _rewrite_query(question, matched_classes, matched_properties, matched_concepts)
+
+    # Phase 44: Inject decomposition terms into rewritten_query (all retrievers benefit)
+    if decomposition_results:
+        decomp_terms = []
+        for d in decomposition_results:
+            for p in d.get("parts", []):
+                term = p.get("concept", "")
+                if term:
+                    decomp_terms.append(term)
+        if decomp_terms:
+            rewritten += f" [分解概念: {' '.join(decomp_terms)}]"
 
     # ── Confidence ──
     all_scores = (
@@ -186,6 +200,7 @@ def map_query_to_ontology(
         "rewritten_query": rewritten,
         "confidence": confidence,
         "target_class": target_class,
+        "decompositions": decomposition_results,
     }
 
 
@@ -457,4 +472,70 @@ def discover_cross_domain_analogs(
         if matches:
             results[did] = sorted(matches, key=lambda x: x["score"], reverse=True)
 
+    return results
+
+
+def _apply_decompositions(
+    question: str,
+    domain_id: Optional[str] = None,
+) -> List[Dict[str, Any]]:
+    """Phase 43: Decompose composite concepts into constituent parts.
+
+    Reads decomposition_rules from domain YAML, matches the user query
+    against known composite terms (e.g., "利润率" → "利润" + "营收"),
+    and returns expansion hints for downstream retrieval.
+
+    YAML format (in domain YAML):
+        decomposition_rules:
+          - name: profit_margin
+            composite: "利润率"
+            formula: "利润 / 营收"
+            parts:
+              - concept: "利润"
+                relation: "分子"
+              - concept: "营收"
+                relation: "分母"
+            units: "%"
+            domain: finance
+    """
+    if not domain_id:
+        return []
+
+    import os as _os, json as _json
+    onto_path = _os.path.expanduser(f"~/.aiplat/ontologies/{domain_id}.yaml")
+    if not _os.path.exists(onto_path):
+        return []
+
+    try:
+        import yaml as _yaml
+        with open(onto_path) as f:
+            domain_data = _yaml.safe_load(f) or {}
+    except Exception:
+        return []
+
+    rules = domain_data.get("decomposition_rules", [])
+    if not rules:
+        return []
+
+    q_lower = question.lower()
+    results = []
+
+    for rule in rules:
+        composite = str(rule.get("composite", "")).lower()
+        if not composite:
+            continue
+        if composite in q_lower or any(part.get("concept", "").lower() in q_lower
+                                        for part in rule.get("parts", [])):
+            parts = []
+            for p in rule.get("parts", []):
+                parts.append({
+                    "concept": p.get("concept", ""),
+                    "relation": p.get("relation", ""),
+                })
+            results.append({
+                "composite": rule.get("composite", ""),
+                "formula": rule.get("formula", ""),
+                "units": rule.get("units", ""),
+                "parts": parts,
+            })
     return results

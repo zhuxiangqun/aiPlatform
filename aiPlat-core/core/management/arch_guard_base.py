@@ -7,7 +7,7 @@ Architecture:
   - Both feed into ArchRegistry → run_all()
 
 Performance:
-  - Import direction checks (§1-§6) query the pre-built code graph (cached, 120s TTL)
+  - Import direction checks (§1-§6) query the pre-built code graph (cached, 300s TTL)
   - Content checks (§3-§38) use graph's file index to narrow grep scope
 
 Adding a new guard rule:
@@ -255,12 +255,14 @@ class ArchYAMLRule(ArchRule):
         ext = self._check_def.get("ext", [".py"])
         filename_pattern = self._check_def.get("filename_pattern")
         grep_exclude = self._check_def.get("grep_exclude", [])
+        grep_exclude_context = self._check_def.get("grep_exclude_context", 0)
         max_count = self._check_def.get("max_count", 500)
         max_matches = self._check_def.get("max_matches")  # threshold: allow up to N matches
 
         results = _grep(repo_root, pattern, paths, exclude, ext,
                         filename_pattern=filename_pattern,
                         grep_exclude=grep_exclude,
+                        grep_exclude_context=grep_exclude_context,
                         max_count=max_count)
         if max_matches is not None and len(results) <= max_matches:
             return []  # within allowed threshold — not a violation
@@ -466,10 +468,14 @@ def _get_graph_adapter(repo_root: Path) -> GraphQueryAdapter:
 
 def _grep(repo_root: Path, pattern: str, paths: List[str], exclude: List[str],
           ext: List[str], filename_pattern: str = None, grep_exclude: List[str] = None,
-          max_count: int = 500) -> List[str]:
+          max_count: int = 500, grep_exclude_context: int = 0) -> List[str]:
     """Run grep across codebase, return list of 'file:line:content' strings.
     
     Uses the pre-built code graph's file index when available to avoid rglob.
+    
+    When grep_exclude_context > 0, a line matching the forbidden pattern is
+    excluded if any of the preceding grep_exclude_context lines contain a
+    grep_exclude pattern (enables 'intentionally off' comment gating).
     """
     results: List[str] = []
     exclude_set = set(exclude)
@@ -512,13 +518,22 @@ def _grep(repo_root: Path, pattern: str, paths: List[str], exclude: List[str],
             except Exception:
                 continue
 
-            for i, line in enumerate(content.split("\n"), 1):
+            lines = content.split("\n")
+            for i, line in enumerate(lines, 1):  # i is 1-indexed line number
                 # grep_exclude applies to both file path and line content
                 if any(re.search(ex, line) for ex in grep_exclude_set):
                     continue
                 if any(re.search(ex, rel_path) for ex in grep_exclude_set):
                     continue
                 if re.search(pattern, line):
+                    # Context-aware exclusion: check preceding lines for exclude patterns
+                    if grep_exclude_context > 0 and grep_exclude_set:
+                        ctx_start = max(0, i - grep_exclude_context - 1)  # 0-indexed
+                        ctx_end = i - 1  # lines before current
+                        ctx_lines = lines[ctx_start:ctx_end]
+                        if any(any(re.search(ex, cl) for ex in grep_exclude_set)
+                               for cl in ctx_lines):
+                            continue
                     text = line.strip()[:120]
                     results.append(f"{rel_path}:{i}: {text}")
                     if len(results) >= max_count:
@@ -559,15 +574,14 @@ class ArchRegistry:
         self._load_yaml_rules()
         self._load_python_rules()
 
-    def run_all(self, repo_root: Path) -> ArchReport:
+    def run_all(self, repo_root: Path, quick: bool = False) -> ArchReport:
         global _GUARD_REPORT_CACHE, _GUARD_REPORT_TS
         key = str(repo_root.resolve())
-        # Check cache from get_arch_registry (single process)
         if _GUARD_REPORT_CACHE and key in _GUARD_REPORT_CACHE:
             cached = _GUARD_REPORT_CACHE[key]
             if time.time() - cached.get("_ts", 0) < 30:
                 return cached["report"]
-        
+
         started = time.time()
         sections: List[ArchSection] = []
         total_violations = 0
@@ -575,9 +589,62 @@ class ArchRegistry:
         warn_count = 0
         fail_count = 0
 
-        # Group rules by section
-        section_map: Dict[str, List[ArchRule]] = {}
+        # Separate grep-type rules from other rules for batched processing
+        grep_rules: List[ArchYAMLRule] = []
+        other_rules: List[ArchRule] = []
         for rule in self._rules:
+            if (isinstance(rule, ArchYAMLRule)
+                    and rule._check_def.get("type") in ("grep_forbidden", "grep_required")
+                    and not rule._check_def.get("grep_graph_import")):
+                grep_rules.append(rule)
+            else:
+                other_rules.append(rule)
+
+        # In quick mode, only run lightweight checks: file_exists, file_forbidden
+        # (No file-body grep, no graph build, no subprocess, no Python-based deep checks)
+        if quick:
+            grep_rules = []
+            other_rules = [r for r in other_rules
+                          if isinstance(r, ArchYAMLRule)
+                          and r._check_def.get("type") in ("file_exists", "file_forbidden")]
+
+        # Run batched grep rules in a single pass
+        if grep_rules:
+            batched_issues = self._run_grep_rules_batched(repo_root, grep_rules)
+            # Distribute results back to sections
+            section_map: Dict[str, Dict[str, Any]] = {}
+            for rule in grep_rules:
+                key = rule.section_number or rule.code
+                if key not in section_map:
+                    section_map[key] = {
+                        "number": rule.section_number or key,
+                        "name": rule.section_name or key,
+                        "status": "pass",
+                        "items": [],
+                    }
+                issues = batched_issues.get(rule.code, [])
+                section_map[key]["items"].extend(issues)
+                for issue in issues:
+                    if issue.level == "error":
+                        section_map[key]["status"] = "fail"
+                        total_violations += issue.count or 1
+
+            for key, sec_data in section_map.items():
+                sstatus = sec_data["status"]
+                if sstatus == "fail":
+                    fail_count += 1
+                elif any(i.level == "warning" for i in sec_data["items"]):
+                    warn_count += 1
+                else:
+                    pass_count += 1
+                sections.append(ArchSection(
+                    number=sec_data["number"], name=sec_data["name"],
+                    status=sstatus, items=sec_data["items"],
+                ))
+
+        # Run remaining rules as before (non-grep, graph-grep, complex)
+        section_map: Dict[str, List[ArchRule]] = {}
+        for rule in other_rules:
             key = rule.section_number or rule.code
             section_map.setdefault(key, []).append(rule)
 
@@ -595,8 +662,6 @@ class ArchRegistry:
                     if issue.level == "error":
                         total_violations += issue.count or 1
                         section_ok = False
-                    elif issue.level == "warning" and (issue.files or issue.count > 0):
-                        pass  # warnings don't count as violations
 
             if not section_ok:
                 section.status = "fail"
@@ -616,11 +681,173 @@ class ArchRegistry:
             duration_ms=duration_ms,
             summary={"pass": pass_count, "warn": warn_count, "fail": fail_count, "violations": total_violations},
         )
-        # Cache for 30s
         if _GUARD_REPORT_CACHE is None:
             _GUARD_REPORT_CACHE = {}
         _GUARD_REPORT_CACHE[key] = {"report": report, "_ts": time.time()}
         return report
+
+    def _run_grep_rules_batched(self, repo_root: Path,
+                                 rules: List[ArchYAMLRule]) -> Dict[str, List[ArchIssue]]:
+        """Run multiple grep rules in a single file-walk pass.
+
+        Groups rules by (paths, ext, exclude) signature. For each group,
+        walks files once, reads each file once, tests ALL patterns per line.
+        """
+        rule_configs = []
+        for rule in rules:
+            rc = {
+                "code": rule.code,
+                "message": rule._message or "",
+                "level": rule.level,
+                "pattern": rule._check_def.get("pattern", ""),
+                "paths": tuple(rule._check_def.get("paths", [])),
+                "exclude": tuple(rule._check_def.get("exclude", ["__pycache__", "tests/", ".git", "node_modules"])),
+                "ext": tuple(rule._check_def.get("ext", [".py"])),
+                "filename_pattern": rule._check_def.get("filename_pattern"),
+                "grep_exclude": tuple(rule._check_def.get("grep_exclude", [])),
+                "max_count": rule._check_def.get("max_count", 500),
+                "max_matches": rule._check_def.get("max_matches"),
+                "min_matches": rule._check_def.get("min_matches", 1),
+                "check_type": rule._check_def.get("type", "grep_forbidden"),
+                "grep_exclude_context": rule._check_def.get("grep_exclude_context", 0),
+            }
+            if rc["pattern"]:
+                rule_configs.append(rc)
+
+        if not rule_configs:
+            return {}
+
+        # Group rules by (paths, ext, exclude) — same file set → batch together
+        groups: Dict[tuple, List[dict]] = {}
+        for rc in rule_configs:
+            sig = (rc["paths"], rc["ext"], rc["exclude"], rc["filename_pattern"] or "")
+            groups.setdefault(sig, []).append(rc)
+
+        # Per-rule results
+        results: Dict[str, List[str]] = {rc["code"]: [] for rc in rule_configs}
+
+        # Process each group with a single file walk
+        for sig, group_rules in groups.items():
+            paths, exts, excludes, fname_pat = sig
+            exts_set = set(exts)
+            excludes_set = set(excludes)
+
+            # Collect files for this group
+            files: List[Path] = []
+            for search_path in paths:
+                d = repo_root / search_path
+                if not d.exists():
+                    continue
+                try:
+                    adapter = _get_graph_adapter(repo_root)
+                    adapter._ensure_loaded()
+                    if adapter._nodes:
+                        path_prefix = search_path.lstrip("/").rstrip("/")
+                        targets = [f for f in adapter.graph_indexed_files()
+                                  if str(f.relative_to(repo_root)).startswith(path_prefix)
+                                  and (not exts_set or any(str(f).endswith(e) for e in exts_set))]
+                        if not targets:
+                            targets = _scan_files(d)
+                    else:
+                        targets = _scan_files(d)
+                except Exception:
+                    targets = _scan_files(d)
+
+                for py_file in targets:
+                    if not py_file.is_file():
+                        continue
+                    rel_path = str(py_file.relative_to(repo_root))
+                    if any(x in rel_path for x in excludes_set):
+                        continue
+                    if exts_set and not any(rel_path.endswith(e) for e in exts_set):
+                        continue
+                    if fname_pat and not re.search(fname_pat, rel_path):
+                        continue
+                    files.append(py_file)
+
+            # Deduplicate
+            seen_paths = set()
+            files = [f for f in files if not (str(f) in seen_paths or seen_paths.add(str(f)))]
+
+            # Prepare per-rule compiled patterns and limit tracking
+            for rc in group_rules:
+                rc["_pattern_re"] = re.compile(rc["pattern"])
+                rc["_grep_exclude_re"] = [re.compile(ex) for ex in (rc["grep_exclude"] or ())]
+                rc["_done"] = False
+
+            # Single pass: read each file once, test all rules' patterns
+            for py_file in files:
+                rel_path = str(py_file.relative_to(repo_root))
+                try:
+                    content = py_file.read_text(encoding="utf-8", errors="replace")
+                except Exception:
+                    continue
+
+                active_rules = [rc for rc in group_rules if not rc["_done"]]
+                if not active_rules:
+                    break
+
+                lines = content.split("\n")
+                for i, line in enumerate(lines, 1):
+                    for rc in active_rules:
+                        if rc["_done"]:
+                            continue
+                        # Apply grep_exclude to line and path
+                        if rc["_grep_exclude_re"]:
+                            if any(ex.search(line) for ex in rc["_grep_exclude_re"]):
+                                continue
+                            if any(ex.search(rel_path) for ex in rc["_grep_exclude_re"]):
+                                continue
+                        if rc["_pattern_re"].search(line):
+                            # Context-aware exclusion: check preceding lines
+                            ctx_n = rc.get("grep_exclude_context", 0)
+                            if ctx_n > 0 and rc["_grep_exclude_re"]:
+                                ctx_start = max(0, i - ctx_n - 1)
+                                ctx_lines = lines[ctx_start:i-1]
+                                if any(any(ex.search(cl) for ex in rc["_grep_exclude_re"])
+                                       for cl in ctx_lines):
+                                    continue
+                            results[rc["code"]].append(
+                                f"{rel_path}:{i}: {line.strip()[:120]}")
+                            limit = rc["max_count"]
+                            if limit > 0 and len(results[rc["code"]]) >= limit:
+                                rc["_done"] = True
+                # Clean up compiled patterns
+                for rc in active_rules:
+                    if rc.get("_done"):
+                        rc.pop("_pattern_re", None)
+                        rc.pop("_grep_exclude_re", None)
+
+            # Clean up remaining
+            for rc in group_rules:
+                rc.pop("_pattern_re", None)
+                rc.pop("_grep_exclude_re", None)
+                rc.pop("_done", None)
+
+        # Convert to ArchIssue per rule
+        output: Dict[str, List[ArchIssue]] = {}
+        for rc in rule_configs:
+            rule_results = results[rc["code"]]
+            code = rc["code"]
+            if rc["check_type"] == "grep_required":
+                if len(rule_results) < rc["min_matches"]:
+                    msg = rc["message"] or f"required pattern not found (need {rc['min_matches']}, got {len(rule_results)})"
+                    output[code] = [ArchIssue(level=rc["level"], code=code,
+                                              message=msg, count=1)]
+                else:
+                    output[code] = []
+            else:
+                if rc["max_matches"] is not None and len(rule_results) <= rc["max_matches"]:
+                    output[code] = []
+                elif rule_results:
+                    msg = rc["message"] or f"forbidden pattern found: {rc['pattern'][:60]}"
+                    output[code] = [ArchIssue(level=rc["level"], code=code,
+                                              message=msg, files=rule_results,
+                                              count=len(rule_results))]
+                else:
+                    output[code] = []
+
+        return output
 
     def _load_yaml_rules(self) -> None:
         config_path = Path(__file__).parent / "arch_guard_rules.yaml"

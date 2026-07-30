@@ -262,7 +262,7 @@ class PipelineStageConfig(BaseModel):
     context_profile: str = "code"        # "minimal" | "code" | "debug" | "deep"
     # Anthropic 5 patterns: chain | router | parallel | orchestrator | evaluator_optimizer
     pipeline_mode: str = "chain"          # "chain" | "router" | "parallel" | "orchestrator" | "evaluator_optimizer" | "agent"
-    routing_mode: str = "static"           # "static" | "llm" | "debate" | "swarm" | "roundtable" — routing strategy
+    routing_mode: str = "static"           # "static" | "llm" | "debate" | "swarm" | "roundtable" | "moa" — routing strategy
     eval_model: str = ""  # dedicated evaluator model (empty = fallback to stage.model or AIPLAT_EVAL_MODEL)
     routing_rules: List[dict] = Field(default_factory=list)  # declarative conditional routing  # 4step-verified
     deviation_tolerance: float = 0.0  # [0.0, 10.0] Accept output when overall score >= this (0=disabled)
@@ -287,6 +287,9 @@ class PipelineStageConfig(BaseModel):
     debate_participants: List[Dict[str, Any]] = Field(default_factory=list)
     debate_max_rounds: int = 3
     debate_manager_agent: str = ""
+    # MoA (Mixture of Agents) routing: parallel reference engines + aggregator synthesis
+    moa_preset: str = "general"
+    moa_reference_count: int = 3
     # Node-type-specific config from workflow canvas (llm/code/http/condition)
     node_config: Dict[str, Any] = Field(default_factory=dict)
     node_type: str = "agent"  # "agent" | "llm" | "code" | "http" | "condition" | "knowledge" | "tool" | "list" | "assigner" | "template" | "loop" | "aggregator"

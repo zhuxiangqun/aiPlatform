@@ -1,4 +1,5 @@
 """VoiceLoop — STT→Agent→Browser→TTS 语音半闭环引擎。
+import logging
 G-axis L3→L4 enabler.
 
 完整链路: 语音输入 → STT转录 → Agent推理决策 → 浏览器/工具操作 → TTS语音反馈
@@ -95,7 +96,7 @@ class VoiceLoop:
                 br = await integrator.capture_browser(**action)
                 result["actions"].append(br)
             except Exception:
-                pass
+                logging.getLogger(__name__).debug('process_voice_command failed', exc_info=True)
 
         # Step 4: TTS feedback
         tts_text = result["agent_response"] or "Action completed."

@@ -134,7 +134,7 @@ class PatternAccumulator:
             import asyncio
             asyncio.create_task(cmm.graduate(pattern.hash, error_context))
         except Exception:
-            pass
+            logging.getLogger(__name__).debug('extract_from_failure failed', exc_info=True)
         
         return pattern
 
@@ -157,7 +157,7 @@ class PatternAccumulator:
                 cmm = get_cmm_graduation()
                 cmm.graduate(pattern_hash, {"anomaly": anomaly})
             except Exception:
-                pass
+                logging.getLogger(__name__).debug('ingest_anomaly failed', exc_info=True)
 
     # ── MetaClaw: 双轨综合 ────────────────────────────
 

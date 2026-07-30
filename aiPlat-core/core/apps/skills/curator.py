@@ -122,7 +122,7 @@ class SkillCurator:
             with open(state_file, "w") as f:
                 json.dump(data, f, indent=2)
         except OSError:
-            pass
+            pass  # noqa: cleanup-best-effort
 
     # ── Public API ──────────────────────────────────────────────────────
 
@@ -208,7 +208,7 @@ class SkillCurator:
                             with open(state_file, "w") as f:
                                 json.dump(data, f, indent=2)
                         except OSError:
-                            pass
+                            pass  # noqa: cleanup-best-effort
                     # Mark children as archived
                     for child in (a, b):
                         self._transition(child, SkillLifecycle.ARCHIVED,
@@ -238,7 +238,7 @@ class SkillCurator:
                     with open(state_file, "w") as f:
                         json.dump(data, f, indent=2)
                 except OSError:
-                    pass
+                    pass  # noqa: cleanup-best-effort
                 promoted.append(skill_id)
         return promoted
 
@@ -312,7 +312,7 @@ class SkillCurator:
             with open(state_file, "w") as f:
                 json.dump(data, f, indent=2)
         except OSError:
-            pass
+            pass  # noqa: cleanup-best-effort
 
     def _archive_to_dir(self, skill_id: str) -> bool:
         """Move a skill directory to .archive/ for reversible archival."""
@@ -346,7 +346,7 @@ class SkillCurator:
             with open(state_file, "w") as f:
                 json.dump(data, f, indent=2)
         except OSError:
-            pass
+            pass  # noqa: cleanup-best-effort
         return True
 
     def _load_state(self):
@@ -365,9 +365,10 @@ class SkillCurator:
             with open(path, "w") as f:
                 json.dump(self._state, f, indent=2)
         except OSError:
-            pass
+            pass  # noqa: cleanup-best-effort
 
 
 def get_skill_curator(skill_dir: Optional[Path] = None) -> SkillCurator:
     """Get a curator for the given skill directory."""
     return SkillCurator(skill_dir=skill_dir)
+

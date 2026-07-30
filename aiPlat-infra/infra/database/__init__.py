@@ -20,4 +20,5 @@ try:
 
     __all__.extend(["PostgresClient", "MySqlClient", "MongoClient", "SqliteClient"])
 except ImportError:
-    pass
+    pass  # noqa: optional-dependency
+

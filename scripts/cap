@@ -1,0 +1,19 @@
+#!/bin/bash
+# cap — capability registration CLI (Phase 43)
+# Usage: cap check | cap auto-register
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+case "${1:-}" in
+    check)
+        python3 "$SCRIPT_DIR/auto_register_capability.py" --check-only
+        ;;
+    auto-register)
+        python3 "$SCRIPT_DIR/auto_register_capability.py" --auto
+        ;;
+    *)
+        echo "Usage: cap {check|auto-register}"
+        echo ""
+        echo "  check          Check for unregistered capabilities (pre-commit)"
+        echo "  auto-register  Open drafts in \$EDITOR, validate, append to registry"
+        ;;
+esac

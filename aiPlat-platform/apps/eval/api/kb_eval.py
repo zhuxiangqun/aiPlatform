@@ -33,7 +33,7 @@ def _connect():
 async def list_samples(limit: int = 100, offset: int = 0, tag: Optional[str] = None):
     conn = _connect()
     try:
-        from core.harness.evaluation.rag_evaluator import _ensure_eval_schema
+        from core.api.core_facade import _ensure_eval_schema
         _ensure_eval_schema(conn)
         if tag:
             rows = conn.execute("SELECT * FROM kb_eval_samples WHERE tags LIKE ? ORDER BY created_at DESC LIMIT ? OFFSET ?",
@@ -57,7 +57,7 @@ async def list_samples(limit: int = 100, offset: int = 0, tag: Optional[str] = N
 async def create_sample(body: Dict[str, Any]):
     conn = _connect()
     try:
-        from core.harness.evaluation.rag_evaluator import _ensure_eval_schema
+        from core.api.core_facade import _ensure_eval_schema
         _ensure_eval_schema(conn)
         sid = body.get("id") or f"evs_{int(time.time())}"
         conn.execute("INSERT OR REPLACE INTO kb_eval_samples VALUES(?,?,?,?,?,?)",
@@ -89,7 +89,7 @@ async def run_evaluation(body: Dict[str, Any]):
 
     conn = _connect()
     try:
-        from core.harness.evaluation.rag_evaluator import _ensure_eval_schema, get_rag_evaluator, EvalSample
+        from core.api.core_facade import _ensure_eval_schema, get_rag_evaluator, EvalSample
         _ensure_eval_schema(conn)
 
         if tag:
@@ -145,7 +145,7 @@ async def run_evaluation(body: Dict[str, Any]):
 async def list_reports(limit: int = 50, offset: int = 0):
     conn = _connect()
     try:
-        from core.harness.evaluation.rag_evaluator import _ensure_eval_schema
+        from core.api.core_facade import _ensure_eval_schema
         _ensure_eval_schema(conn)
         rows = conn.execute("SELECT * FROM kb_eval_reports ORDER BY created_at DESC LIMIT ? OFFSET ?", (limit, offset)).fetchall()
         items = []
@@ -176,7 +176,7 @@ async def import_samples_csv(file: UploadFile = File(...)):
     header = [h.strip().lower() for h in lines[0].split(",")]
     conn = _connect()
     try:
-        from core.harness.evaluation.rag_evaluator import _ensure_eval_schema
+        from core.api.core_facade import _ensure_eval_schema
         _ensure_eval_schema(conn)
         imported = 0
         now = time.time()
@@ -206,7 +206,7 @@ async def reports_time_series(days: int = 30):
     """Aggregate evaluation reports into daily buckets for time-series charts."""
     conn = _connect()
     try:
-        from core.harness.evaluation.rag_evaluator import _ensure_eval_schema
+        from core.api.core_facade import _ensure_eval_schema
         _ensure_eval_schema(conn)
         cutoff = time.time() - days * 86400
         rows = conn.execute("""
@@ -248,7 +248,7 @@ async def compare_reports(session_a: str = "", session_b: str = ""):
     """Compare two evaluation sessions (by day) side-by-side."""
     conn = _connect()
     try:
-        from core.harness.evaluation.rag_evaluator import _ensure_eval_schema
+        from core.api.core_facade import _ensure_eval_schema
         _ensure_eval_schema(conn)
 
         def _avg_for_day(day: str) -> dict:

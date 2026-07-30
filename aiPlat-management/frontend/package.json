@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host 0.0.0.0",
-    "build": "vite build",
+    "build": "bash ../../scripts/check_route_menu_sync.sh; vite build",
     "typecheck": "tsc -b",
     "lint": "eslint .",
     "preview": "vite preview",

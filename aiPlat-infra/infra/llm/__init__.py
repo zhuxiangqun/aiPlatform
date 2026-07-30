@@ -31,4 +31,5 @@ try:
         ["OpenAIClient", "AnthropicClient", "DeepSeekClient", "LocalLLMClient"]
     )
 except ImportError:
-    pass
+    pass  # noqa: optional-dependency
+

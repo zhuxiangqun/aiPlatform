@@ -22,8 +22,8 @@ def wire_hot_reload():
     watch_paths = os.getenv("AIPLAT_CONFIG_WATCH_PATHS", "")
     if not watch_paths:
         # Default: watch skill and agent dirs
-        from core import __file__ as core_init
-        core_dir = Path(core_init).parent
+        import core
+        core_dir = Path(core.__file__).parent
         skill_dir = core_dir / "engine" / "skills"
         agent_dir = core_dir / "engine" / "agents"
         project_root = os.getenv("AIPLAT_PROJECT_ROOT", os.getcwd())

@@ -239,6 +239,28 @@ class BuilderProjectService:
     # ── CRUD ─────────────────────────────────────────────────────────
 
     async def create_project(self, req: ProjectCreateRequest) -> Project:
+        # ── Dedup: reuse existing project if same name + description exists ──
+        self._reload_if_stale()
+        for pid, data in self._projects.items():
+            if data.get("name") == req.name and data.get("description") == req.description:
+                project_data = data
+                team_name = ""
+                if team_id := project_data.get("team_id"):
+                    team = await self._team_service.get_team(team_id)
+                    if team:
+                        team_name = team.name
+                return Project(
+                    project_id=project_data.get("project_id", pid),
+                    name=project_data.get("name", ""),
+                    description=project_data.get("description", ""),
+                    team_id=project_data.get("team_id", ""),
+                    team_name=team_name,
+                    team_stages=_parse_team_stages(project_data.get("team_stages", [])),
+                    runs=[],
+                    created_at=project_data.get("created_at", ""),
+                    updated_at=project_data.get("updated_at", ""),
+                )
+
         project_id = f"prj_{uuid.uuid4().hex[:8]}"
         now = time.strftime("%Y-%m-%dT%H:%M:%S")
 
@@ -347,9 +369,9 @@ class BuilderProjectService:
                             elif os.path.isfile(full):
                                 os.remove(full)
                         except OSError:
-                            pass
+                            pass  # noqa: cleanup-best-effort
             except OSError:
-                pass
+                pass  # noqa: cleanup-best-effort
         for state_file in [
             os.path.join(home, "builder_states", f"{project_id}.json"),
             os.path.join(home, "builder_states", f"{project_id}_chat.json"),
@@ -358,9 +380,81 @@ class BuilderProjectService:
                 if os.path.isfile(state_file):
                     os.remove(state_file)
             except OSError:
-                pass
+                pass  # noqa: cleanup-best-effort
         del self._projects[project_id]
         self._save_projects()
+        return True
+
+    async def batch_delete(self, project_ids: list[str] = None, *,
+                           pass_rate_below: float = None) -> int:
+        """Delete multiple projects. Optionally filter by pass_rate.
+        
+        Args:
+            project_ids: specific project IDs to delete. If None, uses pass_rate filter.
+            pass_rate_below: if set, deletes all projects whose latest run pass_rate is below this value.
+        
+        Returns: number of projects deleted.
+        """
+        self._reload_if_stale()
+        to_delete: list[str] = []
+        
+        if project_ids:
+            to_delete = [pid for pid in project_ids if pid in self._projects]
+        elif pass_rate_below is not None:
+            for pid, data in self._projects.items():
+                runs = data.get("runs", [])
+                if not runs:
+                    to_delete.append(pid)  # never run = 0% effectively
+                    continue
+                latest = runs[-1]
+                if (latest.get("pass_rate") or 0) < pass_rate_below:
+                    to_delete.append(pid)
+        
+        deleted = 0
+        for pid in to_delete:
+            if self.delete_project_sync(pid):
+                deleted += 1
+        
+        if deleted:
+            self._save_projects()
+        return deleted
+
+    def delete_project_sync(self, project_id: str) -> bool:
+        """Synchronous version of delete_project for batch operations."""
+        if project_id not in self._projects:
+            return False
+        import shutil
+        home = os.getenv("AIPLAT_HOME", os.path.expanduser("~/.aiplat"))
+        dirs_to_check = [
+            (os.path.join(home, "output"), project_id),
+            (os.path.join(os.getenv("AIPLAT_APP_DEPLOY_DIR", os.path.expanduser("~/.aiplat/apps")), ""), project_id),
+        ]
+        for base_dir, pid in dirs_to_check:
+            try:
+                if not os.path.isdir(base_dir):
+                    continue
+                for entry in os.listdir(base_dir):
+                    full = os.path.join(base_dir, entry)
+                    if entry.endswith(f"-{pid}") or entry == pid:
+                        try:
+                            if os.path.isdir(full):
+                                shutil.rmtree(full)
+                            elif os.path.isfile(full):
+                                os.remove(full)
+                        except OSError:
+                            pass  # noqa: cleanup-best-effort
+            except OSError:
+                pass  # noqa: cleanup-best-effort
+        for state_file in [
+            os.path.join(home, "builder_states", f"{project_id}.json"),
+            os.path.join(home, "builder_states", f"{project_id}_chat.json"),
+        ]:
+            try:
+                if os.path.isfile(state_file):
+                    os.remove(state_file)
+            except OSError:
+                pass  # noqa: cleanup-best-effort
+        del self._projects[project_id]
         return True
 
     async def chat(self, project_id: str, message: str) -> Dict[str, Any]:
@@ -938,7 +1032,7 @@ class BuilderProjectService:
                         loop.run_until_complete(svc._save_state(project_id, dict(result)))
                         loop.close()
                     except Exception:
-                        pass
+                        logging.getLogger(__name__).debug('_bg_run failed', exc_info=True)
                 t = threading.Thread(target=_bg_run, daemon=True)
                 t.start()
         return {"project_id": project_id, "phase": state.get("phase", "executing")}
@@ -1079,7 +1173,7 @@ class BuilderProjectService:
                 if os.path.exists(fpath):
                     os.remove(fpath)
             except OSError:
-                pass
+                pass  # noqa: cleanup-best-effort
         # Clear in-memory state
         self._runs[project_id] = {}
         self._sessions.pop(project_id, None)
@@ -1422,3 +1516,4 @@ def _get_project_service():
         from builder.builder_team_service import BuilderTeamService
         _project_service_singleton = BuilderProjectService(team_service=BuilderTeamService())
     return _project_service_singleton
+

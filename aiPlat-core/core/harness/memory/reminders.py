@@ -3,6 +3,11 @@ System Reminders
 
 Event-driven reminders to prevent instruction decay.
 """
+# === capability_dependencies (Phase 43: auto-verified) ===
+# depends_on:
+#   - context-compression:
+#       symbols: [check_and_inject → structured dict return]
+# === end ===
 
 from typing import Optional, Dict, Any, Callable
 from dataclasses import dataclass, field
@@ -85,19 +90,24 @@ class SystemReminders:
     async def check_and_inject(
         self,
         state: Dict[str, Any]
-    ) -> Optional[str]:
-        """Check rules and return reminder message if triggered"""
+    ) -> Optional[Dict[str, Any]]:
+        """Phase 42: Check rules and return reminder as structured dict with role.
+        
+        Role defaults to 'system' but can be overridden via AIPLAT_REMINDER_ROLE env var.
+        Returns dict: {"role": "system"|"user", "content": "..."} or None.
+        Backward-compatible: callers that expect str can use .get("content", "").
+        """
         for rule in self._rules:
             if not rule.enabled:
                 continue
-            
             try:
                 if rule.condition(state):
                     message = self._format_message(rule.message_template, state)
-                    return message
+                    import os as _os
+                    role = _os.getenv("AIPLAT_REMINDER_ROLE", "system")
+                    return {"role": role, "content": message}
             except Exception:
                 continue
-        
         return None
     
     def update_state(self, key: str, value: Any):
@@ -129,10 +139,10 @@ class SystemReminders:
         """Format message template with state values"""
         try:
             return template.format(
-                count=state.get("count", 0),
+                count=state.get("pending_todos", state.get("count", 0)),
                 items=state.get("items", ""),
                 error=state.get("error", "unknown"),
-                usage=state.get("token_usage_ratio", 0)
+                usage=state.get("token_usage_ratio", 0),
             )
         except (KeyError, ValueError):
             return template

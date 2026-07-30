@@ -348,7 +348,7 @@ def _prune_session_snapshots(session_id: str, max_keep: int = 50) -> None:
                 if os.path.exists(p):
                     os.remove(p)
             except OSError:
-                pass
+                pass  # noqa: cleanup-best-effort
 
 
 def get_reproducible_context_hash(state: Dict[str, Any]) -> str:
@@ -370,3 +370,4 @@ def get_reproducible_context_hash(state: Dict[str, Any]) -> str:
     }
     raw = json.dumps(context, sort_keys=True, default=str)
     return hashlib.sha256(raw.encode()).hexdigest()[:12]
+

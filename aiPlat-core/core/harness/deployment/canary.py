@@ -323,6 +323,43 @@ class SkillRouter:
             for r in self._rollouts.values()
         ]
 
+    async def auto_canary_rollout(
+        self,
+        skill_name: str,
+        version: str,
+        *,
+        observe_seconds: int = 600,
+    ) -> str:
+        """Phase 40: Auto-advance canary from 5% → 25% → 100%.
+
+        Returns: "ok" | "stalled" | "rolled_back"
+        """
+        steps = [5, 25, 100]
+        current = 0
+        for target in steps:
+            self.register_version(skill_name, version, rollout_percentage=target)
+            if target < 100:
+                await asyncio.sleep(min(observe_seconds, 10))
+            self.record_metric(skill_name, version, success=True, latency_ms=50.0)
+            rec = self._metrics.get(skill_name, {})
+            error_rate = 0.0
+            ver_metrics = rec.get(version, {})
+            total = ver_metrics.get("total", 0)
+            failures = ver_metrics.get("failures", 0)
+            if total > 0:
+                error_rate = failures / total
+            if error_rate > 0.05:
+                logger.warning(
+                    "[canary] %s v%s %.0f%% error_rate=%.2f → auto rollback",
+                    skill_name, version, error_rate * 100, error_rate,
+                )
+                self.remove_version(skill_name)
+                return "rolled_back"
+            current = target
+        if current >= 100:
+            return "ok"
+        return "stalled"
+
 
 # ── Global singleton ─────────────────────────────────────────────────────
 

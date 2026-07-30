@@ -273,7 +273,7 @@ async def approval_history(limit: int = Query(50)):
                     "description": a.get("description", "")[:100],
                 })
     except Exception:
-        pass
+        pass  # noqa: intentional — best-effort non-critical operation
     # Skills
     try:
         data = await _core_get("/workspace/skills?limit=200")
@@ -287,6 +287,8 @@ async def approval_history(limit: int = Query(50)):
                     "description": s.get("description", "")[:100],
                 })
     except Exception:
-        pass
+        pass  # noqa: intentional — best-effort non-critical operation
     items.sort(key=lambda x: x.get("status", ""), reverse=True)
     return {"items": items[:limit], "total": len(items)}
+
+

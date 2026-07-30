@@ -216,7 +216,7 @@ class PromptOptimizer:
             try:
                 return float(raw)
             except (ValueError, TypeError):
-                pass
+                pass  # noqa: cleanup-best-effort
         # Fallback: try to parse from output string
         text = str(getattr(result, "output", result) or "")
         try:
@@ -232,3 +232,4 @@ class PromptOptimizer:
             return ""
         with open(path, "r", encoding="utf-8") as f:
             return f.read()
+

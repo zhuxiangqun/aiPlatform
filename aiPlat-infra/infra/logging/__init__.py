@@ -22,18 +22,19 @@ try:
 
     __all__.extend(["JSONFormatter", "TextFormatter", "ConsoleFormatter"])
 except ImportError:
-    pass
+    pass  # noqa: optional-dependency
 
 try:
     from .outputs import ConsoleOutput, FileOutput, SyslogOutput
 
     __all__.extend(["ConsoleOutput", "FileOutput", "SyslogOutput"])
 except ImportError:
-    pass
+    pass  # noqa: optional-dependency
 
 try:
     from .filters import SensitiveDataFilter
 
     __all__.append("SensitiveDataFilter")
 except ImportError:
-    pass
+    pass  # noqa: optional-dependency
+

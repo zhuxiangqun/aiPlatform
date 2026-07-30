@@ -30,4 +30,5 @@ try:
         ]
     )
 except ImportError:
-    pass
+    pass  # noqa: optional-dependency
+

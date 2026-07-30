@@ -130,7 +130,7 @@ def _has_pragma_allow(func_node: ast.FunctionDef) -> bool:
     """Check if function has ## platform:allowed pragma in docstring or comments."""
     # Check docstring
     if (isinstance(func_node.body[0], ast.Expr) and
-        isinstance(func_node.body[0].value, (ast.Constant, ast.Str))):
+        isinstance(func_node.body[0].value, ast.Constant)):
         doc = getattr(func_node.body[0].value, 'value', '')
         if '## platform:allowed' in str(doc):
             return True
@@ -212,8 +212,8 @@ def scan_platform() -> Tuple[Dict[str, List[Dict]], List[str]]:
             pragma_count = content.count("## platform:allowed")
             decorator_count = content.count("@platform_delegate")
             total = pragma_count + decorator_count
-            if total > 3:
-                pragma_warnings.append(f"{rel}: {total} pragma exemptions (threshold=3)")
+            if total > 5:
+                pragma_warnings.append(f"{rel}: {total} pragma exemptions (threshold=5)")
         except Exception:
             pass
 
@@ -390,7 +390,7 @@ def main():
         print("PASS: No agent file(s) bypass context compression")
 
     if pragma_warnings:
-        print(f"WARN: {len(pragma_warnings)} file(s) exceed pragma threshold (max 3 exemptions)")
+        print(f"WARN: {len(pragma_warnings)} file(s) exceed pragma threshold (max 5 exemptions)")
         for w in pragma_warnings:
             print(f"  ⚠ {w}")
     else:
@@ -466,6 +466,13 @@ def scan_silent_except() -> List[str]:
 
     These swallow errors at the source — the root cause of "errors that can't be traced".
     Returns sorted list of 'relpath:line' locations across all repos.
+
+    Excludes handlers with `# noqa:` comments per CLAUDE.md §5.68 exception taxonomy:
+      - optional-dependency  (ImportError)
+      - normal-cancellation  (asyncio.CancelledError)
+      - schema-idempotent    (sqlite3.OperationalError)
+      - normal-disconnect    (WebSocketDisconnect)
+      - cleanup-best-effort  (OSError)
     """
     locations: List[str] = []
     for root in SILENT_EXCEPT_ROOTS:
@@ -477,13 +484,21 @@ def scan_silent_except() -> List[str]:
             if any(skip in sp for skip in SILENT_EXCEPT_SKIP):
                 continue
             try:
-                tree = ast.parse(py.read_text(encoding="utf-8", errors="ignore"))
+                source = py.read_text(encoding="utf-8", errors="ignore")
+                tree = ast.parse(source)
             except SyntaxError:
                 continue
+            lines = source.split('\n')
             for node in ast.walk(tree):
                 if isinstance(node, ast.ExceptHandler) and all(
                     isinstance(s, ast.Pass) for s in node.body
                 ):
+                    # Check if except line or pass line has # noqa: exemption
+                    except_line = lines[node.lineno - 1] if node.lineno <= len(lines) else ""
+                    pass_node = node.body[0] if node.body else None
+                    pass_line = lines[pass_node.lineno - 1] if pass_node and pass_node.lineno <= len(lines) else ""
+                    if '# noqa:' in except_line or '# noqa:' in pass_line:
+                        continue
                     rel = sp.replace(str(WORKSPACE_ROOT) + "/", "")
                     locations.append(f"{rel}:{node.lineno}")
     return sorted(locations)

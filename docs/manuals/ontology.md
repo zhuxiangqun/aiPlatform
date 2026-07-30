@@ -2,7 +2,7 @@
 
 > 版本: 1.2 · 2026-07-19  
 > 适用: aiPlatform v2.6+  
-> 入口: 知识中心 → 本体模型 (`/infra/ontology`) | 🆕 编辑器入口: `/ontology-editor`  
+> 入口: 打开 /infra/ontology（本体模型） (`/infra/ontology`) | 🆕 编辑器入口: `/ontology-editor`  
 > 📘 知识管线总览 → [knowledge-management.md](knowledge-management.md)  
 > 🆕 v2.6 新增: 本体编辑器 UI、角色视图、跨实体流程编排、时序 SLA 监控、动态阈值触发器、术语消歧
 
@@ -86,7 +86,7 @@ GraphIndex (SQLite 存储) + Wiki 页面
 
 ### 2.1 用智能生成创建第一个域
 
-1. 打开管理端 → 知识中心 → **本体模型**
+1. 打开管理端 → 知识工厂 → **本体模型**
 2. 点击右上角 **🤖 智能生成** 按钮
 3. 填写：
 
@@ -174,7 +174,7 @@ GraphIndex (SQLite 存储) + Wiki 页面
 | 发布与版本 🆕 | 手动替换文件 | publish → 写回 YAML + graph snapshot + 缓存失效 |
 | 监控 🆕 | 不可用 | Monitor tab：状态分布 + 瓶颈分析 + SLA 违约 |
 
-**入口**：管理端 → 知识中心 → 本体编辑器 (`/ontology-editor`)
+**入口**：管理端 → 打开 /ontology-editor（本体编辑器） (`/ontology-editor`)
 
 ---
 
@@ -567,7 +567,7 @@ FDE 现场交付工程师通过 8 步流程使用本体引擎：建域 → 注�
 
 诊断中心的以下检查项反映了本体健康度：
 
-| 检查项 | 含义 | 知识中心 → 本体模型 中的对应操作 |
+| 检查项 | 含义 | 打开 /infra/ontology（本体模型） 中的对应操作 |
 |--------|------|---------------------|
 | `wiki_health` | Wiki 页面健康度（死链/孤立/矛盾） | 点击验证报告 |
 | `wiki_content_quality` | Wiki 内容质量评分 | 点击修复 |

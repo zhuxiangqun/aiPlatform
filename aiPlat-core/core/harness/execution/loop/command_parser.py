@@ -27,6 +27,7 @@ def parse(text: str) -> Optional[Command]:
     u"""Parse a slash command from user text.
 
     "/assess 制造 质量追溯" → Command(name="assess", args=["制造","质量追溯"])
+    "/moa --preset security 分析这段代码" → Command(name="moa", args=["分析这段代码"], kwargs={"preset":"security"})
     """
     if not text or not text.startswith("/"):
         return None
@@ -37,9 +38,20 @@ def parse(text: str) -> Optional[Command]:
         return None
 
     cmd_name = parts[0][1:]  # strip leading /
-    args = parts[1:]
+    raw_args = parts[1:]
 
-    return Command(name=cmd_name, args=args)
+    kwargs: Dict[str, str] = {}
+    args: List[str] = []
+    i = 0
+    while i < len(raw_args):
+        if raw_args[i].startswith("--") and i + 1 < len(raw_args):
+            kwargs[raw_args[i][2:]] = raw_args[i + 1]
+            i += 2
+        else:
+            args.append(raw_args[i])
+            i += 1
+
+    return Command(name=cmd_name, args=args, kwargs=kwargs)
 
 
 def resolve_skill(

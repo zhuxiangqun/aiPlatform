@@ -7,6 +7,7 @@
 | 我是… | 看这篇 | 5分钟能上手 | 
 |------|------|:---:|
 | **第一天加入，完全不知道怎么用** | [01 - 快速入门](./01-fde-quickstart.md) | ✅ |
+| **我要从零交付一个全新客户域** | [06 - 标准交付 SOP](./06-sop-domain-delivery.md) | ✅ |
 | **日常交付客户项目** | [02 - 交付操作手册](./02-fde-delivery.md) | ✅ |
 | **需要理解完整交付方法论** | [05 - 实施流程](./05-fde-implementation-process.md) | — |
 | **已交付项目需要维护监控** | [03 - 运维与自演进](./03-fde-operations.md) | ✅ |
@@ -35,7 +36,7 @@
 |------|------|
 | FDE 工作台（前端） | `http://localhost:5173/diagnostics` → FDE Dashboard |
 | 平台 API | `http://localhost:8003/api/platform/apps/fde/` |
-| Core API | `http://localhost:8002/api/core/fde/` |
+| Core API | `http://localhost:8003/api/platform/apps/fde/` |
 
 ### 相关文档
 

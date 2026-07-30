@@ -90,8 +90,14 @@ class ConversationalAgent(BaseAgent):
 
             result = await super().execute(context)
 
+            # v2.9: suggest grilling when user input is too short or ambiguous
             if result.success and result.output:
                 self._conversation_history.append({"role": "assistant", "content": result.output})
+                last_msg = context.messages[-1]["content"] if context.messages else ""
+                result.metadata["grill_suggested"] = (
+                    len(str(last_msg).strip()) < 20 or
+                    any(kw in str(last_msg).lower() for kw in ["帮我", "优化", "做一个", "能不能"])
+                )
             self._turn_count += 1
             return result
         except Exception as e:

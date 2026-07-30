@@ -14,6 +14,7 @@ Directory structure:
 """
 
 from __future__ import annotations
+import logging
 
 import os
 import re
@@ -55,7 +56,7 @@ def _get_doc_freshness_warning(page: Dict[str, Any], threshold_days: int = 30) -
                 f"内容可能已过期。如需最新信息，可以主动问我是否联网确认]\n\n"
             )
     except (ValueError, TypeError):
-        pass
+        pass  # noqa: cleanup-best-effort
     return ""
 
 
@@ -73,12 +74,12 @@ def _inc_change_counter() -> None:
             from core.harness.knowledge.wiki_quality_monitor import trigger_quality_check
             trigger_quality_check()
         except Exception:
-            pass
+            logging.getLogger(__name__).debug('_inc_change_counter failed', exc_info=True)
         try:
             from core.harness.knowledge.active_synthesis import trigger_active_synthesis
             trigger_active_synthesis()
         except Exception:
-            pass
+            logging.getLogger(__name__).debug('_inc_change_counter failed', exc_info=True)
         _wiki_change_counter = 0
 
 
@@ -598,6 +599,12 @@ def write_page(title: str, body: str, *, category: str = "entities", tags: List[
         from core.harness.knowledge.knowledge_growth import take_growth_snapshot
         take_growth_snapshot(collection_id)
         invalidate_graph_cache(collection_id)
+        # v2.4: trigger DomainRouter index rebuild on content change
+        try:
+            from core.harness.knowledge.domain_router import DomainRouter
+            DomainRouter()._built = False
+        except Exception:
+            logging.getLogger(__name__).debug('unexpected error suppressed', exc_info=True)
     except Exception as e:
         logging.debug(str(e), exc_info=True)
 
@@ -1226,7 +1233,7 @@ def cleanup_ghost_pages(*, collection_id: str = "default", dry_run: bool = False
                         idx.get("pages", {}).pop(title, None)
                         idx_path.write_text(_json.dumps(idx, indent=2, ensure_ascii=False))
                     except Exception:
-                        pass
+                        logging.getLogger(__name__).debug('cleanup_ghost_pages failed', exc_info=True)
                 deleted += 1
         except Exception as e:
             errors.append(f"{title}: {e}")
@@ -1790,7 +1797,7 @@ def _build_graph_raw(*, category: str = "", keyword: str = "", source: str = "",
                 if auto_links:
                     page["related"] = auto_links
             except Exception:
-                pass
+                logging.getLogger(__name__).debug('_build_graph_raw failed', exc_info=True)
 
     cat_colors = {"entities": "#4d9fff", "topics": "#a855f7", "contradictions": "#ef4444"}
     titles = list(all_pages.keys())
@@ -2489,7 +2496,7 @@ def _parse_json_response(content: str) -> Optional[Dict]:
             try:
                 return _json.loads(cleaned)
             except _json.JSONDecodeError:
-                pass
+                pass  # noqa: cleanup-best-effort
     return None
 
 
@@ -3031,3 +3038,4 @@ def classify_page(title: str = "", body: str = "", *, collection_id: str = "defa
         "reasons": reasons,
         "marking": existing_marking,
     }
+

@@ -244,7 +244,7 @@ class OperatorAgent(BaseAgent):  # noqa: agent-subclass-approved — §55: genui
         try:
             return json.loads(text)
         except (json.JSONDecodeError, TypeError):
-            pass
+            pass  # noqa: cleanup-best-effort
         # Try extracting ───...─── delimited JSON
         import re
         for pattern in [
@@ -269,3 +269,4 @@ def _default_decision_prompt() -> str:
 
 def create_operator_agent(config: AgentConfig, **kwargs) -> OperatorAgent:
     return OperatorAgent(config=config, **kwargs)
+

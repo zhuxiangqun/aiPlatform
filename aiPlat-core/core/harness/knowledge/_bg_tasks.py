@@ -77,7 +77,7 @@ async def stop_worker() -> None:
         try:
             await _worker_task
         except asyncio.CancelledError:
-            pass
+            pass  # noqa: normal-cancellation
         _worker_task = None
         _log.info("Wiki background task worker stopped")
 
@@ -91,3 +91,4 @@ async def _run_worker(q: asyncio.Queue) -> None:
             break
         except Exception:
             _log.error(f"Worker loop error:\n{traceback.format_exc()}")
+

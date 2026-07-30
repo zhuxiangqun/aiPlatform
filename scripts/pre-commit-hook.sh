@@ -107,6 +107,13 @@ if [ "$NONCAPS_CHANGED" -gt 0 ]; then
     fi
 fi
 
+# ── Step 2.5: Doc sync enforcement (code_doc_map.yaml) ──
+echo ""
+bash "$WORKSPACE/scripts/verify_doc_sync.sh" --ci || {
+  echo "❌ 文档同步检查失败 — 请在 commit message 中标注 doc-sync 或更新对应文档"
+  exit 1
+}
+
 # ── Step 3: 分流守卫 — 防止往 CLAUDE.md 新增状态型 §5.NNN (WARNING, 不阻断) ──
 if echo "$STAGED_PY" | grep -q "CLAUDE.md" || git diff --cached --name-only | grep -q "aiPlat-core/CLAUDE.md"; then
     python3 "$WORKSPACE/scripts/guard_claude_status.py" --staged || true
@@ -181,6 +188,15 @@ if duplicates:
     fi
 fi
 
+# ── Step 6: Architecture guard (quick) — catch new violations before commit ──
+echo ""
+echo "  Running architecture guard (quick)..."
+if ! bash "$WORKSPACE/scripts/architecture_guard.sh" --quick 2>&1; then
+    echo ""
+    echo "  ❌ Architecture guard found violations. Fix before committing."
+    exit 1
+fi
+
 echo "  ✓ pre-commit checks passed"
 echo ""
 exit 0
@@ -193,4 +209,46 @@ if [ -n "$NEW_ROUTES_WITHOUT_MODEL" ]; then
     echo "$NEW_ROUTES_WITHOUT_MODEL" | head -5 | while read line; do echo "    $line"; done
     echo "  Per §5.76, add response_model=Dict[str, Any] or specific Pydantic model."
     echo ""
+fi
+
+# ── Phase 42: Verify capability count consistency ──
+if [ -z "${SKIP_CAPABILITY_CHECK:-}" ]; then
+    bash "$WORKSPACE/scripts/verify_capability_counts.sh" || {
+        echo "  ❌ Capability count drift detected. Fix hardcoded numbers or run:"
+        echo "     bash scripts/verify_capability_counts.sh"
+        exit 1
+    }
+    echo "  ✅ Capability counts consistent"
+fi
+
+# ── Phase 43: Capability-to-consumer traceability ──
+if [ -z "${SKIP_CAPABILITY_CONSUMERS:-}" ]; then
+    bash "$WORKSPACE/scripts/verify_capability_consumers.sh" || {
+        echo "  ⚠️  Capability consumer warnings (review before pushing)"
+        echo "     Set BLOCK_CAPABILITY_GAP=1 to block commits on gap detection"
+    }
+fi
+
+# ── Phase 43: Capability auto-registration check ──
+if [ -z "${SKIP_CAP_REGISTRATION:-}" ]; then
+    bash "$WORKSPACE/scripts/cap" check || {
+        echo ""
+        echo "  ❌ Unregistered capabilities detected."
+        echo "  → Run: cap auto-register"
+        echo "  → Fill in the TODO fields in each draft"
+        echo "  → Stage the updated registry: git add $WORKSPACE/aiPlat-core/core/capability_registry.yaml"
+        echo "  → Commit again."
+        echo ""
+        echo "  (Set SKIP_CAP_REGISTRATION=1 to bypass, not recommended)"
+        exit 1
+    }
+    echo "  ✅ All capabilities registered"
+fi
+
+# ── Phase 45: Architecture pattern compliance ──
+if [ -z "${SKIP_ARCH_PATTERNS:-}" ]; then
+    bash "$WORKSPACE/scripts/verify_architecture_patterns.sh" || {
+        echo "  ⚠️  Architecture pattern warnings (review before pushing)"
+        echo "     Set BLOCK_ARCH_PATTERNS=1 to block commits on pattern violations"
+    }
 fi

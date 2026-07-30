@@ -1334,10 +1334,10 @@ async def lifespan(app: FastAPI):
         for root, dirs, files in os.walk(kb_base):
             for f in files:
                 if f.endswith(".sqlite3"):
-                    ensure_wal_enabled(os.path.join(root, f))
+                     ensure_wal_enabled(os.path.join(root, f))
             break  # only top-level; sub-tenants are created on demand
     except Exception:
-        pass
+        logging.debug("WAL enablement scan failed", exc_info=True)
 
     # Hot-reload: watch code/config files for changes
     try:
@@ -1345,6 +1345,30 @@ async def lifespan(app: FastAPI):
         wire_hot_reload()
     except Exception as e:
         logging.debug(str(e), exc_info=True)
+
+    # ── Docs → Wiki auto-sync (v2.3) ──
+    # B: 启动时自动导入 docs/ 到 Wiki（可通过 AIPLAT_DOCS_AUTO_SYNC=false 关闭）
+    #    使用后台线程执行，避免阻塞 health check
+    if os.environ.get("AIPLAT_DOCS_AUTO_SYNC", "true").lower() in ("true", "1", "yes"):
+        async def _bg_sync_docs():
+            try:
+                from core.harness.knowledge.docs_sync import sync_docs_to_wiki
+                import asyncio as _asyncio
+                result = await _asyncio.to_thread(sync_docs_to_wiki)
+                if result.get("created", 0) > 0:
+                    logging.info("Docs startup sync: %d pages created/updated", result["created"])
+                if result.get("errors", 0) > 0:
+                    logging.warning("Docs startup sync: %d errors", result["errors"])
+            except Exception as e:
+                logging.warning("Docs startup sync failed: %s", str(e)[:200], exc_info=True)
+        asyncio.create_task(_bg_sync_docs())
+    # C: 文件变更监视（可通过 AIPLAT_DOCS_WATCH=false 关闭）
+    if os.environ.get("AIPLAT_DOCS_WATCH", "true").lower() in ("true", "1", "yes"):
+        try:
+            from core.harness.knowledge.docs_sync import start_docs_watcher
+            start_docs_watcher()
+        except Exception as e:
+            logging.debug("Docs watcher skipped: %s", str(e)[:200], exc_info=True)
 
     # Cache warming: pre-build knowledge graphs on startup to avoid cold-start latency
     # ── Graph warmup disabled by default (saves ~100MB startup memory) ──
@@ -1393,11 +1417,80 @@ async def lifespan(app: FastAPI):
                     if critical:
                         log.warning("Governance cron: %d domain(s) in critical health", len(critical))
                     log.info("Governance cron completed: %d domains checked", len(results))
+                    # v2.9: Knowledge drift monitoring + auto-rebuild
+                    try:
+                        from core.harness.knowledge.staleness_monitor import StalenessMonitor
+                        monitor = StalenessMonitor()
+                        summary = monitor.get_stale_summary()
+                        if summary["total_stale"] > 0:
+                            log.warning("Knowledge drift: %d/%d pages flagged stale in %d collections",
+                                        summary["total_stale"], summary["total_scanned"], len(summary["collections"]))
+                            # Auto-rebuild if drift exceeds 30% threshold
+                            if summary["drift_ratio"] >= 0.3:
+                                log.info("Drift ratio %.1f%% exceeds threshold, triggering auto-rebuild...",
+                                         summary["drift_ratio"] * 100)
+                                rebuild = await monitor.auto_rebuild_if_needed()
+                                log.info("Auto-rebuild: %d built, %d errors", rebuild.get("rebuilt", 0), rebuild.get("errors", 0))
+                    except Exception:
+                        logging.debug("Governance cron: staleness monitor failed", exc_info=True)
+                    try:
+                        from core.harness.evaluation.config_drift_detector import ConfigDriftDetector
+                        cdetector = ConfigDriftDetector()
+                        csummary = cdetector.get_drift_summary()
+                        if csummary["total_drifts"] > 0:
+                            log.info("Config drift: %d agents with drift (%d total)",
+                                     csummary["agents_with_drift"], csummary["total_drifts"])
+                    except Exception:
+                        logging.debug("Governance cron: config drift detection failed", exc_info=True)
+                    # v2.9: P2 Error-to-Fix + P3 SelfHealGate
+                    try:
+                        from core.harness.evaluation.self_heal_gate import SelfHealGate
+                        from core.harness.evaluation.constraint_validator import ConstraintValidator
+                        gate = SelfHealGate()
+                        validator = ConstraintValidator()
+                        issues = validator.scan_all()
+                        for issue in issues:
+                            if issue.level in ("CRITICAL", "HIGH"):
+                                gate.apply(issue.issue_type, {
+                                    "source": issue.source, "detail": issue.detail})
+                        log.info("SelfHeal: %d constraint issues checked", len(issues))
+                    except Exception:
+                        logging.debug("Governance cron: self-heal/constraint check failed", exc_info=True)
+                    # v3.0: Ontology audit + adoption metrics
+                    try:
+                        from core.harness.knowledge.ontology_audit import OntologyAuditor
+                        from core.harness.evaluation.adoption_metrics import AdoptionTracker
+                        auditor = OntologyAuditor()
+                        tracker = AdoptionTracker()
+                        for domain_id in auditor.list_domains():
+                            try:
+                                report = auditor.audit_domain(domain_id)
+                                if report.get("orphan_count", 0) > 0:
+                                    log.info("OntologyAudit: %s orphans=%d classes=%d", 
+                                             domain_id, report["orphan_count"], report["class_count"])
+                            except Exception:
+                                logging.debug("Governance cron: ontology audit failed for %s", domain_id, exc_info=True)
+                        adoption = tracker.compute_metrics()
+                        log.info("AdoptionMetrics: usage=%d grill_rate=%.2f", 
+                                 adoption.get("agent_usage", 0), adoption.get("grill_rate", 0))
+                    except Exception:
+                        logging.debug("Governance cron: adoption metrics failed", exc_info=True)
                 except Exception as e:
                     logging.debug("Governance cron error: %s", e)
                 await asyncio.sleep(governance_cron_hours * 3600)
         asyncio.create_task(_governance_cron_loop())
         log.info("Governance cron started (interval=%sh)", governance_cron_hours)
+
+    # Phase 41: External system auto-discovery listener
+    if os.getenv("AIPLAT_DISCOVERY_ENABLED", "true").lower() in ("1", "true", "yes"):
+        try:
+            from core.harness.infrastructure.discovery_listener import get_discovery_listener
+            listener = get_discovery_listener()
+            asyncio.create_task(listener.start())
+            log.info("DiscoveryListener started (watch dir=%s)",
+                     os.path.expanduser("~/.aiplat/datasources/auto_discovered"))
+        except Exception as e:
+            logging.debug("DiscoveryListener startup skipped: %s", e)
 
     # Cross-graph ontology bridge: scan AGENT.md/SKILL.md for dependency triples
     try:
@@ -1441,6 +1534,28 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logging.debug("Cron loader skipped: %s", e)
 
+    # PR: Scheduled auto-heal — periodically run SystemHealer to detect+fix issues
+    try:
+        from core.harness.knowledge.system_diagnostician import SystemDiagnostician, SystemHealer
+        _heal_interval = int(os.getenv("AIPLAT_AUTO_HEAL_INTERVAL", "3600"))  # default 1h
+        async def _auto_heal_loop():
+            while True:
+                await asyncio.sleep(_heal_interval)
+                try:
+                    diag = SystemDiagnostician().diagnose()
+                    if diag.get("findings"):
+                        healer = SystemHealer()
+                        result = healer.auto_heal(diag)
+                        if result.get("auto_fixed"):
+                            logging.getLogger("auto_heal").info(
+                                "Auto-heal: fixed %d issues", result["auto_fixed"])
+                except Exception:
+                    logging.getLogger("auto_heal").debug("skipped", exc_info=True)
+        asyncio.create_task(_auto_heal_loop())
+        logging.getLogger("auto_heal").info("Started (interval=%ds)", _heal_interval)
+    except Exception as e:
+        logging.getLogger("auto_heal").debug("skipped: %s", e)
+
     # Wake scheduler: autonomous idle-wake trigger (A1.4 zero-token)
     try:
         from core.harness.scheduler.wake_scheduler import get_wake_scheduler
@@ -1451,8 +1566,28 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logging.debug("Wake scheduler skipped: %s", e)
 
+    # Phase 40: Autonomous goal executor — background loop for auto-improvement
+    try:
+        from core.harness.optimization.goal_executor import get_goal_executor
+        executor = get_goal_executor()
+        executor.enabled = True
+        executor.start()
+        interval_min = getattr(executor, '_interval', 3600) // 60
+        logger.info("GoalExecutor started (interval=%dmin, auto-execute=on)", interval_min)
+    except Exception as e:
+        logging.debug("GoalExecutor startup skipped: %s", e)
+
     from core.harness.observation.event_bus import EventBus
     EventBus.start()
+
+    # Phase 36: GossipProtocol — cross-instance knowledge sync (D-axis L5)
+    try:
+        from core.harness.memory.gossip_protocol import get_gossip_protocol
+        _gossip = get_gossip_protocol()
+        await _gossip.start()
+        logger.info("GossipProtocol started (push-pull sync for cross-instance knowledge)")
+    except Exception as e:
+        logging.debug("GossipProtocol startup skipped: %s", e)
 
     # Start wiki background task worker (metrics rebuild, auto-atomize)
     try:
@@ -1621,6 +1756,22 @@ async def lifespan(app: FastAPI):
             _evolution_task.cancel()
             with suppress(asyncio.CancelledError, Exception):
                 await _evolution_task
+    # Release loaded models (Ollama GPU/RAM + local LLM in-process memory)
+    try:
+        from infra.llm.providers.openai_compatible import OpenAICompatibleClient
+        result = OpenAICompatibleClient.unload_ollama_models()
+        if result["unloaded"]:
+            logging.info("Unloaded Ollama models: %s", ", ".join(result["unloaded"]))
+        if result["errors"]:
+            logging.debug("Ollama unload errors: %s", result["errors"])
+    except Exception as e:
+        logging.debug("Ollama unload skipped: %s", str(e)[:200], exc_info=True)
+    try:
+        from infra.llm.providers.local import LocalLLMClient
+        LocalLLMClient.clear_cache()
+        logging.debug("LocalLLMClient cache cleared")
+    except Exception as e:
+        logging.debug("LocalLLMClient cleanup skipped: %s", str(e)[:200], exc_info=True)
 
 
 app = FastAPI(
@@ -1651,7 +1802,7 @@ if _OTEL_ENABLED:
         from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
         FastAPIInstrumentor.instrument_app(app)
     except ImportError:
-        pass
+        pass  # noqa: optional-dependency
 
 if _PROM_ENABLED:
     try:
@@ -1662,7 +1813,7 @@ if _PROM_ENABLED:
         )
         _instrumentator.instrument(app).expose(app, endpoint="/metrics")
     except ImportError:
-        pass
+        pass  # noqa: optional-dependency
 
 api_router = APIRouter(prefix="/api/core")
 
@@ -2174,11 +2325,14 @@ except Exception as e:
     logging.debug("Kanban router: %s", e)
 
 # FDE Toolkit (Field Deployment Engineer — unified entry point)
-# v2.5: Deprecation deprecated — old routes now redirect. Middleware was non-functional
-# because APIRouter has no .middleware() method (AttributeError was silently caught).
+# Routers are registered via apps.fde.__init__.py → router_registry.register()
+# which decouples core server startup from platform-specific router imports.
+# Uses importlib to avoid creating a static import edge in the code graph.
 try:
-    from apps.fde.api.fde import router as fde_router  # migrated to platform per CLAUDE.md §17
-    api_router.include_router(fde_router)
+    import importlib
+    importlib.import_module("apps.fde")  # triggers router + handler registration
+    from core.api.router_registry import mount_all
+    mount_all(app)
 except Exception as e:
     logging.warning(str(e), exc_info=True)
 
@@ -2200,6 +2354,32 @@ except Exception as e:
     logging.debug(str(e), exc_info=True)
 
 
+# ── Digital Human Voice Chat WebSocket ─────────────────────────
+try:
+    from fastapi import WebSocket, WebSocketDisconnect
+    from core.harness.digital_human.voice_pipeline import voice_chat_handler
+
+    @app.websocket("/ws/voice-chat")
+    async def ws_voice_chat(websocket: WebSocket):
+        await websocket.accept()
+        try:
+            await voice_chat_handler(websocket)
+        except WebSocketDisconnect:
+            pass  # noqa: normal-disconnect
+        except Exception as e:
+            logging.getLogger("aiplat.digital_human").warning(
+                "WebSocket error: %s", e)
+        finally:
+            try:
+                await websocket.close()
+            except Exception:
+                logging.debug("WebSocket close failed", exc_info=True)
+
+except Exception as e:
+    logging.getLogger("aiplat.digital_human").debug(
+        "Voice chat WebSocket skipped: %s", e)
+
+
 def run_server(host: str = "0.0.0.0", port: int = 8002):
     """Run the server"""
     uvicorn.run(app, host=host, port=port)
@@ -2207,3 +2387,4 @@ def run_server(host: str = "0.0.0.0", port: int = 8002):
 
 if __name__ == "__main__":
     run_server()
+

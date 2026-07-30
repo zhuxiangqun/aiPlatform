@@ -25,4 +25,5 @@ try:
 
     __all__.extend(["StaticNetworkManager", "ConsulNetworkManager"])
 except ImportError:
-    pass
+    pass  # noqa: optional-dependency
+

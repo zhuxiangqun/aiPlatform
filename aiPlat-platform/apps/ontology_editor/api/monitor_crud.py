@@ -1,8 +1,14 @@
-u"""Ontology Editor — Process Monitor API endpoints (v2.6)."""
+u"""Ontology Editor — Process Monitor API endpoints (v2.7)."""
 from fastapi import APIRouter, HTTPException, Query
 from typing import Any, Dict, List, Optional
 
 router = APIRouter(tags=["ontology-editor-monitor"])
+
+
+def _is_not_initialized(e: Exception) -> bool:
+    """Check if the error means the engine hasn't run yet (no data tables)."""
+    msg = str(e).lower()
+    return any(kw in msg for kw in ("no such table", "database is locked", "unable to open"))
 
 
 @router.get("/domains/{domain_id}/monitor/state-distribution", response_model=Dict[str, Any])
@@ -13,6 +19,8 @@ async def state_distribution(domain_id: str):
         data = get_state_distribution(domain_id)
         return {"domain_id": domain_id, "distribution": data, "total_classes": len(set(d.get("class_name", "") for d in data))}
     except Exception as e:
+        if _is_not_initialized(e):
+            return {"domain_id": domain_id, "distribution": [], "total_classes": 0, "status": "engine_not_run"}
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -24,6 +32,8 @@ async def bottlenecks(domain_id: str, limit: int = Query(10)):
         data = get_bottleneck_analysis(domain_id, limit)
         return {"domain_id": domain_id, "bottlenecks": data, "total": len(data)}
     except Exception as e:
+        if _is_not_initialized(e):
+            return {"domain_id": domain_id, "bottlenecks": [], "total": 0, "status": "engine_not_run"}
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -35,6 +45,8 @@ async def sla_violations(domain_id: str):
         data = get_sla_violations(domain_id)
         return {"domain_id": domain_id, "violations": data, "total": len(data)}
     except Exception as e:
+        if _is_not_initialized(e):
+            return {"domain_id": domain_id, "violations": [], "total": 0, "status": "engine_not_run"}
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -46,6 +58,8 @@ async def trends(domain_id: str, days: int = Query(7)):
         data = get_trend_data(domain_id, days)
         return {"domain_id": domain_id, "trends": data, "days": days}
     except Exception as e:
+        if _is_not_initialized(e):
+            return {"domain_id": domain_id, "trends": [], "days": days, "status": "engine_not_run"}
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -57,6 +71,8 @@ async def process_status(domain_id: str, process_name: Optional[str] = Query(Non
         data = get_process_status(domain_id, process_name or "")
         return {"domain_id": domain_id, "processes": data, "total": len(data)}
     except Exception as e:
+        if _is_not_initialized(e):
+            return {"domain_id": domain_id, "processes": [], "total": 0, "status": "engine_not_run"}
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -68,4 +84,6 @@ async def process_bottlenecks(domain_id: str, limit: int = Query(10)):
         data = get_bottlenecks(domain_id, limit)
         return {"domain_id": domain_id, "bottlenecks": data, "total": len(data)}
     except Exception as e:
+        if _is_not_initialized(e):
+            return {"domain_id": domain_id, "bottlenecks": [], "total": 0, "status": "engine_not_run"}
         raise HTTPException(status_code=500, detail=str(e))

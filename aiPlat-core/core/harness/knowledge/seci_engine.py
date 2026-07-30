@@ -493,7 +493,7 @@ def register_seci_hook() -> bool:
                 try:
                     engine.external_to_combine(aid, threshold=0.5)
                 except Exception:
-                    pass
+                    logging.getLogger(__name__).debug('_seci_post_loop failed', exc_info=True)
 
             # 5. Convergence: trigger C→I scan after atom creation (>5 atoms accumulated)
             if engine.get_atom_count() > 5:
@@ -507,7 +507,7 @@ def register_seci_hook() -> bool:
                             conv_result["triggers_fired"], conv_result.get("total_atoms", 0)
                         )
                 except Exception:
-                    pass
+                    logging.getLogger(__name__).debug('_seci_post_loop failed', exc_info=True)
 
             # 6. Full self-check: diagnose→heal→evolve every 10 conversations
             try:
@@ -517,7 +517,7 @@ def register_seci_hook() -> bool:
                     logger.info("SECI auto-check: health=%s warnings=%d",
                                 result.get("health", "?"), result.get("warnings", 0))
             except Exception:
-                pass
+                logging.getLogger(__name__).debug('_seci_post_loop failed', exc_info=True)
 
             # 7. Quality snapshot: record per-conversation metrics for Quality Bus
             try:
@@ -538,7 +538,7 @@ def register_seci_hook() -> bool:
                 kg.add_entity(qs_id, _json_qs.dumps(qs_data, ensure_ascii=False)[:2000],
                               "SystemSnapshot", source_doc_id=str(int(_time_qs.time())))
             except Exception:
-                pass
+                logging.getLogger(__name__).debug('_seci_post_loop failed', exc_info=True)
 
             logger.info(
                 "SECI hook: POST_LOOP captured %d atoms from %d high-scored entries (session=%s)",

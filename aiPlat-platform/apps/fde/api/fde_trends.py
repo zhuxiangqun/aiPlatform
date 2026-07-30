@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from typing import Any, Dict, List
-from apps.fde.schemas import FdeStatusResponse, FdeListResponse, FdeItemResponse
+from apps.fde.api.schemas import FdeStatusResponse, FdeListResponse, FdeItemResponse
 
 
 from fastapi import APIRouter, HTTPException, Query
@@ -21,7 +21,7 @@ async def fde_system_trends(
     Reads SystemSnapshot entities from knowledge-atom GraphIndex and computes
     week-over-week trends for all key metrics.
     """
-    from core.harness.ontology_engine.graph_index import GraphIndex
+    from core.api.core_facade import GraphIndex
     from datetime import datetime, timezone, timedelta
     import json as _json_st
 
@@ -79,7 +79,7 @@ async def fde_health_history(
     limit: int = Query(10, ge=1, le=50),
 ):
     """Last N health check snapshots for comparison."""
-    from core.harness.ontology_engine.graph_index import GraphIndex
+    from core.api.core_facade import GraphIndex
     import json as _json_hh
     from datetime import datetime, timezone
 

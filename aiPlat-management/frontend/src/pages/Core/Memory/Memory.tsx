@@ -3,7 +3,7 @@ import { Plus, RotateCw, Search, Download, Upload, Eye } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Table, Button, Modal, Input, toast } from '../../../components/ui';
 import { toastGateError } from '../../../components/ui';
-import { CreateSessionModal, SessionDetailModal, SearchMemoryModal, LongTermMemoryModal } from '../../../components/core';
+import { CreateSessionModal, SessionDetailModal, SearchMemoryModal, LongTermMemoryModal, UserProfileModal, SemanticMemoryModal } from '../../../components/core';
 import { useMemoryStore } from '../../../stores';
 import type { MemorySession } from '../../../services';
 import { memoryApi } from '../../../services';
@@ -14,6 +14,8 @@ const Memory: React.FC = () => {
   const [detailModalOpen, setDetailModalOpen] = useState(false);
   const [searchModalOpen, setSearchModalOpen] = useState(false);
   const [longTermOpen, setLongTermOpen] = useState(false);
+  const [userProfileOpen, setUserProfileOpen] = useState(false);
+  const [semanticOpen, setSemanticOpen] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState<{ open: boolean; sessionId: string | null }>({ open: false, sessionId: null });
   const [deleting, setDeleting] = useState(false);
   const [exportModalOpen, setExportModalOpen] = useState(false);
@@ -164,6 +166,12 @@ const Memory: React.FC = () => {
           <Button onClick={() => setLongTermOpen(true)}>
             长期记忆
           </Button>
+          <Button onClick={() => setUserProfileOpen(true)}>
+            记忆规则
+          </Button>
+          <Button onClick={() => setSemanticOpen(true)}>
+            语义记忆
+          </Button>
           <Button
             icon={<RotateCw className="w-4 h-4" />}
             onClick={fetchSessions}
@@ -246,6 +254,16 @@ const Memory: React.FC = () => {
       <LongTermMemoryModal
         open={longTermOpen}
         onClose={() => setLongTermOpen(false)}
+      />
+
+      <UserProfileModal
+        open={userProfileOpen}
+        onClose={() => setUserProfileOpen(false)}
+      />
+
+      <SemanticMemoryModal
+        open={semanticOpen}
+        onClose={() => setSemanticOpen(false)}
       />
 
       {/* Export Modal */}

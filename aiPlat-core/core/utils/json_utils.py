@@ -45,7 +45,7 @@ def parse_json(raw: str) -> Optional[Dict[str, Any]]:
         try:
             return json.loads(json_str)
         except json.JSONDecodeError:
-            pass
+            pass  # noqa: cleanup-best-effort
     return None
 
 
@@ -58,3 +58,4 @@ def extract_json(text: str) -> str:
     if m:
         return m.group(0).strip()
     return ""
+

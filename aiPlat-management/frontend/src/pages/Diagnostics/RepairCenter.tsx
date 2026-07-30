@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, Button } from '../../components/ui';
 import { ArrowLeft, Wrench, RefreshCw, CheckCircle, AlertTriangle, ExternalLink, Sparkles, Play, Zap, ShieldCheck } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
+import GrillPanel from '../../components/grilling/GrillPanel';
 
 const RepairCenter: React.FC = () => {
   const [data, setData] = useState<any>(null);
@@ -12,6 +13,7 @@ const RepairCenter: React.FC = () => {
   const [expandedPreview, setExpandedPreview] = useState<string | null>(null);
   const [previewCode, setPreviewCode] = useState<Record<string, string>>({});
   const [history, setHistory] = useState<any>(null);
+  const [showGuidedRepair, setShowGuidedRepair] = useState(false);
 
   const fetchHistory = async () => {
     try {
@@ -56,7 +58,7 @@ const RepairCenter: React.FC = () => {
         return;
       }
       // Cold cache — fall back to full scan
-      const r = await fetch('/api/core/diagnostics/repairs', { method: 'POST' });
+      const r = await fetch('/api/core/diagnostics/repairs-latest', { method: 'POST' });
       setData(await r.json());
     } catch { }
     finally { setLoading(false); }
@@ -107,6 +109,9 @@ const RepairCenter: React.FC = () => {
         </div>
         <Button variant="ghost" size="sm" onClick={fetchRepairs} loading={loading}>
           <RefreshCw className="w-3 h-3 mr-1" />刷新
+        </Button>
+        <Button variant="ghost" size="sm" onClick={() => setShowGuidedRepair(true)}>
+          <Zap className="w-3 h-3 mr-1" />引导修复
         </Button>
       </div>
 
@@ -485,6 +490,23 @@ const RepairCenter: React.FC = () => {
           </Card>
         );
       })}
+
+      {/* v2.9: GrillingBridge — guided diagnostic remediation */}
+      {showGuidedRepair && (
+        <GrillPanel
+          mode="modal"
+          entryPoint="diagnostics"
+          title="引导修复"
+          onComplete={(output) => {
+            setShowGuidedRepair(false);
+            const flat = output.answers as Record<string, string>;
+            if (flat['操作'] === '自动修复') {
+              fetch('/api/core/diagnostics/repairs-latest', { method: 'POST' }).then(() => fetchRepairs());
+            }
+          }}
+          onClose={() => setShowGuidedRepair(false)}
+        />
+      )}
     </div>
   );
 };

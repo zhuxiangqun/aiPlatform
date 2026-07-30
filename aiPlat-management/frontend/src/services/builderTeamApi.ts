@@ -162,6 +162,9 @@ export const projectApi = {
   delete: async (projectId: string) => {
     return apiClient.delete(`/platform/builder/projects/${projectId}`);
   },
+  batchDelete: async (data: { project_ids?: string[]; pass_rate_below?: number }) => {
+    return apiClient.post<{ deleted: number }>('/platform/builder/projects/batch-delete', data);
+  },
   chat: async (projectId: string, message: string) => {
     return apiClient.post<{ reply: string; prd_ready: boolean; session_state: Record<string, unknown> }>(
       `/platform/builder/projects/${projectId}/chat`, { message }

@@ -1703,6 +1703,43 @@ export const memoryApi = {
     });
   },
 
+  // Phase 40: CRUD for long-term memories
+  listLongTerm: async (params?: { user_id?: string; limit?: number; offset?: number }) => {
+    const query = new URLSearchParams();
+    if (params?.user_id) query.set('user_id', params.user_id);
+    if (params?.limit) query.set('limit', String(params.limit));
+    if (params?.offset) query.set('offset', String(params.offset));
+    const qs = query.toString();
+    return apiClient.get<{ items: LongTermMemoryItem[]; total: number }>(`/core/memory/longterm${qs ? '?' + qs : ''}`);
+  },
+
+  updateLongTerm: async (memoryId: string, data: { content?: string; key?: string; metadata?: Record<string, unknown> }) => {
+    return apiClient.put<LongTermMemoryItem>(`/core/memory/longterm/${memoryId}`, data);
+  },
+
+  deleteLongTerm: async (memoryId: string) => {
+    return apiClient.delete<{ deleted: boolean; memory_id: string }>(`/core/memory/longterm/${memoryId}`);
+  },
+
+  // Phase 40: Memory rules (meta-cognition)
+  getRules: async () => {
+    return apiClient.get<{
+      ignore_greetings: boolean;
+      capture_errors: boolean;
+      ignore_patterns: string[];
+      capture_patterns: string[];
+    }>('/core/memory/rules');
+  },
+
+  updateRules: async (data: {
+    ignore_greetings?: boolean;
+    capture_errors?: boolean;
+    ignore_patterns?: string[];
+    capture_patterns?: string[];
+  }) => {
+    return apiClient.put<Record<string, unknown>>('/core/memory/rules', data);
+  },
+
   exportAll: async () => {
     return apiClient.get<{ version: string; exported_at: string; memory: any; stats?: any }>('/core/memory/export');
   },
@@ -1718,6 +1755,19 @@ export const memoryApi = {
   inspect: async (namespace?: string) => {
     const qs = namespace ? `?namespace=${encodeURIComponent(namespace)}` : '';
     return apiClient.get<any>(`/core/memory/inspect${qs}`);
+  },
+
+  // Phase 40: Semantic memory management
+  searchSemantic: async (data: { query: string; limit?: number }) => {
+    return apiClient.post<{ items: SemanticMemoryItem[]; total: number }>('/core/memory/semantic/search', data);
+  },
+
+  forgetSemantic: async (key: string) => {
+    return apiClient.delete<{ deleted: boolean; key: string }>(`/core/memory/semantic/${key}`);
+  },
+
+  recoverSemantic: async (key: string) => {
+    return apiClient.post<{ recovered: boolean; key: string }>(`/core/memory/semantic/${key}/recover`);
   },
 };
 
@@ -1756,6 +1806,22 @@ export interface LongTermMemoryItem {
   content: string;
   metadata?: Record<string, unknown>;
   created_at?: number | null;
+  source_tag?: string;
+  trust_weight?: number;
+  provenance?: string;
+  relevance_decay?: number;
+}
+
+export interface SemanticMemoryItem {
+  key: string;
+  content: string;
+  metadata?: Record<string, unknown>;
+  access_count?: number;
+  is_deleted?: boolean;
+  source_tag?: string;
+  trust_weight?: number;
+  provenance?: string;
+  created_at?: string | null;
 }
 
 export const skillPackApi = {

@@ -23,4 +23,5 @@ try:
 
     __all__.extend(["RAMMemoryManager", "VRAMMemoryManager"])
 except ImportError:
-    pass
+    pass  # noqa: optional-dependency
+

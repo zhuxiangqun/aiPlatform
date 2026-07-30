@@ -340,7 +340,7 @@ async def tool_auto_fill(request: dict):
             elif any(k in text_lower for k in ["calc", "计算", "math", "数学"]):
                 category = "math"
         except SyntaxError:
-            pass
+            pass  # noqa: cleanup-best-effort
         return {"code": text, "category": category, "description": description, "parameters": parameters}
     except Exception as e:
         return {"code": "", "category": "general", "description": description, "parameters": {}, "error": f"Auto-fill failed: {str(e)}"}
@@ -453,3 +453,4 @@ async def sign_tool(tool_name: str, request: dict, http_request: Request, rt: Ru
         "version": str(version),
         "signature": signature,
     }
+

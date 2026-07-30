@@ -20,4 +20,5 @@ try:
 
     __all__.extend(["RedisCacheClient", "MemoryCacheClient", "FileCacheClient"])
 except ImportError:
-    pass
+    pass  # noqa: optional-dependency
+

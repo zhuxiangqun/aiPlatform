@@ -54,9 +54,39 @@ errors = 0
 warnings = 0
 
 def _grep(pattern, search_dirs):
-    """Shell grep wrapper."""
-    cmd = f'cd "{workspace}" && grep -rn --include="*.py" "{pattern}" {" ".join(search_dirs)} 2>/dev/null'
-    return os.popen(cmd).read().strip()
+    """In-memory grep: search pre-built file index instead of spawning subprocess."""
+    _ensure_file_index()
+    results = []
+    for filepath, content in _FILE_INDEX.items():
+        if not any(filepath.startswith(d.rstrip('/') + '/') or filepath == d.rstrip('/')
+                   for d in search_dirs):
+            continue
+        for i, line in enumerate(content.split('\n'), 1):
+            if re.search(pattern, line):
+                results.append(f"{filepath}:{i}:{line.strip()[:120]}")
+    return "\n".join(results)
+
+
+_FILE_INDEX = None
+
+def _ensure_file_index():
+    global _FILE_INDEX
+    if _FILE_INDEX is not None:
+        return
+    _FILE_INDEX = {}
+    for base in ['aiPlat-core', 'aiPlat-platform', 'aiPlat-infra']:
+        base_path = workspace / base
+        if not base_path.is_dir():
+            continue
+        for py_file in base_path.rglob("*.py"):
+            if '__pycache__' in str(py_file) or '/tests/' in str(py_file):
+                continue
+            rel = str(py_file.relative_to(workspace))
+            try:
+                _FILE_INDEX[rel] = py_file.read_text(encoding='utf-8', errors='replace')
+            except Exception:
+                pass
+    print(f"  File index: {len(_FILE_INDEX)} files loaded")
 
 def _line_to_file(line_str):
     return line_str.split(':', 1)[0] if ':' in line_str else ''

@@ -13,6 +13,7 @@ import re as _re
 from dataclasses import dataclass, field
 from pathlib import Path as _Path
 from typing import Any, Dict, List, Optional
+import logging
 
 
 @dataclass
@@ -435,9 +436,9 @@ class DocumentParser:
                                     page_num=i,
                                 ))
         except ImportError:
-            pass
-        except Exception as e:
-            pass  # Table extraction is best-effort
+            pass  # noqa: optional-dependency
+        except Exception:
+            logging.getLogger(__name__).debug('Table extraction best-effort failed', exc_info=True)
         return tables
 
     def _fallback_pdf_text(self, content: bytes, doc: ParsedDocument) -> str:
@@ -455,7 +456,7 @@ class DocumentParser:
                 text = "\n\n".join(pages)
                 doc.metadata["page_count"] = len(pdf.pages)
         except ImportError:
-            pass
+            pass  # noqa: optional-dependency
         except Exception as e:
             doc.parse_warnings.append(f"pdfplumber error: {e}")
 
@@ -509,7 +510,7 @@ class DocumentParser:
                         rows=data_rows,
                     ))
         except ImportError:
-            pass
+            pass  # noqa: optional-dependency
         except Exception as e:
             doc.parse_warnings.append(f"DOCX table extraction error: {e}")
 
@@ -849,3 +850,4 @@ class DocumentParser:
             if line.strip():
                 return line.strip()[:120]
         return ""
+

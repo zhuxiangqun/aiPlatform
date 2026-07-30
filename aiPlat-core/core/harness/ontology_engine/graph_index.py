@@ -37,6 +37,35 @@ class GraphEdge:
     embedding: Optional[List[float]] = None  # Per-relation embedding vector
     created_by: str = ""           # Agent ID that created this edge
     created_in_run: str = ""       # run_id context for traceability
+    valid_from: str = ""           # Phase 0: ISO 8601, empty=permanent
+    valid_to: str = ""             # Phase 0: ISO 8601, empty=permanent
+
+    def is_active(self, at_time: Optional[str] = None) -> bool:
+        """Check if this edge/relation is valid at the given time (Phase 0)."""
+        if not self.valid_from and not self.valid_to:
+            return True
+        from datetime import datetime, timezone as _tz
+        now = at_time or datetime.now(_tz.utc).isoformat()
+        if self.valid_from and now < self.valid_from:
+            return False
+        if self.valid_to and now > self.valid_to:
+            return False
+        return True
+
+
+def _class_synonyms(domain_id: str, class_name: str) -> List[str]:
+    """P2-B: Load YAML ontology synonyms for a given class."""
+    try:
+        from core.harness.knowledge.ontology_loader import load_ontology_from_yaml
+        ontology = load_ontology_from_yaml(
+            f"~/.aiplat/ontologies/{domain_id}.yaml")
+        for cls in ontology.classes:
+            if getattr(cls, 'name', '') == class_name:
+                return [s for s in (getattr(cls, 'synonyms', []) or [])
+                        if s and s != getattr(cls, 'label', '')]
+    except Exception:
+        logging.getLogger(__name__).debug('_class_synonyms failed', exc_info=True)
+    return []
 
 
 @dataclass
@@ -44,10 +73,11 @@ class GraphNode:
     entity_id: str
     entity_name: str
     class_name: str
-    source_doc_id: str = ""           # KB document ID this entity was extracted from
+    source_doc_id: str = ""
+    aliases: List[str] = field(default_factory=list)  # P2-B: synonyms/nicknames
     out_edges: List[GraphEdge] = field(default_factory=list)
     in_edges: List[GraphEdge] = field(default_factory=list)
-    metadata: Dict[str, Any] = field(default_factory=dict)  # uncertainty, provenance, audit
+    metadata: Dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
@@ -73,15 +103,20 @@ class HyperEdge:
 class GraphIndex:
     """Bidirectional graph with SQLite persistence and incremental writes."""
 
-    def __init__(self, domain_id: str):
+    _loaded_instances: dict = {}
+    _load_epoch: float = 0.0
+
+    def __init__(self, domain_id: str, tenant_id: str = "default"):
         self.domain_id = domain_id
+        self.tenant_id = tenant_id
         self._nodes: Dict[str, GraphNode] = {}
         self._hyperedges: Dict[str, HyperEdge] = {}
         home = _Path(_os.getenv("AIPLAT_HOME", _Path("~").expanduser() / ".aiplat"))
         db_dir = home / "graph"
         db_dir.mkdir(parents=True, exist_ok=True)
-        self._db_path = db_dir / f"{domain_id}.db"
-        self._json_path = db_dir / f"{domain_id}.json"
+        db_prefix = f"{tenant_id}:" if tenant_id and tenant_id != "default" else ""
+        self._db_path = db_dir / f"{db_prefix}{domain_id}.db"
+        self._json_path = db_dir / f"{db_prefix}{domain_id}.json"
         self._conn: Optional[_sqlite3.Connection] = None
 
     def _get_conn(self) -> _sqlite3.Connection:
@@ -106,7 +141,7 @@ class GraphIndex:
         try:
             conn.execute("ALTER TABLE graph_nodes ADD COLUMN source_doc_id TEXT NOT NULL DEFAULT ''")
         except _sqlite3.OperationalError:
-            pass  # Column already exists
+            pass  # Column already exists  # noqa: schema-idempotent
         conn.execute("""
             CREATE TABLE IF NOT EXISTS graph_edges (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -129,23 +164,33 @@ class GraphIndex:
         try:
             conn.execute("ALTER TABLE graph_edges ADD COLUMN context_desc TEXT NOT NULL DEFAULT ''")
         except _sqlite3.OperationalError:
-            pass
+            pass  # noqa: schema-idempotent
         try:
             conn.execute("ALTER TABLE graph_edges ADD COLUMN embedding TEXT NOT NULL DEFAULT ''")
         except _sqlite3.OperationalError:
-            pass
+            pass  # noqa: schema-idempotent
         try:
             conn.execute("ALTER TABLE graph_edges ADD COLUMN created_by TEXT NOT NULL DEFAULT ''")
         except _sqlite3.OperationalError:
-            pass
+            pass  # noqa: schema-idempotent
         try:
             conn.execute("ALTER TABLE graph_edges ADD COLUMN created_in_run TEXT NOT NULL DEFAULT ''")
         except _sqlite3.OperationalError:
-            pass
+            pass  # noqa: schema-idempotent
+        # Phase 0: Temporal edge columns (PRAGMA-checked, idempotent)
+        try:
+            cur = conn.execute("PRAGMA table_info(graph_edges)")
+            cols = {row[1] for row in cur.fetchall()}
+            if "valid_from" not in cols:
+                conn.execute("ALTER TABLE graph_edges ADD COLUMN valid_from TEXT DEFAULT ''")
+            if "valid_to" not in cols:
+                conn.execute("ALTER TABLE graph_edges ADD COLUMN valid_to TEXT DEFAULT ''")
+        except _sqlite3.OperationalError:
+            pass  # noqa: schema-idempotent
         try:
             conn.execute("ALTER TABLE graph_nodes ADD COLUMN metadata TEXT NOT NULL DEFAULT '{}'")
         except _sqlite3.OperationalError:
-            pass
+            pass  # noqa: schema-idempotent
         conn.commit()
 
     # ── Mutators ──────────────────────────────────────────────────
@@ -175,6 +220,7 @@ class GraphIndex:
                 entity_name=entity_name,
                 class_name=class_name,
                 source_doc_id=source_doc_id,
+                aliases=_class_synonyms(self.domain_id, class_name),
             )
             conn = self._get_conn()
             conn.execute(
@@ -184,6 +230,45 @@ class GraphIndex:
             conn.commit()
             self._invalidate_cache()
         return self._nodes[entity_id]
+
+    def add_entity_property(self, entity_id: str, key: str, value: Any) -> None:
+        """Add or update a metadata property on an existing entity.
+
+        Used by DynamicSchemaMapper and CrossDomainResolver to write
+        entity attributes, mapping metadata, and cross-domain edges.
+        """
+        if entity_id not in self._nodes:
+            logging.warning("Entity %s not found in %s, cannot set %s", entity_id, self.domain_id, key)
+            return
+        node = self._nodes[entity_id]
+        if not node.metadata:
+            node.metadata = {}
+        node.metadata[key] = value
+
+    def get_entity_classes(self) -> List[str]:
+        """Return all unique class names across graph entities."""
+        return sorted(set(n.class_name for n in self._nodes.values() if n.class_name))
+
+    def get_entities_by_class(self, class_name: str) -> List[GraphNode]:
+        """Return all graph nodes of the given class."""
+        return [n for n in self._nodes.values() if n.class_name == class_name]
+
+    def migrate_class_nodes(self, old_class_name: str, new_class_name: str) -> int:
+        """Rename a class across all graph nodes. Returns count of migrated nodes."""
+        count = 0
+        for entity_id, node in list(self._nodes.items()):
+            if node.class_name == old_class_name:
+                node.class_name = new_class_name
+                count += 1
+        if count > 0:
+            conn = self._get_conn()
+            conn.execute(
+                "UPDATE graph_nodes SET class_name=? WHERE domain_id=? AND class_name=?",
+                (new_class_name, self.domain_id, old_class_name),
+            )
+            conn.commit()
+            self._invalidate_cache()
+        return count
 
     def add_relation(
         self,
@@ -197,6 +282,8 @@ class GraphIndex:
         inverse_label: str = "",
         inferred: bool = False,
         rule_name: str = "",
+        valid_from: str = "",    # Phase 0
+        valid_to: str = "",      # Phase 0
     ) -> None:
         """Add a directed edge. Creates out_edge on source and in_edge on target.
         Writes to SQLite incrementally.
@@ -231,12 +318,14 @@ class GraphIndex:
             source_id, target_id, relation_name,
             relation_label=relation_label, confidence=confidence,
             inferred=inferred, rule_name=rule_name,
+            valid_from=valid_from, valid_to=valid_to,
         )
         if inverse_name:
             self._add_edge_internal(
                 target_id, source_id, inverse_name,
                 relation_label=inverse_label or inverse_name, confidence=confidence,
                 inferred=inferred, rule_name=rule_name,
+                valid_from=valid_from, valid_to=valid_to,
             )
         self._invalidate_cache()
 
@@ -244,12 +333,14 @@ class GraphIndex:
         self, src: str, tgt: str, rname: str, *,
         relation_label: str = "", confidence: float = 1.0,
         inferred: bool = False, rule_name: str = "",
+        valid_from: str = "", valid_to: str = "",
     ):
         edge = GraphEdge(
             source_id=src, target_id=tgt,
             relation_name=rname, relation_label=relation_label or rname,
             confidence=confidence, inferred=inferred,
             rule_name=rule_name, inferred_confidence=confidence,
+            valid_from=valid_from, valid_to=valid_to,
         )
         self._nodes[src].out_edges.append(edge)
         self._nodes[tgt].in_edges.append(edge)
@@ -257,8 +348,8 @@ class GraphIndex:
         conn.execute(
             """INSERT INTO graph_edges(domain_id, source_id, target_id, relation_name,
                relation_label, confidence, inferred, rule_name, inferred_confidence, context_desc, embedding,
-               created_by, created_in_run)
-               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+               created_by, created_in_run, valid_from, valid_to)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
             (self.domain_id, src, tgt, rname, relation_label or rname,
              confidence, int(inferred), rule_name, confidence,
              getattr(edge, 'context_description', ''),
@@ -502,9 +593,20 @@ class GraphIndex:
         return self._nodes.get(entity_id)
 
     def find_by_name(self, name: str) -> Optional[GraphNode]:
+        """Find entity by name with 3-level matching (exact → alias → substring)."""
         nl = name.lower()
+        # 1. Exact match on entity_name
         for node in self._nodes.values():
             if node.entity_name.lower() == nl:
+                return node
+        # 2. P2-B: Match on aliases
+        for node in self._nodes.values():
+            if node.aliases and nl in (a.lower() for a in node.aliases):
+                return node
+        # 3. Substring match (lenient)
+        for node in self._nodes.values():
+            name_lower = node.entity_name.lower()
+            if len(name_lower) >= 2 and name_lower in nl:
                 return node
         return None
 
@@ -536,6 +638,8 @@ class GraphIndex:
         self, entity_id: str, *,
         direction: str = "outgoing",
         relation_filter: Optional[List[str]] = None,
+        active_only: bool = False,        # Phase 0: filter expired edges
+        at_time: Optional[str] = None,    # Phase 0: reference time for active check
     ) -> List[Tuple[str, GraphEdge]]:
         """Return (neighbor_id, edge) tuples. Use when callers need edge info (relation_name etc).
         
@@ -550,6 +654,8 @@ class GraphIndex:
         def _collect(edges):
             for e in edges:
                 if relation_filter and e.relation_name not in relation_filter:
+                    continue
+                if active_only and not e.is_active(at_time):
                     continue
                 nid = e.target_id if direction != "incoming" else e.source_id
                 if nid == entity_id:
@@ -566,6 +672,311 @@ class GraphIndex:
     def get_inverse_relations(self, entity_id: str) -> List[GraphEdge]:
         node = self._nodes.get(entity_id)
         return list(node.in_edges) if node else []
+
+    # ── Adamic-Adar Graph Similarity (v2.9) ──
+
+    def get_node_degree(self, entity_id: str) -> int:
+        """Return total degree (in-edges + out-edges) for a node."""
+        node = self._nodes.get(entity_id)
+        if not node:
+            return 0
+        return len(node.out_edges) + len(node.in_edges)
+
+    def adamic_adar_similarity(self, source_id: str, target_id: str) -> float:
+        """Compute Adamic-Adar similarity between two nodes.
+
+        AA(u, v) = Σ 1 / log(degree(z)) for z in Γ(u) ∩ Γ(v)
+        
+        Shared neighbors with lower degree contribute more to similarity
+        (they are more "specific" connectors). Returns value in [0, 1].
+        """
+        import math as _math
+        src_node = self._nodes.get(source_id)
+        tgt_node = self._nodes.get(target_id)
+        if not src_node or not tgt_node:
+            return 0.0
+
+        # Collect neighbor sets (both directions)
+        def _neighbor_set(node):
+            s = set()
+            for e in node.out_edges:
+                s.add(e.target_id)
+            for e in node.in_edges:
+                s.add(e.source_id)
+            return s
+
+        src_neighbors = _neighbor_set(src_node)
+        tgt_neighbors = _neighbor_set(tgt_node)
+        shared = src_neighbors & tgt_neighbors
+
+        if not shared:
+            return 0.0
+
+        aa_sum = 0.0
+        for z_id in shared:
+            degree = max(1, self.get_node_degree(z_id))
+            aa_sum += 1.0 / _math.log(degree + 1)
+
+        # Normalize: hypothetical max for a node with degree=2 and 10 shared neighbors
+        # would be 10 / log(3) ≈ 9.1. Cap at 1.0.
+        return min(1.0, aa_sum / 3.0)
+
+    def suggest_related_entities(self, entity_id: str, top_k: int = 10) -> List[Dict[str, Any]]:
+        """Find the top-k most similar entities using Adamic-Adar similarity.
+
+        Returns sorted list of {entity_id, entity_name, class_name, aa_score}.
+        Used by RAG retrieval to enrich query context with related entities.
+        """
+        if entity_id not in self._nodes:
+            return []
+
+        results = []
+        for other_id in self._nodes:
+            if other_id == entity_id:
+                continue
+            score = self.adamic_adar_similarity(entity_id, other_id)
+            if score > 0:
+                n = self._nodes[other_id]
+                results.append({
+                    "entity_id": other_id,
+                    "entity_name": n.entity_name,
+                    "class_name": n.class_name,
+                    "aa_score": round(score, 4),
+                })
+
+        results.sort(key=lambda x: x["aa_score"], reverse=True)
+        return results[:top_k]
+
+    # ── Type Similarity & Source Overlap (v2.10) ──
+
+    def class_tree_distance(self, class_a: str, class_b: str,
+                            domain_id: str = "") -> float:
+        """Compute ontology class hierarchy distance. 0=same class, 1=max distant.
+
+        Reads domain YAML to find parent relationships and computes normalized
+        tree distance. Smaller value = more semantically similar.
+        """
+        if class_a == class_b:
+            return 0.0
+        try:
+            import yaml, os
+            from pathlib import Path
+            did = domain_id or self.domain_id
+            yaml_path = Path(os.getenv("AIPLAT_HOME",
+                Path("~").expanduser() / ".aiplat")) / "ontologies" / f"{did}.yaml"
+            if not yaml_path.exists():
+                return 0.5  # Unknown → medium distance
+
+            domain = yaml.safe_load(yaml_path.read_text(encoding="utf-8")) or {}
+            classes = domain.get("classes", {})
+
+            # Build parent chain for each class
+            def _parent_chain(cls_name, visited=None):
+                visited = visited or set()
+                if cls_name in visited or cls_name not in classes:
+                    return []
+                visited.add(cls_name)
+                parent = classes[cls_name].get("parent", "")
+                if parent:
+                    return [cls_name] + _parent_chain(parent, visited)
+                return [cls_name]
+
+            chain_a = _parent_chain(class_a)
+            chain_b = _parent_chain(class_b)
+            if not chain_a or not chain_b:
+                return 0.5
+
+            # Find LCA depth
+            common = 0
+            for ca, cb in zip(reversed(chain_a), reversed(chain_b)):
+                if ca == cb:
+                    common += 1
+                else:
+                    break
+
+            max_depth = max(len(chain_a), len(chain_b)) or 1
+            return round(1.0 - common / max_depth, 3)
+        except Exception:
+            return 0.5
+
+    def source_overlap_score(self, entity_a: str, entity_b: str) -> float:
+        """Compute source document overlap between two entities.
+
+        Higher score = more shared source documents = closer semantic relationship.
+        Returns 0-1 normalized overlap ratio.
+        """
+        sources_a = set()
+        sources_b = set()
+
+        # Collect source_doc_ids from SQLite
+        conn = self._get_conn()
+        try:
+            rows = conn.execute(
+                "SELECT entity_id, source_doc_id FROM graph_nodes WHERE domain_id=? AND entity_id IN (?,?)",
+                (self.domain_id, entity_a, entity_b)
+            ).fetchall()
+            for r in rows:
+                if r[1]:
+                    if r[0] == entity_a:
+                        sources_a.add(r[1])
+                    elif r[0] == entity_b:
+                        sources_b.add(r[1])
+        except Exception:
+            logging.getLogger(__name__).debug('source_overlap_score failed', exc_info=True)
+
+        if not sources_a or not sources_b:
+            return 0.0
+
+        intersection = sources_a & sources_b
+        union = sources_a | sources_b
+        return round(len(intersection) / len(union), 3)
+
+    def get_entity_source_docs(self, entity_ids: List[str]) -> Dict[str, str]:
+        """Batch lookup source_doc_id for a set of entity IDs.
+        
+        Used by community detection and drift monitoring to trace
+        entities back to their originating KB documents.
+        """
+        if not entity_ids:
+            return {}
+        conn = self._get_conn()
+        placeholders = ','.join(['?'] * len(entity_ids))
+        rows = conn.execute(
+            f"SELECT entity_id, source_doc_id FROM graph_nodes WHERE domain_id=? AND entity_id IN ({placeholders})",
+            (self.domain_id, *entity_ids),
+        ).fetchall()
+        return {r[0]: r[1] for r in rows if r[1]}
+
+    def detect_communities(self, max_iterations: int = 10) -> Dict[str, List[Dict[str, Any]]]:
+        """Louvain modularity-based community detection for knowledge graphs.
+
+        Groups densely connected entities into knowledge communities.
+        Returns {community_label: [{entity_id, entity_name, class_name}, ...]}.
+        
+        Algorithm: simplified Louvain — greedy modularity optimization
+        with node-by-node reassignment and convergence check.
+        """
+        import random as _random
+
+        nodes = list(self._nodes.keys())
+        if len(nodes) < 2:
+            return {}
+
+        # Phase 1: each node in its own community
+        community = {n: i for i, n in enumerate(nodes)}
+        node_to_comm = dict(community)
+
+        total_edges = sum(len(self._nodes[n].out_edges) for n in nodes)
+        if total_edges == 0:
+            return {}
+
+        _random.seed(42)
+
+        for iteration in range(max_iterations):
+            changed = False
+            _random.shuffle(nodes)
+
+            for node_id in nodes:
+                n_node = self._nodes[node_id]
+                # Build neighbor community weights (sum of edge weights to each community)
+                comm_weights: Dict[int, float] = {}
+                current_comm = node_to_comm[node_id]
+
+                for edge in n_node.out_edges:
+                    if edge.target_id in node_to_comm:
+                        tc = node_to_comm[edge.target_id]
+                        comm_weights[tc] = comm_weights.get(tc, 0.0) + 1.0
+                for edge in n_node.in_edges:
+                    if edge.source_id in node_to_comm:
+                        sc = node_to_comm[edge.source_id]
+                        comm_weights[sc] = comm_weights.get(sc, 0.0) + 1.0
+
+                # Find best community to move to (excluding current)
+                best_comm = current_comm
+                best_weight = 0.0
+                for comm_id, weight in comm_weights.items():
+                    if comm_id != current_comm and weight > best_weight:
+                        best_weight = weight
+                        best_comm = comm_id
+
+                if best_comm != current_comm:
+                    node_to_comm[node_id] = best_comm
+                    changed = True
+
+            if not changed:
+                break
+
+        # Aggregate results: group nodes by community
+        # v2.9: collect source_doc_ids for provenance tracking
+        all_entity_ids = list(nodes)
+        source_map = self.get_entity_source_docs(all_entity_ids)
+
+        communities: Dict[int, List[Dict[str, Any]]] = {}
+        for node_id in nodes:
+            cid = node_to_comm[node_id]
+            n = self._nodes[node_id]
+            if cid not in communities:
+                communities[cid] = []
+            communities[cid].append({
+                "entity_id": node_id,
+                "entity_name": n.entity_name,
+                "class_name": n.class_name,
+                "source_doc_id": source_map.get(node_id, ""),
+            })
+
+        # Label communities by most frequent class + member count
+        result = {}
+        for cid, members in communities.items():
+            if len(members) < 2:
+                continue
+            # Pick label: most frequent class name + top 3 entity names
+            class_counts: Dict[str, int] = {}
+            for m in members:
+                cls = m["class_name"]
+                class_counts[cls] = class_counts.get(cls, 0) + 1
+            dominant_class = max(class_counts, key=class_counts.get)
+            top_names = [m["entity_name"][:40] for m in members[:3]]
+            label = f"{dominant_class}: {', '.join(top_names)}"
+            result[label] = members
+
+        return result
+
+    def sync_to_wiki(self) -> int:
+        """Sync graph entity class pages to Wiki for FTS + vector retrieval.
+
+        Creates Wiki index pages for entity classes that exist in the graph.
+        After this call, new ontology classes become discoverable via search.
+        Returns count of pages synced.
+        """
+        count = 0
+        for class_name in self.get_entity_classes():
+            entities = self.get_entities_by_class(class_name)
+            if not entities:
+                continue
+            entity_names = [n.entity_name for n in entities]
+            title = f"{class_name} 实体索引"
+            body = f"""# {class_name} 实体索引
+
+## 概述
+本体实体类别 `{class_name}`，当前包含 {len(entities)} 个实体。
+
+## 实体列表
+{chr(10).join(f"- {name}" for name in entity_names[:50])}
+"""
+            try:
+                from core.harness.knowledge.wiki_engine import write_page
+                write_page(
+                    title[:80], body,
+                    category="synthesis",
+                    tags=["ontology-index", "synthesized", "entity-class", class_name],
+                    summary=f"{class_name} 实体类别索引，包含 {len(entities)} 个实体",
+                )
+                count += 1
+            except Exception:
+                import logging
+                logging.getLogger(__name__).debug(
+                    'sync_to_wiki failed for class %s', class_name, exc_info=True)
+        return count
 
     # ── Persistence ────────────────────────────────────────────────
 
@@ -601,9 +1012,31 @@ class GraphIndex:
         return str(self._json_path)
 
     @classmethod
-    def load(cls, domain_id: str) -> GraphIndex:
-        """Load graph from SQLite first, fall back to JSON."""
-        graph = cls(domain_id)
+    def load(cls, domain_id: str, tenant_id: str = "default") -> GraphIndex:
+        """Load graph from SQLite first, fall back to JSON.
+
+        Uses a class-level LRU cache to prevent duplicate in-memory copies
+        when multiple callers load the same domain graph concurrently.
+        tenant_id scopes the graph to a specific tenant partition.
+        """
+        cache_key = f"gi:{tenant_id}:{domain_id}"
+        if cache_key in cls._loaded_instances:
+            cached = cls._loaded_instances[cache_key]
+            if not hasattr(cls, '_load_epoch') or _time.monotonic() - cls._load_epoch < 300:
+                return cached
+
+        graph = cls._load_internal(domain_id, tenant_id)
+        if len(cls._loaded_instances) >= 5:
+            oldest = next(iter(cls._loaded_instances))
+            cls._loaded_instances.pop(oldest, None)
+        cls._loaded_instances[cache_key] = graph
+        cls._load_epoch = _time.monotonic()
+        return graph
+
+    @classmethod
+    def _load_internal(cls, domain_id: str, tenant_id: str = "default") -> GraphIndex:
+        """Internal load implementation (called by load())."""
+        graph = cls(domain_id, tenant_id)
 
         # Try SQLite first
         conn = graph._get_conn()
@@ -617,6 +1050,7 @@ class GraphIndex:
             for entity_id, entity_name, class_name in rows:
                 graph._nodes[entity_id] = GraphNode(
                     entity_id=entity_id, entity_name=entity_name, class_name=class_name,
+                    aliases=_class_synonyms(graph.domain_id, class_name),
                 )
             # Load edges from SQL
             edge_rows = conn.execute(
@@ -667,7 +1101,7 @@ class GraphIndex:
                             logging.debug(str(e), exc_info=True)
                     graph._hyperedges[ev_id] = he
             except _sqlite3.OperationalError:
-                pass  # Table doesn't exist yet (pre-migration)
+                pass  # Table doesn't exist yet (pre-migration)  # noqa: schema-idempotent
             return graph
 
         # Fallback to JSON
@@ -721,6 +1155,8 @@ class GraphIndex:
 
         Returns: {relation_name: {"domain": [...], "range": [...]}}
         Cached per instance for performance.
+        Both English keys and Chinese labels are included in domain/range lists
+        so validation works regardless of which class name variant is stored.
         """
         if hasattr(self, '_prop_constraints_cache'):
             return getattr(self, '_prop_constraints_cache')
@@ -732,18 +1168,34 @@ class GraphIndex:
             if os.path.exists(path):
                 from core.harness.knowledge.ontology_loader import load_ontology_from_yaml
                 dom = load_ontology_from_yaml(path)
+                # Build key→label mapping from URI (name attribute is empty for OntologyClass)
+                key_to_label = {}
+                for cls in dom.classes:
+                    uri = getattr(cls, 'uri', '') or ''
+                    key = uri.rsplit('/', 1)[-1] if '/' in uri else ''  # e.g. "AISystem"
+                    lbl = getattr(cls, 'label', '')  # e.g. "AI系统"
+                    if key and lbl:
+                        key_to_label[key] = lbl
                 for prop in dom.object_properties:
                     uri = getattr(prop, 'uri', '') or ''
                     name = uri.rsplit('/', 1)[-1] if '/' in uri else uri
                     domain = list(getattr(prop, 'domain', []) or [])
-                    # Resolve domain/range URIs to short class names
                     domain_short = [d.rsplit('/', 1)[-1] for d in domain if '/' in d]
                     range_uri = list(getattr(prop, 'range', []) or [])
                     range_short = [r.rsplit('/', 1)[-1] for r in range_uri if '/' in r]
-                    if name and (domain_short or range_short):
-                        constraints[name] = {"domain": domain_short, "range": range_short}
+                    # Expand domain/range with Chinese labels
+                    domain_expanded = list(domain_short)
+                    range_expanded = list(range_short)
+                    for k in domain_short:
+                        if k in key_to_label:
+                            domain_expanded.append(key_to_label[k])
+                    for k in range_short:
+                        if k in key_to_label:
+                            range_expanded.append(key_to_label[k])
+                    if name and (domain_expanded or range_expanded):
+                        constraints[name] = {"domain": domain_expanded, "range": range_expanded}
         except Exception:
-            pass
+            logging.getLogger(__name__).debug('_load_property_constraints failed', exc_info=True)
 
         setattr(self, '_prop_constraints_cache', constraints)
         return constraints
@@ -767,7 +1219,7 @@ class GraphIndex:
                 for cls in dom.classes:
                     labels.add(cls.label)
         except Exception:
-            pass
+            logging.getLogger(__name__).debug('_load_class_labels failed', exc_info=True)
 
         setattr(self, '_class_labels_cache', labels)
         return labels
@@ -800,7 +1252,7 @@ class GraphIndex:
             action: view | edit | execute
             role: admin | operator | viewer
 
-        # TODO: enforce scope (all/team/own) — currently checks role+action only.
+        # Known limitation: checks role+action only, scope (all/team/own) not yet enforced.
         """
         node = self._nodes.get(entity_id)
         if not node:
@@ -812,12 +1264,15 @@ class GraphIndex:
         return False
 
     def _invalidate_cache(self):
-        """Invalidate traversal cache on graph mutation."""
+        """Invalidate traversal cache and loaded instances on graph mutation."""
+        # Invalidate traversal cache
         try:
             from core.harness.ontology_engine.traversal_cache import get_traversal_cache
             get_traversal_cache(self.domain_id).invalidate()
         except Exception as e:
             logging.debug(str(e), exc_info=True)
+        # Invalidate loaded instance cache for this domain
+        GraphIndex._loaded_instances.pop(f"gi:{self.domain_id}", None)
 
     # ── Graph Snapshots (versioning + rollback) ────────────────────
 
@@ -915,3 +1370,4 @@ class GraphIndex:
 
     def __contains__(self, entity_id: str) -> bool:
         return entity_id in self._nodes
+

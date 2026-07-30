@@ -224,6 +224,24 @@ def check_api_contract() -> list[dict]:
 # §45: Cross-Language API Path Contract
 # ═══════════════════════════════════════════════════════════════
 
+def _resolve_api_helper(subpath: str, helpers: dict[str, str], preceding_content: str) -> str:
+    """Resolve a fetch(API('...')) call to a full path using the API helper base prefix.
+    
+    If helpers dict is empty, try to find the API definition in the preceding content.
+    """
+    if helpers:
+        # Use the first matching helper (usually just 'API')
+        base = next(iter(helpers.values()), "")
+        if base:
+            return base + subpath
+    
+    # Fallback: try to find const API = ... in the preceding file content
+    m = re.search(r"const\s+API\s*=\s*\([^)]*\)\s*(?::\s*\w+)?\s*=>\s*(['\"`])((?:/[^'\"`$\n]{3,}))\2", preceding_content)
+    if m:
+        return m.group(2).rstrip("/") + subpath
+    return ""
+
+
 def _extract_frontend_paths() -> list[dict]:
     entries = []
     frontend_dirs = [
@@ -247,6 +265,10 @@ def _extract_frontend_paths_from_dir(frontend_dir: str) -> list[dict]:
         (re.compile(r"apiClient\s*\.\s*(get|post|put|delete|patch)\s*(?:<[^>]*>)?\s*\(\s*`([^`]+)`"), "apiClient"),
         # fetch('/path', ...) — 1 group: (path), check context for {method: 'POST'}
         (re.compile(r"fetch\s*\(\s*['\"]((?:/[^'\"]+))['\"]"), "fetch"),
+        # fetch(API('subpath'), ...) — via API helper function; 1 group: subpath
+        (re.compile(r"fetch\s*\(\s*API\s*\(\s*['\"]((?:/[^'\"]*)?)['\"]\s*\)"), "fetch_api"),
+        # fetch(API(`subpath`), ...) — via API helper with template literal; 1 group: subpath
+        (re.compile(r"fetch\s*\(\s*API\s*\(\s*`([^`]*)`\s*\)"), "fetch_api"),
     ]
 
     for root, dirs, files in os.walk(frontend_dir):
@@ -259,10 +281,37 @@ def _extract_frontend_paths_from_dir(frontend_dir: str) -> list[dict]:
                 content = open(fp, encoding="utf-8", errors="ignore").read()
             except Exception:
                 continue
+
+            # ── Extract API helper base paths (e.g. const API = (path) => '/prefix' + path) ──
+            api_helpers: dict[str, str] = {}
+            for hm in re.finditer(
+                r"const\s+(\w+)\s*=\s*\([^)]*\)\s*(?::\s*\w+)?\s*=>\s*(['\"`])((?:/[^'\"`$\n]{3,}))\2",
+                content,
+            ):
+                helper_name, _, base_path = hm.group(1), hm.group(2), hm.group(3)
+                api_helpers[helper_name] = base_path.rstrip("/")
+
             for pattern, pat_type in api_patterns:
                 for m in pattern.finditer(content):
                     if pat_type == "apiClient":
                         method, path = m.group(1).upper(), m.group(2)
+                        # apiClient has baseUrl=/api, prepend it
+                        if not path.startswith("/api"):
+                            path = "/api" + path
+                    elif pat_type == "fetch_api":
+                        # fetch(API('/subpath')) — resolve via API helper
+                        subpath = m.group(1)
+                        full_path = _resolve_api_helper(subpath, api_helpers, content[:m.start()])
+                        if not full_path:
+                            continue
+                        path = full_path
+                        method = "GET"
+                        # check for method override in fetch options
+                        end_pos = m.end()
+                        tail = content[end_pos:end_pos + 200]
+                        method_match = re.search(r"method\s*:\s*['\"]([^'\"]+)['\"]", tail)
+                        if method_match:
+                            method = method_match.group(1).upper()
                     else:
                         # fetch() — try to detect method from options
                         path = m.group(1)
@@ -366,9 +415,75 @@ def _build_mount_prefixes() -> dict[str, str]:
     return prefix_map
 
 
+def _propagate_platform_app_prefixes(prefix_map: dict[str, str]):
+    """Propagate mount prefixes through nested include_router chains in platform apps.
+    
+    For example, routes.py mounts router.py at /api/platform/apps, and router.py
+    includes fde.py (which has its own prefix /fde). This function ensures that
+    fde.py is registered with the full mount prefix /api/platform/apps.
+    """
+    apps_api_dir = WORKSPACE_ROOT / "aiPlat-platform" / "apps"
+    if not apps_api_dir.is_dir():
+        return
+
+    # Build a reverse map: filename → list of (parent_filename, parent_path)
+    include_graph: dict[str, list[tuple[str, Path]]] = {}
+    for app_dir in apps_api_dir.iterdir():
+        if not app_dir.is_dir() or app_dir.name.startswith("_"):
+            continue
+        api_dir = app_dir / "api"
+        if not api_dir.is_dir():
+            continue
+        for py_file in api_dir.glob("*.py"):
+            try:
+                content = py_file.read_text(encoding="utf-8", errors="ignore")
+            except Exception:
+                continue
+            # Find from .xxx import router as _yyy_router
+            imports: dict[str, str] = {}
+            for m in re.finditer(
+                r"from\s+\.(\S+)\s+import\s+router\s+as\s+(\w+)",
+                content,
+            ):
+                mod_name, alias = m.group(1), m.group(2)
+                imports[alias] = f"{mod_name}.py"
+
+            # Find router.include_router(_yyy_router [, ...])
+            for m in re.finditer(r"router\.include_router\s*\(\s*(\w+)", content):
+                child_alias = m.group(1)
+                if child_alias in imports:
+                    child_file = imports[child_alias]
+                    include_graph.setdefault(child_file, []).append((py_file.name, py_file))
+
+    # Propagate prefixes: if router.py has prefix X and includes fde.py, fde.py gets X + router_self_prefix
+    # Do multiple passes until stable (handles deeper chains)
+    changed = True
+    while changed:
+        changed = False
+        for child_file, parent_entries in include_graph.items():
+            if child_file in prefix_map:
+                continue
+            for parent_file, parent_path in parent_entries:
+                parent_prefix = prefix_map.get(parent_file, "")
+                if parent_prefix:
+                    # Also find the parent router's self-prefix (e.g., router.py has APIRouter(prefix="/ontology-editor"))
+                    parent_self_prefix = ""
+                    try:
+                        parent_content = parent_path.read_text(encoding="utf-8", errors="ignore")
+                        m = re.search(r"APIRouter\s*\(\s*prefix\s*=\s*['\"]([^'\"]+)['\"]", parent_content[:5000])
+                        if m:
+                            parent_self_prefix = m.group(1)
+                    except Exception:
+                        pass
+                    prefix_map[child_file] = parent_prefix + parent_self_prefix
+                    changed = True
+                    break
+
+
 def _extract_backend_routes() -> list[dict]:
     entries = []
     mount_prefixes = _build_mount_prefixes()
+    _propagate_platform_app_prefixes(mount_prefixes)
     backend_dirs = [
         WORKSPACE_ROOT / "aiPlat-platform",
         WORKSPACE_ROOT / "aiPlat-core",
@@ -657,8 +772,84 @@ def check_ts_import_hygiene() -> list[dict]:
 
 
 # ═══════════════════════════════════════════════════════════════
-# Main
+# §47: FDE Route Migration Guard — detect stale /api/core/fde paths
 # ═══════════════════════════════════════════════════════════════
+
+def check_fde_route_migration() -> list[dict]:
+    """Verify FDE routes are correctly registered on the core server.
+    
+    FDE routes ARE registered at /api/core/fde/* via:
+      platform/apps/fde/__init__.py → router_registry.register("/api/core", fde_router)
+      core/server.py → mount_all(app)
+    
+    This check verifies the chain is intact, NOT that the path should change.
+    """
+    issues = []
+    
+    # ── Phase 1: Verify router_registry chain ──
+    platform_init = WORKSPACE_ROOT / "aiPlat-platform" / "apps" / "fde" / "__init__.py"
+    if platform_init.exists():
+        content = platform_init.read_text(encoding="utf-8")
+        if 'register("/api/core", fde_router)' in content:
+            issues.append({"code": "fde_register_ok", "level": "pass",
+                          "msg": "FDE router registered at /api/core via platform __init__.py → router_registry"})
+        else:
+            issues.append({"code": "fde_register_missing", "level": "error",
+                          "msg": "platform/apps/fde/__init__.py missing register('/api/core', fde_router)"})
+    
+    # ── Phase 2: Verify core server mounts registry ──  
+    core_server = WORKSPACE_ROOT / "aiPlat-core" / "core" / "server.py"
+    if core_server.exists():
+        content = core_server.read_text(encoding="utf-8")
+        ok = True
+        if 'importlib.import_module("apps.fde")' not in content:
+            issues.append({"code": "fde_import_missing", "level": "error",
+                          "msg": "core/server.py missing importlib.import_module('apps.fde')"})
+            ok = False
+        if "mount_all(app)" not in content:
+            issues.append({"code": "fde_mount_missing", "level": "error",
+                          "msg": "core/server.py missing mount_all(app)"})
+            ok = False
+        if ok:
+            issues.append({"code": "fde_mount_ok", "level": "pass",
+                          "msg": "Core server correctly imports apps.fde + mount_all(app)"})
+    
+    # ── Phase 3: Verify frontend uses canonical /api/core/fde path ──
+    frontend_src = WORKSPACE_ROOT / "aiPlat-management" / "frontend" / "src"
+    if frontend_src.exists():
+        found = False
+        for root, dirs, files in os.walk(str(frontend_src)):
+            dirs[:] = [d for d in dirs if d not in ("node_modules", "__pycache__", ".git")]
+            for fn in files:
+                if not fn.endswith((".ts", ".tsx")):
+                    continue
+                fp = os.path.join(root, fn)
+                try:
+                    content = open(fp, encoding="utf-8", errors="ignore").read()
+                except Exception:
+                    continue
+                m = re.search(
+                    r"const\s+API\s*=\s*\([^)]*\)\s*(?::\s+\w+)?\s*=>\s*['\"`]((?:/api/[^'\"`$\n]{5,}))",
+                    content
+                )
+                if m and "fde" in (m.group(1) or "").lower():
+                    base = m.group(1).rstrip("/")
+                    if base in ("/api/core/fde", "/api/platform/apps/fde"):
+                        found = True
+                        break
+                    else:
+                        issues.append({"code": "fde_wrong_base", "level": "error",
+                                      "msg": f"FDE API base '{base}' should be '/api/platform/apps/fde' or '/api/core/fde'"})
+            if found:
+                break
+        if found:
+            issues.append({"code": "fde_fe_ok", "level": "pass",
+                          "msg": f"Frontend uses canonical FDE API path"})
+    
+    if not any(i.get("level") == "error" for i in issues):
+        issues.append({"code": "fde_route_ok", "level": "pass",
+                      "msg": "FDE route chain: platform apps → mount_all → /api/platform/apps/fde (backward compat: /api/core/fde)"})
+    return issues
 
 def main():
     if "--write-baseline" in sys.argv:
@@ -673,6 +864,7 @@ def main():
         ("§44", "Cross-Language API Contract", check_api_contract),
         ("§45", "Cross-Language API Path Contract", check_api_path_contract),
         ("§46", "Frontend Import Path Hygiene", check_ts_import_hygiene),
+        ("§47", "FDE Route Migration Guard", check_fde_route_migration),
     ]
 
     total_errors = 0

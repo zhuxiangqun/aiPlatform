@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from typing import Any, Dict, List
-from apps.fde.schemas import FdeStatusResponse, FdeListResponse, FdeItemResponse
+from apps.fde.api.schemas import FdeStatusResponse, FdeListResponse, FdeItemResponse
 
 
 from fastapi import APIRouter, HTTPException
@@ -38,23 +38,18 @@ async def fde_pipeline_status():
     # Data availability summary
     data_status = {}
     try:
-        from core.harness.ontology_engine.graph_index import GraphIndex
+        from core.api.core_facade import wiki_search_pages, get_graph_health
 
         # Wiki/historical cases
         try:
-            from core.harness.knowledge.wiki_engine import search_pages
-            h = search_pages("诊断报告", collection_id="default", limit=1)
+            h = wiki_search_pages("诊断报告", collection_id="default", limit=1)
             data_status["historical_cases"] = f"{len(h)} available" if h else "empty"
         except Exception:
             data_status["historical_cases"] = "error"
 
         # Graph indices
         for domain in ["ai-knowledge", "fde-delivery", "enterprise-terms", "knowledge-atom"]:
-            try:
-                g = GraphIndex.load(domain)
-                data_status[f"graph:{domain}"] = f"{g.stats()['node_count']} nodes"
-            except Exception:
-                data_status[f"graph:{domain}"] = "error"
+            data_status[f"graph:{domain}"] = get_graph_health(domain).get("node_count", "error")
 
         # YAMLs
         import os as _os_ps

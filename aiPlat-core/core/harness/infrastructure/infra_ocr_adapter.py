@@ -228,7 +228,7 @@ class InfraOCRAdapter(BaseModelAdapter):
             try:
                 os.remove(img_path)
             except OSError:
-                pass
+                pass  # noqa: cleanup-best-effort
         doc.close()
         return "\n\n".join(texts)
 
@@ -255,3 +255,4 @@ __all__ = [
     "InfraOCRAdapter", "create_infra_ocr_adapter",
     "OCRToken", "BBox",
 ]
+

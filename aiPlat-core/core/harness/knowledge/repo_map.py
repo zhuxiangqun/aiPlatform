@@ -133,7 +133,7 @@ class RepositoryMap:
                 elif isinstance(node, ast.FunctionDef) and not node.name.startswith("_"):
                     symbols.append(FileSymbol(name=node.name, kind="function", line=node.lineno))
         except SyntaxError:
-            pass
+            pass  # noqa: cleanup-best-effort
         return symbols
 
     @staticmethod
@@ -144,3 +144,4 @@ class RepositoryMap:
             if target and not target.startswith("."):
                 imports.add(target.split(".")[0])
         return imports
+

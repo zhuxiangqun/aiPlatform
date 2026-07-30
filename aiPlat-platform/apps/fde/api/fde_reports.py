@@ -4,11 +4,12 @@ from __future__ import annotations
 import os
 from datetime import datetime, timezone
 from typing import Any, Dict
-from apps.fde.schemas import FdeStatusResponse, FdeListResponse, FdeItemResponse
+from apps.fde.api.schemas import FdeStatusResponse, FdeListResponse, FdeItemResponse
 
 
 from fastapi import APIRouter, Query
 from fastapi.responses import PlainTextResponse
+import logging
 
 router = APIRouter(tags=["fde-reports"])
 
@@ -37,7 +38,7 @@ async def generate_report(spec_id: str = Query(""), download: bool = Query(False
                 lines.append(f"| {k.get('name','?')} | {k.get('target','')} | {k.get('actual','')} | {status} |")
             kpi_text = "| 指标 | 目标 | 实际 | 达标 |\n|---|---|---|---|\n" + "\n".join(lines)
     except Exception:
-        pass
+        logging.getLogger(__name__).debug('generate_report failed', exc_info=True)
 
     feedback_count = 0
     try:
@@ -45,7 +46,7 @@ async def generate_report(spec_id: str = Query(""), download: bool = Query(False
         if os.path.isdir(fd):
             feedback_count = len([f for f in os.listdir(fd) if f.endswith(".json")])
     except Exception:
-        pass
+        logging.getLogger(__name__).debug('generate_report failed', exc_info=True)
 
     from .fde_acceptance import acceptance_checklist
     checklist_data = (await acceptance_checklist(spec_id)) if spec_id else {}
@@ -128,7 +129,7 @@ async def generate_training_materials(spec_id: str = Query(""), download: bool =
                               if os.path.isdir(os.path.join(skills_dir, d))])
             materials.append(f"## 已配置 Skill\n\n共 **{skill_count}** 个 Skill 可用。")
     except Exception:
-        pass
+        logging.getLogger(__name__).debug('generate_training_materials failed', exc_info=True)
 
     # Quick start guide
     quick_start = """

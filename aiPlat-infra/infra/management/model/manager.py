@@ -57,6 +57,291 @@ _PROVIDER_CAPABILITIES = {
     "custom": {"chat", "embedding"},
 }
 
+# ── Platform resources (cached, TTL 5s) ──
+from dataclasses import dataclass as _dc
+
+@_dc
+class PlatformResources:
+    ram_bytes: int
+    vram_bytes: int           # Apple=vram==ram, NVIDIA=nvidia-smi, no-GPU=0
+    gpu_vendor: Optional[str] # "apple" | "nvidia" | "amd" | None
+    gpu_compatible: bool
+    cpu_cores: int
+    disk_free_bytes: int
+    _collected_at: float = 0.0
+
+_RESOURCE_CACHE: Optional[tuple] = None
+_RESOURCE_CACHE_TTL = 5.0
+
+
+def collect_platform_resources() -> PlatformResources:
+    """采集平台资源，带 5s TTL 缓存。Apple Silicon 统一内存架构下 vram=ram。"""
+    global _RESOURCE_CACHE
+    import time as _time
+    now = _time.time()
+    if _RESOURCE_CACHE and now - _RESOURCE_CACHE[0] < _RESOURCE_CACHE_TTL:
+        return _RESOURCE_CACHE[1]
+
+    import platform as _platform
+
+    ram = psutil.virtual_memory().available if _psutil_available else 0
+    disk = psutil.disk_usage("/").free if _psutil_available else 0
+    cpu = os.cpu_count() or 1
+
+    sys_name = _platform.system()
+    machine = _platform.machine()
+
+    if sys_name == "Darwin" and machine == "arm64":
+        gpu_vendor, vram, gpu_compatible = "apple", ram, True
+    elif sys_name == "Linux":
+        vram, gpu_vendor = _detect_nvidia_gpu()
+        gpu_compatible = gpu_vendor is not None
+    else:
+        vram, gpu_vendor, gpu_compatible = 0, None, False
+
+    res = PlatformResources(
+        ram_bytes=ram or 0,
+        vram_bytes=vram or 0,
+        gpu_vendor=gpu_vendor,
+        gpu_compatible=gpu_compatible,
+        cpu_cores=cpu,
+        disk_free_bytes=disk or 0,
+        _collected_at=now,
+    )
+    _RESOURCE_CACHE = (now, res)
+    return res
+
+
+def _detect_nvidia_gpu() -> tuple:
+    """检测 NVIDIA GPU 和可用显存。无 NVIDIA 时返回 (0, None)。"""
+    try:
+        import pynvml
+        pynvml.nvmlInit()
+        handle = pynvml.nvmlDeviceGetHandleByIndex(0)
+        info = pynvml.nvmlDeviceGetMemoryInfo(handle)
+        return info.free, "nvidia"
+    except Exception:
+        return 0, None
+
+
+def _extract_base_name(full_name: str) -> str:
+    """提取 Ollama 模型基础名（去除量化后缀）。
+    先按 ':' 分割 repo:tag，只对 tag 部分去量化后缀。
+    'qwen2.5-coder:7b-q8_0' -> 'qwen2.5-coder:7b'
+    'mistral:7b-v0.3-q4_K_M' -> 'mistral:7b-v0.3'
+    """
+    if ":" not in full_name:
+        return full_name
+
+    import re
+    repo, tag = full_name.split(":", 1)
+    clean = re.sub(r'-[qQ][0-9a-zA-Z_]+$', '', tag)    # -q4_K_M, -Q8_0
+    clean = re.sub(r'-[fF][pP][0-9]+$', '', clean)      # -fp16, -FP32
+    clean = re.sub(r'-[iI][0-9]+$', '', clean)          # -i1, -I8
+    return f"{repo}:{clean}" if clean else repo
+
+
+# ═══ 硬过滤 + 软过滤 + 评分（模块级辅助函数） ═══
+
+def _get_model_caps(m) -> set:
+    """合并模型自身能力 + provider 级能力。"""
+    caps = set(m.capabilities or ["chat"]) | set(m.tags or [])
+    provider_caps = _PROVIDER_CAPABILITIES.get(m.provider, set())
+    caps |= provider_caps
+    return caps
+
+
+def _hard_filter(model, res: PlatformResources) -> tuple:
+    """物理硬约束。返回 (通过: bool, 原因: str)。永不放宽。"""
+    if not model.enabled:
+        return False, "disabled"
+
+    if model.size is None:
+        return True, "ok (unknown size)"
+    if model.size == 0:
+        return True, "ok"  # API 模型
+
+    if model.size > res.ram_bytes:
+        return False, (f"requires {model.size/1e9:.1f}GB RAM, "
+                       f"only {res.ram_bytes/1e9:.1f}GB available")
+
+    if res.vram_bytes > 0 and model.size > res.vram_bytes:
+        return False, (f"requires {model.size/1e9:.1f}GB VRAM, "
+                       f"only {res.vram_bytes/1e9:.1f}GB available")
+
+    if not model.is_downloaded and model.size > res.disk_free_bytes:
+        return False, (f"requires {model.size/1e9:.1f}GB disk to download, "
+                       f"only {res.disk_free_bytes/1e9:.1f}GB free")
+
+    return True, "ok"
+
+
+def _filter_capability(model, purpose: str, profile: dict) -> bool:
+    """能力匹配。Level 1 可放宽。"""
+    caps = _get_model_caps(model)
+    require = profile.get("require", {}).get("capabilities", [])
+    if require and not all(c in caps for c in require):
+        return False
+    if not any(c in caps for c in profile.get("prefer", ["chat"])):
+        return False
+    if any(c in caps for c in profile.get("avoid", [])):
+        return False
+    return True
+
+
+def _filter_health(model) -> bool:
+    """健康过滤。Level 2 可放宽。取不到数据默认健康。"""
+    try:
+        from .health_checker import HealthChecker
+        return HealthChecker.get_failure_rate(model.name) <= 0.5
+    except Exception:
+        return True
+
+
+def _filter_latency(model) -> bool:
+    """延迟过滤。Level 3 可放宽。取不到数据默认可用。"""
+    try:
+        from .latency_tracker import get_latency_tracker
+        return get_latency_tracker().p95_latency_seconds(model.name) <= 30
+    except Exception:
+        return True
+
+
+def _get_scoring_weights(purpose: str, profile_data: dict) -> dict:
+    """从配置中读取评分权重。未定义时回退默认值（与 v2.1 行为一致）。"""
+    default = {
+        "source_bias": 1.0,
+        "resource_pressure": 1.0,
+        "gpu_compat": 1.0,
+        "reasoning": 1.0,
+        "quality": 1.0,
+        "latency": -1.0,
+        "concurrency": 1.0,
+        "cost": -1.0,
+        "api_credential": 3.0,
+    }
+    profile = profile_data.get("purpose_profiles", {}).get(purpose, {})
+    weights = profile.get("scoring_weights", {})
+    return {**default, **weights}
+
+
+def _score_model(
+    model, purpose: str, profile: dict,
+    res: PlatformResources, preferences: dict, profile_data: dict,
+) -> int:
+    """综合评分（v2.2 动态权重），分数越高越优先。"""
+    weights = _get_scoring_weights(purpose, profile_data)
+    score = 0
+
+    # 0. 未知 size 惩罚（纵深防御：size=None 的本地模型即使绕过 _build_preferences 也会在此扣分）
+    if model.size is None:
+        if model.provider not in ("openai", "deepseek", "anthropic", "openrouter"):
+            score -= 150
+
+    # 1. 资源压力
+    if model.size and model.size > 0:
+        ratio = model.size / max(res.ram_bytes, 1)
+        penalty = 0
+        if ratio > 0.8:       penalty = -100
+        elif ratio > 0.5:     penalty = -30
+        elif ratio > 0.3:     penalty = -10
+        score += int(penalty * weights.get("resource_pressure", 1.0))
+
+    # 2. 来源偏好
+    src = getattr(model.source, 'value', '') if hasattr(model.source, 'value') else ''
+    src_bias = 0
+    if profile.get("prefer_local"):
+        if src == "local":       src_bias = 120
+        elif src == "external":  src_bias = 60
+        else:                    src_bias = 40
+    elif profile.get("prefer_external"):
+        if src == "external":    src_bias = 120
+        elif src == "local":     src_bias = 40
+        else:                    src_bias = 60
+    score += int(src_bias * weights.get("source_bias", 1.0))
+
+    # 3. env var 匹配（不受权重影响，保持 +500 绝对优先）
+    if preferences.get("env_var_model") == model.name:
+        score += 500
+
+    # 4. model_overrides 匹配（不受权重影响）
+    if preferences.get("override_model") == model.name:
+        score += 80
+
+    # 5. GPU 兼容性
+    gpu_score = 0
+    if model.supports_gpu and res.gpu_compatible:
+        gpu_score = 50
+    elif not res.gpu_compatible and model.provider == "ollama":
+        gpu_score = -200
+    score += int(gpu_score * weights.get("gpu_compat", 1.0))
+
+    # 6. 推理能力加分（从 model_capabilities.reasoning_quality 读取）
+    model_caps_data = profile_data.get("model_capabilities", {}).get(model.name, {})
+    reasoning_quality = model_caps_data.get("reasoning_quality", 1)
+    reasoning_score = 0
+    if reasoning_quality >= 4:
+        reasoning_score = 80
+    elif reasoning_quality >= 3:
+        reasoning_score = 40
+    elif reasoning_quality >= 2:
+        reasoning_score = 20
+    if profile.get("prefer", [""])[0] == "reasoning" and reasoning_quality >= 2:
+        reasoning_score += 20
+    score += int(reasoning_score * weights.get("reasoning", 1.0))
+
+    # 7. API 凭证检查（双路径：环境变量 + 适配器 ID）
+    if model.provider in ("openai", "deepseek", "anthropic", "openrouter"):
+        has_creds = False
+        if hasattr(model, 'config') and model.config:
+            # 路径 A：环境变量（传统部署，AIPLAT_*_MODEL 方式）
+            env_name = getattr(model.config, 'api_key_env', '') or ''
+            if env_name and os.getenv(env_name, "").strip():
+                has_creds = True
+            # 路径 B：适配器 ID（管理 UI 配置方式）
+            if not has_creds:
+                adapter_id = getattr(model.config, 'adapter_id', '') or ''
+                if adapter_id:
+                    has_creds = True  # 加载时已通过有效 key 过滤
+        if not has_creds:
+            score += int(-300 * weights.get("api_credential", 3.0))
+
+    # 8. 质量反馈 (-80 ~ +80)
+    try:
+        from .quality_validator import get_quality_tracker
+        qs = get_quality_tracker().get(model.name, purpose)
+        score += int(qs * 80 * weights.get("quality", 1.0))
+    except Exception:
+        pass  # noqa: intentional — best-effort non-critical operation
+
+    # 9. 延迟惩罚
+    try:
+        from .latency_tracker import get_latency_tracker
+        p95 = get_latency_tracker().p95_latency_seconds(model.name)
+    except Exception:
+        p95 = 5
+    latency_penalty = 0
+    if p95 > 10:    latency_penalty = -40
+    elif p95 > 5:   latency_penalty = -20
+    score += int(latency_penalty * weights.get("latency", -1.0))
+
+    # 10. 并发容量
+    max_cc = getattr(model, 'max_concurrency', 0) or 0
+    concurrency_score = 0
+    if max_cc >= 50:    concurrency_score = 30
+    elif max_cc >= 10:  concurrency_score = 15
+    score += int(concurrency_score * weights.get("concurrency", 1.0))
+
+    # 11. 成本
+    model_costs = profile_data.get("model_cost", {})
+    cost = model_costs.get(model.name, 0.0) if model_costs else 0.0
+    cost_penalty = 0
+    if cost > 0.01:   cost_penalty = -10
+    elif cost > 0.001: cost_penalty = -5
+    score += int(cost_penalty * weights.get("cost", -1.0))
+
+    return score
+
 
 class ModelManager:
     """模型管理器"""
@@ -109,7 +394,75 @@ class ModelManager:
                 _future.result(timeout=10.0)
         except Exception as e:
             logging.debug(str(e), exc_info=True)
-    
+        # 4. 补全所有模型的 size / is_downloaded / supports_gpu
+        try:
+            self._resolve_model_sizes()
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
+
+    def _resolve_model_sizes(self) -> None:
+        """补全所有模型的 size、quantization、is_downloaded、supports_gpu 字段。
+        规则：
+          - API 模型 (openai/deepseek/anthropic) → size=0, is_downloaded=True
+          - Ollama 模型 → 从已扫描的同系列模型中匹配：
+            · 优先精确匹配（名称完全相同）
+            · 否则取同名基础型号中 size 最小的变体（保守策略）
+          - 其余 → 保持原值
+        """
+        # 1. 构建 Ollama 变体索引: base_name → [{full_name, size, quantization}]
+        ollama_variants: dict = {}
+        for m in self._models.values():
+            if not (m.size and m.size > 0 and m.source.value == "local" and m.provider == "ollama"):
+                continue
+            base = _extract_base_name(m.name)
+            ollama_variants.setdefault(base, []).append({
+                "full_name": m.name,
+                "size": m.size,
+                "quantization": getattr(m, 'quantization', None),
+            })
+
+        # 2. 补全所有模型
+        for m in self._models.values():
+            if m.size is not None and m.size > 0:
+                continue
+
+            # 优先尝试匹配 Ollama 已扫描的模型（覆盖 provider 字段的误判）
+            base = _extract_base_name(m.name)
+            variants = ollama_variants.get(base, [])
+            if variants:
+                exact = next((v for v in variants if v["full_name"] == m.name), None)
+                if exact:
+                    m.size = exact["size"]
+                    m.quantization = exact["quantization"]
+                else:
+                    smallest = min(variants, key=lambda v: v["size"])
+                    m.size = smallest["size"]
+                    m.quantization = smallest["quantization"]
+                    logging.info("Model %s: matched to %s (smallest variant, %.1fGB)",
+                                 m.name, smallest["full_name"], smallest["size"] / 1e9)
+                m.is_downloaded = any(v["full_name"] == m.name for v in variants)
+                m.supports_gpu = True
+                # 修正适配器注册时的类型/provider 误判
+                if m.provider not in ("ollama",) and any(v["full_name"] == m.name for v in variants):
+                    # 查找对应的 LOCAL 模型获取正确的 provider/type
+                    for local_m in self._models.values():
+                        if local_m.source.value == "local" and local_m.provider == "ollama" and local_m.name == m.name:
+                            m.provider = "ollama"
+                            m.type = local_m.type
+                            break
+                continue
+
+            # 无 Ollama 匹配 → 按 provider 设默认值
+            if m.provider in ("openai", "deepseek", "anthropic", "openrouter"):
+                m.size = 0
+                m.is_downloaded = True
+                m.supports_gpu = False
+            elif m.provider == "ollama":
+                m.size = 0
+                m.is_downloaded = False
+                m.supports_gpu = True
+                logging.warning("Model %s: no Ollama variant found, size unknown", m.name)
+
     async def initialize(self):
         """异步初始化 - 扫描本地模型"""
         await self._scan_local_models()
@@ -123,16 +476,107 @@ class ModelManager:
             self._local_endpoints = endpoints
             local_models = await scan_local_models(endpoints)
             for model in local_models:
+                # 按名称去重：同名的适配器模型已存在 → 合并 size/status，不创建重复条目
+                existing = self._find_model_by_name(model.name)
+                if existing is not None:
+                    if not existing.size or existing.size == 0:
+                        existing.size = getattr(model, 'size', None) or existing.size
+                    if getattr(model, 'quantization', None):
+                        existing.quantization = model.quantization
+                    existing.is_downloaded = True
+                    existing.supports_gpu = True
+                    # 修正适配器注册时的类型/provider 误判
+                    if model.provider and existing.provider in ("deepseek", "openai", "anthropic"):
+                        existing.provider = model.provider
+                    if model.type and model.type != existing.type:
+                        existing.type = model.type
+                    continue  # 不重复添加
                 if model.id not in self._models:
                     self._models[model.id] = model
-                else:
-                    existing = self._models[model.id]
-                    if existing.source == ModelSource.LOCAL:
-                        existing.status = model.status
-                        existing.size = getattr(model, 'size', None)
-                        existing.config.base_url = model.config.base_url
+            # Sync scanned models to adapter table for management UI visibility
+            try:
+                await self._sync_local_to_adapter(local_models, endpoints)
+            except Exception as e:
+                logging.debug("Ollama→adapter sync skipped: %s", str(e)[:200], exc_info=True)
         except Exception as e:
             logging.debug(str(e), exc_info=True)
+
+    async def _sync_local_to_adapter(self, local_models, endpoints):
+        """同步本地扫描结果（Ollama/LM Studio/oMLX/vLLM）到适配器表。
+        
+        使管理 UI 可统一管理所有本地模型（启用/禁用/配置）。
+        Ollama 模型的 size/quantization 从 API 获取；
+        OpenAI 兼容端点（vLLM 等）的 size 留空，由 _resolve_model_sizes() 后续补全。
+        """
+        import json as _json
+        import sqlite3
+        import time as _time
+        import os as _os
+
+        db_path = _os.getenv("AIPLAT_EXECUTION_DB_PATH", "")
+        if not db_path or not _os.path.isfile(db_path):
+            return
+
+        ollama_base = endpoints[0] if endpoints else ""
+        now = _time.time()
+
+        conn = sqlite3.connect(db_path, timeout=5.0)
+        try:
+            for model in local_models:
+                provider = model.provider or "local-scan"
+                adapter_id = f"local-scan:{provider}:{model.name}"
+                size_str = f"{model.size/1e9:.1f}GB" if model.size else "unknown"
+                quantization = getattr(model, 'quantization', None)
+                metadata = {
+                    "source": "local_scan",
+                    "provider": provider,
+                }
+                if model.size:
+                    metadata["size"] = model.size
+                if quantization:
+                    metadata["quantization"] = quantization
+                models_json = _json.dumps([{"name": model.name}])
+                conn.execute(
+                    """INSERT INTO adapters(
+                        adapter_id, name, provider, description, status,
+                        api_key, api_base_url, organization_id,
+                        api_key_enc, api_key_kid,
+                        models_json, rate_limit_json, retry_config_json, metadata_json,
+                        created_at, updated_at
+                    ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                    ON CONFLICT(adapter_id) DO UPDATE SET
+                        name=excluded.name, provider=excluded.provider,
+                        description=excluded.description,
+                        status=excluded.status,
+                        api_key=excluded.api_key,
+                        api_base_url=excluded.api_base_url,
+                        organization_id=excluded.organization_id,
+                        models_json=excluded.models_json,
+                        metadata_json=excluded.metadata_json,
+                        updated_at=excluded.updated_at""",
+                    (
+                        adapter_id,
+                        model.name,
+                        provider,
+                        f"Local {provider.upper()} model {model.name} ({size_str})",
+                        "active",
+                        "__local_scan__",  # sentinel — 本地模型不需要真实 API key
+                        ollama_base or "",
+                        None,
+                        None,
+                        None,
+                        models_json,
+                        "{}",
+                        "{}",
+                        _json.dumps(metadata),
+                        now, now,
+                    ),
+                )
+            conn.commit()
+            logging.getLogger(__name__).info(
+                "Synced %d local models to adapter table", len(local_models))
+        finally:
+            conn.close()
 
     def _scan_local_models_sync(self):
         """Sync wrapper for _scan_local_models — runs in a dedicated event loop."""
@@ -294,7 +738,7 @@ class ModelManager:
         if _psutil_available:
             try:
                 available_ram_bytes = psutil.virtual_memory().available
-            except Exception:
+            except Exception:  # noqa: ram-check-fallback
                 pass
 
         scored = []
@@ -333,12 +777,12 @@ class ModelManager:
 
             score = 0
 
-            # Resource-aware scoring: penalize models too large for available RAM
+            # Resource-aware scoring: hard-block models too large for available RAM
             if available_ram_bytes > 0 and hasattr(m, 'size') and m.size:
                 model_bytes = m.size
                 usage_ratio = model_bytes / available_ram_bytes
                 if usage_ratio > 1.0:
-                    score -= 200  # model larger than free RAM — may not load
+                    continue  # hard block: model larger than free RAM — cannot load
                 elif usage_ratio > 0.8:
                     score -= 100  # very tight fit
                 elif usage_ratio > 0.5:
@@ -444,6 +888,80 @@ class ModelManager:
             )
 
         return result
+
+    # ═══ 统一评分管道 v2.1 ═══
+
+    def _find_model_by_name(self, name: str) -> Optional[ModelInfo]:
+        """按名称查找模型。"""
+        for m in self._models.values():
+            if m.name == name:
+                return m
+        return None
+
+    def unified_pipeline(
+        self, purpose: str, messages: list | None,
+        preferences: dict, profile_data: dict,
+    ) -> str:
+        """统一评分管道。env var 和 model_overrides 作为偏好参数，不再硬覆盖。"""
+        import time as _time
+        res = collect_platform_resources()
+
+        safe = profile_data.get("fallback", {})
+        safe_model = safe.get("safe_model", "qwen2.5:3b")
+        safe_model_alt = safe.get("safe_model_alt", "deepseek-chat")
+        safe_ram_limit_gb = safe.get("safe_model_ram_limit", 4)
+
+        profile = profile_data.get("purpose_profiles", {}).get(purpose, {})
+
+        models = [m for m in self._models.values()
+                  if hasattr(m, 'type') and m.type.value == "chat"]
+
+        # ── 降级链路（硬约束不变，逐级放宽软约束） ──
+        soft_filters = [
+            ("full",     lambda m: (_filter_capability(m, purpose, profile)
+                                    and _filter_health(m)
+                                    and _filter_latency(m))),
+            ("-cap",     lambda m: (_filter_health(m)
+                                    and _filter_latency(m))),
+            ("-cap-hlt", lambda m: _filter_latency(m)),
+            ("none",     lambda m: True),
+        ]
+
+        for level_name, soft_fn in soft_filters:
+            passed = [m for m in models
+                       if _hard_filter(m, res)[0] and soft_fn(m)]
+            if passed:
+                if level_name != "full":
+                    logging.getLogger(__name__).warning(
+                        "Model selection degraded to level=%s for purpose=%s", level_name, purpose)
+                scored = [(_score_model(m, purpose, profile, res, preferences, profile_data), m)
+                           for m in passed]
+                scored.sort(key=lambda x: x[0], reverse=True)
+                return scored[0][1].name
+
+        # ── Safe Model 保底：优先 API，再本地安全模型 ──
+        for safe_name in [safe_model_alt, safe_model]:
+            safe_m = self._find_model_by_name(safe_name)
+            if safe_m is None:
+                continue
+            ok, _reason = _hard_filter(safe_m, res)
+            if not ok:
+                continue
+            if safe_m.size and safe_m.size > 0:
+                if res.ram_bytes < safe_ram_limit_gb * 1024**3:
+                    logging.getLogger(__name__).warning(
+                        "Safe model %s needs >=%.0fGB but only %.1fGB available",
+                        safe_name, safe_ram_limit_gb, res.ram_bytes / 1e9)
+                    continue
+            logging.getLogger(__name__).warning("All models filtered, falling back to safe_model=%s", safe_name)
+            return safe_name
+
+        raise RuntimeError(
+            f"No model can run on this hardware. "
+            f"RAM={res.ram_bytes/1e9:.1f}GB, VRAM={res.vram_bytes/1e9:.1f}GB, "
+            f"GPU={res.gpu_vendor}. "
+            f"Safe models ({safe_model}, {safe_model_alt}) also cannot load."
+        )
 
     def select(self, model_name: str = "", purpose: str = "") -> Optional[ModelInfo]:
         """Select model by name or purpose. Returns full ModelInfo with provider/base_url/api_key_env.
@@ -613,24 +1131,44 @@ class ModelManager:
     # ===== 扫描接口 =====
     
     async def scan_local_models(self, endpoint: str = None) -> List[ModelInfo]:
-        """重新扫描本地 Ollama 模型"""
+        """重新扫描本地模型（管理 UI 调用）。去重后返回，避免重复显示。"""
         if endpoint:
             endpoints = [endpoint]
         else:
             endpoints = self._config_loader.get_local_scan_endpoints()
         if not endpoints:
             return []
-        
+
+        before = {m.name for m in self._models.values()}
+
         local_models = await scan_local_models(endpoints)
-        
-        # 更新本地模型列表（移除旧的 local 模型，添加新的）
-        for key in list(self._models.keys()):
-            if self._models[key].source == ModelSource.LOCAL:
-                del self._models[key]
-        
+
         for model in local_models:
-            self._models[model.id] = model
-        
+            existing = self._find_model_by_name(model.name)
+            if existing is not None:
+                if not existing.size or existing.size == 0:
+                    existing.size = getattr(model, 'size', None) or existing.size
+                if getattr(model, 'quantization', None):
+                    existing.quantization = model.quantization
+                existing.is_downloaded = True
+                existing.supports_gpu = True
+                # 修正适配器注册时的类型/provider 误判
+                if model.provider and existing.provider in ("deepseek", "openai", "anthropic"):
+                    existing.provider = model.provider
+                if model.type and model.type != existing.type:
+                    existing.type = model.type
+                continue
+            if model.id not in self._models:
+                self._models[model.id] = model
+
+        try:
+            await self._sync_local_to_adapter(local_models, endpoints)
+        except Exception as e:
+            logging.debug("scan→adapter sync skipped: %s", str(e)[:200], exc_info=True)
+
+        after = {m.name for m in self._models.values()}
+        self._scan_new_count = len(after - before)
+
         return local_models
     
     async def get_providers(self) -> List[Dict[str, Any]]:

@@ -27,3 +27,9 @@ class LLMClient(ABC):
     @abstractmethod
     def get_metrics(self) -> dict:
         pass
+
+    def close(self) -> None:
+        """Release underlying HTTP connections / resources.
+
+        Default no-op. Subclasses with persistent connections should override.
+        """

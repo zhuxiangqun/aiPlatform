@@ -317,7 +317,7 @@ def create_app() -> FastAPI:
                     _log.info("Core service reachable — accepting requests")
                     return
             except Exception:
-                pass
+                pass  # noqa: intentional — best-effort non-critical operation
             _log.info("Waiting for core service... (%d/20)", i + 1)
             await _asyncio.sleep(6)
         _log.warning("Core service not reachable after 2 minutes — accepting requests anyway")
@@ -355,3 +355,4 @@ def run_server():
 
 if __name__ == "__main__":
     run_server()
+

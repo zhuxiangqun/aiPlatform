@@ -77,7 +77,7 @@ def _safe_enum_value(obj, attr: str) -> str:
 async def _get_real_llm_metrics() -> Dict[str, Any]:
     u"""Query execution_store for real LLM usage stats (24h window)."""
     try:
-        from core.services.execution_store import get_execution_store
+        from core.api.core_facade import get_execution_store
         store = get_execution_store()
         if not store:
             return {}
@@ -203,7 +203,7 @@ async def _scan_governance() -> Dict[str, Any]:
 
     has_keys = False
     try:
-        from core.harness.kernel.runtime import get_kernel_runtime as _g_rt
+        from core.api.core_facade import get_kernel_runtime as _g_rt
         _g_runtime = _g_rt()
         store = getattr(_g_runtime, "execution_store", None) if _g_runtime else None
         if store:
@@ -254,8 +254,8 @@ async def system_overview(refresh: bool = Query(False)) -> Dict[str, Any]:
 
     # -- Models --
     try:
-        from infra.management.model.manager import ModelManager as InfraModelManager
-        mgr = InfraModelManager()
+        from core.api.core_facade import get_model_manager
+        mgr = get_model_manager()
         models = await mgr.list_models()
         available = [m for m in models if _safe_enum_value(m, 'status') not in ("unreachable", "error", "not_configured")]
         infra["models"] = {
@@ -286,7 +286,7 @@ async def system_overview(refresh: bool = Query(False)) -> Dict[str, Any]:
             infra["llm"] = llm_metrics
         else:
             # Fallback to ModelManager for model listing
-            from infra.management.llm.manager import LLMManager
+            from core.api.core_facade import get_llm_manager; LLMManager = get_llm_manager()  # via CoreFacade
             llm_mgr = LLMManager()
             infra["llm"] = {
                 "requests_24h": 0, "success_rate": None, "avg_latency_ms": 0,
@@ -303,7 +303,7 @@ async def system_overview(refresh: bool = Query(False)) -> Dict[str, Any]:
         storage_total += 1
         try:
             if kind == "database":
-                from infra.management.database.manager import DatabaseManager
+                from core.api.core_facade import get_database_manager; DatabaseManager = get_database_manager()  # via CoreFacade
                 dm = DatabaseManager()
                 db_hc = await dm.health_check()
                 db_metrics = (await dm.get_metrics()) if hasattr(dm, 'get_metrics') else []
@@ -315,7 +315,7 @@ async def system_overview(refresh: bool = Query(False)) -> Dict[str, Any]:
                     "connections": conn,
                 }
             elif kind == "vector":
-                from infra.management.vector.manager import VectorManager
+                from core.api.core_facade import get_vector_manager; VectorManager = get_vector_manager()  # via CoreFacade
                 vm = VectorManager()
                 vec_hc = await vm.health_check()
                 vec_metrics = (await vm.get_metrics()) if hasattr(vm, 'get_metrics') else []
@@ -328,7 +328,7 @@ async def system_overview(refresh: bool = Query(False)) -> Dict[str, Any]:
                 }
             elif kind == "cache":
                 try:
-                    from infra.cache.manager import DefaultCacheManager
+                    from core.api.core_facade import get_cache_manager; DefaultCacheManager = get_cache_manager()  # via CoreFacade
                     cm = DefaultCacheManager()
                     stats = await cm.get_stats()
                     infra["storage"]["cache"] = {"hits": stats.get("hits", 0), "misses": stats.get("misses", 0)}
@@ -391,7 +391,7 @@ async def system_overview(refresh: bool = Query(False)) -> Dict[str, Any]:
 
     # -- Agents --
     try:
-        from core.harness.kernel.runtime import get_kernel_runtime
+        from core.api.core_facade import get_kernel_runtime
         rt = get_kernel_runtime()
         engine_count = 0
         agent_types: Dict[str, int] = {}
@@ -496,8 +496,8 @@ async def system_overview(refresh: bool = Query(False)) -> Dict[str, Any]:
             _log.debug(f"Overview MCP probe failed: {e}")
         # Skill lint health
         try:
-            from core.management.skill_linter import lint_skill
-            from core.management.skill_manager import SkillManager
+            from core.api.core_facade import lint_skill
+            from core.api.core_facade import SkillManager
             sm = SkillManager(seed=True, scope="engine")
             ws = SkillManager(seed=False, scope="workspace")
             eng_skills = await sm.list_skills(limit=500, offset=0)

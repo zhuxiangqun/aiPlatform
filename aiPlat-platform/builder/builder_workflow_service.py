@@ -133,7 +133,7 @@ class WorkflowService:
                     from core.api.core_facade import get_agent_frontmatter
                     agent_fm = get_agent_frontmatter(agent_id) or {}
                 except Exception:
-                    pass
+                    logging.getLogger(__name__).debug('execute failed', exc_info=True)
             # Inject Start node's test inputs into stage config
             if nt == 'start':
                 inputs = d.get("start_inputs", [])

@@ -20,20 +20,35 @@ input_schema:
     question:
       type: string
       description: 用户的原始需求描述或模糊问题
+    domain_id:
+      type: string
+      description: 可选，指定领域ID以加载域特定的追问维度
+    entry_point:
+      type: string
+      description: 可选，触发场景(fde_builder/kb_qa/pipeline_hitl/agent_chat/workbench/document_upload/diagnostics/ontology_edit/skill_install/watch_directory/conversational)，用于加载对应的追问模板
   required: [question]
 output_schema:
   type: object
   properties:
     clarification_result:
       type: string
-      description: 所有澄清问题的结构化摘要
+      description: Markdown格式的结构化澄清摘要
     questions_asked:
       type: integer
-      description: 追问了多少轮才达到明确
-  required: [clarification_result]
-  markdown:
-    type: string
-    required: true
+    structured:
+      type: object
+      description: 结构化澄清输出（供下游流水线消费）
+      properties:
+        requirements:
+          type: string
+        constraints:
+          type: string
+        assumptions:
+          type: string
+        open_questions:
+          type: array
+          items: {type: string}
+  required: [clarification_result, structured]
 completion_criterion: |
   1. 用户明确说"可以开始了"或"确认"或"没问题"
   2. 或连续两轮追问无新的实质性模糊点
@@ -68,12 +83,14 @@ triggers:
 
 ## SOP
 
-1. 从用户描述中找出最模糊的一个点——只选一个，不列清单
-2. 问一个问题，附带 ≤3 个推荐选项，每个选项 ≤20 字说明
-3. 用户可以直接说"A""B""C"而不需要打字
-4. 如果可以通过读已有文件或代码回答当前问题 → 读文件，别问用户
-5. 重复步骤 1-4，直到满足 completion_criterion
-6. 输出一份 Markdown 结构化摘要：{需求概述, 关键决策, 输入/输出约定, 约束边界, 下一步建议}
+1. 如果提供了 `domain_id`，读取 `~/.aiplat/ontologies/{domain_id}.yaml` 的 `interview_dimensions` 以获取域特定的追问维度
+2. 如果提供了 `entry_point`，加载对应场景的默认追问模板
+3. 从用户描述中找出最模糊的一个点——只选一个，不列清单，优先覆盖 `interview_dimensions` 中的必填维度
+4. 问一个问题，附带 ≤3 个推荐选项，每个选项 ≤20 字说明
+5. 用户可以直接说"A""B""C"而不需要打字
+6. 如果可以通过读已有文件或代码回答当前问题 → 读文件，别问用户
+7. 重复步骤 3-6，直到满足 completion_criterion
+8. 输出结构化澄清结果，包含 `## Requirements / ## Constraints / ## Assumptions / ## Open Questions` 四个章节
 
 ## 示例
 

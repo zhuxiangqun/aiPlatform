@@ -264,7 +264,7 @@ async def core_chat(ctx: ChatContext) -> ChatResult:
                         "selected_skills": skills_used,
                     })
         except Exception:
-            pass  # auto-select failure must not break execution
+            logging.getLogger(__name__).debug('Auto-select failure, not breaking execution', exc_info=True)
 
     # ── 4. Create and execute agent ──
     from core.harness.interfaces.agent import AgentConfig, AgentContext

@@ -1,6 +1,7 @@
 # aiPlat 管理画面 操作手册
 
-> 版本 1.0 | 最后更新 2026-07 | 适用于 aiPlat v12
+> 版本 2.0 | 最后更新 2026-07-20 | 适用于 aiPlat v21.5+
+> **v2.0 更新**: 菜单按任务流重新分组（8组→5组），子区域标题分段，新增控制画像面板
 
 本文档详细说明 aiPlat 管理画面（Management Dashboard）的所有功能模块、操作方法和典型工作流。
 
@@ -11,24 +12,19 @@
 - [1. 系统概述](#1-系统概述)
 - [2. 五大角色与权限体系](#2-五大角色与权限体系)
 - [3. 侧边栏导航](#3-侧边栏导航)
-- [4. 系统入口页面](#4-系统入口页面)
-- [5. 基础设施](#5-基础设施)
-- [6. AI 能力 — Engine 管理](#6-ai-能力--engine-管理)
-- [7. AI 能力 — 应用市场](#7-ai-能力--应用市场)
-- [8. 平台管理](#8-平台管理)
-- [9. 平台管理 — 应用接入](#9-平台管理--应用接入)
-- [10. 价值中心](#10-价值中心)
-- [11. 诊断与修复](#11-诊断与修复)
-- [12. 知识中心](#12-知识中心)
-- [13. 审批中心](#13-审批中心)
-- [14. 典型操作流程](#14-典型操作流程)
+- [4. 仪表盘](#4-仪表盘)
+- [5. 知识工厂](#5-知识工厂)
+- [6. AI 应用工厂](#6-ai-应用工厂)
+- [7. 诊断与治理](#7-诊断与治理)
+- [8. 平台设置](#8-平台设置)
+- [9. 典型操作流程](#9-典型操作流程)
 - [附录 A：支持模型类型](#附录-a支持模型类型)
 - [附录 B：常见问题](#附录-b常见问题)
 ---
 
 ## 1. 系统概述
 
-aiPlat 管理画面是一个四层架构的 AI 中台管理界面，覆盖基础设施、AI 能力、平台服务和应用接入全栈管理。首页为**系统概览**仪表盘，左侧侧边栏按功能层级分组。右下角提供**角色切换器**用于不同身份视角切换。
+aiPlat 管理画面是一个四层架构的 AI 中台管理界面，覆盖基础设施、AI 引擎、平台服务和应用接入全栈管理。首页为**系统概览**仪表盘，左侧侧边栏按任务流分组（5 组）。右下角提供**角色切换器**用于不同身份视角切换。
 
 **访问地址**：`http://localhost:5173`（开发模式）
 
@@ -84,147 +80,136 @@ aiPlat 管理画面是一个四层架构的 AI 中台管理界面，覆盖基础
 
 ## 3. 侧边栏导航
 
-侧边栏按功能分为 8 个分组，每组包含若干菜单项。左侧图标 + 文字标签，点击进入对应页面。
+侧边栏按任务流分为 5 个分组，每组包含若干菜单项。分组内用子区域标题分段，左侧图标 + 文字标签，点击进入对应页面。支持展开/折叠 + URL 自动匹配展开。
 
 ### 3.1 菜单分组总览
 
 | 分组 | 标签 | 主要角色 | 菜单数 | 说明 |
 |------|------|---------|:---:|------|
-| overview | **总览** | 全部 | 4 | 系统概览、告警中心、系统图谱、文档系统 |
-| knowledge | **知识中心** | admin, developer | 7 | 管线总览、原始资料、本体模型、向量知识库、LLM Wiki、RAG 检索、质量反馈 |
-| ai | **AI 能力** | admin, developer | 20 | Agent/Skill/Tool/MCP/Workflow/Memory 管理 + 市场 + 模板 + 分析 |
-| diagnostics | **诊断与修复** | admin, developer | 4 | 诊断中心、修复中心、FDE 工作台、LLM 审查 |
-| infra | **基础设施** | admin | 9 | 节点、模型、微调、服务、算力、存储、网络、监控、LLM 路由 |
-| platform | **平台管理** | admin | 13 | API 网关、认证鉴权、多租户、渠道、会话、构建、部署等 |
-| value | **价值中心** | admin, developer, business | 6 | 价值看板、KPI 管理、目标追踪、角色管理、策略控制、训练监控 |
-| approval | **审批中心** | admin, approver | 3 | 资产审批、运行时审批、审批记录 |
+| dashboard | **📊 仪表盘** | 全部 | 5 | 系统概览、告警中心、系统图谱、治理仪表盘、价值看板 |
+| knowledge | **🧠 知识工厂** | admin, developer | 11 | 数据接入 → 知识建模 → 知识索引 → 质量验证 四阶段 |
+| build | **🤖 AI 应用工厂** | admin, developer | 17 | 应用生命周期 + 能力组装 + 运行时配置 |
+| diagnostics | **🩺 诊断与治理** | admin, developer | 14 | 系统诊断 + 安全合规 + 审批管理 |
+| platform | **⚙️ 平台设置** | admin | 15 | 日常运维 + 平台配置 + 系统运维 |
 
 ### 3.2 各分组详细菜单
 
-#### 总览
+#### 📊 仪表盘
 
 | 图标 | 名称 | 路由 | 说明 |
 |------|------|------|------|
 | Activity | 系统概览 | `/system-overview` | 全局健康仪表盘 |
 | Bell | 告警中心 | `/alerts` | 系统告警管理 |
 | Share2 | 系统图谱 | `/system-graph` | 架构可视化 |
-| BookOpen | 文档系统 | `/docs` | 在线文档浏览 |
+| Shield | 治理仪表盘 | `/governance` | 8 项治理机制健康状态 |
+| BarChart3 | 价值看板 | `/value-center` | 业务价值量化分析 |
 
-#### 知识中心
+#### 🧠 知识工厂
 
+**📥 数据接入**：
 | 图标 | 名称 | 路由 | 说明 |
 |------|------|------|------|
-| Share2 | 管线总览 | `/knowledge/overview` | 知识处理流水线概览 |
-| FileText | 原始资料 | `/platform/kb?tab=vault` | 上传原始文档（PDF/Word 等） |
-| Box | 本体模型 | `/infra/ontology` | 域本体管理（类/关系/状态机） |
+| Share2 | 数据管线 | `/knowledge/overview` | 知识处理流水线概览 |
+| FileText | 文档入库 | `/platform/kb?tab=vault` | 上传原始文档 |
+
+**🧬 知识建模**：
+| 图标 | 名称 | 路由 | 说明 |
+|------|------|------|------|
+| PenTool | 本体编辑器 | `/ontology-editor` | 域本体 CRUD + NL→YAML |
+| Box | 本体模型 | `/infra/ontology` | 本体图谱可视化 + 推理引擎 |
+
+**🔍 知识索引**：
+| 图标 | 名称 | 路由 | 说明 |
+|------|------|------|------|
 | Database | 向量知识库 | `/platform/kb?tab=documents` | 文档切块与向量索引 |
 | BookOpen | LLM Wiki | `/platform/kb?tab=wiki` | LLM 可读的结构化 Wiki |
-| Search | RAG 检索 | `/platform/kb?tab=eval` | 检索质量评估 |
+
+**✅ 质量验证**：
+| 图标 | 名称 | 路由 | 说明 |
+|------|------|------|------|
+| Search | 检索评估 | `/platform/kb?tab=eval` | 检索质量评估 |
 | TrendingUp | 质量反馈 | `/platform/kb?tab=quality` | 答案质量与反馈闭环 |
 
-#### AI 能力
+#### 🤖 AI 应用工厂
 
-**Engine 管理（系统内置）**：
-
+**📦 应用生命周期**：
 | 图标 | 名称 | 路由 | 说明 |
 |------|------|------|------|
-| Bot | Agent 管理 | `/core/agents` | 引擎内置 Agent 的 CRUD |
-| Sparkles | Skill 管理 | `/core/skills` | 引擎内置 Skill 的注册 |
-| Wrench | Tool 管理 | `/core/tools` | 工具注册与权限管理 |
-| Plug | MCP 管理 | `/core/mcp` | MCP 服务连接管理 |
-| GitBranch | Workflow 管理 | `/core/workflows` | 工作流模板管理 |
-| Brain | Memory 管理 | `/core/memory` | 记忆系统配置 |
+| Sparkles | 新建应用 | `/studio` | 对话式应用构建器 |
+| Wrench | FDE 工作台 | `/diagnostics/fde` | 8 步诊断交付工作台 |
+| FolderOpen | 我的项目 | `/app/builder` | 项目构建与管理 |
+| Rocket | 已部署应用 | `/app/apps` | 部署的应用列表 |
 
-**配置与模板**：
-
+**🧩 能力组装**：
 | 图标 | 名称 | 路由 | 说明 |
 |------|------|------|------|
-| FileText | 系统 Prompt | `/core/prompts` | 系统级提示词模板 |
-| FileText | 提示词模板 | `/prompts/app` | 应用级提示词管理 |
-| PenTool | 变量管理 | `/core/variables` | Prompt 变量 |
-| Key | 凭证管理 | `/core/credentials` | API Key 等凭证 |
+| Bot | Agent 管理 | `/core/agents` | Agent 创建与管理 |
+| Sparkles | Skill 管理 | `/core/skills` | Skill 注册与管理 |
+| GitBranch | Workflow 管理 | `/core/workflows` | 可视化工作流编排 |
+| Wrench | Tool 管理 | `/core/tools` | Tool 注册与配置 |
+| Plug | MCP 连接 | `/core/mcp` | MCP 服务器管理 |
+| Brain | Memory 管理 | `/core/memory` | 记忆系统管理 |
+| ShoppingBag | 能力市场 | `/workspace/marketplace` | 浏览/安装/导入能力 |
 
-**应用市场（用户工作区）**：
-
+**⚙️ 运行时配置**：
 | 图标 | 名称 | 路由 | 说明 |
 |------|------|------|------|
-| Bot | Agent 市场 | `/workspace/agents` | 用户自定义 Agent |
-| Sparkles | Skill 市场 | `/workspace/skills` | 用户自定义 Skill |
-| Wrench | Tool 市场 | `/workspace/tools` | 用户自定义 Tool |
-| Plug | MCP 市场 | `/workspace/mcp` | 用户 MCP 连接 |
-| Users | 团队组装 | `/workspace/teams` | 多 Agent 团队编排 |
-| ShoppingBag | 商城 | `/workspace/marketplace` | 共享资产市场 |
-| Package | 包管理 | `/core/skill-packs` | Skill 打包分发 |
-| Box | 插件管理 | `/plugins` | 插件扩展 |
+| FileText | 提示词配置 | `/core/prompts` | 提示词模板管理 |
+| PenTool | 变量管理 | `/core/variables` | 流水线变量配置 |
+| Key | 凭证管理 | `/core/credentials` | API 密钥管理 |
 
-**分析**：
+#### 🩺 诊断与治理
 
+**🔧 系统诊断**：
 | 图标 | 名称 | 路由 | 说明 |
 |------|------|------|------|
-| BarChart3 | Agent 能力 | `/core/agent-insight` | Agent 能力评估 |
-| BarChart3 | Agent 评估 | `/diagnostics/eval` | Agent 质量评分 |
+| Activity | 诊断中心 | `/diagnostics` | 28 项诊断工具总入口 |
+| Wrench | 修复中心 | `/diagnostics/repairs` | AI 修复建议与执行 |
+| Monitor | 可观测性 | `/diagnostics/observability` | LLM 调用/延迟/Token 统计 |
+| Cpu | 控制画像 | `/diagnostics/control-profile` | 6 维控制画像状态与切换 |
 
-#### 诊断与修复
-
+**🛡️ 安全与合规**：
 | 图标 | 名称 | 路由 | 说明 |
 |------|------|------|------|
-| Activity | 诊断中心 | `/diagnostics` | 综合诊断入口 |
-| Wrench | 修复中心 | `/diagnostics/repairs` | 一键修复问题 |
-| Wrench | FDE 工作台 | `/diagnostics/fde` | FDE 交付操作 |
-| Search | LLM 审查 | `/diagnostics/llm-review` | LLM 输出审查 |
+| FileText | 审计日志 | `/diagnostics/audit` | 操作审计日志查看 |
+| Shield | 变更控制 | `/diagnostics/change-control` | 变更请求生命周期 |
+| Shield | 安全监控 | `/diagnostics/safety` | 对话危机检测 |
+| Search | LLM 代码审查 | `/diagnostics/llm-review` | DeepSeek 深度代码审查 |
+| BarChart3 | Agent 评估 | `/diagnostics/eval` | Arena 排名与评估 |
 
-#### 基础设施
-
+**📋 审批管理**：
 | 图标 | 名称 | 路由 | 说明 |
 |------|------|------|------|
-| Server | 节点管理 | `/infra/nodes` | 计算节点管理 |
-| Cpu | 模型管理 | `/infra/models` | LLM 模型注册 |
-| Wrench | 模型微调 | `/infra/finetune` | 模型训练任务 |
-| Database | 服务管理 | `/infra/services` | 基础服务管理 |
-| HardDrive | 算力调度 | `/infra/scheduler` | GPU 资源调度 |
-| Database | 存储管理 | `/infra/storage` | 数据存储管理 |
-| Network | 网络管理 | `/infra/network` | 网络配置 |
-| Monitor | 监控告警 | `/infra/monitoring` | 资源监控 |
+| Package | 资产审批 | `/approval` | Agent/Skill 市场审批 |
+| Shield | 运行时审批 | `/core/approvals` | 运行时操作审批 |
+| FileText | 审批记录 | `/approval/history` | 审批历史记录 |
+
+#### ⚙️ 平台设置
+
+**🔧 日常运维**：
+| 图标 | 名称 | 路由 | 说明 |
+|------|------|------|------|
+| Cpu | 模型管理 | `/infra/models` | 模型注册与健康检查 |
+| Wrench | 模型微调 | `/infra/finetune` | 微调任务管理 |
+| Database | 存储管理 | `/infra/storage` | 存储配额与用量 |
+| HardDrive | 算力调度 | `/infra/scheduler` | GPU 算力分配 |
+
+**🔐 平台配置**：
+| 图标 | 名称 | 路由 | 说明 |
+|------|------|------|------|
+| Network | API 网关 | `/platform/gateway` | API 路由与代理 |
+| Shield | 认证鉴权 | `/platform/auth` | SSO/OIDC 配置 |
+| Users | 多租户管理 | `/platform/tenant` | 租户创建与配置 |
+| MessageSquare | 渠道管理 | `/app/channels` | 企业 IM 集成 |
+| MessageSquare | 会话管理 | `/app/sessions` | 会话监控 |
+
+**🛡️ 系统运维**：
+| 图标 | 名称 | 路由 | 说明 |
+|------|------|------|------|
+| Settings | 初始化向导 | `/onboarding` | 10 步系统初始化 |
+| Shield | 渗透测试 | `/pentest` | 安全渗透测试 |
+| Rocket | 版本管理 | `/releases` | 版本发布管理 |
 | Monitor | LLM 路由监控 | `/infra/llm-stats` | LLM 路由统计 |
-
-#### 平台管理
-
-| 图标 | 名称 | 路由 | 说明 |
-|------|------|------|------|
-| Network | API 网关 | `/platform/gateway` | 网关配置 |
-| Shield | 认证鉴权 | `/platform/auth` | 身份认证与权限 |
-| Users | 多租户 | `/platform/tenant` | 租户管理 |
-| MessageSquare | 渠道管理 | `/app/channels` | 通信渠道 |
-| MessageSquare | 会话管理 | `/app/sessions` | 用户会话 |
-| FolderOpen | 项目构建 | `/app/builder` | 项目构建 |
-| PenTool | 图表工作室 | `/app/diagrams` | 图表工具 |
-| Rocket | 已部署应用 | `/app/apps` | 应用列表 |
-| Rocket | 版本管理 | `/releases` | 版本发布 |
-| Settings | 初始化向导 | `/onboarding` | 系统初始化 |
-| Sparkles | App Studio | `/studio` | 应用工作室 |
-| Shield | 渗透测试 | `/pentest` | 安全测试 |
-| Monitor | 终端工作台 | `/workbench` | 用户工作台 |
-
-#### 价值中心
-
-| 图标 | 名称 | 路由 | 说明 |
-|------|------|------|------|
-| BarChart3 | 价值看板 | `/value-center` | ROI 价值总览 |
-| Target | KPI 管理 | `/value-center/kpis` | KPI 指标 |
-| Flag | 目标追踪 | `/value-center/goals` | 目标进度 |
-| Users | 角色管理 | `/value-center/roles` | Agent 角色配置 |
-| Sliders | 策略控制 | `/value-center/strategy` | 路由策略 |
-| GitBranch | 训练监控 | `/value-center/training` | SFT/RL 训练 |
-
-#### 审批中心
-
-| 图标 | 名称 | 路由 | 说明 |
-|------|------|------|------|
-| Package | 资产审批 | `/approval` | Skill/Agent 发布审批 |
-| Shield | 运行时审批 | `/core/approvals` | 高危操作审批 |
-| FileText | 审批记录 | `/approval/history` | 审批历史
-
----
 
 ## 4. 系统入口页面
 
@@ -293,7 +278,7 @@ aiPlat 管理画面是一个四层架构的 AI 中台管理界面，覆盖基础
 
 ---
 
-## 5. 基础设施
+## 平台设置
 
 ### 5.1 节点管理（`/infra/nodes`）
 
@@ -411,7 +396,7 @@ aiPlat 管理画面是一个四层架构的 AI 中台管理界面，覆盖基础
 
 ---
 
-## 6. AI 能力 — Engine 管理
+## AI 应用工厂 — 能力组装
 
 ### 6.1 Agent 管理（`/core/agents`）
 
@@ -536,7 +521,7 @@ aiPlat 管理画面是一个四层架构的 AI 中台管理界面，覆盖基础
 
 ---
 
-## 7. AI 能力 — 应用市场
+## 能力市场
 
 ### 7.1 Agent 市场（`/workspace/agents`）
 
@@ -617,7 +602,7 @@ aiPlat 管理画面是一个四层架构的 AI 中台管理界面，覆盖基础
 
 ---
 
-## 8. 平台管理
+## 平台设置 — 平台配置
 
 ### 8.1 知识库管理（`/platform/kb`）
 
@@ -639,7 +624,7 @@ aiPlat 管理画面是一个四层架构的 AI 中台管理界面，覆盖基础
 
 **功能**：知识库深度问答。支持视频时间轴引用、多检索路径标记（蓝色=直接检索、紫色=HyDE）、CRAG 三级回退。
 
-### 8.3 知识中心 — 本体模型（`/infra/ontology`）
+### 知识工厂 — 本体模型（`/infra/ontology`）
 
 **可见角色**：admin, developer
 
@@ -691,7 +676,7 @@ aiPlat 管理画面是一个四层架构的 AI 中台管理界面，覆盖基础
 
 ---
 
-## 9. 平台管理 — 应用接入
+## AI 应用工厂 — 应用生命周期
 
 ### 9.1 渠道管理（`/app/channels`）
 
@@ -771,9 +756,9 @@ aiPlat 管理画面是一个四层架构的 AI 中台管理界面，覆盖基础
 
 ---
 
-## 10. 价值中心
+## 仪表盘 — 价值看板
 
-### 10.1 价值看板（`/value-center`）
+### 价值看板（`/value-center`）
 
 **可见角色**：admin, business
 
@@ -881,7 +866,7 @@ Spec 是 FDE 操作系统的核心产物——从碎石路（临时决策）升�
 
 ---
 
-## 11. 诊断与修复
+## 11. 诊断与治理
 
 **路由**：`/diagnostics`
 
@@ -891,7 +876,7 @@ Spec 是 FDE 操作系统的核心产物——从碎石路（临时决策）升�
 
 ---
 
-### 12.1 诊断总览（`/diagnostics`）
+### 诊断总览（`/diagnostics`）
 
 综合诊断报告，覆盖 25+ 检查类别。点击「一键诊断」运行完整诊断。
 
@@ -975,11 +960,11 @@ Spec 是 FDE 操作系统的核心产物——从碎石路（临时决策）升�
 
 ---
 
-## 12. 知识中心
+## 知识工厂
 
-知识中心是 aiPlat 的"大脑"——管理从原始文档到可检索知识的全流程。
+知识工厂是 aiPlat 的"大脑"——管理从原始文档到可检索知识的全流程。
 
-### 10.1 管线总览（`/knowledge/overview`）
+### 数据管线（`/knowledge/overview`）
 
 **可见角色**：admin, developer
 
@@ -1029,7 +1014,7 @@ Spec 是 FDE 操作系统的核心产物——从碎石路（临时决策）升�
 
 ---
 
-## 13. 审批中心
+## 诊断与治理 — 审批管理
 
 ### 14.1 资产审批（`/approval`）
 
@@ -1178,4 +1163,4 @@ A: 架构守卫对 ~3,000+ 文件做 grep 扫描，某些检查（如 §40 模�
 A: 在 Agent 管理页点击「测试」输入任务后，切换到诊断中心 → Runs 工具，搜索该 Agent 的 run_id，查看执行事件流。
 
 **Q: 知识库文档解析失败怎么办？**
-A: 检查文件格式是否支持（PDF/DOCX/PPTX/HTML/MD/TXT）。大文件（>50MB）可能超时。在诊断中心 → 诊断总览 → Wiki 健康中查看详细错误。
+A: 检查文件格式是否支持（PDF/DOCX/PPTX/HTML/MD/TXT）。大文件（>50MB）可能超时。在诊断与治理 → LLM Wiki → 健康检查中查看详细错误。

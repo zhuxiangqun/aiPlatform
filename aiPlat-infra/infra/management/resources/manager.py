@@ -8,6 +8,7 @@ from typing import Dict, Any, List, Optional
 from ..base import ManagementBase, Status, HealthStatus, Metrics
 from ..schemas import ResourceStats, NodeInfo, AllocatedResource
 from datetime import datetime, timezone
+import logging
 
 
 class ResourcesManager(ManagementBase):
@@ -44,75 +45,76 @@ class ResourcesManager(ManagementBase):
             return Status.UNKNOWN
     
     async def get_metrics(self) -> List[Metrics]:
-        """Get resource metrics."""
+        """获取资源指标（实时系统采集）。"""
         metrics = []
         timestamp = datetime.now(timezone.utc).timestamp()
-        
-        # GPU utilization
-        gpu_util = self._get_config_value("monitoring.gpu_utilization_threshold", 0.9)
+
+        try:
+            import psutil
+
+            # CPU 使用率（interval=0.1 非阻塞采样）
+            cpu_pct = psutil.cpu_percent(interval=0.1)
+            metrics.append(Metrics(
+                name="resources.cpu_usage", value=round(cpu_pct / 100, 3),
+                unit="ratio", timestamp=timestamp,
+                labels={"module": "resources", "cpu_count": str(psutil.cpu_count() or 1)}
+            ))
+
+            # 内存使用率
+            mem = psutil.virtual_memory()
+            metrics.append(Metrics(
+                name="resources.memory_usage", value=round(mem.percent / 100, 3),
+                unit="ratio", timestamp=timestamp,
+                labels={"module": "resources", "total_gb": f"{mem.total/1e9:.1f}", "available_gb": f"{mem.available/1e9:.1f}"}
+            ))
+
+            # 磁盘使用率
+            disk = psutil.disk_usage("/")
+            metrics.append(Metrics(
+                name="resources.disk_usage", value=round(disk.percent / 100, 3),
+                unit="ratio", timestamp=timestamp,
+                labels={"module": "resources", "total_gb": f"{disk.total/1e9:.1f}", "free_gb": f"{disk.free/1e9:.1f}"}
+            ))
+
+            # GPU 信息（Apple Silicon 统一内存 / NVIDIA 独立显存）
+            try:
+                from infra.management.model.manager import collect_platform_resources
+                pres = collect_platform_resources()
+                gpu_label = pres.gpu_vendor or "none"
+                vram_total = pres.vram_bytes or 0
+                vram_free = pres.ram_bytes or 0  # Apple 统一内存下 vram==ram
+                if pres.gpu_compatible:
+                    if pres.gpu_vendor == "apple":
+                        # 统一内存：占用估算 = 总内存 × (已用比例)
+                        used_pct = mem.percent / 100 if mem.total > 0 else 0
+                        gpu_mem_used = int(vram_total * used_pct)
+                        gpu_mem_total = vram_total
+                    else:
+                        gpu_mem_used = max(vram_total - vram_free, 0)
+                        gpu_mem_total = vram_total
+                    metrics.append(Metrics(
+                        name="resources.gpu_utilization", value=round(mem.percent / 100, 3),
+                        unit="ratio", timestamp=timestamp,
+                        labels={"module": "resources", "gpu_vendor": gpu_label}
+                    ))
+                    metrics.append(Metrics(
+                        name="resources.gpu_memory_used", value=gpu_mem_used,
+                        unit="bytes", timestamp=timestamp,
+                        labels={"module": "resources", "total_bytes": str(gpu_mem_total), "gpu_vendor": gpu_label}
+                    ))
+            except Exception:
+                pass  # noqa: intentional — best-effort non-critical operation
+
+        except ImportError:
+            pass  # psutil 不可用，跳过实时指标  # noqa: optional-dependency
+
+        # 活跃分配数
         metrics.append(Metrics(
-            name="resources.gpu_utilization",
-            value=0.75,  # Placeholder
-            unit="ratio",
-            timestamp=timestamp,
+            name="resources.allocations_active", value=len(self._allocations),
+            unit="count", timestamp=timestamp,
             labels={"module": "resources"}
         ))
-        
-        # GPU memory
-        metrics.append(Metrics(
-            name="resources.gpu_memory_used",
-            value=32768,  # Placeholder
-            unit="MB",
-            timestamp=timestamp,
-            labels={"module": "resources"}
-        ))
-        
-        # CPU usage
-        metrics.append(Metrics(
-            name="resources.cpu_usage",
-            value=0.65,  # Placeholder
-            unit="ratio",
-            timestamp=timestamp,
-            labels={"module": "resources"}
-        ))
-        
-        # Memory usage
-        metrics.append(Metrics(
-            name="resources.memory_usage",
-            value=0.70,  # Placeholder
-            unit="ratio",
-            timestamp=timestamp,
-            labels={"module": "resources"}
-        ))
-        
-        # Nodes count
-        metrics.append(Metrics(
-            name="resources.nodes_total",
-            value=len(self._nodes),
-            unit="count",
-            timestamp=timestamp,
-            labels={"module": "resources"}
-        ))
-        
-        # Healthy nodes
-        healthy_count = sum(1 for node in self._nodes.values() if node.status == "healthy")
-        metrics.append(Metrics(
-            name="resources.nodes_healthy",
-            value=healthy_count,
-            unit="count",
-            timestamp=timestamp,
-            labels={"module": "resources"}
-        ))
-        
-        # Active allocations
-        metrics.append(Metrics(
-            name="resources.allocations_active",
-            value=len(self._allocations),
-            unit="count",
-            timestamp=timestamp,
-            labels={"module": "resources"}
-        ))
-        
+
         return metrics
     
     async def health_check(self) -> HealthStatus:
@@ -238,3 +240,4 @@ class ResourcesManager(ManagementBase):
             available=total_gpus - used_gpus,
             utilization=used_gpus / total_gpus if total_gpus > 0 else 0
         )
+

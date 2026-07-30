@@ -1,4 +1,5 @@
 """
+import logging
 Phase 30: GoalExecutor — autonomous closed-loop improvement executor.
 
 Takes improvement proposals from GoalGenerator (Phase 28) and executes
@@ -16,11 +17,20 @@ Execution lifecycle:
 
 Default: auto_execute_enabled=False (safety-first, human opt-in).
 """
+# === capability_dependencies (Phase 43: auto-verified) ===
+# depends_on:
+#   - extension-and-learning:
+#       symbols: [GoalGenerator, ToolBootstrapEngine, StrategySearchEngine]
+#   - abstract-goal-decomposition:
+#       symbols: [AbstractGoalDecomposer, GoalDependencyGraph, GoalProgressEvaluator]
+#   - deploy-and-canary:
+#       symbols: [DeployEngine]
+# === end ===
 
 from __future__ import annotations
 
 import asyncio
-import logging
+import os as _os
 import time
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
@@ -120,6 +130,9 @@ class GoalExecutor:
             logger.debug("goal scan failed: %s", e)
             return
 
+        # Phase 39: Count business_objective goals before execution
+        bizobj_before = sum(1 for g in goals if g.goal_type.value == "business_objective")
+
         executed = 0
         for goal in goals[:self._max_per_scan]:
             success = await self._execute_goal(goal)
@@ -138,9 +151,106 @@ class GoalExecutor:
                 len(goals), executed,
             )
 
+        # Phase 39: Progress evaluation after business_objective decomposition
+        if bizobj_before > 0:
+            try:
+                from core.harness.optimization.goal_progress_evaluator import get_goal_progress_evaluator
+                evaluator = get_goal_progress_evaluator()
+                from core.harness.optimization.goal_dependency_graph import get_goal_dependency_graph
+                dep_graph = get_goal_dependency_graph()
+                gs = dep_graph.stats()
+                completed_goals = [
+                    g for gid, node in dep_graph._nodes.items()
+                    if node.completed
+                ]
+                report = evaluator.evaluate(
+                    abstract_goal="(pending objectives)",
+                    completed_sub_goals=[n.goal for gid, n in dep_graph._nodes.items() if n.completed],
+                    total_goals=gs["total_goals"],
+                )
+                logger.info(
+                    "[goal_executor] progress: %.0f%% (%d/%d) trend=%s rec=%s",
+                    report.completion_rate * 100,
+                    report.completed_count, report.total_count,
+                    report.trend, report.recommendation,
+                )
+            except Exception as e:
+                logger.debug("[goal_executor] progress eval skipped: %s", e)
+
     def _has_bootstrapped(self, error_type: str) -> bool:
         """Phase 31: Check if we've already bootstrapped this error type."""
         return error_type in self._bootstrapped
+
+    async def _execute_business_objective(self, goal) -> bool:
+        """Phase 39: Decompose an abstract business objective into sub-goals.
+
+        Calls AbstractGoalDecomposer.decompose(), registers sub-goals in
+        GoalDependencyGraph, infers dependencies, and executes the first layer.
+        """
+        evidence = goal.source_evidence
+        abstract_text = evidence.get("abstract_goal_text", "")
+        domain_id = evidence.get("domain_id", "")
+        if not abstract_text:
+            logger.debug("[goal_executor] business_objective: no abstract_goal_text")
+            return False
+
+        try:
+            from core.harness.optimization.abstract_goal_decomposer import get_abstract_goal_decomposer
+            decomposer = get_abstract_goal_decomposer()
+            if not decomposer.enabled:
+                logger.info("[goal_executor] AbstractGoalDecomposer disabled, skip bizobj")
+                return False
+
+            result = await decomposer.decompose(abstract_text, domain_id=domain_id or None)
+            if not result.sub_goals:
+                logger.info(
+                    "[goal_executor] business_objective decomposed: 0 sub-goals "
+                    "(feasibility=%.2f, missing_caps=%d)",
+                    result.feasibility, len(result.missing_capabilities),
+                )
+                return False
+
+            from core.harness.optimization.goal_dependency_graph import get_goal_dependency_graph
+            dep_graph = get_goal_dependency_graph()
+            for sg in result.sub_goals:
+                dep_graph.add_goal(sg)
+
+            await dep_graph.infer_dependencies(result.sub_goals)
+            plan = dep_graph.compute_execution_order()
+
+            logger.info(
+                "[goal_executor] business_objective decomposed: "
+                "'%s' → %d sub-goals in %d layers (feasibility=%.2f)",
+                abstract_text[:40], len(result.sub_goals),
+                len(plan.layers), result.feasibility,
+            )
+
+            executed = 0
+            for layer in plan.layers[:2]:
+                batch = await asyncio.gather(*[
+                    self._execute_goal(g) for g in layer
+                ], return_exceptions=True)
+                for i, ok in enumerate(batch):
+                    if ok is True:
+                        dep_graph.mark_completed(layer[i].goal_id)
+                        executed += 1
+                    elif isinstance(ok, Exception):
+                        logger.warning(
+                            "[goal_executor] bizobj sub-goal %s failed: %s",
+                            layer[i].goal_id[:12], ok,
+                        )
+
+            self._history.append(ExecutionRecord(
+                goal_id=goal.goal_id,
+                goal_type=goal.goal_type.value,
+                executed_at=time.time(),
+                success=executed > 0,
+                description=f"Decomposed '{abstract_text[:30]}' → {executed} executed",
+            ))
+            return executed > 0
+        except Exception as e:
+            logger.warning("[goal_executor] business_objective failed: %s", e)
+            return False
 
     async def execute_goal(self, goal) -> bool:
         """Execute a single goal ON DEMAND (human-approved path). Records history.
@@ -160,8 +270,28 @@ class GoalExecutor:
         return success
 
     async def _execute_goal(self, goal) -> bool:
-        """Execute a single auto-executable goal. Returns success."""
+        """Execute a single auto-executable goal. Returns success.
+
+        Phase 39: checks GoalDependencyGraph before execution.
+        """
         try:
+            # ── Phase 39: dependency check ──
+            try:
+                from core.harness.optimization.goal_dependency_graph import get_goal_dependency_graph
+                dep_graph = get_goal_dependency_graph()
+                blocker = dep_graph.check_blocked(goal.goal_id)
+                if blocker:
+                    logger.debug(
+                        "[goal_executor] goal %s blocked by %s, skipping",
+                        goal.goal_id[:12], blocker[:12],
+                    )
+                    return False
+            except Exception:
+                logging.getLogger(__name__).debug('_execute_goal failed', exc_info=True)
+
+            if goal.goal_type.value == "business_objective":
+                return await self._execute_business_objective(goal)
+
             if goal.goal_type.value == "strategy_optimize":
                 # Mark the error_type for active exploration
                 evidence = goal.source_evidence
@@ -175,6 +305,8 @@ class GoalExecutor:
                         "[goal_executor] auto-optimized: %s (%s → restarting search)",
                         error_type, weak_strategy,
                     )
+                    self._mark_completed(goal.goal_id)
+                    await self._push_to_gateway(f"auto-optimized: {error_type} → search reset ({weak_strategy})")
                     return True
 
             elif goal.goal_type.value == "exploration_gap":
@@ -188,6 +320,8 @@ class GoalExecutor:
                         "[goal_executor] auto-exploring: %s → search reset",
                         error_type,
                     )
+                    self._mark_completed(goal.goal_id)
+                    await self._push_to_gateway(f"auto-exploring: {error_type} → search reset")
                     return True
 
             elif goal.goal_type.value == "knowledge_stale":
@@ -218,11 +352,39 @@ class GoalExecutor:
                         "[goal_executor] bootstrapped tool: %s → %s",
                         safe_name, result.status,
                     )
-                    return result.status == "registered"
+                    ok = result.status == "registered"
+                    if ok:
+                        self._mark_completed(goal.goal_id)
+                        await self._push_to_gateway(f"auto-bootstrapped tool: {safe_name}")
+                        # Phase 40: auto-deploy after successful bootstrap
+                        try:
+                            from core.harness.deployment.deploy_engine import get_deploy_engine
+                            deploy_engine = get_deploy_engine()
+                            if deploy_engine.enabled:
+                                deploy_result = await deploy_engine.deploy(
+                                    safe_name, "v1.0.0",
+                                    effects_type=result.effects_type,
+                                )
+                                logger.info(
+                                    "[goal_executor] deployed: %s → %s (canary=%d%%)",
+                                    safe_name, deploy_result.status, deploy_result.canary_pct,
+                                )
+                        except Exception:
+                            logging.getLogger(__name__).debug('code failed', exc_info=True)
+                    return ok
 
         except Exception as e:
             logger.warning("[goal_executor] execution failed for %s: %s", goal.goal_id, e)
         return False
+
+    @staticmethod
+    def _mark_completed(goal_id: str) -> None:
+        """Phase 39: Mark a goal as completed in the dependency graph."""
+        try:
+            from core.harness.optimization.goal_dependency_graph import get_goal_dependency_graph
+            get_goal_dependency_graph().mark_completed(goal_id)
+        except Exception:
+            logging.getLogger(__name__).debug('_mark_completed failed', exc_info=True)
 
     def stats(self) -> Dict[str, Any]:
         """Execution statistics."""
@@ -237,6 +399,20 @@ class GoalExecutor:
             "last_scan_age_seconds": round(time.time() - self._last_scan_ts, 1) if self._last_scan_ts else -1,
             "recent_executions": recent,
         }
+
+    async def _push_to_gateway(self, message: str) -> None:
+        """Push auto-execution result to enterprise gateway + trigger verification pipeline."""
+        try:
+            from core.gateway import get_enterprise_gateway
+            gw = get_enterprise_gateway()
+            await gw.send_message("system", f"[goal-executor] {message}")
+        except Exception:
+            logging.getLogger(__name__).debug('_push_to_gateway failed', exc_info=True)
+        try:
+            from core.harness.ontology_engine.engine import trigger_pipeline
+            await trigger_pipeline("goal_verification", {"message": message})
+        except Exception:
+            logging.getLogger(__name__).debug('_push_to_gateway failed', exc_info=True)
 
 
 # ── Singleton ──

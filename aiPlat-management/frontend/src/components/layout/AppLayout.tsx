@@ -1,17 +1,18 @@
 import { useState, useEffect } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
+import { menuItems, type MenuEntry, type MenuItem, type MenuGroup } from '../../pageManifest';
 
 // ── Role-based sidebar visibility ──────────────────────────────────────
 
 const ROLE_MENUS: Record<string, string[]> = {
-  admin:     ["overview","knowledge","ai","diagnostics","infra","platform","value","approval"],
-  developer: ["overview","knowledge","ai","diagnostics","infra","platform","value"],
-  operator:  ["overview","diagnostics","knowledge","infra","platform"],
-  business:  ["overview","value"],
-  user:      ["overview","platform"],
-  approver:  ["overview","approval"],
-  fde:       ["overview","knowledge","ai","diagnostics","infra","value"],
-  viewer:    ["overview","value"],
+  admin:     ["dashboard","knowledge","build","diagnostics","platform","help"],
+  developer: ["dashboard","knowledge","build","diagnostics","help"],
+  operator:  ["dashboard","diagnostics","platform","help"],
+  business:  ["dashboard","help"],
+  user:      ["dashboard","help"],
+  approver:  ["dashboard","diagnostics","help"],
+  fde:       ["dashboard","knowledge","build","diagnostics","help"],
+  viewer:    ["dashboard","help"],
 };
 
 function getRole(): string {
@@ -28,123 +29,12 @@ const ROLE_LABELS: Record<string, string> = {
 };
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Activity, BarChart3, Bell, BookOpen, Bot, Box, Brain, ChevronDown, ChevronLeft,
-  ChevronRight, Cpu, Database, FileText, Flag, FolderOpen, GitBranch, HardDrive, Key,
-  LogOut, MessageSquare, Monitor, Network, Package, PenTool, Plug,
-  Rocket, Search, Server, Settings, Share2, Shield, ShoppingBag, Sliders, Sparkles,
-  Target, TrendingUp, User, Users, Wrench,
+  Activity, ChevronDown, ChevronLeft,
+  ChevronRight, LogOut, Settings, User,
   type LucideIcon,
 } from 'lucide-react';
 import { NotificationBellButton, NotificationProvider, ToastProvider } from '../ui';
-
-interface MenuItem {
-  key: string;
-  icon: LucideIcon;
-  label: string;
-}
-
-interface MenuGroup {
-  group: string;
-  label: string;
-  items: MenuItem[];
-}
-
-const menuItems: (MenuItem | { divider: boolean } | MenuGroup)[] = [
-  { group: 'overview', label: '总览', items: [
-    { key: '/system-overview', icon: Activity, label: '系统概览' },
-    { key: '/alerts', icon: Bell, label: '告警中心' },
-    { key: '/system-graph', icon: Share2, label: '系统图谱' },
-    { key: '/docs', icon: BookOpen, label: '文档系统' },
-  ]},
-  { divider: true },
-  { group: 'knowledge', label: '知识中心', items: [
-    { key: '/knowledge/overview', icon: Share2, label: '管线总览' },
-    { key: '/platform/kb?tab=vault', icon: FileText, label: '原始资料' },
-    { key: '/infra/ontology', icon: Box, label: '本体模型' },
-    { key: '/ontology-editor', icon: PenTool, label: '本体编辑器' },
-    { key: '/platform/kb?tab=documents', icon: Database, label: '向量知识库' },
-    { key: '/platform/kb?tab=wiki', icon: BookOpen, label: 'LLM Wiki' },
-    { key: '/platform/kb?tab=eval', icon: Search, label: 'RAG 检索' },
-    { key: '/platform/kb?tab=quality', icon: TrendingUp, label: '质量反馈' },
-  ]},
-  { divider: true },
-  { group: 'ai', label: 'AI 能力', items: [
-    // ── Engine 管理 ──
-    { key: '/core/agents', icon: Bot, label: 'Agent 管理' },
-    { key: '/core/skills', icon: Sparkles, label: 'Skill 管理' },
-    { key: '/core/tools', icon: Wrench, label: 'Tool 管理' },
-    { key: '/core/mcp', icon: Plug, label: 'MCP 管理' },
-    { key: '/core/workflows', icon: GitBranch, label: 'Workflow 管理' },
-    { key: '/core/memory', icon: Brain, label: 'Memory 管理' },
-    // ── 配置与模板 ──
-    { key: '/core/prompts', icon: FileText, label: '系统 Prompt' },
-    { key: '/prompts/app', icon: FileText, label: '提示词模板' },
-    { key: '/core/variables', icon: PenTool, label: '变量管理' },
-    { key: '/core/credentials', icon: Key, label: '凭证管理' },
-    // ── 应用市场 ──
-    { key: '/workspace/agents', icon: Bot, label: 'Agent 市场' },
-    { key: '/workspace/skills', icon: Sparkles, label: 'Skill 市场' },
-    { key: '/workspace/tools', icon: Wrench, label: 'Tool 市场' },
-    { key: '/workspace/mcp', icon: Plug, label: 'MCP 市场' },
-    { key: '/workspace/teams', icon: Users, label: '团队组装' },
-    { key: '/workspace/marketplace', icon: ShoppingBag, label: '商城' },
-    { key: '/core/skill-packs', icon: Package, label: '包管理' },
-    { key: '/plugins', icon: Box, label: '插件管理' },
-    // ── 分析 ──
-    { key: '/core/agent-insight', icon: BarChart3, label: 'Agent 能力' },
-    { key: '/diagnostics/eval', icon: BarChart3, label: 'Agent 评估' },
-  ]},
-  { divider: true },
-  { group: 'diagnostics', label: '诊断与修复', items: [
-    { key: '/diagnostics', icon: Activity, label: '诊断中心' },
-    { key: '/diagnostics/repairs', icon: Wrench, label: '修复中心' },
-    { key: '/diagnostics/fde', icon: Wrench, label: 'FDE 工作台' },
-    { key: '/diagnostics/llm-review', icon: Search, label: 'LLM 审查' },
-  ]},
-  { divider: true },
-  { group: 'infra', label: '基础设施', items: [
-    { key: '/infra/nodes', icon: Server, label: '节点管理' },
-    { key: '/infra/models', icon: Cpu, label: '模型管理' },
-    { key: '/infra/finetune', icon: Wrench, label: '模型微调' },
-    { key: '/infra/services', icon: Database, label: '服务管理' },
-    { key: '/infra/scheduler', icon: HardDrive, label: '算力调度' },
-    { key: '/infra/storage', icon: Database, label: '存储管理' },
-    { key: '/infra/network', icon: Network, label: '网络管理' },
-    { key: '/infra/monitoring', icon: Monitor, label: '监控告警' },
-    { key: '/infra/llm-stats', icon: Monitor, label: 'LLM 路由监控' },
-  ]},
-  { divider: true },
-  { group: 'platform', label: '平台管理', items: [
-    { key: '/platform/gateway', icon: Network, label: 'API 网关' },
-    { key: '/platform/auth', icon: Shield, label: '认证鉴权' },
-    { key: '/platform/tenant', icon: Users, label: '多租户' },
-    { key: '/app/channels', icon: MessageSquare, label: '渠道管理' },
-    { key: '/app/sessions', icon: MessageSquare, label: '会话管理' },
-    { key: '/app/builder', icon: FolderOpen, label: '项目构建' },
-    { key: '/app/diagrams', icon: PenTool, label: '图表工作室' },
-    { key: '/app/apps', icon: Rocket, label: '已部署应用' },
-    { key: '/studio', icon: Sparkles, label: 'App Studio' },
-    { key: '/releases', icon: Rocket, label: '版本管理' },
-    { key: '/onboarding', icon: Settings, label: '初始化向导' },
-    { key: '/pentest', icon: Shield, label: '渗透测试' },
-    { key: '/workbench', icon: Monitor, label: '终端工作台' },
-  ]},
-  { divider: true },
-  { group: 'value', label: '价值中心', items: [
-    { key: '/value-center', icon: BarChart3, label: '价值看板' },
-    { key: '/value-center/kpis', icon: Target, label: 'KPI 管理' },
-    { key: '/value-center/goals', icon: Flag, label: '目标追踪' },
-    { key: '/value-center/roles', icon: Users, label: '角色管理' },
-    { key: '/value-center/strategy', icon: Sliders, label: '策略控制' },
-    { key: '/value-center/training', icon: GitBranch, label: '训练监控' },
-  ]},
-  { divider: true },
-  { group: 'approval', label: '审批中心', items: [
-    { key: '/approval', icon: Package, label: '资产审批' },
-    { key: '/core/approvals', icon: Shield, label: '运行时审批' },
-    { key: '/approval/history', icon: FileText, label: '审批记录' },
-  ]},
-];
+import FloatingDigitalHuman from '../digital-human/FloatingDigitalHuman';
 
 const userMenuItems: (MenuItem | { divider: boolean; key: string })[] = [
   { key: 'profile', icon: User, label: '个人中心' },
@@ -159,6 +49,30 @@ const AppLayout: React.FC = () => {
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [roleMenuOpen, setRoleMenuOpen] = useState(false);
 
+  // URL-based auto-expand: compute initial expanded groups from current path
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(() => {
+    const expanded = new Set<string>();
+    const path = location.pathname + location.search;
+    for (const group of menuItems) {
+      if (!('group' in group)) continue;
+      for (const item of group.items) {
+        if (item.subLabel) continue;
+        if (path.startsWith(item.key) || path === item.key) {
+          expanded.add(group.group); break;
+        }
+        // Handle /platform/kb?tab=xxx pattern
+        if (item.key.includes('?') && path.startsWith(item.key.split('?')[0])) {
+          const tabA = new URLSearchParams(item.key.split('?')[1]).get('tab');
+          const tabB = new URLSearchParams(location.search).get('tab');
+          if (tabA && tabB && tabA === tabB) {
+            expanded.add(group.group); break;
+          }
+        }
+      }
+    }
+    return expanded;
+  });
+
   // Role-based default landing page redirect
   useEffect(() => {
     const role = getRole();
@@ -167,12 +81,33 @@ const AppLayout: React.FC = () => {
       if (role === 'fde') {
         navigate('/diagnostics/fde', { replace: true });
       } else if (role === 'approver') {
-        navigate('/approval', { replace: true });
+        navigate('/governance', { replace: true });
       }
     }
   }, []);
 
-  const isActive = (path: string) => location.pathname === path;
+  const toggleGroup = (g: string) => {
+    setExpandedGroups(prev => {
+      const next = new Set(prev);
+      if (next.has(g)) next.delete(g); else next.add(g);
+      return next;
+    });
+  };
+
+  const isActive = (path: string) => {
+    // Exact match
+    if (location.pathname + location.search === path) return true;
+    // Handle /platform/kb?tab=xxx matching
+    if (path.includes('?tab=')) {
+      const keyPath = path.split('?')[0];
+      const keyTab = new URLSearchParams(path.split('?')[1]).get('tab');
+      const curTab = new URLSearchParams(location.search).get('tab');
+      if (location.pathname === keyPath && keyTab === curTab) return true;
+    }
+    // Prefix match for non-tab routes (avoid /diagnostics matching /diagnostics/xyz)
+    if (!path.includes('?') && location.pathname === path) return true;
+    return false;
+  };
 
   return (
     <ToastProvider>
@@ -221,14 +156,36 @@ const AppLayout: React.FC = () => {
 
               if ('group' in item) {
                 if (!canSee(item.group)) return null;
+                const gname = item.group;
+                const isExpanded = expandedGroups.has(gname);
+                // Check if any sub-item is active for group highlight
+                const hasActiveChild = item.items.some(si =>
+                  !si.subLabel && isActive(si.key));
                 return (
                   <div key={item.group} className="mb-2">
-                    {!collapsed && (
-                      <div className="px-3 py-2 text-xs font-medium text-gray-500 uppercase tracking-wide">
-                        {item.label}
-                      </div>
-                    )}
-                    {item.items.map((subItem) => {
+                    {/* Group header — click to expand/collapse */}
+                    <button
+                      onClick={() => toggleGroup(gname)}
+                      className={`w-full flex items-center justify-between px-3 py-2 rounded-lg
+                        text-xs font-medium uppercase tracking-wide transition-colors
+                        ${hasActiveChild ? 'text-primary' : 'text-gray-500 hover:text-gray-300'}`}
+                    >
+                      <span className="truncate">{item.label}</span>
+                      {!collapsed && (
+                        <ChevronDown className={`w-3 h-3 transition-transform ${isExpanded ? '' : '-rotate-90'}`} />
+                      )}
+                    </button>
+                    {/* Group items — shown when expanded */}
+                    {isExpanded && !collapsed && item.items.map((subItem) => {
+                      // Sub-label header (non-clickable)
+                      if (subItem.subLabel) {
+                        return (
+                          <div key={subItem.subLabel}
+                               className="px-3 pt-2 pb-1 text-[10px] font-semibold text-gray-500 uppercase tracking-wider">
+                            {subItem.subLabel}
+                          </div>
+                        );
+                      }
                       const active = isActive(subItem.key);
                       return (
                         <button
@@ -242,13 +199,24 @@ const AppLayout: React.FC = () => {
                               : 'text-gray-500 hover:bg-dark-hover hover:text-gray-200'
                             }
                           `}
-                          title={collapsed ? subItem.label : undefined}
+                          title={subItem.label}
                         >
-                          <subItem.icon className="w-[18px] h-[18px] flex-shrink-0" />
-                          {!collapsed && <span>{subItem.label}</span>}
+                          {subItem.icon && <subItem.icon className="w-[18px] h-[18px] flex-shrink-0" />}
+                          <span className="truncate">{subItem.label}</span>
                         </button>
                       );
                     })}
+                    {/* Collapsed mode: show only active child icon */}
+                    {!isExpanded && collapsed && hasActiveChild && (
+                      <div className="flex justify-center px-2">
+                        {(() => {
+                          const activeItem = item.items.find(si => !si.subLabel && isActive(si.key));
+                          return activeItem?.icon
+                            ? <activeItem.icon className="w-5 h-5 text-primary" />
+                            : null;
+                        })()}
+                      </div>
+                    )}
                   </div>
                 );
                }
@@ -402,8 +370,9 @@ const AppLayout: React.FC = () => {
           </div>
           </main>
         </div>
-      </NotificationProvider>
-    </ToastProvider>
+        </NotificationProvider>
+        <FloatingDigitalHuman currentRoute={location.pathname} />
+      </ToastProvider>
   );
 };
 

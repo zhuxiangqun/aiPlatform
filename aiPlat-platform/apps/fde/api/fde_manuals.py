@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from typing import Any, Dict, List
-from apps.fde.schemas import FdeStatusResponse, FdeListResponse, FdeItemResponse
+from apps.fde.api.schemas import FdeStatusResponse, FdeListResponse, FdeItemResponse
 
 
 from fastapi import APIRouter, HTTPException, Query
@@ -71,7 +71,7 @@ def _generate_manual_content(req: FdeManualRequest) -> str:
 
     term_table = ""
     try:
-        from core.harness.ontology_engine.graph_index import GraphIndex
+        from core.api.core_facade import GraphIndex
         tg = GraphIndex.load("enterprise-terms")
         terms = [(n.entity_name[:60], getattr(n, "source_doc_id", "")[:20])
                  for _, n in tg._nodes.items() if getattr(n, "class_name", "") == "Term"][:8]
@@ -82,7 +82,7 @@ def _generate_manual_content(req: FdeManualRequest) -> str:
 
     delivery_stats = ""
     try:
-        from core.harness.ontology_engine.graph_index import GraphIndex
+        from core.api.core_facade import GraphIndex
         fd = GraphIndex.load("fde-delivery")
         sessions = sum(1 for _, n in fd._nodes.items() if getattr(n, "class_name", "") == "DiagnosisSession")
         if sessions > 0:
@@ -370,7 +370,7 @@ async def fde_manual_start_delivery(project_id: str):
         co = project_id.replace("_", " ")
 
     import time as _t_sd, json as _json_sd
-    from core.harness.ontology_engine.graph_index import GraphIndex
+    from core.api.core_facade import GraphIndex
 
     fd = GraphIndex.load("fde-delivery")
     ts = str(int(_t_sd.time()))

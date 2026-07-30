@@ -186,7 +186,7 @@ class YAMLConfigLoader(IConfigLoader):
             with open(self._config_path, "w") as f:
                 yaml.dump(settings.to_dict(), f, default_flow_style=False)
         except ImportError:
-            pass
+            pass  # noqa: optional-dependency
 
 
 class ConfigManager:

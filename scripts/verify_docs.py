@@ -391,18 +391,21 @@ def check_undocumented_env_vars() -> None:
         log_warning(f"... 还有 {len(missing) - capped} 个未声明的环境变量（设置 AIPLAT_DOC_CHECK_ENV=1 查看全部）")
 
 
-# ── 检查 11：git diff 新增 public API 登记（告警） ──
+# ── 检查 11：git diff 新增 public API 登记（BLOCK after grace period）──
+
 def check_new_public_api() -> None:
     """
     Detect newly added public functions/classes/endpoints in recent .py changes
     that are NOT yet registered in CAPABILITIES.md.
-    
-    Uses git diff to find added `def ` and `class ` lines, then checks
-    if they appear in AIPLAT_CAPABILITIES.md.
+
+    Before grace period: WARN
+    After grace period: BLOCK (exit 1)
     """
     import subprocess
+    from datetime import datetime
     caps_text = CAPABILITIES_FILE.read_text(encoding="utf-8") if CAPABILITIES_FILE.exists() else ""
-    
+    blocking = datetime.now().strftime("%Y-%m-%d") >= HARDCODE_GRACE_END
+
     # Get recently changed .py files (last commit)
     try:
         result = subprocess.run(
@@ -411,10 +414,18 @@ def check_new_public_api() -> None:
         )
         changed_files = [f.strip() for f in result.stdout.split("\n") if f.endswith(".py")]
     except Exception:
-        return  # not a git repo or no history
+        return
 
     if not changed_files:
         return
+
+    # Build a template mapping: file path → suggested CAPABILITIES section
+    section_hints = {
+        "api/routers/": ("二十三", "核心API统一入口"),
+        "api/core_facade.py": ("二十三", "核心API统一入口"),
+        "harness/": ("一", "Harness 执行引擎"),
+        "apps/": ("应用", "对应模块"),
+    }
 
     unregistered = 0
     for fpath in changed_files:
@@ -425,52 +436,201 @@ def check_new_public_api() -> None:
             continue
 
         try:
-            # Get the diff for this file
-            diff_result = subprocess.run(
+            result = subprocess.run(
                 ["git", "-C", str(REPO_ROOT), "diff", "HEAD~1", "--", fpath],
                 capture_output=True, text=True, timeout=10,
             )
-            diff_lines = diff_result.stdout.split("\n")
+            diff_lines = result.stdout.split("\n")
         except Exception:
             continue
 
-        # Extract newly added public symbols
         import re
         new_symbols = set()
         for line in diff_lines:
             if not line.startswith("+"):
                 continue
-            # Skip the diff header
             if line.startswith("+++"):
                 continue
-            # Match: +def function_name(  or  +class ClassName
             m = re.match(r'^\+\s*(?:async\s+)?def\s+([a-zA-Z_][a-zA-Z0-9_]*)', line)
             if m and not m.group(1).startswith("_"):
                 new_symbols.add(m.group(1))
             m = re.match(r'^\+\s*class\s+([A-Z][a-zA-Z0-9_]*)', line)
             if m:
                 new_symbols.add(m.group(1))
-            # Match: +@router.(get|post|...) → next line contains endpoint path
             if '@router.' in line:
                 endpoint_match = re.search(r'@router\.(get|post|put|delete|patch)\("([^"]+)"', line)
                 if endpoint_match:
                     new_symbols.add(f"endpoint:{endpoint_match.group(2)}")
 
-        # Check each new symbol against CAPABILITIES
+        if not new_symbols:
+            continue
+
+        # Find matching section for this file
+        section_hint = ("未知", "")
+        for prefix, (sec, name) in section_hints.items():
+            if fpath.startswith(prefix):
+                section_hint = (sec, name)
+                break
+
         for sym in sorted(new_symbols):
-            # Skip common framework names
             if sym in ("__init__", "__post_init__", "main", "router", "to_dict", "from_dict",
                         "get_stats", "to_json", "from_json", "validate", "to_select_star"):
                 continue
             if sym not in caps_text:
                 rel = full_path.relative_to(REPO_ROOT)
-                log_warning(f"{rel} 新增了 '{sym}' 但未在 AIPLAT_CAPABILITIES.md 中登记")
+                # Build registration template
+                if sym.startswith("endpoint:"):
+                    ep = sym.replace("endpoint:", "")
+                    template = f'| {ep} | `{rel}` | ✅ | <描述> | 2026-{datetime.now().strftime("%m-%d")} |'
+                else:
+                    template = f'| {sym} | `{rel}` | ✅ | <描述> | 2026-{datetime.now().strftime("%m-%d")} |'
+                msg = (
+                    f"{rel} 新增了 '{sym}' 但未在 CAPABILITIES 中登记 → "
+                    f"请在 §{section_hint[0]} {section_hint[1]} 追加: {template}"
+                )
+                if blocking:
+                    log_error(f"BLOCK: {msg}")
+                else:
+                    log_warning(msg)
                 unregistered += 1
                 if unregistered >= 10:
                     break
 
         if unregistered >= 10:
             break
+
+
+# ── R13: Route validity — doc API routes vs code router registrations (WARN) ──
+def check_route_validity() -> None:
+    """Check that /api/* routes referenced in docs actually exist in code routers."""
+    import importlib, pkgutil
+    # Collect all registered routes from code
+    code_routes = set()
+    try:
+        sys.path.insert(0, str(REPO_ROOT / "aiPlat-core"))
+        from core.api.routers.system import router as sys_router
+        code_routes.update(f"/api/core{route.path}" for route in sys_router.routes if hasattr(route, 'path'))
+    except Exception:
+        pass  # router not available, skip
+
+    # Scan docs for /api/* references (but NOT in code blocks)
+    for md_file in DOCS_ROOT.glob("**/*.md"):
+        if "_archive" in str(md_file):
+            continue
+        try:
+            text = md_file.read_text(encoding="utf-8")
+            # Find API routes in regular text (not backtick-quoted)
+            routes = re.findall(r'`(/api/(?:core|platform|infra|app)/[a-zA-Z0-9_/-]+)`', text)
+            for route in routes:
+                if code_routes and route not in code_routes:
+                    log_warning(f"{md_file.relative_to(REPO_ROOT)} 引用了未注册路由: {route}")
+        except Exception:
+            continue
+
+
+# ── R14: Menu path residual — detect old menu nav patterns (WARN) ──
+def check_menu_paths() -> None:
+    """Detect old-style menu path patterns (→) in docs that should use stable URLs."""
+    # Know to skip design docs (describe intent, not state)
+    design_dirs = {str(DOCS_ROOT / "design"), str(DOCS_ROOT / "architecture")}
+    for md_file in DOCS_ROOT.glob("**/*.md"):
+        if "_archive" in str(md_file) or any(str(md_file).startswith(d) for d in design_dirs):
+            continue
+        try:
+            text = md_file.read_text(encoding="utf-8")
+            # Detect patterns like "XX → YY → ZZ" or "XX组 → YY页面"
+            menu_patterns = re.findall(r'[A-Z\u4e00-\u9fff][A-Za-z\u4e00-\u9fff ]+ → [A-Za-z\u4e00-\u9fff /]+', text)
+            if menu_patterns:
+                rel = md_file.relative_to(REPO_ROOT)
+                log_warning(f"{rel} 包含菜单导航路径（建议用稳定路由替代）: {menu_patterns[0][:60]}")
+        except Exception:
+            continue
+
+
+# ── R15: Hardcoded capability numbers — BLOCK after grace period ──
+HARDCODE_GRACE_END = "2026-08-20"  # 30-day grace from 2026-07-20
+
+def check_hardcoded_numbers_blocking() -> None:
+    """After grace period, bare capability counts (700-999 range) in non-CAPABILITIES files → BLOCK."""
+    from datetime import datetime
+    now = datetime.now().strftime("%Y-%m-%d")
+    if now < HARDCODE_GRACE_END:
+        return  # still in grace period
+
+    cap_count = 0
+    if CAPABILITIES_FILE.exists():
+        m = re.search(r'\*\*(\d+)\*\*', CAPABILITIES_FILE.read_text(encoding="utf-8")[:2000])
+        if m:
+            cap_count = int(m.group(1))
+
+    if not cap_count:
+        return
+
+    for md_file in DOCS_ROOT.glob("**/*.md"):
+        if "_archive" in str(md_file) or "AIPLAT_CAPABILITIES.md" in str(md_file):
+            continue
+        try:
+            text = md_file.read_text(encoding="utf-8")
+            bare = re.findall(r'(?<!\*)(?<!\`)(?<!\#)(?<!见 AIPLAT_CAPABILITIES\.md 当前计数[）)])' +
+                              r'(?:[7-9]\d\d)(?!\d)(?![\*`])', text)
+            for num in bare:
+                if 700 <= int(num) <= 999:
+                    rel = md_file.relative_to(REPO_ROOT)
+                    log_error(f"BLOCK: {rel} 中硬编码了能力数 {num}（30天宽限期已过，必须改为引用格式）")
+        except Exception:
+            continue
+
+
+def check_stale_descriptions() -> None:
+    """R16: Compare CAPABILITIES code references (file:line) against actual code.
+
+    Uses a heuristic: if the referenced line is in the first 5% of a large file (>300 lines),
+    the code has likely shifted and the reference may be stale.
+    """
+    if not CAPABILITIES_FILE.exists():
+        return
+
+    content = CAPABILITIES_FILE.read_text(encoding="utf-8")
+    refs = re.findall(r'`([a-zA-Z0-9_/.-]+\.py):(\d+)`', content)
+    stale = 0
+    for file_path, line_str in refs:
+        try:
+            line_num = int(line_str)
+        except ValueError:
+            continue
+        resolved = None
+        for base in ["aiPlat-core", "aiPlat-infra", "aiPlat-platform", "aiPlat-management", "aiPlat-app"]:
+            for sub in ["core/", ""]:
+                candidate = REPO_ROOT / base / sub / file_path
+                if candidate.exists():
+                    resolved = candidate
+                    break
+            if resolved:
+                break
+        if not resolved:
+            candidate = REPO_ROOT / file_path
+            if candidate.exists():
+                resolved = candidate
+
+        if not resolved:
+            continue
+
+        try:
+            current_lines = len(resolved.read_text(encoding="utf-8").split("\n"))
+        except Exception:
+            continue
+
+        # Heuristic: if line is in first 5% of file AND file > 300 lines, likely stale
+        ratio = line_num / max(current_lines, 1)
+        if current_lines > 300 and ratio < 0.05:
+            rel = resolved.relative_to(REPO_ROOT)
+            log_warning(
+                f"CAPABILITIES 引用 {file_path}:{line_num} 可能过时 — "
+                f"行号在文件开头 {ratio:.1%} 处（{current_lines} 行），代码可能已下移"
+            )
+            stale += 1
+            if stale >= 5:
+                break
 
 
 def check_claude_debt_verification() -> None:
@@ -527,6 +687,18 @@ def main():
     check_code_references()
     check_undocumented_env_vars()
     check_new_public_api()
+
+    # ── R13: Route validity — doc API routes vs code router registrations ──
+    check_route_validity()
+
+    # ── R14: Menu path residual — detect old menu navigation patterns ──
+    check_menu_paths()
+
+    # ── R15: Promote bare number to BLOCK (30-day grace) ──
+    check_hardcoded_numbers_blocking()
+
+    # ── Rule 16: Stale description detection (line number drift) ──
+    check_stale_descriptions()
 
     # ── Rule 12: CLAUDE.md §16 debt verification (§0.4 mandatory grep evidence) ──
     check_claude_debt_verification()

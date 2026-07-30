@@ -130,7 +130,7 @@ def classify(ctx: RoutingContext) -> RoutingResult:
                     try:
                         matched_signals[f"entity:{key}"] = m.group(gid)
                     except IndexError:
-                        pass
+                        pass  # noqa: cleanup-best-effort
 
     # Stage 2: Entity extraction
     entities: Dict[str, Any] = {}
@@ -140,7 +140,7 @@ def classify(ctx: RoutingContext) -> RoutingResult:
             try:
                 entities[key] = em.group(group_idx)
             except IndexError:
-                pass
+                pass  # noqa: cleanup-best-effort
 
     # Stage 3: Confidence level
     if best_confidence >= _RULE_CONFIDENCE_HIGH:
@@ -325,9 +325,10 @@ async def classify_with_llm(ctx: RoutingContext) -> RoutingResult:
             f'"entities": {{}}}}'
         )
 
-        resp = await adapter.generate(
-            [{"role": "user", "content": prompt}],
-            config=config,
+        from core.harness.syscalls.llm import sys_llm_generate
+        resp = await sys_llm_generate(
+            adapter, [{"role": "user", "content": prompt}],
+            trace_context={"source": "classifier", "phase": "intent"},
         )
         content = resp.content if hasattr(resp, 'content') else str(resp)
 
@@ -360,8 +361,9 @@ async def classify_with_llm(ctx: RoutingContext) -> RoutingResult:
                 result.suggested_tool_ids = _map_intent_to_tools(new_intent, ctx)
                 result.auto_filter_skill_ids = _map_intent_to_skills(new_intent, ctx, mode="filter")
             except ValueError:
-                pass  # Keep rule-based result
+                pass  # Keep rule-based result  # noqa: cleanup-best-effort
     except Exception as e:
         logging.debug(str(e), exc_info=True)
 
     return result
+

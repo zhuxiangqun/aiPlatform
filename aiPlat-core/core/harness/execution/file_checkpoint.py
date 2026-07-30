@@ -214,7 +214,7 @@ def _prune_path(dstdir: str, path_key: str, max_keep: int = 50) -> None:
                 if os.path.exists(p):
                     os.remove(p)
             except OSError:
-                pass
+                pass  # noqa: cleanup-best-effort
 
 
 __all__ = [
@@ -226,3 +226,4 @@ __all__ = [
     "CHECKPOINT_ROOT",
     "MAX_FILE_BYTES",
 ]
+

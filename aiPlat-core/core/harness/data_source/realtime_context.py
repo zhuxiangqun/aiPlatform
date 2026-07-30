@@ -78,7 +78,7 @@ def fetch_realtime_context(entity_name: str, domain_id: str) -> Optional[dict]:
                 try:
                     ctx["situation"] = sit_tpl.format(**record)
                 except (KeyError, ValueError):
-                    pass
+                    pass  # noqa: cleanup-best-effort
 
             prio_path = rc_map.get("priority_path", "")
             if prio_path:
@@ -102,3 +102,4 @@ def fetch_realtime_context(entity_name: str, domain_id: str) -> Optional[dict]:
         return None
     except Exception:
         return None
+

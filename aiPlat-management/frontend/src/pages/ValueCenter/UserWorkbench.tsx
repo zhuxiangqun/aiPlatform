@@ -3,6 +3,7 @@
  */
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import GrillPanel from '../../components/grilling/GrillPanel';
 
 interface Capability { id: string; name: string; desc: string; icon: string; }
 interface Step { name: string; status: string; }
@@ -37,6 +38,7 @@ const UserWorkbench: React.FC = () => {
   const [createSpecId, setCreateSpecId] = useState('');
   const [createContent, setCreateContent] = useState('');
   const [expandedCard, setExpandedCard] = useState<string | null>(null);
+  const [showGrill, setShowGrill] = useState(false);
   const [specFilter, setSpecFilter] = useState<string>('all');
   const [promoQueue, setPromoQueue] = useState<any[]>([]);
   const pollRef = useRef<number>(0);
@@ -61,14 +63,14 @@ const UserWorkbench: React.FC = () => {
     fetch('/api/core/workbench/capabilities').then(r => r.json()).then(setCaps);
     fetch('/api/core/workbench/tasks').then(r => r.json()).then(d => setHistory(d.items || []));
     fetch('/api/core/workbench/specs').then(r => r.json()).then(d => setSpecs(d.specs || []));
-    fetch('/api/core/workbench/fde-dashboard').then(r => r.json()).then(setFDEData);
+    fetch('/api/platform/apps/workbench/fde-dashboard').then(r => r.json()).then(setFDEData);
     fetch('/api/core/workbench/promotion-queue').then(r => r.json()).then(d => setPromoQueue(d.queue || []));
   }, []);
 
   useEffect(() => {
     dashRef.current = window.setInterval(async () => {
       try {
-        const res = await fetch('/api/core/workbench/fde-dashboard');
+        const res = await fetch('/api/platform/apps/workbench/fde-dashboard');
         setFDEData(await res.json());
         const pRes = await fetch('/api/core/workbench/promotion-queue');
         setPromoQueue((await pRes.json()).queue || []);
@@ -129,7 +131,7 @@ const UserWorkbench: React.FC = () => {
     // fallback refresh
     const sRes = await fetch('/api/core/workbench/specs');
     setSpecs((await sRes.json()).specs || []);
-    const dashRes = await fetch('/api/core/workbench/fde-dashboard');
+    const dashRes = await fetch('/api/platform/apps/workbench/fde-dashboard');
     setFDEData(await dashRes.json());
   };
 
@@ -137,7 +139,7 @@ const UserWorkbench: React.FC = () => {
     await fetch(`/api/core/workbench/spec/${specId}/mark-stable`, { method: 'POST' });
     const [sRes, dRes] = await Promise.all([
       fetch('/api/core/workbench/specs'),
-      fetch('/api/core/workbench/fde-dashboard'),
+      fetch('/api/platform/apps/workbench/fde-dashboard'),
     ]);
     setSpecs((await sRes.json()).specs || []);
     setFDEData(await dRes.json());
@@ -176,7 +178,7 @@ const UserWorkbench: React.FC = () => {
                  setTimeout(async () => {
                    const [sRes, dRes] = await Promise.all([
                      fetch('/api/core/workbench/specs'),
-                     fetch('/api/core/workbench/fde-dashboard'),
+                     fetch('/api/platform/apps/workbench/fde-dashboard'),
                    ]);
                    setSpecs((await sRes.json()).specs || []);
                    setFDEData(await dRes.json());
@@ -288,7 +290,7 @@ const UserWorkbench: React.FC = () => {
                     }
                     const res = await fetch('/api/core/workbench/promotion-queue');
                     setPromoQueue((await res.json()).queue || []);
-                    const dashRes = await fetch('/api/core/workbench/fde-dashboard');
+                    const dashRes = await fetch('/api/platform/apps/workbench/fde-dashboard');
                     setFDEData(await dashRes.json());
                   }} style={{
                     background: '#22c55e', color: '#fff', border: 'none', borderRadius: 6,
@@ -378,7 +380,7 @@ const UserWorkbench: React.FC = () => {
                   });
                   const [sRes, dRes] = await Promise.all([
                     fetch('/api/core/workbench/specs'),
-                    fetch('/api/core/workbench/fde-dashboard'),
+                    fetch('/api/platform/apps/workbench/fde-dashboard'),
                   ]);
                   setSpecs((await sRes.json()).specs || []);
                   setFDEData(await dRes.json());
@@ -530,6 +532,16 @@ const UserWorkbench: React.FC = () => {
           placeholder="请描述你的任务，例如：请审核这份采购合同中的价格、交付和违约条款..."
           style={{ width: '100%', minHeight: 80, background: '#0f172a', border: '1px solid #334155',
             borderRadius: 8, padding: 12, color: '#e2e8f0', fontSize: 13, resize: 'vertical', marginBottom: 12 }} />
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 8 }}>
+          <button onClick={() => setShowGrill(true)} disabled={submitting || !description.trim()}
+            style={{
+              background: '#1e40af', border: '1px solid #3b82f6', borderRadius: 6,
+              padding: '8px 14px', color: '#bfdbfe', cursor: (submitting || !description.trim()) ? 'not-allowed' : 'pointer',
+              fontSize: 13, fontWeight: 600, opacity: (submitting || !description.trim()) ? 0.5 : 1,
+            }}>
+            📋 需求澄清
+          </button>
+        </div>
         <button onClick={submit} disabled={submitting || !description.trim()}
           style={{ ...btnPrimary, opacity: submitting ? 0.5 : 1 }}>
           {submitting ? '提交中...' : '提交任务'}
@@ -636,6 +648,28 @@ const UserWorkbench: React.FC = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* v2.9: GrillingBridge — task requirements clarification */}
+      {showGrill && (
+        <GrillPanel
+          mode="modal"
+          entryPoint="workbench"
+          domainId={selectedCap !== 'general' ? selectedCap : ''}
+          title="任务需求澄清"
+          onComplete={(output) => {
+            const flat = output.answers as Record<string, string>;
+            if (Object.keys(flat).length > 0) {
+              const parts = [description];
+              for (const [k, v] of Object.entries(flat)) {
+                parts.push(`${k}: ${v}`);
+              }
+              setDescription(parts.join('\n'));
+            }
+            setShowGrill(false);
+          }}
+          onClose={() => setShowGrill(false)}
+        />
       )}
     </div>
   );

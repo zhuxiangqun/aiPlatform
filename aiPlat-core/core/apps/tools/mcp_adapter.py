@@ -137,7 +137,7 @@ class McpClient:
                     else:
                         self._pending[req_id].set_result(data.get("result"))
         except asyncio.CancelledError:
-            pass
+            pass  # noqa: normal-cancellation
         except Exception as e:
             logging.debug(str(e), exc_info=True)
 
@@ -224,3 +224,4 @@ async def get_mcp_adapter() -> McpAdapter:
             except Exception as e:
                 logging.debug(str(e), exc_info=True)
     return _mcp_adapter
+

@@ -110,7 +110,7 @@ class EventBus:
             loop = asyncio.get_running_loop()
             _worker_task = asyncio.create_task(cls._dlq_worker())
         except RuntimeError:
-            pass
+            pass  # noqa: cleanup-best-effort
         _log.info("EventBus started with DLQ worker")
 
     @classmethod
@@ -129,3 +129,4 @@ class EventBus:
                 except asyncio.QueueEmpty:
                     break
         _log.info("EventBus stopped")
+

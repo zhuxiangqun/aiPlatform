@@ -15,7 +15,7 @@ interface ClassDef {
 }
 
 function api(path: string) {
-  return `/api/platform/apps/ontology-editor${path}`;
+  return `/platform/apps/ontology-editor${path}`;  // apiClient prepends /api
 }
 
 export default function OntologyEditor() {
@@ -37,6 +37,8 @@ export default function OntologyEditor() {
   const [bottlenecks, setBottlenecks] = useState<any>(null);
   const [slaViolations, setSlaViolations] = useState<any>(null);
   const [trends, setTrends] = useState<any>(null);
+  const [engineRunning, setEngineRunning] = useState(false);
+  const [engineResult, setEngineResult] = useState<string>('');
   const [scenarioData, setScenarioData] = useState<any>(null);
   const [editing, setEditing] = useState(false);
   const [editForm, setEditForm] = useState<any>({});
@@ -44,7 +46,7 @@ export default function OntologyEditor() {
   const fetchDomains = useCallback(async () => {
     try {
       const res = await apiClient.get<{ domains: Domain[]; total: number }>(api('/domains'));
-      setDomains(res.data.domains || []);
+      setDomains((res as any).domains || []);  
     } catch (e: any) {
       setError('Failed to load domains: ' + (e.message || ''));
     }
@@ -57,7 +59,7 @@ export default function OntologyEditor() {
     setError('');
     try {
       const res = await apiClient.get<{ schema: any }>(api(`/domains/${domainId}/schema`));
-      setSchema(res.data.schema);
+      setSchema((res as any).schema);
     } catch (e: any) {
       setError('Failed to load schema: ' + (e.message || ''));
     } finally {
@@ -144,13 +146,37 @@ export default function OntologyEditor() {
       const res = await apiClient.post<{ suggestion: any }>(api(`/domains/${selectedDomain}/generate-from-description`), {
         description: nlDescription,
       });
-      setEditForm(res.data.suggestion);
+      setEditForm((res as any).suggestion);
       setEditing(true);
       setNlDescription('');
     } catch (e: any) {
       setError('Generation failed: ' + (e.message || ''));
     } finally {
       setGenerating(false);
+    }
+  };
+
+  const runEngine = async () => {
+    if (!selectedDomain) return;
+    setEngineRunning(true);
+    setEngineResult('Starting engine pipeline (this may take 1-3 minutes for LLM processing)...');
+    try {
+      const res = await apiClient.post<{ processed: number; total: number; domain: string; from_kb?: boolean }>(
+        `/core/domains/${selectedDomain}/build-instances?limit=3`
+      );
+      const data = res as any;
+      const from = data.from_kb ? 'KB documents' : 'wiki pages';
+      const msg = data.processed !== undefined
+        ? `Done: ${data.processed} ${from} processed`
+        : data.status === 'no_pages'
+          ? 'No wiki pages or KB docs found for this domain'
+          : `Completed: ${data.domain ?? selectedDomain}`;
+      setEngineResult(msg);
+      setTimeout(() => fetchMonitor(), 3000);
+    } catch (e: any) {
+      setEngineResult(`Engine pipeline started (running in background — check Monitor in 2-3 min)`);
+    } finally {
+      setEngineRunning(false);
     }
   };
 
@@ -163,10 +189,10 @@ export default function OntologyEditor() {
         apiClient.get(api(`/domains/${selectedDomain}/monitor/sla-violations`)),
         apiClient.get(api(`/domains/${selectedDomain}/monitor/trends?days=7`)),
       ]);
-      setStateDist(sd.data);
-      setBottlenecks(bo.data);
-      setSlaViolations(sl.data);
-      setTrends(tr.data);
+      setStateDist(sd as any);
+      setBottlenecks(bo as any);
+      setSlaViolations(sl as any);
+      setTrends(tr as any);
     } catch {}
   };
 
@@ -176,8 +202,8 @@ export default function OntologyEditor() {
 
   const fetchScenario = async () => {
     try {
-      const res = await apiClient.get('/api/platform/apps/ontology-editor/scenarios/recommend?mode=maturity');
-      setScenarioData(res.data);
+      const res = await apiClient.get('/platform/apps/ontology-editor/scenarios/recommend?mode=maturity');
+      setScenarioData(res as any);
     } catch {}
   };
 
@@ -302,10 +328,39 @@ export default function OntologyEditor() {
               ))}
             </div>
 
-            {/* Monitor panel */}
-            {monitorTab && (
-              <div style={{ flex: 1 }}>
-                <h4 style={{ margin: '0 0 12px', fontSize: 13, color: '#888' }}>State Distribution</h4>
+             {/* Monitor panel */}
+             {monitorTab && (
+               <div style={{ flex: 1 }}>
+                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                   <h4 style={{ margin: 0, fontSize: 13, color: '#888' }}>State Distribution</h4>
+                   <button
+                     onClick={runEngine}
+                     disabled={engineRunning}
+                     style={{
+                       display: 'flex', alignItems: 'center', gap: 6,
+                       padding: '4px 12px', borderRadius: 6,
+                       background: engineRunning ? '#333' : '#4f46e5',
+                       color: '#fff', border: 'none', cursor: engineRunning ? 'wait' : 'pointer',
+                       fontSize: 12, fontWeight: 500,
+                     }}
+                   >
+                     {engineRunning ? (
+                       <RefreshCw size={13} style={{ animation: 'spin 1s linear infinite' }} />
+                     ) : (
+                       <RefreshCw size={13} />
+                     )}
+                     {engineRunning ? 'Running…' : 'Run Engine'}
+                   </button>
+                 </div>
+                 {engineResult && (
+                   <div style={{
+                     padding: '4px 10px', marginBottom: 8, borderRadius: 4,
+                     background: engineResult.startsWith('Done') || engineResult.startsWith('Completed') ? '#1a3a2a' : '#3a1a1a',
+                     color: '#ccc', fontSize: 11,
+                   }}>
+                     {engineResult}
+                   </div>
+                 )}
                 {stateDist?.distribution?.length ? (
                   <div style={{ maxHeight: 300, overflowY: 'auto' }}>
                     {(() => {

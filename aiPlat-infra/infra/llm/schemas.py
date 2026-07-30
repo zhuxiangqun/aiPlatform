@@ -57,6 +57,7 @@ class LLMConfig:
     max_retries: int = 3
     temperature: float = 0.7
     max_tokens: Optional[int] = None
+    ollama_keep_alive: str = "0"  # "0"=unload immediately, "5m"=keep 5min, "-1"=keep forever
 
 
 @dataclass

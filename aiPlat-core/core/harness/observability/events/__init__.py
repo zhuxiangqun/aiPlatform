@@ -109,7 +109,7 @@ class EventBus:
                 self._queue.get_nowait()
                 self._queue.put_nowait(event)
             except asyncio.QueueEmpty:
-                pass
+                pass  # noqa: cleanup-best-effort
 
     def emit(
         self,

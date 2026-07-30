@@ -19,13 +19,8 @@ from core.utils.ids import new_prefixed_id
 from .db import KBSqlite
 from .storage import get_tenant_storage
 
-# Reuse PoC pipeline for now (A 阶段先收敛为技能/存储；后续可替换为 MinerU/Docling/自研结构化)
+# PR B: MinerU now integrated into core PdfConverter chain — use CoreFacade
 from .poc.ingest import ingest_scanned_pdf
-from .poc.mineru_extract import (
-    extract_tables_from_content_list,
-    load_mineru_content_list,
-    run_mineru_parse,
-)
 from .intelligence.embeddings import embed_text
 from core.api.facades.kb_facade import kb_parse_document, kb_chunk_document
 from core.api.facades.kb_facade import kb_classify_document
@@ -148,8 +143,7 @@ def enqueue_ingest(
                 source_uri=file_path,
                 kind=kind,
             status="ingesting",
-            content_hash=new_hash,  # noqa: F821
-                meta={"ocr_lang": ocr_lang, "ocr_engine": ocr_engine, "dpi": dpi, "max_pages": max_pages, "last_job_id": job_id},
+            meta={"ocr_lang": ocr_lang, "ocr_engine": ocr_engine, "dpi": dpi, "max_pages": max_pages, "last_job_id": job_id},
             )
             out = ingest_document(
                 tenant_id=tenant_id,
@@ -352,8 +346,70 @@ def ingest_url(
         try:
             __import__("os").unlink(tmp_path)
         except Exception:
-            pass
+            logging.getLogger(__name__).debug('_fetch failed', exc_info=True)
 
+
+
+def _cells_to_budget_rows(cells: List[List[str]]) -> List[Dict[str, Any]]:
+    """Extract budget rows from 2D table cells (consumes DocumentElement.cells).
+
+    Matches columns: 预算科目/科目/项目/内容, 2026, 2027, 合计/总计.
+    Platform business logic — no dependency on parser source.
+    """
+    if not cells or len(cells) < 2:
+        return []
+    header = [str(c).strip() for c in cells[0]]
+
+    def _find_col(keys: List[str]) -> Optional[int]:
+        for i, h in enumerate(header):
+            for k in keys:
+                if k in h:
+                    return i
+        return None
+
+    item_ci = _find_col(["预算科目", "科目", "项目", "内容"])
+    y2026_ci = _find_col(["2026"])
+    y2027_ci = _find_col(["2027"])
+    total_ci = _find_col(["合计", "总计"])
+    if item_ci is None or y2026_ci is None:
+        return []
+
+    def _to_amount(x: str) -> Optional[float]:
+        import re
+        s = (x or "").replace(",", "").strip()
+        m = re.search(r"[-+]?\d+(?:\.\d+)?", s)
+        if not m:
+            return None
+        try:
+            return float(m.group(0))
+        except Exception:
+            return None
+
+    out_rows: List[Dict[str, Any]] = []
+    for r in cells[1:]:
+        if not isinstance(r, list) or item_ci >= len(r):
+            continue
+        item = str(r[item_ci]).strip()
+        if not item:
+            continue
+        y2026_v = _to_amount(str(r[y2026_ci])) if y2026_ci < len(r) else None
+        y2027_v = _to_amount(str(r[y2027_ci])) if (y2027_ci is not None and y2027_ci < len(r)) else None
+        total_v = _to_amount(str(r[total_ci])) if (total_ci is not None and total_ci < len(r)) else None
+        if y2026_v is None and y2027_v is None and total_v is None:
+            continue
+        out_rows.append({
+            "item": item,
+            "y2026": y2026_v,
+            "y2027": y2027_v,
+            "total": total_v,
+            "cells": {
+                "item": {"text": item, "bbox": None},
+                "y2026": {"text": str(r[y2026_ci]) if y2026_ci < len(r) else "", "bbox": None},
+                "y2027": {"text": str(r[y2027_ci]) if (y2027_ci is not None and y2027_ci < len(r)) else "", "bbox": None},
+                "total": {"text": str(r[total_ci]) if (total_ci is not None and total_ci < len(r)) else "", "bbox": None},
+            },
+        })
+    return out_rows
 
 
 def ingest_document(
@@ -560,107 +616,39 @@ def ingest_document(
     out_dir = Path(st.assets_dir) / doc_id
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    # --- P1(A): try MinerU first (structure-driven table extraction) ---
+    # --- P1(A): CoreFacade unified parse (PdfConverter with MinerU Tier 3) ---
     mineru_rows: List[Tuple[int, Dict[str, Any]]] = []
     mineru_tables: List[Dict[str, Any]] = []
     try:
-        use_mineru = os.getenv("AIPLAT_KB_PARSER", "auto").lower() in ("auto", "mineru")
+        use_mineru = os.getenv(
+            "AIPLAT_PDF_MINERU_ENABLED",
+            os.getenv("AIPLAT_KB_PARSER", "auto"),
+        ).strip().lower() in ("auto", "mineru", "true", "1")
         if progress_cb:
-            progress_cb(0.06, "mineru_gate", {"AIPLAT_KB_PARSER": os.getenv("AIPLAT_KB_PARSER"), "enabled": use_mineru})
+            progress_cb(0.06, "kb_parse_start", {"parser": "core_facade"})
         if use_mineru:
             if progress_cb:
-                progress_cb(0.08, "mineru_parse_start", {})
-            mineru_out_dir = run_mineru_parse(
-                pdf_path=file_path,
-                out_dir=str(out_dir / "mineru"),
-                max_pages=max_pages,
-                parse_method="auto",
-                heartbeat_cb=lambda elapsed, timeout_s, extra: (
-                    progress_cb(
-                        0.08,
-                        "mineru_parsing",
-                        {"elapsed_s": int(elapsed), "timeout_s": int(timeout_s), **(extra or {})},
-                    )
-                    if progress_cb
-                    else None
-                ),
-            )
-            content_list = load_mineru_content_list(str(mineru_out_dir))
-            mineru_tables = extract_tables_from_content_list(content_list)
-
-            def _cells_to_budget_rows(cells: List[List[str]]) -> List[Dict[str, Any]]:
-                if not cells or len(cells) < 2:
-                    return []
-                header = [str(c).strip() for c in cells[0]]
-
-                def _find_col(keys: List[str]) -> Optional[int]:
-                    for i, h in enumerate(header):
-                        for k in keys:
-                            if k in h:
-                                return i
-                    return None
-
-                item_ci = _find_col(["预算科目", "科目", "项目", "内容"])
-                y2026_ci = _find_col(["2026"])
-                y2027_ci = _find_col(["2027"])
-                total_ci = _find_col(["合计", "总计"])
-                if item_ci is None or y2026_ci is None:
-                    return []
-
-                def _to_amount(x: str) -> Optional[float]:
-                    import re
-
-                    s = (x or "").replace(",", "").strip()
-                    m = re.search(r"[-+]?\d+(?:\.\d+)?", s)
-                    if not m:
-                        return None
-                    try:
-                        return float(m.group(0))
-                    except Exception:
-                        return None
-
-                out_rows: List[Dict[str, Any]] = []
-                for r in cells[1:]:
-                    if not isinstance(r, list) or item_ci >= len(r):
-                        continue
-                    item = str(r[item_ci]).strip()
-                    if not item:
-                        continue
-                    y2026_v = _to_amount(str(r[y2026_ci])) if y2026_ci < len(r) else None
-                    y2027_v = _to_amount(str(r[y2027_ci])) if (y2027_ci is not None and y2027_ci < len(r)) else None
-                    total_v = _to_amount(str(r[total_ci])) if (total_ci is not None and total_ci < len(r)) else None
-                    if y2026_v is None and y2027_v is None and total_v is None:
-                        continue
-                    out_rows.append(
-                        {
-                            "item": item,
-                            "y2026": y2026_v,
-                            "y2027": y2027_v,
-                            "total": total_v,
-                            "cells": {
-                                "item": {"text": item, "bbox": None},
-                                "y2026": {"text": str(r[y2026_ci]) if y2026_ci < len(r) else "", "bbox": None},
-                                "y2027": {"text": str(r[y2027_ci]) if (y2027_ci is not None and y2027_ci < len(r)) else "", "bbox": None},
-                                "total": {"text": str(r[total_ci]) if (total_ci is not None and total_ci < len(r)) else "", "bbox": None},
-                            },
-                        }
-                    )
-                return out_rows
-
+                progress_cb(0.08, "kb_parse_core", {})
+            elements = kb_parse_document(file_path, kind="pdf")
+            mineru_tables = [
+                {"page_idx": e.page_idx, "cells": e.cells, "caption": []}
+                for e in elements if e.type == "table"
+            ]
             for t in mineru_tables:
                 page_idx = int(t.get("page_idx") or 0)
                 cells = t.get("cells") or []
                 for rr in _cells_to_budget_rows(cells):
                     mineru_rows.append((page_idx, rr))
-
             if progress_cb:
-                progress_cb(0.18, "mineru_parse_done", {"tables": len(mineru_tables), "budget_rows": len(mineru_rows)})
+                progress_cb(0.18, "kb_parse_done",
+                            {"tables": len(mineru_tables), "budget_rows": len(mineru_rows)})
     except Exception as e:
         if progress_cb:
-            progress_cb(0.18, "mineru_parse_failed", {"error": str(e)})
+            progress_cb(0.18, "kb_parse_failed", {"error": str(e)})
         mineru_rows = []
         mineru_tables = []
 
+    # Phase B: OCR pipeline (page images + per-page text)
     try:
         res = ingest_scanned_pdf(
             file_path,
@@ -954,7 +942,8 @@ def _mask_pii(text: str) -> str:
     """Mask PII in text before storing in KB. Safe fallback on import error."""
     try:
         from core.api.core_facade import get_pii_detector  # v2.5: canonical path
-        return get_pii_detector().mask(text)
+        masked, _ = get_pii_detector().mask(text)
+        return masked
     except Exception:
         return text
 
@@ -1240,6 +1229,37 @@ def watch_directory(
                         db.touch_watch(tenant_id=tenant_id, watch_id=watch_id)
                     except Exception as e:
                         logging.debug(str(e), exc_info=True)
+                    # PR: Auto-update Wiki pages after reingest
+                    for doc_id in result.get("doc_ids", [])[:10]:
+                        try:
+                            import asyncio as _aio
+                            from core.api.core_facade import wiki_auto_update
+                            file_path = None
+                            for fp, did in result.get("_path_map", {}).items():
+                                if did == doc_id:
+                                    file_path = fp; break
+                            _aio.run(wiki_auto_update(
+                                doc_id=doc_id, file_path=file_path,
+                                collection_id=collection_id,
+                            ))
+                        except Exception:
+                            logging.getLogger(__name__).debug('_poll failed', exc_info=True)
+                    # v2.9: Auto-run ontology engine pipeline on changed docs
+                    for doc_id in result.get("doc_ids", [])[:10]:
+                        try:
+                            import asyncio as _aio
+                            from core.api.core_facade import auto_ontology_pipeline_for_doc
+                            file_path = None
+                            for fp, did in result.get("_path_map", {}).items():
+                                if did == doc_id:
+                                    file_path = fp; break
+                            if file_path:
+                                _aio.run(auto_ontology_pipeline_for_doc(
+                                    doc_id=doc_id, file_path=file_path,
+                                    collection_id=collection_id,
+                                ))
+                        except Exception:
+                            logging.getLogger(__name__).debug('_poll failed', exc_info=True)
             except Exception as e:
                 logging.debug(str(e), exc_info=True)
             time.sleep(max(poll_interval, 5.0))

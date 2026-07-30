@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { Button, Card, CardContent, CardHeader, Input, Textarea, toast } from '../../../components/ui';
-import { Plus, AlertTriangle, Database, Trash2 } from 'lucide-react';
+import { Plus, AlertTriangle, Database, Trash2, PenSquare } from 'lucide-react';
 import { useKBStore } from '../../../stores';
 import { kbApi } from '../../../services';
 import { DocumentGrid } from './DocumentGrid';
 import { UploadModal } from './UploadModal';
+import GrillPanel from '../../../components/grilling/GrillPanel';
 import { ChatPanel } from './ChatPanel';
 import WikiGraph from '../../../components/wiki/WikiGraph';
 import WikiListView from '../../../components/wiki/WikiListView';
@@ -31,7 +33,10 @@ const KnowledgeBasePage: React.FC = () => {
     setUploadModalOpen, clearSelection,
   } = useKBStore();
 
-  const [activeTab, setActiveTab] = useState<string>('documents');
+  const location = useLocation();
+  const navigate = useNavigate();
+  const _initTab = location.pathname.endsWith('/wiki') ? 'wiki' : location.pathname.endsWith('/eval') ? 'eval' : location.pathname.endsWith('/vault') ? 'vault' : location.pathname.endsWith('/health') ? 'health' : 'documents';
+  const [activeTab, setActiveTab] = useState<string>(_initTab);
 
   // Wiki states
   const [wikiPages, setWikiPages] = useState<any[]>([]);
@@ -41,14 +46,20 @@ const KnowledgeBasePage: React.FC = () => {
   const [wikiCategories, setWikiCategories] = useState<string[]>([]);
   const [wikiLoading] = useState(false);
 
-  // Read URL params for category/link from ontology page
+  // Read URL params for tab/category from sidebar navigation
   useEffect(() => {
-    const p = new URLSearchParams(window.location.search);
-    const tab = p.get('activeTab');
+    const p = new URLSearchParams(location.search);
+    const tab = p.get('tab') || p.get('activeTab');
     const cat = p.get('category');
-    if (tab) setActiveTab(tab);
+    // Route-based detection: /kb/wiki → 'wiki', /kb/eval → 'eval'
+    if (tab) { setActiveTab(tab); }
+    else if (location.pathname.endsWith('/wiki')) { setActiveTab('wiki'); }
+    else if (location.pathname.endsWith('/eval')) { setActiveTab('eval'); }
+    else if (location.pathname.endsWith('/vault')) { setActiveTab('vault'); }
+    else if (location.pathname.endsWith('/health')) { setActiveTab('health'); }
+    else { setActiveTab('documents'); }
     if (cat) setWikiCategory(cat);
-  }, []);
+  }, [location.search, location.pathname]);
   const [selectedPage, setSelectedPage] = useState<any>(null);
   const [wikiNewTitle, setWikiNewTitle] = useState('');
   const [wikiNewBody, setWikiNewBody] = useState('');
@@ -61,10 +72,14 @@ const KnowledgeBasePage: React.FC = () => {
   const [convertResult, setConvertResult] = useState<any>(null);
   const [converting, setConverting] = useState(false);
   const [convertingSelected, setConvertingSelected] = useState(false);
+  const [importingDocs, setImportingDocs] = useState(false);
+  const [importDocsResult, setImportDocsResult] = useState<any>(null);
+  const [showMoreMenu, setShowMoreMenu] = useState(false);
   const [newPageOpen, setNewPageOpen] = useState(false);
   const [unprocessedCount, setUnprocessedCount] = useState(0);
   const [unprocessedDocs, setUnprocessedDocs] = useState<any[]>([]);
   const [lintResult, setLintResult] = useState<any>(null);
+  const [showMetaGrill, setShowMetaGrill] = useState(false);
   const [healthTrend, setHealthTrend] = useState<any>(null);
   const [lintLoading, setLintLoading] = useState(false);
   const [proposals, setProposals] = useState<any[]>([]);
@@ -74,7 +89,7 @@ const KnowledgeBasePage: React.FC = () => {
   const [graphRefreshKey, setGraphRefreshKey] = useState(0);
   const [wikiChatOpen, setWikiChatOpen] = useState(false);
   const [exploreTitles, setExploreTitles] = useState<Set<string> | null>(null);
-  const [wikiCollection, setWikiCollection] = useState('default');
+  const [wikiCollection, setWikiCollection] = useState('system_docs');
   const [wikiCollections, setWikiCollections] = useState<Array<{ collection_id: string; page_count: number }>>([]);
   const [schema, setSchema] = useState<any>(null);
   const [allSchemas, setAllSchemas] = useState<any[]>([]);
@@ -149,7 +164,7 @@ const KnowledgeBasePage: React.FC = () => {
 
   const checkUnprocessed = async () => {
     try {
-      const res = await fetch(`${WIKI_API}/unprocessed-docs`).then(r => r.json());
+      const res = await fetch(`${WIKI_API}/unprocessed-docs?collection=${wikiCollection}`).then(r => r.json());
       const items = res.items || [];
       setUnprocessedDocs(items);
       setUnprocessedCount(items.length);
@@ -227,6 +242,11 @@ const KnowledgeBasePage: React.FC = () => {
     else if (activeTab === 'observe') { fetchOntoMetrics(); fetchModelLog(); fetchEvolutionHistory(); }
   }, [activeTab]);
 
+  // 分类/集合变更时自动刷新
+  useEffect(() => {
+    if (activeTab === 'wiki') fetchWikiPages();
+  }, [wikiCollection, wikiCategory]);
+
   // Auto-refresh ontology metrics every 60s (cache-friendly, TTL=5min)
   useEffect(() => {
     if (activeTab !== 'ontology' && activeTab !== 'observe') return;
@@ -238,7 +258,7 @@ const KnowledgeBasePage: React.FC = () => {
   const fetchWikiPages = async () => {
     void (wikiLoading);
     try {
-      let url = `${WIKI_API}/pages?limit=100&source=kb&collection=${wikiCollection}`;
+      let url = `${WIKI_API}/pages?limit=100&collection=${wikiCollection}`;
       if (wikiQuery) url += `&query=${encodeURIComponent(wikiQuery)}`;
       if (wikiCategory) url += `&category=${encodeURIComponent(wikiCategory)}`;
       const res = await fetch(url); const items = (await res.json()).items || [];
@@ -287,6 +307,13 @@ const KnowledgeBasePage: React.FC = () => {
       setK4EffectiveDate(''); setK4ExpiryDate(''); setK4Department(''); setK4Owner(''); setNewPageOpen(false); fetchWikiPages();
     } catch { toast.error('创建失败'); }
   };
+  const handleWikiEdit = (page?: any) => {
+    const p = page || selectedPage;
+    if (!p) return;
+    setWikiNewTitle(p.title || '');
+    setWikiNewBody(p.body || '');
+    setNewPageOpen(true);
+  };
   const handleWikiDelete = async (title: string) => {
     if (!confirm(`确定删除 "${title}"？`)) return;
     try {
@@ -310,7 +337,17 @@ const KnowledgeBasePage: React.FC = () => {
       if (docIds && docIds.length > 0) body.doc_ids = docIds;
       const res = await fetch(`${WIKI_API}/convert-from-kb`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
       const data = await res.json(); setConvertResult(data); toast.success(data.message || `转换 ${data.docs_converted || 0} 个文档`);
-      fetchWikiPages(); setTimeout(checkUnprocessed, 500); setGraphRefreshKey(k => k + 1); } catch {} finally { setConverting(false); }
+      fetchWikiPages(); setTimeout(checkUnprocessed, 500); setGraphRefreshKey(k => k + 1);       } catch { toast.error('导入失败'); } finally { setConverting(false); }
+  };
+  const handleImportDocsDir = async () => {
+    setImportingDocs(true); setImportDocsResult(null);
+    try {
+      const res = await fetch(`${WIKI_API}/ontology/import-docs-dir`, { method: 'POST' });
+      const data = await res.json(); setImportDocsResult(data);
+      toast.success(`已导入 ${data.created} 篇文档`);
+      fetchWikiPages(); setGraphRefreshKey(k => k + 1);
+    } catch { toast.error('导入失败'); }
+    finally { setImportingDocs(false); }
   };
   const handleConvertSelected = async () => {
     const unprocessedIds = new Set(unprocessedDocs.map((d: any) => d.doc_id));
@@ -323,7 +360,19 @@ const KnowledgeBasePage: React.FC = () => {
       const data = await res.json(); setConvertResult(data);
       toast.success(data.message || `转换 ${data.docs_converted || 0} 个文档`);
       fetchWikiPages(); setTimeout(checkUnprocessed, 500); setGraphRefreshKey(k => k + 1);
-    } catch {} finally { setConvertingSelected(false); }
+    } catch { toast.error('转换失败'); }     finally { setConvertingSelected(false); }
+  };
+  const handleConvertAllUnprocessed = async () => {
+    const ids = unprocessedDocs.map((d: any) => d.doc_id);
+    if (ids.length === 0) { toast.info('所有文档已关联 Wiki 页面'); return; }
+    setConvertingSelected(true);
+    try {
+      const body = { tenant_id: 'default', limit: 50, doc_ids: ids };
+      const res = await fetch(`${WIKI_API}/convert-from-kb`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      const data = await res.json(); setConvertResult(data);
+      toast.success(data.message || `转换 ${data.docs_converted || 0} 个文档`);
+      fetchWikiPages(); setTimeout(checkUnprocessed, 500); setGraphRefreshKey(k => k + 1);
+    } catch { toast.error('转换失败，请确认数据源连接正常'); } finally { setConvertingSelected(false); }
   };
   const handleCurate = async () => {
     setCurating(true); setCurateReport(null);
@@ -350,25 +399,14 @@ const KnowledgeBasePage: React.FC = () => {
     try {
       const res = await fetch(`${WIKI_API}/collections`);
       const data = await res.json();
-      setWikiCollections(data.collections || []);
-    } catch {}
+      const cols = (data.collections || []) as Array<{ collection_id: string; page_count: number }>;
+      // 确保当前选中的集合至少出现在列表中
+      if (wikiCollection && !cols.find(c => c.collection_id === wikiCollection)) {
+        cols.push({ collection_id: wikiCollection, page_count: 0 });
+      }
+      setWikiCollections(cols);
+    } catch { toast.error('无法加载 Wiki 集合列表'); }
   };
-  const handleCreateCollection = () => {
-    const name = prompt('输入新集合名称（英文/数字/下划线）：');
-    if (!name) return;
-    if (!/^[a-zA-Z0-9_]+$/.test(name)) { toast.error('集合名只能包含英文、数字和下划线'); return; }
-    fetch(`${WIKI_API}/collections`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ collection_id: name }) })
-      .then(r => r.json()).then(() => { fetchWikiCollections(); setWikiCollection(name); fetchWikiPages(); })
-      .catch(() => toast.error('创建集合失败'));
-  };
-  const handleDeleteCollection = (cid: string) => {
-    if (cid === 'default') { toast.error('不能删除 default 集合'); return; }
-    if (!confirm(`确定删除集合 "${cid}" 及其所有页面？`)) return;
-    fetch(`${WIKI_API}/collections/${encodeURIComponent(cid)}`, { method: 'DELETE' })
-      .then(r => r.json()).then(() => { fetchWikiCollections(); if (wikiCollection === cid) setWikiCollection('default'); fetchWikiPages(); })
-      .catch(() => toast.error('删除集合失败'));
-  };
-
   const fetchWikiSchema = async () => {
     try {
       const r = await fetch(`${WIKI_API}/schema?collection=${wikiCollection}`);
@@ -610,11 +648,18 @@ const KnowledgeBasePage: React.FC = () => {
 
   const selCount = selectedDocIds.size;
 
+  // Split route: /wiki /eval /vault /health render as standalone pages (no tab bar)
+  const isSplitRoute = location.pathname.endsWith('/wiki') || location.pathname.endsWith('/eval') || location.pathname.endsWith('/vault') || location.pathname.endsWith('/health');
+  const pageTitle = location.pathname.endsWith('/wiki') ? 'LLM Wiki' : location.pathname.endsWith('/eval') ? '检索评估' : location.pathname.endsWith('/vault') ? 'Vault 文档库' : location.pathname.endsWith('/health') ? '质量反馈' : '知识库';
+
+  const SPLIT_VISIBLE_TABS = ['documents', 'wiki', 'eval']; // only these appear in split-route navigation
+
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <h1 className="text-lg font-semibold text-gray-100">知识库</h1>
+          <h1 className="text-lg font-semibold text-gray-100">{pageTitle}</h1>
+          {!isSplitRoute && (
           <div className="flex gap-1">
             {(['documents', '编缉知识', '本体观测', '观测', 'Vault', '健康', '评估'] as const).map((label) => {
               const k = label === '评估' ? 'eval' : label === '编缉知识' ? 'wiki' : label === '健康' ? 'health' : label === '本体观测' ? 'ontology' : label === '观测' ? 'observe' : label === 'Vault' ? 'vault' : 'documents';
@@ -628,13 +673,17 @@ const KnowledgeBasePage: React.FC = () => {
               );
             })}
           </div>
+          )}
         </div>
         <div className="flex items-center gap-2">
           {selCount > 0 && (
             <Button variant="ghost" size="sm" onClick={clearSelection}>取消选中 ({selCount})</Button>
           )}
           {activeTab === 'documents' && (
+            <>
             <Button variant="primary" size="sm" onClick={() => setUploadModalOpen(true)}>上传资料</Button>
+            <Button variant="ghost" size="sm" onClick={() => setShowMetaGrill(true)}>📋 完善元数据</Button>
+            </>
           )}
         </div>
       </div>
@@ -644,19 +693,10 @@ const KnowledgeBasePage: React.FC = () => {
           <AlertTriangle className="w-4 h-4 text-yellow-400 shrink-0" />
           <span className="text-yellow-300">{unprocessedCount} 个已有文档尚未关联 Wiki 页面</span>
           <div className="flex-1" />
-          <Button variant="primary" size="sm"
-            onClick={handleConvertSelected}
-            loading={convertingSelected}>
-            转换选中 ({(() => {
-              const unprocessedIds = new Set(unprocessedDocs.map((d: any) => d.doc_id));
-              return Array.from(selectedDocIds).filter(id => unprocessedIds.has(id)).length;
-            })()})
+          <Button variant="ghost" size="sm" onClick={() => navigate('/platform/kb/wiki')}
+            className="text-xs text-yellow-400 hover:text-yellow-300">
+            前往 LLM Wiki 处理 →
           </Button>
-          <Button variant="ghost" size="sm" onClick={() => handleConvertKb()} loading={converting}
-            className="text-xs text-yellow-400">
-            批量转换全部
-          </Button>
-          {convertResult && <span className="text-xs text-gray-400">{convertResult.message}</span>}
         </div>
       )}
 
@@ -876,23 +916,33 @@ const KnowledgeBasePage: React.FC = () => {
               {wikiCategories.map(c => <option key={c} value={c}>{c}</option>)}
             </select>
             <div className="flex-1" />
-            <select value={wikiCollection} onChange={e => { setWikiCollection(e.target.value); fetchWikiPages(); }}
+            <select value={wikiCollection} onChange={e => setWikiCollection(e.target.value)}
               className="h-7 px-2 bg-dark-card border border-dark-border rounded text-xs text-gray-300">
               {wikiCollections.map(c => (
                 <option key={c.collection_id} value={c.collection_id}>{c.collection_id} ({c.page_count})</option>
               ))}
             </select>
-            <Button variant="ghost" size="sm" onClick={handleCreateCollection} className="text-xs" title="新建集合">+集合</Button>
-            <Button variant="ghost" size="sm" onClick={() => wikiCollection !== 'default' && handleDeleteCollection(wikiCollection)} className="text-xs text-red-400 hover:text-red-300" title="删除当前集合">-集合</Button>
-            <Button variant="ghost" size="sm" onClick={() => setWikiChatOpen(!wikiChatOpen)} className="text-xs">
-              💬 问答
-            </Button>
             <Button variant="ghost" size="sm" onClick={handleCurate} loading={curating} className="text-xs">策展</Button>
             <Button variant="ghost" size="sm" onClick={() => setNewPageOpen(true)} className="text-xs"><Plus className="w-3 h-3 mr-1" />新建</Button>
-            <Button variant="ghost" size="sm" onClick={() => { setParseText(''); setParseResult(null); setParseModalOpen(true); }} className="text-xs">🧬 解析</Button>
-            <Button variant="primary" size="sm" onClick={() => handleConvertKb()} loading={converting} className="text-xs"><Database className="w-3 h-3 mr-1" />导入</Button>
-            <Button variant="ghost" size="sm" onClick={handleAtomize} loading={atomizing} className="text-xs" title="原子化：将文档拆解为知识原子">⚛️ 原子化</Button>
-            <Button variant="ghost" size="sm" onClick={handleWikiClear} className="text-xs text-red-400 hover:text-red-300"><Trash2 className="w-3 h-3 mr-1" />清空</Button>
+            {unprocessedCount > 0 && (
+              <Button variant="ghost" size="sm" onClick={handleConvertAllUnprocessed} loading={convertingSelected} className="text-xs text-amber-400 hover:text-amber-300">
+                🔄 转换 {unprocessedCount} 篇
+              </Button>
+            )}
+            {/* 更多操作 */}
+            <div className="relative">
+              <Button variant="ghost" size="sm" onClick={() => setShowMoreMenu(!showMoreMenu)} className="text-xs">⋯ 更多</Button>
+              {showMoreMenu && (
+                <div className="absolute right-0 top-full mt-1 bg-dark-card border border-dark-border rounded-lg shadow-lg z-20 py-1 min-w-[140px]">
+                  <button onClick={() => { handleConvertKb(); setShowMoreMenu(false); }} className="w-full text-left px-3 py-1.5 text-xs text-gray-300 hover:bg-dark-hover"><Database className="w-3 h-3 inline mr-1" />从知识库导入</button>
+                  <button onClick={() => { handleImportDocsDir(); setShowMoreMenu(false); }} className="w-full text-left px-3 py-1.5 text-xs text-gray-300 hover:bg-dark-hover">📂 从文档目录导入</button>
+                  <button onClick={() => { setParseText(''); setParseResult(null); setParseModalOpen(true); setShowMoreMenu(false); }} className="w-full text-left px-3 py-1.5 text-xs text-gray-300 hover:bg-dark-hover">🧬 解析</button>
+                  <button onClick={() => { handleAtomize(); setShowMoreMenu(false); }} className="w-full text-left px-3 py-1.5 text-xs text-gray-300 hover:bg-dark-hover">⚛️ 原子化</button>
+                  <div className="border-t border-dark-border my-1" />
+                  <button onClick={() => { handleWikiClear(); setShowMoreMenu(false); }} className="w-full text-left px-3 py-1.5 text-xs text-red-400 hover:bg-dark-hover"><Trash2 className="w-3 h-3 inline mr-1" />清空集合</button>
+                </div>
+              )}
+            </div>
             {convertResult && <span className="text-[10px] text-gray-400">{convertResult.message}</span>}
             {curateReport && (
               <span className="text-[10px] text-gray-400">
@@ -917,13 +967,14 @@ const KnowledgeBasePage: React.FC = () => {
               {wikiViewMode === 'graph' ? (
                 <div className="flex-1 min-h-0 relative h-full">
               <WikiGraph key={graphRefreshKey} onSelectPage={(title: string) => readWikiPage(title)}
-                exploreTitles={exploreTitles} onExitExplore={handleExitExplore} />
+                exploreTitles={exploreTitles} onExitExplore={handleExitExplore} collection={wikiCollection} />
               {selectedPage && (
                 <div className="absolute top-2 right-2 w-80 max-h-[60%] overflow-auto bg-dark-card border border-dark-border rounded-lg shadow-lg z-10">
                   <div className="flex items-center justify-between p-2 border-b border-dark-border">
                     <span className="text-sm font-medium text-gray-200 truncate">{selectedPage.title}</span>
                     <div className="flex items-center gap-1">
                       <button onClick={() => handleExplore(selectedPage.title)} className="text-gray-500 hover:text-blue-400 text-xs" title="探索关联">🔍</button>
+                      <button onClick={handleWikiEdit} className="text-gray-500 hover:text-yellow-400 text-xs" title="编辑"><PenSquare className="w-3 h-3" /></button>
                       <button onClick={() => handleWikiDelete(selectedPage.title)} className="text-gray-500 hover:text-red-400 text-xs" title="删除"><Trash2 className="w-3 h-3" /></button>
                       <button onClick={() => setSelectedPage(null)} className="text-gray-500 hover:text-gray-300 text-xs">✕</button>
                     </div>
@@ -985,6 +1036,7 @@ const KnowledgeBasePage: React.FC = () => {
               pages={wikiPages}
               onSelect={(title: string) => readWikiPage(title)}
               onDelete={handleWikiDelete}
+              onEdit={(page: any) => handleWikiEdit(page)}
               sourceBadge={sourceBadge}
             />
           )}
@@ -1958,6 +2010,24 @@ const KnowledgeBasePage: React.FC = () => {
       )}
 
       <UploadModal open={uploadModalOpen} onClose={() => setUploadModalOpen(false)} onComplete={handleUploadComplete} />
+
+      {/* v2.9: GrillingBridge — document metadata collection */}
+      {showMetaGrill && (
+        <GrillPanel
+          mode="modal"
+          entryPoint="document_upload"
+          domainId="fde-delivery"
+          title="文档元数据"
+          onComplete={(output) => {
+            const flat = output.answers as Record<string, string>;
+            if (Object.keys(flat).length > 0) {
+              toast.success(`已收集 ${Object.keys(flat).length} 项元数据 — 后续上传文档将自动应用`);
+            }
+            setShowMetaGrill(false);
+          }}
+          onClose={() => setShowMetaGrill(false)}
+        />
+      )}
     </div>
   );
 };

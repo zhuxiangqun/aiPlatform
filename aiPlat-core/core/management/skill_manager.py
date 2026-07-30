@@ -1,2003 +1,4005 @@
 """
+
 Skill Manager - Manages Skill instances
 
+
+
 Provides CRUD operations for skills and execution management.
+
 """
 
+
+
 from dataclasses import dataclass, field
+
 from typing import Dict, List, Optional, Any
+
 from datetime import datetime, timezone
+
 import uuid
+
 import os
+
 from pathlib import Path
+
 import json
+
 import hashlib
+
 import logging
 
+
+
 import yaml
+
 import re
+
 import shutil
 
 
+
+
+
 @dataclass
+
 class SkillInfo:
+
     """Skill information"""
+
     id: str
+
     name: str
+
     type: str  # generation, analysis, transformation, retrieval, execution
+
     description: str
+
     status: str  # enabled, disabled, deprecated
+
     input_schema: Dict[str, Any]
+
     output_schema: Dict[str, Any]
+
     config: Dict[str, Any]
+
     dependencies: List[Dict[str, Any]]
+
     version: str
+
     created_at: datetime
+
     updated_at: datetime
+
     created_by: str
+
     metadata: Dict[str, Any] = field(default_factory=dict)
 
 
+
+
+
 @dataclass
+
 class SkillStats:
+
     """Skill execution statistics"""
+
     total_calls: int = 0
+
     success_count: int = 0
+
     failed_count: int = 0
+
     avg_duration_ms: float = 0.0
+
     success_rate: float = 0.0
 
 
+
+
+
 @dataclass
+
 class SkillExecution:
+
     """Skill execution record"""
+
     id: str
+
     skill_id: str
+
     status: str  # pending, running, completed, failed
+
     input_data: Dict[str, Any]
+
     output_data: Optional[Dict[str, Any]]
+
     error: Optional[str]
+
     start_time: datetime
+
     end_time: Optional[datetime]
+
     duration_ms: float
+
     # Extra metadata for governance/observability (e.g. approval_request_id).
+
     metadata: Dict[str, Any] = field(default_factory=dict)
 
 
+
+
+
 @dataclass
+
 class SkillVersion:
+
     """Skill version"""
+
     version: str
+
     status: str  # current, historical
+
     created_at: datetime
+
     changes: str
 
 
+
+
+
 def _notify_resource_mutated(resource_type: str, action: str, resource_id: str) -> None:
+
     """Fire-and-forget publish to EventBus so graph caches know to invalidate."""
+
     try:
+
         from core.harness.observability.events import EventBus, EventType
+
         EventBus.get_instance().emit(
+
             event_type=EventType.RESOURCE_MUTATED,
+
             source="SkillManager",
+
             data={"resource_type": resource_type, "action": action, "resource_id": resource_id},
+
         )
+
     except Exception as e:
+
         logging.debug(str(e), exc_info=True)
 
 
+
+
+
 class SkillManager:
+
     """
+
     Skill Manager - Manages Skill instances
+
     
+
     Provides:
+
     - Skill CRUD operations
+
     - Skill version management
+
     - Skill execution
+
     - Skill statistics
+
     """
+
     
+
     def __init__(
+
         self,
+
         seed: bool = True,
+
         *,
+
         scope: str = "engine",
+
         reserved_ids: Optional[set] = None,
+
     ):
+
         self._skills: Dict[str, SkillInfo] = {}
+
         self._stats: Dict[str, SkillStats] = {}
+
         self._executions: Dict[str, List[SkillExecution]] = {}
+
         self._versions: Dict[str, List[SkillVersion]] = {}
+
         # skill_id -> [agent_ids]
+
         self._bound_agents: Dict[str, List[str]] = {}
+
         self._scope = scope  # "engine" | "workspace"
+
         self._reserved_ids = reserved_ids or set()
+
         if seed:
+
             self._seed_data()
+
         else:
+
             # Prefer directory-based skills (<base>/skills/<skill_id>/SKILL.md) as source of truth.
+
             self._load_directory_skills()
 
+
+
     def _load_directory_skills(self) -> None:
+
         """Load directory-based skills from filesystem into management plane."""
+
         now = datetime.now(timezone.utc)
+
         # Load low priority first, then allow high priority (repo) to override
+
         for base_dir in self._resolve_skills_paths():
+
             if not base_dir.exists():
+
                 continue
+
             for item in base_dir.iterdir():
+
                 try:
+
                     if not item.is_dir():
+
                         continue
+
                     if item.name.startswith(".") or item.name in ["__pycache__", "scripts", "references", "assets"]:
+
                         continue
+
                     skill_md = item / "SKILL.md"
+
                     if not skill_md.exists():
+
                         continue
+
+
 
                     raw = skill_md.read_text(encoding="utf-8")
+
                     fm, _body = self._split_front_matter(raw)
+
                     fm = fm or {}
 
+
+
                     skill_id = str(fm.get("name") or item.name)
+
                     display_name = str(fm.get("display_name") or fm.get("displayName") or skill_id)
+
                     description = str(fm.get("description") or "")
+
                     category = str(fm.get("category") or "general")
+
                     version = str(fm.get("version") or "1.0.0")
+
                     status = str(fm.get("status") or ("enabled")).lower()
+
                     if status not in ["enabled", "disabled", "deprecated"]:
+
                         status = "enabled"
 
+
+
                     input_schema = fm.get("input_schema") or {}
+
                     output_schema = fm.get("output_schema") or {}
+
                     if not isinstance(input_schema, dict):
+
                         input_schema = {}
+
                     if not isinstance(output_schema, dict):
+
                         output_schema = {}
 
+
+
                     metadata = dict(fm)
+
                     # --- Skill kind detection (rule vs executable), production-safe by default ---
+
                     try:
+
                         kind, kind_meta = self._detect_skill_kind(skill_dir=item, front_matter=metadata)
+
                         metadata["skill_kind"] = kind
+
                         if isinstance(kind_meta, dict):
+
                             metadata.update(kind_meta)
+
                     except Exception:
+
                         metadata["skill_kind"] = metadata.get("skill_kind") or "rule"
+
                     # Normalize capabilities for later policy/doctor analysis.
+
                     caps = metadata.get("capabilities") or metadata.get("capability") or []
+
                     if isinstance(caps, str):
+
                         caps = [caps]
+
                     if not isinstance(caps, list):
+
                         caps = []
+
                     norm_caps: List[str] = []
+
                     for c in caps:
+
                         try:
+
                             s = str(c).strip()
+
                             if s:
+
                                 norm_caps.append(s)
+
                         except Exception:
+
                             continue
+
                     metadata["capabilities"] = norm_caps
+
                     # Normalize permissions (for executable skills / governance)
+
                     try:
+
                         perms = metadata.get("permissions") or []
+
                         if isinstance(perms, str):
+
                             perms = [perms]
+
                         if not isinstance(perms, list):
+
                             perms = []
+
                         metadata["permissions"] = [str(p).strip() for p in perms if str(p).strip()]
+
                     except Exception:
+
                         metadata["permissions"] = []
+
                     metadata.setdefault("filesystem", {})
+
                     if isinstance(metadata["filesystem"], dict):
+
                         metadata["filesystem"]["skill_dir"] = str(item)
+
                         metadata["filesystem"]["skill_md"] = str(skill_md)
+
                         metadata["filesystem"]["source"] = str(base_dir)
+
                     self._enrich_skill_provenance_and_integrity(metadata, skill_dir=item)
 
+
+
                     self._skills[skill_id] = SkillInfo(
+
                         id=skill_id,
+
                         name=display_name,
+
                         type=category,
+
                         description=description,
+
                         status=status,
+
                         input_schema=input_schema,
+
                         output_schema=output_schema,
+
                         config={"version": version},
+
                         dependencies=[],
+
                         version=version,
+
                         created_at=now,
+
                         updated_at=now,
+
                         created_by="filesystem",
+
                         metadata=metadata,
+
                     )
+
                     self._stats.setdefault(skill_id, SkillStats())
+
                     self._executions.setdefault(skill_id, [])
+
                     self._versions.setdefault(skill_id, [SkillVersion(version=version, status="current", created_at=now, changes="Loaded from filesystem")])
+
                     self._bound_agents.setdefault(skill_id, [])
+
                 except Exception:
+
                     import logging
+
                     logging.getLogger(__name__).warning(
+
                         f"Failed to load skill directory {item}: continuing to next skill", exc_info=True
+
                     )
+
                     continue
+
+
 
         # Bridge to execution-layer registry
+
         for _id, info in self._skills.items():
+
             self._bridge_to_registry(info)
+
             if info.status == "disabled":
+
                 try:
+
                     from core.apps.skills import get_skill_registry
+
                     get_skill_registry().disable(_id)
+
                 except Exception as e:
+
                     logging.debug(str(e), exc_info=True)
 
+
+
     def _detect_skill_kind(self, *, skill_dir: Path, front_matter: Dict[str, Any]) -> tuple[str, Dict[str, Any]]:
+
         """
+
         Detect skill kind for directory-based skills.
 
+
+
         Returns: (kind, extra_metadata)
+
           kind in {"rule", "executable"}
 
+
+
         Rules (production-safe, default conservative):
+
         1) frontmatter explicit:
+
            - executable:false -> rule
+
            - executable:true + runtime + entrypoint -> executable
+
         2) fallback inference:
+
            - handler.py or manifest.(json|yml|yaml) present -> executable
+
            - otherwise -> rule
+
         3) security threshold:
+
            - executable MUST declare permissions; otherwise degrade to rule and record warning.
+
         """
+
         fm = front_matter if isinstance(front_matter, dict) else {}
+
         warnings: List[str] = []
 
+
+
         def _bool(v: Any) -> Optional[bool]:
+
             if isinstance(v, bool):
+
                 return v
+
             if isinstance(v, str):
+
                 s = v.strip().lower()
+
                 if s in {"1", "true", "yes", "y", "on"}:
+
                     return True
+
                 if s in {"0", "false", "no", "n", "off"}:
+
                     return False
+
             return None
 
+
+
         explicit = _bool(fm.get("executable"))
+
         runtime = str(fm.get("runtime") or "").strip()
+
         entrypoint = str(fm.get("entrypoint") or fm.get("handler") or "").strip()
 
+
+
         kind = "rule"
+
         if explicit is False:
+
             kind = "rule"
+
         elif explicit is True:
+
             # explicit executable request
+
             if runtime and entrypoint:
+
                 kind = "executable"
+
             else:
+
                 kind = "executable"
+
                 if not runtime:
+
                     warnings.append("missing_runtime")
+
                 if not entrypoint:
+
                     warnings.append("missing_entrypoint")
+
         else:
+
             # infer from structure
+
             has_handler = skill_dir.joinpath("handler.py").exists()
+
             has_manifest = any(
+
                 skill_dir.joinpath(f).exists()
+
                 for f in ["manifest.json", "manifest.yaml", "manifest.yml", "SKILL.manifest.json"]
+
             )
+
             if has_handler or has_manifest:
+
                 kind = "executable"
+
+
 
         # security threshold for executable
+
         if kind == "executable":
+
             perms = fm.get("permissions")
+
             if not perms:
+
                 kind = "rule"
+
                 warnings.append("degraded_to_rule_missing_permissions")
 
+
+
         extra: Dict[str, Any] = {}
+
         if runtime:
+
             extra["runtime"] = runtime
+
         if entrypoint:
+
             extra["entrypoint"] = entrypoint
+
         if warnings:
+
             extra["kind_warnings"] = warnings
+
         return kind, extra
 
+
+
     def _read_skill_manifest_json(self, skill_dir: Path) -> Dict[str, Any]:
+
         """
+
         Optional provenance manifest, e.g.:
+
           {
+
             "publisher": "acme",
+
             "source": "https://github.com/acme/skills",
+
             "version": "1.2.3",
+
             "signature": "base64:...."   # reserved, not verified in P1-3 MVP
+
           }
+
         """
+
         p = skill_dir / "SKILL.manifest.json"
+
         if not p.exists():
+
             return {}
+
         try:
+
             raw = p.read_text(encoding="utf-8")
+
             data = json.loads(raw or "{}")
+
             return data if isinstance(data, dict) else {}
+
         except Exception:
+
             import logging
+
             logging.error("Failed to parse manifest %s", p, exc_info=True)
+
             return {}
+
+
 
     def _sha256_file(self, p: Path) -> str:
+
         h = hashlib.sha256()
+
         with p.open("rb") as f:
+
             while True:
+
                 b = f.read(1024 * 1024)
+
                 if not b:
+
                     break
+
                 h.update(b)
+
         return h.hexdigest()
 
+
+
     def _compute_skill_bundle_integrity(self, skill_dir: Path) -> Dict[str, Any]:
+
         """
+
         Compute a stable-ish directory hash for integrity/audit (not a security signature).
+
         """
+
         entries: List[str] = []
+
         total_bytes = 0
+
         file_count = 0
+
         files_sample: List[str] = []
+
         try:
+
             for p in sorted(skill_dir.rglob("*")):
+
                 try:
+
                     if p.is_dir():
+
                         continue
+
                     rel = str(p.relative_to(skill_dir))
+
                     # ignore dynamic/irrelevant folders
+
                     if rel.startswith("__pycache__/") or rel.endswith(".pyc"):
+
                         continue
+
                     if rel.startswith(".revisions/"):
+
                         continue
+
                     if rel.startswith(".git/"):
+
                         continue
+
                     if rel.startswith("node_modules/"):
+
                         continue
+
                     size = int(p.stat().st_size)
+
                     sha = self._sha256_file(p)
+
                     entries.append(f"{rel}\t{size}\t{sha}")
+
                     total_bytes += size
+
                     file_count += 1
+
                     if len(files_sample) < 20:
+
                         files_sample.append(rel)
+
                 except Exception:
+
                     continue
+
         except Exception as e:
+
             logging.debug(str(e), exc_info=True)
+
         bundle_sha256 = hashlib.sha256(("\n".join(entries)).encode("utf-8")).hexdigest()
+
         return {
+
             "bundle_sha256": bundle_sha256,
+
             "file_count": int(file_count),
+
             "total_bytes": int(total_bytes),
+
             "files_sample": files_sample,
+
         }
 
+
+
     def _enrich_skill_provenance_and_integrity(self, metadata: Dict[str, Any], *, skill_dir: Path) -> None:
+
         """
+
         Mutates metadata in-place.
+
         """
+
         if not isinstance(metadata, dict):
+
             return
+
         prov = metadata.get("provenance") if isinstance(metadata.get("provenance"), dict) else {}
+
         prov.setdefault("source_type", "filesystem")
+
         prov.setdefault("scope", (self._scope or "engine"))
+
         prov.setdefault("skill_dir", str(skill_dir))
 
+
+
         manifest = self._read_skill_manifest_json(skill_dir)
+
         if manifest:
+
             prov.setdefault("publisher", manifest.get("publisher"))
+
             prov.setdefault("source", manifest.get("source"))
+
             prov.setdefault("version", manifest.get("version"))
+
             if manifest.get("signature") is not None:
+
                 prov.setdefault("signature", manifest.get("signature"))
+
             try:
+
                 mpath = skill_dir / "SKILL.manifest.json"
+
                 if mpath.exists():
+
                     prov.setdefault("manifest_sha256", self._sha256_file(mpath))
+
             except Exception as e:
+
                 logging.debug(str(e), exc_info=True)
+
         metadata["provenance"] = prov
 
+
+
         integ = metadata.get("integrity") if isinstance(metadata.get("integrity"), dict) else {}
+
         try:
+
             integ.update(self._compute_skill_bundle_integrity(skill_dir))
+
         except Exception as e:
+
             logging.debug(str(e), exc_info=True)
+
         metadata["integrity"] = integ
 
+
+
     def compute_skill_signature_verification(self, skill: "SkillInfo", trusted_keys: Dict[str, str]) -> Dict[str, Any]:
+
         """
+
         Compute verification info and return a provenance dict (does not persist).
+
         """
+
         if not isinstance(getattr(skill, "metadata", None), dict):
+
             return {}
+
         prov = dict(skill.metadata.get("provenance") or {}) if isinstance(skill.metadata.get("provenance"), dict) else {}
+
         integ = skill.metadata.get("integrity") if isinstance(skill.metadata.get("integrity"), dict) else {}
+
         sig = prov.get("signature")
+
         bundle_sha = integ.get("bundle_sha256")
+
         ver = prov.get("version") or getattr(skill, "version", None) or ""
+
         if not sig or not bundle_sha:
-            return prov
-        if not trusted_keys:
-            prov["signature_verified"] = False
-            prov["signature_verified_reason"] = "no_trusted_keys"
+
             return prov
 
+        if not trusted_keys:
+
+            prov["signature_verified"] = False
+
+            prov["signature_verified_reason"] = "no_trusted_keys"
+
+            return prov
+
+
+
         try:
+
             from core.harness.infrastructure.crypto.signature import verify_skill_signature
 
+
+
             r = verify_skill_signature(
+
                 skill_id=str(skill.id),
+
                 version=str(ver),
+
                 bundle_sha256=str(bundle_sha),
+
                 signature=str(sig),
+
                 trusted_keys=trusted_keys,
+
             )
+
             prov["signature_verified"] = bool(r.get("verified"))
+
             prov["signature_verified_key_id"] = r.get("key_id")
+
             prov["signature_verified_reason"] = r.get("error")
+
         except Exception as e:
+
             prov["signature_verified"] = False
+
             prov["signature_verified_reason"] = f"exception:{type(e).__name__}"
+
         return prov
 
+
+
     def _find_skill_md(self, skill_id: str) -> Optional[Path]:
+
         """Find SKILL.md by searching skills paths from high priority to low."""
+
         for base_dir in reversed(self._resolve_skills_paths()):
+
             p = base_dir / skill_id / "SKILL.md"
+
             if p.exists():
+
                 return p
+
         return None
+
     
+
     def _seed_data(self):
+
         import os as _os
+
         import yaml as _yaml
 
+
+
         now = datetime.now(timezone.utc)
+
+
 
         engine_skills_root = _os.path.join(
+
             _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))),
+
             "engine", "skills"
+
         )
+
+
 
         if not _os.path.isdir(engine_skills_root):
+
             return
 
+
+
         for dirname in sorted(_os.listdir(engine_skills_root)):
+
             skill_dir = _os.path.join(engine_skills_root, dirname)
+
             skill_md = _os.path.join(skill_dir, "SKILL.md")
+
             if not _os.path.isfile(skill_md):
+
                 continue
+
             try:
+
                 with open(skill_md, "r", encoding="utf-8") as f:
+
                     raw = f.read()
+
             except Exception:
+
                 continue
+
+
 
             name = dirname
+
             display_name = name.replace("_", " ").title()
+
             skill_type = "general"
+
             description = ""
+
             status = "enabled"
+
             input_schema = {}
+
             output_schema = {}
 
+
+
             fm: dict = {}
+
             if raw.startswith("---"):
+
                 parts = raw.split("---", 2)
+
                 if len(parts) >= 3:
+
                     try:
+
                         fm = _yaml.safe_load(parts[1]) or {}
+
                         name = str(fm.get("name", dirname))
+
                         display_name = str(fm.get("display_name", display_name))
+
                         skill_type = str(fm.get("category", "general"))
+
                         description = str(fm.get("description", ""))
+
                         status = "enabled" if str(fm.get("status", "enabled")) != "disabled" else "disabled"
+
                         input_schema = fm.get("input_schema") or {}
+
                         output_schema = fm.get("output_schema") or {}
+
                         if not isinstance(input_schema, dict):
+
                             input_schema = {}
+
                         if not isinstance(output_schema, dict):
+
                             output_schema = {}
+
                     except Exception:
+
                         fm = {}
+
                         pass
 
+
+
             if name in self._skills:
+
                 continue
 
+
+
             self._skills[name] = SkillInfo(
+
                 id=name, name=display_name, type=skill_type, description=description,
+
                 status=status, input_schema=input_schema, output_schema=output_schema,
+
                 config=fm.get("config") if isinstance(fm, dict) else {"version": "1.0.0"},
+
                 dependencies=fm.get("dependencies") if isinstance(fm, dict) else [],
+
                 version=str(fm.get("version", "1.0.0")) if isinstance(fm, dict) else "1.0.0",
+
                 metadata=fm if isinstance(fm, dict) else {},
+
                 created_at=now, updated_at=now, created_by="system"
+
             )
+
             # Inject filesystem path for linter SOP body access (not written back to SKILL.md)
+
             if isinstance(self._skills[name].metadata, dict):
+
                 self._skills[name].metadata.setdefault("filesystem", {})["skill_md"] = skill_md
+
             self._stats[name] = SkillStats()
+
             self._executions[name] = []
+
             self._versions[name] = [SkillVersion(version="1.0.0", status="current", created_at=now, changes="初始版本")]
+
         self._bound_agents = {}  # skill_id -> [agent_ids]
+
         
+
         for skill_id, skill_info in self._skills.items():
+
             self._bridge_to_registry(skill_info)
+
     
+
     async def create_skill(
+
         self,
+
         name: str,
+
         skill_type: str,
+
         description: str,
+
         input_schema: Dict[str, Any],
+
         output_schema: Dict[str, Any],
+
         config: Optional[Dict[str, Any]] = None,
+
         dependencies: Optional[List[Dict[str, Any]]] = None,
+
         created_by: str = "system",
+
         metadata: Optional[Dict[str, Any]] = None,
+
         *,
+
         skill_id: Optional[str] = None,
+
         version: Optional[str] = None,
+
         status: Optional[str] = None,
+
     ) -> SkillInfo:
+
         """Create a new skill"""
+
         # -------------------- Template support (workspace) --------------------
+
         # We keep this best-effort and backwards compatible: if template metadata exists and
+
         # caller passed empty schema/config, we fill defaults.
+
         template_name = None
+
         sop_override = None
+
         if isinstance(metadata, dict):
+
             template_name = metadata.get("template") or None
+
             sop_override = metadata.get("sop") or None
 
+
+
         def _tmpl_for(name_or_category: str) -> Dict[str, Any]:
+
             """Provide a single generic template for new skills.
 
+
+
             Specific schemas and SOPs should be defined in SKILL.md files,
+
             not hardcoded per category in the management layer.
+
             """
+
             return {
+
                 "input_schema": {"input": {"type": "string", "required": True}},
+
                 "output_schema": {"output": {"type": "string", "required": True}},
+
                 "config": {"timeout_seconds": 60, "max_concurrent": 10, "retry_count": 1},
+
                 "sop": "1. 明确目标。\n2. 执行。\n3. 输出结果与下一步。",
+
             }
 
+
+
         tmpl = _tmpl_for(template_name or skill_type or "general")
+
         if not input_schema:
+
             input_schema = tmpl.get("input_schema") or {}
+
         if not output_schema:
+
             output_schema = tmpl.get("output_schema") or {}
+
         if not config:
+
             config = tmpl.get("config") or {}
+
         if not sop_override:
+
             sop_override = tmpl.get("sop") or None
 
+
+
         # Skill ID: allow explicit id (recommended for management-generated v2 skills).
+
         if isinstance(skill_id, str) and skill_id.strip():
+
             sid = skill_id.strip().lower()
+
             sid = sid.replace(" ", "_").replace("-", "_")
+
             # keep conservative characters only
+
             sid = "".join([c for c in sid if (c.isalnum() or c in ("_", "-"))])
+
             if not sid or not sid[0].isalpha():
+
                 raise ValueError("invalid_skill_id")
+
             skill_id = sid
+
         else:
+
             skill_id = name.lower().replace(" ", "_").replace("-", "_")
+
         if self._reserved_ids and skill_id in self._reserved_ids:
+
             raise ValueError(f"Skill id '{skill_id}' is reserved by engine scope and cannot be created in workspace.")
+
         now = datetime.now(timezone.utc)
+
         
+
         skill = SkillInfo(
+
             id=skill_id,
+
             name=name,
+
             type=skill_type,
+
             description=description,
+
             status=str(status or "enabled"),
+
             input_schema=input_schema,
+
             output_schema=output_schema,
+
             config=config or {
+
                 "timeout_seconds": 60,
+
                 "max_concurrent": 10,
+
                 "retry_count": 3
+
             },
+
             dependencies=dependencies or [],
+
             version=("v" + str(version).lstrip("v")) if isinstance(version, str) and version.strip() else "v1.0.0",
+
             created_at=now,
+
             updated_at=now,
+
             created_by=created_by,
+
             metadata=metadata or {}
+
         )
+
         
+
         self._skills[skill_id] = skill
+
         self._stats[skill_id] = SkillStats()
+
         self._executions[skill_id] = []
+
         self._versions[skill_id] = [
+
             SkillVersion(
+
                 version="v1.0.0",
+
                 status="current",
+
                 created_at=now,
+
                 changes="Initial version"
+
             )
+
         ]
+
         self._bound_agents[skill_id] = []
 
+
+
         # Auto-grant EXECUTE permission for system/admin on newly created workspace skills
+
         try:
+
             from core.apps.tools.permission import get_permission_manager, Permission
+
             pm = get_permission_manager()
+
             for uid in ("system", "admin"):
+
                 pm.grant_permission(uid, skill_id, Permission.EXECUTE, granted_by="auto_create")
+
         except Exception as e:
+
             logging.debug(str(e), exc_info=True)
 
+
+
         # Materialize directory-based skill on filesystem (SKILL.md + skeleton).
+
         # This makes skill definitions explicit, versionable, and compatible with Agent Skill / SOP mode.
+
         try:
+
             base_dir = self._resolve_skills_base_path()
+
             skill_dir = base_dir / skill_id
+
             skill_dir.mkdir(parents=True, exist_ok=True)
+
             (skill_dir / "references").mkdir(exist_ok=True)
+
             (skill_dir / "scripts").mkdir(exist_ok=True)
+
             (skill_dir / "assets").mkdir(exist_ok=True)
 
+
+
             skill_md_path = skill_dir / "SKILL.md"
+
             if not skill_md_path.exists():
+
                 # Prefer clean semver without leading "v" for SKILL.md.
+
                 semver = str(skill.version or "v1.0.0")
+
                 if semver.startswith("v"):
+
                     semver = semver[1:]
 
+
+
                 trigger_conditions = []
+
                 if isinstance(skill.metadata, dict):
+
                     tc = skill.metadata.get("trigger_conditions")
+
                     if isinstance(tc, list):
+
                         trigger_conditions = [str(x) for x in tc if isinstance(x, (str, int, float)) and str(x).strip()]
+
+
 
                 manifest = self._build_skill_manifest(skill)
 
+
+
                 header = yaml.safe_dump(manifest, sort_keys=False, allow_unicode=True).strip()
+
                 sop_body = ""
+
                 if isinstance(sop_override, str) and sop_override.strip():
+
                     # normalize: ensure numbered list format looks ok
+
                     sop_body = sop_override.strip().rstrip()
+
                 default_sop = "1. 第一步……\n2. 第二步……\n3. 第三步……"
+
                 body = f"""
+
+
 
 # {name}
 
+
+
 ## 目标
+
 用 1-3 句话说明此技能要达成的目标。
 
+
+
 ## 输入
+
 - 说明参数含义与默认值策略
+
 - 若依赖外部资源/路径/权限，请写清楚
 
+
+
 ## 输出
+
 - 输出物是什么（文本/文件/报告）
+
 - 输出位置与命名规则（如适用）
 
+
+
 ## 工作流程（SOP）
+
 {sop_body or default_sop}
 
+
+
 ## 质量要求（Checklist）
+
 - [ ] 覆盖所有输入范围与边界情况
+
 - [ ] 输出包含可追溯证据（如 trace_id/run_id/链接）
+
 - [ ] 遇到失败要给出原因与下一步建议
+
 """
+
                 skill_md_path.write_text(f"---\n{header}\n---\n{body.lstrip()}", encoding="utf-8")
 
+
+
             # Record filesystem location (best effort)
+
             if isinstance(skill.metadata, dict):
+
                 skill.metadata.setdefault("filesystem", {})
+
                 if isinstance(skill.metadata["filesystem"], dict):
+
                     skill.metadata["filesystem"]["skill_dir"] = str(skill_dir)
+
                     skill.metadata["filesystem"]["skill_md"] = str(skill_md_path)
+
                 # Compute provenance + integrity after filesystem materialization
+
                 self._enrich_skill_provenance_and_integrity(skill.metadata, skill_dir=skill_dir)
+
         except Exception as e:
+
             # Do not fail the management operation due to filesystem issues;
+
             # record the error for operators.
+
             if isinstance(skill.metadata, dict):
+
                 skill.metadata.setdefault("filesystem", {})
+
                 if isinstance(skill.metadata["filesystem"], dict):
+
                     skill.metadata["filesystem"]["error"] = str(e)
+
+
 
         # Register in execution-layer after filesystem materialization (so SOP can be injected)
+
         self._bridge_to_registry(skill)
+
         
+
         _notify_resource_mutated("skill", "created", skill_id)
+
         return skill
+
+
 
     def _resolve_skills_base_path(self) -> Path:
+
         """
+
         Resolve primary base path for directory-based skills (SKILL.md).
 
+
+
         Scope:
+
         - engine: <repo_root>/core/engine/skills
+
         - workspace: ~/.aiplat/skills
 
+
+
         Override:
+
         - AIPLAT_ENGINE_SKILLS_PATHS / AIPLAT_WORKSPACE_SKILLS_PATHS: pathsep-separated list (write target = last)
+
         - AIPLAT_ENGINE_SKILLS_PATH / AIPLAT_WORKSPACE_SKILLS_PATH: single path (write target)
+
         """
+
         paths = self._resolve_skills_paths()
+
         # last one is highest priority (write target)
+
         return paths[-1] if paths else (Path(__file__).resolve().parents[2] / "skills")
 
+
+
     async def installer_install(
+
         self,
+
         *,
+
         source_type: str,
+
         url: Optional[str] = None,
+
         ref: Optional[str] = None,
+
         path: Optional[str] = None,
+
         skill_id: Optional[str] = None,
+
         subdir: Optional[str] = None,
+
         auto_detect_subdir: bool = True,
+
         allow_overwrite: bool = False,
+
         metadata: Optional[Dict[str, Any]] = None,
+
     ) -> Dict[str, Any]:
+
         """
+
         Install third-party skills into filesystem (workspace scope only).
+
         This is intentionally management-plane only; runtime execution still goes through SkillRegistry/Executor.
+
         """
+
         scope = (self._scope or "engine").strip().lower()
+
         if scope != "workspace":
+
             raise PermissionError("installer_install_only_allowed_in_workspace_scope")
 
+
+
         from core.management.skill_installer import SkillInstaller
 
+
+
         base = self._resolve_skills_base_path()
+
         base.mkdir(parents=True, exist_ok=True)
+
         inst = SkillInstaller(target_base_dir=base)
 
+
+
         st = str(source_type or "").strip().lower()
+
         if st == "git":
+
             if not url:
+
                 raise ValueError("url_required")
+
             if not ref:
+
                 raise ValueError("ref_required")
+
             res = inst.install_from_git(
+
                 url=str(url),
+
                 ref=str(ref),
+
                 skill_id=skill_id,
+
                 subdir=subdir,
+
                 auto_detect_subdir=bool(auto_detect_subdir),
+
                 allow_overwrite=bool(allow_overwrite),
+
                 metadata=metadata,
+
             )
+
         elif st == "path":
+
             if not path:
+
                 raise ValueError("path_required")
+
             res = inst.install_from_path(
+
                 path=str(path),
+
                 skill_id=skill_id,
+
                 subdir=subdir,
+
                 auto_detect_subdir=bool(auto_detect_subdir),
+
                 allow_overwrite=bool(allow_overwrite),
+
                 metadata=metadata,
+
             )
+
         elif st == "zip":
+
             if not path:
+
                 raise ValueError("zip_path_required")
+
             res = inst.install_from_zip(
+
                 zip_path=str(path),
+
                 skill_id=skill_id,
+
                 subdir=subdir,
+
                 auto_detect_subdir=bool(auto_detect_subdir),
+
                 allow_overwrite=bool(allow_overwrite),
+
                 metadata=metadata,
+
             )
+
         else:
+
             raise ValueError("invalid_source_type")
+
+
 
         # reload directory skills into management plane and bridge to registry
+
         self._load_directory_skills()
+
         return {"installed": res.installed, "skipped": res.skipped, "base": str(base)}
 
+
+
     async def installer_plan(
+
         self,
+
         *,
+
         source_type: str,
+
         url: Optional[str] = None,
+
         ref: Optional[str] = None,
+
         path: Optional[str] = None,
+
         skill_id: Optional[str] = None,
+
         subdir: Optional[str] = None,
+
         auto_detect_subdir: bool = True,
+
         metadata: Optional[Dict[str, Any]] = None,
+
     ) -> Dict[str, Any]:
+
         """
+
         Dry-run plan for installer (no filesystem writes).
+
         """
+
         scope = (self._scope or "engine").strip().lower()
+
         if scope != "workspace":
+
             raise PermissionError("installer_plan_only_allowed_in_workspace_scope")
+
         from core.management.skill_installer import SkillInstaller
 
+
+
         base = self._resolve_skills_base_path()
+
         base.mkdir(parents=True, exist_ok=True)
+
         inst = SkillInstaller(target_base_dir=base)
+
         st = str(source_type or "").strip().lower()
+
         if st == "git":
+
             if not url:
+
                 raise ValueError("url_required")
+
             if not ref:
+
                 raise ValueError("ref_required")
+
             plan = inst.plan_from_git(url=str(url), ref=str(ref), skill_id=skill_id, subdir=subdir, auto_detect_subdir=bool(auto_detect_subdir), metadata=metadata)
+
         elif st == "path":
+
             if not path:
+
                 raise ValueError("path_required")
+
             plan = inst.plan_from_path(path=str(path), skill_id=skill_id, subdir=subdir, auto_detect_subdir=bool(auto_detect_subdir), metadata=metadata)
+
         elif st == "zip":
+
             if not path:
+
                 raise ValueError("zip_path_required")
+
             plan = inst.plan_from_zip(zip_path=str(path), skill_id=skill_id, subdir=subdir, auto_detect_subdir=bool(auto_detect_subdir), metadata=metadata)
+
         else:
+
             raise ValueError("invalid_source_type")
+
         return {"source": plan.source, "detected_subdir": plan.detected_subdir, "skills": plan.skills, "warnings": plan.warnings}
 
+
+
     async def installer_resolve_head(self, *, url: str) -> Dict[str, Any]:
+
         """
+
         Resolve the current HEAD SHA for a git URL (workspace scope).
+
         """
+
         scope = (self._scope or "engine").strip().lower()
+
         if scope != "workspace":
+
             raise PermissionError("installer_resolve_head_only_allowed_in_workspace_scope")
+
         from core.management.skill_installer import resolve_remote_head_sha
 
+
+
         u = str(url or "").strip()
+
         if not u:
+
             raise ValueError("url_required")
+
         sha = resolve_remote_head_sha(u)
+
         return {"url": u, "head_sha": sha}
 
+
+
     async def installer_update(
+
         self,
+
         *,
+
         skill_id: str,
+
         ref: Optional[str] = None,
+
         metadata: Optional[Dict[str, Any]] = None,
+
     ) -> Dict[str, Any]:
+
         """
+
         Update an installed skill from its provenance manifest (git only for now).
+
         """
+
         scope = (self._scope or "engine").strip().lower()
+
         if scope != "workspace":
+
             raise PermissionError("installer_update_only_allowed_in_workspace_scope")
+
         sid = str(skill_id or "").strip()
+
         if not sid:
+
             raise ValueError("skill_id_required")
+
+
 
         base = self._resolve_skills_base_path()
+
         skill_dir = base / sid
+
         manifest_p = skill_dir / "SKILL.manifest.json"
+
         if not manifest_p.exists():
+
             raise ValueError("missing_skill_manifest")
+
         try:
+
             man = json.loads(manifest_p.read_text(encoding="utf-8") or "{}")
+
         except Exception:
+
             man = {}
+
         src = str(man.get("source") or "")
+
         if not src:
+
             raise ValueError("missing_manifest_source")
+
         publisher = str(man.get("publisher") or "")
+
         if publisher not in {"git"}:
+
             raise ValueError("update_only_supported_for_git_installs")
 
+
+
         use_ref = str(ref or man.get("ref") or "").strip()
+
         if not use_ref:
+
             raise ValueError("ref_required")
+
         subdir = str(man.get("subdir") or "").strip() or None
 
+
+
         # force overwrite for update
+
         return await self.installer_install(
+
             source_type="git",
+
             url=src,
+
             ref=use_ref,
+
             skill_id=sid,
+
             subdir=subdir,
+
             allow_overwrite=True,
+
             metadata=metadata,
+
         )
 
+
+
     async def installer_uninstall(self, *, skill_id: str, delete_files: bool = True) -> Dict[str, Any]:
+
         """
+
         Uninstall skill from workspace by deleting filesystem directory (best-effort).
+
         """
+
         scope = (self._scope or "engine").strip().lower()
+
         if scope != "workspace":
+
             raise PermissionError("installer_uninstall_only_allowed_in_workspace_scope")
+
         sid = str(skill_id or "").strip()
+
         if not sid:
+
             raise ValueError("skill_id_required")
+
         ok = await self.delete_skill(sid, delete_files=bool(delete_files))
+
         return {"skill_id": sid, "deleted": bool(ok)}
 
+
+
     def _resolve_skills_paths(self) -> List[Path]:
+
         """Resolve all skills paths in increasing priority order (low -> high) within current scope."""
+
         repo_root = Path(__file__).resolve().parents[2]  # aiPlat-core/
+
         engine_default = repo_root / "core" / "engine" / "skills"
+
         workspace_default = Path.home() / ".aiplat" / "skills"
 
+
+
         scope = (self._scope or "engine").strip().lower()
+
         if scope not in {"engine", "workspace"}:
+
             scope = "engine"
 
+
+
         paths_env = os.environ.get(f"AIPLAT_{scope.upper()}_SKILLS_PATHS")
+
         if paths_env:
+
             parts = [p.strip() for p in paths_env.split(os.pathsep) if p.strip()]
+
             out = [Path(p).expanduser() for p in parts]
+
             return [p.resolve() for p in out]
 
+
+
         single = os.environ.get(f"AIPLAT_{scope.upper()}_SKILLS_PATH")
+
         if single:
+
             return [Path(single).expanduser().resolve()]
 
+
+
         return [engine_default.resolve()] if scope == "engine" else [workspace_default.resolve()]
+
     
+
     def _bridge_to_registry(self, skill_info: SkillInfo) -> None:
+
         """Bridge: register skill in execution-layer SkillRegistry."""
+
         try:
+
             from core.apps.skills import get_skill_registry, create_skill as create_skill_instance
+
             from core.apps.skills.base import TextGenerationSkill, CodeGenerationSkill, DataAnalysisSkill
+
             from core.apps.skills.registry import _GenericSkill
+
             from core.harness.interfaces import SkillConfig
+
             
+
             registry = get_skill_registry()
+
             skill_id = skill_info.id
 
+
+
             # Normalize capabilities (from SKILL.md front matter) into registry metadata,
+
             # so runtime policy/doctor logic can consume it (e.g. "tool:webfetch").
+
             caps_in = []
+
             effects_in = []
+
             try:
+
                 if isinstance(skill_info.metadata, dict):
+
                     caps_in = skill_info.metadata.get("capabilities") or []
+
                     effects_in = skill_info.metadata.get("effects") or []
+
             except Exception:
+
                 caps_in = []
+
                 effects_in = []
+
             if isinstance(caps_in, str):
+
                 caps_in = [caps_in]
+
             if not isinstance(caps_in, list):
+
                 caps_in = []
+
             norm_caps: List[str] = []
+
             for c in caps_in:
+
                 try:
+
                     s = str(c).strip()
+
                     if s:
+
                         norm_caps.append(s)
+
                 except Exception:
+
                     continue
+
             
+
             _builtin_map = {
+
                 "text_generation": TextGenerationSkill,
+
                 "code_generation": CodeGenerationSkill,
+
                 "data_analysis": DataAnalysisSkill,
+
             }
+
             
+
             skill_cls = _builtin_map.get(skill_id)
+
             if skill_cls:
+
                 skill_instance = skill_cls()
+
                 # Override builtin config from directory-based SKILL.md if present
+
                 try:
+
                     md_path = self._find_skill_md(skill_id)
+
                     sop_markdown = ""
+
                     if md_path and md_path.exists():
+
                         raw = md_path.read_text(encoding="utf-8")
+
                         fm, body = self._split_front_matter(raw)
+
                         fm = fm or {}
+
                         sop_markdown = body.strip()
+
                         # Apply overrides to builtin config
+
                         cfg = getattr(skill_instance, "_config", None)
+
                         if cfg is not None:
+
                             cfg.description = skill_info.description
+
                             if hasattr(cfg, "metadata") and isinstance(cfg.metadata, dict):
+
                                 cfg.metadata["category"] = skill_info.type
+
                                 cfg.metadata["version"] = skill_info.version
+
                                 cfg.metadata["capabilities"] = norm_caps
+
                                 cfg.metadata["skill_kind"] = (skill_info.metadata or {}).get("skill_kind") if isinstance(skill_info.metadata, dict) else "rule"
+
                                 cfg.metadata["execution_type"] = (skill_info.metadata or {}).get("execution_type", "") if isinstance(skill_info.metadata, dict) else ""
+
                                 cfg.metadata["execution_mode"] = (skill_info.metadata or {}).get("execution_mode", "inline") if isinstance(skill_info.metadata, dict) else "inline"
+
                                 cfg.metadata["timeout"] = (skill_info.metadata or {}).get("timeout") if isinstance(skill_info.metadata, dict) else None
+
                                 # Optional governance fields
+
                                 if isinstance(skill_info.metadata, dict) and isinstance(skill_info.metadata.get("permissions"), list):
+
                                     cfg.metadata["permissions"] = list(skill_info.metadata.get("permissions") or [])
+
                                 if isinstance(skill_info.metadata, dict) and isinstance(skill_info.metadata.get("runtime"), str):
+
                                     cfg.metadata["runtime"] = skill_info.metadata.get("runtime")
+
                                 if isinstance(skill_info.metadata, dict) and isinstance(skill_info.metadata.get("entrypoint"), str):
+
                                     cfg.metadata["entrypoint"] = skill_info.metadata.get("entrypoint")
+
                                 cfg.metadata["sop_markdown"] = sop_markdown
+
                                 cfg.metadata["filesystem"] = (skill_info.metadata or {}).get("filesystem", {}) if isinstance(skill_info.metadata, dict) else {}
+
                                 cfg.metadata["provenance"] = (skill_info.metadata or {}).get("provenance", {}) if isinstance(skill_info.metadata, dict) else {}
+
                                 cfg.metadata["integrity"] = (skill_info.metadata or {}).get("integrity", {}) if isinstance(skill_info.metadata, dict) else {}
+
                                 # Optional: tools allowlist from SKILL.md
+
                                 if isinstance(fm, dict) and isinstance(fm.get("tools"), list):
+
                                     cfg.metadata["tools"] = list(fm.get("tools") or [])
+
                             # Set effects on config for runtime validation
+
                             if effects_in:
+
                                 cfg.effects = effects_in
+
                 except Exception as e:
+
                     logging.debug(str(e), exc_info=True)
+
             else:
+
                 sop_markdown = ""
+
                 try:
+
                     md_path = self._find_skill_md(skill_id)
+
                     if md_path and md_path.exists():
+
                         raw = md_path.read_text(encoding="utf-8")
+
                         _fm, body = self._split_front_matter(raw)
+
                         sop_markdown = body.strip()
+
                 except Exception:
+
                     sop_markdown = ""
+
+
 
                 config = SkillConfig(
+
                     name=skill_id,
+
                     description=skill_info.description,
+
                     input_schema=skill_info.input_schema or {},
+
                     output_schema=skill_info.output_schema or {},
+
                     effects=effects_in,
+
                     metadata={
+
                         "category": skill_info.type,
+
                         "version": skill_info.version,
+
                         "capabilities": norm_caps,
+
                         "skill_kind": (skill_info.metadata or {}).get("skill_kind") if isinstance(skill_info.metadata, dict) else "rule",
+
                         "execution_type": (skill_info.metadata or {}).get("execution_type", ""),
+
                         "execution_mode": (skill_info.metadata or {}).get("execution_mode", "inline"),
+
                         "timeout": (skill_info.metadata or {}).get("timeout"),
+
                         "permissions": (skill_info.metadata or {}).get("permissions") if isinstance(skill_info.metadata, dict) else [],
+
                         "runtime": (skill_info.metadata or {}).get("runtime") if isinstance(skill_info.metadata, dict) else None,
+
                         "entrypoint": (skill_info.metadata or {}).get("entrypoint") if isinstance(skill_info.metadata, dict) else None,
+
                         # L2: SOP injection (SKILL.md body)
+
                         "sop_markdown": sop_markdown,
+
                         "filesystem": (skill_info.metadata or {}).get("filesystem", {}) if isinstance(skill_info.metadata, dict) else {},
+
                         "provenance": (skill_info.metadata or {}).get("provenance", {}) if isinstance(skill_info.metadata, dict) else {},
+
                         "integrity": (skill_info.metadata or {}).get("integrity", {}) if isinstance(skill_info.metadata, dict) else {},
+
                     }
+
                 )
+
                 skill_instance = _GenericSkill(config)
+
             
+
             registry.register(skill_instance)
+
             
+
             if skill_info.status == "disabled":
+
                 registry.disable(skill_id)
+
         except Exception as e:
+
             logging.debug(str(e), exc_info=True)
+
     
+
     async def get_skill(self, skill_id: str) -> Optional[SkillInfo]:
+
         """Get skill by ID"""
+
         return self._skills.get(skill_id)
 
+
+
     async def get_skill_sop(self, skill_id: str) -> Optional[dict]:
+
         """Get skill SOP content from SKILL.md."""
+
         md = self._find_skill_md(skill_id)
+
         if not md:
+
             return None
+
         try:
+
             raw = md.read_text(encoding="utf-8")
+
             _, body = self._split_front_matter(raw)
+
             return {"skill_id": skill_id, "skill_md": str(md), "sop": body or ""}
+
         except Exception:
+
             return None
+
     
+
     async def list_skills(
+
         self,
+
         skill_type: Optional[str] = None,
+
         status: Optional[str] = None,
+
         limit: int = 100,
+
         offset: int = 0
+
     ) -> List[SkillInfo]:
+
         """List skills with filters"""
+
         skills = list(self._skills.values())
+
         
+
         if skill_type:
+
             skills = [s for s in skills if s.type == skill_type]
+
         if status:
+
             skills = [s for s in skills if s.status == status]
 
+
+
         skills.sort(key=lambda s: s.created_at, reverse=True)
+
         return skills[offset:offset + limit]
+
     
+
     async def update_skill(
+
         self,
+
         skill_id: str,
+
         name: Optional[str] = None,
+
         description: Optional[str] = None,
+
         input_schema: Optional[Dict[str, Any]] = None,
+
         output_schema: Optional[Dict[str, Any]] = None,
+
         config: Optional[Dict[str, Any]] = None,
+
         metadata: Optional[Dict[str, Any]] = None
+
     ) -> Optional[SkillInfo]:
+
         """Update skill configuration"""
+
         skill = self._skills.get(skill_id)
+
         if not skill:
+
             return None
 
+
+
         # Engine skills marked as protected are core capabilities and should not be edited via API.
+
         # Use versions/rollback and enable/disable instead.
+
         if (self._scope or "engine").strip().lower() == "engine":
+
             if isinstance(getattr(skill, "metadata", None), dict) and skill.metadata.get("protected") is True:
+
                 raise PermissionError("Protected engine skill cannot be edited")
+
         
+
         if name:
+
             skill.name = name
+
         if description:
+
             skill.description = description
+
         if input_schema:
+
             skill.input_schema.update(input_schema)
+
         if output_schema:
+
             skill.output_schema.update(output_schema)
+
         if config:
+
             skill.config.update(config)
+
         if metadata:
+
             skill.metadata.update(metadata)
+
         
+
         skill.updated_at = datetime.now(timezone.utc)
 
+
+
         # Record audit trail (best-effort, bounded)
+
         try:
+
             if isinstance(skill.metadata, dict):
+
                 audit = skill.metadata.get("audit") if isinstance(skill.metadata.get("audit"), list) else []
+
                 audit = list(audit)
+
                 audit.append(
+
                     {
+
                         "ts": skill.updated_at.isoformat(),
+
                         "action": "update_skill",
+
                         "fields": {
+
                             "name": bool(name),
+
                             "description": bool(description),
+
                             "input_schema": bool(input_schema),
+
                             "output_schema": bool(output_schema),
+
                             "config": bool(config),
+
                             "metadata": bool(metadata),
+
                         },
+
                     }
+
                 )
+
                 skill.metadata["audit"] = audit[-200:]
+
         except Exception as e:
+
             logging.debug(str(e), exc_info=True)
+
+
 
         # Best-effort: keep execution-layer registry config in sync
+
         self._sync_registry_config(skill)
 
+
+
         # Best-effort: persist updates back to directory-based SKILL.md (keep SOP body unchanged)
+
         try:
+
             base_dir = self._resolve_skills_base_path()
+
             skill_dir = base_dir / skill.id
+
             skill_dir.mkdir(parents=True, exist_ok=True)
+
             (skill_dir / "references").mkdir(exist_ok=True)
+
             (skill_dir / "scripts").mkdir(exist_ok=True)
+
             (skill_dir / "assets").mkdir(exist_ok=True)
 
+
+
             skill_md_path = skill_dir / "SKILL.md"
+
             if not skill_md_path.exists():
+
                 # If the file doesn't exist yet, materialize using the same template as create_skill.
+
                 # (create_skill writes only when absent, so safe to call by reusing logic here)
+
                 # Write minimal content so future updates preserve SOP.
+
                 manifest = self._build_skill_manifest(skill)
+
                 header = yaml.safe_dump(manifest, sort_keys=False, allow_unicode=True).strip()
+
                 skill_md_path.write_text(f"---\n{header}\n---\n\n# {skill.name}\n\n## 目标\n（待补充）\n", encoding="utf-8")
+
             else:
+
                 # Snapshot revision before mutation
+
                 try:
+
                     rev_dir = skill_dir / ".revisions" / datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+
                     rev_dir.mkdir(parents=True, exist_ok=True)
+
                     rev_dir.joinpath("SKILL.md").write_text(skill_md_path.read_text(encoding="utf-8"), encoding="utf-8")
+
                     # store minimal manifest snapshot too
+
                     cfg_snapshot = yaml.safe_dump(self._build_skill_manifest(skill), sort_keys=False, allow_unicode=True).strip()
+
                     rev_dir.joinpath("manifest.yaml").write_text(cfg_snapshot + "\n", encoding="utf-8")
+
                 except Exception as e:
+
                     logging.debug(str(e), exc_info=True)
+
                 raw = skill_md_path.read_text(encoding="utf-8")
+
                 fm, body = self._split_front_matter(raw)
+
                 fm = fm or {}
+
                 fm.update(self._build_skill_manifest(skill))
+
                 header = yaml.safe_dump(fm, sort_keys=False, allow_unicode=True).strip()
+
                 skill_md_path.write_text(f"---\n{header}\n---\n{body.lstrip()}", encoding="utf-8")
 
+
+
             # Record filesystem location (best effort)
+
             if isinstance(skill.metadata, dict):
+
                 skill.metadata.setdefault("filesystem", {})
+
                 if isinstance(skill.metadata["filesystem"], dict):
+
                     skill.metadata["filesystem"]["skill_dir"] = str(skill_dir)
+
                     skill.metadata["filesystem"]["skill_md"] = str(skill_md_path)
+
                 # Refresh provenance + integrity after writeback
+
                 self._enrich_skill_provenance_and_integrity(skill.metadata, skill_dir=skill_dir)
+
         except Exception as e:
+
             if isinstance(skill.metadata, dict):
+
                 skill.metadata.setdefault("filesystem", {})
+
                 if isinstance(skill.metadata["filesystem"], dict):
+
                     skill.metadata["filesystem"]["error"] = str(e)
+
         
+
         _notify_resource_mutated("skill", "updated", skill_id)
+
         return skill
 
+
+
     def _split_front_matter(self, content: str) -> tuple[dict | None, str]:
+
         """
+
         Split SKILL.md into (front_matter_dict, body).
+
         If not found, returns (None, original_content).
+
         """
+
         from core.apps.skills.skill_md import parse_skill_md
 
+
+
         parsed = parse_skill_md(content or "")
+
         return (parsed.front_matter if parsed.front_matter is not None else None), parsed.body
 
+
+
     def _build_skill_manifest(self, skill: "SkillInfo") -> dict:
+
         """Build YAML frontmatter for directory-based skill."""
+
         semver = str(getattr(skill, "version", "") or "v1.0.0")
+
         if semver.startswith("v"):
+
             semver = semver[1:]
+
         trigger_conditions = []
+
         if isinstance(getattr(skill, "metadata", None), dict):
+
             tc = skill.metadata.get("trigger_conditions")
+
             if isinstance(tc, list):
+
                 trigger_conditions = [str(x) for x in tc if isinstance(x, (str, int, float)) and str(x).strip()]
+
         execution_mode = "inline"
+
         if isinstance(getattr(skill, "metadata", None), dict):
+
             em = skill.metadata.get("execution_mode")
+
             if isinstance(em, str) and em.strip():
+
                 execution_mode = em.strip()
+
         manifest = {
+
             "name": skill.id,
+
             "display_name": getattr(skill, "name", skill.id),
+
             "description": getattr(skill, "description", "") or "",
+
             "category": getattr(skill, "type", "general") or "general",
+
             "version": semver,
+
             "status": getattr(skill, "status", "enabled") or "enabled",
+
             "execution_mode": execution_mode,
+
             "trigger_conditions": trigger_conditions,
+
             "input_schema": getattr(skill, "input_schema", {}) or {},
+
             "output_schema": getattr(skill, "output_schema", {}) or {},
+
         }
+
         # v2 governance/routing fields (persist if present)
+
         try:
+
             if isinstance(getattr(skill, "metadata", None), dict):
+
                 for k in ("skill_kind", "permissions", "decision_tree", "resources",
+
                           "tools", "execution_type", "timeout"):
+
                     if k in skill.metadata and skill.metadata.get(k) is not None:
+
                         manifest[k] = skill.metadata.get(k)
+
         except Exception as e:
+
             logging.debug(str(e), exc_info=True)
+
         # Persist selected traceability/governance metadata so it survives reload.
+
         try:
+
             if isinstance(getattr(skill, "metadata", None), dict):
+
                 for k in ("verification", "governance", "provenance", "integrity", "skill_pack"):
+
                     if k in skill.metadata:
+
                         manifest[k] = skill.metadata.get(k)
+
         except Exception as e:
+
             logging.debug(str(e), exc_info=True)
+
         return manifest
 
+
+
     def _sync_registry_config(self, skill: "SkillInfo") -> None:
+
         """Best-effort: sync SkillRegistry config for an existing skill instance."""
+
         try:
+
             from core.apps.skills import get_skill_registry
 
+
+
             registry = get_skill_registry()
+
             inst = registry.get(skill.id)
+
             if not inst:
+
                 return
+
             cfg = getattr(inst, "_config", None)
+
             if not cfg:
+
                 return
+
             try:
+
                 cfg.description = skill.description
+
             except Exception as e:
+
                 logging.debug(str(e), exc_info=True)
+
             try:
+
                 cfg.input_schema = skill.input_schema or {}
+
             except Exception as e:
+
                 logging.debug(str(e), exc_info=True)
+
             try:
+
                 cfg.output_schema = skill.output_schema or {}
+
             except Exception as e:
+
                 logging.debug(str(e), exc_info=True)
+
             try:
+
                 if hasattr(cfg, "metadata") and isinstance(cfg.metadata, dict):
+
                     cfg.metadata["category"] = skill.type
+
                     cfg.metadata["version"] = skill.version
+
                     # propagate provenance/integrity for diagnostics
+
                     if isinstance(getattr(skill, "metadata", None), dict):
+
                         if isinstance(skill.metadata.get("provenance"), dict):
+
                             cfg.metadata["provenance"] = skill.metadata.get("provenance")
+
                         if isinstance(skill.metadata.get("integrity"), dict):
+
                             cfg.metadata["integrity"] = skill.metadata.get("integrity")
+
             except Exception as e:
+
                 logging.debug(str(e), exc_info=True)
+
             # Refresh SOP from filesystem (L2)
+
             try:
+
                 md_path = self._find_skill_md(skill.id)
+
                 if md_path and md_path.exists():
+
                     raw = md_path.read_text(encoding="utf-8")
+
                     _fm, body = self._split_front_matter(raw)
+
                     if hasattr(cfg, "metadata") and isinstance(cfg.metadata, dict):
+
                         cfg.metadata["sop_markdown"] = body.strip()
+
                         cfg.metadata["filesystem"] = (skill.metadata or {}).get("filesystem", {}) if isinstance(skill.metadata, dict) else {}
+
             except Exception as e:
+
                 logging.debug(str(e), exc_info=True)
+
         except Exception:
+
             return
+
     
+
     async def delete_skill(self, skill_id: str, *, delete_files: bool = False) -> bool:
+
         """
+
         Delete skill from management plane.
 
+
+
         Default behavior is **soft delete**:
+
         - keep skills/<skill_id>/ on disk
+
         - mark SKILL.md frontmatter status=deprecated, add deprecated_at
 
+
+
         If delete_files=True:
+
         - recursively remove skills/<skill_id>/ directory (hard delete)
+
         """
+
         skill = self._skills.get(skill_id)
+
         if not skill:
+
             return False
 
+
+
         if (self._scope or "engine").strip().lower() == "engine":
+
             if isinstance(getattr(skill, "metadata", None), dict) and skill.metadata.get("protected") is True:
+
                 raise PermissionError("Protected engine skill cannot be deleted")
+
+
 
         now_iso = datetime.now(timezone.utc).isoformat()
 
+
+
         if delete_files:
+
             # Hard delete: remove directory + unregister + remove from memory
-            try:
-                base_dir = self._resolve_skills_base_path()
-                skill_dir = base_dir / skill.id
-                if skill_dir.exists():
-                    shutil.rmtree(skill_dir)
-            except Exception as e:
-                logging.debug(str(e), exc_info=True)
 
             try:
+
+                base_dir = self._resolve_skills_base_path()
+
+                skill_dir = base_dir / skill.id
+
+                if skill_dir.exists():
+
+                    shutil.rmtree(skill_dir)
+
+            except Exception as e:
+
+                logging.debug(str(e), exc_info=True)
+
+
+
+            try:
+
                 from core.apps.skills import get_skill_registry
 
+
+
                 get_skill_registry().unregister(skill_id)
+
             except Exception as e:
+
                 logging.debug(str(e), exc_info=True)
 
+
+
             self._skills.pop(skill_id, None)
+
             self._stats.pop(skill_id, None)
+
             self._executions.pop(skill_id, None)
+
             self._versions.pop(skill_id, None)
+
             self._bound_agents.pop(skill_id, None)
+
             _notify_resource_mutated("skill", "deleted", skill_id)
+
             return True
 
+
+
         # Soft delete: keep skill in memory and on disk, mark deprecated and disable at runtime
+
         skill.status = "deprecated"
+
         if isinstance(skill.metadata, dict):
+
             skill.metadata["deprecated_at"] = now_iso
+
         skill.updated_at = datetime.now(timezone.utc)
 
+
+
         try:
+
             from core.apps.skills import get_skill_registry
 
+
+
             get_skill_registry().disable(skill_id)
+
         except Exception as e:
+
             logging.debug(str(e), exc_info=True)
+
+
 
         self._writeback_skill_md(skill, extra_frontmatter={"deprecated_at": now_iso})
+
         return True
+
     
+
     async def enable_skill(self, skill_id: str) -> bool:
+
         """Enable skill"""
+
         skill = self._skills.get(skill_id)
+
         if not skill:
+
             return False
+
         if skill.status == "deprecated":
+
             # Must use restore_skill to un-deprecate (keeps intent explicit).
+
             return False
+
         skill.status = "enabled"
+
         skill.updated_at = datetime.now(timezone.utc)
+
         self._sync_registry_config(skill)
+
         try:
+
             from core.apps.skills import get_skill_registry
+
+
 
             get_skill_registry().enable(skill_id)
+
         except Exception as e:
+
             logging.debug(str(e), exc_info=True)
+
         self._writeback_skill_md(skill, remove_frontmatter_keys=["deprecated_at"])
+
         return True
+
     
+
     async def disable_skill(self, skill_id: str) -> bool:
+
         """Disable skill"""
+
         skill = self._skills.get(skill_id)
+
         if not skill:
+
             return False
+
         skill.status = "disabled"
+
         skill.updated_at = datetime.now(timezone.utc)
+
         self._sync_registry_config(skill)
+
         try:
+
             from core.apps.skills import get_skill_registry
+
+
 
             get_skill_registry().disable(skill_id)
+
         except Exception as e:
+
             logging.debug(str(e), exc_info=True)
+
         self._writeback_skill_md(skill)
+
         return True
+
+
 
     async def restore_skill(self, skill_id: str) -> bool:
+
         """Restore a deprecated skill (status -> enabled) and re-enable runtime registry."""
+
         skill = self._skills.get(skill_id)
+
         if not skill:
+
             return False
+
         # Only meaningful for deprecated, but allow restoring disabled as "enable" if needed.
+
         skill.status = "enabled"
+
         if isinstance(skill.metadata, dict):
+
             skill.metadata.pop("deprecated_at", None)
+
         skill.updated_at = datetime.now(timezone.utc)
+
+
 
         # Ensure registered
+
         try:
+
             from core.apps.skills import get_skill_registry
 
+
+
             registry = get_skill_registry()
+
             if not registry.get(skill_id):
+
                 self._bridge_to_registry(skill)
+
             registry.enable(skill_id)
+
         except Exception as e:
+
             logging.debug(str(e), exc_info=True)
+
+
 
         self._sync_registry_config(skill)
+
         self._writeback_skill_md(skill, remove_frontmatter_keys=["deprecated_at"])
+
         return True
+
+
 
     def _writeback_skill_md(
+
         self,
+
         skill: "SkillInfo",
+
         *,
+
         extra_frontmatter: Optional[Dict[str, Any]] = None,
+
         remove_frontmatter_keys: Optional[List[str]] = None,
+
     ) -> None:
+
         """Best-effort writeback of SKILL.md YAML frontmatter while preserving SOP body."""
+
         try:
+
             base_dir = self._resolve_skills_base_path()
+
             skill_dir = base_dir / skill.id
+
             skill_dir.mkdir(parents=True, exist_ok=True)
+
             (skill_dir / "references").mkdir(exist_ok=True)
+
             (skill_dir / "scripts").mkdir(exist_ok=True)
+
             (skill_dir / "assets").mkdir(exist_ok=True)
 
+
+
             skill_md_path = skill_dir / "SKILL.md"
+
             if not skill_md_path.exists():
+
                 fm = self._build_skill_manifest(skill)
+
                 if extra_frontmatter:
+
                     fm.update(extra_frontmatter)
+
                 header = yaml.safe_dump(fm, sort_keys=False, allow_unicode=True).strip()
+
                 skill_md_path.write_text(f"---\n{header}\n---\n\n# {skill.name}\n\n（待补充 SOP）\n", encoding="utf-8")
+
             else:
+
                 raw = skill_md_path.read_text(encoding="utf-8")
+
                 fm, body = self._split_front_matter(raw)
+
                 fm = fm or {}
+
                 fm.update(self._build_skill_manifest(skill))
+
                 if extra_frontmatter:
+
                     fm.update(extra_frontmatter)
+
                 if remove_frontmatter_keys:
+
                     for k in remove_frontmatter_keys:
+
                         fm.pop(k, None)
+
                 header = yaml.safe_dump(fm, sort_keys=False, allow_unicode=True).strip()
+
                 skill_md_path.write_text(f"---\n{header}\n---\n{body.lstrip()}", encoding="utf-8")
 
+
+
             if isinstance(skill.metadata, dict):
+
                 skill.metadata.setdefault("filesystem", {})
+
                 if isinstance(skill.metadata["filesystem"], dict):
+
                     skill.metadata["filesystem"]["skill_dir"] = str(skill_dir)
+
                     skill.metadata["filesystem"]["skill_md"] = str(skill_md_path)
+
         except Exception:
+
             return
 
+
+
     async def get_skill_execution_help(self, skill_id: str) -> Optional[Dict[str, Any]]:
+
         """
+
         Get execution input help/examples/schema for a skill.
+
         Priority:
+
         1) SKILL.md frontmatter:
+
            - execution_help (markdown string)
+
            - execution_examples (list of {title, content})
+
            - execution_input_schema (object)
+
         2) Generate defaults based on skill category + input_schema.
+
         """
+
         skill = self._skills.get(skill_id)
+
         if not skill:
+
             return None
+
+
 
         md_path = self._find_skill_md(skill_id)
+
         fm: dict = {}
+
         if md_path and md_path.exists():
+
             try:
+
                 raw = md_path.read_text(encoding="utf-8")
+
                 _fm, _body = self._split_front_matter(raw)
+
                 if isinstance(_fm, dict):
+
                     fm = _fm
+
             except Exception:
+
                 fm = {}
 
+
+
         help_md = fm.get("execution_help")
+
         examples = fm.get("execution_examples")
+
         schema = fm.get("execution_input_schema")
 
+
+
         norm_examples: list[dict] = []
+
         if isinstance(examples, list):
+
             for e in examples:
+
                 if isinstance(e, dict) and e.get("title") and e.get("content") is not None:
+
                     norm_examples.append({"title": str(e["title"]), "content": str(e["content"])})
 
+
+
         if isinstance(help_md, str) and help_md.strip():
+
             return {
+
                 "skill_id": skill_id,
+
                 "help_markdown": help_md.strip(),
+
                 "examples": norm_examples,
+
                 "input_schema": schema if isinstance(schema, dict) else None,
+
             }
 
+
+
         # -------------------- default help generation --------------------
+
         category = str(getattr(skill, "type", "") or "general")
+
         input_schema = getattr(skill, "input_schema", {}) or {}
 
+
+
         # provide a short, stable contract for UI users
+
         fields = []
+
         if isinstance(input_schema, dict) and input_schema:
+
             for k, v in input_schema.items():
+
                 if isinstance(v, dict):
+
                     desc = v.get("description") or ""
+
                     req = v.get("required")
+
                     fields.append(f"- `{k}`：{desc}{'（必填）' if req else ''}".rstrip())
+
                 else:
+
                     fields.append(f"- `{k}`")
+
         fields_md = "\n".join(fields) if fields else "- `message`：文本任务描述（最通用）"
 
+
+
         default_help = (
+
             "### 如何填写输入\n"
+
             "- 你可以输入 **文本** 或 **JSON**。\n"
+
             "- 如果输入不是合法 JSON，系统会自动封装为：`{\"message\": \"...\"}`。\n"
+
             "\n"
+
             "### 推荐输入字段\n"
+
             f"{fields_md}\n"
+
             "\n"
+
             "### 输出说明\n"
+
             "- 返回值将显示在下方“执行结果”区域；如有 execution_id 可到诊断页查看链路。\n"
+
         )
+
+
 
         if not norm_examples:
+
             norm_examples = [
+
                 {"title": "通用（文本）", "content": "请完成以下任务：\n<描述你的需求>"},
+
                 {"title": "通用（JSON）", "content": json.dumps({"input": "请完成以下任务：<描述你的需求>"}, ensure_ascii=False, indent=2)},
+
             ]
 
+
+
         return {
+
             "skill_id": skill_id,
+
             "help_markdown": default_help,
+
             "examples": norm_examples,
+
             "input_schema": schema if isinstance(schema, dict) else None,
+
         }
+
     
+
     async def execute_skill(
+
         self,
+
         skill_id: str,
+
         input_data: Dict[str, Any],
+
         context: Optional[Dict[str, Any]] = None,
+
         mode: str = "inline",
+
         execution_id: Optional[str] = None,
+
     ) -> SkillExecution:
+
         """Execute skill via SkillExecutor and record audit trail."""
+
         import time
+
         execution_id = str(execution_id or f"exec-{uuid.uuid4().hex[:8]}")
+
         now = datetime.now(timezone.utc)
+
+
 
         # If execution_id already exists (e.g. approval replay), reuse the record to keep run_id stable.
+
         execution: Optional[SkillExecution] = None
+
         try:
+
             for execs in self._executions.values():
+
                 for e in execs:
+
                     if e.id == execution_id:
+
                         execution = e
+
                         break
+
                 if execution is not None:
+
                     break
+
         except Exception:
+
             execution = None
 
+
+
         if execution is None:
+
             execution = SkillExecution(
+
                 id=execution_id,
+
                 skill_id=skill_id,
+
                 status="running",
+
                 input_data=input_data,
+
                 output_data=None,
+
                 error=None,
+
                 start_time=now,
+
                 end_time=None,
+
                 duration_ms=0.0,
+
             )
+
             # Best-effort: allow executing skills even if they weren't loaded into this manager's
+
             # in-memory index (e.g. workspace skills registered into SkillRegistry).
+
             self._executions.setdefault(skill_id, []).append(execution)
+
         else:
+
             # Reset for replay
+
             execution.skill_id = skill_id
+
             execution.status = "running"
+
             execution.input_data = input_data
+
             execution.output_data = None
+
             execution.error = None
+
             execution.start_time = now
+
             execution.end_time = None
+
             execution.duration_ms = 0.0
+
         
+
         stats = self._stats.setdefault(skill_id, SkillStats())
+
         stats.total_calls += 1
+
         
+
         try:
+
             from core.apps.skills import get_skill_executor, get_skill_registry
+
             from core.harness.interfaces import SkillContext
+
             
+
             executor = get_skill_executor()
+
             registry = get_skill_registry()
+
             skill = registry.get(skill_id)
+
             
+
             if skill and hasattr(skill, 'set_model'):
+
                 try:
+
                     from core.harness.utils.model_injection import create_selected_adapter, best_model_for_purpose
+
                     model = create_selected_adapter(model_name=best_model_for_purpose("skill_execution"))
+
                     skill.set_model(model)
+
                 except Exception as e:
+
                     duration_ms = (datetime.now(timezone.utc) - now).total_seconds() * 1000
+
                     await self.fail_execution(execution_id,
+
                         f"Failed to configure LLM adapter for skill '{skill_id}': {e}", duration_ms)
+
                     updated = await self.get_execution(execution_id)
+
                     return updated if updated else execution
+
             
+
             skill_tools = context.get("tools", []) if context else []
+
             # Propagate user_id from active request context when not explicitly provided in payload.context.
+
             resolved_user_id = context.get("user_id") if isinstance(context, dict) else None
+
             if not resolved_user_id:
+
                 try:
+
                     from core.harness.kernel.execution_context import get_active_request_context
 
+
+
                     arq = get_active_request_context()
+
                     if arq and getattr(arq, "user_id", None):
+
                         resolved_user_id = getattr(arq, "user_id")
+
                 except Exception:
+
                     resolved_user_id = None
+
             skill_context = SkillContext(
+
                 session_id=execution_id,
+
                 user_id=str(resolved_user_id or "system"),
+
                 variables=input_data,
+
                 tools=skill_tools,
+
             )
+
             
+
             timeout = context.get("timeout") if context else None
+
             
+
             result = await executor.execute(
+
                 skill_id,
+
                 input_data,
+
                 context=skill_context,
+
                 timeout=timeout,
+
                 mode=mode
+
             )
+
             
+
             duration_ms = (datetime.now(timezone.utc) - now).total_seconds() * 1000
+
             
+
             res_meta = result.metadata if isinstance(getattr(result, "metadata", None), dict) else {}
+
             if result.success:
+
                 await self.complete_execution(execution_id, result.output or {}, duration_ms, metadata=res_meta)
+
             else:
+
                 error_msg = result.error or f"Skill '{skill_id}' execution failed (no error detail)"
+
                 logging.warning("Skill execution failed: skill=%s error=%s", skill_id, error_msg)
+
                 await self.fail_execution(execution_id, error_msg, duration_ms, metadata=res_meta)
 
+
+
             # Report quality signal to infra quality tracker for auto model selection improvement
+
             try:
+
                 if hasattr(skill, '_model') and hasattr(skill._model, 'model_name'):
+
                     used_model = str(skill._model.model_name)
+
                     output_text = ''
+
                     if isinstance(result.output, dict):
+
                         output_text = str(result.output.get('text', result.output.get('output', '')))
+
                     elif result.output:
+
                         output_text = str(result.output)
+
                     olen = len(output_text)
+
                     if olen > 2000:
+
                         delta = 0.15
+
                     elif olen > 1000:
+
                         delta = 0.10
+
                     elif olen > 500:
+
                         delta = 0.05
+
                     elif olen > 200:
+
                         delta = 0.0
+
                     elif result.success:
+
                         delta = -0.05
+
                     else:
+
                         delta = -0.15
+
                     from infra.management.model.quality_validator import get_quality_tracker
+
                     get_quality_tracker().update(used_model, 'skill_execution', delta)
+
             except Exception:
-                pass
+
+                logging.getLogger(__name__).debug('code failed', exc_info=True)
             
+
         except Exception as e:
+
             duration_ms = (datetime.now(timezone.utc) - now).total_seconds() * 1000
+
             await self.fail_execution(execution_id, str(e), duration_ms)
+
         
+
         updated = await self.get_execution(execution_id)
+
         return updated if updated else execution
 
+
+
     # ---------------------------------------------------------------------
+
     # Roadmap-4: Skill Pack install applies (workspace scope)
+
     # ---------------------------------------------------------------------
+
+
 
     async def import_skill_from_pack(
+
         self,
+
         *,
+
         skill_id: str,
+
         display_name: Optional[str] = None,
+
         category: str = "general",
+
         description: str = "",
+
         version: str = "1.0.0",
+
         sop_markdown: str = "",
+
         pack_metadata: Optional[Dict[str, Any]] = None,
+
     ) -> SkillInfo:
+
         """
+
         Create/update a directory-based workspace skill using an explicit id.
 
+
+
         This is intended for Skill Pack installation where the pack defines stable ids.
+
         Engine scope is forbidden.
+
         """
+
         if (self._scope or "engine").strip().lower() != "workspace":
+
             raise PermissionError("import_skill_from_pack is only allowed in workspace scope")
+
         if self._reserved_ids and skill_id in self._reserved_ids:
+
             raise ValueError(f"Skill id '{skill_id}' is reserved by engine scope and cannot be created in workspace.")
 
+
+
         now = datetime.now(timezone.utc)
+
         skill = self._skills.get(skill_id)
+
         if not skill:
+
             skill = SkillInfo(
+
                 id=str(skill_id),
+
                 name=str(display_name or skill_id),
+
                 type=str(category or "general"),
+
                 description=str(description or ""),
+
                 status="enabled",
+
                 input_schema={},
+
                 output_schema={},
+
                 config={"version": str(version or "1.0.0")},
+
                 dependencies=[],
+
                 version=str(version or "1.0.0"),
+
                 created_at=now,
+
                 updated_at=now,
+
                 created_by="skill_pack",
+
                 metadata={},
+
             )
+
             self._skills[skill_id] = skill
+
         else:
+
             # Update fields (best-effort)
+
             if display_name:
+
                 skill.name = str(display_name)
+
             if category:
+
                 skill.type = str(category)
+
             if description:
+
                 skill.description = str(description)
+
             if version:
+
                 skill.version = str(version)
+
                 skill.config = dict(skill.config or {})
+
                 skill.config["version"] = str(version)
+
             skill.updated_at = now
 
+
+
         # Metadata for provenance/audit
+
         if isinstance(skill.metadata, dict) and isinstance(pack_metadata, dict):
+
             skill.metadata.setdefault("skill_pack", {})
+
             if isinstance(skill.metadata.get("skill_pack"), dict):
+
                 skill.metadata["skill_pack"].update(pack_metadata)
 
+
+
         # Ensure tracking dicts
+
         self._stats.setdefault(skill_id, SkillStats())
+
         self._executions.setdefault(skill_id, [])
+
         self._versions.setdefault(skill_id, [SkillVersion(version=str(skill.version or "1.0.0"), status="current", created_at=now, changes="Imported from skill pack")])
+
         self._bound_agents.setdefault(skill_id, [])
 
+
+
         # Materialize SKILL.md with SOP body (overwrite body only when provided)
+
         try:
+
             base_dir = self._resolve_skills_base_path()
+
             skill_dir = base_dir / skill.id
+
             skill_dir.mkdir(parents=True, exist_ok=True)
+
             (skill_dir / "references").mkdir(exist_ok=True)
+
             (skill_dir / "scripts").mkdir(exist_ok=True)
+
             (skill_dir / "assets").mkdir(exist_ok=True)
+
             skill_md_path = skill_dir / "SKILL.md"
 
+
+
             fm = self._build_skill_manifest(skill)
+
             if isinstance(pack_metadata, dict) and pack_metadata:
+
                 fm.setdefault("skill_pack", pack_metadata)
+
             header = yaml.safe_dump(fm, sort_keys=False, allow_unicode=True).strip()
 
+
+
             if skill_md_path.exists() and not sop_markdown:
+
                 # Preserve existing SOP body
+
                 raw = skill_md_path.read_text(encoding="utf-8")
+
                 _old_fm, old_body = self._split_front_matter(raw)
+
                 body = old_body.lstrip()
+
             else:
+
                 body = (sop_markdown or "").strip()
+
                 if not body:
+
                     body = f"# {skill.name}\n\n（待补充 SOP）\n"
+
                 body = body + ("\n" if not body.endswith("\n") else "")
 
+
+
             skill_md_path.write_text(f"---\n{header}\n---\n\n{body}", encoding="utf-8")
+
             if isinstance(skill.metadata, dict):
+
                 skill.metadata.setdefault("filesystem", {})
+
                 if isinstance(skill.metadata["filesystem"], dict):
+
                     skill.metadata["filesystem"]["skill_dir"] = str(skill_dir)
+
                     skill.metadata["filesystem"]["skill_md"] = str(skill_md_path)
+
         except Exception as e:
+
             logging.debug(str(e), exc_info=True)
 
+
+
         # Bridge to execution registry after materialization
+
         self._bridge_to_registry(skill)
+
         return skill
+
     
+
     async def complete_execution(
+
         self,
+
         execution_id: str,
+
         output_data: Dict[str, Any],
+
         duration_ms: float,
+
         metadata: Optional[Dict[str, Any]] = None,
+
     ) -> bool:
+
         """Complete execution"""
+
         for skill_id, executions in self._executions.items():
+
             for exec_ in executions:
+
                 if exec_.id == execution_id:
+
                     exec_.status = "completed"
+
                     exec_.output_data = output_data
+
                     exec_.error = None
+
                     exec_.end_time = datetime.now(timezone.utc)
+
                     exec_.duration_ms = duration_ms
+
                     if isinstance(metadata, dict):
+
                         exec_.metadata = dict(metadata)
+
                     
+
                     # Update stats
+
                     stats = self._stats[skill_id]
+
                     stats.success_count += 1
+
                     stats.success_rate = stats.success_count / stats.total_calls
+
                     stats.avg_duration_ms = (
+
                         (stats.avg_duration_ms * (stats.success_count - 1) + duration_ms)
+
                         / stats.success_count
+
                     )
+
                     
+
                     return True
+
         return False
+
     
+
     async def fail_execution(
+
         self,
+
         execution_id: str,
+
         error: str,
+
         duration_ms: float,
+
         metadata: Optional[Dict[str, Any]] = None,
+
     ) -> bool:
+
         """Fail execution"""
+
         for skill_id, executions in self._executions.items():
+
             for exec_ in executions:
+
                 if exec_.id == execution_id:
+
                     exec_.status = "failed"
+
                     exec_.error = error
+
                     exec_.end_time = datetime.now(timezone.utc)
+
                     exec_.duration_ms = duration_ms
+
                     if isinstance(metadata, dict):
+
                         exec_.metadata = dict(metadata)
+
                     
+
                     # Update stats
+
                     stats = self._stats[skill_id]
+
                     stats.failed_count += 1
+
                     stats.success_rate = stats.success_count / stats.total_calls
+
                     
+
                     return True
+
         return False
+
     
+
     async def get_execution(self, execution_id: str) -> Optional[SkillExecution]:
+
         """Get execution by ID"""
+
         for executions in self._executions.values():
+
             for exec_ in executions:
+
                 if exec_.id == execution_id:
+
                     return exec_
+
         return None
+
     
+
     async def get_execution_history(
+
         self,
+
         skill_id: str,
+
         limit: int = 100,
+
         offset: int = 0
+
     ) -> List[SkillExecution]:
+
         """Get execution history for skill"""
+
         history = self._executions.get(skill_id, [])
+
         return history[offset:offset + limit]
+
     
+
     async def get_stats(self, skill_id: str) -> Optional[SkillStats]:
+
         """Get skill statistics"""
+
         return self._stats.get(skill_id)
+
     
+
     async def get_versions(self, skill_id: str) -> List[SkillVersion]:
+
         """Get skill versions"""
+
         return self._versions.get(skill_id, [])
+
     
+
     async def create_version(
+
         self,
+
         skill_id: str,
+
         changes: str
+
     ) -> Optional[SkillVersion]:
+
         """Create new version"""
+
         skill = self._skills.get(skill_id)
+
         if not skill:
+
             return None
+
         
+
         # Parse current version
+
         current_version = skill.version
+
         major, minor, patch = map(int, current_version[1:].split('.'))
+
         
+
         # Increment patch version
+
         new_version = f"v{major}.{minor}.{patch +1}"
+
         
+
         # Update current version to historical
+
         for v in self._versions[skill_id]:
+
             if v.status == "current":
+
                 v.status = "historical"
+
         
+
         # Create new version
+
         version = SkillVersion(
+
             version=new_version,
+
             status="current",
+
             created_at=datetime.now(timezone.utc),
+
             changes=changes
+
         )
+
         
+
         self._versions[skill_id].append(version)
+
         skill.version = new_version
+
         skill.updated_at = datetime.now(timezone.utc)
+
         
+
         return version
+
     
+
     async def rollback_version(self, skill_id: str, version: str) -> bool:
+
         """Rollback to specific version"""
+
         skill = self._skills.get(skill_id)
+
         if not skill:
+
             return False
+
         
+
         versions = self._versions.get(skill_id, [])
+
         target_version = None
+
         for v in versions:
+
             if v.version == version:
+
                 target_version = v
+
                 break
+
         
+
         if not target_version:
+
             return False
+
         
+
         # Update current version
+
         for v in versions:
+
             v.status = "historical" if v.version != version else "current"
+
         
+
         skill.version = version
+
         skill.updated_at = datetime.now(timezone.utc)
+
         
+
         return True
+
     
+
     async def get_bound_agents(self, skill_id: str) -> List[str]:
+
         """Get agents bound to this skill"""
+
         return self._bound_agents.get(skill_id, [])
+
     
+
     def get_skill_count(self) -> Dict[str, int]:
+
         """Get skill count by status"""
+
         counts = {"total": len(self._skills), "enabled": 0, "disabled": 0, "deprecated": 0}
+
         for skill in self._skills.values():
+
             if skill.status in counts:
+
                 counts[skill.status] += 1
+
         return counts
 
+
+
     def get_skill_ids(self) -> List[str]:
+
         """Get all skill ids currently loaded."""
+
         return list(self._skills.keys())
+

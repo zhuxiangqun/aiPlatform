@@ -376,7 +376,7 @@ class ConverterRegistry:
                 try:
                     _accepts = self._check_accepts_metadata(conv, guess_info)
                 except NotImplementedError:
-                    pass
+                    pass  # noqa: cleanup-best-effort
                 if _accepts and conv.check_dependencies():
                     return conv
         return None
@@ -430,7 +430,7 @@ class ConverterRegistry:
             try:
                 _accepts = self._check_accepts_metadata(conv, stream_info)
             except NotImplementedError:
-                pass
+                pass  # noqa: cleanup-best-effort
             if _accepts:
                 result.append(conv)
         return result
@@ -491,7 +491,7 @@ class ConverterRegistry:
             try:
                 _accepts = conv.accepts(file_stream, stream_info, **kwargs)
             except NotImplementedError:
-                pass
+                pass  # noqa: cleanup-best-effort
 
             assert (
                 cur_pos == file_stream.tell()
@@ -744,3 +744,4 @@ def _register_builtins(registry: ConverterRegistry) -> None:
 
     # Load 3rd-party plugins
     _load_plugins(registry)
+

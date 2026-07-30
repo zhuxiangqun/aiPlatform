@@ -1,6 +1,1 @@
-§1:layer_import_core_to_platform_app
-§1:layer_import_platform_to_infra
-§3:kernel_agnostic_chinese_names
-§45:prompt_hardcode_in_routers_apps
-§77:route_duplicate_detection
-§9:core_apps_app_concerns
+

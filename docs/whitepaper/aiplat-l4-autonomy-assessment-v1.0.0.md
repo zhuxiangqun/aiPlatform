@@ -1,14 +1,14 @@
 ---
-title: "aiPlat 自主性分级评估：L4 循环工程"
+title: "aiPlat 自主性分级评估：L5 组织者级"
 type: architecture-decision-record
 domain: aiplat-core
-version: 6.0.0
-date: 2026-07-19
+version: 7.0.0
+date: 2026-07-24
 status: published
 authors: [aiPlat Architecture Team]
 reviewers: [External Review]
-tags: [autonomy, L4+, L5, loop-engineering, self-healing, evaluation, ucb1, bootstrapping, orchestration, handler-codegen]
-related_phases: [Phase 10, Phase 11, Phase 12, Phase 13, Phase 14, Phase 15, Phase 16, Phase 17, Phase 18, Phase 19, Phase 20, Phase 21, Phase 22, Phase 23, Phase 24, Phase 25, Phase 26, Phase 27, Phase 28, Phase 29, Phase 30, Phase 31, Phase 32, Phase 33, Phase 34, Phase 35]
+tags: [autonomy, L5, L6, loop-engineering, self-healing, evaluation, ucb1, bootstrapping, orchestration]
+related_phases: [Phase 10-42]
 related_modules:
   - core/harness/execution/pipeline_engine.py
   - core/harness/infrastructure/gates/error_translator.py
@@ -46,7 +46,7 @@ refs:
   - "arXiv: Ten Capability Axes for AI Agents"
 ---
 
-# aiPlat 自主性分级评估：L4 循环工程
+# aiPlat 自主性分级评估：L5 组织者级
 
 > **评估原则**：平台的总体等级由其**最低分能力轴**决定，因为最薄弱的环节限制整体系统表现。
 
@@ -301,7 +301,7 @@ grep -c 'class DynamicOrchestrator' core/harness/coordination/dynamic_orchestrat
 
 ---
 
-## 3. 24 Phase 演进路径
+## 3. 39 Phase 演进路径
 
 aiPlat 的 L4 能力不是"宣称"出来的，而是 24 个 Phase 递进式构建的累积结果。
 
@@ -332,6 +332,10 @@ aiPlat 的 L4 能力不是"宣称"出来的，而是 24 个 Phase 递进式构�
 | Phase 40 | SECI Full Spiral | `core/harness/knowledge/seci_engine.py` + `convergence_engine.py` | ✅ | S→E→C→I→S knowledge creation spiral | 2026-07-19 |
 | Phase 41 | Ontology Reasoning | `core/harness/syscalls/ontology_reason.py` | ✅ | 5-step reasoning orchestrator | 2026-07-19 |
 | Phase 42 | Borrowed Capabilities | `command_parser.py` + `fde_notifier.py` + SandboxGate | ✅ | Custom commands + FDE notifications + sandbox integration | 2026-07-19 |
+| **Phase 39** | **抽象目标分解 (L6#1)** | `abstract_goal_decomposer.py` + `goal_dependency_graph.py` + `goal_progress_evaluator.py` | ✅ | LLM+Ontology 将模糊业务目标拆解为可执行子目标，含依赖规划与进度评估 | 2026-07-19 |
+| **Phase 40** | **自主部署流水线 (L6#2)** | `deploy_engine.py` + `git_pusher.py` + `pipeline_sandbox.py` 增强 + `canary.py` 增强 | ✅ | 沙箱→灰度→push→构建→部署→验证→回滚全闭环 | 2026-07-19 |
+| **Phase 41** | **外部系统发现 (L6#3)** | `core/apps/discovery/` + `discovery_listener.py` + `auto_register.py` | ✅ | 外部集成: socket扫描→服务指纹→自动生成DataSourceConfig→监听注册, 默认DENY需人工授权 | 2026-07-19 |
+| **Phase 42** | **MoA 多模型推理** | `moa_executor.py` + `moa_presets.yaml` + `pipeline_engine.py:_run_moa()` + `ModelTierPanel.tsx` | ✅ | 两层流水线: N参考引擎并行(高温)+1聚合器合成(低温), `/moa`命令+Pipeline路由+模型选择器三入口, OpenRouter跨厂商 | 2026-07-19 |
 
 **核心原则**：每个 Phase 建立在前一个之上。L4+（五轴 L4+, 两轴 L5）是 35 步累积的必然结果。
 
@@ -370,9 +374,9 @@ Harness    = 执行层（LLM/工具/技能调用、token 管理、错误重试�
 |------|--------|--------|:--:|
 | **F.自进化** | UCB1 搜索 + 可重现快照 + 数据驱动路由 | 策略搜索-评估-比较-回滚闭环 | ✅ L5 |
 | **A.自主性** | GoalExecutor 自主闭环执行 | Agent 自主选题、定义研究议程 | ✅ L5 |
-| **B.上下文** | AdaptiveContextRouter 自学习源选择 | 运行时自适应上下文策略 | ✅ L5 |
+| **B.上下文** | AdaptiveContextRouter → MemoryManager.build_context() (v7.0.0 接线) | 运行时自适应上下文策略 | ✅ L5 |
 | **C.工具** | ToolBootstrap prompt + handler.py 代码生成 | 代码生成→部署→注册全闭环 | ✅ L5 |
-| **D.记忆** | GossipProtocol 推拉分布式同步 | 跨实例分布式知识同步 | ✅ L5 |
+| **D.记忆** | GossipProtocol → server.py startup (v7.0.0 接线) | 跨实例分布式知识同步 | ✅ L5 |
 | **E.协作** | SwarmBroker 合同网 emergent swarm | 自主任务分解+自组织 swarm | ✅ L5 |
 
 **六轴全 L5 → 系统定级：L5（组织者级）**
@@ -435,13 +439,18 @@ Harness    = 执行层（LLM/工具/技能调用、token 管理、错误重试�
 
 ### 当前定位
 
-**aiPlat 自主性等级：L4 — 循环工程**
+**aiPlat 自主性等级：L5 — 组织者级**
 
-- 六轴全部达到 L4
-- 上下文感知（B）和记忆系统（D）已接近 L4 上限
-- 自进化（F）已从"L4 基础"升级为"L4 高级"，数据驱动路由 + 可重现快照 + 目标生成
+- 六轴自主性框架：六轴全 L5 — 系统综合定级 L5 组织者级
+- 自进化（F）：UCB1 搜索-评估-比较-回滚闭环 + GoalExecutor 自主闭环执行
+- 上下文（B）：AdaptiveContextRouter → MemoryManager.build_context() (v7.0.0 接线验证)
+- 工具（C）：ToolBootstrap 代码生成→部署→注册全闭环
+- 记忆（D）：GossipProtocol → server.py startup (v7.0.0 接线验证)
+- 协作（E）：SwarmBroker → DynamicOrchestrator fallback path + pipeline swarm
+- 工程成熟度：验证体系升级为 8 维运行时验证 (verify_l5_runtime.py v3)
+- **L6 状态**: Phase 39-41 全部默认开启，DeployEngine 有 max_risk=read 安全护栏
 
-### L5 升级前置 Phase（v2.0.0 进度）
+### L5 升级前置 Phase（v5.0.0 进度）
 
 | Phase | 内容 | 优先级 | 状态 |
 |:---:|------|:--:|:--:|
@@ -474,7 +483,7 @@ Harness    = 执行层（LLM/工具/技能调用、token 管理、错误重试�
 | R6 | GovernancePipeline + RBAC 治理角色 + 本体变更审批 + 映射验证 | 治理 |
 | P1 | Custom Commands + FDE 消息通知 + Sandbox 接线 + Subagent 优化 + 推理链可视化 | 成熟度 |
 
-**v2.8 系统全景**：748 项能力验证通过，6 步治理闭环，5 步推理编排，K1-K11 全部闭环，架构守卫 0 ERROR / 0 WARNING。
+**v2.8 系统全景**：776 项能力验证通过，6 步治理闭环，5 步推理编排，K1-K11 全部闭环，架构守卫 0 ERROR / 0 WARNING。
 
 ### 行业对标
 
@@ -494,10 +503,121 @@ Harness    = 执行层（LLM/工具/技能调用、token 管理、错误重试�
 
 ---
 
-> *本文档随系统演进版本化更新。当前版本 v3.0.0 对应 aiPlat Phase 32（2026-07-05）。*
+## 9. L6 升级：三步迈向组织者级自主
+
+v6.3.0 / Phase 41 完成后，aiPlat 完成了从 L5→L6 三个核心能力的实现。
+
+### 9.1 L6 三个新增能力
+
+| # | 能力 | Phase | 激活方式 |
+|---|------|:---:|------|
+| **抽象目标分解** | 接收模糊业务目标 → LLM+Ontology 拆解为结构化子目标 → 依赖规划 → 分层执行 → 进度评估 | 39 | `AIPLAT_AUTO_GOAL_DECOMPOSE_ENABLED=true` |
+| **自主部署** | ToolBootstrap 生成 Skill → 沙箱验证 → 灰度 5%→25%→100% → git push → 构建 → 健康检查 → 自动回滚 | 40 | `AIPLAT_AUTO_DEPLOY_ENABLED=true` |
+| **外部发现(集成)** | 外部进程 socket 扫描 → 服务指纹 → DataSourceConfig 自动生成 → 监听注册 → PolicyGate 人工审批 | 41 | `AIPLAT_DISCOVERY_ENABLED=true` |
+
+### 9.2 L6 负检查：系统未达到 L6 完全自主议程
+
+| L6 特征 | 检查命令 | 预期 | 说明 |
+|---------|---------|:---:|------|
+| 无外部系统自主发现 | `grep -rn 'emergent_swarm_discovery\|auto_host_scan' aiPlat-core/core/ --include='*.py'` | = 0 | 不主动扫描局域网发现新节点 |
+| 无自主代码生成部署 | `grep -rn 'auto_code_gen_deploy\|self_modify_pipeline' aiPlat-core/core/ --include='*.py'` | = 0 | 不自主修改自身引擎代码或重新部署 |
+| 无跨组织自主协调 | `grep -rn 'cross_org_federation\|auto_partner_discovery' aiPlat-core/core/ --include='*.py'` | = 0 | 不跨组织边界自主建立协作 |
+| 无自主资源采购 | `grep -rn 'auto_provision_gpu\|auto_scale_cluster' aiPlat-core/core/ --include='*.py'` | = 0 | 不自主采购计算资源 |
+| 无抽象目标自主分解 | `grep -rn 'auto_goal_decompose\|self_directed_agenda' aiPlat-core/core/ --include='*.py'` | = 0 | 不自主分解"提升企业效率"等抽象目标 |
+
+### 9.3 L6 能力边界
+
+- **抽象目标分解** (Phase 39): 系统能从模糊目标中提取可执行子目标，但目标仍由**人类提交**。系统不自主生成目标方向。
+- **自主部署** (Phase 40): 自动部署的 Skill 限于 `effects.type=read`。write/execute 需**人工审批**后部署。
+- **外部发现** (Phase 41): 扫描仅识别端口和服务类型，不建立未经授权的连接。发现结果需**PolicyGate 审批**才能使用。
+
+这三道防线确保系统停留在"人给方向，系统找路径"的 L5-L6 交界，而非 "系统自己决定方向"的完整 L6。
+
+### 9.4 验证命令
+
+```bash
+# L6 负检查（预期全 0）
+grep -rn 'emergent_swarm_discovery\|auto_host_scan' aiPlat-core/core/ --include='*.py' | wc -l
+grep -rn 'auto_code_gen_deploy\|self_modify_pipeline' aiPlat-core/core/ --include='*.py' | wc -l
+grep -rn 'cross_org_federation\|auto_partner_discovery' aiPlat-core/core/ --include='*.py' | wc -l
+grep -rn 'auto_provision_gpu\|auto_scale_cluster' aiPlat-core/core/ --include='*.py' | wc -l
+grep -rn 'auto_goal_decompose\|self_directed_agenda' aiPlat-core/core/ --include='*.py' | wc -l
+
+# Phase 39-41 模块存在性
+ls aiPlat-core/core/harness/optimization/abstract_goal_decomposer.py
+ls aiPlat-core/core/harness/optimization/goal_dependency_graph.py
+ls aiPlat-core/core/harness/optimization/goal_progress_evaluator.py
+ls aiPlat-core/core/harness/deployment/deploy_engine.py
+ls aiPlat-core/core/harness/deployment/git_pusher.py
+ls aiPlat-core/core/apps/discovery/__init__.py
+ls aiPlat-core/core/harness/infrastructure/discovery_listener.py
+ls aiPlat-core/core/harness/infrastructure/auto_register.py
+```
+
+---
+
+## 10. MoA 多模型推理 (Phase 42)
+
+v6.4.0 / Phase 42 新增通用 MoA (Mixture-of-Agents) 多模型并行推理能力。
+
+### 10.1 架构
+
+MoA 采用严格的两层流水线设计：
+
+| 层级 | 角色 | 温度 | 行为 |
+|:---:|------|:---:|------|
+| 第一层 | 参考引擎 (N 个) | 0.5~0.8 (偏高) | 独立并行接收同一问题，各自生成完整答案。互不干扰，最大化视角多样性 |
+| 第二层 | 聚合引擎 (1 个) | 0.2~0.3 (偏低) | 接收 N 份参考答案，批判性评估、识别冲突、综合最优 → 生成最终回复 |
+
+两层温度参数刻意差异化——参考层发散以覆盖更多可能性，聚合层收敛以保证结论稳健。
+
+### 10.2 预设
+
+| 预设 | 参考引擎 | 聚合器 | 参考温度 | 聚合温度 | 适用场景 |
+|------|:---:|:---:|:---:|:---:|------|
+| `general` | reasoning×2 + chat + code_gen | reasoning | 0.6 | 0.3 | 通用复杂推理 |
+| `creative` | chat×2 + reasoning | chat | 0.8 | 0.4 | 创新性头脑风暴 |
+| `analysis` | reasoning×2 + code_gen | reasoning | 0.5 | 0.2 | 严格定量分析 |
+| `code_review` | reasoning + code_gen + chat | reasoning | 0.6 | 0.3 | 代码审查 |
+| `architecture` | reasoning×2 | reasoning | 0.5 | 0.2 | 架构审查 |
+| `security` | reasoning + code_gen + chat | reasoning | 0.7 | 0.2 | 安全审计 |
+
+### 10.3 三种触发方式
+
+| 方式 | 入口 | 说明 |
+|------|------|------|
+| `/moa` 命令 | 对话中输入 `/moa --preset security 分析这段代码` | 临时触发一次 MoA，执行完后自动切回单模型 |
+| Pipeline 路由 | YAML 配置 `routing_mode: "moa"` | 流水线阶段自动走 MoA 推理 |
+| 模型选择器 | 前端 MoA 卡片 + preset 下拉 | 后续所有对话自动 MoA |
+
+### 10.4 工程特性
+
+- **故障容忍**: `asyncio.gather(return_exceptions=True)`，个别引擎失败不阻塞
+- **成本守卫**: `AIPLAT_MOA_MAX_COST_USD` 环境变量，超标自动降级为单模型
+- **流式输出**: 聚合器内部收集完整结果后返回，类型安全
+- **OpenRouter 跨厂商**: `factory.py` +1 行即可接入 200+ 模型
+
+### 10.5 验证命令
+
+```bash
+ls aiPlat-core/core/harness/syscalls/moa_executor.py
+ls aiPlat-core/core/harness/syscalls/moa_presets.yaml
+grep -c '"moa"' aiPlat-core/core/schemas_builder.py
+grep -c 'MoA' aiPlat-management/frontend/src/components/model/ModelTierPanel.tsx
+```
+
+---
+
+> *本文档随系统演进版本化更新。当前版本 v6.4.0 对应 aiPlat Phase 42（2026-07-19）。*
 >
 > *v1.0.0: Phase 24, L4基础*
 > *v2.0.0: Phase 28, L4(L5-proximate), F轴L4高级*
 > *v3.0.0: Phase 32, L4+(五轴L4+两轴L5), F/A轴触达L5*
 > *v4.0.0: Phase 35, L4+(三轴L5), C轴通过handler.py代码生成触达L5*
 > *v5.0.0: Phase 38, L5(六轴全L5), 39个Phase累积—系统定级L5组织者级*
+> *v6.0.0: Phase 38, L5(10轴全L5), GossipProtocol+SwarmBroker+AdaptiveContextRouter 三轴推至L5, R轴 D4全接线*
+> *v6.1.0: Phase 39, L5→L6第一步, AbstractGoalDecomposer 实现模糊目标→结构化子目标分解, GoalDependencyGraph 拓扑排序执行, GoalProgressEvaluator 收敛评估*
+> *v6.2.0: Phase 40, L5→L6第二步, DeployEngine 沙箱→灰度→push→构建→部署→验证→回滚全闭环, GitPusher, canary auto_rollout*
+> *v6.3.0: Phase 41, L5→L6第三步, 外部集成扫描→指纹→Config生成→监听注册, 默认DENY需人工授权*
+*v6.4.0: Phase 42, 通用MoA多模型推理, 两层流水线(N参考引擎高温并行+1聚合器低温合成), `/moa`命令+Pipeline路由+模型选择器三入口, OpenRouter跨厂商*
+> *v7.0.0: 2026-07-24 全面架构审计。B/D轴接线验证（AdaptiveContextRouter→MemoryManager, GossipProtocol→server.py）。L6 Phase 39-41 默认开启。验证体系升级为 8维运行时验证 (verify_l5_runtime.py v3)。622 ACTIVE, 96/100 readiness。*

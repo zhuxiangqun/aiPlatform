@@ -49,6 +49,56 @@ def _load_doc_kinds(*, tenant_id: str, doc_ids: List[str]) -> List[str]:
     return get_kb_load_doc_kinds_fn()(tenant_id=tenant_id, doc_ids=doc_ids)
 
 
+def _extract_wiki_chunks_for_page(
+    wiki_pages: List[Dict[str, Any]],
+    page_label: str,
+    max_chars: int = 2000,
+) -> List[str]:
+    """Extract relevant sections from operation manual wiki pages for a given page label.
+
+    Matches sections under ### PageLabel headings. Falls back to broader context
+    (the parent ## group section) if exact match yields too little content.
+    """
+    chunks = []
+    for page in wiki_pages:
+        body = page.get("body", "")
+        if not body:
+            continue
+
+        # Strategy 1: exact ### heading match → extract that subsection
+        pattern = rf'^###\s+{re.escape(page_label)}\s*$(.+?)(?=^###\s|\Z)'
+        match = re.search(pattern, body, re.MULTILINE | re.DOTALL)
+        if match:
+            section_text = match.group(0).strip()
+            if len(section_text) > 50:
+                chunks.append(section_text[:max_chars])
+                continue
+
+        # Strategy 2: the label appears in body → extract surrounding paragraph
+        label_pos = body.find(page_label)
+        if label_pos >= 0:
+            # Find the nearest ## or ### heading before this position
+            # and extract everything until the next same-level heading
+            pre_text = body[:label_pos]
+            prev_heading = re.findall(r'^(#{2,3})\s+.+$', pre_text, re.MULTILINE)
+            if prev_heading:
+                last_h = prev_heading[-1]
+                # Find the section start
+                sec_start = body.rfind(f'{last_h} ', 0, label_pos)
+                if sec_start < 0:
+                    sec_start = max(0, label_pos - 200)
+                next_section = re.search(rf'^{last_h}\s+', body[label_pos:], re.MULTILINE)
+                if next_section:
+                    section_end = label_pos + next_section.start()
+                else:
+                    section_end = min(len(body), label_pos + max_chars)
+                section_text = body[sec_start:section_end].strip()
+                if len(section_text) > 50:
+                    chunks.append(section_text[:max_chars])
+
+    return chunks
+
+
 def _assemble_chat_system_msgs(
     domain_config: Dict[str, Any],
     run_context: Optional[dict],
@@ -70,6 +120,74 @@ def _extract_answer_from_loop_output(output: Any) -> str:
     """Delegate to shared answer_extractor."""
     from core.harness.utils.answer_extractor import extract_answer_from_output
     return extract_answer_from_output(output)
+
+
+def _parse_time_range(question: str) -> str:
+    """P1-B: Extract standardized time range from user question.
+
+    Returns: "2024Q3", "2024", "last_quarter" etc., or "" if no time detected.
+    Relative times are converted to absolute values immediately.
+    """
+    q = question.lower() if question else ""
+    # Absolute: "2024年 Q3" or "2024Q3"
+    m = re.search(r'(20\d{2})\s*年?\s*q([1-4])', q)
+    if m:
+        return f"{m.group(1)}Q{m.group(2)}"
+    # Absolute: "2024年" or "2024年度"
+    m = re.search(r'(20\d{2})\s*年(?:度)?', q)
+    if m:
+        return m.group(1)
+    # Relative times → convert to absolute immediately
+    from datetime import datetime as _dt
+    now = _dt.now()
+    if re.search(r'上季度|上个季度', q):
+        qtr = (now.month - 1) // 3  # 0-based: 0=Q1
+        if qtr == 0:
+            return f"{now.year - 1}Q4"
+        return f"{now.year}Q{qtr}"
+    if re.search(r'上个月', q):
+        yr = now.year if now.month > 1 else now.year - 1
+        return str(yr)
+    if re.search(r'去年', q):
+        return str(now.year - 1)
+    if re.search(r'今年|本年', q):
+        return str(now.year)
+    if re.search(r'本季度|这个季度', q):
+        qtr = (now.month - 1) // 3 + 1
+        return f"{now.year}Q{qtr}"
+    return ""
+
+
+def _parse_time_to_filters(time_range: str) -> dict:
+    """Convert standardized time_range to SQL year/quarter.
+
+    '2024Q3' → {'year': 2024, 'quarter': 3}
+    '2024'   → {'year': 2024}
+    ''       → {}
+    """
+    import re
+    if not time_range:
+        return {}
+    m = re.match(r'(20\d{2})Q([1-4])', time_range)
+    if m:
+        return {"year": int(m.group(1)), "quarter": int(m.group(2))}
+    m = re.match(r'^(20\d{2})$', time_range)
+    if m:
+        return {"year": int(m.group(1))}
+    return {}
+
+
+async def _get_related_recommendations(domain_id: str, entity_name: str,
+                                   max_items: int = 3) -> List[str]:
+    """Proactive recommendations based on GraphIndex neighbors."""
+    if not domain_id or not entity_name:
+        return []
+    try:
+        from core.harness.syscalls.graph import sys_graph_neighbors
+        result = await sys_graph_neighbors(entity_name, domain_id=domain_id)
+        return result.get("neighbors", [])[:max_items]
+    except Exception:
+        return []
 
 
 class MaterialsChatAgent(BaseAgent):
@@ -100,12 +218,7 @@ class MaterialsChatAgent(BaseAgent):
 
             vars0 = dict(context.variables or {})
             run_context = vars0.get("_run_context")  # Phase 10.1: runtime context from API caller
-            run_id = str(vars0.get("_run_id") or "").strip() or None
-            scope = dict(vars0.get("scope") or {})
-            options = dict(vars0.get("options") or {})
-            tenant_id = str(vars0.get("tenant_id") or "default")
-            session_id = str(context.session_id or "default")
-            user_id = str(context.user_id or "system")
+            
             question = ""
             if context.messages:
                 question = str(context.messages[-1].get("content") or "").strip()
@@ -113,6 +226,16 @@ class MaterialsChatAgent(BaseAgent):
                 question = str(vars0.get("message") or "").strip()
             if not question:
                 return AgentResult(success=False, error="message_required")
+            
+            # P1-B: parse time range from user question and inject into RunContext
+            if run_context and isinstance(run_context, dict):
+                run_context.setdefault("time_range", _parse_time_range(question))
+            run_id = str(vars0.get("_run_id") or "").strip() or None
+            scope = dict(vars0.get("scope") or {})
+            options = dict(vars0.get("options") or {})
+            tenant_id = str(vars0.get("tenant_id") or "default")
+            session_id = str(context.session_id or "default")
+            user_id = str(context.user_id or "system")
 
             # §5.63: Query sanitization
             question = sanitize_query(question)
@@ -144,6 +267,14 @@ class MaterialsChatAgent(BaseAgent):
                 except Exception:
                     import logging; logging.getLogger(__name__).debug("Semantic cache check skipped", exc_info=True)
             collection_id = str(scope.get("collection_id") or vars0.get("collection_id") or "default")
+            # D7: ControlProfile 知识域过滤 — 画像驱动的 collection 覆盖
+            try:
+                from core.harness.meta.profile_registry import get_active_profile
+                profile = get_active_profile()
+                if profile and profile.collection_filter:
+                    collection_id = profile.collection_filter
+            except Exception:
+                logging.getLogger(__name__).debug('_execute_impl failed', exc_info=True)
             if not _enforce_scope(collection_id, str(vars0.get("tenant_id") or "default")):
                 return AgentResult(success=False, error="scope_required")
             _trace("问题理解", f"DMQR 多查询改写", query_len=len(question))
@@ -168,18 +299,29 @@ class MaterialsChatAgent(BaseAgent):
             # ── Trivial query bypass: skip full RAG pipeline for sub-ms responses ──
             import re as _t_re
             _t_check = question.strip().lower()
-            if any(p in _t_check for p in ("几点", "几点了", "现在时间", "今天日期", "星期几")):
-                from datetime import datetime as _dt
-                now = _dt.now()
-                weekdays = ["星期一", "星期二", "星期三", "星期四", "星期五", "星期六", "星期日"]
-                return AgentResult(success=True,
-                    output={"answer": f"现在是 {now.year}年{now.month}月{now.day}日 {now.hour:02d}:{now.minute:02d}:{now.second:02d}，{weekdays[now.weekday()]}",
-                            "citations": [], "items": [], "scope_applied": scope,
-                            "strategy": "trivial_bypass", "skills_used": [],
-                            "turn_summary": "time query", "intent": "trivial",
-                            "reasoning_path": [], "pipeline_trace": pipeline_trace,
-                            "quality": "trivial"},
-                    metadata={"intent": "trivial", "strategy": "trivial_bypass"})
+            # Use centralized trivial handlers (extracted from here)
+            try:
+                from core.harness.utils.trivial_handlers import handle_time_query, handle_math_expression
+                time_result = handle_time_query(question)
+                if time_result:
+                    return AgentResult(success=True,
+                        output={"answer": time_result, "citations": [], "items": [], "scope_applied": scope,
+                                "strategy": "trivial_bypass", "skills_used": [],
+                                "turn_summary": "time query", "intent": "trivial",
+                                "reasoning_path": [], "pipeline_trace": pipeline_trace,
+                                "quality": "trivial"},
+                        metadata={"intent": "trivial", "strategy": "trivial_bypass"})
+                math_result = handle_math_expression(question)
+                if math_result:
+                    return AgentResult(success=True,
+                        output={"answer": math_result, "citations": [], "items": [], "scope_applied": scope,
+                                "strategy": "trivial_bypass", "skills_used": [],
+                                "turn_summary": "math query", "intent": "trivial",
+                                "reasoning_path": [], "pipeline_trace": pipeline_trace,
+                                "quality": "trivial"},
+                        metadata={"intent": "trivial", "strategy": "trivial_bypass"})
+            except ImportError:
+                pass  # noqa: optional-dependency
             if _t_check in ("你好", "hello", "hi", "hey", "在吗", "在不在"):
                 return AgentResult(success=True,
                     output={"answer": "你好！我是知识库助手，有什么可以帮助你的？",
@@ -241,6 +383,10 @@ class MaterialsChatAgent(BaseAgent):
                     enhanced_question = f"{enhanced_question} [variants: {' | '.join(dmqr_variants[1:4])}]"
             except Exception as e:
                 logging.debug(str(e), exc_info=True)
+            # ── Page-aware retrieval: enrich question with page context ──
+            page_label = (run_context or {}).get("current_page_label", "")
+            if page_label:
+                enhanced_question = f"[当前页面: {page_label}] {enhanced_question}"
             retrieval_policy = choose_retrieval_policy(analysis=analysis, scope=scope, doc_kinds=doc_kinds)
             answer_strategy = choose_answer_strategy(analysis=analysis, retrieval_policy=retrieval_policy)
 
@@ -417,68 +563,52 @@ class MaterialsChatAgent(BaseAgent):
             except Exception as e:
                 logging.debug(str(e), exc_info=True)
 
-            # ── Retrieve document content (ontology-first, FTS5 fallback) ──
+            # ── Phase 44: CRAG 3-level retrieval (reusable syscall) ──
             retrieved_docs: str = ""
             citations: list = []
             try:
-                if ontology_class_uri:
-                    from core.harness.knowledge.orchestrated_retrieval import ontology_first_retrieve
-                    retrieved_docs, citations = await ontology_first_retrieve(
-                        enhanced_question,
-                        ontology_class_uri,
-                        domain_id=domain_id,
-                        collection_id=collection_id,
-                        top_k=int(retrieval_policy.get("top_k") or options.get("top_k") or 8),
-                    )
-                # ── CRAG: Quality gate — if retrieval is weak, try KB fallback ──
-                if not retrieved_docs or len(retrieved_docs or "") < 100:
-                    # Fallback: FTS5 + keyword search
-                    from core.api.facades.kb_facade import kb_retrieve
-                    results = kb_retrieve(
-                        query=enhanced_question,
-                        doc_ids=doc_ids,
-                        collection_id=collection_id,
-                        tenant_id=tenant_id,
-                        top_k=int(retrieval_policy.get("top_k") or options.get("top_k") or 8),
-                    )
-                    if results:
-                        parts = []
-                        for r in results:
-                            loc = ""
-                            if r.get("start_s") is not None:
-                                loc = f"[{r['start_s']:.0f}s] "
-                            elif r.get("page_idx"):
-                                loc = f"[p{r['page_idx']}] "
-                            parts.append(f"{loc}{r['text']}")
-                        retrieved_docs = "\n\n---\n\n".join(parts)
-                        citations = []
-                        for r in results:
-                            ref = f"[doc:{r['doc_id'][:8]}]"
-                            if r.get("start_s") is not None:
-                                ref += f" [{r['start_s']:.0f}s-{r.get('end_s', 0):.0f}s]"
-                            elif r.get("page_idx"):
-                                ref += f" [p{r['page_idx']}]"
-                            citations.append({"source": ref, "text": r["text"][:200]})
-
-                # ── CRAG: Reroute via HyDE if still empty ──
-                if not retrieved_docs or len(retrieved_docs or "") < 50:
-                    try:
-                        from core.harness.knowledge.hyde_expander import hyde_retrieve
-                        hyde_docs, hyde_citations = await hyde_retrieve(
-                            question,
-                            wiki_collection_ids=[router.resolve_collection(domain_id)] if domain_id else [collection_id] if collection_id else None,
-                            top_k=int(retrieval_policy.get("top_k") or options.get("top_k") or 8),
-                        )
-                        if hyde_docs:
-                            retrieved_docs = hyde_docs
-                            citations = hyde_citations
-                    except Exception as e:
-                        logging.debug(str(e), exc_info=True)
+                from core.harness.syscalls.retrieval_crag import sys_crag_retrieve
+                time_filters = _parse_time_to_filters(
+                    run_context.get("time_range", "")) if run_context else {}
+                retrieved_docs, citations = await sys_crag_retrieve(
+                    enhanced_question,
+                    domain_id=domain_id,
+                    collection_id=collection_id,
+                    tenant_id=tenant_id,
+                    doc_ids=doc_ids,
+                    ontology_class_uri=ontology_class_uri,
+                    top_k=int(retrieval_policy.get("top_k") or options.get("top_k") or 8),
+                    time_filters=time_filters or None,
+                    enable_deep_research=os.getenv("AIPLAT_DEEP_RESEARCH_ENABLED", "false").lower() in ("true", "1", "yes"),
+                )
             except Exception as e:
                 logging.debug(str(e), exc_info=True)
             _trace("多路检索", f"检索到 {len(retrieved_docs)} 字符", sources=len(citations) if citations else 0)
             if retrieved_docs:
                 skill_params["doc_content"] = retrieved_docs
+
+            # ── Page-aware Wiki retrieval: search operation manual for current page ──
+            page_label = (run_context or {}).get("current_page_label", "")
+            if page_label:
+                try:
+                    from core.harness.knowledge.wiki_retriever import WikiPageRetriever
+                    wiki_retriever = WikiPageRetriever(
+                        wiki_titles=["manuals / management-ui-operation-manual"],
+                        collection_ids=[collection_id],
+                    )
+                    wiki_docs = wiki_retriever._load_pages()
+                    if wiki_docs:
+                        wiki_chunks = _extract_wiki_chunks_for_page(wiki_docs, page_label)
+                        if wiki_chunks:
+                            wiki_text = "\n\n---\n\n".join(wiki_chunks)
+                            if retrieved_docs:
+                                retrieved_docs = retrieved_docs + "\n\n" + wiki_text
+                            else:
+                                retrieved_docs = wiki_text
+                            _trace("页面感知检索", f"Wiki操作手册命中: {page_label}",
+                                   wiki_chunks=len(wiki_chunks))
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
 
             # ── Graph context: inject structured graph knowledge ──
             graph_context = ""
@@ -492,13 +622,7 @@ class MaterialsChatAgent(BaseAgent):
                     if gq2.get("success"):
                         graph_context += f"{gq2['result']}\n"
             except Exception:
-                pass
-
-            # Compress retrieved docs to fit model context window
-            if retrieved_docs:
-                from core.harness.knowledge.doc_compressor import compress_retrieved_docs
-                model_name = best_model_for_purpose("chat")
-                retrieved_docs = compress_retrieved_docs(retrieved_docs, model_name=model_name)
+                logging.getLogger(__name__).debug('code failed', exc_info=True)
 
             # ── Hallucination check helper (lazy-import, best-effort) ──
             async def _check_hallucination(answer_text: str, current_quality: str):
@@ -560,9 +684,15 @@ class MaterialsChatAgent(BaseAgent):
                                     faithfulness=hallucination_meta.get("faithfulness", 0),
                                     hallucination_risk=hallucination_meta.get("hallucination_risk", 0),
                                     quality=quality, retrieved_count=len(citations))
+                                # PR: Proactive recommendations from GraphIndex neighbors
+                                related = await _get_related_recommendations(
+                                    domain_id or "",
+                                    run_context.get("entity", "") if run_context else ""
+                                )
                                 return AgentResult(
                                     success=True,
                                     output={"answer": answer, "citations": citations, "items": [],
+                                            "related": related,
                                             "scope_applied": scope, "strategy": "domain_skill",
                                             "skills_used": [skill_name], "turn_summary": turn_summary,
                                             "intent": intent, "mode": "", "analysis": analysis,
@@ -602,14 +732,18 @@ class MaterialsChatAgent(BaseAgent):
                                 f"input_tok_est={trace['input_tok_est']} max_tokens={trace['max_tokens']}"
                             )
                         quality = self_review(answer, citations, reasoning_path)
-                        # Self-RAG: auto-retry on low_evidence via HyDE reroute
+                        # Self-RAG: auto-retry on low_evidence via CRAG (Phase 45)
                         if quality == "low_evidence" and not retrieved_docs:
                             try:
-                                from core.harness.knowledge.hyde_expander import hyde_retrieve
-                                hyde_docs, hyde_citations = await hyde_retrieve(
+                                from core.harness.syscalls.retrieval_crag import sys_crag_retrieve
+                                hyde_docs, hyde_citations = await sys_crag_retrieve(
                                     question,
-                                    wiki_collection_ids=[router.resolve_collection(domain_id)] if domain_id else [collection_id] if collection_id else None,
+                                    domain_id=domain_id,
+                                    collection_id=collection_id,
+                                    tenant_id=tenant_id,
                                     top_k=int(retrieval_policy.get("top_k") or options.get("top_k") or 8),
+                                    enable_hyde=True,
+                                    enable_deep_research=os.getenv("AIPLAT_DEEP_RESEARCH_ENABLED", "false").lower() in ("true", "1", "yes"),
                                 )
                                 if hyde_docs:
                                     retrieved_docs = hyde_docs
@@ -644,7 +778,10 @@ class MaterialsChatAgent(BaseAgent):
                                     "quality": quality,
                                     "hallucination": hallucination_meta,
                                     "rag_diagnosis": rag_diagnosis},
-                            metadata={"intent": intent, "strategy": "direct_retrieve", "doc_count": len(doc_ids)},
+                            metadata={"intent": intent, "strategy": "direct_retrieve", "doc_count": len(doc_ids),
+                                      # v2.9: suggest grilling when ontology mapping confidence is low
+                                      "grill_suggested": bool(onto_mapping and onto_mapping.get("matched_classes") and onto_mapping["matched_classes"][0].get("score", 0) < 0.5),
+                                      "domain_id": domain_id, "collection_id": collection_id},
                         )
                 except Exception as e:
                     logging.debug(str(e), exc_info=True)
@@ -747,3 +884,4 @@ class MaterialsChatAgent(BaseAgent):
 
 def create_materials_chat_agent(config: AgentConfig, **kwargs) -> MaterialsChatAgent:
     return MaterialsChatAgent(config=config, **kwargs)
+

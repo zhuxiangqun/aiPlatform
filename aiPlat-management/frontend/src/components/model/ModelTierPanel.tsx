@@ -1,5 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { Zap, Cpu, Loader2, ChevronDown, ChevronUp } from 'lucide-react';
+// === capability_dependencies (Phase 43: auto-verified) ===
+// depends_on:
+//   - model-infrastructure:
+//       symbols: [T1-T5 tiers, model-tier API]
+//   - moa-multi-model-reasoning:
+//       symbols: [MoA card, preset selector, /model-override/moa]
+// === end ===
+import { Zap, Cpu, Loader2, ChevronDown, ChevronUp, Brain, CheckCircle } from 'lucide-react';
 import { apiClient } from '../../services';
 import { Card, CardContent } from '../../components/ui';
 import toast from '../../components/ui/toast';
@@ -40,6 +47,8 @@ export default function ModelTierPanel() {
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState(false);
   const [switching, setSwitching] = useState<string | null>(null);
+  const [moaActive, setMoaActive] = useState(false);
+  const [moaPreset, setMoaPreset] = useState('general');
 
   const fetchData = async () => {
     try {
@@ -74,9 +83,27 @@ export default function ModelTierPanel() {
       await apiClient.post<any>('/model-override', { model_name: '' });
       toast?.success?.('Model override cleared — back to auto-routing') ||
         console.log('Override cleared');
+      setMoaActive(false);
       fetchData();
     } catch (e: any) {
       toast?.error?.(`Clear failed: ${e?.message || 'unknown'}`);
+    }
+  };
+
+  const handleMoASelect = async (preset: string) => {
+    if (moaActive && moaPreset === preset) {
+      await apiClient.post<any>('/model-override', { model_name: '' });
+      setMoaActive(false);
+      toast?.success?.('MoA mode off — back to single-model');
+    } else {
+      try {
+        await apiClient.post<any>('/model-override/moa', { preset });
+        setMoaActive(true);
+        setMoaPreset(preset);
+        toast?.success?.(`MoA mode: ${preset}`) || console.log(`MoA: ${preset}`);
+      } catch (e: any) {
+        toast?.error?.(`MoA failed: ${e?.message || 'unknown'}`);
+      }
     }
   };
 
@@ -111,6 +138,51 @@ export default function ModelTierPanel() {
             >
               Clear override — resume auto-routing
             </button>
+          )}
+
+          {/* MoA (Mixture of Agents) card */}
+          <div
+            className={`flex items-center justify-between px-2 py-2 rounded border cursor-pointer transition-colors
+              ${moaActive
+                ? 'bg-purple-500/10 border-purple-500/30'
+                : 'bg-gray-800/30 text-gray-400 border-gray-700 hover:border-purple-500/20'
+              }`}
+            onClick={() => handleMoASelect('general')}
+          >
+            <div className="flex items-center gap-2 min-w-0">
+              <Brain className="w-4 h-4 text-purple-400" />
+              <div className="min-w-0">
+                <div className="text-xs font-medium text-purple-300">MoA — Mixture of Agents</div>
+                <div className="text-[10px] opacity-70">3-4 models parallel → 1 aggregator</div>
+              </div>
+            </div>
+            {moaActive && <CheckCircle className="w-4 h-4 text-purple-400 flex-shrink-0 ml-2" />}
+          </div>
+          {moaActive && (
+            <>
+              <select
+                className="w-full text-xs bg-dark-card border border-dark-border rounded p-1.5 mt-1"
+                value={moaPreset}
+                onChange={(e) => handleMoASelect(e.target.value)}
+              >
+                <option value="general">General (balanced)</option>
+                <option value="creative">Creative (high temp)</option>
+                <option value="analysis">Analysis (low temp)</option>
+                <option value="code_review">Code Review</option>
+                <option value="architecture">Architecture</option>
+                <option value="security">Security</option>
+              </select>
+              <div className="text-[10px] text-gray-500 mt-1.5 space-y-0.5">
+                <div className="flex justify-between">
+                  <span>3-4 reference engines parallel</span>
+                  <span className="text-purple-400/60">~$0.05-0.10/query</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>1 aggregator synthesizes</span>
+                  <span className="text-gray-600">30-60s typical</span>
+                </div>
+              </div>
+            </>
           )}
 
           {/* Tier list */}

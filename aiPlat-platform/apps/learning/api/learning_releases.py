@@ -10,7 +10,7 @@ from core.api.deps import actor_from_http
 from core.api.utils.governance import gate_error_envelope, governance_links, ui_url
 from core.governance.changeset import record_changeset
 from core.governance.gating import autosmoke_enforce, gate_with_change_control, new_change_id
-from core.harness.kernel.runtime import get_kernel_runtime
+from core.api.core_facade import get_kernel_runtime
 from core.learning.workspace_target import ensure_workspace_target
 import logging
 from apps.common_schemas import StatusResponse, ListResponse, ItemResponse

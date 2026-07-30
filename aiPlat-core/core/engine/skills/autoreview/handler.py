@@ -137,7 +137,7 @@ async def execute(params: Dict[str, Any]) -> Dict[str, Any]:
             engines_used=report.engines_used,
         )
     except Exception:
-        pass
+        logging.getLogger(__name__).debug('code failed', exc_info=True)
 
     return {
         "report": report.to_dict(),
@@ -390,4 +390,4 @@ async def _persist_review(rpt, target: str, focus: str, mode: str,
             },
         )
     except Exception:
-        pass
+        logging.getLogger(__name__).debug('_persist_review failed', exc_info=True)

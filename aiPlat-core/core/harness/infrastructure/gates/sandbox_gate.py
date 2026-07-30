@@ -277,7 +277,7 @@ class SandboxGate:
                     if float(v) > self._MAX_TIMEOUT_PER_TOOL:
                         return (False, f"REJECT: requested timeout {v}s exceeds budget {self._MAX_TIMEOUT_PER_TOOL}s")
                 except (TypeError, ValueError):
-                    pass
+                    pass  # noqa: cleanup-best-effort
                 break
         for k in ("max_tokens", "tokens"):
             v = a.get(k)
@@ -286,7 +286,7 @@ class SandboxGate:
                     if int(v) > self._MAX_TOKENS_PER_TOOL:
                         return (False, f"REJECT: requested tokens {v} exceeds budget {self._MAX_TOKENS_PER_TOOL}")
                 except (TypeError, ValueError):
-                    pass
+                    pass  # noqa: cleanup-best-effort
                 break
         return (True, "resource budget OK")
 
@@ -302,3 +302,4 @@ def get_sandbox() -> SandboxGate:
 
 
 __all__ = ["SandboxGate", "SandboxResult", "Verdict", "get_sandbox"]
+

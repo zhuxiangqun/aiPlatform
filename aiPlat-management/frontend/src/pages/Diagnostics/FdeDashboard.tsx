@@ -8,12 +8,110 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { Card, CardContent, CardHeader, Button, toast } from '../../components/ui';
 import ReasoningTracePanel from './ReasoningTracePanel';
-import { Wrench, RefreshCw, Package, Download, Users, FileText, Target, Activity, AlertTriangle, Send, Clipboard, TrendingUp, CheckCircle, UserCheck, BookOpen, Plus, ChevronDown, ChevronRight, X, ArrowRightLeft, Trash2, Pencil } from 'lucide-react';
+import { Wrench, RefreshCw, Package, Download, Users, FileText, Target, Activity, AlertTriangle, Send, Clipboard, TrendingUp, CheckCircle, UserCheck, BookOpen, Plus, ChevronDown, ChevronRight, X, ArrowRightLeft, Trash2, Pencil, Zap, GitBranch, GitCommit, GitFork, FileText, Play } from 'lucide-react';
 import CapabilityBoundary from './CapabilityBoundary';
 import FloatingFeedback from './FloatingFeedback';
 import WeeklyReport from './WeeklyReport';
+import GrillPanel from '../../components/grilling/GrillPanel';
+import RapidInsightTab from './RapidInsightTab';
+import SimulationPanel from './SimulationPanel';
+import LineageViewer from './LineageViewer';
+import PurposeContext from '../../components/security/PurposeContext';
+import BranchPanel from './BranchPanel';
+import AgentNetworkPanel from './AgentNetworkPanel';
+import TemplatePanel from './TemplatePanel';
+import RecordingPanel from './RecordingPanel';
+import EvoXPanel from './EvoXPanel';
 
 const API = (path: string) => `/api/platform/apps/fde${path}`;
+
+// ═══════════════════════════════════════════════════════════
+// ActionCardsSection — reusable action cards component (v3)
+// Used in ③ AssessTab (diagnosis done) and ⑦ AcceptTab (canary passed)
+// ═══════════════════════════════════════════════════════════
+const ActionCardsSection: React.FC<{
+  readonly specId: string;
+  readonly domainId: string;
+  readonly className: string;
+  readonly state: string;
+}> = ({ specId, domainId, className, state }) => {
+  const [actions, setActions] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!specId) return;
+    fetch(API(`/actions?class=${encodeURIComponent(className)}&state=${encodeURIComponent(state)}&domain=${encodeURIComponent(domainId)}`))
+      .then(r => r.json()).then(d => setActions(d.actions || []))
+      .catch(() => {});
+  }, [specId, className, state, domainId]);
+
+  const handleExecute = async (actionId: string, params: Record<string, string>) => {
+    setLoading(true);
+    try {
+      const r = await fetch(API('/actions/execute'), {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action_id: actionId, entity_id: specId, params, actor: 'fde_engineer', role: 'fde_engineer' }),
+      });
+      const d = await r.json();
+      if (d.status === 'executed') {
+        toast?.success?.(`已执行: ${d.effect || '操作成功'}`);
+        if (d.compensation) toast?.info?.(`补偿: ${d.compensation}`);
+      } else if (d.status === 'blocked') {
+        const color: Record<string, string> = { permission: '红色', state: '橙色', class: '橙色', scope: '灰色' };
+        toast?.warning?.(`${color[d.constraint_type] || d.constraint_type}拦截: ${d.reason || ''}`);
+      } else if (d.status === 'pending_approval') {
+        toast?.info?.('已提交审批');
+      } else if (d.status === 'throttled' && d.require_justification) {
+        const reason = window.prompt(`${d.reason}\n\n请输入复核理由以继续执行：`);
+        if (reason) handleExecute(actionId, { ...params, __justification: reason });
+      } else {
+        toast?.error?.(d.error || '执行失败');
+      }
+    } catch (e: any) { toast?.error?.(e?.message || '请求失败'); }
+    finally { setLoading(false); }
+  };
+
+  if (!actions.length) return null;
+
+  return (
+    <Card>
+      <CardHeader><span className="text-sm font-medium">可执行动作</span></CardHeader>
+      <CardContent>
+        <div className="space-y-3">
+          {actions.map(action => (
+            <div key={action.action_id} className="p-3 rounded bg-gray-800/50 border border-gray-700/50">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm font-medium text-gray-200">{action.label}</span>
+                <span className={`text-[10px] px-1.5 py-0.5 rounded ${
+                  action.risk_level === 'critical' ? 'bg-red-500/20 text-red-400' :
+                  action.risk_level === 'high' ? 'bg-orange-500/20 text-orange-400' :
+                  action.risk_level === 'medium' ? 'bg-yellow-500/20 text-yellow-400' :
+                  'bg-green-500/20 text-green-400'
+                }`}>{action.risk_level}</span>
+              </div>
+              <div className="text-xs text-gray-400 mb-2">{action.effect_semantics}</div>
+              {action.compensation && (
+                <div className="text-[11px] text-orange-400/80 mb-2">补偿: {action.compensation}</div>
+              )}
+              {action.input_schema?.properties && (
+                <div className="mb-2 space-y-1">
+                  {Object.entries(action.input_schema.properties as Record<string, any>).map(([key, schema]: [string, any]) => (
+                    <input key={key}
+                      className="w-full bg-gray-800 border border-gray-700 rounded px-2 py-1 text-xs text-gray-300"
+                      placeholder={schema.description || key}
+                      onChange={e => { action._params = action._params || {}; action._params[key] = e.target.value; }} />
+                  ))}
+                </div>
+              )}
+              <Button variant="default" size="sm" loading={loading}
+                onClick={() => handleExecute(action.action_id, action._params || {})}>执行</Button>
+            </div>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
 
 // ── 工作流状态类型 (append-only pipeline, 每个 Tab 只写 1 个 key) ──
 interface CustomerInfo {
@@ -56,6 +154,80 @@ export const INDUSTRY_DOMAIN_MAP: Record<string, string[]> = {
   'general': ['ai-knowledge', 'default'],
 };
 
+
+
+
+
+// ═══════════════════════════════════════════════════════════
+// ManageActionsButton — YAML action registration UI (v3)
+// ═══════════════════════════════════════════════════════════
+const ManageActionsButton: React.FC = () => {
+  const [open, setOpen] = useState(false);
+  const [yaml, setYaml] = useState(`# 粘贴动作 YAML 或编辑已有动作
+actions:
+  - action_id: "my_action"
+    label: "我的动作"
+    category: business
+    scope: domain
+    domain_id: fde-delivery
+    target_class: "诊断会话"
+    required_state: delivered
+    effect_semantics: "描述这个动作做什么"
+    compensation: "如何回滚"
+    risk_level: low
+    handler: "custom_handlers:my_handler"
+    input_schema:
+      type: object
+      required: [param1]
+      properties:
+        param1: {type: string, description: "参数说明"}`);
+  const [status, setStatus] = useState('');
+
+  const handleRegister = async () => {
+    setStatus('注册中...');
+    try {
+      // Save YAML first, then register
+      const blob = new Blob([yaml], { type: 'text/yaml' });
+      const r = await fetch(API('/actions/from-yaml'), {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ yaml_path: `~/.aiplat/actions/fde_user_actions.yaml` }),
+      });
+      // For save: write to file and re-register
+      const r2 = await fetch(API('/actions'), { method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ yaml_content: yaml }),
+      }).catch(() => null);
+      setStatus('已提交注册');
+      setTimeout(() => { setStatus(''); setOpen(false); }, 1500);
+    } catch (e: any) { setStatus('失败: ' + (e?.message || '')); }
+  };
+
+  if (!open) return (
+    <Button variant="ghost" size="sm" onClick={() => setOpen(true)}
+      className="text-[10px] text-gray-500 hover:text-blue-400">
+      管理动作
+    </Button>
+  );
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-start justify-center pt-[10vh] bg-black/60">
+      <div className="bg-gray-900 border border-gray-700 rounded-xl w-full max-w-lg mx-4 p-5 space-y-3">
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-semibold text-gray-200">动作注册 (YAML)</h3>
+          <button onClick={() => setOpen(false)} className="text-gray-500 hover:text-gray-300"><X className="w-4 h-4" /></button>
+        </div>
+        <textarea className="w-full h-64 bg-gray-800 border border-gray-700 rounded p-2 text-xs text-gray-200 font-mono resize-y"
+          value={yaml} onChange={e => setYaml(e.target.value)} />
+        <div className="flex items-center justify-between">
+          <span className="text-xs text-gray-500">{status}</span>
+          <Button variant="default" size="sm" onClick={handleRegister}>注册动作</Button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+
 // ── FDE 流程步骤 (按 FDE 七项能力 → 运营监控) ──
 const FDE_STEPS = [
   { key: 'customers',  label: '① 业务认知', icon: Users,      hint: '了解客户业务模式、痛点、关键流程' },
@@ -66,6 +238,7 @@ const FDE_STEPS = [
   { key: 'canary',     label: '⑥ 评测护栏', icon: TrendingUp,  hint: '灰度发布 + 质量门禁 + 回滚预案' },
   { key: 'accept',     label: '⑦ 验收移交', icon: CheckCircle, hint: '签收 + 移交 + 首月护航' },
   { key: 'evolution',  label: '⑧ 运营监控', icon: Activity,    hint: '运营指标 + 反馈闭环 + 资产沉淀' },
+  { key: 'rapid_insight', label: '⑨ 快速认知', icon: Zap,       hint: '48h 搞懂陌生行业 — 投喂材料 → 三问认知 → 盲区修复' },
 ] as const;
 
 type TabKey = typeof FDE_STEPS[number]['key'];
@@ -88,15 +261,22 @@ const FdeDashboard: React.FC = () => {
   const [scenarioRecommendations, setScenarioRecommendations] = useState<any[]>([]);
   const [scenarioLoading, setScenarioLoading] = useState(false);
   const [qualityScorecard, setQualityScorecard] = useState<any>(null);
+  const [showSimulation, setShowSimulation] = useState(false);
+  const [showLineage, setShowLineage] = useState(false);
+  const [showBranching, setShowBranching] = useState(false);
+  const [showAgentNetwork, setShowAgentNetwork] = useState(false);
+  const [showEvoX, setShowEvoX] = useState(false);
+  const [showTemplate, setShowTemplate] = useState(false);
+  const [showRecording, setShowRecording] = useState(false);
 
   const MATURITY_COLORS: Record<string, string> = {
     'production-ready': 'text-green-400', 'stable': 'text-blue-400',
-    'building': 'text-yellow-400', 'seeding': 'text-gray-500',
+    'building': 'text-yellow-400', 'growing': 'text-orange-400', 'seeding': 'text-gray-500',
   };
   const MATURITY_LABELS: Record<string, string> = {
-    'production-ready': '生产', 'stable': '稳定', 'building': '构建中', 'seeding': '播种',
+    'production-ready': '生产', 'stable': '稳定', 'building': '构建中', 'growing': '成长', 'seeding': '播种',
   };
-  const MATURITY_ORDER = ['production-ready', 'stable', 'building', 'seeding'] as const;
+  const MATURITY_ORDER = ['production-ready', 'stable', 'building', 'growing', 'seeding'] as const;
 
   useEffect(() => {
     fetch('/api/core/diagnostics/capability-boundary')
@@ -157,10 +337,20 @@ const FdeDashboard: React.FC = () => {
     if (!name) { setWorkflowStages([]); setWorkflowName(''); return; }
     try {
       const r = await fetch(`/api/core/workflow/templates/${name}`);
+      if (!r.ok) {
+        const errText = await r.text().catch(() => 'Unknown error');
+        toast?.error?.(`加载工作流失败 (${r.status}): ${errText.slice(0, 100)}`);
+        setWorkflowStages([]);
+        return;
+      }
       const d = await r.json();
       setWorkflowStages(d.stages || []);
       setWorkflowName(d.name || name);
-    } catch { setWorkflowStages([]); }
+    } catch (e: any) {
+      const msg = e?.message || String(e || '');
+      toast?.error?.(`工作流不可用: ${msg.slice(0, 100)}`);
+      setWorkflowStages([]);
+    }
   };
 
   const progressItems = React.useMemo(() => {
@@ -196,14 +386,15 @@ const FdeDashboard: React.FC = () => {
       return stages;
     }
     return [
-      { key: 'customers',  label: '客户', tabs: '①', tabKey: 'customers',  done: !!customer, active: tab === 'customers' },
-      { key: 'capability', label: '域',   tabs: '②', tabKey: 'capability', done: !!domain, active: tab === 'capability' },
-      { key: 'assess',     label: '诊断',  tabs: '③', tabKey: 'assess',     done: !!diagnosis, active: tab === 'assess' },
-      { key: 'poc',        label: 'POC',  tabs: '④', tabKey: 'poc',        done: !!pocProfile, active: tab === 'poc' },
-      { key: 'deploy',     label: '部署',  tabs: '⑤', tabKey: 'deploy',     done: !!deployVersion, active: tab === 'deploy' },
-      { key: 'canary',     label: '灰度',  tabs: '⑥', tabKey: 'canary',     done: !!canaryResult?.passed, active: tab === 'canary' },
-      { key: 'accept',     label: '验收',  tabs: '⑦', tabKey: 'accept',     done: adopted, active: tab === 'accept' },
-      { key: 'evolution',  label: '监控',  tabs: '⑧', tabKey: 'evolution',  done: adopted, active: tab === 'evolution' },
+      { key: 'customers',  label: '业务认知', tabs: '①', tabKey: 'customers',  done: !!customer, active: tab === 'customers' },
+      { key: 'capability', label: '评估域',   tabs: '②', tabKey: 'capability', done: !!domain, active: tab === 'capability' },
+      { key: 'assess',     label: '问题重构', tabs: '③', tabKey: 'assess',     done: !!diagnosis, active: tab === 'assess' },
+      { key: 'poc',        label: '验证价值', tabs: '④', tabKey: 'poc',        done: !!pocProfile, active: tab === 'poc' },
+      { key: 'deploy',     label: '快速构建', tabs: '⑤', tabKey: 'deploy',     done: !!deployVersion, active: tab === 'deploy' },
+      { key: 'canary',     label: '评测护栏', tabs: '⑥', tabKey: 'canary',     done: !!canaryResult?.passed, active: tab === 'canary' },
+      { key: 'accept',     label: '验收移交', tabs: '⑦', tabKey: 'accept',     done: adopted, active: tab === 'accept' },
+      { key: 'evolution',  label: '运营监控', tabs: '⑧', tabKey: 'evolution',  done: adopted, active: tab === 'evolution' },
+      { key: 'rapid_insight', label: '快速认知', tabs: '⑨', tabKey: 'rapid_insight', done: false, active: tab === 'rapid_insight' },
     ];
   }, [workflowStages, customer, domain, diagnosis, pocProfile, deployVersion, canaryResult, adopted, tab]);
 
@@ -260,11 +451,43 @@ const FdeDashboard: React.FC = () => {
               {workflowName || '自由模式'}
             </span>
           </h1>
-          <select onChange={e => loadWorkflow(e.target.value)} value={workflowName ? 'fde_delivery_v1' : ''}
-            className="text-xs bg-gray-800 border border-gray-700 rounded px-2 py-1 text-gray-400">
-            <option value="">自由模式（默认）</option>
-            <option value="fde_delivery_v1">FDE 标准交付 v1</option>
-          </select>
+          <div className="flex items-center gap-2">
+            <select onChange={e => loadWorkflow(e.target.value)} value={workflowName ? 'fde_delivery_v1' : ''}
+              className="text-xs bg-gray-800 border border-gray-700 rounded px-2 py-1 text-gray-400">
+              <option value="">自由模式（默认）</option>
+              <option value="fde_delivery_v1">FDE 标准交付 v1</option>
+            </select>
+            <ManageActionsButton />
+            <Button variant="ghost" size="sm" onClick={() => setShowSimulation(!showSimulation)}
+              className="text-[10px] text-gray-500 hover:text-purple-400">
+              <GitBranch className="w-3 h-3 mr-1" />沙盒推演
+            </Button>
+            <Button variant="ghost" size="sm" onClick={() => setShowLineage(!showLineage)}
+              className="text-[10px] text-gray-500 hover:text-green-400">
+              <GitCommit className="w-3 h-3 mr-1" />决策血缘
+            </Button>
+            <Button variant="ghost" size="sm" onClick={() => setShowBranching(!showBranching)}
+              className="text-[10px] text-gray-500 hover:text-yellow-400">
+              <GitFork className="w-3 h-3 mr-1" />本体分支
+            </Button>
+            <Button variant="ghost" size="sm" onClick={() => setShowAgentNetwork(!showAgentNetwork)}
+              className="text-[10px] text-gray-500 hover:text-cyan-400">
+              <Activity className="w-3 h-3 mr-1" />Agent网络
+            </Button>
+            <Button variant="ghost" size="sm" onClick={() => setShowEvoX(!showEvoX)}
+              className="text-[10px] text-gray-500 hover:text-orange-400">
+              <Zap className="w-3 h-3 mr-1" />蜂群推演
+            </Button>
+            <Button variant="ghost" size="sm" onClick={() => setShowTemplate(!showTemplate)}
+              className="text-[10px] text-gray-500 hover:text-blue-400">
+              <FileText className="w-3 h-3 mr-1" />模板
+            </Button>
+            <Button variant="ghost" size="sm" onClick={() => setShowRecording(!showRecording)}
+              className="text-[10px] text-gray-500 hover:text-red-400">
+              <Play className="w-3 h-3 mr-1" />录制
+            </Button>
+            <PurposeContext />
+          </div>
        </div>
       {/* ── 流程进度指示 ── */}
       <div className="flex items-center gap-1.5 text-xs text-gray-500 flex-wrap">
@@ -361,6 +584,56 @@ const FdeDashboard: React.FC = () => {
       {tab === 'canary'     && <CanaryTab deployVersion={deployVersion} onResult={setCanaryResult} />}
       {tab === 'accept'     && <AcceptTab canaryResult={canaryResult} diagnosisReport={diagnosis?.reportText || ''} onAdopted={() => setAdopted(true)} />}
       {tab === 'evolution'  && <EvolutionTab namespace={customer?.namespace ?? null} domainId={domain?.id} />}
+      {tab === 'rapid_insight' && <RapidInsightTab />}
+
+      {/* ── 沙盒推演面板 (跨阶段能力) ── */}
+      {showSimulation && (
+        <div className="mt-4">
+          <SimulationPanel />
+        </div>
+      )}
+
+       {/* ── 决策血缘面板 (跨阶段能力) ── */}
+       {showLineage && (
+         <div className="mt-4">
+           <LineageViewer />
+         </div>
+       )}
+
+       {/* ── 本体分支面板 ── */}
+       {showBranching && (
+         <div className="mt-4">
+           <BranchPanel />
+         </div>
+       )}
+
+       {/* ── Agent 网络面板 ── */}
+       {showAgentNetwork && (
+         <div className="mt-4">
+           <AgentNetworkPanel />
+         </div>
+       )}
+
+       {/* ── EvoX 蜂群推演面板 ── */}
+       {showEvoX && (
+         <div className="mt-4">
+           <EvoXPanel />
+         </div>
+       )}
+
+       {/* ── 文档模板面板 ── */}
+       {showTemplate && (
+         <div className="mt-4">
+           <TemplatePanel />
+         </div>
+       )}
+
+       {/* ── 操作录制面板 ── */}
+       {showRecording && (
+         <div className="mt-4">
+           <RecordingPanel />
+         </div>
+       )}
       <FloatingFeedback currentStep={tab} autoValues={{
         customer: customer?.name || '',
         customer_desc: customer?.description || '',
@@ -393,6 +666,12 @@ const EvolutionTab: React.FC<{ readonly namespace: string | null; readonly domai
       .then(d => setScores(d))
       .catch(() => {});
   }, [domainId]);
+  // v3.1: Action audit stats for governance dashboard
+  const [auditStats, setAuditStats] = useState<any>(null);
+  useEffect(() => {
+    fetch(API('/extractions/pending')).then(r => r.json())
+      .then(d => setAuditStats(d)).catch(() => {});
+  }, []);
   if (!data) return <div className="text-gray-500 text-sm p-4">加载中…</div>;
   const cards = [
     { label: '待处理决策', value: data.pending_decisions?.length ?? 0, color: 'text-yellow-400' },
@@ -408,6 +687,17 @@ const EvolutionTab: React.FC<{ readonly namespace: string | null; readonly domai
   }
   cards.push(
     { label: '质量评分', value: scores?.total !== undefined ? scores.total : '—', color: 'text-green-400' },
+  );
+  // v3.1: Action governance cards
+  const pendingCount = auditStats?.pending?.length || auditStats?.count || 0;
+  cards.push(
+    { label: '待确认抽取', value: pendingCount, color: pendingCount > 0 ? 'text-yellow-400' : 'text-gray-500' },
+  );
+  // Phase 39-41: L6 autonomous capability cards
+  cards.push(
+    { label: '目标分解', value: data.metrics?.goal_decomposition?.enabled ? '已启用' : '关闭', color: data.metrics?.goal_decomposition?.enabled ? 'text-purple-400' : 'text-gray-400' },
+    { label: '自主部署', value: data.metrics?.deploy_engine?.enabled ? '已启用' : '关闭', color: data.metrics?.deploy_engine?.enabled ? 'text-purple-400' : 'text-gray-400' },
+    { label: '外部发现', value: data.metrics?.discovery?.enabled ? '已启用' : '关闭', color: data.metrics?.discovery?.enabled ? 'text-purple-400' : 'text-gray-400' },
   );
   return (
     <div className="space-y-4">
@@ -540,6 +830,8 @@ const AssessTab: React.FC<{ readonly domain: string | null; readonly customerDes
   const [dialogInput, setDialogInput] = useState('');
   const [dialogComposing, setDialogComposing] = useState(false);
   const [dialogSessionId, setDialogSessionId] = useState('');
+  // v3: action cards — entity ID for business actions
+  const [specId, setSpecId] = useState('');
 
   useEffect(() => {
     try {
@@ -798,6 +1090,7 @@ const AssessTab: React.FC<{ readonly domain: string | null; readonly customerDes
       const reqStr = parts.join('，');
       const diagSummary = report.replace(/```[\s\S]*?```/g, '').replace(/`{1,2}([^`]+)`{1,2}/g, '$1').trim();
       const specId = generateSpecId(form.industry || '通用');
+      setSpecId(specId);
       const mr = await fetch(API(`/manual/generate?requirements=${encodeURIComponent(reqStr)}&industry=${encodeURIComponent(form.industry || '通用')}&agent_guide=1&workflow_guide=1&spec_id=${encodeURIComponent(specId)}&diagnosis_report=${encodeURIComponent(diagSummary)}`));
       const md = await mr.json();
       setManual(md);
@@ -1062,11 +1355,20 @@ const AssessTab: React.FC<{ readonly domain: string | null; readonly customerDes
             </p>
             <div className="flex items-center gap-2">
               <a href={`data:text/markdown;charset=utf-8,${encodeURIComponent(manual.manual || '')}`} className="text-xs text-blue-400 hover:underline" download={`${manual.project_name || 'delivery-manual'}.md`}><Download className="w-3 h-3 inline mr-1" />下载交付手册 (.md)</a>
+              {specId && (
+                <a href={`/diagnostics/business-value?project_id=${encodeURIComponent(specId)}&name=${encodeURIComponent(manual.project_name || specId)}`} className="text-xs text-green-400 hover:underline" target="_blank">
+                  📈 业务价值报告
+                </a>
+              )}
               <button className="text-xs text-gray-500 hover:text-gray-300" onClick={() => setManual((prev: any) => ({ ...prev, _expanded: !prev?._expanded }))}>{manual?._expanded ? '收起' : '展开'}</button>
             </div>
             <pre className="text-xs text-gray-300 bg-gray-800 p-2 rounded max-h-48 overflow-y-auto">{manual._expanded ? (manual.manual || '') : (manual.manual || '').slice(0, 1500)}</pre>
           </CardContent>
         </Card>
+      )}
+      {/* v3: 可执行动作卡片（诊断完成后立即可用） */}
+      {report && specId && (
+        <ActionCardsSection specId={specId} domainId={domain || 'fde-delivery'} className="诊断会话" state="delivered" />
       )}
       {/* ── 智能澄清 Dialog ── */}
       {dialogOpen && (
@@ -1151,7 +1453,7 @@ const CustomersTab: React.FC<{ readonly onSelect: (c: CustomerInfo) => void; rea
   const [editId, setEditId] = useState('');
   const [editLoading, setEditLoading] = useState(false);
 
-  const load = () => fetch(API('/customers')).then(r => r.json()).then(d => setCustomers(d.customers || []));
+  const load = () => fetch(API('/customers')).then(r => r.json()).then(d => setCustomers(d.items || []));
   useEffect(() => { load(); }, []);
 
   const switchProfile = async (name: string) => {
@@ -1169,7 +1471,7 @@ const CustomersTab: React.FC<{ readonly onSelect: (c: CustomerInfo) => void; rea
   const startEdit = (c: any) => {
     const id = displayId(c);
     setEditId(id);
-    setEditForm({ name: c.name || '', namespace: c.namespace || '', description: c.description || '', deployment_mode: c.deployment_mode || 'online' });
+    setEditForm({ name: c.name || '', namespace: c.namespace || '', description: c.description || '', deployment_mode: c.deployment_mode || 'online', industry: c.industry || '' });
     setShowEdit(true);
   };
 
@@ -1212,6 +1514,15 @@ const CustomersTab: React.FC<{ readonly onSelect: (c: CustomerInfo) => void; rea
 
   return (
     <div className="space-y-4">
+      <a
+        href="/knowledge-factory"
+        className="flex items-center gap-2 p-3 rounded border border-blue-500/20 bg-blue-500/5 hover:bg-blue-500/10 transition-colors text-xs group"
+      >
+        <span className="text-blue-400 text-sm">🧠</span>
+        <span className="text-blue-300 font-medium group-hover:text-blue-200">前往知识工厂</span>
+        <span className="text-gray-500 ml-1">— 文档抽取 · 跨域对齐 · 本体演进</span>
+        <span className="text-blue-400 ml-auto opacity-0 group-hover:opacity-100 transition-opacity">→</span>
+      </a>
       <div className="flex items-center justify-between">
         <span className="text-xs text-gray-500">共 {customers.length} 个客户 Profile</span>
         <div className="flex items-center gap-2">
@@ -1227,7 +1538,7 @@ const CustomersTab: React.FC<{ readonly onSelect: (c: CustomerInfo) => void; rea
           const isExpanded = expanded.includes(id);
           return (
             <Card key={id} className="border-gray-700/50 hover:border-gray-600 transition-colors">
-              <div className="p-3 cursor-pointer" onClick={() => { toggleExpand(id); onSelect({ name: c.name, namespace: c.namespace, industry: c.health?.industry, description: c.description, deployment_mode: c.deployment_mode }); }}>
+              <div className="p-3 cursor-pointer" onClick={() => { toggleExpand(id); onSelect({ name: c.name, namespace: c.namespace, industry: c.industry, description: c.description, deployment_mode: c.deployment_mode }); }}>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-1.5">
                     {isExpanded ? <ChevronDown className="w-3 h-3 text-gray-500" /> : <ChevronRight className="w-3 h-3 text-gray-500" />}
@@ -1303,6 +1614,25 @@ const CustomersTab: React.FC<{ readonly onSelect: (c: CustomerInfo) => void; rea
                   placeholder="默认根据名称生成" />
               </div>
               <div>
+                <label className="text-xs text-gray-400">行业</label>
+                <select className="w-full bg-gray-800 border border-gray-700 rounded px-2 py-1.5 text-sm text-gray-200"
+                  value={createForm.industry || ''}
+                  onChange={e => setCreateForm({ ...createForm, industry: e.target.value })}>
+                  <option value="">-- 请选择 --</option>
+                  <option value="政务">政务</option>
+                  <option value="金融">金融</option>
+                  <option value="制造">制造</option>
+                  <option value="医疗">医疗</option>
+                  <option value="能源">能源</option>
+                  <option value="教育">教育</option>
+                  <option value="交通">交通</option>
+                  <option value="零售">零售</option>
+                  <option value="科技">科技</option>
+                  <option value="安装服务">安装服务</option>
+                  <option value="其他">其他</option>
+                </select>
+              </div>
+              <div>
                 <label className="text-xs text-gray-400">描述</label>
                 <textarea className="w-full bg-gray-800 border border-gray-700 rounded px-2 py-1.5 text-sm text-gray-200 h-16 resize-none"
                   value={createForm.description || ''} onChange={e => setCreateForm({ ...createForm, description: e.target.value })}
@@ -1349,6 +1679,25 @@ const CustomersTab: React.FC<{ readonly onSelect: (c: CustomerInfo) => void; rea
                   value={editForm.namespace || ''} onChange={e => setEditForm({ ...editForm, namespace: e.target.value })} />
               </div>
               <div>
+                <label className="text-xs text-gray-400">行业</label>
+                <select className="w-full bg-gray-800 border border-gray-700 rounded px-2 py-1.5 text-sm text-gray-200"
+                  value={editForm.industry || ''}
+                  onChange={e => setEditForm({ ...editForm, industry: e.target.value })}>
+                  <option value="">-- 请选择 --</option>
+                  <option value="政务">政务</option>
+                  <option value="金融">金融</option>
+                  <option value="制造">制造</option>
+                  <option value="医疗">医疗</option>
+                  <option value="能源">能源</option>
+                  <option value="教育">教育</option>
+                  <option value="交通">交通</option>
+                  <option value="零售">零售</option>
+                  <option value="科技">科技</option>
+                  <option value="安装服务">安装服务</option>
+                  <option value="其他">其他</option>
+                </select>
+              </div>
+              <div>
                 <label className="text-xs text-gray-400">描述</label>
                 <textarea className="w-full bg-gray-800 border border-gray-700 rounded px-2 py-1.5 text-sm text-gray-200 h-16 resize-none"
                   value={editForm.description || ''} onChange={e => setEditForm({ ...editForm, description: e.target.value })} />
@@ -1389,7 +1738,7 @@ const PocTab: React.FC<{ readonly domain: Readonly<DomainInfo> | null; readonly 
   const [templates, setTemplates] = useState<any[]>([]);
 
   useEffect(() => {
-    fetch(API('/templates')).then(r => r.json()).then(d => setTemplates(d.templates || []));
+    fetch(API('/templates')).then(r => r.json()).then(d => setTemplates(d.items || []));
   }, []);
 
   const loadTemplate = async (key: string) => {
@@ -1539,6 +1888,7 @@ const CanaryTab: React.FC<{ readonly deployVersion: string | null; readonly onRe
 const AcceptTab: React.FC<{ readonly canaryResult: Readonly<CanaryResult> | null; readonly diagnosisReport: string; readonly onAdopted: () => void }> = ({ canaryResult, diagnosisReport, onAdopted }) => {
   const [specId, setSpecId] = useState('');
   const [requirements, setRequirements] = useState('');
+  const [showGrill, setShowGrill] = useState(false);
   const [needAgent, setNeedAgent] = useState(true);
   const [needWorkflow, setNeedWorkflow] = useState(false);
   const [checklist, setChecklist] = useState<any>(null);
@@ -1615,6 +1965,9 @@ const AcceptTab: React.FC<{ readonly canaryResult: Readonly<CanaryResult> | null
             <label className="text-xs text-gray-400">客户需求描述（用于自动生成/更新交付手册）</label>
             <div className="flex gap-2">
               <input className="flex-1 bg-gray-800 border border-gray-700 rounded px-2 py-1 text-sm text-gray-200" placeholder="描述客户需求，系统自动生成项目交付手册" value={requirements} onChange={e => setRequirements(e.target.value)} />
+              <Button variant="ghost" size="sm" onClick={() => setShowGrill(true)} disabled={!requirements.trim()}>
+                <BookOpen className="w-3.5 h-3.5 mr-1" />需求澄清
+              </Button>
               <Button variant="ghost" size="sm" onClick={generateManual}>
                 <BookOpen className="w-3.5 h-3.5 mr-1" />{displayManualData ? '更新交付手册' : '生成交付手册'}
               </Button>
@@ -1661,8 +2014,34 @@ const AcceptTab: React.FC<{ readonly canaryResult: Readonly<CanaryResult> | null
       {handoverResult && (<Card><CardHeader><span className="text-sm font-medium">移交管理员</span></CardHeader><CardContent className="space-y-2"><div className="flex items-center gap-2"><UserCheck className="w-4 h-4 text-blue-400" /><span className="text-xs text-gray-400">将项目所有权转移给客户方管理员</span></div><div className="flex gap-2"><input className="flex-1 bg-gray-800 border border-gray-700 rounded px-2 py-1 text-sm text-gray-200" placeholder="客户管理员用户名" value={clientAdmin} onChange={e => setClientAdmin(e.target.value)} /><Button variant="default" size="sm" onClick={doTransfer} loading={loading} disabled={!clientAdmin}>执行移交</Button></div><pre className="text-xs text-gray-300 bg-gray-800 p-2 rounded max-h-32 overflow-y-auto">{JSON.stringify(handoverResult, null, 2)}</pre></CardContent></Card>)}
       {handoverResult && (<Card><CardHeader><span className="text-sm font-medium">项目归档</span></CardHeader><CardContent className="space-y-2"><textarea className="w-full bg-gray-800 border border-gray-700 rounded px-2 py-1 text-sm text-gray-200 h-16" placeholder="项目交付总结..." value={summary} onChange={e => setSummary(e.target.value)} /><Button variant="default" size="sm" onClick={doClose} loading={loading}>关闭项目并归档</Button>{closeResult && <div className="text-xs text-green-400 mt-1">✓ 项目已归档 — {closeResult.archive_id}</div>}</CardContent></Card>)}
       {closeResult && (<Card><CardHeader><span className="text-sm font-medium">首月护航</span></CardHeader><CardContent className="space-y-3"><div className="space-y-2"><div className="flex items-center gap-2"><Activity className="w-4 h-4 text-green-400" /><span className="text-xs text-gray-400">安排 30 天后自动健康检查</span></div><div className="flex gap-2"><input className="flex-1 bg-gray-800 border border-gray-700 rounded px-2 py-1 text-sm text-gray-200" placeholder="通知邮箱 (可选)" onChange={e => (window as any).__health_email = e.target.value} /><Button variant="ghost" size="sm" onClick={async () => { const r = await fetch(API('/handover/schedule-health'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ spec_id: specId, notify_email: (window as any).__health_email || '' }) }); const d = await r.json(); setCloseResult((prev: any) => ({ ...prev, health: d })); }}>安排健康检查</Button></div>{closeResult?.health && <div className="text-xs text-green-400">✓ 已安排 — 将于 {closeResult.health.due_at?.slice(0,10)} 执行</div>}</div><div className="space-y-2 pt-2 border-t border-gray-700/50"><div className="flex items-center gap-2"><Users className="w-4 h-4 text-blue-400" /><span className="text-xs text-gray-400">创建培训沙盒环境</span></div><div className="flex gap-2"><select className="bg-gray-800 border border-gray-700 rounded px-2 py-1 text-sm text-gray-200" onChange={e => (window as any).__sandbox_count = parseInt(e.target.value)} defaultValue="5">{[1,3,5,10,20,50].map(n => <option key={n} value={n}>{n} 人</option>)}</select><Button variant="ghost" size="sm" onClick={async () => { const count = (window as any).__sandbox_count || 5; const r = await fetch(API('/training/sandbox'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ spec_id: specId, trainee_count: count }) }); const d = await r.json(); setCloseResult((prev: any) => ({ ...prev, sandbox: d })); }}>创建培训沙盒</Button></div>{closeResult?.sandbox && <div className="text-xs text-green-400">✓ 沙盒已创建 | {closeResult.sandbox.trainee_count} 人 | 有效期: {closeResult.sandbox.access?.expires_in}</div>}</div></CardContent></Card>      )}
+      {/* v3: 可执行动作卡片 */}
+      {canaryResult?.passed && specId && (
+        <ActionCardsSection specId={specId} domainId="fde-delivery" className="诊断会话" state="delivered" />
+      )}
       {/* ═══════════ 本周 FDE 周报（AI 生成 → FDE 审核 → 交付客户） ═══════ */}
       <WeeklyReport />
+
+      {/* v2.9: GrillingBridge — FDE Builder requirements clarification */}
+      {showGrill && (
+        <GrillPanel
+          mode="modal"
+          entryPoint="fde_builder"
+          domainId="fde-delivery"
+          title="FDE 需求澄清"
+          onComplete={(output) => {
+            const flat = output.answers as Record<string, string>;
+            if (Object.keys(flat).length > 0) {
+              const merged = [requirements, '', '---', '[已澄清需求]'].concat(
+                Object.entries(flat).map(([k, v]) => `- ${k}: ${v}`)
+              ).join('\n');
+              setRequirements(merged);
+            }
+            setShowGrill(false);
+            toast.success('需求已澄清');
+          }}
+          onClose={() => setShowGrill(false)}
+        />
+      )}
     </div>
   );
 };

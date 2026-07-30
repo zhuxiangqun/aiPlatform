@@ -190,7 +190,7 @@ class TrendDetector:
             try:
                 await self._task
             except asyncio.CancelledError:
-                pass
+                pass  # noqa: normal-cancellation
         logger.info("TrendDetector: stopped")
 
     async def _loop(self) -> None:
@@ -610,7 +610,7 @@ Hypothesis-driven diagnosis checklist:
                 )
                 conn.commit()
             except sqlite3.OperationalError:
-                pass  # table may not exist (test environment)
+                pass  # table may not exist (test environment)  # noqa: schema-idempotent
             finally:
                 conn.close()
         _sync()
@@ -697,3 +697,4 @@ def get_trend_detector() -> TrendDetector:
     if _trend_detector is None:
         _trend_detector = TrendDetector()
     return _trend_detector
+

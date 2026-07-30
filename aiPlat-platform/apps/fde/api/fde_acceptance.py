@@ -2,13 +2,14 @@
 from __future__ import annotations
 
 from typing import Any, Dict
-from apps.fde.schemas import FdeStatusResponse, FdeListResponse, FdeItemResponse
+from apps.fde.api.schemas import FdeStatusResponse, FdeListResponse, FdeItemResponse
 
 
 from fastapi import APIRouter, Query
 
 import json, time, os
 from datetime import datetime, timezone
+import logging
 
 router = APIRouter(tags=["fde-acceptance"])
 
@@ -93,7 +94,7 @@ async def acceptance_checklist(spec_id: str = Query("")):
     agent_analysis = None
     try:
         import json as _json_acc
-        from core.apps.fde.agent import run_fde_agent_one_shot as _run_fde_agent_one_shot
+        from core.apps.fde.service.agent import run_fde_agent_one_shot as _run_fde_agent_one_shot
         summary = _json_acc.dumps({
             "spec_id": spec_id, "kpi": kpi_detail,
             "checklist_status": {"passed": passed, "total": len(checklist), "ready": ready},
@@ -106,9 +107,9 @@ async def acceptance_checklist(spec_id: str = Query("")):
         if agent_result and agent_result.get("success"):
             agent_analysis = agent_result["output"]
     except ImportError:
-        pass
+        pass  # noqa: optional-dependency
     except Exception:
-        pass
+        logging.getLogger(__name__).debug('code failed', exc_info=True)
 
     return {
         "checklist": checklist,
@@ -148,3 +149,4 @@ async def acceptance_signoff(body: Dict[str, Any]):
 
     _acceptance_records[spec_id] = record
     return {"status": "signed_off", "record_id": fid, **record}
+

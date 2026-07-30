@@ -13,13 +13,16 @@
 | # | 检查项 | 操作路径 | 通过标准 |
 |---|------|------|------|
 | 0.1 | 离线部署包已打包 | Tab 2 → 部署管理 → 打包 | 下载 `.tar.gz` 文件 |
-| 0.2 | Agent 可用 | AI 能力 → Agent 管理 → 搜索"{{AGENT_NAME}}" | 状态为 `ready` |
+| 0.2 | Agent 可用 | 打开 /core/agents（Agent 管理页面） → 搜索"{{AGENT_NAME}}" | 状态为 `ready` |
 | 0.3 | Agent 配置核查 | 查看 AGENT.md | model: {{MODEL}}, temperature: {{TEMPERATURE}}, skills: {{SKILL_LIST}}, tools: {{TOOL_LIST}} |
-| 0.4 | 依赖资产就绪 | AI 能力 → Skill管理 / Tool管理 / MCP管理 | Agent 引用的 Skill、Tool 均已注册且启用；MCP 连接正常 |
-| 0.5 | Workflow 可用 | AI 能力 → Workflow 管理 → 搜索项目 Workflow | 节点拓扑完整，无断连 |
+| 0.4 | 依赖资产就绪 | 打开 /core/skills（Skill 管理页面） / Tool管理 / MCP管理 | Agent 引用的 Skill、Tool 均已注册且启用；MCP 连接正常 |
+| 0.5 | Workflow 可用 | 打开 /core/workflows（Workflow 管理页面） → 搜索项目 Workflow | 节点拓扑完整，无断连 |
 | 0.6 | POC 行业模板已就绪 | Tab 6 → POC 工具箱 | {{INDUSTRY}} 模板可加载 |
 | 0.7 | 样例数据已准备 | 本地文件 | {{SAMPLE_DATA_COUNT}} 份样例数据（已脱敏） |
 | 0.8 | 网络确认 | 客户现场 | 如需离线部署，使用 0.1 的离线包 |
+| 0.9 | 目标分解已启用 | 环境变量 | `AIPLAT_AUTO_GOAL_DECOMPOSE_ENABLED=true` — 允许客户模糊目标自动拆解为子任务 |
+| 0.10 | 自主部署已配置 | 环境变量 | `AIPLAT_AUTO_DEPLOY_ENABLED=true` + `AIPLAT_AUTO_DEPLOY_MAX_RISK=read` — 仅自动部署只读 Skill |
+| 0.11 | 外部发现已启用(可选) | 环境变量 | `AIPLAT_DISCOVERY_ENABLED=true` + `AIPLAT_DISCOVERY_SUBNETS` — 自动发现客户数据源, 默认 DENY 需审批 |
 
 ### Agent 功能说明
 
@@ -48,11 +51,11 @@
 
 | 检查项 | 异常情况 | 处理方式 |
 |------|------|------|
-| Agent 不存在 | 搜索无结果 | FDE 创建：AI 能力 → Agent 管理 → 创建 → 自动生成 AGENT.md；或联系开发团队按需求定制 |
+| Agent 不存在 | 搜索无结果 | FDE 创建：打开 /core/agents（Agent 管理页面） → 创建 → 自动生成 AGENT.md；或联系开发团队按需求定制 |
 | Agent 非 ready | 状态为 draft/error | 检查 AGENT.md frontmatter 语法 → 修正后切换状态为 ready |
 | Agent 配置不对 | model/skills/tools 不符预期 | 编辑 AGENT.md → 更新对应字段 → 保存 |
 | 依赖资产缺失 | Skill/Tool 未注册，MCP 断开 | Skill/Tool：联系开发团队创建或导入（FDE 不负责开发）。MCP：检查服务端连通性 |
-| Workflow 不存在 | 节点拓扑为空 | FDE 创建：AI 能力 → Workflow 管理 → 新建 → 关联 Agent 节点 |
+| Workflow 不存在 | 节点拓扑为空 | FDE 创建：打开 /core/workflows（Workflow 管理页面） → 新建 → 关联 Agent 节点 |
 | 模板加载失败 | Tab 6 无响应或报错 | 确认模板配置文件存在 → 仍失败则联系运维排查 |
 | 样例数据缺失 | 客户未提供数据 | 用 Tab 6 → POC 工具箱 → 注入模拟数据；并行催促客户提供真实数据 |
 | 打包失败 | 脚本报错或超时 | 检查 install.sh 日志。在线部署环境可跳过打包（联网直接安装）。常见原因：端口占用 → 修改 docker-compose.yml ports 映射 |
@@ -84,7 +87,7 @@
 |:---:|------|------|
 | 1.3.1 | 加载行业模板 | Tab 6 → 加载行业模板 → 选择"{{INDUSTRY}}" |
 | 1.3.2 | 注入样例数据 | Tab 6 → 注入客户数据 → 拖入样例文件 |
-| 1.3.3 | 验证 Agent | AI 能力 → Agent 管理 → "{{AGENT_NAME}}" → 输入测试文本 |
+| 1.3.3 | 验证 Agent | 打开 /core/agents（Agent 管理页面） → "{{AGENT_NAME}}" → 输入测试文本 |
 
 **1.3.3 测试用例**：
 
@@ -166,7 +169,7 @@
 
 | 步骤 | 操作 | 路径 |
 |:---:|------|------|
-| 2.2.1 | 编辑 AGENT.md | AI 能力 → Agent 管理 → "{{AGENT_NAME}}" → 编辑 |
+| 2.2.1 | 编辑 AGENT.md | 打开 /core/agents（Agent 管理页面） → "{{AGENT_NAME}}" → 编辑 |
 | 2.2.2 | 追加定制规则 | 根据客户反馈和 KPI 目标追加行业特定检查项 |
 | 2.2.3 | 微调输出格式 | 按客户偏好调整 |
 | 2.2.4 | 验证改动 | 用客户真实数据测试 → 与 KPI 目标对比 |
@@ -179,7 +182,7 @@
 
 | 步骤 | 操作 | 路径 |
 |:---:|------|------|
-| 2.3.1 | 打开 Workflow | AI 能力 → Workflow 管理 → 搜索项目 Workflow |
+| 2.3.1 | 打开 Workflow | 打开 /core/workflows（Workflow 管理页面） → 搜索项目 Workflow |
 | 2.3.2 | 核查节点配置 | 确认各节点绑定的 Agent/Skill 与项目需求一致 |
 | 2.3.3 | 测试执行 | 运行 Workflow → 确认各阶段产出正确 |
 
@@ -216,7 +219,7 @@
 | # | 集成系统 | 集成方式 | 前置条件 | FDE 操作路径 |
 |:--:|------|------|------|------|
 | 2.5.1 | SSO/OAuth 统一登录 | OIDC 适配器 | 客户提供 IdP metadata URL + client_id | 管理端 → 认证鉴权 → 新增 OIDC Provider → 测试登录 |
-| 2.5.2 | 企业 IM（飞书/企微/Slack） | Webhook 适配器 | 客户提供 Webhook URL | AI 能力 → MCP 管理 → 添加企业 IM 连接 → 发送测试消息 |
+| 2.5.2 | 企业 IM（飞书/企微/Slack） | Webhook 适配器 | 客户提供 Webhook URL | AI 应用工厂 → MCP 管理 → 添加企业 IM 连接 → 发送测试消息 |
 | 2.5.3 | REST API 集成 | API Key 授权 | 客户提供网络白名单 | 渠道管理 → 新建 API 渠道 → 生成 Key → 测试连通 |
 | 2.5.4 | 权限体系（RBAC） | 角色同步 | 客户提供角色-权限映射表 | 管理端 → 认证鉴权 → 角色管理 → 导入映射表 |
 | 2.5.5 | 数据源直连 | 数据库连接器/JDBC | 客户提供只读数据库账号 | 平台存储 → 新建连接 → 测试连通 → 配置同步策略 |
@@ -378,7 +381,7 @@ FDE 返回办公室后，每天花 5 分钟检查系统健康：
 
 | 问题 | 答案 | 详见 |
 |------|------|------|
-| 自演进是什么？ | 观察→诊断→修复→演化四层自动运转 | [FDE 运维手册 §三](./03-fde-operations.md#三自演进系统) |
+| 自演进是什么？ | 观察→诊断→修复→演化→目标分解→自主部署→外部发现七层自动运转 | [FDE 运维手册 §三](./03-fde-operations.md#三自演进系统) |
 | 为什么刚上线时诊断返回"数据不足"？ | 正常现象，需 2-4 周数据积累 | [FDE 运维手册 §三](./03-fde-operations.md#32-数据积累预期) |
 | 系统出问题了怎么排查？ | 诊断→管道检查→全局健康→自动修复四步 | [FDE 运维手册 §三](./03-fde-operations.md#三自演进系统) |
 | 怎么主动触发一次自检？ | `POST /system/self-check` | [FDE 运维手册 §三](./03-fde-operations.md#34-手动全周期自检) |

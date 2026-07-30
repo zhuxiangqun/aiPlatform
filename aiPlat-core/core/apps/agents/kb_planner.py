@@ -85,7 +85,7 @@ class KBPlannerAgent:
             try:
                 return json.loads(m.group(0))
             except json.JSONDecodeError:
-                pass
+                pass  # noqa: cleanup-best-effort
         return {"steps": [{"action": "retrieve", "query": task}]}
 
     async def _execute_step(self, step: dict, doc_ids: List[str], tenant_id: str, prev: list) -> str:
@@ -117,3 +117,4 @@ class KBPlannerAgent:
             model_name=best_model_for_purpose("chat"), temperature=0.3, max_tokens=2000,
         )
         return getattr(resp, "content", "") or str(resp)
+

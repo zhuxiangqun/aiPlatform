@@ -301,7 +301,7 @@ class SkillsGuard:
                     try:
                         self._disabled_categories.add(ThreatCategory(cat_name))
                     except ValueError:
-                        pass
+                        pass  # noqa: cleanup-best-effort
 
     def scan_skill(self, skill_name: str, skill_dir: str) -> ScanResult:
         """Scan all files in a skill directory for threats."""
@@ -407,7 +407,7 @@ class SkillsGuard:
                 os.unlink(temp_file)
                 os.rmdir(temp_dir)
             except OSError:
-                pass
+                pass  # noqa: cleanup-best-effort
 
     @staticmethod
     def _match_file_pattern(filename: str, pattern: str) -> bool:
@@ -485,3 +485,4 @@ def reset_skills_guard():
     """Reset the global singleton (for testing)."""
     global _skills_guard
     _skills_guard = None
+

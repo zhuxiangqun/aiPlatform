@@ -22,9 +22,9 @@ modules:
     enabled: true
     api_prefix: "/api/platform/apps/fde"
     api_module: "apps.fde.api.router"
-    service_module: "core.apps.fde.agent"
+    service_module: "core.apps.fde.service"
     prompts_module: "core.apps.fde.prompts"
-    domains: ["fde-delivery", "lock-service"]
+    domains: ["fde-delivery", "lock-service", "auto_discovery"]
     agents:
       - fde_business_analyst
       - fde_solution_architect

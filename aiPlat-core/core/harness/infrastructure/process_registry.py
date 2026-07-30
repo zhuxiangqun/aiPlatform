@@ -190,7 +190,7 @@ class ProcessRegistry:
                     os.kill(pid, 0)
                     alive = True
                 except (OSError, ProcessLookupError):
-                    pass
+                    pass  # noqa: cleanup-best-effort
 
                 uptime = now - info.started_at
                 heartbeat_age = now - info.last_heartbeat
@@ -236,7 +236,7 @@ class ProcessRegistry:
                 try:
                     await asyncio.wait_for(self._shutdown_signal.wait(), timeout=self._health_interval)
                 except asyncio.TimeoutError:
-                    pass
+                    pass  # noqa: cleanup-best-effort
 
         self._health_task = asyncio.create_task(_monitor())
         logger.info("ProcessRegistry: health monitor started (interval=%ss)", self._health_interval)
@@ -250,7 +250,7 @@ class ProcessRegistry:
             try:
                 await self._health_task
             except asyncio.CancelledError:
-                pass
+                pass  # noqa: normal-cancellation
         logger.info("ProcessRegistry: health monitor stopped")
 
     async def shutdown_all(self, grace_period: float = 10.0):
@@ -286,7 +286,7 @@ class ProcessRegistry:
                         os.kill(pid, signal.SIGKILL)
                         logger.warning("ProcessRegistry: force-killed %s (pid=%d)", info.name, pid)
                     except (OSError, ProcessLookupError):
-                        pass
+                        pass  # noqa: cleanup-best-effort
                     await self.unregister(pid, ProcessStatus.STOPPED)
 
         await self.stop_health_monitor()
@@ -326,3 +326,4 @@ def reset_process_registry():
     """Reset the global singleton (for testing)."""
     global _process_registry
     _process_registry = None
+

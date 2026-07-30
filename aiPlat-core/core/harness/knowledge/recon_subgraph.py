@@ -185,13 +185,13 @@ class ReconSubgraph:
         try:
             _os.remove(self._db_path)
         except OSError:
-            pass
+            pass  # noqa: cleanup-best-effort
         # Also try to remove WAL/SHM files
         for suffix in ("-wal", "-shm"):
             try:
                 _os.remove(self._db_path + suffix)
             except OSError:
-                pass
+                pass  # noqa: cleanup-best-effort
         logger.info("ReconSubgraph discarded: %s", self.run_id)
 
     def snapshot(self, label: str = "") -> str:
@@ -208,3 +208,4 @@ class ReconSubgraph:
             "age_seconds": round(_time.time() - self.created_at, 1),
             "agent_contributions": dict(self.agent_contributions),
         }
+

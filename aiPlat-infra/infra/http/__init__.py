@@ -22,4 +22,5 @@ try:
 
     __all__.extend(["SyncHTTPClient", "AsyncHTTPClientImpl", "AioHttpClient"])
 except ImportError:
-    pass
+    pass  # noqa: optional-dependency
+

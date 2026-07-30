@@ -63,7 +63,7 @@ def get_real_processes() -> List[Dict[str, Any]]:
             except (psutil.NoSuchProcess, psutil.AccessDenied):
                 continue
     except ImportError:
-        pass
+        pass  # noqa: optional-dependency
     
     return processes
 

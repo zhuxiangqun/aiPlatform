@@ -82,14 +82,14 @@ const KnowledgeOverview: React.FC = () => {
     Promise.allSettled([
       fetch('/api/core/diagnostics/wiki-quality?limit=1&collection=default').then(r => r.json()),
       fetch('/api/core/diagnostics/rag-quality?hours=24').then(r => r.json()),
-      fetch('/api/core/wiki/ontology/domains').then(r => r.json()),
+      fetch('/api/core/domains').then(r => r.json()),
       // Risk indicators
-      fetch('/api/core/wiki/ontology/validate').then(r => r.json()).catch(() => ({})),
+      fetch('/api/core/validate').then(r => r.json()).catch(() => ({})),
     ]).then(([wikiR, ragR, domainsR, validateR]) => {
       setHealth({
         wiki: wikiR.status === 'fulfilled' ? wikiR.value : {},
         rag: ragR.status === 'fulfilled' ? ragR.value : {},
-        domains: domainsR.status === 'fulfilled' ? domainsR.value : [],
+        domains: domainsR.status === 'fulfilled' ? (Array.isArray(domainsR.value?.domains) ? domainsR.value.domains : Array.isArray(domainsR.value) ? domainsR.value : []) : [],
       });
       setRisk({
         validate: validateR.status === 'fulfilled' ? validateR.value : {},

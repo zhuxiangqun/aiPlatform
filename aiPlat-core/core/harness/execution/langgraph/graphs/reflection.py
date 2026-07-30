@@ -195,7 +195,7 @@ class ReflectionGraph:
             try:
                 default_descriptions.update(json.loads(env_descs))
             except json.JSONDecodeError:
-                pass
+                pass  # noqa: cleanup-best-effort
 
         dimension_descriptions = {
             EvaluationDimension.FACTUALITY: default_descriptions.get("FACTUALITY", "factuality"),
@@ -304,7 +304,7 @@ class ReflectionGraph:
                                     dimensions[dim] = score
                                     break
                         except ValueError:
-                            pass
+                            pass  # noqa: cleanup-best-effort
             elif line.startswith("FEEDBACK:"):
                 current_section = "feedback"
                 feedback_content = line.replace("FEEDBACK:", "").strip()
@@ -481,3 +481,4 @@ def create_reflection_graph(
         }
     )
     return ReflectionGraph(config)
+

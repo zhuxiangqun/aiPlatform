@@ -1,11 +1,12 @@
 import { Link } from 'react-router-dom';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Activity, GitBranch, Share2, Zap, Wrench, FolderSearch, Wand2, ShieldCheck, AlertTriangle, BarChart3, ArrowLeftRight, Fingerprint, Heart } from 'lucide-react';
+import { Activity, GitBranch, Share2, Zap, Wrench, FolderSearch, Wand2, ShieldCheck, AlertTriangle, BarChart3, ArrowLeftRight, Fingerprint, Heart, Cpu, Users, TrendingUp, Database } from 'lucide-react';
 
 import { Card, CardContent, CardHeader, Badge, Button, toast } from '../../components/ui';
 import { diagnosticsApi } from '../../services';
 import CategoryDetailPanel from './CategoryDetailPanel';
 import ModelTierPanel from '../../components/model/ModelTierPanel';
+import ControlProfilePanel from '../../components/model/ControlProfilePanel';
 
 type Health = {
   layer: string;
@@ -303,6 +304,7 @@ const Diagnostics: React.FC = () => {
     { title: 'Safety', desc: '对话危机检测与情感安全监控', href: '/diagnostics/safety', icon: Heart },
     { title: 'Eval Dashboard', desc: '统一评估：Arena排名、AB评分、进化适应度、Token效率', href: '/diagnostics/eval', icon: BarChart3 },
     { title: 'RAG 质量', desc: 'RAG检索+生成质量仪表盘（忠实度/检索通过率/用户信号）', href: '/diagnostics/rag-quality', icon: BarChart3 },
+    { title: '控制画像', desc: '6维控制画像状态与切换（上下文/工具/模型/编排/记忆/输出）', href: '/diagnostics/control-profile', icon: Cpu },
   ], []);
 
   // Count unhealthy/degraded layers
@@ -337,16 +339,255 @@ const Diagnostics: React.FC = () => {
   }, [unhealthyLayers, diagResult]);
 
   // Collect layer component guidance
+
+  // v2.9: Knowledge drift status
+  const [driftStatus, setDriftStatus] = useState<any>(null);
+  const [driftRebuilding, setDriftRebuilding] = useState(false);
+  useEffect(() => {
+    fetch('/api/core/diagnostics/drift-status')
+      .then(r => r.json()).then(setDriftStatus).catch(() => {});
+    fetch('/api/core/diagnostics/ontology-audit/summary')
+      .then(r => r.json()).then(setAuditSummary).catch(() => {});
+    fetch('/api/core/diagnostics/adoption-metrics')
+      .then(r => r.json()).then(setAdoptionMetrics).catch(() => {});
+    fetch('/api/core/diagnostics/system-health')
+      .then(r => r.json()).then(setSysHealth).catch(() => {});
+  }, []);
+
+  // v2.9: System health
+  const [sysHealth, setSysHealth] = useState<any>(null);
+
+  // v2.9: Ontology audit summary
+  const [auditSummary, setAuditSummary] = useState<any>(null);
+  const [adoptionMetrics, setAdoptionMetrics] = useState<any>(null);
+
+  const handleDriftRebuild = async () => {
+    setDriftRebuilding(true);
+    try {
+      const r = await fetch('/api/core/diagnostics/drift-rebuild', { method: 'POST' });
+      const d = await r.json();
+      toast.success(`重建完成: ${d.rebuilt} 个页面`);
+      setDriftStatus(null); // refetch
+      fetch('/api/core/diagnostics/drift-status').then(r => r.json()).then(setDriftStatus);
+    } catch { toast.error('重建失败'); }
+    setDriftRebuilding(false);
+  };
+
   return (
     <>
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold text-gray-200">诊断中心</h1>
-        <p className="text-sm text-gray-500 mt-1">综合诊断 · 合规审计 · 架构守卫 · 诊断工具</p>
+        <h1 className="text-2xl font-semibold text-gray-200">诊断概览</h1>
+        <p className="text-sm text-gray-500 mt-1">平台健康 · 知识健康 · 项目健康 · 运行时安全</p>
       </div>
+
+      {/* v2.9: System Health Index Card */}
+      {sysHealth && (
+        <Card className={sysHealth.grade?.startsWith('A') ? 'border-green-700/40 bg-green-950/10' :
+          sysHealth.grade?.startsWith('B') ? 'border-blue-700/40 bg-blue-950/10' :
+          'border-yellow-700/40 bg-yellow-950/10'}>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-6">
+              <div className="text-center">
+                <div className="text-4xl font-bold text-gray-100">{sysHealth.health_index}</div>
+                <div className={`text-sm font-semibold mt-1 ${sysHealth.grade?.startsWith('A') ? 'text-green-400' :
+                  sysHealth.grade?.startsWith('B') ? 'text-blue-400' : 'text-yellow-400'}`}>
+                  {sysHealth.grade}级 {sysHealth.trend} {sysHealth.trend_delta > 0 ? '+' : ''}{sysHealth.trend_delta}
+                </div>
+              </div>
+              <div className="flex-1">
+                <div className="text-sm font-medium text-gray-200 mb-2">系统健康指数</div>
+                <div className="grid grid-cols-4 gap-2">
+                  {Object.entries(sysHealth.sub_scores || {}).map(([k, v]: [string, any]) => (
+                    <div key={k} className="text-center p-1.5 rounded bg-dark-bg">
+                      <div className={`text-lg font-bold ${v.score >= 80 ? 'text-green-400' : v.score >= 60 ? 'text-yellow-400' : 'text-red-400'}`}>{v.score}</div>
+                      <div className="text-xs text-gray-500">{v.label}</div>
+                    </div>
+                  ))}
+                </div>
+                {sysHealth.recommendations?.length > 0 && (
+                  <div className="mt-2 text-xs text-blue-400">
+                    💡 {sysHealth.recommendations[0]}
+                  </div>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* ═══════════ 4-Category Navigation ═══════ */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+        <Link to="/diagnostics" className="p-4 rounded-lg border border-blue-700/30 bg-blue-950/10 hover:bg-blue-950/20 transition-colors">
+          <div className="flex items-center gap-2 mb-2">
+            <Activity className="w-5 h-5 text-blue-400" />
+            <span className="text-sm font-semibold text-gray-200">📊 平台健康</span>
+          </div>
+          <p className="text-xs text-gray-500">综合诊断 · 控制画像 · 可观测性</p>
+        </Link>
+        <Link to="/diagnostics/knowledge-health" className="p-4 rounded-lg border border-purple-700/30 bg-purple-950/10 hover:bg-purple-950/20 transition-colors">
+          <div className="flex items-center gap-2 mb-2">
+            <Database className="w-5 h-5 text-purple-400" />
+            <span className="text-sm font-semibold text-gray-200">🧠 知识健康</span>
+          </div>
+          <p className="text-xs text-gray-500">本体审计 · 知识漂移 · LLM 审查</p>
+        </Link>
+        <Link to="/diagnostics/eval" className="p-4 rounded-lg border border-green-700/30 bg-green-950/10 hover:bg-green-950/20 transition-colors">
+          <div className="flex items-center gap-2 mb-2">
+            <TrendingUp className="w-5 h-5 text-green-400" />
+            <span className="text-sm font-semibold text-gray-200">📈 项目健康</span>
+          </div>
+          <p className="text-xs text-gray-500">业务价值 · Agent 评估 · 修复中心</p>
+        </Link>
+        <Link to="/diagnostics/safety" className="p-4 rounded-lg border border-red-700/30 bg-red-950/10 hover:bg-red-950/20 transition-colors">
+          <div className="flex items-center gap-2 mb-2">
+            <ShieldCheck className="w-5 h-5 text-red-400" />
+            <span className="text-sm font-semibold text-gray-200">🔍 安全与合规</span>
+          </div>
+          <p className="text-xs text-gray-500">安全监控 · 审计 · 变更控制</p>
+        </Link>
+      </div>
+
+      {/* ── Below: existing detailed diagnostic cards ── */}
 
       {error && (
         <div className="text-sm text-error bg-error-light border border-dark-border rounded-lg p-3">{error}</div>
+      )}
+
+      {/* v2.9: Knowledge Drift Card */}
+      {driftStatus && driftStatus.total_stale > 0 && (
+        <Card className={driftStatus.status === 'critical' ? 'border-red-700/40 bg-red-950/20' : 'border-yellow-700/40 bg-yellow-950/20'}>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <AlertTriangle className={`w-4 h-4 ${driftStatus.status === 'critical' ? 'text-red-400' : 'text-yellow-400'}`} />
+                <span className="text-sm font-semibold text-gray-200">知识漂移</span>
+                <Badge variant={driftStatus.status === 'critical' ? 'error' : 'warning'}>
+                  {driftStatus.total_stale} stale
+                </Badge>
+              </div>
+              <Button variant="ghost" size="sm" onClick={handleDriftRebuild} loading={driftRebuilding}>
+                <Wrench className="w-3 h-3 mr-1" />自动重建
+              </Button>
+            </div>
+            <p className="text-xs text-gray-500 mt-1">
+              扫描 {driftStatus.total_scanned} 页，{driftStatus.total_stale} 页源文档已发生变化，漂移率 {(driftStatus.drift_ratio * 100).toFixed(1)}%
+            </p>
+          </CardHeader>
+          {driftStatus.stale_pages?.length > 0 && (
+            <CardContent>
+              <div className="space-y-1 max-h-32 overflow-y-auto">
+                {driftStatus.stale_pages.slice(0, 5).map((p: any, i: number) => (
+                  <div key={i} className="text-xs text-gray-400 flex items-center gap-2">
+                    <span className="text-yellow-500">⚠</span>
+                    <span className="text-gray-300">{p.title}</span>
+                    <span className="text-gray-600">({p.stale_sources?.length || 0} 源已变化)</span>
+                  </div>
+                ))}
+                {driftStatus.stale_pages.length > 5 && (
+                  <div className="text-xs text-gray-500">... 还有 {driftStatus.stale_pages.length - 5} 页</div>
+                )}
+              </div>
+            </CardContent>
+          )}
+        </Card>
+      )}
+
+      {/* v2.9: Ontology Audit Card */}
+      {auditSummary && auditSummary.total_entities > 0 && (
+        <Card className={auditSummary.total_orphans > 0 ? 'border-yellow-700/40 bg-yellow-950/20' : 'border-green-700/40 bg-green-950/20'}>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <GitBranch className={`w-4 h-4 ${auditSummary.total_orphans > 0 ? 'text-yellow-400' : 'text-green-400'}`} />
+                <span className="text-sm font-semibold text-gray-200">本体审计</span>
+                <Badge variant={auditSummary.total_orphans > 0 ? 'warning' : 'success'}>
+                  {auditSummary.total_entities} 实体
+                </Badge>
+              </div>
+              <Link to="/infra/ontology" className="text-xs text-blue-400 hover:underline">本体管理</Link>
+            </div>
+            <p className="text-xs text-gray-500 mt-1">
+              {auditSummary.domains_scanned} 个域审计 — {auditSummary.total_orphans} 个孤儿类（YAML中有定义但无实体）
+            </p>
+          </CardHeader>
+          {auditSummary.worst_domains?.length > 0 && (
+            <CardContent>
+              <div className="space-y-1 max-h-28 overflow-y-auto">
+                {auditSummary.worst_domains.slice(0, 5).map((d: any, i: number) => (
+                  <div key={i} className="text-xs text-gray-400 flex items-center gap-2">
+                    <span className={d.orphans > 0 ? 'text-yellow-500' : 'text-green-500'}>
+                      {d.orphans > 0 ? '⚠' : '✅'}
+                    </span>
+                    <span className="text-gray-300 w-28 truncate">{d.domain}</span>
+                    <span className="text-gray-600">{d.entities} entities, {d.edge_count} edges, {d.orphans} orphans</span>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          )}
+        </Card>
+      )}
+
+      {/* v2.9: Employee Adoption Metrics Card */}
+      {adoptionMetrics?.report && (
+        <Card className="border-blue-700/40 bg-blue-950/20">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Users className="w-4 h-4 text-blue-400" />
+                <span className="text-sm font-semibold text-gray-200">员工采纳度</span>
+                <Badge variant={adoptionMetrics.report.adoption_trend === 'rising' ? 'success' : adoptionMetrics.report.adoption_trend === 'declining' ? 'error' : 'warning'}>
+                  {adoptionMetrics.report.adoption_trend}
+                </Badge>
+              </div>
+            </div>
+            <p className="text-xs text-gray-500 mt-1">
+              {adoptionMetrics.report.total_users} 用户 · {adoptionMetrics.report.active_users_7d} 活跃(7d) · {adoptionMetrics.report.total_agent_calls} 次调用
+            </p>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-4 gap-3 mb-3">
+              <div className="text-center p-2 rounded bg-dark-bg">
+                <div className="text-lg font-bold text-blue-400">{(adoptionMetrics.report.grill_trigger_rate * 100).toFixed(0)}%</div>
+                <div className="text-xs text-gray-500">需求澄清率</div>
+              </div>
+              <div className="text-center p-2 rounded bg-dark-bg">
+                <div className="text-lg font-bold text-green-400">{(adoptionMetrics.report.grill_completion_rate * 100).toFixed(0)}%</div>
+                <div className="text-xs text-gray-500">澄清完成率</div>
+              </div>
+              <div className="text-center p-2 rounded bg-dark-bg">
+                <div className="text-lg font-bold text-yellow-400">{(adoptionMetrics.report.hitl_approval_rate * 100).toFixed(0)}%</div>
+                <div className="text-xs text-gray-500">审批通过率</div>
+              </div>
+              <div className="text-center p-2 rounded bg-dark-bg">
+                <div className="text-lg font-bold text-red-400">{(adoptionMetrics.report.hitl_rejection_rate * 100).toFixed(0)}%</div>
+                <div className="text-xs text-gray-500">审批驳回率</div>
+              </div>
+            </div>
+            {adoptionMetrics.report.resistance_hotspots?.length > 0 && (
+              <div className="space-y-1 max-h-24 overflow-y-auto border-t border-gray-700/50 pt-2">
+                <div className="text-xs text-gray-500 mb-1">抵触热点</div>
+                {adoptionMetrics.report.resistance_hotspots.slice(0, 3).map((h: any, i: number) => (
+                  <div key={i} className="text-xs text-gray-400 flex items-center gap-2">
+                    <span className={h.severity === 'high' ? 'text-red-400' : 'text-yellow-400'}>
+                      {h.severity === 'high' ? '🔴' : '🟡'}
+                    </span>
+                    <span className="text-gray-500">{h.user}</span>
+                    <span>{h.signals.slice(0, 2).join(', ')}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+            {adoptionMetrics.report.recommendations?.length > 0 && (
+              <div className="border-t border-gray-700/50 pt-2 mt-2">
+                {adoptionMetrics.report.recommendations.slice(0, 2).map((r: string, i: number) => (
+                  <div key={i} className="text-xs text-blue-400">💡 {r}</div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
       )}
 
       {/* ═══════════ Unified Diagnostic ═══════ */}
@@ -761,6 +1002,9 @@ const Diagnostics: React.FC = () => {
 
       {/* ═══════════ Phase 14: Model Tier Panel ═══════ */}
       <ModelTierPanel />
+
+      {/* ═══════════ ControlProfile Panel ═══════ */}
+      <ControlProfilePanel />
 
       {/* ═══════════ 诊断工具箱（折叠） ═══════ */}
       <details className="bg-dark-card border border-dark-border rounded-lg overflow-hidden">

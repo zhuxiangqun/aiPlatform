@@ -184,7 +184,7 @@ class RedisClient(MessageClient):
                     await asyncio.sleep(0.1)
                     
         except asyncio.CancelledError:
-            pass
+            pass  # noqa: normal-cancellation
 
     async def unsubscribe(self, topic: str) -> None:
         stream_name = self._get_channel_name(topic)
@@ -198,7 +198,7 @@ class RedisClient(MessageClient):
             try:
                 await task
             except asyncio.CancelledError:
-                pass
+                pass  # noqa: normal-cancellation
         
         if stream_name in self._consumer_groups:
             del self._consumer_groups[stream_name]
@@ -233,7 +233,7 @@ class RedisClient(MessageClient):
             try:
                 await task
             except asyncio.CancelledError:
-                pass
+                pass  # noqa: normal-cancellation
         
         self._running_tasks.clear()
         

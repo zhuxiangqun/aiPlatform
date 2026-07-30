@@ -106,7 +106,7 @@ async def upsert_scenario(domain_id: str, data: Dict[str, Any]):
 async def refresh_maturity(domain_id: str):
     u"""Refresh maturity scores for a domain."""
     try:
-        from core.harness.knowledge.domain_router import DomainRouter
+        from core.api.core_facade import DomainRouter
         router = DomainRouter()
         result = router.refresh_domain_maturity(domain_id)
         return result

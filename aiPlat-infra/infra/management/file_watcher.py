@@ -64,7 +64,7 @@ class FileWatcher:
             self._use_watchdog = True
             return
         except ImportError:
-            pass
+            pass  # noqa: optional-dependency
 
         # Fallback: polling
         self._use_watchdog = False
@@ -115,7 +115,7 @@ class FileWatcher:
                             except Exception as e:
                                 logging.debug(str(e), exc_info=True)
                 except OSError:
-                    pass
+                    pass  # noqa: cleanup-best-effort
 
 
 # ── Global singleton ─────────────────────────────────────────────
@@ -157,3 +157,4 @@ def _on_config_change(filepath: str) -> None:
     logger.info(f"config file changed: {filepath}")
     # Callbacks registered by upper layers (core/platform) handle the actual reload
     # Infra layer is agnostic — it only dispatches the event
+

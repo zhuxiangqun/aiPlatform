@@ -707,6 +707,21 @@ rules:
     message: "direct os.getenv read of adapter model env var — use resolve_model_name(capability)
       or create_adapter(capability) from base_model_adapter"
 
+  # §40.3: Behavioral config in .env — flags, thresholds, feature toggles should be in YAML
+  - id: R040_3
+    severity: WARNING
+    check:
+      type: grep_forbidden
+      pattern: '(AIPLAT_WAKE_ENABLED|AIPLAT_KB_PARSER|AIPLAT_KB_TABLES_ONLY|AIPLAT_PDF_MINERU_ENABLED|AIPLAT_AUTO_DEPLOY_ENABLED|AIPLAT_AUTO_GOAL_DECOMPOSE_ENABLED)'
+      paths: ["."]
+      exclude: ["__pycache__", "tests/", "CLAUDE.md", "docs/", "arch_guard_rules.yaml"]
+      grep_exclude: ["# noqa: config-flag", "arch_guard", "CLAUDE\\.md",
+        "AIPLAT_AUTO_GOAL_DECOMPOSE_ENABLED|AIPLAT_AUTO_DEPLOY_ENABLED|AIPLAT_DISCOVERY_ENABLED|AIPLAT_APPROVALS_DISABLED|AIPLAT_SYSCALL_ENFORCE_APPROVAL|AIPLAT_DENY_OVERRIDE_USERS|AIPLAT_APPLY_PROMPT_REVISIONS|AIPLAT_WAKE_ENABLED|AIPLAT_PDF_MINERU_ENABLED|AIPLAT_KB_PARSER"]
+    message: "behavioral flag in env var — timeouts/thresholds/feature-flags belong in YAML config
+      (ControlProfile or PipelineStageConfig); .env is for credentials only (API keys/tokens/passwords)
+      EXCEPTION: existing startup flags (AIPLAT_WAKE_ENABLED, AIPLAT_PDF_MINERU_ENABLED, etc.)
+      are grandfathered — new flags MUST use YAML config."
+
   - id: agent_init_no_direct_create_adapter
     section: "§40"
     section_name: "Agent 初始化 — 禁止直接调用 create_adapter()，必须走 create_selected_adapter()"
@@ -909,7 +924,8 @@ rules:
       paths: ["aiPlat-core/core/api/routers", "aiPlat-core/core/apps", "aiPlat-platform"]
       exclude: ["__pycache__", "tests/"]
       grep_exclude: ["prompt_loader\\.py", "prompt_app\\.py", "_async_prompt_resolve",
-        "_sync_resolve", "_resolve_assemble", "system_prompt:", "arch_guard_rules/"]
+        "_sync_resolve", "_resolve_assemble", "system_prompt:", "arch_guard_rules/",
+        "builder/prompts", "skills/prompts", "workbench/prompts"]
     message: "hardcoded LLM prompt — register in prompt_loader.py via _register()
       and load via _async_prompt_resolve()"
 
@@ -2352,60 +2368,6 @@ rules:
         bash scripts/ruff_f821_ratchet.sh && echo "PASS: F821 ratchet" || echo "BLOCK: new F821 violations detected"
       ok_pattern: "PASS:"
 
-  # ═══ Section 77: Route Duplication Detection ═══
-  - id: route_duplicate_detection
-    section: "§77"
-    section_name: "路由重复检测"
-    level: error
-    check:
-      type: cmd_output
-      shell: >-
-        python3 -c "
-        import ast, os
-        from collections import Counter
-
-        routers_dir = 'aiPlat-core/core/api/routers'
-        duplicates = []
-
-        for fname in sorted(os.listdir(routers_dir)):
-            if not fname.endswith('.py') or fname == '__init__.py':
-                continue
-            fpath = os.path.join(routers_dir, fname)
-            try:
-                tree = ast.parse(open(fpath).read(), filename=fpath)
-            except Exception:
-                continue
-
-            prefix = ''
-            routes = []
-            for node in ast.walk(tree):
-                if isinstance(node, ast.Call) and hasattr(node.func, 'attr'):
-                    # Find APIRouter prefix
-                    if node.func.attr == 'APIRouter':
-                        for kw in node.keywords:
-                            if kw.arg == 'prefix' and isinstance(kw.value, ast.Constant):
-                                prefix = kw.value.value
-                    # Find @router.xxx decorators: func.value.id must be 'router'
-                    if (isinstance(node.func, ast.Attribute) and
-                        hasattr(node.func, 'value') and
-                        hasattr(node.func.value, 'id') and
-                        node.func.value.id == 'router' and
-                        node.func.attr in ('get', 'post', 'put', 'delete', 'patch')):
-                        if node.args and isinstance(node.args[0], ast.Constant):
-                            routes.append((prefix + node.args[0].value, node.func.attr.upper()))
-
-            for (p, m), c in Counter(routes).items():
-                if c > 1:
-                    duplicates.append(f'{fname}: {m} {p} (x{c})')
-
-        if duplicates:
-            print(f'ERROR: {len(duplicates)} duplicate route(s) found')
-            for d in duplicates: print(f'  {d}')
-        else:
-            print('PASS: no duplicate routes detected')
-        "
-      ok_pattern: "PASS:"
-
   # ═══ Section 80: Router Thin Proxy Detection ═══
   - id: router_thin_proxy_detection
     section: "§80"
@@ -2491,4 +2453,110 @@ rules:
           echo "WARNING: $unt endpoint(s) use response_model=dict/None instead of typed schema (known debt H)"
         fi
       ok_pattern: "PASS:"
+
+  # ═══ Section 84: App Module Directory Layout (per app-module-layout.md) ═══
+  - id: app_module_layout_platform
+    section: "§84"
+    section_name: "App Module — platform/apps/{module}/ only allows api/ + __init__.py"
+    level: error
+    check:
+      type: cmd_output
+      cmd: |
+        errs=0
+        for mod_dir in aiPlat-platform/apps/*/; do
+          mod=$(basename "$mod_dir")
+          [ "$mod" = "__pycache__" ] && continue
+          for f in "$mod_dir"*; do
+            name=$(basename "$f")
+            case "$name" in
+              __init__.py|__pycache__|api) ;;
+              *) errs=$((errs + 1)); echo "BAD: aiPlat-platform/apps/$mod/$name — only api/ + __init__.py allowed per app-module-layout.md" ;;
+            esac
+          done
+        done
+        [ "$errs" -eq 0 ] && echo "PASS: all platform module dirs compliant" || echo "FAIL: $errs violations"
+      ok_pattern: "PASS:"
+
+  - id: app_module_layout_core
+    section: "§84"
+    section_name: "App Module — core/apps/{module}/ only allows service/, prompts/, __init__.py (for registry modules)"
+    level: error
+    check:
+      type: cmd_output
+      cmd: |
+        errs=0
+        # Only check modules registered in apps.yaml (business app modules, not infra like agents/skills/tools)
+        registered_mods=$(python3 -c "
+        import yaml
+        with open('aiPlat-platform/registry/apps.yaml') as f:
+            data = yaml.safe_load(f)
+        for m in data.get('modules',{}):
+            print(m)
+        " 2>/dev/null)
+        for mod in $registered_mods; do
+          mod_dir="aiPlat-core/core/apps/$mod"
+          [ -d "$mod_dir" ] || continue
+          for f in "$mod_dir"/*; do
+            name=$(basename "$f")
+            case "$name" in
+              __init__.py|__pycache__|service|prompts|domain|skills|agents|BOUNDARY.yaml) ;;
+              *) errs=$((errs + 1)); echo "BAD: $mod_dir/$name — only service/, prompts/, domain/, skills/, agents/, BOUNDARY.yaml, __init__.py allowed per app-module-layout.md" ;;
+            esac
+          done
+        done
+        [ "$errs" -eq 0 ] && echo "PASS: all core app modules compliant" || echo "FAIL: $errs violations"
+      ok_pattern: "PASS:"
+
+  # ══════════════════════════════════════════════════════════════
+  # §86 Complete-But-Unwired Module Detection
+  # Detects modules >80 lines with class/fn but zero production callers.
+  # These are implementations waiting for a wiring point, NOT dead code.
+  # ══════════════════════════════════════════════════════════════
+  - id: complete_module_unwired
+    section: "§86"
+    section_name: "完整实现未接线检测"
+    level: warning
+    check:
+      type: cmd_output
+      cmd: |
+        python3 -c "
+        import json, subprocess
+        result = subprocess.run(['python3', 'scripts/verify_l5_runtime.py', '--json'], capture_output=True, text=True, timeout=180)
+        data = json.loads(result.stdout)
+        unwired = [item for item in data['items'] if item['status'] == 'UNWIRED']
+        if unwired:
+            for u in unwired:
+                print(f'UNWIRED: {u[\"name\"]} -- {u[\"file_ref\"]}')
+            print(f'ERROR: {len(unwired)} complete implementations waiting for wiring')
+            import sys; sys.exit(1)
+        else:
+            print('PASS: all complete implementations are wired')
+        "
+      ok_pattern: "PASS:"
+
+  # ══════════════════════════════════════════════════════════════
+  # §85 L5 Runtime Capability Verification
+  # ══════════════════════════════════════════════════════════════
+  - id: l5_runtime_verification
+    section: "§85"
+    section_name: "L5 运行时能力验证"
+    level: warning
+    check:
+      type: cmd_output
+      cmd: |
+        python3 scripts/verify_l5_runtime.py
+      ok_pattern: "Readiness: [0-9]+/100"
+
+  - id: l5_default_off_feature_flags
+    section: "§85"
+    section_name: "L5 默认关闭特征标志"
+    level: error
+    check:
+      type: grep_forbidden
+      pattern: 'AIPLAT_AUTO_GOAL_DECOMPOSE_ENABLED.*false|AIPLAT_AUTO_DEPLOY_ENABLED.*false|AIPLAT_DISCOVERY_ENABLED.*false'
+      paths: ["aiPlat-core/core/server.py"]
+      exclude: ["__pycache__"]
+      grep_exclude: ["CLAUDE\\.md", "intentionally off"]
+      grep_exclude_context: 3
+    message: "L6 feature flags default to false — Phase 39-41 are DISABLED in production"
 

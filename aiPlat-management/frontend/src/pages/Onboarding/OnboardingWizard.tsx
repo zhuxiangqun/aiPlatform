@@ -25,25 +25,25 @@ const OnboardingWizard: React.FC = () => {
 
   useEffect(() => {
     fetchProgress();
-    fetch('/api/platform/onboarding/model-recommendations').then(r => r.json()).then(setModels);
-    fetch('/api/platform/onboarding/agent-templates').then(r => r.json()).then(setTemplates);
+    fetch('/api/platform/model-recommendations').then(r => r.json()).then(setModels);
+    fetch('/api/platform/agent-templates').then(r => r.json()).then(setTemplates);
   }, []);
 
   const fetchProgress = async () => {
     setLoading(true);
-    const res = await fetch('/api/platform/onboarding/progress');
+    const res = await fetch('/api/platform/progress');
     const data = await res.json();
     setProgress(data);
     setLoading(false);
   };
 
   const markDone = async (stepKey: string) => {
-    await fetch(`/api/platform/onboarding/progress/${stepKey}`, { method: 'POST' });
+    await fetch(`/api/platform/progress/${stepKey}`, { method: 'POST' });
     await fetchProgress();
   };
 
   const checkReadiness = async () => {
-    const res = await fetch('/api/platform/onboarding/readiness-check');
+    const res = await fetch('/api/platform/readiness-check');
     const data = await res.json();
     setReadiness(data);
     return data.ready;
@@ -52,7 +52,7 @@ const OnboardingWizard: React.FC = () => {
   const activate = async () => {
     const ready = await checkReadiness();
     if (!ready) return;
-    const res = await fetch('/api/platform/onboarding/activate', { method: 'POST' });
+    const res = await fetch('/api/platform/activate', { method: 'POST' });
     const data = await res.json();
     if (data.spec_id) setSpecId(data.spec_id);
     setActivated(true);
@@ -195,7 +195,7 @@ const StepTools: React.FC<{ onDone: () => void }> = ({ onDone }) => {
   const [connected, setConnected] = useState<string[]>([]);
 
   const connect = async (toolId: string) => {
-    await fetch('/api/platform/onboarding/tools/connect', {
+    await fetch('/api/platform/tools/connect', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ tool_name: toolId }),
     });
@@ -234,7 +234,7 @@ const StepAgent: React.FC<{ templates: any[]; onDone: () => void }> = ({ templat
   const [selected, setSelected] = useState('');
 
   const createAgent = async (tplId: string) => {
-    await fetch('/api/platform/onboarding/agent/create-from-template', {
+    await fetch('/api/platform/agent/create-from-template', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ template_id: tplId, agent_name: tplId }),
     });

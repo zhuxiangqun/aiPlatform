@@ -65,7 +65,7 @@ KNOWN_PACKAGES = {
     
     "core.api.rest.routes", "core.apps.testing.browser_test_engine",
     "core.apps.document_intelligence.video_parser", "core.harness.knowledge.graph_index",
-    "core.harness.syscalls.tools",,
+    "core.harness.syscalls.tool",
     "core.harness.runtime",
 }
 
@@ -134,6 +134,8 @@ def main():
         if "/.venv/" in str(fpath) or "/__pycache__/" in str(fpath):
             continue
         if "node_modules" in str(fpath):
+            continue
+        if "/tests/" in str(fpath):
             continue
 
         imports = extract_imports(fpath)

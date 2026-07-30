@@ -113,12 +113,12 @@ async def submit_task(body: Dict[str, Any]) -> Dict[str, Any]:
     # SpecLifecycle: mark PENDING → EXECUTING
     if spec_id:
         try:
-            from core.harness.models.spec_lifecycle import get_spec_lifecycle
+            from core.api.core_facade import get_spec_lifecycle
             sl = get_spec_lifecycle()
             sl.promote_to_pending(spec_id)  # ensure it's in PENDING if still DRAFT
             sl.mark_executing(spec_id, run_id)
         except Exception:
-            pass
+            logging.getLogger(__name__).debug('submit_task failed', exc_info=True)
 
     # Fire-and-forget: simulate task completion
     import asyncio as _aio
@@ -186,7 +186,7 @@ async def _simulate_task_completion(run_id: str, spec_id: str = "") -> None:
     # SpecLifecycle: mark REVIEW + persist varied trace
     if spec_id:
         try:
-            from core.harness.models.spec_lifecycle import get_spec_lifecycle
+            from core.api.core_facade import get_spec_lifecycle
             import random as _r
 
             sl = get_spec_lifecycle()
@@ -218,7 +218,7 @@ async def _simulate_task_completion(run_id: str, spec_id: str = "") -> None:
                                result={"summary": f"完成: {desc[:60]}", "trace": simulated_trace,
                                        "agent_order": [t["agent"] for t in simulated_trace if t["agent"]]})
         except Exception:
-            pass
+            logging.getLogger(__name__).debug('code failed', exc_info=True)
 
 
 @router.get("/tasks/{run_id}", response_model=TaskStatusResponse)
@@ -266,7 +266,7 @@ async def submit_feedback(run_id: str, body: Dict[str, Any]) -> Dict[str, Any]:
 
     # Feed into ImplicitFeedbackCollector
     try:
-        from core.services.implicit_feedback import get_implicit_feedback_collector
+        from core.api.core_facade import get_implicit_feedback_collector
         collector = get_implicit_feedback_collector()
         await collector.record(
             run_id=run_id,
@@ -274,7 +274,7 @@ async def submit_feedback(run_id: str, body: Dict[str, Any]) -> Dict[str, Any]:
             value=0.3 if action == "useful" else -0.1,
         )
     except Exception:
-        pass
+        logging.getLogger(__name__).debug('submit_feedback failed', exc_info=True)
 
     _tasks[run_id] = {**_tasks.get(run_id, {}), "rating": rating, "feedback_action": action}
     return {"run_id": run_id, "rating": rating, "recorded": True}
@@ -286,7 +286,7 @@ async def submit_feedback(run_id: str, body: Dict[str, Any]) -> Dict[str, Any]:
 async def list_specs() -> Dict[str, Any]:
     """List all active (non-archived) Specs with latest status."""
     try:
-        from core.harness.models.spec_lifecycle import get_spec_lifecycle
+        from core.api.core_facade import get_spec_lifecycle
         sl = get_spec_lifecycle()
         specs = sl.list_specs()
         return {"specs": specs, "total": len(specs)}
@@ -298,7 +298,7 @@ async def list_specs() -> Dict[str, Any]:
 async def get_spec_history(spec_id: str) -> Dict[str, Any]:
     """Get full version history for a Spec."""
     try:
-        from core.harness.models.spec_lifecycle import get_spec_lifecycle
+        from core.api.core_facade import get_spec_lifecycle
         sl = get_spec_lifecycle()
         versions = sl.get_history(spec_id)
         result = []
@@ -332,7 +332,7 @@ async def revise_spec(spec_id: str, body: Dict[str, Any]) -> Dict[str, Any]:
       - re_execute: whether to trigger immediate re-execution (default: false)
     """
     try:
-        from core.harness.models.spec_lifecycle import get_spec_lifecycle, RevisionTrigger
+        from core.api.core_facade import get_spec_lifecycle, RevisionTrigger
 
         new_content = body.get("content", {})
         if not new_content:
@@ -418,7 +418,7 @@ async def _trigger_spec_re_execution(spec_id: str, sv: Any, agent_id: str) -> st
         facade = get_core_facade()
         await facade.run_workspace_agent(agent_id=agent_id, payload=payload)
     except Exception:
-        pass  # Best-effort; task submitted to workbench queue
+        pass  # noqa: intentional — best-effort non-critical operation
 
     return run_id
 
@@ -456,7 +456,7 @@ async def get_spec_trace(spec_id: str) -> Dict[str, Any]:
     Each step shows: which Agent was chosen, Supervisor's reasoning, and execution outcome.
     """
     try:
-        from core.harness.models.spec_lifecycle import get_spec_lifecycle
+        from core.api.core_facade import get_spec_lifecycle
         from core.harness.execution.trace_visualizer import get_trace_visualizer
 
         sl = get_spec_lifecycle()
@@ -515,7 +515,7 @@ async def get_training_status() -> Dict[str, Any]:
                 with open(model_path) as f:
                     model_info = _json.load(f)
             except Exception:
-                pass
+                logging.getLogger(__name__).debug('get_training_status failed', exc_info=True)
 
         # Check dataset files
         dataset_dir = os.path.expanduser("~/.aiplat/training")
@@ -546,13 +546,20 @@ async def get_fde_dashboard():
     return await _fde_dashboard()
 
 
+@router.post("/fde-dashboard", response_model=ItemResponse)
+async def post_fde_dashboard():
+    """POST alias for GET /fde-dashboard (compat — frontend method mismatch)."""
+    from apps.fde.api.fde import get_fde_dashboard as _fde_dashboard
+    return await _fde_dashboard()
+
+
 
 
 @router.post("/spec/{spec_id}/mark-stable", response_model=SpecMarkStableResponse)
 async def mark_spec_stable(spec_id: str) -> Dict[str, Any]:
     """Quick action: mark a REVIEW Spec as STABLE (one-click approve)."""
     try:
-        from core.harness.models.spec_lifecycle import get_spec_lifecycle
+        from core.api.core_facade import get_spec_lifecycle
         sl = get_spec_lifecycle()
         result = sl.mark_stable(spec_id)
         if result:
@@ -566,7 +573,7 @@ async def mark_spec_stable(spec_id: str) -> Dict[str, Any]:
 async def create_spec(body: Dict[str, Any]) -> Dict[str, Any]:
     """Create a new Spec from scratch (manual Spec creation)."""
     try:
-        from core.harness.models.spec_lifecycle import get_spec_lifecycle
+        from core.api.core_facade import get_spec_lifecycle
         spec_id = body.get("spec_id", "")
         if not spec_id:
             raise HTTPException(status_code=400, detail="spec_id is required")
@@ -638,7 +645,7 @@ async def install_skill_from_url(body: Dict[str, Any]) -> Dict[str, Any]:
         raise HTTPException(status_code=400, detail="url is required")
 
     try:
-        from core.management.skill_installer import SkillInstaller
+        from core.api.core_facade import SkillInstaller
         installer = SkillInstaller()
 
         # Determine install source
@@ -660,7 +667,7 @@ async def install_skill_from_url(body: Dict[str, Any]) -> Dict[str, Any]:
                     if is_agentskills_format(raw_md):
                         raw_md = convert_agentskills_to_aiplat(raw_md, "imported-skill")
                 except Exception:
-                    pass
+                    logging.getLogger(__name__).debug('install_skill_from_url failed', exc_info=True)
                 with open(_os.path.join(skill_dir, "SKILL.md"), "w") as f:
                     f.write(raw_md)
                 result = await installer.install_from_dir(skill_dir)
@@ -689,7 +696,7 @@ async def duplicate_spec(spec_id: str, body: Dict[str, Any]) -> Dict[str, Any]:
     Body: {"new_spec_id": "my-new-spec"} — optional, defaults to {spec_id}_copy
     """
     try:
-        from core.harness.models.spec_lifecycle import get_spec_lifecycle
+        from core.api.core_facade import get_spec_lifecycle
         sl = get_spec_lifecycle()
         source = sl.get_latest(spec_id)
         if not source:
@@ -720,7 +727,7 @@ async def diff_spec_versions(spec_id: str, v1: int = 0, v2: int = 0) -> Dict[str
     Defaults to comparing latest vs previous version.
     """
     try:
-        from core.harness.models.spec_lifecycle import get_spec_lifecycle
+        from core.api.core_facade import get_spec_lifecycle
         sl = get_spec_lifecycle()
         if v1 <= 0 or v2 <= 0:
             history = sl.get_history(spec_id)
@@ -784,7 +791,7 @@ async def batch_mark_stable(body: Dict[str, Any]) -> Dict[str, Any]:
     if not spec_ids or not isinstance(spec_ids, list):
         raise HTTPException(status_code=400, detail="spec_ids (list) is required")
 
-    from core.harness.models.spec_lifecycle import get_spec_lifecycle
+    from core.api.core_facade import get_spec_lifecycle
     sl = get_spec_lifecycle()
     results = []
     for sid in spec_ids:
@@ -807,7 +814,7 @@ async def batch_mark_stable(body: Dict[str, Any]) -> Dict[str, Any]:
 async def promote_to_platform(spec_id: str, body: Dict[str, Any]) -> Dict[str, Any]:
     """Request Spec promotion to platform scope."""
     try:
-        from core.harness.models.spec_lifecycle import get_spec_lifecycle
+        from core.api.core_facade import get_spec_lifecycle
         sl = get_spec_lifecycle()
         result = sl.promote_to_platform(
             spec_id,
@@ -829,7 +836,7 @@ async def promote_to_platform(spec_id: str, body: Dict[str, Any]) -> Dict[str, A
 async def approve_promotion(spec_id: str, body: Dict[str, Any]) -> Dict[str, Any]:
     """Approve platform promotion (reviewer action)."""
     try:
-        from core.harness.models.spec_lifecycle import get_spec_lifecycle
+        from core.api.core_facade import get_spec_lifecycle
         sl = get_spec_lifecycle()
         result = sl.promote_approve(
             spec_id,
@@ -852,7 +859,7 @@ async def approve_promotion(spec_id: str, body: Dict[str, Any]) -> Dict[str, Any
 async def reject_promotion(spec_id: str, body: Dict[str, Any]) -> Dict[str, Any]:
     """Reject platform promotion (reviewer action)."""
     try:
-        from core.harness.models.spec_lifecycle import get_spec_lifecycle
+        from core.api.core_facade import get_spec_lifecycle
         sl = get_spec_lifecycle()
         result = sl.promote_reject(
             spec_id,
@@ -874,7 +881,7 @@ async def reject_promotion(spec_id: str, body: Dict[str, Any]) -> Dict[str, Any]
 async def get_promotion_queue() -> Dict[str, Any]:
     """List all Specs awaiting platform promotion review."""
     try:
-        from core.harness.models.spec_lifecycle import get_spec_lifecycle
+        from core.api.core_facade import get_spec_lifecycle
         sl = get_spec_lifecycle()
         queue = sl.get_promotion_queue()
         items = [{"spec_id": s.spec_id, "version": s.version, "requester": s.promotion_requester,
@@ -885,5 +892,7 @@ async def get_promotion_queue() -> Dict[str, Any]:
 
 
 # Local helper for _trigger_spec_re_execution
-from core.harness.models.spec_lifecycle import get_spec_lifecycle
+from core.api.core_facade import get_spec_lifecycle
 from apps.common_schemas import StatusResponse, ListResponse, ItemResponse
+import logging
+

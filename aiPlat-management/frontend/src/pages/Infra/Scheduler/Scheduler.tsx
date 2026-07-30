@@ -1,10 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Plus, RotateCw } from 'lucide-react';
+import { Plus, RotateCw, Cpu } from 'lucide-react';
 import { Table, Button, toast } from '../../../components/ui';
 import PageHeader from '../../../components/common/PageHeader';
 import { QuotaModal, PolicyModal } from '../../../components/infra';
 import { schedulerApi, type Quota, type Task, type Policy } from '../../../services';
+
+interface ModelResource {
+  name: string;
+  provider: string;
+  source: string;
+  enabled: boolean;
+  size_bytes: number;
+  size_gb: number;
+  is_downloaded: boolean;
+  supports_gpu: boolean;
+  quantization: string;
+}
 
 interface QuotaFormValues {
   name: string;
@@ -24,6 +36,7 @@ const Scheduler: React.FC = () => {
   const [quotas, setQuotas] = useState<Quota[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [policies, setPolicies] = useState<Policy[]>([]);
+  const [modelResources, setModelResources] = useState<{ models: ModelResource[]; ram_gb: number; vram_gb: number; gpu_vendor: string; ollama_running: boolean } | null>(null);
   const [loading, setLoading] = useState(false);
   const [quotaModalOpen, setQuotaModalOpen] = useState(false);
   const [policyModalOpen, setPolicyModalOpen] = useState(false);
@@ -42,6 +55,11 @@ const Scheduler: React.FC = () => {
       setQuotas(quotasData || []);
       setTasks(tasksData || []);
       setPolicies(policiesData || []);
+      // 获取模型资源占用
+      try {
+        const res = await fetch('/api/infra/scheduler/model-resources');
+        if (res.ok) setModelResources(await res.json());
+      } catch {}
     } catch (error) {
       toast.error('获取调度数据失败');
       console.error('Failed to fetch scheduler data:', error);
@@ -361,6 +379,67 @@ const Scheduler: React.FC = () => {
           />
         </div>
       </motion.div>
+
+      {modelResources && modelResources.models.length > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.25 }}
+          className="bg-dark-card rounded-xl border border-dark-border overflow-hidden"
+        >
+          <div className="px-4 py-3 border-b border-dark-border flex items-center justify-between">
+            <div>
+              <h3 className="text-sm font-medium text-gray-200">模型资源占用</h3>
+              <p className="text-xs text-gray-500 mt-0.5">
+                Ollama: {modelResources.ollama_running ? '运行中' : '未运行'} · 
+                GPU: {modelResources.gpu_vendor || 'N/A'} · 
+                RAM: {modelResources.ram_gb}GB · 
+                VRAM: {modelResources.vram_gb}GB
+              </p>
+            </div>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="border-b border-dark-border bg-dark-hover">
+                  <th className="text-left px-3 py-2 text-gray-400 font-medium">模型名称</th>
+                  <th className="text-left px-2 py-2 text-gray-400 font-medium">来源</th>
+                  <th className="text-right px-2 py-2 text-gray-400 font-medium">大小</th>
+                  <th className="text-center px-2 py-2 text-gray-400 font-medium">量化</th>
+                  <th className="text-center px-2 py-2 text-gray-400 font-medium">GPU</th>
+                  <th className="text-center px-2 py-2 text-gray-400 font-medium">状态</th>
+                </tr>
+              </thead>
+              <tbody>
+                {modelResources.models.map((m: ModelResource) => (
+                  <tr key={m.name} className="border-b border-dark-border/50 hover:bg-dark-hover/50">
+                    <td className="px-3 py-2 text-gray-200 font-medium">{m.name}</td>
+                    <td className="px-2 py-2">
+                      <span className={`px-1.5 py-0.5 rounded text-xs ${
+                        m.source === 'local' ? 'bg-green-900/50 text-green-300' :
+                        m.source === 'external' ? 'bg-blue-900/50 text-blue-300' :
+                        'bg-gray-800 text-gray-400'
+                      }`}>{m.source === 'local' ? '本地' : m.source === 'external' ? '外部' : m.source}</span>
+                    </td>
+                    <td className="px-2 py-2 text-right text-gray-300">{m.size_gb}GB</td>
+                    <td className="px-2 py-2 text-center text-gray-400 text-xs">{m.quantization || '—'}</td>
+                    <td className="px-2 py-2 text-center">
+                      {m.supports_gpu ? <span className="text-green-400">✓</span> : <span className="text-gray-600">—</span>}
+                    </td>
+                    <td className="px-2 py-2 text-center">
+                      {m.enabled ? (
+                        m.is_downloaded ? <span className="text-green-400">可用</span> : <span className="text-yellow-400">未下载</span>
+                      ) : (
+                        <span className="text-gray-500">禁用</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </motion.div>
+      )}
 
       <QuotaModal
         open={quotaModalOpen}

@@ -13,6 +13,9 @@ class LocalLLMClient(LLMClient):
     _instance_lock = threading.Lock()
     _model_cache: Dict[str, Any] = {}
     _embedding_model_cache: Dict[str, Any] = {}
+    _model_load_timestamps: Dict[str, float] = {}
+    _MAX_CACHE_SIZE = 3
+    _IDLE_TTL_SECONDS = 1800  # 30 min idle → auto-unload
 
     def __init__(self, config: LLMConfig):
         self.config = config
@@ -66,8 +69,10 @@ class LocalLLMClient(LLMClient):
 
             cache_key = f"llama_cpp:{model_path}"
             if cache_key in self._model_cache:
+                self._touch_cache(cache_key)
                 return self._model_cache[cache_key]
 
+            self._maybe_cleanup_idle_models()
             model = Llama(
                 model_path=model_path,
                 n_ctx=self._init_options.get("n_ctx", 4096),
@@ -76,6 +81,7 @@ class LocalLLMClient(LLMClient):
                 verbose=self._init_options.get("verbose", False),
             )
             self._model_cache[cache_key] = model
+            self._model_load_timestamps[cache_key] = time.time()
             return model
         except Exception as e:
             raise RuntimeError(f"Failed to load model with llama-cpp: {e}")
@@ -87,8 +93,10 @@ class LocalLLMClient(LLMClient):
 
             cache_key = f"transformers:{model_name}"
             if cache_key in self._model_cache:
+                self._touch_cache(cache_key)
                 return self._model_cache[cache_key]
 
+            self._maybe_cleanup_idle_models()
             tokenizer = AutoTokenizer.from_pretrained(model_name)
             model = AutoModelForCausalLM.from_pretrained(
                 model_name,
@@ -100,6 +108,7 @@ class LocalLLMClient(LLMClient):
                 model = model.to("cpu")
 
             self._model_cache[cache_key] = {"model": model, "tokenizer": tokenizer}
+            self._model_load_timestamps[cache_key] = time.time()
             return {"model": model, "tokenizer": tokenizer}
         except Exception as e:
             raise RuntimeError(f"Failed to load model with transformers: {e}")
@@ -301,7 +310,7 @@ class LocalLLMClient(LLMClient):
             if mem_mb > self._metrics["peak_memory_mb"]:
                 self._metrics["peak_memory_mb"] = mem_mb
         except ImportError:
-            pass
+            pass  # noqa: optional-dependency
 
     def chat(self, request: ChatRequest) -> ChatResponse:
         raise NotImplementedError("Use achat for async")
@@ -428,13 +437,68 @@ class LocalLLMClient(LLMClient):
             process = psutil.Process()
             metrics["current_memory_mb"] = process.memory_info().rss / 1024 / 1024
         except ImportError:
-            pass
+            pass  # noqa: optional-dependency
         if self._model:
             metrics["model_loaded"] = True
             metrics["backend"] = self._backend
         else:
             metrics["model_loaded"] = False
         return metrics
+
+    @classmethod
+    def _maybe_cleanup_idle_models(cls) -> int:
+        """Auto-unload models idle longer than _IDLE_TTL_SECONDS.
+
+        Also evicts oldest models when cache exceeds _MAX_CACHE_SIZE.
+        Returns number of models unloaded.
+        """
+        unloaded = 0
+        with cls._instance_lock:
+            now = time.time()
+
+            # TTL-based eviction
+            expired = []
+            for key, ts in list(cls._model_load_timestamps.items()):
+                if now - ts > cls._IDLE_TTL_SECONDS:
+                    expired.append(key)
+            for key in expired:
+                cls._model_cache.pop(key, None)
+                cls._embedding_model_cache.pop(key, None)
+                cls._model_load_timestamps.pop(key, None)
+                unloaded += 1
+                logging.getLogger("local_llm").info(
+                    "Auto-unloaded idle model: %s (idle %.0fs)", key, now - cls._model_load_timestamps.get(key, now))
+
+            # Size-based eviction (oldest first)
+            if len(cls._model_cache) > cls._MAX_CACHE_SIZE:
+                overflow = len(cls._model_cache) - cls._MAX_CACHE_SIZE
+                sorted_keys = sorted(
+                    cls._model_load_timestamps.items(),
+                    key=lambda x: x[1],
+                )
+                for key, _ in sorted_keys[:overflow]:
+                    cls._model_cache.pop(key, None)
+                    cls._embedding_model_cache.pop(key, None)
+                    cls._model_load_timestamps.pop(key, None)
+                    unloaded += 1
+
+            if unloaded:
+                import gc
+                gc.collect()
+                try:
+                    import torch
+                    if torch.cuda.is_available():
+                        torch.cuda.empty_cache()
+                except ImportError:
+                    pass  # noqa: optional-dependency
+
+        return unloaded
+
+    @classmethod
+    def _touch_cache(cls, cache_key: str) -> None:
+        """Update the last-access timestamp for a cached model."""
+        with cls._instance_lock:
+            cls._model_load_timestamps[cache_key] = time.time()
 
     def unload_model(self):
         if self._backend == "llama_cpp":
@@ -458,7 +522,7 @@ class LocalLLMClient(LLMClient):
             if torch.cuda.is_available():
                 torch.cuda.empty_cache()
         except ImportError:
-            pass
+            pass  # noqa: optional-dependency
 
     @classmethod
     def clear_cache(cls):

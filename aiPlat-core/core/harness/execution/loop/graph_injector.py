@@ -206,7 +206,13 @@ async def inject_memory_reminders(state: LoopState) -> None:
         mgr = get_memory_manager(namespace=ns)
         if mgr is None:
             return
-        reminders = await mgr.get_reminders()
+        reminders = await mgr.get_reminders(
+            token_usage_ratio=float(state.context.get("_token_usage_ratio", 0) or 0),
+            consecutive_reads=int(state.context.get("_consecutive_reads", 0) or 0),
+            tool_failed=bool(state.context.get("_tool_failed", False)),
+            calling_tool=str(state.context.get("_last_tool_called", "") or ""),
+            pending_todos=int(state.context.get("_pending_todos", 0) or 0),
+        )
         if not reminders:
             return
         for reminder_text in reminders:

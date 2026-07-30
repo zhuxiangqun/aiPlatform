@@ -87,12 +87,12 @@ def init_db():
         try:
             conn.execute(f"ALTER TABLE edges ADD COLUMN {col} {typ}")
         except sqlite3.OperationalError:
-            pass  # column already exists
+            pass  # column already exists  # noqa: schema-idempotent
     # Migration: add parent column to symbols table
     try:
         conn.execute("ALTER TABLE symbols ADD COLUMN parent TEXT")
     except sqlite3.OperationalError:
-        pass
+        pass  # noqa: schema-idempotent
     conn.commit()
     conn.close()
 
@@ -342,3 +342,4 @@ def _content_hash(filepath: Path) -> str:
         return hashlib.md5(filepath.read_bytes()[:65536]).hexdigest()
     except Exception:
         return ""
+

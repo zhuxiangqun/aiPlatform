@@ -13,7 +13,7 @@ FDE 团队可以通过 AI 辅助快速创建交付专用的 Agent。
 
 ### 1.1 快速创建
 
-1. 进入管理端 → **AI 能力 → Agent 管理** → 点击 **[+ 新建 Agent]**
+1. 进入管理端 → **打开 /core/agents（Agent 管理页面）** → 点击 **[+ 新建 Agent]**
 2. 填写基本信息：
    - Agent ID（如 `custom_poc_agent`）
    - 显示名称
@@ -61,7 +61,7 @@ FDE 支持的 Workflow 仅需 4 种节点，用于编排 Agent 的自动流转�
 
 ### 2.1 快速创建
 
-1. 管理端 → **AI 能力 → Workflow 管理** → 点击 **[+ 新建]**
+1. 管理端 → **打开 /core/workflows（Workflow 管理页面）** → 点击 **[+ 新建]**
 2. 输入 Workflow 名称和描述
 3. 添加节点（4 种类型）：
    - **start** — 工作流入口，输入 JSON payload
@@ -107,7 +107,7 @@ nodes:
 
 ## 三、CLI 命令速查
 
-> 以下所有命令均基于实际可用的 HTTP API 端点。API base 默认为 `http://localhost:8002/api/core`。
+> 以下所有命令均基于实际可用的 HTTP API 端点。API base 默认为 `http://localhost:8003/api/platform`。
 
 ### 3.1 种子数据
 
@@ -115,7 +115,7 @@ nodes:
 # 种子数据注入请通过 FDE 工作台操作：
 # 进入 ④ POC Tab → 加载行业模板 → 快速数据注入
 # 或通过 API 注入演示数据
-curl -X POST "http://localhost:8002/api/core/fde/poc/inject" \
+curl -X POST "http://localhost:8003/api/platform/apps/fde/poc/inject" \
   -H "Content-Type: application/json" \
   -d '{"profile": "poc-general", "namespace": "demo"}'
 ```
@@ -124,13 +124,13 @@ curl -X POST "http://localhost:8002/api/core/fde/poc/inject" \
 
 ```bash
 # 查看所有反馈历史
-curl "http://localhost:8002/api/core/fde/feedback/history"
+curl "http://localhost:8003/api/platform/apps/fde/feedback/history"
 
 # 按客户过滤诊断会话
-curl "http://localhost:8002/api/core/fde/sessions?company=客户名"
+curl "http://localhost:8003/api/platform/apps/fde/sessions?company=客户名"
 
 # 查看某次诊断的详细时间线（含反馈记录）
-curl "http://localhost:8002/api/core/fde/sessions/session_xxx/timeline"
+curl "http://localhost:8003/api/platform/apps/fde/sessions/session_xxx/timeline"
 ```
 
 ### 3.3 Agent 日志分析
@@ -138,19 +138,19 @@ curl "http://localhost:8002/api/core/fde/sessions/session_xxx/timeline"
 ```bash
 # Agent 执行日志请在 FDE 工作台 → ⑧ 运营监控 Tab 的诊断面板中查看
 # 系统级告警可通过以下 API 获取
-curl "http://localhost:8002/api/core/fde/alerts?min_severity=warning"
+curl "http://localhost:8003/api/platform/apps/fde/alerts?min_severity=warning"
 ```
 
 ### 3.4 部署打包
 
 ```bash
 # 标准打包（online/hybrid）
-curl -X POST "http://localhost:8002/api/core/fde/package" \
+curl -X POST "http://localhost:8003/api/platform/apps/fde/package" \
   -H "Content-Type: application/json" \
   -d '{"customer_name": "客户名"}'
 
 # airgap 打包（含模型文件）
-curl -X POST "http://localhost:8002/api/core/fde/package" \
+curl -X POST "http://localhost:8003/api/platform/apps/fde/package" \
   -H "Content-Type: application/json" \
   -d '{"customer_name": "客户名", "deployment_mode": "airgap"}'
 ```
@@ -167,7 +167,7 @@ bash install.sh
 
 ```bash
 # 查看系统整体健康（含自演进组件状态）
-curl "http://localhost:8002/api/core/fde/health"
+curl "http://localhost:8003/api/platform/apps/fde/health"
 
 # 手动触发全系统自检
 curl -X POST "http://localhost:8002/api/core/system/self-check"
@@ -180,7 +180,7 @@ curl "http://localhost:8002/api/core/knowledge-graph/stats"
 
 ## 四、API 端点快速参考
 
-### FDE Core API (`/api/core/fde/`)
+### FDE Platform API (`/api/platform/apps/fde/`)
 
 | 端点 | 方法 | 功能 |
 |------|:--:|------|
@@ -208,9 +208,9 @@ curl "http://localhost:8002/api/core/knowledge-graph/stats"
 #!/bin/bash
 # 一键检查所有 FDE 相关服务
 for ep in \
-  /api/core/fde/health \
-  /api/core/fde/sessions \
-  /api/core/fde/dashboard \
+  /api/platform/apps/fde/health \
+  /api/platform/apps/fde/sessions \
+  /api/platform/apps/fde/dashboard \
 ; do
   code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 3 "http://localhost:8002$ep")
   echo "$ep: $code"
@@ -218,7 +218,7 @@ done
 
 ---
 
-## 十、v2.7 本体引擎集成
+## 十、本体引擎集成
 
 ### 10.1 域成熟度监控
 
@@ -241,6 +241,6 @@ done
 ### 10.4 推理路径编排
 
 - `ontology_agent` 通过 `sys_ontology_reason` 执行 5 步推理流水线
-- 集成在 FDE field_assessment 和 domain_assessor 中（v2.7 handler 模式）
+- 集成在 FDE field_assessment 和 domain_assessor 中
 - 输出包含 reasoning_trace 可审计推理链
 ```

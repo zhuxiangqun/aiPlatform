@@ -314,7 +314,7 @@ def _parse_rule_yaml(text: str) -> Dict[str, Any]:
                 import json
                 return json.loads(match.group())
             except Exception:
-                pass
+                logging.getLogger(__name__).debug('_parse_rule_yaml failed', exc_info=True)
     return {}
 
 

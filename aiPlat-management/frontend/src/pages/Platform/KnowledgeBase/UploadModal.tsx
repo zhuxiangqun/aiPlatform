@@ -2,6 +2,7 @@ import React, { useRef, useState } from 'react';
 import { Button, Input, Modal, toast } from '../../../components/ui';
 import { kbApi } from '../../../services';
 import { useKBStore } from '../../../stores';
+import GrillPanel from '../../../components/grilling/GrillPanel';
 
 interface Props {
   open: boolean;
@@ -45,6 +46,7 @@ export const UploadModal: React.FC<Props> = ({ open, onClose, onComplete }) => {
 
   // Sync result display
   const [syncResult, setSyncResult] = useState<{ total: number; cleaned: number; skipped: number } | null>(null);
+  const [showWatchGrill, setShowWatchGrill] = useState(false);
 
   const [preview, setPreview] = useState<any>(null);
   const [tempFilePath, setTempFilePath] = useState('');
@@ -335,10 +337,13 @@ export const UploadModal: React.FC<Props> = ({ open, onClose, onComplete }) => {
         <div className="flex gap-2 justify-end">
           <Button variant="secondary" onClick={handleClose} disabled={loading}>取消</Button>
           {mode === 'directory' ? (
-            <Button variant="primary" onClick={handleDirectoryIngest} loading={loading}
-              disabled={!dirPath.trim()}>
-              开始导入
-            </Button>
+            <div className="flex gap-2">
+              <Button variant="ghost" size="sm" onClick={() => setShowWatchGrill(true)}>📋 配置向导</Button>
+              <Button variant="primary" onClick={handleDirectoryIngest} loading={loading}
+                disabled={!dirPath.trim()}>
+                开始导入
+              </Button>
+            </div>
           ) : (
             <Button variant="primary" onClick={handlePreview} loading={loading}
               disabled={(mode === 'file' && !file) || (mode === 'url' && !url.trim())}>
@@ -467,6 +472,20 @@ export const UploadModal: React.FC<Props> = ({ open, onClose, onComplete }) => {
           </div>
         )}
       </div>
+
+      {/* v2.9: GrillingBridge — watch directory configuration wizard */}
+      {showWatchGrill && (
+        <GrillPanel
+          mode="modal"
+          entryPoint="watch_directory"
+          title="监控目录配置"
+          onComplete={(output) => {
+            setShowWatchGrill(false);
+            toast.success('配置已保存');
+          }}
+          onClose={() => setShowWatchGrill(false)}
+        />
+      )}
     </Modal>
   );
 };

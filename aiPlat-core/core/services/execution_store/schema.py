@@ -3127,7 +3127,7 @@ def run_migrations(conn, current: int, target_version: int) -> int:
 
         except sqlite3.OperationalError:
 
-            pass  # column already exists
+            pass  # column already exists  # noqa: schema-idempotent
 
         try:
 
@@ -3135,7 +3135,7 @@ def run_migrations(conn, current: int, target_version: int) -> int:
 
         except sqlite3.OperationalError:
 
-            pass
+            pass  # noqa: schema-idempotent
 
         _set_version(45)
 
@@ -3181,7 +3181,7 @@ def run_migrations(conn, current: int, target_version: int) -> int:
 
         except sqlite3.OperationalError:
 
-            pass
+            pass  # noqa: schema-idempotent
 
         try:
 
@@ -3189,7 +3189,7 @@ def run_migrations(conn, current: int, target_version: int) -> int:
 
         except sqlite3.OperationalError:
 
-            pass
+            pass  # noqa: schema-idempotent
 
         try:
 
@@ -3197,7 +3197,7 @@ def run_migrations(conn, current: int, target_version: int) -> int:
 
         except sqlite3.OperationalError:
 
-            pass
+            pass  # noqa: schema-idempotent
 
         conn.execute(
 
@@ -3220,7 +3220,7 @@ def run_migrations(conn, current: int, target_version: int) -> int:
 
         except sqlite3.OperationalError:
 
-            pass
+            pass  # noqa: schema-idempotent
 
         try:
 
@@ -3232,7 +3232,7 @@ def run_migrations(conn, current: int, target_version: int) -> int:
 
         except sqlite3.OperationalError:
 
-            pass
+            pass  # noqa: schema-idempotent
 
         _set_version(48)
 
@@ -3336,6 +3336,86 @@ def run_migrations(conn, current: int, target_version: int) -> int:
         current = 51
 
 
+    # ---- Migration v52: long_term_memories provenance columns (Phase 40, memory trust) ----
+
+    if current < 52:
+
+        for col, col_def in [
+            ("source_tag", "TEXT DEFAULT ''"),
+            ("trust_weight", "REAL DEFAULT 1.0"),
+            ("provenance", "TEXT DEFAULT ''"),
+        ]:
+            try:
+                conn.execute(f"ALTER TABLE long_term_memories ADD COLUMN {col} {col_def}")
+            except Exception:
+                logging.getLogger(__name__).debug('Schema migration column-add idempotent: column already exists', exc_info=True)
+
+        _set_version(52)
+
+        current = 52
+
+
+    # ---- Migration v53: lineage_decisions — agent decision capture (Phase 41) ----
+
+    if current < 53:
+
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS lineage_decisions (
+                decision_id TEXT PRIMARY KEY,
+                run_id TEXT NOT NULL,
+                trace_id TEXT,
+
+                -- 谁做的决策
+                agent_id TEXT,
+                actor_role TEXT,
+
+                -- 何时
+                decided_at REAL NOT NULL,
+
+                -- 基于什么上下文版本
+                context_snapshot_id TEXT,
+                ontology_version TEXT,
+                kb_collection_version TEXT,
+
+                -- 决策类型: tool_selection | action_selection | parameter_choice | fallback_trigger
+                decision_type TEXT NOT NULL,
+
+                -- 决策详情
+                options_considered TEXT,
+                chosen_option TEXT NOT NULL,
+                choice_reasoning TEXT,
+
+                -- 结果
+                outcome_status TEXT,
+                outcome_summary TEXT,
+                cascaded_decisions TEXT,
+
+                -- 治理
+                policy_version TEXT,
+                constraint_checks TEXT,
+
+                -- 来源
+                source_call TEXT DEFAULT '',
+                created_at REAL NOT NULL
+            )
+        """)
+
+        # Indexes for lineage queries
+        for idx_sql in [
+            "CREATE INDEX IF NOT EXISTS idx_lineage_run ON lineage_decisions(run_id)",
+            "CREATE INDEX IF NOT EXISTS idx_lineage_decided ON lineage_decisions(decided_at)",
+            "CREATE INDEX IF NOT EXISTS idx_lineage_type ON lineage_decisions(decision_type)",
+        ]:
+            try:
+                conn.execute(idx_sql)
+            except Exception:
+                pass
+
+        _set_version(53)
+
+        current = 53
+
+
     # If legacy db exists with tables but without meta, upgrade meta to current
 
     if current < target_version:
@@ -3363,3 +3443,4 @@ def run_migrations(conn, current: int, target_version: int) -> int:
 
 
     return current
+

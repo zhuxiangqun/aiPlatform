@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from fastapi import APIRouter
-from apps.fde.schemas import FdeStatusResponse, FdeListResponse, FdeItemResponse
+from apps.fde.api.schemas import FdeStatusResponse, FdeListResponse, FdeItemResponse
 
 
 router = APIRouter(tags=["fde-overview"])
@@ -30,10 +30,13 @@ async def fde_overview():
                 "phase_2": "主动诊断 (5条跨子系统关联规则)",
                 "phase_3": "自动修复 (confidence>=0.9安全门, 5条修复, 审计)",
                 "phase_4": "自主演化 (术语自动发布, 方案草稿审批)",
+                "phase_5": "抽象目标分解 (AbstractGoalDecomposer — LLM+Ontology拆解模糊目标→子目标→依赖规划→进度评估)",
+                "phase_6": "自主部署 (DeployEngine — 沙箱→灰度→push→构建→部署→验证→回滚全闭环)",
+                "phase_7": "外部发现 (Discovery — socket扫描→服务指纹→DataSourceConfig→监听注册, 默认DENY)",
             },
         },
         "endpoints": 31,
-        "capabilities": 630,
+        "capabilities": 756,
         "domains": 8,
-        "version": "17.6",
+        "version": "18.0",
     }

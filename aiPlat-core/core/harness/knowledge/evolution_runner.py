@@ -34,10 +34,8 @@ class EvolutionSnapshot:
     def create(self):
         """Backup current index.json for rollback."""
         self.created_at = _time.time()
-        wiki_root = _os.path.expanduser(
-            _os.getenv("AIPLAT_HOME", "~/.aiplat"))
-        idx_path = _os.path.join(
-            wiki_root, "wiki", "collections", self.collection_id, "index.json")
+        from core.harness.knowledge.wiki_engine import _wiki_root
+        idx_path = _wiki_root(self.collection_id).parent / "index.json"
         if _os.path.exists(idx_path):
             with open(idx_path) as f:
                 self.index_backup = _json.loads(f.read())
@@ -50,10 +48,8 @@ class EvolutionSnapshot:
         if not self.index_backup:
             logger.warning("No snapshot to rollback")
             return
-        wiki_root = _os.path.expanduser(
-            _os.getenv("AIPLAT_HOME", "~/.aiplat"))
-        idx_path = _os.path.join(
-            wiki_root, "wiki", "collections", self.collection_id, "index.json")
+        from core.harness.knowledge.wiki_engine import _wiki_root
+        idx_path = _wiki_root(self.collection_id).parent / "index.json"
         _os.makedirs(_os.path.dirname(idx_path), exist_ok=True)
         with open(idx_path, "w") as f:
             f.write(_json.dumps(self.index_backup, indent=2, ensure_ascii=False))

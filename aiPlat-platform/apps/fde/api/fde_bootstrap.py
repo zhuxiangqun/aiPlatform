@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from typing import Any, Dict, List
-from apps.fde.schemas import FdeStatusResponse, FdeListResponse, FdeItemResponse
+from apps.fde.api.schemas import FdeStatusResponse, FdeListResponse, FdeItemResponse
 
 
 from fastapi import APIRouter, HTTPException, Query
@@ -38,7 +38,7 @@ async def fde_bootstrap_test_data(
     sid = f"session_{company_name.replace(' ', '')}_{ts}"
 
     try:
-        from core.harness.ontology_engine.graph_index import GraphIndex
+        from core.api.core_facade import GraphIndex
 
         # fde-delivery: session + actions + evidence + meta + transitions
         fd = GraphIndex.load("fde-delivery")
@@ -95,7 +95,7 @@ async def fde_bootstrap_test_data(
         # v2.7: Auto-compute domain maturity from real data
         try:
             from core.harness.knowledge.domain_maturity import compute_domain_maturity
-            from core.harness.knowledge.domain_router import DomainRouter
+            from core.api.core_facade import DomainRouter
             router = DomainRouter()
             for domain_id in router.list_domains():
                 maturity = compute_domain_maturity(domain_id)
@@ -139,7 +139,7 @@ async def fde_bootstrap_all():
     for ind in industries:
         # Reuse bootstrap logic inline
         import time as _t_ball, json as _json_ball
-        from core.harness.ontology_engine.graph_index import GraphIndex
+        from core.api.core_facade import GraphIndex
 
         company_names = {"政务":"某省政务服务中心","金融":"某市商业银行","制造":"华东精密制造有限公司","医疗":"北京三甲医疗集团"}
         actions_map = {
@@ -177,7 +177,7 @@ async def fde_bootstrap_all():
     # v2.7: Auto-compute domain maturity from real data
     try:
         from core.harness.knowledge.domain_maturity import compute_domain_maturity
-        from core.harness.knowledge.domain_router import DomainRouter
+        from core.api.core_facade import DomainRouter
         router = DomainRouter()
         for domain_id in router.list_domains():
             maturity = compute_domain_maturity(domain_id)

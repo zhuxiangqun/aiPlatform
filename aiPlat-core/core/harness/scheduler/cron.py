@@ -80,7 +80,7 @@ class CronScheduler:
             try:
                 await self._task
             except asyncio.CancelledError:
-                pass
+                pass  # noqa: normal-cancellation
         logger.info("CronScheduler stopped")
 
     async def _loop(self) -> None:
@@ -288,3 +288,4 @@ __all__ = [
     "get_cron_scheduler",
     "register_builtin_jobs",
 ]
+

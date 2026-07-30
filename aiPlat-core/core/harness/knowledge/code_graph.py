@@ -794,11 +794,11 @@ def build_graph(_repo_root: Path, roots: List[Path]) -> Tuple[Dict[str, Dict[str
     except Exception as e:
         logging.debug(str(e), exc_info=True)
 
-    # Fallback: in-memory cache (120s TTL)
+    # Fallback: in-memory cache (300s TTL — lasts across guard process lifetime)
     roots_key = ";".join(str(r) for r in roots)
     import time as _t
     with _CACHE_LOCK:
-        if _CACHE and _CACHE_ROOTS == roots_key and _t.time() - _CACHE["_ts"] < 120:
+        if _CACHE and _CACHE_ROOTS == roots_key and _t.time() - _CACHE["_ts"] < 300:
             import sys; sys.stderr.write("code_graph: mem-cache hit — " + str(len(_CACHE["nodes"])) + " nodes\n")
             return _CACHE["nodes"], _CACHE["edges"], _CACHE["issues"]
 

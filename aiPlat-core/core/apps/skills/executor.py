@@ -157,11 +157,11 @@ class SkillExecutor:
                     prompt = _sync_resolve(f"domain-prompt-{domain_id}")
                     domain_ctx["prompt"] = prompt
                 except Exception:
-                    pass
+                    logging.getLogger(__name__).debug('_execute_inline failed', exc_info=True)
                 # Inject into params as _domain_context
                 params = {**params, "_domain_context": json.dumps(domain_ctx, ensure_ascii=False)}
             except Exception:
-                pass
+                logging.getLogger(__name__).debug('code failed', exc_info=True)
 
         execution_id = new_prefixed_id("run")
         record = ExecutionRecord(
@@ -405,6 +405,11 @@ class SkillExecutor:
                         "2) 简洁优先：坚持最小可行实现；不要引入未经请求的抽象/架构/额外功能。\n"
                         "3) 精准修改：只改必须改的地方；避免无关格式化/无关文件改动。\n"
                         "4) 目标驱动：把任务转成可验证目标；给出验收标准（测试/复现步骤/检查清单）。\n"
+                        "5) 错误可见：禁止 except Exception: pass 静默吞错。所有 except 块必须包含以下至少一项：\n"
+                        "   a) logging.warning/error(exc_info=True) — 记录到日志\n"
+                        "   b) raise — 重新抛出\n"
+                        "   c) return/set 默认值 + logging.debug(exc_info=True) — 显式降级\n"
+                        "   仅 ImportError/asyncio.CancelledError/sqlite3.OperationalError 可裸 pass 并标注 # noqa 原因。\n"
                     )
 
                 from core.harness.utils.prompt_loader import _sync_resolve
@@ -565,7 +570,7 @@ def _evaluate_criterion(criterion: dict, params: dict, context) -> bool:
             if op == "!=":
                 return str(actual) != str(val)
     except Exception:
-        pass
+        logging.getLogger(__name__).debug('_evaluate_criterion failed', exc_info=True)
     
     # Fallback: keyword match in params str
     return condition.lower() in str(params).lower()

@@ -150,7 +150,7 @@ class ToolDriftDetector:
             try:
                 await self._worker_task
             except asyncio.CancelledError:
-                pass
+                pass  # noqa: normal-cancellation
 
     # ── Main entry (non-blocking, called from sys_tool_call hot path) ──
 
@@ -190,7 +190,7 @@ class ToolDriftDetector:
         try:
             self._queue.put_nowait(record)
         except asyncio.QueueFull:
-            pass
+            pass  # noqa: cleanup-best-effort
 
         # Sync realtime anomaly check
         if self._realtime_enabled and tool_name:
@@ -324,7 +324,7 @@ class ToolDriftDetector:
                 if all(v is not None for v in extracted.values()):
                     success_count += 1
             except Exception:
-                pass
+                logging.getLogger(__name__).debug('_replay_validate: mapping replay failed', exc_info=True)
 
         replay_rate = success_count / len(replay_sample)
         if replay_rate >= 0.8:
@@ -405,7 +405,7 @@ class ToolDriftDetector:
                 "timestamp": now,
             })
         except Exception:
-            pass
+            logging.getLogger(__name__).debug('_record_anomaly failed', exc_info=True)
 
         # Layer 2+3 glue: realtime reaction via running event loop
         try:
@@ -415,7 +415,7 @@ class ToolDriftDetector:
             elif anomaly_type == AnomalyType.CASCADE_FAILURE:
                 loop.create_task(self._trigger_circuit_breaker_skill(tool_name, detail))
         except RuntimeError:
-            pass
+            pass  # noqa: cleanup-best-effort
 
     async def _trigger_pattern_analysis(self, tool_name: str,
                                         anomaly_type: AnomalyType, detail: str) -> None:
@@ -598,3 +598,4 @@ def get_drift_detector() -> ToolDriftDetector:
     if _drift_detector is None:
         _drift_detector = ToolDriftDetector()
     return _drift_detector
+

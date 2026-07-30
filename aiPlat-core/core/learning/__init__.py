@@ -1,12 +1,16 @@
 """
-Learning loop (Phase 6 - placeholder).
+Learning loop (Phase 6 — fully implemented, 2026-07-29).
 
-This package defines the versioned artifacts and persistence interfaces that power
-"evaluation → feedback → evolution" controlled improvement.
+Powers "evaluation → feedback → evolution" controlled improvement.
 
-Phase 6 scope in this repo (current):
-- Provide types + persistence hooks
-- Do NOT change online execution behavior unless explicitly enabled
+Capabilities:
+- Benchmark evaluation (LearningManager.run_benchmark)
+- Feedback aggregation (LearningManager.aggregate_feedback)  
+- Evolution proposals (LearningManager.propose_evolution)
+- Artifact lifecycle: draft → published → rolled_back
+- Auto-rollback on regression (autorollback)
+- Release candidate management (release)
+- Artifact application (apply)
 """
 
 from .types import (

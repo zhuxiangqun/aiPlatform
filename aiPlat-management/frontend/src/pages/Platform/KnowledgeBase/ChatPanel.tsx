@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Button, Textarea, toast } from '../../../components/ui';
 import { PipelineTrace } from '../../../components/wiki/PipelineTrace';
+import GrillPanel from '../../../components/grilling/GrillPanel';
 
 interface ChatPanelProps {
   onClose?: () => void;
@@ -22,6 +23,8 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ onClose, wikiTitles, label
   const [domainIds, setDomainIds] = useState<Record<number, string>>({});
   const [domainNames, setDomainNames] = useState<Record<number, string>>({});
   const [feedbacks, setFeedbacks] = useState<Record<number, 'like' | 'dislike'>>({});
+  const [showGrill, setShowGrill] = useState(false);
+  const [grillDomain, setGrillDomain] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const titles = wikiTitles || [];
@@ -104,6 +107,11 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ onClose, wikiTitles, label
                   setDomainIds(prev => ({ ...prev, [msgIdx]: data.domain_id }));
                   setDomainNames(prev => ({ ...prev, [msgIdx]: data.domain_name || data.domain_id }));
                 }
+                // v2.9: auto-show GrillPanel when backend suggests clarification
+                if (data.grill_suggested) {
+                  setGrillDomain(data.domain_id || 'ai-knowledge');
+                  setShowGrill(true);
+                }
                 if (fullAnswer) setMessages(prev => [...prev, { role: 'assistant', content: fullAnswer }]);
               }
             } catch {}
@@ -178,7 +186,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ onClose, wikiTitles, label
                       <button className="text-[10px] px-1 rounded hover:bg-green-900/30"
                         onClick={() => {
                           setFeedbacks(f => ({...f, [idx]: 'like'}));
-                          fetch('/api/core/wiki/ontology/engine/feedback', {
+                          fetch('/api/core/engine/feedback', {
                             method: 'POST', headers: {'Content-Type':'application/json'},
                             body: JSON.stringify({session_id: sessionId, query: msg.content?.slice(0,100), is_helpful: true, domain_id: domainIds[idx] || 'default'}),
                           }).catch(()=>{});
@@ -186,7 +194,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ onClose, wikiTitles, label
                       <button className="text-[10px] px-1 rounded hover:bg-red-900/30"
                         onClick={() => {
                           setFeedbacks(f => ({...f, [idx]: 'dislike'}));
-                          fetch('/api/core/wiki/ontology/engine/feedback', {
+                          fetch('/api/core/engine/feedback', {
                             method: 'POST', headers: {'Content-Type':'application/json'},
                             body: JSON.stringify({session_id: sessionId, query: msg.content?.slice(0,100), is_helpful: false, domain_id: domainIds[idx] || 'default'}),
                           }).catch(()=>{});
@@ -241,6 +249,21 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ onClose, wikiTitles, label
           <Button variant="primary" loading={sending} onClick={handleSend} className="flex-shrink-0">发送</Button>
         </div>
       </div>
-    </div>
+
+      {/* v2.9: GrillingBridge — auto-triggered when KB Q&A confidence is low */}
+      {showGrill && (
+        <GrillPanel
+          mode="modal"
+          entryPoint="kb_qa"
+          domainId={grillDomain}
+          title="知识库需求澄清"
+          onComplete={() => {
+            setShowGrill(false);
+            toast.success('需求已澄清，请重新提问');
+          }}
+          onClose={() => setShowGrill(false)}
+        />
+      )}
+      </div>
   );
 };

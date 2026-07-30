@@ -20,7 +20,7 @@ from typing import Any, Dict, Optional
 from fastapi import APIRouter, HTTPException, UploadFile, File
 from fastapi.responses import FileResponse
 
-from core.harness.kernel.runtime import get_kernel_runtime
+from core.api.core_facade import get_kernel_runtime
 from core.apps.tools.browser_test_engine import register_engine, unregister_engine, get_active_engine
 from apps.common_schemas import StatusResponse, ListResponse, ItemResponse
 

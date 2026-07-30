@@ -168,7 +168,7 @@ class AutoLearner:
             if loop.is_running():
                 _asyncio.ensure_future(self._enrich_with_history(draft, error))
         except Exception:
-            pass
+            logging.getLogger(__name__).debug('analyze_failure failed', exc_info=True)
         return draft
 
     def analyze_success(
@@ -229,7 +229,7 @@ class AutoLearner:
             if loop.is_running():
                 _asyncio2.ensure_future(self._enrich_with_history(draft, trajectory_summary[:200]))
         except Exception:
-            pass
+            logging.getLogger(__name__).debug('analyze_success failed', exc_info=True)
         return draft
 
     # ── Rejected Edit Buffer (SkillOpt "refused-edit buffer") ──
@@ -271,7 +271,7 @@ class AutoLearner:
                 draft.sop_body = (draft.sop_body or "") + enrichment
                 draft.description = (draft.description or "") + " [历史经验已注入]"
         except Exception:
-            pass
+            logging.getLogger(__name__).debug('_enrich_with_history failed', exc_info=True)
 
     def is_suspended(self, agent_id: str) -> bool:
         """检查 Agent 是否因低质量而被暂停。"""

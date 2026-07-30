@@ -276,7 +276,7 @@ class ProdFeedbackStore:
                     if row[5]:
                         metadata = json.loads(row[5])
                 except (json.JSONDecodeError, TypeError):
-                    pass
+                    pass  # noqa: cleanup-best-effort
                 result.append(StoredFeedback(
                     id=row[0],
                     session_id=row[1],

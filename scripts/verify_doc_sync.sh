@@ -9,7 +9,7 @@
 # Usage: bash scripts/verify_doc_sync.sh [--ci]
 #   --ci    Exit with non-zero on violations
 
-set -euo pipefail
+set -uo pipefail  # -e removed: explicit exit handling below
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 WORKSPACE="$(cd "$SCRIPT_DIR/.." && pwd)"
@@ -75,6 +75,7 @@ check_stale_entries() {
         # Search broadly for the file across all project dirs
         local found=$(find "$WORKSPACE/aiPlat-core" "$WORKSPACE/aiPlat-platform" \
             "$WORKSPACE/aiPlat-infra" "$WORKSPACE/aiPlat-management" "$WORKSPACE/scripts" \
+            "$WORKSPACE/custom_handlers" \
             -name "$basename" -not -path "*/__pycache__/*" 2>/dev/null | head -1)
 
         if [ -z "$found" ]; then

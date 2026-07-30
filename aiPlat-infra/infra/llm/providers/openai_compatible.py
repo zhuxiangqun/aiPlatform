@@ -61,9 +61,8 @@ class OpenAICompatibleClient(LLMClient):
             if isinstance(e, (openai.RateLimitError, openai.AuthenticationError,
                               openai.PermissionDeniedError, openai.APITimeoutError)):
                 return True
-        except Exception:
+        except Exception:  # noqa: optional-error-detection
             pass
-        if getattr(e, "status_code", None) in (401, 403, 429):
             return True
         if isinstance(e, TimeoutError):
             return True
@@ -80,9 +79,8 @@ class OpenAICompatibleClient(LLMClient):
                 ra = resp.headers.get("retry-after")
                 if ra:
                     return float(ra)
-            except Exception:
+            except Exception:  # noqa: optional-header-parse
                 pass
-        return 0.0
 
     def _rotate_key(self, e: Exception) -> None:
         """Cool down the current key and switch to the next available one."""
@@ -128,6 +126,10 @@ class OpenAICompatibleClient(LLMClient):
         if request.timeout:
             import httpx
             create_kwargs["timeout"] = httpx.Timeout(timeout=request.timeout, connect=5.0)
+        # Ollama keep_alive: auto-unload model after idle timeout (default 5m)
+        if (self.config.provider or "").lower() == "ollama":
+            ka = getattr(self.config, "ollama_keep_alive", "5m") or "5m"
+            create_kwargs["extra_body"] = {"keep_alive": ka}
         response = client.chat.completions.create(**create_kwargs)
 
         latency = time.time() - start
@@ -199,6 +201,8 @@ class OpenAICompatibleClient(LLMClient):
                     top_p=request.top_p,
                     stop=request.stop,
                     stream=True,
+                    **({"extra_body": {"keep_alive": getattr(self.config, "ollama_keep_alive", "5m") or "5m"}}
+                       if (self.config.provider or "").lower() == "ollama" else {}),
                 )
                 for chunk in response:
                     if chunk.choices and chunk.choices[0].delta:
@@ -226,11 +230,61 @@ class OpenAICompatibleClient(LLMClient):
 
     async def embed(self, texts: List[str]) -> List[List[float]]:
         client = self._get_client()
-        response = client.embeddings.create(model="text-embedding-3-small", input=texts)
+        create_kwargs: dict = dict(model="text-embedding-3-small", input=texts)
+        if (self.config.provider or "").lower() == "ollama":
+            ka = getattr(self.config, "ollama_keep_alive", "5m") or "5m"
+            create_kwargs["extra_body"] = {"keep_alive": ka}
+        response = client.embeddings.create(**create_kwargs)
         return [d.embedding for d in response.data]
 
     def count_tokens(self, text: str) -> int:
         return len(text) // 4
+
+    def close(self) -> None:
+        """Release httpx connection pool and client resources."""
+        if self._client is not None:
+            # Unload Ollama model before closing connection
+            if (self.config.provider or "").lower() == "ollama":
+                try:
+                    import httpx
+                    ollama_url = (self.config.base_url or "http://localhost:11434").rstrip("/").replace("/v1", "")
+                    httpx.post(
+                        f"{ollama_url}/api/generate",
+                        json={"model": self.config.model, "keep_alive": 0},
+                        timeout=5.0,
+                    )
+                except Exception:  # noqa: best-effort-unload
+                    pass
+            self._client = None
+
+    @staticmethod
+    def unload_ollama_models(ollama_base_url: str = "http://localhost:11434", timeout: float = 10.0) -> dict:
+        """Unload all loaded Ollama models to free GPU/RAM. Returns status dict."""
+        result = {"unloaded": [], "errors": []}
+        try:
+            import httpx
+            r = httpx.get(f"{ollama_base_url.rstrip('/')}/api/ps", timeout=5.0)
+            r.raise_for_status()
+            models = r.json().get("models", [])
+            for m in models:
+                model_name = m.get("name", m.get("model", ""))
+                if not model_name:
+                    continue
+                try:
+                    ur = httpx.post(
+                        f"{ollama_base_url.rstrip('/')}/api/generate",
+                        json={"model": model_name, "keep_alive": 0},
+                        timeout=timeout,
+                    )
+                    if ur.status_code < 400:
+                        result["unloaded"].append(model_name)
+                    else:
+                        result["errors"].append(f"{model_name}: HTTP {ur.status_code}")
+                except Exception as exc:
+                    result["errors"].append(f"{model_name}: {exc}")
+        except Exception as exc:
+            result["errors"].append(f"list models failed: {exc}")
+        return result
 
     def get_metrics(self) -> dict:
         metrics = dict(self._cost_stats)
@@ -238,9 +292,8 @@ class OpenAICompatibleClient(LLMClient):
         if self._pool is not None:
             try:
                 metrics["credential_pool"] = self._pool.status()
-            except Exception:
+            except Exception:  # noqa: metrics-non-critical
                 pass
-        return metrics
 
 
 # Backward-compat aliases

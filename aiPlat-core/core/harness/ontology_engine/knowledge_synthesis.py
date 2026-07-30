@@ -41,7 +41,7 @@ class KnowledgeSynthesizer:
         self._graph = graph
 
     def synthesize(self, *, domain_id: str = "default", write_to_wiki: bool = True) -> SynthesisResult:
-        """Run all three synthesis types.
+        """Run all four synthesis types.
 
         Each page built by _build_chain_page / _build_fact_card / _build_conclusion carries
         source_instances + synthesis_type (per §5.46) — grep guard: source_instances is set
@@ -91,6 +91,16 @@ class KnowledgeSynthesizer:
                         result.pages_written += 1
                     except Exception as e:
                         result.errors.append(f"conclusion {page['title']}: {e}")
+
+        # 4. Entity class index pages (sync graph entities to Wiki FTS + vector)
+        for class_name in self._graph.get_entity_classes():
+            page = self._build_class_index_page(class_name)
+            if page and write_to_wiki:
+                try:
+                    self._write_page(page, domain_id)
+                    result.pages_written += 1
+                except Exception as e:
+                    result.errors.append(f"class_index {page['title']}: {e}")
 
         return result
 
@@ -191,6 +201,39 @@ class KnowledgeSynthesizer:
             "confidence": min(0.5 + len(he_ids) * 0.1, 0.95),
             "source_instances": [name],
             "synthesis_type": "comprehensive_conclusion",
+        }
+
+    def _build_class_index_page(self, class_name: str) -> dict:
+        """Build a Wiki index page for a graph entity class.
+
+        Ensures each entity class appears in FTS5 and vector index so users
+        can discover newly added ontology classes via search.
+        """
+        entities = self._graph.get_entities_by_class(class_name)
+        entity_names = [n.entity_name for n in entities]
+
+        title = f"{class_name} 实体索引"
+        body = f"""# {class_name} 实体索引
+
+## 概述
+本体实体类别 `{class_name}`，当前包含 {len(entities)} 个实体。
+
+## 实体列表
+{chr(10).join(f"- {name}" for name in entity_names[:50])}
+"""
+        tags = ["ontology-index", "synthesized", "entity-class"]
+        if class_name:
+            tags.append(class_name)
+
+        return {
+            "title": title[:80],
+            "body": body,
+            "category": "synthesis",
+            "tags": tags,
+            "summary": f"{class_name} 实体类别索引，包含 {len(entities)} 个实体",
+            "confidence": 1.0,
+            "source_instances": entity_names[:20],
+            "synthesis_type": "class_index",
         }
 
     def _write_page(self, page: dict, domain_id: str):

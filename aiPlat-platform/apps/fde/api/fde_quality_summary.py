@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from typing import Any, Dict, List
-from apps.fde.schemas import FdeStatusResponse, FdeListResponse, FdeItemResponse
+from apps.fde.api.schemas import FdeStatusResponse, FdeListResponse, FdeItemResponse
 
 
 from fastapi import APIRouter, HTTPException, Query, Body
@@ -47,7 +47,7 @@ async def fde_quality_summary():
 
     # ── SECI quality ──
     try:
-        from core.harness.knowledge.seci_engine import get_seci_engine
+        from core.api.core_facade import get_seci_engine
         se = get_seci_engine()
         ac = se.get_atom_count()
         lc = se.get_link_count()

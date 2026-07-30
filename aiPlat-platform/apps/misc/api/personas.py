@@ -9,7 +9,7 @@ import yaml
 from fastapi import APIRouter, HTTPException, Request
 
 from core.api.deps import actor_from_http, rbac_guard
-from core.harness.kernel.runtime import get_kernel_runtime
+from core.api.core_facade import get_kernel_runtime
 from apps.common_schemas import StatusResponse, ListResponse, ItemResponse
 
 router = APIRouter()

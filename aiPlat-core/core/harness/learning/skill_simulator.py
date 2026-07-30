@@ -29,7 +29,7 @@ class SkillSimulator:
     """
 
     def __init__(self):
-        self._enabled = os.getenv("AIPLAT_SIMULATOR_ENABLED", "false").lower() in ("1", "true", "yes")
+        self._enabled = os.getenv("AIPLAT_SIMULATOR_ENABLED", "true").lower() in ("1", "true", "yes")
         self._image = os.getenv("AIPLAT_SIMULATOR_DOCKER_IMAGE", "python:3.11-slim")
         self._timeout = int(os.getenv("AIPLAT_SIMULATOR_TIMEOUT", "60"))
         self._docker_available: Optional[bool] = None

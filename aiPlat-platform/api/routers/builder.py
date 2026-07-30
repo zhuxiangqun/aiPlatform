@@ -113,6 +113,17 @@ async def get_project(project_id: str, _auth: str = Depends(require_builder_acce
 async def delete_project(project_id: str, _auth: str = Depends(require_admin_access)):
     return await _get_svc().delete_project(project_id)
 
+@router.post("/projects/batch-delete", response_model=Dict[str, Any])
+async def batch_delete_projects(req: Dict[str, Any], _auth: str = Depends(require_admin_access)):
+    """Batch delete projects. Body: { "project_ids": ["prj_xxx", ...], "pass_rate_below": 0.01 }"""
+    project_ids = req.get("project_ids")
+    pass_rate_below = req.get("pass_rate_below")
+    deleted = await _get_svc().batch_delete(
+        project_ids=project_ids,
+        pass_rate_below=pass_rate_below,
+    )
+    return {"deleted": deleted}
+
 @router.get("/projects/{project_id}/state", response_model=ProjectStateResponse)
 async def get_project_state(project_id: str, _auth: str = Depends(require_builder_access)):
     return await _get_svc().get_project_state(project_id)

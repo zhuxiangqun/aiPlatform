@@ -300,7 +300,7 @@ class WikiPageRetriever(IRetriever):
                 if title:
                     ranks[title] = 1.0 / (60 + i + 1)
         except ImportError:
-            pass
+            pass  # noqa: optional-dependency
         return ranks
 
     async def retrieve(self, query: KnowledgeQuery) -> List[KnowledgeResult]:
@@ -420,12 +420,16 @@ class WikiPageRetriever(IRetriever):
                 credibility = 0.5
                 density = 0.3
 
-            # Composite score: semantic + keyword + governance factors
+            # v2.9: Authority score — per-page source_priority (0-10)
+            authority = float(page.get("source_priority", 0)) / 10.0
+
+            # Composite score: semantic + keyword + governance + authority
             cfg = _load_scoring_weights()
             sim = (sim * cfg["semantic"]
                    + fts_score * cfg["fts_keyword"]
                    + freshness * cfg["freshness"]
                    + credibility * cfg["credibility"]
+                   + authority * cfg["authority"]
                    + density * cfg["density"])
 
             # ── Ontology: relation boost ──
@@ -587,11 +591,12 @@ class WikiPageRetriever(IRetriever):
 
 
 _DEFAULT_SCORING = {
-    "semantic": 0.55,
-    "fts_keyword": 0.15,
+    "semantic": 0.50,
+    "fts_keyword": 0.10,
     "freshness": 0.10,
     "credibility": 0.10,
-    "density": 0.10,
+    "authority": 0.15,
+    "density": 0.05,
 }
 
 
@@ -610,7 +615,9 @@ def _load_scoring_weights() -> dict:
             "fts_keyword": float(cfg.get("fts_keyword", _DEFAULT_SCORING["fts_keyword"])),
             "freshness": float(cfg.get("freshness", _DEFAULT_SCORING["freshness"])),
             "credibility": float(cfg.get("credibility", _DEFAULT_SCORING["credibility"])),
+            "authority": float(cfg.get("authority", _DEFAULT_SCORING["authority"])),
             "density": float(cfg.get("density", _DEFAULT_SCORING["density"])),
         }
     except Exception:
         return dict(_DEFAULT_SCORING)
+

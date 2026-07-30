@@ -2,12 +2,13 @@
 from __future__ import annotations
 
 from typing import Any, Dict, List
-from apps.fde.schemas import FdeStatusResponse, FdeListResponse, FdeItemResponse
+from apps.fde.api.schemas import FdeStatusResponse, FdeListResponse, FdeItemResponse
 
 
 from fastapi import APIRouter, HTTPException, Query
 
 import json
+import logging
 
 router = APIRouter(tags=["fde-sessions-compare"])
 
@@ -30,7 +31,7 @@ async def fde_compare_sessions(
         raise HTTPException(status_code=400, detail="Both left and right session IDs are required")
 
     try:
-        from core.harness.ontology_engine.graph_index import GraphIndex
+        from core.api.core_facade import GraphIndex
         import json as _json_cmp
 
         fd = GraphIndex.load("fde-delivery")
@@ -62,7 +63,7 @@ async def fde_compare_sessions(
                             data["industry"] = md.get("industry", "")
                             data["knowledge_gaps"] = len(md.get("knowledge_gaps", []))
                         except Exception:
-                            pass
+                            logging.getLogger(__name__).debug('_get_session_data failed', exc_info=True)
 
             # Actions
             actions = 0

@@ -6,7 +6,7 @@ from typing import Any, Dict, Optional
 
 from fastapi import APIRouter, HTTPException, Request
 
-from core.harness.kernel.runtime import get_kernel_runtime
+from core.api.core_facade import get_kernel_runtime
 from core.learning.pipeline import summarize_syscall_events
 from core.learning.workspace_target import ensure_workspace_target
 import logging

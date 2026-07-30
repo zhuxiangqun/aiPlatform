@@ -1,203 +1,238 @@
-u"""
-Action Contract Registry — 动作契约形式化 (v2.7).
+"""
+Action Contract Registry — Pydantic v2 models with security sandbox, YAML I/O, and
+entity constraint validators (v3, 2026-07-29).
 
-Defines formal I/O schemas for all side-effect actions:
-  - add_tag, call_webhook, mark_related_for_review, inject_case_study
-
-Each action has: input_schema (JSON Schema), output_schema, permissions, 
-preconditions, retry policy, failure_strategy, and a handler reference.
+Extends the original 4 built-in actions with enterprise-grade fields:
+  - Entity constraints: scope, domain_id, target_class, required_state, forbidden_states
+  - Semantics: effect_semantics, compensation, risk_level
+  - Approval: require_approval, approval_threshold, lock_on_pending
+  - Handler security: module whitelist + dangerous keyword rejection
+  - YAML sandbox: path whitelist for from_yaml()
 """
 from __future__ import annotations
 
-import importlib
-import json as _json
-import logging
-from dataclasses import dataclass, field
+import os
+import yaml
+from enum import Enum
 from typing import Any, Dict, List, Optional
+from pydantic import BaseModel, Field, field_validator
 
-logger = logging.getLogger("action_contract")
+
+# ═══════════════════════════════════════════════════════════
+# Enums
+# ═══════════════════════════════════════════════════════════
+
+class ActionScope(str, Enum):
+    DOMAIN = "domain"
+    CROSS_DOMAIN = "cross_domain"
+    GLOBAL = "global"
 
 
-@dataclass
-class ActionContract:
-    u"""Formal contract for a side-effect action."""
-    action_id: str
-    label: str
+class ActionCategory(str, Enum):
+    MUTATION = "mutation"
+    NOTIFICATION = "notification"
+    REVIEW = "review"
+    CASE_STUDY = "case_study"
+    BUSINESS = "business"
+
+
+class FailureStrategy(str, Enum):
+    LOG_ONLY = "log_only"
+    RETRY = "retry"
+    BLOCK = "block_state_transition"
+    ESCALATE = "escalate"
+
+
+class RiskLevel(str, Enum):
+    LOW = "low"
+    MEDIUM = "medium"
+    HIGH = "high"
+    CRITICAL = "critical"
+
+
+# ═══════════════════════════════════════════════════════════
+# Core Model
+# ═══════════════════════════════════════════════════════════
+
+class ActionContractModel(BaseModel):
+    """Enterprise action contract with entity constraints, semantics, and security."""
+
+    model_config = {"extra": "forbid"}
+
+    # ── Identity ──
+    action_id: str = Field(..., min_length=1, max_length=128)
+    label: str = Field(..., min_length=1, max_length=128)
     description: str = ""
-    category: str = "mutation"              # mutation | notification | review | case_study
-    input_schema: Dict[str, Any] = field(default_factory=dict)
-    output_schema: Dict[str, Any] = field(default_factory=dict)
-    required_permissions: List[str] = field(default_factory=list)
-    preconditions: List[Dict] = field(default_factory=list)
-    retry_policy: Dict[str, Any] = field(default_factory=dict)
-    failure_strategy: str = "log_only"      # log_only | retry | escalate | block_state_transition
+    category: ActionCategory = ActionCategory.MUTATION
+
+    # ── Entity constraints ──
+    scope: ActionScope = ActionScope.DOMAIN
+    domain_id: str = ""
+    target_class: str = ""
+    required_state: str = ""  # empty = any state
+    forbidden_states: List[str] = Field(default_factory=list)
+    lock_on_pending: bool = True
+
+    # ── Semantics (human-readable) ──
+    effect_semantics: str = ""
+    compensation: str = ""
+    risk_level: RiskLevel = RiskLevel.LOW
+
+    # ── Schema (machine-validated) ──
+    input_schema: Dict[str, Any] = Field(default_factory=dict)
+    output_schema: Dict[str, Any] = Field(default_factory=dict)
+
+    # ── Permissions & approval ──
+    required_permissions: List[str] = Field(default_factory=list)
+    allowed_roles: List[str] = Field(default_factory=list)
+    require_approval: bool = False
+    approval_threshold: Optional[float] = None
+
+    # ── Execution control ──
+    handler: str = ""  # "module.path:function_name"
+    rollback_action_id: str = ""
+    retry_policy: Dict[str, Any] = Field(
+        default_factory=lambda: {"max_retries": 1, "backoff_seconds": 5}
+    )
+    failure_strategy: FailureStrategy = FailureStrategy.LOG_ONLY
+    max_concurrent: int = 0
     audit: bool = True
-    handler: str = ""                       # "module.path:function_name"
+    preconditions: List[Dict] = Field(default_factory=list)
 
+    # ═══ 决策节流（v3.1 — MSS 启示二：防橡皮图章效应）═══
+    throttle_limit: int = Field(100, ge=0, description="每小时最大执行次数，0=不限")
+    throttle_window_seconds: int = Field(3600, ge=1, description="统计时间窗口（秒）")
+    throttle_block_on_breach: bool = Field(True, description="超限时是否阻断执行")
+    throttle_bypass_roles: List[str] = Field(default_factory=list, description="豁免角色列表（如 admin）")
 
-class ActionRegistry:
-    u"""Global registry of all side-effect action contracts."""
+    # ═══════════════════════════════════════════════════════
+    # Pydantic v2 Validators
+    # ═══════════════════════════════════════════════════════
 
-    def __init__(self):
-        self._contracts: Dict[str, ActionContract] = {}
-        self._handlers: Dict[str, callable] = {}
+    @field_validator("handler")
+    @classmethod
+    def _validate_handler_security(cls, v: str) -> str:
+        """Module whitelist — prevent arbitrary code execution (RCE).
 
-    def register(self, contract: ActionContract) -> None:
-        u"""Register an action contract. Validates handler existence at registration time."""
-        self._contracts[contract.action_id] = contract
-        if contract.handler:
-            self._resolve_handler(contract)
-        logger.debug("Action registered: %s", contract.action_id)
-
-    def get(self, action_id: str) -> Optional[ActionContract]:
-        return self._contracts.get(action_id)
-
-    def list_all(self) -> List[ActionContract]:
-        return list(self._contracts.values())
-
-    def validate_params(self, action_id: str, params: Dict[str, Any]) -> Dict[str, Any]:
-        u"""Validate action params against the contract's input_schema.
-
-        Returns: {"valid": bool, "errors": [...]}
+        Handler format: "module.path:function_name".
+        The module prefix (before ':') must be in the whitelist.
         """
-        contract = self._contracts.get(action_id)
-        if not contract:
-            return {"valid": False, "errors": [f"Unknown action: {action_id}"]}
-        schema = contract.input_schema
-        if not schema:
-            return {"valid": True, "errors": []}
-        try:
-            import jsonschema
-            jsonschema.validate(params, schema)
-            return {"valid": True, "errors": []}
-        except ImportError:
-            # Basic validation: check required fields
-            errors = []
-            for req in schema.get("required", []):
-                if req not in params:
-                    errors.append(f"Missing required field: {req}")
-            return {"valid": len(errors) == 0, "errors": errors}
-        except Exception as e:
-            return {"valid": False, "errors": [str(e)]}
+        if not v:
+            return v
 
-    def get_handler(self, action_id: str):
-        u"""Get the callable handler for an action."""
-        if action_id in self._handlers:
-            return self._handlers[action_id]
-        contract = self._contracts.get(action_id)
-        if contract and contract.handler:
-            return self._resolve_handler(contract)
-        return None
-
-    def _resolve_handler(self, contract: ActionContract):
-        u"""Import and cache the handler from its class-path string."""
-        if not contract.handler:
-            return None
-        try:
-            mod_path, func_name = contract.handler.rsplit(".", 1)
-            module = importlib.import_module(mod_path)
-            handler = getattr(module, func_name, None)
-            if handler is None:
-                raise ValueError(
-                    f"Handler '{func_name}' not found in {mod_path} "
-                    f"for action '{contract.action_id}'"
-                )
-            self._handlers[contract.action_id] = handler
-            return handler
-        except Exception as e:
-            logger.error(
-                "Failed to resolve handler for action '%s': %s",
-                contract.action_id, e
+        ALLOWED_PREFIXES = (
+            "core.harness.ontology_engine.builtin_handlers",
+            "custom_handlers",
+        )
+        # Extract module path (before the colon)
+        module_part = v.rsplit(":", 1)[0] if ":" in v else v
+        if not any(module_part == p or module_part.startswith(p + ".") for p in ALLOWED_PREFIXES):
+            raise ValueError(
+                f"Handler '{v}' not in allowed modules. "
+                f"Module prefix must match: {ALLOWED_PREFIXES}"
             )
-            return None
 
+        DANGEROUS = ("os.", "sys.", "subprocess.", "shutil.", "builtins.")
+        if any(kw in v for kw in DANGEROUS):
+            raise ValueError(
+                f"Handler '{v}' contains dangerous module reference"
+            )
+        return v
 
-# ── Global singleton ──
-_registry: Optional[ActionRegistry] = None
+    @field_validator("required_state")
+    @classmethod
+    def _validate_state_consistency(cls, v: str, info) -> str:
+        """required_state must not appear in forbidden_states."""
+        forbidden = info.data.get("forbidden_states") or []
+        if v and v in forbidden:
+            raise ValueError(f"'{v}' is both required and forbidden")
+        return v
 
+    @field_validator("domain_id")
+    @classmethod
+    def _validate_domain_id(cls, v: str, info) -> str:
+        """domain_id is required when scope=domain."""
+        if info.data.get("scope") == ActionScope.DOMAIN and not v:
+            raise ValueError("domain_id is required when scope is 'domain'")
+        return v
 
-def get_action_registry() -> ActionRegistry:
-    global _registry
-    if _registry is None:
-        _registry = ActionRegistry()
-        _register_builtins(_registry)
-    return _registry
+    @field_validator("target_class")
+    @classmethod
+    def _validate_target_class(cls, v: str, info) -> str:
+        """target_class is required when scope is domain or cross_domain."""
+        scope = info.data.get("scope")
+        if scope in (ActionScope.DOMAIN, ActionScope.CROSS_DOMAIN) and not v:
+            raise ValueError("target_class is required when scope is 'domain' or 'cross_domain'")
+        return v
 
+    # ═══════════════════════════════════════════════════════
+    # YAML I/O (business-user entry point)
+    # ═══════════════════════════════════════════════════════
 
-def _register_builtins(registry: ActionRegistry) -> None:
-    u"""Register the 4 built-in side-effect actions."""
-    registry.register(ActionContract(
-        action_id="add_tag",
-        label="添加标签",
-        description="向实例 frontmatter 追加标签",
-        category="mutation",
-        input_schema={
-            "type": "object",
-            "required": ["tag"],
-            "properties": {"tag": {"type": "string", "description": "标签名称"}},
-        },
-        output_schema={"type": "object", "properties": {"success": {"type": "boolean"}}},
-        required_permissions=["execute"],
-        failure_strategy="log_only",
-        handler="",
-    ))
+    def to_yaml(self) -> str:
+        """Serialize to YAML string for human review."""
+        data = self.model_dump(exclude_none=True, mode="python")
+        for key, val in data.items():
+            if isinstance(val, Enum):
+                data[key] = val.value
+        return yaml.dump(data, allow_unicode=True, sort_keys=False, default_flow_style=False)
 
-    registry.register(ActionContract(
-        action_id="call_webhook",
-        label="Webhook 回调",
-        description="向外部业务系统发送 HTTP POST 通知",
-        category="notification",
-        input_schema={
-            "type": "object",
-            "required": ["url"],
-            "properties": {
-                "url": {"type": "string", "format": "uri"},
-                "payload": {"type": "object"},
-            },
-        },
-        output_schema={"type": "object", "properties": {"status_code": {"type": "integer"}}},
-        required_permissions=["execute"],
-        retry_policy={"max_retries": 1, "backoff_seconds": 5},
-        failure_strategy="log_only",
-        handler="",
-    ))
+    @classmethod
+    def from_yaml(cls, path: str) -> "ActionContractModel":
+        """Load from YAML file (path-whitelist sandbox)."""
+        real_path = os.path.realpath(os.path.expanduser(path))
 
-    registry.register(ActionContract(
-        action_id="mark_related_for_review",
-        label="标记关联实体复审",
-        description="将关联实体加入审查队列",
-        category="review",
-        input_schema={
-            "type": "object",
-            "properties": {
-                "relation": {"type": "string"},
-                "message": {"type": "string"},
-            },
-        },
-        output_schema={"type": "object", "properties": {"affected_count": {"type": "integer"}}},
-        required_permissions=["execute", "approve"],
-        failure_strategy="log_only",
-        handler="",
-    ))
+        ALLOWED_DIRS = [
+            os.path.realpath("./config/actions/"),
+            os.path.realpath(os.path.expanduser("~/.aiplat/actions/")),
+        ]
+        if not any(real_path.startswith(d) for d in ALLOWED_DIRS):
+            raise ValueError(
+                f"YAML path '{path}' resolves outside allowed directories: {ALLOWED_DIRS}"
+            )
 
-    registry.register(ActionContract(
-        action_id="inject_case_study",
-        label="注入案例研究",
-        description="基于模板创建案例研究实体",
-        category="case_study",
-        input_schema={
-            "type": "object",
-            "required": ["template"],
-            "properties": {
-                "template": {"type": "string"},
-                "relation_name": {"type": "string"},
-                "relation_label": {"type": "string"},
-            },
-        },
-        output_schema={"type": "object", "properties": {"case_name": {"type": "string"}}},
-        required_permissions=["execute", "write"],
-        failure_strategy="log_only",
-        handler="",
-    ))
+        if not os.path.exists(real_path):
+            raise FileNotFoundError(f"YAML file not found: {real_path}")
 
-    logger.info("ActionRegistry: %d built-in actions registered", len(registry.list_all()))
+        with open(real_path, "r", encoding="utf-8") as f:
+            raw = yaml.safe_load(f)
+
+        if isinstance(raw, dict) and "actions" in raw:
+            actions_list = raw["actions"]
+            if not isinstance(actions_list, list):
+                raise ValueError("'actions' key must contain a list")
+            if len(actions_list) == 1:
+                data = actions_list[0]
+            else:
+                raise ValueError(
+                    f"YAML contains {len(actions_list)} actions. "
+                    "Use register_from_yaml for batch loading."
+                )
+        else:
+            data = raw
+
+        return cls.model_validate(data)
+
+    @classmethod
+    def from_yaml_batch(cls, path: str) -> List["ActionContractModel"]:
+        """Load multiple actions from a YAML file (batch mode)."""
+        real_path = os.path.realpath(os.path.expanduser(path))
+
+        ALLOWED_DIRS = [
+            os.path.realpath("./config/actions/"),
+            os.path.realpath(os.path.expanduser("~/.aiplat/actions/")),
+        ]
+        if not any(real_path.startswith(d) for d in ALLOWED_DIRS):
+            raise ValueError(f"Path '{path}' outside allowed directories")
+
+        if not os.path.exists(real_path):
+            raise FileNotFoundError(f"YAML file not found: {real_path}")
+
+        with open(real_path, "r", encoding="utf-8") as f:
+            raw = yaml.safe_load(f)
+
+        actions = raw.get("actions", [raw])
+        if not isinstance(actions, list):
+            actions = [actions]
+
+        return [cls.model_validate(a) for a in actions]

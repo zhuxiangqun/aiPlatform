@@ -1,6 +1,17 @@
 """
 ILoop Interface - Execution Loop Contract Definition
 """
+# === capability_dependencies (Phase 43: auto-verified) ===
+# depends_on:
+#   - harness-execution-engine:
+#       symbols: [PipelineEngine, ReActLoop]
+#   - memory-subsystem:
+#       symbols: [MemoryManager.build_context, save_interaction]
+#   - moa-multi-model-reasoning:
+#       symbols: [is_moa_session, get_moa_preset, moa_executor.execute]
+#   - model-infrastructure:
+#       symbols: [best_model_for_purpose]
+# === end ===
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field

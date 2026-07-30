@@ -43,7 +43,7 @@ class RAGAgent(BaseAgent):
     ):
         super().__init__(config, model=model)
         self._rag_config = rag_config or RAGConfig()
-        self._retriever = retriever or self._create_retriever()
+        self._retriever = retriever  # Phase 45: retrieval now via sys_crag_retrieve, passed retriever optional
         self._name = "rag_agent"
         self._description = "Retrieval-Augmented Generation Agent"
         self._metadata = AgentMetadata(
@@ -54,27 +54,6 @@ class RAGAgent(BaseAgent):
             supported_loop_types=["rag", "retrieval_first"],
         )
 
-    def _create_retriever(self) -> KnowledgeRetriever:
-        import os
-        backend = os.getenv("AIPLAT_VECTOR_BACKEND", "")
-        common_kw = dict(
-            retrieval_strategy="hybrid",
-            rerank_enabled=True,
-            rerank_method="multi_factor",
-            rerank_top_k=self._rag_config.rerank_top_k,
-            quality_gate_enabled=True,
-        )
-        if not backend:
-            return KnowledgeRetriever(**common_kw)
-        try:
-            from ...harness.knowledge import create_vector_retriever
-            retriever = create_vector_retriever(backend=backend)
-            for k, v in common_kw.items():
-                setattr(retriever, f"_{k}", v)
-            return retriever
-        except Exception:
-            return KnowledgeRetriever(**common_kw)
-    
     @property
     def metadata(self) -> AgentMetadata:
         return self._metadata
@@ -126,10 +105,17 @@ class RAGAgent(BaseAgent):
             return AgentResult(success=False, output=None, error=str(e), metadata={"agent": self._name})
     
     async def _retrieve(self, query: str) -> List[KnowledgeResult]:
-        results = await self._retriever.search(query, limit=self._rag_config.top_k)
-        if self._rag_config.rerank:
-            results = results[:self._rag_config.rerank_top_k]
-        return results
+        # Phase 45: Route through sys_crag_retrieve (CRAG chain + HyDE fallback)
+        from core.harness.syscalls.retrieval_crag import sys_crag_retrieve
+        retrieved_text, _citations = await sys_crag_retrieve(
+            query, top_k=self._rag_config.top_k,
+        )
+        if retrieved_text:
+            # Create a synthetic KnowledgeResult for backward compat with _build_context
+            from ...harness.knowledge import KnowledgeResult, KnowledgeEntry
+            entry = KnowledgeEntry(id="rag_crag", content=retrieved_text, title="")
+            return [KnowledgeResult(entry=entry, score=1.0)]
+        return []
     
     
     def _build_context(self, results: List[KnowledgeResult]) -> str:

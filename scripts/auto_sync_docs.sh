@@ -31,13 +31,15 @@ section_for() {
         *memory*|*compression*|*episodic*|*semantic*)  echo "## 二、记忆子系统" ;;
         *ontology_engine*|*class_mapper*|*state_machine*|*graph_index*) echo "## 三、知识引擎（本体）" ;;
         *knowledge*|*retrieval*|*rag*|*hyde*|*rrf*|*term_resolver*|*role_view*|*sla_monitor*|*process_orchestrator*|*process_monitor*|*ontology_importer*|*yaml_serializer*|*active_synthesis*|*wiki_quality*) echo "## 三、知识引擎（本体）" ;;
+        *learning*)                                      echo "## 十三、演化系统" ;;
+        *document*)                                      echo "## 十五、文档智能" ;;
         *agents*|*agent*)                               echo "## 五、Agent 系统" ;;
         *skills*|*skill*)                               echo "## 六、Skill 系统" ;;
         *engine/skills*)                                echo "## 六、Skill 系统" ;;
         *api/routers*)                                  echo "## 二十一、平台治理" ;;
         *services*)                                     echo "## 一、Harness 执行引擎" ;;
         *management*)                                   echo "## 七、安全与治理" ;;
-        *policy*|*gate*|*rbac*|*audit*|*pii*|*secrets*) echo "## 七、安全与治理" ;;
+        *policy*|*gate*|*rbac*|*audit*|*pii*|*secrets*|*purpose*) echo "## 七、安全与治理" ;;
         *observation*|*observability*|*metrics*|*otel*|*health*|*usage_tracker*) echo "## 八、可观测性" ;;
         *semantic_gateway*)                             echo "## 二十一、平台治理" ;;
         *infrastructure*|*adapter*|*model*)             echo "## 九、模型基础设施" ;;
@@ -59,7 +61,10 @@ echo "  AUTO SYNC DOCS — Detect + Fix CAPABILITIES.md gaps"
 echo "═══════════════════════════════════════════════════════════════"
 
 NEW_MODULES=""
-for root in "aiPlat-core/core/harness" "aiPlat-core/core/harness/infrastructure" \
+for root in "aiPlat-core/core/harness" "aiPlat-core/core/harness/execution" \
+    "aiPlat-core/core/harness/learning" \
+    "aiPlat-core/core/harness/document" \
+    "aiPlat-core/core/harness/infrastructure" "aiPlat-core/core/harness/infrastructure/gates" \
     "aiPlat-core/core/harness/knowledge" "aiPlat-core/core/harness/observability" \
     "aiPlat-core/core/harness/ontology_engine" "aiPlat-core/core/engine/skills" \
     "aiPlat-core/core/api/routers" "aiPlat-core/core/services" \
@@ -95,6 +100,20 @@ for root in "aiPlat-core/core/harness" "aiPlat-core/core/harness/infrastructure"
             fi
         fi
     done < <(git -C "$WORKSPACE" diff --cached --name-only 2>/dev/null | grep '\.py$' | sort -u)
+    # Pass 3: untracked new files that haven't been staged yet (Rule 11-b)
+    while IFS= read -r f; do
+        basename="${f##*/}"
+        mod="${basename%.py}"
+        dirname="$(dirname "$f")"
+        [[ "$basename" == __init__.py ]] && continue
+        [[ "$f" == */tests/* ]] && continue
+        [[ "$f" == */__pycache__/* ]] && continue
+        if ! grep -qi "$mod" "$CAPS" 2>/dev/null && ! grep -qi "$(basename "$dirname")" "$CAPS" 2>/dev/null; then
+            if ! echo "$NEW_MODULES" | grep -q "$mod|"; then
+                NEW_MODULES="$NEW_MODULES $mod|$f"
+            fi
+        fi
+    done < <(git -C "$WORKSPACE" ls-files --others --exclude-standard 2>/dev/null | grep '\.py$' | sort -u)
 done
 
 if [ -z "$NEW_MODULES" ]; then
@@ -169,6 +188,26 @@ SUM=$((TOTAL + PARTIAL))
 # Update the stats table total row
 sed -i '' "s/| \*\*总计\*\* | [0-9]* | [0-9]* | [0-9]* |/| **总计** | **$TOTAL** | **$PARTIAL** | **$SUM** |/" "$CAPS"
 
+# ── Step 4.0: Sync YAML frontmatter total_capabilities ──
+echo ""
+echo "━━━ Step 4.0: Sync YAML frontmatter ━━━"
+python3 - "$CAPS" "$SUM" << 'PYEOF_YAML'
+import sys, re
+caps_file = sys.argv[1]
+count = sys.argv[2]
+with open(caps_file) as f:
+    content = f.read()
+# Update total_capabilities in YAML frontmatter
+content = re.sub(r'total_capabilities:\s*\d+', f'total_capabilities: {count}', content)
+# Update last_updated date
+from datetime import date
+today = date.today().strftime('%Y-%m-%d')
+content = re.sub(r'last_updated:\s*\d{4}-\d{2}-\d{2}', f'last_updated: {today}', content)
+with open(caps_file, 'w') as f:
+    f.write(content)
+print(f"  ✅ Frontmatter synced: total_capabilities={count}, last_updated={today}")
+PYEOF_YAML
+
 # ── Step 4: Sync ROADMAP and CLAUDE counts ─────────────────
 
 ROADMAP="$WORKSPACE/AIPLAT_ROADMAP.md"
@@ -184,6 +223,34 @@ fi
 if [ -f "$CLAUDE" ]; then
     sed -i '' "s/唯一真相源，[0-9]* 项能力/唯一真相源，${SUM} 项能力/g" "$CLAUDE"
 fi
+
+# ── Step 4.1: Sync all downstream capability count references ─
+# Target files + patterns (documented: scripts/doc_sync_targets.yaml)
+
+echo ""
+echo "━━━ Step 4.1: Sync downstream capability counts ━━━"
+
+DOWNSTREAM_TARGETS=(
+    "docs/README.md|（[0-9]* ✅）|（${SUM} ✅）"
+    "docs/whitepaper/aiplat-l4-autonomy-assessment-v1.0.0.md|[0-9]* 项能力验证通过|${SUM} 项能力验证通过"
+    "docs/whitepaper/verification-protocol.md|changelog.*|[0-9]*|${SUM}"
+    "docs/matrix/capability-impact-matrix.md|[0-9]* capabilities|${SUM} capabilities"
+    "docs/DOCUMENT_SYSTEM.md|能力数 \`[0-9]*\`|能力数 \`${SUM}\`"
+    "AIPLAT_CAPABILITIES.md|（202[0-9]-[0-9][0-9]-[0-9][0-9] — [0-9]*✅）|（2026-07-20 — ${SUM}✅）"
+)
+
+for target in "${DOWNSTREAM_TARGETS[@]}"; do
+    file="${target%%|*}"
+    rest="${target#*|}"
+    pattern="${rest%%|*}"
+    replacement="${rest#*|}"
+    path="$WORKSPACE/$file"
+    if [ -f "$path" ]; then
+        if sed -i '' "s|${pattern}|${replacement}|g" "$path" 2>/dev/null; then
+            echo "  ✓ ${file}"
+        fi
+    fi
+done
 
 # ══════════════════════════════════════════════════════════════
 # Step 4: Auto-recalculate stats table
@@ -395,6 +462,46 @@ with open(target, "w", encoding="utf-8") as f:
     f.write(content)
 print(f"  ✅ Pipeline Key mapping updated ({len(rows)} steps from FDE_PIPELINE_STEPS)")
 PYEOF_PIPELINE
+
+# ══════════════════════════════════════════════════════════════
+# Step 6: Content accuracy — detect (规划中) entries with existing code
+# ══════════════════════════════════════════════════════════════
+echo ""
+echo "━━━ Step 6: Content accuracy (planned→implemented drift) ━━━"
+python3 << 'PYEOF_ACCURACY'
+import os, re
+workspace = os.environ.get("WORKSPACE", os.getcwd())
+caps = os.path.join(workspace, "AIPLAT_CAPABILITIES.md")
+if not os.path.isfile(caps):
+    print("  SKIP: CAPABILITIES.md not found")
+else:
+    with open(caps) as f:
+        content = f.read()
+    issues = 0
+    for line in content.split('\n'):
+        if '规划中' not in line or not line.startswith('|'):
+            continue
+        parts = [c.strip() for c in line.split('|')[1:-1]]
+        if len(parts) < 3: continue
+        name, filepath = parts[0], parts[1]
+        if not ('.py' in filepath or '.yaml' in filepath): continue
+        fn = os.path.basename(filepath.split('+')[0].split(':')[0].strip())
+        for base in ['aiPlat-core','aiPlat-platform','aiPlat-infra','aiPlat-management']:
+            bp = os.path.join(workspace, base)
+            if not os.path.isdir(bp): continue
+            try:
+                result = os.popen(f'find "{bp}" -name "{fn}" -not -path "*/test*" 2>/dev/null').read().strip()
+                if result:
+                    issues += 1
+                    lines = len(open(result.split('\n')[0]).read().split('\n'))
+                    print(f"  ⚠️  {name}: file exists ({lines}L) but marked '规划中'")
+                    break
+            except: pass
+    if issues == 0:
+        print("  ✅ No content drift detected")
+    else:
+        print(f"  → {issues} entries need status fix")
+PYEOF_ACCURACY
 
 echo ""
 echo "═══════════════════════════════════════════════════════════════"

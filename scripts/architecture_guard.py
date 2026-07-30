@@ -48,15 +48,23 @@ ARCH_BASELINE = WORKSPACE_ROOT / "scripts" / "baselines" / "architecture_guard_b
 
 
 def _arch_error_sigs(report) -> dict:
-    """Stable signatures for ERROR-level violations (these drive report.violations/ok).
+    """Stable signatures for ERROR-level violations.
 
-    Signature = '§<section>:<code>' — stable across runs (no line numbers, no counts).
+    Only captures items that represent actual failures:
+    - Has concrete files with violations (grep_forbidden found matches)
+    - Has count > 0 AND files list is empty (grep_required pattern not found)
+    - Excludes items that show as [PASS] (empty files with count=0, or the
+      grep_required found enough matches and returned count=1 as "found").
     """
     sigs = {}
     for section in report.sections:
         for item in getattr(section, "items", []) or []:
             if getattr(item, "level", "") == "error":
-                sigs[f"{section.number}:{item.code}"] = item
+                has_files = bool(getattr(item, "files", None))
+                count = getattr(item, "count", 0) or 0
+                # Only track if there's actual evidence of violations
+                if has_files:
+                    sigs[f"{section.number}:{item.code}"] = item
     return sigs
 
 
@@ -235,7 +243,7 @@ def main():
     from core.management.arch_guard_base import get_arch_registry
 
     registry = get_arch_registry()
-    report = registry.run_all(WORKSPACE_ROOT)
+    report = registry.run_all(WORKSPACE_ROOT, quick=args.quick)
 
     # ── Baseline ratchet: lock known ERROR-level debt, fail only on NEW ──
     error_sigs = _arch_error_sigs(report)

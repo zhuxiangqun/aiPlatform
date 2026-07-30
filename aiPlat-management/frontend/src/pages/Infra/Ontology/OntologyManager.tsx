@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { Plus, Trash2, RefreshCw, Eye, EyeOff, ArrowRight } from 'lucide-react';
+import { Plus, Trash2, RefreshCw, Eye, EyeOff, ArrowRight, Search } from 'lucide-react';
 import { Button, Modal, toast, Input } from '../../../components/ui';
 import OntologyGraph from '../../../components/wiki/OntologyGraph';
 import WikiHealthDashboard from '../../../components/wiki/WikiHealthDashboard';
+import GrillPanel from '../../../components/grilling/GrillPanel';
 
-const WIKI_API = '/api/core/wiki/ontology';
+const WIKI_API = '/api/core';
 
 // ── Inline: Graph Stats + Inference Button ──
 const GraphStats: React.FC<{ domainId: string }> = React.memo(({ domainId }) => {
@@ -179,6 +180,8 @@ const OntologyManager: React.FC = () => {
   };
   // ── Create domain ──
   const [createOpen, setCreateOpen] = useState(false);
+  const [showWizard, setShowWizard] = useState(false);
+  const [domainStats, setDomainStats] = useState<Record<string, any>>({});
   const [newId, setNewId] = useState('');
   const [newName, setNewName] = useState('');
   const [newDesc, setNewDesc] = useState('');
@@ -207,6 +210,10 @@ const OntologyManager: React.FC = () => {
 
   // ── Smart Generate ──
   const [genOpen, setGenOpen] = useState(false);
+  const [wikiGenOpen, setWikiGenOpen] = useState(false);
+  const [wikiGenCollection, setWikiGenCollection] = useState('system_docs');
+  const [wikiGenDomainId, setWikiGenDomainId] = useState('');
+  const [wikiGenLoading, setWikiGenLoading] = useState(false);
   const [genId, setGenId] = useState('');
   const [genName, setGenName] = useState('');
   const [genDesc, setGenDesc] = useState('');
@@ -336,6 +343,22 @@ const OntologyManager: React.FC = () => {
     }
   };
 
+  const handleWikiGenDomain = async () => {
+    setWikiGenLoading(true);
+    try {
+      const r = await fetch(`/api/core/wiki/generate-domain?collection=${wikiGenCollection}&domain_id=${wikiGenDomainId}`, { method: 'POST' });
+      const d = await r.json();
+      if (d.status === 'ok') {
+        toast.success(`领域已生成：${d.classes} 个类，${d.entities} 个实体`);
+        setWikiGenOpen(false);
+        fetchDomains();
+      } else {
+        toast.error(d.message || '生成失败');
+      }
+    } catch { toast.error('生成领域失败'); }
+    finally { setWikiGenLoading(false); }
+  };
+
   const fetchDomainDetail = async (id: string) => {
     try {
       const r = await fetch(`${WIKI_API}/domains/${id}`);
@@ -345,6 +368,31 @@ const OntologyManager: React.FC = () => {
       setGraphData(d);
     } catch { }
   };
+
+  // v2.9: Fetch ontology audit stats for all domains
+  useEffect(() => {
+    fetch('/api/core/diagnostics/ontology-audit/summary')
+      .then(r => r.json()).then(d => {
+        const stats: Record<string, any> = {};
+        for (const w of (d.worst_domains || [])) {
+          stats[w.domain] = { entities: w.entities, edges: w.edge_count, orphans: w.orphans };
+        }
+        // Add relation coverage from individual audit
+        if (selectedDomain) {
+          fetch(`/api/core/diagnostics/ontology-audit?domain_id=${selectedDomain}`)
+            .then(r => r.json()).then(r2 => {
+              const cov = r2.report?.relation_coverage;
+              if (cov) {
+                setDomainStats(prev => ({
+                  ...prev,
+                  [selectedDomain]: { ...prev[selectedDomain], covered: cov.covered, total_defined: cov.total_defined }
+                }));
+              }
+            }).catch(() => {});
+        }
+        setDomainStats(stats);
+      }).catch(() => {});
+  }, [selectedDomain]);
 
   useEffect(() => { fetchDomains(); }, []);
 
@@ -369,13 +417,37 @@ const OntologyManager: React.FC = () => {
         </div>
         <div className="flex gap-2">
           <Button icon={<Plus className="w-4 h-4" />} onClick={() => { setNewId(''); setNewName(''); setNewDesc(''); setCreateOpen(true); }}>新建域</Button>
-          <Button variant="secondary" onClick={() => { setGenId(''); setGenName(''); setGenDesc(''); setGenLimit(20); setGenSubdir(''); setGenKeywords(''); setGenResult(null); setGenYamlEdit(''); setGenOpen(true); fetchVaultDirs(); }}>🤖 智能生成</Button>
+          <Button variant="ghost" size="sm" onClick={() => setShowWizard(true)}>🧬 创建向导</Button>
+          <Button variant="secondary" onClick={() => { setGenId(''); setGenName(''); setGenDesc(''); setGenLimit(20); setGenSubdir(''); setGenKeywords(''); setGenResult(null); setGenYamlEdit(''); setGenOpen(true); fetchVaultDirs(); }}>🤖 从 Vault 生成</Button>
+          <Button variant="secondary" onClick={() => { setWikiGenCollection('system_docs'); setWikiGenDomainId('aiplat-system'); setWikiGenOpen(true); }}>📚 从 Wiki 集合生成</Button>
+          <Button variant="secondary" icon={<Search className="w-4 h-4" />} onClick={async () => {
+            try {
+              toast.info('正在重建所有域的检索索引...');
+              const r = await fetch(`${WIKI_API}/domains/sync-search-index-all`, { method: 'POST' });
+              const data = await r.json();
+              if (data.total_synced > 0) {
+                toast.success(`全量重建完成: ${data.total_synced} 页 (${data.domains_processed}域, ${data.total_classes}类, ${data.total_nodes}实体)`);
+              } else {
+                toast.info('所有域无实体数据');
+              }
+            } catch { toast.error('全量重建失败'); }
+          }}>重建检索索引</Button>
           <Button variant="secondary" icon={<RefreshCw className="w-4 h-4" />} onClick={() => fetchDomains()}>刷新</Button>
         </div>
       </div>
 
       {/* ═══════════ Wiki 知识库健康概览 ═══════ */}
       <WikiHealthDashboard />
+
+      {/* v2.9: Ontology audit summary */}
+      {selectedDomain && (
+        <div className="grid grid-cols-4 gap-3 mb-4">
+          <AuditStat label="实体" value={domainStats?.[selectedDomain]?.entities || '...'} color="text-blue-400" />
+          <AuditStat label="边" value={domainStats?.[selectedDomain]?.edges || '...'} color="text-green-400" />
+          <AuditStat label="孤儿类" value={domainStats?.[selectedDomain]?.orphans ?? '...'} color="text-yellow-400" />
+          <AuditStat label="已覆盖关系" value={domainStats?.[selectedDomain]?.covered ?? '...'} color="text-purple-400" />
+        </div>
+      )}
 
       {/* ── Domain List ── */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -401,6 +473,21 @@ const OntologyManager: React.FC = () => {
               <span title="跨域降级阈值">降级: {d.min_cross_results}</span>
             </div>
             <div className="flex gap-1 mt-2">
+              <Button variant="ghost" size="sm" onClick={async (e) => { e.stopPropagation();
+                await fetch(`/api/core/engine/rebuild?collection=${d.collection_id || d.id}`, { method: 'POST' });
+                fetchDomains(); toast.success(`已重建 ${d.name}`);
+              }} title="重建本体 A-Box"><RefreshCw className="w-3 h-3" /></Button>
+              <Button variant="ghost" size="sm" onClick={async (e) => { e.stopPropagation();
+                try {
+                  const r = await fetch(`${WIKI_API}/domains/${d.id}/sync-search-index`, { method: 'POST' });
+                  const data = await r.json();
+                  if (data.synced > 0) {
+                    toast.success(`${d.name}: 同步 ${data.synced} 个实体索引 (${data.classes}类/${data.nodes}实体)`);
+                  } else {
+                    toast.info(`${d.name}: 无实体数据`);
+                  }
+                } catch { toast.error('同步失败'); }
+              }} title="同步实体到检索索引"><Search className="w-3 h-3" /></Button>
               <Button variant="ghost" size="sm" onClick={async (e) => { e.stopPropagation();
                 if (!confirm(`确定删除域 "${d.name}"？此操作不可逆。`)) return;
                 await fetch(`${WIKI_API}/domains/${d.id}`, { method: 'DELETE' });
@@ -1086,6 +1173,21 @@ const OntologyManager: React.FC = () => {
         )}
       </Modal>
 
+      {/* ── Wiki Collection → Domain 生成 ── */}
+      <Modal open={wikiGenOpen} onClose={() => setWikiGenOpen(false)} title="📚 从 Wiki 集合生成领域">
+        <div className="space-y-4">
+          <div className="text-xs text-gray-400">选择已有 Wiki 集合，从其中的实体和页面自动提取领域本体定义。</div>
+          <Input label="Wiki 集合名" value={wikiGenCollection} onChange={(e: any) => setWikiGenCollection(e.target.value)} placeholder="system_docs" />
+          <Input label="领域标识 (英文ID)" value={wikiGenDomainId} onChange={(e: any) => setWikiGenDomainId(e.target.value)} placeholder="aiplat-system" />
+          <div className="flex gap-2">
+            <Button variant="primary" loading={wikiGenLoading} onClick={handleWikiGenDomain}>
+              🧬 生成领域
+            </Button>
+            <Button variant="ghost" onClick={() => setWikiGenOpen(false)}>取消</Button>
+          </div>
+        </div>
+      </Modal>
+
       {/* ── Evolve Modal ── */}
       <Modal open={evolveOpen} onClose={() => setEvolveOpen(false)} title={evolveData ? "🔄 本体进化建议" : "🔄 本体进化 — 选择资料范围"}>
         {!evolveData && (
@@ -1460,8 +1562,33 @@ const OntologyManager: React.FC = () => {
           }}>{editingProp ? '保存修改' : '添加关系'}</Button>
         </div>
       </Modal>
+
+      {/* v2.9: GrillingBridge — ontology class creation wizard */}
+      {showWizard && (
+        <GrillPanel
+          mode="modal"
+          entryPoint="ontology_edit"
+          title="本体创建向导"
+          onComplete={(output) => {
+            setShowWizard(false);
+            const flat = output.answers as Record<string, string>;
+            if (flat['概念'] && flat['父类']) {
+              toast.success(`已澄清概念: ${flat['概念']} (父类: ${flat['父类']})`);
+            }
+          }}
+          onClose={() => setShowWizard(false)}
+        />
+      )}
     </div>
   );
 };
+
+// v2.9: Inline audit stat component
+const AuditStat: React.FC<{ label: string; value: string | number; color: string }> = ({ label, value, color }) => (
+  <div className="p-2 rounded bg-dark-card border border-dark-border/30 text-center">
+    <div className={`text-lg font-bold ${color}`}>{value}</div>
+    <div className="text-xs text-gray-500">{label}</div>
+  </div>
+);
 
 export default OntologyManager;

@@ -21,6 +21,49 @@ from core.harness.utils.llm_env import get_llm_api_key, get_llm_base_url
 from core.harness.utils.model_injection import best_model_for_purpose
 
 
+# ═══════════════════════════════════════════════════════════════
+# Handler Registry — platform modules push capabilities to core.
+# Direction: platform → core (correct). Zero core→platform imports.
+# ═══════════════════════════════════════════════════════════════
+
+_handlers: Dict[str, Any] = {}
+
+def register_handler(name: str, handler: Any) -> None:
+    """Register a handler from platform layer into CoreFacade.
+
+    Called by platform module __init__.py during import.
+    Direction: platform → core (符合单向依赖).
+
+    Args:
+        name: Handler name used by dispatch()
+        handler: Callable or data to return on dispatch
+    """
+    if name in _handlers:
+        logging.getLogger("aiplat.core_facade").warning(
+            "Handler '%s' already registered, overwriting", name)
+    _handlers[name] = handler
+
+def dispatch(name: str, *args: Any, **kwargs: Any) -> Any:
+    """Dispatch a registered handler by name.
+
+    Called by core modules (system.py, builder.py, etc.) to
+    access platform capabilities without importing platform directly.
+
+    Args:
+        name: Handler name registered by platform module
+        *args, **kwargs: Passed to callable handlers
+    """
+    handler = _handlers.get(name)
+    if handler is None:
+        raise KeyError(
+            f"Handler '{name}' not registered. "
+            f"Ensure the platform module providing it is imported "
+            f"(e.g., import apps.fde). Registered handlers: {list(_handlers.keys())}")
+    if callable(handler):
+        return handler(*args, **kwargs)
+    return handler
+
+
 def get_default_model() -> Any:
     """Create a default model adapter from environment variables."""
     from core.harness.execution.pipeline_engine import PipelineEngine
@@ -92,11 +135,288 @@ def get_model_manager() -> Any:
     return ModelManager()
 
 
+def get_llm_manager() -> Any:
+    """Get the LLMManager class from infra (LLM usage stats, health)."""
+    from infra.management.llm.manager import LLMManager
+    return LLMManager
+
+
+def get_database_manager() -> Any:
+    """Get the DatabaseManager class from infra (DB connection pool stats, health)."""
+    from infra.management.database.manager import DatabaseManager
+    return DatabaseManager
+
+
+def get_vector_manager() -> Any:
+    """Get the VectorManager class from infra (vector store stats, health)."""
+    from infra.management.vector.manager import VectorManager
+    return VectorManager
+
+
+def get_cache_manager() -> Any:
+    """Get the DefaultCacheManager class from infra (cache hit rates, stats)."""
+    from infra.cache.manager import DefaultCacheManager
+    return DefaultCacheManager
+
+
+# ═══════════════════════════════════════════════════════════════
+# Core subsystem access — canonical entry points for core modules
+# ═══════════════════════════════════════════════════════════════
+
+def get_policy_gate() -> Any:
+    """Get PolicyGate singleton — security/access control for all syscalls."""
+    from core.harness.infrastructure.gates.policy_gate import PolicyGate
+    return PolicyGate()
+
+
+def get_working_memory() -> Any:
+    """Get WorkingMemory from active MemoryManager instance."""
+    from core.harness.memory.manager import MemoryManager
+    return MemoryManager()._working
+
+
+def get_circuit_breaker() -> Any:
+    """Get LLM circuit breaker — prevents cascading failures on repeated errors."""
+    from core.harness.syscalls.llm import _llm_cb
+    return _llm_cb
+
+
+def get_hallucination_tracker() -> Any:
+    """Get HallucinationTracker for NLI fact-checking in RAG responses."""
+    from core.harness.evaluation.hallucination_tracker import HallucinationTracker
+    return HallucinationTracker()
+
+
+def get_error_translator() -> Any:
+    """Get ErrorTranslator for 7-level error classification pipeline."""
+    from core.harness.infrastructure.gates.error_translator import ErrorTranslator
+    return ErrorTranslator()
+
+
+def get_graph_index(domain_id: str = "") -> Any:
+    """Get GraphIndex for ontology graph operations."""
+    from core.harness.ontology_engine.graph_index import GraphIndex
+    return GraphIndex.load(domain_id) if domain_id else GraphIndex
+
+
+def get_entity_resolver() -> Any:
+    """Get EntityResolver for entity disambiguation."""
+    from core.harness.ontology_engine.entity_resolver import EntityResolver
+    return EntityResolver()
+
+
+def get_class_mapper() -> Any:
+    """Get ClassMapper for zero-LLM ontology classification."""
+    from core.harness.ontology_engine.class_mapper import ClassMapper
+    return ClassMapper()
+
+
+def get_state_machine() -> Any:
+    """Get StateMachine for entity state transitions."""
+    from core.harness.ontology_engine.state_machine import StateMachine
+    return StateMachine()
+
+
+def get_code_graph() -> Any:
+    """Get CodeGraph for repository import graph analysis."""
+    from core.harness.knowledge.code_graph import build_graph, repo_root, default_roots
+    repo = repo_root()
+    roots = [(repo / r).resolve() for r in default_roots()]
+    return build_graph(repo, roots)
+
+
+def get_knowledge_validator() -> Any:
+    """Get KnowledgeValidator for ontology consistency checks."""
+    from core.harness.knowledge.knowledge_validator import KnowledgeValidator
+    return KnowledgeValidator()
+
+
+def get_domain_router() -> Any:
+    """Get DomainRouter for multi-domain classification."""
+    from core.harness.knowledge.domain_router import DomainRouter
+    return DomainRouter()
+
+
+def get_retrieval_crag() -> Any:
+    """Get CRAG 3-level fallback chain for RAG retrieval."""
+    from core.harness.syscalls.retrieval_crag import CRAGRetriever
+    return CRAGRetriever()
+
+
+def get_skill_registry() -> Any:
+    """Get SkillRegistry for skill discovery and management."""
+    from core.harness.integration import get_skill_registry
+    return get_skill_registry()
+
+
+def get_system_diagnostician() -> Any:
+    """Get SystemDiagnostician for cross-subsystem health checks."""
+    from core.harness.knowledge.system_diagnostician import SystemDiagnostician
+    return SystemDiagnostician()
+
+
+def get_wiki_retriever() -> Any:
+    """Get WikiPageRetriever for domain-aware knowledge retrieval."""
+    from core.harness.knowledge.wiki_retriever import WikiPageRetriever
+    return WikiPageRetriever()
+
+
+def get_arch_guard_rules() -> Any:
+    """Get architecture guard rules configuration."""
+    from core.management.arch_guard_base import get_arch_registry
+    return get_arch_registry()
+
+
+def get_context_bus() -> Any:
+    """Get ContextBus for field-assessment knowledge injection."""
+    from core.harness.knowledge.context_bus import assemble_field_assessment
+    return assemble_field_assessment
+
+
+def get_intent_analyzer() -> Any:
+    """Get IntentAnalyzer for query intent classification."""
+    from core.orchestration.intent_analyzer import IntentAnalyzer
+    return IntentAnalyzer()
+
+
+def get_chain_planner() -> Any:
+    """Get ChainPlanner for multi-step task planning."""
+    from core.orchestration.chain_planner import ChainPlanner
+    return ChainPlanner()
+
+
+def get_capability_mapper() -> Any:
+    """Get CapabilityMapper for task-to-capability routing."""
+    from core.orchestration.capability_mapper import CapabilityMapper
+    return CapabilityMapper()
+
+
+def get_ltm_service() -> Any:
+    """Get LongTermMemory service for structured memory filtering."""
+    from core.services.execution_store.ltm_mixin import list_long_term_memories_filtered
+    return list_long_term_memories_filtered
+
+
+def get_reminder_service() -> Any:
+    """Get ReminderService for system reminder injection."""
+    from core.harness.memory.reminders import check_and_inject
+    return check_and_inject
+
+
+def get_command_parser() -> Any:
+    """Get CommandParser for CLI command handling (/moa, etc.)."""
+    from core.harness.execution.loop.command_parser import CommandParser
+    return CommandParser()
+
+
+def get_cross_validation_gate() -> Any:
+    """Get CrossValidationGate — cross-domain semantic validation (Phase 11.3).
+
+    Activation: gate auto-enables when >=50 cross-domain object_properties exist.
+    Current status: check with get_cross_validation_gate().status()
+    """
+    from core.harness.infrastructure.gates.cross_validation_gate import CrossValidationGate
+    return CrossValidationGate()
+
+
+def get_constraint_validator() -> Any:
+    """Get ConstraintValidator — detect outdated rules, missing deps in configs."""
+    from core.harness.evaluation.constraint_validator import ConstraintValidator
+    return ConstraintValidator()
+
+
+def get_config_drift_detector() -> Any:
+    """Get ConfigDriftDetector — compare deployed state vs AGENT.md specification."""
+    from core.harness.evaluation.config_drift_detector import ConfigDriftDetector
+    return ConfigDriftDetector()
+
+
+def get_self_heal_gate() -> Any:
+    """Get SelfHealGate — 3-level automated system health response (review-first by default)."""
+    from core.harness.evaluation.self_heal_gate import SelfHealGate
+    return SelfHealGate()
+
+
+def list_pending_heal_fixes() -> Any:
+    """List pending self-heal fixes awaiting human approval."""
+    from core.harness.evaluation.self_heal_gate import SelfHealGate
+    return SelfHealGate().list_pending()
+
+
+def approve_heal_fix(fix_id: str) -> Any:
+    """Approve and apply a pending self-heal fix."""
+    from core.harness.evaluation.self_heal_gate import SelfHealGate
+    return SelfHealGate().approve_fix(fix_id)
+
+
+def reject_heal_fix(fix_id: str, reason: str = "") -> Any:
+    """Reject a pending self-heal fix."""
+    from core.harness.evaluation.self_heal_gate import SelfHealGate
+    return SelfHealGate().reject_fix(fix_id, reason)
+
+
+def get_ontology_auditor() -> Any:
+    """Get OntologyAuditor — per-domain knowledge graph health report."""
+    from core.harness.knowledge.ontology_audit import OntologyAuditor
+    return OntologyAuditor()
+
+
+def get_adoption_tracker() -> Any:
+    """Get AdoptionTracker — employee engagement and resistance tracking."""
+    from core.harness.evaluation.adoption_metrics import AdoptionTracker
+    return AdoptionTracker()
+
+
+def get_skill_exporter() -> Any:
+    """Get SkillExporter — convert SKILL.md to OpenAI/LangChain/Anthropic specs."""
+    from core.harness.evaluation.skill_exporter import SkillExporter
+    return SkillExporter()
+
+
+def get_agent_config_differ() -> Any:
+    """Get AgentConfigDiffer — structured change detection for AGENT.md frontmatter."""
+    from core.harness.evaluation.agent_config_diff import AgentConfigDiffer
+    return AgentConfigDiffer()
+
+
+def get_fde_pipeline_health() -> Any:
+    """Get FDE pipeline health stats (via handler registry)."""
+    return dispatch("fde_pipeline_health")
+
+
+def get_fde_health() -> Any:
+    """Get full FDE health check (via handler registry)."""
+    return dispatch("fde_health")
+
+
+def fde_clarify(**kwargs: Any) -> Any:
+    """Run FDE clarification (via handler registry)."""
+    return dispatch("fde_clarify", **kwargs)
+
+
+def get_builder_project_service() -> Any:
+    """Get builder project service (via handler registry)."""
+    return dispatch("builder_project_service")
+
+
+def get_route_permissions() -> Any:
+    """Get route permissions from platform auth (via handler registry)."""
+    return dispatch("route_permissions")
+
+
+def get_method_restrictions() -> Any:
+    """Get method restrictions from platform auth (via handler registry)."""
+    return dispatch("method_restrictions")
+
+
 def llm_generate(model: Any, prompt: Any, **kwargs: Any) -> Any:
     """Call LLM through the syscall boundary. Use this instead of importing
     sys_llm_generate directly from core.harness.syscalls."""
     from core.harness.syscalls.llm import sys_llm_generate
     return sys_llm_generate(model, prompt, **kwargs)
+
+# Alias for platform code that was batch-migrated from core.harness.syscalls.llm
+sys_llm_generate = llm_generate
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -796,17 +1116,13 @@ def restore_file_checkpoint(checkpoint_id: str, session_id: str = "") -> Dict[st
 
 
 def publish_learning_release(release_id: str) -> Dict[str, Any]:
-    """Publish a learning release candidate. Use instead of importing
-    from core.api.routers.learning_releases directly."""
-    from core.api.routers.learning_releases import publish_release_candidate as _fn
-    return _fn(release_id)
+    """Publish a learning release candidate (via handler registry)."""
+    return dispatch("publish_release_candidate", release_id)
 
 
 def rollback_learning_release(release_id: str, reason: str = "") -> Dict[str, Any]:
-    """Rollback a learning release candidate. Use instead of importing
-    from core.api.routers.learning_releases directly."""
-    from core.api.routers.learning_releases import rollback_release_candidate as _fn
-    return _fn(release_id, reason)
+    """Rollback a learning release candidate (via handler registry)."""
+    return dispatch("rollback_release_candidate", release_id, reason)
 
 
 def run_plugin_action(plugin_id: str, action: str, params: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
@@ -1034,7 +1350,322 @@ async def wiki_auto_update(doc_id: str, file_path: str, collection_id: str = "")
     return {"status": "created", "title": title, "category": final_category, "chars": len(body)}
 
 
-def wiki_skill_deps() -> Dict[str, Any]:
+async def auto_ontology_pipeline_for_doc(doc_id: str, file_path: str, collection_id: str = "default") -> Dict[str, Any]:
+    """Auto-run ontology engine pipeline on a newly ingested/re-ingested document.
+
+    Called as fire-and-forget from platform ingest and watch_directory polling.
+    Gated by AIPLAT_AUTO_ONTOLOGY_PIPELINE env var (default: true).
+
+    What it does:
+    1. Resolves domain_id from collection_id via DomainRouter
+    2. Parses the document into text chunks
+    3. Runs OntologyEngine.process_chunks() → extract entities, build GraphIndex,
+       run state machine, synthesize Wiki pages
+    4. Returns summary stats
+
+    This is the bridge that closes the "document change → ontology update" gap.
+    """
+    import os as _os
+    if _os.getenv("AIPLAT_AUTO_ONTOLOGY_PIPELINE", "true").lower() not in ("true", "1", "yes"):
+        return {"status": "disabled", "reason": "AIPLAT_AUTO_ONTOLOGY_PIPELINE env var not enabled"}
+
+    from core.harness.knowledge.domain_router import DomainRouter
+    from core.harness.ontology_engine.engine import load_engine
+    from core.api.core_facade import kb_parse_document, kb_chunk_elements
+
+    router = DomainRouter()
+    domain_id = router.resolve(collection_id) or "ai-knowledge"
+    # If the resolved domain doesn't have a valid engine, try the fallback
+    if load_engine(domain_id) is None:
+        domain_id = "ai-knowledge"
+
+    kind = _os.path.splitext(file_path)[1].lstrip(".") or "txt"
+    try:
+        elements = kb_parse_document(file_path, kind)
+    except Exception as e:
+        return {"status": "parse_error", "error": str(e)[:200]}
+
+    if not elements:
+        return {"status": "skipped", "reason": "no elements parsed"}
+
+    chunks = kb_chunk_elements(elements, kind=kind, target_size=2000, overlap=300)
+    if not chunks:
+        return {"status": "skipped", "reason": "no chunks"}
+
+    engine_chunks = []
+    max_chunks = int(_os.getenv("AIPLAT_ONTOLOGY_MAX_CHUNKS", "30"))
+    for i, ch in enumerate(chunks[:max_chunks]):
+        text = str(ch.get("text", "") or "").strip()
+        if len(text) >= 50:
+            engine_chunks.append({"id": f"{doc_id}-{i}", "text": text[:8000]})
+
+    if not engine_chunks:
+        return {"status": "skipped", "reason": "chunks too small"}
+
+    engine = load_engine(domain_id)
+    if engine is None:
+        return {"status": "skipped", "reason": f"no engine for domain '{domain_id}'"}
+
+    # v2.9: Batch process large docs in groups of 10 chunks to avoid timeout
+    batch_size = 10
+    total_instances = 0
+    total_relations = 0
+    chunks_processed = 0
+    last_error = None
+
+    for batch_start in range(0, len(engine_chunks), batch_size):
+        batch = engine_chunks[batch_start:batch_start + batch_size]
+        try:
+            result = await engine.process_chunks(batch, doc_id=doc_id)
+            total_instances += len(result.instances) if hasattr(result, "instances") else 0
+            total_relations += len(result.relations) if hasattr(result, "relations") else 0
+            chunks_processed += len(batch)
+        except Exception as batch_err:
+            last_error = str(batch_err)[:200]
+            continue
+
+    if chunks_processed == 0 and last_error:
+        return {"status": "error", "doc_id": doc_id, "error": last_error}
+
+    # v2.9: Trigger community page stale-check after ontology pipeline
+    try:
+        from core.harness.knowledge.wiki_engine import _sync_community_pages
+        stale_count = _sync_community_pages(doc_id, collection_id=collection_id)
+        if stale_count > 0:
+            logging.info("Community sync: %d pages marked stale after re-ingest of %s", stale_count, doc_id)
+    except Exception:
+        logging.getLogger(__name__).debug('code failed', exc_info=True)
+
+    return {"status": "completed", "domain": domain_id, "doc_id": doc_id,
+            "instances_created": total_instances, "relations_detected": total_relations,
+            "chunks_processed": chunks_processed, "batches": len(range(0, len(engine_chunks), batch_size))}
+
+
+# ═══════════════════════════════════════════════════════════════
+# GrillingBridge — cross-cutting requirements clarification (v2.9)
+# ═══════════════════════════════════════════════════════════════
+
+_grilling_sessions: Dict[str, Dict[str, Any]] = {}
+
+
+def start_grilling(entry_point: str, domain_id: str = "", context: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    u"""Start a grilling clarification interview session. Returns first question."""
+    import os as _os, yaml as _yaml, uuid as _uuid, time as _time
+    context = context or {}
+    session_id = _uuid.uuid4().hex[:12]
+    dimensions = _load_grilling_dimensions(entry_point, domain_id)
+    if not dimensions:
+        return {"session_id": session_id, "status": "no_dimensions",
+                "message": "No interview dimensions configured for this entry point and domain."}
+    session = {
+        "session_id": session_id, "entry_point": entry_point,
+        "domain_id": domain_id, "context": context,
+        "dimensions": dimensions,
+        "current_idx": 0, "answers": {},
+        "started_at": _time.time(), "conversation": [],
+    }
+    _grilling_sessions[session_id] = session
+    current = dimensions[0]
+    return {
+        "session_id": session_id, "status": "asking",
+        "progress": {"current": 1, "total": len(dimensions), "completed_required": 0, "required_count": sum(1 for d in dimensions if d.get("required"))},
+        "question": {
+            "id": current["id"], "text": current["question"],
+            "label": current.get("label", ""),
+            "options": current.get("options", []),
+            "required": current.get("required", False),
+        },
+    }
+
+
+def continue_grilling(session_id: str, answer: str) -> Dict[str, Any]:
+    u"""Process answer and return next question or finalize."""
+    import time as _time
+    session = _grilling_sessions.get(session_id)
+    if not session:
+        return {"session_id": session_id, "status": "error", "message": "Session not found or expired"}
+    dimensions = session["dimensions"]
+    idx = session["current_idx"]
+    if idx >= len(dimensions):
+        return _finalize_grilling(session_id)
+    current = dimensions[idx]
+    session["answers"][current["id"]] = answer
+    session["conversation"].append({"question": current["question"], "answer": answer, "id": current["id"]})
+    follow_ups = current.get("follow_up", {})
+    if answer in follow_ups and follow_ups[answer]:
+        for fu in follow_ups[answer]:
+            fu["_is_follow_up"] = True
+            dimensions.insert(idx + 1, fu)
+    session["current_idx"] = idx + 1
+    session["_last_active"] = _time.time()
+    if session["current_idx"] >= len(dimensions):
+        return _finalize_grilling(session_id)
+    nxt = dimensions[session["current_idx"]]
+    completed_required = sum(1 for d in dimensions[:session["current_idx"]] if d.get("required") and session["answers"].get(d["id"]))
+    return {
+        "session_id": session_id, "status": "asking",
+        "progress": {"current": session["current_idx"] + 1, "total": len(dimensions),
+                     "completed_required": completed_required,
+                     "required_count": sum(1 for d in dimensions if d.get("required"))},
+        "question": {
+            "id": nxt["id"], "text": nxt["question"],
+            "label": nxt.get("label", ""),
+            "options": nxt.get("options", []),
+            "required": nxt.get("required", False),
+        },
+        "previous_answer": answer,
+    }
+
+
+def skip_grilling_question(session_id: str) -> Dict[str, Any]:
+    u"""Skip current question (only non-required)."""
+    session = _grilling_sessions.get(session_id)
+    if not session:
+        return {"session_id": session_id, "status": "error", "message": "Session not found"}
+    dimensions = session["dimensions"]
+    idx = session["current_idx"]
+    current = dimensions[idx]
+    if current.get("required"):
+        return {"session_id": session_id, "status": "error", "message": "Cannot skip required question"}
+    session["answers"][current["id"]] = "[SKIPPED]"
+    session["current_idx"] = idx + 1
+    if session["current_idx"] >= len(dimensions):
+        return _finalize_grilling(session_id)
+    nxt = dimensions[session["current_idx"]]
+    return {
+        "session_id": session_id, "status": "asking",
+        "progress": {"current": session["current_idx"] + 1, "total": len(dimensions)},
+        "question": {
+            "id": nxt["id"], "text": nxt["question"],
+            "label": nxt.get("label", ""),
+            "options": nxt.get("options", []),
+            "required": nxt.get("required", False),
+        },
+    }
+
+
+def get_grilling_progress(session_id: str) -> Dict[str, Any]:
+    u"""Get current grilling session state (for UI recovery)."""
+    session = _grilling_sessions.get(session_id)
+    if not session:
+        return {"session_id": session_id, "status": "not_found"}
+    dimensions = session["dimensions"]
+    idx = session["current_idx"]
+    answered = []
+    for d in dimensions[:idx]:
+        answered.append({"id": d["id"], "label": d.get("label", d["id"]),
+                         "answer": session["answers"].get(d["id"], "")})
+    current = None
+    if idx < len(dimensions):
+        d = dimensions[idx]
+        current = {"id": d["id"], "text": d["question"], "label": d.get("label", ""),
+                   "options": d.get("options", []), "required": d.get("required", False)}
+    return {
+        "session_id": session_id, "status": "in_progress",
+        "entry_point": session["entry_point"], "domain_id": session["domain_id"],
+        "progress": {"current": idx + 1, "total": len(dimensions)},
+        "answered": answered, "current_question": current,
+    }
+
+
+def _finalize_grilling(session_id: str) -> Dict[str, Any]:
+    u"""Build structured output from completed grilling session."""
+    session = _grilling_sessions.pop(session_id, {})
+    if not session:
+        return {"session_id": session_id, "status": "error", "message": "Session not found"}
+    dimensions = session["dimensions"]
+    answers = session["answers"]
+    # Build structured output
+    answered_items = []
+    for d in dimensions:
+        a = answers.get(d["id"], "")
+        if a and a != "[SKIPPED]":
+            answered_items.append({"id": d["id"], "dimension": d.get("label", d["id"]), "answer": a})
+    answered_ids = [d["id"] for d in answered_items]
+    skipped = [d for d in dimensions if d["id"] not in answered_ids and not d.get("required")]
+    missed = [d for d in dimensions if d["id"] not in answered_ids and d.get("required")]
+    summary_parts = ["## 需求澄清摘要\n"]
+    for item in answered_items:
+        summary_parts.append(f"- **{item['dimension']}**: {item['answer']}")
+    if missed:
+        summary_parts.append(f"\n### 未确认必填项\n" + "\n".join(f"- {d['question']}" for d in missed))
+    if skipped:
+        summary_parts.append(f"\n### 已跳过\n" + "\n".join(f"- {d.get('label', d['id'])}" for d in skipped))
+    return {
+        "session_id": session_id, "status": "completed",
+        "entry_point": session["entry_point"], "domain_id": session["domain_id"],
+        "total_questions": len(dimensions), "answered": len(answered_items),
+        "missed_required": len(missed),
+        "questions_asked": len(session.get("conversation", [])),
+        "summary_markdown": "\n".join(summary_parts),
+        "answers": {d["id"]: answers.get(d["id"], "") for d in dimensions},
+        "answers_flat": {d.get("label", d["id"]): answers.get(d["id"], "") for d in dimensions if answers.get(d["id"]) and answers[d["id"]] != "[SKIPPED]"},
+        "conversation": session.get("conversation", []),
+    }
+
+
+def _load_grilling_dimensions(entry_point: str, domain_id: str) -> List[Dict[str, Any]]:
+    u"""Load interview dimensions from domain YAML + fallback defaults."""
+    import os as _os, yaml as _yaml
+    from pathlib import Path as _Path
+    dimensions = []
+    if domain_id:
+        yaml_path = _Path(_os.getenv("AIPLAT_HOME", _Path("~").expanduser() / ".aiplat")) / "ontologies" / f"{domain_id}.yaml"
+        if yaml_path.exists():
+            try:
+                data = _yaml.safe_load(yaml_path.read_text(encoding="utf-8"))
+                dims = data.get("interview_dimensions", {})
+                dimensions = dims.get(entry_point, dims.get("default", []))
+            except Exception:
+                logging.getLogger(__name__).debug('_load_grilling_dimensions failed', exc_info=True)
+    if not dimensions:
+        dimensions = _default_grilling_dimensions(entry_point)
+    return dimensions
+
+
+def _default_grilling_dimensions(entry_point: str) -> List[Dict[str, Any]]:
+    u"""Built-in default interview dimensions per entry point."""
+    defaults = {
+        "fde_builder": [
+            {"id": "project_type", "label": "项目类型", "question": "你要构建什么类型的项目？", "options": ["Web应用", "API服务", "CLI工具", "不确定"], "required": True},
+            {"id": "tech_stack", "label": "技术栈", "question": "前端技术栈？", "options": ["React+TS", "Vue3", "Next.js", "不确定"], "required": True},
+            {"id": "deployment", "label": "部署", "question": "部署环境？", "options": ["Docker自托管", "云服务器", "K8s", "不确定"], "required": True},
+        ],
+        "kb_qa": [
+            {"id": "domain", "label": "领域", "question": "你想了解哪个领域的内容？", "options": ["AI/大模型", "编程开发", "架构设计", "不确定"], "required": True},
+        ],
+        "pipeline_hitl": [
+            {"id": "review", "label": "审查", "question": "对当前交付物满意吗？", "options": ["满意，继续", "需要调整", "需要更多信息"], "required": True},
+        ],
+        "agent_chat": [
+            {"id": "task_type", "label": "任务", "question": "需要什么帮助？", "options": ["写代码", "查资料", "设计方案", "排查问题", "不确定"], "required": True},
+        ],
+        "workbench": [
+            {"id": "capability", "label": "能力", "question": "需要什么能力？", "options": ["合同审查", "报告生成", "代码审查", "通用任务", "不确定"], "required": True},
+        ],
+        "document_upload": [
+            {"id": "domain", "label": "领域", "question": "这个文档属于哪个领域？", "options": ["通用", "AI知识", "运维", "采购", "不确定"], "required": True},
+            {"id": "marking", "label": "密级", "question": "文档密级？", "options": ["公开", "内部", "机密"], "required": True},
+        ],
+        "diagnostics": [
+            {"id": "action", "label": "操作", "question": "如何处理这个问题？", "options": ["自动修复", "手动修复(显示步骤)", "标记为已知", "忽略"], "required": True},
+        ],
+        "ontology_edit": [
+            {"id": "concept", "label": "概念", "question": "你想建模的现实概念是什么？", "options": [], "required": True},
+            {"id": "parent", "label": "父类", "question": "这个概念属于哪个已有类？", "options": [], "required": False},
+        ],
+        "skill_install": [
+            {"id": "overlap", "label": "重叠", "question": "已有类似 skill，要如何处理？", "options": ["覆盖安装", "合并安装", "取消安装"], "required": True},
+        ],
+        "watch_directory": [
+            {"id": "collection", "label": "集合", "question": "文件分配到哪个集合？", "options": ["default", "system_docs", "新建"], "required": True},
+            {"id": "kind", "label": "类型", "question": "文件类型？", "options": ["markdown", "pdf", "混合", "不确定"], "required": True},
+        ],
+        "conversational": [
+            {"id": "intent", "label": "意图", "question": "你想做什么？", "options": ["聊天/问答", "执行任务", "分析资料", "配置系统"], "required": True},
+        ],
+    }
+    return defaults.get(entry_point, [{"id": "what", "label": "确认", "question": "你能再详细描述一下需求吗？", "options": [], "required": True}])
     u"""Return skill dependency graph (Agent→Skill→Syscall)."""
     from core.harness.knowledge.skill_deps import build_skill_deps
     return build_skill_deps()
@@ -1062,6 +1693,62 @@ def wiki_pages_by_source(source_key: str) -> List[Dict[str, Any]]:
     u"""Find wiki pages that originated from a given source key (e.g. kb:<doc_id>)."""
     from core.harness.knowledge.wiki_engine import pages_by_source
     return pages_by_source(source_key)
+
+
+def wiki_search_pages(query: str = "", *, tags: List[str] = None, category: str = "",
+                       limit: int = 20, collection_id: str = "default") -> List[Dict[str, Any]]:
+    u"""Search wiki pages — Phase 45: CoreFacade wrapper for platform layer."""
+    from core.harness.knowledge.wiki_engine import search_pages
+    return search_pages(query=query, tags=tags, category=category,
+                         limit=limit, collection_id=collection_id)
+
+
+def get_graph_health(domain: str = "") -> Dict[str, Any]:
+    u"""Phase 45: Get GraphIndex health stats for a domain."""
+    from core.harness.ontology_engine.graph_index import GraphIndex
+    try:
+        g = GraphIndex.load(domain) if domain else None
+        if g:
+            return {"domain": domain, "node_count": g.stats().get("node_count", 0),
+                    "exists": True}
+        return {"domain": domain, "exists": False, "error": "not found"}
+    except Exception as e:
+        return {"domain": domain, "exists": False, "error": str(e)[:200]}
+
+
+def get_graph_sessions(domain: str, limit: int = 100) -> Dict[str, Any]:
+    u"""Phase 46: Get diagnosis sessions from a domain graph — platform-safe wrapper."""
+    from core.harness.ontology_engine.graph_index import GraphIndex
+    try:
+        g = GraphIndex.load(domain)
+        sessions = []
+        for nid, node in sorted(list(g._nodes.items()), key=lambda x: x[0], reverse=True):
+            if getattr(node, "class_name", "") == "DiagnosisSession":
+                sessions.append({"id": nid[:60], "company": node.entity_name[:60]})
+                if len(sessions) >= limit:
+                    break
+        return {"domain": domain, "sessions": sessions, "total": len(sessions)}
+    except Exception as e:
+        return {"domain": domain, "sessions": [], "error": str(e)[:200]}
+
+
+def get_graph_neighbors(domain: str, node_id: str, relation: str = "") -> Dict[str, Any]:
+    u"""Phase 46: Get neighbor nodes for a graph node."""
+    from core.harness.ontology_engine.graph_index import GraphIndex
+    try:
+        g = GraphIndex.load(domain)
+        nb = g.get_neighbor_edges(node_id, direction="outgoing")
+        if relation:
+            nb = [(n, e) for n, e in nb if e.relation_name == relation]
+        return {"domain": domain, "node_id": node_id, "neighbors": len(nb)}
+    except Exception as e:
+        return {"domain": domain, "error": str(e)[:200]}
+
+
+def get_wiki_index(collection_id: str = "default") -> str:
+    u"""Phase 46: Generate global wiki index — wraps wiki_engine."""
+    from core.harness.knowledge.wiki_engine import generate_index_md
+    return generate_index_md(collection_id=collection_id)
 
 
 def code_intel_context(task: str) -> Any:
@@ -1124,7 +1811,7 @@ def kb_parse_document(file_path: str, kind: str) -> Any:
                 return [{"type": "text", "text": text.strip(), "page_idx": 0,
                          "cells": None, "meta": {"source": _kind, "fallback": True}}]
         except Exception:
-            pass
+            logging.getLogger(__name__).debug('kb_parse_document failed', exc_info=True)
         return []
 
 
@@ -2251,6 +2938,7 @@ def update_ontology_domain_meta(
 
     if name:
         _register_domain_in_registry(domain_id, name, raw.get("description", ""))
+    _invalidate_domain_caches(domain_id)
     return {"id": domain_id, "status": "updated"}
 
 
@@ -2289,6 +2977,7 @@ def upsert_ontology_class(
     yaml_str = dict_to_yaml(merged)
     Path(file_path).write_text(yaml_str, encoding="utf-8")
 
+    _invalidate_domain_caches(domain_id)
     return {"domain_id": domain_id, "class_name": class_name, "status": "upserted"}
 
 
@@ -2311,6 +3000,7 @@ def delete_ontology_class(domain_id: str, class_name: str) -> Dict[str, Any]:
     yaml_str = dict_to_yaml(cleaned)
     Path(file_path).write_text(yaml_str, encoding="utf-8")
 
+    _invalidate_domain_caches(domain_id)
     return {"domain_id": domain_id, "class_name": class_name, "status": "deleted"}
 
 
@@ -2329,7 +3019,7 @@ def publish_ontology_domain(domain_id: str) -> Dict[str, Any]:
         graph = GraphIndex.load(domain_id)
         graph.snapshot(f"pre-publish-{domain.version}")
     except Exception:
-        pass
+        logging.getLogger(__name__).debug('publish_ontology_domain failed', exc_info=True)
 
     _invalidate_domain_caches(domain_id)
     _save_rule_version(domain_id, file_path, domain)
@@ -2402,7 +3092,7 @@ def _save_rule_version(domain_id: str, file_path: str, domain) -> None:
         yaml_text = Path(file_path).read_text(encoding="utf-8")
         graph.snapshot(f"v{domain.version}-{__import__('time').strftime('%Y%m%dT%H%M%SZ', __import__('time').gmtime())}")
     except Exception:
-        pass
+        logging.getLogger(__name__).debug('_save_rule_version failed', exc_info=True)
 
 
 # ── Role View Facade (v2.6) ──
@@ -2555,13 +3245,13 @@ def _invalidate_domain_caches(domain_id: str) -> None:
         from core.harness.knowledge.domain_router import DomainRouter
         DomainRouter()._built = False
     except Exception:
-        pass
+        logging.getLogger(__name__).debug('_invalidate_domain_caches failed', exc_info=True)
     try:
         from core.harness.ontology_engine.graph_index import GraphIndex
         graph = GraphIndex.load(domain_id)
         graph._built = False
     except Exception:
-        pass
+        logging.getLogger(__name__).debug('_invalidate_domain_caches failed', exc_info=True)
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -2586,11 +3276,25 @@ from core.harness.learning.skill_simulator import SkillSimulator  # v2.5  # noqa
 from core.services.execution_store import get_execution_store  # v2.5  # noqa: boundary — CoreFacade canonical re-export
 from core.harness.knowledge.wiki_engine import delete_page, read_page  # v2.5  # noqa: boundary — CoreFacade canonical re-export
 
+# v2.9: Additional canonical re-exports to close platform→core boundary
+from core.harness.finance.value_calculator import get_value_calculator  # noqa: boundary
+from core.harness.kernel.profile import get_profile_manager  # noqa: boundary
+from core.harness.knowledge.ontology_loader import load_ontology_from_yaml  # noqa: boundary
+from core.harness.knowledge.domain_router import DomainRouter  # noqa: boundary
+from core.harness.knowledge.seci_engine import get_seci_engine  # noqa: boundary
+from core.harness.security.emotion_tracker import get_emotion_tracker  # noqa: boundary
+from core.harness.smoke import enqueue_autosmoke  # noqa: boundary
+from core.harness.evaluation.rag_evaluator import _ensure_eval_schema  # noqa: boundary
+
+# v2.9: Additional platform→core boundary re-exports
+from core.harness.coordination.kanban_engine import KanbanEngine  # noqa: boundary
+from core.harness.deployment.canary import get_skill_router  # noqa: boundary
+
 from core.harness.utils.prompt_loader import _sync_resolve
-from core.harness.utils.model_injection import best_model_for_purpose
+from core.harness.utils.model_injection import best_model_for_purpose, create_selected_adapter  # v2.10
 from core.services.pii_detector import get_pii_detector
 from core.harness.utils.prompt_loader import _sync_resolve
-from core.harness.utils.model_injection import best_model_for_purpose
+from core.harness.utils.model_injection import best_model_for_purpose, create_selected_adapter  # v2.10
 from core.services.pii_detector import get_pii_detector
 from core.harness.kernel.runtime import get_kernel_runtime, set_kernel_runtime, set_kernel_runtime
 from core.harness.kernel.types import ExecutionRequest
@@ -2724,6 +3428,14 @@ from core.management.agent_manager import AgentManager  # v2.5  # noqa: boundary
 from core.management.skill_manager import SkillManager  # v2.5  # noqa: boundary — CoreFacade canonical re-export
 from core.services.execution_store import ExecutionStore, ExecutionStoreConfig  # v2.5  # noqa: boundary — CoreFacade canonical re-export
 
-from core.apps.fde.agent import run_fde_agent_one_shot  # v2.5  # noqa: boundary — CoreFacade canonical re-export
+from core.apps.fde.service.agent import run_fde_agent_one_shot  # v2.5  # noqa: boundary — CoreFacade canonical re-export
 
 from core.security.skill_signature_gate import is_approval_resolved_approved, get_trusted_skill_pubkeys_map  # v2.5
+from core.harness.ontology_engine.graph_index import GraphIndex  # v6.5 — canonical re-export for platform layer
+# v2.10: management + services boundary re-exports
+from core.management.prompt_app_manager import PromptAppManager  # noqa: boundary
+from core.services.implicit_feedback import get_implicit_feedback_collector  # noqa: boundary
+from core.management.skill_manager import SkillManager  # noqa: boundary
+from core.management.skill_linter import lint_skill  # noqa: boundary
+from core.management.skill_installer import SkillInstaller  # noqa: boundary
+from core.management.agentskills_parser import convert_agentskills_to_aiplat, is_agentskills_format  # noqa: boundary

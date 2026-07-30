@@ -5,6 +5,7 @@ import { Button, Modal, Textarea, toast } from './ui';
 import { toastGateError } from './ui';
 import ExecutionViewer, { StructuredDetail } from './ExecutionViewer/ExecutionViewer';
 import { browserTestApi } from '../services/browserTestApi';
+import GrillPanel from './grilling/GrillPanel';
 
 interface ExecuteAgentModalProps {
   open: boolean;
@@ -28,6 +29,7 @@ const ExecuteAgentModal: React.FC<ExecuteAgentModalProps> = ({ open, agent, onCl
   const [caseUploadedPath, setCaseUploadedPath] = useState('');
   const [autoApprove, setAutoApprove] = useState(true);
   const [flowFullscreen, setFlowFullscreen] = useState(false);
+  const [showGrill, setShowGrill] = useState(false);
   const [selectedFlowNode, setSelectedFlowNode] = useState<any>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   // ── Routing state ──
@@ -158,6 +160,10 @@ const ExecuteAgentModal: React.FC<ExecuteAgentModalProps> = ({ open, agent, onCl
       const execDuration = (result as any)?.duration_ms as number | undefined;
       const execSteps = ((result as any)?.metadata?.steps as number) || undefined;
       setResult({ status, execution_id: String((result as any)?.execution_id || ''), run_id: runId, output: (result as any)?.output, error: (result as any)?.error, tokens: (result as any)?.tokens, eval: execEval, duration_ms: execDuration, steps: execSteps });
+      // v2.9: auto-show GrillPanel when backend suggests clarification
+      if ((result as any)?.metadata?.grill_suggested) {
+        setShowGrill(true);
+      }
       if (runId && (status === 'running' || status === 'completed' || status === 'accepted')) {
         setFlowFullscreen(true);
       }
@@ -460,7 +466,17 @@ const ExecuteAgentModal: React.FC<ExecuteAgentModalProps> = ({ open, agent, onCl
 
                   {/* ── Line 5: Next step hint ── */}
                   {routingResult.should_clarify ? (
-                    <div className="text-xs text-orange-400">⚠️ 置信度较低，建议补充更多信息后再执行</div>
+                    <div className="space-y-2">
+                      <div className="text-xs text-orange-400">⚠️ 置信度较低，建议澄清需求后再执行</div>
+                      {!showGrill ? (
+                        <button
+                          onClick={() => setShowGrill(true)}
+                          className="text-xs px-2 py-1 rounded bg-blue-900/30 border border-blue-700/50 text-blue-400 hover:bg-blue-900/50"
+                        >
+                          📋 开始需求澄清
+                        </button>
+                      ) : null}
+                    </div>
                   ) : (
                     <div className="text-xs text-gray-500">💡 {isMatch ? '可以直接执行，意图已自动注入 Agent 推理上下文' : '可切换到推荐 Agent 后执行'}</div>
                   )}
@@ -582,6 +598,26 @@ const ExecuteAgentModal: React.FC<ExecuteAgentModalProps> = ({ open, agent, onCl
             </div>
           )}
         </div>
+
+        {/* v2.9: Grilling clarification panel — replaces low-confidence warning */}
+        {showGrill && agent && (
+          <GrillPanel
+            mode="inline"
+            entryPoint="agent_chat"
+            domainId=""
+            title={`需求澄清 — ${agent.name}`}
+            onComplete={(output) => {
+              const flat = output.answers as Record<string, string>;
+              const clarified = Object.keys(flat).length > 0
+                ? `\n\n[已澄清]\n${Object.entries(flat).map(([k, v]) => `- ${k}: ${v}`).join('\n')}`
+                : '';
+              setInput((prev) => prev + '\n' + clarified);
+              setShowGrill(false);
+              toast.success('需求已澄清，可以执行了');
+            }}
+            onClose={() => setShowGrill(false)}
+          />
+        )}
 
         <div className="border border-dark-border rounded-lg bg-dark-card p-3">
           <div className="flex items-center justify-between mb-2">

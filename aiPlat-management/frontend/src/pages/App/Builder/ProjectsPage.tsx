@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Plus, FolderOpen, Trash2, Clock, BarChart3, Users } from 'lucide-react';
+import { Plus, FolderOpen, Trash2, Clock, BarChart3, Users, CheckSquare, Square, AlertTriangle } from 'lucide-react';
 import { projectApi, builderTeamApi, type ProjectItem, type TeamConfig } from '../../../services';
 import { Card, CardContent, Button, Textarea, toast } from '../../../components/ui';
 import { toastGateError } from '../../../components/ui';
@@ -16,6 +16,8 @@ const ProjectsPage: React.FC = () => {
   const [teamId, setTeamId] = useState('');
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [batchDeleting, setBatchDeleting] = useState(false);
 
   const refresh = useCallback(async () => {
     try {
@@ -48,6 +50,49 @@ const ProjectsPage: React.FC = () => {
     try { await projectApi.delete(id); refresh(); } catch (e: any) { toastGateError(e, '删除失败'); }
   };
 
+  const toggleSelect = (id: string) => {
+    setSelected(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const selectAll = () => {
+    if (selected.size === projects.length) {
+      setSelected(new Set());
+    } else {
+      setSelected(new Set(projects.map(p => p.project_id)));
+    }
+  };
+
+  const batchDelete = async () => {
+    if (selected.size === 0) return;
+    const count = selected.size;
+    if (!window.confirm(`确定要删除选中的 ${count} 个项目吗？所有运行记录和产物将被永久删除。此操作不可撤销。`)) return;
+    setBatchDeleting(true);
+    try {
+      const ids = Array.from(selected);
+      await projectApi.batchDelete({ project_ids: ids });
+      setSelected(new Set());
+      refresh();
+      toast.success(`已删除 ${count} 个项目`);
+    } catch (e: any) { toastGateError(e, '批量删除失败'); }
+    finally { setBatchDeleting(false); }
+  };
+
+  const cleanZeroPass = async () => {
+    if (!window.confirm('确定要删除所有通过率为 0% 的项目吗？此操作不可撤销。')) return;
+    setBatchDeleting(true);
+    try {
+      const res = await projectApi.batchDelete({ pass_rate_below: 0.01 });
+      setSelected(new Set());
+      refresh();
+      toast.success(`已清理 ${(res as any).deleted || 0} 个项目`);
+    } catch (e: any) { toastGateError(e, '清理失败'); }
+    finally { setBatchDeleting(false); }
+  };
+
   const latestRun = (p: ProjectItem) => p.runs?.[p.runs.length - 1];
 
   if (loading) return <div className="p-8 text-gray-500 text-sm">加载中...</div>;
@@ -59,9 +104,26 @@ const ProjectsPage: React.FC = () => {
           <h1 className="text-xl font-bold text-gray-100">项目工作台</h1>
           <p className="text-xs text-gray-500 mt-1">管理你的研发项目，跟踪开发进度</p>
         </div>
-        <Button variant="primary" onClick={() => setShowNew(true)} icon={<Plus className="w-4 h-4" />}>
-          新建项目
-        </Button>
+        <div className="flex items-center gap-2">
+          {projects.length > 0 && (
+            <>
+              <Button variant="ghost" size="sm" onClick={selectAll} className="text-xs">
+                {selected.size === projects.length ? '取消全选' : '全选'}
+              </Button>
+              {selected.size > 0 && (
+                <Button variant="danger" size="sm" onClick={batchDelete} loading={batchDeleting} className="text-xs">
+                  删除选中 ({selected.size})
+                </Button>
+              )}
+              <Button variant="ghost" size="sm" onClick={cleanZeroPass} loading={batchDeleting} className="text-xs text-yellow-400">
+                <AlertTriangle className="w-3 h-3 mr-1" /> 清理0%通过率
+              </Button>
+            </>
+          )}
+          <Button variant="primary" onClick={() => setShowNew(true)} icon={<Plus className="w-4 h-4" />}>
+            新建项目
+          </Button>
+        </div>
       </div>
 
       {/* New project modal */}
@@ -120,13 +182,21 @@ const ProjectsPage: React.FC = () => {
               <motion.div
                 key={p.project_id} layout
                 whileHover={{ y: -1 }}
-                className="rounded-xl border border-dark-border bg-dark-card p-5 cursor-pointer hover:border-primary/40 transition-colors"
-                onClick={() => nav(`/app/projects/${p.project_id}`)}
+                className={`rounded-xl border bg-dark-card p-5 cursor-pointer hover:border-primary/40 transition-colors ${selected.has(p.project_id) ? 'border-primary/60 ring-1 ring-primary/30' : 'border-dark-border'}`}
+                onClick={() => selected.size > 0 ? toggleSelect(p.project_id) : nav(`/app/projects/${p.project_id}`)}
               >
                 <div className="flex items-start justify-between mb-3">
-                  <h3 className="text-sm font-semibold text-gray-100">{p.name}</h3>
+                  <div className="flex items-center gap-2 min-w-0">
+                    <button
+                      onClick={(e: React.MouseEvent) => { e.stopPropagation(); toggleSelect(p.project_id); }}
+                      className="flex-shrink-0 text-gray-500 hover:text-primary transition-colors"
+                    >
+                      {selected.has(p.project_id) ? <CheckSquare className="w-4 h-4 text-primary" /> : <Square className="w-4 h-4" />}
+                    </button>
+                    <h3 className="text-sm font-semibold text-gray-100 truncate">{p.name}</h3>
+                  </div>
                   <Button size="sm" variant="ghost" onClick={(e: React.MouseEvent) => { e.stopPropagation(); remove(p.project_id); }}>
-                    <Trash2 className="w-3.5 h-3.5 text-gray-600" />
+                    <Trash2 className="w-3.5 h-3.5 text-gray-600 hover:text-red-400" />
                   </Button>
                 </div>
                 <p className="text-xs text-gray-500 mb-3 line-clamp-2">{p.description || '无描述'}</p>

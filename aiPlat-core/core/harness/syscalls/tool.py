@@ -35,6 +35,8 @@ async def sys_tool_call(
     timeout_seconds: Optional[float] = None,
     trace_context: Optional[Dict[str, Any]] = None,
 ) -> Any:
+    from ._trace import trace_syscall_entry
+    trace_syscall_entry("sys_tool_call")
     """
     Execute a tool call.
 
@@ -57,6 +59,31 @@ async def sys_tool_call(
 
     # Start span early so "fast-fail" (missing tool) is still observable.
     tool_name = str(getattr(tool, "name", None) or getattr(tool, "get_name", lambda: "")() or "")
+
+    # PR #3: 工具白名单过滤 — 从 ControlProfile 读取 tool_whitelist
+    try:
+        from core.harness.meta.profile_registry import get_active_profile
+        profile = get_active_profile()
+        whitelist = profile.tool_whitelist
+        if whitelist is not None and tool_name not in whitelist:
+            logging.getLogger("aiplat.tool").warning(
+                "Tool '%s' blocked by ControlProfile.tool_whitelist", tool_name)
+            return ToolResult(
+                success=False,
+                error=f"tool_blocked_by_profile: '{tool_name}' not in whitelist",
+            )
+        # C: toolset scope restriction (readonly / voice_only)
+        toolset = profile.toolset
+        high_risk_tools = {"code_execution", "terminal", "file_write", "file_edit", "browser", "deploy"}
+        if toolset == "readonly" and tool_name in high_risk_tools:
+            return ToolResult(success=False,
+                error=f"tool_blocked_by_readonly: '{tool_name}' requires full access")
+        if toolset == "voice_only" and tool_name not in {"sys_knowledge_retrieve", "sys_wiki_context", "sys_tts_generate"}:
+            return ToolResult(success=False,
+                error=f"tool_blocked_by_voice_only: '{tool_name}' not allowed in voice-only mode")
+    except Exception:
+        logging.getLogger(__name__).debug('sys_tool_call failed', exc_info=True)
+
     span = await trace_gate.start(
         "sys.tool.call",
         attributes={
@@ -628,6 +655,17 @@ async def sys_tool_call(
 
     prepared_args = ctx_gate.prepare_tool_args(args, context=trace_context or {})
 
+    # Phase 41: Decision Lineage — capture tool selection decision (best-effort)
+    _decision_id: Optional[str] = None
+    try:
+        from core.harness.infrastructure.decision_capture import capture_tool_decision
+        _decision_id = await capture_tool_decision(
+            tool_name, prepared_args, trace_context,
+            reason="",
+        )
+    except Exception:
+        pass
+
     # Phase 11: LLM parameter completion — fill in missing/inferred params
     try:
         prepared_args = await _llm_complete_params(tool, prepared_args, tool_name or "")
@@ -659,6 +697,35 @@ async def sys_tool_call(
         # P0-2: enrich failed results with structured error diagnostics for Agent self-healing
         result = _enrich_tool_error(result)
         end_ts = time.time()
+
+        # Phase 41: Update decision outcome (best-effort)
+        if _decision_id:
+            try:
+                from core.harness.infrastructure.decision_capture import update_decision_outcome
+                success = bool(getattr(result, "success", True))
+                await update_decision_outcome(
+                    _decision_id,
+                    outcome_status="success" if success else "failed",
+                    outcome_summary=str(getattr(result, "output", ""))[:200] if success else str(getattr(result, "error", ""))[:200],
+                )
+            except Exception:
+                pass
+
+        # Phase 44: Operation Recording (best-effort, zero-cost when not recording)
+        try:
+            from core.harness.learning.operation_recorder import OperationRecorder
+            recorder = OperationRecorder.get()
+            if recorder.is_recording():
+                recorder.record_step(
+                    tool_name=tool_name or '<unknown>',
+                    tool_args=prepared_args if 'prepared_args' in dir() else {},
+                    result_type='success' if bool(getattr(result, 'success', True)) else 'failed',
+                    result_summary=str(getattr(result, 'output', ''))[:200] if bool(getattr(result, 'success', True)) else str(getattr(result, 'error', ''))[:200],
+                    duration_ms=(end_ts - start_ts) * 1000,
+                )
+        except Exception:
+            pass
+
         await trace_gate.end(span, success=bool(getattr(result, "success", True)))
         runtime = get_kernel_runtime()
         store = getattr(runtime, "execution_store", None) if runtime else None
@@ -726,7 +793,7 @@ async def sys_tool_call(
                 error_code=getattr(result, "error", None),
             )
         except Exception:
-            pass
+            logging.getLogger(__name__).debug('code failed', exc_info=True)
         # ToolEvolutionEngine: record call for auto-improvement/deprecation (C4)
         try:
             from core.harness.optimization.tool_evolution import get_tool_evolution
@@ -739,7 +806,7 @@ async def sys_tool_call(
                 error_message=str(getattr(result, "error", "") or "")[:500],
             )
         except Exception:
-            pass
+            logging.getLogger(__name__).debug('code failed', exc_info=True)
         return result
     except Exception:
         end_ts = time.time()
@@ -826,7 +893,7 @@ def _enrich_tool_error(result: Any) -> Any:
             if getattr(result, "stderr", None) is None and stderr:
                 result.stderr = str(stderr)[:2000]
         except Exception:
-            pass
+            logging.getLogger(__name__).debug('_enrich_tool_error failed', exc_info=True)
     except Exception:
         return result
     return result

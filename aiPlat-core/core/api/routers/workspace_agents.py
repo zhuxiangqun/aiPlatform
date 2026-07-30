@@ -353,14 +353,14 @@ async def generate_role_definition(req: AgentAutoFillRequest) -> Any:
     )
 
     try:
-        from core.harness.utils.model_injection import create_selected_adapter, best_model_for_purpose
+        from core.harness.utils.model_injection import best_model_for_purpose
+        from core.harness.syscalls.llm import sys_llm_generate
         model_name = best_model_for_purpose("agent_creation")
-        model = create_selected_adapter(model_name=model_name)
         messages = [
             {"role": "system", "content": await _async_prompt_resolve("agent-role-system")},
             {"role": "user", "content": prompt},
         ]
-        resp = await model.generate(messages, config=kLlmConfig)
+        resp = await sys_llm_generate(model=None, prompt=messages, model_name=model_name)
         content = resp.content if hasattr(resp, 'content') else str(resp)
 
         clean = content.strip()
@@ -682,18 +682,18 @@ async def _run_role_def_task(tid: str, req: "AgentAutoFillRequest"):
     try:
         import json as _json, re as _re
         from core.harness.utils.prompt_loader import _async_prompt_resolve
-        from core.harness.utils.model_injection import create_selected_adapter, best_model_for_purpose
+        from core.harness.utils.model_injection import best_model_for_purpose
+        from core.harness.syscalls.llm import sys_llm_generate
 
         prompt = await _async_prompt_resolve("agent-role-definition",
             name=req.name or '(待填写)', description=req.description or '(无)',
         )
         model_name = best_model_for_purpose("agent_creation")
-        model = create_selected_adapter(model_name=model_name)
         messages = [
             {"role": "system", "content": await _async_prompt_resolve("agent-role-system")},
             {"role": "user", "content": prompt},
         ]
-        resp = await model.generate(messages, config=kLlmConfig)
+        resp = await sys_llm_generate(model=None, prompt=messages, model_name=model_name)
         content = resp.content if hasattr(resp, 'content') else str(resp)
 
         clean = content.strip()
@@ -815,14 +815,14 @@ async def _do_auto_fill(req: AgentAutoFillRequest) -> AgentAutoFillResponse:
     prompt = inline_prompt
 
     try:
-        from core.harness.utils.model_injection import create_selected_adapter, best_model_for_purpose
+        from core.harness.utils.model_injection import best_model_for_purpose
+        from core.harness.syscalls.llm import sys_llm_generate
         model_name = best_model_for_purpose("agent_creation")
-        model = create_selected_adapter(model_name=model_name)
         messages = [
-            {"role": "system", "content": await _async_prompt_resolve("agent-auto-fill-system-role")},
+            {"role": "system", "content": await _async_prompt_resolve("agent-role-system")},
             {"role": "user", "content": prompt},
         ]
-        resp = await model.generate(messages, config=kLlmConfig)
+        resp = await sys_llm_generate(model=None, prompt=messages, model_name=model_name)
         content = resp.content if hasattr(resp, 'content') else str(resp)
     except Exception as e:
         raise HTTPException(status_code=503, detail=f"LLM unavailable: {e}")
@@ -986,14 +986,14 @@ async def agent_auto_fill_batch(req: AgentAutoFillBatchRequest) -> AgentAutoFill
 
     # ── Call LLM ────────────────────────────────────────────
     try:
-        from core.harness.utils.model_injection import create_selected_adapter, best_model_for_purpose
+        from core.harness.utils.model_injection import best_model_for_purpose
+        from core.harness.syscalls.llm import sys_llm_generate
         model_name = best_model_for_purpose("agent_creation")
-        model = create_selected_adapter(model_name=model_name)
         messages = [
             {"role": "system", "content": await _async_prompt_resolve("agent-role-system")},
             {"role": "user", "content": prompt},
         ]
-        resp = await model.generate(messages, config=kLlmConfig)
+        resp = await sys_llm_generate(model=None, prompt=messages, model_name=model_name)
         content = resp.content if hasattr(resp, 'content') else str(resp)
     except Exception as e:
         raise HTTPException(status_code=503, detail=f"LLM unavailable: {e}")

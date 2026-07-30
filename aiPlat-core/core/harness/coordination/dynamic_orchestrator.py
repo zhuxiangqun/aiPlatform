@@ -335,7 +335,7 @@ Return ONLY a JSON array of these objects. Maximum 5 subtasks."""
                 )
                 return [result] if result else []
             except Exception:
-                pass  # fall through to standard decomposition
+                logging.getLogger(__name__).debug('Swarm execution failed, falling through to standard decomposition', exc_info=True)
 
         subtasks = await self.decompose_task(complex_output, source_agent_id)
         if not subtasks:

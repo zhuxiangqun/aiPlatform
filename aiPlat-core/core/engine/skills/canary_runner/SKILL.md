@@ -2,18 +2,18 @@
 id: canary_runner
 name: canary_runner
 display_name: 灰度发布执行器
-description: 调用 /fde/canary/status 和 /fde/canary/rollback 执行灰度操作，监控质量指标并决定是否推进流量
+description: "调用 /fde/canary/status 和 /fde/canary/rollback 执行灰度操作，监控质量指标并决定是否推进流量 (Phase 40: 支持 DeployEngine.auto_canary_rollout 自动推进)"
 execution_type: handler
 category: fde
-version: 1.0.0
+version: 1.1.0
 status: enabled
 effects:
   - type: read
-    resources: ["http://localhost:8002/api/core/fde/canary"]
+    resources: ["http://localhost:8002/api/platform/apps/fde/canary"]
     idempotent: true
     rollback_available: false
   - type: write
-    resources: ["http://localhost:8002/api/core/fde/canary/rollback"]
+    resources: ["http://localhost:8002/api/platform/apps/fde/canary/rollback"]
     idempotent: false
     rollback_available: true
 input_schema:

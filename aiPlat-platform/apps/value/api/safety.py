@@ -80,7 +80,7 @@ async def emotion_state(body: Dict[str, Any]):
         return {"error": "session_id is required"}
 
     try:
-        from core.harness.security.emotion_tracker import get_emotion_tracker
+        from core.api.core_facade import get_emotion_tracker
         tracker = get_emotion_tracker()
         state = await tracker.get_state(session_id=session_id, tenant_id=tenant_id)
         if state is None:
@@ -99,7 +99,7 @@ async def dependency_check(body: Dict[str, Any]):
         return {"error": "session_id is required"}
 
     try:
-        from core.harness.security.emotion_tracker import get_emotion_tracker
+        from core.api.core_facade import get_emotion_tracker
         tracker = get_emotion_tracker()
         state = await tracker.get_state(session_id=session_id, tenant_id=tenant_id)
         if state is None:
@@ -122,7 +122,7 @@ async def dependency_check(body: Dict[str, Any]):
 async def flagged_sessions(tenant_id: str = Query("default")):
     """List all safety-flagged sessions."""
     try:
-        from core.harness.security.emotion_tracker import get_emotion_tracker
+        from core.api.core_facade import get_emotion_tracker
         tracker = get_emotion_tracker()
         flagged = tracker.get_flagged_sessions(tenant_id=tenant_id)
         return {
@@ -145,7 +145,7 @@ async def track_emotion(body: Dict[str, Any]):
         return {"error": "session_id and messages are required"}
 
     try:
-        from core.harness.security.emotion_tracker import get_emotion_tracker
+        from core.api.core_facade import get_emotion_tracker
         tracker = get_emotion_tracker()
         await tracker.track(
             session_id=session_id,

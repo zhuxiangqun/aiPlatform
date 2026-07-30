@@ -1,11 +1,11 @@
 import logging
 """
-Config Loader — discovers models from environment variables + YAML config.
+Config Loader — discovers models from adapters table + YAML config.
 
 Sources (in priority order):
-1. Environment variables: AIPLAT_LLM_MODEL, AIPLAT_AGENT_MODEL, etc.
-2. YAML model_discovery section: provider + model lists
-3. Local_embedding fallback models
+1. Adapter-based models (API keys from management UI SQLite table)
+2. System capability models (OCR, doc-parser, default embedder)
+3. YAML model_discovery section (provider + model lists)
 """
 
 import os
@@ -14,123 +14,6 @@ from typing import List, Dict, Any
 from datetime import datetime, timezone
 
 from .schemas import ModelInfo, ModelType, ModelSource, ModelStatus, ModelConfig, ModelStats
-
-
-_ENV_MODEL_TEMPLATES = {
-    "DEEPSEEK_API_KEY": (
-        "openai_compatible", "chat", "https://api.deepseek.com", "chat", ["deepseek", "chat", "reasoning", "function_call"],
-        ["AIPLAT_LLM_MODEL", "AIPLAT_AGENT_MODEL", "AIPLAT_DOC_LLM_MODEL"],
-    ),
-    "OPENAI_API_KEY": (
-        "openai_compatible", "chat", "https://api.openai.com/v1", "chat", ["openai", "chat", "function_call", "vision"],
-        ["OPENAI_MODEL", "OPENAI_AGENT_MODEL", "AIPLAT_LLM_MODEL"],
-    ),
-    "ANTHROPIC_API_KEY": (
-        "anthropic", "chat", "https://api.anthropic.com", "chat", ["anthropic", "chat", "function_call"],
-        ["ANTHROPIC_MODEL", "AIPLAT_LLM_MODEL"],
-    ),
-}
-
-# Models that don't need an API key — detected from env vars or system capabilities
-_NON_API_MODEL_ENVS = {
-    "AIPLAT_EMBEDDING_MODEL": ("local-embedding", "embedding", "embedding", ["local", "embedding", "huggingface"]),
-    "AIPLAT_RERANK_MODEL": ("reranker", "reranker", "reranker", ["reranker", "search"]),
-    "AIPLAT_VIDEO_WHISPER_MODEL": ("whisper", "audio", "audio", ["whisper", "stt", "speech"]),
-}
-
-
-def _models_from_env(api_key_env: str, provider: str, model_type: str,
-                     base_url: str, capability: str, tags: List[str],
-                     model_envs: List[str]) -> List[ModelInfo]:
-    """Build ModelInfo list from environment variables. api_key_env gates availability;
-       model_envs provide the actual model names."""
-    import re
-    api_key = os.getenv(api_key_env, "").strip()
-    if not api_key:
-        return []
-
-    seen = {}  # dict preserves insertion order (set does not)
-    for env_name in model_envs:
-        val = os.getenv(env_name, "").strip()
-        if not val:
-            continue
-        for name in val.split(","):
-            name = name.strip()
-            if not name or name in seen:
-                continue
-            seen[name] = True
-    # Also check AIPLAT_LLM_MODEL as fallback
-    if not seen:
-        for env_name in ["AIPLAT_LLM_MODEL", "AIPLAT_DOC_LLM_MODEL", "AIPLAT_CODE_GEN_MODEL", "AIPLAT_AGENT_MODEL"]:
-            val = os.getenv(env_name, "").strip()
-            if val and val not in seen:
-                seen[val] = True
-    if not seen:
-        return []
-
-    models = []
-    for name in seen:
-        safe_id = f"{provider}:{re.sub(r'[^a-zA-Z0-9_-]', '-', name.lower())}"
-        # Infer capabilities from model name in addition to template capability
-        caps = [capability] if capability else []
-        nl = name.lower()
-        if "reasoner" in nl or "reasoning" in nl:
-            caps.append("reasoning")
-        if "code" in nl or "coder" in nl:
-            caps.append("code")
-        if "vision" in nl or "vl" in nl:
-            caps.append("vision")
-        # All OpenAI-compatible and Anthropic cloud models support function_call + json_mode
-        if provider in ("openai_compatible", "anthropic"):
-            caps.append("function_call")
-            caps.append("json_mode")
-        models.append(ModelInfo(
-            id=safe_id, name=name, provider=provider,
-            type=ModelType(model_type), source=ModelSource.EXTERNAL,
-            display_name=name, enabled=True,
-            description=f"Remote model ({provider}) — from env",
-            tags=tags[:], capabilities=caps,
-            status=ModelStatus.AVAILABLE,
-            config=ModelConfig(api_key_env=api_key_env, base_url=base_url),
-            stats=ModelStats(), created_at=datetime.now(timezone.utc), updated_at=datetime.now(timezone.utc),
-        ))
-    return models
-
-
-def _load_env_models() -> List[ModelInfo]:
-    """Discover all remote models from environment variables."""
-    all_models: List[ModelInfo] = []
-    for env_key, (provider, mtype, url, cap, tags, model_envs) in _ENV_MODEL_TEMPLATES.items():
-        all_models.extend(_models_from_env(env_key, provider, mtype, url, cap, tags, model_envs))
-    return all_models
-
-
-def _load_non_api_models() -> List[ModelInfo]:
-    """Discover models that don't need an API key (embedding, reranker, whisper, etc.)
-    — detected solely from their environment variables."""
-    import re
-    models: List[ModelInfo] = []
-    for env_name, (provider, mtype, capability, tags) in _NON_API_MODEL_ENVS.items():
-        val = os.getenv(env_name, "").strip()
-        if not val:
-            continue
-        for name in val.split(","):
-            name = name.strip()
-            if not name:
-                continue
-            safe_id = f"{provider}:{re.sub(r'[^a-zA-Z0-9_-]', '-', name.lower())}"
-            models.append(ModelInfo(
-                id=safe_id, name=name, provider=provider,
-                type=ModelType(mtype), source=ModelSource.CONFIG,
-                display_name=name, enabled=True,
-                description=f"Model from env {env_name}",
-                tags=list(tags), capabilities=[capability],
-                status=ModelStatus.AVAILABLE,
-                config=ModelConfig(),
-                stats=ModelStats(), created_at=datetime.now(timezone.utc), updated_at=datetime.now(timezone.utc),
-            ))
-    # AIPLAT_DOC_LLM_MODEL is a CHAT purpose variant, skip if already in chat models
-    return models
 
 
 def _detect_system_capability_models() -> List[ModelInfo]:
@@ -154,7 +37,7 @@ def _detect_system_capability_models() -> List[ModelInfo]:
             created_at=datetime.now(timezone.utc), updated_at=datetime.now(timezone.utc),
         ))
     except ImportError:
-        pass
+        pass  # noqa: optional-dependency
 
     # Tesseract (pytesseract + tesseract binary)
     try:
@@ -173,7 +56,7 @@ def _detect_system_capability_models() -> List[ModelInfo]:
             created_at=datetime.now(timezone.utc), updated_at=datetime.now(timezone.utc),
         ))
     except ImportError:
-        pass
+        pass  # noqa: optional-dependency
 
     # MinerU
     import subprocess as _sp
@@ -211,7 +94,7 @@ def _detect_system_capability_models() -> List[ModelInfo]:
                 stats=ModelStats(), created_at=datetime.now(timezone.utc), updated_at=datetime.now(timezone.utc),
             ))
     except ImportError:
-        pass
+        pass  # noqa: optional-dependency
 
     return models
 
@@ -284,7 +167,7 @@ def _load_adapter_models() -> List[ModelInfo]:
                     ))
         finally:
             conn.close()
-    except Exception:
+    except Exception:  # noqa: fallback-return-empty
         pass
     return models
 
@@ -325,44 +208,29 @@ class ConfigLoader:
             return self._config_cache
 
     def load(self) -> List[ModelInfo]:
-        """Discover models: env vars first, then YAML model_discovery, then local_embedding."""
+        """Discover models: adapters first, then YAML model_discovery, then system capabilities."""
         models: List[ModelInfo] = []
 
-        # 1. Adapter-based models (API keys from management UI, no env var needed)
-        adapter_models = _load_adapter_models()
-        adapter_names = {m.name for m in adapter_models}
-        models.extend(adapter_models)
+        # 1. Adapter-based models (API keys from management UI)
+        models.extend(_load_adapter_models())
 
-        # 2. Remote chat models from environment variables (fallback for env-var configured)
-        env_models = [m for m in _load_env_models() if m.name not in adapter_names]
-        env_names = {m.name for m in env_models}
-        models.extend(env_models)
-
-        # 3. Non-API models from env vars (embedding, reranker, whisper)
-        non_api = _load_non_api_models()
-        models.extend(non_api)
-
-        # 4. System capability models (OCR, doc-parser, default embedder)
+        # 2. System capability models (OCR, doc-parser, default embedder)
         existing_names = {m.name for m in models}
         for cap_model in _detect_system_capability_models():
             if cap_model.name not in existing_names:
                 models.append(cap_model)
                 existing_names.add(cap_model.name)
 
-        # 5. YAML model_discovery section (fallback if env not set)
+        # 3. YAML model_discovery section (fallback for non-adapter providers)
         config = self._load_config()
         discovery_cfg = config.get("model_discovery", {}).get("env_models", [])
         existing_names = {m.name for m in models}
         for item in discovery_cfg:
-            env_key = item.get("env", "")
-            api_key = os.getenv(env_key, "").strip()
-            if not api_key or env_key in {"DEEPSEEK_API_KEY", "OPENAI_API_KEY", "ANTHROPIC_API_KEY"}:
-                continue  # already handled above
             provider = item.get("provider", "openai_compatible")
             base_url = item.get("base_url", "")
             mtype = item.get("type", "chat")
             cap = item.get("capability", "chat")
-            model_name = provider
+            model_name = item.get("name", provider)
             if model_name in existing_names:
                 continue
             existing_names.add(model_name)
@@ -372,8 +240,8 @@ class ConfigLoader:
                 id=safe_id, name=model_name, provider=provider,
                 type=ModelType(mtype), source=ModelSource.EXTERNAL,
                 tags=[provider, mtype], capabilities=[cap],
-                status=ModelStatus.AVAILABLE,
-                config=ModelConfig(api_key_env=env_key, base_url=base_url),
+                status=ModelStatus.NOT_CONFIGURED,
+                config=ModelConfig(base_url=base_url),
                 stats=ModelStats(), created_at=datetime.now(timezone.utc), updated_at=datetime.now(timezone.utc),
             ))
 
@@ -425,3 +293,4 @@ class ConfigLoader:
         endpoints = scan.get("endpoints", ["http://localhost:11434"])
         return {"endpoint": endpoints[0] if endpoints else "http://localhost:11434",
                 "auto_scan": scan.get("auto_scan", True)}
+

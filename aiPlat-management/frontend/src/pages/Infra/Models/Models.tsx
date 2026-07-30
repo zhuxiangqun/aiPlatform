@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Plus, RotateCw, Network, Settings, Trash2, Laptop, Key } from 'lucide-react';
+import { Plus, RotateCw, Network, Settings, Trash2, Laptop, Key, Save, Sliders } from 'lucide-react';
 import { Table, Button, Modal, Select, toast } from '../../../components/ui';
 import PageHeader from '../../../components/common/PageHeader';
 import AddModelModal from '../../../components/infra/AddModelModal';
-import { modelApi, type Model, type Provider } from '../../../services';
+import { modelApi, type Model, type Provider, type ScoringProfile } from '../../../services';
 
 const sourceConfig: Record<string, { bg: string; text: string; label: string }> = {
   config: { bg: 'bg-blue-50', text: 'text-blue-300', label: '内置' },
@@ -19,6 +19,159 @@ const statusConfig: Record<string, { bg: string; text: string; label: string }> 
   not_configured: { bg: 'bg-dark-hover', text: 'text-gray-300', label: '未配置' },
 };
 
+const WEIGHT_KEYS = [
+  'source_bias', 'resource_pressure', 'gpu_compat', 'reasoning',
+  'quality', 'latency', 'concurrency', 'cost', 'api_credential',
+] as const;
+
+const WEIGHT_LABELS: Record<string, string> = {
+  source_bias: '来源偏好',
+  resource_pressure: '资源压力',
+  gpu_compat: 'GPU 兼容',
+  reasoning: '推理能力',
+  quality: '质量反馈',
+  latency: '延迟惩罚',
+  concurrency: '并发容量',
+  cost: '成本',
+  api_credential: 'API 凭证',
+};
+
+const DEFAULT_WEIGHTS: Record<string, number> = {
+  source_bias: 1.0, resource_pressure: 1.0, gpu_compat: 1.0,
+  reasoning: 1.0, quality: 1.0, latency: -1.0,
+  concurrency: 1.0, cost: -1.0, api_credential: 3.0,
+};
+
+const ScoringWeightsTab: React.FC = () => {
+  const [profile, setProfile] = useState<ScoringProfile | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [editing, setEditing] = useState<Record<string, Record<string, number>>>({});
+
+  const loadProfile = async () => {
+    setLoading(true);
+    try {
+      const data = await modelApi.getScoringProfile();
+      setProfile(data);
+      const edit: Record<string, Record<string, number>> = {};
+      for (const [purpose, cfg] of Object.entries(data.purpose_profiles || {})) {
+        edit[purpose] = { ...DEFAULT_WEIGHTS, ...(cfg.scoring_weights || {}) };
+      }
+      setEditing(edit);
+    } catch {
+      toast.error('加载评分配置失败');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { loadProfile(); }, []);
+
+  const handleWeightChange = (purpose: string, key: string, value: string) => {
+    const num = parseFloat(value);
+    if (isNaN(num)) return;
+    setEditing(prev => ({
+      ...prev,
+      [purpose]: { ...(prev[purpose] || {}), [key]: num },
+    }));
+  };
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const purposeProfiles: Record<string, any> = {};
+      for (const [purpose, weights] of Object.entries(editing)) {
+        const original = profile?.purpose_profiles?.[purpose] || {};
+        purposeProfiles[purpose] = {
+          ...original,
+          scoring_weights: weights,
+        };
+      }
+      await modelApi.updateScoringProfile({ purpose_profiles: purposeProfiles });
+      toast.success('评分权重已保存，下次模型选择立即生效');
+      loadProfile();
+    } catch {
+      toast.error('保存失败');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleReset = () => {
+    const reset: Record<string, Record<string, number>> = {};
+    for (const purpose of Object.keys(editing)) {
+      reset[purpose] = { ...DEFAULT_WEIGHTS };
+    }
+    setEditing(reset);
+    toast.success('已重置为默认值，点击保存生效');
+  };
+
+  const purposes = Object.keys(editing).sort();
+
+  if (loading) {
+    return <div className="p-8 text-center text-gray-500">加载中...</div>;
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h3 className="text-sm font-medium text-gray-200">评分权重矩阵</h3>
+        <div className="flex gap-2">
+          <Button variant="secondary" size="sm" onClick={handleReset} disabled={saving}>
+            重置为默认值
+          </Button>
+          <Button variant="primary" size="sm" icon={<Save size={14} />} onClick={handleSave} loading={saving}>
+            保存
+          </Button>
+        </div>
+      </div>
+
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        className="bg-dark-card rounded-xl border border-dark-border overflow-x-auto"
+      >
+        <table className="w-full text-xs">
+          <thead>
+            <tr className="border-b border-dark-border bg-dark-hover">
+              <th className="text-left px-3 py-2 text-gray-400 font-medium sticky left-0 bg-dark-hover z-10">purpose</th>
+              {WEIGHT_KEYS.map(k => (
+                <th key={k} className="text-center px-2 py-2 text-gray-400 font-medium whitespace-nowrap">
+                  {WEIGHT_LABELS[k]}
+                  <div className="text-gray-600 font-normal text-[10px]">{k}</div>
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {purposes.map(purpose => (
+              <tr key={purpose} className="border-b border-dark-border/50 hover:bg-dark-hover/50">
+                <td className="px-3 py-2 text-gray-200 font-medium sticky left-0 bg-dark-card">{purpose}</td>
+                {WEIGHT_KEYS.map(key => (
+                  <td key={key} className="px-1 py-1 text-center">
+                    <input
+                      type="number"
+                      step="0.1"
+                      value={editing[purpose]?.[key] ?? DEFAULT_WEIGHTS[key]}
+                      onChange={e => handleWeightChange(purpose, key, e.target.value)}
+                      className="w-16 px-1 py-1 bg-dark-card border border-dark-border rounded text-center text-gray-200 text-xs focus:outline-none focus:border-primary"
+                    />
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </motion.div>
+
+      <div className="text-xs text-gray-500 space-y-1">
+        <p>正数权重 = 放大对应维度效果；负数权重 = 反向放大（如 latency=-2.0 表示延迟惩罚加倍）</p>
+        <p>修改后点「保存」→ 写回工作区配置文件 → 下次模型选择立即生效，无需重启</p>
+      </div>
+    </div>
+  );
+};
+
 const Models: React.FC = () => {
   const [models, setModels] = useState<Model[]>([]);
   const [providers, setProviders] = useState<Provider[]>([]);
@@ -27,6 +180,7 @@ const Models: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<string | undefined>();
   const [searchText, setSearchText] = useState('');
   const [addModalOpen, setAddModalOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<'models' | 'weights'>('models');
   const [editingModel, setEditingModel] = useState<Model | null>(null);
   const [deleteModal, setDeleteModal] = useState<{ open: boolean; model: Model | null }>({ open: false, model: null });
   const [deleting, setDeleting] = useState(false);
@@ -102,7 +256,12 @@ const Models: React.FC = () => {
   const handleScanLocal = async () => {
     try {
       const result = await modelApi.scanLocal();
-      toast.success(`发现 ${result.total} 个本地模型`);
+      const newCount = (result as any).new_count ?? 0;
+      if (newCount > 0) {
+        toast.success(`发现 ${newCount} 个新模型`);
+      } else {
+        toast.success('模型列表已是最新');
+      }
       fetchModels();
     } catch (error) {
       toast.error('扫描失败，请确保 Ollama 正在运行');
@@ -248,6 +407,32 @@ const Models: React.FC = () => {
         }
       />
 
+      {/* Tab switcher */}
+      <div className="flex gap-1 bg-dark-hover rounded-lg p-1 w-fit">
+        <button
+          onClick={() => setActiveTab('models')}
+          className={`px-4 py-1.5 text-sm rounded-md transition-colors ${
+            activeTab === 'models' ? 'bg-dark-card text-gray-200 shadow-sm' : 'text-gray-500 hover:text-gray-300'
+          }`}
+        >
+          模型列表
+        </button>
+        <button
+          onClick={() => setActiveTab('weights')}
+          className={`px-4 py-1.5 text-sm rounded-md transition-colors flex items-center gap-1.5 ${
+            activeTab === 'weights' ? 'bg-dark-card text-gray-200 shadow-sm' : 'text-gray-500 hover:text-gray-300'
+          }`}
+        >
+          <Sliders size={14} />
+          评分权重
+        </button>
+      </div>
+
+      {activeTab === 'weights' ? (
+        <ScoringWeightsTab />
+      ) : (
+        <>
+
       <AddModelModal
         open={addModalOpen}
         onClose={() => { setAddModalOpen(false); setEditingModel(null); }}
@@ -345,6 +530,8 @@ const Models: React.FC = () => {
           确定要删除模型 {deleteModal.model?.name} 吗？此操作不可恢复。
         </p>
       </Modal>
+    </>
+    )}
     </div>
   );
 };

@@ -1,3 +1,4 @@
+import logging
 """MultiModalTrigger — multi-modal inputs as Goal loop trigger sources.
 G-axis L4→L5 enabler: full closed-loop multi-modal Agent activation.
 
@@ -111,9 +112,9 @@ class MultiModalTrigger:
                                         if asyncio.iscoroutine(result):
                                             await result
                                     except Exception:
-                                        pass
+                                        logging.getLogger(__name__).debug('_watch_loop failed', exc_info=True)
             except Exception:
-                pass
+                logging.getLogger(__name__).debug('_watch_loop failed', exc_info=True)
             await asyncio.sleep(10)
 
     async def start(self):
@@ -176,7 +177,7 @@ class GoalLoopBridge:
             )
             await self._goal_executor._execute_goal(goal)
         except Exception:
-            pass
+            logging.getLogger(__name__).debug('handle_multimodal_trigger failed', exc_info=True)
 
 
 _trigger: Optional[MultiModalTrigger] = None

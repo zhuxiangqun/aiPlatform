@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import os
 from typing import Any, Dict
-from apps.fde.schemas import FdeStatusResponse, FdeListResponse, FdeItemResponse
+from apps.fde.api.schemas import FdeStatusResponse, FdeListResponse, FdeItemResponse
 
 
 from fastapi import APIRouter, HTTPException
@@ -45,32 +45,32 @@ async def fde_validate():
 
     # 2. Domain router classify
     def _ck_router():
-        from core.harness.knowledge.domain_router import DomainRouter
+        from core.api.core_facade import DomainRouter
         r = DomainRouter()
         return bool(r.classify("政务招标围标串标检测"))
 
     # 3. GraphIndex load
     def _ck_graph():
-        from core.harness.ontology_engine.graph_index import GraphIndex
+        from core.api.core_facade import GraphIndex
         g = GraphIndex.load("ai-knowledge")
         return g.stats().get("node_count", 0) >= 0
 
     # 4. Delivery graph
     def _ck_delivery():
-        from core.harness.ontology_engine.graph_index import GraphIndex
+        from core.api.core_facade import GraphIndex
         GraphIndex.load("fde-delivery")
         return True
 
     # 5. Ontology YAML load
     def _ck_ontology():
-        from core.harness.knowledge.ontology_loader import load_ontology_from_yaml
+        from core.api.core_facade import load_ontology_from_yaml
         path = os.path.expanduser("~/.aiplat/ontologies/ai-knowledge.yaml")
         dom = load_ontology_from_yaml(path)
         return len(dom.classes) > 0
 
     # 6. Solution YAML load
     def _ck_solution():
-        from core.harness.knowledge.ontology_loader import load_ontology_from_yaml
+        from core.api.core_facade import load_ontology_from_yaml
         path = os.path.expanduser("~/.aiplat/ontologies/ai-solution.yaml")
         dom = load_ontology_from_yaml(path)
         return len(dom.classes) > 0
@@ -116,7 +116,7 @@ async def fde_benchmark():
     most common recommendations, and readiness score distribution.
     """
     try:
-        from core.harness.ontology_engine.graph_index import GraphIndex
+        from core.api.core_facade import GraphIndex
 
         fd = GraphIndex.load("fde-delivery")
         industries: dict = {}

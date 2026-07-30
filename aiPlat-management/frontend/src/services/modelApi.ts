@@ -66,6 +66,17 @@ export interface ModelListResponse {
   total: number;
 }
 
+export interface ScoringProfile {
+  purpose_profiles: Record<string, {
+    prefer: string[];
+    prefer_local?: boolean;
+    prefer_external?: boolean;
+    scoring_weights?: Record<string, number>;
+  }>;
+  default_scoring_weights: Record<string, number>;
+  fallback: Record<string, string | number>;
+}
+
 export const modelApi = {
   list: async (params?: {
     source?: string;
@@ -136,6 +147,14 @@ export const modelApi = {
 
   createAdapter: async (data: { name: string; provider: string; api_key: string; api_base_url: string }): Promise<{ adapter_id: string; status: string }> => {
     return apiClient.post('/core/adapters', data);
+  },
+
+  getScoringProfile: async (): Promise<ScoringProfile> => {
+    return apiClient.get<ScoringProfile>('/core/models/profile');
+  },
+
+  updateScoringProfile: async (data: Partial<ScoringProfile>): Promise<{ status: string }> => {
+    return apiClient.put<{ status: string }>('/core/models/profile', data);
   },
 };
 

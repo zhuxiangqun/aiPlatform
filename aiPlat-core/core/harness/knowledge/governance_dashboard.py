@@ -35,7 +35,7 @@ def aggregate_dashboard() -> Dict[str, Any]:
         data["health_level"] = "good" if data["overall_health"] >= 80 else \
                                 "warning" if data["overall_health"] >= 60 else "critical"
     except Exception:
-        pass
+        logging.getLogger(__name__).debug('aggregate_dashboard failed', exc_info=True)
 
     # 2. Mechanism status
     try:
@@ -84,7 +84,7 @@ def aggregate_dashboard() -> Dict[str, Any]:
             "detail": "FeedbackLoops + ActiveSynthesis wired",
         }
     except Exception:
-        pass
+        logging.getLogger(__name__).debug('aggregate_dashboard failed', exc_info=True)
 
     # 3. Mapping coverage per domain
     try:
@@ -96,14 +96,14 @@ def aggregate_dashboard() -> Dict[str, Any]:
             for r in results
         ]
     except Exception:
-        pass
+        logging.getLogger(__name__).debug('code failed', exc_info=True)
 
     # 4. Governance cycle history
     try:
         from core.harness.knowledge.governance_pipeline import get_cycle_history
         data["cycle_history"] = get_cycle_history(limit=10)
     except Exception:
-        pass
+        logging.getLogger(__name__).debug('code failed', exc_info=True)
 
     # 5. Audit summary
     try:
@@ -124,6 +124,6 @@ def aggregate_dashboard() -> Dict[str, Any]:
                 "denied_calls": denied[0] if denied else 0,
             }
     except Exception:
-        pass
+        logging.getLogger(__name__).debug('code failed', exc_info=True)
 
     return data

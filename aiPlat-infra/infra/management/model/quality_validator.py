@@ -148,7 +148,7 @@ class QualityValidator:
                 _json.loads(text[bs:be + 1])
                 return QualityResult(ok=True, score_delta=0.02,
                                     details={"reason": "has_valid_json"})
-            except Exception:
+            except Exception:  # noqa: json-fallback
                 pass
 
         # Natural language — check if it's useful (non-trivial length, contains clarifying keywords)

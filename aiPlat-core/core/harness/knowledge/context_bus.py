@@ -15,21 +15,58 @@ callers: registry.py field-assessment skill execution
 from __future__ import annotations
 
 import logging
+import os
 from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
 
+def _estimate_tokens(text: str) -> int:
+    """Estimate token count for mixed CJK/ASCII text.
+
+    Chinese characters ~1.5 tokens each, ASCII ~0.25 tokens/char.
+    Conservative estimate — over-estimates rather than under-estimates.
+    """
+    if not text:
+        return 0
+    cjk = sum(1 for c in text if '\u4e00' <= c <= '\u9fff' or '\u3040' <= c <= '\u30ff')
+    ascii_chars = len(text) - cjk
+    return int(cjk * 1.5 + ascii_chars * 0.25) + 1
+
+
+def _estimate_total_tokens(parts: List[str]) -> int:
+    """Sum estimated tokens across all system_parts."""
+    return sum(_estimate_tokens(p) for p in parts)
+
+
 def assemble_field_assessment(
     params: Dict[str, Any],
     system_parts: List[str],
+    max_prompt_tokens: int = 0,
 ) -> tuple:
     """Assemble all context layers for field-assessment diagnosis.
 
+    Args:
+        params: Skill execution params (industry, company_name, pain_points, etc.)
+        system_parts: Mutable list of system prompt parts (SOP, policy, etc.)
+        max_prompt_tokens: Token budget for injected context layers.
+            - 0 (default): read from env AIPLAT_FIELD_ASSESSMENT_MAX_PROMPT_TOKENS
+              or fall back to max_layers * 2000 tokens.
+            - > 0: explicit budget. Layers exceeding this will be skipped and
+              diagnostics will record "truncated: token budget exceeded".
+
     Returns (system_parts, diagnostics) tuple.
-    diagnostics: {layer_name: "ok" | "error: ..."} for each layer.
+    diagnostics: {layer_name: "ok" | "error: ..." | "truncated: ..."} for each layer.
     """
     from core.harness.knowledge.domain_router import DomainRouter
+
+    # PR #4: 从 ControlProfile 读取 context_layers 上限
+    try:
+        from core.harness.meta.profile_registry import get_active_profile
+        max_layers = get_active_profile().context_layers
+    except Exception:
+        max_layers = 10
+        logger.debug("get_active_profile failed, using default max_layers=10", exc_info=True)
 
     diagnostics = {}
     domain_hint = (params.get("industry") or params.get("company_name") or "").strip()
@@ -38,73 +75,179 @@ def assemble_field_assessment(
 
     did = DomainRouter().classify(domain_hint)
     cross_refs = []
+    _layer_count = 0  # PR #4: track executed layers for profile-driven cap
+
+    # Resolve token budget: explicit arg > env var > profile context_layers fallback
+    if max_prompt_tokens <= 0:
+        max_prompt_tokens = int(os.getenv("AIPLAT_FIELD_ASSESSMENT_MAX_PROMPT_TOKENS", "0") or 0)
+    if max_prompt_tokens <= 0:
+        max_prompt_tokens = max_layers * 2000
+
+    def _check_budget(layer_name: str) -> bool:
+        """Return False if token budget exceeded and layer should be skipped."""
+        if max_prompt_tokens <= 0:
+            return True
+        current = _estimate_total_tokens(system_parts)
+        if current > max_prompt_tokens:
+            diagnostics[layer_name] = f"truncated: tokens={current} > budget={max_prompt_tokens}"
+            return False
+        return True
 
     # Layer 1
-    try:
-        _inject_historical_cases(system_parts, did)
-        diagnostics["historical_cases"] = "ok"
-    except Exception as e:
-        diagnostics["historical_cases"] = f"error: {str(e)[:80]}"
+    if _layer_count < max_layers:
+        _layer_count += 1
+        before = len(system_parts)
+        try:
+            _inject_historical_cases(system_parts, did)
+            if not _check_budget("historical_cases"):
+                del system_parts[before:]
+                return system_parts, diagnostics
+            diagnostics["historical_cases"] = "ok"
+        except Exception as e:
+            diagnostics["historical_cases"] = f"error: {str(e)[:80]}"
 
     # Layer 2
+    before = len(system_parts)
     try:
         cross_refs = _inject_cross_domain_analogs(system_parts, did, params)
+        if not _check_budget("cross_domain_analogs"):
+            del system_parts[before:]
+            return system_parts, diagnostics
         diagnostics["cross_domain_analogs"] = "ok"
     except Exception as e:
         diagnostics["cross_domain_analogs"] = f"error: {str(e)[:80]}"
 
+    if _layer_count >= max_layers: return system_parts, diagnostics
+    _layer_count += 1
+
     # Layer 3
+    before = len(system_parts)
+    if not _check_budget("evidence_rules"):
+        return system_parts, diagnostics
     try:
         _inject_evidence_rules(system_parts, cross_refs, did, params)
+        if not _check_budget("evidence_rules"):
+            del system_parts[before:]
+            return system_parts, diagnostics
         diagnostics["evidence_rules"] = "ok"
     except Exception as e:
         diagnostics["evidence_rules"] = f"error: {str(e)[:80]}"
 
+    _layer_count += 1
+    if _layer_count >= max_layers:
+        return system_parts, diagnostics
+
     # Layer 4
+    before = len(system_parts)
+    if not _check_budget("solution_archetypes"):
+        return system_parts, diagnostics
     try:
         _inject_solution_archetypes(system_parts)
+        if not _check_budget("solution_archetypes"):
+            del system_parts[before:]
+            return system_parts, diagnostics
         diagnostics["solution_archetypes"] = "ok"
     except Exception as e:
         diagnostics["solution_archetypes"] = f"error: {str(e)[:80]}"
 
+    _layer_count += 1
+    if _layer_count >= max_layers:
+        return system_parts, diagnostics
+
     # Layer 5
+    before = len(system_parts)
+    if not _check_budget("graph_traversal"):
+        return system_parts, diagnostics
     try:
         _inject_graph_traversal(system_parts, did, params)
+        if not _check_budget("graph_traversal"):
+            del system_parts[before:]
+            return system_parts, diagnostics
         diagnostics["graph_traversal"] = "ok"
     except Exception as e:
         diagnostics["graph_traversal"] = f"error: {str(e)[:80]}"
 
+    _layer_count += 1
+    if _layer_count >= max_layers:
+        return system_parts, diagnostics
+
     # Layer 6
+    before = len(system_parts)
+    if not _check_budget("delivery_history"):
+        return system_parts, diagnostics
     try:
         _inject_delivery_history(system_parts, params)
+        if not _check_budget("delivery_history"):
+            del system_parts[before:]
+            return system_parts, diagnostics
         diagnostics["delivery_history"] = "ok"
     except Exception as e:
         diagnostics["delivery_history"] = f"error: {str(e)[:80]}"
 
+    _layer_count += 1
+    if _layer_count >= max_layers:
+        return system_parts, diagnostics
+
     # Layer 7
+    before = len(system_parts)
+    if not _check_budget("self_optimization"):
+        return system_parts, diagnostics
     try:
         _inject_self_optimization(system_parts)
+        if not _check_budget("self_optimization"):
+            del system_parts[before:]
+            return system_parts, diagnostics
         diagnostics["self_optimization"] = "ok"
     except Exception as e:
         diagnostics["self_optimization"] = f"error: {str(e)[:80]}"
 
+    _layer_count += 1
+    if _layer_count >= max_layers:
+        return system_parts, diagnostics
+
     # Layer 8
+    before = len(system_parts)
+    if not _check_budget("multi_role_risk"):
+        return system_parts, diagnostics
     try:
         _inject_multi_role_risk(system_parts)
+        if not _check_budget("multi_role_risk"):
+            del system_parts[before:]
+            return system_parts, diagnostics
         diagnostics["multi_role_risk"] = "ok"
     except Exception as e:
         diagnostics["multi_role_risk"] = f"error: {str(e)[:80]}"
 
+    _layer_count += 1
+    if _layer_count >= max_layers:
+        return system_parts, diagnostics
+
     # Layer 9
+    before = len(system_parts)
+    if not _check_budget("term_dictionary"):
+        return system_parts, diagnostics
     try:
         _inject_term_dictionary(system_parts)
+        if not _check_budget("term_dictionary"):
+            del system_parts[before:]
+            return system_parts, diagnostics
         diagnostics["term_dictionary"] = "ok"
     except Exception as e:
         diagnostics["term_dictionary"] = f"error: {str(e)[:80]}"
 
+    _layer_count += 1
+    if _layer_count >= max_layers:
+        return system_parts, diagnostics
+
     # Layer 10
+    before = len(system_parts)
+    if not _check_budget("digital_employees"):
+        return system_parts, diagnostics
     try:
         _inject_digital_employees(system_parts)
+        if not _check_budget("digital_employees"):
+            del system_parts[before:]
+            return system_parts, diagnostics
         diagnostics["digital_employees"] = "ok"
     except Exception as e:
         diagnostics["digital_employees"] = f"error: {str(e)[:80]}"
@@ -131,7 +274,7 @@ def _inject_historical_cases(parts: List[str], did: str):
                 f"以下为同域历史诊断报告摘要，可用于§4.65预期干预效果推理：\n{refs}"
             )
     except Exception:
-        pass
+        logger.debug("_inject_historical_cases: search_pages failed for did=%s", did, exc_info=True)
 
 
 def _inject_cross_domain_analogs(parts: List[str], did: str,
@@ -160,7 +303,7 @@ def _inject_cross_domain_analogs(parts: List[str], did: str,
                     + "\n".join(lines)
                 )
     except Exception:
-        pass
+        logger.debug("_inject_cross_domain_analogs failed", exc_info=True)
     return cross_refs
 
 
@@ -185,7 +328,7 @@ def _inject_solution_archetypes(parts: List[str]):
         from core.harness.knowledge.ontology_bus import render_solution_table
         parts.append(render_solution_table())
     except Exception:
-        pass
+        logger.debug("_inject_solution_archetypes failed", exc_info=True)
 
 
 def _inject_graph_traversal(parts: List[str], did: str, params: Dict):
@@ -222,7 +365,7 @@ def _inject_graph_traversal(parts: List[str], did: str, params: Dict):
                 f"请在 §1 来源列引用这些图谱关系，标注为「本体实例」。"
             )
     except Exception:
-        pass
+        logger.debug("_inject_graph_traversal failed for did=%s", did, exc_info=True)
 
 
 def _inject_delivery_history(parts: List[str], params: Dict):
@@ -260,7 +403,7 @@ def _inject_delivery_history(parts: List[str], params: Dict):
                 "在 §7 部署路线图中增加阶段性验证节点。",
             ]))
     except Exception:
-        pass
+        logger.debug("_inject_delivery_history failed", exc_info=True)
 
 
 def _inject_self_optimization(parts: List[str]):
@@ -309,9 +452,9 @@ def _inject_self_optimization(parts: List[str]):
                 if stale >= 5:
                     parts.append(f"## 知识新鲜度提醒\n{stale} 个知识原子超过 90 天未更新，可能影响诊断准确性。建议重新诊断对应客户或检查知识原子。")
             except Exception:
-                pass
+                logger.debug("_inject_self_optimization: knowledge freshness check failed", exc_info=True)
     except Exception:
-        pass
+        logger.debug("_inject_self_optimization failed", exc_info=True)
 
 
 def _inject_multi_role_risk(parts: List[str]):
@@ -365,7 +508,7 @@ def _inject_digital_employees(parts: List[str]):
         from core.harness.knowledge.ontology_bus import render_digital_employee_table
         parts.append(render_digital_employee_table())
     except Exception:
-        pass
+        logger.debug("_inject_digital_employees failed", exc_info=True)
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -381,15 +524,15 @@ def assemble_agent_context(params: dict, system_parts: list) -> list:
     try:
         _inject_term_dictionary(system_parts)
     except Exception:
-        pass
+        logger.debug("assemble_agent_context: _inject_term_dictionary failed", exc_info=True)
     try:
         _inject_digital_employees(system_parts)
     except Exception:
-        pass
+        logger.debug("assemble_agent_context: _inject_digital_employees failed", exc_info=True)
     try:
         _inject_solution_archetypes(system_parts)
     except Exception:
-        pass
+        logger.debug("assemble_agent_context: _inject_solution_archetypes failed", exc_info=True)
     return system_parts
 
 
@@ -401,11 +544,11 @@ def assemble_skill_context(params: dict, system_parts: list) -> list:
     try:
         _inject_term_dictionary(system_parts)
     except Exception:
-        pass
+        logger.debug("assemble_skill_context: _inject_term_dictionary failed", exc_info=True)
     try:
         _inject_solution_archetypes(system_parts)
     except Exception:
-        pass
+        logger.debug("assemble_skill_context: _inject_solution_archetypes failed", exc_info=True)
     return system_parts
 
 
@@ -417,15 +560,15 @@ def assemble_pipeline_context(params: dict, system_parts: list) -> list:
     try:
         _inject_delivery_history(system_parts, params)
     except Exception:
-        pass
+        logger.debug("assemble_pipeline_context: _inject_delivery_history failed", exc_info=True)
     try:
         _inject_self_optimization(system_parts)
     except Exception:
-        pass
+        logger.debug("assemble_pipeline_context: _inject_self_optimization failed", exc_info=True)
     try:
         _inject_term_dictionary(system_parts)
     except Exception:
-        pass
+        logger.debug("assemble_pipeline_context: _inject_term_dictionary failed", exc_info=True)
     return system_parts
 
 

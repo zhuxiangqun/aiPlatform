@@ -1,0 +1,428 @@
+"""
+Knowledge Pipeline — LLM-driven document entity extraction (Phase 1, 2026-07-30).
+
+Three-step pipeline:
+  1. DocumentIngestor: PDF/Word/text → chunked segments
+  2. EntityExtractor: LLM call → entities + relations + confidence
+  3. DraftYamlWriter: output to ~/.aiplat/ontologies/drafts/
+
+Confidence routing:
+  ≥ 0.85 → auto-write draft YAML
+  0.60–0.85 → pending_extractions (FDE workbench review)
+  < 0.60 → discarded (logged)
+"""
+from __future__ import annotations
+
+import json
+import logging
+import os
+import re
+import time
+import uuid
+from dataclasses import dataclass, field
+from typing import Any, Dict, List, Optional, Literal
+
+logger = logging.getLogger(__name__)
+
+
+# ═══════════════════════════════════════════════════════════
+# Data models
+# ═══════════════════════════════════════════════════════════
+
+@dataclass
+class ExtractedEntity:
+    name: str
+    class_type: str  # 人物|组织|产品|地点|时间|事件|文档|概念|方法
+    attributes: Dict[str, Any] = field(default_factory=dict)
+    confidence: float = 0.0
+    evidence: str = ""
+    source_doc: str = ""
+    source_offset: int = 0
+    entity_id: str = ""
+
+
+@dataclass
+class ExtractedRelation:
+    source_entity: str
+    relation_type: str  # 属于|参与|负责|包含|依赖|导致|演化为|部署于|开始于|结束于
+    target_entity: str
+    confidence: float = 0.0
+    evidence: str = ""
+    source_doc: str = ""
+
+
+@dataclass
+class ExtractionResult:
+    extraction_id: str
+    domain_id: str
+    source_doc: str
+    entities: List[ExtractedEntity] = field(default_factory=list)
+    relations: List[ExtractedRelation] = field(default_factory=list)
+    overall_confidence: float = 0.0
+    status: str = "pending"  # pending | confirmed | rejected | auto_accepted
+    created_at: str = ""
+    draft_yaml_path: str = ""
+
+
+# ═══════════════════════════════════════════════════════════
+# Prompt template
+# ═══════════════════════════════════════════════════════════
+
+EXTRACTION_PROMPT = """你是企业知识抽取专家。从以下文本中抽取实体和关系。
+
+预定义实体类型（只使用这些）:
+  人物, 组织, 产品, 地点, 时间, 事件, 文档, 概念, 方法
+
+预定义关系类型（只使用这些）:
+  属于, 参与, 负责, 包含, 依赖, 导致, 演化为, 部署于, 开始于, 结束于
+
+输出严格 JSON（不含 markdown 标记）:
+{
+  "entities": [
+    {"name": "实体名", "class_type": "预定义类型", "attributes": {}, "evidence": "原文证据"}
+  ],
+  "relations": [
+    {"source": "实体A", "type": "关系类型", "target": "实体B", "evidence": "原文证据"}
+  ],
+  "overall_confidence": 0.0
+}
+
+待抽取文本:
+{chunk_text}"""
+
+
+# ═══════════════════════════════════════════════════════════
+# Step 1: Document Ingestor
+# ═══════════════════════════════════════════════════════════
+
+class DocumentIngestor:
+    """Split document text into LLM-friendly chunks (~2000 chars each)."""
+
+    MAX_CHUNK_SIZE = 2000
+
+    def ingest(self, text: str, doc_name: str = "unknown") -> List[Dict[str, Any]]:
+        """Return list of {offset, text, doc_name} chunks."""
+        chunks = []
+        offset = 0
+        while offset < len(text):
+            chunk = text[offset:offset + self.MAX_CHUNK_SIZE]
+            # Try to break at sentence boundary
+            if len(chunk) == self.MAX_CHUNK_SIZE and offset + self.MAX_CHUNK_SIZE < len(text):
+                last_period = max(chunk.rfind("。"), chunk.rfind(". "), chunk.rfind("\n"), 0)
+                if last_period > self.MAX_CHUNK_SIZE // 2:
+                    chunk = chunk[:last_period + 1]
+            chunks.append({"offset": offset, "text": chunk.strip(), "doc_name": doc_name})
+            offset += len(chunk)
+        return chunks
+
+
+# ═══════════════════════════════════════════════════════════
+# Step 2: Entity Extractor (LLM-driven)
+# ═══════════════════════════════════════════════════════════
+
+class EntityExtractor:
+    """Call LLM to extract entities and relations from a text chunk."""
+
+    VALID_CLASS_TYPES = {"人物", "组织", "产品", "地点", "时间", "事件", "文档", "概念", "方法"}
+    VALID_RELATION_TYPES = {"属于", "参与", "负责", "包含", "依赖", "导致", "演化为", "部署于", "开始于", "结束于"}
+
+    async def extract(self, chunk: Dict[str, Any], domain_id: str = "") -> Dict[str, Any]:
+        """Extract entities + relations from one chunk via LLM."""
+        prompt = EXTRACTION_PROMPT.format(chunk_text=chunk["text"])
+
+        try:
+            # Use the system LLM call
+            result_text = await self._call_llm(prompt)
+            parsed = self._parse_response(result_text, chunk["doc_name"], chunk["offset"])
+            return parsed
+        except Exception as e:
+            logger.warning("Extraction failed for chunk at offset %d: %s", chunk.get("offset", 0), e, exc_info=True)
+            return {"entities": [], "relations": [], "overall_confidence": 0.0}
+
+    async def _call_llm(self, prompt: str) -> str:
+        """Call LLM via the harness syscall channel."""
+        try:
+            from core.harness.syscalls.llm import sys_llm_generate
+            messages = [{"role": "user", "content": prompt}]
+            result = await sys_llm_generate(messages, purpose="doc_llm")
+            return result.get("content", "") or str(result)
+        except Exception:
+            logger.warning("sys_llm_generate unavailable, using fallback", exc_info=True)
+            return ""
+        # If sys_llm_generate not available, try adapter
+        try:
+            from core.harness.utils.model_injection import create_selected_adapter
+            adapter = create_selected_adapter("doc_llm")
+            return adapter.generate([{"role": "user", "content": prompt}])
+        except Exception:
+            logger.warning("LLM adapter also unavailable", exc_info=True)
+            return ""
+
+    def _parse_response(self, result_text: str, doc_name: str, offset: int) -> Dict[str, Any]:
+        """Parse LLM JSON response, handle noise."""
+        # Strip markdown code fences
+        cleaned = re.sub(r'```(?:json)?\s*', '', result_text)
+        cleaned = cleaned.replace('```', '').strip()
+
+        try:
+            data = json.loads(cleaned)
+        except json.JSONDecodeError:
+            # Try to extract JSON from mixed text
+            match = re.search(r'\{[\s\S]*\}', cleaned)
+            if not match:
+                return {"entities": [], "relations": [], "overall_confidence": 0.0}
+            try:
+                data = json.loads(match.group(0))
+            except json.JSONDecodeError:
+                return {"entities": [], "relations": [], "overall_confidence": 0.0}
+
+        entities = []
+        for e in data.get("entities", []):
+            class_type = e.get("class_type", "概念")
+            if class_type not in self.VALID_CLASS_TYPES:
+                class_type = "概念"
+            entities.append(ExtractedEntity(
+                entity_id=str(uuid.uuid4())[:12],
+                name=e.get("name", "unknown"),
+                class_type=class_type,
+                attributes=e.get("attributes", {}),
+                confidence=data.get("overall_confidence", 0.5),
+                evidence=e.get("evidence", ""),
+                source_doc=doc_name,
+                source_offset=offset,
+            ))
+
+        relations = []
+        for r in data.get("relations", []):
+            rel_type = r.get("type", "属于")
+            if rel_type not in self.VALID_RELATION_TYPES:
+                rel_type = "属于"
+            relations.append(ExtractedRelation(
+                source_entity=r.get("source", ""),
+                relation_type=rel_type,
+                target_entity=r.get("target", ""),
+                confidence=data.get("overall_confidence", 0.5),
+                evidence=r.get("evidence", ""),
+                source_doc=doc_name,
+            ))
+
+        return {
+            "entities": entities,
+            "relations": relations,
+            "overall_confidence": data.get("overall_confidence", 0.5),
+        }
+
+
+# ═══════════════════════════════════════════════════════════
+# Step 3: Draft YAML Writer
+# ═══════════════════════════════════════════════════════════
+
+class DraftYamlWriter:
+    """Write extracted entities/relations as draft YAML for expert review."""
+
+    DRAFT_DIR = os.path.expanduser("~/.aiplat/ontologies/drafts")
+
+    def __init__(self):
+        os.makedirs(self.DRAFT_DIR, exist_ok=True)
+
+    def write(self, result: ExtractionResult) -> str:
+        """Write the extraction result to a draft YAML file. Returns file path."""
+        import yaml
+
+        safe_name = re.sub(r'[^\w\-]', '_', result.source_doc)[:40]
+        path = os.path.join(self.DRAFT_DIR, f"{safe_name}_{result.extraction_id}.yaml")
+
+        classes = {}
+        relations = []
+        for e in result.entities:
+            cls_key = f"extracted_{e.class_type}"
+            if cls_key not in classes:
+                classes[cls_key] = {
+                    "label": e.class_type,
+                    "description": f"从文档自动抽取的{e.class_type}",
+                    "required_fields": ["name"],
+                    "extracted_from": result.source_doc,
+                }
+            # Track entities as YAML instances
+            entities_list = classes[cls_key].setdefault("_entities", [])
+            entities_list.append({
+                "name": e.name,
+                "confidence": e.confidence,
+                "evidence": e.evidence[:200],
+            })
+
+        for r in result.relations:
+            relations.append({
+                "source": r.source_entity,
+                "type": r.relation_type,
+                "target": r.target_entity,
+                "confidence": r.confidence,
+                "evidence": r.evidence[:200],
+            })
+
+        draft_data = {
+            "draft": True,
+            "extraction_id": result.extraction_id,
+            "domain_id": result.domain_id,
+            "source_doc": result.source_doc,
+            "overall_confidence": result.overall_confidence,
+            "created_at": result.created_at,
+            "classes": classes,
+            "extracted_relations": relations,
+        }
+
+        with open(path, "w", encoding="utf-8") as f:
+            yaml.dump(draft_data, f, allow_unicode=True, sort_keys=False, default_flow_style=False)
+
+        logger.info("Draft YAML written: %s (%d entities, %d relations)", path,
+                     len(result.entities), len(result.relations))
+        return path
+
+
+# ═══════════════════════════════════════════════════════════
+# Pipeline orchestrator
+# ═══════════════════════════════════════════════════════════
+
+class ExtractionPipeline:
+    """Full pipeline: ingest → extract → route → write."""
+
+    def __init__(self):
+        self.ingestor = DocumentIngestor()
+        self.extractor = EntityExtractor()
+        self.writer = DraftYamlWriter()
+
+    async def run(self, text: str, doc_name: str = "uploaded_doc",
+                  domain_id: str = "default") -> List[ExtractionResult]:
+        """Run full extraction pipeline on a document. Returns results by confidence tier."""
+        chunks = self.ingestor.ingest(text, doc_name)
+        logger.info("Document '%s' split into %d chunks", doc_name, len(chunks))
+
+        all_entities: List[ExtractedEntity] = []
+        all_relations: List[ExtractedRelation] = []
+        total_confidence = 0.0
+        chunk_count = 0
+
+        for chunk in chunks:
+            parsed = await self.extractor.extract(chunk, domain_id)
+            entities = parsed.get("entities", [])
+            relations = parsed.get("relations", [])
+            conf = parsed.get("overall_confidence", 0.0)
+
+            all_entities.extend(entities)
+            all_relations.extend(relations)
+            total_confidence += conf
+            chunk_count += 1
+
+        avg_conf = total_confidence / max(chunk_count, 1)
+        extraction_id = str(uuid.uuid4())[:12]
+
+        result = ExtractionResult(
+            extraction_id=extraction_id,
+            domain_id=domain_id,
+            source_doc=doc_name,
+            entities=all_entities,
+            relations=all_relations,
+            overall_confidence=round(avg_conf, 3),
+            status=self._route_status(avg_conf),
+            created_at=time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+        )
+
+        if result.status in ("auto_accepted", "pending"):
+            path = self.writer.write(result)
+            result.draft_yaml_path = path
+            logger.info("Extraction %s → %s (confidence=%.2f, %d entities, %d relations)",
+                        extraction_id, result.status, avg_conf, len(all_entities), len(all_relations))
+
+        return [result]
+
+    def _route_status(self, confidence: float) -> str:
+        if confidence >= 0.85:
+            return "auto_accepted"
+        elif confidence >= 0.60:
+            return "pending"
+        return "rejected"
+
+
+# ═══════════════════════════════════════════════════════════
+# Pending extractions store (SQLite, same as execution_store)
+# ═══════════════════════════════════════════════════════════
+
+class PendingExtractionStore:
+    """Persist pending extractions for FDE workbench review."""
+
+    def __init__(self, db_path: str = "./data/execution_store.db"):
+        self.db_path = db_path
+
+    async def initialize(self) -> None:
+        import aiosqlite
+        async with aiosqlite.connect(self.db_path) as db:
+            await db.execute("""
+                CREATE TABLE IF NOT EXISTS pending_extractions (
+                    extraction_id TEXT PRIMARY KEY,
+                    domain_id TEXT,
+                    source_doc TEXT,
+                    overall_confidence REAL,
+                    entity_count INTEGER,
+                    relation_count INTEGER,
+                    status TEXT DEFAULT 'pending',
+                    draft_yaml_path TEXT,
+                    created_at TEXT DEFAULT (datetime('now'))
+                )
+            """)
+            await db.commit()
+
+    async def save(self, result: ExtractionResult) -> None:
+        import aiosqlite
+        async with aiosqlite.connect(self.db_path) as db:
+            await db.execute("""
+                INSERT OR REPLACE INTO pending_extractions
+                (extraction_id, domain_id, source_doc, overall_confidence,
+                 entity_count, relation_count, status, draft_yaml_path)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                result.extraction_id,
+                result.domain_id,
+                result.source_doc,
+                result.overall_confidence,
+                len(result.entities),
+                len(result.relations),
+                result.status,
+                result.draft_yaml_path,
+            ))
+            await db.commit()
+
+    async def list_pending(self, domain_id: str = "") -> List[Dict[str, Any]]:
+        import aiosqlite
+        async with aiosqlite.connect(self.db_path) as db:
+            db.row_factory = aiosqlite.Row
+            if domain_id:
+                async with db.execute(
+                    "SELECT * FROM pending_extractions WHERE domain_id=? AND status='pending' ORDER BY created_at DESC",
+                    (domain_id,),
+                ) as cur:
+                    return [dict(r) for r in await cur.fetchall()]
+            else:
+                async with db.execute(
+                    "SELECT * FROM pending_extractions WHERE status='pending' ORDER BY created_at DESC"
+                ) as cur:
+                    return [dict(r) for r in await cur.fetchall()]
+
+    async def confirm(self, extraction_id: str) -> bool:
+        import aiosqlite
+        async with aiosqlite.connect(self.db_path) as db:
+            cur = await db.execute(
+                "UPDATE pending_extractions SET status='confirmed' WHERE extraction_id=?",
+                (extraction_id,),
+            )
+            await db.commit()
+            return cur.rowcount > 0
+
+    async def reject(self, extraction_id: str) -> bool:
+        import aiosqlite
+        async with aiosqlite.connect(self.db_path) as db:
+            cur = await db.execute(
+                "UPDATE pending_extractions SET status='rejected' WHERE extraction_id=?",
+                (extraction_id,),
+            )
+            await db.commit()
+            return cur.rowcount > 0

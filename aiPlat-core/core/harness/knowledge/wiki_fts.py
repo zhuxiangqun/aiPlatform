@@ -28,8 +28,7 @@ def _get_conn():
     conn.execute("PRAGMA journal_mode=WAL")
     conn.execute("""
         CREATE VIRTUAL TABLE IF NOT EXISTS wiki_fts USING fts5(
-            title, tags, summary, body_preview, content='', tokenize='unicode61'
-            /* unicode61 does NOT handle CJK well. See module docstring. */
+            title, tags, summary, body_preview, tokenize='unicode61'
         )
     """)
     return conn

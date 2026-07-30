@@ -90,6 +90,7 @@ class ToolBootstrapEngine:
         auto_approve: bool = False,
         tools: Optional[List[str]] = None,
         with_handler: bool = False,  # Phase 33: generate handler.py code
+        deploy: bool = False,  # Phase 40: auto-deploy after registration
     ) -> BootstrapResult:
         """End-to-end bootstrap a new tool from a capability gap.
 
@@ -149,6 +150,12 @@ class ToolBootstrapEngine:
                         f.write(handler_code)
                     handler_ok = True
                     logger.info("[bootstrap] handler.py generated: %s", handler_path)
+
+            # ── Step 3.6: Phase 40 — Auto-deploy ──
+            if deploy and result.status == "validated":
+                deploy_ok = await self._trigger_deploy(safe_name, effects_type)
+                if deploy_ok:
+                    logger.info("[bootstrap] deployed: %s", safe_name)
 
             # ── Step 4: Risk-based registration ──
             if effects_type == "read" and auto_approve:
@@ -403,15 +410,113 @@ def execute(params: dict) -> dict:
         except SyntaxError:
             return False
 
+    async def _trigger_deploy(self, safe_name: str, effects_type: str) -> bool:
+        """Phase 40: Trigger DeployEngine after successful bootstrap."""
+        try:
+            from core.harness.deployment.deploy_engine import get_deploy_engine
+            engine = get_deploy_engine()
+            result = await engine.deploy(
+                safe_name, "v1.0.0", effects_type=effects_type,
+            )
+            logger.info(
+                "[bootstrap] deploy result: %s status=%s canary=%d%%",
+                safe_name, result.status, result.canary_pct,
+            )
+            return result.status in ("validated", "canary_ok", "pushed", "deployed", "verified")
+        except Exception as e:
+            logger.debug("[bootstrap] deploy unavailable: %s", e)
+            return False
+
+    async def _generate_agent_md(self, safe_name: str, description: str) -> str:
+        """Phase 40: Generate AGENT.md for the new skill via LLM."""
+        try:
+            from core.harness.syscalls.llm import sys_llm_generate
+            from core.harness.utils.model_injection import best_model_for_purpose, create_selected_adapter
+
+            prompt = f"""Create an AGENT.md for an agent that uses the '{safe_name}' skill.
+
+Description: {description}
+
+Requirements:
+1. YAML frontmatter with: name, version, description, role, required_skills (include {safe_name})
+2. SOP body with 3-5 concrete steps
+3. Output format section
+4. Anti-patterns section
+
+Output ONLY the AGENT.md content, nothing else."""
+
+            model_name = best_model_for_purpose("doc_llm")
+            adapter = create_selected_adapter(model_name=model_name)
+            if not adapter:
+                return ""
+            result = await sys_llm_generate(
+                adapter, prompt,
+                trace_context={"source": "tool_bootstrap", "phase": "agent_gen"},
+            )
+            content = getattr(result, "content", str(result)) if result else ""
+            return content.strip() if len(content) > 100 else ""
+        except Exception as e:
+            logger.debug("[bootstrap] agent.md generation failed: %s", e)
+            return ""
+
+    async def _generate_tests(self, safe_name: str, handler_code: str) -> str:
+        """Phase 40: Generate pytest for the handler code via LLM."""
+        try:
+            from core.harness.syscalls.llm import sys_llm_generate
+            from core.harness.utils.model_injection import best_model_for_purpose, create_selected_adapter
+
+            prompt = f"""Write a pytest test file for the following handler code:
+
+```python
+{handler_code[:1500]}
+```
+
+Requirements:
+- Test the execute() function with valid and invalid params
+- Test edge cases (None, empty dict, missing required fields)
+- Use plain pytest (import pytest)
+- Keep under 100 lines
+
+Output ONLY the test file content."""
+
+            model_name = best_model_for_purpose("doc_llm")
+            adapter = create_selected_adapter(model_name=model_name)
+            if not adapter:
+                return ""
+            result = await sys_llm_generate(
+                adapter, prompt,
+                trace_context={"source": "tool_bootstrap", "phase": "test_gen"},
+            )
+            content = getattr(result, "content", str(result)) if result else ""
+            if len(content) > 50 and "def test_" in content:
+                return content.strip()
+            return ""
+        except Exception as e:
+            logger.debug("[bootstrap] test generation failed: %s", e)
+            return ""
+
     def _write_to_staging(self, safe_name: str, skill_content: str) -> None:
-        """Write skill to staging area for human approval."""
+        """Phase 40: Atomic write with fsync + rename."""
         staging_dir = os.path.join(self.SKILLS_DIR, "_staging")
         os.makedirs(staging_dir, exist_ok=True)
-        staging_path = os.path.join(staging_dir, f"{safe_name}_v1.0.0.md")
-        with open(staging_path, "w", encoding="utf-8") as f:
-            f.write(f"# STAGED FOR APPROVAL\n# Generated: {time.ctime()}\n\n")
-            f.write(skill_content)
-        logger.info("[bootstrap] staged: %s", staging_path)
+        target = os.path.join(staging_dir, f"{safe_name}_v1.0.0.md")
+        import tempfile as _tf
+        fd, tmp = _tf.mkstemp(dir=staging_dir, prefix=".tmp_", suffix=".md")
+        try:
+            with os.fdopen(fd, "w", encoding="utf-8") as f:
+                f.write(f"# STAGED FOR APPROVAL\n# Generated: {time.ctime()}\n\n")
+                f.write(skill_content)
+                f.flush()
+                os.fsync(f.fileno())
+            os.replace(tmp, target)
+            logger.info("[bootstrap] staged (atomic): %s", target)
+        except Exception:
+            if os.path.exists(tmp):
+                try:
+                    os.unlink(tmp)
+                except OSError:
+                    pass  # noqa: cleanup-best-effort
+            raise
 
     def stats(self) -> Dict[str, Any]:
         """Bootstrap statistics."""
@@ -438,3 +543,4 @@ def get_tool_bootstrap() -> ToolBootstrapEngine:
     if _bootstrap is None:
         _bootstrap = ToolBootstrapEngine()
     return _bootstrap
+

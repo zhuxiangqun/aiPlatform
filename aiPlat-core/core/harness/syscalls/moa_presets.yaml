@@ -1,0 +1,55 @@
+# MoA Presets — Mixture of Agents configuration (Phase 42).
+# Selected via params.preset (default: general).
+
+general:
+  reference_models:
+    - reasoning
+    - reasoning
+    - chat
+    - code_gen
+  aggregator_model: reasoning
+  aggregator_instruction: >
+    Synthesize the analyses below. Prioritize consensus views.
+    When analyses conflict, explain why and give your best judgment.
+  roles:
+    - "Approach from first principles. Identify core assumptions."
+    - "Consider edge cases and counter-arguments."
+    - "Evaluate practical applicability and user experience."
+    - "Check for logical consistency and formal correctness."
+  temperatures:
+    reference: 0.6
+    aggregator: 0.3
+
+creative:
+  reference_models:
+    - chat
+    - chat
+    - reasoning
+  aggregator_model: chat
+  aggregator_instruction: >
+    Favor the most innovative and unconventional ideas.
+    Practicality matters less than originality here.
+  roles:
+    - "Brainstorm wildly creative approaches. No constraints."
+    - "Think about unconventional analogies and metaphors."
+    - "Cross-check feasibility of the above ideas."
+  temperatures:
+    reference: 0.8
+    aggregator: 0.4
+
+analysis:
+  reference_models:
+    - reasoning
+    - reasoning
+    - code_gen
+  aggregator_model: reasoning
+  aggregator_instruction: >
+    Favor quantitative evidence over qualitative claims.
+    Where data is lacking, state assumptions explicitly.
+  roles:
+    - "Quantitative analysis. Numbers, metrics, benchmarks."
+    - "Qualitative analysis. Context, implications, trade-offs."
+    - "Implementation feasibility. Code-level considerations."
+  temperatures:
+    reference: 0.5
+    aggregator: 0.2

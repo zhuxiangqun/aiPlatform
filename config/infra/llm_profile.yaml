@@ -1,27 +1,34 @@
-# aiPlat LLM Profile — model overrides & purpose profiles
-# gemma4:12b produces empty output (known issue on Apple Silicon),
-# so we override all purposes to use qwen2.5-coder:7b as the reliable default.
-
-model_overrides:
-  chat: qwen2.5-coder:7b
-  agent_creation: qwen2.5-coder:7b
-  code_gen: qwen2.5-coder:7b
-  ontology_gen: qwen2.5-coder:7b
-  embedding: mxbai-embed-large:latest
+# aiPlat LLM Profile — purpose profiles (workspace override)
+# v2.2.1: scoring_weights define scene-specific preferences.
+# prefer_local purposes use scoring_weights to ensure local models are preferred.
 
 purpose_profiles:
   chat:
     prefer: ["chat"]
     prefer_local: true
+    scoring_weights:
+      reasoning: 0.3          # 聊天不重推理
+      latency: -2.5           # 必须快
+      source_bias: 1.5        # 强化本地偏好
   agent_creation:
     prefer: ["chat"]
     prefer_local: true
+    scoring_weights:
+      source_bias: 1.5        # 强化本地偏好
   code_gen:
     prefer: ["chat", "code"]
     prefer_local: true
+    scoring_weights:
+      reasoning: 2.5          # 代码需要强推理
+      latency: -0.5           # 延迟不敏感
+      source_bias: 1.5
   ontology_gen:
     prefer: ["chat"]
     prefer_local: true
+    scoring_weights:
+      source_bias: 1.5
 
 fallback:
-  ultimate_model: qwen2.5-coder:7b
+  safe_model: qwen2.5:3b
+  safe_model_alt: deepseek-chat
+  safe_model_ram_limit: 4

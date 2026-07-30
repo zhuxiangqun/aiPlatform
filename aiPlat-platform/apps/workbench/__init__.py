@@ -1,3 +1,3 @@
 
 # Domain prompts registration (P1-1 migration)
-from . import prompts; prompts.register_workbench_prompts()
+from core.apps.workbench.prompts import register_workbench_prompts; register_workbench_prompts()

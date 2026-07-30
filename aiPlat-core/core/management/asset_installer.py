@@ -570,7 +570,7 @@ _auto_adapted: true
                             fm["status"] = "draft"
                             fm["block_reason"] = f"missing critical tools: {', '.join(critical)}"
             except ImportError:
-                pass
+                pass  # noqa: optional-dependency
 
             # Write back
             new_fm = yaml.dump(dict(fm), allow_unicode=True, sort_keys=False).strip()
@@ -723,3 +723,4 @@ def _try_adapt(root_dir: Path, target_skills_base: Path) -> Optional[Dict[str, A
         return detect_and_convert(root_dir, target_skills_base)
     except Exception:
         return None
+
