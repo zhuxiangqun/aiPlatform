@@ -3617,8 +3617,19 @@ async def voice_brainstorm(payload: dict = Body(...)):
   "core_intent": "核心意图概括",
   "actionable_steps": ["步骤1", "步骤2", "步骤3"],
   "fuzzy_points": ["模糊点1", "模糊点2"],
-  "tone": "思考型/焦虑型/探索型/决策型"
+  "tone": "思考型/焦虑型/探索型/决策型",
+  "response_style": {{
+    "complexity": "simplify/standard/detailed",
+    "tone_adjust": "encourage/reassure/challenge/neutral",
+    "rationale": "简短说明为什么选择这种风格"
+  }}
 }}
+
+tone 与 response_style 的映射规则:
+  思考型 → response_style: complexity=standard, tone=neutral (用户只是在思考)
+  焦虑型 → response_style: complexity=simplify, tone=reassure (降低认知负担，给予安全感)
+  探索型 → response_style: complexity=detailed, tone=challenge (提供更多细节，适当挑战)
+  决策型 → response_style: complexity=standard, tone=encourage (提供清晰选项，鼓励行动)
 
 只返回 JSON, 不要其他内容."""
 
@@ -3660,10 +3671,39 @@ async def voice_brainstorm(payload: dict = Body(...)):
         except Exception:
             pass
 
+        # Phase 60: Store emotion state for session-aware responses
+        try:
+            tone = data.get("tone", "")
+            style = data.get("response_style", {})
+            if tone:
+                import os, json
+                emo_dir = os.path.expanduser("~/.aiplat/emotion")
+                os.makedirs(emo_dir, exist_ok=True)
+                sid = payload.get("session_id", "default")
+                emo_file = os.path.join(emo_dir, f"{sid}.json")
+                recent = []
+                if os.path.exists(emo_file):
+                    try:
+                        with open(emo_file) as f:
+                            recent = json.load(f)
+                    except Exception:
+                        pass
+                recent.append({
+                    "tone": tone,
+                    "complexity": style.get("complexity", "standard"),
+                    "tone_adjust": style.get("tone_adjust", "neutral"),
+                    "timestamp": __import__("time").time(),
+                })
+                with open(emo_file, "w") as f:
+                    json.dump(recent[-10:], f)
+        except Exception:
+            pass
+
         return {
             "success": True,
             "duration_seconds": duration,
             "summary": data,
+            "response_style": data.get("response_style", {}),
         }
 
     except Exception as e:
