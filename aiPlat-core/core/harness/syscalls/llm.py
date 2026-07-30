@@ -641,6 +641,43 @@ def _guard_messages(messages: List[Message], trace_context: Optional[Dict[str, A
         pass
 
 
+    # Phase 60: Emotion-aware response — read emotion state, adjust system prompt
+    try:
+        session_id = (trace_context or {}).get("session_id", "") or (trace_context or {}).get("run_id", "")
+        if isinstance(session_id, str) and session_id and out and out[0].get("role") == "system":
+            import os, json
+            emo_file = os.path.expanduser(f"~/.aiplat/emotion/{session_id}.json")
+            if os.path.exists(emo_file):
+                with open(emo_file) as f:
+                    recent = json.load(f)
+                if recent:
+                    latest = recent[-1]
+                    tone = latest.get("tone", "")
+                    complexity = latest.get("complexity", "standard")
+                    tone_adjust = latest.get("tone_adjust", "neutral")
+
+                    if tone == "焦虑型":
+                        out[0]["content"] = str(out[0].get("content", "")) + (
+                            "\n\n[当前用户状态: 焦虑。请使用简化的语言、结构化的步骤来回应，"
+                            "避免复杂术语和冗长解释。给予明确的下一步行动建议，帮助用户建立掌控感。]"
+                        )
+                    elif tone == "探索型":
+                        out[0]["content"] = str(out[0].get("content", "")) + (
+                            "\n\n[当前用户状态: 探索。请提供更详细的背景、多角度的分析，"
+                            "适当提出开放性问题引导用户深入思考。可以引入相关概念或延伸阅读。]"
+                        )
+                    elif tone == "决策型":
+                        out[0]["content"] = str(out[0].get("content", "")) + (
+                            "\n\n[当前用户状态: 决策。请提供清晰的选项和利弊对比，"
+                            "用数字或等级标注每个选项的可行性。鼓励用户做出选择并给出下一步执行建议。]"
+                        )
+                    # 思考型: neutral, no injection needed
+                    stats["emotion_tone"] = tone
+                    stats["emotion_complexity"] = complexity
+    except Exception:
+        pass
+
+
     # §5.24.3: Auto-inject layer boundary constraints (v2.5, Phase 4)
 
     _try_inject_boundary_rules(out, trace_context)
