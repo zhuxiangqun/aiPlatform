@@ -5,7 +5,8 @@ description: 审查代码质量并给出改进建议。触发条件：用户要�
   处理。
 category: analysis
 version: 1.0.0
-status: enabled
+status: deprecated
+deprecated_reason: 被 autoreview (handler+MoA+auto-fix) 全面覆盖
 protected: true
 completion_criterion: |
   1. 每个改动都有明确的验收标准（可验证的 pass/fail 条件）
