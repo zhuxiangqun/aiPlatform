@@ -553,11 +553,30 @@ const FdeDashboard: React.FC = () => {
           </button>
           {showHealthDetail && healthData?.subsystems && (
             <div className="grid grid-cols-4 gap-1 mt-1 text-[9px]">
-              {Object.entries(healthData.subsystems).map(([name, info]: [string, any]) => (
-                <span key={name} className={`px-2 py-0.5 rounded ${info?.ok ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'}`}>
-                  {info?.ok ? '✓' : '✗'} {name}
-                </span>
-              ))}
+              {Object.entries(healthData.subsystems).map(([name, info]: [string, any]) => {
+                const toggleMap: Record<string, () => void> = {
+                  Scenario: () => setShowSimulation(!showSimulation),
+                  Lineage: () => setShowLineage(!showLineage),
+                  Security3D: () => {},
+                  Branching: () => setShowBranching(!showBranching),
+                  EvoX: () => setShowEvoX(!showEvoX),
+                  KnowledgeROI: () => setShowCompilation(!showCompilation),
+                  Cron: () => {},
+                };
+                const onClick = toggleMap[name];
+                return (
+                  <span
+                    key={name}
+                    onClick={onClick}
+                    className={`px-2 py-0.5 rounded cursor-pointer hover:opacity-80 ${
+                      info?.ok ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'
+                    } ${onClick ? 'hover:ring-1 ring-green-500/30' : ''}`}
+                    title={onClick ? `点击打开 ${name} 面板` : name}
+                  >
+                    {info?.ok ? '✓' : '✗'} {name}
+                  </span>
+                );
+              })}
             </div>
           )}
         </div>
