@@ -1,7 +1,7 @@
 ---
-total_capabilities: 892
+total_capabilities: 894
 last_updated: 2026-07-30
-version: "27.0"
+version: "28.0"
 auto_sync: true
 ---
 
@@ -1225,6 +1225,15 @@ auto_sync: true
 
 ---
 
+## 四十一、E2E端到端验证
+
+| 能力 | 位置 | 状态 | 说明 | 实施状态 |
+|------|------|:---:|------|------|
+| E2EVerifier | harness/execution/e2e_verifier.py | ✅ | 一次调用验证7子系统: ①拆分②执行③汇合④损耗⑤血缘⑥ROI⑦Wiki | 2026-07-30 |
+| POST /verify/e2e | platform/apps/fde/api/fde.py | ✅ | 端到端全链路验证端点 | 2026-07-30 |
+
+---
+
 ## 统计
 
 <!-- AUTO-STATS -->
@@ -1272,7 +1281,8 @@ auto_sync: true
 | 闭环执行层 | 17 | 0 | 17 |
 | 知识编译与OKF | 8 | 0 | 8 |
 | 对话→Wiki 自动管线 | 6 | 0 | 6 |
-| **总计** | **892** | **0** | **892** |
+| E2E 端到端验证 | 2 | 0 | 2 |
+| **总计** | **894** | **0** | **894** |
 
 ---
 

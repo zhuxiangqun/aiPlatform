@@ -3394,6 +3394,33 @@ async def list_garden_reports(limit: int = Query(10)):
             continue
     return {"reports": results}
 
+
+# ════════════════════════════════════════════════════════════
+# E2E Verification — 端到端全链路验证 (Phase 48)
+# ════════════════════════════════════════════════════════════
+
+@router.post("/verify/e2e")
+async def run_e2e_verification(payload: dict = Body(...)):
+    """端到端全链路验证: ①拆分→②执行→③汇合→④损耗→⑤血缘→⑥ROI→⑦Wiki.
+    
+    Body (all optional):
+      - task: 测试任务描述 (留空使用默认)
+      - max_atoms: 最大原子数 (default 10)
+      - verify_lineage: 是否验证决策血缘 (default true)
+      - verify_roi: 是否验证ROI (default true)
+      - verify_ingestor: 是否验证对话摄入 (default true)
+    """
+    from core.harness.execution.e2e_verifier import E2EVerifier
+    verifier = E2EVerifier()
+    report = await verifier.run(
+        task=payload.get("task", ""),
+        max_atoms=payload.get("max_atoms", 10),
+        verify_lineage=payload.get("verify_lineage", True),
+        verify_roi=payload.get("verify_roi", True),
+        verify_ingestor=payload.get("verify_ingestor", True),
+    )
+    return report.to_dict()
+
 # Ontology Branching — branch/fork/diff/merge (Phase 43)
 # ════════════════════════════════════════════════════════════
 
