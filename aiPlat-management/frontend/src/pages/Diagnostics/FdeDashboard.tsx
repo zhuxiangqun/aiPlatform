@@ -307,18 +307,22 @@ const FdeDashboard: React.FC = () => {
 
   // v2.8: Load system health summary
   useEffect(() => {
-    Promise.allSettled([
-      fetch(API('/knowledge/roi?days=1')).then(r => r.json()).catch(() => ({})),
-      fetch(API('/knowledge/garden/reports?limit=1')).then(r => r.json()).catch(() => ({})),
-    ]).then(([roiR, gardenR]) => {
-      const roi = roiR.status === 'fulfilled' ? roiR.value : {};
-      const garden = gardenR.status === 'fulfilled' ? gardenR.value : {};
-      setHealthData({
-        cronRunning: true,
-        roiPct: roi?.avg_saved_percent || 0,
-        gardenHealth: garden?.reports?.[0]?.health_score || '—',
-      });
-    });
+    const load = () => {
+      fetch(API('/health/all')).then(r => r.json()).catch(() => ({}))
+        .then(d => {
+          const subs = d?.subsystems || {};
+          const ok = Object.values(subs).filter((s: any) => s?.ok).length;
+          const total = Object.values(subs).length || 7;
+          setHealthData({
+            overall: d?.overall_healthy ?? true,
+            okCount: ok,
+            totalCount: total,
+          });
+        });
+    };
+    load();
+    const timer = setInterval(load, 30000);
+    return () => clearInterval(timer);
   }, []);
 
   // v2.7: Enrich domain with maturity data when scenario recommendations load
@@ -531,15 +535,13 @@ const FdeDashboard: React.FC = () => {
       {showHealth && (
         <div className="flex items-center gap-3 text-[10px] text-gray-500 bg-gray-800/30 border border-gray-700/30 rounded px-3 py-1.5 flex-wrap">
           <span className="text-gray-400 font-medium">系统</span>
-          <span title="能力数">⚡894 项</span>
+          <span title="能力数">⚡895 项</span>
           <span className="text-gray-600">|</span>
-          <span title="Cron 任务" className={healthData?.cronRunning ? 'text-green-400' : 'text-red-400'}>
-            {healthData?.cronRunning ? '✓' : '✗'} Cron
+          <span title="子系统健康" className={healthData?.overall ? 'text-green-400' : 'text-red-400'}>
+            {healthData?.okCount ?? '?'}/{healthData?.totalCount ?? 7} 健康
           </span>
           <span className="text-gray-600">|</span>
-          <span title="知识编译" className="text-green-400">{healthData?.roiPct || '—'}% 节省</span>
-          <span className="text-gray-600">|</span>
-          <span title="Garden 健康">{healthData?.gardenHealth || '—'}分</span>
+          <span title="30秒自动刷新" className="text-gray-600">↻30s</span>
           <button onClick={() => setShowHealth(false)} className="text-gray-600 hover:text-gray-400 ml-1">×</button>
         </div>
       )}
