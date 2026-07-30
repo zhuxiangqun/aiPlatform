@@ -131,8 +131,42 @@ class SkillRegistry:
         self._body_vectors: Dict[str, List[float]] = {}
         self._body_idf: Dict[str, float] = {}
         self._body_vocab: List[str] = []
+        # Phase 53: Skill extras (references/scripts/assets) cache
+        self._extras: Dict[str, Dict[str, List[Dict]]] = {}
 
-    def seed_data(self, data: Dict[str, Dict[str, Any]] = None) -> None:
+    def _load_extras(self, skill_dir: str) -> Dict[str, List[Dict]]:
+        """扫描 Skill 子目录: references/scripts/assets.
+
+        返回格式:
+          {"references": [{"name":"spec.yaml","path":"/abs/path"}], "scripts": [...], "assets": [...]}
+        """
+        import os as _os_extra
+        extras: Dict[str, List[Dict]] = {"references": [], "scripts": [], "assets": []}
+        for sub in ["references", "scripts", "assets"]:
+            subdir = _os_extra.path.join(skill_dir, sub)
+            if _os_extra.path.isdir(subdir):
+                for f in sorted(_os_extra.listdir(subdir)):
+                    fpath = _os_extra.path.join(subdir, f)
+                    if _os_extra.path.isfile(fpath):
+                        extras[sub].append({"name": f, "path": fpath})
+        return extras
+
+    def get_extras(self, skill_name: str) -> Dict[str, List[Dict]]:
+        """获取 Skill 的子目录资源列表 (on-demand + cache)."""
+        if skill_name in self._extras:
+            return self._extras[skill_name]
+        # Try to find skill directory
+        import os as _os_extra
+        for root in [
+            os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "engine", "skills", skill_name),
+            os.path.expanduser(f"~/.aiplat/skills/{skill_name}"),
+            os.path.expanduser(f"~/.aiplat/workspace_skills/{skill_name}"),
+        ]:
+            if _os_extra.path.isdir(root):
+                extras = self._load_extras(root)
+                self._extras[skill_name] = extras
+                return extras
+        return {"references": [], "scripts": [], "assets": []}
         """Seed the registry with built-in skill instances from engine skills dir.
 
         Skill metadata (name, display_name, category, description, enabled)

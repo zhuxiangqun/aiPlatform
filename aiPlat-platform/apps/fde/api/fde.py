@@ -3505,6 +3505,76 @@ async def health_all():
 
     return {"overall_healthy": overall, "subsystems": subsystems}
 
+
+# ════════════════════════════════════════════════════════════
+# Skill Verify + Extras — 验收清单 + 目录标准化 (Phase 53)
+# ════════════════════════════════════════════════════════════
+
+@router.get("/skills/{skill_id}/verify")
+async def verify_skill(skill_id: str):
+    """5项验收: 可识别/可调用/输出稳定/格式一致/内容符合."""
+    from core.apps.skills.skill_verify import SkillVerifier
+    verifier = SkillVerifier()
+    report = verifier.verify(skill_id)
+    return report.to_dict()
+
+
+@router.get("/skills/{skill_id}/extras")
+async def get_skill_extras(skill_id: str):
+    """获取 Skill 的 references/scripts/assets 资源列表."""
+    from core.apps.skills.registry import get_skill_registry
+    reg = get_skill_registry()
+    return reg.get_extras(skill_id)
+
+
+@router.post("/skills/install")
+async def install_skill(payload: dict = Body(...)):
+    """从 URL 或路径安装 Skill.
+
+    Body:
+      - url: 远程 SKILL.md URL (如 GitHub raw)
+      - path: 本地 Skill 目录路径
+      - skill_name: Skill 名称 (安装目录名)
+    """
+    import os, shutil
+    from core.apps.skills.registry import get_skill_registry
+
+    source = payload.get("url", "") or payload.get("path", "")
+    skill_name = payload.get("skill_name", "")
+
+    if not source or not skill_name:
+        raise HTTPException(status_code=400, detail="需要 url 或 path + skill_name")
+
+    target_dir = os.path.expanduser(f"~/.aiplat/skills/{skill_name}")
+    os.makedirs(target_dir, exist_ok=True)
+
+    if payload.get("url"):
+        try:
+            import urllib.request
+            with urllib.request.urlopen(source, timeout=30) as resp:
+                content = resp.read().decode("utf-8", errors="ignore")
+            with open(os.path.join(target_dir, "SKILL.md"), "w", encoding="utf-8") as f:
+                f.write(content)
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"下载失败: {e}")
+    elif payload.get("path"):
+        src_path = os.path.expanduser(source)
+        if not os.path.isdir(src_path):
+            raise HTTPException(status_code=404, detail=f"路径不存在: {src_path}")
+        if os.path.exists(target_dir):
+            raise HTTPException(status_code=409, detail=f"Skill 已存在: {skill_name}")
+        shutil.copytree(src_path, target_dir, dirs_exist_ok=True)
+
+    # Trigger registry re-scan
+    try:
+        reg = get_skill_registry()
+        if hasattr(reg, "seed_data"):
+            reg.seed_data()
+    except Exception:
+        pass
+
+    return {"installed": True, "skill_name": skill_name, "path": target_dir}
+
 # Ontology Branching — branch/fork/diff/merge (Phase 43)
 # ════════════════════════════════════════════════════════════
 

@@ -1,5 +1,5 @@
 ---
-total_capabilities: 903
+total_capabilities: 908
 last_updated: 2026-07-30
 version: "29.0"
 auto_sync: true
@@ -1225,6 +1225,17 @@ auto_sync: true
 
 ---
 
+## 四十一、Skill 目录标准化与验收 (文章对齐)
+
+| 能力 | 位置 | 状态 | 说明 | 实施状态 |
+|------|------|:---:|------|------|
+| SkillRegistry._load_extras | apps/skills/registry.py | ✅ | 扫描 references/scripts/assets 子目录资源 | 2026-07-30 |
+| SkillVerifier | apps/skills/skill_verify.py | ✅ | 5项自动化验收: 可识别/可调用/输出稳定/格式一致/内容符合 | 2026-07-30 |
+| GET /skills/{id}/verify | platform/apps/fde/api/fde.py | ✅ | Skill 验收报告端点 | 2026-07-30 |
+| GET /skills/{id}/extras | platform/apps/fde/api/fde.py | ✅ | Skill 子目录资源查询 | 2026-07-30 |
+| POST /skills/install | platform/apps/fde/api/fde.py | ✅ | 从URL或路径安装Skill | 2026-07-30 |
+
+---
 ## 四十一、E2E端到端验证
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
@@ -1290,8 +1301,9 @@ auto_sync: true
 | 闭环执行层 | 17 | 0 | 17 |
 | 知识编译与OKF | 8 | 0 | 8 |
 | 对话→Wiki 自动管线 | 6 | 0 | 6 |
+| Skill 目录标准化 | 5 | 0 | 5 |
 | E2E 端到端验证 | 11 | 0 | 11 |
-| **总计** | **903** | **0** | **903** |
+| **总计** | **908** | **0** | **908** |
 
 ---
 
