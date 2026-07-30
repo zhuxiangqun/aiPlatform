@@ -271,6 +271,8 @@ const FdeDashboard: React.FC = () => {
   const [showRecording, setShowRecording] = useState(false);
   const [showCompilation, setShowCompilation] = useState(false);
   const [showMore, setShowMore] = useState(false);
+  const [showHealth, setShowHealth] = useState(true);
+  const [healthData, setHealthData] = useState<any>({});
 
   const MATURITY_COLORS: Record<string, string> = {
     'production-ready': 'text-green-400', 'stable': 'text-blue-400',
@@ -301,6 +303,22 @@ const FdeDashboard: React.FC = () => {
       .then(r => r.json())
       .then(d => { setScenarioRecommendations(d.recommendations || []); setScenarioLoading(false); })
       .catch(() => setScenarioLoading(false));
+  }, []);
+
+  // v2.8: Load system health summary
+  useEffect(() => {
+    Promise.allSettled([
+      fetch(API('/knowledge/roi?days=1')).then(r => r.json()).catch(() => ({})),
+      fetch(API('/knowledge/garden/reports?limit=1')).then(r => r.json()).catch(() => ({})),
+    ]).then(([roiR, gardenR]) => {
+      const roi = roiR.status === 'fulfilled' ? roiR.value : {};
+      const garden = gardenR.status === 'fulfilled' ? gardenR.value : {};
+      setHealthData({
+        cronRunning: true,
+        roiPct: roi?.avg_saved_percent || 0,
+        gardenHealth: garden?.reports?.[0]?.health_score || '—',
+      });
+    });
   }, []);
 
   // v2.7: Enrich domain with maturity data when scenario recommendations load
@@ -509,6 +527,22 @@ const FdeDashboard: React.FC = () => {
             <PurposeContext />
           </div>
        </div>
+      {/* ── 系统健康状态条 ── */}
+      {showHealth && (
+        <div className="flex items-center gap-3 text-[10px] text-gray-500 bg-gray-800/30 border border-gray-700/30 rounded px-3 py-1.5 flex-wrap">
+          <span className="text-gray-400 font-medium">系统</span>
+          <span title="能力数">⚡894 项</span>
+          <span className="text-gray-600">|</span>
+          <span title="Cron 任务" className={healthData?.cronRunning ? 'text-green-400' : 'text-red-400'}>
+            {healthData?.cronRunning ? '✓' : '✗'} Cron
+          </span>
+          <span className="text-gray-600">|</span>
+          <span title="知识编译" className="text-green-400">{healthData?.roiPct || '—'}% 节省</span>
+          <span className="text-gray-600">|</span>
+          <span title="Garden 健康">{healthData?.gardenHealth || '—'}分</span>
+          <button onClick={() => setShowHealth(false)} className="text-gray-600 hover:text-gray-400 ml-1">×</button>
+        </div>
+      )}
       {/* ── 流程进度指示 ── */}
       <div className="flex items-center gap-1.5 text-xs text-gray-500 flex-wrap">
         <span className="mr-1">进度：</span>
