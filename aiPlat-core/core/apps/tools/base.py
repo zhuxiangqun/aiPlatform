@@ -375,11 +375,12 @@ class ToolSearchTool(BaseTool):
 
 class SearchTool(BaseTool):
     """
-    Search Tool
+    Search Tool (DEPRECATED — 迁移到 WebSearchTool: apps/tools/web/web_search.py)
     
     Performs web searches using DuckDuckGo Lite.
     Falls back to mock results if search is unavailable.
     """
+    deprecated = True
 
     def __init__(self):
         config = ToolConfig(

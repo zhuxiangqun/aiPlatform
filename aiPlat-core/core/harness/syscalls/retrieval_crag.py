@@ -463,7 +463,7 @@ async def _deep_research_retrieve(
 
 async def _ddg_search(query: str, max_results: int = 5) -> List[Dict[str, str]]:
 
-    """DuckDuckGo instant answer search. Returns [{title, url, snippet}]."""
+    """DuckDuckGo instant answer search. Returns [{title, url, snippet}]. (DEPRECATED - use WebSearchTool backend=json)"""
 
     import urllib.parse as _urlparse
 
