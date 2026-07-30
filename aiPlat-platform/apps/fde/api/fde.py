@@ -3421,6 +3421,82 @@ async def run_e2e_verification(payload: dict = Body(...)):
     )
     return report.to_dict()
 
+
+# ════════════════════════════════════════════════════════════
+# Health Aggregation — 全子系统一键健康检查 (Phase 49)
+# ════════════════════════════════════════════════════════════
+
+@router.get("/health/all")
+async def health_all():
+    """一键聚合所有子系统的健康状态."""
+    subsystems = {}
+    overall = True
+
+    # Scenario Simulation
+    try:
+        from core.harness.execution.simulation import list_simulations
+        sims = list_simulations(limit=1)
+        subsystems["Scenario"] = {"ok": True, "msg": f"{len(sims)} recent simulations"}
+    except Exception as e:
+        subsystems["Scenario"] = {"ok": False, "msg": str(e)[:100]}
+        overall = False
+
+    # Decision Lineage
+    try:
+        from core.harness.infrastructure.lineage_store import LineageStore
+        runs = LineageStore.get().list_recent_runs(limit=1)
+        subsystems["Lineage"] = {"ok": True, "msg": f"{len(runs)} recent runs"}
+    except Exception as e:
+        subsystems["Lineage"] = {"ok": False, "msg": str(e)[:100]}
+        overall = False
+
+    # Security 3D
+    try:
+        from core.harness.infrastructure.gates.purpose_registry import PurposeRegistry
+        purposes = PurposeRegistry.get().list_all()
+        subsystems["Security3D"] = {"ok": True, "msg": f"{len(purposes)} purposes registered"}
+    except Exception as e:
+        subsystems["Security3D"] = {"ok": False, "msg": str(e)[:100]}
+        overall = False
+
+    # Branching
+    try:
+        from core.harness.ontology_engine.ontology_branch import OntologyBranchManager
+        branches = OntologyBranchManager.get().list_branches("fde-delivery")
+        subsystems["Branching"] = {"ok": True, "msg": f"{len(branches)} branches"}
+    except Exception as e:
+        subsystems["Branching"] = {"ok": False, "msg": str(e)[:100]}
+        overall = False
+
+    # EvoX
+    try:
+        from core.harness.execution.atomic_splitter import AtomicTaskSplitter
+        subsystems["EvoX"] = {"ok": True, "msg": "AtomicSplitter available"}
+    except Exception as e:
+        subsystems["EvoX"] = {"ok": False, "msg": str(e)[:100]}
+        overall = False
+
+    # Knowledge ROI
+    try:
+        from core.harness.knowledge.knowledge_roi import KnowledgeROI
+        roi = KnowledgeROI().summary(days=1)
+        subsystems["KnowledgeROI"] = {"ok": True, "msg": f"{roi.total_queries} queries, {roi.total_saved_tokens} tokens saved"}
+    except Exception as e:
+        subsystems["KnowledgeROI"] = {"ok": False, "msg": str(e)[:100]}
+        overall = False
+
+    # Cron
+    try:
+        from core.harness.scheduler.cron import get_cron_scheduler
+        sched = get_cron_scheduler()
+        status = sched.get_status()
+        subsystems["Cron"] = {"ok": status.get("running", False), "msg": f"{len(status.get('jobs', []))} jobs"}
+    except Exception as e:
+        subsystems["Cron"] = {"ok": False, "msg": str(e)[:100]}
+        overall = False
+
+    return {"overall_healthy": overall, "subsystems": subsystems}
+
 # Ontology Branching — branch/fork/diff/merge (Phase 43)
 # ════════════════════════════════════════════════════════════
 
