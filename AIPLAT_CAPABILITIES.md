@@ -1,5 +1,5 @@
 ---
-total_capabilities: 893
+total_capabilities: 892
 last_updated: 2026-07-30
 version: "27.0"
 auto_sync: true
@@ -32,7 +32,7 @@ auto_sync: true
 
 > 代码即真相。每个条目必须有可验证的代码位置。
 > 更新：任何能力变更时同步更新本文档。
-> 评分：98/100（2026-07-20 — 788✅）
+> 评分：98/100（2026-07-20 — 881✅）
 
 ---
 
@@ -414,7 +414,7 @@ auto_sync: true
 | **auto_ontology_pipeline** | core_facade.py:1037 | ✅ | v2.9: 文档变化→本体引擎自动触发，闭合向量KB→Wiki→GraphIndex三段断层 | 2026-07-21 |
 | **Adamic-Adar 图相似度** | graph_index.py:619-691` + `graph_inference.py:145 | ✅ | v2.9: AA(u,v)=Σ1/log(deg(z)) — 稀有共享邻居权重加权，推理边置信度加成 | 2026-07-21 |
 | **Louvain 社区检测** | graph_index.py:695-782 | ✅ | v2.9: 模块度优化的社区发现算法，169节点中检测出5个知识群落 | 2026-07-21 |
-| **Deep Research Level 4** | retrieval_crag.py:133-196` + `materials_chat.py:526 | ✅ | v2.9: CRAG四级降级 — DuckDuckGo联网搜索(AIPLAT_DEEP_RESEARCH_ENABLED) | 2026-07-21 |
+| **Deep Research Level 4** | ⚠️ deprecated retrieval_crag.py:133-196` + `materials_chat.py:526 | ✅ | v2.9: CRAG四级降级 — DuckDuckGo联网搜索(AIPLAT_DEEP_RESEARCH_ENABLED) | 2026-07-21 |
 | **Entity Title Cleaner** | engine.py:63-77 | ✅ | v2.9: _clean_entity_title() — 自动剥离###/-/1./**粗体**等markdown噪声 | 2026-07-21 |
 | **知识漂移治理** | staleness_monitor.py(planned)` + `harness/knowledge/wiki_engine.py | ✅ | v2.9: 来源追溯(detect_communities source_doc_id)+权威优先级(source_priority)+漂移告警(24h cron) | 2026-07-21 |
 | **Drift Status API** | diagnostics.py:2498-2585 | ✅ | v2.9: GET /diagnostics/drift-status + POST /diagnostics/drift-rebuild — 漂移报告+自动重建 | 2026-07-21 |
@@ -624,6 +624,8 @@ auto_sync: true
 | recorder | harness/practice/recorder.py | ✅ | 自动同步 | 已合入 |
 | graph_extract | harness/syscalls/graph_extract.py | ✅ | 自动同步 | 已合入 |
 | async_utils | harness/utils/async_utils.py | ✅ | 自动同步 | 已合入 |
+| trajectory_collector | `harness/digital_human/trajectory_collector.py` | ✅ | 自动同步 | 已合入 |
+| voice_pipeline | `harness/digital_human/voice_pipeline.py` | ✅ | 自动同步 | 已合入 |
 |------|------|:---:|------|------|
 | ExperienceVector | harness/learning/experience_vector.py | ✅ | PipelineTrace→Embedding→语义检索 | 已合入 |
 | ToolDriftDetector | harness/learning/tool_drift_detector.py | ✅ | 4类漂移检测(struct/field/latency/error) + 重放校验自适应 | 已合入 |
@@ -685,7 +687,7 @@ auto_sync: true
 | BusinessGoalTracker | harness/finance/value_calculator.py | ✅ | 目标设定→进度追踪→偏离预警, on_track/at_risk/behind 实时状态 | 已合入 |
 | GoalAwareRouter | harness/execution/dynamic_router.py:GoalAwareRouter | ✅ | 业务目标感知调度: Speed(提速)/Quality(反思)/Safety(HITL) 策略自动切换 | 已合入 |
 | KPIAgent 监控 | harness/agents/kpi_agent.py | ✅ | 自动追踪 KPI → 偏离预警 → strategy_suggest, EvolutionEngine Step12 触发 | 已合入 |
-| Value Center API | core/api/routers/value.py` + `core/schemas_value.py | ✅ | CRUD endpoints: `/all/goals`, `/all/goals/{id}`, `/all/goals/{id}/trend`, `/all/strategy`; Schemas: `GoalCreateRequest`, `GoalUpdateRequest`, `GoalSourceConfigRequest` | 已合入 |
+| Value Center API | ⚠️ deprecated core/api/routers/value.py` + `core/schemas_value.py | ✅ | CRUD endpoints: `/all/goals`, `/all/goals/{id}`, `/all/goals/{id}/trend`, `/all/strategy`; Schemas: `GoalCreateRequest`, `GoalUpdateRequest`, `GoalSourceConfigRequest` | 已合入 |
  `core/api/routers/value.py` | ✅ | `get_all_goals`, `create_goal_all`, `update_goal_all`, `delete_goal_all`, `create_business_goal`, `get_goal_trend_all`, `get_strategy_all` + 4 REST endpoints (`/all/goals`, `/all/strategy`, `/all/goals/{id}`, `/all/goals/{id}/trend`) | 已合入 |
 | Proposal 工作流 | harness/learning/proposal_store.py | ✅ | draft→pending_approval→approved→merged/rejected + branch/merge语义 (Palantir AIP对齐) | 已合入 |
 | FDEBuilderOrchestrator | apps/fde/orchestration/builder.py | ✅ | FDE 对话式 Agent 构建：_clarify()→DomainRouter→SkillRegistry→auto_fill→Builder.deploy_app() | 2026-07-17 |
@@ -1072,7 +1074,7 @@ auto_sync: true
 | Provenance全链路 | schema.py:v52` + `ltm_mixin.py` + `semantic.py | ✅ | source_tag/trust_weight/provenance 三字段 SQL→API→UI全链路落地 | 已合入 |
 | 语义记忆软删除 | manager.py:forget_semantic()` + `memory.py | ✅ | DELETE /memory/semantic/{key} 软删除 + POST /memory/semantic/{key}/recover 恢复 | 已合入 |
 | 记忆规则引擎 | manager.py:save_memory_rules()` + `UserProfileModal.tsx | ✅ | 忽略寒暄/必记报错开关 + 自定义模式匹配, 存于 ~/.aiplat/memory_rules.json | 已合入 |
-| 结构化筛选器 | ltm_mixin.py:list_long_term_memories_filtered() | ✅ | source_tag + min_trust + date_range 参数化查询, 零SQL注入风险 | 已合入 |
+| 结构化筛选器 | ⚠️ deprecated ltm_mixin.py:list_long_term_memories_filtered() | ✅ | source_tag + min_trust + date_range 参数化查询, 零SQL注入风险 | 已合入 |
 | 行展开详情面板 | LongTermMemoryModal.tsx | ✅ | 点击展开: metadata_json + relevance_decay + provenance 完整可视化 | 已合入 |
 | Wiki页面编辑 | KnowledgeBase/index.tsx:handleWikiEdit() | ✅ | 选中Wiki页面→预填充表单→编辑保存 | 已合入 |
 
@@ -1205,6 +1207,7 @@ auto_sync: true
 | CompilationDashboard (UI) | frontend/Diagnostics/CompilationDashboard.tsx | ✅ | 三层可视化：总量→效率对比→ROI累积+日趋势+按域分解 | 2026-07-30 |
 | POST /knowledge/export-okf | platform/apps/fde/api/fde.py | ✅ | 导出域本体为OKF标准格式 | 2026-07-30 |
 | GET /knowledge/roi | platform/apps/fde/api/fde.py | ✅ | 获取知识编译ROI数据 (可设domain/days) | 2026-07-30 |
+| KnowledgeROI auto-wiring | harness/syscalls/retrieval.py | ✅ | 每次知识检索时自动记录ROI数据(rag_tokens vs wiki_tokens)，使CompilationDashboard展示实时数据 | 2026-07-30 |
 | POST /knowledge/roi/record | platform/apps/fde/api/fde.py | ✅ | 记录查询ROI数据 | 2026-07-30 |
 
 ---
@@ -1267,9 +1270,9 @@ auto_sync: true
 | Global Branching | 10 | 0 | 10 |
 | EvoX 蜂群协作 | 16 | 0 | 16 |
 | 闭环执行层 | 17 | 0 | 17 |
-| 知识编译与OKF | 7 | 0 | 7 |
+| 知识编译与OKF | 8 | 0 | 8 |
 | 对话→Wiki 自动管线 | 6 | 0 | 6 |
-| **总计** | **890** | **0** | **890** |
+| **总计** | **892** | **0** | **892** |
 
 ---
 

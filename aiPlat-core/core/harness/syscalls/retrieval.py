@@ -1632,6 +1632,25 @@ def sys_knowledge_retrieve(
         logging.getLogger(__name__).debug('code failed', exc_info=True)
 
 
+    # Phase 47: KnowledgeROI auto-recording (best-effort)
+    try:
+        from core.harness.knowledge.knowledge_roi import KnowledgeROI
+
+        # Estimate tokens: ~500 per wiki page + ~300 per kb doc
+        rag_tokens = len(results) * 500
+        wiki_tokens = max(50, rag_tokens // 8)  # Wiki mode uses ~1/8 of RAG tokens
+
+        roi = KnowledgeROI()
+        roi.record_from_syscall(
+            query_text=query[:200],
+            domain_id=domain_id or collection_id or "default",
+            rag_tokens=rag_tokens,
+            wiki_tokens=wiki_tokens,
+            cache_hit=bool(graph_early_exit),
+        )
+    except Exception:
+        pass
+
     return results[:top_k]
 
 
