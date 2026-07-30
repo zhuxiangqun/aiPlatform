@@ -102,13 +102,17 @@ class OntologyValidator:
                             reason=f"Exclusive state: operation not allowed in '{current}'",
                         )
 
-                # 保留策略 → 仅警告不阻断
+                # 保留策略 → 执行操作 (如 snapshot)
                 if ctype == "retention_policy":
                     action_required = constraint.get("action", "")
                     if action_required:
+                        # Execute the retention action
+                        action_result = self._execute_retention_action(
+                            action_required, domain_id, state
+                        )
                         return ValidationResult(
                             passed=True,
-                            reason=f"Retention policy triggered: {action_required}",
+                            reason=f"Retention policy executed: {action_required} ({action_result})",
                             block=False,
                         )
 
@@ -202,6 +206,27 @@ class OntologyValidator:
             )
 
         return ValidationResult(passed=True, reason="closure satisfied")
+
+    # ── Retention Action Execution ───────────────────────────────────
+
+    def _execute_retention_action(
+        self,
+        action: str,
+        domain_id: str,
+        state: Dict[str, Any],
+    ) -> str:
+        """执行保留策略操作 (如 snapshot_before_deploy)."""
+        if action == "snapshot_before_deploy":
+            try:
+                from core.harness.ontology_engine.graph_index import GraphIndex
+                gi = GraphIndex(domain_id)
+                snap = gi.snapshot(label=f"retention_before_deploy")
+                gi.close()
+                return f"snapshot_id={snap.get('id', '?')}"
+            except Exception as e:
+                logger.warning("Retention snapshot failed: %s", e)
+                return f"snapshot_failed: {e}"
+        return "unknown_action"
 
     # ── Rule Loading ──────────────────────────────────────────────────
 
