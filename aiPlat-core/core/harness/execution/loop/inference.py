@@ -49,6 +49,13 @@ async def reason(
         from ...memory.manager import get_memory_manager
         try:
             mgr = get_memory_manager()
+            # Phase 49: set domain context for Decision Lineage version tracking
+            domain_id = state.context.get("domain_id", "") or state.get("domain_id", "") or state.get("domain", {}).get("id", "")
+            if domain_id:
+                try:
+                    mgr.set_domain_context(domain_id, state.context.get("collection_id", ""))
+                except Exception:
+                    pass
             task = state.context.get("task", "")
             sys_prompt = state.context.get("system_prompt", "")
             mem_ctx = await mgr.build_context(current_query=task, system_prompt=sys_prompt)
