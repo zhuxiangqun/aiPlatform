@@ -96,6 +96,9 @@ def traverse(
     min_weight: float = 0.0,
     relation_weights: Optional[Dict[str, float]] = None,
     use_cache: bool = True,
+    # Phase 50: reasoning evidence trace
+    record_path: bool = False,
+    run_id: str = "",
 ) -> TraversalResult:
     """BFS traversal from start_entity, recording complete paths.
 
@@ -219,6 +222,30 @@ def traverse(
                 visited.add(nid)
                 queue.append((nid, new_path))
                 has_unvisited = True
+
+                # Phase 50: Record traversal step for reasoning evidence
+                if record_path and run_id:
+                    try:
+                        from core.harness.infrastructure.lineage_store import LineageStore
+                        store = LineageStore.get()
+                        step_idx = len(new_path.steps) - 1
+                        store.record_traversal_step(
+                            run_id=run_id,
+                            step_index=step_idx,
+                            from_entity=current_id,
+                            from_name=current_path.terminal.entity_name if current_path.terminal else current_id,
+                            to_entity=nid,
+                            to_name=neighbor.entity_name,
+                            to_class=neighbor.class_name,
+                            relation=edge.relation_name,
+                            relation_label=edge.relation_label,
+                            confidence=edge.confidence,
+                            hop=current_path.length + 1,
+                            parent_decision_id="",
+                            intermediate_value="",
+                        )
+                    except Exception:
+                        pass  # best-effort, don't block traversal
             elif nid == start_id and current_path.length > 0:
                 # Cycle back to start — record as terminal
                 result.paths.append(new_path)

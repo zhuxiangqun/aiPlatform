@@ -3416,6 +3416,27 @@ def run_migrations(conn, current: int, target_version: int) -> int:
         current = 53
 
 
+    # ---- Migration v54: lineage_decisions traversal columns (Phase 50) ----
+
+    if current < 54:
+
+        for col, col_def in [
+            ("parent_decision_id", "TEXT DEFAULT ''"),
+            ("step_index", "INTEGER DEFAULT -1"),
+            ("hop", "INTEGER DEFAULT 0"),
+            ("from_entity", "TEXT DEFAULT ''"),
+            ("to_entity", "TEXT DEFAULT ''"),
+        ]:
+            try:
+                conn.execute(f"ALTER TABLE lineage_decisions ADD COLUMN {col} {col_def}")
+            except Exception:
+                logging.getLogger(__name__).debug('lineage_decisions column-add idempotent: column already exists', exc_info=True)
+
+        _set_version(54)
+
+        current = 54
+
+
     # If legacy db exists with tables but without meta, upgrade meta to current
 
     if current < target_version:

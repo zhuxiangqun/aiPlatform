@@ -320,6 +320,72 @@ class LineageStore:
             },
         }
 
+    # ── Traversal Path Recording (Phase 50) ───────────────────────────
+
+    def record_traversal_step(
+        self,
+        *,
+        run_id: str,
+        step_index: int,
+        from_entity: str,
+        from_name: str = "",
+        to_entity: str,
+        to_name: str = "",
+        to_class: str = "",
+        relation: str = "",
+        relation_label: str = "",
+        confidence: float = 1.0,
+        hop: int = 0,
+        parent_decision_id: str = "",
+        intermediate_value: str = "",
+        actor: str = "",
+        actor_role: str = "",
+    ) -> str:
+        """记录一次语义遍历步骤到 lineage_decisions 表."""
+        try:
+            conn = self._get_conn()
+            decision_id = f"traverse_{_uuid.uuid4().hex[:12]}"
+            conn.execute(
+                """INSERT INTO lineage_decisions (
+                    decision_id, run_id, decision_type, chosen_option,
+                    step_index, hop, from_entity, to_entity,
+                    parent_decision_id, agent_id, actor_role,
+                    choice_reasoning, outcome_summary,
+                    decided_at, created_at, source_call
+                ) VALUES (?, ?, 'traversal', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                (
+                    decision_id, run_id,
+                    f"{from_entity} → {to_entity}",
+                    step_index, hop, from_entity, to_entity,
+                    parent_decision_id, actor, actor_role,
+                    f"via {relation_label or relation} (conf={confidence:.2f})",
+                    intermediate_value or "",
+                    _time.time(), _time.time(), "graph_traversal",
+                ),
+            )
+            conn.commit()
+            conn.close()
+            return decision_id
+        except Exception as e:
+            logger.warning("Traversal step record failed: %s", e)
+            return ""
+
+    def get_traversal_path(self, run_id: str) -> List[Dict[str, Any]]:
+        """获取某个推理会话的完整遍历路径，按 step_index ASC 排序."""
+        try:
+            conn = self._get_conn()
+            rows = conn.execute(
+                """SELECT * FROM lineage_decisions
+                   WHERE run_id = ? AND decision_type = 'traversal'
+                   ORDER BY step_index ASC""",
+                (run_id,),
+            ).fetchall()
+            conn.close()
+            return [dict(r) for r in rows]
+        except Exception as e:
+            logger.warning("Traversal path query failed: %s", e)
+            return []
+
     def list_recent_runs(self, limit: int = 20) -> List[Dict[str, Any]]:
         """列出最近有决策记录的 run."""
         try:

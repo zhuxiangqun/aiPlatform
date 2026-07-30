@@ -64,9 +64,10 @@ const LineageViewer: React.FC = () => {
   const [selectedRun, setSelectedRun] = useState('');
   const [decisions, setDecisions] = useState<DecisionRecord[]>([]);
   const [graph, setGraph] = useState<GraphData | null>(null);
+  const [traversalPath, setTraversalPath] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
-  const [viewMode, setViewMode] = useState<'list' | 'graph'>('list');
+  const [viewMode, setViewMode] = useState<'list' | 'graph' | 'path'>('list');
 
   // Load recent runs on mount
   useEffect(() => {
@@ -79,12 +80,14 @@ const LineageViewer: React.FC = () => {
     setSelectedRun(runId);
     setLoading(true);
     try {
-      const [decRes, graphRes] = await Promise.all([
+      const [decRes, graphRes, pathRes] = await Promise.all([
         fetch(`${API_BASE}/lineage/${runId}?limit=200`).then(r => r.json()),
         fetch(`${API_BASE}/lineage/${runId}/graph`).then(r => r.json()).catch(() => null),
+        fetch(`${API_BASE}/lineage/${runId}/path`).then(r => r.json()).catch(() => null),
       ]);
       setDecisions(decRes.decisions || []);
       setGraph(graphRes);
+      setTraversalPath(pathRes?.path || []);
     } catch (e: any) {
       toast?.error?.(e?.message || '加载失败');
     }
@@ -149,11 +152,12 @@ const LineageViewer: React.FC = () => {
         <div className="flex items-center gap-2">
           <select
             value={viewMode}
-            onChange={e => setViewMode(e.target.value as 'list' | 'graph')}
+            onChange={e => setViewMode(e.target.value as 'list' | 'graph' | 'path')}
             className="bg-gray-800 border border-gray-700 text-gray-300 text-xs rounded px-2 py-1"
           >
             <option value="list">列表视图</option>
             <option value="graph">图谱视图</option>
+            <option value="path">推理路径</option>
           </select>
           <Button variant="ghost" size="sm" onClick={() => {
             fetch(`${API_BASE}/lineage/recent?limit=20`)
@@ -240,6 +244,40 @@ const LineageViewer: React.FC = () => {
                   </div>
                 ))}
             </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Traversal Path View (Phase 50) */}
+      {viewMode === 'path' && (
+        <Card className="border-gray-700/50">
+          <CardHeader>
+            <span className="text-sm font-medium text-gray-200">
+              推理路径 ({traversalPath.length} 步)
+            </span>
+          </CardHeader>
+          <CardContent>
+            {traversalPath.length === 0 ? (
+              <div className="text-xs text-gray-600 text-center py-4">暂无遍历记录 — 执行跨实体推理后自动显示</div>
+            ) : (
+              <div className="space-y-2">
+                {traversalPath.map((step: any, i: number) => (
+                  <div key={step.decision_id || i} className="p-3 rounded bg-gray-800/50 border border-gray-700/30">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-[10px] bg-blue-500/20 text-blue-400 px-1.5 py-0.5 rounded">Step {step.step_index}</span>
+                      <span className="text-xs text-gray-200 font-medium">{step.from_entity}</span>
+                      <span className="text-gray-600 text-xs">→</span>
+                      <span className="text-xs text-purple-400">{step.to_entity}</span>
+                      {step.hop > 0 && <span className="text-[9px] text-gray-600">(hop {step.hop})</span>}
+                    </div>
+                    <div className="text-[10px] text-gray-500 ml-6">{step.choice_reasoning}</div>
+                    {step.outcome_summary && (
+                      <div className="text-[10px] text-green-400 ml-6 mt-1">{step.outcome_summary}</div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
       )}

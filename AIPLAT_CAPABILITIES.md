@@ -1,5 +1,5 @@
 ---
-total_capabilities: 895
+total_capabilities: 898
 last_updated: 2026-07-30
 version: "28.0"
 auto_sync: true
@@ -1231,6 +1231,9 @@ auto_sync: true
 |------|------|:---:|------|------|
 | E2EVerifier | harness/execution/e2e_verifier.py | ✅ | 一次调用验证7子系统: ①拆分②执行③汇合④损耗⑤血缘⑥ROI⑦Wiki | 2026-07-30 |
 | POST /verify/e2e | platform/apps/fde/api/fde.py | ✅ | 端到端全链路验证端点 | 2026-07-30 |
+| record_traversal_step | harness/infrastructure/lineage_store.py | ✅ | 记录语义遍历步骤到lineage_decisions (decision_type=traversal) | 2026-07-30 |
+| GET /lineage/{id}/path | platform/apps/fde/api/fde.py | ✅ | 获取推理遍历路径 | 2026-07-30 |
+| graph_traversal record_path | harness/ontology_engine/graph_traversal.py | ✅ | traverse()新增record_path参数，BFS每步自动记录遍历证据 | 2026-07-30 |
 | GET /health/all | platform/apps/fde/api/fde.py | ✅ | 一键聚合7子系统健康状态 | 2026-07-30 |
 
 ---
@@ -1282,8 +1285,8 @@ auto_sync: true
 | 闭环执行层 | 17 | 0 | 17 |
 | 知识编译与OKF | 8 | 0 | 8 |
 | 对话→Wiki 自动管线 | 6 | 0 | 6 |
-| E2E 端到端验证 | 3 | 0 | 3 |
-| **总计** | **895** | **0** | **895** |
+| E2E 端到端验证 | 6 | 0 | 6 |
+| **总计** | **898** | **0** | **898** |
 
 ---
 

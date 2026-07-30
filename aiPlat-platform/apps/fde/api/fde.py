@@ -3009,6 +3009,14 @@ async def get_lineage_graph(run_id: str):
     return graph
 
 
+@router.get("/lineage/{run_id}/path")
+async def get_traversal_path(run_id: str):
+    """获取推理遍历路径."""
+    from core.harness.infrastructure.lineage_store import LineageStore
+    path = LineageStore.get().get_traversal_path(run_id)
+    return {"run_id": run_id, "path": path, "steps": len(path)}
+
+
 # ════════════════════════════════════════════════════════════
 # Security 3D — Purpose Registry & Marking Levels (Phase 42)
 # ════════════════════════════════════════════════════════════
