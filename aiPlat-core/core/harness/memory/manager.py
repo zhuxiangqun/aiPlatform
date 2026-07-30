@@ -1002,8 +1002,21 @@ class MemoryManager:
             episodic_summary=episodic_summary,
 
             relevant_memories="\n".join([m.content[:200] for m in relevant_memories[:3]]) if relevant_memories else "",
-
+            version_context={
+                "ontology_version": self._current_ontology_version or self._resolve_ontology_version() or "",
+                "kb_collection_version": self._current_collection_version or "",
+            },
         )
+
+    def _resolve_ontology_version(self) -> str:
+        """Best-effort: resolve current ontology version for Decision Lineage context pin."""
+        try:
+            from core.harness.knowledge.versioned_ontology_store import VersionedOntologyStore
+            store = VersionedOntologyStore(domain_id="")
+            ver = store.get_current_version()
+            return str(ver) if ver else ""
+        except Exception:
+            return ""
 
 
 
