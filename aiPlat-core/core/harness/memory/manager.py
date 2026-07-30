@@ -550,6 +550,25 @@ class MemoryManager:
                     current_query, tenant_id=self._tenant_id, session_id=self._session_id)
 
         
+        # Phase 52: Inject ConversationIngestor wiki pages (best-effort)
+        if retrieval_budget != "working_only":
+            try:
+                import os as _parseos, time as _parsetime
+                wiki_root = _parseos.path.expanduser(_parseos.getenv("AIPLAT_HOME", "~/.aiplat")) + "/wiki/collections"
+                if _parseos.path.isdir(wiki_root):
+                    cutoff = _parsetime.time() - 7 * 86400
+                    for col in _parseos.listdir(wiki_root)[:3]:
+                        col_dir = _parseos.path.join(wiki_root, col)
+                        if _parseos.path.isdir(col_dir):
+                            for f in sorted(_parseos.listdir(col_dir), key=lambda x: _parseos.path.getmtime(_parseos.path.join(col_dir, x)), reverse=True)[:3]:
+                                fpath = _parseos.path.join(col_dir, f)
+                                if _parseos.path.isfile(fpath) and _parseos.path.getmtime(fpath) > cutoff:
+                                    with open(fpath, encoding="utf-8", errors="ignore") as fh:
+                                        body = fh.read()[:500]
+                                    relevant_memories.append(type("_IngestorMem", (), {"content": body, "metadata": {"source": "ingestor", "title": f.replace(".md","")}, "importance": 0.7})())
+            except Exception:
+                pass
+        
 
         # 2. Get episodic summary (Phase 18.1: budget-gated)
 

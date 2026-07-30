@@ -275,7 +275,46 @@ class OntologyValidator:
                         if state_rules:
                             rules.extend(state_rules)
             if not rules:
-                return []
+                rules = []  # Keep rules list even if empty for inference_rules
+
+            # Phase 52: Convert inference_rules + transitions to constraint objects
+            infer = data.get("inference_rules", {})
+            if isinstance(infer, dict):
+                for group in infer.get("exclusive_states", []):
+                    states = group.get("states", [])
+                    if isinstance(states, list) and len(states) >= 2:
+                        rules.append({
+                            "constraints": [{"type": "exclusive_state", "states": states}]
+                        })
+                deps = infer.get("state_dependencies", {})
+                if isinstance(deps, dict):
+                    for state_name, dep in deps.items():
+                        requires = dep.get("requires", [])
+                        if isinstance(requires, list) and requires:
+                            rules.append({
+                                "when": f"to == '{state_name}'",
+                                "constraints": [{"type": "output_required", "fields": requires}]
+                            })
+
+            # Convert state_machine transitions to state_guard constraints
+            classes = data.get("classes", {})
+            for class_name, class_def in classes.items():
+                if isinstance(class_def, dict):
+                    states_block = class_def.get("states", {})
+                    if isinstance(states_block, dict):
+                        trans = states_block.get("transitions", [])
+                        if trans:
+                            from_states = []
+                            for t in trans:
+                                f = t.get("from", [])
+                                if isinstance(f, str):
+                                    from_states.append(f)
+                                elif isinstance(f, list):
+                                    from_states.extend(f)
+                            if from_states:
+                                rules.append({
+                                    "constraints": [{"type": "state_guard", "allowed_from": list(set(from_states))}]
+                                })
 
             # Return all rules (constraint-specific filtering happens in pre/post/final methods)
             return rules

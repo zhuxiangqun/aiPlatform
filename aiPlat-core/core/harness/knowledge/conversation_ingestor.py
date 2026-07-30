@@ -262,19 +262,48 @@ class ConversationIngestor:
             ) / "wiki" / "collections" / (domain_id or "default")
             wiki_dir.mkdir(parents=True, exist_ok=True)
             page_path = wiki_dir / f"{topic_slug}.md"
-            page_path.write_text(wiki_content, encoding="utf-8")
-            written = True
+
+            # Phase 52: Conflict detection — don't overwrite user-modified content
+            if page_path.exists():
+                existing = page_path.read_text(encoding="utf-8", errors="ignore")
+                # User modification heuristic: if content differs significantly (>30%) from AI-generated, keep user version
+                if len(existing) > 0 and abs(len(existing) - len(wiki_content)) / max(len(existing), 1) > 0.3:
+                    conflict_path = wiki_dir / f"{topic_slug}.aiplat_conflict"
+                    conflict_path.write_text(
+                        f"# Conflict: {topic_slug}\n\n"
+                        f"## AI-generated version (not applied)\n\n{wiki_content}\n\n"
+                        f"## User-modified version (kept)\n\n{existing}\n",
+                        encoding="utf-8",
+                    )
+                    logger.warning("Wiki conflict for '%s': user version preserved, AI version saved to %s", topic_slug, conflict_path)
+                    written = True  # Don't fail — conflict was handled
+                else:
+                    page_path.write_text(wiki_content, encoding="utf-8")
+                    written = True
+            else:
+                page_path.write_text(wiki_content, encoding="utf-8")
+                written = True
             logger.debug("Wiki page written: %s", page_path)
         except Exception as e:
             logger.warning("Platform wiki write failed: %s", e)
 
-        # 2. 项目级 almanac/ (repo wiki)
+        # 2. 项目级 almanac/ (repo wiki) — repo priority: user modifications win
         if target_dir:
             try:
                 almanac_dir = _Path(target_dir) / "almanac"
                 almanac_dir.mkdir(parents=True, exist_ok=True)
                 page_path = almanac_dir / f"{topic_slug}.md"
-                page_path.write_text(wiki_content, encoding="utf-8")
+
+                if page_path.exists():
+                    existing = page_path.read_text(encoding="utf-8", errors="ignore")
+                    if len(existing) > 0 and abs(len(existing) - len(wiki_content)) / max(len(existing), 1) > 0.15:
+                        # Repo has priority — user modified, keep their version
+                        logger.info("Repo wiki preserved for '%s': user-modified content kept (diff=%.0f%%)",
+                                    topic_slug, abs(len(existing) - len(wiki_content)) / max(len(existing), 1) * 100)
+                    else:
+                        page_path.write_text(wiki_content, encoding="utf-8")
+                else:
+                    page_path.write_text(wiki_content, encoding="utf-8")
                 logger.debug("Repo wiki written: %s", page_path)
             except Exception as e:
                 logger.debug("Repo wiki write failed: %s", e)
