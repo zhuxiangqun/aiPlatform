@@ -1,7 +1,7 @@
 ---
-total_capabilities: 900
+total_capabilities: 903
 last_updated: 2026-07-30
-version: "28.0"
+version: "29.0"
 auto_sync: true
 ---
 
@@ -1236,6 +1236,9 @@ auto_sync: true
 | graph_traversal record_path | harness/ontology_engine/graph_traversal.py | ✅ | traverse()新增record_path参数，BFS每步自动记录遍历证据 | 2026-07-30 |
 | OntologyValidator | harness/infrastructure/gates/ontology_validator.py | ✅ | 本体驱动确定性校验: PreToolUse/PostToolUse/Stop三阶段规则检查 | 2026-07-30 |
 | ontology hooks | harness/infrastructure/hooks/hook_manager.py | ✅ | PreToolUse(priority65)+Stop(priority60)挂接OntologyValidator | 2026-07-30 |
+| inference_rules injection | harness/infrastructure/gates/ontology_validator.py | ✅ | 自动读取exclusive_states+state_dependencies+transitions转为runtime约束 | 2026-07-30 |
+| Ingestor→MemoryManager | harness/memory/manager.py | ✅ | build_context自动注入最近7天byIngestor生成的Wiki页面 | 2026-07-30 |
+| Wiki冲突处理 | harness/knowledge/conversation_ingestor.py | ✅ | 平台>30%/repo>15%差异保留用户版+.aiplat_conflict审计 | 2026-07-30 |
 | GET /health/all | platform/apps/fde/api/fde.py | ✅ | 一键聚合7子系统健康状态 | 2026-07-30 |
 
 ---
@@ -1287,8 +1290,8 @@ auto_sync: true
 | 闭环执行层 | 17 | 0 | 17 |
 | 知识编译与OKF | 8 | 0 | 8 |
 | 对话→Wiki 自动管线 | 6 | 0 | 6 |
-| E2E 端到端验证 | 8 | 0 | 8 |
-| **总计** | **900** | **0** | **900** |
+| E2E 端到端验证 | 11 | 0 | 11 |
+| **总计** | **903** | **0** | **903** |
 
 ---
 
