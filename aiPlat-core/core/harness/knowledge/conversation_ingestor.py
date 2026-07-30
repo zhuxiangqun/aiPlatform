@@ -98,6 +98,12 @@ class ConversationIngestor:
         # 对每条消息用 LLM 判断是否有长期价值
         for msg in messages:
             try:
+                # Phase 57: Skip messages with cognitive risk patterns
+                content = (msg.get("content") or "").lower()
+                if any(kw in content for kw in ["final_answer", "safety_audit", "审核路径", "七步周天", "认知同化"]):
+                    result.skipped += 1
+                    continue
+
                 worth, topic_slug, wiki_content = await self._judge_and_extract(msg)
                 if worth and topic_slug and wiki_content:
                     result.worth_writing += 1

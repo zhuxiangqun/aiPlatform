@@ -614,8 +614,32 @@ def _guard_messages(messages: List[Message], trace_context: Optional[Dict[str, A
 
             logging.getLogger(__name__).debug('code failed', exc_info=True)
     # §5.24: Read CLAUDE.md from disk on every call — it is never compressed away.
-
     _try_inject_claude_md(out, trace_context)
+
+
+    # Phase 57: Cognitive safety — detect recursive self-ref patterns
+    # (labels like </final_answer>, compliance tags, self-describe loops)
+    try:
+        session_id = (trace_context or {}).get("run_id", "") or (trace_context or {}).get("session_id", "")
+        if isinstance(session_id, str) and session_id:
+            last_user = ""
+            for m in reversed(messages):
+                if isinstance(m, dict) and m.get("role") == "user":
+                    last_user = str(m.get("content", ""))[:2000]
+                    break
+            if last_user:
+                from core.harness.infrastructure.recursive_pattern_detector import check_cognitive_safety
+                result = check_cognitive_safety(last_user, "", session_id=session_id)
+                if result.get("risk_detected"):
+                    stats["cognitive_risk"] = result.get("risk_score", 0)
+                    stats["cognitive_details"] = result.get("details", {})
+                    logging.getLogger("aiplat.cognitive_safety").warning(
+                        "Recursive pattern risk: session=%s score=%.2f",
+                        session_id, result.get("risk_score", 0),
+                    )
+    except Exception:
+        pass
+
 
     # §5.24.3: Auto-inject layer boundary constraints (v2.5, Phase 4)
 
