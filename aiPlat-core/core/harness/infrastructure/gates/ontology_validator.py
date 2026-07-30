@@ -281,8 +281,13 @@ class OntologyValidator:
             infer = data.get("inference_rules", {})
             if isinstance(infer, dict):
                 for group in infer.get("exclusive_states", []):
-                    states = group.get("states", [])
-                    if isinstance(states, list) and len(states) >= 2:
+                    # exclusive_states can be: list of list, or list of dict
+                    states = []
+                    if isinstance(group, list):
+                        states = group  # e.g. ["generated","abandoned"]
+                    elif isinstance(group, dict):
+                        states = group.get("states", [])
+                    if states and len(states) >= 2:
                         rules.append({
                             "constraints": [{"type": "exclusive_state", "states": states}]
                         })
