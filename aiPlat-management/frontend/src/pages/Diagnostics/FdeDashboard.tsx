@@ -270,6 +270,7 @@ const FdeDashboard: React.FC = () => {
   const [showTemplate, setShowTemplate] = useState(false);
   const [showRecording, setShowRecording] = useState(false);
   const [showCompilation, setShowCompilation] = useState(false);
+  const [showMore, setShowMore] = useState(false);
 
   const MATURITY_COLORS: Record<string, string> = {
     'production-ready': 'text-green-400', 'stable': 'text-blue-400',
@@ -468,30 +469,43 @@ const FdeDashboard: React.FC = () => {
               className="text-[10px] text-gray-500 hover:text-green-400">
               <GitCommit className="w-3 h-3 mr-1" />决策血缘
             </Button>
-            <Button variant="ghost" size="sm" onClick={() => setShowBranching(!showBranching)}
-              className="text-[10px] text-gray-500 hover:text-yellow-400">
-              <GitFork className="w-3 h-3 mr-1" />本体分支
-            </Button>
-            <Button variant="ghost" size="sm" onClick={() => setShowAgentNetwork(!showAgentNetwork)}
-              className="text-[10px] text-gray-500 hover:text-cyan-400">
-              <Activity className="w-3 h-3 mr-1" />Agent网络
-            </Button>
             <Button variant="ghost" size="sm" onClick={() => setShowEvoX(!showEvoX)}
               className="text-[10px] text-gray-500 hover:text-orange-400">
               <Zap className="w-3 h-3 mr-1" />蜂群推演
             </Button>
-            <Button variant="ghost" size="sm" onClick={() => setShowTemplate(!showTemplate)}
-              className="text-[10px] text-gray-500 hover:text-blue-400">
-              <FileText className="w-3 h-3 mr-1" />模板
-            </Button>
-            <Button variant="ghost" size="sm" onClick={() => setShowRecording(!showRecording)}
-              className="text-[10px] text-gray-500 hover:text-red-400">
-              <Play className="w-3 h-3 mr-1" />录制
-            </Button>
-            <Button variant="ghost" size="sm" onClick={() => setShowCompilation(!showCompilation)}
-              className="text-[10px] text-gray-500 hover:text-purple-400">
-              <BookOpen className="w-3 h-3 mr-1" />编译
-            </Button>
+            <div className="relative">
+              <Button variant="ghost" size="sm" onClick={() => setShowMore(!showMore)}
+                className={`text-[10px] text-gray-500 hover:text-gray-300`}>
+                <ChevronDown className={`w-3 h-3 mr-1 transition-transform ${showMore ? 'rotate-180' : ''}`} />更多
+              </Button>
+              {showMore && (
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setShowMore(false)} />
+                  <div className="absolute right-0 top-full mt-1 w-36 bg-gray-900 border border-gray-700 rounded-lg shadow-xl z-50 p-1">
+                    <button onClick={() => { setShowBranching(!showBranching); setShowMore(false); }}
+                      className="w-full text-left px-3 py-1.5 text-xs text-gray-400 hover:bg-gray-800 hover:text-yellow-400 rounded flex items-center gap-2">
+                      <GitFork className="w-3 h-3" />本体分支
+                    </button>
+                    <button onClick={() => { setShowAgentNetwork(!showAgentNetwork); setShowMore(false); }}
+                      className="w-full text-left px-3 py-1.5 text-xs text-gray-400 hover:bg-gray-800 hover:text-cyan-400 rounded flex items-center gap-2">
+                      <Activity className="w-3 h-3" />Agent网络
+                    </button>
+                    <button onClick={() => { setShowTemplate(!showTemplate); setShowMore(false); }}
+                      className="w-full text-left px-3 py-1.5 text-xs text-gray-400 hover:bg-gray-800 hover:text-blue-400 rounded flex items-center gap-2">
+                      <FileText className="w-3 h-3" />模板
+                    </button>
+                    <button onClick={() => { setShowRecording(!showRecording); setShowMore(false); }}
+                      className="w-full text-left px-3 py-1.5 text-xs text-gray-400 hover:bg-gray-800 hover:text-red-400 rounded flex items-center gap-2">
+                      <Play className="w-3 h-3" />录制
+                    </button>
+                    <button onClick={() => { setShowCompilation(!showCompilation); setShowMore(false); }}
+                      className="w-full text-left px-3 py-1.5 text-xs text-gray-400 hover:bg-gray-800 hover:text-purple-400 rounded flex items-center gap-2">
+                      <BookOpen className="w-3 h-3" />编译
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
             <PurposeContext />
           </div>
        </div>
