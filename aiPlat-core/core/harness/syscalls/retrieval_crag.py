@@ -80,6 +80,8 @@ async def sys_crag_retrieve(
 
     time_filters: Optional[Dict[str, int]] = None,
 
+    run_id: str = "",
+
 ) -> Tuple[str, List[Dict[str, Any]]]:
 
     from ._trace import trace_syscall_entry
@@ -139,7 +141,7 @@ async def sys_crag_retrieve(
         try:
             from core.harness.knowledge_pipeline.retriever import GraphRAGRetriever
             gr = GraphRAGRetriever()
-            g_result = await gr.retrieve(query, domain_id=domain_id, top_k=_effective_top_k)
+            g_result = await gr.retrieve(query, domain_id=domain_id, top_k=_effective_top_k, run_id=run_id)
             if g_result.get("mode") == "graphrag" and g_result.get("chunks"):
                 chunks_text = "\n\n".join(
                     f"[{c.get('title', '')}] {c.get('content', '')}"
