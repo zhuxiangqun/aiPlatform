@@ -216,10 +216,10 @@ class OntologyValidator:
         按 current_state 过滤 (仅匹配当前状态的规则).
         """
         try:
-            from core.harness.knowledge.ontology_loader import load_ontology_from_yaml
+            import os
+            import yaml as _yaml
 
             yaml_path = ""
-            import os
             home = os.path.expanduser(os.getenv("AIPLAT_HOME", "~/.aiplat"))
             yaml_path = f"{home}/ontologies/{domain_id}.yaml"
             if not os.path.exists(yaml_path):
@@ -232,23 +232,27 @@ class OntologyValidator:
             if not os.path.exists(yaml_path):
                 return []
 
-            import yaml as _yaml
             with open(yaml_path) as f:
                 data = _yaml.safe_load(f)
 
-            rules = data.get("side_effects", [])
+            # Phase 51: Scan all classes for side_effects.constraints
+            rules = data.get("side_effects", [])  # top-level
+            classes = data.get("classes", {})
+            for class_name, class_def in classes.items():
+                if isinstance(class_def, dict):
+                    class_rules = class_def.get("side_effects", [])
+                    if class_rules:
+                        rules.extend(class_rules)
+                    # Also check states.side_effects (nested under states key)
+                    states = class_def.get("states", {})
+                    if isinstance(states, dict):
+                        state_rules = states.get("side_effects", [])
+                        if state_rules:
+                            rules.extend(state_rules)
             if not rules:
                 return []
 
-            # Filter by current state
-            if current_state:
-                matching = []
-                for r in rules:
-                    when = r.get("when", "")
-                    if f"'{current_state}'" in when or current_state in when:
-                        matching.append(r)
-                return matching
-
+            # Return all rules (constraint-specific filtering happens in pre/post/final methods)
             return rules
 
         except Exception as e:
