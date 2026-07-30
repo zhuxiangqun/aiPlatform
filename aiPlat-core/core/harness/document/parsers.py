@@ -117,6 +117,28 @@ def parse_html(file_path: str) -> List[Dict[str, Any]]:
     return parse_markitdown(file_path)
 
 
+def extract_text_from_html(html: str) -> str:
+    """HTML → 纯文本 (统一入口)。
+    
+    所有 Web 抓取 / URL 摄入路径通过此函数提取文本。
+    替代 webfetch.py / wiki.py / kb/intelligence/service.py 各自的重复实现。
+    
+    Returns:
+        去除标签后的纯文本 (去除了 script/style/noscript/注释)
+    """
+    # 1. 去除 script / style / noscript 标签及其内容
+    html = re.sub(r'<(script|style|noscript)[^>]*>.*?</\1>', '', html, flags=re.DOTALL | re.IGNORECASE)
+    # 2. 去除 HTML 注释
+    html = re.sub(r'<!--.*?-->', '', html, flags=re.DOTALL)
+    # 3. 去除所有标签
+    text = re.sub(r'<[^>]+>', ' ', html)
+    # 4. 转义 HTML 实体
+    text = text.replace('&amp;', '&').replace('&lt;', '<').replace('&gt;', '>').replace('&quot;', '"').replace('&#39;', "'")
+    # 5. 合并重复空白
+    text = re.sub(r'\s+', ' ', text).strip()
+    return text
+
+
 # ── Audio ──
 
 def parse_audio(file_path: str) -> List[Dict[str, Any]]:

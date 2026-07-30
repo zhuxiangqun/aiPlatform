@@ -102,10 +102,8 @@ class WebFetchTool(BaseTool):
                         links = re.findall(r'href=["\']([^"\']+)["\']', content)
                         output = "\n".join(links[:50])  # Limit to 50 links
                     else:  # text
-                        # Simple text extraction - remove HTML tags
-                        import re
-                        text = re.sub(r'<[^>]+>', '', content)
-                        text = re.sub(r'\s+', ' ', text).strip()
+                        from core.harness.document.parsers import extract_text_from_html
+                        text = extract_text_from_html(content)
                         output = text[:5000]  # Limit text output
                     
                     return ToolResult(

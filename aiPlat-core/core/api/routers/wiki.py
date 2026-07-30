@@ -889,7 +889,7 @@ async def ingest_url(body: dict):
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Failed to fetch URL: {e}")
 
-    # Convert HTML to plain text (try markdownify if available, else strip HTML)
+    # Convert HTML to plain text
     text = raw_html
     title = url.rsplit("/", 1)[-1] or url
     try:
@@ -897,13 +897,8 @@ async def ingest_url(body: dict):
         title_match = _re.search(r"<title>(.*?)</title>", raw_html, _re.IGNORECASE | _re.DOTALL)
         if title_match:
             title = title_match.group(1).strip()[:200]
-        # Strip HTML tags for plain text storage
-        clean = _re.sub(r"<script[^>]*>.*?</script>", "", raw_html, flags=_re.IGNORECASE | _re.DOTALL)
-        clean = _re.sub(r"<style[^>]*>.*?</style>", "", clean, flags=_re.IGNORECASE | _re.DOTALL)
-        clean = _re.sub(r"<[^>]+>", " ", clean)
-        clean = _re.sub(r"\s+", " ", clean).strip()
-        if clean:
-            text = clean
+        from core.harness.document.parsers import extract_text_from_html
+        text = extract_text_from_html(raw_html)
     except Exception:
         logging.getLogger(__name__).debug('HTML text extraction failed, falling back to raw HTML', exc_info=True)
 

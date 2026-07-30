@@ -192,21 +192,17 @@ def _extract_video_from_page_with_playwright(page_url: str, up_dir: Path, file_h
 
 
 def _extract_page_text(html_bytes: bytes, url: str) -> str:
-    """Extract readable text from an HTML page as fallback."""
+    """Extract readable text from HTML page (unified entry via parsers.py)."""
     try:
-        import re as _re
+        from core.harness.document.parsers import extract_text_from_html
         html_text = html_bytes.decode("utf-8", errors="replace")
-        # Remove scripts, styles, tags
-        html_text = _re.sub(r"<script[^>]*>.*?</script>", "", html_text, flags=_re.DOTALL | _re.IGNORECASE)
-        html_text = _re.sub(r"<style[^>]*>.*?</style>", "", html_text, flags=_re.DOTALL | _re.IGNORECASE)
-        html_text = _re.sub(r"<[^>]+>", " ", html_text)
-        html_text = _re.sub(r"\s+", " ", html_text).strip()
-        # Extract title
+        text = extract_text_from_html(html_text)
+        import re as _re
         title_match = _re.search(r"<title>(.*?)</title>", html_bytes.decode("utf-8", errors="replace"), _re.IGNORECASE)
         title = title_match.group(1).strip() if title_match else ""
-        if not html_text or len(html_text) < 50:
-            return f"Source: {url}\nTitle: {title}\n\n⚠️ 页面内容无法提取：该网站使用动态加载（SPA），建议手动复制视频标题和描述后上传为文本文件。"
-        return f"Source: {url}\nTitle: {title}\n\n{html_text[:8000]}".strip()
+        if not text or len(text) < 50:
+            return f"Source: {url}\nTitle: {title}\n\n页面内容无法提取：该网站使用动态加载（SPA），建议手动复制视频标题和描述后上传为文本文件。"
+        return f"Source: {url}\nTitle: {title}\n\n{text[:8000]}".strip()
     except Exception:
         return f"Source: {url}\n(Could not extract text content)"
 
@@ -538,11 +534,10 @@ def enqueue_doc_ingest(
                     raw = raw_bytes.decode("utf-8")
                 except Exception:
                     raw = raw_bytes.decode("latin-1", errors="ignore")
-                p = _TextHTMLParser()
-                p.feed(raw)
-                text = p.text().strip()
+                from core.harness.document.parsers import extract_text_from_html
+                text = extract_text_from_html(raw) if raw else ""
                 if not text:
-                    text = raw.strip()[:200000]
+                    text = raw.strip()[:200000] if raw else ""
                 # overwrite document status to ready + insert element
                 element_id = new_prefixed_id("el")
                 db2.insert_element(
