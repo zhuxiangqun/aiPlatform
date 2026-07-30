@@ -78,9 +78,8 @@ class WebCrawlTool(BaseTool):
         with urllib.request.urlopen(req, timeout=20) as resp:
             html = resp.read().decode("utf-8", errors="ignore")
         # Extract text
-        text = _re.sub(r"<(script|style|noscript)[^>]*>.*?</\1>", "", html, flags=_re.DOTALL | _re.IGNORECASE)
-        text = _re.sub(r"<[^>]+>", " ", text)
-        text = _re.sub(r"\s+", " ", text).strip()
+        from core.harness.document.parsers import extract_text_from_html
+        text = extract_text_from_html(html)
         # Extract links
         links = list(set(_re.findall(r'href=["\']([^"\']+)["\']', html)))
         return text[:10000], [l for l in links if l.startswith("/") or l.startswith("http")]
