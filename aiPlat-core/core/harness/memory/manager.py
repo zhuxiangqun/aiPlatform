@@ -1008,11 +1008,29 @@ class MemoryManager:
             },
         )
 
+    def set_domain_context(self, domain_id: str, collection_id: str = "") -> None:
+        """设置当前域上下文，使 build_context 返回的 version_context 携带正确的版本信息."""
+        if domain_id:
+            self._current_ontology_version = self._resolve_ontology_version_for(domain_id)
+        if collection_id:
+            self._current_collection_version = collection_id
+
     def _resolve_ontology_version(self) -> str:
-        """Best-effort: resolve current ontology version for Decision Lineage context pin."""
+        """Best-effort: resolve current ontology version (deprecated: use set_domain_context)."""
         try:
             from core.harness.knowledge.versioned_ontology_store import VersionedOntologyStore
-            store = VersionedOntologyStore(domain_id="")
+            # Try default domain — caller should use set_domain_context for accuracy
+            store = VersionedOntologyStore(domain_id="ai-knowledge")
+            ver = store.get_current_version()
+            return str(ver) if ver else ""
+        except Exception:
+            return ""
+
+    def _resolve_ontology_version_for(self, domain_id: str) -> str:
+        """Resolve ontology version for a specific domain."""
+        try:
+            from core.harness.knowledge.versioned_ontology_store import VersionedOntologyStore
+            store = VersionedOntologyStore(domain_id=domain_id)
             ver = store.get_current_version()
             return str(ver) if ver else ""
         except Exception:
