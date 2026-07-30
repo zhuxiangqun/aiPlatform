@@ -663,4 +663,63 @@ def get_default_hooks() -> Dict[str, Hook]:
         priority=20,
     )
 
+    # ── OntologyValidator hooks (Phase 51) ───────────────────────────────
+
+    async def ontology_pre_tool_use_hook(context: HookContext):
+        """PreToolUse: ontology-level legality check (best-effort)."""
+        try:
+            ctx = context.state or {}
+            tool_name = str(ctx.get("tool_name", ctx.get("_current_tool", "")))
+            state = ctx.get("_pipeline_state", ctx)
+            domain_id = str(state.get("domain_id", state.get("domain", {}).get("id", "")))
+            if not domain_id or not tool_name:
+                return {"continue": True}
+
+            from core.harness.infrastructure.gates.ontology_validator import OntologyValidator
+            validator = OntologyValidator()
+            result = validator.pre_check(domain_id, tool_name, state, tool_name=tool_name)
+            if not result.passed and result.block:
+                logging.warning("OntologyValidator PRE blocked: %s → %s", tool_name, result.reason)
+                ctx["_onto_validation_blocked"] = result.reason
+                return {"continue": False, "reason": result.reason}
+            if result.warnings:
+                ctx["_onto_warnings"] = result.warnings
+        except Exception:
+            pass
+        return {"continue": True}
+
+    hooks["ontology_pre_tool_use"] = create_hook(
+        name="ontology_pre_tool_use",
+        callback=ontology_pre_tool_use_hook,
+        phase=HookPhase.PRE_TOOL_USE,
+        priority=65,  # After PolicyGate (70) but before execution
+    )
+
+    async def ontology_stop_hook(context: HookContext):
+        """Stop: ontology closure check."""
+        try:
+            ctx = context.state or {}
+            state = ctx.get("_pipeline_state", ctx)
+            domain_id = str(state.get("domain_id", state.get("domain", {}).get("id", "")))
+            if not domain_id:
+                return {"continue": True}
+
+            from core.harness.infrastructure.gates.ontology_validator import OntologyValidator
+            validator = OntologyValidator()
+            result = validator.final_check(domain_id, state)
+            if not result.passed:
+                logging.warning("OntologyValidator STOP: %s", result.reason)
+                ctx["_onto_closure_failed"] = result.reason
+                return {"continue": False, "reason": result.reason}
+        except Exception:
+            pass
+        return {"continue": True}
+
+    hooks["ontology_stop_hook"] = create_hook(
+        name="ontology_stop_hook",
+        callback=ontology_stop_hook,
+        phase=HookPhase.STOP,
+        priority=60,
+    )
+
     return hooks

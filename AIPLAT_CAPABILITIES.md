@@ -1,5 +1,5 @@
 ---
-total_capabilities: 898
+total_capabilities: 900
 last_updated: 2026-07-30
 version: "28.0"
 auto_sync: true
@@ -1234,6 +1234,8 @@ auto_sync: true
 | record_traversal_step | harness/infrastructure/lineage_store.py | ✅ | 记录语义遍历步骤到lineage_decisions (decision_type=traversal) | 2026-07-30 |
 | GET /lineage/{id}/path | platform/apps/fde/api/fde.py | ✅ | 获取推理遍历路径 | 2026-07-30 |
 | graph_traversal record_path | harness/ontology_engine/graph_traversal.py | ✅ | traverse()新增record_path参数，BFS每步自动记录遍历证据 | 2026-07-30 |
+| OntologyValidator | harness/infrastructure/gates/ontology_validator.py | ✅ | 本体驱动确定性校验: PreToolUse/PostToolUse/Stop三阶段规则检查 | 2026-07-30 |
+| ontology hooks | harness/infrastructure/hooks/hook_manager.py | ✅ | PreToolUse(priority65)+Stop(priority60)挂接OntologyValidator | 2026-07-30 |
 | GET /health/all | platform/apps/fde/api/fde.py | ✅ | 一键聚合7子系统健康状态 | 2026-07-30 |
 
 ---
@@ -1285,8 +1287,8 @@ auto_sync: true
 | 闭环执行层 | 17 | 0 | 17 |
 | 知识编译与OKF | 8 | 0 | 8 |
 | 对话→Wiki 自动管线 | 6 | 0 | 6 |
-| E2E 端到端验证 | 6 | 0 | 6 |
-| **总计** | **898** | **0** | **898** |
+| E2E 端到端验证 | 8 | 0 | 8 |
+| **总计** | **900** | **0** | **900** |
 
 ---
 
