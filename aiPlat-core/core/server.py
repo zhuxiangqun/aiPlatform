@@ -1020,8 +1020,12 @@ async def lifespan(app: FastAPI):
         ("core.apps.tools.sysgraph_tools", "SysGraphFindTool", {}),
         ("core.apps.tools.sysgraph_tools", "SysGraphChurnTool", {}),
         ("core.apps.tools.sysgraph_tools", "SysLspFixTool", {}),
-        # Phase 54: Local TTS (Piper) — zero network, zero API key
+        # Phase 54: Local TTS (Piper)
         ("core.apps.tools.tts", "TTSTool", {}),
+        # Phase 55: Unified Web Tools (Firecrawl alignment)
+        ("core.apps.tools.web.web_search", "WebSearchTool", {}),
+        ("core.apps.tools.web.web_crawl", "WebCrawlTool", {}),
+        ("core.apps.tools.web.web_crawl", "WebMapTool", {}),
     ]
     for module_path, cls_name, kwargs in _tool_modules:
         try:
