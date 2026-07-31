@@ -1802,16 +1802,12 @@ async def sys_llm_generate(
 
     # Phase 4 (optional): central prompt assembly + prompt_version for replay/audit.
     prompt_version = None
+    prompt_meta: Dict[str, Any] = {}
+    applied_prompt_revision_ids: List[str] = []
+    prompt_revision_conflicts: List[Dict[str, Any]] = []
+    ignored_prompt_revision_ids: List[str] = []
 
     if gate_mode != "minimal":
-
-        prompt_meta: Dict[str, Any] = {}
-
-        applied_prompt_revision_ids: List[str] = []
-
-        prompt_revision_conflicts: List[Dict[str, Any]] = []
-
-        ignored_prompt_revision_ids: List[str] = []
 
         if os.getenv("AIPLAT_ENABLE_PROMPT_ASSEMBLER", "true").lower() in ("1", "true", "yes", "y"):
 
