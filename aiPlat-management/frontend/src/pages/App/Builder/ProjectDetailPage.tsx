@@ -92,7 +92,7 @@ const ProjectDetailPage: React.FC = () => {
             } as BuilderSession);
           }
         } catch { /* getState may not be available on brand new projects */ }
-      } catch { toast.error('项目加载失败，请返回重试'); nav('/app/projects'); }
+      } catch { toast.error('项目加载失败，请返回重试'); nav('/app/builder/projects'); }
     })();
   }, [id]);
 
@@ -285,7 +285,7 @@ const ProjectDetailPage: React.FC = () => {
         </div>
         <div className="text-[10px] text-gray-500 text-right">{progressPct}% ({currentIdx + 1}/{totalStages} 阶段{stepCount > 0 ? ` · 步 ${stepCount}/${maxSteps}` : ''})</div>
         <div className="flex items-center gap-3">
-          <Button variant="ghost" onClick={() => nav('/app/projects')}><ArrowLeft className="w-4 h-4" /></Button>
+          <Button variant="ghost" onClick={() => nav('/app/builder/projects')}><ArrowLeft className="w-4 h-4" /></Button>
           <div><h1 className="text-lg font-bold text-gray-100 truncate max-w-lg">{project?.name || '项目'}</h1>
           {teamLabel && <p className="text-[11px] text-gray-500 mt-0.5">团队：{teamLabel}</p>}
           {project?.description && <p className="text-[11px] text-gray-500 mt-0.5 line-clamp-1 max-w-md">{project?.description}</p>}</div>
@@ -419,7 +419,7 @@ const ProjectDetailPage: React.FC = () => {
       </div>
       <div className="text-[10px] text-gray-500 text-right">{progressPct}% ({currentIdx + 1}/{totalStages} 阶段{stepCount > 0 ? ` · 步 ${stepCount}/${maxSteps}` : ''})</div>
       <div className="flex items-center gap-3">
-        <Button variant="ghost" onClick={() => nav('/app/projects')}><ArrowLeft className="w-4 h-4" /></Button>
+        <Button variant="ghost" onClick={() => nav('/app/builder/projects')}><ArrowLeft className="w-4 h-4" /></Button>
         <div><h1 className="text-lg font-bold text-gray-100 truncate max-w-lg">{project?.name || '项目'}</h1>
         {teamLabel && <p className="text-[11px] text-gray-500 mt-0.5">团队：{teamLabel}</p>}</div>
       </div>

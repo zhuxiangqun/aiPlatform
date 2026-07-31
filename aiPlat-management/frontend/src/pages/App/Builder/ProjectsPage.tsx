@@ -37,10 +37,10 @@ const ProjectsPage: React.FC = () => {
     setCreating(true);
     const projectName = name.trim() || desc.trim().slice(0, 30) || '新项目';
     try {
-      await projectApi.create({ name: projectName, description: desc, team_id: teamId || undefined });
+      const project = await projectApi.create({ name: projectName, description: desc, team_id: teamId || undefined });
       setShowNew(false); setName(''); setDesc(''); setTeamId('');
-      refresh();
-      toast.success('项目已创建');
+      toast.success('项目已创建，正在进入需求对话...');
+      nav(`/app/builder/projects/${project.project_id}`);
     } catch (e) { toastGateError(e, '创建失败'); }
     finally { setCreating(false); }
   };
@@ -183,7 +183,7 @@ const ProjectsPage: React.FC = () => {
                 key={p.project_id} layout
                 whileHover={{ y: -1 }}
                 className={`rounded-xl border bg-dark-card p-5 cursor-pointer hover:border-primary/40 transition-colors ${selected.has(p.project_id) ? 'border-primary/60 ring-1 ring-primary/30' : 'border-dark-border'}`}
-                onClick={() => selected.size > 0 ? toggleSelect(p.project_id) : nav(`/app/projects/${p.project_id}`)}
+                onClick={() => selected.size > 0 ? toggleSelect(p.project_id) : nav(`/app/builder/projects/${p.project_id}`)}
               >
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex items-center gap-2 min-w-0">
