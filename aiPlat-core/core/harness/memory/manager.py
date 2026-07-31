@@ -454,6 +454,7 @@ class MemoryManager:
         # Scope to caller's session if provided
         if session_id:
             self._session_id = session_id
+        import logging as _bcl; _bcl.getLogger('MEMORY_DEBUG').warning('build_context: session=%s working_msgs=%d', session_id, self._working.message_count)
 
         # P0-1: 检测审计模式——autoreview 审查时只保留 Working Memory
 
@@ -1244,6 +1245,7 @@ class MemoryManager:
         self._working.add("user", user_message, metadata=_wm_meta)
 
         self._working.add("assistant", assistant_message, metadata=_wm_meta)
+        import logging as _sl; _sl.getLogger('MEMORY_DEBUG').warning('save_interaction: session=%s messages=%d', session_id, self._working.message_count)
 
 
 

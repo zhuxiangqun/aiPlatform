@@ -223,8 +223,11 @@ async def core_chat(ctx: ChatContext) -> ChatResult:
             system_prompt=system_prompt,
             session_id=ctx.session_id,
         )
-        if mem_ctx and isinstance(mem_ctx, dict):
-            existing = mem_ctx.get("messages") or mem_ctx.get("history") or []
+        if mem_ctx:
+            existing = mem_ctx.messages if hasattr(mem_ctx, 'messages') else (
+                mem_ctx.get("messages") if isinstance(mem_ctx, dict) else None)
+            if existing is None:
+                existing = mem_ctx.get("history") if isinstance(mem_ctx, dict) else []
             if isinstance(existing, list):
                 message_history = list(existing) + message_history
     except Exception as e:
