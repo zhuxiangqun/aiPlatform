@@ -2297,10 +2297,29 @@ class MemoryManager:
 
     def _get_llm_callable(self):
 
-        """Get a reusable LLM callable for episodic summarization and scoring."""
+        """Get a reusable LLM callable for episodic summarization and scoring.
+
+        If model wasn't injected at init time (env vars not yet available),
+        attempts lazy injection on first use.
+        """
 
         if not self._config.use_llm_summary:
 
+            return None
+
+        # Lazy injection: retry if init-time injection failed
+        if self._config.model is None:
+            try:
+                from core.harness.utils.model_injection import best_model_for_purpose, create_selected_adapter
+                model_name = best_model_for_purpose("doc_llm")
+                if model_name:
+                    self._config.model = create_selected_adapter(model_name=model_name)
+                    logger.info("Episodic LLM summarization: lazy-injected model '%s'", model_name)
+            except Exception as e:
+                logger.warning("Episodic LLM: lazy injection failed: %s", e)
+                return None
+
+        if self._config.model is None:
             return None
 
         try:
