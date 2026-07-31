@@ -123,9 +123,14 @@ class KnowledgeResult:
     entry: KnowledgeEntry
     score: float
     highlight: Optional[str] = None
-    source_page: str = ""           # Wiki page title (provenance)
-    source_category: str = ""       # Wiki page category
-    evidence_range: str = ""        # e.g. "source_doc_id:kb_001, offset:100-500"
+    source_page: str = ""
+    source_category: str = ""
+    evidence_range: str = ""
+
+    @property
+    def content(self) -> str:
+        """Backward-compatible access to entry content."""
+        return self.entry.content if self.entry else ""
 
     def to_dict(self) -> Dict[str, Any]:
         d = {

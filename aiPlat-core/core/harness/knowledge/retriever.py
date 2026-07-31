@@ -229,7 +229,7 @@ class KnowledgeRetriever:
 
 
         if effective_strategy == "keyword_only":
-            chunks = [r.content for r in results] if results else []
+            chunks = [r.entry.content for r in results] if results else []
             if chunks:
                 from .hybrid_retriever import keyword_search
                 scored = keyword_search(query, chunks, top_k=limit)
@@ -238,7 +238,7 @@ class KnowledgeRetriever:
             return results[:limit]
 
         if effective_strategy == "hybrid" and len(results) > 0:
-            chunks = [r.content for r in results]
+            chunks = [r.entry.content for r in results]
             try:
                 from .hybrid_retriever import keyword_search, rrf_fusion
                 vec_ranked = [(i, r) for i, r in enumerate(results)]
@@ -252,7 +252,7 @@ class KnowledgeRetriever:
         if effective_rerank and len(results) > self._rerank_top_k:
             try:
                 from . import reranker
-                chunks = [r.content for r in results]
+                chunks = [r.entry.content for r in results]
                 if self._rerank_method == "multi_factor":
                     scored = reranker.rerank_by_multi_factor(search_query, chunks, top_k=self._rerank_top_k)
                 else:
@@ -265,7 +265,7 @@ class KnowledgeRetriever:
         if effective_qgate and results:
             try:
                 from .retrieval_quality_gate import check_quality
-                chunks = [r.content for r in results]
+                chunks = [r.entry.content for r in results]
                 gate = check_quality(chunks, query, threshold=self._quality_threshold)
                 for r in results:
                     r.metadata = dict(getattr(r, 'metadata', None) or {})

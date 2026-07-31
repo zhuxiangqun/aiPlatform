@@ -468,7 +468,7 @@ class CandidateKnowledgePool:
 
         try:
 
-            from core.harness.knowledge.graph_index import GraphIndex
+            from core.harness.ontology_engine.graph_index import GraphIndex
 
             gi = GraphIndex.load(gap.domain_id)
 

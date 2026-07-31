@@ -246,7 +246,7 @@ class HallucinationTracker:
         检查 claim 中的实体对是否在 GraphIndex 中存在关系边。
         """
         try:
-            from core.harness.knowledge.graph_index import GraphIndex
+            from core.harness.ontology_engine.graph_index import GraphIndex
             # Extract entity pairs from claim
             entities = self._extract_entities(claim)
             if len(entities) < 2:
@@ -278,7 +278,7 @@ class HallucinationTracker:
     def _has_graph_edge(self, entity_a: str, entity_b: str) -> bool:
         """检查图中是否存在实体间的关系边。"""
         try:
-            from core.harness.knowledge.graph_index import GraphIndex
+            from core.harness.ontology_engine.graph_index import GraphIndex
             # Search for nodes by name
             graph = GraphIndex("ai-knowledge")
             node_a = graph.find_by_name(entity_a)

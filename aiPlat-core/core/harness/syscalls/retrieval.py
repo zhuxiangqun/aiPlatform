@@ -1337,7 +1337,7 @@ def sys_knowledge_retrieve(
 
     try:
 
-        from core.harness.knowledge.graph_index import GraphIndex
+        from core.harness.ontology_engine.graph_index import GraphIndex
 
         gi = GraphIndex(domain_id=domain_id or "default")
 
@@ -1607,7 +1607,7 @@ def sys_knowledge_retrieve(
 
         samples.append({"ts": _t0, "total": round(_total, 4),
 
-                        "wiki": round(_wiki_time, 4), "kb": round(_kb_time, 4)})  # noqa: F821
+                        "wiki": round(_total, 4), "kb": round(_total, 4)})  # noqa: F821
 
         _l_os.makedirs(_l_os.path.dirname(lat_path), exist_ok=True)
 
