@@ -713,6 +713,12 @@ def create_selected_adapter(*, model_name: str) -> Any:
 
                         base_url = str(ad.get("api_base_url") or "")
 
+        # infra credential pool / env var fallback (via get_llm_api_key)
+
+        if needs_api_key and not api_key:
+
+            api_key = get_llm_api_key(provider) or ""
+
 
 
     # Env var overrides (fallback only — adapter-based key takes priority)
