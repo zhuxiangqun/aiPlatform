@@ -578,6 +578,12 @@ class BuilderProjectService:
 
         proj = self._projects.get(project_id, {})
         if not prd_data:
+            # Auto-extract PRD from chat via LLM
+            try:
+                prd_data = await self._extract_prd_from_chat(project_id, session)
+            except Exception as e:
+                logging.warning("Auto PRD extraction failed: %s", str(e)[:100])
+        if not prd_data:
             raise ValueError(_AIPLAT_NO_PRD)
 
         proj["confirmed_prd"] = prd_data
