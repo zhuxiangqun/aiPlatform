@@ -2580,8 +2580,13 @@ Output format: JSON array of {{"rank": 1, "score": 0.95, "content": "..."}}"""
 
                     idx = layer[i]
 
-                    logging.getLogger("pipeline_engine").error(
-                        "Stage %d raised exception", idx, exc_info=result)
+                    # Write traceback to dedicated log file for debugging
+                    import traceback as _tb, os as _os
+                    _log_path = _os.path.join(_os.path.expanduser("~/.aiplat"), "pipeline_errors.log")
+                    with open(_log_path, "a") as _lf:
+                        _lf.write(f"\n=== Stage {idx} error at {_time.time()} ===\n")
+                        _lf.write(f"Exception: {result}\n")
+                        _tb.print_exception(type(result), result, result.__traceback__, file=_lf)
                     state["_last_action_reason"] = f"stage_{idx}_error:{result}"
 
                     continue
