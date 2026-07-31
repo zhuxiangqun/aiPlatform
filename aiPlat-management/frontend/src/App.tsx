@@ -68,6 +68,7 @@ const AppMaterialsChat = lazy(() => import('./pages/Platform/KnowledgeBase/Mater
 const AppTeamAssembly = lazy(() => import('./pages/App/Builder/TeamAssemblyPage'));
 const AgentInsightPage = lazy(() => import('./pages/App/Builder/AgentInsightPage'));
 const AppsPage = lazy(() => import('./pages/App/Builder/AppsPage'));
+const AppFactory = lazy(() => import("./pages/App/Factory"));
 const AppChatPage = lazy(() => import('./pages/App/Builder/AppChatPage'));
 const AppProjects = lazy(() => import('./pages/App/Builder/ProjectsPage'));
 const AppProjectDetail = lazy(() => import('./pages/App/Builder/ProjectDetailPage'));
@@ -212,6 +213,7 @@ const router = createBrowserRouter([
       { path: 'platform/kb/health', element: withSuspense(AppKnowledgeBase) },
       { path: 'platform/kb/chat/:sessionId', element: withSuspense(AppMaterialsChat) },
       { path: 'app/builder/team', element: withSuspense(AppTeamAssembly) },
+      { path: "app/factory", element: withSuspense(AppFactory) },
       { path: 'app/builder/projects', element: withSuspense(AppProjects) },
       { path: 'app/builder/projects/:id', element: withSuspense(AppProjectDetail) },
       { path: 'app/builder', element: withSuspense(AppProjects) },

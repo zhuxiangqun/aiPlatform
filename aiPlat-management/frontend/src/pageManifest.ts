@@ -68,10 +68,8 @@ export const menuItems: MenuEntry[] = [
   // ════════════════════════════════════════════════════════════════
   { group: 'build', label: '🤖 AI 应用工厂', items: [
     { key: '_sub_lifecycle', subLabel: '📦 应用生命周期' },
-    { key: '/studio', icon: Sparkles, label: '新建应用' },
+    { key: '/app/factory', icon: FolderOpen, label: '应用工厂' },
     { key: '/diagnostics/fde', icon: Wrench, label: 'FDE 工作台' },
-    { key: '/app/builder', icon: FolderOpen, label: '我的项目' },
-    { key: '/app/apps', icon: Rocket, label: '已部署应用' },
     { key: '_sub_assembly', subLabel: '🧩 能力组装' },
     { key: '/core/agents', icon: Bot, label: 'Agent 管理' },
     { key: '/core/skills', icon: Sparkles, label: 'Skill 管理' },
