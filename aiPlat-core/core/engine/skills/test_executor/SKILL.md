@@ -33,7 +33,7 @@ effects:
   - type: write
     resources: ["filesystem:test_output"]
     idempotent: false
-    rollback_available: false
+    rollback_available: true
 input_schema:
   test_cases:
     type: array
