@@ -3063,6 +3063,12 @@ Output format: JSON array of {{"rank": 1, "score": 0.95, "content": "..."}}"""
 
             if isinstance(result, Exception):
 
+                import traceback as _tb, os as _os
+                _log_path = _os.path.join(_os.path.expanduser("~/.aiplat"), "pipeline_errors.log")
+                with open(_log_path, "a") as _lf:
+                    _lf.write(f"\n=== Stage {target_idx} error (dynamic) at {time.time()} ===\n")
+                    _lf.write(f"Exception: {result}\n")
+                    _tb.print_exception(type(result), result, result.__traceback__, file=_lf)
                 state["_last_action_reason"] = f"stage_{target_idx}_error:{result}"
 
                 continue
