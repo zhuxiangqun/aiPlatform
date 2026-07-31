@@ -698,4 +698,27 @@ const PrdDetailModal: React.FC<{
   );
 };
 
-export default ProjectDetailPage;
+class ProjectDetailErrorBoundary extends React.Component<{ children: React.ReactNode }, { error: Error | null }> {
+  constructor(props: { children: React.ReactNode }) { super(props); this.state = { error: null }; }
+  static getDerivedStateFromError(error: Error) { return { error }; }
+  render() {
+    if (this.state.error) {
+      return (
+        <div className="p-8 text-center">
+          <h2 className="text-red-400 text-lg mb-2">页面加载失败</h2>
+          <pre className="text-gray-400 text-xs mb-4 text-left max-w-lg mx-auto whitespace-pre-wrap">{this.state.error.stack}</pre>
+          <button className="px-4 py-2 bg-primary text-white rounded" onClick={() => window.location.reload()}>刷新重试</button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+const SafeProjectDetailPage = () => (
+  <ProjectDetailErrorBoundary>
+    <ProjectDetailPage />
+  </ProjectDetailErrorBoundary>
+);
+
+export default SafeProjectDetailPage;
