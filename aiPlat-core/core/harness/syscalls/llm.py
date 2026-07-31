@@ -1800,11 +1800,10 @@ async def sys_llm_generate(
 
 
 
+    # Phase 4 (optional): central prompt assembly + prompt_version for replay/audit.
+    prompt_version = None
+
     if gate_mode != "minimal":
-
-        # Phase 4 (optional): central prompt assembly + prompt_version for replay/audit.
-
-        prompt_version = None
 
         prompt_meta: Dict[str, Any] = {}
 
