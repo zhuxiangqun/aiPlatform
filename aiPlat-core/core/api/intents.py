@@ -306,7 +306,7 @@ async def core_chat(ctx: ChatContext) -> ChatResult:
         from core.harness.memory.manager import get_memory_manager as _get_mem2
         mgr = _get_mem2()
         await mgr.save_interaction(
-            user_input=ctx.user_input, agent_output=reply,
+            user_message=ctx.user_input, assistant_message=reply,
             session_id=ctx.session_id,
             metadata={"trace_id": trace_id, "agent_name": ctx.agent_name, "skills_used": skills_used},
         )
