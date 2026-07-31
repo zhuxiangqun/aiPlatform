@@ -424,6 +424,8 @@ class MemoryManager:
 
         *,
 
+        session_id: Optional[str] = None,
+
         skip_system_messages: bool = False,
 
         retrieval_budget: str = "full",
@@ -432,15 +434,12 @@ class MemoryManager:
 
         """Build complete context from all memory layers.
 
-
+        When session_id is provided, scopes Working memory and semantic retrieval
+        to that session (prevents cross-project contamination in Builder PM chats).
 
         When skip_system_messages=True, the caller handles system-level injection
-
         (CLAUDE.md, project context) separately — only memory-layer context
-
         (working/episodic/semantic) is assembled here.
-
-
 
         retrieval_budget: "full" | "minimal" | "working_only"
 
@@ -451,6 +450,10 @@ class MemoryManager:
           - working_only: working memory only (skip all retrieval)
 
         """
+
+        # Scope to caller's session if provided
+        if session_id:
+            self._session_id = session_id
 
         # P0-1: 检测审计模式——autoreview 审查时只保留 Working Memory
 

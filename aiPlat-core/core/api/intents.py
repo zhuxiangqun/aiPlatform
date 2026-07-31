@@ -221,6 +221,7 @@ async def core_chat(ctx: ChatContext) -> ChatResult:
         mem_ctx = await mgr.build_context(
             current_query=ctx.user_input,
             system_prompt=system_prompt,
+            session_id=ctx.session_id,
         )
         if mem_ctx and isinstance(mem_ctx, dict):
             existing = mem_ctx.get("messages") or mem_ctx.get("history") or []
