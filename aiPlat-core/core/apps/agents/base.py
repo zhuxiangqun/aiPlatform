@@ -191,7 +191,9 @@ class BaseAgent(IAgent):
                     if not messages:
                         messages = [{"role": "user", "content": str(context.variables.get("task", ""))}]
                     try:
-                        response = await sys_llm_generate(self._model, messages)
+                        response = await sys_llm_generate(
+                            self._model, messages,
+                            session_id=getattr(context, 'session_id', None) or None)
                         output = getattr(response, 'content', str(response))
                         self._status = AgentStatus.COMPLETED
                         return AgentResult(success=True, output=output, metadata={
