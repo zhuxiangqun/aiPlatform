@@ -546,10 +546,24 @@ class BuilderProjectService:
             start = reply.find("{")
             end = reply.rfind("}") + 1
             if start >= 0 and end > start:
-                prd = _json.loads(reply[start:end])
-                _log.info("_extract_prd_from_chat: extracted PRD with keys %s", list(prd.keys())[:5])
-                return prd
-            _log.info("_extract_prd_from_chat: no JSON found in reply")
+                json_str = reply[start:end]
+                # Handle common LLM formatting issues
+                prd = None
+                for parser in [
+                    lambda s: _json.loads(s),                           # standard JSON
+                    lambda s: _json.loads(s.replace("'", '"')),         # single-quoted keys
+                    lambda s: eval(s),                                  # Python dict literal
+                ]:
+                    try:
+                        prd = parser(json_str)
+                        if isinstance(prd, dict) and prd:
+                            break
+                    except Exception:
+                        continue
+                if prd and isinstance(prd, dict):
+                    _log.info("_extract_prd_from_chat: extracted PRD with keys %s", list(prd.keys())[:5])
+                    return prd
+            _log.info("_extract_prd_from_chat: no valid JSON found in reply")
         except Exception as e:
             _log.warning("_extract_prd_from_chat failed: %s", str(e)[:200])
         return None

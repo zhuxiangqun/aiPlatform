@@ -199,6 +199,27 @@ async def recommend_team_stages(
     except Exception as e:
         logging.warning(str(e), exc_info=True)
 
+    # Fallback: if LLM returned 0 stages, generate a safe minimal team
+    if not recommendation.stages:
+        fallback_stages = [
+            {"agent_id": "architect_agent", "agent_name": "架构师", "agent_type": "react",
+             "phase": "architecture", "order": 0, "hitl": True,
+             "hitl_phase": "awaiting_architecture_approval",
+             "output_artifact": "architecture", "uses_file_output": False, "generate_test_plan": False},
+            {"agent_id": "programmer_agent", "agent_name": "程序员", "agent_type": "react",
+             "phase": "development", "order": 1,
+             "output_artifact": "code", "uses_file_output": True, "generate_test_plan": False},
+            {"agent_id": "qa_agent", "agent_name": "测试工程师", "agent_type": "react",
+             "phase": "testing", "order": 2,
+             "output_artifact": "test_report", "uses_file_output": False, "generate_test_plan": True,
+             "test_result_key": "test_report"},
+        ]
+        for i, fs in enumerate(fallback_stages):
+            fs["id"] = f"stage_{i}"
+            recommendation.stages.append(fs)
+        recommendation.team_name = recommendation.team_name or "默认开发团队"
+        recommendation.reasoning = (recommendation.reasoning or "AI 团队推荐未生成有效方案，使用默认团队配置。")
+
     # Validate recommended agents
     unknown = []
     for s in recommendation.stages:
