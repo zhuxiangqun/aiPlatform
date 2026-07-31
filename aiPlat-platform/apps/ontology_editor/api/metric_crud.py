@@ -5,7 +5,7 @@ from typing import Any, Dict, List, Optional
 router = APIRouter(tags=["ontology-editor-metrics"])
 
 
-@router.get("/domains/{domain_id}/metrics", response_model=Dict[str, Any])
+@router.get("/domains/{domain_id}/metrics", response_model=StatusResponse)
 async def list_metrics(domain_id: str):
     u"""List all metric definitions for a domain."""
     try:
@@ -25,7 +25,7 @@ async def list_metrics(domain_id: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/domains/{domain_id}/metrics/{metric_name}/value", response_model=Dict[str, Any])
+@router.get("/domains/{domain_id}/metrics/{metric_name}/value", response_model=StatusResponse)
 async def get_metric_value(domain_id: str, metric_name: str, days: int = Query(30)):
     u"""Get current metric value with threshold color."""
     try:
@@ -46,7 +46,7 @@ async def get_metric_value(domain_id: str, metric_name: str, days: int = Query(3
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/domains/{domain_id}/metrics/{metric_name}/trend", response_model=Dict[str, Any])
+@router.get("/domains/{domain_id}/metrics/{metric_name}/trend", response_model=StatusResponse)
 async def get_metric_trend(domain_id: str, metric_name: str, days: int = Query(30)):
     u"""Get daily metric trend for the last N days."""
     try:
@@ -67,7 +67,7 @@ async def get_metric_trend(domain_id: str, metric_name: str, days: int = Query(3
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/domains/{domain_id}/metrics/scorecard", response_model=Dict[str, Any])
+@router.get("/domains/{domain_id}/metrics/scorecard", response_model=StatusResponse)
 async def get_scorecard(domain_id: str):
     u"""Get a scorecard of all metrics for a domain."""
     try:

@@ -343,7 +343,8 @@ scripts/ruff_f821_baseline.json        ← F821 基线快照（ratchet 对比基
     | E | §66 | `PipelineStageConfig` 校验识别为已知假阳性 | **假阳性** |
     | F | §65 | CRAG 3 级回退 | **✅ 已实现** — `materials_chat.py:380-498` |
     | G | §65 | WikiCircuitBreaker/DomainRouter 配置 | **✅ 已实现** — `harness/syscalls/retrieval.py:504`，`domain_router.py:26` |
-    | H | §67 | ~953 个端点使用 `response_model=dict` 而非 typed schema（~1,064 端点中 111 已类型化） | **✅ 已修复 (2026-07-18)** — 全量 typed 化完成。FDE (76端点, FdeStatusResponse等) + 其余6模块 (134端点, StatusResponse等) + core routers (10端点)。全系统 `response_model=dict` 已清零。arch_guard §83 确保不再增长。 |
+    | H | §67 | ~953 个端点使用 `response_model=dict` 而非 typed schema（~1,064 端点中 111 已类型化） | **✅ 已修复 (2026-07-18)** — 全量 typed 化完成。FDE (76端点, FdeStatusResponse等) + 其余6模块 (134端点, StatusResponse等) + core routers (10端点)。全系统 `response_model=dict` 已清零 → 替换为 `StatusResponse` 等 typed models。arch_guard §91 确保不再增长。 |
+<!-- verify: cmd: grep -rn "response_model=dict" aiPlat-platform/ --include="*.py" | grep -v "# noqa" | grep -v "apps/common_schemas" | wc -l expect: 0 operator: eq desc: response_model=dict 清零 -->
     | I | — | Episodic 记忆 LLM 摘要不可达 | **✅ 已修复 (2026-06-29)** — `MemoryManager.__init__` 自动注入 `best_model_for_purpose("doc_llm")`，LLM 摘要路径从不可达变为激活。 （验证：grep -rn "best_model_for_purpose" aiPlat-core/core/harness/memory/manager.py | wc -l → >0）  |
     | J | — | FeedbackLoops DB 后端未实现 | **✅ 已修复 (2026-06-29)** — `_store_to_db()` 实现 SQLite INSERT/retrieve/delete/cleanup 全路径。 |
     | K | — | DatabaseTool 占位符 | **✅ 已修复 (2026-06-29)** — SQLite/PostgreSQL/MySQL 三后端完整实现，默认 SQLite（零依赖），异步驱动可选。 （验证：ls aiPlat-core/core/apps/tools/database.py → 存在）  |

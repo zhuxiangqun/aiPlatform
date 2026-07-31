@@ -10,7 +10,7 @@ from fastapi import APIRouter, HTTPException, Request
 router = APIRouter(prefix="/platform", tags=["kb-integration"])
 
 
-@router.post("/kb/slack/query", response_model=Dict[str, Any])
+@router.post("/kb/slack/query", response_model=StatusResponse)
 async def kb_slack_query(request: Request):
     """Slack slash-command webhook: answer KB questions from Slack.
 
@@ -54,7 +54,7 @@ async def kb_slack_query(request: Request):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/kb/widget/embed.js", response_model=Dict[str, Any])
+@router.get("/kb/widget/embed.js", response_model=StatusResponse)
 async def kb_widget_js():
     """Minimal embeddable JS widget for aiPlat KB."""
     from fastapi.responses import Response

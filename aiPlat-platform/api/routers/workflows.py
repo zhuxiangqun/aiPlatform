@@ -43,13 +43,13 @@ async def _record_workflow_changeset(name: str, workflow_id: str, status: str = 
         _log.debug(f"Failed to record changeset for workflow {workflow_id}", exc_info=True)
 
 
-@router.get("", response_model=Dict[str, Any])
+@router.get("", response_model=StatusResponse)
 async def list_workflows_endpoint(_auth: str = Depends(require_auth)):
     items = await _svc.list()
     return {"workflows": items, "total": len(items)}
 
 
-@router.get("/{workflow_id}", response_model=Dict[str, Any])
+@router.get("/{workflow_id}", response_model=StatusResponse)
 async def get_workflow_endpoint(workflow_id: str, _auth: str = Depends(require_auth)):
     item = await _svc.get(workflow_id)
     if not item:
@@ -57,7 +57,7 @@ async def get_workflow_endpoint(workflow_id: str, _auth: str = Depends(require_a
     return item
 
 
-@router.post("", response_model=Dict[str, Any])
+@router.post("", response_model=StatusResponse)
 async def create_workflow_endpoint(req: Dict[str, Any], _auth: str = Depends(require_auth)):
     try:
         item = await _svc.create(
@@ -72,7 +72,7 @@ async def create_workflow_endpoint(req: Dict[str, Any], _auth: str = Depends(req
         raise HTTPException(status_code=400, detail=str(e))
 
 
-@router.put("/{workflow_id}", response_model=Dict[str, Any])
+@router.put("/{workflow_id}", response_model=StatusResponse)
 async def update_workflow_endpoint(workflow_id: str, req: Dict[str, Any], _auth: str = Depends(require_auth)):
     kwargs: Dict[str, Any] = {}
     if "name" in req:
@@ -91,14 +91,14 @@ async def update_workflow_endpoint(workflow_id: str, req: Dict[str, Any], _auth:
         raise HTTPException(status_code=404, detail=str(e))
 
 
-@router.delete("/{workflow_id}", response_model=Dict[str, Any])
+@router.delete("/{workflow_id}", response_model=StatusResponse)
 async def delete_workflow_endpoint(workflow_id: str, _auth: str = Depends(require_auth)):
     await _svc.delete(workflow_id)
     await _record_workflow_changeset("delete_workflow", workflow_id)
     return {"status": "deleted", "id": workflow_id}
 
 
-@router.post("/{workflow_id}/execute", response_model=Dict[str, Any])
+@router.post("/{workflow_id}/execute", response_model=StatusResponse)
 async def execute_workflow_endpoint(workflow_id: str, req: Dict[str, Any] = {}, _auth: str = Depends(require_auth)):
     try:
         result = await _svc.execute(workflow_id, launch_name=str(req.get("name") or ""))
@@ -107,13 +107,13 @@ async def execute_workflow_endpoint(workflow_id: str, req: Dict[str, Any] = {}, 
         raise HTTPException(status_code=404, detail=str(e))
 
 
-@router.get("/{workflow_id}/runs", response_model=Dict[str, Any])
+@router.get("/{workflow_id}/runs", response_model=StatusResponse)
 async def list_workflow_runs_endpoint(workflow_id: str, _auth: str = Depends(require_auth)):
     runs = await _svc.list_runs(workflow_id)
     return {"runs": runs, "total": len(runs)}
 
 
-@router.post("/{workflow_id}/toggle-enabled", response_model=Dict[str, Any])
+@router.post("/{workflow_id}/toggle-enabled", response_model=StatusResponse)
 async def toggle_workflow_enabled_endpoint(workflow_id: str, _auth: str = Depends(require_auth)):
     # Try directory-based manager first, fall back to SQLite
     mgr = _get_wf_mgr()
@@ -132,7 +132,7 @@ async def toggle_workflow_enabled_endpoint(workflow_id: str, _auth: str = Depend
     return {"enabled": result, "workflow_id": workflow_id}
 
 
-@router.get("/runs/{run_id}/events/latest", response_model=Dict[str, Any])
+@router.get("/runs/{run_id}/events/latest", response_model=StatusResponse)
 async def get_latest_event_endpoint(run_id: str, _auth: str = Depends(require_auth)):
     from storage.sqlite import get_latest_event
     event = get_latest_event(run_id)
@@ -141,14 +141,14 @@ async def get_latest_event_endpoint(run_id: str, _auth: str = Depends(require_au
     return {"event": event}
 
 
-@router.get("/runs/{run_id}/events", response_model=Dict[str, Any])
+@router.get("/runs/{run_id}/events", response_model=StatusResponse)
 async def list_events_endpoint(run_id: str, _auth: str = Depends(require_auth)):
     from storage.sqlite import list_pipeline_events
     events = list_pipeline_events(run_id)
     return {"events": events, "total": len(events)}
 
 
-@router.post("/{workflow_id}/stop", response_model=Dict[str, Any])
+@router.post("/{workflow_id}/stop", response_model=StatusResponse)
 async def stop_workflow_run(workflow_id: str, req: Dict[str, Any] = {}, _auth: str = Depends(require_auth)):
     """Cancel a running pipeline by project_id."""
     project_id = str(req.get("project_id", ""))
@@ -159,7 +159,7 @@ async def stop_workflow_run(workflow_id: str, req: Dict[str, Any] = {}, _auth: s
     return {"status": "cancelled", "project_id": project_id}
 
 
-@router.post("/{workflow_id}/sign", response_model=Dict[str, Any])
+@router.post("/{workflow_id}/sign", response_model=StatusResponse)
 async def sign_workflow(workflow_id: str, req: Dict[str, Any] = {}, _auth: str = Depends(require_auth)):
     """Sign a workflow directory with an Ed25519 private key. Writes WORKFLOW.manifest.json."""
     mgr = _get_wf_mgr()
@@ -213,7 +213,7 @@ async def sign_workflow(workflow_id: str, req: Dict[str, Any] = {}, _auth: str =
     return {"status": "signed", "bundle_sha256": bundle_sha256, "version": str(version), "signature": signature}
 
 
-@router.post("/{workflow_id}/publish", response_model=Dict[str, Any])
+@router.post("/{workflow_id}/publish", response_model=StatusResponse)
 async def publish_version_endpoint(workflow_id: str, req: Dict[str, Any] = {}, _auth: str = Depends(require_auth)):
     # Try directory-based manager first
     mgr = _get_wf_mgr()
@@ -236,14 +236,14 @@ async def publish_version_endpoint(workflow_id: str, req: Dict[str, Any] = {}, _
     return ver
 
 
-@router.get("/{workflow_id}/versions", response_model=Dict[str, Any])
+@router.get("/{workflow_id}/versions", response_model=StatusResponse)
 async def list_versions_endpoint(workflow_id: str, _auth: str = Depends(require_auth)):
     from storage.sqlite import list_workflow_versions
     versions = list_workflow_versions(workflow_id)
     return {"versions": versions, "total": len(versions), "latest_version": versions[0]["version"] if versions else 0}
 
 
-@router.post("/{workflow_id}/restore/{version_id:path}", response_model=Dict[str, Any])
+@router.post("/{workflow_id}/restore/{version_id:path}", response_model=StatusResponse)
 async def restore_version_endpoint(workflow_id: str, version_id: str, _auth: str = Depends(require_auth)):
     from storage.sqlite import get_workflow_version, update_workflow
     ver = get_workflow_version(version_id)

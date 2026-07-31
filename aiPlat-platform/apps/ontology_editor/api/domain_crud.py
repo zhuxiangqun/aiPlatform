@@ -18,7 +18,7 @@ from typing import Any, Dict, List
 router = APIRouter(tags=["ontology-editor"])
 
 
-@router.get("/domains", response_model=Dict[str, Any])
+@router.get("/domains", response_model=StatusResponse)
 async def list_domains():
     u"""List all ontology domains with class/property/rule counts."""
     try:
@@ -29,7 +29,7 @@ async def list_domains():
         raise HTTPException(status_code=500, detail=f"Failed to list domains: {e}")
 
 
-@router.get("/domains/{domain_id}/schema", response_model=Dict[str, Any])
+@router.get("/domains/{domain_id}/schema", response_model=StatusResponse)
 async def get_domain_schema(domain_id: str):
     u"""Get full domain schema as JSON (classes, properties, rules)."""
     try:
@@ -42,7 +42,7 @@ async def get_domain_schema(domain_id: str):
         raise HTTPException(status_code=500, detail=f"Failed to load domain schema: {e}")
 
 
-@router.post("/domains", response_model=Dict[str, Any])
+@router.post("/domains", response_model=StatusResponse)
 async def create_domain(data: Dict[str, Any]):
     u"""Create a new empty ontology domain YAML."""
     try:
@@ -65,7 +65,7 @@ async def create_domain(data: Dict[str, Any]):
         raise HTTPException(status_code=500, detail=f"Failed to create domain: {e}")
 
 
-@router.put("/domains/{domain_id}", response_model=Dict[str, Any])
+@router.put("/domains/{domain_id}", response_model=StatusResponse)
 async def update_domain_meta(domain_id: str, data: Dict[str, Any]):
     u"""Update domain metadata (name, description, version, namespace)."""
     try:
@@ -84,7 +84,7 @@ async def update_domain_meta(domain_id: str, data: Dict[str, Any]):
         raise HTTPException(status_code=500, detail=f"Failed to update domain: {e}")
 
 
-@router.delete("/domains/{domain_id}", response_model=Dict[str, Any])
+@router.delete("/domains/{domain_id}", response_model=StatusResponse)
 async def delete_domain(domain_id: str):
     u"""Delete an ontology domain YAML and remove from registry."""
     try:
@@ -97,7 +97,7 @@ async def delete_domain(domain_id: str):
         raise HTTPException(status_code=500, detail=f"Failed to delete domain: {e}")
 
 
-@router.post("/domains/{domain_id}/classes", response_model=Dict[str, Any])
+@router.post("/domains/{domain_id}/classes", response_model=StatusResponse)
 async def upsert_class(domain_id: str, data: Dict[str, Any]):
     u"""Create or update a class definition within a domain."""
     try:
@@ -117,7 +117,7 @@ async def upsert_class(domain_id: str, data: Dict[str, Any]):
         raise HTTPException(status_code=500, detail=f"Failed to upsert class: {e}")
 
 
-@router.delete("/domains/{domain_id}/classes/{class_name}", response_model=Dict[str, Any])
+@router.delete("/domains/{domain_id}/classes/{class_name}", response_model=StatusResponse)
 async def delete_class(domain_id: str, class_name: str):
     u"""Remove a class from a domain YAML."""
     try:
@@ -130,7 +130,7 @@ async def delete_class(domain_id: str, class_name: str):
         raise HTTPException(status_code=500, detail=f"Failed to delete class: {e}")
 
 
-@router.get("/domains/{domain_id}/rule-versions", response_model=Dict[str, Any])
+@router.get("/domains/{domain_id}/rule-versions", response_model=StatusResponse)
 async def list_rule_versions(domain_id: str):
     u"""List saved rule version snapshots for a domain."""
     try:
@@ -141,7 +141,7 @@ async def list_rule_versions(domain_id: str):
         raise HTTPException(status_code=500, detail=f"Failed to list rule versions: {e}")
 
 
-@router.post("/domains/{domain_id}/rules/generate-from-description", response_model=Dict[str, Any])
+@router.post("/domains/{domain_id}/rules/generate-from-description", response_model=StatusResponse)
 async def generate_rule_from_description(domain_id: str, data: Dict[str, Any]):
     u"""NL→Rule: LLM generates inference rule draft from natural language description."""
     try:
@@ -192,7 +192,7 @@ async def generate_rule_from_description(domain_id: str, data: Dict[str, Any]):
         raise HTTPException(status_code=500, detail=f"Generation failed: {e}")
 
 
-@router.post("/domains/{domain_id}/rules/audit", response_model=Dict[str, Any])
+@router.post("/domains/{domain_id}/rules/audit", response_model=StatusResponse)
 async def audit_rules(domain_id: str):
     u"""Audit inference rules for conflicts, unreachable premises, missing transitions."""
     try:
@@ -208,7 +208,7 @@ async def audit_rules(domain_id: str):
         raise HTTPException(status_code=500, detail=f"Audit failed: {e}")
 
 
-@router.post("/domains/{domain_id}/publish", response_model=Dict[str, Any])
+@router.post("/domains/{domain_id}/publish", response_model=StatusResponse)
 async def publish_domain(domain_id: str):
     u"""Validate and publish domain YAML — snapshot + cache invalidation."""
     try:
@@ -221,7 +221,7 @@ async def publish_domain(domain_id: str):
         raise HTTPException(status_code=500, detail=f"Failed to publish domain: {e}")
 
 
-@router.post("/domains/{domain_id}/generate-from-description", response_model=Dict[str, Any])
+@router.post("/domains/{domain_id}/generate-from-description", response_model=StatusResponse)
 async def generate_from_description(domain_id: str, data: Dict[str, Any]):
     u"""NL→YAML: LLM generates ontology class draft from natural language description."""
     try:

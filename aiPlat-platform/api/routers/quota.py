@@ -23,7 +23,7 @@ def _store(rt: Optional[KernelRuntime]):
     return getattr(rt, "execution_store", None) if rt else None
 
 
-@router.get("/quota/snapshot", response_model=Dict[str, Any])
+@router.get("/quota/snapshot", response_model=StatusResponse)
 async def get_quota_snapshot(tenant_id: str, http_request: Request, rt: RuntimeDep = None):
     store = _store(rt)
     if not store:
@@ -43,7 +43,7 @@ async def get_quota_snapshot(tenant_id: str, http_request: Request, rt: RuntimeD
     return item
 
 
-@router.put("/quota/snapshot", response_model=Dict[str, Any])
+@router.put("/quota/snapshot", response_model=StatusResponse)
 async def put_quota_snapshot(request: dict, http_request: Request, rt: RuntimeDep = None):
     store = _store(rt)
     if not store:
@@ -87,7 +87,7 @@ async def put_quota_snapshot(request: dict, http_request: Request, rt: RuntimeDe
     return saved
 
 
-@router.get("/quota/usage", response_model=Dict[str, Any])
+@router.get("/quota/usage", response_model=StatusResponse)
 async def get_quota_usage(
     http_request: Request,
     tenant_id: str,

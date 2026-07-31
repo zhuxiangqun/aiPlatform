@@ -22,7 +22,7 @@ from core.schemas_conversations import (
     ConversationQueryRequest,
     ConversationScopeUpdateRequest,
 )
-from api.schemas_response import (
+from api.schemas_response import (, StatusResponse
     ConversationResponse,
     ConversationListResponse,
     ConversationScopeUpdateResponse,
@@ -211,7 +211,7 @@ async def query_conversation(session_id: str, request: ConversationQueryRequest,
     return resp
 
 
-@router.post("/conversations/{session_id}/query/stream", response_model=Dict[str, Any])
+@router.post("/conversations/{session_id}/query/stream", response_model=StatusResponse)
 async def query_conversation_stream(session_id: str, request: ConversationQueryRequest, http_request: Request, rt: RuntimeDep = None):
     """Stream conversation query response via Server-Sent Events."""
     from fastapi.responses import StreamingResponse

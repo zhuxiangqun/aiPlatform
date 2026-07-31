@@ -181,7 +181,7 @@ async def _create_gate_policy_approval_request(
     return str(req.request_id)
 
 
-@router.post("/governance/gate-policies/bootstrap", response_model=Dict[str, Any])
+@router.post("/governance/gate-policies/bootstrap", response_model=StatusResponse)
 async def bootstrap_gate_policies(http_request: Request, force: bool = False, rt: RuntimeDep = None):
     """
     Seed built-in templates: dev/staging/prod.
@@ -218,7 +218,7 @@ async def bootstrap_gate_policies(http_request: Request, force: bool = False, rt
     return {"status": "ok", "seeded": True, "default_id": "dev", "items": ["dev", "staging", "prod"], "links": governance_links(change_id=cid) if cid else {}}
 
 
-@router.get("/governance/gate-policies", response_model=Dict[str, Any])
+@router.get("/governance/gate-policies", response_model=StatusResponse)
 async def list_gate_policies(rt: RuntimeDep = None):
     store = _store(rt)
     if not store:
@@ -228,7 +228,7 @@ async def list_gate_policies(rt: RuntimeDep = None):
     return {"status": "ok", "default_id": data.get("default_id"), "items": items}
 
 
-@router.get("/governance/gate-policies/{policy_id}", response_model=Dict[str, Any])
+@router.get("/governance/gate-policies/{policy_id}", response_model=StatusResponse)
 async def get_gate_policy(policy_id: str, rt: RuntimeDep = None):
     store = _store(rt)
     if not store:
@@ -241,7 +241,7 @@ async def get_gate_policy(policy_id: str, rt: RuntimeDep = None):
     raise HTTPException(status_code=404, detail="policy_not_found")
 
 
-@router.put("/governance/gate-policies/{policy_id}", response_model=Dict[str, Any])
+@router.put("/governance/gate-policies/{policy_id}", response_model=StatusResponse)
 async def upsert_gate_policy(policy_id: str, request: dict, http_request: Request, rt: RuntimeDep = None):
     store = _store(rt)
     if not store:
@@ -313,7 +313,7 @@ async def upsert_gate_policy(policy_id: str, request: dict, http_request: Reques
     return {"status": "ok", "item": item, "default_id": data.get("default_id"), "change_id": str(cid), "links": governance_links(change_id=str(cid))}
 
 
-@router.delete("/governance/gate-policies/{policy_id}", response_model=Dict[str, Any])
+@router.delete("/governance/gate-policies/{policy_id}", response_model=StatusResponse)
 async def delete_gate_policy(policy_id: str, http_request: Request, rt: RuntimeDep = None):
     store = _store(rt)
     if not store:
@@ -349,7 +349,7 @@ async def delete_gate_policy(policy_id: str, http_request: Request, rt: RuntimeD
     return {"status": "ok", "deleted": pid, "default_id": data.get("default_id"), "change_id": str(cid), "links": governance_links(change_id=str(cid))}
 
 
-@router.post("/governance/gate-policies/{policy_id}/set-default", response_model=Dict[str, Any])
+@router.post("/governance/gate-policies/{policy_id}/set-default", response_model=StatusResponse)
 async def set_default_gate_policy(policy_id: str, http_request: Request, rt: RuntimeDep = None):
     store = _store(rt)
     if not store:
@@ -381,7 +381,7 @@ async def set_default_gate_policy(policy_id: str, http_request: Request, rt: Run
     return {"status": "ok", "default_id": pid, "change_id": str(cid), "links": governance_links(change_id=str(cid))}
 
 
-@router.get("/governance/gate-policies/{policy_id}/versions", response_model=Dict[str, Any])
+@router.get("/governance/gate-policies/{policy_id}/versions", response_model=StatusResponse)
 async def list_gate_policy_versions(policy_id: str, rt: RuntimeDep = None):
     store = _store(rt)
     if not store:
@@ -396,7 +396,7 @@ async def list_gate_policy_versions(policy_id: str, rt: RuntimeDep = None):
     raise HTTPException(status_code=404, detail="policy_not_found")
 
 
-@router.post("/governance/gate-policies/{policy_id}/rollback", response_model=Dict[str, Any])
+@router.post("/governance/gate-policies/{policy_id}/rollback", response_model=StatusResponse)
 async def rollback_gate_policy(policy_id: str, request: dict, http_request: Request, rt: RuntimeDep = None):
     """
     Rollback policy config to a previous version from revisions.
@@ -455,7 +455,7 @@ async def rollback_gate_policy(policy_id: str, request: dict, http_request: Requ
     raise HTTPException(status_code=404, detail="policy_not_found")
 
 
-@router.post("/governance/gate-policies/{policy_id}/propose", response_model=Dict[str, Any])
+@router.post("/governance/gate-policies/{policy_id}/propose", response_model=StatusResponse)
 async def propose_gate_policy_change(policy_id: str, request: dict, http_request: Request, rt: RuntimeDep = None):
     """
     Productized workflow: propose → approve → apply.
@@ -537,7 +537,7 @@ async def propose_gate_policy_change(policy_id: str, request: dict, http_request
     return {"status": "ok", "change_id": str(change_id), "approval_request_id": approval_request_id, "links": links}
 
 
-@router.post("/governance/gate-policies/changes/{change_id}/apply", response_model=Dict[str, Any])
+@router.post("/governance/gate-policies/changes/{change_id}/apply", response_model=StatusResponse)
 async def apply_gate_policy_change(change_id: str, request: dict, http_request: Request, rt: RuntimeDep = None):
     """
     Apply a previously proposed gate policy change.

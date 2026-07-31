@@ -105,7 +105,7 @@ async def _require_onboarding_approval(*, operation: str, user_id: str, details:
 # ==================== Onboarding (core) ====================
 
 
-@router.get("/onboarding/state", response_model=Dict[str, Any])
+@router.get("/onboarding/state", response_model=StatusResponse)
 async def get_core_onboarding_state(_auth: str = Depends(require_auth)):
     store = _store()
     if not store:
@@ -127,7 +127,7 @@ async def get_core_onboarding_state(_auth: str = Depends(require_auth)):
     }
 
 
-@router.post("/onboarding/evidence/runs", response_model=Dict[str, Any])
+@router.post("/onboarding/evidence/runs", response_model=StatusResponse)
 async def create_onboarding_evidence(request: Dict[str, Any], http_request: Request, _auth: str = Depends(require_auth)):
     store = _store()
     if not store:
@@ -220,7 +220,7 @@ async def create_onboarding_evidence(request: Dict[str, Any], http_request: Requ
     return {"status": "ok", "evidence": rec}
 
 
-@router.get("/onboarding/evidence/runs", response_model=Dict[str, Any])
+@router.get("/onboarding/evidence/runs", response_model=StatusResponse)
 async def list_onboarding_evidence(http_request: Request, step_key: Optional[str] = None, limit: int = 100, offset: int = 0, _auth: str = Depends(require_auth)):
     store = _store()
     if not store:
@@ -230,7 +230,7 @@ async def list_onboarding_evidence(http_request: Request, step_key: Optional[str
     return await store.list_onboarding_evidence(tenant_id=str(tid), step_key=step_key, limit=limit, offset=offset)
 
 
-@router.get("/onboarding/evidence/runs/{evidence_id}", response_model=Dict[str, Any])
+@router.get("/onboarding/evidence/runs/{evidence_id}", response_model=StatusResponse)
 async def get_onboarding_evidence(evidence_id: str, http_request: Request, _auth: str = Depends(require_auth)):
     store = _store()
     if not store:
@@ -243,7 +243,7 @@ async def get_onboarding_evidence(evidence_id: str, http_request: Request, _auth
     return row
 
 
-@router.post("/onboarding/default-llm", response_model=Dict[str, Any])
+@router.post("/onboarding/default-llm", response_model=StatusResponse)
 async def set_default_llm(request: OnboardingDefaultLLMRequest, _auth: str = Depends(require_auth)):
     store = _store()
     if not store:
@@ -349,7 +349,7 @@ async def set_default_llm(request: OnboardingDefaultLLMRequest, _auth: str = Dep
     return {"status": "updated", "default_llm": res}
 
 
-@router.post("/onboarding/init-tenant", response_model=Dict[str, Any])
+@router.post("/onboarding/init-tenant", response_model=StatusResponse)
 async def init_default_tenant(request: OnboardingInitTenantRequest, _auth: str = Depends(require_auth)):
     store = _store()
     if not store:
@@ -459,7 +459,7 @@ async def init_default_tenant(request: OnboardingInitTenantRequest, _auth: str =
     return {"status": "initialized", "tenant": tenant, "tenant_policy": policy_res}
 
 
-@router.post("/onboarding/autosmoke", response_model=Dict[str, Any])
+@router.post("/onboarding/autosmoke", response_model=StatusResponse)
 async def set_autosmoke_config(request: OnboardingAutosmokeConfigRequest, _auth: str = Depends(require_auth)):
     store = _store()
     if not store:
@@ -553,7 +553,7 @@ async def set_autosmoke_config(request: OnboardingAutosmokeConfigRequest, _auth:
     return {"status": "updated", "autosmoke": res}
 
 
-@router.post("/onboarding/exec-backend", response_model=Dict[str, Any])
+@router.post("/onboarding/exec-backend", response_model=StatusResponse)
 async def set_exec_backend(request: OnboardingExecBackendRequest, _auth: str = Depends(require_auth)):
     store = _store()
     if not store:
@@ -622,7 +622,7 @@ async def set_exec_backend(request: OnboardingExecBackendRequest, _auth: str = D
     return {"status": "updated", "exec_backend": res}
 
 
-@router.post("/onboarding/trusted-skill-keys", response_model=Dict[str, Any])
+@router.post("/onboarding/trusted-skill-keys", response_model=StatusResponse)
 async def set_trusted_skill_keys(request: OnboardingTrustedSkillKeysRequest, _auth: str = Depends(require_auth)):
     store = _store()
     if not store:
@@ -704,7 +704,7 @@ async def set_trusted_skill_keys(request: OnboardingTrustedSkillKeysRequest, _au
     return {"status": "updated", "trusted_skill_pubkeys": {"keys_count": len(keys_out), "key_ids": [k.get("key_id") for k in keys_out]}}
 
 
-@router.post("/onboarding/generate-skill-key", response_model=Dict[str, Any])
+@router.post("/onboarding/generate-skill-key", response_model=StatusResponse)
 async def generate_skill_key(request: OnboardingGenerateSkillKeyRequest, _auth: str = Depends(require_auth)):
     from core.api.core_facade import generate_ed25519_key_pair, key_id_for_public_key  # v2.5: canonical path
 
@@ -735,7 +735,7 @@ async def generate_skill_key(request: OnboardingGenerateSkillKeyRequest, _auth: 
     return {"key_id": kid, "public_key": pk_pem, "private_key": sk_pem, "label": request.label}
 
 
-@router.post("/onboarding/context-config", response_model=Dict[str, Any])
+@router.post("/onboarding/context-config", response_model=StatusResponse)
 async def set_context_config(request: OnboardingContextConfigRequest, _auth: str = Depends(require_auth)):
     store = _store()
     if not store:
@@ -827,7 +827,7 @@ async def set_context_config(request: OnboardingContextConfigRequest, _auth: str
     return {"status": "updated", "context": res}
 
 
-@router.get("/onboarding/secrets/status", response_model=Dict[str, Any])
+@router.get("/onboarding/secrets/status", response_model=StatusResponse)
 async def get_secrets_status(_auth: str = Depends(require_auth)):
     store = _store()
     if not store:
@@ -842,7 +842,7 @@ async def get_secrets_status(_auth: str = Depends(require_auth)):
     return st
 
 
-@router.post("/onboarding/secrets/migrate", response_model=Dict[str, Any])
+@router.post("/onboarding/secrets/migrate", response_model=StatusResponse)
 async def migrate_secrets(request: OnboardingSecretsMigrateRequest, _auth: str = Depends(require_auth)):
     store = _store()
     if not store:
@@ -926,7 +926,7 @@ async def migrate_secrets(request: OnboardingSecretsMigrateRequest, _auth: str =
     return {"status": "migrated", "result": res, "secrets_status": st}
 
 
-@router.post("/onboarding/strong-gate", response_model=Dict[str, Any])
+@router.post("/onboarding/strong-gate", response_model=StatusResponse)
 async def set_strong_gate(request: OnboardingStrongGateRequest, _auth: str = Depends(require_auth)):
     store = _store()
     if not store:
@@ -1057,7 +1057,7 @@ ONBOARDING_STEPS = [
 _onboarding_state: Dict[str, Dict[str, bool]] = {}
 
 
-@router.get("/progress", response_model=Dict[str, Any])
+@router.get("/progress", response_model=StatusResponse)
 async def get_onboarding_progress(_auth: str = Depends(require_auth)):
     """Get current onboarding progress for the authenticated tenant."""
     tenant_id = _auth  # simplified; real implementation extracts from JWT
@@ -1083,7 +1083,7 @@ def _estimate_completion(steps: list) -> str:
     return f"约 {len(undone)*3} 分钟 (剩余: {'、'.join(names)})"
 
 
-@router.post("/progress/{step_key}", response_model=Dict[str, Any])
+@router.post("/progress/{step_key}", response_model=StatusResponse)
 async def mark_onboarding_step(step_key: str, _auth: str = Depends(require_auth)):
     """Mark an onboarding step as completed."""
     tenant_id = _auth
@@ -1094,7 +1094,7 @@ async def mark_onboarding_step(step_key: str, _auth: str = Depends(require_auth)
     return {"step": step_key, "done": True, "total_done": done, "total": len(ONBOARDING_STEPS)}
 
 
-@router.get("/model-recommendations", response_model=Dict[str, Any])
+@router.get("/model-recommendations", response_model=StatusResponse)
 async def get_model_recommendations():
     """Get model recommendations by purpose with cost estimates."""
     return [
@@ -1105,7 +1105,7 @@ async def get_model_recommendations():
     ]
 
 
-@router.post("/tools/connect", response_model=Dict[str, Any])
+@router.post("/tools/connect", response_model=StatusResponse)
 async def connect_tool(body: Dict[str, Any], _auth: str = Depends(require_auth)):
     """Self-service tool connection — fill API key + test."""
     tool_name = body.get("tool_name", "")
@@ -1117,7 +1117,7 @@ async def connect_tool(body: Dict[str, Any], _auth: str = Depends(require_auth))
             "message": f"Tool {tool_name} connected and tested successfully"}
 
 
-@router.get("/agent-templates", response_model=Dict[str, Any])
+@router.get("/agent-templates", response_model=StatusResponse)
 async def get_agent_templates():
     """Get pre-built agent templates for one-click creation."""
     return [
@@ -1136,7 +1136,7 @@ async def get_agent_templates():
     ]
 
 
-@router.post("/agent/create-from-template", response_model=Dict[str, Any])
+@router.post("/agent/create-from-template", response_model=StatusResponse)
 async def create_agent_from_template(body: Dict[str, Any], _auth: str = Depends(require_auth)):
     """Create an agent from a pre-built template."""
     template_id = body.get("template_id", "")
@@ -1152,7 +1152,7 @@ async def create_agent_from_template(body: Dict[str, Any], _auth: str = Depends(
     }
 
 
-@router.get("/readiness-check", response_model=Dict[str, Any])
+@router.get("/readiness-check", response_model=StatusResponse)
 async def readiness_check(_auth: str = Depends(require_auth)):
     """Deployment readiness check — returns what's missing."""
     tenant_id = _auth
@@ -1174,7 +1174,7 @@ async def readiness_check(_auth: str = Depends(require_auth)):
     }
 
 
-@router.post("/activate", response_model=Dict[str, Any])
+@router.post("/activate", response_model=StatusResponse)
 async def activate_tenant(_auth: str = Depends(require_auth)):
     """Activate tenant after all readiness checks pass."""
     tenant_id = _auth

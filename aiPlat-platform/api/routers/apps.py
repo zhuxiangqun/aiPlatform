@@ -16,12 +16,12 @@ _svc = AppService()
 
 # ── Manage ──
 
-@router.get("", response_model=Dict[str, Any])
+@router.get("", response_model=StatusResponse)
 async def list_apps(_auth: str = Depends(require_auth)):
     return {"apps": await _svc.list(), "total": 0}
 
 
-@router.get("/{app_id}", response_model=Dict[str, Any])
+@router.get("/{app_id}", response_model=StatusResponse)
 async def get_app(app_id: str, _auth: str = Depends(require_auth)):
     app = await _svc.get(app_id)
     if not app:
@@ -29,7 +29,7 @@ async def get_app(app_id: str, _auth: str = Depends(require_auth)):
     return app
 
 
-@router.delete("/{app_id}", response_model=Dict[str, Any])
+@router.delete("/{app_id}", response_model=StatusResponse)
 async def delete_app(app_id: str, _auth: str = Depends(require_auth)):
     await _svc.delete(app_id)
     return {"status": "deleted", "id": app_id}
@@ -37,7 +37,7 @@ async def delete_app(app_id: str, _auth: str = Depends(require_auth)):
 
 # ── Create App ──
 
-@router.post("", response_model=Dict[str, Any])
+@router.post("", response_model=StatusResponse)
 async def create_app(req: Dict[str, Any], _auth: str = Depends(require_auth)):
     try:
         app = await _svc.publish(
@@ -53,7 +53,7 @@ async def create_app(req: Dict[str, Any], _auth: str = Depends(require_auth)):
 
 # ── Studio Registration (server-to-server, no auth) ──
 
-@router.post("/register-from-studio", response_model=Dict[str, Any])
+@router.post("/register-from-studio", response_model=StatusResponse)
 async def register_studio_app(req: Dict[str, Any]):
     """Studio 部署完成后注册应用。由 management studio.py 内部调用。"""
     try:
@@ -70,7 +70,7 @@ async def register_studio_app(req: Dict[str, Any]):
 
 # ── API mode ──
 
-@router.post("/{app_id}/run", response_model=Dict[str, Any])
+@router.post("/{app_id}/run", response_model=StatusResponse)
 async def run_api(app_id: str, req: Dict[str, Any], _auth: str = Depends(require_auth)):
     try:
         return await _svc.run_api(app_id, req)
@@ -80,7 +80,7 @@ async def run_api(app_id: str, req: Dict[str, Any], _auth: str = Depends(require
 
 # ── Chat mode ──
 
-@router.post("/{app_id}/chat", response_model=Dict[str, Any])
+@router.post("/{app_id}/chat", response_model=StatusResponse)
 async def chat(app_id: str, req: Dict[str, Any], _auth: str = Depends(require_auth)):
     try:
         return await _svc.run_chat(app_id, str(req.get("message") or ""))
@@ -90,7 +90,7 @@ async def chat(app_id: str, req: Dict[str, Any], _auth: str = Depends(require_au
 
 # ── Webhook mode ──
 
-@router.post("/{app_id}/hook", response_model=Dict[str, Any])
+@router.post("/{app_id}/hook", response_model=StatusResponse)
 async def webhook(app_id: str, req: Request, body: Dict[str, Any] = None, x_webhook_secret: str = Header(None, alias="X-Webhook-Secret")):
     try:
         if body is None:

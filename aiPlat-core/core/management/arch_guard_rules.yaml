@@ -2642,10 +2642,10 @@ rules:
         r = subprocess.run(['grep', '-rn', 'response_model=dict', 'aiPlat-platform/api/', '--include=*.py'], capture_output=True, text=True)
         count = len([l for l in r.stdout.split('\n') if l.strip() and '# noqa:' not in l])
         print(f'response_model=dict count: {count}')
-        if count > 108:
-            print(f'ERROR: response_model=dict count increased from 108 to {count}')
+        if count > 0:
+            print(f'ERROR: response_model=dict count = {count}, must be 0')
             sys.exit(1)
-        print('PASS: response_model=dict count stable or decreasing')
+        print('PASS: response_model=dict 已清零')
         "
       ok_pattern: "PASS:"
 

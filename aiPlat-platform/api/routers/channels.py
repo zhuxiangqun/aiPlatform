@@ -28,7 +28,7 @@ def _now() -> float:
 # ── Channels ─────────────────────────────────────────────────────
 
 
-@router.get("/channels", response_model=Dict[str, Any])
+@router.get("/channels", response_model=StatusResponse)
 async def list_channels(status: Optional[str] = None, _auth: str = Depends(require_auth)):
     items = list(_channels.values())
     if status:
@@ -37,7 +37,7 @@ async def list_channels(status: Optional[str] = None, _auth: str = Depends(requi
     return {"channels": items, "total": len(items)}
 
 
-@router.post("/channels", response_model=Dict[str, Any])
+@router.post("/channels", response_model=StatusResponse)
 async def create_channel(body: Dict[str, Any], _auth: str = Depends(require_auth)):
     cid = str(body.get("id") or body.get("name") or "")
     if not cid:
@@ -60,7 +60,7 @@ async def create_channel(body: Dict[str, Any], _auth: str = Depends(require_auth
     return ch
 
 
-@router.get("/channels/{channel_id}", response_model=Dict[str, Any])
+@router.get("/channels/{channel_id}", response_model=StatusResponse)
 async def get_channel(channel_id: str, _auth: str = Depends(require_auth)):
     ch = _channels.get(channel_id)
     if not ch:
@@ -68,7 +68,7 @@ async def get_channel(channel_id: str, _auth: str = Depends(require_auth)):
     return ch
 
 
-@router.put("/channels/{channel_id}", response_model=Dict[str, Any])
+@router.put("/channels/{channel_id}", response_model=StatusResponse)
 async def update_channel(channel_id: str, patch: Dict[str, Any], _auth: str = Depends(require_auth)):
     ch = _channels.get(channel_id)
     if not ch:
@@ -78,13 +78,13 @@ async def update_channel(channel_id: str, patch: Dict[str, Any], _auth: str = De
     return ch
 
 
-@router.delete("/channels/{channel_id}", response_model=Dict[str, Any])
+@router.delete("/channels/{channel_id}", response_model=StatusResponse)
 async def delete_channel(channel_id: str, _auth: str = Depends(require_auth)):
     _channels.pop(channel_id, None)
     return {"status": "ok"}
 
 
-@router.post("/channels/{channel_id}/test", response_model=Dict[str, Any])
+@router.post("/channels/{channel_id}/test", response_model=StatusResponse)
 async def test_channel(channel_id: str, _auth: str = Depends(require_auth)):
     ch = _channels.get(channel_id)
     if not ch:
@@ -95,7 +95,7 @@ async def test_channel(channel_id: str, _auth: str = Depends(require_auth)):
 # ── Sessions ─────────────────────────────────────────────────────
 
 
-@router.get("/sessions", response_model=Dict[str, Any])
+@router.get("/sessions", response_model=StatusResponse)
 async def list_sessions(status: Optional[str] = None, _auth: str = Depends(require_auth)):
     items = list(_sessions.values())
     if status:
@@ -104,7 +104,7 @@ async def list_sessions(status: Optional[str] = None, _auth: str = Depends(requi
     return {"sessions": items, "total": len(items)}
 
 
-@router.get("/sessions/{session_id}", response_model=Dict[str, Any])
+@router.get("/sessions/{session_id}", response_model=StatusResponse)
 async def get_session(session_id: str, _auth: str = Depends(require_auth)):
     s = _sessions.get(session_id)
     if not s:
@@ -112,7 +112,7 @@ async def get_session(session_id: str, _auth: str = Depends(require_auth)):
     return s
 
 
-@router.post("/sessions", response_model=Dict[str, Any])
+@router.post("/sessions", response_model=StatusResponse)
 async def create_session(body: Dict[str, Any], _auth: str = Depends(require_auth)):
     sid = str(body.get("id") or "")
     if not sid:
@@ -133,7 +133,7 @@ async def create_session(body: Dict[str, Any], _auth: str = Depends(require_auth
     return s
 
 
-@router.post("/sessions/{session_id}/end", response_model=Dict[str, Any])
+@router.post("/sessions/{session_id}/end", response_model=StatusResponse)
 async def end_session(session_id: str, _auth: str = Depends(require_auth)):
     s = _sessions.get(session_id)
     if not s:

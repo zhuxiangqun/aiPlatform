@@ -17,7 +17,7 @@ def _cf():
             get_ontology_domain_schema, validate_views_for_domain)
 
 
-@router.get("/domains/{domain_id}/views", response_model=Dict[str, Any])
+@router.get("/domains/{domain_id}/views", response_model=StatusResponse)
 async def list_views(domain_id: str):
     u"""List all role-based views for a domain."""
     try:
@@ -30,7 +30,7 @@ async def list_views(domain_id: str):
         raise HTTPException(status_code=500, detail=f"Failed to list views: {e}")
 
 
-@router.get("/domains/{domain_id}/views/{role}", response_model=Dict[str, Any])
+@router.get("/domains/{domain_id}/views/{role}", response_model=StatusResponse)
 async def get_view(domain_id: str, role: str):
     u"""Get a single role view definition."""
     try:
@@ -47,7 +47,7 @@ async def get_view(domain_id: str, role: str):
         raise HTTPException(status_code=500, detail=f"Failed to get view: {e}")
 
 
-@router.post("/domains/{domain_id}/views/validate", response_model=Dict[str, Any])
+@router.post("/domains/{domain_id}/views/validate", response_model=StatusResponse)
 async def validate_views(domain_id: str):
     u"""Validate all role views for a domain."""
     try:
@@ -59,7 +59,7 @@ async def validate_views(domain_id: str):
         raise HTTPException(status_code=500, detail=f"Validation failed: {e}")
 
 
-@router.post("/domains/{domain_id}/views", response_model=Dict[str, Any])
+@router.post("/domains/{domain_id}/views", response_model=StatusResponse)
 async def upsert_view(domain_id: str, data: Dict[str, Any]):
     u"""Create or update a role view in a domain YAML."""
     try:
@@ -80,7 +80,7 @@ async def upsert_view(domain_id: str, data: Dict[str, Any]):
         raise HTTPException(status_code=500, detail=f"Failed to upsert view: {e}")
 
 
-@router.delete("/domains/{domain_id}/views/{role}", response_model=Dict[str, Any])
+@router.delete("/domains/{domain_id}/views/{role}", response_model=StatusResponse)
 async def delete_view(domain_id: str, role: str):
     u"""Delete a role view from a domain YAML."""
     try:
@@ -93,7 +93,7 @@ async def delete_view(domain_id: str, role: str):
         raise HTTPException(status_code=500, detail=f"Failed to delete view: {e}")
 
 
-@router.get("/domains/{domain_id}/views/{role}/resolve-term", response_model=Dict[str, Any])
+@router.get("/domains/{domain_id}/views/{role}/resolve-term", response_model=StatusResponse)
 async def resolve_term(domain_id: str, role: str, term: str = ""):
     u"""Resolve a term's meaning for a specific role's perspective."""
     if not term:

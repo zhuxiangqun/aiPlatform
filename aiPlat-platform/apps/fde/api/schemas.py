@@ -1,6 +1,6 @@
 """FDE response schemas — typed response_model classes for FDE API endpoints.
 
-Replaces bare `response_model=dict` with structured Pydantic models,
+Replaces bare `response_model=StatusResponse` with structured Pydantic models,
 improving OpenAPI documentation and type safety for API consumers.
 """
 from typing import Any, Dict, List, Optional

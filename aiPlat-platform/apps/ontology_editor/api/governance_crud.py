@@ -7,7 +7,7 @@ router = APIRouter(prefix="/governance", tags=["governance"])
 
 # ── Dashboard ──
 
-@router.get("/dashboard", response_model=Dict[str, Any])
+@router.get("/dashboard", response_model=StatusResponse)
 async def governance_dashboard():
     u"""Aggregated governance dashboard data."""
     try:
@@ -17,7 +17,7 @@ async def governance_dashboard():
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/dashboard/audit-log", response_model=Dict[str, Any])
+@router.get("/dashboard/audit-log", response_model=StatusResponse)
 async def audit_log(days: int = Query(7), domain: str = Query("")):
     u"""Governance audit log."""
     try:
@@ -40,7 +40,7 @@ async def audit_log(days: int = Query(7), domain: str = Query("")):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/dashboard/mapping-coverage", response_model=Dict[str, Any])
+@router.get("/dashboard/mapping-coverage", response_model=StatusResponse)
 async def mapping_coverage_report():
     u"""Data→semantic mapping coverage report (markdown)."""
     try:
@@ -53,7 +53,7 @@ async def mapping_coverage_report():
 
 # ── Governance Pipeline ──
 
-@router.post("/run-cycle", response_model=Dict[str, Any])
+@router.post("/run-cycle", response_model=StatusResponse)
 async def run_cycle(data: Dict[str, Any]):
     u"""Run 6-step governance cycle for a domain."""
     try:
@@ -78,7 +78,7 @@ async def run_cycle(data: Dict[str, Any]):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/run-all", response_model=Dict[str, Any])
+@router.post("/run-all", response_model=StatusResponse)
 async def run_all_cycles():
     u"""Run governance cycle for all domains."""
     try:
@@ -93,7 +93,7 @@ async def run_all_cycles():
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/cycle-history", response_model=Dict[str, Any])
+@router.get("/cycle-history", response_model=StatusResponse)
 async def cycle_history(domain_id: str = Query(""), limit: int = Query(10)):
     u"""Governance cycle history."""
     try:
@@ -106,7 +106,7 @@ async def cycle_history(domain_id: str = Query(""), limit: int = Query(10)):
 
 # ── Change Approval ──
 
-@router.get("/change-requests/pending", response_model=Dict[str, Any])
+@router.get("/change-requests/pending", response_model=StatusResponse)
 async def pending_requests(domain_id: str = Query("")):
     u"""List pending change requests."""
     try:
@@ -117,7 +117,7 @@ async def pending_requests(domain_id: str = Query("")):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/change-requests/{request_id}/approve", response_model=Dict[str, Any])
+@router.post("/change-requests/{request_id}/approve", response_model=StatusResponse)
 async def approve_request(request_id: str, data: Dict[str, Any]):
     u"""Approve a change request."""
     try:
@@ -129,7 +129,7 @@ async def approve_request(request_id: str, data: Dict[str, Any]):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/change-requests/{request_id}/reject", response_model=Dict[str, Any])
+@router.post("/change-requests/{request_id}/reject", response_model=StatusResponse)
 async def reject_request(request_id: str, data: Dict[str, Any]):
     u"""Reject a change request."""
     try:
@@ -141,7 +141,7 @@ async def reject_request(request_id: str, data: Dict[str, Any]):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/change-requests/history", response_model=Dict[str, Any])
+@router.get("/change-requests/history", response_model=StatusResponse)
 async def approval_history(domain_id: str = Query(""), limit: int = Query(50)):
     u"""Approval history."""
     try:
@@ -154,7 +154,7 @@ async def approval_history(domain_id: str = Query(""), limit: int = Query(50)):
 
 # ── Mapping Validation ──
 
-@router.post("/validate-mappings/{domain_id}", response_model=Dict[str, Any])
+@router.post("/validate-mappings/{domain_id}", response_model=StatusResponse)
 async def validate_mappings(domain_id: str):
     u"""Validate all data source mappings for a domain."""
     try:
@@ -170,7 +170,7 @@ async def validate_mappings(domain_id: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/mapping-report/{domain_id}", response_model=Dict[str, Any])
+@router.get("/mapping-report/{domain_id}", response_model=StatusResponse)
 async def mapping_report(domain_id: str):
     u"""Mapping coverage markdown report."""
     try:

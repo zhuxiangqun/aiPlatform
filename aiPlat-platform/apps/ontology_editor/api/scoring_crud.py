@@ -5,7 +5,7 @@ from typing import Any, Dict, List, Optional
 router = APIRouter(tags=["ontology-editor-scoring"])
 
 
-@router.get("/domains/{domain_id}/scoring-models", response_model=Dict[str, Any])
+@router.get("/domains/{domain_id}/scoring-models", response_model=StatusResponse)
 async def list_scoring_models(domain_id: str):
     u"""List all scoring models for a domain."""
     try:
@@ -25,7 +25,7 @@ async def list_scoring_models(domain_id: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/domains/{domain_id}/scoring-models/{model_name}/evaluate", response_model=Dict[str, Any])
+@router.get("/domains/{domain_id}/scoring-models/{model_name}/evaluate", response_model=StatusResponse)
 async def evaluate_entity(domain_id: str, model_name: str, entity: str = Query("")):
     u"""Evaluate a single entity against a scoring model."""
     if not entity:
@@ -53,7 +53,7 @@ async def evaluate_entity(domain_id: str, model_name: str, entity: str = Query("
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/domains/{domain_id}/scoring-models/{model_name}/evaluate-batch", response_model=Dict[str, Any])
+@router.post("/domains/{domain_id}/scoring-models/{model_name}/evaluate-batch", response_model=StatusResponse)
 async def evaluate_batch(domain_id: str, model_name: str, data: Dict[str, Any]):
     u"""Batch evaluate all entities of a class against a scoring model."""
     try:
@@ -82,7 +82,7 @@ async def evaluate_batch(domain_id: str, model_name: str, data: Dict[str, Any]):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/domains/{domain_id}/scoring-models/{model_name}/alerts", response_model=Dict[str, Any])
+@router.get("/domains/{domain_id}/scoring-models/{model_name}/alerts", response_model=StatusResponse)
 async def get_alerts(domain_id: str, model_name: str):
     u"""Get all high/medium level alerts for a scoring model."""
     try:

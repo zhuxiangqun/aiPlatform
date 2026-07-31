@@ -152,3 +152,39 @@ class TeamListResponse(BaseModel):
     """GET /platform/builder/teams"""
     teams: List[Dict[str, Any]] = Field(default_factory=list)
     total: int = 0
+
+
+class StatusResponse(BaseModel):
+    """Generic typed response — replaces Dict[str, Any] / dict across all endpoints.
+    
+    Accepts any extra fields at runtime via model_config extra=allow.
+    Use this instead of response_model=StatusResponse for proper OpenAPI schema generation.
+    """
+    model_config = {"extra": "allow", "protected_namespaces": ()}
+
+    status: str = "ok"
+    detail: str = ""
+    message: str = ""
+
+
+class IDResponse(BaseModel):
+    """Response containing an entity ID — used by create endpoints."""
+    model_config = {"extra": "allow", "protected_namespaces": ()}
+    
+    id: str = ""
+
+
+class ListResponse(BaseModel):
+    """Generic list wrapper."""
+    model_config = {"extra": "allow", "protected_namespaces": ()}
+    
+    items: List[Dict[str, Any]] = Field(default_factory=list)
+    total: int = 0
+
+
+class CountResponse(BaseModel):
+    """Simple count response."""
+    model_config = {"extra": "allow", "protected_namespaces": ()}
+    
+    count: int = 0
+    success: bool = True

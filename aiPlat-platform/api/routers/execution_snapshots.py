@@ -21,7 +21,7 @@ _log = logging.getLogger(__name__)
 router = APIRouter(prefix="/platform/execution/snapshots", tags=["execution-snapshots"])
 
 
-@router.get("/{session_id}", response_model=Dict[str, Any])
+@router.get("/{session_id}", response_model=StatusResponse)
 async def list_snapshots(session_id: str, http_request: Request):
     """List all execution snapshots for a session (newest first)."""
     deny = await rbac_guard(
@@ -34,7 +34,7 @@ async def list_snapshots(session_id: str, http_request: Request):
     return {"session_id": str(session_id), "count": len(items), "items": items}
 
 
-@router.get("/{session_id}/{snapshot_id}", response_model=Dict[str, Any])
+@router.get("/{session_id}/{snapshot_id}", response_model=StatusResponse)
 async def get_snapshot(session_id: str, snapshot_id: str, http_request: Request):
     """Fetch a single snapshot header + full state (recovery payload)."""
     deny = await rbac_guard(
@@ -49,7 +49,7 @@ async def get_snapshot(session_id: str, snapshot_id: str, http_request: Request)
     return snap
 
 
-@router.get("/{session_id}/compare/{snapshot_a}/{snapshot_b}", response_model=Dict[str, Any])
+@router.get("/{session_id}/compare/{snapshot_a}/{snapshot_b}", response_model=StatusResponse)
 async def compare_snapshots(session_id: str, snapshot_a: str, snapshot_b: str, http_request: Request):
     """Diff two snapshots (before/after strategy effect)."""
     deny = await rbac_guard(
@@ -61,7 +61,7 @@ async def compare_snapshots(session_id: str, snapshot_a: str, snapshot_b: str, h
     return core_facade.compare_execution_snapshots(str(snapshot_a), str(snapshot_b), str(session_id))
 
 
-@router.post("/{session_id}/{snapshot_id}/restore", response_model=Dict[str, Any])
+@router.post("/{session_id}/{snapshot_id}/restore", response_model=StatusResponse)
 async def restore_snapshot(session_id: str, snapshot_id: str, http_request: Request):
     """Restore (retrieve) the recoverable full state captured at checkpoint time.
 
@@ -84,7 +84,7 @@ async def restore_snapshot(session_id: str, snapshot_id: str, http_request: Requ
 file_router = APIRouter(prefix="/platform/execution/file-checkpoints", tags=["file-checkpoints"])
 
 
-@file_router.get("", response_model=Dict[str, Any])
+@file_router.get("", response_model=StatusResponse)
 async def list_file_checkpoints(http_request: Request, session_id: str = "", path: str = ""):
     """List file checkpoints (content captured before write/edit overwrites)."""
     deny = await rbac_guard(
@@ -97,7 +97,7 @@ async def list_file_checkpoints(http_request: Request, session_id: str = "", pat
     return {"session_id": str(session_id or "default"), "count": len(items), "items": items}
 
 
-@file_router.get("/{checkpoint_id}", response_model=Dict[str, Any])
+@file_router.get("/{checkpoint_id}", response_model=StatusResponse)
 async def get_file_checkpoint(checkpoint_id: str, http_request: Request, session_id: str = ""):
     """Fetch a file checkpoint header + stored content."""
     deny = await rbac_guard(
@@ -112,7 +112,7 @@ async def get_file_checkpoint(checkpoint_id: str, http_request: Request, session
     return cp
 
 
-@file_router.post("/{checkpoint_id}/restore", response_model=Dict[str, Any])
+@file_router.post("/{checkpoint_id}/restore", response_model=StatusResponse)
 async def restore_file_checkpoint(checkpoint_id: str, http_request: Request, session_id: str = ""):
     """Restore a file to the content captured at checkpoint time (writes it back to disk)."""
     deny = await rbac_guard(

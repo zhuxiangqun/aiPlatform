@@ -2838,9 +2838,9 @@ class KBQueryRequest(BaseModel):
 
 
 
-@app.post("/api/v1/documents/preview", response_model=Dict[str, Any])
+@app.post("/api/v1/documents/preview", response_model=StatusResponse)
 
-@app.post("/platform/documents/preview", response_model=Dict[str, Any])
+@app.post("/platform/documents/preview", response_model=StatusResponse)
 
 async def documents_preview(request: Request):
 
@@ -2978,9 +2978,9 @@ async def documents_preview(request: Request):
 
 
 
-@app.post("/api/v1/documents/ingest", response_model=Dict[str, Any])
+@app.post("/api/v1/documents/ingest", response_model=StatusResponse)
 
-@app.post("/platform/documents/ingest", response_model=Dict[str, Any])
+@app.post("/platform/documents/ingest", response_model=StatusResponse)
 
 async def documents_ingest(request: Request):
 
@@ -3416,9 +3416,9 @@ async def _auto_ontology_pipeline(doc_id: str, file_path: str, collection_id: st
 
 
 
-@app.get("/api/v1/documents", response_model=Dict[str, Any])
+@app.get("/api/v1/documents", response_model=StatusResponse)
 
-@app.get("/platform/documents", response_model=Dict[str, Any])
+@app.get("/platform/documents", response_model=StatusResponse)
 
 async def documents_list(
 
@@ -3552,9 +3552,9 @@ async def documents_list(
 
 
 
-@app.get("/api/v1/documents/categories", response_model=Dict[str, Any])
+@app.get("/api/v1/documents/categories", response_model=StatusResponse)
 
-@app.get("/platform/documents/categories", response_model=Dict[str, Any])
+@app.get("/platform/documents/categories", response_model=StatusResponse)
 
 async def documents_categories(request: Request, collection_id: Optional[str] = None):
 
@@ -3674,9 +3674,9 @@ async def documents_categories(request: Request, collection_id: Optional[str] = 
 
 
 
-@app.get("/api/v1/documents/{doc_id}", response_model=Dict[str, Any])
+@app.get("/api/v1/documents/{doc_id}", response_model=StatusResponse)
 
-@app.get("/platform/documents/{doc_id}", response_model=Dict[str, Any])
+@app.get("/platform/documents/{doc_id}", response_model=StatusResponse)
 
 async def documents_get(doc_id: str, request: Request):
 
@@ -3756,9 +3756,9 @@ async def documents_get(doc_id: str, request: Request):
 
 
 
-@app.get("/api/v1/documents/{doc_id}/sources", response_model=Dict[str, Any])
+@app.get("/api/v1/documents/{doc_id}/sources", response_model=StatusResponse)
 
-@app.get("/platform/documents/{doc_id}/sources", response_model=Dict[str, Any])
+@app.get("/platform/documents/{doc_id}/sources", response_model=StatusResponse)
 
 async def documents_list_sources(doc_id: str, request: Request, limit: int = 100, offset: int = 0):
 
@@ -3846,9 +3846,9 @@ async def documents_list_sources(doc_id: str, request: Request, limit: int = 100
 
 
 
-@app.get("/api/v1/documents/{doc_id}/analysis-runs", response_model=Dict[str, Any])
+@app.get("/api/v1/documents/{doc_id}/analysis-runs", response_model=StatusResponse)
 
-@app.get("/platform/documents/{doc_id}/analysis-runs", response_model=Dict[str, Any])
+@app.get("/platform/documents/{doc_id}/analysis-runs", response_model=StatusResponse)
 
 async def documents_list_analysis_runs(doc_id: str, request: Request, run_type: Optional[str] = None, q: Optional[str] = None, limit: int = 100, offset: int = 0):
 
@@ -3966,9 +3966,9 @@ async def documents_list_analysis_runs(doc_id: str, request: Request, run_type: 
 
 
 
-@app.delete("/api/v1/documents/{doc_id}/analysis-runs/{run_id}", response_model=Dict[str, Any])
+@app.delete("/api/v1/documents/{doc_id}/analysis-runs/{run_id}", response_model=StatusResponse)
 
-@app.delete("/platform/documents/{doc_id}/analysis-runs/{run_id}", response_model=Dict[str, Any])
+@app.delete("/platform/documents/{doc_id}/analysis-runs/{run_id}", response_model=StatusResponse)
 
 async def documents_delete_analysis_run(doc_id: str, run_id: str, request: Request):
 
@@ -4030,9 +4030,9 @@ async def documents_delete_analysis_run(doc_id: str, run_id: str, request: Reque
 
 
 
-@app.get("/api/v1/documents/{doc_id}/export", response_model=Dict[str, Any])
+@app.get("/api/v1/documents/{doc_id}/export", response_model=StatusResponse)
 
-@app.get("/platform/documents/{doc_id}/export", response_model=Dict[str, Any])
+@app.get("/platform/documents/{doc_id}/export", response_model=StatusResponse)
 
 async def documents_export(
 
@@ -4330,9 +4330,9 @@ async def documents_export(
 
 
 
-@app.get("/api/v1/documents/{doc_id}/elements", response_model=Dict[str, Any])
+@app.get("/api/v1/documents/{doc_id}/elements", response_model=StatusResponse)
 
-@app.get("/platform/documents/{doc_id}/elements", response_model=Dict[str, Any])
+@app.get("/platform/documents/{doc_id}/elements", response_model=StatusResponse)
 
 async def documents_list_elements(doc_id: str, request: Request, type: Optional[str] = None, limit: int = 200, offset: int = 0):
 
@@ -4452,11 +4452,11 @@ async def documents_list_elements(doc_id: str, request: Request, type: Optional[
 
 
 
-@app.post("/kb/query", response_model=Dict[str, Any])
+@app.post("/kb/query", response_model=StatusResponse)
 
-@app.post("/api/v1/kb/query", response_model=Dict[str, Any])
+@app.post("/api/v1/kb/query", response_model=StatusResponse)
 
-@app.post("/platform/kb/query", response_model=Dict[str, Any])
+@app.post("/platform/kb/query", response_model=StatusResponse)
 
 async def kb_query(req: KBQueryRequest, request: Request):
 
@@ -6276,7 +6276,7 @@ app.include_router(file_checkpoints_router)
 
 
 
-@app.get("/api/v1/mcp/servers", response_model=Dict[str, Any])
+@app.get("/api/v1/mcp/servers", response_model=StatusResponse)
 
 async def list_mcp_servers(request: Request, scope: str = "workspace", _auth: str = Depends(require_auth)):
 
@@ -6292,7 +6292,7 @@ async def list_mcp_servers(request: Request, scope: str = "workspace", _auth: st
 
 
 
-@app.post("/api/v1/mcp/servers", response_model=Dict[str, Any])
+@app.post("/api/v1/mcp/servers", response_model=StatusResponse)
 
 async def register_mcp_server(request: Request):
 
@@ -6310,7 +6310,7 @@ async def register_mcp_server(request: Request):
 
 
 
-@app.post("/api/v1/mcp/servers/{name}/enable", response_model=Dict[str, Any])
+@app.post("/api/v1/mcp/servers/{name}/enable", response_model=StatusResponse)
 
 async def enable_mcp_server(name: str, request: Request, scope: str = "workspace"):
 
@@ -6324,7 +6324,7 @@ async def enable_mcp_server(name: str, request: Request, scope: str = "workspace
 
 
 
-@app.post("/api/v1/mcp/servers/{name}/disable", response_model=Dict[str, Any])
+@app.post("/api/v1/mcp/servers/{name}/disable", response_model=StatusResponse)
 
 async def disable_mcp_server(name: str, request: Request, scope: str = "workspace"):
 
@@ -6338,7 +6338,7 @@ async def disable_mcp_server(name: str, request: Request, scope: str = "workspac
 
 
 
-@app.get("/api/v1/mcp/servers/{name}/tools", response_model=Dict[str, Any])
+@app.get("/api/v1/mcp/servers/{name}/tools", response_model=StatusResponse)
 
 async def list_mcp_server_tools(name: str, request: Request, scope: str = "workspace", _auth: str = Depends(require_auth)):
 
@@ -6352,7 +6352,7 @@ async def list_mcp_server_tools(name: str, request: Request, scope: str = "works
 
 
 
-@app.get("/api/v1/mcp/servers/{name}/policy-check", response_model=Dict[str, Any])
+@app.get("/api/v1/mcp/servers/{name}/policy-check", response_model=StatusResponse)
 
 async def check_mcp_server_policy(name: str, request: Request, scope: str = "workspace"):
 
@@ -6372,7 +6372,7 @@ async def check_mcp_server_policy(name: str, request: Request, scope: str = "wor
 
 
 
-@app.get("/api/v1/plugins", response_model=Dict[str, Any])
+@app.get("/api/v1/plugins", response_model=StatusResponse)
 
 async def list_plugins(request: Request, status: str = "active", _auth: str = Depends(require_auth)):
 
@@ -6388,7 +6388,7 @@ async def list_plugins(request: Request, status: str = "active", _auth: str = De
 
 
 
-@app.put("/api/v1/plugins", response_model=Dict[str, Any])
+@app.put("/api/v1/plugins", response_model=StatusResponse)
 
 async def install_or_update_plugin(request: Request):
 
@@ -6412,7 +6412,7 @@ async def install_or_update_plugin(request: Request):
 
 
 
-@app.post("/api/v1/plugins/{plugin_id}/enable", response_model=Dict[str, Any])
+@app.post("/api/v1/plugins/{plugin_id}/enable", response_model=StatusResponse)
 
 async def enable_plugin(plugin_id: str, request: Request):
 
@@ -6426,7 +6426,7 @@ async def enable_plugin(plugin_id: str, request: Request):
 
 
 
-@app.post("/api/v1/plugins/{plugin_id}/disable", response_model=Dict[str, Any])
+@app.post("/api/v1/plugins/{plugin_id}/disable", response_model=StatusResponse)
 
 async def disable_plugin(plugin_id: str, request: Request):
 
@@ -6440,7 +6440,7 @@ async def disable_plugin(plugin_id: str, request: Request):
 
 
 
-@app.get("/api/v1/plugins/{plugin_id}/versions", response_model=Dict[str, Any])
+@app.get("/api/v1/plugins/{plugin_id}/versions", response_model=StatusResponse)
 
 async def list_plugin_versions(plugin_id: str, request: Request, _auth: str = Depends(require_auth)):
 
@@ -6454,7 +6454,7 @@ async def list_plugin_versions(plugin_id: str, request: Request, _auth: str = De
 
 
 
-@app.post("/api/v1/plugins/{plugin_id}/rollback", response_model=Dict[str, Any])
+@app.post("/api/v1/plugins/{plugin_id}/rollback", response_model=StatusResponse)
 
 async def rollback_plugin(plugin_id: str, request: Request):
 
@@ -6468,7 +6468,7 @@ async def rollback_plugin(plugin_id: str, request: Request):
 
 
 
-@app.post("/api/v1/plugins/{plugin_id}/run", response_model=Dict[str, Any])
+@app.post("/api/v1/plugins/{plugin_id}/run", response_model=StatusResponse)
 
 async def run_plugin_async(plugin_id: str, request: Request):
 

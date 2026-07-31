@@ -25,7 +25,7 @@ def _store(rt: RuntimeDep):
     return getattr(rt, "execution_store", None) if rt else None
 
 
-@router.post("/ops/prune", response_model=Dict[str, Any])
+@router.post("/ops/prune", response_model=StatusResponse)
 async def ops_prune(request: dict, http_request: Request, rt: RuntimeDep = Depends(get_kernel_runtime)):
     """
     Trigger ExecutionStore.prune() manually (best-effort).
@@ -60,7 +60,7 @@ async def ops_prune(request: dict, http_request: Request, rt: RuntimeDep = Depen
     return {"ok": True, "deleted": res}
 
 
-@router.get("/ops/export/run_events.csv", response_model=Dict[str, Any])
+@router.get("/ops/export/run_events.csv", response_model=StatusResponse)
 async def export_run_events_csv(http_request: Request, run_id: str, limit: int = 5000, rt: RuntimeDep = Depends(get_kernel_runtime)):
     store = _store(rt)
     if not store:
@@ -74,7 +74,7 @@ async def export_run_events_csv(http_request: Request, run_id: str, limit: int =
     return Response(content=data, media_type="text/csv", headers={"Content-Disposition": f'attachment; filename=\"{filename}\"'})
 
 
-@router.get("/ops/export/syscall_events.csv", response_model=Dict[str, Any])
+@router.get("/ops/export/syscall_events.csv", response_model=StatusResponse)
 async def export_syscall_events_csv(
     http_request: Request,
     tenant_id: Optional[str] = None,
@@ -98,7 +98,7 @@ async def export_syscall_events_csv(
     return Response(content=data, media_type="text/csv", headers={"Content-Disposition": f'attachment; filename=\"{filename}\"'})
 
 
-@router.get("/ops/export/approvals.csv", response_model=Dict[str, Any])
+@router.get("/ops/export/approvals.csv", response_model=StatusResponse)
 async def export_approvals_csv(http_request: Request, tenant_id: Optional[str] = None, status: Optional[str] = None, limit: int = 1000, rt: RuntimeDep = Depends(get_kernel_runtime)):
     store = _store(rt)
     if not store:
@@ -112,7 +112,7 @@ async def export_approvals_csv(http_request: Request, tenant_id: Optional[str] =
     return Response(content=data, media_type="text/csv", headers={"Content-Disposition": f'attachment; filename=\"{filename}\"'})
 
 
-@router.get("/ops/export/tenant_usage.csv", response_model=Dict[str, Any])
+@router.get("/ops/export/tenant_usage.csv", response_model=StatusResponse)
 async def export_tenant_usage_csv(
     http_request: Request,
     tenant_id: str,
@@ -136,7 +136,7 @@ async def export_tenant_usage_csv(
     return Response(content=data, media_type="text/csv", headers={"Content-Disposition": f'attachment; filename=\"{filename}\"'})
 
 
-@router.get("/ops/export/gateway_dlq.csv", response_model=Dict[str, Any])
+@router.get("/ops/export/gateway_dlq.csv", response_model=StatusResponse)
 async def export_gateway_dlq_csv(
     http_request: Request,
     status: Optional[str] = None,
@@ -159,7 +159,7 @@ async def export_gateway_dlq_csv(
     return Response(content=data, media_type="text/csv", headers={"Content-Disposition": f'attachment; filename=\"{filename}\"'})
 
 
-@router.get("/ops/export/connector_attempts.csv", response_model=Dict[str, Any])
+@router.get("/ops/export/connector_attempts.csv", response_model=StatusResponse)
 async def export_connector_attempts_csv(
     http_request: Request,
     connector: Optional[str] = None,
@@ -183,7 +183,7 @@ async def export_connector_attempts_csv(
     return Response(content=data, media_type="text/csv", headers={"Content-Disposition": f'attachment; filename=\"{filename}\"'})
 
 
-@router.get("/ops/export/jobs_dlq.csv", response_model=Dict[str, Any])
+@router.get("/ops/export/jobs_dlq.csv", response_model=StatusResponse)
 async def export_jobs_dlq_csv(
     http_request: Request,
     status: Optional[str] = None,
@@ -203,7 +203,7 @@ async def export_jobs_dlq_csv(
     return Response(content=data, media_type="text/csv", headers={"Content-Disposition": f'attachment; filename=\"{filename}\"'})
 
 
-@router.get("/ops/export/job_delivery_attempts.csv", response_model=Dict[str, Any])
+@router.get("/ops/export/job_delivery_attempts.csv", response_model=StatusResponse)
 async def export_job_delivery_attempts_csv(
     http_request: Request,
     job_id: Optional[str] = None,
@@ -226,7 +226,7 @@ async def export_job_delivery_attempts_csv(
     return Response(content=data, media_type="text/csv", headers={"Content-Disposition": f'attachment; filename=\"{filename}\"'})
 
 
-@router.get("/ops/export/gateway_pairings.csv", response_model=Dict[str, Any])
+@router.get("/ops/export/gateway_pairings.csv", response_model=StatusResponse)
 async def export_gateway_pairings_csv(
     http_request: Request,
     channel: Optional[str] = None,
@@ -246,7 +246,7 @@ async def export_gateway_pairings_csv(
     return Response(content=data, media_type="text/csv", headers={"Content-Disposition": f'attachment; filename=\"{filename}\"'})
 
 
-@router.get("/ops/export/gateway_tokens.csv", response_model=Dict[str, Any])
+@router.get("/ops/export/gateway_tokens.csv", response_model=StatusResponse)
 async def export_gateway_tokens_csv(
     http_request: Request,
     enabled: Optional[bool] = None,
@@ -265,7 +265,7 @@ async def export_gateway_tokens_csv(
     return Response(content=data, media_type="text/csv", headers={"Content-Disposition": f'attachment; filename=\"{filename}\"'})
 
 
-@router.get("/ops/export/release_rollouts.csv", response_model=Dict[str, Any])
+@router.get("/ops/export/release_rollouts.csv", response_model=StatusResponse)
 async def export_release_rollouts_csv(
     http_request: Request,
     tenant_id: str,
@@ -288,7 +288,7 @@ async def export_release_rollouts_csv(
     return Response(content=data, media_type="text/csv", headers={"Content-Disposition": f'attachment; filename=\"{filename}\"'})
 
 
-@router.get("/ops/export/release_metrics.csv", response_model=Dict[str, Any])
+@router.get("/ops/export/release_metrics.csv", response_model=StatusResponse)
 async def export_release_metrics_csv(
     http_request: Request,
     tenant_id: str,
@@ -311,7 +311,7 @@ async def export_release_metrics_csv(
     return Response(content=data, media_type="text/csv", headers={"Content-Disposition": f'attachment; filename=\"{filename}\"'})
 
 
-@router.get("/ops/export/learning_artifacts.csv", response_model=Dict[str, Any])
+@router.get("/ops/export/learning_artifacts.csv", response_model=StatusResponse)
 async def export_learning_artifacts_csv(
     http_request: Request,
     target_type: Optional[str] = None,
@@ -343,7 +343,7 @@ async def export_learning_artifacts_csv(
     return Response(content=data, media_type="text/csv", headers={"Content-Disposition": f'attachment; filename=\"{filename}\"'})
 
 
-@router.get("/ops/export/bundle.zip", response_model=Dict[str, Any])
+@router.get("/ops/export/bundle.zip", response_model=StatusResponse)
 async def export_ops_bundle_zip(
     http_request: Request,
     tenant_id: str,

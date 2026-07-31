@@ -17,14 +17,14 @@ from core.api.facades.security_facade import get_permission_manager
 router = APIRouter(prefix="/platform/permissions", tags=["permissions"])
 
 
-@router.get("/permissions/stats", response_model=Dict[str, Any])
+@router.get("/permissions/stats", response_model=StatusResponse)
 async def get_permission_stats(_auth: str = Depends(require_auth)):
     """Get permission statistics"""
     perm_mgr = get_permission_manager()
     return perm_mgr.get_stats()
 
 
-@router.get("/permissions/users/{user_id}", response_model=Dict[str, Any])
+@router.get("/permissions/users/{user_id}", response_model=StatusResponse)
 async def get_user_permissions(user_id: str, _auth: str = Depends(require_auth)):
     """Get all permissions for a user (resource_id -> permissions)."""
     perm_mgr = get_permission_manager()
@@ -35,7 +35,7 @@ async def get_user_permissions(user_id: str, _auth: str = Depends(require_auth))
     }
 
 
-@router.get("/permissions/resources/{resource_id}", response_model=Dict[str, Any])
+@router.get("/permissions/resources/{resource_id}", response_model=StatusResponse)
 async def get_resource_permissions(resource_id: str, _auth: str = Depends(require_auth)):
     """Get all users who have permissions on a resource."""
     perm_mgr = get_permission_manager()
@@ -46,7 +46,7 @@ async def get_resource_permissions(resource_id: str, _auth: str = Depends(requir
     }
 
 
-@router.post("/permissions/grant", response_model=Dict[str, Any])
+@router.post("/permissions/grant", response_model=StatusResponse)
 async def grant_permission(request: Dict[str, Any], _auth: str = Depends(require_admin)):
     """Grant permission to a user for a resource (tool/skill/agent)."""
     user_id = request.get("user_id")
@@ -64,7 +64,7 @@ async def grant_permission(request: Dict[str, Any], _auth: str = Depends(require
     return {"status": "granted", "user_id": user_id, "resource_id": resource_id, "permission": perm_enum.value}
 
 
-@router.post("/permissions/revoke", response_model=Dict[str, Any])
+@router.post("/permissions/revoke", response_model=StatusResponse)
 async def revoke_permission(request: Dict[str, Any], _auth: str = Depends(require_admin)):
     """Revoke permission from a user for a resource (tool/skill/agent)."""
     user_id = request.get("user_id")

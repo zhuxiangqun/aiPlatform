@@ -17,7 +17,7 @@ from core.api.deps import actor_from_http, rbac_guard
 from core.api.utils.governance import change_links, gate_error_envelope, ui_url
 from core.api.utils.run_contract import wrap_execution_result_as_run_summary
 from core.api.facades.runtime_facade import get_kernel_runtime
-from api.schemas_response import ApprovalListResponse, ApprovalActionResponse
+from api.schemas_response import ApprovalListResponse, ApprovalActionResponse, StatusResponse
 
 
 router = APIRouter(prefix="/platform", tags=["approvals"])
@@ -159,7 +159,7 @@ async def list_pending_approvals(
     return {"items": out, "total": len(out)}
 
 
-@router.get("/approvals/{request_id}", response_model=Dict[str, Any])
+@router.get("/approvals/{request_id}", response_model=StatusResponse)
 async def get_approval_request(request_id: str, _auth: str = Depends(require_auth)):
     mgr = _approval_mgr()
     if not mgr:
@@ -217,7 +217,7 @@ async def get_approval_request(request_id: str, _auth: str = Depends(require_aut
     return resp
 
 
-@router.get("/approvals/{request_id}/audit", response_model=Dict[str, Any])
+@router.get("/approvals/{request_id}/audit", response_model=StatusResponse)
 async def get_approval_audit(request_id: str, _auth: str = Depends(require_auth)):
     # backward-compatible alias
     return await get_approval_request(request_id)
@@ -359,7 +359,7 @@ async def reject_request(request_id: str, request: dict, http_request: Request, 
     return {"status": updated.status.value, "request_id": updated.request_id}
 
 
-@router.post("/approvals/{request_id}/replay", response_model=Dict[str, Any])
+@router.post("/approvals/{request_id}/replay", response_model=StatusResponse)
 async def replay_approval(request_id: str, request: dict, http_request: Request, _auth: str = Depends(require_auth)):
     """
     PR-08: Approval Hub replay

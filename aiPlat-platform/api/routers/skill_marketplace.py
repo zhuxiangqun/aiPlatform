@@ -90,7 +90,7 @@ def _scan_catalog() -> List[Dict[str, Any]]:
     return available
 
 
-@router.get("/marketplace", response_model=Dict[str, Any])
+@router.get("/marketplace", response_model=StatusResponse)
 async def list_marketplace(_auth: str = Depends(require_auth)):
     """List installed and available skills."""
     installed = _scan_installed()
@@ -107,7 +107,7 @@ async def list_marketplace(_auth: str = Depends(require_auth)):
     }
 
 
-@router.post("/install", response_model=Dict[str, Any])
+@router.post("/install", response_model=StatusResponse)
 async def install_skill(req: InstallRequest, _auth: str = Depends(require_admin)):
     """Install a skill from source URL or local path."""
     source = req.source.strip()
@@ -158,7 +158,7 @@ async def install_skill(req: InstallRequest, _auth: str = Depends(require_admin)
         raise HTTPException(400, "Unsupported source format. Use 'git+https://...' or 'local+/path/to/skill'")
 
 
-@router.delete("/uninstall/{skill_name}", response_model=Dict[str, Any])
+@router.delete("/uninstall/{skill_name}", response_model=StatusResponse)
 async def uninstall_skill(skill_name: str, _auth: str = Depends(require_admin)):
     """Remove an installed skill."""
     dst = os.path.join(SKILLS_HOME, skill_name)

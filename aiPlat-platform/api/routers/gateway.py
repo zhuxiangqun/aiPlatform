@@ -51,7 +51,7 @@ def _require_gateway_admin(http_request: Request) -> None:
         raise HTTPException(status_code=403, detail="admin token required")
 
 
-@router.post("/gateway/execute", response_model=Dict[str, Any])
+@router.post("/gateway/execute", response_model=StatusResponse)
 async def gateway_execute(request: GatewayExecuteRequest, http_request: Request, rt: RuntimeDep = Depends(get_kernel_runtime)):
     """
     Unified external entry for multi-channel integrations.
@@ -306,7 +306,7 @@ async def gateway_execute(request: GatewayExecuteRequest, http_request: Request,
     return resp
 
 
-@router.post("/gateway/webhook/message", response_model=Dict[str, Any])
+@router.post("/gateway/webhook/message", response_model=StatusResponse)
 async def gateway_webhook_message(http_request: Request, body: Dict[str, Any], rt: RuntimeDep = Depends(get_kernel_runtime)):
     """
     Minimal webhook adapter (Roadmap-3):
@@ -345,7 +345,7 @@ async def gateway_webhook_message(http_request: Request, body: Dict[str, Any], r
     return await gateway_execute(req, http_request, rt)
 
 
-@router.get("/gateway/pairings", response_model=Dict[str, Any])
+@router.get("/gateway/pairings", response_model=StatusResponse)
 async def list_gateway_pairings(
     http_request: Request,
     channel: Optional[str] = None,
@@ -361,7 +361,7 @@ async def list_gateway_pairings(
     return await store.list_gateway_pairings(channel=channel, user_id=user_id, limit=limit, offset=offset)
 
 
-@router.post("/gateway/pairings", response_model=Dict[str, Any])
+@router.post("/gateway/pairings", response_model=StatusResponse)
 async def upsert_gateway_pairing(http_request: Request, body: Dict[str, Any], rt: RuntimeDep = Depends(get_kernel_runtime)):
     store = _store(rt)
     if not store:
@@ -382,7 +382,7 @@ async def upsert_gateway_pairing(http_request: Request, body: Dict[str, Any], rt
     )
 
 
-@router.delete("/gateway/pairings", response_model=Dict[str, Any])
+@router.delete("/gateway/pairings", response_model=StatusResponse)
 async def delete_gateway_pairing(http_request: Request, channel: str, channel_user_id: str, rt: RuntimeDep = Depends(get_kernel_runtime)):
     store = _store(rt)
     if not store:
@@ -394,7 +394,7 @@ async def delete_gateway_pairing(http_request: Request, channel: str, channel_us
     return {"status": "deleted", "channel": channel, "channel_user_id": channel_user_id}
 
 
-@router.get("/gateway/tokens", response_model=Dict[str, Any])
+@router.get("/gateway/tokens", response_model=StatusResponse)
 async def list_gateway_tokens(http_request: Request, enabled: Optional[bool] = None, limit: int = 100, offset: int = 0, rt: RuntimeDep = Depends(get_kernel_runtime)):
     store = _store(rt)
     if not store:
@@ -403,7 +403,7 @@ async def list_gateway_tokens(http_request: Request, enabled: Optional[bool] = N
     return await store.list_gateway_tokens(limit=limit, offset=offset, enabled=enabled)
 
 
-@router.post("/gateway/tokens", response_model=Dict[str, Any])
+@router.post("/gateway/tokens", response_model=StatusResponse)
 async def create_gateway_token(http_request: Request, body: Dict[str, Any], rt: RuntimeDep = Depends(get_kernel_runtime)):
     store = _store(rt)
     if not store:
@@ -424,7 +424,7 @@ async def create_gateway_token(http_request: Request, body: Dict[str, Any], rt: 
     return rec
 
 
-@router.delete("/gateway/tokens/{token_id}", response_model=Dict[str, Any])
+@router.delete("/gateway/tokens/{token_id}", response_model=StatusResponse)
 async def delete_gateway_token(http_request: Request, token_id: str, rt: RuntimeDep = Depends(get_kernel_runtime)):
     store = _store(rt)
     if not store:
@@ -436,7 +436,7 @@ async def delete_gateway_token(http_request: Request, token_id: str, rt: Runtime
     return {"status": "deleted", "token_id": token_id}
 
 
-@router.get("/gateway/dlq", response_model=Dict[str, Any])
+@router.get("/gateway/dlq", response_model=StatusResponse)
 async def list_gateway_delivery_dlq(
     http_request: Request,
     status: Optional[str] = "pending",
@@ -459,7 +459,7 @@ async def list_gateway_delivery_dlq(
     )
 
 
-@router.post("/gateway/dlq/{dlq_id}/retry", response_model=Dict[str, Any])
+@router.post("/gateway/dlq/{dlq_id}/retry", response_model=StatusResponse)
 async def retry_gateway_delivery_dlq(http_request: Request, dlq_id: str, rt: RuntimeDep = Depends(get_kernel_runtime)):
     store = _store(rt)
     if not store:
@@ -485,7 +485,7 @@ async def retry_gateway_delivery_dlq(http_request: Request, dlq_id: str, rt: Run
     return {"ok": bool(out.get("ok")), "dlq_id": dlq_id, "result": out}
 
 
-@router.delete("/gateway/dlq/{dlq_id}", response_model=Dict[str, Any])
+@router.delete("/gateway/dlq/{dlq_id}", response_model=StatusResponse)
 async def delete_gateway_delivery_dlq(http_request: Request, dlq_id: str, rt: RuntimeDep = Depends(get_kernel_runtime)):
     store = _store(rt)
     if not store:

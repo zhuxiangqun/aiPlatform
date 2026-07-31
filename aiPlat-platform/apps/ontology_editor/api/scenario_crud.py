@@ -5,7 +5,7 @@ from typing import Any, Dict, List, Optional
 router = APIRouter(tags=["ontology-editor-scenarios"])
 
 
-@router.get("/scenarios/compare", response_model=Dict[str, Any])
+@router.get("/scenarios/compare", response_model=StatusResponse)
 async def compare_domains():
     u"""Cross-domain maturity comparison."""
     try:
@@ -16,7 +16,7 @@ async def compare_domains():
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/scenarios/recommend", response_model=Dict[str, Any])
+@router.get("/scenarios/recommend", response_model=StatusResponse)
 async def recommend_scenarios(
     industry: str = Query(""),
     pain_points: str = Query(""),
@@ -44,7 +44,7 @@ async def recommend_scenarios(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/scenarios/report", response_model=Dict[str, Any])
+@router.get("/scenarios/report", response_model=StatusResponse)
 async def export_report(domain_ids: str = Query("")):
     u"""Export domain comparison report (markdown)."""
     try:
@@ -56,7 +56,7 @@ async def export_report(domain_ids: str = Query("")):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/scenarios/{domain_id}", response_model=Dict[str, Any])
+@router.post("/scenarios/{domain_id}", response_model=StatusResponse)
 async def upsert_scenario(domain_id: str, data: Dict[str, Any]):
     u"""Create or update a scenario definition for a domain (writes to registry.json)."""
     try:
@@ -102,7 +102,7 @@ async def upsert_scenario(domain_id: str, data: Dict[str, Any]):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/scenarios/refresh-maturity/{domain_id}", response_model=Dict[str, Any])
+@router.post("/scenarios/refresh-maturity/{domain_id}", response_model=StatusResponse)
 async def refresh_maturity(domain_id: str):
     u"""Refresh maturity scores for a domain."""
     try:

@@ -11,7 +11,7 @@ def _is_not_initialized(e: Exception) -> bool:
     return any(kw in msg for kw in ("no such table", "database is locked", "unable to open"))
 
 
-@router.get("/domains/{domain_id}/monitor/state-distribution", response_model=Dict[str, Any])
+@router.get("/domains/{domain_id}/monitor/state-distribution", response_model=StatusResponse)
 async def state_distribution(domain_id: str):
     u"""Get per-class-per-state instance counts."""
     try:
@@ -24,7 +24,7 @@ async def state_distribution(domain_id: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/domains/{domain_id}/monitor/bottlenecks", response_model=Dict[str, Any])
+@router.get("/domains/{domain_id}/monitor/bottlenecks", response_model=StatusResponse)
 async def bottlenecks(domain_id: str, limit: int = Query(10)):
     u"""Top entities stuck longest in current state."""
     try:
@@ -37,7 +37,7 @@ async def bottlenecks(domain_id: str, limit: int = Query(10)):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/domains/{domain_id}/monitor/sla-violations", response_model=Dict[str, Any])
+@router.get("/domains/{domain_id}/monitor/sla-violations", response_model=StatusResponse)
 async def sla_violations(domain_id: str):
     u"""Recent SLA violations from time_elapsed triggers."""
     try:
@@ -50,7 +50,7 @@ async def sla_violations(domain_id: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/domains/{domain_id}/monitor/trends", response_model=Dict[str, Any])
+@router.get("/domains/{domain_id}/monitor/trends", response_model=StatusResponse)
 async def trends(domain_id: str, days: int = Query(7)):
     u"""Daily state transition trend data."""
     try:
@@ -63,7 +63,7 @@ async def trends(domain_id: str, days: int = Query(7)):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/domains/{domain_id}/monitor/process-status", response_model=Dict[str, Any])
+@router.get("/domains/{domain_id}/monitor/process-status", response_model=StatusResponse)
 async def process_status(domain_id: str, process_name: Optional[str] = Query(None)):
     u"""Get running process instance status."""
     try:
@@ -76,7 +76,7 @@ async def process_status(domain_id: str, process_name: Optional[str] = Query(Non
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/domains/{domain_id}/monitor/process-bottlenecks", response_model=Dict[str, Any])
+@router.get("/domains/{domain_id}/monitor/process-bottlenecks", response_model=StatusResponse)
 async def process_bottlenecks(domain_id: str, limit: int = Query(10)):
     u"""Process instances stuck longest at their current step."""
     try:

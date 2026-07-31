@@ -42,7 +42,7 @@ def _new_change_id() -> str:
     return f"chg-{uuid.uuid4().hex[:12]}"
 
 
-@router.get("/policies/tenants", response_model=Dict[str, Any])
+@router.get("/policies/tenants", response_model=StatusResponse)
 async def list_tenant_policies(limit: int = 100, offset: int = 0, rt: RuntimeDep = None):
     store = _store(rt)
     if not store:
@@ -50,7 +50,7 @@ async def list_tenant_policies(limit: int = 100, offset: int = 0, rt: RuntimeDep
     return await store.list_tenant_policies(limit=limit, offset=offset)
 
 
-@router.get("/policies/tenants/{tenant_id}", response_model=Dict[str, Any])
+@router.get("/policies/tenants/{tenant_id}", response_model=StatusResponse)
 async def get_tenant_policy(tenant_id: str, rt: RuntimeDep = None):
     store = _store(rt)
     if not store:
@@ -61,7 +61,7 @@ async def get_tenant_policy(tenant_id: str, rt: RuntimeDep = None):
     return item
 
 
-@router.get("/policies/tenants/{tenant_id}/effective", response_model=Dict[str, Any])
+@router.get("/policies/tenants/{tenant_id}/effective", response_model=StatusResponse)
 async def get_effective_tenant_policy(tenant_id: str, rt: RuntimeDep = None):
     """
     Return the effective policy view (env defaults merged with tenant snapshot).
@@ -177,7 +177,7 @@ async def get_effective_tenant_policy(tenant_id: str, rt: RuntimeDep = None):
     }
 
 
-@router.put("/policies/tenants/{tenant_id}", response_model=Dict[str, Any])
+@router.put("/policies/tenants/{tenant_id}", response_model=StatusResponse)
 async def upsert_tenant_policy(tenant_id: str, request: dict, http_request: Request, rt: RuntimeDep = None):
     store = _store(rt)
     if not store:
@@ -255,7 +255,7 @@ async def upsert_tenant_policy(tenant_id: str, request: dict, http_request: Requ
     return out
 
 
-@router.get("/policies/tenants/{tenant_id}/evaluate-tool", response_model=Dict[str, Any])
+@router.get("/policies/tenants/{tenant_id}/evaluate-tool", response_model=StatusResponse)
 async def evaluate_tenant_tool_policy(tenant_id: str, tool_name: str, http_request: Request, rt: RuntimeDep = None):
     """
     Evaluate a single tool against tenant policy (best-effort).

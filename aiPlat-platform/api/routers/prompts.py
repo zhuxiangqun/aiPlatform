@@ -13,7 +13,7 @@ from auth.deps import require_auth
 router = APIRouter(prefix="/platform/prompts", tags=["prompts"])
 
 
-@router.post("/run", response_model=Dict[str, Any])
+@router.post("/run", response_model=StatusResponse)
 async def run_template(request: dict, _auth: str = Depends(require_auth)):
     """Run a prompt template: render variables → LLM → return output.
     
