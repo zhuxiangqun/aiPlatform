@@ -228,7 +228,7 @@ class PipelineStageConfig(BaseModel):
     order: int = 0
     model: str = ""
     hitl: bool = False
-    agent_type: str = "react"  # react, conversational, rag, plan_execute, reflection, tool_using, multi_agent
+    agent_type: str = "react"  # See ~/.aiplat/registry/agent_types.yaml for valid values (single source of truth)
     hitl_phase: str = ""
     hitl_after_execute: bool = False
     hitl_after_phase: str = ""

@@ -251,13 +251,9 @@ def _convert_lc_agent(json_path: Path, data: Dict[str, Any]) -> Optional[Dict[st
     tools = data.get("tools") or []
     tool_names = [str(t.get("name", t)) for t in tools] if isinstance(tools, list) else []
 
-    lc_agent_type = "conversational"
-    if "react" in agent_type.lower():
-        lc_agent_type = "react"
-    elif "plan" in agent_type.lower():
-        lc_agent_type = "plan_execute"
-    elif "rag" in agent_type.lower():
-        lc_agent_type = "rag"
+    from core.harness.registry.registry_loader import load_agent_types
+    types = load_agent_types()
+    lc_agent_type = types.resolve(str(agent_type))
 
     safe = re.sub(r"[^a-z0-9_]", "_", name.lower())[:32]
 

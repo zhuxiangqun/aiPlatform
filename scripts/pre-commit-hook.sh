@@ -245,6 +245,54 @@ if [ -z "${SKIP_CAP_REGISTRATION:-}" ]; then
     echo "  ✅ All capabilities registered"
 fi
 
+# ── Phase 46: Entity registration guard (agent_type, API key, directory whitelist) ──
+if [ -z "${SKIP_ENTITY_GUARD:-}" ]; then
+    ENTITY_ISSUES=0
+
+    # P1: 禁止 os.getenv("DEEPSEEK_API_KEY") — 必须走 get_llm_api_key()
+    if echo "$STAGED_PY" | xargs grep -l 'os\.getenv.*DEEPSEEK_API_KEY\|os\.getenv.*AIPLAT_LLM_API_KEY' 2>/dev/null | grep -v 'llm_env.py\|model_injection.py\|infra' > /tmp/precommit_apikey.txt; then
+        echo "  ❌ Direct os.getenv(API_KEY) detected in staged files:"
+        cat /tmp/precommit_apikey.txt | sed 's/^/     /'
+        echo "     → Use get_llm_api_key() from core.harness.utils.llm_env instead"
+        ENTITY_ISSUES=1
+    fi
+
+    # P2: AGENT.md 目录白名单 — 只允许 engine/agents/ 和 ~/.aiplat/agents/
+    NEW_AGENTS=$(git diff --cached --name-only --diff-filter=A | grep 'AGENT\.md$' || true)
+    for f in $NEW_AGENTS; do
+        if ! echo "$f" | grep -qE '(engine/agents/|\.aiplat/agents/)'; then
+            echo "  ❌ New AGENT.md outside allowed directories: $f"
+            echo "     → Allowed: core/engine/agents/ or ~/.aiplat/agents/"
+            ENTITY_ISSUES=1
+        fi
+    done
+
+    # P3: SKILL.md 目录白名单
+    NEW_SKILLS=$(git diff --cached --name-only --diff-filter=A | grep 'SKILL\.md$' || true)
+    for f in $NEW_SKILLS; do
+        if ! echo "$f" | grep -qE '(engine/skills/|\.aiplat/skills/)'; then
+            echo "  ❌ New SKILL.md outside allowed directories: $f"
+            echo "     → Allowed: core/engine/skills/ or ~/.aiplat/skills/"
+            ENTITY_ISSUES=1
+        fi
+    done
+
+    # P4: 禁止新增 response_model=dict
+    if echo "$STAGED_PY" | xargs grep -l 'response_model=dict\b' 2>/dev/null | grep -v '# noqa: legacy-response-model' > /tmp/precommit_dict.txt; then
+        echo "  ⚠️  New response_model=dict detected (advisory):"
+        cat /tmp/precommit_dict.txt | sed 's/^/     /'
+        echo "     → Use typed Pydantic response_model instead of dict"
+    fi
+
+    if [ "$ENTITY_ISSUES" -eq 1 ]; then
+        echo ""
+        echo "  ❌ Entity registration violations detected."
+        echo "  → Set SKIP_ENTITY_GUARD=1 to bypass (not recommended)"
+        exit 1
+    fi
+    echo "  ✅ Entity registration guard passed"
+fi
+
 # ── Phase 45: Architecture pattern compliance ──
 if [ -z "${SKIP_ARCH_PATTERNS:-}" ]; then
     bash "$WORKSPACE/scripts/verify_architecture_patterns.sh" || {

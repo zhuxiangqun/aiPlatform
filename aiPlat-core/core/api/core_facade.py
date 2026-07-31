@@ -87,12 +87,17 @@ def create_agent(
     model: Any = None,
     system_prompt: str = "",
 ) -> Any:
-    """Create an agent instance by type. Supported types:
-    conversational, plan_execute, react.
+    """Create an agent instance by type.
 
-    config can be a dict with keys: name, model, temperature, max_tokens, timeout,
-    metadata. If None, defaults are used."""
+    Agent types are defined in ~/.aiplat/registry/agent_types.yaml (single source of truth).
+    Supported canonical types: conversational, react, plan_execute, rag, multi_agent, materials_chat.
+    Aliases (plan→plan_execute, tool→react, etc.) are resolved automatically."""
     from core.harness.interfaces.agent import AgentConfig
+    from core.harness.registry.registry_loader import load_agent_types
+
+    types = load_agent_types()
+    canonical = types.resolve(agent_type)
+
     if isinstance(config, dict):
         config = AgentConfig(
             name=config.get("name", "agent"),
@@ -104,23 +109,28 @@ def create_agent(
         )
     elif config is None:
         config = AgentConfig(name="agent", temperature=0.3, timeout=600)
-    if agent_type == "conversational":
-        from core.apps.agents.conversational import create_conversational_agent
-        return create_conversational_agent(config=config, model=model, system_prompt=system_prompt)
-    elif agent_type in ("plan", "plan_execute"):
-        from core.apps.agents.plan_execute import PlanExecuteAgent
-        return PlanExecuteAgent(config=config, model=model)
-    elif agent_type == "react":
-        from core.apps.agents.react import ReActAgent
-        return ReActAgent(config=config, model=model)
-    else:
-        # Unknown types (pure_agent, subagent, materials_chat, operator, etc.)
-        # default to conversational with a warning
-        import logging
-        logging.getLogger("core_facade").warning(
-            "Unknown agent_type '%s' — falling back to conversational agent", agent_type)
-        from core.apps.agents.conversational import create_conversational_agent
-        return create_conversational_agent(config=config, model=model, system_prompt=system_prompt)
+
+    # Dispatch: canonical type → agent class
+    _DISPATCH = {
+        "conversational": lambda: __import__("core.apps.agents.conversational", fromlist=["create_conversational_agent"]).create_conversational_agent(config=config, model=model, system_prompt=system_prompt),
+        "plan_execute":    lambda: __import__("core.apps.agents.plan_execute", fromlist=["PlanExecuteAgent"]).PlanExecuteAgent(config=config, model=model),
+        "react":           lambda: __import__("core.apps.agents.react", fromlist=["ReActAgent"]).ReActAgent(config=config, model=model),
+        "rag":             lambda: __import__("core.apps.agents.rag", fromlist=["RAGAgent"]).RAGAgent(config=config, model=model),
+        "multi_agent":     lambda: __import__("core.apps.agents.multi_agent", fromlist=["MultiAgent"]).MultiAgent(config=config, model=model),
+        "materials_chat":  lambda: __import__("core.apps.agents.materials_chat", fromlist=["MaterialsChatAgent"]).MaterialsChatAgent(config=config, model=model),
+    }
+
+    factory = _DISPATCH.get(canonical)
+    if factory is not None:
+        return factory()
+
+    # Fallback: conversational (already resolved unknown types)
+    import logging
+    logging.getLogger("core_facade").warning(
+        "No dispatch for agent_type '%s' (canonical='%s') — falling back to conversational",
+        agent_type, canonical)
+    from core.apps.agents.conversational import create_conversational_agent
+    return create_conversational_agent(config=config, model=model, system_prompt=system_prompt)
 
 
 def get_skill_registry() -> Any:

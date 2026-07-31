@@ -2560,3 +2560,91 @@ rules:
       grep_exclude_context: 3
     message: "L6 feature flags default to false — Phase 39-41 are DISABLED in production"
 
+
+  # ══════════════════════════════════════════════════════════════
+  # §84-91 Entity Registry & Anti-Decay Rules (Phase 1)
+  # ══════════════════════════════════════════════════════════════
+
+  - id: legacy_agent_dir
+    section: "§84"
+    section_name: "Agent 目录唯一性"
+    level: error
+    check:
+      type: file_forbidden
+      pattern: "aiPlat-core/agents/"
+    message: "LEGACY agent directory (core/agents/) must be deleted — agents belong in core/engine/agents/ or ~/.aiplat/agents/"
+
+  - id: generated_code_stale
+    section: "§85"
+    section_name: "生成代码残留检测"
+    level: warning
+    check:
+      type: cmd_output
+      cmd: |
+        python3 -c "
+        import os, time, sys
+        home = os.getenv('AIPLAT_HOME', os.path.expanduser('~/.aiplat'))
+        gen_dir = os.path.join(home, 'output')
+        if not os.path.isdir(gen_dir):
+            print('PASS: no generated projects')
+            sys.exit(0)
+        now = time.time()
+        stale = []
+        for d in os.listdir(gen_dir):
+            dp = os.path.join(gen_dir, d)
+            if os.path.isdir(dp) and d.startswith('prj_'):
+                mtime = os.path.getmtime(dp)
+                age_days = (now - mtime) / 86400
+                if age_days > 90:
+                    stale.append(f'{d}: {age_days:.0f}d old')
+        if stale:
+            for s in stale:
+                print(f'WARNING: {s}')
+            print(f'ERROR: {len(stale)} generated projects >90 days old — cleanup needed')
+            sys.exit(1)
+        print('PASS: no stale generated projects')
+        "
+      ok_pattern: "PASS:"
+
+  - id: agent_type_hardcoded
+    section: "§87"
+    section_name: "agent_type 硬编码检测"
+    level: error
+    check:
+      type: grep_forbidden
+      pattern: 'agent_type.*==.*"conversational"|agent_type.*==.*"react"|agent_type.*in\s*\(.*"conversational"|type_map\s*=\s*\{'
+      paths: ["aiPlat-core/core/api/core_facade.py", "aiPlat-core/core/apps/agents/base.py", "aiPlat-core/core/management/n8n_langchain_adapter.py"]
+      exclude: ["__pycache__", "registry_loader.py"]
+      grep_exclude: ["registry_loader", "agent_types.yaml", "load_agent_types"]
+    message: "Hardcoded agent_type mapping detected — use load_agent_types() from registry_loader instead"
+
+  - id: api_key_direct_env
+    section: "§89"
+    section_name: "API key 集中解析"
+    level: error
+    check:
+      type: grep_forbidden
+      pattern: 'os\.getenv\("DEEPSEEK_API_KEY"\)|os\.getenv\("AIPLAT_LLM_API_KEY"\)'
+      paths: ["aiPlat-core/core/"]
+      exclude: ["__pycache__", "tests/", "test_"]
+      grep_exclude: ["llm_env\\.py", "model_injection\\.py", "infra", "credential_pool", "# noqa:", "scripts/"]
+    message: "Direct env var API key read — use get_llm_api_key() from llm_env.py"
+
+  - id: response_model_dict_baseline
+    section: "§91"
+    section_name: "response_model=dict 存量不增长"
+    level: warning
+    check:
+      type: cmd_output
+      cmd: |
+        python3 -c "
+        import subprocess, sys
+        r = subprocess.run(['grep', '-rn', 'response_model=dict', 'aiPlat-platform/api/', '--include=*.py'], capture_output=True, text=True)
+        count = len([l for l in r.stdout.split('\n') if l.strip() and '# noqa:' not in l])
+        print(f'response_model=dict count: {count}')
+        if count > 108:
+            print(f'ERROR: response_model=dict count increased from 108 to {count}')
+            sys.exit(1)
+        print('PASS: response_model=dict count stable or decreasing')
+        "
+      ok_pattern: "PASS:"

@@ -338,16 +338,15 @@ def create_agent(
     **kwargs
 ) -> IAgent:
     """
-    Factory function to create agent
+    Factory function to create agent.
     
-    Args:
-        agent_type: Type of agent ("base", "react", "plan_execute", "conversational", "multi_agent")
-        config: Agent configuration
-        **kwargs: Additional arguments
-        
-    Returns:
-        IAgent: Agent instance
+    Agent types are defined in ~/.aiplat/registry/agent_types.yaml (single source of truth).
     """
+    from core.harness.registry.registry_loader import load_agent_types
+
+    types = load_agent_types()
+    resolved_type = types.resolve(agent_type)
+
     # Lazy import to avoid circular dependencies between agent modules.
     import importlib
     ReActAgent = importlib.import_module(f"{__package__}.react").ReActAgent
@@ -359,23 +358,6 @@ def create_agent(
     
     if config is None:
         config = AgentConfig(name="default")
-    
-    type_map = {
-        "react": "react",
-        "plan": "plan_execute",
-        "plan_execute": "plan_execute",
-        "conversational": "conversational",
-        "multi_agent": "multi_agent",
-        "rag": "rag",
-        "materials_chat": "materials_chat",
-        "operator": "operator",
-        "tool": "react",
-        "reflection": "plan_execute",
-        "review": "conversational",
-        "base": "base",
-    }
-    
-    resolved_type = type_map.get(agent_type, "base")
 
     # ── 编排策略自动升级 ──
     # 如果 AGENT.md frontmatter 中声明了 orchestration.mode，
