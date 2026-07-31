@@ -103,7 +103,8 @@ async def list_projects(_auth: str = Depends(require_builder_access)):
 
 @router.post("/projects", response_model=Dict[str, Any])
 async def create_project(req: ProjectCreateRequest, _auth: str = Depends(require_admin_access)):
-    return await _get_svc().create_project(req)
+    project = await _get_svc().create_project(req)
+    return project.model_dump() if hasattr(project, 'model_dump') else project
 
 @router.get("/projects/{project_id}", response_model=Dict[str, Any])
 async def get_project(project_id: str, _auth: str = Depends(require_builder_access)):
