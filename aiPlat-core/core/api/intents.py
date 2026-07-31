@@ -305,14 +305,17 @@ async def core_chat(ctx: ChatContext) -> ChatResult:
         reply = f"Agent error: {error_detail}{' — ' + str(extra) if extra else ''}"
 
     # ── 5. MemoryManager: save interaction ──
-    from core.harness.memory.manager import get_memory_manager as _get_mem2
-    mgr = _get_mem2()
-    await mgr.save_interaction(
-        user_message=ctx.user_input, assistant_message=reply,
-        session_id=ctx.session_id,
-        metadata={"trace_id": trace_id, "agent_name": ctx.agent_name, "skills_used": skills_used},
-    )
-    memory_saved = True
+    try:
+        from core.harness.memory.manager import get_memory_manager as _get_mem2
+        mgr = _get_mem2()
+        await mgr.save_interaction(
+            user_message=ctx.user_input, assistant_message=reply,
+            session_id=ctx.session_id,
+            metadata={"trace_id": trace_id, "agent_name": ctx.agent_name, "skills_used": skills_used},
+        )
+        memory_saved = True
+    except Exception as e:
+        logging.getLogger("core.intents").warning("save_interaction failed: %s", e)
 
     return ChatResult(
         reply=reply,
