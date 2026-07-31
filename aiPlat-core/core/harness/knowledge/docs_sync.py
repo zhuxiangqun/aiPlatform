@@ -85,6 +85,7 @@ def sync_docs_to_wiki(collection: str = "system_docs") -> dict:
                 tags=["documentation", md_file.parent.name],
                 collection_id=collection,
                 status="draft",
+                skip_validation=True,
             )
             created += 1
         except Exception as e:
@@ -131,6 +132,7 @@ def start_docs_watcher(collection: str = "system_docs"):
                 tags=["documentation", md_path.parent.name],
                 collection_id=collection,
                 status="published",
+                skip_validation=True,
             )
             logger.info("Wiki page synced: %s", title)
         except Exception as e:

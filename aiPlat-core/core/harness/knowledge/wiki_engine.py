@@ -332,19 +332,63 @@ def _run_coro_blocking(coro):
         return _pool.submit(_a.run, coro).result(timeout=30)
 
 
+def _run_schema_validation(title: str, body: str, category: str, summary: str,
+                           tags, related, contradictions, source_articles,
+                           relationships, collection_id: str) -> None:
+    """Schema validation against T-Box (extracted for reuse + skip)."""
+    import os as _os
+    schema_mode = _os.getenv("AIPLAT_WIKI_SCHEMA_MODE", "warning")
+    if schema_mode == "off":
+        return
+    from core.harness.knowledge.knowledge_ontology import validate_page_against_schema
+    page_data = {
+        "title": title, "category": category, "summary": summary or "",
+        "body": body, "tags": tags or [], "related": related or [],
+        "contradictions": contradictions or [],
+        "source_articles": source_articles or [],
+        "relationships": relationships or [],
+    }
+    result = validate_page_against_schema(page_data, mode=schema_mode, collection_id=collection_id)
+    if not result.is_valid:
+        raise ValueError(
+            f"Schema [{result.class_label}] validation failed: "
+            f"missing {result.missing_required}. {result.suggestion}"
+        )
+    if result.warnings:
+        _logger = logging.getLogger("wiki_engine")
+        for w in result.warnings:
+            if w:
+                _logger.warning(f"Schema warning for '{title}': {w}")
+
+
+def _run_a8_check(title: str, summary: str, collection_id: str) -> None:
+    """A8 key discrimination check (extracted for reuse + skip)."""
+    try:
+        from core.harness.knowledge.knowledge_ontology import check_key_discrimination
+        a8_ok, a8_warnings = check_key_discrimination(title, summary, collection_id=collection_id)
+        if not a8_ok:
+            _logger = logging.getLogger("wiki_engine")
+            for w in a8_warnings:
+                _logger.warning(w)
+    except Exception as e:
+        logging.debug(str(e), exc_info=True)
+
+
 def write_page(title: str, body: str, *, category: str = "entities", tags: List[str] = None,
                related: List[str] = None, contradictions: List[str] = None,
                source_articles: List[str] = None, stale_references: List[str] = None,
                relationships: List[Dict[str, str]] = None,
                images: List[Dict[str, str]] = None,
                version: str = "1", summary: str = "", status: str = "",
-               marking: str = "", page_id: str = "", collection_id: str = "default") -> str:
+               marking: str = "", page_id: str = "", collection_id: str = "default",
+               skip_validation: bool = False) -> str:
     """Create or update a wiki page. Returns the file path.
 
     Args:
         page_id: Stable identifier for the page (UUID). Auto-generated on first creation.
                  On updates, the existing page_id is preserved. Use this for stable
                  cross-page references that survive title renames.
+        skip_validation: Skip schema + A8 checks (use for bulk operations like docs sync).
     """
     import re as _re
 
@@ -358,39 +402,13 @@ def write_page(title: str, body: str, *, category: str = "entities", tags: List[
         title = "unnamed_page"
 
     # ── Schema validation against T-Box ──
-    import os as _os
-    schema_mode = _os.getenv("AIPLAT_WIKI_SCHEMA_MODE", "warning")
-    if schema_mode != "off":
-        from core.harness.knowledge.knowledge_ontology import validate_page_against_schema
-        page_data = {
-            "title": title, "category": category, "summary": summary or "",
-            "body": body, "tags": tags or [], "related": related or [],
-            "contradictions": contradictions or [],
-            "source_articles": source_articles or [],
-            "relationships": relationships or [],
-        }
-        result = validate_page_against_schema(page_data, mode=schema_mode, collection_id=collection_id)
-        if not result.is_valid:
-            raise ValueError(
-                f"Schema [{result.class_label}] validation failed: "
-                f"missing {result.missing_required}. {result.suggestion}"
-            )
-        if result.warnings:
-            _logger = logging.getLogger("wiki_engine")
-            for w in result.warnings:
-                if w:
-                    _logger.warning(f"Schema warning for '{title}': {w}")
+    if not skip_validation:
+        _run_schema_validation(title, body, category, summary, tags, related,
+                               contradictions, source_articles, relationships,
+                               collection_id)
 
-    # ── A8: Key discrimination check ──
-    try:
-        from core.harness.knowledge.knowledge_ontology import check_key_discrimination
-        a8_ok, a8_warnings = check_key_discrimination(title, summary, collection_id=collection_id)
-        if not a8_ok:
-            _logger = logging.getLogger("wiki_engine")
-            for w in a8_warnings:
-                _logger.warning(w)
-    except Exception as e:
-        logging.debug(str(e), exc_info=True)
+        # ── A8: Key discrimination check ──
+        _run_a8_check(title, summary, collection_id)
 
     # ── State transition validation ──
     # Valid: draft→curated, curated→published, curated→draft, published→contradicted,
