@@ -3939,6 +3939,8 @@ Output format: JSON array of {{"rank": 1, "score": 0.95, "content": "..."}}"""
 
         local_state = dict(state)
 
+        artifact = None  # Prevent UnboundLocalError in edge cases
+
         local_state["_current_stage_idx"] = idx
 
         graph_trace: List[Dict] = []
