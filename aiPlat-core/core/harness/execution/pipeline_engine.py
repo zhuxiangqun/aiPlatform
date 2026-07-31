@@ -4025,8 +4025,10 @@ Output format: JSON array of {{"rank": 1, "score": 0.95, "content": "..."}}"""
         # Skip if already done (but not for empty/error artifacts)
 
         existing = local_state.get(stage.output_artifact)
+        # Don't skip if the existing artifact is an error state
+        is_error_state = isinstance(existing, dict) and existing.get("loop_state") == "error"
 
-        if existing and (not isinstance(existing, dict) or len(existing) > 0):
+        if existing and not is_error_state and (not isinstance(existing, dict) or len(existing) > 0):
 
             has_raw_only = isinstance(existing, dict) and set(existing.keys()) == {"raw_output"}
 
