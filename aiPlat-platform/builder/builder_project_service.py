@@ -519,6 +519,7 @@ class BuilderProjectService:
         import json as _json
         import logging as _log
         msgs = session.get("messages", [])
+        _log.warning("_extract_prd_from_chat: %d messages in session", len(msgs))
         if not msgs or len(msgs) < 2:
             _log.info("_extract_prd_from_chat: not enough messages (%d)", len(msgs))
             return None
@@ -576,18 +577,6 @@ class BuilderProjectService:
                         break
 
         proj = self._projects.get(project_id, {})
-        if not prd_data:
-            # Auto-extract PRD from chat via LLM
-            try:
-                prd_data = await self._extract_prd_from_chat(project_id, session)
-            except Exception as e:
-                logging.warning("Auto PRD extraction failed: %s", str(e)[:100])
-        if not prd_data:
-            # Auto-extract PRD from conversation: use LLM to summarize chat into PRD
-            try:
-                prd_data = await self._extract_prd_from_chat(project_id, session)
-            except Exception as e:
-                logging.warning("Auto PRD extraction failed: %s", str(e)[:100])
         if not prd_data:
             raise ValueError(_AIPLAT_NO_PRD)
 
