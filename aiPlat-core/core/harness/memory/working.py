@@ -39,11 +39,14 @@ class WorkingMemory:
         self._token_estimate += self._estimate_tokens(content)
         self._ensure_within_limit()
     
-    def get_context(self) -> List[Dict[str, Any]]:
-        """Get current context as message list"""
+    def get_context(self, session_id: Optional[str] = None) -> List[Dict[str, Any]]:
+        """Get current context as message list, optionally filtered by session_id."""
+        messages = self._messages
+        if session_id:
+            messages = [m for m in messages if m.metadata.get("session_id") == session_id]
         return [
             {"role": m.role, "content": m.content, **m.metadata}
-            for m in self._messages
+            for m in messages
         ]
     
     def get_audit_context(self) -> List[Dict[str, Any]]:

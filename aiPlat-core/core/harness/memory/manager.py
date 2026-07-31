@@ -610,7 +610,7 @@ class MemoryManager:
 
             self._working.get_audit_context() if audit_mode 
 
-            else self._working.get_context()
+            else self._working.get_context(session_id=self._session_id)
 
         )
 
@@ -1157,6 +1157,10 @@ class MemoryManager:
 
         is_critical: bool = False,
 
+        session_id: Optional[str] = None,
+
+        metadata: Optional[Dict[str, Any]] = None,
+
     ):
 
         """Save an interaction to memory.
@@ -1235,9 +1239,11 @@ class MemoryManager:
 
         # Save to working memory (all stability levels)
 
-        self._working.add("user", user_message)
+        _wm_meta = {"session_id": session_id} if session_id else {}
 
-        self._working.add("assistant", assistant_message)
+        self._working.add("user", user_message, metadata=_wm_meta)
+
+        self._working.add("assistant", assistant_message, metadata=_wm_meta)
 
 
 
