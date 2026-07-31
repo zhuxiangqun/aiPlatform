@@ -4126,8 +4126,8 @@ Output format: JSON array of {{"rank": 1, "score": 0.95, "content": "..."}}"""
                 summary_keys: List[str] = []
 
                 if isinstance(artifact, dict):
-
-                    summary_keys = [k for k in artifact.keys() if k not in ("raw_output", "_compare", "code_graph")][:5]
+                    _artifact_keys = list(artifact.keys())
+                    summary_keys = [k for k in _artifact_keys if k not in ("raw_output", "_compare", "code_graph")][:5]
 
                 board.append({
 
