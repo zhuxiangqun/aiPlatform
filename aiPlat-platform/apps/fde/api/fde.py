@@ -911,7 +911,8 @@ async def _clarify(context: str, text: str, history: list,
         model_name = best_model_for_purpose("clarify", messages=messages)
         result = await sys_llm_generate(None, messages,
             model_name=model_name, max_tokens=800, temperature=0.3,
-            trace_context={"skip_claude_md": True})
+            trace_context={"skip_claude_md": True},
+            session_id=context or "fde-clarify")
         content = getattr(result, "content", "") or ""
         if not content and isinstance(result, dict):
             content = result.get("content", "") or ""
