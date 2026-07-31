@@ -795,6 +795,16 @@ async def lifespan(app: FastAPI):
         await initialize_registry()
     except Exception:
         logging.getLogger("aiplat.server").warning("SubagentRegistry initialization failed", exc_info=True)
+
+    # ── Entity Registry: auto-discover agents/skills/mcps/workflows ──
+    # Synchronizes ~/.aiplat/registry/*.yaml with filesystem. Zero-cost if already in sync.
+    try:
+        from core.harness.registry.registry_loader import auto_discover_and_register
+        import asyncio as _asyncio2
+        for _etype in ("agents", "skills", "mcps", "workflows"):
+            await _asyncio2.to_thread(auto_discover_and_register, _etype)
+    except Exception:
+        logging.getLogger("aiplat.server").debug("Entity registry auto-discover skipped", exc_info=True)
     
     # Register discovered skills into registry
     if _skill_discovery:
