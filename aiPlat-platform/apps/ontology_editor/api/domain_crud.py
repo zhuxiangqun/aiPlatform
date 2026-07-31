@@ -1,3 +1,4 @@
+from api.schemas_response import StatusResponse
 u"""
 Ontology Editor — Domain CRUD endpoints.
 

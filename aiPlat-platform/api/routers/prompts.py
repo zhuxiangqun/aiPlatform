@@ -3,6 +3,7 @@ Platform Prompt API — external callers can run prompt app templates.
 Exposes the core POST /api/core/prompts/app/run endpoint for external use.
 """
 from __future__ import annotations
+from api.schemas_response import StatusResponse
 from typing import Dict, Any
 
 import httpx

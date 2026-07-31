@@ -7,6 +7,7 @@ platform service endpoints should live in the platform layer, not core.
 
 from __future__ import annotations
 
+from api.schemas_response import StatusResponse
 from typing import Dict, Optional, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request

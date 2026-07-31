@@ -3,6 +3,7 @@ KB Integration router — Slack/IM webhook endpoints for knowledge base Q&A.
 """
 from __future__ import annotations
 
+from api.schemas_response import StatusResponse
 from typing import Any, Dict, Optional
 
 from fastapi import APIRouter, HTTPException, Request

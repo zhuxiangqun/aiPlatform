@@ -3,6 +3,7 @@ Apps API router — publish, chat, api, webhook for workflows.
 """
 from __future__ import annotations
 
+from api.schemas_response import StatusResponse
 from typing import Any, Dict
 
 from fastapi import APIRouter, Depends, HTTPException, Header, Request

@@ -4,6 +4,7 @@ Platform Onboarding routes — tenant bootstrap and initial setup.
 Migrated from aiPlat-core/core/api/routers/onboarding.py per architecture contract.
 """
 from __future__ import annotations
+from api.schemas_response import StatusResponse
 import logging
 
 

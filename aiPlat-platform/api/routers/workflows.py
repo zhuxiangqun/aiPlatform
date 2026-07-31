@@ -3,6 +3,7 @@ Workflow API router — CRUD + execute for workflow definitions.
 """
 from __future__ import annotations
 
+from api.schemas_response import StatusResponse
 import json
 import logging
 from pathlib import Path

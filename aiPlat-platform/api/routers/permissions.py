@@ -6,6 +6,7 @@ Migrated from aiPlat-core/core/api/routers/permissions.py per architecture contr
 from __future__ import annotations
 
 
+from api.schemas_response import StatusResponse
 from typing import Any, Dict, Optional
 
 from fastapi import APIRouter, Depends, HTTPException

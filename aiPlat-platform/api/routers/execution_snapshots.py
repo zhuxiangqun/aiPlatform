@@ -8,6 +8,7 @@ contract (platform → core via facade only).
 """
 from __future__ import annotations
 
+from api.schemas_response import StatusResponse
 import logging
 from typing import Any, Dict
 

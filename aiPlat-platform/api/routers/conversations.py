@@ -22,7 +22,8 @@ from core.schemas_conversations import (
     ConversationQueryRequest,
     ConversationScopeUpdateRequest,
 )
-from api.schemas_response import (, StatusResponse
+from api.schemas_response import (
+    StatusResponse,
     ConversationResponse,
     ConversationListResponse,
     ConversationScopeUpdateResponse,

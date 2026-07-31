@@ -6,6 +6,7 @@ API gateway management belongs in platform layer (docs/index.md §Layer 2).
 """
 
 from __future__ import annotations
+from api.schemas_response import StatusResponse
 import logging
 
 import os

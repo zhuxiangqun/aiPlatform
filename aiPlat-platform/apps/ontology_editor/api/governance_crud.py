@@ -1,3 +1,4 @@
+from api.schemas_response import StatusResponse
 u"""Governance API — 治理管线 + 审批 + 映射验证 + 仪表盘 (v2.8)."""
 from fastapi import APIRouter, HTTPException, Query
 from typing import Any, Dict, List, Optional

@@ -4,6 +4,7 @@ Skill Marketplace API router — list, install, and uninstall skills.
 Mounted at /api/management/skills
 """
 from __future__ import annotations
+from api.schemas_response import StatusResponse
 import logging
 
 import os

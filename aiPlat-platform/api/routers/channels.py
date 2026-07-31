@@ -8,6 +8,7 @@ Channels/sessions management belongs in platform layer.
 
 from __future__ import annotations
 
+from api.schemas_response import StatusResponse
 from typing import Any, Dict, Optional, List
 
 from fastapi import APIRouter, Depends, HTTPException
