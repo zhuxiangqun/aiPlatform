@@ -107,14 +107,20 @@ def create_agent(
     if agent_type == "conversational":
         from core.apps.agents.conversational import create_conversational_agent
         return create_conversational_agent(config=config, model=model, system_prompt=system_prompt)
-    elif agent_type == "plan_execute":
+    elif agent_type in ("plan", "plan_execute"):
         from core.apps.agents.plan_execute import PlanExecuteAgent
         return PlanExecuteAgent(config=config, model=model)
     elif agent_type == "react":
         from core.apps.agents.react import ReActAgent
         return ReActAgent(config=config, model=model)
     else:
-        raise ValueError(f"Unknown agent type: {agent_type}")
+        # Unknown types (pure_agent, subagent, materials_chat, operator, etc.)
+        # default to conversational with a warning
+        import logging
+        logging.getLogger("core_facade").warning(
+            "Unknown agent_type '%s' — falling back to conversational agent", agent_type)
+        from core.apps.agents.conversational import create_conversational_agent
+        return create_conversational_agent(config=config, model=model, system_prompt=system_prompt)
 
 
 def get_skill_registry() -> Any:
