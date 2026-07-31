@@ -543,6 +543,15 @@ class GossipProtocol:
 
         logger.info("[gossip] stopped")
 
+    async def start(self) -> None:
+        """Start the gossip protocol as a background task (non-blocking)."""
+        if self._running:
+            return
+        import asyncio
+        self._task = asyncio.ensure_future(self.run_gossip_loop())
+        self._running = True
+        logger.info("[gossip] started")
+
 
 
     def stats(self) -> Dict[str, Any]:

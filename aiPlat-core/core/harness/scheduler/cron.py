@@ -61,6 +61,7 @@ class CronScheduler:
             handler=handler,
             description=description,
             enabled=enabled,
+            last_run=time.time(),  # Initialize to now to prevent immediate execution on startup
         )
 
     def unregister(self, name: str) -> None:

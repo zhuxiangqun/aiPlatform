@@ -1075,11 +1075,10 @@ async def lifespan(app: FastAPI):
         except Exception as e:
             logging.debug(str(e), exc_info=True)
 
-    # Roadmap-2: wire MCP servers into ToolRegistry (best-effort).
+    # Roadmap-2: wire MCP servers into ToolRegistry (background, don't block startup).
     try:
         from core.mcp.runtime_sync import sync_mcp_runtime
-
-        await sync_mcp_runtime(mcp_manager=_mcp_manager, workspace_mcp_manager=_workspace_mcp_manager)
+        asyncio.create_task(sync_mcp_runtime(mcp_manager=_mcp_manager, workspace_mcp_manager=_workspace_mcp_manager))
     except Exception as e:
         logging.debug(str(e), exc_info=True)
 
