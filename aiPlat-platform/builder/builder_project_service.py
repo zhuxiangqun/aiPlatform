@@ -512,6 +512,7 @@ class BuilderProjectService:
             self._save_chat_session(project_id)
             return {"reply": reply, "prd_ready": prd_ready, "trace_id": result.trace_id, "session_state": {}}
         except Exception as e:
+            self._save_chat_session(project_id)  # save even on error — preserve messages
             return {"reply": f"{_AIPLAT_CHAT_ERROR_PREFIX}{str(e)[:200]}", "prd_ready": False, "trace_id": "", "session_state": {}}
 
     async def _extract_prd_from_chat(self, project_id: str, session: dict) -> Optional[Dict[str, Any]]:

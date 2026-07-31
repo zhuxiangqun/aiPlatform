@@ -203,7 +203,6 @@ async def core_chat(ctx: ChatContext) -> ChatResult:
             logging.debug(str(e), exc_info=True)
 
     if not system_prompt:
-        import logging
         logging.getLogger("core.intents").warning(
             "AGENT.md not found or empty for agent '%s'. Using bare-minimum fallback prompt. "
             "Agent behavior will be unpredictable. "
