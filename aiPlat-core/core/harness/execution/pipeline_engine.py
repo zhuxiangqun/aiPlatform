@@ -5535,6 +5535,8 @@ Output format: JSON array of {{"rank": 1, "score": 0.95, "content": "..."}}"""
 
         """
 
+        artifact = None  # Prevent UnboundLocalError (Python 3.13 scoping)
+
         # Start/End are declarative — no execution needed (matching Dify/Coze pattern)
 
         node_type = getattr(stage, 'node_type', None) or ''
