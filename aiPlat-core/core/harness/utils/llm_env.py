@@ -13,13 +13,27 @@ from typing import Optional
 
 
 def get_llm_api_key(provider: str = "") -> Optional[str]:
-    """Resolve LLM API key for the given provider.
+    """Resolve LLM API key — infra ModelManager PRIMARY, env FALLBACK.
 
     Checks in order:
-    1. AIPLAT_LLM_API_KEY (generic, provider-agnostic)
-    2. {PROVIDER}_API_KEY (e.g., OPENAI_API_KEY)
-    3. Environment variable named by provider (e.g., DEEPSEEK_API_KEY)
+    1. infra ModelManager credential pool (primary, architecture-aligned)
+    2. AIPLAT_LLM_API_KEY (generic env, backward compatible)
+    3. {PROVIDER}_API_KEY (e.g., DEEPSEEK_API_KEY, backward compatible)
     """
+    # PRIMARY: infra ModelManager
+    try:
+        from core.harness.infrastructure.infra_bridge import get_infra_bridge
+        bridge = get_infra_bridge()
+        mgr = bridge.get_model_manager()
+        if mgr and hasattr(mgr, "get_credentials"):
+            creds = mgr.get_credentials(provider or "deepseek")
+            if creds and creds.get("api_key"):
+                return creds["api_key"]
+    except Exception:
+        import logging
+        logging.getLogger(__name__).debug("infra credential lookup failed, falling back to env vars")
+
+    # FALLBACK: env vars
     generic = os.getenv("AIPLAT_LLM_API_KEY", "")
     if generic:
         return generic

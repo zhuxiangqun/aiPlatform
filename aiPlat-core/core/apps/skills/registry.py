@@ -209,7 +209,7 @@ class SkillRegistry:
                             skip_conditions = fm.get("skip_when") or fm.get("skip_conditions") or []
                             triggers = fm.get("triggers") or []
                             domain_id = str(fm.get("domain_id", ""))
-                            body = parts[2].strip()
+                            body = ""  # Lazy: don't load body at startup, load on first use
                         except Exception as e:
                             logging.debug(str(e), exc_info=True)
 
@@ -313,7 +313,8 @@ class SkillRegistry:
                         side_effects=side_effects_raw,            # P1
                         permissions=perm_config,                 # P1
                     metadata={"category": category, "body": body, "version": version,
-                              "uses_file_output": uses_file_output,
+                               "skill_path": str(skill_md),  # Lazy: path for on-demand body loading
+                               "uses_file_output": uses_file_output,
                               "execution_mode": execution_mode,
                               "protected": protected,
                               "executable": executable,
@@ -986,9 +987,25 @@ class SkillRegistry:
                 except Exception as e:
                     logging.debug(str(e), exc_info=True)
             self._skills[name] = skill
-            # Cache SKILL.md body content if available (lives in config.metadata["body"]).
+            # Cache SKILL.md body content — lazy load from disk if not already cached
             md = getattr(target.config, "metadata", None)
             body = ((md.get("body") if isinstance(md, dict) else None) or "").strip()
+            skill_path = (md.get("skill_path") if isinstance(md, dict) else None) or ""
+            if not body and skill_path:
+                # Lazy load: read body from disk on first access
+                try:
+                    with open(skill_path, "r", encoding="utf-8") as f:
+                        raw = f.read()
+                    if raw.startswith("---"):
+                        parts = raw.split("---", 2)
+                        body = parts[2].strip() if len(parts) >= 3 else raw
+                    else:
+                        body = raw
+                    # Store back to metadata for subsequent cache hits
+                    if isinstance(md, dict):
+                        md["body"] = body
+                except Exception:
+                    pass
             if body:
                 self._body_cache[name] = body
             return True
