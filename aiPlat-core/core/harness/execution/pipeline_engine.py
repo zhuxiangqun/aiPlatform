@@ -2580,14 +2580,9 @@ Output format: JSON array of {{"rank": 1, "score": 0.95, "content": "..."}}"""
 
                     idx = layer[i]
 
-                    # Write traceback to dedicated log file for debugging
-                    import traceback as _tb, os as _os
-                    _log_path = _os.path.join(_os.path.expanduser("~/.aiplat"), "pipeline_errors.log")
-                    with open(_log_path, "a") as _lf:
-                        _lf.write(f"\n=== Stage {idx} error at {time.time()} ===\n")
-                        _lf.write(f"Exception: {result}\n")
-                        _tb.print_exception(type(result), result, result.__traceback__, file=_lf)
-                        _lf.flush()
+                    import logging as _plog
+                    _plog.getLogger("pipeline_engine").warning(
+                        "Stage %d exception: %s", idx, result, exc_info=True)
                     state["_last_action_reason"] = f"stage_{idx}_error:{result}"
 
                     continue
@@ -3064,13 +3059,9 @@ Output format: JSON array of {{"rank": 1, "score": 0.95, "content": "..."}}"""
 
             if isinstance(result, Exception):
 
-                import traceback as _tb, os as _os
-                _log_path = _os.path.join(_os.path.expanduser("~/.aiplat"), "pipeline_errors.log")
-                with open(_log_path, "a") as _lf:
-                    _lf.write(f"\n=== Stage {target_idx} error (dynamic) at {time.time()} ===\n")
-                    _lf.write(f"Exception: {result}\n")
-                    _tb.print_exception(type(result), result, result.__traceback__, file=_lf)
-                    _lf.flush()
+                import logging as _plog2
+                _plog2.getLogger("pipeline_engine").warning(
+                    "Stage %d exception (dynamic): %s", target_idx, result, exc_info=True)
                 state["_last_action_reason"] = f"stage_{target_idx}_error:{result}"
 
                 continue
