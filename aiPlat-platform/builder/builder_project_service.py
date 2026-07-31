@@ -514,6 +514,37 @@ class BuilderProjectService:
         except Exception as e:
             return {"reply": f"{_AIPLAT_CHAT_ERROR_PREFIX}{str(e)[:200]}", "prd_ready": False, "trace_id": "", "session_state": {}}
 
+    async def _extract_prd_from_chat(self, project_id: str, session: dict) -> Optional[Dict[str, Any]]:
+        """Use LLM to extract structured PRD from PM chat history."""
+        from core.api.intents import core_chat, ChatContext
+        msgs = session.get("messages", [])
+        if not msgs:
+            return None
+        lines = ["以下是一段产品需求对话，请从中提取PRD：", ""]
+        for m in msgs[-10:]:
+            role = "用户" if m.get("role") == "user" else "PM"
+            content = str(m.get("content", ""))[:500]
+            lines.append(f"{role}: {content}")
+        prompt = "\n".join(lines)
+        prompt += "\n\n请输出JSON格式：{\"title\":\"项目名称\",\"description\":\"概述\",\"functional_requirements\":[],\"user_stories\":[],\"non_functional\":{}}\n只输出JSON。"
+
+        try:
+            result = await core_chat(ChatContext(
+                agent_name="planning_agent",
+                session_id=f"prd_extract_{project_id}",
+                user_input=prompt,
+                model=self.model,
+            ))
+            import json as _json
+            reply = str(result.reply or "")
+            start = reply.find("{")
+            end = reply.rfind("}") + 1
+            if start >= 0 and end > start:
+                return _json.loads(reply[start:end])
+        except Exception:
+            pass
+        return None
+
     async def confirm_prd(self, project_id: str, prd_data: Any = None) -> Dict[str, Any]:
         session = self._sessions.get(project_id)
         if not session:
@@ -538,6 +569,18 @@ class BuilderProjectService:
                         break
 
         proj = self._projects.get(project_id, {})
+        if not prd_data:
+            # Auto-extract PRD from chat via LLM
+            try:
+                prd_data = await self._extract_prd_from_chat(project_id, session)
+            except Exception as e:
+                logging.warning("Auto PRD extraction failed: %s", str(e)[:100])
+        if not prd_data:
+            # Auto-extract PRD from conversation: use LLM to summarize chat into PRD
+            try:
+                prd_data = await self._extract_prd_from_chat(project_id, session)
+            except Exception as e:
+                logging.warning("Auto PRD extraction failed: %s", str(e)[:100])
         if not prd_data:
             raise ValueError(_AIPLAT_NO_PRD)
 
