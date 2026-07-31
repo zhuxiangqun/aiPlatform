@@ -33,7 +33,8 @@ class DeepSeekFineTuneProvider:
     BASE_URL = "https://api.deepseek.com"
 
     def __init__(self, api_key: str = ""):
-        self._api_key = api_key or _os.getenv("DEEPSEEK_API_KEY", "") or _os.getenv("AIPLAT_LLM_API_KEY", "")
+        from core.harness.utils.llm_env import get_llm_api_key
+        self._api_key = api_key or get_llm_api_key("deepseek") or ""
         self._client = httpx.Client(base_url=self.BASE_URL, timeout=httpx.Timeout(60.0))
 
     @property

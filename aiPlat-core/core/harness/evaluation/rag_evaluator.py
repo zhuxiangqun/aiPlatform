@@ -210,8 +210,8 @@ class RagEvaluator:
         if contexts and answer:
             if self._ragas_available:
                 try:
-                    import os as _os
-                    _api_key = _os.getenv("AIPLAT_LLM_API_KEY") or _os.getenv("DEEPSEEK_API_KEY", "")
+                    from core.harness.utils.llm_env import get_llm_api_key
+                    _api_key = get_llm_api_key("openai") or ""
                     if _api_key:
                         _os.environ.setdefault("OPENAI_API_KEY", _api_key)
                         _os.environ.setdefault("OPENAI_API_BASE", _os.getenv("AIPLAT_LLM_BASE_URL") or "https://api.deepseek.com/v1")
@@ -249,7 +249,7 @@ class RagEvaluator:
         from ragas.metrics import faithfulness, answer_relevancy, context_precision, context_recall
         from ragas.llms import LangchainLLMWrapper
 
-        _api_key = _os.getenv("AIPLAT_LLM_API_KEY") or _os.getenv("DEEPSEEK_API_KEY", "")
+        _api_key = get_llm_api_key("openai") or ""
         _base_url = _os.getenv("AIPLAT_LLM_BASE_URL") or "https://api.deepseek.com/v1"
         _model = _best_model_for_purpose("chat")
         _wrapped_llm = None

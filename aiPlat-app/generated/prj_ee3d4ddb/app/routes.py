@@ -1,1 +1,0 @@
-from app.routes.project_routes import router
