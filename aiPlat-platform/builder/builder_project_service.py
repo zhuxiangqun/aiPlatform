@@ -516,33 +516,40 @@ class BuilderProjectService:
 
     async def _extract_prd_from_chat(self, project_id: str, session: dict) -> Optional[Dict[str, Any]]:
         """Use LLM to extract structured PRD from PM chat history."""
-        from core.api.intents import core_chat, ChatContext
+        import json as _json
+        import logging as _log
         msgs = session.get("messages", [])
-        if not msgs:
+        if not msgs or len(msgs) < 2:
+            _log.info("_extract_prd_from_chat: not enough messages (%d)", len(msgs))
             return None
-        lines = ["以下是一段产品需求对话，请从中提取PRD：", ""]
+        # Build conversation summary
+        lines = ["从以下产品需求对话中提取结构化PRD（JSON格式）：", ""]
         for m in msgs[-10:]:
             role = "用户" if m.get("role") == "user" else "PM"
             content = str(m.get("content", ""))[:500]
             lines.append(f"{role}: {content}")
         prompt = "\n".join(lines)
-        prompt += "\n\n请输出JSON格式：{\"title\":\"项目名称\",\"description\":\"概述\",\"functional_requirements\":[],\"user_stories\":[],\"non_functional\":{}}\n只输出JSON。"
+        prompt += '\n\n输出JSON：{"title":"项目名称","description":"概述","functional_requirements":["需求"],"user_stories":["用户故事"],"non_functional":{}}\n只输出JSON。'
 
         try:
+            from core.api.intents import core_chat, ChatContext
             result = await core_chat(ChatContext(
                 agent_name="planning_agent",
                 session_id=f"prd_extract_{project_id}",
                 user_input=prompt,
                 model=self.model,
             ))
-            import json as _json
             reply = str(result.reply or "")
+            _log.info("_extract_prd_from_chat: got %d chars reply", len(reply))
             start = reply.find("{")
             end = reply.rfind("}") + 1
             if start >= 0 and end > start:
-                return _json.loads(reply[start:end])
-        except Exception:
-            pass
+                prd = _json.loads(reply[start:end])
+                _log.info("_extract_prd_from_chat: extracted PRD with keys %s", list(prd.keys())[:5])
+                return prd
+            _log.info("_extract_prd_from_chat: no JSON found in reply")
+        except Exception as e:
+            _log.warning("_extract_prd_from_chat failed: %s", str(e)[:200])
         return None
 
     async def confirm_prd(self, project_id: str, prd_data: Any = None) -> Dict[str, Any]:
