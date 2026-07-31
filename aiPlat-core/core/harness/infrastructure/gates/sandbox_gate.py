@@ -88,6 +88,26 @@ class SandboxGate:
         re.compile(r'chmod\s+777\s+/'),
     )
 
+    def passes(self, stage=None, **kwargs) -> bool:
+        """Synchronous pre-check: returns True if the stage/operation is safe.
+        
+        Lightweight check that doesn't require async. For full async checks, use check().
+        """
+        import asyncio as _asyncio
+        try:
+            loop = _asyncio.get_running_loop()
+        except RuntimeError:
+            loop = None
+        if loop and loop.is_running():
+            # Running in event loop — run check() in a thread
+            import concurrent.futures
+            with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+                fut = pool.submit(_asyncio.run, self.check(kind="stage", **(kwargs)))
+                result = fut.result(timeout=5)
+        else:
+            result = _asyncio.run(self.check(kind="stage", **(kwargs)))
+        return result.verdict != Verdict.REJECT
+
     async def check(
         self,
         *,
