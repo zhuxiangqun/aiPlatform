@@ -39,8 +39,13 @@ const ProjectsPage: React.FC = () => {
     try {
       const project = await projectApi.create({ name: projectName, description: desc, team_id: teamId || undefined });
       setShowNew(false); setName(''); setDesc(''); setTeamId('');
-      toast.success('项目已创建，正在进入需求对话...');
-      nav(`/app/builder/projects/${project.project_id}`);
+      if (project?.project_id) {
+        toast.success('项目已创建，正在进入需求对话...');
+        nav(`/app/builder/projects/${project.project_id}`);
+      } else {
+        toast.success('项目已创建');
+        refresh();
+      }
     } catch (e) { toastGateError(e, '创建失败'); }
     finally { setCreating(false); }
   };
