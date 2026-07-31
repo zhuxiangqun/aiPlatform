@@ -713,7 +713,7 @@ class MaterialsChatAgent(BaseAgent):
                         from core.harness.generation.answer_generator import generate_stream_answer, build_rag_user_message
                         system_msgs = _assemble_chat_system_msgs(domain_config, run_context)
                         user_msg = build_rag_user_message(retrieved_docs, enhanced_question, graph_context=graph_context)
-                        answer, trace = await generate_stream_answer(system_msgs, user_msg, stream_queue)
+                        answer, trace = await generate_stream_answer(system_msgs, user_msg, stream_queue, session_id=session_id)
                         if trace.get("model_name"):
                             _complexity = vars0.get("_query_complexity", "unknown")
                             logging.getLogger("aiplat.cost").info(
@@ -724,7 +724,7 @@ class MaterialsChatAgent(BaseAgent):
                         from core.harness.generation.answer_generator import generate_answer, build_rag_user_message
                         sys_msgs = _assemble_chat_system_msgs(domain_config, run_context)
                         user_msg = build_rag_user_message(retrieved_docs, enhanced_question, graph_context=graph_context)
-                        answer, trace = await generate_answer(sys_msgs, user_msg)
+                        answer, trace = await generate_answer(sys_msgs, user_msg, session_id=session_id)
                         if trace.get("model_name"):
                             _complexity = vars0.get("_query_complexity", "unknown")
                             logging.getLogger("aiplat.cost").info(
@@ -751,7 +751,7 @@ class MaterialsChatAgent(BaseAgent):
                                     # Re-generate answer with HyDE results
                                     hyde_sys_msgs = _assemble_chat_system_msgs(domain_config, run_context)
                                     hyde_user = build_rag_user_message(retrieved_docs, enhanced_question, graph_context=graph_context)
-                                    hyde_answer, _ = await generate_answer(hyde_sys_msgs, hyde_user)
+                                    hyde_answer, _ = await generate_answer(hyde_sys_msgs, hyde_user, session_id=session_id)
                                     answer = hyde_answer
                             except Exception as e:
                                 logging.debug(str(e), exc_info=True)

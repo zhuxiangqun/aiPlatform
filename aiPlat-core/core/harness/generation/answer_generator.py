@@ -23,6 +23,7 @@ async def generate_answer(
     model_name: str = "",
     temperature: float = 0.3,
     max_tokens: int = 2000,
+    session_id: Optional[str] = None,
 ) -> Tuple[str, Dict[str, Any]]:
     """Non-streaming answer generation via sys_llm_generate.
 
@@ -40,6 +41,7 @@ async def generate_answer(
             model_name=mdl,
             temperature=temperature,
             max_tokens=max_tokens,
+            session_id=session_id,
         )
         text = getattr(resp, "content", "") or str(resp)
         answer = text.strip() if text and len(text) > 5 else ""
@@ -64,6 +66,7 @@ async def generate_stream_answer(
     model_name: str = "",
     temperature: float = 0.3,
     max_tokens: int = 2000,
+    session_id: Optional[str] = None,
 ) -> Tuple[str, Dict[str, Any]]:
     """Streaming answer generation via sys_llm_generate_stream.
 
@@ -81,6 +84,7 @@ async def generate_stream_answer(
             model_name=mdl,
             temperature=temperature,
             max_tokens=max_tokens,
+            session_id=session_id,
         ):
             if chunk:
                 answer_parts.append(chunk)

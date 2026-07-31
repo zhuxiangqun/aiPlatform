@@ -1333,25 +1333,24 @@ def _validate_response(response: Any) -> Optional[str]:
 
 
 
-async def _save_interaction_bg(prompt: str, response: str) -> None:
 
-    """Save interaction to memory in background (best-effort)."""
-
+async def _save_llm_interaction(session_id: str, user_message: str, result: Any, model_name: str = "") -> None:
+    """Save sys_llm_generate interaction to MemoryManager (best-effort, fire-and-forget)."""
     try:
-
         from core.harness.memory.manager import get_memory_manager
-
         mgr = get_memory_manager()
-
-        if mgr:
-
-            await mgr.save_interaction(user_message=prompt, assistant_message=response)
-
+        if mgr and session_id:
+            reply = getattr(result, 'content', '') or str(result) or ''
+            await mgr.save_interaction(
+                user_message=user_message,
+                assistant_message=reply,
+                session_id=session_id,
+                metadata={"source": "sys_llm_generate", "model": model_name},
+            )
     except Exception:
+        logging.getLogger(__name__).debug('_save_llm_interaction failed', exc_info=True)
 
-        logging.getLogger(__name__).debug('_save_interaction_bg failed', exc_info=True)
-
-
+ 
 async def sys_llm_generate(
 
     model: Any,
@@ -1359,6 +1358,8 @@ async def sys_llm_generate(
     prompt: Union[str, List[Message]],
 
     *,
+
+    session_id: Optional[str] = None,
 
     trace_context: Optional[Dict[str, Any]] = None,
 
@@ -1413,6 +1414,28 @@ async def sys_llm_generate(
         response_format: Optional response format (e.g. json_schema).
 
     """
+
+    # ── MemoryManager: inject conversation context if session_id provided ──
+    _mem_user_input: Optional[str] = None
+    if session_id and isinstance(prompt, list) and prompt:
+        try:
+            from core.harness.memory.manager import get_memory_manager as _get_mem3
+            _mgr = _get_mem3()
+            _mem_ctx = await _mgr.build_context(
+                current_query=str(prompt[-1].get("content", "")) if hasattr(prompt[-1], 'get') else "",
+                system_prompt="",
+                session_id=session_id,
+            )
+            if _mem_ctx and hasattr(_mem_ctx, 'messages') and _mem_ctx.messages:
+                # Prepend memory context before the last user message
+                _mem_user_input = str(prompt[-1].get("content", "")) if hasattr(prompt[-1], 'get') else ""
+                _mem_msgs = _mem_ctx.messages
+                if isinstance(_mem_msgs, list) and _mem_msgs:
+                    prompt = list(_mem_msgs) + prompt
+        except Exception:
+            pass
+    elif session_id and isinstance(prompt, str):
+        _mem_user_input = prompt
 
     # Gap 6.6: Circuit breaker guard — reject when circuit is open
 
@@ -2205,6 +2228,11 @@ async def sys_llm_generate(
 
                     logging.warning(str(e), exc_info=True)
 
+            # ── MemoryManager: save interaction if session_id provided ──
+            if session_id and _mem_user_input:
+                import asyncio as _asyncio_mem
+                _asyncio_mem.create_task(_save_llm_interaction(
+                    session_id, _mem_user_input, result, model_name))
             return result
 
 
@@ -2547,6 +2575,13 @@ async def sys_llm_generate(
         except Exception:
 
             logging.getLogger(__name__).debug('code failed', exc_info=True)
+        # ── MemoryManager: save interaction if session_id provided ──
+        if session_id and _mem_user_input:
+            import asyncio as _asyncio_mem2
+            wrapped = _wrap_llm_result(result, model_name or "")
+            _asyncio_mem2.create_task(_save_llm_interaction(
+                session_id, _mem_user_input, wrapped, model_name))
+            return wrapped
         return _wrap_llm_result(result, model_name or "")
 
     except Exception:
@@ -2760,6 +2795,8 @@ async def sys_llm_generate_stream(
     messages: List[Dict[str, str]],
 
     *,
+
+    session_id: Optional[str] = None,
 
     model_name: str = "",
 
