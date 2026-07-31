@@ -2648,3 +2648,13 @@ rules:
         print('PASS: response_model=dict count stable or decreasing')
         "
       ok_pattern: "PASS:"
+
+  - id: registry_consistency
+    section: "§88"
+    section_name: "实体注册完备性"
+    level: error
+    check:
+      type: cmd_output
+      cmd: |
+        python3 scripts/verify_registry.py --json 2>/dev/null || true
+      ok_pattern: '"total_issues": 0'
