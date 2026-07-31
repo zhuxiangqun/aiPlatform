@@ -212,7 +212,7 @@ async def core_chat(ctx: ChatContext) -> ChatResult:
         from core.harness.utils.prompt_loader import _async_prompt_resolve
         system_prompt = await _async_prompt_resolve("agent-fallback", agent_name=str(ctx.agent_name))
 
-    # ── 2. MemoryManager: load conversation history ──
+    # ── 2. MemoryManager: load conversation history + full context ──
     memory_saved = False
     message_history: List[Dict[str, str]] = [{"role": "user", "content": ctx.user_input}]
     try:
@@ -224,12 +224,54 @@ async def core_chat(ctx: ChatContext) -> ChatResult:
             session_id=ctx.session_id,
         )
         if mem_ctx:
+            # ── Messages: Working memory history ──
             existing = mem_ctx.messages if hasattr(mem_ctx, 'messages') else (
                 mem_ctx.get("messages") if isinstance(mem_ctx, dict) else None)
             if existing is None:
                 existing = mem_ctx.get("history") if isinstance(mem_ctx, dict) else []
             if isinstance(existing, list):
                 message_history = list(existing) + message_history
+
+            # ── Episodic summary: prepend to system prompt ──
+            episodic = getattr(mem_ctx, 'episodic_summary', '') or ''
+            if episodic and len(episodic) > 10:
+                system_prompt = (
+                    f"## 历史会话摘要\n{episodic[:1500]}\n\n---\n\n{system_prompt}"
+                )
+
+            # ── Semantic memories: inject as context ──
+            relevant = getattr(mem_ctx, 'relevant_memories', '') or ''
+            if isinstance(relevant, str) and len(relevant) > 10:
+                message_history.insert(0, {
+                    "role": "system",
+                    "content": f"## 相关历史知识\n{str(relevant)[:2000]}"
+                })
+            elif isinstance(relevant, list) and relevant:
+                parts = []
+                for m in relevant[:3]:
+                    if isinstance(m, dict):
+                        parts.append(str(m.get('content', ''))[:300])
+                    else:
+                        parts.append(str(m)[:300])
+                if parts:
+                    message_history.insert(0, {
+                        "role": "system",
+                        "content": "## 相关历史知识\n" + "\n---\n".join(parts)
+                    })
+
+            # ── Token budget check ──
+            tc = getattr(mem_ctx, 'token_count', 0)
+            if tc > 30000:
+                logging.getLogger("core.intents").warning(
+                    "Context token count high: %d (session=%s)", tc, ctx.session_id)
+
+            # ── System reminder ──
+            reminder = getattr(mem_ctx, 'reminder', None)
+            if reminder:
+                message_history.insert(0, {
+                    "role": "user",
+                    "content": f"[系统提醒] {str(reminder)[:500]}"
+                })
     except Exception as e:
         logging.debug(str(e), exc_info=True)
 
