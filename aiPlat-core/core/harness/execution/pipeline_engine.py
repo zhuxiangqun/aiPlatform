@@ -2580,6 +2580,8 @@ Output format: JSON array of {{"rank": 1, "score": 0.95, "content": "..."}}"""
 
                     idx = layer[i]
 
+                    logging.getLogger("pipeline_engine").error(
+                        "Stage %d raised exception", idx, exc_info=result)
                     state["_last_action_reason"] = f"stage_{idx}_error:{result}"
 
                     continue
