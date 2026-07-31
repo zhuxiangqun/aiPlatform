@@ -166,8 +166,13 @@ export const projectApi = {
     return apiClient.post<{ deleted: number }>('/platform/builder/projects/batch-delete', data);
   },
   chat: async (projectId: string, message: string) => {
-    return apiClient.post<{ reply: string; prd_ready: boolean; session_state: Record<string, unknown> }>(
+    return apiClient.post<{ reply: string; prd_ready: boolean; trace_id: string }>(
       `/platform/builder/projects/${projectId}/chat`, { message }
+    );
+  },
+  getMessages: async (projectId: string) => {
+    return apiClient.get<{ messages: Array<{ role: string; content: string }> }>(
+      `/platform/builder/projects/${projectId}/messages`
     );
   },
   confirm: async (projectId: string, prd?: Record<string, unknown>) => {

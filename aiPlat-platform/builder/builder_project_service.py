@@ -1330,6 +1330,17 @@ class BuilderProjectService:
             logging.warning(str(e), exc_info=True)
         return None
 
+    async def get_messages(self, project_id: str) -> Dict[str, Any]:
+        """Return chat messages for a project (for UI to restore conversation)."""
+        session = self._sessions.get(project_id)
+        if not session:
+            session = self._load_chat_session(project_id)
+            if session:
+                self._sessions[project_id] = session
+        if isinstance(session, dict):
+            return {"messages": list(session.get("messages", []))}
+        return {"messages": []}
+
     def _load_pipeline_state(self, project_id: str) -> Optional[Dict[str, Any]]:
         """Load pipeline state from per-project JSON file."""
         state_file = os.path.join(_BUILDER_STATES_DIR, f"{project_id}.json")

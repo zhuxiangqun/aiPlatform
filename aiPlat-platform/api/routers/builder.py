@@ -129,6 +129,10 @@ async def batch_delete_projects(req: Dict[str, Any], _auth: str = Depends(requir
 async def get_project_state(project_id: str, _auth: str = Depends(require_builder_access)):
     return await _get_svc().get_project_state(project_id)
 
+@router.get("/projects/{project_id}/messages", response_model=StatusResponse)
+async def get_project_messages(project_id: str, _auth: str = Depends(require_builder_access)):
+    return await _get_svc().get_messages(project_id)
+
 @router.post("/projects/{project_id}/chat", response_model=StatusResponse)
 async def project_chat(project_id: str, req: BuilderChatRequest, _auth: str = Depends(require_builder_access)):
     return await _get_svc().chat(project_id, req.message)

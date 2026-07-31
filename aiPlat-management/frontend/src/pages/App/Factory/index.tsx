@@ -17,7 +17,23 @@ const InlineChat: React.FC<{
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
   const [autoSent, setAutoSent] = useState(false);
+  const [loaded, setLoaded] = useState(false);
   const bottomRef = React.useRef<HTMLDivElement>(null);
+
+  // Load existing messages from backend on mount
+  useEffect(() => {
+    (async () => {
+      try {
+        const resp = await projectApi.getMessages(projectId);
+        const msgs = (resp as any)?.messages || [];
+        if (msgs.length > 0) {
+          setMessages(msgs);
+          setAutoSent(true); // Prevent auto-send when history exists
+        }
+      } catch { /* ignore, will auto-send */ }
+      setLoaded(true);
+    })();
+  }, [projectId]);
 
   const send = useCallback(async (msg: string) => {
     if (!msg.trim()) return;
@@ -32,13 +48,13 @@ const InlineChat: React.FC<{
     } finally { setSending(false); }
   }, [projectId, onPhaseChange]);
 
-  // Auto-send initial message
+  // Auto-send initial message — only when no existing history
   useEffect(() => {
-    if (initialMessage && !autoSent) {
+    if (loaded && initialMessage && !autoSent && messages.length === 0) {
       setAutoSent(true);
       send(initialMessage);
     }
-  }, [initialMessage, autoSent, send]);
+  }, [loaded, initialMessage, autoSent, messages.length, send]);
 
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
 
