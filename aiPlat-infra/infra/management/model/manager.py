@@ -685,6 +685,20 @@ class ModelManager:
                 or os.getenv("AIPLAT_LLM_MODEL", "").strip()
                 or os.getenv("AIPLAT_DEFAULT_MODEL", "").strip())
 
+    def get_credentials(self, provider: str) -> dict:
+        """Resolve API credentials for a provider via credential pool.
+
+        Returns dict with: api_key, base_url (optional), provider
+        Returns empty dict if no credentials found.
+        """
+        from infra.management.model.credential_pool import get_credential_pool
+        try:
+            pool = get_credential_pool(provider)
+            key = pool.next()
+            return {"api_key": key, "provider": provider}
+        except RuntimeError:
+            return {}
+
     def select_by_purpose(self, purpose: str, complexity: str = None) -> Optional[str]:
         """Select best model for purpose via capability scoring.
         
