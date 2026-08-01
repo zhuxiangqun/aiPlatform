@@ -256,6 +256,8 @@ class PipelineStageConfig(BaseModel):
     sandbox_max_processes: int = 100
     # Phase 10 — declarative execution mode (replaces if/elif chains in engine)
     execution_mode: str = "code_first"   # "code_first" | "tdd" | "plan_only"
+    skill_name: str = ""                 # e.g., "architecture_design", "code_generation"
+    skill_model_purpose: str = ""        # e.g., "reasoning", "code_gen" — passed to best_model_for_purpose
     review_gate: str = "quick"           # "none" | "quick" | "llm" | "hitl" — default quick for safety
     tdd_enforce: bool = False
     context_isolation: str = "shared"   # "shared" | "isolated"
