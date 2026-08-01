@@ -96,6 +96,26 @@ const ProjectPanel: React.FC<{
   const [deploying, setDeploying] = useState(false);
   const [healthReport, setHealthReport] = useState<Record<string, any> | null>(null);
   const [loadingHealth, setLoadingHealth] = useState(false);
+  const [stageOutputs, setStageOutputs] = useState<Record<string, any> | null>(null);
+
+  // Load stage outputs when phase is done
+  useEffect(() => {
+    if (phase === 'done' && project.project_id) {
+      (async () => {
+        try {
+          const st = await projectApi.getState(project.project_id);
+          const state = (st as any)?.state || {};
+          const outputs: Record<string, any> = {};
+          for (const k of ['architecture', 'code', 'test_report']) {
+            if (state[k] && typeof state[k] === 'object') {
+              outputs[k] = state[k];
+            }
+          }
+          if (Object.keys(outputs).length > 0) setStageOutputs(outputs);
+        } catch { /* ignore */ }
+      })();
+    }
+  }, [phase, project.project_id]);
 
   useEffect(() => {
     setTeamStages(project.team_stages || []);
@@ -149,6 +169,30 @@ const ProjectPanel: React.FC<{
       toast.success('部署成功');
     } catch (e: any) { toastGateError(e, '部署失败'); }
     finally { setDeploying(false); }
+  };
+
+  const handleApprove = async () => {
+    if (!project.project_id) return;
+    setStarting(true);
+    try {
+      await projectApi.approve(project.project_id);
+      setPhase('executing');
+      toast.success('已审批，继续执行');
+    } catch (e: any) { toastGateError(e, '审批失败'); }
+    finally { setStarting(false); }
+  };
+
+  const handleReject = async () => {
+    if (!project.project_id) return;
+    const feedback = window.prompt('驳回理由（可选）：');
+    if (feedback === null) return; // cancelled
+    setStarting(true);
+    try {
+      await projectApi.reject(project.project_id, feedback);
+      toast.success('已驳回，将重新生成');
+      onRefresh();
+    } catch (e: any) { toastGateError(e, '驳回失败'); }
+    finally { setStarting(false); }
   };
 
   return (
@@ -217,6 +261,16 @@ const ProjectPanel: React.FC<{
           <div className="p-3 rounded bg-blue-500/10 border border-blue-500/30 text-sm text-blue-300 flex items-center gap-2">
             <Loader2 className="w-4 h-4 animate-spin" /> Pipeline 执行中...
           </div>
+        ) : phase === 'paused' || phase?.includes('approval') ? (
+          <div className="p-3 rounded bg-amber-500/10 border border-amber-500/30 text-sm space-y-2">
+            <div className="text-amber-300 flex items-center gap-2">
+              <Clock className="w-4 h-4" /> 等待审批 — 请审核当前阶段产出
+            </div>
+            <div className="flex gap-2">
+              <Button variant="primary" size="sm" onClick={handleApprove} loading={starting}>✅ 审批通过</Button>
+              <Button variant="secondary" size="sm" onClick={handleReject}>❌ 驳回重做</Button>
+            </div>
+          </div>
         ) : null}
 
         {/* Team stages */}
@@ -231,6 +285,24 @@ const ProjectPanel: React.FC<{
                 </React.Fragment>
               ))}
             </div>
+          </div>
+        )}
+
+        {/* Stage Outputs — show architecture/code/test_report when available */}
+        {stageOutputs && Object.keys(stageOutputs).length > 0 && (
+          <div className="space-y-2">
+            <h3 className="text-xs font-semibold text-gray-400 uppercase">阶段产出</h3>
+            {Object.entries(stageOutputs).map(([key, val]) => {
+              const rw = (val as any)?.raw_output || '';
+              const label = key === 'architecture' ? '🏗️ 架构设计' : key === 'code' ? '💻 代码生成' : '🧪 测试报告';
+              const preview = typeof rw === 'string' ? rw.slice(0, 500) : JSON.stringify(rw).slice(0, 500);
+              return (
+                <details key={key} className="text-xs rounded border border-dark-border bg-dark-hover/30">
+                  <summary className="p-2 cursor-pointer text-gray-300 font-medium">{label} ({typeof rw === 'string' ? rw.length : 0} 字符)</summary>
+                  <pre className="p-2 whitespace-pre-wrap break-all text-gray-400 max-h-40 overflow-y-auto border-t border-dark-border">{preview || '(空)'}</pre>
+                </details>
+              );
+            })}
           </div>
         )}
 
