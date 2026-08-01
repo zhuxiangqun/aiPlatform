@@ -3706,6 +3706,16 @@ Output format: JSON array of {{"rank": 1, "score": 0.95, "content": "..."}}"""
                 if _skill and hasattr(_skill, '_config'):
                     _meta = getattr(_skill._config, 'metadata', {}) or {}
                     _sop_body = _meta.get("body", "") or _meta.get("sop_markdown", "")
+                if not _sop_body:
+                    import os as _os
+                    _here = _os.path.dirname(_os.path.abspath(__file__))
+                    _sp = _os.path.abspath(_os.path.join(_here, "..", "..", "engine", "skills", "code_generation", "SKILL.md"))
+                    if _os.path.isfile(_sp):
+                        with open(_sp) as _sf:
+                            _raw = _sf.read()
+                        if _raw.startswith("---"):
+                            _parts = _raw.split("---", 2)
+                            _sop_body = _parts[2].strip() if len(_parts) > 2 else ""
                 if _sop_body:
                     from core.harness.syscalls.llm import sys_llm_generate
                     from core.harness.utils.model_injection import best_model_for_purpose
@@ -3746,6 +3756,16 @@ Output format: JSON array of {{"rank": 1, "score": 0.95, "content": "..."}}"""
                     if _skill and hasattr(_skill, '_config'):
                         _meta = getattr(_skill._config, 'metadata', {}) or {}
                         _sop_body = _meta.get("body", "") or _meta.get("sop_markdown", "")
+                    if not _sop_body:
+                        import os as _os
+                        _here = _os.path.dirname(_os.path.abspath(__file__))
+                        _sp = _os.path.abspath(_os.path.join(_here, "..", "..", "engine", "skills", "test_case_generation", "SKILL.md"))
+                        if _os.path.isfile(_sp):
+                            with open(_sp) as _sf:
+                                _raw = _sf.read()
+                            if _raw.startswith("---"):
+                                _parts = _raw.split("---", 2)
+                                _sop_body = _parts[2].strip() if len(_parts) > 2 else ""
                     if _sop_body:
                         from core.harness.syscalls.llm import sys_llm_generate
                         from core.harness.utils.model_injection import best_model_for_purpose
