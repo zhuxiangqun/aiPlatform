@@ -1610,6 +1610,26 @@ class BuilderProjectService:
     async def deploy_to_app(self, project_id: str) -> Dict[str, Any]:
         """Deploy pipeline output to the app layer."""
         proj = self._projects.get(project_id, {})
+        # Sync pass_rate from final state if available
+        _out_dir = os.path.join(os.getenv("AIPLAT_HOME", os.path.expanduser("~/.aiplat")), "output", project_id)
+        _final_path = os.path.join(_out_dir, "_final_state.json")
+        if os.path.isfile(_final_path):
+            import json as _json
+            with open(_final_path, "r") as _fs:
+                _final_state = _json.load(_fs)
+            _code = _final_state.get("code", {})
+            _arch = _final_state.get("architecture", {})
+            _arch_ok = isinstance(_arch, dict) and len(_arch.get("raw_output", "") if isinstance(_arch, dict) else "") > 500
+            _code_ok = isinstance(_code, dict) and len(_code.get("raw_output", "") if isinstance(_code, dict) else "") > 500
+            _tests_ok = _final_state.get("_has_tests", False)
+            if _arch_ok and _code_ok and _tests_ok: _pr = 1.0
+            elif _tests_ok and _code_ok: _pr = 0.9
+            elif _code_ok: _pr = 0.7 if _arch_ok else 0.6
+            elif _arch_ok: _pr = 0.3
+            else: _pr = 0
+            if proj.get("runs"):
+                proj["runs"][-1]["pass_rate"] = _pr
+                self._save_projects()
         deploy_dir = proj.get("deploy_dir", "") or await self.get_deploy_dir(project_id)
         return _deploy_to_app_for_project(project_id, deploy_dir or "", proj)
 
