@@ -237,6 +237,20 @@ export const projectApi = {
     );
   },
 
+  /** Directly update PRD without PM chat re-engagement. */
+  updatePrd: async (projectId: string, prd: Record<string, unknown>) => {
+    return apiClient.post<{ status: string; detail: string }>(
+      `/platform/builder/projects/${projectId}/update-prd`, { prd }
+    );
+  },
+
+  /** Re-run pipeline with existing PRD (e.g., after editing PRD). */
+  rebuild: async (projectId: string) => {
+    return apiClient.post<{ status: string; detail: string }>(
+      `/platform/builder/projects/${projectId}/rebuild`
+    );
+  },
+
   /** Get pipeline health report with per-stage dimensional scores. */
   getHealthReport: async (projectId: string) => {
     return apiClient.get<{

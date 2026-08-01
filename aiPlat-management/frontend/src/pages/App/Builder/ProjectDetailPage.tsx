@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { CheckCircle, ArrowLeft, BarChart3, Play, Eye, Pencil, X, Rocket, TestTube, Clock, Sparkles, RefreshCw } from 'lucide-react';
+import { CheckCircle, ArrowLeft, BarChart3, Play, Eye, Pencil, X, Rocket, TestTube, Clock, Sparkles, RefreshCw, Save } from 'lucide-react';
 import { projectApi, type ProjectItem, type ProjectRun, type BuilderSession } from '../../../services';
 import { BuilderPipeline } from '../../../components/Builder/BuilderPipeline';
 import { ChatWidget } from '../../../components/ui';
@@ -47,6 +47,7 @@ const ProjectDetailPage: React.FC = () => {
   const [deployResult, setDeployResult] = useState<Record<string, unknown> | null>(null);
   const [recommending, setRecommending] = useState(false);
   const [recommendedTeam, setRecommendedTeam] = useState<Record<string, unknown> | null>(null);
+  const [rebuilding, setRebuilding] = useState(false);
   const [healthReport, setHealthReport] = useState<Record<string, any> | null>(null);
 
   // Derived state — must precede callbacks that reference them
@@ -170,6 +171,19 @@ const ProjectDetailPage: React.FC = () => {
       }
     } catch (e: any) { toastGateError(e, '推荐请求失败'); }
     finally { setRecommending(false); }
+  }, [id]);
+
+  const handleRebuild = useCallback(async () => {
+    if (!id) return;
+    setRebuilding(true);
+    try {
+      await projectApi.rebuild(id);
+      toast.success('已触发重新构建，请等待流水线完成...');
+      setPhase(Phase.executing);
+      // Poll for state updates
+      refreshState();
+    } catch (e: any) { toastGateError(e, '重新构建失败'); }
+    finally { setRebuilding(false); }
   }, [id]);
 
   const refreshState = async () => {
@@ -306,6 +320,7 @@ const ProjectDetailPage: React.FC = () => {
               <div className="flex gap-2 flex-shrink-0">
                 <Button size="sm" onClick={() => setShowPrdDetail(true)} icon={<Eye className="w-3.5 h-3.5" />}>查看详情</Button>
                 <Button size="sm" onClick={startEditing} icon={<Pencil className="w-3.5 h-3.5" />}>修改需求</Button>
+                <Button size="sm" variant="outline" onClick={handleRebuild} loading={rebuilding} icon={<RefreshCw className="w-3.5 h-3.5" />}>重新构建</Button>
               </div>
             </div>
             {/* Inline PRD preview */}
@@ -390,7 +405,7 @@ const ProjectDetailPage: React.FC = () => {
           </div>
         )}
       </motion.div>
-      <PrdDetailModal open={showPrdDetail} prd={confirmedPrd} onClose={() => setShowPrdDetail(false)} onEdit={startEditing} />
+      <PrdDetailModal open={showPrdDetail} prd={confirmedPrd} onClose={() => setShowPrdDetail(false)} onEdit={startEditing} projectId={id} onRebuild={handleRebuild} />
       </>
     );
   }
@@ -658,11 +673,59 @@ const ProjectDetailPage: React.FC = () => {
 
 // Shared modal — rendered outside phase conditions
 const PrdDetailModal: React.FC<{
-  open: boolean; prd: Record<string, unknown> | null; onClose: () => void; onEdit: () => void
-}> = ({ open, prd, onClose, onEdit }) => {
+  open: boolean; prd: Record<string, unknown> | null; onClose: () => void; onEdit: () => void;
+  projectId?: string; onRebuild?: () => void;
+}> = ({ open, prd, onClose, onEdit, projectId, onRebuild }) => {
+  const [editing, setEditing] = useState(false);
+  const [text, setText] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  const startEdit = () => { setText(JSON.stringify(prd, null, 2)); setEditing(true); };
+  const cancelEdit = () => setEditing(false);
+
+  const savePrd = async () => {
+    if (!projectId) return;
+    try {
+      let parsed: Record<string, unknown>;
+      try { parsed = JSON.parse(text); } catch { toast('JSON 格式错误，请检查'); return; }
+      setSaving(true);
+      await projectApi.updatePrd(projectId, parsed);
+      toast.success('PRD 已保存');
+      setEditing(false);
+      onClose();
+      if (onRebuild) onRebuild();
+    } catch (e) { toastGateError(e, '保存 PRD 失败'); }
+    finally { setSaving(false); }
+  };
+
   if (!open || !prd) return null;
   const stories = (prd.user_stories as Array<Record<string, unknown>>) || [];
   const constraints = (prd.constraints as string[]) || [];
+
+  if (editing) {
+    return (
+      <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center" onClick={cancelEdit}>
+        <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }}
+          className="bg-dark-card border border-dark-border rounded-xl p-6 w-full max-w-2xl max-h-[85vh] flex flex-col"
+          onClick={(e) => e.stopPropagation()}>
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-lg font-bold text-gray-100">编辑 PRD (JSON)</h2>
+            <Button size="sm" variant="ghost" onClick={cancelEdit}><X className="w-4 h-4" /></Button>
+          </div>
+          <textarea
+            value={text}
+            onChange={e => setText(e.target.value)}
+            className="flex-1 min-h-[400px] bg-dark-hover border border-dark-border rounded-lg p-3 text-sm text-gray-200 font-mono resize-none focus:outline-none focus:border-primary"
+          />
+          <div className="flex justify-end gap-2 mt-4">
+            <Button variant="ghost" onClick={cancelEdit}>取消</Button>
+            <Button variant="primary" onClick={savePrd} loading={saving} icon={<Save className="w-4 h-4" />}>保存 PRD</Button>
+          </div>
+        </motion.div>
+      </div>
+    );
+  }
+
   return (
     <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center" onClick={onClose}>
       <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }}
@@ -691,7 +754,8 @@ const PrdDetailModal: React.FC<{
         </div>
         <div className="flex justify-end gap-2 mt-6">
           <Button variant="ghost" onClick={onClose}>关闭</Button>
-          <Button variant="primary" onClick={() => { onClose(); onEdit(); }} icon={<Pencil className="w-3.5 h-3.5" />}>修改需求</Button>
+          <Button variant="ghost" onClick={startEdit} icon={<Pencil className="w-3.5 h-3.5" />}>编辑 JSON</Button>
+          <Button variant="primary" onClick={() => { onClose(); onEdit(); }} icon={<Pencil className="w-3.5 h-3.5" />}>对话修改</Button>
         </div>
       </motion.div>
     </div>

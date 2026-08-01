@@ -1305,6 +1305,41 @@ class BuilderProjectService:
         self._pipeline_sessions.pop(project_id, None)
         return {"project_id": project_id, "phase": "dialogue"}
 
+    async def update_prd(self, project_id: str, prd: dict) -> Dict[str, Any]:
+        """Directly update the confirmed PRD without re-running PM chat."""
+        import logging as _log2
+        proj = self._projects.get(project_id, {})
+        if not proj:
+            return {"status": "error", "detail": "项目不存在"}
+        proj["confirmed_prd"] = prd
+        proj["updated_at"] = time.strftime("%Y-%m-%dT%H:%M:%S")
+        self._save_projects()
+        _log2.getLogger("aiplat.builder").info("PRD updated for %s", project_id)
+        return {"status": "ok", "detail": "PRD 已更新"}
+
+    async def rebuild_project(self, project_id: str) -> Dict[str, Any]:
+        """Re-run the pipeline with the existing confirmed PRD."""
+        proj = self._projects.get(project_id, {})
+        if not proj:
+            return {"status": "error", "detail": "项目不存在"}
+        if not proj.get("confirmed_prd"):
+            return {"status": "error", "detail": "没有已确认的 PRD，请先完成 PM 对话"}
+        # Clear previous pipeline state
+        self._runs.pop(project_id, None)
+        self._pipeline_sessions.pop(project_id, None)
+        for fname in (f"{project_id}.json", f"{project_id}_chat.json"):
+            fpath = os.path.join(_BUILDER_STATES_DIR, fname)
+            try:
+                if os.path.exists(fpath):
+                    os.remove(fpath)
+            except OSError:
+                pass  # noqa: cleanup-best-effort
+        # Re-run pipeline with existing PRD
+        import logging as _log3
+        _log3.getLogger("aiplat.builder").info("Rebuilding project %s", project_id)
+        self.start_pipeline_background(project_id)
+        return {"status": "ok", "detail": "已触发重新构建"}
+
     async def get_deploy_dir(self, project_id: str) -> Optional[str]:
         """Get deploy directory path for a project."""
         proj = self._projects.get(project_id, {})

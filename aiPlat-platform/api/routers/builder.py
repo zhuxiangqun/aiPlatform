@@ -168,8 +168,20 @@ async def project_rollback(project_id: str, stage_id: str, _auth: str = Depends(
 
 @router.post("/projects/{project_id}/rollback-prd", response_model=StatusResponse)
 async def project_rollback_prd(project_id: str, _auth: str = Depends(require_builder_access)):
-    """Roll back to PRD editing phase — clears pipeline state and confirmed PRD."""
     return await _get_svc().rollback_prd(project_id)
+
+
+@router.post("/projects/{project_id}/update-prd", response_model=StatusResponse)
+async def project_update_prd(project_id: str, body: Dict[str, Any], _auth: str = Depends(require_builder_access)):
+    """Update PRD directly without going through PM chat again."""
+    prd = body.get("prd", body)
+    return await _get_svc().update_prd(project_id, prd)
+
+
+@router.post("/projects/{project_id}/rebuild", response_model=StatusResponse)
+async def project_rebuild(project_id: str, _auth: str = Depends(require_builder_access)):
+    """Re-run pipeline with existing PRD data (e.g., after editing PRD)."""
+    return await _get_svc().rebuild_project(project_id)
 
 @router.post("/projects/{project_id}/fix", response_model=StatusResponse)
 async def project_fix(project_id: str, _auth: str = Depends(require_builder_access)):
