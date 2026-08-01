@@ -875,6 +875,17 @@ class BuilderProjectService:
                 "description": user_story_match.group(1).strip() if user_story_match else "",
                 "acceptance_criteria": acs,
             })
+        # Fallback: parse numbered/bulleted lists as user stories
+        if not fr_items and func_section.strip():
+            for line_match in re.finditer(r'^\s*(?:\d+\.|[-*])\s*\**(.+?)\**(?:\s*[：:]\s*(.+))?\s*$', func_section or "", re.MULTILINE):
+                _name = line_match.group(1).strip()
+                _desc = (line_match.group(2) or "").strip()
+                fr_items.append({
+                    "id": f"US-{len(fr_items)+1:03d}",
+                    "name": _name,
+                    "description": _desc or _name,
+                    "acceptance_criteria": [],
+                })
         if fr_items:
             prd["functional_requirements"] = fr_items
             prd["user_stories"] = fr_items
