@@ -972,6 +972,16 @@ class BuilderProjectService:
                 for s in stages:
                     if not s.output_artifact or s.output_artifact.startswith("stage_"):
                         s.output_artifact = _semantic_output(s.agent_id, s.phase)
+                # Inject skill_name into stages that don't have it (migration)
+                for s in stages:
+                    if not getattr(s, 'skill_name', ''):
+                        _oa = getattr(s, 'output_artifact', '')
+                        _defaults = {"architecture": ("architecture_design", "reasoning"),
+                                     "code": ("code_generation", "code_gen"),
+                                     "test_report": ("test_case_generation", "code_gen")}
+                        if _oa in _defaults:
+                            s.skill_name = _defaults[_oa][0]
+                            s.skill_model_purpose = _defaults[_oa][1]
                 # Update project snapshot to latest
                 proj["team_stages"] = [s.model_dump() if hasattr(s, 'model_dump') else s for s in stages]
                 self._save_projects()
