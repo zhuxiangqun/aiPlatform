@@ -655,6 +655,24 @@ class BuilderProjectService:
 
         proj = self._projects.get(project_id, {})
         if not prd_data:
+            # Primary: persisted confirmed_prd from update-prd or previous PM dialogue
+            prd_data = proj.get("confirmed_prd")
+        if not prd_data:
+            prd_data = session.get("prd") if isinstance(session, dict) else None
+        # Last resort: extract PRD from last assistant message in session
+        if not prd_data and isinstance(session, dict):
+            msgs = session.get("messages", [])
+            for m in reversed(msgs):
+                if m.get("role") == "assistant":
+                    content = m.get("content", "")
+                    if "<!-- PRD_READY -->" in content or "## 项目名称" in content:
+                        draft = self._parse_markdown_prd(content)
+                        if draft:
+                            prd_data = draft
+                            session["prd"] = draft
+                        break
+
+        if not prd_data:
             # Auto-extract PRD from chat via LLM
             try:
                 prd_data = await self._extract_prd_from_chat(project_id, session)
