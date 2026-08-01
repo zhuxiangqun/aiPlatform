@@ -478,11 +478,29 @@ class BuilderProjectService:
 
         session["messages"].append({"role": "user", "content": message})
 
+        # ── Inject knowledge retrieval context into PM dialogue ──
+        _enriched_message = message
+        try:
+            from core.harness.syscalls.retrieval import sys_knowledge_retrieve
+            _kb_docs = await sys_knowledge_retrieve(message, top_k=3)
+            if _kb_docs:
+                _kb_lines = ["## 知识库中已有的相关内容"]
+                for _doc in _kb_docs[:3]:
+                    _title = str(getattr(_doc, 'title', '') or '')
+                    _snippet = str(getattr(_doc, 'content', '') or getattr(_doc, 'snippet', '') or '')[:300]
+                    if _title or _snippet:
+                        _kb_lines.append(f"- {_title}: {_snippet}")
+                if len(_kb_lines) > 1:
+                    _kb_context = "\n".join(_kb_lines)
+                    _enriched_message = f"{_kb_context}\n\n---\n用户需求: {message}"
+        except Exception:
+            pass  # best-effort, don't block PM dialogue on retrieval failure
+
         try:
             result = await core_chat(ChatContext(
                 agent_name=_AIPLAT_PM_AGENT,
                 session_id=project_id,
-                user_input=message,
+                user_input=_enriched_message,
                 model=self.model,
             ))
             reply = result.reply

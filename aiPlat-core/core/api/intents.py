@@ -282,8 +282,19 @@ async def core_chat(ctx: ChatContext) -> ChatResult:
         required = frontmatter.get("required_skills") if frontmatter else None
         if required:
             skills_used = [s for s in required if isinstance(s, str)]
-        elif not system_prompt.strip():
-            pass
+        else:
+            # Auto-discover matching skills based on agent profile
+            _agent_tags = (frontmatter.get("tags") or []) if frontmatter else []
+            _agent_desc = str(frontmatter.get("description") or "") if frontmatter else ""
+            _agent_cat  = str(frontmatter.get("category") or "") if frontmatter else ""
+            # Search skill registry for likely matches
+            if _agent_desc or _agent_cat:
+                _search_query = f"{_agent_desc} {_agent_cat} {' '.join(_agent_tags)}"
+                _matches = skill_reg.search_corpus(_search_query, limit=5)
+                skills_used = [m.get("name", "") for m in _matches if m.get("name")]
+                if skills_used:
+                    logging.getLogger("core.intents").info(
+                        "auto-bind skills for '%s': %s", ctx.agent_name, skills_used)
     except Exception as e:
         logging.debug(str(e), exc_info=True)
 

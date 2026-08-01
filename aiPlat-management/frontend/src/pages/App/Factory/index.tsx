@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Plus, Send, Loader2, Clock, CheckCircle, XCircle, ExternalLink } from 'lucide-react';
+import { Plus, Send, Loader2, Clock, CheckCircle, XCircle, ExternalLink, BarChart3 } from 'lucide-react';
 import { projectApi, builderTeamApi, type ProjectItem, type ProjectRun } from '../../../services';
 import { Card, CardContent, Button, Textarea, toast } from '../../../components/ui';
 import { toastGateError } from '../../../components/ui';
@@ -94,6 +94,8 @@ const ProjectPanel: React.FC<{
   const [runHistory, setRunHistory] = useState<ProjectRun[]>(project.runs || []);
   const [deployUrl, setDeployUrl] = useState('');
   const [deploying, setDeploying] = useState(false);
+  const [healthReport, setHealthReport] = useState<Record<string, any> | null>(null);
+  const [loadingHealth, setLoadingHealth] = useState(false);
 
   useEffect(() => {
     setTeamStages(project.team_stages || []);
@@ -164,15 +166,51 @@ const ProjectPanel: React.FC<{
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {/* Progress */}
         {phase === 'done' ? (
-          <div className="p-3 rounded bg-green-500/10 border border-green-500/30 text-sm text-green-300">
-            ✅ 构建完成
-            {!deployUrl && (
-              <Button variant="primary" size="sm" className="ml-3" onClick={handleDeploy} loading={deploying}>部署到 App</Button>
+          <div className="space-y-2">
+            <div className="p-3 rounded bg-green-500/10 border border-green-500/30 text-sm text-green-300">
+              ✅ 构建完成
+              {!deployUrl && (
+                <Button variant="primary" size="sm" className="ml-3" onClick={handleDeploy} loading={deploying}>部署到 App</Button>
+              )}
+              {deployUrl && (
+                <a href={deployUrl} target="_blank" rel="noreferrer" className="ml-3 text-primary underline text-xs flex items-center gap-1 inline-flex">
+                  <ExternalLink className="w-3 h-3" /> 打开应用
+                </a>
+              )}
+            </div>
+            {/* Health Report Card */}
+            {!healthReport && (
+              <button
+                className="text-xs text-blue-400 hover:text-blue-300 flex items-center gap-1"
+                onClick={async () => {
+                  setLoadingHealth(true);
+                  try {
+                    const r = await projectApi.getHealthReport(project.project_id);
+                    setHealthReport(r as any);
+                  } catch { /* ignore */ }
+                  setLoadingHealth(false);
+                }}
+              >
+                {loadingHealth ? <Loader2 className="w-3 h-3 animate-spin" /> : <BarChart3 className="w-3 h-3" />}
+                查看健康报告
+              </button>
             )}
-            {deployUrl && (
-              <a href={deployUrl} target="_blank" rel="noreferrer" className="ml-3 text-primary underline text-xs flex items-center gap-1 inline-flex">
-                <ExternalLink className="w-3 h-3" /> 打开应用
-              </a>
+            {healthReport && (
+              <div className="p-3 rounded bg-blue-500/5 border border-blue-500/30 text-xs space-y-1">
+                <div className="flex items-center justify-between">
+                  <span className="text-blue-300 font-medium">Pipeline 健康报告</span>
+                  <span className="text-lg font-bold text-blue-200">{healthReport.overall_score || '?'}/100</span>
+                </div>
+                {healthReport.dimensions?.map((d: any) => (
+                  <div key={d.name} className="flex items-center gap-2">
+                    <span className="w-24 text-gray-400 truncate">{d.display_name || d.name}</span>
+                    <div className="flex-1 h-1.5 bg-gray-700 rounded-full overflow-hidden">
+                      <div className="h-full bg-blue-500 rounded-full" style={{ width: `${Math.min(100, d.score / d.max_score * 100)}%` }} />
+                    </div>
+                    <span className="w-8 text-right text-gray-300">{d.score}</span>
+                  </div>
+                ))}
+              </div>
             )}
           </div>
         ) : phase === 'executing' ? (
