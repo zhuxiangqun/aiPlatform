@@ -3793,8 +3793,15 @@ Output format: JSON array of {{"rank": 1, "score": 0.95, "content": "..."}}"""
                                         _fcontent = _re.sub(r'\n?```\s*$', '', _fcontent)
                                         _full = _os.path.join(_tmp, _fpath)
                                         _os.makedirs(_os.path.dirname(_full), exist_ok=True)
-                                        with open(_full, "w") as _fw:
-                                            _fw.write(_fcontent)
+                                    with open(_full, "w") as _fw:
+                                        _fw.write(_fcontent)
+
+                            # Add __init__.py to all directories (fixes import errors)
+                            for _root, _dirs, _files in _os.walk(_tmp):
+                                for _d in _dirs:
+                                    _init = _os.path.join(_root, _d, "__init__.py")
+                                    if not _os.path.isfile(_init):
+                                        with open(_init, "w") as _: pass
 
                             # Run pytest with the temp dir as PYTHONPATH
                             _env = {**_os.environ, "PYTHONPATH": _tmp + (":" + _os.environ.get("PYTHONPATH","") if _os.environ.get("PYTHONPATH") else "")}
