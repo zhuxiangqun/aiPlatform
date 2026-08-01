@@ -44,7 +44,7 @@ purpose_profiles:
 
 fallback:
   safe_model: qwen2.5:3b
-  safe_model_alt: deepseek-chat
+  safe_model_alt: qwen2.5-coder:7b
   safe_model_ram_limit: 4
 
 # ── Scoring weights (v2.2 dynamic) ──
@@ -98,6 +98,18 @@ model_capabilities:
     routing_rules:
       min_complexity: 3
       max_complexity: 5
+  gemma4:12b:
+    context_window: 131072
+    effective_utilization: 0.80
+    input_token_budget: 60000
+    semantic_understanding: 5
+    reasoning_quality: 4
+    hallucination_rate: 0.05
+    strength_areas: ["chat", "fact_lookup", "instruction_following", "multi_doc_synthesis"]
+    weakness_areas: ["code_generation"]
+    routing_rules:
+      min_complexity: 1
+      max_complexity: 4
   qwen2.5-coder:7b:
     context_window: 32768
     effective_utilization: 0.75

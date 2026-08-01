@@ -59,7 +59,7 @@ def _get_context_size(model_name: str) -> int:
 
     # Fallback: known model sizes
     _KNOWN = {
-        "qwen": 32768, "deepseek": 128000, "gemma": 4096,
+        "qwen": 32768, "deepseek": 128000, "gemma": 131072,
         "llama3": 8192, "mistral": 32768, "mixtral": 32768,
         "gpt-4": 128000, "claude": 200000,
     }

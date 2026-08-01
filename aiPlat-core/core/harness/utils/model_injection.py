@@ -325,7 +325,7 @@ def _do_inject_adapter_models(mgr: Any) -> int:
 
                 provider_caps = {"chat"}
 
-                if provider in ("deepseek", "openai"):
+                if provider in ("deepseek", "openai", "ollama"):
 
                     provider_caps = {"chat", "reasoning"}
 

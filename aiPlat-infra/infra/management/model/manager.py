@@ -143,11 +143,22 @@ def _extract_base_name(full_name: str) -> str:
 
 # ═══ 硬过滤 + 软过滤 + 评分（模块级辅助函数） ═══
 
-def _get_model_caps(m) -> set:
-    """合并模型自身能力 + provider 级能力。"""
+# ── 用途 prefer 标签 → 模型 strength_areas 标签的别名映射 ──
+_CAPABILITY_ALIASES = {
+    "chat":      {"chat"},
+    "code":      {"code", "code_generation"},
+    "reasoning": {"reasoning"},
+}
+
+
+def _get_model_caps(m, profile_data: dict = None) -> set:
+    """合并模型自身能力 + provider 级能力 + YAML strength_areas。"""
     caps = set(m.capabilities or ["chat"]) | set(m.tags or [])
     provider_caps = _PROVIDER_CAPABILITIES.get(m.provider, set())
     caps |= provider_caps
+    if profile_data:
+        mc = profile_data.get("model_capabilities", {}).get(m.name, {})
+        caps |= set(mc.get("strength_areas", []))
     return caps
 
 
@@ -176,13 +187,16 @@ def _hard_filter(model, res: PlatformResources) -> tuple:
     return True, "ok"
 
 
-def _filter_capability(model, purpose: str, profile: dict) -> bool:
-    """能力匹配。Level 1 可放宽。"""
-    caps = _get_model_caps(model)
+def _filter_capability(model, purpose: str, profile: dict, profile_data: dict = None) -> bool:
+    """能力匹配。Level 1 可放宽。支持别名映射展开 prefer 标签。"""
+    caps = _get_model_caps(model, profile_data)
     require = profile.get("require", {}).get("capabilities", [])
     if require and not all(c in caps for c in require):
         return False
-    if not any(c in caps for c in profile.get("prefer", ["chat"])):
+    expanded_prefer = set()
+    for tag in profile.get("prefer", ["chat"]):
+        expanded_prefer |= _CAPABILITY_ALIASES.get(tag, {tag})
+    if not any(c in caps for c in expanded_prefer):
         return False
     if any(c in caps for c in profile.get("avoid", [])):
         return False
@@ -235,7 +249,7 @@ def _score_model(
 
     # 0. 未知 size 惩罚（纵深防御：size=None 的本地模型即使绕过 _build_preferences 也会在此扣分）
     if model.size is None:
-        if model.provider not in ("openai", "deepseek", "anthropic", "openrouter"):
+        if model.provider not in ("openai", "deepseek", "anthropic", "openrouter", "ollama"):
             score -= 150
 
     # 1. 资源压力
@@ -289,6 +303,17 @@ def _score_model(
     if profile.get("prefer", [""])[0] == "reasoning" and reasoning_quality >= 2:
         reasoning_score += 20
     score += int(reasoning_score * weights.get("reasoning", 1.0))
+
+    # 6b. strength_areas 匹配奖励：模型擅长的领域与用途偏好几项重合
+    strengths = set(model_caps_data.get("strength_areas", []))
+    expanded_prefer = set()
+    for tag in profile.get("prefer", []):
+        expanded_prefer |= _CAPABILITY_ALIASES.get(tag, {tag})
+    match_count = len(strengths & expanded_prefer)
+    if match_count >= 2:
+        score += 30
+    elif match_count == 1:
+        score += 10
 
     # 7. API 凭证检查（双路径：环境变量 + 适配器 ID）
     if model.provider in ("openai", "deepseek", "anthropic", "openrouter"):
@@ -922,7 +947,7 @@ class ModelManager:
 
         safe = profile_data.get("fallback", {})
         safe_model = safe.get("safe_model", "qwen2.5:3b")
-        safe_model_alt = safe.get("safe_model_alt", "deepseek-chat")
+        safe_model_alt = safe.get("safe_model_alt", "qwen2.5-coder:7b")
         safe_ram_limit_gb = safe.get("safe_model_ram_limit", 4)
 
         profile = profile_data.get("purpose_profiles", {}).get(purpose, {})
@@ -932,7 +957,7 @@ class ModelManager:
 
         # ── 降级链路（硬约束不变，逐级放宽软约束） ──
         soft_filters = [
-            ("full",     lambda m: (_filter_capability(m, purpose, profile)
+            ("full",     lambda m: (_filter_capability(m, purpose, profile, profile_data)
                                     and _filter_health(m)
                                     and _filter_latency(m))),
             ("-cap",     lambda m: (_filter_health(m)

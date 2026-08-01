@@ -118,7 +118,7 @@ def _load_adapter_models() -> List[ModelInfo]:
                 "ORDER BY updated_at DESC"
             ).fetchall()
             seen_names: set = set()
-            providers_with_reasoning = {"deepseek", "openai"}
+            providers_with_reasoning = {"deepseek", "openai", "ollama"}
             for row in rows:
                 d = dict(row)
                 provider = (d.get("provider") or "").strip().lower()
