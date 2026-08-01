@@ -5859,12 +5859,16 @@ Output format: JSON array of {{"rank": 1, "score": 0.95, "content": "..."}}"""
             # ── Direct code generation via conversational agent ──
             # Skip the ReAct loop that only does "skill_load" tool calls.
             # Instead, inject code_generation SOP directly as system prompt
-            # and use core_chat for actual code generation output.
+            _dbg = logging.getLogger("pipeline_engine")
+            _dbg.warning("_exec_stage uses_file_output=%s agent_type=%s stage=%s",
+                       getattr(stage, 'uses_file_output', None), agent_type, stage.id)
             if stage.uses_file_output:
                 try:
-                    # Load code_generation SOP — path resolves from within aiPlat-core
-                    skill_path = os.path.abspath(os.path.join(
-                        os.path.dirname(__file__), "..", "..", "engine", "skills", "code_generation", "SKILL.md"))
+                    # Load code_generation SOP — resolve relative to this file's location
+                    # pipeline_engine.py is at core/harness/execution/
+                    # skills are at core/engine/skills/
+                    _here = os.path.dirname(os.path.abspath(__file__))
+                    skill_path = os.path.abspath(os.path.join(_here, "..", "..", "engine", "skills", "code_generation", "SKILL.md"))
                     alt_path = os.path.expanduser("~/.aiplat/skills/code_generation/SKILL.md")
                     if not os.path.isfile(skill_path):
                         skill_path = alt_path
