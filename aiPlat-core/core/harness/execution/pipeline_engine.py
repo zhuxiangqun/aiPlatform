@@ -3636,214 +3636,155 @@ Output format: JSON array of {{"rank": 1, "score": 0.95, "content": "..."}}"""
             return await self._exec_tdd_cycle(stage, state)
 
 
-        # ── Direct architecture generation — bypass ReAct ──
+        # ── Architecture design via skill ──
         if getattr(stage, 'output_artifact', '') == 'architecture':
             try:
-                import json as _json
-                from core.harness.syscalls.llm import sys_llm_generate
-                from core.harness.utils.model_injection import best_model_for_purpose
-                _prompt = state.get("description", "")
+                from core.harness.syscalls.skill import sys_skill_call
                 _prd = state.get("_prd_data", {})
-                _prd_text = _json.dumps(_prd, ensure_ascii=False)[:4000] if isinstance(_prd, dict) else _prompt
-                _response = await sys_llm_generate(
-                    None,
-                    [
-                        {"role": "system", "content": (
-                            "你是资深系统架构师。根据PRD需求设计完整、详细、可落地的系统架构。输出纯JSON(无markdown代码块)。\n\n"
-                            "JSON结构：\n"
-                            "{\n"
-                            '  "title":"项目名称",\n'
-                            '  "overview":"500字架构概述：整体架构风格、核心技术选型理由、关键设计决策",\n'
-                            '  "folder_structure":"完整目录树(含后端/前端/配置/测试/脚本等全部文件夹)",\n'
-                            '  "components":[\n'
-                            '    {\n'
-                            '      "name":"组件名",\n'
-                            '      "layer":"前端/后端/中间件/数据/部署",\n'
-                            '      "tech":"具体技术栈(含版本号)",\n'
-                            '      "responsibility":"3-5条详细职责",\n'
-                            '      "depends_on":["依赖的其他组件"],\n'
-                            '      "interfaces":["对外暴露的接口/API"]\n'
-                            '    }\n'
-                            '  ],\n'
-                            '  "data_flow":"完整数据流描述(用户请求→前端→API→服务层→数据库→返回,每个环节的技术细节)",\n'
-                            '  "api_design":[\n'
-                            '    {"method":"GET/POST/PUT/DELETE","path":"/api/resource","description":"功能描述","request":{"headers":{},"body":{}},"response":{"status":200,"body":{}},"error_codes":[400,401,500]}\n'
-                            '  ],\n'
-                            '  "database_schema":"完整的数据库表设计(表名、字段名、类型、约束、索引、外键关系)",\n'
-                            '  "state_management":"状态管理方案(前端store/缓存策略/会话管理)",\n'
-                            '  "security":"安全设计(认证方案、权限模型、数据加密、输入验证、CORS)",\n'
-                            '  "performance":"性能优化(缓存策略、CDN、懒加载、数据库索引、API限流)",\n'
-                            '  "deployment":"部署方案(Docker/docker-compose/环境变量/健康检查/日志/监控)"\n'
-                            "}\n\n"
-                            "要求：\n"
-                            "- 每个组件至少100字职责描述\n"
-                            "- API设计至少覆盖所有CRUD操作和业务核心流程\n"
-                            "- 数据库Schema必须包含字段类型(如VARCHAR(255),INT,TEXT)和约束(NOT NULL,UNIQUE,FOREIGN KEY)\n"
-                            "- 输出必须可被json.loads()直接解析,不要任何注释或markdown代码块"
-                        )},
-                        {"role": "user", "content": (
-                            f"## PRD\n{_prd_text}\n\n"
-                            f"## 项目描述\n{_prompt}\n\n"
-                            f"## 技术约束\n"
-                            f"{_prd.get('constraints','') if isinstance(_prd,dict) else ''}\n\n"
-                            f"请输出完整的架构设计JSON。必须包含folder_structure、详细组件设计、完整API、数据库Schema。"
-                        )},
-                    ],
-                    model_name=best_model_for_purpose("reasoning"),
-                    max_tokens=12000,
+                _skill_result = await sys_skill_call(
+                    "architecture_design",
+                    {
+                        "prd": _prd if isinstance(_prd, dict) else {},
+                        "description": state.get("description", ""),
+                        "constraints": _prd.get("constraints", "") if isinstance(_prd, dict) else "",
+                    },
                 )
-                _result = getattr(_response, "content", "") or str(_response)
+                _output = getattr(_skill_result, 'output', None)
+                if isinstance(_output, dict) and _output.get("text"):
+                    _result = str(_output["text"])
+                elif isinstance(_output, str) and len(_output) > 100:
+                    _result = _output
+                else:
+                    _result = str(_skill_result) if _skill_result else ""
                 _result = _result.replace("```json","").replace("```","").strip()
                 if _result and len(_result) > 200:
                     state[stage.output_artifact] = {"raw_output": _result}
                     logging.getLogger("pipeline_engine").warning(
-                        "Direct arch gen OK: stage=%s output=%d chars", stage.id, len(_result))
+                        "Architecture skill OK: stage=%s output=%d chars", stage.id, len(_result))
                     return state
             except Exception as _se:
                 logging.getLogger("pipeline_engine").warning(
-                    "Direct arch gen failed for %s: %s", stage.id, str(_se)[:200])
+                    "Architecture skill failed for %s: %s", stage.id, str(_se)[:200])
 
-        # ── Direct code generation for uses_file_output stages ──
-        # Bypass ReAct loop entirely: load code_generation SKILL.md as SOP
-        # and call LLM directly. This avoids the skill_load tool call issue.
+        # ── Code generation via skill ──
         if getattr(stage, 'uses_file_output', False):
-            import os as _os
-            _here = _os.path.dirname(_os.path.abspath(__file__))
-            _skill = _os.path.abspath(_os.path.join(_here, "..", "..", "engine", "skills", "code_generation", "SKILL.md"))
-            _alt = _os.path.expanduser("~/.aiplat/skills/code_generation/SKILL.md")
-            if not _os.path.isfile(_skill):
-                _skill = _alt
-            if _os.path.isfile(_skill):
-                try:
-                    with open(_skill, "r") as _sf:
-                        _sop = _sf.read()
-                    if _sop.startswith("---"):
-                        _parts = _sop.split("---", 2)
-                        _sop = _parts[2].strip() if len(_parts) > 2 else _sop
-                    from core.harness.syscalls.llm import sys_llm_generate
-                    from core.harness.utils.model_injection import best_model_for_purpose
-                    _arch = state.get("architecture", {})
-                    _arch_text = ""
-                    if isinstance(_arch, dict):
-                        _arch_text = "\n".join(f"{k}: {v}" for k, v in _arch.items() if isinstance(v, str))
-                    _prompt = state.get("description", "")
-                    _response = await sys_llm_generate(
-                        None,
-                        [
-                            {"role": "system", "content": _sop[:4000]},
-                            {"role": "user", "content": f"## Requirements\n{_prompt}\n\n## Architecture\n{_arch_text[:2000]}\n\nGenerate complete runnable code. Use ## FILE: format for each file. Include all imports."},
-                        ],
-                        model_name=best_model_for_purpose("code_gen"),
-                        max_tokens=32000,
-                    )
-                    _result = getattr(_response, "content", "") or str(_response)
-                    if _result and len(_result) > 100:
-                        state[stage.output_artifact] = {"raw_output": _result}
-                        logging.getLogger("pipeline_engine").warning(
-                            "Direct code gen OK: stage=%s output=%d chars", stage.id, len(_result))
-                        return state
-                except Exception as _se:
+            try:
+                from core.harness.syscalls.skill import sys_skill_call
+                _arch = state.get("architecture", {})
+                _arch_text = ""
+                if isinstance(_arch, dict):
+                    _arch_text = "\n".join(f"{k}: {v}" for k, v in _arch.items() if isinstance(v, str))
+                _skill_result = await sys_skill_call(
+                    "code_generation",
+                    {
+                        "prompt": state.get("description", ""),
+                        "architecture": _arch_text[:3000],
+                    },
+                )
+                _output = getattr(_skill_result, 'output', None)
+                if isinstance(_output, dict) and _output.get("text"):
+                    _result = str(_output["text"])
+                elif isinstance(_output, str) and len(_output) > 100:
+                    _result = _output
+                else:
+                    _result = str(_skill_result) if _skill_result else ""
+                if _result and len(_result) > 100:
+                    state[stage.output_artifact] = {"raw_output": _result}
                     logging.getLogger("pipeline_engine").warning(
-                        "Direct code gen failed for %s: %s", stage.id, str(_se)[:200])
+                        "Code gen skill OK: stage=%s output=%d chars", stage.id, len(_result))
+                    return state
+            except Exception as _se:
+                logging.getLogger("pipeline_engine").warning(
+                    "Code gen skill failed for %s: %s", stage.id, str(_se)[:200])
 
-
-        # ── Direct test generation for generate_test_plan stages ──
-        # Same pattern as code gen: bypass ReAct loop, use direct LLM.
+        # ── Test generation via skill ──
         if getattr(stage, 'generate_test_plan', False):
             _code = state.get("code", {})
             _code_text = _code.get("raw_output", "") if isinstance(_code, dict) else str(_code or "")
             if _code_text and len(_code_text) > 200:
                 try:
-                    from core.harness.syscalls.llm import sys_llm_generate
-                    from core.harness.utils.model_injection import best_model_for_purpose
+                    from core.harness.syscalls.skill import sys_skill_call
                     _arch = state.get("architecture", {})
                     _arch_text = ""
                     if isinstance(_arch, dict):
                         _arch_text = "\n".join(f"{k}: {v}" for k, v in _arch.items() if isinstance(v, str))
-                    _response = await sys_llm_generate(
-                        None,
-                        [
-                            {"role": "system", "content": "You are a QA engineer. Generate pytest test cases for the provided code. Include test fixtures, edge cases, and integration tests. Output only executable Python code."},
-                            {"role": "user", "content": f"## Architecture\n{_arch_text[:1000]}\n\n## Code\n{_code_text[:8000]}\n\nGenerate comprehensive pytest test cases covering all user stories. Output the tests as runnable Python files using ## FILE: format."},
-                        ],
-                        model_name=best_model_for_purpose("code_gen"),
-                        max_tokens=16000,
+                    _skill_result = await sys_skill_call(
+                        "test_case_generation",
+                        {
+                            "prd": state.get("_prd_data", {}),
+                            "architecture": _arch_text[:2000],
+                            "code": _code_text[:8000],
+                        },
                     )
-                    _result = getattr(_response, "content", "") or str(_response)
-                    if _result and len(_result) > 100:
-                        # ── Execute the generated tests ──
-                        _test_output = _result
-                        _passed = _failed = _errors = 0
-                        _test_log = ""
-                        try:
-                            import tempfile, subprocess, os as _os, re as _re, sys as _sys
-                            _tmp = tempfile.mkdtemp(prefix="aiplat_tests_")
-                            _sys.path.insert(0, _tmp)
-
-                            # Write generated code files to temp dir (so imports work)
-                            _code_text = state.get("code", {}).get("raw_output", "") if isinstance(state.get("code"), dict) else ""
-                            for _txt in [_code_text, _result]:
-                                if not _txt: continue
-                                _blocks = _re.split(r'^##\s*FILE:\s*', _txt, flags=_re.MULTILINE)
-                                for _block in _blocks[1:]:
-                                    _lines = _block.strip().split("\n", 1)
-                                    if len(_lines) >= 2:
-                                        _fpath = _lines[0].strip()
-                                        _fcontent = _re.sub(r'^```\w*\n?', '', _lines[1].strip())
-                                        _fcontent = _re.sub(r'\n?```\s*$', '', _fcontent)
-                                        _full = _os.path.join(_tmp, _fpath)
-                                        _os.makedirs(_os.path.dirname(_full), exist_ok=True)
-                                    with open(_full, "w") as _fw:
-                                        _fw.write(_fcontent)
-
-                            # Add __init__.py to all directories (fixes import errors)
-                            for _root, _dirs, _files in _os.walk(_tmp):
-                                for _d in _dirs:
-                                    _init = _os.path.join(_root, _d, "__init__.py")
-                                    if not _os.path.isfile(_init):
-                                        with open(_init, "w") as _: pass
-
-                            # Run pytest with the temp dir as PYTHONPATH
-                            _env = {**_os.environ, "PYTHONPATH": _tmp + (":" + _os.environ.get("PYTHONPATH","") if _os.environ.get("PYTHONPATH") else "")}
-                            _proc = subprocess.run(
-                                [_os.sys.executable, "-m", "pytest", _tmp, "--tb=short", "-q", "--no-header"],
-                                capture_output=True, text=True, timeout=90, env=_env)
-                            _test_log = _proc.stdout + "\n" + _proc.stderr
-                            # Parse results
-                            _m = _re.search(r'(\d+)\s+passed', _test_log)
-                            if _m: _passed = int(_m.group(1))
-                            _m = _re.search(r'(\d+)\s+failed', _test_log)
-                            if _m: _failed = int(_m.group(1))
-                            _m = _re.search(r'(\d+)\s+error', _test_log)
-                            if _m: _errors = int(_m.group(1))
-                            if _passed + _failed + _errors == 0 and 'no tests ran' in _test_log.lower():
-                                pass  # no tests found
-                            import shutil
-                            shutil.rmtree(_tmp, ignore_errors=True)
-                            _sys.path.remove(_tmp)
-                        except Exception as _te:
-                            _test_log = f"Test execution error: {str(_te)[:500]}"
-                            _errors = 1
-
-                        _total = _passed + _failed + _errors
-                        _pr = _passed / _total if _total > 0 else 0
-                        state[stage.output_artifact] = {
-                            "raw_output": _test_output,
-                            "test_results": {
-                                "passed": _passed, "failed": _failed, "errors": _errors,
-                                "total": _total, "pass_rate": round(_pr, 2),
-                            },
-                            "test_log": _test_log[:3000],
-                        }
-                        state["_has_tests"] = True
-                        state["_test_pass_rate"] = _pr
-                        logging.getLogger("pipeline_engine").warning(
-                            "Direct test OK: stage=%s tests=%d/%d/%d log=%d chars",
-                            stage.id, _passed, _failed, _errors, len(_test_log))
-                        return state
+                    _output = getattr(_skill_result, 'output', None)
+                    if isinstance(_output, dict) and _output.get("text"):
+                        _result = str(_output["text"])
+                    elif isinstance(_output, str) and len(_output) > 100:
+                        _result = _output
+                    else:
+                        _result = str(_skill_result) if _skill_result else ""
                 except Exception as _se:
                     logging.getLogger("pipeline_engine").warning(
-                        "Direct test gen failed for %s: %s", stage.id, str(_se)[:200])
+                        "Test gen skill failed for %s: %s", stage.id, str(_se)[:200])
+                    _result = ""
+
+                if _result and len(_result) > 100:
+                    # ── Execute the generated tests ──
+                    _test_output = _result
+                    _passed = _failed = _errors = 0
+                    _test_log = ""
+                    try:
+                        import tempfile, subprocess, os as _os, re as _re, sys as _sys
+                        _tmp = tempfile.mkdtemp(prefix="aiplat_tests_")
+                        _sys.path.insert(0, _tmp)
+                        for _txt in [_code_text, _result]:
+                            if not _txt: continue
+                            _blocks = _re.split(r'^##\s*FILE:\s*', _txt, flags=_re.MULTILINE)
+                            for _block in _blocks[1:]:
+                                _lines = _block.strip().split("\n", 1)
+                                if len(_lines) >= 2:
+                                    _fpath = _lines[0].strip()
+                                    _fcontent = _re.sub(r'^```\w*\n?', '', _lines[1].strip())
+                                    _fcontent = _re.sub(r'\n?```\s*$', '', _fcontent)
+                                    _full = _os.path.join(_tmp, _fpath)
+                                    _os.makedirs(_os.path.dirname(_full), exist_ok=True)
+                                    with open(_full, "w") as _fw:
+                                        _fw.write(_fcontent)
+                        for _root, _dirs, _files in _os.walk(_tmp):
+                            for _d in _dirs:
+                                _init = _os.path.join(_root, _d, "__init__.py")
+                                if not _os.path.isfile(_init):
+                                    with open(_init, "w") as _: pass
+                        _env = {**_os.environ, "PYTHONPATH": _tmp + (":" + _os.environ.get("PYTHONPATH","") if _os.environ.get("PYTHONPATH") else "")}
+                        _proc = subprocess.run(
+                            [_os.sys.executable, "-m", "pytest", _tmp, "--tb=short", "-q", "--no-header"],
+                            capture_output=True, text=True, timeout=90, env=_env)
+                        _test_log = _proc.stdout + "\n" + _proc.stderr
+                        _m = _re.search(r'(\d+)\s+passed', _test_log)
+                        if _m: _passed = int(_m.group(1))
+                        _m = _re.search(r'(\d+)\s+failed', _test_log)
+                        if _m: _failed = int(_m.group(1))
+                        _m = _re.search(r'(\d+)\s+error', _test_log)
+                        if _m: _errors = int(_m.group(1))
+                        import shutil
+                        shutil.rmtree(_tmp, ignore_errors=True)
+                        _sys.path.remove(_tmp)
+                    except Exception as _te:
+                        _test_log = f"Test execution error: {str(_te)[:500]}"
+                        _errors = 1
+
+                    _total = _passed + _failed + _errors
+                    _pr = _passed / _total if _total > 0 else 0
+                    state[stage.output_artifact] = {
+                        "raw_output": _test_output,
+                        "test_results": {"passed": _passed, "failed": _failed, "errors": _errors, "total": _total, "pass_rate": round(_pr, 2)},
+                        "test_log": _test_log[:3000],
+                    }
+                    state["_has_tests"] = True
+                    state["_test_pass_rate"] = _pr
+                    logging.getLogger("pipeline_engine").warning(
+                        "Test skill OK: stage=%s tests=%d/%d/%d", stage.id, _passed, _failed, _errors)
+                    return state
 
         else:  # code_first (default)
 
@@ -6064,54 +6005,6 @@ Output format: JSON array of {{"rank": 1, "score": 0.95, "content": "..."}}"""
 
 
         try:
-
-            # ── Direct code generation via conversational agent ──
-            # Skip the ReAct loop that only does "skill_load" tool calls.
-            # Instead, inject code_generation SOP directly as system prompt
-            _dbg = logging.getLogger("pipeline_engine")
-            _dbg.warning("_exec_stage uses_file_output=%s agent_type=%s stage=%s",
-                       getattr(stage, 'uses_file_output', None), agent_type, stage.id)
-            if stage.uses_file_output:
-                try:
-                    # Load code_generation SOP — resolve relative to this file's location
-                    # pipeline_engine.py is at core/harness/execution/
-                    # skills are at core/engine/skills/
-                    _here = os.path.dirname(os.path.abspath(__file__))
-                    skill_path = os.path.abspath(os.path.join(_here, "..", "..", "engine", "skills", "code_generation", "SKILL.md"))
-                    alt_path = os.path.expanduser("~/.aiplat/skills/code_generation/SKILL.md")
-                    if not os.path.isfile(skill_path):
-                        skill_path = alt_path
-                    if os.path.isfile(skill_path):
-                        with open(skill_path, "r") as _sf:
-                            sop = _sf.read()
-                        if sop.startswith("---"):
-                            parts = sop.split("---", 2)
-                            sop_body = parts[2].strip() if len(parts) > 2 else sop
-                        else:
-                            sop_body = sop
-                        # Direct LLM call: bypass approval gates for pipeline code gen
-                        from core.harness.syscalls.llm import sys_llm_generate
-                        from core.harness.utils.model_injection import best_model_for_purpose
-                        model_name = best_model_for_purpose("code_gen")
-                        response = await sys_llm_generate(
-                            None,
-                            [
-                                {"role": "system", "content": sop_body[:4000]},
-                                {"role": "user", "content": f"{prompt}\n\n根据以上 SOP 和需求描述生成完整可运行代码。使用 ## FILE: 格式输出每个文件，包含所有导入和依赖。"},
-                            ],
-                            model_name=model_name,
-                            max_tokens=32000,
-                        )
-                        result_text = getattr(response, "content", "") or str(response)
-                        if result_text and len(result_text) > 100:
-                            state[stage.output_artifact] = {"raw_output": result_text}
-                            self._snapshot(state, f"stage_{stage.id}_direct_skill")
-                            logging.getLogger("pipeline_engine").info(
-                                "Direct code gen succeeded for %s: %d chars", stage.id, len(result_text))
-                            return state
-                except Exception as _se:
-                    logging.getLogger("pipeline_engine").warning(
-                        "Direct code gen failed for %s: %s", stage.id, str(_se)[:200])
 
             result_text = await self._run_stage_core(stage, state, prompt, agent_type, stage_model)
 
