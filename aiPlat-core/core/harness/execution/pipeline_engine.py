@@ -3750,24 +3750,31 @@ Output format: JSON array of {{"rank": 1, "score": 0.95, "content": "..."}}"""
                         _passed = _failed = _errors = 0
                         _test_log = ""
                         try:
-                            import tempfile, subprocess, os as _os, re as _re
+                            import tempfile, subprocess, os as _os, re as _re, sys as _sys
                             _tmp = tempfile.mkdtemp(prefix="aiplat_tests_")
-                            # Parse ## FILE: blocks and write to temp dir
-                            _blocks = _re.split(r'^##\s*FILE:\s*', _result, flags=_re.MULTILINE)
-                            for _block in _blocks[1:]:
-                                _lines = _block.strip().split("\n", 1)
-                                if len(_lines) >= 2:
-                                    _fpath = _lines[0].strip()
-                                    _fcontent = _re.sub(r'^```\w*\n?', '', _lines[1].strip())
-                                    _fcontent = _re.sub(r'\n?```\s*$', '', _fcontent)
-                                    _full = _os.path.join(_tmp, _fpath)
-                                    _os.makedirs(_os.path.dirname(_full), exist_ok=True)
-                                    with open(_full, "w") as _fw:
-                                        _fw.write(_fcontent)
-                            # Run pytest
+                            _sys.path.insert(0, _tmp)
+
+                            # Write generated code files to temp dir (so imports work)
+                            _code_text = state.get("code", {}).get("raw_output", "") if isinstance(state.get("code"), dict) else ""
+                            for _txt in [_code_text, _result]:
+                                if not _txt: continue
+                                _blocks = _re.split(r'^##\s*FILE:\s*', _txt, flags=_re.MULTILINE)
+                                for _block in _blocks[1:]:
+                                    _lines = _block.strip().split("\n", 1)
+                                    if len(_lines) >= 2:
+                                        _fpath = _lines[0].strip()
+                                        _fcontent = _re.sub(r'^```\w*\n?', '', _lines[1].strip())
+                                        _fcontent = _re.sub(r'\n?```\s*$', '', _fcontent)
+                                        _full = _os.path.join(_tmp, _fpath)
+                                        _os.makedirs(_os.path.dirname(_full), exist_ok=True)
+                                        with open(_full, "w") as _fw:
+                                            _fw.write(_fcontent)
+
+                            # Run pytest with the temp dir as PYTHONPATH
+                            _env = {**_os.environ, "PYTHONPATH": _tmp + (":" + _os.environ.get("PYTHONPATH","") if _os.environ.get("PYTHONPATH") else "")}
                             _proc = subprocess.run(
                                 [_os.sys.executable, "-m", "pytest", _tmp, "--tb=short", "-q", "--no-header"],
-                                capture_output=True, text=True, timeout=60)
+                                capture_output=True, text=True, timeout=90, env=_env)
                             _test_log = _proc.stdout + "\n" + _proc.stderr
                             # Parse results
                             _m = _re.search(r'(\d+)\s+passed', _test_log)
@@ -3780,6 +3787,7 @@ Output format: JSON array of {{"rank": 1, "score": 0.95, "content": "..."}}"""
                                 pass  # no tests found
                             import shutil
                             shutil.rmtree(_tmp, ignore_errors=True)
+                            _sys.path.remove(_tmp)
                         except Exception as _te:
                             _test_log = f"Test execution error: {str(_te)[:500]}"
                             _errors = 1
