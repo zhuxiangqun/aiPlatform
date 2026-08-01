@@ -862,6 +862,23 @@ def _build_from_workflow(workflow_stages: list, current_agent_id: str,
 
     return "\n".join(parts)
 
+def _get_knowledge_context(text: str) -> str:
+    """Retrieve relevant domain knowledge to help clarify."""
+    if not text or len(text) < 5:
+        return ""
+    try:
+        from core.harness.knowledge.wiki_engine import wiki_search_pages as _wiki_search
+        pages = _wiki_search(text, limit=3, collection_id="default")
+        if pages:
+            return "参考知识：\n" + "\n".join(
+                f"- {p.get('title','')}: {p.get('body','')[:300]}"
+                for p in pages if p.get('body')
+            )
+    except Exception:
+        pass
+    return ""
+
+
 async def _clarify(context: str, text: str, history: list,
                     extra: dict = None) -> dict:
     """## platform:allowed
@@ -889,8 +906,12 @@ async def _clarify(context: str, text: str, history: list,
     system_msg = (
         f"你是{cfg['role']}。{cfg['guidance']}\n"
         f"已收集的信息：{collected}\n"
-        + (f"{collected_vs_expected}\n\n" if collected_vs_expected else "\n")
+        + (f"{collected_vs_expected}\n" if collected_vs_expected else "")
+        + f"{_get_knowledge_context(text)}\n"
         + "通过1-3轮追问帮助FDE澄清问题根因。追问时引用FDE已提供的信息，不要凭空猜测。\n"
+        "每轮最多问2个具体问题。当问题已经足够清楚时输出最终摘要。\n"
+        "用中文。\n\n"
+        "只输出以下JSON格式，不要任何解释、不要markdown、不要代码块：\n"
         "每轮最多问2个具体问题。当问题已经足够清楚时输出最终摘要。\n"
         "用中文。\n\n"
         "只输出以下JSON格式，不要任何解释、不要markdown、不要代码块：\n"
