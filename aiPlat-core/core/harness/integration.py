@@ -197,7 +197,10 @@ def get_subagent_coordinator():
 
 def get_skill_permission_resolver():
     """Resolve skill permission resolver function."""
-    return _resolve_or_import("SkillPermissionResolver", "core.apps.tools.skill_tools:resolve_skill_permission")
+    r = _resolve_or_import("SkillPermissionResolver", "core.apps.tools.skill_tools:resolve_skill_permission")
+    if isinstance(r, dict):
+        return r.get("resolve", r.get("resolve_exec", lambda n: "allow"))
+    return r
 
 
 def get_exec_skill_permission_resolver():

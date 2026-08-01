@@ -1375,6 +1375,17 @@ class ReActLoop(BaseLoop):
 
             if mgr:
 
+                # Normalize: if caller passes message list, extract last user/assistant
+                if isinstance(user_msg, list):
+                    _user = next((m.get("content","") for m in reversed(user_msg) if m.get("role")=="user"), "")
+                    user_msg = _user
+                if isinstance(assistant_msg, list):
+                    assistant_msg = str(assistant_msg[-1].get("content","")) if assistant_msg else ""
+                user_msg = str(user_msg or "")
+                assistant_msg = str(assistant_msg or "")
+                if not user_msg or not assistant_msg:
+                    return
+
                 # Classify stability: "high" (decision/recommendation → SQLite),
 
                 # "medium" (normal conversation), "low" (tool call → Working only)
