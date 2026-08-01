@@ -3737,6 +3737,7 @@ Output format: JSON array of {{"rank": 1, "score": 0.95, "content": "..."}}"""
             _code = state.get("code", {})
             _code_text = _code.get("raw_output", "") if isinstance(_code, dict) else str(_code or "")
             if _code_text and len(_code_text) > 200:
+                _result = ""
                 try:
                     from core.harness.integration import get_skill_registry
                     _reg = get_skill_registry()
@@ -3761,7 +3762,7 @@ Output format: JSON array of {{"rank": 1, "score": 0.95, "content": "..."}}"""
                             model_name=best_model_for_purpose("code_gen"),
                             max_tokens=16000,
                         )
-                    _result = getattr(_response, "content", "") or str(_response)
+                        _result = getattr(_response, "content", "") or str(_response)
                 except Exception as _se:
                     logging.getLogger("pipeline_engine").warning(
                         "Test gen skill failed for %s: %s", stage.id, str(_se)[:200])
