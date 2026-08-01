@@ -145,7 +145,7 @@ def _extract_base_name(full_name: str) -> str:
 
 # ── 用途 prefer 标签 → 模型 strength_areas 标签的别名映射 ──
 _CAPABILITY_ALIASES = {
-    "chat":      {"chat"},
+    "chat":      {"chat", "instruction_following", "fact_lookup", "multi_doc_synthesis", "long_form_summary"},
     "code":      {"code", "code_generation"},
     "reasoning": {"reasoning"},
 }
@@ -304,16 +304,21 @@ def _score_model(
         reasoning_score += 20
     score += int(reasoning_score * weights.get("reasoning", 1.0))
 
-    # 6b. strength_areas 匹配奖励：模型擅长的领域与用途偏好几项重合
+    # 6b. strength_areas 匹配奖励：按用途偏好几项命中
     strengths = set(model_caps_data.get("strength_areas", []))
-    expanded_prefer = set()
+    matched_prefers = 0
     for tag in profile.get("prefer", []):
-        expanded_prefer |= _CAPABILITY_ALIASES.get(tag, {tag})
-    match_count = len(strengths & expanded_prefer)
-    if match_count >= 2:
-        score += 30
-    elif match_count == 1:
-        score += 10
+        aliases = _CAPABILITY_ALIASES.get(tag, {tag})
+        if any(a in strengths for a in aliases):
+            matched_prefers += 1
+    score += {0: 0, 1: 15, 2: 90, 3: 150}.get(matched_prefers, 150)
+
+    # 6c. weakness_areas 惩罚：逐个 prefer 标签独立检查
+    weaknesses = set(model_caps_data.get("weakness_areas", []))
+    for tag in profile.get("prefer", []):
+        aliases = _CAPABILITY_ALIASES.get(tag, {tag})
+        if any(a in weaknesses for a in aliases):
+            score -= 40
 
     # 7. API 凭证检查（双路径：环境变量 + 适配器 ID）
     if model.provider in ("openai", "deepseek", "anthropic", "openrouter"):
