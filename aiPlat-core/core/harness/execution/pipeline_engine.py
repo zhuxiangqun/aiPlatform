@@ -3719,9 +3719,12 @@ Output format: JSON array of {{"rank": 1, "score": 0.95, "content": "..."}}"""
             _env = {**_os.environ, "PYTHONPATH": _tmp + (":" + _os.environ.get("PYTHONPATH","") if _os.environ.get("PYTHONPATH") else "")}
             _proc = subprocess.run([_os.sys.executable, "-m", "pytest", _tmp, "--tb=short", "-q", "--no-header"], capture_output=True, text=True, timeout=90, env=_env)
             _test_log = _proc.stdout + "\n" + _proc.stderr
-            for _pat, _var in [('(\d+)\s+passed', '_passed'), ('(\d+)\s+failed', '_failed'), ('(\d+)\s+error', '_errors')]:
-                _m = _re.search(_pat, _test_log)
-                if _m: exec(f"{_var} = int(_m.group(1))")
+            _m = _re.search(r'(\d+)\s+passed', _test_log)
+            if _m: _passed = int(_m.group(1))
+            _m = _re.search(r'(\d+)\s+failed', _test_log)
+            if _m: _failed = int(_m.group(1))
+            _m = _re.search(r'(\d+)\s+error', _test_log)
+            if _m: _errors = int(_m.group(1))
             shutil.rmtree(_tmp, ignore_errors=True)
         except Exception as _te:
             _test_log = f"Test execution error: {str(_te)[:500]}"; _errors = 1
