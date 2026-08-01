@@ -239,6 +239,39 @@ _pipeline_cancels: Dict[str, bool] = {}
 
 
 
+async def _save_pipeline_knowledge_to_wiki(state: dict, config: Any) -> None:
+    """Save pipeline stage outputs to Wiki for cross-project knowledge reuse."""
+    _pid = state.get("session_id", "") or state.get("_run_id", "")
+    if not _pid:
+        return
+    try:
+        from core.harness.knowledge.wiki_engine import write_page
+        _name = state.get("description", _pid)
+        for _key in ("architecture", "code", "test_report"):
+            _val = state.get(_key)
+            if not _val or not isinstance(_val, dict):
+                continue
+            _output = _val.get("raw_output", "") or str(_val)
+            if not _output or len(_output) < 50:
+                continue
+            _title = f"pipeline/{_pid}/{_key}"
+            _label = {"architecture": "架构设计", "code": "代码生成", "test_report": "测试报告"}.get(_key, _key)
+            try:
+                write_page(
+                    title=_title,
+                    body=f"# {_label} — {_name}\n\n{_output[:5000]}",
+                    category="topics",
+                    tags=["pipeline-output", _key],
+                    collection_id="default",
+                    status="draft",
+                    skip_validation=True,
+                )
+            except Exception:
+                pass
+    except Exception:
+        pass
+
+
 class PipelineEventBus:
 
     """Event bus for pipeline execution lifecycle — mirrors Dify/Coze callback pattern.
@@ -8668,9 +8701,16 @@ JSON format: {{"artifact": {{}},"confidence": "HIGH","issues": [{{"severity": "P
 
                 await mm.save_task_skill(task_skill)
 
-            except Exception:
+        except Exception:
 
-                logging.getLogger("pipeline_engine").warning("best-effort skipped", exc_info=True)
+            logging.getLogger("pipeline_engine").warning("best-effort skipped", exc_info=True)
+
+        # ── Save pipeline knowledge to Wiki (cross-project reuse) ──
+        if state.get("phase") == PipelinePhase.DONE:
+            try:
+                await _save_pipeline_knowledge_to_wiki(state, self._config)
+            except Exception:
+                pass
 
 
 
