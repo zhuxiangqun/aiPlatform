@@ -3588,6 +3588,17 @@ Output format: JSON array of {{"rank": 1, "score": 0.95, "content": "..."}}"""
 
 
 
+        # ── Lazy-init SkillRegistry for skill-based pipeline stages ──
+        if not getattr(self, '_skills_loaded', False):
+            try:
+                from core.harness.integration import get_skill_registry
+                _reg = get_skill_registry()
+                if _reg and hasattr(_reg, 'seed_data'):
+                    _reg.seed_data()
+                self._skills_loaded = True
+            except Exception:
+                pass  # best-effort: fallback to ReAct if registry unavailable
+
         # PR #2: 若 stage 未指定执行模式，从 ControlProfile 读取 orchestration_mode
 
         if mode == "code_first":
