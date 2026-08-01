@@ -109,6 +109,20 @@ const ProjectPanel: React.FC<{
     if (raw.confirmed_prd && (raw.runs?.length > 0)) setPrdReady(true);
   }, [project]);
 
+  // Load full project data (list endpoint omits confirmed_prd)
+  useEffect(() => {
+    if (!project?.project_id) return;
+    (async () => {
+      try {
+        const full = await projectApi.get(project.project_id) as any;
+        if (full?.confirmed_prd) {
+          setConfirmedPrd(full.confirmed_prd);
+          setPrdReady(true);
+        }
+      } catch { /* ignore */ }
+    })();
+  }, [project.project_id]);
+
   // ── Poll pipeline state during execution ──
   useEffect(() => {
     if (phase !== 'executing' && !phase?.includes('approval')) {
