@@ -155,24 +155,23 @@ const ProjectPanel: React.FC<{
     return () => { clearInterval(id); };
   }, [phase, project.project_id]);
 
-  // Load stage outputs when phase is done
+  // Load stage outputs whenever project opens (reads _final_state.json via API)
   useEffect(() => {
-    if (phase === 'done' && project.project_id) {
-      (async () => {
-        try {
-          const st = await projectApi.getState(project.project_id);
-          const state = (st as any)?.state || {};
-          const outputs: Record<string, any> = {};
-          for (const k of ['architecture', 'code', 'test_report']) {
-            if (state[k] && typeof state[k] === 'object') {
-              outputs[k] = state[k];
-            }
+    if (!project.project_id) return;
+    (async () => {
+      try {
+        const st = await projectApi.getState(project.project_id);
+        const state = (st as any)?.state || {};
+        const outputs: Record<string, any> = {};
+        for (const k of ['architecture', 'code', 'test_report']) {
+          if (state[k] && typeof state[k] === 'object' && state[k].raw_output) {
+            outputs[k] = state[k];
           }
-          if (Object.keys(outputs).length > 0) setStageOutputs(outputs);
-        } catch { /* ignore */ }
-      })();
-    }
-  }, [phase, project.project_id]);
+        }
+        if (Object.keys(outputs).length > 0) setStageOutputs(outputs);
+      } catch { /* ignore */ }
+    })();
+  }, [project.project_id]);
 
   useEffect(() => {
     setTeamStages(project.team_stages || []);
