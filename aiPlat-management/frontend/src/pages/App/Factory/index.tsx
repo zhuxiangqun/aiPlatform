@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Plus, Send, Loader2, Clock, CheckCircle, XCircle, ExternalLink, BarChart3 } from 'lucide-react';
+import { Plus, Send, Loader2, Clock, CheckCircle, XCircle, ExternalLink, BarChart3, Trash2 } from 'lucide-react';
 import { projectApi, builderTeamApi, type ProjectItem, type ProjectRun } from '../../../services';
 import { Card, CardContent, Button, Textarea, toast } from '../../../components/ui';
 import { toastGateError } from '../../../components/ui';
@@ -386,6 +386,17 @@ const FactoryPage: React.FC = () => {
     finally { setCreating(false); }
   };
 
+  const handleDelete = async (e: React.MouseEvent, project: ProjectItem) => {
+    e.stopPropagation();
+    if (!confirm(`确定要删除「${project.name}」吗？此操作不可撤销。`)) return;
+    try {
+      await projectApi.delete(project.project_id);
+      toast.success('项目已删除');
+      if (selectedProject?.project_id === project.project_id) setSelectedProject(null);
+      loadAll();
+    } catch (err) { toastGateError(err, '删除失败'); }
+  };
+
   const getStatus = (p: ProjectItem) => {
     if (p.runs?.length === 0) return { label: '待开始', color: 'text-gray-500', bg: 'bg-gray-500/10' };
     const last = p.runs?.[p.runs.length - 1];
@@ -414,7 +425,26 @@ const FactoryPage: React.FC = () => {
 
       {/* ── Projects + Apps Grid ── */}
       <div>
-        <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-3">我的应用 ({projects.length + deployedApps.length})</h3>
+        <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-3">
+          我的应用 ({projects.length + deployedApps.length})
+          {projects.length > 0 && (
+            <button
+              onClick={async (e) => {
+                e.stopPropagation();
+                if (!confirm(`确定要删除全部 ${projects.length} 个项目吗？此操作不可撤销。`)) return;
+                try {
+                  await projectApi.batchDelete({ project_ids: projects.map(p => p.project_id) });
+                  toast.success(`已删除 ${projects.length} 个项目`);
+                  setSelectedProject(null);
+                  loadAll();
+                } catch (err) { toastGateError(err, '批量删除失败'); }
+              }}
+              className="ml-2 text-[10px] text-red-400 hover:text-red-300 hover:underline transition-colors"
+            >
+              全部清空
+            </button>
+          )}
+        </h3>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
           {/* Projects */}
           {projects.map(p => {
@@ -427,8 +457,17 @@ const FactoryPage: React.FC = () => {
                 onClick={() => setSelectedProject(p)}
               >
                 <div className="flex items-start justify-between mb-2">
-                  <h4 className="text-sm font-medium text-gray-100 truncate">{p.name}</h4>
-                  <span className={`text-[10px] px-1.5 py-0.5 rounded ${status.bg} ${status.color}`}>{status.label}</span>
+                  <h4 className="text-sm font-medium text-gray-100 truncate pr-6">{p.name}</h4>
+                  <div className="flex items-center gap-1 flex-shrink-0">
+                    <button
+                      onClick={e => handleDelete(e, p)}
+                      className="p-1 rounded hover:bg-red-500/20 text-gray-600 hover:text-red-400 transition-colors"
+                      title="删除项目"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                    <span className={`text-[10px] px-1.5 py-0.5 rounded ${status.bg} ${status.color}`}>{status.label}</span>
+                  </div>
                 </div>
                 <p className="text-xs text-gray-500 line-clamp-2 mb-2">{p.description}</p>
                 <div className="flex items-center gap-2 text-[10px] text-gray-600">
