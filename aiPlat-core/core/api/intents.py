@@ -142,6 +142,35 @@ class QueryResult:
 
 
 # ═══════════════════════════════════════════════════════════════
+# Helpers
+# ═══════════════════════════════════════════════════════════════
+
+def _unwrap_agent_reply(reply: str) -> str:
+    """Extract human-readable text from agent output formats.
+    
+    Handles: {"type":"done","answer":"..."}  → "..." 
+             {"type":"chitchat","response":"..."}  → "..."
+    """
+    if not reply or not isinstance(reply, str):
+        return reply or ""
+    s = reply.strip()
+    if s.startswith("{") and s.endswith("}"):
+        try:
+            import json
+            d = json.loads(s)
+            if isinstance(d, dict):
+                if d.get("type") == "done" and d.get("answer"):
+                    return str(d["answer"])
+                if d.get("type") == "chitchat" and d.get("response"):
+                    return str(d["response"])
+                if d.get("answer"):
+                    return str(d["answer"])
+        except (json.JSONDecodeError, ValueError):
+            pass
+    return reply
+
+
+# ═══════════════════════════════════════════════════════════════
 # Intent implementations — application-agnostic, auto-activate subsystems
 # ═══════════════════════════════════════════════════════════════
 
@@ -369,6 +398,9 @@ async def core_chat(ctx: ChatContext) -> ChatResult:
         else:
             extra = ""
         reply = f"Agent error: {error_detail}{' — ' + str(extra) if extra else ''}"
+
+    # ── Unwrap JSON formats from ReAct/agent outputs ──
+    reply = _unwrap_agent_reply(reply)
 
     # ── 5. MemoryManager: save interaction ──
     try:

@@ -41,6 +41,12 @@ purpose_profiles:
   ontology_gen:
     prefer: ["chat"]
     prefer_local: true
+  wiki_curation:
+    prefer: ["chat"]
+    prefer_external: true   # background tasks: prefer API models over local ollama
+    scoring_weights:
+      cost: -3.0            # minimize cost for background tasks
+      latency: -0.5
 
 fallback:
   safe_model: qwen2.5:3b

@@ -115,6 +115,27 @@ def _parse_team_stages(stages_raw: list) -> list:
     return stages
 
 
+def _unwrap_json_reply(reply: str) -> str:
+    """Extract human-readable text from agent JSON outputs.
+    Handles: {"type":"done","answer":"..."} → "..."
+    """
+    if not reply or not isinstance(reply, str):
+        return reply or ""
+    s = reply.strip()
+    if s.startswith("{") and s.endswith("}"):
+        try:
+            import json
+            d = json.loads(s)
+            if isinstance(d, dict):
+                if d.get("type") == "done" and d.get("answer"):
+                    return str(d["answer"])
+                if d.get("answer"):
+                    return str(d["answer"])
+        except (json.JSONDecodeError, ValueError):
+            pass
+    return reply
+
+
 class BuilderProjectService:
 
     def __init__(self, model: Any = None, team_service: Optional[BuilderTeamService] = None):
@@ -523,6 +544,8 @@ class BuilderProjectService:
                 model=self.model,
             ))
             reply = result.reply
+            # Unwrap agent JSON formats (e.g. {"type":"done","answer":"..."} → plain text)
+            reply = _unwrap_json_reply(reply)
             session["messages"].append({"role": "assistant", "content": reply})
             prd_ready = "<!-- PRD_READY -->" in str(reply)
             if prd_ready:
