@@ -1087,10 +1087,13 @@ class BuilderProjectService:
                         _code = state.get("code", {})
                         _arch_ok = isinstance(_arch, dict) and len(_arch.get("raw_output", "") if isinstance(_arch, dict) else "") > 100
                         _code_ok = isinstance(_code, dict) and len(_code.get("raw_output", "") if isinstance(_code, dict) else "") > 500
-                        if _code_ok:
-                            _computed_pr = 0.7
-                            if _arch_ok:
-                                _computed_pr = 0.85
+                        _tests_ok = state.get("_has_tests", False)
+                        if _tests_ok and _code_ok:
+                            _computed_pr = 0.9
+                        elif _code_ok:
+                            _computed_pr = 0.7 if _arch_ok else 0.6
+                        elif _arch_ok:
+                            _computed_pr = 0.3
                         state["pass_rate"] = _computed_pr
                     run_record["pass_rate"] = _computed_pr
                     run_record["tokens_used"] = state.get("tokens_used", run_record.get("tokens_used", 0))

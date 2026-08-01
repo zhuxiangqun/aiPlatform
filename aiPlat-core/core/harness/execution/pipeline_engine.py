@@ -3680,6 +3680,40 @@ Output format: JSON array of {{"rank": 1, "score": 0.95, "content": "..."}}"""
                     logging.getLogger("pipeline_engine").warning(
                         "Direct code gen failed for %s: %s", stage.id, str(_se)[:200])
 
+
+        # ── Direct test generation for generate_test_plan stages ──
+        # Same pattern as code gen: bypass ReAct loop, use direct LLM.
+        if getattr(stage, 'generate_test_plan', False):
+            _code = state.get("code", {})
+            _code_text = _code.get("raw_output", "") if isinstance(_code, dict) else str(_code or "")
+            if _code_text and len(_code_text) > 200:
+                try:
+                    from core.harness.syscalls.llm import sys_llm_generate
+                    from core.harness.utils.model_injection import best_model_for_purpose
+                    _arch = state.get("architecture", {})
+                    _arch_text = ""
+                    if isinstance(_arch, dict):
+                        _arch_text = "\n".join(f"{k}: {v}" for k, v in _arch.items() if isinstance(v, str))
+                    _response = await sys_llm_generate(
+                        None,
+                        [
+                            {"role": "system", "content": "You are a QA engineer. Generate pytest test cases for the provided code. Include test fixtures, edge cases, and integration tests. Output only executable Python code."},
+                            {"role": "user", "content": f"## Architecture\n{_arch_text[:1000]}\n\n## Code\n{_code_text[:8000]}\n\nGenerate comprehensive pytest test cases covering all user stories. Output the tests as runnable Python files using ## FILE: format."},
+                        ],
+                        model_name=best_model_for_purpose("code_gen"),
+                        max_tokens=16000,
+                    )
+                    _result = getattr(_response, "content", "") or str(_response)
+                    if _result and len(_result) > 100:
+                        state[stage.output_artifact] = {"raw_output": _result}
+                        state["_has_tests"] = True
+                        logging.getLogger("pipeline_engine").warning(
+                            "Direct test gen OK: stage=%s output=%d chars", stage.id, len(_result))
+                        return state
+                except Exception as _se:
+                    logging.getLogger("pipeline_engine").warning(
+                        "Direct test gen failed for %s: %s", stage.id, str(_se)[:200])
+
         else:  # code_first (default)
 
             return await self._exec_stage(stage, state)
