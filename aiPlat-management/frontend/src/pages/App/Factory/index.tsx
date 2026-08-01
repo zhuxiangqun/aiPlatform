@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Plus, Send, Loader2, Clock, CheckCircle, XCircle, ExternalLink, BarChart3, Trash2 } from 'lucide-react';
+import { Plus, Send, Loader2, Clock, CheckCircle, XCircle, ExternalLink, BarChart3, Trash2, Play, RefreshCw, FileText } from 'lucide-react';
 import { projectApi, builderTeamApi, type ProjectItem, type ProjectRun } from '../../../services';
 import { Card, CardContent, Button, Textarea, toast } from '../../../components/ui';
 import { toastGateError } from '../../../components/ui';
@@ -97,6 +97,36 @@ const ProjectPanel: React.FC<{
   const [healthReport, setHealthReport] = useState<Record<string, any> | null>(null);
   const [loadingHealth, setLoadingHealth] = useState(false);
   const [stageOutputs, setStageOutputs] = useState<Record<string, any> | null>(null);
+  const [pollInterval, setPollInterval] = useState<ReturnType<typeof setInterval> | null>(null);
+
+  // ── Poll pipeline state during execution ──
+  useEffect(() => {
+    if (phase !== 'executing' && !phase?.includes('approval')) {
+      if (pollInterval) { clearInterval(pollInterval); setPollInterval(null); }
+      return;
+    }
+    if (!project.project_id || pollInterval) return;
+    const id = setInterval(async () => {
+      try {
+        const st = await projectApi.getState(project.project_id);
+        const s = (st as any)?.state || {};
+        const p = s.phase as string || phase;
+        setPhase(p);
+        const runs = (st as any)?.runs || [];
+        if (runs.length > 0) setRunHistory(runs);
+        if (s._plan_stage_ids || s._graph_trace) setTeamStages((s._plan_stage_ids || []).map((sid: string) => ({ id: sid, agent_name: sid })));
+        // Load outputs when available
+        const outputs: Record<string, any> = {};
+        for (const k of ['architecture', 'code', 'test_report']) {
+          if (s[k] && typeof s[k] === 'object') outputs[k] = s[k];
+        }
+        if (Object.keys(outputs).length > 0) setStageOutputs(outputs);
+        if (p === 'done' || p === 'failed') onRefresh();
+      } catch { /* ignore */ }
+    }, 3000);
+    setPollInterval(id);
+    return () => { clearInterval(id); };
+  }, [phase, project.project_id]);
 
   // Load stage outputs when phase is done
   useEffect(() => {
@@ -258,8 +288,43 @@ const ProjectPanel: React.FC<{
             )}
           </div>
         ) : phase === 'executing' ? (
-          <div className="p-3 rounded bg-blue-500/10 border border-blue-500/30 text-sm text-blue-300 flex items-center gap-2">
-            <Loader2 className="w-4 h-4 animate-spin" /> Pipeline 执行中...
+          <div className="p-3 rounded bg-blue-500/10 border border-blue-500/30 text-sm space-y-3">
+            <div className="flex items-center gap-2 text-blue-300">
+              <Loader2 className="w-4 h-4 animate-spin" /> Pipeline 执行中...
+            </div>
+            {/* Pipeline progress with stages */}
+            {teamStages.length > 0 && (
+              <div className="space-y-1.5">
+                {teamStages.map((s, i) => {
+                  const isRunning = i === teamStages.findLastIndex(st => runHistory?.some(r => r.phase === 'done' ? false : true));
+                  const isDone = runHistory?.length > 0 && i < teamStages.length - 1;
+                  const name = s.agent_name || s.agent_id || s.id || `Stage ${i + 1}`;
+                  return (
+                    <div key={i} className="flex items-center gap-2 text-xs">
+                      {isDone ? (
+                        <CheckCircle className="w-3.5 h-3.5 text-green-400 flex-shrink-0" />
+                      ) : i === 0 || (i > 0 && runHistory?.length > 0) ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin text-blue-400 flex-shrink-0" />
+                      ) : (
+                        <Clock className="w-3.5 h-3.5 text-gray-600 flex-shrink-0" />
+                      )}
+                      <span className={isDone ? 'text-green-300' : isRunning ? 'text-blue-300 font-medium' : 'text-gray-500'}>
+                        {name}
+                      </span>
+                      {isRunning && i > 0 && <span className="text-blue-400 ml-auto text-[10px]">进行中</span>}
+                    </div>
+                  );
+                })}
+                <div className="mt-2 h-1.5 bg-gray-700 rounded-full overflow-hidden">
+                  <div className="h-full bg-blue-500 rounded-full transition-all duration-500" style={{ width: `${teamStages.length > 0 ? ((runHistory?.length || 0) / teamStages.length) * 100 : 50}%` }} />
+                </div>
+              </div>
+            )}
+            {teamStages.length === 0 && (
+              <div className="h-1.5 bg-gray-700 rounded-full overflow-hidden">
+                <div className="h-full bg-blue-500 rounded-full animate-pulse" style={{ width: '60%' }} />
+              </div>
+            )}
           </div>
         ) : phase === 'paused' || phase?.includes('approval') ? (
           <div className="p-3 rounded bg-amber-500/10 border border-amber-500/30 text-sm space-y-2">
@@ -398,11 +463,11 @@ const FactoryPage: React.FC = () => {
   };
 
   const getStatus = (p: ProjectItem) => {
-    if (p.runs?.length === 0) return { label: '待开始', color: 'text-gray-500', bg: 'bg-gray-500/10' };
     const last = p.runs?.[p.runs.length - 1];
-    if (last?.phase === 'done') return { label: '已完成', color: 'text-green-400', bg: 'bg-green-500/10' };
-    if (last?.phase === 'failed') return { label: '失败', color: 'text-red-400', bg: 'bg-red-500/10' };
-    return { label: '构建中', color: 'text-blue-400', bg: 'bg-blue-500/10' };
+    if (!last) return { label: '待开始', color: 'text-gray-500', bg: 'bg-gray-500/10', phase: 'dialogue' };
+    if (last.phase === 'done') return { label: '已完成', color: 'text-green-400', bg: 'bg-green-500/10', phase: 'done' };
+    if (last.phase === 'failed') return { label: '失败', color: 'text-red-400', bg: 'bg-red-500/10', phase: 'failed' };
+    return { label: '构建中', color: 'text-blue-400', bg: 'bg-blue-500/10', phase: 'executing' };
   };
 
   return (
@@ -449,6 +514,9 @@ const FactoryPage: React.FC = () => {
           {/* Projects */}
           {projects.map(p => {
             const status = getStatus(p);
+            const lastRun = p.runs?.[p.runs.length - 1];
+            const passRate = lastRun?.pass_rate ?? 0;
+            const hasPrd = !!(p as any).confirmed_prd;
             return (
               <motion.div
                 key={p.project_id} layout
@@ -470,11 +538,62 @@ const FactoryPage: React.FC = () => {
                   </div>
                 </div>
                 <p className="text-xs text-gray-500 line-clamp-2 mb-2">{p.description}</p>
-                <div className="flex items-center gap-2 text-[10px] text-gray-600">
+                <div className="flex items-center gap-2 text-[10px] text-gray-600 mb-2">
                   <Clock className="w-3 h-3" />
                   <span>{p.created_at?.slice(0, 10)}</span>
                   {p.runs?.length ? <span>· {p.runs.length} 次运行</span> : null}
                 </div>
+
+                {/* ── Phase-dependent footer ── */}
+                {status.phase === 'dialogue' && (
+                  <div className="flex items-center gap-2 pt-2 border-t border-dark-border">
+                    {hasPrd ? (
+                      <>
+                        <span className="text-[10px] text-green-400 flex items-center gap-1"><CheckCircle className="w-3 h-3" />PRD 就绪</span>
+                        <button onClick={async (e) => { e.stopPropagation(); setSelectedProject(p); }} className="ml-auto text-[10px] px-2 py-1 rounded bg-primary/20 text-primary hover:bg-primary/30 transition-colors">查看详情</button>
+                      </>
+                    ) : (
+                      <span className="text-[10px] text-gray-500 flex items-center gap-1"><Clock className="w-3 h-3" />需要完成PM对话</span>
+                    )}
+                  </div>
+                )}
+                {status.phase === 'executing' && (
+                  <div className="pt-2 border-t border-dark-border space-y-1">
+                    <div className="h-1 bg-gray-700 rounded-full overflow-hidden">
+                      <div className="h-full bg-blue-500 rounded-full animate-pulse" style={{ width: '45%' }} />
+                    </div>
+                    <span className="text-[10px] text-blue-400">构建中...</span>
+                  </div>
+                )}
+                {status.phase === 'done' && (
+                  <div className="flex items-center gap-2 pt-2 border-t border-dark-border">
+                    <span className="text-[10px] text-green-400 flex items-center gap-1">
+                      <CheckCircle className="w-3 h-3" />通过率 {(passRate * 100).toFixed(0)}%
+                    </span>
+                    <div className="ml-auto flex gap-1">
+                      <button onClick={async (e) => { e.stopPropagation();
+                        try { const r = await projectApi.deployToApp(p.project_id); setSelectedApp((r as any)?.app_url || ''); } catch {} }}
+                        className="text-[10px] px-2 py-1 rounded bg-green-500/20 text-green-400 hover:bg-green-500/30 transition-colors flex items-center gap-1">
+                        <ExternalLink className="w-3 h-3" />预览
+                      </button>
+                      <button onClick={async (e) => { e.stopPropagation();
+                        try { await projectApi.rebuild(p.project_id); toast.success('重新构建已触发'); loadAll(); } catch (er) { toastGateError(er, '重建失败'); } }}
+                        className="text-[10px] px-2 py-1 rounded bg-dark-hover text-gray-400 hover:text-gray-300 transition-colors flex items-center gap-1">
+                        <RefreshCw className="w-3 h-3" />重建
+                      </button>
+                    </div>
+                  </div>
+                )}
+                {status.phase === 'failed' && (
+                  <div className="flex items-center gap-2 pt-2 border-t border-dark-border">
+                    <span className="text-[10px] text-red-400 flex items-center gap-1"><XCircle className="w-3 h-3" />{lastRun?.error?.slice(0, 30) || '执行失败'}</span>
+                    <button onClick={async (e) => { e.stopPropagation();
+                      try { await projectApi.rebuild(p.project_id); toast.success('重新构建已触发'); loadAll(); } catch (er) { toastGateError(er, '重建失败'); } }}
+                      className="ml-auto text-[10px] px-2 py-1 rounded bg-primary/20 text-primary hover:bg-primary/30 transition-colors flex items-center gap-1">
+                      <RefreshCw className="w-3 h-3" />重新构建
+                    </button>
+                  </div>
+                )}
               </motion.div>
             );
           })}
