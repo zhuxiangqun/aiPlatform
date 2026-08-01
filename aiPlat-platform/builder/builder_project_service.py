@@ -1569,10 +1569,61 @@ def _run_tests_for_project(project_id: str, deploy_dir: str) -> dict:
 
 
 def _deploy_to_app_for_project(project_id: str, deploy_dir: str, proj: dict) -> dict:
-    import os
+    import os, json as _json
     if not deploy_dir:
         deploy_dir = proj.get("deploy_dir", "") or os.path.join(
             os.getenv("AIPLAT_HOME", os.path.expanduser("~/.aiplat")), "output", project_id, "deploy")
+    
+    # Generate a simple app dashboard page
+    _app_home = os.path.join(os.getenv("AIPLAT_HOME", os.path.expanduser("~/.aiplat")), "apps", project_id, "current")
+    os.makedirs(_app_home, exist_ok=True)
+    _name = proj.get("name", project_id)
+    _desc = proj.get("description", "")
+    _stages = proj.get("team_stages", [])
+    _html = f"""<!DOCTYPE html>
+<html lang="zh-CN">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>{_name}</title>
+<style>
+*{{margin:0;padding:0;box-sizing:border-box}}
+body{{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0f172a;color:#e2e8f0;min-height:100vh}}
+.header{{background:#1e293b;padding:2rem;border-bottom:1px solid #334155}}
+.header h1{{font-size:1.5rem;margin-bottom:.5rem}}
+.header p{{color:#94a3b8;font-size:.9rem}}
+.stages{{padding:2rem;display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:1rem}}
+.card{{background:#1e293b;border:1px solid #334155;border-radius:.5rem;padding:1rem}}
+.card h3{{font-size:1rem;margin-bottom:.5rem}}
+.card .label{{color:#64748b;font-size:.8rem;margin-bottom:.25rem}}
+.card .output{{color:#38bdf8;font-size:.85rem;word-break:break-all;max-height:120px;overflow-y:auto}}
+.badge{{display:inline-block;padding:.15rem .5rem;border-radius:999px;font-size:.7rem;font-weight:600}}
+.badge-done{{background:#065f46;color:#6ee7b7}}
+.badge-pending{{background:#1e3a5f;color:#93c5fd}}
+.footer{{padding:1rem 2rem;color:#475569;font-size:.75rem;border-top:1px solid #1e293b}}
+</style></head>
+<body>
+<div class="header"><h1>🚀 {_name}</h1><p>{_desc}</p></div>
+<div class="stages">
+"""
+    for s in _stages:
+        _agent = s.get("agent_name", s.get("agent_id", "?"))
+        _phase = s.get("phase", "")
+        _output = s.get("output_artifact", "")
+        _badge = "badge-done" if _output else "badge-pending"
+        _status = "✅ 已完成" if _output else "⏳ 待执行"
+        _html += f"""<div class="card">
+<h3>{_agent}</h3>
+<div class="label">阶段: {_phase}</div>
+<div class="label">产出: <span class="badge {_badge}">{_status}</span></div>
+<div class="output">{_output}</div>
+</div>\n"""
+    
+    _html += f"""</div>
+<div class="footer">项目ID: {project_id} · 由 aiPlat 应用工厂生成 · <a href="http://localhost:5173/app/factory" style="color:#38bdf8">返回应用工厂</a></div>
+</body></html>"""
+    
+    with open(os.path.join(_app_home, "index.html"), "w", encoding="utf-8") as f:
+        f.write(_html)
+    
     app_url = f"http://localhost:8004/app/sessions/{project_id}"
     return {"ok": True, "deploy_dir": deploy_dir, "app_url": app_url}
 
