@@ -8701,9 +8701,9 @@ JSON format: {{"artifact": {{}},"confidence": "HIGH","issues": [{{"severity": "P
 
                 await mm.save_task_skill(task_skill)
 
-        except Exception:
+            except Exception:
 
-            logging.getLogger("pipeline_engine").warning("best-effort skipped", exc_info=True)
+                logging.getLogger("pipeline_engine").warning("best-effort skipped", exc_info=True)
 
         # ── Save pipeline knowledge to Wiki (cross-project reuse) ──
         if state.get("phase") == PipelinePhase.DONE:
