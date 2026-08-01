@@ -3697,6 +3697,7 @@ class PipelineEngine:
             if _v2 and isinstance(_v2, dict) and _v2.get("raw_output") and len(_v2["raw_output"]) > 200:
                 _code_key = getattr(_s, 'output_artifact', '')
         _code_text = state.get(_code_key, {}).get("raw_output", "") if _code_key else ""
+        try:
             _tmp = tempfile.mkdtemp(prefix="aiplat_tests_")
             for _txt in [_code_text, _result]:
                 if not _txt: continue
