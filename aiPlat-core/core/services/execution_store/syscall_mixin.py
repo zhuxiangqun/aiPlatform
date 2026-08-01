@@ -71,7 +71,7 @@ class SyscallMixin:
             try:
                 conn.execute(
                     """
-                    INSERT INTO syscall_events(
+                    INSERT OR IGNORE INTO syscall_events(
                       id, trace_id, span_id, run_id, tenant_id, kind, name, status, start_time, end_time, duration_ms,
                       args_json, result_json, error, error_code, target_type, target_id, user_id, session_id,
                       approval_request_id, created_at, input_tokens, output_tokens, cost, parent_span_id
@@ -147,7 +147,7 @@ class SyscallMixin:
             try:
                 conn.execute(
                     """
-                    INSERT INTO syscall_events(
+                    INSERT OR IGNORE INTO syscall_events(
                       id, trace_id, span_id, run_id, tenant_id, kind, name, status, start_time, end_time, duration_ms,
                       args_json, result_json, error, error_code, target_type, target_id, user_id, session_id,
                       approval_request_id, created_at, input_tokens, output_tokens, cost, parent_span_id

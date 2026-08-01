@@ -50,7 +50,7 @@ async def reason(
         try:
             mgr = get_memory_manager()
             # Phase 49: set domain context for Decision Lineage version tracking
-            domain_id = state.context.get("domain_id", "") or state.get("domain_id", "") or state.get("domain", {}).get("id", "")
+            domain_id = state.context.get("domain_id", "") or state.context.get("domain", {}).get("id", "")
             if domain_id:
                 try:
                     mgr.set_domain_context(domain_id, state.context.get("collection_id", ""))
