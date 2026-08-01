@@ -837,11 +837,14 @@ class BuilderProjectService:
         prd: Dict[str, Any] = {}
         # Strip PRD_READY marker if present (appears before the # heading)
         clean = reply.replace("<!-- PRD_READY -->", "").strip()
-        title_match = re.search(r"^# (.+)", clean, re.MULTILINE)
+        title_match = re.search(r"^#+ (.+)", clean, re.MULTILINE)
         if title_match:
             prd["title"] = title_match.group(1).strip()
-            if prd["title"].startswith(_AIPLAT_PRD_TITLE_PREFIX):
-                prd["title"] = prd["title"][5:].strip()
+            # Strip prefix like "项目名称：" or "项目名称:"
+            for _pfx in (_AIPLAT_PRD_TITLE_PREFIX, "项目名称:", "Project Name:"):
+                if prd["title"].startswith(_pfx):
+                    prd["title"] = prd["title"][len(_pfx):].strip()
+                    break
         # Extract sections by ## headings
         sections: Dict[str, str] = {}
         current_key = ""
@@ -853,7 +856,13 @@ class BuilderProjectService:
             elif current_key:
                 sections[current_key] += line + "\n"
         # Functional requirements count as user_stories
-        func_section = sections.get(_AIPLAT_PRD_SECTION_REQUIREMENTS, "")
+        func_section = (
+            sections.get(_AIPLAT_PRD_SECTION_REQUIREMENTS, "")
+            or sections.get("核心" + _AIPLAT_PRD_SECTION_REQUIREMENTS, "")
+            or sections.get("主要" + _AIPLAT_PRD_SECTION_REQUIREMENTS, "")
+            or sections.get("关键" + _AIPLAT_PRD_SECTION_REQUIREMENTS, "")
+            or next((v for k, v in sections.items() if _AIPLAT_PRD_SECTION_REQUIREMENTS in k), "")
+        )
         fr_items = []
         for fr_match in re.finditer(r"###\s*(.+?)\n(.*?)(?=\n###|\n##|\Z)", func_section or "", re.DOTALL):
             fr_name = fr_match.group(1).strip()
