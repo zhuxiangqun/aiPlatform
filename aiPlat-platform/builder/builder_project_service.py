@@ -1655,17 +1655,69 @@ def _run_tests_for_project(project_id: str, deploy_dir: str) -> dict:
 
 
 def _deploy_to_app_for_project(project_id: str, deploy_dir: str, proj: dict) -> dict:
-    import os, json as _json
+    import os, json as _json, re as _re
     if not deploy_dir:
         deploy_dir = proj.get("deploy_dir", "") or os.path.join(
             os.getenv("AIPLAT_HOME", os.path.expanduser("~/.aiplat")), "output", project_id, "deploy")
     
-    # Generate a simple app dashboard page
     _app_home = os.path.join(os.getenv("AIPLAT_HOME", os.path.expanduser("~/.aiplat")), "apps", project_id, "current")
     os.makedirs(_app_home, exist_ok=True)
     _name = proj.get("name", project_id)
     _desc = proj.get("description", "")
     _stages = proj.get("team_stages", [])
+    
+    # ── Extract generated code files from pipeline state ──
+    _file_count = 0
+    try:
+        import json
+        out_dir = os.path.join(os.getenv("AIPLAT_HOME", os.path.expanduser("~/.aiplat")), "output", project_id)
+        final_state = os.path.join(out_dir, "_final_state.json")
+        if os.path.isfile(final_state):
+            with open(final_state, "r") as _fs:
+                _state = json.load(_fs)
+            code = _state.get("code", {})
+            code_text = code.get("raw_output", "") if isinstance(code, dict) else str(code)
+            if code_text and "## FILE:" in code_text:
+                # Parse ## FILE: path\n...content... format
+                blocks = _re.split(r'^##\s*FILE:\s*', code_text, flags=_re.MULTILINE)
+                for block in blocks[1:]:  # skip everything before first FILE:
+                    lines = block.strip().split("\n", 1)
+                    if len(lines) >= 2:
+                        fpath = lines[0].strip()
+                        fcontent = lines[1].strip()
+                        # Remove trailing ``` if present
+                        fcontent = _re.sub(r'^```\w*\n?', '', fcontent)
+                        fcontent = _re.sub(r'\n?```\s*$', '', fcontent)
+                        # Write file
+                        full_path = os.path.join(_app_home, fpath)
+                        os.makedirs(os.path.dirname(full_path), exist_ok=True)
+                        with open(full_path, "w", encoding="utf-8") as _fw:
+                            _fw.write(fcontent)
+                        _file_count += 1
+        # Also check stage snapshot files
+        for fname in sorted(os.listdir(out_dir) if os.path.isdir(out_dir) else []):
+            if fname.startswith("_stage_stage_1") and fname.endswith(".json"):
+                with open(os.path.join(out_dir, fname), "r") as _sf:
+                    _st = json.load(_sf)
+                _c = _st.get("code", {})
+                _ct = _c.get("raw_output", "") if isinstance(_c, dict) else str(_c)
+                if _ct and "## FILE:" in _ct and _file_count == 0:
+                    blocks = _re.split(r'^##\s*FILE:\s*', _ct, flags=_re.MULTILINE)
+                    for block in blocks[1:]:
+                        lines = block.strip().split("\n", 1)
+                        if len(lines) >= 2:
+                            fpath = lines[0].strip()
+                            fcontent = _re.sub(r'^```\w*\n?', '', lines[1].strip())
+                            fcontent = _re.sub(r'\n?```\s*$', '', fcontent)
+                            full_path = os.path.join(_app_home, fpath)
+                            os.makedirs(os.path.dirname(full_path), exist_ok=True)
+                            with open(full_path, "w", encoding="utf-8") as _fw:
+                                _fw.write(fcontent)
+                            _file_count += 1
+    except Exception:
+        pass  # best-effort
+    
+    # Generate app dashboard page
     _html = f"""<!DOCTYPE html>
 <html lang="zh-CN">
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
@@ -1704,14 +1756,14 @@ body{{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgro
 </div>\n"""
     
     _html += f"""</div>
-<div class="footer">项目ID: {project_id} · 由 aiPlat 应用工厂生成 · <a href="http://localhost:5173/app/factory" style="color:#38bdf8">返回应用工厂</a></div>
+<div class="footer">项目ID: {project_id}{ " · 生成文件: " + str(_file_count) + " 个" if _file_count else "" } · 由 aiPlat 应用工厂生成 · <a href="http://localhost:5173/app/factory" style="color:#38bdf8">返回应用工厂</a></div>
 </body></html>"""
     
     with open(os.path.join(_app_home, "index.html"), "w", encoding="utf-8") as f:
         f.write(_html)
     
     app_url = f"http://localhost:8004/app/sessions/{project_id}"
-    return {"ok": True, "deploy_dir": deploy_dir, "app_url": app_url}
+    return {"ok": True, "deploy_dir": deploy_dir, "app_url": app_url, "files_generated": _file_count}
 
 
 def _get_agent_insight_for(agent_id: str, projects: dict) -> dict:
