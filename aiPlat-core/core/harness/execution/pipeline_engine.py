@@ -8705,14 +8705,12 @@ JSON format: {{"artifact": {{}},"confidence": "HIGH","issues": [{{"severity": "P
 
                 logging.getLogger("pipeline_engine").warning("best-effort skipped", exc_info=True)
 
-        # ── Save pipeline knowledge to Wiki (cross-project reuse) ──
-        if state.get("phase") == PipelinePhase.DONE:
-            try:
-                await _save_pipeline_knowledge_to_wiki(state, self._config)
-            except Exception:
-                pass
-
-
+            # ── Save pipeline knowledge to Wiki (cross-project reuse) ──
+            if state.get("phase") == PipelinePhase.DONE:
+                try:
+                    await _save_pipeline_knowledge_to_wiki(state, self._config)
+                except Exception:
+                    pass
 
             # Phase 4: establish TaskSkill ↔ WikiPage bilateral links in ontology
 
