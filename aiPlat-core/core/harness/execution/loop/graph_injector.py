@@ -141,11 +141,18 @@ async def inject_ontology_context(state: LoopState) -> dict:
         from core.harness.knowledge.domain_router import DomainRouter
         router = DomainRouter()
         classified = router.classify(task)
-        if not classified or not classified.get("domain_id"):
+        if not classified:
             return hints
-
-        domain_id = classified["domain_id"]
-        config = classified.get("config", {})
+        
+        # classify can return a str (domain_id) or a dict {domain_id, config, ...}
+        if isinstance(classified, str):
+            domain_id = classified
+            config = {}
+        else:
+            domain_id = classified.get("domain_id")
+            config = classified.get("config", {})
+        if not domain_id:
+            return hints
         domain_name = config.get("name", domain_id)
         domain_desc = config.get("description", "")
 
