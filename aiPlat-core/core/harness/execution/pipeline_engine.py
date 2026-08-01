@@ -3637,6 +3637,47 @@ Output format: JSON array of {{"rank": 1, "score": 0.95, "content": "..."}}"""
             return await self._exec_tdd_cycle(stage, state)
 
 
+        # ── Direct architecture generation — bypass ReAct ──
+        if getattr(stage, 'output_artifact', '') == 'architecture':
+            try:
+                import json as _json
+                from core.harness.syscalls.llm import sys_llm_generate
+                from core.harness.utils.model_injection import best_model_for_purpose
+                _prompt = state.get("description", "")
+                _prd = state.get("confirmed_prd", state.get(_prompt[:200], {}))
+                _prd_text = _json.dumps(_prd, ensure_ascii=False)[:3000] if isinstance(_prd, dict) else _prompt
+                _response = await sys_llm_generate(
+                    None,
+                    [
+                        {"role": "system", "content": (
+                            "你是系统架构师。根据PRD需求设计完整的系统架构。\n"
+                            "输出JSON格式，不要markdown代码块：\n"
+                            "{\n"
+                            '  "title":"项目名称",\n'
+                            '  "overview":"架构概述(200字)",\n'
+                            '  "components":[{"name":"组件名","role":"职责","tech":"技术栈"}],\n'
+                            '  "data_flow":"数据流描述",\n'
+                            '  "api_design":[{"method":"GET","path":"/api/x","desc":"说明"}],\n'
+                            '  "database_schema":"数据库设计",\n'
+                            '  "deployment":"部署方案"\n'
+                            "}"
+                        )},
+                        {"role": "user", "content": f"## PRD\n{_prd_text}\n\n## 项目描述\n{_prompt}\n\n请输出完整的架构设计JSON。"},
+                    ],
+                    model_name=best_model_for_purpose("reasoning"),
+                    max_tokens=8000,
+                )
+                _result = getattr(_response, "content", "") or str(_response)
+                _result = _result.replace("```json","").replace("```","").strip()
+                if _result and len(_result) > 200:
+                    state[stage.output_artifact] = {"raw_output": _result}
+                    logging.getLogger("pipeline_engine").warning(
+                        "Direct arch gen OK: stage=%s output=%d chars", stage.id, len(_result))
+                    return state
+            except Exception as _se:
+                logging.getLogger("pipeline_engine").warning(
+                    "Direct arch gen failed for %s: %s", stage.id, str(_se)[:200])
+
         # ── Direct code generation for uses_file_output stages ──
         # Bypass ReAct loop entirely: load code_generation SKILL.md as SOP
         # and call LLM directly. This avoids the skill_load tool call issue.

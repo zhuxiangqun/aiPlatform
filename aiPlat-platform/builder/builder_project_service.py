@@ -1085,10 +1085,12 @@ class BuilderProjectService:
                     if _computed_pr == 0:
                         _arch = state.get("architecture", {})
                         _code = state.get("code", {})
-                        _arch_ok = isinstance(_arch, dict) and len(_arch.get("raw_output", "") if isinstance(_arch, dict) else "") > 100
+                        _arch_ok = isinstance(_arch, dict) and len(_arch.get("raw_output", "") if isinstance(_arch, dict) else "") > 500
                         _code_ok = isinstance(_code, dict) and len(_code.get("raw_output", "") if isinstance(_code, dict) else "") > 500
                         _tests_ok = state.get("_has_tests", False)
-                        if _tests_ok and _code_ok:
+                        if _arch_ok and _code_ok and _tests_ok:
+                            _computed_pr = 1.0
+                        elif _tests_ok and _code_ok:
                             _computed_pr = 0.9
                         elif _code_ok:
                             _computed_pr = 0.7 if _arch_ok else 0.6
