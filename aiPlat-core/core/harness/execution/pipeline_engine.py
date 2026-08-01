@@ -1217,29 +1217,15 @@ class PipelineEngine:
                     return f"Knowledge retrieval failed: {getattr(result, 'error', 'unknown')}"
 
                 # Optional LLM re-ranking of retrieved chunks
-
                 if kb_rerank and output:
 
                     try:
 
-                        rerank_prompt = f"""You are a relevance ranker. Given a user query and retrieved passages, rank them by relevance to the query. Return the top {kb_top_k} passages in order, with a relevance score (0-1).
-
-
-
-Query: {kb_query}
-
-
-
-Passages:
-
-{str(output)[:3000]}
-
-
-
-Output format: JSON array of {{"rank": 1, "score": 0.95, "content": "..."}}"""
+                        from core.harness.utils.prompt_loader import _sync_resolve
+                        rerank_prompt = _sync_resolve("relevance-ranker",
+                            top_k=kb_top_k, query=kb_query, passages=str(output)[:3000])
 
                         from core.harness.syscalls.llm import sys_llm_generate
-
                         rerank_resp = await sys_llm_generate(
 
                             best_model_for_purpose("chat"),
@@ -3656,7 +3642,11 @@ Output format: JSON array of {{"rank": 1, "score": 0.95, "content": "..."}}"""
             _context += f"## PRD\n{_json.dumps(_prd, ensure_ascii=False)[:4000]}\n\n"
         if _desc:
             _context += f"## 项目描述\n{_desc}\n\n"
-        for _key in ("architecture", "code", "test_report"):
+        # Append upstream stage outputs as context (config-driven keys)
+        for _s in (self._config.stages if self._config else []):
+            _key = getattr(_s, 'output_artifact', '')
+            if not _key or _key == getattr(stage, 'output_artifact', ''):
+                continue  # skip own output
             _v = state.get(_key, {})
             if isinstance(_v, dict) and _v.get("raw_output"):
                 _context += f"## {_key}\n{str(_v['raw_output'])[:3000]}\n\n"
@@ -3698,8 +3688,15 @@ Output format: JSON array of {{"rank": 1, "score": 0.95, "content": "..."}}"""
         """Run pytest on generated test code and capture results."""
         import tempfile, subprocess, os as _os, re as _re, shutil
         _passed = _failed = _errors = 0; _test_log = ""
-        try:
-            _code_text = state.get("code", {}).get("raw_output", "") if isinstance(state.get("code"), dict) else ""
+        # Find upstream code stage's output key (config-driven, not hardcoded)
+        _code_key = ""
+        for _s in (self._config.stages if self._config else []):
+            if getattr(_s, 'output_artifact', '') == getattr(stage, 'output_artifact', ''):
+                continue
+            _v2 = state.get(getattr(_s, 'output_artifact', ''))
+            if _v2 and isinstance(_v2, dict) and _v2.get("raw_output") and len(_v2["raw_output"]) > 200:
+                _code_key = getattr(_s, 'output_artifact', '')
+        _code_text = state.get(_code_key, {}).get("raw_output", "") if _code_key else ""
             _tmp = tempfile.mkdtemp(prefix="aiplat_tests_")
             for _txt in [_code_text, _result]:
                 if not _txt: continue

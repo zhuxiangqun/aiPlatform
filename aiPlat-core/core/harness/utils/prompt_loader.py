@@ -1187,8 +1187,152 @@ _register("agent-programmer_agent", """# 角色：资深程序员
     category="agents",
     variables=["agent_name"])
 
-# ── FDE dialog prompts ──
 
+# ── Engine layer prompts (extracted from hardcoded strings) ──
 
-# ── FDE dialog question templates ──
+_register("atomic-splitter-llm-split", """将以下任务分解为可直接执行的子任务（原子步骤）。每个子任务应该：
+1. 是可独立执行的
+2. 有明确的输入和输出
+3. 不需要进一步的推理或决策
 
+返回JSON格式：
+{
+  "steps": [
+    {"id": "step_1", "description": "步骤描述", "input": "输入说明", "output": "预期输出", "tool": "需要的工具（可选）"}
+  ]
+}""",
+    category="engine",
+    variables=["task", "context"])
+
+_register("atomic-splitter-verify-coverage", """检查以下子任务列表是否完全覆盖了原始任务的需求。如果有遗漏，返回缺失的部分：
+{
+  "covered": true/false,
+  "missing": ["缺失的部分1", "缺失的部分2"],
+  "suggestions": "建议"
+}""",
+    category="engine",
+    variables=["task", "steps"])
+
+_register("atomic-splitter-fill-gaps", """原始任务有部分未被已有的子任务覆盖。请为以下缺失部分生成补充的子任务：
+{
+  "gap_steps": [
+    {"id": "step_n", "description": "描述", "input": "输入", "output": "输出"}
+  ]
+}""",
+    category="engine",
+    variables=["task", "gaps", "existing_steps"])
+
+_register("dynamic-router-supervisor", """你是多Agent系统的路由调度器。从以下可用Agent中选择下一个执行者。
+
+选择标准：
+1. 根据任务描述选择最匹配的Agent
+2. 已完成的任务对应的Agent不应再被选择
+3. 如果没有合适的Agent，返回 {"agent_id": null, "reason": "无合适Agent"}
+
+只返回JSON：{"agent_id": "xxx", "reason": "选择理由"}""",
+    category="engine",
+    variables=["agents", "task", "history"])
+
+_register("roundtable-speaker-turn", """现在是 ${name} 的发言轮次。请基于之前的讨论，发表你的观点或建议。""",
+    category="engine",
+    variables=["name"])
+
+_register("roundtable-context", """你正在参与一个圆桌讨论 (Roundtable)。以下是之前的讨论记录：
+
+${history}
+
+请基于以上信息，从你的角度给出分析和建议。""",
+    category="engine",
+    variables=["history"])
+
+_register("evox-atom-executor", """执行以下原子任务。根据任务描述选择合适的执行方式。
+
+返回JSON：
+{
+  "executed": true/false,
+  "result": "执行结果",
+  "tool_used": "使用的工具",
+  "next_action": "continue/stop/retry"
+}""",
+    category="engine",
+    variables=["task", "description"])
+
+_register("technical-planner", """You are a technical planner. Based on the upstream context, produce a structured task execution plan.
+
+Output JSON format:
+{
+  "goal": "overall goal",
+  "steps": [
+    {"id": "step_1", "action": "what to do", "tool": "tool_name", "input": "what to provide", "expected_output": "what should result"},
+    ...
+  ],
+  "dependencies": [{"step": "step_2", "depends_on": "step_1"}],
+  "estimated_complexity": "simple|medium|complex"
+}""",
+    category="engine",
+    variables=["context"])
+
+_register("harness-fix-proposer", """You are a Harness engineer optimizing an AI pipeline execution system. Analyze the failure patterns and propose targeted fixes.
+
+Available tools: prompt_adjust, add_retry, increase_timeout, add_validation, skip_stage, rollback
+
+Output JSON:
+{
+  "diagnosis": "root cause analysis",
+  "fixes": [
+    {"type": "prompt_adjust|add_retry|increase_timeout|...",
+     "target": "which stage/component to fix",
+     "description": "what to change",
+     "confidence": 0.0-1.0}
+  ],
+  "priority": "critical|high|medium|low"
+}""",
+    category="engine",
+    variables=["failure_history", "pipeline_context"])
+
+_register("evaluator-completeness", """You are an independent evaluator. Determine if the task is COMPLETE.
+
+A task is complete when:
+1. All required outputs have been produced
+2. Quality criteria have been met
+3. No blocking issues remain
+
+Output JSON:
+{"complete": true/false, "reason": "explanation", "missing": ["what's missing"]}""",
+    category="engine",
+    variables=["task", "output"])
+
+_register("emergency-compression", """${system_text}
+
+## Context (compressed)
+${last_text}
+
+## Current Task
+${task}
+
+Respond with DONE: your_answer if the context is sufficient to answer the task, or respond with NEED_MORE: description of what additional information you need.""",
+    category="engine",
+    variables=["system_text", "last_text", "task"])
+
+_register("task-continuity-classifier", """You are a task continuity classifier. Given two texts, decide if they are about the SAME task.
+
+Output JSON:
+{"same_task": true/false, "confidence": 0.0-1.0, "reason": "brief explanation"}""",
+    category="engine",
+    variables=["text_a", "text_b"])
+
+_register("step-executor-fallback", """Execute this step: ${action}
+Context: ${context}""",
+    category="engine",
+    variables=["action", "context"])
+
+_register("quick-engine-fallback", """${message}""",
+    category="engine",
+    variables=["message"])
+
+_register("compaction-summary", """CONTEXT_SUMMARY:
+${summary_text}
+PRESERVED_IDENTIFIERS:
+${preserved_ids}""",
+    category="engine",
+    variables=["summary_text", "preserved_ids"])

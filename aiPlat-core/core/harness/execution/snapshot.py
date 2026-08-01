@@ -82,7 +82,7 @@ def _extract_state_summary(state: Dict[str, Any]) -> Dict[str, Any]:
         "artifacts": {
             k: (bool(v) if not isinstance(v, (dict, list)) else len(str(v)))
             for k, v in state.items()
-            if k.startswith("_output_") or k in ("architecture", "code", "test_report")
+            if k.startswith("_output_") or (isinstance(v, dict) and v.get("raw_output"))
         },
         "classified_error": state.get("_last_classified_error"),
         "healing_diagnosis": state.get("_meta_diagnosis", ""),
@@ -365,7 +365,7 @@ def get_reproducible_context_hash(state: Dict[str, Any]) -> str:
         "tokens_used": state.get("tokens_used", 0),
         "artifact_keys": sorted(
             k for k in state
-            if not k.startswith("_") and k in ("architecture", "code", "test_report")
+            if not k.startswith("_") and isinstance(state.get(k), dict) and state.get(k, {}).get("raw_output")
         ),
     }
     raw = json.dumps(context, sort_keys=True, default=str)
