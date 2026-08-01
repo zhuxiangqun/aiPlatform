@@ -2472,36 +2472,31 @@ def _wire_persist_callback(mgr: MemoryManager) -> None:
 
     """Wire the MemoryManager's persistence callback to execution_store's long_term_memories."""
 
-    async def _persist(interaction: dict) -> None:
+    async def _persist(**kwargs) -> None:
+        # Accept both legacy dict-style and new kwarg-style calling conventions
+        interaction = kwargs.get("interaction") or kwargs
+        if isinstance(interaction, dict) and "namespace" in interaction:
+            interaction = interaction
+        else:
+            # New-style: namespace, user_message, assistant_message
+            interaction = {
+                "user_id": str(kwargs.get("user_id", "system")),
+                "session_id": str(kwargs.get("namespace", "default")),
+                "summary": str(kwargs.get("assistant_message", ""))[:5000],
+                "metadata": str(kwargs.get("user_message", ""))[:2000],
+                "timestamp": kwargs.get("timestamp", None),
+            }
 
         try:
-
             from core.services.execution_store import get_execution_store
-
             store = get_execution_store()
-
-            user_id = str(interaction.get("user_id", "system"))
-
-            key = str(interaction.get("session_id", "default"))
-
-            content = str(interaction.get("summary", ""))[:5000]
-
-            import uuid, time as _time
-
-            now = _time.time()
-
-            await store._execute(
-
-                "INSERT INTO long_term_memories(id,user_id,key,content,metadata_json,created_at,updated_at,relevance_decay) VALUES(?,?,?,?,?,?,?,?);",
-
-                (str(uuid.uuid4()), user_id, key, content,
-
-                 str(interaction.get("metadata", "{}"))[:2000],
-
-                 interaction.get("timestamp", now), now, 1.0))
-
+            await store.add_long_term_memory(
+                user_id=str(interaction.get("user_id", "system")),
+                content=str(interaction.get("summary", ""))[:5000],
+                key=str(interaction.get("session_id", "default")),
+                metadata={"raw_user_message": str(interaction.get("metadata", ""))[:2000]},
+            )
         except Exception as e:
-
             logging.warning(str(e), exc_info=True)
 
     mgr._persist_callback = _persist

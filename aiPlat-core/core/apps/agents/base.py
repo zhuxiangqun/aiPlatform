@@ -144,6 +144,7 @@ class BaseAgent(IAgent):
                         "task": context.messages[-1].get("content", "") if context.messages else "",
                         "session_id": context.session_id,
                         "user_id": context.user_id,
+                        "_agent_namespace": context.session_id or "default",
                         **context.variables
                     },
                     step_count=0
