@@ -1462,6 +1462,20 @@ class BuilderProjectService:
                         logging.warning(str(e), exc_info=True)
         if not state:
             state = {}
+        # Merge full pipeline output from _final_state.json if available
+        _out_dir = os.path.join(os.getenv("AIPLAT_HOME", os.path.expanduser("~/.aiplat")), "output", project_id)
+        _final_path = os.path.join(_out_dir, "_final_state.json")
+        if os.path.isfile(_final_path):
+            try:
+                with open(_final_path, "r") as _fs:
+                    _final = json.loads(_fs.read())
+                for _key in ("architecture", "code", "test_report"):
+                    if _key in _final and _final[_key]:
+                        state[_key] = _final[_key]
+                if "_has_tests" in _final:
+                    state["_has_tests"] = _final["_has_tests"]
+            except Exception:
+                pass  # noqa: cleanup-best-effort
         proj = self._projects.get(project_id, {})
         return {
             "project_id": project_id,
