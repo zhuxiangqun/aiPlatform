@@ -72,6 +72,22 @@ async def reason(
     except Exception as e:
         logging.warning(str(e), exc_info=True)
 
+    # ── Knowledge Retrieval: inject domain knowledge into agent context ──
+    try:
+        _task = state.context.get("task", "")
+        _domain = state.context.get("domain_id", "") or state.get("domain_id", "")
+        if _task and _domain:
+            from core.harness.syscalls.retrieval import sys_knowledge_retrieve
+            _kb = sys_knowledge_retrieve(_task, top_k=3, domain_id=_domain)
+            if _kb:
+                _kb_text = "## 知识库已有的相关内容\n" + "\n".join(
+                    f"- {getattr(d, 'title', '') or ''}: {str(getattr(d, 'content', '') or getattr(d, 'snippet', ''))[:300]}"
+                    for d in _kb[:3] if getattr(d, 'title', None) or getattr(d, 'content', None)
+                )
+                state.context["_knowledge_context"] = _kb_text
+    except Exception:
+        pass
+
     # Drain AgentMessageBus before reasoning (P1: wire feedback/coordination messages)
     try:
         from ...interfaces.messaging import get_message_bus

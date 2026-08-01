@@ -986,6 +986,21 @@ async def _execute_agent_impl(self, req: ExecutionRequest) -> ExecutionResult:
 
                 try:
 
+                    # ── Inject MemoryManager context before agent execution ──
+                    _sess = getattr(context, 'session_id', None) or str(payload.get("session_id", "default"))
+                    try:
+                        from core.harness.memory.manager import get_memory_manager
+                        _mm = get_memory_manager()
+                        _mem_ctx = await _mm.build_context(
+                            current_query=str(context.messages[-1].get("content", "")) if context.messages else "",
+                            system_prompt="",
+                            session_id=_sess,
+                        )
+                        if _mem_ctx and hasattr(_mem_ctx, 'messages') and _mem_ctx.messages:
+                            context.messages = list(_mem_ctx.messages) + list(context.messages)
+                    except Exception:
+                        pass
+
                     result = await agent.execute(context)  # type: ignore[attr-defined]
 
                 finally:
@@ -1343,8 +1358,11 @@ async def _execute_agent_impl(self, req: ExecutionRequest) -> ExecutionResult:
                           out.get("answer", "") if isinstance(out, dict) else "")
 
                 if q and answer:
-
-                    await mm.save_interaction(question=q, answer=str(answer), success=result.success)
+                    _sess_id = str(payload.get("session_id", "default")) if isinstance(payload, dict) else "default"
+                    await mm.save_interaction(
+                        user_message=q, assistant_message=str(answer),
+                        session_id=_sess_id,
+                        metadata={"success": result.success})
 
         except Exception:
 
