@@ -285,6 +285,19 @@ class BuilderProjectService:
             "created_at": now,
             "updated_at": now,
         }
+
+        # ── Auto-classify domain ──
+        _domain_id = "default"
+        try:
+            from core.harness.knowledge.domain_router import DomainRouter
+            _desc = req.description or req.name or ""
+            if _desc.strip():
+                _router = DomainRouter()
+                _domain_id = _router.classify(_desc)
+                self._projects[project_id]["domain_id"] = _domain_id
+        except Exception:
+            pass
+
         self._save_projects()
 
         # Initialize chat session for PM dialogue

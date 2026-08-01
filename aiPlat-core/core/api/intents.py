@@ -181,6 +181,19 @@ async def core_chat(ctx: ChatContext) -> ChatResult:
     except Exception as e:
         logging.debug(str(e), exc_info=True)
 
+    # Try PromptLoader for templated system prompt (versioned, managed)
+    if not system_prompt or len(system_prompt) < 50:
+        try:
+            from core.harness.utils.prompt_loader import _async_prompt_resolve
+            _tmpl_id = f"agent-{ctx.agent_name}"
+            _tmpl = await _async_prompt_resolve(_tmpl_id, agent_name=ctx.agent_name)
+            if _tmpl and len(_tmpl) > len(system_prompt):
+                system_prompt = _tmpl
+                logging.getLogger("core.intents").debug(
+                    "Using PromptLoader template '%s' for agent '%s'", _tmpl_id, ctx.agent_name)
+        except Exception:
+            pass
+
     if not system_prompt:
         try:
             import os as _os
