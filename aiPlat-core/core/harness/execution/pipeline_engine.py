@@ -3583,8 +3583,6 @@ Output format: JSON array of {{"rank": 1, "score": 0.95, "content": "..."}}"""
     async def _dispatch_execute(self, stage: PipelineStageConfig, state: PipelineState) -> PipelineState:
 
         """Execute stage based on declarative execution_mode field."""
-        import sys
-        print(f"### _dispatch_execute ENTERED stage={stage.id} mode={getattr(stage, 'execution_mode', '?')} skill={getattr(stage, 'skill_name', '?')}", file=sys.stderr)
 
         mode = getattr(stage, 'execution_mode', 'code_first') or 'code_first'
 
@@ -3606,8 +3604,6 @@ Output format: JSON array of {{"rank": 1, "score": 0.95, "content": "..."}}"""
         # Engine knows NOTHING about what the skill does — it just
         # loads the SKILL.md SOP and calls LLM with pipeline state.
         if getattr(stage, 'skill_name', ''):
-            import sys
-            print(f"### DISPATCH skill={getattr(stage, 'skill_name', '')} stage={stage.id}", file=sys.stderr)
             _result = await self._run_stage_skill(stage, state)
             if _result.get(getattr(stage, 'output_artifact', '')):
                 return _result
