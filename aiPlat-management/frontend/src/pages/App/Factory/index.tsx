@@ -101,6 +101,9 @@ const ProjectPanel: React.FC<{
   const [pollInterval, setPollInterval] = useState<ReturnType<typeof setInterval> | null>(null);
   const [confirmedPrd, setConfirmedPrd] = useState<Record<string, unknown> | null>(
     (project as any).confirmed_prd || null);
+  const [showPrdDetail, setShowPrdDetail] = useState(false);
+  const [prdEditText, setPrdEditText] = useState('');
+  const [savingPrd, setSavingPrd] = useState(false);
 
   // Check for PRD on mount (may have been generated in a previous session)
   useEffect(() => {
@@ -223,6 +226,24 @@ const ProjectPanel: React.FC<{
       toast.success('部署成功');
     } catch (e: any) { toastGateError(e, '部署失败'); }
     finally { setDeploying(false); }
+  };
+
+  const handleEditPrd = () => {
+    setPrdEditText(JSON.stringify(confirmedPrd, null, 2));
+    setShowPrdDetail(true);
+  };
+
+  const handleSavePrd = async () => {
+    if (!project.project_id) return;
+    try {
+      const parsed = JSON.parse(prdEditText);
+      setSavingPrd(true);
+      await projectApi.updatePrd(project.project_id, parsed);
+      setConfirmedPrd(parsed);
+      setShowPrdDetail(false);
+      toast.success('PRD 已保存，可点"重建"重新生成代码');
+    } catch { toast('JSON 格式错误，请检查'); }
+    finally { setSavingPrd(false); }
   };
 
   const handleApprove = async () => {
@@ -364,13 +385,38 @@ const ProjectPanel: React.FC<{
 
         {/* PRD summary — always show if confirmed */}
         {confirmedPrd && (
-          <div className="p-3 rounded border border-green-500/30 bg-green-500/5 text-xs space-y-1">
+          <div className="p-3 rounded border border-green-500/30 bg-green-500/5 text-xs space-y-2">
             <div className="flex items-center gap-2">
               <CheckCircle className="w-3.5 h-3.5 text-green-400" />
               <span className="text-green-300 font-semibold">PRD 已确认</span>
+              <span className="ml-auto text-gray-500 text-[10px]">{new Date().toLocaleDateString()}</span>
             </div>
             <p className="text-gray-200 font-medium">{confirmedPrd.title as string || 'Untitled'}</p>
             <p className="text-gray-400">{(confirmedPrd.user_stories as any[])?.length || 0} 个 User Stories · {confirmedPrd.scope as string || '-'}</p>
+            <div className="flex gap-1.5">
+              {!showPrdDetail ? (
+                <button onClick={handleEditPrd} className="text-[10px] px-2 py-1 rounded bg-dark-hover text-gray-300 hover:text-white transition-colors">📋 查看 & 编辑</button>
+              ) : (
+                <>
+                  <button onClick={() => setShowPrdDetail(false)} className="text-[10px] px-2 py-1 rounded bg-dark-hover text-gray-400 hover:text-gray-300 transition-colors">收起</button>
+                </>
+              )}
+            </div>
+            {/* PRD detail / edit section */}
+            {showPrdDetail && (
+              <div className="space-y-2 pt-2 border-t border-dark-border">
+                <textarea
+                  value={prdEditText}
+                  onChange={e => setPrdEditText(e.target.value)}
+                  className="w-full min-h-[300px] bg-dark-hover border border-dark-border rounded p-2 text-xs text-gray-200 font-mono resize-y focus:outline-none focus:border-primary"
+                />
+                <div className="flex gap-2">
+                  <Button variant="primary" size="sm" onClick={handleSavePrd} loading={savingPrd}>保存 PRD</Button>
+                  <Button variant="ghost" size="sm" onClick={() => setShowPrdDetail(false)}>取消</Button>
+                  <span className="ml-auto text-[10px] text-gray-500">保存后点"重建"重新生成代码</span>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
