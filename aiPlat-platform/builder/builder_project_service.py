@@ -996,6 +996,24 @@ class BuilderProjectService:
 
         # Run synchronously — proxy timeout is 600s, Architect takes 20-60s.
         requirement = proj.get("description", "")
+        # If we have a confirmed PRD, build the requirement from it for richer context
+        if prd_data and isinstance(prd_data, dict):
+            prd_title = prd_data.get("title", "")
+            prd_overview = prd_data.get("overview", "")
+            prd_us = prd_data.get("user_stories", [])
+            prd_constraints = prd_data.get("constraints", [])
+            if isinstance(prd_us, list) and prd_us:
+                us_list = "\n".join(f"- {u.get('id','')}: {u.get('description','')}" for u in prd_us[:8] if isinstance(u, dict))
+            else:
+                us_list = ""
+            if prd_constraints and isinstance(prd_constraints, list):
+                ct_list = "\n".join(f"- {c}" for c in prd_constraints[:5])
+            else:
+                ct_list = ""
+            parts = [prd_title or requirement, prd_overview, us_list, ct_list]
+            rich = "\n\n".join(p for p in parts if p)
+            if len(rich) > len(requirement):
+                requirement = rich
         run_id = f"run_{uuid.uuid4().hex[:8]}"
         now = time.strftime("%Y-%m-%dT%H:%M:%S")
         proj.setdefault("runs", []).append({
@@ -1324,9 +1342,14 @@ class BuilderProjectService:
             return {"status": "error", "detail": "项目不存在"}
         if not proj.get("confirmed_prd"):
             return {"status": "error", "detail": "没有已确认的 PRD，请先完成 PM 对话"}
-        # Clear previous pipeline state
+        # Clear previous pipeline state AND output cache (prevents stale artifact skipping)
         self._runs.pop(project_id, None)
         self._pipeline_sessions.pop(project_id, None)
+        import shutil
+        out_dir = os.path.join(os.getenv("AIPLAT_HOME", os.path.expanduser("~/.aiplat")), "output", project_id)
+        if os.path.isdir(out_dir):
+            try: shutil.rmtree(out_dir)
+            except OSError: pass  # noqa: cleanup-best-effort
         for fname in (f"{project_id}.json", f"{project_id}_chat.json"):
             fpath = os.path.join(_BUILDER_STATES_DIR, fname)
             try:

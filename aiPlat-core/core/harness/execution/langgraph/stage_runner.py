@@ -221,6 +221,23 @@ class StageRunner:
         # reasoning is the actual LLM response; observation is often "No action to execute" filler.
         ctx = result.final_state.context
         reasoning = ctx.get("reasoning", "") or ctx.get("output", "") or ctx.get("observation", "") or ctx.get("action_result", "")
+
+        # ── Merge skill/tool outputs from observations ──
+        # Observations contain actual skill execution results (e.g., code_generation output).
+        # Without this, _exec_stage only sees reasoning text and misses generated code.
+        observations = ctx.get("_observations", [])
+        if observations and isinstance(observations, list):
+            # Collect non-trivial observations (skip filler like "No action to execute")
+            meaningful = [
+                str(o) for o in observations
+                if isinstance(o, str) and len(o.strip()) > 20
+                and "No action" not in str(o)
+            ]
+            if meaningful:
+                delimiter = "\n\n---\n\n"
+                all_obs = delimiter.join(meaningful)
+                reasoning = f"{reasoning}{delimiter}[OBSERVATION]{delimiter}{all_obs}" if reasoning else all_obs
+
         step_count = int(getattr(result.final_state, "step_count", 0) or 0)
         tokens_used = int(getattr(result.final_state, "used_tokens", 0) or 0)
         if reasoning:
