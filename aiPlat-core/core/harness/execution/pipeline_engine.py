@@ -3636,6 +3636,50 @@ Output format: JSON array of {{"rank": 1, "score": 0.95, "content": "..."}}"""
 
             return await self._exec_tdd_cycle(stage, state)
 
+
+        # ── Direct code generation for uses_file_output stages ──
+        # Bypass ReAct loop entirely: load code_generation SKILL.md as SOP
+        # and call LLM directly. This avoids the skill_load tool call issue.
+        if getattr(stage, 'uses_file_output', False):
+            import os as _os
+            _here = _os.path.dirname(_os.path.abspath(__file__))
+            _skill = _os.path.abspath(_os.path.join(_here, "..", "..", "engine", "skills", "code_generation", "SKILL.md"))
+            _alt = _os.path.expanduser("~/.aiplat/skills/code_generation/SKILL.md")
+            if not _os.path.isfile(_skill):
+                _skill = _alt
+            if _os.path.isfile(_skill):
+                try:
+                    with open(_skill, "r") as _sf:
+                        _sop = _sf.read()
+                    if _sop.startswith("---"):
+                        _parts = _sop.split("---", 2)
+                        _sop = _parts[2].strip() if len(_parts) > 2 else _sop
+                    from core.harness.syscalls.llm import sys_llm_generate
+                    from core.harness.utils.model_injection import best_model_for_purpose
+                    _arch = state.get("architecture", {})
+                    _arch_text = ""
+                    if isinstance(_arch, dict):
+                        _arch_text = "\n".join(f"{k}: {v}" for k, v in _arch.items() if isinstance(v, str))
+                    _prompt = state.get("description", "")
+                    _response = await sys_llm_generate(
+                        None,
+                        [
+                            {"role": "system", "content": _sop[:4000]},
+                            {"role": "user", "content": f"## Requirements\n{_prompt}\n\n## Architecture\n{_arch_text[:2000]}\n\nGenerate complete runnable code. Use ## FILE: format for each file. Include all imports."},
+                        ],
+                        model_name=best_model_for_purpose("code_gen"),
+                        max_tokens=32000,
+                    )
+                    _result = getattr(_response, "content", "") or str(_response)
+                    if _result and len(_result) > 100:
+                        state[stage.output_artifact] = {"raw_output": _result}
+                        logging.getLogger("pipeline_engine").warning(
+                            "Direct code gen OK: stage=%s output=%d chars", stage.id, len(_result))
+                        return state
+                except Exception as _se:
+                    logging.getLogger("pipeline_engine").warning(
+                        "Direct code gen failed for %s: %s", stage.id, str(_se)[:200])
+
         else:  # code_first (default)
 
             return await self._exec_stage(stage, state)
