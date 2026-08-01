@@ -867,8 +867,8 @@ def _get_knowledge_context(text: str) -> str:
     if not text or len(text) < 5:
         return ""
     try:
-        from core.harness.knowledge.wiki_engine import wiki_search_pages as _wiki_search
-        pages = _wiki_search(text, limit=3, collection_id="default")
+        from core.api.core_facade import wiki_search_pages
+        pages = wiki_search_pages(text, limit=3, collection_id="default")
         if pages:
             return "参考知识：\n" + "\n".join(
                 f"- {p.get('title','')}: {p.get('body','')[:300]}"
