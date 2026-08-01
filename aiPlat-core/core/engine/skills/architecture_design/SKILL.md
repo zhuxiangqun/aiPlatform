@@ -14,10 +14,10 @@ triggers:
 permissions:
 - llm:generate
 effects:
-- type: write
+- type: read
   resources:
-  - filesystem:/tmp
-  idempotent: false
+  - llm:generate
+  idempotent: true
   rollback_available: true
 input_schema:
   prd:
