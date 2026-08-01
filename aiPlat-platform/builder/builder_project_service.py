@@ -482,7 +482,7 @@ class BuilderProjectService:
         _enriched_message = message
         try:
             from core.harness.syscalls.retrieval import sys_knowledge_retrieve
-            _kb_docs = await sys_knowledge_retrieve(message, top_k=3)
+            _kb_docs = sys_knowledge_retrieve(message, top_k=3)
             if _kb_docs:
                 _kb_lines = ["## 知识库中已有的相关内容"]
                 for _doc in _kb_docs[:3]:
@@ -494,7 +494,7 @@ class BuilderProjectService:
                     _kb_context = "\n".join(_kb_lines)
                     _enriched_message = f"{_kb_context}\n\n---\n用户需求: {message}"
         except Exception:
-            pass  # best-effort, don't block PM dialogue on retrieval failure
+            pass  # best-effort
 
         try:
             result = await core_chat(ChatContext(
