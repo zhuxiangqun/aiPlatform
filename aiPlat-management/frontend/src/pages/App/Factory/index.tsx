@@ -86,7 +86,8 @@ const ProjectPanel: React.FC<{
   onClose: () => void;
   onRefresh: () => void;
 }> = ({ project, onClose, onRefresh }) => {
-  const [phase, setPhase] = useState('dialogue');
+  const [phase, setPhase] = useState(
+    ((project as any).confirmed_prd || (project.runs?.length > 0)) ? 'team_ready' : 'dialogue');
   const [prdReady, setPrdReady] = useState(
     !!(project as any).confirmed_prd || (project as any).runs?.length > 0);
   const [starting, setStarting] = useState(false);

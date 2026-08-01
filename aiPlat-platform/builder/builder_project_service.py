@@ -1082,7 +1082,11 @@ class BuilderProjectService:
                     run_record = proj["runs"][-1]
                     # Compute pass rate from actual artifacts if test stage produced 0
                     _computed_pr = state.get("pass_rate", 0)
-                    if _computed_pr == 0:
+                    # Prefer real test pass_rate from pytest execution
+                    _test_pr = state.get("_test_pass_rate", None)
+                    if _test_pr is not None:
+                        _computed_pr = _test_pr
+                    elif _computed_pr == 0:
                         _arch = state.get("architecture", {})
                         _code = state.get("code", {})
                         _arch_ok = isinstance(_arch, dict) and len(_arch.get("raw_output", "") if isinstance(_arch, dict) else "") > 500

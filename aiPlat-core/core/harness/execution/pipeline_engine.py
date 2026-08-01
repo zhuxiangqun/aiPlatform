@@ -3745,10 +3745,60 @@ Output format: JSON array of {{"rank": 1, "score": 0.95, "content": "..."}}"""
                     )
                     _result = getattr(_response, "content", "") or str(_response)
                     if _result and len(_result) > 100:
-                        state[stage.output_artifact] = {"raw_output": _result}
+                        # ── Execute the generated tests ──
+                        _test_output = _result
+                        _passed = _failed = _errors = 0
+                        _test_log = ""
+                        try:
+                            import tempfile, subprocess, os as _os, re as _re
+                            _tmp = tempfile.mkdtemp(prefix="aiplat_tests_")
+                            # Parse ## FILE: blocks and write to temp dir
+                            _blocks = _re.split(r'^##\s*FILE:\s*', _result, flags=_re.MULTILINE)
+                            for _block in _blocks[1:]:
+                                _lines = _block.strip().split("\n", 1)
+                                if len(_lines) >= 2:
+                                    _fpath = _lines[0].strip()
+                                    _fcontent = _re.sub(r'^```\w*\n?', '', _lines[1].strip())
+                                    _fcontent = _re.sub(r'\n?```\s*$', '', _fcontent)
+                                    _full = _os.path.join(_tmp, _fpath)
+                                    _os.makedirs(_os.path.dirname(_full), exist_ok=True)
+                                    with open(_full, "w") as _fw:
+                                        _fw.write(_fcontent)
+                            # Run pytest
+                            _proc = subprocess.run(
+                                [_os.sys.executable, "-m", "pytest", _tmp, "--tb=short", "-q", "--no-header"],
+                                capture_output=True, text=True, timeout=60)
+                            _test_log = _proc.stdout + "\n" + _proc.stderr
+                            # Parse results
+                            _m = _re.search(r'(\d+)\s+passed', _test_log)
+                            if _m: _passed = int(_m.group(1))
+                            _m = _re.search(r'(\d+)\s+failed', _test_log)
+                            if _m: _failed = int(_m.group(1))
+                            _m = _re.search(r'(\d+)\s+error', _test_log)
+                            if _m: _errors = int(_m.group(1))
+                            if _passed + _failed + _errors == 0 and 'no tests ran' in _test_log.lower():
+                                pass  # no tests found
+                            import shutil
+                            shutil.rmtree(_tmp, ignore_errors=True)
+                        except Exception as _te:
+                            _test_log = f"Test execution error: {str(_te)[:500]}"
+                            _errors = 1
+
+                        _total = _passed + _failed + _errors
+                        _pr = _passed / _total if _total > 0 else 0
+                        state[stage.output_artifact] = {
+                            "raw_output": _test_output,
+                            "test_results": {
+                                "passed": _passed, "failed": _failed, "errors": _errors,
+                                "total": _total, "pass_rate": round(_pr, 2),
+                            },
+                            "test_log": _test_log[:3000],
+                        }
                         state["_has_tests"] = True
+                        state["_test_pass_rate"] = _pr
                         logging.getLogger("pipeline_engine").warning(
-                            "Direct test gen OK: stage=%s output=%d chars", stage.id, len(_result))
+                            "Direct test OK: stage=%s tests=%d/%d/%d log=%d chars",
+                            stage.id, _passed, _failed, _errors, len(_test_log))
                         return state
                 except Exception as _se:
                     logging.getLogger("pipeline_engine").warning(
