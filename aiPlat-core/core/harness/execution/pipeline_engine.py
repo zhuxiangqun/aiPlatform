@@ -3650,29 +3650,30 @@ Output format: JSON array of {{"rank": 1, "score": 0.95, "content": "..."}}"""
         # ── Architecture design via skill ──
         if getattr(stage, 'output_artifact', '') == 'architecture':
             try:
-                from core.harness.syscalls.skill import sys_skill_call
-                _prd = state.get("_prd_data", {})
-                _skill_result = await sys_skill_call(
-                    "architecture_design",
-                    {
-                        "prd": _prd if isinstance(_prd, dict) else {},
-                        "description": state.get("description", ""),
-                        "constraints": _prd.get("constraints", "") if isinstance(_prd, dict) else "",
-                    },
-                )
-                _output = getattr(_skill_result, 'output', None)
-                if isinstance(_output, dict) and _output.get("text"):
-                    _result = str(_output["text"])
-                elif isinstance(_output, str) and len(_output) > 100:
-                    _result = _output
-                else:
-                    _result = str(_skill_result) if _skill_result else ""
-                _result = _result.replace("```json","").replace("```","").strip()
-                if _result and len(_result) > 200:
-                    state[stage.output_artifact] = {"raw_output": _result}
-                    logging.getLogger("pipeline_engine").warning(
-                        "Architecture skill OK: stage=%s output=%d chars", stage.id, len(_result))
-                    return state
+                from core.harness.integration import get_skill_registry
+                _reg = get_skill_registry()
+                _skill = _reg.get("architecture_design") if _reg else None
+                if _skill and hasattr(_skill, 'execute'):
+                    from core.harness.syscalls.skill import sys_skill_call
+                    _prd = state.get("_prd_data", {})
+                    _skill_result = await sys_skill_call(
+                        _skill,
+                        {"prd": _prd if isinstance(_prd, dict) else {}, "description": state.get("description", ""),
+                         "constraints": _prd.get("constraints", "") if isinstance(_prd, dict) else ""},
+                    )
+                    _output = getattr(_skill_result, 'output', None)
+                    if isinstance(_output, dict) and _output.get("text"):
+                        _result = str(_output["text"])
+                    elif isinstance(_output, str) and len(_output) > 100:
+                        _result = _output
+                    else:
+                        _result = str(_skill_result) if _skill_result else ""
+                    _result = _result.replace("```json","").replace("```","").strip()
+                    if _result and len(_result) > 200:
+                        state[stage.output_artifact] = {"raw_output": _result}
+                        logging.getLogger("pipeline_engine").warning(
+                            "Architecture skill OK: stage=%s output=%d chars", stage.id, len(_result))
+                        return state
             except Exception as _se:
                 logging.getLogger("pipeline_engine").warning(
                     "Architecture skill failed for %s: %s", stage.id, str(_se)[:200])
@@ -3680,30 +3681,31 @@ Output format: JSON array of {{"rank": 1, "score": 0.95, "content": "..."}}"""
         # ── Code generation via skill ──
         if getattr(stage, 'uses_file_output', False):
             try:
-                from core.harness.syscalls.skill import sys_skill_call
-                _arch = state.get("architecture", {})
-                _arch_text = ""
-                if isinstance(_arch, dict):
-                    _arch_text = "\n".join(f"{k}: {v}" for k, v in _arch.items() if isinstance(v, str))
-                _skill_result = await sys_skill_call(
-                    "code_generation",
-                    {
-                        "prompt": state.get("description", ""),
-                        "architecture": _arch_text[:3000],
-                    },
-                )
-                _output = getattr(_skill_result, 'output', None)
-                if isinstance(_output, dict) and _output.get("text"):
-                    _result = str(_output["text"])
-                elif isinstance(_output, str) and len(_output) > 100:
-                    _result = _output
-                else:
-                    _result = str(_skill_result) if _skill_result else ""
-                if _result and len(_result) > 100:
-                    state[stage.output_artifact] = {"raw_output": _result}
-                    logging.getLogger("pipeline_engine").warning(
-                        "Code gen skill OK: stage=%s output=%d chars", stage.id, len(_result))
-                    return state
+                from core.harness.integration import get_skill_registry
+                _reg = get_skill_registry()
+                _skill = _reg.get("code_generation") if _reg else None
+                if _skill and hasattr(_skill, 'execute'):
+                    from core.harness.syscalls.skill import sys_skill_call
+                    _arch = state.get("architecture", {})
+                    _arch_text = ""
+                    if isinstance(_arch, dict):
+                        _arch_text = "\n".join(f"{k}: {v}" for k, v in _arch.items() if isinstance(v, str))
+                    _skill_result = await sys_skill_call(
+                        _skill,
+                        {"prompt": state.get("description", ""), "architecture": _arch_text[:3000]},
+                    )
+                    _output = getattr(_skill_result, 'output', None)
+                    if isinstance(_output, dict) and _output.get("text"):
+                        _result = str(_output["text"])
+                    elif isinstance(_output, str) and len(_output) > 100:
+                        _result = _output
+                    else:
+                        _result = str(_skill_result) if _skill_result else ""
+                    if _result and len(_result) > 100:
+                        state[stage.output_artifact] = {"raw_output": _result}
+                        logging.getLogger("pipeline_engine").warning(
+                            "Code gen skill OK: stage=%s output=%d chars", stage.id, len(_result))
+                        return state
             except Exception as _se:
                 logging.getLogger("pipeline_engine").warning(
                     "Code gen skill failed for %s: %s", stage.id, str(_se)[:200])
@@ -3714,19 +3716,19 @@ Output format: JSON array of {{"rank": 1, "score": 0.95, "content": "..."}}"""
             _code_text = _code.get("raw_output", "") if isinstance(_code, dict) else str(_code or "")
             if _code_text and len(_code_text) > 200:
                 try:
-                    from core.harness.syscalls.skill import sys_skill_call
-                    _arch = state.get("architecture", {})
-                    _arch_text = ""
-                    if isinstance(_arch, dict):
-                        _arch_text = "\n".join(f"{k}: {v}" for k, v in _arch.items() if isinstance(v, str))
-                    _skill_result = await sys_skill_call(
-                        "test_case_generation",
-                        {
-                            "prd": state.get("_prd_data", {}),
-                            "architecture": _arch_text[:2000],
-                            "code": _code_text[:8000],
-                        },
-                    )
+                    from core.harness.integration import get_skill_registry
+                    _reg = get_skill_registry()
+                    _skill = _reg.get("test_case_generation") if _reg else None
+                    if _skill and hasattr(_skill, 'execute'):
+                        from core.harness.syscalls.skill import sys_skill_call
+                        _arch = state.get("architecture", {})
+                        _arch_text = ""
+                        if isinstance(_arch, dict):
+                            _arch_text = "\n".join(f"{k}: {v}" for k, v in _arch.items() if isinstance(v, str))
+                        _skill_result = await sys_skill_call(
+                            _skill,
+                            {"prd": state.get("_prd_data", {}), "architecture": _arch_text[:2000], "code": _code_text[:8000]},
+                        )
                     _output = getattr(_skill_result, 'output', None)
                     if isinstance(_output, dict) and _output.get("text"):
                         _result = str(_output["text"])
