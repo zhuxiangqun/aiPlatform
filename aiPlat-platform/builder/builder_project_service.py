@@ -1041,6 +1041,31 @@ class BuilderProjectService:
             run_record["iteration"] = state.get("iteration", 0)
             run_record["error"] = state.get("error", "")
             self._runs[project_id] = state
+            # Merge full output from pipeline's final state snapshot
+            _out_dir = os.path.join(os.getenv("AIPLAT_HOME", os.path.expanduser("~/.aiplat")), "output", project_id)
+            _final_path = os.path.join(_out_dir, "_final_state.json")
+            if os.path.isfile(_final_path):
+                try:
+                    with open(_final_path, "r") as _fs:
+                        _final_state = json.loads(_fs.read())
+                    # Use _final_state's artifact fields which have full content
+                    for _key in ("architecture", "code", "test_report"):
+                        if _key in _final_state and _final_state[_key]:
+                            state[_key] = _final_state[_key]
+                    if "pass_rate" not in state or not state.get("pass_rate"):
+                        state["pass_rate"] = _final_state.get("pass_rate", state.get("pass_rate", 0))
+                    if "iteration" not in state or not state.get("iteration"):
+                        state["iteration"] = _final_state.get("iteration", state.get("iteration", 0))
+                    if "tokens_used" not in state or not state.get("tokens_used"):
+                        state["tokens_used"] = _final_state.get("tokens_used", state.get("tokens_used", 0))
+                    # Update run record with corrected pass_rate
+                    run_record = proj["runs"][-1]
+                    run_record["pass_rate"] = state.get("pass_rate", run_record.get("pass_rate", 0))
+                    run_record["tokens_used"] = state.get("tokens_used", run_record.get("tokens_used", 0))
+                    _runs_dict.pop(project_id, None)  # clear stale event bus cache
+                    self._runs[project_id] = state
+                except Exception as _se:
+                    logging.getLogger("builder").warning("Failed to merge final state: %s", str(_se)[:200])
             # Persist pipeline state so approve works after restart
             self._save_pipeline_state(project_id, state)
             # Trigger deploy assembly if pipeline completed (non-HITL auto pipelines)
