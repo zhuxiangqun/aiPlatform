@@ -188,6 +188,24 @@ class BaseAgent(IAgent):
                         messages.append({"role": "system", "content": conv_cfg.system_prompt})
                     elif context.variables.get("system_prompt"):
                         messages.append({"role": "system", "content": str(context.variables["system_prompt"])})
+                    
+                    # ── Memory injection: load working/episodic/semantic context ──
+                    sid = getattr(context, 'session_id', None) or None
+                    try:
+                        from ...harness.memory.manager import get_memory_manager
+                        mgr = get_memory_manager()
+                        mem_ctx = await mgr.build_context(
+                            current_query=context.messages[-1].get("content", "") if context.messages else "",
+                            system_prompt=messages[0]["content"] if messages else "",
+                            session_id=sid,
+                        )
+                        if mem_ctx:
+                            existing = getattr(mem_ctx, 'messages', None) or []
+                            if isinstance(existing, list):
+                                messages = list(existing) + messages
+                    except Exception:
+                        pass
+                    
                     messages.extend(list(context.messages) if context.messages else [])
                     if not messages:
                         messages = [{"role": "user", "content": str(context.variables.get("task", ""))}]

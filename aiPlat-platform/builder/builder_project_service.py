@@ -1004,6 +1004,11 @@ class BuilderProjectService:
             self._save_pipeline_state(project_id, state)
             # Trigger deploy assembly if pipeline completed (non-HITL auto pipelines)
             await self._save_state(project_id, state)
+            # Auto-deploy on pipeline success
+            try:
+                await self.deploy_to_app(project_id)
+            except Exception as _de:
+                logging.getLogger("builder").warning("auto-deploy failed for %s: %s", project_id, str(_de)[:200])
         except Exception as e:
             run_record = proj["runs"][-1]
             run_record["error"] = str(e)[:200]

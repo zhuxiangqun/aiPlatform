@@ -247,29 +247,35 @@ async def _save_pipeline_knowledge_to_wiki(state: dict, config: Any) -> None:
     try:
         from core.harness.knowledge.wiki_engine import write_page
         _name = state.get("description", _pid)
-        for _key in ("architecture", "code", "test_report"):
-            _val = state.get(_key)
-            if not _val or not isinstance(_val, dict):
+        _saved = 0
+        for _key, _val in state.items():
+            if _key.startswith("_") or not isinstance(_val, dict):
+                continue
+            if _key in ("phase", "error", "tokens_used", "iteration", "artifacts"):
                 continue
             _output = _val.get("raw_output", "") or str(_val)
             if not _output or len(_output) < 50:
                 continue
-            _title = f"pipeline/{_pid}/{_key}"
-            _label = {"architecture": "架构设计", "code": "代码生成", "test_report": "测试报告"}.get(_key, _key)
             try:
                 write_page(
-                    title=_title,
-                    body=f"# {_label} — {_name}\n\n{_output[:5000]}",
+                    title=f"pipeline/{_pid}/{_key}",
+                    body=f"# {_val.get('label', _key)} - {_name}\n\n{_output[:5000]}",
                     category="topics",
                     tags=["pipeline-output", _key],
                     collection_id="default",
                     status="draft",
                     skip_validation=True,
                 )
-            except Exception:
-                pass
-    except Exception:
-        pass
+                _saved += 1
+            except Exception as _we:
+                logging.getLogger("pipeline_engine").warning(
+                    "Wiki save failed pipeline/%s/%s: %s", _pid, _key, str(_we)[:200])
+        if _saved:
+            logging.getLogger("pipeline_engine").info(
+                "Wiki: saved %d pipeline artifacts for %s", _saved, _pid)
+    except Exception as _e:
+        logging.getLogger("pipeline_engine").warning(
+            "Wiki pipeline save error for %s: %s", _pid, str(_e)[:200])
 
 
 class PipelineEventBus:

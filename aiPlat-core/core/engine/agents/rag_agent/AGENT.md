@@ -11,13 +11,6 @@ tags:
 - rag
 - retrieval
 - generation
-skills:
-- knowledge_retrieval
-- summarization
-- code-hygiene
-- information_search
-- doc_query
-- multi_doc_query
 tools:
 - search
 - sysgraph_search
@@ -26,6 +19,13 @@ model: deepseek-reasoner
 config:
   system_prompt: 你是 rag_agent，基于检索增强生成的问答 Agent。引擎内置（engine）：仅核心能力层默认可用。
   model: deepseek-chat
+required_skills:
+- knowledge_retrieval
+- summarization
+- code-hygiene
+- information_search
+- doc_query
+- multi_doc_query
 ---
 
 

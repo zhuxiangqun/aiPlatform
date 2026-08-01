@@ -1664,12 +1664,17 @@ class MemoryManager:
 
 
         # Auto-register in SkillRegistry so agents can discover it
+        # Only register hot skills (pass_rate ≥ 85%) to avoid low-quality contamination
 
         try:
 
             from core.harness.integration import get_skill_registry
 
             from core.apps.skills.metadata import SkillMetadata
+
+            if not getattr(skill, 'is_hot', False):
+                logger.info(f"TaskSkill {skill.skill_id} pass_rate={skill.pass_rate:.2f} < 0.85, skipping registry")
+                return skill_path
 
             registry = get_skill_registry()
 

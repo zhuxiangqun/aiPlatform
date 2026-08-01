@@ -118,9 +118,11 @@ class StageRunner:
             if s.model:
                 model_name = s.model
             elif s.generate_test_plan:
-                model_name = "agent"  # QA needs reasoning
+                from core.harness.utils.model_injection import best_model_for_purpose
+                model_name = best_model_for_purpose("agent")
         if not model_name:
-            model_name = "agent"  # default for all stages
+            from core.harness.utils.model_injection import best_model_for_purpose
+            model_name = best_model_for_purpose("agent")
         max_steps = getattr(self._config, 'max_steps_per_stage', 10) if self._config else 1
         # max_tokens: per-stage token budget, derived from pipeline config
         total_budget = getattr(self._config, 'max_tokens_per_run', 100000) if self._config else 100000

@@ -863,19 +863,34 @@ def _build_from_workflow(workflow_stages: list, current_agent_id: str,
     return "\n".join(parts)
 
 def _get_knowledge_context(text: str) -> str:
-    """Retrieve relevant domain knowledge to help clarify."""
+    """Retrieve relevant domain knowledge to help clarify (Wiki + Graph + Domain)."""
     if not text or len(text) < 5:
         return ""
+    parts = []
     try:
+        # Tier 1: Wiki FTS5 search
         from core.api.core_facade import wiki_search_pages
         pages = wiki_search_pages(text, limit=3, collection_id="default")
         if pages:
-            return "参考知识：\n" + "\n".join(
+            parts.append("\n".join(
                 f"- {p.get('title','')}: {p.get('body','')[:300]}"
                 for p in pages if p.get('body')
-            )
+            ))
     except Exception:
         pass
+    
+    try:
+        # Tier 2: Domain classification for context
+        from core.harness.knowledge.domain_router import DomainRouter
+        router = DomainRouter()
+        domain_id = router.classify(text)
+        if domain_id and isinstance(domain_id, str):
+            parts.append(f"领域分类: {domain_id}")
+    except Exception:
+        pass
+    
+    if parts:
+        return "参考知识：\n" + "\n".join(parts)
     return ""
 
 

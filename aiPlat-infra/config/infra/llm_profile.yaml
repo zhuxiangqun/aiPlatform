@@ -86,12 +86,12 @@ model_capabilities:
     routing_rules:
       min_complexity: 2
       max_complexity: 5
-  deepseek-reasoner:
+  deepseek-v3:  # renamed from deepseek-reasoner (deprecated model name)
     context_window: 65536
     effective_utilization: 0.90
     input_token_budget: 50000
     semantic_understanding: 5
-    reasoning_quality: 2
+    reasoning_quality: 4
     hallucination_rate: 0.03
     strength_areas: ["reasoning"]
     weakness_areas: ["long_form_summary", "instruction_following"]

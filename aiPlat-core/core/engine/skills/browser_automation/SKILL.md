@@ -1,5 +1,5 @@
 ---
-execution_type: handler
+execution_type: prompt
 name: browser_automation
 display_name: 浏览器自动化
 description: 【必须使用 browser 工具实际操作网页，禁止凭记忆回答】自动化网页交互：导航、点击、输入、滚动、截图、提取内容。涉及代码生成和接口审查。

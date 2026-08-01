@@ -1,5 +1,6 @@
 ---
 name: scoring-engine-template
+execution_type: handler
 version: 1.0.0
 category: evaluation
 description: 基于YAML规则文件对数据进行多维评分，输出标准化评分报告

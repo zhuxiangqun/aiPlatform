@@ -10,12 +10,6 @@ category: engineering
 tags:
 - conversational
 - chat
-skills:
-- chitchat
-- translation
-- text_generation
-- code-hygiene
-- grilling
 tools:
 - sysgraph_search
 - sysgraph_context
@@ -23,6 +17,12 @@ model: deepseek-chat
 config:
   system_prompt: 你是 conversational_agent，基于对话模式的通用 Agent。引擎内置（engine）：仅核心能力层默认可用。
   model: deepseek-chat
+required_skills:
+- chitchat
+- translation
+- text_generation
+- code-hygiene
+- grilling
 ---
 
 
