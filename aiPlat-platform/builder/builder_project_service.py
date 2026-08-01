@@ -495,7 +495,13 @@ class BuilderProjectService:
         _enriched_message = message
         try:
             from core.harness.syscalls.retrieval import sys_knowledge_retrieve
-            _kb_docs = sys_knowledge_retrieve(message, top_k=3)
+            from core.harness.knowledge.domain_router import DomainRouter
+            _did = "default"
+            try:
+                _did = DomainRouter().classify(message)
+            except Exception:
+                pass
+            _kb_docs = sys_knowledge_retrieve(message, top_k=3, domain_id=_did)
             if _kb_docs:
                 _kb_lines = ["## 知识库中已有的相关内容"]
                 for _doc in _kb_docs[:3]:
