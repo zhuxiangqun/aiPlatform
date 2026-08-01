@@ -502,10 +502,12 @@ class BuilderProjectService:
                 self._sessions[project_id] = session
 
         if not isinstance(session, dict):
-            return {"reply": _AIPLAT_CHAT_NOT_IN_DIALOGUE, "prd_ready": False, "trace_id": "", "session_state": {}}
+            session = {"phase": BuilderSessionPhase.dialogue.value, "messages": []}
+            self._sessions[project_id] = session
 
-        if not session or session.get("phase") != BuilderSessionPhase.dialogue.value:
-            return {"reply": _AIPLAT_CHAT_NOT_IN_DIALOGUE, "prd_ready": False, "trace_id": "", "session_state": {}}
+        # Always allow chat — reset to dialogue phase if needed
+        if session.get("phase") != BuilderSessionPhase.dialogue.value:
+            session["phase"] = BuilderSessionPhase.dialogue.value
 
         if not self.model:
             return {"reply": _AIPLAT_CHAT_NO_MODEL, "prd_ready": False, "trace_id": "", "session_state": {}}

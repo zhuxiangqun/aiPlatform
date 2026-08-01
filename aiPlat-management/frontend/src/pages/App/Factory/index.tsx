@@ -87,7 +87,8 @@ const ProjectPanel: React.FC<{
   onRefresh: () => void;
 }> = ({ project, onClose, onRefresh }) => {
   const [phase, setPhase] = useState('dialogue');
-  const [prdReady, setPrdReady] = useState(false);
+  const [prdReady, setPrdReady] = useState(
+    !!(project as any).confirmed_prd || (project as any).runs?.length > 0);
   const [starting, setStarting] = useState(false);
   const [recommending, setRecommending] = useState(false);
   const [teamStages, setTeamStages] = useState<Array<{ agent_name?: string; agent_id?: string; phase?: string; id?: string }>>(project.team_stages || []);
@@ -98,6 +99,15 @@ const ProjectPanel: React.FC<{
   const [loadingHealth, setLoadingHealth] = useState(false);
   const [stageOutputs, setStageOutputs] = useState<Record<string, any> | null>(null);
   const [pollInterval, setPollInterval] = useState<ReturnType<typeof setInterval> | null>(null);
+  const [confirmedPrd, setConfirmedPrd] = useState<Record<string, unknown> | null>(
+    (project as any).confirmed_prd || null);
+
+  // Check for PRD on mount (may have been generated in a previous session)
+  useEffect(() => {
+    const raw = project as any;
+    if (raw.confirmed_prd) setConfirmedPrd(raw.confirmed_prd);
+    if (raw.confirmed_prd && (raw.runs?.length > 0)) setPrdReady(true);
+  }, [project]);
 
   // ── Poll pipeline state during execution ──
   useEffect(() => {
@@ -337,6 +347,18 @@ const ProjectPanel: React.FC<{
             </div>
           </div>
         ) : null}
+
+        {/* PRD summary — always show if confirmed */}
+        {confirmedPrd && (
+          <div className="p-3 rounded border border-green-500/30 bg-green-500/5 text-xs space-y-1">
+            <div className="flex items-center gap-2">
+              <CheckCircle className="w-3.5 h-3.5 text-green-400" />
+              <span className="text-green-300 font-semibold">PRD 已确认</span>
+            </div>
+            <p className="text-gray-200 font-medium">{confirmedPrd.title as string || 'Untitled'}</p>
+            <p className="text-gray-400">{(confirmedPrd.user_stories as any[])?.length || 0} 个 User Stories · {confirmedPrd.scope as string || '-'}</p>
+          </div>
+        )}
 
         {/* Team stages */}
         {teamStages.length > 0 && (
