@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import glob
 import logging
+import os
 
 # ── Configurable fallback team (used when LLM recommendation returns 0 stages) ──
 # Can be overridden via ~/.aiplat/default_team.yaml or env var
