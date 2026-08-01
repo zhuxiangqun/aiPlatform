@@ -1910,11 +1910,10 @@ Output format: JSON array of {{"rank": 1, "score": 0.95, "content": "..."}}"""
 
         if prd_data:
 
-            # Use first stage's output_artifact as the PRD key (config-driven)
-
-            prd_key = self._config.stages[0].output_artifact if self._config.stages else ""
-
-            state[prd_key] = prd_data
+            # Store PRD under a non-artifact key so it doesn't interfere with stage skip logic.
+            # The first stage's output_artifact (e.g., "architecture") must remain empty
+            # so the stage actually executes and generates its own output.
+            state["_prd_data"] = prd_data
 
         return await self._run_stages_from(0, state)
 
@@ -3644,7 +3643,7 @@ Output format: JSON array of {{"rank": 1, "score": 0.95, "content": "..."}}"""
                 from core.harness.syscalls.llm import sys_llm_generate
                 from core.harness.utils.model_injection import best_model_for_purpose
                 _prompt = state.get("description", "")
-                _prd = state.get("confirmed_prd", state.get(_prompt[:200], {}))
+                _prd = state.get("_prd_data", {})
                 _prd_text = _json.dumps(_prd, ensure_ascii=False)[:3000] if isinstance(_prd, dict) else _prompt
                 _response = await sys_llm_generate(
                     None,
