@@ -3644,27 +3644,53 @@ Output format: JSON array of {{"rank": 1, "score": 0.95, "content": "..."}}"""
                 from core.harness.utils.model_injection import best_model_for_purpose
                 _prompt = state.get("description", "")
                 _prd = state.get("_prd_data", {})
-                _prd_text = _json.dumps(_prd, ensure_ascii=False)[:3000] if isinstance(_prd, dict) else _prompt
+                _prd_text = _json.dumps(_prd, ensure_ascii=False)[:4000] if isinstance(_prd, dict) else _prompt
                 _response = await sys_llm_generate(
                     None,
                     [
                         {"role": "system", "content": (
-                            "你是系统架构师。根据PRD需求设计完整的系统架构。\n"
-                            "输出JSON格式，不要markdown代码块：\n"
+                            "你是资深系统架构师。根据PRD需求设计完整、详细、可落地的系统架构。输出纯JSON(无markdown代码块)。\n\n"
+                            "JSON结构：\n"
                             "{\n"
                             '  "title":"项目名称",\n'
-                            '  "overview":"架构概述(200字)",\n'
-                            '  "components":[{"name":"组件名","role":"职责","tech":"技术栈"}],\n'
-                            '  "data_flow":"数据流描述",\n'
-                            '  "api_design":[{"method":"GET","path":"/api/x","desc":"说明"}],\n'
-                            '  "database_schema":"数据库设计",\n'
-                            '  "deployment":"部署方案"\n'
-                            "}"
+                            '  "overview":"500字架构概述：整体架构风格、核心技术选型理由、关键设计决策",\n'
+                            '  "folder_structure":"完整目录树(含后端/前端/配置/测试/脚本等全部文件夹)",\n'
+                            '  "components":[\n'
+                            '    {\n'
+                            '      "name":"组件名",\n'
+                            '      "layer":"前端/后端/中间件/数据/部署",\n'
+                            '      "tech":"具体技术栈(含版本号)",\n'
+                            '      "responsibility":"3-5条详细职责",\n'
+                            '      "depends_on":["依赖的其他组件"],\n'
+                            '      "interfaces":["对外暴露的接口/API"]\n'
+                            '    }\n'
+                            '  ],\n'
+                            '  "data_flow":"完整数据流描述(用户请求→前端→API→服务层→数据库→返回,每个环节的技术细节)",\n'
+                            '  "api_design":[\n'
+                            '    {"method":"GET/POST/PUT/DELETE","path":"/api/resource","description":"功能描述","request":{"headers":{},"body":{}},"response":{"status":200,"body":{}},"error_codes":[400,401,500]}\n'
+                            '  ],\n'
+                            '  "database_schema":"完整的数据库表设计(表名、字段名、类型、约束、索引、外键关系)",\n'
+                            '  "state_management":"状态管理方案(前端store/缓存策略/会话管理)",\n'
+                            '  "security":"安全设计(认证方案、权限模型、数据加密、输入验证、CORS)",\n'
+                            '  "performance":"性能优化(缓存策略、CDN、懒加载、数据库索引、API限流)",\n'
+                            '  "deployment":"部署方案(Docker/docker-compose/环境变量/健康检查/日志/监控)"\n'
+                            "}\n\n"
+                            "要求：\n"
+                            "- 每个组件至少100字职责描述\n"
+                            "- API设计至少覆盖所有CRUD操作和业务核心流程\n"
+                            "- 数据库Schema必须包含字段类型(如VARCHAR(255),INT,TEXT)和约束(NOT NULL,UNIQUE,FOREIGN KEY)\n"
+                            "- 输出必须可被json.loads()直接解析,不要任何注释或markdown代码块"
                         )},
-                        {"role": "user", "content": f"## PRD\n{_prd_text}\n\n## 项目描述\n{_prompt}\n\n请输出完整的架构设计JSON。"},
+                        {"role": "user", "content": (
+                            f"## PRD\n{_prd_text}\n\n"
+                            f"## 项目描述\n{_prompt}\n\n"
+                            f"## 技术约束\n"
+                            f"{_prd.get('constraints','') if isinstance(_prd,dict) else ''}\n\n"
+                            f"请输出完整的架构设计JSON。必须包含folder_structure、详细组件设计、完整API、数据库Schema。"
+                        )},
                     ],
                     model_name=best_model_for_purpose("reasoning"),
-                    max_tokens=8000,
+                    max_tokens=12000,
                 )
                 _result = getattr(_response, "content", "") or str(_response)
                 _result = _result.replace("```json","").replace("```","").strip()
