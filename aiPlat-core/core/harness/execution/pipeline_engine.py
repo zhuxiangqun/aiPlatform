@@ -10548,53 +10548,10 @@ Output ONLY this JSON (no preamble): {{"diagnosis":"<1 sentence>","suggested_pro
 
 
 
-        prompt = (
-
-            "You are a Harness engineer optimizing an AI pipeline execution system.\n\n"
-
-            f"A failure pattern has been identified:\n"
-
-            f"  Verifier Cause: {signature.verifier_cause}\n"
-
-            f"  Causal Status: {signature.causal_status}\n"
-
-            f"  Abstract Mechanism: {signature.abstract_mechanism}\n"
-
-            f"  Occurrences: {signature.count}\n\n"
-
-            f"Example failures:\n{example_lines}\n\n"
-
-            "Your task: propose the MINIMAL possible change to PipelineStageConfig or AGENT.md "
-
-            "that would address this specific failure pattern without breaking existing behavior.\n\n"
-
-            "The change must:\n"
-
-            "1. Target a specific PipelineStageConfig field or AGENT.md instruction\n"
-
-            "2. Be minimal — change ONE thing only\n"
-
-            "3. Explain WHY this change addresses the mechanism (not just the symptom)\n"
-
-            "4. Rate the risk: low (cosmetic), medium (changes behavior), high (may break passing cases)\n\n"
-
-            "Reply with JSON only:\n"
-
-            f'{{"target_field": "prompt_extra|hitl|failure_strategy|retry_llm_on_rate_limit|stage_timeout_seconds", '
-
-            f'"target_stage_pattern": "stage id pattern (use * for all)", '
-
-            f'"old_value": "current", "new_value": "proposed", "rationale": "one sentence", '
-
-            f'"target_mechanism": "{signature.abstract_mechanism}", '
-
-            f'"target_causal": "{signature.causal_status}", '
-
-            f'"target_verifier": "{signature.verifier_cause}", '
-
-            f'"risk": "low|medium|high"}}'
-
-        )
+        from core.harness.utils.prompt_loader import _sync_resolve
+        prompt = _sync_resolve("harness-fix-proposer",
+            failure_history=f"Verifier Cause: {signature.verifier_cause}\nCausal Status: {signature.causal_status}\nAbstract Mechanism: {signature.abstract_mechanism}\nOccurrences: {signature.count}\nExamples:\n{example_lines}",
+            pipeline_context="")
 
 
 
