@@ -40,7 +40,9 @@ const InlineChat: React.FC<{
     setSending(true);
     setMessages(prev => [...prev, { role: 'user', content: msg }]);
     try {
-      const resp = await projectApi.chat(projectId, msg);
+      const resp = agentMode
+        ? await projectApi.agentChat(projectId, msg)
+        : await projectApi.chat(projectId, msg);
       setMessages(prev => [...prev, { role: 'assistant', content: resp.reply || '(no response)' }]);
       if (resp.prd_ready && onPhaseChange) onPhaseChange('prd_ready');
     } catch {
@@ -65,7 +67,7 @@ const InlineChat: React.FC<{
       <div className="flex-1 overflow-y-auto p-3 space-y-2 min-h-[200px] max-h-[400px]">
         {messages.map((m, i) => (
           <div key={i} className={`p-2 rounded text-sm ${m.role === 'assistant' ? 'bg-primary/10 border border-primary/20 text-gray-200' : 'bg-dark-card border border-dark-border text-gray-300'}`}>
-            <div className="text-[10px] text-gray-500 mb-1">{m.role === 'assistant' ? 'AI PM' : '你'}</div>
+             <div className="text-[10px] text-gray-500 mb-1">{m.role === 'assistant' ? (agentMode ? agentName : 'AI PM') : '你'}</div>
             <div className="whitespace-pre-wrap break-words">{m.content}</div>
           </div>
         ))}
@@ -73,7 +75,7 @@ const InlineChat: React.FC<{
         <div ref={bottomRef} />
       </div>
       <div className="p-2 border-t border-dark-border flex gap-2">
-        <Textarea value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }} placeholder="输入需求..." rows={2} className="flex-1 text-xs" />
+        <Textarea value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }} placeholder={agentMode ? `使用 ${agentName}...` : '输入需求...'} rows={2} className="flex-1 text-xs" />
         <Button variant="primary" onClick={handleSend} loading={sending} icon={<Send className="w-3 h-3" />} />
       </div>
     </div>
@@ -215,6 +217,8 @@ const ProjectPanel: React.FC<{
   const [deployUrl, setDeployUrl] = useState('');
   const [deploying, setDeploying] = useState(false);
   const [healthReport, setHealthReport] = useState<Record<string, any> | null>(null);
+  const [agentMode, setAgentMode] = useState(false);
+  const [agentName, setAgentName] = useState('');
   const [loadingHealth, setLoadingHealth] = useState(false);
   const [stageOutputs, setStageOutputs] = useState<Record<string, any> | null>(null);
   const [pollInterval, setPollInterval] = useState<ReturnType<typeof setInterval> | null>(null);
@@ -260,6 +264,11 @@ const ProjectPanel: React.FC<{
         const s = (st as any)?.state || {};
         const p = s.phase as string || phase;
         setPhase(p);
+        // Detect Agent mode: generated agent is deployed
+        if (s._generated_agent && !agentMode) {
+          setAgentName(s._generated_agent as string);
+          setAgentMode(true);
+        }
         const runs = (st as any)?.runs || [];
         if (runs.length > 0) setRunHistory(runs);
         // teamStages already set from project.team_stages (line 298);

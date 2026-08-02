@@ -630,6 +630,40 @@ class BuilderProjectService:
             _log.warning("_extract_prd_from_chat failed: %s", str(e)[:200])
         return None
 
+    async def agent_chat(self, project_id: str, message: str) -> Dict[str, Any]:
+        """Chat with the generated Agent application (Agent mode)."""
+        from core.api.intents import core_chat, ChatContext
+
+        proj = self._projects.get(project_id)
+        if not proj:
+            raise ValueError(f"Project {project_id} not found")
+
+        state = self._runs.get(project_id)
+        if not state:
+            state = self._load_pipeline_state(project_id) or {}
+
+        agent_name = state.get("_generated_agent", "")
+        if not agent_name:
+            return {"reply": "Agent 应用尚未生成。请等待 Agent Engineer 阶段完成。", "trace_id": "", "session_state": {}}
+
+        try:
+            result = await core_chat(ChatContext(
+                agent_name=agent_name,
+                session_id=f"{project_id}_app",
+                user_input=message,
+                model=self.model,
+            ))
+            reply = result.reply or ""
+            reply = _unwrap_json_reply(reply)
+            return {
+                "reply": reply,
+                "agent_name": agent_name,
+                "trace_id": getattr(result, 'trace_id', ''),
+                "session_state": {"agent": agent_name},
+            }
+        except Exception as e:
+            return {"reply": f"应用调用失败: {str(e)[:200]}", "trace_id": "", "session_state": {}}
+
     async def confirm_prd(self, project_id: str, prd_data: Any = None) -> Dict[str, Any]:
         session = self._sessions.get(project_id)
         if not session:

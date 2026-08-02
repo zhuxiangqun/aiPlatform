@@ -3794,6 +3794,37 @@ class PipelineEngine:
             state = await self._run_test_execution(state, stage, _result)
         state["_has_tests"] = True if getattr(stage, 'generate_test_plan', False) else state.get("_has_tests", False)
 
+        # ── 5.5. Agent app: write AGENT.md + SKILL.md files to disk ──
+        _agent_name = ""
+        _skill_count = 0
+        if _artifact_key == "agent_app" and "## FILE:" in _result:
+            import re as _re, os as _os2
+            for _block in _re.split(r'^##\s*FILE:\s*', _result, flags=_re.MULTILINE)[1:]:
+                _lines = _block.strip().split("\n", 1)
+                if len(_lines) < 2:
+                    continue
+                _fname = _lines[0].strip()
+                _content = _lines[1].strip()
+                _content = _re.sub(r'^```\w*\n?', '', _content)
+                _content = _re.sub(r'\n?```\s*$', '', _content)
+                _full = _os2.path.expanduser(_fname)
+                try:
+                    _os2.makedirs(_os2.path.dirname(_full), exist_ok=True)
+                    with open(_full, "w", encoding="utf-8") as _fw:
+                        _fw.write(_content)
+                    if "AGENT.md" in _fname:
+                        _agent_name = _os2.path.basename(_os2.path.dirname(_full))
+                    if "SKILL.md" in _fname:
+                        _skill_count += 1
+                    _log.getLogger("pipeline_engine").warning("Agent app: wrote %s (%d chars)", _fname, len(_content))
+                except Exception as _we:
+                    _log.getLogger("pipeline_engine").warning("Agent app: failed to write %s: %s", _fname, _we)
+            if _agent_name:
+                state["_generated_agent"] = _agent_name
+                state["_generated_skill_count"] = _skill_count
+                _log.getLogger("pipeline_engine").warning(
+                    "Agent app deployed: agent=%s skills=%d", _agent_name, _skill_count)
+
         # ── 6. HITL gate: pause pipeline if stage requires human approval ──
         if getattr(stage, 'hitl', False):
             state["phase"] = "paused"
