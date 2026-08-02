@@ -1106,12 +1106,12 @@ class BuilderProjectService:
         print(f"### start_pipeline: session created, calling start for {project_id}", file=sys.stderr)
         self._pipeline_sessions[project_id] = pipeline_session
 
-        # Register event bus listener — writes pipeline state to local _runs for frontend polling
+        # Register event bus listener — writes pipeline state directly to _runs for frontend polling
         from core.api.facades.runtime_facade import get_event_bus
-        _runs_dict: dict = {}
+        _svc_ref = self
         def _on_event(pid: str, evt: str, data: dict):
             if pid == project_id:
-                _runs_dict[pid] = dict(data.get("state", data))
+                _svc_ref._runs[project_id] = dict(data.get("state", data))
         get_event_bus().on(_on_event)
 
         # Run synchronously — proxy timeout is 600s, Architect takes 20-60s.
@@ -1566,6 +1566,14 @@ class BuilderProjectService:
                         logging.warning(str(e), exc_info=True)
         if not state:
             state = {}
+        # Merge in-memory _runs for live updates during pipeline execution
+        _live = self._runs.get(project_id, {})
+        if _live:
+            for _key, _val in _live.items():
+                if isinstance(_val, dict) and _val.get("raw_output"):
+                    state[_key] = _val
+            if _live.get("phase"):
+                state["phase"] = _live["phase"]
         # Merge full pipeline output from _final_state.json if available
         _out_dir = os.path.join(os.getenv("AIPLAT_HOME", os.path.expanduser("~/.aiplat")), "output", project_id)
         _final_path = os.path.join(_out_dir, "_final_state.json")
