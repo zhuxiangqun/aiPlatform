@@ -140,6 +140,14 @@ def _get_cached_model_manager() -> Any:
 
 
 
+
+
+def _find_existing_source(mgr, model_name: str):
+    for m in mgr._models.values():
+        if m.name == model_name:
+            return m.source
+    return ModelSource.EXTERNAL
+
 def _ensure_adapter_models_injected(mgr: Any) -> None:
 
     """Lazily inject adapter-based models (called before model selection, not at init)."""
@@ -341,7 +349,7 @@ def _do_inject_adapter_models(mgr: Any) -> int:
 
                     provider=provider,
 
-                    source=ModelSource.EXTERNAL,
+                    source=_find_existing_source(mgr, model_name),
 
                     enabled=True,
 

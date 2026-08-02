@@ -10,6 +10,7 @@ purpose_profiles:
     scoring_weights:
       reasoning: 0.3
       latency: -2.5
+      source_bias: 2.5
   clarify:
     prefer: ["chat"]
     prefer_local: true
