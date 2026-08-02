@@ -773,6 +773,8 @@ class BuilderProjectService:
                             generate_test_plan=bool(ps.get("generate_test_plan", False)),
                             test_result_key=ps.get("test_result_key", "test_report"),
                             agent_type=ps.get("agent_type", "react"),
+                            skill_name=ps.get("skill_name", ""),
+                            skill_model_purpose=ps.get("skill_model_purpose", ""),
                         ))
                     if team_stages:
                         team_req = TeamAssembleRequest(

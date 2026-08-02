@@ -234,6 +234,37 @@ def _load_fallback_team() -> List[Dict[str, Any]]:
     return []
 
 
+def _match_stage_from_templates(stage: Dict[str, Any]) -> Dict[str, Any]:
+    """Fill skill_name + orchestration fields from registered YAML team templates.
+
+    Scans all ~/.aiplat/teams/*.yaml for stages matching stage['agent_id'].
+    When found, copies config fields (skill_name, output_artifact, hitl, etc.)
+    into the stage dict. Does NOT overwrite fields already set by LLM or user.
+
+    This bridges the gap between LLM-recommended stages (which don't know
+    about skill mapping) and YAML-configured stages (which do).
+    """
+    aid = stage.get("agent_id", "")
+    if not aid:
+        return stage
+
+    for tmpl in list_team_templates():
+        for ts in tmpl.stages:
+            if ts.get("agent_id") == aid:
+                # Copy orchestration fields from template if not already set
+                _config_fields = [
+                    "skill_name", "output_artifact", "test_result_key",
+                    "hitl", "hitl_phase", "uses_file_output", "generate_test_plan",
+                    "failure_strategy", "skill_model_purpose",
+                ]
+                for f in _config_fields:
+                    if not stage.get(f) and ts.get(f):
+                        stage[f] = ts[f]
+                return stage  # First match wins
+
+    return stage
+
+
 # ── Team recommendation ─────────────────────────────────────────
 
 async def recommend_team_stages(
@@ -325,7 +356,7 @@ async def recommend_team_stages(
             )
             for s in stages_raw:
                 if isinstance(s, dict):
-                    recommendation.stages.append({
+                    _stage = {
                         "agent_id": s.get("agent_id") or s.get("agent") or s.get("name") or "",
                         "agent_name": s.get("agent_name") or s.get("name", ""),
                         "agent_type": s.get("agent_type") or s.get("type", "react"),
@@ -338,7 +369,10 @@ async def recommend_team_stages(
                         "generate_test_plan": bool(s.get("generate_test_plan", False)),
                         "test_result_key": s.get("test_result_key", ""),
                         "id": s.get("id", f"stage_{len(recommendation.stages)}"),
-                    })
+                    }
+                    # Match against YAML templates for skill_name + orchestration
+                    _stage = _match_stage_from_templates(_stage)
+                    recommendation.stages.append(_stage)
     except Exception as e:
         logging.warning(str(e), exc_info=True)
 
