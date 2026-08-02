@@ -125,10 +125,7 @@ async def system_overview():
 
     except Exception:
 
-        live["diagnosis_sessions"] = 0
-
-        live["enterprise_terms"] = 0
-
+        live["domain_entity_counts"] = {}
 
 
     try:

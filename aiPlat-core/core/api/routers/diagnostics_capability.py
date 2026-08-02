@@ -81,7 +81,7 @@ def _build_recommend(domain_id: str, metrics: dict, skills: list, gaps: list) ->
     if q > 0 and qr < 0.8:
         recs.append(f"Golden Query通过率偏低（{qr:.0%}），建议增加种子数据和实体关系")
     if not p:
-        recs.append(f"域提示词模板缺失，在prompt_loader.py中_register('domain-prompt-{domain_id}', ...)")
+        recs.append(f"域提示词缺失，在~/.aiplat/ontologies/{domain_id}.yaml中添加llm_prompt字段")
     if not seed:
         recs.append(f"种子数据文件不存在，运行 `python scripts/seed_wiki.py --domain {domain_id}`")
     if e >= 15 and s >= 1:
