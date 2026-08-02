@@ -485,10 +485,10 @@ def _inject_term_dictionary(parts: List[str]):
     """Layer 9: Term dictionary from GraphIndex (R)."""
     try:
         from core.harness.ontology_engine.graph_index import GraphIndex
-        from core.harness.knowledge.domain_router import get_domain_router
+        from core.harness.knowledge.domain_router import DomainRouter
 
         terms = []
-        for domain_id in get_domain_router().list_domains():
+        for domain_id in DomainRouter().list_domains():
             try:
                 g = GraphIndex.load(domain_id)
                 for _, n in getattr(g, '_nodes', {}).items():

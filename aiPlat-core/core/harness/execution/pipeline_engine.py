@@ -3704,7 +3704,7 @@ class PipelineEngine:
         # Automatically classify requirement → inject domain prompt + context bus layers.
         # Engine delegates to DomainRouter + ContextBus — no hardcoded domain knowledge.
         try:
-            from core.harness.knowledge.domain_router import get_domain_router
+            from core.harness.knowledge.domain_router import DomainRouter
             from core.harness.knowledge.context_bus import assemble_pipeline_context
             from core.harness.utils.prompt_loader import _sync_resolve
 
@@ -3712,8 +3712,7 @@ class PipelineEngine:
             _domain_text = _desc or str(_prd.get("title", "") if isinstance(_prd, dict) else "")
             if not _domain_text:
                 _domain_text = getattr(stage, 'phase', '') or _skill_name
-            _domain_router = get_domain_router()
-            _domain_id = _domain_router.classify(_domain_text) or ""
+            _domain_id = DomainRouter().classify(_domain_text) or ""
             if _domain_id:
                 try:
                     _domain_prompt = _sync_resolve(f"domain-prompt-{_domain_id}")
