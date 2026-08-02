@@ -3641,7 +3641,10 @@ class PipelineEngine:
         # ── 3. Inject document schema into system prompt ──
         _schema_text = ""
         try:
-            _schema_yaml = _os.path.join(_os.path.dirname(_os.path.dirname(_os.path.dirname(_os.path.dirname(_os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))))), "config", "document_schemas.yaml")
+            # Resolve path to config/document_schemas.yaml (workspace root)
+            _here = _os.path.dirname(_os.path.abspath(__file__))
+            _workspace = _os.path.abspath(_os.path.join(_here, "..", "..", "..", "..", ".."))
+            _schema_yaml = _os.path.join(_workspace, "config", "document_schemas.yaml")
             if _os.path.isfile(_schema_yaml):
                 import yaml as _yaml
                 with open(_schema_yaml) as _sf:
