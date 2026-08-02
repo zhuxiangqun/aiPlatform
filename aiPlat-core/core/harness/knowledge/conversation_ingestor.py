@@ -100,7 +100,13 @@ class ConversationIngestor:
             try:
                 # Phase 57: Skip messages with cognitive risk patterns
                 content = (msg.get("content") or "").lower()
-                if any(kw in content for kw in ["final_answer", "safety_audit", "审核路径", "七步周天", "认知同化"]):
+                # Built-in engine keywords (infrastructure-level)
+                skip_keywords = ["final_answer", "safety_audit"]
+                # User-configured domain-specific keywords via env var
+                extra = os.getenv("AIPLAT_INGEST_SKIP_KEYWORDS", "")
+                if extra:
+                    skip_keywords.extend(kw.strip() for kw in extra.split(",") if kw.strip())
+                if any(kw in content for kw in skip_keywords):
                     result.skipped += 1
                     continue
 

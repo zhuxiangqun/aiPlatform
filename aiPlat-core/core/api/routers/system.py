@@ -109,18 +109,19 @@ async def system_overview():
     try:
 
         from core.harness.ontology_engine.graph_index import GraphIndex
+        from core.harness.knowledge.domain_router import get_domain_router
 
-        fd = GraphIndex.load("fde-delivery")
+        router = get_domain_router()
+        domain_counts = {}
+        for domain_id in router.list_domains():
+            try:
+                g = GraphIndex.load(domain_id)
+                node_count = len(g._nodes) if hasattr(g, '_nodes') else 0
+                domain_counts[domain_id] = node_count
+            except Exception:
+                domain_counts[domain_id] = 0
 
-        sessions = sum(1 for _, n in fd._nodes.items() if getattr(n, "class_name", "") == "DiagnosisSession")
-
-        tg = GraphIndex.load("enterprise-terms")
-
-        terms = sum(1 for _, n in tg._nodes.items() if getattr(n, "class_name", "") == "Term")
-
-        live["diagnosis_sessions"] = sessions
-
-        live["enterprise_terms"] = terms
+        live["domain_entity_counts"] = domain_counts
 
     except Exception:
 
@@ -728,14 +729,23 @@ async def system_status():
     try:
 
         from core.harness.ontology_engine.graph_index import GraphIndex
+        from core.harness.knowledge.domain_router import get_domain_router
 
-        fd = GraphIndex.load("fde-delivery")
+        router = get_domain_router()
+        delivery_stats = {}
+        for domain_id in router.list_domains():
+            try:
+                g = GraphIndex.load(domain_id)
+                total = len(g._nodes) if hasattr(g, '_nodes') else 0
+                classes = {}
+                for _, n in getattr(g, '_nodes', {}).items():
+                    cn = getattr(n, "class_name", "Unknown")
+                    classes[cn] = classes.get(cn, 0) + 1
+                delivery_stats[domain_id] = {"total_entities": total, "class_distribution": classes}
+            except Exception:
+                delivery_stats[domain_id] = {"error": "unavailable"}
 
-        sessions = sum(1 for _, n in fd._nodes.items() if getattr(n, "class_name", "") == "DiagnosisSession")
-
-        actions = sum(1 for _, n in fd._nodes.items() if getattr(n, "class_name", "") == "DeliveryAction")
-
-        status["delivery"] = {"sessions": sessions, "actions": actions}
+        status["delivery"] = delivery_stats
 
     except Exception:
 

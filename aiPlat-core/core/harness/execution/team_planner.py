@@ -14,23 +14,11 @@ import glob
 import logging
 import os
 
-# ── Configurable fallback team (used when LLM recommendation returns 0 stages) ──
-# Can be overridden via ~/.aiplat/default_team.yaml or env var
-_DEFAULT_TEAM_STAGES = [
-    {"agent_id": os.getenv("AIPLAT_DEFAULT_ARCH_AGENT", "architect_agent"),
-     "agent_name": "架构师", "agent_type": "react", "phase": "architecture",
-     "order": 0, "hitl": True, "hitl_phase": "awaiting_architecture_approval",
-     "output_artifact": "architecture", "uses_file_output": False, "generate_test_plan": False,
-     "skill_name": "architecture_design", "skill_model_purpose": "reasoning"},
-    {"agent_id": os.getenv("AIPLAT_DEFAULT_CODE_AGENT", "programmer_agent"),
-     "agent_name": "程序员", "agent_type": "react", "phase": "development",
-     "order": 1, "output_artifact": "code", "uses_file_output": True, "generate_test_plan": False,
-     "skill_name": "code_generation", "skill_model_purpose": "code_gen"},
-    {"agent_id": os.getenv("AIPLAT_DEFAULT_QA_AGENT", "qa_agent"),
-     "agent_name": "测试工程师", "agent_type": "react", "phase": "testing",
-     "order": 2, "output_artifact": "test_report", "uses_file_output": False, "generate_test_plan": True,
-     "test_result_key": "test_report", "skill_name": "test_case_generation", "skill_model_purpose": "code_gen"},
-]
+# ── Default team: empty — engine carries no business assumptions ──
+# Team configuration is entirely user-driven via ~/.aiplat/default_team.yaml
+# or LLM recommendation. The engine must not embed software-development team defaults
+# that would be irrelevant to manufacturing/finance/government domains.
+_DEFAULT_TEAM_STAGES: list = []
 import os
 import re
 from dataclasses import dataclass, field
@@ -218,13 +206,15 @@ async def recommend_team_stages(
     except Exception as e:
         logging.warning(str(e), exc_info=True)
 
-    # Fallback: if LLM returned 0 stages, generate a safe minimal team
+    # Fallback: if LLM returned 0 stages and no default team is configured,
+    # leave empty — caller must handle (e.g. prompt user to configure a team)
     if not recommendation.stages:
         for i, fs in enumerate(_DEFAULT_TEAM_STAGES):
             fs["id"] = f"stage_{i}"
             recommendation.stages.append(dict(fs))
-        recommendation.team_name = recommendation.team_name or "默认开发团队"
-        recommendation.reasoning = (recommendation.reasoning or "AI 团队推荐未生成有效方案，使用默认团队配置。")
+        if _DEFAULT_TEAM_STAGES:
+            recommendation.team_name = recommendation.team_name or "default-team"
+        recommendation.reasoning = recommendation.reasoning or "LLM recommendation returned no stages. Configure a team via ~/.aiplat/default_team.yaml."
 
     # Validate recommended agents
     unknown = []

@@ -478,11 +478,19 @@ def _inject_term_dictionary(parts: List[str]):
     """Layer 9: Term dictionary from GraphIndex (R)."""
     try:
         from core.harness.ontology_engine.graph_index import GraphIndex
-        tg = GraphIndex.load("enterprise-terms")
+        from core.harness.knowledge.domain_router import get_domain_router
+
         terms = []
-        for _, n in tg._nodes.items():
-            if getattr(n, "class_name", "") == "Term":
-                terms.append({"name": n.entity_name[:80], "source": getattr(n, "source_doc_id", "")[:30]})
+        for domain_id in get_domain_router().list_domains():
+            try:
+                g = GraphIndex.load(domain_id)
+                for _, n in getattr(g, '_nodes', {}).items():
+                    cn = getattr(n, "class_name", "")
+                    if cn in ("Term", "术语"):
+                        terms.append({"name": n.entity_name[:80], "domain": domain_id,
+                                      "source": getattr(n, "source_doc_id", "")[:30]})
+            except Exception:
+                continue
         if terms:
             lines = [
                 "## 业务语义字典", "",

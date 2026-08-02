@@ -169,6 +169,11 @@ def _sync_resolve(template_id: str, **variables) -> str:
         default = _DEFAULT_PROMPTS.get(template_id)
     
     if not default:
+        # Lazy-init domain prompts from YAML files on first access
+        if template_id.startswith("domain-prompt-"):
+            _scan_domain_prompts()
+            default = _DEFAULT_PROMPTS.get(template_id)
+    if not default:
         raise ValueError(f"Unknown prompt template: {template_id}")
 
     if ttl > 0:
@@ -801,69 +806,80 @@ ${context}
     variables=["path_name", "context", "question"])
 
 # ═══════════════════════════════════════════════════════════════
-# Domain-specific system prompts (multi-domain support)
+# Domain-specific system prompts (auto-discovered from YAML)
 # ═══════════════════════════════════════════════════════════════
+# Domains declare llm_prompt in their YAML file at ~/.aiplat/ontologies/{id}.yaml.
+# Adding a new domain no longer requires changing this file.
+# Fallback defaults below for domains without YAML llm_prompt.
 
-_register("domain-prompt-ai-knowledge",
-    "你是AI领域专家。用通俗易懂的语言解释技术概念，尽量提供类比和实际应用场景。",
-    category="domain_prompts")
+_DOMAIN_PROMPT_DEFAULTS = {
+    "ai-knowledge": "你是AI领域专家。用通俗易懂的语言解释技术概念，尽量提供类比和实际应用场景。",
+    "ship-design": "你是船舶设计工程师。使用船舶工程标准术语，涉及规范时引用CCS/DNV标准号。",
+    "it-ops": "你是资深IT运维工程师。回答风格：①必须给出可执行的命令行/配置示例。"
+              "②故障排查按'现象→根因→解决方案'三步结构。③标注操作风险等级(低/中/高)。",
+    "supply-chain": "你是供应链管理专家。回答风格：①涉及时效用天(d)为单位。"
+                    "②风险分级(低/中/高/紧急)必须标注。③替代方案必须包含成本/时效对比。"
+                    "④多级供应商场景考虑牛鞭效应。⑤库存决策参考安全库存公式。",
+    "procurement": "你是采购管理专家。供应商评估按资质/价格/交付三维打分（每维1-5分）。"
+                   "风险分级(低/中/高/紧急)必须标注。替代供应商建议必须包含切换成本和时效对比。",
+    "ai-solution": "你是AI方案架构师。方案必须涵盖NLP/CV/ML/OCR的技术选型、成本估算、数据成熟度要求和部署模式。"
+                   "每个方案至少包含1个候选技术栈和1个备选方案。",
+    "fde-delivery": '你是FDE交付跟踪专家。回答按"诊断→行动→落地状态→证据链"四步结构。'
+                    "每步标注完成率和阻塞项。涉及时间线时精确到天。",
+    "enterprise-terms": "你是企业术语标准化专家。术语解释必须包含：标准定义、业务别名、所属本体类、跨部门使用差异。"
+                        "涉及歧义时列出所有可能的含义并标注上下文。",
+    "knowledge-atom": "你是SECI知识原子管理专家。回答标注知识原子来源(S/E/C/I四阶段)。"
+                       "跨子系统关联标注置信度。引用知识原子时附带evidence_text和source_doc_id。",
+    "gov-service": "你是政务服务专家。合规性必须引用具体法规条款号。"
+                    "信创兼容性标注（CPU/OS/DB/中间件）。审批流程按角色分步描述。",
+    "finance": "你是财务分析专家。成本核算精确到元。ROI计算包含假设条件。"
+               "预算偏差超过5%必须标注。涉及税务时注明适用税种和税率。",
+    "default": "你是通用知识助手。跨域查询时明确标注信息来源所属领域。"
+               "不确定时主动声明置信度。涉及专业知识时优先从企业知识库中检索而非依赖通用知识。",
+}
 
-_register("domain-prompt-ship-design",
-    "你是船舶设计工程师。使用船舶工程标准术语，涉及规范时引用CCS/DNV标准号。",
-    category="domain_prompts")
+_domain_prompts_scanned = False
 
-_register("domain-prompt-it-ops",
-    "你是资深IT运维工程师。回答风格：①必须给出可执行的命令行/配置示例。"
-    "②故障排查按'现象→根因→解决方案'三步结构。③标注操作风险等级(低/中/高)。",
-    category="domain_prompts")
 
-_register("domain-prompt-supply-chain",
-    "你是供应链管理专家。回答风格：①涉及时效用天(d)为单位。"
-    "②风险分级(低/中/高/紧急)必须标注。③替代方案必须包含成本/时效对比。"
-    "④多级供应商场景考虑牛鞭效应。⑤库存决策参考安全库存公式。",
-    category="domain_prompts")
+def _scan_domain_prompts(_force: bool = False):
+    """Scan ~/.aiplat/ontologies/*.yaml for llm_prompt fields.
 
-_register("domain-prompt-procurement",
-    "你是采购管理专家。供应商评估按资质/价格/交付三维打分（每维1-5分）。"
-    "风险分级(低/中/高/紧急)必须标注。替代供应商建议必须包含切换成本和时效对比。"
-    "围标/串标检测标注置信度和证据来源。",
-    category="domain_prompts")
+    Called lazily on first domain prompt access. Reads YAML files directly
+    and auto-registers prompts via _register(). Falls back to
+    _DOMAIN_PROMPT_DEFAULTS for domains without YAML llm_prompt.
 
-_register("domain-prompt-ai-solution",
-    "你是AI方案架构师。方案必须涵盖NLP/CV/ML/OCR的技术选型、成本估算、数据成熟度要求和部署模式。"
-    "每个方案至少包含1个候选技术栈和1个备选方案。",
-    category="domain_prompts")
+    New domain -> create YAML with llm_prompt -> auto-discovered. Zero code change.
+    """
+    global _domain_prompts_scanned
+    if _domain_prompts_scanned and not _force:
+        return
+    _domain_prompts_scanned = True
 
-_register("domain-prompt-fde-delivery",
-    '你是FDE交付跟踪专家。回答按"诊断→行动→落地状态→证据链"四步结构。'
-    "每步标注完成率和阻塞项。涉及时间线时精确到天。",
-    category="domain_prompts")
+    try:
+        import glob as _glob
+        import os as _os
 
-_register("domain-prompt-enterprise-terms",
-    "你是企业术语标准化专家。术语解释必须包含：标准定义、业务别名、所属本体类、跨部门使用差异。"
-    "涉及歧义时列出所有可能的含义并标注上下文。",
-    category="domain_prompts")
+        ontology_dir = _os.path.expanduser("~/.aiplat/ontologies")
+        for yaml_path in _glob.glob(_os.path.join(ontology_dir, "*.yaml")):
+            try:
+                domain_id = _os.path.splitext(_os.path.basename(yaml_path))[0]
+                if domain_id in ("registry",):
+                    continue
+                with open(yaml_path, "r", encoding="utf-8") as f:
+                    data = yaml.safe_load(f)
+                if data and isinstance(data, dict):
+                    llm_prompt = data.get("llm_prompt", "").strip()
+                    if llm_prompt:
+                        _register(f"domain-prompt-{domain_id}", llm_prompt, category="domain_prompts")
+            except Exception:
+                pass
+    except Exception:
+        pass
 
-_register("domain-prompt-knowledge-atom",
-    "你是SECI知识原子管理专家。回答标注知识原子来源(S/E/C/I四阶段)。"
-    "跨子系统关联标注置信度。引用知识原子时附带evidence_text和source_doc_id。",
-    category="domain_prompts")
-
-_register("domain-prompt-gov-service",
-    "你是政务服务专家。合规性必须引用具体法规条款号。"
-    "信创兼容性标注（CPU/OS/DB/中间件）。审批流程按角色分步描述。"
-    "围标/串标检测标注置信度和证据来源。",
-    category="domain_prompts")
-
-_register("domain-prompt-finance",
-    "你是财务分析专家。成本核算精确到元。ROI计算包含假设条件。"
-    "预算偏差超过5%必须标注。涉及税务时注明适用税种和税率。",
-    category="domain_prompts")
-
-_register("domain-prompt-default",
-    "你是通用知识助手。跨域查询时明确标注信息来源所属领域。"
-    "不确定时主动声明置信度。涉及专业知识时优先从企业知识库中检索而非依赖通用知识。",
-    category="domain_prompts")
+    # Register fallback defaults for domains without YAML llm_prompt
+    for domain_id, prompt in _DOMAIN_PROMPT_DEFAULTS.items():
+        if f"domain-prompt-{domain_id}" not in _DEFAULT_PROMPTS:
+            _register(f"domain-prompt-{domain_id}", prompt, category="domain_prompts")
 
 # ── Phase 10.4: OperatorAgent decision prompt ──
 _register("operator-decision",
@@ -1109,84 +1125,8 @@ RULES:
 - confidence is discounted by 0.9^len(premises)
 - If the user mentions "risk", "alert", or "urgent", set severity to "warning" or "critical"
 """,
-    category="ontology",
-    variables=["domain_context", "existing_relations", "description"])
-
-
-# ── Agent SOP templates (versioned, managed) ──
-
-_register("agent-pm_agent", """# 角色：产品经理
-你是专业的产品经理（PM），负责与用户对话，逐步收集需求，生成产品需求文档（PRD）。
-
-## 工作流程
-1. 分析用户需求，追问关键细节（目标用户、核心功能、技术约束）
-2. 每次回复聚焦 1-2 个追问，避免信息过载
-3. 当需求足够清晰时（至少收集到项目名称、核心功能、目标用户），回复末尾加上 `<!-- PRD_READY -->`
-4. 包含 PRD_READY 标记时，按照以下格式输出完整的结构化 PRD：
-
-## 项目名称：XXX
-
-## 核心功能需求
-### 功能点1：简短描述
-具体说明（如有）
-
-### 功能点2：简短描述
-具体说明（如有）
-
-### 功能点N：...
-
-## 目标用户
-- 用户类型：描述
-
-## 技术约束
-- 约束条件
-
-## 输出规则
-- PRD 部分必须用 ### 子标题列出每个功能点，禁止用编号列表或符号列表替代 ###
-- 每个 ### 子标题格式：### 功能名称：一行简短描述
-- 有补充说明时在下一行继续写""",
-    category="agents",
-    variables=["agent_name"])
-
-_register("agent-architect_agent", """# 角色：系统架构师
-根据产品需求文档（PRD），输出完整的系统架构设计方案。
-
-## 输出格式（JSON）
-```json
-{
-  "components": [{"name": "组件名", "responsibility": "职责", "tech": "技术栈"}],
-  "data_model": [{"entity": "实体名", "fields": [{"name": "字段", "type": "类型"}]}],
-  "api_contracts": [{"path": "/api/xxx", "method": "GET", "description": "说明"}],
-  "tech_stack": {"backend": "", "frontend": "", "database": "", "cache": ""}
-}
-```
-
-## 规则
-1. 基于 PRD 内容设计，不凭空想象
-2. 输出完整 JSON，不省略
-3. 组件数 ≥ 3，数据模型 ≥ 3 个实体""",
-    category="agents",
-    variables=["agent_name"])
-
-_register("agent-programmer_agent", """# 角色：资深程序员
-根据架构设计和 PRD，产出符合规范的可运行代码。
-
-## 输出格式
-使用 ## FILE: 格式输出每个代码文件：
-```
-## FILE: path/to/file.py
-```python
-# 完整代码
-```
-
-## 规则
-1. 遵循 Ponytail 懒惰原则：有明确需求才写代码，不凭空想象
-2. 每个文件包含完整可运行代码
-3. 代码含类型注解和简要注释
-4. 无上游产物时明确说明并拒绝生成""",
-    category="agents",
-    variables=["agent_name"])
-
+     category="ontology",
+     variables=["domain_context", "existing_relations", "description"])
 
 # ── Engine layer prompts (extracted from hardcoded strings) ──
 

@@ -223,10 +223,11 @@ class CrossDomainResolver:
 
 # ═══════════════════════════════════════════════════════════
 # Registry bootstrap — seed cross_domain_views config
+# Cross-domain views are user-configured. No default seed data.
 # ═══════════════════════════════════════════════════════════
 
 def seed_cross_domain_config() -> bool:
-    """Add default cross_domain_views to registry.json if missing."""
+    """Initialize cross_domain_views in registry.json if missing (empty by default)."""
     if not os.path.exists(REGISTRY_PATH):
         return False
 
@@ -237,23 +238,7 @@ def seed_cross_domain_config() -> bool:
         if "cross_domain_views" in reg:
             return False  # already exists
 
-        reg["cross_domain_views"] = {
-            "unified_customer": {
-                "label": "统一客户视图",
-                "description": "将锁安的客户现场与 FDE 的客户实体关联",
-                "sources": [
-                    {"domain": "lock-service", "class": "客户现场", "key_fields": ["phone", "name", "custom_id"]},
-                    {"domain": "fde-delivery", "class": "客户", "key_fields": ["namespace", "email", "company_name"]},
-                ],
-                "match_strategy": {
-                    "primary": "phone || namespace",
-                    "secondary": "name_similarity",
-                    "tertiary": "embedding_cos",
-                    "min_confidence": 0.70,
-                },
-                "enable_auto_link": False,
-            }
-        }
+        reg["cross_domain_views"] = {}
         reg.setdefault("cross_domain_actions", {})
 
         with open(REGISTRY_PATH, "w", encoding="utf-8") as f:

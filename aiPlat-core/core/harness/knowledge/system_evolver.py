@@ -267,15 +267,17 @@ class SystemEvolver:
         }
 
         if candidate["type"] == "term" and score >= self.MIN_SANDBOX_SCORE:
-            # Auto-publish: create Term entity in enterprise-terms
+            # Auto-publish: create Term entity in target domain
             try:
                 from core.harness.ontology_engine.graph_index import GraphIndex
-                tg = GraphIndex.load("enterprise-terms")
-                tid = f"term_evolved_{candidate['name'].replace(' ', '_')[:50]}"
-                tg.add_entity(tid, candidate["name"], "Term", source_doc_id="system_evolver")
-                action_detail["action"] = "published"
-                action_detail["reason"] = f"术语已自动创建（score={score} ≥ {self.MIN_SANDBOX_SCORE}）"
-                logger.info("Evolver: published term '%s' (score=%.2f)", candidate["name"][:40], score)
+                target_domain = candidate.get("target_domain", "") or os.getenv("AIPLAT_EVOLVER_TERM_DOMAIN", "")
+                if target_domain:
+                    tg = GraphIndex.load(target_domain)
+                    tid = f"term_evolved_{candidate['name'].replace(' ', '_')[:50]}"
+                    tg.add_entity(tid, candidate["name"], "Term", source_doc_id="system_evolver")
+                    action_detail["action"] = "published"
+                    action_detail["reason"] = f"术语已自动创建（score={score} ≥ {self.MIN_SANDBOX_SCORE}）, domain={target_domain}"
+                    logger.info("Evolver: published term '%s' (score=%.2f)", candidate["name"][:40], score)
             except Exception as e:
                 action_detail["reason"] = f"pub_failed: {str(e)[:80]}"
 

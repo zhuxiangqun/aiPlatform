@@ -137,6 +137,57 @@ echo -n "§79: pipeline skill name hardcodes: "
 count=$(grep -c '"architecture_design"\|"code_generation"\|"test_case_generation"' aiPlat-core/core/harness/execution/pipeline_engine.py 2>/dev/null | tr -d '\n' | tr -d ' ')
 if [ "$count" -gt 0 ] 2>/dev/null; then echo "❌ $count"; grep -n '"architecture_design"\|"code_generation"\|"test_case_generation"' aiPlat-core/core/harness/execution/pipeline_engine.py 2>/dev/null; FAIL=1; else echo "✅"; fi
 
+
+# ══════════════════════════════════════════════════════════════
+# Phase 4: Core genericity — no domain knowledge leaks
+# ══════════════════════════════════════════════════════════════
+echo ""; sep; echo "  PHASE 4: core genericity"; sep
+
+# §80: Hardcoded domain IDs in core (non-apps)
+echo -n "§80: hardcoded domain IDs: "
+count=$(grep -rn '"fde-delivery"\|"lock-service"\|"bell-consulting"\|"bell-data-cloud"\|"bell-healthcare"\|"bell-global"\|"enterprise-terms"' aiPlat-core/core/harness/ --include='*.py' 2>/dev/null | grep -v '#\|test_\|builtin_handlers\|builtin_actions\|domain_router\|ontology_loader\|_scan_domain' | wc -l | tr -d ' ')
+if [ "$count" -gt 0 ] 2>/dev/null; then echo "❌ $count"; grep -rn '"fde-delivery"\|"lock-service"\|"bell-consulting"\|"bell-data-cloud"\|"bell-healthcare"\|"bell-global"\|"enterprise-terms"' aiPlat-core/core/harness/ --include='*.py' 2>/dev/null | grep -v '#\|test_\|builtin_handlers\|builtin_actions\|domain_router\|ontology_loader\|_scan_domain'; FAIL=1; else echo "✅"; fi
+
+# §81: Hardcoded domain-specific class names in core routers
+echo -n "§81: domain class name hardcodes in routers: "
+count=$(grep -rn '"DiagnosisSession"\|"DeliveryAction"\|"Term"' aiPlat-core/core/api/routers/system.py 2>/dev/null | wc -l | tr -d ' ')
+if [ "$count" -gt 0 ] 2>/dev/null; then echo "❌ $count"; grep -rn '"DiagnosisSession"\|"DeliveryAction"\|"Term"' aiPlat-core/core/api/routers/system.py 2>/dev/null; FAIL=1; else echo "✅"; fi
+
+# §82: Business-domain actions in builtin_actions (should be in YAML)
+echo -n "§82: business actions in builtin code: "
+count=$(grep -cn 'domain_id="fde-delivery"\|domain_id="lock-service"\|domain_id="bell-' aiPlat-core/core/harness/ontology_engine/builtin_actions.py 2>/dev/null | tr -d '\n' | tr -d ' ')
+if [ "$count" -gt 0 ] 2>/dev/null; then echo "❌ $count"; grep -n 'domain_id="fde-delivery"\|domain_id="lock-service"\|domain_id="bell-' aiPlat-core/core/harness/ontology_engine/builtin_actions.py 2>/dev/null; FAIL=1; else echo "✅"; fi
+
+# §83: Business keywords in core ingestion filter
+echo -n "§83: business keywords in ingestion: "
+count=$(grep -cn '审核路径\|七步周天\|认知同化' aiPlat-core/core/harness/knowledge/conversation_ingestor.py 2>/dev/null | tr -d '\n' | tr -d ' ')
+if [ "$count" -gt 0 ] 2>/dev/null; then echo "❌ $count"; grep -n '审核路径\|七步周天\|认知同化' aiPlat-core/core/harness/knowledge/conversation_ingestor.py 2>/dev/null; FAIL=1; else echo "✅"; fi
+
+# §84: Hardcoded cross-domain seed data in resolver
+echo -n "§84: cross-domain seed data: "
+count=$(grep -cn '"lock-service".*"fde-delivery"\|"客户现场".*"客户"' aiPlat-core/core/harness/knowledge_pipeline/resolver.py 2>/dev/null | tr -d '\n' | tr -d ' ')
+if [ "$count" -gt 0 ] 2>/dev/null; then echo "❌ $count"; grep -n '"lock-service".*"fde-delivery"\|"客户现场".*"客户"' aiPlat-core/core/harness/knowledge_pipeline/resolver.py 2>/dev/null; FAIL=1; else echo "✅"; fi
+
+# §85: Default team stages with business assumptions
+echo -n "§85: default team stages: "
+count=$(grep -c 'architect_agent\|programmer_agent\|qa_agent' aiPlat-core/core/harness/execution/team_planner.py 2>/dev/null | tr -d '\n' | tr -d ' ')
+if [ "$count" -gt 0 ] 2>/dev/null; then echo "❌ $count"; grep -n 'architect_agent\|programmer_agent\|qa_agent' aiPlat-core/core/harness/execution/team_planner.py 2>/dev/null; FAIL=1; else echo "✅"; fi
+
+# §86: prompt_loader hardcoded _register for domain/agent prompts
+echo -n "§86: hardcoded domain-prompt registrations: "
+count=$(grep -c '_register("domain-prompt-' aiPlat-core/core/harness/utils/prompt_loader.py 2>/dev/null | tr -d '\n' | tr -d ' ')
+if [ "$count" -gt 0 ] 2>/dev/null; then echo "❌ $count"; grep -n '_register("domain-prompt-' aiPlat-core/core/harness/utils/prompt_loader.py 2>/dev/null; FAIL=1; else echo "✅"; fi
+
+# §87: prompt_loader hardcoded agent SOP registrations
+echo -n "§87: hardcoded agent SOP registrations: "
+count=$(grep -c '_register("agent-pm_agent"\|_register("agent-architect_agent"\|_register("agent-programmer_agent"' aiPlat-core/core/harness/utils/prompt_loader.py 2>/dev/null | tr -d '\n' | tr -d ' ')
+if [ "$count" -gt 0 ] 2>/dev/null; then echo "❌ $count"; grep -n '_register("agent-pm_agent"\|_register("agent-architect_agent"\|_register("agent-programmer_agent"' aiPlat-core/core/harness/utils/prompt_loader.py 2>/dev/null; FAIL=1; else echo "✅"; fi
+
+# §88: Hardcoded GraphIndex.load in builtin_handlers
+echo -n "§88: hardcoded domain in handlers: "
+count=$(grep -c 'GraphIndex.load("' aiPlat-core/core/harness/ontology_engine/builtin_handlers.py 2>/dev/null | tr -d '\n' | tr -d ' ')
+if [ "$count" -gt 0 ] 2>/dev/null; then echo "❌ $count"; grep -n 'GraphIndex.load("' aiPlat-core/core/harness/ontology_engine/builtin_handlers.py 2>/dev/null; FAIL=1; else echo "✅"; fi
+
 # ── Aggregate ──
 echo ""; sep
 if [ "$FAIL" -ne 0 ]; then

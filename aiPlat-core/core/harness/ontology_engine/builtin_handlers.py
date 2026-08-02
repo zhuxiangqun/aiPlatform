@@ -17,11 +17,17 @@ logger = logging.getLogger(__name__)
 # ═══════════════════════════════════════════════════════════
 
 async def approve_diagnosis(entity: Dict[str, Any], params: Dict[str, Any], actor: str = "") -> Dict[str, Any]:
-    """Approve a diagnosis session: transition from delivered → in_progress."""
+    """Approve a diagnosis session: transition from delivered → in_progress.
+
+    Domain is read from entity (via action executor) or params. No hardcoded domain ID.
+    """
     from core.harness.ontology_engine.graph_index import GraphIndex
 
     entity_id = entity.get("id") or entity.get("entity_id", "")
-    g = GraphIndex.load("fde-delivery")
+    domain_id = entity.get("domain_id") or params.get("domain_id", "")
+    if not domain_id:
+        raise ValueError("domain_id is required — pass via entity['domain_id'] or params['domain_id']")
+    g = GraphIndex.load(domain_id)
 
     # Update entity state
     g.update_entity_property(entity_id, "state", "in_progress")
@@ -38,11 +44,17 @@ async def approve_diagnosis(entity: Dict[str, Any], params: Dict[str, Any], acto
 
 
 async def accept_order(entity: Dict[str, Any], params: Dict[str, Any], actor: str = "") -> Dict[str, Any]:
-    """Accept an installation order: transition from pending → accepted."""
+    """Accept an installation order: transition from pending → accepted.
+
+    Domain is read from entity (via action executor) or params. No hardcoded domain ID.
+    """
     from core.harness.ontology_engine.graph_index import GraphIndex
 
     entity_id = entity.get("id") or entity.get("entity_id", "")
-    g = GraphIndex.load("lock-service")
+    domain_id = entity.get("domain_id") or params.get("domain_id", "")
+    if not domain_id:
+        raise ValueError("domain_id is required — pass via entity['domain_id'] or params['domain_id']")
+    g = GraphIndex.load(domain_id)
 
     g.update_entity_property(entity_id, "state", "accepted")
     g.update_entity_property(entity_id, "technician_id", params.get("technician_id", ""))
@@ -84,31 +96,39 @@ async def webhook_forward(entity: Dict[str, Any], params: Dict[str, Any], actor:
 # ═══════════════════════════════════════════════════════════
 
 async def deploy_ai_agent(entity: Dict[str, Any], params: Dict[str, Any], actor: str = "") -> Dict[str, Any]:
-    """Bell24: GenAI共创完成 → 创建 AI_Agent 实体并建立开发关系."""
+    """Cross-domain: source entity → create target entity in another domain."""
     from core.harness.ontology_engine.graph_index import GraphIndex
 
     entity_id = entity.get("id") or entity.get("entity_id", "")
     agent_name = params.get("agent_name", f"{entity.get('name', 'Lab')}-AI-Agent")
     partner = params.get("development_partner", "AVILEN")
 
-    # Update GenAI lab status
-    g_consulting = GraphIndex.load("bell-consulting")
-    g_consulting.update_entity_property(entity_id, "state", "deployed")
-    g_consulting.update_entity_property(entity_id, "last_agent_deployed", agent_name)
+    source_domain = entity.get("domain_id") or params.get("source_domain_id", "")
+    target_domain = params.get("cross_domain_id") or params.get("target_domain_id", "")
 
-    # Create AI_Agent entity in bell-data-cloud
-    g_cloud = GraphIndex.load("bell-data-cloud")
-    agent_entity_id = f"AIAG-{entity_id.replace('GENAI-', '').replace('-', '')}"
-    node = g_cloud.add_entity(agent_entity_id, agent_name, "AI_Agent")
-    g_cloud.update_entity_property(agent_entity_id, "development_partner", partner)
-    g_cloud.update_entity_property(agent_entity_id, "deployment_status", "deploying")
-    g_cloud.update_entity_property(agent_entity_id, "launch_date", params.get("launch_date", ""))
-    g_cloud.update_entity_property(agent_entity_id, "target_clients", params.get("target_clients", 0))
-    g_cloud.update_entity_property(agent_entity_id, "created_by", actor)
+    # Update source entity status
+    g_consulting = GraphIndex.load(source_domain) if source_domain else None
+    if g_consulting:
+        g_consulting.update_entity_property(entity_id, "state", "deployed")
+        g_consulting.update_entity_property(entity_id, "last_agent_deployed", agent_name)
 
-    # Cross-domain edge: GenAI Lab → develops → AI_Agent
-    g_consulting.add_relation(entity_id, agent_entity_id, "develops",
-                              relation_label="开发AI Agent", confidence=0.95)
+    # Create AI_Agent entity in target domain
+    g_cloud = GraphIndex.load(target_domain) if target_domain else None
+    if g_cloud:
+        agent_entity_id = f"AIAG-{entity_id.replace('GENAI-', '').replace('-', '')}"
+        node = g_cloud.add_entity(agent_entity_id, agent_name, "AI_Agent")
+        g_cloud.update_entity_property(agent_entity_id, "development_partner", partner)
+        g_cloud.update_entity_property(agent_entity_id, "deployment_status", "deploying")
+        g_cloud.update_entity_property(agent_entity_id, "launch_date", params.get("launch_date", ""))
+        g_cloud.update_entity_property(agent_entity_id, "target_clients", params.get("target_clients", 0))
+        g_cloud.update_entity_property(agent_entity_id, "created_by", actor)
+
+    # Cross-domain edge: source → develops → target
+    if g_consulting and g_cloud:
+        g_consulting.add_relation(
+            entity_id, agent_entity_id, "develops",
+            relation_label="AI agent deployment", confidence=0.95
+        )
 
     return {
         "new_state": "deployed",
@@ -120,7 +140,7 @@ async def deploy_ai_agent(entity: Dict[str, Any], params: Dict[str, Any], actor:
 
 
 async def trigger_emergency_response(entity: Dict[str, Any], params: Dict[str, Any], actor: str = "") -> Dict[str, Any]:
-    """Bell24 CRO: 临床试验严重事件 → 创建紧急应对记录."""
+    """Emergency response: create emergency record from clinical trial."""
     from core.harness.ontology_engine.graph_index import GraphIndex
     import datetime as _dt
 
@@ -129,7 +149,10 @@ async def trigger_emergency_response(entity: Dict[str, Any], params: Dict[str, A
     severity = params.get("severity", "serious")
     description = params.get("description", "")
 
-    g = GraphIndex.load("bell-healthcare")
+    domain_id = entity.get("domain_id") or params.get("domain_id", "")
+    if not domain_id:
+        raise ValueError("domain_id is required")
+    g = GraphIndex.load(domain_id)
     em_id = f"EM-{entity_id.replace('TRIAL-','')}-{_dt.datetime.now().strftime('%H%M%S')}"
 
     # Create EmergencyReception entity
@@ -167,7 +190,10 @@ async def complete_bpr_delivery(entity: Dict[str, Any], params: Dict[str, Any], 
     efficiency_rate = params.get("efficiency_improvement_rate", 0)
     man_hours_saved = params.get("man_hours_saved", 0)
 
-    g = GraphIndex.load("bell-consulting")
+    domain_id = entity.get("domain_id") or params.get("domain_id", "")
+    if not domain_id:
+        raise ValueError("domain_id is required")
+    g = GraphIndex.load(domain_id)
     g.update_entity_property(entity_id, "state", "completed")
     g.update_entity_property(entity_id, "efficiency_improvement_rate", efficiency_rate)
     g.update_entity_property(entity_id, "man_hours_saved", man_hours_saved)
@@ -197,7 +223,10 @@ async def sync_overseas_status(entity: Dict[str, Any], params: Dict[str, Any], a
     employee_update = params.get("employees", 0)
     locations_update = params.get("locations_count", 0)
 
-    g = GraphIndex.load("bell-global")
+    domain_id = entity.get("domain_id") or params.get("domain_id", "")
+    if not domain_id:
+        raise ValueError("domain_id is required")
+    g = GraphIndex.load(domain_id)
     g.update_entity_property(entity_id, "consolidation_status", new_status)
     if employee_update:
         g.update_entity_property(entity_id, "employees", employee_update)

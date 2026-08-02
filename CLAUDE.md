@@ -275,6 +275,31 @@ scripts/ruff_f821_baseline.json        ← F821 基线快照（ratchet 对比基
     - [ ] `_dispatch_execute` 无 if/elif 阶段特判分支
     - [ ] `_run_stage_skill` 无硬编码 artifact key 或 prompt
     - [ ] 新功能是否可通过已有 PipelineStageConfig 字段表达
+
+8c. **Core/Infra 通用性强制（2026-08 新增）**：core 和 infra 层不包含任何业务概念。新增能力时必须做到"扩展无需改 Core 代码"。发现以下模式必须修复：
+
+    | 反模式 | 正确做法 |
+    |-------|---------|
+    | `_register("domain-prompt-xxx")` 硬编码域 prompt | 域 YAML 的 `llm_prompt` 字段 → `_scan_domain_prompts()` 自动加载 |
+    | `_register("agent-xxx")` 硬编码 Agent SOP | Agent 的 AGENT.md 文件原地读取 |
+    | `_DEFAULT_TEAM_STAGES` 包含业务角色 | 空列表，完全由 `~/.aiplat/default_team.yaml` 驱动 |
+    | `GraphIndex.load("fde-delivery")` | 用 `DomainRouter.list_domains()` 遍历 |
+    | 诊断端点硬编码 `"DiagnosisSession"` 类名 | 遍历所有域的 ontology YAML 动态获取类结构 |
+    | `ActionContractModel(domain_id="lock-service")` | 移至 `~/.aiplat/actions/*.yaml` |
+    | 跨域种子数据硬编码 `lock-service↔fde-delivery` | 空种子，由 `registry.json` 用户配置 |
+    | 摄取过滤器包含 `"七步周天"` `"认知同化"` | 业务词通过 `AIPLAT_INGEST_SKIP_KEYWORDS` 注入 |
+
+    **自检命令**（每次改动后逐项确认）：
+    ```bash
+    # 1. 通用性测试
+    pytest core/tests/constitution/test_core_genericity.py -v
+
+    # 2. 引擎层测试
+    pytest core/tests/constitution/test_engine_agnostic.py -v
+
+    # 3. 架构守卫阶段 4 检查
+    bash scripts/architecture_guard.sh
+    ```
 9. **接线完成度（强制——新建文件必须立即接线）**：任何新增的 core 基础设施模块必须至少有一个生产代码调用者（非测试）。零调用者的模块必须在合并时标注为"待接线"或"待删除"。禁止用 feature flag=false 来掩盖未接线。全局单例（`get_*_registry()`）必须在所有消费进程中做初始化。**禁止批量创建 3 个以上文件而不逐个接线**：新建一个→接一个→grep 验证 caller→再建下一个。每轮实施结束时必须跑 caller 验证脚本，任何新建文件 0 caller = 实施未完成。详细自检命令见 `aiPlat-core/CLAUDE.md` §5.30 规则 6-8。
 
 10. **API 入口唯一性（强制——防并行实现）**：同一能力的多个 API 端点，底层必须收敛到同一个的核心函数。**禁止**出现"两个 UI 入口做同一件事但调用不同的检索路径"、"三个 API 端点各自实现了自己的 RRF 融合"这类并行实现。**必须**：
