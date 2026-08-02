@@ -1358,7 +1358,7 @@ class BuilderProjectService:
         await self._save_state(project_id, state)
         # Run remaining pipeline in background thread
         if state.get("phase") == "executing":
-            _idx = state.get("_current_stage_idx", 1)
+            _idx = state.get("_current_stage_idx", 0) + 1
             _rebuild = session or self._rebuild_session(project_id)
             if _rebuild and _idx < len(_rebuild.get_stages()):
                 import threading, asyncio as _asyncio
