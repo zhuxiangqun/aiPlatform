@@ -12,7 +12,9 @@ const InlineChat: React.FC<{
   projectId: string;
   initialMessage?: string;
   onPhaseChange?: (phase: string) => void;
-}> = ({ projectId, initialMessage, onPhaseChange }) => {
+  agentMode?: boolean;
+  agentName?: string;
+}> = ({ projectId, initialMessage, onPhaseChange, agentMode, agentName }) => {
   const [messages, setMessages] = useState<{ role: string; content: string }[]>([]);
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
@@ -677,6 +679,8 @@ const ProjectPanel: React.FC<{
               projectId={project.project_id}
               initialMessage={!prdReady ? project.description : undefined}
               onPhaseChange={(p) => { if (p === 'prd_ready') setPrdReady(true); }}
+              agentMode={agentMode}
+              agentName={agentName}
             />
           </CardContent>
         </Card>
