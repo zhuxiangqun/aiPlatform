@@ -3794,6 +3794,15 @@ class PipelineEngine:
             state = await self._run_test_execution(state, stage, _result)
         state["_has_tests"] = True if getattr(stage, 'generate_test_plan', False) else state.get("_has_tests", False)
 
+        # ── 6. HITL gate: pause pipeline if stage requires human approval ──
+        if getattr(stage, 'hitl', False):
+            state["phase"] = "paused"
+            state["_hitl_phase_name"] = getattr(stage, 'hitl_phase', '') or 'review'
+            state["_hitl_output_artifact"] = getattr(stage, 'output_artifact', '') or ''
+            self._audit_hitl(state, "hitl_paused", detail=f"stage:{stage.id}")
+            _log.getLogger("pipeline_engine").warning(
+                "HITL paused: stage=%s phase=%s", stage.id, state["_hitl_phase_name"])
+
         return state
 
 
