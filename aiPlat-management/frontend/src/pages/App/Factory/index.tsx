@@ -840,7 +840,7 @@ const FactoryPage: React.FC = () => {
                 onClick={() => setSelectedProject(p)}
               >
                 <div className="flex items-start justify-between mb-2">
-                  <h4 className="text-sm font-medium text-gray-100 truncate pr-6">{p.name}</h4>
+                  <h4 className="text-sm font-medium text-gray-100 truncate max-w-[200px]">{p.name}</h4>
                   <div className="flex items-center gap-1 flex-shrink-0">
                     <button
                       onClick={e => handleDelete(e, p)}
