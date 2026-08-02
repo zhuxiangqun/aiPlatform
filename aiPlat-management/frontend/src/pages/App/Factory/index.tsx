@@ -197,9 +197,16 @@ const ProjectPanel: React.FC<{
     if (!project.project_id) return;
     setStarting(true);
     try {
-      const result = await projectApi.start(project.project_id);
-      setPhase(result.phase || 'executing');
-      toast.success('Pipeline 已启动');
+      if (runHistory.length > 0 || (project as any).confirmed_prd) {
+        // Rebuild: background thread, returns immediately, polling shows progress
+        await projectApi.rebuild(project.project_id);
+        setPhase('executing');
+        toast.success('重建已触发');
+      } else {
+        const result = await projectApi.start(project.project_id);
+        setPhase(result.phase || 'executing');
+        toast.success('Pipeline 已启动');
+      }
       onRefresh();
     } catch (e: any) { toastGateError(e, '启动失败'); }
     finally { setStarting(false); }
@@ -465,11 +472,54 @@ const ProjectPanel: React.FC<{
             {Object.entries(stageOutputs).map(([key, val]) => {
               const rw = (val as any)?.raw_output || '';
               const label = key === 'architecture' ? '🏗️ 架构设计' : key === 'code' ? '💻 代码生成' : '🧪 测试报告';
-              const preview = typeof rw === 'string' ? rw.slice(0, 500) : JSON.stringify(rw).slice(0, 500);
+              let summary = '';
+              let detailsContent = '';
+
+              // ── Test report: parse JSON for test_cases ──
+              if (key === 'test_report' && rw) {
+                try {
+                  const j = JSON.parse(rw);
+                  const cases = j.test_cases || j.tests || [];
+                  if (cases.length > 0) {
+                    summary = `${cases.length} 个测试用例`;
+                    detailsContent = `<div class="space-y-1">${cases.map((tc: any) => {
+                      const id = tc.id || tc.name || '?';
+                      const desc = tc.description || tc.user_story || '';
+                      const risk = tc.risk_level || tc.risk || '';
+                      const rtype = tc.test_type || tc.type || '';
+                      return `<div class="flex items-start gap-2 py-0.5"><span class="text-primary font-mono">${id}</span><span class="text-gray-300">${desc.slice(0,60)}</span>${risk ? '<span class="ml-auto text-[10px] px-1 rounded bg-' + (risk==='high'?'red':'blue') + '-500/20 text-' + (risk==='high'?'red':'blue') + '-400">' + risk + '</span>' : ''}${rtype ? '<span class="text-[10px] text-gray-500 ml-1">' + rtype + '</span>' : ''}</div>`;
+                    }).join('')}</div>`;
+                  }
+                } catch { /* use raw preview */ }
+              }
+              // ── Architecture: show structure summary ──
+              if (key === 'architecture' && rw) {
+                try {
+                  const j = JSON.parse(rw);
+                  const comps = j.components?.length || 0;
+                  const apis = j.api_design?.length || 0;
+                  const db = j.database_schema ? 1 : 0;
+                  const hasSec = j.security ? '🔒' : ''; const hasPerf = j.performance ? '⚡' : ''; const hasDeploy = j.deployment ? '🚀' : '';
+                  summary = `${comps} 组件 · ${apis} API · DB ${db} ${hasSec}${hasPerf}${hasDeploy}`;
+                } catch { /* use raw preview */ }
+              }
+              // ── Code: count files ──
+              if (key === 'code' && rw) {
+                const files = (rw.match(/## FILE:/g) || []).length;
+                if (files > 0) summary = `${files} 个代码文件`;
+              }
+
+              const preview = detailsContent || (typeof rw === 'string' ? rw.slice(0, 2000) : JSON.stringify(rw).slice(0, 2000));
               return (
                 <details key={key} className="text-xs rounded border border-dark-border bg-dark-hover/30">
-                  <summary className="p-2 cursor-pointer text-gray-300 font-medium">{label} ({typeof rw === 'string' ? rw.length : 0} 字符)</summary>
-                  <pre className="p-2 whitespace-pre-wrap break-all text-gray-400 max-h-40 overflow-y-auto border-t border-dark-border">{preview || '(空)'}</pre>
+                  <summary className="p-2 cursor-pointer text-gray-300 font-medium">
+                    {label} ({typeof rw === 'string' ? rw.length : 0} 字符{summary ? ' · ' + summary : ''})
+                  </summary>
+                  {detailsContent ? (
+                    <div className="p-2 text-gray-400 max-h-40 overflow-y-auto border-t border-dark-border" dangerouslySetInnerHTML={{ __html: detailsContent }} />
+                  ) : (
+                    <pre className="p-2 whitespace-pre-wrap break-all text-gray-400 max-h-40 overflow-y-auto border-t border-dark-border">{preview || '(空)'}</pre>
+                  )}
                 </details>
               );
             })}
