@@ -101,7 +101,6 @@ class SystemEvolver:
         """Rule 1: Same concept appears ≥3 times in knowledge_gaps → Term."""
         try:
             from core.harness.ontology_engine.graph_index import GraphIndex
-            from core.harness.ontology_engine.graph_index import GraphIndex
             from core.harness.knowledge.domain_router import DomainRouter
             router = DomainRouter()
             domains = router.list_domains()
@@ -109,17 +108,15 @@ class SystemEvolver:
 
             for domain_id in domains:
                 try:
-                    fd = GraphIndex.load(domain_id)
+                    g = GraphIndex.load(domain_id)
                 except Exception:
                     continue
-            for _, n in fd._nodes.items():
-                    if getattr(n, "class_name", "") != "SessionMeta":
-                        continue
+                for _, n in g._nodes.items():
                     import json
                     try:
                         md = json.loads(n.entity_name)
-                        for g in md.get("knowledge_gaps", []):
-                            gap_counter[g.get("concept", "")[:80]] += 1
+                        for gk in md.get("knowledge_gaps", []):
+                            gap_counter[gk.get("concept", "")[:80]] += 1
                     except Exception:
                         continue
     

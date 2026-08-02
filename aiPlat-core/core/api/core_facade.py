@@ -1732,17 +1732,18 @@ def get_graph_health(domain: str = "") -> Dict[str, Any]:
         return {"domain": domain, "exists": False, "error": str(e)[:200]}
 
 
-def get_graph_sessions(domain: str, limit: int = 100) -> Dict[str, Any]:
-    u"""Phase 46: Get diagnosis sessions from a domain graph — platform-safe wrapper."""
+def get_graph_sessions(domain: str, limit: int = 100, class_name: str = "") -> Dict[str, Any]:
+    """Phase 46: Get entities from a domain graph, optionally filtered by class_name."""
     from core.harness.ontology_engine.graph_index import GraphIndex
     try:
         g = GraphIndex.load(domain)
         sessions = []
         for nid, node in sorted(list(g._nodes.items()), key=lambda x: x[0], reverse=True):
-            if getattr(node, "class_name", "") == "DiagnosisSession":
-                sessions.append({"id": nid[:60], "company": node.entity_name[:60]})
-                if len(sessions) >= limit:
-                    break
+            if class_name and getattr(node, "class_name", "") != class_name:
+                continue
+            sessions.append({"id": nid[:60], "company": node.entity_name[:60]})
+            if len(sessions) >= limit:
+                break
         return {"domain": domain, "sessions": sessions, "total": len(sessions)}
     except Exception as e:
         return {"domain": domain, "sessions": [], "error": str(e)[:200]}
