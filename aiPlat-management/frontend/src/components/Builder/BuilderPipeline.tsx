@@ -389,6 +389,8 @@ interface StageTrace {
   model_purpose?: string;
   model_tier?: string;
   complexity_range?: number[];
+  domain_id?: string;
+  context_enriched?: boolean;
   output_size?: number;
   elapsed_sec?: number;
   tokens_used?: number;
@@ -424,6 +426,10 @@ const StageTracePanel: React.FC<{ trace: StageTrace; stageKey: string }> = ({ tr
           {trace.model_purpose && <div>用途: {trace.model_purpose}</div>}
           {trace.model_tier && trace.complexity_range && (
             <div>复杂度: {trace.complexity_range[0]}-{trace.complexity_range[1]}</div>
+          )}
+          {trace.domain_id && <div className="text-blue-400">域: {trace.domain_id}</div>}
+          {trace.context_enriched && (
+            <div className="text-green-400">上下文: 术语字典 + 交付统计 + 自优化</div>
           )}
           {trace.skill_name && <div>技能: {trace.skill_name}</div>}
           {trace.strategy && <div>策略: {trace.strategy === 'skill_dispatch' ? '技能执行' : 'ReAct 推理'}</div>}

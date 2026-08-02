@@ -3632,6 +3632,11 @@ class PipelineEngine:
         import time as _time
         _t0 = _time.time()
 
+        # Step-level metadata (populated by domain/context injection + quality bus)
+        _domain_id = ""
+        _context_enriched = False
+        _quality_score = 0.0
+
         # ── 1. Resolve SOP from SKILL.md ──
         _sop_body = ""
         _here = _os.path.dirname(_os.path.abspath(__file__))
@@ -3695,6 +3700,41 @@ class PipelineEngine:
         if _schema_text:
             _sop_body = _sop_body.replace("\n\n## Output Format Requirements", "") + _schema_text
 
+        # ── 3.5. Domain-aware context injection ──
+        # Automatically classify requirement → inject domain prompt + context bus layers.
+        # Engine delegates to DomainRouter + ContextBus — no hardcoded domain knowledge.
+        try:
+            from core.harness.knowledge.domain_router import get_domain_router
+            from core.harness.knowledge.context_bus import assemble_pipeline_context
+            from core.harness.utils.prompt_loader import _sync_resolve
+
+            # 3.5a. Classify requirement to domain
+            _domain_text = _desc or str(_prd.get("title", "") if isinstance(_prd, dict) else "")
+            if not _domain_text:
+                _domain_text = getattr(stage, 'phase', '') or _skill_name
+            _domain_router = get_domain_router()
+            _domain_id = _domain_router.classify(_domain_text) or ""
+            if _domain_id:
+                try:
+                    _domain_prompt = _sync_resolve(f"domain-prompt-{_domain_id}")
+                    _sop_body = _domain_prompt + "\n\n" + _sop_body
+                except Exception:
+                    pass  # domain has no prompt configured
+
+            # 3.5b. Inject context bus layers (term dictionary + delivery history + self-optimization)
+            _cb_parts = []
+            assemble_pipeline_context(
+                {"description": _desc, "prd_title": str(_prd.get("title", "")) if isinstance(_prd, dict) else ""},
+                _cb_parts
+            )
+            _cb_text = "\n\n".join(_cb_parts).strip()
+            if _cb_text:
+                _context += f"\n\n## 系统知识上下文\n{_cb_text[:2000]}\n"
+                _context_enriched = True
+
+        except Exception:
+            pass  # best-effort: engine runs fine without context injection
+
         # ── 4. LLM call ──
         from core.harness.syscalls.llm import sys_llm_generate
         from core.harness.utils.model_injection import best_model_for_purpose
@@ -3743,6 +3783,8 @@ class PipelineEngine:
             "strategy": "skill_dispatch",
             "model_tier": _tier_info.get("tier", ""),
             "complexity_range": _tier_info.get("complexity_range", []),
+            "domain_id": _domain_id,
+            "context_enriched": _context_enriched,
         }
 
         _log.getLogger("pipeline_engine").warning(
