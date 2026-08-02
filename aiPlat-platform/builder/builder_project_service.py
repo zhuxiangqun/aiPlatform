@@ -1567,6 +1567,15 @@ class BuilderProjectService:
         import logging as _log3
         _log3.getLogger("aiplat.builder").info("Rebuilding project %s", project_id)
         self._runs[project_id] = {"phase": "executing"}  # seed initial state for frontend polling
+        # Add run entry immediately so project card shows "构建中"
+        now = time.strftime("%Y-%m-%dT%H:%M:%S")
+        proj.setdefault("runs", []).append({
+            "run_id": f"run_{uuid.uuid4().hex[:8]}", "project_id": project_id,
+            "phase": "executing", "pass_rate": 0, "tokens_used": 0,
+            "iteration": 0, "error": "", "started_at": now, "finished_at": "",
+        })
+        proj["updated_at"] = now
+        self._save_projects()
         self.start_pipeline_background(project_id)
         return {"status": "ok", "detail": "已触发重新构建"}
 
