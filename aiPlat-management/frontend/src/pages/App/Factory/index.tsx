@@ -576,11 +576,13 @@ const ProjectPanel: React.FC<{
           <div className="space-y-2">
             <h3 className="text-xs font-semibold text-gray-400 uppercase">阶段产出</h3>
             {/* Test results summary card */}
-            {stageOutputs.test_report && (stageOutputs.test_report as any)?.test_results && (() => {
+             {stageOutputs.test_report && (stageOutputs.test_report as any)?.test_results && (() => {
               const tr = (stageOutputs.test_report as any).test_results;
               const p = tr.passed || 0, f = tr.failed || 0, e = tr.errors || 0;
               const total = p + f + e;
               const rate = total > 0 ? p / total : 0;
+              const repairRounds = (stageOutputs.test_report as any)?.repair_rounds || 0;
+              const repairLog = (stageOutputs.test_report as any)?.repair_log || '';
               const color = rate >= 0.8 ? 'text-green-400 bg-green-500/10 border-green-500/30' :
                             rate > 0 ? 'text-amber-400 bg-amber-500/10 border-amber-500/30' :
                             'text-red-400 bg-red-500/10 border-red-500/30';
@@ -588,6 +590,7 @@ const ProjectPanel: React.FC<{
                 <div className={`rounded border p-2 text-xs ${color}`}>
                   <div className="flex items-center gap-2 mb-1">
                     <span className="font-semibold">🧪 测试结果</span>
+                    {repairRounds > 0 && <span className="text-[10px] px-1 rounded bg-blue-500/10 text-blue-400">🛠 自修复 ×{repairRounds}</span>}
                     <span className="ml-auto font-bold">{(rate * 100).toFixed(0)}%</span>
                   </div>
                   <div className="flex gap-3">

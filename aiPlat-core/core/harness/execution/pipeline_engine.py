@@ -3810,7 +3810,7 @@ class PipelineEngine:
     async def _run_test_execution(self, state: PipelineState, stage, _result: str) -> PipelineState:
         """Run pytest on generated test code and capture results."""
         import tempfile, subprocess, os as _os, re as _re, shutil
-        _passed = _failed = _errors = 0; _test_log = ""
+        _passed = _failed = _errors = 0; _test_log = ""; _repair_rounds = 0; _repair_log = ""
         # Find upstream code stage's output key (config-driven, not hardcoded)
         _code_key = ""
         for _s in (self._config.stages if self._config else []):
@@ -3846,16 +3846,87 @@ class PipelineEngine:
             if _m: _failed = int(_m.group(1))
             _m = _re.search(r'(\d+)\s+error', _test_log)
             if _m: _errors = int(_m.group(1))
+            # ── Auto-repair: retry failed tests with LLM fix ──
+            _repair_rounds = 0; _repair_log = ""
+            _max_repairs = min(int(_os.environ.get("AIPLAT_TEST_REPAIR_MAX", "2")), 3)
+            while (_failed > 0 or _errors > 0) and _repair_rounds < _max_repairs and _code_text:
+                _repair_rounds += 1
+                try:
+                    from core.harness.syscalls.llm import sys_llm_generate
+                    from core.harness.utils.model_injection import best_model_for_purpose
+                    _err_sample = _test_log[:2500]
+                    _fix_prompt = (
+                        "Tests failed with the following output. Analyze the errors and fix the code.\n\n"
+                        f"## Test output\n{_err_sample}\n\n"
+                        f"## Code to fix\n{_code_text[:4000]}\n\n"
+                        f"## Test code\n{_result[:3000]}\n\n"
+                        "Output ONLY the fixed code in ## FILE: format. Each file's code must be complete and runnable."
+                    )
+                    _fix_resp = await sys_llm_generate(
+                        None,
+                        [{"role": "user", "content": _fix_prompt}],
+                        model_name=best_model_for_purpose("code_gen"),
+                        max_tokens=16000,
+                    )
+                    _fix_text = getattr(_fix_resp, "content", "") or str(_fix_resp)
+                    if _fix_text and len(_fix_text) > 100:
+                        # Apply fix: replace code files with fixed versions
+                        for _block in _re.split(r'^##\s*FILE:\s*', _fix_text, flags=_re.MULTILINE)[1:]:
+                            _lines2 = _block.strip().split("\n", 1)
+                            if len(_lines2) >= 2:
+                                _full2 = _os.path.join(_tmp, _lines2[0].strip())
+                                _content2 = _re.sub(r'^```\w*\n?', '', _lines2[1].strip())
+                                _content2 = _re.sub(r'\n?```\s*$', '', _content2)
+                                if _os.path.isfile(_full2):
+                                    with open(_full2, "w") as _fw2: _fw2.write(_content2)
+                        # Re-run tests
+                        _proc2 = subprocess.run([_os.sys.executable, "-m", "pytest", _tmp, "--tb=short", "-q", "--no-header"], capture_output=True, text=True, timeout=90, env=_env)
+                        _new_log = _proc2.stdout + "\n" + _proc2.stderr
+                        _p2 = _f2 = _e2 = 0
+                        _m = _re.search(r'(\d+)\s+passed', _new_log)
+                        if _m: _p2 = int(_m.group(1))
+                        _m = _re.search(r'(\d+)\s+failed', _new_log)
+                        if _m: _f2 = int(_m.group(1))
+                        _m = _re.search(r'(\d+)\s+error', _new_log)
+                        if _m: _e2 = int(_m.group(1))
+                        if _p2 > _passed or (_f2 + _e2) < (_failed + _errors):
+                            _repair_log += f"Round {_repair_rounds}: {_passed}/{_failed}/{_errors} → {_p2}/{_f2}/{_e2} (improved)\n"
+                            _passed, _failed, _errors = _p2, _f2, _e2
+                            _test_log = _new_log
+                        else:
+                            _repair_log += f"Round {_repair_rounds}: no improvement\n"
+                            break
+                except Exception:
+                    _repair_log += f"Round {_repair_rounds}: repair failed\n"
+                    break
             shutil.rmtree(_tmp, ignore_errors=True)
         except Exception as _te:
             _test_log = f"Test execution error: {str(_te)[:500]}"; _errors = 1
         _total = _passed + _failed + _errors
         _pr = _passed / _total if _total > 0 else 0
         _artifact_key = getattr(stage, 'output_artifact', '') or 'test_report'
-        state[_artifact_key] = {"raw_output": _result, "test_results": {"passed": _passed, "failed": _failed, "errors": _errors, "total": _total, "pass_rate": round(_pr, 2)}, "test_log": _test_log[:3000]}
+        state[_artifact_key] = {
+            "raw_output": _result,
+            "test_results": {"passed": _passed, "failed": _failed, "errors": _errors, "total": _total, "pass_rate": round(_pr, 2)},
+            "test_log": _test_log[:3000],
+            "repair_rounds": _repair_rounds,
+            "repair_log": _repair_log[:1000] if _repair_log else "",
+        }
         state["_test_pass_rate"] = _pr
         state["_has_tests"] = True
-        logging.getLogger("pipeline_engine").warning("Test executed: stage=%s tests=%d/%d/%d", stage.id, _passed, _failed, _errors)
+        # Notify SelfHealGate for remaining failures
+        if (_failed > 0 or _errors > 0) and _repair_rounds > 0:
+            try:
+                from core.harness.evaluation.self_heal_gate import SelfHealGate
+                SelfHealGate().evaluate_all({stage.id: {
+                    "agent_id": getattr(stage, 'agent_id', ''),
+                    "test_passed": _passed, "test_failed": _failed, "test_errors": _errors,
+                    "repair_rounds": _repair_rounds,
+                    "pass_rate": _pr,
+                }}, skip_rejected=True)
+            except Exception:
+                pass
+        logging.getLogger("pipeline_engine").warning("Test executed: stage=%s tests=%d/%d/%d repair_rounds=%d", stage.id, _passed, _failed, _errors, _repair_rounds)
         return state
 
 
