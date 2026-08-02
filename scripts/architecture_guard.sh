@@ -137,6 +137,47 @@ echo -n "§79: pipeline skill name hardcodes: "
 count=$(grep -c '"architecture_design"\|"code_generation"\|"test_case_generation"' aiPlat-core/core/harness/execution/pipeline_engine.py 2>/dev/null | tr -d '\n' | tr -d ' ')
 if [ "$count" -gt 0 ] 2>/dev/null; then echo "❌ $count"; grep -n '"architecture_design"\|"code_generation"\|"test_case_generation"' aiPlat-core/core/harness/execution/pipeline_engine.py 2>/dev/null; FAIL=1; else echo "✅"; fi
 
+# §79b: Engine state key baseline — detect new business keys not in allowed list
+echo -n "§79b: engine state key baseline: "
+BASELINE="$(dirname "$0")/baselines/engine_state_keys.txt"
+if [ -f "$BASELINE" ]; then
+    # Extract all state key references from engine, compare to baseline
+    NEW_KEYS=$(python3 -c "
+import re, sys
+with open('$BASELINE') as f:
+    allowed = {l.split('|')[0] for l in f if l.strip() and not l.startswith('#')}
+
+text = open('aiPlat-core/core/harness/execution/pipeline_engine.py').read()
+found = set()
+for m in re.finditer(r'state\[.''(\w+)'']', text): found.add(m.group(1))
+for m in re.finditer(r'state\.get\(.''(\w+)'']', text): found.add(m.group(1))
+# Also scan any engine .py files in execution/
+import os
+for root, dirs, files in os.walk('aiPlat-core/core/harness/execution/'):
+    for f in files:
+        if f.endswith('.py'):
+            t = open(os.path.join(root,f)).read()
+            for m in re.finditer(r'state\[.''(\w+)'']', t): found.add(m.group(1))
+            for m in re.finditer(r'state\.get\(.''(\w+)'']', t): found.add(m.group(1))
+
+new = found - allowed
+for k in sorted(new):
+    print(k)
+" 2>/dev/null)
+    _ncount=$(echo "$NEW_KEYS" | grep -c . 2>/dev/null || echo 0)
+    if [ "$_ncount" -gt 0 ] 2>/dev/null; then
+        echo "❌ $_ncount new key(s)"
+        echo "$NEW_KEYS"
+        echo "   Action: add to scripts/baselines/engine_state_keys.txt with status=DEBT (if known),"
+        echo "          or remove hardcoded key from engine, or mark as OK if genuinely generic."
+        FAIL=1
+    else
+        echo "✅"
+    fi
+else
+    echo "⚠️ baseline file not found"
+fi
+
 
 # ══════════════════════════════════════════════════════════════
 # Phase 4: Core genericity — no domain knowledge leaks
@@ -187,6 +228,60 @@ if [ "$count" -gt 0 ] 2>/dev/null; then echo "❌ $count"; grep -n '_register("a
 echo -n "§88: hardcoded domain in handlers: "
 count=$(grep -c 'GraphIndex.load("' aiPlat-core/core/harness/ontology_engine/builtin_handlers.py 2>/dev/null | tr -d '\n' | tr -d ' ')
 if [ "$count" -gt 0 ] 2>/dev/null; then echo "❌ $count"; grep -n 'GraphIndex.load("' aiPlat-core/core/harness/ontology_engine/builtin_handlers.py 2>/dev/null; FAIL=1; else echo "✅"; fi
+
+# ── PHASE 5.5: Process compliance checks ────────────────────────────
+echo ""; sep; echo "  PHASE 5.5: compliance"; sep
+
+# §89: --no-verify usage audit (detect bypasses of pre-commit hook)
+echo -n "§89: --no-verify commits (last 20): "
+if command -v git >/dev/null 2>&1; then
+    NVS=$(git log --oneline -20 --grep='merge\|\--no-verify' 2>/dev/null | wc -l | tr -d ' ')
+    if [ "$NVS" -gt 0 ] 2>/dev/null; then
+        echo "⚠️ $NVS (warning only — some commits bypassed pre-commit)"
+        # Write audit entry
+        AUDIT_LOG="${AIPLAT_HOME:-$HOME/.aiplat}/audit/no_verify_log.txt"
+        mkdir -p "$(dirname "$AUDIT_LOG")" 2>/dev/null
+        echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] §89: $NVS no-verify commits detected in last 20" >> "$AUDIT_LOG" 2>/dev/null || true
+    else
+        echo "✅"
+    fi
+else echo "⚠️ git not available"; fi
+
+# §90: Engine guard pre-commit hook is installed
+echo -n "§90: engine pre-commit hook installed: "
+if [ -f ".git/hooks/pre-commit" ] && grep -q "pre-commit-engine-guard" .git/hooks/pre-commit 2>/dev/null; then
+    echo "✅"
+elif [ -f ".husky/pre-commit" ] && grep -q "pre-commit-engine-guard" .husky/pre-commit 2>/dev/null; then
+    echo "✅"
+else
+    echo "❌ not installed"
+    echo "   Install: cp scripts/pre-commit-engine-guard.sh .git/hooks/pre-commit"
+    FAIL=1
+fi
+
+# §91: Engine self-check enforcement — CLAUDE.md §8b checklist items
+echo -n "§91: engine bypass compliance: "
+BYPASS_COUNT=$(python3 -c "
+import re
+text = open('aiPlat-core/core/harness/execution/pipeline_engine.py').read()
+# Count new sys_llm_generate calls NOT in _run_stage_skill or _run_chained_skill
+# (engine should route through skill execution, not direct LLM calls)
+calls = re.findall(r'await sys_llm_generate\(', text)
+bypass_callers = [l for l in re.findall(r'async def (\w+).*?\n.*?await sys_llm_generate', text, re.DOTALL) 
+                  if '_run_stage_skill' not in l and '_run_chained_skill' not in l and '_exec_chained' not in l]
+# Acceptable: _run_test_execution is a code-mode pytest runner (not LLM)
+# Acceptable: materials_chat, diagnostics are NOT in pipeline_engine.py
+# Check for any method that bypasses _run_stage_skill  
+print(len(bypass_callers))  
+" 2>/dev/null)
+if [ "${BYPASS_COUNT:-0}" -gt 0 ] 2>/dev/null; then
+    echo "❌ $BYPASS_COUNT bypass method(s)"
+    echo "   CLAUDE.md §8b: any new sys_llm_generate in engine must prove correct path infeasible"
+    echo "   Fix: Route through _run_stage_skill or _run_chained_skill"
+    FAIL=1
+else
+    echo "✅"
+fi
 
 # ── Aggregate ──
 echo ""; sep

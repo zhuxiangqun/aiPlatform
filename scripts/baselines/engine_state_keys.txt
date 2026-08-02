@@ -1,0 +1,119 @@
+# Engine state keys baseline — every key found in pipeline_engine.py state references
+# Format: key|status|notes
+#   status: OK (generic/accepted) | DEBT (known violation, tracked for removal) | NEW (unexpected, CI blocks)
+#
+# Auto-generated from: grep -rn 'state\["\|state\.get("' pipeline_engine.py
+# Last baseline rebuild: 2026-08-03
+# Rebuild: python3 scripts/rebuild_state_key_baseline.py
+#
+# -- Engine-internal keys (OK: prefixed with _) --
+_agent_id|OK|engine-internal
+_approval_request_id|OK|engine-internal
+_auto_approve|OK|engine-internal
+_auto_retry_count|OK|engine-internal
+_baseline_test_report|OK|engine-internal
+_checkpoints|OK|engine-internal
+_consecutive_llm_failures|OK|engine-internal
+_consolidated_fingerprint|OK|engine-internal
+_constraint_retry_count|OK|engine-internal
+_constraint_retry_pending|OK|engine-internal
+_context_assembly|OK|engine-internal
+_context_compaction_forced|OK|engine-internal
+_conversation_state|OK|engine-internal
+_cross_validations|OK|engine-internal
+_current_stage_idx|OK|engine-internal
+_debate_state|OK|engine-internal
+_deploy_compile_errors|OK|engine-internal
+_dynamic_trace|OK|engine-internal
+_eval_count|OK|engine-internal
+_failure_classification|OK|engine-internal
+_force_context_compression|OK|engine-internal
+_git_rollback_tag|OK|engine-internal
+_graph_trace|OK|engine-internal
+_has_tests|OK|engine-internal
+_hitl_domain_id|OK|engine-internal
+_hitl_grilling_available|OK|engine-internal
+_hitl_human_feedback|OK|engine-internal
+_hitl_output_artifact|OK|engine-internal
+_hitl_phase_name|OK|engine-internal
+_hitl_resolved_|OK|engine-internal (prefix)
+_hitl_stage_id|OK|engine-internal
+_last_action_reason|OK|engine-internal
+_last_classified_error|OK|engine-internal
+_last_error|OK|engine-internal
+_last_error_stage|OK|engine-internal
+_last_healing_reason|OK|engine-internal
+_last_review|OK|engine-internal
+_last_snapshot_id|OK|engine-internal
+_llm_rate_limit_retry|OK|engine-internal
+_meta_diagnosis|OK|engine-internal
+_meta_optimized|OK|engine-internal
+_meta_strategy_source|OK|engine-internal
+_mock_step_run|OK|engine-internal
+_ontology_entities_produced|OK|engine-internal
+_ontology_entities_used|OK|engine-internal
+_paused_for_approval|OK|engine-internal
+_pipeline_goal|OK|engine-internal
+_plan_stage_ids|OK|engine-internal
+_postprocess_applied|OK|engine-internal
+_predicted_fixes_and_regressions|OK|engine-internal
+_prediction_verification|OK|engine-internal
+_prev_failing_ids|OK|engine-internal
+_project_id|OK|engine-internal
+_quality_warning|OK|engine-internal
+_quick_check_issues|OK|engine-internal
+_reject_feedback|OK|engine-internal
+_route_after|OK|engine-internal
+_run_id|OK|engine-internal
+_schema_error|OK|engine-internal
+_schema_valid|OK|engine-internal
+_score_history|OK|engine-internal
+_shared_state_board|OK|engine-internal
+_skip_retry_on_tolerance|OK|engine-internal
+_stage_assess_failed|OK|engine-internal
+_stage_lineage|OK|engine-internal
+_stage_prev_rewards|OK|engine-internal
+_stage_rewards|OK|engine-internal
+_stage_tokens_used|OK|engine-internal
+_stage_trace_id|OK|engine-internal
+_stage_verification_failed|OK|engine-internal
+_stagnation_count|OK|engine-internal
+_task_plan|OK|engine-internal
+_test_execution_error|OK|engine-internal
+_test_pass_rate|OK|engine-internal
+_test_rejected|OK|engine-internal
+_tokens_bonus|OK|engine-internal
+_trace_id|OK|engine-internal
+_wake_recovered|OK|engine-internal
+_wake_recovered_from|OK|engine-internal
+# -- Generic pipeline keys (OK: universal pipeline concepts) --
+agent_id|OK|generic pipeline
+context|OK|generic pipeline
+conversation_state|OK|generic pipeline
+description|OK|generic pipeline
+domain_id|OK|generic pipeline
+error|OK|generic pipeline
+issues|OK|generic pipeline
+iteration|OK|generic pipeline
+messages|OK|generic pipeline
+output_dir|OK|generic pipeline
+phase|OK|generic pipeline
+project_id|OK|generic pipeline
+project_scaffold|OK|generic pipeline
+qa_retry|OK|generic pipeline
+scene_id|OK|generic pipeline
+session_id|OK|generic pipeline
+spec_id|OK|generic pipeline
+stages|OK|generic pipeline
+step_count|OK|generic pipeline
+task_list|OK|generic pipeline
+tenant_id|OK|generic pipeline
+tokens_budget|OK|generic pipeline
+tokens_used|OK|generic pipeline
+user_id|OK|generic pipeline
+# -- Known violations (DEBT: tracked for future removal) --
+_prd_data|DEBT|FDE domain artifact — scheduled for config-driven replacement
+acceptance_report|DEBT|FDE domain artifact — in _validate_cross_stage (C4)
+customer_profile|DEBT|FDE domain artifact — in _validate_cross_stage (C4)
+deployment_package|DEBT|FDE domain artifact — in _validate_cross_stage (C4)
+solution_design|DEBT|FDE domain artifact — in _validate_cross_stage (C4)

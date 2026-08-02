@@ -33,6 +33,41 @@ if [ -n "$NEW_LLM" ]; then
 else echo "✅ R3: No direct sys_llm_generate with f-string"
 fi
 
+# Rule 4: No new business state keys in engine (vs baseline)
+CHANGED_ENGINE=$(git diff --cached --name-only --diff-filter=ACM 2>/dev/null | grep 'core/harness/execution/' || true)
+if [ -n "$CHANGED_ENGINE" ]; then
+  BASELINE="$(dirname "$0")/baselines/engine_state_keys.txt"
+  if [ -f "$BASELINE" ]; then
+    NEW_KEYS=$(python3 -c "
+import re, os, sys
+baseline_path = '$BASELINE'
+with open(baseline_path) as f:
+    allowed = {l.split('|')[0] for l in f if l.strip() and not l.startswith('#')}
+    debt_keys = {l.split('|')[0] for l in f if '|DEBT|' in l}
+
+found = set()
+for fpath in '$CHANGED_ENGINE'.split():
+    if os.path.isfile(fpath):
+        t = open(fpath).read()
+        for m in re.finditer(r'state\[.''(\w+)'']', t): found.add(m.group(1))
+        for m in re.finditer(r'state\.get\(.''(\w+)'']', t): found.add(m.group(1))
+
+new = found - allowed
+for k in sorted(new):
+    print(k)
+" 2>/dev/null)
+    if [ -n "$NEW_KEYS" ]; then
+      echo "❌ R4: New state keys in engine not in baseline:"
+      echo "$NEW_KEYS"
+      echo "   Fix: Either (a) remove hardcoded key, (b) add to baseline as DEBT,"
+      echo "        or (c) prove it's genuinely generic and add as OK"
+      VIOLATIONS=$((VIOLATIONS+1))
+    else echo "✅ R4: No new state key violations"
+    fi
+  fi
+else echo "✅ R4: No engine changes"
+fi
+
 echo ""
 if [ $VIOLATIONS -gt 0 ]; then
   echo "❌ $VIOLATIONS violation(s) — fix before commit"
