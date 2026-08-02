@@ -138,6 +138,12 @@ async def get_project_messages(project_id: str, _auth: str = Depends(require_bui
 async def project_chat(project_id: str, req: BuilderChatRequest, _auth: str = Depends(require_builder_access)):
     return await _get_svc().chat(project_id, req.message)
 
+@router.post("/projects/{project_id}/execute/{skill_name:path}", response_model=StatusResponse)
+async def project_execute_skill(project_id: str, skill_name: str, body: Dict[str, Any] = {}, _auth: str = Depends(require_builder_access)):
+    """Frontend page calls this to execute a skill through the Agent (not direct)."""
+    params = body if isinstance(body, dict) else {}
+    return await _get_svc().execute_skill(project_id, skill_name, params)
+
 @router.post("/projects/{project_id}/confirm", response_model=StatusResponse)
 async def project_confirm(project_id: str, body: Dict[str, Any] = {}, _auth: str = Depends(require_builder_access)):
     return await _get_svc().confirm_prd(project_id, prd_data=body.get("prd"))

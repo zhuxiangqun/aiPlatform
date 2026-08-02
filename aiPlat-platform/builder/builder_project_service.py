@@ -702,6 +702,51 @@ class BuilderProjectService:
             session["phase"] = BuilderSessionPhase.executing.value
         return {"phase": BuilderSessionPhase.executing.value, "prd": prd_data}
 
+    async def execute_skill(self, project_id: str, skill_name: str, params: Dict[str, Any] = None) -> Dict[str, Any]:
+        """Frontend page → Agent bridge: execute a skill through the generated Agent.
+
+        Routing through the Agent (not direct skill call) ensures ReActLoop runs —
+        activating all 18 platform capabilities (SECI, Memory, Feedback, etc.).
+        """
+        from core.api.intents import core_chat, ChatContext
+        import json as _json, re as _re
+
+        state = self._runs.get(project_id)
+        if not state:
+            state = self._load_pipeline_state(project_id) or {}
+
+        agent_name = state.get("_generated_agent", "")
+        if not agent_name:
+            # Fallback: parse agent name from agent_app output
+            proj = self._projects.get(project_id, {})
+            for s in proj.get("team_stages", []):
+                oa = s.get("output_artifact", "") if isinstance(s, dict) else getattr(s, "output_artifact", "")
+                raw = state.get(oa, {}).get("raw_output", "") if isinstance(state.get(oa), dict) else ""
+                if "AGENT.md" in str(raw):
+                    m = _re.search(r'name:\s*(\S+)', str(raw))
+                    if m:
+                        agent_name = m.group(1)
+                        break
+
+        if not agent_name:
+            return {"error": "Agent not ready", "ok": False}
+
+        params = params or {}
+        message = f"执行技能: {skill_name}\n参数: {_json.dumps(params, ensure_ascii=False)[:2000]}"
+        try:
+            result = await core_chat(ChatContext(
+                agent_name=agent_name,
+                session_id=f"{project_id}_fe",
+                user_input=message,
+                model=self.model,
+            ))
+            reply = result.reply or ""
+            reply = _unwrap_json_reply(reply)
+            return {"ok": True, "skill": skill_name, "agent": agent_name,
+                    "reply": reply, "trace_id": getattr(result, 'trace_id', '')}
+        except Exception as e:
+            return {"error": str(e)[:200], "ok": False}
+
     async def recommend_team(self, project_id: str) -> Dict[str, Any]:
         """Use Planning Agent to analyze PRD and recommend a team configuration.
 
