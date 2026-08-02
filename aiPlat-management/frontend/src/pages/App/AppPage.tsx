@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { Loader2, ChevronRight, Check } from 'lucide-react';
-import { Card, Button } from '../components/ui';
-import { FileUploadStage } from '../components/AppStages/FileUploadStage';
-import { ProgressPoller } from '../components/AppStages/ProgressPoller';
-import { ResultDashboard } from '../components/AppStages/ResultDashboard';
-import { ChatWidget } from '../components/ui/ChatWidget';
-import { projectApi } from '../services';
+import { Card, Button } from '../../components/ui';
+import { FileUploadStage } from '../../components/AppStages/FileUploadStage';
+import { ProgressPoller } from '../../components/AppStages/ProgressPoller';
+import { ResultDashboard } from '../../components/AppStages/ResultDashboard';
+import { ChatWidget } from '../../components/ui/ChatWidget';
+import { projectApi } from '../../services';
 
 interface StageConfig {
   id: string;
