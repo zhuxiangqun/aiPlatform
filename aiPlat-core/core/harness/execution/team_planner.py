@@ -1,24 +1,22 @@
 """
-Team Planner — Agent discovery and LLM-based team recommendation.
+Team Planner — Agent discovery, team template loading, and LLM-based team recommendation.
 
 General AI capability (boundary-standard.md §决策树).
 Callers: platform/builder, CLI, API, any application that needs team planning.
 
 Architecture:
   - list_available_agents() → scans AGENT.md files, builds catalog
+  - list_team_templates() → scans ~/.aiplat/teams/*.yaml
+  - load_team_template(name) → loads a specific team YAML
   - recommend_team_stages() → LLM analyzes requirement + catalog → TeamRecommendation
+
+Team templates are external YAML files — engine carries zero business assumptions.
+New domain? New team YAML. No code change required.
 """
 from __future__ import annotations
 
 import glob
 import logging
-import os
-
-# ── Default team: empty — engine carries no business assumptions ──
-# Team configuration is entirely user-driven via ~/.aiplat/default_team.yaml
-# or LLM recommendation. The engine must not embed software-development team defaults
-# that would be irrelevant to manufacturing/finance/government domains.
-_DEFAULT_TEAM_STAGES: list = []
 import os
 import re
 from dataclasses import dataclass, field
@@ -30,7 +28,6 @@ logger = logging.getLogger("aiplat.team_planner")
 
 
 @dataclass
-# disposition: internal helper — used by recommend_team_stages() in same module
 class AgentCatalogEntry:
     agent_id: str
     display_name: str
@@ -41,7 +38,6 @@ class AgentCatalogEntry:
 
 
 @dataclass
-# disposition: internal helper — used by recommend_team_stages() in same module
 class TeamRecommendation:
     team_name: str
     reasoning: str
@@ -49,15 +45,86 @@ class TeamRecommendation:
     raw_reply: str = ""
 
 
-# disposition: internal helper — used by recommend_team_stages() in same module
+@dataclass
+class TeamTemplate:
+    """A named team configuration loaded from YAML file."""
+    name: str
+    file_path: str
+    team_name: str
+    description: str
+    stages: List[Dict[str, Any]]
+
+
+# ── Team template discovery ──────────────────────────────────────
+
+def list_team_templates() -> List[TeamTemplate]:
+    """Scan ~/.aiplat/teams/*.yaml and return all available team templates.
+
+    Each YAML file defines a pre-configured team with stages.
+    Users can add custom teams without changing engine code.
+    """
+    templates: List[TeamTemplate] = []
+    teams_dir = os.path.expanduser("~/.aiplat/teams")
+    if not os.path.isdir(teams_dir):
+        return templates
+
+    import yaml as _yaml
+    for yaml_path in sorted(glob.glob(os.path.join(teams_dir, "*.yaml"))):
+        try:
+            with open(yaml_path, "r", encoding="utf-8") as f:
+                data = _yaml.safe_load(f)
+            if not isinstance(data, dict):
+                continue
+            name = os.path.splitext(os.path.basename(yaml_path))[0]
+            stages = data.get("stages", [])
+            templates.append(TeamTemplate(
+                name=name,
+                file_path=yaml_path,
+                team_name=str(data.get("team_name", name)),
+                description=str(data.get("description", "")),
+                stages=stages if isinstance(stages, list) else [],
+            ))
+        except Exception:
+            logger.debug("Failed to load team template: %s", yaml_path, exc_info=True)
+    return templates
+
+
+def load_team_template(name: str) -> Optional[TeamTemplate]:
+    """Load a specific team template by name (without .yaml extension).
+
+    Returns None if the template file doesn't exist.
+    """
+    yaml_path = os.path.expanduser(f"~/.aiplat/teams/{name}.yaml")
+    if not os.path.isfile(yaml_path):
+        return None
+
+    import yaml as _yaml
+    try:
+        with open(yaml_path, "r", encoding="utf-8") as f:
+            data = _yaml.safe_load(f)
+        if not isinstance(data, dict):
+            return None
+        stages = data.get("stages", [])
+        return TeamTemplate(
+            name=name,
+            file_path=yaml_path,
+            team_name=str(data.get("team_name", name)),
+            description=str(data.get("description", "")),
+            stages=stages if isinstance(stages, list) else [],
+        )
+    except Exception:
+        logger.debug("Failed to load team template: %s", yaml_path, exc_info=True)
+        return None
+
+
+# ── Agent discovery ──────────────────────────────────────────────
+
 def list_available_agents() -> List[AgentCatalogEntry]:
     """Scan all agent directories for AGENT.md files and return their frontmatter.
 
     Searches:
       1. ~/.aiplat/agents/ (user workspace)
       2. AIPLAT_WORKSPACE_SEEDS/agents/ (engine seeds)
-
-    Returns a list of AgentCatalogEntry sorted by agent_id.
     """
     from core.api.facades.agent_facade import get_agent_frontmatter
 
@@ -94,16 +161,8 @@ def list_available_agents() -> List[AgentCatalogEntry]:
     return entries
 
 
-# disposition: internal helper — used by recommend_team_stages() in same module
 def build_agent_catalog_markdown(agents: Optional[List[AgentCatalogEntry]] = None) -> str:
-    """Format agent catalog as a markdown table for LLM prompts.
-
-    Args:
-        agents: Agents to include (uses all available agents if None)
-
-    Returns:
-        Markdown table with columns: Agent ID, Name, Type, Phase, Skills, Description
-    """
+    """Format agent catalog as a markdown table for LLM prompts."""
     if agents is None:
         agents = list_available_agents()
 
@@ -120,12 +179,27 @@ def build_agent_catalog_markdown(agents: Optional[List[AgentCatalogEntry]] = Non
     return "\n".join(lines)
 
 
+def _load_fallback_team() -> List[Dict[str, Any]]:
+    """Load fallback team from ~/.aiplat/default_team.yaml.
+
+    Returns the stages list if the file exists and is valid, otherwise [].
+    Engine carries zero business assumptions — team is entirely user-configured.
+    """
+    template = load_team_template("default")
+    if template and template.stages:
+        return template.stages
+    return []
+
+
+# ── Team recommendation ─────────────────────────────────────────
+
 async def recommend_team_stages(
     *,
     requirement: Dict[str, Any],
     available_agents: Optional[List[AgentCatalogEntry]] = None,
     model: Any = None,
     extra_context: str = "",
+    team_template: str = "",
 ) -> TeamRecommendation:
     """Use LLM to analyze a requirement and recommend a team configuration.
 
@@ -134,6 +208,8 @@ async def recommend_team_stages(
         available_agents: Agent catalog (uses all available if None)
         model: LLM adapter for inference
         extra_context: Additional text to include in the prompt (e.g., industry context)
+        team_template: Name of a team template from ~/.aiplat/teams/ to use instead
+                       of LLM recommendation (e.g., 'default', 'data-science')
 
     Returns:
         TeamRecommendation with team_name, reasoning, and stages
@@ -141,6 +217,28 @@ async def recommend_team_stages(
     from core.api.intents import core_chat, ChatContext
     from core.utils.json_utils import extract_json
 
+    recommendation = TeamRecommendation(team_name="", reasoning="", raw_reply="")
+
+    # ── Path 1: User explicitly selected a team template ──
+    if team_template:
+        tmpl = load_team_template(team_template)
+        if tmpl and tmpl.stages:
+            recommendation.team_name = tmpl.team_name
+            recommendation.reasoning = f"使用团队模板: {tmpl.team_name} ({team_template}.yaml)"
+            for i, s in enumerate(tmpl.stages):
+                stage = dict(s)
+                stage.setdefault("id", f"stage_{i}")
+                stage.setdefault("order", i)
+                stage.setdefault("agent_type", "react")
+                stage.setdefault("uses_file_output", False)
+                stage.setdefault("hitl", False)
+                stage.setdefault("hitl_phase", "")
+                stage.setdefault("generate_test_plan", False)
+                stage.setdefault("test_result_key", "")
+                recommendation.stages.append(stage)
+            return recommendation
+
+    # ── Path 2: LLM-based team recommendation ──
     if available_agents is None:
         available_agents = list_available_agents()
 
@@ -172,7 +270,7 @@ async def recommend_team_stages(
         model=model,
     ))
 
-    recommendation = TeamRecommendation(team_name="", reasoning="", raw_reply=result.reply or "")
+    recommendation.raw_reply = result.reply or ""
 
     try:
         json_str = extract_json(result.reply or "")
@@ -206,17 +304,27 @@ async def recommend_team_stages(
     except Exception as e:
         logging.warning(str(e), exc_info=True)
 
-    # Fallback: if LLM returned 0 stages and no default team is configured,
-    # leave empty — caller must handle (e.g. prompt user to configure a team)
+    # ── Fallback: LLM returned 0 stages → load from default_team.yaml ──
     if not recommendation.stages:
-        for i, fs in enumerate(_DEFAULT_TEAM_STAGES):
-            fs["id"] = f"stage_{i}"
-            recommendation.stages.append(dict(fs))
-        if _DEFAULT_TEAM_STAGES:
-            recommendation.team_name = recommendation.team_name or "default-team"
-        recommendation.reasoning = recommendation.reasoning or "LLM recommendation returned no stages. Configure a team via ~/.aiplat/default_team.yaml."
+        fallback = _load_fallback_team()
+        if fallback:
+            for i, fs in enumerate(fallback):
+                stage = dict(fs)
+                stage.setdefault("id", f"stage_{i}")
+                stage.setdefault("order", i)
+                stage.setdefault("agent_type", "react")
+                stage.setdefault("uses_file_output", False)
+                stage.setdefault("hitl", False)
+                stage.setdefault("hitl_phase", "")
+                stage.setdefault("generate_test_plan", False)
+                stage.setdefault("test_result_key", "")
+                recommendation.stages.append(stage)
+            if fallback:
+                tmpl = load_team_template("default")
+                recommendation.team_name = recommendation.team_name or (tmpl.team_name if tmpl else "default-team")
+            recommendation.reasoning = recommendation.reasoning or "LLM recommendation returned no stages. Using default team from ~/.aiplat/default_team.yaml."
 
-    # Validate recommended agents
+    # ── Validate recommended agents ──
     unknown = []
     for s in recommendation.stages:
         aid = s.get("agent_id", "")
@@ -230,7 +338,6 @@ async def recommend_team_stages(
     return recommendation
 
 
-# disposition: internal helper — json serialization for prompt injection
 def json_dumps_safe(obj: Any, max_len: int = 8000) -> str:
     """Safe JSON dump with length limit."""
     import json as _json
@@ -245,7 +352,10 @@ def json_dumps_safe(obj: Any, max_len: int = 8000) -> str:
 __all__ = [
     "AgentCatalogEntry",
     "TeamRecommendation",
+    "TeamTemplate",
     "list_available_agents",
     "build_agent_catalog_markdown",
+    "list_team_templates",
+    "load_team_template",
     "recommend_team_stages",
 ]
