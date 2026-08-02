@@ -40,9 +40,7 @@ const InlineChat: React.FC<{
     setSending(true);
     setMessages(prev => [...prev, { role: 'user', content: msg }]);
     try {
-      const resp = agentMode
-        ? await projectApi.agentChat(projectId, msg)
-        : await projectApi.chat(projectId, msg);
+      const resp = await projectApi.chat(projectId, msg);
       setMessages(prev => [...prev, { role: 'assistant', content: resp.reply || '(no response)' }]);
       if (resp.prd_ready && onPhaseChange) onPhaseChange('prd_ready');
     } catch {

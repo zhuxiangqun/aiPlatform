@@ -170,11 +170,6 @@ export const projectApi = {
       `/platform/builder/projects/${projectId}/chat`, { message }
     );
   },
-  agentChat: async (projectId: string, message: string) => {
-    return apiClient.post<{ reply: string; agent_name: string; trace_id: string }>(
-      `/platform/builder/projects/${projectId}/agent-chat`, { message }
-    );
-  },
   getMessages: async (projectId: string) => {
     return apiClient.get<{ messages: Array<{ role: string; content: string }> }>(
       `/platform/builder/projects/${projectId}/messages`
