@@ -417,7 +417,6 @@ const ProjectPanel: React.FC<{
       await projectApi.reject(project.project_id, feedback);
       setPhase('executing');  // immediate UI update — don't wait for refresh
       toast.success('已驳回，将重新生成');
-      onRefresh();
     } catch (e: any) { toastGateError(e, '驳回失败'); }
     finally { setRejecting(false); }
   };
