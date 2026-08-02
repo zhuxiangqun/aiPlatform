@@ -701,6 +701,48 @@ class BuilderProjectService:
             session["phase"] = BuilderSessionPhase.executing.value
         return {"phase": BuilderSessionPhase.executing.value, "prd": prd_data}
 
+    def _ensure_manifest_resolved(self, project_id: str, state: Dict[str, Any]) -> None:
+        """Post-process pipeline state: extract agent_manifest.json from deployed files.
+
+        Moved from pipeline_engine.py → platform service layer.
+        The engine should never know about manifest format, orchestrator, or agent names.
+        """
+        import json, os, re as _re
+        if state.get("agent_manifest"):
+            return  # already resolved
+        _app_home = os.path.join(os.getenv("AIPLAT_HOME", os.path.expanduser("~/.aiplat")), "apps", project_id, "current")
+        _manifest_path = os.path.join(_app_home, "agent_manifest.json")
+        if not os.path.isfile(_manifest_path):
+            # Also try parsing from agent_app raw_output if not yet deployed to disk
+            agent_app = state.get("agent_app", {})
+            raw = agent_app.get("raw_output", "") if isinstance(agent_app, dict) else ""
+            if raw and "agent_manifest.json" in raw:
+                for block in _re.split(r'^##\s*FILE:\s*', raw, flags=_re.MULTILINE)[1:]:
+                    blines = block.strip().split("\n", 1)
+                    if len(blines) >= 2 and "agent_manifest.json" in blines[0]:
+                        try:
+                            man_json = blines[1].strip()
+                            man_json = _re.sub(r'^```(?:json)?\s*\n?', '', man_json)
+                            man_json = _re.sub(r'\n?```\s*$', '', man_json)
+                            state["agent_manifest"] = json.loads(man_json)
+                        except Exception:
+                            pass
+                        break
+            return
+        try:
+            with open(_manifest_path) as f:
+                state["agent_manifest"] = json.load(f)
+            orchestrator = state["agent_manifest"].get("orchestrator", "")
+            if orchestrator:
+                state["_generated_agent"] = orchestrator
+                # Also detect the primary agent name for single-agent fallback
+                agents_list = state["agent_manifest"].get("agents", [])
+                if not state.get("_generated_agent") and agents_list:
+                    # Pick the agent with the most skills
+                    state["_generated_agent"] = agents_list[0].get("name", "")
+        except Exception:
+            pass
+
     async def execute_skill(self, project_id: str, skill_name: str, params: Dict[str, Any] = None) -> Dict[str, Any]:
         """Frontend page → Agent bridge: execute a skill through the generated Agent.
 
@@ -715,6 +757,9 @@ class BuilderProjectService:
         state = self._runs.get(project_id)
         if not state:
             state = self._load_pipeline_state(project_id) or {}
+
+        # Ensure manifest + orchestrator are resolved (moved from engine → platform service)
+        self._ensure_manifest_resolved(project_id, state)
 
         agent_name = ""
 

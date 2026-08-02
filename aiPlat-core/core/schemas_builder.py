@@ -262,6 +262,11 @@ class PipelineStageConfig(BaseModel):
     tdd_enforce: bool = False
     context_isolation: str = "shared"   # "shared" | "isolated"
     context_profile: str = "code"        # "minimal" | "code" | "debug" | "deep"
+    # Phase 11 — config-driven post-execution (replaces hardcoded business logic in engine)
+    chain_skill_after: str = ""          # Auto-execute another skill after this stage completes
+    deploy_files_to_disk: bool = False   # Parse ## FILE: blocks from output, write to project dir
+    deploy_files_target_dir: str = ""    # Override target. Empty = ~/.aiplat/apps/{pid}/current
+    test_execution_mode: str = ""        # "pytest" | "agent_conversation" | "" — which test runner
     # Anthropic 5 patterns: chain | router | parallel | orchestrator | evaluator_optimizer
     pipeline_mode: str = "chain"          # "chain" | "router" | "parallel" | "orchestrator" | "evaluator_optimizer" | "agent"
     routing_mode: str = "static"           # "static" | "llm" | "debate" | "swarm" | "roundtable" | "moa" — routing strategy

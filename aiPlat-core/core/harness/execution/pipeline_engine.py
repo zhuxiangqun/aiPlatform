@@ -3671,9 +3671,9 @@ class PipelineEngine:
         _desc = state.get("description", "")
         _prd = state.get("_prd_data", {})
         if isinstance(_prd, dict) and _prd:
-            _context += f"## PRD\n{_json.dumps(_prd, ensure_ascii=False)[:4000]}\n\n"
+            _context += f"## upstream_input\n{_json.dumps(_prd, ensure_ascii=False)[:4000]}\n\n"
         if _desc:
-            _context += f"## 项目描述\n{_desc}\n\n"
+            _context += f"## description\n{_desc}\n\n"
         # Append upstream stage outputs as context (config-driven keys)
         for _s in (self._config.stages if self._config else []):
             _key = getattr(_s, 'output_artifact', '')
@@ -3800,72 +3800,26 @@ class PipelineEngine:
 
         # ── 5. If test skill, optionally run test execution ──
         if getattr(stage, 'generate_test_plan', False):
-            _is_agent_mode = bool(state.get("_generated_agent") or state.get("agent_app"))
-            if _is_agent_mode:
-                # Agent mode: chain test_executor to validate generated questions
-                _log.getLogger("pipeline_engine").warning(
-                    "Agent mode: chaining test_executor for %s", _skill_name)
-                state = await self._chain_test_executor_for_agent(state, stage, _result, _sop_body)
-            elif "pytest" in _sop_body.lower():
+            _mode = getattr(stage, 'test_execution_mode', '') or ''
+            if _mode == "pytest":
                 state = await self._run_test_execution(state, stage, _result)
-        state["_has_tests"] = True if getattr(stage, 'generate_test_plan', False) else state.get("_has_tests", False)
+            elif _mode:
+                # Chained skill execution handled later via chain_skill_after
+                pass
+            elif "pytest" in _sop_body.lower():
+                # Backward compat: fallback for existing configs without test_execution_mode
+                state = await self._run_test_execution(state, stage, _result)
+            # Note: agent_conversation mode chains via chain_skill_after below
 
-        # ── 5.5. Agent app: write AGENT.md + SKILL.md files to disk ──
-        _agent_name = ""
-        _skill_count = 0
-        if _artifact_key == "agent_app" and "## FILE:" in _result:
-            import re as _re, os as _os2
-            for _block in _re.split(r'^##\s*FILE:\s*', _result, flags=_re.MULTILINE)[1:]:
-                _lines = _block.strip().split("\n", 1)
-                if len(_lines) < 2:
-                    continue
-                _fname = _lines[0].strip()
-                _content = _lines[1].strip()
-                _content = _re.sub(r'^```\w*\n?', '', _content)
-                _content = _re.sub(r'\n?```\s*$', '', _content)
-                _full = _os2.path.expanduser(_fname)
-                try:
-                    _os2.makedirs(_os2.path.dirname(_full), exist_ok=True)
-                    with open(_full, "w", encoding="utf-8") as _fw:
-                        _fw.write(_content)
-                    if "AGENT.md" in _fname:
-                        _agent_name = _os2.path.basename(_os2.path.dirname(_full))
-                    if "SKILL.md" in _fname:
-                        _skill_count += 1
-                    _log.getLogger("pipeline_engine").warning("Agent app: wrote %s (%d chars)", _fname, len(_content))
-                except Exception as _we:
-                    _log.getLogger("pipeline_engine").warning("Agent app: failed to write %s: %s", _fname, _we)
-            if _agent_name:
-                state["_generated_agent"] = _agent_name
-                state["_generated_skill_count"] = _skill_count
-                _log.getLogger("pipeline_engine").warning(
-                    "Agent app deployed: agent=%s skills=%d", _agent_name, _skill_count)
-            # Detect agent_manifest.json for multi-agent routing
-            # (handles both fenced ```json and raw JSON formats)
-            if "agent_manifest.json" in _result:
-                try:
-                    _man_json = ""
-                    # Try to extract the manifest block content (without fences)
-                    for _block in _re.split(r'^##\s*FILE:\s*', _result, flags=_re.MULTILINE)[1:]:
-                        _blines = _block.strip().split("\n", 1)
-                        if len(_blines) >= 2 and "agent_manifest.json" in _blines[0]:
-                            _man_json = _blines[1].strip()
-                            _man_json = _re.sub(r'^```(?:json)?\s*\n?', '', _man_json)
-                            _man_json = _re.sub(r'\n?```\s*$', '', _man_json)
-                            break
-                    if _man_json:
-                        import json as _json_man
-                        state["agent_manifest"] = _json_man.loads(_man_json)
-                        _log.getLogger("pipeline_engine").warning(
-                            "Agent manifest loaded: %d agents", len(state["agent_manifest"].get("agents", [])))
-                        # Use the orchestrator as _generated_agent for execute_skill routing
-                        _orchestrator = state["agent_manifest"].get("orchestrator", "")
-                        if _orchestrator:
-                            state["_generated_agent"] = _orchestrator
-                            _log.getLogger("pipeline_engine").warning(
-                                "Orchestrator agent: %s", _orchestrator)
-                except Exception:
-                    pass
+        # ── 5.5. Chain next skill if configured ──
+        _chain_skill = getattr(stage, 'chain_skill_after', '') or ''
+        if _chain_skill:
+            _chain_result_key = (getattr(stage, 'test_result_key', '') or _artifact_key) + "_exec"
+            state = await self._run_chained_skill(_chain_skill, state, _artifact_key, _chain_result_key)
+
+        # ── 5.6. Deploy files to disk if configured ──
+        if getattr(stage, 'deploy_files_to_disk', False) and "## FILE:" in _result:
+            self._deploy_result_files(state, stage, _result)
 
         # ── 6. HITL gate: pause pipeline if stage requires human approval ──
         if getattr(stage, 'hitl', False):
@@ -3895,104 +3849,104 @@ class PipelineEngine:
         return state
 
 
-    async def _chain_test_executor_for_agent(self, state: PipelineState, stage, _result: str, _sop_body: str) -> PipelineState:
-        """Chain test_executor skill after test_case_generation in Agent mode.
+    async def _run_chained_skill(self, skill_name: str, state: PipelineState,
+                                  upstream_artifact_key: str, result_artifact_key: str) -> PipelineState:
+        """Generic: load a skill SOP, feed it the upstream artifact, call LLM, store result.
 
-        Reads the generated test_questions, loads test_executor SKILL.md SOP,
-        and calls the LLM to validate the agent via conversational testing.
-        Stores the execution report under the stage's configured output_artifact.
+        The engine knows NOTHING about what the skill does — it just loads SKILL.md,
+        passes the upstream raw_output as context, and stores the LLM output.
         """
-        import json as _json, os as _os, logging as _log
-
+        import os as _os, json as _json, logging as _log
         _log = _log.getLogger("pipeline_engine")
-        _log.warning("Chaining test_executor for agent-mode validation")
 
-        # 1. Parse generated test questions
-        _questions = []
-        try:
-            _parsed = _json.loads(_result)
-            _questions = _parsed.get("test_questions", [])
-        except Exception:
-            # Mixed content: extract JSON block
-            _jstart = _result.find('{')
-            _jend = _result.rfind('}')
-            if _jstart >= 0 and _jend > _jstart:
-                try:
-                    _parsed = _json.loads(_result[_jstart:_jend+1])
-                    _questions = _parsed.get("test_questions", [])
-                except Exception:
-                    pass
-        if not _questions:
-            _log.warning("test_executor: no test_questions found, skipping")
-            return state
-
-        _log.warning("test_executor: %d questions to validate", len(_questions))
-
-        # 2. Find generated agent name
-        _agent_name = ""
-        try:
-            _agent_app = state.get("agent_app", {})
-            if isinstance(_agent_app, dict):
-                _raw = _agent_app.get("raw_output", "")
-                if "analysis_agent" in _raw:
-                    _agent_name = "analysis_agent"
-            if not _agent_name and state.get("_generated_agent"):
-                _agent_name = state.get("_generated_agent", "")
-        except Exception:
-            pass
-
-        # 3. Load test_executor SKILL.md SOP
-        _exec_sop = ""
+        # 1. Load SOP from SKILL.md
         _here = _os.path.dirname(_os.path.abspath(__file__))
-        _sp = _os.path.join(_here, "..", "..", "engine", "skills", "test_executor", "SKILL.md")
+        _sp = _os.path.join(_here, "..", "..", "engine", "skills", skill_name, "SKILL.md")
         _sp = _os.path.abspath(_sp)
-        _alt = _os.path.expanduser("~/.aiplat/skills/test_executor/SKILL.md")
+        _alt = _os.path.expanduser(f"~/.aiplat/skills/{skill_name}/SKILL.md")
         if not _os.path.isfile(_sp):
             _sp = _alt
-        if _os.path.isfile(_sp):
-            with open(_sp, "r") as _sf:
-                _raw = _sf.read()
-            if _raw.startswith("---"):
-                _parts = _raw.split("---", 2)
-                _exec_sop = _parts[2].strip() if len(_parts) > 2 else ""
-        if not _exec_sop:
-            _log.warning("test_executor: no SOP found, skipping execution")
+        if not _os.path.isfile(_sp):
+            _log.warning("chained skill '%s': SKILL.md not found", skill_name)
+            return state
+        with open(_sp, "r") as _sf:
+            _raw = _sf.read()
+        _sop = _raw.split("---", 2)[2].strip() if _raw.startswith("---") else _raw
+        if not _sop:
+            _log.warning("chained skill '%s': empty SOP", skill_name)
             return state
 
-        # 4. Build context with test questions
-        _context = _json.dumps({
-            "mode": "agent_conversation",
-            "test_cases": _questions,
-            "agent_name": _agent_name,
-        }, ensure_ascii=False)
+        # 2. Build context from upstream artifact
+        _upstream = state.get(upstream_artifact_key, {})
+        _upstream_text = _upstream.get("raw_output", "") if isinstance(_upstream, dict) else str(_upstream)
+        if not _upstream_text:
+            _log.warning("chained skill '%s': no upstream content in '%s'", skill_name, upstream_artifact_key)
+            return state
 
-        # 5. LLM call with test_executor SOP
+        _log.warning("chained skill '%s': executing (%d chars upstream)", skill_name, len(_upstream_text))
+
+        # 3. LLM call
         from core.harness.syscalls.llm import sys_llm_generate
         from core.harness.utils.model_injection import best_model_for_purpose
 
         _response = await sys_llm_generate(
             None,
             [
-                {"role": "system", "content": _exec_sop},
-                {"role": "user", "content": _context},
+                {"role": "system", "content": _sop},
+                {"role": "user", "content": _upstream_text[:16000]},
             ],
             model_name=best_model_for_purpose("chat"),
             max_tokens=16000,
         )
-        _exec_result = getattr(_response, "content", "") or str(_response)
-        _exec_result = _exec_result.replace("```json", "").replace("```", "").strip()
+        _result = getattr(_response, "content", "") or str(_response)
+        _result = _result.replace("```json", "").replace("```", "").strip()
 
-        if not _exec_result or len(_exec_result) < 50:
-            _log.warning("test_executor: empty result")
+        if not _result or len(_result) < 50:
+            _log.warning("chained skill '%s': empty/short result (%d chars)", skill_name, len(_result))
             return state
 
-        # 6. Store execution report
-        _test_key = getattr(stage, 'test_result_key', '') or getattr(stage, 'output_artifact', '') + "_exec"
-        state[_test_key] = {"raw_output": _exec_result}
-        state["test_results"] = state.get("test_results", {})
-        _log.warning("test_executor: report stored under '%s' (%d chars)", _test_key, len(_exec_result))
-
+        # 4. Store result
+        state[result_artifact_key] = {"raw_output": _result}
+        _log.warning("chained skill '%s': OK (%d chars → %s)", skill_name, len(_result), result_artifact_key)
         return state
+
+    @staticmethod
+    def _deploy_result_files(state, stage, _result: str) -> None:
+        """Generic: parse ## FILE: blocks from output and write to project directory.
+
+        No business logic — engine doesn't know (or care) what AGENT.md or SKILL.md mean.
+        It just writes the files the LLM told it to write.
+        """
+        import re as _re, os as _os2, logging as _log
+        _log = _log.getLogger("pipeline_engine")
+
+        _target = (getattr(stage, 'deploy_files_target_dir', '') or '').strip()
+        if not _target:
+            # Default: ~/.aiplat/apps/{project_id}/current
+            _pid = state.get("project_id", "") or state.get("_project_id", "")
+            _home = _os2.getenv("AIPLAT_HOME", _os2.path.expanduser("~/.aiplat"))
+            _target = _os2.path.join(_home, "apps", _pid, "current")
+        _os2.makedirs(_target, exist_ok=True)
+        _log.warning("deploy: writing files to %s", _target)
+
+        _count = 0
+        for _block in _re.split(r'^##\s*FILE:\s*', _result, flags=_re.MULTILINE)[1:]:
+            _lines = _block.strip().split("\n", 1)
+            if len(_lines) < 2:
+                continue
+            _fname = _lines[0].strip()
+            _content = _lines[1].strip()
+            _content = _re.sub(r'^```\w*\n?', '', _content)
+            _content = _re.sub(r'\n?```\s*$', '', _content)
+            _full = _os2.path.join(_target, _fname)
+            try:
+                _os2.makedirs(_os2.path.dirname(_full), exist_ok=True)
+                with open(_full, "w", encoding="utf-8") as _fw:
+                    _fw.write(_content)
+                _count += 1
+            except Exception as _we:
+                _log.warning("deploy: failed to write %s: %s", _fname, _we)
+        _log.warning("deploy: wrote %d files", _count)
 
     async def _run_test_execution(self, state: PipelineState, stage, _result: str) -> PipelineState:
         """Run pytest on generated test code and capture results."""
