@@ -625,6 +625,16 @@ const ProjectPanel: React.FC<{
                   summary = `${comps} 组件 · ${apis} API · DB ${db} ${hasSec}${hasPerf}${hasDeploy}`;
                 } catch { /* raw text, skip */ }
               }
+              // PRD: structured JSON with functional_requirements
+              if (rw && /functional_requirements|acceptance_criteria/.test(rw.slice(0, 500))) {
+                try {
+                  const j = JSON.parse(rw);
+                  const frs = j.functional_requirements || [];
+                  const acs = frs.reduce((sum: number, fr: any) => sum + (fr.acceptance_criteria?.length || 0), 0);
+                  const title = (j.title || '').slice(0, 30);
+                  if (frs.length > 0) summary = `${title} · ${frs.length} FR · ${acs} 验收标准`;
+                } catch { /* raw text, skip */ }
+              }
               // Code: count ## FILE: blocks
               if (rw && rw.includes('## FILE:')) {
                 const files = (rw.match(/## FILE:/g) || []).length;

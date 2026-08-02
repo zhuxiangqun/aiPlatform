@@ -1159,6 +1159,16 @@ class BuilderProjectService:
         state = {"phase": "executing"}
         try:
             state = await pipeline_session.start(project_id, requirement, prd_data=prd_data)
+            # Write structured PRD back to confirmed_prd for UI display
+            _prd_artifact = state.get("prd", {})
+            if isinstance(_prd_artifact, dict) and _prd_artifact.get("raw_output"):
+                try:
+                    _prd_json = json.loads(_prd_artifact["raw_output"])
+                    if isinstance(_prd_json, dict) and _prd_json.get("functional_requirements"):
+                        proj["confirmed_prd"] = _prd_json
+                        self._save_projects()
+                except Exception:
+                    pass  # noqa: not valid JSON — keep old confirmed_prd
             # Config-driven: use stage.test_result_key (default "test_report" for backward compat)
             test_key = "test_report"
             for s in (proj.get("team_stages") or []):
