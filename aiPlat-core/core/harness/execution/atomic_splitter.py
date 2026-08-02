@@ -141,34 +141,16 @@ class AtomicTaskSplitter:
         try:
             from core.harness.utils.model_injection import best_model_for_purpose
             from core.harness.syscalls.llm import sys_llm_generate
+            from core.harness.utils.prompt_loader import _sync_resolve
 
             domain_text = f"\n领域: {domain_hint}" if domain_hint else ""
             context_text = ""
             if existing_context:
                 context_text = f"\n已有上下文: {_json.dumps(existing_context, ensure_ascii=False)[:500]}"
-
-            prompt = f"""将以下任务拆分为最多 {max_atoms} 个原子子任务。
-
-原始任务:
-{task}{domain_text}{context_text}
-
-每个原子子任务必须满足:
-1. 边界清晰 — 明确声明做什么和不做什么
-2. 输出结构化 — 输出 JSON schema (不是自由文本)
-3. 可独立执行 — 不依赖其他原子的中间结果 (除非显式声明依赖)
-4. 所有原子加起来必须完整覆盖原始任务
-
-返回 JSON 数组:
-[{{
-  "atom_id": "atom_1",
-  "boundary": "计算第1-50题的数学答案，不处理物理题和逻辑题",
-  "input_schema": {{"type": "object", "properties": {{"question_ids": {{"type": "array", "items": {{"type": "integer"}}}}}}, "required": ["question_ids"]}},
-  "output_schema": {{"type": "object", "properties": {{"answers": {{"type": "object"}}, "correct_count": {{"type": "integer"}}}}, "required": ["answers"]}},
-  "dependencies": [],
-  "estimated_tokens": 2000
-}}]
-
-只返回 JSON 数组，不要其他内容。"""
+            
+            prompt = _sync_resolve("atomic-splitter-llm-split",
+                task=f"原始任务:\n{task}{domain_text}{context_text}",
+                context=f"最多 {max_atoms} 个原子子任务")
 
             result = await sys_llm_generate(
                 messages=[{"role": "user", "content": prompt}],
@@ -224,23 +206,15 @@ class AtomicTaskSplitter:
         try:
             from core.harness.utils.model_injection import best_model_for_purpose
             from core.harness.syscalls.llm import sys_llm_generate
+            from core.harness.utils.prompt_loader import _sync_resolve
 
             boundaries = "\n".join(
                 f"- {a.atom_id}: {a.boundary[:200]}" for a in atoms
             )
 
-            prompt = f"""检查以下原子任务列表是否完整覆盖原始任务。
-
-原始任务:
-{task[:2000]}
-
-原子任务:
-{boundaries}
-
-分析是否有遗漏、重复或覆盖空白。如果有未覆盖的部分，列出具体内容。
-如果没有遗漏，返回: {{"gaps": []}}
-
-返回 JSON: {{"gaps": ["未覆盖部分1", "未覆盖部分2"]}}"""
+            prompt = _sync_resolve("atomic-splitter-verify-coverage",
+                task=task[:2000],
+                steps=boundaries)
 
             result = await sys_llm_generate(
                 messages=[{"role": "user", "content": prompt}],
@@ -271,17 +245,14 @@ class AtomicTaskSplitter:
         try:
             from core.harness.utils.model_injection import best_model_for_purpose
             from core.harness.syscalls.llm import sys_llm_generate
+            from core.harness.utils.prompt_loader import _sync_resolve
 
             existing_ids = [a.atom_id for a in existing_atoms]
 
-            prompt = f"""为以下未覆盖的部分创建原子子任务 (最多 {remaining_slots} 个)。
-
-原始任务: {task[:1000]}
-现有原子ID: {existing_ids}
-未覆盖部分:
-{chr(10).join(f'- {g}' for g in gaps[:10])}
-
-返回 JSON 数组 (与拆分阶段相同格式)。"""
+            prompt = _sync_resolve("atomic-splitter-fill-gaps",
+                task=task[:1000],
+                gaps=chr(10).join(f'- {g}' for g in gaps[:10]),
+                existing_steps=str(existing_ids))
 
             result = await sys_llm_generate(
                 messages=[{"role": "user", "content": prompt}],
