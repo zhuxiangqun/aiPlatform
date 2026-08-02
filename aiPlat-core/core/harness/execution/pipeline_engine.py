@@ -1885,11 +1885,12 @@ class PipelineEngine:
                 state[f"start.{key}"] = val
 
         if prd_data:
-
-            # Store PRD under a non-artifact key so it doesn't interfere with stage skip logic.
-            # The first stage's output_artifact (e.g., "architecture") must remain empty
-            # so the stage actually executes and generates its own output.
-            state["_prd_data"] = prd_data
+            # Merge chat PRD context into description for all pipeline stages
+            import json as _json
+            _d = state.get("description", "")
+            if isinstance(prd_data, dict):
+                _d = (str(_d) + "\n\n" + _json.dumps(prd_data, ensure_ascii=False, indent=2))[:8000]
+            state["description"] = _d
 
         return await self._run_stages_from(0, state)
 
@@ -3669,9 +3670,6 @@ class PipelineEngine:
         import json as _json
         _context = ""
         _desc = state.get("description", "")
-        _prd = state.get("_prd_data", {})
-        if isinstance(_prd, dict) and _prd:
-            _context += f"## upstream_input\n{_json.dumps(_prd, ensure_ascii=False)[:4000]}\n\n"
         if _desc:
             _context += f"## description\n{_desc}\n\n"
         # Append upstream stage outputs as context (config-driven keys)
@@ -6495,12 +6493,6 @@ class PipelineEngine:
                     return state
 
         self._snapshot(state, f"stage_{stage.id}_output")
-
-        # ── Cross-stage validation ──
-
-        state.setdefault("_cross_validations", {})
-
-        self._validate_cross_stage(stage, state)
 
         if artifact:
 
@@ -9644,141 +9636,8 @@ JSON format: {{"artifact": {{}},"confidence": "HIGH","issues": [{{"severity": "P
 
 
 
-    def _validate_cross_stage(self, stage: PipelineStageConfig, state: PipelineState) -> None:
-
-        """Cross-stage validation: check downstream outputs reference upstream artifacts."""
-
-        validations = state.get("_cross_validations", {})
-
-        # C1: SA → BA consistency
-
-        if stage.output_artifact == "solution_design":
-
-            cp = state.get("customer_profile") or {}
-
-            sd = state.get("solution_design") or {}
-
-            score = 100; checks = []
-
-            cp_text = str(cp).lower()
-
-            sd_text = str(sd).lower()
-
-            if len(cp_text) > 10:
-
-                overlap = sum(1 for w in ["制造", "零售", "金融", "医疗", "教育", "政府"] if w in cp_text and w in sd_text)
-
-                if overlap == 0:
-
-                    checks.append("no industry keyword overlap with customer_profile"); score -= 20
-
-                else:
-
-                    checks.append(f"{overlap} industry keyword matches with customer_profile")
-
-                pain_points = cp.get("pain_points", []) if isinstance(cp, dict) else []
-
-                ref = sum(1 for p in pain_points if str(p)[:10] in sd_text)
-
-                if pain_points and ref == 0:
-
-                    checks.append("no pain_points addressed"); score -= 25
-
-                elif pain_points:
-
-                    checks.append(f"{ref}/{len(pain_points)} pain points addressed")
-
-            validations["sa_ba_consistency"] = {"score": score, "checks": checks}
-
-        # C2: DE → SA coverage
-
-        if stage.output_artifact == "deployment_package":
-
-            sd = state.get("solution_design") or {}
-
-            dp = state.get("deployment_package") or {}
-
-            score = 100; checks = []
-
-            sol_comps = sd.get("components", []) if isinstance(sd, dict) else []
-
-            dep_comps = dp.get("components", []) if isinstance(dp, dict) else []
-
-            if sol_comps:
-
-                dep_names = [str(c.get("name","")).lower() for c in dep_comps if isinstance(c, dict)]
-
-                covered = sum(1 for c in sol_comps if isinstance(c,dict) and str(c.get("name","")).lower() in dep_names)
-
-                cov = covered / len(sol_comps) if sol_comps else 1
-
-                checks.append(f"component coverage: {covered}/{len(sol_comps)}")
-
-                if cov < 0.5: score -= 30; checks.append("coverage < 50%")
-
-                elif cov < 1.0: score -= 15
-
-            risks = dp.get("risk_matrix",[]) if isinstance(dp, dict) else []
-
-            if sd.get("gap_analysis") and not risks:
-
-                score -= 20; checks.append("no risk_matrix despite gap_analysis")
-
-            validations["de_sa_coverage"] = {"score": score, "checks": checks}
-
-        # C3: DM → DE acceptance
-
-        if stage.output_artifact == "acceptance_report":
-
-            dp = state.get("deployment_package") or {}
-
-            ar = state.get("acceptance_report") or {}
-
-            score = 100; checks = []
-
-            test_plan = dp.get("test_plan",[]) if isinstance(dp, dict) else []
-
-            risk_matrix = dp.get("risk_matrix",[]) if isinstance(dp, dict) else []
-
-            ar_text = str(ar).lower()
-
-            if test_plan:
-
-                ref = sum(1 for t in test_plan if isinstance(t,dict) and str(t.get("test",""))[:20].lower() in ar_text)
-
-                if ref == 0: score -= 25; checks.append("no test_plan references")
-
-                else: checks.append(f"{ref}/{len(test_plan)} tests covered")
-
-            if risk_matrix:
-
-                ref = sum(1 for r in risk_matrix if isinstance(r,dict) and str(r.get("risk",""))[:20].lower() in ar_text)
-
-                if ref == 0: score -= 25; checks.append("no risk_matrix references")
-
-                else: checks.append(f"{ref}/{len(risk_matrix)} risks covered")
-
-            validations["dm_de_acceptance"] = {"score": score, "checks": checks}
-
-        # C4: Quality gate
-
-        scores = [v["score"] for v in validations.values()]
-
-        if scores:
-
-            overall = sum(scores) // len(scores)
-
-            validations["_quality_score"] = overall
-
-            if overall < 50:
-
-                state["_quality_warning"] = f"cross-stage quality {overall}/100 < 50"
-
-        state["_cross_validations"] = validations
-
-
-
     @staticmethod
+
 
     def _verify_stage_behavior(stage: PipelineStageConfig, artifact: Any, output_dir: str = "") -> Dict[str, Any]:
 

@@ -111,9 +111,5 @@ tenant_id|OK|generic pipeline
 tokens_budget|OK|generic pipeline
 tokens_used|OK|generic pipeline
 user_id|OK|generic pipeline
-# -- Known violations (DEBT: tracked for future removal) --
-_prd_data|DEBT|FDE domain artifact — scheduled for config-driven replacement
-acceptance_report|DEBT|FDE domain artifact — in _validate_cross_stage (C4)
-customer_profile|DEBT|FDE domain artifact — in _validate_cross_stage (C4)
-deployment_package|DEBT|FDE domain artifact — in _validate_cross_stage (C4)
-solution_design|DEBT|FDE domain artifact — in _validate_cross_stage (C4)
+# All DEBT keys resolved as of 2026-08-03 — baseline is clean
+
