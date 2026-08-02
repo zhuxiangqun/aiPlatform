@@ -750,7 +750,7 @@ const FactoryPage: React.FC = () => {
   useEffect(() => { loadAll(); }, [loadAll]);
 
   const create = async () => {
-    if (!desc.trim()) return;
+    if (!desc.trim()) { toast.warning('请输入应用描述'); return; }
     setCreating(true);
     try {
       const project = await projectApi.create({ name: desc.trim().slice(0, 30) || '新项目', description: desc.trim() });
