@@ -1,5 +1,4 @@
 """
-import logging
 Phase 30: GoalExecutor — autonomous closed-loop improvement executor.
 
 Takes improvement proposals from GoalGenerator (Phase 28) and executes
@@ -30,6 +29,7 @@ Default: auto_execute_enabled=False (safety-first, human opt-in).
 from __future__ import annotations
 
 import asyncio
+import logging
 import os as _os
 import time
 from dataclasses import dataclass
