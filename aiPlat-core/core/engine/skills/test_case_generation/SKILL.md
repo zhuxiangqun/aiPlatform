@@ -102,21 +102,33 @@ skip_when: 代码模块过小或已有充分测试覆盖
 
 ### Agent Step 3: 组织为测试计划
 
-输出格式:
+**先输出 JSON**（紧凑一行，不要 ``` 包裹），**再输出 Markdown 报告**。
 
+JSON:
 ```json
 {
   "mode": "agent_conversation",
-  "test_questions": [
-    {
-      "id": "AQ-001",
-      "ac_ref": "AC1",
-      "category": "happy_path|boundary|exception",
-      "question": "自然语言问题",
-      "min_expectation": "最低预期"
-    }
-  ]
+  "test_questions": [...]
 }
+```
+
+Markdown 报告:
+```markdown
+## 对话测试计划 — {项目名称}
+
+### 汇总
+| 指标 | 值 |
+|:---|---:|
+| 测试问题总数 | {total} |
+| 覆盖 FR | {n} |
+| Happy path | {happy} |
+| 边界 | {boundary} |
+| 异常 | {exception} |
+
+### 测试问题
+| # | FR | 问题 | 最低预期 |
+|:---|----|------|------|
+| 1 | FR-001 | 我用手机拍摄的视频能上传吗？ | 支持MP4上传，显示元数据 |
 ```
 
 ---

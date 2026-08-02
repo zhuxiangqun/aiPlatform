@@ -638,7 +638,17 @@ const ProjectPanel: React.FC<{
                   const frs = j.functional_requirements || [];
                   const acs = frs.reduce((sum: number, fr: any) => sum + (fr.acceptance_criteria?.length || 0), 0);
                   const title = (j.title || '').slice(0, 30);
-                  if (frs.length > 0) summary = `${title} · ${frs.length} FR · ${acs} 验收标准`;
+                  const uss = j.user_stories?.length || 0;
+                  if (frs.length > 0) summary = `${title} · ${frs.length} FR · ${acs} 验收标准 · ${uss} US`;
+                } catch { /* raw text, skip */ }
+              }
+              // QA Agent mode: has test_questions with mode=agent_conversation
+              if (rw && /test_questions|agent_conversation/.test(rw.slice(0, 300))) {
+                try {
+                  const j = JSON.parse(rw);
+                  const qs = j.test_questions || [];
+                  const coveredFRs = new Set(qs.map((q: any) => q.ac_ref?.split('-')[0] || '')).size;
+                  if (qs.length > 0) summary = `${qs.length} 条对话测试 · 覆盖 ${coveredFRs} 个FR`;
                 } catch { /* raw text, skip */ }
               }
               // Code: count ## FILE: blocks
