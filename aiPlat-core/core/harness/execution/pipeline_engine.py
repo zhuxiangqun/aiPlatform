@@ -2847,7 +2847,9 @@ class PipelineEngine:
 
         saved_bytes = 0
 
-        for stage in stages[:-1]:  # keep last stage
+        # Keep last 3 stages for builder pipelines (not just 1)
+        _keep_count = min(3, len(stages))
+        for stage in (stages[:-_keep_count] if _keep_count < len(stages) else []):
 
             key = stage.output_artifact
 

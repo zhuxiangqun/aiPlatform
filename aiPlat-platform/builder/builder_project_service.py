@@ -1313,30 +1313,50 @@ class BuilderProjectService:
                     self._save_projects()
 
     async def approve_stage(self, project_id: str, feedback: str = "") -> Dict[str, Any]:
-        session = self._pipeline_sessions.get(project_id)
-        if not session:
-            session = self._rebuild_session(project_id)
-            if not session:
-                raise ValueError("no session")
         state = self._runs.get(project_id)
         if not state:
             state = self._load_pipeline_state(project_id)
             if not state:
                 raise ValueError("no pipeline state")
-        state = await session.approve(dict(state), feedback=feedback)
+
+        session = self._pipeline_sessions.get(project_id)
+        if session:
+            # Fast path: use existing session
+            state = await session.approve(dict(state), feedback=feedback)
+        else:
+            # Rebuild path: approve directly on state without loading models
+            _hitl_id = state.get("_hitl_stage_id", "")
+            if _hitl_id:
+                state["_hitl_resolved_" + _hitl_id] = True
+            state["_hitl_stage_id"] = ""
+            state["_hitl_human_feedback"] = ""
+            state["phase"] = "executing"
+            # Move to next stage after the HITL stage
+            _proj = self._projects.get(project_id, {})
+            _ts = _proj.get("team_stages", [])
+            _next_idx = 0
+            for _i, _s in enumerate(_ts):
+                _sid = _s.get("id", "") if isinstance(_s, dict) else getattr(_s, "id", "")
+                if _sid == _hitl_id:
+                    _next_idx = _i + 1
+                    break
+            state["_current_stage_idx"] = _next_idx
+
         self._runs[project_id] = state
         await self._save_state(project_id, state)
-        # Run remaining pipeline in background thread (same pattern as start_pipeline_background)
+        # Run remaining pipeline in background thread
         if state.get("phase") == "executing":
-            idx = state.get("_current_stage_idx", 0) + 1
-            if idx < len(session.get_stages()):
+            _idx = state.get("_current_stage_idx", 1)
+            _rebuild = session or self._rebuild_session(project_id)
+            if _rebuild and _idx < len(_rebuild.get_stages()):
                 import threading, asyncio as _asyncio
+                _ses = _rebuild
                 svc = self
                 def _bg_run():
                     try:
                         loop = _asyncio.new_event_loop()
                         _asyncio.set_event_loop(loop)
-                        result = loop.run_until_complete(session._engine._run_stages_from(idx, dict(state)))
+                        result = loop.run_until_complete(_ses._engine._run_stages_from(_idx, dict(state)))
                         svc._runs[project_id] = dict(result)
                         loop.run_until_complete(svc._save_state(project_id, dict(result)))
                         loop.close()
