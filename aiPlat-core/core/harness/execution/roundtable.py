@@ -43,7 +43,8 @@ async def run_roundtable(
         round_speakers: List[Dict[str, Any]] = []
 
         for name in agent_names:
-            prompt = round_context + f"\n\n现在是 {name} 的发言轮次。请基于之前的讨论，发表你的观点。可以赞同、补充、质疑其他观点，但保持建设性。"
+            from core.harness.utils.prompt_loader import _sync_resolve
+            prompt = round_context + "\n\n" + _sync_resolve("roundtable-speaker-turn", name=name)
             try:
                 output = await run_agent(name, prompt, "")
                 all_outputs[name].append(output)
@@ -85,12 +86,9 @@ def _build_round_context(
     agent_names: List[str],
 ) -> str:
     """Build the context prompt for the current round."""
-    parts = [
-        f"## 圆桌讨论 (Roundtable) — 第 {round_num} 轮",
-        f"\n**讨论主题**: {topic}",
-        f"\n**参与方**: {', '.join(agent_names)}",
-        f"\n**规则**: 每位参与者平等发言。你可以赞同、补充或质疑其他观点，保持建设性。目标是达成共识或产出综合方案。",
-    ]
+    from core.harness.utils.prompt_loader import _sync_resolve
+    return _sync_resolve("roundtable-context",
+        history=f"## 圆桌讨论 — 第 {round_num} 轮\n\n话题: {topic}\n参与者: {', '.join(agent_names)}")
 
     if transcript:
         parts.append("\n### 此前讨论记录")

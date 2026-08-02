@@ -217,14 +217,12 @@ class DynamicRouter:
             for e in history
         ]) if history else "（尚未执行任何步骤）"
 
-        system = (
-            f"你是多Agent系统的路由调度器。从以下可用Agent中选择下一个执行者。\n\n"
-            f"【可用Agent】\n{agents_desc}\n\n"
-            f"【规则】\n"
-            f"1. 选择最应该执行下一步的Agent\n"
-            f"2. 如果任务已完成，输出 finish\n"
-            f"3. 如果当前信息不足，优先选能获取信息的Agent\n"
-        )
+        from core.harness.utils.prompt_loader import _sync_resolve
+
+        system = _sync_resolve("dynamic-router-supervisor",
+            agents=agents_desc,
+            task=goal[:200],
+            history=history_str)
         # Inject business goal context if available
         if self.goal_router:
             strategy = self.goal_router.adjust()
