@@ -1348,7 +1348,7 @@ class BuilderProjectService:
         await self._save_state(project_id, state)
         # Run remaining pipeline in background thread
         if state.get("phase") == "executing":
-            _idx = state.get("_current_stage_idx", 0) + 1
+            _idx = state.get("_current_stage_idx", 0)  # reject/approve already cleared, start from HITL stage
             if _idx < len(session.get_stages()):
                 import threading, asyncio as _asyncio
                 svc = self
@@ -1406,7 +1406,7 @@ class BuilderProjectService:
         await self._save_state(project_id, state)
         # Run remaining pipeline in background thread
         if state.get("phase") == "executing":
-            _idx = state.get("_current_stage_idx", 0) + 1
+            _idx = state.get("_current_stage_idx", 0)  # reject/approve already cleared, start from HITL stage
             if _idx < len(session.get_stages()):
                 import threading, asyncio as _asyncio
                 svc = self
