@@ -141,13 +141,28 @@ const SCHEMAS: Record<string, DocSchema> = {
     ]}],
     sections: [{ key: "test_log", title: "执行日志", type: "code" }],
   },
+  qa: {
+    title: "Agent 对话测试",
+    tables: [{ key: "test_questions", title: "对话测试用例", columns: [
+      { key: "id", label: "ID", width: "90px" },
+      { key: "ac_ref", label: "验收标准", width: "110px" },
+      { key: "category", label: "分类", type: "category" },
+      { key: "question", label: "测试问题" },
+      { key: "min_expectation", label: "最低期望" },
+    ]}],
+  },
 };
 
 const formatBadge = (v: string, type: string) => {
-  if (type === 'risk' || type === 'badge') {
+  if (type === 'risk' || type === 'badge' || type === 'priority') {
     const low = (v || '').toLowerCase();
-    const color = low === 'high' ? 'bg-red-100 text-red-700' : low === 'medium' ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-600';
+    const color = low === 'high' ? 'bg-red-100 text-red-700' : low === 'medium' ? 'bg-amber-100 text-amber-700' : low === 'standard' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-600';
     return <span className={`px-1.5 py-0.5 rounded text-[10px] ${color}`}>{v}</span>;
+  }
+  if (type === 'category') {
+    const colors: Record<string,string> = { happy_path:'bg-green-100 text-green-700', exception:'bg-red-100 text-red-700', boundary:'bg-amber-100 text-amber-700' };
+    const labels: Record<string,string> = { happy_path:'正常流程', exception:'异常流程', boundary:'边界测试' };
+    return <span className={`px-1.5 py-0.5 rounded text-[10px] ${colors[v]||'bg-gray-100 text-gray-600'}`}>{labels[v]||v}</span>;
   }
   if (type === 'method_badge') {
     const colors: Record<string,string>={GET:'bg-blue-100 text-blue-700',POST:'bg-green-100 text-green-700',PUT:'bg-amber-100 text-amber-700',DELETE:'bg-red-100 text-red-700'};
@@ -217,6 +232,7 @@ const FullscreenView: React.FC<{
     }
     if (parsed.user_stories) schema = SCHEMAS.prd;
     else if (parsed.components) schema = SCHEMAS.architecture;
+    else if (parsed.test_questions) schema = SCHEMAS.qa;
     else if (parsed.test_cases) schema = SCHEMAS.test;
   }
   return (
