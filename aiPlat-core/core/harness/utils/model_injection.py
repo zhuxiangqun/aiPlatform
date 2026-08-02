@@ -1674,39 +1674,28 @@ def best_model_for_purpose(purpose: str, messages: list = None) -> str:
 
 
 def best_model_for_purpose_with_meta(purpose: str, messages: list = None) -> dict:
+    """Model metadata from the single source of truth: ModelManager."""
     model = best_model_for_purpose(purpose, messages)
     profile = _load_llm_profile()
-    tiers = profile.get("tiers", {})
     pprof = profile.get("purpose_profiles", {}).get(purpose, {})
 
+    # Tier from ModelManager — based on model capabilities, not static YAML lists
     tier = "unknown"
-    for tname, tconfig in tiers.items():
-        if not isinstance(tconfig, dict):
-            continue
-        tmodels = tconfig.get("models", [])
-        if not isinstance(tmodels, list):
-            continue
-        for m in tmodels:
-            mname = m.get("name", "") if isinstance(m, dict) else str(m)
-            if mname == model:
-                tier = tname
-                break
-        if tier != "unknown":
-            break
+    try:
+        mgr = _get_cached_model_manager()
+        tier = mgr.get_model_tier(model, profile)
+    except Exception:
+        pass
 
-    # Get complexity_range from tier config
-    complexity_range = []
-    if tier != "unknown":
-        tconfig = tiers.get(tier, {})
-        if isinstance(tconfig, dict):
-            complexity_range = tconfig.get("complexity_range", [])
+    # complexity_range from tier_ranges
+    complexity_range = profile.get("tiers", {}).get(tier, {}).get("complexity_range", [])
 
     return {
         "model": model,
         "model_tier": tier,
         "model_purpose": purpose,
         "prefer_local": pprof.get("prefer_local", False),
-        "complexity_range": complexity_range,
+        "complexity_range": complexity_range if isinstance(complexity_range, list) else [],
     }
 
 

@@ -1007,6 +1007,52 @@ class ModelManager:
             f"Safe models ({safe_model}, {safe_model_alt}) also cannot load."
         )
 
+    def get_model_tier(self, model_name: str, profile_data: dict = None) -> str:
+        """Determine tier from model capabilities (single source of truth).
+
+        Uses model_capabilities.reasoning_quality + semantic_understanding
+        to compute a complexity score, then maps to tiers via complexity_range.
+        No static model lists in YAML.
+        """
+        if profile_data is None:
+            try:
+                from pathlib import Path
+                import yaml as _yaml
+                config_path = os.getenv("AIPLAT_LLM_CONFIG_PATH",
+                    str(Path(__file__).resolve().parent.parent.parent.parent /
+                        "config" / "infra" / "llm_profile.yaml"))
+                with open(config_path) as f:
+                    profile_data = _yaml.safe_load(f) or {}
+            except Exception:
+                return "unknown"
+
+        tiers = profile_data.get("tiers", {})
+        caps = profile_data.get("model_capabilities", {})
+
+        # Match model name: try exact, then shortened forms
+        cap = caps.get(model_name)
+        if not cap:
+            for cn, cc in caps.items():
+                if model_name in cn or cn in model_name:
+                    cap = cc
+                    break
+
+        if isinstance(cap, dict):
+            reasoning = cap.get("reasoning_quality", 1)
+            semantic = cap.get("semantic_understanding", 1)
+            complexity = min(max(reasoning * 0.6 + semantic * 0.4, 0.5), 4.99)
+        else:
+            complexity = 2.5
+
+        for tier_name, tier_config in sorted(tiers.items()):
+            if not isinstance(tier_config, dict):
+                continue
+            rng = tier_config.get("complexity_range", [0, 0])
+            if len(rng) >= 2 and rng[0] <= complexity < rng[1]:
+                return tier_name
+
+        return "unknown"
+
     def select(self, model_name: str = "", purpose: str = "") -> Optional[ModelInfo]:
         """Select model by name or purpose. Returns full ModelInfo with provider/base_url/api_key_env.
 

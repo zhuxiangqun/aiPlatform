@@ -180,54 +180,18 @@ tiers:
   T1:
     label: "轻量/快速"
     complexity_range: [0, 1]
-    default_model: "qwen2.5:3b"
-    models:
-      - name: qwen2.5:3b
-        source: local
-    max_tools: 4
   T2:
     label: "日常对话"
     complexity_range: [1, 2]
-    default_model: "qwen2.5-coder:7b"
-    models:
-      - name: qwen2.5-coder:7b
-        source: local
-      - name: minicpm-v:8b
-        source: local
-    fallback_models: ["deepseek-chat"]
-    max_tools: 8
   T3:
     label: "内容创作/编码"
     complexity_range: [2, 3]
-    default_model: "qwen2.5-coder:7b"
-    models:
-      - name: qwen2.5-coder:7b
-        source: local
-      - name: qwen2.5-coder:14b
-        source: local
-      - name: gemma4:12b
-        source: local
-    fallback_models: ["deepseek-chat"]
-    max_tools: 16
   T4:
     label: "复杂推理"
     complexity_range: [3, 4]
-    default_model: "deepseek-chat"
-    models:
-      - name: deepseek-chat
-        source: external
-      - name: qwen2.5-coder:32b
-        source: local
-    fallback_models: ["deepseek-v4-pro"]
-    max_tools: 32
   T5:
     label: "高难度推理"
     complexity_range: [4, 5]
-    default_model: "deepseek-v4-pro"
-    models:
-      - name: deepseek-v4-pro
-        source: external
-    max_tools: 64
 
 # ── TTS: 本地语音合成 (Piper TTS) ──
 tts:
