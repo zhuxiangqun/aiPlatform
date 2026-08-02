@@ -3557,6 +3557,8 @@ class PipelineEngine:
 
         """Execute stage based on declarative execution_mode field."""
 
+        import time as _time
+        _t0 = _time.time()
         mode = getattr(stage, 'execution_mode', 'code_first') or 'code_first'
 
 
@@ -3577,10 +3579,30 @@ class PipelineEngine:
         # _run_stage_skill handles all errors internally — even empty output
         # is a valid signal (no output for this stage), not a reason to bypass.
         if getattr(stage, 'skill_name', ''):
-            return await self._run_stage_skill(stage, state)
+            result = await self._run_stage_skill(stage, state)
+        else:
+            # code_first (default) — ReAct path ONLY for stages without skill_name
+            result = await self._exec_stage(stage, state)
 
-        # code_first (default) — ReAct path ONLY for stages without skill_name
-        return await self._exec_stage(stage, state)
+        # ── Record stage trace for reasoning visibility ──
+        _trace_key = f"_trace_{stage.id}"
+        if _trace_key not in result:
+            _elapsed = round(_time.time() - _t0, 2)
+            result[_trace_key] = {
+                "stage_id": stage.id,
+                "agent_id": getattr(stage, 'agent_id', '') or '',
+                "phase": getattr(stage, 'phase', '') or '',
+                "skill_name": getattr(stage, 'skill_name', '') or '',
+                "model_name": best_model_for_purpose(getattr(stage, 'skill_model_purpose', '') or 'chat'),
+                "model_purpose": getattr(stage, 'skill_model_purpose', '') or 'chat',
+                "elapsed_sec": _elapsed,
+                "retry_count": result.get(f"_retry_{stage.id}", 0),
+                "failure_strategy": getattr(stage, 'failure_strategy', 'fail_pipeline') or 'fail_pipeline',
+                "strategy": "react",
+            }
+        result.pop(f"_retry_{stage.id}", None)  # clean up retry counter from state
+
+        return result
 
 
     async def _run_stage_skill(self, stage: PipelineStageConfig, state: PipelineState) -> PipelineState:
@@ -3598,6 +3620,8 @@ class PipelineEngine:
             return state
 
         import os as _os, logging as _log
+        import time as _time
+        _t0 = _time.time()
 
         # ── 1. Resolve SOP from SKILL.md ──
         _sop_body = ""
@@ -3683,7 +3707,27 @@ class PipelineEngine:
 
         # ── 4. Store result ──
         _artifact_key = getattr(stage, 'output_artifact', '') or _skill_name
+        _elapsed = round(_time.time() - _t0, 2)
+
         state[_artifact_key] = {"raw_output": _result}
+
+        # ── Stage trace: structured metadata for reasoning visibility ──
+        _model_name = best_model_for_purpose(_purpose)
+        state[f"_trace_{stage.id}"] = {
+            "stage_id": stage.id,
+            "agent_id": getattr(stage, 'agent_id', '') or '',
+            "phase": getattr(stage, 'phase', '') or '',
+            "skill_name": _skill_name,
+            "model_name": _model_name,
+            "model_purpose": _purpose,
+            "output_size": len(_result),
+            "elapsed_sec": _elapsed,
+            "tokens_used": getattr(_response, 'usage', {}).get('total_tokens', 0) if hasattr(_response, 'usage') else 0,
+            "retry_count": state.get(f"_retry_{stage.id}", 0),
+            "failure_strategy": getattr(stage, 'failure_strategy', 'fail_pipeline') or 'fail_pipeline',
+            "strategy": "skill_dispatch",
+        }
+
         _log.getLogger("pipeline_engine").warning(
             "Skill %s OK: stage=%s output=%d chars", _skill_name, stage.id, len(_result))
 

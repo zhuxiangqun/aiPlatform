@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { CheckCircle, XCircle, Loader2, Clock, Download, Code, FileText, Bug } from 'lucide-react';
+import { CheckCircle, XCircle, Loader2, Clock, Download, Code, FileText, Bug, Eye, EyeOff } from 'lucide-react';
 import type { BuilderSession, PipelineStageConfig } from '../../services';
 import InteractivePipelineDAG from './InteractivePipelineDAG';
 
@@ -378,6 +378,55 @@ function getTestReport(session: Record<string, unknown>): Record<string, unknown
   return undefined;
 }
 
+// --- stage trace panel (orchestration visibility) ---
+
+interface StageTrace {
+  stage_id?: string;
+  agent_id?: string;
+  phase?: string;
+  skill_name?: string;
+  model_name?: string;
+  model_purpose?: string;
+  output_size?: number;
+  elapsed_sec?: number;
+  tokens_used?: number;
+  retry_count?: number;
+  failure_strategy?: string;
+  strategy?: string;
+}
+
+const StageTracePanel: React.FC<{ trace: StageTrace; stageKey: string }> = ({ trace, stageKey }) => {
+  const [open, setOpen] = useState(false);
+  if (!trace || !trace.model_name) return null;
+
+  return (
+    <div className="mt-2 border-t border-dark-border pt-2">
+      <button
+        onClick={() => setOpen(!open)}
+        className="flex items-center gap-1 text-[10px] text-gray-500 hover:text-gray-300 transition-colors w-full text-left"
+      >
+        {open ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+        思维链{trace.model_name ? ` · ${trace.model_name}` : ''}
+        {trace.elapsed_sec != null ? ` · ${trace.elapsed_sec.toFixed(0)}s` : ''}
+      </button>
+      {open && (
+        <div className="mt-2 text-[10px] text-gray-400 space-y-1 pl-4 border-l border-dark-border">
+          {trace.model_name && <div>模型: <span className="text-gray-300">{trace.model_name}</span></div>}
+          {trace.model_purpose && <div>用途: {trace.model_purpose}</div>}
+          {trace.skill_name && <div>技能: {trace.skill_name}</div>}
+          {trace.strategy && <div>策略: {trace.strategy === 'skill_dispatch' ? '技能执行' : 'ReAct 推理'}</div>}
+          {trace.output_size != null && <div>产出: {(trace.output_size / 1024).toFixed(1)} KB</div>}
+          {trace.tokens_used != null && trace.tokens_used > 0 && <div>Token: {trace.tokens_used.toLocaleString()}</div>}
+          {trace.retry_count != null && trace.retry_count > 0 && <div className="text-yellow-400">重试: {trace.retry_count} 次</div>}
+          {trace.failure_strategy && <div>失败策略: {trace.failure_strategy}</div>}
+          {trace.agent_id && <div>Agent: {trace.agent_id}</div>}
+        </div>
+      )}
+    </div>
+  );
+};
+
+
 export const BuilderPipeline: React.FC<PipelineProps> = ({ session, teamStages, onRegenerate, onApprove, onReject: _onReject, onRollback, loading }) => {
   const raw = session as Record<string, unknown>;
   const testReport = getTestReport(raw);
@@ -446,6 +495,20 @@ export const BuilderPipeline: React.FC<PipelineProps> = ({ session, teamStages, 
                   <span className="text-[10px] text-cyan-400 font-medium">LLM 推理中…</span>
                 </div>
               )}
+
+              {/* trace panel: model info + reasoning chain */}
+              {(hasContent || status === 'passed' || status === 'running') && (() => {
+                const traceKey = `_trace_${stage.key}`;
+                const trace = (session as Record<string, unknown>)[traceKey] as StageTrace | undefined;
+                if (!trace && !hasContent) return null;
+                // Also check for trace on agent_id
+                const sid = (stage as unknown as Record<string, unknown>).id as string | undefined;
+                const altTraceKey = sid ? `_trace_${sid}` : null;
+                const altTrace = altTraceKey ? (session as Record<string, unknown>)[altTraceKey] as StageTrace | undefined : undefined;
+                const finalTrace = trace || altTrace;
+                if (!finalTrace) return null;
+                return <StageTracePanel trace={finalTrace} stageKey={stage.key} />;
+              })()}
 
               {hasContent && (
                 <div className="text-xs text-gray-400 space-y-1">

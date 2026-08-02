@@ -211,6 +211,14 @@ def _enrich_stage_from_agent(stage: Dict[str, Any]) -> Dict[str, Any]:
         else:
             stage["skill_model_purpose"] = "chat"
 
+    # Pre-resolve model name so frontend can preview without running pipeline
+    if not stage.get("resolved_model"):
+        try:
+            from core.harness.utils.model_injection import best_model_for_purpose
+            stage["resolved_model"] = best_model_for_purpose(stage.get("skill_model_purpose", "chat"))
+        except Exception:
+            stage["resolved_model"] = "auto"
+
     return stage
 
 
