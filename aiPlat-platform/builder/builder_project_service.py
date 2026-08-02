@@ -1343,16 +1343,14 @@ class BuilderProjectService:
             state["_hitl_stage_id"] = ""
             state["_hitl_human_feedback"] = ""
             state["phase"] = "executing"
-            # Move to next stage after the HITL stage
+            # Record HITL stage index (matching session.approve() semantics)
             _proj = self._projects.get(project_id, {})
             _ts = _proj.get("team_stages", [])
-            _next_idx = 0
             for _i, _s in enumerate(_ts):
                 _sid = _s.get("id", "") if isinstance(_s, dict) else getattr(_s, "id", "")
                 if _sid == _hitl_id:
-                    _next_idx = _i + 1
+                    state["_current_stage_idx"] = _i
                     break
-            state["_current_stage_idx"] = _next_idx
 
         self._runs[project_id] = state
         await self._save_state(project_id, state)
