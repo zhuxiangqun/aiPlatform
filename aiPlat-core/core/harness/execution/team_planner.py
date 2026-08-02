@@ -179,6 +179,45 @@ def build_agent_catalog_markdown(agents: Optional[List[AgentCatalogEntry]] = Non
     return "\n".join(lines)
 
 
+def _enrich_stage_from_agent(stage: Dict[str, Any]) -> Dict[str, Any]:
+    """Fill agent attributes (name/type/phase/skills) from AGENT.md frontmatter.
+
+    Only reads the agent_id already in the stage dict. Fields already present
+    (set by YAML or LLM) are preserved — only empty fields get auto-populated.
+    Returns the stage dict with defaults filled in.
+    """
+    aid = stage.get("agent_id", "")
+    if not aid:
+        return stage
+
+    from core.api.facades.agent_facade import get_agent_frontmatter
+    fm = get_agent_frontmatter(aid) or {}
+
+    if not stage.get("agent_name"):
+        stage["agent_name"] = str(fm.get("display_name") or fm.get("name") or aid)
+    if not stage.get("agent_type"):
+        stage["agent_type"] = str(fm.get("agent_type") or "react")
+    if not stage.get("phase"):
+        stage["phase"] = str(fm.get("phase") or fm.get("phase_description") or "")
+    if not stage.get("skill_name"):
+        skills = fm.get("required_skills") or fm.get("skills") or []
+        if isinstance(skills, list) and skills:
+            stage["skill_name"] = str(skills[0])
+    if not stage.get("skill_model_purpose"):
+        # Derive from agent phase or type: reasoning, code_gen, chat, skill_execution
+        phase = stage.get("phase", "").lower()
+        if "design" in phase or "architect" in phase or "review" in phase:
+            stage["skill_model_purpose"] = "reasoning"
+        elif "dev" in phase or "code" in phase or "program" in phase:
+            stage["skill_model_purpose"] = "code_gen"
+        elif "test" in phase or "qa" in phase:
+            stage["skill_model_purpose"] = "code_gen"
+        else:
+            stage["skill_model_purpose"] = "chat"
+
+    return stage
+
+
 def _load_fallback_team() -> List[Dict[str, Any]]:
     """Load fallback team from ~/.aiplat/default_team.yaml.
 
@@ -229,12 +268,7 @@ async def recommend_team_stages(
                 stage = dict(s)
                 stage.setdefault("id", f"stage_{i}")
                 stage.setdefault("order", i)
-                stage.setdefault("agent_type", "react")
-                stage.setdefault("uses_file_output", False)
-                stage.setdefault("hitl", False)
-                stage.setdefault("hitl_phase", "")
-                stage.setdefault("generate_test_plan", False)
-                stage.setdefault("test_result_key", "")
+                stage = _enrich_stage_from_agent(stage)
                 recommendation.stages.append(stage)
             return recommendation
 
@@ -309,15 +343,9 @@ async def recommend_team_stages(
         fallback = _load_fallback_team()
         if fallback:
             for i, fs in enumerate(fallback):
-                stage = dict(fs)
+                stage = _enrich_stage_from_agent(dict(fs))
                 stage.setdefault("id", f"stage_{i}")
                 stage.setdefault("order", i)
-                stage.setdefault("agent_type", "react")
-                stage.setdefault("uses_file_output", False)
-                stage.setdefault("hitl", False)
-                stage.setdefault("hitl_phase", "")
-                stage.setdefault("generate_test_plan", False)
-                stage.setdefault("test_result_key", "")
                 recommendation.stages.append(stage)
             if fallback:
                 tmpl = load_team_template("default")
