@@ -496,7 +496,7 @@ const ProjectPanel: React.FC<{
             <Button variant="primary" size="sm" onClick={handleConfirm} loading={starting}>确认需求</Button>
           )}
           {phase === 'team_ready' && (
-            <Button variant="primary" size="sm" onClick={handleStart} loading={starting}>启动构建</Button>
+            <Button variant="primary" size="sm" onClick={handleStart} loading={starting}>{runHistory.length > 0 ? '重新构建' : '启动构建'}</Button>
           )}
         </div>
 
