@@ -1337,7 +1337,9 @@ class BuilderProjectService:
     async def approve_stage(self, project_id: str, feedback: str = "") -> Dict[str, Any]:
         session = self._pipeline_sessions.get(project_id)
         if not session:
-            raise ValueError("no pipeline session — rebuild project first")
+            session = self._rebuild_session(project_id)
+            if not session:
+                raise ValueError("no pipeline session — rebuild project first")
         state = self._runs.get(project_id)
         if not state:
             state = self._load_pipeline_state(project_id)
@@ -1348,7 +1350,7 @@ class BuilderProjectService:
         await self._save_state(project_id, state)
         # Run remaining pipeline in background thread
         if state.get("phase") == "executing":
-            _idx = state.get("_current_stage_idx", 0)  # reject/approve already cleared, start from HITL stage
+            _idx = state.get("_current_stage_idx", 0) + 1  # approve: HITL is done, start from next
             if _idx < len(session.get_stages()):
                 import threading, asyncio as _asyncio
                 svc = self
@@ -1395,7 +1397,9 @@ class BuilderProjectService:
     async def reject_stage(self, project_id: str, feedback: str) -> Dict[str, Any]:
         session = self._pipeline_sessions.get(project_id)
         if not session:
-            raise ValueError("no pipeline session — rebuild project first")
+            session = self._rebuild_session(project_id)
+            if not session:
+                raise ValueError("no pipeline session — rebuild project first")
         state = self._runs.get(project_id)
         if not state:
             state = self._load_pipeline_state(project_id)
