@@ -56,8 +56,8 @@ class TraceVisualizer:
 
     # 中文犹豫词 → likelihood 评分
     HESITATION_PATTERNS = [
-        ("考虑", 0.5), ("可能", 0.4), ("不确定", 0.7),
-        ("或者", 0.3), ("暂时", 0.3), ("尝试", 0.4),
+    ("consider", 0.5), ("maybe", 0.4), ("unsure", 0.7),
+    ("or", 0.3), ("temporarily", 0.3), ("try", 0.4),
         ("maybe", 0.4), ("perhaps", 0.4), ("unclear", 0.6),
         ("alternatively", 0.4),
     ]
@@ -141,28 +141,28 @@ class TraceVisualizer:
                 agent_counts[s.agent] = agent_counts.get(s.agent, 0) + 1
         for agent, count in agent_counts.items():
             if count >= 3:
-                warnings.append(f"🔁 {agent} 被调用 {count} 次 — 可能 task 拆分过细，建议合并为一个 stage")
+                warnings.append(f"🔁 {agent} called {count} times — consider splitting into sub-Agents")
             elif count >= 2:
-                warnings.append(f"🔄 {agent} 被调用 {count} 次 — 检查是否应设为返回后再用")
+                warnings.append(f"🔄 {agent} called {count} times — check if should be reused")
 
-        # 2. 步数和 stage 数差异过大
+        # 2. Step count vs expected stage count
         if stage_count > 0 and len(steps) > stage_count * 1.5:
-            warnings.append(f"📊 实际执行 {len(steps)} 步，预期 {stage_count} 个 stage — Agent 可能在绕弯路")
+            warnings.append(f"📊 Executed {len(steps)} steps (expected {stage_count} stages) — Agent may be looping")
 
-        # 3. 多步犹豫
+        # 3. Multiple hesitation steps
         hesitation = [s for s in steps if s.is_hesitation]
         if len(hesitation) >= 3:
-            warnings.append(f"🤔 Supervisor 在 {len(hesitation)} 步中表达了犹豫 — Spec 的阶段划分可能不够清晰")
+            warnings.append(f"🤔 Supervisor hesitated {len(hesitation)} times — stage boundaries may be unclear")
 
-        # 4. 推理太短（可能 Supervisor 没认真思考）
+        # 4. Reasoning too short (Supervisor may not have analyzed properly)
         short_reason = [s for s in steps if len(s.reasoning) < 20]
         if len(short_reason) >= len(steps) * 0.5 and len(steps) >= 3:
-            warnings.append("⚡ Supervisor 推理文本过短 — 可能未充分分析就选了 Agent")
+            warnings.append("⚡ Supervisor reasoning too short — may have selected Agent without analysis")
 
-        # 5. 超时/错误步
+        # 5. Timeout/error steps
         errors = [s for s in steps if s.outcome in ("timeout", "error")]
         if errors:
-            warnings.append(f"❌ {len(errors)} 步执行失败({', '.join(s.agent for s in errors)})")
+            warnings.append(f"✕ {len(errors)} step(s) failed ({', '.join(s.agent for s in errors)})")
 
         return warnings
 

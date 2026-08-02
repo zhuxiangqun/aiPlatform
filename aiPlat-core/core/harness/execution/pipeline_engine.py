@@ -2622,7 +2622,7 @@ class PipelineEngine:
 
 
 
-            # P1-3: 动态预算重分配——未使用的 token 均分给剩余 stage
+            # P1-3: Dynamic budget redistribution — unused tokens distributed to remaining stages
 
             try:
 
@@ -2679,7 +2679,7 @@ class PipelineEngine:
 
             logging.warning(str(e), exc_info=True)
 
-        # Feed execution into knowledge graph (F5: ops→知识自动索引)
+        # Feed execution into knowledge graph (F5: ops → knowledge auto-indexing)
 
         try:
 
@@ -2924,13 +2924,13 @@ class PipelineEngine:
 
                 if s.output_artifact:
 
-                    desc_parts.append(f"产出:{s.output_artifact}")
+                    desc_parts.append(f"output:{s.output_artifact}")
 
                 if getattr(s, "uses_file_output", False):
 
-                    desc_parts.append("文件操作")
+                    desc_parts.append("file ops")
 
-                agent_descriptions[name] = ", ".join(desc_parts) if desc_parts else "通用Agent"
+                agent_descriptions[name] = ", ".join(desc_parts) if desc_parts else "general"
 
 
 
@@ -2948,7 +2948,7 @@ class PipelineEngine:
 
         )
 
-        goal = state.get("_pipeline_goal", "执行流水线")
+        goal = state.get("_pipeline_goal", "execute pipeline")
 
         logger = logging.getLogger("pipeline_engine.dynamic_router")
 
@@ -3105,7 +3105,7 @@ class PipelineEngine:
 
         logger.info("Dynamic routing finished: %d/%d stages executed", len(done_indices), len(stages))
 
-        # Persist trace for developer visibility (Andrew Ng 三层 Loop P2)
+        # Persist trace for developer visibility (3-tier Loop P2)
 
         await self._persist_dynamic_trace(state, done_indices, stages)
 
@@ -3125,7 +3125,7 @@ class PipelineEngine:
 
 
 
-        goal = state.get("_pipeline_goal", "执行流水线")
+        goal = state.get("_pipeline_goal", "execute pipeline")
 
         logger = logging.getLogger("pipeline_engine.debate")
 
@@ -3201,7 +3201,7 @@ class PipelineEngine:
 
             "role": "merge",
 
-            "reasoning": f"辩论完成: {result.get('rounds')} 轮, converged={result.get('converged')}",
+                    "reasoning": f"debate completed: {result.get('rounds')} rounds, converged={result.get('converged')}",
 
         })
 
@@ -3289,7 +3289,7 @@ class PipelineEngine:
 
 
 
-        goal = state.get("_pipeline_goal", "执行流水线")
+        goal = state.get("_pipeline_goal", "execute pipeline")
 
         agent_names = [s.agent_name or s.agent_id for s in stages]
 
@@ -3323,7 +3323,7 @@ class PipelineEngine:
 
             "role": "merge",
 
-            "reasoning": f"竞选择优完成: winner={result.get('winner')}, scores={result.get('scores')}",
+                    "reasoning": f"tournament completed: winner={result.get('winner')}, scores={result.get('scores')}",
 
         })
 
@@ -3343,7 +3343,7 @@ class PipelineEngine:
 
 
 
-        goal = state.get("_pipeline_goal", "执行流水线")
+        goal = state.get("_pipeline_goal", "execute pipeline")
 
         agent_names = [s.agent_name or s.agent_id for s in stages]
 
@@ -3379,7 +3379,7 @@ class PipelineEngine:
 
             "role": "synthesis",
 
-            "reasoning": f"圆桌讨论完成: {result.get('rounds')} 轮, converged={result.get('converged')}",
+                    "reasoning": f"roundtable completed: {result.get('rounds')} rounds, converged={result.get('converged')}",
 
         })
 
@@ -3417,7 +3417,7 @@ class PipelineEngine:
 
                 result = {
 
-                    "summary": f"完成 {len(done_indices)}/{len(stages)} 个 stage",
+                    "summary": f"done {len(done_indices)}/{len(stages)} stages",
 
                     "trace": trace,
 
@@ -3735,7 +3735,7 @@ class PipelineEngine:
             )
             _cb_text = "\n\n".join(_cb_parts).strip()
             if _cb_text:
-                _context += f"\n\n## 系统知识上下文\n{_cb_text[:2000]}\n"
+                _context += f"\n\n## system knowledge context\n{_cb_text[:2000]}\n"
                 _context_enriched = True
 
         except Exception:
@@ -6125,7 +6125,7 @@ class PipelineEngine:
 
             state["_last_action_reason"] = "stage_timeout"
 
-            # PR #3: 阶段超时 — 归因到 D4_orchestration
+            # PR #3: Stage timeout — attributed to D4_orchestration
 
             try:
 
@@ -9262,9 +9262,9 @@ JSON format: {{"artifact": {{}},"confidence": "HIGH","issues": [{{"severity": "P
 
             # Append learning section if not present
 
-            if "## 历史教训" not in raw:
+            if "## lessons learned" not in raw:
 
-                raw += "\n\n## 历史教训\n（由系统自动从历史运行中学习）\n"
+                raw += "\n\n## lessons learned\n（from system auto-learning from history）\n"
 
             # Only add if not duplicate
 
@@ -9769,7 +9769,7 @@ JSON format: {{"artifact": {{}},"confidence": "HIGH","issues": [{{"severity": "P
 
     async def _feed_execution_to_graph(self, state: PipelineState) -> None:
 
-        """Feed pipeline completion into knowledge graph (F5: 操作→知识自动索引).
+        """Feed pipeline completion into knowledge graph (F5: ops → knowledge auto-indexing).
 
 
 
@@ -10323,7 +10323,7 @@ Score history: {json.dumps([h.get('overall', 0) for h in history[-5:]]) if histo
 
 {error_hint}
 
-Output ONLY this JSON (no preamble): {{"diagnosis":"<1 sentence>","suggested_prompt_extra":"<追加内容>","suggested_agent_type":"react|plan|reflection","enable_test_plan":false}}"""
+Output ONLY this JSON (no preamble): {{"diagnosis":"<1 sentence>","suggested_prompt_extra":"<additional content>","suggested_agent_type":"react|plan|reflection","enable_test_plan":false}}"""
 
 
 

@@ -12,11 +12,11 @@ from ...kernel.runtime import get_kernel_runtime
 
 async def inject_graph_context(state: LoopState) -> dict:
     """Original: _try_inject_graph_context (loop.py:1769)"""
-    u"""注入代码图 + Wiki 知识图上下文到 Agent 决策循环。
+    """Inject code graph + Wiki knowledge graph context into Agent decision loop.
 
-    代码图：sys_code_intel_context → 相关文件 + 依赖关系
-    知识图：Wiki 页面可用性声明 → Agent 知道可以查 sys_wiki_context
-    技能图：可用技能列表 → Agent 规划时参考
+    Code graph: sys_code_intel_context → related files + dependencies
+    Knowledge graph: Wiki page availability → Agent can query sys_wiki_context
+    Skill graph: available skill list → Agent planning reference
     """
     hints: Dict[str, Any] = {}
     task = state.context.get("task", "") or state.context.get("_original_query", "")
@@ -42,9 +42,9 @@ async def inject_graph_context(state: LoopState) -> dict:
             state.context.setdefault("messages", []).insert(0, {
                 "role": "user",
                 "content": (
-                    "[系统] 代码知识图谱已预构建。以下是与任务相关的文件:\n"
+                    "[system] Code knowledge graph pre-built. Files related to task:\n"
                     f"{file_list}\n\n"
-                    "优先使用代码图定位代码，避免反复 grep/glob。"
+                    "Use the code graph to locate code — avoid repeated grep/glob."
                 ),
             })
     except Exception:
@@ -69,25 +69,25 @@ async def inject_graph_context(state: LoopState) -> dict:
                 total += len(search_pages(limit=1000, collection_id=cid))
             kb_info = ""
             if kbs:
-                kb_info = f"（限定集合: {', '.join(kbs)}，共 {total} 页）"
+                kb_info = f" (collection: {', '.join(kbs)}, {total} pages)"
             else:
-                kb_info = f"（共 {total} 页）"
+                kb_info = f" ({total} pages)"
             hints["wiki"] = {"pages": total, "collections": kbs}
             state.context.setdefault("messages", []).insert(1, {
                 "role": "user",
                 "content":                     (
-                    f"[系统] Wiki 知识库可用{kb_info}。\n\n"
-                    f"检索语法:\n"
-                    f"  sys_knowledge_retrieve('问题', wiki_collection_ids=['{first_cid}'])\n"
-                    f"  sys_wiki_context('问题', collection_ids=['{first_cid}'])\n\n"
-                    f"【可用本体类过滤 - 传 target_class 参数】\n"
-                    f"  '{__AI}ConceptPage' → 概念实体页 (entities)\n"
-                    f"  '{__AI}TopicPage' → 专题综述页 (topics)\n"
-                    f"  expand_subclasses=True → 同时查子类页面\n\n"
-                    f"【示例】\n"
-                    f"  sys_knowledge_retrieve('什么是记忆系统', wiki_collection_ids=['{first_cid}'], target_class='{__AI}ConceptPage', expand_subclasses=True)\n"
-                    f"  sys_knowledge_retrieve('各方案对比', wiki_collection_ids=['{first_cid}'], target_class='{__AI}TopicPage')\n\n"
-                    f"不需要重新推理或猜测已有知识，直接检索即可。"
+                    f"[system] Wiki KB available{kb_info}.\n\n"
+                    f"Search syntax:\n"
+                    f"  sys_knowledge_retrieve('question', wiki_collection_ids=['{first_cid}'])\n"
+                    f"  sys_wiki_context('question', collection_ids=['{first_cid}'])\n\n"
+                    f"[Available ontology class filters - pass target_class param]\n"
+                    f"  '{__AI}ConceptPage' → concept entity pages (entities)\n"
+                    f"  '{__AI}TopicPage' → topic overview pages (topics)\n"
+                    f"  expand_subclasses=True → also search subclass pages\n\n"
+                    f"[Examples]\n"
+                    f"  sys_knowledge_retrieve('what is memory system', wiki_collection_ids=['{first_cid}'], target_class='{__AI}ConceptPage', expand_subclasses=True)\n"
+                    f"  sys_knowledge_retrieve('compare solutions', wiki_collection_ids=['{first_cid}'], target_class='{__AI}TopicPage')\n\n"
+                    f"No need to re-reason or guess — just search directly."
                 ),
             })
     except Exception as e:
@@ -106,8 +106,8 @@ async def inject_graph_context(state: LoopState) -> dict:
             state.context.setdefault("messages", []).insert(2, {
                 "role": "user",
                 "content": (
-                    f"[系统] 已注册 {deps['stats']['total_skills']} 个技能。"
-                    f"主要包括: {', '.join(skills[:10])}。"
+                    f"[system] {deps['stats']['total_skills']} skills registered."
+                    f" Primary: {', '.join(skills[:10])}."
                 ),
             })
     except Exception as e:
@@ -117,9 +117,9 @@ async def inject_graph_context(state: LoopState) -> dict:
     state.context.setdefault("messages", []).insert(3, {
         "role": "user",
         "content": (
-            "[系统] 文件操作 syscall 可用: sys_file_read, sys_file_write, "
-            "sys_file_edit, sys_glob, sys_code_search。"
-            "读写文件时优先使用这些 syscall 而不是绕过 syscall 通道。"
+            "[system] File syscalls available: sys_file_read, sys_file_write, "
+            "sys_file_edit, sys_glob, sys_code_search."
+            "Use these instead of bypassing the syscall channel."
         ),
     })
 
@@ -128,9 +128,9 @@ async def inject_graph_context(state: LoopState) -> dict:
 
 
 async def inject_ontology_context(state: LoopState) -> dict:
-    u"""注入域本体上下文到 Agent 决策循环 (v2.6).
+    """Inject domain ontology context into Agent decision loop (v2.6).
 
-    DomainRouter 自动分类 → domain_id + 关键 class 列表 + 检索提示。
+    DomainRouter auto-classify → domain_id + key class list + search hints.
     """
     hints: Dict[str, Any] = {}
     task = state.context.get("task", "") or state.context.get("_original_query", "")
@@ -174,14 +174,14 @@ async def inject_ontology_context(state: LoopState) -> dict:
                 )
 
         hint_msg = (
-            f"[系统] 域本体上下文已注入:\n"
-            f"  当前域: {domain_name} ({domain_id})"
+            f"[system] Domain ontology context injected:\n"
+            f"  domain: {domain_name} ({domain_id})"
         )
         if domain_desc:
             hint_msg += f" — {domain_desc[:120]}"
         if class_list:
-            hint_msg += f"\n  关键本体类:\n{class_list}"
-        hint_msg += f"\n  检索时指定 domain_id='{domain_id}' 缩小范围。"
+            hint_msg += f"\n  key ontology classes:\n{class_list}"
+        hint_msg += f"\n  use domain_id='{domain_id}' to narrow search scope."
 
         hints["ontology"] = {
             "domain_id": domain_id,
