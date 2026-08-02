@@ -1908,43 +1908,26 @@ class PipelineEngine:
 
         human_feedback = feedback or state.get("_hitl_human_feedback", "")
 
-        if hitl_stage_id and human_feedback:
-
+        if hitl_stage_id:
             for i, s in enumerate(self._config.stages):
-
                 if s.id == hitl_stage_id:
-
-                    state[s.output_artifact] = {"raw_output": human_feedback, "source": "human_hitl"}
-
-                    state[f"_stage_{s.id}_done"] = True
-
-                    try:
-
-                        import json as _j
-
-                        parsed = _j.loads(human_feedback)
-
-                        if isinstance(parsed, dict):
-
-                            state[s.output_artifact] = parsed
-
-                    except Exception:
-
-                        logging.getLogger(__name__).debug('approve failed', exc_info=True)
+                    # If user provided feedback, inject it into stage output
+                    if human_feedback:
+                        state[s.output_artifact] = {"raw_output": human_feedback, "source": "human_hitl"}
+                        try:
+                            import json as _j
+                            parsed = _j.loads(human_feedback)
+                            if isinstance(parsed, dict):
+                                state[s.output_artifact] = parsed
+                        except Exception:
+                            logging.getLogger(__name__).debug('approve failed', exc_info=True)
                     state["_hitl_resolved_" + s.id] = True
-
                     state["_hitl_stage_id"] = ""
-
                     state["_hitl_human_feedback"] = ""
-
                     state["phase"] = PipelinePhase.EXECUTING
-
                     state["_current_stage_idx"] = i
-
                     self._audit_hitl(state, "hitl_human_input", detail=f"stage={s.id}")
-
                     # Don't run remaining stages here — let caller do it async
-
                     return state
 
             state["_hitl_stage_id"] = ""
