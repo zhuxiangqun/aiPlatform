@@ -262,7 +262,8 @@ const ProjectPanel: React.FC<{
         setPhase(p);
         const runs = (st as any)?.runs || [];
         if (runs.length > 0) setRunHistory(runs);
-        if (s._plan_stage_ids || s._graph_trace) setTeamStages((s._plan_stage_ids || []).map((sid: string) => ({ id: sid, agent_name: sid })));
+        // teamStages already set from project.team_stages (line 298);
+        // don't overwrite with stripped _plan_stage_ids which lack output_artifact
         // Load outputs in team stage order (dynamic, not hardcoded)
         const outputs: Record<string, any> = {};
         const orderedKeys = teamStages.map(s => (s as any).output_artifact).filter(Boolean);
@@ -602,7 +603,11 @@ const ProjectPanel: React.FC<{
               // Dynamic label: match output_artifact to team stage's agent_name
               const matchedStage = teamStages.find(s => (s as any).output_artifact === key);
               const agentLabel = (matchedStage as any)?.agent_name || (matchedStage as any)?.display_name || '';
-              const label = agentLabel || key.replace(/_/g, ' ');
+              // Fallback to key-based label if teamStages not available
+              const label = agentLabel || {
+                architecture: '🏗️ 架构设计', code: '💻 代码生成', test_report: '🧪 测试报告',
+                testReport: '🧪 测试报告', prd: '📋 PRD',
+              }[key] || key.replace(/[_-]/g, ' ');
               let summary = '';
 
               // ── Structural detection (not key-name matching) ──
