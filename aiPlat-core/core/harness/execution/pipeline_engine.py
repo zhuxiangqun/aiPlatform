@@ -3841,14 +3841,29 @@ class PipelineEngine:
                 _log.getLogger("pipeline_engine").warning(
                     "Agent app deployed: agent=%s skills=%d", _agent_name, _skill_count)
             # Detect agent_manifest.json for multi-agent routing
+            # (handles both fenced ```json and raw JSON formats)
             if "agent_manifest.json" in _result:
                 try:
-                    _man_match = _re.search(r'##\s*FILE:.*agent_manifest\.json.*?\n```(?:json)?\s*\n(.*?)\n```', _result, _re.DOTALL)
-                    if _man_match:
+                    _man_json = ""
+                    # Try to extract the manifest block content (without fences)
+                    for _block in _re.split(r'^##\s*FILE:\s*', _result, flags=_re.MULTILINE)[1:]:
+                        _blines = _block.strip().split("\n", 1)
+                        if len(_blines) >= 2 and "agent_manifest.json" in _blines[0]:
+                            _man_json = _blines[1].strip()
+                            _man_json = _re.sub(r'^```(?:json)?\s*\n?', '', _man_json)
+                            _man_json = _re.sub(r'\n?```\s*$', '', _man_json)
+                            break
+                    if _man_json:
                         import json as _json_man
-                        state["agent_manifest"] = _json_man.loads(_man_match.group(1))
+                        state["agent_manifest"] = _json_man.loads(_man_json)
                         _log.getLogger("pipeline_engine").warning(
                             "Agent manifest loaded: %d agents", len(state["agent_manifest"].get("agents", [])))
+                        # Use the orchestrator as _generated_agent for execute_skill routing
+                        _orchestrator = state["agent_manifest"].get("orchestrator", "")
+                        if _orchestrator:
+                            state["_generated_agent"] = _orchestrator
+                            _log.getLogger("pipeline_engine").warning(
+                                "Orchestrator agent: %s", _orchestrator)
                 except Exception:
                     pass
 

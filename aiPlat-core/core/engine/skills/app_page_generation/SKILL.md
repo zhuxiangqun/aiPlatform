@@ -81,7 +81,7 @@ skip_when: code_generation已处理代码模式
 ## SOP
 
 1. 读 PRD 的用户故事和交互流程
-2. 读 agent_app 了解后端有哪些 Skill 可用
+2. 从 agent_app 的 agent_manifest.json 中提取 skill_routing 的 keys——这些是后端实际可调用的 Skill 名，必须精确匹配（含下划线和大小写）
 3. 确定页面模式(mode):
    - `wizard` — 多步骤(上传→处理→结果)
    - `dashboard` — 组件平铺(监控/总览)
@@ -117,5 +117,6 @@ skip_when: code_generation已处理代码模式
 |--------|--------|
 | 生成 React/TSX 代码 | 生成 app_page.json |
 | stage 不设 skill 字段 | 每个 stage 明确引用 Agent Skill |
-| 引用不存在的 Skill 名 | 必须从 agent_app 中的 Skill 清单里选 |
+| 引用不存在的 Skill 名或名称不匹配 | **必须**从 agent_manifest.json 的 skill_routing 字典中精确复制 key 名 |
+| 自行编造 Skill 名 | 只能用 agent_manifest.json 里声明的 skill 名 |
 | 组件的 input 用 JSON body | 用 `"{{prev_stage.field}}"` 引用上游结果 |
