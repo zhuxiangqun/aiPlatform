@@ -295,6 +295,10 @@ const ProjectPanel: React.FC<{
       try {
         const st = await projectApi.getState(project.project_id);
         const state = (st as any)?.state || {};
+        const realPhase = state.phase as string;
+        if (realPhase && realPhase !== 'idle') {
+          setPhase(realPhase);
+        }
         const outputs: Record<string, any> = {};
         const orderedKeys = project.team_stages?.map(s => (s as any).output_artifact).filter(Boolean) || [];
         const keys = orderedKeys.length > 0 ? orderedKeys : ['architecture', 'code', 'test_report'];
