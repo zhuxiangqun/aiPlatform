@@ -726,6 +726,7 @@ const ProjectPanel: React.FC<{
               }
 
               const preview = rw ? (typeof rw === 'string' ? rw.slice(0, 2000) : JSON.stringify(rw).slice(0, 2000)) : '';
+              const qaParsed = (rw && rw.includes('"test_questions"')) ? tryParseJSON(rw, '"test_questions"') : null;
 
               // Inline test results card — rendered at correct position in stage order
               const tr = (val as any)?.test_results;
@@ -764,8 +765,25 @@ const ProjectPanel: React.FC<{
                       </button>
                     )}
                   </summary>
-                  <div className="p-2 max-h-72 overflow-y-auto border-t border-dark-border text-gray-300 text-xs prose prose-invert prose-xs max-w-none">
-                    {preview ? <ReactMarkdown remarkPlugins={[remarkGfm]}>{preview}</ReactMarkdown> : '(空)'}
+                  <div className="p-2 max-h-72 overflow-y-auto border-t border-dark-border text-gray-300 text-xs max-w-none">
+                    {qaParsed ? (
+                      <table className="w-full text-[10px] border-collapse">
+                        <thead><tr className="text-gray-400 text-left"><th className="p-1">ID</th><th className="p-1 w-[52px]">分类</th><th className="p-1">问题</th><th className="p-1 hidden sm:table-cell">期望</th></tr></thead>
+                        <tbody>
+                          {(qaParsed.test_questions || []).slice(0, 10).map((q: any) => (
+                            <tr key={q.id} className="border-t border-gray-700/50 hover:bg-gray-800/30">
+                              <td className="p-1 text-gray-500">{q.id}</td>
+                              <td className="p-1"><span className={`px-1 rounded text-[9px] ${q.category==='happy_path'?'bg-green-900/50 text-green-400':q.category==='exception'?'bg-red-900/50 text-red-400':'bg-amber-900/50 text-amber-400'}`}>{q.category==='happy_path'?'正常':q.category==='exception'?'异常':'边界'}</span></td>
+                              <td className="p-1 max-w-[200px] truncate">{q.question}</td>
+                              <td className="p-1 max-w-[180px] truncate text-gray-500 hidden sm:table-cell">{q.min_expectation}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                        {qaParsed.test_questions?.length > 10 && <tfoot><tr><td colSpan={4} className="p-1 text-[10px] text-gray-500 text-center">... 共 {qaParsed.test_questions.length} 条 · 点 🔍 全屏 查看完整表格</td></tr></tfoot>}
+                      </table>
+                    ) : preview ? (
+                      <ReactMarkdown remarkPlugins={[remarkGfm]} className="prose prose-invert prose-xs max-w-none">{preview}</ReactMarkdown>
+                    ) : '(空)'}
                   </div>
                 </details>
                 </React.Fragment>
