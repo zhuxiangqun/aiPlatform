@@ -2,6 +2,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Plus, Send, Loader2, Clock, CheckCircle, XCircle, ExternalLink, BarChart3, Trash2, Play, RefreshCw, FileText } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { projectApi, builderTeamApi, type ProjectItem, type ProjectRun } from '../../../services';
 import { Card, CardContent, Button, Textarea, toast } from '../../../components/ui';
 import { toastGateError } from '../../../components/ui';
@@ -181,7 +183,15 @@ const FullscreenView: React.FC<{
 }> = ({ open, title, content, onClose }) => {
   if (!open) return null;
   let parsed: any = null; let schema: DocSchema | undefined;
-  try { parsed = JSON.parse(content); } catch { /* raw */ }
+  try {
+    parsed = JSON.parse(content);
+  } catch {
+    const jStart = content.indexOf('{');
+    const jEnd = content.lastIndexOf('}');
+    if (jStart >= 0 && jEnd > jStart) {
+      try { parsed = JSON.parse(content.slice(jStart, jEnd + 1)); } catch {}
+    }
+  }
   if (parsed) {
     if (parsed.user_stories) schema = SCHEMAS.prd;
     else if (parsed.components) schema = SCHEMAS.architecture;
@@ -194,7 +204,11 @@ const FullscreenView: React.FC<{
         <button onClick={onClose} className="p-1.5 rounded hover:bg-gray-100 text-gray-500 hover:text-gray-800 transition-colors text-lg">✕</button>
       </div>
       <div className="flex-1 overflow-y-auto p-6 bg-white max-w-4xl mx-auto w-full" onClick={e => e.stopPropagation()}>
-        {schema && parsed ? <DataDocument data={parsed} schema={schema} /> : <pre className="text-xs text-gray-700 font-mono whitespace-pre-wrap break-all">{content}</pre>}
+        {schema && parsed ? <DataDocument data={parsed} schema={schema} /> : (
+          <ReactMarkdown remarkPlugins={[remarkGfm]} className="prose prose-sm max-w-none text-gray-800">
+            {content}
+          </ReactMarkdown>
+        )}
       </div>
     </div>
   );
@@ -631,12 +645,12 @@ const ProjectPanel: React.FC<{
                   if (cases.length > 0) summary = `${cases.length} 个测试用例`;
                 } catch { /* raw text, skip */ }
               }
-              // Architecture: has components/api_contracts/data_model
-              if (rw && rw.includes('"components"') && rw.includes('"api_contracts"')) {
+              // Architecture: has components + (api_contracts or api_design)
+              if (rw && rw.includes('"components"') && (rw.includes('"api_contracts"') || rw.includes('"api_design"'))) {
                 const j = tryParseJSON(rw, '"components"');
                 if (j) {
                   const comps = j.components?.length || 0;
-                  const apis = j.api_contracts?.length || 0;
+                  const apis = j.api_contracts?.length || j.api_design?.length || 0;
                   const db = j.database_schema ? 1 : 0;
                   const hasSec = j.security ? '🔒' : ''; const hasPerf = j.performance ? '⚡' : ''; const hasDeploy = j.deployment ? '🚀' : '';
                   summary = `${comps} 组件 · ${apis} API · DB ${db} ${hasSec}${hasPerf}${hasDeploy}`;
