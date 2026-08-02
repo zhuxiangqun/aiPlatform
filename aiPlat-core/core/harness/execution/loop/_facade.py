@@ -4231,25 +4231,8 @@ class PlanExecuteLoop(BaseLoop):
 
             else:
 
-                prompt = (
-
-                    "请为任务生成可执行的步骤计划。\n"
-
-                    "要求：\n"
-
-                    "1) 普通步骤用自然语言描述即可。\n"
-
-                    "2) 若某一步需要调用工具，请用结构化 JSON 表达（单行）：\n"
-
-                    "   {\"tool\":\"tool_name\",\"args\":{...}}\n"
-
-                    "3) 若某一步需要调用 skill，也必须显式标注（单行）：\n"
-
-                    "   {\"skill\":\"skill_name\",\"args\":{...}}\n"
-
-                    f"\nTask: {state.context.get('task', '')}\n"
-
-                )
+                from core.harness.utils.prompt_loader import _sync_resolve
+                prompt = _sync_resolve("plan-execute-plan", task=state.context.get("task", ""))
 
             response = await sys_llm_generate(
 
