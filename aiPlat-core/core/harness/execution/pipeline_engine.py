@@ -3774,7 +3774,8 @@ class PipelineEngine:
 
         # ── 5. If test skill, optionally run pytest (skip in Agent mode) ──
         if getattr(stage, 'generate_test_plan', False):
-            if state.get("_generated_agent"):
+            _is_agent_mode = bool(state.get("_generated_agent") or state.get("agent_app"))
+            if _is_agent_mode:
                 # Agent mode — QA handles conversational validation, no pytest needed
                 _log.getLogger("pipeline_engine").warning(
                     "Agent mode: skipping pytest for %s (QA validates via conversation)", _skill_name)
