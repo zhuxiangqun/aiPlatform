@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Button, Card, Progress } from '../../ui';
+import { Button, Card, Progress } from '../ui';
 import { Upload, File, AlertCircle } from 'lucide-react';
 
 interface FileUploadConfig {

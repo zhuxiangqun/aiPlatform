@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Card, Progress } from '../../ui';
+import { Card, Progress } from '../ui';
 import { Loader2, CheckCircle, XCircle } from 'lucide-react';
 
 interface ProgressConfig {

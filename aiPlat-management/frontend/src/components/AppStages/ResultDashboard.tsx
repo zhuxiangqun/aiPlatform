@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Badge } from '../../ui';
+import { Card, Badge } from '../ui';
 import { Copy, Download, ExternalLink } from 'lucide-react';
 
 interface SectionConfig {
