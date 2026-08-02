@@ -352,8 +352,12 @@ const ProjectPanel: React.FC<{
     try {
       const result = await projectApi.recommendTeam(project.project_id);
       const stages = (result as any)?.plan_stages || [];
-      setTeamStages(stages);
-      toast.success('AI 已推荐团队');
+      if (stages.length > 0) {
+        setTeamStages(stages);
+        toast.success(`AI 已推荐 ${stages.length} 个阶段`);
+      } else {
+        toast.warning('AI 推荐失败，请确保 PRD 已完成');
+      }
     } catch (e: any) { toastGateError(e, '推荐失败'); }
     finally { setRecommending(false); }
   };
@@ -689,7 +693,7 @@ const ProjectPanel: React.FC<{
 
         {/* Actions */}
         <div className="flex flex-wrap gap-2">
-          {!prdReady && phase === 'dialogue' && (
+          {!prdReady && phase === 'dialogue' && teamStages.length === 0 && (
             <Button variant="secondary" size="sm" onClick={handleRecommend} loading={recommending}>AI 推荐团队</Button>
           )}
           {prdReady && phase === 'dialogue' && (
