@@ -97,11 +97,22 @@ type DocSchema = {
 
 const SCHEMAS: Record<string, DocSchema> = {
   prd: {
-    title_field: "title", overview_field: "overview", scope_badge: "scope",
-    tables: [{ key: "user_stories", title: "用户故事", columns: [
-      { key: "id", label: "ID", width: "140px" }, { key: "description", label: "描述" },
-      { key: "priority", label: "优先级", type: "badge" }, { key: "acceptance_criteria", label: "验收标准", type: "ac_list" },
-    ]}],
+    title_field: "title", overview_field: "description",
+    tables: [
+      { key: "functional_requirements", title: "功能需求", columns: [
+        { key: "id", label: "ID", width: "100px" },
+        { key: "name", label: "名称", width: "160px" },
+        { key: "description", label: "描述" },
+        { key: "priority", label: "优先级", type: "badge" },
+        { key: "acceptance_criteria", label: "验收标准", type: "ac_list" },
+      ]},
+      { key: "user_stories", title: "用户故事", columns: [
+        { key: "id", label: "ID", width: "100px" },
+        { key: "story", label: "描述" },
+        { key: "priority", label: "优先级", type: "badge" },
+        { key: "related_fr", label: "关联FR" },
+      ]},
+    ],
     lists: [{ key: "constraints", title: "技术约束" }],
   },
   architecture: {
