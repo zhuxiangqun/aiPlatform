@@ -1424,7 +1424,28 @@ class BuilderProjectService:
             if not state:
                 raise ValueError("no pipeline state")
         state = await session.reject(dict(state), feedback)
+        self._runs[project_id] = state
         await self._save_state(project_id, state)
+        # Run remaining pipeline in background thread
+        if state.get("phase") == "executing":
+            _idx = state.get("_current_stage_idx", 0) + 1
+            _rebuild = session or self._rebuild_session(project_id)
+            if _rebuild and _idx < len(_rebuild.get_stages()):
+                import threading, asyncio as _asyncio
+                _ses = _rebuild
+                svc = self
+                def _bg_run():
+                    try:
+                        loop = _asyncio.new_event_loop()
+                        _asyncio.set_event_loop(loop)
+                        result = loop.run_until_complete(_ses._engine._run_stages_from(_idx, dict(state)))
+                        svc._runs[project_id] = dict(result)
+                        loop.run_until_complete(svc._save_state(project_id, dict(result)))
+                        loop.close()
+                    except Exception:
+                        logging.getLogger(__name__).debug('_bg_run failed', exc_info=True)
+                t = threading.Thread(target=_bg_run, daemon=True)
+                t.start()
         return {"project_id": project_id, "phase": state.get("phase", "executing")}
 
     async def regenerate_stage(self, project_id: str, stage_id: str, feedback: str) -> Dict[str, Any]:
