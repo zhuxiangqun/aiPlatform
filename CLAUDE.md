@@ -261,7 +261,20 @@ scripts/ruff_f821_baseline.json        ← F821 基线快照（ratchet 对比基
    - 禁止硬编码业务 artifact key（如 `state.get("prd")`）
    - 禁止硬编码业务评分维度、评估逻辑、角色 prompt 全文
    - 引擎行为分叉必须全部来自 PipelineStageConfig 字段，不允许 `if agent_id ==` / `if phase ==`
-   - infra 不允许硬编码服务名映射、业务进程标签、开发者本地路径、GPU 型号等
+    - infra 不允许硬编码服务名映射、业务进程标签、开发者本地路径、GPU 型号等
+8b. **绕过前置证明（强制——2026-08 新增）**：任何在引擎层（`core/harness/execution/`）新增的 `sys_llm_generate` 调用、硬编码 prompt、或绕过 `_run_stage_skill` 的分支，**提交前必须证明正确路径不可行**。证明失败 = 改走正确路径（修 ReAct/skill 基础设施）。禁止以"反正能跑通"为由绕过基础设施。
+
+    **违反检测**（三道防线，违反任一即阻断）：
+    - Pre-commit: `scripts/pre-commit-engine-guard.sh` — 检测引擎层中文/硬编码/绕过
+    - CI: `architecture_guard.sh` §77-79 — 引擎层 artifact key/prompt/skill name
+    - pytest: `tests/constitution/test_engine_agnostic.py` — CI 中自动执行
+
+    **自检清单**（每次 engine.py 改动后逐项确认）：
+    - [ ] `bash scripts/pre-commit-engine-guard.sh` 通过
+    - [ ] `pytest core/tests/constitution/test_engine_agnostic.py -v` 通过
+    - [ ] `_dispatch_execute` 无 if/elif 阶段特判分支
+    - [ ] `_run_stage_skill` 无硬编码 artifact key 或 prompt
+    - [ ] 新功能是否可通过已有 PipelineStageConfig 字段表达
 9. **接线完成度（强制——新建文件必须立即接线）**：任何新增的 core 基础设施模块必须至少有一个生产代码调用者（非测试）。零调用者的模块必须在合并时标注为"待接线"或"待删除"。禁止用 feature flag=false 来掩盖未接线。全局单例（`get_*_registry()`）必须在所有消费进程中做初始化。**禁止批量创建 3 个以上文件而不逐个接线**：新建一个→接一个→grep 验证 caller→再建下一个。每轮实施结束时必须跑 caller 验证脚本，任何新建文件 0 caller = 实施未完成。详细自检命令见 `aiPlat-core/CLAUDE.md` §5.30 规则 6-8。
 
 10. **API 入口唯一性（强制——防并行实现）**：同一能力的多个 API 端点，底层必须收敛到同一个的核心函数。**禁止**出现"两个 UI 入口做同一件事但调用不同的检索路径"、"三个 API 端点各自实现了自己的 RRF 融合"这类并行实现。**必须**：

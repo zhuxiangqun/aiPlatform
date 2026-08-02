@@ -3573,15 +3573,13 @@ class PipelineEngine:
                 pass  # best-effort: fallback to ReAct if registry unavailable
 
         # ── Unified skill dispatch ──
-        # If stage has skill_name configured, use skill directly.
-        # Engine knows NOTHING about what the skill does — it just
-        # loads the SKILL.md SOP and calls LLM with pipeline state.
+        # Stages with skill_name must NOT fall through to ReAct.
+        # _run_stage_skill handles all errors internally — even empty output
+        # is a valid signal (no output for this stage), not a reason to bypass.
         if getattr(stage, 'skill_name', ''):
-            _result = await self._run_stage_skill(stage, state)
-            if _result.get(getattr(stage, 'output_artifact', '')):
-                return _result
+            return await self._run_stage_skill(stage, state)
 
-        # code_first (default) — legacy ReAct path for stages without skill_name
+        # code_first (default) — ReAct path ONLY for stages without skill_name
         return await self._exec_stage(stage, state)
 
 

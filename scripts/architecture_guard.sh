@@ -115,6 +115,28 @@ else
     echo "  SKIP: Phase 2 runs as separate CI job (use --quick for fast pre-commit checks)"
 fi
 
+
+
+# ══════════════════════════════════════════════════════════════
+# Phase 3: Engine layer agnostic checks
+# ══════════════════════════════════════════════════════════════
+echo ""; sep; echo "  PHASE 3: engine agnostic"; sep
+
+# §77: Engine layer hardcoded artifact key tuples
+echo -n "§77: engine artifact key tuples: "
+count=$(grep -rn '"architecture".*"code".*"test_report"\|state\.get("architecture"\|state\.get("code"\|state\.get("test_report"' aiPlat-core/core/harness/execution/ --include='*.py' 2>/dev/null | grep -v '_run_stage_skill\|#\|test_\|snapshot' | wc -l | tr -d ' ')
+if [ "$count" -gt 0 ] 2>/dev/null; then echo "❌ $count"; grep -rn '"architecture".*"code".*"test_report"\|state\.get("architecture"\|state\.get("code"\|state\.get("test_report"' aiPlat-core/core/harness/execution/ --include='*.py' 2>/dev/null | grep -v '_run_stage_skill\|#\|test_\|snapshot'; FAIL=1; else echo "✅"; fi
+
+# §78: Engine layer Chinese prompt hardcodes
+echo -n "§78: engine Chinese prompts: "
+count=$(grep -rn '你是\|你是一个\|请将\|请基于' aiPlat-core/core/harness/execution/ --include='*.py' 2>/dev/null | grep -v '#\|prompt_loader\|test_\|_sync_resolve' | wc -l | tr -d ' ')
+if [ "$count" -gt 0 ] 2>/dev/null; then echo "❌ $count"; grep -rn '你是\|你是一个\|请将\|请基于' aiPlat-core/core/harness/execution/ --include='*.py' 2>/dev/null | grep -v '#\|prompt_loader\|test_\|_sync_resolve'; FAIL=1; else echo "✅"; fi
+
+# §79: Pipeline engine skill name hardcodes
+echo -n "§79: pipeline skill name hardcodes: "
+count=$(grep -c '"architecture_design"\|"code_generation"\|"test_case_generation"' aiPlat-core/core/harness/execution/pipeline_engine.py 2>/dev/null | tr -d '\n' | tr -d ' ')
+if [ "$count" -gt 0 ] 2>/dev/null; then echo "❌ $count"; grep -n '"architecture_design"\|"code_generation"\|"test_case_generation"' aiPlat-core/core/harness/execution/pipeline_engine.py 2>/dev/null; FAIL=1; else echo "✅"; fi
+
 # ── Aggregate ──
 echo ""; sep
 if [ "$FAIL" -ne 0 ]; then
