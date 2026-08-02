@@ -3639,28 +3639,30 @@ class PipelineEngine:
                 _context += f"## {_key}\n{str(_v['raw_output'])[:3000]}\n\n"
 
         # ── 3. Inject document schema into system prompt ──
+        # Read $ref from SKILL.md YAML frontmatter (not hardcoded artifact key mapping)
         _schema_text = ""
         try:
-            # Resolve path to config/document_schemas.yaml (workspace root)
-            _here = _os.path.dirname(_os.path.abspath(__file__))
-            _workspace = _os.path.abspath(_os.path.join(_here, "..", "..", "..", "..", ".."))
-            _schema_yaml = _os.path.join(_workspace, "config", "document_schemas.yaml")
-            if _os.path.isfile(_schema_yaml):
-                import yaml as _yaml
-                with open(_schema_yaml) as _sf:
-                    _schemas = _yaml.safe_load(_sf) or {}
-                _schema_id = getattr(stage, 'output_artifact', '')
-                _schema_map = {"architecture": "architecture", "code": "code", "test_report": "test"}
-                _ref = _schema_map.get(_schema_id, "")
-                if _ref and _ref in _schemas.get("schemas", {}):
-                    _spec = _schemas["schemas"][_ref].get("output_spec", "")
+            _ref = ""
+            if _raw.startswith("---"):
+                for _line in _raw.split("\n"):
+                    _line = _line.strip()
+                    if _line.startswith("$ref:"):
+                        _ref = _line.split("$ref:", 1)[1].strip().strip('"').strip("'")
+                        break
+            if _ref:
+                _workspace = _os.path.abspath(_os.path.join(_here, "..", "..", "..", "..", ".."))
+                _schema_yaml = _os.path.join(_workspace, "config", "document_schemas.yaml")
+                if _os.path.isfile(_schema_yaml):
+                    import yaml as _yaml
+                    with open(_schema_yaml) as _sf:
+                        _schemas = _yaml.safe_load(_sf) or {}
+                    _spec = _schemas.get("schemas", {}).get(_ref, {}).get("output_spec", "")
                     if _spec:
                         _schema_text = f"\n\n## Output Format Requirements\n{_spec.strip()}"
         except Exception:
             pass
         if _schema_text:
             _sop_body = _sop_body.replace("\n\n## Output Format Requirements", "") + _schema_text
-            _sop_body = _sop_body.rsplit("\n\n## Output Format Requirements", 1)[0] + _schema_text if "\n\n## Output Format Requirements" in _sop_body else _sop_body + _schema_text
 
         # ── 4. LLM call ──
         from core.harness.syscalls.llm import sys_llm_generate
