@@ -1006,6 +1006,17 @@ class BuilderProjectService:
         t.start()
         print("### thread launched for", project_id, file=sys.stderr)
 
+    def _make_persist_callback(self, project_id: str):
+        _svc = self
+        _pid = project_id
+        def _cb(state: dict):
+            try:
+                _svc._runs[_pid] = dict(state)
+                _svc._save_pipeline_state(_pid, dict(state))
+            except Exception:
+                pass
+        return _cb
+
     async def start_pipeline(self, project_id: str) -> Dict[str, Any]:
         proj = self._projects.get(project_id)
         if not proj:
@@ -1101,7 +1112,8 @@ class BuilderProjectService:
             if isinstance(chat_session, dict):
                 prd_data = chat_session.get("prd")
 
-        pipeline_session = create_pipeline_session(config=config, model=self.model, skill_loader=_create_skill_loader())
+        pipeline_session = create_pipeline_session(config=config, model=self.model, skill_loader=_create_skill_loader(),
+                                                     persist_callback=self._make_persist_callback(project_id))
         import sys
         print(f"### start_pipeline: session created, calling start for {project_id}", file=sys.stderr)
         self._pipeline_sessions[project_id] = pipeline_session
@@ -1546,6 +1558,7 @@ class BuilderProjectService:
         # Re-run pipeline with existing PRD
         import logging as _log3
         _log3.getLogger("aiplat.builder").info("Rebuilding project %s", project_id)
+        self._runs[project_id] = {"phase": "executing"}  # seed initial state for frontend polling
         self.start_pipeline_background(project_id)
         return {"status": "ok", "detail": "已触发重新构建"}
 
@@ -1711,7 +1724,8 @@ class BuilderProjectService:
         max_tokens = int(os.getenv("AIPLAT_BUILDER_MAX_TOKENS", "100000"))
         max_retry = int(os.getenv("AIPLAT_BUILDER_MAX_RETRY", "3"))
         config = PipelineConfig(stages=stages, max_tokens_per_run=max_tokens, max_retry_attempts=max_retry)
-        session = create_pipeline_session(config=config, model=self.model, skill_loader=_create_skill_loader())
+        session = create_pipeline_session(config=config, model=self.model, skill_loader=_create_skill_loader(),
+                                            persist_callback=self._make_persist_callback(project_id))
         self._pipeline_sessions[project_id] = session
         return session
 

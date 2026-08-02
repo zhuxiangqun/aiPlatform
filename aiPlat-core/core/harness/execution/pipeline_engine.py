@@ -516,7 +516,8 @@ class PipelineState(TypedDict, total=False):
 
 class PipelineEngine:
 
-    def __init__(self, config: PipelineConfig, model: Any = None, skill_loader: Any = None):
+    def __init__(self, config: PipelineConfig, model: Any = None, skill_loader: Any = None,
+                 persist_callback: Any = None):
 
         self._config = config
 
@@ -527,6 +528,8 @@ class PipelineEngine:
             self._model = self._load_default_model(category="agent")
 
         self._skill_loader = skill_loader
+        
+        self._persist_callback = persist_callback  # called after each stage completes
 
         self._stage_runner = StageRunner(model=self._model, pipeline_config=config)
 
@@ -3596,6 +3599,13 @@ class PipelineEngine:
             }
         result.pop(f"_retry_{stage.id}", None)  # clean up retry counter from state
 
+        # Persist state after every stage (skill or react) for frontend polling
+        try:
+            if self._persist_callback:
+                self._persist_callback(dict(result))
+        except Exception:
+            pass
+
         return result
 
 
@@ -3849,6 +3859,13 @@ class PipelineEngine:
             _event_bus.emit(state.get("session_id", state.get("_run_id", "")),
                             "node_ended", {"state": dict(state), "node_id": stage.id,
                                            "elapsed": round(_time.time() - _t0, 2)})
+        except Exception:
+            pass
+
+        # Persist state immediately — each stage completion writes to disk
+        try:
+            if self._persist_callback:
+                self._persist_callback(dict(state))
         except Exception:
             pass
 

@@ -856,6 +856,7 @@ def create_pipeline_session(
     config: Any,
     model: Any = None,
     skill_loader: Any = None,
+    persist_callback: Any = None,
 ) -> PipelineSession:
     """Create a PipelineSession. Use this instead of importing and instantiating
     PipelineEngine directly.
@@ -867,7 +868,8 @@ def create_pipeline_session(
         state = await session.approve(state)
     """
     from core.harness.execution.pipeline_engine import PipelineEngine
-    engine = PipelineEngine(config=config, model=model, skill_loader=skill_loader)
+    engine = PipelineEngine(config=config, model=model, skill_loader=skill_loader,
+                            persist_callback=persist_callback)
     return PipelineSession(engine=engine, config=config)
 
 
