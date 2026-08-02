@@ -69,6 +69,7 @@ export const menuItems: MenuEntry[] = [
   { group: 'build', label: '🤖 AI 应用工厂', items: [
     { key: '_sub_lifecycle', subLabel: '📦 应用生命周期' },
     { key: '/app/factory', icon: FolderOpen, label: '应用工厂' },
+    { key: '/app/apps', icon: Rocket, label: '已部署应用' },
     { key: '/diagnostics/fde', icon: Wrench, label: 'FDE 工作台' },
     { key: '_sub_assembly', subLabel: '🧩 能力组装' },
     { key: '/core/agents', icon: Bot, label: 'Agent 管理' },
