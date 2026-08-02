@@ -35,9 +35,9 @@ input_schema:
     required: true
 output_schema:
   $ref: "code"
-    type: string
-    required: true
-    description: 面向人阅读的 Markdown 输出，与结构化字段一致
+  type: string
+  required: true
+  description: 面向人阅读的 Markdown 输出，与结构化字段一致
 metadata:
   trigger_conditions:
   - 生成代码

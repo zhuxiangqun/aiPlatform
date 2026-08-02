@@ -48,6 +48,11 @@ keywords:
 trigger_conditions:
 - when: 需要生成应用页面
   query: 生成页面/app_page/app页面
+effects:
+  - type: read
+    resources: ["pipeline_state:prd", "pipeline_state:agent_app"]
+    idempotent: true
+    rollback_available: false
 skip_when: code_generation已处理代码模式
 ---
 
