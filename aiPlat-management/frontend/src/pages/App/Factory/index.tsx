@@ -211,6 +211,7 @@ const ProjectPanel: React.FC<{
   const [prdReady, setPrdReady] = useState(
     !!(project as any).confirmed_prd || (project as any).runs?.length > 0);
   const [starting, setStarting] = useState(false);
+  const [rejecting, setRejecting] = useState(false);
   const [recommending, setRecommending] = useState(false);
   const [teamStages, setTeamStages] = useState<Array<{ agent_name?: string; agent_id?: string; phase?: string; id?: string }>>(project.team_stages || []);
   const [runHistory, setRunHistory] = useState<ProjectRun[]>(project.runs || []);
@@ -410,13 +411,14 @@ const ProjectPanel: React.FC<{
     if (!project.project_id) return;
     const feedback = window.prompt('驳回理由（可选）：');
     if (feedback === null) return; // cancelled
-    setStarting(true);
+    setRejecting(true);
     try {
       await projectApi.reject(project.project_id, feedback);
+      setPhase('executing');  // immediate UI update — don't wait for refresh
       toast.success('已驳回，将重新生成');
       onRefresh();
     } catch (e: any) { toastGateError(e, '驳回失败'); }
-    finally { setStarting(false); }
+    finally { setRejecting(false); }
   };
 
   return (
@@ -532,7 +534,7 @@ const ProjectPanel: React.FC<{
             </div>
             <div className="flex gap-2">
               <Button variant="primary" size="sm" onClick={handleApprove} loading={starting}>✅ 审批通过</Button>
-              <Button variant="secondary" size="sm" onClick={handleReject}>❌ 驳回重做</Button>
+              <Button variant="secondary" size="sm" onClick={handleReject} loading={rejecting}>❌ 驳回重做</Button>
             </div>
           </div>
         ) : null}
