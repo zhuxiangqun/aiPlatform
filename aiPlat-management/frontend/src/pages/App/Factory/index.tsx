@@ -612,6 +612,17 @@ const ProjectPanel: React.FC<{
               let summary = '';
 
               // ── Structural detection (not key-name matching) ──
+              // Helper: extract JSON from mixed text (Markdown + JSON)
+              const tryParseJSON = (text: string, marker: string) => {
+                const idx = text.indexOf(marker);
+                if (idx < 0) return null;
+                const jsonStart = Math.max(0, text.lastIndexOf('{', idx) - 500, text.indexOf('{'));
+                if (jsonStart < 0) return null;
+                const jsonEnd = text.lastIndexOf('}');
+                if (jsonEnd <= jsonStart) return null;
+                try { return JSON.parse(text.slice(jsonStart, jsonEnd + 1)); }
+                catch { return null; }
+              };
               // Test report: has pass_rate or test_cases
               if (rw && (val as any).pass_rate != null || /test_cases|test_suites/.test(rw.slice(0, 200))) {
                 try {
@@ -621,35 +632,35 @@ const ProjectPanel: React.FC<{
                 } catch { /* raw text, skip */ }
               }
               // Architecture: has components/api_contracts/data_model
-              if (rw && /components|api_contracts|data_model/.test(rw.slice(0, 200))) {
-                try {
-                  const j = JSON.parse(rw);
+              if (rw && rw.includes('"components"') && rw.includes('"api_contracts"')) {
+                const j = tryParseJSON(rw, '"components"');
+                if (j) {
                   const comps = j.components?.length || 0;
-                  const apis = j.api_contracts?.length || j.api_design?.length || 0;
+                  const apis = j.api_contracts?.length || 0;
                   const db = j.database_schema ? 1 : 0;
                   const hasSec = j.security ? '🔒' : ''; const hasPerf = j.performance ? '⚡' : ''; const hasDeploy = j.deployment ? '🚀' : '';
                   summary = `${comps} 组件 · ${apis} API · DB ${db} ${hasSec}${hasPerf}${hasDeploy}`;
-                } catch { /* raw text, skip */ }
+                }
               }
               // PRD: structured JSON with functional_requirements
-              if (rw && /functional_requirements|acceptance_criteria/.test(rw.slice(0, 500))) {
-                try {
-                  const j = JSON.parse(rw);
+              if (rw && rw.includes('"functional_requirements"')) {
+                const j = tryParseJSON(rw, '"functional_requirements"');
+                if (j) {
                   const frs = j.functional_requirements || [];
                   const acs = frs.reduce((sum: number, fr: any) => sum + (fr.acceptance_criteria?.length || 0), 0);
                   const title = (j.title || '').slice(0, 30);
                   const uss = j.user_stories?.length || 0;
                   if (frs.length > 0) summary = `${title} · ${frs.length} FR · ${acs} 验收标准 · ${uss} US`;
-                } catch { /* raw text, skip */ }
+                }
               }
               // QA Agent mode: has test_questions with mode=agent_conversation
-              if (rw && /test_questions|agent_conversation/.test(rw.slice(0, 300))) {
-                try {
-                  const j = JSON.parse(rw);
+              if (rw && rw.includes('"test_questions"') && rw.includes('"agent_conversation"')) {
+                const j = tryParseJSON(rw, '"test_questions"');
+                if (j) {
                   const qs = j.test_questions || [];
                   const coveredFRs = new Set(qs.map((q: any) => q.ac_ref?.split('-')[0] || '')).size;
                   if (qs.length > 0) summary = `${qs.length} 条对话测试 · 覆盖 ${coveredFRs} 个FR`;
-                } catch { /* raw text, skip */ }
+                }
               }
               // Code: count ## FILE: blocks
               if (rw && rw.includes('## FILE:')) {
