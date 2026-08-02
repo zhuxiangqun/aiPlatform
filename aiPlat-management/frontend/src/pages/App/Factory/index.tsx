@@ -80,6 +80,24 @@ const InlineChat: React.FC<{
   );
 };
 
+// ── Fullscreen content viewer ──
+const FullscreenView: React.FC<{
+  open: boolean; title: string; content: string; onClose: () => void
+}> = ({ open, title, content, onClose }) => {
+  if (!open) return null;
+  return (
+    <div className="fixed inset-0 bg-black/80 z-[60] flex flex-col" onClick={onClose}>
+      <div className="flex items-center justify-between p-3 border-b border-dark-border bg-dark-card flex-shrink-0" onClick={e => e.stopPropagation()}>
+        <h3 className="text-sm font-bold text-gray-100">{title} ({content.length} 字符)</h3>
+        <button onClick={onClose} className="p-1.5 rounded hover:bg-dark-hover text-gray-400 hover:text-white transition-colors text-lg">✕</button>
+      </div>
+      <pre className="flex-1 overflow-y-auto p-4 text-xs text-gray-300 font-mono whitespace-pre-wrap break-all" onClick={e => e.stopPropagation()}>
+        {content}
+      </pre>
+    </div>
+  );
+};
+
 // ── Project detail panel ──
 const ProjectPanel: React.FC<{
   project: ProjectItem;
@@ -105,6 +123,8 @@ const ProjectPanel: React.FC<{
   const [showPrdDetail, setShowPrdDetail] = useState(false);
   const [prdEditText, setPrdEditText] = useState('');
   const [savingPrd, setSavingPrd] = useState(false);
+  const [fullscreenTitle, setFullscreenTitle] = useState('');
+  const [fullscreenContent, setFullscreenContent] = useState('');
 
   // Check for PRD on mount (may have been generated in a previous session)
   useEffect(() => {
@@ -402,7 +422,11 @@ const ProjectPanel: React.FC<{
             <p className="text-gray-400">{(confirmedPrd.user_stories as any[])?.length || 0} 个 User Stories · {confirmedPrd.scope as string || '-'}</p>
             <div className="flex gap-1.5">
               {!showPrdDetail ? (
+                <>
                 <button onClick={handleEditPrd} className="text-[10px] px-2 py-1 rounded bg-dark-hover text-gray-300 hover:text-white transition-colors">📋 查看 & 编辑</button>
+                <button onClick={() => { setFullscreenTitle('PRD: ' + (confirmedPrd.title as string || '')); setFullscreenContent(JSON.stringify(confirmedPrd, null, 2)); }}
+                  className="text-[10px] px-2 py-1 rounded bg-dark-hover text-gray-300 hover:text-white transition-colors">🔍 全屏</button>
+                </>
               ) : (
                 <>
                   <button onClick={() => setShowPrdDetail(false)} className="text-[10px] px-2 py-1 rounded bg-dark-hover text-gray-400 hover:text-gray-300 transition-colors">收起</button>
@@ -512,8 +536,14 @@ const ProjectPanel: React.FC<{
               const preview = detailsContent || (typeof rw === 'string' ? rw.slice(0, 2000) : JSON.stringify(rw).slice(0, 2000));
               return (
                 <details key={key} className="text-xs rounded border border-dark-border bg-dark-hover/30">
-                  <summary className="p-2 cursor-pointer text-gray-300 font-medium">
-                    {label} ({typeof rw === 'string' ? rw.length : 0} 字符{summary ? ' · ' + summary : ''})
+                  <summary className="p-2 cursor-pointer text-gray-300 font-medium flex items-center justify-between">
+                    <span>{label} ({typeof rw === 'string' ? rw.length : 0} 字符{summary ? ' · ' + summary : ''})</span>
+                    {rw && (
+                      <button onClick={e => { e.preventDefault(); setFullscreenTitle(label); setFullscreenContent(typeof rw === 'string' ? rw : JSON.stringify(rw, null, 2)); }}
+                        className="text-[10px] px-1.5 py-0.5 rounded bg-dark-hover text-gray-500 hover:text-gray-300 hover:bg-primary/20 transition-colors flex-shrink-0 ml-2">
+                        🔍 全屏
+                      </button>
+                    )}
                   </summary>
                   {detailsContent ? (
                     <div className="p-2 text-gray-400 max-h-40 overflow-y-auto border-t border-dark-border" dangerouslySetInnerHTML={{ __html: detailsContent }} />
@@ -565,6 +595,12 @@ const ProjectPanel: React.FC<{
           </details>
         )}
       </div>
+      <FullscreenView
+        open={!!fullscreenContent}
+        title={fullscreenTitle}
+        content={fullscreenContent}
+        onClose={() => { setFullscreenContent(''); setFullscreenTitle(''); }}
+      />
     </motion.div>
   );
 };
