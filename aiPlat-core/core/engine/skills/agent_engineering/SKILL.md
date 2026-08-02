@@ -5,7 +5,7 @@ description: >-
   根据PRD和架构设计,将应用需求分解为Agent和多个Skill的Agent模型应用。
   输出AGENT.md和多个SKILL.md文件。
 category: generation
-version: 1.0.0
+version: 1.1.0
 status: enabled
 execution_mode: prompt
 execution_type: prompt
@@ -83,6 +83,22 @@ Agent 应用 = AGENT.md (编排) + SKILL.md × N (能力单元)。
 
 ## SOP
 
+### Step 0: 多 Agent 评估
+根据 PRD 的复杂度，决定单 Agent 还是多 Agent 架构：
+
+| PRD 信号 | Agent 数量 | 架构 |
+|---------|:---:|------|
+| ≤3 个功能需求，无异步流程 | 1 | 单 Agent 处理全部 |
+| 4-6 功能需求，有异步任务 | 2-3 | 拆分为: orchestrator + 1-2 个 sub-agent |
+| ≥7 功能需求，有实时+批量混合 | 4+ | orchestrator + 多个 sub-agent |
+| 有实时通知/定时任务 | +1 | 加 notification_agent |
+| 有审批/多角色 | +1 | 加 orchestrator_agent 协调流程 |
+
+**多 Agent 模式必须生成 `agent_manifest.json`**，记录：
+- 每个 Agent 的 name、display_name
+- 每个 Agent 负责哪些 Skills
+- Skill → Agent 的路由映射表
+
 ### Step 1: 分析需求，确定 Agent 身份
 1. 读取 PRD 的标题、目标用户、核心功能
 2. 确定 Agent 的 `agent_type`:
@@ -118,10 +134,49 @@ Agent 应用 = AGENT.md (编排) + SKILL.md × N (能力单元)。
 
 ## 输出格式
 
-用 `## FILE:` 格式输出，每个文件一个代码块:
+用 `## FILE:` 格式输出。**多 Agent 模式必须首先输出 agent_manifest.json**。
+
+### agent_manifest.json（多 Agent 模式第一条输出）
 
 ```
-## FILE: ~/.aiplat/agents/{agent_name}/AGENT.md
+## FILE: ~/.aiplat/apps/{app_name}/agent_manifest.json
+```json
+{
+  "app_name": "video_sense",
+  "mode": "multi_agent",
+  "agents": [
+    {
+      "name": "orchestrator_agent",
+      "display_name": "协调 Agent",
+      "agent_type": "react",
+      "role": "orchestrator",
+      "skills": ["upload", "analysis"],
+      "description": "接收用户请求,分发到子Agent"
+    },
+    {
+      "name": "analysis_agent", 
+      "display_name": "分析 Agent",
+      "agent_type": "react",
+      "role": "worker",
+      "skills": ["video_analysis", "result_presentation"],
+      "description": "执行AI分析,生成结果"
+    }
+  ],
+  "skill_routing": {
+    "video_upload": "orchestrator_agent",
+    "video_analysis": "analysis_agent",
+    "result_presentation": "analysis_agent",
+    "check_progress": "orchestrator_agent"
+  }
+}
+```
+
+manifest 字段说明:
+- `agents[].role`: `orchestrator`(协调) / `worker`(执行) / `notification`(通知)
+- `skill_routing`: 每个 Skill → 负责 Agent 的映射表(前端页面用)
+- `mode`: `single`(单Agent) / `multi_agent`(多Agent)
+
+### AGENT.md + SKILL.md
 ```yaml
 ---
 name: {agent_name}
@@ -165,10 +220,13 @@ scoring_dimensions:
 | 生成 handler.py (需要编码) | 优先用 execution_type: prompt (LLM推理即可) |
 
 ## Checklist
-- [ ] 至少生成 1 个 AGENT.md
-- [ ] 每个核心功能对应 1 个 SKILL.md
+- [ ] 根据 PRD 复杂度决定单/多 Agent 模式
+- [ ] 多 Agent 模式: 首先输出 agent_manifest.json
+- [ ] 每个 Agent 至少 1 个 AGENT.md
+- [ ] 每个核心功能对应 1 个 SKILL.md（由负责的 Agent 的 `required_skills` 引用）
+- [ ] 多 Agent 时: orchestrator_agent 的 SOP 描述如何分发到子 Agent
+- [ ] agent_manifest.json 的 skill_routing 覆盖所有 Skill
 - [ ] 所有 Skill 的 input/output 字段完整
-- [ ] AGENT.md 的 SOP 引用所有 Skills
 - [ ] scoring_dimensions 已定义(3-4个维度)
 - [ ] 优先使用 execution_type: prompt
 - [ ] 没有生成 Python 或 React 代码

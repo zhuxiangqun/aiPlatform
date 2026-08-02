@@ -3824,6 +3824,17 @@ class PipelineEngine:
                 state["_generated_skill_count"] = _skill_count
                 _log.getLogger("pipeline_engine").warning(
                     "Agent app deployed: agent=%s skills=%d", _agent_name, _skill_count)
+            # Detect agent_manifest.json for multi-agent routing
+            if "agent_manifest.json" in _result:
+                try:
+                    _man_match = _re.search(r'##\s*FILE:.*agent_manifest\.json.*?\n```(?:json)?\s*\n(.*?)\n```', _result, _re.DOTALL)
+                    if _man_match:
+                        import json as _json_man
+                        state["agent_manifest"] = _json_man.loads(_man_match.group(1))
+                        _log.getLogger("pipeline_engine").warning(
+                            "Agent manifest loaded: %d agents", len(state["agent_manifest"].get("agents", [])))
+                except Exception:
+                    pass
 
         # ── 6. HITL gate: pause pipeline if stage requires human approval ──
         if getattr(stage, 'hitl', False):

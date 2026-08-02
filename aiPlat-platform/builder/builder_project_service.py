@@ -707,6 +707,8 @@ class BuilderProjectService:
 
         Routing through the Agent (not direct skill call) ensures ReActLoop runs —
         activating all 18 platform capabilities (SECI, Memory, Feedback, etc.).
+
+        Multi-agent: reads agent_manifest.json for skill→agent routing.
         """
         from core.api.intents import core_chat, ChatContext
         import json as _json, re as _re
@@ -715,12 +717,20 @@ class BuilderProjectService:
         if not state:
             state = self._load_pipeline_state(project_id) or {}
 
-        agent_name = state.get("_generated_agent", "")
+        agent_name = ""
+
+        # ── Path 1: Multi-agent routing via agent_manifest.json ──
+        _manifest = state.get("agent_manifest", {})
+        if isinstance(_manifest, dict) and _manifest.get("skill_routing"):
+            agent_name = _manifest["skill_routing"].get(skill_name, "")
+
+        # ── Path 2: Single-agent via _generated_agent ──
         if not agent_name:
-            # Fallback: parse agent name from agent_app output
-            proj = self._projects.get(project_id, {})
-            for s in proj.get("team_stages", []):
-                oa = s.get("output_artifact", "") if isinstance(s, dict) else getattr(s, "output_artifact", "")
+            agent_name = state.get("_generated_agent", "")
+
+        # ── Path 3: Fallback — parse agent name from agent_app output ──
+        if not agent_name:
+            for oa in ["agent_app", "architecture", "code"]:
                 raw = state.get(oa, {}).get("raw_output", "") if isinstance(state.get(oa), dict) else ""
                 if "AGENT.md" in str(raw):
                     m = _re.search(r'name:\s*(\S+)', str(raw))
