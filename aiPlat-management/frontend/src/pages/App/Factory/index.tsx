@@ -427,7 +427,12 @@ const ProjectPanel: React.FC<{
           <div className="space-y-2">
             <div className="p-3 rounded bg-green-500/10 border border-green-500/30 text-sm text-green-300">
               ✅ 构建完成
-              {!deployUrl && (
+              {agentMode && (
+                <a href={`/app/apps/${project.project_id}`} target="_blank" rel="noreferrer" className="ml-3 text-primary underline text-xs flex items-center gap-1 inline-flex">
+                  <ExternalLink className="w-3 h-3" /> 使用应用
+                </a>
+              )}
+              {!agentMode && !deployUrl && (
                 <Button variant="primary" size="sm" className="ml-3" onClick={handleDeploy} loading={deploying}>部署到 App</Button>
               )}
               {deployUrl && (
