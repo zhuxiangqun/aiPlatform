@@ -3581,11 +3581,10 @@ class PipelineEngine:
         _trace_key = f"_trace_{stage.id}"
         if _trace_key not in result:
             _elapsed = round(_time.time() - _t0, 2)
-            _model = best_model_for_purpose(getattr(stage, 'skill_model_purpose', '') or 'chat')
-            _tier_info = {}
+            _model_meta = {}
             try:
-                from core.harness.utils.model_injection import get_model_tier_info
-                _tier_info = get_model_tier_info(_model)
+                from core.harness.utils.model_injection import best_model_for_purpose_with_meta
+                _model_meta = best_model_for_purpose_with_meta(getattr(stage, 'skill_model_purpose', '') or 'chat')
             except Exception:
                 pass
             result[_trace_key] = {
@@ -3593,14 +3592,14 @@ class PipelineEngine:
                 "agent_id": getattr(stage, 'agent_id', '') or '',
                 "phase": getattr(stage, 'phase', '') or '',
                 "skill_name": getattr(stage, 'skill_name', '') or '',
-                "model_name": _model,
+                "model_name": _model_meta.get("model", _model),
                 "model_purpose": getattr(stage, 'skill_model_purpose', '') or 'chat',
                 "elapsed_sec": _elapsed,
                 "retry_count": result.get(f"_retry_{stage.id}", 0),
                 "failure_strategy": getattr(stage, 'failure_strategy', 'fail_pipeline') or 'fail_pipeline',
                 "strategy": "react",
-                "model_tier": _tier_info.get("tier", ""),
-                "complexity_range": _tier_info.get("complexity_range", []),
+                "model_tier": _model_meta.get("model_tier", ""),
+                "complexity_range": [],
             }
         result.pop(f"_retry_{stage.id}", None)  # clean up retry counter from state
 
@@ -3768,10 +3767,10 @@ class PipelineEngine:
 
         # ── Stage trace: structured metadata for reasoning visibility ──
         _model_name = best_model_for_purpose(_purpose)
-        _tier_info = {}
+        _model_meta = {}
         try:
-            from core.harness.utils.model_injection import get_model_tier_info
-            _tier_info = get_model_tier_info(_model_name)
+            from core.harness.utils.model_injection import best_model_for_purpose_with_meta
+            _model_meta = best_model_for_purpose_with_meta(_purpose)
         except Exception:
             pass
         state[f"_trace_{stage.id}"] = {
@@ -3787,8 +3786,8 @@ class PipelineEngine:
             "retry_count": state.get(f"_retry_{stage.id}", 0),
             "failure_strategy": getattr(stage, 'failure_strategy', 'fail_pipeline') or 'fail_pipeline',
             "strategy": "skill_dispatch",
-            "model_tier": _tier_info.get("tier", ""),
-            "complexity_range": _tier_info.get("complexity_range", []),
+            "model_tier": _model_meta.get("model_tier", ""),
+            "complexity_range": [],
             "domain_id": _domain_id,
             "context_enriched": _context_enriched,
         }
