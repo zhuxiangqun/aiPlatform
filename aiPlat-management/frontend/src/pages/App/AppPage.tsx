@@ -99,7 +99,7 @@ export const AppPage: React.FC = () => {
 
   const renderStage = (stage: StageConfig, idx: number, isActive: boolean) => {
     const input = resolveInput(stage.config?.input, stageResults);
-    const props = { config: stage.config, onExecute: executeSkill, skill: stage.skill, stageInput: input };
+    const props = { config: stage.config, onExecute: executeSkill, skill: stage.skill, stageInput: input, projectId };
 
     const Component =
       stage.component === 'file_upload' ? FileUploadStage :

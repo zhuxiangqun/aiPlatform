@@ -260,6 +260,19 @@ export const projectApi = {
       trend: Array<{ run_id: string; score: number; timestamp: string }>;
     }>(`/platform/builder/projects/${projectId}/health-report`);
   },
+
+  /** Upload a file for an App Factory project. Returns file reference. */
+  uploadFile: async (projectId: string, formData: FormData) => {
+    const resp = await fetch(`/api/platform/builder/projects/${projectId}/files/upload`, {
+      method: 'POST',
+      body: formData,
+    });
+    if (!resp.ok) {
+      const txt = await resp.text().catch(() => '');
+      throw new Error(txt || `HTTP ${resp.status}`);
+    }
+    return resp.json();
+  },
 };
 
 // ━━━ Agent Insights API ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

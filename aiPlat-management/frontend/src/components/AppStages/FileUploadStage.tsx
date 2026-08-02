@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
-import { Button, Card, Progress } from '../ui';
+import { Button, Card } from '../ui';
 import { Upload, File, AlertCircle } from 'lucide-react';
+import { projectApi } from '../../services';
 
 interface FileUploadConfig {
   accept?: string;
@@ -13,9 +14,10 @@ interface Props {
   config: FileUploadConfig;
   onExecute: (skill: string, params: Record<string, any>) => Promise<any>;
   skill: string;
+  projectId?: string;
 }
 
-export const FileUploadStage: React.FC<Props> = ({ config, onExecute, skill }) => {
+export const FileUploadStage: React.FC<Props> = ({ config, onExecute, skill, projectId = '' }) => {
   const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState('');
@@ -38,8 +40,24 @@ export const FileUploadStage: React.FC<Props> = ({ config, onExecute, skill }) =
     setUploading(true);
     setError('');
     try {
-      const res = await onExecute(skill, { file_name: file.name, file_size: file.size });
-      setResult(res);
+      // Step 1: Upload file bytes via FormData
+      const formData = new FormData();
+      formData.append('file', file, file.name);
+      const uploadRes = await projectApi.uploadFile(projectId, formData);
+
+      if (!uploadRes.ok) {
+        throw new Error(uploadRes.error || '上传失败');
+      }
+
+      // Step 2: Execute skill with file reference
+      const skillRes = await onExecute(skill, {
+        file_name: uploadRes.file_name,
+        file_size: uploadRes.file_size,
+        file_url: uploadRes.file_url,
+        file_path: uploadRes.file_path,
+        content_type: uploadRes.content_type,
+      });
+      setResult(skillRes);
     } catch (e: any) {
       setError(e?.message || '上传失败');
     } finally {

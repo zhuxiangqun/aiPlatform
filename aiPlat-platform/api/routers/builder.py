@@ -9,7 +9,7 @@ import logging
 import os
 from typing import Any, Dict, List
 from pathlib import Path
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile, File, Form
 from fastapi.responses import JSONResponse
 from api.schemas_response import ProjectListResponse, ProjectStateResponse, PipelineStartResponse, TeamListResponse, StatusResponse
 
@@ -143,6 +143,42 @@ async def project_execute_skill(project_id: str, skill_name: str, body: Dict[str
     """Frontend page calls this to execute a skill through the Agent (not direct)."""
     params = body if isinstance(body, dict) else {}
     return await _get_svc().execute_skill(project_id, skill_name, params)
+
+@router.post("/projects/{project_id}/files/upload", response_model=StatusResponse)
+async def project_file_upload(
+    project_id: str,
+    file: UploadFile = File(...),
+    _auth: str = Depends(require_builder_access),
+):
+    """Upload a file for an App Factory project. Returns file reference for skill execution."""
+    import re as _re
+    import time as _time
+
+    if not file.filename:
+        raise HTTPException(status_code=400, detail="file_required")
+
+    _app_home = Path(os.getenv("AIPLAT_HOME", os.path.expanduser("~/.aiplat"))) / "apps" / project_id / "current"
+    _upload_dir = _app_home / "uploads"
+    _upload_dir.mkdir(parents=True, exist_ok=True)
+
+    _safe_name = _re.sub(r"[^A-Za-z0-9_.\u4e00-\u9fff-]+", "_", file.filename)
+    _unique = f"{int(_time.time())}_{_safe_name}"
+    _dst = _upload_dir / _unique
+
+    _data = await file.read()
+    if len(_data) > 500 * 1024 * 1024:  # 500MB limit
+        raise HTTPException(status_code=413, detail="file_too_large")
+    _dst.write_bytes(_data)
+
+    _file_url = f"http://localhost:8004/app/sessions/{project_id}/uploads/{_unique}"
+    return {
+        "ok": True,
+        "file_name": file.filename,
+        "file_size": len(_data),
+        "file_path": str(_dst),
+        "file_url": _file_url,
+        "content_type": file.content_type or "",
+    }
 
 @router.post("/projects/{project_id}/confirm", response_model=StatusResponse)
 async def project_confirm(project_id: str, body: Dict[str, Any] = {}, _auth: str = Depends(require_builder_access)):
