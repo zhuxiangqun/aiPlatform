@@ -1550,20 +1550,18 @@ class BuilderProjectService:
             except Exception as e:
                 logging.warning(str(e), exc_info=True)
         state["phase"] = state.get("phase", phase)
-        if not state or state.get("phase") == "failed":
-            persisted = self._load_pipeline_state(project_id)
-            if persisted:
-                self._runs[project_id] = persisted  # recovery
+        # Always merge persisted state artifacts — most reliable data source
+        persisted = self._load_pipeline_state(project_id)
+        if persisted:
+            self._runs[project_id] = persisted  # recovery
+            if not state or state.get("phase") == "failed":
                 state = persisted
-                # Restore episodic memory from persisted state
-                episodic = state.get("_episodic")
-                if isinstance(episodic, dict):
-                    try:
-                        from core.api.facades.runtime_facade import get_memory_manager
-                        mgr = get_memory_manager()
-                        mgr.import_episodic_state(episodic)
-                    except Exception as e:
-                        logging.warning(str(e), exc_info=True)
+            else:
+                # Merge artifact keys from persisted into event-based state
+                _artifact_keys = ("architecture", "code", "test_report", "agent_app", "frontend_pages")
+                for _key in _artifact_keys:
+                    if _key in persisted and isinstance(persisted[_key], dict) and persisted[_key].get("raw_output"):
+                        state[_key] = persisted[_key]
         if not state:
             state = {}
         # Merge in-memory _runs for live updates during pipeline execution
@@ -1581,11 +1579,13 @@ class BuilderProjectService:
             try:
                 with open(_final_path, "r") as _fs:
                     _final = json.loads(_fs.read())
-                for _key in ("architecture", "code", "test_report"):
+                for _key in ("architecture", "code", "test_report", "agent_app", "frontend_pages"):
                     if _key in _final and _final[_key]:
                         state[_key] = _final[_key]
                 if "_has_tests" in _final:
                     state["_has_tests"] = _final["_has_tests"]
+                if "_generated_agent" in _final:
+                    state["_generated_agent"] = _final["_generated_agent"]
             except Exception:
                 pass  # noqa: cleanup-best-effort
         proj = self._projects.get(project_id, {})
