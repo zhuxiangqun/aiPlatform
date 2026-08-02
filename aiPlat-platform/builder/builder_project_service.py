@@ -143,7 +143,6 @@ class BuilderProjectService:
         self._team_service = team_service or BuilderTeamService(None)
         self._projects: Dict[str, Dict[str, Any]] = {}
         self._sessions: Dict[str, Dict[str, Any]] = {}
-        self._pipeline_sessions: Dict[str, Any] = {}
         self._runs: Dict[str, Dict[str, Any]] = {}
         self._phases: Dict[str, str] = {}  # dialogue | executing
         self._load_projects()
@@ -1116,7 +1115,6 @@ class BuilderProjectService:
                                                      persist_callback=self._make_persist_callback(project_id))
         import sys
         print(f"### start_pipeline: session created, calling start for {project_id}", file=sys.stderr)
-        self._pipeline_sessions[project_id] = pipeline_session
 
         # Register event bus listener — writes pipeline state directly to _runs for frontend polling
         from core.api.facades.runtime_facade import get_event_bus
@@ -1318,55 +1316,83 @@ class BuilderProjectService:
         except Exception as e:
             logging.warning(str(e), exc_info=True)
         self._save_pipeline_state(project_id, state)
-        session = self._pipeline_sessions.get(project_id)
-        # Config-driven: find test result key from session stages
+        # Config-driven: find test result key from project stages
         test_key = "test_report"
-        if session:
-            for s in (session.get_stages() or []):
-                sk = getattr(s, 'test_result_key', '') if hasattr(s, 'test_result_key') else ''
-                if sk:
-                    test_key = sk
+        proj = self._projects.get(project_id, {})
+        for s in (proj.get("team_stages") or []):
+            sk = s.get("test_result_key", "") if isinstance(s, dict) else getattr(s, 'test_result_key', '')
+            if sk:
+                test_key = sk
         tr = state.get(test_key) or {}
         if state.get("phase") == "done" or tr.get("recommendation") == "APPROVED":
-            if session:
-                deploy_dir = session.assemble_deploy(state)
-                if deploy_dir:
-                    self._projects.setdefault(project_id, {})["deploy_dir"] = deploy_dir
-                    self._save_projects()
+            try:
+                _ss = self._rebuild_session(project_id)
+                if _ss:
+                    deploy_dir = _ss.assemble_deploy(state)
+                    if deploy_dir:
+                        self._projects.setdefault(project_id, {})["deploy_dir"] = deploy_dir
+                        self._save_projects()
+            except Exception:
+                pass  # noqa: cleanup-best-effort
 
     async def approve_stage(self, project_id: str, feedback: str = "") -> Dict[str, Any]:
-        session = self._pipeline_sessions.get(project_id)
-        if not session:
-            session = self._rebuild_session(project_id)
-            if not session:
-                raise ValueError("no pipeline session — rebuild project first")
         state = self._runs.get(project_id)
         if not state:
             state = self._load_pipeline_state(project_id)
             if not state:
                 raise ValueError("no pipeline state")
-        state = await session.approve(dict(state), feedback=feedback)
+
+        # Approve directly on state — no session needed
+        _hitl_id = state.get("_hitl_stage_id", "")
+        state["_hitl_resolved_" + _hitl_id] = True if _hitl_id else False
+        state["_hitl_stage_id"] = ""
+        state["_hitl_human_feedback"] = ""
+        state["phase"] = "executing"
+
+        # Find HITL stage index and inject feedback if provided
+        _proj = self._projects.get(project_id, {})
+        _ts = _proj.get("team_stages", [])
+        _found = False
+        for _i, _s in enumerate(_ts):
+            _sid = _s.get("id", "") if isinstance(_s, dict) else getattr(_s, "id", "")
+            if _sid == _hitl_id:
+                state["_current_stage_idx"] = _i
+                if feedback:
+                    _oa = _s.get("output_artifact", "") if isinstance(_s, dict) else getattr(_s, "output_artifact", "")
+                    if _oa:
+                        state[_oa] = {"raw_output": feedback, "source": "human_hitl"}
+                _found = True
+                break
+        if not _found:
+            state["_current_stage_idx"] = 1  # default: architect
+
         self._runs[project_id] = state
         await self._save_state(project_id, state)
-        # Run remaining pipeline in background thread
+        # Run remaining pipeline from next stage in background thread
         if state.get("phase") == "executing":
-            _idx = state.get("_current_stage_idx", 0) + 1  # approve: HITL is done, start from next
-            if _idx < len(session.get_stages()):
-                import threading, asyncio as _asyncio
-                svc = self
-                def _bg_run():
-                    try:
-                        loop = _asyncio.new_event_loop()
-                        _asyncio.set_event_loop(loop)
-                        result = loop.run_until_complete(session._engine._run_stages_from(_idx, dict(state)))
-                        svc._runs[project_id] = dict(result)
-                        loop.run_until_complete(svc._save_state(project_id, dict(result)))
-                        loop.close()
-                    except Exception:
-                        logging.getLogger(__name__).debug('_bg_run failed', exc_info=True)
-                t = threading.Thread(target=_bg_run, daemon=True)
-                t.start()
+            _idx = state.get("_current_stage_idx", 0) + 1
+            self._start_bg_stages(project_id, _idx, dict(state))
         return {"project_id": project_id, "phase": state.get("phase", "executing")}
+
+    def _start_bg_stages(self, project_id: str, start_idx: int, state: dict):
+        """Start remaining pipeline stages in background thread with on-demand engine."""
+        import threading, asyncio as _asyncio
+        _pid = project_id
+        _svc = self
+        def _bg_run():
+            try:
+                _ses = _svc._rebuild_session(_pid)
+                if _ses and start_idx < len(_ses.get_stages()):
+                    loop = _asyncio.new_event_loop()
+                    _asyncio.set_event_loop(loop)
+                    result = loop.run_until_complete(_ses._engine._run_stages_from(start_idx, dict(state)))
+                    _svc._runs[_pid] = dict(result)
+                    loop.run_until_complete(_svc._save_state(_pid, dict(result)))
+                    loop.close()
+            except Exception:
+                logging.getLogger(__name__).debug('_bg_run failed', exc_info=True)
+        t = threading.Thread(target=_bg_run, daemon=True)
+        t.start()
 
     async def _bg_run_stages(self, project_id: str, session, state: Dict, start_idx: int):
         """Run remaining pipeline stages, updating state periodically."""
@@ -1378,11 +1404,9 @@ class BuilderProjectService:
             self._runs[project_id] = {"phase": "failed", "error": str(e)[:200]}
 
     async def start_fix(self, project_id: str) -> Dict[str, Any]:
-        session = self._pipeline_sessions.get(project_id)
+        session = self._rebuild_session(project_id)
         if not session:
-            session = self._rebuild_session(project_id)
-            if not session:
-                raise ValueError("no session")
+            raise ValueError("no session — rebuild project first")
         state = self._runs.get(project_id)
         if not state:
             state = self._load_pipeline_state(project_id)
@@ -1395,46 +1419,51 @@ class BuilderProjectService:
         return {"project_id": project_id, "phase": state.get("phase", "executing")}
 
     async def reject_stage(self, project_id: str, feedback: str) -> Dict[str, Any]:
-        session = self._pipeline_sessions.get(project_id)
-        if not session:
-            session = self._rebuild_session(project_id)
-            if not session:
-                raise ValueError("no pipeline session — rebuild project first")
         state = self._runs.get(project_id)
         if not state:
             state = self._load_pipeline_state(project_id)
             if not state:
                 raise ValueError("no pipeline state")
-        state = await session.reject(dict(state), feedback)
+
+        _hitl_id = state.get("_hitl_stage_id", "")
+        state["_reject_feedback"] = feedback
+        state["_hitl_stage_id"] = ""
+        state["phase"] = "executing"
+
+        # Find HITL stage, inject feedback, clear subsequent stages
+        _proj = self._projects.get(project_id, {})
+        _ts = _proj.get("team_stages", [])
+        _found = False
+        for _i, _s in enumerate(_ts):
+            _sid = _s.get("id", "") if isinstance(_s, dict) else getattr(_s, "id", "")
+            _hitl_true = (_s.get("hitl") or getattr(_s, "hitl", False)) if isinstance(_s, dict) else False
+            if _sid == _hitl_id or (not _hitl_id and _hitl_true):
+                state["_current_stage_idx"] = _i
+                _oa = _s.get("output_artifact", "") if isinstance(_s, dict) else getattr(_s, "output_artifact", "")
+                if _oa:
+                    state[_oa] = {"raw_output": feedback, "source": "human_reject"} if feedback else None
+                # Clear subsequent stages
+                for _j in range(_i + 1, len(_ts)):
+                    _soa = _ts[_j].get("output_artifact", "") if isinstance(_ts[_j], dict) else getattr(_ts[_j], "output_artifact", "")
+                    if _soa:
+                        state[_soa] = None
+                _found = True
+                break
+        if not _found:
+            state["_current_stage_idx"] = 1
+
         self._runs[project_id] = state
         await self._save_state(project_id, state)
-        # Run remaining pipeline in background thread
+        # Reject restarts from HITL stage itself (not +1)
         if state.get("phase") == "executing":
-            _idx = state.get("_current_stage_idx", 0)  # reject/approve already cleared, start from HITL stage
-            if _idx < len(session.get_stages()):
-                import threading, asyncio as _asyncio
-                svc = self
-                def _bg_run():
-                    try:
-                        loop = _asyncio.new_event_loop()
-                        _asyncio.set_event_loop(loop)
-                        result = loop.run_until_complete(session._engine._run_stages_from(_idx, dict(state)))
-                        svc._runs[project_id] = dict(result)
-                        loop.run_until_complete(svc._save_state(project_id, dict(result)))
-                        loop.close()
-                    except Exception:
-                        logging.getLogger(__name__).debug('_bg_run failed', exc_info=True)
-                t = threading.Thread(target=_bg_run, daemon=True)
-                t.start()
+            self._start_bg_stages(project_id, state.get("_current_stage_idx", 1), dict(state))
         return {"project_id": project_id, "phase": state.get("phase", "executing")}
 
     async def regenerate_stage(self, project_id: str, stage_id: str, feedback: str) -> Dict[str, Any]:
         """Rollback to stage with feedback, then restart from that point."""
-        session = self._pipeline_sessions.get(project_id)
+        session = self._rebuild_session(project_id)
         if not session:
-            session = self._rebuild_session(project_id)
-            if not session:
-                raise ValueError("no session")
+            raise ValueError("no session — rebuild project first")
         state = self._runs.get(project_id)
         if not state:
             state = self._load_pipeline_state(project_id)
@@ -1467,11 +1496,9 @@ class BuilderProjectService:
         return {"project_id": project_id, "phase": state.get("phase", "executing"), "state": state}
 
     async def rollback_stage(self, project_id: str, stage_id: str) -> Dict[str, Any]:
-        session = self._pipeline_sessions.get(project_id)
+        session = self._rebuild_session(project_id)
         if not session:
-            session = self._rebuild_session(project_id)
-            if not session:
-                raise ValueError("no session")
+            raise ValueError("no session — rebuild project first")
         state = self._runs.get(project_id)
         if not state:
             state = self._load_pipeline_state(project_id)
@@ -1488,11 +1515,9 @@ class BuilderProjectService:
 
     async def resume_from_stage(self, project_id: str, stage_id: str) -> Dict[str, Any]:
         """Resume pipeline from a specific stage without clearing artifacts."""
-        session = self._pipeline_sessions.get(project_id)
+        session = self._rebuild_session(project_id)
         if not session:
-            session = self._rebuild_session(project_id)
-            if not session:
-                raise ValueError("no session")
+            raise ValueError("no session — rebuild project first")
         state = self._runs.get(project_id)
         if not state:
             state = self._load_pipeline_state(project_id)
@@ -1527,7 +1552,6 @@ class BuilderProjectService:
         # Clear in-memory state
         self._runs[project_id] = {}
         self._sessions.pop(project_id, None)
-        self._pipeline_sessions.pop(project_id, None)
         return {"project_id": project_id, "phase": "dialogue"}
 
     async def update_prd(self, project_id: str, prd: dict) -> Dict[str, Any]:
@@ -1552,7 +1576,6 @@ class BuilderProjectService:
             return {"status": "error", "detail": "没有已确认的 PRD，请先完成 PM 对话"}
         # Clear previous pipeline state AND output cache (prevents stale artifact skipping)
         self._runs.pop(project_id, None)
-        self._pipeline_sessions.pop(project_id, None)
         import shutil
         out_dir = os.path.join(os.getenv("AIPLAT_HOME", os.path.expanduser("~/.aiplat")), "output", project_id)
         if os.path.isdir(out_dir):
@@ -1578,10 +1601,6 @@ class BuilderProjectService:
         })
         proj["updated_at"] = now
         self._save_projects()
-        # Sync create session so approve/reject don't need _rebuild_session
-        session = self._rebuild_session(project_id)
-        if session:
-            self._pipeline_sessions[project_id] = session
         self.start_pipeline_background(project_id)
         return {"status": "ok", "detail": "已触发重新构建"}
 
@@ -1749,7 +1768,6 @@ class BuilderProjectService:
         config = PipelineConfig(stages=stages, max_tokens_per_run=max_tokens, max_retry_attempts=max_retry)
         session = create_pipeline_session(config=config, model=self.model, skill_loader=_create_skill_loader(),
                                             persist_callback=self._make_persist_callback(project_id))
-        self._pipeline_sessions[project_id] = session
         return session
 
     async def get_graph(self, project_id: str) -> Dict[str, Any]:
