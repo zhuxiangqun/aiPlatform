@@ -68,7 +68,7 @@ const InlineChat: React.FC<{
         {messages.map((m, i) => (
           <div key={i} className={`p-2 rounded text-sm ${m.role === 'assistant' ? 'bg-primary/10 border border-primary/20 text-gray-200' : 'bg-dark-card border border-dark-border text-gray-300'}`}>
              <div className="text-[10px] text-gray-500 mb-1">{m.role === 'assistant' ? (agentMode ? agentName : 'AI PM') : '你'}</div>
-            <div className="whitespace-pre-wrap break-words">{m.content}</div>
+            <div className="whitespace-pre-wrap break-words max-h-[200px] overflow-y-auto">{m.content}</div>
           </div>
         ))}
         {sending && <div className="flex items-center gap-2 text-xs text-gray-500"><Loader2 className="w-3 h-3 animate-spin" />思考中...</div>}
