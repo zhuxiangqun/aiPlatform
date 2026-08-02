@@ -3638,7 +3638,28 @@ class PipelineEngine:
             if isinstance(_v, dict) and _v.get("raw_output"):
                 _context += f"## {_key}\n{str(_v['raw_output'])[:3000]}\n\n"
 
-        # ── 3. LLM call ──
+        # ── 3. Inject document schema into system prompt ──
+        _schema_text = ""
+        try:
+            _schema_yaml = _os.path.join(_os.path.dirname(_os.path.dirname(_os.path.dirname(_os.path.dirname(_os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))))), "config", "document_schemas.yaml")
+            if _os.path.isfile(_schema_yaml):
+                import yaml as _yaml
+                with open(_schema_yaml) as _sf:
+                    _schemas = _yaml.safe_load(_sf) or {}
+                _schema_id = getattr(stage, 'output_artifact', '')
+                _schema_map = {"architecture": "architecture", "code": "code", "test_report": "test"}
+                _ref = _schema_map.get(_schema_id, "")
+                if _ref and _ref in _schemas.get("schemas", {}):
+                    _spec = _schemas["schemas"][_ref].get("output_spec", "")
+                    if _spec:
+                        _schema_text = f"\n\n## Output Format Requirements\n{_spec.strip()}"
+        except Exception:
+            pass
+        if _schema_text:
+            _sop_body = _sop_body.replace("\n\n## Output Format Requirements", "") + _schema_text
+            _sop_body = _sop_body.rsplit("\n\n## Output Format Requirements", 1)[0] + _schema_text if "\n\n## Output Format Requirements" in _sop_body else _sop_body + _schema_text
+
+        # ── 4. LLM call ──
         from core.harness.syscalls.llm import sys_llm_generate
         from core.harness.utils.model_injection import best_model_for_purpose
         _purpose = getattr(stage, 'skill_model_purpose', '') or 'chat'

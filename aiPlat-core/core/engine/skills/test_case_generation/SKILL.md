@@ -25,9 +25,7 @@ input_schema:
     type: object
     required: true
 output_schema:
-  test_cases:
-    type: array
-  markdown:
+  $ref: "test"
     type: string
     required: true
     description: 面向人阅读的 Markdown 输出

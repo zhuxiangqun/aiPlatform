@@ -80,23 +80,111 @@ const InlineChat: React.FC<{
   );
 };
 
-// ── Fullscreen content viewer (with document rendering) ──
+// ── Document schemas (shared with backend YAML) ──
+type ColDef = { key: string; label: string; width?: string; type?: string };
+type TableDef = { key: string; title: string; columns: ColDef[] };
+type SectionDef = { key: string; title: string; type?: string };
+type ListDef = { key: string; title: string };
+type StatDef = { key: string; label: string; color?: string; format?: string };
+type DocSchema = {
+  title_field?: string; overview_field?: string; scope_badge?: string; title?: string;
+  tables?: TableDef[]; sections?: SectionDef[]; lists?: ListDef[]; stat_blocks?: StatDef[];
+};
+
+const SCHEMAS: Record<string, DocSchema> = {
+  prd: {
+    title_field: "title", overview_field: "overview", scope_badge: "scope",
+    tables: [{ key: "user_stories", title: "用户故事", columns: [
+      { key: "id", label: "ID", width: "140px" }, { key: "description", label: "描述" },
+      { key: "priority", label: "优先级", type: "badge" }, { key: "acceptance_criteria", label: "验收标准", type: "ac_list" },
+    ]}],
+    lists: [{ key: "constraints", title: "技术约束" }],
+  },
+  architecture: {
+    title_field: "title", overview_field: "overview",
+    tables: [
+      { key: "components", title: "组件清单", columns: [
+        { key: "name", label: "组件名" }, { key: "layer", label: "层级", type: "badge" },
+        { key: "tech", label: "技术栈" }, { key: "responsibility", label: "职责", width: "300px" },
+      ]},
+      { key: "api_design", title: "API 设计", columns: [
+        { key: "method", label: "方法", type: "method_badge" }, { key: "path", label: "路径" },
+        { key: "description", label: "说明" },
+      ]},
+    ],
+    sections: [
+      { key: "database_schema", title: "数据库设计", type: "code" }, { key: "deployment", title: "部署方案" },
+      { key: "security", title: "安全设计" }, { key: "performance", title: "性能优化" },
+    ],
+  },
+  test: {
+    title: "测试报告",
+    tables: [{ key: "test_cases", title: "测试用例", columns: [
+      { key: "id", label: "ID", width: "120px" }, { key: "user_story", label: "User Story" },
+      { key: "description", label: "描述" }, { key: "risk_level", label: "风险", type: "risk" },
+      { key: "test_type", label: "类型" },
+    ]}],
+    sections: [{ key: "test_log", title: "执行日志", type: "code" }],
+  },
+};
+
+const formatBadge = (v: string, type: string) => {
+  if (type === 'risk' || type === 'badge') {
+    const low = (v || '').toLowerCase();
+    const color = low === 'high' ? 'bg-red-100 text-red-700' : low === 'medium' ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-600';
+    return <span className={`px-1.5 py-0.5 rounded text-[10px] ${color}`}>{v}</span>;
+  }
+  if (type === 'method_badge') {
+    const colors: Record<string,string>={GET:'bg-blue-100 text-blue-700',POST:'bg-green-100 text-green-700',PUT:'bg-amber-100 text-amber-700',DELETE:'bg-red-100 text-red-700'};
+    return <span className={`px-1 rounded text-[10px] font-mono ${colors[v]||'bg-gray-100 text-gray-600'}`}>{v}</span>;
+  }
+  if (type === 'ac_list' && Array.isArray(v)) return <>{v.map((a:string,i:number)=><div key={i} className="text-[11px] text-gray-500">· {a}</div>)}</>;
+  if (type === 'code') return <pre className="text-xs text-gray-600 font-mono whitespace-pre-wrap">{v}</pre>;
+  return <>{v}</>;
+};
+
+// ── Generic DataDocument — schema-driven renderer ──
+const DataDocument: React.FC<{ data: Record<string, unknown>; schema: DocSchema }> = ({ data, schema }) => {
+  const title = (schema.title_field ? data[schema.title_field] : schema.title) as string || '';
+  const overview = schema.overview_field ? (data[schema.overview_field] as string) : '';
+  const scope = schema.scope_badge ? (data[schema.scope_badge] as string) : '';
+  return (
+    <div className="space-y-5 text-sm text-gray-800">
+      {title && <div><h1 className="text-xl font-bold text-gray-900 mb-1">{title}</h1>{scope && <span className="text-xs px-2 py-0.5 rounded bg-blue-100 text-blue-700">{scope}</span>}</div>}
+      {overview && <p className="text-gray-600 leading-relaxed">{overview}</p>}
+      {(schema.tables || []).map((t: TableDef) => {
+        const rows = (data[t.key] || []) as any[];
+        if (!rows.length) return null;
+        return <div key={t.key}><h2 className="text-base font-semibold text-gray-900 mb-2 border-b pb-1">{t.title} ({rows.length})</h2>
+          <table className="w-full text-xs border-collapse"><thead><tr className="bg-gray-50">{t.columns.map((c: ColDef) => (<th key={c.key} className="p-2 text-left border" style={{width:c.width}}>{c.label}</th>))}</tr></thead>
+          <tbody>{rows.map((r: any, i: number) => (<tr key={i} className="border">{t.columns.map((c: ColDef) => (<td key={c.key} className="p-2 border">{c.type ? formatBadge(r[c.key], c.type) : <>{r[c.key]?.toString()||''}</>}</td>))}</tr>))}</tbody></table></div>;
+      })}
+      {(schema.lists || []).map((l: ListDef) => {
+        const items = (data[l.key] || []) as string[];
+        if (!items.length) return null;
+        return <div key={l.key}><h2 className="text-base font-semibold text-gray-900 mb-2 border-b pb-1">{l.title}</h2><ul className="list-disc pl-5 space-y-0.5 text-gray-600 text-xs">{items.map((c:string,i:number)=><li key={i}>{c}</li>)}</ul></div>;
+      })}
+      {(schema.sections || []).map((s: SectionDef) => {
+        const v = data[s.key];
+        if (!v) return null;
+        return <div key={s.key}><h2 className="text-base font-semibold text-gray-900 mb-2 border-b pb-1">{s.title}</h2>{s.type === 'code' ? <pre className="text-xs text-gray-600 font-mono whitespace-pre-wrap">{v as string}</pre> : <div className="text-gray-600 text-xs">{v as string}</div>}</div>;
+      })}
+    </div>
+  );
+};
+
+// ── Fullscreen content viewer (schema-driven) ──
 const FullscreenView: React.FC<{
   open: boolean; title: string; content: string; onClose: () => void
 }> = ({ open, title, content, onClose }) => {
   if (!open) return null;
-
-  let parsed: any = null;
-  let docType: string = 'raw';
-  try { parsed = JSON.parse(content); } catch { /* raw text */ }
-
+  let parsed: any = null; let schema: DocSchema | undefined;
+  try { parsed = JSON.parse(content); } catch { /* raw */ }
   if (parsed) {
-    if (parsed.user_stories || parsed.functional_requirements) docType = 'prd';
-    else if (parsed.components && parsed.overview) docType = 'architecture';
-    else if (parsed.test_cases || parsed.tests) docType = 'test';
-    else if (parsed.passed !== undefined && parsed.failed !== undefined) docType = 'test_results';
+    if (parsed.user_stories) schema = SCHEMAS.prd;
+    else if (parsed.components) schema = SCHEMAS.architecture;
+    else if (parsed.test_cases) schema = SCHEMAS.test;
   }
-
   return (
     <div className="fixed inset-0 bg-black/80 z-[60] flex flex-col" onClick={onClose}>
       <div className="flex items-center justify-between p-3 border-b border-gray-200 bg-white flex-shrink-0" onClick={e => e.stopPropagation()}>
@@ -104,103 +192,8 @@ const FullscreenView: React.FC<{
         <button onClick={onClose} className="p-1.5 rounded hover:bg-gray-100 text-gray-500 hover:text-gray-800 transition-colors text-lg">✕</button>
       </div>
       <div className="flex-1 overflow-y-auto p-6 bg-white max-w-4xl mx-auto w-full" onClick={e => e.stopPropagation()}>
-        {docType === 'prd' && <PrdDocument prd={parsed} />}
-        {docType === 'architecture' && <ArchitectureDocument arch={parsed} />}
-        {docType === 'test' && <TestDocView test={parsed} />}
-        {docType === 'raw' && <pre className="text-xs text-gray-700 font-mono whitespace-pre-wrap break-all">{content}</pre>}
+        {schema && parsed ? <DataDocument data={parsed} schema={schema} /> : <pre className="text-xs text-gray-700 font-mono whitespace-pre-wrap break-all">{content}</pre>}
       </div>
-    </div>
-  );
-};
-
-// ── PRD Document ──
-const PrdDocument: React.FC<{ prd: Record<string, unknown> }> = ({ prd }) => {
-  const stories = (prd.user_stories || prd.functional_requirements || []) as any[];
-  const constraints = (prd.constraints || []) as string[];
-  return (
-    <div className="space-y-5 text-sm text-gray-800">
-      <div>
-        <h1 className="text-xl font-bold text-gray-900 mb-1">{prd.title as string || 'Untitled'}</h1>
-        {prd.scope && <span className="text-xs px-2 py-0.5 rounded bg-blue-100 text-blue-700">{prd.scope as string}</span>}
-      </div>
-      {prd.overview && <p className="text-gray-600 leading-relaxed">{prd.overview as string}</p>}
-      {stories.length > 0 && (
-        <div>
-          <h2 className="text-base font-semibold text-gray-900 mb-2 border-b pb-1">用户故事 ({stories.length})</h2>
-          <table className="w-full text-xs border-collapse">
-            <thead><tr className="bg-gray-50"><th className="p-2 text-left border">ID</th><th className="p-2 text-left border">描述</th><th className="p-2 text-left border w-16">优先级</th><th className="p-2 text-left border">验收标准</th></tr></thead>
-            <tbody>{stories.map((s: any, i: number) => (
-              <tr key={i} className="border"><td className="p-2 border font-mono text-blue-700">{s.id || s.name}</td><td className="p-2 border">{s.description || ''}</td><td className="p-2 border"><span className={`px-1.5 py-0.5 rounded text-[10px] ${(s.priority||'').toLowerCase()==='high'?'bg-red-100 text-red-700':'bg-gray-100 text-gray-600'}`}>{s.priority || '-'}</span></td><td className="p-2 border text-gray-500">{(s.acceptance_criteria||[]).slice(0,3).map((ac: string, j: number) => <div key={j} className="text-[11px]">· {ac}</div>)}</td></tr>
-            ))}</tbody>
-          </table>
-        </div>
-      )}
-      {constraints.length > 0 && (
-        <div>
-          <h2 className="text-base font-semibold text-gray-900 mb-2 border-b pb-1">技术约束</h2>
-          <ul className="list-disc pl-5 space-y-0.5 text-gray-600 text-xs">{constraints.map((c, i) => <li key={i}>{c}</li>)}</ul>
-        </div>
-      )}
-    </div>
-  );
-};
-
-// ── Architecture Document ──
-const ArchitectureDocument: React.FC<{ arch: Record<string, unknown> }> = ({ arch }) => {
-  const comps = (arch.components || []) as any[];
-  const apis = (arch.api_design || []) as any[];
-  return (
-    <div className="space-y-5 text-sm text-gray-800">
-      <div>
-        <h1 className="text-xl font-bold text-gray-900 mb-1">{arch.title as string || 'Architecture'}</h1>
-      </div>
-      {arch.overview && <p className="text-gray-600 leading-relaxed">{arch.overview as string}</p>}
-      {comps.length > 0 && (
-        <div>
-          <h2 className="text-base font-semibold text-gray-900 mb-2 border-b pb-1">组件清单 ({comps.length})</h2>
-          <table className="w-full text-xs border-collapse">
-            <thead><tr className="bg-gray-50"><th className="p-2 text-left border">组件</th><th className="p-2 text-left border w-16">层级</th><th className="p-2 text-left border">技术栈</th><th className="p-2 text-left border">职责</th></tr></thead>
-            <tbody>{comps.map((c: any, i: number) => (
-              <tr key={i} className="border"><td className="p-2 border font-medium">{c.name}</td><td className="p-2 border text-xs text-gray-500">{c.layer}</td><td className="p-2 border text-xs text-gray-600">{c.tech}</td><td className="p-2 border text-xs text-gray-500">{c.responsibility?.slice(0, 120)}</td></tr>
-            ))}</tbody>
-          </table>
-        </div>
-      )}
-      {apis.length > 0 && (
-        <div>
-          <h2 className="text-base font-semibold text-gray-900 mb-2 border-b pb-1">API 设计 ({apis.length})</h2>
-          <table className="w-full text-xs border-collapse">
-            <thead><tr className="bg-gray-50"><th className="p-2 text-left border w-16">方法</th><th className="p-2 text-left border">路径</th><th className="p-2 text-left border">说明</th></tr></thead>
-            <tbody>{apis.map((a: any, i: number) => (
-              <tr key={i} className="border"><td className="p-2 border font-mono text-xs"><span className={`px-1 rounded ${a.method==='POST'?'bg-green-100 text-green-700':a.method==='GET'?'bg-blue-100 text-blue-700':a.method==='PUT'?'bg-amber-100 text-amber-700':'bg-red-100 text-red-700'}`}>{a.method}</span></td><td className="p-2 border font-mono text-xs">{a.path}</td><td className="p-2 border text-xs text-gray-500">{a.description}</td></tr>
-            ))}</tbody>
-          </table>
-        </div>
-      )}
-      {arch.database_schema && <div><h2 className="text-base font-semibold text-gray-900 mb-2 border-b pb-1">数据库设计</h2><pre className="text-xs text-gray-600 font-mono whitespace-pre-wrap">{arch.database_schema as string}</pre></div>}
-      {arch.deployment && <div><h2 className="text-base font-semibold text-gray-900 mb-2 border-b pb-1">部署方案</h2><p className="text-xs text-gray-600">{arch.deployment as string}</p></div>}
-    </div>
-  );
-};
-
-// ── Test Document ──
-const TestDocView: React.FC<{ test: Record<string, unknown> }> = ({ test }) => {
-  const cases = (test.test_cases || test.tests || []) as any[];
-  return (
-    <div className="space-y-5 text-sm text-gray-800">
-      <h1 className="text-xl font-bold text-gray-900">测试报告</h1>
-      {cases.length > 0 && (
-        <div>
-          <h2 className="text-base font-semibold text-gray-900 mb-2 border-b pb-1">测试用例 ({cases.length})</h2>
-          <table className="w-full text-xs border-collapse">
-            <thead><tr className="bg-gray-50"><th className="p-2 text-left border">ID</th><th className="p-2 text-left border">User Story</th><th className="p-2 text-left border">描述</th><th className="p-2 text-left border w-16">风险</th><th className="p-2 text-left border w-24">类型</th></tr></thead>
-            <tbody>{cases.map((c: any, i: number) => (
-              <tr key={i} className="border"><td className="p-2 border font-mono text-blue-700">{c.id || c.name}</td><td className="p-2 border text-xs">{c.user_story}</td><td className="p-2 border text-xs text-gray-500">{c.description?.slice(0, 80)}</td><td className="p-2 border"><span className={`px-1.5 py-0.5 rounded text-[10px] ${(c.risk_level||c.risk||'').toLowerCase()==='high'?'bg-red-100 text-red-700':'bg-blue-100 text-blue-700'}`}>{c.risk_level || c.risk || '-'}</span></td><td className="p-2 border text-xs text-gray-500">{c.test_type || c.type || '-'}</td></tr>
-            ))}</tbody>
-          </table>
-        </div>
-      )}
-      {cases.length === 0 && <p className="text-gray-500">无结构化测试用例数据。</p>}
     </div>
   );
 };

@@ -34,9 +34,7 @@ input_schema:
     type: string
     required: true
 output_schema:
-  code:
-    type: string
-  markdown:
+  $ref: "code"
     type: string
     required: true
     description: 面向人阅读的 Markdown 输出，与结构化字段一致

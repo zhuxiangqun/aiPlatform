@@ -30,9 +30,7 @@ input_schema:
     type: string
     description: 技术约束
 output_schema:
-  raw_output:
-    type: string
-    description: 架构设计JSON
+  $ref: "architecture"
 ---
 
 # 系统架构设计 (Architecture Design)

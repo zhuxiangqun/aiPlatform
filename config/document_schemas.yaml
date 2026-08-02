@@ -1,0 +1,96 @@
+# Document schemas — shared contract between LLM output and frontend rendering.
+# Each schema defines how to render a JSON document type.
+# The same schema is injected into the LLM's system prompt via _run_stage_skill.
+
+schemas:
+  prd:
+    title_field: "title"
+    overview_field: "overview"
+    scope_badge: "scope"
+    tables:
+      - key: "user_stories"
+        title: "用户故事"
+        columns:
+          - { key: "id", label: "ID", width: "140px" }
+          - { key: "description", label: "描述" }
+          - { key: "priority", label: "优先级", type: "badge" }
+          - { key: "acceptance_criteria", label: "验收标准", type: "ac_list" }
+    lists:
+      - { key: "constraints", title: "技术约束" }
+    output_spec: |
+      Output JSON with these fields ONLY:
+      {
+        "title": "项目名称",
+        "overview": "项目概述",
+        "scope": "范围",
+        "user_stories": [
+          {"id": "US-001", "description": "描述", "priority": "high|medium|low", "acceptance_criteria": ["验收1"]}
+        ],
+        "constraints": ["约束1"]
+      }
+
+  architecture:
+    title_field: "title"
+    overview_field: "overview"
+    tables:
+      - key: "components"
+        title: "组件清单"
+        columns:
+          - { key: "name", label: "组件名" }
+          - { key: "layer", label: "层级", type: "badge" }
+          - { key: "tech", label: "技术栈" }
+          - { key: "responsibility", label: "职责", width: "300px" }
+      - key: "api_design"
+        title: "API 设计"
+        columns:
+          - { key: "method", label: "方法", type: "method_badge" }
+          - { key: "path", label: "路径" }
+          - { key: "description", label: "说明" }
+    sections:
+      - { key: "database_schema", title: "数据库设计", type: "code" }
+      - { key: "deployment", title: "部署方案" }
+      - { key: "security", title: "安全设计" }
+      - { key: "performance", title: "性能优化" }
+      - { key: "state_management", title: "状态管理" }
+      - { key: "folder_structure", title: "目录结构", type: "code" }
+      - { key: "data_flow", title: "数据流" }
+    output_spec: |
+      Output JSON with these fields:
+      {
+        "title": "...",
+        "overview": "...",
+        "components": [{"name":"","layer":"","tech":"","responsibility":""}],
+        "api_design": [{"method":"GET","path":"/api/x","description":""}],
+        "database_schema": "...",
+        "deployment": "...",
+        "security": "..."
+      }
+
+  test:
+    title: "测试报告"
+    tables:
+      - key: "test_cases"
+        title: "测试用例"
+        columns:
+          - { key: "id", label: "ID", width: "120px" }
+          - { key: "user_story", label: "User Story" }
+          - { key: "description", label: "描述" }
+          - { key: "risk_level", label: "风险", type: "risk" }
+          - { key: "test_type", label: "类型" }
+    sections:
+      - { key: "test_log", title: "执行日志", type: "code" }
+    output_spec: |
+      Output JSON with these fields:
+      {
+        "test_cases": [
+          {"id":"TC-001","user_story":"US-001","description":"","risk_level":"high|medium|low","test_type":"unit|integration|e2e"}
+        ]
+      }
+
+  test_results:
+    stat_blocks:
+      - { key: "passed", label: "通过", color: "green" }
+      - { key: "failed", label: "失败", color: "red" }
+      - { key: "errors", label: "错误", color: "amber" }
+      - { key: "total", label: "总计", color: "gray" }
+      - { key: "pass_rate", label: "通过率", format: "percent" }
