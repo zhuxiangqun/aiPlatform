@@ -204,6 +204,17 @@ const FullscreenView: React.FC<{
     }
   }
   if (parsed) {
+    // Normalize simplified PRD format (string arrays → objects)
+    if (parsed.functional_requirements?.length > 0 && typeof parsed.functional_requirements[0] === 'string') {
+      parsed.functional_requirements = parsed.functional_requirements.map((s: string, i: number) => ({
+        id: `FR-${String(i+1).padStart(3,'0')}`, name: s, description: '', priority: '', acceptance_criteria: [],
+      }));
+    }
+    if (parsed.user_stories?.length > 0 && typeof parsed.user_stories[0] === 'string') {
+      parsed.user_stories = parsed.user_stories.map((s: string, i: number) => ({
+        id: `US-${String(i+1).padStart(3,'0')}`, story: s, priority: '', related_fr: '',
+      }));
+    }
     if (parsed.user_stories) schema = SCHEMAS.prd;
     else if (parsed.components) schema = SCHEMAS.architecture;
     else if (parsed.test_cases) schema = SCHEMAS.test;
@@ -573,12 +584,17 @@ const ProjectPanel: React.FC<{
               <span className="ml-auto text-gray-500 text-[10px]">{new Date().toLocaleDateString()}</span>
             </div>
             <p className="text-gray-200 font-medium">{confirmedPrd.title as string || 'Untitled'}</p>
-            <p className="text-gray-400">{(confirmedPrd.user_stories as any[])?.length || 0} 个 User Stories · {confirmedPrd.scope as string || '-'}</p>
+            <p className="text-gray-400">{(confirmedPrd.user_stories as any[])?.length || 0} 个 User Stories</p>
             <div className="flex gap-1.5">
               {!showPrdDetail ? (
                 <>
                 <button onClick={handleEditPrd} className="text-[10px] px-2 py-1 rounded bg-dark-hover text-gray-300 hover:text-white transition-colors">📋 查看 & 编辑</button>
-                <button onClick={() => { setFullscreenTitle('PRD: ' + (confirmedPrd.title as string || '')); setFullscreenContent(JSON.stringify(confirmedPrd, null, 2)); }}
+                <button onClick={() => {
+                  const pmKey = teamStages[0]?.output_artifact;
+                  const pmRaw = pmKey ? stageOutputs[pmKey]?.raw_output : null;
+                  setFullscreenTitle('PRD: ' + (confirmedPrd.title as string || ''));
+                  setFullscreenContent(pmRaw || JSON.stringify(confirmedPrd, null, 2));
+                }}
                   className="text-[10px] px-2 py-1 rounded bg-dark-hover text-gray-300 hover:text-white transition-colors">🔍 全屏</button>
                 </>
               ) : (
