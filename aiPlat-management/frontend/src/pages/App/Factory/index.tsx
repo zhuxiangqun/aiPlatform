@@ -227,7 +227,7 @@ const FullscreenView: React.FC<{
       </div>
       <div className="flex-1 overflow-y-auto p-6 bg-white max-w-4xl mx-auto w-full" onClick={e => e.stopPropagation()}>
         {schema && parsed ? <DataDocument data={parsed} schema={schema} /> : (
-          <ReactMarkdown remarkPlugins={[remarkGfm]} className="prose prose-sm max-w-none text-gray-800">
+          <ReactMarkdown remarkPlugins={[remarkGfm]} className="prose max-w-none text-gray-800">
             {content}
           </ReactMarkdown>
         )}
@@ -748,7 +748,9 @@ const ProjectPanel: React.FC<{
                       </button>
                     )}
                   </summary>
-                  <pre className="p-2 whitespace-pre-wrap break-all text-gray-400 max-h-40 overflow-y-auto border-t border-dark-border">{preview || '(空)'}</pre>
+                  <div className="p-2 max-h-72 overflow-y-auto border-t border-dark-border text-gray-300 text-xs prose prose-invert prose-xs max-w-none">
+                    {preview ? <ReactMarkdown remarkPlugins={[remarkGfm]}>{preview}</ReactMarkdown> : '(空)'}
+                  </div>
                 </details>
                 </React.Fragment>
               );
