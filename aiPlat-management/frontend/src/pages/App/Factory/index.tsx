@@ -643,11 +643,7 @@ const ProjectPanel: React.FC<{
                       </button>
                     )}
                   </summary>
-                  {detailsContent ? (
-                    <div className="p-2 text-gray-400 max-h-40 overflow-y-auto border-t border-dark-border" dangerouslySetInnerHTML={{ __html: detailsContent }} />
-                  ) : (
-                    <pre className="p-2 whitespace-pre-wrap break-all text-gray-400 max-h-40 overflow-y-auto border-t border-dark-border">{preview || '(空)'}</pre>
-                  )}
+                  <pre className="p-2 whitespace-pre-wrap break-all text-gray-400 max-h-40 overflow-y-auto border-t border-dark-border">{preview || '(空)'}</pre>
                 </details>
               );
             })}
