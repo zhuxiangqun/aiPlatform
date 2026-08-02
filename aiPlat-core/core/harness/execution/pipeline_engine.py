@@ -3772,9 +3772,14 @@ class PipelineEngine:
         _log.getLogger("pipeline_engine").warning(
             "Skill %s OK: stage=%s output=%d chars", _skill_name, stage.id, len(_result))
 
-        # ── 5. If test skill, optionally run pytest ──
-        if getattr(stage, 'generate_test_plan', False) and "pytest" in _sop_body.lower():
-            state = await self._run_test_execution(state, stage, _result)
+        # ── 5. If test skill, optionally run pytest (skip in Agent mode) ──
+        if getattr(stage, 'generate_test_plan', False):
+            if state.get("_generated_agent"):
+                # Agent mode — QA handles conversational validation, no pytest needed
+                _log.getLogger("pipeline_engine").warning(
+                    "Agent mode: skipping pytest for %s (QA validates via conversation)", _skill_name)
+            elif "pytest" in _sop_body.lower():
+                state = await self._run_test_execution(state, stage, _result)
         state["_has_tests"] = True if getattr(stage, 'generate_test_plan', False) else state.get("_has_tests", False)
 
         # ── 5.5. Agent app: write AGENT.md + SKILL.md files to disk ──
