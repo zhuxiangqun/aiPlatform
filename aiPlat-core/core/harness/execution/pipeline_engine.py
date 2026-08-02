@@ -2203,6 +2203,11 @@ class PipelineEngine:
 
                 state[self._config.stages[i].test_result_key] = None
 
+        # Inject reject feedback into HITL stage output so the stage sees the reason
+        if idx >= 0 and idx < len(self._config.stages) and feedback:
+            _stage = self._config.stages[idx]
+            state[_stage.output_artifact] = {"raw_output": feedback, "source": "human_reject"}
+
         state["phase"] = PipelinePhase.EXECUTING
 
         state["qa_retry"] = 0

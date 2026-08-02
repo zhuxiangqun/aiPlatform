@@ -412,6 +412,7 @@ const ProjectPanel: React.FC<{
     const feedback = window.prompt('驳回理由（可选）：');
     if (feedback === null) return; // cancelled
     setRejecting(true);
+    setStageOutputs(null);  // clear outputs immediately — UI returns to initial state
     try {
       await projectApi.reject(project.project_id, feedback);
       setPhase('executing');  // immediate UI update — don't wait for refresh
