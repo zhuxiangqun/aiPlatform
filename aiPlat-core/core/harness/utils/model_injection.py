@@ -1694,11 +1694,19 @@ def best_model_for_purpose_with_meta(purpose: str, messages: list = None) -> dic
         if tier != "unknown":
             break
 
+    # Get complexity_range from tier config
+    complexity_range = []
+    if tier != "unknown":
+        tconfig = tiers.get(tier, {})
+        if isinstance(tconfig, dict):
+            complexity_range = tconfig.get("complexity_range", [])
+
     return {
         "model": model,
         "model_tier": tier,
         "model_purpose": purpose,
         "prefer_local": pprof.get("prefer_local", False),
+        "complexity_range": complexity_range,
     }
 
 

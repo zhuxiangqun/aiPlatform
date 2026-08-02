@@ -3599,7 +3599,8 @@ class PipelineEngine:
                 "failure_strategy": getattr(stage, 'failure_strategy', 'fail_pipeline') or 'fail_pipeline',
                 "strategy": "react",
                 "model_tier": _model_meta.get("model_tier", ""),
-                "complexity_range": [],
+            "complexity_range": _model_meta.get("complexity_range", []),
+
             }
         result.pop(f"_retry_{stage.id}", None)  # clean up retry counter from state
 
