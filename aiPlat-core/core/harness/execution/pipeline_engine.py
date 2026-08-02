@@ -3639,6 +3639,13 @@ class PipelineEngine:
                 "Skill %s: no SOP found, falling back to ReAct", _skill_name)
             return state  # caller falls through to _exec_stage
 
+        # Emit node_started event for frontend polling visibility
+        try:
+            _event_bus.emit(state.get("session_id", state.get("_run_id", "")),
+                            "node_started", {"state": dict(state), "node_id": stage.id})
+        except Exception:
+            pass
+
         # ── 2. Build context from pipeline state ──
         import json as _json
         _context = ""
@@ -3834,6 +3841,14 @@ class PipelineEngine:
             self._audit_hitl(state, "hitl_paused", detail=f"stage:{stage.id}")
             _log.getLogger("pipeline_engine").warning(
                 "HITL paused: stage=%s phase=%s", stage.id, state["_hitl_phase_name"])
+
+        # Emit node_ended event for frontend polling visibility
+        try:
+            _event_bus.emit(state.get("session_id", state.get("_run_id", "")),
+                            "node_ended", {"state": dict(state), "node_id": stage.id,
+                                           "elapsed": round(_time.time() - _t0, 2)})
+        except Exception:
+            pass
 
         return state
 
