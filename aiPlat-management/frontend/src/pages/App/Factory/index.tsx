@@ -263,9 +263,11 @@ const ProjectPanel: React.FC<{
         const runs = (st as any)?.runs || [];
         if (runs.length > 0) setRunHistory(runs);
         if (s._plan_stage_ids || s._graph_trace) setTeamStages((s._plan_stage_ids || []).map((sid: string) => ({ id: sid, agent_name: sid })));
-        // Load outputs when available
+        // Load outputs in team stage order (dynamic, not hardcoded)
         const outputs: Record<string, any> = {};
-        for (const k of ['architecture', 'code', 'test_report']) {
+        const orderedKeys = teamStages.map(s => (s as any).output_artifact).filter(Boolean);
+        const keys = orderedKeys.length > 0 ? orderedKeys : ['architecture', 'code', 'test_report'];
+        for (const k of keys) {
           if (s[k] && typeof s[k] === 'object') outputs[k] = s[k];
         }
         if (Object.keys(outputs).length > 0) setStageOutputs(outputs);
@@ -284,7 +286,9 @@ const ProjectPanel: React.FC<{
         const st = await projectApi.getState(project.project_id);
         const state = (st as any)?.state || {};
         const outputs: Record<string, any> = {};
-        for (const k of ['architecture', 'code', 'test_report']) {
+        const orderedKeys = project.team_stages?.map(s => (s as any).output_artifact).filter(Boolean) || [];
+        const keys = orderedKeys.length > 0 ? orderedKeys : ['architecture', 'code', 'test_report'];
+        for (const k of keys) {
           if (state[k] && typeof state[k] === 'object' && state[k].raw_output) {
             outputs[k] = state[k];
           }
@@ -595,45 +599,39 @@ const ProjectPanel: React.FC<{
             })()}
             {Object.entries(stageOutputs).map(([key, val]) => {
               const rw = (val as any)?.raw_output || '';
-              const label = key === 'architecture' ? '🏗️ 架构设计' : key === 'code' ? '💻 代码生成' : '🧪 测试报告';
+              // Dynamic label: match output_artifact to team stage's agent_name
+              const matchedStage = teamStages.find(s => (s as any).output_artifact === key);
+              const agentLabel = (matchedStage as any)?.agent_name || (matchedStage as any)?.display_name || '';
+              const label = agentLabel || key.replace(/_/g, ' ');
               let summary = '';
-              let detailsContent = '';
 
-              // ── Test report: parse JSON for test_cases ──
-              if (key === 'test_report' && rw) {
+              // ── Structural detection (not key-name matching) ──
+              // Test report: has pass_rate or test_cases
+              if (rw && (val as any).pass_rate != null || /test_cases|test_suites/.test(rw.slice(0, 200))) {
                 try {
                   const j = JSON.parse(rw);
-                  const cases = j.test_cases || j.tests || [];
-                  if (cases.length > 0) {
-                    summary = `${cases.length} 个测试用例`;
-                    detailsContent = `<div class="space-y-1">${cases.map((tc: any) => {
-                      const id = tc.id || tc.name || '?';
-                      const desc = tc.description || tc.user_story || '';
-                      const risk = tc.risk_level || tc.risk || '';
-                      const rtype = tc.test_type || tc.type || '';
-                      return `<div class="flex items-start gap-2 py-0.5"><span class="text-primary font-mono">${id}</span><span class="text-gray-300">${desc.slice(0,60)}</span>${risk ? '<span class="ml-auto text-[10px] px-1 rounded bg-' + (risk==='high'?'red':'blue') + '-500/20 text-' + (risk==='high'?'red':'blue') + '-400">' + risk + '</span>' : ''}${rtype ? '<span class="text-[10px] text-gray-500 ml-1">' + rtype + '</span>' : ''}</div>`;
-                    }).join('')}</div>`;
-                  }
-                } catch { /* use raw preview */ }
+                  const cases = j.test_cases || [];
+                  if (cases.length > 0) summary = `${cases.length} 个测试用例`;
+                } catch { /* raw text, skip */ }
               }
-              // ── Architecture: show structure summary ──
-              if (key === 'architecture' && rw) {
+              // Architecture: has components/api_contracts/data_model
+              if (rw && /components|api_contracts|data_model/.test(rw.slice(0, 200))) {
                 try {
                   const j = JSON.parse(rw);
                   const comps = j.components?.length || 0;
-                  const apis = j.api_design?.length || 0;
+                  const apis = j.api_contracts?.length || j.api_design?.length || 0;
                   const db = j.database_schema ? 1 : 0;
                   const hasSec = j.security ? '🔒' : ''; const hasPerf = j.performance ? '⚡' : ''; const hasDeploy = j.deployment ? '🚀' : '';
                   summary = `${comps} 组件 · ${apis} API · DB ${db} ${hasSec}${hasPerf}${hasDeploy}`;
-                } catch { /* use raw preview */ }
+                } catch { /* raw text, skip */ }
               }
-              // ── Code: count files ──
-              if (key === 'code' && rw) {
+              // Code: count ## FILE: blocks
+              if (rw && rw.includes('## FILE:')) {
                 const files = (rw.match(/## FILE:/g) || []).length;
                 if (files > 0) summary = `${files} 个代码文件`;
               }
 
-              const preview = detailsContent || (typeof rw === 'string' ? rw.slice(0, 2000) : JSON.stringify(rw).slice(0, 2000));
+              const preview = rw ? (typeof rw === 'string' ? rw.slice(0, 2000) : JSON.stringify(rw).slice(0, 2000)) : '';
               return (
                 <details key={key} className="text-xs rounded border border-dark-border bg-dark-hover/30">
                   <summary className="p-2 cursor-pointer text-gray-300 font-medium flex items-center justify-between">
