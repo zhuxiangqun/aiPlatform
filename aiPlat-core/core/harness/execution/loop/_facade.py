@@ -446,16 +446,10 @@ class ReActLoop(BaseLoop):
             from core.harness.utils.model_injection import best_model_for_purpose
 
             from core.harness.syscalls.llm import sys_llm_generate
+            from core.harness.utils.prompt_loader import _sync_resolve
 
-            prompt = (
-
-                "You are an independent evaluator. Determine if the task is COMPLETE.\n"
-
-                "Respond with 'COMPLETE' or 'INCOMPLETE: <reason>'.\n\n"
-
-                f"Task: {task[:500]}\n\nAgent output: {output[:1000]}"
-
-            )
+            prompt = _sync_resolve("evaluator-completeness",
+                task=task[:500], output=output[:1000])
 
             resp = await sys_llm_generate(
 

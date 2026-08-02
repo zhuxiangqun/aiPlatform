@@ -417,7 +417,10 @@ async def reason(
                         m.get("content", "")[:300] for m in compressed
                         if m.get("role") != "system"
                     )
-                    emergency_prompt = f"{system_text}\n\n## Context (compressed)\n{last_text}\n\n## Current Task\n{state.context.get('task', '')}\n\nRespond with DONE: ..."
+                    from core.harness.utils.prompt_loader import _sync_resolve
+                    emergency_prompt = _sync_resolve("emergency-compression",
+                        system_text=system_text, last_text=last_text,
+                        task=state.context.get('task', ''))
                     response = await sys_llm_generate(model, emergency_prompt,
                         trace_context=trace_ctx, model_name=config.model_name)
                     return response.content if hasattr(response, "content") else str(response)

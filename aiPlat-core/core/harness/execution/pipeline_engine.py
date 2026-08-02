@@ -1660,21 +1660,8 @@ class PipelineEngine:
 
             plan_format = node_cfg.get('format', 'json')
 
-            prompt = (
-
-                f"You are a technical planner. Based on the upstream context, "
-
-                f"produce a structured task execution plan.\n\n"
-
-                f"{plan_hint}\n\n"
-
-                f"Output format: JSON array of tasks. Each task has: "
-
-                f'{{"id": "t1", "description": "...", "acceptance_criteria": ["..."], '
-
-                f'"estimated_complexity": "low|medium|high"}}'
-
-            )
+            from core.harness.utils.prompt_loader import _sync_resolve
+            prompt = _sync_resolve("technical-planner", context=plan_hint)
 
             from core.harness.syscalls.llm import sys_llm_generate
 
