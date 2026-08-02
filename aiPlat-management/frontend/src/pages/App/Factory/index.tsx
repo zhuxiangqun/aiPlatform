@@ -715,7 +715,10 @@ const ProjectPanel: React.FC<{
                 const j = tryParseJSON(rw, '"test_questions"');
                 if (j) {
                   const qs = j.test_questions || [];
-                  const coveredFRs = new Set(qs.map((q: any) => q.ac_ref?.split('-')[0] || '')).size;
+                  const coveredFRs = new Set(qs.map((q: any) => {
+                    const parts = (q.ac_ref || '').split('-');
+                    return parts.length >= 2 ? parts.slice(0, 2).join('-') : q.ac_ref || '';
+                  })).size;
                   if (qs.length > 0) summary = `${qs.length} 条对话测试 · 覆盖 ${coveredFRs} 个FR`;
                 }
               }

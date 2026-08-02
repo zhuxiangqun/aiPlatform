@@ -3798,13 +3798,14 @@ class PipelineEngine:
         _log.getLogger("pipeline_engine").warning(
             "Skill %s OK: stage=%s output=%d chars", _skill_name, stage.id, len(_result))
 
-        # ── 5. If test skill, optionally run pytest (skip in Agent mode) ──
+        # ── 5. If test skill, optionally run test execution ──
         if getattr(stage, 'generate_test_plan', False):
             _is_agent_mode = bool(state.get("_generated_agent") or state.get("agent_app"))
             if _is_agent_mode:
-                # Agent mode — QA handles conversational validation, no pytest needed
+                # Agent mode: chain test_executor to validate generated questions
                 _log.getLogger("pipeline_engine").warning(
-                    "Agent mode: skipping pytest for %s (QA validates via conversation)", _skill_name)
+                    "Agent mode: chaining test_executor for %s", _skill_name)
+                state = await self._chain_test_executor_for_agent(state, stage, _result, _sop_body)
             elif "pytest" in _sop_body.lower():
                 state = await self._run_test_execution(state, stage, _result)
         state["_has_tests"] = True if getattr(stage, 'generate_test_plan', False) else state.get("_has_tests", False)
@@ -3878,6 +3879,105 @@ class PipelineEngine:
 
         return state
 
+
+    async def _chain_test_executor_for_agent(self, state: PipelineState, stage, _result: str, _sop_body: str) -> PipelineState:
+        """Chain test_executor skill after test_case_generation in Agent mode.
+
+        Reads the generated test_questions, loads test_executor SKILL.md SOP,
+        and calls the LLM to validate the agent via conversational testing.
+        Stores the execution report under the stage's configured output_artifact.
+        """
+        import json as _json, os as _os, logging as _log
+
+        _log = _log.getLogger("pipeline_engine")
+        _log.warning("Chaining test_executor for agent-mode validation")
+
+        # 1. Parse generated test questions
+        _questions = []
+        try:
+            _parsed = _json.loads(_result)
+            _questions = _parsed.get("test_questions", [])
+        except Exception:
+            # Mixed content: extract JSON block
+            _jstart = _result.find('{')
+            _jend = _result.rfind('}')
+            if _jstart >= 0 and _jend > _jstart:
+                try:
+                    _parsed = _json.loads(_result[_jstart:_jend+1])
+                    _questions = _parsed.get("test_questions", [])
+                except Exception:
+                    pass
+        if not _questions:
+            _log.warning("test_executor: no test_questions found, skipping")
+            return state
+
+        _log.warning("test_executor: %d questions to validate", len(_questions))
+
+        # 2. Find generated agent name
+        _agent_name = ""
+        try:
+            _agent_app = state.get("agent_app", {})
+            if isinstance(_agent_app, dict):
+                _raw = _agent_app.get("raw_output", "")
+                if "analysis_agent" in _raw:
+                    _agent_name = "analysis_agent"
+            if not _agent_name and state.get("_generated_agent"):
+                _agent_name = state.get("_generated_agent", "")
+        except Exception:
+            pass
+
+        # 3. Load test_executor SKILL.md SOP
+        _exec_sop = ""
+        _here = _os.path.dirname(_os.path.abspath(__file__))
+        _sp = _os.path.join(_here, "..", "..", "engine", "skills", "test_executor", "SKILL.md")
+        _sp = _os.path.abspath(_sp)
+        _alt = _os.path.expanduser("~/.aiplat/skills/test_executor/SKILL.md")
+        if not _os.path.isfile(_sp):
+            _sp = _alt
+        if _os.path.isfile(_sp):
+            with open(_sp, "r") as _sf:
+                _raw = _sf.read()
+            if _raw.startswith("---"):
+                _parts = _raw.split("---", 2)
+                _exec_sop = _parts[2].strip() if len(_parts) > 2 else ""
+        if not _exec_sop:
+            _log.warning("test_executor: no SOP found, skipping execution")
+            return state
+
+        # 4. Build context with test questions
+        _context = _json.dumps({
+            "mode": "agent_conversation",
+            "test_cases": _questions,
+            "agent_name": _agent_name,
+        }, ensure_ascii=False)
+
+        # 5. LLM call with test_executor SOP
+        from core.harness.syscalls.llm import sys_llm_generate
+        from core.harness.utils.model_injection import best_model_for_purpose
+
+        _response = await sys_llm_generate(
+            None,
+            [
+                {"role": "system", "content": _exec_sop},
+                {"role": "user", "content": _context},
+            ],
+            model_name=best_model_for_purpose("chat"),
+            max_tokens=16000,
+        )
+        _exec_result = getattr(_response, "content", "") or str(_response)
+        _exec_result = _exec_result.replace("```json", "").replace("```", "").strip()
+
+        if not _exec_result or len(_exec_result) < 50:
+            _log.warning("test_executor: empty result")
+            return state
+
+        # 6. Store execution report
+        _test_key = getattr(stage, 'test_result_key', '') or getattr(stage, 'output_artifact', '') + "_exec"
+        state[_test_key] = {"raw_output": _exec_result}
+        state["test_results"] = state.get("test_results", {})
+        _log.warning("test_executor: report stored under '%s' (%d chars)", _test_key, len(_exec_result))
+
+        return state
 
     async def _run_test_execution(self, state: PipelineState, stage, _result: str) -> PipelineState:
         """Run pytest on generated test code and capture results."""
