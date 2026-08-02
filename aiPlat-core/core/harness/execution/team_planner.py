@@ -199,10 +199,6 @@ def _enrich_stage_from_agent(stage: Dict[str, Any]) -> Dict[str, Any]:
         stage["agent_type"] = str(fm.get("agent_type") or "react")
     if not stage.get("phase"):
         stage["phase"] = str(fm.get("phase") or fm.get("phase_description") or "")
-    if not stage.get("skill_name"):
-        skills = fm.get("required_skills") or fm.get("skills") or []
-        if isinstance(skills, list) and skills:
-            stage["skill_name"] = str(skills[0])
     if not stage.get("skill_model_purpose"):
         # Derive from agent phase or type: reasoning, code_gen, chat, skill_execution
         phase = stage.get("phase", "").lower()
