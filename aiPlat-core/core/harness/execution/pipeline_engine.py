@@ -2801,6 +2801,8 @@ class PipelineEngine:
         except Exception:
 
             logging.getLogger(__name__).debug('code failed', exc_info=True)
+        if state.get("phase") != PipelinePhase.PAUSED:
+            state["phase"] = PipelinePhase.DONE
         _event_bus.emit(state.get("session_id", ""), "complete", {"state": dict(state)})
 
         return state
