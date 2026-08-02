@@ -2022,8 +2022,42 @@ def _deploy_to_app_for_project(project_id: str, deploy_dir: str, proj: dict) -> 
     except Exception:
         pass  # best-effort
     
-    # Generate app dashboard page
-    _html = f"""<!DOCTYPE html>
+    # Check if generated code includes an index.html — use it as entry point
+    _has_index_html = os.path.isfile(os.path.join(_app_home, "index.html"))
+    
+    # Also extract frontend_pages / app_page.json if present
+    _app_page_json = ""
+    try:
+        import json as _j2
+        out_dir = os.path.join(os.getenv("AIPLAT_HOME", os.path.expanduser("~/.aiplat")), "output", project_id)
+        final_state = os.path.join(out_dir, "_final_state.json")
+        if os.path.isfile(final_state):
+            with open(final_state, "r") as _fs:
+                _state = _j2.load(_fs)
+            fp = _state.get("frontend_pages", {})
+            fp_raw = fp.get("raw_output", "") if isinstance(fp, dict) else str(fp)
+            if fp_raw:
+                # Try to parse app_page.json
+                try:
+                    fp_data = _j2.loads(fp_raw)
+                    _app_page_json = _j2.dumps(fp_data, ensure_ascii=False, indent=2)
+                except Exception:
+                    fp_data = {}
+                    # Extract JSON block from mixed content
+                    _jstart = fp_raw.find('{')
+                    _jend = fp_raw.rfind('}')
+                    if _jstart >= 0 and _jend > _jstart:
+                        try: fp_data = _j2.loads(fp_raw[:_jend+1][_jstart:]); _app_page_json = _j2.dumps(fp_data, ensure_ascii=False, indent=2)
+                        except Exception: pass
+                if _app_page_json:
+                    with open(os.path.join(_app_home, "app_page.json"), "w", encoding="utf-8") as _apf:
+                        _apf.write(_app_page_json)
+    except Exception:
+        pass
+    
+    if not _has_index_html:
+        # Generate app dashboard page only if no index.html was provided by generated code
+        _html = f"""<!DOCTYPE html>
 <html lang="zh-CN">
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>{_name}</title>
@@ -2033,6 +2067,10 @@ body{{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgro
 .header{{background:#1e293b;padding:2rem;border-bottom:1px solid #334155}}
 .header h1{{font-size:1.5rem;margin-bottom:.5rem}}
 .header p{{color:#94a3b8;font-size:.9rem}}
+.actions{{display:flex;gap:.75rem;margin-top:1rem;flex-wrap:wrap}}
+.btn{{display:inline-block;padding:.5rem 1rem;border-radius:.375rem;font-size:.85rem;text-decoration:none;transition:all .2s}}
+.btn-primary{{background:#2563eb;color:#fff}} .btn-primary:hover{{background:#1d4ed8}}
+.btn-secondary{{background:#334155;color:#e2e8f0}} .btn-secondary:hover{{background:#475569}}
 .stages{{padding:2rem;display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:1rem}}
 .card{{background:#1e293b;border:1px solid #334155;border-radius:.5rem;padding:1rem}}
 .card h3{{font-size:1rem;margin-bottom:.5rem}}
@@ -2042,32 +2080,75 @@ body{{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgro
 .badge-done{{background:#065f46;color:#6ee7b7}}
 .badge-pending{{background:#1e3a5f;color:#93c5fd}}
 .footer{{padding:1rem 2rem;color:#475569;font-size:.75rem;border-top:1px solid #1e293b}}
+.code-preview{{padding:1rem 2rem}}
+.code-preview h2{{font-size:1rem;margin-bottom:.5rem;color:#94a3b8}}
+.file-list{{display:flex;flex-wrap:wrap;gap:.5rem;margin-top:.5rem}}
+.file-tag{{background:#1e293b;border:1px solid #334155;border-radius:.25rem;padding:.25rem .5rem;font-size:.75rem;font-family:monospace;color:#38bdf8}}
 </style></head>
 <body>
-<div class="header"><h1>🚀 {_name}</h1><p>{_desc}</p></div>
+<div class="header"><h1>🚀 {_name}</h1><p>{_desc}</p>
+<div class="actions">
+<a href="http://localhost:5173/app/apps/{project_id}" class="btn btn-primary">📱 使用应用</a>
+<a href="http://localhost:5173/app/factory" class="btn btn-secondary">🔧 返回应用工厂</a>
+<a href="/app/sessions/{project_id}/health" class="btn btn-secondary">🩺 健康报告</a>
+</div></div>
 <div class="stages">
 """
-    for s in _stages:
-        _agent = s.get("agent_name", s.get("agent_id", "?"))
-        _phase = s.get("phase", "")
-        _output = s.get("output_artifact", "")
-        _badge = "badge-done" if _output else "badge-pending"
-        _status = "✅ 已完成" if _output else "⏳ 待执行"
-        _html += f"""<div class="card">
+        for s in _stages:
+            _agent = s.get("agent_name", s.get("agent_id", "?"))
+            _phase = s.get("phase", "")
+            _output = s.get("output_artifact", "")
+            _badge = "badge-done" if _output else "badge-pending"
+            _status = "✅ 已完成" if _output else "⏳ 待执行"
+            _html += f"""<div class="card">
 <h3>{_agent}</h3>
 <div class="label">阶段: {_phase}</div>
 <div class="label">产出: <span class="badge {_badge}">{_status}</span></div>
 <div class="output">{_output}</div>
 </div>\n"""
-    
-    _html += f"""</div>
-<div class="footer">项目ID: {project_id}{ " · 生成文件: " + str(_file_count) + " 个" if _file_count else "" } · 由 aiPlat 应用工厂生成 · <a href="http://localhost:5173/app/factory" style="color:#38bdf8">返回应用工厂</a></div>
+        
+        _html += f"""</div>
+"""
+        # Show extracted files if any
+        if _file_count > 0:
+            try:
+                _fl = [f for f in sorted(os.listdir(_app_home)) if f != "index.html"]
+                if _fl:
+                    _html += '<div class="code-preview"><h2>📁 生成文件 ({0} 个)</h2><div class="file-list">'.format(len(_fl))
+                    for _fn in _fl[:30]:
+                        _html += f'<span class="file-tag">{_fn}</span>'
+                    if len(_fl) > 30:
+                        _html += f'<span class="file-tag" style="color:#64748b">... 共 {len(_fl)} 个文件</span>'
+                    _html += '</div></div>'
+            except Exception:
+                pass
+        
+        _html += f"""<div class="footer">项目ID: {project_id}{ " · 生成文件: " + str(_file_count) + " 个" if _file_count else "" } · 由 aiPlat 应用工厂生成</div>
 </body></html>"""
     
     with open(os.path.join(_app_home, "index.html"), "w", encoding="utf-8") as f:
         f.write(_html)
     
     app_url = f"http://localhost:8004/app/sessions/{project_id}"
+    
+    # Register in apps table so it appears in deployed apps list
+    try:
+        from ..storage.sqlite import init_db, _connect
+        import time as _time
+        init_db()
+        conn = _connect()
+        now = _time.time()
+        app_id = f"factory_{project_id}"
+        conn.execute(
+            """INSERT OR REPLACE INTO apps (id, name, workflow_id, mode, description, capability_type, capability_id, created_at, updated_at)
+               VALUES (?, ?, '', 'dashboard', ?, 'factory', ?, ?, ?)""",
+            (app_id, _name, f"AI应用工厂生成 · {app_url}", project_id, now, now),
+        )
+        conn.commit()
+        conn.close()
+    except Exception:
+        pass  # best-effort
+    
     return {"ok": True, "deploy_dir": deploy_dir, "app_url": app_url, "files_generated": _file_count}
 
 

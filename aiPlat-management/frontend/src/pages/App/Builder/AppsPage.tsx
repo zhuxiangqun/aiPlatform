@@ -1,14 +1,14 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { MessageSquare, Code, Webhook, Trash2, ExternalLink, Plus, Sparkles, Layers } from 'lucide-react';
+import { MessageSquare, Code, Webhook, Trash2, ExternalLink, Plus, Sparkles, Layers, FolderOpen } from 'lucide-react';
 import { toast } from '../../../components/ui';
 import { appApi, workflowApi } from '../../../services';
 
 const MODE_ICONS: Record<string, React.FC<any>> = { chat: MessageSquare, api: Code, webhook: Webhook, studio: ExternalLink };
-const MODE_LABELS: Record<string, string> = { chat: 'Chat 对话', api: 'API 端点', webhook: 'Webhook', studio: '独立应用' };
-const MODE_COLORS: Record<string, string> = { chat: 'border-blue-500/20 bg-blue-500/5 text-blue-400', api: 'border-green-500/20 bg-green-500/5 text-green-400', webhook: 'border-purple-500/20 bg-purple-500/5 text-purple-400', studio: 'border-purple-500/20 bg-purple-500/5 text-purple-400' };
+const MODE_LABELS: Record<string, string> = { chat: 'Chat 对话', api: 'API 端点', webhook: 'Webhook', studio: '独立应用', dashboard: '应用工厂' };
+const MODE_COLORS: Record<string, string> = { chat: 'border-blue-500/20 bg-blue-500/5 text-blue-400', api: 'border-green-500/20 bg-green-500/5 text-green-400', webhook: 'border-purple-500/20 bg-purple-500/5 text-purple-400', studio: 'border-purple-500/20 bg-purple-500/5 text-purple-400', dashboard: 'border-amber-500/20 bg-amber-500/5 text-amber-400' };
 
-type AppFilter = 'all' | 'workflow' | 'studio';
+type AppFilter = 'all' | 'workflow' | 'studio' | 'factory';
 
 const AppsPage: React.FC = () => {
   const navigate = useNavigate();
@@ -45,7 +45,11 @@ const AppsPage: React.FC = () => {
   };
 
   const handleOpen = (app: any) => {
-    if (app.mode === 'studio' || app.capability_type === 'studio') {
+    if (app.mode === 'dashboard' || app.capability_type === 'factory') {
+      const url = app.app_url;
+      if (url) window.open(url, '_blank');
+      else navigate(`/app/apps/${app.capability_id}`);
+    } else if (app.mode === 'studio' || app.capability_type === 'studio') {
       const url = app.app_url || (app.description || '').replace('Studio 生成 · ', '');
       if (url) window.open(url, '_blank');
     } else if (app.mode === 'chat') navigate(`/app/apps/${app.id}/chat`);
@@ -57,14 +61,16 @@ const AppsPage: React.FC = () => {
     ? apps
     : filter === 'studio'
       ? apps.filter((a: any) => a.capability_type === 'studio' || a.mode === 'studio')
-      : apps.filter((a: any) => a.capability_type !== 'studio' && a.mode !== 'studio');
+      : filter === 'factory'
+        ? apps.filter((a: any) => a.capability_type === 'factory' || a.mode === 'dashboard')
+        : apps.filter((a: any) => a.capability_type !== 'studio' && a.capability_type !== 'factory' && a.mode !== 'studio' && a.mode !== 'dashboard');
 
   return (
     <div className="p-6 space-y-6">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-lg font-semibold text-gray-100">已部署应用</h1>
-            <p className="text-xs text-gray-500 mt-1">Workflow 发布 + Studio 生成的已部署应用</p>
+            <p className="text-xs text-gray-500 mt-1">AI 应用工厂 + Workflow 发布 + Studio 生成的已部署应用</p>
           </div>
           <button onClick={() => setCreateOpen(true)}
             className="flex items-center gap-1 px-3 py-2 rounded-lg bg-blue-500/20 border border-blue-500/30 text-blue-300 hover:bg-blue-500/30 transition-colors text-xs">
@@ -76,6 +82,7 @@ const AppsPage: React.FC = () => {
         <div className="flex gap-2">
           {[
             { key: 'all' as AppFilter, label: '全部', icon: Layers },
+            { key: 'factory' as AppFilter, label: '应用工厂', icon: FolderOpen },
             { key: 'workflow' as AppFilter, label: 'Workflow 发布', icon: Code },
             { key: 'studio' as AppFilter, label: 'Studio 生成', icon: Sparkles },
           ].map(({ key, label, icon: Icon }) => (
