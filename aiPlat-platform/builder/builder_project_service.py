@@ -1413,17 +1413,44 @@ class BuilderProjectService:
         return {"project_id": project_id, "phase": state.get("phase", "executing")}
 
     async def reject_stage(self, project_id: str, feedback: str) -> Dict[str, Any]:
-        session = self._pipeline_sessions.get(project_id)
-        if not session:
-            session = self._rebuild_session(project_id)
-            if not session:
-                raise ValueError("no session")
         state = self._runs.get(project_id)
         if not state:
             state = self._load_pipeline_state(project_id)
             if not state:
                 raise ValueError("no pipeline state")
-        state = await session.reject(dict(state), feedback)
+
+        session = self._pipeline_sessions.get(project_id)
+        if session:
+            state = await session.reject(dict(state), feedback)
+        else:
+            # Simplified reject: modify state directly, no session needed
+            _hitl_id = state.get("_hitl_stage_id", "")
+            state["_reject_feedback"] = feedback
+            state["_hitl_stage_id"] = ""
+            state["phase"] = "executing"
+            # Find HITL stage index and clear outputs
+            _proj = self._projects.get(project_id, {})
+            _ts = _proj.get("team_stages", [])
+            _idx_found = -1
+            for _i, _s in enumerate(_ts):
+                _sid = _s.get("id", "") if isinstance(_s, dict) else getattr(_s, "id", "")
+                _hitl_true = (_s.get("hitl") or getattr(_s, "hitl", False)) if isinstance(_s, dict) else False
+                if _sid == _hitl_id or (not _hitl_id and _hitl_true):
+                    _idx_found = _i
+                    state["_current_stage_idx"] = _i
+                    # Inject feedback into HITL stage output
+                    _oa = _s.get("output_artifact", "") if isinstance(_s, dict) else getattr(_s, "output_artifact", "")
+                    if _oa and feedback:
+                        state[_oa] = {"raw_output": feedback, "source": "human_reject"}
+                    # Clear subsequent stages
+                    for _j in range(_i + 1, len(_ts)):
+                        _soa = _ts[_j].get("output_artifact", "") if isinstance(_ts[_j], dict) else getattr(_ts[_j], "output_artifact", "")
+                        if _soa:
+                            state[_soa] = None
+                    break
+            if _idx_found < 0:
+                state["_current_stage_idx"] = 0
+
         self._runs[project_id] = state
         await self._save_state(project_id, state)
         # Run remaining pipeline in background thread
@@ -1564,6 +1591,7 @@ class BuilderProjectService:
 
     async def rebuild_project(self, project_id: str) -> Dict[str, Any]:
         """Re-run the pipeline with the existing confirmed PRD."""
+        self._reload_if_stale()
         proj = self._projects.get(project_id, {})
         if not proj:
             return {"status": "error", "detail": "项目不存在"}
