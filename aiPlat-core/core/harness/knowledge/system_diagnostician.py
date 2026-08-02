@@ -136,25 +136,24 @@ class SystemDiagnostician:
             sessions = []
             for domain_id in domains:
                 try:
-                    fd = GraphIndex.load(domain_id)
+                    g = GraphIndex.load(domain_id)
                 except Exception:
                     continue
-                for _, n in fd._nodes.items():
-                    if getattr(n, "class_name", "") == "DiagnosisSession":
-                        nb = fd.get_neighbor_edges(getattr(n, "entity_id", ""), direction="outgoing")
-                        for nid, e in nb:
-                            if e.relation_name == "has_meta":
-                                mn = fd.get_node(nid)
-                                if mn:
-                                    import json
-                                    try:
-                                        md = json.loads(mn.entity_name)
-                                        ev = md.get("evidence_map", [])
-                                        if ev:
-                                            backed = sum(1 for x in ev if x.get("source") and x["source"] not in ("", "LLM推测", "行业普遍痛点"))
-                                            sessions.append({"coverage": round(backed / max(len(ev), 1) * 100)})
-                                    except Exception:
-                                        logging.getLogger(__name__).debug('_check_evidence_decline failed', exc_info=True)
+                for _, n in g._nodes.items():
+                    nb = g.get_neighbor_edges(getattr(n, "entity_id", ""), direction="outgoing")
+                    for nid, e in nb:
+                        if e.relation_name == "has_meta":
+                            mn = g.get_node(nid)
+                            if mn:
+                                import json
+                                try:
+                                    md = json.loads(mn.entity_name)
+                                    ev = md.get("evidence_map", [])
+                                    if ev:
+                                        backed = sum(1 for x in ev if x.get("source") and x["source"] not in ("", "LLM推测", "行业普遍痛点"))
+                                        sessions.append({"coverage": round(backed / max(len(ev), 1) * 100)})
+                                except Exception:
+                                    pass
 
             if len(sessions) < 3:
                 return {"rule": "evidence_decline", "severity": "info",
@@ -375,7 +374,7 @@ class SystemDiagnostician:
     # ═══════════════════════════════════════════════════════════════
 
     def _check_confidence_calibration(self) -> Optional[Dict]:
-        """diagnosis confidence vs actual delivery rate 偏差检测"""
+        """Entity confidence vs action completion rate detection."""
         try:
             from core.harness.ontology_engine.graph_index import GraphIndex
             from core.harness.knowledge.domain_router import DomainRouter
@@ -385,32 +384,35 @@ class SystemDiagnostician:
             total_determinism = 0
             sessions_with_actions = 0
 
-            for _, n in fd._nodes.items():
-                if getattr(n, "class_name", "") != "DiagnosisSession":
+            for domain_id in domains:
+                try:
+                    g = GraphIndex.load(domain_id)
+                except Exception:
                     continue
-                nb = fd.get_neighbor_edges(getattr(n, "entity_id", ""), direction="outgoing")
-                has_meta = False
-                has_action = False
-                for nid, e in nb:
-                    if e.relation_name == "has_meta":
-                        mn = fd.get_node(nid)
-                        if mn:
-                            import json
-                            try:
-                                md = json.loads(mn.entity_name)
-                                em = md.get("evidence_map", [])
-                                if em:
-                                    backed = sum(1 for x in em if x.get("source") and x["source"] not in ("", "LLM推测", "行业普遍痛点"))
-                                    total_determinism += round(backed / max(len(em), 1) * 100)
-                                    sessions_with_meta += 1
-                                    has_meta = True
-                            except Exception:
-                                logging.getLogger(__name__).debug('_check_confidence_calibration failed', exc_info=True)
-                    if e.relation_name == "has_action":
-                        has_action = True
+                for _, n in g._nodes.items():
+                    nb = g.get_neighbor_edges(getattr(n, "entity_id", ""), direction="outgoing")
+                    has_meta = False
+                    has_action = False
+                    for nid, e in nb:
+                        if e.relation_name == "has_meta":
+                            mn = g.get_node(nid)
+                            if mn:
+                                import json
+                                try:
+                                    md = json.loads(mn.entity_name)
+                                    em = md.get("evidence_map", [])
+                                    if em:
+                                        backed = sum(1 for x in em if x.get("source") and x["source"] not in ("", "LLM推测", "行业普遍痛点"))
+                                        total_determinism += round(backed / max(len(em), 1) * 100)
+                                        sessions_with_meta += 1
+                                        has_meta = True
+                                except Exception:
+                                    pass
+                        if e.relation_name == "has_action":
+                            has_action = True
 
-                if has_action:
-                    sessions_with_actions += 1
+                    if has_action:
+                        sessions_with_actions += 1
 
             if sessions_with_meta >= 2:
                 avg_determinism = round(total_determinism / sessions_with_meta)

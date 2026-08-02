@@ -382,12 +382,16 @@ def _inject_delivery_history(parts: List[str], params: Dict):
         delivered = total_sessions = industry_sessions = 0
         industry_lower = (params.get("industry") or "").strip().lower()
 
-        for _, node in list(fd._nodes.items())[:100]:
-            if getattr(node, "class_name", "") == "DiagnosisSession":
-                total_sessions += 1
-                nb = fd.get_neighbor_edges(getattr(node, "entity_id", ""), direction="outgoing")
+        for domain_id in domains:
+            try:
+                g = GraphIndex.load(domain_id)
+            except Exception:
+                continue
+            for _, node in list(g._nodes.items())[:100]:
+                nb = g.get_neighbor_edges(getattr(node, "entity_id", ""), direction="outgoing")
                 if any(e.relation_name == "has_action" for _, e in nb):
                     delivered += 1
+                total_sessions += 1
                 if industry_lower and industry_lower in node.entity_name.lower():
                     industry_sessions += 1
 
@@ -414,10 +418,13 @@ def _inject_self_optimization(parts: List[str]):
         router = DomainRouter()
         domains = router.list_domains()
         sessions = []
-        sessions = []
-        for _, node in list(fd._nodes.items())[:200]:
-            if getattr(node, "class_name", "") == "DiagnosisSession":
-                nb = fd.get_neighbor_edges(getattr(node, "entity_id", ""), direction="outgoing")
+        for domain_id in domains:
+            try:
+                g = GraphIndex.load(domain_id)
+            except Exception:
+                continue
+            for _, node in list(g._nodes.items())[:200]:
+                nb = g.get_neighbor_edges(getattr(node, "entity_id", ""), direction="outgoing")
                 has_action = any(e.relation_name == "has_action" for _, e in nb)
                 sessions.append({"name": node.entity_name, "has_actions": has_action})
 

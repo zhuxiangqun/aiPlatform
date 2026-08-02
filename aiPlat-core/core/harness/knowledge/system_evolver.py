@@ -178,16 +178,14 @@ class SystemEvolver:
 
             for domain_id in domains:
                 try:
-                    fd = GraphIndex.load(domain_id)
+                    g = GraphIndex.load(domain_id)
                 except Exception:
                     continue
-            for _, n in fd._nodes.items():
-                    if getattr(n, "class_name", "") != "DiagnosisSession":
-                        continue
+                for _, n in g._nodes.items():
                     parts = n.entity_name.split("_", 1) if "_" in n.entity_name else [n.entity_name]
                     ind = parts[0]
                     industry_stats[ind]["sessions"] += 1
-                    nb = fd.get_neighbor_edges(getattr(n, "entity_id", ""), direction="outgoing")
+                    nb = g.get_neighbor_edges(getattr(n, "entity_id", ""), direction="outgoing")
                     if any(e.relation_name == "has_action" for _, e in nb):
                         industry_stats[ind]["with_actions"] += 1
     
