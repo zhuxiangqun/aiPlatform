@@ -1308,6 +1308,19 @@ class BuilderProjectService:
     async def _save_state(self, project_id: str, state: dict):
         """Save pipeline state and trigger deploy assembly if completed."""
         self._runs[project_id] = state
+        self._save_pipeline_state(project_id, state)
+        # Sync runs to projects.json so project card shows correct status
+        proj = self._projects.get(project_id, {})
+        if proj:
+            runs = proj.get("runs", [])
+            if runs:
+                runs[-1]["phase"] = state.get("phase", "done")
+                runs[-1]["pass_rate"] = state.get("_test_pass_rate", 0)
+                runs[-1]["tokens_used"] = state.get("tokens_used", 0)
+                runs[-1]["iteration"] = state.get("iteration", 0)
+                runs[-1]["error"] = state.get("error", "")
+                proj["updated_at"] = time.strftime("%Y-%m-%dT%H:%M:%S")
+                self._save_projects()
         # Embed episodic memory state for restart survival
         try:
             from core.api.facades.runtime_facade import get_memory_manager
