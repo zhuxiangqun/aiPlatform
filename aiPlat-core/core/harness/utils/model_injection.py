@@ -1875,3 +1875,29 @@ def get_moa_preset() -> str:
     return "general"
 
 
+def get_model_tier_info(model_name: str) -> dict:
+    """Get tier and complexity range for a model name from llm_profile.yaml.
+
+    Returns dict with: tier, complexity_range, model_count_in_tier.
+    Used by pipeline engine trace for reasoning visibility.
+    """
+    profile = _load_llm_profile()
+    tiers = profile.get("tiers", {})
+    for tier_name, tier_config in tiers.items():
+        if not isinstance(tier_config, dict):
+            continue
+        models = tier_config.get("models", [])
+        if not isinstance(models, list):
+            continue
+        for m in models:
+            if m == model_name or (isinstance(m, dict) and m.get("name") == model_name):
+                rng = tier_config.get("complexity_range", [0, 0])
+                return {
+                    "tier": tier_name,
+                    "complexity_range": rng,
+                    "model_count": len(models),
+                }
+    return {"tier": "unknown", "complexity_range": [0, 0], "model_count": 0}
+
+
+

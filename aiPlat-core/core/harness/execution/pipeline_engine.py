@@ -3588,17 +3588,26 @@ class PipelineEngine:
         _trace_key = f"_trace_{stage.id}"
         if _trace_key not in result:
             _elapsed = round(_time.time() - _t0, 2)
+            _model = best_model_for_purpose(getattr(stage, 'skill_model_purpose', '') or 'chat')
+            _tier_info = {}
+            try:
+                from core.harness.utils.model_injection import get_model_tier_info
+                _tier_info = get_model_tier_info(_model)
+            except Exception:
+                pass
             result[_trace_key] = {
                 "stage_id": stage.id,
                 "agent_id": getattr(stage, 'agent_id', '') or '',
                 "phase": getattr(stage, 'phase', '') or '',
                 "skill_name": getattr(stage, 'skill_name', '') or '',
-                "model_name": best_model_for_purpose(getattr(stage, 'skill_model_purpose', '') or 'chat'),
+                "model_name": _model,
                 "model_purpose": getattr(stage, 'skill_model_purpose', '') or 'chat',
                 "elapsed_sec": _elapsed,
                 "retry_count": result.get(f"_retry_{stage.id}", 0),
                 "failure_strategy": getattr(stage, 'failure_strategy', 'fail_pipeline') or 'fail_pipeline',
                 "strategy": "react",
+                "model_tier": _tier_info.get("tier", ""),
+                "complexity_range": _tier_info.get("complexity_range", []),
             }
         result.pop(f"_retry_{stage.id}", None)  # clean up retry counter from state
 
@@ -3713,6 +3722,12 @@ class PipelineEngine:
 
         # ── Stage trace: structured metadata for reasoning visibility ──
         _model_name = best_model_for_purpose(_purpose)
+        _tier_info = {}
+        try:
+            from core.harness.utils.model_injection import get_model_tier_info
+            _tier_info = get_model_tier_info(_model_name)
+        except Exception:
+            pass
         state[f"_trace_{stage.id}"] = {
             "stage_id": stage.id,
             "agent_id": getattr(stage, 'agent_id', '') or '',
@@ -3726,6 +3741,8 @@ class PipelineEngine:
             "retry_count": state.get(f"_retry_{stage.id}", 0),
             "failure_strategy": getattr(stage, 'failure_strategy', 'fail_pipeline') or 'fail_pipeline',
             "strategy": "skill_dispatch",
+            "model_tier": _tier_info.get("tier", ""),
+            "complexity_range": _tier_info.get("complexity_range", []),
         }
 
         _log.getLogger("pipeline_engine").warning(

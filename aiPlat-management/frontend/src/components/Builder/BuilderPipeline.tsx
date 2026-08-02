@@ -387,6 +387,8 @@ interface StageTrace {
   skill_name?: string;
   model_name?: string;
   model_purpose?: string;
+  model_tier?: string;
+  complexity_range?: number[];
   output_size?: number;
   elapsed_sec?: number;
   tokens_used?: number;
@@ -406,13 +408,23 @@ const StageTracePanel: React.FC<{ trace: StageTrace; stageKey: string }> = ({ tr
         className="flex items-center gap-1 text-[10px] text-gray-500 hover:text-gray-300 transition-colors w-full text-left"
       >
         {open ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
-        思维链{trace.model_name ? ` · ${trace.model_name}` : ''}
+        思维链 · {trace.model_name}{trace.model_tier ? ` · ${trace.model_tier}` : ''}
         {trace.elapsed_sec != null ? ` · ${trace.elapsed_sec.toFixed(0)}s` : ''}
       </button>
       {open && (
         <div className="mt-2 text-[10px] text-gray-400 space-y-1 pl-4 border-l border-dark-border">
-          {trace.model_name && <div>模型: <span className="text-gray-300">{trace.model_name}</span></div>}
+          {trace.model_name && (
+            <div>
+              模型: <span className="text-gray-300">{trace.model_name}</span>
+              {trace.model_tier && (
+                <span className="ml-1 px-1 bg-dark-border rounded text-[9px]">{trace.model_tier}</span>
+              )}
+            </div>
+          )}
           {trace.model_purpose && <div>用途: {trace.model_purpose}</div>}
+          {trace.model_tier && trace.complexity_range && (
+            <div>复杂度: {trace.complexity_range[0]}-{trace.complexity_range[1]}</div>
+          )}
           {trace.skill_name && <div>技能: {trace.skill_name}</div>}
           {trace.strategy && <div>策略: {trace.strategy === 'skill_dispatch' ? '技能执行' : 'ReAct 推理'}</div>}
           {trace.output_size != null && <div>产出: {(trace.output_size / 1024).toFixed(1)} KB</div>}
