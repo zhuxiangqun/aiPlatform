@@ -1,0 +1,55 @@
+name: aiplat-genericity-guard
+
+# CI guard: Core/Infra genericity checks on every push and PR.
+# Ensures engine remains domain-agnostic and core stays free of hardcoded business knowledge.
+# Uses the same checks as `scripts/check-genericity.sh` for consistency.
+
+on:
+  push:
+    paths:
+      - 'aiPlat-core/core/harness/**'
+      - 'aiPlat-core/core/api/routers/**'
+      - 'aiPlat-infra/infra/**'
+      - 'scripts/pre-commit-engine-guard.sh'
+      - 'scripts/check-genericity.sh'
+      - 'scripts/architecture_guard.sh'
+      - 'aiPlat-core/core/tests/constitution/test_core_genericity.py'
+      - 'aiPlat-core/core/tests/constitution/test_engine_agnostic.py'
+  pull_request:
+    paths:
+      - 'aiPlat-core/core/harness/**'
+      - 'aiPlat-core/core/api/routers/**'
+      - 'aiPlat-infra/infra/**'
+
+jobs:
+  genericity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pytest pyyaml
+          pip install -e aiPlat-core/ 2>/dev/null || true
+
+      - name: Engine layer compliance
+        run: bash scripts/pre-commit-engine-guard.sh
+
+      - name: Core genericity tests
+        working-directory: aiPlat-core
+        run: python -m pytest core/tests/constitution/test_core_genericity.py -v --tb=short
+
+      - name: Engine agnostic tests
+        working-directory: aiPlat-core
+        run: python -m pytest core/tests/constitution/test_engine_agnostic.py -v --tb=short
+
+      - name: Full self-check (smoke)
+        run: bash scripts/check-genericity.sh
