@@ -104,13 +104,8 @@ class TargetContinuity:
             from core.harness.utils.model_injection import best_model_for_purpose
             from core.harness.syscalls.llm import sys_llm_generate
 
-            prompt = (
-                "You are a task continuity classifier. Given two texts, decide if they "
-                "are about the SAME task or different tasks. Respond with ONLY 'SAME' or 'NEW'.\n\n"
-                f"Current task: {task[:300]}\n\n"
-                f"New input: {msg[:300]}\n\n"
-                "Are these about the SAME task or a NEW task?"
-            )
+            from core.harness.utils.prompt_loader import _sync_resolve
+            prompt = _sync_resolve("task-continuity-classifier", text_a=task[:300], text_b=msg[:300])
             resp = await sys_llm_generate(
                 model=None,
                 prompt=prompt,
