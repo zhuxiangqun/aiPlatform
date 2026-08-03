@@ -358,6 +358,14 @@ const ProjectPanel: React.FC<{
         const state = (st as any)?.state || {};
         const realPhase = state.phase as string;
         if (realPhase && realPhase !== 'idle') {
+          // Only enter executing UI if there's actually a run in progress
+          // Prevents stale backend phase from misleading users into thinking
+          // they triggered execution by clicking the card
+          if (realPhase === 'executing') {
+            const runs = (st as any)?.runs || [];
+            const hasActiveRun = runs.some((r: any) => r.phase === 'executing');
+            if (!hasActiveRun) return;
+          }
           setPhase(realPhase);
         }
         setProgressState(state._progress || null);
