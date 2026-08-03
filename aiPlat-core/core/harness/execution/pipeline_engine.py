@@ -3741,20 +3741,34 @@ class PipelineEngine:
         except Exception:
             pass  # best-effort: engine runs fine without context injection
 
-        # ── 4. LLM call ──
+        # ── 4. Execute: LLM or Agent (config-driven via execution_backend) ──
         from core.harness.syscalls.llm import sys_llm_generate
         from core.harness.utils.model_injection import best_model_for_purpose
         _purpose = getattr(stage, 'skill_model_purpose', '') or 'chat'
-        _response = await sys_llm_generate(
-            None,
-            [
-                {"role": "system", "content": _sop_body},
-                {"role": "user", "content": _context or _desc},
-            ],
-            model_name=best_model_for_purpose(_purpose),
-            max_tokens=32000,
-        )
-        _result = getattr(_response, "content", "") or str(_response)
+        _backend = getattr(stage, 'execution_backend', '') or 'llm'
+
+        if _backend == "agent":
+            # Agent runtime → StageRunner → ReActLoop (tools, hooks, token management)
+            _log.getLogger("pipeline_engine").warning(
+                "Skill %s: running via StageRunner (execution_backend=agent)", _skill_name)
+            state["_sys_prompt"] = _sop_body
+            _prompt = _context or _desc
+            _agent_result = await self._stage_runner.run(_prompt, state, stage=stage)
+            state.pop("_sys_prompt", None)
+            _result = str(_agent_result or "")
+            _result = _result.replace("```json", "").replace("```", "").strip()
+        else:
+            # Direct LLM call (default, backward-compatible)
+            _response = await sys_llm_generate(
+                None,
+                [
+                    {"role": "system", "content": _sop_body},
+                    {"role": "user", "content": _context or _desc},
+                ],
+                model_name=best_model_for_purpose(_purpose),
+                max_tokens=32000,
+            )
+            _result = getattr(_response, "content", "") or str(_response)
         _result = _result.replace("```json", "").replace("```", "").strip()
 
         if not _result or len(_result) < 100:

@@ -267,6 +267,8 @@ class PipelineStageConfig(BaseModel):
     deploy_files_to_disk: bool = False   # Parse ## FILE: blocks from output, write to project dir
     deploy_files_target_dir: str = ""    # Override target. Empty = ~/.aiplat/apps/{pid}/current
     test_execution_mode: str = ""        # "pytest" | "agent_conversation" | "" — which test runner
+    # Phase 12 — execution backend selection (replaces SOP detection / agent_type switching)
+    execution_backend: str = "llm"       # "llm"=sys_llm_generate | "agent"=StageRunner.run()→ReActLoop
     # Anthropic 5 patterns: chain | router | parallel | orchestrator | evaluator_optimizer
     pipeline_mode: str = "chain"          # "chain" | "router" | "parallel" | "orchestrator" | "evaluator_optimizer" | "agent"
     routing_mode: str = "static"           # "static" | "llm" | "debate" | "swarm" | "roundtable" | "moa" — routing strategy
