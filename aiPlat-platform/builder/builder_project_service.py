@@ -159,6 +159,28 @@ def _unwrap_json_reply(reply: str) -> str:
     return reply
 
 
+# ── HITL suspend/resume context (Phase 1: in-memory, Phase 2: Redis) ──
+_HITL_SUSPENDED: Dict[str, dict] = {}
+
+def suspend_hitl(project_id: str, context: dict) -> None:
+    """Persist HITL suspension context. Called by pipeline_manager skill on pause."""
+    import time as _t
+    _HITL_SUSPENDED[project_id] = {
+        "skill": "pipeline_manager",
+        "step": "awaiting_approval",
+        "context": context,
+        "suspended_at": _t.time(),
+    }
+    logging.getLogger("aiplat.builder").warning("HITL suspended: project=%s", project_id)
+
+def resume_hitl(project_id: str) -> Optional[dict]:
+    """Retrieve and clear HITL suspension context. Called by approve/reject tools."""
+    ctx = _HITL_SUSPENDED.pop(project_id, None)
+    if ctx:
+        logging.getLogger("aiplat.builder").warning("HITL resumed: project=%s step=%s", project_id, ctx.get("step"))
+    return ctx
+
+
 class BuilderProjectService:
 
     def __init__(self, model: Any = None, team_service: Optional[BuilderTeamService] = None):

@@ -19,7 +19,9 @@ import glob
 import logging
 import os
 import re
+from collections import defaultdict, deque
 from dataclasses import dataclass, field
+from functools import lru_cache
 from typing import Any, Dict, List, Optional
 
 from core.schemas_builder import PipelineStageConfig
@@ -35,6 +37,9 @@ class AgentCatalogEntry:
     phase: str
     skills: List[str]
     description: str
+    depends_on: List[str] = field(default_factory=list)
+    output_artifact: str = ""
+    execution_backend: str = "llm"
 
 
 @dataclass
@@ -155,10 +160,76 @@ def list_available_agents() -> List[AgentCatalogEntry]:
                 phase=str(fm.get("phase") or fm.get("phase_description") or "-"),
                 skills=[s for s in (fm.get("required_skills") or []) if isinstance(s, str)],
                 description=re.sub(r"\s+", " ", str(fm.get("description") or "")[:200]),
+                depends_on=[d for d in (fm.get("depends_on") or []) if isinstance(d, str)],
+                output_artifact=str(fm.get("output_artifact") or ""),
+                execution_backend=str(fm.get("execution_backend") or "llm"),
             ))
 
     entries.sort(key=lambda e: e.agent_id)
     return entries
+
+
+@lru_cache(maxsize=1)
+def _list_agents_cached() -> tuple:
+    """Scanned & cached agent catalog. I/O once, reuse until server restart."""
+    return tuple(list_available_agents())
+
+
+def _topological_order(stages: List[Dict]) -> List[Dict]:
+    """Kahn's algorithm: assign `order` from depends_on DAG. Same order = parallel-safe.
+
+    Each stage dict must have `id` and optionally `depends_on` (list of stage ids).
+    Returns stages with `order` assigned (sorted). Isolated nodes get order=0.
+    Circular dependencies get order=-1 with warning.
+    """
+    if not stages:
+        return stages
+    # Ensure each stage has an id
+    for i, s in enumerate(stages):
+        if not s.get("id"):
+            s["id"] = s.get("agent_id", f"stage_{i}")
+    stage_map = {s["id"]: s for s in stages}
+    graph: dict = defaultdict(list)
+    in_degree: dict = {s["id"]: 0 for s in stages}
+
+    # Build graph from depends_on
+    for s in stages:
+        for dep_ref in s.get("depends_on", []) or []:
+            # dep_ref can be agent_id or output_artifact name
+            # First try direct id match; then try matching by output_artifact
+            dep_id = dep_ref if dep_ref in stage_map else None
+            if not dep_id:
+                for sid, sm in stage_map.items():
+                    if sm.get("output_artifact") == dep_ref:
+                        dep_id = sid
+                        break
+            if dep_id and dep_id != s["id"]:
+                graph[dep_id].append(s["id"])
+                in_degree[s["id"]] += 1
+
+    # BFS by layer (same layer = same order = parallel-safe)
+    queue = deque([sid for sid, deg in in_degree.items() if deg == 0])
+    order_map: dict = {}
+    current_order = 0
+
+    while queue:
+        level_size = len(queue)
+        for _ in range(level_size):
+            node = queue.popleft()
+            order_map[node] = current_order
+            for neighbor in graph[node]:
+                in_degree[neighbor] -= 1
+                if in_degree[neighbor] == 0:
+                    queue.append(neighbor)
+        current_order += 1
+
+    # Assign order; remaining in_degree > 0 = circular dependency
+    for s in stages:
+        s["order"] = order_map.get(s["id"], -1)
+        if s["order"] == -1:
+            logger.warning("Circular or broken dependency: stage %s cannot be ordered", s["id"])
+
+    return sorted(stages, key=lambda x: x["order"])
 
 
 def build_agent_catalog_markdown(agents: Optional[List[AgentCatalogEntry]] = None) -> str:
@@ -331,9 +402,10 @@ async def recommend_team_stages(
             for i, s in enumerate(tmpl.stages):
                 stage = dict(s)
                 stage.setdefault("id", f"stage_{i}")
-                stage.setdefault("order", i)
                 stage = _enrich_stage_from_agent(stage)
                 recommendation.stages.append(stage)
+            # Auto-assign order from depends_on DAG (overrides sequential defaults)
+            recommendation.stages = _topological_order(recommendation.stages)
             return recommendation
 
     # ── Path 2: LLM-based team recommendation ──
@@ -429,6 +501,9 @@ async def recommend_team_stages(
                 unknown.append(aid)
     if unknown:
         recommendation.reasoning += f" [WARNING: Unknown agents: {unknown}]"
+
+    # Auto-assign order from depends_on DAG (for both LLM-recommended and fallback paths)
+    recommendation.stages = _topological_order(recommendation.stages)
 
     return recommendation
 
