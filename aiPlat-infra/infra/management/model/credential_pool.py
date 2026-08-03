@@ -64,9 +64,9 @@ class CredentialPool:
 
     @staticmethod
     def _load_keys(provider: str) -> List[str]:
-        """Load keys from environment variables.
+        """Load keys: env var (primary) → SQLite adapters table (fallback).
 
-        Order: {PROVIDER}_KEYS (comma-separated) → {PROVIDER}_API_KEY (single)
+        Order: {PROVIDER}_KEYS → {PROVIDER}_API_KEY → adapters.api_key
         """
         env_multi = f"{provider.upper()}_KEYS"
         env_single = f"{provider.upper()}_API_KEY"
@@ -78,6 +78,44 @@ class CredentialPool:
         single = os.getenv(env_single, "").strip()
         if single:
             return [single]
+
+        # Fallback: SQLite adapters table (Management UI registered)
+        try:
+            db_path = os.getenv("AIPLAT_EXECUTION_DB_PATH",
+                                os.path.expanduser("~/.aiplat/data/execution.db"))
+            if os.path.isfile(db_path):
+                import sqlite3
+                conn = sqlite3.connect(db_path, timeout=3.0)
+                try:
+                    # Match provider by name or openai_compatible with provider base_url
+                    rows = conn.execute(
+                        "SELECT api_key, api_key_enc FROM adapters "
+                        "WHERE status='active' AND (provider=? OR (api_base_url LIKE ?)) "
+                        "AND (api_key IS NOT NULL OR api_key_enc IS NOT NULL) "
+                        "LIMIT 1",
+                        (provider, f"%{provider}%")
+                    ).fetchall()
+                    for row in rows:
+                        key = row[0] or ""
+                        if key.strip():
+                            return [key.strip()]
+                        # Try decrypted key
+                        enc = row[1] or ""
+                        if enc.strip():
+                            try:
+                                from cryptography.fernet import Fernet
+                                secret = os.getenv("AIPLAT_SECRET_KEY", "")
+                                if secret:
+                                    f = Fernet(secret.encode() if isinstance(secret, str) else secret)
+                                    key = f.decrypt(enc.encode() if isinstance(enc, str) else enc).decode()
+                                    if key.strip():
+                                        return [key.strip()]
+                            except Exception:
+                                pass
+                finally:
+                    conn.close()
+        except Exception:
+            pass
 
         return []
 

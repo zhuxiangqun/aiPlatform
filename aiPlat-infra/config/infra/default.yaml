@@ -205,22 +205,9 @@ mcp:
 # 模型发现配置（启动时从环境变量 + 本地扫描动态构建模型列表）
 model_discovery:
   # 从环境变量读取的 remote 模型（逗号分隔的 model_name 列表）
-  env_models:
-    - env: DEEPSEEK_API_KEY
-      provider: openai_compatible
-      base_url: https://api.deepseek.com
-      type: chat
-      capability: chat
-    - env: OPENAI_API_KEY
-      provider: openai_compatible
-      base_url: https://api.openai.com/v1
-      type: chat
-      capability: chat
-    - env: ANTHROPIC_API_KEY
-      provider: anthropic
-      base_url: https://api.anthropic.com
-      type: chat
-      capability: chat
+  # Models registered via Management UI → SQLite adapters table
+  # (credentials stored in SQLite, no env var needed)
+  env_models: []
   
   # 本地模型 endpoint 扫描（自动发现）
   local_scan:
