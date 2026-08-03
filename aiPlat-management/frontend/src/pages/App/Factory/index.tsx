@@ -735,16 +735,23 @@ const ProjectPanel: React.FC<{
                   if (frs.length > 0) summary = `${title} · ${frs.length} FR · ${acs} 验收标准 · ${uss} US`;
                 }
               }
-              // QA Agent mode: has test_questions with mode=agent_conversation
-              if (rw && rw.includes('"test_questions"') && rw.includes('"agent_conversation"')) {
+              // QA Agent mode: has test_questions (with or without agent_conversation)
+              if (rw && rw.includes('"test_questions"')) {
                 const j = tryParseJSON(rw, '"test_questions"');
                 if (j) {
                   const qs = j.test_questions || [];
-                  const coveredFRs = new Set(qs.map((q: any) => {
-                    const parts = (q.ac_ref || '').split('-');
-                    return parts.length >= 2 ? parts.slice(0, 2).join('-') : q.ac_ref || '';
-                  })).size;
-                  if (qs.length > 0) summary = `${qs.length} 条对话测试 · 覆盖 ${coveredFRs} 个FR`;
+                  if (qs.length > 0) {
+                    // Only count FRs when test_questions are objects with ac_ref
+                    if (typeof qs[0] === 'object') {
+                      const coveredFRs = new Set(qs.map((q: any) => {
+                        const parts = (q.ac_ref || '').split('-');
+                        return parts.length >= 2 ? parts.slice(0, 2).join('-') : q.ac_ref || '';
+                      })).size;
+                      summary = `${qs.length} 条对话测试 · 覆盖 ${coveredFRs} 个FR`;
+                    } else {
+                      summary = `${qs.length} 条对话测试`;
+                    }
+                  }
                 }
               }
               // Code: count ## FILE: blocks
