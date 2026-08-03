@@ -3903,7 +3903,7 @@ class PipelineEngine:
                 failure_strategy="skip_stage",
             )
             state["_sys_prompt"] = _sop
-            _result = await self._stage_runner.run(_prompt, dict(state), stage=_chain_stage)
+            _result = await self._stage_runner.run(_prompt, state, stage=_chain_stage)
             state.pop("_sys_prompt", None)
         except Exception as _e:
             state.pop("_sys_prompt", None)
