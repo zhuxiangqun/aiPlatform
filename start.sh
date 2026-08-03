@@ -66,16 +66,12 @@ export AIPLAT_GOVERNANCE_INJECT_MODE="${AIPLAT_GOVERNANCE_INJECT_MODE:-all}"
 
 # LLM 配置 — 由 infra ModelManager 统一管理。
 # 模型选择策略编辑: aiPlat-infra/config/infra/llm_profile.yaml
-# API key 和 base URL 从这里注入:
-export AIPLAT_LLM_API_KEY="${AIPLAT_LLM_API_KEY:-${DEEPSEEK_API_KEY:-}}"
-export AIPLAT_LLM_BASE_URL="${AIPLAT_LLM_BASE_URL:-${DEEPSEEK_BASE_URL:-https://api.deepseek.com/v1}}"
+# API key 统一存储在 SQLite adapters 表，通过 Management UI 管理。
+# 无需环境变量 — 所有模型凭据从 ~/.aiplat/data/execution.db 读取。
 export AIPLAT_LLM_CONFIG_PATH="${AIPLAT_LLM_CONFIG_PATH:-$PROJECT_ROOT/aiPlat-infra/config/infra/llm_profile.yaml}"
 # Builder Pipeline: 单次流水线 token 预算
 export AIPLAT_BUILDER_MAX_TOKENS="${AIPLAT_BUILDER_MAX_TOKENS:-50000}"
 export AIPLAT_SKILL_STRICT_VALIDATION="${AIPLAT_SKILL_STRICT_VALIDATION:-false}"  # allow legacy skills with effects/idempotent mismatch
-if [ -z "${AIPLAT_LLM_API_KEY:-}" ]; then
-  echo "提示：未检测到 DeepSeek API Key。请先设置 DEEPSEEK_API_KEY 或 AIPLAT_LLM_API_KEY。"
-fi
 
 # Reduce native BLAS thread contention/crashes (notably with libpaddle on macOS)
 export OMP_NUM_THREADS="${OMP_NUM_THREADS:-1}"
