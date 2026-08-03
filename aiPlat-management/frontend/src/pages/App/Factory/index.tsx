@@ -694,6 +694,19 @@ const ProjectPanel: React.FC<{
           </div>
         )}
 
+        {/* Actions — show for team_ready / done / failed so user can always rebuild */}
+        <div className="flex flex-wrap gap-2">
+          {!prdReady && phase === 'dialogue' && teamStages.length === 0 && (
+            <Button variant="secondary" size="sm" onClick={handleRecommend} loading={recommending}>AI 推荐团队</Button>
+          )}
+          {prdReady && phase === 'dialogue' && (
+            <Button variant="primary" size="sm" onClick={handleConfirm} loading={starting}>确认需求</Button>
+          )}
+          {(phase === 'team_ready' || phase === 'done' || phase === 'failed') && (
+            <Button variant="primary" size="sm" onClick={handleStart} loading={starting}>{runHistory.length > 0 ? '重新构建' : '启动构建'}</Button>
+          )}
+        </div>
+
         {/* Stage Outputs — show architecture/code/test_report when available */}
         {stageOutputs && Object.keys(stageOutputs).length > 0 && (
           <div className="space-y-2">
@@ -866,19 +879,6 @@ const ProjectPanel: React.FC<{
             />
           </CardContent>
         </Card>
-
-        {/* Actions */}
-        <div className="flex flex-wrap gap-2">
-          {!prdReady && phase === 'dialogue' && teamStages.length === 0 && (
-            <Button variant="secondary" size="sm" onClick={handleRecommend} loading={recommending}>AI 推荐团队</Button>
-          )}
-          {prdReady && phase === 'dialogue' && (
-            <Button variant="primary" size="sm" onClick={handleConfirm} loading={starting}>确认需求</Button>
-          )}
-          {phase === 'team_ready' && (
-            <Button variant="primary" size="sm" onClick={handleStart} loading={starting}>{runHistory.length > 0 ? '重新构建' : '启动构建'}</Button>
-          )}
-        </div>
 
         {/* Run history */}
         {runHistory.length > 0 && (
