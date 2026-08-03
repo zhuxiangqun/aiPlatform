@@ -3903,11 +3903,21 @@ class PipelineEngine:
                 failure_strategy="skip_stage",
             )
             state["_sys_prompt"] = _sop
-            _result = await self._stage_runner.run(_prompt, state, stage=_chain_stage)
+            import asyncio as _asyncio
+            _result = await _asyncio.wait_for(
+                self._stage_runner.run(_prompt, state, stage=_chain_stage),
+                timeout=180,
+            )
             state.pop("_sys_prompt", None)
+        except _asyncio.TimeoutError:
+            state.pop("_sys_prompt", None)
+            _log.warning("chained skill '%s': timed out after 180s", skill_name)
+            state["_progress"] = {"stage": skill_name, "status": "timeout"}
+            return state
         except Exception as _e:
             state.pop("_sys_prompt", None)
             _log.warning("chained skill '%s': StageRunner failed: %s", skill_name, str(_e)[:200])
+            state["_progress"] = {"stage": skill_name, "status": "error", "error": str(_e)[:200]}
             return state
 
         _result = str(_result or "")
