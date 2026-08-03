@@ -769,14 +769,11 @@ def create_selected_adapter(*, model_name: str) -> Any:
                 api_key = str(ad.get("api_key") or "")
 
         if not api_key:
-
-            raise RuntimeError(
-
+            _log.warning(
                 f"No API key configured for remote model '{selected_model}'. "
-
-                "Set AIPLAT_LLM_API_KEY or DEEPSEEK_API_KEY environment variable."
-
+                f"Register this model via Management UI → SQLite adapters table."
             )
+            return None
 
 
 
@@ -1016,7 +1013,8 @@ async def create_adapter_with_fallback(purpose: str, timeout: int = 60) -> Any:
 
 
 
-    raise RuntimeError(f"All {len(candidates)} models failed for '{purpose}': {last_error}")
+    _fb_log.warning(f"All {len(candidates)} models failed for '{purpose}': {last_error}")
+    return None
 
 
 
@@ -1203,16 +1201,9 @@ async def generate_with_fallback(purpose: str,
                     _fb_log.warning(f"'{model_name}' failed ({i+1}/{len(candidates)}): {e}")
 
                     if is_permanent:
-
                         _fb_log.error(f"Permanent error on '{model_name}': {err_str}. Stopping fallback.")
-
-                        raise RuntimeError(
-
-                            f"Model '{model_name}' failed with permanent error: {err_str}. "
-
-                            f"Tried {len(failed_models)+1}/{len(candidates)} candidates. Errors: {errors}"
-
-                        ) from e
+                        last_error = err_str
+                        break  # don't crash — let outer loop handle graceful exit
 
                     failed_models.add(model_name)
 
@@ -1227,13 +1218,12 @@ async def generate_with_fallback(purpose: str,
                       f"Tried {len(failed_models)}/{len(candidates)} models. Falling back to first candidate.")
         # Return first candidate rather than crashing — server startup should never die on model selection
         if candidates:
-            return candidates[0][1]  # candidates is list of (score, model_name) tuples
-        return None
-
+            return None, candidates[0][1]  # (resp, model_name) tuple
+        return None, None
 
 
     _fb_log.warning(f"All {len(candidates)} models failed for '{purpose}'. Errors: {errors}")
-    return None
+    return None, None
 
 
 

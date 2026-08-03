@@ -1376,7 +1376,12 @@ async def lifespan(app: FastAPI):
                     logging.warning("Docs startup sync: %d errors", result["errors"])
             except Exception as e:
                 logging.warning("Docs startup sync failed: %s", str(e)[:200], exc_info=True)
-        asyncio.create_task(_bg_sync_docs())
+        # Wiki doc sync — defer to background for fast startup
+        async def _bg_sync_docs_deferred():
+            await asyncio.sleep(30)  # delay to keep startup responsive
+            await _bg_sync_docs()
+        asyncio.create_task(_bg_sync_docs_deferred())
+        asyncio.create_task(_bg_sync_docs_deferred())
     # C: 文件变更监视（可通过 AIPLAT_DOCS_WATCH=false 关闭）
     if os.environ.get("AIPLAT_DOCS_WATCH", "true").lower() in ("true", "1", "yes"):
         try:
