@@ -808,7 +808,11 @@ const ProjectPanel: React.FC<{
                         {qaParsed.test_questions?.length > 10 && <tfoot><tr><td colSpan={4} className="p-1 text-[10px] text-gray-500 text-center">... 共 {qaParsed.test_questions.length} 条 · 点 🔍 全屏 查看完整表格</td></tr></tfoot>}
                       </table>
                     ) : preview ? (
-                      <ReactMarkdown remarkPlugins={[remarkGfm]} className="prose prose-invert prose-xs max-w-none">{preview}</ReactMarkdown>
+                      rw.includes('## FILE:') ? (
+                        <pre className="whitespace-pre-wrap break-all text-gray-400 font-mono">{preview}</pre>
+                      ) : (
+                        <ReactMarkdown remarkPlugins={[remarkGfm]} className="prose prose-invert prose-xs max-w-none">{preview}</ReactMarkdown>
+                      )
                     ) : '(空)'}
                   </div>
                 </details>
