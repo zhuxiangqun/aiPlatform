@@ -809,7 +809,12 @@ const ProjectPanel: React.FC<{
                       </table>
                     ) : preview ? (
                       rw.includes('## FILE:') ? (
-                        <pre className="whitespace-pre-wrap break-all text-gray-400 font-mono">{preview}</pre>
+                        <div>
+                          <div className="flex items-center gap-1.5 px-2 py-1 bg-gray-800 border-b border-gray-700 text-[10px] text-gray-400">
+                            <FileText className="w-3 h-3" /> {(rw.match(/## FILE:/g) || []).length} 个文件
+                          </div>
+                          <pre className="p-2 text-xs text-gray-200 font-mono whitespace-pre-wrap break-all max-h-72 overflow-y-auto">{preview}</pre>
+                        </div>
                       ) : (
                         <ReactMarkdown remarkPlugins={[remarkGfm]} className="prose prose-invert prose-xs max-w-none">{preview}</ReactMarkdown>
                       )
