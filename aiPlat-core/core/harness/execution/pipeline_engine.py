@@ -3849,10 +3849,11 @@ class PipelineEngine:
 
     async def _run_chained_skill(self, skill_name: str, state: PipelineState,
                                   upstream_artifact_key: str, result_artifact_key: str) -> PipelineState:
-        """Generic: load a skill SOP, feed it the upstream artifact, call LLM, store result.
+        """Generic: load a skill SOP, feed it the upstream artifact, run via StageRunner→ReActLoop.
 
         The engine knows NOTHING about what the skill does — it just loads SKILL.md,
-        passes the upstream raw_output as context, and stores the LLM output.
+        passes the upstream raw_output as context, and runs the skill through the
+        ReAct loop so the agent can use tools (e.g., core_chat for test execution).
         """
         import os as _os, json as _json, logging as _log, time as _time
         _t0 = _time.time()
@@ -3875,30 +3876,41 @@ class PipelineEngine:
             _log.warning("chained skill '%s': empty SOP", skill_name)
             return state
 
-        # 2. Build context from upstream artifact
+        # 2. Build context from upstream artifact + agent metadata
         _upstream = state.get(upstream_artifact_key, {})
         _upstream_text = _upstream.get("raw_output", "") if isinstance(_upstream, dict) else str(_upstream)
         if not _upstream_text:
             _log.warning("chained skill '%s': no upstream content in '%s'", skill_name, upstream_artifact_key)
             return state
 
-        _log.warning("chained skill '%s': executing (%d chars upstream)", skill_name, len(_upstream_text))
+        _agent_name = state.get("_generated_agent", "")
+        _prompt = f"执行技能 {skill_name}:\n\n上游产出物:\n{_upstream_text[:24000]}"
+        if _agent_name:
+            _prompt += f"\n\n被测Agent: {_agent_name}"
+
+        _log.warning("chained skill '%s': executing via StageRunner (%d chars upstream)", skill_name, len(_upstream_text))
         state["_progress"] = {"stage": skill_name, "status": "running", "started_at": _time.time()}
 
-        # 3. LLM call
-        from core.harness.syscalls.llm import sys_llm_generate
-        from core.harness.utils.model_injection import best_model_for_purpose
+        # 3. Run via StageRunner → ReActLoop (enables tool calls like core_chat)
+        try:
+            from core.schemas_builder import PipelineStageConfig
+            _chain_stage = PipelineStageConfig(
+                id=f"chained_{skill_name}",
+                agent_id="chained_skill",
+                order=0,
+                required_skills=[skill_name],
+                max_consecutive_llm_failures=3,
+                failure_strategy="skip_stage",
+            )
+            state["_sys_prompt"] = _sop
+            _result = await self._stage_runner.run(_prompt, dict(state), stage=_chain_stage)
+            state.pop("_sys_prompt", None)
+        except Exception as _e:
+            state.pop("_sys_prompt", None)
+            _log.warning("chained skill '%s': StageRunner failed: %s", skill_name, str(_e)[:200])
+            return state
 
-        _response = await sys_llm_generate(
-            None,
-            [
-                {"role": "system", "content": _sop},
-                {"role": "user", "content": _upstream_text[:16000]},
-            ],
-            model_name=best_model_for_purpose("chat"),
-            max_tokens=16000,
-        )
-        _result = getattr(_response, "content", "") or str(_response)
+        _result = str(_result or "")
         _result = _result.replace("```json", "").replace("```", "").strip()
 
         if not _result or len(_result) < 50:
