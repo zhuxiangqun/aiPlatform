@@ -644,13 +644,15 @@ class BuilderProjectService:
             _log.info("_extract_prd_from_chat: not enough messages (%d)", len(msgs))
             return None
         # Build conversation summary
+        proj = self._projects.get(project_id, {})
+        _name = proj.get("name", "") or "新项目"
         lines = ["从以下产品需求对话中提取结构化PRD（JSON格式）：", ""]
         for m in msgs[-10:]:
             role = "用户" if m.get("role") == "user" else "PM"
             content = str(m.get("content", ""))[:500]
             lines.append(f"{role}: {content}")
         prompt = "\n".join(lines)
-        prompt += '\n\n输出JSON：{"title":"项目名称","description":"概述","functional_requirements":["需求"],"user_stories":["用户故事"],"non_functional":{}}\n只输出JSON。'
+        prompt += f'\n\n输出JSON：{{"title":"{_name}","description":"概述","functional_requirements":[{{"id":"FR-001","name":"功能名","description":"描述","priority":"high","acceptance_criteria":["验收标准"]}}],"user_stories":[{{"id":"US-001","story":"作为...我...以便...","priority":"high","related_fr":["FR-001"]}}],"constraints":{{"platform":"Web","languages":["Python"]}}}}\n只输出JSON。'
 
         try:
             from core.api.intents import core_chat, ChatContext
