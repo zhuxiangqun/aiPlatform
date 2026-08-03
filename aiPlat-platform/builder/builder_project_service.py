@@ -2110,8 +2110,23 @@ def _deploy_to_app_for_project(project_id: str, deploy_dir: str, proj: dict) -> 
     except Exception:
         pass  # best-effort
     
-    # Check if generated code includes an index.html — use it as entry point
-    _has_index_html = os.path.isfile(os.path.join(_app_home, "index.html"))
+    # Check if generated code includes a meaningful index.html
+    _index_path = os.path.join(_app_home, "index.html")
+    _has_index_html = False
+    if os.path.isfile(_index_path):
+        try:
+            _sz = os.path.getsize(_index_path)
+            if _sz > 0:
+                with open(_index_path, "r") as _if:
+                    _preview = _if.read(200)
+                # Only trust index.html if it has actual HTML content, not empty/stale
+                _has_index_html = ("<html" in _preview.lower() or "<!doctype" in _preview.lower()) and _sz > 100
+        except Exception:
+            pass
+        # Remove stale/empty file so it gets regenerated
+        if not _has_index_html:
+            try: os.remove(_index_path)
+            except OSError: pass  # noqa: cleanup-best-effort
     
     # Also extract frontend_pages / app_page.json if present
     _app_page_json = ""
