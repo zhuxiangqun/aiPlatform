@@ -604,7 +604,26 @@ const ProjectPanel: React.FC<{
             {progressState?.status === 'running' && (
               <div className="text-[10px] text-blue-400 mt-1 flex items-center gap-1">
                 <Loader2 className="w-3 h-3 animate-spin" />
-                {progressState.stage === 'test_executor' ? '执行对话测试中...' : '运行中...'}
+                {progressState.stage === 'test_executor' ? (
+                  <>执行对话测试中{progressState.total_steps > 1 ? ` (${progressState.total_steps} 条)` : ''}... {Math.floor((Date.now()/1000 - (progressState.started_at || 0)) || 0)}s</>
+                ) : (
+                  <>运行中... {Math.floor((Date.now()/1000 - (progressState.started_at || 0)) || 0)}s</>
+                )}
+              </div>
+            )}
+            {progressState?.status === 'timeout' && (
+              <div className="text-[10px] text-amber-400 mt-1 flex items-center gap-1">
+                ⚠️ 测试执行超时（{progressState.elapsed_sec}s）— 流水线将继续
+              </div>
+            )}
+            {progressState?.status === 'error' && (
+              <div className="text-[10px] text-red-400 mt-1 flex items-center gap-1">
+                ❌ 执行失败: {(progressState.error || '').slice(0, 60)}
+              </div>
+            )}
+            {progressState?.status === 'completed' && (
+              <div className="text-[10px] text-green-400 mt-1 flex items-center gap-1">
+                ✅ 完成 ({progressState.elapsed_sec}s)
               </div>
             )}
           </div>

@@ -3903,7 +3903,22 @@ class PipelineEngine:
             _prompt += f"\n\n被测Agent: {_agent_name}"
 
         _log.warning("chained skill '%s': executing via StageRunner (%d chars upstream)", skill_name, len(_upstream_text))
-        state["_progress"] = {"stage": skill_name, "status": "running", "started_at": _time.time()}
+        # Track step count from upstream test_questions for progress display
+        _total_steps = 1
+        try:
+            _parsed = _json.loads(_upstream_text)
+            _qs = _parsed.get("test_questions", [])
+            _total_steps = len(_qs) if isinstance(_qs, list) and _qs else 1
+        except Exception:
+            try:
+                _jstart = _upstream_text.find('{')
+                _jend = _upstream_text.rfind('}')
+                if _jstart >= 0 and _jend > _jstart:
+                    _qs = _json.loads(_upstream_text[_jstart:_jend+1]).get("test_questions", [])
+                    _total_steps = len(_qs) if isinstance(_qs, list) and _qs else 1
+            except Exception:
+                pass
+        state["_progress"] = {"stage": skill_name, "status": "running", "started_at": _time.time(), "total_steps": _total_steps}
 
         # 3. Run via StageRunner → ReActLoop (enables tool calls like core_chat)
         try:
@@ -3926,12 +3941,14 @@ class PipelineEngine:
         except _asyncio.TimeoutError:
             state.pop("_sys_prompt", None)
             _log.warning("chained skill '%s': timed out after 180s", skill_name)
-            state["_progress"] = {"stage": skill_name, "status": "timeout"}
+            _elapsed = round(_time.time() - _t0, 1)
+            state["_progress"] = {"stage": skill_name, "status": "timeout", "elapsed_sec": _elapsed, "total_steps": state.get("_progress", {}).get("total_steps", 1)}
             return state
         except Exception as _e:
             state.pop("_sys_prompt", None)
             _log.warning("chained skill '%s': StageRunner failed: %s", skill_name, str(_e)[:200])
             state["_progress"] = {"stage": skill_name, "status": "error", "error": str(_e)[:200]}
+
             return state
 
         _result = str(_result or "")
