@@ -248,7 +248,9 @@ const FullscreenView: React.FC<{
         <button onClick={onClose} className="p-1.5 rounded hover:bg-gray-100 text-gray-500 hover:text-gray-800 transition-colors text-lg">✕</button>
       </div>
       <div className="flex-1 overflow-y-auto p-6 bg-white max-w-4xl mx-auto w-full" onClick={e => e.stopPropagation()}>
-        {schema && parsed ? <DataDocument data={parsed} schema={schema} /> : (
+        {schema && parsed ? <DataDocument data={parsed} schema={schema} /> : content.includes('## FILE:') ? (
+          <pre className="text-xs text-gray-800 font-mono whitespace-pre-wrap break-all">{content}</pre>
+        ) : (
           <ReactMarkdown remarkPlugins={[remarkGfm]} className="prose max-w-none text-gray-800">
             {content}
           </ReactMarkdown>
