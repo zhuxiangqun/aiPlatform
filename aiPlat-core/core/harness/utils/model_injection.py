@@ -1227,7 +1227,7 @@ async def generate_with_fallback(purpose: str,
                       f"Tried {len(failed_models)}/{len(candidates)} models. Falling back to first candidate.")
         # Return first candidate rather than crashing — server startup should never die on model selection
         if candidates:
-            return best_model_for_purpose(purpose, messages=messages, candidates=[candidates[0]])
+            return candidates[0][1]  # candidates is list of (score, model_name) tuples
         return None
 
 
