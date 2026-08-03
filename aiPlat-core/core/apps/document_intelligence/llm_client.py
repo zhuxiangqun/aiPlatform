@@ -16,7 +16,7 @@ from core.harness.utils.model_injection import best_model_for_purpose
 
 
 def llm_enabled() -> bool:
-    api_key = (os.getenv("AIPLAT_LLM_API_KEY") or get_llm_api_key("openai") or "").strip()
+    api_key = (get_llm_api_key("openai") or "").strip()
     model_name = _default_model_name()
     return bool(api_key and model_name)
 

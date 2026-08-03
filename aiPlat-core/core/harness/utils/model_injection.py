@@ -415,7 +415,10 @@ def _log_model_selection(purpose: str, selected: str, entry: str = "best_model_f
 
             with open(log_path) as f:
 
-                samples = _log_json.loads(f.read())
+                try:
+                    samples = _log_json.loads(f.read())
+                except Exception:
+                    pass  # best-effort: corrupt log, restore from backup or start fresh
 
         record = {"ts": _log_time.time(), "purpose": purpose,
 
@@ -721,49 +724,21 @@ def create_selected_adapter(*, model_name: str) -> Any:
 
                         base_url = str(ad.get("api_base_url") or "")
 
-        # infra credential pool / env var fallback (via get_llm_api_key)
-
+        # infra credential pool ONLY (no env var fallback)
         if needs_api_key and not api_key:
 
             api_key = get_llm_api_key(provider) or ""
 
 
-
-    # Env var overrides (fallback only — adapter-based key takes priority)
-
-    provider_env = os.getenv("AIPLAT_LLM_PROVIDER", "").strip()
-
-    base_url_env = os.getenv("AIPLAT_LLM_BASE_URL", "").strip()
-
-    api_key_env = (os.getenv("AIPLAT_LLM_API_KEY") or "").strip()
-
-
-
-    if provider_env and not provider:
-
-        provider = _norm_provider(provider_env)
-
-    if base_url_env and needs_api_key and not base_url:
-
-        base_url = base_url_env
-
-    if api_key_env and needs_api_key and not api_key:
-
-        api_key = api_key_env
-
-
-
-    # If model not found in registry, fall back to env var resolution
-
+    # If model not found in registry, provider env still useful for routing
     if not model_info:
-
+        provider_env = os.getenv("AIPLAT_LLM_PROVIDER", "").strip()
+        if provider_env and not provider:
+            provider = _norm_provider(provider_env)
         if not api_key:
-
-            api_key = api_key_env or get_llm_api_key("deepseek") or ""
-
+            api_key = get_llm_api_key(provider) or ""
         if not base_url:
-
-            base_url = base_url_env or get_llm_base_url("deepseek") or ""
+            base_url = get_llm_base_url(provider) or ""
 
 
 
