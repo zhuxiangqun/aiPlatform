@@ -1,53 +1,78 @@
-# aiPlat LLM Profile — purpose profiles & model capabilities
-# All purposes are auto-selected by the unified scoring pipeline (v2.1).
-# Selection is driven by model_capabilities + resource awareness, not manual overrides.
+# aiPlat LLM Profile — purpose requirements & model capabilities
+# v3: Capability-driven selection. Each purpose declares WHAT it needs (requirements).
+# The engine auto-matches against model_capabilities. No manual model preferences.
+# Selection is driven by model_capabilities + resource awareness, not human guesses.
 
 purpose_profiles:
   chat:
-    prefer: ["chat"]
-    prefer_local: true
-    local_preference_weight: 3.0
-    scoring_weights:
-      reasoning: 0.3
+    description: 日常对话 — 低延迟优先,本地模型即可
+    require:
+      type: chat
+      hallucination_max: 0.10
+    weights:
       latency: -2.5
-      source_bias: 2.5
+      quality: 0.3
+      api_credential: 1.0
   clarify:
-    prefer: ["chat"]
-    prefer_local: true
-    scoring_weights:
-      reasoning: 0.1
+    description: 澄清问题 — 极低延迟,不强调推理质量
+    require:
+      type: chat
+    weights:
       latency: -3.0
-      quality: 0.5
-  agent_creation:
-    prefer: ["chat"]
-    prefer_local: true
+      api_credential: 1.0
+  agent:
+    description: Agent编排/测试执行 — 需要强推理+大上下文+低幻觉
+    require:
+      reasoning_quality: 3
+      context_window: 32000
+      hallucination_max: 0.06
+    weights:
+      reasoning: 3.5
+      quality: 1.5
+      latency: -1.0
+      cost: -0.5
   code_gen:
-    prefer: ["chat", "code"]
-    scoring_weights:
+    description: 代码生成 — 需要强推理+编码能力
+    require:
+      reasoning_quality: 2
+      context_window: 16000
+    weights:
       reasoning: 2.5
       latency: -0.5
+      api_credential: 1.0
   reasoning:
-    prefer: ["chat", "reasoning"]
-    prefer_external: true
-    scoring_weights:
+    description: 复杂推理 — 需要最强推理+低幻觉+大上下文
+    require:
+      reasoning_quality: 4
+      context_window: 64000
+      hallucination_max: 0.05
+    weights:
       reasoning: 3.5
       quality: 1.8
+      latency: -1.0
       resource_pressure: 0.3
       cost: -0.3
   skill_execution:
-    prefer: ["chat"]
-    prefer_external: true
-    scoring_weights:
-      resource_pressure: 1.5
+    description: Skill执行 — 需要稳定可靠+中等推理
+    require:
+      reasoning_quality: 2
+      context_window: 16000
+    weights:
       reasoning: 1.2
+      resource_pressure: 1.5
   ontology_gen:
-    prefer: ["chat"]
-    prefer_local: true
+    description: 本体生成 — 本地优先,基础推理即可
+    require:
+      type: chat
+      context_window: 16000
+    weights:
+      api_credential: 1.0
   wiki_curation:
-    prefer: ["chat"]
-    prefer_external: true   # background tasks: prefer API models over local ollama
-    scoring_weights:
-      cost: -3.0            # minimize cost for background tasks
+    description: Wiki策展 — 后台任务,低优先级,偏好API模型
+    require:
+      hallucination_max: 0.08
+    weights:
+      cost: -3.0
       latency: -0.5
 
 fallback:

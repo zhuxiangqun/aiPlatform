@@ -3930,6 +3930,7 @@ class PipelineEngine:
                 required_skills=[skill_name],
                 max_consecutive_llm_failures=3,
                 failure_strategy="skip_stage",
+                skill_model_purpose="agent",  # route to agent profile for capability-driven model selection
             )
             state["_sys_prompt"] = _sop
             import asyncio as _asyncio

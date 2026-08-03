@@ -188,18 +188,28 @@ def _hard_filter(model, res: PlatformResources) -> tuple:
 
 
 def _filter_capability(model, purpose: str, profile: dict, profile_data: dict = None) -> bool:
-    """能力匹配。Level 1 可放宽。支持别名映射展开 prefer 标签。"""
+    """Requirement-driven capability matching. Reads 'require' from profile, checks model_capabilities.
+
+    Replaces the old prefer/avoid/prefer_local/prefer_external logic.
+    Engine derives suitability from model capabilities vs task requirements.
+    """
     caps = _get_model_caps(model, profile_data)
-    require = profile.get("require", {}).get("capabilities", [])
-    if require and not all(c in caps for c in require):
+    # Always require chat type (all pipeline models are chat)
+    require_type = profile.get("require", {}).get("type", "chat")
+    if require_type and require_type not in caps:
         return False
-    expanded_prefer = set()
-    for tag in profile.get("prefer", ["chat"]):
-        expanded_prefer |= _CAPABILITY_ALIASES.get(tag, {tag})
-    if not any(c in caps for c in expanded_prefer):
-        return False
-    if any(c in caps for c in profile.get("avoid", [])):
-        return False
+    # Check capability requirements from model_capabilities
+    model_caps_data = profile_data.get("model_capabilities", {}).get(model.name, {}) if profile_data else {}
+    require = profile.get("require", {})
+    if require.get("reasoning_quality", 0) > 0:
+        if model_caps_data.get("reasoning_quality", 1) < require["reasoning_quality"]:
+            return False
+    if require.get("context_window", 0) > 0:
+        if model_caps_data.get("context_window", 1) < require["context_window"]:
+            return False
+    if require.get("hallucination_max", 1.0) < 1.0:
+        if model_caps_data.get("hallucination_rate", 1.0) > require["hallucination_max"]:
+            return False
     return True
 
 
@@ -222,20 +232,19 @@ def _filter_latency(model) -> bool:
 
 
 def _get_scoring_weights(purpose: str, profile_data: dict) -> dict:
-    """从配置中读取评分权重。未定义时回退默认值（与 v2.1 行为一致）。"""
+    """Read scoring weights from profile. 'weights' key (v3) takes priority, 'scoring_weights' (v2) as fallback."""
     default = {
-        "source_bias": 1.0,
-        "resource_pressure": 1.0,
-        "gpu_compat": 1.0,
         "reasoning": 1.0,
         "quality": 1.0,
         "latency": -1.0,
+        "api_credential": 3.0,
+        "resource_pressure": 1.0,
+        "gpu_compat": 1.0,
         "concurrency": 1.0,
         "cost": -1.0,
-        "api_credential": 3.0,
     }
     profile = profile_data.get("purpose_profiles", {}).get(purpose, {})
-    weights = profile.get("scoring_weights", {})
+    weights = profile.get("weights") or profile.get("scoring_weights") or {}
     return {**default, **weights}
 
 
@@ -261,18 +270,12 @@ def _score_model(
         elif ratio > 0.3:     penalty = -10
         score += int(penalty * weights.get("resource_pressure", 1.0))
 
-    # 2. 来源偏好
+    # 2. Capability-driven origin scoring (v3: replaces prefer_local/prefer_external)
     src = getattr(model.source, 'value', '') if hasattr(model.source, 'value') else ''
     src_bias = 0
-    if profile.get("prefer_local"):
-        if src == "local":       src_bias = 120
-        elif src == "external":  src_bias = 60
-        else:                    src_bias = 40
-    elif profile.get("prefer_external"):
-        if src == "external":    src_bias = 120
-        elif src == "local":     src_bias = 40
-        else:                    src_bias = 60
-    score += int(src_bias * weights.get("source_bias", 1.0))
+    if src == "external":      src_bias = 80   # API models: consistent quality, no RAM pressure
+    elif src == "local":       src_bias = 40   # local models: free but RAM-heavy
+    score += src_bias
 
     # 3. env var 匹配（不受权重影响，保持 +500 绝对优先）
     if preferences.get("env_var_model") == model.name:
@@ -290,35 +293,36 @@ def _score_model(
         gpu_score = -200
     score += int(gpu_score * weights.get("gpu_compat", 1.0))
 
-    # 6. 推理能力加分（从 model_capabilities.reasoning_quality 读取）
+    # 6. Capability-driven reasoning scoring (v3: from model_capabilities, not profile tags)
     model_caps_data = profile_data.get("model_capabilities", {}).get(model.name, {})
     reasoning_quality = model_caps_data.get("reasoning_quality", 1)
     reasoning_score = 0
-    if reasoning_quality >= 4:
-        reasoning_score = 80
-    elif reasoning_quality >= 3:
-        reasoning_score = 40
-    elif reasoning_quality >= 2:
-        reasoning_score = 20
-    if profile.get("prefer", [""])[0] == "reasoning" and reasoning_quality >= 2:
-        reasoning_score += 20
+    if reasoning_quality >= 5:   reasoning_score = 100
+    elif reasoning_quality >= 4: reasoning_score = 60
+    elif reasoning_quality >= 3: reasoning_score = 35
+    elif reasoning_quality >= 2: reasoning_score = 15
+    # Bonus: model's reasoning meets or exceeds the purpose's requirement
+    require = profile.get("require", {})
+    req_reasoning = require.get("reasoning_quality", 0)
+    if req_reasoning and reasoning_quality >= req_reasoning:
+        reasoning_score += 30  # model is well-qualified for this task
     score += int(reasoning_score * weights.get("reasoning", 1.0))
 
-    # 6b. strength_areas 匹配奖励：按用途偏好几项命中
-    strengths = set(model_caps_data.get("strength_areas", []))
-    matched_prefers = 0
-    for tag in profile.get("prefer", []):
-        aliases = _CAPABILITY_ALIASES.get(tag, {tag})
-        if any(a in strengths for a in aliases):
-            matched_prefers += 1
-    score += {0: 0, 1: 15, 2: 90, 3: 150}.get(matched_prefers, 150)
+    # 6b. Hallucination penalty (v3: capability-driven)
+    hallucination_rate = model_caps_data.get("hallucination_rate", 0.10)
+    hallucination_penalty = 0
+    if hallucination_rate > 0.08:   hallucination_penalty = -60
+    elif hallucination_rate > 0.05: hallucination_penalty = -20
+    if require.get("hallucination_max", 1.0) < 1.0:
+        if hallucination_rate > require["hallucination_max"]:
+            hallucination_penalty -= 40
+    score += hallucination_penalty
 
-    # 6c. weakness_areas 惩罚：逐个 prefer 标签独立检查
-    weaknesses = set(model_caps_data.get("weakness_areas", []))
-    for tag in profile.get("prefer", []):
-        aliases = _CAPABILITY_ALIASES.get(tag, {tag})
-        if any(a in weaknesses for a in aliases):
-            score -= 40
+    # 6c. Context window bonus (v3: capability-driven)
+    context_window = model_caps_data.get("context_window", 4096)
+    req_context = require.get("context_window", 0)
+    if req_context and context_window >= req_context:
+        score += 20  # model has sufficient context for this task
 
     # 7. API 凭证检查（双路径：环境变量 + 适配器 ID）
     if model.provider in ("openai", "deepseek", "anthropic", "openrouter"):
