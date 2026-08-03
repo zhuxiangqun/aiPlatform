@@ -32,7 +32,7 @@ export default defineConfig({
         timeout: 600000,
       },
       '/api/platform/builder': {
-        target: 'http://localhost:8002',
+        target: 'http://localhost:8000',
         changeOrigin: true,
         timeout: 300000,
       },

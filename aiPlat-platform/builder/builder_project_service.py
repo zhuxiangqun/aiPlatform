@@ -2188,8 +2188,8 @@ body{{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgro
         _html += f"""<div class="footer">项目ID: {project_id}{ " · 生成文件: " + str(_file_count) + " 个" if _file_count else "" } · 由 aiPlat 应用工厂生成</div>
 </body></html>"""
     
-    with open(os.path.join(_app_home, "index.html"), "w", encoding="utf-8") as f:
-        f.write(_html)
+        with open(os.path.join(_app_home, "index.html"), "w", encoding="utf-8") as f:
+            f.write(_html)
     
     app_url = f"http://localhost:8004/app/sessions/{project_id}"
     
