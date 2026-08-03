@@ -277,6 +277,7 @@ const ProjectPanel: React.FC<{
   const [deploying, setDeploying] = useState(false);
   const [healthReport, setHealthReport] = useState<Record<string, any> | null>(null);
   const [progressState, setProgressState] = useState<Record<string, any> | null>(null);
+  const [hasRunningPipeline, setHasRunningPipeline] = useState(false);
   const [agentMode, setAgentMode] = useState(false);
   const [agentName, setAgentName] = useState('');
   const [loadingHealth, setLoadingHealth] = useState(false);
@@ -357,16 +358,17 @@ const ProjectPanel: React.FC<{
         const st = await projectApi.getState(project.project_id);
         const state = (st as any)?.state || {};
         const realPhase = state.phase as string;
-        if (realPhase && realPhase !== 'idle') {
-          // Only enter executing UI if there's actually a run in progress
-          // Prevents stale backend phase from misleading users into thinking
-          // they triggered execution by clicking the card
-          if (realPhase === 'executing') {
-            const runs = (st as any)?.runs || [];
-            const hasActiveRun = runs.some((r: any) => r.phase === 'executing');
-            if (!hasActiveRun) return;
-          }
+        // Never auto-enter executing UI on panel open — it confuses users
+        // who think clicking the card triggered execution.
+        // Only sync non-executing phases (done, failed, paused) for accuracy.
+        if (realPhase && realPhase !== 'idle' && realPhase !== 'executing') {
           setPhase(realPhase);
+        }
+        // Check if pipeline is running — show subtle indicator instead
+        if (realPhase === 'executing') {
+          const runs = (st as any)?.runs || [];
+          const hasActiveRun = runs.some((r: any) => r.phase === 'executing');
+          setHasRunningPipeline(hasActiveRun);
         }
         setProgressState(state._progress || null);
         const outputs: Record<string, any> = {};
@@ -614,6 +616,19 @@ const ProjectPanel: React.FC<{
             </div>
           </div>
         ) : null}
+
+        {/* Running pipeline indicator — subtle, doesn't hijack the view */}
+        {hasRunningPipeline && phase !== 'executing' && (
+          <div className="p-2 rounded border border-blue-500/20 bg-blue-500/5 text-xs flex items-center justify-between">
+            <span className="flex items-center gap-1.5 text-blue-300">
+              <Loader2 className="w-3 h-3 animate-spin" /> Pipeline 正在运行中
+            </span>
+            <button onClick={() => { setPhase('executing'); setHasRunningPipeline(false); }}
+              className="text-[10px] px-2 py-0.5 rounded bg-blue-500/20 text-blue-300 hover:bg-blue-500/30">
+              查看进度
+            </button>
+          </div>
+        )}
 
         {/* PRD summary — always show if confirmed */}
         {confirmedPrd && (
