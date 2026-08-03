@@ -1223,20 +1223,17 @@ async def generate_with_fallback(purpose: str,
                     continue
 
     except _asyncio.TimeoutError:
-
-        _fb_log.error(f"Global fallback timeout ({global_timeout}s) for '{purpose}'. "
-
-                      f"Tried {len(failed_models)}/{len(candidates)} models.")
-
-        raise RuntimeError(f"All models timed out for '{purpose}' within {global_timeout}s. "
-
-                           f"Failed: {failed_models}")
+        _fb_log.warning(f"Model selection timed out ({global_timeout}s) for '{purpose}'. "
+                      f"Tried {len(failed_models)}/{len(candidates)} models. Falling back to first candidate.")
+        # Return first candidate rather than crashing — server startup should never die on model selection
+        if candidates:
+            return best_model_for_purpose(purpose, messages=messages, candidates=[candidates[0]])
+        return None
 
 
 
-    raise RuntimeError(f"All {len(candidates)} models failed for '{purpose}'. "
-
-                       f"Errors: {errors}")
+    _fb_log.warning(f"All {len(candidates)} models failed for '{purpose}'. Errors: {errors}")
+    return None
 
 
 
