@@ -230,6 +230,12 @@ const FullscreenView: React.FC<{
         id: `US-${String(i+1).padStart(3,'0')}`, story: s, priority: '', related_fr: '',
       }));
     }
+    // Normalize QA test_questions (string arrays → objects)
+    if (parsed.test_questions?.length > 0 && typeof parsed.test_questions[0] === 'string') {
+      parsed.test_questions = parsed.test_questions.map((s: string, i: number) => ({
+        id: `AQ-${String(i+1).padStart(3,'0')}`, ac_ref: '', category: '', question: s, min_expectation: '',
+      }));
+    }
     if (parsed.user_stories) schema = SCHEMAS.prd;
     else if (parsed.components) schema = SCHEMAS.architecture;
     else if (parsed.test_questions) schema = SCHEMAS.qa;
