@@ -1672,10 +1672,11 @@ class BuilderProjectService:
                     os.remove(fpath)
             except OSError:
                 pass  # noqa: cleanup-best-effort
-        # Re-sync team stages from default.yaml to pick up latest config (e.g., new test_executor stage)
+        # Re-sync team stages from YAML template to pick up latest config (e.g., new stages)
         try:
             from core.harness.execution.team_planner import load_team_template, _enrich_stage_from_agent
-            tmpl = load_team_template("default")
+            _tid = proj.get("team_id") or "default"
+            tmpl = load_team_template(_tid)
             if tmpl and tmpl.stages:
                 stages = []
                 for i, s in enumerate(tmpl.stages):
@@ -1685,7 +1686,7 @@ class BuilderProjectService:
                     stage = _enrich_stage_from_agent(stage)
                     stages.append(stage)
                 proj["team_stages"] = stages
-                proj["team_id"] = "default"
+                proj["team_id"] = _tid
                 self._save_projects()
         except Exception as e:
             logging.warning("rebuild: team re-sync failed (using existing): %s", e)
