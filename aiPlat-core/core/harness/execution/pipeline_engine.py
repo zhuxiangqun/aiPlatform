@@ -3764,7 +3764,7 @@ class PipelineEngine:
         _artifact_key = getattr(stage, 'output_artifact', '') or _skill_name
         _elapsed = round(_time.time() - _t0, 2)
 
-        state[_artifact_key] = {"raw_output": _result}
+        state[_artifact_key] = {"raw_output": _result, "elapsed_sec": _elapsed}
 
         # ── Stage trace: structured metadata for reasoning visibility ──
         _model_name = best_model_for_purpose(_purpose)
@@ -3854,7 +3854,8 @@ class PipelineEngine:
         The engine knows NOTHING about what the skill does — it just loads SKILL.md,
         passes the upstream raw_output as context, and stores the LLM output.
         """
-        import os as _os, json as _json, logging as _log
+        import os as _os, json as _json, logging as _log, time as _time
+        _t0 = _time.time()
         _log = _log.getLogger("pipeline_engine")
 
         # 1. Load SOP from SKILL.md
@@ -3882,6 +3883,7 @@ class PipelineEngine:
             return state
 
         _log.warning("chained skill '%s': executing (%d chars upstream)", skill_name, len(_upstream_text))
+        state["_progress"] = {"stage": skill_name, "status": "running", "started_at": _time.time()}
 
         # 3. LLM call
         from core.harness.syscalls.llm import sys_llm_generate
@@ -3904,8 +3906,10 @@ class PipelineEngine:
             return state
 
         # 4. Store result
-        state[result_artifact_key] = {"raw_output": _result}
-        _log.warning("chained skill '%s': OK (%d chars → %s)", skill_name, len(_result), result_artifact_key)
+        _elapsed = round(_time.time() - _t0, 2)
+        state[result_artifact_key] = {"raw_output": _result, "elapsed_sec": _elapsed}
+        state["_progress"] = {"stage": skill_name, "status": "completed", "elapsed_sec": _elapsed}
+        _log.warning("chained skill '%s': OK (%d chars, %.1fs → %s)", skill_name, len(_result), _elapsed, result_artifact_key)
         return state
 
     @staticmethod

@@ -270,6 +270,7 @@ const ProjectPanel: React.FC<{
   const [deployUrl, setDeployUrl] = useState('');
   const [deploying, setDeploying] = useState(false);
   const [healthReport, setHealthReport] = useState<Record<string, any> | null>(null);
+  const [progressState, setProgressState] = useState<Record<string, any> | null>(null);
   const [agentMode, setAgentMode] = useState(false);
   const [agentName, setAgentName] = useState('');
   const [loadingHealth, setLoadingHealth] = useState(false);
@@ -317,6 +318,7 @@ const ProjectPanel: React.FC<{
         const s = (st as any)?.state || {};
         const p = s.phase as string || phase;
         setPhase(p);
+        setProgressState(s._progress || null);
         // Detect Agent mode: generated agent is deployed
         if (s._generated_agent && !agentMode) {
           setAgentName(s._generated_agent as string);
@@ -658,6 +660,7 @@ const ProjectPanel: React.FC<{
             <h3 className="text-xs font-semibold text-gray-400 uppercase">阶段产出</h3>
             {Object.entries(stageOutputs).map(([key, val]) => {
               const rw = (val as any)?.raw_output || '';
+              const elapsed = (val as any)?.elapsed_sec != null ? ((val as any).elapsed_sec as number).toFixed(1) : '';
               // Dynamic label: match output_artifact to team stage's agent_name
               const matchedStage = teamStages.find(s => (s as any).output_artifact === key);
               const agentLabel = (matchedStage as any)?.agent_name || (matchedStage as any)?.display_name || '';
@@ -760,7 +763,7 @@ const ProjectPanel: React.FC<{
                   )}
                   <details className="text-xs rounded border border-dark-border bg-dark-hover/30">
                   <summary className="p-2 cursor-pointer text-gray-300 font-medium flex items-center justify-between">
-                    <span>{label} ({typeof rw === 'string' ? rw.length : 0} 字符{summary ? ' · ' + summary : ''})</span>
+                    <span>{label} ({typeof rw === 'string' ? rw.length : 0} 字符{elapsed ? ` · ⏱ ${elapsed}s` : ''}{summary ? ' · ' + summary : ''})</span>
                     {rw && (
                       <button onClick={e => { e.preventDefault(); setFullscreenTitle(label); setFullscreenContent(typeof rw === 'string' ? rw : JSON.stringify(rw, null, 2)); }}
                         className="text-[10px] px-1.5 py-0.5 rounded bg-dark-hover text-gray-500 hover:text-gray-300 hover:bg-primary/20 transition-colors flex-shrink-0 ml-2">
@@ -1055,9 +1058,16 @@ const FactoryPage: React.FC = () => {
           <div className="text-center py-12 text-gray-500">
             <p className="text-lg mb-2">还没有应用</p>
             <p className="text-sm">在上方输入需求描述，开始构建你的第一个应用</p>
+              </div>
+            )}
+            {/* Sub-step progress */}
+            {progressState?.status === 'running' && (
+              <div className="text-[10px] text-blue-400 mt-1 flex items-center gap-1">
+                <Loader2 className="w-3 h-3 animate-spin" />
+                {progressState.stage === 'test_executor' ? '执行对话测试中...' : '运行中...'}
+              </div>
+            )}
           </div>
-        )}
-      </div>
 
       {/* ── Project Detail Panel ── */}
       {selectedProject && (
