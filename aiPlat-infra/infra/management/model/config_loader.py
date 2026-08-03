@@ -157,6 +157,7 @@ def _resolve_capabilities(model_name: str, provider: str) -> list:
     if provider in providers_with_reasoning:
         caps.append("reasoning")
     return caps
+def _load_adapter_models() -> List[ModelInfo]:
     """Discover models from adapters table (API keys configured via management UI)."""
     import json as _json
     import sqlite3
