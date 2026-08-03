@@ -80,6 +80,10 @@ class BuilderTeamService:
     async def list_teams(self) -> List[TeamConfig]:
         return list(self._teams.values())
 
+    def reload_teams(self) -> None:
+        """Reload team configs from disk. Called when YAML configs change (e.g., new stages added to default.yaml)."""
+        self._load_teams()
+
     async def get_team(self, team_id: str) -> Optional[TeamConfig]:
         return self._teams.get(team_id)
 

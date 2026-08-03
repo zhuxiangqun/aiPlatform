@@ -1625,7 +1625,7 @@ class BuilderProjectService:
         return {"status": "ok", "detail": "PRD 已更新"}
 
     async def rebuild_project(self, project_id: str) -> Dict[str, Any]:
-        """Re-run the pipeline with the existing confirmed PRD."""
+        """Re-run the pipeline with the existing confirmed PRD. Re-recommends team to pick up latest config changes."""
         self._reload_if_stale()
         proj = self._projects.get(project_id, {})
         if not proj:
@@ -1646,6 +1646,23 @@ class BuilderProjectService:
                     os.remove(fpath)
             except OSError:
                 pass  # noqa: cleanup-best-effort
+        # Re-sync team stages from default.yaml to pick up latest config (e.g., new test_executor stage)
+        try:
+            from core.harness.execution.team_planner import load_team_template, _enrich_stage_from_agent
+            tmpl = load_team_template("default")
+            if tmpl and tmpl.stages:
+                stages = []
+                for i, s in enumerate(tmpl.stages):
+                    stage = dict(s)
+                    stage.setdefault("id", f"canvas_node_{i+1}")
+                    stage.setdefault("order", i)
+                    stage = _enrich_stage_from_agent(stage)
+                    stages.append(stage)
+                proj["team_stages"] = stages
+                proj["team_id"] = "default"
+                self._save_projects()
+        except Exception as e:
+            logging.warning("rebuild: team re-sync failed (using existing): %s", e)
         # Re-run pipeline with existing PRD
         import logging as _log3
         _log3.getLogger("aiplat.builder").info("Rebuilding project %s", project_id)
