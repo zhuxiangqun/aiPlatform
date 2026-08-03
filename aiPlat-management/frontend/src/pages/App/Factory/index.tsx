@@ -354,6 +354,7 @@ const ProjectPanel: React.FC<{
         if (realPhase && realPhase !== 'idle') {
           setPhase(realPhase);
         }
+        setProgressState(state._progress || null);
         const outputs: Record<string, any> = {};
         const orderedKeys = project.team_stages?.map(s => (s as any).output_artifact).filter(Boolean) || [];
         const keys = orderedKeys.length > 0 ? orderedKeys : ['architecture', 'code', 'test_report'];
@@ -578,6 +579,13 @@ const ProjectPanel: React.FC<{
             {teamStages.length === 0 && (
               <div className="h-1.5 bg-gray-700 rounded-full overflow-hidden">
                 <div className="h-full bg-blue-500 rounded-full animate-pulse" style={{ width: '60%' }} />
+              </div>
+            )}
+            {/* Sub-step progress indicator */}
+            {progressState?.status === 'running' && (
+              <div className="text-[10px] text-blue-400 mt-1 flex items-center gap-1">
+                <Loader2 className="w-3 h-3 animate-spin" />
+                {progressState.stage === 'test_executor' ? '执行对话测试中...' : '运行中...'}
               </div>
             )}
           </div>
@@ -1058,16 +1066,9 @@ const FactoryPage: React.FC = () => {
           <div className="text-center py-12 text-gray-500">
             <p className="text-lg mb-2">还没有应用</p>
             <p className="text-sm">在上方输入需求描述，开始构建你的第一个应用</p>
-              </div>
-            )}
-            {/* Sub-step progress */}
-            {progressState?.status === 'running' && (
-              <div className="text-[10px] text-blue-400 mt-1 flex items-center gap-1">
-                <Loader2 className="w-3 h-3 animate-spin" />
-                {progressState.stage === 'test_executor' ? '执行对话测试中...' : '运行中...'}
-              </div>
-            )}
           </div>
+        )}
+        </div>
 
       {/* ── Project Detail Panel ── */}
       {selectedProject && (
