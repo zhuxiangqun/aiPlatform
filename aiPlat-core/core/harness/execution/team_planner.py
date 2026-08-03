@@ -180,11 +180,13 @@ def build_agent_catalog_markdown(agents: Optional[List[AgentCatalogEntry]] = Non
 
 
 def _enrich_stage_from_agent(stage: Dict[str, Any]) -> Dict[str, Any]:
-    """Fill agent attributes (name/type/phase/skills) from AGENT.md frontmatter.
+    """Auto-populate pipeline fields from AGENT.md frontmatter.
 
-    Only reads the agent_id already in the stage dict. Fields already present
-    (set by YAML or LLM) are preserved — only empty fields get auto-populated.
-    Returns the stage dict with defaults filled in.
+    AGENT.md is the single source of truth for agent configuration.
+    Fields already present in the stage (set by YAML or LLM) are preserved —
+    only empty/missing fields get auto-populated from AGENT.md.
+
+    This eliminates the need to duplicate agent config in every team YAML.
     """
     aid = stage.get("agent_id", "")
     if not aid:
@@ -193,14 +195,16 @@ def _enrich_stage_from_agent(stage: Dict[str, Any]) -> Dict[str, Any]:
     from core.api.facades.agent_facade import get_agent_frontmatter
     fm = get_agent_frontmatter(aid) or {}
 
+    # ── Display fields ──
     if not stage.get("agent_name"):
         stage["agent_name"] = str(fm.get("display_name") or fm.get("name") or aid)
     if not stage.get("agent_type"):
         stage["agent_type"] = str(fm.get("agent_type") or "react")
     if not stage.get("phase"):
         stage["phase"] = str(fm.get("phase") or fm.get("phase_description") or "")
+
+    # ── Model routing ──
     if not stage.get("skill_model_purpose"):
-        # Derive from agent phase or type: reasoning, code_gen, chat, skill_execution
         phase = stage.get("phase", "").lower()
         if "design" in phase or "architect" in phase or "review" in phase:
             stage["skill_model_purpose"] = "reasoning"
@@ -218,6 +222,31 @@ def _enrich_stage_from_agent(stage: Dict[str, Any]) -> Dict[str, Any]:
             stage["resolved_model"] = best_model_for_purpose(stage.get("skill_model_purpose", "chat"))
         except Exception:
             stage["resolved_model"] = "auto"
+
+    # ── Pipeline execution fields (from AGENT.md, not hardcoded in team YAML) ──
+    _pipe_fields = [
+        # (stage_key, fm_key, default, coerce_type)
+        ("skill_name",         "skill_name",         "",     str),
+        ("output_artifact",    "output_artifact",    "",     str),
+        ("required_skills",    "required_skills",    [],     lambda v: v if isinstance(v, list) else []),
+        ("execution_backend",  "execution_backend",  "llm",  str),
+        ("test_execution_mode","test_execution_mode","",      str),
+        ("generate_test_plan", "generate_test_plan",  False,  bool),
+        ("deploy_files_to_disk","deploy_files_to_disk",False, bool),
+        ("chain_skill_after",  "chain_skill_after",  "",     str),
+        ("depends_on",         "depends_on",         [],     lambda v: v if isinstance(v, list) else []),
+        ("hitl",               "hitl",               False,  bool),
+        ("hitl_phase",         "hitl_phase",         "",     str),
+        ("uses_file_output",   "uses_file_output",   False,  bool),
+    ]
+    for stage_key, fm_key, default, coerce in _pipe_fields:
+        if not stage.get(stage_key):
+            val = fm.get(fm_key, default)
+            if val != default or not stage.get(stage_key):
+                try:
+                    stage[stage_key] = coerce(val) if callable(coerce) else val
+                except Exception:
+                    stage[stage_key] = default
 
     return stage
 
