@@ -115,6 +115,29 @@ def _parse_team_stages(stages_raw: list) -> list:
     return stages
 
 
+async def _load_stages_from_template(team_id: str) -> List:
+    """Load team stages from YAML template (always up-to-date, not cached).
+
+    Priority: YAML template > team service cache.
+    Used by start_pipeline to ensure latest config changes (e.g., new stages) are picked up.
+    """
+    try:
+        from core.harness.execution.team_planner import load_team_template, _enrich_stage_from_agent
+        tmpl = load_team_template(team_id)
+        if tmpl and tmpl.stages:
+            stages = []
+            for i, s in enumerate(tmpl.stages):
+                stage = dict(s)
+                stage.setdefault("id", f"canvas_node_{i+1}")
+                stage.setdefault("order", i)
+                stage = _enrich_stage_from_agent(stage)
+                stages.append(PipelineStageConfig(**stage))
+            return stages
+    except Exception:
+        pass  # Fall through to team service cache
+    return []
+
+
 def _unwrap_json_reply(reply: str) -> str:
     """Extract human-readable text from agent JSON outputs.
     Handles: {"type":"done","answer":"..."} → "..."
@@ -1069,12 +1092,15 @@ class BuilderProjectService:
         team_id = proj.get("team_id", "")
         stages: List[PipelineStageConfig] = []
 
-        # Re-sync latest team stages (team might have been edited after project creation)
+        # Re-sync latest team stages — prefer YAML template (always up-to-date) over service cache
         if team_id:
-            team = await self._team_service.get_team(team_id)
-            if team and team.stages:
-                stages = [PipelineStageConfig(**s.model_dump()) if hasattr(s, 'model_dump') else PipelineStageConfig(**s) for s in team.stages]
+            stages = await self._load_stages_from_template(team_id)
+            if not stages:
+                team = await self._team_service.get_team(team_id)
+                if team and team.stages:
+                    stages = [PipelineStageConfig(**s.model_dump()) if hasattr(s, 'model_dump') else PipelineStageConfig(**s) for s in team.stages]
 
+            if stages:
                 # Inject model + hitl config from agent AGENT.md
                 for s in stages:
                     if (not s.model or not s.hitl_after_execute or not hasattr(s, '_auto_hitl_loaded')
