@@ -358,17 +358,18 @@ const ProjectPanel: React.FC<{
         const st = await projectApi.getState(project.project_id);
         const state = (st as any)?.state || {};
         const realPhase = state.phase as string;
-        // Never auto-enter executing UI on panel open — it confuses users
-        // who think clicking the card triggered execution.
-        // Only sync non-executing phases (done, failed, paused) for accuracy.
+        // Never auto-enter executing UI on panel open — it confuses users.
+        // But DO show approval/paused/done/failed states immediately.
         if (realPhase && realPhase !== 'idle' && realPhase !== 'executing') {
           setPhase(realPhase);
         }
-        // Check if pipeline is running — show subtle indicator instead
+        // Executing phase: show subtle indicator, user can click to enter
         if (realPhase === 'executing') {
           const runs = (st as any)?.runs || [];
           const hasActiveRun = runs.some((r: any) => r.phase === 'executing');
-          setHasRunningPipeline(hasActiveRun);
+          if (hasActiveRun) {
+            setHasRunningPipeline(true);
+          }
         }
         setProgressState(state._progress || null);
         const outputs: Record<string, any> = {};
@@ -778,33 +779,8 @@ const ProjectPanel: React.FC<{
               const preview = rw ? (typeof rw === 'string' ? rw.slice(0, 2000) : JSON.stringify(rw).slice(0, 2000)) : '';
               const qaParsed = (rw && rw.includes('"test_questions"')) ? tryParseJSON(rw, '"test_questions"') : null;
 
-              // Inline test results card — rendered at correct position in stage order
-              const tr = (val as any)?.test_results;
-              const hasTestResults = tr && (tr.passed != null || tr.failed != null || tr.errors != null);
-              const repairRounds = (val as any)?.repair_rounds || 0;
-              const p = tr?.passed || 0, f = tr?.failed || 0, e = tr?.errors || 0;
-              const total = p + f + e;
-              const rate = total > 0 ? p / total : 0;
-              const testColor = rate >= 0.8 ? 'text-green-400 bg-green-500/10 border-green-500/30' :
-                                rate > 0 ? 'text-amber-400 bg-amber-500/10 border-amber-500/30' :
-                                'text-red-400 bg-red-500/10 border-red-500/30';
-
               return (
                 <React.Fragment key={key}>
-                  {hasTestResults && (
-                    <div className={`rounded border p-2 text-xs ${testColor}`}>
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="font-semibold">🧪 测试结果</span>
-                        {repairRounds > 0 && <span className="text-[10px] px-1 rounded bg-blue-500/10 text-blue-400">🛠 自修复 ×{repairRounds}</span>}
-                        <span className="ml-auto font-bold">{(rate * 100).toFixed(0)}%</span>
-                      </div>
-                      <div className="flex gap-3">
-                        <span>✅ {p} 通过</span>
-                        <span>❌ {f} 失败</span>
-                        <span>⚠️ {e} 错误</span>
-                      </div>
-                    </div>
-                  )}
                   <details className="text-xs rounded border border-dark-border bg-dark-hover/30">
                   <summary className="p-2 cursor-pointer text-gray-300 font-medium flex items-center justify-between">
                     <span>{label} ({typeof rw === 'string' ? rw.length : 0} 字符{elapsed ? ` · ⏱ ${elapsed}s` : ''}{summary ? ' · ' + summary : ''})</span>
@@ -839,6 +815,31 @@ const ProjectPanel: React.FC<{
                 </React.Fragment>
               );
             })}
+            {/* Aggregate test results — shown at end, not inline per-stage */}
+            {(() => {
+              for (const [key, val] of Object.entries(stageOutputs)) {
+                const tr = (val as any)?.test_results;
+                if (tr && (tr.passed != null || tr.failed != null || tr.errors != null)) {
+                  const p = tr.passed || 0; const f = tr.failed || 0; const e = tr.errors || 0;
+                  const total = p + f + e; const rate = total > 0 ? p / total : 0;
+                  const testColor = rate >= 0.8 ? 'text-green-400 bg-green-500/10 border-green-500/30' : rate > 0 ? 'text-amber-400 bg-amber-500/10 border-amber-500/30' : 'text-red-400 bg-red-500/10 border-red-500/30';
+                  return (
+                    <div key="test-results" className={`rounded border p-2 text-xs ${testColor}`}>
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="font-semibold">🧪 测试结果</span>
+                        <span className="ml-auto font-bold">{(rate * 100).toFixed(0)}%</span>
+                      </div>
+                      <div className="flex gap-3">
+                        <span>✅ {p} 通过</span>
+                        <span>❌ {f} 失败</span>
+                        <span>⚠️ {e} 错误</span>
+                      </div>
+                    </div>
+                  );
+                }
+              }
+              return null;
+            })()}
           </div>
         )}
 
