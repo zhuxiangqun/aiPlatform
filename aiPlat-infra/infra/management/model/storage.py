@@ -13,7 +13,12 @@ from .schemas import ModelInfo, ModelSource, ModelType, ModelStatus, ModelConfig
 
 
 class ExternalModelStorage:
-    """外部模型 JSON 存储"""
+    """DEPRECATED: 外部模型 JSON 存储 — 不再使用。
+    
+    所有模型现在通过 SQLite adapters 表管理。
+    本地模型通过 local_scan (Ollama/LM Studio) 自动发现。
+    此 class 保留用于向后兼容，不再被 _load_all_models() 调用。
+    """
     
     def __init__(self, file_path: str = None):
         if file_path is None:

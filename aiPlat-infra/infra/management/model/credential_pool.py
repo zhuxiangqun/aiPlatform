@@ -4,16 +4,13 @@ CredentialPool — multi-API-key round-robin pool with cooldown.
 Architecture: aiPlat-infra (Layer 0) — infrastructure-level, no internal deps.
 Provides factory get_credential_pool() → next(provider) for core to consume.
 
-Keys are read from environment variables:
-  - Single key:  DEEPSEEK_API_KEY=sk-xxx
-  - Multi keys:  DEEPSEEK_KEYS=sk-aaa,sk-bbb,sk-ccc
+Keys are read from SQLite adapters table — single source of truth.
+Encrypted keys (api_key_enc) supported via AIPLAT_SECRET_KEY Fernet.
+No env var fallback.
 
 The pool uses round-robin with per-key cooldown to avoid "chain reaction"
 rate limits: when a key receives a 429, it's placed in cooldown and skipped
 in the next round, preventing a single rate-limited key from blocking all iterations.
-
-P0: Single-key mode (default). Multi-key requires DEEPSEEK_KEYS env var.
-P1+: Vault/AWS Secrets Manager integration.
 """
 
 from __future__ import annotations
@@ -59,27 +56,17 @@ class CredentialPool:
         if not self._keys:
             raise RuntimeError(
                 f"CredentialPool: no API keys found for provider '{provider}'. "
-                f"Set {provider.upper()}_API_KEY or {provider.upper()}_KEYS environment variable."
+                f"Register this model via Management UI → 模型管理, or insert into SQLite adapters table."
             )
 
     @staticmethod
     def _load_keys(provider: str) -> List[str]:
-        """Load keys: env var (primary) → SQLite adapters table (fallback).
+        """Load keys from SQLite adapters table — single source of truth.
 
-        Order: {PROVIDER}_KEYS → {PROVIDER}_API_KEY → adapters.api_key
+        No env var fallback. All model API keys are stored in the adapters table,
+        configured via Management UI. Encrypted keys (api_key_enc) supported
+        via AIPLAT_SECRET_KEY.
         """
-        env_multi = f"{provider.upper()}_KEYS"
-        env_single = f"{provider.upper()}_API_KEY"
-
-        multi = os.getenv(env_multi, "").strip()
-        if multi:
-            return [k.strip() for k in multi.split(",") if k.strip()]
-
-        single = os.getenv(env_single, "").strip()
-        if single:
-            return [single]
-
-        # Fallback: SQLite adapters table (Management UI registered)
         try:
             db_path = os.getenv("AIPLAT_EXECUTION_DB_PATH",
                                 os.path.expanduser("~/.aiplat/data/execution.db"))

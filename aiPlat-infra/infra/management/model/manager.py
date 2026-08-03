@@ -406,14 +406,7 @@ class ModelManager:
             self._models[model.id] = model
             seen_names.add(model.name)
         
-        # 2. 加载用户添加的外部模型（跳过同名模型——适配器发现优先）
-        external_models = self._storage.load()
-        for model in external_models:
-            if model.name not in seen_names:
-                self._models[model.id] = model
-                seen_names.add(model.name)
-        
-        # 3. 扫描本地 Ollama / LM Studio / vLLM 模型
+        # 2. Scan local Ollama / LM Studio / vLLM models
         try:
             # Use a separate thread to run the async scan synchronously,
             # avoiding "cannot run event loop while another is running" errors
