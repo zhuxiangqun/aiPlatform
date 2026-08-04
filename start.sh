@@ -65,6 +65,9 @@ export AIPLAT_CAPABILITY_INJECT_MODE="${AIPLAT_CAPABILITY_INJECT_MODE:-always}"
 export AIPLAT_GOVERNANCE_INJECT_MODE="${AIPLAT_GOVERNANCE_INJECT_MODE:-all}"
 # Governance cron: 0 = skip warmup at startup (start 5x faster). Set to 24 for hourly cron.
 export AIPLAT_GOVERNANCE_CRON_HOURS="${AIPLAT_GOVERNANCE_CRON_HOURS:-0}"
+# Docs sync: false = skip knowledge base sync at startup (avoids LLM calls blocking server).
+# Set to true only if you need auto-sync of docs/ to Wiki on every startup.
+export AIPLAT_DOCS_AUTO_SYNC="${AIPLAT_DOCS_AUTO_SYNC:-false}"
 
 # LLM 配置 — 由 infra ModelManager 统一管理。
 # 模型选择策略编辑: aiPlat-infra/config/infra/llm_profile.yaml

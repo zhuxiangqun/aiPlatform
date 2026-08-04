@@ -1361,6 +1361,15 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logging.debug(str(e), exc_info=True)
 
+    # ═══════════════════════════════════════════════════════════════
+    # Server is now ready to accept requests.
+    # All code below this line is deferred/background initialization
+    # that must NOT block request processing.
+    # ═══════════════════════════════════════════════════════════════
+    global _server_ready
+    _server_ready = True
+    logging.getLogger(__name__).info("Server ready — accepting requests")
+
     # ── Docs → Wiki auto-sync (v2.3) ──
     # B: 启动时自动导入 docs/ 到 Wiki（可通过 AIPLAT_DOCS_AUTO_SYNC=false 关闭）
     #    使用后台线程执行，避免阻塞 health check
@@ -1380,7 +1389,6 @@ async def lifespan(app: FastAPI):
         async def _bg_sync_docs_deferred():
             await asyncio.sleep(30)  # delay to keep startup responsive
             await _bg_sync_docs()
-        asyncio.create_task(_bg_sync_docs_deferred())
         asyncio.create_task(_bg_sync_docs_deferred())
     # C: 文件变更监视（可通过 AIPLAT_DOCS_WATCH=false 关闭）
     if os.environ.get("AIPLAT_DOCS_WATCH", "true").lower() in ("true", "1", "yes"):
@@ -1734,10 +1742,6 @@ async def lifespan(app: FastAPI):
         logging.getLogger("aiplat.quality").info("WikiQualityMonitor initialized")
     except Exception as e:
         logging.debug(str(e), exc_info=True)
-
-    global _server_ready
-    _server_ready = True
-    logging.getLogger(__name__).info("Server ready — accepting requests")
 
     yield
 
