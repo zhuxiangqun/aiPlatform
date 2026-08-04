@@ -3754,6 +3754,8 @@ class PipelineEngine:
             state["_sys_prompt"] = _sop_body
             state["_progress"] = {"stage": _skill_name, "status": "running", "started_at": _time.time(),
                                   "backend": "agent"}
+            # Intermediate flush so frontend can see progress during long-running stages
+            self._snapshot(state, f"stage_{stage.id}_progress")
             _prompt = _context or _desc
             _agent_result = await self._stage_runner.run(_prompt, state, stage=stage)
             state.pop("_sys_prompt", None)
