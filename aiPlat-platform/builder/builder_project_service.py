@@ -1118,7 +1118,7 @@ class BuilderProjectService:
 
         # Re-sync latest team stages — prefer YAML template (always up-to-date) over service cache
         if team_id:
-            stages = await self._load_stages_from_template(team_id)
+            stages = await _load_stages_from_template(team_id)
             if not stages:
                 team = await self._team_service.get_team(team_id)
                 if team and team.stages:
