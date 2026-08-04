@@ -1602,8 +1602,10 @@ def sys_knowledge_retrieve(
         samples = []
 
         if _l_os.path.exists(lat_path):
-
-            samples = _l_json.loads(open(lat_path).read())
+            try:
+                samples = _l_json.loads(open(lat_path).read())
+            except Exception:
+                samples = []  # noqa: corrupt-file-recovery
 
         samples.append({"ts": _t0, "total": round(_total, 4),
 

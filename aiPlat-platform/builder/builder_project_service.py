@@ -1758,35 +1758,31 @@ class BuilderProjectService:
             if not state or state.get("phase") == "failed":
                 state = persisted
             else:
-                # Merge artifact keys from persisted into event-based state
-                _artifact_keys = ("architecture", "code", "test_report", "agent_app", "frontend_pages")
-                for _key in _artifact_keys:
-                    if _key in persisted and isinstance(persisted[_key], dict) and persisted[_key].get("raw_output"):
-                        state[_key] = persisted[_key]
+                # Merge ALL runtime state keys from persisted into event-based state
+                # Internal keys (_progress etc) from persisted ALWAYS override event-based state
+                for _key, _val in persisted.items():
+                    if _key not in state or _key.startswith("_"):
+                        state[_key] = _val
         if not state:
             state = {}
-        # Merge in-memory _runs for live updates during pipeline execution
+        # Merge in-memory _runs for live updates during pipeline execution (include ALL keys)
         _live = self._runs.get(project_id, {})
         if _live:
             for _key, _val in _live.items():
-                if isinstance(_val, dict) and _val.get("raw_output"):
+                if _key not in state or _key.startswith("_"):
                     state[_key] = _val
             if _live.get("phase"):
                 state["phase"] = _live["phase"]
-        # Merge full pipeline output from _final_state.json if available
+        # Merge full pipeline output from _final_state.json if available (ALL keys)
         _out_dir = os.path.join(os.getenv("AIPLAT_HOME", os.path.expanduser("~/.aiplat")), "output", project_id)
         _final_path = os.path.join(_out_dir, "_final_state.json")
         if os.path.isfile(_final_path):
             try:
                 with open(_final_path, "r") as _fs:
                     _final = json.loads(_fs.read())
-                for _key in ("architecture", "code", "test_report", "agent_app", "frontend_pages"):
-                    if _key in _final and _final[_key]:
-                        state[_key] = _final[_key]
-                if "_has_tests" in _final:
-                    state["_has_tests"] = _final["_has_tests"]
-                if "_generated_agent" in _final:
-                    state["_generated_agent"] = _final["_generated_agent"]
+                for _key, _val in _final.items():
+                    if _key not in state:
+                        state[_key] = _val
             except Exception:
                 pass  # noqa: cleanup-best-effort
         proj = self._projects.get(project_id, {})

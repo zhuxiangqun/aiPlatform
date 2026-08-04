@@ -638,6 +638,8 @@ def create_selected_adapter(*, model_name: str) -> Any:
 
     """Create adapter for a model. Delegates to infra ModelManager for model info."""
 
+    _log = logging.getLogger("aiplat.model_injection")
+
     from core.harness.utils.llm_env import get_llm_api_key, get_llm_base_url
 
 
