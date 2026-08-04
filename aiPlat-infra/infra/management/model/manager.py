@@ -171,6 +171,9 @@ def _hard_filter(model, res: PlatformResources) -> tuple:
         return True, "ok (unknown size)"
     if model.size == 0:
         return True, "ok"  # API 模型
+    # Ollama / external-service models run in separate processes — size check irrelevant
+    if isinstance(getattr(model, 'provider', ''), str) and model.provider in ("ollama",):
+        return True, "ok"  # runs in separate Ollama process
 
     if model.size > res.ram_bytes:
         return False, (f"requires {model.size/1e9:.1f}GB RAM, "
@@ -819,7 +822,9 @@ class ModelManager:
             score = 0
 
             # Resource-aware scoring: hard-block models too large for available RAM
-            if available_ram_bytes > 0 and hasattr(m, 'size') and m.size:
+            # Skip for remote/external providers (Ollama runs in separate process, API models are remote)
+            _provider = getattr(m, 'provider', '')
+            if available_ram_bytes > 0 and hasattr(m, 'size') and m.size and _provider not in ("ollama", "openai", "deepseek", "anthropic", "openrouter"):
                 model_bytes = m.size
                 usage_ratio = model_bytes / available_ram_bytes
                 if usage_ratio > 1.0:

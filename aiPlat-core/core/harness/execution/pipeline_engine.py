@@ -3791,6 +3791,8 @@ class PipelineEngine:
                                   "backend": "agent", "current_step": _final_steps}
         else:
             # Direct LLM call (default, backward-compatible)
+            state["_progress"] = {"stage": _skill_name, "status": "running", "started_at": _time.time(),
+                                  "backend": "llm", "current_step": 0}
             _response = await sys_llm_generate(
                 None,
                 [
@@ -3801,6 +3803,9 @@ class PipelineEngine:
                 max_tokens=32000,
             )
             _result = getattr(_response, "content", "") or str(_response)
+            _elapsed = round(_time.time() - _t0, 2)
+            state["_progress"] = {"stage": _skill_name, "status": "completed", "elapsed_sec": _elapsed,
+                                  "backend": "llm", "current_step": 0}
         _result = _result.replace("```json", "").replace("```", "").strip()
 
         if not _result or len(_result) < 100:
