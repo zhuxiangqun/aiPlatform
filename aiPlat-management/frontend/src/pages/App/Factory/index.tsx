@@ -605,7 +605,9 @@ const ProjectPanel: React.FC<{
               <div className="text-[10px] text-blue-400 mt-1 flex items-center gap-1">
                 <Loader2 className="w-3 h-3 animate-spin" />
                 {progressState.stage === 'test_executor' ? (
-                  <>执行对话测试中{progressState.total_steps > 1 ? ` (${progressState.total_steps} 条)` : ''}... {Math.floor((Date.now()/1000 - (progressState.started_at || 0)) || 0)}s</>
+                  <>执行对话测试中{progressState.current_step > 0 ? ` (Step ${progressState.current_step})` : ''}... {Math.floor((Date.now()/1000 - (progressState.started_at || 0)) || 0)}s</>
+                ) : progressState.backend === 'agent' ? (
+                  <>{progressState.stage} 执行中{progressState.current_step > 0 ? ` (Step ${progressState.current_step})` : ''}... {Math.floor((Date.now()/1000 - (progressState.started_at || 0)) || 0)}s</>
                 ) : (
                   <>运行中... {Math.floor((Date.now()/1000 - (progressState.started_at || 0)) || 0)}s</>
                 )}

@@ -3753,16 +3753,42 @@ class PipelineEngine:
                 "Skill %s: running via StageRunner (execution_backend=agent)", _skill_name)
             state["_sys_prompt"] = _sop_body
             state["_progress"] = {"stage": _skill_name, "status": "running", "started_at": _time.time(),
-                                  "backend": "agent"}
-            # Intermediate flush so frontend can see progress during long-running stages
+                                  "backend": "agent", "current_step": 0}
             self._snapshot(state, f"stage_{stage.id}_progress")
             _prompt = _context or _desc
-            _agent_result = await self._stage_runner.run(_prompt, state, stage=stage)
+
+            # Background progress polling: snapshot every 5s for real-time frontend visibility
+            _poll_active = {"active": True}
+            async def _poll_progress():
+                _last_step = 0
+                while _poll_active["active"]:
+                    await asyncio.sleep(5)
+                    _cs = int(state.get("step_count", 0) or 0)
+                    if _cs and _cs != _last_step:
+                        _last_step = _cs
+                        state["_progress"]["current_step"] = _cs
+                        try:
+                            self._snapshot(state, f"stage_{stage.id}_progress")
+                        except Exception:
+                            pass
+            _poll_task = asyncio.create_task(_poll_progress())
+
+            try:
+                _agent_result = await self._stage_runner.run(_prompt, state, stage=stage)
+            finally:
+                _poll_active["active"] = False
+                try:
+                    await asyncio.wait_for(_poll_task, timeout=3)
+                except Exception:
+                    pass
+
             state.pop("_sys_prompt", None)
             _result = str(_agent_result or "")
             _result = _result.replace("```json", "").replace("```", "").strip()
             _elapsed = round(_time.time() - _t0, 2)
-            state["_progress"] = {"stage": _skill_name, "status": "completed", "elapsed_sec": _elapsed, "backend": "agent"}
+            _final_steps = int(state.get("step_count", 0) or 0)
+            state["_progress"] = {"stage": _skill_name, "status": "completed", "elapsed_sec": _elapsed,
+                                  "backend": "agent", "current_step": _final_steps}
         else:
             # Direct LLM call (default, backward-compatible)
             _response = await sys_llm_generate(
