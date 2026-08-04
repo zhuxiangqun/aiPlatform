@@ -1730,9 +1730,47 @@ class BuilderProjectService:
         })
         proj["updated_at"] = now
         self._save_projects()
+
+        # Feature Flag: USE_CORE_ENGINE=true → delegate to Core server (8002)
+        # Default false — runs pipeline in-process (legacy behavior).
+        _use_core = os.getenv("AIPLAT_USE_CORE_ENGINE", "false").lower() in ("true", "1", "yes")
+        if _use_core:
+            return await self._rebuild_via_core(project_id, proj)
+
         import asyncio as _bg_asyncio
         _bg_asyncio.create_task(self.start_pipeline(project_id))
         return {"status": "ok", "detail": "已触发重新构建"}
+
+    async def _get_state_via_core(self, project_id: str) -> Dict[str, Any]:
+        """Read pipeline state from Core server HTTP API."""
+        from builder.pipeline_orchestrator_client import PipelineOrchestratorClient
+        client = PipelineOrchestratorClient()
+        return await client.get_state(project_id)
+
+    async def _rebuild_via_core(self, project_id: str, proj: dict) -> Dict[str, Any]:
+        """Trigger pipeline execution via Core server HTTP API."""
+        from builder.pipeline_orchestrator_client import PipelineOrchestratorClient
+
+        stages = proj.get("team_stages", [])
+        config = {
+            "total_stages": len(stages),
+            "tokens_budget": int(os.getenv("AIPLAT_BUILDER_MAX_TOKENS", "100000")),
+            "output_dir": os.path.join(
+                os.getenv("AIPLAT_HOME", os.path.expanduser("~/.aiplat")),
+                "output", project_id),
+            "description": proj.get("description", ""),
+            "stages": [
+                s if isinstance(s, dict) else s.model_dump() if hasattr(s, "model_dump") else dict(s)
+                for s in stages
+            ],
+        }
+
+        client = PipelineOrchestratorClient()
+        result = await client.trigger_run(project_id, config)
+
+        if result.get("status") in ("accepted", "conflict"):
+            return {"status": "ok", "detail": "已触发重新构建"}
+        return {"status": "error", "detail": result.get("detail", "Core unavailable")}
 
     async def get_deploy_dir(self, project_id: str) -> Optional[str]:
         """Get deploy directory path for a project."""
@@ -1740,6 +1778,11 @@ class BuilderProjectService:
         return proj.get("deploy_dir") or None
 
     async def get_project_state(self, project_id: str) -> Dict[str, Any]:
+        # Feature Flag: delegate state read to Core server
+        _use_core = os.getenv("AIPLAT_USE_CORE_ENGINE", "false").lower() in ("true", "1", "yes")
+        if _use_core:
+            return await self._get_state_via_core(project_id)
+
         # Merge all pipeline_events' states for complete picture (single source of truth)
         import json
         from storage.sqlite import list_pipeline_events

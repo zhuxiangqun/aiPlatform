@@ -1370,6 +1370,24 @@ async def lifespan(app: FastAPI):
     _server_ready = True
     logging.getLogger(__name__).info("Server ready — accepting requests")
 
+    # ── Orphan pipeline recovery (background, non-blocking) ──
+    async def _recover_orphan_pipelines():
+        """Recover pipelines stuck in 'executing' phase after server restart."""
+        await asyncio.sleep(10)  # give infrastructure time to settle
+        try:
+            from core.harness.execution.pipeline_run_store import get_pipeline_run_store
+            store = get_pipeline_run_store()
+            orphans = store.list_orphan_runs()
+            for run_id in orphans:
+                store.mark_orphan_for_retry(run_id)  # mark pending to avoid dead state
+            if orphans:
+                logging.getLogger(__name__).warning(
+                    "Recovered %d orphan pipeline(s): %s", len(orphans), orphans)
+        except Exception:
+            logging.getLogger(__name__).debug(
+                "Orphan pipeline recovery skipped", exc_info=True)
+    asyncio.create_task(_recover_orphan_pipelines())
+
     # ── Docs → Wiki auto-sync (v2.3) ──
     # B: 启动时自动导入 docs/ 到 Wiki（可通过 AIPLAT_DOCS_AUTO_SYNC=false 关闭）
     #    使用后台线程执行，避免阻塞 health check
@@ -2377,6 +2395,13 @@ try:
     api_router.include_router(kanban_router)
 except Exception as e:
     logging.debug("Kanban router: %s", e)
+
+# Pipeline execution API (POST /run, GET /state, POST /cancel)
+try:
+    from core.api.routers.pipeline_execution import router as pipeline_exec_router
+    api_router.include_router(pipeline_exec_router)
+except Exception as e:
+    logging.debug("Pipeline execution router: %s", e)
 
 # FDE Toolkit (Field Deployment Engineer — unified entry point)
 # Routers are registered via apps.fde.__init__.py → router_registry.register()
