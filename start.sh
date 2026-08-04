@@ -63,6 +63,8 @@ export AIPLAT_CAPABILITY_INJECT_MODE="${AIPLAT_CAPABILITY_INJECT_MODE:-always}"
 #   on every LLM call. ~500 tokens overhead.
 # 'coding' = inject only when code_generation/code_review/refactor skills are active.
 export AIPLAT_GOVERNANCE_INJECT_MODE="${AIPLAT_GOVERNANCE_INJECT_MODE:-all}"
+# Governance cron: 0 = skip warmup at startup (start 5x faster). Set to 24 for hourly cron.
+export AIPLAT_GOVERNANCE_CRON_HOURS="${AIPLAT_GOVERNANCE_CRON_HOURS:-0}"
 
 # LLM 配置 — 由 infra ModelManager 统一管理。
 # 模型选择策略编辑: aiPlat-infra/config/infra/llm_profile.yaml
@@ -384,7 +386,7 @@ export AIPLAT_EMBEDDING_BACKEND="${AIPLAT_EMBEDDING_BACKEND:-hash}"
 export HF_HUB_OFFLINE="${HF_HUB_OFFLINE:-1}"
 
 cd "$PROJECT_ROOT/aiPlat-core/core"
-PYTHONPATH="$PROJECT_ROOT/aiPlat-core" nohup "$PY" -m uvicorn server:app --host 0.0.0.0 --port 8002 --workers 1 > "$AIPLAT_HOME/logs/core.log" 2>&1 &
+PYTHONPATH="$PROJECT_ROOT/aiPlat-core" nohup "$PY" -m uvicorn server:app --host 0.0.0.0 --port 8002 --workers 2 > "$AIPLAT_HOME/logs/core.log" 2>&1 &
 CORE_PID=$!
 echo "PID: $CORE_PID"
 
