@@ -60,12 +60,11 @@ async def pipeline_run(request: Request) -> Dict[str, Any]:
     )
 
     # Enqueue pipeline execution via background task
-    from api.deps import get_stage_runner  # noqa: deferred import
-
     async def _execute_pipeline():
         try:
             from core.harness.execution.pipeline_engine import PipelineEngine, PipelineConfig
             from core.schemas_builder import PipelineStageConfig
+            from core.harness.utils.model_injection import best_model_for_purpose
 
             stages_raw = config.get("stages", [])
             stages = []
@@ -78,7 +77,10 @@ async def pipeline_run(request: Request) -> Dict[str, Any]:
                 max_tokens_per_run=config.get("tokens_budget", 100000),
                 max_retry_attempts=3,
             )
-            engine = PipelineEngine(config=pipeline_config)
+            engine = PipelineEngine(
+                config=pipeline_config,
+                model=best_model_for_purpose("chat"),
+            )
             state: Dict[str, Any] = {
                 "session_id": run_id,
                 "phase": "executing",
