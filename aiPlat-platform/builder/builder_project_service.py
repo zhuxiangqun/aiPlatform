@@ -1752,6 +1752,7 @@ class BuilderProjectService:
         from builder.pipeline_orchestrator_client import PipelineOrchestratorClient
 
         stages = proj.get("team_stages", [])
+        prd_data = proj.get("confirmed_prd") or proj.get("description", "")
         config = {
             "total_stages": len(stages),
             "tokens_budget": int(os.getenv("AIPLAT_BUILDER_MAX_TOKENS", "100000")),
@@ -1759,6 +1760,7 @@ class BuilderProjectService:
                 os.getenv("AIPLAT_HOME", os.path.expanduser("~/.aiplat")),
                 "output", project_id),
             "description": proj.get("description", ""),
+            "prd_data": prd_data,
             "stages": [
                 s if isinstance(s, dict) else s.model_dump() if hasattr(s, "model_dump") else dict(s)
                 for s in stages

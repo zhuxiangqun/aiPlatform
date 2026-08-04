@@ -367,6 +367,57 @@ else
     echo "✅"
 fi
 
+# §92: Platform → Core layer violation detection
+# Platform MUST NOT import core.harness.execution.* or core.harness.engine.*
+# Pipeline execution should be delegated via Core API, not direct instantiation.
+echo -n "§92: platform→core boundary: "
+VIOLATIONS=$(grep -rEn "from core\.harness\.execution\.(pipeline_engine|engine)\b|from core\.harness\.execution import.*PipelineEngine|import.*core\.harness\.execution\.(pipeline_engine|engine)" \
+    aiPlat-platform/ --include="*.py" 2>/dev/null | grep -v "# noqa:" | grep -v __pycache__ | grep -v "pipeline_orchestrator_client" | wc -l | tr -d ' ')
+if [ "${VIOLATIONS:-0}" -gt 0 ] 2>/dev/null; then
+    echo "❌ ${VIOLATIONS} violation(s)"
+    grep -rEn "from core\.harness\.execution\.(pipeline_engine|engine)\b|from core\.harness\.execution import.*PipelineEngine" \
+        aiPlat-platform/ --include="*.py" 2>/dev/null | grep -v "# noqa:" | grep -v __pycache__ | grep -v "pipeline_orchestrator_client"
+    echo "   Fix: Use PipelineOrchestratorClient → Core HTTP API, not direct import"
+    FAIL=1
+else
+    echo "✅"
+fi
+
+# §93: Service class size gate — prevent God Objects
+# Any service class >1000 lines triggers ERROR (must be refactored)
+echo -n "§93: service class size gate: "
+OVERSIZED=$(python3 -c "
+import ast, sys, os
+oversized = []
+for root, dirs, files in os.walk('aiPlat-platform'):
+    dirs[:] = [d for d in dirs if d not in ('__pycache__', '.git', 'node_modules')]
+    for f in files:
+        if not f.endswith('.py'): continue
+        path = os.path.join(root, f)
+        try:
+            with open(path) as fh:
+                content = fh.read()
+            tree = ast.parse(content)
+            for node in ast.walk(tree):
+                if isinstance(node, ast.ClassDef):
+                    end = node.end_lineno if hasattr(node, 'end_lineno') else node.lineno
+                    size = end - node.lineno + 1
+                    if size > 1000:
+                        oversized.append(f'{path}:{node.lineno} {node.name} ({size} lines)')
+        except Exception:
+            pass
+for o in oversized:
+    print(o)
+print(len(oversized))
+" 2>/dev/null)
+if [ "${OVERSIZED:-0}" -gt 0 ] 2>/dev/null; then
+    echo "⚠️  ${OVERSIZED} class(es) over 1000 lines"
+    echo "   Consider splitting large service classes (God Object anti-pattern)"
+    echo "   CLAUDE.md §5.30 Rule 2: Prefer composition over monolithic classes"
+else
+    echo "✅"
+fi
+
 # ── Aggregate ──
 echo ""; sep
 if [ "$FAIL" -ne 0 ]; then

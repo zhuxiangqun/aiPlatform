@@ -68,6 +68,10 @@ export AIPLAT_GOVERNANCE_CRON_HOURS="${AIPLAT_GOVERNANCE_CRON_HOURS:-0}"
 # Docs sync: false = skip knowledge base sync at startup (avoids LLM calls blocking server).
 # Set to true only if you need auto-sync of docs/ to Wiki on every startup.
 export AIPLAT_DOCS_AUTO_SYNC="${AIPLAT_DOCS_AUTO_SYNC:-false}"
+# Pipeline execution: true = delegate pipeline to Core server (8002) via HTTP API.
+# Runs pipeline in Core's event loop where all LLM infrastructure is initialized.
+# Set to true to enable the new layered architecture (Phase 1).
+export AIPLAT_USE_CORE_ENGINE="${AIPLAT_USE_CORE_ENGINE:-false}"
 
 # LLM 配置 — 由 infra ModelManager 统一管理。
 # 模型选择策略编辑: aiPlat-infra/config/infra/llm_profile.yaml
@@ -449,7 +453,7 @@ export AIPLAT_VIDEO_WHISPER_MODEL="${AIPLAT_VIDEO_WHISPER_MODEL:-small}"
 # export AIPLAT_QUEUE_BACKEND=redis           # Redis message queue (default: thread)
 # export AIPLAT_REDIS_URL=redis://localhost:6379/0
 # export AIPLAT_CHROMA_PATH=~/.aiplat/data/chroma  # Chroma persistence path
-PYTHONPATH="$PROJECT_ROOT/aiPlat-platform" nohup "$PY" -m uvicorn api.rest.routes:app --host 0.0.0.0 --port 8003 > "$AIPLAT_HOME/logs/platform.log" 2>&1 &
+PYTHONPATH="$PROJECT_ROOT/aiPlat-platform:$PROJECT_ROOT/aiPlat-core:$PROJECT_ROOT/aiPlat-infra" nohup "$PY" -m uvicorn api.rest.routes:app --host 0.0.0.0 --port 8003 > "$AIPLAT_HOME/logs/platform.log" 2>&1 &
 PLATFORM_PID=$!
 echo "PID: $PLATFORM_PID"
 

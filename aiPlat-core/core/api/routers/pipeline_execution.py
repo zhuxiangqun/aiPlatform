@@ -22,6 +22,56 @@ router = APIRouter(prefix="/pipeline", tags=["pipeline"])
 _log = logging.getLogger("aiplat.pipeline.api")
 
 
+def _make_store_callback(run_id: str, store):
+    """Create a persist_callback that writes progress to PipelineRunStore."""
+
+    def _cb(state: dict):
+        try:
+            phase = state.get("phase", "executing")
+            stage_idx = state.get("_current_stage_idx", 0)
+            progress = state.get("_progress")
+
+            store.update_run_progress(
+                run_id,
+                current_stage_idx=stage_idx,
+                pass_rate=state.get("pass_rate", 0.0),
+            )
+
+            # Write per-stage progress + artifacts
+            stages = state.get("team_stages", state.get("_stages", []))
+            if isinstance(stages, list):
+                for i, s in enumerate(stages):
+                    if isinstance(s, dict):
+                        sid = s.get("id", f"stage_{i}")
+                        oa = s.get("output_artifact", "")
+                        artifact = state.get(oa) if oa else None
+                        store.upsert_stage(
+                            run_id,
+                            sid,
+                            stage_idx=i if i != stage_idx else stage_idx,
+                            agent_id=s.get("agent_id", ""),
+                            skill_name=s.get("skill_name", ""),
+                            status="completed" if artifact else ("running" if i == stage_idx else "pending"),
+                            progress=progress if i == stage_idx else None,
+                            artifact_key=oa,
+                            artifact_output=str(artifact.get("raw_output", ""))[:50000] if isinstance(artifact, dict) else "",
+                            elapsed_sec=artifact.get("elapsed_sec", 0.0) if isinstance(artifact, dict) else 0.0,
+                        )
+
+            if progress and isinstance(progress, dict):
+                store.upsert_stage(
+                    run_id, f"stage_{stage_idx}",
+                    stage_idx=stage_idx,
+                    status=progress.get("status", "running"),
+                    progress=progress,
+                )
+
+        except Exception:
+            _log.debug("persist callback failed", exc_info=True)
+
+    return _cb
+
+
 @router.post("/run")
 async def pipeline_run(request: Request) -> Dict[str, Any]:
     """Trigger a pipeline run. Returns 202 with run_id immediately.
@@ -51,22 +101,35 @@ async def pipeline_run(request: Request) -> Dict[str, Any]:
 
     run_id = f"run_{uuid.uuid4().hex[:12]}"
     config = body.get("config", {})
+    stages_raw = config.get("stages", [])
 
     store.create_run(
         run_id=run_id,
         project_id=project_id,
-        total_stages=config.get("total_stages", 0),
+        total_stages=len(stages_raw),
         tokens_budget=config.get("tokens_budget", 0),
     )
 
+    # Pre-create stage records
+    for i, s in enumerate(stages_raw[:]):
+        if isinstance(s, dict):
+            store.upsert_stage(
+                run_id, s.get("id", f"stage_{i}"),
+                stage_idx=i,
+                agent_id=s.get("agent_id", ""),
+                skill_name=s.get("skill_name", ""),
+                status="pending",
+            )
+
     # Enqueue pipeline execution via background task
+    _persist = _make_store_callback(run_id, store)
+
     async def _execute_pipeline():
         try:
             from core.harness.execution.pipeline_engine import PipelineEngine, PipelineConfig
             from core.schemas_builder import PipelineStageConfig
             from core.harness.utils.model_injection import best_model_for_purpose
 
-            stages_raw = config.get("stages", [])
             stages = []
             for s in stages_raw:
                 if isinstance(s, dict):
@@ -80,6 +143,7 @@ async def pipeline_run(request: Request) -> Dict[str, Any]:
             engine = PipelineEngine(
                 config=pipeline_config,
                 model=best_model_for_purpose("chat"),
+                persist_callback=_persist,
             )
             state: Dict[str, Any] = {
                 "session_id": run_id,
@@ -95,13 +159,11 @@ async def pipeline_run(request: Request) -> Dict[str, Any]:
                 "context": {},
             }
 
-            # Run pipeline — write progress via PipelineRunStore
             result = await engine._run_stages_from(0, state)
 
             # Save final state
             phase = result.get("phase", "done")
-            error = result.get("error", "")
-            store.update_run_phase(run_id, phase, error=str(error)[:500])
+            store.update_run_phase(run_id, phase, str(result.get("error", ""))[:500])
             store.update_run_progress(
                 run_id,
                 current_stage_idx=result.get("_current_stage_idx", 0),
