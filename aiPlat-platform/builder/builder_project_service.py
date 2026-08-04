@@ -1476,10 +1476,13 @@ class BuilderProjectService:
 
         self._runs[project_id] = state
         await self._save_state(project_id, state)
-        # Run remaining pipeline from next stage in background thread
+        # Run remaining pipeline from next stage (same event loop, via create_task)
         if state.get("phase") == "executing":
             _idx = state.get("_current_stage_idx", 0) + 1
-            self._start_bg_stages(project_id, _idx, dict(state))
+            _ses = self._rebuild_session(project_id)
+            if _ses and _idx < len(_ses.get_stages()):
+                import asyncio as _bg_asyncio
+                _bg_asyncio.create_task(self._bg_run_stages(project_id, _ses, dict(state), _idx))
         return {"project_id": project_id, "phase": state.get("phase", "executing")}
 
     def _start_bg_stages(self, project_id: str, start_idx: int, state: dict):
@@ -1727,7 +1730,8 @@ class BuilderProjectService:
         })
         proj["updated_at"] = now
         self._save_projects()
-        self.start_pipeline_background(project_id)
+        import asyncio as _bg_asyncio
+        _bg_asyncio.create_task(self.start_pipeline(project_id))
         return {"status": "ok", "detail": "已触发重新构建"}
 
     async def get_deploy_dir(self, project_id: str) -> Optional[str]:
