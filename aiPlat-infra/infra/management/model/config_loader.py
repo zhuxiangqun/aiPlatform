@@ -99,64 +99,6 @@ def _detect_system_capability_models() -> List[ModelInfo]:
     return models
 
 
-def _infer_model_type(name: str, caps: list, provider: str) -> 'ModelType':
-    """Infer model type from capabilities and name patterns."""
-    import re
-    name_lower = name.lower()
-    if "embed" in name_lower or "embedding" in name_lower or "mxbai" in name_lower:
-        return ModelType.EMBEDDING
-    if "ocr" in name_lower or "tesseract" in name_lower:
-        return ModelType("ocr")
-    if "embedding" in caps or any(c for c in caps if "embed" in c):
-        return ModelType.EMBEDDING
-    return ModelType.CHAT
-
-
-def _resolve_capabilities(model_name: str, provider: str) -> list:
-    """Read capabilities from llm_profile.yaml model_capabilities, with sensible fallback.
-
-    model_capabilities is the single source of truth for what each model can do.
-    Falls back to provider-based defaults only if YAML has no entry for this model.
-    """
-    try:
-        from pathlib import Path
-        import yaml as _yaml
-        cfg_path = Path(__file__).resolve().parent.parent.parent.parent / "config" / "infra" / "llm_profile.yaml"
-        if not cfg_path.exists():
-            cfg_path = Path(os.getenv("AIPLAT_LLM_CONFIG_PATH", str(cfg_path)))
-        if cfg_path.exists():
-            with open(cfg_path) as f:
-                cfg = _yaml.safe_load(f) or {}
-            caps_data = cfg.get("model_capabilities", {}).get(model_name, {})
-            if caps_data:
-                caps = []
-                # Use strength_areas from YAML as capabilities
-                areas = caps_data.get("strength_areas", [])
-                if areas:
-                    caps.extend(areas)
-                # Infer type from strength_areas
-                if not areas or all(a in ["chat", "fact_lookup", "long_form_summary", "multi_doc_synthesis",
-                                           "instruction_following", "evaluation"] for a in areas):
-                    caps.insert(0, "chat")
-                if caps_data.get("reasoning_quality", 0) >= 3:
-                    caps.append("reasoning")
-                # Remove duplicates while preserving order
-                seen = set()
-                unique = []
-                for c in caps:
-                    if c not in seen:
-                        seen.add(c)
-                        unique.append(c)
-                if unique:
-                    return unique
-    except Exception:
-        pass
-    # Fallback: provider-based defaults
-    providers_with_reasoning = {"deepseek", "openai", "ollama"}
-    caps = ["chat"]
-    if provider in providers_with_reasoning:
-        caps.append("reasoning")
-    return caps
 def _load_adapter_models() -> List[ModelInfo]:
     """Discover models from adapters table (API keys configured via management UI)."""
     import json as _json
@@ -170,7 +112,8 @@ def _load_adapter_models() -> List[ModelInfo]:
         conn.row_factory = sqlite3.Row
         try:
             rows = conn.execute(
-                "SELECT adapter_id, name, provider, api_base_url, models_json "
+                "SELECT adapter_id, name, provider, api_base_url, models_json, "
+                "capabilities_json, model_type "
                 "FROM adapters WHERE status='active' "
                 "AND ((api_key IS NOT NULL AND api_key != '') OR (api_key_enc IS NOT NULL AND api_key_enc != '')) "
                 "ORDER BY updated_at DESC"
@@ -206,10 +149,19 @@ def _load_adapter_models() -> List[ModelInfo]:
                     if not name or name in seen_names or "," in name:
                         continue
                     seen_names.add(name)
-                    # Capabilities from model_capabilities.yaml (single source of truth)
-                    caps = _resolve_capabilities(name, provider)
-                    # Infer type from capabilities and model name
-                    _mtype = _infer_model_type(name, caps, provider)
+                    # Capabilities & type from SQLite adapters table (single source of truth)
+                    caps_json = d.get("capabilities_json") or "[]"
+                    try:
+                        caps = _json.loads(caps_json) if isinstance(caps_json, str) else (caps_json or [])
+                    except Exception:
+                        caps = ["chat"]
+                    if not caps:
+                        caps = ["chat"]
+                    _mtype = d.get("model_type") or "chat"
+                    try:
+                        _mtype = ModelType(_mtype)
+                    except Exception:
+                        _mtype = ModelType.CHAT
                     safe_id = f"adapter:{adapter_id}:{name}"
                     models.append(ModelInfo(
                         id=safe_id, name=name, provider=provider,

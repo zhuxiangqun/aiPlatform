@@ -92,8 +92,10 @@ default_scoring_weights:
   cost: -1.0
   api_credential: 3.0
 
-# ── Model capability profiles (P2: structured registration) ──
-# Used by ModelManager.select(purpose, complexity, input_tokens) for intelligent routing.
+# ── Model capability profiles (DEPRECATED: migrated to SQLite adapters table) ──
+# Model capabilities are now stored in adapters.capabilities_json and adapters.model_type.
+# The entries below serve as reference defaults for new model registration only.
+# Runtime capability queries go to SQLite, not YAML.
 model_capabilities:
   qwen2.5:3b:
     context_window: 32768
