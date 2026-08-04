@@ -3752,11 +3752,15 @@ class PipelineEngine:
             _log.getLogger("pipeline_engine").warning(
                 "Skill %s: running via StageRunner (execution_backend=agent)", _skill_name)
             state["_sys_prompt"] = _sop_body
+            state["_progress"] = {"stage": _skill_name, "status": "running", "started_at": _time.time(),
+                                  "backend": "agent"}
             _prompt = _context or _desc
             _agent_result = await self._stage_runner.run(_prompt, state, stage=stage)
             state.pop("_sys_prompt", None)
             _result = str(_agent_result or "")
             _result = _result.replace("```json", "").replace("```", "").strip()
+            _elapsed = round(_time.time() - _t0, 2)
+            state["_progress"] = {"stage": _skill_name, "status": "completed", "elapsed_sec": _elapsed, "backend": "agent"}
         else:
             # Direct LLM call (default, backward-compatible)
             _response = await sys_llm_generate(
