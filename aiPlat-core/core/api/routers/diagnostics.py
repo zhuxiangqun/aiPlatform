@@ -2511,12 +2511,25 @@ async def get_drift_status(collection: str = "", refresh: bool = False):
     if not refresh and _drift_cache["data"] and _time.time() - _drift_cache["ts"] < 300:
         return _drift_cache["data"]
 
-    monitor = StalenessMonitor()
-    if collection:
-        report = monitor.scan_collection(collection)
-        reports = [report]
-    else:
-        reports = monitor.scan_all_collections()
+    try:
+        monitor = StalenessMonitor()
+        if collection:
+            reports = [monitor.scan_collection(collection)]
+        else:
+            reports = monitor.scan_all_collections() or []
+    except Exception as e:
+        import logging
+        logging.getLogger("diagnostics").warning("Drift scan failed: %s", str(e)[:200])
+        return {
+            "status": "unknown",
+            "drift_ratio": 0,
+            "total_scanned": 0,
+            "total_stale": 0,
+            "collections": {},
+            "stale_pages": [],
+            "suggested_actions": [],
+            "error": str(e)[:500],
+        }
 
     stale_pages = []
     total_stale = 0

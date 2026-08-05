@@ -53,7 +53,7 @@ export default function ControlProfilePanel() {
 
   const fetchData = async () => {
     try {
-      const resp = await apiClient.get<any>('/diagnostics/profile/status');
+      const resp = await apiClient.get<any>('/core/diagnostics/profile/status');
       setData(resp.data);
       setError('');
     } catch (e: any) {
@@ -68,7 +68,7 @@ export default function ControlProfilePanel() {
   const handleSwitch = async (name: string) => {
     setSwitching(name);
     try {
-      await apiClient.post<any>('/diagnostics/profile/switch', { name });
+      await apiClient.post<any>('/core/diagnostics/profile/switch', { name });
       fetchData();
     } catch (e: any) {
       console.error('Profile switch failed:', e);
@@ -80,7 +80,7 @@ export default function ControlProfilePanel() {
   const handleReset = async () => {
     setSwitching('reset');
     try {
-      await apiClient.post<any>('/diagnostics/profile/switch', { name: 'reset' });
+      await apiClient.post<any>('/core/diagnostics/profile/switch', { name: 'reset' });
       fetchData();
     } catch (e: any) {
       console.error('Reset failed:', e);
