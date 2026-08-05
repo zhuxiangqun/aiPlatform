@@ -536,7 +536,9 @@ const ProjectPanel: React.FC<{
                   try {
                     const r = await projectApi.getHealthReport(project.project_id);
                     setHealthReport(r as any);
-                  } catch { /* ignore */ }
+                  } catch (e) {
+                    toastGateError(e, '健康报告加载失败');
+                  }
                   setLoadingHealth(false);
                 }}
               >
@@ -1082,18 +1084,11 @@ const FactoryPage: React.FC = () => {
                     <span className="text-[10px] text-green-400 flex items-center gap-1">
                       <CheckCircle className="w-3 h-3" />通过率 {(passRate * 100).toFixed(0)}%
                     </span>
-                    <div className="ml-auto flex gap-1">
-                      <button onClick={async (e) => { e.stopPropagation();
-                        try { const r = await projectApi.deployToApp(p.project_id); setSelectedApp((r as any)?.app_url || ''); } catch {} }}
-                        className="text-[10px] px-2 py-1 rounded bg-green-500/20 text-green-400 hover:bg-green-500/30 transition-colors flex items-center gap-1">
-                        <ExternalLink className="w-3 h-3" />预览
-                      </button>
-                      <button onClick={async (e) => { e.stopPropagation();
-                        try { await projectApi.rebuild(p.project_id); toast.success('重新构建已触发'); loadAll(); } catch (er) { toastGateError(er, '重建失败'); } }}
-                        className="text-[10px] px-2 py-1 rounded bg-dark-hover text-gray-400 hover:text-gray-300 transition-colors flex items-center gap-1">
-                        <RefreshCw className="w-3 h-3" />重建
-                      </button>
-                    </div>
+                    <button onClick={async (e) => { e.stopPropagation();
+                      try { const r = await projectApi.deployToApp(p.project_id); setSelectedApp((r as any)?.app_url || ''); } catch {} }}
+                      className="ml-auto text-[10px] px-2 py-1 rounded bg-green-500/20 text-green-400 hover:bg-green-500/30 transition-colors flex items-center gap-1">
+                      <ExternalLink className="w-3 h-3" />预览
+                    </button>
                   </div>
                 )}
                 {status.phase === 'failed' && (
