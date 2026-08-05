@@ -221,6 +221,39 @@ def scan_configurable_capabilities() -> Dict[str, List[Dict[str, Any]]]:
                     }
             break
 
+    # Extract inline comments from source for field descriptions
+    source_text = schema_path.read_text()
+    source_lines = source_text.split('\n')
+    
+    # Build line → field_name mapping from AST
+    line_to_field = {}
+    for node in ast.walk(tree):
+        if isinstance(node, ast.ClassDef) and node.name == "PipelineStageConfig":
+            for item in node.body:
+                if isinstance(item, ast.AnnAssign) and isinstance(item.target, ast.Name):
+                    line_to_field[item.lineno] = item.target.id
+            break
+    
+    for line_no, name in line_to_field.items():
+        if name not in fields:
+            continue
+        comment = ""
+        if line_no <= len(source_lines):
+            line_text = source_lines[line_no - 1]
+            # Inline comment
+            if '#' in line_text:
+                comment = line_text.split('#', 1)[1].strip().strip(' "')
+            # Next 1-2 lines triple-quoted docstring
+            if not comment:
+                for offset in range(1, 3):  # check next 2 lines
+                    if line_no - 1 + offset < len(source_lines):
+                        next_line = source_lines[line_no - 1 + offset].strip()
+                        if next_line.startswith('"""'):
+                            comment = next_line.strip('"').strip()
+                            break
+            if comment:
+                fields[name]["description"] = comment
+
     # Check which fields are consumed by pipeline_engine
     consumed = []
     orphan = []
@@ -231,6 +264,7 @@ def scan_configurable_capabilities() -> Dict[str, List[Dict[str, Any]]]:
         entry = {
             "field": name,
             "schema_default": info["default"],
+            "description": info.get("description", ""),
             "consumed_at": refs,
             "engine_consumed": len(refs) > 0,
         }
@@ -299,6 +333,8 @@ def output_yaml(auto: list, configurable: dict, file=None) -> None:
     for c in cc:
         print(f"    - id: {c['field']}", file=out)
         print(f"      field: PipelineStageConfig.{c['field']}", file=out)
+        if c.get("description"):
+            print(f"      description: \"{c['description']}\"", file=out)
         print(f"      schema_default: {c['schema_default']}", file=out)
         print(f"      consumed_at:", file=out)
         for r in c["consumed_at"]:

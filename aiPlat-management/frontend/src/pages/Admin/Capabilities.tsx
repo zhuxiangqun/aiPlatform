@@ -146,7 +146,7 @@ const CapabilitiesPage: React.FC = () => {
         <div>
           <h1 className="text-2xl font-bold">核心能力管理</h1>
           <p className="text-sm text-gray-500 mt-1">
-            审核: {totalReviewed}/{totalItems} · 
+            扫描 AIPLAT_CAPABILITIES.md 中声明的能力在代码中是否真实存在。审核: {totalReviewed}/{totalItems} · 
             <button className="ml-2 text-blue-600 hover:underline" onClick={() => localStorage.removeItem(REVIEW_STORAGE_KEY)}>重置审核状态</button>
           </p>
         </div>
@@ -206,13 +206,14 @@ const CapabilitiesPage: React.FC = () => {
                   {activeTab === "auto" && (
                     <>
                       <th className="text-left p-3 font-semibold text-gray-700">能力 ID</th>
-                      <th className="text-left p-3 font-semibold text-gray-700 w-20">状态</th>
+                      <th className="text-left p-3 font-semibold text-gray-700">代码存在</th>
                       <th className="text-left p-3 font-semibold text-gray-700">代码位置</th>
                     </>
                   )}
                   {(activeTab === "consumed" || activeTab === "orphan") && (
                     <>
                       <th className="text-left p-3 font-semibold text-gray-700">Schema 字段</th>
+                      <th className="text-left p-3 font-semibold text-gray-700">说明</th>
                       <th className="text-left p-3 font-semibold text-gray-700 w-24">引擎消费</th>
                       <th className="text-left p-3 font-semibold text-gray-700">默认值</th>
                     </>
@@ -230,8 +231,8 @@ const CapabilitiesPage: React.FC = () => {
                     <td className="p-3 font-mono text-xs">{item.id}</td>
                     <td className="p-3">
                       {item.status === "active"
-                        ? <CheckCircle className="w-4 h-4 text-green-600" title="Active — code reference found" />
-                        : <AlertTriangle className="w-4 h-4 text-red-600" title="Missing — no code found" />}
+                        ? <span className="inline-flex items-center text-xs text-green-700"><CheckCircle className="w-3 h-3 mr-1" /> 已找到</span>
+                        : <span className="inline-flex items-center text-xs text-red-700"><AlertTriangle className="w-3 h-3 mr-1" /> 未找到</span>}
                     </td>
                     <td className="p-3 text-xs text-gray-500">
                       {(item.found_at || item.paths || [])?.slice(0, 2).map((p: any, i: number) => (
@@ -258,6 +259,9 @@ const CapabilitiesPage: React.FC = () => {
                       <input type="checkbox" checked={!!item.reviewed} onChange={e => markReviewed(item.field || "", e.target.checked)} />
                     </td>
                     <td className="p-3 font-mono text-xs">{item.field || "-"}</td>
+                    <td className="p-3 text-xs text-gray-500 max-w-[200px] truncate" title={(item as any).description || ""}>
+                      {(item as any).description || "-"}
+                    </td>
                     <td className="p-3">
                       {item.engine_consumed
                         ? <span className="text-green-600 text-xs">✓ {item.consumed_at?.length || 0} refs</span>
