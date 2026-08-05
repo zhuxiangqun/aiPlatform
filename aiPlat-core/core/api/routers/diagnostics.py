@@ -1892,14 +1892,47 @@ async def get_observability_stats():
     try:
         from core.harness.utils.model_injection import get_route_metrics
         metrics = get_route_metrics()
-        metrics.setdefault("total_calls", 0)
-        metrics.setdefault("fallback_count", 0)
+        total = metrics.get("total_calls", 0)
+        fallback = metrics.get("fallback_count", 0)
+        recent = metrics.get("recent_logs", []) or []
+        
+        # Build throughput timeline from recent logs
+        throughput = []
+        error_timeline = []
+        model_usage_map = {}
+        for log in recent[-100:]:
+            ts = log.get("ts", 0)
+            throughput.append({"ts": ts, "count": 1})
+            if not log.get("success"):
+                error_timeline.append({"ts": ts, "total": 1})
+            model = log.get("model", "unknown")
+            if model not in model_usage_map:
+                model_usage_map[model] = {"model": model, "calls": 0, "avg_latency_ms": 0}
+            model_usage_map[model]["calls"] += 1
+        
         return {
-            "status": "ok",
-            "metrics": metrics,
+            "llm_stats": {
+                "total_calls": total,
+                "success_rate": round(1.0 - fallback / max(1, total), 2),
+                "avg_latency_ms": 0,
+                "max_latency_ms": 0,
+                "total_input_tokens": 0,
+                "total_output_tokens": 0,
+                "total_cost": 0,
+            },
+            "syscall_by_kind": {},
+            "active_runs": 0,
+            "throughput": throughput,
+            "error_timeline": error_timeline,
+            "model_usage": list(model_usage_map.values()),
+            "top_errors": [],
         }
     except Exception as e:
-        return {"status": "error", "error": str(e)[:200], "metrics": {}}
+        return {
+            "llm_stats": {"total_calls":0,"success_rate":0,"avg_latency_ms":0,"max_latency_ms":0,"total_input_tokens":0,"total_output_tokens":0,"total_cost":0},
+            "syscall_by_kind": {}, "active_runs": 0, "throughput": [], "error_timeline": [],
+            "model_usage": [], "top_errors": [], "error": str(e)[:200],
+        }
 
 
 @router.put("/diagnostics/observability/alerts", response_model=Dict[str, Any], include_in_schema=False)
