@@ -32,7 +32,6 @@ const CapabilitiesPage: React.FC = () => {
       setCfgOrphan(prev => prev.map(c => ({ ...c, reviewed: true })));
     }
   }, [changes.total_changes, autoList.length, cfgConsumed.length]);
-  const [showOnlyChanges, setShowOnlyChanges] = useState(true);
 
   // Load persisted review state from localStorage
   const loadReviewState = () => {
@@ -217,6 +216,7 @@ const CapabilitiesPage: React.FC = () => {
         <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
           AUTO: {totalAuto}
         </span>
+      </div>
 
       <div className="flex gap-2 mb-4 border-b">
         {(["auto", "consumed", ...(totalCfgBad > 0 ? ["orphan"] : [])] as const).map(tab => (
