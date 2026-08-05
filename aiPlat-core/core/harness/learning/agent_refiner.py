@@ -73,8 +73,13 @@ class AgentRefiner:
                     "failed_tools": dict(list(diag.failed_tools.items())[:5]),
                 }
 
-        logger.info("AgentRefiner: %d agents analyzed, %d refined",
-                     len(agents), len(results))
+        # Also generate prompt improvement suggestions from model health data
+        prompt_results = self._refine_prompts_from_model_health()
+        if prompt_results.get("suggestions"):
+            results["_prompt_improvements"] = prompt_results
+
+        logger.info("AgentRefiner: %d agents analyzed, %d refined, %d prompt suggestions",
+                      len(agents), len(results), prompt_results.get("count", 0))
         return {"refined": len(results), "agents": results}
 
     def _scan_agents(self) -> List[str]:
@@ -202,6 +207,64 @@ class AgentRefiner:
 
         return suggestions
 
+    def _refine_prompts_from_model_health(self) -> Dict[str, Any]:
+        """Generate prompt improvement suggestions from ModelHealthStore data.
+
+        Models with high failure rate and sufficient call history are
+        analyzed. Suggestions go into refinement_candidates for
+        voting-based adoption, same path as agent refinements.
+        """
+        try:
+            from core.harness.utils.model_health_store import get_model_health_store
+            store = get_model_health_store()
+            all_health = store.list_health_scores()
+        except Exception as e:
+            logger.debug("Model health read failed: %s", e)
+            return {"count": 0, "suggestions": 0}
+
+        suggestions = []
+        for model_name, health in all_health.items():
+            calls = health.get("call_count", 0)
+            if calls < 10:  # insufficient data for reliable analysis
+                continue
+
+            failure_rate = health.get("failure_count", 0) / calls
+            avg_latency = health.get("avg_latency_ms", 1000.0)
+            biz_score = health.get("business_score", 0.5)
+
+            # Generate suggestion based on failure patterns
+            if failure_rate > 0.3:
+                if avg_latency > 5000:
+                    msg = (
+                        f"Prompt optimization for {model_name}: "
+                        f"High failure rate ({failure_rate:.0%}) with extreme latency "
+                        f"({avg_latency:.0f}ms). Consider simplifying output format "
+                        f"requirements or adding timeout handling instructions."
+                    )
+                elif biz_score < 0.4:
+                    msg = (
+                        f"Prompt optimization for {model_name}: "
+                        f"High failure rate ({failure_rate:.0%}) and low business pass rate "
+                        f"({biz_score:.0%}). Review prompt for output quality — "
+                        f"check that expected output schema is clearly specified."
+                    )
+                else:
+                    msg = (
+                        f"Prompt optimization for {model_name}: "
+                        f"Elevated failure rate ({failure_rate:.0%}) with "
+                        f"{calls} total calls. Consider adding retry instructions "
+                        f"or explicit error-handling examples to the system prompt."
+                    )
+
+                # Submit to refinement_candidates for voting
+                _suggest_prompt_improvement(
+                    model_name, msg,
+                    confidence=min(95.0, 50.0 + failure_rate * 100)
+                )
+                suggestions.append(model_name)
+
+        return {"count": len(suggestions), "suggestions": suggestions}
+
     def _write_suggestions(self, agent_id: str, suggestions: List[str]) -> str:
         """将建议写入 agent 目录下的 _evolution_suggestions.md."""
         for root in [
@@ -291,3 +354,57 @@ async def submit_refinement_suggestion(
             conn.close()
     except Exception:
         logger.debug("submit_refinement_suggestion failed", exc_info=True)
+
+
+def _suggest_prompt_improvement(
+    model_name: str, suggestion: str, confidence: float = 85.0
+) -> None:
+    """Write a prompt improvement suggestion to refinement_candidates (sync).
+
+    Uses the same voting mechanism as AgentRefiner — suggestions with
+    ≥3 votes from independent pipeline runs are auto-applied.
+    """
+    try:
+        import sqlite3, time as _t
+        from pathlib import Path
+
+        main_db = _os.path.join(
+            _os.path.expanduser("~"), ".aiplat", "aiplat_executions.sqlite3")
+        if not _os.path.isfile(main_db):
+            return
+
+        # Use a compound target ID: model_name as primary, "prompt" as type
+        target = f"{model_name}/prompt"
+        now = _t.strftime("%Y-%m-%dT%H:%M:%S")
+
+        conn = sqlite3.connect(main_db, timeout=5.0)
+        conn.row_factory = sqlite3.Row
+        try:
+            existing = conn.execute("""
+                SELECT id, vote_count FROM refinement_candidates
+                WHERE target_model = ? AND status = 'pending'
+                  AND last_seen_at > datetime(?, '-7 days')
+            """, (target, now)).fetchone()
+
+            if existing:
+                conn.execute(
+                    """UPDATE refinement_candidates
+                       SET vote_count = vote_count + 1, last_seen_at = ?
+                       WHERE id = ?""",
+                    (now, existing["id"]),
+                )
+            else:
+                conn.execute(
+                    """INSERT INTO refinement_candidates
+                       (target_model, suggestion_text, confidence,
+                        first_seen_at, last_seen_at)
+                       VALUES (?, ?, ?, ?, ?)""",
+                    (target, suggestion, confidence, now, now),
+                )
+            conn.commit()
+            logger.info("Prompt suggestion for %s (confidence=%.1f%%)",
+                        model_name, confidence)
+        finally:
+            conn.close()
+    except Exception:
+        logger.debug("_suggest_prompt_improvement failed", exc_info=True)
