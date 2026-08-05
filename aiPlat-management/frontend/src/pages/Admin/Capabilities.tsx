@@ -15,6 +15,8 @@ const CapabilitiesPage: React.FC = () => {
   const [cfgOrphan, setCfgOrphan] = useState<ConfigCap[]>([]);
   const [activeTab, setActiveTab] = useState<"auto" | "consumed" | "orphan">("auto");
   const [saving, setSaving] = useState(false);
+  const [changes, setChanges] = useState<any>({});
+  const [showOnlyChanges, setShowOnlyChanges] = useState(true);
 
   // Load persisted review state from localStorage
   const loadReviewState = () => {
@@ -49,6 +51,7 @@ const CapabilitiesPage: React.FC = () => {
       setAutoList(mergeReview(data.auto || [], "id"));
       setCfgConsumed(mergeReview(data.configurable?.consumed || [], "field"));
       setCfgOrphan(mergeReview(data.configurable?.orphan || [], "field"));
+      setChanges(data.changes || {});
     } catch {
       toast.error("Scan failed");
     } finally {
@@ -140,6 +143,23 @@ const CapabilitiesPage: React.FC = () => {
   const totalReviewed = reviewedAuto + reviewedCfg;
   const totalItems = totalAuto + totalCfgOk + totalCfgBad;
 
+  const isChangedItem = (id: string, category: "auto" | "cfg") => {
+    if (changes.new_scan) return true;
+    const added = category === "auto" ? (changes.auto_added || []) : (changes.cfg_added || []);
+    const removed = category === "auto" ? (changes.auto_removed || []) : (changes.cfg_removed || []);
+    return added.includes(id) || removed.includes(id);
+  };
+
+  const filteredAuto = showOnlyChanges && !changes.new_scan
+    ? autoList.filter(a => isChangedItem(a.id, "auto"))
+    : autoList;
+  const filteredConsumed = showOnlyChanges && !changes.new_scan
+    ? cfgConsumed.filter(c => isChangedItem(c.field || "", "cfg"))
+    : cfgConsumed;
+  const filteredOrphan = showOnlyChanges && !changes.new_scan
+    ? cfgOrphan.filter(c => isChangedItem(c.field || "", "cfg"))
+    : cfgOrphan;
+
   return (
     <div className="p-6 max-w-6xl">
       <div className="flex items-center justify-between mb-6">
@@ -170,6 +190,11 @@ const CapabilitiesPage: React.FC = () => {
         <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800">
           <AlertTriangle className="w-3 h-3 mr-1" /> 红色 = 代码缺失 (missing)
         </span>
+        {changes.total_changes > 0 && !changes.new_scan && (
+          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800">
+            +{changes.auto_added?.length || 0}/-{changes.auto_removed?.length || 0} AUTO · +{changes.cfg_added?.length || 0}/-{changes.cfg_removed?.length || 0} CFG
+          </span>
+        )}
         <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
           AUTO: {totalAuto}
         </span>
@@ -181,6 +206,12 @@ const CapabilitiesPage: React.FC = () => {
             ORPHAN: {totalCfgBad}
           </span>
         )}
+        {!changes.new_scan && (
+          <label className="inline-flex items-center gap-1 text-xs text-gray-500 cursor-pointer">
+            <input type="checkbox" checked={showOnlyChanges} onChange={e => setShowOnlyChanges(e.target.checked)} />
+            仅显示变化
+          </label>
+        )}
       </div>
 
       <div className="flex gap-2 mb-4 border-b">
@@ -188,7 +219,9 @@ const CapabilitiesPage: React.FC = () => {
           <button key={tab} className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
             activeTab === tab ? "border-blue-600 text-blue-600" : "border-transparent text-gray-500 hover:text-gray-700"
           }`} onClick={() => setActiveTab(tab)}>
-            {tab === "auto" ? `AUTO (${totalAuto})` : tab === "consumed" ? `CONFIG (${totalCfgOk})` : `⚠️ Orphan (${totalCfgBad})`}
+            {tab === "auto" ? `AUTO (${filteredAuto.length}${showOnlyChanges && !changes.new_scan ? '/' + totalAuto : ''})`
+             : tab === "consumed" ? `CONFIG (${filteredConsumed.length}${showOnlyChanges && !changes.new_scan ? '/' + totalCfgOk : ''})`
+             : `⚠️ Orphan (${filteredOrphan.length}${showOnlyChanges && !changes.new_scan ? '/' + totalCfgBad : ''})`}
           </button>
         ))}
       </div>
@@ -236,7 +269,7 @@ const CapabilitiesPage: React.FC = () => {
                 </tr>
               </thead>
               <tbody>
-                {activeTab === "auto" && autoList.map((item, idx) => (
+                {activeTab === "auto" && filteredAuto.map((item, idx) => (
                   <tr key={item.id} className={`border-b hover:bg-gray-50 ${item.reviewed ? "bg-green-50" : ""}`}>
                     <td className="p-3 text-center text-gray-400 text-xs">{idx + 1}</td>
                     <td className="p-3">
@@ -269,7 +302,7 @@ const CapabilitiesPage: React.FC = () => {
                   </tr>
                 ))}
                 {(activeTab === "consumed" || activeTab === "orphan") && 
-                  (activeTab === "consumed" ? cfgConsumed : cfgOrphan).map((item, idx) => (
+                  (activeTab === "consumed" ? filteredConsumed : filteredOrphan).map((item, idx) => (
                   <tr key={item.field || idx} className={`border-b hover:bg-gray-50 ${item.reviewed ? "bg-green-50" : ""}`}>
                     <td className="p-3 text-center text-gray-400 text-xs">{idx + 1}</td>
                     <td className="p-3">

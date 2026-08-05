@@ -377,6 +377,69 @@ def verify_vs_frontmatter(auto: list, configurable: dict) -> int:
     body_content = "\n".join(lines[fm_end_idx + 1:])
 
 
+def _compute_changes(auto: list, configurable: dict) -> Dict[str, Any]:
+    """Compare current scan vs last merged frontmatter. Returns change summary."""
+    caps_path = WORKSPACE / CAPABILITIES_FILE
+    if not caps_path.exists():
+        return {"new_scan": True, "detail": "No frontmatter yet"}
+
+    # Simple YAML parse of frontmatter for previous scan data
+    content = caps_path.read_text()
+    lines = content.split("\n")
+    if not lines or lines[0].strip() != "---":
+        return {"new_scan": True}
+
+    in_fm = False
+    fm_lines = []
+    for i, line in enumerate(lines[1:], 1):
+        if line.strip() == "---":
+            break
+        fm_lines.append(line)
+
+    # Read scan_hash and previous core_guarantees using simple YAML parsing
+    prev_auto_ids = set()
+    prev_cfg_ids = set()
+    scan_hash = "none"
+    in_auto = in_cfg = False
+    for line in "\n".join(fm_lines).split("\n"):
+        stripped = line.strip()
+        if stripped.startswith("scan_hash:"):
+            scan_hash = stripped.split(":", 1)[1].strip().strip('"')
+        elif stripped.startswith("auto:"):
+            in_auto, in_cfg = True, False
+        elif stripped.startswith("configurable:"):
+            in_auto, in_cfg = False, True
+        elif in_auto and stripped.startswith("- id:"):
+            prev_auto_ids.add(stripped.split("- id:")[1].strip())
+        elif in_cfg and stripped.startswith("- id:"):
+            prev_cfg_ids.add(stripped.split("- id:")[1].strip())
+
+    current_auto_ids = {a["id"] for a in auto}
+    current_cfg_ids = {c["field"] for c in configurable.get("consumed", []) + configurable.get("orphan", [])}
+
+    changes = {
+        "scan_hash": scan_hash,
+        "auto_added": sorted(current_auto_ids - prev_auto_ids),
+        "auto_removed": sorted(prev_auto_ids - current_auto_ids),
+        "cfg_added": sorted(current_cfg_ids - prev_cfg_ids),
+        "cfg_removed": sorted(prev_cfg_ids - current_cfg_ids),
+        "unchanged_auto": len(prev_auto_ids & current_auto_ids),
+        "unchanged_cfg": len(prev_cfg_ids & current_cfg_ids),
+        "total_changes": len((current_auto_ids ^ prev_auto_ids) | (current_cfg_ids ^ prev_cfg_ids)),
+    }
+    # Generate a simple hash for the current scan
+    import hashlib
+    h = hashlib.md5()
+    for a in sorted(current_auto_ids):
+        h.update(a.encode())
+    for c in sorted(current_cfg_ids):
+        h.update(c.encode())
+    changes["current_hash"] = h.hexdigest()[:12]
+    changes["new_scan"] = not prev_auto_ids and not prev_cfg_ids
+
+    return changes
+
+
 def merge_into_frontmatter(auto: list, configurable: dict) -> None:
     """Auto-merge scan results into AIPLAT_CAPABILITIES.md frontmatter."""
     caps_path = WORKSPACE / CAPABILITIES_FILE
@@ -429,6 +492,10 @@ def merge_into_frontmatter(auto: list, configurable: dict) -> None:
         fm_new.append(line)
 
     fm_new.append(yaml_block)
+    # Add scan hash for incremental diff tracking
+    import hashlib
+    h = hashlib.md5(yaml_block.encode()).hexdigest()[:12]
+    fm_new.append(f"scan_hash: {h}")
     new_content = "---\n" + "\n".join(fm_new) + "\n---\n" + body
     caps_path.write_text(new_content)
     print(f"Merged core_guarantees into {CAPABILITIES_FILE}")
@@ -437,7 +504,7 @@ def merge_into_frontmatter(auto: list, configurable: dict) -> None:
 # ── Main ───────────────────────────────────────────────────────
 
 def main():
-    import argparse
+    import argparse, json as _json
     parser = argparse.ArgumentParser(description="Scan inherited capabilities")
     parser.add_argument("--verify", action="store_true", help="Diff vs frontmatter")
     parser.add_argument("--merge", action="store_true", help="Auto-merge into frontmatter")
@@ -452,8 +519,13 @@ def main():
     elif args.merge:
         merge_into_frontmatter(auto, configurable)
     elif args.json:
-        import json as _json
-        print(_json.dumps({"auto": auto, "configurable": configurable}, indent=2, ensure_ascii=False))
+        # Include change summary vs last merged state
+        result = {
+            "auto": auto,
+            "configurable": configurable,
+            "changes": _compute_changes(auto, configurable),
+        }
+        print(_json.dumps(result, indent=2, ensure_ascii=False))
     else:
         output_yaml(auto, configurable)
 
