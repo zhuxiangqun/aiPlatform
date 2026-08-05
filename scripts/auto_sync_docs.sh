@@ -503,6 +503,16 @@ else:
         print(f"  → {issues} entries need status fix")
 PYEOF_ACCURACY
 
+# ── Step 9: Scan inherited capabilities — detect drift between code and frontmatter ──
+echo ""
+echo "━━━ Step 9: Inherited capabilities scan ━━━"
+SCAN_SCRIPT="$SCRIPT_DIR/scan_inherited_capabilities.py"
+if [ -f "$SCAN_SCRIPT" ]; then
+    python3 "$SCAN_SCRIPT" --verify 2>&1 || echo "  → Review core_guarantees in AIPLAT_CAPABILITIES.md frontmatter"
+else
+    echo "  (scan_inherited_capabilities.py not found — skipping)"
+fi
+
 echo ""
 echo "═══════════════════════════════════════════════════════════════"
 echo "  Sync complete: $ADDED new entries, $SUM total (CAPS+ROADMAP+CLAUDE)"
