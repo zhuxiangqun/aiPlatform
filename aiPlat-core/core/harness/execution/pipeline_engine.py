@@ -3761,6 +3761,8 @@ class PipelineEngine:
             state["_progress"] = {"stage": _skill_name, "status": "running", "started_at": _time.time(),
                                   "backend": "agent", "current_step": 0}
             self._snapshot(state, f"stage_{stage.id}_progress")
+            if self._persist_callback:
+                self._persist_callback(dict(state))  # immediate: frontend sees "running" now
             _prompt = _context or _desc
 
             # Background progress polling: snapshot every 5s for real-time frontend visibility
@@ -3795,23 +3797,41 @@ class PipelineEngine:
             _final_steps = int(state.get("step_count", 0) or 0)
             state["_progress"] = {"stage": _skill_name, "status": "completed", "elapsed_sec": _elapsed,
                                   "backend": "agent", "current_step": _final_steps}
+            if self._persist_callback:
+                self._persist_callback(dict(state))  # immediate: frontend sees "completed"
         else:
             # Direct LLM call (default, backward-compatible)
             state["_progress"] = {"stage": _skill_name, "status": "running", "started_at": _time.time(),
                                   "backend": "llm", "current_step": 0}
-            _response = await sys_llm_generate(
-                None,
-                [
-                    {"role": "system", "content": _sop_body},
-                    {"role": "user", "content": _context or _desc},
-                ],
-                model_name=best_model_for_purpose(_purpose),
-                max_tokens=32000,
-            )
-            _result = getattr(_response, "content", "") or str(_response)
+            if self._persist_callback:
+                self._persist_callback(dict(state))  # immediate: frontend sees "running"
+            try:
+                _response = await sys_llm_generate(
+                    None,
+                    [
+                        {"role": "system", "content": _sop_body},
+                        {"role": "user", "content": _context or _desc},
+                    ],
+                    model_name=best_model_for_purpose(_purpose),
+                    max_tokens=32000,
+                )
+                _result = getattr(_response, "content", "") or str(_response)
+            except Exception as _llm_err:
+                _log.getLogger("pipeline_engine").warning(
+                    "Skill %s: LLM call failed: %s", _skill_name, str(_llm_err)[:200])
+                _result = ""
+                state["_progress"] = {"stage": _skill_name, "status": "error",
+                                      "elapsed_sec": round(_time.time() - _t0, 2),
+                                      "backend": "llm", "current_step": 0,
+                                      "error": str(_llm_err)[:200]}
+                if self._persist_callback:
+                    self._persist_callback(dict(state))
+                return state
             _elapsed = round(_time.time() - _t0, 2)
             state["_progress"] = {"stage": _skill_name, "status": "completed", "elapsed_sec": _elapsed,
                                   "backend": "llm", "current_step": 0}
+            if self._persist_callback:
+                self._persist_callback(dict(state))  # immediate: frontend sees "completed"
         _result = _result.replace("```json", "").replace("```", "").strip()
 
         if not _result or len(_result) < 100:

@@ -1022,6 +1022,29 @@ async def create_adapter_with_fallback(purpose: str, timeout: int = 60) -> Any:
 
 
 
+# ── Model failure cache: skip models that fail 3+ times within 5 min ──
+_FAILURE_TRACKER: Dict[str, list] = {}  # model_name → [timestamp, ...]
+_FAILURE_THRESHOLD = 3
+_FAILURE_WINDOW_SECS = 300
+
+
+def _is_model_degraded(model_name: str) -> bool:
+    """Return True if model has failed >= threshold times within the window."""
+    import time as _t
+    failures = _FAILURE_TRACKER.get(model_name, [])
+    now = _t.time()
+    recent = [t for t in failures if now - t < _FAILURE_WINDOW_SECS]
+    _FAILURE_TRACKER[model_name] = recent
+    return len(recent) >= _FAILURE_THRESHOLD
+
+
+def _record_failure(model_name: str) -> None:
+    import time as _t
+    failures = _FAILURE_TRACKER.get(model_name, [])
+    failures.append(_t.time())
+    _FAILURE_TRACKER[model_name] = failures
+
+
 async def generate_with_fallback(purpose: str,
 
                                    messages: list,
@@ -1183,6 +1206,7 @@ async def generate_with_fallback(purpose: str,
                     _fb_log.warning(f"'{model_name}' timed out ({i+1}/{len(candidates)}, {per_model_timeout}s)")
 
                     failed_models.add(model_name)
+                    _record_failure(model_name)
 
                     errors.append({"model": model_name, "error": msg, "transient": True})
 
@@ -1201,6 +1225,7 @@ async def generate_with_fallback(purpose: str,
                     is_permanent = any(kw in err_str.lower() for kw in permanent_keywords)
 
                     _fb_log.warning(f"'{model_name}' failed ({i+1}/{len(candidates)}): {e}")
+                    _record_failure(model_name)
 
                     if is_permanent:
                         _fb_log.error(f"Permanent error on '{model_name}': {err_str}. Stopping fallback.")
