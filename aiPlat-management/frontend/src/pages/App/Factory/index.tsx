@@ -362,7 +362,7 @@ const ProjectPanel: React.FC<{
         const realPhase = state.phase as string;
         // Never auto-enter executing UI on panel open — it confuses users.
         // But DO show approval/paused/done/failed states immediately.
-        if (realPhase && realPhase !== 'idle' && realPhase !== 'executing') {
+        if (realPhase && realPhase !== 'idle' && realPhase !== 'executing' && realPhase !== 'pending') {
           setPhase(realPhase);
         }
         // Executing phase: show subtle indicator, user can click to enter
@@ -981,6 +981,7 @@ const FactoryPage: React.FC = () => {
     if (!last) return { label: '待开始', color: 'text-gray-500', bg: 'bg-gray-500/10', phase: 'dialogue' };
     if (last.phase === 'done') return { label: '已完成', color: 'text-green-400', bg: 'bg-green-500/10', phase: 'done' };
     if (last.phase === 'failed') return { label: '失败', color: 'text-red-400', bg: 'bg-red-500/10', phase: 'failed' };
+    if (last.phase === 'pending') return { label: '已中断', color: 'text-amber-400', bg: 'bg-amber-500/10', phase: 'failed' };
     return { label: '构建中', color: 'text-blue-400', bg: 'bg-blue-500/10', phase: 'executing' };
   };
 

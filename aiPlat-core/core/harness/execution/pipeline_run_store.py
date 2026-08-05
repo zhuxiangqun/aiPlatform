@@ -254,6 +254,17 @@ class PipelineRunStore:
         finally:
             conn.close()
 
+    def get_run_by_id(self, run_id: str) -> Optional[Dict[str, Any]]:
+        conn = self._get_conn()
+        try:
+            row = conn.execute(
+                "SELECT * FROM pipeline_runs WHERE run_id = ?",
+                (run_id,),
+            ).fetchone()
+            return dict(row) if row else None
+        finally:
+            conn.close()
+
     def get_stages(self, run_id: str) -> List[Dict[str, Any]]:
         conn = self._get_conn()
         try:
@@ -310,6 +321,48 @@ class PipelineRunStore:
         if _progress:
             state["_progress"] = _progress
 
+        return state
+
+    def get_full_state_from_run_id(self, run_id: str) -> Dict[str, Any]:
+        """Return aggregated state for a specific run_id (not project_id).
+
+        Used by orphan pipeline recovery to reload state when project_id
+        may not be known at the callsite.
+        """
+        run = self._get_conn().execute(
+            "SELECT * FROM pipeline_runs WHERE run_id = ?", (run_id,)
+        ).fetchone()
+        if not run:
+            return {"phase": "idle"}
+
+        stages = self.get_stages(run_id)
+        state: Dict[str, Any] = {
+            "phase": run["phase"],
+            "_current_stage_idx": run["current_stage_idx"],
+            "tokens_used": run["tokens_used"],
+            "tokens_budget": run["tokens_budget"],
+            "pass_rate": run["pass_rate"],
+            "error": run["error_message"],
+            "session_id": run["run_id"],
+        }
+        _progress = None
+        for s in stages:
+            if s["artifact_key"] and s["artifact_output"]:
+                state[s["artifact_key"]] = {
+                    "raw_output": s["artifact_output"],
+                    "elapsed_sec": s["elapsed_sec"],
+                }
+            if s["progress_json"]:
+                try:
+                    p = json.loads(s["progress_json"])
+                    if p and p.get("status") in ("running",):
+                        _progress = p
+                    elif p and _progress is None:
+                        _progress = p
+                except json.JSONDecodeError:
+                    pass
+        if _progress:
+            state["_progress"] = _progress
         return state
 
     # ── Recovery ─────────────────────────────────────────────────

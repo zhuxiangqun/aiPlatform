@@ -396,7 +396,7 @@ class BuilderProjectService:
             runs_data = data.get("runs", [])
             if runs_data:
                 last = runs_data[-1]
-                if last.get("phase") == "executing" and not last.get("finished_at"):
+                if last.get("phase") in ("executing", "pending") and not last.get("finished_at"):
                     try:
                         state = await self._get_state_via_core(pid)
                         if state.get("phase") in ("done", "failed"):
