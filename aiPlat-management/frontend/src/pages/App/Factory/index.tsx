@@ -344,7 +344,7 @@ const ProjectPanel: React.FC<{
         for (const k of keys) {
           if (s[k] && typeof s[k] === 'object') outputs[k] = s[k];
         }
-        if (Object.keys(outputs).length > 0) setStageOutputs(outputs);
+        if (Object.keys(outputs).length > 0) setStageOutputs(prev => ({ ...prev, ...outputs }));
         if (p === 'done' || p === 'failed') onRefresh();
       } catch { /* ignore */ }
     }, 3000);
@@ -382,7 +382,7 @@ const ProjectPanel: React.FC<{
             outputs[k] = state[k];
           }
         }
-        if (Object.keys(outputs).length > 0) setStageOutputs(outputs);
+        if (Object.keys(outputs).length > 0) setStageOutputs(prev => ({ ...prev, ...outputs }));
       } catch { /* ignore */ }
     })();
   }, [project.project_id]);
