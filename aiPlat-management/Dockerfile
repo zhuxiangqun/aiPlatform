@@ -10,4 +10,4 @@ ENV PYTHONPATH=/app
 ENV AIPLAT_HOME=/app/.aiplat
 EXPOSE 8000
 
-CMD ["uvicorn", "management.server:create_app", "--host", "0.0.0.0", "--port", "8000", "--factory"]
+CMD ["gunicorn", "-c", "gunicorn.conf.py", "management.server:create_app"]

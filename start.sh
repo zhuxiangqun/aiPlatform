@@ -108,7 +108,7 @@ export HF_DATASETS_OFFLINE="${HF_DATASETS_OFFLINE:-1}"
 export AIPLAT_PORT_SERVICES="${AIPLAT_PORT_SERVICES:-8002=core-api:aiPlat-core,8001=infra-api:aiPlat-infra,8000=management-api:aiPlat-management,8003=platform-api:aiPlat-platform,8004=app-api:aiPlat-app,5173=frontend-dev:frontend}"
 # Infra: target processes for service manager monitoring.
 # Format: "name:cmdline:port,name:cmdline:port,..."
-export AIPLAT_TARGET_PROCESSES="${AIPLAT_TARGET_PROCESSES:-aiPlat-infra:uvicorn:8001,aiPlat-core:uvicorn:8002,aiPlat-platform:uvicorn:8003,aiPlat-app:uvicorn:8004,aiPlat-management:uvicorn:8000,frontend:proxy_server.py:5173}"
+export AIPLAT_TARGET_PROCESSES="${AIPLAT_TARGET_PROCESSES:-aiPlat-infra:gunicorn:8001,aiPlat-core:gunicorn:8002,aiPlat-platform:gunicorn:8003,aiPlat-app:gunicorn:8004,aiPlat-management:gunicorn:8000,frontend:proxy_server.py:5173}"
 
 # Parser selection for KB ingest: auto|mineru|ocr
 export AIPLAT_KB_PARSER="${AIPLAT_KB_PARSER:-auto}"
@@ -361,7 +361,7 @@ kill_port_if_any 8001
 verify_import "infra" "from infra.management.api.main import create_app"
 
 cd "$PROJECT_ROOT/aiPlat-infra"
-PYTHONPATH="$PROJECT_ROOT/aiPlat-infra" nohup "$PY" -m uvicorn infra.management.api.main:create_app --host 0.0.0.0 --port 8001 --factory > "$AIPLAT_HOME/logs/infra.log" 2>&1 &
+PYTHONPATH="$PROJECT_ROOT/aiPlat-infra" nohup "$PY" -m gunicorn -c gunicorn.conf.py -w 1 --threads 4 infra.management.api.main:create_app > "$AIPLAT_HOME/logs/infra.log" 2>&1 &
 INFRA_PID=$!
 echo "PID: $INFRA_PID"
 
@@ -388,8 +388,8 @@ export AIPLAT_EMBED_BACKEND="${AIPLAT_EMBED_BACKEND:-hash}"
 export AIPLAT_EMBEDDING_BACKEND="${AIPLAT_EMBEDDING_BACKEND:-hash}"
 export HF_HUB_OFFLINE="${HF_HUB_OFFLINE:-1}"
 
-cd "$PROJECT_ROOT/aiPlat-core/core"
-PYTHONPATH="$PROJECT_ROOT/aiPlat-core" nohup "$PY" -m uvicorn server:app --host 0.0.0.0 --port 8002 --workers 4 > "$AIPLAT_HOME/logs/core.log" 2>&1 &
+cd "$PROJECT_ROOT/aiPlat-core"
+PYTHONPATH="$PROJECT_ROOT/aiPlat-core" nohup "$PY" -m gunicorn -c gunicorn.conf.py -w 1 --threads 4 server:app > "$AIPLAT_HOME/logs/core.log" 2>&1 &
 CORE_PID=$!
 echo "PID: $CORE_PID"
 
@@ -449,7 +449,7 @@ export AIPLAT_VIDEO_WHISPER_MODEL="${AIPLAT_VIDEO_WHISPER_MODEL:-small}"
 # export AIPLAT_QUEUE_BACKEND=redis           # Redis message queue (default: thread)
 # export AIPLAT_REDIS_URL=redis://localhost:6379/0
 # export AIPLAT_CHROMA_PATH=~/.aiplat/data/chroma  # Chroma persistence path
-PYTHONPATH="$PROJECT_ROOT/aiPlat-platform:$PROJECT_ROOT/aiPlat-core:$PROJECT_ROOT/aiPlat-infra" nohup "$PY" -m uvicorn api.rest.routes:app --host 0.0.0.0 --port 8003 > "$AIPLAT_HOME/logs/platform.log" 2>&1 &
+PYTHONPATH="$PROJECT_ROOT/aiPlat-platform:$PROJECT_ROOT/aiPlat-core:$PROJECT_ROOT/aiPlat-infra" nohup "$PY" -m gunicorn -c gunicorn.conf.py -w 1 --threads 4 api.rest.routes:app > "$AIPLAT_HOME/logs/platform.log" 2>&1 &
 PLATFORM_PID=$!
 echo "PID: $PLATFORM_PID"
 
@@ -473,7 +473,7 @@ cd "$PROJECT_ROOT/aiPlat-app"
 export AIPLAT_APP_DB_PATH="${AIPLAT_APP_DB_PATH:-$PROJECT_ROOT/aiPlat-app/data/aiplat_app.sqlite3}"
 mkdir -p "$(dirname "$AIPLAT_APP_DB_PATH")"
 echo "App DB: $AIPLAT_APP_DB_PATH"
-PYTHONPATH="$PROJECT_ROOT/aiPlat-app" nohup "$PY" -m uvicorn api.rest.routes:app --host 0.0.0.0 --port 8004 > "$AIPLAT_HOME/logs/app.log" 2>&1 &
+PYTHONPATH="$PROJECT_ROOT/aiPlat-app" nohup "$PY" -m gunicorn -c gunicorn.conf.py -w 1 --threads 4 api.rest.routes:app > "$AIPLAT_HOME/logs/app.log" 2>&1 &
 APP_PID=$!
 echo "PID: $APP_PID"
 
@@ -528,7 +528,7 @@ kill_port_if_any 8000
 verify_import "management" "import management.server"
 
 cd "$PROJECT_ROOT/aiPlat-management"
-nohup "$PY" -m uvicorn management.server:create_app --host 0.0.0.0 --port 8000 --factory > "$AIPLAT_HOME/logs/management.log" 2>&1 &
+nohup "$PY" -m gunicorn -c gunicorn.conf.py -w 1 --threads 2 management.server:create_app > "$AIPLAT_HOME/logs/management.log" 2>&1 &
 MGMT_PID=$!
 echo "PID: $MGMT_PID"
 

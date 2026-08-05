@@ -10,4 +10,4 @@ ENV PYTHONPATH=/app
 ENV AIPLAT_HOME=/app/.aiplat
 EXPOSE 8002
 
-CMD ["uvicorn", "server:app", "--host", "0.0.0.0", "--port", "8002"]
+CMD ["gunicorn", "-c", "gunicorn.conf.py", "server:app"]

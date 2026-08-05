@@ -11,4 +11,4 @@ ENV PYTHONPATH=/app
 ENV AIPLAT_HOME=/app/.aiplat
 EXPOSE 8001
 
-CMD ["uvicorn", "infra.management.api.main:create_app", "--host", "0.0.0.0", "--port", "8001", "--factory"]
+CMD ["gunicorn", "-c", "gunicorn.conf.py", "infra.management.api.main:create_app"]
