@@ -1372,16 +1372,13 @@ async def lifespan(app: FastAPI):
 
     # ── Orphan pipeline recovery (background, non-blocking) ──
     async def _recover_orphan_pipelines():
-        """Recover pipelines stuck in 'executing' phase after server restart.
+        """Recover pipelines stuck after server restart.
 
-        Strategy:
-        1. Mark orphans as 'failed' with descriptive error.
-        2. Auto-retrigger rebuild via platform API if stages have progress.
-           (Clean rebuild handles config reload + stage re-sync properly.)
+        Strategy: mark orphaned runs as 'failed' with descriptive error.
+        Users rebuild from the UI — no auto-retrigger (Platform may not be ready).
         """
-        await asyncio.sleep(10)  # give infrastructure time to settle
+        await asyncio.sleep(20)  # extended: Platform takes 30-45s to start
         try:
-            import httpx
             from core.harness.execution.pipeline_run_store import get_pipeline_run_store
             store = get_pipeline_run_store()
             orphans = store.list_orphan_runs()
@@ -1392,34 +1389,21 @@ async def lifespan(app: FastAPI):
                     continue
 
                 stages = store.get_stages(run_id)
+                idx = run.get("current_stage_idx", 0)
                 has_progress = any(
                     s.get("artifact_output") or s.get("status") == "completed"
                     for s in stages
                 )
 
-                project_id = run.get("project_id", "")
-                if has_progress and project_id:
-                    # Mark as failed and auto-rebuild
+                if has_progress:
                     store.update_run_phase(
                         run_id, "failed",
-                        "Pipeline interrupted by server restart — auto-rebuilding"
+                        f"Pipeline interrupted at stage {idx} by server restart"
                     )
                     logging.getLogger(__name__).warning(
-                        "Orphan run %s: had progress, triggering rebuild", run_id[:12])
-
-                    # Re-trigger via platform rebuild endpoint
-                    try:
-                        async with httpx.AsyncClient(timeout=10) as client:
-                            await client.post(
-                                f"http://localhost:8003/platform/builder/projects/{project_id}/rebuild"
-                            )
-                    except Exception:
-                        logging.getLogger(__name__).debug(
-                            "Auto-rebuild failed for run %s", run_id[:12],
-                            exc_info=True
-                        )
+                        "Orphan run %s: interrupted at stage %d, marked failed",
+                        run_id[:12], idx)
                 else:
-                    # Never started — just mark failed
                     store.update_run_phase(
                         run_id, "failed",
                         "Server restart before pipeline started"
