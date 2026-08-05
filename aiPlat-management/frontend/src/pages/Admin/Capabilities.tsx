@@ -16,6 +16,22 @@ const CapabilitiesPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<"auto" | "consumed" | "orphan">("auto");
   const [saving, setSaving] = useState(false);
   const [changes, setChanges] = useState<any>({});
+
+  // Auto-mark unchanged items from previous review as pre-reviewed
+  useEffect(() => {
+    const state = loadReviewState();
+    if (!changes.new_scan && !changes.total_changes) {
+      // No changes — all items were previously approved, pre-check them
+      const newState = { ...state };
+      autoList.forEach(a => { if (!newState[a.id]) newState[a.id] = true; });
+      cfgConsumed.forEach(c => { if (!newState[c.field || '']) newState[c.field || ''] = true; });
+      cfgOrphan.forEach(c => { if (!newState[c.field || '']) newState[c.field || ''] = true; });
+      saveReviewState(newState);
+      setAutoList(prev => prev.map(a => ({ ...a, reviewed: true })));
+      setCfgConsumed(prev => prev.map(c => ({ ...c, reviewed: true })));
+      setCfgOrphan(prev => prev.map(c => ({ ...c, reviewed: true })));
+    }
+  }, [changes.total_changes, autoList.length, cfgConsumed.length]);
   const [showOnlyChanges, setShowOnlyChanges] = useState(true);
 
   // Load persisted review state from localStorage
@@ -143,22 +159,15 @@ const CapabilitiesPage: React.FC = () => {
   const totalReviewed = reviewedAuto + reviewedCfg;
   const totalItems = totalAuto + totalCfgOk + totalCfgBad;
 
-  const isChangedItem = (id: string, category: "auto" | "cfg") => {
+  const isNewItem = (id: string, category: "auto" | "cfg") => {
     if (changes.new_scan) return true;
     const added = category === "auto" ? (changes.auto_added || []) : (changes.cfg_added || []);
-    const removed = category === "auto" ? (changes.auto_removed || []) : (changes.cfg_removed || []);
-    return added.includes(id) || removed.includes(id);
+    return added.includes(id);
   };
 
-  const filteredAuto = showOnlyChanges && !changes.new_scan
-    ? autoList.filter(a => isChangedItem(a.id, "auto"))
-    : autoList;
-  const filteredConsumed = showOnlyChanges && !changes.new_scan
-    ? cfgConsumed.filter(c => isChangedItem(c.field || "", "cfg"))
-    : cfgConsumed;
-  const filteredOrphan = showOnlyChanges && !changes.new_scan
-    ? cfgOrphan.filter(c => isChangedItem(c.field || "", "cfg"))
-    : cfgOrphan;
+  const reviewCount = autoList.filter(a => a.reviewed).length
+    + cfgConsumed.filter(c => c.reviewed).length
+    + cfgOrphan.filter(c => c.reviewed).length;
 
   return (
     <div className="p-6 max-w-6xl">
@@ -166,7 +175,17 @@ const CapabilitiesPage: React.FC = () => {
         <div>
           <h1 className="text-2xl font-bold">核心能力管理</h1>
           <p className="text-sm text-gray-500 mt-1">
-            扫描 AIPLAT_CAPABILITIES.md 中声明的能力在代码中是否真实存在。审核: {totalReviewed}/{totalItems} · 
+            扫描 AIPLAT_CAPABILITIES.md 中声明的能力在代码中是否真实存在。
+            {!changes.new_scan && changes.total_changes === 0 && autoList.length > 0 && (
+              <span className="ml-2 px-1.5 py-0.5 rounded text-xs bg-green-100 text-green-700">无变化 — 上次审核结果有效</span>
+            )}
+            {!changes.new_scan && changes.total_changes > 0 && (
+              <span className="ml-2 px-1.5 py-0.5 rounded text-xs bg-yellow-100 text-yellow-700">已审核: {reviewCount}/{totalItems}</span>
+            )}
+            {changes.new_scan && (
+              <span className="ml-2 px-1.5 py-0.5 rounded text-xs bg-blue-100 text-blue-700">首次审核</span>
+            )}
+             · 
             <button className="ml-2 text-blue-600 hover:underline" onClick={() => localStorage.removeItem(REVIEW_STORAGE_KEY)}>重置审核状态</button>
           </p>
         </div>
@@ -198,30 +217,15 @@ const CapabilitiesPage: React.FC = () => {
         <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
           AUTO: {totalAuto}
         </span>
-        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
-          CONFIG: {totalCfgOk}
-        </span>
-        {totalCfgBad > 0 && (
-          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800">
-            ORPHAN: {totalCfgBad}
-          </span>
-        )}
-        {!changes.new_scan && (
-          <label className="inline-flex items-center gap-1 text-xs text-gray-500 cursor-pointer">
-            <input type="checkbox" checked={showOnlyChanges} onChange={e => setShowOnlyChanges(e.target.checked)} />
-            仅显示变化
-          </label>
-        )}
-      </div>
 
       <div className="flex gap-2 mb-4 border-b">
         {(["auto", "consumed", ...(totalCfgBad > 0 ? ["orphan"] : [])] as const).map(tab => (
           <button key={tab} className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
             activeTab === tab ? "border-blue-600 text-blue-600" : "border-transparent text-gray-500 hover:text-gray-700"
           }`} onClick={() => setActiveTab(tab)}>
-            {tab === "auto" ? `AUTO (${filteredAuto.length}${showOnlyChanges && !changes.new_scan ? '/' + totalAuto : ''})`
-             : tab === "consumed" ? `CONFIG (${filteredConsumed.length}${showOnlyChanges && !changes.new_scan ? '/' + totalCfgOk : ''})`
-             : `⚠️ Orphan (${filteredOrphan.length}${showOnlyChanges && !changes.new_scan ? '/' + totalCfgBad : ''})`}
+            {tab === "auto" ? `AUTO (${totalAuto})`
+             : tab === "consumed" ? `CONFIG (${totalCfgOk})`
+             : `⚠️ Orphan (${totalCfgBad})`}
           </button>
         ))}
       </div>
@@ -269,13 +273,18 @@ const CapabilitiesPage: React.FC = () => {
                 </tr>
               </thead>
               <tbody>
-                {activeTab === "auto" && filteredAuto.map((item, idx) => (
-                  <tr key={item.id} className={`border-b hover:bg-gray-50 ${item.reviewed ? "bg-green-50" : ""}`}>
+                {activeTab === "auto" && autoList.map((item, idx) => (
+                  <tr key={item.id} className={`border-b hover:bg-gray-50 ${item.reviewed ? "bg-green-50" : ""} ${isNewItem(item.id, "auto") ? "bg-yellow-50" : ""}`}>
                     <td className="p-3 text-center text-gray-400 text-xs">{idx + 1}</td>
                     <td className="p-3">
                       <input type="checkbox" checked={!!item.reviewed} onChange={e => markReviewed(item.id, e.target.checked)} />
                     </td>
-                    <td className="p-3 font-mono text-xs">{item.id}</td>
+                    <td className="p-3 font-mono text-xs">
+                      {item.id}
+                      {isNewItem(item.id, "auto") && !changes.new_scan && (
+                        <span className="ml-2 px-1 py-0 text-xs bg-yellow-200 text-yellow-800 rounded">新增</span>
+                      )}
+                    </td>
                     <td className="p-3 text-xs text-gray-500 max-w-[220px] truncate" title={(item as any).description || ""}>
                       {(item as any).description || "-"}
                     </td>
@@ -302,13 +311,18 @@ const CapabilitiesPage: React.FC = () => {
                   </tr>
                 ))}
                 {(activeTab === "consumed" || activeTab === "orphan") && 
-                  (activeTab === "consumed" ? filteredConsumed : filteredOrphan).map((item, idx) => (
-                  <tr key={item.field || idx} className={`border-b hover:bg-gray-50 ${item.reviewed ? "bg-green-50" : ""}`}>
+                  (activeTab === "consumed" ? cfgConsumed : cfgOrphan).map((item, idx) => (
+                   <tr key={item.field || idx} className={`border-b hover:bg-gray-50 ${item.reviewed ? "bg-green-50" : ""} ${isNewItem(item.field || "", "cfg") ? "bg-yellow-50" : ""}`}>
                     <td className="p-3 text-center text-gray-400 text-xs">{idx + 1}</td>
                     <td className="p-3">
                       <input type="checkbox" checked={!!item.reviewed} onChange={e => markReviewed(item.field || "", e.target.checked)} />
                     </td>
-                    <td className="p-3 font-mono text-xs">{item.field || "-"}</td>
+                    <td className="p-3 font-mono text-xs">
+                      {item.field || "-"}
+                      {isNewItem(item.field || "", "cfg") && !changes.new_scan && (
+                        <span className="ml-2 px-1 py-0 text-xs bg-yellow-200 text-yellow-800 rounded">新增</span>
+                      )}
+                    </td>
                     <td className="p-3 text-xs text-gray-500 max-w-[200px] truncate" title={(item as any).description || ""}>
                       {(item as any).description || "-"}
                     </td>
