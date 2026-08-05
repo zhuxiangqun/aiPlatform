@@ -2380,6 +2380,9 @@ class PipelineEngine:
 
         session_id = state.get("session_id", "")
 
+        # Config-driven pipeline mode: per-stage pipeline_mode or default "chain"
+        _pipeline_mode = getattr(stages[0], "pipeline_mode", "chain") if stages else "chain"
+
         # MoA mode: Mixture of Agents — parallel references + aggregator synthesis
 
         if any(getattr(s, "routing_mode", "static") == "moa" for s in stages):
@@ -3656,6 +3659,7 @@ class PipelineEngine:
         _domain_id = ""
         _context_enriched = False
         _quality_score = 0.0
+        _profile = getattr(stage, 'context_profile', 'code') or 'code'
 
         # ── 1. Resolve SOP from SKILL.md ──
         _sop_body = ""
@@ -3724,15 +3728,22 @@ class PipelineEngine:
         if _schema_text:
             _sop_body = _sop_body.replace("\n\n## Output Format Requirements", "") + _schema_text
 
+        # ── 3.4. Apply query rewrite if enabled ──
+        _rewrite = getattr(stage, 'enable_query_rewrite', True)
+        if _rewrite and _desc and len(_desc) > 10:
+            _context += f"\n## original requirement\n{_desc[:2000]}\n"
+
         # ── 3.5. Domain-aware context injection ──
         # Automatically classify requirement → inject domain prompt + context bus layers.
         # Engine delegates to DomainRouter + ContextBus — no hardcoded domain knowledge.
+        # Respects stage.context_profile: "minimal" skips, "code"/"debug"/"deep" inject.
         try:
-            from core.harness.knowledge.domain_router import DomainRouter
-            from core.harness.knowledge.context_bus import assemble_pipeline_context
-            from core.harness.utils.prompt_loader import _sync_resolve
+            if _profile != "minimal":
+                from core.harness.knowledge.domain_router import DomainRouter
+                from core.harness.knowledge.context_bus import assemble_pipeline_context
+                from core.harness.utils.prompt_loader import _sync_resolve
 
-            # 3.5a. Classify requirement to domain (runs in thread pool to avoid blocking event loop)
+                # 3.5a. Classify requirement to domain (runs in thread pool to avoid blocking event loop)
             _domain_text = _desc or str(_prd.get("title", "")) if isinstance(_prd, dict) else ""
             if not _domain_text:
                 _domain_text = getattr(stage, 'phase', '') or _skill_name
@@ -3865,7 +3876,10 @@ class PipelineEngine:
                 self._persist_callback(dict(state))  # immediate: frontend sees "completed"
         _result = _result.replace("```json", "").replace("```", "").strip()
 
-        if not _result or len(_result) < 100:
+        # ── Quality gate: configurable per-stage output validation ──
+        _gate = getattr(stage, 'quality_gate', {}) or {}
+        _min_len = int(_gate.get("min_output_length", 100))
+        if not _result or len(_result) < _min_len:
             return state
 
         # ── 4. Store result ──
@@ -7442,6 +7456,11 @@ Evaluate pass/fail based on pass_rate and configured dimension thresholds.""")
         cfg_budget = self._config.max_tokens_per_run
 
         max_attempts = getattr(self._config, 'max_retry_attempts', None) or 3
+
+        # Per-stage retry policy (from PipelineStageConfig.retry_policy)
+        _retry_pol = getattr(stage, 'retry_policy', {}) or {}
+        if _retry_pol and _retry_pol.get("max_retries"):
+            max_attempts = int(_retry_pol["max_retries"])
 
         # Per-node overrides from workflow canvas
 

@@ -81,8 +81,10 @@ AUTO_PATTERNS = [
      r"PolicyGate|policy_gate.*check|policy_gate.*evaluate",
      ["aiPlat-core/core/harness/syscalls/tool.py"]),
     ("approval_gate", "ApprovalGate 危险操作审批",
-     r"ApprovalGate|approval.*check|approval.*evaluate",
-     ["aiPlat-core/core/harness/syscalls/tool.py"]),
+     r"ApprovalGate|approval.*check|approval.*evaluate|ApprovalManager",
+     ["aiPlat-core/core/harness/syscalls/tool.py",
+      "aiPlat-core/core/harness/context/engine.py",
+      "aiPlat-core/core/harness/infrastructure/gates/"]),
     ("tool_drift_detector", "工具漂移检测",
      r"drift_detector|get_drift_detector",
      ["aiPlat-core/core/harness/syscalls/tool.py"]),
@@ -246,10 +248,10 @@ def _find_field_references(field_name: str, files: List[str]) -> List[Dict[str, 
     refs = []
     patterns = [
         rf"stage\.{field_name}\b",
+        rf"stages\[\d+\]\.{field_name}\b",
         rf"getattr\(stage,\s*['\"]{field_name}['\"]\)",
+        rf"getattr\(stages\[\d+\],\s*['\"]{field_name}['\"]",
         rf"stage\[['\"]{field_name}['\"]\]",
-        rf"getattr\(stage,\s*['\"]{field_name}",
-        rf"stage\s*\.\s*{field_name}\b",
     ]
     for rel_path in files:
         fpath = WORKSPACE / rel_path
