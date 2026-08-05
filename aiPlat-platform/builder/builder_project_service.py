@@ -391,6 +391,22 @@ class BuilderProjectService:
 
     async def list_projects(self) -> List[Project]:
         self._reload_if_stale()
+        # ── Sync stuck "executing" runs from Core (best-effort, non-blocking) ──
+        for pid, data in list(self._projects.items()):
+            runs_data = data.get("runs", [])
+            if runs_data:
+                last = runs_data[-1]
+                if last.get("phase") == "executing" and not last.get("finished_at"):
+                    try:
+                        state = await self._get_state_via_core(pid)
+                        if state.get("phase") in ("done", "failed"):
+                            last["phase"] = state["phase"]
+                            last["finished_at"] = time.strftime("%Y-%m-%dT%H:%M:%S")
+                            data["updated_at"] = time.strftime("%Y-%m-%dT%H:%M:%S")
+                            self._save_projects()
+                    except Exception:
+                        pass  # noqa: cleanup-best-effort
+
         # Batch-load all teams to avoid N+1 per-project queries
         team_ids = list({data.get("team_id", "") for data in self._projects.values() if data.get("team_id")})
         team_map: Dict[str, str] = {}
@@ -1433,7 +1449,17 @@ class BuilderProjectService:
 
     async def get_project_state(self, project_id: str) -> Dict[str, Any]:
         # Delegate state read to Core server — single source of truth.
-        return await self._get_state_via_core(project_id)
+        state = await self._get_state_via_core(project_id)
+        # When pipeline completes on Core, sync run phase so project card shows correct status
+        if state.get("phase") in ("done", "failed"):
+            proj = self._projects.get(project_id, {})
+            runs = proj.get("runs", [])
+            if runs:
+                runs[-1]["phase"] = state["phase"]
+                runs[-1]["finished_at"] = time.strftime("%Y-%m-%dT%H:%M:%S")
+                proj["updated_at"] = time.strftime("%Y-%m-%dT%H:%M:%S")
+                self._save_projects()
+        return state
 
     # ── Pipeline state persistence (per-project files, survives restart) ──
 
