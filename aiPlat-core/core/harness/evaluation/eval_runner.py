@@ -410,6 +410,15 @@ class EvalRunner:
         self._metrics = metrics_engine or EvalMetricsEngine()
 
 
+    async def run(self, prompt: str, state: Dict[str, Any]) -> str:
+        """Single eval prompt execution. Used by pipeline engine's _tri_evaluate."""
+        try:
+            from core.harness.llm.llm import llm_generate
+            resp = await llm_generate([{"role": "user", "content": prompt}])
+            return resp if resp else ""
+        except Exception:
+            return ""
+
 
     async def run_eval_set(
 

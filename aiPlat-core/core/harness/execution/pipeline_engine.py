@@ -4746,6 +4746,9 @@ class PipelineEngine:
 
         local_state[f"_stage_{stage.id}_done"] = True
 
+        # Evaluate stage health from scoring_dimensions (heuristic, zero-LLM-cost)
+        await self._evaluate_stage_health(stage, local_state)
+
         # Cache result for future runs with identical inputs
 
         input_hash = local_state.get(f"_input_hash_{stage.id}", "")
@@ -6998,6 +7001,111 @@ class PipelineEngine:
 
         return state
 
+    async def _evaluate_stage_health(self, stage: PipelineStageConfig, state: PipelineState) -> None:
+        """Compute per-dimension health scores from stage output (heuristic, zero-LLM-cost).
+
+        Writes to state[f"_health_report_{stage.id}"] in the format expected by
+        get_health_report() in builder_project_service.py.
+        """
+        dims = getattr(stage, 'scoring_dimensions', None)
+        if not dims:
+            return
+
+        artifact = state.get(stage.output_artifact)
+        if artifact is None:
+            return
+
+        raw_output = ""
+        if isinstance(artifact, dict):
+            raw_output = str(artifact.get("raw_output", ""))
+        else:
+            raw_output = str(artifact)
+
+        output_len = len(raw_output) if raw_output else 0
+
+        # ── Heuristic scoring per dimension ──
+        dimension_scores = []
+        for dim in dims:
+            dim_name = dim.get("name", "")
+            dim_weight = dim.get("weight", 0.0)
+            dim_threshold = dim.get("threshold", 7.0)
+            dim_desc = dim.get("description", dim_name)
+            score = 5.0  # default midpoint
+
+            # Completeness / coverage: based on output size and structural element count
+            if dim_name in ("completeness", "coverage", "execution_completeness"):
+                score = min(10.0, 3.0 + (output_len / 1500) * 7.0)
+                struct_count = raw_output.count('## ') + raw_output.count('|') / 4.0
+                struct_count += raw_output.count('FR-') + raw_output.count('AC')
+                score = min(10.0, score + struct_count * 0.3)
+
+            # Clarity / configurability: output structure and organization
+            elif dim_name in ("clarity", "configurability"):
+                sections = raw_output.count('## ') + raw_output.count('### ')
+                score = min(10.0, 2.0 + sections * 1.5)
+                if '```' in raw_output:
+                    score += 1.0
+                score = min(10.0, score)
+
+            # Modularity / correctness / feasibility / interactivity / data_binding
+            elif dim_name in ("modularity", "correctness", "feasibility", "interactivity",
+                              "data_binding"):
+                files = raw_output.count('## FILE:') + raw_output.count('"file"')
+                files += raw_output.count('"path"')
+                components = raw_output.count('"name"') / 2.0
+                components += raw_output.count('"component"')
+                score = min(10.0, 3.0 + files * 1.0 + components * 0.8)
+
+            # Testability / evaluation_accuracy: based on test results
+            elif dim_name in ("testability", "evaluation_accuracy"):
+                if isinstance(artifact, dict):
+                    tr = artifact.get("test_results") or artifact
+                    if isinstance(tr, dict) and tr.get("total", 0) > 0:
+                        rate = tr.get("pass_rate", 0)
+                        score = rate * 10.0
+                    else:
+                        ac_count = raw_output.count('AC') + raw_output.count('acceptance_criteria')
+                        score = min(10.0, 3.0 + ac_count * 0.5)
+                else:
+                    ac_count = raw_output.count('AC') + raw_output.count('acceptance_criteria')
+                    score = min(10.0, 3.0 + ac_count * 0.5)
+
+            # Functionality / robustness: based on output quality signals
+            elif dim_name in ("functionality", "robustness"):
+                if isinstance(artifact, dict) and artifact.get("pass_rate") is not None:
+                    score = (artifact.get("pass_rate") or 0) * 10.0
+                else:
+                    score = min(10.0, 3.0 + (output_len / 2000) * 7.0)
+
+            # Default: output size proxy
+            else:
+                score = min(10.0, 3.0 + (output_len / 2000) * 7.0)
+
+            dimension_scores.append({
+                "name": dim_name,
+                "display_name": dim_desc,
+                "score": round(score, 1),
+                "max_score": 10.0,
+                "weight": dim_weight,
+                "pass_threshold": dim_threshold,
+                "issues_count": 0,
+            })
+
+        # Compute weighted overall score (0-100 scale)
+        total_weight = sum(d["weight"] for d in dimension_scores) or 1.0
+        weighted_sum = sum(d["score"] * d["weight"] for d in dimension_scores)
+        overall = round(weighted_sum / total_weight * 10.0, 1)
+
+        verdict = "passed" if overall >= 70 else "partial" if overall >= 40 else "failed"
+
+        report = {
+            "stage_id": stage.id,
+            "agent_id": getattr(stage, 'agent_id', '') or stage.id,
+            "dimensions": dimension_scores,
+            "overall_score": overall,
+            "verdict": verdict,
+        }
+        state[f"_health_report_{stage.id}"] = report
 
 
     async def _tri_evaluate(self, stage: PipelineStageConfig, state: Dict, pytest_output: str) -> Dict:
