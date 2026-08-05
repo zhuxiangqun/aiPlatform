@@ -94,6 +94,7 @@ deploy-kit/images/*.tar
 .aiplat/overview_cache.json
 .aiplat/code_graph.db
 .aiplat/cap_graph.db
-.aiplat/execution.db
+.aiplat/aiplat_executions.sqlite3
+.aiplat/execution.db  # legacy path
 
 pentest-reports/

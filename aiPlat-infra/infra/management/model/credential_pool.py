@@ -69,7 +69,7 @@ class CredentialPool:
         """
         try:
             db_path = os.getenv("AIPLAT_EXECUTION_DB_PATH",
-                                os.path.expanduser("~/.aiplat/data/execution.db"))
+                                os.path.expanduser("~/.aiplat/aiplat_executions.sqlite3"))
             if os.path.isfile(db_path):
                 import sqlite3
                 conn = sqlite3.connect(db_path, timeout=3.0)

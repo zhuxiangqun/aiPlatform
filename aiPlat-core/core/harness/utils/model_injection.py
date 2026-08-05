@@ -229,7 +229,7 @@ def _do_inject_adapter_models(mgr: Any) -> int:
 
                 os.path.join(os.getenv("AIPLAT_HOME", os.path.expanduser("~/.aiplat")),
 
-                            "data", "aiplat_executions.sqlite3"),
+                            "aiplat_executions.sqlite3"),
 
             ]:
 

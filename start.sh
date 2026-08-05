@@ -75,7 +75,7 @@ export AIPLAT_USE_CORE_ENGINE="${AIPLAT_USE_CORE_ENGINE:-true}"
 # LLM 配置 — 由 infra ModelManager 统一管理。
 # 模型选择策略编辑: aiPlat-infra/config/infra/llm_profile.yaml
 # API key 统一存储在 SQLite adapters 表，通过 Management UI 管理。
-# 无需环境变量 — 所有模型凭据从 ~/.aiplat/data/execution.db 读取。
+# 无需环境变量 — 所有模型凭据从 ~/.aiplat/aiplat_executions.sqlite3 读取。
 export AIPLAT_LLM_CONFIG_PATH="${AIPLAT_LLM_CONFIG_PATH:-$PROJECT_ROOT/aiPlat-infra/config/infra/llm_profile.yaml}"
 # Builder Pipeline: 单次流水线 token 预算
 export AIPLAT_BUILDER_MAX_TOKENS="${AIPLAT_BUILDER_MAX_TOKENS:-50000}"

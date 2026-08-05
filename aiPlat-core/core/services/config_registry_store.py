@@ -347,7 +347,8 @@ _registry_singleton: Optional[ConfigRegistryStore] = None
 
 def get_config_registry_store(db_path: Optional[str] = None) -> ConfigRegistryStore:
     global _registry_singleton
-    desired = db_path or os.environ.get("AIPLAT_EXECUTION_DB_PATH", "data/aiplat_executions.sqlite3")
+    desired = db_path or os.environ.get("AIPLAT_EXECUTION_DB_PATH",
+        os.path.join(os.path.expanduser("~"), ".aiplat", "aiplat_executions.sqlite3"))
     if _registry_singleton is None or getattr(_registry_singleton, "_db_path", None) != str(desired):
         _registry_singleton = ConfigRegistryStore(db_path=str(desired))
     return _registry_singleton
