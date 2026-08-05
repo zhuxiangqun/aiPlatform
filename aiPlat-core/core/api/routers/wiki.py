@@ -16,7 +16,7 @@ except ImportError:
 from core.schemas_common import DeleteResponse, WikiDeleteAllResponse, ListResponse, WikiPageResponse, MessageResponse
 import logging
 
-router = APIRouter(tags=["wiki"])
+router = APIRouter(prefix="/wiki", tags=["wiki"])
 
 # Include sub-module routers (incremental migration)
 # wiki_learning.py, wiki_loop_triggers.py, wiki_ontology_sql.py
@@ -1536,7 +1536,7 @@ async def curate_wiki(collection: str = "default"):
     return report
 
 
-@router.post("/wiki/index-md", response_model=Dict[str, Any])
+@router.post("/index-md", response_model=Dict[str, Any])
 async def regenerate_wiki_index(collection: str = "default"):
     """Generate a human-readable wiki index page (index.md) from index.json."""
     try:
@@ -1550,7 +1550,7 @@ async def regenerate_wiki_index(collection: str = "default"):
         raise HTTPException(status_code=500, detail=f"Index generation failed: {e}")
 
 
-@router.get("/wiki/health-trend", response_model=Dict[str, Any])
+@router.get("/health-trend", response_model=Dict[str, Any])
 async def get_wiki_health_trend():
     """Get wiki health score trend over time."""
     try:
@@ -1562,7 +1562,7 @@ async def get_wiki_health_trend():
         raise HTTPException(status_code=500, detail=f"Failed to get health trend: {e}")
 
 
-@router.get("/wiki/golden-queries/seed", response_model=Dict[str, Any])
+@router.get("/golden-queries/seed", response_model=Dict[str, Any])
 async def seed_golden_queries():
     """Create a default golden_queries.yaml template."""
     try:
@@ -1574,7 +1574,7 @@ async def seed_golden_queries():
         raise HTTPException(status_code=500, detail=f"Failed: {e}")
 
 
-@router.post("/wiki/golden-queries/run", response_model=Dict[str, Any])
+@router.post("/golden-queries/run", response_model=Dict[str, Any])
 async def run_golden_tests():
     """Run regression tests against golden queries."""
     try:
@@ -1586,7 +1586,7 @@ async def run_golden_tests():
         raise HTTPException(status_code=500, detail=f"Golden test failed: {e}")
 
 
-@router.get("/wiki/query-structured", response_model=Dict[str, Any])
+@router.get("/query-structured", response_model=Dict[str, Any])
 async def wiki_structured_query(q: str = ""):
     """Deterministic structured query — same question, same answer."""
     if not q:
@@ -1675,7 +1675,7 @@ async def ontology_source_impact(collection: str = "default"):
         raise HTTPException(status_code=500, detail=f"Impact query failed: {e}")
 
 
-@router.get("/wiki/changelog", response_model=Dict[str, Any])
+@router.get("/changelog", response_model=Dict[str, Any])
 async def get_wiki_changelog(title: str = "", limit: int = 20, collection: str = "default"):
     """Get wiki changelog entries, optionally filtered by page title."""
     from core.harness.knowledge.wiki_engine import _wiki_root
@@ -1697,7 +1697,7 @@ async def get_wiki_changelog(title: str = "", limit: int = 20, collection: str =
         raise HTTPException(status_code=500, detail=f"Failed to read changelog: {e}")
 
 
-@router.post("/wiki/rollback/{title}", response_model=Dict[str, Any])
+@router.post("/rollback/{title}", response_model=Dict[str, Any])
 async def wiki_rollback(title: str, index: int = -1, collection: str = "default"):
     """Rollback a wiki page to a previous version from changelog.
     
@@ -1712,7 +1712,7 @@ async def wiki_rollback(title: str, index: int = -1, collection: str = "default"
     return {"status": "rolled_back", "title": title, "index": index}
 
 
-@router.get("/wiki/page/{page_id}", response_model=Dict[str, Any])
+@router.get("/page/{page_id}", response_model=Dict[str, Any])
 async def wiki_page_by_id(page_id: str, collection: str = "default"):
     """Get a wiki page by its stable page_id (UUID). Survives title renames."""
     try:
@@ -1727,7 +1727,7 @@ async def wiki_page_by_id(page_id: str, collection: str = "default"):
         raise HTTPException(status_code=500, detail=f"Page lookup failed: {e}")
 
 
-@router.get("/wiki/duplicates", response_model=Dict[str, Any])
+@router.get("/duplicates", response_model=Dict[str, Any])
 async def detect_wiki_duplicates(collection: str = "default"):
     """Detect potentially duplicate wiki pages using embedding similarity."""
     try:
@@ -3253,7 +3253,7 @@ async def rebuild_fts_index(collection: str = "default"):
         raise HTTPException(status_code=500, detail=f"FTS rebuild failed: {e}")
 
 
-@router.post("/wiki/evolve", response_model=Dict[str, Any])
+@router.post("/evolve", response_model=Dict[str, Any])
 async def evolve_knowledge(collection: str = "default", generations: int = 1,
                             max_mutations: int = 5, force: bool = False):
     """Run knowledge evolution — event-driven, not timer-driven.
@@ -3285,7 +3285,7 @@ async def evolve_knowledge(collection: str = "default", generations: int = 1,
         raise HTTPException(status_code=500, detail=f"Evolution failed: {e}")
 
 
-@router.get("/wiki/evolution-history", response_model=Dict[str, Any])
+@router.get("/evolution-history", response_model=Dict[str, Any])
 async def get_evolution_history(collection: str = "default"):
     """Get evolution generation history."""
     import json as _json, os as _os
