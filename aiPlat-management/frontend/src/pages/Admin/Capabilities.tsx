@@ -193,25 +193,25 @@ const CapabilitiesPage: React.FC = () => {
             <div className="p-8 text-center text-gray-500"><RefreshCw className="w-8 h-8 mx-auto mb-2 animate-spin" /> Loading...</div>
           ) : (
             <table className="w-full text-sm">
-              <thead className="bg-gray-50 border-b">
+              <thead className="bg-gray-100 border-b-2 border-gray-300 text-gray-700 text-xs uppercase tracking-wider">
                 <tr>
-                  <th className="text-center p-3 w-8 text-gray-400 text-xs">#</th>
-                  <th className="text-left p-3 w-8">✓</th>
+                  <th className="text-center p-3 w-8 text-gray-400">#</th>
+                  <th className="text-center p-3 w-8 text-gray-400">✓</th>
                   {activeTab === "auto" && (
                     <>
-                      <th className="text-left p-3 font-medium">能力 ID</th>
-                      <th className="text-left p-3 font-medium w-20">状态</th>
-                      <th className="text-left p-3 font-medium">代码位置</th>
+                      <th className="text-left p-3 font-semibold text-gray-700">能力 ID</th>
+                      <th className="text-left p-3 font-semibold text-gray-700 w-20">状态</th>
+                      <th className="text-left p-3 font-semibold text-gray-700">代码位置</th>
                     </>
                   )}
                   {(activeTab === "consumed" || activeTab === "orphan") && (
                     <>
-                      <th className="text-left p-3 font-medium">Schema 字段</th>
-                      <th className="text-left p-3 font-medium w-24">引擎消费</th>
-                      <th className="text-left p-3 font-medium">默认值</th>
+                      <th className="text-left p-3 font-semibold text-gray-700">Schema 字段</th>
+                      <th className="text-left p-3 font-semibold text-gray-700 w-24">引擎消费</th>
+                      <th className="text-left p-3 font-semibold text-gray-700">默认值</th>
                     </>
                   )}
-                  <th className="p-3 w-24 font-medium">操作</th>
+                  <th className="p-3 w-24 font-semibold text-gray-700">操作</th>
                 </tr>
               </thead>
               <tbody>
