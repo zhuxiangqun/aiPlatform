@@ -195,6 +195,7 @@ const CapabilitiesPage: React.FC = () => {
             <table className="w-full text-sm">
               <thead className="bg-gray-50 border-b">
                 <tr>
+                  <th className="text-center p-3 w-8 text-gray-400 text-xs">#</th>
                   <th className="text-left p-3 w-8">✓</th>
                   {activeTab === "auto" && (
                     <>
@@ -214,8 +215,9 @@ const CapabilitiesPage: React.FC = () => {
                 </tr>
               </thead>
               <tbody>
-                {activeTab === "auto" && autoList.map((item) => (
+                {activeTab === "auto" && autoList.map((item, idx) => (
                   <tr key={item.id} className={`border-b hover:bg-gray-50 ${item.reviewed ? "bg-green-50" : ""}`}>
+                    <td className="p-3 text-center text-gray-400 text-xs">{idx + 1}</td>
                     <td className="p-3">
                       <input type="checkbox" checked={!!item.reviewed} onChange={e => markReviewed(item.id, e.target.checked)} />
                     </td>
@@ -237,9 +239,9 @@ const CapabilitiesPage: React.FC = () => {
                   </tr>
                 ))}
                 {(activeTab === "consumed" || activeTab === "orphan") && 
-                  (activeTab === "consumed" ? cfgConsumed : cfgOrphan).map((item, i) => (
-                  <tr key={item.field || i} className={`border-b hover:bg-gray-50 ${item.reviewed ? "bg-green-50" : ""}`}>
-                    <td className="p-3">
+                  (activeTab === "consumed" ? cfgConsumed : cfgOrphan).map((item, idx) => (
+                  <tr key={item.field || idx} className={`border-b hover:bg-gray-50 ${item.reviewed ? "bg-green-50" : ""}`}>
+                    <td className="p-3 text-center text-gray-400 text-xs">{idx + 1}</td>
                       <input type="checkbox" checked={!!item.reviewed} onChange={e => markReviewed(item.field || "", e.target.checked)} />
                     </td>
                     <td className="p-3 font-mono text-xs">{item.field || "-"}</td>
