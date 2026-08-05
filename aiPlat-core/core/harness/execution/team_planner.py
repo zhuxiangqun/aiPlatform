@@ -332,42 +332,45 @@ def _ensure_capability_profile(stage: dict) -> None:
     YAML config produced, this step guarantees the output has every required
     capability field with sensible defaults.
 
-    Defaults are read from PipelineStageConfig schema (single source of truth).
-    Only overridden for fields that need production-specific non-empty values.
+    Default sources (priority order):
+    1. Existing stage values (never overwritten)
+    2. ~/.aiplat/capability_defaults.yaml (production-tuned defaults)
+    3. PipelineStageConfig.model_fields (Pydantic schema defaults)
     """
     from core.schemas_builder import PipelineStageConfig
 
-    # Schema-derived defaults (single source of truth — never hardcode):
-    #   execution_backend="llm", failure_strategy="fail_pipeline",
-    #   sandbox=False, sandbox_mode="subprocess", context_profile="code",
-    #   skill_model_purpose="", test_execution_mode="", chain_skill_after="",
-    #   deploy_files_to_disk=False, hitl=False, hitl_phase="",
-    #   generate_test_plan=False, uses_file_output=False, model=""
+    # ── Source 1: capability_defaults.yaml ──
+    _yaml_defaults = _load_capability_defaults_yaml()
 
+    for key, value in _yaml_defaults.items():
+        if key not in stage:
+            stage[key] = value
+
+    # ── Source 2: PipelineStageConfig schema defaults (single source of truth) ──
     for name, field in PipelineStageConfig.model_fields.items():
         if name in stage:
-            continue  # preserve existing values
+            continue
         if name.startswith("_"):
             continue
-        # Get default: try default_factory first, then default
         if field.default_factory is not None:
             stage[name] = field.default_factory()
         elif field.default is not None and str(field.default) != "PydanticUndefined":
             stage[name] = field.default
 
-    # Production overrides: fields where schema empty-default is insufficient
-    _production_defaults = {
-        "scoring_dimensions": [
-            {"name": "completeness", "weight": 0.4},
-            {"name": "accuracy", "weight": 0.3},
-            {"name": "efficiency", "weight": 0.3},
-        ],
-        "quality_gate": {"min_output_length": 100},
-        "retry_policy": {"max_retries": 2, "backoff": "exponential"},
-    }
-    for key, value in _production_defaults.items():
-        if not stage.get(key):  # only inject if empty (schema default was []/{})
-            stage[key] = value
+
+def _load_capability_defaults_yaml() -> dict:
+    """Load production capability defaults from YAML (single source of truth)."""
+    import os as _os
+    config_path = _os.path.expanduser("~/.aiplat/capability_defaults.yaml")
+    if not _os.path.isfile(config_path):
+        return {}
+    try:
+        import yaml as _yaml
+        with open(config_path) as f:
+            data = _yaml.safe_load(f) or {}
+        return data.get("pipeline_stage", {})
+    except Exception:
+        return {}
 
 
 def _load_fallback_team() -> List[Dict[str, Any]]:
