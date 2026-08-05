@@ -236,7 +236,7 @@ const CapabilitiesPage: React.FC = () => {
             <div className="p-8 text-center text-gray-500"><RefreshCw className="w-8 h-8 mx-auto mb-2 animate-spin" /> Loading...</div>
           ) : (
                <table className="w-full text-sm">
-              <thead className="bg-gray-100 border-b-2 border-gray-300 text-gray-700 text-xs uppercase tracking-wider">
+              <thead className="bg-gray-100 border-b-2 border-gray-300 text-gray-900 text-xs uppercase tracking-wider">
                 <tr>
                   <th className="text-center p-3 w-8 text-gray-400">#</th>
                   <th className="text-center p-3 w-8 text-gray-400">
@@ -255,18 +255,18 @@ const CapabilitiesPage: React.FC = () => {
                   </th>
                   {activeTab === "auto" && (
                     <>
-                      <th className="text-left p-3 font-semibold text-gray-700">能力 ID</th>
-                      <th className="text-left p-3 font-semibold text-gray-700">说明</th>
-                      <th className="text-left p-3 font-semibold text-gray-700">代码存在</th>
-                      <th className="text-left p-3 font-semibold text-gray-700">代码位置</th>
+                      <th className="text-left p-3 font-semibold text-gray-900">能力 ID</th>
+                      <th className="text-left p-3 font-semibold text-gray-900">说明</th>
+                      <th className="text-left p-3 font-semibold text-gray-900">代码存在</th>
+                      <th className="text-left p-3 font-semibold text-gray-900">代码位置</th>
                     </>
                   )}
                   {(activeTab === "consumed" || activeTab === "orphan") && (
                     <>
-                      <th className="text-left p-3 font-semibold text-gray-700">Schema 字段</th>
-                      <th className="text-left p-3 font-semibold text-gray-700">说明</th>
-                      <th className="text-left p-3 font-semibold text-gray-700 w-24">引擎消费</th>
-                      <th className="text-left p-3 font-semibold text-gray-700">默认值</th>
+                      <th className="text-left p-3 font-semibold text-gray-900">Schema 字段</th>
+                      <th className="text-left p-3 font-semibold text-gray-900">说明</th>
+                      <th className="text-left p-3 font-semibold text-gray-900 w-24">引擎消费</th>
+                      <th className="text-left p-3 font-semibold text-gray-900">默认值</th>
                     </>
                   )}
                   <th className="p-3 w-24 font-semibold text-gray-700">操作</th>
@@ -279,7 +279,7 @@ const CapabilitiesPage: React.FC = () => {
                     <td className="p-3">
                       <input type="checkbox" checked={!!item.reviewed} onChange={e => markReviewed(item.id, e.target.checked)} />
                     </td>
-                    <td className="p-3 font-mono text-xs">
+                    <td className="p-3 font-mono text-sm text-gray-900 font-medium">
                       {item.id}
                       {isNewItem(item.id, "auto") && !changes.new_scan && (
                         <span className="ml-2 px-1 py-0 text-xs bg-yellow-200 text-yellow-800 rounded">新增</span>
@@ -317,7 +317,7 @@ const CapabilitiesPage: React.FC = () => {
                     <td className="p-3">
                       <input type="checkbox" checked={!!item.reviewed} onChange={e => markReviewed(item.field || "", e.target.checked)} />
                     </td>
-                    <td className="p-3 font-mono text-xs">
+                    <td className="p-3 font-mono text-sm text-gray-900 font-medium">
                       {item.field || "-"}
                       {isNewItem(item.field || "", "cfg") && !changes.new_scan && (
                         <span className="ml-2 px-1 py-0 text-xs bg-yellow-200 text-yellow-800 rounded">新增</span>
