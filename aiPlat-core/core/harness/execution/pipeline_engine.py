@@ -3715,11 +3715,17 @@ class PipelineEngine:
             from core.harness.knowledge.context_bus import assemble_pipeline_context
             from core.harness.utils.prompt_loader import _sync_resolve
 
-            # 3.5a. Classify requirement to domain
-            _domain_text = _desc or str(_prd.get("title", "") if isinstance(_prd, dict) else "")
+            # 3.5a. Classify requirement to domain (runs in thread pool to avoid blocking event loop)
+            _domain_text = _desc or str(_prd.get("title", "")) if isinstance(_prd, dict) else ""
             if not _domain_text:
                 _domain_text = getattr(stage, 'phase', '') or _skill_name
-            _domain_id = DomainRouter().classify(_domain_text) or ""
+            _domain_id = ""
+            try:
+                import asyncio as _dom_asyncio
+                _domain_id = await _dom_asyncio.to_thread(
+                    DomainRouter().classify, _domain_text) or ""
+            except Exception:
+                _domain_id = ""  # best-effort: classification is optional
             if _domain_id:
                 try:
                     _domain_prompt = _sync_resolve(f"domain-prompt-{_domain_id}")

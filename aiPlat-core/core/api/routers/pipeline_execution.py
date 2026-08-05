@@ -23,45 +23,34 @@ _log = logging.getLogger("aiplat.pipeline.api")
 
 
 def _make_store_callback(run_id: str, store):
-    """Create a persist_callback that writes progress to PipelineRunStore."""
+    """Create a persist_callback that writes progress + artifacts to PipelineRunStore."""
 
     def _cb(state: dict):
         try:
-            phase = state.get("phase", "executing")
-            stage_idx = state.get("_current_stage_idx", 0)
-            progress = state.get("_progress")
-
             store.update_run_progress(
                 run_id,
-                current_stage_idx=stage_idx,
+                current_stage_idx=state.get("_current_stage_idx", 0),
                 pass_rate=state.get("pass_rate", 0.0),
             )
 
-            # Write per-stage progress + artifacts
-            stages = state.get("team_stages", state.get("_stages", []))
-            if isinstance(stages, list):
-                for i, s in enumerate(stages):
-                    if isinstance(s, dict):
-                        sid = s.get("id", f"stage_{i}")
-                        oa = s.get("output_artifact", "")
-                        artifact = state.get(oa) if oa else None
-                        store.upsert_stage(
-                            run_id,
-                            sid,
-                            stage_idx=i if i != stage_idx else stage_idx,
-                            agent_id=s.get("agent_id", ""),
-                            skill_name=s.get("skill_name", ""),
-                            status="completed" if artifact else ("running" if i == stage_idx else "pending"),
-                            progress=progress if i == stage_idx else None,
-                            artifact_key=oa,
-                            artifact_output=str(artifact.get("raw_output", ""))[:50000] if isinstance(artifact, dict) else "",
-                            elapsed_sec=artifact.get("elapsed_sec", 0.0) if isinstance(artifact, dict) else 0.0,
-                        )
+            # Write per-artifact progress (state keys with raw_output are artifacts)
+            for key, val in state.items():
+                if isinstance(val, dict) and val.get("raw_output"):
+                    stage_id = key.replace("_", "-")  # prd, architecture, etc → stage ids
+                    store.upsert_stage(
+                        run_id, stage_id,
+                        status="completed",
+                        artifact_key=key,
+                        artifact_output=str(val.get("raw_output", ""))[:50000],
+                        elapsed_sec=float(val.get("elapsed_sec", 0) or 0),
+                    )
 
+            # Write _progress as stage progress
+            progress = state.get("_progress")
             if progress and isinstance(progress, dict):
+                stage_id = progress.get("stage", "current")
                 store.upsert_stage(
-                    run_id, f"stage_{stage_idx}",
-                    stage_idx=stage_idx,
+                    run_id, stage_id,
                     status=progress.get("status", "running"),
                     progress=progress,
                 )
