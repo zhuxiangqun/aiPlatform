@@ -70,8 +70,7 @@ export AIPLAT_GOVERNANCE_CRON_HOURS="${AIPLAT_GOVERNANCE_CRON_HOURS:-0}"
 export AIPLAT_DOCS_AUTO_SYNC="${AIPLAT_DOCS_AUTO_SYNC:-false}"
 # Pipeline execution: true = delegate pipeline to Core server (8002) via HTTP API.
 # Runs pipeline in Core's event loop where all LLM infrastructure is initialized.
-# Set to true to enable the new layered architecture (Phase 1).
-export AIPLAT_USE_CORE_ENGINE="${AIPLAT_USE_CORE_ENGINE:-false}"
+export AIPLAT_USE_CORE_ENGINE="${AIPLAT_USE_CORE_ENGINE:-true}"
 
 # LLM 配置 — 由 infra ModelManager 统一管理。
 # 模型选择策略编辑: aiPlat-infra/config/infra/llm_profile.yaml
