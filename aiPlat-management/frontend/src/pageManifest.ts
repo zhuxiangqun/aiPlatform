@@ -109,6 +109,8 @@ export const menuItems: MenuEntry[] = [
     { key: '/approval', icon: Package, label: '资产审批' },
     { key: '/core/approvals', icon: Shield, label: '运行时审批' },
     { key: '/approval/history', icon: FileText, label: '审批记录' },
+    { key: '_sub_capability', subLabel: '🎯 核心能力' },
+    { key: '/governance/capabilities', icon: Cpu, label: '核心能力管理' },
   ]},
   { divider: true },
   // ════════════════════════════════════════════════════════════════

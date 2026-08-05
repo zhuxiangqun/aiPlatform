@@ -116,6 +116,7 @@ const KnowledgeFactoryPage = lazy(() => import('./pages/KnowledgeFactory/Knowled
 const DocsViewer = lazy(() => import('./pages/Docs/DocsViewer'));
 const OntologyEditor = lazy(() => import('./pages/OntologyEditor'));
 const GovernanceDashboard = lazy(() => import('./pages/Governance'));
+const CapabilitiesAdmin = lazy(() => import('./pages/Admin/Capabilities'));
 const RunComparison = lazy(() => import('./pages/Diagnostics/RunComparison'));
 const ModelPlayground = lazy(() => import('./pages/Diagnostics/ModelPlayground'));
 const ModelAuditPanel = lazy(() => import('./pages/Diagnostics/ModelAuditPanel'));
@@ -160,6 +161,7 @@ const router = createBrowserRouter([
       { path: 'docs', element: withSuspense(DocsViewer) },
       { path: 'ontology-editor', element: withSuspense(OntologyEditor) },
       { path: 'governance', element: withSuspense(GovernanceDashboard) },
+      { path: 'governance/capabilities', element: withSuspense(CapabilitiesAdmin) },
       { path: 'infra/nodes', element: withSuspense(InfraNodes) },
       { path: 'infra/models', element: withSuspense(InfraModels) },
       { path: 'infra/finetune', element: withSuspense(InfraFineTune) },
