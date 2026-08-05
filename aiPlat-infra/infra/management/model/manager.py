@@ -543,7 +543,8 @@ class ModelManager:
         import time as _time
         import os as _os
 
-        db_path = _os.getenv("AIPLAT_EXECUTION_DB_PATH", "")
+        db_path = _os.getenv("AIPLAT_EXECUTION_DB_PATH",
+            _os.path.join(_os.path.expanduser("~"), ".aiplat", "aiplat_executions.sqlite3"))
         if not db_path or not _os.path.isfile(db_path):
             return
 

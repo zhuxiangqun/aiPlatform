@@ -351,9 +351,6 @@ if [ -f "$_EXEC_DB" ]; then
   fi
 fi
 
-# ExecutionStore DB 路径 — 需要在此设定，以便 infra/core 进程都能从 adapters 表发现模型
-export AIPLAT_EXECUTION_DB_PATH="${AIPLAT_EXECUTION_DB_PATH:-$PROJECT_ROOT/aiPlat-core/core/data/aiplat_executions.sqlite3}"
-mkdir -p "$(dirname "$AIPLAT_EXECUTION_DB_PATH")"
 
 # ===== Step 1: aiPlat-infra =====
 echo "============================================================"
