@@ -54,7 +54,7 @@ export default function ControlProfilePanel() {
   const fetchData = async () => {
     try {
       const resp = await apiClient.get<any>('/core/diagnostics/profile/status');
-      setData(resp.data);
+      setData(resp);
       setError('');
     } catch (e: any) {
       setError(e?.message || 'failed to load');

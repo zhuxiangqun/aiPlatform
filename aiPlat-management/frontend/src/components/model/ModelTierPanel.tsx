@@ -53,7 +53,7 @@ export default function ModelTierPanel() {
   const fetchData = async () => {
     try {
       const resp = await apiClient.get<any>('/core/diagnostics/model-tier');
-      setData(resp.data);
+      setData(resp);
     } catch {
       // silently fail
     } finally {

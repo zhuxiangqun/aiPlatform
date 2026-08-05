@@ -426,1164 +426,500 @@ scan_hash: 549e75eedbaf
 # Generated: 2026-08-05 20:14
 # Merge into AIPLAT_CAPABILITIES.md frontmatter after review.
 
-scan_hash: a89eba9c2d01
 core_guarantees:
-  auto:
-  - id: llm_circuit_breaker
-    description: LLM 熔断器：5次连续失败→断路30s
-    found_at:
-    - file: aiPlat-core/core/harness/syscalls/llm.py
-      line: 140
-      snippet: o=True)   _llm_cb = LLMCircuitBreaker(failure_threshold=5, recovery_
-    - file: aiPlat-core/core/harness/syscalls/llm.py
-      line: 1442
-      snippet: 'is open      if not _llm_cb.allow_request():          try:'
-    - file: aiPlat-core/core/harness/syscalls/llm.py
-      line: 2131
-      snippet: '_llm_cb.record_success()                      # PR #'
-    - file: aiPlat-core/core/harness/syscalls/llm.py
-      line: 2203
-      snippet: _llm_cb.record_failure()                      raise
-    status: active
-  - id: pii_detection
-    description: PII 脱敏：手机/身份证/邮箱/银行卡自动替换
-    found_at:
-    - file: aiPlat-core/core/harness/syscalls/llm.py
-      line: 545
-      snippet: tent, pii_mapping = pii.mask(content)                  if
-    status: active
-  - id: injection_guard
-    description: 提示词注入防护：6条正则+特殊token过滤+覆盖保护
-    found_at:
-    - file: aiPlat-core/core/harness/syscalls/llm.py
-      line: 380
-      snippet: 'ax_chars,          "injection_alerts": 0,          "special_tokens'
-    - file: aiPlat-core/core/harness/syscalls/llm.py
-      line: 396
-      snippet: break attempts      _INJECTION_PATTERNS = [          r"(?i)ignore\s+(
-    - file: aiPlat-core/core/harness/syscalls/llm.py
-      line: 414
-      snippet: 'compile(p) for p in _INJECTION_PATTERNS]        # §5.18: Special toke'
-    - file: aiPlat-core/core/harness/syscalls/llm.py
-      line: 420
-      snippet: kens to filter      _SPECIAL_TOKENS = ["<|im_start|>", "<|im_end|
-    - file: aiPlat-core/core/harness/syscalls/llm.py
-      line: 422
-      snippet: '"<|im_end|>"]      _CONTROL_RE = _re.compile("|".join(_re.es'
-    - file: aiPlat-core/core/harness/syscalls/llm.py
-      line: 422
-      snippet: '.escape(t) for t in _SPECIAL_TOKENS))        def _norm_role(r: An'
-    - file: aiPlat-core/core/harness/syscalls/llm.py
-      line: 504
-      snippet: content = _CONTROL_RE.sub("[FILTERED]", content)
-    - file: aiPlat-core/core/harness/syscalls/llm.py
-      line: 518
-      snippet: stats["injection_alerts"] += 1                      d
-    - file: aiPlat-core/core/harness/syscalls/llm.py
-      line: 1684
-      snippet: 'ge_guard_stats.get("injection_alerts", 0) > 0:              try:'
-    - file: aiPlat-core/core/harness/syscalls/llm.py
-      line: 1702
-      snippet: essage_guard_stats["injection_alerts"],
-    - file: aiPlat-core/core/harness/syscalls/llm.py
-      line: 1722
-      snippet: 'ge_guard_stats.get("injection_alerts", 0) > 0:          await trac'
-    - file: aiPlat-core/core/harness/syscalls/llm.py
-      line: 1760
-      snippet: essage_guard_stats['injection_alerts']} alert(s)",
-    - file: aiPlat-core/core/harness/syscalls/llm.py
-      line: 1762
-      snippet: essage_guard_stats["injection_alerts"],              })          r
-    - file: aiPlat-core/core/harness/syscalls/llm.py
-      line: 1766
-      snippet: essage_guard_stats['injection_alerts']} prompt injection alert(s)
-    status: active
-  - id: immune_memory
-    description: ImmunMemory 攻击模式防御
-    found_at:
-    - file: aiPlat-core/core/harness/syscalls/llm.py
-      line: 532
-      snippet: ImmuneMemory.immunize(content, detected_type)
-    - file: aiPlat-core/core/harness/syscalls/llm.py
-      line: 1510
-      snippet: match = ImmuneMemory.scan(prompt)              if match
-    - file: aiPlat-core/core/harness/syscalls/llm.py
-      line: 1518
-      snippet: akeResponse(content=ImmuneMemory.SAFE_RESPONSE, usage={})              elif
-    status: active
-  - id: claude_md_injection
-    description: CLAUDE.md 架构规约注入
-    found_at:
-    - file: aiPlat-core/core/harness/syscalls/llm.py
-      line: 617
-      snippet: 'ompressed away.     _try_inject_claude_md(out, trace_context)       #
-        P'
-    - file: aiPlat-core/core/harness/syscalls/llm.py
-      line: 904
-      snippet: 'P2 cleanup) ──  def _try_inject_claude_md(messages: List[Message],
-        trac'
-    status: active
-  - id: wiki_circuit_breaker
-    description: Wiki 检索熔断器
-    found_at:
-    - file: aiPlat-core/core/harness/syscalls/retrieval.py
-      line: 1024
-      snippet: 's      ]      class WikiCircuitBreaker:      u"""Circuit breaker for'
-    - file: aiPlat-core/core/harness/syscalls/retrieval.py
-      line: 1100
-      snippet: r (domain, tenant)  _wiki_circuit_breaker = WikiCircuitBreaker(failure_
-    - file: aiPlat-core/core/harness/syscalls/retrieval.py
-      line: 1100
-      snippet: i_circuit_breaker = WikiCircuitBreaker(failure_threshold=3, recovery
-    - file: aiPlat-core/core/harness/syscalls/retrieval.py
-      line: 1238
-      snippet: '():          if not _wiki_circuit_breaker.allow_request(              d'
-    - file: aiPlat-core/core/harness/syscalls/retrieval.py
-      line: 1260
-      snippet: )              _wiki_circuit_breaker.record_success(
-    - file: aiPlat-core/core/harness/syscalls/retrieval.py
-      line: 1272
-      snippet: 'ption:              _wiki_circuit_breaker.record_failure('
-    status: active
-  - id: rate_limiter
-    description: 模型调用限流：并发控制+cooldown
-    found_at:
-    - file: aiPlat-core/core/harness/syscalls/llm.py
-      line: 2111
-      snippet: nfrastructure.gates.rate_limit_tracker import check_and_acquire, suc
-    - file: aiPlat-core/core/harness/syscalls/llm.py
-      line: 2111
-      snippet: imit_tracker import check_and_acquire, success as _rt_success, reco
-    - file: aiPlat-core/core/harness/syscalls/llm.py
-      line: 2113
-      snippet: wait = await check_and_acquire(model_name or "deepseek-v4-pr
-    status: active
-  - id: memory_build_context
-    description: 四层记忆注入（Working/Episodic/Semantic/TaskSkill）
-    found_at:
-    - file: aiPlat-core/core/harness/syscalls/llm.py
-      line: 1424
-      snippet: _mem_ctx = await _mgr.build_context(                 current_quer
-    status: active
-  - id: memory_save_interaction
-    description: 交互记忆保存（Episodic）
-    found_at:
-    - file: aiPlat-core/core/harness/syscalls/llm.py
-      line: 1344
-      snippet: await mgr.save_interaction(                 user_message
-    status: active
-  - id: context_compression_5level
-    description: 5 级上下文压缩
-    found_at:
-    - file: aiPlat-core/core/harness/memory/compression.py
-      line: 223
-      snippet: 't window      class ContextCompression:      """Five-level context
-        c'
-    - file: aiPlat-core/core/harness/memory/compression.py
-      line: 1108
-      snippet: '", "ContextState", "ContextCompression",      "TOOL_OUTPUT_SUMMARY_T'
-    - file: aiPlat-core/core/harness/memory/compression.py
-      line: 1118
-      snippet: ']      __all__ = ["ContextCompression", "CompressionLevel", "Contex'
-    - file: aiPlat-core/core/harness/memory/manager.py
-      line: 75
-      snippet: .compression import ContextCompression, ContextState  from .reminder
-    - file: aiPlat-core/core/harness/memory/manager.py
-      line: 335
-      snippet: self._compression = ContextCompression()          self._reminders =
-    - file: aiPlat-core/core/harness/execution/loop/inference.py
-      line: 44
-      snippet: 'await loop._maybe_compact_messages(state)      # Option'
-    - file: aiPlat-core/core/harness/execution/loop/inference.py
-      line: 48
-      snippet: await loop._maybe_compact_messages(state)         from
-    - file: aiPlat-core/core/harness/execution/loop/inference.py
-      line: 404
-      snippet: .compression import ContextCompression, ContextState
-    - file: aiPlat-core/core/harness/execution/loop/inference.py
-      line: 405
-      snippet: comp = ContextCompression()                 msgs = stat
-    status: active
-  - id: semantic_cache
-    description: 语义缓存 L1(MD5)+L2(Cosine≥0.95)
-    found_at:
-    - file: aiPlat-core/core/apps/agents/materials_chat.py
-      line: 257
-      snippet: e.harness.knowledge.semantic_cache_hook import try_cache_hit
-    - file: aiPlat-core/core/apps/agents/materials_chat.py
-      line: 257
-      snippet: c_cache_hook import try_cache_hit                     collectio
-    - file: aiPlat-core/core/apps/agents/materials_chat.py
-      line: 259
-      snippet: cached = await try_cache_hit(question, collection_id_pre)
-    - file: aiPlat-core/core/apps/agents/materials_chat.py
-      line: 265
-      snippet: 'etadata={"source": "semantic_cache", "pipeline_trace": pipeline_'
-    - file: aiPlat-core/core/apps/agents/materials_chat.py
-      line: 544
-      snippet: e.harness.knowledge.semantic_cache_hook import try_cache_hit
-    - file: aiPlat-core/core/apps/agents/materials_chat.py
-      line: 544
-      snippet: c_cache_hook import try_cache_hit                 cached = awai
-    - file: aiPlat-core/core/apps/agents/materials_chat.py
-      line: 545
-      snippet: cached = await try_cache_hit(enhanced_question, domain_id)
-    - file: aiPlat-core/core/harness/knowledge/semantic_cache_hook.py
-      line: 4
-      snippet: 'two functions:   - try_cache_hit(query, domain_id) → Optional['
-    - file: aiPlat-core/core/harness/knowledge/semantic_cache_hook.py
-      line: 5
-      snippet: Optional[dict]   - write_cache_result(query, domain_id, answer, cit
-    - file: aiPlat-core/core/harness/knowledge/semantic_cache_hook.py
-      line: 15
-      snippet: g.getLogger("aiplat.semantic_cache_hook")   async def try_cache_
-    - file: aiPlat-core/core/harness/knowledge/semantic_cache_hook.py
-      line: 18
-      snippet: '_hook")   async def try_cache_hit(question: str, domain_id: str'
-    - file: aiPlat-core/core/harness/knowledge/semantic_cache_hook.py
-      line: 24
-      snippet: e.harness.knowledge.semantic_cache import get_semantic_cache
-    - file: aiPlat-core/core/harness/knowledge/semantic_cache_hook.py
-      line: 24
-      snippet: ic_cache import get_semantic_cache          cache = get_semantic
-    - file: aiPlat-core/core/harness/knowledge/semantic_cache_hook.py
-      line: 26
-      snippet: cache = get_semantic_cache()         if not cache.enable
-    - file: aiPlat-core/core/harness/knowledge/semantic_cache_hook.py
-      line: 43
-      snippet: 'rn None   async def write_cache_result(     question: str,     domai'
-    - file: aiPlat-core/core/harness/knowledge/semantic_cache_hook.py
-      line: 54
-      snippet: e.harness.knowledge.semantic_cache import get_semantic_cache
-    - file: aiPlat-core/core/harness/knowledge/semantic_cache_hook.py
-      line: 54
-      snippet: ic_cache import get_semantic_cache          cache = get_semantic
-    - file: aiPlat-core/core/harness/knowledge/semantic_cache_hook.py
-      line: 56
-      snippet: cache = get_semantic_cache()         if not cache.enable
-    status: active
-  - id: hallucination_tracker
-    description: 幻觉检测：GraphIndex 事实验证
-    found_at:
-    - file: aiPlat-core/core/harness/syscalls/llm.py
-      line: 2538
-      snippet: .harness.evaluation.hallucination_tracker import get_hallucination_trac
-    - file: aiPlat-core/core/harness/syscalls/llm.py
-      line: 2538
-      snippet: tion_tracker import get_hallucination_tracker                      tracker
-    - file: aiPlat-core/core/harness/syscalls/llm.py
-      line: 2540
-      snippet: tracker = get_hallucination_tracker()                      report
-    status: active
-  - id: quality_recording
-    description: 质量评分记录（异步，fire-and-forget）
-    found_at:
-    - file: aiPlat-core/core/harness/utils/model_injection.py
-      line: 57
-      snippet: dated atomically by _record_quality_and_metrics_async.  _route_me
-    - file: aiPlat-core/core/harness/utils/model_injection.py
-      line: 73
-      snippet: uccess, latency_ms, quality_delta}]  }    def get_route_metrics
-    - file: aiPlat-core/core/harness/utils/model_injection.py
-      line: 1212
-      snippet: _as.create_task(_record_quality_and_metrics_async(
-    - file: aiPlat-core/core/harness/utils/model_injection.py
-      line: 1286
-      snippet: 'None      async def _record_quality_and_metrics_async(purpose: st'
-    - file: aiPlat-core/core/harness/utils/model_injection.py
-      line: 1304
-      snippet: ty_validator import QualityValidator, get_quality_tracker
-    - file: aiPlat-core/core/harness/utils/model_injection.py
-      line: 1306
-      snippet: r          result = QualityValidator.validate(purpose, text)
-    - file: aiPlat-core/core/harness/utils/model_injection.py
-      line: 1314
-      snippet: log_entry["quality_delta"] = round(result.score_delta,
-    status: active
-  - id: prompt_assembler
-    description: Prompt 动态组装（工具/技能/记忆/budget）
-    found_at:
-    - file: aiPlat-core/core/harness/syscalls/llm.py
-      line: 1839
-      snippet: 'ess.assembly import PromptAssembler                  # Phase 6.8'
-    - file: aiPlat-core/core/harness/syscalls/llm.py
-      line: 1909
-      snippet: assembled = PromptAssembler().assemble(
-    - file: aiPlat-core/core/harness/syscalls/llm.py
-      line: 1909
-      snippet: = PromptAssembler().assemble(                      prepared
-    status: active
-  - id: policy_gate
-    description: PolicyGate 权限检查（sys_tool_call入口）
-    found_at:
-    - file: aiPlat-core/core/harness/syscalls/tool.py
-      line: 5
-      snippet: 'be enforced here: - PolicyGate (permission + approval) - Tra'
-    - file: aiPlat-core/core/harness/syscalls/tool.py
-      line: 20
-      snippet: ucture.gates import PolicyGate, PolicyDecision, TraceGate, C
-    - file: aiPlat-core/core/harness/syscalls/tool.py
-      line: 49
-      snippet: 具自身处理非法参数       - 被 PolicyGate 拒绝时返回 ToolResult 而非抛异常——调用者必须
-    - file: aiPlat-core/core/harness/syscalls/tool.py
-      line: 55
-      snippet: '"     policy_gate = PolicyGate()     trace_gate = TraceGate('
-    - file: aiPlat-core/core/harness/syscalls/tool.py
-      line: 451
-      snippet: 'c_info=True)      # PolicyGate (permission; approval optiona'
-    - file: aiPlat-core/core/harness/syscalls/tool.py
-      line: 463
-      snippet: 'orced via         # PolicyGate even without context — closes'
-    - file: aiPlat-core/core/harness/syscalls/tool.py
-      line: 470
-      snippet: pr = await policy_gate.check_tool(user_id=user_id, tool_na
-    - file: aiPlat-core/core/harness/syscalls/tool.py
-      line: 472
-      snippet: pr = await policy_gate.check_tool(user_id=user_id, tool_na
-    status: active
-  - id: approval_gate
-    description: ApprovalGate 危险操作审批
-    found_at:
-    - file: aiPlat-core/core/harness/context/engine.py
-      line: 630
-      snippet: oval.manager import ApprovalManager, ApprovalContext
-    - file: aiPlat-core/core/harness/context/engine.py
-      line: 637
-      snippet: mgr = ApprovalManager(execution_store=store)
-    - file: aiPlat-core/core/harness/context/engine.py
-      line: 1085
-      snippet: oval.manager import ApprovalManager, ApprovalContext
-    - file: aiPlat-core/core/harness/context/engine.py
-      line: 1092
-      snippet: mgr = ApprovalManager(execution_store=store)
-    status: active
-  - id: tool_drift_detector
-    description: 工具漂移检测
-    found_at:
-    - file: aiPlat-core/core/harness/syscalls/tool.py
-      line: 785
-      snippet: rness.learning.tool_drift_detector import get_drift_detector
-    - file: aiPlat-core/core/harness/syscalls/tool.py
-      line: 785
-      snippet: ift_detector import get_drift_detector             dd = get_drift_de
-    - file: aiPlat-core/core/harness/syscalls/tool.py
-      line: 786
-      snippet: or             dd = get_drift_detector()             dd.record_call(
-    status: active
-  - id: token_budget_management
-    description: Token 预算管理
-    found_at:
-    - file: aiPlat-core/core/harness/execution/loop/inference.py
-      line: 234
-      snippet: 'extAssembler: token budget + source attribution (Phase 9'
-    - file: aiPlat-core/core/harness/execution/loop/inference.py
-      line: 248
-      snippet: r_id"),             budgets=BudgetSpec(token_budget=conf
-    - file: aiPlat-core/core/harness/execution/loop/inference.py
-      line: 248
-      snippet: budgets=BudgetSpec(token_budget=config.max_tokens or 100_000)
-    - file: aiPlat-core/core/harness/execution/loop/inference.py
-      line: 256
-      snippet: '),             "over_budget": assembly_result.context.is_'
-    - file: aiPlat-core/core/harness/execution/loop/inference.py
-      line: 256
-      snippet: sult.context.is_over_budget(),             "compact_neede
-    - file: aiPlat-core/core/harness/execution/loop/inference.py
-      line: 264
-      snippet: t disclosure policy/budgets for replay (best-effort, de-
-    - file: aiPlat-core/core/harness/execution/loop/inference.py
-      line: 270
-      snippet: it only when policy/budget changes to reduce noise.
-    - file: aiPlat-core/core/harness/execution/loop/inference.py
-      line: 290
-      snippet: '"budgets": key_fields,'
-    - file: aiPlat-core/core/harness/execution/loop/inference.py
-      line: 377
-      snippet: 'ort) for compaction budgets.         try:             us'
-    - file: aiPlat-core/core/harness/execution/loop/inference.py
-      line: 387
-      snippet: 'e)         # Update budget_remaining         _max = floa'
-    - file: aiPlat-core/core/harness/execution/loop/inference.py
-      line: 390
-      snippet: ':             state.budget_remaining = max(0.0, 1.0 - (s'
-    - file: aiPlat-core/core/harness/execution/loop/inference.py
-      line: 408
-      snippet: n_usage=est_tokens, token_limit=est_tokens * 2, message_count
-    status: active
-  - id: model_health_tracking
-    description: 模型健康自适应跟踪
-    found_at:
-    - file: aiPlat-core/core/harness/utils/model_injection.py
-      line: 1045
-      snippet: 'URE_THRESHOLD   def _record_failure(model_name: str) -> None:'
-    - file: aiPlat-core/core/harness/utils/model_injection.py
-      line: 1058
-      snippet: 'pass   def _record_success(model_name: str, latency_ms:'
-    - file: aiPlat-core/core/harness/utils/model_injection.py
-      line: 1222
-      snippet: _record_success(model_name, latency_ms=_laten
-    - file: aiPlat-core/core/harness/utils/model_injection.py
-      line: 1233
-      snippet: _record_failure(model_name)
-    - file: aiPlat-core/core/harness/utils/model_injection.py
-      line: 1252
-      snippet: _record_failure(model_name)
-    - file: aiPlat-core/core/harness/utils/model_injection.py
-      line: 1257
-      snippet: _record_failure(model_name)
-    - file: aiPlat-infra/infra/management/model/manager.py
-      line: 381
-      snippet: score)     score += _calculate_dynamic_boost(model.name)      return
-        score
-    - file: aiPlat-infra/infra/management/model/manager.py
-      line: 386
-      snippet: 'return score   def _calculate_dynamic_boost(model_name: str) -> float:'
-    - file: aiPlat-infra/infra/management/model/manager.py
-      line: 387
-      snippet: scoring factor from ModelHealthStore (range [-10, +10]).      Retu
-    status: active
-  - id: experience_vector
-    description: 经验向量（Loop+Pipeline 存入）
-    found_at:
-    - file: aiPlat-core/core/harness/execution/loop/_facade.py
-      line: 1556
-      snippet: '# CMM + ExperienceVector: extract patterns and store e'
-    - file: aiPlat-core/core/harness/execution/loop/_facade.py
-      line: 1562
-      snippet: .ensure_future(self._try_feed_learning_pipeline(state, user_msg, ass
-    - file: aiPlat-core/core/harness/execution/loop/_facade.py
-      line: 1750
-      snippet: '# ExperienceVector: store this failure for futur'
-    - file: aiPlat-core/core/harness/execution/loop/_facade.py
-      line: 1829
-      snippet: '# CMM + ExperienceVector: feed exception to learning p'
-    - file: aiPlat-core/core/harness/execution/loop/_facade.py
-      line: 1876
-      snippet: ue)       async def _try_feed_learning_pipeline(          self, stat
-    - file: aiPlat-core/core/harness/execution/loop/_facade.py
-      line: 1882
-      snippet: ternAccumulator and ExperienceVector.                    Successfu
-    - file: aiPlat-core/core/harness/execution/loop/_facade.py
-      line: 1914
-      snippet: er(__name__).debug('_try_feed_learning_pipeline failed', exc_info=Tr
-    - file: aiPlat-core/core/harness/execution/loop/_facade.py
-      line: 1917
-      snippet: '# ── ExperienceVector: store this interaction ──'
-    - file: aiPlat-core/core/harness/execution/loop/_facade.py
-      line: 1933
-      snippet: er(__name__).debug('_try_feed_learning_pipeline failed', exc_info=Tr
-    - file: aiPlat-core/core/harness/execution/loop/_facade.py
-      line: 1958
-      snippet: er(__name__).debug('_try_feed_learning_pipeline failed', exc_info=Tr
-    - file: aiPlat-core/core/harness/execution/loop/_facade.py
-      line: 1973
-      snippet: er(__name__).debug('_try_feed_learning_pipeline failed', exc_info=Tr
-    - file: aiPlat-core/core/harness/execution/loop/_facade.py
-      line: 2006
-      snippet: er(__name__).debug('_try_feed_learning_pipeline failed', exc_info=Tr
-    - file: aiPlat-core/core/harness/execution/pipeline_engine.py
-      line: 2733
-      snippet: 'atternAccumulator + ExperienceVector          try:              ru'
-    - file: aiPlat-core/core/harness/execution/pipeline_engine.py
-      line: 11168
-      snippet: atternAccumulator + ExperienceVector on pipeline failure."""
-    - file: aiPlat-core/core/harness/execution/pipeline_engine.py
-      line: 11389
-      snippet: 'o=True)           # ExperienceVector: store pipeline failure for s'
-    status: active
-  - id: seci_knowledge_spiral
-    description: SECI 知识螺旋（POST_LOOP→atom→convergence）
-    found_at:
-    - file: aiPlat-core/core/harness/knowledge/seci_engine.py
-      line: 2
-      snippet: '""" SECI Knowledge Creation Engine — e'
-    - file: aiPlat-core/core/harness/knowledge/seci_engine.py
-      line: 2
-      snippet: gine — encoding the SECI spiral as a shared bus.  Four
-    - file: aiPlat-core/core/harness/knowledge/seci_engine.py
-      line: 12
-      snippet: 'llers: hook_manager POST_LOOP, skill_routing Canary callbac'
-    - file: aiPlat-core/core/harness/knowledge/seci_engine.py
-      line: 24
-      snippet: 'r(__name__)   class SECIEngine:     """Knowledge creat'
-    - file: aiPlat-core/core/harness/knowledge/seci_engine.py
-      line: 39
-      snippet: 'logger.debug("SECIEngine: graph load failed: %s"'
-    - file: aiPlat-core/core/harness/knowledge/seci_engine.py
-      line: 84
-      snippet: '],                 "SECI知识原子",                 source_'
-    - file: aiPlat-core/core/harness/knowledge/seci_engine.py
-      line: 93
-      snippet: '],                 "SECI知识原子",                 source_'
-    - file: aiPlat-core/core/harness/knowledge/seci_engine.py
-      line: 104
-      snippet: 'o(                 "SECI S→E: created atom %s (source='
-    - file: aiPlat-core/core/harness/knowledge/seci_engine.py
-      line: 178
-      snippet: lass_name", "") == "SECI知识原子" and nid != atom_id
-    - file: aiPlat-core/core/harness/knowledge/seci_engine.py
-      line: 200
-      snippet: '"target_class": "SECI知识原子(existing)",'
-    - file: aiPlat-core/core/harness/knowledge/seci_engine.py
-      line: 206
-      snippet: 'logger.debug("SECI E→C: existing atom scan skipp'
-    - file: aiPlat-core/core/harness/knowledge/seci_engine.py
-      line: 214
-      snippet: 'lass_name", "") != "SECI知识原子" or eid == atom_id:'
-    - file: aiPlat-core/core/harness/knowledge/seci_engine.py
-      line: 234
-      snippet: '"target_class": "SECI知识原子(deprecated)",'
-    - file: aiPlat-core/core/harness/knowledge/seci_engine.py
-      line: 241
-      snippet: '.info(             "SECI E→C: atom %s linked to %d ent'
-    - file: aiPlat-core/core/harness/knowledge/seci_engine.py
-      line: 276
-      snippet: 'lass_name", "") == "SECI知识原子":                 atoms.a'
-    - file: aiPlat-core/core/harness/knowledge/seci_engine.py
-      line: 317
-      snippet: '"SECI C→I: adjusting skill %s weigh'
-    - file: aiPlat-core/core/harness/knowledge/seci_engine.py
-      line: 327
-      snippet: 'logger.debug("SECI C→I: SkillRegistry access fai'
-    - file: aiPlat-core/core/harness/knowledge/seci_engine.py
-      line: 378
-      snippet: :200],             "SECI知识原子",             source_doc_
-    - file: aiPlat-core/core/harness/knowledge/seci_engine.py
-      line: 387
-      snippet: 8000],             "SECI知识原子",             source_doc_
-    - file: aiPlat-core/core/harness/knowledge/seci_engine.py
-      line: 400
-      snippet: '.info(             "SECI I→S: Canary %s for skill ''%s'''
-    - file: aiPlat-core/core/harness/knowledge/seci_engine.py
-      line: 419
-      snippet: lass_name", "") == "SECI知识原子"         )      def get_l
-    - file: aiPlat-core/core/harness/knowledge/seci_engine.py
-      line: 432
-      snippet: '════════ # Phase 2: POST_LOOP Hook Registration — Auto-capt'
-    - file: aiPlat-core/core/harness/knowledge/seci_engine.py
-      line: 436
-      snippet: 'le-level singleton _seci_engine_singleton: Optional[SECIEngin'
-    - file: aiPlat-core/core/harness/knowledge/seci_engine.py
-      line: 436
-      snippet: 'singleton: Optional[SECIEngine] = None _hook_registere'
-    - file: aiPlat-core/core/harness/knowledge/seci_engine.py
-      line: 440
-      snippet: 'l = False   def get_seci_engine() -> SECIEngine:     """Get o'
-    - file: aiPlat-core/core/harness/knowledge/seci_engine.py
-      line: 440
-      snippet: 'et_seci_engine() -> SECIEngine:     """Get or create t'
-    - file: aiPlat-core/core/harness/knowledge/seci_engine.py
-      line: 441
-      snippet: '""Get or create the SECIEngine singleton."""     globa'
-    - file: aiPlat-core/core/harness/knowledge/seci_engine.py
-      line: 442
-      snippet: ton."""     global _seci_engine_singleton     if _seci_engine
-    - file: aiPlat-core/core/harness/knowledge/seci_engine.py
-      line: 443
-      snippet: 'e_singleton     if _seci_engine_singleton is None:         _s'
-    - file: aiPlat-core/core/harness/knowledge/seci_engine.py
-      line: 444
-      snippet: 'n is None:         _seci_engine_singleton = SECIEngine()'
-    - file: aiPlat-core/core/harness/knowledge/seci_engine.py
-      line: 444
-      snippet: _engine_singleton = SECIEngine()     return _seci_engi
-    - file: aiPlat-core/core/harness/knowledge/seci_engine.py
-      line: 445
-      snippet: ngine()     return _seci_engine_singleton   def register_seci
-    - file: aiPlat-core/core/harness/knowledge/seci_engine.py
-      line: 448
-      snippet: 'ine_singleton   def register_seci_hook() -> bool:     """Register
-        th'
-    - file: aiPlat-core/core/harness/knowledge/seci_engine.py
-      line: 449
-      snippet: '"""Register the POST_LOOP SECI hook with HookManager.'
-    - file: aiPlat-core/core/harness/knowledge/seci_engine.py
-      line: 449
-      snippet: ister the POST_LOOP SECI hook with HookManager.      C
-    - file: aiPlat-core/core/harness/knowledge/seci_engine.py
-      line: 451
-      snippet: startup (e.g., from seci_engine module init     or app bootst
-    - file: aiPlat-core/core/harness/knowledge/seci_engine.py
-      line: 462
-      snippet: 'ontext):         """POST_LOOP hook: capture S→E knowledge f'
-    - file: aiPlat-core/core/harness/knowledge/seci_engine.py
-      line: 484
-      snippet: engine = get_seci_engine()             session_id = ge
-    - file: aiPlat-core/core/harness/knowledge/seci_engine.py
-      line: 506
-      snippet: '"SECI→Convergence: %d triggers fire'
-    - file: aiPlat-core/core/harness/knowledge/seci_engine.py
-      line: 517
-      snippet: 'logger.info("SECI auto-check: health=%s warning'
-    - file: aiPlat-core/core/harness/knowledge/seci_engine.py
-      line: 544
-      snippet: 'o(                 "SECI hook: POST_LOOP captured %d a'
-    - file: aiPlat-core/core/harness/knowledge/seci_engine.py
-      line: 544
-      snippet: '"SECI hook: POST_LOOP captured %d atoms from %d hig'
-    - file: aiPlat-core/core/harness/knowledge/seci_engine.py
-      line: 549
-      snippet: 'logger.debug("SECI hook: POST_LOOP skipped: %s",'
-    - file: aiPlat-core/core/harness/knowledge/seci_engine.py
-      line: 549
-      snippet: 'r.debug("SECI hook: POST_LOOP skipped: %s", str(e))'
-    - file: aiPlat-core/core/harness/knowledge/seci_engine.py
-      line: 560
-      snippet: 'ject         class _SECIHook:             phase = Hook'
-    - file: aiPlat-core/core/harness/knowledge/seci_engine.py
-      line: 561
-      snippet: 'phase = HookPhase.POST_LOOP             priority = 50  #'
-    - file: aiPlat-core/core/harness/knowledge/seci_engine.py
-      line: 568
-      snippet: x)          hook = _SECIHook()         hm.register(hoo
-    - file: aiPlat-core/core/harness/knowledge/seci_engine.py
-      line: 571
-      snippet: logger.info("SECI hook registered on POST_LOOP
-    - file: aiPlat-core/core/harness/knowledge/seci_engine.py
-      line: 571
-      snippet: hook registered on POST_LOOP (priority=50)")         retur
-    - file: aiPlat-core/core/harness/knowledge/seci_engine.py
-      line: 574
-      snippet: 'logger.warning("SECI hook registration failed: %s"'
-    status: active
-  - id: skill_crystalization
-    description: Skill 晶体化（pipeline完成→TaskSkill→SkillRegistry）
-    found_at:
-    - file: aiPlat-core/core/harness/execution/pipeline_engine.py
-      line: 2696
-      snippet: await self._crystallize_skill(state)          except Except
-    - file: aiPlat-core/core/harness/execution/pipeline_engine.py
-      line: 9051
-      snippet: '}        async def _crystallize_skill(self, state: PipelineState)
-        -'
-    - file: aiPlat-core/core/harness/execution/pipeline_engine.py
-      line: 9275
-      snippet: get_memory_manager, TaskSkill                  mm = get_mem
-    - file: aiPlat-core/core/harness/execution/pipeline_engine.py
-      line: 9279
-      snippet: task_skill = TaskSkill(                      skill_i
-    - file: aiPlat-core/core/harness/execution/pipeline_engine.py
-      line: 9301
-      snippet: await mm.save_task_skill(task_skill)              exce
-    - file: aiPlat-core/core/harness/execution/pipeline_engine.py
-      line: 9314
-      snippet: 'Phase 4: establish TaskSkill ↔ WikiPage bilateral links in'
-    - file: aiPlat-core/core/harness/execution/pipeline_engine.py
-      line: 9324
-      snippet: k_skill_uri = f"{AI}TaskSkill_{skill_id}"
-    - file: aiPlat-core/core/harness/execution/pipeline_engine.py
-      line: 9346
-      snippet: 'logger.info("TaskSkill %s linked: %d used + %d produ'
-    status: active
-  - id: feedback_loops
-    description: 交互反馈回路
-    found_at:
-    - file: aiPlat-core/core/harness/execution/loop/_facade.py
-      line: 1433
-      snippet: k_loops.prod import get_production_feedback                  pfb =
-        get_pr
-    - file: aiPlat-core/core/harness/execution/loop/_facade.py
-      line: 1435
-      snippet: 'pfb = get_production_feedback()                  if pfb:'
-    - file: aiPlat-core/core/harness/execution/loop/_facade.py
-      line: 1459
-      snippet: _loops.local import get_local_feedback, FeedbackLevel, FeedbackType
-    - file: aiPlat-core/core/harness/execution/loop/_facade.py
-      line: 1461
-      snippet: 'fb = get_local_feedback()                  if fb:'
-    status: active
-  configurable:
-  - field: agent_type
-    schema_default: react
-    description: See ~/.aiplat/registry/agent_types.yaml for valid values (single
-      source of truth)
-    consumed_at:
-    - file: aiPlat-core/core/harness/execution/pipeline_engine.py
-      line: 10539
-      snippet: stage.agent_type = changes["suggeste
-    - file: aiPlat-core/core/harness/execution/pipeline_engine.py
-      line: 6357
-      snippet: nt_type = getattr(stage, 'agent_type', '') or 'react'
-    - file: aiPlat-core/core/harness/execution/pipeline_engine.py
-      line: 10493
-      snippet: ent_type={getattr(stage, 'agent_type', 'react')}, prompt_extra={jso
-    engine_consumed: true
-  - field: chain_skill_after
-    schema_default: ''
-    description: Auto-execute another skill after this stage completes
-    consumed_at:
-    - file: aiPlat-core/core/harness/execution/pipeline_engine.py
-      line: 3935
-      snippet: n_skill = getattr(stage, 'chain_skill_after', '') or ''         if
-        _c
-    engine_consumed: true
-  - field: context_profile
-    schema_default: code
-    description: minimal|code|debug|deep
-    consumed_at:
-    - file: aiPlat-core/core/harness/execution/pipeline_engine.py
-      line: 3739
-      snippet: 'Respects stage.context_profile: "minimal" skips, "'
-    - file: aiPlat-core/core/harness/execution/pipeline_engine.py
-      line: 3662
-      snippet: profile = getattr(stage, 'context_profile', 'code') or 'code'
-    engine_consumed: true
-  - field: deploy_files_target_dir
-    schema_default: ''
-    description: Override target. Empty = ~/.aiplat/apps/{pid}/current
-    consumed_at:
-    - file: aiPlat-core/core/harness/execution/pipeline_engine.py
-      line: 4087
-      snippet: target = (getattr(stage, 'deploy_files_target_dir', '') or '').strip()
-    engine_consumed: true
-  - field: deploy_files_to_disk
-    schema_default: false
-    description: 'Parse ## FILE: blocks from output, write to project dir'
-    consumed_at:
-    - file: aiPlat-core/core/harness/execution/pipeline_engine.py
-      line: 3941
-      snippet: if getattr(stage, 'deploy_files_to_disk', False) and "## FILE:" in
-        _
-    engine_consumed: true
-  - field: enable_query_rewrite
-    schema_default: true
-    description: rewrite ambiguous follow-up queries before retrieval
-    consumed_at:
-    - file: aiPlat-core/core/harness/execution/pipeline_engine.py
-      line: 3732
-      snippet: rewrite = getattr(stage, 'enable_query_rewrite', True)         if _rewrite
-    engine_consumed: true
-  - field: execution_backend
-    schema_default: llm
-    description: llm"=sys_llm_generate | "agent"=StageRunner.run()→ReActLoop
-    consumed_at:
-    - file: aiPlat-core/core/harness/execution/pipeline_engine.py
-      line: 3782
-      snippet: backend = getattr(stage, 'execution_backend', '') or 'llm'          i
-    engine_consumed: true
-  - field: failure_strategy
-    schema_default: fail_pipeline
-    description: ''
-    consumed_at:
-    - file: aiPlat-core/core/harness/execution/pipeline_engine.py
-      line: 6651
-      snippet: 'if stage.failure_strategy == ''fail_pipeline'':'
-    - file: aiPlat-core/core/harness/execution/pipeline_engine.py
-      line: 3622
-      snippet: 'trategy": getattr(stage, ''failure_strategy'', ''fail_pipeline'')
-        or ''fail_pipeline'','
-    - file: aiPlat-core/core/harness/execution/pipeline_engine.py
-      line: 3910
-      snippet: 'trategy": getattr(stage, ''failure_strategy'', ''fail_pipeline'')
-        or ''fail_pipeline'','
-    - file: aiPlat-core/core/harness/execution/pipeline_engine.py
-      line: 6240
-      snippet: trategy = getattr(stage, 'failure_strategy', None) or 'fail_pipeline'
-    - file: aiPlat-core/core/harness/execution/pipeline_engine.py
-      line: 10261
-      snippet: trategy = getattr(stage, 'failure_strategy', None) or ''          if
-        f
-    engine_consumed: true
-  - field: generate_test_plan
-    schema_default: false
-    description: ''
-    consumed_at:
-    - file: aiPlat-core/core/harness/execution/pipeline_engine.py
-      line: 2018
-      snippet: if cur_stage.generate_test_plan and state.get("phas
-    - file: aiPlat-core/core/harness/execution/pipeline_engine.py
-      line: 7825
-      snippet: 'get_id or stage.generate_test_plan:              agent'
-    - file: aiPlat-core/core/harness/execution/pipeline_engine.py
-      line: 8083
-      snippet: 'utput and stage.generate_test_plan:              # Thi'
-    - file: aiPlat-core/core/harness/execution/pipeline_engine.py
-      line: 8089
-      snippet: 'y and not stage.generate_test_plan:              # Thi'
-    - file: aiPlat-core/core/harness/execution/pipeline_engine.py
-      line: 10543
-      snippet: stage.generate_test_plan = True
-    - file: aiPlat-core/core/harness/execution/pipeline_engine.py
-      line: 3922
-      snippet: 'if getattr(stage, ''generate_test_plan'', False):             _mode'
-    engine_consumed: true
-  - field: hitl
-    schema_default: false
-    description: ''
-    consumed_at:
-    - file: aiPlat-core/core/harness/execution/pipeline_engine.py
-      line: 6435
-      snippet: if stage.hitl and node_type == 'h
-    - file: aiPlat-core/core/harness/execution/pipeline_engine.py
-      line: 7438
-      snippet: 'if stage.hitl:              state'
-    - file: aiPlat-core/core/harness/execution/pipeline_engine.py
-      line: 3945
-      snippet: 'if getattr(stage, ''hitl'', False):             state['
-    engine_consumed: true
-  - field: hitl_phase
-    schema_default: ''
-    description: ''
-    consumed_at:
-    - file: aiPlat-core/core/harness/execution/pipeline_engine.py
-      line: 2018
-      snippet: ') == (cur_stage.hitl_phase or ""):'
-    - file: aiPlat-core/core/harness/execution/pipeline_engine.py
-      line: 6439
-      snippet: _name"] = stage.hitl_phase or f"{stage.id}_hum
-    - file: aiPlat-core/core/harness/execution/pipeline_engine.py
-      line: 7442
-      snippet: _name"] = stage.hitl_phase              self._
-    - file: aiPlat-core/core/harness/execution/pipeline_engine.py
-      line: 3948
-      snippet: _name"] = getattr(stage, 'hitl_phase', '') or 'review'
-    - file: aiPlat-core/core/harness/execution/pipeline_engine.py
-      line: 4389
-      snippet: _name"] = getattr(stage, 'hitl_phase', '') or 'review'
-    engine_consumed: true
-  - field: output_artifact
-    schema_default: ''
-    description: ''
-    consumed_at:
-    - file: aiPlat-core/core/harness/execution/pipeline_engine.py
-      line: 2227
-      snippet: 'state[_stage.output_artifact] = {"raw_output": f'
-    - file: aiPlat-core/core/harness/execution/pipeline_engine.py
-      line: 2867
-      snippet: 'and final_stage.output_artifact:              keep_'
-    - file: aiPlat-core/core/harness/execution/pipeline_engine.py
-      line: 2869
-      snippet: add(final_stage.output_artifact)          if final_
-    - file: aiPlat-core/core/harness/execution/pipeline_engine.py
-      line: 2885
-      snippet: key = stage.output_artifact              if not
-    - file: aiPlat-core/core/harness/execution/pipeline_engine.py
-      line: 2919
-      snippet: ed, final_stage.output_artifact if final_stage else
-    - file: aiPlat-core/core/harness/execution/pipeline_engine.py
-      line: 3648
-      snippet: ult under stage.output_artifact         """
-    - file: aiPlat-core/core/harness/execution/pipeline_engine.py
-      line: 4249
-      snippet: 'state.get(stage.output_artifact):              test'
-    - file: aiPlat-core/core/harness/execution/pipeline_engine.py
-      line: 4259
-      snippet: 'state.get(stage.output_artifact):              impl'
-    - file: aiPlat-core/core/harness/execution/pipeline_engine.py
-      line: 4287
-      snippet: state.get(stage.output_artifact)              issue
-    - file: aiPlat-core/core/harness/execution/pipeline_engine.py
-      line: 4315
-      snippet: 'state.get(stage.output_artifact), dict):'
-    - file: aiPlat-core/core/harness/execution/pipeline_engine.py
-      line: 4317
-      snippet: les(state[stage.output_artifact])
-    - file: aiPlat-core/core/harness/execution/pipeline_engine.py
-      line: 4347
-      snippet: state.get(stage.output_artifact, {}), default=str)[
-    - file: aiPlat-core/core/harness/execution/pipeline_engine.py
-      line: 4627
-      snippet: state.pop(stage.output_artifact, None)
-    - file: aiPlat-core/core/harness/execution/pipeline_engine.py
-      line: 4639
-      snippet: 'state.get(stage.output_artifact):'
-    - file: aiPlat-core/core/harness/execution/pipeline_engine.py
-      line: 4643
-      snippet: cal_state[stage.output_artifact] = cached
-    - file: aiPlat-core/core/harness/execution/pipeline_engine.py
-      line: 4651
-      snippet: 'state.get(stage.output_artifact)         # Don''t sk'
-    - file: aiPlat-core/core/harness/execution/pipeline_engine.py
-      line: 4661
-      snippet: 'ason": f"{stage.output_artifact}_exists", "ts": tim'
-    - file: aiPlat-core/core/harness/execution/pipeline_engine.py
-      line: 4665
-      snippet: = f"skip:{stage.output_artifact}_exists"
-    - file: aiPlat-core/core/harness/execution/pipeline_engine.py
-      line: 4669
-      snippet: 'state.get(stage.output_artifact):'
-    - file: aiPlat-core/core/harness/execution/pipeline_engine.py
-      line: 4753
-      snippet: 'state.get(stage.output_artifact) is not None:'
-    - file: aiPlat-core/core/harness/execution/pipeline_engine.py
-      line: 4755
-      snippet: cal_state[stage.output_artifact]          artifact
-    - file: aiPlat-core/core/harness/execution/pipeline_engine.py
-      line: 4757
-      snippet: 'state.get(stage.output_artifact)          # Structu'
-    - file: aiPlat-core/core/harness/execution/pipeline_engine.py
-      line: 4805
-      snippet: 'state.get(stage.output_artifact):              try:'
-    - file: aiPlat-core/core/harness/execution/pipeline_engine.py
-      line: 4821
-      snippet: state.get(stage.output_artifact)          if isinst
-    - file: aiPlat-core/core/harness/execution/pipeline_engine.py
-      line: 5150
-      snippet: state.get(stage.output_artifact, {}))) if stage.use
-    - file: aiPlat-core/core/harness/execution/pipeline_engine.py
-      line: 5176
-      snippet: state.get(stage.output_artifact)          if artifa
-    - file: aiPlat-core/core/harness/execution/pipeline_engine.py
-      line: 5388
-      snippet: state.get(stage.output_artifact)          if artifa
-    - file: aiPlat-core/core/harness/execution/pipeline_engine.py
-      line: 5528
-      snippet: state.get(stage.output_artifact)          if artifa
-    - file: aiPlat-core/core/harness/execution/pipeline_engine.py
-      line: 5676
-      snippet: state.get(stage.output_artifact)          if artifa
-    - file: aiPlat-core/core/harness/execution/pipeline_engine.py
-      line: 6124
-      snippet: esult.get(stage.output_artifact, "") if isinstance(
-    - file: aiPlat-core/core/harness/execution/pipeline_engine.py
-      line: 6132
-      snippet: 'act_key": stage.output_artifact,              "is_p'
-    - file: aiPlat-core/core/harness/execution/pipeline_engine.py
-      line: 6264
-      snippet: state[stage.output_artifact] = state[fb_key]
-    - file: aiPlat-core/core/harness/execution/pipeline_engine.py
-      line: 6595
-      snippet: 'state[stage.output_artifact] = {"files": files}'
-    - file: aiPlat-core/core/harness/execution/pipeline_engine.py
-      line: 6599
-      snippet: 'state[stage.output_artifact] = {"raw_output": s'
-    - file: aiPlat-core/core/harness/execution/pipeline_engine.py
-      line: 6621
-      snippet: state[stage.output_artifact] = artifact
-    - file: aiPlat-core/core/harness/execution/pipeline_engine.py
-      line: 6639
-      snippet: t = state[stage.output_artifact]                  j
-    - file: aiPlat-core/core/harness/execution/pipeline_engine.py
-      line: 6703
-      snippet: state.get(stage.output_artifact) or {}          scr
-    - file: aiPlat-core/core/harness/execution/pipeline_engine.py
-      line: 6935
-      snippet: tifact != stage.output_artifact and not s.uses_file
-    - file: aiPlat-core/core/harness/execution/pipeline_engine.py
-      line: 7155
-      snippet: state.get(stage.output_artifact, ""))
-    - file: aiPlat-core/core/harness/execution/pipeline_engine.py
-      line: 7161
-      snippet: doc_type=stage.output_artifact or "general")
-    - file: aiPlat-core/core/harness/execution/pipeline_engine.py
-      line: 7220
-      snippet: state.get(stage.output_artifact)                  i
-    - file: aiPlat-core/core/harness/execution/pipeline_engine.py
-      line: 7228
-      snippet: state[stage.output_artifact] = fixed
-    - file: aiPlat-core/core/harness/execution/pipeline_engine.py
-      line: 7430
-      snippet: lt_key or stage.output_artifact] = artifact
-    - file: aiPlat-core/core/harness/execution/pipeline_engine.py
-      line: 7436
-      snippet: state[stage.output_artifact] = artifact
-    - file: aiPlat-core/core/harness/execution/pipeline_engine.py
-      line: 7607
-      snippet: state.get(stage.output_artifact)              if re
-    - file: aiPlat-core/core/harness/execution/pipeline_engine.py
-      line: 7659
-      snippet: state.get(stage.output_artifact)              if at
-    - file: aiPlat-core/core/harness/execution/pipeline_engine.py
-      line: 7027
-      snippet: f._config.stages[0].output_artifact if self._config.sta
-    - file: aiPlat-core/core/harness/execution/pipeline_engine.py
-      line: 3268
-      snippet: key = getattr(stage, "output_artifact", f"_moa_{stage.stage_id}")                  st
-    - file: aiPlat-core/core/harness/execution/pipeline_engine.py
-      line: 3699
-      snippet: 'r _key == getattr(stage, ''output_artifact'', ''''):                 co'
-    - file: aiPlat-core/core/harness/execution/pipeline_engine.py
-      line: 3886
-      snippet: act_key = getattr(stage, 'output_artifact', '') or _skill_name
-    - file: aiPlat-core/core/harness/execution/pipeline_engine.py
-      line: 3949
-      snippet: ifact"] = getattr(stage, 'output_artifact', '') or ''             s
-    - file: aiPlat-core/core/harness/execution/pipeline_engine.py
-      line: 4122
-      snippet: ''', '''') == getattr(stage, ''output_artifact'', ''''):                 co'
-    - file: aiPlat-core/core/harness/execution/pipeline_engine.py
-      line: 4212
-      snippet: act_key = getattr(stage, 'output_artifact', '') or 'test_report'
-    - file: aiPlat-core/core/harness/execution/pipeline_engine.py
-      line: 4397
-      snippet: ifact"] = getattr(stage, 'output_artifact', '') or ''
-    - file: aiPlat-core/core/harness/execution/pipeline_engine.py
-      line: 8693
-      snippet: 'act_key": getattr(stage, "output_artifact", ""),'
-    - file: aiPlat-core/core/harness/execution/pipeline_engine.py
-      line: 8695
-      snippet: state.get(getattr(stage, "output_artifact", ""), ""))),
-    - file: aiPlat-core/core/harness/execution/pipeline_engine.py
-      line: 9853
-      snippet: ed_keys = getattr(stage, 'output_artifact', '') or ''
-    - file: aiPlat-core/core/harness/execution/pipeline_engine.py
-      line: 11319
-      snippet: rtifact = getattr(stage, "output_artifact", "") if not isinstance(s
-    engine_consumed: true
-  - field: pipeline_mode
-    schema_default: chain
-    description: chain|router|parallel|orchestrator|evaluator_optimizer|agent
-    consumed_at:
-    - file: aiPlat-core/core/harness/execution/pipeline_engine.py
-      line: 2384
-      snippet: ne_mode = getattr(stages[0], "pipeline_mode", "chain") if stages else
-        "cha
-    engine_consumed: true
-  - field: quality_gate
-    schema_default: '{''min_output_length'': 100}'
-    description: 'CRAG-style quality gate: {condition, fallback, final_fallback}'
-    consumed_at:
-    - file: aiPlat-core/core/harness/execution/pipeline_engine.py
-      line: 3880
-      snippet: _gate = getattr(stage, 'quality_gate', {}) or {}         _min_
-    engine_consumed: true
-  - field: retry_policy
-    schema_default: '{''max_retries'': 2, ''backoff'': ''exponential''}'
-    description: 'Self-heal retry: {on, action, max_retries}'
-    consumed_at:
-    - file: aiPlat-core/core/harness/execution/pipeline_engine.py
-      line: 7461
-      snippet: try_pol = getattr(stage, 'retry_policy', {}) or {}         if _r
-    engine_consumed: true
-  - field: review_gate
-    schema_default: quick
-    description: none|quick|llm|hitl" — default quick for safety
-    consumed_at:
-    - file: aiPlat-core/core/harness/execution/pipeline_engine.py
-      line: 4271
-      snippet: gate = getattr(stage, 'review_gate', 'quick') or 'quick'
-    engine_consumed: true
-  - field: sandbox
-    schema_default: false
-    description: ''
-    consumed_at:
-    - file: aiPlat-core/core/harness/execution/pipeline_engine.py
-      line: 6148
-      snippet: Sandbox (stage.sandbox=True) — isolated su
-    - file: aiPlat-core/core/harness/execution/pipeline_engine.py
-      line: 725
-      snippet: 'if getattr(stage, ''sandbox'', False):              from'
-    engine_consumed: true
-  - field: sandbox_mode
-    schema_default: subprocess
-    description: ''
-    consumed_at:
-    - file: aiPlat-core/core/harness/execution/pipeline_engine.py
-      line: 6196
-      snippet: ox_mode = getattr(stage, 'sandbox_mode', 'none') or 'none'
-    engine_consumed: true
-  - field: scoring_dimensions
-    schema_default: '[{''name'': ''completeness'', ''weight'': 0.4}, {''name'': ''accuracy'',
-      ''weight'': 0.3}, {''name'': ''efficiency'', ''weight'': 0.3}]'
-    description: ''
-    consumed_at:
-    - file: aiPlat-core/core/harness/execution/pipeline_engine.py
-      line: 7039
-      snippet: ', Any]] = stage.scoring_dimensions or []          if n'
-    engine_consumed: true
-  - field: skill_model_purpose
-    schema_default: ''
-    description: e.g., "reasoning", "code_gen" — passed to best_model_for_purpose
-    consumed_at:
-    - file: aiPlat-core/core/harness/execution/pipeline_engine.py
-      line: 3610
-      snippet: with_meta(getattr(stage, 'skill_model_purpose', '') or 'chat')
-    - file: aiPlat-core/core/harness/execution/pipeline_engine.py
-      line: 3619
-      snippet: 'purpose": getattr(stage, ''skill_model_purpose'', '''') or ''chat'','
-    - file: aiPlat-core/core/harness/execution/pipeline_engine.py
-      line: 3781
-      snippet: purpose = getattr(stage, 'skill_model_purpose', '') or 'chat'         _
-    engine_consumed: true
-  - field: skill_name
-    schema_default: ''
-    description: e.g., "architecture_design", "code_generation
-    consumed_at:
-    - file: aiPlat-core/core/harness/execution/pipeline_engine.py
-      line: 3597
-      snippet: 'if getattr(stage, ''skill_name'', ''''):             result'
-    - file: aiPlat-core/core/harness/execution/pipeline_engine.py
-      line: 3617
-      snippet: 'll_name": getattr(stage, ''skill_name'', '''') or '''','
-    - file: aiPlat-core/core/harness/execution/pipeline_engine.py
-      line: 3650
-      snippet: ll_name = getattr(stage, 'skill_name', '') or ''         if no
-    engine_consumed: true
-  - field: test_execution_mode
-    schema_default: ''
-    description: pytest|agent_conversation|" — which test runner
-    consumed_at:
-    - file: aiPlat-core/core/harness/execution/pipeline_engine.py
-      line: 3923
-      snippet: _mode = getattr(stage, 'test_execution_mode', '') or ''             i
-    engine_consumed: true
-  - field: test_result_key
-    schema_default: test_report
-    description: DEFAULT_TEST_RESULT_KEY — changed via AGENT.md frontmatter
-    consumed_at:
-    - file: aiPlat-core/core/harness/execution/pipeline_engine.py
-      line: 2871
-      snippet: 'and final_stage.test_result_key:              keep_'
-    - file: aiPlat-core/core/harness/execution/pipeline_engine.py
-      line: 2873
-      snippet: add(final_stage.test_result_key)            cleaned
-    - file: aiPlat-core/core/harness/execution/pipeline_engine.py
-      line: 6707
-      snippet: ult_key = stage.test_result_key          if not scr
-    - file: aiPlat-core/core/harness/execution/pipeline_engine.py
-      line: 7368
-      snippet: (f"_prev_{stage.test_result_key}", {})
-    - file: aiPlat-core/core/harness/execution/pipeline_engine.py
-      line: 7382
-      snippet: '[f"_prev_{stage.test_result_key}"] = report'
-    - file: aiPlat-core/core/harness/execution/pipeline_engine.py
-      line: 7430
-      snippet: state[stage.test_result_key or stage.output_art
-    - file: aiPlat-core/core/harness/execution/pipeline_engine.py
-      line: 8089
-      snippet: elif stage.test_result_key and not stage.gener
-    - file: aiPlat-core/core/harness/execution/pipeline_engine.py
-      line: 3937
-      snippet: lt_key = (getattr(stage, 'test_result_key', '') or _artifact_key) +
-    engine_consumed: true
-  - field: uses_file_output
-    schema_default: false
-    description: ''
-    consumed_at:
-    - file: aiPlat-core/core/harness/execution/pipeline_engine.py
-      line: 1710
-      snippet: if not stage.uses_file_output and agent_type in s
-    - file: aiPlat-core/core/harness/execution/pipeline_engine.py
-      line: 4293
-      snippet: if stage.uses_file_output and isinstance(arti
-    - file: aiPlat-core/core/harness/execution/pipeline_engine.py
-      line: 4315
-      snippet: if stage.uses_file_output and isinstance(stat
-    - file: aiPlat-core/core/harness/execution/pipeline_engine.py
-      line: 5150
-      snippet: '{}))) if stage.uses_file_output else 0'
-    - file: aiPlat-core/core/harness/execution/pipeline_engine.py
-      line: 6589
-      snippet: 'if stage.uses_file_output:              files'
-    - file: aiPlat-core/core/harness/execution/pipeline_engine.py
-      line: 8027
-      snippet: 'if stage.uses_file_output:              fmt_t'
-    - file: aiPlat-core/core/harness/execution/pipeline_engine.py
-      line: 8071
-      snippet: if stage.uses_file_output and state.get("outp
-    - file: aiPlat-core/core/harness/execution/pipeline_engine.py
-      line: 8083
-      snippet: if not stage.uses_file_output and stage.generate_
-    - file: aiPlat-core/core/harness/execution/pipeline_engine.py
-      line: 9825
-      snippet: if stage.uses_file_output and isinstance(arti
-    - file: aiPlat-core/core/harness/execution/pipeline_engine.py
-      line: 9851
-      snippet: if not stage.uses_file_output and isinstance(arti
-    - file: aiPlat-core/core/harness/execution/pipeline_engine.py
-      line: 9800
-      snippet: '== 0 and getattr(stage, ''uses_file_output'', False):              issue'
-    engine_consumed: true
+  auto:  # 23 active, 0 missing
+    - id: llm_circuit_breaker
+      description: "LLM 熔断器：5次连续失败→断路30s"
+      paths:
+        - aiPlat-core/core/harness/syscalls/llm.py::140
+        - aiPlat-core/core/harness/syscalls/llm.py::1442
+        - aiPlat-core/core/harness/syscalls/llm.py::2131
+        - aiPlat-core/core/harness/syscalls/llm.py::2203
+    - id: pii_detection
+      description: "PII 脱敏：手机/身份证/邮箱/银行卡自动替换"
+      paths:
+        - aiPlat-core/core/harness/syscalls/llm.py::545
+    - id: injection_guard
+      description: "提示词注入防护：6条正则+特殊token过滤+覆盖保护"
+      paths:
+        - aiPlat-core/core/harness/syscalls/llm.py::380
+        - aiPlat-core/core/harness/syscalls/llm.py::396
+        - aiPlat-core/core/harness/syscalls/llm.py::414
+        - aiPlat-core/core/harness/syscalls/llm.py::420
+        - aiPlat-core/core/harness/syscalls/llm.py::422
+        - aiPlat-core/core/harness/syscalls/llm.py::422
+        - aiPlat-core/core/harness/syscalls/llm.py::504
+        - aiPlat-core/core/harness/syscalls/llm.py::518
+        - aiPlat-core/core/harness/syscalls/llm.py::1684
+        - aiPlat-core/core/harness/syscalls/llm.py::1702
+        - aiPlat-core/core/harness/syscalls/llm.py::1722
+        - aiPlat-core/core/harness/syscalls/llm.py::1760
+        - aiPlat-core/core/harness/syscalls/llm.py::1762
+        - aiPlat-core/core/harness/syscalls/llm.py::1766
+    - id: immune_memory
+      description: "ImmunMemory 攻击模式防御"
+      paths:
+        - aiPlat-core/core/harness/syscalls/llm.py::532
+        - aiPlat-core/core/harness/syscalls/llm.py::1510
+        - aiPlat-core/core/harness/syscalls/llm.py::1518
+    - id: claude_md_injection
+      description: "CLAUDE.md 架构规约注入"
+      paths:
+        - aiPlat-core/core/harness/syscalls/llm.py::617
+        - aiPlat-core/core/harness/syscalls/llm.py::904
+    - id: wiki_circuit_breaker
+      description: "Wiki 检索熔断器"
+      paths:
+        - aiPlat-core/core/harness/syscalls/retrieval.py::1024
+        - aiPlat-core/core/harness/syscalls/retrieval.py::1100
+        - aiPlat-core/core/harness/syscalls/retrieval.py::1100
+        - aiPlat-core/core/harness/syscalls/retrieval.py::1238
+        - aiPlat-core/core/harness/syscalls/retrieval.py::1260
+        - aiPlat-core/core/harness/syscalls/retrieval.py::1272
+    - id: rate_limiter
+      description: "模型调用限流：并发控制+cooldown"
+      paths:
+        - aiPlat-core/core/harness/syscalls/llm.py::2111
+        - aiPlat-core/core/harness/syscalls/llm.py::2111
+        - aiPlat-core/core/harness/syscalls/llm.py::2113
+    - id: memory_build_context
+      description: "四层记忆注入（Working/Episodic/Semantic/TaskSkill）"
+      paths:
+        - aiPlat-core/core/harness/syscalls/llm.py::1424
+    - id: memory_save_interaction
+      description: "交互记忆保存（Episodic）"
+      paths:
+        - aiPlat-core/core/harness/syscalls/llm.py::1344
+    - id: context_compression_5level
+      description: "5 级上下文压缩"
+      paths:
+        - aiPlat-core/core/harness/memory/compression.py::223
+        - aiPlat-core/core/harness/memory/compression.py::1108
+        - aiPlat-core/core/harness/memory/compression.py::1118
+        - aiPlat-core/core/harness/memory/manager.py::75
+        - aiPlat-core/core/harness/memory/manager.py::335
+        - aiPlat-core/core/harness/execution/loop/inference.py::44
+        - aiPlat-core/core/harness/execution/loop/inference.py::48
+        - aiPlat-core/core/harness/execution/loop/inference.py::404
+        - aiPlat-core/core/harness/execution/loop/inference.py::405
+    - id: semantic_cache
+      description: "语义缓存 L1(MD5)+L2(Cosine≥0.95)"
+      paths:
+        - aiPlat-core/core/apps/agents/materials_chat.py::257
+        - aiPlat-core/core/apps/agents/materials_chat.py::257
+        - aiPlat-core/core/apps/agents/materials_chat.py::259
+        - aiPlat-core/core/apps/agents/materials_chat.py::265
+        - aiPlat-core/core/apps/agents/materials_chat.py::544
+        - aiPlat-core/core/apps/agents/materials_chat.py::544
+        - aiPlat-core/core/apps/agents/materials_chat.py::545
+        - aiPlat-core/core/harness/knowledge/semantic_cache_hook.py::4
+        - aiPlat-core/core/harness/knowledge/semantic_cache_hook.py::5
+        - aiPlat-core/core/harness/knowledge/semantic_cache_hook.py::15
+        - aiPlat-core/core/harness/knowledge/semantic_cache_hook.py::18
+        - aiPlat-core/core/harness/knowledge/semantic_cache_hook.py::24
+        - aiPlat-core/core/harness/knowledge/semantic_cache_hook.py::24
+        - aiPlat-core/core/harness/knowledge/semantic_cache_hook.py::26
+        - aiPlat-core/core/harness/knowledge/semantic_cache_hook.py::43
+        - aiPlat-core/core/harness/knowledge/semantic_cache_hook.py::54
+        - aiPlat-core/core/harness/knowledge/semantic_cache_hook.py::54
+        - aiPlat-core/core/harness/knowledge/semantic_cache_hook.py::56
+    - id: hallucination_tracker
+      description: "幻觉检测：GraphIndex 事实验证"
+      paths:
+        - aiPlat-core/core/harness/syscalls/llm.py::2538
+        - aiPlat-core/core/harness/syscalls/llm.py::2538
+        - aiPlat-core/core/harness/syscalls/llm.py::2540
+    - id: quality_recording
+      description: "质量评分记录（异步，fire-and-forget）"
+      paths:
+        - aiPlat-core/core/harness/utils/model_injection.py::57
+        - aiPlat-core/core/harness/utils/model_injection.py::73
+        - aiPlat-core/core/harness/utils/model_injection.py::1212
+        - aiPlat-core/core/harness/utils/model_injection.py::1286
+        - aiPlat-core/core/harness/utils/model_injection.py::1304
+        - aiPlat-core/core/harness/utils/model_injection.py::1306
+        - aiPlat-core/core/harness/utils/model_injection.py::1314
+    - id: prompt_assembler
+      description: "Prompt 动态组装（工具/技能/记忆/budget）"
+      paths:
+        - aiPlat-core/core/harness/syscalls/llm.py::1839
+        - aiPlat-core/core/harness/syscalls/llm.py::1909
+        - aiPlat-core/core/harness/syscalls/llm.py::1909
+    - id: policy_gate
+      description: "PolicyGate 权限检查（sys_tool_call入口）"
+      paths:
+        - aiPlat-core/core/harness/syscalls/tool.py::5
+        - aiPlat-core/core/harness/syscalls/tool.py::20
+        - aiPlat-core/core/harness/syscalls/tool.py::49
+        - aiPlat-core/core/harness/syscalls/tool.py::55
+        - aiPlat-core/core/harness/syscalls/tool.py::451
+        - aiPlat-core/core/harness/syscalls/tool.py::463
+        - aiPlat-core/core/harness/syscalls/tool.py::470
+        - aiPlat-core/core/harness/syscalls/tool.py::472
+    - id: approval_gate
+      description: "ApprovalGate 危险操作审批"
+      paths:
+        - aiPlat-core/core/harness/context/engine.py::630
+        - aiPlat-core/core/harness/context/engine.py::637
+        - aiPlat-core/core/harness/context/engine.py::1085
+        - aiPlat-core/core/harness/context/engine.py::1092
+    - id: tool_drift_detector
+      description: "工具漂移检测"
+      paths:
+        - aiPlat-core/core/harness/syscalls/tool.py::785
+        - aiPlat-core/core/harness/syscalls/tool.py::785
+        - aiPlat-core/core/harness/syscalls/tool.py::786
+    - id: token_budget_management
+      description: "Token 预算管理"
+      paths:
+        - aiPlat-core/core/harness/execution/loop/inference.py::234
+        - aiPlat-core/core/harness/execution/loop/inference.py::248
+        - aiPlat-core/core/harness/execution/loop/inference.py::248
+        - aiPlat-core/core/harness/execution/loop/inference.py::256
+        - aiPlat-core/core/harness/execution/loop/inference.py::256
+        - aiPlat-core/core/harness/execution/loop/inference.py::264
+        - aiPlat-core/core/harness/execution/loop/inference.py::270
+        - aiPlat-core/core/harness/execution/loop/inference.py::290
+        - aiPlat-core/core/harness/execution/loop/inference.py::377
+        - aiPlat-core/core/harness/execution/loop/inference.py::387
+        - aiPlat-core/core/harness/execution/loop/inference.py::390
+        - aiPlat-core/core/harness/execution/loop/inference.py::408
+    - id: model_health_tracking
+      description: "模型健康自适应跟踪"
+      paths:
+        - aiPlat-core/core/harness/utils/model_injection.py::1045
+        - aiPlat-core/core/harness/utils/model_injection.py::1058
+        - aiPlat-core/core/harness/utils/model_injection.py::1222
+        - aiPlat-core/core/harness/utils/model_injection.py::1233
+        - aiPlat-core/core/harness/utils/model_injection.py::1252
+        - aiPlat-core/core/harness/utils/model_injection.py::1257
+        - aiPlat-infra/infra/management/model/manager.py::381
+        - aiPlat-infra/infra/management/model/manager.py::386
+        - aiPlat-infra/infra/management/model/manager.py::387
+    - id: experience_vector
+      description: "经验向量（Loop+Pipeline 存入）"
+      paths:
+        - aiPlat-core/core/harness/execution/loop/_facade.py::1556
+        - aiPlat-core/core/harness/execution/loop/_facade.py::1562
+        - aiPlat-core/core/harness/execution/loop/_facade.py::1750
+        - aiPlat-core/core/harness/execution/loop/_facade.py::1829
+        - aiPlat-core/core/harness/execution/loop/_facade.py::1876
+        - aiPlat-core/core/harness/execution/loop/_facade.py::1882
+        - aiPlat-core/core/harness/execution/loop/_facade.py::1914
+        - aiPlat-core/core/harness/execution/loop/_facade.py::1917
+        - aiPlat-core/core/harness/execution/loop/_facade.py::1933
+        - aiPlat-core/core/harness/execution/loop/_facade.py::1958
+        - aiPlat-core/core/harness/execution/loop/_facade.py::1973
+        - aiPlat-core/core/harness/execution/loop/_facade.py::2006
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::2733
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::11168
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::11389
+    - id: seci_knowledge_spiral
+      description: "SECI 知识螺旋（POST_LOOP→atom→convergence）"
+      paths:
+        - aiPlat-core/core/harness/knowledge/seci_engine.py::2
+        - aiPlat-core/core/harness/knowledge/seci_engine.py::2
+        - aiPlat-core/core/harness/knowledge/seci_engine.py::12
+        - aiPlat-core/core/harness/knowledge/seci_engine.py::24
+        - aiPlat-core/core/harness/knowledge/seci_engine.py::39
+        - aiPlat-core/core/harness/knowledge/seci_engine.py::84
+        - aiPlat-core/core/harness/knowledge/seci_engine.py::93
+        - aiPlat-core/core/harness/knowledge/seci_engine.py::104
+        - aiPlat-core/core/harness/knowledge/seci_engine.py::178
+        - aiPlat-core/core/harness/knowledge/seci_engine.py::200
+        - aiPlat-core/core/harness/knowledge/seci_engine.py::206
+        - aiPlat-core/core/harness/knowledge/seci_engine.py::214
+        - aiPlat-core/core/harness/knowledge/seci_engine.py::234
+        - aiPlat-core/core/harness/knowledge/seci_engine.py::241
+        - aiPlat-core/core/harness/knowledge/seci_engine.py::276
+        - aiPlat-core/core/harness/knowledge/seci_engine.py::317
+        - aiPlat-core/core/harness/knowledge/seci_engine.py::327
+        - aiPlat-core/core/harness/knowledge/seci_engine.py::378
+        - aiPlat-core/core/harness/knowledge/seci_engine.py::387
+        - aiPlat-core/core/harness/knowledge/seci_engine.py::400
+        - aiPlat-core/core/harness/knowledge/seci_engine.py::419
+        - aiPlat-core/core/harness/knowledge/seci_engine.py::432
+        - aiPlat-core/core/harness/knowledge/seci_engine.py::436
+        - aiPlat-core/core/harness/knowledge/seci_engine.py::436
+        - aiPlat-core/core/harness/knowledge/seci_engine.py::440
+        - aiPlat-core/core/harness/knowledge/seci_engine.py::440
+        - aiPlat-core/core/harness/knowledge/seci_engine.py::441
+        - aiPlat-core/core/harness/knowledge/seci_engine.py::442
+        - aiPlat-core/core/harness/knowledge/seci_engine.py::443
+        - aiPlat-core/core/harness/knowledge/seci_engine.py::444
+        - aiPlat-core/core/harness/knowledge/seci_engine.py::444
+        - aiPlat-core/core/harness/knowledge/seci_engine.py::445
+        - aiPlat-core/core/harness/knowledge/seci_engine.py::448
+        - aiPlat-core/core/harness/knowledge/seci_engine.py::449
+        - aiPlat-core/core/harness/knowledge/seci_engine.py::449
+        - aiPlat-core/core/harness/knowledge/seci_engine.py::451
+        - aiPlat-core/core/harness/knowledge/seci_engine.py::462
+        - aiPlat-core/core/harness/knowledge/seci_engine.py::484
+        - aiPlat-core/core/harness/knowledge/seci_engine.py::506
+        - aiPlat-core/core/harness/knowledge/seci_engine.py::517
+        - aiPlat-core/core/harness/knowledge/seci_engine.py::544
+        - aiPlat-core/core/harness/knowledge/seci_engine.py::544
+        - aiPlat-core/core/harness/knowledge/seci_engine.py::549
+        - aiPlat-core/core/harness/knowledge/seci_engine.py::549
+        - aiPlat-core/core/harness/knowledge/seci_engine.py::560
+        - aiPlat-core/core/harness/knowledge/seci_engine.py::561
+        - aiPlat-core/core/harness/knowledge/seci_engine.py::568
+        - aiPlat-core/core/harness/knowledge/seci_engine.py::571
+        - aiPlat-core/core/harness/knowledge/seci_engine.py::571
+        - aiPlat-core/core/harness/knowledge/seci_engine.py::574
+    - id: skill_crystalization
+      description: "Skill 晶体化（pipeline完成→TaskSkill→SkillRegistry）"
+      paths:
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::2696
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::9051
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::9275
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::9279
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::9301
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::9314
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::9324
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::9346
+    - id: feedback_loops
+      description: "交互反馈回路"
+      paths:
+        - aiPlat-core/core/harness/execution/loop/_facade.py::1433
+        - aiPlat-core/core/harness/execution/loop/_facade.py::1435
+        - aiPlat-core/core/harness/execution/loop/_facade.py::1459
+        - aiPlat-core/core/harness/execution/loop/_facade.py::1461
+
+  configurable:  # 24 consumed by engine
+    - id: agent_type
+      field: PipelineStageConfig.agent_type
+      description: "See ~/.aiplat/registry/agent_types.yaml for valid values (single source of truth)"
+      schema_default: react
+      consumed_at:
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::10539
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::6357
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::10493
+    - id: chain_skill_after
+      field: PipelineStageConfig.chain_skill_after
+      description: "Auto-execute another skill after this stage completes"
+      schema_default: 
+      consumed_at:
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::3935
+    - id: context_profile
+      field: PipelineStageConfig.context_profile
+      description: "minimal|code|debug|deep"
+      schema_default: code
+      consumed_at:
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::3739
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::3662
+    - id: deploy_files_target_dir
+      field: PipelineStageConfig.deploy_files_target_dir
+      description: "Override target. Empty = ~/.aiplat/apps/{pid}/current"
+      schema_default: 
+      consumed_at:
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::4087
+    - id: deploy_files_to_disk
+      field: PipelineStageConfig.deploy_files_to_disk
+      description: "Parse ## FILE: blocks from output, write to project dir"
+      schema_default: False
+      consumed_at:
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::3941
+    - id: enable_query_rewrite
+      field: PipelineStageConfig.enable_query_rewrite
+      description: "rewrite ambiguous follow-up queries before retrieval"
+      schema_default: True
+      consumed_at:
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::3732
+    - id: execution_backend
+      field: PipelineStageConfig.execution_backend
+      description: "llm"=sys_llm_generate | "agent"=StageRunner.run()→ReActLoop"
+      schema_default: llm
+      consumed_at:
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::3782
+    - id: failure_strategy
+      field: PipelineStageConfig.failure_strategy
+      schema_default: fail_pipeline
+      consumed_at:
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::6651
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::3622
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::3910
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::6240
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::10261
+    - id: generate_test_plan
+      field: PipelineStageConfig.generate_test_plan
+      schema_default: False
+      consumed_at:
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::2018
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::7825
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::8083
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::8089
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::10543
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::3922
+    - id: hitl
+      field: PipelineStageConfig.hitl
+      schema_default: False
+      consumed_at:
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::6435
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::7438
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::3945
+    - id: hitl_phase
+      field: PipelineStageConfig.hitl_phase
+      schema_default: 
+      consumed_at:
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::2018
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::6439
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::7442
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::3948
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::4389
+    - id: output_artifact
+      field: PipelineStageConfig.output_artifact
+      schema_default: 
+      consumed_at:
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::2227
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::2867
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::2869
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::2885
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::2919
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::3648
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::4249
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::4259
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::4287
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::4315
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::4317
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::4347
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::4627
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::4639
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::4643
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::4651
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::4661
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::4665
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::4669
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::4753
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::4755
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::4757
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::4805
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::4821
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::5150
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::5176
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::5388
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::5528
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::5676
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::6124
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::6132
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::6264
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::6595
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::6599
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::6621
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::6639
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::6703
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::6935
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::7155
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::7161
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::7220
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::7228
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::7430
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::7436
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::7607
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::7659
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::7027
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::3268
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::3699
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::3886
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::3949
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::4122
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::4212
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::4397
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::8693
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::8695
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::9853
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::11319
+    - id: pipeline_mode
+      field: PipelineStageConfig.pipeline_mode
+      description: "chain|router|parallel|orchestrator|evaluator_optimizer|agent"
+      schema_default: chain
+      consumed_at:
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::2384
+    - id: quality_gate
+      field: PipelineStageConfig.quality_gate
+      description: "CRAG-style quality gate: {condition, fallback, final_fallback}"
+      schema_default: {'min_output_length': 100}
+      consumed_at:
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::3880
+    - id: retry_policy
+      field: PipelineStageConfig.retry_policy
+      description: "Self-heal retry: {on, action, max_retries}"
+      schema_default: {'max_retries': 2, 'backoff': 'exponential'}
+      consumed_at:
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::7461
+    - id: review_gate
+      field: PipelineStageConfig.review_gate
+      description: "none|quick|llm|hitl" — default quick for safety"
+      schema_default: quick
+      consumed_at:
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::4271
+    - id: sandbox
+      field: PipelineStageConfig.sandbox
+      schema_default: False
+      consumed_at:
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::6148
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::725
+    - id: sandbox_mode
+      field: PipelineStageConfig.sandbox_mode
+      schema_default: subprocess
+      consumed_at:
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::6196
+    - id: scoring_dimensions
+      field: PipelineStageConfig.scoring_dimensions
+      schema_default: [{'name': 'completeness', 'weight': 0.4}, {'name': 'accuracy', 'weight': 0.3}, {'name': 'efficiency', 'weight': 0.3}]
+      consumed_at:
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::7039
+    - id: skill_model_purpose
+      field: PipelineStageConfig.skill_model_purpose
+      description: "e.g., "reasoning", "code_gen" — passed to best_model_for_purpose"
+      schema_default: 
+      consumed_at:
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::3610
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::3619
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::3781
+    - id: skill_name
+      field: PipelineStageConfig.skill_name
+      description: "e.g., "architecture_design", "code_generation"
+      schema_default: 
+      consumed_at:
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::3597
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::3617
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::3650
+    - id: test_execution_mode
+      field: PipelineStageConfig.test_execution_mode
+      description: "pytest|agent_conversation|" — which test runner"
+      schema_default: 
+      consumed_at:
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::3923
+    - id: test_result_key
+      field: PipelineStageConfig.test_result_key
+      description: "DEFAULT_TEST_RESULT_KEY — changed via AGENT.md frontmatter"
+      schema_default: test_report
+      consumed_at:
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::2871
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::2873
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::6707
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::7368
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::7382
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::7430
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::8089
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::3937
+    - id: uses_file_output
+      field: PipelineStageConfig.uses_file_output
+      schema_default: False
+      consumed_at:
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::1710
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::4293
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::4315
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::5150
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::6589
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::8027
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::8071
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::8083
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::9825
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::9851
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::9800
+scan_hash: a89eba9c2d01
 ---
 
 # aiPlat — 三层知识系统
