@@ -150,6 +150,9 @@ export default function ControlProfilePanel() {
 
       {expanded && (
         <CardContent className="px-4 pb-4 pt-0 space-y-4">
+          <p className="text-[11px] text-gray-500 leading-relaxed">
+            <strong>D1-D6 联合控制当前值</strong>——上下文深度(D1)决定注入多少层记忆、工具权限(D2)控制可用操作、模型层级(D3)自动路由到最优模型、编排模式(D4)选择执行策略、记忆(D5)控制压缩率和 episodic/semantic 开关、输出(D6)控制门禁和 schema 校验。预设画像可通过 /profile/switch 切换。
+          </p>
           {/* D1-D6 6-dimension grid */}
           <div className="grid grid-cols-2 gap-2">
             {/* D1: Context */}

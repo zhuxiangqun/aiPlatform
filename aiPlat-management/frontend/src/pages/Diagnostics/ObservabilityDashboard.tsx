@@ -160,6 +160,12 @@ const ObservabilityDashboard: React.FC = () => {
         <span style={{ fontSize: 11, color: '#6b7280', marginLeft: 8 }}>每 30s 自动刷新</span>
       </div>
 
+      <p style={{ fontSize: 12, color: '#9ca3af', marginBottom: 20, lineHeight: 1.6 }}>
+        <strong>LLM 调用运营数据</strong>——展示过去 24 小时内所有 LLM 请求的吞吐量、成功率、延迟、Token 消耗和模型分布。
+        数据来源：<code>sys_llm_generate</code> 的每次调用记录。刚重启时数据为空，Pipeline 执行后会自然填充。
+        下方 Syscall 分布、模型使用分布、错误 Top 列表分别按类型/模型/错误信息聚合展示。
+      </p>
+
       <Link to="/diagnostics" className="inline-flex items-center gap-1 text-sm text-gray-400 hover:text-gray-200 transition-colors mb-4">
         <ArrowLeft className="w-3 h-3" />返回诊断中心
       </Link>
