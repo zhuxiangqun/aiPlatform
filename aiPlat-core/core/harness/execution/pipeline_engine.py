@@ -3833,6 +3833,15 @@ class PipelineEngine:
                     max_tokens=32000,
                 ), timeout=180)  # per-stage timeout: 3 minutes
                 _result = getattr(_response, "content", "") or str(_response)
+                # Record success for adaptive model selection
+                try:
+                    _latency = round((_time.time() - _t0) * 1000, 0)
+                    from core.harness.utils.model_injection import _record_success as _pipeline_record_success
+                    _pipeline_record_success(
+                        best_model_for_purpose(_purpose),
+                        latency_ms=_latency, purpose=_purpose)
+                except Exception:
+                    pass
             except asyncio.TimeoutError:
                 _log.getLogger("pipeline_engine").warning(
                     "Skill %s: LLM call timed out after 180s", _skill_name)
@@ -3842,6 +3851,12 @@ class PipelineEngine:
                                       "backend": "llm", "current_step": 0}
                 if self._persist_callback:
                     self._persist_callback(dict(state))
+                # Record failure
+                try:
+                    from core.harness.utils.model_injection import _record_failure as _pipeline_record_failure
+                    _pipeline_record_failure(best_model_for_purpose(_purpose))
+                except Exception:
+                    pass
                 return state
             _elapsed = round(_time.time() - _t0, 2)
             state["_progress"] = {"stage": _skill_name, "status": "completed", "elapsed_sec": _elapsed,
