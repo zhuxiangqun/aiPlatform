@@ -281,11 +281,9 @@ def _find_field_references(field_name: str, files: List[str]) -> List[Dict[str, 
     """Find all references to a field in the given files."""
     refs = []
     patterns = [
-        rf"stage\.{field_name}\b",
-        rf"stages\[\d+\]\.{field_name}\b",
-        rf"getattr\(stage,\s*['\"]{field_name}['\"]\)",
-        rf"getattr\(stages\[\d+\],\s*['\"]{field_name}['\"]",
-        rf"stage\[['\"]{field_name}['\"]\]",
+        rf"stage\.{field_name}\b",                                      # stage.field
+        rf"stages\[\d+\]\.{field_name}\b",                              # stages[0].field
+        rf"getattr\(\s*stages?(\[\d+\])?\s*,\s*['\"]{field_name}['\"][^)]*\)",  # getattr(stage/stages[N], 'field', ...)
     ]
     for rel_path in files:
         fpath = WORKSPACE / rel_path
