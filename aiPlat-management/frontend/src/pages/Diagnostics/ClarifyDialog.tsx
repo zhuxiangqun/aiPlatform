@@ -28,7 +28,7 @@ interface ClarifyDialogProps {
   onSubmit: (result: ClarifyResult) => void;
 }
 
-const API = (path: string) => `/api/platform/apps/fde${path}`;
+const API = (path: string) => `/api/platform/apps${path}`;
 
 const ClarifyDialog: React.FC<ClarifyDialogProps> = ({
   open, onClose, context, title, placeholder = '描述你遇到的问题…',

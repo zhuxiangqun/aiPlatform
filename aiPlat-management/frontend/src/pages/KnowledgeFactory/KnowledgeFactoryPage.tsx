@@ -16,7 +16,7 @@ import {
   RefreshCw, Brain, GitBranch, XCircle,
 } from 'lucide-react';
 
-const API = (path: string) => `/api/platform/apps/fde${path}`;
+const API = (path: string) => `/api/platform/apps${path}`;
 
 // ═══════════════════════════════════════════════════════════
 // ① KnowledgeExtractionPanel — 文件上传 + 文本粘贴双模式
