@@ -332,21 +332,12 @@ def _ensure_capability_profile(stage: dict) -> None:
     YAML config produced, this step guarantees the output has every required
     capability field with sensible defaults.
 
-    Default sources (priority order):
-    1. Existing stage values (never overwritten)
-    2. ~/.aiplat/capability_defaults.yaml (production-tuned defaults)
-    3. PipelineStageConfig.model_fields (Pydantic schema defaults)
+    Source: PipelineStageConfig.model_fields (Pydantic Schema, single truth).
+    Schema defaults were recently hardened to production values — no need
+    for an external YAML file.
     """
     from core.schemas_builder import PipelineStageConfig
 
-    # ── Source 1: capability_defaults.yaml ──
-    _yaml_defaults = _load_capability_defaults_yaml()
-
-    for key, value in _yaml_defaults.items():
-        if key not in stage:
-            stage[key] = value
-
-    # ── Source 2: PipelineStageConfig schema defaults (single source of truth) ──
     for name, field in PipelineStageConfig.model_fields.items():
         if name in stage:
             continue

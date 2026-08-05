@@ -279,7 +279,11 @@ class PipelineStageConfig(BaseModel):
     # [{failure_type, constraint_action, max_escalation}] — targeted recovery per failure type
     # Empty list = use system DEFAULT_FAILURE_MODE_CONSTRAINTS
     enable_query_rewrite: bool = True  # rewrite ambiguous follow-up queries before retrieval
-    scoring_dimensions: List[Dict[str, Any]] = Field(default_factory=list)
+    scoring_dimensions: List[Dict[str, Any]] = Field(default_factory=lambda: [
+        {"name": "completeness", "weight": 0.4},
+        {"name": "accuracy", "weight": 0.3},
+        {"name": "efficiency", "weight": 0.3},
+    ])
     # Fine-grained per-stage reward weights (UnityMAS-O inspired)
     scoring_weights: Dict[str, float] = Field(default_factory=lambda: {
         "output_quality": 0.40, "token_efficiency": 0.15,
@@ -322,11 +326,11 @@ class PipelineStageConfig(BaseModel):
     # Planner-Generator-Evaluator separation: stage ID for structured planning
     planning_stage_id: str = ""
     # ── v4.0: Declarative quality gates & routing for pipeline agents ──
-    quality_gate: Dict[str, Any] = Field(default_factory=dict)  # 4step-verified: wired via pipeline_compiler.py→retriever quality_gate
+    quality_gate: Dict[str, Any] = Field(default_factory=lambda: {"min_output_length": 100})
     """CRAG-style quality gate: {condition, fallback, final_fallback}"""
     routing_rules: Dict[str, Any] = Field(default_factory=dict)  # 4step-verified: wired via pipeline_compiler.py + engine.py:1900
     """Domain routing rules: {tiers, fallback_domain}"""
-    retry_policy: Dict[str, Any] = Field(default_factory=dict)  # 4step-verified: wired via pipeline_compiler.py→knowledge_writeback
+    retry_policy: Dict[str, Any] = Field(default_factory=lambda: {"max_retries": 2, "backoff": "exponential"})
     """Self-heal retry: {on, action, max_retries}"""
     # ── v4.1: Cross-stage rollback (delegation + adversarial pattern) ──
     rollback_on_reject: bool = False
