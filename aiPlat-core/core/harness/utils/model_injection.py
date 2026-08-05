@@ -1222,9 +1222,9 @@ async def generate_with_fallback(purpose: str,
 
                     err_str = str(e)
 
-                    permanent_keywords = ("API key", "401", "403", "404", "api_key", "unauthorized",
+                    permanent_keywords = ("API key", "401", "403", "api_key", "unauthorized",
 
-                                          "invalid api key", "not found", "model not found")
+                                          "invalid api key")
 
                     is_permanent = any(kw in err_str.lower() for kw in permanent_keywords)
 
@@ -1232,9 +1232,12 @@ async def generate_with_fallback(purpose: str,
                     _record_failure(model_name)
 
                     if is_permanent:
-                        _fb_log.error(f"Permanent error on '{model_name}': {err_str}. Stopping fallback.")
+                        _fb_log.warning(f"Permanent error on '{model_name}': {err_str}. Skipping.")
+                        failed_models.add(model_name)
+                        _record_failure(model_name)
+                        errors.append({"model": model_name, "error": err_str, "transient": False})
                         last_error = err_str
-                        break  # don't crash — let outer loop handle graceful exit
+                        continue  # skip this model, try the next one
 
                     failed_models.add(model_name)
 
