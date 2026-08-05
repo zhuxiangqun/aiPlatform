@@ -393,7 +393,7 @@ export AIPLAT_EMBEDDING_BACKEND="${AIPLAT_EMBEDDING_BACKEND:-hash}"
 export HF_HUB_OFFLINE="${HF_HUB_OFFLINE:-1}"
 
 cd "$PROJECT_ROOT/aiPlat-core/core"
-PYTHONPATH="$PROJECT_ROOT/aiPlat-core" nohup "$PY" -m uvicorn server:app --host 0.0.0.0 --port 8002 --workers 2 > "$AIPLAT_HOME/logs/core.log" 2>&1 &
+PYTHONPATH="$PROJECT_ROOT/aiPlat-core" nohup "$PY" -m uvicorn server:app --host 0.0.0.0 --port 8002 --workers 4 > "$AIPLAT_HOME/logs/core.log" 2>&1 &
 CORE_PID=$!
 echo "PID: $CORE_PID"
 
