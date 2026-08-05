@@ -16,7 +16,7 @@ except ImportError:
 from core.schemas_common import DeleteResponse, WikiDeleteAllResponse, ListResponse, WikiPageResponse, MessageResponse
 import logging
 
-router = APIRouter(prefix="/wiki", tags=["wiki"])
+router = APIRouter(tags=["wiki"])
 
 # Include sub-module routers (incremental migration)
 # wiki_learning.py, wiki_loop_triggers.py, wiki_ontology_sql.py
