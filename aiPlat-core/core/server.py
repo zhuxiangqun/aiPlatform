@@ -2403,6 +2403,13 @@ try:
 except Exception as e:
     logging.debug("Pipeline execution router: %s", e)
 
+# Capability admin API (scan/read/manage core_guarantees)
+try:
+    from core.api.routers.capability_admin import router as cap_admin_router
+    api_router.include_router(cap_admin_router)
+except Exception as e:
+    logging.debug("Capability admin router: %s", e)
+
 # FDE Toolkit (Field Deployment Engineer — unified entry point)
 # Routers are registered via apps.fde.__init__.py → router_registry.register()
 # which decouples core server startup from platform-specific router imports.

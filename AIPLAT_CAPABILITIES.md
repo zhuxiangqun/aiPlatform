@@ -3,8 +3,7 @@ total_capabilities: 914
 last_updated: 2026-07-30
 version: "29.0"
 auto_sync: true
-core_guarantees:
-  auto:  # 22 active, 1 missing
+  auto:  # 23 active, 0 missing
     - id: llm_circuit_breaker
       description: "LLM 熔断器：5次连续失败→断路30s"
       paths:
@@ -133,6 +132,13 @@ core_guarantees:
         - aiPlat-core/core/harness/syscalls/tool.py::463
         - aiPlat-core/core/harness/syscalls/tool.py::470
         - aiPlat-core/core/harness/syscalls/tool.py::472
+    - id: approval_gate
+      description: "ApprovalGate 危险操作审批"
+      paths:
+        - aiPlat-core/core/harness/context/engine.py::630
+        - aiPlat-core/core/harness/context/engine.py::637
+        - aiPlat-core/core/harness/context/engine.py::1085
+        - aiPlat-core/core/harness/context/engine.py::1092
     - id: tool_drift_detector
       description: "工具漂移检测"
       paths:
@@ -181,9 +187,9 @@ core_guarantees:
         - aiPlat-core/core/harness/execution/loop/_facade.py::1958
         - aiPlat-core/core/harness/execution/loop/_facade.py::1973
         - aiPlat-core/core/harness/execution/loop/_facade.py::2006
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::2730
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::11149
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::11370
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::2733
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::11168
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::11389
     - id: seci_knowledge_spiral
       description: "SECI 知识螺旋（POST_LOOP→atom→convergence）"
       paths:
@@ -240,14 +246,14 @@ core_guarantees:
     - id: skill_crystalization
       description: "Skill 晶体化（pipeline完成→TaskSkill→SkillRegistry）"
       paths:
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::2693
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::9032
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::9256
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::9260
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::9282
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::9295
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::9305
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::9327
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::2696
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::9051
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::9275
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::9279
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::9301
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::9314
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::9324
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::9346
     - id: feedback_loops
       description: "交互反馈回路"
       paths:
@@ -255,290 +261,150 @@ core_guarantees:
         - aiPlat-core/core/harness/execution/loop/_facade.py::1435
         - aiPlat-core/core/harness/execution/loop/_facade.py::1459
         - aiPlat-core/core/harness/execution/loop/_facade.py::1461
-  # ⚠️  MISSING — declared but no code found:
-  #   - approval_gate: ApprovalGate 危险操作审批
 
-  configurable:  # 19 consumed by engine
+  configurable:  # 12 consumed by engine
     - id: agent_type
       field: PipelineStageConfig.agent_type
       schema_default: react
       consumed_at:
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::10520
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::6343
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::10474
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::10520
-    - id: chain_skill_after
-      field: PipelineStageConfig.chain_skill_after
-      schema_default: 
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::10539
+    - id: context_profile
+      field: PipelineStageConfig.context_profile
+      schema_default: code
       consumed_at:
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::3921
-    - id: deploy_files_target_dir
-      field: PipelineStageConfig.deploy_files_target_dir
-      schema_default: 
-      consumed_at:
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::4073
-    - id: deploy_files_to_disk
-      field: PipelineStageConfig.deploy_files_to_disk
-      schema_default: False
-      consumed_at:
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::3927
-    - id: execution_backend
-      field: PipelineStageConfig.execution_backend
-      schema_default: llm
-      consumed_at:
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::3771
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::3739
     - id: failure_strategy
       field: PipelineStageConfig.failure_strategy
       schema_default: fail_pipeline
       consumed_at:
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::6637
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::3619
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::3896
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::6226
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::10242
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::6637
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::6651
     - id: generate_test_plan
       field: PipelineStageConfig.generate_test_plan
       schema_default: False
       consumed_at:
         - aiPlat-core/core/harness/execution/pipeline_engine.py::2018
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::7806
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::8064
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::8070
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::10524
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::3908
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::2018
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::7806
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::8064
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::8070
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::10524
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::7825
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::8083
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::8089
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::10543
     - id: hitl
       field: PipelineStageConfig.hitl
       schema_default: False
       consumed_at:
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::6421
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::7424
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::3931
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::3934
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::4375
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::6421
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::7424
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::6435
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::7438
     - id: hitl_phase
       field: PipelineStageConfig.hitl_phase
       schema_default: 
       consumed_at:
         - aiPlat-core/core/harness/execution/pipeline_engine.py::2018
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::6425
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::7428
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::3934
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::4375
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::2018
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::6425
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::7428
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::6439
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::7442
     - id: output_artifact
       field: PipelineStageConfig.output_artifact
       schema_default: 
       consumed_at:
         - aiPlat-core/core/harness/execution/pipeline_engine.py::2227
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::2864
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::2866
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::2882
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::2916
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::3645
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::4235
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::4245
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::4273
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::4301
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::4303
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::4333
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::4613
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::4625
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::4629
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::4637
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::4647
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::2867
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::2869
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::2885
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::2919
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::3648
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::4249
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::4259
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::4287
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::4315
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::4317
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::4347
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::4627
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::4639
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::4643
         - aiPlat-core/core/harness/execution/pipeline_engine.py::4651
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::4655
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::4739
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::4741
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::4743
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::4791
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::4807
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::5136
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::5162
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::5374
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::5514
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::5662
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::6110
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::6118
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::6250
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::6581
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::6585
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::6607
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::6625
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::6689
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::6921
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::7141
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::7147
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::7206
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::7214
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::7416
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::7422
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::7588
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::7640
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::3265
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::3695
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::3872
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::3935
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::4108
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::4198
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::4383
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::8674
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::8676
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::9834
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::11300
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::2227
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::2864
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::2866
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::2882
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::2916
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::3645
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::4235
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::4245
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::4273
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::4301
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::4303
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::4333
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::4613
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::4625
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::4629
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::4637
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::4647
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::4651
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::4655
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::4739
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::4741
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::4743
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::4791
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::4807
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::5136
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::5162
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::5374
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::5514
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::5662
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::6110
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::6118
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::6250
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::6581
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::6585
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::6607
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::6625
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::6689
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::6921
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::7141
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::7147
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::7206
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::7214
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::7416
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::7422
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::7588
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::7640
-    - id: review_gate
-      field: PipelineStageConfig.review_gate
-      schema_default: quick
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::4661
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::4665
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::4669
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::4753
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::4755
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::4757
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::4805
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::4821
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::5150
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::5176
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::5388
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::5528
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::5676
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::6124
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::6132
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::6264
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::6595
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::6599
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::6621
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::6639
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::6703
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::6935
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::7155
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::7161
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::7220
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::7228
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::7430
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::7436
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::7607
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::7659
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::7027
+    - id: pipeline_mode
+      field: PipelineStageConfig.pipeline_mode
+      schema_default: chain
       consumed_at:
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::4257
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::2384
     - id: sandbox
       field: PipelineStageConfig.sandbox
       schema_default: False
       consumed_at:
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::6134
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::725
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::733
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::735
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::737
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::6182
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::6134
-    - id: sandbox_mode
-      field: PipelineStageConfig.sandbox_mode
-      schema_default: subprocess
-      consumed_at:
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::6182
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::6148
     - id: scoring_dimensions
       field: PipelineStageConfig.scoring_dimensions
       schema_default: "Lambda(args=arguments(), body=List(elts=[Dict(keys=[Constant(value='name'), Con
       consumed_at:
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::7025
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::7025
-    - id: skill_model_purpose
-      field: PipelineStageConfig.skill_model_purpose
-      schema_default: 
-      consumed_at:
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::3607
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::3616
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::3770
-    - id: skill_name
-      field: PipelineStageConfig.skill_name
-      schema_default: 
-      consumed_at:
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::3594
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::3614
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::3647
-    - id: test_execution_mode
-      field: PipelineStageConfig.test_execution_mode
-      schema_default: 
-      consumed_at:
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::3909
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::7039
     - id: test_result_key
       field: PipelineStageConfig.test_result_key
       schema_default: test_report
       consumed_at:
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::2868
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::2870
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::6693
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::7354
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::2871
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::2873
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::6707
         - aiPlat-core/core/harness/execution/pipeline_engine.py::7368
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::7416
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::8070
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::3923
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::2868
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::2870
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::6693
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::7354
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::7368
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::7416
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::8070
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::7382
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::7430
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::8089
     - id: uses_file_output
       field: PipelineStageConfig.uses_file_output
       schema_default: False
       consumed_at:
         - aiPlat-core/core/harness/execution/pipeline_engine.py::1710
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::4279
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::4301
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::5136
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::6575
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::8008
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::8052
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::8064
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::9806
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::9832
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::9781
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::1710
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::4279
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::4301
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::5136
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::6575
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::8008
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::8052
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::8064
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::9806
-        - aiPlat-core/core/harness/execution/pipeline_engine.py::9832
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::4293
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::4315
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::5150
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::6589
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::8027
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::8071
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::8083
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::9825
+        - aiPlat-core/core/harness/execution/pipeline_engine.py::9851
 
-  # ⚠️  ORPHAN — Schema fields never read by engine (5):
-  #   - context_profile: default=code — Schema defines 'context_profile' but pipeline_engine never reads it
+  # ⚠️  ORPHAN — Schema fields never read by engine (12):
+  #   - chain_skill_after: default= — Schema defines 'chain_skill_after' but pipeline_engine never reads it
+  #   - deploy_files_target_dir: default= — Schema defines 'deploy_files_target_dir' but pipeline_engine never reads it
+  #   - deploy_files_to_disk: default=False — Schema defines 'deploy_files_to_disk' but pipeline_engine never reads it
   #   - enable_query_rewrite: default=True — Schema defines 'enable_query_rewrite' but pipeline_engine never reads it
-  #   - pipeline_mode: default=chain — Schema defines 'pipeline_mode' but pipeline_engine never reads it
+  #   - execution_backend: default=llm — Schema defines 'execution_backend' but pipeline_engine never reads it
   #   - quality_gate: default="Lambda(args=arguments(), body=Dict(keys=[Constant(value='min_output_length')],  — Schema defines 'quality_gate' but pipeline_engine never reads it
   #   - retry_policy: default="Lambda(args=arguments(), body=Dict(keys=[Constant(value='max_retries'), Constan — Schema defines 'retry_policy' but pipeline_engine never reads it
+  #   - review_gate: default=quick — Schema defines 'review_gate' but pipeline_engine never reads it
+  #   - sandbox_mode: default=subprocess — Schema defines 'sandbox_mode' but pipeline_engine never reads it
+  #   - skill_model_purpose: default= — Schema defines 'skill_model_purpose' but pipeline_engine never reads it
+  #   - skill_name: default= — Schema defines 'skill_name' but pipeline_engine never reads it
+  #   - test_execution_mode: default= — Schema defines 'test_execution_mode' but pipeline_engine never reads it
   #
   #   Action: either wire the engine to consume these fields,
   #   or remove them from core_guarantees.
