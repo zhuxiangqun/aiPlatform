@@ -670,9 +670,9 @@ const ProjectPanel: React.FC<{
                 <button onClick={handleEditPrd} className="text-[10px] px-2 py-1 rounded bg-dark-hover text-gray-300 hover:text-white transition-colors">📋 查看 & 编辑</button>
                 <button onClick={() => {
                   const pmKey = teamStages[0]?.output_artifact;
-                  const pmRaw = pmKey ? stageOutputs[pmKey]?.raw_output : null;
-                  setFullscreenTitle('PRD: ' + (confirmedPrd.title as string || ''));
-                  setFullscreenContent(pmRaw || JSON.stringify(confirmedPrd, null, 2));
+                  const pmRaw = pmKey && stageOutputs ? stageOutputs[pmKey]?.raw_output : null;
+                  setFullscreenTitle('PRD: ' + (confirmedPrd?.title as string || ''));
+                  setFullscreenContent(pmRaw || JSON.stringify(confirmedPrd || {}, null, 2));
                 }}
                   className="text-[10px] px-2 py-1 rounded bg-dark-hover text-gray-300 hover:text-white transition-colors">🔍 全屏</button>
                 </>
