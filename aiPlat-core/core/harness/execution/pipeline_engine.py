@@ -3806,7 +3806,7 @@ class PipelineEngine:
             if self._persist_callback:
                 self._persist_callback(dict(state))  # immediate: frontend sees "running"
             try:
-                _response = await sys_llm_generate(
+                _response = await asyncio.wait_for(sys_llm_generate(
                     None,
                     [
                         {"role": "system", "content": _sop_body},
@@ -3814,16 +3814,15 @@ class PipelineEngine:
                     ],
                     model_name=best_model_for_purpose(_purpose),
                     max_tokens=32000,
-                )
+                ), timeout=180)  # per-stage timeout: 3 minutes
                 _result = getattr(_response, "content", "") or str(_response)
-            except Exception as _llm_err:
+            except asyncio.TimeoutError:
                 _log.getLogger("pipeline_engine").warning(
-                    "Skill %s: LLM call failed: %s", _skill_name, str(_llm_err)[:200])
+                    "Skill %s: LLM call timed out after 180s", _skill_name)
                 _result = ""
-                state["_progress"] = {"stage": _skill_name, "status": "error",
-                                      "elapsed_sec": round(_time.time() - _t0, 2),
-                                      "backend": "llm", "current_step": 0,
-                                      "error": str(_llm_err)[:200]}
+                state["_progress"] = {"stage": _skill_name, "status": "timeout",
+                                      "elapsed_sec": 180.0,
+                                      "backend": "llm", "current_step": 0}
                 if self._persist_callback:
                     self._persist_callback(dict(state))
                 return state
