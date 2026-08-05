@@ -1886,6 +1886,22 @@ async def get_entropy_alerts(limit: int = 20):
         return {"alerts": [], "total": 0, "error": str(e)[:200]}
 
 
+@router.get("/diagnostics/observability/stats", response_model=Dict[str, Any])
+async def get_observability_stats():
+    """Return LLM call stats for observability dashboard."""
+    try:
+        from core.harness.utils.model_injection import get_route_metrics
+        metrics = get_route_metrics()
+        metrics.setdefault("total_calls", 0)
+        metrics.setdefault("fallback_count", 0)
+        return {
+            "status": "ok",
+            "metrics": metrics,
+        }
+    except Exception as e:
+        return {"status": "error", "error": str(e)[:200], "metrics": {}}
+
+
 @router.put("/diagnostics/observability/alerts", response_model=Dict[str, Any], include_in_schema=False)
 async def put_observability_alerts(body: dict):
     """Save alert configuration (observability dashboard)."""
