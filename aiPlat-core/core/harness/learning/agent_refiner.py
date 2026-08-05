@@ -223,3 +223,71 @@ class AgentRefiner:
                 logger.info("Agent refinement written: %s", path)
                 return path
         return ""
+
+
+async def submit_refinement_suggestion(
+    target_model: str, suggestion: str, confidence: float
+) -> None:
+    """Submit a refinement candidate for voting-based adoption.
+
+    High-confidence suggestions (≥80%) are stored in refinement_candidates
+    table. They require ≥3 independent pipeline verifications (vote_count)
+    before apply_mature_refinements actually writes to AGENT.md.
+
+    Args:
+        target_model: agent_id or skill name
+        suggestion: human-readable refinement text
+        confidence: 0-100 confidence percentage
+    """
+    if confidence < 80.0:
+        logger.debug("Suggestion confidence %.1f%% < 80%%, skipping.", confidence)
+        return
+
+    try:
+        import os as _os, sqlite3, time as _time
+        from core.utils.paths import get_aiplat_data_dir
+
+        db = _os.path.join(get_aiplat_data_dir(""), "data", "pipeline_runs.db")
+        db = _os.path.expanduser(db)
+        # Use the main execution DB for refinement_candidates
+        main_db = _os.path.join(_os.path.expanduser("~"), ".aiplat", "aiplat_executions.sqlite3")
+        if not _os.path.isfile(main_db):
+            logger.debug("Main DB not found, skipping refinement submission")
+            return
+
+        conn = sqlite3.connect(main_db, timeout=5.0)
+        conn.row_factory = sqlite3.Row
+        try:
+            now = _time.strftime("%Y-%m-%dT%H:%M:%S")
+            # Check for existing similar suggestion within 7 days
+            existing = conn.execute("""
+                SELECT id, vote_count FROM refinement_candidates
+                WHERE target_model = ? AND suggestion_text = ?
+                  AND status = 'pending'
+                  AND last_seen_at > datetime(?, '-7 days')
+            """, (target_model, suggestion, now)).fetchone()
+
+            if existing:
+                conn.execute(
+                    """UPDATE refinement_candidates
+                       SET vote_count = vote_count + 1, last_seen_at = ?
+                       WHERE id = ?""",
+                    (now, existing["id"]),
+                )
+                logger.info("Suggestion vote %d→%d for %s",
+                            existing["vote_count"], existing["vote_count"] + 1, target_model)
+            else:
+                conn.execute(
+                    """INSERT INTO refinement_candidates
+                       (target_model, suggestion_text, confidence,
+                        first_seen_at, last_seen_at)
+                       VALUES (?, ?, ?, ?, ?)""",
+                    (target_model, suggestion, confidence, now, now),
+                )
+                logger.info("New refinement candidate for %s (confidence=%.1f%%)",
+                            target_model, confidence)
+            conn.commit()
+        finally:
+            conn.close()
+    except Exception:
+        logger.debug("submit_refinement_suggestion failed", exc_info=True)

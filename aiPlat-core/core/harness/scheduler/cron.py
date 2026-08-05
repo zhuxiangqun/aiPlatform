@@ -132,6 +132,57 @@ def get_cron_scheduler() -> CronScheduler:
     return _cron_scheduler
 
 
+# ── Job lock helpers (SQLite-based, prevents overlapping cron runs) ──
+
+async def _acquire_lock(job_name: str, ttl: int = 3600) -> bool:
+    """Try to acquire a job lock. Returns True if acquired, False if already held."""
+    try:
+        import sqlite3, os, time as _t
+        db = os.path.join(os.path.expanduser("~"), ".aiplat", "aiplat_executions.sqlite3")
+        if not os.path.isfile(db):
+            return True  # no DB = no lock contention
+        conn = sqlite3.connect(db, timeout=5.0)
+        try:
+            now = _t.strftime("%Y-%m-%dT%H:%M:%S")
+            expiry = _t.strftime("%Y-%m-%dT%H:%M:%S",
+                                 _t.localtime(_t.time() + ttl))
+            conn.execute(
+                """INSERT INTO job_locks (job_name, locked_at, expires_at)
+                   VALUES (?, ?, ?)
+                   ON CONFLICT(job_name) DO UPDATE SET
+                   locked_at = excluded.locked_at,
+                   expires_at = excluded.expires_at
+                   WHERE expires_at < ?""",
+                (job_name, now, expiry, now))
+            conn.commit()
+            # Check if we got the lock
+            row = conn.execute(
+                "SELECT locked_at FROM job_locks WHERE job_name = ?",
+                (job_name,)).fetchone()
+            return row and row[0] == now
+        finally:
+            conn.close()
+    except Exception:
+        return True  # best-effort: don't block on lock errors
+
+
+async def _release_lock(job_name: str) -> None:
+    try:
+        import sqlite3, os
+        db = os.path.join(os.path.expanduser("~"), ".aiplat", "aiplat_executions.sqlite3")
+        if not os.path.isfile(db):
+            return
+        conn = sqlite3.connect(db, timeout=5.0)
+        try:
+            conn.execute(
+                "DELETE FROM job_locks WHERE job_name = ?", (job_name,))
+            conn.commit()
+        finally:
+            conn.close()
+    except Exception:
+        pass
+
+
 async def register_builtin_jobs() -> None:
     """Register built-in cron jobs for self-evolution."""
     sched = get_cron_scheduler()
@@ -307,6 +358,58 @@ async def register_builtin_jobs() -> None:
 
     sched.register("auto_garden", 24 * 3600, _auto_garden,
                    description="Daily wiki cleanup: stale pages, duplicates, orphans, thin content")
+
+    # ── Nightly Evolution: 14-step self-optimization (3:00 AM) ──
+    async def _nightly_evolution():
+        if not await _acquire_lock("nightly_evolution", ttl=3600):
+            logger.info("Evolution still running (job_lock), skipping.")
+            return
+        try:
+            from core.harness.evolution_engine import nightly_evolution
+            await nightly_evolution()
+        except Exception as e:
+            logger.warning("Nightly evolution failed: %s", str(e)[:300], exc_info=True)
+        finally:
+            await _release_lock("nightly_evolution")
+
+    sched.register("nightly_evolution", 24 * 3600, _nightly_evolution,
+                   description="Daily self-evolution: agent refinement, skill evolver, spec health")
+
+    # ── Apply mature refinements: ≥3-vote suggestions → AGENT.md (3:30 AM) ──
+    async def _apply_refinements():
+        if not await _acquire_lock("apply_refinements", ttl=600):
+            return
+        try:
+            from core.harness.learning.apply_mature_refinements import apply_mature_refinements
+            result = await apply_mature_refinements()
+            if result["applied"] > 0:
+                logger.info("Applied %d mature refinements (backups: %d, errors: %d)",
+                            result["applied"], len(result["backups"]), result["errors"])
+        except Exception as e:
+            logger.warning("Apply refinements failed: %s", str(e)[:200], exc_info=True)
+        finally:
+            await _release_lock("apply_refinements")
+
+    sched.register("apply_mature_refinements", 24 * 3600, _apply_refinements,
+                   description="Apply ≥3-vote refinement suggestions to AGENT.md")
+
+    # ── KPI aggregation: per-model business scores → model_health (2:00 AM) ──
+    async def _kpi_aggregation():
+        if not await _acquire_lock("kpi_aggregation", ttl=300):
+            return
+        try:
+            from core.harness.learning.kpi_tracker import get_kpi_tracker
+            tracker = get_kpi_tracker()
+            scores = await tracker.aggregate_daily_metrics()
+            if scores:
+                logger.info("KPI aggregation: %d models updated", len(scores))
+        except Exception as e:
+            logger.warning("KPI aggregation failed: %s", str(e)[:200], exc_info=True)
+        finally:
+            await _release_lock("kpi_aggregation")
+
+    sched.register("kpi_aggregation", 24 * 3600, _kpi_aggregation,
+                   description="Daily KPI aggregation: per-model pass rates → model_health")
 
 
 __all__ = [

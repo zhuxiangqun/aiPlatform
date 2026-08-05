@@ -377,7 +377,53 @@ def _score_model(
     elif cost > 0.001: cost_penalty = -5
     score += int(cost_penalty * weights.get("cost", -1.0))
 
+    # 12. Dynamic boost: real-world performance (success rate, latency, business score)
+    score += _calculate_dynamic_boost(model.name)
+
     return score
+
+
+def _calculate_dynamic_boost(model_name: str) -> float:
+    """Dynamic scoring factor from ModelHealthStore (range [-10, +10]).
+
+    Returns 0 on cold start (no health data yet), ensuring static
+    factors from llm_profile.yaml remain the primary signal.
+    """
+    try:
+        from core.harness.utils.model_health_store import get_model_health_store
+        health = get_model_health_store().get_health_score(model_name)
+    except Exception:
+        return 0.0
+
+    if not health:
+        return 0.0
+
+    calls = health.get("call_count", 0)
+    if calls == 0:
+        return 0.0
+
+    success_rate = health.get("success_count", 0) / calls
+    failure_rate = health.get("failure_count", 0) / calls
+    avg_latency = health.get("avg_latency_ms", 1000.0)
+    biz = health.get("business_score", 0.5)
+
+    # Min-Max normalization — all sub-scores in bounded ranges
+    health_bonus = success_rate * 10.0                          # [0, +10]
+    failure_penalty = -min(10.0, failure_rate * 20.0)           # [-10, 0]
+    business_bonus = max(-5.0, min(5.0, (biz - 0.5) * 10.0))   # [-5, +5]
+
+    base_ms, max_ms = 800.0, 5000.0
+    if avg_latency > base_ms:
+        ratio = (avg_latency - base_ms) / (max_ms - base_ms)
+        latency_penalty = -min(10.0, ratio * 10.0)              # [-10, 0]
+    else:
+        latency_penalty = 0.0
+
+    exploration_bonus = 2.0 if calls < 5 else 0.0               # cold start
+
+    return max(-10.0, min(10.0,
+        health_bonus + failure_penalty + business_bonus
+        + latency_penalty + exploration_bonus))
 
 
 class ModelManager:

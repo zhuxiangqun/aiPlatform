@@ -1047,6 +1047,21 @@ def _record_failure(model_name: str) -> None:
     failures = _FAILURE_TRACKER.get(model_name, [])
     failures.append(_t.time())
     _FAILURE_TRACKER[model_name] = failures
+    # Persist to SQLite for cross-restart learning
+    try:
+        from core.harness.utils.model_health_store import get_model_health_store
+        get_model_health_store().record_failure(model_name, error="unknown")
+    except Exception:
+        pass
+
+
+def _record_success(model_name: str, latency_ms: float = 0.0, purpose: str = "") -> None:
+    """Record successful model call for adaptive selection learning."""
+    try:
+        from core.harness.utils.model_health_store import get_model_health_store
+        get_model_health_store().record_success(model_name, latency_ms=latency_ms, purpose=purpose)
+    except Exception:
+        pass
 
 
 async def generate_with_fallback(purpose: str,
@@ -1161,6 +1176,7 @@ async def generate_with_fallback(purpose: str,
 
                     from core.harness.syscalls.llm import sys_llm_generate
 
+                    _call_start = _time.time()
                     resp = await _asyncio.wait_for(
 
                         sys_llm_generate(adapter, messages,
@@ -1200,6 +1216,10 @@ async def generate_with_fallback(purpose: str,
                         attempts=len(failed_models) + 1
 
                     ))
+
+                    # Record success for adaptive model selection
+                    _latency_ms = round((_time.time() - _call_start) * 1000.0, 1)
+                    _record_success(model_name, latency_ms=_latency_ms, purpose=purpose)
 
                     return resp, model_name
 

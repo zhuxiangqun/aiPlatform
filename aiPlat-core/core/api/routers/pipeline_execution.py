@@ -150,6 +150,25 @@ async def pipeline_run(request: Request) -> Dict[str, Any]:
 
             result = await engine._run_stages_from(0, state)
 
+            # Record primary model for KPI/learning feedback loop
+            _primary_model = best_model_for_purpose("chat")
+            try:
+                from core.harness.execution.pipeline_run_store import get_pipeline_run_store as _prs
+                _prs_store = _prs()
+                # Upsert run with primary_model_used via raw SQL since store API may not have this field
+                import sqlite3 as _sql
+                _db = _prs_store._db_path
+                _conn = _sql.connect(_db, timeout=5)
+                try:
+                    _conn.execute(
+                        "UPDATE pipeline_runs SET primary_model_used = ? WHERE run_id = ?",
+                        (_primary_model, run_id))
+                    _conn.commit()
+                finally:
+                    _conn.close()
+            except Exception:
+                pass
+
             # Save final state
             phase = result.get("phase", "done")
             store.update_run_phase(run_id, phase, str(result.get("error", ""))[:500])

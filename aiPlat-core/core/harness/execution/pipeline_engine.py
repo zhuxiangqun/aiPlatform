@@ -278,6 +278,23 @@ async def _save_pipeline_knowledge_to_wiki(state: dict, config: Any) -> None:
             "Wiki pipeline save error for %s: %s", _pid, str(_e)[:200])
 
 
+async def _safe_generalize_skill(engine: Any, skill_id: str, state: dict) -> None:
+    """Fire-and-forget generalization — never blocks pipeline, never crashes."""
+    try:
+        from core.harness.learning.success_generalizer import get_generalizer
+        generalizer = get_generalizer()
+        if hasattr(generalizer, 'generalize_async'):
+            await generalizer.generalize_async(skill_id, str(state.get("description", "")))
+        else:
+            generalizer.generalize(skill_id, str(state.get("description", "")))
+    except asyncio.CancelledError:
+        pass
+    except Exception:
+        import logging as _gl
+        _gl.getLogger("pipeline_engine").debug(
+            "safe_generalize_skill failed", exc_info=True)
+
+
 class PipelineEventBus:
 
     """Event bus for pipeline execution lifecycle — mirrors Dify/Coze callback pattern.
@@ -9349,6 +9366,14 @@ JSON format: {{"artifact": {{}},"confidence": "HIGH","issues": [{{"severity": "P
             self._store_artifacts(sid, state)
 
 
+
+            # Fire-and-forget: generalize successful skill for cross-run learning
+            try:
+                import asyncio as _gen_async
+                _gen_async.create_task(
+                    _safe_generalize_skill(self, skill_id, state))
+            except Exception:
+                pass
 
             return skill_path
 
