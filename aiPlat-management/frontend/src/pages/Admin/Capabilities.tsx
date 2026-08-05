@@ -242,6 +242,7 @@ const CapabilitiesPage: React.FC = () => {
                   (activeTab === "consumed" ? cfgConsumed : cfgOrphan).map((item, idx) => (
                   <tr key={item.field || idx} className={`border-b hover:bg-gray-50 ${item.reviewed ? "bg-green-50" : ""}`}>
                     <td className="p-3 text-center text-gray-400 text-xs">{idx + 1}</td>
+                    <td className="p-3">
                       <input type="checkbox" checked={!!item.reviewed} onChange={e => markReviewed(item.field || "", e.target.checked)} />
                     </td>
                     <td className="p-3 font-mono text-xs">{item.field || "-"}</td>
