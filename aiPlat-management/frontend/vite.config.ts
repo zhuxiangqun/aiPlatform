@@ -31,11 +31,6 @@ export default defineConfig({
         changeOrigin: true,
         timeout: 600000,
       },
-      '/api/platform/builder': {
-        target: 'http://localhost:8000',
-        changeOrigin: true,
-        timeout: 300000,
-      },
       '/api/core/diagnostics': {
         target: 'http://localhost:8002',
         changeOrigin: true,
