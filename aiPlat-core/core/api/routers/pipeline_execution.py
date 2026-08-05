@@ -117,11 +117,13 @@ async def pipeline_run(request: Request) -> Dict[str, Any]:
         try:
             from core.harness.execution.pipeline_engine import PipelineEngine, PipelineConfig
             from core.schemas_builder import PipelineStageConfig
+            from core.harness.execution.team_planner import _ensure_capability_profile
             from core.harness.utils.model_injection import best_model_for_purpose
 
             stages = []
             for s in stages_raw:
                 if isinstance(s, dict):
+                    _ensure_capability_profile(s)  # guarantee all core capabilities
                     stages.append(PipelineStageConfig(**s))
 
             pipeline_config = PipelineConfig(
