@@ -99,3 +99,72 @@ async def trigger_rescan():
         return {"status": "ok", "output": result.stdout, "error": result.stderr}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/guarantees")
+async def update_guarantees(payload: GuaranteeUpdate):
+    """Update core_guarantees in AIPLAT_CAPABILITIES.md frontmatter.
+
+    Accepts {auto: [...], configurable: [...]}. Replaces the existing
+    core_guarantees block in the frontmatter with the new values.
+    """
+    caps_path = os.path.join(SCRIPTS_DIR, "..", "AIPLAT_CAPABILITIES.md")
+    
+    # Read current file
+    with open(caps_path) as f:
+        content = f.read()
+    
+    # Backup
+    with open(caps_path + ".review_backup", "w") as f:
+        f.write(content)
+    
+    # Build new YAML block
+    import yaml
+    new_block = {"core_guarantees": {}}
+    if payload.auto is not None:
+        new_block["core_guarantees"]["auto"] = payload.auto
+    if payload.configurable is not None:
+        new_block["core_guarantees"]["configurable"] = payload.configurable
+    
+    yaml_text = yaml.dump(new_block, default_flow_style=False, allow_unicode=True, sort_keys=False)
+    
+    # Replace or insert core_guarantees block
+    lines = content.split("\n")
+    # Find frontmatter boundaries
+    fm_start = None
+    fm_end = None
+    for i, line in enumerate(lines):
+        if line.strip() == "---":
+            if fm_start is None:
+                fm_start = i
+            elif fm_end is None:
+                fm_end = i
+                break
+    
+    if fm_start is None or fm_end is None:
+        raise HTTPException(status_code=500, detail="Frontmatter not found")
+    
+    # Remove old core_guarantees block within frontmatter
+    fm_lines = lines[fm_start + 1:fm_end]
+    new_fm = []
+    skip_block = False
+    for line in fm_lines:
+        if line.strip().startswith("core_guarantees:"):
+            skip_block = True
+            continue
+        if skip_block:
+            if line and not line.startswith("  ") and not line.startswith("\t"):
+                skip_block = False
+                new_fm.append(line)
+            continue
+        new_fm.append(line)
+    
+    # Insert new block
+    new_fm.append(yaml_text.rstrip())
+    
+    # Reassemble
+    new_content = "---\n" + "\n".join(new_fm) + "\n---\n" + "\n".join(lines[fm_end + 1:])
+    with open(caps_path, "w") as f:
+        f.write(new_content)
+    
+    return {"status": "ok", "detail": "core_guarantees updated"}
