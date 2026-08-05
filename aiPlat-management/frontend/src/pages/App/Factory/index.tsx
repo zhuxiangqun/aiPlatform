@@ -570,33 +570,60 @@ const ProjectPanel: React.FC<{
               <Loader2 className="w-4 h-4 animate-spin" /> Pipeline 执行中...
             </div>
             {/* Pipeline progress with stages */}
-            {teamStages.length > 0 && (
-              <div className="space-y-1.5">
-                {teamStages.map((s, i) => {
-                  const isRunning = i === teamStages.findLastIndex(st => runHistory?.some(r => r.phase === 'done' ? false : true));
-                  const isDone = runHistory?.length > 0 && i < teamStages.length - 1;
-                  const name = s.agent_name || s.agent_id || s.id || `Stage ${i + 1}`;
-                  return (
-                    <div key={i} className="flex items-center gap-2 text-xs">
-                      {isDone ? (
-                        <CheckCircle className="w-3.5 h-3.5 text-green-400 flex-shrink-0" />
-                      ) : i === 0 || (i > 0 && runHistory?.length > 0) ? (
-                        <Loader2 className="w-3.5 h-3.5 animate-spin text-blue-400 flex-shrink-0" />
-                      ) : (
-                        <Clock className="w-3.5 h-3.5 text-gray-600 flex-shrink-0" />
-                      )}
-                      <span className={isDone ? 'text-green-300' : isRunning ? 'text-blue-300 font-medium' : 'text-gray-500'}>
-                        {name}
-                      </span>
-                      {isRunning && i > 0 && <span className="text-blue-400 ml-auto text-[10px]">进行中</span>}
-                    </div>
-                  );
-                })}
-                <div className="mt-2 h-1.5 bg-gray-700 rounded-full overflow-hidden">
-                  <div className="h-full bg-blue-500 rounded-full transition-all duration-500" style={{ width: `${teamStages.length > 0 ? ((runHistory?.length || 0) / teamStages.length) * 100 : 50}%` }} />
+            {teamStages.length > 0 && (() => {
+              // ── Config-driven stage detection ──
+              // Use _progress.stage (=output_artifact) for exact running-stage match.
+              // Fallback to _current_stage_idx for done/completed detection.
+              const runningKey = progressState?.status === 'running' ? progressState.stage : null;
+              const doneKey = progressState?.status === 'completed' ? progressState.stage : null;
+              const cumDone = progressState ? (() => {
+                // If we have a running/done key, count stages up to and including it
+                let count = 0;
+                for (const s of teamStages) {
+                  if ((s as any).output_artifact === runningKey || (s as any).output_artifact === doneKey) {
+                    count++;
+                    break;
+                  }
+                  count++;
+                }
+                return count;
+              })() : (stageOutputs ? Object.keys(stageOutputs).length : 0);
+
+              const progressPct = teamStages.length > 0
+                ? Math.round((cumDone / teamStages.length) * 100)
+                : 0;
+
+              return (<>
+                <div className="space-y-1.5">
+                  {teamStages.map((s, i) => {
+                    const key = (s as any).output_artifact || '';
+                    const isRunning = runningKey === key;
+                    // Stage is done if its output_artifact has produced data
+                    const hasOutput = stageOutputs ? stageOutputs[key] != null : false;
+                    const isDone = hasOutput && !isRunning;
+                    const name = s.agent_name || s.agent_id || s.id || `Stage ${i + 1}`;
+                    return (
+                      <div key={i} className="flex items-center gap-2 text-xs">
+                        {isDone ? (
+                          <CheckCircle className="w-3.5 h-3.5 text-green-400 flex-shrink-0" />
+                        ) : isRunning ? (
+                          <Loader2 className="w-3.5 h-3.5 animate-spin text-blue-400 flex-shrink-0" />
+                        ) : (
+                          <Clock className="w-3.5 h-3.5 text-gray-600 flex-shrink-0" />
+                        )}
+                        <span className={isDone ? 'text-green-300' : isRunning ? 'text-blue-300 font-medium' : 'text-gray-500'}>
+                          {name}
+                        </span>
+                        {isRunning && <span className="text-blue-400 ml-auto text-[10px]">进行中</span>}
+                      </div>
+                    );
+                  })}
+                  <div className="mt-2 h-1.5 bg-gray-700 rounded-full overflow-hidden">
+                    <div className="h-full bg-blue-500 rounded-full transition-all duration-500" style={{ width: `${progressPct}%` }} />
+                  </div>
                 </div>
-              </div>
-            )}
+              </>);
+            })()}
             {teamStages.length === 0 && (
               <div className="h-1.5 bg-gray-700 rounded-full overflow-hidden">
                 <div className="h-full bg-blue-500 rounded-full animate-pulse" style={{ width: '60%' }} />

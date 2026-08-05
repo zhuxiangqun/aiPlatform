@@ -3590,6 +3590,11 @@ class PipelineEngine:
             except Exception:
                 pass  # best-effort: fallback to ReAct if registry unavailable
 
+        # ── Broadcast progress for ALL stages (not just skill-based) ──
+        _stage_tag = getattr(stage, 'output_artifact', '') or stage.id
+        state["_progress"] = {"stage": _stage_tag, "status": "running",
+                              "started_at": _t0, "backend": "agent"}
+
         # ── Unified skill dispatch ──
         # Stages with skill_name must NOT fall through to ReAct.
         # _run_stage_skill handles all errors internally — even empty output
@@ -3599,6 +3604,11 @@ class PipelineEngine:
         else:
             # code_first (default) — ReAct path ONLY for stages without skill_name
             result = await self._exec_stage(stage, state)
+
+        # ── Broadcast stage completion ──
+        _elapsed_sec = round(_time.time() - _t0, 2)
+        state["_progress"] = {"stage": _stage_tag, "status": "completed",
+                              "elapsed_sec": _elapsed_sec, "backend": "agent"}
 
         # ── Record stage trace for reasoning visibility ──
         _trace_key = f"_trace_{stage.id}"
