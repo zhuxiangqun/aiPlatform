@@ -58,12 +58,14 @@ AUTO_PATTERNS = [
      ["aiPlat-core/core/harness/syscalls/llm.py"]),
     ("context_compression_5level", "5 级上下文压缩",
      r"ContextCompression|_maybe_compact|compact_messages",
-     ["aiPlat-core/core/loop/inference.py",
-      "aiPlat-core/core/harness/syscalls/llm.py"]),
+     ["aiPlat-core/core/harness/memory/compression.py",
+      "aiPlat-core/core/harness/memory/manager.py",
+      "aiPlat-core/core/harness/execution/loop/inference.py"]),
     ("semantic_cache", "语义缓存 L1(MD5)+L2(Cosine≥0.95)",
      r"semantic_cache|try_cache_hit|write_cache_result",
-     ["aiPlat-core/core/harness/syscalls/retrieval.py",
-      "aiPlat-core/core/apps/materials_chat.py"]),
+     ["aiPlat-core/core/apps/agents/materials_chat.py",
+      "aiPlat-core/core/harness/knowledge/semantic_cache_hook.py",
+      "aiPlat-core/core/harness/syscalls/retrieval.py"]),
     # Quality & Safety
     ("hallucination_tracker", "幻觉检测：GraphIndex 事实验证",
      r"hallucination_tracker|get_hallucination_tracker|check_consistency",
@@ -86,7 +88,7 @@ AUTO_PATTERNS = [
      ["aiPlat-core/core/harness/syscalls/tool.py"]),
     ("token_budget_management", "Token 预算管理",
      r"budget|token_limit|token_budget|_budget",
-     ["aiPlat-core/core/loop/inference.py"]),
+     ["aiPlat-core/core/harness/execution/loop/inference.py"]),
     # Self-Learning
     ("model_health_tracking", "模型健康自适应跟踪",
      r"_record_success|_record_failure|ModelHealthStore|_calculate_dynamic_boost",
@@ -94,7 +96,7 @@ AUTO_PATTERNS = [
       "aiPlat-infra/infra/management/model/manager.py"]),
     ("experience_vector", "经验向量（Loop+Pipeline 存入）",
      r"ExperienceVector|_try_feed_learning|feed_learning",
-     ["aiPlat-core/core/loop/_facade.py",
+     ["aiPlat-core/core/harness/execution/loop/_facade.py",
       "aiPlat-core/core/harness/execution/pipeline_engine.py"]),
     ("seci_knowledge_spiral", "SECI 知识螺旋（POST_LOOP→atom→convergence）",
      r"seci_engine|SECI|register_seci_hook|POST_LOOP",
@@ -104,7 +106,7 @@ AUTO_PATTERNS = [
      ["aiPlat-core/core/harness/execution/pipeline_engine.py"]),
     ("feedback_loops", "交互反馈回路",
      r"get_production_feedback|get_local_feedback|feedback.*record",
-     ["aiPlat-core/core/loop/_facade.py"]),
+     ["aiPlat-core/core/harness/execution/loop/_facade.py"]),
 ]
 
 # Files to scan for CONFIGURABLE capability field consumption
@@ -246,6 +248,8 @@ def _find_field_references(field_name: str, files: List[str]) -> List[Dict[str, 
         rf"stage\.{field_name}\b",
         rf"getattr\(stage,\s*['\"]{field_name}['\"]\)",
         rf"stage\[['\"]{field_name}['\"]\]",
+        rf"getattr\(stage,\s*['\"]{field_name}",
+        rf"stage\s*\.\s*{field_name}\b",
     ]
     for rel_path in files:
         fpath = WORKSPACE / rel_path
