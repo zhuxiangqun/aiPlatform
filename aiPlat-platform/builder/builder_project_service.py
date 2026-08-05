@@ -1159,26 +1159,6 @@ class BuilderProjectService:
                 _bg_asyncio.create_task(self._bg_run_stages(project_id, _ses, dict(state), _idx))
         return {"project_id": project_id, "phase": state.get("phase", "executing")}
 
-    def _start_bg_stages(self, project_id: str, start_idx: int, state: dict):
-        """Start remaining pipeline stages in background thread with on-demand engine."""
-        import threading, asyncio as _asyncio
-        _pid = project_id
-        _svc = self
-        def _bg_run():
-            try:
-                _ses = _svc._rebuild_session(_pid)
-                if _ses and start_idx < len(_ses.get_stages()):
-                    loop = _asyncio.new_event_loop()
-                    _asyncio.set_event_loop(loop)
-                    result = loop.run_until_complete(_ses._engine._run_stages_from(start_idx, dict(state)))
-                    _svc._runs[_pid] = dict(result)
-                    loop.run_until_complete(_svc._save_state(_pid, dict(result)))
-                    loop.close()
-            except Exception:
-                logging.getLogger(__name__).debug('_bg_run failed', exc_info=True)
-        t = threading.Thread(target=_bg_run, daemon=True)
-        t.start()
-
     async def _bg_run_stages(self, project_id: str, session, state: Dict, start_idx: int):
         """Run remaining pipeline stages, updating state periodically."""
         try:
@@ -1241,7 +1221,11 @@ class BuilderProjectService:
         await self._save_state(project_id, state)
         # Reject restarts from HITL stage itself (not +1)
         if state.get("phase") == "executing":
-            self._start_bg_stages(project_id, state.get("_current_stage_idx", 1), dict(state))
+            _ses = self._rebuild_session(project_id)
+            if _ses and state.get("_current_stage_idx", 0) < len(_ses.get_stages()):
+                import asyncio as _bg_asyncio2
+                _bg_asyncio2.create_task(self._bg_run_stages(
+                    project_id, _ses, dict(state), state.get("_current_stage_idx", 1)))
         return {"project_id": project_id, "phase": state.get("phase", "executing")}
 
     async def regenerate_stage(self, project_id: str, stage_id: str, feedback: str) -> Dict[str, Any]:
@@ -1546,7 +1530,7 @@ class BuilderProjectService:
         max_retry = int(os.getenv("AIPLAT_BUILDER_MAX_RETRY", "3"))
         config = PipelineConfig(stages=stages, max_tokens_per_run=max_tokens, max_retry_attempts=max_retry)
         session = create_pipeline_session(config=config, model=self.model, skill_loader=_create_skill_loader(),
-                                            persist_callback=self._make_persist_callback(project_id))
+                                            persist_callback=None)
         return session
 
     async def get_graph(self, project_id: str) -> Dict[str, Any]:
