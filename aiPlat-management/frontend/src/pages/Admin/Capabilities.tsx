@@ -157,8 +157,8 @@ const CapabilitiesPage: React.FC = () => {
           <Button variant="outline" onClick={handleRescan} disabled={loading}>
             <RefreshCw className="w-4 h-4 mr-1" /> Rescan
           </Button>
-          <Button onClick={handleSubmitReview} disabled={saving || totalReviewed === 0}>
-            <Save className="w-4 h-4 mr-1" /> 提交审核 ({totalReviewed}/{totalItems})
+          <Button onClick={handleSubmitReview} disabled={saving}>
+            <Save className="w-4 h-4 mr-1" /> 提交审核
           </Button>
         </div>
       </div>
@@ -198,14 +198,28 @@ const CapabilitiesPage: React.FC = () => {
           {loading ? (
             <div className="p-8 text-center text-gray-500"><RefreshCw className="w-8 h-8 mx-auto mb-2 animate-spin" /> Loading...</div>
           ) : (
-            <table className="w-full text-sm">
+               <table className="w-full text-sm">
               <thead className="bg-gray-100 border-b-2 border-gray-300 text-gray-700 text-xs uppercase tracking-wider">
                 <tr>
                   <th className="text-center p-3 w-8 text-gray-400">#</th>
-                  <th className="text-center p-3 w-8 text-gray-400">✓</th>
+                  <th className="text-center p-3 w-8 text-gray-400">
+                    <input type="checkbox" 
+                      title="全选/取消"
+                      onChange={e => {
+                        const items = activeTab === "auto" ? autoList : activeTab === "consumed" ? cfgConsumed : cfgOrphan;
+                        const allChecked = items.every(a => a.reviewed);
+                        items.forEach(a => markReviewed((a as any).id || (a as any).field || "", !allChecked));
+                      }}
+                      checked={(() => {
+                        const items = activeTab === "auto" ? autoList : activeTab === "consumed" ? cfgConsumed : cfgOrphan;
+                        return items.length > 0 && items.every(a => a.reviewed);
+                      })()}
+                    />
+                  </th>
                   {activeTab === "auto" && (
                     <>
                       <th className="text-left p-3 font-semibold text-gray-700">能力 ID</th>
+                      <th className="text-left p-3 font-semibold text-gray-700">说明</th>
                       <th className="text-left p-3 font-semibold text-gray-700">代码存在</th>
                       <th className="text-left p-3 font-semibold text-gray-700">代码位置</th>
                     </>
@@ -229,6 +243,9 @@ const CapabilitiesPage: React.FC = () => {
                       <input type="checkbox" checked={!!item.reviewed} onChange={e => markReviewed(item.id, e.target.checked)} />
                     </td>
                     <td className="p-3 font-mono text-xs">{item.id}</td>
+                    <td className="p-3 text-xs text-gray-500 max-w-[220px] truncate" title={(item as any).description || ""}>
+                      {(item as any).description || "-"}
+                    </td>
                     <td className="p-3">
                       {item.status === "active"
                         ? <span className="inline-flex items-center text-xs text-green-700"><CheckCircle className="w-3 h-3 mr-1" /> 已找到</span>
