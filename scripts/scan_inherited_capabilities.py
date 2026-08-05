@@ -190,6 +190,25 @@ def scan_configurable_capabilities() -> Dict[str, List[Dict[str, Any]]]:
     except Exception:
         return {"consumed": [], "orphan": []}
 
+    # Try to get actual default values from Pydantic Schema
+    _schema_defaults = {}
+    try:
+        from core.schemas_builder import PipelineStageConfig
+        for name, field in PipelineStageConfig.model_fields.items():
+            if field.default_factory is not None:
+                try:
+                    val = field.default_factory()
+                    if isinstance(val, (list, dict)):
+                        _schema_defaults[name] = repr(val)
+                    elif isinstance(val, (str, int, float, bool)):
+                        _schema_defaults[name] = val
+                except Exception:
+                    _schema_defaults[name] = "<factory>"
+            elif field.default is not None and str(field.default) != "PydanticUndefined":
+                _schema_defaults[name] = field.default
+    except Exception:
+        pass
+
     fields = {}
     for node in ast.walk(tree):
         if isinstance(node, ast.ClassDef) and node.name == "PipelineStageConfig":
@@ -214,11 +233,11 @@ def scan_configurable_capabilities() -> Dict[str, List[Dict[str, Any]]]:
                             default_val = item.value.value
                         elif isinstance(item.value, ast.Name):
                             default_val = f"<{item.value.id}>"
-                    fields[name] = {
-                        "name": name,
-                        "default": default_val,
-                        "is_factory": is_factory,
-                    }
+                        fields[name] = {
+                            "name": name,
+                            "default": _schema_defaults.get(name, default_val),
+                            "is_factory": is_factory,
+                        }
             break
 
     # Extract inline comments from source for field descriptions
@@ -252,6 +271,11 @@ def scan_configurable_capabilities() -> Dict[str, List[Dict[str, Any]]]:
                             comment = next_line.strip('"').strip()
                             break
             if comment:
+                # Clean up raw comment formatting
+                comment = comment.strip(' "\'')
+                # Fix: "a" | "b" | "c" → a | b | c
+                comment = comment.replace('"|"', '|').replace('" | "', '|')
+                # Fix: llm"=sys_llm_generate → llm=sys_llm_generate
                 fields[name]["description"] = comment
 
     # Check which fields are consumed by pipeline_engine

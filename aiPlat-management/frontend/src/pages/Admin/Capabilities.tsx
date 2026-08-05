@@ -285,7 +285,7 @@ const CapabilitiesPage: React.FC = () => {
                         <span className="ml-2 px-1 py-0 text-xs bg-yellow-200 text-yellow-800 rounded">新增</span>
                       )}
                     </td>
-                    <td className="p-3 text-xs text-gray-500 max-w-[220px] truncate" title={(item as any).description || ""}>
+                    <td className="p-3 text-sm text-gray-800 max-w-[220px] truncate" title={(item as any).description || ""}>
                       {(item as any).description || "-"}
                     </td>
                     <td className="p-3">
@@ -293,7 +293,7 @@ const CapabilitiesPage: React.FC = () => {
                         ? <span className="inline-flex items-center text-xs text-green-700"><CheckCircle className="w-3 h-3 mr-1" /> 已找到</span>
                         : <span className="inline-flex items-center text-xs text-red-700"><AlertTriangle className="w-3 h-3 mr-1" /> 未找到</span>}
                     </td>
-                    <td className="p-3 text-xs text-gray-500">
+                    <td className="p-3 text-sm text-gray-800">
                       {(item.found_at || item.paths || [])?.slice(0, 2).map((p: any, i: number) => (
                         <div key={i} className="truncate" title={typeof p === "string" ? p : `${p.file}:${p.line}`}>
                           {typeof p === "string" ? p : `${p.file.split("/").pop()}:${p.line}`}
@@ -323,7 +323,7 @@ const CapabilitiesPage: React.FC = () => {
                         <span className="ml-2 px-1 py-0 text-xs bg-yellow-200 text-yellow-800 rounded">新增</span>
                       )}
                     </td>
-                    <td className="p-3 text-xs text-gray-500 max-w-[200px] truncate" title={(item as any).description || ""}>
+                    <td className="p-3 text-sm text-gray-800 max-w-[200px] truncate" title={(item as any).description || ""}>
                       {(item as any).description || "-"}
                     </td>
                     <td className="p-3">
@@ -331,7 +331,7 @@ const CapabilitiesPage: React.FC = () => {
                         ? <span className="text-green-600 text-xs">✓ {item.consumed_at?.length || 0} refs</span>
                         : <span className="text-red-600 text-xs">✗ 0 refs</span>}
                     </td>
-                    <td className="p-3 text-xs text-gray-500 max-w-xs">
+                    <td className="p-3 text-sm text-gray-800 max-w-xs">
                       {item._editing ? (
                         <div className="flex gap-1">
                           <input
