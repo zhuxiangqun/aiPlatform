@@ -319,7 +319,7 @@ const CapabilitiesPage: React.FC = () => {
                   </tr>
                 ))}
                 {activeTab === "auto" && autoList.length === 0 && (
-                  <tr><td colSpan={5} className="p-8 text-center text-gray-400">No data. Click Refresh to scan.</td></tr>
+                  <tr><td colSpan={7} className="p-8 text-center text-gray-400">No data. Click Refresh to scan.</td></tr>
                 )}
               </tbody>
             </table>
