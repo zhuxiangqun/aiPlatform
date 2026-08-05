@@ -1122,11 +1122,6 @@ const FactoryPage: React.FC = () => {
                 {status.phase === 'failed' && (
                   <div className="flex items-center gap-2 pt-2 border-t border-dark-border">
                     <span className="text-[10px] text-red-400 flex items-center gap-1"><XCircle className="w-3 h-3" />{lastRun?.error?.slice(0, 30) || '执行失败'}</span>
-                    <button onClick={async (e) => { e.stopPropagation();
-                      try { await projectApi.rebuild(p.project_id); toast.success('重新构建已触发'); loadAll(); } catch (er) { toastGateError(er, '重建失败'); } }}
-                      className="ml-auto text-[10px] px-2 py-1 rounded bg-primary/20 text-primary hover:bg-primary/30 transition-colors flex items-center gap-1">
-                      <RefreshCw className="w-3 h-3" />重新构建
-                    </button>
                   </div>
                 )}
               </motion.div>
