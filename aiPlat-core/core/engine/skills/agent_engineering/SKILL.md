@@ -126,6 +126,7 @@ Agent 应用 = AGENT.md (编排) + SKILL.md × N (能力单元)。
 2. 写入 SOP: 描述用户对话→调用哪个Skill→得到什么结果→如何反馈
 3. 写入反模式 (常见错误+修正)
 4. 写入 scoring_dimensions (质量评分维度)
+5. **无需在 frontmatter 中写 quality_gate / context_profile / retry_policy / sandbox ——系统启动时自动注入默认值，确保所有核心能力 100% 连线。**
 
 ### Step 4: 验证
 1. 检查所有 required_skills 对应的 SKILL.md 都已生成

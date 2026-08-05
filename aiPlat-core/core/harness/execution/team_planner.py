@@ -319,7 +319,40 @@ def _enrich_stage_from_agent(stage: Dict[str, Any]) -> Dict[str, Any]:
                 except Exception:
                     stage[stage_key] = default
 
+    # ── Capability profile: guarantee all core capabilities are wired ──
+    _ensure_capability_profile(stage)
+
     return stage
+
+
+def _ensure_capability_profile(stage: dict) -> None:
+    """Post-generation injection: every generated app gets all core capability defaults.
+
+    Runs after _enrich_stage_from_agent() — regardless of what the LLM or
+    YAML config produced, this step guarantees the output has every required
+    capability field with sensible defaults.
+    """
+    _defaults = {
+        # Execution
+        "execution_backend": "llm",
+        # Quality
+        "scoring_dimensions": [
+            {"name": "completeness", "weight": 0.4},
+            {"name": "accuracy", "weight": 0.3},
+            {"name": "efficiency", "weight": 0.3},
+        ],
+        "quality_gate": {"min_output_length": 100},
+        # Context
+        "context_profile": "code",
+        # Resilience
+        "retry_policy": {"max_retries": 2, "backoff": "exponential"},
+        "failure_strategy": "skip_stage",
+        # Safety
+        "sandbox": False,
+    }
+    for key, value in _defaults.items():
+        if key not in stage:
+            stage[key] = value
 
 
 def _load_fallback_team() -> List[Dict[str, Any]]:
