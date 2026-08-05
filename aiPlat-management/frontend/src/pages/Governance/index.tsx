@@ -31,7 +31,7 @@ export default function GovernanceDashboard() {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const res = await apiClient.get<DashboardData>('/api/platform/apps/ontology-editor/governance/dashboard');
+      const res = await apiClient.get<DashboardData>('/platform/apps/ontology-editor/governance/dashboard');
       setData(res.data);
     } catch {}
     setLoading(false);

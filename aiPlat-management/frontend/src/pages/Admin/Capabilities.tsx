@@ -41,7 +41,7 @@ const CapabilitiesPage: React.FC = () => {
   const fetchScan = async () => {
     setLoading(true);
     try {
-      const data = await apiClient.get<any>("/api/core/capabilities/scan");
+      const data = await apiClient.get<any>("/core/capabilities/scan");
       const reviewState = loadReviewState();
       const mergeReview = (items: any[], key: string) =>
         items.map((item: any) => ({ ...item, reviewed: !!reviewState[item[key] || item.id] }));
@@ -59,7 +59,7 @@ const CapabilitiesPage: React.FC = () => {
   const handleRescan = async () => {
     setLoading(true);
     try {
-      await apiClient.post("/api/core/capabilities/rescan");
+      await apiClient.post("/core/capabilities/rescan");
       toast.success("Rescan & merge complete");
       await fetchScan();
     } catch {
@@ -121,7 +121,7 @@ const CapabilitiesPage: React.FC = () => {
       const auto = autoList.map(({ reviewed, _editing, _editValue, ...rest }) => rest);
       const configurable = cfgConsumed.map(({ reviewed, _editing, _editValue, ...rest }) => rest);
       
-      await apiClient.post("/api/core/capabilities/guarantees", { auto, configurable });
+      await apiClient.post("/core/capabilities/guarantees", { auto, configurable });
       toast.success("Review submitted — frontmatter updated");
     } catch {
       toast.error("Submit failed");
