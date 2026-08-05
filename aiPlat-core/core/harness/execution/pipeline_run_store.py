@@ -368,11 +368,12 @@ class PipelineRunStore:
     # ── Recovery ─────────────────────────────────────────────────
 
     def list_orphan_runs(self) -> List[str]:
-        """Return run_ids stuck in 'executing' phase (for crash recovery)."""
+        """Return run_ids stuck in non-terminal phases (for crash recovery)."""
         conn = self._get_conn()
         try:
             rows = conn.execute(
-                """SELECT run_id FROM pipeline_runs WHERE phase = 'executing'"""
+                """SELECT run_id FROM pipeline_runs
+                   WHERE phase IN ('executing', 'pending')"""
             ).fetchall()
             return [r["run_id"] for r in rows]
         finally:
