@@ -2422,6 +2422,20 @@ try:
 except Exception as e:
     logging.warning(str(e), exc_info=True)
 
+# Wiki API (knowledge base endpoints)
+try:
+    from core.api.routers.wiki import router as wiki_router
+    api_router.include_router(wiki_router)
+except Exception as e:
+    logging.debug("Wiki router: %s", e)
+
+# KB Evaluation stubs (field manual & quality feedback pages)
+try:
+    from core.api.routers.kb_eval import router as kb_eval_router
+    api_router.include_router(kb_eval_router)
+except Exception as e:
+    logging.debug("KB eval router: %s", e)
+
 # System self-evolution (core capability, not FDE-specific)
 try:
     from core.api.routers.system import router as system_router
