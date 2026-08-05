@@ -165,6 +165,12 @@ const CapabilitiesPage: React.FC = () => {
 
       <div className="flex gap-4 mb-6">
         <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
+          <CheckCircle className="w-3 h-3 mr-1" /> 绿色 = 代码存在 (active)
+        </span>
+        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800">
+          <AlertTriangle className="w-3 h-3 mr-1" /> 红色 = 代码缺失 (missing)
+        </span>
+        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
           AUTO: {totalAuto}
         </span>
         <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
@@ -224,12 +230,18 @@ const CapabilitiesPage: React.FC = () => {
                     <td className="p-3 font-mono text-xs">{item.id}</td>
                     <td className="p-3">
                       {item.status === "active"
-                        ? <CheckCircle className="w-4 h-4 text-green-600" />
-                        : <AlertTriangle className="w-4 h-4 text-red-600" />}
+                        ? <CheckCircle className="w-4 h-4 text-green-600" title="Active — code reference found" />
+                        : <AlertTriangle className="w-4 h-4 text-red-600" title="Missing — no code found" />}
                     </td>
                     <td className="p-3 text-xs text-gray-500">
-                      {item.paths?.slice(0, 2).map((p, i) => <div key={i} className="truncate">{p}</div>)}
-                      {item.paths?.length > 2 && <div className="text-gray-400">+{item.paths.length - 2} more</div>}
+                      {(item.found_at || item.paths || [])?.slice(0, 2).map((p: any, i: number) => (
+                        <div key={i} className="truncate" title={typeof p === "string" ? p : `${p.file}:${p.line}`}>
+                          {typeof p === "string" ? p : `${p.file.split("/").pop()}:${p.line}`}
+                        </div>
+                      ))}
+                      {(item.found_at || item.paths || []).length > 2 && (
+                        <div className="text-gray-400">+{(item.found_at || item.paths).length - 2} more</div>
+                      )}
                     </td>
                     <td className="p-3">
                       <button onClick={() => handleRemoveAuto(item.id)} className="text-red-500 hover:text-red-700" title="Remove">
