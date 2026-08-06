@@ -1660,7 +1660,7 @@ class BuilderProjectService:
         """Build health report from pipeline state, aggregating per-stage dimensional scores."""
         # Read from Core — single source of truth for pipeline state
         core_state = await self._get_state_via_core(project_id)
-        state = core_state if isinstance(core_state, dict) else {}
+        state = (core_state.get("state", {}) if isinstance(core_state, dict) else {})
         proj = self._projects.get(project_id, {})
         stages = []
         all_dims: Dict[str, Dict] = {}
