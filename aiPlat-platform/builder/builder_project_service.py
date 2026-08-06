@@ -1746,6 +1746,7 @@ def _deploy_to_app_for_project(project_id: str, deploy_dir: str, proj: dict) -> 
     _name = proj.get("name", project_id)
     _desc = proj.get("description", "")
     _stages = proj.get("team_stages", [])
+    _app_prefix = os.path.expanduser("~/.aiplat/apps/")
     
     # ── Extract generated code files from pipeline state ──
     _file_count = 0
@@ -1764,8 +1765,12 @@ def _deploy_to_app_for_project(project_id: str, deploy_dir: str, proj: dict) -> 
                 for block in blocks[1:]:  # skip everything before first FILE:
                     lines = block.strip().split("\n", 1)
                     if len(lines) >= 2:
-                        fpath = lines[0].strip()
-                        fcontent = lines[1].strip()
+                    fpath = lines[0].strip()
+                    # Normalize path: expand ~ and strip prefix to relative path
+                    fpath = os.path.expanduser(fpath)
+                    if fpath.startswith(_app_prefix):
+                        fpath = fpath[len(_app_prefix):]
+                    fcontent = lines[1].strip()
                         # Remove trailing ``` if present
                         fcontent = _re.sub(r'^```\w*\n?', '', fcontent)
                         fcontent = _re.sub(r'\n?```\s*$', '', fcontent)
@@ -1788,6 +1793,9 @@ def _deploy_to_app_for_project(project_id: str, deploy_dir: str, proj: dict) -> 
                         lines = block.strip().split("\n", 1)
                         if len(lines) >= 2:
                             fpath = lines[0].strip()
+                            fpath = os.path.expanduser(fpath)
+                            if fpath.startswith(_app_prefix):
+                                fpath = fpath[len(_app_prefix):]
                             fcontent = _re.sub(r'^```\w*\n?', '', lines[1].strip())
                             fcontent = _re.sub(r'\n?```\s*$', '', fcontent)
                             full_path = os.path.join(_app_home, fpath)
@@ -1958,20 +1966,23 @@ body{{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgro
     # Register in apps table so it appears in deployed apps list
     try:
         from ..storage.sqlite import init_db, _connect
-        import time as _time
+        import time as _time, logging as _log_app
         init_db()
         conn = _connect()
         now = _time.time()
         app_id = f"factory_{project_id}"
         conn.execute(
-            """INSERT OR REPLACE INTO apps (id, name, workflow_id, mode, description, capability_type, capability_id, created_at, updated_at)
-               VALUES (?, ?, '', 'dashboard', ?, 'factory', ?, ?, ?)""",
-            (app_id, _name, f"AI应用工厂生成 · {app_url}", project_id, now, now),
+            """INSERT OR REPLACE INTO apps (id, name, workflow_id, mode, description, created_at, updated_at)
+               VALUES (?, ?, '', 'dashboard', ?, ?, ?)""",
+            (app_id, _name, f"AI应用工厂生成 · {app_url}", now, now),
         )
         conn.commit()
         conn.close()
+        _log_app.getLogger("aiplat.builder").info("App %s registered in DB", app_id)
     except Exception:
-        pass  # best-effort
+        import logging as _log_app2
+        _log_app2.getLogger("aiplat.builder").warning(
+            "Failed to register app in DB for %s", project_id, exc_info=True)
     
     return {"ok": True, "deploy_dir": deploy_dir, "app_url": app_url, "files_generated": _file_count}
 
