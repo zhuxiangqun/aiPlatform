@@ -1965,7 +1965,7 @@ body{{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgro
     
     # Register in apps table so it appears in deployed apps list
     try:
-        from ..storage.sqlite import init_db, _connect
+        from storage.sqlite import init_db, _connect
         import time as _time, logging as _log_app
         init_db()
         conn = _connect()
