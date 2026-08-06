@@ -1152,7 +1152,7 @@ const FactoryPage: React.FC = () => {
               whileHover={{ y: -1 }}
               className="rounded-lg border border-green-500/30 bg-green-500/5 p-4 cursor-pointer hover:border-green-400/50 transition-colors"
               onClick={() => {
-                const pid = a.app_id?.replace('factory_', '');
+                const pid = (a.id || a.app_id || '').replace('factory_', '');
                 setSelectedApp(a.app_url || `http://localhost:8004/app/sessions/${pid}`);
               }}
             >
