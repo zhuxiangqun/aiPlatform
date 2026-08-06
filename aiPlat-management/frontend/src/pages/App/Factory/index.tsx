@@ -408,17 +408,6 @@ const ProjectPanel: React.FC<{
     setRunHistory(project.runs || []);
   }, [project]);
 
-  // Auto-load health report when pipeline is done
-  useEffect(() => {
-    if (phase === 'done' && !healthReport && !loadingHealth && project.project_id) {
-      setLoadingHealth(true);
-      projectApi.getHealthReport(project.project_id)
-        .then(r => setHealthReport(r as any))
-        .catch(() => {})
-        .finally(() => setLoadingHealth(false));
-    }
-  }, [phase, healthReport, loadingHealth]);
-
   const handleConfirm = async () => {
     if (!project.project_id) return;
     setStarting(true);
@@ -554,8 +543,24 @@ const ProjectPanel: React.FC<{
                 </a>
               )}
             </div>
-            {/* Health Report Card */}
-            {!healthReport && (
+            {/* Health Report Card — auto-loads when pipeline done */}
+            {healthReport ? (
+              <div className="p-3 rounded bg-blue-500/5 border border-blue-500/30 text-xs space-y-1">
+                <div className="flex items-center justify-between">
+                  <span className="text-blue-300 font-medium">Pipeline 健康报告</span>
+                  <span className="text-lg font-bold text-blue-200">{healthReport.overall_score || '?'}/100</span>
+                </div>
+                {healthReport.dimensions?.map((d: any) => (
+                  <div key={d.name} className="flex items-center gap-2">
+                    <span className="w-24 text-gray-400 truncate">{d.display_name || d.name}</span>
+                    <div className="flex-1 h-1.5 bg-gray-700 rounded-full overflow-hidden">
+                      <div className="h-full bg-blue-500 rounded-full" style={{ width: `${Math.min(100, d.score / d.max_score * 100)}%` }} />
+                    </div>
+                    <span className="w-8 text-right text-gray-300">{d.score}</span>
+                  </div>
+                ))}
+              </div>
+            ) : (
               <button
                 className="text-xs text-blue-400 hover:text-blue-300 flex items-center gap-1"
                 onClick={async () => {
@@ -572,23 +577,6 @@ const ProjectPanel: React.FC<{
                 {loadingHealth ? <Loader2 className="w-3 h-3 animate-spin" /> : <BarChart3 className="w-3 h-3" />}
                 查看健康报告
               </button>
-            )}
-            {healthReport && (
-              <div className="p-3 rounded bg-blue-500/5 border border-blue-500/30 text-xs space-y-1">
-                <div className="flex items-center justify-between">
-                  <span className="text-blue-300 font-medium">Pipeline 健康报告</span>
-                  <span className="text-lg font-bold text-blue-200">{healthReport.overall_score || '?'}/100</span>
-                </div>
-                {healthReport.dimensions?.map((d: any) => (
-                  <div key={d.name} className="flex items-center gap-2">
-                    <span className="w-24 text-gray-400 truncate">{d.display_name || d.name}</span>
-                    <div className="flex-1 h-1.5 bg-gray-700 rounded-full overflow-hidden">
-                      <div className="h-full bg-blue-500 rounded-full" style={{ width: `${Math.min(100, d.score / d.max_score * 100)}%` }} />
-                    </div>
-                    <span className="w-8 text-right text-gray-300">{d.score}</span>
-                  </div>
-                ))}
-              </div>
             )}
           </div>
         ) : phase === 'executing' ? (
