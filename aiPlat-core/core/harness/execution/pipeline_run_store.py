@@ -308,6 +308,13 @@ class PipelineRunStore:
                     "raw_output": s["artifact_output"],
                     "elapsed_sec": s["elapsed_sec"],
                 }
+            # Restore health reports from progress_json
+            if s["artifact_key"] and s["artifact_key"].startswith("_health_report_"):
+                if s["progress_json"]:
+                    try:
+                        state[s["artifact_key"]] = json.loads(s["progress_json"])
+                    except json.JSONDecodeError:
+                        pass
             if s["progress_json"]:
                 try:
                     p = json.loads(s["progress_json"])

@@ -45,6 +45,18 @@ def _make_store_callback(run_id: str, store):
                         elapsed_sec=float(val.get("elapsed_sec", 0) or 0),
                     )
 
+            # Write health reports (_health_report_{stage_id} keys)
+            for key, val in state.items():
+                if key.startswith("_health_report_") and isinstance(val, dict):
+                    store.upsert_stage(
+                        run_id, key,
+                        status="completed",
+                        artifact_key=key,
+                        artifact_output="",
+                        elapsed_sec=0,
+                        progress=val,
+                    )
+
             # Write _progress as stage progress
             progress = state.get("_progress")
             if progress and isinstance(progress, dict):
