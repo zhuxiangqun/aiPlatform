@@ -2547,51 +2547,14 @@ class PipelineEngine:
 
 
 
-            # Execute all stages in this layer in parallel with Semaphore control
-
-            layer_timeout = max(600 * len(layer), 3600)
-
-            try:
-
-                from core.harness.integration import get_parallel_executor
-
-                ParallelExecutor = get_parallel_executor().ParallelExecutor
-
-                pool_size = max(1, min(len(layer), 5))
-
-                _executor = ParallelExecutor(max_concurrency=pool_size)
-
-                _sem = asyncio.Semaphore(pool_size)
-
-                async def _stage_with_sem(i):
-
-                    async with _sem:
-
-                        return await self._exec_single_stage(stages[i], i, state)
-
-                results = await asyncio.wait_for(
-
-                    asyncio.gather(*[_stage_with_sem(i) for i in layer], return_exceptions=True),
-
-                    timeout=layer_timeout,
-
-                )
-
-                state.setdefault("_parallel_stats", []).append({
-
-                    "pool_size": pool_size, "layer_count": len(layer),
-
-                })
-
-            except asyncio.TimeoutError:
-
-                state["error"] = f"layer_timeout ({layer_timeout}s)"
-
-                state["phase"] = PipelinePhase.FAILED
-
-                state["_last_action_reason"] = "layer_timeout"
-
-                break
+            # Execute all stages in this layer sequentially
+            results = []
+            for i in layer:
+                try:
+                    result = await self._exec_single_stage(stages[i], i, state)
+                    results.append(result)
+                except Exception as e:
+                    results.append(e)
 
             # Merge results and check for HITL
 
