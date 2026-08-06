@@ -5,6 +5,8 @@ import { Card, Button } from '../../components/ui';
 import { FileUploadStage } from '../../components/AppStages/FileUploadStage';
 import { ProgressPoller } from '../../components/AppStages/ProgressPoller';
 import { ResultDashboard } from '../../components/AppStages/ResultDashboard';
+import { DataFormStage } from '../../components/AppStages/DataFormStage';
+import { DataTableStage } from '../../components/AppStages/DataTableStage';
 import { ChatWidget } from '../../components/ui/ChatWidget';
 import { projectApi } from '../../services';
 
@@ -113,6 +115,8 @@ export const AppPage: React.FC = () => {
       stage.component === 'file_upload' ? FileUploadStage :
       stage.component === 'progress_poller' ? ProgressPoller :
       stage.component === 'result_dashboard' ? ResultDashboard :
+      stage.component === 'data_form' ? DataFormStage :
+      stage.component === 'data_table' ? DataTableStage :
       null;
 
     if (!Component) return <Card className="p-4"><p className="text-sm text-gray-400">未知组件: {stage.component}</p></Card>;
