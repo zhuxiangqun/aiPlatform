@@ -6,7 +6,7 @@ bind = f"0.0.0.0:{_port}"
 
 workers = multiprocessing.cpu_count() * 2 + 1
 worker_class = "uvicorn.workers.UvicornWorker"
-preload_app = True            # Resolve fork + asyncio conflict on macOS/Linux
+preload_app = False           # Do NOT preload on macOS — ObjC runtime crashes fork()
 timeout = 120                 # Max seconds per worker request
 graceful_timeout = 30         # Graceful shutdown window
 keepalive = 5

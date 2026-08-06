@@ -6,7 +6,7 @@ bind = f"0.0.0.0:{_port}"
 
 workers = multiprocessing.cpu_count() * 2 + 1
 worker_class = "uvicorn.workers.UvicornWorker"
-preload_app = True
+preload_app = False
 timeout = 120
 graceful_timeout = 30
 keepalive = 5

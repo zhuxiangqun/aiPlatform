@@ -105,6 +105,9 @@ export HF_DATASETS_OFFLINE="${HF_DATASETS_OFFLINE:-1}"
 
 # Infra: port→service mapping for network manager (was hardcoded, now env-driven).
 # Format: "port=service:name,port=service:name,..."
+# macOS: prevent ObjC runtime from crashing on fork() in gunicorn workers
+export OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES
+
 export AIPLAT_PORT_SERVICES="${AIPLAT_PORT_SERVICES:-8002=core-api:aiPlat-core,8001=infra-api:aiPlat-infra,8000=management-api:aiPlat-management,8003=platform-api:aiPlat-platform,8004=app-api:aiPlat-app,5173=frontend-dev:frontend}"
 # Infra: target processes for service manager monitoring.
 # Format: "name:cmdline:port,name:cmdline:port,..."

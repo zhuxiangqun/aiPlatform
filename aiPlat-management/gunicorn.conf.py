@@ -8,7 +8,7 @@ bind = f"0.0.0.0:{_port}"
 # Hard cap at 8 workers to prevent OOM kills. Scale horizontally if needed.
 workers = min(multiprocessing.cpu_count() * 2 + 1, 8)
 worker_class = "uvicorn.workers.UvicornWorker"
-preload_app = True
+preload_app = False
 timeout = 180                # Management endpoints can be heavy (diagnostics, etc.)
 graceful_timeout = 30
 keepalive = 5
