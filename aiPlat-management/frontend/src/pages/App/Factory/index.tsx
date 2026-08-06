@@ -151,6 +151,18 @@ const SCHEMAS: Record<string, DocSchema> = {
       { key: "min_expectation", label: "最低期望" },
     ]}],
   },
+  frontend: {
+    title_field: "app_title", overview_field: "app_name",
+    tables: [{ key: "stages", title: "页面阶段", columns: [
+      { key: "id", label: "ID", width: "120px" },
+      { key: "title", label: "标题" },
+      { key: "skill", label: "Skill" },
+      { key: "component", label: "组件", type: "badge" },
+    ]}],
+    lists: [
+      { key: "auth_required_stages", title: "需认证的阶段" },
+    ],
+  },
 };
 
 const formatBadge = (v: string, type: string) => {
@@ -240,6 +252,7 @@ const FullscreenView: React.FC<{
     else if (parsed.components) schema = SCHEMAS.architecture;
     else if (parsed.test_questions) schema = SCHEMAS.qa;
     else if (parsed.test_cases) schema = SCHEMAS.test;
+    else if (parsed.stages || parsed.app_name) schema = SCHEMAS.frontend;  // app_page.json format
   }
   return (
     <div className="fixed inset-0 bg-black/80 z-[60] flex flex-col" onClick={onClose}>
@@ -248,8 +261,11 @@ const FullscreenView: React.FC<{
         <button onClick={onClose} className="p-1.5 rounded hover:bg-dark-hover text-gray-400 hover:text-gray-200 transition-colors text-lg">✕</button>
       </div>
       <div className="flex-1 overflow-y-auto p-6 bg-dark-card max-w-4xl mx-auto w-full" onClick={e => e.stopPropagation()}>
-        {schema && parsed ? <DataDocument data={parsed} schema={schema} /> : content.includes('## FILE:') ? (
+        {schema && parsed ? <DataDocument data={parsed} schema={schema} /> :
+         content.includes('## FILE:') ? (
           <pre className="text-xs text-gray-200 font-mono whitespace-pre-wrap break-all">{content}</pre>
+        ) : parsed ? (
+          <pre className="text-xs text-gray-200 font-mono whitespace-pre-wrap break-all">{JSON.stringify(parsed, null, 2)}</pre>
         ) : (
           <ReactMarkdown remarkPlugins={[remarkGfm]} className="prose prose-invert max-w-none text-gray-200">
             {content}
