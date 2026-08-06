@@ -3637,11 +3637,16 @@ class PipelineEngine:
             }
         result.pop(f"_retry_{stage.id}", None)  # clean up retry counter from state
 
+        # ── Evaluate stage health BEFORE persist (ensures report is written even if persist fails) ──
+        await self._evaluate_stage_health(stage, result)
+
         # Persist state after every stage (skill or react) for frontend polling
         try:
             if self._persist_callback:
                 self._persist_callback(dict(result))
         except Exception:
+            _log.getLogger("pipeline_engine").warning(
+                "persist_callback failed for stage=%s", stage.id, exc_info=True)
             pass
 
         return result
