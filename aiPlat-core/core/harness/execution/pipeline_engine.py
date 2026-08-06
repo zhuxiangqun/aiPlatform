@@ -3625,7 +3625,7 @@ class PipelineEngine:
                 "agent_id": getattr(stage, 'agent_id', '') or '',
                 "phase": getattr(stage, 'phase', '') or '',
                 "skill_name": getattr(stage, 'skill_name', '') or '',
-                "model_name": _model_meta.get("model", _model),
+                "model_name": _model_meta.get("model", self._model),
                 "model_purpose": getattr(stage, 'skill_model_purpose', '') or 'chat',
                 "elapsed_sec": _elapsed,
                 "retry_count": result.get(f"_retry_{stage.id}", 0),
