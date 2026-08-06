@@ -1151,7 +1151,10 @@ const FactoryPage: React.FC = () => {
               layout
               whileHover={{ y: -1 }}
               className="rounded-lg border border-green-500/30 bg-green-500/5 p-4 cursor-pointer hover:border-green-400/50 transition-colors"
-              onClick={() => setSelectedApp(a.app_url || `http://localhost:8004/${a.app_id}`)}
+              onClick={() => {
+                const pid = a.app_id?.replace('factory_', '');
+                setSelectedApp(a.app_url || `http://localhost:8004/app/sessions/${pid}`);
+              }}
             >
               <div className="flex items-start justify-between mb-2">
                 <h4 className="text-sm font-medium text-gray-100 truncate">{a.name || a.app_id}</h4>
