@@ -1658,9 +1658,9 @@ class BuilderProjectService:
 
     async def get_health_report(self, project_id: str) -> Dict[str, Any]:
         """Build health report from pipeline state, aggregating per-stage dimensional scores."""
-        state = self._runs.get(project_id)
-        if not state:
-            state = self._load_pipeline_state(project_id) or {}
+        # Read from Core — single source of truth for pipeline state
+        core_state = await self._get_state_via_core(project_id)
+        state = core_state if isinstance(core_state, dict) else {}
         proj = self._projects.get(project_id, {})
         stages = []
         all_dims: Dict[str, Dict] = {}
