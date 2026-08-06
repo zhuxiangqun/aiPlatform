@@ -1098,7 +1098,7 @@ async def generate_with_fallback(purpose: str,
 
     """
 
-    import asyncio as _asyncio, logging as _logging
+    import asyncio as _asyncio, logging as _logging, time as _time
 
     _fb_log = _logging.getLogger("aiplat.model_fallback")
 
