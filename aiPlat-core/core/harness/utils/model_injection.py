@@ -704,11 +704,13 @@ def create_selected_adapter(*, model_name: str) -> Any:
 
                 base_url = os.getenv("OLLAMA_HOST", "http://localhost:11434")
 
-            # Normalize Ollama URL: add /v1 suffix
 
-            if base_url and not base_url.rstrip("/").endswith("/v1"):
 
-                base_url = base_url.rstrip("/") + "/v1"
+        # Normalize OpenAI-compatible URL: add /v1 suffix for ALL providers
+
+        if base_url and not base_url.rstrip("/").endswith("/v1"):
+
+            base_url = base_url.rstrip("/") + "/v1"
 
 
 
