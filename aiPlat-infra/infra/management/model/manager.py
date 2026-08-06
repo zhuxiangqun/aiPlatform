@@ -264,6 +264,10 @@ def _score_model(
         if model.provider not in ("openai", "deepseek", "anthropic", "openrouter", "ollama"):
             score -= 150
 
+    # 0b. Cold-start penalty for local models not pre-loaded (~60-180s disk load)
+    if model.provider == "ollama" and not getattr(model, 'is_downloaded', True):
+        score -= 80
+
     # 1. 资源压力
     if model.size and model.size > 0:
         ratio = model.size / max(res.ram_bytes, 1)

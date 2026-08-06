@@ -11113,6 +11113,10 @@ def _write_pipeline_event(run_id: str, event_type: str, node_id: str,
 
     """Write pipeline event to platform SQLite. Self-contained in core; no cross-layer import."""
 
+    global _pipeline_events_table_missing
+    if _pipeline_events_table_missing:
+        return
+
     try:
 
         import sqlite3
