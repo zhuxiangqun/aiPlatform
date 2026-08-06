@@ -48,6 +48,14 @@ export const AppPage: React.FC = () => {
         if (fp?.raw_output) raw = fp.raw_output;
         else if (state.agent_app?.raw_output) raw = state.agent_app.raw_output;
 
+        // Fallback: fetch app_page.json from deployed app server
+        if (!raw || !raw.includes('"app_name"')) {
+          try {
+            const appRes = await fetch(`http://localhost:8004/app/sessions/${projectId}/app_page.json`);
+            if (appRes.ok) raw = await appRes.text();
+          } catch {}
+        }
+
         // Extract JSON from markdown or raw
         const jsonMatch = raw.match(/\{[\s\S]*"app_name"[\s\S]*\}/);
         if (jsonMatch) {
