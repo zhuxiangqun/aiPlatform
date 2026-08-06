@@ -460,16 +460,18 @@ class ModelManager:
             seen_names.add(model.name)
         
         # 2. Scan local Ollama / LM Studio / vLLM models
-        try:
-            # Use a separate thread to run the async scan synchronously,
-            # avoiding "cannot run event loop while another is running" errors
-            # when called from within uvicorn's existing event loop.
-            import concurrent.futures as _cfutures
-            with _cfutures.ThreadPoolExecutor(max_workers=1) as _pool:
-                _future = _pool.submit(self._scan_local_models_sync)
-                _future.result(timeout=10.0)
-        except Exception as e:
-            logging.debug(str(e), exc_info=True)
+        #    Only if no models were loaded from config/adapter DB (step 1).
+        #    With models in SQLite adapters table, HTTP scan is redundant.
+        if not self._models:
+            try:
+                import concurrent.futures as _cfutures
+                with _cfutures.ThreadPoolExecutor(max_workers=1) as _pool:
+                    _future = _pool.submit(self._scan_local_models_sync)
+                    _future.result(timeout=10.0)
+            except Exception as e:
+                logging.debug(str(e), exc_info=True)
+        else:
+            self._local_scanned = True  # skip future scans, models already loaded
         # 4. 补全所有模型的 size / is_downloaded / supports_gpu
         try:
             self._resolve_model_sizes()
