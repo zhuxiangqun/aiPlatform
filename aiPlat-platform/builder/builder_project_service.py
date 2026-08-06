@@ -1765,12 +1765,12 @@ def _deploy_to_app_for_project(project_id: str, deploy_dir: str, proj: dict) -> 
                 for block in blocks[1:]:  # skip everything before first FILE:
                     lines = block.strip().split("\n", 1)
                     if len(lines) >= 2:
-                    fpath = lines[0].strip()
-                    # Normalize path: expand ~ and strip prefix to relative path
-                    fpath = os.path.expanduser(fpath)
-                    if fpath.startswith(_app_prefix):
-                        fpath = fpath[len(_app_prefix):]
-                    fcontent = lines[1].strip()
+                        fpath = lines[0].strip()
+                        # Normalize path: expand ~ and strip prefix to relative path
+                        fpath = os.path.expanduser(fpath)
+                        if fpath.startswith(_app_prefix):
+                            fpath = fpath[len(_app_prefix):]
+                        fcontent = lines[1].strip()
                         # Remove trailing ``` if present
                         fcontent = _re.sub(r'^```\w*\n?', '', fcontent)
                         fcontent = _re.sub(r'\n?```\s*$', '', fcontent)
