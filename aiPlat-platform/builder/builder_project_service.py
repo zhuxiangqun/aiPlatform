@@ -1860,22 +1860,18 @@ def _deploy_to_app_for_project(project_id: str, deploy_dir: str, proj: dict) -> 
         import shutil
         _agents_dir = os.path.join(os.getenv("AIPLAT_HOME", os.path.expanduser("~/.aiplat")), "agents")
         _skills_dir = os.path.join(os.getenv("AIPLAT_HOME", os.path.expanduser("~/.aiplat")), "skills")
-        # Register agents
-        _cur_agents = os.path.join(_app_home, "agents")
-        if os.path.isdir(_cur_agents):
-            for _agent_name in os.listdir(_cur_agents):
-                _src = os.path.join(_cur_agents, _agent_name, "AGENT.md")
-                if os.path.isfile(_src):
+        # Scan recursively for AGENT.md and SKILL.md files (may be nested under app dir)
+        for _root, _dirs, _files in os.walk(_app_home):
+            for _f in _files:
+                _src = os.path.join(_root, _f)
+                if _f == "AGENT.md":
+                    _agent_name = os.path.basename(_root)
                     _dst = os.path.join(_agents_dir, _agent_name, "AGENT.md")
                     os.makedirs(os.path.dirname(_dst), exist_ok=True)
                     shutil.copy2(_src, _dst)
                     _reg_count += 1
-        # Register skills
-        _cur_skills = os.path.join(_app_home, "skills")
-        if os.path.isdir(_cur_skills):
-            for _skill_name in os.listdir(_cur_skills):
-                _src = os.path.join(_cur_skills, _skill_name, "SKILL.md")
-                if os.path.isfile(_src):
+                elif _f == "SKILL.md":
+                    _skill_name = os.path.basename(_root)
                     _dst = os.path.join(_skills_dir, _skill_name, "SKILL.md")
                     os.makedirs(os.path.dirname(_dst), exist_ok=True)
                     shutil.copy2(_src, _dst)
