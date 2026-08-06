@@ -11107,6 +11107,9 @@ _PLATFORM_DB_PATH = os.getenv("AIPLAT_PLATFORM_DB_PATH", "data/aiplat_platform.s
 
 
 
+_pipeline_events_table_missing = False
+
+
 def _write_pipeline_event(run_id: str, event_type: str, node_id: str,
 
                           state_json: str, elapsed: float, output: str) -> None:
