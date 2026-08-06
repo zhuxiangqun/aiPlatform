@@ -1756,7 +1756,7 @@ def _deploy_to_app_for_project(project_id: str, deploy_dir: str, proj: dict) -> 
         if os.path.isfile(final_state):
             with open(final_state, "r") as _fs:
                 _state = json.load(_fs)
-            code = _state.get("code", {})
+            code = _state.get("agent_app", {}) or _state.get("code", {})
             code_text = code.get("raw_output", "") if isinstance(code, dict) else str(code)
             if code_text and "## FILE:" in code_text:
                 # Parse ## FILE: path\n...content... format
@@ -1845,7 +1845,40 @@ def _deploy_to_app_for_project(project_id: str, deploy_dir: str, proj: dict) -> 
                         _apf.write(_app_page_json)
     except Exception:
         pass
-    
+
+    # ── Register generated agents & skills to workspace ──
+    _reg_count = 0
+    try:
+        import shutil
+        _agents_dir = os.path.join(os.getenv("AIPLAT_HOME", os.path.expanduser("~/.aiplat")), "agents")
+        _skills_dir = os.path.join(os.getenv("AIPLAT_HOME", os.path.expanduser("~/.aiplat")), "skills")
+        # Register agents
+        _cur_agents = os.path.join(_app_home, "agents")
+        if os.path.isdir(_cur_agents):
+            for _agent_name in os.listdir(_cur_agents):
+                _src = os.path.join(_cur_agents, _agent_name, "AGENT.md")
+                if os.path.isfile(_src):
+                    _dst = os.path.join(_agents_dir, _agent_name, "AGENT.md")
+                    os.makedirs(os.path.dirname(_dst), exist_ok=True)
+                    shutil.copy2(_src, _dst)
+                    _reg_count += 1
+        # Register skills
+        _cur_skills = os.path.join(_app_home, "skills")
+        if os.path.isdir(_cur_skills):
+            for _skill_name in os.listdir(_cur_skills):
+                _src = os.path.join(_cur_skills, _skill_name, "SKILL.md")
+                if os.path.isfile(_src):
+                    _dst = os.path.join(_skills_dir, _skill_name, "SKILL.md")
+                    os.makedirs(os.path.dirname(_dst), exist_ok=True)
+                    shutil.copy2(_src, _dst)
+                    _reg_count += 1
+        if _reg_count > 0:
+            import logging as _log_dep
+            _log_dep.getLogger("aiplat.builder").info(
+                "Deploy: registered %d agents/skills from %s", _reg_count, _app_home)
+    except Exception:
+        pass  # best-effort
+
     if not _has_index_html:
         # Generate app dashboard page only if no index.html was provided by generated code
         _html = f"""<!DOCTYPE html>
