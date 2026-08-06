@@ -156,20 +156,20 @@ const SCHEMAS: Record<string, DocSchema> = {
 const formatBadge = (v: string, type: string) => {
   if (type === 'risk' || type === 'badge' || type === 'priority') {
     const low = (v || '').toLowerCase();
-    const color = low === 'high' ? 'bg-red-100 text-red-700' : low === 'medium' ? 'bg-amber-100 text-amber-700' : low === 'standard' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-600';
+    const color = low === 'high' ? 'bg-red-500/20 text-red-300' : low === 'medium' ? 'bg-amber-500/20 text-amber-300' : low === 'standard' ? 'bg-blue-500/20 text-blue-300' : 'bg-dark-hover text-gray-400';
     return <span className={`px-1.5 py-0.5 rounded text-[10px] ${color}`}>{v}</span>;
   }
   if (type === 'category') {
-    const colors: Record<string,string> = { happy_path:'bg-green-100 text-green-700', exception:'bg-red-100 text-red-700', boundary:'bg-amber-100 text-amber-700' };
+    const colors: Record<string,string> = { happy_path:'bg-green-500/20 text-green-300', exception:'bg-red-500/20 text-red-300', boundary:'bg-amber-500/20 text-amber-300' };
     const labels: Record<string,string> = { happy_path:'正常流程', exception:'异常流程', boundary:'边界测试' };
-    return <span className={`px-1.5 py-0.5 rounded text-[10px] ${colors[v]||'bg-gray-100 text-gray-600'}`}>{labels[v]||v}</span>;
+    return <span className={`px-1.5 py-0.5 rounded text-[10px] ${colors[v]||'bg-dark-hover text-gray-400'}`}>{labels[v]||v}</span>;
   }
   if (type === 'method_badge') {
-    const colors: Record<string,string>={GET:'bg-blue-100 text-blue-700',POST:'bg-green-100 text-green-700',PUT:'bg-amber-100 text-amber-700',DELETE:'bg-red-100 text-red-700'};
-    return <span className={`px-1 rounded text-[10px] font-mono ${colors[v]||'bg-gray-100 text-gray-600'}`}>{v}</span>;
+    const colors: Record<string,string>={GET:'bg-blue-500/20 text-blue-300',POST:'bg-green-500/20 text-green-300',PUT:'bg-amber-500/20 text-amber-300',DELETE:'bg-red-500/20 text-red-300'};
+    return <span className={`px-1 rounded text-[10px] font-mono ${colors[v]||'bg-dark-hover text-gray-400'}`}>{v}</span>;
   }
-  if (type === 'ac_list' && Array.isArray(v)) return <>{v.map((a:string,i:number)=><div key={i} className="text-[11px] text-gray-500">· {a}</div>)}</>;
-  if (type === 'code') return <pre className="text-xs text-gray-600 font-mono whitespace-pre-wrap">{v}</pre>;
+  if (type === 'ac_list' && Array.isArray(v)) return <>{v.map((a:string,i:number)=><div key={i} className="text-[11px] text-gray-400">· {a}</div>)}</>;
+  if (type === 'code') return <pre className="text-xs text-gray-300 font-mono whitespace-pre-wrap">{v}</pre>;
   return <>{v}</>;
 };
 
@@ -179,25 +179,25 @@ const DataDocument: React.FC<{ data: Record<string, unknown>; schema: DocSchema 
   const overview = schema.overview_field ? (data[schema.overview_field] as string) : '';
   const scope = schema.scope_badge ? (data[schema.scope_badge] as string) : '';
   return (
-    <div className="space-y-5 text-sm text-gray-800">
-      {title && <div><h1 className="text-xl font-bold text-gray-900 mb-1">{title}</h1>{scope && <span className="text-xs px-2 py-0.5 rounded bg-blue-100 text-blue-700">{scope}</span>}</div>}
-      {overview && <p className="text-gray-600 leading-relaxed">{overview}</p>}
+    <div className="space-y-5 text-sm text-gray-200">
+      {title && <div><h1 className="text-xl font-bold text-gray-100 mb-1">{title}</h1>{scope && <span className="text-xs px-2 py-0.5 rounded bg-blue-500/20 text-blue-300">{scope}</span>}</div>}
+      {overview && <p className="text-gray-400 leading-relaxed">{overview}</p>}
       {(schema.tables || []).map((t: TableDef) => {
         const rows = (data[t.key] || []) as any[];
         if (!rows.length) return null;
-        return <div key={t.key}><h2 className="text-base font-semibold text-gray-900 mb-2 border-b pb-1">{t.title} ({rows.length})</h2>
-          <table className="w-full text-xs border-collapse"><thead><tr className="bg-gray-50">{t.columns.map((c: ColDef) => (<th key={c.key} className="p-2 text-left border" style={{width:c.width}}>{c.label}</th>))}</tr></thead>
-          <tbody>{rows.map((r: any, i: number) => (<tr key={i} className="border">{t.columns.map((c: ColDef) => (<td key={c.key} className="p-2 border">{c.type ? formatBadge(r[c.key], c.type) : <>{r[c.key]?.toString()||''}</>}</td>))}</tr>))}</tbody></table></div>;
+        return <div key={t.key}><h2 className="text-base font-semibold text-gray-100 mb-2 border-b border-dark-border pb-1">{t.title} ({rows.length})</h2>
+          <table className="w-full text-xs border-collapse"><thead><tr className="bg-dark-hover">{t.columns.map((c: ColDef) => (<th key={c.key} className="p-2 text-left border border-dark-border" style={{width:c.width}}>{c.label}</th>))}</tr></thead>
+          <tbody>{rows.map((r: any, i: number) => (<tr key={i} className="border border-dark-border">{t.columns.map((c: ColDef) => (<td key={c.key} className="p-2 border border-dark-border">{c.type ? formatBadge(r[c.key], c.type) : <>{r[c.key]?.toString()||''}</>}</td>))}</tr>))}</tbody></table></div>;
       })}
       {(schema.lists || []).map((l: ListDef) => {
         const items = (data[l.key] || []) as string[];
         if (!items.length) return null;
-        return <div key={l.key}><h2 className="text-base font-semibold text-gray-900 mb-2 border-b pb-1">{l.title}</h2><ul className="list-disc pl-5 space-y-0.5 text-gray-600 text-xs">{items.map((c:string,i:number)=><li key={i}>{c}</li>)}</ul></div>;
+        return <div key={l.key}><h2 className="text-base font-semibold text-gray-100 mb-2 border-b border-dark-border pb-1">{l.title}</h2><ul className="list-disc pl-5 space-y-0.5 text-gray-400 text-xs">{items.map((c:string,i:number)=><li key={i}>{c}</li>)}</ul></div>;
       })}
       {(schema.sections || []).map((s: SectionDef) => {
         const v = data[s.key];
         if (!v) return null;
-        return <div key={s.key}><h2 className="text-base font-semibold text-gray-900 mb-2 border-b pb-1">{s.title}</h2>{s.type === 'code' ? <pre className="text-xs text-gray-600 font-mono whitespace-pre-wrap">{v as string}</pre> : <div className="text-gray-600 text-xs">{v as string}</div>}</div>;
+        return <div key={s.key}><h2 className="text-base font-semibold text-gray-100 mb-2 border-b border-dark-border pb-1">{s.title}</h2>{s.type === 'code' ? <pre className="text-xs text-gray-300 font-mono whitespace-pre-wrap">{v as string}</pre> : <div className="text-gray-400 text-xs">{v as string}</div>}</div>;
       })}
     </div>
   );
@@ -243,15 +243,15 @@ const FullscreenView: React.FC<{
   }
   return (
     <div className="fixed inset-0 bg-black/80 z-[60] flex flex-col" onClick={onClose}>
-      <div className="flex items-center justify-between p-3 border-b border-gray-200 bg-white flex-shrink-0" onClick={e => e.stopPropagation()}>
-        <h3 className="text-sm font-bold text-gray-800">{title}</h3>
-        <button onClick={onClose} className="p-1.5 rounded hover:bg-gray-100 text-gray-500 hover:text-gray-800 transition-colors text-lg">✕</button>
+      <div className="flex items-center justify-between p-3 border-b border-dark-border bg-dark-card flex-shrink-0" onClick={e => e.stopPropagation()}>
+        <h3 className="text-sm font-bold text-gray-200">{title}</h3>
+        <button onClick={onClose} className="p-1.5 rounded hover:bg-dark-hover text-gray-400 hover:text-gray-200 transition-colors text-lg">✕</button>
       </div>
-      <div className="flex-1 overflow-y-auto p-6 bg-white max-w-4xl mx-auto w-full" onClick={e => e.stopPropagation()}>
+      <div className="flex-1 overflow-y-auto p-6 bg-dark-card max-w-4xl mx-auto w-full" onClick={e => e.stopPropagation()}>
         {schema && parsed ? <DataDocument data={parsed} schema={schema} /> : content.includes('## FILE:') ? (
-          <pre className="text-xs text-gray-800 font-mono whitespace-pre-wrap break-all">{content}</pre>
+          <pre className="text-xs text-gray-200 font-mono whitespace-pre-wrap break-all">{content}</pre>
         ) : (
-          <ReactMarkdown remarkPlugins={[remarkGfm]} className="prose max-w-none text-gray-800">
+          <ReactMarkdown remarkPlugins={[remarkGfm]} className="prose prose-invert max-w-none text-gray-200">
             {content}
           </ReactMarkdown>
         )}
