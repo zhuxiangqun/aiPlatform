@@ -34,7 +34,7 @@ output_schema:
   test_cases:
     type: array
     required: true
-    description: "代码模式→pytest文件列表; Agent模式→对话测试问题列表"
+    description: "代码模式→pytest文件列表; Agent模式→对话测试问题对象数组(含id/ac_ref/category/question/min_expectation)"
   report:
     type: string
     required: true
@@ -90,45 +90,57 @@ skip_when: 代码模块过小或已有充分测试覆盖
 | 用户上传视频后返回 task_id | "请帮我上传这个视频文件" | "我传的文件500MB，能处理吗？" / "我上传了一个空的文件" |
 | 分析结果包含标签/语音/动作 | "刚才分析的结果里有哪些标签？" | "视频没有声音你也能分析吗？" |
 
-### Agent Step 2: 标注预期行为
+### Agent Step 2: 为每个测试问题定义完整字段
 
-每个问题标注最低预期：
+对 Step 1 的每个问题，标注以下字段（**全部必填，缺一不可**）:
 
-| 测试问题 | 最低预期 |
-|---------|------|
-| "请帮我上传这个视频" | 返回 task_id；提示上传成功 |
-| "我传的文件500MB" | 返回文件大小限制提示或开始处理 |
-| "我上传了空文件" | 返回"文件无效"或"不支持处理"提示 |
+| 字段 | 含义 | 来源 | 示例 |
+|------|------|------|------|
+| id | 唯一ID | AQ-001 顺序编号 | "AQ-001" |
+| ac_ref | 对应的验收标准编号 | PRD 的 FR 编号 | "FR-002" |
+| category | 覆盖类型 | 三选一 | "happy_path" / "boundary" / "exception" |
+| question | 自然语言问题 | Step 1 产出 | "我上传一个2.5GB的MKV文件" |
+| min_expectation | 可验证的具体预期 | PRD 的 acceptance_criteria | "返回错误提示'文件大小超过2GB限制'，拒绝上传" |
 
-### Agent Step 3: 组织为测试计划
+注意:
+- `ac_ref` 必须从 PRD 的 FR 编号精确提取，如 "FR-001"、"FR-002"
+- `category` 必须是三个值之一: "happy_path"、"boundary"、"exception"
+- `min_expectation` 不能写"正常返回"或"符合预期"，必须写明具体的可验证行为
+- 每个 FR 至少覆盖 happy_path + boundary + exception 各 1 条
 
-**先输出 JSON**（紧凑一行，不要 ``` 包裹），**再输出 Markdown 报告**。
+### Agent Step 3: 输出 JSON
 
-JSON:
+**只输出 JSON**（紧凑一行，不要 ``` 包裹），不要 Markdown 报告。
+
+JSON 必须是以下结构:
+
 ```json
 {
   "mode": "agent_conversation",
-  "test_questions": [...]
+  "test_questions": [
+    {
+      "id": "AQ-001",
+      "ac_ref": "FR-002",
+      "category": "happy_path",
+      "question": "我要上传一个MP4格式的视频文件",
+      "min_expectation": "上传成功，返回UUID格式的task_id，状态为processing"
+    },
+    {
+      "id": "AQ-002",
+      "ac_ref": "FR-002",
+      "category": "boundary",
+      "question": "我上传一个2.5GB的MKV文件",
+      "min_expectation": "返回错误提示'文件大小超过2GB限制'，拒绝上传"
+    },
+    {
+      "id": "AQ-003",
+      "ac_ref": "FR-002",
+      "category": "exception",
+      "question": "我上传一个.txt文件",
+      "min_expectation": "返回错误提示'不支持的文件格式，仅支持MP4/MOV/AVI/MKV'"
+    }
+  ]
 }
-```
-
-Markdown 报告:
-```markdown
-## 对话测试计划 — {项目名称}
-
-### 汇总
-| 指标 | 值 |
-|:---|---:|
-| 测试问题总数 | {total} |
-| 覆盖 FR | {n} |
-| Happy path | {happy} |
-| 边界 | {boundary} |
-| 异常 | {exception} |
-
-### 测试问题
-| # | FR | 问题 | 最低预期 |
-|:---|----|------|------|
-| 1 | FR-001 | 我用手机拍摄的视频能上传吗？ | 支持MP4上传，显示元数据 |
 ```
 
 ---
@@ -153,7 +165,11 @@ Markdown 报告:
 
 | ❌ 禁止 | ✅ 必须 |
 |--------|--------|
-| Agent 模式输出 `## FILE: test_*.py` | Agent 模式输出对话测试问题 |
+| Agent 模式输出 `## FILE: test_*.py` | Agent 模式输出 JSON（test_questions 对象数组） |
 | 代码模式输出"请帮楼上个视频" | 代码模式输出 `def test_xxx()` |
-| 测试问题只有 happy path | 至少覆盖 happy + 边界 + 异常 |
-| 预期写"正常返回" | 写明具体预期值 |
+| test_questions 是字符串数组 | 每个元素是含全部 5 个字段的对象 |
+| ac_ref 为空或写 "-" / "N/A" | 每行必须有对应的 FR 编号 |
+| category 为空或写 "测试" / "test" | 必须是 happy_path / boundary / exception |
+| min_expectation 写 "正常返回" / "符合预期" | 写明具体的可验证预期值 |
+| 测试问题只有 happy path | 每个 FR 至少覆盖 happy + boundary + exception |
+| Agent 模式输出 Markdown 报告 | 只输出 JSON（Markdown 由 test_executor 生成） |
