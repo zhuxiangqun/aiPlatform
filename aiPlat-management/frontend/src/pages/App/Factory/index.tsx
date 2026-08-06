@@ -408,6 +408,17 @@ const ProjectPanel: React.FC<{
     setRunHistory(project.runs || []);
   }, [project]);
 
+  // Auto-load health report when pipeline is done
+  useEffect(() => {
+    if (phase === 'done' && !healthReport && !loadingHealth && project.project_id) {
+      setLoadingHealth(true);
+      projectApi.getHealthReport(project.project_id)
+        .then(r => setHealthReport(r as any))
+        .catch(() => {})
+        .finally(() => setLoadingHealth(false));
+    }
+  }, [phase, healthReport, loadingHealth]);
+
   const handleConfirm = async () => {
     if (!project.project_id) return;
     setStarting(true);
