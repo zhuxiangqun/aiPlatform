@@ -309,9 +309,13 @@ def _enrich_stage_from_agent(stage: Dict[str, Any]) -> Dict[str, Any]:
         ("hitl",               "hitl",               False,  bool),
         ("hitl_phase",         "hitl_phase",         "",     str),
         ("uses_file_output",   "uses_file_output",   False,  bool),
+        ("scoring_dimensions",  "scoring_dimensions",  [],     lambda v: v if isinstance(v, list) else []),
     ]
+    # Fields that MUST use AGENT.md as the authoritative source,
+    # even if the team YAML already has a (stale) default value.
+    _auth_fields = {"output_artifact", "scoring_dimensions"}
     for stage_key, fm_key, default, coerce in _pipe_fields:
-        if not stage.get(stage_key):
+        if not stage.get(stage_key) or stage_key in _auth_fields:
             val = fm.get(fm_key, default)
             if val != default or not stage.get(stage_key):
                 try:
