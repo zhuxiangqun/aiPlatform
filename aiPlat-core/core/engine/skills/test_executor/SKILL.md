@@ -42,10 +42,18 @@ input_schema:
     required: false
     description: Agent模式下的被测Agent名
 output_schema:
-  markdown:
+  test_results:
+    type: array
+    required: true
+    description: "逐条测试结果数组，每项含id/question/min_expectation/result/score/reason"
+  pass_rate:
+    type: integer
+    required: true
+    description: "通过率百分比(0-100)"
+  recommendation:
     type: string
     required: true
-    description: Markdown测试报告
+    description: "APPROVED|CONDITIONAL_APPROVAL|REJECTED"
 trigger_conditions:
   - 用户提供测试用例
   - pipeline QA阶段自动触发
@@ -70,66 +78,70 @@ trigger_conditions:
 1. 确认 agent_name 可用(输入中存在)
 2. 确认 test_cases 每条包含 question 和 min_expectation
 
-### Agent Step 2: 逐条对话测试
+### Agent Step 2: 逐条文档分析
 
-对每条测试问题:
-1. `core_chat(agent_name, question)` → 获取 Agent 回复
-2. 记录: 问题 / Agent回复 / trace_id / 耗时
-3. 评估: 回复是否满足 min_expectation
+对 test_cases 中的每条测试用例，**逐一分析**（不需要调用 core_chat，基于文档即可）:
 
-**重要**: 必须通过 core_chat(agent_name)，不直接调 Skill。保证测试也走 ReActLoop。
+1. 读取每条测试用例的全部字段: id, ac_ref, category, question, min_expectation
+2. 分析 min_expectation 是否明确、可验证
+3. 分析测试问题是否覆盖对应的 FR 验收标准
+4. 分析覆盖类型(happy/boundary/exception)是否完整
 
-### Agent Step 3: 平台能力验证
+对每条给出:
+- result: ✅(通过) / ❌(失败) / ⚠️(需改进)
+- score: 1-5 分
+- reason: 简短理由(1-2句)
 
-每轮对话后检查运行时数据确认能力激活:
-- `_trace_{id}.domain_id` 非空 → Domain Router ✅
-- `_trace_{id}.context_enriched` → Context Bus ✅
-- `_trace_{id}.model_tier` 非空 → Model Tier ✅
-- POST_LOOP 事件有记录 → SECI ✅
-- save_interaction 有日志 → Memory ✅
-- core_chat 返回 trace_id → Trace ✅
+### Agent Step 3: 汇总评分
 
-### Agent Step 4: 评估与汇总
+按 3 维对整体测试用例集评分(1-5):
 
-| 维度 | 1-5分 | 含义 |
-|------|:---:|------|
-| 准确性 | | 回复是否满足预期 |
-| 完整性 | | 是否遗漏关键信息 |
-| 稳定性 | | 有无幻觉/矛盾 |
+| 维度 | 含义 |
+|------|------|
+| 完整性 | min_expectation 是否明确可验证 |
+| 覆盖度 | 是否覆盖全部 FR 验收标准 |
+| 合理性 | 测试问题是否模拟真实用户场景 |
 
-### Agent Step 5: 生成报告
+### Agent Step 4: 生成报告（强制格式）
 
-```markdown
-## 测试报告 — {agent_name}
-**测试模式**: Agent 对话验证
-**执行时间**: {timestamp}
+**必须输出以下 JSON**（紧凑一行，不要 ``` 包裹）:
 
-### 汇总
-| 指标 | 值 |
-|:---|---:|
-| 问题总数 | {total} |
-| ✅ 通过 | {passed} |
-| ❌ 失败 | {failed} |
-| 通过率 | {pass_rate}% |
-
-### 平台能力验证
-| 能力 | 状态 | 详情 |
-|------|:---:|------|
-| Domain Router | {✅/❌} | {详情} |
-| Context Bus | {✅/❌} | {详情} |
-| Model Tier | {✅/❌} | {详情} |
-| SECI | {✅/❌} | {详情} |
-| Memory | {✅/❌} | {详情} |
-| Trace | {✅/❌} | {详情} |
-
-### 对话测试详情
-| # | 问题 | Agent回复 | 预期 | 评估 |
-|:---|------|------|------|:---:|
-| 1 | {question} | {reply[:100]} | {min_expectation} | {✅/❌} |
-
-### 决策摘要
 ```json
-{"pass_rate": 85.7, "recommendation": "APPROVED", "issues": [...]}
+{
+  "pass_rate": 75,
+  "recommendation": "CONDITIONAL_APPROVAL",
+  "test_results": [
+    {
+      "id": "AQ-001",
+      "question": "输入合法视频链接后点击解析按钮",
+      "min_expectation": "5秒内返回视频标题和可播放地址",
+      "result": "✅",
+      "score": 4,
+      "reason": "min_expectation 有具体时间限制和返回内容，可验证"
+    },
+    {
+      "id": "AQ-002",
+      "question": "上传一个500MB的MP4文件",
+      "min_expectation": "3秒内显示视频基本信息",
+      "result": "✅",
+      "score": 5,
+      "reason": "格式、大小、时间限制明确，边界清晰"
+    }
+  ],
+  "summary": "12条测试用例覆盖4个FR，happy/boundary/exception 完整",
+  "issues": [
+    {
+      "id": "AQ-012",
+      "severity": "medium",
+      "description": "缺少明确的删除确认消息",
+      "suggestion": "删除后返回确认提示并更新记录列表"
+    }
+  ],
+  "strengths": [
+    "边界测试覆盖充分（文件大小、格式限制）",
+    "min_expectation 具体可验证"
+  ]
+}
 ```
 
 ---
@@ -149,7 +161,9 @@ trigger_conditions:
 
 | ❌ 错误 | ✅ 正确 |
 |--------|--------|
-| Agent 模式跑 pytest | Agent 模式用 core_chat 对话测试 |
+| Agent 模式只输出 JSON 总结 | Agent 模式输出包含逐条 test_results 的 JSON |
 | 代码模式发"请帮我上传" | 代码模式用 pytest 断言 |
 | 只测 happy path | 必须覆盖边界 + 异常 |
+| test_results 数组只有 1-2 条 | 必须逐条列出，与上游 test_cases 数量一致 |
+| reason 只写"通过"/"不通过" | 必须写具体的 1-2 句理由 |
 | 不验证平台能力 | Agent 模式检查 _trace_ 字段 |
