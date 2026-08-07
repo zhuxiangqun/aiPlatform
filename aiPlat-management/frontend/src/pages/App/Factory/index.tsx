@@ -435,7 +435,7 @@ const ProjectPanel: React.FC<{
 
   // ── Poll pipeline state during execution ──
   useEffect(() => {
-    if (phase !== 'executing' && !phase?.includes('approval')) {
+    if (phase !== 'executing' && phase !== 'paused' && !phase?.includes('approval')) {
       if (pollInterval) { clearInterval(pollInterval); setPollInterval(null); }
       return;
     }
