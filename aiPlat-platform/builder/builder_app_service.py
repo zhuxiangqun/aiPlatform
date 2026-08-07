@@ -72,6 +72,40 @@ class AppService:
         return app
 
     async def delete(self, app_id: str) -> bool:
+        # ── Cascade cleanup for factory-deployed apps ──
+        if app_id.startswith("factory_"):
+            import json, os, shutil
+            project_id = app_id.replace("factory_", "", 1)
+            # Clear deploy_dir from projects.json
+            projects_file = os.path.join(
+                os.getenv("AIPLAT_HOME", os.path.expanduser("~/.aiplat")),
+                "projects.json",
+            )
+            if os.path.exists(projects_file):
+                try:
+                    with open(projects_file, "r", encoding="utf-8") as f:
+                        data = json.load(f)
+                    for p in data.get("projects", []):
+                        if p.get("project_id") == project_id:
+                            p["deploy_dir"] = ""
+                            p["updated_at"] = __import__("time").strftime("%Y-%m-%dT%H:%M:%S")
+                            break
+                    tmp = projects_file + ".tmp"
+                    with open(tmp, "w", encoding="utf-8") as f:
+                        json.dump(data, f, ensure_ascii=False, indent=2)
+                    os.replace(tmp, projects_file)
+                except Exception:
+                    pass  # noqa: cleanup-best-effort
+            # Remove deployed files from disk
+            deploy_root = os.path.join(
+                os.getenv("AIPLAT_HOME", os.path.expanduser("~/.aiplat")),
+                "apps", project_id,
+            )
+            if os.path.isdir(deploy_root):
+                try:
+                    shutil.rmtree(deploy_root)
+                except OSError:
+                    pass  # noqa: cleanup-best-effort
         return delete_app(app_id)
 
     async def _run_workflow(self, workflow_id: str, user_input: str, run_name: str = "") -> Dict[str, Any]:

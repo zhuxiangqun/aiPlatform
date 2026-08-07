@@ -368,6 +368,7 @@ const ProjectPanel: React.FC<{
   const [runHistory, setRunHistory] = useState<ProjectRun[]>(project.runs || []);
   const [deployUrl, setDeployUrl] = useState('');
   const [deploying, setDeploying] = useState(false);
+  const [deployChecked, setDeployChecked] = useState(false);
   const [fixingBugs, setFixingBugs] = useState(false);
   const [healthReport, setHealthReport] = useState<Record<string, any> | null>(null);
   const [progressState, setProgressState] = useState<Record<string, any> | null>(null);
@@ -403,6 +404,28 @@ const ProjectPanel: React.FC<{
           setPrdReady(true);
         }
       } catch { /* ignore */ }
+    })();
+  }, [project.project_id]);
+
+  // ── Check deploy status on mount ──
+  useEffect(() => {
+    if (!project?.project_id) return;
+    (async () => {
+      try {
+        const r = await fetch('/api/platform/apps');
+        const data = await r.json();
+        const apps: any[] = data?.apps || [];
+        const deployed = apps.find((a: any) =>
+          (a.id || a.app_id || '').replace('factory_', '') === project.project_id
+        );
+        if (deployed) {
+          // Extract app_url from description or build it
+          const desc = deployed.description || '';
+          const urlMatch = desc.match(/https?:\/\/[^\s]+/);
+          setDeployUrl(urlMatch ? urlMatch[0] : `http://localhost:8004/app/sessions/${project.project_id}`);
+        }
+      } catch { /* ignore */ }
+      setDeployChecked(true);
     })();
   }, [project.project_id]);
 
