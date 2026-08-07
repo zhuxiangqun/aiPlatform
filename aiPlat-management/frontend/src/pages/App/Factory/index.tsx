@@ -1041,7 +1041,17 @@ const ProjectPanel: React.FC<{
 
               const preview = rw ? (typeof rw === 'string' ? rw.slice(0, 2000) : JSON.stringify(rw).slice(0, 2000)) : '';
               const qaParsed = (rw && rw.includes('"test_questions"')) ? tryParseJSON(rw, '"test_questions"') : null;
-              const testReportParsed = (rw && (rw.includes('"test_results"') || rw.includes('"bug_summary"'))) ? tryParseJSON(rw, '"test_results"') || tryParseJSON(rw, '"bug_summary"') : null;
+              const testReportParsed = (() => {
+                if (!rw || !(rw.includes('"test_results"') || rw.includes('"bug_summary"'))) return null;
+                try { return JSON.parse(rw); } catch {}
+                // Fallback: extract JSON from markdown-wrapped text
+                const jStart = rw.indexOf('{');
+                const jEnd = rw.lastIndexOf('}');
+                if (jStart >= 0 && jEnd > jStart) {
+                  try { return JSON.parse(rw.slice(jStart, jEnd + 1)); } catch {}
+                }
+                return null;
+              })();
               const bugCount = testReportParsed?.bug_summary?.total_bugs || testReportParsed?.bug_summary?.bugs?.length || 0;
 
               return (
