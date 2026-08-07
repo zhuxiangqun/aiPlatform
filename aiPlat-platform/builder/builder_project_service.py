@@ -1771,6 +1771,9 @@ def _deploy_to_app_for_project(project_id: str, deploy_dir: str, proj: dict) -> 
                         if fpath.startswith(_app_prefix):
                             fpath = fpath[len(_app_prefix):]
                         fcontent = lines[1].strip()
+                        # Strip leading 'yaml' line if present (LLM sometimes adds it before ---)
+                        if fcontent.startswith("yaml\n"):
+                            fcontent = fcontent[4:]
                         # Remove trailing ``` if present
                         fcontent = _re.sub(r'^```\w*\n?', '', fcontent)
                         fcontent = _re.sub(r'\n?```\s*$', '', fcontent)
@@ -1796,7 +1799,10 @@ def _deploy_to_app_for_project(project_id: str, deploy_dir: str, proj: dict) -> 
                             fpath = os.path.expanduser(fpath)
                             if fpath.startswith(_app_prefix):
                                 fpath = fpath[len(_app_prefix):]
-                            fcontent = _re.sub(r'^```\w*\n?', '', lines[1].strip())
+                            fcontent = lines[1].strip()
+                            if fcontent.startswith("yaml\n"):
+                                fcontent = fcontent[4:]
+                            fcontent = _re.sub(r'^```\w*\n?', '', fcontent)
                             fcontent = _re.sub(r'\n?```\s*$', '', fcontent)
                             full_path = os.path.join(_app_home, fpath)
                             os.makedirs(os.path.dirname(full_path), exist_ok=True)
