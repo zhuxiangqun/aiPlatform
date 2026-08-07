@@ -449,7 +449,7 @@ const ProjectPanel: React.FC<{
         setProgressState(s._progress || null);
         // Track HITL stage for inline approval buttons
         if (p === 'paused' && s._current_stage_idx != null) {
-          const idx = s._current_stage_idx as number;
+          const idx = (s._current_stage_idx as number) - 1; // HITL pauses BEFORE stage runs → review previous stage output
           const stage = teamStages[idx];
           if (stage) {
             setHitlStageId((stage as any).id || (stage as any).agent_id || `stage_${idx}`);
