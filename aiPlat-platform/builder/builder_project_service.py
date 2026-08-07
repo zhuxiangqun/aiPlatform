@@ -1404,6 +1404,12 @@ class BuilderProjectService:
                     stages.append(stage)
                 proj["team_stages"] = stages
                 proj["team_id"] = _tid
+                # ── HITL gates: architecture, agent engineering, qa ──
+                _hitl_agents = {"architect_agent", "agent_engineer", "qa_agent"}
+                for s in stages:
+                    if s.get("agent_id") in _hitl_agents:
+                        s["hitl"] = True
+                        s["hitl_phase"] = "review"
                 self._save_projects()
         except Exception as e:
             logging.warning("rebuild: team re-sync failed (using existing): %s", e)
