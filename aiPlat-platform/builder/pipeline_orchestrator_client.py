@@ -93,3 +93,24 @@ class PipelineOrchestratorClient:
         except Exception as e:
             _log.warning("cancel_run failed for %s: %s", project_id, str(e)[:200])
             return {"status": "error", "detail": str(e)[:200]}
+
+    async def resolve_hitl(
+        self,
+        project_id: str,
+        action: str,
+        feedback: str = "",
+        *,
+        timeout: float = _REQUEST_TIMEOUT,
+    ) -> Dict[str, Any]:
+        """Resolve a HITL pause on Core — approve or reject."""
+        try:
+            async with httpx.AsyncClient(timeout=timeout) as client:
+                resp = await client.post(
+                    f"{self._base_url}/api/core/pipelines/{project_id}/hitl-resolve",
+                    json={"action": action, "feedback": feedback},
+                )
+                resp.raise_for_status()
+                return resp.json()
+        except Exception as e:
+            _log.warning("resolve_hitl failed for %s: %s", project_id, str(e)[:200])
+            return {"status": "error", "detail": str(e)[:200]}

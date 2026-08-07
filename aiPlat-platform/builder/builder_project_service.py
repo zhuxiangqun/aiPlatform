@@ -1161,6 +1161,14 @@ class BuilderProjectService:
 
         # Approve directly on state — no session needed
         _hitl_id = state.get("_hitl_stage_id", "")
+        if not _hitl_id:
+            # HITL pauses BEFORE the stage runs — the stage to review is the previous one
+            _proj = self._projects.get(project_id, {})
+            _ts = _proj.get("team_stages", [])
+            _idx = max(0, state.get("_current_stage_idx", 1) - 1)
+            if _idx < len(_ts):
+                _s = _ts[_idx]
+                _hitl_id = _s.get("id", "") if isinstance(_s, dict) else getattr(_s, "id", "")
         state["_hitl_resolved_" + _hitl_id] = True if _hitl_id else False
         state["_hitl_stage_id"] = ""
         state["_hitl_human_feedback"] = ""
@@ -1185,14 +1193,25 @@ class BuilderProjectService:
 
         self._runs[project_id] = state
         await self._save_state(project_id, state)
-        # Run remaining pipeline from next stage (same event loop, via create_task)
+        # Schedule pipeline continuation as background task
         if state.get("phase") == "executing":
             _idx = state.get("_current_stage_idx", 0) + 1
-            _ses = self._rebuild_session(project_id)
-            if _ses and _idx < len(_ses.get_stages()):
-                import asyncio as _bg_asyncio
-                _bg_asyncio.create_task(self._bg_run_stages(project_id, _ses, dict(state), _idx))
+            import asyncio as _bg_asyncio
+            _bg_asyncio.create_task(self._continue_pipeline(project_id, dict(state), _idx))
         return {"project_id": project_id, "phase": state.get("phase", "executing")}
+
+    async def _continue_pipeline(self, project_id: str, state: Dict, start_idx: int):
+        """Background: rebuild session and continue pipeline from start_idx.
+        Runs session creation in thread pool to avoid blocking the event loop."""
+        import asyncio as _bg_asyncio, concurrent.futures as _cf
+        loop = _bg_asyncio.get_running_loop()
+        try:
+            _ses = await loop.run_in_executor(None, self._rebuild_session, project_id)
+            if _ses and start_idx < len(_ses.get_stages()):
+                await self._bg_run_stages(project_id, _ses, state, start_idx)
+                return
+        except Exception as e:
+            _log.warning("_continue_pipeline: _rebuild_session failed for %s: %s", project_id, str(e)[:200])
 
     async def _bg_run_stages(self, project_id: str, session, state: Dict, start_idx: int):
         """Run remaining pipeline stages, updating state periodically."""
@@ -1230,6 +1249,12 @@ class BuilderProjectService:
             raise ValueError("no pipeline state")
 
         _hitl_id = state.get("_hitl_stage_id", "")
+        if not _hitl_id:
+            # HITL pauses BEFORE the stage runs — the stage to review is the previous one
+            _idx = max(0, state.get("_current_stage_idx", 1) - 1)
+            if _idx < len(_ts):
+                _s = _ts[_idx]
+                _hitl_id = _s.get("id", "") if isinstance(_s, dict) else getattr(_s, "id", "")
         state["_reject_feedback"] = feedback
         state["_hitl_stage_id"] = ""
         state["phase"] = "executing"
@@ -1241,7 +1266,7 @@ class BuilderProjectService:
         for _i, _s in enumerate(_ts):
             _sid = _s.get("id", "") if isinstance(_s, dict) else getattr(_s, "id", "")
             _hitl_true = (_s.get("hitl") or getattr(_s, "hitl", False)) if isinstance(_s, dict) else False
-            if _sid == _hitl_id or (not _hitl_id and _hitl_true):
+            if _sid == _hitl_id:
                 state["_current_stage_idx"] = _i
                 _oa = _s.get("output_artifact", "") if isinstance(_s, dict) else getattr(_s, "output_artifact", "")
                 if _oa:
@@ -1258,13 +1283,11 @@ class BuilderProjectService:
 
         self._runs[project_id] = state
         await self._save_state(project_id, state)
-        # Reject restarts from HITL stage itself (not +1)
+        # Reject restarts from HITL stage itself (not +1) — schedule as background task
         if state.get("phase") == "executing":
-            _ses = self._rebuild_session(project_id)
-            if _ses and state.get("_current_stage_idx", 0) < len(_ses.get_stages()):
-                import asyncio as _bg_asyncio2
-                _bg_asyncio2.create_task(self._bg_run_stages(
-                    project_id, _ses, dict(state), state.get("_current_stage_idx", 1)))
+            _idx = state.get("_current_stage_idx", 1)
+            import asyncio as _bg_asyncio2
+            _bg_asyncio2.create_task(self._continue_pipeline(project_id, dict(state), _idx))
         return {"project_id": project_id, "phase": state.get("phase", "executing")}
 
     async def regenerate_stage(self, project_id: str, stage_id: str, feedback: str) -> Dict[str, Any]:

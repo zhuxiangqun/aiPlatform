@@ -2683,7 +2683,7 @@ class PipelineEngine:
 
             if pm:
 
-                pm.push(event={"type": "pipeline_complete", "phase": state.get("phase"),
+                pm.push("pipeline", payload={"type": "pipeline_complete", "phase": state.get("phase"),
 
                     "session_id": state.get("session_id")})
 
