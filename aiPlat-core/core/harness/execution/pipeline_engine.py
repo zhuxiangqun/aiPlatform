@@ -11136,7 +11136,7 @@ def _write_pipeline_event(run_id: str, event_type: str, node_id: str,
 
                 (str(run_id), str(event_type), str(node_id or ""),
 
-                 str(state_json), float(elapsed), str(output or ""), time.time()),
+                 str(state_json)[:2000000], float(elapsed), str(output or ""), time.time()),
 
             )
 

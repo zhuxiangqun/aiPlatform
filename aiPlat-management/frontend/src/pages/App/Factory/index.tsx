@@ -435,7 +435,7 @@ const ProjectPanel: React.FC<{
 
   // ── Poll pipeline state during execution ──
   useEffect(() => {
-    if (phase !== 'executing' && phase !== 'paused' && !phase?.includes('approval')) {
+    if (phase !== 'executing' && phase !== 'paused' && phase !== 'approving_pipeline' && !phase?.includes('approval')) {
       if (pollInterval) { clearInterval(pollInterval); setPollInterval(null); }
       return;
     }
@@ -445,7 +445,10 @@ const ProjectPanel: React.FC<{
         const st = await projectApi.getState(project.project_id);
         const s = (st as any)?.state || {};
         const p = s.phase as string || phase;
-        setPhase(p);
+        // During transition (approving/rejecting), don't revert to paused from Core
+        if (phase !== 'approving_pipeline' || (p !== 'paused' && p !== 'approving_pipeline')) {
+          setPhase(p);
+        }
         setProgressState(s._progress || null);
         // Track HITL stage for inline approval buttons
         if (p === 'paused' && s._current_stage_idx != null) {
@@ -656,8 +659,9 @@ const ProjectPanel: React.FC<{
     setStarting(true);
     try {
       await projectApi.approve(project.project_id);
-      setPhase('executing');
-      toast.success('已审批，继续执行');
+      setPhase('approving_pipeline');
+      setHitlStageId(null);
+      toast.success('已审批，正在继续执行');
     } catch (e: any) { toastGateError(e, '审批失败'); }
     finally { setStarting(false); }
   };
@@ -667,10 +671,11 @@ const ProjectPanel: React.FC<{
     const feedback = window.prompt('驳回理由（可选）：');
     if (feedback === null) return; // cancelled
     setRejecting(true);
-    setStageOutputs(null);  // clear outputs immediately — UI returns to initial state
+    setStageOutputs(null);
     try {
       await projectApi.reject(project.project_id, feedback);
-      setPhase('executing');  // immediate UI update — don't wait for refresh
+      setPhase('approving_pipeline');
+      setHitlStageId(null);
       toast.success('已驳回，将重新生成');
     } catch (e: any) { toastGateError(e, '驳回失败'); }
     finally { setRejecting(false); }
@@ -842,6 +847,10 @@ const ProjectPanel: React.FC<{
                 ✅ 完成 ({progressState.elapsed_sec}s)
               </div>
             )}
+          </div>
+        ) : phase === 'approving_pipeline' ? (
+          <div className="text-[11px] text-blue-400 flex items-center gap-1.5 p-2 rounded bg-blue-500/5">
+            <Loader2 className="w-3 h-3 animate-spin" /> 审批已提交，正在继续执行...
           </div>
         ) : phase === 'paused' || phase?.includes('approval') ? (
           <div className="text-[11px] text-amber-400 flex items-center gap-1.5 p-2 rounded bg-amber-500/5">
@@ -1089,7 +1098,7 @@ const ProjectPanel: React.FC<{
                           ✏️ 编辑
                         </button>
                       )}
-                      {isHITL && (phase === 'paused' || phase?.includes('approval')) && (
+                      {isHITL && (phase === 'paused' || phase?.includes('approval')) && phase !== 'approving_pipeline' && (
                         <>
                           <button onClick={e => { e.preventDefault(); handleApprove(); }}
                             className="text-[10px] px-1.5 py-0.5 rounded bg-green-500/20 text-green-300 hover:bg-green-500/30 hover:text-green-200 transition-colors">
@@ -1207,21 +1216,24 @@ const FactoryPage: React.FC = () => {
   const nav = useNavigate();
   const [projects, setProjects] = useState<ProjectItem[]>([]);
   const [deployedApps, setDeployedApps] = useState<any[]>([]);
+  const [loadingApps, setLoadingApps] = useState(true);
   const [desc, setDesc] = useState('');
   const [creating, setCreating] = useState(false);
   const [selectedProject, setSelectedProject] = useState<ProjectItem | null>(null);
   const [selectedApp, setSelectedApp] = useState<string>('');
 
   const loadAll = useCallback(async () => {
+    setLoadingApps(true);
     try {
       const p = await projectApi.list();
-      setProjects(p.projects || []);
-    } catch { /* ignore */ }
+      if (p?.projects) setProjects(p.projects);
+    } catch { /* retry on next loadAll call */ }
     try {
       const r = await fetch('/api/platform/apps');
       const d = await r.json();
-      setDeployedApps(d.apps || []);
+      if (d?.apps) setDeployedApps(d.apps);
     } catch { /* ignore */ }
+    setLoadingApps(false);
   }, []);
 
   useEffect(() => { loadAll(); }, [loadAll]);
@@ -1399,10 +1411,16 @@ const FactoryPage: React.FC = () => {
           ))}
         </div>
 
-        {projects.length === 0 && deployedApps.length === 0 && (
+        {projects.length === 0 && deployedApps.length === 0 && !loadingApps && (
           <div className="text-center py-12 text-gray-500">
             <p className="text-lg mb-2">还没有应用</p>
             <p className="text-sm">在上方输入需求描述，开始构建你的第一个应用</p>
+          </div>
+        )}
+        {loadingApps && projects.length === 0 && deployedApps.length === 0 && (
+          <div className="text-center py-12 text-gray-500">
+            <Loader2 className="w-6 h-6 animate-spin mx-auto mb-3" />
+            <p className="text-sm">加载中...</p>
           </div>
         )}
         </div>
