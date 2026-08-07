@@ -370,6 +370,7 @@ const ProjectPanel: React.FC<{
   const [deploying, setDeploying] = useState(false);
   const [deployChecked, setDeployChecked] = useState(false);
   const [fixingBugs, setFixingBugs] = useState(false);
+  const [hitlStageId, setHitlStageId] = useState<string | null>(null);
   const [healthReport, setHealthReport] = useState<Record<string, any> | null>(null);
   const [progressState, setProgressState] = useState<Record<string, any> | null>(null);
   const [hasRunningPipeline, setHasRunningPipeline] = useState(false);
@@ -446,6 +447,16 @@ const ProjectPanel: React.FC<{
         const p = s.phase as string || phase;
         setPhase(p);
         setProgressState(s._progress || null);
+        // Track HITL stage for inline approval buttons
+        if (p === 'paused' && s._current_stage_idx != null) {
+          const idx = s._current_stage_idx as number;
+          const stage = teamStages[idx];
+          if (stage) {
+            setHitlStageId((stage as any).id || (stage as any).agent_id || `stage_${idx}`);
+          }
+        } else if (p !== 'paused') {
+          setHitlStageId(null);
+        }
         // Detect Agent mode: generated agent is deployed
         if (s._generated_agent && !agentMode) {
           setAgentName(s._generated_agent as string);
@@ -833,14 +844,8 @@ const ProjectPanel: React.FC<{
             )}
           </div>
         ) : phase === 'paused' || phase?.includes('approval') ? (
-          <div className="p-3 rounded bg-amber-500/10 border border-amber-500/30 text-sm space-y-2">
-            <div className="text-amber-300 flex items-center gap-2">
-              <Clock className="w-4 h-4" /> 等待审批 — 请审核当前阶段产出
-            </div>
-            <div className="flex gap-2">
-              <Button variant="primary" size="sm" onClick={handleApprove} loading={starting}>✅ 审批通过</Button>
-              <Button variant="secondary" size="sm" onClick={handleReject} loading={rejecting}>❌ 驳回重做</Button>
-            </div>
+          <div className="text-[11px] text-amber-400 flex items-center gap-1.5 p-2 rounded bg-amber-500/5">
+            <Clock className="w-3 h-3" /> 等待审批 — 请在下方「阶段产出」中审核并操作
           </div>
         ) : null}
 
@@ -970,6 +975,10 @@ const ProjectPanel: React.FC<{
                 architecture: '🏗️ 架构设计', code: '💻 代码生成', test_report: '🧪 测试报告',
                 testReport: '🧪 测试报告', prd: '📋 PRD',
               }[key] || key.replace(/[_-]/g, ' ');
+              const isHITL = hitlStageId && (
+                (matchedStage as any)?.id === hitlStageId ||
+                (matchedStage as any)?.agent_id === hitlStageId
+              );
               let summary = '';
 
               // ── Structural detection (not key-name matching) ──
@@ -1079,6 +1088,18 @@ const ProjectPanel: React.FC<{
                           className="text-[10px] px-1.5 py-0.5 rounded bg-dark-hover text-gray-500 hover:text-yellow-400 transition-colors">
                           ✏️ 编辑
                         </button>
+                      )}
+                      {isHITL && (phase === 'paused' || phase?.includes('approval')) && (
+                        <>
+                          <button onClick={e => { e.preventDefault(); handleApprove(); }}
+                            className="text-[10px] px-1.5 py-0.5 rounded bg-green-500/20 text-green-300 hover:bg-green-500/30 hover:text-green-200 transition-colors">
+                            ✅ 审批通过
+                          </button>
+                          <button onClick={e => { e.preventDefault(); handleReject(); }}
+                            className="text-[10px] px-1.5 py-0.5 rounded bg-red-500/20 text-red-300 hover:bg-red-500/30 hover:text-red-200 transition-colors">
+                            ❌ 驳回重做
+                          </button>
+                        </>
                       )}
                     </div>
                   </summary>
