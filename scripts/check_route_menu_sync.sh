@@ -16,9 +16,9 @@ STRICT=false
 
 SRC="$ROOT/aiPlat-management/frontend/src"
 APP="$SRC/App.tsx"
-LAYOUT="$SRC/components/layout/AppLayout.tsx"
+MANIFEST="$SRC/pageManifest.ts"
 
-if [ ! -f "$APP" ] || [ ! -f "$LAYOUT" ]; then
+if [ ! -f "$APP" ] || [ ! -f "$MANIFEST" ]; then
   echo "⚠️  Route/menu source files not found, skipping check."
   exit 0
 fi
@@ -36,12 +36,12 @@ trap 'rm -f "$R" "$M"' EXIT
   grep -o 'path: *"[^"]*"' "$APP" 2>/dev/null || true
 } | sed "s/path: *['\"]//g; s/['\"]//g" | sed 's|^/||; s|/:[^/]*||g' | sort -u > "$R"
 
-# ── Extract menu route keys from AppLayout.tsx ────────────────────────
+# ── Extract menu route keys from pageManifest.ts ──────────────────────
 # Format:  key: '/docs'   or   key: "/docs"
 # Only keys starting with / (not _sub_ labels, dividers, user menu)
 {
-  grep -o "key: *'/[^']*'" "$LAYOUT" 2>/dev/null || true
-  grep -o 'key: *"/[^"]*"' "$LAYOUT" 2>/dev/null || true
+  grep -o "key: *'/[^']*'" "$MANIFEST" 2>/dev/null || true
+  grep -o 'key: *"/[^"]*"' "$MANIFEST" 2>/dev/null || true
 } | sed "s/key: *['\"]//g; s/['\"]//g" | sed 's|^/||; s|\?.*||' | sort -u > "$M"
 
 # ── Known intentional non-menu routes ─────────────────────────────────
@@ -53,64 +53,25 @@ governance
 releases
 overview
 pentest
-studio
-plugins
-workbench
 onboarding
 onboarding/wizard
-app/apps
 app/apps/chat
 app/builder
 app/builder/projects
 app/builder/team
-app/channels
 app/diagrams
-app/sessions
-approval
-approval/history
 core/agent-insight
-core/approvals
-core/jobs
-core/learning/artifacts
-core/learning/releases
-core/learning/rollouts
 core/plugins
-core/skill-packs
-core/skills-rollouts
+core/learning/rollouts
 core/workflows/edit
 core/workflows/new
 core/workflows/runs
-diagnostics/browser-test
-diagnostics/capability-boundary
-diagnostics/capability-graph
-diagnostics/capability-policy
-diagnostics/code-intel
-diagnostics/context
 diagnostics/doctor
-diagnostics/exec-backends
-diagnostics/graphs
-diagnostics/links
-diagnostics/model-audit
-diagnostics/model-playground
-diagnostics/ops
-diagnostics/policies
-diagnostics/policy-debug
-diagnostics/rag-quality
-diagnostics/repo
-diagnostics/routing-dashboard
-diagnostics/routing-replay
-diagnostics/run-comparison
-diagnostics/runs
-diagnostics/smoke
-diagnostics/syscalls
-diagnostics/traces
-diagnostics/workflows
-infra/llm-stats
-infra/monitoring
-infra/network
-infra/nodes
-infra/services
+diagnostics/drift-status
+diagnostics/knowledge-health
+knowledge/overview
 platform/kb/chat
+plugins
 prompts/app
 value-center
 value-center/goals
@@ -119,12 +80,7 @@ value-center/roles
 value-center/spec
 value-center/strategy
 value-center/training
-workspace/agents
-workspace/mcp
-workspace/skills
 workspace/skills-lint
-workspace/teams
-workspace/tools
 HEREDOC
 
 # Re-sort after appending exclusions

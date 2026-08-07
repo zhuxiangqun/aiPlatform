@@ -483,7 +483,7 @@ Harness    = 执行层（LLM/工具/技能调用、token 管理、错误重试�
 | R6 | GovernancePipeline + RBAC 治理角色 + 本体变更审批 + 映射验证 | 治理 |
 | P1 | Custom Commands + FDE 消息通知 + Sandbox 接线 + Subagent 优化 + 推理链可视化 | 成熟度 |
 
-**v2.8 系统全景**：881 项能力验证通过，6 步治理闭环，5 步推理编排，K1-K11 全部闭环，架构守卫 0 ERROR / 0 WARNING。
+**v2.8 系统全景**：914 项能力验证通过，6 步治理闭环，5 步推理编排，K1-K11 全部闭环，架构守卫 0 ERROR / 0 WARNING。
 
 ### 行业对标
 

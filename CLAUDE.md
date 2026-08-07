@@ -8,7 +8,7 @@ language: zh-CN
 
 此文件是 **工作区兜底规约**，用于在系统执行链路中自动推断到 workspace root 时仍然能注入/强制基本规则。
 
-**能力全貌**：参见 [`AIPLAT_CAPABILITIES.md`](./AIPLAT_CAPABILITIES.md)（唯一真相源，910 项能力）
+**能力全貌**：参见 [`AIPLAT_CAPABILITIES.md`](./AIPLAT_CAPABILITIES.md)（唯一真相源，914 项能力）
 
 **架构定位**：企业大脑 — 从"工具集合"到"自演进操作系统"的 8 层架构：
 
@@ -90,6 +90,25 @@ language: zh-CN
 | **5** | **技术文档/文章中的可验证声明** | **附带 grep 命中文件:行号 验证证据** |
 | **违反后果**：`phase_check.sh` Step 7 → `verify_doc_sync.sh → **退出码 1 阻断** |
 | **自动修复**：`git commit` 时 pre-commit hook 自动运行 `auto_sync_docs.sh`，新模块自动生成条目并 stage |
+| **6** | **新增公共符号（函数/类/export）** | **`core/capability_registry.yaml` 对应 section 的 `provides` 新增一条** |
+| **违反后果**：`cap check` (pre-commit Phase 43) → `auto_register_capability.py --check-only` → **退出码 1 阻断 commit** |
+| **注意**：`auto_sync_docs.sh` 会自动同步 `AIPLAT_CAPABILITIES.md`，但**不会**同步 `capability_registry.yaml`。后者必须手动更新。 |
+
+### 新增能力两步校验表（强制——防遗漏 capability_registry.yaml）
+
+每次新增能力（新 public 函数/类/组件 export/agent）后，必须自检以下两项：
+
+| # | 检查项 | 验证命令 |
+|---|------|---------|
+| 1 | `AIPLAT_CAPABILITIES.md` 已同步 | `grep '<能力名>' AIPLAT_CAPABILITIES.md` 命中 |
+| 2 | `core/capability_registry.yaml` 已注册 | `grep '<能力名>' core/capability_registry.yaml` 命中 |
+
+**历史案例（2026-08-07）**：Sidebar v2.1 + test_report_orchestrator + 一键修复 三个新能力实施过程中，只更新了 `AIPLAT_CAPABILITIES.md`，漏掉了 `capability_registry.yaml`。根因：`auto_sync_docs.sh` 自动同步了前者，但不存在自动同步后者的机制，形成单向依赖缺口。pre-commit 的 `cap check` (Phase 43) 检测到 staged 文件中有新 export 符号但 registry 中无记录，阻断 commit。
+
+**预防措施**：
+1. 新增能力时，同时更新上述两个文件（本表已强制执行）
+2. `capability_registry.yaml` 中路径字段必须用单文件相对路径（如 `aiPlat-management/frontend/src/pageManifest.ts`），禁止 `~`、`+`、`:` 等特殊字符
+3. 远期：扩展 `auto_sync_docs.sh` 自动调用 `cap auto-register` 同步 registry
 
 **规则 5 详解——技术文档声明必须代码验证（强制）**：
 

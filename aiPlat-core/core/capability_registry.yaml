@@ -7,10 +7,10 @@
 # Verifiers: verify_capability_consumers.sh (pre-commit hook)
 # Generator: generate_impact_matrix.py → docs/matrix/capability-impact-matrix.md
 
-version: "1.0.0"
-generated_at: "2026-07-19"
+version: "1.1.0"
+generated_at: "2026-08-07"
 total_capability_domains: 32
-total_capabilities: 776
+total_capabilities: 780
 
 domains:
   # ══════════════════════════════════════════════════════════════
@@ -218,7 +218,7 @@ domains:
   agent-system:
     section: "五"
     section_name: "Agent 系统"
-    caps_count: 23
+    caps_count: 24
     provides:
       - symbol: "BaseAgent"
         type: "class"
@@ -236,6 +236,10 @@ domains:
         type: "class"
         signature: "decision-support: severity, impact, recommended_actions"
         module: "core/apps/agents/operator_agent.py"
+      - symbol: "test_report_orchestrator"
+        type: "agent"
+        signature: "workspace agent — tests→bug→regenerate per-stage auto-fix"
+        module: "~/.aiplat/agents/test_report_orchestrator/AGENT.md"
     breaks: []
     consumers_expected:
       - module: "core/harness/execution/pipeline_engine.py"
@@ -841,7 +845,7 @@ domains:
   management-and-quality:
     section: "二十五"
     section_name: "管理 & 质量"
-    caps_count: 21
+    caps_count: 24
     provides:
       - symbol: "QualityBus"
         type: "class"
@@ -855,6 +859,18 @@ domains:
         type: "class"
         signature: "7d→stable, 90d→archived"
         module: "core/harness/specs/lifecycle.py"
+      - symbol: "filterItemsByRole"
+        type: "function"
+        signature: "Sidebar v2.1: two-level role filtering + empty subLabel cleanup"
+        module: "aiPlat-management/frontend/src/components/layout/AppLayout.tsx"
+      - symbol: "handleFixBugs"
+        type: "function"
+        signature: "Factory page: trigger test_report_orchestrator agent for one-click bug fix"
+        module: "aiPlat-management/frontend/src/pages/App/Factory/index.tsx"
+      - symbol: "Sidebar v2.1 menuItems"
+        type: "data"
+        signature: "Task-flow driven sidebar: 5 groups, 90+ entries, item-level roles"
+        module: "aiPlat-management/frontend/src/pageManifest.ts"
     breaks: []
     consumers_expected:
       - module: "core/harness/execution/pipeline_engine.py"

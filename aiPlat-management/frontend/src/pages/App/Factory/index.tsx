@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Plus, Send, Loader2, Clock, CheckCircle, XCircle, ExternalLink, BarChart3, Trash2, Play, RefreshCw, FileText } from 'lucide-react';
+import { Plus, Send, Loader2, Clock, CheckCircle, XCircle, ExternalLink, BarChart3, Trash2, Play, RefreshCw, FileText, Wrench } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { projectApi, builderTeamApi, type ProjectItem, type ProjectRun } from '../../../services';
+import { projectApi, builderTeamApi, workspaceAgentApi, type ProjectItem, type ProjectRun } from '../../../services';
 import { Card, CardContent, Button, Textarea, toast } from '../../../components/ui';
 import { toastGateError } from '../../../components/ui';
 import type { BuilderSession } from '../../../services';
@@ -368,6 +368,7 @@ const ProjectPanel: React.FC<{
   const [runHistory, setRunHistory] = useState<ProjectRun[]>(project.runs || []);
   const [deployUrl, setDeployUrl] = useState('');
   const [deploying, setDeploying] = useState(false);
+  const [fixingBugs, setFixingBugs] = useState(false);
   const [healthReport, setHealthReport] = useState<Record<string, any> | null>(null);
   const [progressState, setProgressState] = useState<Record<string, any> | null>(null);
   const [hasRunningPipeline, setHasRunningPipeline] = useState(false);
@@ -514,6 +515,29 @@ const ProjectPanel: React.FC<{
       onRefresh();
     } catch (e: any) { toastGateError(e, '启动失败'); }
     finally { setStarting(false); }
+  };
+
+  const handleFixBugs = async () => {
+    if (!project.project_id) return;
+    setFixingBugs(true);
+    try {
+      const result = await workspaceAgentApi.execute('test_report_orchestrator', {
+        input: { project_id: project.project_id },
+      });
+      const output = (result as any)?.output;
+      if (output) {
+        const summary = typeof output === 'string' ? JSON.parse(output) : output;
+        const fixed = summary?.summary?.fixed_stages || 0;
+        const total = summary?.summary?.total_bugs || 0;
+        toast.success(`修复编排完成: ${fixed} 个阶段已触发修复, 覆盖 ${total} 个 Bug`);
+      } else {
+        toast.success('修复编排已触发');
+      }
+      // Trigger state refresh to show rebuild button after fix
+      setPhase('executing');
+      onRefresh();
+    } catch (e: any) { toastGateError(e, '修复失败'); }
+    finally { setFixingBugs(false); }
   };
 
   const handleRecommend = async () => {
@@ -933,18 +957,30 @@ const ProjectPanel: React.FC<{
 
               const preview = rw ? (typeof rw === 'string' ? rw.slice(0, 2000) : JSON.stringify(rw).slice(0, 2000)) : '';
               const qaParsed = (rw && rw.includes('"test_questions"')) ? tryParseJSON(rw, '"test_questions"') : null;
+              const testReportParsed = (rw && (rw.includes('"test_results"') || rw.includes('"bug_summary"'))) ? tryParseJSON(rw, '"test_results"') || tryParseJSON(rw, '"bug_summary"') : null;
+              const bugCount = testReportParsed?.bug_summary?.total_bugs || testReportParsed?.bug_summary?.bugs?.length || 0;
 
               return (
                 <React.Fragment key={key}>
                   <details className="text-xs rounded border border-dark-border bg-dark-hover/30">
                   <summary className="p-2 cursor-pointer text-gray-300 font-medium flex items-center justify-between">
                     <span>{label} ({typeof rw === 'string' ? rw.length : 0} 字符{elapsed ? ` · ⏱ ${elapsed}s` : ''}{summary ? ' · ' + summary : ''})</span>
-                    {rw && (
-                      <button onClick={e => { e.preventDefault(); setFullscreenTitle(label); setFullscreenContent(typeof rw === 'string' ? rw : JSON.stringify(rw, null, 2)); }}
-                        className="text-[10px] px-1.5 py-0.5 rounded bg-dark-hover text-gray-500 hover:text-gray-300 hover:bg-primary/20 transition-colors flex-shrink-0 ml-2">
-                        🔍 全屏
-                      </button>
-                    )}
+                    <div className="flex items-center gap-1 flex-shrink-0 ml-2">
+                      {bugCount > 0 && (
+                        <button onClick={e => { e.preventDefault(); handleFixBugs(); }}
+                          disabled={fixingBugs}
+                          className="text-[10px] px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-300 hover:bg-blue-500/30 hover:text-blue-200 transition-colors">
+                          {fixingBugs ? <Loader2 className="w-3 h-3 animate-spin inline mr-0.5" /> : <Wrench className="w-3 h-3 inline mr-0.5" />}
+                          一键修复 ({bugCount} Bug)
+                        </button>
+                      )}
+                      {rw && (
+                        <button onClick={e => { e.preventDefault(); setFullscreenTitle(label); setFullscreenContent(typeof rw === 'string' ? rw : JSON.stringify(rw, null, 2)); }}
+                          className="text-[10px] px-1.5 py-0.5 rounded bg-dark-hover text-gray-500 hover:text-gray-300 hover:bg-primary/20 transition-colors">
+                          🔍 全屏
+                        </button>
+                      )}
+                    </div>
                   </summary>
                   <div className="p-2 max-h-72 overflow-y-auto border-t border-dark-border text-gray-300 text-xs max-w-none">
                     {qaParsed ? (

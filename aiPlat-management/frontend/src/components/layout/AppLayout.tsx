@@ -18,8 +18,47 @@ const ROLE_MENUS: Record<string, string[]> = {
 function getRole(): string {
   return localStorage.getItem('aiplat_role') || 'developer';
 }
-function canSee(group: string): boolean {
-  return (ROLE_MENUS[getRole()] || []).includes(group);
+
+// ── Two-level sidebar filtering ─────────────────────────────────────
+// L1: Group-level (existing ROLE_MENUS)
+// L2: Item-level (MenuItem.roles field)
+
+function filterItemsByRole(items: MenuItem[], role: string): MenuItem[] {
+  // Pass 1: filter non-subLabel items by roles
+  const pass1 = items.filter(item => {
+    if (item.subLabel) return true;   // keep subLabels for now
+    if (item.roles) return item.roles.includes(role);
+    return true;                       // no roles → inherit group visibility
+  });
+
+  // Pass 2: find empty subLabels (no visible children), mark for removal
+  const emptySubLabels = new Set<string>();
+  let currentSubLabel: string | null = null;
+  let childCount = 0;
+
+  for (const item of pass1) {
+    if (item.subLabel) {
+      if (currentSubLabel && childCount === 0) {
+        emptySubLabels.add(currentSubLabel);
+      }
+      currentSubLabel = item.key;
+      childCount = 0;
+    } else {
+      childCount++;
+    }
+  }
+  // Check the last group
+  if (currentSubLabel && childCount === 0) {
+    emptySubLabels.add(currentSubLabel);
+  }
+
+  // Pass 3: remove empty subLabels
+  return pass1.filter(item => !item.subLabel || !emptySubLabels.has(item.key));
+}
+
+// Advanced tools: admin/dev/fde get default expand; operator/approver get collapsed
+function isAdvancedToolsLabel(subLabel: string): boolean {
+  return subLabel.includes('高级工具');
 }
 
 const ROLE_LABELS: Record<string, string> = {
@@ -49,7 +88,7 @@ const AppLayout: React.FC = () => {
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [roleMenuOpen, setRoleMenuOpen] = useState(false);
 
-  // URL-based auto-expand: compute initial expanded groups from current path
+  // URL-based auto-expand + role-based advanced tools default expand
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(() => {
     const expanded = new Set<string>();
     const path = location.pathname + location.search;
@@ -69,6 +108,11 @@ const AppLayout: React.FC = () => {
           }
         }
       }
+    }
+    // 🆕 Advanced tools: admin/dev/fde get diagnostics group expanded by default
+    const role = getRole();
+    if (['admin', 'developer', 'fde'].includes(role)) {
+      expanded.add('diagnostics');
     }
     return expanded;
   });
@@ -108,6 +152,16 @@ const AppLayout: React.FC = () => {
     if (!path.includes('?') && location.pathname === path) return true;
     return false;
   };
+
+  // ── Pre-compute filtered sidebar menu ───────────────────────
+  const role = getRole();
+  const visibleGroups = ROLE_MENUS[role] || [];
+  // L1: Group-level filter — exclude groups not in ROLE_MENUS for current role
+  const visibleMenu = menuItems.filter(entry => {
+    if ('divider' in entry) return true;
+    if ('group' in entry) return visibleGroups.includes(entry.group);
+    return false;  // no top-level individual items in v2.1
+  });
 
   return (
     <ToastProvider>
@@ -149,104 +203,79 @@ const AppLayout: React.FC = () => {
 
           {/* Navigation */}
           <nav className="flex-1 overflow-y-auto py-2 px-2">
-            {menuItems.map((item, index) => {
+            {visibleMenu.map((item, index) => {
               if ('divider' in item) {
                 return <div key={index} className="my-2 border-t border-gray-100" />;
               }
 
-              if ('group' in item) {
-                if (!canSee(item.group)) return null;
-                const gname = item.group;
-                const isExpanded = expandedGroups.has(gname);
-                // Check if any sub-item is active for group highlight
-                const hasActiveChild = item.items.some(si =>
-                  !si.subLabel && isActive(si.key));
-                return (
-                  <div key={item.group} className="mb-2">
-                    {/* Group header — click to expand/collapse */}
-                    <button
-                      onClick={() => toggleGroup(gname)}
-                      className={`w-full flex items-center justify-between px-3 py-2 rounded-lg
-                        text-xs font-medium uppercase tracking-wide transition-colors
-                        ${hasActiveChild ? 'text-primary' : 'text-gray-500 hover:text-gray-300'}`}
-                    >
-                      <span className="truncate">{item.label}</span>
-                      {!collapsed && (
-                        <ChevronDown className={`w-3 h-3 transition-transform ${isExpanded ? '' : '-rotate-90'}`} />
-                      )}
-                    </button>
-                    {/* Group items — shown when expanded */}
-                    {isExpanded && !collapsed && item.items.map((subItem) => {
-                      // Sub-label header (non-clickable)
-                      if (subItem.subLabel) {
-                        return (
-                          <div key={subItem.subLabel}
-                               className="px-3 pt-2 pb-1 text-[10px] font-semibold text-gray-500 uppercase tracking-wider">
-                            {subItem.subLabel}
-                          </div>
-                        );
-                      }
-                      const active = isActive(subItem.key);
-                      return (
-                        <button
-                          key={subItem.key}
-                          onClick={() => navigate(subItem.key)}
-                          className={`
-                            w-full flex items-center gap-3 px-3 py-2.5 rounded-lg mb-0.5
-                            text-sm font-medium transition-colors
-                            ${active
-                              ? 'bg-primary-light text-primary'
-                              : 'text-gray-500 hover:bg-dark-hover hover:text-gray-200'
-                            }
-                          `}
-                          title={subItem.label}
-                        >
-                          {subItem.icon && <subItem.icon className="w-[18px] h-[18px] flex-shrink-0" />}
-                          <span className="truncate">{subItem.label}</span>
-                        </button>
-                      );
-                    })}
-                    {/* Collapsed mode: show only active child icon */}
-                    {!isExpanded && collapsed && hasActiveChild && (
-                      <div className="flex justify-center px-2">
-                        {(() => {
-                          const activeItem = item.items.find(si => !si.subLabel && isActive(si.key));
-                          return activeItem?.icon
-                            ? <activeItem.icon className="w-5 h-5 text-primary" />
-                            : null;
-                        })()}
-                      </div>
-                    )}
-                  </div>
-                );
-               }
+              // item is a MenuGroup (L1 filtered by visibleMenu)
+              const gname = item.group;
+              const isExpanded = expandedGroups.has(gname);
 
-              // Individual menu items — admin-only, except diagnostics sub-pages
-              // which are gated by ROLE_MENUS (Phase 2 fix)
-              if (getRole() !== 'admin') {
-                const path = item.key;
-                if (!path.startsWith('/diagnostics') || !canSee('diagnostics')) {
-                  return null;
-                }
-              }
-              const active = isActive(item.key);
+              // L2: Item-level filter
+              const role = getRole();
+              const visibleItems = filterItemsByRole(item.items, role);
+
+              // Check if any sub-item is active for group highlight
+              const hasActiveChild = visibleItems.some(si =>
+                !si.subLabel && isActive(si.key));
               return (
-                <button
-                  key={item.key}
-                  onClick={() => navigate(item.key)}
-                  className={`
-                    w-full flex items-center gap-3 px-3 py-2.5 rounded-lg mb-0.5
-                    text-sm font-medium transition-colors
-                    ${active
-                      ? 'bg-primary-light text-primary'
-                      : 'text-gray-500 hover:bg-dark-hover hover:text-gray-200'
+                <div key={item.group} className="mb-2">
+                  {/* Group header — click to expand/collapse */}
+                  <button
+                    onClick={() => toggleGroup(gname)}
+                    className={`w-full flex items-center justify-between px-3 py-2 rounded-lg
+                      text-xs font-medium uppercase tracking-wide transition-colors
+                      ${hasActiveChild ? 'text-primary' : 'text-gray-500 hover:text-gray-300'}`}
+                  >
+                    <span className="truncate">{item.label}</span>
+                    {!collapsed && (
+                      <ChevronDown className={`w-3 h-3 transition-transform ${isExpanded ? '' : '-rotate-90'}`} />
+                    )}
+                  </button>
+                  {/* Group items — shown when expanded */}
+                  {isExpanded && !collapsed && visibleItems.map((subItem) => {
+                    // Sub-label header (non-clickable)
+                    if (subItem.subLabel) {
+                      return (
+                        <div key={subItem.subLabel}
+                             className="px-3 pt-2 pb-1 text-[10px] font-semibold text-gray-500 uppercase tracking-wider">
+                          {subItem.subLabel}
+                        </div>
+                      );
                     }
-                  `}
-                  title={collapsed ? item.label : undefined}
-                >
-                  <item.icon className="w-[18px] h-[18px] flex-shrink-0" />
-                  {!collapsed && <span>{item.label}</span>}
-                </button>
+                    const active = isActive(subItem.key);
+                    return (
+                      <button
+                        key={subItem.key}
+                        onClick={() => navigate(subItem.key)}
+                        className={`
+                          w-full flex items-center gap-3 px-3 py-2.5 rounded-lg mb-0.5
+                          text-sm font-medium transition-colors
+                          ${active
+                            ? 'bg-primary-light text-primary'
+                            : 'text-gray-500 hover:bg-dark-hover hover:text-gray-200'
+                          }
+                        `}
+                        title={subItem.label}
+                      >
+                        {subItem.icon && <subItem.icon className="w-[18px] h-[18px] flex-shrink-0" />}
+                        <span className="truncate">{subItem.label}</span>
+                      </button>
+                    );
+                  })}
+                  {/* Collapsed mode: show only active child icon */}
+                  {!isExpanded && collapsed && hasActiveChild && (
+                    <div className="flex justify-center px-2">
+                      {(() => {
+                        const activeItem = visibleItems.find(si => !si.subLabel && isActive(si.key));
+                        return activeItem?.icon
+                          ? <activeItem.icon className="w-5 h-5 text-primary" />
+                          : null;
+                      })()}
+                    </div>
+                  )}
+                </div>
               );
             })}
           </nav>

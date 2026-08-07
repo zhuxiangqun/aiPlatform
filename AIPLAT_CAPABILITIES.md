@@ -1,7 +1,7 @@
 ---
 total_capabilities: 914
-last_updated: 2026-07-30
-version: "29.0"
+last_updated: 2026-08-07
+version: "30.0"
 auto_sync: true
   auto:  # 23 active, 0 missing
     - id: llm_circuit_breaker
@@ -1613,7 +1613,7 @@ core_guarantees:
 
 > 代码即真相。每个条目必须有可验证的代码位置。
 > 更新：任何能力变更时同步更新本文档。
-> 评分：98/100（2026-07-20 — 881✅）
+> 评分：98/100（2026-07-20 — 914✅）
 
 ---
 
@@ -1954,6 +1954,7 @@ core_guarantees:
 | DelegateManager | harness/infrastructure/delegate_tool.py | ✅ | 子Agent委托 + 资源预算隔离 + 重试退避 + 输出摘要(§5.26) | 已合入 |
 | OperatorAgent | apps/agents/operator_agent.py | ✅ | 运维决策助手 — 消费RunContext → 结构化JSON(severity/impact/actions/can_continue) | Phase 10.4 |
 | operator-decision prompt | harness/utils/prompt_loader.py | ✅ | 决策框架 + 输出格式 + 约束规则 | Phase 10.4 |
+| test_report_orchestrator | aiPlat-platform/apps/factory OR workspace agent | ✅ | 测试报告修复编排器 — 接收project_id→读取测试报告→Bug归属阶段→逐阶段调regenerate触发修复→下游级联重建 | 2026-08-07 |
 | 共享检索管道 | harness/knowledge/orchestrated_retrieval.py | ✅ | traverse_ontology_graph + ontology_first_retrieve + build_reasoning_path | 重构 |
 | HyDE 检索统一 | harness/knowledge/hyde_expander.py | ✅ | hyde_retrieve() 封装全管道(生成→检索→格式化) | 重构 |
 | 成本路由决策 | harness/knowledge/cost_estimator.py | ✅ | resolve_routing_mode() 统一成本→路由映射 | 重构 |
@@ -2036,6 +2037,12 @@ core_guarantees:
 | agent_manager | management/agent_manager.py | ✅ | 自动同步 | 已合入 |
 | skill_manager | management/skill_manager.py | ✅ | 自动同步 | 已合入 |
 | workflow_manager | management/workflow_manager.py | ✅ | 自动同步 | 已合入 |
+| DataFormStage | `aiPlat-management/frontend/src/components/AppStages/DataFormStage.tsx` | ✅ | 自动同步 | 已合入 |
+| DataTableStage | `aiPlat-management/frontend/src/components/AppStages/DataTableStage.tsx` | ✅ | 自动同步 | 已合入 |
+| FileUploadStage | `aiPlat-management/frontend/src/components/AppStages/FileUploadStage.tsx` | ✅ | 自动同步 | 已合入 |
+| ProgressPoller | `aiPlat-management/frontend/src/components/AppStages/ProgressPoller.tsx` | ✅ | 自动同步 | 已合入 |
+| ResultDashboard | `aiPlat-management/frontend/src/components/AppStages/ResultDashboard.tsx` | ✅ | 自动同步 | 已合入 |
+| KnowledgeFactoryPage | `aiPlat-management/frontend/src/pages/KnowledgeFactory/KnowledgeFactoryPage.tsx` | ✅ | 自动同步 | 已合入 |
 |------|------|:---:|------|------|
 | PolicyGate | harness/infrastructure/gates/policy_gate.py | ✅ | 统一权限检查 + 架构边界实时拦截 | 已合入 |
 | ApprovalGate | harness/infrastructure/approval/manager.py | ✅ | approve/deny/pending，双门禁 | 已合入 |
@@ -2605,6 +2612,9 @@ core_guarantees:
 | 能力图谱健康 | api/routers/diagnostics.py:_check_capability | ✅ | 孤立Agent/未解析引用/入口重复自动检测 | 已合入 |
 | Wiki 健康检查 | api/routers/diagnostics.py:_check_wiki_health | ✅ | 死链/孤立/矛盾/过期页面检测→health_score 评分 | 已合入 |
 | 链路追踪诊断 | api/routers/diagnostics.py:_check_traces | ✅ | 链路追踪完整性: span_id/trace_id/事件持久化检查 | 已合入 |
+| Sidebar v2.1 菜单系统 | aiPlat-management/frontend/src/pageManifest.ts | ✅ | 任务流驱动侧边栏：5组90+入口，两级过滤(group级ROLE_MENUS+item级roles字段22条)，空壳子区域自动清理，高级工具按角色默认展开，路由同步检查脚本 | 2026-08-07 |
+| App Factory 页面 | aiPlat-management/frontend/src/pages/App/Factory/index.tsx | ✅ | 项目工厂全生命周期：InlineChat对话、Pipeline阶段状态监控、产出物全屏JSON/Markdown渲染、Bug统计卡片、一键修复按钮(触发test_report_orchestrator) | 2026-08-07 |
+| 一键修复(Bug Fix Orchestrator) | aiPlat-management/frontend/src/pages/App/Factory/index.tsx | ✅ | 测试报告中点击"一键修复(N Bug)"→调用test_report_orchestrator Agent→逐阶段重新生成→下游级联重建 | 2026-08-07 |
 
 ---
 
@@ -2897,7 +2907,7 @@ core_guarantees:
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 11 | 0 | 11 |
-| **总计** | **914** | **0** | **914** |
+| **总计** | **815** | **0** | **815** |
 
 ---
 

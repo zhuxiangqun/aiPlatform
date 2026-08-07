@@ -26,6 +26,8 @@ if [ "${1:-}" = "--force" ]; then FORCE=true; fi
 section_for() {
     local mod="$1"
     local dir="${2:-}"
+    # Also accept a hint to disambiguate
+    local ext="${3:-.py}"
     case "$dir" in
         *execution*|*loop*|*pipeline*|*langgraph*)    echo "## 一、Harness 执行引擎" ;;
         *memory*|*compression*|*episodic*|*semantic*)  echo "## 二、记忆子系统" ;;
@@ -48,6 +50,12 @@ section_for() {
         *platform*|*tenant*|*billing*|*governance*)     echo "## 二十一、平台治理" ;;
         *apps/ontology_editor*)                         echo "## 二十一、平台治理" ;;
         *approval*)                                     echo "## 三、知识引擎（本体）" ;;
+        # ── Frontend paths ──
+        *components/layout*)                            echo "## 二十五、管理 & 质量" ;;
+        *pages/App/Factory*)                             echo "## 二十五、管理 & 质量" ;;
+        *pages/Diagnostics*|*pages/Core*)                echo "## 二十五、管理 & 质量" ;;
+        *pages/*)                                        echo "## 二十五、管理 & 质量" ;;
+        *frontend/src*)                                  echo "## 二十五、管理 & 质量" ;;
         *)                                              echo "## 十一、扩展与学习" ;;
     esac
 }
@@ -113,7 +121,54 @@ for root in "aiPlat-core/core/harness" "aiPlat-core/core/harness/execution" \
                 NEW_MODULES="$NEW_MODULES $mod|$f"
             fi
         fi
-    done < <(git -C "$WORKSPACE" ls-files --others --exclude-standard 2>/dev/null | grep '\.py$' | sort -u)
+     done < <(git -C "$WORKSPACE" ls-files --others --exclude-standard 2>/dev/null | grep '\.py$' | sort -u)
+done
+
+# ── Step 1b: Frontend .tsx/.ts files ─────────────────────
+for root in "aiPlat-management/frontend/src" \
+    "aiPlat-management/frontend/src/components" \
+    "aiPlat-management/frontend/src/pages"; do
+    if [ ! -d "$WORKSPACE/$root" ]; then continue; fi
+    # Pass F1: committed .tsx/.ts files (git log)
+    while IFS= read -r f; do
+        basename="${f##*/}"
+        mod="${basename%.tsx}"; mod="${mod%.ts}"
+        dirname="$(dirname "$f")"
+        [[ "$basename" == *.d.ts ]] && continue
+        [[ "$f" == */tests/* ]] && continue
+        [[ "$f" == */__pycache__/* ]] && continue
+        if ! grep -qi "$mod" "$CAPS" 2>/dev/null && ! grep -qi "$(basename "$dirname")" "$CAPS" 2>/dev/null; then
+            NEW_MODULES="$NEW_MODULES $mod|$f"
+        fi
+    done < <(git -C "$WORKSPACE" log --diff-filter=AM --name-only --since="7 days ago" -- "$root/" 2>/dev/null | grep -E '\.(tsx|ts)$' | grep -v '\.d\.ts$' | sort -u)
+    # Pass F2: staged .tsx/.ts files
+    while IFS= read -r f; do
+        basename="${f##*/}"
+        mod="${basename%.tsx}"; mod="${mod%.ts}"
+        dirname="$(dirname "$f")"
+        [[ "$basename" == *.d.ts ]] && continue
+        [[ "$f" == */tests/* ]] && continue
+        [[ "$f" == */__pycache__/* ]] && continue
+        if ! grep -qi "$mod" "$CAPS" 2>/dev/null && ! grep -qi "$(basename "$dirname")" "$CAPS" 2>/dev/null; then
+            if ! echo "$NEW_MODULES" | grep -q "$mod|"; then
+                NEW_MODULES="$NEW_MODULES $mod|$f"
+            fi
+        fi
+    done < <(git -C "$WORKSPACE" diff --cached --name-only 2>/dev/null | grep -E '\.(tsx|ts)$' | grep -v '\.d\.ts$' | sort -u)
+    # Pass F3: untracked .tsx/.ts files
+    while IFS= read -r f; do
+        basename="${f##*/}"
+        mod="${basename%.tsx}"; mod="${mod%.ts}"
+        dirname="$(dirname "$f")"
+        [[ "$basename" == *.d.ts ]] && continue
+        [[ "$f" == */tests/* ]] && continue
+        [[ "$f" == */__pycache__/* ]] && continue
+        if ! grep -qi "$mod" "$CAPS" 2>/dev/null && ! grep -qi "$(basename "$dirname")" "$CAPS" 2>/dev/null; then
+            if ! echo "$NEW_MODULES" | grep -q "$mod|"; then
+                NEW_MODULES="$NEW_MODULES $mod|$f"
+            fi
+        fi
+    done < <(git -C "$WORKSPACE" ls-files --others --exclude-standard 2>/dev/null | grep -E '\.(tsx|ts)$' | grep -v '\.d\.ts$' | sort -u)
 done
 
 if [ -z "$NEW_MODULES" ]; then

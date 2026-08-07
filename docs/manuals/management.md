@@ -1,7 +1,7 @@
 # aiPlat 管理画面 操作手册
 
-> 版本 2.0 | 最后更新 2026-07-20 | 适用于 aiPlat v21.5+
-> **v2.0 更新**: 菜单按任务流重新分组（8组→5组），子区域标题分段，新增控制画像面板
+> 版本 2.1 | 最后更新 2026-08-07 | 适用于 aiPlat v22.0+
+> **v2.1 更新**: 侧边栏 v2.1 重构 — 任务流驱动排列，5 组 90+ 入口，引擎/工作区双入口对称，条目级 role 权限 (22 条覆盖)，高级工具按角色默认展开，空壳子区域自动清理。新增 App Factory 一键修复、Bug 修复编排器 Agent。
 
 本文档详细说明 aiPlat 管理画面（Management Dashboard）的所有功能模块、操作方法和典型工作流。
 
@@ -86,11 +86,11 @@ aiPlat 管理画面是一个四层架构的 AI 中台管理界面，覆盖基础
 
 | 分组 | 标签 | 主要角色 | 菜单数 | 说明 |
 |------|------|---------|:---:|------|
-| dashboard | **📊 仪表盘** | 全部 | 5 | 系统概览、告警中心、系统图谱、治理仪表盘、价值看板 |
-| knowledge | **🧠 知识工厂** | admin, developer | 11 | 数据接入 → 知识建模 → 知识索引 → 质量验证 四阶段 |
-| build | **🤖 AI 应用工厂** | admin, developer | 17 | 应用生命周期 + 能力组装 + 运行时配置 |
-| diagnostics | **🩺 诊断与治理** | admin, developer | 14 | 系统诊断 + 安全合规 + 审批管理 |
-| platform | **⚙️ 平台设置** | admin | 15 | 日常运维 + 平台配置 + 系统运维 |
+| dashboard | **📊 仪表盘** | 全部 | 6 | 系统概览、告警中心、系统图谱、治理仪表盘、价值看板、用户工作台(🔒admin/dev/fde) |
+| knowledge | **🧠 知识工厂** | admin, developer, fde | 9 | 知识生产→数据源→本体模型→知识库→质量验证 五阶段 |
+| build | **🤖 AI 应用工厂** | admin, developer, fde | 28 | 应用生命周期(10项) + 能力组装(引擎6项+工作区6项) + 配置(3项) |
+| diagnostics | **🩺 诊断与治理** | admin, developer, operator, fde, approver | 41 | 概览与监控(4+1🔒) + 排查与追踪(5+1🔒) + 合规与审批(8+2🔒) + 项目评估(3+1🔒) + 高级工具(14,🔒) |
+| platform | **⚙️ 平台设置** | admin, operator | 18 | 监控与运维(10,含4🔒) + 接入配置(5) + 系统维护(3) |
 
 ### 3.2 各分组详细菜单
 
@@ -135,23 +135,23 @@ aiPlat 管理画面是一个四层架构的 AI 中台管理界面，覆盖基础
 **📦 应用生命周期**：
 | 图标 | 名称 | 路由 | 说明 |
 |------|------|------|------|
-| Sparkles | 新建应用 | `/studio` | 对话式应用构建器 |
-| Wrench | FDE 工作台 | `/diagnostics/fde` | 8 步诊断交付工作台 |
-| FolderOpen | 我的项目 | `/app/builder` | 项目构建与管理 |
+| FolderOpen | 应用工厂 | `/app/factory` | 统一项目管理：对话交互、Pipeline 监控、一键修复 |
+| Palette | 工作室 | `/studio` | 对话式 Agent 应用构建器 |
 | Rocket | 已部署应用 | `/app/apps` | 部署的应用列表 |
+| BookOpen | 学习产出 | `/core/learning/artifacts` | 查看技能学习与知识晶体化结果 |
+| Wrench | 修复中心 | `/diagnostics/repairs` | 自动修复 Pipeline 中发现的问题 |
+| Rocket | 发布管理 | `/core/learning/releases` | 版本发布与灰度管理 |
+| Share2 | 技能发布 | `/core/skills-rollouts` | 技能灰度发布与回滚 |
+| Package | 技能包 | `/core/skill-packs` | 技能打包与分发 |
+| Wrench | FDE 工作台 | `/diagnostics/fde` | 8 步诊断交付工作台 |
 
-**🧩 能力组装**：
-| 图标 | 名称 | 路由 | 说明 |
-|------|------|------|------|
-| Bot | Agent 管理 | `/core/agents` | Agent 创建与管理 |
-| Sparkles | Skill 管理 | `/core/skills` | Skill 注册与管理 |
-| GitBranch | Workflow 管理 | `/core/workflows` | 可视化工作流编排 |
-| Wrench | Tool 管理 | `/core/tools` | Tool 注册与配置 |
-| Plug | MCP 连接 | `/core/mcp` | MCP 服务器管理 |
-| Brain | Memory 管理 | `/core/memory` | 记忆系统管理 |
-| ShoppingBag | 能力市场 | `/workspace/marketplace` | 浏览/安装/导入能力 |
+**🧩 能力组装**（引擎内置 + 工作区双入口）：
+| 来源 | Agent | Skill | Tool | MCP | Workflow | Memory | Teams | 能力市场 |
+|------|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
+| 引擎(`/core/*`) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | — | — |
+| 工作区(`/workspace/*`) | ✅ | ✅ | ✅ | ✅ | — | — | ✅ | ✅ |
 
-**⚙️ 运行时配置**：
+**⚙️ 配置**：
 | 图标 | 名称 | 路由 | 说明 |
 |------|------|------|------|
 | FileText | 提示词配置 | `/core/prompts` | 提示词模板管理 |
@@ -705,18 +705,29 @@ aiPlat 管理画面是一个四层架构的 AI 中台管理界面，覆盖基础
 - 查看会话详情（消息历史、使用的 Agent、工具调用记录）
 - 强制结束异常会话
 
-### 9.3 项目构建（`/app/builder`）
+### 9.3 项目构建（`/app/builder`）与 App 工厂（`/app/factory`）
 
-**可见角色**：admin, user
+**可见角色**：admin, developer, fde
 
-**功能**：Pipeline 项目从创建到部署的完整生命周期。
+**功能**：Pipeline 项目从创建到部署的完整生命周期。`/app/factory` 为 v2.1 新版统一入口，`/app/builder` 为兼容旧版保留。
+
+**App Factory 核心功能**：
+- **对话创建项目**：InlineChat 组件与 Agent 实时对话，输入需求自动创建项目
+- **Pipeline 阶段监控**：各阶段状态卡片（loading/success/error）、产出物实时预览
+- **全屏查看产出物**：点击"🔍 全屏"展开 JSON/Markdown 渲染（PRD、架构、代码、测试报告等）
+- **一键修复 Bug**：当测试报告检测到 Bug 时，显示蓝色按钮"🔧 一键修复 (N Bug)"
+  - 点击 → 触发 `test_report_orchestrator` Agent
+  - Agent 自动：读取测试报告 → Bug 按流水线阶段分组 → 逐阶段调 regenerate 触发修复
+  - 各阶段负责 Agent（Agent 工程师、前端工程师等）重新生成产出物
+  - 下游 QA + Test Executor 级联自动重建
 
 **操作流程**：
-1. **创建项目**：填写项目名称、描述
-2. **团队配置**：选择参与项目的 Agent（PM/Architect/Programmer/QA）
-3. **定义 Pipeline 阶段**：设置各阶段的执行顺序、HITL 审批点
-4. **启动 Pipeline**：触发执行 → 监控每个阶段的状态
-5. **查看产出物**：checkpoint 快照、代码产物、测试报告
+1. **创建项目**：填写项目名称、描述，AI 自动推荐团队
+2. **对话交互**：与 PM Agent 多轮对话确认需求，生成结构化 PRD
+3. **确认需求**：审查 PRD → 确认 → AI 推荐开发团队
+4. **启动构建**：点击"启动构建" → Pipeline 自动执行各阶段
+5. **查看产出物**：展开各 stage 卡片，查看 PRD/架构/代码/测试报告
+6. **修复 Bug**：测试报告出现 Bug 时，点击"一键修复" → 等待重建
 
 ### 9.4 图表工作室（`/app/diagrams`）
 
@@ -1069,7 +1080,7 @@ Spec 是 FDE 操作系统的核心产物——从碎石路（临时决策）升�
 ### 13.3 运行一次完整 Pipeline
 
 ```
-1. 侧边栏 → App → 项目构建 (/app/builder)
+1. 侧边栏 → AI 应用工厂 → 应用工厂 (/app/factory)
 2. 点击「新建项目」
 3. 配置团队（选择 PM + Architect + Programmer + QA Agent）
 4. 配置 Pipeline 阶段：
