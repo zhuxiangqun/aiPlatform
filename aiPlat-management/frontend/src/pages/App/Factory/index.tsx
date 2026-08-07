@@ -163,6 +163,54 @@ const SCHEMAS: Record<string, DocSchema> = {
       { key: "auth_required_stages", title: "需认证的阶段" },
     ],
   },
+  test_report: {
+    title: "测试报告",
+    title_field: "header.project",
+    overview_field: "recommendation",
+    scope_badge: "meta.pass_rate",
+    tables: [
+      { key: "test_results", title: "测试结果", columns: [
+        { key: "id", label: "ID", width: "80px" },
+        { key: "ac_ref", label: "FR", width: "70px" },
+        { key: "category", label: "类型", type: "category" },
+        { key: "question", label: "测试问题" },
+        { key: "min_expectation", label: "预期", width: "180px" },
+        { key: "result", label: "结果", type: "test_result_badge" },
+        { key: "is_bug", label: "Bug?", type: "bug_badge" },
+        { key: "score", label: "评分", width: "50px" },
+        { key: "reason", label: "理由", width: "220px" },
+      ]},
+      { key: "bug_summary.bugs", title: "Bug 清单", columns: [
+        { key: "id", label: "ID", width: "90px" },
+        { key: "severity", label: "严重度", type: "badge" },
+        { key: "title", label: "标题" },
+        { key: "FR", label: "关联FR", width: "70px" },
+        { key: "suggested_fix", label: "修复建议", width: "250px" },
+      ]},
+      { key: "quality_analysis.functional_coverage.by_fr", title: "功能覆盖率", columns: [
+        { key: "fr", label: "FR", width: "80px" },
+        { key: "ac_total", label: "AC总数", width: "60px" },
+        { key: "ac_covered", label: "已覆盖", width: "60px" },
+        { key: "coverage_pct", label: "覆盖率", width: "70px" },
+      ]},
+    ],
+    sections: [
+      { key: "quality_analysis.functional_coverage.overview", title: "覆盖总览", type: "text" },
+      { key: "quality_analysis.case_quality.assessment", title: "用例质量评估", type: "text" },
+    ],
+    lists: [
+      { key: "quality_analysis.risk_assessment.high_risk", title: "🔴 高风险" },
+      { key: "quality_analysis.risk_assessment.medium_risk", title: "🟡 中风险" },
+      { key: "quality_analysis.risk_assessment.low_risk", title: "🟢 低风险" },
+      { key: "improvements", title: "改进建议" },
+    ],
+    stat_blocks: [
+      { key: "meta.passed", label: "通过" },
+      { key: "meta.failed", label: "失败" },
+      { key: "meta.warnings", label: "警告" },
+      { key: "bug_summary.total_bugs", label: "Bug" },
+    ],
+  },
 };
 
 const formatBadge = (v: string, type: string) => {
@@ -176,6 +224,14 @@ const formatBadge = (v: string, type: string) => {
     const labels: Record<string,string> = { happy_path:'正常流程', exception:'异常流程', boundary:'边界测试' };
     return <span className={`px-1.5 py-0.5 rounded text-[10px] ${colors[v]||'bg-dark-hover text-gray-400'}`}>{labels[v]||v}</span>;
   }
+  if (type === 'bug_badge') {
+    return v ? <span className="px-1.5 py-0.5 rounded text-[10px] bg-red-500/20 text-red-300">🐛 Bug</span>
+             : <span className="px-1.5 py-0.5 rounded text-[10px] text-gray-500">—</span>;
+  }
+  if (type === 'test_result_badge') {
+    const colors: Record<string,string> = { PASS:'bg-green-500/20 text-green-300', FAIL:'bg-red-500/20 text-red-300', WARNING:'bg-amber-500/20 text-amber-300' };
+    return <span className={`px-1.5 py-0.5 rounded text-[10px] ${colors[v]||'bg-dark-hover text-gray-400'}`}>{v}</span>;
+  }
   if (type === 'method_badge') {
     const colors: Record<string,string>={GET:'bg-blue-500/20 text-blue-300',POST:'bg-green-500/20 text-green-300',PUT:'bg-amber-500/20 text-amber-300',DELETE:'bg-red-500/20 text-red-300'};
     return <span className={`px-1 rounded text-[10px] font-mono ${colors[v]||'bg-dark-hover text-gray-400'}`}>{v}</span>;
@@ -187,30 +243,48 @@ const formatBadge = (v: string, type: string) => {
 
 // ── Generic DataDocument — schema-driven renderer ──
 const DataDocument: React.FC<{ data: Record<string, unknown>; schema: DocSchema }> = ({ data, schema }) => {
-  const title = (schema.title_field ? data[schema.title_field] : schema.title) as string || '';
-  const overview = schema.overview_field ? (data[schema.overview_field] as string) : '';
-  const scope = schema.scope_badge ? (data[schema.scope_badge] as string) : '';
+  const _get = (obj: any, path: string): any => {
+    if (!path.includes('.')) return obj?.[path];
+    return path.split('.').reduce((o, k) => (o != null ? o[k] : undefined), obj);
+  };
+  const title = (schema.title_field ? _get(data, schema.title_field) : schema.title) as string || '';
+  const overview = schema.overview_field ? (_get(data, schema.overview_field) as string) : '';
+  const scope = schema.scope_badge ? (_get(data, schema.scope_badge) as any) : '';
   return (
     <div className="space-y-5 text-sm text-gray-200">
-      {title && <div><h1 className="text-xl font-bold text-gray-100 mb-1">{title}</h1>{scope && <span className="text-xs px-2 py-0.5 rounded bg-blue-500/20 text-blue-300">{scope}</span>}</div>}
+      {title && <div><h1 className="text-xl font-bold text-gray-100 mb-1">{title}</h1>{scope != null && scope !== '' && <span className="text-xs px-2 py-0.5 rounded bg-blue-500/20 text-blue-300">{scope}{scope.toString().includes('%') ? '' : ''}</span>}</div>}
       {overview && <p className="text-gray-400 leading-relaxed">{overview}</p>}
       {(schema.tables || []).map((t: TableDef) => {
-        const rows = (data[t.key] || []) as any[];
+        const rows = (_get(data, t.key) || []) as any[];
         if (!rows.length) return null;
         return <div key={t.key}><h2 className="text-base font-semibold text-gray-100 mb-2 border-b border-dark-border pb-1">{t.title} ({rows.length})</h2>
           <table className="w-full text-xs border-collapse"><thead><tr className="bg-dark-hover">{t.columns.map((c: ColDef) => (<th key={c.key} className="p-2 text-left border border-dark-border" style={{width:c.width}}>{c.label}</th>))}</tr></thead>
           <tbody>{rows.map((r: any, i: number) => (<tr key={i} className="border border-dark-border">{t.columns.map((c: ColDef) => (<td key={c.key} className="p-2 border border-dark-border">{c.type ? formatBadge(r[c.key], c.type) : <>{r[c.key]?.toString()||''}</>}</td>))}</tr>))}</tbody></table></div>;
       })}
       {(schema.lists || []).map((l: ListDef) => {
-        const items = (data[l.key] || []) as string[];
+        const items = (_get(data, l.key) || []) as any[];
         if (!items.length) return null;
-        return <div key={l.key}><h2 className="text-base font-semibold text-gray-100 mb-2 border-b border-dark-border pb-1">{l.title}</h2><ul className="list-disc pl-5 space-y-0.5 text-gray-400 text-xs">{items.map((c:string,i:number)=><li key={i}>{c}</li>)}</ul></div>;
+        const priorities: Record<string,string> = { MUST_FIX:'text-red-400', SHOULD_FIX:'text-amber-400', NICE_TO_HAVE:'text-blue-400' };
+        return <div key={l.key}><h2 className="text-base font-semibold text-gray-100 mb-2 border-b border-dark-border pb-1">{l.title}</h2><ul className="list-disc pl-5 space-y-0.5 text-gray-400 text-xs">{items.map((c:any,i:number)=><li key={i}>{typeof c==='string' ? c : c.item ? <><span className={priorities[c.priority]||''}>[{c.priority}]</span> {c.item} {c.ref ? <span className="text-gray-600">({c.ref})</span> : ''}</> : String(c)}</li>)}</ul></div>;
       })}
       {(schema.sections || []).map((s: SectionDef) => {
-        const v = data[s.key];
+        const v = _get(data, s.key);
         if (!v) return null;
         return <div key={s.key}><h2 className="text-base font-semibold text-gray-100 mb-2 border-b border-dark-border pb-1">{s.title}</h2>{s.type === 'code' ? <pre className="text-xs text-gray-300 font-mono whitespace-pre-wrap">{v as string}</pre> : <div className="text-gray-400 text-xs">{v as string}</div>}</div>;
       })}
+      {(schema.stat_blocks || []).length > 0 && (
+        <div className="flex gap-3 flex-wrap">
+          {schema.stat_blocks.map((sb: any) => {
+            const val = _get(data, sb.key);
+            return val != null ? (
+              <div key={sb.key} className="px-3 py-1.5 rounded bg-dark-hover text-xs">
+                <span className="text-gray-500">{sb.label}: </span>
+                <span className="text-gray-200 font-medium">{String(val)}</span>
+              </div>
+            ) : null;
+          })}
+        </div>
+      )}
     </div>
   );
 };
@@ -251,6 +325,7 @@ const FullscreenView: React.FC<{
     if (parsed.user_stories) schema = SCHEMAS.prd;
     else if (parsed.components) schema = SCHEMAS.architecture;
     else if (parsed.test_questions) schema = SCHEMAS.qa;
+    else if (parsed.test_results || (parsed.header?.report_id)) schema = SCHEMAS.test_report;
     else if (parsed.test_cases) schema = SCHEMAS.test;
     else if (parsed.stages || parsed.app_name) schema = SCHEMAS.frontend;  // app_page.json format
   }
