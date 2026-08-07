@@ -1153,8 +1153,11 @@ class BuilderProjectService:
         state = self._runs.get(project_id)
         if not state:
             state = self._load_pipeline_state(project_id)
-            if not state:
-                raise ValueError("no pipeline state")
+        # Fallback: state may be in Core memory only (disk file deleted by rebuild)
+        if not state:
+            state = await self._get_state_via_core(project_id)
+        if not state:
+            raise ValueError("no pipeline state")
 
         # Approve directly on state — no session needed
         _hitl_id = state.get("_hitl_stage_id", "")
@@ -1207,8 +1210,10 @@ class BuilderProjectService:
         state = self._runs.get(project_id)
         if not state:
             state = self._load_pipeline_state(project_id)
-            if not state:
-                raise ValueError("no pipeline state")
+        if not state:
+            state = await self._get_state_via_core(project_id)
+        if not state:
+            raise ValueError("no pipeline state")
         state = dict(state)
         state["phase"] = "executing"
         state = await session.approve(state)
@@ -1219,8 +1224,10 @@ class BuilderProjectService:
         state = self._runs.get(project_id)
         if not state:
             state = self._load_pipeline_state(project_id)
-            if not state:
-                raise ValueError("no pipeline state")
+        if not state:
+            state = await self._get_state_via_core(project_id)
+        if not state:
+            raise ValueError("no pipeline state")
 
         _hitl_id = state.get("_hitl_stage_id", "")
         state["_reject_feedback"] = feedback
@@ -1268,8 +1275,10 @@ class BuilderProjectService:
         state = self._runs.get(project_id)
         if not state:
             state = self._load_pipeline_state(project_id)
-            if not state:
-                raise ValueError("no pipeline state")
+        if not state:
+            state = await self._get_state_via_core(project_id)
+        if not state:
+            raise ValueError("no pipeline state")
 
         # 1. Inject feedback
         state = await session.reject(dict(state), feedback)
