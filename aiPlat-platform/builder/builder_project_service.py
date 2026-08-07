@@ -565,6 +565,16 @@ class BuilderProjectService:
             session = {"phase": BuilderSessionPhase.dialogue.value, "messages": []}
             self._sessions[project_id] = session
 
+        # ── Guard: prevent accidental PRD overwrite after project is done ──
+        proj = self._projects.get(project_id, {})
+        if proj.get("confirmed_prd"):
+            runs = proj.get("runs") or []
+            if runs and runs[-1].get("phase") == "done":
+                return {
+                    "reply": "项目已构建完成。如需修改需求，请点击「重新编辑需求」按钮。",
+                    "prd_ready": True, "trace_id": "", "session_state": {},
+                }
+
         # Always allow chat — reset to dialogue phase if needed
         if session.get("phase") != BuilderSessionPhase.dialogue.value:
             session["phase"] = BuilderSessionPhase.dialogue.value
@@ -952,6 +962,12 @@ class BuilderProjectService:
                             skill_model_purpose=ps.get("skill_model_purpose", ""),
                         ))
                     if team_stages:
+                        # ── HITL gates: architecture, agent engineering, qa ──
+                        _hitl_agents = {"architect_agent", "agent_engineer", "qa_agent"}
+                        for ts in team_stages:
+                            if ts.agent_id in _hitl_agents:
+                                ts.hitl = True
+                                ts.hitl_phase = "review"
                         team_req = TeamAssembleRequest(
                             name=recommendation.get("team_name", f"团队-{project_id}"),
                             description=recommendation.get("reasoning", ""),
@@ -1446,6 +1462,39 @@ class BuilderProjectService:
         """Get deploy directory path for a project."""
         proj = self._projects.get(project_id, {})
         return proj.get("deploy_dir") or None
+
+    async def update_stage_artifact(self, project_id: str, stage_id: str, content: str) -> Dict[str, Any]:
+        """Update a stage's raw_output artifact — allows user to manually edit before rebuild."""
+        state = self._load_pipeline_state(project_id)
+        if not state:
+            raise ValueError("no pipeline state")
+        session = self._rebuild_session(project_id)
+        if not session:
+            raise ValueError("no session")
+        # Match stage by id, agent_id, or output_artifact
+        matched_stage = None
+        matched_key = stage_id
+        for s in session.get_stages():
+            if s.id == stage_id or s.agent_id == stage_id or s.output_artifact == stage_id:
+                matched_stage = s
+                matched_key = s.output_artifact or s.agent_id or s.id
+                break
+        if not matched_stage:
+            raise ValueError(f"stage not found: {stage_id}")
+        # Update artifact in pipeline state
+        state[matched_key] = {
+            "raw_output": content,
+            "source": "user_edited",
+            "elapsed_sec": 0,
+            "_edited_at": time.strftime("%Y-%m-%dT%H:%M:%S"),
+        }
+        await self._save_state(project_id, state)
+        return {
+            "project_id": project_id,
+            "stage_id": matched_stage.id,
+            "artifact_key": matched_key,
+            "status": "updated",
+        }
 
     async def get_project_state(self, project_id: str) -> Dict[str, Any]:
         # Delegate state read to Core server — single source of truth.

@@ -385,6 +385,9 @@ const ProjectPanel: React.FC<{
   const [savingPrd, setSavingPrd] = useState(false);
   const [fullscreenTitle, setFullscreenTitle] = useState('');
   const [fullscreenContent, setFullscreenContent] = useState('');
+  const [editingStage, setEditingStage] = useState<string | null>(null);
+  const [editContent, setEditContent] = useState('');
+  const [savingEdit, setSavingEdit] = useState(false);
 
   // Check for PRD on mount (may have been generated in a previous session)
   useEffect(() => {
@@ -590,6 +593,35 @@ const ProjectPanel: React.FC<{
     finally { setDeploying(false); }
   };
 
+  const handleRollbackPrd = async () => {
+    if (!project.project_id) return;
+    if (!confirm('将回到需求编辑模式，当前 PRD 仍保留。确定？')) return;
+    try {
+      await projectApi.rollbackPrd(project.project_id);
+      setPrdReady(false);
+      setPhase('dialogue');
+      setStageOutputs(null);
+      toast.success('已进入需求编辑模式，可在下方对话中修改需求');
+    } catch (e: any) { toastGateError(e, '操作失败'); }
+  };
+
+  const handleEditStage = (stageKey: string, currentRaw: any) => {
+    const content = typeof currentRaw === 'string' ? currentRaw : JSON.stringify(currentRaw, null, 2);
+    setEditingStage(stageKey);
+    setEditContent(content);
+  };
+
+  const handleSaveStageEdit = async () => {
+    if (!editingStage || !project.project_id) return;
+    setSavingEdit(true);
+    try {
+      await projectApi.updateStageArtifact(project.project_id, editingStage, editContent);
+      toast.success('已保存，可点击「从此阶段重建」');
+      setEditingStage(null);
+    } catch (e: any) { toastGateError(e, '保存失败'); }
+    finally { setSavingEdit(false); }
+  };
+
   const handleEditPrd = () => {
     setPrdEditText(JSON.stringify(confirmedPrd, null, 2));
     setShowPrdDetail(true);
@@ -663,6 +695,11 @@ const ProjectPanel: React.FC<{
                 <a href={deployUrl} target="_blank" rel="noreferrer" className="ml-3 text-primary underline text-xs flex items-center gap-1 inline-flex">
                   <ExternalLink className="w-3 h-3" /> 打开应用
                 </a>
+              )}
+              {!agentMode && (
+                <Button variant="ghost" size="sm" className="ml-2" onClick={handleRollbackPrd}>
+                  重新编辑需求
+                </Button>
               )}
             </div>
             {/* Health Report Card — auto-loads when pipeline done */}
@@ -897,6 +934,30 @@ const ProjectPanel: React.FC<{
         {/* Stage Outputs — show architecture/code/test_report when available */}
         {stageOutputs && Object.keys(stageOutputs).length > 0 && (
           <div className="space-y-2">
+            {/* ── Stage Artifact Editor ── */}
+            {editingStage && (
+              <div className="p-3 rounded border border-amber-500/30 bg-amber-500/5 space-y-2">
+                <div className="text-xs text-amber-300 flex items-center gap-2">
+                  ✏️ 编辑中：{editingStage}
+                </div>
+                <textarea value={editContent} onChange={e => setEditContent(e.target.value)}
+                  className="w-full h-40 text-xs bg-dark-bg border border-dark-border rounded p-2 text-gray-200 font-mono" />
+                <div className="flex gap-2">
+                  <Button size="sm" onClick={handleSaveStageEdit} loading={savingEdit}>保存</Button>
+                  <Button size="sm" variant="ghost" onClick={() => setEditingStage(null)}>取消</Button>
+                  <Button size="sm" variant="secondary" onClick={async () => {
+                    await handleSaveStageEdit();
+                    if (!project.project_id) return;
+                    try {
+                      await projectApi.regenerateStage(project.project_id, editingStage, '用户手动编辑后重建');
+                      toast.success('已从此阶段重建，下游将自动重跑');
+                      setPhase('executing');
+                      onRefresh();
+                    } catch (e: any) { toastGateError(e, '重建失败'); }
+                  }}>保存并从此阶段重建</Button>
+                </div>
+              </div>
+            )}
             <h3 className="text-xs font-semibold text-gray-400 uppercase">阶段产出</h3>
             {Object.entries(stageOutputs).map(([key, val]) => {
               const rw = (val as any)?.raw_output || '';
@@ -1001,6 +1062,12 @@ const ProjectPanel: React.FC<{
                         <button onClick={e => { e.preventDefault(); setFullscreenTitle(label); setFullscreenContent(typeof rw === 'string' ? rw : JSON.stringify(rw, null, 2)); }}
                           className="text-[10px] px-1.5 py-0.5 rounded bg-dark-hover text-gray-500 hover:text-gray-300 hover:bg-primary/20 transition-colors">
                           🔍 全屏
+                        </button>
+                      )}
+                      {phase === 'done' && rw && (
+                        <button onClick={e => { e.preventDefault(); handleEditStage(key, rw); }}
+                          className="text-[10px] px-1.5 py-0.5 rounded bg-dark-hover text-gray-500 hover:text-yellow-400 transition-colors">
+                          ✏️ 编辑
                         </button>
                       )}
                     </div>

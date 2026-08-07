@@ -251,6 +251,21 @@ export const projectApi = {
     );
   },
 
+  /** Rollback to PRD editing phase — clears pipeline state, allows re-editing. */
+  rollbackPrd: async (projectId: string) => {
+    return apiClient.post<{ project_id: string; phase: string }>(
+      `/platform/builder/projects/${projectId}/rollback-prd`
+    );
+  },
+
+  /** Manually edit a stage's output artifact. */
+  updateStageArtifact: async (projectId: string, stageId: string, content: string) => {
+    return apiClient.put<{ project_id: string; stage_id: string; artifact_key: string; status: string }>(
+      `/platform/builder/projects/${projectId}/stages/${stageId}/artifact`,
+      { content }
+    );
+  },
+
   /** Get pipeline health report with per-stage dimensional scores. */
   getHealthReport: async (projectId: string) => {
     return apiClient.get<{

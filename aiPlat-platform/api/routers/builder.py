@@ -295,6 +295,16 @@ async def regenerate_project_stage(project_id: str, req: Dict[str, Any], _auth: 
     return await _get_svc().regenerate_stage(project_id, stage_id, feedback)
 
 
+@router.put("/projects/{project_id}/stages/{stage_id}/artifact", response_model=StatusResponse)
+async def update_stage_artifact(project_id: str, stage_id: str, req: Dict[str, Any],
+                                 _auth: str = Depends(require_builder_access)):
+    """Manually edit a stage's output artifact — user edits content, then can rebuild from this stage."""
+    content = str(req.get("content") or req.get("raw_output") or "")
+    if not content:
+        raise HTTPException(400, detail="content is required")
+    return await _get_svc().update_stage_artifact(project_id, stage_id, content)
+
+
 @router.post("/projects/{project_id}/deploy-to-app", response_model=StatusResponse)
 async def deploy_project_to_app(project_id: str, _auth: str = Depends(require_builder_access)):
     """Deploy pipeline output to aiPlat-app (port 8004)."""
