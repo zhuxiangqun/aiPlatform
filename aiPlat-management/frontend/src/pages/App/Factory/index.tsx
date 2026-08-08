@@ -435,7 +435,7 @@ const ProjectPanel: React.FC<{
 
   // ── Poll pipeline state during execution ──
   useEffect(() => {
-    if (phase !== 'executing' && phase !== 'paused' && phase !== 'approving_pipeline' && !phase?.includes('approval')) {
+    if (phase !== 'executing' && phase !== 'paused' && !phase?.includes('approval')) {
       if (pollInterval) { clearInterval(pollInterval); setPollInterval(null); }
       return;
     }
@@ -445,32 +445,18 @@ const ProjectPanel: React.FC<{
         const st = await projectApi.getState(project.project_id);
         const s = (st as any)?.state || {};
         const p = s.phase as string || phase;
-        // During transition, check if pipeline advanced by looking for new artifacts
-        if (phase !== 'approving_pipeline' || p !== 'paused') {
-          setPhase(p);
-        } else {
-          // Core says paused — is it the old pause or a new one?
-          // Check if any stage beyond the one that was paused has produced output
-          const coreIdx = s._current_stage_idx as number | undefined;
-          let advanced = false;
-          if (coreIdx != null) {
-            for (let i = coreIdx; i < teamStages.length; i++) {
-              const artifactKey = (teamStages[i] as any).output_artifact;
-              if (artifactKey && s[artifactKey] && typeof s[artifactKey] === 'object' && s[artifactKey].raw_output) {
-                advanced = true;
-                break;
-              }
-            }
-          }
-          if (advanced) setPhase(p);
-        }
+        setPhase(p);
         setProgressState(s._progress || null);
-        // Track HITL stage for inline approval buttons
-        if (p === 'paused' && s._current_stage_idx != null) {
-          const idx = s._current_stage_idx as number; // HITL pauses AFTER stage runs → review this stage's output
-          const stage = teamStages[idx];
-          if (stage) {
-            setHitlStageId((stage as any).id || (stage as any).agent_id || `stage_${idx}`);
+        // v3.1: Track HITL stage from Core's _hitl_stage_id — precise, no idx guessing
+        if (p === 'paused') {
+          const hitlId = s._hitl_stage_id as string;
+          if (hitlId) {
+            setHitlStageId(hitlId);
+          } else if (s._current_stage_idx != null) {
+            // Fallback: Core hasn't written _hitl_stage_id yet (old pipeline)
+            const idx = s._current_stage_idx as number;
+            const stage = teamStages[idx];
+            if (stage) setHitlStageId((stage as any).id || (stage as any).agent_id || '');
           }
         } else if (p !== 'paused') {
           setHitlStageId(null);
@@ -671,14 +657,12 @@ const ProjectPanel: React.FC<{
 
   const handleApprove = async () => {
     if (!project.project_id) return;
-    setPhase('approving_pipeline');
     setHitlStageId(null);
     setStarting(true);
     try {
       await projectApi.approve(project.project_id);
       toast.success('已审批，正在继续执行');
     } catch (e: any) {
-      setPhase('paused');
       toastGateError(e, '审批失败');
     }
     finally { setStarting(false); }
@@ -688,7 +672,6 @@ const ProjectPanel: React.FC<{
     if (!project.project_id) return;
     const feedback = window.prompt('驳回理由（可选）：');
     if (feedback === null) return; // cancelled
-    setPhase('approving_pipeline');
     setHitlStageId(null);
     setRejecting(true);
     setStageOutputs(null);
@@ -696,7 +679,6 @@ const ProjectPanel: React.FC<{
       await projectApi.reject(project.project_id, feedback);
       toast.success('已驳回，将重新生成');
     } catch (e: any) {
-      setPhase('paused');
       toastGateError(e, '驳回失败');
     }
     finally { setRejecting(false); }
@@ -775,13 +757,10 @@ const ProjectPanel: React.FC<{
               </button>
             )}
           </div>
-        ) : phase === 'executing' || phase === 'approving_pipeline' ? (
+        ) : phase === 'executing' ? (
           <div className="p-3 rounded bg-blue-500/10 border border-blue-500/30 text-sm space-y-3">
             <div className="flex items-center gap-2 text-blue-300">
               <Loader2 className="w-4 h-4 animate-spin" /> Pipeline 执行中...
-              {phase === 'approving_pipeline' && (
-                <span className="text-[10px] text-blue-400">（审批已提交）</span>
-              )}
             </div>
             {/* Pipeline progress with stages */}
             {teamStages.length > 0 && (() => {
@@ -1120,7 +1099,7 @@ const ProjectPanel: React.FC<{
                           ✏️ 编辑
                         </button>
                       )}
-                      {isHITL && (phase === 'paused' || phase?.includes('approval')) && phase !== 'approving_pipeline' && (
+                      {isHITL && (phase === 'paused' || phase?.includes('approval')) && (
                         <>
                           <button onClick={e => { e.preventDefault(); handleApprove(); }}
                             className="text-[10px] px-1.5 py-0.5 rounded bg-green-500/20 text-green-300 hover:bg-green-500/30 hover:text-green-200 transition-colors">

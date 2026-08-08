@@ -51,6 +51,18 @@ def _make_store_callback(run_id: str, store):
                 pass_rate=state.get("pass_rate", 0.0),
             )
 
+            # ── v3.1: write HITL pause location for frontend visibility ──
+            _hitl_id = state.get("_hitl_stage_id", "")
+            if _hitl_id:
+                store.update_hitl_fields(
+                    run_id,
+                    hitl_stage_id=_hitl_id,
+                    hitl_phase_name=state.get("_hitl_phase_name", "review"),
+                    hitl_output_artifact=state.get("_hitl_output_artifact", ""),
+                )
+            else:
+                store.clear_hitl_fields(run_id)
+
             # Write per-artifact progress (state keys with raw_output are artifacts)
             for key, val in state.items():
                 if isinstance(val, dict) and val.get("raw_output"):

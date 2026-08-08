@@ -186,6 +186,36 @@ class PipelineRunStore:
             (current_stage_idx, tokens_used, pass_rate, now, run_id),
         )
 
+    # ── v3.1: HITL field writers ───────────────────────────────────
+
+    def update_hitl_fields(
+        self,
+        run_id: str,
+        hitl_stage_id: str = "",
+        hitl_phase_name: str = "",
+        hitl_output_artifact: str = "",
+    ) -> None:
+        """Write precise HITL pause location for frontend visibility."""
+        now = _time.strftime("%Y-%m-%dT%H:%M:%S")
+        self._execute(
+            """UPDATE pipeline_runs
+               SET _hitl_stage_id = ?, _hitl_phase_name = ?,
+                   _hitl_output_artifact = ?, updated_at = ?
+               WHERE run_id = ?""",
+            (hitl_stage_id, hitl_phase_name, hitl_output_artifact, now, run_id),
+        )
+
+    def clear_hitl_fields(self, run_id: str) -> None:
+        """Clear HITL fields when pipeline resumes."""
+        now = _time.strftime("%Y-%m-%dT%H:%M:%S")
+        self._execute(
+            """UPDATE pipeline_runs
+               SET _hitl_stage_id = '', _hitl_phase_name = '',
+                   _hitl_output_artifact = '', updated_at = ?
+               WHERE run_id = ?""",
+            (now, run_id),
+        )
+
     # ── Stage-level operations ───────────────────────────────────
 
     def upsert_stage(
@@ -308,6 +338,10 @@ class PipelineRunStore:
             "pass_rate": run["pass_rate"],
             "error": run["error_message"],
             "session_id": run["run_id"],
+            # ── v3.1: HITL precise pause location ──
+            "_hitl_stage_id": run.get("_hitl_stage_id", "") or "",
+            "_hitl_phase_name": run.get("_hitl_phase_name", "") or "",
+            "_hitl_output_artifact": run.get("_hitl_output_artifact", "") or "",
         }
 
         # Merge stage artifacts + progress into state
