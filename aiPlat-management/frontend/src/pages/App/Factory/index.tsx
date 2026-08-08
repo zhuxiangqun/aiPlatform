@@ -478,7 +478,7 @@ const ProjectPanel: React.FC<{
           if (s[k] && typeof s[k] === 'object') outputs[k] = s[k];
         }
         if (Object.keys(outputs).length > 0) setStageOutputs(prev => ({ ...prev, ...outputs }));
-        if (p === 'done' || p === 'failed') onRefresh();
+        if (p === 'done' || p === 'failed' || (p === 'paused' && phase !== 'paused')) onRefresh();
       } catch { /* ignore */ }
     }, 3000);
     setPollInterval(id);
