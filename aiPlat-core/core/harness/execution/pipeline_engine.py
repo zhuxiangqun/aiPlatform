@@ -530,6 +530,25 @@ class PipelineState(TypedDict, total=False):
     _conversation_state: Dict[str, Any]
 
 
+# ── v3.1: global pipeline registry for HITL resolution ──
+_running_pipelines: Dict[str, "PipelineEngine"] = {}
+
+
+def get_running_pipeline(project_id: str) -> Optional["PipelineEngine"]:
+    """Look up the active engine instance for HITL resolution."""
+    return _running_pipelines.get(project_id)
+
+
+def register_pipeline(project_id: str, engine: "PipelineEngine") -> None:
+    """Register an engine as active for a project."""
+    _running_pipelines[project_id] = engine
+
+
+def unregister_pipeline(project_id: str) -> None:
+    """Remove a completed/failed engine from the registry."""
+    _running_pipelines.pop(project_id, None)
+
+
 
 class PipelineEngine:
 
@@ -553,6 +572,11 @@ class PipelineEngine:
         self._eval_runner = EvalRunner()
 
         self._model_lock = asyncio.Lock()  # guards parallel stage model swaps
+
+        # ── v3.1: HITL event-driven resume ──
+        self._resume_event = asyncio.Event()
+        self._reject_feedback: str = ""
+        self._shutdown_requested: bool = False
 
 
 
@@ -2239,6 +2263,114 @@ class PipelineEngine:
         state.pop("_last_action_reason", None)
 
         return await self._run_stages_from(idx, state)
+
+
+    # ── v3.1: Event-driven HITL methods ──────────────────────────────
+
+    async def run(self, project_id: str, initial_state: Dict[str, Any]) -> None:
+        """Event-driven pipeline main loop — the entire lifecycle runs here."""
+        register_pipeline(project_id, self)
+        self._state = initial_state
+        self._state.setdefault("phase", "executing")
+        self._state.setdefault("project_id", project_id)
+        self._state["started_at"] = __import__("datetime").datetime.now().isoformat()
+
+        try:
+            if self._persist_callback:
+                self._persist_callback(dict(self._state))
+
+            idx = int(self._state.get("_current_stage_idx", 0) or 0)
+            total = len(self._config.stages)
+
+            while idx < total and not self._shutdown_requested:
+                self._state["_current_stage_idx"] = idx
+
+                # Execute the current stage (or layer)
+                result = await self._exec_single_stage(
+                    self._config.stages[idx], idx, self._state)
+                if result:
+                    self._state = dict(result[0]) if isinstance(result, tuple) else dict(result)
+                else:
+                    idx += 1
+                    continue
+
+                # Check for HITL pause
+                if self._state.get("phase") == "paused":
+                    if self._persist_callback:
+                        self._persist_callback(dict(self._state))
+
+                    # ⏸️  Block until user approves/rejects
+                    _log_engine = __import__("logging").getLogger("pipeline_engine")
+                    _log_engine.warning("v3.1 HITL paused: stage=%s idx=%d",
+                        self._state.get("_hitl_stage_id", "?"), idx)
+                    await self._resume_event.wait()
+                    self._resume_event.clear()
+
+                    # 🚀  Wake up: check if reject or approve
+                    if self._reject_feedback:
+                        _log_engine.warning("v3.1 HITL rejected: invalidating from idx=%d", idx)
+                        self._invalidate_downstream(idx)
+                        # idx stays the same — re-run current stage
+                    else:
+                        idx += 1  # Approved — move to next stage
+                else:
+                    idx += 1
+
+            if not self._shutdown_requested:
+                self._state["phase"] = "done"
+
+        except asyncio.CancelledError:
+            self._state["phase"] = "failed"
+            self._state["error_message"] = "Pipeline task cancelled"
+            raise
+        except Exception as e:
+            self._state["phase"] = "failed"
+            self._state["error_message"] = str(e)[:500]
+        finally:
+            if self._state.get("phase") not in ("done", "failed"):
+                self._state["phase"] = "done"
+            self._state["finished_at"] = __import__("datetime").datetime.now().isoformat()
+            if self._persist_callback:
+                self._persist_callback(dict(self._state))
+            unregister_pipeline(project_id)
+
+    def approve(self, feedback: str = "") -> None:
+        """Synchronous: approve HITL and wake the engine."""
+        if self._state.get("phase") != "paused":
+            return
+        hitl_id = self._state.get("_hitl_stage_id", "")
+        self._state[f"_hitl_resolved_{hitl_id}"] = True
+        self._state["_hitl_stage_id"] = ""
+        self._state["_hitl_human_feedback"] = ""
+        self._state["phase"] = "executing"
+        self._reject_feedback = ""
+        self._resume_event.set()
+
+    def reject(self, feedback: str) -> None:
+        """Synchronous: reject HITL and wake the engine for re-run."""
+        if self._state.get("phase") != "paused":
+            return
+        self._reject_feedback = feedback
+        self._state["_reject_feedback"] = feedback
+        self._state["_hitl_stage_id"] = ""
+        self._state["phase"] = "executing"
+        self._resume_event.set()
+
+    def force_terminate(self) -> None:
+        """Emergency: terminate the pipeline immediately."""
+        self._shutdown_requested = True
+        self._state["phase"] = "failed"
+        self._state["error_message"] = "Force terminated by administrator"
+        self._resume_event.set()
+
+    def _invalidate_downstream(self, start_idx: int) -> None:
+        """Clear artifacts for current and all downstream stages."""
+        for i in range(start_idx, len(self._config.stages)):
+            key = self._config.stages[i].output_artifact
+            if key and key in self._state:
+                self._state.pop(key, None)
+        self._state.pop("_progress", None)
+        self._state.pop("_reject_feedback", None)
 
 
 

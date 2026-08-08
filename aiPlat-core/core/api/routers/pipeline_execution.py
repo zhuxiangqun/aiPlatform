@@ -186,37 +186,11 @@ async def pipeline_run(request: Request) -> Dict[str, Any]:
                 "context": {},
             }
 
-            result = await engine._run_stages_from(0, state)
-
-            # Record primary model for KPI/learning feedback loop
-            _primary_model = best_model_for_purpose("chat")
-            try:
-                from core.harness.execution.pipeline_run_store import get_pipeline_run_store as _prs
-                _prs_store = _prs()
-                # Upsert run with primary_model_used via raw SQL since store API may not have this field
-                import sqlite3 as _sql
-                _db = _prs_store._db_path
-                _conn = _sql.connect(_db, timeout=5)
-                try:
-                    _conn.execute(
-                        "UPDATE pipeline_runs SET primary_model_used = ? WHERE run_id = ?",
-                        (_primary_model, run_id))
-                    _conn.commit()
-                finally:
-                    _conn.close()
-            except Exception:
-                pass
-
-            # Save final state
-            phase = result.get("phase", "done")
-            store.update_run_phase(run_id, phase, str(result.get("error", ""))[:500])
-            store.update_run_progress(
-                run_id,
-                current_stage_idx=result.get("_current_stage_idx", 0),
-                pass_rate=result.get("pass_rate", 0.0),
-            )
-
-            _log.info("Pipeline %s completed: phase=%s", run_id, phase)
+            # ── v3.1: Event-driven engine — run() handles full lifecycle incl HITL ──
+            await engine.run(project_id, state)
+        except asyncio.CancelledError:
+            _building_flags.pop(project_id, None)
+            raise
         except Exception as e:
             _log.error("Pipeline %s failed: %s", run_id, str(e)[:500], exc_info=True)
             store.update_run_phase(run_id, "failed", str(e)[:500])
@@ -242,6 +216,32 @@ async def pipeline_state(project_id: str) -> Dict[str, Any]:
         "phase": state.get("phase", "idle"),
         "state": state,
     }
+
+
+@router.post("/{project_id}/hitl-resolve")
+async def pipeline_hitl_resolve(project_id: str, request: Request) -> Dict[str, Any]:
+    """v3.1: Resolve a HITL pause — approve or reject from Platform."""
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+    action = str(body.get("action", "approve")).lower()
+    feedback = str(body.get("feedback", ""))
+
+    from core.harness.execution.pipeline_engine import get_running_pipeline
+
+    engine = get_running_pipeline(project_id)
+    if not engine:
+        raise HTTPException(status_code=404, detail="No active pipeline for this project")
+
+    if action == "approve":
+        engine.approve(feedback)
+        return {"status": "resolved", "project_id": project_id, "action": "approved"}
+    elif action == "reject":
+        engine.reject(feedback)
+        return {"status": "resolved", "project_id": project_id, "action": "rejected"}
+    else:
+        raise HTTPException(status_code=400, detail=f"Unknown action: {action}")
 
 
 @router.post("/{project_id}/cancel")

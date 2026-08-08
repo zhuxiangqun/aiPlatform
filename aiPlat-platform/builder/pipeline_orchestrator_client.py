@@ -106,7 +106,7 @@ class PipelineOrchestratorClient:
         try:
             async with httpx.AsyncClient(timeout=timeout) as client:
                 resp = await client.post(
-                    f"{self._base_url}/api/core/pipelines/{project_id}/hitl-resolve",
+                    f"{self._base_url}/api/core/pipeline/{project_id}/hitl-resolve",
                     json={"action": action, "feedback": feedback},
                 )
                 resp.raise_for_status()

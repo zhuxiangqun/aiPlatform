@@ -1150,55 +1150,17 @@ class BuilderProjectService:
                 pass  # noqa: cleanup-best-effort
 
     async def approve_stage(self, project_id: str, feedback: str = "") -> Dict[str, Any]:
-        state = self._runs.get(project_id)
-        if not state:
-            state = self._load_pipeline_state(project_id)
-        # Fallback: state may be in Core memory only (disk file deleted by rebuild)
-        if not state:
-            state = await self._get_state_via_core(project_id)
-        if not state:
-            raise ValueError("no pipeline state")
-
-        # Approve directly on state — no session needed
-        _hitl_id = state.get("_hitl_stage_id", "")
-        if not _hitl_id:
-            # HITL pauses AFTER the stage runs — review this stage's output
-            _proj = self._projects.get(project_id, {})
-            _ts = _proj.get("team_stages", [])
-            _idx = max(0, state.get("_current_stage_idx", 1))
-            if _idx < len(_ts):
-                _s = _ts[_idx]
-                _hitl_id = _s.get("id", "") if isinstance(_s, dict) else getattr(_s, "id", "")
-        state["_hitl_resolved_" + _hitl_id] = True if _hitl_id else False
-        state["_hitl_stage_id"] = ""
-        state["_hitl_human_feedback"] = ""
-        state["phase"] = "executing"
-
-        # Find HITL stage index and inject feedback if provided
-        _proj = self._projects.get(project_id, {})
-        _ts = _proj.get("team_stages", [])
-        _found = False
-        for _i, _s in enumerate(_ts):
-            _sid = _s.get("id", "") if isinstance(_s, dict) else getattr(_s, "id", "")
-            if _sid == _hitl_id:
-                state["_current_stage_idx"] = _i
-                if feedback:
-                    _oa = _s.get("output_artifact", "") if isinstance(_s, dict) else getattr(_s, "output_artifact", "")
-                    if _oa:
-                        state[_oa] = {"raw_output": feedback, "source": "human_hitl"}
-                _found = True
-                break
-        if not _found:
-            state["_current_stage_idx"] = 1  # default: architect
-
-        self._runs[project_id] = state
-        await self._save_state(project_id, state)
-        # Schedule pipeline continuation as background task
-        if state.get("phase") == "executing":
-            _idx = state.get("_current_stage_idx", 0) + 1
-            import asyncio as _bg_asyncio
-            _bg_asyncio.create_task(self._continue_pipeline(project_id, dict(state), _idx))
-        return {"project_id": project_id, "phase": state.get("phase", "executing")}
+        """v3.1: Forward HITL approve to Core — no local pipeline manipulation."""
+        try:
+            from builder.pipeline_orchestrator_client import PipelineOrchestratorClient
+            client = PipelineOrchestratorClient()
+            resp = await client.resolve_hitl(project_id, action="approve", feedback=feedback)
+            if resp.get("status") == "resolved":
+                return {"project_id": project_id, "phase": "executing", "status": "ok"}
+            return {"status": "error", "detail": resp.get("detail", "Core unavailable")}
+        except Exception as e:
+            _log.warning("approve_stage failed for %s: %s", project_id, str(e)[:200])
+            raise
 
     async def _continue_pipeline(self, project_id: str, state: Dict, start_idx: int):
         """Background: rebuild session and continue pipeline from start_idx.
@@ -1277,55 +1239,17 @@ class BuilderProjectService:
         return {"project_id": project_id, "phase": state.get("phase", "executing")}
 
     async def reject_stage(self, project_id: str, feedback: str) -> Dict[str, Any]:
-        state = self._runs.get(project_id)
-        if not state:
-            state = self._load_pipeline_state(project_id)
-        if not state:
-            state = await self._get_state_via_core(project_id)
-        if not state:
-            raise ValueError("no pipeline state")
-
-        _hitl_id = state.get("_hitl_stage_id", "")
-        if not _hitl_id:
-            # HITL pauses AFTER the stage runs — review this stage's output
-            _idx = max(0, state.get("_current_stage_idx", 1))
-            if _idx < len(_ts):
-                _s = _ts[_idx]
-                _hitl_id = _s.get("id", "") if isinstance(_s, dict) else getattr(_s, "id", "")
-        state["_reject_feedback"] = feedback
-        state["_hitl_stage_id"] = ""
-        state["phase"] = "executing"
-
-        # Find HITL stage, inject feedback, clear subsequent stages
-        _proj = self._projects.get(project_id, {})
-        _ts = _proj.get("team_stages", [])
-        _found = False
-        for _i, _s in enumerate(_ts):
-            _sid = _s.get("id", "") if isinstance(_s, dict) else getattr(_s, "id", "")
-            _hitl_true = (_s.get("hitl") or getattr(_s, "hitl", False)) if isinstance(_s, dict) else False
-            if _sid == _hitl_id:
-                state["_current_stage_idx"] = _i
-                _oa = _s.get("output_artifact", "") if isinstance(_s, dict) else getattr(_s, "output_artifact", "")
-                if _oa:
-                    state[_oa] = {"raw_output": feedback, "source": "human_reject"} if feedback else None
-                # Clear subsequent stages
-                for _j in range(_i + 1, len(_ts)):
-                    _soa = _ts[_j].get("output_artifact", "") if isinstance(_ts[_j], dict) else getattr(_ts[_j], "output_artifact", "")
-                    if _soa:
-                        state[_soa] = None
-                _found = True
-                break
-        if not _found:
-            state["_current_stage_idx"] = 1
-
-        self._runs[project_id] = state
-        await self._save_state(project_id, state)
-        # Reject restarts from HITL stage itself (not +1) — schedule as background task
-        if state.get("phase") == "executing":
-            _idx = state.get("_current_stage_idx", 1)
-            import asyncio as _bg_asyncio2
-            _bg_asyncio2.create_task(self._continue_pipeline(project_id, dict(state), _idx))
-        return {"project_id": project_id, "phase": state.get("phase", "executing")}
+        """v3.1: Forward HITL reject to Core — no local pipeline manipulation."""
+        try:
+            from builder.pipeline_orchestrator_client import PipelineOrchestratorClient
+            client = PipelineOrchestratorClient()
+            resp = await client.resolve_hitl(project_id, action="reject", feedback=feedback)
+            if resp.get("status") == "resolved":
+                return {"project_id": project_id, "phase": "executing", "status": "ok"}
+            return {"status": "error", "detail": resp.get("detail", "Core unavailable")}
+        except Exception as e:
+            _log.warning("reject_stage failed for %s: %s", project_id, str(e)[:200])
+            raise
 
     async def regenerate_stage(self, project_id: str, stage_id: str, feedback: str) -> Dict[str, Any]:
         """Rollback to stage with feedback, then restart from that point."""
