@@ -656,13 +656,16 @@ const ProjectPanel: React.FC<{
 
   const handleApprove = async () => {
     if (!project.project_id) return;
+    setPhase('approving_pipeline');
+    setHitlStageId(null);
     setStarting(true);
     try {
       await projectApi.approve(project.project_id);
-      setPhase('approving_pipeline');
-      setHitlStageId(null);
       toast.success('已审批，正在继续执行');
-    } catch (e: any) { toastGateError(e, '审批失败'); }
+    } catch (e: any) {
+      setPhase('paused');
+      toastGateError(e, '审批失败');
+    }
     finally { setStarting(false); }
   };
 
@@ -670,14 +673,17 @@ const ProjectPanel: React.FC<{
     if (!project.project_id) return;
     const feedback = window.prompt('驳回理由（可选）：');
     if (feedback === null) return; // cancelled
+    setPhase('approving_pipeline');
+    setHitlStageId(null);
     setRejecting(true);
     setStageOutputs(null);
     try {
       await projectApi.reject(project.project_id, feedback);
-      setPhase('approving_pipeline');
-      setHitlStageId(null);
       toast.success('已驳回，将重新生成');
-    } catch (e: any) { toastGateError(e, '驳回失败'); }
+    } catch (e: any) {
+      setPhase('paused');
+      toastGateError(e, '驳回失败');
+    }
     finally { setRejecting(false); }
   };
 
