@@ -1202,23 +1202,26 @@ class BuilderProjectService:
 
     async def _continue_pipeline(self, project_id: str, state: Dict, start_idx: int):
         """Background: rebuild session and continue pipeline from start_idx.
-        Runs session creation in thread pool to avoid blocking the event loop."""
+        Runs session creation and pipeline execution in thread pool to avoid
+        blocking the gunicorn event loop (preventing WORKER TIMEOUT crashes)."""
         import asyncio as _bg_asyncio, concurrent.futures as _cf
         loop = _bg_asyncio.get_running_loop()
         try:
             _ses = await loop.run_in_executor(None, self._rebuild_session, project_id)
             if _ses and start_idx < len(_ses.get_stages()):
-                await self._bg_run_stages(project_id, _ses, state, start_idx)
+                # Run entire pipeline continuation in thread — engine blocks for minutes
+                await loop.run_in_executor(None, self._run_stages_sync, project_id, _ses, state, start_idx)
                 return
         except Exception as e:
-            _log.warning("_continue_pipeline: _rebuild_session failed for %s: %s", project_id, str(e)[:200])
+            _log.warning("_continue_pipeline: failed for %s: %s", project_id, str(e)[:200])
 
-    async def _bg_run_stages(self, project_id: str, session, state: Dict, start_idx: int):
-        """Run remaining pipeline stages, updating state periodically."""
+    def _run_stages_sync(self, project_id: str, session, state: Dict, start_idx: int):
+        """Synchronous pipeline runner — called from thread pool executor."""
+        import asyncio as _as
         try:
-            result = await session._engine._run_stages_from(start_idx, state)
+            result = _as.run(session._engine._run_stages_from(start_idx, state))
             self._runs[project_id] = dict(result)
-            await self._save_state(project_id, dict(result))
+            _as.run(self._save_state(project_id, dict(result)))
         except Exception as e:
             self._runs[project_id] = {"phase": "failed", "error": str(e)[:200]}
 
