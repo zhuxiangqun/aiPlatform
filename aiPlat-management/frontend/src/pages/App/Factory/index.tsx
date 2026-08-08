@@ -760,10 +760,13 @@ const ProjectPanel: React.FC<{
               </button>
             )}
           </div>
-        ) : phase === 'executing' ? (
+        ) : phase === 'executing' || phase === 'approving_pipeline' ? (
           <div className="p-3 rounded bg-blue-500/10 border border-blue-500/30 text-sm space-y-3">
             <div className="flex items-center gap-2 text-blue-300">
               <Loader2 className="w-4 h-4 animate-spin" /> Pipeline 执行中...
+              {phase === 'approving_pipeline' && (
+                <span className="text-[10px] text-blue-400">（审批已提交）</span>
+              )}
             </div>
             {/* Pipeline progress with stages */}
             {teamStages.length > 0 && (() => {
@@ -853,10 +856,6 @@ const ProjectPanel: React.FC<{
                 ✅ 完成 ({progressState.elapsed_sec}s)
               </div>
             )}
-          </div>
-        ) : phase === 'approving_pipeline' ? (
-          <div className="text-[11px] text-blue-400 flex items-center gap-1.5 p-2 rounded bg-blue-500/5">
-            <Loader2 className="w-3 h-3 animate-spin" /> 审批已提交，正在继续执行...
           </div>
         ) : phase === 'paused' || phase?.includes('approval') ? (
           <div className="text-[11px] text-amber-400 flex items-center gap-1.5 p-2 rounded bg-amber-500/5">
