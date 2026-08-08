@@ -353,6 +353,14 @@ async def lifespan(app: FastAPI):
     # ExecutionStore (SQLite) - persistent execution/history
     _execution_store = get_execution_store()
     await _execution_store.init()
+
+    # ── v3.1: cleanup orphaned pipelines from previous crash ──
+    try:
+        from core.api.routers.pipeline_execution import cleanup_orphaned_pipelines
+        await cleanup_orphaned_pipelines()
+    except Exception:
+        log.warning("Orphan pipeline cleanup failed", exc_info=True)
+
     # Auto-init dev signing keys if not configured
     try:
         from core.security.skill_signature_gate import auto_init_dev_keys

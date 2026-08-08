@@ -118,6 +118,16 @@ class PipelineRunStore:
                 CREATE INDEX IF NOT EXISTS idx_pipeline_stages_run
                     ON pipeline_stages(run_id);
             """)
+            # ── v3.1 migration: HITL fields (idempotent — ignore if already exist) ──
+            for col, col_type in [
+                ("_hitl_stage_id", "TEXT DEFAULT ''"),
+                ("_hitl_phase_name", "TEXT DEFAULT ''"),
+                ("_hitl_output_artifact", "TEXT DEFAULT ''"),
+            ]:
+                try:
+                    conn.execute(f"ALTER TABLE pipeline_runs ADD COLUMN {col} {col_type}")
+                except Exception:
+                    pass  # noqa: schema-idempotent
             conn.commit()
         finally:
             conn.close()

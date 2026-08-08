@@ -1279,12 +1279,12 @@ const FactoryPage: React.FC = () => {
     try {
       const p = await projectApi.list();
       if (p?.projects) setProjects(p.projects);
-    } catch { /* retry on next loadAll call */ }
+    } catch { /* keep existing state, retry on next loadAll */ }
     try {
       const r = await fetch('/api/platform/apps');
       const d = await r.json();
       if (d?.apps) setDeployedApps(d.apps);
-    } catch { /* ignore */ }
+    } catch { /* keep existing state */ }
     setLoadingApps(false);
   }, []);
 

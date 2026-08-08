@@ -21,6 +21,24 @@ router = APIRouter(prefix="/pipeline", tags=["pipeline"])
 
 _log = logging.getLogger("aiplat.pipeline.api")
 
+# ── v3.1: per-project building flag prevents duplicate concurrent runs ──
+_building_flags: Dict[str, bool] = {}
+
+
+async def cleanup_orphaned_pipelines():
+    """Startup: mark all executing/paused runs as failed (system restart)."""
+    try:
+        store = get_pipeline_run_store()
+        conn = store._get_conn()
+        conn.execute(
+            "UPDATE pipeline_runs SET phase='failed', error_message='系统重启, 流水线中断' "
+            "WHERE phase IN ('executing', 'paused')"
+        )
+        conn.commit()
+        _log.info("Orphan cleanup: reset stale executing/paused runs to failed")
+    except Exception:
+        _log.warning("Orphan cleanup failed", exc_info=True)
+
 
 def _make_store_callback(run_id: str, store):
     """Create a persist_callback that writes progress + artifacts to PipelineRunStore."""
@@ -89,11 +107,17 @@ async def pipeline_run(request: Request) -> Dict[str, Any]:
     if not project_id:
         raise HTTPException(status_code=400, detail="project_id is required")
 
+    # ── v3.1: prevent duplicate concurrent runs ──
+    if _building_flags.get(project_id):
+        return {"status": "conflict", "detail": "已有正在执行的流水线, 请稍后重试"}
+    _building_flags[project_id] = True
+
     store = get_pipeline_run_store()
 
     # Check for existing executing run
     existing = store.get_run_by_project(project_id)
     if existing and existing.get("phase") == "executing":
+        _building_flags.pop(project_id, None)
         return {
             "status": "conflict",
             "run_id": existing["run_id"],
@@ -196,6 +220,8 @@ async def pipeline_run(request: Request) -> Dict[str, Any]:
         except Exception as e:
             _log.error("Pipeline %s failed: %s", run_id, str(e)[:500], exc_info=True)
             store.update_run_phase(run_id, "failed", str(e)[:500])
+        finally:
+            _building_flags.pop(project_id, None)
 
     asyncio.create_task(_execute_pipeline())
 
