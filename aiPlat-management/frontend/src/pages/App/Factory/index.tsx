@@ -1159,7 +1159,33 @@ const ProjectPanel: React.FC<{
                           <pre className="p-2 text-xs text-gray-100 bg-gray-900 font-mono whitespace-pre-wrap break-all max-h-72 overflow-y-auto">{preview}</pre>
                         </div>
                       ) : rw.trimStart().startsWith('{') ? (
-                        <pre className="p-2 text-xs text-gray-100 bg-gray-900 font-mono whitespace-pre-wrap break-all max-h-72 overflow-y-auto">{preview}</pre>
+                        (() => {
+                          let arch: any = null;
+                          try { arch = JSON.parse(rw); } catch {}
+                          return arch?.components ? (
+                            <table className="w-full text-[10px] border-collapse">
+                              <thead><tr className="text-gray-400 text-left">
+                                <th className="p-1">组件</th><th className="p-1 w-[50px]">层级</th><th className="p-1 w-[70px]">技术栈</th>
+                              </tr></thead>
+                              <tbody>
+                                {(arch.components || []).slice(0, 5).map((c: any, i: number) => (
+                                  <tr key={i} className="border-t border-gray-700/50">
+                                    <td className="p-1 font-medium">{c.name}</td>
+                                    <td className="p-1"><span className="px-1 rounded text-[9px] bg-gray-700 text-gray-300">{c.layer}</span></td>
+                                    <td className="p-1 text-gray-500 max-w-[100px] truncate">{c.tech}</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                              {arch.components.length > 5 && (
+                                <tfoot><tr><td colSpan={3} className="p-1 text-[10px] text-gray-500 text-center">
+                                  共 {arch.components.length} 个组件 · {arch.api_design?.length || 0} 个 API · 点 🔍 全屏查看完整设计
+                                </td></tr></tfoot>
+                              )}
+                            </table>
+                          ) : (
+                            <pre className="p-2 text-xs text-gray-100 bg-gray-900 font-mono whitespace-pre-wrap break-all max-h-72 overflow-y-auto">{preview}</pre>
+                          );
+                        })()
                       ) : (
                         <ReactMarkdown remarkPlugins={[remarkGfm]} className="prose prose-invert prose-xs max-w-none">{preview}</ReactMarkdown>
                       )
