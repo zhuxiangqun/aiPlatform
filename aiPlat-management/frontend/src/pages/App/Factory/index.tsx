@@ -1161,7 +1161,7 @@ const ProjectPanel: React.FC<{
                       ) : rw.trimStart().startsWith('{') ? (
                         (() => {
                           let arch: any = null;
-                          try { arch = JSON.parse(rw); } catch {}
+                          try { arch = JSON.parse(rw); } catch { arch = tryParseJSON(rw, '"components"'); }
                           return arch?.components ? (
                             <table className="w-full text-[10px] border-collapse">
                               <thead><tr className="text-gray-400 text-left">
@@ -1183,7 +1183,9 @@ const ProjectPanel: React.FC<{
                               )}
                             </table>
                           ) : (
-                            <pre className="p-2 text-xs text-gray-100 bg-gray-900 font-mono whitespace-pre-wrap break-all max-h-72 overflow-y-auto">{preview}</pre>
+                            <div className="text-[10px] text-gray-400 p-1">
+                              {summary || 'JSON 格式有误'} · 点 🔍 全屏 查看原始内容
+                            </div>
                           );
                         })()
                       ) : (
