@@ -45,13 +45,14 @@ def _make_store_callback(run_id: str, store):
 
     def _cb(state: dict):
         try:
+            _phase = state.get("phase", "executing")
             store.update_run_progress(
                 run_id,
                 current_stage_idx=state.get("_current_stage_idx", 0),
                 pass_rate=state.get("pass_rate", 0.0),
             )
-
-            # ── v3.1: write HITL pause location for frontend visibility ──
+            # ── v3.1: sync phase + HITL fields ──
+            store.update_run_phase(run_id, _phase)
             _hitl_id = state.get("_hitl_stage_id", "")
             if _hitl_id:
                 store.update_hitl_fields(
