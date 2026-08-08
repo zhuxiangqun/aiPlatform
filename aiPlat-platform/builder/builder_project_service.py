@@ -962,12 +962,18 @@ class BuilderProjectService:
                             skill_model_purpose=ps.get("skill_model_purpose", ""),
                         ))
                     if team_stages:
-                        # ── HITL gates: architecture, agent engineering, qa ──
-                        _hitl_agents = {"architect_agent", "agent_engineer", "qa_agent"}
-                        for ts in team_stages:
-                            if ts.agent_id in _hitl_agents:
-                                ts.hitl = True
-                                ts.hitl_phase = "review"
+                        # ── v3.1: HITL gates from team template YAML ──
+                        try:
+                            from core.harness.execution.team_planner import load_team_template
+                            tmpl = load_team_template("default")
+                            if tmpl and tmpl.stages:
+                                _hitl_map = {s.agent_id: s for s in tmpl.stages if s.hitl}
+                                for ts in team_stages:
+                                    if ts.agent_id in _hitl_map:
+                                        ts.hitl = True
+                                        ts.hitl_phase = _hitl_map[ts.agent_id].hitl_phase or "review"
+                        except Exception:
+                            pass  # noqa: cleanup-best-effort
                         team_req = TeamAssembleRequest(
                             name=recommendation.get("team_name", f"团队-{project_id}"),
                             description=recommendation.get("reasoning", ""),
@@ -1338,12 +1344,6 @@ class BuilderProjectService:
                     stages.append(stage)
                 proj["team_stages"] = stages
                 proj["team_id"] = _tid
-                # ── HITL gates: architecture, agent engineering, qa ──
-                _hitl_agents = {"architect_agent", "agent_engineer", "qa_agent"}
-                for s in stages:
-                    if s.get("agent_id") in _hitl_agents:
-                        s["hitl"] = True
-                        s["hitl_phase"] = "review"
                 self._save_projects()
         except Exception as e:
             logging.warning("rebuild: team re-sync failed (using existing): %s", e)
