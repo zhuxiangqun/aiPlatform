@@ -1205,11 +1205,19 @@ class BuilderProjectService:
         Runs session creation and pipeline execution in thread pool to avoid
         blocking the gunicorn event loop (preventing WORKER TIMEOUT crashes)."""
         import asyncio as _bg_asyncio, concurrent.futures as _cf
+        # ── Enrich state with Core's artifacts (builder_states only has metadata) ──
+        try:
+            core_state = await self._get_state_via_core(project_id)
+            inner = core_state.get("state", {})
+            for key, val in inner.items():
+                if isinstance(val, dict) and val.get("raw_output"):
+                    state[key] = val  # merge artifact output into state
+        except Exception:
+            pass  # best-effort
         loop = _bg_asyncio.get_running_loop()
         try:
             _ses = await loop.run_in_executor(None, self._rebuild_session, project_id)
             if _ses and start_idx < len(_ses.get_stages()):
-                # Run entire pipeline continuation in thread — engine blocks for minutes
                 await loop.run_in_executor(None, self._run_stages_sync, project_id, _ses, state, start_idx)
                 return
         except Exception as e:
