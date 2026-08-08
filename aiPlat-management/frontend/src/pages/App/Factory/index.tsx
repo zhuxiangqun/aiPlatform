@@ -964,16 +964,18 @@ const ProjectPanel: React.FC<{
                 <div className="flex gap-2">
                   <Button size="sm" onClick={handleSaveStageEdit} loading={savingEdit}>保存</Button>
                   <Button size="sm" variant="ghost" onClick={() => setEditingStage(null)}>取消</Button>
-                  <Button size="sm" variant="secondary" onClick={async () => {
-                    await handleSaveStageEdit();
-                    if (!project.project_id) return;
-                    try {
-                      await projectApi.regenerateStage(project.project_id, editingStage, '用户手动编辑后重建');
-                      toast.success('已从此阶段重建，下游将自动重跑');
-                      setPhase('executing');
-                      onRefresh();
-                    } catch (e: any) { toastGateError(e, '重建失败'); }
-                  }}>保存并从此阶段重建</Button>
+                  {phase !== 'paused' && (
+                    <Button size="sm" variant="secondary" onClick={async () => {
+                      await handleSaveStageEdit();
+                      if (!project.project_id) return;
+                      try {
+                        await projectApi.regenerateStage(project.project_id, editingStage, '用户手动编辑后重建');
+                        toast.success('已从此阶段重建，下游将自动重跑');
+                        setPhase('executing');
+                        onRefresh();
+                      } catch (e: any) { toastGateError(e, '重建失败'); }
+                    }}>保存并从此阶段重建</Button>
+                  )}
                 </div>
               </div>
             )}
@@ -1097,7 +1099,7 @@ const ProjectPanel: React.FC<{
                           🔍 全屏
                         </button>
                       )}
-                      {phase === 'done' && rw && (
+                      {(phase === 'done' || phase === 'paused') && rw && (
                         <button onClick={e => { e.preventDefault(); handleEditStage(key, rw); }}
                           className="text-[10px] px-1.5 py-0.5 rounded bg-dark-hover text-gray-500 hover:text-yellow-400 transition-colors">
                           ✏️ 编辑
