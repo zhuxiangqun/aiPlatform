@@ -1247,8 +1247,9 @@ const FactoryPage: React.FC = () => {
   const nav = useNavigate();
   const [projects, setProjects] = useState<ProjectItem[]>([]);
   const [deployedApps, setDeployedApps] = useState<any[]>([]);
-  const [loadingApps, setLoadingApps] = useState(true);
-  const [desc, setDesc] = useState('');
+	const [loadingApps, setLoadingApps] = useState(true);
+	const [projectStates, setProjectStates] = useState<Record<string, string>>({});
+	const [desc, setDesc] = useState('');
   const [creating, setCreating] = useState(false);
   const [selectedProject, setSelectedProject] = useState<ProjectItem | null>(null);
   const [selectedApp, setSelectedApp] = useState<string>('');
@@ -1257,7 +1258,19 @@ const FactoryPage: React.FC = () => {
     setLoadingApps(true);
     try {
       const p = await projectApi.list();
-      if (p?.projects) setProjects(p.projects);
+	      if (p?.projects) {
+	        setProjects(p.projects);
+	        // ── v3.1: fetch real-time pipeline phase from Core ──
+	        const states: Record<string, string> = {};
+	        await Promise.all(p.projects.map(async (prj: ProjectItem) => {
+	          try {
+	            const st = await projectApi.getState(prj.project_id);
+	            const phase = (st as any)?.state?.phase || (st as any)?.phase || '';
+	            if (phase) states[prj.project_id] = phase;
+	          } catch { /* skip */ }
+	        }));
+	        setProjectStates(states);
+	      }
     } catch { /* keep existing state, retry on next loadAll */ }
     try {
       const r = await fetch('/api/platform/apps');
@@ -1294,11 +1307,13 @@ const FactoryPage: React.FC = () => {
   };
 
   const getStatus = (p: ProjectItem) => {
-    const last = p.runs?.[p.runs.length - 1];
-    if (!last) return { label: '待开始', color: 'text-gray-500', bg: 'bg-gray-500/10', phase: 'dialogue' };
-    if (last.phase === 'done') return { label: '已完成', color: 'text-green-400', bg: 'bg-green-500/10', phase: 'done' };
-    if (last.phase === 'failed') return { label: '失败', color: 'text-red-400', bg: 'bg-red-500/10', phase: 'failed' };
-    if (last.phase === 'pending') return { label: '已中断', color: 'text-amber-400', bg: 'bg-amber-500/10', phase: 'failed' };
+    const realPhase = projectStates[p.project_id];
+    const phase = realPhase || p.runs?.[p.runs.length - 1]?.phase;
+    if (!phase) return { label: '待开始', color: 'text-gray-500', bg: 'bg-gray-500/10', phase: 'dialogue' };
+    if (phase === 'done') return { label: '已完成', color: 'text-green-400', bg: 'bg-green-500/10', phase: 'done' };
+    if (phase === 'failed') return { label: '失败', color: 'text-red-400', bg: 'bg-red-500/10', phase: 'failed' };
+    if (phase === 'paused') return { label: '等待审批', color: 'text-amber-400', bg: 'bg-amber-500/10', phase: 'paused' };
+    if (phase === 'pending') return { label: '已中断', color: 'text-amber-400', bg: 'bg-amber-500/10', phase: 'failed' };
     return { label: '构建中', color: 'text-blue-400', bg: 'bg-blue-500/10', phase: 'executing' };
   };
 
