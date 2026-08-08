@@ -371,7 +371,6 @@ const ProjectPanel: React.FC<{
   const [deployChecked, setDeployChecked] = useState(false);
   const [fixingBugs, setFixingBugs] = useState(false);
   const [hitlStageId, setHitlStageId] = useState<string | null>(null);
-  const [approvedAtIdx, setApprovedAtIdx] = useState<number | null>(null);
   const [healthReport, setHealthReport] = useState<Record<string, any> | null>(null);
   const [progressState, setProgressState] = useState<Record<string, any> | null>(null);
   const [hasRunningPipeline, setHasRunningPipeline] = useState(false);
@@ -446,15 +445,24 @@ const ProjectPanel: React.FC<{
         const st = await projectApi.getState(project.project_id);
         const s = (st as any)?.state || {};
         const p = s.phase as string || phase;
-        // During transition, only block Core's paused if the pipeline hasn't advanced
-        const coreIdx = s._current_stage_idx as number | undefined;
-        if (phase !== 'approving_pipeline' || p !== 'paused' ||
-            (coreIdx != null && approvedAtIdx != null && coreIdx !== approvedAtIdx)) {
+        // During transition, check if pipeline advanced by looking for new artifacts
+        if (phase !== 'approving_pipeline' || p !== 'paused') {
           setPhase(p);
-        }
-        // Remember last paused idx so we can detect advancement after approve
-        if (p === 'paused' && coreIdx != null) {
-          setApprovedAtIdx(coreIdx);
+        } else {
+          // Core says paused — is it the old pause or a new one?
+          // Check if any stage beyond the one that was paused has produced output
+          const coreIdx = s._current_stage_idx as number | undefined;
+          let advanced = false;
+          if (coreIdx != null) {
+            for (let i = coreIdx; i < teamStages.length; i++) {
+              const artifactKey = (teamStages[i] as any).output_artifact;
+              if (artifactKey && s[artifactKey] && typeof s[artifactKey] === 'object' && s[artifactKey].raw_output) {
+                advanced = true;
+                break;
+              }
+            }
+          }
+          if (advanced) setPhase(p);
         }
         setProgressState(s._progress || null);
         // Track HITL stage for inline approval buttons
