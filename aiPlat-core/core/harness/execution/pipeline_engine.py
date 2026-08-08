@@ -3563,7 +3563,26 @@ class PipelineEngine:
         # _run_stage_skill handles all errors internally — even empty output
         # is a valid signal (no output for this stage), not a reason to bypass.
         if getattr(stage, 'skill_name', ''):
-            result = await self._run_stage_skill(stage, state)
+            _artifact_key = getattr(stage, 'output_artifact', '') or getattr(stage, 'skill_name', '')
+            _max_json_retries = 2
+            for _json_try in range(_max_json_retries + 1):
+                result = await self._run_stage_skill(stage, state)
+                _output = str(result.get(_artifact_key, {}).get('raw_output', '') or '')
+                if not _output.strip().startswith('{'):
+                    break  # not JSON output, no validation needed
+                try:
+                    import json as _json_mod
+                    _json_mod.loads(_output)
+                    break  # valid JSON
+                except _json_mod.JSONDecodeError as _je:
+                    if _json_try < _max_json_retries:
+                        _err_msg = f"[Auto-Fix {_json_try+1}/{_max_json_retries}] JSON解析失败: {_je.msg} (第{_je.lineno}行,第{_je.colno}列). 请重新输出合法JSON, 禁止TypeScript语法如 `| null`, 禁止尾随逗号."
+                        _log.getLogger("pipeline_engine").warning(
+                            "Skill %s JSON invalid (retry %d/%d): %s", getattr(stage,'skill_name',''), _json_try+1, _max_json_retries, _je.msg)
+                        state["_reject_feedback"] = _err_msg
+                        result.pop(_artifact_key, None)  # clear bad output
+                    else:
+                        break  # max retries, let user see the bad output
         else:
             # code_first (default) — ReAct path ONLY for stages without skill_name
             result = await self._exec_stage(stage, state)
