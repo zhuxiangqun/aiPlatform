@@ -1222,6 +1222,32 @@ class BuilderProjectService:
             result = _as.run(session._engine._run_stages_from(start_idx, state))
             self._runs[project_id] = dict(result)
             _as.run(self._save_state(project_id, dict(result)))
+            # ── Sync state to Core's pipeline_run_store so frontend sees progress ──
+            try:
+                from core.harness.execution.pipeline_run_store import get_pipeline_run_store
+                store = get_pipeline_run_store()
+                run = store.get_run_by_project(project_id)
+                if run:
+                    _rid = run["run_id"]
+                    _r = dict(result)
+                    store.update_run_phase(_rid, _r.get("phase", "executing"))
+                    store.update_run_progress(
+                        _rid,
+                        current_stage_idx=_r.get("_current_stage_idx", 0),
+                        pass_rate=_r.get("pass_rate", 0.0),
+                    )
+                    # Write per-artifact outputs
+                    for key, val in _r.items():
+                        if isinstance(val, dict) and val.get("raw_output"):
+                            store.upsert_stage(
+                                _rid, key,
+                                status="completed" if val.get("raw_output") else "pending",
+                                artifact_key=key,
+                                artifact_output=str(val.get("raw_output", ""))[:50000],
+                                elapsed_sec=float(val.get("elapsed_sec", 0) or 0),
+                            )
+            except Exception:
+                pass  # noqa: cleanup-best-effort
         except Exception as e:
             self._runs[project_id] = {"phase": "failed", "error": str(e)[:200]}
 
