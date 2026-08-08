@@ -467,7 +467,7 @@ const ProjectPanel: React.FC<{
         setProgressState(s._progress || null);
         // Track HITL stage for inline approval buttons
         if (p === 'paused' && s._current_stage_idx != null) {
-          const idx = (s._current_stage_idx as number) - 1; // HITL pauses BEFORE stage runs → review previous stage output
+          const idx = s._current_stage_idx as number; // HITL pauses AFTER stage runs → review this stage's output
           const stage = teamStages[idx];
           if (stage) {
             setHitlStageId((stage as any).id || (stage as any).agent_id || `stage_${idx}`);
@@ -1158,6 +1158,8 @@ const ProjectPanel: React.FC<{
                           </div>
                           <pre className="p-2 text-xs text-gray-100 bg-gray-900 font-mono whitespace-pre-wrap break-all max-h-72 overflow-y-auto">{preview}</pre>
                         </div>
+                      ) : rw.trimStart().startsWith('{') ? (
+                        <pre className="p-2 text-xs text-gray-100 bg-gray-900 font-mono whitespace-pre-wrap break-all max-h-72 overflow-y-auto">{preview}</pre>
                       ) : (
                         <ReactMarkdown remarkPlugins={[remarkGfm]} className="prose prose-invert prose-xs max-w-none">{preview}</ReactMarkdown>
                       )
