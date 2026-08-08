@@ -1162,10 +1162,10 @@ class BuilderProjectService:
         # Approve directly on state — no session needed
         _hitl_id = state.get("_hitl_stage_id", "")
         if not _hitl_id:
-            # HITL pauses BEFORE the stage runs — the stage to review is the previous one
+            # HITL pauses AFTER the stage runs — review this stage's output
             _proj = self._projects.get(project_id, {})
             _ts = _proj.get("team_stages", [])
-            _idx = max(0, state.get("_current_stage_idx", 1) - 1)
+            _idx = max(0, state.get("_current_stage_idx", 1))
             if _idx < len(_ts):
                 _s = _ts[_idx]
                 _hitl_id = _s.get("id", "") if isinstance(_s, dict) else getattr(_s, "id", "")
@@ -1287,8 +1287,8 @@ class BuilderProjectService:
 
         _hitl_id = state.get("_hitl_stage_id", "")
         if not _hitl_id:
-            # HITL pauses BEFORE the stage runs — the stage to review is the previous one
-            _idx = max(0, state.get("_current_stage_idx", 1) - 1)
+            # HITL pauses AFTER the stage runs — review this stage's output
+            _idx = max(0, state.get("_current_stage_idx", 1))
             if _idx < len(_ts):
                 _s = _ts[_idx]
                 _hitl_id = _s.get("id", "") if isinstance(_s, dict) else getattr(_s, "id", "")
