@@ -1162,65 +1162,6 @@ class BuilderProjectService:
             _log.warning("approve_stage failed for %s: %s", project_id, str(e)[:200])
             raise
 
-    async def _continue_pipeline(self, project_id: str, state: Dict, start_idx: int):
-        """Background: rebuild session and continue pipeline from start_idx.
-        Runs session creation and pipeline execution in thread pool to avoid
-        blocking the gunicorn event loop (preventing WORKER TIMEOUT crashes)."""
-        import asyncio as _bg_asyncio, concurrent.futures as _cf
-        # ── Enrich state with Core's artifacts (builder_states only has metadata) ──
-        try:
-            core_state = await self._get_state_via_core(project_id)
-            inner = core_state.get("state", {})
-            for key, val in inner.items():
-                if isinstance(val, dict) and val.get("raw_output"):
-                    state[key] = val  # merge artifact output into state
-        except Exception:
-            pass  # best-effort
-        loop = _bg_asyncio.get_running_loop()
-        try:
-            _ses = await loop.run_in_executor(None, self._rebuild_session, project_id)
-            if _ses and start_idx < len(_ses.get_stages()):
-                await loop.run_in_executor(None, self._run_stages_sync, project_id, _ses, state, start_idx)
-                return
-        except Exception as e:
-            _log.warning("_continue_pipeline: failed for %s: %s", project_id, str(e)[:200])
-
-    def _run_stages_sync(self, project_id: str, session, state: Dict, start_idx: int):
-        """Synchronous pipeline runner — called from thread pool executor."""
-        import asyncio as _as
-        try:
-            result = _as.run(session._engine._run_stages_from(start_idx, state))
-            self._runs[project_id] = dict(result)
-            _as.run(self._save_state(project_id, dict(result)))
-            # ── Sync state to Core's pipeline_run_store so frontend sees progress ──
-            try:
-                from core.harness.execution.pipeline_run_store import get_pipeline_run_store
-                store = get_pipeline_run_store()
-                run = store.get_run_by_project(project_id)
-                if run:
-                    _rid = run["run_id"]
-                    _r = dict(result)
-                    store.update_run_phase(_rid, _r.get("phase", "executing"))
-                    store.update_run_progress(
-                        _rid,
-                        current_stage_idx=_r.get("_current_stage_idx", 0),
-                        pass_rate=_r.get("pass_rate", 0.0),
-                    )
-                    # Write per-artifact outputs
-                    for key, val in _r.items():
-                        if isinstance(val, dict) and val.get("raw_output"):
-                            store.upsert_stage(
-                                _rid, key,
-                                status="completed" if val.get("raw_output") else "pending",
-                                artifact_key=key,
-                                artifact_output=str(val.get("raw_output", ""))[:50000],
-                                elapsed_sec=float(val.get("elapsed_sec", 0) or 0),
-                            )
-            except Exception:
-                pass  # noqa: cleanup-best-effort
-        except Exception as e:
-            self._runs[project_id] = {"phase": "failed", "error": str(e)[:200]}
-
     async def start_fix(self, project_id: str) -> Dict[str, Any]:
         session = self._rebuild_session(project_id)
         if not session:
