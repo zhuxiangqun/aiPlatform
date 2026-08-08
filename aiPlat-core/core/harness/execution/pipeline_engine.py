@@ -2284,15 +2284,13 @@ class PipelineEngine:
 
             while idx < total and not self._shutdown_requested:
                 self._state["_current_stage_idx"] = idx
+                stage = self._config.stages[idx]
 
-                # Execute the current stage (or layer)
-                result = await self._exec_single_stage(
-                    self._config.stages[idx], idx, self._state)
-                if result:
-                    self._state = dict(result[0]) if isinstance(result, tuple) else dict(result)
+                # Execute via the same dispatcher _run_stages_from uses
+                if getattr(stage, 'skill_name', ''):
+                    self._state = await self._run_stage_skill(stage, self._state)
                 else:
-                    idx += 1
-                    continue
+                    self._state = await self._exec_stage(stage, self._state)
 
                 # Check for HITL pause
                 if self._state.get("phase") == "paused":
