@@ -1493,7 +1493,7 @@ const FactoryPage: React.FC = () => {
       {/* ── Create Section ── */}
       <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="bg-dark-card border border-dark-border rounded-xl p-5">
         <h2 className="text-lg font-bold text-gray-100 mb-3">新建应用
-          <a href="/docs" target="_blank" className="ml-2 text-xs text-gray-500 hover:text-primary font-normal underline underline-offset-2">
+          <a href="/docs?path=design/ai-app-factory.md" target="_blank" className="ml-2 text-xs text-gray-500 hover:text-primary font-normal underline underline-offset-2">
             📖 设计文档
           </a>
         </h2>

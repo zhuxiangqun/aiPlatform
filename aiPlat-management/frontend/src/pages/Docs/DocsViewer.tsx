@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { ChevronRight, ChevronDown, FileText, Folder, FolderOpen, Search, BookOpen, ExternalLink, Download } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -38,8 +38,10 @@ function _buildCategoryTree(tree: TreeItem[], cats: Record<string, string>): { c
 }
 
 const DocsViewer: React.FC = () => {
+  const [searchParams] = useSearchParams();
+  const urlPath = searchParams.get('path') || 'README.md';
   const [tree, setTree] = useState<TreeItem[]>([]);
-  const [selectedPath, setSelectedPath] = useState<string>('README.md');
+  const [selectedPath, setSelectedPath] = useState<string>(urlPath);
   const [content, setContent] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -70,10 +72,10 @@ const DocsViewer: React.FC = () => {
       .finally(() => setLoading(false));
   }, []);
 
-  // Auto-load README on mount
+  // Auto-load document from URL param or default to README
   useEffect(() => {
-    loadContent('README.md');
-  }, [loadContent]);
+    loadContent(urlPath);
+  }, [loadContent, urlPath]);
 
   const cleanContent = useMemo(() => stripFrontmatter(content), [content]);
 
