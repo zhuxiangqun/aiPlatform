@@ -7983,7 +7983,16 @@ Evaluate pass/fail based on pass_rate and configured dimension thresholds.""")
 
         feedback = state.get("_reject_feedback", "")
 
-        fb = f"\n## Reject Feedback\n{feedback}" if feedback else ""
+        if feedback:
+            fb = (
+                "\n## 🛑 REGENERATE WITH FEEDBACK — YOU MUST FIX THESE ISSUES\n"
+                "You were rejected and must regenerate. Address EVERY issue below.\n"
+                "Before generating your final output, list how you will fix each one.\n\n"
+                f"{feedback}\n"
+                "\n---\n"
+            )
+        else:
+            fb = ""
 
         ctx = {}
 
@@ -8430,7 +8439,7 @@ Evaluate pass/fail based on pass_rate and configured dimension thresholds.""")
 
 
         raw = f"""You are {stage.agent_name or stage.id}.
-
+{fb}
 {scene_context}
 
 {previous_notes}
@@ -8447,7 +8456,7 @@ Evaluate pass/fail based on pass_rate and configured dimension thresholds.""")
 
 {stage_hints}
 
-Complete your work based on upstream output.{fb}{constraint_text}{handoff_text}{iss}{agent_list}{fmt_text}{progress_text}{test_plan_text}
+Complete your work based on upstream output.{constraint_text}{handoff_text}{iss}{agent_list}{fmt_text}{progress_text}{test_plan_text}
 
 
 
