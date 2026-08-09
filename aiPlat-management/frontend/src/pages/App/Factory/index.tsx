@@ -740,19 +740,48 @@ const ProjectPanel: React.FC<{
     }
   };
 
-  const handleApprove = async () => {
-    if (!project.project_id) return;
+  // ── Transition to executing mode — optimistic, then correct via real state ──
+  const _enterExecutingMode = async () => {
+    setPhase('executing');
     setHitlStageId(null);
     setHitlOutputArtifact(null);
+
+    try {
+      const st = await projectApi.getState(project.project_id);
+      const s = (st as any)?.state || {};
+      setProgressState(s._progress || null);
+
+      const orderedKeys = teamStages.map((ts: any) => ts.output_artifact).filter(Boolean);
+      const keys = orderedKeys.length > 0 ? orderedKeys : ['architecture', 'code', 'test_report'];
+      const outputs: Record<string, any> = {};
+      for (const k of keys) {
+        if (s[k] && typeof s[k] === 'object') outputs[k] = s[k];
+      }
+      if (Object.keys(outputs).length > 0) setStageOutputs(outputs);
+
+      const backendPhase = s.phase as string;
+      if (backendPhase === 'paused') {
+        setPhase('paused');
+        if (s._hitl_stage_id) setHitlStageId(s._hitl_stage_id as string);
+        if (s._hitl_output_artifact) setHitlOutputArtifact(s._hitl_output_artifact as string);
+      } else if (backendPhase === 'done' || backendPhase === 'failed') {
+        setPhase(backendPhase);
+        onRefresh();
+      }
+    } catch { /* keep 'executing' — poll will fix */ }
+  };
+
+  const handleApprove = async () => {
+    if (!project.project_id) return;
+    _enterExecutingMode();
     setStarting(true);
     try {
       await projectApi.approve(project.project_id);
       toast.success('已审批，正在继续执行');
-      // Immediately fetch state — eliminates 0-3s blank between poll ticks
-      const st = await projectApi.getState(project.project_id);
-      await _refreshFromState((st as any)?.state);
     } catch (e: any) {
       toastGateError(e, '审批失败');
+      const st = await projectApi.getState(project.project_id);
+      await _refreshFromState((st as any)?.state);
     }
     finally { setStarting(false); }
   };
@@ -760,8 +789,8 @@ const ProjectPanel: React.FC<{
   const handleReject = async () => {
     if (!project.project_id) return;
     const feedback = window.prompt('驳回理由（可选）：');
-    if (feedback === null) return; // cancelled
-    // Clear only rejected stage + downstream (not upstream already-approved stages)
+    if (feedback === null) return;
+    // Clear only rejected stage + downstream
     const _rejectedArtifact = hitlOutputArtifact;
     const _keys = teamStages.map((ts: any) => ts.output_artifact).filter(Boolean);
     const _rejIdx = _rejectedArtifact ? _keys.indexOf(_rejectedArtifact) : -1;
@@ -777,17 +806,15 @@ const ProjectPanel: React.FC<{
     } else {
       setStageOutputs(null);
     }
-    setHitlStageId(null);
-    setHitlOutputArtifact(null);
+    _enterExecutingMode();
     setRejecting(true);
     try {
       await projectApi.reject(project.project_id, feedback);
       toast.success('已驳回，将重新生成');
-      // Immediately fetch state — eliminates 0-3s blank between poll ticks
-      const st = await projectApi.getState(project.project_id);
-      await _refreshFromState((st as any)?.state);
     } catch (e: any) {
       toastGateError(e, '驳回失败');
+      const st = await projectApi.getState(project.project_id);
+      await _refreshFromState((st as any)?.state);
     }
     finally { setRejecting(false); }
   };
