@@ -331,7 +331,7 @@ async def pipeline_state(project_id: str) -> Dict[str, Any]:
 
 @router.post("/{project_id}/hitl-resolve")
 async def pipeline_hitl_resolve(project_id: str, request: Request) -> Dict[str, Any]:
-    """v3.1: Resolve a HITL pause — approve or reject from Platform."""
+    """v3.3: Resolve a HITL pause — approve or reject. Works cross-worker via DB fallback."""
     try:
         body = await request.json()
     except Exception:
@@ -342,17 +342,23 @@ async def pipeline_hitl_resolve(project_id: str, request: Request) -> Dict[str, 
     from core.harness.execution.pipeline_engine import get_running_pipeline
 
     engine = get_running_pipeline(project_id)
-    if not engine:
-        raise HTTPException(status_code=404, detail="No active pipeline for this project")
+    if engine:
+        # Direct path: engine is on this worker
+        if action == "approve":
+            engine.approve(feedback)
+        elif action == "reject":
+            engine.reject(feedback)
+        else:
+            raise HTTPException(status_code=400, detail=f"Unknown action: {action}")
+        return {"status": "resolved", "project_id": project_id, "action": action}
 
-    if action == "approve":
-        engine.approve(feedback)
-        return {"status": "resolved", "project_id": project_id, "action": "approved"}
-    elif action == "reject":
-        engine.reject(feedback)
-        return {"status": "resolved", "project_id": project_id, "action": "rejected"}
-    else:
-        raise HTTPException(status_code=400, detail=f"Unknown action: {action}")
+    # Cross-worker fallback: write action to DB — engine polls it
+    store = get_pipeline_run_store()
+    ok = store.write_hitl_action(project_id, action)
+    if ok:
+        return {"status": "resolved", "project_id": project_id, "action": action,
+                "via": "db"}
+    raise HTTPException(status_code=404, detail="No active paused pipeline for this project")
 
 
 @router.post("/{project_id}/cancel")

@@ -2297,16 +2297,15 @@ class PipelineEngine:
                     if self._persist_callback:
                         self._persist_callback(dict(self._state))
 
-                    # ⏸️  Block until user approves/rejects
+                    # v3.3: Wait for HITL — event (local) OR DB poll (cross-worker)
                     _log_engine = __import__("logging").getLogger("pipeline_engine")
-                    _log_engine.warning("v3.1 HITL paused: stage=%s idx=%d",
+                    _log_engine.warning("v3.3 HITL paused: stage=%s idx=%d",
                         self._state.get("_hitl_stage_id", "?"), idx)
-                    await self._resume_event.wait()
-                    self._resume_event.clear()
+                    await self._wait_for_hitl()
 
                     # 🚀  Wake up: check if reject or approve
                     if self._reject_feedback:
-                        _log_engine.warning("v3.1 HITL rejected: invalidating from idx=%d", idx)
+                        _log_engine.warning("v3.3 HITL rejected: invalidating from idx=%d", idx)
                         self._invalidate_downstream(idx)
                         # idx stays the same — re-run current stage
                     else:
@@ -2393,6 +2392,47 @@ class PipelineEngine:
         self._state.pop("_reject_feedback", None)
 
 
+    async def _wait_for_hitl(self) -> None:
+        """Wait for HITL resolution — local event OR cross-worker DB signal.
+
+        The main pipeline loop calls `_resume_event.wait()` for local approve/reject
+        (same worker). The HTTP endpoint writes the action directly.
+
+        For cross-worker (different worker): the HTTP handler writes the action
+        to the DB. This method polls the DB every 1 second and converts any
+        pending action into an `_resume_event.set()`.
+        """
+        import asyncio as _aio
+        from core.harness.execution.pipeline_run_store import get_pipeline_run_store
+
+        _run_id = self._state.get("session_id", "")
+
+        async def _check_event():
+            await self._resume_event.wait()
+            return True
+
+        async def _check_db():
+            store = get_pipeline_run_store()
+            while True:
+                await _aio.sleep(1)
+                action = store.poll_hitl_action(_run_id)
+                if action:
+                    if action == "approve":
+                        self._reject_feedback = ""
+                    elif action == "reject":
+                        self._reject_feedback = self._reject_feedback or "cross-worker reject"
+                    # Clear the action and wake the engine
+                    store.clear_hitl_action(_run_id)
+                    self._resume_event.set()
+                    return True
+
+        tasks = [_aio.create_task(_check_event()), _aio.create_task(_check_db())]
+        done, pending = await _aio.wait(tasks, return_when=_aio.FIRST_COMPLETED)
+        for t in pending:
+            t.cancel()
+        self._resume_event.clear()
+
+
     async def _resume_from_hitl(self) -> None:
         """Recover after restart: re-register + enter HITL wait loop.
 
@@ -2413,9 +2453,8 @@ class PipelineEngine:
         if self._persist_callback:
             self._persist_callback(dict(self._state))
 
-        _log_engine.warning("v3.2 HITL recovery: waiting for approval at stage idx=%d", idx)
-        await self._resume_event.wait()
-        self._resume_event.clear()
+        _log_engine.warning("v3.3 HITL recovery: waiting for approval at stage idx=%d", idx)
+        await self._wait_for_hitl()
 
         # After wake: check if rejected or approved
         if self._reject_feedback:

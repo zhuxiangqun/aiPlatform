@@ -140,6 +140,11 @@ class PipelineRunStore:
                     conn.execute(f"ALTER TABLE pipeline_stages ADD COLUMN {col} {col_type}")
                 except Exception:
                     pass  # noqa: schema-idempotent
+            # ── v3.3: cross-worker HITL signal ──
+            try:
+                conn.execute("ALTER TABLE pipeline_runs ADD COLUMN _hitl_action TEXT DEFAULT ''")
+            except Exception:
+                pass  # noqa: schema-idempotent
             conn.commit()
         finally:
             conn.close()
@@ -255,9 +260,54 @@ class PipelineRunStore:
         self._execute(
             """UPDATE pipeline_runs
                SET _hitl_stage_id = '', _hitl_phase_name = '',
-                   _hitl_output_artifact = '', updated_at = ?
+                   _hitl_output_artifact = '', _hitl_action = '',
+                   updated_at = ?
                WHERE run_id = ?""",
             (now, run_id),
+        )
+
+    # ── v3.3: Cross-worker HITL (DB-signalled approve/reject) ──
+
+    def write_hitl_action(self, project_id: str, action: str) -> bool:
+        """Write a HITL action to the latest paused pipeline for a project.
+
+        Returns True if updated, False if no paused pipeline found.
+        """
+        now = _time.strftime("%Y-%m-%dT%H:%M:%S")
+        conn = self._get_conn()
+        try:
+            conn.execute(
+                """UPDATE pipeline_runs
+                   SET _hitl_action = ?, updated_at = ?
+                   WHERE run_id = (
+                       SELECT run_id FROM pipeline_runs
+                       WHERE project_id = ? AND phase = 'paused'
+                       ORDER BY updated_at DESC LIMIT 1
+                   )""",
+                (action, now, project_id),
+            )
+            conn.commit()
+            return conn.total_changes > 0
+        finally:
+            conn.close()
+
+    def poll_hitl_action(self, run_id: str) -> str:
+        """Check for a pending HITL action on a specific run."""
+        conn = self._get_conn()
+        try:
+            row = conn.execute(
+                "SELECT _hitl_action FROM pipeline_runs WHERE run_id = ?",
+                (run_id,),
+            ).fetchone()
+            return (row["_hitl_action"] or "") if row else ""
+        finally:
+            conn.close()
+
+    def clear_hitl_action(self, run_id: str) -> None:
+        """Clear the HITL action flag after processing."""
+        self._execute(
+            "UPDATE pipeline_runs SET _hitl_action = '' WHERE run_id = ?",
+            (run_id,),
         )
 
     # ── Stage-level operations ───────────────────────────────────
