@@ -26,16 +26,25 @@ _building_flags: Dict[str, bool] = {}
 
 
 async def cleanup_orphaned_pipelines():
-    """Startup: mark all executing/paused runs as failed (system restart)."""
+    """Startup: mark only truly orphaned (executing) runs as failed.
+    
+    Paused/HITL pipelines are legitimate — user was about to approve/reject.
+    They should survive restart and be re-registered for HITL continuation.
+    """
     try:
         store = get_pipeline_run_store()
         conn = store._get_conn()
+        # Only kill pipelines that were mid-execution (no HITL guarding them)
         conn.execute(
             "UPDATE pipeline_runs SET phase='failed', error_message='系统重启, 流水线中断' "
-            "WHERE phase IN ('executing', 'paused')"
+            "WHERE phase = 'executing'"
         )
+        count = conn.total_changes
         conn.commit()
-        _log.info("Orphan cleanup: reset stale executing/paused runs to failed")
+        if count:
+            _log.warning("Orphan cleanup: %d executing pipeline(s) marked as failed", count)
+        else:
+            _log.info("Orphan cleanup: no executing pipelines found")
     except Exception:
         _log.warning("Orphan cleanup failed", exc_info=True)
 
