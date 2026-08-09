@@ -2371,6 +2371,55 @@ class PipelineEngine:
         self._state.pop("_reject_feedback", None)
 
 
+    async def _resume_from_hitl(self) -> None:
+        """Recover after restart: re-register + enter HITL wait loop.
+
+        The pipeline was paused at HITL when the server restarted.
+        All state (including the completed stage's artifact) is intact.
+        We just need to re-enter the Event-driven wait loop so the
+        user can approve/reject and the pipeline can continue.
+        """
+        _log_engine = __import__("logging").getLogger("pipeline_engine")
+        _log_engine.warning("v3.2 HITL recovery: resuming paused pipeline for project %s",
+            self._state.get("project_id", "?"))
+
+        idx = int(self._state.get("_current_stage_idx", 0) or 0)
+        total = len(self._config.stages)
+
+        # Ensure phase is correct (may have been tampered by cleanup)
+        self._state["phase"] = "paused"
+        if self._persist_callback:
+            self._persist_callback(dict(self._state))
+
+        _log_engine.warning("v3.2 HITL recovery: waiting for approval at stage idx=%d", idx)
+        await self._resume_event.wait()
+        self._resume_event.clear()
+
+        # After wake: check if rejected or approved
+        if self._reject_feedback:
+            _log_engine.warning("v3.2 HITL recovery: rejected — invalidating from idx=%d", idx)
+            self._invalidate_downstream(idx)
+            # idx stays same — re-run current stage
+        else:
+            idx += 1  # Approved — move to next
+            _log_engine.warning("v3.2 HITL recovery: approved — continuing from idx=%d", idx)
+
+        # Continue with remaining stages
+        self._state["phase"] = "executing"
+        await self._run_stages_from(idx, self._state)
+
+        if not self._shutdown_requested:
+            self._state["phase"] = "done"
+            if self._persist_callback:
+                self._persist_callback(dict(self._state))
+
+        # Unregister when done
+        try:
+            unregister_pipeline(self._state.get("project_id", ""))
+        except Exception:
+            pass  # noqa: cleanup-best-effort
+
+
 
     async def rollback(self, state: PipelineState, stage_id: str) -> PipelineState:
 

@@ -128,6 +128,18 @@ class PipelineRunStore:
                     conn.execute(f"ALTER TABLE pipeline_runs ADD COLUMN {col} {col_type}")
                 except Exception:
                     pass  # noqa: schema-idempotent
+            # ── v3.2: full stage config persistence (for restart recovery) ──
+            for col, col_type in [
+                ("output_artifact", "TEXT DEFAULT ''"),
+                ("hitl", "INTEGER DEFAULT 0"),
+                ("hitl_phase", "TEXT DEFAULT ''"),
+                ("agent_name", "TEXT DEFAULT ''"),
+                ("input_artifacts", "TEXT DEFAULT ''"),
+            ]:
+                try:
+                    conn.execute(f"ALTER TABLE pipeline_stages ADD COLUMN {col} {col_type}")
+                except Exception:
+                    pass  # noqa: schema-idempotent
             conn.commit()
         finally:
             conn.close()
@@ -232,6 +244,11 @@ class PipelineRunStore:
         artifact_output: str = "",
         elapsed_sec: float = 0.0,
         error_message: str = "",
+        output_artifact: str = "",
+        hitl: bool = False,
+        hitl_phase: str = "",
+        agent_name: str = "",
+        input_artifacts: str = "",
     ) -> None:
         progress_str = json.dumps(progress) if progress else ""
         now = _time.strftime("%Y-%m-%dT%H:%M:%S")
@@ -242,8 +259,10 @@ class PipelineRunStore:
             """INSERT INTO pipeline_stages
                (run_id, stage_id, stage_idx, agent_id, skill_name,
                 status, progress_json, artifact_key, artifact_output,
-                elapsed_sec, error_message, started_at, finished_at)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                elapsed_sec, error_message, started_at, finished_at,
+                output_artifact, hitl, hitl_phase, agent_name, input_artifacts)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+                       ?, ?, ?, ?, ?)
                ON CONFLICT(run_id, stage_id) DO UPDATE SET
                 stage_idx = excluded.stage_idx,
                 agent_id = excluded.agent_id,
@@ -261,11 +280,17 @@ class PipelineRunStore:
                 finished_at = CASE
                     WHEN excluded.finished_at != '' THEN excluded.finished_at
                     ELSE pipeline_stages.finished_at
-                END""",
+                END,
+                output_artifact = excluded.output_artifact,
+                hitl = excluded.hitl,
+                hitl_phase = excluded.hitl_phase,
+                agent_name = excluded.agent_name,
+                input_artifacts = excluded.input_artifacts""",
             (
                 run_id, stage_id, stage_idx, agent_id, skill_name,
                 status, progress_str, artifact_key, artifact_output,
                 elapsed_sec, error_message, started, finished,
+                output_artifact, 1 if hitl else 0, hitl_phase, agent_name, input_artifacts,
             ),
         )
 
@@ -417,6 +442,22 @@ class PipelineRunStore:
         return state
 
     # ── Recovery ─────────────────────────────────────────────────
+
+    def list_paused_runs(self) -> List[Dict[str, Any]]:
+        """Return runs stuck in paused/HITL state (for restart recovery)."""
+        conn = self._get_conn()
+        try:
+            rows = conn.execute(
+                """SELECT * FROM pipeline_runs
+                   WHERE phase = 'paused'"""
+            ).fetchall()
+            return [dict(r) for r in rows]
+        finally:
+            conn.close()
+
+    def load_stages_config(self, run_id: str) -> List[Dict[str, Any]]:
+        """Load full stage config from pipeline_stages for engine reconstruction."""
+        return self.get_stages(run_id)
 
     def list_orphan_runs(self) -> List[str]:
         """Return run_ids stuck in non-terminal phases (for crash recovery)."""

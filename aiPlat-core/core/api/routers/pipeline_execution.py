@@ -26,27 +26,101 @@ _building_flags: Dict[str, bool] = {}
 
 
 async def cleanup_orphaned_pipelines():
-    """Startup: mark only truly orphaned (executing) runs as failed.
-    
+    """Startup: mark executing runs as failed, recover paused ones from DB.
+
     Paused/HITL pipelines are legitimate — user was about to approve/reject.
-    They should survive restart and be re-registered for HITL continuation.
+    They survive restart by rebuilding the PipelineEngine from saved state.
     """
     try:
         store = get_pipeline_run_store()
         conn = store._get_conn()
-        # Only kill pipelines that were mid-execution (no HITL guarding them)
+
+        # 1. Mark truly orphaned (executing) pipelines as failed
         conn.execute(
             "UPDATE pipeline_runs SET phase='failed', error_message='系统重启, 流水线中断' "
             "WHERE phase = 'executing'"
         )
         count = conn.total_changes
-        conn.commit()
         if count:
             _log.warning("Orphan cleanup: %d executing pipeline(s) marked as failed", count)
+
+        # 2. Recover paused (HITL) pipelines
+        paused_runs = store.list_paused_runs()
+        if paused_runs:
+            _log.warning("Orphan recovery: %d paused pipeline(s) to rebuild", len(paused_runs))
+            from core.harness.execution.pipeline_engine import (
+                PipelineEngine, PipelineConfig, register_pipeline,
+            )
+            from core.schemas_builder import PipelineStageConfig
+            from core.harness.utils.model_injection import best_model_for_purpose
+
+            for run in paused_runs:
+                run_id = run["run_id"]
+                project_id = run["project_id"]
+                try:
+                    # Rebuild stage config from saved DB records
+                    stage_rows = store.load_stages_config(run_id)
+                    stages = []
+                    for sr in stage_rows:
+                        input_arts = sr.get("input_artifacts", "")
+                        inputs = [a.strip() for a in input_arts.split(",") if a.strip()] if input_arts else []
+                        stage = PipelineStageConfig(
+                            id=sr["stage_id"],
+                            agent_id=sr.get("agent_id", ""),
+                            agent_name=sr.get("agent_name", ""),
+                            skill_name=sr.get("skill_name", ""),
+                            output_artifact=sr.get("output_artifact", sr.get("artifact_key", "")),
+                            hitl=bool(sr.get("hitl", False)),
+                            hitl_phase=sr.get("hitl_phase", ""),
+                            input_artifacts=inputs,
+                        )
+                        stages.append(stage)
+
+                    if not stages:
+                        _log.warning("Recovery: no stages for run %s, marking as failed", run_id)
+                        conn.execute(
+                            "UPDATE pipeline_runs SET phase='failed', error_message='恢复失败: 无阶段配置' "
+                            "WHERE run_id = ?", (run_id,)
+                        )
+                        continue
+
+                    pipeline_config = PipelineConfig(
+                        stages=stages,
+                        max_tokens_per_run=run.get("tokens_budget", 100000),
+                        max_retry_attempts=3,
+                    )
+
+                    engine = PipelineEngine(
+                        config=pipeline_config,
+                        model=best_model_for_purpose("chat"),
+                        persist_callback=None,  # will be set if needed
+                    )
+
+                    # Load saved state
+                    saved_state = store.get_full_state_from_run_id(run_id)
+                    engine._state = dict(saved_state)
+                    engine._state.setdefault("phase", "paused")
+                    engine._state.setdefault("project_id", project_id)
+                    engine._state.setdefault("_current_stage_idx", run.get("current_stage_idx", 0))
+
+                    # Register and resume in background
+                    register_pipeline(project_id, engine)
+                    asyncio.create_task(engine._resume_from_hitl())
+                    _log.warning("Recovery: pipeline %s re-registered, HITL active", project_id)
+
+                except Exception:
+                    _log.warning("Recovery failed for run %s", run_id, exc_info=True)
+                    conn.execute(
+                        "UPDATE pipeline_runs SET phase='failed', error_message='恢复失败' "
+                        "WHERE run_id = ?", (run_id,)
+                    )
+
         else:
-            _log.info("Orphan cleanup: no executing pipelines found")
+            _log.info("Orphan recovery: no paused pipelines found")
+
+        conn.commit()
     except Exception:
-        _log.warning("Orphan cleanup failed", exc_info=True)
+        _log.warning("Orphan cleanup/recovery failed", exc_info=True)
 
 
 def _make_store_callback(run_id: str, store):
@@ -157,7 +231,7 @@ async def pipeline_run(request: Request) -> Dict[str, Any]:
         tokens_budget=config.get("tokens_budget", 0),
     )
 
-    # Pre-create stage records
+    # Pre-create stage records with full config for restart recovery
     for i, s in enumerate(stages_raw[:]):
         if isinstance(s, dict):
             store.upsert_stage(
@@ -166,6 +240,11 @@ async def pipeline_run(request: Request) -> Dict[str, Any]:
                 agent_id=s.get("agent_id", ""),
                 skill_name=s.get("skill_name", ""),
                 status="pending",
+                output_artifact=s.get("output_artifact", ""),
+                hitl=bool(s.get("hitl", False)),
+                hitl_phase=str(s.get("hitl_phase", "")),
+                agent_name=str(s.get("agent_name", "")),
+                input_artifacts=",".join(s.get("input_artifacts", []) or []),
             )
 
     # Enqueue pipeline execution via background task
