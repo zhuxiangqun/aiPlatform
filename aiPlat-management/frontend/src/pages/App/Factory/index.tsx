@@ -611,21 +611,26 @@ const ProjectPanel: React.FC<{
       if (output) {
         let raw = typeof output === 'string' ? output : JSON.stringify(output);
         let summary: any = null;
-        try { summary = JSON.parse(raw); } catch {
-          const codeBlock = raw.match(/```(?:json)?\s*([\s\S]*?)```/g);
-          if (codeBlock) {
-            for (let i = codeBlock.length - 1; i >= 0; i--) {
-              try { summary = JSON.parse(codeBlock[i].replace(/```(?:json)?\s*/g, '').trim()); break; } catch {}
-            }
+        // ReAct agents output conversation logs, not clean JSON.
+        // Search for keywords to find the actual result JSON chunk.
+        const keywords = ['"total_bugs"', '"fixed_stages"', '"stages"'];
+        for (const kw of keywords) {
+          const idx = raw.lastIndexOf(kw);
+          if (idx < 0) continue;
+          // Find enclosing braces
+          const start = raw.lastIndexOf('{', idx);
+          if (start < 0) continue;
+          let depth = 0;
+          let end = start;
+          for (let j = start; j < raw.length; j++) {
+            if (raw[j] === '{') depth++;
+            if (raw[j] === '}') { depth--; if (depth === 0) { end = j + 1; break; } }
           }
-          if (!summary) {
-            const jsonMatches = raw.match(/\{[\s\S]*\}/g);
-            if (jsonMatches) {
-              for (let i = jsonMatches.length - 1; i >= 0; i--) {
-                try { summary = JSON.parse(jsonMatches[i]); break; } catch {}
-              }
-            }
-          }
+          try { summary = JSON.parse(raw.slice(start, end)); break; } catch {}
+        }
+        if (!summary) {
+          // Fallback: try direct parse (agent returned clean JSON)
+          try { summary = JSON.parse(raw); } catch {}
         }
         const fixed = summary?.summary?.fixed_stages || summary?.fixed_stages || 0;
         const total = summary?.summary?.total_bugs || summary?.total_bugs || 0;
