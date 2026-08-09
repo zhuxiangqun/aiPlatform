@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import { Plus, Send, Loader2, Clock, CheckCircle, XCircle, ExternalLink, BarChart3, Trash2, Play, RefreshCw, FileText, Wrench } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { projectApi, builderTeamApi, workspaceAgentApi, type ProjectItem, type ProjectRun } from '../../../services';
+import { projectApi, builderTeamApi, type ProjectItem, type ProjectRun } from '../../../services';
 import { Card, CardContent, Button, Textarea, toast } from '../../../components/ui';
 import { toastGateError } from '../../../components/ui';
 import type { BuilderSession } from '../../../services';
@@ -604,42 +604,15 @@ const ProjectPanel: React.FC<{
     if (!project.project_id) return;
     setFixingBugs(true);
     try {
-      const result = await workspaceAgentApi.execute('test_report_orchestrator', {
-        input: { project_id: project.project_id },
-      });
-       const output = (result as any)?.output;
-       if (output) {
-         let raw = typeof output === 'string' ? output : JSON.stringify(output);
-         let summary: any = null;
-         // Try direct parse first
-         try { summary = JSON.parse(raw); } catch {
-           // Extract from ```json ... ``` blocks
-           const codeBlock = raw.match(/```(?:json)?\s*([\s\S]*?)```/g);
-           if (codeBlock) {
-             for (let i = codeBlock.length - 1; i >= 0; i--) {
-               try { summary = JSON.parse(codeBlock[i].replace(/```(?:json)?\s*/g, '').trim()); break; } catch {}
-             }
-           }
-           // Fallback: extract last JSON-like object in the text
-           if (!summary) {
-             const jsonMatches = raw.match(/\{[\s\S]*\}/g);
-             if (jsonMatches) {
-               for (let i = jsonMatches.length - 1; i >= 0; i--) {
-                 try { summary = JSON.parse(jsonMatches[i]); break; } catch {}
-               }
-             }
-           }
-         }
-         const fixed = summary?.summary?.fixed_stages || summary?.fixed_stages || 0;
-         const total = summary?.summary?.total_bugs || summary?.total_bugs || 0;
-        toast.success(`修复编排完成: ${fixed} 个阶段已触发修复, 覆盖 ${total} 个 Bug`);
-      } else {
-        toast.success('修复编排已触发');
-      }
-      // Trigger state refresh to show rebuild button after fix
+      // Regenerate the fix_orchestrator stage (pipeline stage, not workspace agent).
+      // This runs _run_stage_skill → execution_backend=agent → StageRunner → ReActLoop.
+      // The agent reads test_report from state, calls POST /regenerate for each buggy stage.
+      await projectApi.regenerateStage(project.project_id, 'fix_summary',
+        '请分析test_report中的Bug，对每个受影响stage调用POST /regenerate进行修复');
+      toast.success('修复编排已触发，管道正在重建');
       setPhase('executing');
       onRefresh();
-    } catch (e: any) { toastGateError(e, '修复失败'); }
+    } catch (e: any) { toastGateError(e, '修复触发失败'); }
     finally { setFixingBugs(false); }
   };
 
