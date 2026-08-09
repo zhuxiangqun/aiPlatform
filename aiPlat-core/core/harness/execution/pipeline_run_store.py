@@ -145,6 +145,11 @@ class PipelineRunStore:
                 conn.execute("ALTER TABLE pipeline_runs ADD COLUMN _hitl_action TEXT DEFAULT ''")
             except Exception:
                 pass  # noqa: schema-idempotent
+            # ── v3.4: clear inline artifact data — now stored in filesystem ──
+            conn.execute(
+                "UPDATE pipeline_stages SET artifact_output = '' "
+                "WHERE LENGTH(artifact_output) > 200 AND artifact_output NOT LIKE '/%'"
+            )
             conn.commit()
         finally:
             conn.close()
