@@ -604,8 +604,11 @@ const ProjectPanel: React.FC<{
     if (!project.project_id) return;
     setFixingBugs(true);
     try {
+      // Pre-fetch test_report to pass directly — avoids agent having to HTTP GET 68K state
+      const st = await projectApi.getState(project.project_id);
+      const testReportRaw = (st as any)?.state?.test_report?.raw_output || '';
       const result = await workspaceAgentApi.execute('test_report_orchestrator', {
-        input: { project_id: project.project_id },
+        input: { project_id: project.project_id, test_report: testReportRaw },
       });
       const output = (result as any)?.output;
       if (output) {

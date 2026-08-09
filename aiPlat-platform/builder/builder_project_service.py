@@ -1199,8 +1199,13 @@ class BuilderProjectService:
             raise
 
     async def regenerate_stage(self, project_id: str, stage_id: str, feedback: str) -> Dict[str, Any]:
-        """Rollback to stage with feedback, then restart from that point."""
-        # Re-sync team config from YAML so new stages (e.g., fix_orchestrator) are picked up
+        """Rollback to stage with feedback, then restart in background.
+
+        Returns immediately (like rebuild) so the caller can poll GET /state.
+        Pipeline executes asynchronously in a background task.
+        """
+        import asyncio
+        # Re-sync team config from YAML so new stages are picked up
         self._sync_team_stages(project_id)
         
         session = self._rebuild_session(project_id)
@@ -1225,7 +1230,7 @@ class BuilderProjectService:
                 break
         state = await session.rollback(dict(state), target_id)
 
-        # 3. Resume from rollback point
+        # 3. Find target index
         target_idx = 0
         for i, s in enumerate(session.get_stages()):
             if s.id == target_id:
@@ -1235,9 +1240,24 @@ class BuilderProjectService:
         state["phase"] = "executing"
         state["tokens_used"] = 0
         state.pop("error", None)
-        state = await session.resume_from(target_idx, state)
-        await self._save_state(project_id, state)
-        return {"project_id": project_id, "phase": state.get("phase", "executing"), "state": state}
+
+        # 4. Launch pipeline in background — returns immediately
+        self._runs[project_id] = state  # seed for frontend polling
+        asyncio.create_task(self._run_regenerate_background(project_id, session, state, target_idx))
+        await asyncio.sleep(0)  # yield event loop so response can be sent
+        return {"project_id": project_id, "phase": "executing", "status": "regenerating"}
+
+    async def _run_regenerate_background(self, project_id: str, session, state: dict, target_idx: int) -> None:
+        """Execute the regeneration pipeline in background after the HTTP request returns."""
+        try:
+            state = await session.resume_from(target_idx, state)
+            await self._save_state(project_id, state)
+        except Exception as e:
+            logging.warning("regenerate background failed for %s: %s", project_id, str(e)[:200])
+            state["phase"] = "failed"
+            state["error"] = str(e)[:500]
+            import traceback
+            traceback.print_exc()
 
     async def rollback_stage(self, project_id: str, stage_id: str) -> Dict[str, Any]:
         session = self._rebuild_session(project_id)
