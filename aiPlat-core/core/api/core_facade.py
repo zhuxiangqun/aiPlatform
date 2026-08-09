@@ -821,11 +821,11 @@ class PipelineSession:
 
     async def approve(self, state: Dict[str, Any], feedback: str = "") -> Dict[str, Any]:
         """HITL approval: resume pipeline from current HITL pause."""
-        return await self._engine.approve(dict(state), feedback=feedback)
+        return await self._engine.approve_session(dict(state), feedback=feedback)
 
     async def reject(self, state: Dict[str, Any], feedback: str = "") -> Dict[str, Any]:
         """HITL rejection: provide feedback and resume pipeline."""
-        return await self._engine.reject(dict(state), feedback)
+        return await self._engine.reject_session(dict(state), feedback)
 
     async def rollback(self, state: Dict[str, Any], stage_id: str) -> Dict[str, Any]:
         """Rollback pipeline to a previous stage."""

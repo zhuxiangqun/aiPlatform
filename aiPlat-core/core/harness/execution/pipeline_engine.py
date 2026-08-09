@@ -1937,7 +1937,7 @@ class PipelineEngine:
 
 
 
-    async def approve(self, state: PipelineState, feedback: str = "") -> PipelineState:
+    async def approve_session(self, state: PipelineState, feedback: str = "") -> PipelineState:
 
         state = dict(state)
 
@@ -2225,7 +2225,7 @@ class PipelineEngine:
 
 
 
-    async def reject(self, state: PipelineState, feedback: str) -> PipelineState:
+    async def reject_session(self, state: PipelineState, feedback: str) -> PipelineState:
 
         state = dict(state)
 

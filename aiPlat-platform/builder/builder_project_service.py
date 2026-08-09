@@ -1200,6 +1200,9 @@ class BuilderProjectService:
 
     async def regenerate_stage(self, project_id: str, stage_id: str, feedback: str) -> Dict[str, Any]:
         """Rollback to stage with feedback, then restart from that point."""
+        # Re-sync team config from YAML so new stages (e.g., fix_orchestrator) are picked up
+        self._sync_team_stages(project_id)
+        
         session = self._rebuild_session(project_id)
         if not session:
             raise ValueError("no session — rebuild project first")
@@ -1330,23 +1333,7 @@ class BuilderProjectService:
             except OSError:
                 pass  # noqa: cleanup-best-effort
         # Re-sync team stages from YAML template to pick up latest config (e.g., new stages)
-        try:
-            from core.harness.execution.team_planner import load_team_template, _enrich_stage_from_agent
-            _tid = proj.get("team_id") or "default"
-            tmpl = load_team_template(_tid)
-            if tmpl and tmpl.stages:
-                stages = []
-                for i, s in enumerate(tmpl.stages):
-                    stage = dict(s)
-                    stage.setdefault("id", f"canvas_node_{i+1}")
-                    stage.setdefault("order", i)
-                    stage = _enrich_stage_from_agent(stage)
-                    stages.append(stage)
-                proj["team_stages"] = stages
-                proj["team_id"] = _tid
-                self._save_projects()
-        except Exception as e:
-            logging.warning("rebuild: team re-sync failed (using existing): %s", e)
+        self._sync_team_stages(project_id)
         # Re-run pipeline with existing PRD
         import logging as _log3
         _log3.getLogger("aiplat.builder").info("Rebuilding project %s", project_id)
@@ -1536,6 +1523,36 @@ class BuilderProjectService:
         except Exception as e:
             _log.warning("Failed to load pipeline state for %s: %s", project_id, str(e)[:200])
         return None
+
+    def _sync_team_stages(self, project_id: str) -> bool:
+        """Re-sync team stages from YAML template to pick up latest config changes.
+
+        Called by rebuild_project and regenerate_stage to ensure the pipeline
+        config reflects the current YAML (e.g., newly added fix_orchestrator stage).
+        Returns True on success, False if sync failed.
+        """
+        proj = self._projects.get(project_id, {})
+        if not proj:
+            return False
+        try:
+            from core.harness.execution.team_planner import load_team_template, _enrich_stage_from_agent
+            _tid = proj.get("team_id") or "default"
+            tmpl = load_team_template(_tid)
+            if tmpl and tmpl.stages:
+                stages = []
+                for i, s in enumerate(tmpl.stages):
+                    stage = dict(s)
+                    stage.setdefault("id", f"canvas_node_{i+1}")
+                    stage.setdefault("order", i)
+                    stage = _enrich_stage_from_agent(stage)
+                    stages.append(stage)
+                proj["team_stages"] = stages
+                proj["team_id"] = _tid
+                self._save_projects()
+                return True
+        except Exception as e:
+            logging.warning("team re-sync failed for %s: %s", project_id, e)
+        return False
 
     def _rebuild_session(self, project_id: str) -> Optional[Any]:
         """Rebuild PipelineSession and state from persisted project data (for crash recovery)."""
