@@ -477,7 +477,13 @@ const ProjectPanel: React.FC<{
         for (const k of keys) {
           if (s[k] && typeof s[k] === 'object') outputs[k] = s[k];
         }
-        if (Object.keys(outputs).length > 0) setStageOutputs(prev => ({ ...prev, ...outputs }));
+        if (Object.keys(outputs).length > 0) {
+          if (p === 'paused' || p === 'executing') {
+            setStageOutputs(outputs);
+          } else {
+            setStageOutputs(prev => ({ ...prev, ...outputs }));
+          }
+        }
         if (p === 'done' || p === 'failed' || (p === 'paused' && phase !== 'paused')) onRefresh();
       } catch { /* ignore */ }
     }, 3000);
@@ -827,11 +833,11 @@ const ProjectPanel: React.FC<{
               <div className="text-[10px] text-blue-400 mt-1 flex items-center gap-1">
                 <Loader2 className="w-3 h-3 animate-spin" />
                 {progressState.stage === 'test_executor' ? (
-                  <>执行对话测试中{progressState.current_step > 0 ? ` (Step ${progressState.current_step})` : ''}... {Math.floor((Date.now()/1000 - (progressState.started_at || 0)) || 0)}s</>
+                  <>执行对话测试中{progressState.current_step > 0 ? ` (Step ${progressState.current_step})` : ''}... {progressState.started_at ? `${Math.floor(Date.now()/1000 - progressState.started_at)}s` : ''}</>
                 ) : progressState.backend === 'agent' ? (
-                  <>{progressState.stage} 执行中{progressState.current_step > 0 ? ` (Step ${progressState.current_step})` : ''}... {Math.floor((Date.now()/1000 - (progressState.started_at || 0)) || 0)}s</>
+                  <>{progressState.stage} 执行中{progressState.current_step > 0 ? ` (Step ${progressState.current_step})` : ''}... {progressState.started_at ? `${Math.floor(Date.now()/1000 - progressState.started_at)}s` : ''}</>
                 ) : (
-                  <>运行中... {Math.floor((Date.now()/1000 - (progressState.started_at || 0)) || 0)}s</>
+                  <>运行中... {progressState.started_at ? `${Math.floor(Date.now()/1000 - progressState.started_at)}s` : ''}</>
                 )}
               </div>
             )}
@@ -1249,6 +1255,7 @@ const FactoryPage: React.FC = () => {
   const [deployedApps, setDeployedApps] = useState<any[]>([]);
 	const [loadingApps, setLoadingApps] = useState(true);
 	const [projectStates, setProjectStates] = useState<Record<string, string>>({});
+	const [projectPassRates, setProjectPassRates] = useState<Record<string, number>>({});
 	const [desc, setDesc] = useState('');
   const [creating, setCreating] = useState(false);
   const [selectedProject, setSelectedProject] = useState<ProjectItem | null>(null);
@@ -1262,14 +1269,23 @@ const FactoryPage: React.FC = () => {
 	        setProjects(p.projects);
 	        // ── v3.1: fetch real-time pipeline phase from Core ──
 	        const states: Record<string, string> = {};
+	        const rates: Record<string, number> = {};
 	        await Promise.all(p.projects.map(async (prj: ProjectItem) => {
 	          try {
 	            const st = await projectApi.getState(prj.project_id);
 	            const phase = (st as any)?.state?.phase || (st as any)?.phase || '';
 	            if (phase) states[prj.project_id] = phase;
+	            const tr = (st as any)?.state?.test_report;
+	            if (tr?.raw_output) {
+	              try {
+	                const trj = JSON.parse(tr.raw_output);
+	                if (trj.meta?.pass_rate != null) rates[prj.project_id] = trj.meta.pass_rate;
+	              } catch {}
+	            }
 	          } catch { /* skip */ }
 	        }));
 	        setProjectStates(states);
+	        if (Object.keys(rates).length > 0) setProjectPassRates(rates);
 	      }
     } catch { /* keep existing state, retry on next loadAll */ }
     try {
@@ -1362,7 +1378,7 @@ const FactoryPage: React.FC = () => {
           {projects.map(p => {
             const status = getStatus(p);
             const lastRun = p.runs?.[p.runs.length - 1];
-            const passRate = lastRun?.pass_rate ?? 0;
+            const passRate = projectPassRates[p.project_id] ?? lastRun?.pass_rate ?? 0;
             const hasPrd = !!(p as any).confirmed_prd;
             return (
               <motion.div
