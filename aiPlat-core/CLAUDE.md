@@ -151,6 +151,44 @@ language: zh-CN
 | 3 | `agent_manager.py` | 写回 AGENT.md 时保留该字段（`fm["字段名"] = ...`） |
 | 4 | `engine.py` | 将引擎中对应的硬编码替换为新字段 |
 
+### 5.4.1 双引擎模式：LLM 直接调用 vs Agent 执行器（强制）
+
+Pipeline engine 支持两种执行后端，由 `PipelineStageConfig.execution_backend` 选择：
+
+| backend | 路径 | 产出物 | 适用场景 |
+|---------|------|------|---------|
+| `llm`（默认） | `sys_llm_generate` 一次调用 | 纯 LLM 响应 → `raw_output` | 生成式 stage（PRD、架构设计、代码生成） |
+| `agent` | `StageRunner` → `ReActLoop` | Final Answer（不存完整对话日志） | 编排式 stage（测试修复、文件操作） |
+
+#### 配置规则（强制）
+
+1. `execution_backend` **只能**在 `~/.aiplat/teams/default.yaml` 的 `stages[].execution_backend` 声明。
+   **禁止**从 AGENT.md frontmatter 读取。`team_planner.py:_enrich_stage_from_agent` 的 `_pipe_fields`
+   不得包含 `execution_backend` 映射。
+
+2. 默认值 `"llm"` 由 `PipelineStageConfig.execution_backend` 的 schema default 提供。
+   YAML 中不需显式写 `execution_backend: llm`（默认已生效），显式写更好。
+
+#### agent 后端的产出物提取（强制）
+
+`_run_stage_skill()` 在 `_backend == "agent"` 路径结束后，**必须**从 ReAct 对话历史中提取
+Final Answer，不能将完整对话日志作为 `raw_output` 存储。
+
+| ❌ 禁止 | ✅ 应做 |
+|--------|--------|
+| `_result = str(_agent_result)` 存整个对话日志 | 提取 `_agent_result.final_answer` 或最后一条对话消息 |
+| 下游 stage 读到 ReAct 推理过程 | 下游 stage 读到结构化 JSON |
+
+#### 工具注入隔离（强制）
+
+`agent` 后端的工具列表在 YAML 中按 stage 声明（`stages[].tools` 字段）。
+`StageRunner.run()` 初始化时只注入当前 stage 声明的工具列表。
+
+| ❌ 禁止 | ✅ 应做 |
+|--------|--------|
+| 全局注册工具池供所有 stage 共享 | 按 stage 配置注入 |
+| `pm_agent`（llm 后端）意外获得 `http`/`regenerate` 工具 | 工具列表仅 `agent` 后端的 stage 声明 |
+
 ### 5.5 通用引擎原则（设计基础，来自 `docs/README.md` 设计原则）
 
 `core/harness/execution/` 是**通用流水线引擎**，它不属于任何特定业务团队。它的职责是——

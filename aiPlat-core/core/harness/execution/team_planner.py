@@ -300,7 +300,7 @@ def _enrich_stage_from_agent(stage: Dict[str, Any]) -> Dict[str, Any]:
         ("skill_name",         "skill_name",         "",     str),
         ("output_artifact",    "output_artifact",    "",     str),
         ("required_skills",    "required_skills",    [],     lambda v: v if isinstance(v, list) else []),
-        ("execution_backend",  "execution_backend",  "llm",  str),
+        # execution_backend is set ONLY by YAML — not from AGENT.md (see CLAUDE.md §5.4.1)
         ("test_execution_mode","test_execution_mode","",      str),
         ("generate_test_plan", "generate_test_plan",  False,  bool),
         ("deploy_files_to_disk","deploy_files_to_disk",False, bool),

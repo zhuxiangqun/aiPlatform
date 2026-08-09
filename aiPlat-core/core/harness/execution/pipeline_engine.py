@@ -4068,7 +4068,13 @@ class PipelineEngine:
                     pass
 
             state.pop("_sys_prompt", None)
-            _result = str(_agent_result or "")
+            # Extract final answer from ReAct dialogue — not the full conversation log
+            if hasattr(_agent_result, 'final_answer'):
+                _result = str(_agent_result.final_answer or "")
+            elif isinstance(_agent_result, dict):
+                _result = str(_agent_result.get("final_answer", "") or _agent_result.get("output", ""))
+            else:
+                _result = str(_agent_result or "")
             _result = _result.replace("```json", "").replace("```", "").strip()
             _elapsed = round(_time.time() - _t0, 2)
             _final_steps = int(state.get("step_count", 0) or 0)
