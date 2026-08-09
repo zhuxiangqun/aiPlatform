@@ -3853,6 +3853,18 @@ class PipelineEngine:
         import time as _time
         _t0 = _time.time()
 
+        # ── Write running progress immediately — frontend poll sees current stage ──
+        _stage_tag = getattr(stage, 'output_artifact', '') or _skill_name
+        state["_progress"] = {
+            "stage": _stage_tag,
+            "status": "running",
+            "started_at": _t0,
+            "backend": "llm",
+            "current_step": 0,
+        }
+        if self._persist_callback:
+            self._persist_callback(dict(state))
+
         # Step-level metadata (populated by domain/context injection + quality bus)
         _domain_id = ""
         _context_enriched = False
