@@ -693,6 +693,53 @@ const ProjectPanel: React.FC<{
     finally { setSavingPrd(false); }
   };
 
+  // ── Shared: refresh UI from a pipeline state snapshot (used by poll, approve, reject) ──
+  const _refreshFromState = async (stateObj: any) => {
+    const s = stateObj || {};
+    const p = s.phase as string || 'executing';
+    setPhase(p);
+    setProgressState(s._progress || null);
+
+    if (p === 'paused') {
+      const hitlId = s._hitl_stage_id as string;
+      const hitlArtifact = s._hitl_output_artifact as string;
+      if (hitlId) setHitlStageId(hitlId);
+      if (hitlArtifact) setHitlOutputArtifact(hitlArtifact);
+    } else {
+      setHitlStageId(null);
+      setHitlOutputArtifact(null);
+    }
+
+    const orderedKeys = teamStages.map((ts: any) => ts.output_artifact).filter(Boolean);
+    const keys = orderedKeys.length > 0 ? orderedKeys : ['architecture', 'code', 'test_report'];
+    const outputs: Record<string, any> = {};
+    for (const k of keys) {
+      if (s[k] && typeof s[k] === 'object') outputs[k] = s[k];
+    }
+    if (Object.keys(outputs).length > 0) {
+      if (p === 'paused' || p === 'executing') {
+        const _hitlArtifact = s._hitl_output_artifact as string;
+        if (p === 'paused' && _hitlArtifact && !outputs[_hitlArtifact] && outputs[Object.keys(outputs)[0]]) {
+          setTimeout(async () => {
+            try {
+              const st2 = await projectApi.getState(project.project_id);
+              const s2 = (st2 as any)?.state || {};
+              const o2: Record<string, any> = {};
+              for (const k of keys) {
+                if (s2[k] && typeof s2[k] === 'object') o2[k] = s2[k];
+              }
+              if (o2[_hitlArtifact]) setStageOutputs(o2);
+            } catch {}
+          }, 400);
+        } else {
+          setStageOutputs(outputs);
+        }
+      } else {
+        setStageOutputs(prev => ({ ...prev, ...outputs }));
+      }
+    }
+  };
+
   const handleApprove = async () => {
     if (!project.project_id) return;
     setHitlStageId(null);
@@ -701,6 +748,9 @@ const ProjectPanel: React.FC<{
     try {
       await projectApi.approve(project.project_id);
       toast.success('已审批，正在继续执行');
+      // Immediately fetch state — eliminates 0-3s blank between poll ticks
+      const st = await projectApi.getState(project.project_id);
+      await _refreshFromState((st as any)?.state);
     } catch (e: any) {
       toastGateError(e, '审批失败');
     }
@@ -711,13 +761,31 @@ const ProjectPanel: React.FC<{
     if (!project.project_id) return;
     const feedback = window.prompt('驳回理由（可选）：');
     if (feedback === null) return; // cancelled
+    // Clear only rejected stage + downstream (not upstream already-approved stages)
+    const _rejectedArtifact = hitlOutputArtifact;
+    const _keys = teamStages.map((ts: any) => ts.output_artifact).filter(Boolean);
+    const _rejIdx = _rejectedArtifact ? _keys.indexOf(_rejectedArtifact) : -1;
+    if (_rejIdx >= 0) {
+      setStageOutputs(prev => {
+        if (!prev) return null;
+        const next: Record<string, any> = {};
+        for (const k of _keys.slice(0, _rejIdx)) {
+          if (prev[k]) next[k] = prev[k];
+        }
+        return next;
+      });
+    } else {
+      setStageOutputs(null);
+    }
     setHitlStageId(null);
     setHitlOutputArtifact(null);
     setRejecting(true);
-    setStageOutputs(null);
     try {
       await projectApi.reject(project.project_id, feedback);
       toast.success('已驳回，将重新生成');
+      // Immediately fetch state — eliminates 0-3s blank between poll ticks
+      const st = await projectApi.getState(project.project_id);
+      await _refreshFromState((st as any)?.state);
     } catch (e: any) {
       toastGateError(e, '驳回失败');
     }
