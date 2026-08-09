@@ -144,6 +144,7 @@ def _make_store_callback(run_id: str, store):
 
     def _cb(state: dict):
         try:
+            import json as _json
             _phase = state.get("phase", "executing")
             # v3.2: Atomic update — phase + HITL + progress in ONE SQL transaction
             store.atomic_update_phase_and_hitl(
@@ -155,6 +156,7 @@ def _make_store_callback(run_id: str, store):
                 hitl_phase_name=state.get("_hitl_phase_name", "review"),
                 hitl_output_artifact=state.get("_hitl_output_artifact", ""),
                 error=state.get("error_message", state.get("error", "")),
+                _progress_json=_json.dumps(state.get("_progress", {})),
             )
 
             # Write per-artifact progress (state keys with raw_output are artifacts)

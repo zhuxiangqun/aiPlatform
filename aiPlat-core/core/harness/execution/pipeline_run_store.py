@@ -150,6 +150,11 @@ class PipelineRunStore:
                 "UPDATE pipeline_stages SET artifact_output = '' "
                 "WHERE LENGTH(artifact_output) > 200 AND artifact_output NOT LIKE '/%'"
             )
+            # ── v3.5: _progress persistence for frontend stage tracking ──
+            try:
+                conn.execute("ALTER TABLE pipeline_runs ADD COLUMN _progress_json TEXT DEFAULT ''")
+            except Exception:
+                pass  # noqa: schema-idempotent
             conn.commit()
         finally:
             conn.close()
@@ -220,9 +225,10 @@ class PipelineRunStore:
         hitl_phase_name: str = "",
         hitl_output_artifact: str = "",
         error: str = "",
+        _progress_json: str = "",
     ) -> None:
-        """Update phase + HITL fields + progress in a single atomic SQL statement.
-
+        """Update phase + HITL fields + progress + pipeline run in a single atomic SQL statement.
+        
         Replaces the old pattern of calling update_run_progress →
         update_run_phase → update_hitl_fields in three separate transactions
         (which could leave the DB in an inconsistent state if one failed).
@@ -234,10 +240,11 @@ class PipelineRunStore:
                SET phase = ?, error_message = ?, finished_at = ?,
                    current_stage_idx = ?, pass_rate = ?,
                    _hitl_stage_id = ?, _hitl_phase_name = ?,
-                   _hitl_output_artifact = ?, updated_at = ?
+                   _hitl_output_artifact = ?, _progress_json = ?,
+                   updated_at = ?
                WHERE run_id = ?""",
             (phase, error, finished, current_stage_idx, pass_rate,
-             hitl_stage_id, hitl_phase_name, hitl_output_artifact, now, run_id),
+             hitl_stage_id, hitl_phase_name, hitl_output_artifact, _progress_json, now, run_id),
         )
 
     # ── v3.1: HITL field writers ───────────────────────────────────
@@ -490,6 +497,14 @@ class PipelineRunStore:
                 except json.JSONDecodeError:
                     pass
 
+        # Restore _progress from runs table (v3.5 — persisted per stage start)
+        _run_progress = run.get("_progress_json", "")
+        if _run_progress and not _progress:
+            try:
+                _progress = json.loads(_run_progress)
+            except json.JSONDecodeError:
+                pass
+
         if _progress:
             state["_progress"] = _progress
 
@@ -541,6 +556,14 @@ class PipelineRunStore:
                         _progress = p
                 except json.JSONDecodeError:
                     pass
+
+        _run_progress = run.get("_progress_json", "")
+        if _run_progress and not _progress:
+            try:
+                _progress = json.loads(_run_progress)
+            except json.JSONDecodeError:
+                pass
+
         if _progress:
             state["_progress"] = _progress
         return state

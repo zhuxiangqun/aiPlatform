@@ -382,7 +382,8 @@ const ProjectPanel: React.FC<{
   const [hitlOutputArtifact, setHitlOutputArtifact] = useState<string | null>(null);
   const [healthReport, setHealthReport] = useState<Record<string, any> | null>(null);
   const [progressState, setProgressState] = useState<Record<string, any> | null>(null);
-  const [hasRunningPipeline, setHasRunningPipeline] = useState(false);
+  const [executingSince, setExecutingSince] = useState<number | null>(null);
+  const [elapsed, setElapsed] = useState(0);
   const [agentMode, setAgentMode] = useState(false);
   const [agentName, setAgentName] = useState('');
   const [loadingHealth, setLoadingHealth] = useState(false);
@@ -469,7 +470,7 @@ const ProjectPanel: React.FC<{
               setHitlOutputArtifact((stage as any).output_artifact || null);
             }
           }
-        } else if (p !== 'paused') {
+        } else if (p !== 'paused' && p !== 'executing') {
           setHitlStageId(null);
           setHitlOutputArtifact(null);
         }
@@ -524,6 +525,23 @@ const ProjectPanel: React.FC<{
     return () => { clearInterval(id); };
   }, [phase, project.project_id]);
 
+  // ── Independent execution timer — keeps ticking even when state endpoint times out ──
+  useEffect(() => {
+    if (phase === 'executing' && executingSince === null) {
+      setExecutingSince(Date.now());
+    } else if (phase !== 'executing') {
+      setExecutingSince(null);
+    }
+  }, [phase, executingSince]);
+
+  useEffect(() => {
+    if (executingSince == null) return;
+    const id = setInterval(() => {
+      setElapsed(Math.floor((Date.now() - executingSince) / 1000));
+    }, 1000);
+    return () => clearInterval(id);
+  }, [executingSince]);
+
   // Load stage outputs whenever project opens (reads _final_state.json via API)
   useEffect(() => {
     if (!project.project_id) return;
@@ -532,22 +550,13 @@ const ProjectPanel: React.FC<{
         const st = await projectApi.getState(project.project_id);
         const state = (st as any)?.state || {};
         const realPhase = state.phase as string;
-        // Never auto-enter executing UI on panel open — it confuses users.
-        // But DO show approval/paused/done/failed states immediately.
-        if (realPhase && realPhase !== 'idle' && realPhase !== 'executing' && realPhase !== 'pending') {
+        // Show all states immediately — no longer skip executing
+        if (realPhase && realPhase !== 'idle' && realPhase !== 'pending') {
           setPhase(realPhase);
         }
         // Also load HITL fields on initial open (so button appears immediately)
         if (state._hitl_stage_id) setHitlStageId(state._hitl_stage_id as string);
         if (state._hitl_output_artifact) setHitlOutputArtifact(state._hitl_output_artifact as string);
-        // Executing phase: show subtle indicator, user can click to enter
-        if (realPhase === 'executing') {
-          const runs = (st as any)?.runs || [];
-          const hasActiveRun = runs.some((r: any) => r.phase === 'executing');
-          if (hasActiveRun) {
-            setHasRunningPipeline(true);
-          }
-        }
         setProgressState(state._progress || null);
         const outputs: Record<string, any> = {};
         const orderedKeys = project.team_stages?.map(s => (s as any).output_artifact).filter(Boolean) || [];
@@ -747,10 +756,8 @@ const ProjectPanel: React.FC<{
       const hitlArtifact = s._hitl_output_artifact as string;
       if (hitlId) setHitlStageId(hitlId);
       if (hitlArtifact) setHitlOutputArtifact(hitlArtifact);
-    } else {
-      setHitlStageId(null);
-      setHitlOutputArtifact(null);
     }
+    // Don't clear HITL during executing — let it naturally transition via poll
 
     const orderedKeys = teamStages.map((ts: any) => ts.output_artifact).filter(Boolean);
     const keys = orderedKeys.length > 0 ? orderedKeys : ['architecture', 'code', 'test_report'];
@@ -1022,11 +1029,11 @@ const ProjectPanel: React.FC<{
               <div className="text-[10px] text-blue-400 mt-1 flex items-center gap-1">
                 <Loader2 className="w-3 h-3 animate-spin" />
                 {progressState.stage === 'test_executor' ? (
-                  <>执行对话测试中{progressState.current_step > 0 ? ` (Step ${progressState.current_step})` : ''}... {progressState.started_at ? `${Math.floor(Date.now()/1000 - progressState.started_at)}s` : ''}</>
+                  <>执行对话测试中{progressState.current_step > 0 ? ` (Step ${progressState.current_step})` : ''}... {elapsed}s</>
                 ) : progressState.backend === 'agent' ? (
-                  <>{progressState.stage} 执行中{progressState.current_step > 0 ? ` (Step ${progressState.current_step})` : ''}... {progressState.started_at ? `${Math.floor(Date.now()/1000 - progressState.started_at)}s` : ''}</>
+                  <>{progressState.stage} 执行中{progressState.current_step > 0 ? ` (Step ${progressState.current_step})` : ''}... {elapsed}s</>
                 ) : (
-                  <>运行中... {progressState.started_at ? `${Math.floor(Date.now()/1000 - progressState.started_at)}s` : ''}</>
+                  <>运行中... {elapsed}s</>
                 )}
               </div>
             )}
@@ -1051,19 +1058,6 @@ const ProjectPanel: React.FC<{
             <Clock className="w-3 h-3" /> 等待审批 — 请在下方「阶段产出」中审核并操作
           </div>
         ) : null}
-
-        {/* Running pipeline indicator — subtle, doesn't hijack the view */}
-        {hasRunningPipeline && phase !== 'executing' && (
-          <div className="p-2 rounded border border-blue-500/20 bg-blue-500/5 text-xs flex items-center justify-between">
-            <span className="flex items-center gap-1.5 text-blue-300">
-              <Loader2 className="w-3 h-3 animate-spin" /> Pipeline 正在运行中
-            </span>
-            <button onClick={() => { setPhase('executing'); setHasRunningPipeline(false); }}
-              className="text-[10px] px-2 py-0.5 rounded bg-blue-500/20 text-blue-300 hover:bg-blue-500/30">
-              查看进度
-            </button>
-          </div>
-        )}
 
         {/* PRD summary — always show if confirmed */}
         {confirmedPrd && (
@@ -1488,8 +1482,8 @@ const FactoryPage: React.FC = () => {
 	        await Promise.all(p.projects.map(async (prj: ProjectItem) => {
 	          try {
 	            const st = await projectApi.getState(prj.project_id);
-	            const phase = (st as any)?.state?.phase || (st as any)?.phase || '';
-	            if (phase) states[prj.project_id] = phase;
+            const phase = (st as any)?.state?.phase || (st as any)?.phase || '';
+            states[prj.project_id] = phase; // always set, even if empty (frontend handles 'loading')
 	            const tr = (st as any)?.state?.test_report;
 	            if (tr?.raw_output) {
 	              try {
@@ -1539,8 +1533,8 @@ const FactoryPage: React.FC = () => {
 
   const getStatus = (p: ProjectItem) => {
     const realPhase = projectStates[p.project_id];
-    const phase = realPhase || p.runs?.[p.runs.length - 1]?.phase;
-    if (!phase) return { label: '待开始', color: 'text-gray-500', bg: 'bg-gray-500/10', phase: 'dialogue' };
+    const phase = realPhase; // No fallback to old runs[].phase — state endpoint is authoritative
+    if (!phase) return { label: '获取中...', color: 'text-gray-500', bg: 'bg-gray-500/10', phase: 'loading' };
     if (phase === 'done') return { label: '已完成', color: 'text-green-400', bg: 'bg-green-500/10', phase: 'done' };
     if (phase === 'expired') return { label: '已过期', color: 'text-gray-400', bg: 'bg-gray-500/10', phase: 'expired' };
     if (phase === 'failed') return { label: '失败', color: 'text-red-400', bg: 'bg-red-500/10', phase: 'failed' };
