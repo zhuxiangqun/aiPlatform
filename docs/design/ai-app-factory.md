@@ -97,6 +97,42 @@ stages:
 1. 编辑 `~/.aiplat/teams/default.yaml`，在对应 stage 加 `hitl: true` + `hitl_phase: review`
 2. 前端 **不需要改** — `isHITL` 由 `hitlOutputArtifact` 驱动，自动适配
 
+### 3.3 数据一致性与原子写入
+
+#### 审批操作的 DB 写入顺序
+
+`approve()` / `reject()` 必须遵循以下顺序（`pipeline_engine.py`）：
+
+1. **幂等防御**：`if self._state.get("phase") != "paused": return`
+2. **更新内存** `self._state`（phase、HITL 字段）
+3. **先同步写 DB** — 同一事务更新 `phase` + `_hitl_stage_id` + `_hitl_phase_name` + `_hitl_output_artifact` + `_current_stage_idx`
+4. **DB 确认落盘后**，才执行 `self._resume_event.set()` 唤醒引擎
+
+**反模式（禁止）**：
+- 先 `set()` event 再写 DB → 引擎提前唤醒，`GET /state` 可能读到旧状态
+- 分多次 DB 事务更新（`update_run_progress` → `update_run_phase` → `clear_hitl_fields`）→ 部分成功导致字段矛盾
+
+#### 原子更新方法
+
+`pipeline_run_store.py` 提供 `atomic_update_phase_and_hitl()` 单 SQL 方法，一次 commit 完成上述全部字段更新：
+
+```python
+def atomic_update_phase_and_hitl(self, run_id, phase, current_stage_idx, pass_rate,
+                                  hitl_stage_id, hitl_phase_name, hitl_output_artifact, error=""):
+    now = _time.strftime("%Y-%m-%dT%H:%M:%S")
+    finished = now if phase in ("done", "failed", "cancelled", "expired") else ""
+    self._execute("""UPDATE pipeline_runs SET
+                     phase=?, error_message=?, finished_at=?,
+                     current_stage_idx=?, pass_rate=?,
+                     _hitl_stage_id=?, _hitl_phase_name=?, _hitl_output_artifact=?,
+                     updated_at=?
+                     WHERE run_id=?""",
+                  (phase, error, finished, current_stage_idx, pass_rate,
+                   hitl_stage_id, hitl_phase_name, hitl_output_artifact, now, run_id))
+```
+
+禁止在 `_make_store_callback`（`pipeline_execution.py`）中分三次调用独立更新方法。所有状态变更必须经由原子方法一次落盘。
+
 ---
 
 ## 4. 前端关键模式
@@ -143,9 +179,16 @@ const isHITL = hitlOutputArtifact && key === hitlOutputArtifact;
 
 | 管道状态 | 策略 | 原因 |
 |---------|------|------|
-| `executing` | **替换** | 清除上次运行的旧下游数据 |
-| `paused` | **替换**（有 race guard） | 同上；如果 HITL artifact 缺失则延迟重试 |
+| `executing` | **渐进式** | 只清空 `_current_stage_idx + 1` 之后的产出，保留当前及上游。避免 stage 切换瞬间 UI 空白 |
+| `paused` | **渐进式**（有 race guard） | 同上；若 HITL artifact 缺失则延迟重试 |
 | `done` / `failed` | **合并**（`prev => ({...prev, ...})`） | 保留最终全部产出 |
+
+**工具函数**：`_applyProgressiveOutputs(outputs, currentStageIdx, allStageKeys)`
+
+- `allStageKeys` 必须从 `teamStages` 的完整顺序列表传入，**禁止**用 `Object.keys(outputs)` 回退（会丢失顺序）
+- 实现逻辑：`const keepIdx = Math.min(currentStageIdx + 1, allStageKeys.length);` 仅保留前 `keepIdx` 个 key
+
+**禁止**全量替换 `setStageOutputs(outputs)`——会导致正在执行的 stage 产出从 UI 短暂消失（3 秒轮询空窗期）。
 
 ---
 
@@ -204,7 +247,9 @@ You were rejected and must regenerate. Address EVERY issue below.
 
 ### 6.3 单 project 多条 paused run
 
-只恢复最新的一条，旧 pause 标记 `failed`（去重逻辑在 `cleanup_orphaned_pipelines`）。
+只恢复最新的一条，旧 pause 标记 `expired`（去重逻辑在 `cleanup_orphaned_pipelines`），同时清空 `_hitl_stage_id`、`_hitl_phase_name`、`_hitl_output_artifact`，并写入 `error_message='旧暂停记录已清理'`。
+
+前端 `getStatus` 对 `expired` 返回灰色"已过期"标签，项目卡片不展示红色"失败"告警，仅显示"重新构建"按钮。
 
 ---
 
@@ -239,6 +284,14 @@ You were rejected and must regenerate. Address EVERY issue below.
 | 1 | macOS gunicorn SIGABRT | `export OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES` | 启动命令 |
 | 2 | Platform 服务器未启动 | 三层都需要起（8000/8002/8003） | 启动脚本 |
 | 3 | httpx localhost→IPv6 超时 | 改为 `127.0.0.1` + 超时 60s | `pipeline_orchestrator_client.py` |
+
+### 架构加固 (2026-08-09)
+
+| # | 问题 | 修复 | 位置 |
+|---|------|------|------|
+| P0 | approve 后内存/DB 状态不一致（三次独立事务导致 phase 与 HITL 字段矛盾） | 原子 SQL 事务 `atomic_update_phase_and_hitl` + 先写 DB 再 `set()` event | `pipeline_engine.py`, `pipeline_run_store.py`, `pipeline_execution.py` |
+| P1 | stage 切换时产出闪烁（全量替换清除当前 stage 产出） | 渐进式清理：`_applyProgressiveOutputs` 只清 `idx+1` 之后的 key | `index.tsx` |
+| P2 | 旧审批被标记为 `failed`，前端显示红色"失败" | 独立 `expired` 状态 + 灰色标签 + 清空 HITL 字段 | `pipeline_execution.py`, `index.tsx` |
 
 ---
 

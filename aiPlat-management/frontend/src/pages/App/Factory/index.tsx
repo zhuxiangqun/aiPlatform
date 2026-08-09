@@ -500,15 +500,19 @@ const ProjectPanel: React.FC<{
                 try {
                   const st2 = await projectApi.getState(project.project_id);
                   const s2 = (st2 as any)?.state || {};
-                  const o2: Record<string, any> = {};
-                  for (const k of keys) {
-                    if (s2[k] && typeof s2[k] === 'object') o2[k] = s2[k];
-                  }
-                  if (o2[_hitlArtifact]) setStageOutputs(o2);
+                   const o2: Record<string, any> = {};
+                   for (const k of keys) {
+                     if (s2[k] && typeof s2[k] === 'object') o2[k] = s2[k];
+                   }
+                   if (o2[_hitlArtifact]) {
+                     const filtered = _applyProgressiveOutputs(o2, s2._current_stage_idx || 0, keys);
+                     if (Object.keys(filtered).length > 0) setStageOutputs(filtered);
+                   }
                 } catch { /* retry failed — next poll will fix */ }
               }, 400);
             } else {
-              setStageOutputs(outputs);
+              const filtered = _applyProgressiveOutputs(outputs, s._current_stage_idx || 0, orderedKeys);
+              if (Object.keys(filtered).length > 0) setStageOutputs(filtered);
             }
           } else {
             setStageOutputs(prev => ({ ...prev, ...outputs }));
@@ -693,6 +697,20 @@ const ProjectPanel: React.FC<{
     finally { setSavingPrd(false); }
   };
 
+  // ── P1: Progressive output clearing — keeps upstream stages, clears only downstream ──
+  const _applyProgressiveOutputs = (
+    outputs: Record<string, any>,
+    currentStageIdx: number,
+    allStageKeys: string[],
+  ): Record<string, any> => {
+    const keepIdx = Math.min(currentStageIdx + 1, allStageKeys.length);
+    const filtered: Record<string, any> = {};
+    for (const k of allStageKeys.slice(0, keepIdx)) {
+      if (outputs[k] !== undefined) filtered[k] = outputs[k];
+    }
+    return filtered;
+  };
+
   // ── Shared: refresh UI from a pipeline state snapshot (used by poll, approve, reject) ──
   const _refreshFromState = async (stateObj: any) => {
     const s = stateObj || {};
@@ -728,11 +746,15 @@ const ProjectPanel: React.FC<{
               for (const k of keys) {
                 if (s2[k] && typeof s2[k] === 'object') o2[k] = s2[k];
               }
-              if (o2[_hitlArtifact]) setStageOutputs(o2);
+              if (o2[_hitlArtifact]) {
+                const filtered = _applyProgressiveOutputs(o2, s2._current_stage_idx || 0, keys);
+                if (Object.keys(filtered).length > 0) setStageOutputs(filtered);
+              }
             } catch {}
           }, 400);
         } else {
-          setStageOutputs(outputs);
+          const filtered = _applyProgressiveOutputs(outputs, s._current_stage_idx || 0, keys);
+          if (Object.keys(filtered).length > 0) setStageOutputs(filtered);
         }
       } else {
         setStageOutputs(prev => ({ ...prev, ...outputs }));
@@ -757,7 +779,10 @@ const ProjectPanel: React.FC<{
       for (const k of keys) {
         if (s[k] && typeof s[k] === 'object') outputs[k] = s[k];
       }
-      if (Object.keys(outputs).length > 0) setStageOutputs(outputs);
+      if (Object.keys(outputs).length > 0) {
+        const filtered = _applyProgressiveOutputs(outputs, s._current_stage_idx || 0, keys);
+        if (Object.keys(filtered).length > 0) setStageOutputs(filtered);
+      }
 
       const backendPhase = s.phase as string;
       if (backendPhase === 'paused') {
@@ -1482,6 +1507,7 @@ const FactoryPage: React.FC = () => {
     const phase = realPhase || p.runs?.[p.runs.length - 1]?.phase;
     if (!phase) return { label: '待开始', color: 'text-gray-500', bg: 'bg-gray-500/10', phase: 'dialogue' };
     if (phase === 'done') return { label: '已完成', color: 'text-green-400', bg: 'bg-green-500/10', phase: 'done' };
+    if (phase === 'expired') return { label: '已过期', color: 'text-gray-400', bg: 'bg-gray-500/10', phase: 'expired' };
     if (phase === 'failed') return { label: '失败', color: 'text-red-400', bg: 'bg-red-500/10', phase: 'failed' };
     if (phase === 'paused') return { label: '等待审批', color: 'text-amber-400', bg: 'bg-amber-500/10', phase: 'paused' };
     if (phase === 'pending') return { label: '已中断', color: 'text-amber-400', bg: 'bg-amber-500/10', phase: 'failed' };

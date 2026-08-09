@@ -2333,25 +2333,47 @@ class PipelineEngine:
             unregister_pipeline(project_id)
 
     def approve(self, feedback: str = "") -> None:
-        """Synchronous: approve HITL and wake the engine."""
+        """Synchronous: approve HITL and wake the engine.
+        
+        Must write DB BEFORE setting the event — ensures GET /state returns
+        consistent data (phase=executing + HITL fields cleared) immediately.
+        """
+        # ① Idempotency guard
         if self._state.get("phase") != "paused":
             return
+        # ② Ensure _current_stage_idx is set
+        self._state.setdefault("_current_stage_idx", 0)
+        # ③ Update in-memory state
         hitl_id = self._state.get("_hitl_stage_id", "")
         self._state[f"_hitl_resolved_{hitl_id}"] = True
         self._state["_hitl_stage_id"] = ""
+        self._state["_hitl_output_artifact"] = ""
+        self._state["_hitl_phase_name"] = ""
         self._state["_hitl_human_feedback"] = ""
         self._state["phase"] = "executing"
         self._reject_feedback = ""
+        # ④ Persist to DB first — single atomic transaction
+        if self._persist_callback:
+            self._persist_callback(dict(self._state))
+        # ⑤ Wake the engine AFTER DB is confirmed
         self._resume_event.set()
 
     def reject(self, feedback: str) -> None:
-        """Synchronous: reject HITL and wake the engine for re-run."""
+        """Synchronous: reject HITL and wake the engine for re-run.
+        
+        Same DB-before-event ordering as approve().
+        """
         if self._state.get("phase") != "paused":
             return
+        self._state.setdefault("_current_stage_idx", 0)
         self._reject_feedback = feedback
         self._state["_reject_feedback"] = feedback
         self._state["_hitl_stage_id"] = ""
+        self._state["_hitl_output_artifact"] = ""
+        self._state["_hitl_phase_name"] = ""
         self._state["phase"] = "executing"
+        if self._persist_callback:
+            self._persist_callback(dict(self._state))
         self._resume_event.set()
 
     def force_terminate(self) -> None:

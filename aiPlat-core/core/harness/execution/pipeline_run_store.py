@@ -198,6 +198,38 @@ class PipelineRunStore:
             (current_stage_idx, tokens_used, pass_rate, now, run_id),
         )
 
+    # ── v3.2: Atomic phase + HITL update (single SQL transaction) ──────
+
+    def atomic_update_phase_and_hitl(
+        self,
+        run_id: str,
+        phase: str,
+        current_stage_idx: int = 0,
+        pass_rate: float = 0.0,
+        hitl_stage_id: str = "",
+        hitl_phase_name: str = "",
+        hitl_output_artifact: str = "",
+        error: str = "",
+    ) -> None:
+        """Update phase + HITL fields + progress in a single atomic SQL statement.
+
+        Replaces the old pattern of calling update_run_progress →
+        update_run_phase → update_hitl_fields in three separate transactions
+        (which could leave the DB in an inconsistent state if one failed).
+        """
+        now = _time.strftime("%Y-%m-%dT%H:%M:%S")
+        finished = now if phase in ("done", "failed", "cancelled", "expired") else ""
+        self._execute(
+            """UPDATE pipeline_runs
+               SET phase = ?, error_message = ?, finished_at = ?,
+                   current_stage_idx = ?, pass_rate = ?,
+                   _hitl_stage_id = ?, _hitl_phase_name = ?,
+                   _hitl_output_artifact = ?, updated_at = ?
+               WHERE run_id = ?""",
+            (phase, error, finished, current_stage_idx, pass_rate,
+             hitl_stage_id, hitl_phase_name, hitl_output_artifact, now, run_id),
+        )
+
     # ── v3.1: HITL field writers ───────────────────────────────────
 
     def update_hitl_fields(

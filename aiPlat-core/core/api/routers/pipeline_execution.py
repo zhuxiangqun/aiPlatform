@@ -57,7 +57,8 @@ async def cleanup_orphaned_pipelines():
             for run in paused_runs:
                 if run["run_id"] != latest_per_project.get(run["project_id"], {}).get("run_id"):
                     conn.execute(
-                        "UPDATE pipeline_runs SET phase='failed', error_message='旧暂停记录已清理' "
+                        "UPDATE pipeline_runs SET phase='expired', error_message='旧暂停记录已清理', "
+                        "_hitl_stage_id='', _hitl_phase_name='', _hitl_output_artifact='' "
                         "WHERE run_id = ?", (run["run_id"],)
                     )
             to_recover = list(latest_per_project.values())
@@ -144,23 +145,17 @@ def _make_store_callback(run_id: str, store):
     def _cb(state: dict):
         try:
             _phase = state.get("phase", "executing")
-            store.update_run_progress(
+            # v3.2: Atomic update — phase + HITL + progress in ONE SQL transaction
+            store.atomic_update_phase_and_hitl(
                 run_id,
+                phase=_phase,
                 current_stage_idx=state.get("_current_stage_idx", 0),
                 pass_rate=state.get("pass_rate", 0.0),
+                hitl_stage_id=state.get("_hitl_stage_id", ""),
+                hitl_phase_name=state.get("_hitl_phase_name", "review"),
+                hitl_output_artifact=state.get("_hitl_output_artifact", ""),
+                error=state.get("error_message", state.get("error", "")),
             )
-            # ── v3.1: sync phase + HITL fields ──
-            store.update_run_phase(run_id, _phase)
-            _hitl_id = state.get("_hitl_stage_id", "")
-            if _hitl_id:
-                store.update_hitl_fields(
-                    run_id,
-                    hitl_stage_id=_hitl_id,
-                    hitl_phase_name=state.get("_hitl_phase_name", "review"),
-                    hitl_output_artifact=state.get("_hitl_output_artifact", ""),
-                )
-            else:
-                store.clear_hitl_fields(run_id)
 
             # Write per-artifact progress (state keys with raw_output are artifacts)
             for key, val in state.items():
