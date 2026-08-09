@@ -6,7 +6,7 @@ bind = f"0.0.0.0:{_port}"
 
 workers = multiprocessing.cpu_count() * 2 + 1
 worker_class = "uvicorn.workers.UvicornWorker"
-preload_app = False           # Do NOT preload on macOS — ObjC runtime crashes fork()
+preload_app = False          # Avoid loading all agents/skills in master; OBJC_DISABLE_... handles fork safety
 timeout = 600                # Pipeline can run 5-6 min per stage (LLM calls)
 graceful_timeout = 30         # Graceful shutdown window
 keepalive = 5

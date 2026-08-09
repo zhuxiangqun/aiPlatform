@@ -21,8 +21,8 @@ import httpx
 
 _log = logging.getLogger("aiplat.pipeline.client")
 
-_CORE_URL = os.getenv("AIPLAT_CORE_URL", "http://localhost:8002").rstrip("/")
-_REQUEST_TIMEOUT = 10.0  # trigger/cancel: short timeout
+_CORE_URL = os.getenv("AIPLAT_CORE_URL", "http://127.0.0.1:8002").rstrip("/")
+_REQUEST_TIMEOUT = 60.0  # trigger/cancel: generous timeout (core startup is slow)
 _POLL_TIMEOUT = 15.0  # state poll: slightly longer
 
 
