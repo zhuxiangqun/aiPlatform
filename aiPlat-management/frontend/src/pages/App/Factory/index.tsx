@@ -379,6 +379,7 @@ const ProjectPanel: React.FC<{
   const [deployChecked, setDeployChecked] = useState(false);
   const [fixingBugs, setFixingBugs] = useState(false);
   const [hitlStageId, setHitlStageId] = useState<string | null>(null);
+  const [hitlOutputArtifact, setHitlOutputArtifact] = useState<string | null>(null);
   const [healthReport, setHealthReport] = useState<Record<string, any> | null>(null);
   const [progressState, setProgressState] = useState<Record<string, any> | null>(null);
   const [hasRunningPipeline, setHasRunningPipeline] = useState(false);
@@ -455,19 +456,24 @@ const ProjectPanel: React.FC<{
         const p = s.phase as string || phase;
         setPhase(p);
         setProgressState(s._progress || null);
-        // v3.1: Track HITL stage from Core's _hitl_stage_id — precise, no idx guessing
+        // v3.1: Track HITL stage from Core's _hitl_stage_id and _hitl_output_artifact
         if (p === 'paused') {
           const hitlId = s._hitl_stage_id as string;
-          if (hitlId) {
-            setHitlStageId(hitlId);
-          } else if (s._current_stage_idx != null) {
-            // Fallback: Core hasn't written _hitl_stage_id yet (old pipeline)
+          const hitlArtifact = s._hitl_output_artifact as string;
+          if (hitlId) setHitlStageId(hitlId);
+          if (hitlArtifact) setHitlOutputArtifact(hitlArtifact);
+          if (!hitlId && !hitlArtifact && s._current_stage_idx != null) {
+            // Fallback: Core hasn't written HITL fields yet (old pipeline)
             const idx = s._current_stage_idx as number;
             const stage = teamStages[idx];
-            if (stage) setHitlStageId((stage as any).id || (stage as any).agent_id || '');
+            if (stage) {
+              setHitlStageId((stage as any).id || (stage as any).agent_id || '');
+              setHitlOutputArtifact((stage as any).output_artifact || null);
+            }
           }
         } else if (p !== 'paused') {
           setHitlStageId(null);
+          setHitlOutputArtifact(null);
         }
         // Detect Agent mode: generated agent is deployed
         if (s._generated_agent && !agentMode) {
@@ -512,6 +518,9 @@ const ProjectPanel: React.FC<{
         if (realPhase && realPhase !== 'idle' && realPhase !== 'executing' && realPhase !== 'pending') {
           setPhase(realPhase);
         }
+        // Also load HITL fields on initial open (so button appears immediately)
+        if (state._hitl_stage_id) setHitlStageId(state._hitl_stage_id as string);
+        if (state._hitl_output_artifact) setHitlOutputArtifact(state._hitl_output_artifact as string);
         // Executing phase: show subtle indicator, user can click to enter
         if (realPhase === 'executing') {
           const runs = (st as any)?.runs || [];
@@ -672,6 +681,7 @@ const ProjectPanel: React.FC<{
   const handleApprove = async () => {
     if (!project.project_id) return;
     setHitlStageId(null);
+    setHitlOutputArtifact(null);
     setStarting(true);
     try {
       await projectApi.approve(project.project_id);
@@ -687,6 +697,7 @@ const ProjectPanel: React.FC<{
     const feedback = window.prompt('驳回理由（可选）：');
     if (feedback === null) return; // cancelled
     setHitlStageId(null);
+    setHitlOutputArtifact(null);
     setRejecting(true);
     setStageOutputs(null);
     try {
@@ -999,10 +1010,7 @@ const ProjectPanel: React.FC<{
                 architecture: '🏗️ 架构设计', code: '💻 代码生成', test_report: '🧪 测试报告',
                 testReport: '🧪 测试报告', prd: '📋 PRD',
               }[key] || key.replace(/[_-]/g, ' ');
-              const isHITL = hitlStageId && (
-                (matchedStage as any)?.id === hitlStageId ||
-                (matchedStage as any)?.agent_id === hitlStageId
-              );
+              const isHITL = hitlOutputArtifact && key === hitlOutputArtifact;
               let summary = '';
 
               // ── Structural detection (not key-name matching) ──
