@@ -1491,7 +1491,7 @@ const FactoryPage: React.FC = () => {
                 {status.phase === 'done' && (
                   <div className="flex items-center gap-2 pt-2 border-t border-dark-border">
                     <span className="text-[10px] text-green-400 flex items-center gap-1">
-                      <CheckCircle className="w-3 h-3" />通过率 {(passRate * 100).toFixed(0)}%
+                       <CheckCircle className="w-3 h-3" />通过率 {passRate.toFixed(0)}%
                     </span>
                     <button onClick={async (e) => { e.stopPropagation();
                       try { const r = await projectApi.deployToApp(p.project_id); setSelectedApp((r as any)?.app_url || ''); } catch {} }}
