@@ -4145,6 +4145,8 @@ class PipelineEngine:
         state[_artifact_key] = {"raw_output": _result, "elapsed_sec": _elapsed}
 
         # ── Stage trace: structured metadata for reasoning visibility ──
+        # agent backend doesn't set _response — default to None for safe trace access
+        _resp = locals().get('_response')
         _model_name = best_model_for_purpose(_purpose)
         _model_meta = {}
         try:
@@ -4161,7 +4163,7 @@ class PipelineEngine:
             "model_purpose": _purpose,
             "output_size": len(_result),
             "elapsed_sec": _elapsed,
-            "tokens_used": getattr(_response, 'usage', {}).get('total_tokens', 0) if hasattr(_response, 'usage') else 0,
+            "tokens_used": getattr(_resp, 'usage', {}).get('total_tokens', 0) if hasattr(_resp, 'usage') else 0,
             "retry_count": state.get(f"_retry_{stage.id}", 0),
             "failure_strategy": getattr(stage, 'failure_strategy', 'fail_pipeline') or 'fail_pipeline',
             "strategy": "skill_dispatch",
