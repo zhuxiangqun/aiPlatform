@@ -493,7 +493,25 @@ const ProjectPanel: React.FC<{
         }
         if (Object.keys(outputs).length > 0) {
           if (p === 'paused' || p === 'executing') {
-            setStageOutputs(outputs);
+            // Race guard: when paused, ensure the HITL artifact is available before replacing.
+            // Backend may write phase='paused' before persisting the artifact.
+            const _hitlArtifact = s._hitl_output_artifact as string;
+            if (p === 'paused' && _hitlArtifact && !outputs[_hitlArtifact] && outputs[Object.keys(outputs)[0]]) {
+              // State incomplete — retry after brief delay to let backend finish persisting
+              setTimeout(async () => {
+                try {
+                  const st2 = await projectApi.getState(project.project_id);
+                  const s2 = (st2 as any)?.state || {};
+                  const o2: Record<string, any> = {};
+                  for (const k of keys) {
+                    if (s2[k] && typeof s2[k] === 'object') o2[k] = s2[k];
+                  }
+                  if (o2[_hitlArtifact]) setStageOutputs(o2);
+                } catch { /* retry failed — next poll will fix */ }
+              }, 400);
+            } else {
+              setStageOutputs(outputs);
+            }
           } else {
             setStageOutputs(prev => ({ ...prev, ...outputs }));
           }
