@@ -212,7 +212,8 @@ class OpenAICompatibleClient(LLMClient):
         raise RuntimeError(f"OpenAI API error: {last_exc}")
 
     async def achat(self, request: ChatRequest) -> ChatResponse:
-        return self.chat(request)
+        import asyncio
+        return await asyncio.to_thread(self.chat, request)
 
     async def stream_chat(self, request: ChatRequest) -> AsyncIterator[StreamChunk]:
         messages = [{"role": m.role, "content": m.content} for m in request.messages]
