@@ -248,11 +248,19 @@ const DataDocument: React.FC<{ data: Record<string, unknown>; schema: DocSchema 
     return path.split('.').reduce((o, k) => (o != null ? o[k] : undefined), obj);
   };
   const title = (schema.title_field ? _get(data, schema.title_field) : schema.title) as string || '';
-  const overview = schema.overview_field ? (_get(data, schema.overview_field) as string) : '';
+  const recLabels: Record<string, string> = { CONDITIONAL_APPROVAL: '有条件通过', APPROVED: '已通过', REJECTED: '已拒绝' };
+  const overview = (() => {
+    const raw = schema.overview_field ? (_get(data, schema.overview_field) as string) : '';
+    if (schema.overview_field === 'recommendation') {
+      return recLabels[raw] || raw;
+    }
+    return raw;
+  })();
   const scope = schema.scope_badge ? (_get(data, schema.scope_badge) as any) : '';
+  const scopeLabel = schema.scope_badge === 'meta.pass_rate' ? `通过率 ${scope}%` : (typeof scope === 'number' ? `${scope}%` : scope);
   return (
     <div className="space-y-5 text-sm text-gray-200">
-      {title && <div><h1 className="text-xl font-bold text-gray-100 mb-1">{title}</h1>{scope != null && scope !== '' && <span className="text-xs px-2 py-0.5 rounded bg-blue-500/20 text-blue-300">{scope}{scope.toString().includes('%') ? '' : ''}</span>}</div>}
+      {title && <div><h1 className="text-xl font-bold text-gray-100 mb-1">{title}</h1>{scope != null && scope !== '' && <span className="text-xs px-2 py-0.5 rounded bg-blue-500/20 text-blue-300">{scopeLabel}</span>}</div>}
       {overview && <p className="text-gray-400 leading-relaxed">{overview}</p>}
       {(schema.tables || []).map((t: TableDef) => {
         const rows = (_get(data, t.key) || []) as any[];
@@ -1145,15 +1153,44 @@ const ProjectPanel: React.FC<{
                         </div>
                       ) : rw.trimStart().startsWith('{') ? (
                         (() => {
-                          let arch: any = null;
-                          try { arch = JSON.parse(rw); } catch { arch = tryParseJSON(rw, '"components"'); }
-                          return arch?.components ? (
+                          let parsedInline: any = null;
+                          try { parsedInline = JSON.parse(rw); } catch { parsedInline = tryParseJSON(rw, '"components"'); }
+                          // test_report: structured JSON with test_results and bug_summary
+                          if (parsedInline?.test_results && parsedInline?.header) {
+                            const tr = parsedInline;
+                            const passed = tr.meta?.passed || 0;
+                            const failed = tr.meta?.failed || 0;
+                            const bugs = tr.bug_summary?.total_bugs ?? tr.bug_summary?.bugs?.length ?? 0;
+                            const rate = tr.meta?.pass_rate ?? 0;
+                            const rec = tr.recommendation || '';
+                            const recLabel: Record<string,string> = { CONDITIONAL_APPROVAL: '有条件通过', APPROVED: '已通过', REJECTED: '已拒绝' };
+                            return (
+                              <div className="space-y-2">
+                                <div className="flex items-center gap-3 text-[10px]">
+                                  <span className="text-green-400">✅ {passed} 通过</span>
+                                  {failed > 0 && <span className="text-red-400">❌ {failed} 失败</span>}
+                                  {bugs > 0 && <span className="text-amber-400">🐛 {bugs} 个 Bug</span>}
+                                  <span className="text-blue-400">通过率 {rate}%</span>
+                                  <span className="text-gray-500">|</span>
+                                  <span className="text-gray-400">{recLabel[rec] || rec}</span>
+                                </div>
+                                {tr.test_results?.find((r: any) => r.is_bug) && (
+                                  <div className="text-[10px] text-red-400">
+                                    发现 Bug: {tr.test_results.filter((r: any) => r.is_bug).map((r: any, i: number) => (
+                                      <span key={i} className="inline-block mr-1.5">{r.id}: {r.reason?.slice(0, 50)}</span>
+                                    ))?.slice?.(0, 3)}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          }
+                          return parsedInline?.components ? (
                             <table className="w-full text-[10px] border-collapse">
                               <thead><tr className="text-gray-400 text-left">
                                 <th className="p-1">组件</th><th className="p-1 w-[50px]">层级</th><th className="p-1 w-[70px]">技术栈</th>
                               </tr></thead>
                               <tbody>
-                                {(arch.components || []).slice(0, 5).map((c: any, i: number) => (
+                                {(parsedInline.components || []).slice(0, 5).map((c: any, i: number) => (
                                   <tr key={i} className="border-t border-gray-700/50">
                                     <td className="p-1 font-medium">{c.name}</td>
                                     <td className="p-1"><span className="px-1 rounded text-[9px] bg-gray-700 text-gray-300">{c.layer}</span></td>
@@ -1161,9 +1198,9 @@ const ProjectPanel: React.FC<{
                                   </tr>
                                 ))}
                               </tbody>
-                              {arch.components.length > 5 && (
+                              {parsedInline.components.length > 5 && (
                                 <tfoot><tr><td colSpan={3} className="p-1 text-[10px] text-gray-500 text-center">
-                                  共 {arch.components.length} 个组件 · {arch.api_design?.length || 0} 个 API · 点 🔍 全屏查看完整设计
+                                  共 {parsedInline.components.length} 个组件 · {parsedInline.api_design?.length || 0} 个 API · 点 🔍 全屏查看完整设计
                                 </td></tr></tfoot>
                               )}
                             </table>
