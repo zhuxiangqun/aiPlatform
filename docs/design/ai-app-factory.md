@@ -133,6 +133,8 @@ def atomic_update_phase_and_hitl(self, run_id, phase, current_stage_idx, pass_ra
 
 禁止在 `_make_store_callback`（`pipeline_execution.py`）中分三次调用独立更新方法。所有状态变更必须经由原子方法一次落盘。
 
+> **注意**：`reject()` 同样调用 `atomic_update_phase_and_hitl()` 写入 `phase='executing'` 并清空 HITL 字段，与 `approve()` 使用同一原子事务。
+
 ---
 
 ## 4. 前端关键模式
@@ -353,6 +355,9 @@ cd aiPlat-management && gunicorn -c gunicorn.conf.py -w 1 --threads 2 management
 - [ ] 驳回 → 上游产出保留 → 当前 stage 重跑
 - [ ] 重启 core → paused 管道状态保留 → approve 正常
 - [ ] npm run build 通过
+- [ ] **P0**: 审批后 `GET /state` 立即返回 `phase=executing` 且 `_hitl_*` 为空（原子事务验证）
+- [ ] **P1**: Stage 切换期间（如 PM→Architect），上游产出（PRD）不闪烁消失（渐进式替换验证）
+- [ ] **P2**: 多条 paused 旧记录清理后，项目卡片显示灰色"已过期"而非红色"失败"
 
 ---
 
@@ -360,7 +365,7 @@ cd aiPlat-management && gunicorn -c gunicorn.conf.py -w 1 --threads 2 management
 
 | 方向 | 现状 | 改进 |
 |------|------|------|
-| 多 worker | `-w 1`，LLM 执行期间 HTTP 阻塞 | 3+ workers + 会话亲和 |
+| 多 worker | `-w 1`，LLM 响应处理（JSON 解析、大文本序列化）占用 GIL | `--threads 4` 缓解 + 远期多 worker |
 | 推送通知 | 3s 轮询 | WebSocket 推送 phase 变化 |
 | 管道进度 | `_progress` 字段偶尔缺失 | 每个 stage 入口/出口强制写入 |
 | DB 持久化 | SQLite 单文件 | 可切换 PostgreSQL（已有 schema） |
