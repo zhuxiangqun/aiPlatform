@@ -44,17 +44,32 @@ async def cleanup_orphaned_pipelines():
         if count:
             _log.warning("Orphan cleanup: %d executing pipeline(s) marked as failed", count)
 
-        # 2. Recover paused (HITL) pipelines
+        # 2. Recover paused (HITL) pipelines — only latest per project
         paused_runs = store.list_paused_runs()
         if paused_runs:
-            _log.warning("Orphan recovery: %d paused pipeline(s) to rebuild", len(paused_runs))
+            # Deduplicate: keep only the most recent paused run per project
+            latest_per_project: Dict[str, dict] = {}
+            for run in paused_runs:
+                pid = run["project_id"]
+                if pid not in latest_per_project or run.get("updated_at", "") > latest_per_project[pid].get("updated_at", ""):
+                    latest_per_project[pid] = run
+            # Mark stale paused runs as failed
+            for run in paused_runs:
+                if run["run_id"] != latest_per_project.get(run["project_id"], {}).get("run_id"):
+                    conn.execute(
+                        "UPDATE pipeline_runs SET phase='failed', error_message='旧暂停记录已清理' "
+                        "WHERE run_id = ?", (run["run_id"],)
+                    )
+            to_recover = list(latest_per_project.values())
+            _log.warning("Orphan recovery: %d paused pipeline(s) to rebuild (filtered from %d)",
+                len(to_recover), len(paused_runs))
             from core.harness.execution.pipeline_engine import (
                 PipelineEngine, PipelineConfig, register_pipeline,
             )
             from core.schemas_builder import PipelineStageConfig
             from core.harness.utils.model_injection import best_model_for_purpose
 
-            for run in paused_runs:
+            for run in to_recover:
                 run_id = run["run_id"]
                 project_id = run["project_id"]
                 try:
@@ -93,7 +108,7 @@ async def cleanup_orphaned_pipelines():
                     engine = PipelineEngine(
                         config=pipeline_config,
                         model=best_model_for_purpose("chat"),
-                        persist_callback=None,  # will be set if needed
+                        persist_callback=_make_store_callback(run_id, store),
                     )
 
                     # Load saved state
