@@ -4144,6 +4144,11 @@ class PipelineEngine:
 
         state[_artifact_key] = {"raw_output": _result, "elapsed_sec": _elapsed}
 
+        # Write artifact to filesystem (authoritative storage; SQLite is cache)
+        _out_dir = state.get("output_dir", "")
+        if _out_dir and _artifact_key and _result and not _artifact_key.startswith("_"):
+            self._write_artifact_file(_out_dir, _artifact_key, _result)
+
         # ── Stage trace: structured metadata for reasoning visibility ──
         # agent backend doesn't set _response — default to None for safe trace access
         _resp = locals().get('_response')
@@ -4328,11 +4333,29 @@ class PipelineEngine:
         # 4. Store result
         _elapsed = round(_time.time() - _t0, 2)
         state[result_artifact_key] = {"raw_output": _result, "elapsed_sec": _elapsed}
+        _out_dir = state.get("output_dir", "")
+        if _out_dir and result_artifact_key and _result and not result_artifact_key.startswith("_"):
+            self._write_artifact_file(_out_dir, result_artifact_key, _result)
         state["_progress"] = {"stage": skill_name, "status": "completed", "elapsed_sec": _elapsed}
         _log.warning("chained skill '%s': OK (%d chars, %.1fs → %s)", skill_name, len(_result), _elapsed, result_artifact_key)
         return state
 
     @staticmethod
+    @staticmethod
+    def _write_artifact_file(output_dir: str, artifact_key: str, content: str) -> str:
+        """Write pipeline artifact to filesystem. Returns file path."""
+        import os as _os2
+        if not output_dir or not artifact_key or not content:
+            return ""
+        try:
+            _os2.makedirs(output_dir, exist_ok=True)
+            path = _os2.path.join(output_dir, f"{artifact_key}.json")
+            with open(path, "w", encoding="utf-8") as f:
+                f.write(content)
+            return path
+        except Exception:
+            return ""  # best-effort; SQLite still has the truncated version
+
     def _deploy_result_files(state, stage, _result: str) -> None:
         """Generic: parse ## FILE: blocks from output and write to project directory.
 

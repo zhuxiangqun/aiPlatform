@@ -452,11 +452,20 @@ class PipelineRunStore:
         }
 
         # Merge stage artifacts + progress into state
+        import os as _os_fs
         _progress = None
         for s in stages:
             if s["artifact_key"] and s["artifact_output"]:
+                # Read from filesystem if artifact_output is a file path
+                _content = s["artifact_output"]
+                if _os_fs.path.isfile(_content):
+                    try:
+                        with open(_content, "r", encoding="utf-8") as _f:
+                            _content = _f.read()
+                    except Exception:
+                        pass  # fallback: use raw path string
                 state[s["artifact_key"]] = {
-                    "raw_output": s["artifact_output"],
+                    "raw_output": _content,
                     "elapsed_sec": s["elapsed_sec"],
                 }
             # Restore health reports from progress_json
@@ -504,10 +513,18 @@ class PipelineRunStore:
             "session_id": run["run_id"],
         }
         _progress = None
+        import os as _os_fs2
         for s in stages:
             if s["artifact_key"] and s["artifact_output"]:
+                _content = s["artifact_output"]
+                if _os_fs2.path.isfile(_content):
+                    try:
+                        with open(_content, "r", encoding="utf-8") as _f:
+                            _content = _f.read()
+                    except Exception:
+                        pass
                 state[s["artifact_key"]] = {
-                    "raw_output": s["artifact_output"],
+                    "raw_output": _content,
                     "elapsed_sec": s["elapsed_sec"],
                 }
             if s["progress_json"]:

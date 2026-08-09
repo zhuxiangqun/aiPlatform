@@ -158,14 +158,19 @@ def _make_store_callback(run_id: str, store):
             )
 
             # Write per-artifact progress (state keys with raw_output are artifacts)
+            import os as _osp
+            _out_dir = state.get("output_dir", "")
             for key, val in state.items():
                 if isinstance(val, dict) and val.get("raw_output"):
                     stage_id = key.replace("_", "-")  # prd, architecture, etc → stage ids
+                    # Prefer filesystem path if artifact was written to disk
+                    _fpath = _osp.join(_out_dir, f"{key}.json") if _out_dir else ""
+                    artifact_out = _fpath if _fpath and _osp.path.isfile(_fpath) else str(val.get("raw_output", ""))[:50000]
                     store.upsert_stage(
                         run_id, stage_id,
                         status="completed",
                         artifact_key=key,
-                        artifact_output=str(val.get("raw_output", ""))[:50000],
+                        artifact_output=artifact_out,
                         elapsed_sec=float(val.get("elapsed_sec", 0) or 0),
                     )
 
