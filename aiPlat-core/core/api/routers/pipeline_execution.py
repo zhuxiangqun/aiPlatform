@@ -164,7 +164,7 @@ def _make_store_callback(run_id: str, store):
                 if isinstance(val, dict) and val.get("raw_output"):
                     stage_id = key.replace("_", "-")  # prd, architecture, etc → stage ids
                     # Prefer filesystem path if artifact was written to disk
-                    _fpath = _osp.join(_out_dir, f"{key}.json") if _out_dir else ""
+                    _fpath = _osp.path.join(_out_dir, f"{key}.json") if _out_dir else ""
                     artifact_out = _fpath if _fpath and _osp.path.isfile(_fpath) else str(val.get("raw_output", ""))[:50000]
                     store.upsert_stage(
                         run_id, stage_id,
