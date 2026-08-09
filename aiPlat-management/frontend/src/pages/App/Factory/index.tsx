@@ -387,7 +387,6 @@ const ProjectPanel: React.FC<{
   const [agentName, setAgentName] = useState('');
   const [loadingHealth, setLoadingHealth] = useState(false);
   const [stageOutputs, setStageOutputs] = useState<Record<string, any> | null>(null);
-  const [pollInterval, setPollInterval] = useState<ReturnType<typeof setInterval> | null>(null);
   const [confirmedPrd, setConfirmedPrd] = useState<Record<string, unknown> | null>(
     (project as any).confirmed_prd || null);
   const [showPrdDetail, setShowPrdDetail] = useState(false);
@@ -445,10 +444,9 @@ const ProjectPanel: React.FC<{
   // ── Poll pipeline state during execution ──
   useEffect(() => {
     if (phase !== 'executing' && phase !== 'paused' && !phase?.includes('approval')) {
-      if (pollInterval) { clearInterval(pollInterval); setPollInterval(null); }
       return;
     }
-    if (!project.project_id || pollInterval) return;
+    if (!project.project_id) return;
     const id = setInterval(async () => {
       try {
         const st = await projectApi.getState(project.project_id);
@@ -519,7 +517,6 @@ const ProjectPanel: React.FC<{
         if (p === 'done' || p === 'failed' || (p === 'paused' && phase !== 'paused')) onRefresh();
       } catch { /* ignore */ }
     }, 3000);
-    setPollInterval(id);
     return () => { clearInterval(id); };
   }, [phase, project.project_id]);
 
