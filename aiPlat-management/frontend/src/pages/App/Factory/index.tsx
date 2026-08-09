@@ -607,11 +607,31 @@ const ProjectPanel: React.FC<{
       const result = await workspaceAgentApi.execute('test_report_orchestrator', {
         input: { project_id: project.project_id },
       });
-      const output = (result as any)?.output;
-      if (output) {
-        const summary = typeof output === 'string' ? JSON.parse(output) : output;
-        const fixed = summary?.summary?.fixed_stages || 0;
-        const total = summary?.summary?.total_bugs || 0;
+       const output = (result as any)?.output;
+       if (output) {
+         let raw = typeof output === 'string' ? output : JSON.stringify(output);
+         let summary: any = null;
+         // Try direct parse first
+         try { summary = JSON.parse(raw); } catch {
+           // Extract from ```json ... ``` blocks
+           const codeBlock = raw.match(/```(?:json)?\s*([\s\S]*?)```/g);
+           if (codeBlock) {
+             for (let i = codeBlock.length - 1; i >= 0; i--) {
+               try { summary = JSON.parse(codeBlock[i].replace(/```(?:json)?\s*/g, '').trim()); break; } catch {}
+             }
+           }
+           // Fallback: extract last JSON-like object in the text
+           if (!summary) {
+             const jsonMatches = raw.match(/\{[\s\S]*\}/g);
+             if (jsonMatches) {
+               for (let i = jsonMatches.length - 1; i >= 0; i--) {
+                 try { summary = JSON.parse(jsonMatches[i]); break; } catch {}
+               }
+             }
+           }
+         }
+         const fixed = summary?.summary?.fixed_stages || summary?.fixed_stages || 0;
+         const total = summary?.summary?.total_bugs || summary?.total_bugs || 0;
         toast.success(`修复编排完成: ${fixed} 个阶段已触发修复, 覆盖 ${total} 个 Bug`);
       } else {
         toast.success('修复编排已触发');
