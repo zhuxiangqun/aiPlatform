@@ -798,11 +798,17 @@ const ProjectPanel: React.FC<{
 
   const handleApprove = async () => {
     if (!project.project_id) return;
-    _enterExecutingMode();
+    // Optimistic: progress bar appears immediately
+    setPhase('executing');
+    setHitlStageId(null);
+    setHitlOutputArtifact(null);
     setStarting(true);
     try {
       await projectApi.approve(project.project_id);
       toast.success('已审批，正在继续执行');
+      // Fetch state AFTER API — backend has processed the approval
+      const st = await projectApi.getState(project.project_id);
+      await _refreshFromState((st as any)?.state);
     } catch (e: any) {
       toastGateError(e, '审批失败');
       const st = await projectApi.getState(project.project_id);
@@ -831,11 +837,16 @@ const ProjectPanel: React.FC<{
     } else {
       setStageOutputs(null);
     }
-    _enterExecutingMode();
+    // Optimistic: progress bar appears immediately
+    setPhase('executing');
+    setHitlStageId(null);
+    setHitlOutputArtifact(null);
     setRejecting(true);
     try {
       await projectApi.reject(project.project_id, feedback);
       toast.success('已驳回，将重新生成');
+      const st = await projectApi.getState(project.project_id);
+      await _refreshFromState((st as any)?.state);
     } catch (e: any) {
       toastGateError(e, '驳回失败');
       const st = await projectApi.getState(project.project_id);
