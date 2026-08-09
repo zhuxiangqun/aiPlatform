@@ -1437,18 +1437,39 @@ class BuilderProjectService:
         }
 
     async def get_project_state(self, project_id: str) -> Dict[str, Any]:
-        # Delegate state read to Core server — single source of truth.
-        state = await self._get_state_via_core(project_id)
+        """Read pipeline state directly from SQLite — never blocked by Core's event loop.
+
+        The Core server's HTTP endpoint for state can time out during LLM execution
+        (single-worker event loop blocked by pipeline). This method bypasses Core
+        entirely and reads the shared SQLite DB directly in a thread pool.
+
+        SQLite WAL mode allows concurrent reads while Core writes, so this is
+        both safe and 100% available regardless of pipeline activity.
+        """
+        import asyncio
+        from core.harness.execution.pipeline_run_store import get_pipeline_run_store
+
+        def _read():
+            store = get_pipeline_run_store()
+            state = store.get_full_state(project_id)
+            return {
+                "project_id": project_id,
+                "phase": state.get("phase", "idle"),
+                "state": state,
+            }
+
+        result = await asyncio.to_thread(_read)
+
         # When pipeline completes on Core, sync run phase so project card shows correct status
-        if state.get("phase") in ("done", "failed"):
+        if result.get("phase") in ("done", "failed"):
             proj = self._projects.get(project_id, {})
             runs = proj.get("runs", [])
             if runs:
-                runs[-1]["phase"] = state["phase"]
+                runs[-1]["phase"] = result["phase"]
                 runs[-1]["finished_at"] = time.strftime("%Y-%m-%dT%H:%M:%S")
                 proj["updated_at"] = time.strftime("%Y-%m-%dT%H:%M:%S")
                 self._save_projects()
-        return state
+        return result
 
     # ── Pipeline state persistence (per-project files, survives restart) ──
 
