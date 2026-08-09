@@ -4034,6 +4034,7 @@ class PipelineEngine:
             # Agent runtime → StageRunner → ReActLoop (tools, hooks, token management)
             _log.getLogger("pipeline_engine").warning(
                 "Skill %s: running via StageRunner (execution_backend=agent)", _skill_name)
+            _stage_tools = getattr(stage, 'tools', None) or []
             state["_sys_prompt"] = _sop_body
             state["_progress"] = {"stage": _skill_name, "status": "running", "started_at": _time.time(),
                                   "backend": "agent", "current_step": 0}
@@ -4059,7 +4060,7 @@ class PipelineEngine:
             _poll_task = asyncio.create_task(_poll_progress())
 
             try:
-                _agent_result = await self._stage_runner.run(_prompt, state, stage=stage)
+                _agent_result = await self._stage_runner.run(_prompt, state, stage=stage, tools=_stage_tools)
             finally:
                 _poll_active["active"] = False
                 try:

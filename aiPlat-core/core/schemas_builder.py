@@ -244,6 +244,7 @@ class PipelineStageConfig(BaseModel):
     depends_on: List[str] = Field(default_factory=list)
     output_artifact: str = ""
     required_skills: List[str] = Field(default_factory=list)
+    tools: List[str] = Field(default_factory=list)  # per-stage tool whitelist for agent backend
     failure_strategy: str = "fail_pipeline"
     fallback_result_key: str = ""
     retry_llm_on_rate_limit: bool = True
