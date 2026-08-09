@@ -4,7 +4,6 @@ import { motion } from 'framer-motion';
 import { Plus, Send, Loader2, Clock, CheckCircle, XCircle, ExternalLink, BarChart3, Trash2, Play, RefreshCw, FileText, Wrench } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import designDocRaw from './README.md?raw';
 import { projectApi, builderTeamApi, workspaceAgentApi, type ProjectItem, type ProjectRun } from '../../../services';
 import { Card, CardContent, Button, Textarea, toast } from '../../../components/ui';
 import { toastGateError } from '../../../components/ui';
@@ -1416,7 +1415,6 @@ const FactoryPage: React.FC = () => {
   const [creating, setCreating] = useState(false);
   const [selectedProject, setSelectedProject] = useState<ProjectItem | null>(null);
   const [selectedApp, setSelectedApp] = useState<string>('');
-  const [showDesignDoc, setShowDesignDoc] = useState(false);
 
   const loadAll = useCallback(async () => {
     setLoadingApps(true);
@@ -1494,42 +1492,11 @@ const FactoryPage: React.FC = () => {
     <div className="p-6 max-w-6xl mx-auto space-y-6">
       {/* ── Create Section ── */}
       <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="bg-dark-card border border-dark-border rounded-xl p-5">
-        <h2 className="text-lg font-bold text-gray-100 mb-3">新建应用</h2>
-
-        {/* ── Design Doc Button ── */}
-        <div className="flex items-center gap-2 mb-3">
-          <button
-            onClick={() => setShowDesignDoc(!showDesignDoc)}
-            className="text-xs flex items-center gap-1 px-2 py-1 rounded bg-dark-hover text-gray-400 hover:text-gray-200 transition-colors"
-          >
-            <FileText className="w-3 h-3" /> {showDesignDoc ? '收起设计文档' : '📖 查看设计文档'}
-          </button>
-        </div>
-
-        {/* ── Design Doc Modal ── */}
-        {showDesignDoc && (
-          <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="mb-3">
-            <div className="p-4 rounded bg-dark-hover border border-dark-border max-h-96 overflow-y-auto text-xs leading-relaxed">
-              <ReactMarkdown remarkPlugins={[remarkGfm]} className="prose prose-invert prose-xs max-w-none text-gray-300"
-                components={{
-                  h1: ({children}) => <h1 className="text-base font-bold text-gray-100 mt-3 mb-1 first:mt-0">{children}</h1>,
-                  h2: ({children}) => <h2 className="text-sm font-semibold text-gray-200 mt-2 mb-1">{children}</h2>,
-                  h3: ({children}) => <h3 className="text-xs font-semibold text-gray-300 mt-2 mb-1">{children}</h3>,
-                  code: ({children}) => <code className="text-[11px] bg-dark-bg px-1 py-0.5 rounded">{children}</code>,
-                  pre: ({children}) => <pre className="text-[11px] bg-dark-bg p-2 rounded overflow-x-auto my-1">{children}</pre>,
-                  table: ({children}) => <table className="w-full border-collapse my-1">{children}</table>,
-                  th: ({children}) => <th className="border border-gray-700 px-2 py-1 text-left text-gray-400">{children}</th>,
-                  td: ({children}) => <td className="border border-gray-700 px-2 py-1">{children}</td>,
-                  ul: ({children}) => <ul className="list-disc pl-4 space-y-0.5">{children}</ul>,
-                  ol: ({children}) => <ol className="list-decimal pl-4 space-y-0.5">{children}</ol>,
-                }}
-              >
-                {designDocRaw}
-              </ReactMarkdown>
-            </div>
-          </motion.div>
-        )}
-
+        <h2 className="text-lg font-bold text-gray-100 mb-3">新建应用
+          <a href="/docs" target="_blank" className="ml-2 text-xs text-gray-500 hover:text-primary font-normal underline underline-offset-2">
+            📖 设计文档
+          </a>
+        </h2>
         <p className="text-sm text-gray-400 mb-3">用自然语言描述你想要构建的应用，AI 将自动完成需求分析、架构设计和代码生成</p>
         <Textarea
           value={desc}
