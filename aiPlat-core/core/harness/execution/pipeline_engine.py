@@ -4427,6 +4427,9 @@ class PipelineEngine:
                 _content = _content[5:]
             elif _content.startswith("json\n"):
                 _content = _content[5:]
+            # Strip leaked YAML terminators from JSON files (trailing ---)
+            if _fname.endswith(".json") and _content.rstrip().endswith("---"):
+                _content = _re.sub(r'\n?---\s*$', '', _content)
             _full = _os2.path.join(_target, _fname)
             try:
                 _os2.makedirs(_os2.path.dirname(_full), exist_ok=True)

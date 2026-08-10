@@ -30,7 +30,28 @@ input_schema:
     type: string
     description: 技术约束
 output_schema:
-  $ref: "architecture"
+  type: object
+  required: true
+  description: 系统架构设计JSON文档
+  properties:
+    components:
+      type: array
+      description: 组件清单(名称/层级/技术栈/职责)
+    api_design:
+      type: array
+      description: API接口设计(方法/路径/说明)
+    database_schema:
+      type: string
+      description: 数据库表结构设计
+    deployment:
+      type: string
+      description: 部署方案
+    security:
+      type: string
+      description: 安全设计
+    performance:
+      type: string
+      description: 性能优化方案
 ---
 
 # 系统架构设计 (Architecture Design)

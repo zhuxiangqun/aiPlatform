@@ -17,8 +17,8 @@ triggers:
   - 跑用例
   - pytest
 permissions:
-  - file:read
-  - file:write
+  - fs:read
+  - fs:write
 effects:
   - type: read
     resources: ["filesystem:test*"]
