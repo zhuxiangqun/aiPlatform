@@ -173,3 +173,14 @@ JSON 必须是以下结构:
 | min_expectation 写 "正常返回" / "符合预期" | 写明具体的可验证预期值 |
 | 测试问题只有 happy path | 每个 FR 至少覆盖 happy + boundary + exception |
 | Agent 模式输出 Markdown 报告 | 只输出 JSON（Markdown 由 test_executor 生成） |
+
+## ⚠️ 输出前强制自检（必须执行）
+
+在输出 JSON 之前，**必须**逐条核对：
+
+1. PRD 中有多少个 FR？（到 `functional_requirements` 中数，如 `["FR-001", ..., "FR-007"]`）
+2. 输出的 test_questions 中覆盖了哪些 FR？（逐条检查 `ac_ref` 字段）
+3. 如果某个 FR 没有任何测试用例 → **不要输出**，继续为缺失的 FR 生成用例
+4. 只有当**全部 FR 都有至少 1 条测试用例后**，才能输出 JSON
+
+**如果跳过此自检直接输出不完整的 JSON，则违反 SOP。**
