@@ -3826,6 +3826,10 @@ class PipelineEngine:
                         if _cc_input_raw:
                             try:
                                 _cc_items = _json_mod.loads(_cc_input_raw) if isinstance(_cc_input_raw, str) else _cc_input_raw
+                                # Support nested fields (e.g., prd.functional_requirements)
+                                _cc_input_field = _cc.get("input_field", "")
+                                if _cc_input_field and isinstance(_cc_items, dict):
+                                    _cc_items = _cc_items.get(_cc_input_field, [])
                                 _expected = len(_cc_items) if isinstance(_cc_items, list) else 0
                                 _batch_items = _parsed.get(_cc_output_key, [])
                                 _batch_accumulator.extend(_batch_items)
