@@ -1,11 +1,6 @@
 #!/usr/bin/env bash
-# ============================================================================
-# caller_verify.sh — 接线完成度验证脚本
-#
-# 扫描全仓关键模块的公共符号，检测 0 调用者的死代码。
-# 覆盖范围：harness 核心 + Phase 0-6 全部新增模块
-#
-# Usage: bash scripts/caller_verify.sh
+# DEPRECATED: 接线完成度检查已由 capability_convergence.yaml + capability_convergence.py 覆盖。
+# 本文件保留供历史参考。所有新的接线规则请加入 capability_convergence.yaml。
 # ============================================================================
 set -euo
 

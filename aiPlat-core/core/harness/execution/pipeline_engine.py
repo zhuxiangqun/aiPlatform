@@ -3805,6 +3805,8 @@ class PipelineEngine:
         if getattr(stage, 'skill_name', ''):
             _artifact_key = getattr(stage, 'output_artifact', '') or getattr(stage, 'skill_name', '')
             _max_json_retries = 2
+            _batch_accumulator: list = []     # aggregate results across completeness retries
+            _batch_complete = False
             for _json_try in range(_max_json_retries + 1):
                 result = await self._run_stage_skill(stage, state)
                 _output = str(result.get(_artifact_key, {}).get('raw_output', '') or '')
@@ -3812,8 +3814,43 @@ class PipelineEngine:
                     break  # not JSON output, no validation needed
                 try:
                     import json as _json_mod
-                    _json_mod.loads(_output)
-                    break  # valid JSON
+                    _parsed = _json_mod.loads(_output)
+                    # ── Completeness check: progressive batch execution ──
+                    _cc = getattr(stage, 'completeness_check', None)
+                    if _cc and not _batch_complete:
+                        _cc_input_key = _cc.get("input_artifact", "")
+                        _cc_output_key = _cc.get("output_key", "test_results")
+                        _cc_max_per = _cc.get("max_per_call", 10)
+                        _cc_input_raw = (state.get(_cc_input_key, {}).get("raw_output", "")
+                            if isinstance(state.get(_cc_input_key, {}), dict) else "")
+                        if _cc_input_raw:
+                            try:
+                                _cc_items = _json_mod.loads(_cc_input_raw) if isinstance(_cc_input_raw, str) else _cc_input_raw
+                                _expected = len(_cc_items) if isinstance(_cc_items, list) else 0
+                                _batch_items = _parsed.get(_cc_output_key, [])
+                                _batch_accumulator.extend(_batch_items)
+                                _covered = len(_batch_accumulator)
+                                if _expected > _covered and _json_try < _max_json_retries:
+                                    _start = _covered
+                                    _end = min(_start + _cc_max_per, _expected)
+                                    _remaining = _cc_items[_start:_end]
+                                    _err_msg = f"[补全 {_json_try+1}/{_max_json_retries}] 只覆盖{_covered}/{_expected}条。继续第{_start+1}-{_end}条: {_json_mod.dumps(_remaining, ensure_ascii=False)[:800]}"
+                                    _log.getLogger("pipeline_engine").warning(
+                                        "Skill %s completeness retry: %d/%d items", getattr(stage,'skill_name',''), _covered, _expected)
+                                    state["_reject_feedback"] = _err_msg
+                                    result.pop(_artifact_key, None)
+                                    continue  # retry the JSON retry loop
+                                else:
+                                    _batch_complete = True
+                                    # Merge all batch results into final output
+                                    _merged = dict(_parsed)
+                                    _merged[_cc_output_key] = _batch_accumulator
+                                    result[_artifact_key] = {"raw_output": _json_mod.dumps(_merged, ensure_ascii=False),
+                                                             "elapsed_sec": 0}
+                                    _json_mod.loads(result[_artifact_key]["raw_output"])  # re-validate
+                            except Exception:
+                                pass
+                    break  # valid JSON (or batch complete)
                 except _json_mod.JSONDecodeError as _je:
                     if _json_try < _max_json_retries:
                         _err_msg = f"[Auto-Fix {_json_try+1}/{_max_json_retries}] JSON解析失败: {_je.msg} (第{_je.lineno}行,第{_je.colno}列). 请重新输出合法JSON, 禁止TypeScript语法如 `| null`, 禁止尾随逗号."
@@ -3949,7 +3986,9 @@ class PipelineEngine:
                 continue  # skip own output
             _v = state.get(_key, {})
             if isinstance(_v, dict) and _v.get("raw_output"):
-                _context += f"## {_key}\n{str(_v['raw_output'])[:3000]}\n\n"
+                import json as _ctx_json
+                _summary = self._summarize_artifact(_v)
+                _context += f"## {_key} (摘要)\n{_ctx_json.dumps(_summary, ensure_ascii=False)[:2000]}\n\n"
 
         # ── 3. Inject document schema into system prompt ──
         # Read $ref from SKILL.md YAML frontmatter (not hardcoded artifact key mapping)

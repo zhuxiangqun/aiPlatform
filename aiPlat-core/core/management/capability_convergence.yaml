@@ -115,6 +115,21 @@ capabilities:
       - "harness/syscalls/skill.py::sys_skill_call"
       - "harness/syscalls/agent.py::sys_agent_call"
 
+  # ── Context Assembly ──
+  - name: "context_assembly"
+    description: >
+      上下文组装 — Pipeline stage 的 LLM 调用前必须通过 _summarize_artifact
+      进行结构化摘要，禁止直接使用 raw_output[:3000] 硬截断
+    canonical_path: "harness/execution/pipeline_engine.py::_summarize_artifact"
+    forbidden_patterns:
+      - pattern: 'raw_output.*\[:3000\]|raw_output.*\[:2000\]'
+        paths: ["core/harness/execution/pipeline_engine.py"]
+        message: "raw_output[:3000] hard truncation bypasses _summarize_artifact"
+      - pattern: '_context\s\+\=\s*f".*\{_key'
+        paths: ["core/harness/execution/pipeline_engine.py"]
+        message: "manual raw_output string concatenation bypasses ContextAssembler"
+    resolution_required: true
+
 # ── Runtime Gate Coverage (Phase 3) ──
 # These are the gates that GateTracer validates at runtime.
 # Every agent/skill/tool execution must hit all gates in its capability.
