@@ -4137,7 +4137,7 @@ class PipelineEngine:
                     ],
                     model_name=best_model_for_purpose(_purpose),
                     max_tokens=32000,
-                ), timeout=180)  # per-stage timeout: 3 minutes
+                ), timeout=getattr(stage, 'stage_timeout_seconds', 300))
                 _result = getattr(_response, "content", "") or str(_response)
                 # Record success for adaptive model selection
                 try:
@@ -4346,7 +4346,7 @@ class PipelineEngine:
             import asyncio as _asyncio
             _result = await _asyncio.wait_for(
                 self._stage_runner.run(_prompt, state, stage=_chain_stage),
-                timeout=180,
+                timeout=getattr(stage, 'stage_timeout_seconds', 300),
             )
             state.pop("_sys_prompt", None)
         except _asyncio.TimeoutError:
