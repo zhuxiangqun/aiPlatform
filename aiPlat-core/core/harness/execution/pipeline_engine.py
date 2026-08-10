@@ -3980,6 +3980,7 @@ class PipelineEngine:
         if _desc:
             _context += f"## description\n{_desc}\n\n"
         # Append upstream stage outputs as context (config-driven keys)
+        _input_artifacts = getattr(stage, 'input_artifacts', []) or []
         for _s in (self._config.stages if self._config else []):
             _key = getattr(_s, 'output_artifact', '')
             if not _key or _key == getattr(stage, 'output_artifact', ''):
@@ -3987,8 +3988,12 @@ class PipelineEngine:
             _v = state.get(_key, {})
             if isinstance(_v, dict) and _v.get("raw_output"):
                 import json as _ctx_json
-                _summary = self._summarize_artifact(_v)
-                _context += f"## {_key} (摘要)\n{_ctx_json.dumps(_summary, ensure_ascii=False)[:2000]}\n\n"
+                if _key in _input_artifacts:
+                    # Critical input — include full content, don't summarize
+                    _context += f"## {_key}\n{str(_v['raw_output'])}\n\n"
+                else:
+                    _summary = self._summarize_artifact(_v)
+                    _context += f"## {_key} (摘要)\n{_ctx_json.dumps(_summary, ensure_ascii=False)[:2000]}\n\n"
 
         # ── 3. Inject document schema into system prompt ──
         # Read $ref from SKILL.md YAML frontmatter (not hardcoded artifact key mapping)
