@@ -3825,7 +3825,15 @@ class PipelineEngine:
                             if isinstance(state.get(_cc_input_key, {}), dict) else "")
                         if _cc_input_raw:
                             try:
-                                _cc_items = _json_mod.loads(_cc_input_raw) if isinstance(_cc_input_raw, str) else _cc_input_raw
+                                _cc_items_raw = _cc_input_raw
+                                if isinstance(_cc_items_raw, str):
+                                    _cc_items_raw = _cc_items_raw.strip()
+                                    if not _cc_items_raw.startswith(('[', '{')):
+                                        import re
+                                        _m = re.search(r'\{.*\}|\[.*\]', _cc_items_raw, re.DOTALL)
+                                        if _m:
+                                            _cc_items_raw = _m.group(0)
+                                _cc_items = _json_mod.loads(_cc_items_raw) if isinstance(_cc_items_raw, str) else _cc_items_raw
                                 # Support nested fields (e.g., prd.functional_requirements)
                                 _cc_input_field = _cc.get("input_field", "")
                                 if _cc_input_field and isinstance(_cc_items, dict):
