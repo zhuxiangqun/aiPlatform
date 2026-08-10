@@ -3804,7 +3804,7 @@ class PipelineEngine:
         # is a valid signal (no output for this stage), not a reason to bypass.
         if getattr(stage, 'skill_name', ''):
             _artifact_key = getattr(stage, 'output_artifact', '') or getattr(stage, 'skill_name', '')
-            _max_json_retries = 2
+            _max_json_retries = 5
             _batch_accumulator: list = []     # aggregate results across completeness retries
             _batch_complete = False
             for _json_try in range(_max_json_retries + 1):
