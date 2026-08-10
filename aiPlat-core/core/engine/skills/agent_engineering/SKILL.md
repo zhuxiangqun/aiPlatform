@@ -236,6 +236,8 @@ scoring_dimensions:
 | AGENT.md 的 SOP 太模糊 | 每步明确写调用哪个Skill |
 | 忽略平台已有的 39 个 Engine Skill | 优先复用: file_operations/knowledge_retrieve/code_execution |
 | 生成 handler.py (需要编码) | 优先用 execution_type: prompt (LLM推理即可) |
+| 用 ```yaml 包裹 YAML 内容 | ⚠️ AGENT.md/SKILL.md 的 YAML frontmatter 必须从第一行 `---` 开始，禁止前置 `yaml` 代码块标记 |
+| 用 ```json 包裹 JSON 内容 | ⚠️ agent_manifest.json 必须是纯 JSON，禁止任何代码块标记封装，禁止末尾 `---` |
 
 ## Checklist
 - [ ] 根据 PRD 复杂度决定单/多 Agent 模式

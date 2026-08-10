@@ -4422,6 +4422,11 @@ class PipelineEngine:
             _content = _lines[1].strip()
             _content = _re.sub(r'^```\w*\n?', '', _content)
             _content = _re.sub(r'\n?```\s*$', '', _content)
+            # Strip leaked code block language markers (yaml., json.)
+            if _content.startswith("yaml\n"):
+                _content = _content[5:]
+            elif _content.startswith("json\n"):
+                _content = _content[5:]
             _full = _os2.path.join(_target, _fname)
             try:
                 _os2.makedirs(_os2.path.dirname(_full), exist_ok=True)
