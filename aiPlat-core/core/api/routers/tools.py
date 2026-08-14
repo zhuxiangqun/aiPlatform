@@ -162,6 +162,36 @@ async def list_tools(limit: int = 100, offset: int = 0, available_only: bool = F
     return {"total": len(tools), "tools": result}
 
 
+@router.get("/tools/{tool_name}", response_model=Dict[str, Any])
+async def get_tool(tool_name: str):
+    """Get a single tool's info."""
+    registry = get_tool_registry()
+    tool = registry.get(tool_name)
+    if not tool:
+        raise HTTPException(status_code=404, detail=f"Tool {tool_name} not found")
+    avail = registry.get_availability(tool_name) if hasattr(registry, "get_availability") else {"available": True, "reason": None}
+    info: Dict[str, Any] = {
+        "name": tool_name,
+        "available": bool(avail.get("available")),
+        "unavailable_reason": avail.get("reason"),
+        "description": tool.get_description(),
+        "category": getattr(tool._config, "category", "general") if hasattr(tool, "_config") else "general",
+        "parameters": getattr(tool._config, "parameters", {}) if hasattr(tool, '_config') else {},
+    }
+    meta = getattr(tool._config, 'metadata', {}) if hasattr(tool, '_config') else {}
+    prov = (meta or {}).get('provenance', {}) if isinstance(meta, dict) else {}
+    info["protected"] = True if not prov.get("scope") else False
+    info["scope"] = prov.get("scope") or "engine"
+    if prov:
+        info["provenance"] = {"scope": info["scope"], "tool_path": prov.get("tool_path", ""),
+            "source_type": prov.get("source_type", "filesystem"),
+            "source": prov.get("source", ""),
+            "signature": prov.get("signature", ""),
+            "signature_verified": prov.get("signature_verified", False),
+            "signature_verified_key_id": prov.get("signature_verified_key_id", "")}
+    return info
+
+
 @router.delete("/tools/{tool_name}", response_model=Dict[str, Any])
 async def delete_workspace_tool(tool_name: str, http_request: Request):
     """Delete a workspace tool — removes .py file and unregisters from ToolRegistry."""

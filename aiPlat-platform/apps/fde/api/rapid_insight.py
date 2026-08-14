@@ -65,8 +65,8 @@ async def rapid_insight_upload(
     entities_extracted = 0
     relations_extracted = 0
     try:
-        from core.harness.ontology_engine.engine import OntologyEngine
-        from core.harness.knowledge.domain_router import DomainRouter
+        from core.api.core_facade import OntologyEngine
+        from core.api.core_facade import DomainRouter
 
         # Register temporary domain
         DomainRouter().register_domain(domain_id, {
@@ -93,14 +93,14 @@ async def rapid_insight_upload(
     # Cross-domain alignment
     aligned_domains = []
     try:
-        from core.harness.knowledge_pipeline.resolver import CrossDomainResolver
+        from core.api.core_facade import CrossDomainResolver
         resolver = CrossDomainResolver()
         candidates = resolver.find_candidates("bell_unified_client")
         aligned_domains = list(set(
             c.get("left", {}).get("domain", "") for c in candidates
         ))[:5]
     except Exception:
-        pass
+        logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
 
     session = {
         "session_id": session_id,
@@ -205,7 +205,7 @@ async def rapid_insight_answer(body: Dict[str, Any]):
     # Locate blind spots for wrong answers
     blind_spots = []
     if not correct:
-        from core.harness.ontology_engine.graph_index import GraphIndex
+        from core.api.core_facade import GraphIndex
         from core.apps.fde.service.rapid_insight_service import locate_blind_spot_source
 
         domain_id = session["domain_id"]
@@ -221,7 +221,7 @@ async def rapid_insight_answer(body: Dict[str, Any]):
                             blind_spots.append(spot)
                     break
             except Exception:
-                pass
+                logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
 
     session["answers"] = session.get("answers", {})
     session["answers"][question_id] = {
@@ -275,7 +275,7 @@ async def rapid_insight_status(session_id: str):
 def _compute_reuse_rate(session: dict) -> dict:
     """P1: compute reuse rate for a session's domain."""
     try:
-        from core.harness.ontology_engine.graph_index import GraphIndex
+        from core.api.core_facade import GraphIndex
         from core.apps.fde.service.rapid_insight_service import calculate_reuse_rate
         domain_id = session.get("domain_id", "")
         tenant_id = session.get("tenant_id", "default")

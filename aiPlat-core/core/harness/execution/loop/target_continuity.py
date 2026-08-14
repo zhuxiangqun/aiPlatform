@@ -1,9 +1,10 @@
-"""Target Continuity — 目标连续性裁决 (Agent 运行时确定性约束第4层).
+"""Target Continuity — target-continuity verdict (Agent runtime deterministic constraint, layer 4).
 
-Hermes-inspired: 用户中途插话/新消息时, 判定是"补充旧任务"还是"新任务"。
-词汇重叠度评分 + 双阈值 (0.24/0.08) + LLM 两级裁决。
+Hermes-inspired: when the user interjects mid-way or sends a new message, determine whether it is
+a "supplement to the old task" or a "new task".
+Vocabulary-overlap scoring + dual thresholds (0.24/0.08) + two-tier LLM adjudication.
 
-用法:
+Usage:
   judge = TargetContinuity()
   verdict = judge.decide(current_task, new_input)
   # → {"same_task": bool, "overlap_score": float, "method": "fast"|"llm"}
@@ -17,21 +18,10 @@ from typing import Any, Dict, Optional
 
 log = logging.getLogger("aiplat.continuity")
 
-# Chinese + English stopwords for overlap scoring
-_STOP_WORDS = {
-    "的", "了", "在", "是", "我", "有", "和", "就", "不", "人", "都", "一", "一个",
-    "上", "也", "很", "到", "说", "要", "去", "你", "会", "着", "没有", "看", "好",
-    "the", "a", "an", "is", "are", "was", "were", "be", "been", "being",
-    "have", "has", "had", "do", "does", "did", "will", "would", "shall",
-    "should", "may", "might", "must", "can", "could", "to", "of", "in",
-    "for", "on", "with", "at", "by", "from", "as", "into", "through",
-    "during", "before", "after", "and", "but", "or", "nor", "not", "so",
-    "yet", "both", "either", "neither", "each", "every", "all", "any",
-    "few", "more", "most", "other", "some", "such", "no", "only", "own",
-    "same", "than", "too", "very", "just", "because", "about", "over",
-    "this", "that", "these", "those", "it", "its", "he", "she", "they",
-    "we", "you", "me", "him", "her", "us", "them", "my", "your", "his",
-}
+# Chinese + English stopwords for overlap scoring (see core.harness.utils.zh_language)
+from core.harness.utils.zh_language import TASK_CONTINUITY_STOPWORDS
+
+_STOP_WORDS = TASK_CONTINUITY_STOPWORDS
 
 
 def _tokenize(text: str) -> set:
@@ -114,6 +104,8 @@ class TargetContinuity:
             )
             text = str(resp).upper().strip()
             same = "SAME" in text and "NEW" not in text
-            return {"same_task": same, "reason": f"LLM裁决: {'SAME' if same else 'NEW'} (重叠={score:.3f})"}
+            from core.harness.utils.zh_language import TASK_CONTINUITY_VERDICT_TMPL
+            return {"same_task": same, "reason": TASK_CONTINUITY_VERDICT_TMPL.format(
+                verdict='SAME' if same else 'NEW', score=score)}
         except Exception:
             return None

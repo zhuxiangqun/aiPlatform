@@ -198,7 +198,7 @@ class GraphRAGRetriever:
                                 hop=depth + 1,
                             )
                         except Exception:
-                            pass  # best-effort
+                            logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)  # best-effort
 
             # Phase 1: Hyperedge traversal — expand via multi-entity hyperedges
             for he in g.get_hyperedges_for_entity(current_id):

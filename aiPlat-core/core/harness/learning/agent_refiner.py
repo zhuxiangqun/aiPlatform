@@ -95,7 +95,7 @@ class AgentRefiner:
                         if _os.path.isfile(_os.path.join(root, d, "AGENT.md")):
                             agents.add(d)
             except Exception:
-                pass
+                logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
         return sorted(agents)
 
     def _diagnose(self, agent_id: str, lookback_days: int) -> AgentDiagnostic:
@@ -215,7 +215,7 @@ class AgentRefiner:
         voting-based adoption, same path as agent refinements.
         """
         try:
-            from core.harness.utils.model_health_store import get_model_health_store
+            from infra.management.model.model_health_store import get_model_health_store
             store = get_model_health_store()
             all_health = store.list_health_scores()
         except Exception as e:

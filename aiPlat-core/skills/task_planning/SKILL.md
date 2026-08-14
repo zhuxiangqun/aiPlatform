@@ -4,6 +4,7 @@ display_name: 任务规划
 description: 将目标拆解为可执行的步骤计划（含依赖、验收标准、验证命令）。
 category: execution
 version: 1.0.0
+execution_type: prompt
 status: enabled
 execution_mode: inline
 executable: true

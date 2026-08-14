@@ -425,14 +425,16 @@ else:
 PYEOF_R12
 
 # ══════════════════════════════════════════════════════════════
-# Step 7: Auto-register new public APIs from git diff (Rule 11)
+# Step 7: Auto-register new public symbols to capability_registry.yaml
 # ══════════════════════════════════════════════════════════════
 echo ""
-echo "━━━ Step 7: Auto-register new public APIs from git diff ━━━"
-python3 "$WORKSPACE/scripts/verify_docs.py" 2>&1 | grep "新增了.*但未在" | while read -r line; do
-  echo "  📝 $line"
-done
-echo "  ℹ️  Run 'python3 scripts/verify_docs.py' for full report"
+echo "━━━ Step 7: Auto-register new symbols to capability_registry.yaml ━━━"
+REGISTER_SCRIPT="$WORKSPACE/scripts/auto_register_capability.py"
+if [ -f "$REGISTER_SCRIPT" ]; then
+    python3 "$REGISTER_SCRIPT" --auto 2>&1 | tail -10
+else
+    echo "  ℹ️  auto_register_capability.py not found — run 'python3 scripts/verify_docs.py' for manual check"
+fi
 
 # ══════════════════════════════════════════════════════════════
 # Step 8: Generate FDE Pipeline Key mapping table from code

@@ -4,6 +4,7 @@ display_name: 多语言翻译
 description: 在多语言之间进行翻译，保持术语一致、语气一致，并可选择直译/意译风格。
 category: transformation
 version: 1.0.0
+execution_type: prompt
 status: enabled
 execution_mode: inline
 executable: true

@@ -287,7 +287,7 @@ async def _safe_generalize_skill(engine: Any, skill_id: str, state: dict) -> Non
             await generalizer.generalize_async(skill_id, str(state.get("description", "")))
         else:
             generalizer.generalize(skill_id, str(state.get("description", "")))
-    except asyncio.CancelledError:
+    except asyncio.CancelledError:  # noqa: normal-cancellation
         pass
     except Exception:
         import logging as _gl
@@ -882,6 +882,14 @@ class PipelineEngine:
 
             llm_output_schema = node_cfg.get('output_schema', '')
 
+            # Engine infra — progress emission (shared with _run_stage_skill)
+            _stage_tag = getattr(stage, 'output_artifact', '') or stage.id
+            state["_progress"] = {"stage": _stage_tag, "status": "running",
+                                  "started_at": __import__("time").time(),
+                                  "backend": "llm", "current_step": 0}
+            if self._persist_callback:
+                self._persist_callback(dict(state))
+
             from core.harness.syscalls.llm import sys_llm_generate
 
             kwargs: dict = {
@@ -939,6 +947,14 @@ class PipelineEngine:
             )
 
             result_text = getattr(resp, 'content', '') or str(resp)
+
+            # Engine infra — model health recording (shared with _run_stage_skill)
+            try:
+                from core.harness.utils.model_injection import _record_success as _eng_record_success
+                _llm_latency = 0  # latency tracking not available in canvas node path
+                _eng_record_success(llm_model_name, latency_ms=_llm_latency, purpose="chat")
+            except Exception:
+                logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
 
             # Token tracking for LLM node path (aligns with StageRunner path at L1537-1539)
 
@@ -1270,9 +1286,9 @@ class PipelineEngine:
                             top_k=kb_top_k, query=kb_query, passages=str(output)[:3000])
 
                         from core.harness.syscalls.llm import sys_llm_generate
+                        _rerank_model = best_model_for_purpose("chat")
                         rerank_resp = await sys_llm_generate(
-
-                            best_model_for_purpose("chat"),
+                            _rerank_model,
 
                             [{"role": "user", "content": rerank_prompt}],
 
@@ -1281,6 +1297,13 @@ class PipelineEngine:
                         )
 
                         rerank_text = getattr(rerank_resp, 'content', '') or ''
+
+                        # Engine infra — model health recording (shared with _run_stage_skill)
+                        try:
+                            from core.harness.utils.model_injection import _record_success as _rerank_record_success
+                            _rerank_record_success(_rerank_model, latency_ms=0, purpose="chat")
+                        except Exception:
+                            logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
 
                         if rerank_text:
 
@@ -1711,17 +1734,28 @@ class PipelineEngine:
 
             from core.harness.utils.model_injection import best_model_for_purpose
 
+            # Engine infra — progress + trace (shared with _run_stage_skill)
+            _plan_model = best_model_for_purpose("chat")
             resp = await sys_llm_generate(
 
                 None, [{"role": "user", "content": prompt}],
 
-                model_name=best_model_for_purpose("chat"),
+                model_name=_plan_model,
 
                 max_tokens=1000,
+
+                trace_context={"source": f"workflow_plan_{stage.id}"},
 
             )
 
             plan_text = getattr(resp, 'content', '') or str(resp)
+
+            # Engine infra — model health recording
+            try:
+                from core.harness.utils.model_injection import _record_success as _plan_record_success
+                _plan_record_success(_plan_model, latency_ms=0, purpose="chat")
+            except Exception:
+                logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
 
             state["_task_plan"] = plan_text
 
@@ -2565,6 +2599,101 @@ class PipelineEngine:
         calling the private method directly."""
 
         return await self._run_stages_from(start_idx, state)
+
+
+    async def resume_from_checkpoint(self, run_id: str, session_id: str = "") -> PipelineState:
+
+        """v4.0: cross-session intelligent resume — continue from the last completed stage.
+
+        Priority:
+
+          1. Read stage status from pipeline_run_store → locate the failed/incomplete stage
+
+          2. Restore PipelineState from the on-disk checkpoint JSON
+
+          3. Analyze the failure cause → decide whether to retry / compress context / fall back to the previous stage
+
+          4. Continue execution from the resume point
+
+        """
+
+        state = self._load_pipeline_state(session_id, run_id)
+
+        if not state:
+
+            raise ValueError(f"Pipeline state not found for run={run_id}")
+
+
+        # 1. Load stage status from store
+
+        try:
+
+            from core.harness.execution.pipeline_run_store import get_pipeline_run_store
+
+            store = get_pipeline_run_store()
+
+            stages_raw = store.list_stages(run_id) if hasattr(store, 'list_stages') else []
+
+        except Exception:
+
+            stages_raw = []
+
+
+        # 2. Find resume point
+
+        resume_idx = 0
+
+        for s in sorted(stages_raw, key=lambda x: x.get("stage_idx", 0) if isinstance(x, dict) else 0):
+
+            if not isinstance(s, dict):
+
+                continue
+
+            status = s.get("status", "")
+
+            if status == "completed":
+
+                resume_idx = max(resume_idx, s.get("stage_idx", 0) + 1)
+
+            elif status in ("failed", "timeout"):
+
+                # v4.0 enhancement 3: intelligent resume — analyze the failure cause
+
+                error = s.get("error_message", "")
+
+                if "context_length" in error.lower() or "token" in error.lower():
+
+                    # Compress context before retry
+
+                    state["_force_context_compress"] = True
+
+                resume_idx = s.get("stage_idx", 0)
+
+                break
+
+
+        # 3. Restore from disk checkpoints if state is stale
+
+        checkpoints = self._load_checkpoints_from_disk(state)
+
+        if checkpoints:
+
+            last_healthy = [c for c in checkpoints if isinstance(c, dict) and not c.get("error")]
+
+            if last_healthy:
+
+                last = last_healthy[-1]
+
+                state["_current_stage_idx"] = last.get("stage_idx", resume_idx)
+
+                state["tokens_used"] = last.get("tokens_used", 0)
+
+                state["_wake_recovered"] = True
+
+
+        # 4. Resume execution
+
+        return await self._run_stages_from(resume_idx, state)
 
 
 
@@ -3791,7 +3920,7 @@ class PipelineEngine:
                     _reg.seed_data()
                 self._skills_loaded = True
             except Exception:
-                pass  # best-effort: fallback to ReAct if registry unavailable
+                logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)  # best-effort: fallback to ReAct if registry unavailable
 
         # ── Broadcast progress for ALL stages (not just skill-based) ──
         _stage_tag = getattr(stage, 'output_artifact', '') or stage.id
@@ -3846,7 +3975,7 @@ class PipelineEngine:
                                     _start = _covered
                                     _end = min(_start + _cc_max_per, _expected)
                                     _remaining = _cc_items[_start:_end]
-                                    _err_msg = f"[补全 {_json_try+1}/{_max_json_retries}] 只覆盖{_covered}/{_expected}条。继续第{_start+1}-{_end}条: {_json_mod.dumps(_remaining, ensure_ascii=False)[:800]}"
+                                    _err_msg = f"[complete {_json_try+1}/{_max_json_retries}] only covered {_covered}/{_expected} items. Continue items {_start+1}-{_end}: {_json_mod.dumps(_remaining, ensure_ascii=False)[:800]}"
                                     _log.getLogger("pipeline_engine").warning(
                                         "Skill %s completeness retry: %d/%d items", getattr(stage,'skill_name',''), _covered, _expected)
                                     state["_reject_feedback"] = _err_msg
@@ -3861,11 +3990,11 @@ class PipelineEngine:
                                                              "elapsed_sec": 0}
                                     _json_mod.loads(result[_artifact_key]["raw_output"])  # re-validate
                             except Exception:
-                                pass
+                                logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
                     break  # valid JSON (or batch complete)
                 except _json_mod.JSONDecodeError as _je:
                     if _json_try < _max_json_retries:
-                        _err_msg = f"[Auto-Fix {_json_try+1}/{_max_json_retries}] JSON解析失败: {_je.msg} (第{_je.lineno}行,第{_je.colno}列). 请重新输出合法JSON, 禁止TypeScript语法如 `| null`, 禁止尾随逗号."
+                        _err_msg = f"[Auto-Fix {_json_try+1}/{_max_json_retries}] JSON parse failed: {_je.msg} (line {_je.lineno}, col {_je.colno}). Please re-output valid JSON, no TypeScript syntax like `| null`, no trailing commas."
                         _log.getLogger("pipeline_engine").warning(
                             "Skill %s JSON invalid (retry %d/%d): %s", getattr(stage,'skill_name',''), _json_try+1, _max_json_retries, _je.msg)
                         state["_reject_feedback"] = _err_msg
@@ -3875,6 +4004,26 @@ class PipelineEngine:
         else:
             # code_first (default) — ReAct path ONLY for stages without skill_name
             result = await self._exec_stage(stage, state)
+
+        # ── Safety net: normalize app_name/project_id in stage output to canonical value ──
+        _canonical_app = state.get("app_name", "")
+        if _canonical_app:
+            _art_key = getattr(stage, 'output_artifact', '') or getattr(stage, 'skill_name', '')
+            _raw = result.get(_art_key, {}).get('raw_output', '') if isinstance(result.get(_art_key), dict) else ''
+            if isinstance(_raw, str) and _raw.strip():
+                try:
+                    import json as _norm_json
+                    _parsed = _norm_json.loads(_raw)
+                    if isinstance(_parsed, dict):
+                        _changed = False
+                        if "app_name" in _parsed and _parsed["app_name"] != _canonical_app:
+                            _parsed["app_name"] = _canonical_app
+                            _changed = True
+                        if _changed:
+                            result[_art_key] = {"raw_output": _norm_json.dumps(_parsed, ensure_ascii=False),
+                                                "elapsed_sec": result.get(_art_key, {}).get("elapsed_sec", 0)}
+                except Exception:
+                    logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
 
         # ── Broadcast stage completion ──
         _elapsed_sec = round(_time.time() - _t0, 2)
@@ -3890,7 +4039,7 @@ class PipelineEngine:
                 from core.harness.utils.model_injection import best_model_for_purpose_with_meta
                 _model_meta = best_model_for_purpose_with_meta(getattr(stage, 'skill_model_purpose', '') or 'chat')
             except Exception:
-                pass
+                logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
             result[_trace_key] = {
                 "stage_id": stage.id,
                 "agent_id": getattr(stage, 'agent_id', '') or '',
@@ -3921,6 +4070,187 @@ class PipelineEngine:
             pass
 
         return result
+
+
+    # ═══ v3.0: Capability Profile — static inference + runtime injection ═══
+
+    @staticmethod
+    def _infer_profile_from_stage(stage) -> str:
+        """Static inference — shared by team_planner (build time) and engine (runtime).
+        orchestrator → collaborative | react/tool/subagent → autonomous
+        required_tools/skills → full | hitl/gen_test_plan → full
+        phase + depends_on → standard | else → minimal
+        """
+        agent_type = getattr(stage, 'agent_type', '') or ''
+        tools = getattr(stage, 'required_tools', []) or []
+        skills = getattr(stage, 'required_skills', []) or []
+        pipeline_mode = getattr(stage, 'pipeline_mode', '') or ''
+
+        if agent_type == "orchestrator" or pipeline_mode == "orchestrator":
+            return "collaborative"
+        if agent_type in ("react", "tool", "subagent"):
+            return "autonomous"
+        if tools or skills:
+            return "full"
+        if getattr(stage, 'hitl', False) or getattr(stage, 'generate_test_plan', False):
+            return "full"
+        if getattr(stage, 'phase', '') and getattr(stage, 'depends_on', []):
+            return "standard"
+        return "minimal"
+
+
+    # ═══ v5.0: Runtime Profile Calibration ═══
+
+    async def _calibrate_profile_from_history(self, stage, state) -> Dict[str, Any]:
+        """v5.0: compare Agent declarations vs actual runtime behavior to calibrate the capability profile.
+
+        Data source: execution_store.get_recent_syscall_events(run_id, limit=50)
+        The kind + name fields distinguish tool calls from skill calls.
+
+        Decision rules:
+          - Cold start (<10 events) → insufficient_data
+          - Used 2+ undeclared tools + currently zero declared tools + steps > 3 → upgrade_recommended→full
+          - Agent executes declared Skills normally → tolerate implicit Skill dependencies
+          - Declared tools but never used + ≥20 events → downgrade_suggested
+        """
+        import logging as _lg
+        _logger = _lg.getLogger("pipeline_engine.calibration")
+
+        run_id = state.get("_run_id", "") or state.get("run_id", "")
+        try:
+            from core.services.execution_store import get_execution_store
+            store = get_execution_store()
+            events = await store.get_recent_syscall_events(run_id, limit=50)
+        except Exception:
+            return {"status": "error", "reason": "execution_store unavailable"}
+
+        # ── cold-start protection ──
+        if len(events) < 10:
+            return {"status": "insufficient_data", "samples": len(events)}
+
+        # ── separate tool calls vs skill calls ──
+        actual_tools: set = set()
+        actual_skills: set = set()
+        for e in events:
+            name = e.get("name", "")
+            kind = e.get("kind", "")
+            if not name:
+                continue
+            if kind and "tool" in kind.lower():
+                actual_tools.add(name)
+            elif kind and ("skill" in kind.lower() or "exec" in kind.lower()):
+                actual_skills.add(name)
+
+        # ── declared vs actual comparison ──
+        declared_tools = set(getattr(stage, 'required_tools', []))
+        declared_skills = set(getattr(stage, 'required_skills', []))
+        unused_tools = declared_tools - actual_tools
+        undeclared_tools = actual_tools - declared_tools
+
+        # ── fault tolerance: implicit Skill dependencies ──
+        if actual_skills & declared_skills:
+            undeclared_tools = set()
+
+        # ── upgrade decision ──
+        # NOTE: v5.1 avg_steps should read the historical average step count from execution_store
+        avg_steps = int(state.get("step_count", 0) or 0)
+        if undeclared_tools and not declared_tools:
+            if len(undeclared_tools) >= 2 and avg_steps > 3:
+                _logger.warning(
+                    "undeclared tools %s in %d runs, recommending upgrade",
+                    undeclared_tools, len(events))
+                return {
+                    "status": "upgrade_recommended",
+                    "current_profile": getattr(stage, 'capability_profile', 'auto'),
+                    "recommended_profile": "full",
+                    "undeclared_tools": list(undeclared_tools),
+                    "samples": len(events),
+                }
+
+        # ── downgrade suggestion ──
+        if unused_tools and len(events) >= 20:
+            _logger.info(
+                "%d declared but unused tools in %d runs — consider cleanup",
+                len(unused_tools), len(events))
+            return {
+                "status": "downgrade_suggested",
+                "unused_tools": list(unused_tools),
+                "samples": len(events),
+            }
+
+        return {"status": "consistent", "samples": len(events)}
+
+
+    async def _apply_capability_profile(self, stage, state) -> str:
+        """Inject capability set per tier. Returns effective tier.
+        full/autonomous → agent backend + tools/skills + safety
+        minimal/standard no tools → downgrade agent→llm to save resources
+        """
+        import logging as _log
+
+        profile = getattr(stage, 'capability_profile', 'auto') or 'auto'
+        if profile == "auto":
+            profile = self._infer_profile_from_stage(stage)
+
+        tools = getattr(stage, 'required_tools', []) or []
+        skills = getattr(stage, 'required_skills', []) or []
+
+        if profile in ("standard", "full", "autonomous", "collaborative", "self_evolving", "persistent"):
+            state["_trace_enabled"] = True
+            state["_metrics_enabled"] = True
+
+        if profile in ("full", "autonomous", "collaborative", "self_evolving", "persistent"):
+            stage.execution_backend = "agent"
+            stage.tokens_budget = getattr(stage, 'tokens_budget', 0) or 30000
+            stage.max_steps = getattr(stage, 'max_steps', 0) or 10
+            state["_policy_gate_enabled"] = True
+            state["_pii_detect_enabled"] = True
+
+        if profile in ("autonomous", "collaborative", "self_evolving", "persistent"):
+            stage.enable_reflection = True
+            stage.enable_task_skills = True
+
+        if profile == "collaborative":
+            stage.pipeline_mode = "orchestrator"
+            stage.agent_type = getattr(stage, 'agent_type', '') or "orchestrator"
+            state["_subagent_coordinator_enabled"] = True
+            state["_agent_message_bus_enabled"] = True
+            # P2: require tool call rationale for traceability
+            state["_tool_rationale_required"] = True
+
+        if profile in ("self_evolving", "collaborative"):
+            state["_adaptive_security"] = True
+            state["_online_evolution_enabled"] = True
+
+        if profile == "persistent":
+            state["_auto_resume_on_failure"] = True
+            stage.enable_auto_resume = True
+
+        if profile in ("minimal", "standard"):
+            if getattr(stage, 'execution_backend', 'llm') == "agent":
+                if not tools and not skills:
+                    stage.execution_backend = "llm"
+                    stage.max_steps = 0
+
+        # ── v5.0: Runtime profile calibration ──
+        _cal = await self._calibrate_profile_from_history(stage, state)
+        if _cal.get("status") == "upgrade_recommended":
+            _new = _cal.get("recommended_profile")
+            _mode = __import__("os").environ.get("AIPLAT_PROFILE_CALIBRATE", "log")
+            _clog = __import__("logging").getLogger("pipeline_engine")
+            if _mode in ("upgrade", "full"):
+                _clog.warning("Profile auto-upgraded: %s → %s (%d undeclared tools)",
+                              profile, _new, len(_cal.get("undeclared_tools", [])))
+                profile = _new
+                state["_profile_auto_upgraded"] = True
+            else:
+                _clog.info("Calibration suggests: %s → %s (mode=log, not applied)",
+                           profile, _new)
+
+        _log.getLogger("pipeline_engine").debug(
+            "capability_profile=%s backend=%s calibration=%s", profile,
+            getattr(stage, 'execution_backend', 'llm'), _cal.get("status", "n/a"))
+        return profile
 
 
     async def _run_stage_skill(self, stage: PipelineStageConfig, state: PipelineState) -> PipelineState:
@@ -3983,7 +4313,7 @@ class PipelineEngine:
             _event_bus.emit(state.get("session_id", state.get("_run_id", "")),
                             "node_started", {"state": dict(state), "node_id": stage.id})
         except Exception:
-            pass
+            logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
 
         # ── 2. Build context from pipeline state ──
         import json as _json
@@ -3991,6 +4321,24 @@ class PipelineEngine:
         _desc = state.get("description", "")
         if _desc:
             _context += f"## description\n{_desc}\n\n"
+        # Canonical app_name — established at project creation, reused by all stages.
+        # Downstream stages MUST use this value instead of generating their own name.
+        _app_name = state.get("app_name", "")
+        if _app_name:
+            _context += f"## app_name (must use this value, do not rename)\n{_app_name}\n\n"
+        # Canonical project_id — the unique project key, injected for FK linkage.
+        _project_id = state.get("project_id", "")
+        if _project_id:
+            _context += f"## project_id (must use this value, do not rename)\n{_project_id}\n\n"
+        # Regenerate feedback — injected so the stage re-runs with the human/Bug fix instructions
+        _reject_feedback = state.get("_reject_feedback", "")
+        if _reject_feedback:
+            _context += (
+                "\n## 🛑 REGENERATE WITH FEEDBACK — YOU MUST FIX THESE ISSUES\n"
+                "You were rejected and must regenerate. Address EVERY issue below.\n"
+                "Before generating your final output, ensure each issue is resolved.\n\n"
+                f"{_reject_feedback}\n\n---\n"
+            )
         # Append upstream stage outputs as context (config-driven keys)
         _input_artifacts = getattr(stage, 'input_artifacts', []) or []
         for _s in (self._config.stages if self._config else []):
@@ -4005,7 +4353,7 @@ class PipelineEngine:
                     _context += f"## {_key}\n{str(_v['raw_output'])}\n\n"
                 else:
                     _summary = self._summarize_artifact(_v)
-                    _context += f"## {_key} (摘要)\n{_ctx_json.dumps(_summary, ensure_ascii=False)[:2000]}\n\n"
+                    _context += f"## {_key} (summary)\n{_ctx_json.dumps(_summary, ensure_ascii=False)[:2000]}\n\n"
 
         # ── 3. Inject document schema into system prompt ──
         # Read $ref from SKILL.md YAML frontmatter (not hardcoded artifact key mapping)
@@ -4029,7 +4377,7 @@ class PipelineEngine:
                     if _spec:
                         _schema_text = f"\n\n## Output Format Requirements\n{_spec.strip()}"
         except Exception:
-            pass
+            logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
         if _schema_text:
             _sop_body = _sop_body.replace("\n\n## Output Format Requirements", "") + _schema_text
 
@@ -4064,7 +4412,7 @@ class PipelineEngine:
                     _domain_prompt = _sync_resolve(f"domain-prompt-{_domain_id}")
                     _sop_body = _domain_prompt + "\n\n" + _sop_body
                 except Exception:
-                    pass  # domain has no prompt configured
+                    logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)  # domain has no prompt configured
 
             # 3.5b. Inject context bus layers (term dictionary + delivery history + self-optimization)
             _cb_parts = []
@@ -4078,7 +4426,24 @@ class PipelineEngine:
                 _context_enriched = True
 
         except Exception:
-            pass  # best-effort: engine runs fine without context injection
+            logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)  # best-effort: engine runs fine without context injection
+
+        # ── 3.5: Capability Profile injection (v3.0) ──
+        await self._apply_capability_profile(stage, state)
+
+        # ── v1.0: runtime triple — write to TripleStore during Pipeline execution ──
+        try:
+            from core.harness.ontology_engine.triple_store import get_triple_store, _make_urn
+            _ts = get_triple_store()
+            _run_urn = _make_urn("run", state.get("_run_id", "") or state.get("run_id", ""))
+            _agent_urn = _make_urn("agent", getattr(stage, 'agent_id', '') or '')
+            _skill = getattr(stage, 'skill_name', '') or ''
+            if _run_urn and _agent_urn:
+                _ts.add(_run_urn, "contains_stage", _agent_urn, 1.0, "runtime_scan", {})
+            if _agent_urn and _skill:
+                _ts.add(_agent_urn, "uses_skill", _make_urn("skill", _skill), 1.0, "runtime_scan", {})
+        except Exception:
+            logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
 
         # ── 4. Execute: LLM or Agent (config-driven via execution_backend) ──
         from core.harness.syscalls.llm import sys_llm_generate
@@ -4112,7 +4477,7 @@ class PipelineEngine:
                         try:
                             self._snapshot(state, f"stage_{stage.id}_progress")
                         except Exception:
-                            pass
+                            logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
             _poll_task = asyncio.create_task(_poll_progress())
 
             try:
@@ -4122,7 +4487,7 @@ class PipelineEngine:
                 try:
                     await asyncio.wait_for(_poll_task, timeout=3)
                 except Exception:
-                    pass
+                    logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
 
             state.pop("_sys_prompt", None)
             # Extract final answer from ReAct dialogue — not the full conversation log
@@ -4164,7 +4529,7 @@ class PipelineEngine:
                         best_model_for_purpose(_purpose),
                         latency_ms=_latency, purpose=_purpose)
                 except Exception:
-                    pass
+                    logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
             except asyncio.TimeoutError:
                 _log.getLogger("pipeline_engine").warning(
                     "Skill %s: LLM call timed out after 180s", _skill_name)
@@ -4179,7 +4544,7 @@ class PipelineEngine:
                     from core.harness.utils.model_injection import _record_failure as _pipeline_record_failure
                     _pipeline_record_failure(best_model_for_purpose(_purpose))
                 except Exception:
-                    pass
+                    logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
                 return state
             _elapsed = round(_time.time() - _t0, 2)
             state["_progress"] = {"stage": _skill_name, "status": "completed", "elapsed_sec": _elapsed,
@@ -4214,7 +4579,7 @@ class PipelineEngine:
             from core.harness.utils.model_injection import best_model_for_purpose_with_meta
             _model_meta = best_model_for_purpose_with_meta(_purpose)
         except Exception:
-            pass
+            logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
         state[f"_trace_{stage.id}"] = {
             "stage_id": stage.id,
             "agent_id": getattr(stage, 'agent_id', '') or '',
@@ -4233,6 +4598,45 @@ class PipelineEngine:
             "domain_id": _domain_id,
             "context_enriched": _context_enriched,
         }
+
+        # ── Decision trace: generic per-stage provenance for failure localization ──
+        # Records confidence + upstream dependencies so the fix flow can walk
+        # backward to the max error-contribution node. No business concepts here.
+        try:
+            from core.harness.execution.decision_trace import record_decision as _record_decision
+            _run_id = (state.get("session_id") or state.get("_run_id")
+                       or state.get("project_id", ""))
+            if _run_id:
+                _depends_on = []
+                for _s in (self._config.stages if self._config else []):
+                    if getattr(_s, 'output_artifact', '') in (_input_artifacts or []):
+                        _depends_on.append(getattr(_s, 'id', ''))
+                # Coarse confidence heuristic: structured output > plain text >
+                # minimal. (Quality-bus score is a later refinement; this gives
+                # the graph a non-trivial signal today.)
+                _conf = 0.7
+                if _result:
+                    _stripped = _result.strip()
+                    if "## FILE:" in _result or (_stripped.startswith("{") and _stripped.endswith("}")):
+                        _conf = 0.85
+                    elif len(_result) < 200:
+                        _conf = 0.5
+                _record_decision(_run_id, stage.id, depends_on=_depends_on,
+                                 confidence=_conf)
+        except Exception:  # noqa: best-effort-trace — decision trace is non-critical
+            pass
+
+        # ── Cost budget: accumulate USD from tokens × price (config-driven) ──
+        try:
+            from core.harness.execution.cost_budget import cost_for as _cost_for
+            _tokens_total = getattr(_resp, 'usage', {}).get('total_tokens', 0) if hasattr(_resp, 'usage') else 0
+            if not _tokens_total:
+                _tokens_total = int(state.get("_stage_tokens_used", 0) or 0)
+            if _tokens_total:
+                _delta = _cost_for(_model_name, _tokens_total, 0)
+                state["cost_used_usd"] = round(state.get("cost_used_usd", 0.0) + _delta, 6)
+        except Exception:  # noqa: best-effort-cost — cost tracking is non-critical
+            pass
 
         _log.getLogger("pipeline_engine").warning(
             "Skill %s OK: stage=%s output=%d chars", _skill_name, stage.id, len(_result))
@@ -4276,14 +4680,14 @@ class PipelineEngine:
                             "node_ended", {"state": dict(state), "node_id": stage.id,
                                            "elapsed": round(_time.time() - _t0, 2)})
         except Exception:
-            pass
+            logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
 
         # Persist state immediately — each stage completion writes to disk
         try:
             if self._persist_callback:
                 self._persist_callback(dict(state))
         except Exception:
-            pass
+            logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
 
         return state
 
@@ -4325,9 +4729,9 @@ class PipelineEngine:
             return state
 
         _agent_name = state.get("_generated_agent", "")
-        _prompt = f"执行技能 {skill_name}:\n\n上游产出物:\n{_upstream_text[:24000]}"
+        _prompt = f"Execute skill {skill_name}:\n\nUpstream artifacts:\n{_upstream_text[:24000]}"
         if _agent_name:
-            _prompt += f"\n\n被测Agent: {_agent_name}"
+            _prompt += f"\n\nAgent under test: {_agent_name}"
 
         _log.warning("chained skill '%s': executing via StageRunner (%d chars upstream)", skill_name, len(_upstream_text))
         # Track step count from upstream test_questions for progress display
@@ -4344,7 +4748,7 @@ class PipelineEngine:
                     _qs = _json.loads(_upstream_text[_jstart:_jend+1]).get("test_questions", [])
                     _total_steps = len(_qs) if isinstance(_qs, list) and _qs else 1
             except Exception:
-                pass
+                logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
         state["_progress"] = {"stage": skill_name, "status": "running", "started_at": _time.time(), "total_steps": _total_steps}
 
         # 3. Run via StageRunner → ReActLoop (enables tool calls like core_chat)
@@ -4517,6 +4921,7 @@ class PipelineEngine:
                         [{"role": "user", "content": _fix_prompt}],
                         model_name=best_model_for_purpose("code_gen"),
                         max_tokens=16000,
+                        trace_context={"source": f"test_auto_repair_r{_repair_rounds}"},
                     )
                     _fix_text = getattr(_fix_resp, "content", "") or str(_fix_resp)
                     if _fix_text and len(_fix_text) > 100:
@@ -4575,7 +4980,7 @@ class PipelineEngine:
                     "pass_rate": _pr,
                 }}, skip_rejected=True)
             except Exception:
-                pass
+                logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
         logging.getLogger("pipeline_engine").warning("Test executed: stage=%s tests=%d/%d/%d repair_rounds=%d", stage.id, _passed, _failed, _errors, _repair_rounds)
         return state
 
@@ -6573,6 +6978,15 @@ class PipelineEngine:
 
             state["phase"] = PipelinePhase.FAILED
 
+            return state
+
+        # ── Cost budget (USD) — config-driven, mirrors token budget ──
+        _cost_used = float(state.get("cost_used_usd", 0.0) or 0.0)
+        _cost_budget = float(getattr(self._config, 'max_cost_per_run_usd', 0.0) or 0.0)
+        if _cost_budget > 0 and _cost_used >= _cost_budget:
+            state["error"] = f"cost_budget_exhausted ({_cost_used:.4f}/{_cost_budget:.4f})"
+            state["_last_action_reason"] = "cost_budget_exhausted"
+            state["phase"] = PipelinePhase.FAILED
             return state
 
 
@@ -9771,7 +10185,7 @@ JSON format: {{"artifact": {{}},"confidence": "HIGH","issues": [{{"severity": "P
                 try:
                     await _save_pipeline_knowledge_to_wiki(state, self._config)
                 except Exception:
-                    pass
+                    logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
 
             # Phase 4: establish TaskSkill ↔ WikiPage bilateral links in ontology
 
@@ -9869,7 +10283,7 @@ JSON format: {{"artifact": {{}},"confidence": "HIGH","issues": [{{"severity": "P
                 _gen_async.create_task(
                     _safe_generalize_skill(self, skill_id, state))
             except Exception:
-                pass
+                logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
 
             return skill_path
 
@@ -11404,16 +11818,25 @@ Output ONLY this JSON (no preamble): {{"diagnosis":"<1 sentence>","suggested_pro
 
 
         try:
-
+            _hf_model = best_model_for_purpose("chat")
             resp = await sys_llm_generate(
 
                 None, [{"role": "user", "content": prompt}],
 
-                model_name=best_model_for_purpose("chat"),
+                model_name=_hf_model,
 
                 max_tokens=500,
 
+                trace_context={"source": "harness_fix_proposer"},
+
             )
+
+            # Engine infra — model health recording
+            try:
+                from core.harness.utils.model_injection import _record_success as _hf_record_success
+                _hf_record_success(_hf_model, latency_ms=0, purpose="chat")
+            except Exception:
+                logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
 
             import json as _json
 

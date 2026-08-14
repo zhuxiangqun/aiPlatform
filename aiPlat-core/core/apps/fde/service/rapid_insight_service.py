@@ -101,7 +101,7 @@ def extract_industry_consensus(
             classes = g.get_entity_classes()
             entities.extend(classes[:5])
         except Exception:
-            pass
+            logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
 
     return {
         "consensus": f"Top-{len(top)} 推理结论（归一化置信度）",
@@ -160,7 +160,7 @@ def detect_industry_controversies(
                     ],
                 })
         except Exception:
-            pass
+            logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
 
     if not controversies:
         controversies.append({
@@ -228,7 +228,7 @@ def generate_penetrating_questions(
             if g_first._nodes:
                 break
         except Exception:
-            pass
+            logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
 
     filtered = []
     dropped = 0
@@ -416,7 +416,7 @@ def _get_chunk_preview(doc_id: str, chunk_id: str) -> str:
             with open(chunk_path) as f:
                 return f.read()[:500]
         except Exception:
-            pass
+            logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
     return f"文档: {doc_id}, Chunk: {chunk_id}（chunk 文件未缓存）"
 
 
@@ -499,7 +499,7 @@ def _parse_llm_questions(llm_output: Any) -> List[Dict]:
         if match:
             return json.loads(match.group())
     except Exception:
-        pass
+        logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
     # Fallback: try to parse the whole thing
     try:
         return json.loads(str(llm_output))
@@ -599,7 +599,7 @@ def auto_suggest_domains(
         try:
             class_embeddings = json.loads(open(vec_path).read())
         except Exception:
-            pass
+            logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
 
     if not class_embeddings:
         return suggestions

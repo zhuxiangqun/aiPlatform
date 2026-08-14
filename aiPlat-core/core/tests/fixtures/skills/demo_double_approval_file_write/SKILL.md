@@ -4,6 +4,7 @@ display_name: 双层审批写文件（示范）
 description: 同时触发 skill 审批与 tool(file_operations) 审批，用于验证“分层审批策略”配置是否生效（skill_only / tool_only / both）。
 category: execution
 version: 0.1.0
+execution_type: prompt
 status: test_fixture
 execution_mode: prompt
 permissions:

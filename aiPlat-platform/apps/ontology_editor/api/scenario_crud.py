@@ -10,7 +10,7 @@ router = APIRouter(tags=["ontology-editor-scenarios"])
 async def compare_domains():
     u"""Cross-domain maturity comparison."""
     try:
-        from core.harness.knowledge.domain_maturity import compare_domains
+        from core.api.core_facade import compare_domains
         results = compare_domains()
         return {"domains": results, "total": len(results)}
     except Exception as e:
@@ -30,10 +30,10 @@ async def recommend_scenarios(
     """
     try:
         if mode == "scenario":
-            from core.harness.knowledge.scenario_selector import recommend_order
+            from core.api.core_facade import recommend_order
             results = recommend_order(industry=industry, pain_points=pain_points)
         else:
-            from core.harness.knowledge.domain_maturity import compare_domains
+            from core.api.core_facade import compare_domains
             results = compare_domains()
             results = [{"domain_id": r["domain_id"], "maturity_score": r["maturity_score"],
                          "level": r["level"], "recommendation":
@@ -49,7 +49,7 @@ async def recommend_scenarios(
 async def export_report(domain_ids: str = Query("")):
     u"""Export domain comparison report (markdown)."""
     try:
-        from core.harness.knowledge.domain_maturity import export_comparison_report
+        from core.api.core_facade import export_comparison_report
         ids = [d.strip() for d in domain_ids.split(",") if d.strip()] if domain_ids else None
         report = export_comparison_report(ids, format="md")
         return {"format": "markdown", "report": report}

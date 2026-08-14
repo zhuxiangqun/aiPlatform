@@ -872,9 +872,9 @@ def _scan_domain_prompts(_force: bool = False):
                     if llm_prompt:
                         _register(f"domain-prompt-{domain_id}", llm_prompt, category="domain_prompts")
             except Exception:
-                pass
+                logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
     except Exception:
-        pass
+        logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
 
     # Register fallback defaults for domains without YAML llm_prompt
     for domain_id, prompt in _DOMAIN_PROMPT_DEFAULTS.items():
@@ -1276,3 +1276,56 @@ PRESERVED_IDENTIFIERS:
 ${preserved_ids}""",
     category="engine",
     variables=["summary_text", "preserved_ids"])
+
+_register("voice-brainstorm", """以下是用户的一段语音漫谈转录 (约 ${duration} 秒)。
+文本可能包含"嗯/啊"、自我纠正、跳跃话题、重复表达——这些是正常现象。
+
+请完成三项任务:
+1. 提取核心意图 (1-2句话概括用户真正想表达什么)
+2. 输出3个可执行步骤 (具体、可操作、用户下一步就能做的)
+3. 列出待澄清的模糊点 (哪些地方用户可能自己还没想清楚)
+
+语音转录:
+${transcript}
+
+返回 JSON:
+{
+  "core_intent": "核心意图概括",
+  "actionable_steps": ["步骤1", "步骤2", "步骤3"],
+  "fuzzy_points": ["模糊点1", "模糊点2"],
+  "tone": "思考型/焦虑型/探索型/决策型",
+  "response_style": {
+    "complexity": "simplify/standard/detailed",
+    "tone_adjust": "encourage/reassure/challenge/neutral",
+    "rationale": "简短说明为什么选择这种风格"
+  }
+}
+
+tone 与 response_style 的映射规则:
+  思考型 → response_style: complexity=standard, tone=neutral (用户只是在思考)
+  焦虑型 → response_style: complexity=simplify, tone=reassure (降低认知负担，给予安全感)
+  探索型 → response_style: complexity=detailed, tone=challenge (提供更多细节，适当挑战)
+  决策型 → response_style: complexity=standard, tone=encourage (提供清晰选项，鼓励行动)
+
+只返回 JSON, 不要其他内容.""",
+    category="fde",
+    variables=["transcript", "duration"])
+
+_register("prd-extract-from-chat", """从以下产品需求对话中提取结构化PRD（JSON格式）：
+
+${conversation}
+
+输出JSON：{"title":"${name}","description":"概述","functional_requirements":[{"id":"FR-001","name":"功能名","description":"描述","priority":"high","acceptance_criteria":["验收标准"]}],"user_stories":[{"id":"US-001","story":"作为...我...以便...","priority":"high","related_fr":["FR-001"]}],"constraints":{"platform":"Web","languages":["Python"]}}
+只输出JSON。""",
+     category="builder",
+     variables=["conversation", "name"])
+
+_register("tool-rationale-template", """Before calling any tool, output a one-line rationale explaining WHY you chose this specific tool and what you expect it to return.
+
+Format:
+  RATIONALE: <1-line reason>
+  ACT: call tool
+
+This ensures every tool call is deliberate and traceable — no blind tool invocation.""",
+    category="engine",
+    variables=[])

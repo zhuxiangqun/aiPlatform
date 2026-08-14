@@ -153,7 +153,7 @@ export const projectApi = {
   list: async () => {
     return apiClient.get<{ projects: ProjectItem[]; total: number }>('/platform/builder/projects');
   },
-  create: async (data: { name: string; description: string; team_id?: string }) => {
+  create: async (data: { name: string; description: string; team_id?: string; app_name?: string }) => {
     return apiClient.post<ProjectItem>('/platform/builder/projects', data);
   },
   get: async (projectId: string) => {

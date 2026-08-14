@@ -3409,7 +3409,7 @@ def run_migrations(conn, current: int, target_version: int) -> int:
             try:
                 conn.execute(idx_sql)
             except Exception:
-                pass
+                logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
 
         _set_version(53)
 

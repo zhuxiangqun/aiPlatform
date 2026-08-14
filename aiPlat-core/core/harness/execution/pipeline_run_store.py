@@ -475,7 +475,7 @@ class PipelineRunStore:
                         with open(_content, "r", encoding="utf-8") as _f:
                             _content = _f.read()
                     except Exception:
-                        pass  # fallback: use raw path string
+                        logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)  # fallback: use raw path string
                 state[s["artifact_key"]] = {
                     "raw_output": _content,
                     "elapsed_sec": s["elapsed_sec"],
@@ -485,7 +485,7 @@ class PipelineRunStore:
                 if s["progress_json"]:
                     try:
                         state[s["artifact_key"]] = json.loads(s["progress_json"])
-                    except json.JSONDecodeError:
+                    except json.JSONDecodeError:  # noqa: best-effort-parse
                         pass
             if s["progress_json"]:
                 try:
@@ -494,7 +494,7 @@ class PipelineRunStore:
                         _progress = p  # running stage wins
                     elif p and _progress is None:
                         _progress = p  # first non-running as fallback
-                except json.JSONDecodeError:
+                except json.JSONDecodeError:  # noqa: best-effort-parse
                     pass
 
         # Restore _progress from runs table (v3.5 — persisted per stage start)
@@ -502,7 +502,7 @@ class PipelineRunStore:
         if _run_progress and not _progress:
             try:
                 _progress = json.loads(_run_progress)
-            except json.JSONDecodeError:
+            except json.JSONDecodeError:  # noqa: best-effort-parse
                 pass
 
         if _progress:
@@ -521,6 +521,7 @@ class PipelineRunStore:
         ).fetchone()
         if not run:
             return {"phase": "idle"}
+        run = dict(run)  # sqlite3.Row → dict so .get() works below
 
         stages = self.get_stages(run_id)
         state: Dict[str, Any] = {
@@ -542,7 +543,7 @@ class PipelineRunStore:
                         with open(_content, "r", encoding="utf-8") as _f:
                             _content = _f.read()
                     except Exception:
-                        pass
+                        logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
                 state[s["artifact_key"]] = {
                     "raw_output": _content,
                     "elapsed_sec": s["elapsed_sec"],
@@ -554,14 +555,14 @@ class PipelineRunStore:
                         _progress = p
                     elif p and _progress is None:
                         _progress = p
-                except json.JSONDecodeError:
+                except json.JSONDecodeError:  # noqa: best-effort-parse
                     pass
 
         _run_progress = run.get("_progress_json", "")
         if _run_progress and not _progress:
             try:
                 _progress = json.loads(_run_progress)
-            except json.JSONDecodeError:
+            except json.JSONDecodeError:  # noqa: best-effort-parse
                 pass
 
         if _progress:

@@ -4,6 +4,8 @@ import { ArrowLeft, Copy, ExternalLink, Share2 } from 'lucide-react';
 
 import { Badge, Button, Card, CardContent, CardHeader, Input, Pagination, Table } from '../../../components/ui';
 import { diagnosticsApi } from '../../../services';
+import ProjectSelector from '../../../components/ui/ProjectSelector';
+import { useProjectId } from '../../../hooks/useProjectId';
 
 const toBadgeVariant = (status: string): 'success' | 'warning' | 'error' | 'info' | 'default' => {
   if (status === 'healthy' || status === 'success' || status === 'completed') return 'success';
@@ -19,6 +21,7 @@ const Traces: React.FC = () => {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { projectId, setProjectId } = useProjectId();
 
   const limit = Number(searchParams.get('limit') || '50');
   const offset = Number(searchParams.get('offset') || '0');
@@ -31,7 +34,7 @@ const Traces: React.FC = () => {
     try {
       const res = traceId
         ? await diagnosticsApi.getTrace(traceId, { limit, offset })
-        : await diagnosticsApi.listTraces({ limit, offset, status: status || undefined });
+        : await diagnosticsApi.listTraces({ limit, offset, status: status || undefined, project_id: projectId || undefined });
       setData(res);
     } catch (e: any) {
       setError(e?.message || '加载失败');
@@ -114,6 +117,8 @@ const Traces: React.FC = () => {
       <Link to="/diagnostics" className="inline-flex items-center gap-1 text-sm text-gray-400 hover:text-gray-200 transition-colors mb-4">
         <ArrowLeft className="w-3 h-3" />返回诊断中心
       </Link>
+
+      <ProjectSelector value={projectId} onChange={setProjectId} />
 
       <Card>
         <CardHeader>

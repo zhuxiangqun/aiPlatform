@@ -116,11 +116,17 @@ const SystemOverview: React.FC = () => {
       {/* Compact status summary — details in Diagnostics Center */}
       {data && (
         <div className="flex items-center gap-3 text-xs text-gray-400 mb-2">
-          {data.codebase_stats && (
-            <span className={data.codebase_stats.health_score >= 75 ? 'text-green-400' : data.codebase_stats.health_score >= 50 ? 'text-yellow-400' : 'text-red-400'}>
-              架构 {(data.codebase_stats.health_score ?? '?')}/{data.codebase_stats.health_grade ?? '?'} ({(data.codebase_stats.cycles ?? 0)} 环)
-            </span>
-          )}
+           {data.codebase_stats && (
+             <span className="flex items-center gap-1">
+               <span className={data.codebase_stats.health_score >= 75 ? 'text-green-400' : data.codebase_stats.health_score >= 50 ? 'text-yellow-400' : 'text-red-400'}>
+                 架构 {(data.codebase_stats.health_score ?? '?')}/{data.codebase_stats.health_grade ?? '?'} ({(data.codebase_stats.cycles ?? 0)} 环)
+               </span>
+               <button onClick={() => fetch('/api/core/diagnostics/guard/run', { method: 'POST' }).then(() => setTimeout(fetchData, 3000, true))}
+                       className="text-gray-600 hover:text-blue-400 ml-1" title="重跑架构守卫">
+                 <RefreshCw className="w-3 h-3" />
+               </button>
+             </span>
+           )}
           {core.governance && !core.governance.error && (
             <span className={core.governance.has_trusted_keys ? 'text-green-400' : 'text-red-400'}>
               治理: {core.governance.has_trusted_keys ? '✅' : '⚠️ 未配置'}
@@ -187,6 +193,11 @@ const SystemOverview: React.FC = () => {
                   <MetricRow label="请求" value={infra.llm?.requests_24h != null ? `${infra.llm.requests_24h.toLocaleString()} 次` : '—'} />
                   <MetricRow label="成功率" value={infra.llm?.success_rate != null ? `${infra.llm.success_rate}%` : '—'} />
                   <MetricRow label="平均延迟" value={infra.llm?.avg_latency_ms ? `${infra.llm.avg_latency_ms}ms` : '—'} />
+                  <MetricRow label="最近延迟" value={
+                    infra.llm?.recent_avg_latency_ms
+                      ? <span className="text-green-400">{infra.llm.recent_avg_latency_ms}ms</span>
+                      : '—'
+                  } sub={infra.llm?.recent_avg_latency_ms ? `最近1h · ${infra.llm.recent_call_count || '?'}次` : undefined} />
                   <MetricRow label="Token 消耗" value={infra.llm?.total_tokens_24h != null ? `${(infra.llm.total_tokens_24h / 1000).toFixed(1)}K` : '—'} />
                   {infra.llm?.error_count_24h > 0 && (
                     <MetricRow label="错误" value={<span className="text-red-400">{infra.llm.error_count_24h} 次</span>} />

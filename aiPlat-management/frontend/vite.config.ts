@@ -84,7 +84,6 @@ export default defineConfig({
       '/api/platform': {
         target: 'http://localhost:8003',
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api/, ''),
         timeout: 600000,
       },
       '/api/onboarding': {

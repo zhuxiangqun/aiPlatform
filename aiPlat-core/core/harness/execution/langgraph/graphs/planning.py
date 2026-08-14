@@ -11,7 +11,7 @@ execute them sequentially or in parallel, then aggregate results.
 
 
 
-Based on framework/patterns.md §5 Planning 模式.
+Based on framework/patterns.md §5 Planning pattern.
 
 
 
@@ -359,49 +359,49 @@ class PlanningGraph:
 
         strategy_desc_map = {
 
-            DecompositionStrategy.SEQUENTIAL: "按顺序依次执行",
+            DecompositionStrategy.SEQUENTIAL: "execute sequentially",
 
-            DecompositionStrategy.PARALLEL: "可并行同时执行",
+            DecompositionStrategy.PARALLEL: "can execute in parallel",
 
-            DecompositionStrategy.HIERARCHICAL: "分层逐级拆解",
+            DecompositionStrategy.HIERARCHICAL: "decompose hierarchically",
 
         }
 
-        strategy_desc = strategy_desc_map.get(self._config.strategy, "按顺序依次执行")
+        strategy_desc = strategy_desc_map.get(self._config.strategy, "execute sequentially")
 
 
 
         prompt_template = os.getenv("AIPLAT_PLANNING_TEMPLATE",
 
-            """将以下任务分解为子任务。
+            """Decompose the following task into subtasks.
 
 
 
-任务：{task}
+Task: {task}
 
 
 
-分解策略：{strategy}
+Decomposition strategy: {strategy}
 
 
 
-请按以下格式列出子任务：
+List subtasks in the following format:
 
-TASK_1: 子任务描述 [depends_on: 无]
+TASK_1: subtask description [depends_on: none]
 
-TASK_2: 子任务描述 [depends_on: TASK_1]
+TASK_2: subtask description [depends_on: TASK_1]
 
-TASK_3: 子任务描述 [depends_on: TASK_1]
+TASK_3: subtask description [depends_on: TASK_1]
 
 
 
-要求：
+Requirements:
 
-- 每个子任务应有明确的输入和输出
+- Each subtask should have clear input and output
 
-- 标注子任务之间的依赖关系
+- Mark dependencies between subtasks
 
-- 子任务数量不超过 {max_steps} 个
+- Number of subtasks should not exceed {max_steps}
 
 """)
 
@@ -507,7 +507,7 @@ TASK_3: 子任务描述 [depends_on: TASK_1]
 
                     dep_str = dep_str.replace("[depends_on:", "").replace("]", "").strip()
 
-                    if dep_str and dep_str != "无":
+                    if dep_str and dep_str != "none":
 
                         dependencies = [d.strip() for d in dep_str.split(",")]
 
@@ -601,15 +601,15 @@ TASK_3: 子任务描述 [depends_on: TASK_1]
 
                 if dep_id in results:
 
-                    context_str += f"\n前序任务 {dep_id} 的结果：{results[dep_id][:500]}"
+                    context_str += f"\nResult of previous task {dep_id}: {results[dep_id][:500]}"
 
             
 
-            prompt = f"任务：{subtask.description}"
+            prompt = f"Task: {subtask.description}"
 
             if context_str:
 
-                prompt += f"\n\n参考前序任务结果：{context_str}"
+                prompt += f"\n\nReference previous task results: {context_str}"
 
             
 
@@ -713,15 +713,15 @@ TASK_3: 子任务描述 [depends_on: TASK_1]
 
                     if dep_id in results:
 
-                        context_str += f"\n前序任务 {dep_id} 的结果：{results[dep_id][:500]}"
+                        context_str += f"\nResult of previous task {dep_id}: {results[dep_id][:500]}"
 
                 
 
-                prompt = f"任务：{subtask.description}"
+                prompt = f"Task: {subtask.description}"
 
                 if context_str:
 
-                    prompt += f"\n\n参考前序任务结果：{context_str}"
+                    prompt += f"\n\nReference previous task results: {context_str}"
 
                 
 
@@ -829,15 +829,15 @@ TASK_3: 子任务描述 [depends_on: TASK_1]
 
                     if dep_id in results:
 
-                        context_str += f"\n前序任务 {dep_id} 的结果：{results[dep_id][:500]}"
+                        context_str += f"\nResult of previous task {dep_id}: {results[dep_id][:500]}"
 
                 
 
-                prompt = f"任务（层级 {depth + 1}）：{subtask.description}"
+                prompt = f"Task (level {depth + 1}): {subtask.description}"
 
                 if context_str:
 
-                    prompt += f"\n\n参考前序任务结果：{context_str}"
+                    prompt += f"\n\nReference previous task results: {context_str}"
 
                 
 
@@ -931,7 +931,7 @@ TASK_3: 子任务描述 [depends_on: TASK_1]
 
         if not completed_results:
 
-            final_result = "所有子任务执行失败"
+            final_result = "all subtasks failed"
 
         elif len(completed_results) == 1:
 
@@ -963,7 +963,7 @@ TASK_3: 子任务描述 [depends_on: TASK_1]
 
         if failed_count > 0:
 
-            final_result += f"\n\n---\n注意：{failed_count}/{total_count} 个子任务执行失败"
+            final_result += f"\n\n---\nNote: {failed_count}/{total_count} subtasks failed"
 
         
 
@@ -1099,9 +1099,9 @@ def create_planning_graph(
 
     """
 
-    # PR #2: 从 ControlProfile 读取最大并行 Agent 数
+    # PR #2: read the maximum number of parallel Agents from ControlProfile
 
-    if max_parallel == 5:  # 默认值，尝试从 profile 覆盖
+    if max_parallel == 5:  # default value; try to override from profile
 
         try:
 

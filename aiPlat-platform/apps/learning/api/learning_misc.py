@@ -7,7 +7,7 @@ from typing import Dict, Annotated, Optional, Any
 from fastapi import APIRouter, Depends, HTTPException, Request
 
 from core.api.deps import actor_from_http
-from core.harness.integration import KernelRuntime
+from core.api.core_facade import KernelRuntime
 from core.api.core_facade import get_kernel_runtime
 from apps.common_schemas import StatusResponse, ListResponse, ItemResponse
 

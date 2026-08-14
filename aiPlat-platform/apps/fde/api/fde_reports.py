@@ -28,7 +28,7 @@ async def generate_report(spec_id: str = Query(""), download: bool = Query(False
     # Gather data
     kpi_text = "无 KPI 数据"
     try:
-        from core.harness.learning.kpi_tracker import get_kpi_tracker
+        from core.api.core_facade import get_kpi_tracker
         tracker = get_kpi_tracker()
         kpis = tracker.get_all(spec_id=spec_id) if spec_id else tracker.get_all()
         if kpis:

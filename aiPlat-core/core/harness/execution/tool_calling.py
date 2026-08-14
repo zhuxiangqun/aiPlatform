@@ -1,9 +1,9 @@
 """
-结构化 Tool Calling 解析工具
+Structured Tool Calling parsing utilities
 
-目标：
-- 优先支持结构化 JSON 形式的工具调用（tool/args 或 name/arguments）
-- 兼容旧格式：ACTION: tool_name: {json} 或 ACTION: tool_name: text
+Goals:
+- Prioritize structured JSON-form tool calls (tool/args or name/arguments)
+- Backward-compatible with legacy formats: ACTION: tool_name: {json} or ACTION: tool_name: text
 """
 
 from __future__ import annotations
@@ -48,11 +48,11 @@ def _extract_json_candidate(text: str) -> Optional[str]:
 
 def _normalize_tool_call(obj: Any, raw: str) -> Optional[ParsedToolCall]:
     """
-    支持以下结构化形态（择一）：
+    Supports the following structured forms (pick one):
     1) {"tool": "...", "args": {...}}
     2) {"tool_name": "...", "tool_args": {...}}
-    3) {"name": "...", "arguments": {...}} 或 arguments 为 JSON 字符串
-    4) [{"tool": "...", "args": {...}}, ...] 取第一项
+    3) {"name": "...", "arguments": {...}} or arguments as a JSON string
+    4) [{"tool": "...", "args": {...}}, ...] take the first item
     """
     if isinstance(obj, list) and obj:
         return _normalize_tool_call(obj[0], raw)
@@ -89,11 +89,11 @@ def _normalize_tool_call(obj: Any, raw: str) -> Optional[ParsedToolCall]:
 
 def parse_tool_call(text: str) -> Optional[ParsedToolCall]:
     """
-    解析工具调用。
+    Parse a tool call.
 
-    优先级：
-    1) 结构化 JSON（fenced 或内嵌）
-    2) 旧式 ACTION: ...
+    Priority:
+    1) Structured JSON (fenced or inline)
+    2) Legacy ACTION: ...
     """
     if not text:
         return None
@@ -134,14 +134,14 @@ def parse_tool_call(text: str) -> Optional[ParsedToolCall]:
 
 def parse_action_call(text: str) -> Optional[ParsedActionCall]:
     """
-    解析“动作调用”（tool 或 skill）。
+    Parse an "action call" (tool or skill).
 
-    支持：
-    - Tool（结构化优先）：
+    Supports:
+    - Tool (structured first):
       - {"tool":"name","args":{...}}
-      - {"name":"name","arguments":"{...}"}（OpenAI style，默认视为 tool）
+      - {"name":"name","arguments":"{...}"} (OpenAI style, treated as tool by default)
       - ACTION: name: {json_or_text}
-    - Skill（必须显式标注，避免 substring 误触发）：
+    - Skill (must be explicitly tagged to avoid substring false triggers):
       - {"skill":"name","args":{...}} / {"skill_name":"name","skill_args":{...}}
       - SKILL: name: {json_or_text}
     """

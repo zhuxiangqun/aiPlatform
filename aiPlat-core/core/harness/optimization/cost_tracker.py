@@ -188,6 +188,12 @@ class CostTracker:
 
 
 
+    def get_pricing(self) -> Dict[str, Dict[str, float]]:
+
+        """Current pricing table (single source of truth for cost estimation)."""
+
+        return dict(self._pricing)
+
     def cost_for_model(self, model: str) -> float:
 
         pricing = self._pricing.get(model, {"input": 0.0, "output": 0.0})

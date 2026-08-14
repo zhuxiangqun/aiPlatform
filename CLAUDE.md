@@ -8,7 +8,7 @@ language: zh-CN
 
 此文件是 **工作区兜底规约**，用于在系统执行链路中自动推断到 workspace root 时仍然能注入/强制基本规则。
 
-**能力全貌**：参见 [`AIPLAT_CAPABILITIES.md`](./AIPLAT_CAPABILITIES.md)（唯一真相源，914 项能力）
+**能力全貌**：参见 [`AIPLAT_CAPABILITIES.md`](./AIPLAT_CAPABILITIES.md)（唯一真相源，935 项能力）
 
 **架构定位**：企业大脑 — 从"工具集合"到"自演进操作系统"的 8 层架构：
 
@@ -406,7 +406,7 @@ scripts/ruff_f821_baseline.json        ← F821 基线快照（ratchet 对比基
     | J | — | FeedbackLoops DB 后端未实现 | **✅ 已修复 (2026-06-29)** — `_store_to_db()` 实现 SQLite INSERT/retrieve/delete/cleanup 全路径。 |
     | K | — | DatabaseTool 占位符 | **✅ 已修复 (2026-06-29)** — SQLite/PostgreSQL/MySQL 三后端完整实现，默认 SQLite（零依赖），异步驱动可选。 （验证：ls aiPlat-core/core/apps/tools/database.py → 存在）  |
     | L | — | BrowserTestEngine 缺失 action | **✅ 已修复 (2026-06-29)** — 新增 `select_option`/`scroll`/`hover`/`press_key`/`file_upload` 五个 action。 |
-    | M | — | 31 个 engine Skill 缺 `execution_type` 字段 | **✅ 已修复 (2026-06-29)** — 全部 31 个 SKILL.md 已添加 `execution_type: prompt`。 （验证：grep -rl "execution_type:" aiPlat-core/core/engine/skills/*/SKILL.md | wc -l → 45）  |
+    | M | — | 31 个 engine Skill 缺 `execution_type` 字段 | **✅ 已修复 (2026-06-29)** — 全部 31 个 SKILL.md 已添加 `execution_type: prompt`。 （验证：grep -rl "execution_type:" aiPlat-core/core/engine/skills/*/SKILL.md | wc -l → 53）  |
     | N | — | architecture_guard.sh 超时 | **✅ 已修复 (2026-06-29)** — 移除 golden_path E2E 测试（→CI 独立 job）+ 并行化 4 个独立脚本 + 排除 .venv/node_modules。 （验证：grep "timeout" scripts/architecture_guard.sh → 已配置）  |
     | O | — | 3 builder stub routers (死代码) | **✅ 已修复 (2026-06-29)** — `builder_projects.py`/`builder_pipeline.py`/`builder_teams.py` 已删除（未挂载的失源码死代码）。 （验证：ls aiPlat-core/core/api/routers/builder_projects.py builder_pipeline.py builder_teams.py 2>/dev/null | wc -l → 0）  |
     | P | — | 3 platform endpoint stubs | **✅ 已修复 (2026-06-29)** — `ingest-directory`/`kb/watch → （参见 AIPLAT_CAPABILITIES.md 当前计数） Not Implemented + WARNING 日志；`studio/sessions → WARNING 日志。 |

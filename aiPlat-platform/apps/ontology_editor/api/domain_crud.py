@@ -198,7 +198,7 @@ async def audit_rules(domain_id: str):
     u"""Audit inference rules for conflicts, unreachable premises, missing transitions."""
     try:
         from core.api.core_facade import get_ontology_domain_schema
-        from core.harness.knowledge.rule_auditor import audit_rules as _audit_rules
+        from core.api.core_facade import audit_rules as _audit_rules
 
         schema = get_ontology_domain_schema(domain_id)
         result = _audit_rules(schema)

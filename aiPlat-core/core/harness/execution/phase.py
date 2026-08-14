@@ -1,15 +1,15 @@
-"""Harness 内核级 Pipeline 阶段常量（通用，无业务概念）。
+"""Harness kernel-level Pipeline stage constants (generic, no business concepts).
 
-替代 BuilderSessionPhase 的业务枚举依赖。
-所有阶段名称均为字符串常量，可直接比较或作为 state key 使用。
+Replaces the business-enum dependency on BuilderSessionPhase.
+All stage names are string constants that can be compared directly or used as state keys.
 """
 
 
 class PipelinePhase:
-    """Pipeline 执行阶段的通用标识符。
+    """Generic identifiers for Pipeline execution stages.
 
-    这些常量不绑定任何业务模块的语义。
-    状态机使用阶段名称做字符串匹配，而非枚举类型比较。
+    These constants are not bound to any business module's semantics.
+    The state machine matches on stage names as strings rather than comparing enum types.
     """
 
     DIALOGUE = "dialogue"

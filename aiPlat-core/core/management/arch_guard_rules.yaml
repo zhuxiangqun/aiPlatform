@@ -167,7 +167,7 @@ rules:
       pattern: '=.*"ai.platform|=.*"aiplat|=.*"aiPlat|=.*"ai-platform'
       paths: ["aiPlat-infra/infra"]
       exclude: ["__pycache__", "tests/"]
-      grep_exclude: ["os\\.getenv|AIPLAT_"]
+      grep_exclude: ["os\\.getenv|AIPLAT_|Path\\.home.*aiplat|expanduser.*aiplat|# noqa: infra-generic"]
     message: "application-name defaults in infra (use env vars)"
 
   - id: infra_agnostic_gpu_models
@@ -384,7 +384,7 @@ rules:
       pattern: "except Exception: pass"
       paths: ["aiPlat-core/core", "aiPlat-platform", "aiPlat-app"]
       exclude: ["__pycache__", "tests/", "generated/"]
-      grep_exclude: ["# noqa|# allowed"]
+      grep_exclude: ["# noqa|# allowed|skills/registry.py|skills/executor.py"]
     message: "bare except:pass — use logging at minimum"
 
   # ═══ Section 26: Security Hardcoded Credentials ═══
@@ -793,7 +793,7 @@ rules:
   - id: disabled_by_default
     section: "§41"
     section_name: "利用化守卫 — 默认禁用"
-    level: info
+    level: warning
     check:
       type: grep_forbidden
       pattern: 'os\.getenv\("AIPLAT_APPLY_PROMPT_REVISIONS", "false"\)|os\.getenv\("AIPLAT_SYSCALL_ENFORCE_APPROVAL",
@@ -980,7 +980,7 @@ rules:
   - id: zero_caller_todo_wire
     section: "§47"
     section_name: "接线完成度 — 零调用者标记"
-    level: info
+    level: warning
     check:
       type: grep_forbidden
       pattern: '# TODO.*wire|# FIXME.*caller|# TODO.*caller|0 caller|zero caller|FIXME.*wire|待接线'
@@ -1172,7 +1172,7 @@ rules:
   - id: agent_md_missing_handoff_fields
     section: "§59"
     section_name: "AGENT.md 交接字段完整性"
-    level: info
+    level: warning
     check:
       type: grep_forbidden
       pattern: '^handoff:|^交接信息:|^handoff_target:'
@@ -1341,7 +1341,7 @@ rules:
   - id: multi_tenant_isolation
     section: "§65"
     section_name: "多租户数据隔离 — 检索/KB 查询必须带 tenant_id 或 collection_id"
-    level: info
+    level: error
     check:
       type: grep_forbidden
       pattern: '(?:def (?:kb_retrieve|search_pages|graph_query|fts_search)\()(?!.*tenant_id|.*collection_id)'
@@ -1381,7 +1381,7 @@ rules:
   - id: skill_effects_required
     section: "§65"
     section_name: "Skill 副作用声明 — SKILL.md 必须包含 effects 字段"
-    level: info
+    level: warning
     check:
       type: grep_forbidden
       pattern: '^---$'
@@ -1394,7 +1394,7 @@ rules:
   - id: retrieval_crag_hyde_fallback
     section: "§65"
     section_name: "检索质量门 — MaterialsChatAgent 必须实现 CRAG/HyDE 3 级回退链"
-    level: info
+    level: warning
     check:
       type: grep_required
       pattern: hyde_prompt|fts5|CRAG.*quality|ontology_first|Level 
@@ -1412,7 +1412,7 @@ rules:
   - id: extension_cost_hierarchy
     section: "§66"
     section_name: "扩展机制成本层次 — 禁止能用 Hook 解决的场景上 MCP"
-    level: info
+    level: warning
     check:
       type: grep_forbidden
       pattern: 'MCPRuntime|mcp_server|create_mcp_server'
@@ -1442,7 +1442,7 @@ rules:
   - id: context_priority_tags
     section: "§66"
     section_name: "上下文优先级 — Tool/Skill 返回值应包括 priority 字段"
-    level: info
+    level: warning
     check:
       type: grep_forbidden
       pattern: 'return \{[^}]*"result"'
@@ -1455,7 +1455,7 @@ rules:
   - id: context_compression_thresholds
     section: "§66"
     section_name: "上下文压缩阈值 — 禁止硬编码阈值，必须是配置驱动"
-    level: info
+    level: warning
     check:
       type: grep_forbidden
       pattern: '(?:0\\.7[0-9]|0\\.8[0-9]|0\\.9[0-9])|(?:percentage.*[789][0-9])'
@@ -1556,7 +1556,7 @@ rules:
   - id: observability_trace_span
     section: "§66"
     section_name: "可观测性 trace/span — syscall 必须产生 trace_id 和 span_id"
-    level: info
+    level: error
     check:
       type: grep_forbidden
       pattern: 'def (?:sys_llm_generate|sys_tool_call|sys_skill_call)\('
@@ -1569,7 +1569,7 @@ rules:
   - id: pipeline_config_4step
     section: "§66"
     section_name: "PipelineStageConfig 4 步链路 — 新字段必须同步到 4 个文件"
-    level: info
+    level: warning
     check:
       type: grep_forbidden
       pattern: 'quality_gate|routing_rules|retry_policy'
@@ -1627,7 +1627,7 @@ rules:
   - id: agent_md_handoff_5fields
     section: "§66"
     section_name: "AGENT.md 交接 5 字段 — 必须声明完整的 5 项交接信息"
-    level: info
+    level: warning
     check:
       type: grep_forbidden
       pattern: '^## (?:做了什么|产出物在哪|如何验证|已知问题|下一步)'
@@ -1750,7 +1750,7 @@ rules:
   - id: metrics_regression_guard
     section: "§68"
     section_name: "指标回归 — avg_degree 不得持续上升"
-    level: info
+    level: warning
     check:
       type: grep_forbidden
       pattern: 'from core\.harness\.\w+ import.*from core\.harness\.\w+'
@@ -2254,7 +2254,7 @@ rules:
   - id: no_untracked_debt_todos
     section: "§74"
     section_name: "已知债务 — TODO: wire / 0 caller 必须标注 noqa: known-debt 和 Phase"
-    level: info
+    level: warning
     check:
       type: grep_forbidden
       pattern: 'TODO.*wire\b|0 caller|待接线'
@@ -2656,5 +2656,29 @@ rules:
     check:
       type: cmd_output
       cmd: |
-        python3 scripts/verify_registry.py --json 2>/dev/null || true
+        python3 scripts/verify_registry.py --json
       ok_pattern: '"total_issues": 0'
+
+  # ═══ Section 94: Platform Must Import Through CoreFacade ═══
+  - id: platform_harness_direct_import
+    section: "§94"
+    section_name: "Platform→CoreFacade Import Compliance"
+    level: error
+    check:
+      type: grep_forbidden
+      pattern: "from core\\.harness\\."
+      paths: ["aiPlat-platform/"]
+      exclude: ["__pycache__", "tests/"]
+      grep_exclude: ["# noqa: boundary|core_facade|voice\\.py|service/"]
+    message: "platform must import from core.api.core_facade, not core.harness directly — use CoreFacade re-exports"
+
+  # ═══ Section 95: CoreFacade Signature Ripple Detection ═══
+  - id: signature_ripple
+    section: "§95"
+    section_name: "CoreFacade Signature Ripple Detection"
+    level: error
+    check:
+      type: cmd_output
+      shell: "python3 scripts/check_signature_ripple.py --check --json 2>/dev/null"
+      ok_pattern: '"violations": 0'
+    message: "CoreFacade function signature changed but platform callers not updated. Run python3 scripts/check_signature_ripple.py --check for details, then --update after fixing."

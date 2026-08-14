@@ -12,6 +12,7 @@ import time
 from typing import List, AsyncIterator
 from ..base import LLMClient
 from ..schemas import ChatRequest, ChatResponse, StreamChunk, LLMConfig
+import logging
 
 
 class OpenAICompatibleClient(LLMClient):
@@ -31,9 +32,19 @@ class OpenAICompatibleClient(LLMClient):
             "completion_tokens": 0,
             "total_tokens": 0,
         }
-        # ── Credential pool wiring (only active for multi-key providers) ──
         self._pool = None
         self._current_key = None
+        # ── Credential pool wiring (only active for multi-key providers) ──
+        try:
+            provider = (config.provider or "").lower()
+            if provider:
+                from infra.management.model.credential_pool import get_credential_pool
+                pool = get_credential_pool(provider)
+                if pool.key_count > 1:
+                    self._pool = pool
+        except Exception:
+            # single-key mode — unchanged behavior (config.api_key)
+            self._pool = None
 
     def _get_keep_alive(self) -> str | None:
         """Dynamic keep_alive based on model deployment state (v3).
@@ -55,25 +66,13 @@ class OpenAICompatibleClient(LLMClient):
             elif ds == "local_cold":
                 return "30"
         except Exception:
-            pass
+            logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
         return None
 
     def _get_extra_body(self) -> dict:
         """Return extra_body dict with keep_alive, or empty dict for API models."""
         _ka = self._get_keep_alive()
         return {"keep_alive": _ka} if _ka else {}
-
-    # ── Credential pool wiring (only active for multi-key providers) ──
-        try:
-            provider = (config.provider or "").lower()
-            if provider:
-                from infra.management.model.credential_pool import get_credential_pool
-                pool = get_credential_pool(provider)
-                if pool.key_count > 1:
-                    self._pool = pool
-        except Exception:
-            # No {PROVIDER}_KEYS / no env keys → single-key mode (unchanged)
-            self._pool = None
 
     def _resolve_api_key(self) -> str:
         """Return the active API key — pool key when rotating, else static config key."""
@@ -324,6 +323,7 @@ class OpenAICompatibleClient(LLMClient):
                 metrics["credential_pool"] = self._pool.status()
             except Exception:  # noqa: metrics-non-critical
                 pass
+        return metrics
 
 
 # Backward-compat aliases

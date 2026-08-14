@@ -19,12 +19,12 @@ import time as _time
 from functools import wraps
 from typing import Any, Dict, Optional
 
-from core.utils.paths import get_aiplat_data_dir
+_log = logging.getLogger("infra.model.health")
 
-_log = logging.getLogger("aiplat.model.health")
-
-_DB_PATH = os.path.join(get_aiplat_data_dir("data"), "..", "aiplat_executions.sqlite3")
-_DB_PATH = os.path.normpath(_DB_PATH)
+_DB_PATH = os.environ.get(
+    "AIPLAT_MODEL_HEALTH_DB",
+    os.path.expanduser("~/.aiplat/aiplat_executions.sqlite3")
+)
 _BUSY_TIMEOUT_MS = 5000
 
 
@@ -57,10 +57,10 @@ class ModelHealthStore:
 
     Usage:
         store = ModelHealthStore()
-        store.record_success("deepseek-chat", latency_ms=1200, purpose="chat")
-        store.record_failure("gemma4:12b", error="404")
+        store.record_success("example-model", latency_ms=1200, purpose="chat")
+        store.record_failure("example-model", error="404")
 
-        health = store.get_health_score("deepseek-chat")
+        health = store.get_health_score("example-model")
         # → {"success_count": 10, "failure_count": 2, "call_count": 12,
         #    "avg_latency_ms": 1100.0, "business_score": 0.85}
     """

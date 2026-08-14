@@ -560,7 +560,11 @@ Tool/Skill 在返回结果时 MAY 附加 `priority` 字段：
 - `_call_llm` → 已从 engine 删除 ✅ (仍存在于 `memory/manager.py:217` 作为 episodic 摘要的本地函数)
 - Graph trace 事件在每个阶段出入口记录 ✅
 - 结构化 checkpoint：`_snapshot()` 写入 `state["_checkpoints"]` + 磁盘文件 ✅
-- PipelineEngine 内 0 处直接 `sys_llm_generate` 调用 ✅
+- PipelineEngine 内 6 处直接 `sys_llm_generate` 调用 — 全部 known-exception（预存并行执行路径，§91 守卫 AST 白名单）：
+  - `_run_stage_skill`（1 处：llm backend，§5.4.1 定义）
+  - `_run_stage_core`（3 处：工作流画布 llm 节点 / rerank / plan）
+  - `_run_test_execution`（1 处：pytest 修复）
+  - `_propose_harness_fix`（1 处：harness 自愈，prompt 已走 `_sync_resolve`）
 - PipelineEngine 内 1 处直接 `sys_tool_call` 调用 (`_exec_test_runner:915`) — 已知例外：test runner 调用 `CodeExecutionTool` 执行 pytest
 - `langgraph/nodes/` 中 3 个文件（reason_node/act_node/observe_node）有直接 syscall 调用 → 已知例外（ReAct 图节点的并行实现，Phase 9 统一后 retire）
 

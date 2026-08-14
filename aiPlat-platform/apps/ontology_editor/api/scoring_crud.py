@@ -12,7 +12,7 @@ async def list_scoring_models(domain_id: str):
     try:
         from core.api.core_facade import get_ontology_domain_schema
         schema = get_ontology_domain_schema(domain_id)
-        from core.harness.knowledge.scoring_engine import load_models
+        from core.api.core_facade import load_models
         models = load_models(schema)
         return {
             "domain_id": domain_id,
@@ -34,7 +34,8 @@ async def evaluate_entity(domain_id: str, model_name: str, entity: str = Query("
     try:
         from core.api.core_facade import get_ontology_domain_schema
         schema = get_ontology_domain_schema(domain_id)
-        from core.harness.knowledge.scoring_engine import load_models, evaluate
+        from core.api.core_facade import evaluate
+        from core.api.core_facade import load_models
         models = {m.name: m for m in load_models(schema)}
         model = models.get(model_name)
         if not model:
@@ -63,7 +64,8 @@ async def evaluate_batch(domain_id: str, model_name: str, data: Dict[str, Any]):
             raise HTTPException(status_code=400, detail="class_name is required")
         from core.api.core_facade import get_ontology_domain_schema
         schema = get_ontology_domain_schema(domain_id)
-        from core.harness.knowledge.scoring_engine import load_models, evaluate_batch
+        from core.api.core_facade import evaluate_batch
+        from core.api.core_facade import load_models
         models = {m.name: m for m in load_models(schema)}
         model = models.get(model_name)
         if not model:
@@ -89,7 +91,8 @@ async def get_alerts(domain_id: str, model_name: str):
     try:
         from core.api.core_facade import get_ontology_domain_schema
         schema = get_ontology_domain_schema(domain_id)
-        from core.harness.knowledge.scoring_engine import load_models, get_alerts
+        from core.api.core_facade import get_alerts
+        from core.api.core_facade import load_models
         models = {m.name: m for m in load_models(schema)}
         model = models.get(model_name)
         if not model:

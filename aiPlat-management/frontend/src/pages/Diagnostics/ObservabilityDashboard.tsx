@@ -82,6 +82,20 @@ const ObservabilityDashboard: React.FC = () => {
   const [alertConfig, setAlertConfig] = useState<any[]>([]);
   const [alertOpen, setAlertOpen] = useState(false);
   const [alertSaving, setAlertSaving] = useState(false);
+  // Per-project scoping
+  const [projectId, setProjectId] = useState<string>(() => localStorage.getItem('diag_project_id') || '');
+  const [projectList, setProjectList] = useState<Array<{ project_id: string; name: string }>>([]);
+
+  useEffect(() => {
+    fetch('/api/platform/builder/projects')
+      .then(r => r.json())
+      .then(d => setProjectList(d.projects || []))
+      .catch(() => {});
+  }, []);
+  useEffect(() => {
+    if (projectId) localStorage.setItem('diag_project_id', projectId);
+    else localStorage.removeItem('diag_project_id');
+  }, [projectId]);
 
   const fetchAlerts = useCallback(async () => {
     try {
@@ -120,14 +134,14 @@ const ObservabilityDashboard: React.FC = () => {
 
   const fetchStats = useCallback(async () => {
     try {
-      const res = await (diagnosticsApi as any).getObservabilityStats();
+      const res = await (diagnosticsApi as any).getObservabilityStats(projectId || undefined);
       setStats(res as Stats);
     } catch (e: any) {
       setError(e?.message || 'Failed to load stats');
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [projectId]);
 
   useEffect(() => {
     fetchStats();
@@ -165,6 +179,22 @@ const ObservabilityDashboard: React.FC = () => {
         数据来源：<code>sys_llm_generate</code> 的每次调用记录。刚重启时数据为空，Pipeline 执行后会自然填充。
         下方 Syscall 分布、模型使用分布、错误 Top 列表分别按类型/模型/错误信息聚合展示。
       </p>
+
+      {projectList.length > 0 && (
+        <div className="flex items-center gap-3 mb-4" style={{ background: '#1e293b', borderRadius: 10, padding: '8px 14px', border: '1px solid #374151' }}>
+          <span style={{ fontSize: 12, color: '#94a3b8', whiteSpace: 'nowrap' }}>📂 项目筛选</span>
+          <select
+            value={projectId}
+            onChange={e => setProjectId(e.target.value)}
+            style={{ flex: 1, background: '#0f172a', border: '1px solid #374151', borderRadius: 6, padding: '6px 10px', color: '#e2e8f0', fontSize: 13, outline: 'none' }}
+          >
+            <option value="">-- 全部项目 --</option>
+            {projectList.map(p => (
+              <option key={p.project_id} value={p.project_id}>{p.name}</option>
+            ))}
+          </select>
+        </div>
+      )}
 
       <Link to="/diagnostics" className="inline-flex items-center gap-1 text-sm text-gray-400 hover:text-gray-200 transition-colors mb-4">
         <ArrowLeft className="w-3 h-3" />返回诊断中心

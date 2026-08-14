@@ -101,19 +101,17 @@ Agent 应用 = AGENT.md (编排) + SKILL.md × N (能力单元)。
 
 ### Step 1: 分析需求，确定 Agent 身份
 1. 读取 PRD 的标题、目标用户、核心功能
-2. 确定 Agent 的 `agent_type`:
-   - `conversational` — 对话式交互(默认)
-   - `react` — 需要工具调用的复杂任务
-   - `rag` — 以知识检索为主
+2. 确定 Agent 的 `agent_type`（影响引擎自动授予的能力等级）:
+   - `conversational` — 纯对话 Agent（引擎授予 minimal: 仅基础上下文+质量评分）
+   - `react` — 需要工具调用的复杂任务（引擎授予 autonomous: 全部 ~40 项核心能力）
+   - `rag` — 以知识检索为主（引擎授予 full: 上下文+安全+检索+工具调用）
 3. 确定 Agent 的显示名和描述
 
 ### Step 2: 分解功能为 Skills
 对 PRD 的每个 `functional_requirement`:
 1. 判断是独立的能力单元还是内部步骤
 2. 独立能力 → 生成 SKILL.md
-3. 判断 `execution_type`:
-   - `prompt` — LLM 推理即可(默认,无需编写代码)
-   - `handler` — 需要实际执行代码(如调用外部API)
+3. 统一声明 `execution_type: prompt` — LLM 推理即可。本 pipeline 没有后端代码生成 stage，**不会生成 handler.py**；若声明 `handler` 会导致 Skill 注册时报错（§17），因此一律用 `prompt`。
 
 **每个 SKILL.md 必须包含以下 3 个执步:**
 
@@ -139,10 +137,13 @@ Agent 应用 = AGENT.md (编排) + SKILL.md × N (能力单元)。
 
 ### Step 3: 生成 AGENT.md
 1. 写入 frontmatter (agent_type, required_skills, required_tools)
+   - agent_type 必须根据 Step 1 的规则设定（react/conversational/rag）
 2. 写入 SOP: 描述用户对话→调用哪个Skill→得到什么结果→如何反馈
 3. 写入反模式 (常见错误+修正)
 4. 写入 scoring_dimensions (质量评分维度)
-5. **无需在 frontmatter 中写 quality_gate / context_profile / retry_policy / sandbox ——系统启动时自动注入默认值，确保所有核心能力 100% 连线。**
+5. **无需在 frontmatter 中写 capability_profile / execution_backend / quality_gate /
+   context_profile / retry_policy / sandbox ——引擎根据 agent_type + required_tools
+   自动推断能力剖面并注入对应能力集。**
 
 ### Step 4: 验证
 1. 检查所有 required_skills 对应的 SKILL.md 都已生成
@@ -154,13 +155,15 @@ Agent 应用 = AGENT.md (编排) + SKILL.md × N (能力单元)。
 
 用 `## FILE:` 格式输出。**多 Agent 模式必须首先输出 agent_manifest.json**。
 
+> **app_name 规则（强制）**：`app_name` 必须使用上下文注入的 `## app_name` 值，**不得自行生成、翻译或改名**。所有 `## FILE:` 路径和 `agent_manifest.json` 的 `app_name` 字段必须与注入值完全一致。
+
 ### agent_manifest.json（多 Agent 模式第一条输出）
 
 ```
 ## FILE: ~/.aiplat/apps/{app_name}/agent_manifest.json
 ```json
 {
-  "app_name": "video_sense",
+  "app_name": "{app_name}",
   "mode": "multi_agent",
   "agents": [
     {
@@ -236,6 +239,7 @@ scoring_dimensions:
 | AGENT.md 的 SOP 太模糊 | 每步明确写调用哪个Skill |
 | 忽略平台已有的 39 个 Engine Skill | 优先复用: file_operations/knowledge_retrieve/code_execution |
 | 生成 handler.py (需要编码) | 优先用 execution_type: prompt (LLM推理即可) |
+| 声明 `execution_type: handler` | 一律用 `execution_type: prompt`（本 pipeline 不生成 handler.py，handler 会注册报错） |
 | 用 ```yaml 包裹 YAML 内容 | ⚠️ AGENT.md/SKILL.md 的 YAML frontmatter 必须从第一行 `---` 开始，禁止前置 `yaml` 代码块标记 |
 | 用 ```json 包裹 JSON 内容 | ⚠️ agent_manifest.json 必须是纯 JSON，禁止任何代码块标记封装，禁止末尾 `---` |
 

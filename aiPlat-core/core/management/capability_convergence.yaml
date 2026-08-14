@@ -53,7 +53,7 @@ capabilities:
       - symbol: "check_workspace_gate" # toolset gate
         from: "harness/tools/toolsets.py"
     known_paths:
-      - "harness/execution/loop.py::_dispatch_skill_call"
+      - "harness/execution/loop/_facade.py::_dispatch_skill_call"
       - "apps/skills/executor.py::execute"       # SkillExecutor.execute (inline)
     forbidden_paths:
       - "apps/skills/executor.py::_execute_fork"  # bypasses PolicyGate entirely
@@ -105,10 +105,10 @@ capabilities:
   # ── Event Emission ──
   - name: "event_emission"
     description: "事件发布 — Syscall 层必须通过 add_syscall_event 发布可观测事件"
-    canonical_path: "services/execution_store.py::add_syscall_event"
+    canonical_path: "services/execution_store/syscall_mixin.py::add_syscall_event"
     mandatory_gates:
       - symbol: "add_syscall_event"
-        from: "services/execution_store.py"
+        from: "services/execution_store/syscall_mixin.py"
     known_paths:
       - "harness/syscalls/llm.py::sys_llm_generate"
       - "harness/syscalls/tool.py::sys_tool_call"

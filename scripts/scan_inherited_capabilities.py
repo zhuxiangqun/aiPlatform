@@ -15,6 +15,7 @@ drift between Schema/Code and the core_guarantees in frontmatter.
 from __future__ import annotations
 
 import ast
+import json
 import os
 import re
 import sys
@@ -340,7 +341,7 @@ def output_yaml(auto: list, configurable: dict, file=None) -> None:
     print(f"  auto:  # {len(active)} active, {len(missing)} missing", file=out)
     for a in active:
         print(f"    - id: {a['id']}", file=out)
-        print(f"      description: \"{a['description']}\"", file=out)
+        print(f"      description: {json.dumps(a['description'], ensure_ascii=False)}", file=out)
         print(f"      paths:", file=out)
         for f in a["found_at"]:
             print(f"        - {f['file']}::{f['line']}", file=out)
@@ -356,8 +357,8 @@ def output_yaml(auto: list, configurable: dict, file=None) -> None:
         print(f"    - id: {c['field']}", file=out)
         print(f"      field: PipelineStageConfig.{c['field']}", file=out)
         if c.get("description"):
-            print(f"      description: \"{c['description']}\"", file=out)
-        print(f"      schema_default: {c['schema_default']}", file=out)
+            print(f"      description: {json.dumps(c['description'], ensure_ascii=False)}", file=out)
+        print(f"      schema_default: {json.dumps(c['schema_default'], ensure_ascii=False)}", file=out)
         print(f"      consumed_at:", file=out)
         for r in c["consumed_at"]:
             print(f"        - {r['file']}::{r['line']}", file=out)

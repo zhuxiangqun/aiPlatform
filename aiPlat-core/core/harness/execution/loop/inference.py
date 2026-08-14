@@ -7,6 +7,7 @@ Zero dependency on ReActLoop instance state.
 
 from typing import Any, Dict, List, Optional, Tuple
 import json, os, time, re, logging
+import logging
 
 from ...interfaces.loop import LoopState, LoopConfig
 from ...syscalls import sys_llm_generate
@@ -55,7 +56,7 @@ async def reason(
                 try:
                     mgr.set_domain_context(domain_id, state.context.get("collection_id", ""))
                 except Exception:
-                    pass
+                    logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
             task = state.context.get("task", "")
             sys_prompt = state.context.get("system_prompt", "")
             mem_ctx = await mgr.build_context(current_query=task, system_prompt=sys_prompt)
@@ -80,13 +81,13 @@ async def reason(
             from core.harness.syscalls.retrieval import sys_knowledge_retrieve
             _kb = sys_knowledge_retrieve(_task, top_k=3, domain_id=_domain)
             if _kb:
-                _kb_text = "## 知识库已有的相关内容\n" + "\n".join(
+                _kb_text = "## Existing relevant knowledge base content\n" + "\n".join(
                     f"- {getattr(d, 'title', '') or ''}: {str(getattr(d, 'content', '') or getattr(d, 'snippet', ''))[:300]}"
                     for d in _kb[:3] if getattr(d, 'title', None) or getattr(d, 'content', None)
                 )
                 state.context["_knowledge_context"] = _kb_text
     except Exception:
-        pass
+        logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
 
     # Drain AgentMessageBus before reasoning (P1: wire feedback/coordination messages)
     try:
@@ -119,7 +120,7 @@ async def reason(
     except Exception as e:
         logging.warning(str(e), exc_info=True)
 
-    # v2.8: Slash command routing — "/assess 金融" → skill invocation
+    # v2.8: Slash command routing — "/assess finance" → skill invocation
     task = state.context.get("task", "")
     if task.startswith("/"):
         try:
@@ -214,7 +215,7 @@ async def reason(
         for msg in state.context.get("messages", [])[-5:]
     ])
     tools_desc, tools_desc_stats = loop._build_tools_desc()
-    # 上下文压力（best-effort）：用于渐进式披露预算
+    # Context pressure (best-effort): used for progressive disclosure budgeting
     try:
         max_tokens = float(getattr(config, "max_tokens", state.max_tokens) or state.max_tokens)
         used_tokens = float(getattr(state, "used_tokens", 0) or 0)
@@ -369,7 +370,7 @@ async def reason(
         response = await sys_llm_generate(model, prompt,
             trace_context=trace_ctx,
             model_name=config.model_name)
-        # P1-2: 调用后跟踪 token usage，供下次调用前预估+预压缩
+        # P1-2: track token usage after the call for pre-estimation + pre-compaction before the next call
         # Persist this interaction to MemoryManager for cross-turn memory
         await loop._try_save_interaction(state, prompt, getattr(response, "content", str(response)))
         # L3: Auto-extract user facts from conversation

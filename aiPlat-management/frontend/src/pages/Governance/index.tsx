@@ -32,7 +32,7 @@ export default function GovernanceDashboard() {
     setLoading(true);
     try {
       const res = await apiClient.get<DashboardData>('/platform/apps/ontology-editor/governance/dashboard');
-      setData(res.data);
+      setData(res);
     } catch {}
     setLoading(false);
   };

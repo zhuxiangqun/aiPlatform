@@ -9,7 +9,7 @@
 | 顺序 | 文档 | 说明 |
 |:---:|------|------|
 | 1 | [manuals/getting-started.md](manuals/getting-started.md) | 5 分钟体验 |
-| 2 | [manuals/knowledge-management.md](manuals/knowledge-management.md) | 知识管理全管线 |
+| 2 | [knowledge-system.md](knowledge-system.md) | 知识管理完整指南（管线/存储/本体/RAG/运维） |
 | 3 | [manuals/deployment.md](manuals/deployment.md) | 部署指南 |
 
 ---
@@ -21,7 +21,7 @@
 | **架构师** | [architecture/README.md](architecture/README.md) → [architecture/overview.md](architecture/overview.md) |
 | **开发者** | [manuals/development.md](manuals/development.md) → 对应层的 `CLAUDE.md` |
 | **运维** | [manuals/deployment.md](manuals/deployment.md) → [manuals/management.md](manuals/management.md) |
-| **知识管理员** | [manuals/knowledge-management.md](manuals/knowledge-management.md) → [manuals/ontology.md](manuals/ontology.md) |
+| **知识管理员** | [knowledge-system.md](knowledge-system.md) |
 | **FDE 交付工程师** | [manuals/README.md](manuals/README.md)（手册总目录）→ 按需选择 |
 | **新用户** | [manuals/getting-started.md](manuals/getting-started.md) → [AIPLAT_CAPABILITIES.md](../AIPLAT_CAPABILITIES.md) |
 
@@ -83,7 +83,7 @@
 ## 📐 文档治理
 
 - **[DOCUMENT_SYSTEM.md](DOCUMENT_SYSTEM.md)**：文档系统宪法（分类、边界、验证）
-- **[AIPLAT_CAPABILITIES.md](../AIPLAT_CAPABILITIES.md)**：唯一能力清单（914 ✅）
+- **[AIPLAT_CAPABILITIES.md](../AIPLAT_CAPABILITIES.md)**：唯一能力清单（935 ✅）
 - **verify_doc_structure.py**：目录树一致性验证
 - **verify_capability_consistency.py**：能力统计表一致
 - **verify_imports.py**：导入模块存在性验证

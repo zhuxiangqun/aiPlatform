@@ -1,0 +1,2302 @@
+{
+  "functions": {
+    "register_handler": {
+      "params": [
+        {
+          "name": "name",
+          "has_default": false,
+          "is_kw_only": false
+        },
+        {
+          "name": "handler",
+          "has_default": false,
+          "is_kw_only": false
+        }
+      ],
+      "lineno": 31
+    },
+    "dispatch": {
+      "params": [
+        {
+          "name": "name",
+          "has_default": false,
+          "is_kw_only": false
+        }
+      ],
+      "lineno": 46
+    },
+    "get_default_model": {
+      "params": [],
+      "lineno": 67
+    },
+    "create_pipeline_engine": {
+      "params": [
+        {
+          "name": "config",
+          "has_default": false,
+          "is_kw_only": false
+        },
+        {
+          "name": "model",
+          "has_default": true,
+          "is_kw_only": false
+        },
+        {
+          "name": "skill_loader",
+          "has_default": true,
+          "is_kw_only": false
+        }
+      ],
+      "lineno": 73
+    },
+    "create_agent": {
+      "params": [
+        {
+          "name": "agent_type",
+          "has_default": false,
+          "is_kw_only": false
+        },
+        {
+          "name": "config",
+          "has_default": true,
+          "is_kw_only": false
+        },
+        {
+          "name": "model",
+          "has_default": true,
+          "is_kw_only": false
+        },
+        {
+          "name": "system_prompt",
+          "has_default": true,
+          "is_kw_only": false
+        }
+      ],
+      "lineno": 84
+    },
+    "get_skill_registry": {
+      "params": [],
+      "lineno": 262
+    },
+    "get_tool_registry": {
+      "params": [],
+      "lineno": 142
+    },
+    "get_model_manager": {
+      "params": [],
+      "lineno": 148
+    },
+    "get_llm_manager": {
+      "params": [],
+      "lineno": 154
+    },
+    "get_database_manager": {
+      "params": [],
+      "lineno": 160
+    },
+    "get_vector_manager": {
+      "params": [],
+      "lineno": 166
+    },
+    "get_cache_manager": {
+      "params": [],
+      "lineno": 172
+    },
+    "get_policy_gate": {
+      "params": [],
+      "lineno": 182
+    },
+    "get_working_memory": {
+      "params": [],
+      "lineno": 188
+    },
+    "get_circuit_breaker": {
+      "params": [],
+      "lineno": 194
+    },
+    "get_hallucination_tracker": {
+      "params": [],
+      "lineno": 200
+    },
+    "get_error_translator": {
+      "params": [],
+      "lineno": 206
+    },
+    "get_graph_index": {
+      "params": [
+        {
+          "name": "domain_id",
+          "has_default": true,
+          "is_kw_only": false
+        }
+      ],
+      "lineno": 212
+    },
+    "get_entity_resolver": {
+      "params": [],
+      "lineno": 218
+    },
+    "get_class_mapper": {
+      "params": [],
+      "lineno": 224
+    },
+    "get_state_machine": {
+      "params": [],
+      "lineno": 230
+    },
+    "get_code_graph": {
+      "params": [],
+      "lineno": 236
+    },
+    "get_knowledge_validator": {
+      "params": [],
+      "lineno": 244
+    },
+    "get_domain_router": {
+      "params": [],
+      "lineno": 250
+    },
+    "get_retrieval_crag": {
+      "params": [],
+      "lineno": 256
+    },
+    "get_system_diagnostician": {
+      "params": [],
+      "lineno": 268
+    },
+    "get_wiki_retriever": {
+      "params": [],
+      "lineno": 274
+    },
+    "get_arch_guard_rules": {
+      "params": [],
+      "lineno": 280
+    },
+    "get_context_bus": {
+      "params": [],
+      "lineno": 286
+    },
+    "get_intent_analyzer": {
+      "params": [],
+      "lineno": 292
+    },
+    "get_chain_planner": {
+      "params": [],
+      "lineno": 298
+    },
+    "get_capability_mapper": {
+      "params": [],
+      "lineno": 304
+    },
+    "get_ltm_service": {
+      "params": [],
+      "lineno": 310
+    },
+    "get_reminder_service": {
+      "params": [],
+      "lineno": 316
+    },
+    "get_command_parser": {
+      "params": [],
+      "lineno": 322
+    },
+    "get_cross_validation_gate": {
+      "params": [],
+      "lineno": 328
+    },
+    "get_constraint_validator": {
+      "params": [],
+      "lineno": 338
+    },
+    "get_config_drift_detector": {
+      "params": [],
+      "lineno": 344
+    },
+    "get_self_heal_gate": {
+      "params": [],
+      "lineno": 350
+    },
+    "list_pending_heal_fixes": {
+      "params": [],
+      "lineno": 356
+    },
+    "approve_heal_fix": {
+      "params": [
+        {
+          "name": "fix_id",
+          "has_default": false,
+          "is_kw_only": false
+        }
+      ],
+      "lineno": 362
+    },
+    "reject_heal_fix": {
+      "params": [
+        {
+          "name": "fix_id",
+          "has_default": false,
+          "is_kw_only": false
+        },
+        {
+          "name": "reason",
+          "has_default": true,
+          "is_kw_only": false
+        }
+      ],
+      "lineno": 368
+    },
+    "get_ontology_auditor": {
+      "params": [],
+      "lineno": 374
+    },
+    "get_adoption_tracker": {
+      "params": [],
+      "lineno": 380
+    },
+    "get_skill_exporter": {
+      "params": [],
+      "lineno": 386
+    },
+    "get_agent_config_differ": {
+      "params": [],
+      "lineno": 392
+    },
+    "get_fde_pipeline_health": {
+      "params": [],
+      "lineno": 398
+    },
+    "get_fde_health": {
+      "params": [],
+      "lineno": 403
+    },
+    "fde_clarify": {
+      "params": [],
+      "lineno": 408
+    },
+    "get_builder_project_service": {
+      "params": [],
+      "lineno": 413
+    },
+    "get_route_permissions": {
+      "params": [],
+      "lineno": 418
+    },
+    "get_method_restrictions": {
+      "params": [],
+      "lineno": 423
+    },
+    "llm_generate": {
+      "params": [
+        {
+          "name": "model",
+          "has_default": false,
+          "is_kw_only": false
+        },
+        {
+          "name": "prompt",
+          "has_default": false,
+          "is_kw_only": false
+        }
+      ],
+      "lineno": 428
+    },
+    "core_chat": {
+      "params": [
+        {
+          "name": "ctx",
+          "has_default": false,
+          "is_kw_only": false
+        }
+      ],
+      "lineno": 485
+    },
+    "parse_output": {
+      "params": [
+        {
+          "name": "raw",
+          "has_default": false,
+          "is_kw_only": false
+        }
+      ],
+      "lineno": 642
+    },
+    "get_agent_frontmatter": {
+      "params": [
+        {
+          "name": "agent_id",
+          "has_default": false,
+          "is_kw_only": false
+        }
+      ],
+      "lineno": 655
+    },
+    "get_code_gen_skill": {
+      "params": [
+        {
+          "name": "model",
+          "has_default": true,
+          "is_kw_only": false
+        }
+      ],
+      "lineno": 694
+    },
+    "seed_all_registries": {
+      "params": [],
+      "lineno": 701
+    },
+    "get_secret": {
+      "params": [
+        {
+          "name": "name",
+          "has_default": false,
+          "is_kw_only": false
+        }
+      ],
+      "lineno": 733
+    },
+    "set_secret": {
+      "params": [
+        {
+          "name": "name",
+          "has_default": false,
+          "is_kw_only": false
+        },
+        {
+          "name": "value",
+          "has_default": false,
+          "is_kw_only": false
+        }
+      ],
+      "lineno": 739
+    },
+    "get_permission_manager": {
+      "params": [],
+      "lineno": 747
+    },
+    "resolve_skill_permission": {
+      "params": [
+        {
+          "name": "skill_name",
+          "has_default": false,
+          "is_kw_only": false
+        }
+      ],
+      "lineno": 752
+    },
+    "resolve_executable_skill_permission": {
+      "params": [
+        {
+          "name": "skill_name",
+          "has_default": false,
+          "is_kw_only": false
+        }
+      ],
+      "lineno": 757
+    },
+    "get_exec_backend": {
+      "params": [],
+      "lineno": 762
+    },
+    "scan_security": {
+      "params": [
+        {
+          "name": "code",
+          "has_default": false,
+          "is_kw_only": false
+        }
+      ],
+      "lineno": 767
+    },
+    "create_chat_service": {
+      "params": [
+        {
+          "name": "model",
+          "has_default": true,
+          "is_kw_only": false
+        }
+      ],
+      "lineno": 779
+    },
+    "create_conversation_service": {
+      "params": [
+        {
+          "name": "store",
+          "has_default": true,
+          "is_kw_only": false
+        }
+      ],
+      "lineno": 786
+    },
+    "create_pipeline_session": {
+      "params": [
+        {
+          "name": "config",
+          "has_default": false,
+          "is_kw_only": false
+        },
+        {
+          "name": "model",
+          "has_default": true,
+          "is_kw_only": false
+        },
+        {
+          "name": "skill_loader",
+          "has_default": true,
+          "is_kw_only": false
+        },
+        {
+          "name": "persist_callback",
+          "has_default": true,
+          "is_kw_only": false
+        }
+      ],
+      "lineno": 855
+    },
+    "validate_pipeline_stages": {
+      "params": [
+        {
+          "name": "stages",
+          "has_default": false,
+          "is_kw_only": false
+        }
+      ],
+      "lineno": 876
+    },
+    "apply_agent_md_to_stage": {
+      "params": [
+        {
+          "name": "stage",
+          "has_default": false,
+          "is_kw_only": false
+        },
+        {
+          "name": "agent_id",
+          "has_default": false,
+          "is_kw_only": false
+        }
+      ],
+      "lineno": 908
+    },
+    "record_changeset": {
+      "params": [
+        {
+          "name": "resource_type",
+          "has_default": true,
+          "is_kw_only": true
+        },
+        {
+          "name": "resource_id",
+          "has_default": true,
+          "is_kw_only": true
+        },
+        {
+          "name": "action",
+          "has_default": true,
+          "is_kw_only": true
+        },
+        {
+          "name": "before",
+          "has_default": true,
+          "is_kw_only": true
+        },
+        {
+          "name": "after",
+          "has_default": true,
+          "is_kw_only": true
+        },
+        {
+          "name": "tenant_id",
+          "has_default": true,
+          "is_kw_only": true
+        },
+        {
+          "name": "actor_id",
+          "has_default": true,
+          "is_kw_only": true
+        },
+        {
+          "name": "metadata",
+          "has_default": true,
+          "is_kw_only": true
+        }
+      ],
+      "lineno": 995
+    },
+    "new_change_id": {
+      "params": [],
+      "lineno": 1020
+    },
+    "apply_autosmoke_result": {
+      "params": [
+        {
+          "name": "verification_id",
+          "has_default": false,
+          "is_kw_only": false
+        },
+        {
+          "name": "result",
+          "has_default": false,
+          "is_kw_only": false
+        },
+        {
+          "name": "resource_type",
+          "has_default": true,
+          "is_kw_only": true
+        },
+        {
+          "name": "resource_id",
+          "has_default": true,
+          "is_kw_only": true
+        },
+        {
+          "name": "job_run",
+          "has_default": true,
+          "is_kw_only": true
+        }
+      ],
+      "lineno": 1027
+    },
+    "mark_resource_pending": {
+      "params": [
+        {
+          "name": "resource_type",
+          "has_default": false,
+          "is_kw_only": false
+        },
+        {
+          "name": "resource_id",
+          "has_default": false,
+          "is_kw_only": false
+        },
+        {
+          "name": "workspace_agent_manager",
+          "has_default": true,
+          "is_kw_only": true
+        },
+        {
+          "name": "workspace_skill_manager",
+          "has_default": true,
+          "is_kw_only": true
+        },
+        {
+          "name": "workspace_mcp_manager",
+          "has_default": true,
+          "is_kw_only": true
+        }
+      ],
+      "lineno": 1037
+    },
+    "evaluate_tool_policy_snapshot": {
+      "params": [
+        {
+          "name": "policy",
+          "has_default": false,
+          "is_kw_only": false
+        },
+        {
+          "name": "tool_name",
+          "has_default": false,
+          "is_kw_only": true
+        }
+      ],
+      "lineno": 1050
+    },
+    "list_execution_snapshots": {
+      "params": [
+        {
+          "name": "session_id",
+          "has_default": false,
+          "is_kw_only": false
+        }
+      ],
+      "lineno": 1059
+    },
+    "get_execution_snapshot": {
+      "params": [
+        {
+          "name": "snapshot_id",
+          "has_default": false,
+          "is_kw_only": false
+        },
+        {
+          "name": "session_id",
+          "has_default": false,
+          "is_kw_only": false
+        }
+      ],
+      "lineno": 1069
+    },
+    "compare_execution_snapshots": {
+      "params": [
+        {
+          "name": "snapshot_a_id",
+          "has_default": false,
+          "is_kw_only": false
+        },
+        {
+          "name": "snapshot_b_id",
+          "has_default": false,
+          "is_kw_only": false
+        },
+        {
+          "name": "session_id",
+          "has_default": false,
+          "is_kw_only": false
+        }
+      ],
+      "lineno": 1084
+    },
+    "restore_execution_snapshot": {
+      "params": [
+        {
+          "name": "snapshot_id",
+          "has_default": false,
+          "is_kw_only": false
+        },
+        {
+          "name": "session_id",
+          "has_default": false,
+          "is_kw_only": false
+        }
+      ],
+      "lineno": 1090
+    },
+    "list_file_checkpoints": {
+      "params": [
+        {
+          "name": "session_id",
+          "has_default": true,
+          "is_kw_only": true
+        },
+        {
+          "name": "path",
+          "has_default": true,
+          "is_kw_only": true
+        }
+      ],
+      "lineno": 1116
+    },
+    "get_file_checkpoint": {
+      "params": [
+        {
+          "name": "checkpoint_id",
+          "has_default": false,
+          "is_kw_only": false
+        },
+        {
+          "name": "session_id",
+          "has_default": true,
+          "is_kw_only": false
+        }
+      ],
+      "lineno": 1122
+    },
+    "restore_file_checkpoint": {
+      "params": [
+        {
+          "name": "checkpoint_id",
+          "has_default": false,
+          "is_kw_only": false
+        },
+        {
+          "name": "session_id",
+          "has_default": true,
+          "is_kw_only": false
+        }
+      ],
+      "lineno": 1128
+    },
+    "publish_learning_release": {
+      "params": [
+        {
+          "name": "release_id",
+          "has_default": false,
+          "is_kw_only": false
+        }
+      ],
+      "lineno": 1136
+    },
+    "rollback_learning_release": {
+      "params": [
+        {
+          "name": "release_id",
+          "has_default": false,
+          "is_kw_only": false
+        },
+        {
+          "name": "reason",
+          "has_default": true,
+          "is_kw_only": false
+        }
+      ],
+      "lineno": 1141
+    },
+    "run_plugin_action": {
+      "params": [
+        {
+          "name": "plugin_id",
+          "has_default": false,
+          "is_kw_only": false
+        },
+        {
+          "name": "action",
+          "has_default": false,
+          "is_kw_only": false
+        },
+        {
+          "name": "params",
+          "has_default": true,
+          "is_kw_only": false
+        }
+      ],
+      "lineno": 1146
+    },
+    "kb_retrieve": {
+      "params": [
+        {
+          "name": "query",
+          "has_default": false,
+          "is_kw_only": false
+        },
+        {
+          "name": "doc_ids",
+          "has_default": false,
+          "is_kw_only": false
+        }
+      ],
+      "lineno": 1154
+    },
+    "wiki_retrieve": {
+      "params": [
+        {
+          "name": "query",
+          "has_default": false,
+          "is_kw_only": false
+        },
+        {
+          "name": "wiki_titles",
+          "has_default": true,
+          "is_kw_only": false
+        }
+      ],
+      "lineno": 1160
+    },
+    "wiki_auto_update": {
+      "params": [
+        {
+          "name": "doc_id",
+          "has_default": false,
+          "is_kw_only": false
+        },
+        {
+          "name": "file_path",
+          "has_default": false,
+          "is_kw_only": false
+        },
+        {
+          "name": "collection_id",
+          "has_default": true,
+          "is_kw_only": false
+        }
+      ],
+      "lineno": 1166
+    },
+    "auto_ontology_pipeline_for_doc": {
+      "params": [
+        {
+          "name": "doc_id",
+          "has_default": false,
+          "is_kw_only": false
+        },
+        {
+          "name": "file_path",
+          "has_default": false,
+          "is_kw_only": false
+        },
+        {
+          "name": "collection_id",
+          "has_default": true,
+          "is_kw_only": false
+        }
+      ],
+      "lineno": 1371
+    },
+    "start_grilling": {
+      "params": [
+        {
+          "name": "entry_point",
+          "has_default": false,
+          "is_kw_only": false
+        },
+        {
+          "name": "domain_id",
+          "has_default": true,
+          "is_kw_only": false
+        },
+        {
+          "name": "context",
+          "has_default": true,
+          "is_kw_only": false
+        }
+      ],
+      "lineno": 1469
+    },
+    "continue_grilling": {
+      "params": [
+        {
+          "name": "session_id",
+          "has_default": false,
+          "is_kw_only": false
+        },
+        {
+          "name": "answer",
+          "has_default": false,
+          "is_kw_only": false
+        }
+      ],
+      "lineno": 1499
+    },
+    "skip_grilling_question": {
+      "params": [
+        {
+          "name": "session_id",
+          "has_default": false,
+          "is_kw_only": false
+        }
+      ],
+      "lineno": 1538
+    },
+    "get_grilling_progress": {
+      "params": [
+        {
+          "name": "session_id",
+          "has_default": false,
+          "is_kw_only": false
+        }
+      ],
+      "lineno": 1565
+    },
+    "wiki_skill_impact": {
+      "params": [
+        {
+          "name": "skill_id",
+          "has_default": false,
+          "is_kw_only": false
+        }
+      ],
+      "lineno": 1692
+    },
+    "wiki_fts_index": {
+      "params": [],
+      "lineno": 1698
+    },
+    "wiki_fts_search": {
+      "params": [
+        {
+          "name": "query",
+          "has_default": false,
+          "is_kw_only": false
+        },
+        {
+          "name": "limit",
+          "has_default": true,
+          "is_kw_only": false
+        }
+      ],
+      "lineno": 1704
+    },
+    "wiki_pages_by_source": {
+      "params": [
+        {
+          "name": "source_key",
+          "has_default": false,
+          "is_kw_only": false
+        }
+      ],
+      "lineno": 1710
+    },
+    "wiki_search_pages": {
+      "params": [
+        {
+          "name": "query",
+          "has_default": true,
+          "is_kw_only": false
+        },
+        {
+          "name": "tags",
+          "has_default": true,
+          "is_kw_only": true
+        },
+        {
+          "name": "category",
+          "has_default": true,
+          "is_kw_only": true
+        },
+        {
+          "name": "limit",
+          "has_default": true,
+          "is_kw_only": true
+        },
+        {
+          "name": "collection_id",
+          "has_default": true,
+          "is_kw_only": true
+        }
+      ],
+      "lineno": 1716
+    },
+    "get_graph_health": {
+      "params": [
+        {
+          "name": "domain",
+          "has_default": true,
+          "is_kw_only": false
+        }
+      ],
+      "lineno": 1724
+    },
+    "get_graph_sessions": {
+      "params": [
+        {
+          "name": "domain",
+          "has_default": false,
+          "is_kw_only": false
+        },
+        {
+          "name": "limit",
+          "has_default": true,
+          "is_kw_only": false
+        },
+        {
+          "name": "class_name",
+          "has_default": true,
+          "is_kw_only": false
+        }
+      ],
+      "lineno": 1737
+    },
+    "get_graph_neighbors": {
+      "params": [
+        {
+          "name": "domain",
+          "has_default": false,
+          "is_kw_only": false
+        },
+        {
+          "name": "node_id",
+          "has_default": false,
+          "is_kw_only": false
+        },
+        {
+          "name": "relation",
+          "has_default": true,
+          "is_kw_only": false
+        }
+      ],
+      "lineno": 1754
+    },
+    "get_wiki_index": {
+      "params": [
+        {
+          "name": "collection_id",
+          "has_default": true,
+          "is_kw_only": false
+        }
+      ],
+      "lineno": 1767
+    },
+    "code_intel_context": {
+      "params": [
+        {
+          "name": "task",
+          "has_default": false,
+          "is_kw_only": false
+        }
+      ],
+      "lineno": 1773
+    },
+    "code_intel_blast": {
+      "params": [
+        {
+          "name": "file_path",
+          "has_default": false,
+          "is_kw_only": false
+        }
+      ],
+      "lineno": 1779
+    },
+    "kb_ocr_keyframes": {
+      "params": [
+        {
+          "name": "image_paths",
+          "has_default": false,
+          "is_kw_only": false
+        },
+        {
+          "name": "engine",
+          "has_default": true,
+          "is_kw_only": false
+        },
+        {
+          "name": "lang",
+          "has_default": true,
+          "is_kw_only": false
+        }
+      ],
+      "lineno": 1785
+    },
+    "kb_probe_video_duration": {
+      "params": [
+        {
+          "name": "video_path",
+          "has_default": false,
+          "is_kw_only": false
+        }
+      ],
+      "lineno": 1791
+    },
+    "kb_extract_video_keyframes": {
+      "params": [
+        {
+          "name": "video_path",
+          "has_default": false,
+          "is_kw_only": false
+        },
+        {
+          "name": "output_dir",
+          "has_default": false,
+          "is_kw_only": false
+        },
+        {
+          "name": "interval_seconds",
+          "has_default": true,
+          "is_kw_only": false
+        }
+      ],
+      "lineno": 1797
+    },
+    "kb_extract_video_audio": {
+      "params": [
+        {
+          "name": "video_path",
+          "has_default": false,
+          "is_kw_only": false
+        },
+        {
+          "name": "audio_path",
+          "has_default": false,
+          "is_kw_only": false
+        }
+      ],
+      "lineno": 1803
+    },
+    "kb_parse_document": {
+      "params": [
+        {
+          "name": "file_path",
+          "has_default": false,
+          "is_kw_only": false
+        },
+        {
+          "name": "kind",
+          "has_default": false,
+          "is_kw_only": false
+        }
+      ],
+      "lineno": 1809
+    },
+    "kb_chunk_document": {
+      "params": [
+        {
+          "name": "elements",
+          "has_default": false,
+          "is_kw_only": false
+        },
+        {
+          "name": "kind",
+          "has_default": true,
+          "is_kw_only": false
+        },
+        {
+          "name": "target_size",
+          "has_default": true,
+          "is_kw_only": false
+        },
+        {
+          "name": "overlap",
+          "has_default": true,
+          "is_kw_only": false
+        }
+      ],
+      "lineno": 1837
+    },
+    "kb_chunk_elements": {
+      "params": [
+        {
+          "name": "elements",
+          "has_default": false,
+          "is_kw_only": false
+        },
+        {
+          "name": "kind",
+          "has_default": true,
+          "is_kw_only": false
+        },
+        {
+          "name": "target_size",
+          "has_default": true,
+          "is_kw_only": false
+        },
+        {
+          "name": "overlap",
+          "has_default": true,
+          "is_kw_only": false
+        }
+      ],
+      "lineno": 1843
+    },
+    "kb_create_infra_db_client": {
+      "params": [
+        {
+          "name": "db_path",
+          "has_default": false,
+          "is_kw_only": false
+        }
+      ],
+      "lineno": 1849
+    },
+    "kb_classify_document": {
+      "params": [
+        {
+          "name": "elements",
+          "has_default": false,
+          "is_kw_only": false
+        },
+        {
+          "name": "kind",
+          "has_default": false,
+          "is_kw_only": false
+        }
+      ],
+      "lineno": 1858
+    },
+    "kb_transcribe_audio": {
+      "params": [
+        {
+          "name": "audio_path",
+          "has_default": false,
+          "is_kw_only": false
+        },
+        {
+          "name": "language",
+          "has_default": true,
+          "is_kw_only": false
+        },
+        {
+          "name": "diagnostics",
+          "has_default": true,
+          "is_kw_only": false
+        }
+      ],
+      "lineno": 1864
+    },
+    "kb_transcribe_audio_chunked": {
+      "params": [
+        {
+          "name": "audio_path",
+          "has_default": false,
+          "is_kw_only": false
+        },
+        {
+          "name": "language",
+          "has_default": true,
+          "is_kw_only": false
+        },
+        {
+          "name": "chunk_seconds",
+          "has_default": true,
+          "is_kw_only": false
+        }
+      ],
+      "lineno": 1875
+    },
+    "kb_embed_text": {
+      "params": [
+        {
+          "name": "text",
+          "has_default": false,
+          "is_kw_only": false
+        },
+        {
+          "name": "dim",
+          "has_default": true,
+          "is_kw_only": false
+        }
+      ],
+      "lineno": 1881
+    },
+    "kb_embed_text_sync": {
+      "params": [
+        {
+          "name": "text",
+          "has_default": false,
+          "is_kw_only": false
+        },
+        {
+          "name": "dim",
+          "has_default": true,
+          "is_kw_only": false
+        }
+      ],
+      "lineno": 1898
+    },
+    "kb_extract_keywords": {
+      "params": [
+        {
+          "name": "text",
+          "has_default": false,
+          "is_kw_only": false
+        }
+      ],
+      "lineno": 1904
+    },
+    "kb_score_text": {
+      "params": [
+        {
+          "name": "text",
+          "has_default": false,
+          "is_kw_only": false
+        },
+        {
+          "name": "keywords",
+          "has_default": false,
+          "is_kw_only": false
+        }
+      ],
+      "lineno": 1910
+    },
+    "kb_element_source": {
+      "params": [
+        {
+          "name": "element",
+          "has_default": false,
+          "is_kw_only": false
+        }
+      ],
+      "lineno": 1916
+    },
+    "kb_get_ingest_fn": {
+      "params": [],
+      "lineno": 1922
+    },
+    "kb_get_tenant_storage": {
+      "params": [
+        {
+          "name": "tenant_id",
+          "has_default": false,
+          "is_kw_only": false
+        }
+      ],
+      "lineno": 1928
+    },
+    "kb_kind_category": {
+      "params": [
+        {
+          "name": "kind",
+          "has_default": false,
+          "is_kw_only": false
+        }
+      ],
+      "lineno": 1934
+    },
+    "kb_llm_chat_complete": {
+      "params": [
+        {
+          "name": "system_prompt",
+          "has_default": false,
+          "is_kw_only": false
+        },
+        {
+          "name": "user_prompt",
+          "has_default": false,
+          "is_kw_only": false
+        },
+        {
+          "name": "temperature",
+          "has_default": true,
+          "is_kw_only": false
+        },
+        {
+          "name": "max_tokens",
+          "has_default": true,
+          "is_kw_only": false
+        }
+      ],
+      "lineno": 1944
+    },
+    "kb_llm_enabled": {
+      "params": [],
+      "lineno": 1950
+    },
+    "extract_json_block": {
+      "params": [
+        {
+          "name": "text",
+          "has_default": false,
+          "is_kw_only": false
+        }
+      ],
+      "lineno": 1956
+    },
+    "kb_summarize_document": {
+      "params": [
+        {
+          "name": "tenant_id",
+          "has_default": false,
+          "is_kw_only": true
+        },
+        {
+          "name": "collection_id",
+          "has_default": false,
+          "is_kw_only": true
+        },
+        {
+          "name": "doc_id",
+          "has_default": false,
+          "is_kw_only": true
+        },
+        {
+          "name": "profile",
+          "has_default": true,
+          "is_kw_only": true
+        }
+      ],
+      "lineno": 1961
+    },
+    "get_agent_registry_facade": {
+      "params": [],
+      "lineno": 1970
+    },
+    "run_workspace_agent": {
+      "params": [
+        {
+          "name": "agent_info",
+          "has_default": false,
+          "is_kw_only": false
+        },
+        {
+          "name": "user_message",
+          "has_default": false,
+          "is_kw_only": false
+        },
+        {
+          "name": "max_steps",
+          "has_default": true,
+          "is_kw_only": true
+        },
+        {
+          "name": "toolset",
+          "has_default": true,
+          "is_kw_only": true
+        },
+        {
+          "name": "session_id",
+          "has_default": true,
+          "is_kw_only": true
+        },
+        {
+          "name": "stream",
+          "has_default": true,
+          "is_kw_only": true
+        }
+      ],
+      "lineno": 2004
+    },
+    "get_chat_service_model": {
+      "params": [
+        {
+          "name": "rt",
+          "has_default": true,
+          "is_kw_only": false
+        }
+      ],
+      "lineno": 2490
+    },
+    "get_ontology_context": {
+      "params": [
+        {
+          "name": "question",
+          "has_default": true,
+          "is_kw_only": false
+        },
+        {
+          "name": "max_pages",
+          "has_default": true,
+          "is_kw_only": true
+        },
+        {
+          "name": "collection_id",
+          "has_default": true,
+          "is_kw_only": true
+        },
+        {
+          "name": "include_contradictions",
+          "has_default": true,
+          "is_kw_only": true
+        },
+        {
+          "name": "include_state_summary",
+          "has_default": true,
+          "is_kw_only": true
+        }
+      ],
+      "lineno": 2504
+    },
+    "get_entity_lifecycle_summary": {
+      "params": [
+        {
+          "name": "collection_id",
+          "has_default": true,
+          "is_kw_only": false
+        }
+      ],
+      "lineno": 2527
+    },
+    "generate_ontology_suggestions": {
+      "params": [
+        {
+          "name": "collection_id",
+          "has_default": true,
+          "is_kw_only": false
+        },
+        {
+          "name": "max_suggestions",
+          "has_default": true,
+          "is_kw_only": true
+        },
+        {
+          "name": "confidence_threshold",
+          "has_default": true,
+          "is_kw_only": true
+        },
+        {
+          "name": "include_llm",
+          "has_default": true,
+          "is_kw_only": true
+        }
+      ],
+      "lineno": 2539
+    },
+    "predict_evolution_impact_for": {
+      "params": [
+        {
+          "name": "suggestion",
+          "has_default": false,
+          "is_kw_only": false
+        },
+        {
+          "name": "collection_id",
+          "has_default": true,
+          "is_kw_only": false
+        }
+      ],
+      "lineno": 2568
+    },
+    "check_ontology_health_triggers": {
+      "params": [
+        {
+          "name": "collection_id",
+          "has_default": true,
+          "is_kw_only": false
+        }
+      ],
+      "lineno": 2581
+    },
+    "get_entity_quality": {
+      "params": [
+        {
+          "name": "entity_uri",
+          "has_default": false,
+          "is_kw_only": false
+        },
+        {
+          "name": "collection_id",
+          "has_default": true,
+          "is_kw_only": true
+        }
+      ],
+      "lineno": 2591
+    },
+    "apply_field_security": {
+      "params": [
+        {
+          "name": "data",
+          "has_default": false,
+          "is_kw_only": false
+        },
+        {
+          "name": "entity_uri",
+          "has_default": true,
+          "is_kw_only": true
+        },
+        {
+          "name": "actor_role",
+          "has_default": true,
+          "is_kw_only": true
+        },
+        {
+          "name": "actor_scopes",
+          "has_default": true,
+          "is_kw_only": true
+        },
+        {
+          "name": "collection_id",
+          "has_default": true,
+          "is_kw_only": true
+        }
+      ],
+      "lineno": 2603
+    },
+    "get_growth_stats": {
+      "params": [
+        {
+          "name": "days",
+          "has_default": true,
+          "is_kw_only": false
+        },
+        {
+          "name": "collection_id",
+          "has_default": true,
+          "is_kw_only": true
+        }
+      ],
+      "lineno": 2626
+    },
+    "check_obsidian_compatibility": {
+      "params": [
+        {
+          "name": "collection_id",
+          "has_default": true,
+          "is_kw_only": false
+        }
+      ],
+      "lineno": 2632
+    },
+    "get_learning_paths": {
+      "params": [],
+      "lineno": 2694
+    },
+    "get_learner_profile": {
+      "params": [
+        {
+          "name": "learner_id",
+          "has_default": false,
+          "is_kw_only": false
+        }
+      ],
+      "lineno": 2700
+    },
+    "complete_chapter_for_learner": {
+      "params": [
+        {
+          "name": "learner_id",
+          "has_default": false,
+          "is_kw_only": false
+        },
+        {
+          "name": "chapter_id",
+          "has_default": false,
+          "is_kw_only": false
+        },
+        {
+          "name": "answers",
+          "has_default": false,
+          "is_kw_only": false
+        }
+      ],
+      "lineno": 2707
+    },
+    "get_scene_template": {
+      "params": [
+        {
+          "name": "scene_id",
+          "has_default": false,
+          "is_kw_only": false
+        },
+        {
+          "name": "collection_id",
+          "has_default": true,
+          "is_kw_only": true
+        }
+      ],
+      "lineno": 2736
+    },
+    "instantiate_scene": {
+      "params": [
+        {
+          "name": "scene_id",
+          "has_default": false,
+          "is_kw_only": false
+        },
+        {
+          "name": "params",
+          "has_default": true,
+          "is_kw_only": true
+        },
+        {
+          "name": "collection_id",
+          "has_default": true,
+          "is_kw_only": true
+        }
+      ],
+      "lineno": 2743
+    },
+    "verify_stage_output": {
+      "params": [
+        {
+          "name": "artifact",
+          "has_default": false,
+          "is_kw_only": false
+        },
+        {
+          "name": "expected_outcomes",
+          "has_default": false,
+          "is_kw_only": false
+        },
+        {
+          "name": "stage_id",
+          "has_default": true,
+          "is_kw_only": false
+        }
+      ],
+      "lineno": 2756
+    },
+    "list_algorithms": {
+      "params": [],
+      "lineno": 2767
+    },
+    "register_writeback_target": {
+      "params": [
+        {
+          "name": "target_type",
+          "has_default": false,
+          "is_kw_only": false
+        },
+        {
+          "name": "target_endpoint",
+          "has_default": false,
+          "is_kw_only": false
+        },
+        {
+          "name": "trigger_actions",
+          "has_default": true,
+          "is_kw_only": true
+        },
+        {
+          "name": "field_mapping",
+          "has_default": true,
+          "is_kw_only": true
+        },
+        {
+          "name": "collection_id",
+          "has_default": true,
+          "is_kw_only": true
+        }
+      ],
+      "lineno": 2775
+    },
+    "list_writeback_targets": {
+      "params": [
+        {
+          "name": "collection_id",
+          "has_default": true,
+          "is_kw_only": false
+        }
+      ],
+      "lineno": 2797
+    },
+    "get_entity_markings": {
+      "params": [
+        {
+          "name": "entity_uri",
+          "has_default": false,
+          "is_kw_only": false
+        },
+        {
+          "name": "collection_id",
+          "has_default": true,
+          "is_kw_only": true
+        },
+        {
+          "name": "resolve_effective",
+          "has_default": true,
+          "is_kw_only": true
+        }
+      ],
+      "lineno": 2805
+    },
+    "set_entity_marking": {
+      "params": [
+        {
+          "name": "entity_uri",
+          "has_default": false,
+          "is_kw_only": false
+        },
+        {
+          "name": "label",
+          "has_default": false,
+          "is_kw_only": false
+        },
+        {
+          "name": "level",
+          "has_default": false,
+          "is_kw_only": false
+        },
+        {
+          "name": "scope",
+          "has_default": true,
+          "is_kw_only": false
+        },
+        {
+          "name": "collection_id",
+          "has_default": true,
+          "is_kw_only": true
+        }
+      ],
+      "lineno": 2816
+    },
+    "check_kb_entity_access": {
+      "params": [
+        {
+          "name": "entity_uri",
+          "has_default": false,
+          "is_kw_only": false
+        },
+        {
+          "name": "action",
+          "has_default": false,
+          "is_kw_only": false
+        },
+        {
+          "name": "actor_scopes",
+          "has_default": true,
+          "is_kw_only": true
+        },
+        {
+          "name": "actor_role",
+          "has_default": true,
+          "is_kw_only": true
+        },
+        {
+          "name": "collection_id",
+          "has_default": true,
+          "is_kw_only": true
+        }
+      ],
+      "lineno": 2831
+    },
+    "list_ontology_domains": {
+      "params": [],
+      "lineno": 2858
+    },
+    "get_ontology_domain_schema": {
+      "params": [
+        {
+          "name": "domain_id",
+          "has_default": false,
+          "is_kw_only": false
+        }
+      ],
+      "lineno": 2877
+    },
+    "create_ontology_domain": {
+      "params": [
+        {
+          "name": "domain_id",
+          "has_default": false,
+          "is_kw_only": false
+        },
+        {
+          "name": "name",
+          "has_default": false,
+          "is_kw_only": false
+        },
+        {
+          "name": "namespace",
+          "has_default": true,
+          "is_kw_only": true
+        },
+        {
+          "name": "description",
+          "has_default": true,
+          "is_kw_only": true
+        },
+        {
+          "name": "version",
+          "has_default": true,
+          "is_kw_only": true
+        }
+      ],
+      "lineno": 2891
+    },
+    "update_ontology_domain_meta": {
+      "params": [
+        {
+          "name": "domain_id",
+          "has_default": false,
+          "is_kw_only": false
+        },
+        {
+          "name": "name",
+          "has_default": true,
+          "is_kw_only": true
+        },
+        {
+          "name": "description",
+          "has_default": true,
+          "is_kw_only": true
+        },
+        {
+          "name": "version",
+          "has_default": true,
+          "is_kw_only": true
+        },
+        {
+          "name": "namespace",
+          "has_default": true,
+          "is_kw_only": true
+        }
+      ],
+      "lineno": 2926
+    },
+    "delete_ontology_domain": {
+      "params": [
+        {
+          "name": "domain_id",
+          "has_default": false,
+          "is_kw_only": false
+        }
+      ],
+      "lineno": 2964
+    },
+    "upsert_ontology_class": {
+      "params": [
+        {
+          "name": "domain_id",
+          "has_default": false,
+          "is_kw_only": false
+        },
+        {
+          "name": "class_name",
+          "has_default": false,
+          "is_kw_only": false
+        },
+        {
+          "name": "class_data",
+          "has_default": false,
+          "is_kw_only": false
+        }
+      ],
+      "lineno": 2976
+    },
+    "delete_ontology_class": {
+      "params": [
+        {
+          "name": "domain_id",
+          "has_default": false,
+          "is_kw_only": false
+        },
+        {
+          "name": "class_name",
+          "has_default": false,
+          "is_kw_only": false
+        }
+      ],
+      "lineno": 3003
+    },
+    "publish_ontology_domain": {
+      "params": [
+        {
+          "name": "domain_id",
+          "has_default": false,
+          "is_kw_only": false
+        }
+      ],
+      "lineno": 3026
+    },
+    "list_rule_versions": {
+      "params": [
+        {
+          "name": "domain_id",
+          "has_default": false,
+          "is_kw_only": false
+        }
+      ],
+      "lineno": 3053
+    },
+    "get_rule_version_diff": {
+      "params": [
+        {
+          "name": "domain_id",
+          "has_default": false,
+          "is_kw_only": false
+        },
+        {
+          "name": "version_id",
+          "has_default": false,
+          "is_kw_only": false
+        }
+      ],
+      "lineno": 3064
+    },
+    "rollback_rule_version": {
+      "params": [
+        {
+          "name": "domain_id",
+          "has_default": false,
+          "is_kw_only": false
+        },
+        {
+          "name": "version_id",
+          "has_default": false,
+          "is_kw_only": false
+        }
+      ],
+      "lineno": 3094
+    },
+    "list_views_for_domain": {
+      "params": [
+        {
+          "name": "domain_id",
+          "has_default": false,
+          "is_kw_only": false
+        }
+      ],
+      "lineno": 3120
+    },
+    "get_view_for_domain": {
+      "params": [
+        {
+          "name": "domain_id",
+          "has_default": false,
+          "is_kw_only": false
+        },
+        {
+          "name": "role",
+          "has_default": false,
+          "is_kw_only": false
+        }
+      ],
+      "lineno": 3128
+    },
+    "upsert_view_for_domain": {
+      "params": [
+        {
+          "name": "domain_id",
+          "has_default": false,
+          "is_kw_only": false
+        },
+        {
+          "name": "role",
+          "has_default": false,
+          "is_kw_only": false
+        },
+        {
+          "name": "view_data",
+          "has_default": false,
+          "is_kw_only": false
+        }
+      ],
+      "lineno": 3139
+    },
+    "delete_view_for_domain": {
+      "params": [
+        {
+          "name": "domain_id",
+          "has_default": false,
+          "is_kw_only": false
+        },
+        {
+          "name": "role",
+          "has_default": false,
+          "is_kw_only": false
+        }
+      ],
+      "lineno": 3153
+    },
+    "resolve_term_in_view": {
+      "params": [
+        {
+          "name": "domain_id",
+          "has_default": false,
+          "is_kw_only": false
+        },
+        {
+          "name": "role",
+          "has_default": false,
+          "is_kw_only": false
+        },
+        {
+          "name": "term",
+          "has_default": false,
+          "is_kw_only": false
+        }
+      ],
+      "lineno": 3166
+    },
+    "validate_views_for_domain": {
+      "params": [
+        {
+          "name": "domain_id",
+          "has_default": false,
+          "is_kw_only": false
+        }
+      ],
+      "lineno": 3176
+    },
+    "resolve_prompt": {
+      "params": [
+        {
+          "name": "prompt_id",
+          "has_default": false,
+          "is_kw_only": false
+        }
+      ],
+      "lineno": 3183
+    },
+    "get_process_status": {
+      "params": [
+        {
+          "name": "domain_id",
+          "has_default": false,
+          "is_kw_only": false
+        },
+        {
+          "name": "process_name",
+          "has_default": true,
+          "is_kw_only": false
+        }
+      ],
+      "lineno": 3192
+    },
+    "get_bottlenecks": {
+      "params": [
+        {
+          "name": "domain_id",
+          "has_default": false,
+          "is_kw_only": false
+        },
+        {
+          "name": "limit",
+          "has_default": true,
+          "is_kw_only": false
+        }
+      ],
+      "lineno": 3198
+    },
+    "get_state_distribution": {
+      "params": [
+        {
+          "name": "domain_id",
+          "has_default": false,
+          "is_kw_only": false
+        }
+      ],
+      "lineno": 3204
+    },
+    "get_bottleneck_analysis": {
+      "params": [
+        {
+          "name": "domain_id",
+          "has_default": false,
+          "is_kw_only": false
+        },
+        {
+          "name": "limit",
+          "has_default": true,
+          "is_kw_only": false
+        }
+      ],
+      "lineno": 3210
+    },
+    "get_sla_violations": {
+      "params": [
+        {
+          "name": "domain_id",
+          "has_default": false,
+          "is_kw_only": false
+        }
+      ],
+      "lineno": 3216
+    },
+    "get_trend_data": {
+      "params": [
+        {
+          "name": "domain_id",
+          "has_default": false,
+          "is_kw_only": false
+        },
+        {
+          "name": "days",
+          "has_default": true,
+          "is_kw_only": false
+        }
+      ],
+      "lineno": 3222
+    },
+    "cancel_pipeline": {
+      "params": [
+        {
+          "name": "run_id",
+          "has_default": false,
+          "is_kw_only": false
+        }
+      ],
+      "lineno": 3335
+    },
+    "get_document_categories": {
+      "params": [],
+      "lineno": 3391
+    },
+    "is_crypto_configured": {
+      "params": [],
+      "lineno": 3397
+    },
+    "llm_generate_stream": {
+      "params": [],
+      "lineno": 3403
+    },
+    "normalize_conversation_scope": {
+      "params": [
+        {
+          "name": "scope",
+          "has_default": false,
+          "is_kw_only": false
+        }
+      ],
+      "lineno": 3409
+    },
+    "secret_configured": {
+      "params": [
+        {
+          "name": "key_id",
+          "has_default": true,
+          "is_kw_only": false
+        }
+      ],
+      "lineno": 3418
+    },
+    "set_knowledge_providers": {
+      "params": [],
+      "lineno": 3423
+    },
+    "engine": {
+      "params": [],
+      "lineno": 814
+    },
+    "start": {
+      "params": [
+        {
+          "name": "project_id",
+          "has_default": false,
+          "is_kw_only": false
+        },
+        {
+          "name": "requirement",
+          "has_default": false,
+          "is_kw_only": false
+        },
+        {
+          "name": "prd_data",
+          "has_default": true,
+          "is_kw_only": false
+        }
+      ],
+      "lineno": 817
+    },
+    "approve": {
+      "params": [
+        {
+          "name": "state",
+          "has_default": false,
+          "is_kw_only": false
+        },
+        {
+          "name": "feedback",
+          "has_default": true,
+          "is_kw_only": false
+        }
+      ],
+      "lineno": 822
+    },
+    "reject": {
+      "params": [
+        {
+          "name": "state",
+          "has_default": false,
+          "is_kw_only": false
+        },
+        {
+          "name": "feedback",
+          "has_default": true,
+          "is_kw_only": false
+        }
+      ],
+      "lineno": 826
+    },
+    "rollback": {
+      "params": [
+        {
+          "name": "state",
+          "has_default": false,
+          "is_kw_only": false
+        },
+        {
+          "name": "stage_id",
+          "has_default": false,
+          "is_kw_only": false
+        }
+      ],
+      "lineno": 830
+    },
+    "resume_from": {
+      "params": [
+        {
+          "name": "stage_idx",
+          "has_default": false,
+          "is_kw_only": false
+        },
+        {
+          "name": "state",
+          "has_default": false,
+          "is_kw_only": false
+        }
+      ],
+      "lineno": 834
+    },
+    "get_graph": {
+      "params": [],
+      "lineno": 838
+    },
+    "snapshot": {
+      "params": [],
+      "lineno": 842
+    },
+    "get_stages": {
+      "params": [],
+      "lineno": 846
+    },
+    "assemble_deploy": {
+      "params": [
+        {
+          "name": "state",
+          "has_default": false,
+          "is_kw_only": false
+        }
+      ],
+      "lineno": 850
+    }
+  },
+  "created_at": "2026-08-11T00:27:40.745606",
+  "source": "aiPlat-core/core/api/core_facade.py"
+}

@@ -274,7 +274,7 @@ effects:
                     else:
                         score += 10
         except Exception:
-            pass  # Can't parse frontmatter — skip check
+            logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)  # Can't parse frontmatter — skip check
 
         # ③ 反模式覆盖
         anti_pattern_keywords = ["如果", "错误", "失败", "重试", "异常", "注意", "不要", "避免"]

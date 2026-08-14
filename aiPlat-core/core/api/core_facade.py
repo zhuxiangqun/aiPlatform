@@ -3300,7 +3300,7 @@ from core.harness.finance.value_calculator import get_value_calculator  # noqa: 
 from core.harness.kernel.profile import get_profile_manager  # noqa: boundary
 from core.harness.knowledge.ontology_loader import load_ontology_from_yaml  # noqa: boundary
 from core.harness.knowledge.domain_router import DomainRouter  # noqa: boundary
-from core.harness.knowledge.seci_engine import get_seci_engine  # noqa: boundary
+from core.harness.knowledge.seci_engine import get_seci_engine, hook_registered  # noqa: boundary
 from core.harness.security.emotion_tracker import get_emotion_tracker  # noqa: boundary
 from core.harness.smoke import enqueue_autosmoke  # noqa: boundary
 from core.harness.evaluation.rag_evaluator import _ensure_eval_schema  # noqa: boundary
@@ -3448,6 +3448,7 @@ from core.management.skill_manager import SkillManager  # v2.5  # noqa: boundary
 from core.services.execution_store import ExecutionStore, ExecutionStoreConfig  # v2.5  # noqa: boundary — CoreFacade canonical re-export
 
 from core.apps.fde.service.agent import run_fde_agent_one_shot  # v2.5  # noqa: boundary — CoreFacade canonical re-export
+from core.apps.fde.service.voice import run_voice_brainstorm  # noqa: boundary — CoreFacade canonical re-export
 
 from core.security.skill_signature_gate import is_approval_resolved_approved, get_trusted_skill_pubkeys_map  # v2.5
 from core.harness.ontology_engine.graph_index import GraphIndex  # v6.5 — canonical re-export for platform layer
@@ -3458,3 +3459,118 @@ from core.management.skill_manager import SkillManager  # noqa: boundary
 from core.management.skill_linter import lint_skill  # noqa: boundary
 from core.management.skill_installer import SkillInstaller  # noqa: boundary
 from core.management.agentskills_parser import convert_agentskills_to_aiplat, is_agentskills_format  # noqa: boundary
+
+# v2.6 — platform→CoreFacade canonical re-exports (eliminate direct core.harness imports)
+from core.harness.ontology_engine.action_registry import get_action_registry  # noqa: boundary
+from core.harness.ontology_engine.ontology_branch import OntologyBranchManager  # noqa: boundary
+from core.harness.infrastructure.lineage_store import LineageStore  # noqa: boundary
+from core.harness.learning.operation_recorder import OperationRecorder  # noqa: boundary
+from core.harness.knowledge.scoring_engine import load_models  # noqa: boundary
+from core.harness.knowledge.metric_engine import load_metrics  # noqa: boundary
+from core.harness.knowledge.versioned_ontology_store import VersionedOntologyStore  # noqa: boundary
+from core.harness.execution.team_planner import load_team_template  # noqa: boundary
+from core.harness.knowledge.knowledge_roi import KnowledgeROI  # noqa: boundary
+from core.harness.learning.kpi_tracker import get_kpi_tracker  # noqa: boundary
+from core.harness.training.full_training import get_full_training_engine  # noqa: boundary
+from core.harness.training.distillation import get_distillation_engine  # noqa: boundary
+from core.harness.knowledge_pipeline.resolver import CrossDomainResolver  # noqa: boundary
+from core.harness.knowledge.convergence_engine import ConvergenceEngine  # noqa: boundary
+from core.harness.execution.atomic_splitter import AtomicTaskSplitter  # noqa: boundary
+from core.harness.learning.agent_network import AgentNetwork  # noqa: boundary
+from core.harness.infrastructure.db_utils import get_db_connection  # noqa: boundary
+from core.harness.integration import KernelRuntime  # noqa: boundary
+
+# v2.7 — complete platform→CoreFacade canonical re-exports (all remaining harness symbols)
+from core.harness.infrastructure.action_contract import ActionContractModel  # noqa: boundary
+from core.harness.infrastructure.action_store import ActionStore  # noqa: boundary
+from core.harness.evaluation.adversarial_test_suite import AdversarialTestSuite  # noqa: boundary
+from core.harness.infrastructure.approval.types import ApprovalContext, RequestStatus, RuleType  # noqa: boundary
+from core.harness.infrastructure.approval.manager import ApprovalManager  # noqa: boundary
+from core.harness.infrastructure.gates.approval_gate import ApprovalRule  # noqa: boundary
+from core.harness.execution.atomic_splitter import AtomicTaskDefinition  # noqa: boundary
+from core.harness.knowledge.auto_garden import AutoGarden  # noqa: boundary
+from core.harness.knowledge.conversation_ingestor import ConversationIngestor  # noqa: boundary
+from core.harness.infrastructure.throttle import DecisionThrottle  # noqa: boundary
+from core.harness.execution.e2e_verifier import E2EVerifier  # noqa: boundary
+from core.harness.evaluation.ab_optimizer import EvalABOptimizer  # noqa: boundary
+from core.harness.evaluation.workbench import EvaluatorThresholds  # noqa: boundary
+from core.harness.execution.evox_executor import EvoXExecutor  # noqa: boundary
+from core.harness.learning.feedback_radar import FeedbackRadar  # noqa: boundary
+from core.harness.training.full_training import FullTrainingConfig  # noqa: boundary
+from core.harness.execution.dynamic_router import GoalAwareRouter  # noqa: boundary
+from core.harness.knowledge_pipeline.retriever import GraphRAGRetriever  # noqa: boundary
+from core.harness.security.immune_memory import ImmuneMemory  # noqa: boundary
+from core.harness.document.converters._mineru import MineruConverter  # noqa: boundary
+from core.harness.knowledge.okf_exporter import OKFExporter  # noqa: boundary
+from core.harness.ontology_engine.engine import OntologyEngine  # noqa: boundary
+from core.harness.learning.partner_selector import PartnerSelector  # noqa: boundary
+from core.harness.infrastructure.gates.policy_gate import PolicyGate  # noqa: boundary
+from core.harness.execution.programmatic_collector import ProgrammaticCollector  # noqa: boundary
+from core.harness.infrastructure.gates.purpose_registry import PurposeRegistry  # noqa: boundary
+from core.harness.execution.simulation import SimulationOrchestrator  # noqa: boundary
+from core.harness.learning.skill_generator import SkillGenerator  # noqa: boundary
+from core.harness.document.protocol import StreamInfo  # noqa: boundary
+from core.harness.knowledge.system_evolver import SystemEvolver  # noqa: boundary
+from core.harness.knowledge.system_diagnostician import SystemHealer  # noqa: boundary
+from core.harness.document.template_engine import TemplateRegistry, TemplateRenderer  # noqa: boundary
+from core.harness.utils.prompt_loader import _async_prompt_resolve, auto_classify, get_metadata, list_templates  # noqa: boundary
+from core.harness.execution.team_planner import _enrich_stage_from_agent  # noqa: boundary
+from core.harness.knowledge.governance_dashboard import aggregate_dashboard  # noqa: boundary
+from core.harness.evaluation.workbench import apply_threshold_gate, persist_evaluation, validate_report  # noqa: boundary
+from core.harness.learning.proposal_store import ProposalStore as _ProposalStore  # noqa: boundary
+
+def approve(request_id: str, approved_by: str = "admin", comment: str = "") -> bool:
+    """Approve a change request via ProposalStore."""
+    return _ProposalStore().approve(request_id, approved_by)
+from core.harness.knowledge.rule_auditor import audit_rules  # noqa: boundary
+from core.harness.knowledge.capability_graph import build_capability_graph  # noqa: boundary
+from core.harness.knowledge.code_graph import build_graph, clear_cache, default_roots, repo_root, PY_IMPORT_RE, JS_IMPORT_RE, strip_py_type_checking, is_code_file, should_skip, read_text, resolve_js_relative, resolve_py_module, detect_issues, convert_file_graph_to_symbols, count_cycles, health_score, blast, ScanResult  # noqa: boundary
+from core.harness.knowledge.capability_health import capability_health_report  # noqa: boundary
+from core.harness.knowledge.consistency_gate import check_cross_stage_consistency  # noqa: boundary
+from core.harness.knowledge.domain_maturity import compare_domains, compute_domain_maturity, export_comparison_report  # noqa: boundary
+from core.harness.evaluation.evidence_diff import compute_evidence_diff  # noqa: boundary
+from core.harness.utils.model_injection import create_selected_adapter  # noqa: boundary
+from core.harness.restatement.run_state import default_run_state, merge_from_evaluation, normalize_run_state  # noqa: boundary
+from core.harness.knowledge.ontology_query_mapper import discover_cross_domain_analogs  # noqa: boundary
+from core.harness.knowledge.scoring_engine import evaluate_batch  # noqa: boundary
+from core.harness.document.parsers import extract_text_from_html  # noqa: boundary
+from core.harness.knowledge.mapping_validator import generate_mapping_report, validate_all_sources  # noqa: boundary
+from core.harness.optimization.abstract_goal_decomposer import get_abstract_goal_decomposer  # noqa: boundary
+from core.harness.routing.skill_routing import get_all_weights  # noqa: boundary
+from core.harness.learning import get_auto_learner  # noqa: boundary
+from core.harness.security.crisis_detector import get_crisis_detector  # noqa: boundary
+from core.harness.scheduler.cron import get_cron_scheduler  # noqa: boundary
+from core.harness.knowledge.governance_pipeline import get_cycle_history, run_all_domains, run_cycle  # noqa: boundary
+from core.harness.deployment.deploy_engine import get_deploy_engine  # noqa: boundary
+from core.harness.infrastructure.discovery_listener import get_discovery_listener  # noqa: boundary
+from core.harness.learning.tool_drift_detector import get_drift_detector  # noqa: boundary
+from core.harness.learning.feedback_radar import get_feedback_radar  # noqa: boundary
+from core.harness.training.auto_trigger import get_lora_auto_trigger  # noqa: boundary
+from core.harness.execution.pipeline_run_store import get_pipeline_run_store  # noqa: boundary
+from core.harness.training.rl_trainer import get_rl_trainer  # noqa: boundary
+from core.harness.knowledge.seci_engine import get_seci_engine, hook_registered  # noqa: boundary
+from core.harness.execution.trace_visualizer import get_trace_visualizer  # noqa: boundary
+from core.harness.execution.decision_trace import record_decision, locate_max_error_node, trace_root_cause_chain, get_trace, clear_trace  # noqa: boundary
+from core.harness.execution.cost_budget import CostBudgetController, get_pricing, cost_for  # noqa: boundary
+from core.harness.execution.hypothesis_generator import generate_hypotheses  # noqa: boundary
+from core.harness.execution.governance_report import build_run_report  # noqa: boundary
+from core.harness.knowledge.metric_engine import get_trend  # noqa: boundary
+from core.harness.knowledge.symbol_health import is_excluded_from_dead_code  # noqa: boundary
+from core.harness.execution.simulation import list_simulations, load_simulation_report  # noqa: boundary
+from core.harness.knowledge.ontology_loader import load_ontology_from_yaml  # noqa: boundary
+from core.harness.knowledge.ontology_bus import load_solution_archetypes, render_solution_table  # noqa: boundary
+from core.harness.knowledge.scenario_selector import recommend_order  # noqa: boundary
+from core.harness.evaluation.adversarial_test_suite import run_cognitive_robustness_check  # noqa: boundary
+from core.harness.knowledge.metric_engine import scorecard, get_trend as _get_trend_alias  # noqa: boundary
+from core.harness.infrastructure.crypto.signature import sign_skill  # noqa: boundary
+from core.harness.syscalls.retrieval import sys_knowledge_retrieve  # noqa: boundary
+
+# v2.7.1 — final multi-line import symbols
+from core.harness.learning.playbook import PlaybookManifest, pack_playbook, unpack_playbook  # noqa: boundary
+from core.harness.finance.value_calculator import BusinessGoal, get_value_calculator  # noqa: boundary
+from core.harness.execution.simulation import ScenarioDefinition, ScenarioType  # noqa: boundary
+from core.harness.knowledge_pipeline.extractor import ExtractionPipeline, ExtractionResult, PendingExtractionStore  # noqa: boundary
+from core.harness.infrastructure.gates.marking_propagation import get_entity_max_marking_level, MARKING_LABELS  # noqa: boundary
+
+# v2.7.2 — de-privatized internal symbols
+from core.harness.document.converters._mineru import table_text_to_cells, parse_markdown_table, cells_to_markdown, load_mineru_content_list  # noqa: boundary

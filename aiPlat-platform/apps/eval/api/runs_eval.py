@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 
 from core.api.deps import actor_from_http, rbac_guard
 from core.api.core_facade import get_kernel_runtime
-from core.harness.integration import KernelRuntime
+from core.api.core_facade import KernelRuntime
 from core.schemas_eval import EvidenceDiffRequest
 from apps.common_schemas import StatusResponse, ListResponse, ItemResponse
 
@@ -58,7 +58,7 @@ async def submit_run_evaluation(run_id: str, request: dict, http_request: Reques
     if not isinstance(report, dict):
         raise HTTPException(status_code=400, detail="missing_report")
 
-    from core.harness.evaluation.workbench import EvaluatorThresholds, apply_threshold_gate, persist_evaluation, validate_report
+    from core.api.core_facade import EvaluatorThresholds, apply_threshold_gate, persist_evaluation, validate_report
 
     ok, reason = validate_report(report)
     if not ok:
@@ -86,7 +86,7 @@ async def submit_run_evaluation(run_id: str, request: dict, http_request: Reques
         metadata_extra={"project_id": project_id, "url": url, "tag_template": tag_template},
     )
     try:
-        from core.harness.restatement.run_state import merge_from_evaluation, normalize_run_state
+        from core.api.core_facade import merge_from_evaluation, normalize_run_state
         from core.learning.manager import LearningManager
         from core.learning.types import LearningArtifactKind
 
@@ -307,7 +307,7 @@ async def get_latest_run_state(run_id: str, rt: RuntimeDep = None):
     res = await store.list_learning_artifacts(target_type="run", target_id=rid, kind="run_state", limit=20, offset=0)
     items = (res or {}).get("items") if isinstance(res, dict) else None
     if not isinstance(items, list) or not items:
-        from core.harness.restatement.run_state import default_run_state
+        from core.api.core_facade import default_run_state
         return {"status": "ok", "item": {"payload": default_run_state(run_id=rid, task=str(run.get("task") or "")), "artifact_id": None}}
     items2 = sorted(items, key=lambda x: float((x or {}).get("created_at") or 0), reverse=True)
     return {"status": "ok", "item": items2[0]}
@@ -357,7 +357,7 @@ async def compute_run_evidence_diff(run_id: str, request: EvidenceDiffRequest, h
         raise HTTPException(status_code=400, detail="invalid_evidence_pack_payload")
     base_payload = dict(base_payload); new_payload = dict(new_payload)
     base_payload["evidence_pack_id"] = base_id; new_payload["evidence_pack_id"] = new_id
-    from core.harness.evaluation.evidence_diff import compute_evidence_diff
+    from core.api.core_facade import compute_evidence_diff
     from core.learning.manager import LearningManager
     from core.learning.types import LearningArtifactKind
     diff = compute_evidence_diff(base_payload, new_payload)
@@ -386,7 +386,7 @@ async def upsert_run_state(run_id: str, request: dict, http_request: Request, rt
     if not isinstance(st, dict):
         raise HTTPException(status_code=400, detail="missing_state")
     lock_flag = (request or {}).get("lock")
-    from core.harness.restatement.run_state import normalize_run_state
+    from core.api.core_facade import normalize_run_state
     from core.learning.manager import LearningManager
     from core.learning.types import LearningArtifactKind
     actor = actor_from_http(http_request, request or {})

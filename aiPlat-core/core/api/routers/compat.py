@@ -117,24 +117,63 @@ async def compat_scoped_evaluation_policy_latest(scope_id: str):
 # ════════════════════════════════════════════════════════════
 
 def _list_models() -> list[dict]:
-    """List available models from infra ModelManager."""
+    """List installed models + market catalog for playground comparison."""
+    result = []
+    installed_names = set()
+
+    # 1. Installed models (local Ollama + configured API)
     try:
-        from core.harness.utils.model_injection import best_model_for_purpose
-        purposes = ["chat", "code_gen", "reasoning", "skill_execution", "clarify", "doc_llm"]
-        models = {}
-        for p in purposes:
-            try:
-                model = best_model_for_purpose(p)
-                if model:
-                    models[model] = {"name": model, "purposes": models.get(model, {}).get("purposes", []) + [p]}
-            except Exception:
-                pass  # noqa: cleanup-best-effort — model unavailable, skip
-        return [
-            {"name": name, "purposes": info["purposes"], "available": True}
-            for name, info in models.items()
-        ]
+        from infra.management.model.manager import ModelManager as InfraModelManager
+        mgr = InfraModelManager()
+        models = mgr.select_by_purpose_list("chat")
+        for m in models:
+            name = m if isinstance(m, str) else getattr(m, "name", str(m))
+            installed_names.add(name)
+            result.append({
+                "name": name, "available": True,
+                "category": "installed",
+            })
     except Exception:
-        return []
+        logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
+
+    # 2. Market catalog — popular models user can add
+    _CATALOG = [
+        {"name": "claude-sonnet-4-20250514", "provider": "Anthropic", "context": "200K", "strength": "复杂推理、代码生成、长上下文"},
+        {"name": "claude-3.5-haiku", "provider": "Anthropic", "context": "200K", "strength": "快速轻量、成本低"},
+        {"name": "gpt-4o", "provider": "OpenAI", "context": "128K", "strength": "多模态、通用能力强"},
+        {"name": "gpt-4o-mini", "provider": "OpenAI", "context": "128K", "strength": "高性价比、快速响应"},
+        {"name": "gemini-2.5-flash", "provider": "Google", "context": "1M", "strength": "超长上下文、多模态"},
+        {"name": "gemini-2.5-pro", "provider": "Google", "context": "1M", "strength": "最强推理、超长上下文"},
+        {"name": "llama-4-maverick", "provider": "Meta", "context": "128K", "strength": "开源旗舰、多语言"},
+        {"name": "llama-4-scout", "provider": "Meta", "context": "10M", "strength": "开源超长上下文"},
+        {"name": "mixtral-8x22b", "provider": "Mistral", "context": "64K", "strength": "开源MoE、函数调用"},
+        {"name": "mistral-large", "provider": "Mistral", "context": "128K", "strength": "多语言、代码能力"},
+        {"name": "qwen-max", "provider": "Alibaba", "context": "128K", "strength": "中文能力强、性价比"},
+        {"name": "glm-4-plus", "provider": "Zhipu", "context": "128K", "strength": "中文理解、长文本"},
+    ]
+    for cat in _CATALOG:
+        if cat["name"] not in installed_names:
+            result.append({**cat, "available": False, "category": "catalog"})
+
+    # Also add installed models as reference
+    for r in result:
+        if r.get("available") and not r.get("provider"):
+            # Local model — guess provider from name
+            name = r["name"]
+            if "qwen" in name.lower():
+                r["provider"] = "Alibaba (Ollama)"
+                r["strength"] = "本地运行、数据安全"
+            elif "gemma" in name.lower():
+                r["provider"] = "Google (Ollama)"
+                r["strength"] = "本地运行、轻量高效"
+            elif "minicpm" in name.lower():
+                r["provider"] = "OpenBMB (Ollama)"
+                r["strength"] = "本地运行、多模态"
+            elif "deepseek" in name.lower():
+                r["provider"] = "DeepSeek"
+                r["strength"] = "高性价比、推理能力强"
+
+    return result
 
 
 @router.get("/diagnostics/playground/models")
@@ -172,33 +211,114 @@ async def compat_playground_chat(body: Dict[str, Any]):
 
 @router.post("/diagnostics/playground/compare")
 async def compat_playground_compare(body: Dict[str, Any]):
-    """Compare outputs from multiple models."""
+    """Compare outputs from multiple models (installed + market with api_key).
+    
+    Body: {
+        prompt: str,
+        models: [{name: str, api_key?: str, api_base?: str}]
+    }
+    """
     prompt = body.get("prompt", "")
-    model_a = body.get("model_a", "")
-    model_b = body.get("model_b", "")
+    model_list = body.get("models") or []
+    # Backward compat: model_a/model_b
+    if not model_list:
+        ma = body.get("model_a", "")
+        mb = body.get("model_b", "")
+        model_list = [{"name": m} for m in (ma, mb) if m]
 
     if not prompt:
         return {"results": [], "error": "No prompt provided"}
 
-    results = []
-    for label, model_id in [("A", model_a), ("B", model_b)]:
-        if not model_id:
-            continue
-        try:
-            from core.harness.utils.model_injection import create_selected_adapter
-            adapter = create_selected_adapter("chat", model_id=model_id)
-            messages = [{"role": "user", "content": prompt}]
-            reply = adapter.generate(messages)
-            results.append({"label": label, "model": model_id, "reply": reply, "status": "ok"})
-        except Exception as e:
-            results.append({"label": label, "model": model_id, "reply": str(e)[:200], "status": "error"})
+    # Preload installed model names for routing
+    installed_names = set()
+    try:
+        from infra.management.model.manager import ModelManager as InfraModelManager
+        mgr = InfraModelManager()
+        for m in mgr.select_by_purpose_list("chat"):
+            installed_names.add(m if isinstance(m, str) else getattr(m, "name", str(m)))
+    except Exception:
+        logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
 
-    return {"results": results, "status": "ok" if results else "error"}
+    import time as _time, asyncio as _aio
+    messages = [{"role": "user", "content": prompt}]
+
+    async def _call_model(model_name: str, api_key: str = "", api_base: str = ""):
+        start = _time.time()
+        try:
+            if model_name in installed_names:
+                # Installed model — use system adapter
+                from core.harness.utils.model_injection import create_selected_adapter
+                adapter = create_selected_adapter("chat", model_name=model_name)
+                reply = adapter.generate(messages)
+            elif api_key:
+                # Market model — create temp adapter with provided config
+                from core.adapters.llm.base import create_adapter
+                provider_map = {
+                    "gpt": "openai", "claude": "anthropic", "gemini": "google",
+                    "llama": "openai_compatible", "mixtral": "openai_compatible",
+                    "mistral": "openai_compatible", "qwen": "openai_compatible",
+                    "glm": "openai_compatible",
+                }
+                provider = "openai_compatible"
+                for k, v in provider_map.items():
+                    if k in model_name.lower():
+                        provider = v
+                        break
+                # Determine base URL
+                if not api_base:
+                    _base_map = {
+                        "openai": "https://api.openai.com/v1",
+                        "openai_compatible": api_base,  # will be set below
+                    }
+                adapter = create_adapter(
+                    provider=provider,
+                    api_key=api_key,
+                    model=model_name,
+                    base_url=api_base or None,
+                )
+                reply = adapter.generate(messages)
+            else:
+                raise ValueError("未配置 API key — 请在模型名称旁输入密钥")
+
+            latency_ms = int((_time.time() - start) * 1000)
+            return {
+                "model": model_name, "content": reply, "status": "success",
+                "latency_ms": latency_ms,
+            }
+        except Exception as e:
+            latency_ms = int((_time.time() - start) * 1000)
+            return {
+                "model": model_name, "status": "error",
+                "error": str(e)[:300], "latency_ms": latency_ms,
+            }
+
+    # Run all models in parallel
+    tasks = [
+        _call_model(m.get("name", m) if isinstance(m, dict) else m,
+                     api_key=m.get("api_key", "") if isinstance(m, dict) else "",
+                     api_base=m.get("api_base", "") if isinstance(m, dict) else "")
+        for m in model_list
+    ]
+    results = await _aio.gather(*tasks, return_exceptions=True)
+    clean = []
+    for r in results:
+        if isinstance(r, Exception):
+            clean.append({"model": "?", "status": "error", "error": str(r)[:200]})
+        else:
+            clean.append(r)
+
+    return {"results": clean, "status": "ok"}
 
 
 # ════════════════════════════════════════════════════════════
 # Repairs stub — delegates to GET handler
 # ════════════════════════════════════════════════════════════
+
+@router.get("/diagnostics/repairs-latest")
+async def compat_repairs_get(request: Request):
+    """GET repairs-latest — returns cached/empty result (repairs module migrated out)."""
+    return {"needs_diagnostics": False, "repairs": [], "status": "delegated"}
+
 
 @router.post("/diagnostics/repairs-latest")
 async def compat_repairs_post(request: Request, body: Dict[str, Any] = None):

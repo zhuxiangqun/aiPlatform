@@ -4,6 +4,7 @@ display_name: 文本生成
 description: 根据提示生成各类文本内容（摘要、改写、邮件、说明文档等）。
 category: generation
 version: 1.0.0
+execution_type: prompt
 status: enabled
 execution_mode: inline
 executable: true

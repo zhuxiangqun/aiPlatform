@@ -4,6 +4,7 @@ display_name: 闲聊
 description: 处理日常闲聊与简单问答，保持友好、简洁、尊重。
 category: generation
 version: 1.0.0
+execution_type: prompt
 status: enabled
 execution_mode: inline
 executable: true

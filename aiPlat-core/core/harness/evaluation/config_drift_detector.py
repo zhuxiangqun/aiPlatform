@@ -130,12 +130,11 @@ class ConfigDriftDetector:
 
     def _check_agent_drift(self, agent_id: str, agent_file: Path) -> List[DriftEntry]:
 
-        """Check one agent for 4 drift dimensions."""
+        """Check one agent for 4 drift dimensions with real validation (not field-exists=flag)."""
 
         entries: List[DriftEntry] = []
 
         content = agent_file.read_text(encoding="utf-8")
-
 
 
         fm = self._parse_frontmatter(content)
@@ -143,6 +142,115 @@ class ConfigDriftDetector:
         if not fm:
 
             return entries
+
+        # Pre-load available skills: engine + workspace (cached across agents)
+        _available_skills = getattr(self, '_cached_skills', None)
+        if _available_skills is None:
+            _available_skills = set()
+            # Engine skills (core/engine/skills/)
+            _engine_skills_dir = Path(__file__).resolve().parent.parent.parent / "engine" / "skills"
+            if _engine_skills_dir.exists():
+                for sd in _engine_skills_dir.iterdir():
+                    if sd.is_dir() and (sd / "SKILL.md").exists():
+                        _available_skills.add(sd.name)
+            # Workspace skills (~/.aiplat/skills/)
+            _skills_dir = self._home / "skills"
+            if _skills_dir.exists():
+                for sd in _skills_dir.iterdir():
+                    if sd.is_dir() and (sd / "SKILL.md").exists():
+                        _available_skills.add(sd.name)
+            self._cached_skills = _available_skills
+
+        # Recognized pipeline phases from all domains
+        _valid_phases = {
+            "agent_construction", "build_and_deploy", "business_cognition",
+            "creative", "design", "development", "deployed", "deployment",
+            "disabled", "editorial", "fix_orchestration", "frontend",
+            "handover_and_acceptance", "monitoring", "orchestration",
+            "plan", "problem_reconstruction", "production", "requirements",
+            "research", "review", "scaffold", "serving", "staging",
+            "test_execution", "testing", "build",
+        }
+
+
+        # 1. HITL bypass: declared auto_hitl but no HITL pause events recorded
+        if fm.get("auto_hitl"):
+            has_hitl_events = False
+            try:
+                import sqlite3
+                db_path = self._home / "aiplat_executions.sqlite3"
+                if db_path.exists():
+                    conn = sqlite3.connect(str(db_path), timeout=2.0)
+                    try:
+                        row = conn.execute(
+                            "SELECT COUNT(*) FROM pipeline_events WHERE kind=? AND agent_id=?",
+                            ("hitl", agent_id)
+                        ).fetchone()
+                        if row and row[0] > 0:
+                            has_hitl_events = True
+                    finally:
+                        conn.close()
+            except Exception:
+                logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
+
+            if not has_hitl_events:
+                entries.append(DriftEntry(
+                    agent_id=agent_id, drift_type="hitl_bypass",
+                    declared=f"auto_hitl: true (phase: {fm.get('hitl_phase', '?')})",
+                    actual="No HITL pause events recorded for this agent",
+                    severity="warning",
+                ))
+
+
+        # 2. Skill unused: declared skills that don't exist (no SKILL.md in workspace)
+        skills = fm.get("required_skills") or fm.get("skills") or []
+        if isinstance(skills, list) and len(skills) > 0:
+            missing = [s for s in skills if isinstance(s, str) and s not in _available_skills]
+            if missing:
+                entries.append(DriftEntry(
+                    agent_id=agent_id, drift_type="skill_unbind_check",
+                    declared=f"{len(skills)} skills declared",
+                    actual=f"{len(missing)} missing: {', '.join(missing[:5])}",
+                    severity="warning",
+                ))
+
+
+        # 3. Model mismatch: declared model not available in registry
+        model = fm.get("model", "")
+        if model and model not in ("auto", "best"):
+            model_available = False
+            try:
+                from infra.management.model.manager import ModelManager
+                mgr = ModelManager()
+                candidates = mgr.select_by_purpose_list("chat")
+                # Check if model exists in candidate list or matches any registered model
+                for c in candidates:
+                    if c == model or model in c:
+                        model_available = True
+                        break
+            except Exception:
+                model_available = True  # don't flag if we can't verify
+            if not model_available:
+                entries.append(DriftEntry(
+                    agent_id=agent_id, drift_type="model_config_check",
+                    declared=f"model: {model}",
+                    actual="Model not available in registry - consider 'auto' or 'best'",
+                    severity="warning",
+                ))
+
+
+        # 4. Phase violation: phase value not in recognized pipeline phases
+        phase = fm.get("phase", "")
+        if phase and phase.lower() not in _valid_phases:
+            entries.append(DriftEntry(
+                agent_id=agent_id, drift_type="phase_alignment_check",
+                declared=f"phase: {phase}",
+                actual=f"Not in recognized phases",
+                severity="warning",
+            ))
+
+
+        return entries
 
 
 

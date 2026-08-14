@@ -114,3 +114,32 @@ class PipelineOrchestratorClient:
         except Exception as e:
             _log.warning("resolve_hitl failed for %s: %s", project_id, str(e)[:200])
             return {"status": "error", "detail": str(e)[:200]}
+
+    async def stage_operation(
+        self,
+        project_id: str,
+        op: str,
+        stage_id: str = "",
+        feedback: str = "",
+        config: Optional[Dict[str, Any]] = None,
+        *,
+        timeout: float = _REQUEST_TIMEOUT,
+    ) -> Dict[str, Any]:
+        """Non-blocking stage-level restart on Core (regenerate/rollback/resume)."""
+        try:
+            async with httpx.AsyncClient(timeout=timeout) as client:
+                resp = await client.post(
+                    f"{self._api_prefix}/{project_id}/stage-operation",
+                    json={"op": op, "stage_id": stage_id, "feedback": feedback, "config": config or {}},
+                )
+                resp.raise_for_status()
+                return resp.json()
+        except httpx.TimeoutException:
+            _log.warning("stage_operation timeout for %s", project_id)
+            return {"status": "timeout", "detail": "Core unavailable"}
+        except httpx.HTTPStatusError as e:
+            _log.warning("stage_operation HTTP %d for %s", e.response.status_code, project_id)
+            return {"status": "error", "detail": f"HTTP {e.response.status_code}"}
+        except Exception as e:
+            _log.warning("stage_operation failed for %s: %s", project_id, str(e)[:200])
+            return {"status": "error", "detail": str(e)[:200]}

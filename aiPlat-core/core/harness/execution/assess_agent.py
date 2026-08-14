@@ -1,7 +1,7 @@
 """
 AssessAgent — independent evaluation agent that scores, never modifies.
 
-Design principle (from Ben Yoskovitz): "不能让写代码的 agent 自己给自己判卷"
+Design principle (from Ben Yoskovitz): "Never let the agent that writes the code grade its own work"
 
 Key constraints (enforced, not advisory):
   1. NO write — cannot modify files, state, or trigger downstream stages

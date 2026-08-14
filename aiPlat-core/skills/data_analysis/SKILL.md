@@ -4,6 +4,7 @@ display_name: 数据分析
 description: 分析结构化/半结构化数据并给出洞察、结论与可视化建议。
 category: analysis
 version: 1.0.0
+execution_type: prompt
 status: enabled
 execution_mode: inline
 executable: true

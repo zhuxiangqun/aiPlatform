@@ -31,3 +31,11 @@ consumer_patterns:
   - "harness/multimodal/"
   - "harness/infrastructure/"
   - "harness/document/transcriber"
+  - "harness/syscalls/"
+  - "harness/digital_human/"
+  - "apps/tools/"
+
+# ── 已知例外 ──
+known_exceptions:
+  - path: aiPlat-core/core/api/routers/entropy.py
+    reason: "诊断工具 — subprocess.run([grep]) 中的字符串匹配，非真实 import"

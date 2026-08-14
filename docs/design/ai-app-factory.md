@@ -216,7 +216,7 @@ feedback 注入到 prompt 顶部（不是末尾）：
 ```
 You are architect_agent.
 
-## 🛑 REGENERATE WITH FEEDBACK — YOU MUST FIX THESE ISSUES
+### 5.5 Reject Feedback 修复记录
 You were rejected and must regenerate. Address EVERY issue below.
 
 测试发现Bug: ...

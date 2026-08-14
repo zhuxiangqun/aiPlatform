@@ -29,6 +29,7 @@ class HookPhase(Enum):
     SESSION_END = "session_end"
     
     # Tool hooks
+    PRE_TOOL_RATIONALE = "pre_tool_rationale"  # v3.0: require rationale before tool call
     PRE_TOOL_USE = "pre_tool_use"
     POST_TOOL_USE = "post_tool_use"
     
@@ -685,7 +686,7 @@ def get_default_hooks() -> Dict[str, Hook]:
             if result.warnings:
                 ctx["_onto_warnings"] = result.warnings
         except Exception:
-            pass
+            logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
         return {"continue": True}
 
     hooks["ontology_pre_tool_use"] = create_hook(
@@ -712,7 +713,7 @@ def get_default_hooks() -> Dict[str, Hook]:
                 ctx["_onto_closure_failed"] = result.reason
                 return {"continue": False, "reason": result.reason}
         except Exception:
-            pass
+            logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
         return {"continue": True}
 
     hooks["ontology_stop_hook"] = create_hook(

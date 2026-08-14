@@ -1,7 +1,7 @@
 u"""
-Command Parser — FDE 斜杠命令系统 (v2.8).
+Command Parser — FDE slash-command system (v2.8).
 
-Parses "/assess 金融 信贷风险" style commands from AGENT.md frontmatter
+Parses "/assess finance credit-risk" style commands from AGENT.md frontmatter
 and routes them to the corresponding skill invocation.
 """
 from __future__ import annotations
@@ -26,8 +26,8 @@ class Command:
 def parse(text: str) -> Optional[Command]:
     u"""Parse a slash command from user text.
 
-    "/assess 制造 质量追溯" → Command(name="assess", args=["制造","质量追溯"])
-    "/moa --preset security 分析这段代码" → Command(name="moa", args=["分析这段代码"], kwargs={"preset":"security"})
+    "/assess manufacturing quality-traceability" → Command(name="assess", args=["manufacturing","quality-traceability"])
+    "/moa --preset security analyze-this-code" → Command(name="moa", args=["analyze-this-code"], kwargs={"preset":"security"})
     """
     if not text or not text.startswith("/"):
         return None

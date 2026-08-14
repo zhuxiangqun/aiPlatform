@@ -31,13 +31,20 @@ class TestCostTracker:
     """成本追踪测试"""
 
     def test_cost_calculation(self):
-        """测试成本计算"""
+        """测试成本计算（pricing 由配置注入，未注入时默认免费）"""
         from infra.llm.cost_tracker import CostTracker
 
-        tracker = CostTracker()
+        tracker = CostTracker(pricing={"gpt-4": {"prompt": 30.0, "completion": 60.0}})
         cost = tracker.calculate(
             model="gpt-4",
             input_tokens=100,
             output_tokens=50,
         )
         assert cost > 0
+
+    def test_cost_zero_without_pricing(self):
+        """无 pricing 注入时默认免费（本地模型安全默认）"""
+        from infra.llm.cost_tracker import CostTracker
+
+        tracker = CostTracker()
+        assert tracker.calculate("gpt-4", 100, 50) == 0.0

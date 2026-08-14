@@ -4,6 +4,7 @@ display_name: 内容摘要
 description: 将长文本压缩为结构化摘要（要点、结论、行动项）。
 category: transformation
 version: 1.0.0
+execution_type: prompt
 status: enabled
 execution_mode: inline
 executable: true

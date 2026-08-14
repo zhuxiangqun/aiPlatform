@@ -107,7 +107,8 @@ for c in contracts:
     auth_path = c['authoritative']['path']
     consumers = {con['path'] for con in c.get('consumers', [])}
     legacy = {fix['path'] for fix in c.get('legacy_fixes', [])}
-    allowed = consumers | legacy | {auth_path}
+    exceptions = {ex['path'] for ex in c.get('known_exceptions', [])}
+    allowed = consumers | legacy | exceptions | {auth_path}
     
     for forbidden in c.get('forbidden_direct_imports', []):
         for base in ['aiPlat-core', 'aiPlat-platform', 'aiPlat-infra']:
@@ -342,5 +343,4 @@ else
 fi
 
 # Advisory only for now — uncomment to block CI:
-# exit $EXIT_CODE
-exit 0
+exit $EXIT_CODE

@@ -122,7 +122,8 @@ async def _load_stages_from_template(team_id: str) -> List:
      Used by pipeline rebuild to ensure latest config changes are picked up.
      """
     try:
-        from core.harness.execution.team_planner import load_team_template, _enrich_stage_from_agent
+        from core.api.core_facade import _enrich_stage_from_agent
+        from core.api.core_facade import load_team_template
         tmpl = load_team_template(team_id)
         if tmpl and tmpl.stages:
             stages = []
@@ -134,7 +135,7 @@ async def _load_stages_from_template(team_id: str) -> List:
                 stages.append(PipelineStageConfig(**stage))
             return stages
     except Exception:
-        pass  # Fall through to team service cache
+        logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)  # Fall through to team service cache
     return []
 
 
@@ -154,7 +155,7 @@ def _unwrap_json_reply(reply: str) -> str:
                     return str(d["answer"])
                 if d.get("answer"):
                     return str(d["answer"])
-        except (json.JSONDecodeError, ValueError):
+        except (json.JSONDecodeError, ValueError):  # noqa: best-effort-parse
             pass
     return reply
 
@@ -179,6 +180,64 @@ def resume_hitl(project_id: str) -> Optional[dict]:
     if ctx:
         logging.getLogger("aiplat.builder").warning("HITL resumed: project=%s step=%s", project_id, ctx.get("step"))
     return ctx
+
+
+def _derive_app_name(name: str, provided: str = "", project_id: str = "") -> str:
+    """Derive a canonical English slug for the project.
+
+    Priority:
+      1. User-provided app_name (normalized)
+      2. ASCII slug from the project name
+      3. Deterministic fallback: app_{project_id_suffix}
+    """
+    if provided and provided.strip():
+        slug = provided.strip()
+    else:
+        # Extract ASCII alphanumeric runs from name (e.g. "视频解析 Platform" → "platform")
+        ascii_parts = re.findall(r"[A-Za-z0-9]+", name or "")
+        slug = "_".join(ascii_parts) if ascii_parts else ""
+    if not slug:
+        suffix = (project_id or "").replace("prj_", "").replace("-", "_")
+        slug = f"app_{suffix}" if suffix else "app"
+    # Normalize: lowercase, non-alnum → underscore, collapse repeats, trim
+    slug = re.sub(r"[^a-z0-9]+", "_", slug.lower()).strip("_")
+    # Prefix must be a letter/underscore (safe filesystem + JSON key)
+    if slug and slug[0].isdigit():
+        slug = f"app_{slug}"
+    return slug or "app"
+
+
+async def _translate_app_name(name: str) -> str:
+    """Best-effort LLM translation of a non-ASCII project name to an English slug.
+
+    Returns "" on failure (caller falls back to `app_{project_id_suffix}`).
+    """
+    if not name or not name.strip():
+        return ""
+    try:
+        from core.api.core_facade import best_model_for_purpose
+        from core.api.facades.service_facade import llm_generate
+        _prompt = (
+            "把下面的中文项目名翻译成一个简洁的英文 slug（小写、下划线分隔、无空格、不要拼音）。"
+            "只输出 slug 本身，不要解释，不要加引号或标点。\n"
+            "示例：'视频解析平台' → video_parser\n"
+            f"项目名：{name.strip()}"
+        )
+        resp = await llm_generate(
+            None,
+            [{"role": "user", "content": _prompt}],
+            model_name=best_model_for_purpose("chat"),
+            temperature=0.2,
+            max_tokens=30,
+        )
+        slug = (getattr(resp, "content", "") or str(resp)).strip()
+        slug = re.sub(r"[^a-z0-9]+", "_", slug.lower()).strip("_")
+        if slug and not slug[0].isdigit():
+            return slug
+    except Exception as e:
+        logging.getLogger("aiplat.builder").warning(
+            "app_name translation failed for %r: %s", name, str(e)[:200])
+    return ""
 
 
 class BuilderProjectService:
@@ -318,6 +377,7 @@ class BuilderProjectService:
                     project_id=project_data.get("project_id", pid),
                     name=project_data.get("name", ""),
                     description=project_data.get("description", ""),
+                    app_name=project_data.get("app_name", ""),
                     team_id=project_data.get("team_id", ""),
                     team_name=team_name,
                     team_stages=_parse_team_stages(project_data.get("team_stages", [])),
@@ -344,6 +404,7 @@ class BuilderProjectService:
             "project_id": project_id,
             "name": req.name or f"Project {project_id}",
             "description": req.description,
+            "app_name": _derive_app_name(req.name, getattr(req, "app_name", ""), project_id),
             "team_id": req.team_id,
             "team_stages": [s.model_dump() if hasattr(s, 'model_dump') else s for s in stages],
             "runs": [],
@@ -351,17 +412,26 @@ class BuilderProjectService:
             "updated_at": now,
         }
 
+        # ── Improve auto-derived app_name for non-ASCII names (LLM translation) ──
+        _provided = (getattr(req, "app_name", "") or "").strip()
+        if (not _provided
+                and not re.search(r"[A-Za-z]", req.name or "")
+                and re.search(r"[\u4e00-\u9fff]", req.name or "")):
+            _translated = await _translate_app_name(req.name)
+            if _translated:
+                self._projects[project_id]["app_name"] = _translated
+
         # ── Auto-classify domain ──
         _domain_id = "default"
         try:
-            from core.harness.knowledge.domain_router import DomainRouter
+            from core.api.core_facade import DomainRouter
             _desc = req.description or req.name or ""
             if _desc.strip():
                 _router = DomainRouter()
                 _domain_id = _router.classify(_desc)
                 self._projects[project_id]["domain_id"] = _domain_id
         except Exception:
-            pass
+            logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
 
         self._save_projects()
 
@@ -381,6 +451,7 @@ class BuilderProjectService:
             project_id=project_data.get("project_id", project_id),
             name=project_data.get("name", ""),
             description=project_data.get("description", ""),
+            app_name=project_data.get("app_name", ""),
             team_id=project_data.get("team_id", ""),
             team_name=team_name,
             team_stages=_parse_team_stages(project_data.get("team_stages", [])),
@@ -428,6 +499,7 @@ class BuilderProjectService:
                 project_id=data.get("project_id", pid),
                 name=data.get("name", ""),
                 description=data.get("description", ""),
+                app_name=data.get("app_name", ""),
                 team_id=team_id,
                 team_name=team_name,
                 team_stages=_parse_team_stages(data.get("team_stages", [])),
@@ -587,13 +659,13 @@ class BuilderProjectService:
         # ── Inject knowledge retrieval context into PM dialogue ──
         _enriched_message = message
         try:
-            from core.harness.syscalls.retrieval import sys_knowledge_retrieve
-            from core.harness.knowledge.domain_router import DomainRouter
+            from core.api.core_facade import sys_knowledge_retrieve
+            from core.api.core_facade import DomainRouter
             _did = "default"
             try:
                 _did = DomainRouter().classify(message)
             except Exception:
-                pass
+                logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
             _kb_docs = sys_knowledge_retrieve(message, top_k=3, domain_id=_did)
             if _kb_docs:
                 _kb_lines = ["## 知识库中已有的相关内容"]
@@ -606,7 +678,7 @@ class BuilderProjectService:
                     _kb_context = "\n".join(_kb_lines)
                     _enriched_message = f"{_kb_context}\n\n---\n用户需求: {message}"
         except Exception:
-            pass  # best-effort
+            logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)  # best-effort
 
         try:
             # Check if this project has a generated Agent app → route chat to it
@@ -672,13 +744,15 @@ class BuilderProjectService:
         # Build conversation summary
         proj = self._projects.get(project_id, {})
         _name = proj.get("name", "") or "新项目"
-        lines = ["从以下产品需求对话中提取结构化PRD（JSON格式）：", ""]
+        lines = []
         for m in msgs[-10:]:
             role = "用户" if m.get("role") == "user" else "PM"
             content = str(m.get("content", ""))[:500]
             lines.append(f"{role}: {content}")
-        prompt = "\n".join(lines)
-        prompt += f'\n\n输出JSON：{{"title":"{_name}","description":"概述","functional_requirements":[{{"id":"FR-001","name":"功能名","description":"描述","priority":"high","acceptance_criteria":["验收标准"]}}],"user_stories":[{{"id":"US-001","story":"作为...我...以便...","priority":"high","related_fr":["FR-001"]}}],"constraints":{{"platform":"Web","languages":["Python"]}}}}\n只输出JSON。'
+        conversation_text = "\n".join(lines)
+
+        from core.api.core_facade import _sync_resolve
+        prompt = _sync_resolve("prd-extract-from-chat", conversation=conversation_text, name=_name)
 
         try:
             from core.api.intents import core_chat, ChatContext
@@ -799,7 +873,7 @@ class BuilderProjectService:
                             man_json = _re.sub(r'\n?```\s*$', '', man_json)
                             state["agent_manifest"] = json.loads(man_json)
                         except Exception:
-                            pass
+                            logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
                         break
             return
         try:
@@ -814,7 +888,7 @@ class BuilderProjectService:
                     # Pick the agent with the most skills
                     state["_generated_agent"] = agents_list[0].get("name", "")
         except Exception:
-            pass
+            logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
 
     async def execute_skill(self, project_id: str, skill_name: str, params: Dict[str, Any] = None) -> Dict[str, Any]:
         """Frontend page → Agent bridge: execute a skill through the generated Agent.
@@ -964,7 +1038,7 @@ class BuilderProjectService:
                     if team_stages:
                         # ── v3.1: HITL gates from team template YAML ──
                         try:
-                            from core.harness.execution.team_planner import load_team_template
+                            from core.api.core_facade import load_team_template
                             tmpl = load_team_template("default")
                             if tmpl and tmpl.stages:
                                 _hitl_map = {s.agent_id: s for s in tmpl.stages if s.hitl}
@@ -1169,21 +1243,13 @@ class BuilderProjectService:
             raise
 
     async def start_fix(self, project_id: str) -> Dict[str, Any]:
-        session = self._rebuild_session(project_id)
-        if not session:
-            raise ValueError("no session — rebuild project first")
-        state = self._runs.get(project_id)
-        if not state:
-            state = self._load_pipeline_state(project_id)
-        if not state:
-            state = await self._get_state_via_core(project_id)
-        if not state:
-            raise ValueError("no pipeline state")
-        state = dict(state)
-        state["phase"] = "executing"
-        state = await session.approve(state)
-        await self._save_state(project_id, state)
-        return {"project_id": project_id, "phase": state.get("phase", "executing")}
+        """Approve the current HITL pause on Core (non-blocking)."""
+        from builder.pipeline_orchestrator_client import PipelineOrchestratorClient
+        client = PipelineOrchestratorClient()
+        resp = await client.resolve_hitl(project_id, action="approve")
+        if resp.get("status") == "resolved":
+            return {"project_id": project_id, "phase": "executing", "status": "ok"}
+        return {"status": "error", "detail": resp.get("detail", "Core unavailable")}
 
     async def reject_stage(self, project_id: str, feedback: str) -> Dict[str, Any]:
         """v3.1: Forward HITL reject to Core — no local pipeline manipulation."""
@@ -1199,106 +1265,98 @@ class BuilderProjectService:
             raise
 
     async def regenerate_stage(self, project_id: str, stage_id: str, feedback: str) -> Dict[str, Any]:
-        """Rollback to stage with feedback, then restart in background.
+        """Delegate stage regeneration to Core (single authority, non-blocking).
 
-        Returns immediately (like rebuild) so the caller can poll GET /state.
-        Pipeline executes asynchronously in a background task.
+        Returns immediately — the pipeline re-runs from the target stage on Core.
         """
-        import asyncio
-        # Re-sync team config from YAML so new stages are picked up
         self._sync_team_stages(project_id)
-        
-        session = self._rebuild_session(project_id)
-        if not session:
-            raise ValueError("no session — rebuild project first")
-        state = self._runs.get(project_id)
-        if not state:
-            state = self._load_pipeline_state(project_id)
-        if not state:
-            state = await self._get_state_via_core(project_id)
-        if not state:
-            raise ValueError("no pipeline state")
+        proj = self._projects.get(project_id, {})
+        config = self._build_stage_config(project_id, proj)
+        from builder.pipeline_orchestrator_client import PipelineOrchestratorClient
+        client = PipelineOrchestratorClient()
+        result = await client.stage_operation(project_id, "regenerate", stage_id, feedback, config)
+        if result.get("status") in ("accepted", "conflict"):
+            return {"project_id": project_id, "phase": "executing", "status": "regenerating"}
+        return {"status": "error", "detail": result.get("detail", "Core unavailable")}
 
-        # 1. Inject feedback
-        state = await session.reject(dict(state), feedback)
+    async def locate_max_error_node(self, project_id: str, failed_stage_ids: List[str]) -> Dict[str, Any]:
+        """Locate the max error-contribution node from the decision trace graph.
 
-        # 2. Rollback to target stage (clears it and downstream)
-        target_id = stage_id
-        for s in session.get_stages():
-            if s.output_artifact == stage_id or s.agent_id == stage_id or s.id == stage_id:
-                target_id = s.id
-                break
-        state = await session.rollback(dict(state), target_id)
-
-        # 3. Find target index
-        target_idx = 0
-        for i, s in enumerate(session.get_stages()):
-            if s.id == target_id:
-                target_idx = i
-                break
-        state = dict(state)
-        state["phase"] = "executing"
-        state["tokens_used"] = 0
-        state.pop("error", None)
-
-        # 4. Launch pipeline in background — returns immediately
-        self._runs[project_id] = state  # seed for frontend polling
-        asyncio.create_task(self._run_regenerate_background(project_id, session, state, target_idx))
-        await asyncio.sleep(0)  # yield event loop so response can be sent
-        return {"project_id": project_id, "phase": "executing", "status": "regenerating"}
-
-    async def _run_regenerate_background(self, project_id: str, session, state: dict, target_idx: int) -> None:
-        """Execute the regeneration pipeline in background after the HTTP request returns."""
+        Delegates to Core's generic decision trace (single authority). Returns
+        {"stage_id", "decision_id", "error_contribution", "confidence", ...}.
+        """
+        from core.api.core_facade import locate_max_error_node as _locate
         try:
-            state = await session.resume_from(target_idx, state)
-            await self._save_state(project_id, state)
-        except Exception as e:
-            logging.warning("regenerate background failed for %s: %s", project_id, str(e)[:200])
-            state["phase"] = "failed"
-            state["error"] = str(e)[:500]
-            import traceback
-            traceback.print_exc()
+            result = _locate(project_id, list(failed_stage_ids or []))
+            result["status"] = "ok"
+            return result
+        except Exception as e:  # noqa: facade-unavailable
+            _log.warning("locate_max_error_node failed for %s: %s", project_id, str(e)[:200])
+            return {"status": "error", "stage_id": None,
+                    "error_contribution": 0.0, "detail": str(e)[:200]}
+
+    async def generate_fix_hypotheses(self, project_id: str, failed_stage_ids: List[str],
+                                      test_report: str = "") -> Dict[str, Any]:
+        """Generate root-cause hypotheses from the decision trace graph.
+
+        Delegates to Core's hypothesis generator (single authority). Returns
+        {"hypotheses": [...], "max_error_stage": str, "status": "ok"}.
+        """
+        from core.api.core_facade import generate_hypotheses as _gen
+        try:
+            hypotheses = _gen(project_id, list(failed_stage_ids or []), test_report)
+            max_error_stage = hypotheses[0]["stage_id"] if hypotheses else None
+            return {"status": "ok", "hypotheses": hypotheses,
+                    "max_error_stage": max_error_stage}
+        except Exception as e:  # noqa: facade-unavailable
+            _log.warning("generate_fix_hypotheses failed for %s: %s", project_id, str(e)[:200])
+            return {"status": "error", "hypotheses": [],
+                    "max_error_stage": None, "detail": str(e)[:200]}
+
+    async def build_run_report(self, project_id: str, failed_stage_ids: List[str],
+                               test_report: str = "", cost_used_usd: float = 0.0,
+                               cost_budget_usd: float = 0.0) -> Dict[str, Any]:
+        """Build a governance/explainability report for a pipeline run.
+
+        Delegates to Core's governance report (single authority). Returns the
+        full report dict with a "status" field.
+        """
+        from core.api.core_facade import build_run_report as _report
+        try:
+            report = _report(project_id, cost_used_usd, cost_budget_usd,
+                             list(failed_stage_ids or []), test_report)
+            report["status"] = "ok"
+            return report
+        except Exception as e:  # noqa: facade-unavailable
+            _log.warning("build_run_report failed for %s: %s", project_id, str(e)[:200])
+            return {"status": "error", "run_id": project_id, "detail": str(e)[:200]}
 
     async def rollback_stage(self, project_id: str, stage_id: str) -> Dict[str, Any]:
-        session = self._rebuild_session(project_id)
-        if not session:
-            raise ValueError("no session — rebuild project first")
-        state = self._runs.get(project_id)
-        if not state:
-            state = self._load_pipeline_state(project_id)
-            if not state:
-                raise ValueError("no pipeline state")
-        target_id = stage_id
-        for s in session.get_stages():
-            if s.output_artifact == stage_id or s.agent_id == stage_id:
-                target_id = s.id
-                break
-        state = await session.rollback(dict(state), target_id)
-        await self._save_state(project_id, state)
-        return {"project_id": project_id, "phase": state.get("phase", "executing")}
+        """Delegate stage rollback to Core (single authority, non-blocking)."""
+        self._sync_team_stages(project_id)
+        proj = self._projects.get(project_id, {})
+        config = self._build_stage_config(project_id, proj)
+        from builder.pipeline_orchestrator_client import PipelineOrchestratorClient
+        client = PipelineOrchestratorClient()
+        result = await client.stage_operation(project_id, "rollback", stage_id, "", config)
+        if result.get("status") in ("accepted", "conflict"):
+            return {"project_id": project_id, "phase": "executing"}
+        return {"status": "error", "detail": result.get("detail", "Core unavailable")}
 
     async def resume_from_stage(self, project_id: str, stage_id: str) -> Dict[str, Any]:
-        """Resume pipeline from a specific stage without clearing artifacts."""
-        session = self._rebuild_session(project_id)
-        if not session:
-            raise ValueError("no session — rebuild project first")
-        state = self._runs.get(project_id)
-        if not state:
-            state = self._load_pipeline_state(project_id)
-            if not state:
-                raise ValueError("no pipeline state")
-        target_idx = 0
-        for i, s in enumerate(session.get_stages()):
-            if s.id == stage_id or s.output_artifact == stage_id or s.agent_id == stage_id:
-                target_idx = i
-                break
-        state = dict(state)
-        state["phase"] = "executing"
-        state["tokens_used"] = 0
-        state.pop("error", None)
-        state = await session.resume_from(target_idx, state)
-        await self._save_state(project_id, state)
-        return {"project_id": project_id, "phase": state.get("phase", "executing")}
+        """Delegate stage resume to Core (single authority, non-blocking).
+
+        Resume from a specific stage WITHOUT clearing artifacts.
+        """
+        self._sync_team_stages(project_id)
+        proj = self._projects.get(project_id, {})
+        config = self._build_stage_config(project_id, proj)
+        from builder.pipeline_orchestrator_client import PipelineOrchestratorClient
+        client = PipelineOrchestratorClient()
+        result = await client.stage_operation(project_id, "resume", stage_id, "", config)
+        if result.get("status") in ("accepted", "conflict"):
+            return {"project_id": project_id, "phase": "executing"}
+        return {"status": "error", "detail": result.get("detail", "Core unavailable")}
 
     async def rollback_prd(self, project_id: str) -> Dict[str, Any]:
         """Roll back to PRD editing phase"""
@@ -1378,12 +1436,44 @@ class BuilderProjectService:
         client = PipelineOrchestratorClient()
         return await client.get_state(project_id)
 
+    def _build_stage_config(self, project_id: str, proj: dict) -> Dict[str, Any]:
+        """Build the pipeline config dict shared by rebuild + stage-level operations."""
+        stages = proj.get("team_stages", [])
+        prd_data = proj.get("confirmed_prd") or proj.get("description", "")
+        _app_name = proj.get("app_name", "") or _derive_app_name(proj.get("name", ""), "", project_id)
+        return {
+            "total_stages": len(stages),
+            "tokens_budget": int(os.getenv("AIPLAT_BUILDER_MAX_TOKENS", "100000")),
+            "output_dir": os.path.join(
+                os.getenv("AIPLAT_HOME", os.path.expanduser("~/.aiplat")),
+                "output", project_id),
+            "description": proj.get("description", ""),
+            "app_name": _app_name,
+            "prd_data": prd_data,
+            "stages": [
+                s if isinstance(s, dict) else s.model_dump() if hasattr(s, "model_dump") else dict(s)
+                for s in stages
+            ],
+        }
+
     async def _rebuild_via_core(self, project_id: str, proj: dict) -> Dict[str, Any]:
         """Trigger pipeline execution via Core server HTTP API."""
         from builder.pipeline_orchestrator_client import PipelineOrchestratorClient
 
         stages = proj.get("team_stages", [])
         prd_data = proj.get("confirmed_prd") or proj.get("description", "")
+        # Resolve canonical app_name: stored → ASCII derive → LLM translate → fallback
+        _app_name = proj.get("app_name", "")
+        if not _app_name:
+            _name = proj.get("name", "")
+            _app_name = _derive_app_name(_name, "", project_id)
+            if (not re.search(r"[A-Za-z]", _name)
+                    and re.search(r"[\u4e00-\u9fff]", _name)):
+                _translated = await _translate_app_name(_name)
+                if _translated:
+                    _app_name = _translated
+                    proj["app_name"] = _translated
+                    self._save_projects()
         config = {
             "total_stages": len(stages),
             "tokens_budget": int(os.getenv("AIPLAT_BUILDER_MAX_TOKENS", "100000")),
@@ -1391,6 +1481,7 @@ class BuilderProjectService:
                 os.getenv("AIPLAT_HOME", os.path.expanduser("~/.aiplat")),
                 "output", project_id),
             "description": proj.get("description", ""),
+            "app_name": _app_name,
             "prd_data": prd_data,
             "stages": [
                 s if isinstance(s, dict) else s.model_dump() if hasattr(s, "model_dump") else dict(s)
@@ -1454,7 +1545,7 @@ class BuilderProjectService:
         both safe and 100% available regardless of pipeline activity.
         """
         import asyncio
-        from core.harness.execution.pipeline_run_store import get_pipeline_run_store
+        from core.api.core_facade import get_pipeline_run_store
 
         def _read():
             store = get_pipeline_run_store()
@@ -1555,7 +1646,8 @@ class BuilderProjectService:
         if not proj:
             return False
         try:
-            from core.harness.execution.team_planner import load_team_template, _enrich_stage_from_agent
+            from core.api.core_facade import _enrich_stage_from_agent
+            from core.api.core_facade import load_team_template
             _tid = proj.get("team_id") or "default"
             tmpl = load_team_template(_tid)
             if tmpl and tmpl.stages:
@@ -1857,7 +1949,7 @@ def _deploy_to_app_for_project(project_id: str, deploy_dir: str, proj: dict) -> 
                                 _fw.write(fcontent)
                             _file_count += 1
     except Exception:
-        pass  # best-effort
+        logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)  # best-effort
     
     # Check if generated code includes a meaningful index.html
     _index_path = os.path.join(_app_home, "index.html")
@@ -1871,7 +1963,7 @@ def _deploy_to_app_for_project(project_id: str, deploy_dir: str, proj: dict) -> 
                 # Only trust index.html if it has actual HTML content, not empty/stale
                 _has_index_html = ("<html" in _preview.lower() or "<!doctype" in _preview.lower()) and _sz > 100
         except Exception:
-            pass
+            logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
         # Remove stale/empty file so it gets regenerated
         if not _has_index_html:
             try: os.remove(_index_path)
@@ -1900,12 +1992,12 @@ def _deploy_to_app_for_project(project_id: str, deploy_dir: str, proj: dict) -> 
                     _jend = fp_raw.rfind('}')
                     if _jstart >= 0 and _jend > _jstart:
                         try: fp_data = _j2.loads(fp_raw[:_jend+1][_jstart:]); _app_page_json = _j2.dumps(fp_data, ensure_ascii=False, indent=2)
-                        except Exception: pass
+                        except Exception: pass  # noqa: cleanup-best-effort — temp file cleanup
                 if _app_page_json:
                     with open(os.path.join(_app_home, "app_page.json"), "w", encoding="utf-8") as _apf:
                         _apf.write(_app_page_json)
     except Exception:
-        pass
+        logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
 
     # ── Register generated agents & skills to workspace ──
     _reg_count = 0
@@ -1934,7 +2026,7 @@ def _deploy_to_app_for_project(project_id: str, deploy_dir: str, proj: dict) -> 
             _log_dep.getLogger("aiplat.builder").info(
                 "Deploy: registered %d agents/skills from %s", _reg_count, _app_home)
     except Exception:
-        pass  # best-effort
+        logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)  # best-effort
 
     if not _has_index_html:
         # Generate app dashboard page only if no index.html was provided by generated code
@@ -2002,7 +2094,7 @@ body{{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgro
                         _html += f'<span class="file-tag" style="color:#64748b">... 共 {len(_fl)} 个文件</span>'
                     _html += '</div></div>'
             except Exception:
-                pass
+                logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
         
         _html += f"""<div class="footer">项目ID: {project_id}{ " · 生成文件: " + str(_file_count) + " 个" if _file_count else "" } · 由 aiPlat 应用工厂生成</div>
 </body></html>"""

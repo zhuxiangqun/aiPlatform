@@ -4,6 +4,7 @@ display_name: Hello Skill
 description: 当用户要求“测试 skill 系统”“hello skill”“演示技能目录结构”时，触发该技能。
 category: general
 version: 0.1.0
+execution_type: prompt
 trigger_conditions:
   - "hello skill"
   - "测试 skill"

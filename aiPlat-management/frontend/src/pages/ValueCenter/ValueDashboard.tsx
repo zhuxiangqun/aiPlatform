@@ -24,7 +24,8 @@ const ValueDashboard: React.FC = () => {
 
   useEffect(() => {
     setLoading(true);
-    fetch(`/api/core/value/all?month=${month}&audience=${audience}`)
+    const tenant = localStorage.getItem('active_tenant_id') || 'default';
+    fetch(`/api/platform/apps/value/${tenant}?month=${month}&audience=${audience}`)
       .then(r => r.json())
       .then(d => { setData(d); setLoading(false); })
       .catch(() => setLoading(false));

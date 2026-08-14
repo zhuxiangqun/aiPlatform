@@ -39,5 +39,5 @@ def get_llm_base_url(provider: str = "") -> Optional[str]:
             if info and info.get("base_url"):
                 return info["base_url"]
     except Exception:
-        pass
+        logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
     return None

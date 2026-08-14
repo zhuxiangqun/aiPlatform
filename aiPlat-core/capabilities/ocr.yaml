@@ -70,6 +70,11 @@ consumers:
     note: "从 InfraOCRAdapter 重导出 OCRToken / BBox"
 
 # ── 能力缺口（已知缺失，待补充） ──
+known_exceptions:
+  - path: aiPlat-core/core/api/routers/entropy.py
+    reason: "诊断工具 — subprocess.run([grep]) 中的字符串匹配，非真实 import"
+
+# ── 能力缺口（已知缺失，待补充） ──
 known_gaps: []
 
 # ── 历史违规（已修复） ──
@@ -86,3 +91,9 @@ legacy_fixes:
   - path: aiPlat-core/core/engine/skills/poc_data_inject/handler.py
     reason: "2026-07-13 从跨层 import platform 改为纯 core OCR 实现"
     fixed_at: "2026-07-13"
+
+consumer_patterns:
+  - "harness/document/"
+  - "harness/infrastructure/"
+  - "engine/skills/"
+  - "api/"

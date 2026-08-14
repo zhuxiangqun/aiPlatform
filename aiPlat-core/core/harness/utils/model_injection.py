@@ -263,7 +263,7 @@ def _do_inject_adapter_models(mgr: Any) -> int:
 
             rows = conn.execute(
 
-                "SELECT adapter_id, name, provider, api_base_url, models_json "
+                "SELECT adapter_id, name, provider, api_base_url, models_json, api_key "
 
                 "FROM adapters WHERE status='active' "
 
@@ -285,11 +285,20 @@ def _do_inject_adapter_models(mgr: Any) -> int:
 
                 models_json = d.get("models_json") or "[]"
 
-
-
                 if not provider or not adapter_id:
 
                     continue
+
+                # Skip placeholder/corrupted keys (e.g. sk-test-*, *validation*, non-sk blobs)
+                _raw_key = (d.get("api_key") or "").strip()
+                if _raw_key and not _raw_key.startswith("__local"):
+                    _lkey = _raw_key.lower()
+                    if (not _lkey.startswith("sk-")
+                            or "test" in _lkey or "validation" in _lkey):
+                        logging.info(
+                            "Adapter injection: skipping adapter %s (%s) with invalid key",
+                            adapter_id, provider)
+                        continue
 
 
 
@@ -319,7 +328,8 @@ def _do_inject_adapter_models(mgr: Any) -> int:
 
                 if not model_name:
 
-                    model_name = f"{provider}-chat"
+                    # Fallback: adapter `name` field (e.g. deepseek-v4-pro), else provider-chat
+                    model_name = (d.get("name") or "").strip() or f"{provider}-chat"
 
 
 
@@ -418,7 +428,7 @@ def _log_model_selection(purpose: str, selected: str, entry: str = "best_model_f
                 try:
                     samples = _log_json.loads(f.read())
                 except Exception:
-                    pass  # best-effort: corrupt log, restore from backup or start fresh
+                    logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)  # best-effort: corrupt log, restore from backup or start fresh
 
         record = {"ts": _log_time.time(), "purpose": purpose,
 
@@ -1044,26 +1054,26 @@ def _is_model_degraded(model_name: str) -> bool:
     return len(recent) >= _FAILURE_THRESHOLD
 
 
-def _record_failure(model_name: str) -> None:
+def _record_failure(model_name: str, error: str = "") -> None:
     import time as _t
     failures = _FAILURE_TRACKER.get(model_name, [])
     failures.append(_t.time())
     _FAILURE_TRACKER[model_name] = failures
     # Persist to SQLite for cross-restart learning
     try:
-        from core.harness.utils.model_health_store import get_model_health_store
-        get_model_health_store().record_failure(model_name, error="unknown")
+        from infra.management.model.model_health_store import get_model_health_store
+        get_model_health_store().record_failure(model_name, error=error or "unknown")
     except Exception:
-        pass
+        logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
 
 
 def _record_success(model_name: str, latency_ms: float = 0.0, purpose: str = "") -> None:
     """Record successful model call for adaptive selection learning."""
     try:
-        from core.harness.utils.model_health_store import get_model_health_store
+        from infra.management.model.model_health_store import get_model_health_store
         get_model_health_store().record_success(model_name, latency_ms=latency_ms, purpose=purpose)
     except Exception:
-        pass
+        logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
 
 
 async def generate_with_fallback(purpose: str,
@@ -1140,7 +1150,18 @@ async def generate_with_fallback(purpose: str,
 
 
 
-    per_model_timeout = min(timeout, 15)  # per-model cap
+    # per-model cap: local models need more time for cold starts (GGUF loading)
+    _local_candidate = False
+    try:
+        mgr = _get_cached_model_manager()
+        for c in candidates:
+            mi = mgr.select(model_name=c)
+            if mi and getattr(mi, 'source', None) and str(mi.source) == 'local':
+                _local_candidate = True
+                break
+    except Exception:
+        logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
+    per_model_timeout = min(timeout, 120 if _local_candidate else 60)
 
     # P2: global timeout aligned with caller budget, minimum guarantee
 
@@ -1232,7 +1253,7 @@ async def generate_with_fallback(purpose: str,
                     _fb_log.warning(f"'{model_name}' timed out ({i+1}/{len(candidates)}, {per_model_timeout}s)")
 
                     failed_models.add(model_name)
-                    _record_failure(model_name)
+                    _record_failure(model_name, error=msg)
 
                     errors.append({"model": model_name, "error": msg, "transient": True})
 
@@ -1251,12 +1272,12 @@ async def generate_with_fallback(purpose: str,
                     is_permanent = any(kw in err_str.lower() for kw in permanent_keywords)
 
                     _fb_log.warning(f"'{model_name}' failed ({i+1}/{len(candidates)}): {e}")
-                    _record_failure(model_name)
+                    _record_failure(model_name, error=err_str)
 
                     if is_permanent:
                         _fb_log.warning(f"Permanent error on '{model_name}': {err_str}. Skipping.")
                         failed_models.add(model_name)
-                        _record_failure(model_name)
+                        _record_failure(model_name, error=err_str)
                         errors.append({"model": model_name, "error": err_str, "transient": False})
                         last_error = err_str
                         continue  # skip this model, try the next one
@@ -1711,7 +1732,7 @@ def best_model_for_purpose_with_meta(purpose: str, messages: list = None) -> dic
         mgr = _get_cached_model_manager()
         tier = mgr.get_model_tier(model, profile)
     except Exception:
-        pass
+        logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
 
     # complexity_range from tier_ranges
     complexity_range = profile.get("tiers", {}).get(tier, {}).get("complexity_range", [])

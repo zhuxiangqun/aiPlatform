@@ -3,7 +3,7 @@ Pipeline Sandbox — deployment gate that synthesizes variant scenarios from
 past successful runs and validates the pipeline against them.
 
 Design principle (from Shanghai AI Lab / trading simulation paper):
-  "静态回测忽略市场影响 → 实盘崩溃"
+  "Static backtesting ignores market impact → live crash"
   → Sandbox generates interactive variant scenarios to surface hidden fragility.
 
 Core workflow:

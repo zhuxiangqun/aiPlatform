@@ -117,7 +117,7 @@ def _is_approval_resolved_approved(approval_request_id: str) -> bool:
     mgr = _approval_manager()
     if not approval_request_id or not mgr:
         return False
-    from core.harness.infrastructure.approval.types import RequestStatus
+    from core.api.core_facade import RequestStatus
 
     r = mgr.get_request(str(approval_request_id))
     if not r:
@@ -129,7 +129,7 @@ async def _require_onboarding_approval(*, operation: str, user_id: str, details:
     """
     Prompt templates release / write operations are global-impact changes, so by default they go through approvals.
     """
-    from core.harness.infrastructure.approval.types import ApprovalContext, ApprovalRule, RuleType
+    from core.api.core_facade import ApprovalContext, ApprovalRule, RuleType
 
     mgr = _approval_manager()
     if not mgr:
@@ -206,7 +206,7 @@ async def seed_prompt_templates():
     store = _store()
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
-    from core.harness.utils.prompt_loader import list_templates as _list, auto_classify
+    from core.api.core_facade import list_templates as _list, auto_classify
 
     templates = _list()
     seeded, skipped = [], []
@@ -232,7 +232,7 @@ async def seed_prompt_templates():
 @router.get("/prompts/{template_id}/variables", response_model=ListResponse)
 async def get_template_variables(template_id: str):
     """Return template metadata (variables, role, category)."""
-    from core.harness.utils.prompt_loader import get_metadata as _meta
+    from core.api.core_facade import get_metadata as _meta
     meta = _meta(str(template_id))
     if not meta:
         raise HTTPException(status_code=404, detail="Template not found in prompt_loader")
@@ -987,7 +987,7 @@ async def auto_optimize_prompt_rollout(template_id: str):
             "hint": "Configure rollout with multiple versions before auto-optimizing.",
         }
     try:
-        from core.harness.evaluation.ab_optimizer import EvalABOptimizer
+        from core.api.core_facade import EvalABOptimizer
         EvalABOptimizer.ensure_tables()
         new_rollout, report = EvalABOptimizer.compute_optimized_rollout(rollout, template_id)
     except HTTPException:

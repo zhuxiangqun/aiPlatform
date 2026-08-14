@@ -348,8 +348,48 @@ class _ExecutionStoreBase:
                 }
             finally:
                 conn.close()
+        return await anyio.to_thread.run_sync(_sync)
+
+
+    async def get_recent_syscall_events(
+        self, run_id: str = "", limit: int = 50
+    ) -> List[Dict[str, Any]]:
+        """返回指定 pipeline run 的最近 N 条 syscall 事件。
+
+        用于 v5.0 运行时剖面校准——对比 Agent 声明 vs 实际行为。
+        run_id 为空时返回全局最近事件。
+        """
+        await self.init()
+        db_path = self._config.db_path
+
+        def _sync() -> List[Dict[str, Any]]:
+            conn = sqlite3.connect(db_path, timeout=5.0)
+            try:
+                if run_id:
+                    rows = conn.execute(
+                        """SELECT kind, name, status, created_at
+                           FROM syscall_events WHERE run_id = ?
+                           ORDER BY created_at DESC LIMIT ?""",
+                        (run_id, limit),
+                    ).fetchall()
+                else:
+                    rows = conn.execute(
+                        """SELECT kind, name, status, created_at
+                           FROM syscall_events
+                           ORDER BY created_at DESC LIMIT ?""",
+                        (limit,),
+                    ).fetchall()
+                return [{
+                    "kind": r[0] or "",
+                    "name": r[1] or "",
+                    "status": r[2] or "",
+                    "created_at": r[3] or "",
+                } for r in rows]
+            finally:
+                conn.close()
 
         return await anyio.to_thread.run_sync(_sync)
+
 
     async def prune(self, now_ts: Optional[float] = None) -> Dict[str, int]:
         """

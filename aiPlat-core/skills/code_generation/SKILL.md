@@ -4,6 +4,7 @@ display_name: 代码生成
 description: 根据需求描述生成代码（支持指定语言/框架/目录结构），并给出可运行的最小实现。
 category: generation
 version: 1.0.0
+execution_type: prompt
 status: disabled
 execution_mode: inline
 executable: true

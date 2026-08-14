@@ -271,6 +271,10 @@ class PipelineStageConfig(BaseModel):
     test_execution_mode: str = ""        # "pytest" | "agent_conversation" | "" — which test runner
     # Phase 12 — execution backend selection (replaces SOP detection / agent_type switching)
     execution_backend: str = "llm"       # "llm"=sys_llm_generate | "agent"=StageRunner.run()→ReActLoop
+    # v3.0 — capability profile: replaces binary execution_backend switch with declarative capability tiers.
+    # "auto" = engine auto-infers from stage declarations (recommended)
+    # "minimal" | "standard" | "full" | "autonomous" = manual override
+    capability_profile: str = "auto"
     # Anthropic 5 patterns: chain | router | parallel | orchestrator | evaluator_optimizer
     pipeline_mode: str = "chain"          # "chain" | "router" | "parallel" | "orchestrator" | "evaluator_optimizer" | "agent"
     routing_mode: str = "static"           # "static" | "llm" | "debate" | "swarm" | "roundtable" | "moa" — routing strategy
@@ -302,6 +306,9 @@ class PipelineStageConfig(BaseModel):
     debate_participants: List[Dict[str, Any]] = Field(default_factory=list)
     debate_max_rounds: int = 3
     debate_manager_agent: str = ""
+    # ── Cost budget controller (per-stage) ──
+    cost_budget_usd: float = 0.0     # 0 = unlimited; else stop/downgrade when stage cost reaches this
+    cost_priority: str = "balanced"  # "balanced" | "minimize_cost" | "maximize_quality"
     # MoA (Mixture of Agents) routing: parallel reference engines + aggregator synthesis
     moa_preset: str = "general"
     moa_reference_count: int = 3
@@ -345,6 +352,7 @@ class PipelineConfig(BaseModel):
     stages: List[PipelineStageConfig] = Field(default_factory=list)
     max_iterations: int = 3
     max_tokens_per_run: int = 100000
+    max_cost_per_run_usd: float = 0.0  # 0 = unlimited; else pipeline stops when cost reaches this
     max_stagnation: int = 3
     max_retry_attempts: int = 3
     max_steps_per_stage: int = 10
@@ -414,6 +422,7 @@ class Project(BaseModel):
     project_id: str = ""
     name: str = ""
     description: str = ""
+    app_name: str = ""  # canonical English slug (e.g. "video_parser") — established at creation, reused by all stages
     team_id: str = ""
     team_name: str = ""
     team_stages: List[PipelineStageConfig] = Field(default_factory=list)
@@ -425,6 +434,7 @@ class Project(BaseModel):
 class ProjectCreateRequest(BaseModel):
     name: str = ""
     description: str = ""
+    app_name: str = ""  # optional: user-provided English slug; auto-derived if empty
     team_id: str = ""
     stages: List[Dict[str, Any]] = Field(default_factory=list)  # pre-built workflow stages
 

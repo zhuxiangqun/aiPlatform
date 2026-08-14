@@ -638,7 +638,7 @@ def _guard_messages(messages: List[Message], trace_context: Optional[Dict[str, A
                         session_id, result.get("risk_score", 0),
                     )
     except Exception:
-        pass
+        logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
 
 
     # Phase 60: Emotion-aware response — read emotion state, adjust system prompt
@@ -675,7 +675,7 @@ def _guard_messages(messages: List[Message], trace_context: Optional[Dict[str, A
                     stats["emotion_tone"] = tone
                     stats["emotion_complexity"] = complexity
     except Exception:
-        pass
+        logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
 
 
     # §5.24.3: Auto-inject layer boundary constraints (v2.5, Phase 4)
@@ -1433,7 +1433,7 @@ async def sys_llm_generate(
                 if isinstance(_mem_msgs, list) and _mem_msgs:
                     prompt = list(_mem_msgs) + prompt
         except Exception:
-            pass
+            logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
     elif session_id and isinstance(prompt, str):
         _mem_user_input = prompt
 
@@ -2469,6 +2469,8 @@ async def sys_llm_generate(
                         "end_time": end_ts,
 
                         "duration_ms": (end_ts - start_ts) * 1000.0,
+
+                        "model_name": model_name,
 
                         "input_tokens": input_tokens,
 

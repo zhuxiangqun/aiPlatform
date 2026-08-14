@@ -94,7 +94,7 @@ async def fde_bootstrap_test_data(
 
         # v2.7: Auto-compute domain maturity from real data
         try:
-            from core.harness.knowledge.domain_maturity import compute_domain_maturity
+            from core.api.core_facade import compute_domain_maturity
             from core.api.core_facade import DomainRouter
             router = DomainRouter()
             for domain_id in router.list_domains():
@@ -176,7 +176,7 @@ async def fde_bootstrap_all():
 
     # v2.7: Auto-compute domain maturity from real data
     try:
-        from core.harness.knowledge.domain_maturity import compute_domain_maturity
+        from core.api.core_facade import compute_domain_maturity
         from core.api.core_facade import DomainRouter
         router = DomainRouter()
         for domain_id in router.list_domains():

@@ -54,7 +54,7 @@ async def publish_release_candidate(candidate_id: str, request: dict, http_reque
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
     from core.learning.manager import LearningManager
     from core.learning.release import require_publish_approval, is_approved
-    from core.harness.infrastructure.approval.manager import ApprovalManager
+    from core.api.core_facade import ApprovalManager
 
     mgr = LearningManager(execution_store=store)
     approval_mgr = _approval_mgr() or ApprovalManager(execution_store=store)
@@ -447,7 +447,7 @@ async def rollback_release_candidate(candidate_id: str, request: dict, http_requ
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
     from core.learning.manager import LearningManager
     from core.learning.release import require_rollback_approval, is_approved
-    from core.harness.infrastructure.approval.manager import ApprovalManager
+    from core.api.core_facade import ApprovalManager
 
     mgr = LearningManager(execution_store=store)
     approval_mgr = _approval_mgr() or ApprovalManager(execution_store=store)

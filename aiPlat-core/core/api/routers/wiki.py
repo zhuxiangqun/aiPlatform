@@ -2708,6 +2708,15 @@ async def delete_ontology_domain(domain_id: str):
     file_path = d / "ontologies" / f"{domain_id}.yaml"
     if not file_path.exists():
         raise HTTPException(status_code=404, detail=f"Domain '{domain_id}' not found")
+
+    # Auto-snapshot before destructive delete (best-effort, non-blocking)
+    try:
+        from core.harness.ontology_engine.graph_index import GraphIndex
+        graph = GraphIndex.load(domain_id)
+        graph.snapshot(f"pre-delete-{domain_id}")
+    except Exception:
+        logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
+
     file_path.unlink()
 
     # Remove from registry.json

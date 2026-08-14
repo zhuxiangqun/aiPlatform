@@ -621,34 +621,64 @@ const ProjectPanel: React.FC<{
       });
       const output = (result as any)?.output;
       if (output) {
-        let raw = typeof output === 'string' ? output : JSON.stringify(output);
+        // ReAct agents wrap their trace in {text: "..."}. Extract the raw text first.
+        const text = typeof output === 'string' ? output : (output?.text || output?.content || '');
         let summary: any = null;
-        // ReAct agents output conversation logs, not clean JSON.
-        // Search for keywords to find the actual result JSON chunk.
-        const keywords = ['"total_bugs"', '"fixed_stages"', '"stages"'];
-        for (const kw of keywords) {
-          const idx = raw.lastIndexOf(kw);
-          if (idx < 0) continue;
-          // Find enclosing braces
-          const start = raw.lastIndexOf('{', idx);
-          if (start < 0) continue;
-          let depth = 0;
-          let end = start;
-          for (let j = start; j < raw.length; j++) {
-            if (raw[j] === '{') depth++;
-            if (raw[j] === '}') { depth--; if (depth === 0) { end = j + 1; break; } }
+
+        // 1. ReAct final answer: {"type":"done","answer":"{...json...}"} (line-separated)
+        if (text) {
+          const lines = text.split('\n');
+          for (const line of lines) {
+            const trimmed = line.trim();
+            if (!trimmed.startsWith('{')) continue;
+            try {
+              const obj = JSON.parse(trimmed);
+              if (obj && obj.type === 'done' && typeof obj.answer === 'string') {
+                try { summary = JSON.parse(obj.answer); } catch { summary = obj.answer; }
+                break;
+              }
+            } catch {}
           }
-          try { summary = JSON.parse(raw.slice(start, end)); break; } catch {}
         }
+
+        // 2. Fallback: search keywords in the raw text and extract enclosing JSON
         if (!summary) {
-          // Fallback: try direct parse (agent returned clean JSON)
-          try { summary = JSON.parse(raw); } catch {}
+          const raw = text || JSON.stringify(output);
+          for (const kw of ['"total_bugs"', '"fixed_stages"', '"status"']) {
+            const idx = raw.lastIndexOf(kw);
+            if (idx < 0) continue;
+            const start = raw.lastIndexOf('{', idx);
+            if (start < 0) continue;
+            let depth = 0;
+            let end = start;
+            for (let j = start; j < raw.length; j++) {
+              if (raw[j] === '{') depth++;
+              if (raw[j] === '}') { depth--; if (depth === 0) { end = j + 1; break; } }
+            }
+            try { summary = JSON.parse(raw.slice(start, end)); break; } catch {}
+          }
         }
-        const fixed = summary?.summary?.fixed_stages || summary?.fixed_stages || 0;
-        const total = summary?.summary?.total_bugs || summary?.total_bugs || 0;
-        toast.success(`修复编排完成: ${fixed} 个阶段已触发修复，覆盖 ${total} 个 Bug`);
+
+        const status = typeof summary === 'string' ? '' : (summary?.status || '');
+        if (status === 'no_bugs') {
+          toast.info('当前无 Bug 需要修复');
+        } else if (status === 'all_fixed') {
+          toast.success(`修复完成: ${summary.before ?? '?'} 个 Bug 已全部清零`);
+        } else if (status === 'regenerating') {
+          const fixed = summary?.fixed_stages ?? 0;
+          const total = summary?.total_bugs ?? 0;
+          toast.success(`修复已触发: ${fixed} 个阶段将重新生成，覆盖 ${total} 个 Bug`);
+        } else if (status === 'max_retries' || status === 'stuck' || status === 'timeout') {
+          toast.warning(`修复未完全成功 (${status})，可再次点击「一键修复」`);
+        } else if (summary && (summary?.fixed_stages != null || summary?.total_bugs != null || summary?.summary)) {
+          const fixed = summary?.summary?.fixed_stages ?? summary?.fixed_stages ?? 0;
+          const total = summary?.summary?.total_bugs ?? summary?.total_bugs ?? 0;
+          toast.success(`修复编排完成: ${fixed} 个阶段已触发修复，覆盖 ${total} 个 Bug`);
+        } else {
+          toast.error('修复编排未返回结果，请重试');
+        }
       } else {
-        toast.success('修复编排已触发');
+        toast.error('修复编排未返回结果');
       }
       setPhase('executing');
       onRefresh();
@@ -1466,6 +1496,7 @@ const FactoryPage: React.FC = () => {
 	const [projectStates, setProjectStates] = useState<Record<string, string>>({});
 	const [projectPassRates, setProjectPassRates] = useState<Record<string, number>>({});
 	const [desc, setDesc] = useState('');
+	const [appName, setAppName] = useState('');
   const [creating, setCreating] = useState(false);
   const [selectedProject, setSelectedProject] = useState<ProjectItem | null>(null);
   const [selectedApp, setSelectedApp] = useState<string>('');
@@ -1511,8 +1542,9 @@ const FactoryPage: React.FC = () => {
     if (!desc.trim()) { toast.warning('请输入应用描述'); return; }
     setCreating(true);
     try {
-      const project = await projectApi.create({ name: desc.trim().slice(0, 30) || '新项目', description: desc.trim() });
+      const project = await projectApi.create({ name: desc.trim().slice(0, 30) || '新项目', description: desc.trim(), app_name: appName.trim() || undefined });
       setDesc('');
+      setAppName('');
       toast.success('项目已创建');
       setSelectedProject(project);
       loadAll();
@@ -1559,6 +1591,12 @@ const FactoryPage: React.FC = () => {
           placeholder="例如：构建一个视频解析平台，支持上传、转码、AI 摘要生成..."
           rows={3}
           className="mb-3"
+        />
+        <input
+          value={appName}
+          onChange={e => setAppName(e.target.value)}
+          placeholder="应用英文名（可选，如 video_parser）"
+          className="mb-3 w-full bg-dark-bg border border-dark-border rounded-lg px-3 py-2 text-sm text-gray-200 outline-none focus:border-blue-500/50"
         />
         <Button variant="primary" onClick={create} loading={creating} icon={<Plus className="w-4 h-4" />}>
           开始构建

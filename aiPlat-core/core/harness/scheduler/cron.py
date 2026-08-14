@@ -180,7 +180,7 @@ async def _release_lock(job_name: str) -> None:
         finally:
             conn.close()
     except Exception:
-        pass
+        logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
 
 
 async def register_builtin_jobs() -> None:

@@ -20,7 +20,7 @@ async def fde_diagnose():
     systemic issues. Returns findings, correlations, and overall health.
     """
     try:
-        from core.harness.knowledge.system_diagnostician import SystemDiagnostician
+        from core.api.core_facade import SystemDiagnostician
         sd = SystemDiagnostician()
         return sd.diagnose()
     except HTTPException:
@@ -39,7 +39,8 @@ async def fde_heal():
     All actions are audited via SystemSnapshot entities.
     """
     try:
-        from core.harness.knowledge.system_diagnostician import SystemDiagnostician, SystemHealer
+        from core.api.core_facade import SystemHealer
+        from core.api.core_facade import SystemDiagnostician
         sd = SystemDiagnostician()
         diagnosis = sd.diagnose()
         healer = SystemHealer()
@@ -66,7 +67,7 @@ async def fde_evolve():
     Skills are not auto-registered.
     """
     try:
-        from core.harness.knowledge.system_evolver import SystemEvolver
+        from core.api.core_facade import SystemEvolver
         evolver = SystemEvolver()
         return evolver.evolve()
     except HTTPException:
@@ -89,7 +90,7 @@ async def fde_self_check():
 
     # Step 1: Diagnose
     try:
-        from core.harness.knowledge.system_diagnostician import SystemDiagnostician
+        from core.api.core_facade import SystemDiagnostician
         sd = SystemDiagnostician()
         results["diagnosis"] = sd.diagnose()
     except Exception as e:
@@ -97,7 +98,7 @@ async def fde_self_check():
 
     # Step 2: Heal (guarded by confidence)
     try:
-        from core.harness.knowledge.system_diagnostician import SystemHealer
+        from core.api.core_facade import SystemHealer
         healer = SystemHealer()
         results["heal"] = healer.auto_heal(results.get("diagnosis", {}))
     except Exception as e:
@@ -105,7 +106,7 @@ async def fde_self_check():
 
     # Step 3: Evolve
     try:
-        from core.harness.knowledge.system_evolver import SystemEvolver
+        from core.api.core_facade import SystemEvolver
         results["evolution"] = SystemEvolver().evolve()
     except Exception as e:
         results["evolution"] = {"error": str(e)[:100]}

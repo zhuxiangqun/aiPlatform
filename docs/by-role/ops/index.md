@@ -8,7 +8,7 @@
 |------|------|------|
 | 部署指南 | `docs/manuals/deployment.md` | 单机/集群/容器化 |
 | 管理画面 | `docs/manuals/management.md` | 管理员操作 |
-| 本体模型 | `docs/manuals/ontology.md` | 域/类/关系/状态机 |
+| 本体模型 | `docs/knowledge-system.md` | 域/类/关系/状态机 |
 | 测试指南 | `docs/manuals/testing.md` | 集成测试、E2E |
 
 ## FDE 手册

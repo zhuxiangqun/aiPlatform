@@ -54,9 +54,10 @@ async def run_roundtable(
 
         transcript.extend(round_speakers)
 
-        # Check for natural convergence (all agents start with "同意" / "Agreed" in last round)
+        # Check for natural convergence (all agents start with "Agree" / "Agreed" in last round)
         if round_num >= 2:
-            agreements = sum(1 for s in round_speakers if s["output"].strip()[:4] in ("同意", "赞同", "Agre", "I ag"))
+            from core.harness.utils.zh_language import ROUNDTABLE_AGREEMENT_PREFIXES
+            agreements = sum(1 for s in round_speakers if s["output"].strip()[:4] in ROUNDTABLE_AGREEMENT_PREFIXES)
             if agreements >= len(agent_names) * 0.6:
                 logger.info("Roundtable converged at round %d", round_num)
                 break
@@ -88,11 +89,11 @@ def _build_round_context(
     """Build the context prompt for the current round."""
     from core.harness.utils.prompt_loader import _sync_resolve
     return _sync_resolve("roundtable-context",
-        history=f"## 圆桌讨论 — 第 {round_num} 轮\n\n话题: {topic}\n参与者: {', '.join(agent_names)}")
+        history=f"## Roundtable discussion — round {round_num}\n\nTopic: {topic}\nParticipants: {', '.join(agent_names)}")
 
     if transcript:
-        parts.append("\n### 此前讨论记录")
+        parts.append("\n### Previous discussion records")
         for entry in transcript[-10:]:  # Last 10 utterances
-            parts.append(f"\n**{entry['agent']}** (第{entry['round']}轮):\n{entry['output'][:500]}")
+            parts.append(f"\n**{entry['agent']}** (round {entry['round']}):\n{entry['output'][:500]}")
 
     return "\n".join(parts)

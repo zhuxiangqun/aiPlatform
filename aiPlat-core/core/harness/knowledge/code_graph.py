@@ -15,8 +15,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Set, Tuple
 
-_PY_IMPORT_RE = re.compile(r"^\s*(from\s+([a-zA-Z0-9_\.]+)\s+import|import\s+([a-zA-Z0-9_\.]+))", re.M)
-_JS_IMPORT_RE = re.compile(
+PY_IMPORT_RE = re.compile(r"^\s*(from\s+([a-zA-Z0-9_\.]+)\s+import|import\s+([a-zA-Z0-9_\.]+))", re.M)
+JS_IMPORT_RE = re.compile(
     r"""(?:import\s+[^;]*?\s+from\s+['"]([^'"]+)['"]|import\s*\(\s*['"]([^'"]+)['"]\s*\)|require\s*\(\s*['"]([^'"]+)['"]\s*\))"""
 )
 
@@ -92,7 +92,7 @@ def default_roots() -> List[str]:
     ]
 
 
-def _strip_py_type_checking(text: str) -> str:
+def strip_py_type_checking(text: str) -> str:
     if "TYPE_CHECKING" not in text:
         return text
     lines = text.splitlines()
@@ -125,15 +125,15 @@ def _extract_py_imports_ast(filepath: Path) -> list:
     Returns list of (module_name, is_top_level) tuples.
     Fallback to regex on SyntaxError returns top-level-only list with str items."""
     try:
-        text = _read_text(filepath)
+        text = read_text(filepath)
         if not text:
             return []
-        text = _strip_py_type_checking(text)
+        text = strip_py_type_checking(text)
         tree = ast.parse(text, filename=str(filepath))
     except SyntaxError:
         # Fallback to regex for files with syntax issues — assume top-level
         mods = []
-        for m in _PY_IMPORT_RE.finditer(text):
+        for m in PY_IMPORT_RE.finditer(text):
             mod = m.group(2) or m.group(3)
             if mod and not mod.startswith("TYPE_CHECKING"):
                 mods.append((mod, True))  # assume top-level in regex fallback
@@ -162,10 +162,10 @@ def _extract_calls_ast(filepath: Path) -> list:
     """Extract function/method calls from a Python file using AST.
     Returns list of (function_name, line_number) tuples."""
     try:
-        text = _read_text(filepath)
+        text = read_text(filepath)
         if not text:
             return []
-        text = _strip_py_type_checking(text)
+        text = strip_py_type_checking(text)
         tree = ast.parse(text, filename=str(filepath))
     except SyntaxError:
         return []
@@ -197,10 +197,10 @@ def _extract_py_imported_names(filepath: Path) -> set:
     """Extract all names made available by import statements in a Python file.
     Returns set of local name strings (e.g. 'os', 'llm_generate', 'json')."""
     try:
-        text = _read_text(filepath)
+        text = read_text(filepath)
         if not text:
             return set()
-        text = _strip_py_type_checking(text)
+        text = strip_py_type_checking(text)
         tree = ast.parse(text, filename=str(filepath))
     except SyntaxError:
         return set()
@@ -251,10 +251,10 @@ def _detect_undefined_calls(filepath: Path) -> list:
     if filepath.suffix.lower() != ".py":
         return []
     try:
-        text = _read_text(filepath)
+        text = read_text(filepath)
         if not text:
             return []
-        text = _strip_py_type_checking(text)
+        text = strip_py_type_checking(text)
         tree = ast.parse(text, filename=str(filepath))
     except SyntaxError:
         return []
@@ -314,10 +314,10 @@ def _extract_symbols_ast(filepath: Path) -> list:
     Returns list of (name, kind, line_number, parent_base) tuples where
     parent_base is the base class name for ClassDef, or None."""
     try:
-        text = _read_text(filepath)
+        text = read_text(filepath)
         if not text:
             return []
-        text = _strip_py_type_checking(text)
+        text = strip_py_type_checking(text)
         tree = ast.parse(text, filename=str(filepath))
     except SyntaxError:
         return []
@@ -352,7 +352,7 @@ _JS_FUNC_RE = re.compile(
 def _extract_js_symbols(filepath: Path) -> list:
     """Extract functions/classes from .ts/.tsx/.js/.jsx files via regex."""
     try:
-        text = _read_text(filepath)
+        text = read_text(filepath)
         if not text:
             return []
     except Exception:
@@ -381,7 +381,7 @@ def _extract_js_routes(filepath: Path) -> list:
     """Extract React Router routes with component names from TSX/TS files.
     Returns list of [path, component_name, line_no, 'GET'] per route."""
     try:
-        text = _read_text(filepath)
+        text = read_text(filepath)
     except Exception:
         return []
     lines = text.split('\n')
@@ -415,7 +415,7 @@ def _extract_js_routes(filepath: Path) -> list:
 def _extract_api_calls(filepath: Path) -> List[str]:
     """Extract backend API endpoint strings from frontend files."""
     try:
-        text = _read_text(filepath)
+        text = read_text(filepath)
     except Exception:
         return []
     endpoints = []
@@ -439,13 +439,13 @@ def _extract_backend_routes(filepath: Path) -> list:
     if ext != ".py":
         # Fallback to regex for config files
         try:
-            text = _read_text(filepath)
+            text = read_text(filepath)
         except Exception:
             return []
         return [[m.group(1), "", 0, "GET"] for m in _BACKEND_ROUTE_RE.finditer(text) if m.group(1)]
 
     try:
-        text = _read_text(filepath)
+        text = read_text(filepath)
         if not text:
             return []
         tree = ast.parse(text, filename=str(filepath))
@@ -496,7 +496,7 @@ def _extract_router_prefix(filepath: Path) -> str:
     """Extract APIRouter prefix from a Python file. e.g. prefix='/core' → 'core'"""
     import re as _re
     try:
-        text = _read_text(filepath)
+        text = read_text(filepath)
         # Fast pattern: APIRouter(prefix='...') or APIRouter(prefix="/...")
         m = _re.search(r"APIRouter\s*\(\s*prefix\s*=\s*['\"]([^'\"]+)['\"]", text)
         if m:
@@ -566,14 +566,14 @@ def _route_matches(api_path: str, route_pattern: str) -> bool:
     return True
 
 
-def _is_code_file(p: Path) -> bool:
+def is_code_file(p: Path) -> bool:
     if not p.is_file() or p.name.startswith("."):
         return False
     ext = p.suffix.lower()
     return ext in {".py", ".ts", ".tsx", ".js", ".jsx", ".vue", ".svelte", ".java", ".go", ".rs", ".rb", ".php"}
 
 
-def _should_skip(p: Path) -> bool:
+def should_skip(p: Path) -> bool:
     parts = set(p.parts)
     if any(x in parts for x in {".git", ".venv", "venv", "__pycache__", ".pytest_cache", ".mypy_cache",
                                   ".ruff_cache", "node_modules", "dist", "build", "tests", "__tests__"}):
@@ -583,7 +583,7 @@ def _should_skip(p: Path) -> bool:
     return False
 
 
-def _read_text(p: Path, max_bytes: int = 800_000) -> str:
+def read_text(p: Path, max_bytes: int = 800_000) -> str:
     try:
         if p.stat().st_size > max_bytes:
             return ""
@@ -592,7 +592,7 @@ def _read_text(p: Path, max_bytes: int = 800_000) -> str:
         return ""
 
 
-def _resolve_js_relative(from_file: Path, spec: str) -> Optional[Path]:
+def resolve_js_relative(from_file: Path, spec: str) -> Optional[Path]:
     base = (from_file.parent / spec).resolve()
     candidates = [base] if base.suffix else []
     if not base.suffix:
@@ -605,7 +605,7 @@ def _resolve_js_relative(from_file: Path, spec: str) -> Optional[Path]:
     return None
 
 
-def _resolve_py_module(_repo_root: Path, from_file: Path, mod: str) -> Optional[Path]:
+def resolve_py_module(_repo_root: Path, from_file: Path, mod: str) -> Optional[Path]:
     u"""Resolve a Python import module to a file path.
 
     Handles: absolute (core.harness.X), relative (.Y, ..Z, .a.b)
@@ -657,7 +657,7 @@ def _resolve_py_module(_repo_root: Path, from_file: Path, mod: str) -> Optional[
     return None
 
 
-def _detect_issues(text: str) -> List[Dict[str, Any]]:
+def detect_issues(text: str) -> List[Dict[str, Any]]:
     out: List[Dict[str, Any]] = []
     if not text: return out
     if re.search(r"AKIA[0-9A-Z]{16}", text):
@@ -727,7 +727,7 @@ def build_graph(_repo_root: Path, roots: List[Path]) -> Tuple[Dict[str, Dict[str
                             nodes[rel] = {"id": rel, "path": rel, "ext": f.suffix.lower(),
                                           "out": [], "in": 0, "issue_count": 0, "symbols": []}
                         for mod, is_top in _extract_py_imports_ast(f):
-                            tgt = _resolve_py_module(_repo_root, f, mod)
+                            tgt = resolve_py_module(_repo_root, f, mod)
                             if tgt and tgt.exists():
                                 rel_to = str(tgt.relative_to(_repo_root))
                                 nodes.setdefault(rel_to, {"id": rel_to, "path": rel_to, "ext": tgt.suffix.lower(),
@@ -739,10 +739,10 @@ def build_graph(_repo_root: Path, roots: List[Path]) -> Tuple[Dict[str, Dict[str
                     # Rebuild edges for stale file
                     edges = [e for e in edges if e["from"] != rel]
                     if f.exists():
-                        text = _read_text(f)
+                        text = read_text(f)
                         deps = set()
                         for mod, is_top in _extract_py_imports_ast(f):
-                            tgt = _resolve_py_module(_repo_root, f, mod)
+                            tgt = resolve_py_module(_repo_root, f, mod)
                             if tgt and tgt.exists():
                                 rel_to = str(tgt.relative_to(_repo_root))
                                 deps.add(rel_to)
@@ -809,15 +809,15 @@ def build_graph(_repo_root: Path, roots: List[Path]) -> Tuple[Dict[str, Dict[str
     for r in roots:
         if not r.exists(): continue
         for p in r.rglob("*"):
-            if _should_skip(p): continue
-            if _is_code_file(p): files.append(p)
+            if should_skip(p): continue
+            if is_code_file(p): files.append(p)
     for f in files:
         rel = str(f.relative_to(_repo_root))
         nodes[rel] = {"id": rel, "path": rel, "ext": f.suffix.lower(), "out": [], "in": 0, "issue_count": 0, "symbols": []}
     for f in files:
         rel_from = str(f.relative_to(_repo_root))
-        text = _read_text(f)
-        file_issues = _detect_issues(text)
+        text = read_text(f)
+        file_issues = detect_issues(text)
         if file_issues:
             for it in file_issues: issues.append({**it, "file": rel_from})
             nodes[rel_from]["issue_count"] = len(file_issues)
@@ -826,7 +826,7 @@ def build_graph(_repo_root: Path, roots: List[Path]) -> Tuple[Dict[str, Dict[str
             # AST-based extraction: imports + symbols + calls
             imported_modules: Dict[str, bool] = {}  # mod → is_top_level
             for mod, is_top in _extract_py_imports_ast(f):
-                tgt = _resolve_py_module(_repo_root, f, mod)
+                tgt = resolve_py_module(_repo_root, f, mod)
                 if tgt and tgt.exists():
                     rel_to = str(tgt.relative_to(_repo_root))
                     if rel_to in nodes and rel_to != rel_from:
@@ -839,11 +839,11 @@ def build_graph(_repo_root: Path, roots: List[Path]) -> Tuple[Dict[str, Dict[str
             except Exception as e:
                 logging.debug(str(e), exc_info=True)
         else:
-            for m in _JS_IMPORT_RE.finditer(text):
+            for m in JS_IMPORT_RE.finditer(text):
                 spec = m.group(1) or m.group(2) or m.group(3)
                 if not spec: continue
                 if spec.startswith("."):
-                    tgt = _resolve_js_relative(f, spec)
+                    tgt = resolve_js_relative(f, spec)
                     if tgt and tgt.exists():
                         rel_to = str(tgt.relative_to(_repo_root))
                         if rel_to in nodes and rel_to != rel_from: deps.add(rel_to)
@@ -1099,7 +1099,7 @@ def _enrich_nodes_with_symbols(nodes, repo_root):
             continue
         try:
             file_path = repo_root / path
-            code = _read_text(file_path, max_bytes=200000)
+            code = read_text(file_path, max_bytes=200000)
             if not code:
                 continue
             tree = ast.parse(code)
@@ -1325,9 +1325,9 @@ def convert_file_graph_to_symbols(
         if not fpath.exists() or fpath.suffix.lower() != ".py":
             continue
         try:
-            text = _read_text(fpath)
+            text = read_text(fpath)
             if text:
-                text = _strip_py_type_checking(text)
+                text = strip_py_type_checking(text)
                 tree = ast.parse(text, filename=str(fpath))
                 # Build parent map: child_id → parent_name
                 _build_contains_edges(tree, file_id, symbol_nodes, symbol_edges)

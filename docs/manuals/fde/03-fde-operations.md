@@ -171,13 +171,13 @@ FDE 在 ③ 问题重构 → 澄清对话中产生的知识缺口会自动入库
 | 查看流程瓶颈 | `GET /ontology-editor/domains/{id}/monitor/bottlenecks` |
 | 规则版本管理 | `GET /api/platform/apps/ontology-editor/domains/{id}/rule-versions` |
 
-> 本体编辑器 + 角色视图 + 流程编排 + 流程监控详见 [知识管理手册](../knowledge-management.md) §3.7。
+> 本体编辑器 + 角色视图 + 流程编排 + 流程监控详见 [知识系统完整指南](../../knowledge-system.md) §四、本体模型 和 §十二、本体操作手册。
 
-更多详情参见 [本体引擎手册](../ontology.md)。
+更多详情参见 [知识系统完整指南](../../knowledge-system.md)。
 
 ---
 
-## 五、能力增强与 FDE 工作流映射
+## 六、能力增强与 FDE 工作流映射
 
 以下新增能力间接提升 FDE 工作流效率。映射到 8 步交付生命周期：
 

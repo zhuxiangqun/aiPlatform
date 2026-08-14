@@ -114,7 +114,7 @@ class SkillVerifier:
                         fm = yaml.safe_load(parts[1]) if len(parts) >= 2 else {}
                         exec_type = fm.get("execution_type", "") if isinstance(fm, dict) else ""
                     except Exception:
-                        pass
+                        logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
             return VerifyCheck(
                 name="can_be_called", pass_=bool(exec_type),
                 detail=f"execution_type={exec_type}" if exec_type else "缺少 execution_type 声明",
@@ -173,7 +173,7 @@ class SkillVerifier:
                     fm = yaml.safe_load(parts[1]) if len(parts) >= 2 else {}
                     desc = str(fm.get("description", "")) if isinstance(fm, dict) else ""
                 except Exception:
-                    pass
+                    logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
             if len(desc) < 20:
                 issues.append(f"description 过短 ({len(desc)} chars, 需≥20)")
             # Count SOP steps (numbered lines OR ## Step N: headings)

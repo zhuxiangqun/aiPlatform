@@ -2,6 +2,22 @@ import { useState, useEffect } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { menuItems, type MenuEntry, type MenuItem, type MenuGroup } from '../../pageManifest';
 
+// ── Flatten all menu items once (menuItems is static) — avoids O(n²) rebuild in isActive ──
+const ALL_MENU_KEYS: string[] = (() => {
+  const keys: string[] = [];
+  for (const entry of menuItems) {
+    if ('items' in entry && Array.isArray(entry.items)) {
+      for (const item of entry.items) {
+        if (item.key) keys.push(item.key);
+      }
+    } else if ('key' in entry && (entry as MenuItem).key) {
+      keys.push((entry as MenuItem).key);
+    }
+  }
+  return keys;
+})();
+
+
 // ── Role-based sidebar visibility ──────────────────────────────────────
 
 const ROLE_MENUS: Record<string, string[]> = {
@@ -138,20 +154,26 @@ const AppLayout: React.FC = () => {
     });
   };
 
-  const isActive = (path: string) => {
-    // Exact match
-    if (location.pathname + location.search === path) return true;
-    // Handle /platform/kb?tab=xxx matching
-    if (path.includes('?tab=')) {
-      const keyPath = path.split('?')[0];
-      const keyTab = new URLSearchParams(path.split('?')[1]).get('tab');
-      const curTab = new URLSearchParams(location.search).get('tab');
-      if (location.pathname === keyPath && keyTab === curTab) return true;
-    }
-    // Prefix match for non-tab routes (avoid /diagnostics matching /diagnostics/xyz)
-    if (!path.includes('?') && location.pathname === path) return true;
-    return false;
-  };
+   const isActive = (path: string) => {
+     if (!path) return false;
+     // Exact match
+     if (location.pathname + location.search === path) return true;
+     // Handle /platform/kb?tab=xxx matching
+     if (path.includes('?tab=')) {
+       const keyPath = path.split('?')[0];
+       const keyTab = new URLSearchParams(path.split('?')[1]).get('tab');
+       const curTab = new URLSearchParams(location.search).get('tab');
+       if (location.pathname === keyPath && keyTab === curTab) return true;
+     }
+      // Prefix match: highlight parent. Skip if any item exactly matches current path.
+      if (!path.includes('?') && location.pathname.startsWith(path + '/')) {
+        const exactChild = ALL_MENU_KEYS.some(key =>
+          key.startsWith(path + '/') && location.pathname === key
+        );
+        if (!exactChild) return true;
+      }
+      return false;
+    };
 
   // ── Pre-compute filtered sidebar menu ───────────────────────
   const role = getRole();

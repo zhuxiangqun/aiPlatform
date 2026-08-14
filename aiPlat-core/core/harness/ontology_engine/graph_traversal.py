@@ -12,6 +12,7 @@ Usage:
 """
 
 from __future__ import annotations
+import logging
 
 from collections import deque
 from dataclasses import dataclass, field
@@ -245,7 +246,7 @@ def traverse(
                             intermediate_value="",
                         )
                     except Exception:
-                        pass  # best-effort, don't block traversal
+                        logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)  # best-effort, don't block traversal
             elif nid == start_id and current_path.length > 0:
                 # Cycle back to start — record as terminal
                 result.paths.append(new_path)

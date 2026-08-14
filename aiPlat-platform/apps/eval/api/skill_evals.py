@@ -687,7 +687,7 @@ async def apply_skill_md_suggestion(suite_id: str, request: dict, http_request: 
                 rt = get_kernel_runtime()
                 mgr = getattr(rt, "approval_manager", None) if rt else None
                 if mgr is not None:
-                    from core.harness.infrastructure.approval.types import ApprovalContext, ApprovalRule, RuleType
+                    from core.api.core_facade import ApprovalContext, ApprovalRule, RuleType
 
                     op = f"change:engine_skill_md_patch:{str(change_id)}"
                     rid = f"engine_skill_md_patch:{str(change_id)}"

@@ -98,7 +98,7 @@ def _load_registry() -> Dict[str, Any]:
             with open(BRANCH_REGISTRY_PATH) as f:
                 return _json.load(f)
         except Exception:
-            pass
+            logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
     return {"branches": {}}
 
 
@@ -320,7 +320,7 @@ class OntologyBranchManager:
                 gi_target.load(load_nodes=True)
             except Exception:
                 # Try to load from disk JSON
-                pass
+                logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
 
             # Compare entities
             source_nodes = set(gi_source._nodes.keys())

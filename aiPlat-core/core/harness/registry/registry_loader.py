@@ -81,7 +81,7 @@ def _load_yaml(filepath: Path, ttl_seconds: float = 60.0) -> Optional[Dict[str, 
             actual_mtime = os.path.getmtime(filepath)
             if actual_mtime == cached_mtime and now - cached_data.get("_loaded_at", 0) < ttl_seconds:
                 return cached_data
-        except OSError:
+        except OSError:  # noqa: cleanup-best-effort
             pass
     try:
         if not filepath.exists():
@@ -397,7 +397,7 @@ def _build_record(entity_type: str, eid: str, source: str,
                         if cat:
                             record["category"] = cat
         except Exception:
-            pass
+            logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
     return record
 
 
@@ -425,7 +425,7 @@ def _make_rel(source_path: str) -> str:
     ws = Path(__file__).resolve().parent.parent.parent.parent.parent
     try:
         return str(p.relative_to(ws))
-    except ValueError:
+    except ValueError:  # noqa: best-effort-parse
         pass
     home = Path.home()
     try:

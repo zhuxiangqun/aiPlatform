@@ -62,7 +62,7 @@ class KPITracker:
             # Write back to ModelHealthStore
             if scores:
                 try:
-                    from core.harness.utils.model_health_store import get_model_health_store
+                    from infra.management.model.model_health_store import get_model_health_store
                     store = get_model_health_store()
                     for model, score in scores.items():
                         store.set_business_score(model, score)

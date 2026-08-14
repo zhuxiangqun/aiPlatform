@@ -155,7 +155,7 @@ class AutoGarden:
                 if hasattr(monitor, "check_stale"):
                     # Just check, don't auto-rebuild
                     pass
-            except ImportError:
+            except ImportError:  # noqa: optional-dependency
                 pass
 
             # 4. 硬删除 (仅 obsolete 标记的页面)

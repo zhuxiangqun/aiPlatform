@@ -1005,7 +1005,7 @@ class SkillRegistry:
                     if isinstance(md, dict):
                         md["body"] = body
                 except Exception:
-                    pass
+                    logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
             if body:
                 self._body_cache[name] = body
             return True

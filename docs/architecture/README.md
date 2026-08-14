@@ -9,7 +9,7 @@
 | [system-architecture-contract.md](system-architecture-contract.md) | 跨层 API 契约 |
 | [core/core-layer1-latest.md](core/core-layer1-latest.md) | Core 层最新架构详述 |
 | [governance.md](governance.md) | 治理文档 |
-| [knowledge-base-architecture.md](knowledge-base-architecture.md) | 知识库架构：向量KB/GraphIndex/Wiki 写入与 RAG 检索全链路 |
+| [../knowledge-system.md](../knowledge-system.md) | 知识系统完整指南：向量KB/GraphIndex/Wiki/本体/检索/运维 |
 | [slo.md](slo.md) | SLO 定义 |
 
 ## ADR 裁决

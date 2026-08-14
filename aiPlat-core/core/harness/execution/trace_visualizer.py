@@ -1,14 +1,14 @@
 """
-TraceVisualizer — Agent 决策痕迹 → 开发者可读格式 (Andrew Ng 三层 Loop P2)
+TraceVisualizer — Agent decision traces → developer-readable format (Andrew Ng three-layer Loop P2)
 
-将 DynamicRouter 运行时产生的 _dynamic_trace 翻译为:
-  1. 决策链: 每一步选了谁、Supervisor 的推理依据
-  2. 犹豫点: Agent 重新考虑时的不确定信号
-  3. 异常点: 同一 Agent 被重复调用 / 跳过 / 超时
-  4. 效率摘要: 总步数、重复率、路径选择多样性
+Translates the _dynamic_trace produced by DynamicRouter at runtime into:
+  1. Decision chain: whom each step selected, and the Supervisor's reasoning basis
+  2. Hesitation points: uncertainty signals when an Agent reconsiders
+  3. Anomaly points: the same Agent being called repeatedly / skipped / timed out
+  4. Efficiency summary: total steps, repeat rate, path-selection diversity
 
-输出格式: 开发者直接可用的文本 + 结构化数据，帮助理解 Agent 行为、
-定位 Spec 需要修正的地方。
+Output format: developer-ready text + structured data to help understand Agent behavior
+and locate the parts of the Spec that need correction.
 """
 from __future__ import annotations
 
@@ -25,8 +25,8 @@ class TraceStep:
     agent: str
     reasoning: str
     decision: str
-    is_hesitation: bool = False      # 推理中出现"考虑"、"可能"、"或" 等不确定词
-    is_repeat: bool = False          # 同一 Agent 在前几步已被调用过
+    is_hesitation: bool = False      # reasoning contains uncertain words like "consider", "maybe", "or"
+    is_repeat: bool = False          # the same Agent was already called in a previous step
     outcome: str = ""                # ok / timeout / error
 
 
@@ -35,26 +35,26 @@ class TraceSummary:
     spec_id: str
     total_steps: int
     unique_agents: List[str]
-    agent_call_order: List[str]      # 实际调用顺序
-    repeat_count: int                 # 重复调用次数
-    hesitation_count: int             # 犹豫步数
-    max_repeat_agent: str = ""        # 被重复调用最多的 Agent
+    agent_call_order: List[str]      # actual call order
+    repeat_count: int                 # number of repeated calls
+    hesitation_count: int             # number of hesitant steps
+    max_repeat_agent: str = ""        # the Agent called the most times
     steps: List[TraceStep] = field(default_factory=list)
     anomaly_warnings: List[str] = field(default_factory=list)
     spec_suggestions: List[str] = field(default_factory=list)
 
 
 class TraceVisualizer:
-    """原始 trace → 开发者可读分析。
+    """Raw trace → developer-readable analysis.
 
     Usage:
         viz = TraceVisualizer()
         summary = viz.analyze(trace_data, spec_id="my-agent", stage_count=5)
-        # summary.anomaly_warnings → ["architect 被调用 3 次，可能是 task 拆分过细"]
-        # summary.spec_suggestions → ["建议在 Stage 2 增加 output_artifact 约束"]
+        # summary.anomaly_warnings → ["architect was called 3 times, possibly over-split tasks"]
+        # summary.spec_suggestions → ["suggest adding an output_artifact constraint at Stage 2"]
     """
 
-    # 中文犹豫词 → likelihood 评分
+    # hesitation words → likelihood score
     HESITATION_PATTERNS = [
     ("consider", 0.5), ("maybe", 0.4), ("unsure", 0.7),
     ("or", 0.3), ("temporarily", 0.3), ("try", 0.4),
@@ -87,9 +87,9 @@ class TraceVisualizer:
             steps=steps,
         )
 
-        # 异常检测
+        # anomaly detection
         summary.anomaly_warnings = self._detect_anomalies(steps, stage_count)
-        # Spec 调整建议
+        # Spec adjustment suggestions
         summary.spec_suggestions = self._suggest_spec_changes(steps, stage_count, goal)
 
         return summary
@@ -134,7 +134,7 @@ class TraceVisualizer:
     def _detect_anomalies(self, steps: List[TraceStep], stage_count: int) -> List[str]:
         warnings: List[str] = []
 
-        # 1. 同一 Agent 被重复调用 ≥ 2 次（可能需要合并 stage）
+        # 1. The same Agent was called ≥ 2 times (may need to merge stages)
         agent_counts: Dict[str, int] = {}
         for s in steps:
             if s.agent:
@@ -171,7 +171,7 @@ class TraceVisualizer:
     ) -> List[str]:
         suggestions: List[str] = []
 
-        # 根据重复调用 Agent → 建议调整 stage 配置
+        # Based on repeated Agent calls → suggest adjusting the stage config
         agent_counts: Dict[str, int] = {}
         for s in steps:
             if s.agent:
@@ -179,30 +179,30 @@ class TraceVisualizer:
         for agent, count in agent_counts.items():
             if count >= 3:
                 suggestions.append(
-                    f"Stage '{agent}' 被重复调用 — 建议检查 dependency 配置，"
-                    f"或将其拆分为有明确上下文的子 Agent"
+                    f"Stage '{agent}' was called repeatedly — check the dependency config, "
+                    f"or split it into sub-agents with clear contexts"
                 )
 
-        # 基于犹豫 → 建议补充 Spec 中的阶段划分说明
+        # Based on hesitation → suggest clarifying stage division in the Spec
         hesitation = [s for s in steps if s.is_hesitation]
         if hesitation:
             agents_in_hesitation = list(dict.fromkeys(s.agent for s in hesitation if s.agent))
             suggestions.append(
-                f"Supervisor 在阶段 {', '.join(agents_in_hesitation[:3])} 之间存在犹豫 — "
-                f"建议在 Spec 的 pipeline_stage 中明确各阶段的输出依赖关系"
+                f"Supervisor hesitated between stages {', '.join(agents_in_hesitation[:3])} — "
+                f"clarify each stage's output dependency in the Spec's pipeline_stage"
             )
 
-        # 基于步数过多 → 建议限制
+        # Based on excessive steps → suggest limiting
         if stage_count > 0 and len(steps) > stage_count * 2:
             suggestions.append(
-                f"建议在 PipelineConfig 中设置 max_steps={stage_count + 2} 防止过度执行"
+                f"Set max_steps={stage_count + 2} in PipelineConfig to prevent over-execution"
             )
 
         return suggestions
 
     def format_chain(self, summary: TraceSummary) -> str:
-        """生成决策链的文本展示，适合嵌入前端或诊断面板。"""
-        lines = [f"## {summary.spec_id} 执行决策链 ({summary.total_steps} 步)"]
+        """Generate a text rendering of the decision chain, for frontend/diagnostic panels."""
+        lines = [f"## {summary.spec_id} decision chain ({summary.total_steps} steps)"]
         for s in summary.steps:
             flag = ""
             if s.is_hesitation:
@@ -215,15 +215,15 @@ class TraceVisualizer:
         return "\n".join(lines)
 
     def format_anomalies(self, summary: TraceSummary) -> str:
-        """生成异常报告的文本展示。"""
+        """Generate a text rendering of the anomaly report."""
         if not summary.anomaly_warnings:
-            return "✅ 未检测到异常"
+            return "✅ No anomalies detected"
         return "\n".join(summary.anomaly_warnings)
 
     def format_suggestions(self, summary: TraceSummary) -> str:
-        """生成 Spec 调整建议的文本展示。"""
+        """Generate a text rendering of Spec adjustment suggestions."""
         if not summary.spec_suggestions:
-            return "✅ 当前 Spec 无需调整"
+            return "✅ Current Spec needs no adjustment"
         return "\n".join(f"- {s}" for s in summary.spec_suggestions)
 
 

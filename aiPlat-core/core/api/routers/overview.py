@@ -110,6 +110,16 @@ async def _get_real_llm_metrics() -> Dict[str, Any]:
             ).fetchone()
             total_tokens = token_row[0] or 0 if token_row else 0
 
+            # Recent latency snapshot (last 1 hour, more responsive than 24h avg)
+            recent = conn.execute(
+                "SELECT COALESCE(AVG(duration_ms), 0), COUNT(*)"
+                " FROM syscall_events"
+                " WHERE kind='llm' AND status='success' AND start_time > ?",
+                (now - 3600,)
+            ).fetchone()
+            recent_avg = round(recent[0] or 0, 1)
+            recent_count = recent[1] or 0
+
             # Hourly breakdown for trend
             hourly = conn.execute(
                 "SELECT strftime('%H', start_time, 'unixepoch') AS hr,"
@@ -132,6 +142,8 @@ async def _get_real_llm_metrics() -> Dict[str, Any]:
                 "total_tokens_24h": total_tokens,
                 "error_count_24h": failed,
                 "hourly_trend": trend,
+                "recent_avg_latency_ms": recent_avg,
+                "recent_call_count": recent_count,
             }
         finally:
             conn.close()
@@ -455,7 +467,18 @@ async def system_overview(refresh: bool = Query(False)) -> Dict[str, Any]:
             # Fallback: scan ~/.aiplat/agents/ directory
             ws_dir = Path.home() / ".aiplat" / "agents"
             if ws_dir.exists():
-                workspace_count = sum(1 for _ in ws_dir.rglob("AGENT.md"))
+                for md_path in sorted(ws_dir.rglob("AGENT.md")):
+                    workspace_count += 1
+                    # Aggregate workspace agent types into by_type
+                    try:
+                        content = md_path.read_text(encoding="utf-8", errors="ignore")
+                        if content.startswith("---"):
+                            import yaml
+                            fm = yaml.safe_load(content.split("---", 2)[1]) or {}
+                            at = str(fm.get("agent_type", "uncategorized")).lower()
+                            agent_types[at] = agent_types.get(at, 0) + 1
+                    except Exception:
+                        logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
         core["agents"] = {
             "engine": engine_count, "workspace": workspace_count,
             "total": engine_count + workspace_count,

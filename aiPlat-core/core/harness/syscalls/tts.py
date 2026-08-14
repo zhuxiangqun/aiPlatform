@@ -48,7 +48,7 @@ async def sys_tts_generate(
         try:
             os.unlink(wav_path)
         except Exception:
-            pass
+            logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
 
         logger.debug("TTS generated: %d chars → %d bytes (voice=%s)", len(text), len(audio_bytes), voice)
         return audio_bytes

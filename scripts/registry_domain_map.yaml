@@ -1,0 +1,115 @@
+# Domain mapping: file path pattern → capability_registry domain key
+# Used by auto_register_capability.py to auto-classify new symbols
+
+mapping:
+  # ── Core Harness ──
+  - pattern: "core/harness/execution/"
+    domain: harness-execution-engine
+  - pattern: "core/harness/memory/"
+    domain: memory-subsystem
+  - pattern: "core/harness/knowledge/"
+    domain: knowledge-engine-ontology
+  - pattern: "core/harness/syscalls/"
+    domain: syscalls-runtime
+  - pattern: "core/harness/infrastructure/"
+    domain: infrastructure-layer
+  - pattern: "core/harness/evaluation/"
+    domain: evaluation-qa
+  - pattern: "core/harness/ontology_engine/"
+    domain: knowledge-engine-ontology
+  - pattern: "core/harness/observability/"
+    domain: observability-metrics
+  - pattern: "core/harness/learning/"
+    domain: learning-evolution
+  - pattern: "core/harness/document/"
+    domain: document-intelligence
+  - pattern: "core/harness/routing/"
+    domain: model-management
+  - pattern: "core/harness/deployment/"
+    domain: deployment-ops
+  - pattern: "core/harness/utils/model_injection"
+    domain: model-management
+  - pattern: "core/harness/utils/"
+    domain: infrastructure-layer
+  - pattern: "core/harness/"
+    domain: harness-execution-engine
+
+  # ── Core API ──
+  - pattern: "core/api/routers/"
+    domain: api-layer
+  - pattern: "core/api/core_facade"
+    domain: api-layer
+  - pattern: "core/api/"
+    domain: api-layer
+
+  # ── Core Schemas ──
+  - pattern: "core/schemas_"
+    domain: schemas
+  - pattern: "core/schemas."
+    domain: schemas
+
+  # ── Core Services ──
+  - pattern: "core/services/"
+    domain: api-layer
+  - pattern: "core/diagnostics/"
+    domain: infrastructure-layer
+  - pattern: "core/management/"
+    domain: infrastructure-layer
+  - pattern: "core/engine/skills/"
+    domain: skill-system
+  - pattern: "core/apps/agents/"
+    domain: agent-system
+  - pattern: "core/apps/skills/"
+    domain: skill-system
+  - pattern: "core/apps/tools/"
+    domain: tool-system
+  - pattern: "core/apps/"
+    domain: agent-system
+
+  # ── Infra ──
+  - pattern: "infra/management/model/"
+    domain: model-management
+  - pattern: "infra/llm/"
+    domain: model-management
+  - pattern: "infra/management/"
+    domain: infrastructure-layer
+  - pattern: "infra/"
+    domain: infra-foundation
+
+  # ── Platform ──
+  - pattern: "platform/apps/"
+    domain: api-layer
+  - pattern: "platform/api/"
+    domain: api-layer
+  - pattern: "platform/builder/"
+    domain: pipeline-builder
+
+  # ── Frontend ──
+  - pattern: "frontend/src/components/ui/"
+    domain: ui-components
+  - pattern: "frontend/src/components/model/"
+    domain: model-ui
+  - pattern: "frontend/src/components/digital-human/"
+    domain: ui-components
+  - pattern: "frontend/src/components/grilling/"
+    domain: ui-components
+  - pattern: "frontend/src/components/workspace/"
+    domain: ui-components
+  - pattern: "frontend/src/components/layout/"
+    domain: ui-components
+  - pattern: "frontend/src/components/"
+    domain: ui-components
+  - pattern: "frontend/src/hooks/"
+    domain: hooks
+  - pattern: "frontend/src/pages/"
+    domain: diagnostics-frontend
+  - pattern: "frontend/src/services/"
+    domain: api-client
+  - pattern: "frontend/src/pageManifest"
+    domain: diagnostics-frontend
+  - pattern: "frontend/"
+    domain: diagnostics-frontend
+
+  # ── Fallback ──
+  - pattern: ""
+    domain: extension-plugins

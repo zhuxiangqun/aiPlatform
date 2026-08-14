@@ -232,7 +232,7 @@ class ContextCompression:
 
         self._thresholds = self._init_thresholds()
 
-        self._compression_stats: List[Tuple[int, int]] = []  # (before, after) msg counts
+        self._compression_stats: List[Tuple[int, int]] = []  # (before, after) msg counts, rolling window
 
 
 
@@ -240,7 +240,7 @@ class ContextCompression:
 
     def compression_stats(self) -> List[Tuple[int, int]]:
 
-        """公开只读访问最近3次压缩统计，供SystemDiagnostician使用。"""
+        """公开只读访问最近压缩统计（最多 100 条），供 SystemDiagnostician 和 benchmark 使用。"""
 
         return list(self._compression_stats)
 
@@ -377,7 +377,7 @@ class ContextCompression:
 
         self._compression_stats.append((len(context), len(result)))
 
-        if len(self._compression_stats) > 3:
+        if len(self._compression_stats) > 100:
 
             self._compression_stats.pop(0)
 

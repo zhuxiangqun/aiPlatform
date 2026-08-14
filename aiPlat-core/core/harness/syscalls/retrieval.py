@@ -1651,7 +1651,7 @@ def sys_knowledge_retrieve(
             cache_hit=bool(graph_early_exit),
         )
     except Exception:
-        pass
+        logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
 
     return results[:top_k]
 

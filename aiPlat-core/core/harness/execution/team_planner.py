@@ -1,7 +1,7 @@
 """
 Team Planner — Agent discovery, team template loading, and LLM-based team recommendation.
 
-General AI capability (boundary-standard.md §决策树).
+General AI capability (boundary-standard.md §decision tree).
 Callers: platform/builder, CLI, API, any application that needs team planning.
 
 Architecture:
@@ -327,6 +327,11 @@ def _enrich_stage_from_agent(stage: Dict[str, Any]) -> Dict[str, Any]:
     # ── Capability profile: guarantee all core capabilities are wired ──
     _ensure_capability_profile(stage)
 
+    # ── v3.0: Auto-infer capability profile from stage declarations ──
+    if stage.get('capability_profile', 'auto') == 'auto':
+        from core.harness.execution.pipeline_engine import PipelineEngine
+        stage['capability_profile'] = PipelineEngine._infer_profile_from_stage(stage)
+
     return stage
 
 
@@ -445,7 +450,7 @@ async def recommend_team_stages(
         tmpl = load_team_template(team_template)
         if tmpl and tmpl.stages:
             recommendation.team_name = tmpl.team_name
-            recommendation.reasoning = f"使用团队模板: {tmpl.team_name} ({team_template}.yaml)"
+            recommendation.reasoning = f"using team template: {tmpl.team_name} ({team_template}.yaml)"
             for i, s in enumerate(tmpl.stages):
                 stage = dict(s)
                 stage.setdefault("id", f"stage_{i}")

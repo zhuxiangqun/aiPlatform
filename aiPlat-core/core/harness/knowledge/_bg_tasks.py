@@ -42,7 +42,10 @@ async def _process_one(task: Dict[str, Any]) -> None:
         if task_type == "rebuild_metrics":
             from core.harness.knowledge.knowledge_validator import compute_ontology_metrics
             cid = task.get("collection_id", "default")
-            compute_ontology_metrics(collection_id=cid, force_fresh=True)
+            force_fresh = bool(task.get("force_fresh", True))
+            # Heavy sync work (YAML frontmatter parse + A-Box build + inference) — run
+            # in a worker thread so it never blocks the event loop / HTTP server.
+            await asyncio.to_thread(compute_ontology_metrics, collection_id=cid, force_fresh=force_fresh)
         elif task_type == "auto_atomize":
             from core.harness.knowledge.wiki_engine import _auto_atomize_by_title_impl
             title = task.get("title", "")
@@ -53,7 +56,7 @@ async def _process_one(task: Dict[str, Any]) -> None:
             title = task.get("title", "")
             marking = task.get("marking", "public")
             cid = task.get("collection_id", "default")
-            _propagate_marking(title, marking, cid)
+            await asyncio.to_thread(_propagate_marking, title, marking, cid)
         else:
             _log.warning(f"Unknown background task type: {task_type}")
     except Exception:

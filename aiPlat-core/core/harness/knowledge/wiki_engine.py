@@ -720,6 +720,17 @@ def write_page(title: str, body: str, *, category: str = "entities", tags: List[
         logging.debug(str(e), exc_info=True)
 
     _inc_change_counter()
+    # ── v1.0: 写入 KB→Wiki 三元组到 TripleStore ──
+    try:
+        from core.harness.ontology_engine.triple_store import get_triple_store, _make_urn
+        _ts = get_triple_store()
+        if source_articles:
+            for _src in source_articles:
+                if isinstance(_src, str) and _src.strip():
+                    _ts.add(_make_urn("kb_doc", _src.strip()), "depends_on_kb",
+                            _make_urn("wiki", title if title else "unnamed"), 1.0, "wiki_engine", {})
+    except Exception:
+        logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
     return str(p)
 
 

@@ -68,7 +68,7 @@ const AppMaterialsChat = lazy(() => import('./pages/Platform/KnowledgeBase/Mater
 const AppTeamAssembly = lazy(() => import('./pages/App/Builder/TeamAssemblyPage'));
 const AgentInsightPage = lazy(() => import('./pages/App/Builder/AgentInsightPage'));
 const AppsPage = lazy(() => import('./pages/App/Builder/AppsPage'));
-const AppFactory = lazy(() => import("./pages/App/Factory"));
+const AppFactory = lazy(() => import("./pages/App/AIFactory"));
 const AppPage = lazy(() => import("./pages/App/AppPage"));
 const AppChatPage = lazy(() => import('./pages/App/Builder/AppChatPage'));
 const AppProjects = lazy(() => import('./pages/App/Builder/ProjectsPage'));
@@ -155,7 +155,7 @@ const router = createBrowserRouter([
       { path: 'value-center/strategy', element: withSuspense(StrategyControl) },
       { path: 'value-center/training', element: withSuspense(TrainingMonitor) },
       { path: 'value-center/spec/:specId', element: withSuspense(SpecDetailPage) },
-      { path: 'workbench', element: withSuspense(UserWorkbench) },
+      { path: 'workbench', element: <Navigate to="/app/factory" replace /> },
       { path: 'knowledge/overview', element: withSuspense(KnowledgeOverview) },
       { path: 'knowledge-factory', element: withSuspense(KnowledgeFactoryPage) },
       { path: 'docs', element: withSuspense(DocsViewer) },
@@ -269,7 +269,7 @@ const router = createBrowserRouter([
       { path: 'diagnostics/knowledge-health', element: withSuspense(DiagnosticsHome) },
       { path: 'diagnostics/drift-status', element: withSuspense(DiagnosticsHome) },
       { path: 'diagnostics/control-profile', element: withSuspense(ControlProfilePanel) },
-      { path: 'studio', element: withSuspense(StudioPage) },
+      { path: 'studio', element: <Navigate to="/app/factory?tab=chat" replace /> },
       { path: 'pentest', element: withSuspense(PentestPage) },
     ],
   },

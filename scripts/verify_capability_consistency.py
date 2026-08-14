@@ -52,6 +52,23 @@ CHAPTER_MAP: dict[str, str] = {
     "二十四、编排系统":         "编排系统",
     "二十五、管理 & 质量":      "管理 & 质量",
     "二十六、编排层 (Orchestration)": "编排层",
+    "二十七、L6 自主能力":     "L6 自主能力",
+    "二十八、记忆系统白盒化":   "记忆系统白盒化",
+    "二十九、记忆运行时过滤":   "记忆运行时过滤",
+    "三十、MoA 多模型推理":    "MoA多模型推理",
+    "三十一、AI知识层增强":     "AI知识层增强",
+    "三十二、Hermes压缩对标":   "Hermes压缩对标",
+    "三十三、Scenario Simulation": "Scenario Simulation",
+    "三十四、Decision Lineage": "Decision Lineage",
+    "三十五、Security 3D":     "Security 3D 增强",
+    "三十六、Global Branching": "Global Branching",
+    "三十七、EvoX 蜂群协作":    "EvoX 蜂群协作",
+    "三十八、闭环执行层":       "闭环执行层",
+    "三十九、知识编译与OKF":    "知识编译与OKF",
+    "四十、对话→Wiki 自动管线": "对话→Wiki 自动管线",
+    "四十一、Web 工具归并":     "Web 工具归并",
+    "四十一、Skill 目录标准化": "Skill 目录标准化",
+    "四十一、E2E端到端验证":   "E2E 端到端验证",
 }
 
 

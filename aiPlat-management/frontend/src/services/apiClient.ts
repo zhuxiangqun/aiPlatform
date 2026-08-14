@@ -231,14 +231,14 @@ export const diagnosticsApi = {
 
   // ===== Observability (core only for now) =====
 
-  listTraces: async (params: { limit?: number; offset?: number; status?: string } = {}) => {
-    const q = new URLSearchParams();
-    if (params.limit != null) q.set('limit', String(params.limit));
-    if (params.offset != null) q.set('offset', String(params.offset));
-    if (params.status) q.set('status', params.status);
-    const qs = q.toString();
-    return apiClient.get<any>(`/diagnostics/trace/core${qs ? `?${qs}` : ''}`);
-  },
+  listTraces: async (params: { limit?: number; offset?: number; status?: string; project_id?: string } = {}) => {
+     const qs = new URLSearchParams();
+     if (params.limit) qs.set('limit', String(params.limit));
+     if (params.offset) qs.set('offset', String(params.offset));
+     if (params.status) qs.set('status', params.status);
+     if (params.project_id) qs.set('project_id', params.project_id);
+     return apiClient.get<any>(`/core/traces?${qs.toString()}`);
+   },
 
   getTrace: async (traceId: string, params: { limit?: number; offset?: number } = {}) => {
     const q = new URLSearchParams({ trace_id: traceId });
@@ -392,9 +392,10 @@ export const diagnosticsApi = {
     const qs = q.toString();
     return apiClient.get<any>(`/core/diagnostics/code-intel/blast?${qs}`);
   },
-  getObservabilityStats: async () => {
-    return apiClient.get<any>('/core/diagnostics/observability/stats');
-  },
+   getObservabilityStats: async (projectId?: string) => {
+     const qs = projectId ? `?project_id=${encodeURIComponent(projectId)}` : '';
+     return apiClient.get<any>(`/core/diagnostics/observability/stats${qs}`);
+   },
 };
 
 // Onboarding API

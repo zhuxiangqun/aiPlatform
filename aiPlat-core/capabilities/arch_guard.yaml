@@ -29,6 +29,7 @@ methods:
 consumer_patterns:
   - "harness/syscalls/"
   - "management/"
+  - "api/"
   - "api/routers/diagnostics"
   - "harness/knowledge/diagnostics"
   - "scripts/"

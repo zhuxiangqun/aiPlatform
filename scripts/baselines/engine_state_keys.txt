@@ -110,6 +110,7 @@ task_list|OK|generic pipeline
 tenant_id|OK|generic pipeline
 tokens_budget|OK|generic pipeline
 tokens_used|OK|generic pipeline
+cost_used_usd|OK|generic pipeline
 user_id|OK|generic pipeline
 # All DEBT keys resolved as of 2026-08-03 — baseline is clean
 

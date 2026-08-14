@@ -65,5 +65,5 @@
 - [交付手册模板](../fde/fde-delivery-manual.md) — 交付后自动生成的客户验收文档
 - [输入输出文档模板](./templates/) — 10 个标准文档模板（客户档案/诊断报告/签收单等）
 - [标书审查实例](./examples/bid-review/delivery-manual.md) — 投标场景实操参考
-- [知识管理手册](../knowledge-management.md) — 知识库反馈闭环
-- [本体引擎手册](../ontology.md) — 域本体与 FDE 集成
+- [知识系统完整指南](../../knowledge-system.md) — 知识库反馈闭环
+- [知识系统完整指南](../../knowledge-system.md) — 域本体与 FDE 集成

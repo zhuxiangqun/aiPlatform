@@ -141,11 +141,7 @@ async def create_business_goal(tenant_id: str, body: Dict[str, Any]) -> Dict[str
 
     try:
 
-        from core.harness.finance.value_calculator import (
-
-            get_value_calculator, BusinessGoal,
-
-        )
+        from core.api.core_facade import get_value_calculator, BusinessGoal
 
         calc = get_value_calculator()
 
@@ -289,7 +285,7 @@ async def get_strategy_status(tenant_id: str) -> Dict[str, Any]:
 
         from core.api.core_facade import get_value_calculator
 
-        from core.harness.execution.dynamic_router import GoalAwareRouter
+        from core.api.core_facade import GoalAwareRouter
 
         calc = get_value_calculator()
 

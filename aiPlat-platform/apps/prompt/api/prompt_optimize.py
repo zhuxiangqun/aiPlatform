@@ -49,7 +49,7 @@ async def optimize_prompt(req: PromptOptimizeRequest):
                     "optimized": "", "changes": [], "analysis": "",
                     "hint": "请配置 AIPLAT_LLM_API_KEY 或启动 Ollama/LM Studio 本地模型"}
 
-        from core.harness.utils.prompt_loader import _async_prompt_resolve
+        from core.api.core_facade import _async_prompt_resolve
         optimize_prompt = await _async_prompt_resolve("prompt-optimize",
             context=context_text,
             prompt=req.prompt[:3000],

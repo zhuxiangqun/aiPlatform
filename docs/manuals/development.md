@@ -527,7 +527,7 @@ aiPlatform/
 ```markdown
 # 一级标题（文档标题）
 
-## 二级标题（章节）
+### Changelog: v1.2.0
 
 ### 三级标题（小节）
 
@@ -583,7 +583,7 @@ PATCH: 向后兼容的问题修正
 ```markdown
 # CHANGELOG
 
-## [1.2.0] - 2026-04-11
+### Changelog: 2026-04-11
 
 ### Added
 - feat(database): add MySQL support

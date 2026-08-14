@@ -576,8 +576,9 @@ class DefaultContextEngine(ContextEngine):
                                 INSERT INTO syscall_events(
                                   id, trace_id, span_id, run_id, kind, name, status, start_time, end_time, duration_ms,
                                   args_json, result_json, error, error_code, target_type, target_id, user_id, session_id,
-                                  approval_request_id, created_at
-                                ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?);
+                                  approval_request_id, created_at,
+                                  model_name, input_tokens, output_tokens, cost
+                                ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?);
                                 """,
                                 (
                                     str(uuid.uuid4()),
@@ -600,6 +601,10 @@ class DefaultContextEngine(ContextEngine):
                                     store_evt.get("session_id"),
                                     store_evt.get("approval_request_id"),
                                     float(time.time()),
+                                    store_evt.get("model_name"),
+                                    store_evt.get("input_tokens"),
+                                    store_evt.get("output_tokens"),
+                                    store_evt.get("cost"),
                                 ),
                             )
                             conn.commit()
@@ -1029,8 +1034,9 @@ class DefaultContextEngine(ContextEngine):
                                 INSERT INTO syscall_events(
                                   id, trace_id, span_id, run_id, kind, name, status, start_time, end_time, duration_ms,
                                   args_json, result_json, error, error_code, target_type, target_id, user_id, session_id,
-                                  approval_request_id, created_at
-                                ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?);
+                                  approval_request_id, created_at,
+                                  model_name, input_tokens, output_tokens, cost
+                                ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?);
                                 """,
                                 (
                                     str(uuid.uuid4()),
@@ -1053,6 +1059,10 @@ class DefaultContextEngine(ContextEngine):
                                     store_evt.get("session_id"),
                                     store_evt.get("approval_request_id"),
                                     float(time.time()),
+                                    store_evt.get("model_name"),
+                                    store_evt.get("input_tokens"),
+                                    store_evt.get("output_tokens"),
+                                    store_evt.get("cost"),
                                 ),
                             )
                             conn.commit()
