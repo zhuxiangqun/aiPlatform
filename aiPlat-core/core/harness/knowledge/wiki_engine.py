@@ -1044,6 +1044,40 @@ def _update_index(title: str, category: str, tags: List[str], related: List[str]
     idx_path.write_text(_json.dumps(idx, indent=2, ensure_ascii=False))
 
 
+def generate_index_md(collection_id: str = "default") -> str:
+    """Generate a human-readable Markdown index (index.md) from index.json."""
+    idx_path = _wiki_root(collection_id) / "index.json"
+    try:
+        idx = _json.loads(idx_path.read_text(encoding="utf-8"))
+    except Exception:
+        idx = {"pages": {}, "last_updated": ""}
+
+    pages: Dict[str, Any] = idx.get("pages", {}) or {}
+    if not pages:
+        return "No pages yet"
+
+    by_category: Dict[str, List[str]] = {}
+    for title, meta in sorted(pages.items()):
+        cat = (meta or {}).get("category", "uncategorized") if isinstance(meta, dict) else "uncategorized"
+        by_category.setdefault(cat, []).append(title)
+
+    lines = ["# Wiki Index", ""]
+    for category in sorted(by_category):
+        lines.append(f"## {category}")
+        for title in sorted(by_category[category]):
+            meta = pages.get(title)
+            tags = (meta or {}).get("tags", []) if isinstance(meta, dict) else []
+            tag_str = f" — `{'`, `'.join(tags)}`" if tags else ""
+            lines.append(f"- {title}{tag_str}")
+        lines.append("")
+
+    last_updated = idx.get("last_updated", "")
+    if last_updated:
+        lines.append(f"*Last updated: {last_updated}*")
+
+    return "\n".join(lines).rstrip() + "\n"
+
+
 def update_page(title: str, *, collection_id: str = "default", **kwargs) -> bool:
     u"""Update specific frontmatter fields of an existing wiki page, preserving others."""
     existing = None
