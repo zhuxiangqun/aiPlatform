@@ -219,13 +219,15 @@ class SharedKnowledgePool:
                 logging.getLogger(__name__).debug('_init_db failed', exc_info=True)
             self._db_conn = None
 
-            try:
+            for _suffix in ("", "-wal", "-shm"):
 
-                os.remove(POOL_DB)
+                try:
 
-            except OSError:
+                    os.remove(POOL_DB + _suffix)
 
-                pass  # noqa: cleanup-best-effort
+                except OSError:
+
+                    pass  # noqa: cleanup-best-effort
 
             self._db_conn = sqlite3.connect(POOL_DB, check_same_thread=False)
 

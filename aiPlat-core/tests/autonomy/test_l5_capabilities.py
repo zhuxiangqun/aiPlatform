@@ -7,12 +7,22 @@ All tests are marked as @pytest.mark.regression — they protect core L5 autonom
 
 import sys
 import os
+import json
 import pytest  # noqa: F401 — used by @pytest.mark
 import asyncio
 import tempfile
 import uuid
 
 pytestmark = pytest.mark.regression  # All L5 tests are regression-critical
+
+# Config-driven capability→agent map (AIPLAT_ROLE_AGENT_MAP) used by DynamicOrchestrator
+ROLE_AGENT_MAP = json.dumps({
+    "security": ["security_reviewer"],
+    "review": ["reviewer_agent"],
+    "refactor": ["refactor_agent"],
+    "analysis": ["analyst_agent"],
+    "test": ["test_agent"],
+})
 
 
 # ══════════════════════════════════════════════════════════
@@ -170,8 +180,9 @@ class TestDynamicOrchestrator:
     """Verify orchestrator can detect capability gaps from agent output."""
 
     @pytest.mark.asyncio
-    async def test_senses_security_gap(self):
+    async def test_senses_security_gap(self, monkeypatch):
         """Must detect '需要安全检查' as a security capability gap."""
+        monkeypatch.setenv("AIPLAT_ROLE_AGENT_MAP", ROLE_AGENT_MAP)
         from core.harness.coordination.dynamic_orchestrator import DynamicOrchestrator
 
         orch = DynamicOrchestrator()
@@ -185,8 +196,9 @@ class TestDynamicOrchestrator:
         )
 
     @pytest.mark.asyncio
-    async def test_senses_review_gap_english(self):
+    async def test_senses_review_gap_english(self, monkeypatch):
         """Must detect 'needs review' in English text."""
+        monkeypatch.setenv("AIPLAT_ROLE_AGENT_MAP", ROLE_AGENT_MAP)
         from core.harness.coordination.dynamic_orchestrator import DynamicOrchestrator
 
         orch = DynamicOrchestrator()
@@ -203,8 +215,9 @@ class TestDynamicOrchestrator:
         result = await orch.sense_gap('hello world', 'test')
         assert result is None, f"Should not detect gap in normal text, got {result}"
 
-    def test_capability_map_complete(self):
+    def test_capability_map_complete(self, monkeypatch):
         """All 5 capability types should have candidate agents."""
+        monkeypatch.setenv("AIPLAT_ROLE_AGENT_MAP", ROLE_AGENT_MAP)
         from core.harness.coordination.dynamic_orchestrator import DynamicOrchestrator
 
         orch = DynamicOrchestrator()
@@ -276,6 +289,9 @@ class TestSharedKnowledgePool:
         # Phase 34: also clear SQLite
         if os.path.exists(POOL_DB):
             os.remove(POOL_DB)
+            for _suffix in ("-wal", "-shm"):
+                if os.path.exists(POOL_DB + _suffix):
+                    os.remove(POOL_DB + _suffix)
             pool._db_conn = None  # force re-init
             pool._loaded = False
 

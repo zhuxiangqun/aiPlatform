@@ -238,6 +238,69 @@ class SelfHealGate:
                 })
                 results[key] = r
         return results
+    # ── Review-First Pending Queue ────────────────────────────
+
+    def _queue_pending(self, signal_type: str, data: Dict[str, Any], action: str):
+        """Queue a fix suggestion for human approval via management dashboard."""
+        try:
+            entries = []
+            if self._pending_path.exists():
+                entries = json.loads(self._pending_path.read_text())
+        except Exception:
+            entries = []
+
+        entries.append({
+            "id": f"heal_{int(time.time())}_{len(entries)}",
+            "signal_type": signal_type,
+            "source": data.get("source", "unknown"),
+            "action": action,
+            "detail": data.get("detail", ""),
+            "severity": data.get("severity", "medium"),
+            "status": "pending",
+            "created_at": time.time(),
+        })
+        # Keep last 200 entries
+        self._pending_path.write_text(json.dumps(entries[-200:], ensure_ascii=False, indent=2))
+        logging.getLogger("aiplat.self_heal").info(
+            "Queued for review: %s → %s", signal_type, action)
+
+    def list_pending(self) -> List[Dict[str, Any]]:
+        """List pending fix suggestions for management dashboard."""
+        try:
+            if self._pending_path.exists():
+                return json.loads(self._pending_path.read_text())
+        except Exception:
+            logging.getLogger(__name__).debug("SelfHeal: list_pending read failed", exc_info=True)
+        return []
+
+    def approve_fix(self, fix_id: str) -> Dict[str, Any]:
+        """Approve and apply a pending fix from the dashboard."""
+        entries = self.list_pending()
+        for e in entries:
+            if e.get("id") == fix_id:
+                signal_type = e.get("signal_type", "")
+                signal_data = {"source": e.get("source", ""),
+                               "detail": e.get("detail", ""),
+                               "severity": e.get("severity", "")}
+                self._execute_auto_fix(signal_type, signal_data)
+                e["status"] = "approved"
+                e["approved_at"] = time.time()
+                self._pending_path.write_text(json.dumps(entries, ensure_ascii=False, indent=2))
+                self._log_entry(signal_type, signal_data, "human_approved", "applied")
+                return {"status": "applied", "fix_id": fix_id}
+        return {"status": "not_found", "fix_id": fix_id}
+
+    def reject_fix(self, fix_id: str, reason: str = "") -> Dict[str, Any]:
+        """Reject a pending fix from the dashboard."""
+        entries = self.list_pending()
+        for e in entries:
+            if e.get("id") == fix_id:
+                e["status"] = "rejected"
+                e["rejected_at"] = time.time()
+                e["rejected_reason"] = reason
+                self._pending_path.write_text(json.dumps(entries, ensure_ascii=False, indent=2))
+                return {"status": "rejected", "fix_id": fix_id}
+        return {"status": "not_found", "fix_id": fix_id}
 
 
 # ── v2.10: SystemAwareness Log ──
@@ -308,66 +371,3 @@ def _get_awareness_logs(days: int = 7, severity: str = "all") -> list:
     ))
     return entries[:50]
 
-    # ── Review-First Pending Queue ────────────────────────────
-
-    def _queue_pending(self, signal_type: str, data: Dict[str, Any], action: str):
-        """Queue a fix suggestion for human approval via management dashboard."""
-        try:
-            entries = []
-            if self._pending_path.exists():
-                entries = json.loads(self._pending_path.read_text())
-        except Exception:
-            entries = []
-
-        entries.append({
-            "id": f"heal_{int(time.time())}_{len(entries)}",
-            "signal_type": signal_type,
-            "source": data.get("source", "unknown"),
-            "action": action,
-            "detail": data.get("detail", ""),
-            "severity": data.get("severity", "medium"),
-            "status": "pending",
-            "created_at": time.time(),
-        })
-        # Keep last 200 entries
-        self._pending_path.write_text(json.dumps(entries[-200:], ensure_ascii=False, indent=2))
-        logging.getLogger("aiplat.self_heal").info(
-            "Queued for review: %s → %s", signal_type, action)
-
-    def list_pending(self) -> List[Dict[str, Any]]:
-        """List pending fix suggestions for management dashboard."""
-        try:
-            if self._pending_path.exists():
-                return json.loads(self._pending_path.read_text())
-        except Exception:
-            logging.getLogger(__name__).debug("SelfHeal: list_pending read failed", exc_info=True)
-        return []
-
-    def approve_fix(self, fix_id: str) -> Dict[str, Any]:
-        """Approve and apply a pending fix from the dashboard."""
-        entries = self.list_pending()
-        for e in entries:
-            if e.get("id") == fix_id:
-                signal_type = e.get("signal_type", "")
-                signal_data = {"source": e.get("source", ""),
-                               "detail": e.get("detail", ""),
-                               "severity": e.get("severity", "")}
-                self._execute_auto_fix(signal_type, signal_data)
-                e["status"] = "approved"
-                e["approved_at"] = time.time()
-                self._pending_path.write_text(json.dumps(entries, ensure_ascii=False, indent=2))
-                self._log_entry(signal_type, signal_data, "human_approved", "applied")
-                return {"status": "applied", "fix_id": fix_id}
-        return {"status": "not_found", "fix_id": fix_id}
-
-    def reject_fix(self, fix_id: str, reason: str = "") -> Dict[str, Any]:
-        """Reject a pending fix from the dashboard."""
-        entries = self.list_pending()
-        for e in entries:
-            if e.get("id") == fix_id:
-                e["status"] = "rejected"
-                e["rejected_at"] = time.time()
-                e["rejected_reason"] = reason
-                self._pending_path.write_text(json.dumps(entries, ensure_ascii=False, indent=2))
-                return {"status": "rejected", "fix_id": fix_id}
-        return {"status": "not_found", "fix_id": fix_id}

@@ -84,13 +84,14 @@ class DynamicOrchestrator:
     # Known capabilities → agent mappings (config-driven via AIPLAT_ROLE_AGENT_MAP env var).
     # Format: {"review": ["agent1", "agent2"], "analysis": ["agent3"], ...}
     # Falls back to empty dict if not configured — no agent IDs hardcoded in engine.
-    _capability_map: Dict[str, List[str]] = field(default_factory=dict)
+    _capability_map: Dict[str, List[str]]
 
     def __init__(self):
         import json as _json_om, os as _os_om
         self._history: List[OrchestrationEvent] = []
         self._spawned_count: int = 0
         self._active_tasks: Dict[str, asyncio.Task] = {}
+        self._capability_map: Dict[str, List[str]] = {}
         raw = _os_om.getenv("AIPLAT_ROLE_AGENT_MAP", "")
         if raw:
             try:
