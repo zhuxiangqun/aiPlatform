@@ -4689,6 +4689,17 @@ class PipelineEngine:
         except Exception:
             logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
 
+        # ── Online evolution: non-blocking incremental evolution trigger ──
+        # Fires for self_evolving/collaborative profiles after a stage completes.
+        try:
+            from core.harness.infrastructure.hooks.online_evolution import get_online_evolution, OnlineEvolution
+            _evo: OnlineEvolution = get_online_evolution()
+            _evo_result = await _evo.on_post_loop(state)
+            if _evo_result and isinstance(_evo_result, dict) and _evo_result.get("online_evolution_triggered"):
+                state["_online_evolution_triggered"] = _evo_result["online_evolution_triggered"]
+        except Exception:
+            logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
+
         return state
 
 
