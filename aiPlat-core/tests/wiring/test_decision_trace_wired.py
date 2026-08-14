@@ -198,3 +198,22 @@ def test_build_fix_plan_single_failed_returns_it(clean_run):
 def test_build_fix_plan_reexported_by_facade():
     from core.api import core_facade
     assert hasattr(core_facade, "build_fix_plan")
+
+
+def test_real_project_scenario_cross_stage_bugs(clean_run):
+    """Regression: prj_c1b3c2d6 — 5 bugs across agent_engineer + frontend_developer.
+
+    Stages use canvas_node_* ids but the fix flow knows them by agent_id.
+    The plan must resolve agent_id → stage and pick the earliest failed stage
+    (agent_engineer), whose regeneration re-runs the downstream frontend stage.
+    """
+    run_id = clean_run
+    record_decision(run_id, "canvas_node_1", depends_on=[], confidence=0.9, agent_id="pm_agent")
+    record_decision(run_id, "canvas_node_2", depends_on=["canvas_node_1"], confidence=0.85, agent_id="architect_agent")
+    record_decision(run_id, "canvas_node_3", depends_on=["canvas_node_1", "canvas_node_2"], confidence=0.85, agent_id="agent_engineer")
+    record_decision(run_id, "canvas_node_4", depends_on=["canvas_node_3", "canvas_node_1"], confidence=0.85, agent_id="frontend_developer")
+    record_decision(run_id, "canvas_node_5", depends_on=["canvas_node_1", "canvas_node_2"], confidence=0.85, agent_id="qa_agent")
+    record_decision(run_id, "canvas_node_6", depends_on=["canvas_node_5"], confidence=0.85, agent_id="test_executor")
+
+    plan = build_fix_plan(run_id, failed_stage_ids=["agent_engineer", "frontend_developer"])
+    assert plan == ["agent_engineer"], plan
