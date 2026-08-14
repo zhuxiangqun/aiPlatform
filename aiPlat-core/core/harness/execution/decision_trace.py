@@ -23,7 +23,6 @@ _TRACE_DIR = os.path.expanduser("~/.aiplat/decision_traces")
 _DEFAULT_CONFIDENCE = 0.7
 
 _lock = threading.RLock()
-_cache: Dict[str, Dict[str, Any]] = {}
 
 
 def _trace_file(run_id: str) -> str:
@@ -31,9 +30,13 @@ def _trace_file(run_id: str) -> str:
 
 
 def _load(run_id: str) -> Dict[str, Any]:
+    """Read the trace for ``run_id``.
+
+    Always reads from disk — the trace file is the single source of truth and
+    is shared across processes (core records, platform queries). An in-memory
+    cache would go stale cross-process and overwrite fresh decisions.
+    """
     with _lock:
-        if run_id in _cache:
-            return _cache[run_id]
         data: Dict[str, Any] = {"run_id": run_id, "decisions": {}, "failed": []}
         try:
             if os.path.isfile(_trace_file(run_id)):
@@ -41,16 +44,16 @@ def _load(run_id: str) -> Dict[str, Any]:
                     data = json.load(fh)
         except Exception:  # noqa: best-effort-read — corrupt/missing trace treated as empty
             pass
-        _cache[run_id] = data
         return data
 
 
-def _save(run_id: str) -> None:
+def _save(run_id: str, data: Dict[str, Any]) -> None:
+    """Persist the trace for ``run_id``."""
     with _lock:
         try:
             os.makedirs(_TRACE_DIR, exist_ok=True)
             with open(_trace_file(run_id), "w", encoding="utf-8") as fh:
-                json.dump(_cache.get(run_id, {}), fh, ensure_ascii=False, indent=2)
+                json.dump(data, fh, ensure_ascii=False, indent=2)
         except Exception:  # noqa: best-effort-write — trace persistence is non-critical
             pass
 
@@ -86,7 +89,7 @@ def record_decision(
         "error_contribution": error_contribution,
     }
     data["decisions"][decision_id] = record
-    _save(run_id)
+    _save(run_id, data)
     return record
 
 
@@ -116,7 +119,7 @@ def _mark_failed(run_id: str, stage_ids: List[str]) -> None:
         decision_id = _resolve_decision_id(run_id, sid) or f"{run_id}_{sid}"
         if decision_id not in failed:
             failed.append(decision_id)
-    _save(run_id)
+    _save(run_id, data)
 
 
 def locate_max_error_node(
@@ -175,7 +178,7 @@ def locate_max_error_node(
         if best is None or contribution > best["error_contribution"]:
             best = candidate
 
-    _save(run_id)
+    _save(run_id, data)
     return best or {
         "stage_id": None,
         "decision_id": None,
@@ -237,7 +240,7 @@ def trace_root_cause_chain(
             "total_downstream": total_downstream,
         })
 
-    _save(run_id)
+    _save(run_id, data)
     chain.sort(key=lambda x: -x["depth"])  # deepest root first
     return chain
 
@@ -308,9 +311,8 @@ def build_fix_plan(
 
 
 def clear_trace(run_id: str) -> None:
-    """Drop the in-memory cache and JSON file for ``run_id``."""
+    """Drop the JSON file for ``run_id``."""
     with _lock:
-        _cache.pop(run_id, None)
         try:
             if os.path.isfile(_trace_file(run_id)):
                 os.remove(_trace_file(run_id))
