@@ -1297,21 +1297,24 @@ class BuilderProjectService:
 
     async def generate_fix_hypotheses(self, project_id: str, failed_stage_ids: List[str],
                                       test_report: str = "") -> Dict[str, Any]:
-        """Generate root-cause hypotheses from the decision trace graph.
+        """Generate root-cause hypotheses + a hybrid fix plan from the decision trace.
 
-        Delegates to Core's hypothesis generator (single authority). Returns
-        {"hypotheses": [...], "max_error_stage": str, "status": "ok"}.
+        Delegates to Core (single authority). Returns
+        {"hypotheses": [...], "max_error_stage": str, "fix_plan": [...], "status": "ok"}.
         """
         from core.api.core_facade import generate_hypotheses as _gen
+        from core.api.core_facade import build_fix_plan as _plan
         try:
             hypotheses = _gen(project_id, list(failed_stage_ids or []), test_report)
             max_error_stage = hypotheses[0]["stage_id"] if hypotheses else None
+            fix_plan = _plan(project_id, list(failed_stage_ids or []), test_report)
             return {"status": "ok", "hypotheses": hypotheses,
-                    "max_error_stage": max_error_stage}
+                    "max_error_stage": max_error_stage, "fix_plan": fix_plan}
         except Exception as e:  # noqa: facade-unavailable
             _log.warning("generate_fix_hypotheses failed for %s: %s", project_id, str(e)[:200])
             return {"status": "error", "hypotheses": [],
-                    "max_error_stage": None, "detail": str(e)[:200]}
+                    "max_error_stage": None, "fix_plan": list(failed_stage_ids or []),
+                    "detail": str(e)[:200]}
 
     async def build_run_report(self, project_id: str, failed_stage_ids: List[str],
                                test_report: str = "", cost_used_usd: float = 0.0,

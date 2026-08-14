@@ -4604,8 +4604,11 @@ class PipelineEngine:
         # backward to the max error-contribution node. No business concepts here.
         try:
             from core.harness.execution.decision_trace import record_decision as _record_decision
-            _run_id = (state.get("session_id") or state.get("_run_id")
-                       or state.get("project_id", ""))
+            # Use project_id as the trace key — it is the stable identifier the
+            # fix flow and frontend query by (session_id drifts to run_id on
+            # regenerate, which would split the trace across files).
+            _run_id = (state.get("project_id") or state.get("session_id")
+                       or state.get("_run_id", ""))
             if _run_id:
                 _depends_on = []
                 for _s in (self._config.stages if self._config else []):
@@ -4622,9 +4625,11 @@ class PipelineEngine:
                     elif len(_result) < 200:
                         _conf = 0.5
                 _record_decision(_run_id, stage.id, depends_on=_depends_on,
-                                 confidence=_conf)
-        except Exception:  # noqa: best-effort-trace — decision trace is non-critical
-            pass
+                                 confidence=_conf,
+                                 agent_id=getattr(stage, 'agent_id', '') or '')
+        except Exception as _trace_err:  # noqa: best-effort-trace — decision trace is non-critical
+            _log.getLogger("pipeline_engine").debug(
+                "decision trace record failed for stage %s: %s", stage.id, _trace_err, exc_info=True)
 
         # ── Cost budget: accumulate USD from tokens × price (config-driven) ──
         try:

@@ -12,6 +12,7 @@ from core.harness.execution.decision_trace import (
     record_decision,
     locate_max_error_node,
     trace_root_cause_chain,
+    build_fix_plan,
     get_trace,
     clear_trace,
 )
@@ -142,3 +143,58 @@ def test_trace_root_cause_chain_orders_deepest_root_first(clean_run):
 def test_trace_root_cause_chain_reexported_by_facade():
     from core.api import core_facade
     assert hasattr(core_facade, "trace_root_cause_chain")
+
+
+def test_locate_max_error_node_resolves_by_agent_id(clean_run):
+    """Failure localization matches failed stages by agent_id, not just stage_id."""
+    run_id = clean_run
+    record_decision(run_id, "canvas_node_1", depends_on=[], confidence=0.9, agent_id="pm_agent")
+    record_decision(run_id, "canvas_node_2", depends_on=["canvas_node_1"], confidence=0.3, agent_id="architect_agent")
+    record_decision(run_id, "canvas_node_3", depends_on=["canvas_node_2"], confidence=0.8, agent_id="agent_engineer")
+
+    # failed_stage_ids use agent_id (what the fix flow knows), not stage_id
+    result = locate_max_error_node(run_id, failed_stage_ids=["agent_engineer"])
+
+    assert result["stage_id"] == "canvas_node_2", result  # architect is the low-conf culprit
+    assert abs(result["error_contribution"] - 0.7) < 1e-6
+
+
+def test_build_fix_plan_single_root_cause(clean_run):
+    """A low-confidence upstream node yields a single-stage plan."""
+    run_id = clean_run
+    record_decision(run_id, "n1", depends_on=[], confidence=0.9, agent_id="pm")
+    record_decision(run_id, "n2", depends_on=["n1"], confidence=0.25, agent_id="arch")  # low conf root cause
+    record_decision(run_id, "n3", depends_on=["n2"], confidence=0.85, agent_id="code")
+    record_decision(run_id, "n4", depends_on=["n2"], confidence=0.85, agent_id="frontend")
+
+    plan = build_fix_plan(run_id, failed_stage_ids=["code", "frontend"])
+    assert plan == ["arch"], plan
+
+
+def test_build_fix_plan_falls_back_to_earliest_failed_stage(clean_run):
+    """Independent bugs with no low-conf root cause → earliest failed stage."""
+    run_id = clean_run
+    record_decision(run_id, "n1", depends_on=[], confidence=0.9, agent_id="pm")
+    record_decision(run_id, "n2", depends_on=["n1"], confidence=0.85, agent_id="backend")
+    record_decision(run_id, "n3", depends_on=["n2"], confidence=0.85, agent_id="frontend")
+
+    plan = build_fix_plan(run_id, failed_stage_ids=["backend", "frontend"])
+    assert plan == ["backend"], plan  # upstream-most failed stage
+
+
+def test_build_fix_plan_empty_trace_returns_first_failed(clean_run):
+    """Empty trace → return the first failed stage (per-stage fallback)."""
+    run_id = clean_run
+    plan = build_fix_plan(run_id, failed_stage_ids=["backend", "frontend"])
+    assert plan == ["backend"], plan
+
+
+def test_build_fix_plan_single_failed_returns_it(clean_run):
+    run_id = clean_run
+    plan = build_fix_plan(run_id, failed_stage_ids=["backend"])
+    assert plan == ["backend"], plan
+
+
+def test_build_fix_plan_reexported_by_facade():
+    from core.api import core_facade
+    assert hasattr(core_facade, "build_fix_plan")

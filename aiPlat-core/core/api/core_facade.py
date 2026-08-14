@@ -3550,7 +3550,7 @@ from core.harness.execution.pipeline_run_store import get_pipeline_run_store  # 
 from core.harness.training.rl_trainer import get_rl_trainer  # noqa: boundary
 from core.harness.knowledge.seci_engine import get_seci_engine, hook_registered  # noqa: boundary
 from core.harness.execution.trace_visualizer import get_trace_visualizer  # noqa: boundary
-from core.harness.execution.decision_trace import record_decision, locate_max_error_node, trace_root_cause_chain, get_trace, clear_trace  # noqa: boundary
+from core.harness.execution.decision_trace import record_decision, locate_max_error_node, trace_root_cause_chain, build_fix_plan, get_trace, clear_trace  # noqa: boundary
 from core.harness.execution.cost_budget import CostBudgetController, get_pricing, cost_for  # noqa: boundary
 from core.harness.execution.hypothesis_generator import generate_hypotheses  # noqa: boundary
 from core.harness.execution.governance_report import build_run_report  # noqa: boundary
