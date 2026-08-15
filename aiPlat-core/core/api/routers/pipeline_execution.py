@@ -78,6 +78,12 @@ async def cleanup_orphaned_pipelines():
                     stage_rows = store.load_stages_config(run_id)
                     stages = []
                     for sr in stage_rows:
+                        # Only stage-config rows (canvas_node_*) carry agent_id;
+                        # artifact/progress rows (prd, test_cases, skill_name, …) are
+                        # noise here and must be skipped, otherwise the stage list
+                        # becomes misaligned with _current_stage_idx.
+                        if not sr.get("agent_id"):
+                            continue
                         input_arts = sr.get("input_artifacts", "")
                         inputs = [a.strip() for a in input_arts.split(",") if a.strip()] if input_arts else []
                         stage = PipelineStageConfig(
@@ -157,6 +163,7 @@ def _make_store_callback(run_id: str, store):
                 hitl_output_artifact=state.get("_hitl_output_artifact", ""),
                 error=state.get("error_message", state.get("error", "")),
                 _progress_json=_json.dumps(state.get("_progress", {})),
+                output_dir=state.get("output_dir", ""),
             )
 
             # Write per-artifact progress (state keys with raw_output are artifacts)

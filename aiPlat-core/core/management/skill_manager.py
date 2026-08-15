@@ -1055,6 +1055,7 @@ class SkillManager:
             if isinstance(self._skills[name].metadata, dict):
 
                 self._skills[name].metadata.setdefault("filesystem", {})["skill_md"] = skill_md
+                self._skills[name].metadata["filesystem"]["skill_dir"] = skill_dir
 
             self._stats[name] = SkillStats()
 

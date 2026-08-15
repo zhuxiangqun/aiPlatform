@@ -155,6 +155,11 @@ class PipelineRunStore:
                 conn.execute("ALTER TABLE pipeline_runs ADD COLUMN _progress_json TEXT DEFAULT ''")
             except Exception:
                 pass  # noqa: schema-idempotent
+            # ── v3.6: output_dir persistence (survive restart → artifact file paths) ──
+            try:
+                conn.execute("ALTER TABLE pipeline_runs ADD COLUMN output_dir TEXT DEFAULT ''")
+            except Exception:
+                pass  # noqa: schema-idempotent
             conn.commit()
         finally:
             conn.close()
@@ -226,6 +231,7 @@ class PipelineRunStore:
         hitl_output_artifact: str = "",
         error: str = "",
         _progress_json: str = "",
+        output_dir: str = "",
     ) -> None:
         """Update phase + HITL fields + progress + pipeline run in a single atomic SQL statement.
         
@@ -241,10 +247,12 @@ class PipelineRunStore:
                    current_stage_idx = ?, pass_rate = ?,
                    _hitl_stage_id = ?, _hitl_phase_name = ?,
                    _hitl_output_artifact = ?, _progress_json = ?,
+                   output_dir = CASE WHEN ? != '' THEN ? ELSE output_dir END,
                    updated_at = ?
                WHERE run_id = ?""",
             (phase, error, finished, current_stage_idx, pass_rate,
-             hitl_stage_id, hitl_phase_name, hitl_output_artifact, _progress_json, now, run_id),
+             hitl_stage_id, hitl_phase_name, hitl_output_artifact, _progress_json,
+             output_dir, output_dir, now, run_id),
         )
 
     # ── v3.1: HITL field writers ───────────────────────────────────
@@ -457,6 +465,8 @@ class PipelineRunStore:
             "pass_rate": run["pass_rate"],
             "error": run["error_message"],
             "session_id": run["run_id"],
+            # ── v3.6: output_dir (persisted so artifact file paths survive restart) ──
+            "output_dir": run.get("output_dir", "") or "",
             # ── v3.1: HITL precise pause location ──
             "_hitl_stage_id": run.get("_hitl_stage_id", "") or "",
             "_hitl_phase_name": run.get("_hitl_phase_name", "") or "",
@@ -466,20 +476,31 @@ class PipelineRunStore:
         # Merge stage artifacts + progress into state
         import os as _os_fs
         _progress = None
+        _out_dir = run.get("output_dir", "") or ""
         for s in stages:
-            if s["artifact_key"] and s["artifact_output"]:
+            if s["artifact_key"]:
                 # Read from filesystem if artifact_output is a file path
                 _content = s["artifact_output"]
-                if _os_fs.path.isfile(_content):
+                if _content and _os_fs.path.isfile(_content):
                     try:
                         with open(_content, "r", encoding="utf-8") as _f:
                             _content = _f.read()
                     except Exception:
                         logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)  # fallback: use raw path string
-                state[s["artifact_key"]] = {
-                    "raw_output": _content,
-                    "elapsed_sec": s["elapsed_sec"],
-                }
+                if not _content and _out_dir:
+                    # Fallback: artifact_output lost (e.g. broken recovery) — read from output dir file
+                    _fallback = _os_fs.path.join(_out_dir, f"{s['artifact_key']}.json")
+                    if _os_fs.path.isfile(_fallback):
+                        try:
+                            with open(_fallback, "r", encoding="utf-8") as _f:
+                                _content = _f.read()
+                        except Exception:
+                            logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
+                if _content:
+                    state[s["artifact_key"]] = {
+                        "raw_output": _content,
+                        "elapsed_sec": s["elapsed_sec"],
+                    }
             # Restore health reports from progress_json
             if s["artifact_key"] and s["artifact_key"].startswith("_health_report_"):
                 if s["progress_json"]:
@@ -524,6 +545,8 @@ class PipelineRunStore:
         run = dict(run)  # sqlite3.Row → dict so .get() works below
 
         stages = self.get_stages(run_id)
+        import os as _os_fs2
+        _output_dir = run.get("output_dir", "") or ""
         state: Dict[str, Any] = {
             "phase": run["phase"],
             "_current_stage_idx": run["current_stage_idx"],
@@ -532,22 +555,37 @@ class PipelineRunStore:
             "pass_rate": run["pass_rate"],
             "error": run["error_message"],
             "session_id": run["run_id"],
+            # ── v3.6: output_dir persisted to run record (engine._output_root wrote it) ──
+            "output_dir": _output_dir,
+            # ── v3.1: HITL precise pause location (must survive restart) ──
+            "_hitl_stage_id": run.get("_hitl_stage_id", "") or "",
+            "_hitl_phase_name": run.get("_hitl_phase_name", "") or "",
+            "_hitl_output_artifact": run.get("_hitl_output_artifact", "") or "",
         }
         _progress = None
-        import os as _os_fs2
         for s in stages:
-            if s["artifact_key"] and s["artifact_output"]:
+            if s["artifact_key"]:
                 _content = s["artifact_output"]
-                if _os_fs2.path.isfile(_content):
+                if _content and _os_fs2.path.isfile(_content):
                     try:
                         with open(_content, "r", encoding="utf-8") as _f:
                             _content = _f.read()
                     except Exception:
                         logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
-                state[s["artifact_key"]] = {
-                    "raw_output": _content,
-                    "elapsed_sec": s["elapsed_sec"],
-                }
+                if not _content and _output_dir:
+                    # Fallback: artifact_output lost — read from output dir file
+                    _fallback = _os_fs2.path.join(_output_dir, f"{s['artifact_key']}.json")
+                    if _os_fs2.path.isfile(_fallback):
+                        try:
+                            with open(_fallback, "r", encoding="utf-8") as _f:
+                                _content = _f.read()
+                        except Exception:
+                            logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
+                if _content:
+                    state[s["artifact_key"]] = {
+                        "raw_output": _content,
+                        "elapsed_sec": s["elapsed_sec"],
+                    }
             if s["progress_json"]:
                 try:
                     p = json.loads(s["progress_json"])
