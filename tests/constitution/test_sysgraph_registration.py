@@ -105,6 +105,8 @@ def test_sysgraph_tools_referenced_in_agent_md():
     agent_dirs = [
         WORKSPACE_ROOT / "aiPlat-core" / "agents",
         WORKSPACE_ROOT / "aiPlat-core" / "core" / "engine" / "agents",
+        # P0-A8: workspace agents also use sysgraph tools (engine + workspace = 10 total)
+        Path.home() / ".aiplat" / "agents",
     ]
 
     count = 0

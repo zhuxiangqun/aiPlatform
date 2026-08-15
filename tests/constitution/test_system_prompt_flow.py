@@ -40,15 +40,26 @@ class TestSystemPromptFlow:
         )
 
     def test_react_loop_reads_system_prompt_from_context(self):
-        """ReActLoop._reason must read system_prompt from context and send as system role."""
+        """ReActLoop._reason must read system_prompt from context and send as system role.
+
+        P0-A7: _reason delegates to inference.reason (extracted from loop.py).
+        The system_prompt injection lives in the delegation target — verify both.
+        """
         import inspect
         from core.harness.execution.loop import ReActLoop
+        from core.harness.execution.loop import inference
 
         source = inspect.getsource(ReActLoop._reason)
-        assert ("system_prompt" in source or "_sys_prompt" in source), (
-            "ReActLoop._reason does not reference system_prompt or _sys_prompt. "
+        reason_src = inspect.getsource(inference.reason)
+        combined = source + reason_src
+        assert ("system_prompt" in combined or "_sys_prompt" in combined), (
+            "ReActLoop._reason / inference.reason does not reference system_prompt or _sys_prompt. "
             "It must read the system_prompt from LoopState context and inject it "
             "as a role='system' message before calling the LLM."
+        )
+        # The actual injection must produce a role='system' message
+        assert "role" in reason_src and "system" in reason_src, (
+            "inference.reason must inject system_prompt as role='system' message."
         )
 
 
