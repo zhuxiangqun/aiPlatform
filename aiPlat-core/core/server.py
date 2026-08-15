@@ -1047,6 +1047,9 @@ async def lifespan(app: FastAPI):
         ("core.apps.tools.sysgraph_tools", "SysLspFixTool", {}),
         # Phase 54: Local TTS (Piper)
         ("core.apps.tools.tts", "TTSTool", {}),
+        # P0-B3: voice_loop / wake_agent wiring
+        ("core.apps.tools.voice_loop_tool", "VoiceLoopTool", {}),
+        ("core.apps.tools.wake_agent_tool", "WakeAgentTool", {}),
         # Phase 55: Unified Web Tools (Firecrawl alignment)
         ("core.apps.tools.web.web_search", "WebSearchTool", {}),
         ("core.apps.tools.web.web_crawl", "WebCrawlTool", {}),

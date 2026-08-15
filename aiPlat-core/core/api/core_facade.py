@@ -3360,3 +3360,83 @@ from core.harness.infrastructure.gates.marking_propagation import get_entity_max
 
 # v2.7.2 — de-privatized internal symbols
 from core.harness.document.converters._mineru import table_text_to_cells, parse_markdown_table, cells_to_markdown, load_mineru_content_list  # noqa: boundary
+
+
+# ═══════════════════════════════════════════════════════════════
+# P0-B3: wired subsystems (arena / voice_loop / wake_agent)
+# ═══════════════════════════════════════════════════════════════
+
+def arena_leaderboard() -> list:
+    """Get Darwin Arena Elo leaderboard (empty before first run)."""
+    from core.harness.arena.arena import DarwinArena
+    return DarwinArena().leaderboard()
+
+
+async def arena_run_round_robin(contenders: list, matches_per_pair: int = 3,
+                                benchmark_fn=None, on_match=None) -> dict:
+    """Manually trigger a round-robin tournament.
+
+    Args:
+        contenders: list of (name, agent_fn) tuples
+        matches_per_pair: matches per head-to-head pair
+        benchmark_fn: async (name, fn) -> float; defaults to a no-op scorer
+    """
+    from core.harness.arena.arena import DarwinArena
+
+    async def _default_benchmark(name, fn):
+        # Deterministic fallback so manual runs work without a real benchmark:
+        # score by function identity hash (0..1) — callers should pass a real fn.
+        import hashlib
+        h = hashlib.md5(f"{name}:{fn}".encode()).hexdigest()
+        return int(h[:4], 16) / 65535.0
+
+    arena = DarwinArena()
+    result = await arena.round_robin(
+        contenders=contenders,
+        benchmark_fn=benchmark_fn or _default_benchmark,
+        matches_per_pair=matches_per_pair,
+        on_match=on_match,
+    )
+    return {
+        "leaderboard": result.leaderboard,
+        "promotions": [{"name": p.name, "rating": p.rating,
+                        "win_rate": p.win_rate, "promoted": p.promoted,
+                        "reason": p.promotion_reason} for p in result.promotions],
+        "total_matches": len(result.matches),
+        "total_duration_s": result.total_duration_s,
+    }
+
+
+async def voice_loop_process(audio_path: str, llm_callback=None) -> dict:
+    """Full voice loop: STT → Agent → Browser/Tool → TTS (manual trigger)."""
+    from core.harness.multimodal.voice_loop import VoiceLoop
+    return await VoiceLoop().process_voice_command(audio_path, llm_callback=llm_callback)
+
+
+def wake_agent_status() -> dict:
+    """Get WakeAgent filesystem-change detector status."""
+    from core.harness.monitoring.wake_agent import get_wake_agent
+    agent = get_wake_agent()
+    return {
+        "paths": agent.paths,
+        "interval": agent.interval,
+        "running": agent._running,
+        "change_count": agent._change_counter,
+    }
+
+
+async def wake_agent_start(paths: list = None) -> dict:
+    """Start WakeAgent watching (zero-token checksum polling)."""
+    from core.harness.monitoring.wake_agent import get_wake_agent
+    agent = get_wake_agent(paths)
+    if not agent._running:
+        await agent.start()
+    return {"running": agent._running, "paths": agent.paths}
+
+
+async def wake_agent_stop() -> dict:
+    """Stop WakeAgent."""
+    from core.harness.monitoring.wake_agent import get_wake_agent
+    agent = get_wake_agent()
+    agent.stop()
+    return {"running": False}

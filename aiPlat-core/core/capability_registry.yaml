@@ -832,12 +832,26 @@ domains:
         type: "pattern"
         signature: "sequential round discussion, agreement convergence"
         module: "core/harness/execution/roundtable.py"
+      - symbol: "DarwinArena"
+        type: "class"
+        signature: "Elo 评分 + Champion 晋升 + round_robin 手动竞技 (P0-B3 已接线: facade + eval API)"
+        module: "core/harness/arena/arena.py"
+      - symbol: "VoiceLoopTool"
+        type: "class"
+        signature: "完整语音循环 STT→Agent→TTS 工具 (P0-B3 已接线: server 注册)"
+        module: "core/apps/tools/voice_loop_tool.py"
+      - symbol: "WakeAgentTool"
+        type: "class"
+        signature: "零 token 文件变更监控工具 status/start/stop (P0-B3 已接线: server 注册 + eval API)"
+        module: "core/apps/tools/wake_agent_tool.py"
     breaks: []
     consumers_expected:
       - module: "core/harness/execution/pipeline_engine.py"
         reason: "Pipeline routing_mode dispatch"
       - module: "core/harness/coordination/swarm_broker.py"
         reason: "SwarmBroker 蜂群协作"
+      - module: "aiPlat-platform/apps/eval/api/arena_wiring.py"
+        reason: "P0-B3 arena/wake-agent REST 端点"
 
   # ══════════════════════════════════════════════════════════════
   # 二十一、平台治理 (59 caps)
