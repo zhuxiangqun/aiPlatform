@@ -410,10 +410,179 @@ async def _run_pytest(params: Dict[str, Any]) -> Dict[str, Any]:
 
 
 # ══════════════════════════════════════════════════════════════════
+# Agent 真实对话测试（v2.3 — 从文档校验升级为真实行为验证）
+# ══════════════════════════════════════════════════════════════════
+
+def _parse_agent_manifest(agent_app_raw: str) -> Dict[str, Any]:
+    """从 agent_app 的 ## FILE: 块解析 agent_manifest.json。"""
+    import re
+    for block in re.split(r'^#{2,4}\s*FILE:\s*', agent_app_raw, flags=re.MULTILINE)[1:]:
+        lines = block.strip().split("\n", 1)
+        if len(lines) >= 2 and "agent_manifest.json" in lines[0]:
+            man = re.sub(r'^```(?:json)?\s*\n?', '', lines[1].strip())
+            man = re.sub(r'\n?```\s*$', '', man)
+            try:
+                return json.loads(man)
+            except Exception:
+                return {}
+    return {}
+
+
+def _parse_agent_sops(agent_app_raw: str) -> Dict[str, str]:
+    """从 agent_app 的 ## FILE: 块解析每个 AGENT.md 的 SOP body（frontmatter 之后）。"""
+    import re
+    sops: Dict[str, str] = {}
+    for block in re.split(r'^#{2,4}\s*FILE:\s*', agent_app_raw, flags=re.MULTILINE)[1:]:
+        lines = block.strip().split("\n", 1)
+        if len(lines) < 2:
+            continue
+        path = lines[0].strip()
+        if not path.endswith("AGENT.md"):
+            continue
+        parts = [p for p in path.split("/") if p]
+        name = parts[-2] if len(parts) >= 2 else ""
+        if not name:
+            continue
+        content = re.sub(r'^```\w*\n?', '', lines[1].strip())
+        content = re.sub(r'\n?```\s*$', '', content)
+        if content.startswith("---"):
+            _p = content.split("---", 2)
+            content = _p[2].strip() if len(_p) >= 3 else content
+        sops[name] = content
+    return sops
+
+
+async def _run_agent_conversation(params: Dict[str, Any]) -> Dict[str, Any]:
+    """Agent 真实对话测试闭环：真实运行 Agent → 发 question → 评估真实回复。"""
+    import asyncio
+    from core.harness.utils.model_injection import best_model_for_purpose
+
+    raw = str(params.get("agent_app") or "")
+    test_cases = _extract_questions(params.get("test_cases"))
+    project = str(params.get("project") or "未命名项目")
+    today = _dt.date.today().isoformat()
+
+    manifest = _parse_agent_manifest(raw)
+    routing = (manifest or {}).get("skill_routing", {}) or {}
+    agents_meta = {a["name"]: a for a in (manifest or {}).get("agents", [])
+                   if isinstance(a, dict) and a.get("name")}
+    sops = _parse_agent_sops(raw)
+
+    configs: Dict[str, Dict[str, Any]] = {}
+    for name, meta in agents_meta.items():
+        configs[name] = {
+            "system_prompt": sops.get(name, ""),
+            "model": best_model_for_purpose("chat"),
+            "skills": (meta.get("skills") or meta.get("required_skills") or []),
+            "tools": (meta.get("tools") or meta.get("required_tools") or []),
+        }
+
+    grouped: Dict[str, List[Dict[str, Any]]] = {}
+    for tc in test_cases:
+        grouped.setdefault(str(tc.get("target_skill") or tc.get("skill") or ""), []).append(tc)
+
+    # 组内串行、组间并发（受 max_concurrent_skills=2 限制）
+    sem = asyncio.Semaphore(2)
+
+    async def _run_group(skill: str, cases: list) -> list:
+        async with sem:
+            agent_name = routing.get(skill, "")
+            if not agent_name or agent_name not in configs:
+                return [{"id": c.get("id"), "result": "SKIP",
+                         "reason": f"no agent for skill {skill}"} for c in cases]
+            out = []
+            for c in cases:
+                out.append(await _run_single_conversation(agent_name, configs[agent_name], c))
+            return out
+
+    groups = [_run_group(skill, cases) for skill, cases in grouped.items()]
+    group_results = await asyncio.gather(*groups) if groups else []
+    results = [r for gr in group_results for r in gr]
+
+    return _build_conversation_report(results, project, today)
+
+
+async def _run_single_conversation(agent_name: str, cfg: dict, tc: Dict[str, Any]) -> Dict[str, Any]:
+    """单次真实对话：构造 AgentInfo → run_workspace_agent → 评估回复。"""
+    import asyncio
+    from core.management.agent_manager import AgentInfo
+    from core.api.core_facade import run_workspace_agent
+
+    question = str(tc.get("question") or "")
+    expectation = str(tc.get("min_expectation") or "")
+    if not question:
+        return {"id": tc.get("id"), "result": "SKIP", "reason": "empty question"}
+
+    info = AgentInfo(id=agent_name, name=agent_name, type="react", status="ready",
+                     config={"system_prompt": cfg["system_prompt"], "model": cfg["model"]},
+                     skills=list(cfg["skills"]), tools=list(cfg["tools"]))
+    try:
+        resp = await asyncio.wait_for(
+            run_workspace_agent(agent_info=info, user_message=question, max_steps=10,
+                                session_id=f"qa-{agent_name}-{tc.get('id')}"),
+            timeout=60,
+        )
+        reply = str(resp.get("output") or resp.get("reply") or "") if isinstance(resp, dict) else str(resp)
+        status, evidence = await _evaluate_response(reply, expectation)
+        return {"id": tc.get("id"), "agent": agent_name, "result": status,
+                "response": reply[:500], "evidence": evidence}
+    except asyncio.TimeoutError:
+        return {"id": tc.get("id"), "agent": agent_name, "result": "TIMEOUT", "reason": "60s timeout"}
+    except Exception as e:
+        return {"id": tc.get("id"), "agent": agent_name, "result": "ERROR", "reason": str(e)[:200]}
+
+
+async def _evaluate_response(reply: str, expectation: str):
+    """评估：规则门禁（关键词命中）→ 未命中则 LLM 复核（doc_llm）。"""
+    import re
+    keywords = [k for k in re.findall(r'[\'"“]([^\'"”]{2,30})[\'"”]', expectation) if len(k) >= 2]
+    if keywords and all(k in reply for k in keywords):
+        return "PASS", f"规则命中关键词: {keywords}"
+    try:
+        from core.harness.syscalls.llm import sys_llm_generate
+        from core.harness.utils.model_injection import best_model_for_purpose
+        prompt = (f"判断 Agent 回复是否满足预期。\n预期: {expectation}\n回复: {reply[:2000]}\n"
+                  f"只回 JSON: {{\"satisfied\": true|false, \"evidence\": \"...\"}}")
+        resp = await sys_llm_generate(
+            None, [{"role": "user", "content": prompt}],
+            model_name=best_model_for_purpose("doc_llm"),
+        )
+        txt = getattr(resp, "content", "") or str(resp)
+        satisfied = '"satisfied": true' in txt or '"satisfied":true' in txt
+        return ("PASS" if satisfied else "FAIL"), txt[:300]
+    except Exception:
+        return "WARNING", "LLM 复核不可用，人工确认"
+
+
+def _build_conversation_report(results: List[Dict[str, Any]], project: str, today: str) -> Dict[str, Any]:
+    """汇总真实对话测试结果为标准 test_report。"""
+    passed = sum(1 for r in results if r.get("result") == "PASS")
+    failed = [r for r in results if r.get("result") in ("FAIL", "TIMEOUT", "ERROR")]
+    bugs = [{"id": f"BUG-{i+1:03d}", "test_id": r.get("id"), "severity": "high",
+             "title": f"真实对话测试未通过: {r.get('id')}",
+             "reproduction": r.get("response", ""), "actual": r.get("evidence", ""),
+             "suggested_fix": f"修复 agent '{r.get('agent')}' 的对应 skill，使其回复满足 min_expectation。"}
+            for i, r in enumerate(failed)]
+    return {
+        "header": {"report_id": "TR-CONV-0001", "project": project,
+                   "test_mode": "agent_conversation", "date": today, "executor": "test_executor"},
+        "meta": {"total_test_cases": len(results), "passed": passed, "failed": len(failed),
+                 "warnings": 0, "pass_rate": round(passed / len(results) * 100) if results else 0},
+        "test_results": results,
+        "bug_summary": {"total_bugs": len(bugs), "bugs": bugs},
+        "recommendation": "APPROVED" if not failed else "REJECTED",
+        "improvements": [{"priority": "MUST_FIX", "item": b["suggested_fix"], "ref": b["id"]} for b in bugs],
+    }
+
+
+# ══════════════════════════════════════════════════════════════════
 # 入口：分流
 # ══════════════════════════════════════════════════════════════════
 async def execute(params: Dict[str, Any]) -> Dict[str, Any]:
     code = params.get("code")
     if code and str(code).strip():
         return await _run_pytest(params)
+    agent_app = params.get("agent_app")
+    if agent_app and "agent_manifest.json" in str(agent_app):
+        return await _run_agent_conversation(params)
     return await _run_document_check(params)

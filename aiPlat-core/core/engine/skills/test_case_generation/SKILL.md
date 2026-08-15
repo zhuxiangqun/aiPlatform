@@ -123,11 +123,12 @@ def test_upload_video_success():
 
 ### Agent Step 2: 为每个测试问题定义字段
 
-每条问题标注：id / ac_ref / category / question / min_expectation / assertions。
+每条问题标注：id / ac_ref / category / question / min_expectation / assertions / target_skill。
+其中 target_skill 从 agent_manifest.json 的 skill_routing 反查该问题对应的 Skill 名（用于测试执行器路由到目标 Agent）。
 
 ### Agent Step 3: 输出 JSON
 
-只输出 `{"mode": "agent_conversation", "test_questions": [...]}`。
+只输出 `{"mode": "agent_conversation", "test_questions": [{..., "target_skill": "video_upload"}]}`。
 
 ---
 
