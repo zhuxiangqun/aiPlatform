@@ -442,8 +442,16 @@ def _parse_agent_manifest(agent_app_raw: str) -> Dict[str, Any]:
         if len(lines) >= 2 and "agent_manifest.json" in lines[0]:
             man = re.sub(r'^```(?:json)?\s*\n?', '', lines[1].strip())
             man = re.sub(r'\n?```\s*$', '', man)
+            # 截断 frontmatter 分隔符残留（LLM 有时在 JSON 后跟 ---）
+            man = man.split("\n---", 1)[0].strip()
             try:
                 return json.loads(man)
+            except Exception:
+                pass
+            # 兜底: raw_decode 提取第一个完整 JSON 对象（容忍尾随内容）
+            try:
+                obj, _ = json.JSONDecoder().raw_decode(man)
+                return obj if isinstance(obj, dict) else {}
             except Exception:
                 return {}
     return {}
@@ -507,7 +515,7 @@ async def _run_agent_conversation(params: Dict[str, Any]) -> Dict[str, Any]:
         grouped.setdefault(str(tc.get("target_skill") or tc.get("skill") or ""), []).append(tc)
 
     # 组内串行、组间并发（受 max_concurrent_skills=2 限制）
-    sem = asyncio.Semaphore(2)
+    sem = asyncio.Semaphore(4)
 
     async def _run_group(skill: str, cases: list) -> list:
         async with sem:
@@ -545,7 +553,7 @@ async def _run_single_conversation(agent_name: str, cfg: dict, tc: Dict[str, Any
         resp = await asyncio.wait_for(
             run_workspace_agent(agent_info=info, user_message=question, max_steps=10,
                                 session_id=f"qa-{agent_name}-{tc.get('id')}"),
-            timeout=60,
+            timeout=120,
         )
         reply = str(resp.get("output") or resp.get("reply") or "") if isinstance(resp, dict) else str(resp)
         status, evidence = await _evaluate_response(reply, expectation)
