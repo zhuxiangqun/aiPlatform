@@ -310,11 +310,10 @@ class EvolutionEngine:
                 curator_report = await SkillCurator().run_if_idle()
                 if curator_report:
                     result["curator"] = {
-                        "active": curator_report.active_count,
-                        "stale": curator_report.stale_count,
-                        "archived": curator_report.archived_count,
-                        "merged": len(curator_report.merged),
-                        "promoted": len(curator_report.promoted),
+                        "reviewed": curator_report.get("reviewed", 0),
+                        "stale": len(curator_report.get("stale", [])),
+                        "archived": len(curator_report.get("archived", [])),
+                        "merge_suggestions": len(curator_report.get("merge_suggestions", [])),
                     }
             except Exception as e:
                 logging.getLogger(__name__).debug('curator run failed: %s', e, exc_info=True)
