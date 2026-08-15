@@ -269,6 +269,9 @@ class PipelineStageConfig(BaseModel):
     deploy_files_to_disk: bool = False   # Parse ## FILE: blocks from output, write to project dir
     deploy_files_target_dir: str = ""    # Override target. Empty = ~/.aiplat/apps/{pid}/current
     test_execution_mode: str = ""        # "pytest" | "agent_conversation" | "" — which test runner
+    # v3.1 — architecture mode (config-driven, drives architecture_design output shape)
+    # "code" = FastAPI/RESTful architecture | "agent" = Agent/skill-routing architecture | "" = auto/legacy
+    architecture_mode: str = ""
     # Phase 12 — execution backend selection (replaces SOP detection / agent_type switching)
     execution_backend: str = "llm"       # "llm"=sys_llm_generate | "agent"=StageRunner.run()→ReActLoop
     # v3.0 — capability profile: replaces binary execution_backend switch with declarative capability tiers.

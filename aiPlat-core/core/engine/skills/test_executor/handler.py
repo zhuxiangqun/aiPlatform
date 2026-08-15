@@ -34,12 +34,33 @@ def _lang_tag_pattern():
 # Agent 模式：确定性文档校验
 # ══════════════════════════════════════════════════════════════════
 def _extract_questions(test_cases: Any) -> List[Dict[str, Any]]:
-    """兼容两种输入: 直接数组 或 {mode, test_questions: [...]}。"""
+    """兼容三种输入: 直接数组 / {mode, test_questions} / 混合文本(含 JSON test_questions)。"""
     if isinstance(test_cases, dict):
         qs = test_cases.get("test_questions") or test_cases.get("test_cases") or []
         return [q for q in qs if isinstance(q, dict)]
     if isinstance(test_cases, list):
         return [q for q in test_cases if isinstance(q, dict)]
+    if isinstance(test_cases, str):
+        import re as _re, json as _j
+        s = test_cases.strip()
+        # 直接 JSON
+        if s.startswith("{"):
+            try:
+                d = _j.loads(s)
+                if isinstance(d, dict):
+                    qs = d.get("test_questions") or d.get("test_cases") or []
+                    return [q for q in qs if isinstance(q, dict)]
+            except Exception:
+                pass
+        # 混合文本: 提取 "test_questions": [...] 数组
+        m = _re.search(r'"test_questions"\s*:\s*(\[[\s\S]*\])', s)
+        if m:
+            try:
+                arr = _j.loads(m.group(1))
+                if isinstance(arr, list):
+                    return [q for q in arr if isinstance(q, dict)]
+            except Exception:
+                pass
     return []
 
 

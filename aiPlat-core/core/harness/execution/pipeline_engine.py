@@ -4443,6 +4443,11 @@ class PipelineEngine:
                     _summary = self._summarize_artifact(_v)
                     _context += f"## {_key} (summary)\n{_ctx_json.dumps(_summary, ensure_ascii=False)[:2000]}\n\n"
 
+        # Inject architecture_mode into context (config-driven, drives architecture_design output shape)
+        _arch_mode = getattr(stage, 'architecture_mode', '') or ''
+        if _arch_mode:
+            _context = f"## architecture_mode\n{_arch_mode}\n\n" + _context
+
         # ── 3. Inject document schema into system prompt ──
         # Read $ref from SKILL.md YAML frontmatter (not hardcoded artifact key mapping)
         _schema_text = ""

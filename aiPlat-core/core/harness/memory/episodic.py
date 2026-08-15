@@ -150,9 +150,21 @@ class EpisodicMemory:
         now = _time.time()
         cutoff = now - self._ttl_seconds
         removed = 0
-        while self._full_messages and float(self._full_messages[0].get("timestamp", now)) < cutoff:
-            self._full_messages.pop(0)
-            removed += 1
+        while self._full_messages:
+            _ts = self._full_messages[0].get("timestamp", now)
+            try:
+                _tsf = _ts
+                if isinstance(_ts, str):
+                    import datetime as _dt
+                    _tsf = _dt.datetime.fromisoformat(_ts).timestamp()
+                _tsf = float(_tsf)
+            except Exception:
+                break  # unparseable timestamp — stop (treat as non-expired, avoid ValueError)
+            if _tsf < cutoff:
+                self._full_messages.pop(0)
+                removed += 1
+            else:
+                break
         return removed
 
     def _apply_topic_overwrites(self, newly_scored_indices: List[int]) -> None:
