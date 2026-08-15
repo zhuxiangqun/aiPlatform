@@ -125,8 +125,8 @@ async def test_overall_accuracy():
     if not all_quality:
         pytest.skip("No evaluable cases")
 
-    overall_name = sum(q.tool_name_accuracy for q in all_quality) / len(all_quality)
-    overall_param = sum(q.param_accuracy for q in all_quality) / len(all_quality)
+    overall_name = sum(q.selection_rate for q in all_quality) / len(all_quality)
+    overall_param = sum(q.param_rate for q in all_quality) / len(all_quality)
 
     print(f"\n  Tool name accuracy: {overall_name:.1%}")
     print(f"  Param accuracy:    {overall_param:.1%}")
