@@ -55,7 +55,14 @@ async def test_mcp_smoke_initialize():
 @pytest.mark.asyncio
 async def test_mcp_smoke_list_tools():
     """Verify tools/list returns at least the test-1 tool."""
+    import os
     import sys
+    from pathlib import Path
+
+    # User-level tools dir — absent in CI/fresh environments; skip there.
+    tools_dir = Path(os.environ.get("AIPLAT_TOOLS_PATH", Path.home() / ".aiplat" / "tools"))
+    if not tools_dir.is_dir() or not list(tools_dir.glob("*.py")):
+        pytest.skip(f"no user tools at {tools_dir} (optional in CI)")
 
     proc = await asyncio.create_subprocess_exec(
         sys.executable, "-m", "core.apps.mcp.local_tools_server",
@@ -88,7 +95,14 @@ async def test_mcp_smoke_list_tools():
 @pytest.mark.asyncio
 async def test_mcp_smoke_call_tool_test_1():
     """Verify tools/call with test-1 returns correct result (num=11 → 121)."""
+    import os
     import sys
+    from pathlib import Path
+
+    # User-level tools dir — absent in CI/fresh environments; skip there.
+    tools_dir = Path(os.environ.get("AIPLAT_TOOLS_PATH", Path.home() / ".aiplat" / "tools"))
+    if not tools_dir.is_dir() or not list(tools_dir.glob("*.py")):
+        pytest.skip(f"no user tools at {tools_dir} (optional in CI)")
 
     proc = await asyncio.create_subprocess_exec(
         sys.executable, "-m", "core.apps.mcp.local_tools_server",
