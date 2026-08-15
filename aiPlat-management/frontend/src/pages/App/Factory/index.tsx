@@ -1184,7 +1184,7 @@ const ProjectPanel: React.FC<{
           {prdReady && phase === 'dialogue' && (
             <Button variant="primary" size="sm" onClick={handleConfirm} loading={starting}>确认需求</Button>
           )}
-          {(phase === 'team_ready' || phase === 'done' || phase === 'failed') && (
+          {(phase === 'team_ready' || phase === 'done' || phase === 'failed' || phase === 'paused') && (
             <Button variant="primary" size="sm" onClick={handleStart} loading={starting}>{runHistory.length > 0 ? '重新构建' : '启动构建'}</Button>
           )}
         </div>
@@ -1721,6 +1721,24 @@ const FactoryPage: React.FC = () => {
                 {status.phase === 'failed' && (
                   <div className="flex items-center gap-2 pt-2 border-t border-dark-border">
                     <span className="text-[10px] text-red-400 flex items-center gap-1"><XCircle className="w-3 h-3" />{lastRun?.error?.slice(0, 30) || '执行失败'}</span>
+                  </div>
+                )}
+                {status.phase === 'paused' && (
+                  <div className="flex items-center gap-2 pt-2 border-t border-dark-border">
+                    <span className="text-[10px] text-amber-400 flex items-center gap-1"><Clock className="w-3 h-3" />等待审批</span>
+                    <button
+                      onClick={async (e) => {
+                        e.stopPropagation();
+                        try {
+                          await projectApi.rebuild(p.project_id);
+                          toast.success('重建已触发');
+                          loadAll();
+                        } catch (err) { toastGateError(err, '重建失败'); }
+                      }}
+                      className="ml-auto text-[10px] px-2 py-1 rounded bg-primary/20 text-primary hover:bg-primary/30 transition-colors"
+                    >
+                      🔄 重新构建
+                    </button>
                   </div>
                 )}
               </motion.div>
