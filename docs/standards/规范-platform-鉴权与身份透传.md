@@ -73,3 +73,19 @@ platform 对外提供：
 - `GET /whoami`：返回解析后的 `{ tenant_id, actor_id, scopes, request_id? }`（用于联调/排障）
 - 日志必须打印（脱敏）：`request_id/tenant_id/actor_id` + route + latency
 
+
+---
+
+## 6. Managed Policy — 企业远程托管策略（P1-A6，2026-08-16）
+
+企业管理员可通过 `PUT /api/platform/policy/managed`（仅 admin）设置**托管策略**：
+
+- **语义**：`managed: true` 的策略项（如 `model_whitelist`、`sandbox_required`）由企业远程强制，
+  本地 user policy **不可覆盖**；
+- **合并规则**：`merge_managed_policy(local, managed)` — managed 键覆盖本地；
+  PolicyGate 读策略时优先 managed 项；
+- **实现**：`aiPlat-platform/auth/schemas_policy.py::ManagedPolicy` +
+  `api/routers/policy.py::PUT /platform/policy/managed`；
+- **审计**：managed 策略变更记录 `managed_policy_upsert` 审计事件。
+
+> **对照**：Claude Code 的 Server-managed settings — 企业通过远程配置强制权限/沙箱/模型，本地不可覆盖。
