@@ -107,3 +107,66 @@ METHOD_RESTRICTIONS: Dict[str, Dict[str, List[str]]] = {
     #     "/core/agents": ["GET"],
     # },
 }
+
+
+# ════════════════════════════════════════════════════════════════
+# P1-A6: ManagedPolicy — 企业远程托管策略 (Claude Code 借鉴)
+#
+# managed: true 的策略项由企业管理员远程强制，本地 user policy 不可覆盖。
+# PolicyGate 读策略时优先 managed 项。
+# ════════════════════════════════════════════════════════════════
+
+class ManagedPolicy:
+    """Enterprise-managed policy entry (server-mandated, locally non-overridable).
+
+    Args:
+        scope: 策略作用域 (tenant | global)
+        key: 策略键 (model_whitelist / sandbox_required / max_tools ...)
+        value: 策略值
+        managed: 是否托管 (True → 本地不可覆盖)
+        source: 托管来源 (默认 "enterprise-admin")
+    """
+
+    def __init__(self, scope: str = "tenant", key: str = "",
+                 value: object = None, managed: bool = True,
+                 source: str = "enterprise-admin"):
+        self.scope = scope
+        self.key = key
+        self.value = value
+        self.managed = managed
+        self.source = source
+
+    @property
+    def is_managed(self) -> bool:
+        return self.managed
+
+    def to_dict(self) -> Dict:
+        return {
+            "scope": self.scope,
+            "key": self.key,
+            "value": self.value,
+            "managed": self.managed,
+            "source": self.source,
+        }
+
+    @classmethod
+    def from_dict(cls, data: Dict) -> "ManagedPolicy":
+        return cls(
+            scope=str(data.get("scope", "tenant")),
+            key=str(data.get("key", "")),
+            value=data.get("value"),
+            managed=bool(data.get("managed", True)),
+            source=str(data.get("source", "enterprise-admin")),
+        )
+
+
+def merge_managed_policy(local: Dict, managed: Dict) -> Dict:
+    """Merge managed policy over local policy — managed keys win.
+
+    Local policy may only relax keys NOT marked managed.
+    """
+    merged = dict(local or {})
+    for key, val in (managed or {}).items():
+        if isinstance(val, dict) and val.get("managed"):
+            merged[key] = val.get("value", merged.get(key))
+    return merged

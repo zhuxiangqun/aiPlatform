@@ -1,5 +1,5 @@
 ---
-total_capabilities: 1026
+total_capabilities: 1027
 last_updated: 2026-08-15
 version: "30.0"
 auto_sync: true
@@ -1025,6 +1025,7 @@ scan_hash: 8f9548ec24f4
 ## 七、安全与治理
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| ManagedPolicy | `aiPlat-platform/auth/schemas_policy.py` | ✅ | 企业远程托管策略 (managed 键本地不可覆盖, P1-A6) | 已合入 |
 | PIIDetector | `harness/infrastructure/pii_detector.py` | ✅ | 自动同步 | 已合入 |
 | prompt_auditor | harness/audit/prompt_auditor.py | ✅ | 自动同步 | 已合入 |
 | semantic_gate | harness/infrastructure/gates/semantic_gate.py | ✅ | 自动同步 | 已合入 |
@@ -1945,7 +1946,7 @@ scan_hash: 8f9548ec24f4
 | 知识基础设施 | 29 | 0 | 29 |
 | Agent 系统 | 35 | 0 | 35 |
 | Skill 系统 | 54 | 0 | 54 |
-| 安全与治理 | 46 | 0 | 46 |
+| 安全与治理 | 47 | 0 | 47 |
 | 可观测性 | 18 | 0 | 18 |
 | 模型基础设施 | 42 | 0 | 42 |
 | 部署与运维 | 23 | 0 | 23 |
@@ -1983,7 +1984,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 16 | 0 | 16 |
-| **总计** | **1026** | **0** | **1026** |
+| **总计** | **1027** | **0** | **1027** |
 
 ---
 

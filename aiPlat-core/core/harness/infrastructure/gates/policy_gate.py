@@ -722,6 +722,17 @@ class PolicyGate:
 
                 tenant_pol = None
 
+        # P1-A6: managed policy override — enterprise-mandated keys win over local
+        try:
+            from aiPlat_platform.auth.schemas_policy import merge_managed_policy
+            managed_block = None
+            if isinstance(tenant_pol, dict):
+                managed_block = tenant_pol.get("_managed") or tenant_pol
+            if managed_block:
+                tenant_pol = merge_managed_policy(tenant_pol, managed_block)
+        except Exception:
+            pass  # noqa: managed-policy-optional
+
         pol = self._load_approval_review_policy(tenant_policy=tenant_pol if isinstance(tenant_pol, dict) else None)
 
         mode = pol.get("mode")
