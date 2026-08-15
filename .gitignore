@@ -65,6 +65,8 @@ credentials/
 *.sqlite
 *.sqlite3
 data/
+!aiPlat-core/core/tests/data/
+!aiPlat-core/core/tests/data/gold_*.json
 *.bin
 vector_index.bin
 download/

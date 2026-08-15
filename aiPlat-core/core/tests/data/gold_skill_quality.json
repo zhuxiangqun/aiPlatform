@@ -1,0 +1,92 @@
+[
+  {
+    "id": "sq_001",
+    "domain": "knowledge",
+    "difficulty": "easy",
+    "user_input": "根据知识库，支付模块的幂等性怎么设计的？",
+    "curated_skill": "knowledge_retrieval",
+    "verifier": {"type": "contains", "values": ["幂等", "idempotent", "重复支付"]},
+    "expected_answer_length": {"min": 50, "max": 500}
+  },
+  {
+    "id": "sq_002",
+    "domain": "knowledge",
+    "difficulty": "hard",
+    "user_input": "对比支付模块和订单模块在并发场景下的事务处理差异",
+    "curated_skill": "multi_doc_query",
+    "verifier": {"type": "contains_all", "values": ["支付", "订单", "事务", "并发"]},
+    "expected_answer_length": {"min": 100, "max": 1000}
+  },
+  {
+    "id": "sq_003",
+    "domain": "generation",
+    "difficulty": "easy",
+    "user_input": "写一个 Python 函数，计算两个日期之间的工作日天数",
+    "curated_skill": "code_generation",
+    "verifier": {"type": "code_exec", "test": "assert 'def' in output.lower() and 'import' in output.lower()"},
+    "expected_answer_length": {"min": 30, "max": 500}
+  },
+  {
+    "id": "sq_004",
+    "domain": "generation",
+    "difficulty": "medium",
+    "user_input": "写一个 FastAPI 接口，接收 JSON body 里的 user_id 和 amount，调用支付确认并返回事务状态",
+    "curated_skill": "code_generation",
+    "verifier": {"type": "code_exec", "test": "assert 'user_id' in output.lower() and 'amount' in output.lower()"},
+    "expected_answer_length": {"min": 80, "max": 800}
+  },
+  {
+    "id": "sq_005",
+    "domain": "engineering",
+    "difficulty": "easy",
+    "user_input": "打开 github.com/aiplat 看看首页有什么内容",
+    "curated_skill": "browser_automation",
+    "verifier": {"type": "contains", "values": ["github", "aiplat"]},
+    "expected_answer_length": {"min": 30, "max": 500}
+  },
+  {
+    "id": "sq_006",
+    "domain": "engineering",
+    "difficulty": "hard",
+    "user_input": "重构代码中重复的 tenant 校验逻辑，抽取为公共中间件",
+    "curated_skill": "code-hygiene",
+    "verifier": {"type": "code_exec", "test": "assert 'middleware' in output.lower() or 'decorator' in output.lower()"},
+    "expected_answer_length": {"min": 80, "max": 800}
+  },
+  {
+    "id": "sq_007",
+    "domain": "testing",
+    "difficulty": "medium",
+    "user_input": "给这个支付模块写 2 个测试用例：正常支付和重复支付",
+    "curated_skill": "test_case_generation",
+    "verifier": {"type": "code_exec", "test": "assert 'def test_' in output.lower()"},
+    "expected_answer_length": {"min": 80, "max": 800}
+  },
+  {
+    "id": "sq_008",
+    "domain": "interaction",
+    "difficulty": "easy",
+    "user_input": "把这段英文翻译成中文：The quick brown fox jumps over the lazy dog",
+    "curated_skill": "translation",
+    "verifier": {"type": "contains", "values": ["狐狸", "狗"]},
+    "expected_answer_length": {"min": 10, "max": 100}
+  },
+  {
+    "id": "sq_009",
+    "domain": "knowledge",
+    "difficulty": "hard",
+    "user_input": "分析过去一个月知识库中所有关于支付故障的记录，找出共性和根因",
+    "curated_skill": "root_cause_analysis",
+    "verifier": {"type": "contains", "values": ["故障", "根因", "共性"]},
+    "expected_answer_length": {"min": 100, "max": 1000}
+  },
+  {
+    "id": "sq_010",
+    "domain": "testing",
+    "difficulty": "medium",
+    "user_input": "找到所有调用了 authenticate 函数的文件，并检查它们是否有测试覆盖",
+    "curated_skill": "sysgraph_search",
+    "verifier": {"type": "contains", "values": ["authenticate", "test"]},
+    "expected_answer_length": {"min": 50, "max": 600}
+  }
+]
