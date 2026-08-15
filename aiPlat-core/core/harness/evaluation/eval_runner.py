@@ -524,6 +524,31 @@ class EvalRunner:
 
 
 
+    async def run_task(self, case: dict):
+        """Execute a single eval case (gold-dataset regression API).
+
+        case: {agent_id, user_input/input, expected_tool(s)} or an EvalTask dict.
+        Returns an object with .syscall_events and .level for tool-quality checks.
+        """
+        from core.harness.evaluation.eval_types import AgentEvalResult, EvalTask, TaskResultLevel
+
+        agent_id = str(case.get("agent_id", case.get("agent", "pm_agent")))
+        task = EvalTask(
+            task_id=str(case.get("id", case.get("task_id", f"case-{uuid.uuid4().hex[:8]}"))),
+            agent_id=agent_id,
+            user_input=str(case.get("user_input", case.get("input", ""))),
+            expected_tools=case.get("expected_tools") or
+                ([case["expected_tool"]] if case.get("expected_tool") else []),
+        )
+        result, events = await self._execute_single_task(agent_id, task)
+        return AgentEvalResult(
+            agent_id=agent_id,
+            eval_set_id="single-case",
+            level=result.level if hasattr(result, "level") else TaskResultLevel.L2,
+            task_results=[result],
+            syscall_events=events,
+        )
+
     async def _execute_single_task(
 
         self, agent_id: str, task: EvalTask,
