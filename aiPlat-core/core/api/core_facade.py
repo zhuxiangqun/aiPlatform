@@ -215,52 +215,10 @@ def get_policy_gate() -> Any:
     return PolicyGate()
 
 
-def get_working_memory() -> Any:
-    """Get WorkingMemory from active MemoryManager instance."""
-    from core.harness.memory.manager import MemoryManager
-    return MemoryManager()._working
-
-
-def get_circuit_breaker() -> Any:
-    """Get LLM circuit breaker — prevents cascading failures on repeated errors."""
-    from core.harness.syscalls.llm import _llm_cb
-    return _llm_cb
-
-
 def get_hallucination_tracker() -> Any:
     """Get HallucinationTracker for NLI fact-checking in RAG responses."""
     from core.harness.evaluation.hallucination_tracker import HallucinationTracker
     return HallucinationTracker()
-
-
-def get_error_translator() -> Any:
-    """Get ErrorTranslator for 7-level error classification pipeline."""
-    from core.harness.infrastructure.gates.error_translator import ErrorTranslator
-    return ErrorTranslator()
-
-
-def get_graph_index(domain_id: str = "") -> Any:
-    """Get GraphIndex for ontology graph operations."""
-    from core.harness.ontology_engine.graph_index import GraphIndex
-    return GraphIndex.load(domain_id) if domain_id else GraphIndex
-
-
-def get_entity_resolver() -> Any:
-    """Get EntityResolver for entity disambiguation."""
-    from core.harness.ontology_engine.entity_resolver import EntityResolver
-    return EntityResolver()
-
-
-def get_class_mapper() -> Any:
-    """Get ClassMapper for zero-LLM ontology classification."""
-    from core.harness.ontology_engine.class_mapper import ClassMapper
-    return ClassMapper()
-
-
-def get_state_machine() -> Any:
-    """Get StateMachine for entity state transitions."""
-    from core.harness.ontology_engine.state_machine import StateMachine
-    return StateMachine()
 
 
 def get_code_graph() -> Any:
@@ -271,22 +229,10 @@ def get_code_graph() -> Any:
     return build_graph(repo, roots)
 
 
-def get_knowledge_validator() -> Any:
-    """Get KnowledgeValidator for ontology consistency checks."""
-    from core.harness.knowledge.knowledge_validator import KnowledgeValidator
-    return KnowledgeValidator()
-
-
 def get_domain_router() -> Any:
     """Get DomainRouter for multi-domain classification."""
     from core.harness.knowledge.domain_router import DomainRouter
     return DomainRouter()
-
-
-def get_retrieval_crag() -> Any:
-    """Get CRAG 3-level fallback chain for RAG retrieval."""
-    from core.harness.syscalls.retrieval_crag import CRAGRetriever
-    return CRAGRetriever()
 
 
 def get_skill_registry() -> Any:
@@ -307,80 +253,10 @@ def get_wiki_retriever() -> Any:
     return WikiPageRetriever()
 
 
-def get_arch_guard_rules() -> Any:
-    """Get architecture guard rules configuration."""
-    from core.management.arch_guard_base import get_arch_registry
-    return get_arch_registry()
-
-
 def get_context_bus() -> Any:
     """Get ContextBus for field-assessment knowledge injection."""
     from core.harness.knowledge.context_bus import assemble_field_assessment
     return assemble_field_assessment
-
-
-def get_intent_analyzer() -> Any:
-    """Get IntentAnalyzer for query intent classification."""
-    from core.orchestration.intent_analyzer import IntentAnalyzer
-    return IntentAnalyzer()
-
-
-def get_chain_planner() -> Any:
-    """Get ChainPlanner for multi-step task planning."""
-    from core.orchestration.chain_planner import ChainPlanner
-    return ChainPlanner()
-
-
-def get_capability_mapper() -> Any:
-    """Get CapabilityMapper for task-to-capability routing."""
-    from core.orchestration.capability_mapper import CapabilityMapper
-    return CapabilityMapper()
-
-
-def get_ltm_service() -> Any:
-    """Get LongTermMemory service for structured memory filtering."""
-    from core.services.execution_store.ltm_mixin import list_long_term_memories_filtered
-    return list_long_term_memories_filtered
-
-
-def get_reminder_service() -> Any:
-    """Get ReminderService for system reminder injection."""
-    from core.harness.memory.reminders import check_and_inject
-    return check_and_inject
-
-
-def get_command_parser() -> Any:
-    """Get CommandParser for CLI command handling (/moa, etc.)."""
-    from core.harness.execution.loop.command_parser import CommandParser
-    return CommandParser()
-
-
-def get_cross_validation_gate() -> Any:
-    """Get CrossValidationGate — cross-domain semantic validation (Phase 11.3).
-
-    Activation: gate auto-enables when >=50 cross-domain object_properties exist.
-    Current status: check with get_cross_validation_gate().status()
-    """
-    from core.harness.infrastructure.gates.cross_validation_gate import CrossValidationGate
-    return CrossValidationGate()
-
-
-def get_constraint_validator() -> Any:
-    """Get ConstraintValidator — detect outdated rules, missing deps in configs."""
-    from core.harness.evaluation.constraint_validator import ConstraintValidator
-    return ConstraintValidator()
-
-
-def get_config_drift_detector() -> Any:
-    """Get ConfigDriftDetector — compare deployed state vs AGENT.md specification."""
-    from core.harness.evaluation.config_drift_detector import ConfigDriftDetector
-    return ConfigDriftDetector()
-
-
-def get_self_heal_gate() -> Any:
-    """Get SelfHealGate — 3-level automated system health response (review-first by default)."""
-    from core.harness.evaluation.self_heal_gate import SelfHealGate
-    return SelfHealGate()
 
 
 def list_pending_heal_fixes() -> Any:
@@ -399,30 +275,6 @@ def reject_heal_fix(fix_id: str, reason: str = "") -> Any:
     """Reject a pending self-heal fix."""
     from core.harness.evaluation.self_heal_gate import SelfHealGate
     return SelfHealGate().reject_fix(fix_id, reason)
-
-
-def get_ontology_auditor() -> Any:
-    """Get OntologyAuditor — per-domain knowledge graph health report."""
-    from core.harness.knowledge.ontology_audit import OntologyAuditor
-    return OntologyAuditor()
-
-
-def get_adoption_tracker() -> Any:
-    """Get AdoptionTracker — employee engagement and resistance tracking."""
-    from core.harness.evaluation.adoption_metrics import AdoptionTracker
-    return AdoptionTracker()
-
-
-def get_skill_exporter() -> Any:
-    """Get SkillExporter — convert SKILL.md to OpenAI/LangChain/Anthropic specs."""
-    from core.harness.evaluation.skill_exporter import SkillExporter
-    return SkillExporter()
-
-
-def get_agent_config_differ() -> Any:
-    """Get AgentConfigDiffer — structured change detection for AGENT.md frontmatter."""
-    from core.harness.evaluation.agent_config_diff import AgentConfigDiffer
-    return AgentConfigDiffer()
 
 
 def get_fde_pipeline_health() -> Any:
@@ -1161,8 +1013,6 @@ def restore_file_checkpoint(checkpoint_id: str, session_id: str = "") -> Dict[st
     return _fn(checkpoint_id, session_id)
 
 
-
-
 def publish_learning_release(release_id: str) -> Dict[str, Any]:
     """Publish a learning release candidate (via handler registry)."""
     return dispatch("publish_release_candidate", release_id)
@@ -1764,36 +1614,6 @@ def get_graph_health(domain: str = "") -> Dict[str, Any]:
         return {"domain": domain, "exists": False, "error": str(e)[:200]}
 
 
-def get_graph_sessions(domain: str, limit: int = 100, class_name: str = "") -> Dict[str, Any]:
-    """Phase 46: Get entities from a domain graph, optionally filtered by class_name."""
-    from core.harness.ontology_engine.graph_index import GraphIndex
-    try:
-        g = GraphIndex.load(domain)
-        sessions = []
-        for nid, node in sorted(list(g._nodes.items()), key=lambda x: x[0], reverse=True):
-            if class_name and getattr(node, "class_name", "") != class_name:
-                continue
-            sessions.append({"id": nid[:60], "company": node.entity_name[:60]})
-            if len(sessions) >= limit:
-                break
-        return {"domain": domain, "sessions": sessions, "total": len(sessions)}
-    except Exception as e:
-        return {"domain": domain, "sessions": [], "error": str(e)[:200]}
-
-
-def get_graph_neighbors(domain: str, node_id: str, relation: str = "") -> Dict[str, Any]:
-    u"""Phase 46: Get neighbor nodes for a graph node."""
-    from core.harness.ontology_engine.graph_index import GraphIndex
-    try:
-        g = GraphIndex.load(domain)
-        nb = g.get_neighbor_edges(node_id, direction="outgoing")
-        if relation:
-            nb = [(n, e) for n, e in nb if e.relation_name == relation]
-        return {"domain": domain, "node_id": node_id, "neighbors": len(nb)}
-    except Exception as e:
-        return {"domain": domain, "error": str(e)[:200]}
-
-
 def get_wiki_index(collection_id: str = "default") -> str:
     u"""Phase 46: Generate global wiki index — wraps wiki_engine."""
     from core.harness.knowledge.wiki_engine import generate_index_md
@@ -2028,7 +1848,6 @@ def _get_latest_eval_score(agent_id: str):
 async def _get_latest_eval_score_async(agent_id: str):
     import asyncio
     return await asyncio.to_thread(_get_latest_eval_score, agent_id)
-
 
 
 async def run_workspace_agent(
@@ -2531,28 +2350,6 @@ def get_chat_service_model(rt: Any = None) -> Any:
 
 # ── Ontology Facade (Phase 1: semantic↔action loop closure) ──
 
-def get_ontology_context(
-    question: str = "",
-    *,
-    max_pages: int = 10,
-    collection_id: str = "default",
-    include_contradictions: bool = True,
-    include_state_summary: bool = True,
-) -> Dict[str, Any]:
-    u"""Query ontology state — lifecycle summary, contradictions, health score.
-
-    Use this from platform/management to get ontology context without importing
-    harness-internal modules.
-    """
-    from core.harness.syscalls.ontology_context import sys_ontology_context
-    return sys_ontology_context(
-        question=question,
-        max_pages=max_pages,
-        collection_id=collection_id,
-        include_contradictions=include_contradictions,
-        include_state_summary=include_state_summary,
-    )
-
 
 def get_entity_lifecycle_summary(
     collection_id: str = "default",
@@ -2721,11 +2518,6 @@ def check_obsidian_compatibility(collection_id: str = "default") -> Dict[str, An
 
 # ── Learning Coach Facade (L6 — AI Learning Coach) ──
 
-def get_learning_paths() -> List[Dict[str, Any]]:
-    u"""List all available learning paths with summaries."""
-    from core.harness.knowledge.learning_paths import get_path_summary
-    return get_path_summary()
-
 
 def get_learner_profile(learner_id: str) -> Optional[Dict[str, Any]]:
     u"""Get a learner profile."""
@@ -2762,12 +2554,6 @@ async def complete_chapter_for_learner(
 
 
 # ── Scene Model Facade (Phase A — purpose-driven pipeline templates) ──
-
-def get_scene_template(scene_id: str, *, collection_id: str = "default") -> Optional[Dict[str, Any]]:
-    u"""Get a scene template by ID."""
-    from core.harness.knowledge.scene_model import get_scene
-    scene = get_scene(scene_id, collection_id=collection_id)
-    return scene.to_dict() if scene else None
 
 
 def instantiate_scene(
@@ -3089,36 +2875,6 @@ def list_rule_versions(domain_id: str) -> List[Dict[str, Any]]:
         return snaps
     except Exception:
         return []
-
-
-def get_rule_version_diff(domain_id: str, version_id: str) -> Dict[str, Any]:
-    u"""Compute structural diff between a version and the current YAML."""
-    import difflib
-
-    base_dir = _resolve_ontologies_dir()
-    file_path = f"{base_dir}/{domain_id}.yaml"
-    current = Path(file_path).read_text(encoding="utf-8") if Path(file_path).exists() else ""
-
-    from core.harness.ontology_engine.graph_index import GraphIndex
-    try:
-        graph = GraphIndex.load(domain_id)
-        comparisons = graph.compare_snapshots(int(version_id), -1) if version_id.isdigit() else {}
-    except Exception:
-        comparisons = {}
-
-    diff_lines = list(difflib.unified_diff(
-        current.splitlines(keepends=True),
-        current.splitlines(keepends=True),
-        fromfile=f"{domain_id}@v{version_id}",
-        tofile=f"{domain_id}@current",
-    ))
-
-    return {
-        "domain_id": domain_id,
-        "version_id": version_id,
-        "comparisons": comparisons,
-        "diff": "".join(diff_lines) if diff_lines else "(no changes)",
-    }
 
 
 def rollback_rule_version(domain_id: str, version_id: str) -> Dict[str, Any]:
