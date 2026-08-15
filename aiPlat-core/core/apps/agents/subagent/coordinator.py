@@ -315,24 +315,13 @@ class SubagentCoordinator:
         except Exception:
             logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
 
-        # ── 第 2 层: LLM 轻量摘要 ──
+        # ── 第 2 层: LLM 轻量摘要（经 doc_compressor 统一通道 — §57 上下文组装合规）──
         try:
-            from core.harness.syscalls.llm import sys_llm_generate
-            from core.harness.utils.model_injection import best_model_for_purpose
-            prompt = (
-                f"Summarize the following output within {max_chars} characters. "
-                "Keep key findings, numbers, decisions, and conclusions. "
-                "Drop tool call chains, intermediate reasoning steps, and code blocks. "
-                "Return only the summary, no preamble:\n\n"
-                f"{output[:4000]}"
-            )
-            resp = await sys_llm_generate(
-                best_model_for_purpose("chat"),
-                [{"role": "user", "content": prompt}],
-                max_tokens=200, temperature=0.0,
+            from core.harness.knowledge.doc_compressor import llm_summarize
+            content = await llm_summarize(
+                output, max_chars=max_chars,
                 trace_context={"source": "subagent_summarize"},
             )
-            content = resp.get("content", "") if isinstance(resp, dict) else str(resp)
             if content and len(content) > 10:
                 return content[:max_chars]
         except Exception:

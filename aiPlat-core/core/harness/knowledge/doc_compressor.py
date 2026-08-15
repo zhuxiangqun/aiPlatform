@@ -3,11 +3,64 @@ Doc Compressor — token-aware truncation of retrieved documents.
 
 Replaces hard-coded char-based truncation with model-aware token budgeting.
 Integrates with MemoryManager for 5-level context compression.
+
+Public API:
+  - compress_retrieved_docs()  — token-aware truncation (no LLM)
+  - llm_summarize()           — LLM lightweight summarization channel
+                                (subagent/other layers call this instead of
+                                calling sys_llm_generate directly — §57
+                                context-assembly compliance)
 """
 import logging
-from typing import Optional
+from typing import Any, Dict, Optional
 
 _logger = logging.getLogger(__name__)
+
+
+async def llm_summarize(text: str, max_chars: int = 4000,
+                        model_name: str = "", max_tokens: int = 200,
+                        temperature: float = 0.0,
+                        trace_context: Optional[Dict[str, Any]] = None) -> str:
+    """LLM lightweight summarization (single syscall channel).
+
+    Summarizes long output keeping key findings, numbers, decisions and
+    conclusions; drops tool call chains, intermediate reasoning and code blocks.
+
+    Args:
+        text: raw text to summarize (truncated to 4000 chars before call)
+        max_chars: max chars of returned summary
+        model_name: model to use (empty → best_model_for_purpose("chat"))
+        max_tokens: LLM max completion tokens
+        temperature: LLM temperature
+        trace_context: optional trace context for the syscall
+
+    Returns:
+        summary string (or "" on failure — caller must have a fallback)
+    """
+    if not text:
+        return ""
+    try:
+        from core.harness.syscalls.llm import sys_llm_generate
+        from core.harness.utils.model_injection import best_model_for_purpose
+        prompt = (
+            f"Summarize the following output within {max_chars} characters. "
+            "Keep key findings, numbers, decisions, and conclusions. "
+            "Drop tool call chains, intermediate reasoning steps, and code blocks. "
+            "Return only the summary, no preamble:\n\n"
+            f"{text[:4000]}"
+        )
+        resp = await sys_llm_generate(
+            model_name or best_model_for_purpose("chat"),
+            [{"role": "user", "content": prompt}],
+            max_tokens=max_tokens, temperature=temperature,
+            trace_context=trace_context or {"source": "doc_compressor.llm_summarize"},
+        )
+        content = resp.get("content", "") if isinstance(resp, dict) else str(resp)
+        if content and len(content) > 10:
+            return content[:max_chars]
+    except Exception:
+        _logger.debug("LLM summarization failed", exc_info=True)
+    return ""
 
 
 def compress_retrieved_docs(docs: str, model_name: str = "",
