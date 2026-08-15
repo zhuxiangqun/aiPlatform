@@ -18,14 +18,18 @@ try:
     HAS_HYPOTHESIS = True
 except ImportError:
     HAS_HYPOTHESIS = False
-    # Fallback stubs so class-body decorators don't raise NameError when
-    # hypothesis is absent (the class is skipped via skipif below).
+    # Fallback stubs so class-body decorators don't raise when hypothesis is
+    # absent (the class is skipped via skipif below). `st.X` attribute access
+    # and `given(...)` must both be callable no-ops.
+    class _StubStrategies:
+        def __getattr__(self, name):
+            return lambda *a, **k: None
     class _StubGiven:
         def __call__(self, *a, **k):
             return lambda f: f
     given = _StubGiven()
     settings = lambda *a, **k: (lambda f: f)
-    st = _StubGiven()
+    st = _StubStrategies()
     HealthCheck = object
 
 # ── Graph invariants ──────────────────────────────────────────────
