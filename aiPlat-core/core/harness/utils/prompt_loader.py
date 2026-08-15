@@ -1135,6 +1135,12 @@ _register("atomic-splitter-llm-split", """将以下任务分解为可直接执�
 2. 有明确的输入和输出
 3. 不需要进一步的推理或决策
 
+任务内容：
+${task}
+
+约束：
+${context}
+
 返回JSON格式：
 {
   "steps": [
@@ -1145,6 +1151,14 @@ _register("atomic-splitter-llm-split", """将以下任务分解为可直接执�
     variables=["task", "context"])
 
 _register("atomic-splitter-verify-coverage", """检查以下子任务列表是否完全覆盖了原始任务的需求。如果有遗漏，返回缺失的部分：
+
+原始任务：
+${task}
+
+现有子任务：
+${steps}
+
+返回JSON格式：
 {
   "covered": true/false,
   "missing": ["缺失的部分1", "缺失的部分2"],
@@ -1154,6 +1168,17 @@ _register("atomic-splitter-verify-coverage", """检查以下子任务列表是�
     variables=["task", "steps"])
 
 _register("atomic-splitter-fill-gaps", """原始任务有部分未被已有的子任务覆盖。请为以下缺失部分生成补充的子任务：
+
+原始任务：
+${task}
+
+缺失部分：
+${gaps}
+
+已有子任务ID：
+${existing_steps}
+
+返回JSON格式：
 {
   "gap_steps": [
     {"id": "step_n", "description": "描述", "input": "输入", "output": "输出"}
@@ -1163,6 +1188,15 @@ _register("atomic-splitter-fill-gaps", """原始任务有部分未被已有的�
     variables=["task", "gaps", "existing_steps"])
 
 _register("dynamic-router-supervisor", """你是多Agent系统的路由调度器。从以下可用Agent中选择下一个执行者。
+
+可用Agent：
+${agents}
+
+当前任务：
+${task}
+
+执行历史：
+${history}
 
 选择标准：
 1. 根据任务描述选择最匹配的Agent
@@ -1187,6 +1221,12 @@ ${history}
 
 _register("evox-atom-executor", """执行以下原子任务。根据任务描述选择合适的执行方式。
 
+任务内容：
+${task}
+
+任务描述：
+${description}
+
 返回JSON：
 {
   "executed": true/false,
@@ -1198,6 +1238,9 @@ _register("evox-atom-executor", """执行以下原子任务。根据任务描述
     variables=["task", "description"])
 
 _register("technical-planner", """You are a technical planner. Based on the upstream context, produce a structured task execution plan.
+
+Upstream context:
+${context}
 
 Output JSON format:
 {
@@ -1213,6 +1256,12 @@ Output JSON format:
     variables=["context"])
 
 _register("harness-fix-proposer", """You are a Harness engineer optimizing an AI pipeline execution system. Analyze the failure patterns and propose targeted fixes.
+
+Failure history:
+${failure_history}
+
+Pipeline context:
+${pipeline_context}
 
 Available tools: prompt_adjust, add_retry, increase_timeout, add_validation, skip_stage, rollback
 
@@ -1231,6 +1280,12 @@ Output JSON:
     variables=["failure_history", "pipeline_context"])
 
 _register("evaluator-completeness", """You are an independent evaluator. Determine if the task is COMPLETE.
+
+Task:
+${task}
+
+Produced output:
+${output}
 
 A task is complete when:
 1. All required outputs have been produced
@@ -1256,6 +1311,12 @@ Respond with DONE: your_answer if the context is sufficient to answer the task, 
 
 _register("task-continuity-classifier", """You are a task continuity classifier. Given two texts, decide if they are about the SAME task.
 
+Text A:
+${text_a}
+
+Text B:
+${text_b}
+
 Output JSON:
 {"same_task": true/false, "confidence": 0.0-1.0, "reason": "brief explanation"}""",
     category="engine",
@@ -1266,7 +1327,8 @@ Context: ${context}""",
     category="engine",
     variables=["action", "context"])
 
-_register("quick-engine-fallback", """${message}""",
+_register("quick-engine-fallback", """${message}
+""",
     category="engine",
     variables=["message"])
 

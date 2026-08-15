@@ -236,7 +236,7 @@ def test_migrated_files_use_prompt_loader():
     import re
     migrated_files = [
         "aiPlat-core/core/harness/assembly/prompt_assembler.py",
-        "aiPlat-core/core/harness/execution/loop.py",
+        "aiPlat-core/core/harness/execution/loop/_facade.py",
         # pipeline_engine.py removed: pure orchestrator, delegates prompt construction to StageRunner/ReActLoop
         "aiPlat-core/core/harness/knowledge/wiki_engine.py",
         "aiPlat-core/core/harness/assembly/compaction_prompt.py",
@@ -276,17 +276,18 @@ def test_migrated_files_use_prompt_loader():
 
 
 def test_prompt_app_routers_registered():
-    """All 3 new prompt routers must be importable and have endpoints."""
+    """Prompt routers (platform layer, after module migration) must be importable and have endpoints."""
+    # Prompt module migrated from core/api/routers/ to platform apps/ (see CLAUDE.md §16-W)
     routers = {
-        "prompt_app": ["/prompts/app/templates", "/prompts/app/categories", "/prompts/app/optimize"],
-        "prompt_eval": ["/prompts/eval/test-cases", "/prompts/eval/runs"],
-        "prompt_optimize": ["/prompts/optimize"],
+        "apps.prompt.api.router": ["/prompts/app/templates", "/prompts/app/categories", "/prompts/app/optimize"],
+        "apps.eval.api.router": ["/prompts/eval/test-cases", "/prompts/eval/runs"],
+        "apps.prompt.api.prompt_optimize": ["/prompts/optimize"],
     }
     missing = []
     for module_name, paths in routers.items():
         try:
-            mod = __import__(f"core.api.routers.{module_name}", fromlist=["router"])
-            route_paths = [r.path for r in mod.router.routes]
+            mod = __import__(module_name, fromlist=["router"])
+            route_paths = [r.path for r in mod.router.routes if hasattr(r, "path")]
             for p in paths:
                 if p not in route_paths:
                     missing.append(f"{module_name}: missing {p}")
@@ -297,9 +298,14 @@ def test_prompt_app_routers_registered():
 
 
 def test_prompt_menu_reorganized():
-    """AppLayout must have '提示词工程' menu group with app/optimize/eval items."""
-    app_layout = WORKSPACE_ROOT / "aiPlat-management" / "frontend" / "src" / "components" / "layout" / "AppLayout.tsx"
-    content = app_layout.read_text(encoding="utf-8")
-    assert "提示词工程" in content, "Missing 提示词工程 menu group"
-    assert "应用模板" in content, "Missing 应用模板 menu item"
-    assert "系统Prompt" in content, "Missing 系统Prompt menu item"
+    """Menu (pageManifest.ts, after 5-group reorganization) must expose the prompt entry."""
+    # Menu moved from AppLayout.tsx hardcode to pageManifest.ts (CLAUDE.md §16-AA, 2026-07-20)
+    manifest = WORKSPACE_ROOT / "aiPlat-management" / "frontend" / "src" / "pageManifest.ts"
+    content = manifest.read_text(encoding="utf-8")
+    assert "提示词配置" in content, "Missing 提示词配置 menu entry (prompt workbench)"
+    assert "/core/prompts" in content, "Missing /core/prompts menu route"
+    # prompt app templates must be reachable via the AppTemplates page route
+    app_tsx = WORKSPACE_ROOT / "aiPlat-management" / "frontend" / "src" / "App.tsx"
+    app_content = app_tsx.read_text(encoding="utf-8")
+    assert "prompts/app" in app_content, "Missing prompts/app route to AppTemplates"
+    assert "pages/Prompts/AppTemplates" in app_content, "Missing AppTemplates page binding"

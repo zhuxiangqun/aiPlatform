@@ -5,6 +5,9 @@ Routes:
   /health                          — health check
   /app/sessions/{project_id}       — deployed app static files (SPA)
   /app/sessions/{project_id}/{path} — nested routes for SPA
+
+# NOTE: deployed app static hosting allowed (Layer 3 serves built Web pages;
+# not a business API layer — no auth/CRUD/business endpoints)
 """
 
 import os
