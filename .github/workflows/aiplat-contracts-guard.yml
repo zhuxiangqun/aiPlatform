@@ -133,6 +133,14 @@ jobs:
         run: |
           bash ./scripts/phase_check.sh
 
+      - name: Generate capability impact matrix
+        run: |
+          python3 ./scripts/generate_impact_matrix.py
+          if ! git diff --quiet -- docs/matrix/capability-impact-matrix.md; then
+            echo "::error::capability-impact-matrix.md is stale — run: python3 scripts/generate_impact_matrix.py and commit"
+            exit 1
+          fi
+
       - name: Tool selection regression (gold dataset)
         working-directory: ./aiPlat-core
         run: |

@@ -1,7 +1,7 @@
 # Capability Impact Matrix
 
 > Auto-generated from `capability_registry.yaml`
-> Version: 1.0.0 | 32 domains | （见 AIPLAT_CAPABILITIES.md 当前计数）capabilities
+> Version: 1.1.0 | 34 domains | 1015 capabilities
 
 ## Consumer-to-Capability Dependencies
 
@@ -22,7 +22,7 @@
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| management-and-quality | §二十五 管理 & 质量 | 21 | 诊断仪表盘 |
+| management-and-quality | §二十五 管理 & 质量 | 24 | 诊断仪表盘 |
 | observability | §八 可观测性 | 16 | 诊断仪表盘 |
 
 ### aiPlat-management/frontend/src/pages/Infra
@@ -30,6 +30,12 @@
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
 | infra-infrastructure | §二十二 Infra 基础设施 | 11 | Infra 管理前端 |
+
+### aiPlat-platform/apps/eval/api/arena_wiring.py
+
+| Domain | Section | Caps | Reason |
+|--------|---------|:---:|--------|
+| arena-and-scheduling | §二十 Arena & 调度 | 4 | P0-B3 arena/wake-agent REST 端点 |
 
 ### aiPlat-platform/apps/fde/api/fde.py
 
@@ -41,27 +47,27 @@
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| rag-retrieval | §四 RAG 检索 | 40 | FDE 追问 → 检索增强 |
+| rag-retrieval | §四 RAG 检索 | 41 | FDE 追问 → 检索增强 |
 
 ### aiPlat-platform/apps/fde/api/fde_dashboard_v2.py
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
 | memory-subsystem | §二 记忆子系统 | 31 | L6 记忆指标展示 |
-| platform-governance | §二十一 平台治理 | 59 | 仪表盘治理指标 |
+| platform-governance | §二十一 平台治理 | 74 | 仪表盘治理指标 |
 | l6-autonomy | §二十七 L6 自主能力 | 8 | _get_goal_decomposition_stats |
 
 ### aiPlat-platform/apps/fde/api/fde_diagnostics_v2.py
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| knowledge-engine-ontology | §三 知识引擎（本体） | 113 | FDE 能力自描述 |
+| knowledge-engine-ontology | §三 知识引擎（本体） | 130 | FDE 能力自描述 |
 
 ### aiPlat-platform/apps/fde/api/fde_pipeline.py
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| harness-execution-engine | §一 Harness 执行引擎 | 34 | FDE Pipeline 状态查询 |
+| harness-execution-engine | §一 Harness 执行引擎 | 36 | FDE Pipeline 状态查询 |
 
 ### aiPlat-platform/apps/fde/api/fde_quality_summary.py
 
@@ -79,7 +85,7 @@
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| harness-execution-engine | §一 Harness 执行引擎 | 34 | FDEBuilderOrch 构建流水线 |
+| harness-execution-engine | §一 Harness 执行引擎 | 36 | FDEBuilderOrch 构建流水线 |
 | orchestration-system | §二十四 编排系统 | 4 | FDEBuilderOrch 编排 |
 
 ### aiPlat-platform/server.py
@@ -99,19 +105,19 @@
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| agent-system | §五 Agent 系统 | 23 | Agent REST 端点 |
+| agent-system | §五 Agent 系统 | 24 | Agent REST 端点 |
 
 ### core/api/routers/builder_project_service.py
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| harness-execution-engine | §一 Harness 执行引擎 | 34 | PipelineEngine 调度入口 |
+| harness-execution-engine | §一 Harness 执行引擎 | 36 | PipelineEngine 调度入口 |
 
 ### core/api/routers/engine_skills.py
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| skill-system | §六 Skill 系统 | 23 | Skill REST 端点 |
+| skill-system | §六 Skill 系统 | 29 | Skill REST 端点 |
 
 ### core/api/routers/mcp.py
 
@@ -131,7 +137,7 @@
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| knowledge-engine-ontology | §三 知识引擎（本体） | 113 | Wiki CRUD + index + ingest 端点 |
+| knowledge-engine-ontology | §三 知识引擎（本体） | 130 | Wiki CRUD + index + ingest 端点 |
 | ai-knowledge-layer | §三十一 AI知识层增强 | 3 | /wiki/index-md + /ingest/url 端点 |
 | document-intelligence | §十五 文档智能 | 24 | Upload/ingest 端点 |
 
@@ -139,13 +145,13 @@
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| knowledge-engine-ontology | §三 知识引擎（本体） | 113 | 本体引擎 REST API |
+| knowledge-engine-ontology | §三 知识引擎（本体） | 130 | 本体引擎 REST API |
 
 ### core/apps/agents/materials_chat.py
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| rag-retrieval | §四 RAG 检索 | 40 | CRAG + HyDE + RRF 自身 |
+| rag-retrieval | §四 RAG 检索 | 41 | CRAG + HyDE + RRF 自身 |
 
 ### core/apps/agents/multi_agent.py
 
@@ -157,7 +163,7 @@
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| agent-system | §五 Agent 系统 | 23 | Builder 创建 Agent |
+| agent-system | §五 Agent 系统 | 24 | Builder 创建 Agent |
 
 ### core/apps/mcp/adapter.py
 
@@ -175,7 +181,7 @@
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| skill-system | §六 Skill 系统 | 23 | autoreview Skill handler |
+| skill-system | §六 Skill 系统 | 29 | autoreview Skill handler |
 
 ### core/harness/coordination/swarm_broker.py
 
@@ -189,7 +195,7 @@
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| deploy-and-operations | §十 部署与运维 | 17 | self-harness cycle |
+| deploy-and-operations | §十 部署与运维 | 21 | self-harness cycle |
 | fine-tuning-system | §十七 微调系统 | 12 | nightly LoRA trigger |
 
 ### core/harness/execution/loop/command_parser.py
@@ -208,19 +214,19 @@
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| harness-execution-engine | §一 Harness 执行引擎 | 34 | 自身消费 PipelineStageConfig + StageRunner |
-| security-and-governance | §七 安全与治理 | 33 | HITL → PolicyGate + ApprovalGate |
+| harness-execution-engine | §一 Harness 执行引擎 | 36 | 自身消费 PipelineStageConfig + StageRunner |
+| security-and-governance | §七 安全与治理 | 36 | HITL → PolicyGate + ApprovalGate |
 | moa-multi-model-reasoning | §三十 MoA 多模型推理 | 5 | _run_moa 路由模式 |
 | model-infrastructure | §九 模型基础设施 | 27 | Pipeline 阶段模型选择 |
 | memory-subsystem | §二 记忆子系统 | 31 | _crystallize_skill → save_task_skill |
 | arena-and-scheduling | §二十 Arena & 调度 | 4 | Pipeline routing_mode dispatch |
-| management-and-quality | §二十五 管理 & 质量 | 21 | Pipeline 质量评分 |
+| management-and-quality | §二十五 管理 & 质量 | 24 | Pipeline 质量评分 |
 | orchestration-layer | §二十六 编排层 | 17 | Pipeline → Swarm/Debate/Roundtable/MoA dispatch |
 | orchestration-system | §二十四 编排系统 | 4 | Pipeline 编排 |
-| agent-system | §五 Agent 系统 | 23 | Pipeline 调度 Agent |
+| agent-system | §五 Agent 系统 | 24 | Pipeline 调度 Agent |
 | observability | §八 可观测性 | 16 | Pipeline trace 事件 |
-| skill-system | §六 Skill 系统 | 23 | Pipeline 调用 Skill |
-| extension-and-learning | §十一 扩展与学习 | 79 | Pipeline 故障→StrategySearchEngine |
+| skill-system | §六 Skill 系统 | 29 | Pipeline 调用 Skill |
+| extension-and-learning | §十一 扩展与学习 | 87 | Pipeline 故障→StrategySearchEngine |
 | evaluation-system | §十三 评估系统 | 13 | Pipeline 质量评分 |
 | gate-system | §十二 Gate 系统 | 17 | Pipeline 阶段 Gate 检查 |
 | knowledge-infrastructure | §四附 知识基础设施 | 29 | RunContext 运行时上下文 |
@@ -241,7 +247,7 @@
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| harness-execution-engine | §一 Harness 执行引擎 | 34 | ReActLoop 运行时 |
+| harness-execution-engine | §一 Harness 执行引擎 | 36 | ReActLoop 运行时 |
 | moa-multi-model-reasoning | §三十 MoA 多模型推理 | 5 | ReActLoop MoA interception |
 | memory-subsystem | §二 记忆子系统 | 31 | build_context() + save_interaction() 调用 |
 
@@ -249,25 +255,25 @@
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| knowledge-engine-ontology | §三 知识引擎（本体） | 113 | 10层上下文注入 |
+| knowledge-engine-ontology | §三 知识引擎（本体） | 130 | 10层上下文注入 |
 
 ### core/harness/knowledge/domain_maturity.py
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| knowledge-engine-ontology | §三 知识引擎（本体） | 113 | 域成熟度评分 |
+| knowledge-engine-ontology | §三 知识引擎（本体） | 130 | 域成熟度评分 |
 
 ### core/harness/knowledge/domain_router.py
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| rag-retrieval | §四 RAG 检索 | 40 | 域分类 → 检索范围确定 |
+| rag-retrieval | §四 RAG 检索 | 41 | 域分类 → 检索范围确定 |
 
 ### core/harness/knowledge/knowledge_synthesis.py
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| knowledge-engine-ontology | §三 知识引擎（本体） | 113 | KnowledgeSynthesizer 合成 Wiki 页 |
+| knowledge-engine-ontology | §三 知识引擎（本体） | 130 | KnowledgeSynthesizer 合成 Wiki 页 |
 
 ### core/harness/knowledge/seci_engine.py
 
@@ -282,7 +288,7 @@
 | ai-knowledge-layer | §三十一 AI知识层增强 | 3 | build_context 注入 brand_rules |
 | hermes-compression | §三十二 Hermes压缩对标 | 3 | build_context → normalize_roles + reminder dict injection |
 | memory-runtime-filtering | §二十九 记忆运行时过滤 | 2 | save_interaction 过滤逻辑 |
-| extension-and-learning | §十一 扩展与学习 | 79 | build_context → SharedKnowledgePool 注入 |
+| extension-and-learning | §十一 扩展与学习 | 87 | build_context → SharedKnowledgePool 注入 |
 | knowledge-infrastructure | §四附 知识基础设施 | 29 | build_context 注入 ContextBus |
 
 ### core/harness/memory/reminders.py
@@ -295,7 +301,7 @@
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| platform-governance | §二十一 平台治理 | 59 | 本体引擎治理 |
+| platform-governance | §二十一 平台治理 | 74 | 本体引擎治理 |
 | document-intelligence | §十五 文档智能 | 24 | OntologyEngine 文档输入 |
 
 ### core/harness/optimization/goal_executor.py
@@ -304,7 +310,7 @@
 |--------|---------|:---:|--------|
 | l6-autonomy | §二十七 L6 自主能力 | 8 | _execute_business_objective |
 | orchestration-layer | §二十六 编排层 | 17 | Goal 分解后并行执行 |
-| extension-and-learning | §十一 扩展与学习 | 79 | GoalExecutor 启动 + 执行循环 |
+| extension-and-learning | §十一 扩展与学习 | 87 | GoalExecutor 启动 + 执行循环 |
 | deploy-and-canary | §十八 部署与灰度 | 4 | tool_gap → DeployEngine.deploy |
 
 ### core/harness/optimization/goal_generator.py
@@ -319,8 +325,8 @@
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
 | model-infrastructure | §九 模型基础设施 | 27 | ToolBootstrap 模型选择 |
-| skill-system | §六 Skill 系统 | 23 | ToolBootstrap → SkillRegistry.register |
-| extension-and-learning | §十一 扩展与学习 | 79 | ToolBootstrap 自举工具创建 |
+| skill-system | §六 Skill 系统 | 29 | ToolBootstrap → SkillRegistry.register |
+| extension-and-learning | §十一 扩展与学习 | 87 | ToolBootstrap 自举工具创建 |
 | deploy-and-canary | §十八 部署与灰度 | 4 | _trigger_deploy |
 
 ### core/harness/scheduler/wake_scheduler.py
@@ -333,7 +339,7 @@
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| security-and-governance | §七 安全与治理 | 33 | _guard_messages → PII masking |
+| security-and-governance | §七 安全与治理 | 36 | _guard_messages → PII masking |
 | model-infrastructure | §九 模型基础设施 | 27 | sys_llm_generate → best_model_for_purpose |
 | runtime-intervention | §十九 运行时干预 | 2 | 最佳模型选择 |
 
@@ -347,22 +353,22 @@
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| knowledge-engine-ontology | §三 知识引擎（本体） | 113 | GraphIndex 遍历检索 |
+| knowledge-engine-ontology | §三 知识引擎（本体） | 130 | GraphIndex 遍历检索 |
 | memory-subsystem | §二 记忆子系统 | 31 | 语义记忆检索 |
-| rag-retrieval | §四 RAG 检索 | 40 | 检索路由 + 多路融合 |
+| rag-retrieval | §四 RAG 检索 | 41 | 检索路由 + 多路融合 |
 
 ### core/harness/syscalls/skill.py
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| security-and-governance | §七 安全与治理 | 33 | sys_skill_call → PolicyGate |
-| skill-system | §六 Skill 系统 | 23 | sys_skill_call |
+| security-and-governance | §七 安全与治理 | 36 | sys_skill_call → PolicyGate |
+| skill-system | §六 Skill 系统 | 29 | sys_skill_call |
 
 ### core/harness/syscalls/tool.py
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| security-and-governance | §七 安全与治理 | 33 | sys_tool_call → PolicyGate.check_tool |
+| security-and-governance | §七 安全与治理 | 36 | sys_tool_call → PolicyGate.check_tool |
 | observability | §八 可观测性 | 16 | 工具调用审计 |
 | tool-ecosystem | §十六 工具生态 | 21 | sys_tool_call → ToolRegistry |
 
@@ -377,10 +383,10 @@
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| platform-governance | §二十一 平台治理 | 59 | Governance cron 定时任务 |
+| platform-governance | §二十一 平台治理 | 74 | Governance cron 定时任务 |
 | l6-autonomy | §二十七 L6 自主能力 | 8 | DiscoveryListener 启动 |
-| deploy-and-operations | §十 部署与运维 | 17 | 启动时挂载 cron + WakeScheduler |
-| extension-and-learning | §十一 扩展与学习 | 79 | GoalExecutor + WakeScheduler 启动 |
+| deploy-and-operations | §十 部署与运维 | 21 | 启动时挂载 cron + WakeScheduler |
+| extension-and-learning | §十一 扩展与学习 | 87 | GoalExecutor + WakeScheduler 启动 |
 
 ## Capability-to-Consumer Impact
 
@@ -389,7 +395,7 @@
 - **core/apps/agents/multi_agent.py** — MultiAgent 通信
 - **core/harness/coordination/swarm_broker.py** — SwarmBroker agent discovery
 
-### §五 Agent 系统 (23 caps)
+### §五 Agent 系统 (24 caps)
 
 - **core/harness/execution/pipeline_engine.py** — Pipeline 调度 Agent
 - **core/apps/builder/builder_project_service.py** — Builder 创建 Agent
@@ -404,6 +410,7 @@
 
 - **core/harness/execution/pipeline_engine.py** — Pipeline routing_mode dispatch
 - **core/harness/coordination/swarm_broker.py** — SwarmBroker 蜂群协作
+- **aiPlat-platform/apps/eval/api/arena_wiring.py** — P0-B3 arena/wake-agent REST 端点
 
 ### §二十三 核心API统一入口 (5 caps)
 
@@ -416,7 +423,7 @@
 - **core/harness/optimization/tool_bootstrap.py** — _trigger_deploy
 - **aiPlat-platform/apps/fde/api/fde.py** — FDE canary 端点
 
-### §十 部署与运维 (17 caps)
+### §十 部署与运维 (21 caps)
 
 - **core/server.py** — 启动时挂载 cron + WakeScheduler
 - **core/harness/evolution_engine.py** — self-harness cycle
@@ -431,7 +438,7 @@
 - **core/harness/execution/pipeline_engine.py** — Pipeline 质量评分
 - **aiPlat-platform/apps/fde/api/fde_quality_summary.py** — FDE 质量摘要
 
-### §十一 扩展与学习 (79 caps)
+### §十一 扩展与学习 (87 caps)
 
 - **core/harness/optimization/goal_executor.py** — GoalExecutor 启动 + 执行循环
 - **core/harness/optimization/tool_bootstrap.py** — ToolBootstrap 自举工具创建
@@ -449,7 +456,7 @@
 - **core/harness/execution/pipeline_engine.py** — Pipeline 阶段 Gate 检查
 - **core/harness/infrastructure/integration.py** — 8 Gate 统一出口
 
-### §一 Harness 执行引擎 (34 caps)
+### §一 Harness 执行引擎 (36 caps)
 
 - **core/api/routers/builder_project_service.py** — PipelineEngine 调度入口
 - **core/harness/execution/pipeline_engine.py** — 自身消费 PipelineStageConfig + StageRunner
@@ -469,7 +476,7 @@
 - **core/harness/utils/model_injection.py** — ModelManager 缓存
 - **aiPlat-management/frontend/src/pages/Infra** — Infra 管理前端
 
-### §三 知识引擎（本体） (113 caps)
+### §三 知识引擎（本体） (130 caps)
 
 - **core/api/routers/wiki.py** — Wiki CRUD + index + ingest 端点
 - **core/api/routers/wiki_ontology_engine.py** — 本体引擎 REST API
@@ -493,7 +500,7 @@
 - **core/server.py** — DiscoveryListener 启动
 - **aiPlat-platform/apps/fde/api/fde_dashboard_v2.py** — _get_goal_decomposition_stats
 
-### §二十五 管理 & 质量 (21 caps)
+### §二十五 管理 & 质量 (24 caps)
 
 - **core/harness/execution/pipeline_engine.py** — Pipeline 质量评分
 - **aiPlat-management/frontend/src/pages/Diagnostics** — 诊断仪表盘
@@ -555,13 +562,13 @@
 - **core/harness/execution/pipeline_engine.py** — Pipeline 编排
 - **aiPlat-platform/apps/fde/orchestration/builder.py** — FDEBuilderOrch 编排
 
-### §二十一 平台治理 (59 caps)
+### §二十一 平台治理 (74 caps)
 
 - **core/server.py** — Governance cron 定时任务
 - **core/harness/ontology_engine/engine.py** — 本体引擎治理
 - **aiPlat-platform/apps/fde/api/fde_dashboard_v2.py** — 仪表盘治理指标
 
-### §四 RAG 检索 (40 caps)
+### §四 RAG 检索 (41 caps)
 
 - **core/apps/agents/materials_chat.py** — CRAG + HyDE + RRF 自身
 - **core/harness/syscalls/retrieval.py** — 检索路由 + 多路融合
@@ -573,14 +580,14 @@
 - **core/api/routers/adapters.py** — /model-override 端点
 - **core/harness/syscalls/llm.py** — 最佳模型选择
 
-### §七 安全与治理 (33 caps)
+### §七 安全与治理 (36 caps)
 
 - **core/harness/syscalls/tool.py** — sys_tool_call → PolicyGate.check_tool
 - **core/harness/syscalls/skill.py** — sys_skill_call → PolicyGate
 - **core/harness/execution/pipeline_engine.py** — HITL → PolicyGate + ApprovalGate
 - **core/harness/syscalls/llm.py** — _guard_messages → PII masking
 
-### §六 Skill 系统 (23 caps)
+### §六 Skill 系统 (29 caps)
 
 - **core/harness/execution/pipeline_engine.py** — Pipeline 调用 Skill
 - **core/harness/syscalls/skill.py** — sys_skill_call
