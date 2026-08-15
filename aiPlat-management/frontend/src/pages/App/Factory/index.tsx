@@ -1402,7 +1402,7 @@ const ProjectPanel: React.FC<{
                                   <span className="text-gray-500">|</span>
                                   <span className="text-gray-400">{recLabel[rec] || rec}</span>
                                 </div>
-                                {tr.test_results?.find((r: any) => r.is_bug) && (
+                                {Array.isArray(tr.test_results) && tr.test_results.find((r: any) => r.is_bug) && (
                                   <div className="text-[10px] text-red-400">
                                     发现 Bug: {tr.test_results.filter((r: any) => r.is_bug).map((r: any, i: number) => (
                                       <span key={i} className="inline-block mr-1.5">{r.id}: {r.reason?.slice(0, 50)}</span>
