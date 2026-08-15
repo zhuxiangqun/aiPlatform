@@ -616,6 +616,32 @@ const ProjectPanel: React.FC<{
       // Pre-fetch test_report to pass directly — avoids agent having to HTTP GET 68K state
       const st = await projectApi.getState(project.project_id);
       const testReportRaw = (st as any)?.state?.test_report?.raw_output || '';
+
+      // ── Deterministic path: pytest report → fix programmer_agent directly (no LLM agent) ──
+      let reportObj: any = null;
+      try { reportObj = JSON.parse(testReportRaw); } catch {}
+      const isPytest = reportObj && ((reportObj.test_mode === 'pytest' || reportObj.header?.test_mode === 'pytest') || (reportObj.bug_summary && Array.isArray(reportObj.bug_summary.failed_tests)));
+      if (isPytest) {
+        const totalBugs = reportObj?.bug_summary?.total_bugs ?? 0;
+        const suggestedFix = reportObj?.bug_summary?.suggested_fix || '';
+        if (!totalBugs || !suggestedFix) {
+          toast.info('当前无 Bug 需要修复');
+          setFixingBugs(false);
+          return;
+        }
+        // pytest failures are code defects → regenerate the code-generating stage
+        const gen = await projectApi.generateHypotheses(project.project_id, ['programmer_agent']);
+        const fixPlan: string[] = (gen as any)?.fix_plan?.length ? (gen as any).fix_plan : ['programmer_agent'];
+        for (const stage of fixPlan) {
+          await projectApi.regenerateStage(project.project_id, stage, suggestedFix);
+        }
+        toast.success(`修复已触发: ${fixPlan.length} 个阶段将重新生成，覆盖 ${totalBugs} 个 Bug`);
+        setPhase('executing');
+        onRefresh();
+        setFixingBugs(false);
+        return;
+      }
+
       const result = await workspaceAgentApi.execute('test_report_orchestrator', {
         input: { project_id: project.project_id, test_report: testReportRaw },
       });

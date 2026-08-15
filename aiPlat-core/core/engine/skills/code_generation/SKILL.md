@@ -105,9 +105,36 @@ skip_when: 跳过条件：用户仅询问概念、对比工具而非实际写代
 # 代码生成（Engine）
 
 ## SOP
-1. 解析需求：输入语言、框架、代码风格、测试要求。
+1. 解析需求：语言/框架/代码风格/测试要求。
 2. 生成代码：## FILE: 格式，每文件包含完整实现。
 3. 自检：语法正确、导入完备、安全无注入。
+
+## 技术栈（强制 — 后端必须用 Python）
+- **后端一律用 Python + FastAPI + SQLAlchemy 2.0 + Pydantic v2**。**绝对禁止** JavaScript/Node.js/TypeScript/Go 等——测试执行器用 pytest 跑，只有 Python 代码能被测试
+- 目录结构统一 `backend/app/`（main.py、api/、models/、schemas/、services/、core/、utils/），测试从 `from app.xxx import` 导入
+
+## 聚焦原则（强制 — 避免单次输出超时）
+- **优先核心业务文件**：main.py、routers/*.py、models/*.py、schemas、核心 service
+- **合并样板**：config/settings/database 合并为 1-2 个文件；不要输出空 `__init__.py`、纯 re-export 文件、冗余 requirements.txt
+- **目标 ≤ 15 个文件**：输出可运行的 MVP（核心功能可跑通），而非完整生产应用
+- 每个文件必须有实质内容，禁止为凑结构而拆文件
+
+## 输出格式（强制）
+- 文件头**必须用两个 `#`**：`## FILE: path/to/file.py`（markdown 二级标题）。**禁止三个 `#`**（`### FILE:` 会导致引擎无法解析）
+- 文件头后直接跟代码内容，**不要用 ``` 包裹**，也不要在代码前加 `python` 语言标记行
+
+## 跨文件 import 一致性（强制 — 输出前逐条自检）
+生成全部文件后，**逐条核对每个 `from X import Y`**：
+- `Y` 必须确实在文件 X 里定义，或在 X 的 `__init__.py` 里显式导出
+- 例如 `from app.api.routes import router` → `backend/app/api/routes/__init__.py` 里必须有 `router = APIRouter()` 或 `from .parse import router`
+- 引用不存在的符号会报 `ImportError: cannot import name`，pytest 直接判失败
+- 若某目录需要被 `from app.api import xxx` 引用，其 `__init__.py` 必须显式 re-export 这些符号（`from .xxx import yyy`），**禁止留空的 `__init__.py`**（空 __init__ 会导致子模块无法被上层 import）
+
+## 依赖声明（强制 — 所有第三方依赖必须写入 requirements.txt）
+- **自由使用任何第三方库**：passlib、bcrypt、email-validator、python-multipart、python-jose 等都可以用
+- **所有依赖必须在 `## FILE: backend/requirements.txt` 里声明，含版本号**（如 `passlib==1.7.4`、`email-validator==2.1.0`）。测试执行器会读 requirements.txt 自动 `pip install`，未声明的依赖会导致 import error，且部署后无法运行
+- 代码必须能被 `pip install -r requirements.txt` 后直接 import
+- **SQLAlchemy 2.0 API（不是 1.x）**：UUID 用 `sqlalchemy.Uuid`（不是 `sqlalchemy.dialects.sqlite.UUID`）；模型列用 `mapped_column`/`Mapped` 注解；`metadata` 是保留字，字段名禁止叫 `metadata`
 
 ## 目标
 根据需求生成高质量可执行代码

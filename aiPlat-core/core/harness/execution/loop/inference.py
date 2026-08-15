@@ -38,7 +38,7 @@ async def reason(
     msgs = state.context.get("messages")
     if isinstance(msgs, list) and len(msgs) > 6:
         estimated_tokens = state.used_tokens or sum(
-            len(str(m.get("content", ""))).split() * 1.3 for m in msgs if isinstance(m, dict)
+            len(str(m.get("content", "")).split()) * 1.3 for m in msgs if isinstance(m, dict)
         )
         max_tokens = float(getattr(config, "max_tokens", 0) or 0)
         if max_tokens > 0 and estimated_tokens / max_tokens > 0.80:

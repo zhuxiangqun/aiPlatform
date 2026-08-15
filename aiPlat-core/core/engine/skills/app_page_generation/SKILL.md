@@ -101,6 +101,20 @@ skip_when: code_generation已处理代码模式
 
 ## SOP
 
+### 修复模式（最高优先级 — 上下文出现 `## 🛑 REGENERATE WITH FEEDBACK` 时执行）
+
+当输入上下文中出现 `## 🛑 REGENERATE WITH FEEDBACK` 段落时，**进入修复模式，跳过下方 1-6 步的从零生成流程**：
+
+1. **只修前端组件配置**：只处理 feedback 中与页面/组件/交互相关的 Bug（组件名如 progress_poller/result_dashboard/data_form/file_upload、按钮、对话框、提示、错误码展示等）；**后端 Agent/Skill 逻辑的 Bug（校验逻辑、认证、业务状态等）不是你的职责，直接忽略**。
+2. **逐条精确落地 `suggested_fix`**：对每条相关的 `suggested_fix`，在对应 stage 的 `component` 和 `config` 中写出**精确的配置字段和值**。禁止只堆砌关键词（如只加"重试"字样），必须落到具体 config。例如：
+   - "progress_poller 增加失败分支" → `"stages": [..., {"status": "failed", "label": "失败"}]` + `"error_display": {"show_code": true, "code_field": "error_code"}`
+   - "result_dashboard 支持错误展示" → 在 result_dashboard 的 config 中增加 `"error_display": {"show_code": true}`
+   - "data_form 支持暂停/取消" → `"actions": [{"type": "pause"}, {"type": "cancel"}]` + `"task_status": {"field": "status"}`
+3. **保留未提及的 stage**：上一版中未被 feedback 指出的 stage 和正确配置要原样保留。
+4. **重新输出完整 app_page.json**：修复后必须重新输出完整的 `app_page.json`（不要只输出 diff）。
+
+---
+
 1. 读 PRD 的用户故事和交互流程
 2. 从 agent_app 的 agent_manifest.json 中提取 skill_routing 的 keys——这些是后端实际可调用的 Skill 名，必须精确匹配（含下划线和大小写）。**若 agent_app 缺失或无法读取，`skill` 字段留空并保留该 stage（不要删除阶段），绝不自行编造 skill 名。**
 3. 确定页面模式(mode):

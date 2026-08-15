@@ -223,6 +223,14 @@ export const projectApi = {
     );
   },
 
+  /** Generate root-cause hypotheses + fix plan from the decision trace graph. */
+  generateHypotheses: async (projectId: string, failedStageIds: string[]) => {
+    return apiClient.post<{ status: string; fix_plan: string[]; hypotheses: Array<Record<string, unknown>> }>(
+      `/platform/builder/projects/${projectId}/generate-hypotheses`,
+      { failed_stage_ids: failedStageIds, test_report: '' }
+    );
+  },
+
   /** Run tests (E2E smoke + repo tests) on a completed project. */
   test: async (projectId: string) => {
     return apiClient.post<{ project_id: string; all_passed: boolean; e2e_smoke: Record<string, unknown>; repo_tests: Record<string, unknown> }>(

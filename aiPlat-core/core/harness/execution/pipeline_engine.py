@@ -2002,6 +2002,8 @@ class PipelineEngine:
                             logging.getLogger(__name__).debug('approve failed', exc_info=True)
                     state["_hitl_resolved_" + s.id] = True
                     state["_hitl_stage_id"] = ""
+                    state["_hitl_phase_name"] = ""
+                    state["_hitl_output_artifact"] = ""
                     state["_hitl_human_feedback"] = ""
                     state["phase"] = PipelinePhase.EXECUTING
                     state["_current_stage_idx"] = i
@@ -2010,6 +2012,8 @@ class PipelineEngine:
                     return state
 
             state["_hitl_stage_id"] = ""
+            state["_hitl_phase_name"] = ""
+            state["_hitl_output_artifact"] = ""
 
         self._repair_message_integrity(state)
 
@@ -2481,6 +2485,19 @@ class PipelineEngine:
 
         idx = int(self._state.get("_current_stage_idx", 0) or 0)
         total = len(self._config.stages)
+
+        # Defensive: if HITL fields were lost or point to a non-stage id (e.g. a
+        # skill_name from an older broken recovery), re-derive from the current
+        # stage index so the frontend still knows which stage/artifact to approve.
+        _valid_stage_ids = {getattr(_s, 'id', '') for _s in self._config.stages}
+        _hitl_id = self._state.get("_hitl_stage_id") or ""
+        if (_hitl_id not in _valid_stage_ids) and 0 <= idx < total:
+            _s = self._config.stages[idx]
+            self._state["_hitl_stage_id"] = getattr(_s, 'id', '') or ''
+            self._state["_hitl_phase_name"] = self._state.get("_hitl_phase_name") or (getattr(_s, 'hitl_phase', '') or 'review')
+            self._state["_hitl_output_artifact"] = getattr(_s, 'output_artifact', '') or ''
+            _log_engine.warning("v3.2 HITL recovery: re-derived HITL fields from idx=%d (stage=%s)",
+                                idx, getattr(_s, 'id', '?'))
 
         # Ensure phase is correct (may have been tampered by cleanup)
         self._state["phase"] = "paused"
@@ -4253,6 +4270,29 @@ class PipelineEngine:
         return profile
 
 
+    def _build_handler_params(self, stage: PipelineStageConfig, state: PipelineState) -> Dict[str, Any]:
+        """Construct handler params from input_artifacts (config-driven, no hardcoded keys).
+
+        For each declared input_artifact, pass its raw_output to the handler.
+        JSON-shaped artifacts (dict/array) are parsed; others passed as text.
+        """
+        import json as _hj
+        params: Dict[str, Any] = {}
+        for _key in (getattr(stage, 'input_artifacts', []) or []):
+            _v = state.get(_key)
+            if isinstance(_v, dict) and _v.get("raw_output"):
+                _raw = str(_v["raw_output"]).strip()
+                if _raw.startswith(("{", "[")):
+                    try:
+                        params[_key] = _hj.loads(_raw)
+                    except Exception:
+                        params[_key] = _raw
+                else:
+                    params[_key] = _raw
+        params.setdefault("project", state.get("app_name") or state.get("description") or "")
+        return params
+
+
     async def _run_stage_skill(self, stage: PipelineStageConfig, state: PipelineState) -> PipelineState:
         """Execute a stage via its configured skill, loading SOP from SKILL.md.
 
@@ -4303,10 +4343,63 @@ class PipelineEngine:
             if _raw.startswith("---"):
                 _parts = _raw.split("---", 2)
                 _sop_body = _parts[2].strip() if len(_parts) > 2 else ""
+                _execution_type = ""
+                try:
+                    import yaml as _yaml_mod
+                    _fm = _yaml_mod.safe_load(_parts[1])
+                    if isinstance(_fm, dict):
+                        _execution_type = str(_fm.get("execution_type", "") or "").strip()
+                except Exception:
+                    _execution_type = ""
         if not _sop_body:
             _log.getLogger("pipeline_engine").warning(
                 "Skill %s: no SOP found, falling back to ReAct", _skill_name)
             return state  # caller falls through to _exec_stage
+
+        # ── 1.5. Handler execution (execution_type: handler — deterministic, no LLM) ──
+        if _execution_type == "handler":
+            _handler_path = _os.path.join(_os.path.dirname(_sp), "handler.py")
+            if _os.path.isfile(_handler_path):
+                try:
+                    import importlib.util as _iu
+                    _spec = _iu.spec_from_file_location(f"skill_handler_{_skill_name}", _handler_path)
+                    if _spec and _spec.loader:
+                        _hmod = _iu.module_from_spec(_spec)
+                        _spec.loader.exec_module(_hmod)
+                        if hasattr(_hmod, "execute") and callable(_hmod.execute):
+                            _hparams = self._build_handler_params(stage, state)
+                            _hres = _hmod.execute(_hparams)
+                            import asyncio as _aio_mod
+                            if _aio_mod.iscoroutine(_hres):
+                                _hres = await _hres
+                            if isinstance(_hres, dict):
+                                import json as _hj_local
+                                _artifact_key = getattr(stage, 'output_artifact', '') or _skill_name
+                                state[_artifact_key] = {
+                                    "raw_output": _hj_local.dumps(_hres, ensure_ascii=False),
+                                    "elapsed_sec": round(_time.time() - _t0, 2),
+                                }
+                                # Handler self-repaired the code (auto-repair fixed pytest) → write back
+                                # the fixed code to the file-generating stage (uses_file_output, generic field).
+                                _fixed_code = str(_hres.get("fixed_code") or "")
+                                if _fixed_code:
+                                    for _s in (self._config.stages if self._config else []):
+                                        if getattr(_s, 'uses_file_output', False):
+                                            _code_artifact = getattr(_s, 'output_artifact', '')
+                                            if _code_artifact and isinstance(state.get(_code_artifact), dict):
+                                                state[_code_artifact]["raw_output"] = _fixed_code
+                                            break
+                                state["_progress"] = {"stage": _skill_name, "status": "completed",
+                                                      "elapsed_sec": round(_time.time() - _t0, 2),
+                                                      "backend": "handler", "current_step": 0}
+                                if self._persist_callback:
+                                    self._persist_callback(dict(state))
+                                _log.getLogger("pipeline_engine").warning(
+                                    "Skill %s: handler executed (deterministic)", _skill_name)
+                                return state
+                except Exception as _he:
+                    _log.getLogger("pipeline_engine").warning(
+                        "Skill %s: handler execution failed, falling back to LLM: %s", _skill_name, _he)
 
         # Emit node_started event for frontend polling visibility
         try:
@@ -4646,19 +4739,6 @@ class PipelineEngine:
         _log.getLogger("pipeline_engine").warning(
             "Skill %s OK: stage=%s output=%d chars", _skill_name, stage.id, len(_result))
 
-        # ── 5. If test skill, optionally run test execution ──
-        if getattr(stage, 'generate_test_plan', False):
-            _mode = getattr(stage, 'test_execution_mode', '') or ''
-            if _mode == "pytest":
-                state = await self._run_test_execution(state, stage, _result)
-            elif _mode:
-                # Chained skill execution handled later via chain_skill_after
-                pass
-            elif "pytest" in _sop_body.lower():
-                # Backward compat: fallback for existing configs without test_execution_mode
-                state = await self._run_test_execution(state, stage, _result)
-            # Note: agent_conversation mode chains via chain_skill_after below
-
         # ── 5.5. Chain next skill if configured ──
         _chain_skill = getattr(stage, 'chain_skill_after', '') or ''
         if _chain_skill:
@@ -4832,7 +4912,7 @@ class PipelineEngine:
         except Exception:
             return ""  # best-effort; SQLite still has the truncated version
 
-    def _deploy_result_files(state, stage, _result: str) -> None:
+    def _deploy_result_files(self, state, stage, _result: str) -> None:
         """Generic: parse ## FILE: blocks from output and write to project directory.
 
         No business logic — engine doesn't know (or care) what AGENT.md or SKILL.md mean.
@@ -4851,7 +4931,7 @@ class PipelineEngine:
         _log.warning("deploy: writing files to %s", _target)
 
         _count = 0
-        for _block in _re.split(r'^##\s*FILE:\s*', _result, flags=_re.MULTILINE)[1:]:
+        for _block in _re.split(r'^#{2,4}\s*FILE:\s*', _result, flags=_re.MULTILINE)[1:]:
             _lines = _block.strip().split("\n", 1)
             if len(_lines) < 2:
                 continue
@@ -4876,131 +4956,6 @@ class PipelineEngine:
             except Exception as _we:
                 _log.warning("deploy: failed to write %s: %s", _fname, _we)
         _log.warning("deploy: wrote %d files", _count)
-
-    async def _run_test_execution(self, state: PipelineState, stage, _result: str) -> PipelineState:
-        """Run pytest on generated test code and capture results."""
-        import tempfile, subprocess, os as _os, re as _re, shutil
-        _passed = _failed = _errors = 0; _test_log = ""; _repair_rounds = 0; _repair_log = ""
-        # Find upstream code stage's output key (config-driven, not hardcoded)
-        _code_key = ""
-        for _s in (self._config.stages if self._config else []):
-            if getattr(_s, 'output_artifact', '') == getattr(stage, 'output_artifact', ''):
-                continue
-            _v2 = state.get(getattr(_s, 'output_artifact', ''))
-            if _v2 and isinstance(_v2, dict) and _v2.get("raw_output") and len(_v2["raw_output"]) > 200:
-                _code_key = getattr(_s, 'output_artifact', '')
-        _code_text = state.get(_code_key, {}).get("raw_output", "") if _code_key else ""
-        try:
-            _tmp = tempfile.mkdtemp(prefix="aiplat_tests_")
-            for _txt in [_code_text, _result]:
-                if not _txt: continue
-                for _block in _re.split(r'^##\s*FILE:\s*', _txt, flags=_re.MULTILINE)[1:]:
-                    _lines = _block.strip().split("\n", 1)
-                    if len(_lines) >= 2:
-                        _full = _os.path.join(_tmp, _lines[0].strip())
-                        _content = _re.sub(r'^```\w*\n?', '', _lines[1].strip())
-                        _content = _re.sub(r'\n?```\s*$', '', _content)
-                        _os.makedirs(_os.path.dirname(_full), exist_ok=True)
-                        with open(_full, "w") as _fw: _fw.write(_content)
-            for _root, _dirs, _files in _os.walk(_tmp):
-                for _d in _dirs:
-                    _init = _os.path.join(_root, _d, "__init__.py")
-                    if not _os.path.isfile(_init):
-                        with open(_init, "w") as _: pass
-            _env = {**_os.environ, "PYTHONPATH": _tmp + (":" + _os.environ.get("PYTHONPATH","") if _os.environ.get("PYTHONPATH") else "")}
-            _proc = subprocess.run([_os.sys.executable, "-m", "pytest", _tmp, "--tb=short", "-q", "--no-header"], capture_output=True, text=True, timeout=90, env=_env)
-            _test_log = _proc.stdout + "\n" + _proc.stderr
-            _m = _re.search(r'(\d+)\s+passed', _test_log)
-            if _m: _passed = int(_m.group(1))
-            _m = _re.search(r'(\d+)\s+failed', _test_log)
-            if _m: _failed = int(_m.group(1))
-            _m = _re.search(r'(\d+)\s+error', _test_log)
-            if _m: _errors = int(_m.group(1))
-            # ── Auto-repair: retry failed tests with LLM fix ──
-            _repair_rounds = 0; _repair_log = ""
-            _max_repairs = min(int(_os.environ.get("AIPLAT_TEST_REPAIR_MAX", "2")), 3)
-            while (_failed > 0 or _errors > 0) and _repair_rounds < _max_repairs and _code_text:
-                _repair_rounds += 1
-                try:
-                    from core.harness.syscalls.llm import sys_llm_generate
-                    from core.harness.utils.model_injection import best_model_for_purpose
-                    _err_sample = _test_log[:2500]
-                    _fix_prompt = (
-                        "Tests failed with the following output. Analyze the errors and fix the code.\n\n"
-                        f"## Test output\n{_err_sample}\n\n"
-                        f"## Code to fix\n{_code_text[:4000]}\n\n"
-                        f"## Test code\n{_result[:3000]}\n\n"
-                        "Output ONLY the fixed code in ## FILE: format. Each file's code must be complete and runnable."
-                    )
-                    _fix_resp = await sys_llm_generate(
-                        None,
-                        [{"role": "user", "content": _fix_prompt}],
-                        model_name=best_model_for_purpose("code_gen"),
-                        max_tokens=16000,
-                        trace_context={"source": f"test_auto_repair_r{_repair_rounds}"},
-                    )
-                    _fix_text = getattr(_fix_resp, "content", "") or str(_fix_resp)
-                    if _fix_text and len(_fix_text) > 100:
-                        # Apply fix: replace code files with fixed versions
-                        for _block in _re.split(r'^##\s*FILE:\s*', _fix_text, flags=_re.MULTILINE)[1:]:
-                            _lines2 = _block.strip().split("\n", 1)
-                            if len(_lines2) >= 2:
-                                _full2 = _os.path.join(_tmp, _lines2[0].strip())
-                                _content2 = _re.sub(r'^```\w*\n?', '', _lines2[1].strip())
-                                _content2 = _re.sub(r'\n?```\s*$', '', _content2)
-                                if _os.path.isfile(_full2):
-                                    with open(_full2, "w") as _fw2: _fw2.write(_content2)
-                        # Re-run tests
-                        _proc2 = subprocess.run([_os.sys.executable, "-m", "pytest", _tmp, "--tb=short", "-q", "--no-header"], capture_output=True, text=True, timeout=90, env=_env)
-                        _new_log = _proc2.stdout + "\n" + _proc2.stderr
-                        _p2 = _f2 = _e2 = 0
-                        _m = _re.search(r'(\d+)\s+passed', _new_log)
-                        if _m: _p2 = int(_m.group(1))
-                        _m = _re.search(r'(\d+)\s+failed', _new_log)
-                        if _m: _f2 = int(_m.group(1))
-                        _m = _re.search(r'(\d+)\s+error', _new_log)
-                        if _m: _e2 = int(_m.group(1))
-                        if _p2 > _passed or (_f2 + _e2) < (_failed + _errors):
-                            _repair_log += f"Round {_repair_rounds}: {_passed}/{_failed}/{_errors} → {_p2}/{_f2}/{_e2} (improved)\n"
-                            _passed, _failed, _errors = _p2, _f2, _e2
-                            _test_log = _new_log
-                        else:
-                            _repair_log += f"Round {_repair_rounds}: no improvement\n"
-                            break
-                except Exception:
-                    _repair_log += f"Round {_repair_rounds}: repair failed\n"
-                    break
-            shutil.rmtree(_tmp, ignore_errors=True)
-        except Exception as _te:
-            _test_log = f"Test execution error: {str(_te)[:500]}"; _errors = 1
-        _total = _passed + _failed + _errors
-        _pr = _passed / _total if _total > 0 else 0
-        _artifact_key = getattr(stage, 'output_artifact', '') or 'test_report'
-        state[_artifact_key] = {
-            "raw_output": _result,
-            "test_results": {"passed": _passed, "failed": _failed, "errors": _errors, "total": _total, "pass_rate": round(_pr, 2)},
-            "test_log": _test_log[:3000],
-            "repair_rounds": _repair_rounds,
-            "repair_log": _repair_log[:1000] if _repair_log else "",
-        }
-        state["_test_pass_rate"] = _pr
-        state["_has_tests"] = True
-        # Notify SelfHealGate for remaining failures
-        if (_failed > 0 or _errors > 0) and _repair_rounds > 0:
-            try:
-                from core.harness.evaluation.self_heal_gate import SelfHealGate
-                SelfHealGate().evaluate_all({stage.id: {
-                    "agent_id": getattr(stage, 'agent_id', ''),
-                    "test_passed": _passed, "test_failed": _failed, "test_errors": _errors,
-                    "repair_rounds": _repair_rounds,
-                    "pass_rate": _pr,
-                }}, skip_rejected=True)
-            except Exception:
-                logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
-        logging.getLogger("pipeline_engine").warning("Test executed: stage=%s tests=%d/%d/%d repair_rounds=%d", stage.id, _passed, _failed, _errors, _repair_rounds)
-        return state
-
-
 
     async def _exec_tdd_cycle(self, stage: PipelineStageConfig, state: PipelineState) -> PipelineState:
 
@@ -7478,6 +7433,14 @@ class PipelineEngine:
 
         output_dir = state.get("output_dir", "")
 
+        # §7-5: system dependency health check — missing runtime deps → ENV_ERROR (not TEST_FAIL)
+        import shutil as _shutil
+        _env_issues = []
+        for _dep in ("ffmpeg", "ffprobe"):
+            if not _shutil.which(_dep):
+                _env_issues.append(f"{_dep} not found on PATH")
+        state["_test_env_issues"] = _env_issues
+
         test_plan = state.get(stage.output_artifact) or {}
 
         script = test_plan.get("test_script", "")
@@ -9312,7 +9275,7 @@ JSON format: {{"artifact": {{}},"confidence": "HIGH","issues": [{{"severity": "P
 
         # Example: ## FILE: backend/models/user.py
 
-        for m in re.finditer(r'##\s*FILE:\s*(\S+)[\s\S]*?\n(.*?)(?=\n##\s*FILE:|\Z)', text, re.MULTILINE):
+        for m in re.finditer(r'#{2,4}\s*FILE:\s*(\S+)[\s\S]*?\n(.*?)(?=\n##\s*FILE:|\Z)', text, re.MULTILINE):
 
             files.append({"path": m.group(1).strip(), "content": m.group(2).strip()})
 

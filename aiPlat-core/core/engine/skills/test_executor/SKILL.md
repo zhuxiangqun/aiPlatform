@@ -5,9 +5,9 @@ description: >
   Agent模式: 逐条发对话测试问题给Agent，评估回复。
   代码模式: 读取pytest文件，subprocess执行，解析输出。
 category: execution
-version: 2.1.0
+version: 2.2.0
 status: enabled
-execution_type: prompt
+execution_type: handler
 tags:
   - 测试
   - 执行
@@ -32,7 +32,19 @@ input_schema:
   test_cases:
     type: array
     required: true
-    description: 测试用例数组(来自test_case_generation)
+    description: 测试用例数组(来自test_case_generation,每条含 id/ac_ref/category/question/min_expectation/assertions)
+  agent_app:
+    type: string
+    required: false
+    description: 被测 Agent 应用定义(来自 agent_engineering,含 agent 列表/skill_routing/错误处理逻辑)
+  frontend_pages:
+    type: string
+    required: false
+    description: 前端页面定义(来自 app_page_generation,含页面/组件/交互)
+  project:
+    type: string
+    required: false
+    description: 项目名(用于报告头)
   mode:
     type: string
     required: false
@@ -75,9 +87,20 @@ trigger_conditions:
   - pipeline QA阶段自动触发
 ---
 
-# 测试用例执行器 v2.1
+# 测试用例执行器 v2.2（确定性文档校验）
 
-## Step 0: 模式检测
+## 执行方式：handler（确定性，非 LLM 主观评估）
+
+本 skill `execution_type: handler`，由 `handler.py` 的 `execute(params)` 做**确定性字符串匹配**校验：
+
+1. 读取每条 test_case 的 `assertions` 数组（`{target: agent_app|frontend_pages, must_contain: [...], must_not_contain: [...]}`）
+2. 在对应产物文本中做纯字符串包含/排除匹配
+3. 全部断言命中 → PASS；任一断言缺失/违规 → FAIL 并生成 bug（suggested_fix 明确列出缺失关键词）
+4. 输出标准 test_report JSON（header/meta/test_results/bug_summary/...）
+
+判定完全确定，不依赖 LLM 主观解读。修复侧只要精确写入断言要求的关键词/字段（如 `413`、`error_code`、`failed` 状态值），校验侧就确定 PASS。
+
+## Step 0: 模式检测（legacy，供人阅读参考）
 
 ```
 检查 mode 或上下文
@@ -96,17 +119,19 @@ trigger_conditions:
 
 ### Agent Step 2: 逐条分析测试用例
 
-对 test_cases 中的**每条测试用例**逐一分析，不要跳过任何一条:
+对 test_cases 中的**每条测试用例**逐一分析，不要跳过任何一条。
+
+**关键：必须完整读取 `agent_app`（被测 Agent 定义，含 agent 列表/skill_routing/错误处理逻辑）和 `frontend_pages`（前端页面定义），逐条对比其设计是否真正满足 min_expectation。不要凭空判断用例质量，要引用被测产物中的具体证据。**
 
 1. 解析全部字段: id, ac_ref, category, question, min_expectation
-2. 判定 result:
-   - PASS: min_expectation 明确可验证，覆盖对应 FR
-   - FAIL: min_expectation 无法满足(设计缺陷/方法缺陷/逻辑矛盾)
-   - WARNING: min_expectation 模糊、无法判定是否满足
+2. 对比 agent_app / frontend_pages 的实际设计，判定 result:
+   - PASS: agent_app 或 frontend_pages 的设计明确包含满足 min_expectation 的能力(有对应 skill/agent/错误处理分支/UI 交互)
+   - FAIL: min_expectation 明确，但 agent_app/frontend_pages 的设计缺少对应能力(设计缺陷)
+   - WARNING: min_expectation 模糊，或无法从文档判断是否满足
 3. 判定 is_bug:
    - true: min_expectation 明确但 app 设计/逻辑无法满足(设计缺陷或方法缺陷)
    - false: min_expectation 模糊(用例质量问题)或测试通过
-4. 给出 1-5 分和 1-2 句 reason
+4. 给出 1-5 分和 1-2 句 reason，引用 agent_app/frontend_pages 中的具体证据(如某个 agent 的 skill、某个错误处理分支)
 
 ### Agent Step 3: 生成质量分析
 

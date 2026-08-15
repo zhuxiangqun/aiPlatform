@@ -83,6 +83,19 @@ Agent 应用 = AGENT.md (编排) + SKILL.md × N (能力单元)。
 
 ## SOP
 
+### 修复模式（最高优先级 — 上下文出现 `## 🛑 REGENERATE WITH FEEDBACK` 时执行）
+
+当输入上下文中出现 `## 🛑 REGENERATE WITH FEEDBACK` 段落时，**进入修复模式，跳过下方 Step 0-4 的从零生成流程**：
+
+1. **只修与自己职责相关的 Bug**：只处理 feedback 中与 Agent/Skill 后端逻辑相关的 Bug（校验逻辑、错误处理分支、业务状态流转、认证/授权、文件处理等）；**纯前端 UI/组件配置的 Bug（组件名如 progress_poller/result_dashboard/data_form、按钮、对话框等）不是你的职责，直接忽略**。
+2. **逐条精确落地 `suggested_fix`**：对每条相关的 `suggested_fix`，在对应 SKILL.md 的「输入校验」「核心处理」「错误处理」中写出**明确的、可定位的文字**。禁止只堆砌关键词（如只写"支持重试/取消"），必须写清楚**在哪个分支、什么触发条件、返回什么**。例如：
+   - "上传格式非法 → 返回『不支持的文件格式,仅支持 MP4/MOV/AVI/MKV』并拒绝入库"
+   - "转码任务进行中收到删除请求 → 先调用取消转码再删除记录，状态置为已取消"
+3. **保留未提及的内容**：上一版产物中未被 feedback 指出的正确逻辑要原样保留，不要因重写而丢失。
+4. **重新输出完整产物**：修复后必须重新输出完整的 `agent_manifest.json` + 全部 AGENT.md + SKILL.md（下游需要完整文件，不要只输出 diff 或只输出被修改的部分）。
+
+---
+
 ### Step 0: 多 Agent 评估
 根据 PRD 的复杂度，决定单 Agent 还是多 Agent 架构：
 

@@ -26,10 +26,14 @@ input_schema:
   prd:
     type: object
     required: true
+  code:
+    type: object
+    required: false
+    description: "代码产物(## FILE: 格式后端代码, 代码模式时必传)。有 code 则生成 pytest 文件"
   agent_app:
     type: object
     required: false
-    description: Agent应用产出(Agent模式时必传)
+    description: Agent应用产出(纯Agent模式、无 code 时才用)
 output_schema:
   test_cases:
     type: array
@@ -59,105 +63,71 @@ trigger_conditions:
 skip_when: 代码模块过小或已有充分测试覆盖
 ---
 
-# 测试用例生成（Engine）v2.1
+# 测试用例生成（Engine）v2.2
 
-## Step 0: 模式检测
+## Step 0: 模式检测（code 优先，代码模式是默认）
 
 ```
-检查上下文中有 agent_app 或 _generated_agent
-  → YES: 走 "Agent 对话测试" (Step A)
-  → NO:  走 "代码 pytest" (Step B)
-```
-
----
-
-## Agent 对话测试 SOP
-
-### Agent Step 1: 从 PRD 提取测试问题
-
-对每条 acceptance_criteria，生成 1-3 句自然语言测试问题：
-
-- **Happy path**: 模拟用户正常使用
-- **边界**: 测试极限情况
-- **异常**: 测试错误处理
-
-问题必须用**真实用户说话的方式**——不技术化，不写"测试"二字。
-
-示例:
-
-| AC | Happy path 问题 | 边界/异常问题 |
-|----|------|------|
-| 用户上传视频后返回 task_id | "请帮我上传这个视频文件" | "我传的文件500MB，能处理吗？" / "我上传了一个空的文件" |
-| 分析结果包含标签/语音/动作 | "刚才分析的结果里有哪些标签？" | "视频没有声音你也能分析吗？" |
-
-### Agent Step 2: 为每个测试问题定义完整字段
-
-对 Step 1 的每个问题，标注以下字段（**全部必填，缺一不可**）:
-
-| 字段 | 含义 | 来源 | 示例 |
-|------|------|------|------|
-| id | 唯一ID | AQ-001 顺序编号 | "AQ-001" |
-| ac_ref | 对应的验收标准编号 | PRD 的 FR 编号 | "FR-002" |
-| category | 覆盖类型 | 三选一 | "happy_path" / "boundary" / "exception" |
-| question | 自然语言问题 | Step 1 产出 | "我上传一个2.5GB的MKV文件" |
-| min_expectation | 可验证的具体预期 | PRD 的 acceptance_criteria | "返回错误提示'文件大小超过2GB限制'，拒绝上传" |
-
-注意:
-- `ac_ref` 必须从 PRD 的 FR 编号精确提取，如 "FR-001"、"FR-002"
-- `category` 必须是三个值之一: "happy_path"、"boundary"、"exception"
-- `min_expectation` 不能写"正常返回"或"符合预期"，必须写明具体的可验证行为
-- 每个 FR 至少覆盖 happy_path + boundary + exception 各 1 条
-
-### Agent Step 3: 输出 JSON
-
-**只输出 JSON**（紧凑一行，不要 ``` 包裹），不要 Markdown 报告。
-
-JSON 必须是以下结构:
-
-```json
-{
-  "mode": "agent_conversation",
-  "test_questions": [
-    {
-      "id": "AQ-001",
-      "ac_ref": "FR-002",
-      "category": "happy_path",
-      "question": "我要上传一个MP4格式的视频文件",
-      "min_expectation": "上传成功，返回UUID格式的task_id，状态为processing"
-    },
-    {
-      "id": "AQ-002",
-      "ac_ref": "FR-002",
-      "category": "boundary",
-      "question": "我上传一个2.5GB的MKV文件",
-      "min_expectation": "返回错误提示'文件大小超过2GB限制'，拒绝上传"
-    },
-    {
-      "id": "AQ-003",
-      "ac_ref": "FR-002",
-      "category": "exception",
-      "question": "我上传一个.txt文件",
-      "min_expectation": "返回错误提示'不支持的文件格式，仅支持MP4/MOV/AVI/MKV'"
-    }
-  ]
-}
+检查输入上下文：
+1. 有 `## FILE:` 格式的后端代码（code 产物，如 main.py / routers/*.py / models/*.py）→ 走 "代码 pytest" (Step B)
+2. 否则有 agent_app（含 agent_manifest.json 的 Agent 应用定义）→ 走 "Agent 对话测试" (Step A)
+3. 两者都没有 → 默认走 "代码 pytest" (Step B)
 ```
 
 ---
 
-## 代码 pytest SOP（保留，向后兼容）
+## 代码 pytest SOP（Step B — 默认模式，只要输入含 `## FILE:` 代码就执行本 SOP）
 
 ### Code Step 1: 建立测试范围
 
-读取 PRD 的 functional_requirements 和 acceptance_criteria，按风险分级策略：高风险接口→全组合判定表；标准→核心+2边界+1异常；低风险→happy+1异常。
+读取 PRD 的 functional_requirements / acceptance_criteria，以及 code 产物里**真实存在的路由路径**（`@app.get("/api/xxx")` / `@router.post("/xxx")`）。按风险分级：高风险接口→全组合判定表；标准→核心+2边界+1异常；低风险→happy+1异常。
 
-### Code Step 2: 生成 pytest 文件
+### Code Step 2: 生成 pytest 文件（HTTP 行为测试，禁止调用内部方法）
 
-用 `## FILE: tests/{name}_test.py` 格式输出可执行 pytest 代码，每个断言含失败提示信息。
+用 `## FILE: tests/{name}_test.py` 格式输出**可执行 pytest 代码**。**一律通过 FastAPI TestClient 发 HTTP 请求测路由行为**：
 
-### Code Step 3: 输出 Markdown 测试报告
+```python
+# tests/test_video.py
+from fastapi.testclient import TestClient
+from app.main import app
 
-汇总表 + 需求覆盖表 + 失败详情表 + JSON 决策摘要。
+client = TestClient(app)
+
+def test_upload_video_success():
+    resp = client.post("/api/video/upload", json={...})
+    assert resp.status_code == 200
+    assert "task_id" in resp.json()
+```
+
+规则（违反即大量 AttributeError 失败）：
+- 每个测试函数必须以 `def test_` 开头，含明确的 `assert`
+- **只测 HTTP 路由行为**：`client.get/post/put/delete("路由路径")` + 断言 `status_code`/响应 JSON 字段
+- **路由路径必须从 code 产物里 grep 真实存在**（`@app.get("/api/xxx")` 里的路径），禁止凭空编造
+- **禁止直接调用内部类/方法**（如 `security_manager.hash_url()`、`upload_service.create()`）——这些方法名 code 产物里未必存在，会 AttributeError。只通过 HTTP 路由间接测试
+- **禁止 import 具体符号**（`from app.core.security import security_manager`），只允许 `from app.main import app` + `TestClient`
+- 每个 FR 至少覆盖 happy_path + boundary + exception 各 1 条
+
+### Code Step 3: 输出
+
+**只输出 `## FILE: tests/*_test.py` 代码块**（可多个文件）。禁止输出 JSON、禁止输出 `test_questions`、禁止输出自然语言"测试问题"。
+
+---
+
+## Agent 对话测试 SOP（Step A — 仅当输入含 agent_app 且**不含** `## FILE:` 后端代码时使用）
+
+> 纯 Agent 应用（无代码）才走本 SOP。若输入含 `## FILE:` 代码，一律走上面的代码 pytest SOP。
+
+### Agent Step 1: 从 PRD 提取测试问题
+
+对每条 acceptance_criteria，生成 1-3 句自然语言测试问题（happy/boundary/exception），问题用真实用户口吻。
+
+### Agent Step 2: 为每个测试问题定义字段
+
+每条问题标注：id / ac_ref / category / question / min_expectation / assertions。
+
+### Agent Step 3: 输出 JSON
+
+只输出 `{"mode": "agent_conversation", "test_questions": [...]}`。
 
 ---
 
@@ -165,22 +135,15 @@ JSON 必须是以下结构:
 
 | ❌ 禁止 | ✅ 必须 |
 |--------|--------|
-| Agent 模式输出 `## FILE: test_*.py` | Agent 模式输出 JSON（test_questions 对象数组） |
-| 代码模式输出"请帮楼上个视频" | 代码模式输出 `def test_xxx()` |
-| test_questions 是字符串数组 | 每个元素是含全部 5 个字段的对象 |
+| 有 `## FILE:` 代码时还输出 test_questions | 有代码 → 输出 `## FILE: tests/*_test.py` |
+| 代码模式输出 JSON / 自然语言"测试问题" | 代码模式输出 `def test_xxx()` 可执行代码 |
+| 测试函数凭空编造不存在的函数/路由 | 从 code 产物里找真实函数/路由/字段 |
 | ac_ref 为空或写 "-" / "N/A" | 每行必须有对应的 FR 编号 |
-| category 为空或写 "测试" / "test" | 必须是 happy_path / boundary / exception |
 | min_expectation 写 "正常返回" / "符合预期" | 写明具体的可验证预期值 |
-| 测试问题只有 happy path | 每个 FR 至少覆盖 happy + boundary + exception |
-| Agent 模式输出 Markdown 报告 | 只输出 JSON（Markdown 由 test_executor 生成） |
 
-## ⚠️ 输出前强制自检（必须执行）
+## ⚠️ 输出前强制自检
 
-在输出 JSON 之前，**必须**逐条核对：
-
-1. PRD 中有多少个 FR？（到 `functional_requirements` 中数，如 `["FR-001", ..., "FR-007"]`）
-2. 输出的 test_questions 中覆盖了哪些 FR？（逐条检查 `ac_ref` 字段）
-3. 如果某个 FR 没有任何测试用例 → **不要输出**，继续为缺失的 FR 生成用例
-4. 只有当**全部 FR 都有至少 1 条测试用例后**，才能输出 JSON
-
-**如果跳过此自检直接输出不完整的 JSON，则违反 SOP。**
+1. PRD 中有多少个 FR？（到 `functional_requirements` 中数）
+2. 若输入含 `## FILE:` 代码 → 确认输出的是 `## FILE: tests/*_test.py` 而非 JSON
+3. 每个 FR 至少有 1 条测试
+4. 全部 FR 覆盖后才输出
