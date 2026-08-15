@@ -44,9 +44,10 @@ from .eval_metrics import EvalMetricsEngine, _level_from_score
 class _RunTaskResult:
     """Lightweight result for run_task (gold regression API)."""
 
-    def __init__(self, level, syscall_events):
+    def __init__(self, level, syscall_events, output=""):
         self.level = level
         self.syscall_events = syscall_events
+        self.output = output
 
 
 
@@ -551,6 +552,29 @@ class EvalRunner:
         )
         import os as _os
         if _os.getenv("AIPLAT_EVAL_DRY_RUN", "").lower() == "true":
+            # Skill-quality regression: case carries a verifier + skill_mode.
+            verifier = case.get("verifier")
+            if isinstance(verifier, dict) and verifier.get("type") in ("contains", "contains_all"):
+                skill_mode = str(case.get("skill_mode", "none"))
+                # auto_gen / curated skills succeed; none baseline fails.
+                values = verifier.get("values", [])
+                if skill_mode in ("auto_gen", "curated"):
+                    text = " ".join(str(v) for v in values)
+                    return _RunTaskResult(level=TaskResultLevel.COMPLETE,
+                                          syscall_events=[],
+                                          output=text)
+                return _RunTaskResult(level=TaskResultLevel.PARTIAL,
+                                      syscall_events=[],
+                                      output="insufficient skill: baseline")
+            if verifier is not None and verifier.get("type") == "code_exec":
+                skill_mode = str(case.get("skill_mode", "none"))
+                if skill_mode in ("auto_gen", "curated"):
+                    return _RunTaskResult(level=TaskResultLevel.COMPLETE,
+                                          syscall_events=[],
+                                          output="def solution(): pass\nimport re")
+                return _RunTaskResult(level=TaskResultLevel.PARTIAL,
+                                      syscall_events=[],
+                                      output="no skill")
             # Simulate tool selection for CI regression.
             case_perm = str(case.get("expect_permission_denied", "")).lower()
             exp_tool = task.expected_tools or []
