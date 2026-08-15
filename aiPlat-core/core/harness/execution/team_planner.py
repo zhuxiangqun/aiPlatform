@@ -48,6 +48,8 @@ class TeamRecommendation:
     reasoning: str
     stages: List[Dict[str, Any]] = field(default_factory=list)
     raw_reply: str = ""
+    # v3.2 — application mode: "code" | "agent" | "hybrid"(预留,暂不启用)
+    mode: str = ""
 
 
 @dataclass
@@ -475,13 +477,18 @@ async def recommend_team_stages(
         prompt += f"## Additional Context\n\n{extra_context}\n\n"
     prompt += (
         "## Task\n"
+        "0. First determine the application MODE and output it as a `mode` field:\n"
+        "   - `agent`: conversational / intent-understanding / multi-turn interaction (e.g. chatbot, QA assistant)\n"
+        "   - `code`: deterministic functions / clear API / performance-sensitive (e.g. upload/transcode, data analysis, CRUD)\n"
+        "   (Judge: is the core 'natural-language interaction' or 'deterministic computation/API'? Only these two, do not output hybrid)\n"
         "1. Select the best agents from the available types above for each stage\n"
+        "   (agent mode → the agent generating Agent apps (AGENT.md+SKILL.md); code mode → the agent generating source code)\n"
         "2. Assign agent_id matching exactly the names listed in the catalog\n"
         "3. Order stages by logical dependency (upstream stages before downstream)\n"
         "4. Set uses_file_output=True for agents that generate source files\n"
         "5. Set generate_test_plan=True for agents that validate/verify output\n"
         "6. Set hitl=True for stages that require human approval\n"
-        "7. Output JSON with team_name, reasoning, and stages array\n"
+        "7. Output JSON with team_name, reasoning, mode, and stages array\n"
         "8. If Agent Performance History is provided, prefer agents with higher first_pass_rate and lower rejection_rate when multiple agents could fulfill the same role. Include a brief note in reasoning about why you preferred certain agents."
     )
 
@@ -501,6 +508,9 @@ async def recommend_team_stages(
             data = _json.loads(json_str)
             recommendation.team_name = str(data.get("team_name", ""))
             recommendation.reasoning = str(data.get("reasoning", ""))
+            _mode = str(data.get("mode", "")).strip().lower()
+            if _mode in ("agent", "code"):
+                recommendation.mode = _mode
             stages_raw = (
                 data.get("stages")
                 or data.get("team", {}).get("stages")

@@ -1,6 +1,6 @@
 ---
-total_capabilities: 935
-last_updated: 2026-08-14
+total_capabilities: 944
+last_updated: 2026-08-15
 version: "30.0"
 auto_sync: true
 core_guarantees:
@@ -568,7 +568,7 @@ scan_hash: 8f9548ec24f4
 
 > 代码即真相。每个条目必须有可验证的代码位置。
 > 更新：任何能力变更时同步更新本文档。
-> 评分：98/100（2026-07-20 — 935✅）
+> 评分：98/100（2026-07-20 — 944✅）
 
 ---
 

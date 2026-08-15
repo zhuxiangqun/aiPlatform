@@ -373,6 +373,8 @@ const ProjectPanel: React.FC<{
   const [rejecting, setRejecting] = useState(false);
   const [recommending, setRecommending] = useState(false);
   const [teamStages, setTeamStages] = useState<Array<{ agent_name?: string; agent_id?: string; phase?: string; id?: string }>>(project.team_stages || []);
+  const [recommendedMode, setRecommendedMode] = useState<string>('');
+  const [recommendedReason, setRecommendedReason] = useState<string>('');
   const [runHistory, setRunHistory] = useState<ProjectRun[]>(project.runs || []);
   const [deployUrl, setDeployUrl] = useState('');
   const [deploying, setDeploying] = useState(false);
@@ -583,7 +585,10 @@ const ProjectPanel: React.FC<{
       await projectApi.confirm(project.project_id);
       const teamResult = await projectApi.recommendTeam(project.project_id);
       const stages = (teamResult as any)?.plan_stages || [];
+      const rec = (teamResult as any)?.recommendation || {};
       setTeamStages(stages);
+      setRecommendedMode((rec.mode as string) || '');
+      setRecommendedReason((rec.reasoning as string) || '');
       setPhase('team_ready');
       toast.success('PRD 已确认，团队已推荐');
     } catch (e: any) { toastGateError(e, '确认失败'); }
@@ -1167,6 +1172,14 @@ const ProjectPanel: React.FC<{
         {teamStages.length > 0 && (
           <div className="space-y-1">
             <h3 className="text-xs font-semibold text-gray-400 uppercase">团队配置</h3>
+            {recommendedMode && (
+              <div className="flex items-center gap-1.5 text-[10px]">
+                <span className={`px-1.5 py-0.5 rounded ${recommendedMode === 'agent' ? 'bg-purple-500/20 text-purple-300' : 'bg-blue-500/20 text-blue-300'}`}>
+                  {recommendedMode === 'agent' ? '🤖 Agent 应用模式' : '💻 代码应用模式'}
+                </span>
+                {recommendedReason && <span className="text-gray-500 truncate max-w-[300px]">{recommendedReason.slice(0, 80)}</span>}
+              </div>
+            )}
             <div className="flex items-center gap-1 text-xs">
               {teamStages.map((s, i) => (
                 <React.Fragment key={s.id || i}>

@@ -1013,6 +1013,14 @@ class BuilderProjectService:
             proj["plan_stages"] = plan_stages
             proj["plan_stage_ids"] = [s.get("id", f"plan_stage_{i}") for i, s in enumerate(plan_stages)]
 
+            # v3.2: 模式判断 → 映射固定团队模板（agent→default.yaml, code→code.yaml）
+            recommendation["mode"] = rec.mode
+            if rec.mode in ("agent", "code") and not proj.get("team_id"):
+                proj["team_id"] = "default" if rec.mode == "agent" else "code"
+                recommendation["_mode_mapped"] = True
+                recommendation["_team_id"] = proj["team_id"]
+                self._save_projects()
+
             # Auto-create team from plan_stages so pipeline can start immediately
             if not proj.get("team_id"):
                 try:
