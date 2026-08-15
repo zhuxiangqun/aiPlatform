@@ -4217,15 +4217,12 @@ class PipelineEngine:
             state["_metrics_enabled"] = True
 
         if profile in ("full", "autonomous", "collaborative", "self_evolving", "persistent"):
-            stage.execution_backend = "agent"
-            stage.tokens_budget = getattr(stage, 'tokens_budget', 0) or 30000
-            stage.max_steps = getattr(stage, 'max_steps', 0) or 10
             state["_policy_gate_enabled"] = True
             state["_pii_detect_enabled"] = True
 
         if profile in ("autonomous", "collaborative", "self_evolving", "persistent"):
-            stage.enable_reflection = True
-            stage.enable_task_skills = True
+            state["_reflection_enabled"] = True
+            state["_task_skills_enabled"] = True
 
         if profile == "collaborative":
             stage.pipeline_mode = "orchestrator"
@@ -4241,13 +4238,11 @@ class PipelineEngine:
 
         if profile == "persistent":
             state["_auto_resume_on_failure"] = True
-            stage.enable_auto_resume = True
 
         if profile in ("minimal", "standard"):
             if getattr(stage, 'execution_backend', 'llm') == "agent":
                 if not tools and not skills:
                     stage.execution_backend = "llm"
-                    stage.max_steps = 0
 
         # ── v5.0: Runtime profile calibration ──
         _cal = await self._calibrate_profile_from_history(stage, state)
