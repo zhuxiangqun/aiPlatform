@@ -65,13 +65,16 @@ skip_when: 代码模块过小或已有充分测试覆盖
 
 # 测试用例生成（Engine）v2.2
 
-## Step 0: 模式检测（code 优先，代码模式是默认）
+## Step 0: 模式检测（精确版 — 按产物类型区分，勿按 `## FILE:` 字样判断）
 
 ```
-检查输入上下文：
-1. 有 `## FILE:` 格式的后端代码（code 产物，如 main.py / routers/*.py / models/*.py）→ 走 "代码 pytest" (Step B)
-2. 否则有 agent_app（含 agent_manifest.json 的 Agent 应用定义）→ 走 "Agent 对话测试" (Step A)
+检查输入上下文中的产物：
+1. 有 `code` 产物，且其 `## FILE:` 路径以 `.py` 结尾（如 main.py / routers/*.py / models/*.py / app.py）→ 走 "代码 pytest" (Step B)
+2. 有 `agent_app` 产物，且内容含 `agent_manifest.json`（Agent 应用定义）→ 走 "Agent 对话测试" (Step A)
 3. 两者都没有 → 默认走 "代码 pytest" (Step B)
+
+⚠️ 关键区分：`## FILE: AGENT.md` / `## FILE: SKILL.md` / `## FILE: agent_manifest.json` 是 Agent 应用定义（.md/.json），
+不是代码。只有 `## FILE:` 路径以 `.py` 结尾的才是代码产物。切勿因输入含 `## FILE:` 字样就判定为代码模式。
 ```
 
 ---

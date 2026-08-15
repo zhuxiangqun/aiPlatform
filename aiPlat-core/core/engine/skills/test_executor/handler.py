@@ -459,6 +459,10 @@ async def _run_agent_conversation(params: Dict[str, Any]) -> Dict[str, Any]:
 
     raw = str(params.get("agent_app") or "")
     test_cases = _extract_questions(params.get("test_cases"))
+    if not test_cases:
+        # 兜底：test_cases 非 test_questions 数组（如 test_case_generation 误判生成了 pytest 代码）
+        # → 回退到文档校验，避免静默空报告
+        return await _run_document_check(params)
     project = str(params.get("project") or "未命名项目")
     today = _dt.date.today().isoformat()
 
