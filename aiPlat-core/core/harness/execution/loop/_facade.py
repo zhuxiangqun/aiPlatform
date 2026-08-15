@@ -4159,7 +4159,7 @@ class PlanExecuteLoop(BaseLoop):
 
         self._tools = tools or []
 
-        self._plan: List[Dict[str, Any]] = []
+        self._plan_steps: List[Dict[str, Any]] = []
 
         self._current_node = "plan"
 
@@ -4276,7 +4276,7 @@ class PlanExecuteLoop(BaseLoop):
 
             # Parse plan (simplified)
 
-            self._plan = [
+            self._plan_steps = [
 
                 {"step": i + 1, "action": line.strip().lstrip("0123456789. ").strip()}
 
@@ -4288,7 +4288,7 @@ class PlanExecuteLoop(BaseLoop):
 
         
 
-        state.context["plan"] = self._plan
+        state.context["plan"] = self._plan_steps
 
         self._current_node = "execute"
 
@@ -4312,9 +4312,9 @@ class PlanExecuteLoop(BaseLoop):
 
         
 
-        if current_step < len(self._plan):
+        if current_step < len(self._plan_steps):
 
-            step = self._plan[current_step]
+            step = self._plan_steps[current_step]
 
             action = step.get("action", "")
 
@@ -4508,7 +4508,7 @@ class PlanExecuteLoop(BaseLoop):
 
             
 
-            if current_step + 1 >= len(self._plan):
+            if current_step + 1 >= len(self._plan_steps):
 
                 state.context["output"] = state.context.get("step_0_result", step_result)
 
