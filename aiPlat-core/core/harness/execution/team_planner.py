@@ -278,12 +278,10 @@ def _enrich_stage_from_agent(stage: Dict[str, Any]) -> Dict[str, Any]:
 
     # ── Model routing ──
     if not stage.get("skill_model_purpose"):
-        phase = stage.get("phase", "").lower()
-        if "design" in phase or "architect" in phase or "review" in phase:
+        _skill = str(stage.get("skill_name", "")).lower()
+        if "architecture" in _skill or "design" in _skill:
             stage["skill_model_purpose"] = "reasoning"
-        elif "dev" in phase or "code" in phase or "program" in phase:
-            stage["skill_model_purpose"] = "code_gen"
-        elif "test" in phase or "qa" in phase:
+        elif "code" in _skill or "generation" in _skill or "test" in _skill:
             stage["skill_model_purpose"] = "code_gen"
         else:
             stage["skill_model_purpose"] = "chat"

@@ -105,7 +105,7 @@ def _load_adapter_models() -> List[ModelInfo]:
     import sqlite3
     models: List[ModelInfo] = []
     db_path = os.getenv("AIPLAT_EXECUTION_DB_PATH",
-        os.path.join(os.path.expanduser("~"), ".aiplat", "aiplat_executions.sqlite3"))
+        "")
     if not db_path or not os.path.isfile(db_path):
         return models
     try:
