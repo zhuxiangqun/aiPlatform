@@ -126,7 +126,7 @@ jobs:
 
       - name: Constitution tests (cross-layer)
         run: |
-          python -m pip install pytest
+          python -m pip install pytest pytest-asyncio
           python -m pytest tests/constitution/ -v --tb=short
 
       - name: Phase check (doc sync + wiring + dead code)
@@ -205,7 +205,7 @@ jobs:
       - name: E2E API smoke test (warn-only)
         continue-on-error: true
         run: |
-          python -m pip install pytest httpx
+          python -m pip install pytest pytest-asyncio httpx
           python -m pytest tests/e2e/ -v --tb=short || echo "::warning::E2E API smoke test failed"
 
   e2e-docker:
