@@ -92,7 +92,7 @@ jobs:
       - name: Install dependencies
         run: |
           pip install pyyaml pytest pytest-asyncio python-multipart
-          pip install -e ./aiPlat-infra 2>/dev/null || true
-          pip install -e ./aiPlat-core 2>/dev/null || true
+          pip install -e ../aiPlat-infra 2>/dev/null || true
+          pip install -e ../aiPlat-core 2>/dev/null || true
       - name: Check SLA breaches
         run: python -c "from core.harness.security.sla_tracker import check_and_exit; check_and_exit()"
