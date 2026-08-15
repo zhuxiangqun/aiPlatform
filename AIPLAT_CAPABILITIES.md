@@ -911,7 +911,7 @@ scan_hash: 8f9548ec24f4
 | 5 个内置 SubAgent | apps/agents/subagent/registry.py | ✅ | reviewer/debugger/tester/docs/perf | 已合入 |
 | ParallelExecutor | apps/agents/parallel_executor.py | ✅ | Map-Reduce, max_concurrency=5, 异常隔离 | 已合入 |
 | PipelineCompiler | apps/agents/pipeline_compiler.py | ✅ | AGENT.md stages[] YAML → PipelineStageConfig | 已合入 |
-| Agent SDK | aiplat-sdk/ | ✅ | L1 Agent/L2 Pipeline/L3 ReActLoop — execute/stream/chat 全路径可用 | 已合入 |
+| Agent SDK | aiplat-sdk/ | ✅ | L1 Agent/L2 Pipeline/L3 ReActLoop — execute/stream/chat 全路径可用；P0-B1 修复 bind_skill/bind_tool 未初始化缺陷 + 回归测试 | 已合入 |
 | FanOut 并行 | apps/agents/parallel_executor.py | ✅ | 已接线 | 已合入 |
 | DelegateManager | harness/infrastructure/delegate_tool.py | ✅ | 子Agent委托 + 资源预算隔离 + 重试退避 + 输出摘要(§5.26) | 已合入 |
 | OperatorAgent | apps/agents/operator_agent.py | ✅ | 运维决策助手 — 消费RunContext → 结构化JSON(severity/impact/actions/can_continue) | 已合入 |
@@ -1888,7 +1888,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 11 | 0 | 11 |
-| **总计** | **936** | **0** | **936** |
+| **总计** | **931** | **0** | **931** |
 
 ---
 
