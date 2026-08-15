@@ -25,7 +25,7 @@ Usage:
   - L2 协调层 MUST NOT 直接执行工具: 工具调用必须通过 syscalls
   - L3 执行层 MUST 通过 ReActLoop 路径: 不得绕过 syscall 边界
 
-设计文档: core/docs/orchestration/index.md
+设计文档: aiPlat-core/docs/orchestration/index.md
 """
 
 # ── L1: Planning ──────────────────────────────────────────

@@ -57,7 +57,7 @@
 [project/PHASE_STATUS.md](project/PHASE_STATUS.md) — Phase 实施状态快照
 
 ### 其他
-[agents/](agents/) · [articles/](articles/) · [audit/](audit/) · [by-role/](by-role/) · [compliance/](compliance/) · [harness/](harness/) · [mcp/](mcp/) · [reports/](reports/) · [skills/](skills/) · [strategy/](strategy/) · [tools/](tools/) · [whitepaper/](whitepaper/) · [archive/](archive/)
+[agents/](agents/) · [articles/](articles/) · [audit/](audit/) · [by-role/](by-role/) · [compliance/](compliance/) · [harness/](harness/) · [matrix/](matrix/) · [mcp/](mcp/) · [reports/](reports/) · [research/](research/) · [skills/](skills/) · [strategy/](strategy/) · [tools/](tools/) · [whitepaper/](whitepaper/) · [archive/](archive/)
 
 ---
 
@@ -74,6 +74,8 @@
 | `policy/` | 安全/运维策略 | 2 | 是 |
 | `API/` | API 协议与契约 | 2 | 是 |
 | `project/` | 项目管理（Phase 状态等） | 1 | 是 |
+| `matrix/` | 能力影响矩阵 | 1 | 是 |
+| `research/` | 研究报告（审计/对标/方案） | 14 | 是 |
 | `reports/` | 生成报告快照 | 3 | **否**（重新生成） |
 | `archive/` | 历史文档 | 27 | **否**（只读） |
 | 其他 | 1 文件专题目录 | 10 | 按需 |
@@ -83,7 +85,7 @@
 ## 📐 文档治理
 
 - **[DOCUMENT_SYSTEM.md](DOCUMENT_SYSTEM.md)**：文档系统宪法（分类、边界、验证）
-- **[AIPLAT_CAPABILITIES.md](../AIPLAT_CAPABILITIES.md)**：唯一能力清单（945 ✅）
+- **[AIPLAT_CAPABILITIES.md](../AIPLAT_CAPABILITIES.md)**：唯一能力清单（942 ✅）
 - **verify_doc_structure.py**：目录树一致性验证
 - **verify_capability_consistency.py**：能力统计表一致
 - **verify_imports.py**：导入模块存在性验证
