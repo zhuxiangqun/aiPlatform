@@ -81,7 +81,7 @@
 | `--color-border` | `#30363D` | 边框/分割线 |
 | `--color-text-strong` | `#E6EDF3` | 标题/强调 |
 | `--color-text` | `#C9D1D9` | 正文 |
-| `--color-text-muted` | `#8B949E` | 次要说明/占位 |
+| `--color-text-muted` | `#8B（参见 AIPLAT_CAPABILITIES.md 当前计数）E` | 次要说明/占位 |
 
 ### 2.2 排版系统
 
