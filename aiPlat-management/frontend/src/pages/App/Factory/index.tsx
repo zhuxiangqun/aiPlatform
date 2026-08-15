@@ -629,9 +629,11 @@ const ProjectPanel: React.FC<{
           setFixingBugs(false);
           return;
         }
-        // pytest failures are code defects → regenerate the code-generating stage
-        const gen = await projectApi.generateHypotheses(project.project_id, ['programmer_agent']);
-        const fixPlan: string[] = (gen as any)?.fix_plan?.length ? (gen as any).fix_plan : ['programmer_agent'];
+        // pytest failures are code defects → regenerate the code-generating stage (dynamic, not hardcoded)
+        const codeStage = teamStages.find((s: any) => s.output_artifact === 'code');
+        const codeAgent = codeStage?.agent_id || 'programmer_agent';
+        const gen = await projectApi.generateHypotheses(project.project_id, [codeAgent]);
+        const fixPlan: string[] = (gen as any)?.fix_plan?.length ? (gen as any).fix_plan : [codeAgent];
         for (const stage of fixPlan) {
           await projectApi.regenerateStage(project.project_id, stage, suggestedFix);
         }

@@ -134,8 +134,8 @@ def check_trace(project_id: str):
     return 0
 
 
-def _derive_failed_stages(test_report_raw: str):
-    """确定性 bug→stage 映射（模拟 agent Step 2，供冒烟测试用）。"""
+def _derive_failed_stages(project_id: str, test_report_raw: str):
+    """确定性 bug→stage 映射：按当前项目团队动态定位代码/前端阶段（不硬编码 agent 名）。"""
     stages = set()
     try:
         d = json.loads(test_report_raw) if test_report_raw.strip().startswith("{") else {}
@@ -146,12 +146,26 @@ def _derive_failed_stages(test_report_raw: str):
         # 兜底：全文搜索 FR
         import re
         bugs = [{"suggested_fix": m.group(0)} for m in re.finditer(r'suggested_fix[^,}]+', test_report_raw)]
+
+    # 动态获取当前项目团队阶段（而非硬编码 agent 名）
+    team_stages = []
+    try:
+        proj = _http("GET", f"{PLATFORM}/platform/builder/projects/{project_id}")
+        if isinstance(proj, dict):
+            team_stages = proj.get("team_stages") or []
+    except Exception:
+        team_stages = []
+    code_agent = next((s.get("agent_id") for s in team_stages
+                       if s.get("output_artifact") == "code" or s.get("uses_file_output")), "programmer_agent")
+    frontend_agent = next((s.get("agent_id") for s in team_stages
+                           if s.get("output_artifact") in ("frontend_pages", "app_page")), "frontend_developer")
+
     for b in bugs:
         fix = str(b.get("suggested_fix", "") or "") if isinstance(b, dict) else str(b)
-        if any(k in fix for k in ("接口", "后端", "失败原因", "校验逻辑")):
-            stages.add("agent_engineer")
+        if any(k in fix for k in ("接口", "后端", "失败原因", "校验逻辑", "pytest", "ImportError", "AssertionError")):
+            stages.add(code_agent)
         if any(k in fix for k in ("组件", "表单", "上传", "页面", "按钮", "会话")):
-            stages.add("frontend_developer")
+            stages.add(frontend_agent)
     return sorted(stages)
 
 
@@ -169,7 +183,7 @@ def fix_direct(project_id: str):
         print("  ❌ 未取到 test_report")
         return 1
 
-    failed = _derive_failed_stages(test_report_raw)
+    failed = _derive_failed_stages(project_id, test_report_raw)
     print(f"  失败阶段（确定性映射）: {failed}")
     if not failed:
         print("  ⚠️ 未映射到失败阶段，跳过（可先跑 --poll 确认流水线完成）")

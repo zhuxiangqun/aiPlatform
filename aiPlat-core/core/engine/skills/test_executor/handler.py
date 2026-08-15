@@ -278,6 +278,11 @@ async def _run_pytest(params: Dict[str, Any]) -> Dict[str, Any]:
         # 3. 读 requirements.txt + 自动装依赖
         _env_issues = _install_requirements(tmp)
 
+        # 3.5 系统依赖健康检查（视频处理需要 ffmpeg/ffprobe，缺失 → ENV_ERROR）
+        for _dep in ("ffmpeg", "ffprobe"):
+            if not shutil.which(_dep):
+                _env_issues.append(f"{_dep} not found on PATH")
+
         # 4. conftest.py：让 pytest 能 import `app.*`（pytest rootdir 是 tmp，代码在 backend/ 等子目录）
         conftest = os.path.join(tmp, "conftest.py")
         if not os.path.isfile(conftest):
