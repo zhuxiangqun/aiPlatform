@@ -35,7 +35,10 @@ jobs:
         with:
           python-version: "3.11"
       - name: Install dependencies
-        run: pip install pyyaml
+        run: |
+          pip install pyyaml pytest
+          pip install -e ./aiPlat-infra 2>/dev/null || true
+          pip install -e ./aiPlat-core 2>/dev/null || true
       - name: Capability consumer verification (replaces deprecated caller_verify.sh)
         run: bash scripts/verify_capability_consumers.sh
       - name: Phase check
