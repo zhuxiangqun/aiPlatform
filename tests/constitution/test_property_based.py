@@ -11,6 +11,7 @@ import pytest
 
 WORKSPACE_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(WORKSPACE_ROOT / "aiPlat-core"))
+sys.path.insert(0, str(WORKSPACE_ROOT / "aiPlat-platform"))
 
 try:
     from hypothesis import given, settings, strategies as st, HealthCheck

@@ -26,6 +26,7 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install -e ./aiPlat-infra
           python -m pip install -e ./aiPlat-core
+          python -m pip install -e ./aiPlat-platform
 
       - name: Contracts link check
         run: |
