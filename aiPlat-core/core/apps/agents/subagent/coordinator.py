@@ -53,6 +53,30 @@ class SubagentCoordinator:
         self._active_instances: Dict[str, SubagentInstance] = {}
         self._create_agent_fn = create_agent_fn
         self._get_tool_registry_fn = get_tool_registry_fn
+        self._providers = {}
+
+    # ── Provider registry (P1-A3) ──────────────────────────────
+
+    def list_providers(self) -> List[str]:
+        """List available subagent providers."""
+        if not self._providers:
+            from .providers import get_provider_factories
+            self._providers = {name: factory(self)
+                               for name, factory in get_provider_factories().items()}
+        return sorted(self._providers.keys())
+
+    def get_provider(self, name: str = ""):
+        """Get a provider by name (default: AIPLAT_SUBAGENT_PROVIDER or in_process)."""
+        if not self._providers:
+            self.list_providers()
+        if not name:
+            from .providers import default_provider_name
+            name = default_provider_name()
+        provider = self._providers.get(name)
+        if provider is None:
+            raise ValueError(
+                f"Unknown subagent provider '{name}' — available: {self.list_providers()}")
+        return provider
     
     async def _get_registry(self):
         if self._registry is None:
@@ -262,6 +286,37 @@ class SubagentCoordinator:
                 error=str(e),
                 duration_ms=duration,
             )
+
+    async def execute_with_provider(
+        self,
+        task: str,
+        subagent_name: str,
+        context: Optional[List[Dict]] = None,
+        *,
+        provider: str = "",
+    ) -> SubagentResult:
+        """Execute a subagent via a named provider (P1-A3).
+
+        Default provider comes from AIPLAT_SUBAGENT_PROVIDER (in_process).
+        External providers (acp) run the subagent outside this process.
+        """
+        from .providers import ProviderResult
+        prov = self.get_provider(provider)
+        if not prov.capabilities.start:
+            return SubagentResult(
+                subagent_name=subagent_name,
+                success=False,
+                output="",
+                error=f"Provider '{prov.name}' does not support start",
+            )
+        result: ProviderResult = await prov.start(
+            name=subagent_name, task=task, context=context)
+        return SubagentResult(
+            subagent_name=subagent_name,
+            success=result.ok,
+            output=result.output[:800] if result.ok else "",
+            error=result.error if not result.ok else "",
+        )
 
     @staticmethod
     def _filter_protocol_violations(output: str) -> str:

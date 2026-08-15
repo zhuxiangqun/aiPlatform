@@ -1,5 +1,5 @@
 ---
-total_capabilities: 1017
+total_capabilities: 1018
 last_updated: 2026-08-15
 version: "30.0"
 auto_sync: true
@@ -922,6 +922,7 @@ scan_hash: 8f9548ec24f4
 ## 五、Agent 系统
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| SubagentProviders | `apps/agents/subagent/providers.py` | ✅ | 子代理 provider 抽象 (in_process/acp, P1-A3) | 已合入 |
 | SubagentCoordinator | `apps/agents/subagent/coordinator.py` | ✅ | 自动同步 | 已合入 |
 | run_voice_brainstorm | `` | ✅ | 自动同步 | 已合入 |
 | BaseAgent | `` | ✅ | 自动同步 | 已合入 |
@@ -1934,7 +1935,7 @@ scan_hash: 8f9548ec24f4
 | 知识引擎（本体） | 134 | 0 | 134 |
 | RAG 检索 | 42 | 0 | 42 |
 | 知识基础设施 | 29 | 0 | 29 |
-| Agent 系统 | 28 | 0 | 28 |
+| Agent 系统 | 29 | 0 | 29 |
 | Skill 系统 | 54 | 0 | 54 |
 | 安全与治理 | 46 | 0 | 46 |
 | 可观测性 | 18 | 0 | 18 |
@@ -1974,7 +1975,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 16 | 0 | 16 |
-| **总计** | **1017** | **0** | **1017** |
+| **总计** | **1018** | **0** | **1018** |
 
 ---
 
