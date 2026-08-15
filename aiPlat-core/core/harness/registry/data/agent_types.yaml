@@ -1,0 +1,46 @@
+# agent_types.yaml — single source of truth for all agent type definitions.
+#
+# Consumers (read from this file via registry_loader):
+#   1. core_facade.create_agent()         — type routing factory
+#   2. schemas_builder.PipelineStageConfig — docstring auto-generation
+#   3. agent_config_validator             — valid-type checking
+#   4. n8n_langchain_adapter             — type-to-LangChain mapping
+#   5. CLAUDE.md                          — documentation auto-generation
+#
+# DO NOT hardcode agent_type lists in any .py file.
+# arch_guard §87 enforces this.
+
+canonical:
+  - conversational
+  - react
+  - plan_execute
+  - rag
+  - multi_agent
+  - materials_chat
+
+aliases:
+  plan: plan_execute
+  reflection: plan_execute
+  review: conversational
+  tool: react
+  tool_using: react
+  planning: plan_execute
+  code: react
+  qa: react
+  architect: react
+  subagent: react
+  pure_agent: conversational
+  operator: react
+  shell: conversational
+  base: conversational
+
+deprecated:
+  - subagent       # → react
+  - pure_agent     # → conversational
+  - shell           # → conversational
+  - base            # → conversational
+
+# Schema used by registry_loader for validation
+# canonical: list of strings that ARE valid types
+# aliases:    map of alias → canonical (resolved at load time)
+# deprecated: list of legacy types that still work but log warnings

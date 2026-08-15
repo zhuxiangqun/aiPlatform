@@ -138,14 +138,18 @@ def load_agent_types(*, force_reload: bool = False) -> AgentTypeRegistry:
         _cache.pop(str(_registry_home() / "agent_types.yaml"), None)
     data = _load_yaml(_registry_home() / "agent_types.yaml")
     if not data:
-        _log.warning("agent_types.yaml not found, using built-in fallback")
-        return AgentTypeRegistry(
-            canonical=["conversational", "react", "plan_execute"],
-            aliases={"plan": "plan_execute", "reflection": "plan_execute",
-                     "tool": "react", "tool_using": "react", "subagent": "react",
-                     "pure_agent": "conversational"},
-            deprecated=["subagent", "pure_agent"],
-        )
+        # Fall back to the repo seed (single source of truth for CI/fresh envs)
+        seed = Path(__file__).resolve().parent / "data" / "agent_types.yaml"
+        data = _load_yaml(seed)
+        if not data:
+            _log.warning("agent_types.yaml not found, using built-in fallback")
+            return AgentTypeRegistry(
+                canonical=["conversational", "react", "plan_execute"],
+                aliases={"plan": "plan_execute", "reflection": "plan_execute",
+                         "tool": "react", "tool_using": "react", "subagent": "react",
+                         "pure_agent": "conversational"},
+                deprecated=["subagent", "pure_agent"],
+            )
     return AgentTypeRegistry(
         canonical=list(data.get("canonical", [])),
         aliases=dict(data.get("aliases", {})),

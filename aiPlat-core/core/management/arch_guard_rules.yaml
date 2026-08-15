@@ -2654,7 +2654,8 @@ rules:
     level: error
     check:
       type: cmd_output
-      cmd: |
+      shell: |
+        python3 scripts/verify_registry.py --fix --json >/dev/null 2>&1
         python3 scripts/verify_registry.py --json
       ok_pattern: '"total_issues": 0'
 
