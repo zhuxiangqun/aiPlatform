@@ -532,7 +532,7 @@ class EvalRunner:
         """
         from core.harness.evaluation.eval_types import AgentEvalResult, EvalTask, TaskResultLevel
 
-        agent_id = str(case.get("agent_id", case.get("agent", "pm_agent")))
+        agent_id = str(case.get("agent_id") or case.get("agent") or "default_agent")
         task = EvalTask(
             task_id=str(case.get("id", case.get("task_id", f"case-{uuid.uuid4().hex[:8]}"))),
             agent_id=agent_id,
