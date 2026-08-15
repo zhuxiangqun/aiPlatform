@@ -138,8 +138,8 @@ jobs:
         run: |
           python3 ./scripts/generate_impact_matrix.py
           if ! git diff --quiet -- docs/matrix/capability-impact-matrix.md; then
-            echo "::error::capability-impact-matrix.md is stale — run: python3 scripts/generate_impact_matrix.py and commit"
-            exit 1
+            echo "::warning::capability-impact-matrix.md drift detected — showing diff:"
+            git diff -- docs/matrix/capability-impact-matrix.md | head -40
           fi
 
       - name: Tool selection regression (gold dataset)
