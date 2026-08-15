@@ -83,7 +83,7 @@
 ## 📐 文档治理
 
 - **[DOCUMENT_SYSTEM.md](DOCUMENT_SYSTEM.md)**：文档系统宪法（分类、边界、验证）
-- **[AIPLAT_CAPABILITIES.md](../AIPLAT_CAPABILITIES.md)**：唯一能力清单（935 ✅）
+- **[AIPLAT_CAPABILITIES.md](../AIPLAT_CAPABILITIES.md)**：唯一能力清单（944 ✅）
 - **verify_doc_structure.py**：目录树一致性验证
 - **verify_capability_consistency.py**：能力统计表一致
 - **verify_imports.py**：导入模块存在性验证
