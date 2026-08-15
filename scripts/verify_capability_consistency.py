@@ -237,8 +237,8 @@ def fix() -> None:
                 continue
             # Find matching section
             section_title = None
-            for st in CHAPTER_MAP:
-                if st == dim:
+            for st, dim_name in CHAPTER_MAP.items():
+                if dim_name == dim:
                     section_title = st
                     break
             if section_title and section_title in actual:
