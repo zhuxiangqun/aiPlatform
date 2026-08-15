@@ -2,6 +2,9 @@
 AuditMixin — extracted from ExecutionStore events_mixin.py.
 
 Auto-generated via Mixin split. Contains entity-specific CRUD methods.
+
+# DEPRECATED: tenant_policies CRUD should migrate to platform layer
+# (TenantManager; tracked P0-A3). Core keeps read-only access for audit.
 """
 from typing import Any, Dict, List, Optional, Tuple
 import json, time, sqlite3, logging

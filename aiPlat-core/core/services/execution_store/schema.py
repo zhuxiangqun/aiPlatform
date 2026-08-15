@@ -3,6 +3,10 @@ Database schema migration — extracted from execution_store.py _init_sync().
 
 Contains all 51 schema migrations (v1-v51).
 Pure function: takes conn + version params, zero self dependency.
+
+# DEPRECATED: tenant_quotas/tenant_policies management should migrate to platform layer
+# (TenantManager quota storage; tracked P0-A3). v35 migration kept for
+# existing-database compatibility; new writes go through platform.
 """
 import time
 import logging

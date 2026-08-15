@@ -2,6 +2,11 @@
 QuotaMixin — extracted from ExecutionStore events_mixin.py.
 
 Auto-generated via Mixin split. Contains entity-specific CRUD methods.
+
+# DEPRECATED: tenant_quotas/tenant_usage management should migrate to platform layer
+# (TenantManager in aiPlat-platform/tenants/manager.py). Core keeps read-only
+# access for PolicyGate runtime checks; writes migrate to platform.
+# Tracked: P0-A3 (aiPlat问题总清单与行动纲领.md)
 """
 from typing import Any, Dict, List, Optional, Tuple
 import json, time, sqlite3, logging
