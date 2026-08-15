@@ -1,7 +1,7 @@
 # Capability Impact Matrix
 
 > Auto-generated from `capability_registry.yaml`
-> Version: 1.1.0 | 34 domains | 1015 capabilities
+> Version: 1.1.0 | 34 domains | 1030 capabilities
 
 ## Consumer-to-Capability Dependencies
 
