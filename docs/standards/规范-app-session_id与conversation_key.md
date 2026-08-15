@@ -2,8 +2,9 @@
 title: 规范：aiPlat-app Session ID 与 Conversation Key（企业平台默认）
 date: 2026-04-18
 scope: aiPlat-app（channels/sessions 权威）
-status: draft
+status: approved
 draft_date: 2026-07-04
+approved_date: 2026-08-16
 ---
 
 ## 1. 目标（为什么要规定）
