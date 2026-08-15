@@ -2091,15 +2091,15 @@ rules:
   # 73.10: caller_verify.sh must run as part of architecture_guard.sh
   - id: caller_verify_in_arch_guard
     section: "§73"
-    section_name: "caller_verify.sh 已集成到 architecture_guard.sh"
+    section_name: "capability_consumers 已集成到 architecture_guard.sh"
     level: error
     check:
       type: grep_required
-      pattern: 'caller_verify\.sh|phase_check'
+      pattern: 'verify_capability_consumers\.sh|phase_check'
       paths: ["scripts/architecture_guard.sh"]
       ext: [".sh"]
       min_matches: 1
-    message: "caller_verify.sh 未在 architecture_guard.sh 中执行 — 0-caller 检测不会在 CI 中运行"
+    message: "verify_capability_consumers.sh 未在 architecture_guard.sh 中执行 — 0-caller 检测不会在 CI 中运行 (caller_verify.sh 已废弃)"
 
   # 73.11: method_verify.sh must exist and be integrated
   - id: method_verify_in_phase_check

@@ -338,9 +338,11 @@ if command -v git >/dev/null 2>&1; then
     fi
 else echo "⚠️ git not available"; fi
 
-# §90: Engine guard pre-commit hook is installed
+# §90: Engine guard pre-commit hook is installed (skip in CI — hooks are local-dev)
 echo -n "§90: engine pre-commit hook installed: "
-if [ -f ".git/hooks/pre-commit" ] && grep -q "pre-commit-engine-guard" .git/hooks/pre-commit 2>/dev/null; then
+if [ "${CI:-}" = "true" ] || [ "${GITHUB_ACTIONS:-}" = "true" ]; then
+    echo "✅ (CI — local hook not required)"
+elif [ -f ".git/hooks/pre-commit" ] && grep -q "pre-commit-engine-guard" .git/hooks/pre-commit 2>/dev/null; then
     echo "✅"
 elif [ -f ".husky/pre-commit" ] && grep -q "pre-commit-engine-guard" .husky/pre-commit 2>/dev/null; then
     echo "✅"
@@ -453,6 +455,17 @@ if [ "${OVERSIZED:-0}" -gt 0 ] 2>/dev/null; then
     echo "   CLAUDE.md §5.30 Rule 2: Prefer composition over monolithic classes"
 else
     echo "✅"
+fi
+
+# ── §73: Capability consumer verification (replaces deprecated caller_verify.sh) ──
+# Phase 2.5 method-level wiring runs in phase_check.sh (method_verify.sh + wiring tests).
+echo -n "§73: capability consumers wired: "
+if bash scripts/verify_capability_consumers.sh >/dev/null 2>&1; then
+    echo "✅"
+else
+    echo "❌ verify_capability_consumers.sh found issues"
+    echo "   Run: bash scripts/verify_capability_consumers.sh for details"
+    FAIL=1
 fi
 
 # ── Aggregate ──
