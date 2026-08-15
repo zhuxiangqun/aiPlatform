@@ -81,6 +81,36 @@ def create_pipeline_engine(
     return PipelineEngine(config=config, model=model, skill_loader=skill_loader)
 
 
+def register_pipeline(project_id: str, engine: Any) -> None:
+    """Register a running pipeline engine (pipeline registry singleton)."""
+    from core.harness.execution.pipeline_engine import register_pipeline as _r
+    _r(project_id, engine)
+
+
+def get_running_pipeline(project_id: str) -> Any:
+    """Get the running pipeline engine for a project, if any."""
+    from core.harness.execution.pipeline_engine import get_running_pipeline as _g
+    return _g(project_id)
+
+
+def unregister_pipeline(project_id: str) -> None:
+    """Unregister a finished/terminated pipeline engine."""
+    from core.harness.execution.pipeline_engine import unregister_pipeline as _u
+    _u(project_id)
+
+
+def get_pipeline_healing_stats() -> dict:
+    """Get PipelineEngine._healing_stats (diagnostics health check)."""
+    from core.harness.execution.pipeline_engine import PipelineEngine
+    return getattr(PipelineEngine, '_healing_stats', {})
+
+
+def get_pipeline_run_store() -> Any:
+    """Get the pipeline run store singleton."""
+    from core.harness.execution.pipeline_run_store import get_pipeline_run_store as _g
+    return _g()
+
+
 def create_agent(
     agent_type: str,
     config: Any = None,

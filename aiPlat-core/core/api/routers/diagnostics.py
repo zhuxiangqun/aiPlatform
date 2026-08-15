@@ -647,8 +647,8 @@ def _register_health_checks():
             module = "self_healing"
             severity = Severity.MEDIUM
             async def run(self) -> HealthResult:
-                from core.harness.execution.pipeline_engine import PipelineEngine
-                stats = getattr(PipelineEngine, '_healing_stats', {})
+                from core.api.core_facade import get_pipeline_healing_stats
+                stats = get_pipeline_healing_stats()
                 attempts = stats.get("attempts", 0)
                 successes = stats.get("successes", 0)
                 skips = stats.get("skips", 0)

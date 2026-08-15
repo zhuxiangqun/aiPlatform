@@ -64,8 +64,8 @@ async def cleanup_orphaned_pipelines():
             to_recover = list(latest_per_project.values())
             _log.warning("Orphan recovery: %d paused pipeline(s) to rebuild (filtered from %d)",
                 len(to_recover), len(paused_runs))
-            from core.harness.execution.pipeline_engine import (
-                PipelineEngine, PipelineConfig, register_pipeline,
+            from core.api.core_facade import (
+                create_pipeline_engine, register_pipeline,
             )
             from core.schemas_builder import PipelineStageConfig
             from core.harness.utils.model_injection import best_model_for_purpose
@@ -220,7 +220,7 @@ def _reconstruct_engine(project_id: str, run_id: str, store, stages_raw=None):
     When `stages_raw` is provided (fresh team config from platform), use it;
     otherwise fall back to the stage records saved in the store.
     """
-    from core.harness.execution.pipeline_engine import PipelineEngine, PipelineConfig
+    from core.api.core_facade import create_pipeline_engine
     from core.schemas_builder import PipelineStageConfig
     from core.harness.utils.model_injection import best_model_for_purpose
 
@@ -330,7 +330,7 @@ async def pipeline_run(request: Request) -> Dict[str, Any]:
 
     async def _execute_pipeline():
         try:
-            from core.harness.execution.pipeline_engine import PipelineEngine, PipelineConfig
+            from core.api.core_facade import create_pipeline_engine
             from core.schemas_builder import PipelineStageConfig
             from core.harness.execution.team_planner import _ensure_capability_profile
             from core.harness.utils.model_injection import best_model_for_purpose
@@ -408,7 +408,7 @@ async def pipeline_hitl_resolve(project_id: str, request: Request) -> Dict[str, 
     action = str(body.get("action", "approve")).lower()
     feedback = str(body.get("feedback", ""))
 
-    from core.harness.execution.pipeline_engine import get_running_pipeline
+    from core.api.core_facade import get_running_pipeline
 
     engine = get_running_pipeline(project_id)
     if engine:
@@ -475,7 +475,7 @@ async def pipeline_stage_operation(project_id: str, request: Request) -> Dict[st
     run_id = run["run_id"]
 
     # Stop any existing running/paused engine to avoid double-run
-    from core.harness.execution.pipeline_engine import get_running_pipeline, unregister_pipeline
+    from core.api.core_facade import get_running_pipeline, unregister_pipeline
     existing = get_running_pipeline(project_id)
     if existing is not None:
         existing.force_terminate()
@@ -556,8 +556,7 @@ async def resume_pipeline_run(run_id: str, body: dict = Body(default_factory=dic
     - Context length errors → auto-compress before retry
     - Other errors → retry from failed stage
     """
-    from core.harness.execution.pipeline_engine import PipelineEngine
-    from core.harness.execution.pipeline_run_store import get_pipeline_run_store
+    from core.api.core_facade import get_pipeline_run_store
 
     store = get_pipeline_run_store()
     run = store.get_run(run_id)
@@ -567,7 +566,7 @@ async def resume_pipeline_run(run_id: str, body: dict = Body(default_factory=dic
     session_id = body.get("session_id", run.get("project_id", ""))
     config_data = run.get("config", {})
 
-    engine = PipelineEngine(config=config_data)
+    engine = create_pipeline_engine(config=config_data)
 
     try:
         result = await engine.resume_from_checkpoint(run_id, session_id)

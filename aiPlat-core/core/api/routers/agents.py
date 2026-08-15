@@ -1619,7 +1619,7 @@ async def resolve_pipeline_hitl(pipeline_id: str, request: dict):
 
     try:
 
-        from core.harness.execution.pipeline_engine import get_running_pipeline
+        from core.api.core_facade import get_running_pipeline
 
         engine = get_running_pipeline(pipeline_id)
 
@@ -1687,7 +1687,7 @@ async def adjust_pipeline_stage(pipeline_id: str, request: dict):
 
     try:
 
-        from core.harness.execution.pipeline_engine import get_running_pipeline
+        from core.api.core_facade import get_running_pipeline
 
         engine = get_running_pipeline(pipeline_id)
 
