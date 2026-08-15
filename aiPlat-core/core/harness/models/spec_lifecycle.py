@@ -810,7 +810,7 @@ class SpecLifecycle:
 
         try:
 
-            from core.apps.skills.registry import SkillRegistry
+            from core.api.core_facade import get_skill_registry
 
             from core.apps.skills.base import BaseSkill
 

@@ -217,7 +217,7 @@ class ConstraintValidator:
 
     def _get_available_skills(self) -> List[str]:
         try:
-            from core.apps.skills.registry import get_skill_registry
+            from core.api.core_facade import get_skill_registry
             reg = get_skill_registry()
             return [s.name for s in reg.list_all()] if reg else []
         except Exception:

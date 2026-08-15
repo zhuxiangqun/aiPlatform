@@ -341,12 +341,12 @@ class AutoLearner:
             (approved_path / "SKILL.md").write_text(draft.to_yaml(), encoding="utf-8")
             # ── Register in SkillRegistry so it's immediately available ──
             try:
-                from core.apps.skills.registry import SkillRegistry
+                from core.api.core_facade import get_skill_registry
                 from core.apps.skills.discovery import create_discovery
                 discovery = create_discovery()
                 skills = await discovery.scan_directory(str(approved_path))
                 for skill in skills:
-                    SkillRegistry().register(skill)
+                    get_skill_registry().register(skill)
             except Exception as e:
                 logging.debug("SkillRegistry registration skipped: %s", e)
             # Phase 4.3: Hook LoRA AutoTrigger

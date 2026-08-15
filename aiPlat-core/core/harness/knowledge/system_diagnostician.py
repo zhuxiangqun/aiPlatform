@@ -181,8 +181,8 @@ class SystemDiagnostician:
     def _check_skill_degradation(self, now: datetime) -> Optional[Dict]:
         """任一 Skill pass_rate < 0.5 超 2 周"""
         try:
-            from core.apps.skills.registry import SkillRegistry
-            sr = SkillRegistry()
+            from core.api.core_facade import get_skill_registry
+            sr = get_skill_registry()
             degraded = []
             for name, stats in sr._binding_stats.items():
                 if stats.total_executions >= 5 and stats.recent_pass_rate < 0.5:
@@ -668,8 +668,8 @@ def _trigger_improve_action() -> str:
 def _downgrade_degraded_skills() -> str:
     """Apply damping adjustment to degraded skills."""
     try:
-        from core.apps.skills.registry import SkillRegistry
-        sr = SkillRegistry()
+        from core.api.core_facade import get_skill_registry
+        sr = get_skill_registry()
         degraded = []
         for name, stats in sr._binding_stats.items():
             if stats.total_executions >= 5 and stats.recent_pass_rate < 0.5:

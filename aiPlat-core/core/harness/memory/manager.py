@@ -800,7 +800,7 @@ class MemoryManager:
 
             try:
 
-                from core.apps.skills.registry import get_skill_registry
+                from core.api.core_facade import get_skill_registry
 
                 reg = get_skill_registry()
 

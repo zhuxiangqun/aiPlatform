@@ -298,8 +298,8 @@ class SECIEngine:
         # C→I: Adjust skill weights based on atom source distribution
         adjustments = []
         try:
-            from core.apps.skills.registry import SkillRegistry
-            sr = SkillRegistry()
+            from core.api.core_facade import get_skill_registry
+            sr = get_skill_registry()
             stats = sr._binding_stats  # Internal access for weight adjustment
 
             for src, count in by_source.items():

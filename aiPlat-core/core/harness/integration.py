@@ -44,8 +44,8 @@ def _ensure_di():
             return AgentRegistry()
 
         def _skill_registry_factory():
-            from core.apps.skills.registry import SkillRegistry  # noqa
-            return SkillRegistry()
+            from core.api.core_facade import get_skill_registry  # noqa
+            return get_skill_registry()
 
         def _tool_registry_factory():
             from core.apps.tools.base import get_tool_registry  # noqa

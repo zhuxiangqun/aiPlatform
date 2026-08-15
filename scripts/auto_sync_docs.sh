@@ -86,7 +86,7 @@ for root in "aiPlat-core/core/harness" "aiPlat-core/core/harness/execution" \
         dirname="$(dirname "$f")"
         # Skip __init__, tests, pycache
         [[ "$basename" == __init__.py ]] && continue
-        [[ "$f" == */tests/* ]] && continue
+        [[ "$f" == */tests/* || "$f" == tests/* || "$f" == *"/tests/"* ]] && continue
         [[ "$f" == */__pycache__/* ]] && continue
         # Check if module name OR parent directory is already registered
         if ! grep -qi "$mod" "$CAPS" 2>/dev/null && ! grep -qi "$(basename "$dirname")" "$CAPS" 2>/dev/null; then
@@ -99,7 +99,7 @@ for root in "aiPlat-core/core/harness" "aiPlat-core/core/harness/execution" \
         mod="${basename%.py}"
         dirname="$(dirname "$f")"
         [[ "$basename" == __init__.py ]] && continue
-        [[ "$f" == */tests/* ]] && continue
+        [[ "$f" == */tests/* || "$f" == tests/* || "$f" == *"/tests/"* ]] && continue
         [[ "$f" == */__pycache__/* ]] && continue
         if ! grep -qi "$mod" "$CAPS" 2>/dev/null && ! grep -qi "$(basename "$dirname")" "$CAPS" 2>/dev/null; then
             # Avoid duplicates from pass 1
@@ -114,7 +114,7 @@ for root in "aiPlat-core/core/harness" "aiPlat-core/core/harness/execution" \
         mod="${basename%.py}"
         dirname="$(dirname "$f")"
         [[ "$basename" == __init__.py ]] && continue
-        [[ "$f" == */tests/* ]] && continue
+        [[ "$f" == */tests/* || "$f" == tests/* || "$f" == *"/tests/"* ]] && continue
         [[ "$f" == */__pycache__/* ]] && continue
         if ! grep -qi "$mod" "$CAPS" 2>/dev/null && ! grep -qi "$(basename "$dirname")" "$CAPS" 2>/dev/null; then
             if ! echo "$NEW_MODULES" | grep -q "$mod|"; then
@@ -135,7 +135,7 @@ for root in "aiPlat-management/frontend/src" \
         mod="${basename%.tsx}"; mod="${mod%.ts}"
         dirname="$(dirname "$f")"
         [[ "$basename" == *.d.ts ]] && continue
-        [[ "$f" == */tests/* ]] && continue
+        [[ "$f" == */tests/* || "$f" == tests/* || "$f" == *"/tests/"* ]] && continue
         [[ "$f" == */__pycache__/* ]] && continue
         if ! grep -qi "$mod" "$CAPS" 2>/dev/null && ! grep -qi "$(basename "$dirname")" "$CAPS" 2>/dev/null; then
             NEW_MODULES="$NEW_MODULES $mod|$f"
@@ -147,7 +147,7 @@ for root in "aiPlat-management/frontend/src" \
         mod="${basename%.tsx}"; mod="${mod%.ts}"
         dirname="$(dirname "$f")"
         [[ "$basename" == *.d.ts ]] && continue
-        [[ "$f" == */tests/* ]] && continue
+        [[ "$f" == */tests/* || "$f" == tests/* || "$f" == *"/tests/"* ]] && continue
         [[ "$f" == */__pycache__/* ]] && continue
         if ! grep -qi "$mod" "$CAPS" 2>/dev/null && ! grep -qi "$(basename "$dirname")" "$CAPS" 2>/dev/null; then
             if ! echo "$NEW_MODULES" | grep -q "$mod|"; then
@@ -161,7 +161,7 @@ for root in "aiPlat-management/frontend/src" \
         mod="${basename%.tsx}"; mod="${mod%.ts}"
         dirname="$(dirname "$f")"
         [[ "$basename" == *.d.ts ]] && continue
-        [[ "$f" == */tests/* ]] && continue
+        [[ "$f" == */tests/* || "$f" == tests/* || "$f" == *"/tests/"* ]] && continue
         [[ "$f" == */__pycache__/* ]] && continue
         if ! grep -qi "$mod" "$CAPS" 2>/dev/null && ! grep -qi "$(basename "$dirname")" "$CAPS" 2>/dev/null; then
             if ! echo "$NEW_MODULES" | grep -q "$mod|"; then
