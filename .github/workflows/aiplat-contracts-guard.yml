@@ -139,7 +139,7 @@ jobs:
           python3 ./scripts/generate_impact_matrix.py
           if ! git diff --quiet -- docs/matrix/capability-impact-matrix.md; then
             echo "::warning::capability-impact-matrix.md drift detected — showing diff:"
-            git diff -- docs/matrix/capability-impact-matrix.md | head -40
+            git diff -- docs/matrix/capability-impact-matrix.md | head -40 || true
           fi
 
       - name: Tool selection regression (gold dataset)
