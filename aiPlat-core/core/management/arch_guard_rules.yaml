@@ -1899,7 +1899,7 @@ rules:
     level: info
     check:
       type: grep_required
-      pattern: 'OnErrorReflector\|on_error_reflector'
+      pattern: 'OnErrorReflector|on_error_reflector'
       paths: ["aiPlat-core/core/harness/execution/loop.py", "aiPlat-core/core/harness/infrastructure/hooks/"]
       min_matches: 1
     message: "ReActLoop 未检测到 OnErrorReflector 注册 — 连续工具失败时将无自动反思能力 (§5.89)"
@@ -1911,7 +1911,7 @@ rules:
     level: info
     check:
       type: grep_required
-      pattern: 'feedback.*implicit\|implicit.*feedback'
+      pattern: 'feedback.*implicit|implicit.*feedback'
       paths: ["aiPlat-core/core/api/routers/", "aiPlat-core/core/services/implicit_feedback.py"]
       min_matches: 1
     message: "未检测到隐式反馈端点 — 用户行为信号将无法收集 (§5.90)"
@@ -1923,7 +1923,7 @@ rules:
     level: info
     check:
       type: grep_required
-      pattern: 'lora_auto_trigger\|LoRAAutoTrigger'
+      pattern: 'lora_auto_trigger|LoRAAutoTrigger'
       paths: ["aiPlat-core/core/harness/learning/"]
       min_matches: 1
     message: "AutoLearner 未钩入 LoRAAutoTrigger — 审批通过后将无法自动触发微调建议 (§5.91)"
@@ -1935,7 +1935,7 @@ rules:
     level: info
     check:
       type: grep_required
-      pattern: 'MetaAgent\|meta_agent\|meta_agent'
+      pattern: 'MetaAgent|meta_agent|meta_agent'
       paths: ["aiPlat-core/core/harness/meta/"]
       min_matches: 1
     message: "未检测到 MetaAgent 模块 — 远景探索，默认关闭，企业部署建议启用 (§5.92)"
@@ -1949,7 +1949,7 @@ rules:
     level: info
     check:
       type: grep_required
-      pattern: 'experience_vector\|ExperienceVectorCache'
+      pattern: 'experience_vector|ExperienceVectorCache'
       paths: ["aiPlat-core/core/harness/learning/"]
       min_matches: 1
     message: "AutoLearner 未接入经验向量缓存 — 建议集成以提升 SkillDraft 质量 20%"
@@ -1997,7 +1997,7 @@ rules:
     level: info
     check:
       type: grep_required
-      pattern: 'ErrorReflector\|on_error_reflector\|reflect_on_error'
+      pattern: 'ErrorReflector|on_error_reflector|reflect_on_error'
       paths: ["aiPlat-core/core/harness/infrastructure/hooks/"]
       min_matches: 1
     message: "ErrorReflector 未接入 ReActLoop — 连续 tool_call 失败后无反思能力 (§4.1)"
@@ -2009,7 +2009,7 @@ rules:
     level: info
     check:
       type: grep_required
-      pattern: 'HallucinationTracker\|hallucination_tracker\|evaluate_faithfulness'
+      pattern: 'HallucinationTracker|hallucination_tracker|evaluate_faithfulness'
       paths: ["aiPlat-core/core/apps/agents/"]
       min_matches: 1
     message: "HallucinationTracker 未接入 MaterialsChatAgent — 无 NLI 事实核查能力 (§3.1)"
@@ -2021,7 +2021,7 @@ rules:
     level: info
     check:
       type: grep_required
-      pattern: 'ParallelExecutor\|parallel_executor'
+      pattern: 'ParallelExecutor|parallel_executor'
       paths: ["aiPlat-core/core/harness/execution/"]
       min_matches: 1
     message: "ParallelExecutor 未接入 PipelineEngine — FanOut 并行能力未生效 (§1.2)"
@@ -2033,7 +2033,7 @@ rules:
     level: info
     check:
       type: grep_required
-      pattern: 'EnterpriseGateway\|FeishuAdapter\|WeComAdapter\|SlackAdapter\|gateway'
+      pattern: 'EnterpriseGateway|FeishuAdapter|WeComAdapter|SlackAdapter|gateway'
       paths: ["aiPlat-core/core/server.py"]
       min_matches: 1
     message: "EnterpriseGateway 未接入 server.py startup — 企业消息能力未生效 (§2.3)"
@@ -2045,7 +2045,7 @@ rules:
     level: info
     check:
       type: grep_required
-      pattern: 'ImplicitFeedbackCollector\|implicit_feedback\|process_behavior'
+      pattern: 'ImplicitFeedbackCollector|implicit_feedback|process_behavior'
       paths: ["aiPlat-core/core/api/"]
       min_matches: 1
     message: "ImplicitFeedbackCollector 未接入 chat API — 用户行为信号未收集 (§4.2)"
@@ -2072,7 +2072,7 @@ rules:
     level: info
     check:
       type: grep_required
-      pattern: 'run_nightly\|EvolutionEngine.*cron\|evolution_cron'
+      pattern: 'run_nightly|EvolutionEngine.*cron|evolution_cron'
       paths: ["aiPlat-core/core/server.py"]
       min_matches: 1
     message: "EvolutionEngine.run_nightly() 未接入 server.py cron — 夜间进化流水线从未运行 (§5.4)"
@@ -2170,7 +2170,7 @@ rules:
     level: info
     check:
       type: grep_required
-      pattern: 'test_reflector\|test_parallel\|test_gateway'
+      pattern: 'test_reflector|test_parallel|test_gateway'
       paths: ["aiPlat-core/core/tests/wiring/integration/"]
       min_matches: 1
     message: "接线集成测试缺失 — 应至少包含 reflector/parallel/gateway 三个测试文件"
