@@ -30,8 +30,8 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - name: Caller verification
-        run: bash scripts/caller_verify.sh
+      - name: Capability consumer verification (replaces deprecated caller_verify.sh)
+        run: bash scripts/verify_capability_consumers.sh
       - name: Phase check
         run: bash scripts/phase_check.sh
 
