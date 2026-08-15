@@ -18,6 +18,15 @@ try:
     HAS_HYPOTHESIS = True
 except ImportError:
     HAS_HYPOTHESIS = False
+    # Fallback stubs so class-body decorators don't raise NameError when
+    # hypothesis is absent (the class is skipped via skipif below).
+    class _StubGiven:
+        def __call__(self, *a, **k):
+            return lambda f: f
+    given = _StubGiven()
+    settings = lambda *a, **k: (lambda f: f)
+    st = _StubGiven()
+    HealthCheck = object
 
 # ── Graph invariants ──────────────────────────────────────────────
 
