@@ -1,5 +1,5 @@
 ---
-total_capabilities: 1027
+total_capabilities: 1030
 last_updated: 2026-08-15
 version: "30.0"
 auto_sync: true
@@ -1025,6 +1025,7 @@ scan_hash: 8f9548ec24f4
 ## 七、安全与治理
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| PromptAuditRules | `core/harness/audit/prompt_audit_rules.py` | ✅ | 提示词审计规则 | 已合入 |
 | ManagedPolicy | `aiPlat-platform/auth/schemas_policy.py` | ✅ | 企业远程托管策略 (managed 键本地不可覆盖, P1-A6) | 已合入 |
 | PIIDetector | `harness/infrastructure/pii_detector.py` | ✅ | 自动同步 | 已合入 |
 | prompt_auditor | harness/audit/prompt_auditor.py | ✅ | 自动同步 | 已合入 |
@@ -1342,6 +1343,8 @@ scan_hash: 8f9548ec24f4
 ## 十三、评估系统
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| AdversarialTestSuite | `core/harness/evaluation/adversarial_test_suite.py` | ✅ | 认知安全对抗测试 | 已合入 |
+| NLIBridge | `core/harness/evaluation/nli_engine.py` | ✅ | NLI 推理引擎 | 已合入 |
 | EvalRunner | `core/harness/evaluation/eval_runner.py` | ✅ | 自动同步 | 已合入 |
 | QualityScoring | `core/harness/knowledge/scoring_engine.py` | ✅ | 自动同步 | 已合入 |
 | eval_retrieval | `harness/evaluation/eval_retrieval.py` | ✅ | 自动同步 | 已合入 |
@@ -1946,13 +1949,13 @@ scan_hash: 8f9548ec24f4
 | 知识基础设施 | 29 | 0 | 29 |
 | Agent 系统 | 35 | 0 | 35 |
 | Skill 系统 | 54 | 0 | 54 |
-| 安全与治理 | 47 | 0 | 47 |
+| 安全与治理 | 48 | 0 | 48 |
 | 可观测性 | 18 | 0 | 18 |
 | 模型基础设施 | 42 | 0 | 42 |
 | 部署与运维 | 23 | 0 | 23 |
 | 扩展与学习 | 127 | 0 | 127 |
 | Gate 系统 | 17 | 0 | 17 |
-| 评估系统 | 16 | 0 | 16 |
+| 评估系统 | 18 | 0 | 18 |
 | MCP 协议 | 9 | 0 | 9 |
 | A2A 协议 | 9 | 0 | 9 |
 | 文档智能 | 27 | 0 | 27 |
@@ -1984,7 +1987,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 16 | 0 | 16 |
-| **总计** | **1027** | **0** | **1027** |
+| **总计** | **1030** | **0** | **1030** |
 
 ---
 

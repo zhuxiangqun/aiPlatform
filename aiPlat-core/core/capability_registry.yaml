@@ -10,7 +10,7 @@
 version: "1.1.0"
 generated_at: "2026-08-16"
 total_capability_domains: 34
-total_capabilities: 1025
+total_capabilities: 1030
 
 domains:
   # ══════════════════════════════════════════════════════════════
@@ -485,10 +485,6 @@ domains:
         type: "class"
         signature: "aggregate metrics across layers"
         module: "core/harness/observability/metrics/__init__.py"
-      - symbol: "AuditLog"
-        type: "class"
-        signature: "record tool/skill/gate events"
-        module: "core/harness/infrastructure/audit.py"
     breaks: []
     consumers_expected:
       - module: "core/harness/execution/pipeline_engine.py"
@@ -666,6 +662,14 @@ domains:
         type: "module"
         signature: "Recall@10, precision, F1 for RAG"
         module: "core/harness/evaluation/eval_retrieval.py"
+      - symbol: "AdversarialTestSuite"
+        type: "module"
+        signature: "认知安全对抗测试"
+        module: "core/harness/evaluation/adversarial_test_suite.py"
+      - symbol: "NLIBridge"
+        type: "module"
+        signature: "NLI 推理引擎"
+        module: "core/harness/evaluation/nli_engine.py"
       - symbol: "QualityScoring"
         type: "pattern"
         signature: "4-D scoring: FDE+SECI+Convergence+ContextBus"
