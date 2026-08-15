@@ -314,6 +314,90 @@ class SkillMarketplace:
 
             return {"total_skills": total, "installed": installed, "rated": rated}
 
+    # ── P1-A5: agentskills.io 开放标准对接 ──────────────────────────
+
+    EXTERNAL_SOURCES = {
+        "agentskills.io": "https://agentskills.io/skills/index.json",
+    }
+
+    def supports_external_source(self, source: str) -> bool:
+        """Whether an external skill source is supported (agentskills.io)."""
+        return source in self.EXTERNAL_SOURCES
+
+    def _frontmatter(self, text: str) -> dict:
+        """Parse YAML-ish frontmatter from SKILL.md (safe subset)."""
+        result = {}
+        if not text.startswith("---"):
+            return result
+        end = text.find("\n---", 3)
+        if end < 0:
+            return result
+        for line in text[3:end].splitlines():
+            if ":" in line:
+                k, _, v = line.partition(":")
+                result[k.strip()] = v.strip().strip("'\"")
+        return result
+
+    def export_skill(self, skill_id: str, skill_dir: str = "") -> dict:
+        """Serialize an aiPlat skill to agentskills.io-compatible format.
+
+        Maps aiPlat SKILL.md frontmatter → agentskills.io metadata.
+        aiPlat extensions (effects/permissions) use safe defaults when absent.
+        """
+        base = skill_dir or os.path.expanduser("~/.aiplat/skills")
+        skill_path = os.path.join(base, skill_id, "SKILL.md")
+        if not os.path.exists(skill_path):
+            return {"error": f"skill not found: {skill_id}"}
+        with open(skill_path, encoding="utf-8") as f:
+            text = f.read()
+        fm = self._frontmatter(text)
+        return {
+            "name": fm.get("name", skill_id),
+            "description": fm.get("description", ""),
+            "version": fm.get("version", "1.0.0"),
+            "category": fm.get("category", "general"),
+            "tags": fm.get("tags", ""),
+            "effects": fm.get("effects", "[]"),      # aiPlat extension → default safe
+            "permissions": fm.get("permissions", "[]"),
+            "agent": fm.get("agent", ""),
+            "metadata_format": "agentskills.io",
+            "source": "aiplat",
+        }
+
+    def discover_external(self, source: str = "agentskills.io",
+                          limit: int = 50) -> list[dict]:
+        """Discover skills from an external source index (aggregated view).
+
+        Pulls the remote index (network); on failure returns an empty list
+        with the error noted (discover is best-effort, never blocks install).
+        """
+        if not self.supports_external_source(source):
+            return [{"error": f"unsupported source: {source}"}]
+        index_url = self.EXTERNAL_SOURCES[source]
+        try:
+            import urllib.request
+            with urllib.request.urlopen(index_url, timeout=8) as resp:
+                data = json.loads(resp.read().decode("utf-8"))
+        except Exception as e:
+            return [{"error": f"external source unreachable: {str(e)[:100]}"}]
+        items = data.get("skills", data if isinstance(data, list) else [])
+        return [
+            {"name": s.get("name"), "description": s.get("description", ""),
+             "version": s.get("version", "1.0.0"), "source": source}
+            for s in items[:limit]
+        ]
+
+    def install_external(self, skill_id: str, source: str = "agentskills.io",
+                         source_url: str = "") -> bool:
+        """Install a skill from an external source (git clone fallback)."""
+        if source_url:
+            return self.install(skill_id, source_url)
+        # No direct URL — fail loud rather than guessing
+        raise ValueError(
+            f"External install requires source_url for '{skill_id}' "
+            f"(agentskills.io index provides repo URLs per skill)")
+
+
 
 
 

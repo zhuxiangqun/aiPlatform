@@ -858,7 +858,7 @@ scan_hash: 8f9548ec24f4
 | code_entropy_detector | harness/knowledge/code_entropy_detector.py | ✅ | 自动同步 | 已合入 |
 | adaptive_context | harness/knowledge/adaptive_context.py | ✅ | 自动同步 | 已合入 |
 | wiki_indexer | harness/knowledge/wiki_indexer.py | ✅ | 自动同步 | 已合入 |
-| skill_marketplace | harness/knowledge/skill_marketplace.py | ✅ | 自动同步 | 已合入 |
+| skill_marketplace | harness/knowledge/skill_marketplace.py | ✅ | agentskills.io 对接: export/discover_external/install_external (P1-A5) | 已合入 |
 | recon_subgraph | harness/knowledge/recon_subgraph.py | ✅ | 自动同步 | 已合入 |
 |------|------|:---:|------|------|
 | 统一知识检索 | harness/syscalls/retrieval.py:569 | ✅ | 并行 Wiki + KB，RRF 三路融合 | 已合入 |
