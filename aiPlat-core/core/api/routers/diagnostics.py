@@ -3422,3 +3422,17 @@ except ImportError:
     pass  # noqa: optional-dependency
 
 
+
+
+@router.post("/diagnostics/cross-validation", response_model=Dict[str, Any])
+async def run_cross_validation(payload: dict):
+    """CrossValidationGate semantic verification (equipment/process/quality).
+
+    Body: {"output": {...}, "domain_id": "default"}
+    Returns readiness + violations (framework stub — below activation
+    threshold returns ready=false with note).
+    """
+    from core.api.core_facade import cross_validation_verify
+    output = (payload or {}).get("output", {})
+    domain_id = str((payload or {}).get("domain_id", "default"))
+    return cross_validation_verify(output, domain_id=domain_id)

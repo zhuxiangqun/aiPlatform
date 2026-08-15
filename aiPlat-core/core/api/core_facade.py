@@ -3440,3 +3440,25 @@ async def wake_agent_stop() -> dict:
     agent = get_wake_agent()
     agent.stop()
     return {"running": False}
+
+def cross_validation_verify(output: dict, *, domain_id: str = "default") -> dict:
+    """Run CrossValidationGate semantic verification (equipment/process/quality).
+
+    Framework stub — activates when cross-domain object_properties reach the
+    activation threshold; returns readiness info when not yet active.
+    """
+    from core.harness.infrastructure.gates.cross_validation_gate import CrossValidationGate
+    gate = CrossValidationGate()
+    if not gate.is_ready():
+        return {"ready": False, "violations": [], "note": "below activation threshold"}
+    result = gate.verify(output, domain_id=domain_id)
+    return {
+        "ready": True,
+        "valid": getattr(result, "valid", True),
+        "violations": [
+            {"layer": v.layer, "severity": v.severity, "detail": v.detail}
+            for v in getattr(result, "cross_violations", [])
+        ],
+        "layers_checked": getattr(result, "layers_checked", []),
+        "reason": getattr(result, "reason", ""),
+    }

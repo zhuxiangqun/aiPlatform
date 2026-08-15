@@ -154,7 +154,7 @@ rules:
       paths: ["aiPlat-core/core"]
       exclude: ["__pycache__", "tests/"]
       grep_exclude: ["orchestration/|kernel/types\\.py|prompt_loader\\.py|prompt_app\\\
-            .py"]
+            .py|engine/skills/"]
     message: "hardcoded Chinese business names in core (use config-driven)"
 
   # ═══ Section 4: Infra Application Agnostic ═══

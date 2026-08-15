@@ -338,11 +338,11 @@ class PipelineStageConfig(BaseModel):
     # Planner-Generator-Evaluator separation: stage ID for structured planning
     planning_stage_id: str = ""
     # ── v4.0: Declarative quality gates & routing for pipeline agents ──
-    quality_gate: Dict[str, Any] = Field(default_factory=lambda: {"min_output_length": 100})
+    quality_gate: Dict[str, Any] = Field(default_factory=lambda: {"min_output_length": 100})  # 4step-verified: engine.py:4650 使用
     """CRAG-style quality gate: {condition, fallback, final_fallback}"""
     routing_rules: Dict[str, Any] = Field(default_factory=dict)  # 4step-verified: wired via pipeline_compiler.py + engine.py:1900
     """Domain routing rules: {tiers, fallback_domain}"""
-    retry_policy: Dict[str, Any] = Field(default_factory=lambda: {"max_retries": 2, "backoff": "exponential"})
+    retry_policy: Dict[str, Any] = Field(default_factory=lambda: {"max_retries": 2, "backoff": "exponential"})  # 4step-verified: engine.py:8306 使用
     """Self-heal retry: {on, action, max_retries}"""
     # ── v4.1: Cross-stage rollback (delegation + adversarial pattern) ──
     rollback_on_reject: bool = False

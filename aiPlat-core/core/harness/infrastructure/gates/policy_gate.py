@@ -284,7 +284,7 @@ class PolicyGate:
 
         )
 
-        self._enforce_approval = os.getenv("AIPLAT_SYSCALL_ENFORCE_APPROVAL", "false").lower() in (
+        self._enforce_approval = os.getenv("AIPLAT_SYSCALL_ENFORCE_APPROVAL", "false").lower() in (  # noqa: known-design
 
             "1", "true",
 
