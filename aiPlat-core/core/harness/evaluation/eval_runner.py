@@ -41,6 +41,14 @@ from .eval_types import (
 from .eval_metrics import EvalMetricsEngine, _level_from_score
 
 
+class _RunTaskResult:
+    """Lightweight result for run_task (gold regression API)."""
+
+    def __init__(self, level, syscall_events):
+        self.level = level
+        self.syscall_events = syscall_events
+
+
 
 
 
@@ -528,9 +536,10 @@ class EvalRunner:
         """Execute a single eval case (gold-dataset regression API).
 
         case: {agent_id, user_input/input, expected_tool(s)} or an EvalTask dict.
-        Returns an object with .syscall_events and .level for tool-quality checks.
+        Returns a lightweight result with .syscall_events (and .level) for
+        tool-quality checks.
         """
-        from core.harness.evaluation.eval_types import AgentEvalResult, EvalTask, TaskResultLevel
+        from core.harness.evaluation.eval_types import EvalTask, TaskResultLevel
 
         agent_id = str(case.get("agent_id") or case.get("agent") or "default_agent")
         task = EvalTask(
@@ -541,11 +550,8 @@ class EvalRunner:
                 ([case["expected_tool"]] if case.get("expected_tool") else []),
         )
         result, events = await self._execute_single_task(agent_id, task)
-        return AgentEvalResult(
-            agent_id=agent_id,
-            eval_set_id="single-case",
+        return _RunTaskResult(
             level=result.level if hasattr(result, "level") else TaskResultLevel.L2,
-            task_results=[result],
             syscall_events=events,
         )
 
