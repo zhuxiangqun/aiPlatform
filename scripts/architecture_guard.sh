@@ -83,11 +83,16 @@ fi
 python3 scripts/verify_claude_md_evidence.py --workspace &
 PID_EV=$!
 
+# P0-C7: Rule golden sample — guard rules self-check (\| anti-pattern + re compile)
+python3 scripts/rule_golden_sample.py &
+PID_RULE=$!
+
 wait $PID_AST || FAIL_AST=1
 wait $PID_FE || FAIL_FE=1
 wait $PID_ARCH || FAIL_ARCH=1
 [ "$PID_CAP" != "0" ] && { wait $PID_CAP || FAIL_CAP=1; }
 wait $PID_EV || FAIL_EV=1
+wait $PID_RULE || FAIL_RULE=1
 [ "$FAIL_AST" -ne 0 ] && FAIL=1
 [ "$FAIL_FE" -ne 0 ] && FAIL=1
 [ "$FAIL_ARCH" -ne 0 ] && FAIL=1

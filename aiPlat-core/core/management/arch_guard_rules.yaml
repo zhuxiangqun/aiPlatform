@@ -1393,14 +1393,13 @@ rules:
   # 65.5: Retrieval 3-level CRAG/HyDE fallback — MaterialsChatAgent must implement all 3 levels
   - id: retrieval_crag_hyde_fallback
     section: "§65"
-    section_name: "检索质量门 — MaterialsChatAgent 必须实现 CRAG/HyDE 3 级回退链"
+    section_name: "检索质量门 — 必须实现 CRAG/HyDE 4 级回退链"
     level: warning
     check:
       type: grep_required
-      pattern: hyde_prompt|fts5|CRAG.*quality|ontology_first|Level 
-        [123].*retriev
+      pattern: "hyde_prompt|fts5|CRAG.*quality|ontology_first|Level [123].*retriev"
       paths:
-        - aiPlat-core/core/apps/agents/materials_chat.py
+        - "aiPlat-core/core/harness/syscalls/retrieval_crag.py"
       min_matches: 2
     message: "检索质量门缺失 — MaterialsChatAgent 必须实现 CRAG/HyDE 3级回退链 (normal→FTS5→HyDE)，违反
       §5.44"

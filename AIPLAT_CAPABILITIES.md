@@ -1,5 +1,5 @@
 ---
-total_capabilities: 944
+total_capabilities: 945
 last_updated: 2026-08-15
 version: "30.0"
 auto_sync: true
@@ -568,7 +568,7 @@ scan_hash: 8f9548ec24f4
 
 > 代码即真相。每个条目必须有可验证的代码位置。
 > 更新：任何能力变更时同步更新本文档。
-> 评分：98/100（2026-07-20 — 944✅）
+> 评分：98/100（2026-07-20 — 945✅）
 
 ---
 
@@ -1117,6 +1117,7 @@ scan_hash: 8f9548ec24f4
 | 一键启动/停止 | [概念] | ✅ | 6服务顺序启动，pyc清理，端口释放 | 已合入 |
 | 开发环境 | scripts/dev.sh | ✅ | 5服务并行开发启动 | 已合入 |
 | 架构守卫 | scripts/architecture_guard.sh | ✅ | 172规则零依赖扫描 | 已合入 |
+| 守卫规则自检（黄金样本） | scripts/rule_golden_sample.py | ✅ | P0-C7：检测规则 pattern 的 \\| 反模式 + re 编译错误，防 12 条语法 bug 重演；--verify 标记规则要求未达标项 | 已合入 |
 | Phase 验收 | scripts/phase_check.sh | ✅ | caller_verify + wiring + 死代码 | 已合入 |
 | Caller 验证 | scripts/caller_verify.sh | ✅ | 零调用者模块检测 | 已合入 |
 | E2E 测试 | scripts/e2e_verify.sh | ✅ | 端到端验证 | 已合入 |
@@ -1887,7 +1888,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 11 | 0 | 11 |
-| **总计** | **930** | **0** | **930** |
+| **总计** | **936** | **0** | **936** |
 
 ---
 
