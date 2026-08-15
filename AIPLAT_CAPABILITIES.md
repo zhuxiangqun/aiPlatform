@@ -588,6 +588,15 @@ scan_hash: 8f9548ec24f4
 ## 一、Harness 执行引擎
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| FailureClassifier | `harness/execution/failure_classifier.py` | ✅ | 自动同步 | 已合入 |
+| ContextCompression | `harness/memory/compression.py` | ✅ | 自动同步 | 已合入 |
+| generate_hypotheses | `harness/execution/pipeline_engine.py` | ✅ | 自动同步 | 已合入 |
+| clear_trace | `` | ✅ | 自动同步 | 已合入 |
+| get_trace | `` | ✅ | 自动同步 | 已合入 |
+| mark_failed | `` | ✅ | 自动同步 | 已合入 |
+| record_decision | `` | ✅ | 自动同步 | 已合入 |
+| cost_for | `` | ✅ | 自动同步 | 已合入 |
+| get_pricing | `` | ✅ | 自动同步 | 已合入 |
 | debate | harness/execution/debate.py | ✅ | 自动同步 | 已合入 |
 | conditional | harness/execution/conditional.py | ✅ | 自动同步 | 已合入 |
 | stage_runner | harness/execution/langgraph/stage_runner.py | ✅ | 自动同步 | 已合入 |
@@ -642,6 +651,13 @@ scan_hash: 8f9548ec24f4
 ## 二、记忆子系统
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| SystemReminders.check_and_inject | `harness/memory/reminders.py` | ✅ | 自动同步 | 已合入 |
+| MemoryManager.save_memory_rules | `harness/memory/manager.py` | ✅ | 自动同步 | 已合入 |
+| MemoryManager.load_memory_rules | `harness/memory/manager.py` | ✅ | 自动同步 | 已合入 |
+| SemanticMemoryModal | `aiPlat-management/frontend/src/components/SemanticMemoryModal.tsx` | ✅ | 自动同步 | 已合入 |
+| Memory rules JSON | `harness/memory/manager.py` | ✅ | 自动同步 | 已合入 |
+| LongTermMemoryMixin | `services/execution_store/ltm_mixin.py` | ✅ | 自动同步 | 已合入 |
+| MemoryEntry | `harness/memory/base.py` | ✅ | 自动同步 | 已合入 |
 | migrate_semantic | harness/memory/migrate_semantic.py | ✅ | 自动同步 | 已合入 |
 | shared_pool | harness/memory/shared_pool.py | ✅ | 自动同步 | 已合入 |
 | gossip_protocol | harness/memory/gossip_protocol.py | ✅ | 自动同步 | 已合入 |
@@ -680,6 +696,10 @@ scan_hash: 8f9548ec24f4
 ## 三、知识引擎（本体）
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| WikiEngine | `harness/knowledge/wiki_engine.py` | ✅ | 自动同步 | 已合入 |
+| build_prompt_to_agent_bridge | `` | ✅ | 自动同步 | 已合入 |
+| build_model_usage_bridge | `` | ✅ | 自动同步 | 已合入 |
+| build_wiki_to_agent_bridge | `` | ✅ | 自动同步 | 已合入 |
 | knowledge_gap_detector | harness/ontology_engine/knowledge_gap_detector.py | ✅ | 自动同步 | 已合入 |
 | graph_importer | harness/ontology_engine/graph_importer.py | ✅ | 自动同步 | 已合入 |
 | audit_rules | harness/ontology_engine/audit_rules.py | ✅ | 自动同步 | 已合入 |
@@ -817,6 +837,7 @@ scan_hash: 8f9548ec24f4
 ## 四、RAG 检索
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| WikiPageRetriever | `harness/knowledge/retrieval.py` | ✅ | 自动同步 | 已合入 |
 | wiki_engine | harness/knowledge/wiki_engine.py | ✅ | 自动同步 | 已合入 |
 | capability_graph | harness/knowledge/capability_graph.py | ✅ | 自动同步 | 已合入 |
 | sqlite_retriever | harness/knowledge/sqlite_retriever.py | ✅ | 自动同步 | 已合入 |
@@ -901,6 +922,9 @@ scan_hash: 8f9548ec24f4
 ## 五、Agent 系统
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| SubagentCoordinator | `apps/agents/subagent/coordinator.py` | ✅ | 自动同步 | 已合入 |
+| run_voice_brainstorm | `` | ✅ | 自动同步 | 已合入 |
+| BaseAgent | `` | ✅ | 自动同步 | 已合入 |
 | kpi_agent | harness/agents/kpi_agent.py | ✅ | 自动同步 | 已合入 |
 | strategy_agent | harness/agents/strategy_agent.py | ✅ | 自动同步 | 已合入 |
 |------|------|:---:|------|------|
@@ -933,6 +957,8 @@ scan_hash: 8f9548ec24f4
 ## 六、Skill 系统
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| BaseSkill | `apps/skills/base.py` | ✅ | 自动同步 | 已合入 |
+| SkillManager | `apps/skills/skill_manager.py` | ✅ | 自动同步 | 已合入 |
 | review_report | engine/skills/autoreview/review_report.py | ✅ | 自动同步 | 已合入 |
 |------|------|:---:|------|------|
 | SkillRegistry | apps/skills/registry.py | ✅ | 注册/启用/禁用/版本管理/semver回滚 | 已合入 |
@@ -992,6 +1018,7 @@ scan_hash: 8f9548ec24f4
 ## 七、安全与治理
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| PIIDetector | `harness/infrastructure/pii_detector.py` | ✅ | 自动同步 | 已合入 |
 | prompt_auditor | harness/audit/prompt_auditor.py | ✅ | 自动同步 | 已合入 |
 | semantic_gate | harness/infrastructure/gates/semantic_gate.py | ✅ | 自动同步 | 已合入 |
 | cross_validation_gate | harness/infrastructure/gates/cross_validation_gate.py | ✅ | 自动同步 | 已合入 |
@@ -1044,6 +1071,8 @@ scan_hash: 8f9548ec24f4
 ## 八、可观测性
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| AuditLog | `harness/infrastructure/audit.py` | ✅ | 自动同步 | 已合入 |
+| MetricsAggregator | `harness/observability/metrics/__init__.py` | ✅ | 自动同步 | 已合入 |
 |------|------|:---:|------|------|
 | trace_id / span_id | harness/observation/event_schema.py | ✅ | 每次 syscall 携带 | 已合入 |
 | EventBus | harness/observation/event_bus.py | ✅ | 发布/订阅 syscall 事件 | 已合入 |
@@ -1067,6 +1096,8 @@ scan_hash: 8f9548ec24f4
 ## 九、模型基础设施
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| LLMClient | `aiPlat-infra/infra/llm/base.py` | ✅ | 自动同步 | 已合入 |
+| ModelTierRouter | `harness/routing/model_tier_router.py` | ✅ | 自动同步 | 已合入 |
 | infra_bridge | harness/infrastructure/infra_bridge.py | ✅ | 自动同步 | 已合入 |
 | base_model_adapter | harness/infrastructure/base_model_adapter.py | ✅ | 自动同步 | 已合入 |
 | infra_audio_adapter | harness/infrastructure/infra_audio_adapter.py | ✅ | 自动同步 | 已合入 |
@@ -1114,6 +1145,7 @@ scan_hash: 8f9548ec24f4
 ## 十、部署与运维
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| CronScheduler | `harness/scheduler/cron.py` | ✅ | 自动同步 | 已合入 |
 |------|------|:---:|------|------|
 | 一键启动/停止 | [概念] | ✅ | 6服务顺序启动，pyc清理，端口释放 | 已合入 |
 | 开发环境 | scripts/dev.sh | ✅ | 5服务并行开发启动 | 已合入 |
@@ -1143,6 +1175,17 @@ scan_hash: 8f9548ec24f4
 ## 十一、扩展与学习
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| ModelTierPanel MoA card | `aiPlat-management/frontend/src/components/model/ModelTierPanel.tsx` | ✅ | 自动同步 | 已合入 |
+| MoaResult | `harness/syscalls/moa_executor.py` | ✅ | 自动同步 | 已合入 |
+| moa_executor.execute | `harness/syscalls/moa_executor.py` | ✅ | 自动同步 | 已合入 |
+| DiscoveryListener | `harness/infrastructure/discovery_listener.py` | ✅ | 自动同步 | 已合入 |
+| GoalProgressEvaluator | `harness/optimization/goal_progress_evaluator.py` | ✅ | 自动同步 | 已合入 |
+| GoalDependencyGraph | `harness/optimization/goal_dependency_graph.py` | ✅ | 自动同步 | 已合入 |
+| AbstractGoalDecomposer | `harness/optimization/abstract_goal_decomposer.py` | ✅ | 自动同步 | 已合入 |
+| SharedKnowledgePool | `harness/memory/shared_pool.py` | ✅ | 自动同步 | 已合入 |
+| StrategySearchEngine | `harness/optimization/search_engine.py` | ✅ | 自动同步 | 已合入 |
+| ToolBootstrapEngine | `harness/optimization/tool_bootstrap.py` | ✅ | 自动同步 | 已合入 |
+| GoalGenerator | `harness/optimization/goal_generator.py` | ✅ | 自动同步 | 已合入 |
 | cmm_graduation | harness/learning/cmm_graduation.py | ✅ | 自动同步 | 已合入 |
 | integration | harness/integration.py | ✅ | 自动同步 | 已合入 |
 | toolsets | harness/tools/toolsets.py | ✅ | 自动同步 | 已合入 |
@@ -1287,6 +1330,9 @@ scan_hash: 8f9548ec24f4
 ## 十三、评估系统
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| EvalRunner | `core/harness/evaluation/eval_runner.py` | ✅ | 自动同步 | 已合入 |
+| QualityScoring | `core/harness/knowledge/scoring_engine.py` | ✅ | 自动同步 | 已合入 |
+| eval_retrieval | `harness/evaluation/eval_retrieval.py` | ✅ | 自动同步 | 已合入 |
 |------|------|:---:|------|------|
 | EvaluationRunner | harness/evaluation/eval_runner.py | ✅ | 全流水线评估执行引擎 | 已合入 |
 | EvalMetricsEngine | harness/evaluation/eval_metrics.py | ✅ | 从 ExecutionStore trace 计算综合评估指标 | 已合入 |
@@ -1307,6 +1353,9 @@ scan_hash: 8f9548ec24f4
 ## 十四、MCP 协议
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| MCPToolAdapter | `apps/mcp/adapter.py` | ✅ | 自动同步 | 已合入 |
+| MCPClientManager | `apps/mcp/client.py` | ✅ | 自动同步 | 已合入 |
+| MCPRuntime | `apps/mcp/runtime.py` | ✅ | 自动同步 | 已合入 |
 |------|------|:---:|------|------|
 | MCP JSON-RPC 2.0 | apps/mcp/protocol.py | ✅ | 完整 MCP 协议实现 (init, tools/list, tools/call) | 已合入 |
 | MCP HTTP+SSE Server | apps/mcp/server.py | ✅ | 远程工具暴露服务 | 已合入 |
@@ -1320,6 +1369,8 @@ scan_hash: 8f9548ec24f4
 ## 十四附、A2A 协议 (Agent-to-Agent)
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| AgentMessageBus | `core/harness/interfaces/messaging.py` | ✅ | 自动同步 | 已合入 |
+| AgentDiscovery | `harness/ontology_engine/triple_scanner.py` | ✅ | 自动同步 | 已合入 |
 |------|------|:---:|------|------|
 | Agent Card | apps/a2a/agent_card.py | ✅ | 自动枚举 Skill/Tool 能力 + JSON-LD 上下文 | 已合入 |
 | Task Send | apps/a2a/server.py | ✅ | POST /tasks → 复用 core_chat 执行 | 已合入 |
@@ -1334,6 +1385,9 @@ scan_hash: 8f9548ec24f4
 ## 十五、文档智能
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| OCREngine | `harness/document/ocr.py` | ✅ | 自动同步 | 已合入 |
+| Transcriber | `harness/document/transcriber.py` | ✅ | 自动同步 | 已合入 |
+| VideoParser | `harness/document/video.py` | ✅ | 自动同步 | 已合入 |
 |------|------|:---:|------|------|
 | Document Classifier | apps/document_intelligence/classifier.py | ✅ | 文档类型分类 + KB provider集成 | 已合入 |
 | Document Summarizer | apps/document_intelligence/summarizer.py | ✅ | LLM 文档摘要，可配置策略 | 已合入 |
@@ -1393,6 +1447,8 @@ scan_hash: 8f9548ec24f4
 ## 十七、微调系统
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| RLTrainer | `harness/training/rl_trainer.py` | ✅ | 自动同步 | 已合入 |
+| LoRAAutoTrigger | `harness/training/auto_trigger.py` | ✅ | 自动同步 | 已合入 |
 |------|------|:---:|------|------|
 | MLX LoRA Trainer | harness/finetune/mlx_trainer.py | ✅ | Apple Silicon 本地 QLoRA 微调，MPS后端 | 已合入 |
 | GGUF Exporter | harness/finetune/gguf_exporter.py | ✅ | 模型导出 GGUF 格式 | 已合入 |
@@ -1412,6 +1468,9 @@ scan_hash: 8f9548ec24f4
 ## 十八、部署与灰度
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| SkillRouter | `harness/deployment/canary.py` | ✅ | 自动同步 | 已合入 |
+| GitPusher | `harness/deployment/git_pusher.py` | ✅ | 自动同步 | 已合入 |
+| DeployEngine | `harness/deployment/deploy_engine.py` | ✅ | 自动同步 | 已合入 |
 |------|------|:---:|------|------|
 | Skill Canary 部署 | harness/deployment/canary.py | ✅ | Canary/A-B/Shadow/Auto-Rollback 四种模式 | 已合入 |
 | Canary Escalation | harness/canary/escalation.py | ✅ | 确定性灰度升级 + 变更控制集成 | 已合入 |
@@ -1423,6 +1482,8 @@ scan_hash: 8f9548ec24f4
 ## 十九、运行时干预
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| set_model_override / clear_model_override | `harness/utils/model_injection.py` | ✅ | 自动同步 | 已合入 |
+| _model_overrides | `harness/utils/model_injection.py` | ✅ | 自动同步 | 已合入 |
 |------|------|:---:|------|------|
 | Howl Intervention | harness/intervention/howl.py | ✅ | Agent 停滞/退化检测 + redirect/clarify/fallback策略 | 已合入 |
 | RunState Restatement | harness/restatement/run_state.py | ✅ | 结构化/版本化/人可编辑的进度制品 | 已合入 |
@@ -1432,6 +1493,9 @@ scan_hash: 8f9548ec24f4
 ## 二十、Arena & 调度
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| WakeAgentTool | `apps/tools/wake_agent_tool.py` | ✅ | 自动同步 | 已合入 |
+| VoiceLoopTool | `apps/tools/voice_loop_tool.py` | ✅ | 自动同步 | 已合入 |
+| Swarm (Darwin Arena) | `harness/execution/swarm.py` | ✅ | 自动同步 | 已合入 |
 |------|------|:---:|------|------|
 | Darwin Arena | harness/arena/arena.py | ✅ | 多Agent竞技，Bayesian Elo评分 + Champion晋升 | 已合入 |
 | Arena Regression | harness/arena/regression.py | ✅ | Champion 能力退化检测 | 已合入 |
@@ -1443,6 +1507,11 @@ scan_hash: 8f9548ec24f4
 ## 二十一、平台治理
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| DomainMaturity | `harness/knowledge/domain_maturity.py` | ✅ | 自动同步 | 已合入 |
+| ScenarioSelector | `harness/knowledge/scenario_selector.py` | ✅ | 自动同步 | 已合入 |
+| PathPlanner | `harness/knowledge/path_planner.py` | ✅ | 自动同步 | 已合入 |
+| ScoringEngine | `harness/knowledge/scoring_engine.py` | ✅ | 自动同步 | 已合入 |
+| GovernancePipeline | `harness/knowledge/governance_pipeline.py` | ✅ | 自动同步 | 已合入 |
 | authenticator | aiPlat-platform/auth/authenticator.py | ✅ | 自动同步 | 已合入 |
 | pdf_render | aiPlat-platform/kb/poc/pdf_render.py | ✅ | 自动同步 | 已合入 |
 | prompt_app | apps/prompt/api/prompt_app.py | ✅ | 自动同步 | 已合入 |
@@ -1524,6 +1593,9 @@ scan_hash: 8f9548ec24f4
 ## 二十二、Infra 基础设施
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| InfraBridge | `harness/infrastructure/infra_bridge.py` | ✅ | 自动同步 | 已合入 |
+| create_llm_client | `aiPlat-infra/infra/llm/factory.py` | ✅ | 自动同步 | 已合入 |
+| ModelManager | `aiPlat-infra/infra/management/model/manager.py` | ✅ | 自动同步 | 已合入 |
 |------|------|:---:|------|------|
 | Model Health Checker | infra/management/model/health_checker.py | ✅ | 模型可用性/延迟/质量健康监控 | 已合入 |
 | Local Model Scanner | infra/management/model/local_model_scanner.py | ✅ | 自动发现 Ollama/LM Studio/vLLM/oMLX 本地模型 | 已合入 |
@@ -1556,6 +1628,8 @@ scan_hash: 8f9548ec24f4
 ## 二十四、编排系统
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| ChainPlanner | `harness/orchestration/chain_planner.py` | ✅ | 自动同步 | 已合入 |
+| IntentAnalyzer | `harness/orchestration/intent_analyzer.py` | ✅ | 自动同步 | 已合入 |
 |------|------|:---:|------|------|
 | Pipeline Orchestrator | core/orchestration/orchestrator.py | ✅ | 多步流水线编排 + 能力映射 | 已合入 |
 | Capability Mapper | core/orchestration/capability_mapper.py | ✅ | Intent→Capability→Executor 解析链 | 已合入 |
@@ -1567,6 +1641,10 @@ scan_hash: 8f9548ec24f4
 ## 二十五、管理 & 质量
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| Sidebar v2.3 menuItems | `aiPlat-management/frontend/src/pageManifest.ts` | ✅ | 自动同步 | 已合入 |
+| handleFixBugs | `aiPlat-management/frontend/src/pages/App/Factory/index.tsx` | ✅ | 自动同步 | 已合入 |
+| filterItemsByRole | `aiPlat-management/frontend/src/components/layout/AppLayout.tsx` | ✅ | 自动同步 | 已合入 |
+| QualityBus | `core/harness/knowledge/scoring_engine.py` | ✅ | 自动同步 | 已合入 |
 |------|------|:---:|------|------|
 | Asset Installer | management/asset_installer.py | ✅ | Git/dir/zip 导入 Agent/Skill/MCP，host allowlist安全 | 已合入 |
 | Format Adapters | management/format_adapters.py | ✅ | 多格式导入 (YAML/JSON/TOML frontmatter) | 已合入 |
@@ -1598,6 +1676,11 @@ scan_hash: 8f9548ec24f4
 ## 二十六、编排层 (Orchestration)
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| SubagentCoordinator | `apps/agents/subagent/coordinator.py` | ✅ | 自动同步 | 已合入 |
+| AdaptiveContextRouter | `harness/knowledge/adaptive_context.py` | ✅ | 自动同步 | 已合入 |
+| GossipProtocol | `harness/memory/gossip_protocol.py` | ✅ | 自动同步 | 已合入 |
+| SwarmBroker | `harness/coordination/swarm_broker.py` | ✅ | 自动同步 | 已合入 |
+| DynamicOrchestrator | `harness/coordination/dynamic_orchestrator.py` | ✅ | 自动同步 | 已合入 |
 |------|------|:---:|------|------|
 | 意图分析 | orchestration/intent_analyzer.py | ✅ | 意图分类与分解 | 已合入 |
 | 链规划 | orchestration/chain_planner.py | ✅ | 执行链拓扑规划 | 已合入 |
@@ -1889,7 +1972,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 11 | 0 | 11 |
-| **总计** | **933** | **0** | **933** |
+| **总计** | **1015** | **0** | **1015** |
 
 ---
 

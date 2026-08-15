@@ -175,6 +175,13 @@ if [ -z "$NEW_MODULES" ]; then
     echo ""
     echo "✅ No new unreferenced modules"
     echo ""
+    # ── Step 10: registry → CAPABILITIES sync check (P0-C3) ──
+    echo "━━━ Step 10: registry → CAPABILITIES sync check ━━━"
+    if python3 "$SCRIPT_DIR/sync_registry_to_docs.py" >/dev/null 2>&1; then
+        echo "  ✅ registry 符号全部在 CAPABILITIES 中"
+    else
+        echo "  ⚠️ registry → docs 漂移 (运行: python3 scripts/sync_registry_to_docs.py --fix 补登)"
+    fi
     exit 0
 fi
 
@@ -568,6 +575,15 @@ if [ -f "$SCAN_SCRIPT" ]; then
     python3 "$SCAN_SCRIPT" --verify 2>&1 || echo "  → Review core_guarantees in AIPLAT_CAPABILITIES.md frontmatter"
 else
     echo "  (scan_inherited_capabilities.py not found — skipping)"
+fi
+
+# ── Step 10: registry → CAPABILITIES sync check (P0-C3) ──
+echo ""
+echo "━━━ Step 10: registry → CAPABILITIES sync check ━━━"
+if python3 "$SCRIPT_DIR/sync_registry_to_docs.py" >/dev/null 2>&1; then
+    echo "  ✅ registry 符号全部在 CAPABILITIES 中"
+else
+    echo "  ⚠️ registry → docs 漂移 (运行: python3 scripts/sync_registry_to_docs.py --fix 补登)"
 fi
 
 echo ""

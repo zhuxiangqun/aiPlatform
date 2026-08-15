@@ -617,11 +617,11 @@ domains:
       - symbol: "QualityScoring"
         type: "pattern"
         signature: "4-D scoring: FDE+SECI+Convergence+ContextBus"
-        module: "core/harness/knowledge/quality_bus.py"
-      - symbol: "BenchmarkRunner"
+        module: "core/harness/knowledge/scoring_engine.py"
+      - symbol: "EvalRunner"
         type: "class"
         signature: "5 metrics: pipeline P95, graph P95, retrieval recall, state accuracy, calibration"
-        module: "core/harness/evaluation/benchmark.py"
+        module: "core/harness/evaluation/eval_runner.py"
     breaks: []
     consumers_expected:
       - module: "core/harness/execution/pipeline_engine.py"
@@ -671,7 +671,7 @@ domains:
       - symbol: "AgentMessageBus"
         type: "class"
         signature: "TASK_ASSIGN/PROGRESS_UPDATE/RESULT/ERROR/CANCEL"
-        module: "core/apps/agents/message_bus.py"
+        module: "core/harness/interfaces/messaging.py"
     breaks: []
     consumers_expected:
       - module: "core/apps/agents/multi_agent.py"
@@ -974,9 +974,9 @@ domains:
     caps_count: 24
     provides:
       - symbol: "QualityBus"
-        type: "class"
-        signature: "4-subsystem unified scoring 0-100"
-        module: "core/harness/knowledge/quality_bus.py"
+        type: "pattern"
+        signature: "4-subsystem unified scoring 0-100 (via ScoringEngine)"
+        module: "core/harness/knowledge/scoring_engine.py"
       - symbol: "FeedbackLoops"
         type: "module"
         signature: "FeedbackTranslator, policy→natural language"
