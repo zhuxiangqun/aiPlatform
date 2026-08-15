@@ -10,7 +10,7 @@
 version: "1.1.0"
 generated_at: "2026-08-16"
 total_capability_domains: 34
-total_capabilities: 1018
+total_capabilities: 1025
 
 domains:
   # ══════════════════════════════════════════════════════════════
@@ -321,6 +321,34 @@ domains:
       - symbol: run_voice_brainstorm
       - symbol: run_voice_brainstorm
       - symbol: run_voice_brainstorm
+      - symbol: ProviderCapabilities
+      - symbol: ProviderResult
+      - symbol: SubagentProvider
+      - symbol: InProcessProvider
+      - symbol: ACPProvider
+      - symbol: get_provider_factories
+      - symbol: default_provider_name
+        type: function
+        signature: 'default_provider_name()'
+        module: aiPlat-core/core/apps/agents/subagent/providers.py
+        type: function
+        signature: 'get_provider_factories()'
+        module: aiPlat-core/core/apps/agents/subagent/providers.py
+        type: class
+        signature: 'External provider: execute subagents via the ACP WebSocket protocol.'
+        module: aiPlat-core/core/apps/agents/subagent/providers.py
+        type: class
+        signature: 'Default provider: existing conversational-agent execution in this process.'
+        module: aiPlat-core/core/apps/agents/subagent/providers.py
+        type: class
+        signature: 'Abstract subagent execution provider.'
+        module: aiPlat-core/core/apps/agents/subagent/providers.py
+        type: dataclass
+        signature: 'Normalized result from any provider.'
+        module: aiPlat-core/core/apps/agents/subagent/providers.py
+        type: dataclass
+        signature: 'Feature flags a provider supports (DSH-style).'
+        module: aiPlat-core/core/apps/agents/subagent/providers.py
         type: function
         signature: '执行语音漫谈 LLM 意图提取.'
         module: aiPlat-core/core/apps/fde/service/voice.py
@@ -570,6 +598,14 @@ domains:
         type: "class"
         signature: "技能生命周期 active→stale→archived (P1-A2)"
         module: "core/harness/learning/skill_curator.py"
+      - symbol: "ChannelAdapters"
+        type: "module"
+        signature: "多渠道适配器 Discord/WeCom/Email/DingTalk (P1-A4)"
+        module: "aiPlat-app/channels/adapters/__init__.py"
+      - symbol: "ChannelDispatcher"
+        type: "class"
+        signature: "统一调度 7 渠道 (3 内置 + 4 扩展)"
+        module: "aiPlat-app/channels/adapter.py"
     breaks: []
     consumers_expected:
       - module: "core/harness/optimization/goal_executor.py"
