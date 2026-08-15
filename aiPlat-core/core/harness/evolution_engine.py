@@ -304,6 +304,21 @@ class EvolutionEngine:
 
                 await self._simulate_approved_drafts(result)
 
+            # Curator: skill lifecycle maintenance (P1-A2)
+            try:
+                from core.harness.learning.skill_curator import SkillCurator
+                curator_report = await SkillCurator().run_if_idle()
+                if curator_report:
+                    result["curator"] = {
+                        "active": curator_report.active_count,
+                        "stale": curator_report.stale_count,
+                        "archived": curator_report.archived_count,
+                        "merged": len(curator_report.merged),
+                        "promoted": len(curator_report.promoted),
+                    }
+            except Exception as e:
+                logging.getLogger(__name__).debug('curator run failed: %s', e, exc_info=True)
+
             return result
 
         except Exception as e:

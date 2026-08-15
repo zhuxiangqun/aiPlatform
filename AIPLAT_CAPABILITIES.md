@@ -1,5 +1,5 @@
 ---
-total_capabilities: 1015
+total_capabilities: 1017
 last_updated: 2026-08-15
 version: "30.0"
 auto_sync: true
@@ -1175,6 +1175,8 @@ scan_hash: 8f9548ec24f4
 ## 十一、扩展与学习
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| LearnNudgeHook | `core/harness/learning/learn_nudge_hook.py` | ✅ | 会话内实时学习触发 (POST_OBSERVE, P1-A1) | 已合入 |
+| SkillCurator | `core/harness/learning/skill_curator.py` | ✅ | 技能生命周期维护 active→stale→archived (P1-A2) | 已合入 |
 | ModelTierPanel MoA card | `aiPlat-management/frontend/src/components/model/ModelTierPanel.tsx` | ✅ | 自动同步 | 已合入 |
 | MoaResult | `harness/syscalls/moa_executor.py` | ✅ | 自动同步 | 已合入 |
 | moa_executor.execute | `harness/syscalls/moa_executor.py` | ✅ | 自动同步 | 已合入 |
@@ -1938,7 +1940,7 @@ scan_hash: 8f9548ec24f4
 | 可观测性 | 18 | 0 | 18 |
 | 模型基础设施 | 42 | 0 | 42 |
 | 部署与运维 | 23 | 0 | 23 |
-| 扩展与学习 | 123 | 0 | 123 |
+| 扩展与学习 | 125 | 0 | 125 |
 | Gate 系统 | 17 | 0 | 17 |
 | 评估系统 | 16 | 0 | 16 |
 | MCP 协议 | 9 | 0 | 9 |
@@ -1972,7 +1974,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 16 | 0 | 16 |
-| **总计** | **1015** | **0** | **1015** |
+| **总计** | **1017** | **0** | **1017** |
 
 ---
 

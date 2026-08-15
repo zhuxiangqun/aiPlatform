@@ -623,6 +623,13 @@ def get_default_hooks() -> Dict[str, Hook]:
         priority=45,
     )
 
+    # ── LearnNudge: 会话内实时学习触发 (P1-A1) ──
+    try:
+        from core.harness.learning.learn_nudge_hook import create_learn_nudge_hook
+        hooks["learn_nudge"] = create_learn_nudge_hook()
+    except Exception as e:
+        logging.debug("learn_nudge hook not registered: %s", e, exc_info=True)
+
     # ── DevilAdvocate: pre-execution risk simulation ──
     async def devil_advocate_hook(context: HookContext):
         """Phase 8: Before high-risk tool execution, run failure simulation.
