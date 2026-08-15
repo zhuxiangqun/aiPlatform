@@ -583,7 +583,16 @@ echo "━━━ Step 10: registry → CAPABILITIES sync check ━━━"
 if python3 "$SCRIPT_DIR/sync_registry_to_docs.py" >/dev/null 2>&1; then
     echo "  ✅ registry 符号全部在 CAPABILITIES 中"
 else
-    echo "  ⚠️ registry → docs 漂移 (运行: python3 scripts/sync_registry_to_docs.py --fix 补登)"
+    echo "  ⚠️ registry → docs 漂移 — 自动补登 (P1-B1 单一真相源)..."
+    if python3 "$SCRIPT_DIR/sync_registry_to_docs.py" --fix >/dev/null 2>&1; then
+        echo "  ✅ 已自动补登缺失符号"
+        # re-stage the updated CAPABILITIES if this runs inside a git hook
+        if [ -f "$WORKSPACE/AIPLAT_CAPABILITIES.md" ] && ! git -C "$WORKSPACE" diff --cached --quiet "$WORKSPACE/AIPLAT_CAPABILITIES.md" 2>/dev/null; then
+            git -C "$WORKSPACE" add "$WORKSPACE/AIPLAT_CAPABILITIES.md" 2>/dev/null || true
+        fi
+    else
+        echo "  ⚠️ 自动补登失败 — 手动运行: python3 scripts/sync_registry_to_docs.py --fix"
+    fi
 fi
 
 echo ""
