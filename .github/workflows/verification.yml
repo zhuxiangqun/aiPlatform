@@ -33,7 +33,7 @@ jobs:
           python-version: "3.11"
       - name: Install dependencies
         run: |
-          pip install pyyaml
+          pip install pyyaml pytest pytest-asyncio
           pip install -e ./aiPlat-infra 2>/dev/null || true
           pip install -e ./aiPlat-core 2>/dev/null || true
       - name: Run depth verification
