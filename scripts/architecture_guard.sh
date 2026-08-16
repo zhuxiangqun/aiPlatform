@@ -80,7 +80,7 @@ if ! $QUICK_MODE && [ -z "${SKIP_CAP_CONV:-}" ]; then
 else
     PID_CAP=0
 fi
-python3 scripts/verify_claude_md_evidence.py --workspace &
+python3 scripts/verify_claude_md_evidence.py --strict &
 PID_EV=$!
 
 # P0-C7: Rule golden sample — guard rules self-check (\| anti-pattern + re compile)

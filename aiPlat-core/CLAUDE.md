@@ -778,6 +778,7 @@ grep -rn "any(kw in.*for kw in\|_name.*for kw in\|审查.*排查\|售前.*客服
 ### 当前已知违规（截至 2026-05）
 
 - `builder_session.py:238-240`: ~~`session.get("architecture"/"code"/"test_report")` 硬编码 artifact key（KNOWN_DEBT）~~ → ✅ 已修复：`BuilderSessionStateResponse` 已有通用 `artifacts: Dict` 字段，`builder_session.py` 已改为从 `session.get("artifacts", {})` 动态填充。typed 字段（architecture/code/test_report）保留向后兼容。
+<!-- verify: cmd: grep -c artifacts aiPlat-core/core/schemas_builder.py expect: 6 operator: eq desc: BuilderSessionStateResponse.artifacts 字段存在 -->
 - `schemas_builder.py:29-31`: `BuilderSessionPhase` 业务枚举保留用于向后兼容（`awaiting_*` 名称，引擎已不再使用它们做行为分叉）
 - `agent_insight_service.py:70`: 度量层使用业务枚举值（已标注为允许的例外——度量层本质上是业务聚合）
 
@@ -944,11 +945,13 @@ grep -rn "TODO.*wire\|0 caller\|待接线\|FIXME.*wire" aiPlat-core/core/ --incl
 | 案例 | 原问题 | 当前状态 |
 |------|--------|:---:|
 | `ContextAssembler.assemble()` | 实现了但只 1 个 caller | ✅ 已修复（schemas wired, build_context 参数修复） |
+<!-- verify: cmd: grep -c ContextAssembler aiPlat-core/core/harness/execution/loop/inference.py expect: 3 operator: eq desc: ContextAssembler 有生产调用(inference.py) -->
 | `MemoryManager.build_context()` | 实现了但未接入执行循环 | ✅ 已接入（loop.py:545） |
 | `Orchestrator.plan()` | `AIPLAT_ENABLE_ORCHESTRATOR=false` | ✅ 已 enable |
 | `FeedbackLoops (3 modules)` | `harness.start()` 从未调用 | ✅ 已激活，drain wired |
 | `AgentMessageBus` | 只 send 不 receive | ✅ send wired, receive 故意不使用（bus 是通知层） |
 | `PipelineEngine._summarize_artifact` | 与 ContextAssembler 重复 | ✅ 已验证——`_summarize_artifact` 做 artifact 截断，`ContextAssembler` 做 token 压缩，功能不重复 |
+<!-- verify: cmd: grep -c _summarize_artifact aiPlat-core/core/harness/execution/pipeline_engine.py expect: 5 operator: eq desc: _summarize_artifact 在 pipeline_engine 实现 -->
 | Phase 0-4 6 模块 (2026-06) | 批量创建后遗忘接线：`on_error_reflector`/`hallucination_tracker`/`parallel_executor`/`gateway`/`implicit_feedback`/`semantic_cache` | ⚠️ 已发现，待 Phase 7 接线（见 `tests/wiring/` xfail 标记） |
 
 **设计文档依据**：
