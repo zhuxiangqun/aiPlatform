@@ -397,8 +397,10 @@ scripts/ruff_f821_baseline.json        ← F821 基线快照（ratchet 对比基
     | B | §35 | 2 个 execute 端点（引擎 + 工作区）被标记为 WARNING | **永久告警** — 2 是正确数量，若增至 ≥3 升级为 ERROR |
     | C | §40 | 模型注册/路由迁移 | **✅ 已完成 (2026-06-29)** — `model_router.py` 已删除，`get_model_registry()` 重命名为 `get_model_manager()`，llm.py 和 base.py 迁移到 `model_injection.create_selected_adapter()`。infra `ModelManager.select()` 已确认存在。 |
     | D | §65 | 4 个检索函数缺 tenant_id | **✅ 已修复 (2026-07-01)** — `KnowledgeQuery` 增加 `tenant_id` 字段，`WikiPageRetriever.retrieve()` tenant_id 不匹配时返回空结果（WARNING→ERROR 阻断），非只读放行。 |
+<!-- verify: cmd: grep -c "tenant_id: str = \"\"" aiPlat-core/core/harness/knowledge/types.py expect: 1 operator: eq desc: KnowledgeQuery.tenant_id 字段存在 -->
     | E | §66 | `PipelineStageConfig` 校验识别为已知假阳性 | **假阳性** |
     | F | §65 | CRAG 3 级回退 | **✅ 已实现** — `materials_chat.py:380-498` |
+<!-- verify: cmd: ls aiPlat-core/core/apps/agents/materials_chat.py 2>/dev/null | wc -l expect: 1 operator: eq desc: materials_chat.py 存在(CRAG 回退实现) -->
     | G | §65 | WikiCircuitBreaker/DomainRouter 配置 | **✅ 已实现** — `harness/syscalls/retrieval.py:504`，`domain_router.py:26` |
     | H | §67 | ~953 个端点使用 `response_model=dict` 而非 typed schema（~1,064 端点中 111 已类型化） | **✅ 已修复 (2026-07-18)** — 全量 typed 化完成。FDE (76端点, FdeStatusResponse等) + 其余6模块 (134端点, StatusResponse等) + core routers (10端点)。全系统 `response_model=dict` 已清零 → 替换为 `StatusResponse` 等 typed models。arch_guard §91 确保不再增长。 |
 <!-- verify: cmd: grep -rn "response_model=dict" aiPlat-platform/ --include="*.py" | grep -v "# noqa" | grep -v "apps/common_schemas" | wc -l expect: 0 operator: eq desc: response_model=dict 清零 -->
@@ -411,6 +413,7 @@ scripts/ruff_f821_baseline.json        ← F821 基线快照（ratchet 对比基
     | O | — | 3 builder stub routers (死代码) | **✅ 已修复 (2026-06-29)** — `builder_projects.py`/`builder_pipeline.py`/`builder_teams.py` 已删除（未挂载的失源码死代码）。 （验证：ls aiPlat-core/core/api/routers/builder_projects.py builder_pipeline.py builder_teams.py 2>/dev/null | wc -l → 0）  |
     | P | — | 3 platform endpoint stubs | **✅ 已修复 (2026-06-29)** — `ingest-directory`/`kb/watch → （参见 AIPLAT_CAPABILITIES.md 当前计数） Not Implemented + WARNING 日志；`studio/sessions → WARNING 日志。 |
     | Q | — | EmailNotifier 假成功 | **✅ 已修复 (2026-07-18)** — `core/harness/infrastructure/email_notifier.py`：零依赖 smtplib 实现，支持 TLS/认证，开发模式自动降级为 console log。环境变量：`AIPLAT_SMTP_HOST/PORT/USER/PASS/FROM/TLS`。 （验证：`python3 -c "from core.harness.infrastructure.email_notifier import EmailNotifier; n=EmailNotifier(); assert n.send('test@test.com','test','test')"` → True） |
+<!-- verify: cmd: grep -c "def send" aiPlat-core/core/harness/infrastructure/email_notifier.py expect: 1 operator: eq desc: EmailNotifier.send 已实现 -->
     | R | — | 5 infra management 占位符 | **✅ 已修复 (2026-06-29)** — 全部改为 `raise NotImplementedError` + 清晰的接线说明。 |
     | S | — | `cancel_pipeline` no-op stub | **✅ 已修复 (2026-06-29)** — 真实实现：append_run_event(cancel_requested) + cancel_queued_run + EventBus.publish。pipeline engine 主循环定期检查 is_cancel_requested()。 |
     | T | — | `set_knowledge_providers` no-op stub | **✅ 已修复 (2026-06-29)** — 真实实现：委托 kb_facade → kb_provider 的 4 个 setter 函数 (ingest_fn/query_fn/enqueue_fn/load_doc_kinds_fn)。 （验证：grep -rn "set_knowledge_providers\|kb_facade" aiPlat-core/core/api/core_facade.py | wc -l → >0）  |
@@ -424,6 +427,7 @@ scripts/ruff_f821_baseline.json        ← F821 基线快照（ratchet 对比基
     | AB | — | ~496 处 `except Exception: pass` 静默吞错（2026-07-25 审计发现→2026-07-29 彻底清理） | **✅ 已修复 (2026-07-29)** — 225 存量全量治理完毕：14 处 `except Exception: pass` 加入 logging，192 处合法模式（ImportError/OSError/OperationalError/CancelledError/WebSocketDisconnect）加 `# noqa:` 注释，守卫 `scan_silent_except()` 支持 `# noqa:` 豁免。基线 0，architecture_guard.sh 阻断新增。 |
     | AC | — | 企业级可治理 AI 执行层（Action Registry v3） | **✅ 已完成 (2026-07-29)** — 10 个文件完整实施。`ActionContractModel`（Pydantic v2 + 实体约束 + 安全沙箱）、`AsyncActionRegistry`（7 步异步执行流水线 + 审批回调 + 审计持久化）、`EntityLock`（mutex/stake 双语义锁）、`ActionStore`（aiosqlite + entity_snapshot 不可变审计）、`builtin_actions`（2 业务 + 4 legacy 桥接 + YAML 自助注册）、`builtin_handlers`（4 个可调用 handler）、`engine.py` StateMachine 桥接（零停机 migration）、`action_routes.py` REST API + FDE AcceptTab 前端动作卡片。 |
     | AD | — | 知识生命周期三层管线（Knowledge Pipeline v3） | **✅ 已完成 (2026-07-30)** — `extractor.py`（DocumentIngestor 分块 + EntityExtractor LLM 9实体10关系抽取 + DraftYamlWriter YAML草稿 + PendingExtractionStore SQLite待审）、`resolver.py`（CrossDomainResolver 三级匹配 精确键/Jaro-Winkler/向量余弦 + 跨域边写入 + registry.json seed）、`retriever.py`（GraphRAGRetriever 实体路由→BFS 2跳子图→定向检索→推理路径 + ActionRegistry 上下文注入）、`extraction_routes.py` REST API（抽取/待审/确认/跨域候选/跨域边/GraphRAG上下文）、FDE 工作台 ① 知识抽取面板。 |
+<!-- verify: cmd: ls aiPlat-core/core/harness/knowledge_pipeline/extractor.py 2>/dev/null | wc -l expect: 1 operator: eq desc: knowledge_pipeline extractor 存在 -->
 
     **验证命令（排查已知例外后）**：
     ```bash
@@ -575,13 +579,19 @@ python -c "from core.harness.memory.manager import _re_rank_messages; print('OK'
 | K1 | core/schemas_policy.py DeprecationWarning 副本 | 过渡期 (v2.2 删除) |
 | K2 | 前端API路径 baseline (16条, 多数为路径格式差异) | 已知基线 |
 | K3 | Phase 4 Agent边界约束注入 | ✅ 已实现 (llm.py _try_inject_boundary_rules + pre-commit hook) |
+<!-- verify: cmd: grep -c _try_inject_boundary_rules aiPlat-core/core/harness/syscalls/llm.py expect: 2 operator: eq desc: _try_inject_boundary_rules 已接线 -->
 | K4 | 种子数据注入端到端 — 需 server 运行 | 待运行时 |
 | K5 | CLAUDE.md §16 已知债务 H (~60+ routes 缺 response_model) | **✅ 已修复 (2026-07-18)** — 全量 typed 化完成 |
+<!-- verify: cmd: grep -rn "response_model=dict" aiPlat-platform/ --include="*.py" | grep -v "# noqa" | grep -v "common_schemas" | wc -l expect: 0 operator: eq desc: response_model=dict 清零 -->
     | K6 | sla_monitor 后台线程未调用 start() — server.py 启动时需接线 | **✅ 已修复 (2026-07-19)** — server.py startup lifecycle 中 start_sla_monitor()。 |
+<!-- verify: cmd: grep -c start_sla_monitor aiPlat-core/core/server.py expect: 2 operator: eq desc: start_sla_monitor 已接入 -->
     | K7 | process_orchestrator.check_step_completion() 未在 engine.py 侧作用完成后接入 | **✅ 已修复 (2026-07-19)** — engine.py Step 3.5 StateMachine 后立即调用 check_step_completion。 |
-    | K8 | 跨域流程编排 (processes.domains) 预留设计但未实现 | **✅ 已修复 (2026-07-19)** — supply-chain.yaml 新增 cross_domain_quality_trace 跨域流程。 |
+<!-- verify: cmd: grep -c check_step_completion aiPlat-core/core/harness/ontology_engine/engine.py expect: 2 operator: eq desc: check_step_completion 已接入 engine -->
+    | K8 | 跨域流程编排 (processes.domains) 预留设计但未实现 | ⚠️ 声明已过期 — supply-chain.yaml 无 cross_domain_quality_trace 流程（2026-08 核实），跨域流程编排仍为预留设计 |
     | K9 | registry.json 场景字段 (priority/maturity/scenarios/industries) 待填充 | **✅ 已修复 (2026-07-19)** — server.py startup 中 refresh_domain_maturity() 自动填充。 |
+<!-- verify: cmd: grep -c refresh_domain_maturity aiPlat-core/core/server.py expect: 1 operator: eq desc: refresh_domain_maturity 已接入 -->
     | K10 | OntologyAgent 缺少 Golden Query 评测数据 (eval_score=None) | **✅ 已修复 (2026-07-19)** — golden_queries.yaml 17 条查询 + _load_golden_eval_score()。 |
+<!-- verify: cmd: grep -c _load_golden_eval_score aiPlat-core/core/harness/knowledge/domain_maturity.py expect: 2 operator: eq desc: _load_golden_eval_score 已实现 -->
     | K11 | GovernancePipeline 调度未接入 server.py cron 定时任务 | **✅ 已修复 (2026-07-19)** — AIPLAT_GOVERNANCE_CRON_HOURS 默认 24。 |
 
 ### 19.3 自动化防护生效
