@@ -580,7 +580,42 @@ def should_skip(p: Path) -> bool:
         return True
     if p.name.endswith((".min.js", ".map")):
         return True
+    # P2-B5: honor .gitignore — untracked files under ignored dirs (tmp/, data/, …)
+    # must not enter the graph. git ls-files --others --exclude-standard is the
+    # authoritative "untracked-but-visible" set.
+    try:
+        import subprocess as _sp
+        repo_root = _repo_root_of(p)
+        if repo_root is not None:
+            rel = str(p.relative_to(repo_root))
+            out = _sp.run(
+                ["git", "check-ignore", "-q", "--", rel],
+                capture_output=True, cwd=str(repo_root), timeout=5,
+            )
+            if out.returncode == 0:  # 0 = ignored
+                return True
+    except Exception as e:  # noqa: BLE001 — best-effort gitignore check; non-fatal
+        import logging
+        logging.getLogger(__name__).debug("gitignore check skipped: %s", e)
     return False
+
+
+_repo_root_cache: Dict[Path, Path] = {}
+
+
+def _repo_root_of(p: Path) -> Optional[Path]:
+    """Nearest ancestor containing .git (cached)."""
+    cur = p.parent if p.is_file() else p
+    if cur in _repo_root_cache:
+        return _repo_root_cache[cur]
+    probe = cur
+    while probe != probe.parent:
+        if (probe / ".git").exists():
+            _repo_root_cache[cur] = probe
+            return probe
+        probe = probe.parent
+    _repo_root_cache[cur] = None
+    return None
 
 
 def read_text(p: Path, max_bytes: int = 800_000) -> str:
