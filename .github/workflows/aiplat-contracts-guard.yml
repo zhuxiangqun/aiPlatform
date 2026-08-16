@@ -254,7 +254,9 @@ jobs:
           }
 
       - name: Run E2E tests
-        run: python -m pytest tests/e2e/ -v --tb=short
+        run: |
+          python -m pip install pytest pytest-asyncio httpx
+          python -m pytest tests/e2e/ -v --tb=short
 
       - name: Cleanup
         if: always()
