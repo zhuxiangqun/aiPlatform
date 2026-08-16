@@ -31,7 +31,7 @@ services:
       - AIPLAT_HOME=/app/.aiplat
       - AIPLAT_LLM_CONFIG_PATH=/app/aiPlat-infra/config/infra/llm_profile.yaml
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8001/health', timeout=3)"]
       interval: 15s
       timeout: 5s
       retries: 5
@@ -56,7 +56,7 @@ services:
       - AIPLAT_LLM_CONFIG_PATH=/app/aiPlat-infra/config/infra/llm_profile.yaml
       - AIPLAT_EXECUTION_DB_PATH=/app/.aiplat/aiplat_executions.sqlite3
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8002/api/core/health"]
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8002/api/core/health', timeout=3)"]
       interval: 15s
       timeout: 5s
       retries: 10
@@ -80,7 +80,7 @@ services:
       - AIPLAT_REPO_ROOT=/app
       - AIPLAT_PLATFORM_DB_PATH=/app/.aiplat/aiplat_platform.sqlite3
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8003/platform/health"]
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8003/health', timeout=3)"]
       interval: 15s
       timeout: 5s
       retries: 5
@@ -103,7 +103,7 @@ services:
       - AIPLAT_HOME=/app/.aiplat
       - AIPLAT_APP_DB_PATH=/app/.aiplat/aiplat_app.sqlite3
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8004/health"]
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8004/health', timeout=3)"]
       interval: 15s
       timeout: 5s
       retries: 5
@@ -128,7 +128,7 @@ services:
       - AIPLAT_HOME=/app/.aiplat
       - AIPLAT_MANAGEMENT_MODE=production
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=3)"]
       interval: 15s
       timeout: 5s
       retries: 5
