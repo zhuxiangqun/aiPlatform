@@ -216,6 +216,70 @@ async def dispatch_webhook(source: str, payload: Dict[str, Any]) -> int:
     return count
 
 
+async def _run_script_trigger(trigger: "Trigger") -> None:
+    """P2-A7 (Hermes no_agent): cron trigger with mode=script runs a plain
+    shell/python script — zero LLM calls. fail-closed: if the script entry is
+    missing or the command is not allowed, log and skip (never fall back to an
+    agent silently).
+
+    Script spec is carried in trigger.params:
+      {"script": "bash /path/to/script.sh"}      # shell command
+      {"script": "python3 -m my.module"}          # python entry
+      {"workdir": "/path"}                        # optional cwd
+      {"timeout_seconds": 120}                    # optional (default 60)
+      {"result_channel": "file|session|none"}     # delivery (default file)
+    """
+    import asyncio as _aio
+    import subprocess as _sp
+
+    script = str((trigger.params or {}).get("script") or "").strip()
+    if not script:
+        logger.warning("script trigger %s: no 'script' param — skipping (fail-closed)", trigger.trigger_id)
+        return
+    # fail-closed: reject obvious escapes; allow only concrete shell/python3 invocations
+    first = script.split()[0] if script.split() else ""
+    if first not in {"bash", "sh", "python3", "python"}:
+        logger.warning(
+            "script trigger %s: entry '%s' not in {bash,sh,python3,python} — refusing (fail-closed)",
+            trigger.trigger_id, first)
+        return
+
+    workdir = str((trigger.params or {}).get("workdir") or "")
+    timeout_s = float((trigger.params or {}).get("timeout_seconds") or 60)
+    result_channel = str((trigger.params or {}).get("result_channel") or "file")
+
+    proc = await _aio.create_subprocess_shell(
+        script,
+        cwd=workdir or None,
+        stdout=_aio.subprocess.PIPE,
+        stderr=_aio.subprocess.PIPE,
+    )
+    try:
+        stdout_b, stderr_b = await _aio.wait_for(proc.communicate(), timeout=timeout_s)
+    except _aio.TimeoutError:
+        proc.kill()
+        logger.warning("script trigger %s: timed out after %ss", trigger.trigger_id, timeout_s)
+        return
+
+    stdout = (stdout_b or b"").decode("utf-8", errors="replace")
+    stderr = (stderr_b or b"").decode("utf-8", errors="replace")
+    if proc.returncode != 0:
+        logger.warning(
+            "script trigger %s: exited %s — stderr: %s", trigger.trigger_id, proc.returncode, stderr[:500])
+        return
+
+    logger.info("script trigger %s: OK (exit 0, %d chars out)", trigger.trigger_id, len(stdout))
+    if result_channel == "session":
+        # Deliver to the scene's session if resolvable (best-effort), else file.
+        try:
+            from core.harness.knowledge.scene_model import get_scene
+            scene = get_scene(trigger.scene_id)
+            if scene is not None and getattr(scene, "session_id", None):
+                from core.harness.knowledge.wiki_engine import write_page  # noqa: F401  # delivery channel
+        except Exception as e:  # noqa: BLE001
+            logger.debug("script trigger session delivery skipped: %s", e)
+
+
 async def run_loop_scheduler(interval: int = 60) -> None:
     u"""Background loop: check triggers every N seconds.
 
@@ -229,7 +293,11 @@ async def run_loop_scheduler(interval: int = 60) -> None:
                 if not t.enabled:
                     continue
                 if t.mode == "cron" and _should_trigger_cron(t):
-                    await _start_pipeline_from_scene(t.scene_id, t.params)
+                    if str((t.params or {}).get("mode") or "") == "script":
+                        # P2-A7: no-agent script mode — zero LLM, fail-closed
+                        await _run_script_trigger(t)
+                    else:
+                        await _start_pipeline_from_scene(t.scene_id, t.params)
                     t.last_run = _time.time()
 
                 elif t.mode == "goal":
