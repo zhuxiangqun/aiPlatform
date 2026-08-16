@@ -1,13 +1,17 @@
 FROM python:3.11-slim
 
 WORKDIR /app
-COPY requirements.txt .
-RUN grep -v -E "PyQt|PySide|llama_cpp_python|openai-whisper" requirements.txt > requirements-server.txt && pip install --no-cache-dir -r requirements-server.txt
 
-COPY . .
+# Core depends on aiplat-infra (model adapters). Build context is the repo root.
+COPY aiPlat-infra ./aiPlat-infra
+RUN pip install --no-cache-dir -e ./aiPlat-infra
+
+COPY aiPlat-core ./aiPlat-core
+RUN pip install --no-cache-dir -e ./aiPlat-core
 
 ENV PYTHONPATH=/app
 ENV AIPLAT_HOME=/app/.aiplat
+WORKDIR /app/aiPlat-core
 EXPOSE 8002
 
 CMD ["gunicorn", "-c", "gunicorn.conf.py", "server:app"]
