@@ -543,14 +543,14 @@ async def get_fde_dashboard():
     Remove this proxy once frontend migration is complete.
     """
     from apps.fde.api.fde import get_fde_dashboard as _fde_dashboard  # migrated to platform
-    return await _fde_dashboard()
+    return {"data": await _fde_dashboard()}
 
 
 @router.post("/fde-dashboard", response_model=ItemResponse)
 async def post_fde_dashboard():
     """POST alias for GET /fde-dashboard (compat — frontend method mismatch)."""
     from apps.fde.api.fde import get_fde_dashboard as _fde_dashboard
-    return await _fde_dashboard()
+    return {"data": await _fde_dashboard()}
 
 
 
