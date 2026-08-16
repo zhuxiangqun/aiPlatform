@@ -117,3 +117,5 @@ aiPlat 逻辑上分为：
 - **CodeGraph gitignore 感知（P2-B5）**：`should_skip` 增加 `git check-ignore`，未跟踪但被忽略的文件不入图。
 
 **契约不变项**：syscall 三通道唯一性、单向依赖链、Prompt Cache 稳定性约束均未改变；script 模式不产生 syscall 事件（无 LLM 通道）。
+
+- **事件源双写（P2-A1）**：`PipelineRunStore` 新增 `pipeline_run_events` append-only 事件日志（阶段/phase/hitl 事件），引擎状态回调双写；run 状态快照保留（向后兼容），事件供回放/审计/UI 时间线。

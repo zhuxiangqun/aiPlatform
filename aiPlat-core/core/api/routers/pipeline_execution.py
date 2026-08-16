@@ -152,6 +152,26 @@ def _make_store_callback(run_id: str, store):
         try:
             import json as _json
             _phase = state.get("phase", "executing")
+            # P2-A1: append-only event log (dual-write, backward compatible)
+            try:
+                _evt_type = {
+                    "done": "pipeline_finished",
+                    "failed": "pipeline_failed",
+                    "cancelled": "pipeline_cancelled",
+                    "paused": "pipeline_paused",
+                    "review": "pipeline_hitl",
+                    "executing": "pipeline_progress",
+                }.get(_phase, "pipeline_progress")
+                store.append_run_event(
+                    run_id, _evt_type,
+                    stage_id=str(state.get("_current_stage_idx", "")),
+                    payload={"phase": _phase,
+                             "current_stage_idx": state.get("_current_stage_idx", 0),
+                             "pass_rate": state.get("pass_rate", 0.0)},
+                )
+            except Exception as _e:  # noqa: BLE001
+                import logging as _lg
+                _lg.getLogger(__name__).debug("append_run_event failed: %s", _e)
             # v3.2: Atomic update — phase + HITL + progress in ONE SQL transaction
             store.atomic_update_phase_and_hitl(
                 run_id,

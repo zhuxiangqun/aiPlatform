@@ -77,3 +77,12 @@ management 展示层建议以：
 - script 模式**不落 run 记录**（无 LLM、无 pipeline 状态机）——观测通过 scheduler 日志（`script trigger ...: OK`）完成
 - goal 模式的每次续跑都是**独立 run**（run_id 前缀 `run-`），通过 trigger_id + `iterations_left` 关联重试链，trace_id 由各 run 独立生成
 - 两者共享 scheduler 的 `_TRIGGERS_PATH`（`~/.aiplat/loop/triggers.json`）持久化 `last_run` / `iterations_left`
+
+### 4.1 事件源双写（P2-A1，2026-08-17 补充）
+
+`PipelineRunStore` 升级为"状态 + 事件"双写（向后兼容，不迁移现有状态逻辑）：
+
+- **表**：`pipeline_run_events`（append-only：`seq/run_id/event_type/stage_id/payload/created_at`）
+- **事件类型**：`stage_started / stage_completed / stage_skipped / stage_paused / stage_failed / hitl_requested / hitl_resolved / run_phase_changed / pipeline_started / pipeline_finished`（引擎回调映射：progress/hitl/finished/failed/cancelled/paused）
+- **语义**：run 当前状态仍在 `pipeline_runs`（状态快照），事件日志用于回放/审计/UI 时间线；`seq` 单调递增保证顺序
+- **契约**：事件 payload 含 `phase / current_stage_idx / pass_rate`；`run_id` 复用 `run-<uuid12>` 命名空间，与 trace_id 独立
