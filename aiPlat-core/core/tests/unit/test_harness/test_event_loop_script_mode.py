@@ -39,3 +39,21 @@ async def test_script_trigger_timeout_and_error(tmp_path, monkeypatch):
     t_slow = Trigger(trigger_id="t-slow", mode="cron", scene_id="",
                      params={"script": "bash -c 'sleep 5'", "mode": "script", "timeout_seconds": 0.2})
     await _run_script_trigger(t_slow)
+
+
+@pytest.mark.asyncio
+async def test_goal_judge_builtin_conditions():
+    sys.path.insert(0, ".")
+    from core.harness.execution.event_loop import Trigger, _judge_goal_condition
+
+    t_always = Trigger(trigger_id="g-always", mode="goal", scene_id="s",
+                       goal_condition="always", max_iterations=5)
+    assert await _judge_goal_condition(t_always) is True
+
+    t_never = Trigger(trigger_id="g-never", mode="goal", scene_id="s",
+                      goal_condition="never", max_iterations=5)
+    assert await _judge_goal_condition(t_never) is False
+
+    t_empty = Trigger(trigger_id="g-empty", mode="goal", scene_id="s",
+                      goal_condition="", max_iterations=5)
+    assert await _judge_goal_condition(t_empty) is False

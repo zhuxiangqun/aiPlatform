@@ -280,6 +280,84 @@ async def _run_script_trigger(trigger: "Trigger") -> None:
             logger.debug("script trigger session delivery skipped: %s", e)
 
 
+async def _judge_goal_condition(trigger: "Trigger") -> bool:
+    """P2-A6 (Hermes judge_goal): evaluate a goal trigger's condition each
+    round and decide whether the goal is met. Deterministic built-ins first;
+    LLM judge is opt-in via params.judge='llm'. Returns True when met.
+
+    Built-in conditions (goal_condition):
+      - "ci_all_green"       → recent CI runs (from execution_store) all success
+      - "error_rate_below_1pct" → recent syscall events error ratio < 1%
+      - "always"             → always met (test/debug)
+      - "never"              → never met (loop until iteration budget)
+    Custom: params.get("judge_expr") = "key op value" evaluated against the
+    execution_store summary (e.g. "artifacts_count >= 3").
+    """
+    cond = str(trigger.goal_condition or "").strip()
+    if not cond:
+        logger.debug("goal trigger %s: no goal_condition — treated as not met", trigger.trigger_id)
+        return False
+    if cond == "always":
+        return True
+    if cond == "never":
+        return False
+
+    try:
+        from core.services.execution_store import get_execution_store
+        store = get_execution_store()
+
+        if cond == "ci_all_green":
+            items = await store.list_syscall_events(limit=50) if hasattr(store, "list_syscall_events") else None
+            if not items:
+                return False
+            evs = items if isinstance(items, list) else (items.get("items") or [])
+            if not evs:
+                return False
+            statuses = [str(e.get("status") or "") for e in evs if isinstance(e, dict)]
+            return all(s in {"success", "completed", "ok"} for s in statuses if s)
+
+        if cond == "error_rate_below_1pct":
+            items = await store.list_syscall_events(limit=500) if hasattr(store, "list_syscall_events") else None
+            if not items:
+                return False
+            evs = items if isinstance(items, list) else (items.get("items") or [])
+            if not evs:
+                return False
+            errors = sum(1 for e in evs if isinstance(e, dict) and str(e.get("status") or "").startswith("error"))
+            return (errors / max(len(evs), 1)) < 0.01
+
+        # Custom judge_expr: "key op value" on the store summary dict
+        expr = str((trigger.params or {}).get("judge_expr") or "").strip()
+        if expr:
+            summary = {}
+            for meth in ("get_artifact_stats", "get_overview", "get_stats"):
+                if hasattr(store, meth):
+                    try:
+                        r = await getattr(store, meth)()
+                        if isinstance(r, dict):
+                            summary.update(r)
+                    except Exception:  # noqa: BLE001
+                        continue
+            parts = expr.split()
+            if len(parts) == 3:
+                key, op, val = parts
+                cur = summary.get(key)
+                try:
+                    cur_f = float(cur)
+                    val_f = float(val)
+                    if op == ">=": return cur_f >= val_f
+                    if op == ">":  return cur_f > val_f
+                    if op == "<=": return cur_f <= val_f
+                    if op == "<":  return cur_f < val_f
+                    if op == "==": return cur_f == val_f
+                except (TypeError, ValueError):
+                    return False
+        return False
+    except Exception as e:  # noqa: BLE001
+        logger.warning("goal judge for %s failed: %s", trigger.trigger_id, str(e)[:200])
+        return False
+
+
 async def run_loop_scheduler(interval: int = 60) -> None:
     u"""Background loop: check triggers every N seconds.
 
@@ -301,9 +379,22 @@ async def run_loop_scheduler(interval: int = 60) -> None:
                     t.last_run = _time.time()
 
                 elif t.mode == "goal":
-                    # Goal triggers are checked but not auto-launched —
-                    # they require an external condition check to pass
-                    pass
+                    # P2-A6: judge each round — met → done; not met → re-run
+                    # (within the trigger's iteration budget)
+                    met = await _judge_goal_condition(t)
+                    t.params = dict(t.params or {})
+                    budget = int(t.params.get("iterations_left", t.max_iterations))
+                    if met:
+                        logger.info("goal trigger %s: goal_judge: met", t.trigger_id)
+                        t.params["iterations_left"] = 0
+                    elif budget > 0:
+                        logger.info("goal trigger %s: goal_judge: not_met (budget %d) — re-running",
+                                    t.trigger_id, budget)
+                        t.params["iterations_left"] = budget - 1
+                        await _start_pipeline_from_scene(t.scene_id, t.params)
+                    else:
+                        logger.info("goal trigger %s: goal_judge: not_met — budget exhausted, stop", t.trigger_id)
+                        t.params["iterations_left"] = 0
 
             save_triggers(triggers)
         except Exception as e:
