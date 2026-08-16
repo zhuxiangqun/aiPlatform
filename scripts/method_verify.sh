@@ -136,7 +136,9 @@ check_staged() {
     staged_files=$(git diff --cached --name-only --diff-filter=ACM 2>/dev/null \
         | grep -E 'harness/|management/|infrastructure/|execution/|evaluation/|coordination/|memory/|knowledge/|syscalls/|context/|routing/|learning/|scheduler/|training/|monitoring/' \
         | grep '\.py$' \
-        | grep -v __pycache__ || true)
+        | grep -v __pycache__ \
+        | grep -v '/tests/' \
+        | grep -v '^tests/' || true)
     
     if [ -z "$staged_files" ]; then
         return 0

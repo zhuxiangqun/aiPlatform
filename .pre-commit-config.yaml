@@ -1,29 +1,28 @@
+# aiPlat pre-commit 框架配置
+# 安装: pre-commit install   (框架接管 .git/hooks/pre-commit)
+# 手动: git commit --no-verify 绕过（§89 审计记录）
+# 说明: 综合 hook(aiplat-comprehensive) 调用 scripts/pre-commit-hook.sh ——
+#       该脚本包含 10+ 步检查(compile/cap/doc-sync/wiring/route/arch-guard/engine-guard)，
+#       比早期 4 个零散 hook 更完整。此处保留轻量钩子用于快速失败。
 repos:
   - repo: local
     hooks:
+      - id: aiplat-comprehensive
+        name: aiPlat Comprehensive Pre-commit (10+ checks)
+        entry: bash scripts/pre-commit-hook.sh
+        language: system
+        stages: [pre-commit]
+        pass_filenames: false
+
       - id: bash-syntax
         name: Bash Syntax Check
         entry: bash -n
         language: system
         files: '\.sh$'
 
-      - id: skill-frontmatter
-        name: Validate SKILL.md Frontmatter
+      - id: yaml-syntax
+        name: YAML Frontmatter Syntax Check
         entry: python scripts/validate_frontmatter.py
         language: python
-        files: '.*/SKILL\.md$'
-        pass_filenames: false
-
-      - id: architecture-guard
-        name: Run Architecture Guard
-        entry: bash scripts/architecture_guard.sh
-        language: system
-        files: '\.(py|yaml|sh)$'
-        pass_filenames: false
-
-      - id: import-integrity
-        name: Verify Import Integrity
-        entry: python scripts/verify_imports.py
-        language: python
-        files: '\.py$'
+        files: '\.(yaml|yml|md)$'
         pass_filenames: false

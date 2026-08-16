@@ -14,6 +14,7 @@ Usage:
 import argparse
 import json
 import sys
+import time
 from pathlib import Path
 
 # Workspace root is parent of scripts/
@@ -79,9 +80,15 @@ def _load_arch_baseline() -> set:
         return set()
 
 
-def _write_arch_baseline(sigs) -> None:
+def _write_arch_baseline(sigs, reason: str = "") -> None:
     ARCH_BASELINE.parent.mkdir(parents=True, exist_ok=True)
-    ARCH_BASELINE.write_text("\n".join(sorted(sigs)) + "\n", encoding="utf-8")
+    lines = []
+    if reason:
+        # P2-B2 review gate: baseline regenerations must carry an approval trail.
+        lines.append(f"# baseline regenerated: {reason}")
+        lines.append(f"# at: {time.strftime('%Y-%m-%d %H:%M:%S')}")
+    lines.append("\n".join(sorted(sigs)) + "\n")
+    ARCH_BASELINE.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
 def format_text(report) -> str:
@@ -207,6 +214,7 @@ def main():
     parser.add_argument("--quick", action="store_true", help="Quick mode (imports only)")
     parser.add_argument("--diff-only", action="store_true", help="Only scan git-changed files + CodeGraph callers")
     parser.add_argument("--write-baseline", action="store_true", help="Regenerate the ERROR-level baseline ratchet")
+    parser.add_argument("--baseline-reason", default="", help="P2-B2 review gate: required approval note when --write-baseline (e.g. 'PR #N: authorized by <reviewer>')")
     args = parser.parse_args()
 
     # ── --diff-only: expand changed files via CodeGraph for faster PR CI ──
@@ -248,8 +256,14 @@ def main():
     # ── Baseline ratchet: lock known ERROR-level debt, fail only on NEW ──
     error_sigs = _arch_error_sigs(report)
     if args.write_baseline:
-        _write_arch_baseline(set(error_sigs))
+        if not args.baseline_reason.strip():
+            print("❌ --write-baseline requires --baseline-reason (P2-B2 review gate)")
+            print("   Baseline regenerations are a ratchet release valve; they must carry")
+            print("   an approval trail, e.g.: --baseline-reason 'PR #N: authorized by <reviewer>'")
+            sys.exit(1)
+        _write_arch_baseline(set(error_sigs), reason=args.baseline_reason.strip())
         print(f"PASS: architecture_guard baseline written = {len(error_sigs)} error signatures")
+        print(f"      reason: {args.baseline_reason.strip()}")
         sys.exit(0)
 
     baseline = _load_arch_baseline()

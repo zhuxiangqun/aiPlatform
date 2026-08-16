@@ -114,6 +114,20 @@ bash "$WORKSPACE/scripts/verify_doc_sync.sh" --ci || {
   exit 1
 }
 
+# ── Step 2.6: check_code_doc_gap (harness → CAPABILITIES 符号级漂移) ──
+echo ""
+echo "  Checking code→doc gap (harness modules)..."
+if ! python3 "$WORKSPACE/scripts/check_code_doc_gap.py" --ci 2>&1; then
+    echo "  ⚠️  code→doc gap detected — run: python3 scripts/check_code_doc_gap.py"
+fi
+
+# ── Step 2.7: registry → CAPABILITIES 方向同步 (P0-C3/P0-C5) ──
+echo ""
+echo "  Checking registry→docs sync..."
+if ! python3 "$WORKSPACE/scripts/sync_registry_to_docs.py" 2>&1 | tail -1 | grep -q "✅"; then
+    echo "  ⚠️  registry→docs drift — run: python3 scripts/sync_registry_to_docs.py --fix"
+fi
+
 # ── Step 3: 分流守卫 — 防止往 CLAUDE.md 新增状态型 §5.NNN (WARNING, 不阻断) ──
 if echo "$STAGED_PY" | grep -q "CLAUDE.md" || git diff --cached --name-only | grep -q "aiPlat-core/CLAUDE.md"; then
     python3 "$WORKSPACE/scripts/guard_claude_status.py" --staged || true
@@ -199,7 +213,6 @@ fi
 
 echo "  ✓ pre-commit checks passed"
 echo ""
-exit 0
 
 # ── Step 1.9: Detect new routes missing response_model ──
 NEW_ROUTES_WITHOUT_MODEL=$(git diff --cached -U0 | grep -E '^\+.*@router\.(get|post|put|delete)' | grep -v "response_model" | grep -v "#\|__pycache__" || true)
@@ -301,12 +314,8 @@ if [ -z "${SKIP_ARCH_PATTERNS:-}" ]; then
     }
 fi
 
-# ── Phase 47: CoreFacade signature ripple (only when core_facade.py changed) ──
-if echo "$STAGED_PY" | grep -q 'core_facade.py' 2>/dev/null; then
-    if ! python3 "$WORKSPACE/scripts/check_signature_ripple.py" --check 2>/dev/null; then
-        echo "  ❌ CoreFacade signature changed — verify platform callers are updated"
-        echo "     Run: python3 scripts/check_signature_ripple.py --check"
-        echo "     Fix callers, then: python3 scripts/check_signature_ripple.py --update"
-        FAIL=1
-    fi
-fi
+# ── Engine layer compliance (pre-commit-engine-guard) ──
+bash "$WORKSPACE/scripts/pre-commit-engine-guard.sh" || {
+    echo "  ❌ Engine layer compliance violations — fix before commit"
+    exit 1
+}

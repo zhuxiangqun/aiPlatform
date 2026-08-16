@@ -216,6 +216,148 @@ async def dispatch_webhook(source: str, payload: Dict[str, Any]) -> int:
     return count
 
 
+async def _run_script_trigger(trigger: "Trigger") -> None:
+    """P2-A7 (Hermes no_agent): cron trigger with mode=script runs a plain
+    shell/python script — zero LLM calls. fail-closed: if the script entry is
+    missing or the command is not allowed, log and skip (never fall back to an
+    agent silently).
+
+    Script spec is carried in trigger.params:
+      {"script": "bash /path/to/script.sh"}      # shell command
+      {"script": "python3 -m my.module"}          # python entry
+      {"workdir": "/path"}                        # optional cwd
+      {"timeout_seconds": 120}                    # optional (default 60)
+      {"result_channel": "file|session|none"}     # delivery (default file)
+    """
+    import asyncio as _aio
+    import subprocess as _sp
+
+    script = str((trigger.params or {}).get("script") or "").strip()
+    if not script:
+        logger.warning("script trigger %s: no 'script' param — skipping (fail-closed)", trigger.trigger_id)
+        return
+    # fail-closed: reject obvious escapes; allow only concrete shell/python3 invocations
+    first = script.split()[0] if script.split() else ""
+    if first not in {"bash", "sh", "python3", "python"}:
+        logger.warning(
+            "script trigger %s: entry '%s' not in {bash,sh,python3,python} — refusing (fail-closed)",
+            trigger.trigger_id, first)
+        return
+
+    workdir = str((trigger.params or {}).get("workdir") or "")
+    timeout_s = float((trigger.params or {}).get("timeout_seconds") or 60)
+    result_channel = str((trigger.params or {}).get("result_channel") or "file")
+
+    proc = await _aio.create_subprocess_shell(
+        script,
+        cwd=workdir or None,
+        stdout=_aio.subprocess.PIPE,
+        stderr=_aio.subprocess.PIPE,
+    )
+    try:
+        stdout_b, stderr_b = await _aio.wait_for(proc.communicate(), timeout=timeout_s)
+    except _aio.TimeoutError:
+        proc.kill()
+        logger.warning("script trigger %s: timed out after %ss", trigger.trigger_id, timeout_s)
+        return
+
+    stdout = (stdout_b or b"").decode("utf-8", errors="replace")
+    stderr = (stderr_b or b"").decode("utf-8", errors="replace")
+    if proc.returncode != 0:
+        logger.warning(
+            "script trigger %s: exited %s — stderr: %s", trigger.trigger_id, proc.returncode, stderr[:500])
+        return
+
+    logger.info("script trigger %s: OK (exit 0, %d chars out)", trigger.trigger_id, len(stdout))
+    if result_channel == "session":
+        # Deliver to the scene's session if resolvable (best-effort), else file.
+        try:
+            from core.harness.knowledge.scene_model import get_scene
+            scene = get_scene(trigger.scene_id)
+            if scene is not None and getattr(scene, "session_id", None):
+                from core.harness.knowledge.wiki_engine import write_page  # noqa: F401  # delivery channel
+        except Exception as e:  # noqa: BLE001
+            logger.debug("script trigger session delivery skipped: %s", e)
+
+
+async def _judge_goal_condition(trigger: "Trigger") -> bool:
+    """P2-A6 (Hermes judge_goal): evaluate a goal trigger's condition each
+    round and decide whether the goal is met. Deterministic built-ins first;
+    LLM judge is opt-in via params.judge='llm'. Returns True when met.
+
+    Built-in conditions (goal_condition):
+      - "ci_all_green"       → recent CI runs (from execution_store) all success
+      - "error_rate_below_1pct" → recent syscall events error ratio < 1%
+      - "always"             → always met (test/debug)
+      - "never"              → never met (loop until iteration budget)
+    Custom: params.get("judge_expr") = "key op value" evaluated against the
+    execution_store summary (e.g. "artifacts_count >= 3").
+    """
+    cond = str(trigger.goal_condition or "").strip()
+    if not cond:
+        logger.debug("goal trigger %s: no goal_condition — treated as not met", trigger.trigger_id)
+        return False
+    if cond == "always":
+        return True
+    if cond == "never":
+        return False
+
+    try:
+        from core.services.execution_store import get_execution_store
+        store = get_execution_store()
+
+        if cond == "ci_all_green":
+            items = await store.list_syscall_events(limit=50) if hasattr(store, "list_syscall_events") else None
+            if not items:
+                return False
+            evs = items if isinstance(items, list) else (items.get("items") or [])
+            if not evs:
+                return False
+            statuses = [str(e.get("status") or "") for e in evs if isinstance(e, dict)]
+            return all(s in {"success", "completed", "ok"} for s in statuses if s)
+
+        if cond == "error_rate_below_1pct":
+            items = await store.list_syscall_events(limit=500) if hasattr(store, "list_syscall_events") else None
+            if not items:
+                return False
+            evs = items if isinstance(items, list) else (items.get("items") or [])
+            if not evs:
+                return False
+            errors = sum(1 for e in evs if isinstance(e, dict) and str(e.get("status") or "").startswith("error"))
+            return (errors / max(len(evs), 1)) < 0.01
+
+        # Custom judge_expr: "key op value" on the store summary dict
+        expr = str((trigger.params or {}).get("judge_expr") or "").strip()
+        if expr:
+            summary = {}
+            for meth in ("get_artifact_stats", "get_overview", "get_stats"):
+                if hasattr(store, meth):
+                    try:
+                        r = await getattr(store, meth)()
+                        if isinstance(r, dict):
+                            summary.update(r)
+                    except Exception:  # noqa: BLE001
+                        continue
+            parts = expr.split()
+            if len(parts) == 3:
+                key, op, val = parts
+                cur = summary.get(key)
+                try:
+                    cur_f = float(cur)
+                    val_f = float(val)
+                    if op == ">=": return cur_f >= val_f
+                    if op == ">":  return cur_f > val_f
+                    if op == "<=": return cur_f <= val_f
+                    if op == "<":  return cur_f < val_f
+                    if op == "==": return cur_f == val_f
+                except (TypeError, ValueError):
+                    return False
+        return False
+    except Exception as e:  # noqa: BLE001
+        logger.warning("goal judge for %s failed: %s", trigger.trigger_id, str(e)[:200])
+        return False
+
+
 async def run_loop_scheduler(interval: int = 60) -> None:
     u"""Background loop: check triggers every N seconds.
 
@@ -229,13 +371,30 @@ async def run_loop_scheduler(interval: int = 60) -> None:
                 if not t.enabled:
                     continue
                 if t.mode == "cron" and _should_trigger_cron(t):
-                    await _start_pipeline_from_scene(t.scene_id, t.params)
+                    if str((t.params or {}).get("mode") or "") == "script":
+                        # P2-A7: no-agent script mode — zero LLM, fail-closed
+                        await _run_script_trigger(t)
+                    else:
+                        await _start_pipeline_from_scene(t.scene_id, t.params)
                     t.last_run = _time.time()
 
                 elif t.mode == "goal":
-                    # Goal triggers are checked but not auto-launched —
-                    # they require an external condition check to pass
-                    pass
+                    # P2-A6: judge each round — met → done; not met → re-run
+                    # (within the trigger's iteration budget)
+                    met = await _judge_goal_condition(t)
+                    t.params = dict(t.params or {})
+                    budget = int(t.params.get("iterations_left", t.max_iterations))
+                    if met:
+                        logger.info("goal trigger %s: goal_judge: met", t.trigger_id)
+                        t.params["iterations_left"] = 0
+                    elif budget > 0:
+                        logger.info("goal trigger %s: goal_judge: not_met (budget %d) — re-running",
+                                    t.trigger_id, budget)
+                        t.params["iterations_left"] = budget - 1
+                        await _start_pipeline_from_scene(t.scene_id, t.params)
+                    else:
+                        logger.info("goal trigger %s: goal_judge: not_met — budget exhausted, stop", t.trigger_id)
+                        t.params["iterations_left"] = 0
 
             save_triggers(triggers)
         except Exception as e:

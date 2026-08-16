@@ -109,3 +109,11 @@ aiPlat 逻辑上分为：
 - **syscall 边界**：CrossValidationGate 经 CoreFacade + diagnostics 端点接线（条件激活 stub 获得生产调用者）。
 
 **契约不变项**：单向依赖链（app→platform→core→infra）、syscall 三通道唯一性（sys_llm_generate/sys_tool_call/sys_skill_call）、Prompt Cache 稳定性约束均未改变。
+
+## 附录 B：2026-08 P2 架构变更记录（Phase 5）
+
+- **goal judge（P2-A6）**：`event_loop._judge_goal_condition` 每轮评估 goal 触发达成度（内置条件 + judge_expr），未达成在 `iterations_left` 预算内续跑（每次续跑独立 run）；LLM judge 预留未启用。
+- **no-agent script 模式（P2-A7）**：cron 触发 `params.mode="script"` 直接执行 bash/sh/python3（零 LLM），fail-closed 入口白名单；无 run 记录，经 scheduler 日志观测。
+- **CodeGraph gitignore 感知（P2-B5）**：`should_skip` 增加 `git check-ignore`，未跟踪但被忽略的文件不入图。
+
+**契约不变项**：syscall 三通道唯一性、单向依赖链、Prompt Cache 稳定性约束均未改变；script 模式不产生 syscall 事件（无 LLM 通道）。
