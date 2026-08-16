@@ -10,7 +10,7 @@ COPY aiPlat-core ./aiPlat-core
 RUN pip install --no-cache-dir -e ./aiPlat-core
 
 COPY aiPlat-platform ./aiPlat-platform
-RUN pip install --no-cache-dir -e ./aiPlat-platform
+RUN pip install --no-cache-dir -e ./aiPlat-platform && pip install --no-cache-dir gunicorn
 
 ENV PYTHONPATH=/app
 ENV AIPLAT_HOME=/app/.aiplat

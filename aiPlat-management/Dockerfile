@@ -4,7 +4,7 @@ WORKDIR /app
 
 # Management is a thin management plane — external deps only, no aiplat core/infra imports.
 COPY aiPlat-management ./aiPlat-management
-RUN pip install --no-cache-dir -e ./aiPlat-management
+RUN pip install --no-cache-dir -e ./aiPlat-management && pip install --no-cache-dir gunicorn
 
 ENV PYTHONPATH=/app
 ENV AIPLAT_HOME=/app/.aiplat
