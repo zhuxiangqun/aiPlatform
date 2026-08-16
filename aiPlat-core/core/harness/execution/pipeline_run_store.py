@@ -117,6 +117,19 @@ class PipelineRunStore:
 
                 CREATE INDEX IF NOT EXISTS idx_pipeline_stages_run
                     ON pipeline_stages(run_id);
+
+                -- ── P2-A1: append-only event log (event-sourced complement) ──
+                CREATE TABLE IF NOT EXISTS pipeline_run_events (
+                    seq INTEGER PRIMARY KEY AUTOINCREMENT,
+                    run_id TEXT NOT NULL,
+                    event_type TEXT NOT NULL,
+                    stage_id TEXT NOT NULL DEFAULT '',
+                    payload TEXT NOT NULL DEFAULT '{}',
+                    created_at REAL NOT NULL
+                );
+
+                CREATE INDEX IF NOT EXISTS idx_run_events_run
+                    ON pipeline_run_events(run_id, seq);
             """)
             # ── v3.1 migration: HITL fields (idempotent — ignore if already exist) ──
             for col, col_type in [
@@ -201,6 +214,53 @@ class PipelineRunStore:
                WHERE run_id = ?""",
             (phase, error, finished, now, run_id),
         )
+
+    # ── P2-A1: append-only event log (event-sourced complement) ──
+
+    def append_run_event(self, run_id: str, event_type: str, stage_id: str = "",
+                         payload: Optional[Dict[str, Any]] = None) -> None:
+        """Append an event to the run's append-only log (P2-A1).
+
+        Event types: stage_started / stage_completed / stage_skipped /
+        stage_paused / stage_failed / hitl_requested / hitl_resolved /
+        run_phase_changed / pipeline_started / pipeline_finished.
+        Payload is JSON-serialized. Never mutates existing rows —
+        run current state remains in pipeline_runs (state+event dual-write).
+        """
+        import json as _json
+        self._execute(
+            """INSERT INTO pipeline_run_events
+               (run_id, event_type, stage_id, payload, created_at)
+               VALUES (?, ?, ?, ?, ?)""",
+            (run_id, event_type, stage_id,
+             _json.dumps(payload or {}, ensure_ascii=False),
+             _time.time()),
+        )
+
+    def list_run_events(self, run_id: str, limit: int = 500) -> List[Dict[str, Any]]:
+        """Read back events in append order (for replay / UI timeline)."""
+        import json as _json
+        conn = self._get_conn()
+        try:
+            rows = conn.execute(
+                """SELECT seq, run_id, event_type, stage_id, payload, created_at
+                   FROM pipeline_run_events WHERE run_id = ?
+                   ORDER BY seq ASC LIMIT ?""",
+                (run_id, int(limit)),
+            ).fetchall()
+        finally:
+            conn.close()
+        out = []
+        for r in rows or []:
+            try:
+                payload = _json.loads(r[4]) if r[4] else {}
+            except Exception:  # noqa: BLE001
+                payload = {}
+            out.append({
+                "seq": r[0], "run_id": r[1], "event_type": r[2],
+                "stage_id": r[3], "payload": payload, "created_at": r[5],
+            })
+        return out
 
     def update_run_progress(
         self,
