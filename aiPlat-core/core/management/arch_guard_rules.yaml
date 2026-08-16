@@ -1617,7 +1617,7 @@ rules:
         code_graph|wiki_engine|skill_deps|_try_inject_claude_md|_try_inject_memory_reminders
       paths:
         - aiPlat-core/core/harness/memory/
-        - aiPlat-core/core/harness/execution/loop.py
+        - aiPlat-core/core/harness/execution/loop/
       min_matches: 1
     message: "Graph context injection not detected — Agents must inject code/wiki/skill
       graphs at startup (§5.32)"
@@ -1899,7 +1899,7 @@ rules:
     check:
       type: grep_required
       pattern: 'OnErrorReflector|on_error_reflector'
-      paths: ["aiPlat-core/core/harness/execution/loop.py", "aiPlat-core/core/harness/infrastructure/hooks/"]
+      paths: ["aiPlat-core/core/harness/execution/loop/", "aiPlat-core/core/harness/infrastructure/hooks/"]
       min_matches: 1
     message: "ReActLoop 未检测到 OnErrorReflector 注册 — 连续工具失败时将无自动反思能力 (§5.89)"
 
@@ -2168,10 +2168,8 @@ rules:
     section_name: "接线集成测试 — tests/wiring/integration/ 必须存在"
     level: info
     check:
-      type: grep_required
-      pattern: 'test_reflector|test_parallel|test_gateway'
-      paths: ["aiPlat-core/core/tests/wiring/integration/"]
-      min_matches: 1
+      type: file_exists
+      path: "aiPlat-core/core/tests/wiring/integration/test_reflector.py"
     message: "接线集成测试缺失 — 应至少包含 reflector/parallel/gateway 三个测试文件"
 
   # ═══ Section 74: 全系统扫描补充规则 (2026-06 四维扫描) ═══
