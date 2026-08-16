@@ -231,12 +231,27 @@ jobs:
             echo "::group::core container logs (startup failure)"
             docker compose -f docker-compose.test.yml logs core 2>&1 | tail -80
             echo "::endgroup::"
+            echo "::group::platform container logs (startup failure)"
+            docker compose -f docker-compose.test.yml logs platform 2>&1 | tail -80
+            echo "::endgroup::"
+            echo "::group::management container logs (startup failure)"
+            docker compose -f docker-compose.test.yml logs management 2>&1 | tail -80
+            echo "::endgroup::"
             docker compose -f docker-compose.test.yml down -v >/dev/null 2>&1 || true
             exit 1
           }
 
       - name: Wait for health
-        run: bash scripts/wait_for_health.sh 60
+        run: |
+          bash scripts/wait_for_health.sh 60 || {
+            echo "::group::platform container logs (not healthy)"
+            docker compose -f docker-compose.test.yml logs platform 2>&1 | tail -60
+            echo "::endgroup::"
+            echo "::group::management container logs (not healthy)"
+            docker compose -f docker-compose.test.yml logs management 2>&1 | tail -60
+            echo "::endgroup::"
+            exit 1
+          }
 
       - name: Run E2E tests
         run: python -m pytest tests/e2e/ -v --tb=short
