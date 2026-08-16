@@ -34,10 +34,11 @@ def test_policy_denied_auto_retry(monkeypatch):
 
         return _R()
 
-    # Patch syscall
-    import core.harness.execution.loop as loopmod
+    # Patch syscall — ReActLoop imports sys_tool_call into loop/_facade (loop.py was
+    # SRP-split into a package, so the old `loop.sys_tool_call` attribute is gone).
+    import core.harness.execution.loop._facade as loop_facade
 
-    monkeypatch.setattr(loopmod, "sys_tool_call", _fake_sys_tool_call)
+    monkeypatch.setattr(loop_facade, "sys_tool_call", _fake_sys_tool_call)
 
     loop = ReActLoop(model=_DummyModel(), tools=[_DummyTool()])
     state = LoopState(context={"task": "t", "messages": [], "session_id": "s", "user_id": "u"})

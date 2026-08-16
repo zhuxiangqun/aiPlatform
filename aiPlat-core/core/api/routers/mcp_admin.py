@@ -12,7 +12,8 @@ from typing import Any, Dict, List, Optional
 from pathlib import Path
 
 import aiohttp
-from fastapi import APIRouter, File, Form, HTTPException, Request, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
+from typing import Annotated
 
 from core.api.deps import actor_from_http
 from core.api.utils.governance import governance_links
@@ -20,6 +21,7 @@ from core.governance.audit import audit_event
 from core.governance.changeset import record_changeset
 from core.governance.gating import autosmoke_enforce, gate_with_change_control
 from core.governance.verification import apply_autosmoke_result, mark_resource_pending
+from core.harness.integration import KernelRuntime
 from core.harness.kernel.runtime import get_kernel_runtime
 from core.management.mcp_manager import MCPServerInfo
 from core.mcp.prod_policy import prod_stdio_policy_check, runtime_env
@@ -29,6 +31,9 @@ from core.mcp.runtime_sync import sync_mcp_runtime
 router = APIRouter()
 
 logger = logging.getLogger(__name__)
+
+# Runtime dependency alias — matches the other core routers (agents.py, harness.py, …).
+RuntimeDep = Annotated[Optional[KernelRuntime], Depends(get_kernel_runtime)]
 
 
 def _rt():

@@ -74,7 +74,7 @@ async def start_worker() -> None:
 
 async def stop_worker() -> None:
     """Stop the background task worker (called from server.py lifespan shutdown)."""
-    global _worker_task
+    global _worker_task, _queue
     if _worker_task is not None:
         _worker_task.cancel()
         try:
@@ -83,6 +83,13 @@ async def stop_worker() -> None:
             pass  # noqa: normal-cancellation
         _worker_task = None
         _log.info("Wiki background task worker stopped")
+    # asyncio.Queue is bound to the event loop it was created on. The worker
+    # (and the server lifespan) may run on a *different* loop on the next start
+    # (e.g. consecutive TestClient(app) blocks in tests / reload). Reset the
+    # queue so start_worker() rebuilds it on the current loop; otherwise the
+    # worker's q.get() raises "Queue is bound to a different event loop" and
+    # spins in the worker loop, blocking the event loop.
+    _queue = None
 
 
 async def _run_worker(q: asyncio.Queue) -> None:

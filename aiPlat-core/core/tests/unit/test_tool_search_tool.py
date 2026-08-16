@@ -5,8 +5,10 @@ def test_tool_search_tool_can_find_registered_tools():
     from core.apps.tools.base import CalculatorTool, ToolSearchTool, get_tool_registry
 
     reg = get_tool_registry()
-    # ensure the tool is present for this test (idempotent)
-    reg.register(CalculatorTool())
+    # ensure the tool is present for this test (idempotent — may already be
+    # registered when an earlier test started the core.server lifespan)
+    if reg.get("calculator") is None:
+        reg.register(CalculatorTool())
 
     t = ToolSearchTool()
     res = anyio.run(t.execute, {"query": "calculator", "limit": 5, "include_schema": True})

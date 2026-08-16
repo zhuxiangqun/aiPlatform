@@ -569,7 +569,7 @@ class DefaultContextEngine(ContextEngine):
 
                     db_path = getattr(getattr(store, "_config", None), "db_path", None)
                     if db_path:
-                        conn = sqlite3.connect(str(db_path, timeout=5.0))
+                        conn = sqlite3.connect(str(db_path), timeout=5.0)
                         try:
                             conn.execute(
                                 """
@@ -678,7 +678,7 @@ class DefaultContextEngine(ContextEngine):
         try:
             import sqlite3
 
-            conn = sqlite3.connect(str(db_path, timeout=5.0))
+            conn = sqlite3.connect(str(db_path), timeout=5.0)
             conn.row_factory = sqlite3.Row
             try:
                 q = str(query or "").strip()
@@ -1027,7 +1027,7 @@ class DefaultContextEngine(ContextEngine):
 
                     db_path = getattr(getattr(store, "_config", None), "db_path", None)
                     if db_path:
-                        conn = sqlite3.connect(str(db_path, timeout=5.0))
+                        conn = sqlite3.connect(str(db_path), timeout=5.0)
                         try:
                             conn.execute(
                                 """

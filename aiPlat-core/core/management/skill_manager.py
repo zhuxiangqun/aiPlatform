@@ -1951,6 +1951,12 @@ class SkillManager:
 
                 caps_in = []
 
+            # §5.19: every registered skill must declare effects. Management-created
+            # skills default to read-only when the caller did not declare any (safe
+            # default — the SKILL.md/effects can be tightened later).
+            if not effects_in:
+                effects_in = [{"type": "read", "resources": [], "idempotent": True, "rollback_available": True}]
+
             norm_caps: List[str] = []
 
             for c in caps_in:
