@@ -5,6 +5,8 @@ import { Card, Button } from '../../components/ui';
 import { FileUploadStage } from '../../components/AppStages/FileUploadStage';
 import { ProgressPoller } from '../../components/AppStages/ProgressPoller';
 import { ResultDashboard } from '../../components/AppStages/ResultDashboard';
+import { DataFormStage } from '../../components/AppStages/DataFormStage';
+import { DataTableStage } from '../../components/AppStages/DataTableStage';
 import { ChatWidget } from '../../components/ui/ChatWidget';
 import { projectApi } from '../../services';
 
@@ -47,6 +49,14 @@ export const AppPage: React.FC = () => {
         const fp = state.frontend_pages || state['agent_app'] || {};
         if (fp?.raw_output) raw = fp.raw_output;
         else if (state.agent_app?.raw_output) raw = state.agent_app.raw_output;
+
+        // Fallback: fetch app_page.json from deployed app server
+        if (!raw || !raw.includes('"app_name"')) {
+          try {
+            const appRes = await fetch(`http://localhost:8004/app/sessions/${projectId}/app_page.json`);
+            if (appRes.ok) raw = await appRes.text();
+          } catch {}
+        }
 
         // Extract JSON from markdown or raw
         const jsonMatch = raw.match(/\{[\s\S]*"app_name"[\s\S]*\}/);
@@ -105,6 +115,8 @@ export const AppPage: React.FC = () => {
       stage.component === 'file_upload' ? FileUploadStage :
       stage.component === 'progress_poller' ? ProgressPoller :
       stage.component === 'result_dashboard' ? ResultDashboard :
+      stage.component === 'data_form' ? DataFormStage :
+      stage.component === 'data_table' ? DataTableStage :
       null;
 
     if (!Component) return <Card className="p-4"><p className="text-sm text-gray-400">未知组件: {stage.component}</p></Card>;

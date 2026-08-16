@@ -42,7 +42,10 @@ async def _process_one(task: Dict[str, Any]) -> None:
         if task_type == "rebuild_metrics":
             from core.harness.knowledge.knowledge_validator import compute_ontology_metrics
             cid = task.get("collection_id", "default")
-            compute_ontology_metrics(collection_id=cid, force_fresh=True)
+            force_fresh = bool(task.get("force_fresh", True))
+            # Heavy sync work (YAML frontmatter parse + A-Box build + inference) — run
+            # in a worker thread so it never blocks the event loop / HTTP server.
+            await asyncio.to_thread(compute_ontology_metrics, collection_id=cid, force_fresh=force_fresh)
         elif task_type == "auto_atomize":
             from core.harness.knowledge.wiki_engine import _auto_atomize_by_title_impl
             title = task.get("title", "")
@@ -53,7 +56,7 @@ async def _process_one(task: Dict[str, Any]) -> None:
             title = task.get("title", "")
             marking = task.get("marking", "public")
             cid = task.get("collection_id", "default")
-            _propagate_marking(title, marking, cid)
+            await asyncio.to_thread(_propagate_marking, title, marking, cid)
         else:
             _log.warning(f"Unknown background task type: {task_type}")
     except Exception:
@@ -71,7 +74,7 @@ async def start_worker() -> None:
 
 async def stop_worker() -> None:
     """Stop the background task worker (called from server.py lifespan shutdown)."""
-    global _worker_task
+    global _worker_task, _queue
     if _worker_task is not None:
         _worker_task.cancel()
         try:
@@ -80,6 +83,13 @@ async def stop_worker() -> None:
             pass  # noqa: normal-cancellation
         _worker_task = None
         _log.info("Wiki background task worker stopped")
+    # asyncio.Queue is bound to the event loop it was created on. The worker
+    # (and the server lifespan) may run on a *different* loop on the next start
+    # (e.g. consecutive TestClient(app) blocks in tests / reload). Reset the
+    # queue so start_worker() rebuilds it on the current loop; otherwise the
+    # worker's q.get() raises "Queue is bound to a different event loop" and
+    # spins in the worker loop, blocking the event loop.
+    _queue = None
 
 
 async def _run_worker(q: asyncio.Queue) -> None:

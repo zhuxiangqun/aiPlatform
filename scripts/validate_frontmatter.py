@@ -98,6 +98,8 @@ def main():
 
     for search_dir in search_dirs:
         for md_file in sorted(search_dir.rglob("*.md")):
+            if "/wiki/" in str(md_file) or "\\wiki\\" in str(md_file):
+                continue  # wiki pages/entities are knowledge data, not config files
             ftype = _file_type(md_file)
             if ftype == "unknown":
                 continue  # only check known config file types

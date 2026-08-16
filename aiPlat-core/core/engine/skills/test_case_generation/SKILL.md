@@ -26,15 +26,19 @@ input_schema:
   prd:
     type: object
     required: true
+  code:
+    type: object
+    required: false
+    description: "代码产物(## FILE: 格式后端代码, 代码模式时必传)。有 code 则生成 pytest 文件"
   agent_app:
     type: object
     required: false
-    description: Agent应用产出(Agent模式时必传)
+    description: Agent应用产出(纯Agent模式、无 code 时才用)
 output_schema:
   test_cases:
     type: array
     required: true
-    description: "代码模式→pytest文件列表; Agent模式→对话测试问题列表"
+    description: "代码模式→pytest文件列表; Agent模式→对话测试问题对象数组(含id/ac_ref/category/question/min_expectation)"
   report:
     type: string
     required: true
@@ -59,93 +63,80 @@ trigger_conditions:
 skip_when: 代码模块过小或已有充分测试覆盖
 ---
 
-# 测试用例生成（Engine）v2.1
+# 测试用例生成（Engine）v2.2
 
-## Step 0: 模式检测
+## Step 0: 模式检测（精确版 — 显式 architecture_mode 优先，其次按产物类型）
 
 ```
-检查上下文中有 agent_app 或 _generated_agent
-  → YES: 走 "Agent 对话测试" (Step A)
-  → NO:  走 "代码 pytest" (Step B)
-```
+0. 【最高优先级】输入含 `## architecture_mode` 字段时，直接按其值决定：
+   - architecture_mode=agent → 走 "Agent 对话测试" (Step A)
+   - architecture_mode=code  → 走 "代码 pytest" (Step B)
+   （显式字段是权威，不要被产物内容推翻）
 
----
+1. 无 architecture_mode 时，按产物类型区分：
+   - 有 `code` 产物，且其 `## FILE:` 路径以 `.py` 结尾（如 main.py / routers/*.py / models/*.py / app.py）→ Step B
+   - 有 `agent_app` 产物，且内容含 `agent_manifest.json` → Step A
+   - 两者都没有 → 默认 Step B
 
-## Agent 对话测试 SOP
-
-### Agent Step 1: 从 PRD 提取测试问题
-
-对每条 acceptance_criteria，生成 1-3 句自然语言测试问题：
-
-- **Happy path**: 模拟用户正常使用
-- **边界**: 测试极限情况
-- **异常**: 测试错误处理
-
-问题必须用**真实用户说话的方式**——不技术化，不写"测试"二字。
-
-示例:
-
-| AC | Happy path 问题 | 边界/异常问题 |
-|----|------|------|
-| 用户上传视频后返回 task_id | "请帮我上传这个视频文件" | "我传的文件500MB，能处理吗？" / "我上传了一个空的文件" |
-| 分析结果包含标签/语音/动作 | "刚才分析的结果里有哪些标签？" | "视频没有声音你也能分析吗？" |
-
-### Agent Step 2: 标注预期行为
-
-每个问题标注最低预期：
-
-| 测试问题 | 最低预期 |
-|---------|------|
-| "请帮我上传这个视频" | 返回 task_id；提示上传成功 |
-| "我传的文件500MB" | 返回文件大小限制提示或开始处理 |
-| "我上传了空文件" | 返回"文件无效"或"不支持处理"提示 |
-
-### Agent Step 3: 组织为测试计划
-
-**先输出 JSON**（紧凑一行，不要 ``` 包裹），**再输出 Markdown 报告**。
-
-JSON:
-```json
-{
-  "mode": "agent_conversation",
-  "test_questions": [...]
-}
-```
-
-Markdown 报告:
-```markdown
-## 对话测试计划 — {项目名称}
-
-### 汇总
-| 指标 | 值 |
-|:---|---:|
-| 测试问题总数 | {total} |
-| 覆盖 FR | {n} |
-| Happy path | {happy} |
-| 边界 | {boundary} |
-| 异常 | {exception} |
-
-### 测试问题
-| # | FR | 问题 | 最低预期 |
-|:---|----|------|------|
-| 1 | FR-001 | 我用手机拍摄的视频能上传吗？ | 支持MP4上传，显示元数据 |
+⚠️ 关键区分：`## FILE: AGENT.md` / `## FILE: SKILL.md` / `## FILE: agent_manifest.json` 是 Agent 应用定义（.md/.json），
+不是代码。只有 `## FILE:` 路径以 `.py` 结尾的才是代码产物。
 ```
 
 ---
 
-## 代码 pytest SOP（保留，向后兼容）
+## 代码 pytest SOP（Step B — 默认模式，只要输入含 `## FILE:` 代码就执行本 SOP）
 
 ### Code Step 1: 建立测试范围
 
-读取 PRD 的 functional_requirements 和 acceptance_criteria，按风险分级策略：高风险接口→全组合判定表；标准→核心+2边界+1异常；低风险→happy+1异常。
+读取 PRD 的 functional_requirements / acceptance_criteria，以及 code 产物里**真实存在的路由路径**（`@app.get("/api/xxx")` / `@router.post("/xxx")`）。按风险分级：高风险接口→全组合判定表；标准→核心+2边界+1异常；低风险→happy+1异常。
 
-### Code Step 2: 生成 pytest 文件
+### Code Step 2: 生成 pytest 文件（HTTP 行为测试，禁止调用内部方法）
 
-用 `## FILE: tests/{name}_test.py` 格式输出可执行 pytest 代码，每个断言含失败提示信息。
+用 `## FILE: tests/{name}_test.py` 格式输出**可执行 pytest 代码**。**一律通过 FastAPI TestClient 发 HTTP 请求测路由行为**：
 
-### Code Step 3: 输出 Markdown 测试报告
+```python
+# tests/test_video.py
+from fastapi.testclient import TestClient
+from app.main import app
 
-汇总表 + 需求覆盖表 + 失败详情表 + JSON 决策摘要。
+client = TestClient(app)
+
+def test_upload_video_success():
+    resp = client.post("/api/video/upload", json={...})
+    assert resp.status_code == 200
+    assert "task_id" in resp.json()
+```
+
+规则（违反即大量 AttributeError 失败）：
+- 每个测试函数必须以 `def test_` 开头，含明确的 `assert`
+- **只测 HTTP 路由行为**：`client.get/post/put/delete("路由路径")` + 断言 `status_code`/响应 JSON 字段
+- **路由路径必须从 code 产物里 grep 真实存在**（`@app.get("/api/xxx")` 里的路径），禁止凭空编造
+- **禁止直接调用内部类/方法**（如 `security_manager.hash_url()`、`upload_service.create()`）——这些方法名 code 产物里未必存在，会 AttributeError。只通过 HTTP 路由间接测试
+- **禁止 import 具体符号**（`from app.core.security import security_manager`），只允许 `from app.main import app` + `TestClient`
+- 每个 FR 至少覆盖 happy_path + boundary + exception 各 1 条
+
+### Code Step 3: 输出
+
+**只输出 `## FILE: tests/*_test.py` 代码块**（可多个文件）。禁止输出 JSON、禁止输出 `test_questions`、禁止输出自然语言"测试问题"。
+
+---
+
+## Agent 对话测试 SOP（Step A — 仅当输入含 agent_app 且**不含** `## FILE:` 后端代码时使用）
+
+> 纯 Agent 应用（无代码）才走本 SOP。若输入含 `## FILE:` 代码，一律走上面的代码 pytest SOP。
+
+### Agent Step 1: 从 PRD 提取测试问题
+
+对每条 acceptance_criteria，生成 1-3 句自然语言测试问题（happy/boundary/exception），问题用真实用户口吻。
+
+### Agent Step 2: 为每个测试问题定义字段
+
+每条问题标注：id / ac_ref / category / question / min_expectation / assertions / target_skill。
+其中 target_skill 从 agent_manifest.json 的 skill_routing 反查该问题对应的 Skill 名（用于测试执行器路由到目标 Agent）。
+
+### Agent Step 3: 输出 JSON
+
+只输出 `{"mode": "agent_conversation", "test_questions": [{..., "target_skill": "video_upload"}]}`。
 
 ---
 
@@ -153,7 +144,15 @@ Markdown 报告:
 
 | ❌ 禁止 | ✅ 必须 |
 |--------|--------|
-| Agent 模式输出 `## FILE: test_*.py` | Agent 模式输出对话测试问题 |
-| 代码模式输出"请帮楼上个视频" | 代码模式输出 `def test_xxx()` |
-| 测试问题只有 happy path | 至少覆盖 happy + 边界 + 异常 |
-| 预期写"正常返回" | 写明具体预期值 |
+| 有 `## FILE:` 代码时还输出 test_questions | 有代码 → 输出 `## FILE: tests/*_test.py` |
+| 代码模式输出 JSON / 自然语言"测试问题" | 代码模式输出 `def test_xxx()` 可执行代码 |
+| 测试函数凭空编造不存在的函数/路由 | 从 code 产物里找真实函数/路由/字段 |
+| ac_ref 为空或写 "-" / "N/A" | 每行必须有对应的 FR 编号 |
+| min_expectation 写 "正常返回" / "符合预期" | 写明具体的可验证预期值 |
+
+## ⚠️ 输出前强制自检
+
+1. PRD 中有多少个 FR？（到 `functional_requirements` 中数）
+2. 若输入含 `## FILE:` 代码 → 确认输出的是 `## FILE: tests/*_test.py` 而非 JSON
+3. 每个 FR 至少有 1 条测试
+4. 全部 FR 覆盖后才输出

@@ -42,6 +42,43 @@ ALLOWED_HARNESS_TO_APPS: Set[Tuple[str, str]] = {
     ("harness/execution/pipeline_engine.py", "apps/skills/evolution/engine"),
     # pipeline_engine — lazy import guarded by try/except for evolution triggers
     ("harness/execution/pipeline_engine.py", "apps/skills/evolution/triggers"),
+
+    # P0-A1: integration.py 注册中心设计职责（wire apps into harness）
+    ("harness/integration.py", "apps/agents"),
+    ("harness/integration.py", "apps/agents/subagent/coordinator"),
+    ("harness/integration.py", "apps/exec_drivers/registry"),
+    ("harness/integration.py", "apps/mcp/runtime"),
+    ("harness/integration.py", "apps/skills/curator"),
+    ("harness/integration.py", "apps/skills/evolution/engine"),
+    ("harness/integration.py", "apps/skills/registry"),
+    ("harness/integration.py", "apps/tools/base"),
+    ("harness/integration.py", "apps/tools/permission"),
+    ("harness/integration.py", "apps/tools/skill_tools"),
+    ("harness/integration/skill.py", "apps/tools/permission"),
+    ("harness/integration/agent.py", "apps/tools/permission"),
+    # Data type / enum imports — allowed (not service calls)
+    ("harness/infrastructure/gates/policy_gate.py", "apps/tools/permission"),
+    ("harness/memory/manager.py", "apps/skills/metadata"),
+    ("harness/models/spec_lifecycle.py", "apps/skills/base"),
+    ("harness/feedback_loops/__init__.py", "apps/skills/evolution/engine"),
+    # P0-A1: lazy import guarded by try/except — runtime-on-demand (待 CoreFacade 收敛)
+    ("harness/coordination/dynamic_orchestrator.py", "apps/agents/subagent/coordinator"),
+    ("harness/digital_human/voice_pipeline.py", "apps/agents"),
+    ("harness/execution/langgraph/nodes/registry.py", "apps/tools/base"),
+    ("harness/execution/pipeline_engine.py", "apps/quality/types"),
+    ("harness/execution/pipeline_engine.py", "apps/quality/verifier"),
+    ("harness/execution/pipeline_engine.py", "apps/skills/evolution/engine"),
+    ("harness/execution/pipeline_engine.py", "apps/tools/code"),
+    ("harness/infrastructure/delegate_tool.py", "apps/agents/subagent/coordinator"),
+    ("harness/kernel/profile.py", "apps/mcp/client"),
+    ("harness/learning/__init__.py", "apps/skills/discovery"),
+    ("harness/multimodal/integrator.py", "apps/document_intelligence/video_parser"),
+    ("harness/multimodal/integrator.py", "apps/testing/browser_test_engine"),
+    ("harness/syscalls/skill.py", "apps/skills/skill_execution_record"),
+    ("harness/training/auto_trigger.py", "apps/finetune/job_manager"),
+    ("harness/training/auto_trigger.py", "apps/finetune/schemas"),
+    ("harness/training/distillation.py", "apps/finetune/dataset_manager"),
+    ("harness/training/full_training.py", "apps/finetune/dataset_manager"),
 }
 
 

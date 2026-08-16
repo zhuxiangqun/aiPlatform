@@ -77,13 +77,13 @@ async def fde_validate():
 
     # 7. Consistency gate import
     def _ck_consistency():
-        from core.harness.knowledge.consistency_gate import check_cross_stage_consistency
+        from core.api.core_facade import check_cross_stage_consistency
         warnings = check_cross_stage_consistency("## 2. Data Maturity\nmaturity=1\n## 6. Config\nUse GPT-4 large model")
         return len(warnings) > 0  # Should detect contradiction
 
     # 8. Cross-domain analog
     def _ck_cross_domain():
-        from core.harness.knowledge.ontology_query_mapper import discover_cross_domain_analogs
+        from core.api.core_facade import discover_cross_domain_analogs
         result = discover_cross_domain_analogs("AI技术")
         return isinstance(result, dict)
 

@@ -62,12 +62,17 @@ def _inject_http_request_context(payload: Any, http_request: Request, *, entrypo
 
 
 @router.get("/traces", response_model=Dict[str, Any])
-async def list_traces(limit: int = 100, offset: int = 0, status: Optional[str] = None, rt: RuntimeDep = None):
-    """List persisted traces (requires ExecutionStore)."""
+async def list_traces(limit: int = 100, offset: int = 0, status: Optional[str] = None, project_id: str = None, rt: RuntimeDep = None):
+    """List persisted traces. Optional project_id filter: WHERE run_id LIKE 'prj_{id}%'."""
     store = _store(rt)
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
     items, total = await store.list_traces(limit=limit, offset=offset, status=status)
+    # Post-query project filter
+    if project_id and project_id.strip():
+        prefix = f"prj_{project_id.strip()}"
+        items = [t for t in items if (t.get("run_id") or "").startswith(prefix)]
+        total = len(items)
     traces = [
         {
             **t,
@@ -127,13 +132,20 @@ async def list_graph_runs(
     graph_name: Optional[str] = None,
     status: Optional[str] = None,
     trace_id: Optional[str] = None,
+    project_id: str = None,
     rt: RuntimeDep = None,
 ):
-    """List persisted graph runs (requires ExecutionStore)."""
+    """List persisted graph runs. Optional project_id filter."""
     store = _store(rt)
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
     result = await store.list_graph_runs(limit=limit, offset=offset, graph_name=graph_name, status=status, trace_id=trace_id)
+    items = result.get("items", [])
+    # Post-query project filter
+    if project_id and project_id.strip():
+        prefix = f"prj_{project_id.strip()}"
+        items = [r for r in items if (r.get("run_id") or "").startswith(prefix)]
+        result = {"items": items, "total": len(items)}
     items = result.get("items", [])
     for r in items:
         r["start_time"] = datetime.utcfromtimestamp(r["start_time"]).isoformat() if r.get("start_time") else None

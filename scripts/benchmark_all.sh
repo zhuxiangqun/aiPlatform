@@ -95,6 +95,15 @@ else
     FAIL=$((FAIL+1))
 fi
 
+# ── 6. Memory Compression Efficiency (v4.0) ──
+[ "$CI_MODE" = false ] && echo "-- 6. Memory Compression --"
+if python3 "$SCRIPT_DIR/benchmark_memory.py" --ci 2>/dev/null; then
+    PASS=$((PASS+1))
+    [ "$CI_MODE" = false ] && echo "  PASS  memory compression active"
+else
+    [ "$CI_MODE" = false ] && echo "  WARN  memory compression inactive or not enough samples"
+fi
+
 # ── Save results ──
 RESULTS_JSON="${HOME}/.aiplat/benchmark_results.json"
 python3 -c "

@@ -34,4 +34,5 @@ consumer_patterns:
   - "api/"
   - "management/"
   - "harness/coordination/"
+  - "harness/digital_human/"
   - "server\\.py"

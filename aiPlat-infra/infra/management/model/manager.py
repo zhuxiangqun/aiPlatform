@@ -57,6 +57,9 @@ _PROVIDER_CAPABILITIES = {
     "custom": {"chat", "embedding"},
 }
 
+# API providers — always available, no local file check
+_API_PROVIDERS = frozenset({"openai", "deepseek", "anthropic", "openrouter"})
+
 # ── Platform resources (cached, TTL 5s) ──
 from dataclasses import dataclass as _dc
 
@@ -170,7 +173,10 @@ def _hard_filter(model, res: PlatformResources) -> tuple:
     if model.size is None:
         return True, "ok (unknown size)"
     if model.size == 0:
-        return True, "ok"  # API 模型
+        return True, "ok"  # API model
+    # Models running in separate processes (Ollama, LM Studio) skip RAM/VRAM checks
+    if _derive_model_state(model) in ("local_hot", "local_cold"):
+        return True, "ok (external process)"
 
     if model.size > res.ram_bytes:
         return False, (f"requires {model.size/1e9:.1f}GB RAM, "
@@ -214,7 +220,10 @@ def _filter_capability(model, purpose: str, profile: dict, profile_data: dict = 
 
 
 def _filter_health(model) -> bool:
-    """健康过滤。Level 2 可放宽。取不到数据默认健康。"""
+    """健康过滤 + unavailable discard。本地模型文件不存在则直接丢弃。"""
+    # v3: discard models that don't have local files (e.g. deleted Ollama models)
+    if _derive_model_state(model) == "unavailable":
+        return False
     try:
         from .health_checker import HealthChecker
         return HealthChecker.get_failure_rate(model.name) <= 0.5
@@ -248,52 +257,188 @@ def _get_scoring_weights(purpose: str, profile_data: dict) -> dict:
     return {**default, **weights}
 
 
+# ── Model runtime state (v3: replaces all provider-specific checks) ──
+
+_MODEL_STATE_CACHE: Dict[str, tuple] = {}
+_MODEL_SIZE_CACHE: Dict[str, tuple] = {}
+
+
+def _get_has_local_file(model, mgr=None) -> bool:
+    """Check if a local model exists on disk (from adapters cache or /api/show)."""
+    import time as _time, json as _json
+    provider = getattr(model, 'provider', '') or ''
+    if provider in _API_PROVIDERS:
+        return True
+
+    # Check models_json cache from adapters table
+    name = getattr(model, 'name', '')
+    if name:
+        cache_key = f"file:{name}"
+        cached = _MODEL_STATE_CACHE.get(cache_key)
+        if cached and _time.time() - cached[1] < 3600:
+            return cached[0]
+
+    # Try /api/show (lightweight, does NOT load model)
+    try:
+        import urllib.request as _ur
+        base = os.getenv("OLLAMA_HOST", "http://localhost:11434")
+        req = _ur.Request(f"{base.rstrip('/')}/api/show", data=_json.dumps({"name": name}).encode(), headers={"Content-Type": "application/json"}, method="POST")
+        with _ur.urlopen(req, timeout=5) as resp:
+            data = _json.loads(resp.read())
+            has = bool(data)
+            # Also capture size for later use
+            if has and data.get("size"):
+                _MODEL_SIZE_CACHE[name] = (data["size"], _time.time())
+            _MODEL_STATE_CACHE[f"file:{name}"] = (has, _time.time())
+            return has
+    except Exception:
+        logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
+
+    _MODEL_STATE_CACHE[f"file:{name}"] = (False, _time.time())
+    return False
+
+
+def _get_is_loaded_in_memory(model) -> bool:
+    """Check if a local model is loaded in Ollama memory (from /api/ps cache)."""
+    import time as _time, json as _json
+    name = getattr(model, 'name', '')
+    if not name:
+        return False
+    cache_key = f"mem:{name}"
+    cached = _MODEL_STATE_CACHE.get(cache_key)
+    if cached and _time.time() - cached[1] < 30:
+        return cached[0]
+
+    try:
+        import urllib.request as _ur
+        base = os.getenv("OLLAMA_HOST", "http://localhost:11434")
+        with _ur.urlopen(f"{base.rstrip('/')}/api/ps", timeout=3) as resp:
+            data = _json.loads(resp.read())
+            loaded = {m["name"] for m in data.get("models", []) if m.get("name")}
+            is_loaded = name in loaded
+            _MODEL_STATE_CACHE[cache_key] = (is_loaded, _time.time())
+            return is_loaded
+    except Exception:
+        logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
+
+    _MODEL_STATE_CACHE[cache_key] = (False, _time.time())
+    return False
+
+
+def _derive_model_state(model, mgr=None) -> str:
+    """Derive deployment state: api | local_hot | local_cold | unavailable.
+
+    API providers short-circuit — no local file check needed.
+    """
+    provider = getattr(model, 'provider', '') or ''
+
+    # 1. API providers — always available, no local file concept
+    if provider in _API_PROVIDERS:
+        return "api"
+
+    # 2. Local models — check file existence first
+    if not _get_has_local_file(model):
+        return "unavailable"
+
+    # 3. File exists — check if loaded in memory
+    if _get_is_loaded_in_memory(model):
+        return "local_hot"
+
+    return "local_cold"
+
+
+def _fill_model_size(model, mgr=None) -> None:
+    """Fill model.size for local models that have size=0.
+
+    Checks models_json cache first, then /api/show (lightweight, one-time).
+    Result cached for 3600s.
+    """
+    import time as _time, json as _json
+    name = getattr(model, 'name', '')
+    if not name:
+        return
+    size = getattr(model, 'size', 0) or 0
+    if size > 0:
+        return  # already known
+
+    # Check size cache
+    cached = _MODEL_SIZE_CACHE.get(name)
+    if cached and _time.time() - cached[1] < 3600:
+        model.size = cached[0]
+        return
+
+    # Try /api/show
+    try:
+        import urllib.request as _ur
+        base = os.getenv("OLLAMA_HOST", "http://localhost:11434")
+        req = _ur.Request(f"{base.rstrip('/')}/api/show", data=_json.dumps({"name": name}).encode(), headers={"Content-Type": "application/json"}, method="POST")
+        with _ur.urlopen(req, timeout=5) as resp:
+            data = _json.loads(resp.read())
+            if data.get("size"):
+                model.size = data["size"]
+                _MODEL_SIZE_CACHE[name] = (data["size"], _time.time())
+    except Exception:
+        logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
+
+
+# ── Scoring (v3: deployment_type driven, zero provider hardcoding) ──
+
+
 def _score_model(
     model, purpose: str, profile: dict,
     res: PlatformResources, preferences: dict, profile_data: dict,
+    best_api_model=None,
 ) -> int:
-    """综合评分（v2.2 动态权重），分数越高越优先。"""
+    """Unified scoring (v3): deployment_type driven, zero provider hardcoding."""
     weights = _get_scoring_weights(purpose, profile_data)
     score = 0
 
-    # 0. 未知 size 惩罚（纵深防御：size=None 的本地模型即使绕过 _build_preferences 也会在此扣分）
-    if model.size is None:
-        if model.provider not in ("openai", "deepseek", "anthropic", "openrouter", "ollama"):
-            score -= 150
+    # ── Pre-score: fill model size for local models with size=0 ──
+    _fill_model_size(model)
 
-    # 1. 资源压力
-    if model.size and model.size > 0:
-        ratio = model.size / max(res.ram_bytes, 1)
+    # ── Derive deployment state ──
+    _ds = _derive_model_state(model)
+
+    # 0. Unknown size penalty (not for API or local models)
+    if model.size is None and _ds != "api":
+        score -= 150
+
+    # 0b. Cold-start penalty: local models not pre-loaded (~disk load time)
+    if _ds == "local_cold":
+        _size = (model.size or 0) or 0
+        if _size > 0:
+            startup_sec = max(1, _size / (100 * 1024 * 1024))  # ~100MB/s disk
+            score -= min(30, int(startup_sec * 0.5))
+        else:
+            score -= 15  # unknown size, conservative estimate
+
+    # 1. Resource pressure
+    _size = (model.size or 0) or 0
+    if _size > 0:
+        ratio = _size / max(res.ram_bytes, 1)
         penalty = 0
         if ratio > 0.8:       penalty = -100
         elif ratio > 0.5:     penalty = -30
         elif ratio > 0.3:     penalty = -10
         score += int(penalty * weights.get("resource_pressure", 1.0))
 
-    # 2. Capability-driven origin scoring (v3: replaces prefer_local/prefer_external)
-    src = getattr(model.source, 'value', '') if hasattr(model.source, 'value') else ''
-    src_bias = 0
-    if src == "external":      src_bias = 80   # API models: consistent quality, no RAM pressure
-    elif src == "local":       src_bias = 40   # local models: free but RAM-heavy
-    score += src_bias
+    # 2. Source bias: REMOVED — replaced by quality-gated local preference (see #15)
 
-    # 3. env var 匹配（不受权重影响，保持 +500 绝对优先）
-    if preferences.get("env_var_model") == model.name:
-        score += 500
+    # 3. env var override — absolute priority
+    score += 500 if preferences.get("env_var_model") == model.name else 0
 
-    # 4. model_overrides 匹配（不受权重影响）
-    if preferences.get("override_model") == model.name:
-        score += 80
+    # 4. YAML model_overrides
+    score += 80 if preferences.get("override_model") == model.name else 0
 
-    # 5. GPU 兼容性
+    # 5. GPU compatibility
     gpu_score = 0
     if model.supports_gpu and res.gpu_compatible:
         gpu_score = 50
-    elif not res.gpu_compatible and model.provider == "ollama":
-        gpu_score = -200
+    elif not res.gpu_compatible and _size > 4 * 1024 * 1024 * 1024:
+        gpu_score = -50  # large model, no GPU
     score += int(gpu_score * weights.get("gpu_compat", 1.0))
 
-    # 6. Capability-driven reasoning scoring (v3: from model_capabilities, not profile tags)
+    # 6. Reasoning quality (from model_capabilities YAML)
     model_caps_data = profile_data.get("model_capabilities", {}).get(model.name, {})
     reasoning_quality = model_caps_data.get("reasoning_quality", 1)
     reasoning_score = 0
@@ -301,14 +446,12 @@ def _score_model(
     elif reasoning_quality >= 4: reasoning_score = 60
     elif reasoning_quality >= 3: reasoning_score = 35
     elif reasoning_quality >= 2: reasoning_score = 15
-    # Bonus: model's reasoning meets or exceeds the purpose's requirement
     require = profile.get("require", {})
-    req_reasoning = require.get("reasoning_quality", 0)
-    if req_reasoning and reasoning_quality >= req_reasoning:
-        reasoning_score += 30  # model is well-qualified for this task
+    if require.get("reasoning_quality", 0) and reasoning_quality >= require["reasoning_quality"]:
+        reasoning_score += 30
     score += int(reasoning_score * weights.get("reasoning", 1.0))
 
-    # 6b. Hallucination penalty (v3: capability-driven)
+    # 6b. Hallucination penalty
     hallucination_rate = model_caps_data.get("hallucination_rate", 0.10)
     hallucination_penalty = 0
     if hallucination_rate > 0.08:   hallucination_penalty = -60
@@ -318,63 +461,204 @@ def _score_model(
             hallucination_penalty -= 40
     score += hallucination_penalty
 
-    # 6c. Context window bonus (v3: capability-driven)
+    # 6c. Context window bonus
     context_window = model_caps_data.get("context_window", 4096)
-    req_context = require.get("context_window", 0)
-    if req_context and context_window >= req_context:
-        score += 20  # model has sufficient context for this task
+    if require.get("context_window", 0) and context_window >= require["context_window"]:
+        score += 20
 
-    # 7. API 凭证检查（双路径：环境变量 + 适配器 ID）
-    if model.provider in ("openai", "deepseek", "anthropic", "openrouter"):
+    # 7. Latency: API models have network overhead
+    latency_penalty = 0
+    if _ds == "api":
+        latency_penalty = -20
+    score += int(latency_penalty * weights.get("latency", -1.0))
+
+    # 8. Load: concurrency pressure (v3 new)
+    load_penalty = 0
+    if _ds in ("local_hot", "local_cold"):
+        try:
+            _c = _get_is_loaded_in_memory(model)
+            if _c:
+                from infra.management.model.manager import _MODEL_STATE_CACHE as _msc
+                import time as _t
+                mem_cached = _msc.get(f"mem:{model.name}")
+                if mem_cached and _t.time() - mem_cached[1] < 30:
+                    # rough estimate: loaded model = potentially busy
+                    pass
+        except Exception:
+            logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
+    score += load_penalty
+
+    # 9. API credential check (deployment_type aware)
+    if _ds == "api":
         has_creds = False
         if hasattr(model, 'config') and model.config:
-            # 路径 A：环境变量（传统部署，AIPLAT_*_MODEL 方式）
             env_name = getattr(model.config, 'api_key_env', '') or ''
             if env_name and os.getenv(env_name, "").strip():
                 has_creds = True
-            # 路径 B：适配器 ID（管理 UI 配置方式）
-            if not has_creds:
-                adapter_id = getattr(model.config, 'adapter_id', '') or ''
-                if adapter_id:
-                    has_creds = True  # 加载时已通过有效 key 过滤
+            adapter_id = getattr(model.config, 'adapter_id', '') or ''
+            if adapter_id:
+                has_creds = True
         if not has_creds:
             score += int(-300 * weights.get("api_credential", 3.0))
 
-    # 8. 质量反馈 (-80 ~ +80)
+    # 10. Quality feedback (-80 ~ +80)
     try:
         from .quality_validator import get_quality_tracker
         qs = get_quality_tracker().get(model.name, purpose)
         score += int(qs * 80 * weights.get("quality", 1.0))
     except Exception:
-        pass  # noqa: intentional — best-effort non-critical operation
+        logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
 
-    # 9. 延迟惩罚
+    # 11. Historical latency
     try:
         from .latency_tracker import get_latency_tracker
         p95 = get_latency_tracker().p95_latency_seconds(model.name)
     except Exception:
         p95 = 5
-    latency_penalty = 0
-    if p95 > 10:    latency_penalty = -40
-    elif p95 > 5:   latency_penalty = -20
-    score += int(latency_penalty * weights.get("latency", -1.0))
+    hist_latency_penalty = 0
+    if p95 > 10:    hist_latency_penalty = -40
+    elif p95 > 5:   hist_latency_penalty = -20
+    score += int(hist_latency_penalty * weights.get("latency", -1.0))
 
-    # 10. 并发容量
+    # 12. Concurrency capacity
     max_cc = getattr(model, 'max_concurrency', 0) or 0
     concurrency_score = 0
     if max_cc >= 50:    concurrency_score = 30
     elif max_cc >= 10:  concurrency_score = 15
     score += int(concurrency_score * weights.get("concurrency", 1.0))
 
-    # 11. 成本
+    # 13. Cost
     model_costs = profile_data.get("model_cost", {})
     cost = model_costs.get(model.name, 0.0) if model_costs else 0.0
-    cost_penalty = 0
-    if cost > 0.01:   cost_penalty = -10
-    elif cost > 0.001: cost_penalty = -5
-    score += int(cost_penalty * weights.get("cost", -1.0))
+    if cost > 0.01:   score += int(-10 * weights.get("cost", -1.0))
+    elif cost > 0.001: score += int(-5 * weights.get("cost", -1.0))
+
+    # 14. Dynamic boost: real-world performance
+    score += _calculate_dynamic_boost(model.name)
+
+    # 15. Quality-gated local preference: local-first when comparable to best API model.
+    #     Administrative override (prefer_local in YAML) already applied +120 above;
+    #     skip quality gate in that case.
+    src = getattr(model.source, 'value', '') if hasattr(model.source, 'value') else ''
+    if src == "local":
+        prefer_local = profile.get("prefer_local", False)
+        if not prefer_local:
+            if best_api_model is not None:
+                # Mixed env: only add bonus if quality is comparable
+                if _has_sufficient_data(model, min_successes=5):
+                    if _within_quality_band(model, best_api_model, profile_data):
+                        score += 20
+                # Data insufficient → no bonus, API wins on merit
+            else:
+                # Pure offline env (no API model to compare) → auto-prefer local
+                score += 20
 
     return score
+
+
+def _has_sufficient_data(model, min_successes: int = 5) -> bool:
+    """Check if model has enough runtime data for quality comparison.
+
+    Returns True if success_count >= min_successes in model_health_store.
+    Models with insufficient data are not eligible for quality-gated preference.
+    """
+    try:
+        from infra.management.model.model_health_store import get_model_health_store
+        health = get_model_health_store().get_health(model.name)
+        if not health:
+            return False
+        return health.get("success_count", 0) >= min_successes
+    except Exception:
+        return False
+
+
+def _within_quality_band(local_model, best_api_model, profile_data) -> bool:
+    """Check if local model quality is within tolerance of the best API model.
+
+    Three conditions must ALL be satisfied:
+      1. Success rate gap ≤ 20 percentage points
+      2. P95 latency ≤ 3× the best API model's P95
+      3. Reasoning quality gap ≤ 1 tier (from YAML model_capabilities)
+    """
+    # 1. Success rate comparison
+    try:
+        from infra.management.model.model_health_store import get_model_health_store
+        store = get_model_health_store()
+        lh = store.get_health(local_model.name) or {}
+        ah = store.get_health(best_api_model.name) or {}
+
+        l_total = lh.get("success_count", 0) + lh.get("failure_count", 0)
+        a_total = ah.get("success_count", 0) + ah.get("failure_count", 0)
+        l_rate = lh.get("success_count", 0) / max(l_total, 1)
+        a_rate = ah.get("success_count", 0) / max(a_total, 1)
+
+        if l_rate < a_rate - 0.20:
+            return False
+    except Exception:
+        return False  # Cannot compare → conservative: not in band
+
+    # 2. P95 latency comparison
+    try:
+        from infra.management.model.latency_tracker import get_latency_tracker
+        tracker = get_latency_tracker()
+        l_p95 = tracker.p95_latency_seconds(local_model.name)
+        a_p95 = tracker.p95_latency_seconds(best_api_model.name)
+        if l_p95 > a_p95 * 3:
+            return False
+    except Exception:
+        logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
+
+    # 3. Reasoning quality comparison (from YAML model_capabilities)
+    caps = profile_data.get("model_capabilities", {})
+    l_qual = caps.get(local_model.name, {}).get("reasoning_quality", 1)
+    a_qual = caps.get(best_api_model.name, {}).get("reasoning_quality", 1)
+    if l_qual < a_qual - 1:
+        return False
+
+    return True
+
+
+def _calculate_dynamic_boost(model_name: str) -> float:
+    """Dynamic scoring factor from ModelHealthStore (range [-10, +10]).
+
+    Returns 0 on cold start (no health data yet), ensuring static
+    factors from llm_profile.yaml remain the primary signal.
+    """
+    try:
+        from infra.management.model.model_health_store import get_model_health_store
+        health = get_model_health_store().get_health_score(model_name)
+    except Exception:
+        return 0.0
+
+    if not health:
+        return 0.0
+
+    calls = health.get("call_count", 0)
+    if calls == 0:
+        return 0.0
+
+    success_rate = health.get("success_count", 0) / calls
+    failure_rate = health.get("failure_count", 0) / calls
+    avg_latency = health.get("avg_latency_ms", 1000.0)
+    biz = health.get("business_score", 0.5)
+
+    # Min-Max normalization — all sub-scores in bounded ranges
+    health_bonus = success_rate * 15.0                          # [0, +15] — strengthened quality signal
+    failure_penalty = -min(15.0, failure_rate * 30.0)           # [-15, 0] — strengthened quality signal
+    business_bonus = max(-5.0, min(5.0, (biz - 0.5) * 10.0))   # [-5, +5]
+
+    base_ms, max_ms = 800.0, 5000.0
+    if avg_latency > base_ms:
+        ratio = (avg_latency - base_ms) / (max_ms - base_ms)
+        latency_penalty = -min(10.0, ratio * 10.0)              # [-10, 0]
+    else:
+        latency_penalty = 0.0
+
+    exploration_bonus = 2.0 if calls < 5 else 0.0               # cold start
+
+    return max(-10.0, min(10.0,
+        health_bonus + failure_penalty + business_bonus
+        + latency_penalty + exploration_bonus))
 
 
 class ModelManager:
@@ -410,18 +694,15 @@ class ModelManager:
             self._models[model.id] = model
             seen_names.add(model.name)
         
-        # 2. Scan local Ollama / LM Studio / vLLM models
+        # 2. Scan local Ollama / LM Studio / vLLM models (always, not just when empty)
         try:
-            # Use a separate thread to run the async scan synchronously,
-            # avoiding "cannot run event loop while another is running" errors
-            # when called from within uvicorn's existing event loop.
             import concurrent.futures as _cfutures
             with _cfutures.ThreadPoolExecutor(max_workers=1) as _pool:
                 _future = _pool.submit(self._scan_local_models_sync)
                 _future.result(timeout=10.0)
         except Exception as e:
             logging.debug(str(e), exc_info=True)
-        # 4. 补全所有模型的 size / is_downloaded / supports_gpu
+        # 3. 补全所有模型的 size / is_downloaded / supports_gpu
         try:
             self._resolve_model_sizes()
         except Exception as e:
@@ -512,7 +793,9 @@ class ModelManager:
                         existing.quantization = model.quantization
                     existing.is_downloaded = True
                     existing.supports_gpu = True
-                    # 修正适配器注册时的类型/provider 误判
+                    # 修正适配器注册时的 source/provider/type 误判
+                    if existing.source != model.source:
+                        existing.source = model.source
                     if model.provider and existing.provider in ("deepseek", "openai", "anthropic"):
                         existing.provider = model.provider
                     if model.type and model.type != existing.type:
@@ -526,7 +809,7 @@ class ModelManager:
             except Exception as e:
                 logging.debug("Ollama→adapter sync skipped: %s", str(e)[:200], exc_info=True)
         except Exception as e:
-            logging.debug(str(e), exc_info=True)
+            logging.warning("Local model scan failed: %s", str(e)[:300], exc_info=True)
 
     async def _sync_local_to_adapter(self, local_models, endpoints):
         """同步本地扫描结果（Ollama/LM Studio/oMLX/vLLM）到适配器表。
@@ -819,7 +1102,9 @@ class ModelManager:
             score = 0
 
             # Resource-aware scoring: hard-block models too large for available RAM
-            if available_ram_bytes > 0 and hasattr(m, 'size') and m.size:
+            # Skip for remote/external providers (Ollama runs in separate process, API models are remote)
+            _provider = getattr(m, 'provider', '')
+            if available_ram_bytes > 0 and hasattr(m, 'size') and m.size and _provider not in ("ollama", "openai", "deepseek", "anthropic", "openrouter"):
                 model_bytes = m.size
                 usage_ratio = model_bytes / available_ram_bytes
                 if usage_ratio > 1.0:
@@ -975,8 +1260,22 @@ class ModelManager:
                 if level_name != "full":
                     logging.getLogger(__name__).warning(
                         "Model selection degraded to level=%s for purpose=%s", level_name, purpose)
-                scored = [(_score_model(m, purpose, profile, res, preferences, profile_data), m)
-                           for m in passed]
+
+                # Pre-compute best API model for quality-gated comparison (#15)
+                best_api_model = None
+                api_candidates = [m for m in passed
+                                  if getattr(getattr(m, 'source', None), 'value', '') == "external"]
+                if api_candidates:
+                    # Use full scoring (without local preference) to find best API model
+                    api_scored = [(_score_model(m, purpose, profile, res, preferences, profile_data,
+                                               best_api_model=None), m)
+                                  for m in api_candidates]
+                    api_scored.sort(key=lambda x: x[0], reverse=True)
+                    best_api_model = api_scored[0][1]
+
+                scored = [(_score_model(m, purpose, profile, res, preferences, profile_data,
+                                        best_api_model=best_api_model), m)
+                          for m in passed]
                 scored.sort(key=lambda x: x[0], reverse=True)
                 return scored[0][1].name
 

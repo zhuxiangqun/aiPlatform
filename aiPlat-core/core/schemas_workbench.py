@@ -6,7 +6,21 @@ from pydantic import BaseModel, Field
 class CapabilityItem(BaseModel): id: str; name: str; desc: str = ""; icon: str = ""
 class TaskSubmitResponse(BaseModel): run_id: str; status: str; spec_id: str = ""
 class TaskFeedbackResponse(BaseModel): run_id: str; rating: int; recorded: bool = True
-class TrainingStatusResponse(BaseModel): status: str = ""; model: str = ""; dataset: str = ""; error: Optional[str] = None
+class TrainingStatusResponse(BaseModel):
+    """LoRAAutoTrigger 训练流水线状态（端点返回 get_status() + 附加字段）"""
+    enabled: bool = False
+    approved_total: int = 0
+    quality_count: int = 0
+    threshold: int = 0
+    quality_threshold: float = 0.0
+    max_samples: int = 0
+    progress_pct: float = 0.0
+    ready_to_trigger: bool = False
+    dataset_dir: str = ""
+    latest_model: str = ""
+    latest_model_completed_at: str = ""
+    dataset_count: int = 0
+    error: Optional[str] = None
 class SkillInstallResponse(BaseModel): status: str; skill: str; source: str = ""
 class SeedDemoResponse(BaseModel): seeded: int; specs: List[str] = Field(default_factory=list); note: str = ""
 class BatchResultItem(BaseModel): spec_id: str; status: str; error: Optional[str] = None

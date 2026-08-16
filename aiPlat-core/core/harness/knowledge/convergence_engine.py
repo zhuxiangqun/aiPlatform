@@ -131,8 +131,8 @@ class ConvergenceEngine:
 
                 for skill_name in skills:
                     try:
-                        from core.apps.skills.registry import SkillRegistry
-                        sr = SkillRegistry()
+                        from core.api.core_facade import get_skill_registry
+                        sr = get_skill_registry()
                         stats = sr._binding_stats
                         if skill_name in stats:
                             stats[skill_name].adjust_weight(
@@ -321,8 +321,8 @@ class ConvergenceEngine:
     def _rollback_skill_weight(self, atom_id: str):
         """Rollback skill weights associated with a deprecated atom."""
         try:
-            from core.apps.skills.registry import SkillRegistry
-            sr = SkillRegistry()
+            from core.api.core_facade import get_skill_registry
+            sr = get_skill_registry()
             stats = sr._binding_stats
             # Rollback the most likely affected skill
             for skill_name in list(stats.keys()):

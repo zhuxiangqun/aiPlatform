@@ -17,7 +17,7 @@ const AppChatPage: React.FC = () => {
   const [modelInfo, setModelInfo] = useState<{ current_model?: string; override_active?: boolean }>({});
 
   useEffect(() => {
-    apiClient.get<any>('/diagnostics/model-tier').then(r => 
+    apiClient.get<any>('/core/diagnostics/model-tier').then(r => 
       setModelInfo(r.data?.status || {})
     ).catch(() => {});
   }, []);

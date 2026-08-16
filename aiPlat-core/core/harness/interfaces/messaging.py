@@ -26,6 +26,9 @@ class AgentMessageType(Enum):
     RESPONSE = "response"
     GRAPH_DELTA = "graph_delta"
     GRAPH_CONFLICT = "graph_conflict"
+    # v3.0: peer-to-peer collaboration modes (reserved for collaborative agents)
+    DEBATE = "debate"
+    VOTE = "vote"
 
 
 @dataclass

@@ -9,7 +9,7 @@
 | 顺序 | 文档 | 说明 |
 |:---:|------|------|
 | 1 | [manuals/getting-started.md](manuals/getting-started.md) | 5 分钟体验 |
-| 2 | [manuals/knowledge-management.md](manuals/knowledge-management.md) | 知识管理全管线 |
+| 2 | [knowledge-system.md](knowledge-system.md) | 知识管理完整指南（管线/存储/本体/RAG/运维） |
 | 3 | [manuals/deployment.md](manuals/deployment.md) | 部署指南 |
 
 ---
@@ -21,7 +21,7 @@
 | **架构师** | [architecture/README.md](architecture/README.md) → [architecture/overview.md](architecture/overview.md) |
 | **开发者** | [manuals/development.md](manuals/development.md) → 对应层的 `CLAUDE.md` |
 | **运维** | [manuals/deployment.md](manuals/deployment.md) → [manuals/management.md](manuals/management.md) |
-| **知识管理员** | [manuals/knowledge-management.md](manuals/knowledge-management.md) → [manuals/ontology.md](manuals/ontology.md) |
+| **知识管理员** | [knowledge-system.md](knowledge-system.md) |
 | **FDE 交付工程师** | [manuals/README.md](manuals/README.md)（手册总目录）→ 按需选择 |
 | **新用户** | [manuals/getting-started.md](manuals/getting-started.md) → [AIPLAT_CAPABILITIES.md](../AIPLAT_CAPABILITIES.md) |
 
@@ -57,7 +57,7 @@
 [project/PHASE_STATUS.md](project/PHASE_STATUS.md) — Phase 实施状态快照
 
 ### 其他
-[agents/](agents/) · [articles/](articles/) · [audit/](audit/) · [by-role/](by-role/) · [compliance/](compliance/) · [harness/](harness/) · [mcp/](mcp/) · [reports/](reports/) · [skills/](skills/) · [strategy/](strategy/) · [tools/](tools/) · [whitepaper/](whitepaper/) · [archive/](archive/)
+[agents/](agents/) · [articles/](articles/) · [audit/](audit/) · [by-role/](by-role/) · [compliance/](compliance/) · [harness/](harness/) · [matrix/](matrix/) · [mcp/](mcp/) · [reports/](reports/) · [research/](research/) · [skills/](skills/) · [strategy/](strategy/) · [tools/](tools/) · [whitepaper/](whitepaper/) · [archive/](archive/)
 
 ---
 
@@ -74,6 +74,8 @@
 | `policy/` | 安全/运维策略 | 2 | 是 |
 | `API/` | API 协议与契约 | 2 | 是 |
 | `project/` | 项目管理（Phase 状态等） | 1 | 是 |
+| `matrix/` | 能力影响矩阵 | 1 | 是 |
+| `research/` | 研究报告（审计/对标/方案） | 14 | 是 |
 | `reports/` | 生成报告快照 | 3 | **否**（重新生成） |
 | `archive/` | 历史文档 | 27 | **否**（只读） |
 | 其他 | 1 文件专题目录 | 10 | 按需 |
@@ -83,7 +85,7 @@
 ## 📐 文档治理
 
 - **[DOCUMENT_SYSTEM.md](DOCUMENT_SYSTEM.md)**：文档系统宪法（分类、边界、验证）
-- **[AIPLAT_CAPABILITIES.md](../AIPLAT_CAPABILITIES.md)**：唯一能力清单（881 ✅）
+- **[AIPLAT_CAPABILITIES.md](../AIPLAT_CAPABILITIES.md)**：唯一能力清单（942 ✅）
 - **verify_doc_structure.py**：目录树一致性验证
 - **verify_capability_consistency.py**：能力统计表一致
 - **verify_imports.py**：导入模块存在性验证

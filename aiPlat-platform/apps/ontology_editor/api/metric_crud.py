@@ -12,7 +12,7 @@ async def list_metrics(domain_id: str):
     try:
         from core.api.core_facade import get_ontology_domain_schema
         schema = get_ontology_domain_schema(domain_id)
-        from core.harness.knowledge.metric_engine import load_metrics
+        from core.api.core_facade import load_metrics
         metrics = load_metrics(schema)
         return {
             "domain_id": domain_id,
@@ -32,7 +32,8 @@ async def get_metric_value(domain_id: str, metric_name: str, days: int = Query(3
     try:
         from core.api.core_facade import get_ontology_domain_schema
         schema = get_ontology_domain_schema(domain_id)
-        from core.harness.knowledge.metric_engine import load_metrics, compute
+        from core.api.core_facade import compute
+        from core.api.core_facade import load_metrics
         metrics = {m.name: m for m in load_metrics(schema)}
         metric = metrics.get(metric_name)
         if not metric:
@@ -53,7 +54,8 @@ async def get_metric_trend(domain_id: str, metric_name: str, days: int = Query(3
     try:
         from core.api.core_facade import get_ontology_domain_schema
         schema = get_ontology_domain_schema(domain_id)
-        from core.harness.knowledge.metric_engine import load_metrics, get_trend
+        from core.api.core_facade import get_trend
+        from core.api.core_facade import load_metrics
         metrics = {m.name: m for m in load_metrics(schema)}
         metric = metrics.get(metric_name)
         if not metric:
@@ -74,7 +76,8 @@ async def get_scorecard(domain_id: str):
     try:
         from core.api.core_facade import get_ontology_domain_schema
         schema = get_ontology_domain_schema(domain_id)
-        from core.harness.knowledge.metric_engine import load_metrics, scorecard
+        from core.api.core_facade import scorecard
+        from core.api.core_facade import load_metrics
         metrics = load_metrics(schema)
         if not metrics:
             return {"domain_id": domain_id, "scorecard": [], "total": 0}

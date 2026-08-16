@@ -300,3 +300,13 @@ if [ -z "${SKIP_ARCH_PATTERNS:-}" ]; then
         echo "     Set BLOCK_ARCH_PATTERNS=1 to block commits on pattern violations"
     }
 fi
+
+# ── Phase 47: CoreFacade signature ripple (only when core_facade.py changed) ──
+if echo "$STAGED_PY" | grep -q 'core_facade.py' 2>/dev/null; then
+    if ! python3 "$WORKSPACE/scripts/check_signature_ripple.py" --check 2>/dev/null; then
+        echo "  ❌ CoreFacade signature changed — verify platform callers are updated"
+        echo "     Run: python3 scripts/check_signature_ripple.py --check"
+        echo "     Fix callers, then: python3 scripts/check_signature_ripple.py --update"
+        FAIL=1
+    fi
+fi

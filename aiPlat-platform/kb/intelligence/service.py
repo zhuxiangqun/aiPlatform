@@ -194,7 +194,7 @@ def _extract_video_from_page_with_playwright(page_url: str, up_dir: Path, file_h
 def _extract_page_text(html_bytes: bytes, url: str) -> str:
     """Extract readable text from HTML page (unified entry via parsers.py)."""
     try:
-        from core.harness.document.parsers import extract_text_from_html
+        from core.api.core_facade import extract_text_from_html
         html_text = html_bytes.decode("utf-8", errors="replace")
         text = extract_text_from_html(html_text)
         import re as _re
@@ -534,7 +534,7 @@ def enqueue_doc_ingest(
                     raw = raw_bytes.decode("utf-8")
                 except Exception:
                     raw = raw_bytes.decode("latin-1", errors="ignore")
-                from core.harness.document.parsers import extract_text_from_html
+                from core.api.core_facade import extract_text_from_html
                 text = extract_text_from_html(raw) if raw else ""
                 if not text:
                     text = raw.strip()[:200000] if raw else ""

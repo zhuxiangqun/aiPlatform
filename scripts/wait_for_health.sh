@@ -15,8 +15,8 @@ for i in $(seq 1 "$TIMEOUT"); do
     core_ok=false; mgmt_ok=false; plat_ok=false
 
     curl -sf -m2 "$BASE_CORE/api/core/health" >/dev/null 2>&1 && core_ok=true
-    curl -sf -m2 "$BASE_MGMT/api/health" >/dev/null 2>&1 && mgmt_ok=true
-    curl -sf -m2 "$BASE_PLAT/api/platform/health" >/dev/null 2>&1 && plat_ok=true
+    curl -sf -m2 "$BASE_MGMT/health" >/dev/null 2>&1 && mgmt_ok=true
+    curl -sf -m2 "$BASE_PLAT/health" >/dev/null 2>&1 && plat_ok=true
 
     if $core_ok && $mgmt_ok && $plat_ok; then
         echo "✅ 全部服务就绪 (${i}s)"

@@ -190,4 +190,25 @@ def create_metrics_collector() -> MetricsCollector:
     return MetricsCollector()
 
 
+def get_top_endpoints(limit: int = 5) -> list:
+    """Return the most frequently called endpoints in the past hour.
+
+    Reads from the module-level MetricsCollector singleton (metrics_collector).
+    Returns a list of endpoint path strings, sorted desc by call count.
+    """
+    collector = metrics_collector
+    endpoint_calls: dict = {}
+    cutoff = time.time() - 3600
+
+    for entry in collector.aggregator._history:
+        if entry["timestamp"] < cutoff:
+            continue
+        endpoint = entry.get("metadata", {}).get("endpoint", "")
+        if endpoint:
+            endpoint_calls[endpoint] = endpoint_calls.get(endpoint, 0) + 1
+
+    sorted_eps = sorted(endpoint_calls.items(), key=lambda x: x[1], reverse=True)
+    return [ep for ep, _ in sorted_eps[:limit]]
+
+
 metrics_collector = MetricsCollector.get_instance()

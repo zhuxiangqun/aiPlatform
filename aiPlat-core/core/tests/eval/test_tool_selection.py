@@ -95,14 +95,11 @@ async def test_per_case(case):
             f"{case['id']}: expected ≤1 tool call, got {quality.total_calls}"
         return
 
-    # 正常工具场景：必须选对工具
-    if case.get("expected_tools"):
-        matched = quality.tool_name_matches
+    # 正常工具场景：必须选对工具 (correct_selections = 工具选择正确数)
+    if case.get("expected_tools") or case.get("expected_tool"):
+        matched = quality.correct_selections
         assert matched > 0, \
-            f"{case['id']}: expected one of {case['expected_tools']}, but none matched"
-    elif case.get("expected_tool"):
-        assert quality.tool_name_matches > 0, \
-            f"{case['id']}: expected '{case['expected_tool']}', did not call it"
+            f"{case['id']}: expected {case.get('expected_tools') or [case.get('expected_tool')]}, but none matched"
 
 
 # ── 2. 全量准确率 + 混淆矩阵 ──────────────────────────
@@ -128,8 +125,8 @@ async def test_overall_accuracy():
     if not all_quality:
         pytest.skip("No evaluable cases")
 
-    overall_name = sum(q.tool_name_accuracy for q in all_quality) / len(all_quality)
-    overall_param = sum(q.param_accuracy for q in all_quality) / len(all_quality)
+    overall_name = sum(q.selection_rate for q in all_quality) / len(all_quality)
+    overall_param = sum(q.param_rate for q in all_quality) / len(all_quality)
 
     print(f"\n  Tool name accuracy: {overall_name:.1%}")
     print(f"  Param accuracy:    {overall_param:.1%}")

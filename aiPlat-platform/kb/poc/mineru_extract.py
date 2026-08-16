@@ -21,12 +21,7 @@ from typing import Any, Dict, List, Optional
 logger = logging.getLogger(__name__)
 
 # Re-export helpers from core for backward compatibility
-from core.harness.document.converters._mineru import (
-    _table_text_to_cells,
-    _parse_markdown_table,
-    _cells_to_markdown,
-    _load_mineru_content_list,
-)
+from core.api.core_facade import table_text_to_cells, parse_markdown_table, cells_to_markdown, load_mineru_content_list
 
 
 def run_mineru_parse(
@@ -43,9 +38,9 @@ def run_mineru_parse(
         "MinerU is now integrated in core PdfConverter chain.",
         DeprecationWarning, stacklevel=2,
     )
-    from core.harness.document.converters._mineru import MineruConverter
+    from core.api.core_facade import MineruConverter
     converter = MineruConverter()
-    from core.harness.document.protocol import StreamInfo
+    from core.api.core_facade import StreamInfo
     info = StreamInfo(local_path=pdf_path, extension=".pdf")
     elements = converter.convert(None, info)
     # Legacy return: path to output directory

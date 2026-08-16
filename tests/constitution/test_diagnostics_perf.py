@@ -58,11 +58,11 @@ def test_shared_graph_built_exactly_once():
     run_func = None
     for node in ast.walk(tree):
         if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-            if node.name == "run_all_diagnostics":
+            if node.name == "_run_diag_impl":  # actual diagnostic implementation (P0-A8)
                 run_func = node
                 break
     
-    assert run_func is not None, "run_all_diagnostics function not found"
+    assert run_func is not None, "_run_diag_impl function not found"
     
     # Count _get_or_build_graph calls (should be exactly 1)
     get_graph_calls = 0
@@ -73,7 +73,7 @@ def test_shared_graph_built_exactly_once():
                 get_graph_calls += 1
     
     assert get_graph_calls >= 1, (
-        "run_all_diagnostics should call _get_or_build_graph() at least once "
+        "_run_diag_impl should call _get_or_build_graph() at least once "
         "to build the shared code graph"
     )
 

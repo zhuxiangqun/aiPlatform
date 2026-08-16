@@ -65,11 +65,17 @@ export AIPLAT_CAPABILITY_INJECT_MODE="${AIPLAT_CAPABILITY_INJECT_MODE:-always}"
 export AIPLAT_GOVERNANCE_INJECT_MODE="${AIPLAT_GOVERNANCE_INJECT_MODE:-all}"
 # Governance cron: 0 = skip warmup at startup (start 5x faster). Set to 24 for hourly cron.
 export AIPLAT_GOVERNANCE_CRON_HOURS="${AIPLAT_GOVERNANCE_CRON_HOURS:-0}"
+# Docs sync: false = skip knowledge base sync at startup (avoids LLM calls blocking server).
+# Set to true only if you need auto-sync of docs/ to Wiki on every startup.
+export AIPLAT_DOCS_AUTO_SYNC="${AIPLAT_DOCS_AUTO_SYNC:-false}"
+# Pipeline execution: true = delegate pipeline to Core server (8002) via HTTP API.
+# Runs pipeline in Core's event loop where all LLM infrastructure is initialized.
+export AIPLAT_USE_CORE_ENGINE="${AIPLAT_USE_CORE_ENGINE:-true}"
 
 # LLM 配置 — 由 infra ModelManager 统一管理。
 # 模型选择策略编辑: aiPlat-infra/config/infra/llm_profile.yaml
 # API key 统一存储在 SQLite adapters 表，通过 Management UI 管理。
-# 无需环境变量 — 所有模型凭据从 ~/.aiplat/data/execution.db 读取。
+# 无需环境变量 — 所有模型凭据从 ~/.aiplat/aiplat_executions.sqlite3 读取。
 export AIPLAT_LLM_CONFIG_PATH="${AIPLAT_LLM_CONFIG_PATH:-$PROJECT_ROOT/aiPlat-infra/config/infra/llm_profile.yaml}"
 # Builder Pipeline: 单次流水线 token 预算
 export AIPLAT_BUILDER_MAX_TOKENS="${AIPLAT_BUILDER_MAX_TOKENS:-50000}"
@@ -99,10 +105,13 @@ export HF_DATASETS_OFFLINE="${HF_DATASETS_OFFLINE:-1}"
 
 # Infra: port→service mapping for network manager (was hardcoded, now env-driven).
 # Format: "port=service:name,port=service:name,..."
+# macOS: prevent ObjC runtime from crashing on fork() in gunicorn workers
+export OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES
+
 export AIPLAT_PORT_SERVICES="${AIPLAT_PORT_SERVICES:-8002=core-api:aiPlat-core,8001=infra-api:aiPlat-infra,8000=management-api:aiPlat-management,8003=platform-api:aiPlat-platform,8004=app-api:aiPlat-app,5173=frontend-dev:frontend}"
 # Infra: target processes for service manager monitoring.
 # Format: "name:cmdline:port,name:cmdline:port,..."
-export AIPLAT_TARGET_PROCESSES="${AIPLAT_TARGET_PROCESSES:-aiPlat-infra:uvicorn:8001,aiPlat-core:uvicorn:8002,aiPlat-platform:uvicorn:8003,aiPlat-app:uvicorn:8004,aiPlat-management:uvicorn:8000,frontend:proxy_server.py:5173}"
+export AIPLAT_TARGET_PROCESSES="${AIPLAT_TARGET_PROCESSES:-aiPlat-infra:gunicorn:8001,aiPlat-core:gunicorn:8002,aiPlat-platform:gunicorn:8003,aiPlat-app:gunicorn:8004,aiPlat-management:gunicorn:8000,frontend:proxy_server.py:5173}"
 
 # Parser selection for KB ingest: auto|mineru|ocr
 export AIPLAT_KB_PARSER="${AIPLAT_KB_PARSER:-auto}"
@@ -345,9 +354,6 @@ if [ -f "$_EXEC_DB" ]; then
   fi
 fi
 
-# ExecutionStore DB 路径 — 需要在此设定，以便 infra/core 进程都能从 adapters 表发现模型
-export AIPLAT_EXECUTION_DB_PATH="${AIPLAT_EXECUTION_DB_PATH:-$PROJECT_ROOT/aiPlat-core/core/data/aiplat_executions.sqlite3}"
-mkdir -p "$(dirname "$AIPLAT_EXECUTION_DB_PATH")"
 
 # ===== Step 1: aiPlat-infra =====
 echo "============================================================"
@@ -358,7 +364,7 @@ kill_port_if_any 8001
 verify_import "infra" "from infra.management.api.main import create_app"
 
 cd "$PROJECT_ROOT/aiPlat-infra"
-PYTHONPATH="$PROJECT_ROOT/aiPlat-infra" nohup "$PY" -m uvicorn infra.management.api.main:create_app --host 0.0.0.0 --port 8001 --factory > "$AIPLAT_HOME/logs/infra.log" 2>&1 &
+PYTHONPATH="$PROJECT_ROOT/aiPlat-infra" nohup "$PY" -m gunicorn -c gunicorn.conf.py -w 1 --threads 4 infra.management.api.main:create_app > "$AIPLAT_HOME/logs/infra.log" 2>&1 &
 INFRA_PID=$!
 echo "PID: $INFRA_PID"
 
@@ -385,8 +391,8 @@ export AIPLAT_EMBED_BACKEND="${AIPLAT_EMBED_BACKEND:-hash}"
 export AIPLAT_EMBEDDING_BACKEND="${AIPLAT_EMBEDDING_BACKEND:-hash}"
 export HF_HUB_OFFLINE="${HF_HUB_OFFLINE:-1}"
 
-cd "$PROJECT_ROOT/aiPlat-core/core"
-PYTHONPATH="$PROJECT_ROOT/aiPlat-core" nohup "$PY" -m uvicorn server:app --host 0.0.0.0 --port 8002 --workers 2 > "$AIPLAT_HOME/logs/core.log" 2>&1 &
+cd "$PROJECT_ROOT/aiPlat-core"
+PYTHONPATH="$PROJECT_ROOT/aiPlat-core" nohup "$PY" -m gunicorn -c gunicorn.conf.py -w 1 --threads 4 server:app > "$AIPLAT_HOME/logs/core.log" 2>&1 &
 CORE_PID=$!
 echo "PID: $CORE_PID"
 
@@ -446,7 +452,7 @@ export AIPLAT_VIDEO_WHISPER_MODEL="${AIPLAT_VIDEO_WHISPER_MODEL:-small}"
 # export AIPLAT_QUEUE_BACKEND=redis           # Redis message queue (default: thread)
 # export AIPLAT_REDIS_URL=redis://localhost:6379/0
 # export AIPLAT_CHROMA_PATH=~/.aiplat/data/chroma  # Chroma persistence path
-PYTHONPATH="$PROJECT_ROOT/aiPlat-platform" nohup "$PY" -m uvicorn api.rest.routes:app --host 0.0.0.0 --port 8003 > "$AIPLAT_HOME/logs/platform.log" 2>&1 &
+PYTHONPATH="$PROJECT_ROOT/aiPlat-platform:$PROJECT_ROOT/aiPlat-core:$PROJECT_ROOT/aiPlat-infra" nohup "$PY" -m gunicorn -c gunicorn.conf.py -w 1 --threads 4 api.rest.routes:app > "$AIPLAT_HOME/logs/platform.log" 2>&1 &
 PLATFORM_PID=$!
 echo "PID: $PLATFORM_PID"
 
@@ -470,7 +476,7 @@ cd "$PROJECT_ROOT/aiPlat-app"
 export AIPLAT_APP_DB_PATH="${AIPLAT_APP_DB_PATH:-$PROJECT_ROOT/aiPlat-app/data/aiplat_app.sqlite3}"
 mkdir -p "$(dirname "$AIPLAT_APP_DB_PATH")"
 echo "App DB: $AIPLAT_APP_DB_PATH"
-PYTHONPATH="$PROJECT_ROOT/aiPlat-app" nohup "$PY" -m uvicorn api.rest.routes:app --host 0.0.0.0 --port 8004 > "$AIPLAT_HOME/logs/app.log" 2>&1 &
+PYTHONPATH="$PROJECT_ROOT/aiPlat-app" nohup "$PY" -m gunicorn -c gunicorn.conf.py -w 1 --threads 4 api.rest.routes:app > "$AIPLAT_HOME/logs/app.log" 2>&1 &
 APP_PID=$!
 echo "PID: $APP_PID"
 
@@ -525,7 +531,7 @@ kill_port_if_any 8000
 verify_import "management" "import management.server"
 
 cd "$PROJECT_ROOT/aiPlat-management"
-nohup "$PY" -m uvicorn management.server:create_app --host 0.0.0.0 --port 8000 --factory > "$AIPLAT_HOME/logs/management.log" 2>&1 &
+nohup "$PY" -m gunicorn -c gunicorn.conf.py -w 1 --threads 2 management.server:create_app > "$AIPLAT_HOME/logs/management.log" 2>&1 &
 MGMT_PID=$!
 echo "PID: $MGMT_PID"
 

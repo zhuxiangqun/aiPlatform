@@ -682,3 +682,29 @@ def get_deploy_engine() -> DeployEngine:
 
     return _deploy_engine
 
+
+# ── Rollback event persistence (consumed by diagnostics/checks/rollback_monitor.py) ──
+
+import json as _json
+
+_ROLLBACK_LOG = __import__("pathlib").Path.home() / ".aiplat" / "data" / "rollback_events.jsonl"
+
+
+def _persist_rollback_event(
+    event_type: str,
+    reason: str,
+    revision_from: int = 0,
+    revision_to: int = 0,
+) -> None:
+    """Persist a rollback event immediately to JSONL for diagnostics consumption."""
+    log_dir = _ROLLBACK_LOG.parent
+    log_dir.mkdir(parents=True, exist_ok=True)
+    with open(_ROLLBACK_LOG, "a") as f:
+        f.write(_json.dumps({
+            "event_type": event_type,
+            "reason": reason,
+            "revision_from": revision_from,
+            "revision_to": revision_to,
+            "timestamp": __import__("time").time(),
+        }, ensure_ascii=False) + "\n")
+

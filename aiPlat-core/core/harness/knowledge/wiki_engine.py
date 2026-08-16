@@ -720,6 +720,17 @@ def write_page(title: str, body: str, *, category: str = "entities", tags: List[
         logging.debug(str(e), exc_info=True)
 
     _inc_change_counter()
+    # ── v1.0: 写入 KB→Wiki 三元组到 TripleStore ──
+    try:
+        from core.harness.ontology_engine.triple_store import get_triple_store, _make_urn
+        _ts = get_triple_store()
+        if source_articles:
+            for _src in source_articles:
+                if isinstance(_src, str) and _src.strip():
+                    _ts.add(_make_urn("kb_doc", _src.strip()), "depends_on_kb",
+                            _make_urn("wiki", title if title else "unnamed"), 1.0, "wiki_engine", {})
+    except Exception:
+        logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
     return str(p)
 
 
@@ -1031,6 +1042,40 @@ def _update_index(title: str, category: str, tags: List[str], related: List[str]
                              "last_updated": datetime.now(timezone.utc).isoformat()}
     idx["last_updated"] = datetime.now(timezone.utc).isoformat()
     idx_path.write_text(_json.dumps(idx, indent=2, ensure_ascii=False))
+
+
+def generate_index_md(collection_id: str = "default") -> str:
+    """Generate a human-readable Markdown index (index.md) from index.json."""
+    idx_path = _wiki_root(collection_id) / "index.json"
+    try:
+        idx = _json.loads(idx_path.read_text(encoding="utf-8"))
+    except Exception:
+        idx = {"pages": {}, "last_updated": ""}
+
+    pages: Dict[str, Any] = idx.get("pages", {}) or {}
+    if not pages:
+        return "No pages yet"
+
+    by_category: Dict[str, List[str]] = {}
+    for title, meta in sorted(pages.items()):
+        cat = (meta or {}).get("category", "uncategorized") if isinstance(meta, dict) else "uncategorized"
+        by_category.setdefault(cat, []).append(title)
+
+    lines = ["# Wiki Index", ""]
+    for category in sorted(by_category):
+        lines.append(f"## {category}")
+        for title in sorted(by_category[category]):
+            meta = pages.get(title)
+            tags = (meta or {}).get("tags", []) if isinstance(meta, dict) else []
+            tag_str = f" — `{'`, `'.join(tags)}`" if tags else ""
+            lines.append(f"- {title}{tag_str}")
+        lines.append("")
+
+    last_updated = idx.get("last_updated", "")
+    if last_updated:
+        lines.append(f"*Last updated: {last_updated}*")
+
+    return "\n".join(lines).rstrip() + "\n"
 
 
 def update_page(title: str, *, collection_id: str = "default", **kwargs) -> bool:

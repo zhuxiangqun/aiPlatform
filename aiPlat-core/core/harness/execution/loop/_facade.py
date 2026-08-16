@@ -146,7 +146,7 @@ class ReActLoop(BaseLoop):
 
 
 
-        # PR #2: 注入 ControlProfile 到 _config，供 get_active_profile() 读取
+        # PR #2: inject ControlProfile into _config for get_active_profile() to read
 
         if hasattr(self._config, "__dict__"):
 
@@ -370,7 +370,7 @@ class ReActLoop(BaseLoop):
 
         """Run the workbench threshold gate against the agent's output before
 
-        allowing a DONE/FINAL declaration (Agent 运行时确定性约束 第2层).
+        allowing a DONE/FINAL declaration (Agent runtime deterministic constraint — layer 2).
 
 
 
@@ -417,7 +417,7 @@ class ReActLoop(BaseLoop):
 
     async def _llm_completion_evaluate(self, state: LoopState) -> Optional[str]:
 
-        """Independent LLM evaluator checks completion quality (Agent 运行时确定性约束 第3层).
+        """Independent LLM evaluator checks completion quality (Agent runtime deterministic constraint — layer 3).
 
 
 
@@ -776,9 +776,9 @@ class ReActLoop(BaseLoop):
 
 
 
-        # 支持“直接结束”语义：当模型给出 DONE/FINAL 且没有动作调用时，直接结束。
+        # Support the "finish directly" semantics: when the model emits DONE/FINAL with no action call, end directly.
 
-        # 这使得在无工具调用场景也能完成一次 agent 执行（例如 mock LLM / 纯对话）。
+        # This allows an agent execution to complete even with no tool calls (e.g. mock LLM / pure conversation).
 
         try:
 
@@ -886,7 +886,7 @@ class ReActLoop(BaseLoop):
 
                 # Deterministic evaluation gate: run workbench threshold check before
 
-                # allowing the agent to declare completion (Agent 运行时确定性约束 第2层)
+                # allowing the agent to declare completion (Agent runtime deterministic constraint — layer 2)
 
                 _eval_veto = self._deterministic_eval(state)
 
@@ -1149,7 +1149,7 @@ class ReActLoop(BaseLoop):
 
                     skill_name = obj.get("skill", obj.get("tool", ""))
 
-                    tag = f'[🔧 {skill_name}]' if skill_name else '[🔧 技能调用]'
+                    tag = f'[🔧 {skill_name}]' if skill_name else '[🔧 skill call]'
 
                     result_parts.append(tag)
 
@@ -2012,7 +2012,7 @@ class ReActLoop(BaseLoop):
 
 
 
-        Detects patterns like "我的预算是X", "我叫Y" and updates LearnerProfile.
+        Detects patterns like "my budget is X", "my name is Y" and updates LearnerProfile.
 
         Mimics ChatGPT's "Memory updated" behavior.
 
@@ -2026,7 +2026,9 @@ class ReActLoop(BaseLoop):
 
             facts = {}
 
-            budget_match = re.search(r'预算[是为:：]\s*(\d+)\s*万?', user_msg_str)
+            from core.harness.utils.zh_language import FACT_BUDGET_RE, FACT_NAME_RE, FACT_GOAL_RE
+
+            budget_match = re.search(FACT_BUDGET_RE, user_msg_str)
 
             if budget_match:
 
@@ -2034,7 +2036,7 @@ class ReActLoop(BaseLoop):
 
 
 
-            name_match = re.search(r'(?:我|本人)[叫是称呼为]\s*([\u4e00-\u9fa5a-zA-Z]{2,10})', user_msg_str)
+            name_match = re.search(FACT_NAME_RE, user_msg_str)
 
             if name_match:
 
@@ -2042,7 +2044,7 @@ class ReActLoop(BaseLoop):
 
 
 
-            goal_match = re.search(r'(?:目标|想|要)[是]?\s*(.{5,50})', user_msg_str)
+            goal_match = re.search(FACT_GOAL_RE, user_msg_str)
 
             if goal_match and len(goal_match.group(1)) > 3:
 
@@ -2194,7 +2196,7 @@ class ReActLoop(BaseLoop):
 
 
 
-        # PR #3: 根据 ControlProfile.tool_rank_by 排序工具列表
+        # PR #3: sort the tool list according to ControlProfile.tool_rank_by
 
         try:
 
@@ -2204,13 +2206,13 @@ class ReActLoop(BaseLoop):
 
             if rank_by == "success_rate":
 
-                # 按工具历史成功率排序（成功率高的排前面）
+                # sort by historical tool success rate (higher success rate first)
 
                 def _success_score(t):
 
                     name = getattr(t, "name", "")
 
-                    # 从 ToolDriftDetector 或工具自身获取成功率
+                    # get the success rate from ToolDriftDetector or from the tool itself
 
                     success = getattr(t, "_success_rate", None)
 
@@ -2234,7 +2236,7 @@ class ReActLoop(BaseLoop):
 
             elif rank_by == "relevance":
 
-                # 按语义相关性排序（预留，当前退化为静态排序）
+                # sort by semantic relevance (reserved; currently falls back to static ordering)
 
                 ordered.sort(key=lambda x: (0 if getattr(x, "name", "") in always_include else 1,
 
@@ -2242,7 +2244,7 @@ class ReActLoop(BaseLoop):
 
             else:
 
-                # static: 保持当前顺序
+                # static: keep the current order
 
                 ordered.sort(key=lambda x: (0 if getattr(x, "name", "") in always_include else 1,
 
@@ -2250,7 +2252,7 @@ class ReActLoop(BaseLoop):
 
         except Exception:
 
-            # 兜底: 静态排序
+            # fallback: static ordering
 
             ordered.sort(key=lambda x: (0 if getattr(x, "name", "") in always_include else 1,
 
@@ -2368,7 +2370,7 @@ class ReActLoop(BaseLoop):
 
 
 
-        # P1-1: 动态高亮最相关的 3 个工具（不改物理顺序，包尾追加提示）
+        # P1-1: dynamically highlight the 3 most relevant tools (without changing physical order; append a hint at the end)
 
         try:
 
@@ -2447,7 +2449,7 @@ class ReActLoop(BaseLoop):
 
 
 
-        # P0：统一的渐进式披露预算（基于上下文压力）
+        # P0: unified progressive disclosure budget (based on context pressure)
 
         try:
 
@@ -3673,15 +3675,15 @@ class ReActLoop(BaseLoop):
 
                             + (f"- approval_request_id: {approval_id}\n" if approval_id else "")
 
-                            + "\n可选重试策略（择一）：\n"
+                            + "\nOptional retry strategies (choose one):\n"
 
-                            "1) 改用更安全的只读工具（Read/Grep/Glob）先收集信息。\n"
+                            "1) Switch to safer read-only tools (Read/Grep/Glob) to gather info first.\n"
 
-                            "2) 缩小影响范围/调整参数（例如只读单文件、避免写入/执行）。\n"
+                            "2) Narrow the scope / adjust params (e.g. read a single file, avoid write/execute).\n"
 
                             "3) 使用 tool_search 搜索可用工具：{\"tool\":\"tool_search\",\"args\":{\"query\":\"read\"}}。\n"
 
-                            "4) 若确实需要高风险操作，请走审批流程（如果返回 approval_request_id）。\n"
+                            "4) If a high-risk operation is truly needed, go through the approval flow (if approval_request_id is returned).\n"
 
                         )
 
@@ -3803,13 +3805,13 @@ class ReActLoop(BaseLoop):
 
                         f"[Tool Result: {tool_name} ({tool_use_id})\n"
 
-                        f"首1K: {head}\n"
+                        f"First 1K: {head}\n"
 
-                        f"-- 内容过长({len(raw_output)}chars)，已截断 --\n"
+                        f"-- content too long ({len(raw_output)} chars), truncated --\n"
 
-                        f"尾1K: {tail}\n"
+                        f"Last 1K: {tail}\n"
 
-                        f"摘要生成中... 可用 sys_read_scratchpad({tool_use_id}) 获取完整智能摘要]"
+                        f"summary generating... use sys_read_scratchpad({tool_use_id}) to get the full smart summary]"
 
                     )
 
@@ -4017,7 +4019,7 @@ class ReActLoop(BaseLoop):
 
                 output=result[:2000],
 
-                dimensions="正确性、完整性、逻辑一致性、格式规范性",
+                dimensions="correctness, completeness, logical consistency, format compliance",
 
             )
 
@@ -4157,7 +4159,7 @@ class PlanExecuteLoop(BaseLoop):
 
         self._tools = tools or []
 
-        self._plan: List[Dict[str, Any]] = []
+        self._plan_steps: List[Dict[str, Any]] = []
 
         self._current_node = "plan"
 
@@ -4274,7 +4276,7 @@ class PlanExecuteLoop(BaseLoop):
 
             # Parse plan (simplified)
 
-            self._plan = [
+            self._plan_steps = [
 
                 {"step": i + 1, "action": line.strip().lstrip("0123456789. ").strip()}
 
@@ -4286,7 +4288,7 @@ class PlanExecuteLoop(BaseLoop):
 
         
 
-        state.context["plan"] = self._plan
+        state.context["plan"] = self._plan_steps
 
         self._current_node = "execute"
 
@@ -4310,9 +4312,9 @@ class PlanExecuteLoop(BaseLoop):
 
         
 
-        if current_step < len(self._plan):
+        if current_step < len(self._plan_steps):
 
-            step = self._plan[current_step]
+            step = self._plan_steps[current_step]
 
             action = step.get("action", "")
 
@@ -4506,7 +4508,7 @@ class PlanExecuteLoop(BaseLoop):
 
             
 
-            if current_step + 1 >= len(self._plan):
+            if current_step + 1 >= len(self._plan_steps):
 
                 state.context["output"] = state.context.get("step_0_result", step_result)
 

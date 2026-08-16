@@ -74,7 +74,14 @@ async def _evaluate_condition(cases: list, skill_mode: str) -> dict:
 
 @pytest.mark.eval
 async def test_skill_net_gain():
-    """自生成 Skill 的净收益必须 > 0（相对于无Skill基线）。"""
+    """自生成 Skill 的净收益必须 > 0（相对于无Skill基线）。
+
+    Requires real LLM generation — in DRY_RUN (CI) mode the net gain cannot
+    be measured truthfully, so it is skipped (mechanism is covered by the
+    other eval tests).
+    """
+    if os.getenv("AIPLAT_EVAL_DRY_RUN", "").lower() == "true":
+        pytest.skip("DRY_RUN: net gain needs real LLM generation")
     cases = _load_gold()
     baseline = await _evaluate_condition(cases, "none")
     auto_gen = await _evaluate_condition(cases, "auto_gen")

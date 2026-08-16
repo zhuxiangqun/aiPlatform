@@ -18,6 +18,9 @@ class ChannelType(str, Enum):
     WEBCHAT = "webchat"
     DISCORD = "discord"
     WECHAT = "wechat"
+    WHATSAPP = "whatsapp"
+    EMAIL = "email"
+    DINGTALK = "dingtalk"
 
 
 @dataclass
@@ -136,6 +139,14 @@ class ChannelDispatcher:
             ChannelType.SLACK: SlackAdapter(),
             ChannelType.WEBCHAT: WebChatAdapter(),
         }
+        # P1-A4: merge extended adapters (Discord/WeCom/Email/DingTalk)
+        try:
+            from .adapters import ADAPTERS
+            for ch, cls in ADAPTERS.items():
+                if ch not in self._adapters:
+                    self._adapters[ch] = cls()
+        except Exception:
+            pass  # noqa: extended-adapters-optional
 
     def register_adapter(self, channel: ChannelType, adapter: ChannelAdapter) -> None:
         self._adapters[channel] = adapter

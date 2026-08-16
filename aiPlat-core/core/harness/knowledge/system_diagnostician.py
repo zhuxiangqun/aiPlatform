@@ -153,7 +153,7 @@ class SystemDiagnostician:
                                         backed = sum(1 for x in ev if x.get("source") and x["source"] not in ("", "LLM推测", "行业普遍痛点"))
                                         sessions.append({"coverage": round(backed / max(len(ev), 1) * 100)})
                                 except Exception:
-                                    pass
+                                    logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
 
             if len(sessions) < 3:
                 return {"rule": "evidence_decline", "severity": "info",
@@ -181,8 +181,8 @@ class SystemDiagnostician:
     def _check_skill_degradation(self, now: datetime) -> Optional[Dict]:
         """任一 Skill pass_rate < 0.5 超 2 周"""
         try:
-            from core.apps.skills.registry import SkillRegistry
-            sr = SkillRegistry()
+            from core.api.core_facade import get_skill_registry
+            sr = get_skill_registry()
             degraded = []
             for name, stats in sr._binding_stats.items():
                 if stats.total_executions >= 5 and stats.recent_pass_rate < 0.5:
@@ -407,7 +407,7 @@ class SystemDiagnostician:
                                         sessions_with_meta += 1
                                         has_meta = True
                                 except Exception:
-                                    pass
+                                    logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
                         if e.relation_name == "has_action":
                             has_action = True
 
@@ -668,8 +668,8 @@ def _trigger_improve_action() -> str:
 def _downgrade_degraded_skills() -> str:
     """Apply damping adjustment to degraded skills."""
     try:
-        from core.apps.skills.registry import SkillRegistry
-        sr = SkillRegistry()
+        from core.api.core_facade import get_skill_registry
+        sr = get_skill_registry()
         degraded = []
         for name, stats in sr._binding_stats.items():
             if stats.total_executions >= 5 and stats.recent_pass_rate < 0.5:

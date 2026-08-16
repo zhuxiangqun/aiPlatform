@@ -34,7 +34,7 @@ from typing import Any, Dict, List, Optional
 from apps.fde.api.schemas import FdeStatusResponse, FdeListResponse, FdeItemResponse
 
 
-from core.harness.utils.prompt_loader import _sync_resolve
+from core.api.core_facade import _sync_resolve
 
 from fastapi import APIRouter, Body, HTTPException, Query
 from core.api.http_errors import not_found, bad_request
@@ -240,7 +240,7 @@ def _collect_pending_decisions() -> List[Dict[str, Any]]:
 async def _collect_signal_alerts() -> List[Dict[str, Any]]:
     """FeedbackRadar high/critical user feedback signals."""
     try:
-        from core.harness.learning.feedback_radar import FeedbackRadar
+        from core.api.core_facade import FeedbackRadar
         radar = FeedbackRadar()
         active = await radar.analyze_all_active() if hasattr(radar, "analyze_all_active") else []
         return [a for a in (active or []) if a.get("severity") in ("high", "critical")]
@@ -305,8 +305,8 @@ async def _bg_package(task_id: str) -> None:
 
         # 1) Export models
         _package_tasks[task_id].update({"progress": 5, "detail": "扫描模型中…", "log": log_entries})
-        from infra.management.model.manager import ModelManager
-        mm = ModelManager()
+        from core.api.core_facade import get_model_manager
+        mm = get_model_manager()
 
         def _on_model_progress(i: int, total: int, name: str):
             pct = 5 + int((i / max(total, 1)) * 25)
@@ -551,7 +551,7 @@ async def package_download(task_id: str):
 async def list_customers():
     """客户列表 + 健康摘要 (复用 ProfileManager)。"""
     try:
-        from core.harness.kernel.profile import get_profile_manager
+        from core.api.core_facade import get_profile_manager
         pm = get_profile_manager()
         customers = []
         for cfg in pm.list_all():
@@ -576,7 +576,7 @@ async def list_customers():
 async def list_templates():
     """List POC template profiles."""
     try:
-        from core.harness.kernel.profile import get_profile_manager
+        from core.api.core_facade import get_profile_manager
         pm = get_profile_manager()
         templates = []
         for cfg in pm.list_all():
@@ -606,7 +606,7 @@ async def create_customer(body: Dict[str, Any]):
         if not namespace:
             namespace = name.lower().replace(" ", "-").replace("_", "-")
         
-        from core.harness.kernel.profile import get_profile_manager
+        from core.api.core_facade import get_profile_manager
         pm = get_profile_manager()
         existing = pm.get(namespace)
         if existing:
@@ -627,7 +627,7 @@ async def create_customer(body: Dict[str, Any]):
 async def update_customer(profile_id: str, body: Dict[str, Any]):
     """Update a customer profile."""
     try:
-        from core.harness.kernel.profile import get_profile_manager
+        from core.api.core_facade import get_profile_manager
         pm = get_profile_manager()
         cfg = pm.update(
             namespace=profile_id,
@@ -649,7 +649,7 @@ async def update_customer(profile_id: str, body: Dict[str, Any]):
 async def delete_customer(profile_id: str):
     """Delete a customer profile."""
     try:
-        from core.harness.kernel.profile import get_profile_manager
+        from core.api.core_facade import get_profile_manager
         pm = get_profile_manager()
         cfg = pm.get(profile_id)
         if not cfg:
@@ -877,17 +877,17 @@ def _get_knowledge_context(text: str) -> str:
                 for p in pages if p.get('body')
             ))
     except Exception:
-        pass
+        logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
     
     try:
         # Tier 2: Domain classification for context
-        from core.harness.knowledge.domain_router import DomainRouter
+        from core.api.core_facade import DomainRouter
         router = DomainRouter()
         domain_id = router.classify(text)
         if domain_id and isinstance(domain_id, str):
             parts.append(f"领域分类: {domain_id}")
     except Exception:
-        pass
+        logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
     
     if parts:
         return "参考知识：\n" + "\n".join(parts)
@@ -942,8 +942,8 @@ async def _clarify(context: str, text: str, history: list,
         messages.append({"role": "user", "content": f"FDE输入：{text}"})
 
     try:
-        from core.harness.utils.model_injection import best_model_for_purpose
-        from core.harness.syscalls.llm import sys_llm_generate
+        from core.api.core_facade import best_model_for_purpose
+        from core.api.core_facade import sys_llm_generate
         model_name = best_model_for_purpose("clarify", messages=messages)
         result = await sys_llm_generate(None, messages,
             model_name=model_name, max_tokens=800, temperature=0.3,
@@ -1012,9 +1012,9 @@ async def infer_industry(body: Dict[str, Any]):
         return {"industry": "general", "confidence": 0, "method": "empty", "reason": "无企业信息"}
     
     try:
-        from core.harness.syscalls.llm import sys_llm_generate
-        from core.harness.utils.model_injection import best_model_for_purpose
-        from core.harness.utils.prompt_loader import _sync_resolve
+        from core.api.core_facade import sys_llm_generate
+        from core.api.core_facade import best_model_for_purpose
+        from core.api.core_facade import _sync_resolve
         
         system_prompt = _sync_resolve("fde-infer-industry-system")
         user_prompt = _sync_resolve("fde-infer-industry-user",
@@ -1078,7 +1078,7 @@ async def submit_clarified_feedback(body: Dict[str, Any]):
 async def switch_profile(profile_id: str):
     """切换当前工作 Profile (FDE 多客户上下文切换)。"""
     try:
-        from core.harness.kernel.profile import get_profile_manager
+        from core.api.core_facade import get_profile_manager
         pm = get_profile_manager()
         cfg = pm.get(profile_id)
         if not cfg:
@@ -1156,7 +1156,7 @@ async def fde_feedback_history(
 async def canary_status():
     """灰度发布当前状态: 各 Skill 的版本分流情况 + A/B 测试进度。"""
     try:
-        from core.harness.deployment.canary import get_skill_router
+        from core.api.core_facade import get_skill_router
         router_ = get_skill_router()
         rollout = router_.get_rollout_status()
         return {
@@ -1186,7 +1186,7 @@ async def canary_rollback(body: Dict[str, Any]):
 
     # 1) Try SkillRouter.check_auto_rollback first
     try:
-        from core.harness.deployment.canary import get_skill_router
+        from core.api.core_facade import get_skill_router
         router_ = get_skill_router()
         result = router_.check_auto_rollback(spec_id)
         if result:
@@ -1256,7 +1256,7 @@ async def fde_poc_inject(body: Dict[str, Any]):
 async def canary_insight():
     """⑥ 评测护栏: Agent 驱动的灰度质量分析 (via fde_delivery_engineer)."""
     try:
-        from core.harness.deployment.canary import get_skill_router
+        from core.api.core_facade import get_skill_router
         router_ = get_skill_router()
         rollout = router_.get_rollout_status()
     except Exception:
@@ -1354,7 +1354,7 @@ def _downgrade_diagnosis_headings(text: str) -> str:
 def _resolve_default_model(industry: str) -> str:
     """Resolve default model from the system's LLM profile."""
     try:
-        from core.harness.utils.model_injection import best_model_for_purpose
+        from core.api.core_facade import best_model_for_purpose
         return best_model_for_purpose("skill_execution") or "{{待Agent创建后填写}}"
     except Exception:
         return "{{待Agent创建后填写}}"
@@ -1578,7 +1578,7 @@ async def generate_delivery_manual(
     kpi_lines = []
     if not is_draft:
         try:
-            from core.harness.learning.kpi_tracker import get_kpi_tracker
+            from core.api.core_facade import get_kpi_tracker
             tracker = get_kpi_tracker()
             kpis = tracker.get_all(spec_id=spec_id) if spec_id else tracker.get_all()
             if kpis:
@@ -1816,7 +1816,7 @@ async def _extract_pending_questions(session_id: str) -> list:
 
     import json as _json_pq
     try:
-        from core.harness.ontology_engine.graph_index import GraphIndex
+        from core.api.core_facade import GraphIndex
         fd = GraphIndex.load("fde-delivery")
         rpt = ""
         for nid, node in list(fd._nodes.items()):
@@ -1833,11 +1833,11 @@ async def _extract_pending_questions(session_id: str) -> list:
             return []
 
         # Use LLM to extract confirmation questions
-        from core.harness.syscalls.llm import sys_llm_generate
+        from core.api.core_facade import sys_llm_generate
         # Pass messages to best_model_for_purpose so complexity router
         # can detect this is a simple extraction and select a small model (T1-T2)
         # instead of defaulting to the heavy 32B general-purpose model.
-        from core.harness.utils.model_injection import best_model_for_purpose
+        from core.api.core_facade import best_model_for_purpose
         model_name = best_model_for_purpose("skill_execution",
             messages=[{"role":"user","content":extract_prompt[:500]}])
         if not model_name:
@@ -1921,8 +1921,8 @@ async def fde_assess_dialog(req: FdeDialogRequest):
         # Fallback: continue with legacy LLM path
 
     from core.apps.skills.registry import _compute_readiness
-    from core.harness.syscalls.llm import sys_llm_generate
-    from core.harness.utils.model_injection import best_model_for_purpose
+    from core.api.core_facade import sys_llm_generate
+    from core.api.core_facade import best_model_for_purpose
 
     model_name = best_model_for_purpose("skill_execution")
     llm_available = model_name is not None
@@ -2094,7 +2094,7 @@ async def fde_health():
     # ── 2. Graph indices ──
     graphs = {}
     try:
-        from core.harness.ontology_engine.graph_index import GraphIndex
+        from core.api.core_facade import GraphIndex
         for did in domains[:6]:
             try:
                 g = GraphIndex.load(did)
@@ -2109,7 +2109,7 @@ async def fde_health():
 
     # ── 3. Delivery tracking ──
     try:
-        from core.harness.ontology_engine.graph_index import GraphIndex
+        from core.api.core_facade import GraphIndex
         fd = GraphIndex.load("fde-delivery")
         fd_stats = fd.stats()
         sessions = 0
@@ -2134,7 +2134,7 @@ async def fde_health():
 
     # ── 4. Ontology YAML health ──
     try:
-        from core.harness.knowledge.ontology_loader import load_ontology_from_yaml
+        from core.api.core_facade import load_ontology_from_yaml
         yaml_stats = {}
         for did in domains[:6]:
             path = _os_health.path.expanduser(f"~/.aiplat/ontologies/{did}.yaml")
@@ -2147,7 +2147,7 @@ async def fde_health():
 
     # ── 5. Model check ──
     try:
-        from core.harness.utils.model_injection import best_model_for_purpose
+        from core.api.core_facade import best_model_for_purpose
         model = best_model_for_purpose("skill_execution")
         result["components"]["model"] = {
             "name": getattr(model, "model_name", "unknown"),
@@ -2159,7 +2159,7 @@ async def fde_health():
 
     # ── 6. ContextBus layer check ──
     try:
-        from core.harness.knowledge.context_bus import assemble_field_assessment
+        from core.api.core_facade import assemble_field_assessment
         _, diag = assemble_field_assessment(
             {"industry": "health-check", "company_name": "self-test", "pain_points": "test"},
             []
@@ -2313,7 +2313,7 @@ async def fde_improve_suggestions(session_id: str):
         raise HTTPException(status_code=400, detail="session_id is required")
 
     try:
-        from core.harness.ontology_engine.graph_index import GraphIndex
+        from core.api.core_facade import GraphIndex
         import json as _json_im
 
         fd = GraphIndex.load("fde-delivery")
@@ -2422,7 +2422,7 @@ async def fde_improve_suggestions(session_id: str):
 def _get_convergence_status() -> dict:
     """Get ConvergenceEngine status for /fde/seci-status."""
     try:
-        from core.harness.knowledge.convergence_engine import ConvergenceEngine
+        from core.api.core_facade import ConvergenceEngine
         ce = ConvergenceEngine()
         s = ce.get_status()
         return {
@@ -2436,7 +2436,7 @@ def _get_convergence_status() -> dict:
 def _get_pipeline_health() -> str:
     """Quick ContextBus pipeline health check — returns 'ok' | 'degraded' | 'error'."""
     try:
-        from core.harness.knowledge.context_bus import assemble_field_assessment
+        from core.api.core_facade import assemble_field_assessment
         _, diag = assemble_field_assessment(
             {"industry": "health-check", "company_name": "self-test", "pain_points": "test"},
             [],
@@ -2455,7 +2455,7 @@ def _record_health_snapshot(result: dict):
     Executed asynchronously after each GET /fde/health call.
     """
     try:
-        from core.harness.ontology_engine.graph_index import GraphIndex
+        from core.api.core_facade import GraphIndex
         import json as _json_hs, time as _time_hs
 
         kg = GraphIndex.load("knowledge-atom")
@@ -2490,11 +2490,11 @@ def _get_quick_quality_score(status: dict, governance: dict) -> dict:
 def _get_evolution_stats() -> dict:
     """Quick evolution cycle stats for dashboard."""
     try:
-        from core.harness.ontology_engine.graph_index import GraphIndex
+        from core.api.core_facade import GraphIndex
         kg = GraphIndex.load("knowledge-atom")
         snaps = sum(1 for _, n in kg._nodes.items() if getattr(n, "class_name", "") == "SystemSnapshot" and str(getattr(n, "entity_id", "")).startswith("heal_"))
         total_snaps = sum(1 for _, n in kg._nodes.items() if getattr(n, "class_name", "") == "SystemSnapshot" and str(getattr(n, "entity_id", "")).startswith("snap_"))
-        from core.harness.knowledge.seci_engine import get_seci_engine
+        from core.api.core_facade import get_seci_engine
         sec = get_seci_engine()
         return {
             "health_snapshots": total_snaps,
@@ -2530,10 +2530,8 @@ async def fde_seci_status():
     source distribution, and skill weight adjustments from C→I.
     """
     try:
-        from core.harness.knowledge.seci_engine import (
-            get_seci_engine, _hook_registered,
-        )
-        from core.harness.ontology_engine.graph_index import GraphIndex
+        from core.api.core_facade import get_seci_engine, hook_registered
+        from core.api.core_facade import GraphIndex
 
         engine = get_seci_engine()
         kg = GraphIndex.load("knowledge-atom")
@@ -2575,7 +2573,7 @@ async def fde_seci_status():
 
         # ── 3. Skill weight adjustments ──
         try:
-            from core.harness.routing.skill_routing import get_all_weights
+            from core.api.core_facade import get_all_weights
             weights = get_all_weights()
         except Exception:
             weights = {}
@@ -2588,7 +2586,7 @@ async def fde_seci_status():
 
         return {
             "status": "active",
-            "hook_registered": _hook_registered,
+            "hook_registered": hook_registered,
             "spiral_health": spiral_health,
             "atoms": {
                 "total": total_atoms,
@@ -2640,7 +2638,7 @@ def _get_governance_live_status() -> dict:
         logging.getLogger('fde').debug('_get_governance_live_status failed', exc_info=True)
 
     try:
-        from core.harness.knowledge.seci_engine import get_seci_engine
+        from core.api.core_facade import get_seci_engine
         se = get_seci_engine()
         status["knowledge_atom_count"] = se.get_atom_count()
         status["knowledge_link_count"] = se.get_link_count()
@@ -2648,14 +2646,14 @@ def _get_governance_live_status() -> dict:
         logging.getLogger('fde').debug('_get_governance_live_status failed', exc_info=True)
 
     try:
-        from core.harness.knowledge.convergence_engine import ConvergenceEngine
+        from core.api.core_facade import ConvergenceEngine
         ce = ConvergenceEngine()
         status["convergence_triggers_fired"] = ce.get_status().get("applied_triggers", 0)
     except Exception:
         logging.getLogger('fde').debug('_get_governance_live_status failed', exc_info=True)
 
     try:
-        from core.harness.ontology_engine.graph_index import GraphIndex
+        from core.api.core_facade import GraphIndex
         tg = GraphIndex.load("enterprise-terms")
         status["enterprise_term_count"] = sum(
             1 for _, n in tg._nodes.items()
@@ -2665,7 +2663,7 @@ def _get_governance_live_status() -> dict:
         logging.getLogger('fde').debug('_get_governance_live_status failed', exc_info=True)
 
     try:
-        from core.harness.ontology_engine.graph_index import GraphIndex
+        from core.api.core_facade import GraphIndex
         fd = GraphIndex.load("fde-delivery")
         sessions = 0
         evidence = 0
@@ -2885,9 +2883,7 @@ async def run_simulation(
       - domain_id?: str
       - scenario_count?: int (for param mutation mode)
     """
-    from core.harness.execution.simulation import (
-        SimulationOrchestrator, ScenarioDefinition, ScenarioType
-    )
+    from core.api.core_facade import SimulationOrchestrator, ScenarioDefinition, ScenarioType
 
     seed_state = payload.get("seed_state", {})
     scenarios_raw = payload.get("scenarios", [])
@@ -2961,14 +2957,14 @@ async def run_simulation(
 @router.get("/simulations")
 async def list_simulations(limit: int = Query(20, ge=1, le=100)):
     """列出最近的模拟报告。"""
-    from core.harness.execution.simulation import list_simulations
+    from core.api.core_facade import list_simulations
     return {"simulations": list_simulations(limit=limit)}
 
 
 @router.get("/simulations/{simulation_id}")
 async def get_simulation(simulation_id: str):
     """获取指定模拟报告的详细信息。"""
-    from core.harness.execution.simulation import load_simulation_report
+    from core.api.core_facade import load_simulation_report
     report = load_simulation_report(simulation_id)
     if not report:
         raise HTTPException(status_code=404, detail=f"Simulation {simulation_id} not found")
@@ -2986,7 +2982,7 @@ async def quick_simulate(
       - scenario_count?: int (default 5)
       - assessment_rubric?: [{field, constraint, expected}]
     """
-    from core.harness.execution.simulation import SimulationOrchestrator
+    from core.api.core_facade import SimulationOrchestrator
 
     seed_params = payload.get("seed_params", {})
     scenario_count = payload.get("scenario_count", 5)
@@ -3022,7 +3018,7 @@ async def quick_simulate(
 @router.get("/lineage/recent")
 async def list_lineage_runs(limit: int = Query(20, ge=1, le=100)):
     """列出最近有决策记录的 run."""
-    from core.harness.infrastructure.lineage_store import LineageStore
+    from core.api.core_facade import LineageStore
     store = LineageStore.get()
     runs = store.list_recent_runs(limit=limit)
     return {"runs": runs}
@@ -3031,7 +3027,7 @@ async def list_lineage_runs(limit: int = Query(20, ge=1, le=100)):
 @router.get("/lineage/{run_id}")
 async def get_lineage(run_id: str, limit: int = Query(100, ge=1, le=500)):
     """获取某个 run 的所有决策记录."""
-    from core.harness.infrastructure.lineage_store import LineageStore
+    from core.api.core_facade import LineageStore
     store = LineageStore.get()
     decisions = store.get_by_run(run_id=run_id, limit=limit)
     return {"run_id": run_id, "decisions": decisions, "total": len(decisions)}
@@ -3040,7 +3036,7 @@ async def get_lineage(run_id: str, limit: int = Query(100, ge=1, le=500)):
 @router.get("/lineage/{run_id}/graph")
 async def get_lineage_graph(run_id: str):
     """获取决策图谱 (nodes + edges 用于前端可视化)."""
-    from core.harness.infrastructure.lineage_store import LineageStore
+    from core.api.core_facade import LineageStore
     store = LineageStore.get()
     graph = store.get_decision_graph(run_id=run_id)
     return graph
@@ -3049,7 +3045,7 @@ async def get_lineage_graph(run_id: str):
 @router.get("/lineage/{run_id}/path")
 async def get_traversal_path(run_id: str):
     """获取推理遍历路径."""
-    from core.harness.infrastructure.lineage_store import LineageStore
+    from core.api.core_facade import LineageStore
     path = LineageStore.get().get_traversal_path(run_id)
     return {"run_id": run_id, "path": path, "steps": len(path)}
 
@@ -3061,7 +3057,7 @@ async def get_traversal_path(run_id: str):
 @router.get("/security/purposes")
 async def list_purposes():
     """列出所有已注册的 Purpose."""
-    from core.harness.infrastructure.gates.purpose_registry import PurposeRegistry
+    from core.api.core_facade import PurposeRegistry
     return {"purposes": PurposeRegistry.get().list_all()}
 
 
@@ -3070,7 +3066,7 @@ async def check_security_3d(
     payload: dict = Body(...),
 ):
     """三维权限检查 (dry-run)."""
-    from core.harness.infrastructure.gates.policy_gate import PolicyGate
+    from core.api.core_facade import PolicyGate
 
     gate = PolicyGate()
     result = await gate.check_tool_3d(
@@ -3094,9 +3090,7 @@ async def check_marking_level(
     collection_id: str = Query("default"),
 ):
     """检查实体的标记级别."""
-    from core.harness.infrastructure.gates.marking_propagation import (
-        get_entity_max_marking_level, MARKING_LABELS,
-    )
+    from core.api.core_facade import get_entity_max_marking_level, MARKING_LABELS
     level = get_entity_max_marking_level(entity_uri, collection_id=collection_id)
     return {
         "entity_uri": entity_uri,
@@ -3114,7 +3108,7 @@ async def check_marking_level(
 @router.post("/atomic/split")
 async def split_atomic_tasks(payload: dict = Body(...)):
     """将复杂任务拆分为原子子任务."""
-    from core.harness.execution.atomic_splitter import AtomicTaskSplitter
+    from core.api.core_facade import AtomicTaskSplitter
     splitter = AtomicTaskSplitter()
     result = await splitter.split(
         payload.get("task", ""),
@@ -3133,7 +3127,8 @@ async def split_atomic_tasks(payload: dict = Body(...)):
 @router.post("/atomic/validate")
 async def validate_atoms(payload: dict = Body(...)):
     """验证原子任务列表的质量."""
-    from core.harness.execution.atomic_splitter import AtomicTaskSplitter, AtomicTaskDefinition
+    from core.api.core_facade import AtomicTaskDefinition
+    from core.api.core_facade import AtomicTaskSplitter
     atoms = [AtomicTaskDefinition(**a) for a in payload.get("atoms", [])]
     splitter = AtomicTaskSplitter()
     return splitter.validate(atoms)
@@ -3143,7 +3138,7 @@ async def validate_atoms(payload: dict = Body(...)):
 @router.post("/evo/execute")
 async def run_evox_swarm(payload: dict = Body(...)):
     """执行 EvoX 蜂群流水线: 拆分→并行执行→程序化汇合→损耗检测."""
-    from core.harness.execution.evox_executor import EvoXExecutor
+    from core.api.core_facade import EvoXExecutor
     executor = EvoXExecutor(parallel_limit=payload.get("parallel_limit", 10))
     result = await executor.run(
         payload.get("task", ""),
@@ -3171,7 +3166,7 @@ async def run_evox_swarm(payload: dict = Body(...)):
 @router.post("/collect")
 async def collect_and_detect(payload: dict = Body(...)):
     """程序化收集 + 损耗检测."""
-    from core.harness.execution.programmatic_collector import ProgrammaticCollector
+    from core.api.core_facade import ProgrammaticCollector
     collector = ProgrammaticCollector()
     collect_result, loss_report = collector.collect_and_detect(
         payload.get("state", {}),
@@ -3201,7 +3196,7 @@ async def analyze_agent_network(
     lookback_hours: float = Query(168.0),
 ):
     """分析 Agent 关系网络."""
-    from core.harness.learning.agent_network import AgentNetwork
+    from core.api.core_facade import AgentNetwork
     ids = [a.strip() for a in agent_ids.split(",") if a.strip()]
     net = AgentNetwork()
     nodes = await net.analyze(ids, lookback_hours=lookback_hours)
@@ -3211,14 +3206,14 @@ async def analyze_agent_network(
 @router.get("/network/snapshots")
 async def get_network_snapshots():
     """获取历史网络快照."""
-    from core.harness.learning.agent_network import AgentNetwork
+    from core.api.core_facade import AgentNetwork
     return {"snapshots": AgentNetwork().load_snapshots()}
 
 
 @router.post("/network/evolve")
 async def evolve_agent_network(payload: dict = Body(...)):
     """触发网络演化追踪."""
-    from core.harness.learning.agent_network import AgentNetwork
+    from core.api.core_facade import AgentNetwork
     agent_ids = payload.get("agent_ids", [])
     net = AgentNetwork()
     snapshots = await net.evolution_tracking(
@@ -3232,7 +3227,7 @@ async def evolve_agent_network(payload: dict = Body(...)):
 @router.post("/partners/select")
 async def select_partners(payload: dict = Body(...)):
     """选择协作伙伴."""
-    from core.harness.learning.partner_selector import PartnerSelector
+    from core.api.core_facade import PartnerSelector
     selector = PartnerSelector()
     partners = await selector.select(
         payload.get("agent_id", ""),
@@ -3251,7 +3246,7 @@ async def select_partners(payload: dict = Body(...)):
 @router.post("/templates/register")
 async def register_template(payload: dict = Body(...)):
     """注册文档模板."""
-    from core.harness.document.template_engine import TemplateRegistry
+    from core.api.core_facade import TemplateRegistry
     registry = TemplateRegistry.get()
     template = registry.register(
         payload.get("template_id", ""),
@@ -3264,14 +3259,14 @@ async def register_template(payload: dict = Body(...)):
 @router.get("/templates")
 async def list_templates():
     """列出所有模板."""
-    from core.harness.document.template_engine import TemplateRegistry
+    from core.api.core_facade import TemplateRegistry
     return {"templates": TemplateRegistry.get().list_all()}
 
 
 @router.post("/templates/render")
 async def render_template(payload: dict = Body(...)):
     """渲染模板."""
-    from core.harness.document.template_engine import TemplateRenderer
+    from core.api.core_facade import TemplateRenderer
     renderer = TemplateRenderer()
     result = renderer.render(
         payload.get("template_id", ""),
@@ -3284,7 +3279,7 @@ async def render_template(payload: dict = Body(...)):
 @router.post("/recording/start")
 async def start_recording(payload: dict = Body(...)):
     """开始录制操作."""
-    from core.harness.learning.operation_recorder import OperationRecorder
+    from core.api.core_facade import OperationRecorder
     rid = OperationRecorder.get().start(description=payload.get("description", ""))
     return {"recording_id": rid, "status": "recording"}
 
@@ -3292,7 +3287,7 @@ async def start_recording(payload: dict = Body(...)):
 @router.post("/recording/stop")
 async def stop_recording():
     """停止录制."""
-    from core.harness.learning.operation_recorder import OperationRecorder
+    from core.api.core_facade import OperationRecorder
     recording = OperationRecorder.get().stop()
     if recording:
         OperationRecorder.get().save(recording)
@@ -3303,8 +3298,8 @@ async def stop_recording():
 @router.post("/recording/generate")
 async def generate_skill_from_recording(payload: dict = Body(...)):
     """从录制生成 SKILL.md."""
-    from core.harness.learning.operation_recorder import OperationRecorder
-    from core.harness.learning.skill_generator import SkillGenerator
+    from core.api.core_facade import OperationRecorder
+    from core.api.core_facade import SkillGenerator
     recording = OperationRecorder.get().load(payload.get("recording_id", ""))
     if not recording:
         raise HTTPException(status_code=404, detail="Recording not found")
@@ -3320,7 +3315,7 @@ async def generate_skill_from_recording(payload: dict = Body(...)):
 @router.post("/recording/register")
 async def register_skill_from_generation(payload: dict = Body(...)):
     """注册生成的 SKILL.md."""
-    from core.harness.learning.skill_generator import SkillGenerator
+    from core.api.core_facade import SkillGenerator
     gen = SkillGenerator()
     path = gen.register(
         payload.get("skill_md", ""),
@@ -3332,7 +3327,7 @@ async def register_skill_from_generation(payload: dict = Body(...)):
 @router.get("/recordings")
 async def list_recordings(limit: int = Query(20)):
     """列出最近的录制."""
-    from core.harness.learning.operation_recorder import OperationRecorder
+    from core.api.core_facade import OperationRecorder
     return {"recordings": OperationRecorder.get().list_recordings(limit=limit)}
 
 
@@ -3344,7 +3339,7 @@ async def list_recordings(limit: int = Query(20)):
 @router.post("/knowledge/export-okf")
 async def export_okf(payload: dict = Body(...)):
     """导出域本体为 OKF 标准格式."""
-    from core.harness.knowledge.okf_exporter import OKFExporter
+    from core.api.core_facade import OKFExporter
     exporter = OKFExporter()
     result = await exporter.export(
         payload.get("domain_id", "ai-knowledge"),
@@ -3360,7 +3355,7 @@ async def get_knowledge_roi(
     days: int = Query(30, ge=1, le=365),
 ):
     """获取知识编译 ROI 数据."""
-    from core.harness.knowledge.knowledge_roi import KnowledgeROI
+    from core.api.core_facade import KnowledgeROI
     roi = KnowledgeROI()
     summary = roi.summary(domain_id=domain_id, days=days)
     return {
@@ -3378,7 +3373,7 @@ async def get_knowledge_roi(
 @router.post("/knowledge/roi/record")
 async def record_roi(payload: dict = Body(...)):
     """记录一次查询的 ROI 数据."""
-    from core.harness.knowledge.knowledge_roi import KnowledgeROI
+    from core.api.core_facade import KnowledgeROI
     roi = KnowledgeROI()
     qid = roi.record_from_syscall(
         payload.get("query_text", ""),
@@ -3397,7 +3392,7 @@ async def record_roi(payload: dict = Body(...)):
 @router.post("/knowledge/ingest-conversations")
 async def ingest_conversations(payload: dict = Body(...)):
     """扫描对话记录 → 提取有价值知识 → 写入 Wiki."""
-    from core.harness.knowledge.conversation_ingestor import ConversationIngestor
+    from core.api.core_facade import ConversationIngestor
     ingestor = ConversationIngestor()
     result = await ingestor.ingest_recent(
         hours=payload.get("hours", 5),
@@ -3411,7 +3406,7 @@ async def ingest_conversations(payload: dict = Body(...)):
 @router.post("/knowledge/garden")
 async def run_auto_garden(payload: dict = Body(...)):
     """执行 Wiki 花园整理."""
-    from core.harness.knowledge.auto_garden import AutoGarden
+    from core.api.core_facade import AutoGarden
     garden = AutoGarden()
     result = garden.run(
         collection_id=payload.get("collection_id", ""),
@@ -3455,7 +3450,7 @@ async def run_e2e_verification(payload: dict = Body(...)):
       - verify_roi: 是否验证ROI (default true)
       - verify_ingestor: 是否验证对话摄入 (default true)
     """
-    from core.harness.execution.e2e_verifier import E2EVerifier
+    from core.api.core_facade import E2EVerifier
     verifier = E2EVerifier()
     report = await verifier.run(
         task=payload.get("task", ""),
@@ -3479,7 +3474,7 @@ async def health_all():
 
     # Scenario Simulation
     try:
-        from core.harness.execution.simulation import list_simulations
+        from core.api.core_facade import list_simulations
         sims = list_simulations(limit=1)
         subsystems["Scenario"] = {"ok": True, "msg": f"{len(sims)} recent simulations"}
     except Exception as e:
@@ -3488,7 +3483,7 @@ async def health_all():
 
     # Decision Lineage
     try:
-        from core.harness.infrastructure.lineage_store import LineageStore
+        from core.api.core_facade import LineageStore
         runs = LineageStore.get().list_recent_runs(limit=1)
         subsystems["Lineage"] = {"ok": True, "msg": f"{len(runs)} recent runs"}
     except Exception as e:
@@ -3497,7 +3492,7 @@ async def health_all():
 
     # Security 3D
     try:
-        from core.harness.infrastructure.gates.purpose_registry import PurposeRegistry
+        from core.api.core_facade import PurposeRegistry
         purposes = PurposeRegistry.get().list_all()
         subsystems["Security3D"] = {"ok": True, "msg": f"{len(purposes)} purposes registered"}
     except Exception as e:
@@ -3506,7 +3501,7 @@ async def health_all():
 
     # Branching
     try:
-        from core.harness.ontology_engine.ontology_branch import OntologyBranchManager
+        from core.api.core_facade import OntologyBranchManager
         branches = OntologyBranchManager.get().list_branches("fde-delivery")
         subsystems["Branching"] = {"ok": True, "msg": f"{len(branches)} branches"}
     except Exception as e:
@@ -3515,7 +3510,7 @@ async def health_all():
 
     # EvoX
     try:
-        from core.harness.execution.atomic_splitter import AtomicTaskSplitter
+        from core.api.core_facade import AtomicTaskSplitter
         subsystems["EvoX"] = {"ok": True, "msg": "AtomicSplitter available"}
     except Exception as e:
         subsystems["EvoX"] = {"ok": False, "msg": str(e)[:100]}
@@ -3523,7 +3518,7 @@ async def health_all():
 
     # Knowledge ROI
     try:
-        from core.harness.knowledge.knowledge_roi import KnowledgeROI
+        from core.api.core_facade import KnowledgeROI
         roi = KnowledgeROI().summary(days=1)
         subsystems["KnowledgeROI"] = {"ok": True, "msg": f"{roi.total_queries} queries, {roi.total_saved_tokens} tokens saved"}
     except Exception as e:
@@ -3532,7 +3527,7 @@ async def health_all():
 
     # Cron
     try:
-        from core.harness.scheduler.cron import get_cron_scheduler
+        from core.api.core_facade import get_cron_scheduler
         sched = get_cron_scheduler()
         status = sched.get_status()
         subsystems["Cron"] = {"ok": status.get("running", False), "msg": f"{len(status.get('jobs', []))} jobs"}
@@ -3608,7 +3603,7 @@ async def install_skill(payload: dict = Body(...)):
         if hasattr(reg, "seed_data"):
             reg.seed_data()
     except Exception:
-        pass
+        logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
 
     return {"installed": True, "skill_name": skill_name, "path": target_dir}
 
@@ -3628,124 +3623,12 @@ async def voice_brainstorm(payload: dict = Body(...)):
       - transcript: str (Whisper 转录的原始文本)
       - duration_seconds: int (录音时长, 可选)
     """
-    transcript = str(payload.get("transcript", "")).strip()
-    if len(transcript) < 20:
-        return {"success": False, "error": "转录文本过短 (需≥20字符)", "summary": {}}
-
-    duration = payload.get("duration_seconds", 0)
-
-    try:
-        from core.harness.utils.model_injection import best_model_for_purpose
-        from core.harness.syscalls.llm import sys_llm_generate
-
-        prompt = f"""以下是用户的一段语音漫谈转录 (约 {duration} 秒)。
-文本可能包含"嗯/啊"、自我纠正、跳跃话题、重复表达——这些是正常现象。
-
-请完成三项任务:
-1. 提取核心意图 (1-2句话概括用户真正想表达什么)
-2. 输出3个可执行步骤 (具体、可操作、用户下一步就能做的)
-3. 列出待澄清的模糊点 (哪些地方用户可能自己还没想清楚)
-
-语音转录:
-{transcript[:8000]}
-
-返回 JSON:
-{{
-  "core_intent": "核心意图概括",
-  "actionable_steps": ["步骤1", "步骤2", "步骤3"],
-  "fuzzy_points": ["模糊点1", "模糊点2"],
-  "tone": "思考型/焦虑型/探索型/决策型",
-  "response_style": {{
-    "complexity": "simplify/standard/detailed",
-    "tone_adjust": "encourage/reassure/challenge/neutral",
-    "rationale": "简短说明为什么选择这种风格"
-  }}
-}}
-
-tone 与 response_style 的映射规则:
-  思考型 → response_style: complexity=standard, tone=neutral (用户只是在思考)
-  焦虑型 → response_style: complexity=simplify, tone=reassure (降低认知负担，给予安全感)
-  探索型 → response_style: complexity=detailed, tone=challenge (提供更多细节，适当挑战)
-  决策型 → response_style: complexity=standard, tone=encourage (提供清晰选项，鼓励行动)
-
-只返回 JSON, 不要其他内容."""
-
-        result = await sys_llm_generate(
-            messages=[{"role": "user", "content": prompt}],
-            model=best_model_for_purpose("reasoning"),
-            temperature=0.3,
-            max_tokens=1500,
-        )
-        content = result.get("content", "") if isinstance(result, dict) else str(result)
-
-        # Parse JSON
-        import json as _json
-        data = {}
-        try:
-            if "```json" in content:
-                content = content.split("```json")[1].split("```")[0]
-            elif "```" in content:
-                parts = content.split("```")
-                for p in parts:
-                    if p.strip().startswith("{"):
-                        content = p
-                        break
-            start = content.find("{")
-            end = content.rfind("}")
-            if start >= 0 and end > start:
-                data = _json.loads(content[start:end + 1])
-        except Exception:
-            data = {"core_intent": content[:500], "actionable_steps": [], "fuzzy_points": []}
-
-        # Auto-trigger ConversationIngestor for valuable insights
-        try:
-            import asyncio
-            async def _ingest():
-                from core.harness.knowledge.conversation_ingestor import ConversationIngestor
-                ingestor = ConversationIngestor()
-                await ingestor.ingest_recent(hours=1, max_messages=5)
-            asyncio.ensure_future(_ingest())
-        except Exception:
-            pass
-
-        # Phase 60: Store emotion state for session-aware responses
-        try:
-            tone = data.get("tone", "")
-            style = data.get("response_style", {})
-            if tone:
-                import os, json
-                emo_dir = os.path.expanduser("~/.aiplat/emotion")
-                os.makedirs(emo_dir, exist_ok=True)
-                sid = payload.get("session_id", "default")
-                emo_file = os.path.join(emo_dir, f"{sid}.json")
-                recent = []
-                if os.path.exists(emo_file):
-                    try:
-                        with open(emo_file) as f:
-                            recent = json.load(f)
-                    except Exception:
-                        pass
-                recent.append({
-                    "tone": tone,
-                    "complexity": style.get("complexity", "standard"),
-                    "tone_adjust": style.get("tone_adjust", "neutral"),
-                    "timestamp": __import__("time").time(),
-                })
-                with open(emo_file, "w") as f:
-                    json.dump(recent[-10:], f)
-        except Exception:
-            pass
-
-        return {
-            "success": True,
-            "duration_seconds": duration,
-            "summary": data,
-            "response_style": data.get("response_style", {}),
-        }
-
-    except Exception as e:
-        logging.getLogger("aiplat.voice").warning("brainstorm failed: %s", e)
-        return {"success": False, "error": str(e)[:200], "summary": {}}
+    from core.api.core_facade import run_voice_brainstorm as _brainstorm
+    return await _brainstorm(
+        transcript=str(payload.get("transcript", "")),
+        duration_seconds=int(payload.get("duration_seconds", 0)),
+        session_id=str(payload.get("session_id", "default")),
+    )
 
 
 # ════════════════════════════════════════════════════════════
@@ -3755,14 +3638,14 @@ tone 与 response_style 的映射规则:
 @router.get("/security/adversarial/report")
 async def get_adversarial_report():
     """获取最新认知安全对抗测试报告."""
-    from core.harness.evaluation.adversarial_test_suite import run_cognitive_robustness_check
+    from core.api.core_facade import run_cognitive_robustness_check
     return run_cognitive_robustness_check()
 
 
 @router.post("/security/adversarial/export")
 async def export_adversarial_training_data():
     """手动导出对抗训练数据 (失败案例 → ShareGPT JSONL)."""
-    from core.harness.evaluation.adversarial_test_suite import AdversarialTestSuite
+    from core.api.core_facade import AdversarialTestSuite
     suite = AdversarialTestSuite()
     report = suite.run()
     path = suite.export_training_data(report)
@@ -3779,14 +3662,14 @@ async def export_adversarial_training_data():
 @router.get("/branches/{domain_id}")
 async def list_branches(domain_id: str):
     """列出域的所有分支."""
-    from core.harness.ontology_engine.ontology_branch import OntologyBranchManager
+    from core.api.core_facade import OntologyBranchManager
     return {"domain_id": domain_id, "branches": [b.to_dict() for b in OntologyBranchManager.get().list_branches(domain_id)]}
 
 
 @router.post("/branches/{domain_id}/fork")
 async def fork_branch(domain_id: str, payload: dict = Body(...)):
     """从 main 分支派生新分支."""
-    from core.harness.ontology_engine.ontology_branch import OntologyBranchManager
+    from core.api.core_facade import OntologyBranchManager
     info = OntologyBranchManager.get().fork(domain_id, payload.get("branch_name", ""), description=payload.get("description", ""))
     return info.to_dict()
 
@@ -3794,7 +3677,7 @@ async def fork_branch(domain_id: str, payload: dict = Body(...)):
 @router.delete("/branches/{domain_id}/{branch_name}")
 async def delete_branch(domain_id: str, branch_name: str):
     """删除分支."""
-    from core.harness.ontology_engine.ontology_branch import OntologyBranchManager
+    from core.api.core_facade import OntologyBranchManager
     OntologyBranchManager.get().delete_branch(domain_id, branch_name)
     return {"deleted": True, "branch": branch_name}
 
@@ -3802,7 +3685,7 @@ async def delete_branch(domain_id: str, branch_name: str):
 @router.get("/branches/{domain_id}/diff")
 async def diff_branches(domain_id: str, source: str = Query("main"), target: str = Query("main")):
     """对比两个分支的差异."""
-    from core.harness.ontology_engine.ontology_branch import OntologyBranchManager
+    from core.api.core_facade import OntologyBranchManager
     diff = OntologyBranchManager.get().diff(domain_id, source, target)
     return {"merge_level": diff.merge_level.value, "diff_summary": diff.diff_summary,
             "added_entities": diff.added_entities, "removed_entities": diff.removed_entities,
@@ -3813,7 +3696,7 @@ async def diff_branches(domain_id: str, source: str = Query("main"), target: str
 @router.post("/branches/{domain_id}/merge")
 async def merge_branches(domain_id: str, payload: dict = Body(...)):
     """合并分支."""
-    from core.harness.ontology_engine.ontology_branch import OntologyBranchManager
+    from core.api.core_facade import OntologyBranchManager
     result = OntologyBranchManager.get().merge(domain_id, payload.get("source", ""), payload.get("target", "main"),
                                                 auto_apply=payload.get("auto_apply", False))
     return {"success": result.success, "merge_level": result.merge_level.value,
@@ -3825,7 +3708,7 @@ async def merge_branches(domain_id: str, payload: dict = Body(...)):
 @router.post("/simulate/evox-scenarios")
 async def simulate_evox_scenarios(payload: dict = Body(...)):
     """EvoX 蜂群场景推演: 对比不同拆分策略."""
-    from core.harness.execution.simulation import SimulationOrchestrator
+    from core.api.core_facade import SimulationOrchestrator
     orch = SimulationOrchestrator()
     report = await orch.run_evox_scenarios(
         payload.get("task", ""),

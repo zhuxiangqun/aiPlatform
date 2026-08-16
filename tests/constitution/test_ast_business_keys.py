@@ -61,6 +61,8 @@ FRAMEWORK_KEYS = {
     "qa_retry", "task_list",
     "conversation_state", "_conversation_state",  # cross-stage conversation memory
     "output_dir",  # framework-level: project output directory set by builder
+    "description",  # engine-level: project/task description (generic, not business artifact)
+    "cost_used_usd",  # engine-level: cumulative stage cost tracking (generic)
 }
 
 

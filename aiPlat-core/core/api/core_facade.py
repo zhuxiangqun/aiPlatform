@@ -81,6 +81,36 @@ def create_pipeline_engine(
     return PipelineEngine(config=config, model=model, skill_loader=skill_loader)
 
 
+def register_pipeline(project_id: str, engine: Any) -> None:
+    """Register a running pipeline engine (pipeline registry singleton)."""
+    from core.harness.execution.pipeline_engine import register_pipeline as _r
+    _r(project_id, engine)
+
+
+def get_running_pipeline(project_id: str) -> Any:
+    """Get the running pipeline engine for a project, if any."""
+    from core.harness.execution.pipeline_engine import get_running_pipeline as _g
+    return _g(project_id)
+
+
+def unregister_pipeline(project_id: str) -> None:
+    """Unregister a finished/terminated pipeline engine."""
+    from core.harness.execution.pipeline_engine import unregister_pipeline as _u
+    _u(project_id)
+
+
+def get_pipeline_healing_stats() -> dict:
+    """Get PipelineEngine._healing_stats (diagnostics health check)."""
+    from core.harness.execution.pipeline_engine import PipelineEngine
+    return getattr(PipelineEngine, '_healing_stats', {})
+
+
+def get_pipeline_run_store() -> Any:
+    """Get the pipeline run store singleton."""
+    from core.harness.execution.pipeline_run_store import get_pipeline_run_store as _g
+    return _g()
+
+
 def create_agent(
     agent_type: str,
     config: Any = None,
@@ -185,52 +215,10 @@ def get_policy_gate() -> Any:
     return PolicyGate()
 
 
-def get_working_memory() -> Any:
-    """Get WorkingMemory from active MemoryManager instance."""
-    from core.harness.memory.manager import MemoryManager
-    return MemoryManager()._working
-
-
-def get_circuit_breaker() -> Any:
-    """Get LLM circuit breaker — prevents cascading failures on repeated errors."""
-    from core.harness.syscalls.llm import _llm_cb
-    return _llm_cb
-
-
 def get_hallucination_tracker() -> Any:
     """Get HallucinationTracker for NLI fact-checking in RAG responses."""
     from core.harness.evaluation.hallucination_tracker import HallucinationTracker
     return HallucinationTracker()
-
-
-def get_error_translator() -> Any:
-    """Get ErrorTranslator for 7-level error classification pipeline."""
-    from core.harness.infrastructure.gates.error_translator import ErrorTranslator
-    return ErrorTranslator()
-
-
-def get_graph_index(domain_id: str = "") -> Any:
-    """Get GraphIndex for ontology graph operations."""
-    from core.harness.ontology_engine.graph_index import GraphIndex
-    return GraphIndex.load(domain_id) if domain_id else GraphIndex
-
-
-def get_entity_resolver() -> Any:
-    """Get EntityResolver for entity disambiguation."""
-    from core.harness.ontology_engine.entity_resolver import EntityResolver
-    return EntityResolver()
-
-
-def get_class_mapper() -> Any:
-    """Get ClassMapper for zero-LLM ontology classification."""
-    from core.harness.ontology_engine.class_mapper import ClassMapper
-    return ClassMapper()
-
-
-def get_state_machine() -> Any:
-    """Get StateMachine for entity state transitions."""
-    from core.harness.ontology_engine.state_machine import StateMachine
-    return StateMachine()
 
 
 def get_code_graph() -> Any:
@@ -241,22 +229,10 @@ def get_code_graph() -> Any:
     return build_graph(repo, roots)
 
 
-def get_knowledge_validator() -> Any:
-    """Get KnowledgeValidator for ontology consistency checks."""
-    from core.harness.knowledge.knowledge_validator import KnowledgeValidator
-    return KnowledgeValidator()
-
-
 def get_domain_router() -> Any:
     """Get DomainRouter for multi-domain classification."""
     from core.harness.knowledge.domain_router import DomainRouter
     return DomainRouter()
-
-
-def get_retrieval_crag() -> Any:
-    """Get CRAG 3-level fallback chain for RAG retrieval."""
-    from core.harness.syscalls.retrieval_crag import CRAGRetriever
-    return CRAGRetriever()
 
 
 def get_skill_registry() -> Any:
@@ -277,80 +253,10 @@ def get_wiki_retriever() -> Any:
     return WikiPageRetriever()
 
 
-def get_arch_guard_rules() -> Any:
-    """Get architecture guard rules configuration."""
-    from core.management.arch_guard_base import get_arch_registry
-    return get_arch_registry()
-
-
 def get_context_bus() -> Any:
     """Get ContextBus for field-assessment knowledge injection."""
     from core.harness.knowledge.context_bus import assemble_field_assessment
     return assemble_field_assessment
-
-
-def get_intent_analyzer() -> Any:
-    """Get IntentAnalyzer for query intent classification."""
-    from core.orchestration.intent_analyzer import IntentAnalyzer
-    return IntentAnalyzer()
-
-
-def get_chain_planner() -> Any:
-    """Get ChainPlanner for multi-step task planning."""
-    from core.orchestration.chain_planner import ChainPlanner
-    return ChainPlanner()
-
-
-def get_capability_mapper() -> Any:
-    """Get CapabilityMapper for task-to-capability routing."""
-    from core.orchestration.capability_mapper import CapabilityMapper
-    return CapabilityMapper()
-
-
-def get_ltm_service() -> Any:
-    """Get LongTermMemory service for structured memory filtering."""
-    from core.services.execution_store.ltm_mixin import list_long_term_memories_filtered
-    return list_long_term_memories_filtered
-
-
-def get_reminder_service() -> Any:
-    """Get ReminderService for system reminder injection."""
-    from core.harness.memory.reminders import check_and_inject
-    return check_and_inject
-
-
-def get_command_parser() -> Any:
-    """Get CommandParser for CLI command handling (/moa, etc.)."""
-    from core.harness.execution.loop.command_parser import CommandParser
-    return CommandParser()
-
-
-def get_cross_validation_gate() -> Any:
-    """Get CrossValidationGate — cross-domain semantic validation (Phase 11.3).
-
-    Activation: gate auto-enables when >=50 cross-domain object_properties exist.
-    Current status: check with get_cross_validation_gate().status()
-    """
-    from core.harness.infrastructure.gates.cross_validation_gate import CrossValidationGate
-    return CrossValidationGate()
-
-
-def get_constraint_validator() -> Any:
-    """Get ConstraintValidator — detect outdated rules, missing deps in configs."""
-    from core.harness.evaluation.constraint_validator import ConstraintValidator
-    return ConstraintValidator()
-
-
-def get_config_drift_detector() -> Any:
-    """Get ConfigDriftDetector — compare deployed state vs AGENT.md specification."""
-    from core.harness.evaluation.config_drift_detector import ConfigDriftDetector
-    return ConfigDriftDetector()
-
-
-def get_self_heal_gate() -> Any:
-    """Get SelfHealGate — 3-level automated system health response (review-first by default)."""
-    from core.harness.evaluation.self_heal_gate import SelfHealGate
-    return SelfHealGate()
 
 
 def list_pending_heal_fixes() -> Any:
@@ -369,30 +275,6 @@ def reject_heal_fix(fix_id: str, reason: str = "") -> Any:
     """Reject a pending self-heal fix."""
     from core.harness.evaluation.self_heal_gate import SelfHealGate
     return SelfHealGate().reject_fix(fix_id, reason)
-
-
-def get_ontology_auditor() -> Any:
-    """Get OntologyAuditor — per-domain knowledge graph health report."""
-    from core.harness.knowledge.ontology_audit import OntologyAuditor
-    return OntologyAuditor()
-
-
-def get_adoption_tracker() -> Any:
-    """Get AdoptionTracker — employee engagement and resistance tracking."""
-    from core.harness.evaluation.adoption_metrics import AdoptionTracker
-    return AdoptionTracker()
-
-
-def get_skill_exporter() -> Any:
-    """Get SkillExporter — convert SKILL.md to OpenAI/LangChain/Anthropic specs."""
-    from core.harness.evaluation.skill_exporter import SkillExporter
-    return SkillExporter()
-
-
-def get_agent_config_differ() -> Any:
-    """Get AgentConfigDiffer — structured change detection for AGENT.md frontmatter."""
-    from core.harness.evaluation.agent_config_diff import AgentConfigDiffer
-    return AgentConfigDiffer()
 
 
 def get_fde_pipeline_health() -> Any:
@@ -821,11 +703,11 @@ class PipelineSession:
 
     async def approve(self, state: Dict[str, Any], feedback: str = "") -> Dict[str, Any]:
         """HITL approval: resume pipeline from current HITL pause."""
-        return await self._engine.approve(dict(state), feedback=feedback)
+        return await self._engine.approve_session(dict(state), feedback=feedback)
 
     async def reject(self, state: Dict[str, Any], feedback: str = "") -> Dict[str, Any]:
         """HITL rejection: provide feedback and resume pipeline."""
-        return await self._engine.reject(dict(state), feedback)
+        return await self._engine.reject_session(dict(state), feedback)
 
     async def rollback(self, state: Dict[str, Any], stage_id: str) -> Dict[str, Any]:
         """Rollback pipeline to a previous stage."""
@@ -1129,8 +1011,6 @@ def restore_file_checkpoint(checkpoint_id: str, session_id: str = "") -> Dict[st
     """Restore a file to the content captured in the given checkpoint (writes it back)."""
     from core.harness.execution.file_checkpoint import restore_file_checkpoint as _fn
     return _fn(checkpoint_id, session_id)
-
-
 
 
 def publish_learning_release(release_id: str) -> Dict[str, Any]:
@@ -1734,36 +1614,6 @@ def get_graph_health(domain: str = "") -> Dict[str, Any]:
         return {"domain": domain, "exists": False, "error": str(e)[:200]}
 
 
-def get_graph_sessions(domain: str, limit: int = 100, class_name: str = "") -> Dict[str, Any]:
-    """Phase 46: Get entities from a domain graph, optionally filtered by class_name."""
-    from core.harness.ontology_engine.graph_index import GraphIndex
-    try:
-        g = GraphIndex.load(domain)
-        sessions = []
-        for nid, node in sorted(list(g._nodes.items()), key=lambda x: x[0], reverse=True):
-            if class_name and getattr(node, "class_name", "") != class_name:
-                continue
-            sessions.append({"id": nid[:60], "company": node.entity_name[:60]})
-            if len(sessions) >= limit:
-                break
-        return {"domain": domain, "sessions": sessions, "total": len(sessions)}
-    except Exception as e:
-        return {"domain": domain, "sessions": [], "error": str(e)[:200]}
-
-
-def get_graph_neighbors(domain: str, node_id: str, relation: str = "") -> Dict[str, Any]:
-    u"""Phase 46: Get neighbor nodes for a graph node."""
-    from core.harness.ontology_engine.graph_index import GraphIndex
-    try:
-        g = GraphIndex.load(domain)
-        nb = g.get_neighbor_edges(node_id, direction="outgoing")
-        if relation:
-            nb = [(n, e) for n, e in nb if e.relation_name == relation]
-        return {"domain": domain, "node_id": node_id, "neighbors": len(nb)}
-    except Exception as e:
-        return {"domain": domain, "error": str(e)[:200]}
-
-
 def get_wiki_index(collection_id: str = "default") -> str:
     u"""Phase 46: Generate global wiki index — wraps wiki_engine."""
     from core.harness.knowledge.wiki_engine import generate_index_md
@@ -1998,7 +1848,6 @@ def _get_latest_eval_score(agent_id: str):
 async def _get_latest_eval_score_async(agent_id: str):
     import asyncio
     return await asyncio.to_thread(_get_latest_eval_score, agent_id)
-
 
 
 async def run_workspace_agent(
@@ -2501,28 +2350,6 @@ def get_chat_service_model(rt: Any = None) -> Any:
 
 # ── Ontology Facade (Phase 1: semantic↔action loop closure) ──
 
-def get_ontology_context(
-    question: str = "",
-    *,
-    max_pages: int = 10,
-    collection_id: str = "default",
-    include_contradictions: bool = True,
-    include_state_summary: bool = True,
-) -> Dict[str, Any]:
-    u"""Query ontology state — lifecycle summary, contradictions, health score.
-
-    Use this from platform/management to get ontology context without importing
-    harness-internal modules.
-    """
-    from core.harness.syscalls.ontology_context import sys_ontology_context
-    return sys_ontology_context(
-        question=question,
-        max_pages=max_pages,
-        collection_id=collection_id,
-        include_contradictions=include_contradictions,
-        include_state_summary=include_state_summary,
-    )
-
 
 def get_entity_lifecycle_summary(
     collection_id: str = "default",
@@ -2691,11 +2518,6 @@ def check_obsidian_compatibility(collection_id: str = "default") -> Dict[str, An
 
 # ── Learning Coach Facade (L6 — AI Learning Coach) ──
 
-def get_learning_paths() -> List[Dict[str, Any]]:
-    u"""List all available learning paths with summaries."""
-    from core.harness.knowledge.learning_paths import get_path_summary
-    return get_path_summary()
-
 
 def get_learner_profile(learner_id: str) -> Optional[Dict[str, Any]]:
     u"""Get a learner profile."""
@@ -2732,12 +2554,6 @@ async def complete_chapter_for_learner(
 
 
 # ── Scene Model Facade (Phase A — purpose-driven pipeline templates) ──
-
-def get_scene_template(scene_id: str, *, collection_id: str = "default") -> Optional[Dict[str, Any]]:
-    u"""Get a scene template by ID."""
-    from core.harness.knowledge.scene_model import get_scene
-    scene = get_scene(scene_id, collection_id=collection_id)
-    return scene.to_dict() if scene else None
 
 
 def instantiate_scene(
@@ -3061,36 +2877,6 @@ def list_rule_versions(domain_id: str) -> List[Dict[str, Any]]:
         return []
 
 
-def get_rule_version_diff(domain_id: str, version_id: str) -> Dict[str, Any]:
-    u"""Compute structural diff between a version and the current YAML."""
-    import difflib
-
-    base_dir = _resolve_ontologies_dir()
-    file_path = f"{base_dir}/{domain_id}.yaml"
-    current = Path(file_path).read_text(encoding="utf-8") if Path(file_path).exists() else ""
-
-    from core.harness.ontology_engine.graph_index import GraphIndex
-    try:
-        graph = GraphIndex.load(domain_id)
-        comparisons = graph.compare_snapshots(int(version_id), -1) if version_id.isdigit() else {}
-    except Exception:
-        comparisons = {}
-
-    diff_lines = list(difflib.unified_diff(
-        current.splitlines(keepends=True),
-        current.splitlines(keepends=True),
-        fromfile=f"{domain_id}@v{version_id}",
-        tofile=f"{domain_id}@current",
-    ))
-
-    return {
-        "domain_id": domain_id,
-        "version_id": version_id,
-        "comparisons": comparisons,
-        "diff": "".join(diff_lines) if diff_lines else "(no changes)",
-    }
-
-
 def rollback_rule_version(domain_id: str, version_id: str) -> Dict[str, Any]:
     u"""Restore rules to a previous version — restore snapshot + invalidate caches."""
     from core.harness.ontology_engine.graph_index import GraphIndex
@@ -3300,7 +3086,7 @@ from core.harness.finance.value_calculator import get_value_calculator  # noqa: 
 from core.harness.kernel.profile import get_profile_manager  # noqa: boundary
 from core.harness.knowledge.ontology_loader import load_ontology_from_yaml  # noqa: boundary
 from core.harness.knowledge.domain_router import DomainRouter  # noqa: boundary
-from core.harness.knowledge.seci_engine import get_seci_engine  # noqa: boundary
+from core.harness.knowledge.seci_engine import get_seci_engine, hook_registered  # noqa: boundary
 from core.harness.security.emotion_tracker import get_emotion_tracker  # noqa: boundary
 from core.harness.smoke import enqueue_autosmoke  # noqa: boundary
 from core.harness.evaluation.rag_evaluator import _ensure_eval_schema  # noqa: boundary
@@ -3448,6 +3234,7 @@ from core.management.skill_manager import SkillManager  # v2.5  # noqa: boundary
 from core.services.execution_store import ExecutionStore, ExecutionStoreConfig  # v2.5  # noqa: boundary — CoreFacade canonical re-export
 
 from core.apps.fde.service.agent import run_fde_agent_one_shot  # v2.5  # noqa: boundary — CoreFacade canonical re-export
+from core.apps.fde.service.voice import run_voice_brainstorm  # noqa: boundary — CoreFacade canonical re-export
 
 from core.security.skill_signature_gate import is_approval_resolved_approved, get_trusted_skill_pubkeys_map  # v2.5
 from core.harness.ontology_engine.graph_index import GraphIndex  # v6.5 — canonical re-export for platform layer
@@ -3458,3 +3245,220 @@ from core.management.skill_manager import SkillManager  # noqa: boundary
 from core.management.skill_linter import lint_skill  # noqa: boundary
 from core.management.skill_installer import SkillInstaller  # noqa: boundary
 from core.management.agentskills_parser import convert_agentskills_to_aiplat, is_agentskills_format  # noqa: boundary
+
+# v2.6 — platform→CoreFacade canonical re-exports (eliminate direct core.harness imports)
+from core.harness.ontology_engine.action_registry import get_action_registry  # noqa: boundary
+from core.harness.ontology_engine.ontology_branch import OntologyBranchManager  # noqa: boundary
+from core.harness.infrastructure.lineage_store import LineageStore  # noqa: boundary
+from core.harness.learning.operation_recorder import OperationRecorder  # noqa: boundary
+from core.harness.knowledge.scoring_engine import load_models  # noqa: boundary
+from core.harness.knowledge.metric_engine import load_metrics  # noqa: boundary
+from core.harness.knowledge.versioned_ontology_store import VersionedOntologyStore  # noqa: boundary
+from core.harness.execution.team_planner import load_team_template  # noqa: boundary
+from core.harness.knowledge.knowledge_roi import KnowledgeROI  # noqa: boundary
+from core.harness.learning.kpi_tracker import get_kpi_tracker  # noqa: boundary
+from core.harness.training.full_training import get_full_training_engine  # noqa: boundary
+from core.harness.training.distillation import get_distillation_engine  # noqa: boundary
+from core.harness.knowledge_pipeline.resolver import CrossDomainResolver  # noqa: boundary
+from core.harness.knowledge.convergence_engine import ConvergenceEngine  # noqa: boundary
+from core.harness.execution.atomic_splitter import AtomicTaskSplitter  # noqa: boundary
+from core.harness.learning.agent_network import AgentNetwork  # noqa: boundary
+from core.harness.infrastructure.db_utils import get_db_connection  # noqa: boundary
+from core.harness.integration import KernelRuntime  # noqa: boundary
+
+# v2.7 — complete platform→CoreFacade canonical re-exports (all remaining harness symbols)
+from core.harness.infrastructure.action_contract import ActionContractModel  # noqa: boundary
+from core.harness.infrastructure.action_store import ActionStore  # noqa: boundary
+from core.harness.evaluation.adversarial_test_suite import AdversarialTestSuite  # noqa: boundary
+from core.harness.infrastructure.approval.types import ApprovalContext, RequestStatus, RuleType  # noqa: boundary
+from core.harness.infrastructure.approval.manager import ApprovalManager  # noqa: boundary
+from core.harness.infrastructure.gates.approval_gate import ApprovalRule  # noqa: boundary
+from core.harness.execution.atomic_splitter import AtomicTaskDefinition  # noqa: boundary
+from core.harness.knowledge.auto_garden import AutoGarden  # noqa: boundary
+from core.harness.knowledge.conversation_ingestor import ConversationIngestor  # noqa: boundary
+from core.harness.infrastructure.throttle import DecisionThrottle  # noqa: boundary
+from core.harness.execution.e2e_verifier import E2EVerifier  # noqa: boundary
+from core.harness.evaluation.ab_optimizer import EvalABOptimizer  # noqa: boundary
+from core.harness.evaluation.workbench import EvaluatorThresholds  # noqa: boundary
+from core.harness.execution.evox_executor import EvoXExecutor  # noqa: boundary
+from core.harness.learning.feedback_radar import FeedbackRadar  # noqa: boundary
+from core.harness.training.full_training import FullTrainingConfig  # noqa: boundary
+from core.harness.execution.dynamic_router import GoalAwareRouter  # noqa: boundary
+from core.harness.knowledge_pipeline.retriever import GraphRAGRetriever  # noqa: boundary
+from core.harness.security.immune_memory import ImmuneMemory  # noqa: boundary
+from core.harness.document.converters._mineru import MineruConverter  # noqa: boundary
+from core.harness.knowledge.okf_exporter import OKFExporter  # noqa: boundary
+from core.harness.ontology_engine.engine import OntologyEngine  # noqa: boundary
+from core.harness.learning.partner_selector import PartnerSelector  # noqa: boundary
+from core.harness.infrastructure.gates.policy_gate import PolicyGate  # noqa: boundary
+from core.harness.execution.programmatic_collector import ProgrammaticCollector  # noqa: boundary
+from core.harness.infrastructure.gates.purpose_registry import PurposeRegistry  # noqa: boundary
+from core.harness.execution.simulation import SimulationOrchestrator  # noqa: boundary
+from core.harness.learning.skill_generator import SkillGenerator  # noqa: boundary
+from core.harness.document.protocol import StreamInfo  # noqa: boundary
+from core.harness.knowledge.system_evolver import SystemEvolver  # noqa: boundary
+from core.harness.knowledge.system_diagnostician import SystemHealer  # noqa: boundary
+from core.harness.document.template_engine import TemplateRegistry, TemplateRenderer  # noqa: boundary
+from core.harness.utils.prompt_loader import _async_prompt_resolve, auto_classify, get_metadata, list_templates  # noqa: boundary
+from core.harness.execution.team_planner import _enrich_stage_from_agent  # noqa: boundary
+from core.harness.knowledge.governance_dashboard import aggregate_dashboard  # noqa: boundary
+from core.harness.evaluation.workbench import apply_threshold_gate, persist_evaluation, validate_report  # noqa: boundary
+from core.harness.learning.proposal_store import ProposalStore as _ProposalStore  # noqa: boundary
+
+def approve(request_id: str, approved_by: str = "admin", comment: str = "") -> bool:
+    """Approve a change request via ProposalStore."""
+    return _ProposalStore().approve(request_id, approved_by)
+from core.harness.knowledge.rule_auditor import audit_rules  # noqa: boundary
+from core.harness.knowledge.capability_graph import build_capability_graph  # noqa: boundary
+from core.harness.knowledge.code_graph import build_graph, clear_cache, default_roots, repo_root, PY_IMPORT_RE, JS_IMPORT_RE, strip_py_type_checking, is_code_file, should_skip, read_text, resolve_js_relative, resolve_py_module, detect_issues, convert_file_graph_to_symbols, count_cycles, health_score, blast, ScanResult  # noqa: boundary
+from core.harness.knowledge.capability_health import capability_health_report  # noqa: boundary
+from core.harness.knowledge.consistency_gate import check_cross_stage_consistency  # noqa: boundary
+from core.harness.knowledge.domain_maturity import compare_domains, compute_domain_maturity, export_comparison_report  # noqa: boundary
+from core.harness.evaluation.evidence_diff import compute_evidence_diff  # noqa: boundary
+from core.harness.utils.model_injection import create_selected_adapter  # noqa: boundary
+from core.harness.restatement.run_state import default_run_state, merge_from_evaluation, normalize_run_state  # noqa: boundary
+from core.harness.knowledge.ontology_query_mapper import discover_cross_domain_analogs  # noqa: boundary
+from core.harness.knowledge.scoring_engine import evaluate_batch  # noqa: boundary
+from core.harness.document.parsers import extract_text_from_html  # noqa: boundary
+from core.harness.knowledge.mapping_validator import generate_mapping_report, validate_all_sources  # noqa: boundary
+from core.harness.optimization.abstract_goal_decomposer import get_abstract_goal_decomposer  # noqa: boundary
+from core.harness.routing.skill_routing import get_all_weights  # noqa: boundary
+from core.harness.learning import get_auto_learner  # noqa: boundary
+from core.harness.security.crisis_detector import get_crisis_detector  # noqa: boundary
+from core.harness.scheduler.cron import get_cron_scheduler  # noqa: boundary
+from core.harness.knowledge.governance_pipeline import get_cycle_history, run_all_domains, run_cycle  # noqa: boundary
+from core.harness.deployment.deploy_engine import get_deploy_engine  # noqa: boundary
+from core.harness.infrastructure.discovery_listener import get_discovery_listener  # noqa: boundary
+from core.harness.learning.tool_drift_detector import get_drift_detector  # noqa: boundary
+from core.harness.learning.feedback_radar import get_feedback_radar  # noqa: boundary
+from core.harness.training.auto_trigger import get_lora_auto_trigger  # noqa: boundary
+from core.harness.execution.pipeline_run_store import get_pipeline_run_store  # noqa: boundary
+from core.harness.training.rl_trainer import get_rl_trainer  # noqa: boundary
+from core.harness.knowledge.seci_engine import get_seci_engine, hook_registered  # noqa: boundary
+from core.harness.execution.trace_visualizer import get_trace_visualizer  # noqa: boundary
+from core.harness.execution.decision_trace import record_decision, locate_max_error_node, trace_root_cause_chain, build_fix_plan, get_trace, clear_trace  # noqa: boundary
+from core.harness.execution.cost_budget import CostBudgetController, get_pricing, cost_for  # noqa: boundary
+from core.harness.execution.hypothesis_generator import generate_hypotheses  # noqa: boundary
+from core.harness.execution.governance_report import build_run_report  # noqa: boundary
+from core.harness.knowledge.metric_engine import get_trend  # noqa: boundary
+from core.harness.knowledge.symbol_health import is_excluded_from_dead_code  # noqa: boundary
+from core.harness.execution.simulation import list_simulations, load_simulation_report  # noqa: boundary
+from core.harness.knowledge.ontology_loader import load_ontology_from_yaml  # noqa: boundary
+from core.harness.knowledge.ontology_bus import load_solution_archetypes, render_solution_table  # noqa: boundary
+from core.harness.knowledge.scenario_selector import recommend_order  # noqa: boundary
+from core.harness.evaluation.adversarial_test_suite import run_cognitive_robustness_check  # noqa: boundary
+from core.harness.knowledge.metric_engine import scorecard, get_trend as _get_trend_alias  # noqa: boundary
+from core.harness.infrastructure.crypto.signature import sign_skill  # noqa: boundary
+from core.harness.syscalls.retrieval import sys_knowledge_retrieve  # noqa: boundary
+
+# v2.7.1 — final multi-line import symbols
+from core.harness.learning.playbook import PlaybookManifest, pack_playbook, unpack_playbook  # noqa: boundary
+from core.harness.finance.value_calculator import BusinessGoal, get_value_calculator  # noqa: boundary
+from core.harness.execution.simulation import ScenarioDefinition, ScenarioType  # noqa: boundary
+from core.harness.knowledge_pipeline.extractor import ExtractionPipeline, ExtractionResult, PendingExtractionStore  # noqa: boundary
+from core.harness.infrastructure.gates.marking_propagation import get_entity_max_marking_level, MARKING_LABELS  # noqa: boundary
+
+# v2.7.2 — de-privatized internal symbols
+from core.harness.document.converters._mineru import table_text_to_cells, parse_markdown_table, cells_to_markdown, load_mineru_content_list  # noqa: boundary
+
+
+# ═══════════════════════════════════════════════════════════════
+# P0-B3: wired subsystems (arena / voice_loop / wake_agent)
+# ═══════════════════════════════════════════════════════════════
+
+def arena_leaderboard() -> list:
+    """Get Darwin Arena Elo leaderboard (empty before first run)."""
+    from core.harness.arena.arena import DarwinArena
+    return DarwinArena().leaderboard()
+
+
+async def arena_run_round_robin(contenders: list, matches_per_pair: int = 3,
+                                benchmark_fn=None, on_match=None) -> dict:
+    """Manually trigger a round-robin tournament.
+
+    Args:
+        contenders: list of (name, agent_fn) tuples
+        matches_per_pair: matches per head-to-head pair
+        benchmark_fn: async (name, fn) -> float; defaults to a no-op scorer
+    """
+    from core.harness.arena.arena import DarwinArena
+
+    async def _default_benchmark(name, fn):
+        # Deterministic fallback so manual runs work without a real benchmark:
+        # score by function identity hash (0..1) — callers should pass a real fn.
+        import hashlib
+        h = hashlib.md5(f"{name}:{fn}".encode()).hexdigest()
+        return int(h[:4], 16) / 65535.0
+
+    arena = DarwinArena()
+    result = await arena.round_robin(
+        contenders=contenders,
+        benchmark_fn=benchmark_fn or _default_benchmark,
+        matches_per_pair=matches_per_pair,
+        on_match=on_match,
+    )
+    return {
+        "leaderboard": result.leaderboard,
+        "promotions": [{"name": p.name, "rating": p.rating,
+                        "win_rate": p.win_rate, "promoted": p.promoted,
+                        "reason": p.promotion_reason} for p in result.promotions],
+        "total_matches": len(result.matches),
+        "total_duration_s": result.total_duration_s,
+    }
+
+
+async def voice_loop_process(audio_path: str, llm_callback=None) -> dict:
+    """Full voice loop: STT → Agent → Browser/Tool → TTS (manual trigger)."""
+    from core.harness.multimodal.voice_loop import VoiceLoop
+    return await VoiceLoop().process_voice_command(audio_path, llm_callback=llm_callback)
+
+
+def wake_agent_status() -> dict:
+    """Get WakeAgent filesystem-change detector status."""
+    from core.harness.monitoring.wake_agent import get_wake_agent
+    agent = get_wake_agent()
+    return {
+        "paths": agent.paths,
+        "interval": agent.interval,
+        "running": agent._running,
+        "change_count": agent._change_counter,
+    }
+
+
+async def wake_agent_start(paths: list = None) -> dict:
+    """Start WakeAgent watching (zero-token checksum polling)."""
+    from core.harness.monitoring.wake_agent import get_wake_agent
+    agent = get_wake_agent(paths)
+    if not agent._running:
+        await agent.start()
+    return {"running": agent._running, "paths": agent.paths}
+
+
+async def wake_agent_stop() -> dict:
+    """Stop WakeAgent."""
+    from core.harness.monitoring.wake_agent import get_wake_agent
+    agent = get_wake_agent()
+    agent.stop()
+    return {"running": False}
+
+def cross_validation_verify(output: dict, *, domain_id: str = "default") -> dict:
+    """Run CrossValidationGate semantic verification (equipment/process/quality).
+
+    Framework stub — activates when cross-domain object_properties reach the
+    activation threshold; returns readiness info when not yet active.
+    """
+    from core.harness.infrastructure.gates.cross_validation_gate import CrossValidationGate
+    gate = CrossValidationGate()
+    if not gate.is_ready():
+        return {"ready": False, "violations": [], "note": "below activation threshold"}
+    result = gate.verify(output, domain_id=domain_id)
+    return {
+        "ready": True,
+        "valid": getattr(result, "valid", True),
+        "violations": [
+            {"layer": v.layer, "severity": v.severity, "detail": v.detail}
+            for v in getattr(result, "cross_violations", [])
+        ],
+        "layers_checked": getattr(result, "layers_checked", []),
+        "reason": getattr(result, "reason", ""),
+    }

@@ -571,7 +571,7 @@ class MemoryManager:
                                         body = fh.read()[:500]
                                     relevant_memories.append(type("_IngestorMem", (), {"content": body, "metadata": {"source": "ingestor", "title": f.replace(".md","")}, "importance": 0.7})())
             except Exception:
-                pass
+                logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
         
 
         # 2. Get episodic summary (Phase 18.1: budget-gated)
@@ -800,7 +800,7 @@ class MemoryManager:
 
             try:
 
-                from core.apps.skills.registry import get_skill_registry
+                from core.api.core_facade import get_skill_registry
 
                 reg = get_skill_registry()
 

@@ -122,29 +122,31 @@ async def run_cycle(
 
         try:
 
+            import asyncio as _aio
+
             if step_name == "scenario":
 
-                _run_scenario_check(domain_id, step)
+                await _aio.to_thread(_run_scenario_check, domain_id, step)
 
             elif step_name == "modeling":
 
-                _run_modeling_check(domain_id, step)
+                await _aio.to_thread(_run_modeling_check, domain_id, step)
 
             elif step_name == "mapping":
 
-                _run_mapping_check(domain_id, step)
+                await _aio.to_thread(_run_mapping_check, domain_id, step)
 
             elif step_name == "quality":
 
-                _run_quality_check(domain_id, step)
+                await _aio.to_thread(_run_quality_check, domain_id, step)
 
             elif step_name == "publishing":
 
-                _run_publishing_check(domain_id, step, auto_publish)
+                await _aio.to_thread(_run_publishing_check, domain_id, step, auto_publish)
 
             elif step_name == "feedback":
 
-                _run_feedback_check(domain_id, step)
+                await _aio.to_thread(_run_feedback_check, domain_id, step)
 
         except Exception as e:
 

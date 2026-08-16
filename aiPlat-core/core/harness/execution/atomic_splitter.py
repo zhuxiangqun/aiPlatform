@@ -1,18 +1,18 @@
 """
-AtomicTaskSplitter — 原子任务分解器 (EvoMap EvoX 对齐)
+AtomicTaskSplitter — atomic task splitter (EvoMap EvoX aligned)
 
-将复杂任务动态拆分为边界清晰、可独立执行的原子子任务:
+Dynamically splits complex tasks into atomic subtasks with clear boundaries that can be executed independently:
 
-  1. LLM 分析 → 原子任务列表 (每个原子有明确边界、结构化输出schema、负责人)
-  2. verify_coverage() → 检查原子列表是否完整覆盖原始任务，未覆盖自动补全
-  3. 注入 PipelineEngine FanOut → N 个独立 ReActLoop 并行执行
+  1. LLM analysis → list of atomic tasks (each atom has a clear boundary, structured output schema, and owner)
+  2. verify_coverage() → checks whether the atom list fully covers the original task; auto-fills any gaps
+  3. Injects PipelineEngine FanOut → N independent ReActLoops executed in parallel
 
-设计原则 (EvoX 蜂群):
-  - 每个原子 = 独立上下文，不互相干扰
-  - 每个原子有结构化输出 (不是自由文本)，通过 schema 约束格式
-  - 所有原子加起来必须覆盖原始任务，不重复、不遗漏
+Design principles (EvoX swarm):
+  - Each atom = an independent context, with no mutual interference
+  - Each atom has structured output (not free text), constrained by a schema
+  - All atoms together must cover the original task, with no overlap and no omission
 
-调用者: PipelineEngine → FanOut 模式 / REST API POST /atomic/split
+Callers: PipelineEngine → FanOut mode / REST API POST /atomic/split
 """
 
 from __future__ import annotations
@@ -30,15 +30,15 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class AtomicTaskDefinition:
-    """单个原子任务定义."""
+    """Definition of a single atomic task."""
     atom_id: str
-    boundary: str                       # 任务边界描述 (做什么、不做什么)
-    input_schema: Dict[str, Any]        # 输入 JSON Schema
-    output_schema: Dict[str, Any]       # 输出 JSON Schema (不是自由文本)
-    assigned_agent: str = ""            # 指派的 Agent ID (可为空，由调度器分配)
-    dependencies: List[str] = field(default_factory=list)  # 依赖的原子ID
-    priority: int = 0                   # 优先级 (0=最低)
-    estimated_tokens: int = 0           # 预估 token 消耗
+    boundary: str                       # task boundary description (what to do and what not to do)
+    input_schema: Dict[str, Any]        # input JSON Schema
+    output_schema: Dict[str, Any]       # output JSON Schema (not free text)
+    assigned_agent: str = ""            # assigned Agent ID (may be empty; assigned by the scheduler)
+    dependencies: List[str] = field(default_factory=list)  # IDs of dependent atoms
+    priority: int = 0                   # priority (0 = lowest)
+    estimated_tokens: int = 0           # estimated token consumption
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -55,11 +55,11 @@ class AtomicTaskDefinition:
 
 @dataclass
 class SplitResult:
-    """拆分结果."""
+    """Split result."""
     original_task: str
     atoms: List[AtomicTaskDefinition]
-    coverage_verified: bool = False     # 是否通过全覆盖验证
-    uncovered_gaps: List[str] = field(default_factory=list)  # 未覆盖的部分
+    coverage_verified: bool = False     # whether full-coverage verification passed
+    uncovered_gaps: List[str] = field(default_factory=list)  # uncovered portions
     atom_count: int = 0
     total_estimated_tokens: int = 0
 
@@ -77,11 +77,11 @@ _TASK_MUTATIONS: Dict[str, str] = {
 # ── AtomicTaskSplitter ─────────────────────────────────────────────────────
 
 class AtomicTaskSplitter:
-    """原子任务分解器.
+    """Atomic task splitter.
 
-    使用方式:
+    Usage:
         splitter = AtomicTaskSplitter()
-        result = await splitter.split("分析563道题并输出答案", max_atoms=50)
+        result = await splitter.split("Analyze 563 questions and output the answers", max_atoms=50)
         → SplitResult(atoms=[...], coverage_verified=True)
     """
 
@@ -96,13 +96,13 @@ class AtomicTaskSplitter:
         domain_hint: str = "",
         existing_context: Optional[Dict[str, Any]] = None,
     ) -> SplitResult:
-        """将复杂任务拆分为原子子任务.
+        """Split a complex task into atomic subtasks.
 
         Args:
-            task: 原始任务描述
-            max_atoms: 最大原子数 (0=使用默认值)
-            domain_hint: 领域提示 (帮助 LLM 更精准拆分)
-            existing_context: 已有的上下文信息
+            task: original task description
+            max_atoms: maximum number of atoms (0 = use the default)
+            domain_hint: domain hint (helps the LLM split more precisely)
+            existing_context: existing context information
 
         Returns:
             SplitResult
@@ -110,14 +110,14 @@ class AtomicTaskSplitter:
         limit = max_atoms if max_atoms > 0 else self._max_atoms
         atoms = await self._llm_split(task, limit, domain_hint, existing_context)
 
-        # 覆盖率验证
+        # coverage verification
         gaps = await self._verify_coverage(task, atoms)
         if gaps:
-            # 自动补全未覆盖部分
+            # auto-fill uncovered portions
             extra = await self._llm_fill_gaps(task, atoms, gaps, limit - len(atoms))
             atoms.extend(extra)
 
-        # 最终验证
+        # final verification
         final_gaps = await self._verify_coverage(task, atoms) if gaps else []
         coverage_ok = len(final_gaps) == 0
 
@@ -137,20 +137,20 @@ class AtomicTaskSplitter:
         domain_hint: str,
         existing_context: Optional[Dict],
     ) -> List[AtomicTaskDefinition]:
-        """LLM 驱动的原子拆分."""
+        """LLM-driven atomic splitting."""
         try:
             from core.harness.utils.model_injection import best_model_for_purpose
             from core.harness.syscalls.llm import sys_llm_generate
             from core.harness.utils.prompt_loader import _sync_resolve
 
-            domain_text = f"\n领域: {domain_hint}" if domain_hint else ""
+            domain_text = f"\nDomain: {domain_hint}" if domain_hint else ""
             context_text = ""
             if existing_context:
-                context_text = f"\n已有上下文: {_json.dumps(existing_context, ensure_ascii=False)[:500]}"
+                context_text = f"\nExisting context: {_json.dumps(existing_context, ensure_ascii=False)[:500]}"
             
             prompt = _sync_resolve("atomic-splitter-llm-split",
-                task=f"原始任务:\n{task}{domain_text}{context_text}",
-                context=f"最多 {max_atoms} 个原子子任务")
+                task=f"Original task:\n{task}{domain_text}{context_text}",
+                context=f"At most {max_atoms} atomic subtasks")
 
             result = await sys_llm_generate(
                 messages=[{"role": "user", "content": prompt}],
@@ -159,7 +159,7 @@ class AtomicTaskSplitter:
                 max_tokens=4000,
             )
 
-            # 解析 JSON
+            # Parse JSON
             content = self._extract_json(result.get("content", "") if isinstance(result, dict) else str(result))
             atoms_raw = _json.loads(content)
 
@@ -184,7 +184,7 @@ class AtomicTaskSplitter:
             logger.warning("LLM split failed: %s, returning fallback single-atom", e)
             return [AtomicTaskDefinition(
                 atom_id="atom_fallback",
-                boundary=f"执行全部任务: {task[:200]}",
+                boundary=f"Execute all tasks: {task[:200]}",
                 input_schema={},
                 output_schema={"type": "object"},
                 estimated_tokens=5000,
@@ -195,13 +195,13 @@ class AtomicTaskSplitter:
         task: str,
         atoms: List[AtomicTaskDefinition],
     ) -> List[str]:
-        """验证原子列表是否完整覆盖原始任务.
+        """Verify whether the atom list fully covers the original task.
 
         Returns:
-            未覆盖的部分列表 (空列表 = 完整覆盖)
+            list of uncovered portions (empty list = full coverage)
         """
         if not atoms:
-            return ["无原子任务"]
+            return ["No atomic tasks"]
 
         try:
             from core.harness.utils.model_injection import best_model_for_purpose
@@ -238,7 +238,7 @@ class AtomicTaskSplitter:
         gaps: List[str],
         remaining_slots: int,
     ) -> List[AtomicTaskDefinition]:
-        """自动补全未覆盖的部分."""
+        """Auto-fill the uncovered portions."""
         if not gaps or remaining_slots <= 0:
             return []
 
@@ -284,7 +284,7 @@ class AtomicTaskSplitter:
             return []
 
     def validate(self, atoms: List[AtomicTaskDefinition]) -> Dict[str, Any]:
-        """验证原子列表的质量 (非 LLM 确定性检查).
+        """Validate the quality of the atom list (non-LLM deterministic check).
 
         Returns:
             {"valid": bool, "issues": [...]}
@@ -294,37 +294,37 @@ class AtomicTaskSplitter:
         output_keys: Set[str] = set()
 
         for a in atoms:
-            # 重复ID
+            # duplicate ID
             if a.atom_id in ids:
                 issues.append(_TASK_MUTATIONS["overlapping_keys"] + f": {a.atom_id}")
             ids.add(a.atom_id)
 
-            # 空边界
+            # empty boundary
             if not a.boundary.strip():
                 issues.append(_TASK_MUTATIONS["empty_boundary"] + f": {a.atom_id}")
 
-            # 空 schema
+            # empty schema
             if not a.output_schema:
                 issues.append(_TASK_MUTATIONS["missing_schema"] + f": {a.atom_id}")
 
-            # 循环依赖
+            # circular dependency
             for dep in a.dependencies:
                 if dep == a.atom_id:
                     issues.append(_TASK_MUTATIONS["circular_dependency"] + f": {a.atom_id} → {dep}")
 
-            # 检查输出 key 冲突
+            # check output key conflicts
             for key in a.output_schema.get("properties", {}).keys():
                 if key in output_keys:
-                    issues.append(f"输出key冲突: '{key}' 已在另一个原子中使用")
+                    issues.append(f"output key conflict: '{key}' already used in another atom")
                 output_keys.add(key)
 
         return {"valid": len(issues) == 0, "issues": issues}
 
     @staticmethod
     def _extract_json(text: str) -> str:
-        """从 LLM 输出中提取 JSON."""
+        """Extract JSON from LLM output."""
         text = text.strip()
-        # 处理 markdown code block
+        # handle markdown code blocks
         if "```json" in text:
             text = text.split("```json")[1].split("```")[0]
         elif "```" in text:
@@ -334,7 +334,7 @@ class AtomicTaskSplitter:
                 if p.startswith("[") or p.startswith("{"):
                     text = p
                     break
-        # 提取最外层 JSON 数组/对象
+        # extract the outermost JSON array/object
         start = text.find("[")
         if start == -1:
             start = text.find("{")

@@ -94,7 +94,7 @@ class InfraAudioAdapter(BaseModelAdapter):
                         (config or {}).get("model_path", model_path)
                     )
             except Exception:
-                pass
+                logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
 
         cmd = [
             "piper",

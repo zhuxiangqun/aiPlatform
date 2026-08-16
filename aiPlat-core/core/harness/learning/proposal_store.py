@@ -200,8 +200,8 @@ class ProposalStore:
         if not skill_name:
             return
         try:
-            from core.apps.skills.registry import SkillRegistry
-            registry = SkillRegistry()
+            from core.api.core_facade import get_skill_registry
+            registry = get_skill_registry()
             # Trigger re-scan for the new skill
             logger.info("Proposal merge: skill '%s' → SkillRegistry", skill_name)
         except Exception as e:

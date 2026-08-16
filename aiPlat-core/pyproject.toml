@@ -65,6 +65,7 @@ markers = [
     "regression: mark test as regression test (covers historical defects)",
     "benchmark: mark test as performance benchmark (measures timing/cost)",
     "agent_intelligence: mark test as Agent cognitive intelligence verification",
+    "eval: evaluation regression tests (gold dataset, AIPLAT_EVAL_DRY_RUN)",
 ]
 
 [tool.coverage.run]

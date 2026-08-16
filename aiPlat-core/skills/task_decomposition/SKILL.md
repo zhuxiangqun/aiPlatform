@@ -4,6 +4,7 @@ display_name: 任务分解
 description: 将复杂任务分解为简单子任务，并给出依赖关系与优先级。
 category: analysis
 version: 1.0.0
+execution_type: prompt
 status: enabled
 execution_mode: inline
 executable: true

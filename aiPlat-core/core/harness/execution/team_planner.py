@@ -1,7 +1,7 @@
 """
 Team Planner — Agent discovery, team template loading, and LLM-based team recommendation.
 
-General AI capability (boundary-standard.md §决策树).
+General AI capability (boundary-standard.md §decision tree).
 Callers: platform/builder, CLI, API, any application that needs team planning.
 
 Architecture:
@@ -48,6 +48,8 @@ class TeamRecommendation:
     reasoning: str
     stages: List[Dict[str, Any]] = field(default_factory=list)
     raw_reply: str = ""
+    # v3.2 — application mode: "code" | "agent" | "hybrid"(预留,暂不启用)
+    mode: str = ""
 
 
 @dataclass
@@ -276,12 +278,10 @@ def _enrich_stage_from_agent(stage: Dict[str, Any]) -> Dict[str, Any]:
 
     # ── Model routing ──
     if not stage.get("skill_model_purpose"):
-        phase = stage.get("phase", "").lower()
-        if "design" in phase or "architect" in phase or "review" in phase:
+        _skill = str(stage.get("skill_name", "")).lower()
+        if "architecture" in _skill or "design" in _skill:
             stage["skill_model_purpose"] = "reasoning"
-        elif "dev" in phase or "code" in phase or "program" in phase:
-            stage["skill_model_purpose"] = "code_gen"
-        elif "test" in phase or "qa" in phase:
+        elif "code" in _skill or "generation" in _skill or "test" in _skill:
             stage["skill_model_purpose"] = "code_gen"
         else:
             stage["skill_model_purpose"] = "chat"
@@ -300,7 +300,8 @@ def _enrich_stage_from_agent(stage: Dict[str, Any]) -> Dict[str, Any]:
         ("skill_name",         "skill_name",         "",     str),
         ("output_artifact",    "output_artifact",    "",     str),
         ("required_skills",    "required_skills",    [],     lambda v: v if isinstance(v, list) else []),
-        ("execution_backend",  "execution_backend",  "llm",  str),
+        ("tools",              "required_tools",    [],     lambda v: v if isinstance(v, list) else []),
+        # execution_backend is set ONLY by YAML — not from AGENT.md (see CLAUDE.md §5.4.1)
         ("test_execution_mode","test_execution_mode","",      str),
         ("generate_test_plan", "generate_test_plan",  False,  bool),
         ("deploy_files_to_disk","deploy_files_to_disk",False, bool),
@@ -309,9 +310,13 @@ def _enrich_stage_from_agent(stage: Dict[str, Any]) -> Dict[str, Any]:
         ("hitl",               "hitl",               False,  bool),
         ("hitl_phase",         "hitl_phase",         "",     str),
         ("uses_file_output",   "uses_file_output",   False,  bool),
+        ("scoring_dimensions",  "scoring_dimensions",  [],     lambda v: v if isinstance(v, list) else []),
     ]
+    # Fields that MUST use AGENT.md as the authoritative source,
+    # even if the team YAML already has a (stale) default value.
+    _auth_fields = {"output_artifact", "scoring_dimensions"}
     for stage_key, fm_key, default, coerce in _pipe_fields:
-        if not stage.get(stage_key):
+        if not stage.get(stage_key) or stage_key in _auth_fields:
             val = fm.get(fm_key, default)
             if val != default or not stage.get(stage_key):
                 try:
@@ -319,7 +324,54 @@ def _enrich_stage_from_agent(stage: Dict[str, Any]) -> Dict[str, Any]:
                 except Exception:
                     stage[stage_key] = default
 
+    # ── Capability profile: guarantee all core capabilities are wired ──
+    _ensure_capability_profile(stage)
+
+    # ── v3.0: Auto-infer capability profile from stage declarations ──
+    if stage.get('capability_profile', 'auto') == 'auto':
+        from core.harness.execution.pipeline_engine import PipelineEngine
+        stage['capability_profile'] = PipelineEngine._infer_profile_from_stage(stage)
+
     return stage
+
+
+def _ensure_capability_profile(stage: dict) -> None:
+    """Post-generation injection: every generated app gets all core capability defaults.
+
+    Runs after _enrich_stage_from_agent() — regardless of what the LLM or
+    YAML config produced, this step guarantees the output has every required
+    capability field with sensible defaults.
+
+    Source: PipelineStageConfig.model_fields (Pydantic Schema, single truth).
+    Schema defaults were recently hardened to production values — no need
+    for an external YAML file.
+    """
+    from core.schemas_builder import PipelineStageConfig
+
+    for name, field in PipelineStageConfig.model_fields.items():
+        if name in stage:
+            continue
+        if name.startswith("_"):
+            continue
+        if field.default_factory is not None:
+            stage[name] = field.default_factory()
+        elif field.default is not None and str(field.default) != "PydanticUndefined":
+            stage[name] = field.default
+
+
+def _load_capability_defaults_yaml() -> dict:
+    """Load production capability defaults from YAML (single source of truth)."""
+    import os as _os
+    config_path = _os.path.expanduser("~/.aiplat/capability_defaults.yaml")
+    if not _os.path.isfile(config_path):
+        return {}
+    try:
+        import yaml as _yaml
+        with open(config_path) as f:
+            data = _yaml.safe_load(f) or {}
+        return data.get("pipeline_stage", {})
+    except Exception:
+        return {}
 
 
 def _load_fallback_team() -> List[Dict[str, Any]]:
@@ -398,7 +450,7 @@ async def recommend_team_stages(
         tmpl = load_team_template(team_template)
         if tmpl and tmpl.stages:
             recommendation.team_name = tmpl.team_name
-            recommendation.reasoning = f"使用团队模板: {tmpl.team_name} ({team_template}.yaml)"
+            recommendation.reasoning = f"using team template: {tmpl.team_name} ({team_template}.yaml)"
             for i, s in enumerate(tmpl.stages):
                 stage = dict(s)
                 stage.setdefault("id", f"stage_{i}")
@@ -423,13 +475,18 @@ async def recommend_team_stages(
         prompt += f"## Additional Context\n\n{extra_context}\n\n"
     prompt += (
         "## Task\n"
+        "0. First determine the application MODE and output it as a `mode` field:\n"
+        "   - `agent`: conversational / intent-understanding / multi-turn interaction (e.g. chatbot, QA assistant)\n"
+        "   - `code`: deterministic functions / clear API / performance-sensitive (e.g. upload/transcode, data analysis, CRUD)\n"
+        "   (Judge: is the core 'natural-language interaction' or 'deterministic computation/API'? Only these two, do not output hybrid)\n"
         "1. Select the best agents from the available types above for each stage\n"
+        "   (agent mode → the agent generating Agent apps (AGENT.md+SKILL.md); code mode → the agent generating source code)\n"
         "2. Assign agent_id matching exactly the names listed in the catalog\n"
         "3. Order stages by logical dependency (upstream stages before downstream)\n"
         "4. Set uses_file_output=True for agents that generate source files\n"
         "5. Set generate_test_plan=True for agents that validate/verify output\n"
         "6. Set hitl=True for stages that require human approval\n"
-        "7. Output JSON with team_name, reasoning, and stages array\n"
+        "7. Output JSON with team_name, reasoning, mode, and stages array\n"
         "8. If Agent Performance History is provided, prefer agents with higher first_pass_rate and lower rejection_rate when multiple agents could fulfill the same role. Include a brief note in reasoning about why you preferred certain agents."
     )
 
@@ -449,6 +506,9 @@ async def recommend_team_stages(
             data = _json.loads(json_str)
             recommendation.team_name = str(data.get("team_name", ""))
             recommendation.reasoning = str(data.get("reasoning", ""))
+            _mode = str(data.get("mode", "")).strip().lower()
+            if _mode in ("agent", "code"):
+                recommendation.mode = _mode
             stages_raw = (
                 data.get("stages")
                 or data.get("team", {}).get("stages")

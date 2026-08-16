@@ -4,6 +4,7 @@ display_name: 写文件便签（示范，需审批）
 description: 将输入内容写入指定路径（高风险，默认需审批），用于验证权限/审批链路与证据链。
 category: execution
 version: 0.1.0
+execution_type: prompt
 status: test_fixture
 execution_mode: prompt
 permissions:

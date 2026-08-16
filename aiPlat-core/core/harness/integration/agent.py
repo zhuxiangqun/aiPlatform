@@ -999,7 +999,7 @@ async def _execute_agent_impl(self, req: ExecutionRequest) -> ExecutionResult:
                         if _mem_ctx and hasattr(_mem_ctx, 'messages') and _mem_ctx.messages:
                             context.messages = list(_mem_ctx.messages) + list(context.messages)
                     except Exception:
-                        pass
+                        logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
 
                     result = await agent.execute(context)  # type: ignore[attr-defined]
 

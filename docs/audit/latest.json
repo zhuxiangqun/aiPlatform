@@ -1,0 +1,37 @@
+{
+  "generated_at": "2026-08-14T07:41:33.004653",
+  "doc": "/Users/apple/workdata/person/zy/aiPlatform/AIPLAT_CAPABILITIES.md",
+  "total_declared": 920,
+  "markers": {
+    "ok": 937,
+    "warn": 4,
+    "todo": 0
+  },
+  "refs": {
+    "unique_total": 1037,
+    "frontmatter": 337,
+    "table": 879,
+    "file_ok": 1037,
+    "file_missing": 0,
+    "line_ok": 1037,
+    "line_bad": 0
+  },
+  "missing_files": [],
+  "out_of_range": [],
+  "impl": {
+    "merged": 879,
+    "phase_tagged": 0,
+    "other": 0
+  },
+  "fragments": {
+    "auto_generated": 0,
+    "merge_after_review": 0
+  },
+  "orphan_recheck": [],
+  "rates": {
+    "file_exist": 1.0,
+    "line_valid": 1.0,
+    "impl": 0.8476,
+    "completion": 0.9695
+  }
+}

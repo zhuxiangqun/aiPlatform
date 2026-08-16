@@ -120,6 +120,16 @@ workspace-root/
 │   ├── articles/                     ← 技术文章（对外发布）
 │   │   └── private-control-plane.md
 │   │
+│   ├── matrix/                        ← 🆕 能力影响矩阵
+│   │   └── capability-impact-matrix.md ← 能力变更影响矩阵
+│   │
+│   ├── research/                      ← 🆕 研究报告（审计/对标/方案，含 8 份审计报告）
+│   │   ├── README.md                 ← 研究索引（报告清单 + 定位）
+│   │   ├── aiPlat核心能力对标报告.md  ← 21 章核心能力对标（Claude Code / DeepSeek Harness / Hermes）
+│   │   ├── aiPlat问题总清单与行动纲领.md ← 54 项问题总清单 + 6 Phase 行动纲领
+│   │   ├── aiPlat改进方案.md          ← 完整改进方案
+│   │   └── ...（审计/元审计报告 8 份）
+│   │
 │   ├── archive/                      ← 归档（历史版本，只读）
 │   │   ├── README.md                 ← 归档说明 + "仅做历史参考"免责声明
 │   │   └── ...（历史文件）

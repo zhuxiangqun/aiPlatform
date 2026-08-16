@@ -8,14 +8,17 @@ Manages AI models from three sources:
 """
 
 from .manager import ModelManager
+from .model_health_store import ModelHealthStore, get_model_health_store
 from .schemas import ModelInfo, ModelType, ModelSource, ModelStatus, ModelConfig, ModelStats
 
 __all__ = [
     "ModelManager",
+    "ModelHealthStore",
     "ModelInfo",
     "ModelType",
     "ModelSource",
     "ModelStatus",
     "ModelConfig",
     "ModelStats",
+    "get_model_health_store",
 ]

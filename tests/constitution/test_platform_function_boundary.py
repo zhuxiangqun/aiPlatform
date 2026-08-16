@@ -27,6 +27,7 @@ ALLOWED_ORCHESTRATORS: Set[Tuple[str, str]] = {
     ("builder/builder_project_service.py", "approve_stage"),
     ("builder/builder_project_service.py", "reject_stage"),
     ("builder/builder_project_service.py", "rollback_stage"),
+    ("builder/builder_workflow_service.py", "execute"),
     ("builder/builder_session.py", "chat"),
     ("builder/builder_session.py", "create_session"),
     ("kb/intelligence/llm.py", "chat_complete"),
@@ -36,6 +37,25 @@ ALLOWED_ORCHESTRATORS: Set[Tuple[str, str]] = {
 
 KNOWN_DEBT_FILES: Set[str] = {
     "builder/builder_roles.py",
+}
+
+# P0-A4: business API functions that delegate LLM via CoreFacade (合规委托).
+# These are platform business features (clarify/industry/prompt/eval) whose
+# LLM calls go through core.api.core_facade — same as builder.chat below.
+ALLOWED_LLM_ORCHESTRATORS: Set[Tuple[str, str]] = {
+    ("builder/builder_project_service.py", "_extract_prd_from_chat"),
+    ("builder/builder_project_service.py", "execute_skill"),
+    ("apps/fde/api/fde.py", "_clarify"),
+    ("apps/fde/api/fde.py", "infer_industry"),
+    ("apps/fde/api/fde.py", "_extract_pending_questions"),
+    ("apps/fde/api/fde.py", "fde_assess_dialog"),
+    ("apps/fde/api/fde_ask.py", "fde_ask"),
+    ("apps/eval/api/prompt_eval.py", "_run_evaluation"),
+    ("apps/prompt/api/prompt_app.py", "preview_template"),
+    ("apps/prompt/api/prompt_app.py", "preview_text"),
+    ("apps/prompt/api/prompt_app.py", "run_prompt"),
+    ("apps/prompt/api/prompt_app.py", "optimize_prompt"),
+    ("apps/prompt/api/prompt_optimize.py", "optimize_prompt"),
 }
 
 
@@ -65,7 +85,7 @@ def test_platform_functions_no_llm_inference():
         for node in ast.walk(tree):
             if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
                 continue
-            if (rel, node.name) in ALLOWED_ORCHESTRATORS:
+            if (rel, node.name) in ALLOWED_ORCHESTRATORS or (rel, node.name) in ALLOWED_LLM_ORCHESTRATORS:
                 continue
 
             for sub in ast.walk(node):
@@ -114,7 +134,7 @@ def test_platform_functions_no_agent_discovery():
         for node in ast.walk(tree):
             if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
                 continue
-            if (rel, node.name) in ALLOWED_ORCHESTRATORS:
+            if (rel, node.name) in ALLOWED_ORCHESTRATORS or (rel, node.name) in ALLOWED_LLM_ORCHESTRATORS:
                 continue
 
             for sub in ast.walk(node):

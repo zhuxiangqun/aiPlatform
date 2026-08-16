@@ -431,7 +431,7 @@ async def get_feedback_radar(spec_id: str) -> Dict[str, Any]:
     driven by real user behavior signals (copy, re-query, abandon, repeat).
     """
     try:
-        from core.harness.learning.feedback_radar import get_feedback_radar
+        from core.api.core_facade import get_feedback_radar
         radar = get_feedback_radar()
         suggestions = await radar.analyze(spec_id)
         result = []
@@ -457,7 +457,7 @@ async def get_spec_trace(spec_id: str) -> Dict[str, Any]:
     """
     try:
         from core.api.core_facade import get_spec_lifecycle
-        from core.harness.execution.trace_visualizer import get_trace_visualizer
+        from core.api.core_facade import get_trace_visualizer
 
         sl = get_spec_lifecycle()
         latest = sl.get_latest(spec_id)
@@ -502,7 +502,7 @@ async def get_spec_trace(spec_id: str) -> Dict[str, Any]:
 async def get_training_status() -> Dict[str, Any]:
     """Get SFT/RL auto-training pipeline status (LoRAAutoTrigger monitoring)."""
     try:
-        from core.harness.training.auto_trigger import get_lora_auto_trigger
+        from core.api.core_facade import get_lora_auto_trigger
         trigger = get_lora_auto_trigger()
         status = trigger.get_status()
 
@@ -543,14 +543,14 @@ async def get_fde_dashboard():
     Remove this proxy once frontend migration is complete.
     """
     from apps.fde.api.fde import get_fde_dashboard as _fde_dashboard  # migrated to platform
-    return await _fde_dashboard()
+    return {"data": await _fde_dashboard()}
 
 
 @router.post("/fde-dashboard", response_model=ItemResponse)
 async def post_fde_dashboard():
     """POST alias for GET /fde-dashboard (compat — frontend method mismatch)."""
     from apps.fde.api.fde import get_fde_dashboard as _fde_dashboard
-    return await _fde_dashboard()
+    return {"data": await _fde_dashboard()}
 
 
 

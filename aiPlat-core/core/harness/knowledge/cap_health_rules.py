@@ -121,6 +121,11 @@ class UnusedSkillCheck(CapRule):
     # They won't appear in AGENT.md required_skills but ARE used at runtime.
     _WORKSPACE_PERSONA = {
         "ponytail-lazy", "security-auditor", "test-engineer", "web-perf-auditor",
+        "clarify",
+        # Domain-specific workspace skills referenced by agents but not globally installed
+        "graph_query", "score_evaluate",
+        "video_info_extract", "quality_select", "download_manage", "playback_manage",
+        "field-assessment",
     }
 
     # Workspace utility skills are available system-wide and don't need agent binding.
@@ -202,6 +207,19 @@ class UnresolvedRefCheck(CapRule):
     issue_key = "unresolved_refs"
     description = "Unresolved agent→skill references"
 
+    # System-level tools available via harness syscall (file I/O, search, git, etc.)
+    # These don't appear as capability graph nodes but ARE accessible at runtime.
+    _SYSCALL_TOOLS = {
+        "file_read", "file_write", "file_edit", "file_delete",
+        "code_search", "code_execution", "code_analysis",
+        "git", "git_diff", "git_commit", "git_branch",
+        "knowledge_retrieve", "knowledge_search",
+        "sys_graph_extract", "sys_graph_validate",
+        "project.create", "project.update_prd", "project.set_team",
+        "pipeline.start", "pipeline.approve", "pipeline.reject",
+        "app.deploy",
+    }
+
     def check(self, ctx: CapContext) -> List[CapIssue]:
         issues = []
         for e in ctx.edges:
@@ -218,6 +236,9 @@ class UnresolvedRefCheck(CapRule):
                 if _plain in UnusedSkillCheck._WORKSPACE_UTILITY:
                     continue
                 if _plain in UnusedSkillCheck._ENGINE_SYSTEM:
+                    continue
+                # System-level tools accessible via syscall harness (file I/O, search, git, etc.)
+                if (_plain in self._SYSCALL_TOOLS) or (target in self._SYSCALL_TOOLS):
                     continue
                 from_node = ctx.nodes.get(e["from"], {})
                 issues.append(CapIssue(

@@ -198,6 +198,188 @@ class OntologyEngine:
 
 
 
+    async def _continue_from_phase2(
+
+
+
+        self,
+
+
+
+        extraction_tasks: list,
+
+
+
+        model_name: str,
+
+
+
+        doc_id: str,
+
+
+
+        result,
+
+
+
+    ) -> None:
+
+        """Continue ontology pipeline from Phase 2 (LLM extraction) through Phase 3.
+
+        Used by async_enhance mode — caller has already completed Phase 1 classification
+
+        and basic indexing. This method runs the LLM-heavy Phases 2-3 as a background task.
+
+        """
+
+        import logging as _log
+
+
+
+        # ── Phase 2: Parallel Property Extraction (LLM) ──
+
+
+
+        async def _extract_one(mapping, chunk, tc):
+
+            class_name = str(mapping.get("class_name", ""))
+
+            entity_text = str(mapping.get("entity_text", ""))
+
+            chunk_text = str(chunk.get("text", "") or "")
+
+            chunk_id = str(chunk.get("id", ""))
+
+            chunk_source = str(chunk.get("source", "") or "")
+
+
+
+            prompt = self._prompts.get("property_extraction", "")
+
+            if not prompt:
+
+                extracted = await self._property_extractor.extract(
+
+                    class_name, entity_text, chunk_text,
+
+                    table_context=tc,
+
+                    model_name=model_name,
+
+                    doc_id=doc_id,
+
+                )
+
+            else:
+
+                extracted = await self._property_extractor.extract_with_prompt(
+
+                    class_name, entity_text, chunk_text, prompt,
+
+                    table_context=tc,
+
+                    model_name=model_name,
+
+                    doc_id=doc_id,
+
+                )
+
+            return extracted, class_name, entity_text, chunk_id, chunk_source, mapping
+
+
+
+        if extraction_tasks:
+
+            coros = [_extract_one(m, c, tc) for m, c, tc in extraction_tasks]
+
+            extracted_list = await __import__("asyncio").gather(*coros, return_exceptions=True)
+
+            for item in extracted_list:
+
+                if isinstance(item, Exception):
+
+                    _log.getLogger("ontology.engine").debug("extraction failed: %s", item, exc_info=True)
+
+                    continue
+
+                extracted, class_name, entity_text, chunk_id, chunk_source, mapping = item
+
+                # Merge LLM results into properties
+
+                properties = mapping.get("properties", {}) or {}
+
+                if isinstance(extracted, dict):
+
+                    for k, v in extracted.items():
+
+                        if v not in (None, ""):
+
+                            properties[k] = v
+
+                result.stats["extracted_properties"] += 1
+
+                result.instances.append({
+
+                    "class_name": class_name,
+
+                    "entity_text": entity_text,
+
+                    "properties": properties,
+
+                    "confidence": mapping.get("confidence", 0.7),
+
+                    "chunk_id": chunk_id,
+
+                    "chunk_source": chunk_source,
+
+                    "doc_id": doc_id,
+
+                })
+
+
+
+        # ── Phase 3: Graph build + Knowledge Synthesis ──
+
+
+
+        if result.instances:
+
+            try:
+
+                graph = self._graph
+
+                graph.build_instances(result.instances, domain_id=self._domain.id)
+
+                result.stats["graph_built"] = True
+
+                result.stats["graph_entities"] = len(result.instances)
+
+
+
+                try:
+
+                    from core.harness.ontology_engine.knowledge_synthesis import KnowledgeSynthesizer
+
+                    synthesizer = KnowledgeSynthesizer(graph)
+
+                    synth_result = synthesizer.synthesize(
+
+                        domain_id=self._domain.id, write_to_wiki=True
+
+                    )
+
+                    result.stats["synthesized_pages"] = synth_result.pages_written
+
+                except Exception as e:
+
+                    _log.getLogger("ontology.engine").debug(str(e), exc_info=True)
+
+            except Exception as e:
+
+                _log.getLogger("ontology.engine").debug(str(e), exc_info=True)
+
+
+
     async def process_chunks(
 
         self,
@@ -316,7 +498,67 @@ class OntologyEngine:
 
             for mapping in mappings:
 
-                extraction_tasks.append((mapping, chunk, table_context))
+                 extraction_tasks.append((mapping, chunk, table_context))
+
+
+
+        # ── v1.0: Async enhancement split — Phase 1 → immediate indexing ──
+
+        if async_enhance:
+
+            import asyncio as _asyncio
+
+            # Capture state needed for Phase 2-3
+
+            _self = self
+
+            _tasks = list(extraction_tasks)
+
+            _result = result
+
+            _model_name = model_name
+
+            _doc_id = doc_id
+
+
+
+            async def _async_enhance():
+
+                u"""Background: Phase 2-3 enhancement (LLM + graph + Wiki synthesis)."""
+
+                import logging as _log
+
+                _logger = _log.getLogger("ontology.engine.enhance")
+
+                try:
+
+                    await _self._continue_from_phase2(
+
+                        _tasks, _model_name, _doc_id, _result
+
+                    )
+
+                    _logger.info("Async enhancement completed: %d instances, %d synthesized",
+
+                                 len(enhanced_result.instances),
+
+                                 enhanced_result.stats.get("synthesized_pages", 0))
+
+                except Exception as _exc:
+
+                    _logger.warning("Async enhancement failed (basic index intact): %s",
+
+                                    str(_exc)[:200])
+
+
+
+            _asyncio.create_task(_async_enhance())
+
+            result.stats["async_mode"] = True
+
+            result.stats["enhancement_scheduled"] = True
+
+            return result
 
 
 

@@ -16,7 +16,11 @@ jobs:
         with:
           python-version: "3.11"
       - name: Install dependencies
-        run: pip install pyyaml 2>/dev/null || true
+        run: |
+          pip install pyyaml pytest pytest-asyncio python-multipart
+          pip install -e ./aiPlat-infra 2>/dev/null || true
+          pip install -e ./aiPlat-core 2>/dev/null || true
+          pip install -e ./aiPlat-platform 2>/dev/null || true
       - name: Run architecture guard
         run: bash scripts/architecture_guard.sh
       - name: Run constitution tests
@@ -30,8 +34,13 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - name: Caller verification
-        run: bash scripts/caller_verify.sh
+      - name: Install dependencies
+        run: |
+          pip install pyyaml pytest pytest-asyncio python-multipart
+          pip install -e ./aiPlat-infra 2>/dev/null || true
+          pip install -e ./aiPlat-core 2>/dev/null || true
+      - name: Capability consumer verification (replaces deprecated caller_verify.sh)
+        run: bash scripts/verify_capability_consumers.sh
       - name: Phase check
         run: bash scripts/phase_check.sh
 
@@ -43,6 +52,8 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+      - name: Install dependencies
+        run: pip install pyyaml
       - name: Frontend guard
         run: python scripts/guard_frontend.py
 
@@ -54,6 +65,8 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+      - name: Install dependencies
+        run: pip install pyyaml
       - name: Validate frontmatter
         run: python scripts/validate_frontmatter.py --quick
 
@@ -76,5 +89,10 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+      - name: Install dependencies
+        run: |
+          pip install pyyaml pytest pytest-asyncio python-multipart
+          pip install -e ../aiPlat-infra 2>/dev/null || true
+          pip install -e ../aiPlat-core 2>/dev/null || true
       - name: Check SLA breaches
         run: python -c "from core.harness.security.sla_tracker import check_and_exit; check_and_exit()"

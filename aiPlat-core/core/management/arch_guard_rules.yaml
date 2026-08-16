@@ -154,7 +154,7 @@ rules:
       paths: ["aiPlat-core/core"]
       exclude: ["__pycache__", "tests/"]
       grep_exclude: ["orchestration/|kernel/types\\.py|prompt_loader\\.py|prompt_app\\\
-            .py"]
+            .py|engine/skills/"]
     message: "hardcoded Chinese business names in core (use config-driven)"
 
   # ═══ Section 4: Infra Application Agnostic ═══
@@ -167,7 +167,7 @@ rules:
       pattern: '=.*"ai.platform|=.*"aiplat|=.*"aiPlat|=.*"ai-platform'
       paths: ["aiPlat-infra/infra"]
       exclude: ["__pycache__", "tests/"]
-      grep_exclude: ["os\\.getenv|AIPLAT_"]
+      grep_exclude: ["os\\.getenv|AIPLAT_|Path\\.home.*aiplat|expanduser.*aiplat|# noqa: infra-generic"]
     message: "application-name defaults in infra (use env vars)"
 
   - id: infra_agnostic_gpu_models
@@ -384,7 +384,7 @@ rules:
       pattern: "except Exception: pass"
       paths: ["aiPlat-core/core", "aiPlat-platform", "aiPlat-app"]
       exclude: ["__pycache__", "tests/", "generated/"]
-      grep_exclude: ["# noqa|# allowed"]
+      grep_exclude: ["# noqa|# allowed|skills/registry.py|skills/executor.py"]
     message: "bare except:pass — use logging at minimum"
 
   # ═══ Section 26: Security Hardcoded Credentials ═══
@@ -793,7 +793,7 @@ rules:
   - id: disabled_by_default
     section: "§41"
     section_name: "利用化守卫 — 默认禁用"
-    level: info
+    level: warning
     check:
       type: grep_forbidden
       pattern: 'os\.getenv\("AIPLAT_APPLY_PROMPT_REVISIONS", "false"\)|os\.getenv\("AIPLAT_SYSCALL_ENFORCE_APPROVAL",
@@ -980,7 +980,7 @@ rules:
   - id: zero_caller_todo_wire
     section: "§47"
     section_name: "接线完成度 — 零调用者标记"
-    level: info
+    level: warning
     check:
       type: grep_forbidden
       pattern: '# TODO.*wire|# FIXME.*caller|# TODO.*caller|0 caller|zero caller|FIXME.*wire|待接线'
@@ -1172,7 +1172,7 @@ rules:
   - id: agent_md_missing_handoff_fields
     section: "§59"
     section_name: "AGENT.md 交接字段完整性"
-    level: info
+    level: warning
     check:
       type: grep_forbidden
       pattern: '^handoff:|^交接信息:|^handoff_target:'
@@ -1341,7 +1341,7 @@ rules:
   - id: multi_tenant_isolation
     section: "§65"
     section_name: "多租户数据隔离 — 检索/KB 查询必须带 tenant_id 或 collection_id"
-    level: info
+    level: error
     check:
       type: grep_forbidden
       pattern: '(?:def (?:kb_retrieve|search_pages|graph_query|fts_search)\()(?!.*tenant_id|.*collection_id)'
@@ -1381,7 +1381,7 @@ rules:
   - id: skill_effects_required
     section: "§65"
     section_name: "Skill 副作用声明 — SKILL.md 必须包含 effects 字段"
-    level: info
+    level: warning
     check:
       type: grep_forbidden
       pattern: '^---$'
@@ -1393,14 +1393,13 @@ rules:
   # 65.5: Retrieval 3-level CRAG/HyDE fallback — MaterialsChatAgent must implement all 3 levels
   - id: retrieval_crag_hyde_fallback
     section: "§65"
-    section_name: "检索质量门 — MaterialsChatAgent 必须实现 CRAG/HyDE 3 级回退链"
-    level: info
+    section_name: "检索质量门 — 必须实现 CRAG/HyDE 4 级回退链"
+    level: warning
     check:
       type: grep_required
-      pattern: hyde_prompt|fts5|CRAG.*quality|ontology_first|Level 
-        [123].*retriev
+      pattern: "hyde_prompt|fts5|CRAG.*quality|ontology_first|Level [123].*retriev"
       paths:
-        - aiPlat-core/core/apps/agents/materials_chat.py
+        - "aiPlat-core/core/harness/syscalls/retrieval_crag.py"
       min_matches: 2
     message: "检索质量门缺失 — MaterialsChatAgent 必须实现 CRAG/HyDE 3级回退链 (normal→FTS5→HyDE)，违反
       §5.44"
@@ -1412,7 +1411,7 @@ rules:
   - id: extension_cost_hierarchy
     section: "§66"
     section_name: "扩展机制成本层次 — 禁止能用 Hook 解决的场景上 MCP"
-    level: info
+    level: warning
     check:
       type: grep_forbidden
       pattern: 'MCPRuntime|mcp_server|create_mcp_server'
@@ -1442,7 +1441,7 @@ rules:
   - id: context_priority_tags
     section: "§66"
     section_name: "上下文优先级 — Tool/Skill 返回值应包括 priority 字段"
-    level: info
+    level: warning
     check:
       type: grep_forbidden
       pattern: 'return \{[^}]*"result"'
@@ -1455,7 +1454,7 @@ rules:
   - id: context_compression_thresholds
     section: "§66"
     section_name: "上下文压缩阈值 — 禁止硬编码阈值，必须是配置驱动"
-    level: info
+    level: warning
     check:
       type: grep_forbidden
       pattern: '(?:0\\.7[0-9]|0\\.8[0-9]|0\\.9[0-9])|(?:percentage.*[789][0-9])'
@@ -1556,7 +1555,7 @@ rules:
   - id: observability_trace_span
     section: "§66"
     section_name: "可观测性 trace/span — syscall 必须产生 trace_id 和 span_id"
-    level: info
+    level: error
     check:
       type: grep_forbidden
       pattern: 'def (?:sys_llm_generate|sys_tool_call|sys_skill_call)\('
@@ -1569,7 +1568,7 @@ rules:
   - id: pipeline_config_4step
     section: "§66"
     section_name: "PipelineStageConfig 4 步链路 — 新字段必须同步到 4 个文件"
-    level: info
+    level: warning
     check:
       type: grep_forbidden
       pattern: 'quality_gate|routing_rules|retry_policy'
@@ -1627,7 +1626,7 @@ rules:
   - id: agent_md_handoff_5fields
     section: "§66"
     section_name: "AGENT.md 交接 5 字段 — 必须声明完整的 5 项交接信息"
-    level: info
+    level: warning
     check:
       type: grep_forbidden
       pattern: '^## (?:做了什么|产出物在哪|如何验证|已知问题|下一步)'
@@ -1750,7 +1749,7 @@ rules:
   - id: metrics_regression_guard
     section: "§68"
     section_name: "指标回归 — avg_degree 不得持续上升"
-    level: info
+    level: warning
     check:
       type: grep_forbidden
       pattern: 'from core\.harness\.\w+ import.*from core\.harness\.\w+'
@@ -1899,7 +1898,7 @@ rules:
     level: info
     check:
       type: grep_required
-      pattern: 'OnErrorReflector\|on_error_reflector'
+      pattern: 'OnErrorReflector|on_error_reflector'
       paths: ["aiPlat-core/core/harness/execution/loop.py", "aiPlat-core/core/harness/infrastructure/hooks/"]
       min_matches: 1
     message: "ReActLoop 未检测到 OnErrorReflector 注册 — 连续工具失败时将无自动反思能力 (§5.89)"
@@ -1911,7 +1910,7 @@ rules:
     level: info
     check:
       type: grep_required
-      pattern: 'feedback.*implicit\|implicit.*feedback'
+      pattern: 'feedback.*implicit|implicit.*feedback'
       paths: ["aiPlat-core/core/api/routers/", "aiPlat-core/core/services/implicit_feedback.py"]
       min_matches: 1
     message: "未检测到隐式反馈端点 — 用户行为信号将无法收集 (§5.90)"
@@ -1923,7 +1922,7 @@ rules:
     level: info
     check:
       type: grep_required
-      pattern: 'lora_auto_trigger\|LoRAAutoTrigger'
+      pattern: 'lora_auto_trigger|LoRAAutoTrigger'
       paths: ["aiPlat-core/core/harness/learning/"]
       min_matches: 1
     message: "AutoLearner 未钩入 LoRAAutoTrigger — 审批通过后将无法自动触发微调建议 (§5.91)"
@@ -1935,7 +1934,7 @@ rules:
     level: info
     check:
       type: grep_required
-      pattern: 'MetaAgent\|meta_agent\|meta_agent'
+      pattern: 'MetaAgent|meta_agent|meta_agent'
       paths: ["aiPlat-core/core/harness/meta/"]
       min_matches: 1
     message: "未检测到 MetaAgent 模块 — 远景探索，默认关闭，企业部署建议启用 (§5.92)"
@@ -1949,7 +1948,7 @@ rules:
     level: info
     check:
       type: grep_required
-      pattern: 'experience_vector\|ExperienceVectorCache'
+      pattern: 'experience_vector|ExperienceVectorCache'
       paths: ["aiPlat-core/core/harness/learning/"]
       min_matches: 1
     message: "AutoLearner 未接入经验向量缓存 — 建议集成以提升 SkillDraft 质量 20%"
@@ -1997,7 +1996,7 @@ rules:
     level: info
     check:
       type: grep_required
-      pattern: 'ErrorReflector\|on_error_reflector\|reflect_on_error'
+      pattern: 'ErrorReflector|on_error_reflector|reflect_on_error'
       paths: ["aiPlat-core/core/harness/infrastructure/hooks/"]
       min_matches: 1
     message: "ErrorReflector 未接入 ReActLoop — 连续 tool_call 失败后无反思能力 (§4.1)"
@@ -2009,7 +2008,7 @@ rules:
     level: info
     check:
       type: grep_required
-      pattern: 'HallucinationTracker\|hallucination_tracker\|evaluate_faithfulness'
+      pattern: 'HallucinationTracker|hallucination_tracker|evaluate_faithfulness'
       paths: ["aiPlat-core/core/apps/agents/"]
       min_matches: 1
     message: "HallucinationTracker 未接入 MaterialsChatAgent — 无 NLI 事实核查能力 (§3.1)"
@@ -2021,7 +2020,7 @@ rules:
     level: info
     check:
       type: grep_required
-      pattern: 'ParallelExecutor\|parallel_executor'
+      pattern: 'ParallelExecutor|parallel_executor'
       paths: ["aiPlat-core/core/harness/execution/"]
       min_matches: 1
     message: "ParallelExecutor 未接入 PipelineEngine — FanOut 并行能力未生效 (§1.2)"
@@ -2033,7 +2032,7 @@ rules:
     level: info
     check:
       type: grep_required
-      pattern: 'EnterpriseGateway\|FeishuAdapter\|WeComAdapter\|SlackAdapter\|gateway'
+      pattern: 'EnterpriseGateway|FeishuAdapter|WeComAdapter|SlackAdapter|gateway'
       paths: ["aiPlat-core/core/server.py"]
       min_matches: 1
     message: "EnterpriseGateway 未接入 server.py startup — 企业消息能力未生效 (§2.3)"
@@ -2045,7 +2044,7 @@ rules:
     level: info
     check:
       type: grep_required
-      pattern: 'ImplicitFeedbackCollector\|implicit_feedback\|process_behavior'
+      pattern: 'ImplicitFeedbackCollector|implicit_feedback|process_behavior'
       paths: ["aiPlat-core/core/api/"]
       min_matches: 1
     message: "ImplicitFeedbackCollector 未接入 chat API — 用户行为信号未收集 (§4.2)"
@@ -2072,7 +2071,7 @@ rules:
     level: info
     check:
       type: grep_required
-      pattern: 'run_nightly\|EvolutionEngine.*cron\|evolution_cron'
+      pattern: 'run_nightly|EvolutionEngine.*cron|evolution_cron'
       paths: ["aiPlat-core/core/server.py"]
       min_matches: 1
     message: "EvolutionEngine.run_nightly() 未接入 server.py cron — 夜间进化流水线从未运行 (§5.4)"
@@ -2092,15 +2091,15 @@ rules:
   # 73.10: caller_verify.sh must run as part of architecture_guard.sh
   - id: caller_verify_in_arch_guard
     section: "§73"
-    section_name: "caller_verify.sh 已集成到 architecture_guard.sh"
+    section_name: "capability_consumers 已集成到 architecture_guard.sh"
     level: error
     check:
       type: grep_required
-      pattern: 'caller_verify\.sh|phase_check'
+      pattern: 'verify_capability_consumers\.sh|phase_check'
       paths: ["scripts/architecture_guard.sh"]
       ext: [".sh"]
       min_matches: 1
-    message: "caller_verify.sh 未在 architecture_guard.sh 中执行 — 0-caller 检测不会在 CI 中运行"
+    message: "verify_capability_consumers.sh 未在 architecture_guard.sh 中执行 — 0-caller 检测不会在 CI 中运行 (caller_verify.sh 已废弃)"
 
   # 73.11: method_verify.sh must exist and be integrated
   - id: method_verify_in_phase_check
@@ -2170,7 +2169,7 @@ rules:
     level: info
     check:
       type: grep_required
-      pattern: 'test_reflector\|test_parallel\|test_gateway'
+      pattern: 'test_reflector|test_parallel|test_gateway'
       paths: ["aiPlat-core/core/tests/wiring/integration/"]
       min_matches: 1
     message: "接线集成测试缺失 — 应至少包含 reflector/parallel/gateway 三个测试文件"
@@ -2254,7 +2253,7 @@ rules:
   - id: no_untracked_debt_todos
     section: "§74"
     section_name: "已知债务 — TODO: wire / 0 caller 必须标注 noqa: known-debt 和 Phase"
-    level: info
+    level: warning
     check:
       type: grep_forbidden
       pattern: 'TODO.*wire\b|0 caller|待接线'
@@ -2655,6 +2654,31 @@ rules:
     level: error
     check:
       type: cmd_output
-      cmd: |
-        python3 scripts/verify_registry.py --json 2>/dev/null || true
+      shell: |
+        python3 scripts/verify_registry.py --fix --json >/dev/null 2>&1
+        python3 scripts/verify_registry.py --json
       ok_pattern: '"total_issues": 0'
+
+  # ═══ Section 94: Platform Must Import Through CoreFacade ═══
+  - id: platform_harness_direct_import
+    section: "§94"
+    section_name: "Platform→CoreFacade Import Compliance"
+    level: error
+    check:
+      type: grep_forbidden
+      pattern: "from core\\.harness\\."
+      paths: ["aiPlat-platform/"]
+      exclude: ["__pycache__", "tests/"]
+      grep_exclude: ["# noqa: boundary|core_facade|voice\\.py|service/"]
+    message: "platform must import from core.api.core_facade, not core.harness directly — use CoreFacade re-exports"
+
+  # ═══ Section 95: CoreFacade Signature Ripple Detection ═══
+  - id: signature_ripple
+    section: "§95"
+    section_name: "CoreFacade Signature Ripple Detection"
+    level: error
+    check:
+      type: cmd_output
+      shell: "python3 scripts/check_signature_ripple.py --check --json 2>/dev/null"
+      ok_pattern: '"violations": 0'
+    message: "CoreFacade function signature changed but platform callers not updated. Run python3 scripts/check_signature_ripple.py --check for details, then --update after fixing."

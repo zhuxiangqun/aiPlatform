@@ -8,7 +8,7 @@ Implements Stage 1 of the Self-Harness loop:
   4. Split into held-in (proposer sees) and held-out (validation gate uses)
 
 Design reference: Shanghai AI Lab Self-Harness paper (2026)
-  "只有当两个失败案例在以上三个维度完全一致时，才会被归入同一簇"
+  "Only when two failure cases are fully identical across the three dimensions above are they grouped into the same cluster"
 
 callers: pipeline_engine (post-execution), wiki.py (view clusters), core_facade
 """

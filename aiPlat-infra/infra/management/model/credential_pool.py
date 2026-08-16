@@ -18,6 +18,29 @@ import os
 import time
 from dataclasses import dataclass
 from typing import Dict, List, Optional
+import logging
+
+
+def _is_valid_key(key: str) -> bool:
+    """True for a plausible API key; false for placeholder/corrupted/sentinel blobs.
+
+    Rejects:
+      - empty / whitespace
+      - local scan sentinels (``__local*``)
+      - placeholders containing "test" / "validation"
+      - corrupted non-``sk-`` blobs (e.g. JSON written into the api_key column)
+    """
+    k = (key or "").strip()
+    if not k:
+        return False
+    if k.startswith("__local"):
+        return False
+    if not k.lower().startswith("sk-"):
+        return False
+    _l = k.lower()
+    if "test" in _l or "validation" in _l:
+        return False
+    return True
 
 
 # ══════════════════════════════════════════════════════════════
@@ -61,31 +84,42 @@ class CredentialPool:
 
     @staticmethod
     def _load_keys(provider: str) -> List[str]:
-        """Load keys from SQLite adapters table — single source of truth.
+        """Load keys for a provider, deduped and validity-filtered.
 
-        No env var fallback. All model API keys are stored in the adapters table,
-        configured via Management UI. Encrypted keys (api_key_enc) supported
-        via AIPLAT_SECRET_KEY.
+        Primary source: SQLite adapters table (management UI — single source of truth).
+        Fallback: ``{PROVIDER}_KEYS`` / ``{PROVIDER}_API_KEY`` env vars (comma-separated
+        multi-key or single key), used for dev/CI without the management UI.
+
+        Loads ALL valid keys (for round-robin), preferring exact provider match
+        over api_base_url LIKE, and filtering placeholder/corrupted blobs.
         """
+        keys: List[str] = []
+        seen = set()
+
+        # ── Primary: SQLite adapters table ──
         try:
             db_path = os.getenv("AIPLAT_EXECUTION_DB_PATH",
-                                os.path.expanduser("~/.aiplat/data/execution.db"))
+                                os.path.expanduser("~/.aiplat/aiplat_executions.sqlite3"))
             if os.path.isfile(db_path):
                 import sqlite3
                 conn = sqlite3.connect(db_path, timeout=3.0)
                 try:
-                    # Match provider by name or openai_compatible with provider base_url
+                    # Exact provider match first, then api_base_url LIKE fallback.
+                    # No LIMIT — load every key so the round-robin pool actually rotates.
                     rows = conn.execute(
                         "SELECT api_key, api_key_enc FROM adapters "
                         "WHERE status='active' AND (provider=? OR (api_base_url LIKE ?)) "
                         "AND (api_key IS NOT NULL OR api_key_enc IS NOT NULL) "
-                        "LIMIT 1",
-                        (provider, f"%{provider}%")
+                        "ORDER BY (provider=?) DESC",
+                        (provider, f"%{provider}%", provider)
                     ).fetchall()
                     for row in rows:
                         key = row[0] or ""
-                        if key.strip():
-                            return [key.strip()]
+                        if _is_valid_key(key):
+                            if key not in seen:
+                                seen.add(key)
+                                keys.append(key)
+                            continue
                         # Try decrypted key
                         enc = row[1] or ""
                         if enc.strip():
@@ -95,16 +129,27 @@ class CredentialPool:
                                 if secret:
                                     f = Fernet(secret.encode() if isinstance(secret, str) else secret)
                                     key = f.decrypt(enc.encode() if isinstance(enc, str) else enc).decode()
-                                    if key.strip():
-                                        return [key.strip()]
+                                    if _is_valid_key(key) and key not in seen:
+                                        seen.add(key)
+                                        keys.append(key)
                             except Exception:
-                                pass
+                                logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
                 finally:
                     conn.close()
         except Exception:
-            pass
+            logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
 
-        return []
+        # ── Fallback: env vars ({PROVIDER}_KEYS comma-separated, {PROVIDER}_API_KEY single) ──
+        if not keys:
+            _up = provider.upper().replace("-", "_")
+            env_keys = os.getenv(f"{_up}_KEYS", "") or os.getenv(f"{_up}_API_KEY", "") or ""
+            for k in env_keys.split(","):
+                k = k.strip()
+                if _is_valid_key(k) and k not in seen:
+                    seen.add(k)
+                    keys.append(k)
+
+        return keys
 
     def next(self) -> str:
         """Return the next available key (skips keys in cooldown).

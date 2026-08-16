@@ -12,6 +12,7 @@ import time
 from typing import List, AsyncIterator
 from ..base import LLMClient
 from ..schemas import ChatRequest, ChatResponse, StreamChunk, LLMConfig
+import logging
 
 
 class OpenAICompatibleClient(LLMClient):
@@ -31,9 +32,9 @@ class OpenAICompatibleClient(LLMClient):
             "completion_tokens": 0,
             "total_tokens": 0,
         }
-        # ── Credential pool wiring (only active for multi-key providers) ──
         self._pool = None
         self._current_key = None
+        # ── Credential pool wiring (only active for multi-key providers) ──
         try:
             provider = (config.provider or "").lower()
             if provider:
@@ -42,8 +43,36 @@ class OpenAICompatibleClient(LLMClient):
                 if pool.key_count > 1:
                     self._pool = pool
         except Exception:
-            # No {PROVIDER}_KEYS / no env keys → single-key mode (unchanged)
+            # single-key mode — unchanged behavior (config.api_key)
             self._pool = None
+
+    def _get_keep_alive(self) -> str | None:
+        """Dynamic keep_alive based on model deployment state (v3).
+
+        Returns None for API models, '-1' for hot-loaded local models,
+        '30' for cold-loaded local models (prevents thrashing).
+        """
+        try:
+            from infra.management.model.manager import _derive_model_state
+            # Construct a lightweight model info object
+            class _M: pass
+            m = _M()
+            m.provider = getattr(self.config, 'provider', '') or ''
+            m.name = getattr(self.config, 'model', '') or ''
+            m.size = 0
+            ds = _derive_model_state(m)
+            if ds == "local_hot":
+                return "-1"
+            elif ds == "local_cold":
+                return "30"
+        except Exception:
+            logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
+        return None
+
+    def _get_extra_body(self) -> dict:
+        """Return extra_body dict with keep_alive, or empty dict for API models."""
+        _ka = self._get_keep_alive()
+        return {"keep_alive": _ka} if _ka else {}
 
     def _resolve_api_key(self) -> str:
         """Return the active API key — pool key when rotating, else static config key."""
@@ -126,10 +155,10 @@ class OpenAICompatibleClient(LLMClient):
         if request.timeout:
             import httpx
             create_kwargs["timeout"] = httpx.Timeout(timeout=request.timeout, connect=5.0)
-        # Ollama keep_alive: auto-unload model after idle timeout (default 5m)
-        if (self.config.provider or "").lower() == "ollama":
-            ka = getattr(self.config, "ollama_keep_alive", "5m") or "5m"
-            create_kwargs["extra_body"] = {"keep_alive": ka}
+        # Dynamic keep_alive based on model deployment state (v3)
+        _ka = self._get_keep_alive()
+        if _ka:
+            create_kwargs["extra_body"] = {"keep_alive": _ka}
         response = client.chat.completions.create(**create_kwargs)
 
         latency = time.time() - start
@@ -182,7 +211,8 @@ class OpenAICompatibleClient(LLMClient):
         raise RuntimeError(f"OpenAI API error: {last_exc}")
 
     async def achat(self, request: ChatRequest) -> ChatResponse:
-        return self.chat(request)
+        import asyncio
+        return await asyncio.to_thread(self.chat, request)
 
     async def stream_chat(self, request: ChatRequest) -> AsyncIterator[StreamChunk]:
         messages = [{"role": m.role, "content": m.content} for m in request.messages]
@@ -200,10 +230,9 @@ class OpenAICompatibleClient(LLMClient):
                     max_tokens=request.max_tokens,
                     top_p=request.top_p,
                     stop=request.stop,
-                    stream=True,
-                    **({"extra_body": {"keep_alive": getattr(self.config, "ollama_keep_alive", "5m") or "5m"}}
-                       if (self.config.provider or "").lower() == "ollama" else {}),
-                )
+                     stream=True,
+                     **self._get_extra_body(),
+                 )
                 for chunk in response:
                     if chunk.choices and chunk.choices[0].delta:
                         delta = chunk.choices[0].delta
@@ -231,9 +260,9 @@ class OpenAICompatibleClient(LLMClient):
     async def embed(self, texts: List[str]) -> List[List[float]]:
         client = self._get_client()
         create_kwargs: dict = dict(model="text-embedding-3-small", input=texts)
-        if (self.config.provider or "").lower() == "ollama":
-            ka = getattr(self.config, "ollama_keep_alive", "5m") or "5m"
-            create_kwargs["extra_body"] = {"keep_alive": ka}
+        _ka = self._get_keep_alive()
+        if _ka:
+            create_kwargs["extra_body"] = {"keep_alive": _ka}
         response = client.embeddings.create(**create_kwargs)
         return [d.embedding for d in response.data]
 
@@ -294,6 +323,7 @@ class OpenAICompatibleClient(LLMClient):
                 metrics["credential_pool"] = self._pool.status()
             except Exception:  # noqa: metrics-non-critical
                 pass
+        return metrics
 
 
 # Backward-compat aliases

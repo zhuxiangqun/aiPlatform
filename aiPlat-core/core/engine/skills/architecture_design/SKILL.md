@@ -30,7 +30,28 @@ input_schema:
     type: string
     description: 技术约束
 output_schema:
-  $ref: "architecture"
+  type: object
+  required: true
+  description: 系统架构设计JSON文档
+  properties:
+    components:
+      type: array
+      description: 组件清单(名称/层级/技术栈/职责)
+    api_design:
+      type: array
+      description: API接口设计(方法/路径/说明)
+    database_schema:
+      type: string
+      description: 数据库表结构设计
+    deployment:
+      type: string
+      description: 部署方案
+    security:
+      type: string
+      description: 安全设计
+    performance:
+      type: string
+      description: 性能优化方案
 ---
 
 # 系统架构设计 (Architecture Design)
@@ -39,7 +60,30 @@ output_schema:
 
 你是资深系统架构师。根据PRD需求设计完整、详细、可落地的系统架构。输出纯JSON（无markdown代码块）。
 
-### JSON输出结构
+### ⚠️ 模式感知（最高优先级 — 先判断架构模式再设计）
+
+**必须**根据输入中的 `architecture_mode` 字段选择架构风格：
+
+- **`architecture_mode: agent`**（Agent 应用）→ 生成 **Agent 架构**，JSON 结构如下（**不要**生成 FastAPI/API 设计/数据库表）：
+  ```json
+  {
+    "title": "项目名称",
+    "overview": "Agent 架构概述：单/多 Agent 划分理由、意图理解与技能路由设计",
+    "agents": [
+      {"name": "agent_id", "display_name": "显示名", "role": "orchestrator|worker|notification",
+       "responsibility": "职责描述", "skills": ["skill_id 列表"]}
+    ],
+    "skill_routing": {"skill_id": "负责该 skill 的 agent_id"},
+    "data_flow": "用户自然语言 → 意图识别 → 路由到 agent → 调用 skill → 生成回复",
+    "error_handling": "意图无法识别/技能缺失/多轮澄清 的降级策略"
+  }
+  ```
+
+- **`architecture_mode: code`**（代码应用）→ 生成 **FastAPI 代码架构**（见下方「JSON输出结构」）。
+
+- 若输入**未提供** `architecture_mode` → 按 PRD 特征判断：对话式/意图理解/多轮 → agent；确定性功能/API/上传转码 → code。
+
+### JSON输出结构（代码模式）
 
 ```json
 {

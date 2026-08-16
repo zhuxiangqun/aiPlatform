@@ -278,6 +278,23 @@ async def _save_pipeline_knowledge_to_wiki(state: dict, config: Any) -> None:
             "Wiki pipeline save error for %s: %s", _pid, str(_e)[:200])
 
 
+async def _safe_generalize_skill(engine: Any, skill_id: str, state: dict) -> None:
+    """Fire-and-forget generalization — never blocks pipeline, never crashes."""
+    try:
+        from core.harness.learning.success_generalizer import get_generalizer
+        generalizer = get_generalizer()
+        if hasattr(generalizer, 'generalize_async'):
+            await generalizer.generalize_async(skill_id, str(state.get("description", "")))
+        else:
+            generalizer.generalize(skill_id, str(state.get("description", "")))
+    except asyncio.CancelledError:  # noqa: normal-cancellation
+        pass
+    except Exception:
+        import logging as _gl
+        _gl.getLogger("pipeline_engine").debug(
+            "safe_generalize_skill failed", exc_info=True)
+
+
 class PipelineEventBus:
 
     """Event bus for pipeline execution lifecycle — mirrors Dify/Coze callback pattern.
@@ -513,6 +530,25 @@ class PipelineState(TypedDict, total=False):
     _conversation_state: Dict[str, Any]
 
 
+# ── v3.1: global pipeline registry for HITL resolution ──
+_running_pipelines: Dict[str, "PipelineEngine"] = {}
+
+
+def get_running_pipeline(project_id: str) -> Optional["PipelineEngine"]:
+    """Look up the active engine instance for HITL resolution."""
+    return _running_pipelines.get(project_id)
+
+
+def register_pipeline(project_id: str, engine: "PipelineEngine") -> None:
+    """Register an engine as active for a project."""
+    _running_pipelines[project_id] = engine
+
+
+def unregister_pipeline(project_id: str) -> None:
+    """Remove a completed/failed engine from the registry."""
+    _running_pipelines.pop(project_id, None)
+
+
 
 class PipelineEngine:
 
@@ -536,6 +572,11 @@ class PipelineEngine:
         self._eval_runner = EvalRunner()
 
         self._model_lock = asyncio.Lock()  # guards parallel stage model swaps
+
+        # ── v3.1: HITL event-driven resume ──
+        self._resume_event = asyncio.Event()
+        self._reject_feedback: str = ""
+        self._shutdown_requested: bool = False
 
 
 
@@ -841,6 +882,14 @@ class PipelineEngine:
 
             llm_output_schema = node_cfg.get('output_schema', '')
 
+            # Engine infra — progress emission (shared with _run_stage_skill)
+            _stage_tag = getattr(stage, 'output_artifact', '') or stage.id
+            state["_progress"] = {"stage": _stage_tag, "status": "running",
+                                  "started_at": __import__("time").time(),
+                                  "backend": "llm", "current_step": 0}
+            if self._persist_callback:
+                self._persist_callback(dict(state))
+
             from core.harness.syscalls.llm import sys_llm_generate
 
             kwargs: dict = {
@@ -898,6 +947,14 @@ class PipelineEngine:
             )
 
             result_text = getattr(resp, 'content', '') or str(resp)
+
+            # Engine infra — model health recording (shared with _run_stage_skill)
+            try:
+                from core.harness.utils.model_injection import _record_success as _eng_record_success
+                _llm_latency = 0  # latency tracking not available in canvas node path
+                _eng_record_success(llm_model_name, latency_ms=_llm_latency, purpose="chat")
+            except Exception:
+                logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
 
             # Token tracking for LLM node path (aligns with StageRunner path at L1537-1539)
 
@@ -1229,9 +1286,9 @@ class PipelineEngine:
                             top_k=kb_top_k, query=kb_query, passages=str(output)[:3000])
 
                         from core.harness.syscalls.llm import sys_llm_generate
+                        _rerank_model = best_model_for_purpose("chat")
                         rerank_resp = await sys_llm_generate(
-
-                            best_model_for_purpose("chat"),
+                            _rerank_model,
 
                             [{"role": "user", "content": rerank_prompt}],
 
@@ -1240,6 +1297,13 @@ class PipelineEngine:
                         )
 
                         rerank_text = getattr(rerank_resp, 'content', '') or ''
+
+                        # Engine infra — model health recording (shared with _run_stage_skill)
+                        try:
+                            from core.harness.utils.model_injection import _record_success as _rerank_record_success
+                            _rerank_record_success(_rerank_model, latency_ms=0, purpose="chat")
+                        except Exception:
+                            logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
 
                         if rerank_text:
 
@@ -1670,17 +1734,28 @@ class PipelineEngine:
 
             from core.harness.utils.model_injection import best_model_for_purpose
 
+            # Engine infra — progress + trace (shared with _run_stage_skill)
+            _plan_model = best_model_for_purpose("chat")
             resp = await sys_llm_generate(
 
                 None, [{"role": "user", "content": prompt}],
 
-                model_name=best_model_for_purpose("chat"),
+                model_name=_plan_model,
 
                 max_tokens=1000,
+
+                trace_context={"source": f"workflow_plan_{stage.id}"},
 
             )
 
             plan_text = getattr(resp, 'content', '') or str(resp)
+
+            # Engine infra — model health recording
+            try:
+                from core.harness.utils.model_injection import _record_success as _plan_record_success
+                _plan_record_success(_plan_model, latency_ms=0, purpose="chat")
+            except Exception:
+                logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
 
             state["_task_plan"] = plan_text
 
@@ -1896,7 +1971,7 @@ class PipelineEngine:
 
 
 
-    async def approve(self, state: PipelineState, feedback: str = "") -> PipelineState:
+    async def approve_session(self, state: PipelineState, feedback: str = "") -> PipelineState:
 
         state = dict(state)
 
@@ -1927,6 +2002,8 @@ class PipelineEngine:
                             logging.getLogger(__name__).debug('approve failed', exc_info=True)
                     state["_hitl_resolved_" + s.id] = True
                     state["_hitl_stage_id"] = ""
+                    state["_hitl_phase_name"] = ""
+                    state["_hitl_output_artifact"] = ""
                     state["_hitl_human_feedback"] = ""
                     state["phase"] = PipelinePhase.EXECUTING
                     state["_current_stage_idx"] = i
@@ -1935,6 +2012,8 @@ class PipelineEngine:
                     return state
 
             state["_hitl_stage_id"] = ""
+            state["_hitl_phase_name"] = ""
+            state["_hitl_output_artifact"] = ""
 
         self._repair_message_integrity(state)
 
@@ -2184,7 +2263,7 @@ class PipelineEngine:
 
 
 
-    async def reject(self, state: PipelineState, feedback: str) -> PipelineState:
+    async def reject_session(self, state: PipelineState, feedback: str) -> PipelineState:
 
         state = dict(state)
 
@@ -2222,6 +2301,235 @@ class PipelineEngine:
         state.pop("_last_action_reason", None)
 
         return await self._run_stages_from(idx, state)
+
+
+    # ── v3.1: Event-driven HITL methods ──────────────────────────────
+
+    async def run(self, project_id: str, initial_state: Dict[str, Any]) -> None:
+        """Event-driven pipeline main loop — the entire lifecycle runs here."""
+        register_pipeline(project_id, self)
+        self._state = initial_state
+        self._state.setdefault("phase", "executing")
+        self._state.setdefault("project_id", project_id)
+        self._state["started_at"] = __import__("datetime").datetime.now().isoformat()
+
+        try:
+            if self._persist_callback:
+                self._persist_callback(dict(self._state))
+
+            idx = int(self._state.get("_current_stage_idx", 0) or 0)
+            total = len(self._config.stages)
+
+            while idx < total and not self._shutdown_requested:
+                self._state["_current_stage_idx"] = idx
+                stage = self._config.stages[idx]
+
+                # Execute via the same dispatcher _run_stages_from uses
+                if getattr(stage, 'skill_name', ''):
+                    self._state = await self._run_stage_skill(stage, self._state)
+                else:
+                    self._state = await self._exec_stage(stage, self._state)
+
+                # Check for HITL pause
+                if self._state.get("phase") == "paused":
+                    if self._persist_callback:
+                        self._persist_callback(dict(self._state))
+
+                    # v3.3: Wait for HITL — event (local) OR DB poll (cross-worker)
+                    _log_engine = __import__("logging").getLogger("pipeline_engine")
+                    _log_engine.warning("v3.3 HITL paused: stage=%s idx=%d",
+                        self._state.get("_hitl_stage_id", "?"), idx)
+                    await self._wait_for_hitl()
+
+                    # 🚀  Wake up: check if reject or approve
+                    if self._reject_feedback:
+                        _log_engine.warning("v3.3 HITL rejected: invalidating from idx=%d", idx)
+                        self._invalidate_downstream(idx)
+                        # idx stays the same — re-run current stage
+                    else:
+                        idx += 1  # Approved — move to next stage
+                else:
+                    idx += 1
+
+            if not self._shutdown_requested:
+                self._state["phase"] = "done"
+
+        except asyncio.CancelledError:
+            self._state["phase"] = "failed"
+            self._state["error_message"] = "Pipeline task cancelled"
+            raise
+        except Exception as e:
+            self._state["phase"] = "failed"
+            self._state["error_message"] = str(e)[:500]
+        finally:
+            if self._state.get("phase") not in ("done", "failed"):
+                self._state["phase"] = "done"
+            self._state["finished_at"] = __import__("datetime").datetime.now().isoformat()
+            if self._persist_callback:
+                self._persist_callback(dict(self._state))
+            unregister_pipeline(project_id)
+
+    def approve(self, feedback: str = "") -> None:
+        """Synchronous: approve HITL and wake the engine.
+        
+        Must write DB BEFORE setting the event — ensures GET /state returns
+        consistent data (phase=executing + HITL fields cleared) immediately.
+        """
+        # ① Idempotency guard
+        if self._state.get("phase") != "paused":
+            return
+        # ② Ensure _current_stage_idx is set
+        self._state.setdefault("_current_stage_idx", 0)
+        # ③ Update in-memory state
+        hitl_id = self._state.get("_hitl_stage_id", "")
+        self._state[f"_hitl_resolved_{hitl_id}"] = True
+        self._state["_hitl_stage_id"] = ""
+        self._state["_hitl_output_artifact"] = ""
+        self._state["_hitl_phase_name"] = ""
+        self._state["_hitl_human_feedback"] = ""
+        self._state["phase"] = "executing"
+        self._reject_feedback = ""
+        # ④ Persist to DB first — single atomic transaction
+        if self._persist_callback:
+            self._persist_callback(dict(self._state))
+        # ⑤ Wake the engine AFTER DB is confirmed
+        self._resume_event.set()
+
+    def reject(self, feedback: str) -> None:
+        """Synchronous: reject HITL and wake the engine for re-run.
+        
+        Same DB-before-event ordering as approve().
+        """
+        if self._state.get("phase") != "paused":
+            return
+        self._state.setdefault("_current_stage_idx", 0)
+        self._reject_feedback = feedback
+        self._state["_reject_feedback"] = feedback
+        self._state["_hitl_stage_id"] = ""
+        self._state["_hitl_output_artifact"] = ""
+        self._state["_hitl_phase_name"] = ""
+        self._state["phase"] = "executing"
+        if self._persist_callback:
+            self._persist_callback(dict(self._state))
+        self._resume_event.set()
+
+    def force_terminate(self) -> None:
+        """Emergency: terminate the pipeline immediately."""
+        self._shutdown_requested = True
+        self._state["phase"] = "failed"
+        self._state["error_message"] = "Force terminated by administrator"
+        self._resume_event.set()
+
+    def _invalidate_downstream(self, start_idx: int) -> None:
+        """Clear artifacts for current and all downstream stages."""
+        for i in range(start_idx, len(self._config.stages)):
+            key = self._config.stages[i].output_artifact
+            if key and key in self._state:
+                self._state.pop(key, None)
+        self._state.pop("_progress", None)
+        self._state.pop("_reject_feedback", None)
+
+
+    async def _wait_for_hitl(self) -> None:
+        """Wait for HITL resolution — local event OR cross-worker DB signal.
+
+        The main pipeline loop calls `_resume_event.wait()` for local approve/reject
+        (same worker). The HTTP endpoint writes the action directly.
+
+        For cross-worker (different worker): the HTTP handler writes the action
+        to the DB. This method polls the DB every 1 second and converts any
+        pending action into an `_resume_event.set()`.
+        """
+        import asyncio as _aio
+        from core.harness.execution.pipeline_run_store import get_pipeline_run_store
+
+        _run_id = self._state.get("session_id", "")
+
+        async def _check_event():
+            await self._resume_event.wait()
+            return True
+
+        async def _check_db():
+            store = get_pipeline_run_store()
+            while True:
+                await _aio.sleep(1)
+                action = store.poll_hitl_action(_run_id)
+                if action:
+                    if action == "approve":
+                        self._reject_feedback = ""
+                    elif action == "reject":
+                        self._reject_feedback = self._reject_feedback or "cross-worker reject"
+                    # Clear the action and wake the engine
+                    store.clear_hitl_action(_run_id)
+                    self._resume_event.set()
+                    return True
+
+        tasks = [_aio.create_task(_check_event()), _aio.create_task(_check_db())]
+        done, pending = await _aio.wait(tasks, return_when=_aio.FIRST_COMPLETED)
+        for t in pending:
+            t.cancel()
+        self._resume_event.clear()
+
+
+    async def _resume_from_hitl(self) -> None:
+        """Recover after restart: re-register + enter HITL wait loop.
+
+        The pipeline was paused at HITL when the server restarted.
+        All state (including the completed stage's artifact) is intact.
+        We just need to re-enter the Event-driven wait loop so the
+        user can approve/reject and the pipeline can continue.
+        """
+        _log_engine = __import__("logging").getLogger("pipeline_engine")
+        _log_engine.warning("v3.2 HITL recovery: resuming paused pipeline for project %s",
+            self._state.get("project_id", "?"))
+
+        idx = int(self._state.get("_current_stage_idx", 0) or 0)
+        total = len(self._config.stages)
+
+        # Defensive: if HITL fields were lost or point to a non-stage id (e.g. a
+        # skill_name from an older broken recovery), re-derive from the current
+        # stage index so the frontend still knows which stage/artifact to approve.
+        _valid_stage_ids = {getattr(_s, 'id', '') for _s in self._config.stages}
+        _hitl_id = self._state.get("_hitl_stage_id") or ""
+        if (_hitl_id not in _valid_stage_ids) and 0 <= idx < total:
+            _s = self._config.stages[idx]
+            self._state["_hitl_stage_id"] = getattr(_s, 'id', '') or ''
+            self._state["_hitl_phase_name"] = self._state.get("_hitl_phase_name") or (getattr(_s, 'hitl_phase', '') or 'review')
+            self._state["_hitl_output_artifact"] = getattr(_s, 'output_artifact', '') or ''
+            _log_engine.warning("v3.2 HITL recovery: re-derived HITL fields from idx=%d (stage=%s)",
+                                idx, getattr(_s, 'id', '?'))
+
+        # Ensure phase is correct (may have been tampered by cleanup)
+        self._state["phase"] = "paused"
+        if self._persist_callback:
+            self._persist_callback(dict(self._state))
+
+        _log_engine.warning("v3.3 HITL recovery: waiting for approval at stage idx=%d", idx)
+        await self._wait_for_hitl()
+
+        # After wake: check if rejected or approved
+        if self._reject_feedback:
+            _log_engine.warning("v3.2 HITL recovery: rejected — invalidating from idx=%d", idx)
+            self._invalidate_downstream(idx)
+            # idx stays same — re-run current stage
+        else:
+            idx += 1  # Approved — move to next
+            _log_engine.warning("v3.2 HITL recovery: approved — continuing from idx=%d", idx)
+
+        # Continue with remaining stages
+        self._state["phase"] = "executing"
+        await self._run_stages_from(idx, self._state)
+
+        if not self._shutdown_requested:
+            self._state["phase"] = "done"
+            if self._persist_callback:
+                self._persist_callback(dict(self._state))
+
+        # Unregister when done
+        try:
+            unregister_pipeline(self._state.get("project_id", ""))
+        except Exception:
+            pass  # noqa: cleanup-best-effort
 
 
 
@@ -2310,6 +2618,101 @@ class PipelineEngine:
         return await self._run_stages_from(start_idx, state)
 
 
+    async def resume_from_checkpoint(self, run_id: str, session_id: str = "") -> PipelineState:
+
+        """v4.0: cross-session intelligent resume — continue from the last completed stage.
+
+        Priority:
+
+          1. Read stage status from pipeline_run_store → locate the failed/incomplete stage
+
+          2. Restore PipelineState from the on-disk checkpoint JSON
+
+          3. Analyze the failure cause → decide whether to retry / compress context / fall back to the previous stage
+
+          4. Continue execution from the resume point
+
+        """
+
+        state = self._load_pipeline_state(session_id, run_id)
+
+        if not state:
+
+            raise ValueError(f"Pipeline state not found for run={run_id}")
+
+
+        # 1. Load stage status from store
+
+        try:
+
+            from core.harness.execution.pipeline_run_store import get_pipeline_run_store
+
+            store = get_pipeline_run_store()
+
+            stages_raw = store.list_stages(run_id) if hasattr(store, 'list_stages') else []
+
+        except Exception:
+
+            stages_raw = []
+
+
+        # 2. Find resume point
+
+        resume_idx = 0
+
+        for s in sorted(stages_raw, key=lambda x: x.get("stage_idx", 0) if isinstance(x, dict) else 0):
+
+            if not isinstance(s, dict):
+
+                continue
+
+            status = s.get("status", "")
+
+            if status == "completed":
+
+                resume_idx = max(resume_idx, s.get("stage_idx", 0) + 1)
+
+            elif status in ("failed", "timeout"):
+
+                # v4.0 enhancement 3: intelligent resume — analyze the failure cause
+
+                error = s.get("error_message", "")
+
+                if "context_length" in error.lower() or "token" in error.lower():
+
+                    # Compress context before retry
+
+                    state["_force_context_compress"] = True
+
+                resume_idx = s.get("stage_idx", 0)
+
+                break
+
+
+        # 3. Restore from disk checkpoints if state is stale
+
+        checkpoints = self._load_checkpoints_from_disk(state)
+
+        if checkpoints:
+
+            last_healthy = [c for c in checkpoints if isinstance(c, dict) and not c.get("error")]
+
+            if last_healthy:
+
+                last = last_healthy[-1]
+
+                state["_current_stage_idx"] = last.get("stage_idx", resume_idx)
+
+                state["tokens_used"] = last.get("tokens_used", 0)
+
+                state["_wake_recovered"] = True
+
+
+        # 4. Resume execution
+
+        return await self._run_stages_from(resume_idx, state)
+
+
 
     def _should_use_dynamic_routing(self, stages: List[PipelineStageConfig], session_id: str = "") -> bool:
 
@@ -2362,6 +2765,9 @@ class PipelineEngine:
         stages = self._config.stages
 
         session_id = state.get("session_id", "")
+
+        # Config-driven pipeline mode: per-stage pipeline_mode or default "chain"
+        _pipeline_mode = getattr(stages[0], "pipeline_mode", "chain") if stages else "chain"
 
         # MoA mode: Mixture of Agents — parallel references + aggregator synthesis
 
@@ -2527,51 +2933,14 @@ class PipelineEngine:
 
 
 
-            # Execute all stages in this layer in parallel with Semaphore control
-
-            layer_timeout = max(600 * len(layer), 3600)
-
-            try:
-
-                from core.harness.integration import get_parallel_executor
-
-                ParallelExecutor = get_parallel_executor().ParallelExecutor
-
-                pool_size = max(1, min(len(layer), 5))
-
-                _executor = ParallelExecutor(max_concurrency=pool_size)
-
-                _sem = asyncio.Semaphore(pool_size)
-
-                async def _stage_with_sem(i):
-
-                    async with _sem:
-
-                        return await self._exec_single_stage(stages[i], i, state)
-
-                results = await asyncio.wait_for(
-
-                    asyncio.gather(*[_stage_with_sem(i) for i in layer], return_exceptions=True),
-
-                    timeout=layer_timeout,
-
-                )
-
-                state.setdefault("_parallel_stats", []).append({
-
-                    "pool_size": pool_size, "layer_count": len(layer),
-
-                })
-
-            except asyncio.TimeoutError:
-
-                state["error"] = f"layer_timeout ({layer_timeout}s)"
-
-                state["phase"] = PipelinePhase.FAILED
-
-                state["_last_action_reason"] = "layer_timeout"
-
-                break
+            # Execute all stages in this layer sequentially
+            results = []
+            for i in layer:
+                try:
+                    result = await self._exec_single_stage(stages[i], i, state)
+                    results.append(result)
+                except Exception as e:
+                    results.append(e)
 
             # Merge results and check for HITL
 
@@ -2700,7 +3069,7 @@ class PipelineEngine:
 
             if pm:
 
-                pm.push(event={"type": "pipeline_complete", "phase": state.get("phase"),
+                pm.push("pipeline", payload={"type": "pipeline_complete", "phase": state.get("phase"),
 
                     "session_id": state.get("session_id")})
 
@@ -3568,17 +3937,115 @@ class PipelineEngine:
                     _reg.seed_data()
                 self._skills_loaded = True
             except Exception:
-                pass  # best-effort: fallback to ReAct if registry unavailable
+                logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)  # best-effort: fallback to ReAct if registry unavailable
+
+        # ── Broadcast progress for ALL stages (not just skill-based) ──
+        _stage_tag = getattr(stage, 'output_artifact', '') or stage.id
+        state["_progress"] = {"stage": _stage_tag, "status": "running",
+                              "started_at": _t0, "backend": "agent"}
 
         # ── Unified skill dispatch ──
         # Stages with skill_name must NOT fall through to ReAct.
         # _run_stage_skill handles all errors internally — even empty output
         # is a valid signal (no output for this stage), not a reason to bypass.
         if getattr(stage, 'skill_name', ''):
-            result = await self._run_stage_skill(stage, state)
+            _artifact_key = getattr(stage, 'output_artifact', '') or getattr(stage, 'skill_name', '')
+            _max_json_retries = 5
+            _batch_accumulator: list = []     # aggregate results across completeness retries
+            _batch_complete = False
+            for _json_try in range(_max_json_retries + 1):
+                result = await self._run_stage_skill(stage, state)
+                _output = str(result.get(_artifact_key, {}).get('raw_output', '') or '')
+                if not _output.strip().startswith('{'):
+                    break  # not JSON output, no validation needed
+                try:
+                    import json as _json_mod
+                    _parsed = _json_mod.loads(_output)
+                    # ── Completeness check: progressive batch execution ──
+                    _cc = getattr(stage, 'completeness_check', None)
+                    if _cc and not _batch_complete:
+                        _cc_input_key = _cc.get("input_artifact", "")
+                        _cc_output_key = _cc.get("output_key", "test_results")
+                        _cc_max_per = _cc.get("max_per_call", 10)
+                        _cc_input_raw = (state.get(_cc_input_key, {}).get("raw_output", "")
+                            if isinstance(state.get(_cc_input_key, {}), dict) else "")
+                        if _cc_input_raw:
+                            try:
+                                _cc_items_raw = _cc_input_raw
+                                if isinstance(_cc_items_raw, str):
+                                    _cc_items_raw = _cc_items_raw.strip()
+                                    if not _cc_items_raw.startswith(('[', '{')):
+                                        import re
+                                        _m = re.search(r'\{.*\}|\[.*\]', _cc_items_raw, re.DOTALL)
+                                        if _m:
+                                            _cc_items_raw = _m.group(0)
+                                _cc_items = _json_mod.loads(_cc_items_raw) if isinstance(_cc_items_raw, str) else _cc_items_raw
+                                # Support nested fields (e.g., prd.functional_requirements)
+                                _cc_input_field = _cc.get("input_field", "")
+                                if _cc_input_field and isinstance(_cc_items, dict):
+                                    _cc_items = _cc_items.get(_cc_input_field, [])
+                                _expected = len(_cc_items) if isinstance(_cc_items, list) else 0
+                                _batch_items = _parsed.get(_cc_output_key, [])
+                                _batch_accumulator.extend(_batch_items)
+                                _covered = len(_batch_accumulator)
+                                if _expected > _covered and _json_try < _max_json_retries:
+                                    _start = _covered
+                                    _end = min(_start + _cc_max_per, _expected)
+                                    _remaining = _cc_items[_start:_end]
+                                    _err_msg = f"[complete {_json_try+1}/{_max_json_retries}] only covered {_covered}/{_expected} items. Continue items {_start+1}-{_end}: {_json_mod.dumps(_remaining, ensure_ascii=False)[:800]}"
+                                    _log.getLogger("pipeline_engine").warning(
+                                        "Skill %s completeness retry: %d/%d items", getattr(stage,'skill_name',''), _covered, _expected)
+                                    state["_reject_feedback"] = _err_msg
+                                    result.pop(_artifact_key, None)
+                                    continue  # retry the JSON retry loop
+                                else:
+                                    _batch_complete = True
+                                    # Merge all batch results into final output
+                                    _merged = dict(_parsed)
+                                    _merged[_cc_output_key] = _batch_accumulator
+                                    result[_artifact_key] = {"raw_output": _json_mod.dumps(_merged, ensure_ascii=False),
+                                                             "elapsed_sec": 0}
+                                    _json_mod.loads(result[_artifact_key]["raw_output"])  # re-validate
+                            except Exception:
+                                logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
+                    break  # valid JSON (or batch complete)
+                except _json_mod.JSONDecodeError as _je:
+                    if _json_try < _max_json_retries:
+                        _err_msg = f"[Auto-Fix {_json_try+1}/{_max_json_retries}] JSON parse failed: {_je.msg} (line {_je.lineno}, col {_je.colno}). Please re-output valid JSON, no TypeScript syntax like `| null`, no trailing commas."
+                        _log.getLogger("pipeline_engine").warning(
+                            "Skill %s JSON invalid (retry %d/%d): %s", getattr(stage,'skill_name',''), _json_try+1, _max_json_retries, _je.msg)
+                        state["_reject_feedback"] = _err_msg
+                        result.pop(_artifact_key, None)  # clear bad output
+                    else:
+                        break  # max retries, let user see the bad output
         else:
             # code_first (default) — ReAct path ONLY for stages without skill_name
             result = await self._exec_stage(stage, state)
+
+        # ── Safety net: normalize app_name/project_id in stage output to canonical value ──
+        _canonical_app = state.get("app_name", "")
+        if _canonical_app:
+            _art_key = getattr(stage, 'output_artifact', '') or getattr(stage, 'skill_name', '')
+            _raw = result.get(_art_key, {}).get('raw_output', '') if isinstance(result.get(_art_key), dict) else ''
+            if isinstance(_raw, str) and _raw.strip():
+                try:
+                    import json as _norm_json
+                    _parsed = _norm_json.loads(_raw)
+                    if isinstance(_parsed, dict):
+                        _changed = False
+                        if "app_name" in _parsed and _parsed["app_name"] != _canonical_app:
+                            _parsed["app_name"] = _canonical_app
+                            _changed = True
+                        if _changed:
+                            result[_art_key] = {"raw_output": _norm_json.dumps(_parsed, ensure_ascii=False),
+                                                "elapsed_sec": result.get(_art_key, {}).get("elapsed_sec", 0)}
+                except Exception:
+                    logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
+
+        # ── Broadcast stage completion ──
+        _elapsed_sec = round(_time.time() - _t0, 2)
+        state["_progress"] = {"stage": _stage_tag, "status": "completed",
+                              "elapsed_sec": _elapsed_sec, "backend": "agent"}
 
         # ── Record stage trace for reasoning visibility ──
         _trace_key = f"_trace_{stage.id}"
@@ -3589,13 +4056,13 @@ class PipelineEngine:
                 from core.harness.utils.model_injection import best_model_for_purpose_with_meta
                 _model_meta = best_model_for_purpose_with_meta(getattr(stage, 'skill_model_purpose', '') or 'chat')
             except Exception:
-                pass
+                logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
             result[_trace_key] = {
                 "stage_id": stage.id,
                 "agent_id": getattr(stage, 'agent_id', '') or '',
                 "phase": getattr(stage, 'phase', '') or '',
                 "skill_name": getattr(stage, 'skill_name', '') or '',
-                "model_name": _model_meta.get("model", _model),
+                "model_name": _model_meta.get("model", self._model),
                 "model_purpose": getattr(stage, 'skill_model_purpose', '') or 'chat',
                 "elapsed_sec": _elapsed,
                 "retry_count": result.get(f"_retry_{stage.id}", 0),
@@ -3607,14 +4074,218 @@ class PipelineEngine:
             }
         result.pop(f"_retry_{stage.id}", None)  # clean up retry counter from state
 
+        # ── Evaluate stage health BEFORE persist (ensures report is written even if persist fails) ──
+        await self._evaluate_stage_health(stage, result)
+
         # Persist state after every stage (skill or react) for frontend polling
         try:
             if self._persist_callback:
                 self._persist_callback(dict(result))
         except Exception:
+            _log.getLogger("pipeline_engine").warning(
+                "persist_callback failed for stage=%s", stage.id, exc_info=True)
             pass
 
         return result
+
+
+    # ═══ v3.0: Capability Profile — static inference + runtime injection ═══
+
+    @staticmethod
+    def _infer_profile_from_stage(stage) -> str:
+        """Static inference — shared by team_planner (build time) and engine (runtime).
+        orchestrator → collaborative | react/tool/subagent → autonomous
+        required_tools/skills → full | hitl/gen_test_plan → full
+        phase + depends_on → standard | else → minimal
+        """
+        agent_type = getattr(stage, 'agent_type', '') or ''
+        tools = getattr(stage, 'required_tools', []) or []
+        skills = getattr(stage, 'required_skills', []) or []
+        pipeline_mode = getattr(stage, 'pipeline_mode', '') or ''
+
+        if agent_type == "orchestrator" or pipeline_mode == "orchestrator":
+            return "collaborative"
+        if agent_type in ("react", "tool", "subagent"):
+            return "autonomous"
+        if tools or skills:
+            return "full"
+        if getattr(stage, 'hitl', False) or getattr(stage, 'generate_test_plan', False):
+            return "full"
+        if getattr(stage, 'phase', '') and getattr(stage, 'depends_on', []):
+            return "standard"
+        return "minimal"
+
+
+    # ═══ v5.0: Runtime Profile Calibration ═══
+
+    async def _calibrate_profile_from_history(self, stage, state) -> Dict[str, Any]:
+        """v5.0: compare Agent declarations vs actual runtime behavior to calibrate the capability profile.
+
+        Data source: execution_store.get_recent_syscall_events(run_id, limit=50)
+        The kind + name fields distinguish tool calls from skill calls.
+
+        Decision rules:
+          - Cold start (<10 events) → insufficient_data
+          - Used 2+ undeclared tools + currently zero declared tools + steps > 3 → upgrade_recommended→full
+          - Agent executes declared Skills normally → tolerate implicit Skill dependencies
+          - Declared tools but never used + ≥20 events → downgrade_suggested
+        """
+        import logging as _lg
+        _logger = _lg.getLogger("pipeline_engine.calibration")
+
+        run_id = state.get("_run_id", "") or state.get("run_id", "")
+        try:
+            from core.services.execution_store import get_execution_store
+            store = get_execution_store()
+            events = await store.get_recent_syscall_events(run_id, limit=50)
+        except Exception:
+            return {"status": "error", "reason": "execution_store unavailable"}
+
+        # ── cold-start protection ──
+        if len(events) < 10:
+            return {"status": "insufficient_data", "samples": len(events)}
+
+        # ── separate tool calls vs skill calls ──
+        actual_tools: set = set()
+        actual_skills: set = set()
+        for e in events:
+            name = e.get("name", "")
+            kind = e.get("kind", "")
+            if not name:
+                continue
+            if kind and "tool" in kind.lower():
+                actual_tools.add(name)
+            elif kind and ("skill" in kind.lower() or "exec" in kind.lower()):
+                actual_skills.add(name)
+
+        # ── declared vs actual comparison ──
+        declared_tools = set(getattr(stage, 'required_tools', []))
+        declared_skills = set(getattr(stage, 'required_skills', []))
+        unused_tools = declared_tools - actual_tools
+        undeclared_tools = actual_tools - declared_tools
+
+        # ── fault tolerance: implicit Skill dependencies ──
+        if actual_skills & declared_skills:
+            undeclared_tools = set()
+
+        # ── upgrade decision ──
+        # NOTE: v5.1 avg_steps should read the historical average step count from execution_store
+        avg_steps = int(state.get("step_count", 0) or 0)
+        if undeclared_tools and not declared_tools:
+            if len(undeclared_tools) >= 2 and avg_steps > 3:
+                _logger.warning(
+                    "undeclared tools %s in %d runs, recommending upgrade",
+                    undeclared_tools, len(events))
+                return {
+                    "status": "upgrade_recommended",
+                    "current_profile": getattr(stage, 'capability_profile', 'auto'),
+                    "recommended_profile": "full",
+                    "undeclared_tools": list(undeclared_tools),
+                    "samples": len(events),
+                }
+
+        # ── downgrade suggestion ──
+        if unused_tools and len(events) >= 20:
+            _logger.info(
+                "%d declared but unused tools in %d runs — consider cleanup",
+                len(unused_tools), len(events))
+            return {
+                "status": "downgrade_suggested",
+                "unused_tools": list(unused_tools),
+                "samples": len(events),
+            }
+
+        return {"status": "consistent", "samples": len(events)}
+
+
+    async def _apply_capability_profile(self, stage, state) -> str:
+        """Inject capability set per tier. Returns effective tier.
+        full/autonomous → agent backend + tools/skills + safety
+        minimal/standard no tools → downgrade agent→llm to save resources
+        """
+        import logging as _log
+
+        profile = getattr(stage, 'capability_profile', 'auto') or 'auto'
+        if profile == "auto":
+            profile = self._infer_profile_from_stage(stage)
+
+        tools = getattr(stage, 'required_tools', []) or []
+        skills = getattr(stage, 'required_skills', []) or []
+
+        if profile in ("standard", "full", "autonomous", "collaborative", "self_evolving", "persistent"):
+            state["_trace_enabled"] = True
+            state["_metrics_enabled"] = True
+
+        if profile in ("full", "autonomous", "collaborative", "self_evolving", "persistent"):
+            state["_policy_gate_enabled"] = True
+            state["_pii_detect_enabled"] = True
+
+        if profile in ("autonomous", "collaborative", "self_evolving", "persistent"):
+            state["_reflection_enabled"] = True
+            state["_task_skills_enabled"] = True
+
+        if profile == "collaborative":
+            stage.pipeline_mode = "orchestrator"
+            stage.agent_type = getattr(stage, 'agent_type', '') or "orchestrator"
+            state["_subagent_coordinator_enabled"] = True
+            state["_agent_message_bus_enabled"] = True
+            # P2: require tool call rationale for traceability
+            state["_tool_rationale_required"] = True
+
+        if profile in ("self_evolving", "collaborative"):
+            state["_adaptive_security"] = True
+            state["_online_evolution_enabled"] = True
+
+        if profile == "persistent":
+            state["_auto_resume_on_failure"] = True
+
+        if profile in ("minimal", "standard"):
+            if getattr(stage, 'execution_backend', 'llm') == "agent":
+                if not tools and not skills:
+                    stage.execution_backend = "llm"
+
+        # ── v5.0: Runtime profile calibration ──
+        _cal = await self._calibrate_profile_from_history(stage, state)
+        if _cal.get("status") == "upgrade_recommended":
+            _new = _cal.get("recommended_profile")
+            _mode = __import__("os").environ.get("AIPLAT_PROFILE_CALIBRATE", "log")
+            _clog = __import__("logging").getLogger("pipeline_engine")
+            if _mode in ("upgrade", "full"):
+                _clog.warning("Profile auto-upgraded: %s → %s (%d undeclared tools)",
+                              profile, _new, len(_cal.get("undeclared_tools", [])))
+                profile = _new
+                state["_profile_auto_upgraded"] = True
+            else:
+                _clog.info("Calibration suggests: %s → %s (mode=log, not applied)",
+                           profile, _new)
+
+        _log.getLogger("pipeline_engine").debug(
+            "capability_profile=%s backend=%s calibration=%s", profile,
+            getattr(stage, 'execution_backend', 'llm'), _cal.get("status", "n/a"))
+        return profile
+
+
+    def _build_handler_params(self, stage: PipelineStageConfig, state: PipelineState) -> Dict[str, Any]:
+        """Construct handler params from input_artifacts (config-driven, no hardcoded keys).
+
+        For each declared input_artifact, pass its raw_output to the handler.
+        JSON-shaped artifacts (dict/array) are parsed; others passed as text.
+        """
+        import json as _hj
+        params: Dict[str, Any] = {}
+        for _key in (getattr(stage, 'input_artifacts', []) or []):
+            _v = state.get(_key)
+            if isinstance(_v, dict) and _v.get("raw_output"):
+                _raw = str(_v["raw_output"]).strip()
+                if _raw.startswith(("{", "[")):
+                    try:
+                        params[_key] = _hj.loads(_raw)
+                    except Exception:
+                        params[_key] = _raw
+                else:
+                    params[_key] = _raw
+        params.setdefault("project", state.get("app_name") or state.get("description") or "")
+        return params
 
 
     async def _run_stage_skill(self, stage: PipelineStageConfig, state: PipelineState) -> PipelineState:
@@ -3635,10 +4306,23 @@ class PipelineEngine:
         import time as _time
         _t0 = _time.time()
 
+        # ── Write running progress immediately — frontend poll sees current stage ──
+        _stage_tag = getattr(stage, 'output_artifact', '') or _skill_name
+        state["_progress"] = {
+            "stage": _stage_tag,
+            "status": "running",
+            "started_at": _t0,
+            "backend": "llm",
+            "current_step": 0,
+        }
+        if self._persist_callback:
+            self._persist_callback(dict(state))
+
         # Step-level metadata (populated by domain/context injection + quality bus)
         _domain_id = ""
         _context_enriched = False
         _quality_score = 0.0
+        _profile = getattr(stage, 'context_profile', 'code') or 'code'
 
         # ── 1. Resolve SOP from SKILL.md ──
         _sop_body = ""
@@ -3654,17 +4338,70 @@ class PipelineEngine:
             if _raw.startswith("---"):
                 _parts = _raw.split("---", 2)
                 _sop_body = _parts[2].strip() if len(_parts) > 2 else ""
+                _execution_type = ""
+                try:
+                    import yaml as _yaml_mod
+                    _fm = _yaml_mod.safe_load(_parts[1])
+                    if isinstance(_fm, dict):
+                        _execution_type = str(_fm.get("execution_type", "") or "").strip()
+                except Exception:
+                    _execution_type = ""
         if not _sop_body:
             _log.getLogger("pipeline_engine").warning(
                 "Skill %s: no SOP found, falling back to ReAct", _skill_name)
             return state  # caller falls through to _exec_stage
+
+        # ── 1.5. Handler execution (execution_type: handler — deterministic, no LLM) ──
+        if _execution_type == "handler":
+            _handler_path = _os.path.join(_os.path.dirname(_sp), "handler.py")
+            if _os.path.isfile(_handler_path):
+                try:
+                    import importlib.util as _iu
+                    _spec = _iu.spec_from_file_location(f"skill_handler_{_skill_name}", _handler_path)
+                    if _spec and _spec.loader:
+                        _hmod = _iu.module_from_spec(_spec)
+                        _spec.loader.exec_module(_hmod)
+                        if hasattr(_hmod, "execute") and callable(_hmod.execute):
+                            _hparams = self._build_handler_params(stage, state)
+                            _hres = _hmod.execute(_hparams)
+                            import asyncio as _aio_mod
+                            if _aio_mod.iscoroutine(_hres):
+                                _hres = await _hres
+                            if isinstance(_hres, dict):
+                                import json as _hj_local
+                                _artifact_key = getattr(stage, 'output_artifact', '') or _skill_name
+                                state[_artifact_key] = {
+                                    "raw_output": _hj_local.dumps(_hres, ensure_ascii=False),
+                                    "elapsed_sec": round(_time.time() - _t0, 2),
+                                }
+                                # Handler self-repaired the code (auto-repair fixed pytest) → write back
+                                # the fixed code to the file-generating stage (uses_file_output, generic field).
+                                _fixed_code = str(_hres.get("fixed_code") or "")
+                                if _fixed_code:
+                                    for _s in (self._config.stages if self._config else []):
+                                        if getattr(_s, 'uses_file_output', False):
+                                            _code_artifact = getattr(_s, 'output_artifact', '')
+                                            if _code_artifact and isinstance(state.get(_code_artifact), dict):
+                                                state[_code_artifact]["raw_output"] = _fixed_code
+                                            break
+                                state["_progress"] = {"stage": _skill_name, "status": "completed",
+                                                      "elapsed_sec": round(_time.time() - _t0, 2),
+                                                      "backend": "handler", "current_step": 0}
+                                if self._persist_callback:
+                                    self._persist_callback(dict(state))
+                                _log.getLogger("pipeline_engine").warning(
+                                    "Skill %s: handler executed (deterministic)", _skill_name)
+                                return state
+                except Exception as _he:
+                    _log.getLogger("pipeline_engine").warning(
+                        "Skill %s: handler execution failed, falling back to LLM: %s", _skill_name, _he)
 
         # Emit node_started event for frontend polling visibility
         try:
             _event_bus.emit(state.get("session_id", state.get("_run_id", "")),
                             "node_started", {"state": dict(state), "node_id": stage.id})
         except Exception:
-            pass
+            logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
 
         # ── 2. Build context from pipeline state ──
         import json as _json
@@ -3672,14 +4409,44 @@ class PipelineEngine:
         _desc = state.get("description", "")
         if _desc:
             _context += f"## description\n{_desc}\n\n"
+        # Canonical app_name — established at project creation, reused by all stages.
+        # Downstream stages MUST use this value instead of generating their own name.
+        _app_name = state.get("app_name", "")
+        if _app_name:
+            _context += f"## app_name (must use this value, do not rename)\n{_app_name}\n\n"
+        # Canonical project_id — the unique project key, injected for FK linkage.
+        _project_id = state.get("project_id", "")
+        if _project_id:
+            _context += f"## project_id (must use this value, do not rename)\n{_project_id}\n\n"
+        # Regenerate feedback — injected so the stage re-runs with the human/Bug fix instructions
+        _reject_feedback = state.get("_reject_feedback", "")
+        if _reject_feedback:
+            _context += (
+                "\n## 🛑 REGENERATE WITH FEEDBACK — YOU MUST FIX THESE ISSUES\n"
+                "You were rejected and must regenerate. Address EVERY issue below.\n"
+                "Before generating your final output, ensure each issue is resolved.\n\n"
+                f"{_reject_feedback}\n\n---\n"
+            )
         # Append upstream stage outputs as context (config-driven keys)
+        _input_artifacts = getattr(stage, 'input_artifacts', []) or []
         for _s in (self._config.stages if self._config else []):
             _key = getattr(_s, 'output_artifact', '')
             if not _key or _key == getattr(stage, 'output_artifact', ''):
                 continue  # skip own output
             _v = state.get(_key, {})
             if isinstance(_v, dict) and _v.get("raw_output"):
-                _context += f"## {_key}\n{str(_v['raw_output'])[:3000]}\n\n"
+                import json as _ctx_json
+                if _key in _input_artifacts:
+                    # Critical input — include full content, don't summarize
+                    _context += f"## {_key}\n{str(_v['raw_output'])}\n\n"
+                else:
+                    _summary = self._summarize_artifact(_v)
+                    _context += f"## {_key} (summary)\n{_ctx_json.dumps(_summary, ensure_ascii=False)[:2000]}\n\n"
+
+        # Inject architecture_mode into context (config-driven, drives architecture_design output shape)
+        _arch_mode = getattr(stage, 'architecture_mode', '') or ''
+        if _arch_mode:
+            _context = f"## architecture_mode\n{_arch_mode}\n\n" + _context
 
         # ── 3. Inject document schema into system prompt ──
         # Read $ref from SKILL.md YAML frontmatter (not hardcoded artifact key mapping)
@@ -3703,29 +4470,42 @@ class PipelineEngine:
                     if _spec:
                         _schema_text = f"\n\n## Output Format Requirements\n{_spec.strip()}"
         except Exception:
-            pass
+            logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
         if _schema_text:
             _sop_body = _sop_body.replace("\n\n## Output Format Requirements", "") + _schema_text
+
+        # ── 3.4. Apply query rewrite if enabled ──
+        _rewrite = getattr(stage, 'enable_query_rewrite', True)
+        if _rewrite and _desc and len(_desc) > 10:
+            _context += f"\n## original requirement\n{_desc[:2000]}\n"
 
         # ── 3.5. Domain-aware context injection ──
         # Automatically classify requirement → inject domain prompt + context bus layers.
         # Engine delegates to DomainRouter + ContextBus — no hardcoded domain knowledge.
+        # Respects stage.context_profile: "minimal" skips, "code"/"debug"/"deep" inject.
         try:
-            from core.harness.knowledge.domain_router import DomainRouter
-            from core.harness.knowledge.context_bus import assemble_pipeline_context
-            from core.harness.utils.prompt_loader import _sync_resolve
+            if _profile != "minimal":
+                from core.harness.knowledge.domain_router import DomainRouter
+                from core.harness.knowledge.context_bus import assemble_pipeline_context
+                from core.harness.utils.prompt_loader import _sync_resolve
 
-            # 3.5a. Classify requirement to domain
-            _domain_text = _desc or str(_prd.get("title", "") if isinstance(_prd, dict) else "")
+                # 3.5a. Classify requirement to domain (runs in thread pool to avoid blocking event loop)
+            _domain_text = _desc or str(_prd.get("title", "")) if isinstance(_prd, dict) else ""
             if not _domain_text:
                 _domain_text = getattr(stage, 'phase', '') or _skill_name
-            _domain_id = DomainRouter().classify(_domain_text) or ""
+            _domain_id = ""
+            try:
+                import asyncio as _dom_asyncio
+                _domain_id = await _dom_asyncio.to_thread(
+                    DomainRouter().classify, _domain_text) or ""
+            except Exception:
+                _domain_id = ""  # best-effort: classification is optional
             if _domain_id:
                 try:
                     _domain_prompt = _sync_resolve(f"domain-prompt-{_domain_id}")
                     _sop_body = _domain_prompt + "\n\n" + _sop_body
                 except Exception:
-                    pass  # domain has no prompt configured
+                    logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)  # domain has no prompt configured
 
             # 3.5b. Inject context bus layers (term dictionary + delivery history + self-optimization)
             _cb_parts = []
@@ -3739,7 +4519,24 @@ class PipelineEngine:
                 _context_enriched = True
 
         except Exception:
-            pass  # best-effort: engine runs fine without context injection
+            logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)  # best-effort: engine runs fine without context injection
+
+        # ── 3.5: Capability Profile injection (v3.0) ──
+        await self._apply_capability_profile(stage, state)
+
+        # ── v1.0: runtime triple — write to TripleStore during Pipeline execution ──
+        try:
+            from core.harness.ontology_engine.triple_store import get_triple_store, _make_urn
+            _ts = get_triple_store()
+            _run_urn = _make_urn("run", state.get("_run_id", "") or state.get("run_id", ""))
+            _agent_urn = _make_urn("agent", getattr(stage, 'agent_id', '') or '')
+            _skill = getattr(stage, 'skill_name', '') or ''
+            if _run_urn and _agent_urn:
+                _ts.add(_run_urn, "contains_stage", _agent_urn, 1.0, "runtime_scan", {})
+            if _agent_urn and _skill:
+                _ts.add(_agent_urn, "uses_skill", _make_urn("skill", _skill), 1.0, "runtime_scan", {})
+        except Exception:
+            logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
 
         # ── 4. Execute: LLM or Agent (config-driven via execution_backend) ──
         from core.harness.syscalls.llm import sys_llm_generate
@@ -3751,10 +4548,13 @@ class PipelineEngine:
             # Agent runtime → StageRunner → ReActLoop (tools, hooks, token management)
             _log.getLogger("pipeline_engine").warning(
                 "Skill %s: running via StageRunner (execution_backend=agent)", _skill_name)
+            _stage_tools = getattr(stage, 'tools', None) or []
             state["_sys_prompt"] = _sop_body
             state["_progress"] = {"stage": _skill_name, "status": "running", "started_at": _time.time(),
                                   "backend": "agent", "current_step": 0}
             self._snapshot(state, f"stage_{stage.id}_progress")
+            if self._persist_callback:
+                self._persist_callback(dict(state))  # immediate: frontend sees "running" now
             _prompt = _context or _desc
 
             # Background progress polling: snapshot every 5s for real-time frontend visibility
@@ -3770,40 +4570,86 @@ class PipelineEngine:
                         try:
                             self._snapshot(state, f"stage_{stage.id}_progress")
                         except Exception:
-                            pass
+                            logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
             _poll_task = asyncio.create_task(_poll_progress())
 
             try:
-                _agent_result = await self._stage_runner.run(_prompt, state, stage=stage)
+                _agent_result = await self._stage_runner.run(_prompt, state, stage=stage, tools=_stage_tools)
             finally:
                 _poll_active["active"] = False
                 try:
                     await asyncio.wait_for(_poll_task, timeout=3)
                 except Exception:
-                    pass
+                    logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
 
             state.pop("_sys_prompt", None)
-            _result = str(_agent_result or "")
+            # Extract final answer from ReAct dialogue — not the full conversation log
+            if hasattr(_agent_result, 'final_answer'):
+                _result = str(_agent_result.final_answer or "")
+            elif isinstance(_agent_result, dict):
+                _result = str(_agent_result.get("final_answer", "") or _agent_result.get("output", ""))
+            else:
+                _result = str(_agent_result or "")
             _result = _result.replace("```json", "").replace("```", "").strip()
             _elapsed = round(_time.time() - _t0, 2)
             _final_steps = int(state.get("step_count", 0) or 0)
             state["_progress"] = {"stage": _skill_name, "status": "completed", "elapsed_sec": _elapsed,
                                   "backend": "agent", "current_step": _final_steps}
+            if self._persist_callback:
+                self._persist_callback(dict(state))  # immediate: frontend sees "completed"
         else:
             # Direct LLM call (default, backward-compatible)
-            _response = await sys_llm_generate(
-                None,
-                [
-                    {"role": "system", "content": _sop_body},
-                    {"role": "user", "content": _context or _desc},
-                ],
-                model_name=best_model_for_purpose(_purpose),
-                max_tokens=32000,
-            )
-            _result = getattr(_response, "content", "") or str(_response)
+            state["_progress"] = {"stage": _skill_name, "status": "running", "started_at": _time.time(),
+                                  "backend": "llm", "current_step": 0}
+            if self._persist_callback:
+                self._persist_callback(dict(state))  # immediate: frontend sees "running"
+            try:
+                _response = await asyncio.wait_for(sys_llm_generate(
+                    None,
+                    [
+                        {"role": "system", "content": _sop_body},
+                        {"role": "user", "content": _context or _desc},
+                    ],
+                    model_name=best_model_for_purpose(_purpose),
+                    max_tokens=32000,
+                ), timeout=getattr(stage, 'stage_timeout_seconds', 300))
+                _result = getattr(_response, "content", "") or str(_response)
+                # Record success for adaptive model selection
+                try:
+                    _latency = round((_time.time() - _t0) * 1000, 0)
+                    from core.harness.utils.model_injection import _record_success as _pipeline_record_success
+                    _pipeline_record_success(
+                        best_model_for_purpose(_purpose),
+                        latency_ms=_latency, purpose=_purpose)
+                except Exception:
+                    logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
+            except asyncio.TimeoutError:
+                _log.getLogger("pipeline_engine").warning(
+                    "Skill %s: LLM call timed out after 180s", _skill_name)
+                _result = ""
+                state["_progress"] = {"stage": _skill_name, "status": "timeout",
+                                      "elapsed_sec": 180.0,
+                                      "backend": "llm", "current_step": 0}
+                if self._persist_callback:
+                    self._persist_callback(dict(state))
+                # Record failure
+                try:
+                    from core.harness.utils.model_injection import _record_failure as _pipeline_record_failure
+                    _pipeline_record_failure(best_model_for_purpose(_purpose))
+                except Exception:
+                    logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
+                return state
+            _elapsed = round(_time.time() - _t0, 2)
+            state["_progress"] = {"stage": _skill_name, "status": "completed", "elapsed_sec": _elapsed,
+                                  "backend": "llm", "current_step": 0}
+            if self._persist_callback:
+                self._persist_callback(dict(state))  # immediate: frontend sees "completed"
         _result = _result.replace("```json", "").replace("```", "").strip()
 
-        if not _result or len(_result) < 100:
+        # ── Quality gate: configurable per-stage output validation ──
+        _gate = getattr(stage, 'quality_gate', {}) or {}
+        _min_len = int(_gate.get("min_output_length", 100))
+        if not _result or len(_result) < _min_len:
             return state
 
         # ── 4. Store result ──
@@ -3812,14 +4658,21 @@ class PipelineEngine:
 
         state[_artifact_key] = {"raw_output": _result, "elapsed_sec": _elapsed}
 
+        # Write artifact to filesystem (authoritative storage; SQLite is cache)
+        _out_dir = state.get("output_dir", "")
+        if _out_dir and _artifact_key and _result and not _artifact_key.startswith("_"):
+            self._write_artifact_file(_out_dir, _artifact_key, _result)
+
         # ── Stage trace: structured metadata for reasoning visibility ──
+        # agent backend doesn't set _response — default to None for safe trace access
+        _resp = locals().get('_response')
         _model_name = best_model_for_purpose(_purpose)
         _model_meta = {}
         try:
             from core.harness.utils.model_injection import best_model_for_purpose_with_meta
             _model_meta = best_model_for_purpose_with_meta(_purpose)
         except Exception:
-            pass
+            logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
         state[f"_trace_{stage.id}"] = {
             "stage_id": stage.id,
             "agent_id": getattr(stage, 'agent_id', '') or '',
@@ -3829,7 +4682,7 @@ class PipelineEngine:
             "model_purpose": _purpose,
             "output_size": len(_result),
             "elapsed_sec": _elapsed,
-            "tokens_used": getattr(_response, 'usage', {}).get('total_tokens', 0) if hasattr(_response, 'usage') else 0,
+            "tokens_used": getattr(_resp, 'usage', {}).get('total_tokens', 0) if hasattr(_resp, 'usage') else 0,
             "retry_count": state.get(f"_retry_{stage.id}", 0),
             "failure_strategy": getattr(stage, 'failure_strategy', 'fail_pipeline') or 'fail_pipeline',
             "strategy": "skill_dispatch",
@@ -3839,21 +4692,52 @@ class PipelineEngine:
             "context_enriched": _context_enriched,
         }
 
+        # ── Decision trace: generic per-stage provenance for failure localization ──
+        # Records confidence + upstream dependencies so the fix flow can walk
+        # backward to the max error-contribution node. No business concepts here.
+        try:
+            from core.harness.execution.decision_trace import record_decision as _record_decision
+            # Use project_id as the trace key — it is the stable identifier the
+            # fix flow and frontend query by (session_id drifts to run_id on
+            # regenerate, which would split the trace across files).
+            _run_id = (state.get("project_id") or state.get("session_id")
+                       or state.get("_run_id", ""))
+            if _run_id:
+                _depends_on = []
+                for _s in (self._config.stages if self._config else []):
+                    if getattr(_s, 'output_artifact', '') in (_input_artifacts or []):
+                        _depends_on.append(getattr(_s, 'id', ''))
+                # Coarse confidence heuristic: structured output > plain text >
+                # minimal. (Quality-bus score is a later refinement; this gives
+                # the graph a non-trivial signal today.)
+                _conf = 0.7
+                if _result:
+                    _stripped = _result.strip()
+                    if "## FILE:" in _result or (_stripped.startswith("{") and _stripped.endswith("}")):
+                        _conf = 0.85
+                    elif len(_result) < 200:
+                        _conf = 0.5
+                _record_decision(_run_id, stage.id, depends_on=_depends_on,
+                                 confidence=_conf,
+                                 agent_id=getattr(stage, 'agent_id', '') or '')
+        except Exception as _trace_err:  # noqa: best-effort-trace — decision trace is non-critical
+            _log.getLogger("pipeline_engine").debug(
+                "decision trace record failed for stage %s: %s", stage.id, _trace_err, exc_info=True)
+
+        # ── Cost budget: accumulate USD from tokens × price (config-driven) ──
+        try:
+            from core.harness.execution.cost_budget import cost_for as _cost_for
+            _tokens_total = getattr(_resp, 'usage', {}).get('total_tokens', 0) if hasattr(_resp, 'usage') else 0
+            if not _tokens_total:
+                _tokens_total = int(state.get("_stage_tokens_used", 0) or 0)
+            if _tokens_total:
+                _delta = _cost_for(_model_name, _tokens_total, 0)
+                state["cost_used_usd"] = round(state.get("cost_used_usd", 0.0) + _delta, 6)
+        except Exception:  # noqa: best-effort-cost — cost tracking is non-critical
+            pass
+
         _log.getLogger("pipeline_engine").warning(
             "Skill %s OK: stage=%s output=%d chars", _skill_name, stage.id, len(_result))
-
-        # ── 5. If test skill, optionally run test execution ──
-        if getattr(stage, 'generate_test_plan', False):
-            _mode = getattr(stage, 'test_execution_mode', '') or ''
-            if _mode == "pytest":
-                state = await self._run_test_execution(state, stage, _result)
-            elif _mode:
-                # Chained skill execution handled later via chain_skill_after
-                pass
-            elif "pytest" in _sop_body.lower():
-                # Backward compat: fallback for existing configs without test_execution_mode
-                state = await self._run_test_execution(state, stage, _result)
-            # Note: agent_conversation mode chains via chain_skill_after below
 
         # ── 5.5. Chain next skill if configured ──
         _chain_skill = getattr(stage, 'chain_skill_after', '') or ''
@@ -3881,14 +4765,25 @@ class PipelineEngine:
                             "node_ended", {"state": dict(state), "node_id": stage.id,
                                            "elapsed": round(_time.time() - _t0, 2)})
         except Exception:
-            pass
+            logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
 
         # Persist state immediately — each stage completion writes to disk
         try:
             if self._persist_callback:
                 self._persist_callback(dict(state))
         except Exception:
-            pass
+            logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
+
+        # ── Online evolution: non-blocking incremental evolution trigger ──
+        # Fires for self_evolving/collaborative profiles after a stage completes.
+        try:
+            from core.harness.infrastructure.hooks.online_evolution import get_online_evolution, OnlineEvolution
+            _evo: OnlineEvolution = get_online_evolution()
+            _evo_result = await _evo.on_post_loop(state)
+            if _evo_result and isinstance(_evo_result, dict) and _evo_result.get("online_evolution_triggered"):
+                state["_online_evolution_triggered"] = _evo_result["online_evolution_triggered"]
+        except Exception:
+            logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
 
         return state
 
@@ -3930,9 +4825,9 @@ class PipelineEngine:
             return state
 
         _agent_name = state.get("_generated_agent", "")
-        _prompt = f"执行技能 {skill_name}:\n\n上游产出物:\n{_upstream_text[:24000]}"
+        _prompt = f"Execute skill {skill_name}:\n\nUpstream artifacts:\n{_upstream_text[:24000]}"
         if _agent_name:
-            _prompt += f"\n\n被测Agent: {_agent_name}"
+            _prompt += f"\n\nAgent under test: {_agent_name}"
 
         _log.warning("chained skill '%s': executing via StageRunner (%d chars upstream)", skill_name, len(_upstream_text))
         # Track step count from upstream test_questions for progress display
@@ -3949,7 +4844,7 @@ class PipelineEngine:
                     _qs = _json.loads(_upstream_text[_jstart:_jend+1]).get("test_questions", [])
                     _total_steps = len(_qs) if isinstance(_qs, list) and _qs else 1
             except Exception:
-                pass
+                logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
         state["_progress"] = {"stage": skill_name, "status": "running", "started_at": _time.time(), "total_steps": _total_steps}
 
         # 3. Run via StageRunner → ReActLoop (enables tool calls like core_chat)
@@ -3968,7 +4863,7 @@ class PipelineEngine:
             import asyncio as _asyncio
             _result = await _asyncio.wait_for(
                 self._stage_runner.run(_prompt, state, stage=_chain_stage),
-                timeout=180,
+                timeout=getattr(stage, 'stage_timeout_seconds', 300),
             )
             state.pop("_sys_prompt", None)
         except _asyncio.TimeoutError:
@@ -3994,12 +4889,30 @@ class PipelineEngine:
         # 4. Store result
         _elapsed = round(_time.time() - _t0, 2)
         state[result_artifact_key] = {"raw_output": _result, "elapsed_sec": _elapsed}
+        _out_dir = state.get("output_dir", "")
+        if _out_dir and result_artifact_key and _result and not result_artifact_key.startswith("_"):
+            self._write_artifact_file(_out_dir, result_artifact_key, _result)
         state["_progress"] = {"stage": skill_name, "status": "completed", "elapsed_sec": _elapsed}
         _log.warning("chained skill '%s': OK (%d chars, %.1fs → %s)", skill_name, len(_result), _elapsed, result_artifact_key)
         return state
 
     @staticmethod
-    def _deploy_result_files(state, stage, _result: str) -> None:
+    @staticmethod
+    def _write_artifact_file(output_dir: str, artifact_key: str, content: str) -> str:
+        """Write pipeline artifact to filesystem. Returns file path."""
+        import os as _os2
+        if not output_dir or not artifact_key or not content:
+            return ""
+        try:
+            _os2.makedirs(output_dir, exist_ok=True)
+            path = _os2.path.join(output_dir, f"{artifact_key}.json")
+            with open(path, "w", encoding="utf-8") as f:
+                f.write(content)
+            return path
+        except Exception:
+            return ""  # best-effort; SQLite still has the truncated version
+
+    def _deploy_result_files(self, state, stage, _result: str) -> None:
         """Generic: parse ## FILE: blocks from output and write to project directory.
 
         No business logic — engine doesn't know (or care) what AGENT.md or SKILL.md mean.
@@ -4018,7 +4931,7 @@ class PipelineEngine:
         _log.warning("deploy: writing files to %s", _target)
 
         _count = 0
-        for _block in _re.split(r'^##\s*FILE:\s*', _result, flags=_re.MULTILINE)[1:]:
+        for _block in _re.split(r'^#{2,4}\s*FILE:\s*', _result, flags=_re.MULTILINE)[1:]:
             _lines = _block.strip().split("\n", 1)
             if len(_lines) < 2:
                 continue
@@ -4026,6 +4939,14 @@ class PipelineEngine:
             _content = _lines[1].strip()
             _content = _re.sub(r'^```\w*\n?', '', _content)
             _content = _re.sub(r'\n?```\s*$', '', _content)
+            # Strip leaked code block language markers (yaml., json.)
+            if _content.startswith("yaml\n"):
+                _content = _content[5:]
+            elif _content.startswith("json\n"):
+                _content = _content[5:]
+            # Strip leaked YAML terminators from JSON files (trailing ---)
+            if _fname.endswith(".json") and _content.rstrip().endswith("---"):
+                _content = _re.sub(r'\n?---\s*$', '', _content)
             _full = _os2.path.join(_target, _fname)
             try:
                 _os2.makedirs(_os2.path.dirname(_full), exist_ok=True)
@@ -4035,130 +4956,6 @@ class PipelineEngine:
             except Exception as _we:
                 _log.warning("deploy: failed to write %s: %s", _fname, _we)
         _log.warning("deploy: wrote %d files", _count)
-
-    async def _run_test_execution(self, state: PipelineState, stage, _result: str) -> PipelineState:
-        """Run pytest on generated test code and capture results."""
-        import tempfile, subprocess, os as _os, re as _re, shutil
-        _passed = _failed = _errors = 0; _test_log = ""; _repair_rounds = 0; _repair_log = ""
-        # Find upstream code stage's output key (config-driven, not hardcoded)
-        _code_key = ""
-        for _s in (self._config.stages if self._config else []):
-            if getattr(_s, 'output_artifact', '') == getattr(stage, 'output_artifact', ''):
-                continue
-            _v2 = state.get(getattr(_s, 'output_artifact', ''))
-            if _v2 and isinstance(_v2, dict) and _v2.get("raw_output") and len(_v2["raw_output"]) > 200:
-                _code_key = getattr(_s, 'output_artifact', '')
-        _code_text = state.get(_code_key, {}).get("raw_output", "") if _code_key else ""
-        try:
-            _tmp = tempfile.mkdtemp(prefix="aiplat_tests_")
-            for _txt in [_code_text, _result]:
-                if not _txt: continue
-                for _block in _re.split(r'^##\s*FILE:\s*', _txt, flags=_re.MULTILINE)[1:]:
-                    _lines = _block.strip().split("\n", 1)
-                    if len(_lines) >= 2:
-                        _full = _os.path.join(_tmp, _lines[0].strip())
-                        _content = _re.sub(r'^```\w*\n?', '', _lines[1].strip())
-                        _content = _re.sub(r'\n?```\s*$', '', _content)
-                        _os.makedirs(_os.path.dirname(_full), exist_ok=True)
-                        with open(_full, "w") as _fw: _fw.write(_content)
-            for _root, _dirs, _files in _os.walk(_tmp):
-                for _d in _dirs:
-                    _init = _os.path.join(_root, _d, "__init__.py")
-                    if not _os.path.isfile(_init):
-                        with open(_init, "w") as _: pass
-            _env = {**_os.environ, "PYTHONPATH": _tmp + (":" + _os.environ.get("PYTHONPATH","") if _os.environ.get("PYTHONPATH") else "")}
-            _proc = subprocess.run([_os.sys.executable, "-m", "pytest", _tmp, "--tb=short", "-q", "--no-header"], capture_output=True, text=True, timeout=90, env=_env)
-            _test_log = _proc.stdout + "\n" + _proc.stderr
-            _m = _re.search(r'(\d+)\s+passed', _test_log)
-            if _m: _passed = int(_m.group(1))
-            _m = _re.search(r'(\d+)\s+failed', _test_log)
-            if _m: _failed = int(_m.group(1))
-            _m = _re.search(r'(\d+)\s+error', _test_log)
-            if _m: _errors = int(_m.group(1))
-            # ── Auto-repair: retry failed tests with LLM fix ──
-            _repair_rounds = 0; _repair_log = ""
-            _max_repairs = min(int(_os.environ.get("AIPLAT_TEST_REPAIR_MAX", "2")), 3)
-            while (_failed > 0 or _errors > 0) and _repair_rounds < _max_repairs and _code_text:
-                _repair_rounds += 1
-                try:
-                    from core.harness.syscalls.llm import sys_llm_generate
-                    from core.harness.utils.model_injection import best_model_for_purpose
-                    _err_sample = _test_log[:2500]
-                    _fix_prompt = (
-                        "Tests failed with the following output. Analyze the errors and fix the code.\n\n"
-                        f"## Test output\n{_err_sample}\n\n"
-                        f"## Code to fix\n{_code_text[:4000]}\n\n"
-                        f"## Test code\n{_result[:3000]}\n\n"
-                        "Output ONLY the fixed code in ## FILE: format. Each file's code must be complete and runnable."
-                    )
-                    _fix_resp = await sys_llm_generate(
-                        None,
-                        [{"role": "user", "content": _fix_prompt}],
-                        model_name=best_model_for_purpose("code_gen"),
-                        max_tokens=16000,
-                    )
-                    _fix_text = getattr(_fix_resp, "content", "") or str(_fix_resp)
-                    if _fix_text and len(_fix_text) > 100:
-                        # Apply fix: replace code files with fixed versions
-                        for _block in _re.split(r'^##\s*FILE:\s*', _fix_text, flags=_re.MULTILINE)[1:]:
-                            _lines2 = _block.strip().split("\n", 1)
-                            if len(_lines2) >= 2:
-                                _full2 = _os.path.join(_tmp, _lines2[0].strip())
-                                _content2 = _re.sub(r'^```\w*\n?', '', _lines2[1].strip())
-                                _content2 = _re.sub(r'\n?```\s*$', '', _content2)
-                                if _os.path.isfile(_full2):
-                                    with open(_full2, "w") as _fw2: _fw2.write(_content2)
-                        # Re-run tests
-                        _proc2 = subprocess.run([_os.sys.executable, "-m", "pytest", _tmp, "--tb=short", "-q", "--no-header"], capture_output=True, text=True, timeout=90, env=_env)
-                        _new_log = _proc2.stdout + "\n" + _proc2.stderr
-                        _p2 = _f2 = _e2 = 0
-                        _m = _re.search(r'(\d+)\s+passed', _new_log)
-                        if _m: _p2 = int(_m.group(1))
-                        _m = _re.search(r'(\d+)\s+failed', _new_log)
-                        if _m: _f2 = int(_m.group(1))
-                        _m = _re.search(r'(\d+)\s+error', _new_log)
-                        if _m: _e2 = int(_m.group(1))
-                        if _p2 > _passed or (_f2 + _e2) < (_failed + _errors):
-                            _repair_log += f"Round {_repair_rounds}: {_passed}/{_failed}/{_errors} → {_p2}/{_f2}/{_e2} (improved)\n"
-                            _passed, _failed, _errors = _p2, _f2, _e2
-                            _test_log = _new_log
-                        else:
-                            _repair_log += f"Round {_repair_rounds}: no improvement\n"
-                            break
-                except Exception:
-                    _repair_log += f"Round {_repair_rounds}: repair failed\n"
-                    break
-            shutil.rmtree(_tmp, ignore_errors=True)
-        except Exception as _te:
-            _test_log = f"Test execution error: {str(_te)[:500]}"; _errors = 1
-        _total = _passed + _failed + _errors
-        _pr = _passed / _total if _total > 0 else 0
-        _artifact_key = getattr(stage, 'output_artifact', '') or 'test_report'
-        state[_artifact_key] = {
-            "raw_output": _result,
-            "test_results": {"passed": _passed, "failed": _failed, "errors": _errors, "total": _total, "pass_rate": round(_pr, 2)},
-            "test_log": _test_log[:3000],
-            "repair_rounds": _repair_rounds,
-            "repair_log": _repair_log[:1000] if _repair_log else "",
-        }
-        state["_test_pass_rate"] = _pr
-        state["_has_tests"] = True
-        # Notify SelfHealGate for remaining failures
-        if (_failed > 0 or _errors > 0) and _repair_rounds > 0:
-            try:
-                from core.harness.evaluation.self_heal_gate import SelfHealGate
-                SelfHealGate().evaluate_all({stage.id: {
-                    "agent_id": getattr(stage, 'agent_id', ''),
-                    "test_passed": _passed, "test_failed": _failed, "test_errors": _errors,
-                    "repair_rounds": _repair_rounds,
-                    "pass_rate": _pr,
-                }}, skip_rejected=True)
-            except Exception:
-                pass
-        logging.getLogger("pipeline_engine").warning("Test executed: stage=%s tests=%d/%d/%d repair_rounds=%d", stage.id, _passed, _failed, _errors, _repair_rounds)
-        return state
-
-
 
     async def _exec_tdd_cycle(self, stage: PipelineStageConfig, state: PipelineState) -> PipelineState:
 
@@ -4669,6 +5466,9 @@ class PipelineEngine:
         t_end = time.time()
 
         local_state[f"_stage_{stage.id}_done"] = True
+
+        # Evaluate stage health from scoring_dimensions (heuristic, zero-LLM-cost)
+        await self._evaluate_stage_health(stage, local_state)
 
         # Cache result for future runs with identical inputs
 
@@ -6151,6 +6951,15 @@ class PipelineEngine:
 
             return state
 
+        # ── Cost budget (USD) — config-driven, mirrors token budget ──
+        _cost_used = float(state.get("cost_used_usd", 0.0) or 0.0)
+        _cost_budget = float(getattr(self._config, 'max_cost_per_run_usd', 0.0) or 0.0)
+        if _cost_budget > 0 and _cost_used >= _cost_budget:
+            state["error"] = f"cost_budget_exhausted ({_cost_used:.4f}/{_cost_budget:.4f})"
+            state["_last_action_reason"] = "cost_budget_exhausted"
+            state["phase"] = PipelinePhase.FAILED
+            return state
+
 
 
         # ── Degradation strategy (CLAUDE.md §5.17) ──
@@ -6624,6 +7433,14 @@ class PipelineEngine:
 
         output_dir = state.get("output_dir", "")
 
+        # §7-5: system dependency health check — missing runtime deps → ENV_ERROR (not TEST_FAIL)
+        import shutil as _shutil
+        _env_issues = []
+        for _dep in ("ffmpeg", "ffprobe"):
+            if not _shutil.which(_dep):
+                _env_issues.append(f"{_dep} not found on PATH")
+        state["_test_env_issues"] = _env_issues
+
         test_plan = state.get(stage.output_artifact) or {}
 
         script = test_plan.get("test_script", "")
@@ -6922,6 +7739,111 @@ class PipelineEngine:
 
         return state
 
+    async def _evaluate_stage_health(self, stage: PipelineStageConfig, state: PipelineState) -> None:
+        """Compute per-dimension health scores from stage output (heuristic, zero-LLM-cost).
+
+        Writes to state[f"_health_report_{stage.id}"] in the format expected by
+        get_health_report() in builder_project_service.py.
+        """
+        dims = getattr(stage, 'scoring_dimensions', None)
+        if not dims:
+            return
+
+        artifact = state.get(stage.output_artifact)
+        if artifact is None:
+            return
+
+        raw_output = ""
+        if isinstance(artifact, dict):
+            raw_output = str(artifact.get("raw_output", ""))
+        else:
+            raw_output = str(artifact)
+
+        output_len = len(raw_output) if raw_output else 0
+
+        # ── Heuristic scoring per dimension ──
+        dimension_scores = []
+        for dim in dims:
+            dim_name = dim.get("name", "")
+            dim_weight = dim.get("weight", 0.0)
+            dim_threshold = dim.get("threshold", 7.0)
+            dim_desc = dim.get("description", dim_name)
+            score = 5.0  # default midpoint
+
+            # Completeness / coverage: based on output size and structural element count
+            if dim_name in ("completeness", "coverage", "execution_completeness"):
+                score = min(10.0, 3.0 + (output_len / 1500) * 7.0)
+                struct_count = raw_output.count('## ') + raw_output.count('|') / 4.0
+                struct_count += raw_output.count('FR-') + raw_output.count('AC')
+                score = min(10.0, score + struct_count * 0.3)
+
+            # Clarity / configurability: output structure and organization
+            elif dim_name in ("clarity", "configurability"):
+                sections = raw_output.count('## ') + raw_output.count('### ')
+                score = min(10.0, 2.0 + sections * 1.5)
+                if '```' in raw_output:
+                    score += 1.0
+                score = min(10.0, score)
+
+            # Modularity / correctness / feasibility / interactivity / data_binding
+            elif dim_name in ("modularity", "correctness", "feasibility", "interactivity",
+                              "data_binding"):
+                files = raw_output.count('## FILE:') + raw_output.count('"file"')
+                files += raw_output.count('"path"')
+                components = raw_output.count('"name"') / 2.0
+                components += raw_output.count('"component"')
+                score = min(10.0, 3.0 + files * 1.0 + components * 0.8)
+
+            # Testability / evaluation_accuracy: based on test results
+            elif dim_name in ("testability", "evaluation_accuracy"):
+                if isinstance(artifact, dict):
+                    tr = artifact.get("test_results") or artifact
+                    if isinstance(tr, dict) and tr.get("total", 0) > 0:
+                        rate = tr.get("pass_rate", 0)
+                        score = rate * 10.0
+                    else:
+                        ac_count = raw_output.count('AC') + raw_output.count('acceptance_criteria')
+                        score = min(10.0, 3.0 + ac_count * 0.5)
+                else:
+                    ac_count = raw_output.count('AC') + raw_output.count('acceptance_criteria')
+                    score = min(10.0, 3.0 + ac_count * 0.5)
+
+            # Functionality / robustness: based on output quality signals
+            elif dim_name in ("functionality", "robustness"):
+                if isinstance(artifact, dict) and artifact.get("pass_rate") is not None:
+                    score = (artifact.get("pass_rate") or 0) * 10.0
+                else:
+                    score = min(10.0, 3.0 + (output_len / 2000) * 7.0)
+
+            # Default: output size proxy
+            else:
+                score = min(10.0, 3.0 + (output_len / 2000) * 7.0)
+
+            dimension_scores.append({
+                "name": dim_name,
+                "display_name": dim_desc,
+                "score": round(score, 1),
+                "max_score": 10.0,
+                "weight": dim_weight,
+                "pass_threshold": dim_threshold,
+                "issues_count": 0,
+            })
+
+        # Compute weighted overall score (0-100 scale)
+        total_weight = sum(d["weight"] for d in dimension_scores) or 1.0
+        weighted_sum = sum(d["score"] * d["weight"] for d in dimension_scores)
+        overall = round(weighted_sum / total_weight * 10.0, 1)
+
+        verdict = "passed" if overall >= 70 else "partial" if overall >= 40 else "failed"
+
+        report = {
+            "stage_id": stage.id,
+            "agent_id": getattr(stage, 'agent_id', '') or stage.id,
+            "dimensions": dimension_scores,
+            "overall_score": overall,
+            "verdict": verdict,
+        }
+        state[f"_health_report_{stage.id}"] = report
 
 
     async def _tri_evaluate(self, stage: PipelineStageConfig, state: Dict, pytest_output: str) -> Dict:
@@ -7381,6 +8303,11 @@ Evaluate pass/fail based on pass_rate and configured dimension thresholds.""")
 
         max_attempts = getattr(self._config, 'max_retry_attempts', None) or 3
 
+        # Per-stage retry policy (from PipelineStageConfig.retry_policy)
+        _retry_pol = getattr(stage, 'retry_policy', {}) or {}
+        if _retry_pol and _retry_pol.get("max_retries"):
+            max_attempts = int(_retry_pol["max_retries"])
+
         # Per-node overrides from workflow canvas
 
         node_cfg = getattr(stage, 'node_config', None) or {}
@@ -7667,7 +8594,16 @@ Evaluate pass/fail based on pass_rate and configured dimension thresholds.""")
 
         feedback = state.get("_reject_feedback", "")
 
-        fb = f"\n## Reject Feedback\n{feedback}" if feedback else ""
+        if feedback:
+            fb = (
+                "\n## 🛑 REGENERATE WITH FEEDBACK — YOU MUST FIX THESE ISSUES\n"
+                "You were rejected and must regenerate. Address EVERY issue below.\n"
+                "Before generating your final output, list how you will fix each one.\n\n"
+                f"{feedback}\n"
+                "\n---\n"
+            )
+        else:
+            fb = ""
 
         ctx = {}
 
@@ -8114,7 +9050,7 @@ Evaluate pass/fail based on pass_rate and configured dimension thresholds.""")
 
 
         raw = f"""You are {stage.agent_name or stage.id}.
-
+{fb}
 {scene_context}
 
 {previous_notes}
@@ -8131,7 +9067,7 @@ Evaluate pass/fail based on pass_rate and configured dimension thresholds.""")
 
 {stage_hints}
 
-Complete your work based on upstream output.{fb}{constraint_text}{handoff_text}{iss}{agent_list}{fmt_text}{progress_text}{test_plan_text}
+Complete your work based on upstream output.{constraint_text}{handoff_text}{iss}{agent_list}{fmt_text}{progress_text}{test_plan_text}
 
 
 
@@ -8339,7 +9275,7 @@ JSON format: {{"artifact": {{}},"confidence": "HIGH","issues": [{{"severity": "P
 
         # Example: ## FILE: backend/models/user.py
 
-        for m in re.finditer(r'##\s*FILE:\s*(\S+)[\s\S]*?\n(.*?)(?=\n##\s*FILE:|\Z)', text, re.MULTILINE):
+        for m in re.finditer(r'#{2,4}\s*FILE:\s*(\S+)[\s\S]*?\n(.*?)(?=\n##\s*FILE:|\Z)', text, re.MULTILINE):
 
             files.append({"path": m.group(1).strip(), "content": m.group(2).strip()})
 
@@ -9228,7 +10164,7 @@ JSON format: {{"artifact": {{}},"confidence": "HIGH","issues": [{{"severity": "P
                 try:
                     await _save_pipeline_knowledge_to_wiki(state, self._config)
                 except Exception:
-                    pass
+                    logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
 
             # Phase 4: establish TaskSkill ↔ WikiPage bilateral links in ontology
 
@@ -9319,6 +10255,14 @@ JSON format: {{"artifact": {{}},"confidence": "HIGH","issues": [{{"severity": "P
             self._store_artifacts(sid, state)
 
 
+
+            # Fire-and-forget: generalize successful skill for cross-run learning
+            try:
+                import asyncio as _gen_async
+                _gen_async.create_task(
+                    _safe_generalize_skill(self, skill_id, state))
+            except Exception:
+                logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
 
             return skill_path
 
@@ -10853,16 +11797,25 @@ Output ONLY this JSON (no preamble): {{"diagnosis":"<1 sentence>","suggested_pro
 
 
         try:
-
+            _hf_model = best_model_for_purpose("chat")
             resp = await sys_llm_generate(
 
                 None, [{"role": "user", "content": prompt}],
 
-                model_name=best_model_for_purpose("chat"),
+                model_name=_hf_model,
 
                 max_tokens=500,
 
+                trace_context={"source": "harness_fix_proposer"},
+
             )
+
+            # Engine infra — model health recording
+            try:
+                from core.harness.utils.model_injection import _record_success as _hf_record_success
+                _hf_record_success(_hf_model, latency_ms=0, purpose="chat")
+            except Exception:
+                logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
 
             import json as _json
 
@@ -10932,11 +11885,18 @@ _PLATFORM_DB_PATH = os.getenv("AIPLAT_PLATFORM_DB_PATH", "data/aiplat_platform.s
 
 
 
+_pipeline_events_table_missing = False
+
+
 def _write_pipeline_event(run_id: str, event_type: str, node_id: str,
 
                           state_json: str, elapsed: float, output: str) -> None:
 
     """Write pipeline event to platform SQLite. Self-contained in core; no cross-layer import."""
+
+    global _pipeline_events_table_missing
+    if _pipeline_events_table_missing:
+        return
 
     try:
 
@@ -10954,7 +11914,7 @@ def _write_pipeline_event(run_id: str, event_type: str, node_id: str,
 
                 (str(run_id), str(event_type), str(node_id or ""),
 
-                 str(state_json), float(elapsed), str(output or ""), time.time()),
+                 str(state_json)[:2000000], float(elapsed), str(output or ""), time.time()),
 
             )
 

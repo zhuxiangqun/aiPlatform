@@ -7,10 +7,10 @@
 # Verifiers: verify_capability_consumers.sh (pre-commit hook)
 # Generator: generate_impact_matrix.py → docs/matrix/capability-impact-matrix.md
 
-version: "1.0.0"
-generated_at: "2026-07-19"
-total_capability_domains: 32
-total_capabilities: 776
+version: "1.1.0"
+generated_at: "2026-08-16"
+total_capability_domains: 34
+total_capabilities: 1030
 
 domains:
   # ══════════════════════════════════════════════════════════════
@@ -22,6 +22,50 @@ domains:
     caps_count: 36
     provides:
       - symbol: "PipelineEngine"
+      - symbol: get_pricing
+      - symbol: cost_for
+      - symbol: CostBudgetController
+      - symbol: record_decision
+      - symbol: mark_failed
+      - symbol: locate_max_error_node
+      - symbol: trace_root_cause_chain
+      - symbol: get_trace
+      - symbol: clear_trace
+      - symbol: build_run_report
+      - symbol: generate_hypotheses
+        type: function
+        signature: 'Generate ranked root-cause hypotheses for a failed pipeline run.'
+        module: aiPlat-core/core/harness/execution/hypothesis_generator.py
+        type: function
+        signature: 'Build a complete governance/explainability report for a pipeline run.'
+        module: aiPlat-core/core/harness/execution/governance_report.py
+        type: function
+        signature: 'Drop the in-memory cache and JSON file for ``run_id``.'
+        module: aiPlat-core/core/harness/execution/decision_trace.py
+        type: function
+        signature: 'Return the full trace graph for ``run_id``.'
+        module: aiPlat-core/core/harness/execution/decision_trace.py
+        type: function
+        signature: 'Trace the full vertical root-cause chain from failure node(s) back to root.'
+        module: aiPlat-core/core/harness/execution/decision_trace.py
+        type: function
+        signature: 'Walk the decision graph backward and return the node with max error contribution'
+        module: aiPlat-core/core/harness/execution/decision_trace.py
+        type: function
+        signature: 'Mark downstream stages as failed so error propagates upstream.'
+        module: aiPlat-core/core/harness/execution/decision_trace.py
+        type: function
+        signature: 'Record one stage decision into the trace graph.'
+        module: aiPlat-core/core/harness/execution/decision_trace.py
+        type: class
+        signature: 'Per-run budget enforcer. Cost calc reuses the existing CostTracker pricing.'
+        module: aiPlat-core/core/harness/execution/cost_budget.py
+        type: function
+        signature: 'Stateless USD cost for one call (existing CostTracker pricing).'
+        module: aiPlat-core/core/harness/execution/cost_budget.py
+        type: function
+        signature: 'Pricing table from the existing CostTracker (single source of truth).'
+        module: aiPlat-core/core/harness/execution/cost_budget.py
         type: "class"
         signature: "_run_stages_from, _exec_stage, _retry_loop, _meta_optimize"
         module: "core/harness/execution/pipeline_engine.py"
@@ -104,6 +148,54 @@ domains:
     caps_count: 130
     provides:
       - symbol: "GraphIndex"
+      - symbol: build_wiki_to_agent_bridge
+      - symbol: build_model_usage_bridge
+      - symbol: build_prompt_to_agent_bridge
+      - symbol: build_wiki_to_agent_bridge
+      - symbol: build_model_usage_bridge
+      - symbol: build_prompt_to_agent_bridge
+      - symbol: build_wiki_to_agent_bridge
+      - symbol: build_model_usage_bridge
+      - symbol: build_prompt_to_agent_bridge
+      - symbol: build_wiki_to_agent_bridge
+      - symbol: build_model_usage_bridge
+      - symbol: build_prompt_to_agent_bridge
+        type: function
+        signature: '复用 prompt_loader 调用点扫描建立 Prompt→Agent 三元组。'
+        module: aiPlat-core/core/harness/knowledge/cross_domain_bridge.py
+        type: function
+        signature: '扫描所有 Agent 的 model 字段→建立 uses_model 三元组。'
+        module: aiPlat-core/core/harness/knowledge/cross_domain_bridge.py
+        type: function
+        signature: '用关键词匹配建立 Wiki 页面→Agent 的三元组。'
+        module: aiPlat-core/core/harness/knowledge/cross_domain_bridge.py
+        type: function
+        signature: '复用 prompt_loader 调用点扫描建立 Prompt→Agent 三元组。'
+        module: aiPlat-core/core/harness/knowledge/cross_domain_bridge.py
+        type: function
+        signature: '扫描所有 Agent 的 model 字段→建立 uses_model 三元组。'
+        module: aiPlat-core/core/harness/knowledge/cross_domain_bridge.py
+        type: function
+        signature: '用关键词匹配建立 Wiki 页面→Agent 的三元组。'
+        module: aiPlat-core/core/harness/knowledge/cross_domain_bridge.py
+        type: function
+        signature: '复用 prompt_loader 调用点扫描建立 Prompt→Agent 三元组。'
+        module: aiPlat-core/core/harness/knowledge/cross_domain_bridge.py
+        type: function
+        signature: '扫描所有 Agent 的 model 字段→建立 uses_model 三元组。'
+        module: aiPlat-core/core/harness/knowledge/cross_domain_bridge.py
+        type: function
+        signature: '用关键词匹配建立 Wiki 页面→Agent 的三元组。'
+        module: aiPlat-core/core/harness/knowledge/cross_domain_bridge.py
+        type: function
+        signature: '复用 prompt_loader 调用点扫描建立 Prompt→Agent 三元组。'
+        module: aiPlat-core/core/harness/knowledge/cross_domain_bridge.py
+        type: function
+        signature: '扫描所有 Agent 的 model 字段→建立 uses_model 三元组。'
+        module: aiPlat-core/core/harness/knowledge/cross_domain_bridge.py
+        type: function
+        signature: '用关键词匹配建立 Wiki 页面→Agent 的三元组。'
+        module: aiPlat-core/core/harness/knowledge/cross_domain_bridge.py
         type: "class"
         signature: "add_entity, add_relation, add_hyperedge, traverse, snapshot"
         module: "core/harness/ontology_engine/graph_index.py"
@@ -115,6 +207,10 @@ domains:
         type: "module"
         signature: "write_page, search_pages, generate_index_md, list_all_pages, read_page"
         module: "core/harness/knowledge/wiki_engine.py"
+      - symbol: "llm_summarize"
+        type: "function"
+        signature: "LLM 轻量摘要统一通道 (sys_llm_generate 单一入口 — §57 上下文组装合规)"
+        module: "core/harness/knowledge/doc_compressor.py"
       - symbol: "DomainRouter"
         type: "class"
         signature: "classify(query)→domain_id (T1 inverted/T2 vector/T3 LLM)"
@@ -218,9 +314,53 @@ domains:
   agent-system:
     section: "五"
     section_name: "Agent 系统"
-    caps_count: 23
+    caps_count: 24
     provides:
       - symbol: "BaseAgent"
+      - symbol: run_voice_brainstorm
+      - symbol: run_voice_brainstorm
+      - symbol: run_voice_brainstorm
+      - symbol: run_voice_brainstorm
+      - symbol: ProviderCapabilities
+      - symbol: ProviderResult
+      - symbol: SubagentProvider
+      - symbol: InProcessProvider
+      - symbol: ACPProvider
+      - symbol: get_provider_factories
+      - symbol: default_provider_name
+        type: function
+        signature: 'default_provider_name()'
+        module: aiPlat-core/core/apps/agents/subagent/providers.py
+        type: function
+        signature: 'get_provider_factories()'
+        module: aiPlat-core/core/apps/agents/subagent/providers.py
+        type: class
+        signature: 'External provider: execute subagents via the ACP WebSocket protocol.'
+        module: aiPlat-core/core/apps/agents/subagent/providers.py
+        type: class
+        signature: 'Default provider: existing conversational-agent execution in this process.'
+        module: aiPlat-core/core/apps/agents/subagent/providers.py
+        type: class
+        signature: 'Abstract subagent execution provider.'
+        module: aiPlat-core/core/apps/agents/subagent/providers.py
+        type: dataclass
+        signature: 'Normalized result from any provider.'
+        module: aiPlat-core/core/apps/agents/subagent/providers.py
+        type: dataclass
+        signature: 'Feature flags a provider supports (DSH-style).'
+        module: aiPlat-core/core/apps/agents/subagent/providers.py
+        type: function
+        signature: '执行语音漫谈 LLM 意图提取.'
+        module: aiPlat-core/core/apps/fde/service/voice.py
+        type: function
+        signature: '执行语音漫谈 LLM 意图提取.'
+        module: aiPlat-core/core/apps/fde/service/voice.py
+        type: function
+        signature: '执行语音漫谈 LLM 意图提取.'
+        module: aiPlat-core/core/apps/fde/service/voice.py
+        type: function
+        signature: '执行语音漫谈 LLM 意图提取.'
+        module: aiPlat-core/core/apps/fde/service/voice.py
         type: "class"
         signature: "execute(context)→AgentResult, 8 types"
         module: "core/apps/agents/base.py"
@@ -228,6 +368,10 @@ domains:
         type: "class"
         signature: "execute_single, parallel, sequential"
         module: "core/apps/agents/subagent/coordinator.py"
+      - symbol: "SubagentProviders"
+        type: "module"
+        signature: "SubagentProvider 抽象 + in_process/acp provider (P1-A3)"
+        module: "core/apps/agents/subagent/providers.py"
       - symbol: "ParallelExecutor"
         type: "class"
         signature: "Map-Reduce parallel + EmbeddingBridge"
@@ -236,6 +380,10 @@ domains:
         type: "class"
         signature: "decision-support: severity, impact, recommended_actions"
         module: "core/apps/agents/operator_agent.py"
+      - symbol: "test_report_orchestrator"
+        type: "agent"
+        signature: "workspace agent — tests→bug→regenerate per-stage auto-fix"
+        module: "~/.aiplat/agents/test_report_orchestrator/AGENT.md"
     breaks: []
     consumers_expected:
       - module: "core/harness/execution/pipeline_engine.py"
@@ -294,6 +442,10 @@ domains:
         type: "class"
         signature: "check_tool, check_agent, _check_arch_boundary"
         module: "core/harness/infrastructure/gates/policy_gate.py"
+      - symbol: "ManagedPolicy"
+        type: "class"
+        signature: "企业远程托管策略 managed 键本地不可覆盖 (P1-A6)"
+        module: "aiPlat-platform/auth/schemas_policy.py"
       - symbol: "ApprovalGate"
         type: "class"
         signature: "dangerous command detection (CRITICAL/HIGH/MEDIUM/LOW)"
@@ -333,10 +485,6 @@ domains:
         type: "class"
         signature: "aggregate metrics across layers"
         module: "core/harness/observability/metrics/__init__.py"
-      - symbol: "AuditLog"
-        type: "class"
-        signature: "record tool/skill/gate events"
-        module: "core/harness/infrastructure/audit.py"
     breaks: []
     consumers_expected:
       - module: "core/harness/execution/pipeline_engine.py"
@@ -442,6 +590,22 @@ domains:
         type: "class"
         signature: "query, publish, cross-session knowledge"
         module: "core/harness/memory/shared_pool.py"
+      - symbol: "LearnNudgeHook"
+        type: "function"
+        signature: "会话内实时学习触发 POST_OBSERVE (P1-A1)"
+        module: "core/harness/learning/learn_nudge_hook.py"
+      - symbol: "SkillCurator"
+        type: "class"
+        signature: "技能生命周期 active→stale→archived (P1-A2)"
+        module: "core/harness/learning/skill_curator.py"
+      - symbol: "ChannelAdapters"
+        type: "module"
+        signature: "多渠道适配器 Discord/WeCom/Email/DingTalk (P1-A4)"
+        module: "aiPlat-app/channels/adapters/__init__.py"
+      - symbol: "ChannelDispatcher"
+        type: "class"
+        signature: "统一调度 7 渠道 (3 内置 + 4 扩展)"
+        module: "aiPlat-app/channels/adapter.py"
     breaks: []
     consumers_expected:
       - module: "core/harness/optimization/goal_executor.py"
@@ -498,14 +662,22 @@ domains:
         type: "module"
         signature: "Recall@10, precision, F1 for RAG"
         module: "core/harness/evaluation/eval_retrieval.py"
+      - symbol: "AdversarialTestSuite"
+        type: "module"
+        signature: "认知安全对抗测试"
+        module: "core/harness/evaluation/adversarial_test_suite.py"
+      - symbol: "NLIBridge"
+        type: "module"
+        signature: "NLI 推理引擎"
+        module: "core/harness/evaluation/nli_engine.py"
       - symbol: "QualityScoring"
         type: "pattern"
         signature: "4-D scoring: FDE+SECI+Convergence+ContextBus"
-        module: "core/harness/knowledge/quality_bus.py"
-      - symbol: "BenchmarkRunner"
+        module: "core/harness/knowledge/scoring_engine.py"
+      - symbol: "EvalRunner"
         type: "class"
         signature: "5 metrics: pipeline P95, graph P95, retrieval recall, state accuracy, calibration"
-        module: "core/harness/evaluation/benchmark.py"
+        module: "core/harness/evaluation/eval_runner.py"
     breaks: []
     consumers_expected:
       - module: "core/harness/execution/pipeline_engine.py"
@@ -555,7 +727,7 @@ domains:
       - symbol: "AgentMessageBus"
         type: "class"
         signature: "TASK_ASSIGN/PROGRESS_UPDATE/RESULT/ERROR/CANCEL"
-        module: "core/apps/agents/message_bus.py"
+        module: "core/harness/interfaces/messaging.py"
     breaks: []
     consumers_expected:
       - module: "core/apps/agents/multi_agent.py"
@@ -716,12 +888,26 @@ domains:
         type: "pattern"
         signature: "sequential round discussion, agreement convergence"
         module: "core/harness/execution/roundtable.py"
+      - symbol: "DarwinArena"
+        type: "class"
+        signature: "Elo 评分 + Champion 晋升 + round_robin 手动竞技 (P0-B3 已接线: facade + eval API)"
+        module: "core/harness/arena/arena.py"
+      - symbol: "VoiceLoopTool"
+        type: "class"
+        signature: "完整语音循环 STT→Agent→TTS 工具 (P0-B3 已接线: server 注册)"
+        module: "core/apps/tools/voice_loop_tool.py"
+      - symbol: "WakeAgentTool"
+        type: "class"
+        signature: "零 token 文件变更监控工具 status/start/stop (P0-B3 已接线: server 注册 + eval API)"
+        module: "core/apps/tools/wake_agent_tool.py"
     breaks: []
     consumers_expected:
       - module: "core/harness/execution/pipeline_engine.py"
         reason: "Pipeline routing_mode dispatch"
       - module: "core/harness/coordination/swarm_broker.py"
         reason: "SwarmBroker 蜂群协作"
+      - module: "aiPlat-platform/apps/eval/api/arena_wiring.py"
+        reason: "P0-B3 arena/wake-agent REST 端点"
 
   # ══════════════════════════════════════════════════════════════
   # 二十一、平台治理 (59 caps)
@@ -841,12 +1027,12 @@ domains:
   management-and-quality:
     section: "二十五"
     section_name: "管理 & 质量"
-    caps_count: 21
+    caps_count: 24
     provides:
       - symbol: "QualityBus"
-        type: "class"
-        signature: "4-subsystem unified scoring 0-100"
-        module: "core/harness/knowledge/quality_bus.py"
+        type: "pattern"
+        signature: "4-subsystem unified scoring 0-100 (via ScoringEngine)"
+        module: "core/harness/knowledge/scoring_engine.py"
       - symbol: "FeedbackLoops"
         type: "module"
         signature: "FeedbackTranslator, policy→natural language"
@@ -855,6 +1041,18 @@ domains:
         type: "class"
         signature: "7d→stable, 90d→archived"
         module: "core/harness/specs/lifecycle.py"
+      - symbol: "filterItemsByRole"
+        type: "function"
+        signature: "Sidebar v2.3: two-level role filtering + empty subLabel cleanup + diagnostics per-project scoping"
+        module: "aiPlat-management/frontend/src/components/layout/AppLayout.tsx"
+      - symbol: "handleFixBugs"
+        type: "function"
+        signature: "Factory page: trigger test_report_orchestrator agent for one-click bug fix"
+        module: "aiPlat-management/frontend/src/pages/App/Factory/index.tsx"
+      - symbol: "Sidebar v2.3 menuItems"
+        type: "data"
+        signature: "Task-flow driven sidebar: 6 groups, 92 entries; AI工厂33→14精简58%; 引擎能力配置独立成组; 价值看板→仪表盘"
+        module: "aiPlat-management/frontend/src/pageManifest.ts"
     breaks: []
     consumers_expected:
       - module: "core/harness/execution/pipeline_engine.py"

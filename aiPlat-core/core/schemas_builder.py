@@ -244,6 +244,8 @@ class PipelineStageConfig(BaseModel):
     depends_on: List[str] = Field(default_factory=list)
     output_artifact: str = ""
     required_skills: List[str] = Field(default_factory=list)
+    tools: List[str] = Field(default_factory=list)  # per-stage tool whitelist for agent backend
+    completeness_check: Optional[dict] = Field(default=None)  # {input_artifact, output_key, max_per_call}
     failure_strategy: str = "fail_pipeline"
     fallback_result_key: str = ""
     retry_llm_on_rate_limit: bool = True
@@ -267,8 +269,15 @@ class PipelineStageConfig(BaseModel):
     deploy_files_to_disk: bool = False   # Parse ## FILE: blocks from output, write to project dir
     deploy_files_target_dir: str = ""    # Override target. Empty = ~/.aiplat/apps/{pid}/current
     test_execution_mode: str = ""        # "pytest" | "agent_conversation" | "" — which test runner
+    # v3.1 — architecture mode (config-driven, drives architecture_design output shape)
+    # "code" = FastAPI/RESTful architecture | "agent" = Agent/skill-routing architecture | "" = auto/legacy
+    architecture_mode: str = ""
     # Phase 12 — execution backend selection (replaces SOP detection / agent_type switching)
     execution_backend: str = "llm"       # "llm"=sys_llm_generate | "agent"=StageRunner.run()→ReActLoop
+    # v3.0 — capability profile: replaces binary execution_backend switch with declarative capability tiers.
+    # "auto" = engine auto-infers from stage declarations (recommended)
+    # "minimal" | "standard" | "full" | "autonomous" = manual override
+    capability_profile: str = "auto"
     # Anthropic 5 patterns: chain | router | parallel | orchestrator | evaluator_optimizer
     pipeline_mode: str = "chain"          # "chain" | "router" | "parallel" | "orchestrator" | "evaluator_optimizer" | "agent"
     routing_mode: str = "static"           # "static" | "llm" | "debate" | "swarm" | "roundtable" | "moa" — routing strategy
@@ -279,7 +288,11 @@ class PipelineStageConfig(BaseModel):
     # [{failure_type, constraint_action, max_escalation}] — targeted recovery per failure type
     # Empty list = use system DEFAULT_FAILURE_MODE_CONSTRAINTS
     enable_query_rewrite: bool = True  # rewrite ambiguous follow-up queries before retrieval
-    scoring_dimensions: List[Dict[str, Any]] = Field(default_factory=list)
+    scoring_dimensions: List[Dict[str, Any]] = Field(default_factory=lambda: [
+        {"name": "completeness", "weight": 0.4},
+        {"name": "accuracy", "weight": 0.3},
+        {"name": "efficiency", "weight": 0.3},
+    ])
     # Fine-grained per-stage reward weights (UnityMAS-O inspired)
     scoring_weights: Dict[str, float] = Field(default_factory=lambda: {
         "output_quality": 0.40, "token_efficiency": 0.15,
@@ -296,6 +309,9 @@ class PipelineStageConfig(BaseModel):
     debate_participants: List[Dict[str, Any]] = Field(default_factory=list)
     debate_max_rounds: int = 3
     debate_manager_agent: str = ""
+    # ── Cost budget controller (per-stage) ──
+    cost_budget_usd: float = 0.0     # 0 = unlimited; else stop/downgrade when stage cost reaches this
+    cost_priority: str = "balanced"  # "balanced" | "minimize_cost" | "maximize_quality"
     # MoA (Mixture of Agents) routing: parallel reference engines + aggregator synthesis
     moa_preset: str = "general"
     moa_reference_count: int = 3
@@ -322,11 +338,11 @@ class PipelineStageConfig(BaseModel):
     # Planner-Generator-Evaluator separation: stage ID for structured planning
     planning_stage_id: str = ""
     # ── v4.0: Declarative quality gates & routing for pipeline agents ──
-    quality_gate: Dict[str, Any] = Field(default_factory=dict)  # 4step-verified: wired via pipeline_compiler.py→retriever quality_gate
+    quality_gate: Dict[str, Any] = Field(default_factory=lambda: {"min_output_length": 100})  # 4step-verified: engine.py:4650 使用
     """CRAG-style quality gate: {condition, fallback, final_fallback}"""
     routing_rules: Dict[str, Any] = Field(default_factory=dict)  # 4step-verified: wired via pipeline_compiler.py + engine.py:1900
     """Domain routing rules: {tiers, fallback_domain}"""
-    retry_policy: Dict[str, Any] = Field(default_factory=dict)  # 4step-verified: wired via pipeline_compiler.py→knowledge_writeback
+    retry_policy: Dict[str, Any] = Field(default_factory=lambda: {"max_retries": 2, "backoff": "exponential"})  # 4step-verified: engine.py:8306 使用
     """Self-heal retry: {on, action, max_retries}"""
     # ── v4.1: Cross-stage rollback (delegation + adversarial pattern) ──
     rollback_on_reject: bool = False
@@ -339,6 +355,7 @@ class PipelineConfig(BaseModel):
     stages: List[PipelineStageConfig] = Field(default_factory=list)
     max_iterations: int = 3
     max_tokens_per_run: int = 100000
+    max_cost_per_run_usd: float = 0.0  # 0 = unlimited; else pipeline stops when cost reaches this
     max_stagnation: int = 3
     max_retry_attempts: int = 3
     max_steps_per_stage: int = 10
@@ -408,6 +425,7 @@ class Project(BaseModel):
     project_id: str = ""
     name: str = ""
     description: str = ""
+    app_name: str = ""  # canonical English slug (e.g. "video_parser") — established at creation, reused by all stages
     team_id: str = ""
     team_name: str = ""
     team_stages: List[PipelineStageConfig] = Field(default_factory=list)
@@ -419,6 +437,7 @@ class Project(BaseModel):
 class ProjectCreateRequest(BaseModel):
     name: str = ""
     description: str = ""
+    app_name: str = ""  # optional: user-provided English slug; auto-derived if empty
     team_id: str = ""
     stages: List[Dict[str, Any]] = Field(default_factory=list)  # pre-built workflow stages
 

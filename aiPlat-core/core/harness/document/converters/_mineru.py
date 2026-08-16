@@ -142,7 +142,7 @@ class MineruConverter(DocumentConverter):
                 last_err = f"exit_code_{proc.returncode}: {stderr[:200]}"
                 logger.warning("[MinerU] Failed: %s", last_err)
 
-            return _load_mineru_content_list(out_dir) if not last_err else []
+            return load_mineru_content_list(out_dir) if not last_err else []
 
     # ── JSON → DocumentElement ──────────────────────────────────
 
@@ -161,11 +161,11 @@ class MineruConverter(DocumentConverter):
             text = item.get("text", "") or item.get("md", "") or ""
 
             if item_type == "table":
-                cells = _table_text_to_cells(item)
+                cells = table_text_to_cells(item)
                 if cells:
                     elements.append(DocumentElement(
                         type="table",
-                        text=text or _cells_to_markdown(cells),
+                        text=text or cells_to_markdown(cells),
                         page_idx=page_idx,
                         cells=cells,
                         meta={"source": "pdf", "parser": "mineru"},
@@ -186,7 +186,7 @@ class MineruConverter(DocumentConverter):
 
 # ── Helper: table extraction from MinerU JSON ────────────────────
 
-def _table_text_to_cells(obj: Dict[str, Any]) -> Optional[List[List[str]]]:
+def table_text_to_cells(obj: Dict[str, Any]) -> Optional[List[List[str]]]:
     """Normalize MinerU/Docling table payloads to 2D cell array."""
     for key in ("cells", "table_cells"):
         val = obj.get(key)
@@ -197,13 +197,13 @@ def _table_text_to_cells(obj: Dict[str, Any]) -> Optional[List[List[str]]]:
     for key in ("table_body", "table_data", "md", "markdown"):
         val = obj.get(key)
         if isinstance(val, str) and "|" in val:
-            cells = _parse_markdown_table(val)
+            cells = parse_markdown_table(val)
             if cells:
                 return cells
     return None
 
 
-def _parse_markdown_table(md: str) -> Optional[List[List[str]]]:
+def parse_markdown_table(md: str) -> Optional[List[List[str]]]:
     """Parse a markdown table string to 2D cell array."""
     lines = [l.strip() for l in md.strip().split("\n") if l.strip()]
     if len(lines) < 2:
@@ -218,7 +218,7 @@ def _parse_markdown_table(md: str) -> Optional[List[List[str]]]:
     return rows if len(rows) >= 1 else None
 
 
-def _cells_to_markdown(cells: List[List[str]]) -> str:
+def cells_to_markdown(cells: List[List[str]]) -> str:
     """Convert 2D cells to markdown table string."""
     if not cells:
         return ""
@@ -230,7 +230,7 @@ def _cells_to_markdown(cells: List[List[str]]) -> str:
     return "\n".join(lines)
 
 
-def _load_mineru_content_list(output_dir: str) -> List[Dict[str, Any]]:
+def load_mineru_content_list(output_dir: str) -> List[Dict[str, Any]]:
     """Scan output_dir for MinerU content-list JSON files."""
     root = Path(output_dir)
     json_files = sorted(

@@ -1,6 +1,5 @@
 """Vulnerability SLA Tracker — enforces CVSS-based fix deadlines.
 
-import logging
 Gap 5.8: transforms SECURITY.md static SLA table into automated enforcement.
 
 
@@ -11,6 +10,7 @@ CVSS severity, and provides CI-integrated breach detection.
 
 """
 
+import logging
 import os, sqlite3, threading, time
 
 from datetime import datetime, timezone, timedelta

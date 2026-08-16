@@ -26,6 +26,8 @@ if [ "${1:-}" = "--force" ]; then FORCE=true; fi
 section_for() {
     local mod="$1"
     local dir="${2:-}"
+    # Also accept a hint to disambiguate
+    local ext="${3:-.py}"
     case "$dir" in
         *execution*|*loop*|*pipeline*|*langgraph*)    echo "## 一、Harness 执行引擎" ;;
         *memory*|*compression*|*episodic*|*semantic*)  echo "## 二、记忆子系统" ;;
@@ -48,6 +50,12 @@ section_for() {
         *platform*|*tenant*|*billing*|*governance*)     echo "## 二十一、平台治理" ;;
         *apps/ontology_editor*)                         echo "## 二十一、平台治理" ;;
         *approval*)                                     echo "## 三、知识引擎（本体）" ;;
+        # ── Frontend paths ──
+        *components/layout*)                            echo "## 二十五、管理 & 质量" ;;
+        *pages/App/Factory*)                             echo "## 二十五、管理 & 质量" ;;
+        *pages/Diagnostics*|*pages/Core*)                echo "## 二十五、管理 & 质量" ;;
+        *pages/*)                                        echo "## 二十五、管理 & 质量" ;;
+        *frontend/src*)                                  echo "## 二十五、管理 & 质量" ;;
         *)                                              echo "## 十一、扩展与学习" ;;
     esac
 }
@@ -78,7 +86,7 @@ for root in "aiPlat-core/core/harness" "aiPlat-core/core/harness/execution" \
         dirname="$(dirname "$f")"
         # Skip __init__, tests, pycache
         [[ "$basename" == __init__.py ]] && continue
-        [[ "$f" == */tests/* ]] && continue
+        [[ "$f" == */tests/* || "$f" == tests/* || "$f" == *"/tests/"* ]] && continue
         [[ "$f" == */__pycache__/* ]] && continue
         # Check if module name OR parent directory is already registered
         if ! grep -qi "$mod" "$CAPS" 2>/dev/null && ! grep -qi "$(basename "$dirname")" "$CAPS" 2>/dev/null; then
@@ -91,7 +99,7 @@ for root in "aiPlat-core/core/harness" "aiPlat-core/core/harness/execution" \
         mod="${basename%.py}"
         dirname="$(dirname "$f")"
         [[ "$basename" == __init__.py ]] && continue
-        [[ "$f" == */tests/* ]] && continue
+        [[ "$f" == */tests/* || "$f" == tests/* || "$f" == *"/tests/"* ]] && continue
         [[ "$f" == */__pycache__/* ]] && continue
         if ! grep -qi "$mod" "$CAPS" 2>/dev/null && ! grep -qi "$(basename "$dirname")" "$CAPS" 2>/dev/null; then
             # Avoid duplicates from pass 1
@@ -106,20 +114,74 @@ for root in "aiPlat-core/core/harness" "aiPlat-core/core/harness/execution" \
         mod="${basename%.py}"
         dirname="$(dirname "$f")"
         [[ "$basename" == __init__.py ]] && continue
-        [[ "$f" == */tests/* ]] && continue
+        [[ "$f" == */tests/* || "$f" == tests/* || "$f" == *"/tests/"* ]] && continue
         [[ "$f" == */__pycache__/* ]] && continue
         if ! grep -qi "$mod" "$CAPS" 2>/dev/null && ! grep -qi "$(basename "$dirname")" "$CAPS" 2>/dev/null; then
             if ! echo "$NEW_MODULES" | grep -q "$mod|"; then
                 NEW_MODULES="$NEW_MODULES $mod|$f"
             fi
         fi
-    done < <(git -C "$WORKSPACE" ls-files --others --exclude-standard 2>/dev/null | grep '\.py$' | sort -u)
+     done < <(git -C "$WORKSPACE" ls-files --others --exclude-standard 2>/dev/null | grep '\.py$' | sort -u)
+done
+
+# ── Step 1b: Frontend .tsx/.ts files ─────────────────────
+for root in "aiPlat-management/frontend/src" \
+    "aiPlat-management/frontend/src/components" \
+    "aiPlat-management/frontend/src/pages"; do
+    if [ ! -d "$WORKSPACE/$root" ]; then continue; fi
+    # Pass F1: committed .tsx/.ts files (git log)
+    while IFS= read -r f; do
+        basename="${f##*/}"
+        mod="${basename%.tsx}"; mod="${mod%.ts}"
+        dirname="$(dirname "$f")"
+        [[ "$basename" == *.d.ts ]] && continue
+        [[ "$f" == */tests/* || "$f" == tests/* || "$f" == *"/tests/"* ]] && continue
+        [[ "$f" == */__pycache__/* ]] && continue
+        if ! grep -qi "$mod" "$CAPS" 2>/dev/null && ! grep -qi "$(basename "$dirname")" "$CAPS" 2>/dev/null; then
+            NEW_MODULES="$NEW_MODULES $mod|$f"
+        fi
+    done < <(git -C "$WORKSPACE" log --diff-filter=AM --name-only --since="7 days ago" -- "$root/" 2>/dev/null | grep -E '\.(tsx|ts)$' | grep -v '\.d\.ts$' | sort -u)
+    # Pass F2: staged .tsx/.ts files
+    while IFS= read -r f; do
+        basename="${f##*/}"
+        mod="${basename%.tsx}"; mod="${mod%.ts}"
+        dirname="$(dirname "$f")"
+        [[ "$basename" == *.d.ts ]] && continue
+        [[ "$f" == */tests/* || "$f" == tests/* || "$f" == *"/tests/"* ]] && continue
+        [[ "$f" == */__pycache__/* ]] && continue
+        if ! grep -qi "$mod" "$CAPS" 2>/dev/null && ! grep -qi "$(basename "$dirname")" "$CAPS" 2>/dev/null; then
+            if ! echo "$NEW_MODULES" | grep -q "$mod|"; then
+                NEW_MODULES="$NEW_MODULES $mod|$f"
+            fi
+        fi
+    done < <(git -C "$WORKSPACE" diff --cached --name-only 2>/dev/null | grep -E '\.(tsx|ts)$' | grep -v '\.d\.ts$' | sort -u)
+    # Pass F3: untracked .tsx/.ts files
+    while IFS= read -r f; do
+        basename="${f##*/}"
+        mod="${basename%.tsx}"; mod="${mod%.ts}"
+        dirname="$(dirname "$f")"
+        [[ "$basename" == *.d.ts ]] && continue
+        [[ "$f" == */tests/* || "$f" == tests/* || "$f" == *"/tests/"* ]] && continue
+        [[ "$f" == */__pycache__/* ]] && continue
+        if ! grep -qi "$mod" "$CAPS" 2>/dev/null && ! grep -qi "$(basename "$dirname")" "$CAPS" 2>/dev/null; then
+            if ! echo "$NEW_MODULES" | grep -q "$mod|"; then
+                NEW_MODULES="$NEW_MODULES $mod|$f"
+            fi
+        fi
+    done < <(git -C "$WORKSPACE" ls-files --others --exclude-standard 2>/dev/null | grep -E '\.(tsx|ts)$' | grep -v '\.d\.ts$' | sort -u)
 done
 
 if [ -z "$NEW_MODULES" ]; then
     echo ""
     echo "✅ No new unreferenced modules"
     echo ""
+    # ── Step 10: registry → CAPABILITIES sync check (P0-C3) ──
+    echo "━━━ Step 10: registry → CAPABILITIES sync check ━━━"
+    if python3 "$SCRIPT_DIR/sync_registry_to_docs.py" >/dev/null 2>&1; then
+        echo "  ✅ registry 符号全部在 CAPABILITIES 中"
+    else
+        echo "  ⚠️ registry → docs 漂移 (运行: python3 scripts/sync_registry_to_docs.py --fix 补登)"
+    fi
     exit 0
 fi
 
@@ -370,14 +432,16 @@ else:
 PYEOF_R12
 
 # ══════════════════════════════════════════════════════════════
-# Step 7: Auto-register new public APIs from git diff (Rule 11)
+# Step 7: Auto-register new public symbols to capability_registry.yaml
 # ══════════════════════════════════════════════════════════════
 echo ""
-echo "━━━ Step 7: Auto-register new public APIs from git diff ━━━"
-python3 "$WORKSPACE/scripts/verify_docs.py" 2>&1 | grep "新增了.*但未在" | while read -r line; do
-  echo "  📝 $line"
-done
-echo "  ℹ️  Run 'python3 scripts/verify_docs.py' for full report"
+echo "━━━ Step 7: Auto-register new symbols to capability_registry.yaml ━━━"
+REGISTER_SCRIPT="$WORKSPACE/scripts/auto_register_capability.py"
+if [ -f "$REGISTER_SCRIPT" ]; then
+    python3 "$REGISTER_SCRIPT" --auto 2>&1 | tail -10
+else
+    echo "  ℹ️  auto_register_capability.py not found — run 'python3 scripts/verify_docs.py' for manual check"
+fi
 
 # ══════════════════════════════════════════════════════════════
 # Step 8: Generate FDE Pipeline Key mapping table from code
@@ -502,6 +566,34 @@ else:
     else:
         print(f"  → {issues} entries need status fix")
 PYEOF_ACCURACY
+
+# ── Step 9: Scan inherited capabilities — detect drift between code and frontmatter ──
+echo ""
+echo "━━━ Step 9: Inherited capabilities scan ━━━"
+SCAN_SCRIPT="$SCRIPT_DIR/scan_inherited_capabilities.py"
+if [ -f "$SCAN_SCRIPT" ]; then
+    python3 "$SCAN_SCRIPT" --verify 2>&1 || echo "  → Review core_guarantees in AIPLAT_CAPABILITIES.md frontmatter"
+else
+    echo "  (scan_inherited_capabilities.py not found — skipping)"
+fi
+
+# ── Step 10: registry → CAPABILITIES sync check (P0-C3) ──
+echo ""
+echo "━━━ Step 10: registry → CAPABILITIES sync check ━━━"
+if python3 "$SCRIPT_DIR/sync_registry_to_docs.py" >/dev/null 2>&1; then
+    echo "  ✅ registry 符号全部在 CAPABILITIES 中"
+else
+    echo "  ⚠️ registry → docs 漂移 — 自动补登 (P1-B1 单一真相源)..."
+    if python3 "$SCRIPT_DIR/sync_registry_to_docs.py" --fix >/dev/null 2>&1; then
+        echo "  ✅ 已自动补登缺失符号"
+        # re-stage the updated CAPABILITIES if this runs inside a git hook
+        if [ -f "$WORKSPACE/AIPLAT_CAPABILITIES.md" ] && ! git -C "$WORKSPACE" diff --cached --quiet "$WORKSPACE/AIPLAT_CAPABILITIES.md" 2>/dev/null; then
+            git -C "$WORKSPACE" add "$WORKSPACE/AIPLAT_CAPABILITIES.md" 2>/dev/null || true
+        fi
+    else
+        echo "  ⚠️ 自动补登失败 — 手动运行: python3 scripts/sync_registry_to_docs.py --fix"
+    fi
+fi
 
 echo ""
 echo "═══════════════════════════════════════════════════════════════"

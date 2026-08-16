@@ -7,6 +7,13 @@ Runs on port 8002.
 
 import os as _os
 import sys as _sys
+# Diagnostic: dump Python stacks on SIGUSR1 (for busy-loop / spin debugging).
+try:
+    import faulthandler as _faulthandler
+    import signal as _signal
+    _faulthandler.register(_signal.SIGUSR1, all_threads=True)
+except Exception:
+    logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
 # Ensure aiPlat-platform modules can be imported (avoids name collision with stdlib platform)
 _aiplat_root = _os.path.dirname(_os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))))
 _aiplat_platform = _os.path.join(_aiplat_root, 'aiPlat-platform')
@@ -353,6 +360,14 @@ async def lifespan(app: FastAPI):
     # ExecutionStore (SQLite) - persistent execution/history
     _execution_store = get_execution_store()
     await _execution_store.init()
+
+    # ── v3.1: cleanup orphaned pipelines from previous crash ──
+    try:
+        from core.api.routers.pipeline_execution import cleanup_orphaned_pipelines
+        await cleanup_orphaned_pipelines()
+    except Exception:
+        log.warning("Orphan pipeline cleanup failed", exc_info=True)
+
     # Auto-init dev signing keys if not configured
     try:
         from core.security.skill_signature_gate import auto_init_dev_keys
@@ -1032,6 +1047,9 @@ async def lifespan(app: FastAPI):
         ("core.apps.tools.sysgraph_tools", "SysLspFixTool", {}),
         # Phase 54: Local TTS (Piper)
         ("core.apps.tools.tts", "TTSTool", {}),
+        # P0-B3: voice_loop / wake_agent wiring
+        ("core.apps.tools.voice_loop_tool", "VoiceLoopTool", {}),
+        ("core.apps.tools.wake_agent_tool", "WakeAgentTool", {}),
         # Phase 55: Unified Web Tools (Firecrawl alignment)
         ("core.apps.tools.web.web_search", "WebSearchTool", {}),
         ("core.apps.tools.web.web_crawl", "WebCrawlTool", {}),
@@ -1361,6 +1379,66 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logging.debug(str(e), exc_info=True)
 
+    # ═══════════════════════════════════════════════════════════════
+    # Server is now ready to accept requests.
+    # All code below this line is deferred/background initialization
+    # that must NOT block request processing.
+    # ═══════════════════════════════════════════════════════════════
+    global _server_ready
+    _server_ready = True
+    logging.getLogger(__name__).info("Server ready — accepting requests")
+
+    # ── Orphan pipeline recovery (background, non-blocking) ──
+    async def _recover_orphan_pipelines():
+        """Recover pipelines stuck after server restart.
+
+        Strategy: mark orphaned runs as 'failed' with descriptive error.
+        Users rebuild from the UI — no auto-retrigger (Platform may not be ready).
+        """
+        await asyncio.sleep(20)  # extended: Platform takes 30-45s to start
+        try:
+            from core.harness.execution.pipeline_run_store import get_pipeline_run_store
+            store = get_pipeline_run_store()
+            orphans = store.list_orphan_runs()
+
+            for run_id in orphans:
+                run = store.get_run_by_id(run_id)
+                if not run:
+                    continue
+
+                stages = store.get_stages(run_id)
+                idx = run.get("current_stage_idx", 0)
+                has_progress = any(
+                    s.get("artifact_output") or s.get("status") == "completed"
+                    for s in stages
+                )
+
+                if has_progress:
+                    store.update_run_phase(
+                        run_id, "failed",
+                        f"Pipeline interrupted at stage {idx} by server restart"
+                    )
+                    logging.getLogger(__name__).warning(
+                        "Orphan run %s: interrupted at stage %d, marked failed",
+                        run_id[:12], idx)
+                else:
+                    store.update_run_phase(
+                        run_id, "failed",
+                        "Server restart before pipeline started"
+                    )
+                    logging.getLogger(__name__).debug(
+                        "Orphan run %s: no progress, marked failed", run_id[:12])
+
+            if orphans:
+                logging.getLogger(__name__).warning(
+                    "Recovered %d orphan pipeline(s)", len(orphans))
+
+        except Exception:
+            logging.getLogger(__name__).debug(
+                "Orphan pipeline recovery skipped", exc_info=True)
+
+    asyncio.create_task(_recover_orphan_pipelines())
+
     # ── Docs → Wiki auto-sync (v2.3) ──
     # B: 启动时自动导入 docs/ 到 Wiki（可通过 AIPLAT_DOCS_AUTO_SYNC=false 关闭）
     #    使用后台线程执行，避免阻塞 health check
@@ -1380,7 +1458,6 @@ async def lifespan(app: FastAPI):
         async def _bg_sync_docs_deferred():
             await asyncio.sleep(30)  # delay to keep startup responsive
             await _bg_sync_docs()
-        asyncio.create_task(_bg_sync_docs_deferred())
         asyncio.create_task(_bg_sync_docs_deferred())
     # C: 文件变更监视（可通过 AIPLAT_DOCS_WATCH=false 关闭）
     if os.environ.get("AIPLAT_DOCS_WATCH", "true").lower() in ("true", "1", "yes"):
@@ -1441,7 +1518,7 @@ async def lifespan(app: FastAPI):
                     try:
                         from core.harness.knowledge.staleness_monitor import StalenessMonitor
                         monitor = StalenessMonitor()
-                        summary = monitor.get_stale_summary()
+                        summary = await asyncio.to_thread(monitor.get_stale_summary)
                         if summary["total_stale"] > 0:
                             log.warning("Knowledge drift: %d/%d pages flagged stale in %d collections",
                                         summary["total_stale"], summary["total_scanned"], len(summary["collections"]))
@@ -1456,7 +1533,7 @@ async def lifespan(app: FastAPI):
                     try:
                         from core.harness.evaluation.config_drift_detector import ConfigDriftDetector
                         cdetector = ConfigDriftDetector()
-                        csummary = cdetector.get_drift_summary()
+                        csummary = await asyncio.to_thread(cdetector.get_drift_summary)
                         if csummary["total_drifts"] > 0:
                             log.info("Config drift: %d agents with drift (%d total)",
                                      csummary["agents_with_drift"], csummary["total_drifts"])
@@ -1468,7 +1545,7 @@ async def lifespan(app: FastAPI):
                         from core.harness.evaluation.constraint_validator import ConstraintValidator
                         gate = SelfHealGate()
                         validator = ConstraintValidator()
-                        issues = validator.scan_all()
+                        issues = await asyncio.to_thread(validator.scan_all)
                         for issue in issues:
                             if issue.level in ("CRITICAL", "HIGH"):
                                 gate.apply(issue.issue_type, {
@@ -1482,15 +1559,15 @@ async def lifespan(app: FastAPI):
                         from core.harness.evaluation.adoption_metrics import AdoptionTracker
                         auditor = OntologyAuditor()
                         tracker = AdoptionTracker()
-                        for domain_id in auditor.list_domains():
+                        for domain_id in await asyncio.to_thread(auditor.list_domains):
                             try:
-                                report = auditor.audit_domain(domain_id)
+                                report = await asyncio.to_thread(auditor.audit_domain, domain_id)
                                 if report.get("orphan_count", 0) > 0:
                                     log.info("OntologyAudit: %s orphans=%d classes=%d", 
                                              domain_id, report["orphan_count"], report["class_count"])
                             except Exception:
                                 logging.debug("Governance cron: ontology audit failed for %s", domain_id, exc_info=True)
-                        adoption = tracker.compute_metrics()
+                        adoption = await asyncio.to_thread(tracker.compute_metrics)
                         log.info("AdoptionMetrics: usage=%d grill_rate=%.2f", 
                                  adoption.get("agent_usage", 0), adoption.get("grill_rate", 0))
                     except Exception:
@@ -1536,8 +1613,21 @@ async def lifespan(app: FastAPI):
                 await asyncio.sleep(60)
                 while True:
                     try:
-                        from core.api.routers.diagnostics import run_all_diagnostics
-                        await run_all_diagnostics()
+                        import core.api.routers.diagnostics as _diag_mod
+                        # Run in thread to avoid blocking event loop
+                        import threading as _th
+                        def _run():
+                            import asyncio as _aio
+                            _loop = _aio.new_event_loop()
+                            try:
+                                result = _loop.run_until_complete(_diag_mod._run_diag_impl(quick=True))
+                                _diag_mod._DIAG_CACHE = result
+                                _diag_mod._DIAG_CACHE_TS = __import__('time').time()
+                                _diag_mod._save_diag_cache()
+                                _diag_mod._append_diag_history(result)
+                            finally:
+                                _loop.close()
+                        _th.Thread(target=_run, daemon=True).start()
                     except asyncio.CancelledError:
                         raise
                     except Exception as e:
@@ -1648,7 +1738,7 @@ async def lifespan(app: FastAPI):
                     data = _json.load(f)
                 _last_run_date = data.get("date", "")
         except Exception:
-            pass
+            logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
 
         async def _evolution_cron():
             import time, json as _json
@@ -1734,10 +1824,6 @@ async def lifespan(app: FastAPI):
         logging.getLogger("aiplat.quality").info("WikiQualityMonitor initialized")
     except Exception as e:
         logging.debug(str(e), exc_info=True)
-
-    global _server_ready
-    _server_ready = True
-    logging.getLogger(__name__).info("Server ready — accepting requests")
 
     yield
 
@@ -2374,6 +2460,20 @@ try:
 except Exception as e:
     logging.debug("Kanban router: %s", e)
 
+# Pipeline execution API (POST /run, GET /state, POST /cancel)
+try:
+    from core.api.routers.pipeline_execution import router as pipeline_exec_router
+    api_router.include_router(pipeline_exec_router)
+except Exception as e:
+    logging.debug("Pipeline execution router: %s", e)
+
+# Capability admin API (scan/read/manage core_guarantees)
+try:
+    from core.api.routers.capability_admin import router as cap_admin_router
+    api_router.include_router(cap_admin_router)
+except Exception as e:
+    logging.debug("Capability admin router: %s", e)
+
 # FDE Toolkit (Field Deployment Engineer — unified entry point)
 # Routers are registered via apps.fde.__init__.py → router_registry.register()
 # which decouples core server startup from platform-specific router imports.
@@ -2385,6 +2485,20 @@ try:
     mount_all(app)
 except Exception as e:
     logging.warning(str(e), exc_info=True)
+
+# Wiki API (knowledge base endpoints)
+try:
+    from core.api.routers.wiki import router as wiki_router
+    api_router.include_router(wiki_router)
+except Exception as e:
+    logging.debug("Wiki router: %s", e)
+
+# KB Evaluation stubs (field manual & quality feedback pages)
+try:
+    from core.api.routers.kb_eval import router as kb_eval_router
+    api_router.include_router(kb_eval_router)
+except Exception as e:
+    logging.debug("KB eval router: %s", e)
 
 # System self-evolution (core capability, not FDE-specific)
 try:
@@ -2400,6 +2514,13 @@ except Exception as e:
 try:
     from core.apps.a2a import a2a_router
     app.include_router(a2a_router)
+except Exception as e:
+    logging.debug(str(e), exc_info=True)
+
+# ── Unified Ontology Query API — 跨域 SPO 三元组查询 ──────────
+try:
+    from core.api.routers.ontology_routes import router as ontology_router
+    app.include_router(ontology_router, prefix="/api/core/ontology")
 except Exception as e:
     logging.debug(str(e), exc_info=True)
 

@@ -373,6 +373,10 @@ class EvalMetricsEngine:
 
         match_mode: "MatchMode" = None,
 
+        skip_self_heal: bool = False,
+
+        agent_id: str = "",
+
     ) -> "TrajectoryQuality":
 
         """Three-mode trajectory matching for tool call sequences.
@@ -431,6 +435,58 @@ class EvalMetricsEngine:
 
             result.matched_count = len(actual)
 
+        else:
+
+            expected_set = set(expected)
+
+
+
+            if mode == MatchMode.EXACT_ORDER:
+
+                result.matched = (actual == expected)
+
+                result.matched_count = sum(1 for a, e in zip(actual, expected) if a == e)
+
+                result.missing = [e for e in expected if e not in actual]
+
+                result.extra = [a for a in actual if a not in expected_set]
+
+
+
+            elif mode == MatchMode.IN_ORDER:
+
+                ei = 0  # expected index
+
+                for tool in actual:
+
+                    if ei < len(expected) and tool == expected[ei]:
+
+                        ei += 1
+
+                result.matched = (ei == len(expected))
+
+                result.matched_count = ei
+
+                result.missing = expected[ei:]
+
+                result.extra = [a for a in actual if a not in expected_set]
+
+
+
+            elif mode == MatchMode.ANY_ORDER:
+
+                matched = [e for e in expected if e in actual]
+
+                result.matched = (len(matched) == len(expected))
+
+                result.matched_count = len(matched)
+
+                result.missing = [e for e in expected if e not in actual]
+
+                result.extra = [a for a in actual if a not in expected_set]
+
+
+
         # v2.10: Event-driven health update + SelfHealGate inline trigger
 
         if not skip_self_heal:
@@ -441,11 +497,11 @@ class EvalMetricsEngine:
 
                 SystemHealthCalculator().recompute_on_event("eval_metrics_changed", agent_id,
 
-                    {"composite": result.composite_score / 100 if result.composite_score else 0.85})
+                    {"composite": result.score})
 
                 # SelfHealGate inline: only trigger for low-score agents
 
-                if result.composite_score and result.composite_score < 60:
+                if result.score is not None and result.score < 0.6:
 
                     from core.harness.evaluation.self_heal_gate import SelfHealGate
 
@@ -454,60 +510,6 @@ class EvalMetricsEngine:
             except Exception:
 
                 logging.getLogger(__name__).debug('compute_trajectory_quality failed', exc_info=True)
-
-
-        return result
-
-
-
-        expected_set = set(expected)
-
-
-
-        if mode == MatchMode.EXACT_ORDER:
-
-            result.matched = (actual == expected)
-
-            result.matched_count = sum(1 for a, e in zip(actual, expected) if a == e)
-
-            result.missing = [e for e in expected if e not in actual]
-
-            result.extra = [a for a in actual if a not in expected_set]
-
-
-
-        elif mode == MatchMode.IN_ORDER:
-
-            ei = 0  # expected index
-
-            for tool in actual:
-
-                if ei < len(expected) and tool == expected[ei]:
-
-                    ei += 1
-
-            result.matched = (ei == len(expected))
-
-            result.matched_count = ei
-
-            result.missing = expected[ei:]
-
-            result.extra = [a for a in actual if a not in expected_set]
-
-
-
-        elif mode == MatchMode.ANY_ORDER:
-
-            matched = [e for e in expected if e in actual]
-
-            result.matched = (len(matched) == len(expected))
-
-            result.matched_count = len(matched)
-
-            result.missing = [e for e in expected if e not in actual]
-
-            result.extra = [a for a in actual if a not in expected_set]
-
 
 
         return result

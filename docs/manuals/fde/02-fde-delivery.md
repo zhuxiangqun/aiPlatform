@@ -546,7 +546,7 @@ curl -X POST "http://localhost:8003/api/platform/apps/fde/poc/inject" \
 
 ---
 
-## 十、FDE 工具箱（v28.0 新增）
+## 九、FDE 工具箱（v28.0 新增）
 
 除八步交付流程外，FDE 工作台顶部提供 10+ 跨阶段工具：
 

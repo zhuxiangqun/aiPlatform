@@ -229,7 +229,7 @@ def _do_inject_adapter_models(mgr: Any) -> int:
 
                 os.path.join(os.getenv("AIPLAT_HOME", os.path.expanduser("~/.aiplat")),
 
-                            "data", "aiplat_executions.sqlite3"),
+                            "aiplat_executions.sqlite3"),
 
             ]:
 
@@ -263,7 +263,7 @@ def _do_inject_adapter_models(mgr: Any) -> int:
 
             rows = conn.execute(
 
-                "SELECT adapter_id, name, provider, api_base_url, models_json "
+                "SELECT adapter_id, name, provider, api_base_url, models_json, api_key "
 
                 "FROM adapters WHERE status='active' "
 
@@ -285,11 +285,20 @@ def _do_inject_adapter_models(mgr: Any) -> int:
 
                 models_json = d.get("models_json") or "[]"
 
-
-
                 if not provider or not adapter_id:
 
                     continue
+
+                # Skip placeholder/corrupted keys (e.g. sk-test-*, *validation*, non-sk blobs)
+                _raw_key = (d.get("api_key") or "").strip()
+                if _raw_key and not _raw_key.startswith("__local"):
+                    _lkey = _raw_key.lower()
+                    if (not _lkey.startswith("sk-")
+                            or "test" in _lkey or "validation" in _lkey):
+                        logging.info(
+                            "Adapter injection: skipping adapter %s (%s) with invalid key",
+                            adapter_id, provider)
+                        continue
 
 
 
@@ -319,7 +328,8 @@ def _do_inject_adapter_models(mgr: Any) -> int:
 
                 if not model_name:
 
-                    model_name = f"{provider}-chat"
+                    # Fallback: adapter `name` field (e.g. deepseek-v4-pro), else provider-chat
+                    model_name = (d.get("name") or "").strip() or f"{provider}-chat"
 
 
 
@@ -418,7 +428,7 @@ def _log_model_selection(purpose: str, selected: str, entry: str = "best_model_f
                 try:
                     samples = _log_json.loads(f.read())
                 except Exception:
-                    pass  # best-effort: corrupt log, restore from backup or start fresh
+                    logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)  # best-effort: corrupt log, restore from backup or start fresh
 
         record = {"ts": _log_time.time(), "purpose": purpose,
 
@@ -580,6 +590,10 @@ def _load_adapter_from_store(adapter_id: str) -> Optional[dict]:
 
             db_path = os.getenv("AIPLAT_EXECUTION_DB_PATH")
 
+        if not db_path:
+
+            db_path = os.path.join(os.path.expanduser("~"), ".aiplat", "aiplat_executions.sqlite3")
+
         if not db_path or not os.path.isfile(str(db_path or "")):
 
             return None
@@ -637,6 +651,8 @@ def _load_adapter_from_store(adapter_id: str) -> Optional[dict]:
 def create_selected_adapter(*, model_name: str) -> Any:
 
     """Create adapter for a model. Delegates to infra ModelManager for model info."""
+
+    _log = logging.getLogger("aiplat.model_injection")
 
     from core.harness.utils.llm_env import get_llm_api_key, get_llm_base_url
 
@@ -698,11 +714,13 @@ def create_selected_adapter(*, model_name: str) -> Any:
 
                 base_url = os.getenv("OLLAMA_HOST", "http://localhost:11434")
 
-            # Normalize Ollama URL: add /v1 suffix
 
-            if base_url and not base_url.rstrip("/").endswith("/v1"):
 
-                base_url = base_url.rstrip("/") + "/v1"
+        # Normalize OpenAI-compatible URL: add /v1 suffix for ALL providers
+
+        if base_url and not base_url.rstrip("/").endswith("/v1"):
+
+            base_url = base_url.rstrip("/") + "/v1"
 
 
 
@@ -1020,6 +1038,44 @@ async def create_adapter_with_fallback(purpose: str, timeout: int = 60) -> Any:
 
 
 
+# ── Model failure cache: skip models that fail 3+ times within 5 min ──
+_FAILURE_TRACKER: Dict[str, list] = {}  # model_name → [timestamp, ...]
+_FAILURE_THRESHOLD = 3
+_FAILURE_WINDOW_SECS = 300
+
+
+def _is_model_degraded(model_name: str) -> bool:
+    """Return True if model has failed >= threshold times within the window."""
+    import time as _t
+    failures = _FAILURE_TRACKER.get(model_name, [])
+    now = _t.time()
+    recent = [t for t in failures if now - t < _FAILURE_WINDOW_SECS]
+    _FAILURE_TRACKER[model_name] = recent
+    return len(recent) >= _FAILURE_THRESHOLD
+
+
+def _record_failure(model_name: str, error: str = "") -> None:
+    import time as _t
+    failures = _FAILURE_TRACKER.get(model_name, [])
+    failures.append(_t.time())
+    _FAILURE_TRACKER[model_name] = failures
+    # Persist to SQLite for cross-restart learning
+    try:
+        from infra.management.model.model_health_store import get_model_health_store
+        get_model_health_store().record_failure(model_name, error=error or "unknown")
+    except Exception:
+        logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
+
+
+def _record_success(model_name: str, latency_ms: float = 0.0, purpose: str = "") -> None:
+    """Record successful model call for adaptive selection learning."""
+    try:
+        from infra.management.model.model_health_store import get_model_health_store
+        get_model_health_store().record_success(model_name, latency_ms=latency_ms, purpose=purpose)
+    except Exception:
+        logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
+
+
 async def generate_with_fallback(purpose: str,
 
                                    messages: list,
@@ -1054,7 +1110,7 @@ async def generate_with_fallback(purpose: str,
 
     """
 
-    import asyncio as _asyncio, logging as _logging
+    import asyncio as _asyncio, logging as _logging, time as _time
 
     _fb_log = _logging.getLogger("aiplat.model_fallback")
 
@@ -1094,7 +1150,18 @@ async def generate_with_fallback(purpose: str,
 
 
 
-    per_model_timeout = min(timeout, 15)  # per-model cap
+    # per-model cap: local models need more time for cold starts (GGUF loading)
+    _local_candidate = False
+    try:
+        mgr = _get_cached_model_manager()
+        for c in candidates:
+            mi = mgr.select(model_name=c)
+            if mi and getattr(mi, 'source', None) and str(mi.source) == 'local':
+                _local_candidate = True
+                break
+    except Exception:
+        logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
+    per_model_timeout = min(timeout, 120 if _local_candidate else 60)
 
     # P2: global timeout aligned with caller budget, minimum guarantee
 
@@ -1132,6 +1199,7 @@ async def generate_with_fallback(purpose: str,
 
                     from core.harness.syscalls.llm import sys_llm_generate
 
+                    _call_start = _time.time()
                     resp = await _asyncio.wait_for(
 
                         sys_llm_generate(adapter, messages,
@@ -1172,6 +1240,10 @@ async def generate_with_fallback(purpose: str,
 
                     ))
 
+                    # Record success for adaptive model selection
+                    _latency_ms = round((_time.time() - _call_start) * 1000.0, 1)
+                    _record_success(model_name, latency_ms=_latency_ms, purpose=purpose)
+
                     return resp, model_name
 
                 except _asyncio.TimeoutError:
@@ -1181,6 +1253,7 @@ async def generate_with_fallback(purpose: str,
                     _fb_log.warning(f"'{model_name}' timed out ({i+1}/{len(candidates)}, {per_model_timeout}s)")
 
                     failed_models.add(model_name)
+                    _record_failure(model_name, error=msg)
 
                     errors.append({"model": model_name, "error": msg, "transient": True})
 
@@ -1192,18 +1265,22 @@ async def generate_with_fallback(purpose: str,
 
                     err_str = str(e)
 
-                    permanent_keywords = ("API key", "401", "403", "404", "api_key", "unauthorized",
+                    permanent_keywords = ("API key", "401", "403", "api_key", "unauthorized",
 
-                                          "invalid api key", "not found", "model not found")
+                                          "invalid api key")
 
                     is_permanent = any(kw in err_str.lower() for kw in permanent_keywords)
 
                     _fb_log.warning(f"'{model_name}' failed ({i+1}/{len(candidates)}): {e}")
+                    _record_failure(model_name, error=err_str)
 
                     if is_permanent:
-                        _fb_log.error(f"Permanent error on '{model_name}': {err_str}. Stopping fallback.")
+                        _fb_log.warning(f"Permanent error on '{model_name}': {err_str}. Skipping.")
+                        failed_models.add(model_name)
+                        _record_failure(model_name, error=err_str)
+                        errors.append({"model": model_name, "error": err_str, "transient": False})
                         last_error = err_str
-                        break  # don't crash — let outer loop handle graceful exit
+                        continue  # skip this model, try the next one
 
                     failed_models.add(model_name)
 
@@ -1655,7 +1732,7 @@ def best_model_for_purpose_with_meta(purpose: str, messages: list = None) -> dic
         mgr = _get_cached_model_manager()
         tier = mgr.get_model_tier(model, profile)
     except Exception:
-        pass
+        logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
 
     # complexity_range from tier_ranges
     complexity_range = profile.get("tiers", {}).get(tier, {}).get("complexity_range", [])

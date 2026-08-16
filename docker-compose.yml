@@ -9,12 +9,19 @@
 #
 # 环境变量: 见 .env 或 .env.production
 
+x-default-logging: &default-logging
+  driver: "json-file"
+  options:
+    max-size: "100m"
+    max-file: "3"
+
 services:
   infra:
     build:
       context: .
       dockerfile: aiPlat-infra/Dockerfile
     restart: unless-stopped
+    logging: *default-logging
     ports:
       - "8001:8001"
     volumes:
@@ -24,7 +31,7 @@ services:
       - AIPLAT_HOME=/app/.aiplat
       - AIPLAT_LLM_CONFIG_PATH=/app/aiPlat-infra/config/infra/llm_profile.yaml
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8001/health', timeout=3)"]
       interval: 15s
       timeout: 5s
       retries: 5
@@ -35,6 +42,7 @@ services:
       context: .
       dockerfile: aiPlat-core/Dockerfile
     restart: unless-stopped
+    logging: *default-logging
     ports:
       - "8002:8002"
     depends_on:
@@ -48,7 +56,7 @@ services:
       - AIPLAT_LLM_CONFIG_PATH=/app/aiPlat-infra/config/infra/llm_profile.yaml
       - AIPLAT_EXECUTION_DB_PATH=/app/.aiplat/aiplat_executions.sqlite3
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8002/api/core/health"]
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8002/api/core/health', timeout=3)"]
       interval: 15s
       timeout: 5s
       retries: 10
@@ -59,6 +67,7 @@ services:
       context: .
       dockerfile: aiPlat-platform/Dockerfile
     restart: unless-stopped
+    logging: *default-logging
     ports:
       - "8003:8003"
     depends_on:
@@ -71,7 +80,7 @@ services:
       - AIPLAT_REPO_ROOT=/app
       - AIPLAT_PLATFORM_DB_PATH=/app/.aiplat/aiplat_platform.sqlite3
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8003/platform/health"]
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8003/health', timeout=3)"]
       interval: 15s
       timeout: 5s
       retries: 5
@@ -82,6 +91,7 @@ services:
       context: .
       dockerfile: aiPlat-app/Dockerfile
     restart: unless-stopped
+    logging: *default-logging
     ports:
       - "8004:8004"
     depends_on:
@@ -93,7 +103,7 @@ services:
       - AIPLAT_HOME=/app/.aiplat
       - AIPLAT_APP_DB_PATH=/app/.aiplat/aiplat_app.sqlite3
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8004/health"]
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8004/health', timeout=3)"]
       interval: 15s
       timeout: 5s
       retries: 5
@@ -104,6 +114,7 @@ services:
       context: .
       dockerfile: aiPlat-management/Dockerfile
     restart: unless-stopped
+    logging: *default-logging
     ports:
       - "8000:8000"
     depends_on:
@@ -117,21 +128,24 @@ services:
       - AIPLAT_HOME=/app/.aiplat
       - AIPLAT_MANAGEMENT_MODE=production
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=3)"]
       interval: 15s
       timeout: 5s
       retries: 5
-      start_period: 10s
+      start_period: 120s
 
   frontend:
     build:
       context: ./aiPlat-management/frontend
       dockerfile: Dockerfile
     restart: unless-stopped
+    logging: *default-logging
     ports:
       - "5173:80"
     depends_on:
-      management:
+      core:
+        condition: service_healthy
+      platform:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:80"]
@@ -144,6 +158,7 @@ services:
   prometheus:
     image: prom/prometheus:v2.52.0
     restart: unless-stopped
+    logging: *default-logging
     ports:
       - "9090:9090"
     volumes:
@@ -159,6 +174,7 @@ services:
   grafana:
     image: grafana/grafana:10.4.0
     restart: unless-stopped
+    logging: *default-logging
     ports:
       - "3001:3000"
     volumes:
@@ -174,6 +190,7 @@ services:
   jaeger:
     image: jaegertracing/all-in-one:1.54
     restart: unless-stopped
+    logging: *default-logging
     ports:
       - "16686:16686"
       - "4317:4317"

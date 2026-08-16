@@ -33,7 +33,8 @@ methods:
 consumer_patterns:
   - "harness/evaluation/"
   - "harness/integration"
-  - "harness/syscalls/llm"
+  - "harness/syscalls/"
+  - "harness/scheduler/"
   - "apps/agents/"
   - "api/"
   - "management/"

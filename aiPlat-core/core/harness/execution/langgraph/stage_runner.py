@@ -41,16 +41,18 @@ class StageRunner:
             return self._skills or []
         return self._load_global_skills(self._skills or [], filter_names=required)
 
-    def _resolve_tools(self) -> List[Any]:
+    def _resolve_tools(self, override: Optional[List[str]] = None) -> List[Any]:
+        if override is not None:
+            return self._load_global_tools(override)
         if not self._stage:
             return self._load_global_tools(self._tools)
         if self._tools:
             return self._tools
         return self._load_global_tools(self._tools)
 
-    def _resolve_tools_selective(self, prompt: str) -> List[Any]:
+    def _resolve_tools_selective(self, prompt: str, override: Optional[List[str]] = None) -> List[Any]:
         """Resolve tools with semantic selection (reduces token cost)."""
-        tools = self._resolve_tools()
+        tools = self._resolve_tools(override=override)
         try:
             from core.harness.execution.tool_selector import get_tool_selector
             selector = get_tool_selector()
@@ -103,12 +105,16 @@ class StageRunner:
         except Exception:
             return fallback or []
 
-    async def run(self, prompt: str, state: Dict[str, Any], stage=None) -> str:
+    async def run(self, prompt: str, state: Dict[str, Any], stage=None, tools: Optional[List[str]] = None) -> str:
         """Execute one stage via ReActLoop and return the LLM response text.
 
         This replaces engine._call_llm() for generic pipeline stages.
         The ReActLoop handles: token tracking, hook firing, error recovery,
         and message guard (injection detection).
+
+        Args:
+            tools: Per-stage tool whitelist. Overrides __init__ tools when provided.
+                   Used by dual-engine to inject stage-specific tools for agent backend.
         """
         # Use per-stage config if provided (Issue 1 fix: per-stage model/skill filtering)
         s = stage if stage is not None else self._stage
@@ -144,7 +150,7 @@ class StageRunner:
             logging.info("auto_skill_filter_applied", extra={
                 "filtered_from": prev_count, "filtered_to": len(skills), "filter": auto_filter,
             })
-        tools = self._resolve_tools_selective(prompt)
+        tools = self._resolve_tools_selective(prompt, override=tools)
         loop = ReActLoop(
             config=LoopConfig(
                 max_steps=max_steps,

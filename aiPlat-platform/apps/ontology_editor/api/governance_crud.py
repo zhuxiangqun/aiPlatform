@@ -8,17 +8,17 @@ router = APIRouter(prefix="/governance", tags=["governance"])
 
 # ── Dashboard ──
 
-@router.get("/dashboard", response_model=StatusResponse)
+@router.get("/dashboard")
 async def governance_dashboard():
     u"""Aggregated governance dashboard data."""
     try:
-        from core.harness.knowledge.governance_dashboard import aggregate_dashboard
+        from core.api.core_facade import aggregate_dashboard
         return aggregate_dashboard()
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/dashboard/audit-log", response_model=StatusResponse)
+@router.get("/dashboard/audit-log")
 async def audit_log(days: int = Query(7), domain: str = Query("")):
     u"""Governance audit log."""
     try:
@@ -41,11 +41,11 @@ async def audit_log(days: int = Query(7), domain: str = Query("")):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/dashboard/mapping-coverage", response_model=StatusResponse)
+@router.get("/dashboard/mapping-coverage")
 async def mapping_coverage_report():
     u"""Data→semantic mapping coverage report (markdown)."""
     try:
-        from core.harness.knowledge.mapping_validator import generate_mapping_report
+        from core.api.core_facade import generate_mapping_report
         report = generate_mapping_report()
         return {"format": "markdown", "report": report}
     except Exception as e:
@@ -61,7 +61,7 @@ async def run_cycle(data: Dict[str, Any]):
         domain_id = data.get("domain_id", "")
         if not domain_id:
             raise HTTPException(status_code=400, detail="domain_id required")
-        from core.harness.knowledge.governance_pipeline import run_cycle as _run
+        from core.api.core_facade import run_cycle as _run
         steps = data.get("steps")
         auto_publish = data.get("auto_publish", False)
         result = await _run(domain_id, steps=steps, auto_publish=auto_publish)
@@ -83,7 +83,7 @@ async def run_cycle(data: Dict[str, Any]):
 async def run_all_cycles():
     u"""Run governance cycle for all domains."""
     try:
-        from core.harness.knowledge.governance_pipeline import run_all_domains
+        from core.api.core_facade import run_all_domains
         results = await run_all_domains()
         return {
             "cycles": [{"domain_id": r.domain_id, "health": r.overall_health,
@@ -94,11 +94,11 @@ async def run_all_cycles():
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/cycle-history", response_model=StatusResponse)
+@router.get("/cycle-history")
 async def cycle_history(domain_id: str = Query(""), limit: int = Query(10)):
     u"""Governance cycle history."""
     try:
-        from core.harness.knowledge.governance_pipeline import get_cycle_history
+        from core.api.core_facade import get_cycle_history
         history = get_cycle_history(domain_id, limit)
         return {"cycles": history, "total": len(history)}
     except Exception as e:
@@ -107,11 +107,11 @@ async def cycle_history(domain_id: str = Query(""), limit: int = Query(10)):
 
 # ── Change Approval ──
 
-@router.get("/change-requests/pending", response_model=StatusResponse)
+@router.get("/change-requests/pending")
 async def pending_requests(domain_id: str = Query("")):
     u"""List pending change requests."""
     try:
-        from core.harness.infrastructure.gates.ontology_approval import list_pending
+        from core.api.core_facade import list_pending
         pending = list_pending(domain_id)
         return {"requests": pending, "total": len(pending)}
     except Exception as e:
@@ -122,7 +122,7 @@ async def pending_requests(domain_id: str = Query("")):
 async def approve_request(request_id: str, data: Dict[str, Any]):
     u"""Approve a change request."""
     try:
-        from core.harness.infrastructure.gates.ontology_approval import approve
+        from core.api.core_facade import approve
         approved_by = data.get("approved_by", "governance_admin")
         comment = data.get("comment", "")
         return approve(request_id, approved_by, comment)
@@ -134,7 +134,7 @@ async def approve_request(request_id: str, data: Dict[str, Any]):
 async def reject_request(request_id: str, data: Dict[str, Any]):
     u"""Reject a change request."""
     try:
-        from core.harness.infrastructure.gates.ontology_approval import reject
+        from core.api.core_facade import reject
         rejected_by = data.get("rejected_by", "governance_admin")
         reason = data.get("reason", "")
         return reject(request_id, rejected_by, reason)
@@ -142,11 +142,11 @@ async def reject_request(request_id: str, data: Dict[str, Any]):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/change-requests/history", response_model=StatusResponse)
+@router.get("/change-requests/history")
 async def approval_history(domain_id: str = Query(""), limit: int = Query(50)):
     u"""Approval history."""
     try:
-        from core.harness.infrastructure.gates.ontology_approval import get_history
+        from core.api.core_facade import get_history
         history = get_history(domain_id, limit)
         return {"history": history, "total": len(history)}
     except Exception as e:
@@ -159,7 +159,7 @@ async def approval_history(domain_id: str = Query(""), limit: int = Query(50)):
 async def validate_mappings(domain_id: str):
     u"""Validate all data source mappings for a domain."""
     try:
-        from core.harness.knowledge.mapping_validator import validate_all_sources
+        from core.api.core_facade import validate_all_sources
         results = validate_all_sources(domain_id)
         return {
             "domain_id": domain_id,
@@ -171,11 +171,11 @@ async def validate_mappings(domain_id: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/mapping-report/{domain_id}", response_model=StatusResponse)
+@router.get("/mapping-report/{domain_id}")
 async def mapping_report(domain_id: str):
     u"""Mapping coverage markdown report."""
     try:
-        from core.harness.knowledge.mapping_validator import generate_mapping_report
+        from core.api.core_facade import generate_mapping_report
         report = generate_mapping_report([domain_id])
         return {"format": "markdown", "report": report}
     except Exception as e:

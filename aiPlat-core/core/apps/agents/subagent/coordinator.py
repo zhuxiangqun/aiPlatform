@@ -53,6 +53,30 @@ class SubagentCoordinator:
         self._active_instances: Dict[str, SubagentInstance] = {}
         self._create_agent_fn = create_agent_fn
         self._get_tool_registry_fn = get_tool_registry_fn
+        self._providers = {}
+
+    # ── Provider registry (P1-A3) ──────────────────────────────
+
+    def list_providers(self) -> List[str]:
+        """List available subagent providers."""
+        if not self._providers:
+            from .providers import get_provider_factories
+            self._providers = {name: factory(self)
+                               for name, factory in get_provider_factories().items()}
+        return sorted(self._providers.keys())
+
+    def get_provider(self, name: str = ""):
+        """Get a provider by name (default: AIPLAT_SUBAGENT_PROVIDER or in_process)."""
+        if not self._providers:
+            self.list_providers()
+        if not name:
+            from .providers import default_provider_name
+            name = default_provider_name()
+        provider = self._providers.get(name)
+        if provider is None:
+            raise ValueError(
+                f"Unknown subagent provider '{name}' — available: {self.list_providers()}")
+        return provider
     
     async def _get_registry(self):
         if self._registry is None:
@@ -233,7 +257,7 @@ class SubagentCoordinator:
                 if isinstance(output, dict):
                     output = output.get("content", str(output))
                 # Summarize per §5.26: parent needs concise summary, not full output
-                summarized = self._summarize_output(str(output), max_chars=800)
+                summarized = await self._summarize_output(str(output), max_chars=800)
                 duration = int((datetime.now(timezone.utc) - start_time).total_seconds() * 1000)
                 instance.state = "completed"
                 instance.completed_at = datetime.now(timezone.utc).isoformat()
@@ -263,11 +287,116 @@ class SubagentCoordinator:
                 duration_ms=duration,
             )
 
+    async def execute_with_provider(
+        self,
+        task: str,
+        subagent_name: str,
+        context: Optional[List[Dict]] = None,
+        *,
+        provider: str = "",
+    ) -> SubagentResult:
+        """Execute a subagent via a named provider (P1-A3).
+
+        Default provider comes from AIPLAT_SUBAGENT_PROVIDER (in_process).
+        External providers (acp) run the subagent outside this process.
+        """
+        from .providers import ProviderResult
+        prov = self.get_provider(provider)
+        if not prov.capabilities.start:
+            return SubagentResult(
+                subagent_name=subagent_name,
+                success=False,
+                output="",
+                error=f"Provider '{prov.name}' does not support start",
+            )
+        result: ProviderResult = await prov.start(
+            name=subagent_name, task=task, context=context)
+        return SubagentResult(
+            subagent_name=subagent_name,
+            success=result.ok,
+            output=result.output[:800] if result.ok else "",
+            error=result.error if not result.ok else "",
+        )
+
     @staticmethod
-    def _summarize_output(output: str, max_chars: int = 800) -> str:
+    def _filter_protocol_violations(output: str) -> str:
+        """确定性移除协议禁止的内容（CLAODE.md §5.26 强制执行）。
+
+        在摘要流程最前面运行——不依赖 LLM 判断，100% 确定性。
+        """
+        import re
+
+        # 1. 代码块: ```...``` → [code removed]
+        output = re.sub(r'```[\s\S]*?```', '[code removed]', output)
+
+        # 2. 工具调用链: "Action:" / "sys_tool_call" / "调用工具" 行
+        output = re.sub(
+            r'(?:^(?:Action|Tool call|调用工具|sys_tool_call|sys_skill_call)[:\s]+.*(?:\n|$))+',
+            '[tool calls removed]\n', output, flags=re.MULTILINE | re.IGNORECASE)
+
+        # 3. 推理标记: "Thought:" / "Let me think" / "思考：" / "推理："
+        output = re.sub(
+            r'^(?:Thought|Let me think|思考|推理|Reasoning)[:\s]+.*(?:\n|$)',
+            '', output, flags=re.MULTILINE | re.IGNORECASE)
+
+        return output.strip()
+
+
+    @staticmethod
+    async def _summarize_output(output: str, max_chars: int = 800) -> str:
+        """v2.0: 智能摘要 — 4 层降级策略，全部确定性。
+
+        第 0 层: 正则过滤协议禁止内容（100% 确定性）
+        第 1 层: 5 级上下文压缩（保留关键语义信息）
+        第 2 层: LLM 轻量格式化摘要（输入已清理，LLM 只需提取结论）
+        第 3 层: 安全截断（在句号/换行边界断开）
+        """
+        # ── 第 0 层: 协议强制过滤 ──
+        output = SubagentCoordinator._filter_protocol_violations(output)
+
         if len(output) <= max_chars:
             return output
-        return output[:max_chars] + f"\n\n... [truncated from {len(output)} chars]"
+            return output
+
+        # ── 第 1 层: 上下文压缩 ──
+        try:
+            from core.harness.memory.manager import MemoryManager
+            mgr = MemoryManager()
+            if hasattr(mgr, '_compression') and mgr._compression is not None:
+                compressed = await mgr._compression.compress_lightweight(
+                    output, target_chars=max_chars)
+                if compressed and len(compressed) > 0 and len(compressed) < len(output) * 0.8:
+                    return compressed[:max_chars]
+        except Exception:
+            logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
+
+        # ── 第 2 层: LLM 轻量摘要（经 doc_compressor 统一通道 — §57 上下文组装合规）──
+        try:
+            from core.harness.knowledge.doc_compressor import llm_summarize
+            content = await llm_summarize(
+                output, max_chars=max_chars,
+                trace_context={"source": "subagent_summarize"},
+            )
+            if content and len(content) > 10:
+                return content[:max_chars]
+        except Exception:
+            logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
+
+        # ── 第 3 层: 安全截断 ──
+        return SubagentCoordinator._safe_truncate(output, max_chars)
+
+
+    @staticmethod
+    def _safe_truncate(text: str, max_chars: int) -> str:
+        """在最近句号/换行边界断开，不破坏句子完整性。"""
+        if len(text) <= max_chars:
+            return text
+        cut = text[:max_chars]
+        for sep in ['\n\n', '。', '. ', '\n', '，', ', ']:
+            idx = cut.rfind(sep)
+            if idx > max_chars * 0.6:
+                return cut[:idx + len(sep)] + f"\n\n... [从 {len(text)} 字符摘要]"
+        return cut + f"\n\n... [从 {len(text)} 字符摘要]"
     
     async def execute_parallel(
         self,

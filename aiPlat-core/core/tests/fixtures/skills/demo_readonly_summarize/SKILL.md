@@ -4,6 +4,7 @@ display_name: 只读摘要（示范）
 description: 对输入文本做结构化摘要（无副作用、可自动触发），用于验证 Skill Contract/路由/可观测闭环。
 category: transformation
 version: 0.1.0
+execution_type: prompt
 status: test_fixture
 execution_mode: prompt
 permissions:

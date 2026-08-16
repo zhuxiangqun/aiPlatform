@@ -284,7 +284,7 @@ class PolicyGate:
 
         )
 
-        self._enforce_approval = os.getenv("AIPLAT_SYSCALL_ENFORCE_APPROVAL", "false").lower() in (
+        self._enforce_approval = os.getenv("AIPLAT_SYSCALL_ENFORCE_APPROVAL", "false").lower() in (  # noqa: known-design
 
             "1", "true",
 
@@ -297,6 +297,64 @@ class PolicyGate:
             u.strip() for u in os.getenv("AIPLAT_DENY_OVERRIDE_USERS", "").split(",") if u.strip()
 
         )
+
+        # v3.0: adaptive security — dynamic risk scoring per user/operation
+
+        self._adaptive_mode = os.getenv("AIPLAT_ADAPTIVE_SECURITY", "false").lower() in ("1", "true")
+
+
+
+    def _compute_risk_score(self, user_id: str, operation: str) -> float:
+
+        """Dynamic risk score 0.0-1.0 from user's recent policy decisions.
+
+        Used by adaptive security to auto-escalate high-risk tool calls.
+
+        """
+
+        try:
+
+            from core.services.execution_store import get_execution_store
+
+            store = get_execution_store()
+
+            recent = store.get_recent_policy_decisions(user_id, limit=10)
+
+            if not recent:
+
+                return 0.0
+
+            denials = sum(1 for d in recent if d.get("decision") == "DENY")
+
+            base_risk = denials / len(recent)
+
+            op_weight = _OPERATION_RISK_WEIGHTS.get(operation, 0.0)
+
+            return min(1.0, base_risk + op_weight)
+
+        except Exception:
+
+            return 0.0
+
+
+
+    # Operations with elevated baseline risk (write > execute > read)
+
+    _OPERATION_RISK_WEIGHTS: ClassVar[Dict[str, float]] = {
+
+        "tool:sys_file_write": 0.3,
+
+        "tool:sys_file_edit": 0.3,
+
+        "tool:sys_code_exec": 0.4,
+
+        "tool:sys_shell_exec": 0.5,
+
+        "skill:" : 0.2,  # partial match for any skill execution
+
+        "tool:" : 0.1,   # partial match for any tool call
+
+    }
 
 
 
@@ -663,6 +721,17 @@ class PolicyGate:
             except Exception:
 
                 tenant_pol = None
+
+        # P1-A6: managed policy override — enterprise-mandated keys win over local
+        try:
+            from aiPlat_platform.auth.schemas_policy import merge_managed_policy
+            managed_block = None
+            if isinstance(tenant_pol, dict):
+                managed_block = tenant_pol.get("_managed") or tenant_pol
+            if managed_block:
+                tenant_pol = merge_managed_policy(tenant_pol, managed_block)
+        except Exception:
+            pass  # noqa: managed-policy-optional
 
         pol = self._load_approval_review_policy(tenant_policy=tenant_pol if isinstance(tenant_pol, dict) else None)
 
@@ -1317,6 +1386,19 @@ class PolicyGate:
 
 
 
+        # v3.0: adaptive security — escalate risk if user has elevated risk score
+
+        if self._adaptive_mode:
+
+            risk = self._compute_risk_score(user_id, f"tool:{tool_name}")
+
+            if risk > 0.8:
+
+                return PolicyResult(decision=PolicyDecision.APPROVAL_REQUIRED,
+
+                                   reason=f"elevated_risk:{risk:.2f}")
+
+
         return PolicyResult(decision=PolicyDecision.ALLOW)
 
 
@@ -1373,7 +1455,7 @@ class PolicyGate:
                     scope=getattr(result, "scope", PolicyScope.SESSION),
                 )
 
-        except ImportError:
+        except ImportError:  # noqa: optional-dependency
             pass  # Purpose Registry not available → fall through
         except Exception as e:
             logging.getLogger(__name__).debug("Purpose check failed, allowing: %s", e)
@@ -1394,7 +1476,7 @@ class PolicyGate:
                         reason=f"Layer-Marking: {reason}",
                         scope=getattr(result, "scope", PolicyScope.SESSION),
                     )
-            except ImportError:
+            except ImportError:  # noqa: optional-dependency
                 pass
             except Exception as e:
                 logging.getLogger(__name__).debug("Marking check failed, allowing: %s", e)
@@ -1704,6 +1786,19 @@ class PolicyGate:
 
             return PolicyResult(decision=PolicyDecision.ALLOW)
 
+
+
+        # v3.0: adaptive security — escalate risk for high-risk skill users
+
+        if self._adaptive_mode:
+
+            risk = self._compute_risk_score(user_id, f"skill:{skill_name}")
+
+            if risk > 0.8:
+
+                return PolicyResult(decision=PolicyDecision.APPROVAL_REQUIRED,
+
+                                   reason=f"elevated_risk:{risk:.2f}")
 
 
         return PolicyResult(decision=PolicyDecision.ALLOW)

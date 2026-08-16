@@ -151,19 +151,19 @@ export const diagnosticsApi = {
   },
 
   runE2ESmoke: async (body: Record<string, unknown>) => {
-    return apiClient.post<any>('/diagnostics/e2e/smoke', body);
+    return apiClient.post<any>('/core/diagnostics/e2e/smoke', body);
   },
 
   getDoctor: async () => {
-    return apiClient.get<any>('/diagnostics/doctor');
+    return apiClient.get<any>('/core/diagnostics/doctor');
   },
 
   getContextConfig: async () => {
-    return apiClient.get<any>('/diagnostics/context/config');
+    return apiClient.get<any>('/core/diagnostics/context/config');
   },
 
   promptAssemble: async (body: Record<string, unknown>) => {
-    return apiClient.post<any>('/diagnostics/prompt/assemble', body);
+    return apiClient.post<any>('/core/diagnostics/prompt/assemble', body);
   },
 
   getContextMetricsRecent: async (params: { limit?: number; offset?: number; tenant_id?: string; session_id?: string } = {}) => {
@@ -186,7 +186,7 @@ export const diagnosticsApi = {
   },
 
   getExecBackends: async () => {
-    return apiClient.get<any>('/diagnostics/exec/backends');
+    return apiClient.get<any>('/core/diagnostics/exec/backends');
   },
 
   getExecBackendMetricsSummary: async (params: { window_hours?: number; limit?: number } = {}) => {
@@ -198,23 +198,23 @@ export const diagnosticsApi = {
   },
 
   recordRepoChangeset: async (body: Record<string, unknown>) => {
-    return apiClient.post<any>('/diagnostics/repo/changeset/record', body);
+    return apiClient.post<any>('/core/diagnostics/repo/changeset/record', body);
   },
 
   repoGitBranch: async (body: Record<string, unknown>) => {
-    return apiClient.post<any>('/diagnostics/repo/git/branch', body);
+    return apiClient.post<any>('/core/diagnostics/repo/git/branch', body);
   },
 
   repoGitCommit: async (body: Record<string, unknown>) => {
-    return apiClient.post<any>('/diagnostics/repo/git/commit', body);
+    return apiClient.post<any>('/core/diagnostics/repo/git/commit', body);
   },
 
   getRepoChangesetPatch: async () => {
-    return apiClient.get<any>('/diagnostics/repo/changeset/patch');
+    return apiClient.get<any>('/core/diagnostics/repo/changeset/patch');
   },
 
   getRepoStagedPreview: async () => {
-    return apiClient.get<any>('/diagnostics/repo/staged/preview');
+    return apiClient.get<any>('/core/diagnostics/repo/staged/preview');
   },
 
   getPromptTemplateDiff: async (templateId: string, params: { from_version?: string; to_version?: string } = {}) => {
@@ -226,19 +226,19 @@ export const diagnosticsApi = {
   },
 
   runRepoTests: async (body: Record<string, unknown>) => {
-    return apiClient.post<any>('/diagnostics/repo/tests/run', body);
+    return apiClient.post<any>('/core/diagnostics/repo/tests/run', body);
   },
 
   // ===== Observability (core only for now) =====
 
-  listTraces: async (params: { limit?: number; offset?: number; status?: string } = {}) => {
-    const q = new URLSearchParams();
-    if (params.limit != null) q.set('limit', String(params.limit));
-    if (params.offset != null) q.set('offset', String(params.offset));
-    if (params.status) q.set('status', params.status);
-    const qs = q.toString();
-    return apiClient.get<any>(`/diagnostics/trace/core${qs ? `?${qs}` : ''}`);
-  },
+  listTraces: async (params: { limit?: number; offset?: number; status?: string; project_id?: string } = {}) => {
+     const qs = new URLSearchParams();
+     if (params.limit) qs.set('limit', String(params.limit));
+     if (params.offset) qs.set('offset', String(params.offset));
+     if (params.status) qs.set('status', params.status);
+     if (params.project_id) qs.set('project_id', params.project_id);
+     return apiClient.get<any>(`/core/traces?${qs.toString()}`);
+   },
 
   getTrace: async (traceId: string, params: { limit?: number; offset?: number } = {}) => {
     const q = new URLSearchParams({ trace_id: traceId });
@@ -392,9 +392,10 @@ export const diagnosticsApi = {
     const qs = q.toString();
     return apiClient.get<any>(`/core/diagnostics/code-intel/blast?${qs}`);
   },
-  getObservabilityStats: async () => {
-    return apiClient.get<any>('/core/diagnostics/observability/stats');
-  },
+   getObservabilityStats: async (projectId?: string) => {
+     const qs = projectId ? `?project_id=${encodeURIComponent(projectId)}` : '';
+     return apiClient.get<any>(`/core/diagnostics/observability/stats${qs}`);
+   },
 };
 
 // Onboarding API

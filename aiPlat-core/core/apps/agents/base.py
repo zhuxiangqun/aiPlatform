@@ -204,7 +204,7 @@ class BaseAgent(IAgent):
                             if isinstance(existing, list):
                                 messages = list(existing) + messages
                     except Exception:
-                        pass
+                        logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
                     
                     messages.extend(list(context.messages) if context.messages else [])
                     if not messages:

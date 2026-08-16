@@ -2,16 +2,24 @@
 title: 规范：aiPlat-platform 鉴权与身份透传（企业平台默认）
 date: 2026-04-18
 scope: aiPlat-platform → aiPlat-app/aiPlat-core/aiPlat-management
-status: draft
+status: approved
 draft_date: 2026-07-04
+approved_date: 2026-08-16
 ---
 
 ## 1. 总原则（最佳实践默认值）
 
 1) **用户鉴权**：以 **JWT（SSO）为主**（短期 access token + refresh token）。  
-2) **服务间鉴权**：优先 **mTLS**；若必须用 token，使用 **service JWT（client credentials）** 或 **服务 API key**（仅代表“机器身份”，不承载复杂用户权限）。  
+2) **服务间鉴权**：当前实现为 **JWT + API key**（`auth/authenticator.py`，API key 前缀 `apl_`，SHA-256 哈希存储）；**mTLS 为远期目标**（规范推荐，未实现——见 §1.2 消歧说明）。  
 3) **用户权限与租户归属**：必须由 platform 权威签发（JWT claims 最合适），下游（app/core）只消费、不推断。  
-4) **全链路幂等与审计**：platform 生成 `request_id=req_<ulid>` 并透传；所有下游日志/审计必须带 request_id。
+4) **全链路幂等与审计**：platform 生成 `request_id=req_<ulid>`（`api/rest/routes.py:_get_or_create_request_id` + `utils/ids.py:new_prefixed_id`）并透传；所有下游日志/审计必须带 request_id。
+
+### 1.1 消歧记录（P0-C2，2026-08-16）
+
+| 规范原文 | 代码事实 | 消歧 |
+|---|---|---|
+| 服务间鉴权"优先 mTLS" | 无 mTLS 实现；`authenticator.py` 仅 JWT + API key | **以代码为准**：当前实现为 JWT/API key；mTLS 降级为远期目标，实现后方可回迁"优先" |
+| API key 格式未定义 | `apl_<token_urlsafe(32)>`，SHA-256 哈希入库（`authenticator.py:71-72`） | 补充为规范 |
 
 ---
 
@@ -65,3 +73,19 @@ platform 对外提供：
 - `GET /whoami`：返回解析后的 `{ tenant_id, actor_id, scopes, request_id? }`（用于联调/排障）
 - 日志必须打印（脱敏）：`request_id/tenant_id/actor_id` + route + latency
 
+
+---
+
+## 6. Managed Policy — 企业远程托管策略（P1-A6，2026-08-16）
+
+企业管理员可通过 `PUT /api/platform/policy/managed`（仅 admin）设置**托管策略**：
+
+- **语义**：`managed: true` 的策略项（如 `model_whitelist`、`sandbox_required`）由企业远程强制，
+  本地 user policy **不可覆盖**；
+- **合并规则**：`merge_managed_policy(local, managed)` — managed 键覆盖本地；
+  PolicyGate 读策略时优先 managed 项；
+- **实现**：`aiPlat-platform/auth/schemas_policy.py::ManagedPolicy` +
+  `api/routers/policy.py::PUT /platform/policy/managed`；
+- **审计**：managed 策略变更记录 `managed_policy_upsert` 审计事件。
+
+> **对照**：Claude Code 的 Server-managed settings — 企业通过远程配置强制权限/沙箱/模型，本地不可覆盖。

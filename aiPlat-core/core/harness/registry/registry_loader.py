@@ -81,7 +81,7 @@ def _load_yaml(filepath: Path, ttl_seconds: float = 60.0) -> Optional[Dict[str, 
             actual_mtime = os.path.getmtime(filepath)
             if actual_mtime == cached_mtime and now - cached_data.get("_loaded_at", 0) < ttl_seconds:
                 return cached_data
-        except OSError:
+        except OSError:  # noqa: cleanup-best-effort
             pass
     try:
         if not filepath.exists():
@@ -138,14 +138,18 @@ def load_agent_types(*, force_reload: bool = False) -> AgentTypeRegistry:
         _cache.pop(str(_registry_home() / "agent_types.yaml"), None)
     data = _load_yaml(_registry_home() / "agent_types.yaml")
     if not data:
-        _log.warning("agent_types.yaml not found, using built-in fallback")
-        return AgentTypeRegistry(
-            canonical=["conversational", "react", "plan_execute"],
-            aliases={"plan": "plan_execute", "reflection": "plan_execute",
-                     "tool": "react", "tool_using": "react", "subagent": "react",
-                     "pure_agent": "conversational"},
-            deprecated=["subagent", "pure_agent"],
-        )
+        # Fall back to the repo seed (single source of truth for CI/fresh envs)
+        seed = Path(__file__).resolve().parent / "data" / "agent_types.yaml"
+        data = _load_yaml(seed)
+        if not data:
+            _log.warning("agent_types.yaml not found, using built-in fallback")
+            return AgentTypeRegistry(
+                canonical=["conversational", "react", "plan_execute"],
+                aliases={"plan": "plan_execute", "reflection": "plan_execute",
+                         "tool": "react", "tool_using": "react", "subagent": "react",
+                         "pure_agent": "conversational"},
+                deprecated=["subagent", "pure_agent"],
+            )
     return AgentTypeRegistry(
         canonical=list(data.get("canonical", [])),
         aliases=dict(data.get("aliases", {})),
@@ -397,7 +401,7 @@ def _build_record(entity_type: str, eid: str, source: str,
                         if cat:
                             record["category"] = cat
         except Exception:
-            pass
+            logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
     return record
 
 
@@ -425,7 +429,7 @@ def _make_rel(source_path: str) -> str:
     ws = Path(__file__).resolve().parent.parent.parent.parent.parent
     try:
         return str(p.relative_to(ws))
-    except ValueError:
+    except ValueError:  # noqa: best-effort-parse
         pass
     home = Path.home()
     try:

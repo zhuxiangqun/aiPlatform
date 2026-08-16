@@ -4,6 +4,7 @@ display_name: 代码审查
 description: 审查代码质量并给出可操作的改进建议（正确性/可读性/安全/性能）。
 category: analysis
 version: 1.0.0
+execution_type: prompt
 status: enabled
 execution_mode: inline
 executable: true

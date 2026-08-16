@@ -4,6 +4,7 @@ display_name: 知识召回
 description: 从向量库/知识库召回相关文档片段，用于辅助回答与决策。
 category: retrieval
 version: 1.0.0
+execution_type: prompt
 status: enabled
 execution_mode: inline
 executable: true

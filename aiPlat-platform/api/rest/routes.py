@@ -5196,6 +5196,55 @@ async def create_auth_user(body: Dict[str, Any], _auth: str = Depends(require_ad
     return platform_store.upsert_auth_user(user)
 
 
+@app.post("/platform/auth/mfa/setup")
+async def mfa_setup(body: Dict[str, Any], _auth: str = Depends(require_admin)):
+    """为指定用户启用 MFA，返回 TOTP 密钥与扫码 URI。"""
+    from auth.mfa import generate_totp_secret, totp_uri
+    uid = str(body.get("user_id") or "")
+    user = platform_store.get_auth_user(uid)
+    if not user:
+        return {"ok": False, "error": f"user {uid} not found"}
+    secret = generate_totp_secret()
+    user["mfa_secret"] = secret
+    user["mfa_enabled"] = False  # 待 verify 后激活
+    platform_store.upsert_auth_user(user)
+    account = user.get("username") or uid
+    return {"ok": True, "secret": secret, "uri": totp_uri(secret, account), "user_id": uid}
+
+
+@app.post("/platform/auth/mfa/verify")
+async def mfa_verify(body: Dict[str, Any], _auth: str = Depends(require_admin)):
+    """校验 TOTP 码，通过后激活该用户 MFA。"""
+    from auth.mfa import verify_totp
+    uid = str(body.get("user_id") or "")
+    code = str(body.get("code") or "")
+    user = platform_store.get_auth_user(uid)
+    if not user or not user.get("mfa_secret"):
+        return {"ok": False, "error": "mfa not set up"}
+    if not verify_totp(user["mfa_secret"], code):
+        return {"ok": False, "error": "invalid code"}
+    user["mfa_enabled"] = True
+    platform_store.upsert_auth_user(user)
+    return {"ok": True, "user_id": uid, "mfa_enabled": True}
+
+
+@app.post("/platform/auth/mfa/disable")
+async def mfa_disable(body: Dict[str, Any], _auth: str = Depends(require_admin)):
+    """关闭用户 MFA（需提供有效 TOTP 码）。"""
+    from auth.mfa import verify_totp
+    uid = str(body.get("user_id") or "")
+    code = str(body.get("code") or "")
+    user = platform_store.get_auth_user(uid)
+    if not user:
+        return {"ok": False, "error": f"user {uid} not found"}
+    if user.get("mfa_secret") and not verify_totp(user["mfa_secret"], code):
+        return {"ok": False, "error": "invalid code"}
+    user.pop("mfa_secret", None)
+    user["mfa_enabled"] = False
+    platform_store.upsert_auth_user(user)
+    return {"ok": True, "user_id": uid, "mfa_enabled": False}
+
+
 
 
 

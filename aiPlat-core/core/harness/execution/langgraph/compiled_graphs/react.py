@@ -1,11 +1,11 @@
 """
 Compiled ReAct graph (Reason -> Act -> Observe) using internal CompiledGraph engine.
 
-目的：
-- 让 checkpoint/restore/resume 能在"不依赖外部 langgraph"路径上闭环。
-- 触发 CallbackManager 事件，配合 server lifespan 的落库 handler 写入 ExecutionStore。
+Purpose:
+- Allow checkpoint/restore/resume to close the loop on a path that does not depend on external langgraph.
+- Trigger CallbackManager events, feeding the server lifespan persistence handler to write into ExecutionStore.
 
-Phase 9: 节点函数内联 syscall 通道，不再依赖 nodes/ 的并行 ReAct 实现。
+Phase 9: node functions inline the syscall channel, no longer depending on the parallel ReAct implementation in nodes/.
 """
 
 from __future__ import annotations
@@ -41,12 +41,12 @@ def _build_reason_prompt(state: Dict[str, Any]) -> str:
 
 What should I do next?
 
-优先使用结构化工具调用（推荐）：
+Prefer structured tool calls (recommended):
 ```json
 {{"tool":"tool_name","args":{{...}}}}
 ```
 
-兼容旧格式：
+Legacy format:
 ACTION: tool_name: {{json_or_text}}
 
 If finished, respond with: DONE

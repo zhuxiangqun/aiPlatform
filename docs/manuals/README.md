@@ -52,8 +52,8 @@
 |------|------|:---:|------|
 | 快速入门 | [getting-started.md](getting-started.md) | 106 | 新用户 |
 | 管理画面操作 | [management.md](management.md) | 992 | 管理员 |
-| 本体模型管理 | [ontology.md](ontology.md) | 785 | 管理员/运维 |
-| 知识管理指南 | [knowledge-management.md](knowledge-management.md) | 453 | 知识管理员 |
+| 本体模型管理 | [../knowledge-system.md](../knowledge-system.md) | 2200 | 管理员/运维 |
+| 知识管理指南 | [../knowledge-system.md](../knowledge-system.md) | 2200 | 知识管理员 |
 | 部署指南 | [deployment.md](deployment.md) | 876 | 运维 |
 | 部署速查 | [deploy-guide.md](deploy-guide.md) | 58 | 运维 |
 | 开发指南 | [development.md](development.md) | 697 | 开发者 |

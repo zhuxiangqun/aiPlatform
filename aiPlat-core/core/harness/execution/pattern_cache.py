@@ -1,19 +1,19 @@
 """
-Pattern Cache — 执行模式晶体化 (Phase 5.4)
+Pattern Cache — execution-pattern crystallization (Phase 5.4)
 
-检测重复执行模式，跳过 LLM 推理直接复用执行路径。
-非向量实现：MD5(domain+task_type+trigger_signature) → 精确匹配。
+Detects repeated execution patterns and skips LLM reasoning to directly reuse the execution path.
+Non-vector implementation: MD5(domain+task_type+trigger_signature) → exact match.
 
-与 SemanticCache 互补:
-  - SemanticCache: 缓存"答案" (RAG 结果)
-  - PatternCache: 缓存"执行路径" (跳过哪些Pipeline阶段、用哪些工具)
+Complements SemanticCache:
+  - SemanticCache: caches "answers" (RAG results)
+  - PatternCache: caches "execution paths" (which Pipeline stages to skip, which tools to use)
 
-收益: Pipeline 重复场景节省 40-60% Token
+Benefit: saves 40-60% of tokens in repeated Pipeline scenarios
 
 Usage:
     cache = PatternCache()
     
-    # 存储执行模式
+    # store an execution pattern
     await cache.store(
         domain_id="ai-knowledge",
         task_type="retrieval_qa",
@@ -21,14 +21,14 @@ Usage:
         execution_path={"skip_stages": ["domain_route", "ontology_map"], "use_tools": ["wiki_retrieve"]}
     )
     
-    # 检索缓存模式
+    # retrieve a cached pattern
     cached = await cache.match(
         domain_id="ai-knowledge", 
         task_type="retrieval_qa",
         trigger_signature="Python 3.13 new features"
     )
     if cached:
-        # 跳过域路由和本体映射，直接用 wiki_retrieve
+        # skip domain routing and ontology mapping, and use wiki_retrieve directly
         pipeline.set_skip_stages(cached["skip_stages"])
 """
 
@@ -44,11 +44,11 @@ _log = logging.getLogger("aiplat.pattern_cache")
 @dataclass 
 # disposition: internal data type — Phase 5 pattern cache, wiring pending
 class ExecutionPattern:
-    """单个执行模式"""
+    """A single execution pattern"""
     pattern_id: str
     domain_id: str
     task_type: str              # retrieval_qa / code_gen / data_analysis / summarize
-    trigger_signature: str      # 简化的触发签名 (提取自 query)
+    trigger_signature: str      # simplified trigger signature (extracted from the query)
     skip_stages: List[str] = field(default_factory=list)
     use_tools: List[str] = field(default_factory=list)
     use_skills: List[str] = field(default_factory=list)
@@ -59,12 +59,12 @@ class ExecutionPattern:
 
 
 class PatternCache:
-    """执行模式缓存 — 跳过重复推理，直接复用执行路径。
+    """Execution-pattern cache — skip repeated reasoning and directly reuse the execution path.
 
-    环境变量:
-        AIPLAT_PATTERN_CACHE_SIZE: 最大条目 (默认: 1000)
-        AIPLAT_PATTERN_CACHE_ENABLED: 是否启用 (默认: true)
-        AIPLAT_PATTERN_CACHE_HIT_THRESHOLD: 模式命中次数阈值 (默认: 3, 命中≥3次才启用)
+    Environment variables:
+        AIPLAT_PATTERN_CACHE_SIZE: maximum entries (default: 1000)
+        AIPLAT_PATTERN_CACHE_ENABLED: whether enabled (default: true)
+        AIPLAT_PATTERN_CACHE_HIT_THRESHOLD: pattern hit-count threshold (default: 3; enabled only after ≥3 hits)
     """
 
     def __init__(self):
@@ -76,32 +76,29 @@ class PatternCache:
     # ── Public API ──────────────────────────────────────────────────────
 
     def _make_key(self, domain_id: str, task_type: str, trigger_signature: str) -> str:
-        """生成确定性缓存键 (MD5)"""
+        """Generate a deterministic cache key (MD5)."""
         raw = f"{domain_id}|{task_type}|{trigger_signature.lower().strip()[:200]}"
         return hashlib.md5(raw.encode()).hexdigest()[:12]
 
     def _extract_signature(self, query: str) -> str:
-        """从 query 中提取触发签名。
+        """Extract the trigger signature from a query.
 
-        策略: 移除停用词、提取核心名词/动词。
+        Strategy: remove stopwords/punctuation, keep core nouns/verbs.
         """
         import re as _re
+        from core.harness.utils.zh_language import PATTERN_QUERY_CLEAN_RE
         # Remove common words and punctuation
-        clean = _re.sub(r'[?？,，。！!的了吗呢吧是有什么如何怎么哪个哪些]', ' ', query)
+        clean = _re.sub(PATTERN_QUERY_CLEAN_RE, ' ', query)
         words = [w for w in clean.split() if len(w) > 1][:6]
         return ' '.join(words)[:200]
 
     def _classify_task_type(self, query: str) -> str:
-        """分类任务类型"""
+        """Classify the task type."""
+        from core.harness.utils.zh_language import TASK_TYPE_KEYWORDS
         q = query.lower()
-        if any(k in q for k in ['code', '代码', '写', 'implement', '函数', 'class']):
-            return 'code_gen'
-        if any(k in q for k in ['data', '数据', '统计', '分析', 'chart', '图表']):
-            return 'data_analysis'
-        if any(k in q for k in ['summar', '总结', '摘要', '概括']):
-            return 'summarize'
-        if any(k in q for k in ['search', '搜索', 'find', '查找', 'retriev']):
-            return 'retrieval_qa'
+        for task_type, kws in TASK_TYPE_KEYWORDS.items():
+            if any(k in q for k in kws):
+                return task_type
         return 'retrieval_qa'  # default
 
     async def store(
@@ -112,13 +109,13 @@ class PatternCache:
         *,
         success: bool = True,
     ):
-        """存储执行模式。
+        """Store an execution pattern.
 
         Args:
-            domain_id: 域标识
-            query: 原始查询
+            domain_id: domain identifier
+            query: original query
             execution_path: {"skip_stages": [...], "use_tools": [...], "use_skills": [...], "retrieval_strategy": "..."}
-            success: 执行是否成功
+            success: whether the execution succeeded
         """
         if not self._enabled:
             return
@@ -156,12 +153,12 @@ class PatternCache:
         domain_id: str,
         query: str,
     ) -> Optional[Dict[str, Any]]:
-        """匹配执行模式。
+        """Match an execution pattern.
 
-        仅返回命中 ≥ hit_threshold 的模式 (已验证可靠的模式)。
+        Only returns patterns with hits ≥ hit_threshold (patterns already verified as reliable).
 
         Returns:
-            None (无匹配) 或 {"skip_stages": [...], "use_tools": [...], ...}
+            None (no match) or {"skip_stages": [...], "use_tools": [...], ...}
         """
         if not self._enabled:
             return None
@@ -193,9 +190,9 @@ class PatternCache:
         *,
         top_k: int = 3,
     ) -> List[Dict[str, Any]]:
-        """模糊匹配 (同域 + 同任务类型的最近模式)。
+        """Fuzzy match (nearest patterns in the same domain + same task type).
 
-        当精确匹配失败时，返回同域+同类的最远模式作为参考。
+        When exact matching fails, returns the nearest patterns of the same domain and type as a reference.
         """
         if not self._enabled:
             return []
@@ -218,7 +215,7 @@ class PatternCache:
         ]
 
     async def prune_low_success(self, min_success_rate: float = 0.5) -> Dict[str, Any]:
-        """淘汰成功率低于阈值的执行模式。Phase 5.5: EvolutionEngine 夜间调用。"""
+        """Evict execution patterns whose success rate is below the threshold. Phase 5.5: called nightly by EvolutionEngine."""
         removed = 0
         for pid in list(self._patterns.keys()):
             p = self._patterns[pid]

@@ -65,6 +65,8 @@ credentials/
 *.sqlite
 *.sqlite3
 data/
+!aiPlat-core/core/tests/data/
+!aiPlat-core/core/tests/data/gold_*.json
 *.bin
 vector_index.bin
 download/
@@ -94,6 +96,7 @@ deploy-kit/images/*.tar
 .aiplat/overview_cache.json
 .aiplat/code_graph.db
 .aiplat/cap_graph.db
-.aiplat/execution.db
+.aiplat/aiplat_executions.sqlite3
+.aiplat/execution.db  # legacy path
 
 pentest-reports/

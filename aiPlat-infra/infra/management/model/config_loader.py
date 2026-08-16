@@ -104,7 +104,8 @@ def _load_adapter_models() -> List[ModelInfo]:
     import json as _json
     import sqlite3
     models: List[ModelInfo] = []
-    db_path = os.getenv("AIPLAT_EXECUTION_DB_PATH", "")
+    db_path = os.getenv("AIPLAT_EXECUTION_DB_PATH",
+        "")
     if not db_path or not os.path.isfile(db_path):
         return models
     try:
@@ -115,6 +116,7 @@ def _load_adapter_models() -> List[ModelInfo]:
                 "SELECT adapter_id, name, provider, api_base_url, models_json, "
                 "capabilities_json, model_type "
                 "FROM adapters WHERE status='active' "
+                "AND adapter_id NOT LIKE 'local-scan:%' "
                 "AND ((api_key IS NOT NULL AND api_key != '') OR (api_key_enc IS NOT NULL AND api_key_enc != '')) "
                 "ORDER BY updated_at DESC"
             ).fetchall()

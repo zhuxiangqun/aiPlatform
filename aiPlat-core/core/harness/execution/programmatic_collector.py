@@ -1,16 +1,16 @@
 """
-ProgrammaticCollector — 程序化结果汇合 + 损耗检测 (EvoMap EvoX 对齐)
+ProgrammaticCollector — programmatic result merge + loss detection (EvoMap EvoX aligned)
 
-绕过 LLM 转述，直接从 PipelineState 按 key 结构化收集原子任务输出。
-对比各原子正确输出 vs 最终汇总，计算信息损耗率。
+Bypasses LLM paraphrasing and structurally collects atomic task outputs from PipelineState by key.
+Compares each atom's correct output vs the final aggregate to compute the information loss rate.
 
-设计原则 (EvoX):
-  - Agent 负责解题，应用程序负责收件
-  - 结构化输出写入固定位置 (state[output_artifact])
-  - 程序按 key 直接收集，正确答案不需要被另一个 LLM 重新读懂
-  - 损耗检测: 对比原子正确结果 → 汇总结果，计算损耗率
+Design principles (EvoX):
+  - The Agent solves problems; the application collects the results
+  - Structured output is written to a fixed location (state[output_artifact])
+  - The program collects directly by key; correct answers do not need to be re-read by another LLM
+  - Loss detection: compare atomic correct results → aggregate result, and compute the loss rate
 
-调用者: PipelineEngine → collector stage / REST API
+Callers: PipelineEngine → collector stage / REST API
 """
 
 from __future__ import annotations
@@ -27,32 +27,32 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class CollectResult:
-    """汇合结果."""
+    """Merge result."""
     total_atoms: int
     collected_atoms: int
-    missed_atoms: List[str] = field(default_factory=list)  # 未产出结果的原子
-    merged_output: Dict[str, Any] = field(default_factory=dict)  # 合并后的结构化输出
-    merged_summary: str = ""           # 可读摘要
+    missed_atoms: List[str] = field(default_factory=list)  # atoms that produced no result
+    merged_output: Dict[str, Any] = field(default_factory=dict)  # merged structured output
+    merged_summary: str = ""           # human-readable summary
 
 
 @dataclass
 class LossReport:
-    """损耗分析报告."""
-    total_correct_in_atoms: int        # 原子阶段正确数
-    total_correct_in_final: int        # 最终汇总正确数
-    loss_count: int                    # 丢失数
-    loss_rate: float                   # 损耗率 (%)
-    loss_details: List[Dict[str, Any]] = field(default_factory=list)  # 每个丢失项的详情
-    root_causes: List[str] = field(default_factory=list)  # 根因分析
-    retention_rate: float = 0.0        # 保留率 (%)
+    """Loss analysis report."""
+    total_correct_in_atoms: int        # number of correct items at the atom stage
+    total_correct_in_final: int        # number of correct items in the final aggregate
+    loss_count: int                    # number of lost items
+    loss_rate: float                   # loss rate (%)
+    loss_details: List[Dict[str, Any]] = field(default_factory=list)  # details for each lost item
+    root_causes: List[str] = field(default_factory=list)  # root-cause analysis
+    retention_rate: float = 0.0        # retention rate (%)
 
 
 # ── ProgrammaticCollector ──────────────────────────────────────────────────
 
 class ProgrammaticCollector:
-    """程序化结果汇合.
+    """Programmatic result merge.
 
-    使用方式:
+    Usage:
         collector = ProgrammaticCollector()
         result = collector.collect(state, atom_definitions)
         loss = collector.detect_loss(atom_outputs, final_output, atom_defs)
@@ -65,12 +65,12 @@ class ProgrammaticCollector:
         *,
         merge_strategy: str = "by_schema",
     ) -> CollectResult:
-        """从 PipelineState 中按 key 结构化收集所有原子输出.
+        """Structurally collect all atomic outputs from PipelineState by key.
 
         Args:
-            state: PipelineState (包含各原子的 output_artifact)
-            atom_definitions: 原子任务定义列表 (来自 AtomicTaskSplitter)
-            merge_strategy: 合并策略 — "by_schema" (按schema对齐) | "concat" (简单拼接)
+            state: PipelineState (containing each atom's output_artifact)
+            atom_definitions: list of atomic task definitions (from AtomicTaskSplitter)
+            merge_strategy: merge strategy — "by_schema" (align by schema) | "concat" (simple concatenation)
 
         Returns:
             CollectResult
@@ -83,7 +83,7 @@ class ProgrammaticCollector:
             output_key = atom_def.get("output_artifact", atom_id)
             output_schema = atom_def.get("output_schema", {})
 
-            # 直接从 state 读取 (不经过 LLM)
+            # read directly from state (without going through the LLM)
             atom_output = state.get(output_key)
 
             if atom_output is None:
@@ -97,12 +97,12 @@ class ProgrammaticCollector:
                 missed.append(atom_id)
                 continue
 
-            # 按 schema 验证和提取
+            # validate and extract by schema
             extracted = self._extract_by_schema(atom_output, output_schema, atom_id)
             if extracted:
                 collected[atom_id] = extracted
 
-        # 合并所有收集的结果
+        # merge all collected results
         merged = self._merge_outputs(collected, atom_definitions, merge_strategy)
 
         return CollectResult(
@@ -110,7 +110,7 @@ class ProgrammaticCollector:
             collected_atoms=len(collected),
             missed_atoms=missed,
             merged_output=merged,
-            merged_summary=f"收集 {len(collected)}/{len(atom_definitions)} 个原子 (缺失 {len(missed)})",
+            merged_summary=f"collected {len(collected)}/{len(atom_definitions)} atoms (missing {len(missed)})",
         )
 
     def _extract_by_schema(
@@ -119,8 +119,8 @@ class ProgrammaticCollector:
         output_schema: Dict[str, Any],
         atom_id: str,
     ) -> Optional[Dict[str, Any]]:
-        """按输出 schema 提取结构化数据."""
-        # 如果已经是 dict，直接按 schema 字段提取
+        """Extract structured data according to the output schema."""
+        # if already a dict, extract fields directly per the schema
         if isinstance(atom_output, dict):
             props = output_schema.get("properties", {})
             if not props:
@@ -132,7 +132,7 @@ class ProgrammaticCollector:
                     result[key] = atom_output[key]
             return {atom_id: result} if result else {atom_id: atom_output}
 
-        # 字符串类型 → 尝试解析 JSON
+        # string type → attempt to parse JSON
         if isinstance(atom_output, str):
             try:
                 data = _json.loads(atom_output)
@@ -148,17 +148,17 @@ class ProgrammaticCollector:
         atom_definitions: List[Dict[str, Any]],
         strategy: str,
     ) -> Dict[str, Any]:
-        """合并各原子输出."""
+        """Merge the outputs of each atom."""
         if strategy == "concat":
             return {"atoms": collected, "total": len(collected)}
 
-        # By schema: 按原子ID分组，尝试同 schema 对齐
+        # By schema: group by atom ID and attempt to align to the same schema
         merged: Dict[str, Any] = {"atoms": {}, "summary": {}}
 
         for atom_id, data in collected.items():
             merged["atoms"][atom_id] = data
 
-            # 提取数值型结果用于汇总
+            # extract numeric results for aggregation
             for key, val in data.items():
                 if isinstance(val, (int, float)):
                     merged["summary"].setdefault(key, 0)
@@ -176,14 +176,14 @@ class ProgrammaticCollector:
         final_output: Dict[str, Any],
         atom_definitions: List[Dict[str, Any]],
     ) -> LossReport:
-        """检测汇总过程中的信息损耗.
+        """Detect information loss during aggregation.
 
-        对比各原子输出中的正确结果 vs 最终汇总输出中的正确结果.
+        Compares the correct results in each atomic output vs the correct results in the final aggregate output.
 
         Args:
-            atom_outputs: 各原子的结构化输出 {atom_id: {result...}}
-            final_output: 最终汇总输出 (可能经过 LLM 汇总)
-            atom_definitions: 原子任务定义
+            atom_outputs: structured output of each atom {atom_id: {result...}}
+            final_output: final aggregate output (possibly summarized by an LLM)
+            atom_definitions: atomic task definitions
 
         Returns:
             LossReport
@@ -192,10 +192,10 @@ class ProgrammaticCollector:
         correct_items: Set[str] = set()
         loss_details: List[Dict[str, Any]] = []
 
-        # Step 1: 统计各原子中的正确结果
+        # Step 1: count the correct results in each atom
         for atom_id, data in atom_outputs.items():
             if isinstance(data, dict):
-                # 查找正确标记
+                # look for the correctness marker
                 for key in ["correct_count", "passed", "success_count"]:
                     if key in data:
                         val = data[key]
@@ -203,13 +203,13 @@ class ProgrammaticCollector:
                             total_correct += int(val)
                             correct_items.add(atom_id)
 
-                # 查找答案字典
+                # look for the answers dict
                 answers = data.get("answers", {})
                 if isinstance(answers, dict):
                     for qid, answer in answers.items():
                         correct_items.add(f"{atom_id}:{qid}")
 
-        # Step 2: 统计最终汇总中的正确结果
+        # Step 2: count the correct results in the final aggregate
         final_correct = 0
         if isinstance(final_output, dict):
             for key in ["correct_count", "passed", "total_correct"]:
@@ -219,30 +219,30 @@ class ProgrammaticCollector:
                         final_correct = int(val)
                         break
 
-            # 也检查 answers
+            # also check answers
             final_answers = final_output.get("answers", {})
             if isinstance(final_answers, dict):
                 final_correct = max(final_correct, len(final_answers))
 
-        # Step 3: 对比损耗
+        # Step 3: compare for loss
         loss_count = max(0, total_correct - final_correct)
         loss_rate = (loss_count / max(total_correct, 1)) * 100
 
-        # Step 4: 根因分析
+        # Step 4: root-cause analysis
         root_causes = []
         if loss_count > 0:
             if final_correct < total_correct and final_output:
                 root_causes.append(
-                    f"汇总环节信息丢失: 原子阶段 {total_correct} 正确 → 汇总后仅保留 {final_correct} 正确"
+                    f"information loss during aggregation: {total_correct} correct at atom stage -> only {final_correct} correct after aggregation"
                 )
             if isinstance(final_output, str) and len(str(final_output)) < 200:
-                root_causes.append("汇总输出过于简洁，可能丢失了细节")
+                root_causes.append("aggregation output too concise, may have lost details")
 
-            # 检查是否有遗漏的原子
+            # Check for missing atoms
             missed = [d.get("atom_id", "") for d in atom_definitions
                       if d.get("atom_id", "") not in atom_outputs]
             if missed:
-                root_causes.append(f"{len(missed)} 个原子未产出结果或结果未被收集")
+                root_causes.append(f"{len(missed)} atoms produced no result or results were not collected")
 
         return LossReport(
             total_correct_in_atoms=total_correct,
@@ -260,7 +260,7 @@ class ProgrammaticCollector:
         atom_definitions: List[Dict[str, Any]],
         final_output: Optional[Dict[str, Any]] = None,
     ) -> Tuple[CollectResult, Optional[LossReport]]:
-        """一键执行: 收集 + 损耗检测.
+        """One-shot execution: collect + loss detection.
 
         Returns:
             (CollectResult, Optional[LossReport])
@@ -275,7 +275,7 @@ class ProgrammaticCollector:
                 atom_definitions,
             )
 
-        # 如果有损耗，写入 lineage_decisions
+        # if there is loss, write it to lineage_decisions
         if loss_report and loss_report.loss_count > 0:
             self._write_loss_to_lineage(state, loss_report)
 
@@ -286,7 +286,7 @@ class ProgrammaticCollector:
         state: Dict[str, Any],
         loss_report: LossReport,
     ) -> None:
-        """将损耗分析写入 Decision Lineage (best-effort)."""
+        """Write the loss analysis to Decision Lineage (best-effort)."""
         try:
             from core.harness.infrastructure.lineage_store import LineageStore, DecisionRecord
 
@@ -300,9 +300,9 @@ class ProgrammaticCollector:
                 decision_type="loss_detection",
                 chosen_option="structured_collect",
                 choice_reasoning=(
-                    f"损耗分析: {loss_report.total_correct_in_atoms}→{loss_report.total_correct_in_final} "
-                    f"(丢失 {loss_report.loss_count}, 保留率 {loss_report.retention_rate}%). "
-                    f"根因: {'; '.join(loss_report.root_causes[:3])}"
+                    f"loss analysis: {loss_report.total_correct_in_atoms}->{loss_report.total_correct_in_final} "
+                    f"(lost {loss_report.loss_count}, retention {loss_report.retention_rate}%). "
+                    f"root cause: {'; '.join(loss_report.root_causes[:3])}"
                 ),
                 outcome_status="logged",
                 outcome_summary=f"Loss rate: {loss_report.loss_rate}%",

@@ -4,7 +4,7 @@ LangGraph Reflection Graph
 Implements the Reflection pattern: Executor Agent generates, Critic Agent reviews.
 Loop iterates until Critic approves or max iterations reached.
 
-Based on framework/patterns.md §4 Reflection 模式.
+Based on framework/patterns.md §4 Reflection pattern.
 """
 
 from typing import Any, Dict, List, Optional, TypedDict
@@ -211,7 +211,7 @@ class ReflectionGraph:
 
         previous_feedback = ""
         if feedback:
-            previous_feedback = f"\n之前的改进建议：\n" + "\n".join(f"- {f}" for f in feedback)
+            previous_feedback = f"\nPrevious improvement suggestions:\n" + "\n".join(f"- {f}" for f in feedback)
 
         dim_names = [d.value for d in self._config.evaluation_dimensions]
         import os as _os

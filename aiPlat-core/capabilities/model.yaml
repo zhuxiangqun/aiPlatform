@@ -39,7 +39,7 @@ consumers:
     uses: N/A
     role: provider
     note: "T1-T5 分层路由器 — 被 best_model_for_purpose 调用，不是消费者"
-  - path: aiPlat-core/core/api/routers/fde.py
+  - path: aiPlat-platform/apps/fde/api/fde.py
     uses: best_model_for_purpose
     note: "FDE 诊断对话框"
 

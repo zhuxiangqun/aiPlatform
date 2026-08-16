@@ -23,7 +23,7 @@ async def fde_pipeline_status():
     t0 = _t_ps.time()
 
     try:
-        from core.harness.knowledge.context_bus import assemble_field_assessment
+        from core.api.core_facade import assemble_field_assessment
         _, diag = assemble_field_assessment(
             {"industry": "pipeline-test", "company_name": "self-check", "pain_points": "test"},
             [],

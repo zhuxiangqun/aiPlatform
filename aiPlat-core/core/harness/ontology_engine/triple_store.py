@@ -36,6 +36,8 @@ TRIPLE_TYPES = {
     "depends_on_kb":        "Wiki → KB Document",
     "produces_artifact":    "Pipeline → 产物",
     "member_of_phase":      "Agent → Pipeline Phase",
+    # v1.0 cross-domain bridges
+    "used_by_agent":        "Entity → Agent（跨域桥接）",
 }
 
 

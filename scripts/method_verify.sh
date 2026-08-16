@@ -95,6 +95,13 @@ has_caller() {
     local method_name="$2"
     local basename="$(basename "$file_path")"
     
+    # Same-file caller: method invoked via instance attribute (e.g. `self.map_reduce(`
+    # or `executor.map_reduce(`) from a different function in the same module.
+    # This catches wrapper patterns like `parallel_analyze()` → `executor.map_reduce()`.
+    if grep -qE "\b(self|executor|[a-z_]+)\.${method_name}\s*\(" "$file_path" 2>/dev/null; then
+        return 0
+    fi
+    
     # Search in all production code (excluding self and tests)
     local hits
     hits=$(grep -rl "$method_name" "$WORKSPACE/aiPlat-core" \
@@ -141,25 +148,42 @@ check_staged() {
         local full_path="$WORKSPACE/$rel_path"
         local basename="$(basename "$rel_path")"
         
-        # Extract new symbols from staged file
+        # Extract NEW symbols from staged file (symbols not present in HEAD)
         local new_symbols
         new_symbols=$(python3 -c "
-import ast
-try:
-    tree = ast.parse(open('$full_path').read())
-except:
-    import sys; sys.exit(0)
+import ast, subprocess
 
-# Only flag NEW functions/classes not in HEAD (simplified: check all public)
-for node in ast.walk(tree):
-    if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-        if not node.name.startswith('_') and node.name not in ['get','post','put','delete','patch']:
-            print(f'{node.name}')
-    elif isinstance(node, ast.ClassDef):
-        if not node.name.startswith('_'):
-            bases = [b.attr if isinstance(b, ast.Attribute) else b.id if isinstance(b, ast.Name) else '' for b in node.bases]
-            if not any(k in str(b).lower() for k in ['abc', 'protocol']):
-                print(f'{node.name}')
+def public_symbols(src):
+    try:
+        tree = ast.parse(src)
+    except Exception:
+        return set()
+    syms = set()
+    for node in ast.walk(tree):
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            if node.name.startswith('_') or node.name in ['get','post','put','delete','patch']:
+                continue
+            if any(isinstance(d, ast.Name) and d.id == 'property' for d in node.decorator_list):
+                continue  # @property accessor, not a callable method
+            syms.add(node.name)
+        elif isinstance(node, ast.ClassDef):
+            if not node.name.startswith('_'):
+                bases = [b.attr if isinstance(b, ast.Attribute) else b.id if isinstance(b, ast.Name) else '' for b in node.bases]
+                if not any(k in str(bases).lower() for k in ['abc', 'protocol']):
+                    syms.add(node.name)
+    return syms
+
+cur = public_symbols(open('$full_path').read())
+head = set()
+try:
+    r = subprocess.run(['git', 'show', 'HEAD:$rel_path'], capture_output=True, text=True)
+    if r.returncode == 0:
+        head = public_symbols(r.stdout)
+except Exception:
+    pass
+
+for s in sorted(cur - head):
+    print(s)
 " 2>/dev/null)
         
         [ -z "$new_symbols" ] && continue

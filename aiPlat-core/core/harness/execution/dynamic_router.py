@@ -73,14 +73,14 @@ class GoalAwareRouter:
 
         if status.get("has_lagging_goal"):
             params["max_steps"] = 10
-            context.append("⚡当前有业务目标进度落后，请优先选择最快的Agent，减少冗余步骤")
+            context.append("⚡A business goal is lagging; prefer the fastest Agent and reduce redundant steps")
 
         if status.get("quality_trend") == "declining":
             params["force_reflection"] = True
-            context.append("🔍检测到质量指标下滑，请启用反思模式，输出前自检")
+            context.append("🔍Quality metrics are declining; enable reflection mode and self-check before output")
 
         if status.get("security_incidents", 0) > 3:
-            context.append("🛡️安全事件增多，外部调用必须经过人工确认")
+            context.append("🛡️Security incidents increasing; external calls require human confirmation")
 
         return {"params": params, "context": "\n".join(context)}
 
@@ -208,14 +208,14 @@ class DynamicRouter:
     ) -> Any:
         """Call Supervisor LLM to decide the next agent."""
         agents_desc = "\n".join([
-            f"- {name}: {self.agent_descriptions.get(name, '通用Agent')}"[:120]
+            f"- {name}: {self.agent_descriptions.get(name, 'generic agent')}"[:120]
             for name in available
         ])
         history = state.get("_dynamic_trace", state.get("trace", []))[-5:]
         history_str = "\n".join([
             f"  Step {e.get('step','?')}: {e.get('agent','?')}"
             for e in history
-        ]) if history else "（尚未执行任何步骤）"
+        ]) if history else "(no steps executed yet)"
 
         from core.harness.utils.prompt_loader import _sync_resolve
 
@@ -227,11 +227,11 @@ class DynamicRouter:
         if self.goal_router:
             strategy = self.goal_router.adjust()
             if strategy.get("context"):
-                system += f"\n【业务目标牵引】\n{strategy['context']}\n"
+                system += f"\n[Business goal guidance]\n{strategy['context']}\n"
         user = (
-            f"【目标】{goal[:200]}\n\n"
-            f"【执行历史】\n{history_str}\n\n"
-            f"当前是第{step}步（上限{self.max_steps}）。请输出JSON: "
+            f"[Goal] {goal[:200]}\n\n"
+            f"[Execution history]\n{history_str}\n\n"
+            f"Current step {step} (max {self.max_steps}). Output JSON: "
             f'{{"reasoning": "...", "decision": "call_agent"|"finish", "agent_name": "..."}}'
         )
 

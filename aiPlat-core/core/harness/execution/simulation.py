@@ -544,7 +544,7 @@ class SimulationOrchestrator:
                     idx = int(stage_key)
                     if idx < len(stages) and isinstance(stages[idx], dict):
                         stages[idx]["_model_override"] = model_name
-                except ValueError:
+                except ValueError:  # noqa: best-effort-parse
                     pass
 
         # 跳过阶段

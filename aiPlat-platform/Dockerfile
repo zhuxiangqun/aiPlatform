@@ -1,14 +1,20 @@
 FROM python:3.11-slim
 
 WORKDIR /app
-COPY requirements.txt .
-RUN apt-get update && apt-get install -y git && rm -rf /var/lib/apt/lists/*
-RUN grep -v -E "PyQt|PySide|llama_cpp_python|openai-whisper" requirements.txt > requirements-server.txt && pip install --no-cache-dir -r requirements-server.txt
 
-COPY . .
+# Platform depends on aiplat-core (+ its aiplat-infra dependency). Root context.
+COPY aiPlat-infra ./aiPlat-infra
+RUN pip install --no-cache-dir -e ./aiPlat-infra
+
+COPY aiPlat-core ./aiPlat-core
+RUN pip install --no-cache-dir -e ./aiPlat-core
+
+COPY aiPlat-platform ./aiPlat-platform
+RUN pip install --no-cache-dir -e ./aiPlat-platform && pip install --no-cache-dir gunicorn
 
 ENV PYTHONPATH=/app
 ENV AIPLAT_HOME=/app/.aiplat
+WORKDIR /app/aiPlat-platform
 EXPOSE 8003
 
-CMD ["uvicorn", "api.rest.routes:app", "--host", "0.0.0.0", "--port", "8003"]
+CMD ["gunicorn", "-c", "gunicorn.conf.py", "api.rest.routes:app"]

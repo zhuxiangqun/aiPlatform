@@ -3,6 +3,10 @@ Database schema migration — extracted from execution_store.py _init_sync().
 
 Contains all 51 schema migrations (v1-v51).
 Pure function: takes conn + version params, zero self dependency.
+
+# DEPRECATED: tenant_quotas/tenant_policies management should migrate to platform layer
+# (TenantManager quota storage; tracked P0-A3). v35 migration kept for
+# existing-database compatibility; new writes go through platform.
 """
 import time
 import logging
@@ -3146,25 +3150,37 @@ def run_migrations(conn, current: int, target_version: int) -> int:
 
     if current < 46:
 
-        conn.executescript("""
+        try:
 
-            CREATE TABLE IF NOT EXISTS prompt_scenario_tags (
+            conn.execute("""
 
-                name         TEXT PRIMARY KEY,
+                CREATE TABLE IF NOT EXISTS prompt_scenario_tags (
 
-                category     TEXT NOT NULL DEFAULT "",
+                    name         TEXT PRIMARY KEY,
 
-                parent       TEXT DEFAULT "",
+                    category     TEXT NOT NULL DEFAULT "",
 
-                display_order INTEGER DEFAULT 0,
+                    parent       TEXT DEFAULT "",
 
-                created_at   REAL NOT NULL
+                    display_order INTEGER DEFAULT 0,
 
-            );
+                    created_at   REAL NOT NULL
 
-            ALTER TABLE prompt_app_templates ADD COLUMN scenario_tags TEXT DEFAULT '[]';
+                )
 
-        """)
+            """)
+
+        except sqlite3.OperationalError:
+
+            pass  # noqa: schema-idempotent
+
+        try:
+
+            conn.execute("ALTER TABLE prompt_app_templates ADD COLUMN scenario_tags TEXT DEFAULT '[]';")
+
+        except sqlite3.OperationalError:
+
+            pass  # column already exists  # noqa: schema-idempotent
 
         _set_version(46)
 
@@ -3409,7 +3425,7 @@ def run_migrations(conn, current: int, target_version: int) -> int:
             try:
                 conn.execute(idx_sql)
             except Exception:
-                pass
+                logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
 
         _set_version(53)
 

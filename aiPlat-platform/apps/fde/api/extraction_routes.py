@@ -9,11 +9,7 @@ from typing import Any, Dict, Optional
 
 from fastapi import APIRouter, HTTPException, Query, UploadFile, File, Form
 
-from core.harness.knowledge_pipeline.extractor import (
-    ExtractionPipeline,
-    PendingExtractionStore,
-    ExtractionResult,
-)
+from core.api.core_facade import ExtractionPipeline, PendingExtractionStore, ExtractionResult
 
 router = APIRouter(tags=["fde-extraction"])
 
@@ -120,7 +116,7 @@ async def list_resolution_candidates(
 ):
     """List cross-domain merge candidates from registry.json views."""
     try:
-        from core.harness.knowledge_pipeline.resolver import CrossDomainResolver
+        from core.api.core_facade import CrossDomainResolver
         resolver = CrossDomainResolver()
         candidates = resolver.find_candidates(view_name)
         return {
@@ -155,7 +151,7 @@ async def resolve_cross_domain(body: Dict[str, Any]):
         raise HTTPException(status_code=400, detail="left_id, right_id, left_domain, right_domain required")
 
     try:
-        from core.harness.knowledge_pipeline.resolver import CrossDomainResolver
+        from core.api.core_facade import CrossDomainResolver
         ok = CrossDomainResolver.resolve(view_name, left_id, right_id, left_domain, right_domain, confidence)
         return {"status": "resolved" if ok else "failed"}
     except Exception as e:
@@ -173,7 +169,7 @@ async def get_entity_context(body: Dict[str, Any]):
         raise HTTPException(status_code=400, detail="entity_id required")
 
     try:
-        from core.harness.knowledge_pipeline.retriever import GraphRAGRetriever
+        from core.api.core_facade import GraphRAGRetriever
         retriever = GraphRAGRetriever()
         context = await retriever.get_entity_context(entity_id, domain_id, action_context)
         return context
@@ -196,8 +192,8 @@ async def check_throttle_status(body: Dict[str, Any]):
         raise HTTPException(status_code=400, detail="action_id required")
 
     try:
-        from core.harness.infrastructure.throttle import DecisionThrottle
-        from core.harness.ontology_engine.action_registry import get_action_registry
+        from core.api.core_facade import DecisionThrottle
+        from core.api.core_facade import get_action_registry
         reg = get_action_registry()
         c = reg.get(action_id)
         if not c:
@@ -232,7 +228,7 @@ async def create_ontology_proposal(body: Dict[str, Any]):
         raise HTTPException(status_code=400, detail="changes required")
 
     try:
-        from core.harness.knowledge.versioned_ontology_store import VersionedOntologyStore
+        from core.api.core_facade import VersionedOntologyStore
         store = VersionedOntologyStore(domain_id)
         proposal_id = await store.create_proposal(changes, author)
         return {"status": "draft", "proposal_id": proposal_id, "domain_id": domain_id}
@@ -246,7 +242,7 @@ async def list_ontology_proposals(
 ):
     """List ontology evolution proposals."""
     try:
-        from core.harness.knowledge.versioned_ontology_store import VersionedOntologyStore
+        from core.api.core_facade import VersionedOntologyStore
         store = VersionedOntologyStore(domain_id or "fde-delivery")
         proposals = await store.list_proposals(domain_id=domain_id)
         return {"proposals": proposals, "count": len(proposals)}
@@ -258,7 +254,7 @@ async def list_ontology_proposals(
 async def apply_ontology_proposal(proposal_id: str):
     """Apply an approved ontology proposal."""
     try:
-        from core.harness.infrastructure.action_store import ActionStore
+        from core.api.core_facade import ActionStore
         store = ActionStore()
         await store.initialize()
         proposal = await store.get_ontology_proposal(proposal_id)
@@ -266,7 +262,7 @@ async def apply_ontology_proposal(proposal_id: str):
             raise HTTPException(status_code=404, detail="Proposal not found")
 
         domain_id = proposal.get("domain_id", "fde-delivery")
-        from core.harness.knowledge.versioned_ontology_store import VersionedOntologyStore
+        from core.api.core_facade import VersionedOntologyStore
         vstore = VersionedOntologyStore(domain_id)
         ok = await vstore.apply_proposal(proposal_id)
         return {"status": "applied" if ok else "failed", "proposal_id": proposal_id}

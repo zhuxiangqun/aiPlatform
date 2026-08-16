@@ -63,3 +63,22 @@ consumers:
 
 # ── 历史违规 ──
 legacy_fixes: []
+
+consumer_patterns:
+  - "harness/knowledge/"
+  - "harness/knowledge_pipeline/"
+  - "harness/infrastructure/"
+  - "harness/syscalls/"
+  - "harness/memory/"
+  - "apps/skills/"
+
+# ── 已知例外（合法使用 forbidden_direct_imports 的文件） ──
+known_exceptions:
+  - path: aiPlat-core/core/api/routers/entropy.py
+    reason: "诊断工具 — subprocess.run([grep]) 中的字符串匹配，非真实 import"
+  - path: aiPlat-core/core/harness/execution/tool_selector.py
+    reason: "合法的降级 fallback — adapter 优先，失败后才直接加载 SentenceTransformer"
+  - path: aiPlat-core/core/harness/infrastructure/infra_reranker_adapter.py
+    reason: "Reranker 权威实现 — 使用 sentence_transformers.CrossEncoder，非 embedding bypass"
+  - path: aiPlat-infra/infra/llm/providers/local.py
+    reason: "Infra provider — 封装本地模型加载，这是 provider 的职责"

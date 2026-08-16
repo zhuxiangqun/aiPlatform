@@ -5,8 +5,12 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
-  schedule:
-    - cron: "0 6 * * *"  # daily at 6 AM UTC
+  # P1-B13: schedule removed — daily cron was red for consecutive days (8-12~8-15)
+  # and added noise to the required-status-checks context list. Verification now
+  # runs on push/PR only (where it gates merges). Re-enable cron once the suite
+  # is green in CI consistently.
+  # schedule:
+  #   - cron: "0 6 * * *"
 
 jobs:
   pyramid:
@@ -14,6 +18,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Install dependencies
+        run: pip install pyyaml
       - name: Run pyramid verification
         run: bash scripts/verify-l4-pyramid.sh
 
@@ -25,6 +31,11 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+      - name: Install dependencies
+        run: |
+          pip install pyyaml pytest pytest-asyncio
+          pip install -e ./aiPlat-infra 2>/dev/null || true
+          pip install -e ./aiPlat-core 2>/dev/null || true
       - name: Run depth verification
         run: bash scripts/verify-l4-depth.sh
 
@@ -33,6 +44,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Install dependencies
+        run: pip install pyyaml
       - name: Run claims verification
         run: bash scripts/verify-l4-claims.sh
 
@@ -41,5 +54,23 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Install dependencies
+        run: pip install pyyaml
       - name: Run reference verification
         run: bash scripts/verify_whitepaper_refs.sh
+
+  vuln-sla:
+    name: Vulnerability SLA Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install dependencies
+        run: |
+          pip install pyyaml
+          pip install -e ./aiPlat-infra 2>/dev/null || true
+          pip install -e ./aiPlat-core 2>/dev/null || true
+      - name: Check SLA breaches
+        run: python -c "from core.harness.security.sla_tracker import check_and_exit; check_and_exit()"

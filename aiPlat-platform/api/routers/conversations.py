@@ -50,7 +50,7 @@ def _init_platform_runtime() -> None:
     from core.api.core_facade import ExecutionStore, ExecutionStoreConfig  # v2.5
     from core.api.core_facade import AgentDiscovery, AgentLoader, AgentRegistry, get_agent_registry_facade as get_agent_registry
 
-    db_path = os.path.expanduser(os.getenv("AIPLAT_EXECUTION_DB_PATH", "~/.aiplat/data/execution.db"))
+    db_path = os.path.expanduser(os.getenv("AIPLAT_EXECUTION_DB_PATH", "~/.aiplat/aiplat_executions.sqlite3"))
     store = ExecutionStore(ExecutionStoreConfig(db_path=db_path))
     agent_mgr = AgentManager(seed=False, scope="engine")
     ws_agent_mgr = AgentManager(seed=False, scope="workspace", reserved_ids=set(agent_mgr.get_agent_ids()))

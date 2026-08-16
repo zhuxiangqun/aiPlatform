@@ -8,7 +8,7 @@
 |------|------|------|
 | 快速入门 | `docs/manuals/getting-started.md` | 5 分钟体验 |
 | 管理画面操作 | `docs/manuals/management.md` | 角色、导航、功能模块 |
-| 本体模型管理 | `docs/manuals/ontology.md` | 域/类/关系/状态机 |
+| 本体模型管理 | `docs/knowledge-system.md` | 域/类/关系/状态机 |
 | 部署指南 | `docs/manuals/deployment.md` | 单机/集群/容器化 |
 
 ## 按角色快速跳转

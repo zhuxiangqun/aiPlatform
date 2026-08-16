@@ -44,17 +44,38 @@ const TIER_COLORS: Record<string, string> = {
   auto: 'bg-gray-500/20 text-gray-400 border-gray-500/30',
 };
 
-export default function ControlProfilePanel() {
+export default function ControlProfilePanel({ projectId: parentProjectId }: { projectId?: string }) {
   const [data, setData] = useState<ProfileStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState(false);
   const [switching, setSwitching] = useState<string | null>(null);
   const [error, setError] = useState<string>('');
+  // Self-contained project selector（standalone page 也能用）
+  const [projectList, setProjectList] = useState<Array<{ project_id: string; name: string }>>([]);
+  const [projectId, setProjectId] = useState<string>(parentProjectId || localStorage.getItem('diag_project_id') || '');
+
+  // Fetch project list for selector
+  useEffect(() => {
+    fetch('/api/platform/builder/projects')
+      .then(r => r.json())
+      .then(d => setProjectList(d.projects || []))
+      .catch(() => {});
+  }, []);
+
+  // Sync with localStorage + parent
+  useEffect(() => {
+    if (parentProjectId) setProjectId(parentProjectId);
+  }, [parentProjectId]);
+  useEffect(() => {
+    if (projectId) localStorage.setItem('diag_project_id', projectId);
+    else localStorage.removeItem('diag_project_id');
+  }, [projectId]);
 
   const fetchData = async () => {
     try {
-      const resp = await apiClient.get<any>('/diagnostics/profile/status');
-      setData(resp.data);
+      const qs = projectId ? `?project_id=${encodeURIComponent(projectId)}` : '';
+      const resp = await apiClient.get<any>(`/core/diagnostics/profile/status${qs}`);
+      setData(resp);
       setError('');
     } catch (e: any) {
       setError(e?.message || 'failed to load');
@@ -63,12 +84,20 @@ export default function ControlProfilePanel() {
     }
   };
 
-  useEffect(() => { fetchData(); }, []);
+  useEffect(() => { fetchData(); }, [projectId]);
+
+  // Auto-retry if initial load fails (server cold-start)
+  useEffect(() => {
+    if (!error && data) return;
+    if (!error) return; // still loading, don't retry
+    const timer = setTimeout(fetchData, 5000);
+    return () => clearTimeout(timer);
+  }, [error, data]);
 
   const handleSwitch = async (name: string) => {
     setSwitching(name);
     try {
-      await apiClient.post<any>('/diagnostics/profile/switch', { name });
+      await apiClient.post<any>('/core/diagnostics/profile/switch', { name });
       fetchData();
     } catch (e: any) {
       console.error('Profile switch failed:', e);
@@ -80,7 +109,7 @@ export default function ControlProfilePanel() {
   const handleReset = async () => {
     setSwitching('reset');
     try {
-      await apiClient.post<any>('/diagnostics/profile/switch', { name: 'reset' });
+      await apiClient.post<any>('/core/diagnostics/profile/switch', { name: 'reset' });
       fetchData();
     } catch (e: any) {
       console.error('Reset failed:', e);
@@ -89,12 +118,44 @@ export default function ControlProfilePanel() {
     }
   };
 
+  if (!projectId) {
+    return (
+      <Card className="bg-dark-card border-dark-border">
+        <CardContent className="p-5">
+          <div className="flex items-center gap-2 mb-3">
+            <Cpu className="w-5 h-5 text-gray-400" />
+            <h3 className="text-sm font-semibold text-gray-200">控制画像</h3>
+          </div>
+          <p className="text-xs text-gray-500 mb-3">
+            选择一个项目以查看和切换该项目的 Agent 控制参数（模型层级、温度、工具权限等）。
+          </p>
+          {projectList.length > 0 ? (
+            <select
+              value={projectId}
+              onChange={e => setProjectId(e.target.value)}
+              className="w-full bg-dark-bg border border-dark-border rounded-lg px-3 py-2 text-sm text-gray-200 outline-none focus:border-blue-500/50"
+            >
+              <option value="">-- 请选择项目 --</option>
+              {projectList.map(p => (
+                <option key={p.project_id} value={p.project_id}>{p.name}</option>
+              ))}
+            </select>
+          ) : (
+            <div className="text-xs text-gray-600">
+              暂无项目 — 请先在「AI 应用工厂」创建一个项目
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    );
+  }
+
   if (loading) {
     return (
       <Card className="bg-dark-card border-dark-border">
         <CardContent className="p-4 flex items-center gap-2">
           <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
-          <span className="text-xs text-gray-500">Loading profile status...</span>
+          <span className="text-xs text-gray-500">Loading control profile...</span>
         </CardContent>
       </Card>
     );
@@ -104,7 +165,19 @@ export default function ControlProfilePanel() {
     return (
       <Card className="bg-dark-card border-dark-border">
         <CardContent className="p-4">
-          <span className="text-xs text-gray-500">Profile status unavailable</span>
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 text-yellow-400" />
+            <span className="text-xs text-gray-300 font-medium">控制画像加载失败</span>
+          </div>
+          <p className="text-[11px] text-gray-500 mt-1">
+            {error || '服务器返回了空数据，请确认 Core 服务(8002)已完全启动（冷启动约需 2-3 分钟）。'}
+          </p>
+          <button
+            onClick={fetchData}
+            className="mt-2 text-[10px] text-blue-400 hover:text-blue-300 underline cursor-pointer bg-transparent border-none p-0"
+          >
+            重试
+          </button>
         </CardContent>
       </Card>
     );
@@ -150,6 +223,9 @@ export default function ControlProfilePanel() {
 
       {expanded && (
         <CardContent className="px-4 pb-4 pt-0 space-y-4">
+          <p className="text-[11px] text-gray-500 leading-relaxed">
+            <strong>D1-D6 联合控制当前值</strong>——上下文深度(D1)决定注入多少层记忆、工具权限(D2)控制可用操作、模型层级(D3)自动路由到最优模型、编排模式(D4)选择执行策略、记忆(D5)控制压缩率和 episodic/semantic 开关、输出(D6)控制门禁和 schema 校验。预设画像可通过 /profile/switch 切换。
+          </p>
           {/* D1-D6 6-dimension grid */}
           <div className="grid grid-cols-2 gap-2">
             {/* D1: Context */}

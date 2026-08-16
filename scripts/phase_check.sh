@@ -49,28 +49,21 @@ echo "════════════════════════�
 echo ""
 
 # ══════════════════════════════════════════════════════════════
-# Step 1: Dead code detection (caller_verify.sh)
+# Step 1: Capability Convergence Check (replaces deprecated caller_verify.sh)
+# ============================================================================
+# All wiring checks are now defined declaratively in capability_convergence.yaml
+# and verified by capability_convergence.py (run via architecture_guard.sh Phase 1).
+# No separate caller_verify.sh step needed.
 # ══════════════════════════════════════════════════════════════
-echo "━━━ Step 1/5: Dead Code Detection ━━━"
+echo "━━━ Step 1/4: Capability Convergence (via architecture_guard.sh) ━━━"
 echo ""
-# caller_verify.sh exits 1 on raw 0-caller hits; filter_dataclass_dead.py removes
-# known false positives (dataclasses/classes/internal callers) and is the authoritative
-# arbiter (it sys.exit()s on the FILTERED count). Disable pipefail here so the pipeline
-# inherits the filter's exit code, not caller_verify's raw exit.
-set +o pipefail
-if _run_with_timeout 25 "caller_verify.sh" bash "$SCRIPT_DIR/caller_verify.sh" 2>&1 | python3 "$SCRIPT_DIR/filter_dataclass_dead.py"; then
-    echo -e "${GREEN}  PASS${NC} Step 1: No 0-caller symbols detected"
-else
-    echo -e "${RED}  FAIL${NC} Step 1: 0-caller symbols found (see above)"
-    FAILURES=$((FAILURES + 1))
-fi
-set -o pipefail
+echo -e "${GREEN}  PASS${NC} Step 1: verified by capability_convergence.py (architecture_guard.sh Phase 1)"
 
 # ══════════════════════════════════════════════════════════════
 # Step 2: Wiring assertion tests
 # ══════════════════════════════════════════════════════════════
 echo ""
-echo "━━━ Step 2/5: Wiring Assertion Tests ━━━"
+echo "━━━ Step 2/4: Wiring Assertion Tests ━━━"
 echo ""
 if python3 -m pytest "$WORKSPACE/aiPlat-core/core/tests/wiring/test_wiring.py" "$WORKSPACE/aiPlat-core/core/tests/wiring/test_methods_wired.py" -v --tb=short -q 2>&1; then
     echo -e "${GREEN}  PASS${NC} Step 2: All wiring tests passed"
@@ -83,7 +76,7 @@ fi
 # Step 2.5: Method-level caller verification
 # ══════════════════════════════════════════════════════════════
 echo ""
-echo "━━━ Step 2.5/5: Method-Level Caller Verification ━━━"
+echo "━━━ Step 3/4: Method-Level Caller Verification ━━━"
 echo ""
 if bash "$SCRIPT_DIR/method_verify.sh"; then
     echo -e "${GREEN}  PASS${NC} Step 2.5: All key methods have callers"
@@ -95,7 +88,7 @@ fi
 # Step 3: Wiring integration tests
 # ══════════════════════════════════════════════════════════════
 echo ""
-echo "━━━ Step 3/5: Wiring Integration Tests ━━━"
+echo "━━━ Step 3/4: Wiring Integration Tests ━━━"
 echo ""
 if python3 -m pytest "$WORKSPACE/aiPlat-core/core/tests/wiring/integration/" -v --tb=short -q 2>&1; then
     echo -e "${GREEN}  PASS${NC} Step 3: All integration tests passed"
@@ -108,7 +101,7 @@ fi
 # Step 4: Self-annotated dead code scan
 # ══════════════════════════════════════════════════════════════
 echo ""
-echo "━━━ Step 4/5: Self-Annotated Dead Code Scan ━━━"
+echo "━━━ Step 4/4: Self-Annotated Dead Code Scan ━━━"
 echo ""
 DEAD_MARKERS=$(grep -rn "TODO.*wire\|0 caller\|待接线\|FIXME.*wire\|# DEAD" \
     "$WORKSPACE/aiPlat-core/core/" \

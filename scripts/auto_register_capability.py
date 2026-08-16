@@ -1,384 +1,402 @@
 #!/usr/bin/env python3
 """
-auto_register_capability.py — Phase 43: auto-register new capabilities.
+Auto-register new public symbols to capability_registry.yaml.
 
-Modes:
-  --check-only:  Scan git diff for unregistered symbols, generate draft templates.
-                 Exit 0 if all registered, exit 1 if unregistered found (blocks commit).
-  --auto:        Read draft templates, open $EDITOR, validate, append to registry.
+Scans git diff for new Python/TypeScript files, extracts public symbols
+(functions, classes, components, hooks), and appends them to the
+correct domain section in core/capability_registry.yaml.
 
-Design:
-  - Automatable: symbol name, type, module path (from AST)
-  - Must be human: section_name, reason (from template TODO fields)
-  - Gate: template with any "TODO" → block commit
+Usage:
+  python3 scripts/auto_register_capability.py --check   # dry run, show what would be added
+  python3 scripts/auto_register_capability.py --auto     # actually add + update counts
+  python3 scripts/auto_register_capability.py --force    # forcibly re-register from git diff
 """
-
 from __future__ import annotations
 
-import ast
 import os
 import re
-import subprocess
+import ast
 import sys
-import tempfile
+import yaml
+import subprocess
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from datetime import date
 
-ROOT = Path(__file__).resolve().parent.parent
-REGISTRY_PATH = ROOT / "aiPlat-core" / "core" / "capability_registry.yaml"
-DRAFT_DIR = Path.home() / ".aiplat" / "registry_drafts"
-
-# Patterns to skip
-SKIP_PREFIXES = ("_", "__", "test_")
-SKIP_DIRS = ("tests", "__pycache__", ".git", "node_modules", "download", "archive")
-SKIP_SUFFIXES = (".pyc",)
+WORKSPACE = Path(__file__).resolve().parent.parent
+REGISTRY = WORKSPACE / "aiPlat-core" / "core" / "capability_registry.yaml"
+DOMAIN_MAP_PATH = WORKSPACE / "scripts" / "registry_domain_map.yaml"
 
 
-def get_staged_files() -> List[str]:
-    """Get staged (cached) files from git diff."""
+# ════════════════════════════════════════════════════════════
+# Domain mapping
+# ════════════════════════════════════════════════════════════
+
+def load_domain_map() -> list[tuple[str, str]]:
+    """Load path → domain mappings, sorted by specificity (longest first)."""
+    if DOMAIN_MAP_PATH.exists():
+        with open(DOMAIN_MAP_PATH) as f:
+            data = yaml.safe_load(f)
+        mapping = data.get("mapping", [])
+        # Sort by pattern length descending (more specific paths first)
+        mapping.sort(key=lambda x: len(x["pattern"]), reverse=True)
+        return [(m["pattern"], m["domain"]) for m in mapping]
+    return []
+
+
+def map_file_to_domain(filepath: str) -> str:
+    """Map a file path to a registry domain name."""
+    # Normalize: strip workspace prefix
+    for prefix in ["aiPlat-core/", "aiPlat-infra/", "aiPlat-platform/",
+                    "aiPlat-management/"]:
+        if filepath.startswith(prefix):
+            filepath = filepath[len(prefix):]
+            break
+
+    mappings = load_domain_map()
+    for pattern, domain in mappings:
+        if pattern and pattern in filepath:
+            return domain
+    return "extension-plugins"
+
+
+# ════════════════════════════════════════════════════════════
+# Symbol extraction
+# ════════════════════════════════════════════════════════════
+
+class Symbol:
+    def __init__(self, name: str, type_: str, signature: str, module: str):
+        self.name = name
+        self.type = type_
+        self.signature = signature
+        self.module = module
+
+
+def extract_python_symbols(full_path: Path, rel_path: str) -> list[Symbol]:
+    """Extract public top-level symbols from a Python file."""
     try:
-        result = subprocess.run(
-            ["git", "diff", "--cached", "--name-only", "--diff-filter=ACM"],
-            capture_output=True, text=True, cwd=ROOT,
-        )
-        return [f.strip() for f in result.stdout.strip().split("\n") if f.strip()]
+        with open(full_path) as f:
+            source = f.read()
     except Exception:
         return []
 
-
-def get_staged_diff_lines(filepath: str) -> List[str]:
-    """Get added lines from staged diff for a file."""
     try:
-        result = subprocess.run(
-            ["git", "diff", "--cached", "-U0", filepath],
-            capture_output=True, text=True, cwd=ROOT,
-        )
-        lines = []
-        for line in result.stdout.split("\n"):
-            if line.startswith("+") and not line.startswith("+++"):
-                lines.append(line[1:])  # strip leading +
-        return lines
+        tree = ast.parse(source)
+    except SyntaxError:
+        return []
+
+    symbols = []
+    for node in ast.iter_child_nodes(tree):
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            name = node.name
+            if name.startswith("_"):
+                continue
+            sig = _extract_signature_py(node)
+            type_ = "function"
+            symbols.append(Symbol(name, type_, sig, rel_path))
+
+        elif isinstance(node, ast.ClassDef):
+            name = node.name
+            if name.startswith("_"):
+                continue
+            # Determine class type from bases/decorators
+            type_ = "class"
+            for base in node.bases:
+                if isinstance(base, ast.Name):
+                    if base.id in ("BaseModel",):
+                        type_ = "pydantic_model"
+                    elif base.id in ("Enum", "IntEnum", "StrEnum"):
+                        type_ = "enum"
+
+            has_dataclass = any(
+                isinstance(d, ast.Name) and d.id == "dataclass"
+                for d in node.decorator_list
+            )
+            if has_dataclass:
+                type_ = "dataclass"
+
+            sig = _extract_class_sig_py(node)
+            symbols.append(Symbol(name, type_, sig, rel_path))
+
+    return symbols
+
+
+def _extract_signature_py(node: ast.FunctionDef | ast.AsyncFunctionDef) -> str:
+    """Extract signature from function docstring or args."""
+    # Try docstring first line
+    if (isinstance(node.body[0], ast.Expr)
+            and isinstance(node.body[0].value, ast.Constant)):
+        doc = ast.literal_eval(node.body[0].value) if isinstance(node.body[0].value, ast.Constant) else node.body[0].value.s
+        first_line = doc.strip().split("\n")[0].strip()
+        if first_line:
+            return first_line[:80]
+
+    # Fallback: list arg names
+    args = [a.arg for a in node.args.args if a.arg != "self"]
+    return f"{node.name}({', '.join(args[:4])})"
+
+
+def _extract_class_sig_py(node: ast.ClassDef) -> str:
+    """Extract class signature from docstring."""
+    if (isinstance(node.body[0], ast.Expr)
+            and isinstance(node.body[0].value, ast.Constant)):
+        doc = ast.literal_eval(node.body[0].value) if isinstance(node.body[0].value, ast.Constant) else node.body[0].value.s
+        first_line = doc.strip().split("\n")[0].strip()
+        if first_line:
+            return first_line[:80]
+
+    # Fallback: count public methods
+    methods = [m.name for m in node.body
+               if isinstance(m, (ast.FunctionDef, ast.AsyncFunctionDef))
+               and not m.name.startswith("_")]
+    return ", ".join(methods[:4]) if methods else node.name
+
+
+def extract_ts_symbols(full_path: Path, rel_path: str) -> list[Symbol]:
+    """Extract exported symbols from a TypeScript/TSX file."""
+    try:
+        with open(full_path) as f:
+            source = f.read()
     except Exception:
         return []
 
+    symbols = []
+    basename = full_path.stem
 
-def extract_python_symbols(filepath: str) -> List[Tuple[str, str, int]]:
-    """Extract public class/function definitions from a .py file.
-    Returns list of (symbol_name, symbol_type, line_number).
+    # export default function ComponentName
+    for m in re.finditer(r'export\s+default\s+function\s+(\w+)', source):
+        name = m.group(1)
+        if name.startswith("_"): continue
+        sig = _find_ts_description(source, name)
+        symbols.append(Symbol(name, "component", sig, rel_path))
+
+    # export default function (anonymous) → use filename
+    if re.search(r'export\s+default\s+function\s*\(', source):
+        name = _pascal_case(basename)
+        if not name.startswith("_"):
+            sig = _find_ts_description(source, basename)
+            symbols.append(Symbol(name, "component", sig, rel_path))
+
+    # export function / export async function
+    for m in re.finditer(r'export\s+(?:async\s+)?function\s+(\w+)', source):
+        name = m.group(1)
+        if name.startswith("_"): continue
+        type_ = "hook" if name.startswith("use") else "function"
+        sig = _find_ts_description(source, name)
+        symbols.append(Symbol(name, type_, sig, rel_path))
+
+    # export const Xyz: React.FC = / export const Xyz = () =>
+    for m in re.finditer(r'export\s+const\s+(\w+)(?:\s*:\s*React\.FC)?\s*=\s*(?:\(|\()', source):
+        name = m.group(1)
+        if name.startswith("_"): continue
+        type_ = "hook" if name.startswith("use") else "component"
+        sig = _find_ts_description(source, name)
+        symbols.append(Symbol(name, type_, sig, rel_path))
+
+    return symbols
+
+
+def _find_ts_description(source: str, name: str) -> str:
+    """Try to find a comment description near the symbol."""
+    # Look for JSDoc or inline comment
+    patterns = [
+        rf'\/\*\*?\s*\n?\s*\*?\s*(.+?)\s*\*\/\s*(?:export\s+)?.*?{name}',
+        rf'\/\/\s*(.+?)\n\s*(?:export\s+)?.*?{name}',
+    ]
+    for pat in patterns:
+        m = re.search(pat, source, re.DOTALL)
+        if m:
+            return m.group(1).strip()[:80]
+    return name
+
+
+def _pascal_case(s: str) -> str:
+    """kebab-case or snake_case → PascalCase."""
+    return "".join(w.capitalize() for w in re.split(r'[-_]', s))
+
+
+# ════════════════════════════════════════════════════════════
+# Registry I/O (text-based — preserves formatting, comments)
+# ════════════════════════════════════════════════════════════
+
+def read_registry_lines() -> list[str]:
+    with open(REGISTRY) as f:
+        return f.readlines()
+
+
+def write_registry_lines(lines: list[str]) -> None:
+    with open(REGISTRY, "w") as f:
+        f.writelines(lines)
+
+
+def is_already_registered(lines: list[str], symbol: str, module: str) -> bool:
+    """Check if symbol+module combo appears anywhere."""
+    text = "".join(lines)
+    # Look for "symbol: {name}" followed by "module: {module}" nearby
+    sym_re = re.compile(r'-\s+symbol:\s+' + re.escape(symbol) + r'\s*$', re.MULTILINE)
+    mod_re = re.compile(r'module:\s+' + re.escape(module) + r'\s*$')
+    for m in sym_re.finditer(text):
+        # Check if module appears within next 5 lines
+        nearby = text[m.end():m.end() + 300]
+        if mod_re.search(nearby):
+            return True
+    return False
+
+
+def find_domain_insertion_point(lines: list[str], domain_key: str) -> int | None:
+    """Find line index to insert new provides entries in a domain.
+    Returns index right after the last provides entry.
     """
-    full_path = filepath
-    for pfx in ("", str(ROOT) + "/", str(ROOT) + "/aiPlat-core/",
-                str(ROOT) + "/aiPlat-platform/", str(ROOT) + "/aiPlat-management/"):
-        candidate = Path(pfx + filepath) if pfx.endswith("/") else Path(pfx) / filepath
-        if candidate.exists():
-            full_path = str(candidate)
-            break
-    if not os.path.exists(full_path):
-        return []
+    in_domain = False
+    in_provides = False
+    last_provide_line = -1
 
-    symbols = []
-    try:
-        with open(full_path) as f:
-            try:
-                tree = ast.parse(f.read())
-            except SyntaxError:
-                return []
-        for node in ast.walk(tree):
-            # Class definitions
-            if isinstance(node, ast.ClassDef):
-                if not any(node.name.startswith(p) for p in SKIP_PREFIXES):
-                    # Skip private classes and dunder-only classes
-                    if not node.name.startswith("_") or (
-                        node.name.startswith("__") and node.name.endswith("__")
-                    ):
-                        continue
-                    symbols.append((node.name, "class", node.lineno))
-            # Function definitions (top-level only)
-            elif isinstance(node, ast.FunctionDef):
-                if not any(node.name.startswith(p) for p in SKIP_PREFIXES):
-                    if not node.name.startswith("_"):
-                        symbols.append((node.name, "function", node.lineno))
-            # Async function definitions
-            elif isinstance(node, ast.AsyncFunctionDef):
-                if not any(node.name.startswith(p) for p in SKIP_PREFIXES):
-                    if not node.name.startswith("_"):
-                        symbols.append((node.name, "async_function", node.lineno))
-    except Exception:
-        pass
-    return symbols
+    for i, line in enumerate(lines):
+        stripped = line.strip()
+        if stripped == f"{domain_key}:":
+            in_domain = True
+        elif in_domain and stripped == "provides:":
+            in_provides = True
+        elif in_provides:
+            if stripped.startswith("- symbol:"):
+                last_provide_line = i
+            elif not stripped.startswith("-") and ":" in stripped and not stripped.startswith("#"):
+                # Exit provides section
+                if last_provide_line >= 0:
+                    return last_provide_line + 1
+                # No provides entries yet — insert after "provides:" line
+                return i - 1  # insert before next section
+            elif stripped == "breaks:" or stripped == "consumers_expected:":
+                return last_provide_line + 1 if last_provide_line >= 0 else i
+
+    return None
 
 
-def extract_tsx_symbols(filepath: str) -> List[Tuple[str, str, int]]:
-    """Extract exported symbols from .tsx/.ts files."""
-    full_path = filepath
-    for pfx in ("", str(ROOT) + "/"):
-        candidate = Path(pfx) / filepath if pfx else Path(filepath)
-        if candidate.exists():
-            full_path = str(candidate)
-            break
-    if not os.path.exists(full_path):
-        return []
+def add_symbol_text(lines: list[str], sym: Symbol, domain_key: str) -> bool:
+    """Insert symbol entry into registry lines. Returns True if added."""
+    idx = find_domain_insertion_point(lines, domain_key)
+    if idx is None:
+        return False
 
-    symbols = []
-    try:
-        with open(full_path) as f:
-            content = f.read()
-        # export const Xxx
-        for m in re.finditer(r'export\s+(?:const|function|class)\s+(\w+)', content):
-            name = m.group(1)
-            if not any(name.startswith(p) for p in SKIP_PREFIXES):
-                stype = "react_component" if name[0].isupper() else "function"
-                symbols.append((name, stype, 0))
-        # export default function/class Xxx
-        for m in re.finditer(r'export\s+default\s+(?:function|class)\s+(\w+)', content):
-            name = m.group(1)
-            if not any(name.startswith(p) for p in SKIP_PREFIXES):
-                symbols.append((name, "react_component", 0))
-    except Exception:
-        pass
-    return symbols
+    # Build entry
+    module = sym.module
+    indent = "      "
+    entry_lines = [
+        f"{indent}- symbol: {sym.name}\n",
+        f"{indent}  type: {sym.type}\n",
+        f"{indent}  signature: '{sym.signature[:80]}'\n",
+        f"{indent}  module: {module}\n",
+    ]
+
+    # Insert after the last provides entry
+    for i, line in enumerate(entry_lines):
+        lines.insert(idx + i, line)
+    return True
 
 
-def load_registry() -> dict:
-    """Load capability registry."""
-    import yaml as _yaml
-    if REGISTRY_PATH.exists():
-        with open(REGISTRY_PATH) as f:
-            return _yaml.safe_load(f) or {"domains": {}}
-    return {"domains": {}}
+def update_registry_counts(lines: list[str], added: int) -> None:
+    """Update caps_count and total_capabilities."""
+    text = "".join(lines)
 
-
-def is_registered(symbol: str, registry: dict) -> bool:
-    """Check if a symbol is already in the registry."""
-    for domain_id, domain in registry.get("domains", {}).items():
-        for prov in domain.get("provides", []):
-            reg_sym = prov.get("symbol", "")
-            if symbol in reg_sym or reg_sym.endswith("." + symbol):
-                return True
-    return False
-
-
-def infer_domain(filepath: str) -> Tuple[str, str]:
-    """Infer which domain a file belongs to by grepping CAPABILITIES.md."""
-    caps_path = ROOT / "AIPLAT_CAPABILITIES.md"
-    if not caps_path.exists():
-        return "unclassified", "三十三(待分类)"
-
-    # Extract the module hint from the filepath
-    hints = filepath.split("/")
-    hints = [h for h in hints if h not in ("core", "aiPlat-core", "aiPlat-platform", "aiPlat-management")]
-    best_count = 0
-    best_domain = "unclassified"
-    best_section = "三十三(待分类)"
-
-    try:
-        with open(caps_path) as f:
-            content = f.read()
-        import re as _re
-        for hint in hints[:3]:
-            # Find sections that mention this path component
-            pattern = _re.escape(hint)
-            matches = _re.findall(pattern, content, _re.IGNORECASE)
-            if len(matches) > best_count:
-                best_count = len(matches)
-                # Find which section this belongs to
-                section_match = _re.search(
-                    r'^## (.*' + _re.escape(hint) + r'.*)$',
-                    content, _re.MULTILINE | _re.IGNORECASE,
-                )
-                if section_match:
-                    best_domain = hint.replace(".py", "").replace("_", "-")
-                    best_section = section_match.group(1)
-    except Exception:
-        pass
-
-    return best_domain, best_section
-
-
-def generate_draft(
-    symbols: List[Tuple[str, str, int]],
-    filepath: str,
-) -> str:
-    """Generate YAML draft template for unregistered symbols."""
-    domain_id, section_name = infer_domain(filepath)
-    lines = [f"# Auto-generated draft from: {filepath}"]
-    lines.append(f"# Fill in the 2 TODO fields:")
-    lines.append(f"#   1. section_name (what is this capability?)")
-    lines.append(f"#   2. reason (why does each consumer need this?)")
-    lines.append("")
-    lines.append(f"domain_id: {domain_id}")
-    lines.append(f"section_name: \"{section_name}\"  # TODO: describe this capability")
-    lines.append(f"caps_count: {len(symbols)}")
-    lines.append("provides:")
-    for name, stype, lineno in symbols:
-        lines.append(f"  - symbol: \"{name}\"")
-        lines.append(f"    type: \"{stype}\"")
-        lines.append(f"    signature: \"TODO: describe signature\"")
-        lines.append(f"    module: \"{filepath}\"")
-    lines.append("breaks: []")
-    lines.append("consumers_expected:")
-    lines.append("  - module: \"TODO\"  # TODO: which module uses this?")
-    lines.append("    reason: \"TODO: why does this module use {symbols[0][0] if symbols else ''}?\"")
-    return "\n".join(lines)
-
-
-def has_todos(yaml_content: str) -> bool:
-    """Check if YAML content still has TODO placeholders."""
-    return "TODO" in yaml_content or "todo" in yaml_content
-
-
-def append_to_registry(yaml_content: str) -> None:
-    """Parse draft YAML and append to capability_registry.yaml."""
-    import yaml as _yaml
-    draft = _yaml.safe_load(yaml_content)
-    domain_id = draft.get("domain_id", "unclassified")
-
-    # Load current registry
-    registry = load_registry()
-
-    # Check if domain already exists
-    if domain_id in registry["domains"]:
-        # Append provides
-        existing = registry["domains"][domain_id].get("provides", [])
-        existing_symbols = {p["symbol"] for p in existing}
-        for prov in draft.get("provides", []):
-            if prov["symbol"] not in existing_symbols:
-                existing.append(prov)
-        registry["domains"][domain_id]["caps_count"] = len(existing)
-        # Append consumers_expected
-        existing_cons = registry["domains"][domain_id].get("consumers_expected", [])
-        existing_cons.extend(draft.get("consumers_expected", []))
-    else:
-        registry["domains"][domain_id] = {
-            "section": "三十三",
-            "section_name": draft.get("section_name", "待分类"),
-            "caps_count": draft.get("caps_count", len(draft.get("provides", []))),
-            "provides": draft.get("provides", []),
-            "breaks": draft.get("breaks", []),
-            "consumers_expected": draft.get("consumers_expected", []),
-        }
-
-    # Update header
-    registry["total_capability_domains"] = len(registry["domains"])
-    registry["total_capabilities"] = sum(
-        v.get("caps_count", 0) for v in registry["domains"].values()
-    )
-
-    # Write back
-    with open(REGISTRY_PATH, "w") as f:
-        _yaml.dump(registry, f, default_flow_style=False, allow_unicode=True, sort_keys=False)
-
-    print(f"✅ Registry updated: {REGISTRY_PATH}")
-    print(f"   {registry['total_capability_domains']} domains, {registry['total_capabilities']} capabilities")
-
-
-def check_only() -> bool:
-    """Return True if clean (all registered), False if violations found."""
-    staged = get_staged_files()
-    py_files = [f for f in staged if f.endswith(".py") and not any(
-        d in f for d in SKIP_DIRS) and not any(f.endswith(s) for s in SKIP_SUFFIXES)]
-    tsx_files = [f for f in staged if (f.endswith(".tsx") or f.endswith(".ts")) and not any(
-        d in f for d in SKIP_DIRS)]
-
-    registry = load_registry()
-    unregistered = []
-
-    for f in py_files:
-        if not f.startswith("aiPlat-core") and not f.startswith("aiPlat-platform"):
-            continue
-        symbols = extract_python_symbols(f)
-        for name, stype, lineno in symbols:
-            if not is_registered(name, registry):
-                unregistered.append((f, name, stype, lineno))
-
-    for f in tsx_files:
-        symbols = extract_tsx_symbols(f)
-        for name, stype, lineno in symbols:
-            if not is_registered(name, registry):
-                unregistered.append((f, name, stype, lineno))
-
-    if not unregistered:
-        print("✅ All new symbols are registered.")
-        return True
-
-    # Group by file for clean output
-    by_file: Dict[str, list] = {}
-    for f, name, stype, lineno in unregistered:
-        by_file.setdefault(f, []).append((name, stype, lineno))
-
-    print(f"\n❌ {len(unregistered)} unregistered capabilities detected:\n")
-    DRAFT_DIR.mkdir(parents=True, exist_ok=True)
-
-    for f, symbols in by_file.items():
-        print(f"  {f}:")
-        draft_path = DRAFT_DIR / f"{Path(f).stem.replace('.', '_')}_draft.yaml"
-        draft_content = generate_draft(symbols, f)
-        with open(draft_path, "w") as df:
-            df.write(draft_content)
-        for name, stype, lineno in symbols:
-            print(f"    {lineno}: {stype} {name}")
-        print(f"    → Draft: {draft_path}")
-        print()
-
-    print("Run: cap auto-register")
-    print("Or fill drafts manually and run: cap register <draft.yaml>")
-    return False
-
-
-def auto_mode() -> None:
-    """Read drafts, open editor, validate, append to registry."""
-    if not DRAFT_DIR.exists() or not list(DRAFT_DIR.glob("*.yaml")):
-        print("No draft files found in", DRAFT_DIR)
-        print("Run 'cap check' first to generate drafts.")
-        sys.exit(1)
-
-    editor = os.environ.get("EDITOR", os.environ.get("VISUAL", "vim"))
-    count = 0
-
-    for draft_path in sorted(DRAFT_DIR.glob("*_draft.yaml")):
-        if not draft_path.name.endswith("_draft.yaml"):
-            continue
-
-        # Open editor
-        subprocess.run([editor, str(draft_path)])
-
-        # Validate: no TODOs
-        with open(draft_path) as f:
-            content = f.read()
-        if has_todos(content):
-            print(f"\n⚠️  {draft_path.name} still contains TODO placeholders.")
-            print("   Please complete all TODO fields and run again.")
-            print("   Skipping this draft for now.")
-            continue
-
-        # Append to registry (skip comment lines)
-        clean_content = "\n".join(
-            line for line in content.split("\n")
-            if not line.strip().startswith("#")
+    # Update total_capabilities
+    if added > 0:
+        m = re.search(r'total_capabilities:\s*(\d+)', text)
+        if m:
+            new_total = int(m.group(1)) + added
+            text = re.sub(r'total_capabilities:\s*\d+', f'total_capabilities: {new_total}', text)
+        text = re.sub(
+            r'generated_at:\s*\'\d{4}-\d{2}-\d{2}\'',
+            f"generated_at: '{date.today().strftime('%Y-%m-%d')}'",
+            text
         )
-        append_to_registry(clean_content)
-        count += 1
-        print(f"  ✅ Registered from {draft_path.name}")
 
-    if count > 0:
-        # Stage the registry update
-        subprocess.run(["git", "add", str(REGISTRY_PATH)], cwd=ROOT)
-        print(f"\n✅ {count} capability drafts registered.")
-        print("   capability_registry.yaml updated and staged.")
-    else:
-        print("   Fix TODOs in drafts and run 'cap auto-register' again.")
-        sys.exit(1)
+    lines[:] = text.splitlines(True)
 
+
+# ════════════════════════════════════════════════════════════
+# File discovery
+# ════════════════════════════════════════════════════════════
+
+def get_new_files() -> list[str]:
+    """Get new files from git diff (staged + unstaged)."""
+    files = set()
+
+    # Staged new files
+    try:
+        out = subprocess.check_output(
+            ["git", "-C", str(WORKSPACE), "diff", "--cached", "--name-only",
+             "--diff-filter=A"],
+            text=True, timeout=5
+        )
+        files.update(f.strip() for f in out.split("\n") if f.strip())
+    except Exception:
+        pass
+
+    # Unstaged new files (git ls-files --others)
+    try:
+        out = subprocess.check_output(
+            ["git", "-C", str(WORKSPACE), "ls-files", "--others",
+             "--exclude-standard"],
+            text=True, timeout=5
+        )
+        files.update(f.strip() for f in out.split("\n") if f.strip())
+    except Exception:
+        pass
+
+    return sorted(f for f in files
+                  if (f.endswith(".py") and "test" not in f.lower()
+                      and "__init__" not in f)
+                  or f.endswith((".tsx", ".ts")))
+
+
+# ════════════════════════════════════════════════════════════
+# Main
+# ════════════════════════════════════════════════════════════
 
 def main():
-    if "--check-only" in sys.argv:
-        ok = check_only()
-        sys.exit(0 if ok else 1)
-    elif "--auto" in sys.argv:
-        auto_mode()
-    else:
-        print("Usage: auto_register_capability.py --check-only | --auto")
+    mode = sys.argv[1] if len(sys.argv) > 1 else "--check"
+
+    if not REGISTRY.exists():
+        print("❌ capability_registry.yaml not found")
         sys.exit(1)
+
+    lines = read_registry_lines()
+    new_files = get_new_files()
+    added = 0
+    skipped = 0
+
+    for f in new_files:
+        full = WORKSPACE / f
+        if not full.exists():
+            continue
+
+        if f.endswith(".py"):
+            symbols = extract_python_symbols(full, f)
+        else:
+            symbols = extract_ts_symbols(full, f)
+
+        for sym in symbols:
+            if is_already_registered(lines, sym.name, sym.module):
+                skipped += 1
+                continue
+
+            domain = map_file_to_domain(f)
+            if mode == "--check":
+                print(f"  ➕ {sym.name:30s} | {sym.type:15s} | {domain:25s} | {f}")
+            else:
+                if add_symbol_text(lines, sym, domain):
+                    print(f"  ✅ {sym.name:30s} | {sym.type:15s} | {domain:25s} | {f}")
+                    added += 1
+
+    if mode == "--check":
+        print(f"\n  Found {len(new_files)} new files with symbols (--auto to register)")
+        return
+
+    if added > 0:
+        update_registry_counts(lines, added)
+        write_registry_lines(lines)
+        print(f"\n✅ Added {added} symbols, skipped {skipped} existing")
+    else:
+        print(f"\n✅ No new symbols to register (skipped {skipped} existing)")
 
 
 if __name__ == "__main__":

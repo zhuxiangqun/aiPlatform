@@ -60,34 +60,56 @@ const UserWorkbench: React.FC = () => {
   });
 
   useEffect(() => {
-    fetch('/api/core/workbench/capabilities').then(r => r.json()).then(setCaps);
-    fetch('/api/core/workbench/tasks').then(r => r.json()).then(d => setHistory(d.items || []));
-    fetch('/api/core/workbench/specs').then(r => r.json()).then(d => setSpecs(d.specs || []));
-    fetch('/api/platform/apps/workbench/fde-dashboard').then(r => r.json()).then(setFDEData);
-    fetch('/api/core/workbench/promotion-queue').then(r => r.json()).then(d => setPromoQueue(d.queue || []));
+    fetch('/api/platform/apps/workbench/capabilities').then(r => r.ok ? r.json() : {items:[]}).then(d => setCaps(d.items || [])).catch(() => setCaps([]));
+    fetch('/api/platform/apps/workbench/tasks').then(r => r.ok ? r.json() : {items:[]}).then(d => setHistory(d.items || [])).catch(() => setHistory([]));
+    fetch('/api/platform/apps/workbench/specs').then(r => r.ok ? r.json() : {specs:[]}).then(d => setSpecs(d.specs || [])).catch(() => setSpecs([]));
+    fetch('/api/platform/apps/workbench/fde-dashboard').then(r => r.ok ? r.json() : {}).then(d => setFDEData({
+      pending_decisions: [], signal_alerts: [], trace_anomalies: [],
+      timeline: [], last_updated: '',
+      training: { enabled: false, quality_count: 0, threshold: 0, progress_pct: 0, ready_to_trigger: false, latest_model: '', dataset_count: 0 },
+      ...(d || {}),
+    })).catch(() => setFDEData(null));
+    fetch('/api/platform/apps/workbench/promotion-queue').then(r => r.ok ? r.json() : {items:[]}).then(d => setPromoQueue(d.items || [])).catch(() => setPromoQueue([]));
   }, []);
 
   useEffect(() => {
+    let stopped = false;
     dashRef.current = window.setInterval(async () => {
       try {
         const res = await fetch('/api/platform/apps/workbench/fde-dashboard');
-        setFDEData(await res.json());
-        const pRes = await fetch('/api/core/workbench/promotion-queue');
-        setPromoQueue((await pRes.json()).queue || []);
-      } catch {}
+        if (res.ok) {
+          const d = await res.json();
+          setFDEData({
+            pending_decisions: [], signal_alerts: [], trace_anomalies: [],
+            timeline: [], last_updated: '',
+            training: { enabled: false, quality_count: 0, threshold: 0, progress_pct: 0, ready_to_trigger: false, latest_model: '', dataset_count: 0 },
+            ...(d || {}),
+          });
+        }
+        const pRes = await fetch('/api/platform/apps/workbench/promotion-queue');
+        if (pRes.ok) {
+          setPromoQueue((await pRes.json()).items || []);
+        } else if (pRes.status === 404 && !stopped) {
+          // Backend not implemented — stop polling to avoid 404 noise
+          stopped = true;
+          clearInterval(dashRef.current);
+        }
+      } catch {
+        if (!stopped) { stopped = true; clearInterval(dashRef.current); }
+      }
     }, 30000);
     return () => clearInterval(dashRef.current);
   }, []);
 
   const pollTask = (runId: string) => {
     pollRef.current = window.setInterval(async () => {
-      const res = await fetch(`/api/core/workbench/tasks/${runId}`);
+      const res = await fetch(`/api/platform/apps/workbench/tasks/${runId}`);
       const t = await res.json();
       setCurrentTask(t);
       if (t.status === 'completed' || t.status === 'failed') {
         clearInterval(pollRef.current);
-        fetch('/api/core/workbench/tasks').then(r => r.json()).then(d => setHistory(d.items || []));
-        fetch('/api/core/workbench/specs').then(r => r.json()).then(d => setSpecs(d.specs || []));
+        fetch('/api/platform/apps/workbench/tasks').then(r => r.ok ? r.json() : {items:[]}).then(d => setHistory(d.items || [])).catch(() => {});
+        fetch('/api/platform/apps/workbench/specs').then(r => r.ok ? r.json() : {specs:[]}).then(d => setSpecs(d.specs || [])).catch(() => {});
       }
     }, 2000);
   };
@@ -95,18 +117,27 @@ const UserWorkbench: React.FC = () => {
   const submit = async () => {
     if (!description.trim()) return;
     setSubmitting(true);
-    const res = await fetch('/api/core/workbench/submit', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ description, capability: selectedCap, spec_id: selectedSpec }),
-    });
-    const { run_id } = await res.json();
+    try {
+      const res = await fetch('/api/platform/apps/workbench/submit', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ description, capability: selectedCap, spec_id: selectedSpec }),
+      });
+      if (!res.ok) {
+        alert('提交失败：服务未就绪（workbench 端点尚未实现）');
+        setSubmitting(false);
+        return;
+      }
+      const { run_id } = await res.json();
+      if (run_id) pollTask(run_id);
+    } catch {
+      alert('提交失败：功能开发中，请通过「应用工厂」或「工作室」Tab 创建项目');
+    }
     setDescription('');
     setSubmitting(false);
-    pollTask(run_id);
   };
 
   const sendFeedback = async (runId: string, action: string) => {
-    await fetch(`/api/core/workbench/tasks/${runId}/feedback`, {
+    await fetch(`/api/platform/apps/workbench/tasks/${runId}/feedback`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ rating: action === 'useful' ? 5 : 2, action }),
     });
@@ -116,7 +147,7 @@ const UserWorkbench: React.FC = () => {
 
   const handleCreateSpec = async () => {
     if (!createSpecId.trim()) return;
-    const res = await fetch('/api/core/workbench/spec/create', {
+    const res = await fetch('/api/platform/apps/workbench/spec/create', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ spec_id: createSpecId.trim(), content: { agent_md: createContent || `# ${createSpecId}` }, created_by: 'developer' }),
     });
@@ -129,16 +160,16 @@ const UserWorkbench: React.FC = () => {
       return;
     }
     // fallback refresh
-    const sRes = await fetch('/api/core/workbench/specs');
+    const sRes = await fetch('/api/platform/apps/workbench/specs');
     setSpecs((await sRes.json()).specs || []);
     const dashRes = await fetch('/api/platform/apps/workbench/fde-dashboard');
     setFDEData(await dashRes.json());
   };
 
   const handleMarkStable = async (specId: string) => {
-    await fetch(`/api/core/workbench/spec/${specId}/mark-stable`, { method: 'POST' });
+    await fetch(`/api/platform/apps/workbench/spec/${specId}/mark-stable`, { method: 'POST' });
     const [sRes, dRes] = await Promise.all([
-      fetch('/api/core/workbench/specs'),
+      fetch('/api/platform/apps/workbench/specs'),
       fetch('/api/platform/apps/workbench/fde-dashboard'),
     ]);
     setSpecs((await sRes.json()).specs || []);
@@ -174,10 +205,10 @@ const UserWorkbench: React.FC = () => {
              }}>
                <span>暂无待处理事项 — 提交一个关联 Spec 的任务即可开始收集数据</span>
                <button onClick={async () => {
-                 await fetch('/api/core/workbench/seed-demo', { method: 'POST' });
+                 await fetch('/api/platform/apps/workbench/seed-demo', { method: 'POST' });
                  setTimeout(async () => {
                    const [sRes, dRes] = await Promise.all([
-                     fetch('/api/core/workbench/specs'),
+                     fetch('/api/platform/apps/workbench/specs'),
                      fetch('/api/platform/apps/workbench/fde-dashboard'),
                    ]);
                    setSpecs((await sRes.json()).specs || []);
@@ -283,13 +314,13 @@ const UserWorkbench: React.FC = () => {
                   }}>
                     <button onClick={async () => {
                     for (const p of promoQueue) {
-                      await fetch(`/api/core/workbench/spec/${p.spec_id}/promote/approve`, {
+                      await fetch(`/api/platform/apps/workbench/spec/${p.spec_id}/promote/approve`, {
                         method: 'POST', headers: {'Content-Type': 'application/json'},
                         body: JSON.stringify({reviewer: 'dashboard'}),
                       });
                     }
-                    const res = await fetch('/api/core/workbench/promotion-queue');
-                    setPromoQueue((await res.json()).queue || []);
+                    const res = await fetch('/api/platform/apps/workbench/promotion-queue');
+                    setPromoQueue((await res.json()).items || []);
                     const dashRes = await fetch('/api/platform/apps/workbench/fde-dashboard');
                     setFDEData(await dashRes.json());
                   }} style={{
@@ -300,12 +331,12 @@ const UserWorkbench: React.FC = () => {
                   </button>
                   {promoQueue.map((p: any) => (
                     <button key={p.spec_id} onClick={async () => {
-                      await fetch(`/api/core/workbench/spec/${p.spec_id}/promote/reject`, {
+                      await fetch(`/api/platform/apps/workbench/spec/${p.spec_id}/promote/reject`, {
                         method: 'POST', headers: {'Content-Type': 'application/json'},
                         body: JSON.stringify({reviewer: 'dashboard', reason: 'Rejected from dashboard'}),
                       });
-                      const res = await fetch('/api/core/workbench/promotion-queue');
-                      setPromoQueue((await res.json()).queue || []);
+                      const res = await fetch('/api/platform/apps/workbench/promotion-queue');
+                      setPromoQueue((await res.json()).items || []);
                     }} style={{
                       background: '#334155', color: '#ef4444', border: '1px solid #ef444440',
                       borderRadius: 6, padding: '4px 10px', cursor: 'pointer', fontSize: 11,
@@ -374,12 +405,12 @@ const UserWorkbench: React.FC = () => {
               {specs.filter(s => s.latest_status === 'review').length > 0 && (
                 <button onClick={async () => {
                   const reviewIds = specs.filter(s => s.latest_status === 'review').map(s => s.spec_id);
-                  await fetch('/api/core/workbench/spec/batch-mark-stable', {
+                  await fetch('/api/platform/apps/workbench/spec/batch-mark-stable', {
                     method: 'POST', headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({spec_ids: reviewIds}),
                   });
                   const [sRes, dRes] = await Promise.all([
-                    fetch('/api/core/workbench/specs'),
+                    fetch('/api/platform/apps/workbench/specs'),
                     fetch('/api/platform/apps/workbench/fde-dashboard'),
                   ]);
                   setSpecs((await sRes.json()).specs || []);

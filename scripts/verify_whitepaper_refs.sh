@@ -23,6 +23,14 @@ check_ref() {
     local raw_path="$2"
     local expected_min="${3:-1}"
     local expected_exact="${4:-}"
+    # User-level paths (~/.aiplat) are optional in CI/fresh environments —
+    # skip (not STALE) when missing rather than failing the reference check.
+    if [[ "$raw_path" == ~* || "$raw_path" == /* ]] && [[ "$raw_path" == *".aiplat"* ]]; then
+        if [ ! -f "${raw_path/#\~/$HOME}" ]; then
+            echo "  ℹ️  SKIP: $label — user-level file absent (optional in CI)"
+            return
+        fi
+    fi
     local path
     # Expand ~ and handle absolute vs relative paths
     if [[ "$raw_path" == /* ]]; then

@@ -1,16 +1,16 @@
 """
-E2EVerifier — 端到端验证器 (全链路串联)
+E2EVerifier — end-to-end verifier (full-chain integration).
 
-一次调用验证 7 个子系统是否真实串联工作:
-  ① AtomicTaskSplitter (任务分解)
-  ② EvoXExecutor (蜂群并行执行)
-  ③ ProgrammaticCollector (程序化汇合)
-  ④ LossDetector (损耗检测)
-  ⑤ Decision Lineage (决策血缘自动捕获)
-  ⑥ KnowledgeROI (ROI 自动记录)
-  ⑦ ConversationIngestor (对话→Wiki 自动沉淀)
+Verifies that 7 subsystems are truly chained together in one call:
+  ① AtomicTaskSplitter (task decomposition)
+  ② EvoXExecutor (swarm parallel execution)
+  ③ ProgrammaticCollector (programmatic aggregation)
+  ④ LossDetector (loss detection)
+  ⑤ Decision Lineage (automatic decision lineage capture)
+  ⑥ KnowledgeROI (automatic ROI recording)
+  ⑦ ConversationIngestor (conversation → Wiki auto-crystallization)
 
-调用者: POST /verify/e2e
+Caller: POST /verify/e2e
 """
 
 from __future__ import annotations
@@ -73,11 +73,11 @@ class E2EReport:
 # ── E2EVerifier ─────────────────────────────────────────────────────────
 
 class E2EVerifier:
-    """端到端验证器.
+    """End-to-end verifier.
 
-    使用方式:
+    Usage:
         verifier = E2EVerifier()
-        report = await verifier.run("分析563道题目并输出答案")
+        report = await verifier.run("Analyze 563 problems and output answers")
     """
 
     async def run(
@@ -89,19 +89,19 @@ class E2EVerifier:
         verify_roi: bool = True,
         verify_ingestor: bool = True,
     ) -> E2EReport:
-        """执行端到端验证.
+        """Run end-to-end verification.
 
-        默认测试任务 (如果没有提供):
-          "分析以下三门学科: 数学(物理公式推导)、物理(力学与电磁学)、化学(有机合成路径)。
-           每门学科生成3道典型题目并给出详细解题步骤。最终以结构化JSON输出所有题目和答案。"
+        Default test task (if not provided):
+          "Analyze the following three subjects: Math (physics formula derivation), Physics (mechanics and electromagnetism), Chemistry (organic synthesis pathways).
+           For each subject generate 3 typical problems with detailed solution steps. Output all problems and answers as structured JSON."
         """
         vid = f"e2e_{_time.strftime('%H%M%S')}_{_uuid.uuid4().hex[:6]}"
         report = E2EReport(verification_id=vid)
         start_time = _time.time()
 
         test_task = task or (
-            "分析以下三门学科: 数学(物理公式推导)、物理(力学与电磁学)、化学(有机合成路径)。"
-            "每门学科生成3道典型题目并给出详细解题步骤。最终以结构化JSON输出所有题目和答案。"
+            "Analyze the following three subjects: Math (physics formula derivation), Physics (mechanics and electromagnetism), Chemistry (organic synthesis pathways)."
+            "For each subject generate 3 typical problems with detailed solution steps. Output all problems and answers as structured JSON."
         )
         report.task = test_task[:200]
 
@@ -333,7 +333,7 @@ class E2EVerifier:
                 import asyncio
                 asyncio.ensure_future(ingestor_sync.ingest_recent(hours=1, max_messages=5))
             except Exception:
-                pass
+                logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
 
         logger.info("E2E verification %s: %d/%d passed in %.0fms",
                      vid, sum(1 for s in subsystems if s.pass_), len(subsystems), report.total_time_ms)

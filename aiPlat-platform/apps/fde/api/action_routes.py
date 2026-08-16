@@ -45,7 +45,7 @@ async def list_actions(
 ):
     """List actions available for a given entity class + state."""
     try:
-        from core.harness.ontology_engine.action_registry import get_action_registry
+        from core.api.core_facade import get_action_registry
         reg = get_action_registry()
         actions = reg.list_for_class(
             domain_id=domain or "fde-delivery",
@@ -91,7 +91,7 @@ async def execute_action(body: Dict[str, Any]):
             entity_ref = str(entity_ref[0])
 
     try:
-        from core.harness.ontology_engine.action_registry import get_action_registry
+        from core.api.core_facade import get_action_registry
         reg = get_action_registry()
         result = await reg.execute(
             action_id=action_id,
@@ -141,8 +141,8 @@ async def register_from_yaml(body: Dict[str, Any]):
         raise HTTPException(status_code=400, detail="yaml_path is required")
 
     try:
-        from core.harness.infrastructure.action_contract import ActionContractModel
-        from core.harness.ontology_engine.action_registry import get_action_registry
+        from core.api.core_facade import ActionContractModel
+        from core.api.core_facade import get_action_registry
 
         contracts = ActionContractModel.from_yaml_batch(yaml_path)
         reg = get_action_registry()
@@ -170,7 +170,7 @@ async def list_pending_approvals(
 ):
     """List pending approval requests."""
     try:
-        from core.harness.ontology_engine.action_registry import get_action_registry
+        from core.api.core_facade import get_action_registry
         reg = get_action_registry()
         items = await reg._store.list_pending_by_entity(entity_ref) if entity_ref else []
         return {"pending": items, "count": len(items)}
@@ -182,7 +182,7 @@ async def list_pending_approvals(
 async def approve_action(lock_id: str, body: Dict[str, Any] = None):
     """Approve a pending action."""
     try:
-        from core.harness.ontology_engine.action_registry import get_action_registry
+        from core.api.core_facade import get_action_registry
         reg = get_action_registry()
         result = await reg.approve(lock_id, resolver=body.get("resolver", "approver") if body else "approver")
         return result
@@ -194,7 +194,7 @@ async def approve_action(lock_id: str, body: Dict[str, Any] = None):
 async def reject_action(lock_id: str, body: Dict[str, Any] = None):
     """Reject a pending action."""
     try:
-        from core.harness.ontology_engine.action_registry import get_action_registry
+        from core.api.core_facade import get_action_registry
         reg = get_action_registry()
         result = await reg.reject(
             lock_id,

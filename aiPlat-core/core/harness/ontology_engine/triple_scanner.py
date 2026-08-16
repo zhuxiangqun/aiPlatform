@@ -175,6 +175,19 @@ async def scan_and_populate(store: TripleStore = None) -> Dict[str, Any]:
     except Exception as e:
         logging.debug(str(e), exc_info=True)
 
+    # ── 4.5. Cross-domain bridges ────────────────────────
+    try:
+        from core.harness.knowledge.cross_domain_bridge import (
+            build_wiki_to_agent_bridge,
+            build_model_usage_bridge,
+            build_prompt_to_agent_bridge,
+        )
+        triples += build_wiki_to_agent_bridge()
+        triples += build_model_usage_bridge()
+        triples += build_prompt_to_agent_bridge()
+    except Exception:
+        logging.debug("cross-domain bridge scan failed", exc_info=True)
+
     # ── 5. Batch write ────────────────────────────────
     if triples:
         store.add_batch(triples)

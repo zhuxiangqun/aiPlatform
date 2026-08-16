@@ -17,7 +17,8 @@ def _resolve_adapter_api_key(adapter_id: str) -> Optional[str]:
     """Resolve API key from adapters table (management UI configured)."""
     if not adapter_id:
         return None
-    db_path = os.getenv("AIPLAT_EXECUTION_DB_PATH", "")
+    db_path = os.getenv("AIPLAT_EXECUTION_DB_PATH",
+        "")
     if not db_path or not os.path.isfile(db_path):
         return None
     try:

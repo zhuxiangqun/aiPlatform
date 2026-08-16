@@ -52,13 +52,13 @@ async def fde_governance_validate():
 
     # 1. config_driven: OntologyBus renders valid markdown
     def _ck1():
-        from core.harness.knowledge.ontology_bus import render_solution_table
+        from core.api.core_facade import render_solution_table
         result = render_solution_table()
         return "## AI解决方案原型库" in result and "| 方案类别" in result
 
     # 2. hot_reload: mtime cache is functional
     def _ck2():
-        from core.harness.knowledge.ontology_bus import load_solution_archetypes, clear_cache
+        from core.api.core_facade import load_solution_archetypes, clear_cache
         clear_cache()
         a1 = load_solution_archetypes()
         a2 = load_solution_archetypes()  # second call = cache hit
@@ -93,7 +93,7 @@ async def fde_governance_validate():
 
     # 7. knowledge_convergence: ConvergenceEngine loads config
     def _ck7():
-        from core.harness.knowledge.convergence_engine import ConvergenceEngine
+        from core.api.core_facade import ConvergenceEngine
         ce = ConvergenceEngine()
         s = ce.get_status()
         return s.get("total_atoms", -1) >= 0

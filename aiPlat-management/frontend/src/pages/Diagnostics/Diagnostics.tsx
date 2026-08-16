@@ -72,8 +72,24 @@ const Diagnostics: React.FC = () => {
   const [expandedCat, setExpandedCat] = useState<string | null>(null);
   // 防止手动运行后 useEffect 中 latest 覆盖结果
   const manualRunRef = useRef(false);
+  // Per-project scoping
+  const [projectId, setProjectId] = useState<string>(() => localStorage.getItem('diag_project_id') || '');
+  const [projectList, setProjectList] = useState<Array<{ project_id: string; name: string }>>([]);
 
   // RAG quality summary
+
+  // Fetch project list + persist selection
+  useEffect(() => {
+    fetch('/api/platform/builder/projects')
+      .then(r => r.json())
+      .then(d => setProjectList(d.projects || []))
+      .catch(() => {});
+  }, []);
+  useEffect(() => {
+    if (projectId) localStorage.setItem('diag_project_id', projectId);
+    else localStorage.removeItem('diag_project_id');
+  }, [projectId]);
+
   const [ragQuality, setRagQuality] = useState<any>(null);
   useEffect(() => {
     fetch('/api/core/diagnostics/rag-quality?hours=24')
@@ -380,6 +396,34 @@ const Diagnostics: React.FC = () => {
         <h1 className="text-2xl font-semibold text-gray-200">诊断概览</h1>
         <p className="text-sm text-gray-500 mt-1">平台健康 · 知识健康 · 项目健康 · 运行时安全</p>
       </div>
+
+      {/* Project scoping */}
+      {projectList.length > 0 && (
+        <div className="flex items-center gap-3 bg-dark-card border border-dark-border rounded-lg px-4 py-2.5">
+          <span className="text-xs text-gray-400 whitespace-nowrap">📂 诊断项目</span>
+          <select
+            value={projectId}
+            onChange={e => setProjectId(e.target.value)}
+            className="flex-1 bg-dark-bg border border-dark-border rounded px-3 py-1.5 text-sm text-gray-200 outline-none focus:border-blue-500/50"
+          >
+            <option value="">-- 系统全局 --</option>
+            {projectList.map(p => (
+              <option key={p.project_id} value={p.project_id}>{p.name}</option>
+            ))}
+          </select>
+          {!projectId && (
+            <span className="text-[11px] text-gray-500">选择项目后，控制画像、可观测性等数据将按项目筛选</span>
+          )}
+          {projectId && (
+            <button
+              onClick={() => setProjectId('')}
+              className="text-[11px] text-gray-400 hover:text-gray-200 transition-colors whitespace-nowrap"
+            >
+              清除选择
+            </button>
+          )}
+        </div>
+      )}
 
       {/* v2.9: System Health Index Card */}
       {sysHealth && (
@@ -1004,7 +1048,7 @@ const Diagnostics: React.FC = () => {
       <ModelTierPanel />
 
       {/* ═══════════ ControlProfile Panel ═══════ */}
-      <ControlProfilePanel />
+      <ControlProfilePanel projectId={projectId || undefined} />
 
       {/* ═══════════ 诊断工具箱（折叠） ═══════ */}
       <details className="bg-dark-card border border-dark-border rounded-lg overflow-hidden">

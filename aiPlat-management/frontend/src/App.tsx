@@ -68,7 +68,7 @@ const AppMaterialsChat = lazy(() => import('./pages/Platform/KnowledgeBase/Mater
 const AppTeamAssembly = lazy(() => import('./pages/App/Builder/TeamAssemblyPage'));
 const AgentInsightPage = lazy(() => import('./pages/App/Builder/AgentInsightPage'));
 const AppsPage = lazy(() => import('./pages/App/Builder/AppsPage'));
-const AppFactory = lazy(() => import("./pages/App/Factory"));
+const AppFactory = lazy(() => import("./pages/App/AIFactory"));
 const AppPage = lazy(() => import("./pages/App/AppPage"));
 const AppChatPage = lazy(() => import('./pages/App/Builder/AppChatPage'));
 const AppProjects = lazy(() => import('./pages/App/Builder/ProjectsPage'));
@@ -116,6 +116,7 @@ const KnowledgeFactoryPage = lazy(() => import('./pages/KnowledgeFactory/Knowled
 const DocsViewer = lazy(() => import('./pages/Docs/DocsViewer'));
 const OntologyEditor = lazy(() => import('./pages/OntologyEditor'));
 const GovernanceDashboard = lazy(() => import('./pages/Governance'));
+const CapabilitiesAdmin = lazy(() => import('./pages/Admin/Capabilities'));
 const RunComparison = lazy(() => import('./pages/Diagnostics/RunComparison'));
 const ModelPlayground = lazy(() => import('./pages/Diagnostics/ModelPlayground'));
 const ModelAuditPanel = lazy(() => import('./pages/Diagnostics/ModelAuditPanel'));
@@ -154,12 +155,13 @@ const router = createBrowserRouter([
       { path: 'value-center/strategy', element: withSuspense(StrategyControl) },
       { path: 'value-center/training', element: withSuspense(TrainingMonitor) },
       { path: 'value-center/spec/:specId', element: withSuspense(SpecDetailPage) },
-      { path: 'workbench', element: withSuspense(UserWorkbench) },
+      { path: 'workbench', element: <Navigate to="/app/factory" replace /> },
       { path: 'knowledge/overview', element: withSuspense(KnowledgeOverview) },
       { path: 'knowledge-factory', element: withSuspense(KnowledgeFactoryPage) },
       { path: 'docs', element: withSuspense(DocsViewer) },
       { path: 'ontology-editor', element: withSuspense(OntologyEditor) },
       { path: 'governance', element: withSuspense(GovernanceDashboard) },
+      { path: 'governance/capabilities', element: withSuspense(CapabilitiesAdmin) },
       { path: 'infra/nodes', element: withSuspense(InfraNodes) },
       { path: 'infra/models', element: withSuspense(InfraModels) },
       { path: 'infra/finetune', element: withSuspense(InfraFineTune) },
@@ -267,7 +269,7 @@ const router = createBrowserRouter([
       { path: 'diagnostics/knowledge-health', element: withSuspense(DiagnosticsHome) },
       { path: 'diagnostics/drift-status', element: withSuspense(DiagnosticsHome) },
       { path: 'diagnostics/control-profile', element: withSuspense(ControlProfilePanel) },
-      { path: 'studio', element: withSuspense(StudioPage) },
+      { path: 'studio', element: <Navigate to="/app/factory?tab=chat" replace /> },
       { path: 'pentest', element: withSuspense(PentestPage) },
     ],
   },

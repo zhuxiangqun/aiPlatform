@@ -57,7 +57,7 @@ def _generate_manual_content(req: FdeManualRequest) -> str:
 
     sol_table = ""
     try:
-        from core.harness.knowledge.ontology_bus import load_solution_archetypes
+        from core.api.core_facade import load_solution_archetypes
         sols = load_solution_archetypes()[:6]
         sol_table = "\n".join([
             "| 方案类别 | 数据成熟度 | 成本 | 部署 | 周期 | 信创 |",

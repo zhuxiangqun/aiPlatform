@@ -165,7 +165,7 @@ def _unwrap_agent_reply(reply: str) -> str:
                     return str(d["response"])
                 if d.get("answer"):
                     return str(d["answer"])
-        except (json.JSONDecodeError, ValueError):
+        except (json.JSONDecodeError, ValueError):  # noqa: best-effort-parse
             pass
     return reply
 
@@ -221,7 +221,7 @@ async def core_chat(ctx: ChatContext) -> ChatResult:
                 logging.getLogger("core.intents").debug(
                     "Using PromptLoader template '%s' for agent '%s'", _tmpl_id, ctx.agent_name)
         except Exception:
-            pass
+            logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
 
     if not system_prompt:
         try:

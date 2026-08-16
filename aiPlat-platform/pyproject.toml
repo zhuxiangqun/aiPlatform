@@ -12,4 +12,26 @@ dependencies = [
     "fastapi>=0.100.0",
     "uvicorn>=0.23.0",
     "pydantic>=2.0.0",
+    "python-multipart>=0.0.9",
+]
+
+[tool.setuptools]
+# Flat multi-package layout — enumerate top-level packages explicitly
+# (setuptools flat-layout auto-discovery errors on multiple top-level dirs).
+packages = [
+    "api",
+    "auth",
+    "apps",
+    "billing",
+    "tenants",
+    "gateway",
+    "builder",
+    "storage",
+    "registry",
+    "services",
+    "messaging",
+    "deployment",
+    "governance",
+    "kb",
+    "utils",
 ]

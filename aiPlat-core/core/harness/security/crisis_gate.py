@@ -239,7 +239,17 @@ class CrisisGate:
             except Exception:
 
                 logging.getLogger(__name__).debug('_log failed', exc_info=True)
-        _asyncio.ensure_future(_log())
+        try:
+            _asyncio.get_running_loop()
+            _asyncio.ensure_future(_log())
+        except RuntimeError:
+            # No running event loop (e.g. sync pytest on Python 3.11) —
+            # run the audit synchronously so crisis escalation is never lost.
+            try:
+                import asyncio as _a2
+                _a2.run(_log())
+            except Exception:
+                logging.getLogger(__name__).debug('_audit_crisis sync fallback failed', exc_info=True)
 
 
 

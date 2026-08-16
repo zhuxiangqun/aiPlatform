@@ -78,15 +78,7 @@ export default function LLMReview() {
   const [costStats, setCostStats] = useState<{ total_cost: number; total_tokens: number; runs: number }>({ total_cost: 0, total_tokens: 0, runs: 0 });
   const runIdRef = useRef('');
   const intervalRef = useRef<number | null>(null);
-  const barRef = useRef<HTMLDivElement>(null);
-
-  // Direct DOM update for progress bar — avoids re-render-driven reflow
-  const updateProgressBar = useCallback((done: number, total: number) => {
-    if (barRef.current) {
-      const pct = total > 0 ? (done / total) * 100 : 0;
-      barRef.current.style.width = `${pct}%`;
-    }
-  }, []);
+  const [progressPct, setProgressPct] = useState(0);
 
   const startReview = async () => {
     dispatch({ type: 'start' });
@@ -119,7 +111,7 @@ export default function LLMReview() {
       startTransition(() => {
         if (data.status === 'running') {
           dispatch({ type: 'progress', data });
-          updateProgressBar(data.files_done || 0, data.files_total || 0);
+          setProgressPct((data.files_done || 0) / Math.max(data.files_total || 1, 1) * 100);
         } else if (data.status === 'done') {
           dispatch({ type: 'done', data });
           if (intervalRef.current) { clearInterval(intervalRef.current); intervalRef.current = null; }
@@ -238,9 +230,8 @@ export default function LLMReview() {
                 </div>
                 <div className="w-full bg-dark-bg rounded-full h-2">
                   <div
-                    ref={barRef}
                     className="bg-cyan-400 h-2 rounded-full"
-                    style={{ width: '0%', transition: 'width 0.5s ease-out' }}
+                    style={{ width: `${progressPct}%`, transition: 'width 0.5s ease-out' }}
                   />
                 </div>
               </div>

@@ -367,19 +367,12 @@ class DomainRouter:
 
             try:
                 loop = asyncio.get_running_loop()
-                # Already in async context — use thread pool
-                def _sync_run():
-                    new_loop = asyncio.new_event_loop()
-                    try:
-                        return new_loop.run_until_complete(_call())
-                    finally:
-                        new_loop.close()
+                # Already in async context — run coroutine in same loop via thread pool
                 import concurrent.futures
-                with concurrent.futures.ThreadPoolExecutor(max_workers=1) as ex:
-                    future = ex.submit(_sync_run)
-                    result = future.result(timeout=10)
+                future = asyncio.run_coroutine_threadsafe(_call(), loop)
+                result = future.result(timeout=15)
             except RuntimeError:
-                # No running loop — use asyncio.run()
+                # No running loop (sync context) — use asyncio.run
                 result = asyncio.run(_call())
 
             answer = str(result.get("content", "")).strip().lower()

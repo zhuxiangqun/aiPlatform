@@ -8,8 +8,4 @@ This module re-exports both for backward compatibility.
 """
 from core.schemas_eval_policy import EvalPolicy, EvalTrigger, EvalMetric
 
-# Backward-compat re-export of auth permissions
-try:
-    from auth.schemas_policy import *  # noqa: F403
-except ImportError:
-    pass  # noqa: optional-dependency — auth module may not be installed
+

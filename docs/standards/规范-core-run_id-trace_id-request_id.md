@@ -2,8 +2,9 @@
 title: 规范：aiPlat-core Run/Trace/Request 三 ID（企业平台默认）
 date: 2026-04-18
 scope: aiPlat-platform + aiPlat-core + aiPlat-management（全链路）
-status: draft
+status: approved
 draft_date: 2026-07-04
+approved_date: 2026-08-16
 ---
 
 ## 1. 三个 ID 的分工（必须分离）
@@ -18,9 +19,16 @@ draft_date: 2026-07-04
 - **request_id ≠ run_id**：重试/转发/回放都围绕 request_id 做幂等；
 - **run_id ≠ trace_id**：同一个 run 可能有多段 trace（例如内部重试/子流程），但对外仍是一条 run 记录。
 
+### 1.1 消歧记录（P0-C2，2026-08-16）
+
+| 规范原文 | 代码事实 | 消歧 |
+|---|---|---|
+| run_id 格式 `run_<ulid>` | pipeline run_id 实际为 `run-<uuid12>`（`core/api/core_facade.py:1868`） | 格式为**建议值**，以代码实现为准（前缀 `run-` + 唯一 ID）；`run_<ulid>` 保留为推荐目标 |
+| 未提及 job 调度 | `core/management/job_scheduler.py:179` 使用 `jobrun-<uuid12>` 独立命名空间 | 补充：**job 调度 run_id 与 pipeline run_id 命名空间分离**（`jobrun-` 前缀），不可混用 |
+
 ---
 
-## 2. 幂等：request_id → run_id 映射（推荐）
+## 2. 幂等：request_id → run_id 映射（推荐，未实现）
 
 企业场景中（尤其 app→platform→core），建议由 core 提供一条幂等映射表：
 
@@ -30,6 +38,8 @@ draft_date: 2026-07-04
   2) core 收到请求先查 `(tenant_id, request_id)`：
      - 若存在：直接返回已有 run_id（以及当前 run 状态）
      - 若不存在：生成新的 `run_<ulid>`，写入映射表，再开始执行
+
+> **状态标注（P0-C2）**：`request_dedup` 表当前**未实现**。本节为推荐设计（幂等目标），实现前不得将"已实现"写入文档或 UI 声称。
 
 这样可以保证：
 - 上游超时重试不会创建重复 run

@@ -4,6 +4,7 @@ display_name: 信息检索
 description: 从知识库与互联网检索信息并汇总来源与结论。
 category: retrieval
 version: 1.0.0
+execution_type: prompt
 status: enabled
 execution_mode: inline
 executable: true

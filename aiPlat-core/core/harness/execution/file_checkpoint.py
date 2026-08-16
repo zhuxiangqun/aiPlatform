@@ -29,7 +29,7 @@ from typing import Any, Dict, List, Optional
 logger = logging.getLogger("aiplat.file_checkpoint")
 
 CHECKPOINT_ROOT = os.path.expanduser("~/.aiplat/file_checkpoints")
-MAX_FILE_BYTES = 1_048_576          # 1 MB — skip larger files (Hermes: 大文件自动跳过)
+MAX_FILE_BYTES = 1_048_576          # 1 MB — skip larger files (Hermes: large files auto-skipped)
 MAX_CHECKPOINTS_PER_PATH = 50       # bounded retention per file path
 
 

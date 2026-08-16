@@ -87,7 +87,7 @@ class AgentNetwork:
             import os
             self._network_file = os.path.expanduser("~/.aiplat/agent_network.json")
         except Exception:
-            pass
+            logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
 
     async def analyze(
         self,
@@ -210,7 +210,7 @@ class AgentNetwork:
             with open(self._network_file, "w") as f:
                 _json.dump([s.to_dict() for s in snapshots], f, ensure_ascii=False, indent=2)
         except Exception:
-            pass
+            logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
 
     def load_snapshots(self) -> List[Dict[str, Any]]:
         """加载历史网络快照."""

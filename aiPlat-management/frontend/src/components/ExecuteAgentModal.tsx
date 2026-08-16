@@ -669,7 +669,7 @@ const ExecuteAgentModal: React.FC<ExecuteAgentModalProps> = ({ open, agent, onCl
             runId={result.run_id}
             live={true}
             title=""
-            height={window.innerHeight - 40}
+            height={Math.max(200, window.innerHeight - 40)}
             onNodeClick={(node: any) => setSelectedFlowNode(node)}
           />
           {selectedFlowNode && (

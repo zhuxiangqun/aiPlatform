@@ -144,11 +144,11 @@ class SkillCurator:
 
 
 
-        from core.apps.skills.registry import SkillRegistry
+        from core.api.core_facade import get_skill_registry
 
 
 
-        sr = SkillRegistry()
+        sr = get_skill_registry()
 
         now = int(_time_curator.time())
 

@@ -106,6 +106,8 @@ check_git_diff_sync() {
 
     # Check if there are unstaged .py changes
     local py_changes=$(git -C "$WORKSPACE" diff --name-only 2>/dev/null | grep '\.py$' | grep -v __pycache__ | head -5 || true)
+    # Also check .tsx/.ts changes (frontend)
+    local tsx_changes=$(git -C "$WORKSPACE" diff --name-only 2>/dev/null | grep -E '\.(tsx|ts)$' | grep -v '\.d\.ts$' | grep -v node_modules | head -5 || true)
     local caps_changed=$(git -C "$WORKSPACE" diff --name-only 2>/dev/null | grep -c "CAPABILITIES.md\|ROADMAP.md" || true)
     caps_changed=${caps_changed:-0}
 
@@ -113,6 +115,13 @@ check_git_diff_sync() {
         echo -e "  ${YELLOW}⚠${NC} 检测到 .py 变更但 CAPABILITIES.md/ROADMAP.md 未同步更新"
         echo "  变更文件:"
         for f in $py_changes; do
+            echo "    $f"
+        done
+        VIOLATIONS=$((VIOLATIONS + 1))
+    elif [ -n "$tsx_changes" ] && [ "$caps_changed" -eq 0 ]; then
+        echo -e "  ${YELLOW}⚠${NC} 检测到 .tsx/.ts 变更但 CAPABILITIES.md/ROADMAP.md 未同步更新"
+        echo "  变更文件:"
+        for f in $tsx_changes; do
             echo "    $f"
         done
         VIOLATIONS=$((VIOLATIONS + 1))

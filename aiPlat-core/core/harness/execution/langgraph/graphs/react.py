@@ -1,13 +1,14 @@
 """
-ReAct Graph（LangGraph 目录下的统一实现）
+ReAct Graph (unified implementation under the LangGraph directory)
 
-说明：
-- 过去此模块尝试直接使用第三方 `langgraph`（StateGraph），但 state 类型/实例化与本仓 TypedDict
-  定义不一致，且无法与 aiPlat 的 callbacks/checkpoints/ExecutionStore 形成闭环。
-- 自 Round12 起：ReActGraph.run 默认使用本仓内部的 CompiledGraph 引擎（core.py），从而支持：
-  1) callbacks（落库到 ExecutionStore）
-  2) checkpoints（支持 restore/resume）
-  3) 与 Harness 主执行路径统一口径
+Notes:
+- Previously this module tried to use the third-party `langgraph` (StateGraph) directly, but its state
+  typing/instantiation was inconsistent with this repo's TypedDict definitions, and it could not form a
+  closed loop with aiPlat's callbacks/checkpoints/ExecutionStore.
+- Since Round12: ReActGraph.run defaults to this repo's internal CompiledGraph engine (core.py), enabling:
+  1) callbacks (persisted to ExecutionStore)
+  2) checkpoints (supporting restore/resume)
+  3) unified behavior with the Harness main execution path
 """
 
 from typing import Any, Dict, List, Optional

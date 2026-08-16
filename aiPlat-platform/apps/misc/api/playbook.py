@@ -10,9 +10,7 @@ from apps.common_schemas import StatusResponse, ListResponse, ItemResponse
 
 from typing import Any, Dict, Optional
 from fastapi import APIRouter, HTTPException, UploadFile, File
-from core.harness.learning.playbook import (
-    PlaybookManifest, pack_playbook, unpack_playbook,
-)
+from core.api.core_facade import PlaybookManifest, pack_playbook, unpack_playbook
 
 router = APIRouter(prefix="/playbook", tags=["playbook"])
 

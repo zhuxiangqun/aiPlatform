@@ -26,7 +26,7 @@ async def crisis_check(body: Dict[str, Any]):
         return {"error": "text or message is required"}
 
     try:
-        from core.harness.security.crisis_detector import get_crisis_detector
+        from core.api.core_facade import get_crisis_detector
         detector = get_crisis_detector()
         result = detector.detect(text, session_id=session_id)
         return result.to_dict()
@@ -43,7 +43,7 @@ async def session_check(body: Dict[str, Any]):
         return {"error": "messages is required"}
 
     try:
-        from core.harness.security.crisis_detector import get_crisis_detector
+        from core.api.core_facade import get_crisis_detector
         detector = get_crisis_detector()
         all_signals = []
         max_severity = "none"

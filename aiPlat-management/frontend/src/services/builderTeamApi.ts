@@ -153,7 +153,7 @@ export const projectApi = {
   list: async () => {
     return apiClient.get<{ projects: ProjectItem[]; total: number }>('/platform/builder/projects');
   },
-  create: async (data: { name: string; description: string; team_id?: string }) => {
+  create: async (data: { name: string; description: string; team_id?: string; app_name?: string }) => {
     return apiClient.post<ProjectItem>('/platform/builder/projects', data);
   },
   get: async (projectId: string) => {
@@ -223,6 +223,14 @@ export const projectApi = {
     );
   },
 
+  /** Generate root-cause hypotheses + fix plan from the decision trace graph. */
+  generateHypotheses: async (projectId: string, failedStageIds: string[]) => {
+    return apiClient.post<{ status: string; fix_plan: string[]; hypotheses: Array<Record<string, unknown>> }>(
+      `/platform/builder/projects/${projectId}/generate-hypotheses`,
+      { failed_stage_ids: failedStageIds, test_report: '' }
+    );
+  },
+
   /** Run tests (E2E smoke + repo tests) on a completed project. */
   test: async (projectId: string) => {
     return apiClient.post<{ project_id: string; all_passed: boolean; e2e_smoke: Record<string, unknown>; repo_tests: Record<string, unknown> }>(
@@ -248,6 +256,21 @@ export const projectApi = {
   rebuild: async (projectId: string) => {
     return apiClient.post<{ status: string; detail: string }>(
       `/platform/builder/projects/${projectId}/rebuild`
+    );
+  },
+
+  /** Rollback to PRD editing phase — clears pipeline state, allows re-editing. */
+  rollbackPrd: async (projectId: string) => {
+    return apiClient.post<{ project_id: string; phase: string }>(
+      `/platform/builder/projects/${projectId}/rollback-prd`
+    );
+  },
+
+  /** Manually edit a stage's output artifact. */
+  updateStageArtifact: async (projectId: string, stageId: string, content: string) => {
+    return apiClient.put<{ project_id: string; stage_id: string; artifact_key: string; status: string }>(
+      `/platform/builder/projects/${projectId}/stages/${stageId}/artifact`,
+      { content }
     );
   },
 

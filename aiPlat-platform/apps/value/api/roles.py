@@ -156,8 +156,8 @@ def _get_employee_metrics() -> Dict[str, Any]:
 def _get_guard_metrics() -> Dict[str, Any]:
     """Defense layer: attacks blocked, circuits, alerts."""
     try:
-        from core.harness.security.immune_memory import ImmuneMemory
-        from core.harness.learning.tool_drift_detector import get_drift_detector
+        from core.api.core_facade import ImmuneMemory
+        from core.api.core_facade import get_drift_detector
         im = ImmuneMemory.get_stats()
         dd = get_drift_detector()
         rt = dd.get_realtime_stats()
@@ -175,7 +175,7 @@ def _get_guard_metrics() -> Dict[str, Any]:
 def _get_advisor_metrics() -> Dict[str, Any]:
     """Quality improvers: drafts generated, pass rates, skills."""
     try:
-        from core.harness.learning import get_auto_learner
+        from core.api.core_facade import get_auto_learner
         learner = get_auto_learner()
         return {
             "drafts_in_storage": len(learner._storage),

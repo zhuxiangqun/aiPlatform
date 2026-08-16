@@ -1055,6 +1055,7 @@ class SkillManager:
             if isinstance(self._skills[name].metadata, dict):
 
                 self._skills[name].metadata.setdefault("filesystem", {})["skill_md"] = skill_md
+                self._skills[name].metadata["filesystem"]["skill_dir"] = skill_dir
 
             self._stats[name] = SkillStats()
 
@@ -1949,6 +1950,12 @@ class SkillManager:
             if not isinstance(caps_in, list):
 
                 caps_in = []
+
+            # §5.19: every registered skill must declare effects. Management-created
+            # skills default to read-only when the caller did not declare any (safe
+            # default — the SKILL.md/effects can be tightened later).
+            if not effects_in:
+                effects_in = [{"type": "read", "resources": [], "idempotent": True, "rollback_available": True}]
 
             norm_caps: List[str] = []
 

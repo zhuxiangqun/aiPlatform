@@ -95,3 +95,17 @@ aiPlat 逻辑上分为：
 
 推荐将 ADR 放在：
 - `docs/architecture/` 或 `docs/design/` 对应子目录
+
+---
+
+## 附录 A：2026-08 P0-P1 架构变更记录
+
+本附录记录 P0-P1 大规模改造期间对 core 边界的变更（满足 PR binding check 的契约更新要求）：
+
+- **宪法合规（P0-A1~A10）**：harness→apps 反向依赖收白名单（`integration.py`）；api→engine 直导收敛 CoreFacade；platform LLM 推理收敛门面；`doc_compressor.llm_summarize` 作为 LLM 摘要唯一通道（§57 上下文组装合规）。
+- **facade 收敛（P0-B4）**：删除 30 个 0 调用者 CoreFacade getter（类直用路径保留，§10 入口唯一性）。
+- **学习闭环（P1-A1/A2）**：`learn_nudge_hook`（POST_OBSERVE 实时学习触发）+ `learning/skill_curator`（委托 harness/knowledge 实现，不违反 harness→apps 边界）。
+- **子代理 provider（P1-A3）**：`SubagentProvider` 抽象 + in_process/acp 双 provider（对齐 DSH 契约）。
+- **syscall 边界**：CrossValidationGate 经 CoreFacade + diagnostics 端点接线（条件激活 stub 获得生产调用者）。
+
+**契约不变项**：单向依赖链（app→platform→core→infra）、syscall 三通道唯一性（sys_llm_generate/sys_tool_call/sys_skill_call）、Prompt Cache 稳定性约束均未改变。

@@ -37,8 +37,9 @@ jobs:
       - name: Install test dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install pytest pyyaml
-          pip install -e aiPlat-core/ 2>/dev/null || true
+          pip install pytest pyyaml anyio
+          pip install -e aiPlat-infra/
+          pip install -e aiPlat-core/
 
       - name: Engine layer compliance
         run: bash scripts/pre-commit-engine-guard.sh

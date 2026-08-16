@@ -302,7 +302,7 @@ class SkillRegistry:
                             cfg.metadata["permissions_config"] = perm_config
                         if domain_id:
                             cfg.metadata["domain_id"] = domain_id
-                        cfg.metadata["filesystem"] = {"skill_md": skill_md}
+                        cfg.metadata["filesystem"] = {"skill_md": skill_md, "skill_dir": skill_dir}
                     self.register(skill)
                 else:
                     config = SkillConfig(
@@ -315,8 +315,9 @@ class SkillRegistry:
                     metadata={"category": category, "body": body, "version": version,
                                "skill_path": str(skill_md),  # Lazy: path for on-demand body loading
                                "uses_file_output": uses_file_output,
-                              "execution_mode": execution_mode,
-                              "protected": protected,
+                               "execution_mode": execution_mode,
+                               "execution_type": execution_type,
+                               "protected": protected,
                               "executable": executable,
                               "permissions": permissions,
                               "input_schema": input_schema,
@@ -325,7 +326,7 @@ class SkillRegistry:
                               "skip_conditions": skip_conditions,
                               "triggers": triggers,
                               "layer_dirs": layer_dirs,
-                              "filesystem": {"skill_md": skill_md}}
+                              "filesystem": {"skill_md": skill_md, "skill_dir": skill_dir}}
                     )
                     skill = _GenericSkill(config)
                     self.register(skill)
@@ -1005,7 +1006,7 @@ class SkillRegistry:
                     if isinstance(md, dict):
                         md["body"] = body
                 except Exception:
-                    pass
+                    logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
             if body:
                 self._body_cache[name] = body
             return True

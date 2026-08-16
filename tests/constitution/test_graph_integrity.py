@@ -58,7 +58,7 @@ def test_key_modules_have_symbols():
 
     key_files = [
         "aiPlat-core/core/harness/execution/pipeline_engine.py",
-        "aiPlat-core/core/harness/execution/loop.py",
+        "aiPlat-core/core/harness/execution/loop/_facade.py",
         "aiPlat-core/core/harness/knowledge/code_graph.py",
         "aiPlat-core/core/apps/tools/sysgraph_tools.py",
         "aiPlat-core/core/api/routers/diagnostics.py",

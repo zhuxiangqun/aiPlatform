@@ -127,7 +127,7 @@ async def fde_dashboard():
 # ── Phase 39-41: L6 capability stats helpers ──
 def _get_goal_decomposition_stats() -> dict:
     try:
-        from core.harness.optimization.abstract_goal_decomposer import get_abstract_goal_decomposer
+        from core.api.core_facade import get_abstract_goal_decomposer
         d = get_abstract_goal_decomposer()
         return {"enabled": d.enabled, "decompose_count": d._decompose_count}
     except Exception:
@@ -136,7 +136,7 @@ def _get_goal_decomposition_stats() -> dict:
 
 def _get_deploy_engine_stats() -> dict:
     try:
-        from core.harness.deployment.deploy_engine import get_deploy_engine
+        from core.api.core_facade import get_deploy_engine
         e = get_deploy_engine()
         return e.stats()
     except Exception:
@@ -145,7 +145,7 @@ def _get_deploy_engine_stats() -> dict:
 
 def _get_discovery_stats() -> dict:
     try:
-        from core.harness.infrastructure.discovery_listener import get_discovery_listener
+        from core.api.core_facade import get_discovery_listener
         d = get_discovery_listener()
         return d.stats()
     except Exception:

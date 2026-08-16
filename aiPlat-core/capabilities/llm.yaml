@@ -60,6 +60,24 @@ known_exceptions:
   - path: aiPlat-core/core/apps/agents/operator_agent.py
     reason: "单次决策 Agent，不维护会话上下文，不需要 MemoryManager.build_context()"
     context_requirement_waived: true
+  - path: aiPlat-core/core/api/routers/entropy.py
+    reason: "诊断工具 — subprocess.run([grep]) 中的字符串匹配，非真实 import"
+  - path: aiPlat-core/core/harness/execution/tool_selector.py
+    reason: "合法的降级 fallback — adapter 优先，失败后才直接加载 SentenceTransformer"
+  - path: aiPlat-core/core/harness/infrastructure/infra_reranker_adapter.py
+    reason: "Reranker 权威实现 — 使用 sentence_transformers.CrossEncoder，非 LLM bypass"
+  - path: aiPlat-core/core/harness/infrastructure/infra_embedding_adapter.py
+    reason: "Embedding 权威实现 — 这是适配器本身，封装 sentence_transformers"
+  - path: aiPlat-infra/infra/llm/providers/openai_compatible.py
+    reason: "Infra LLM provider — 封装 OpenAI SDK，这是 provider 的职责"
+  - path: aiPlat-infra/infra/llm/providers/anthropic.py
+    reason: "Infra LLM provider — 封装 Anthropic SDK，这是 provider 的职责"
+  - path: aiPlat-infra/infra/llm/providers/local.py
+    reason: "Infra LLM provider — 封装本地模型加载，这是 provider 的职责"
+  - path: aiPlat-core/core/harness/memory/embedding.py
+    reason: "合法的降级 fallback — 优先走 InfraEmbeddingAdapter，失败后才直接加载"
+  - path: aiPlat-core/core/harness/syscalls/retrieval.py
+    reason: "合法的降级 fallback — 优先走 InfraRerankerAdapter，失败后才加载 CrossEncoder"
 
 # ── 历史违规 ──
 legacy_fixes: []

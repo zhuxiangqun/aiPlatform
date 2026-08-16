@@ -13,14 +13,14 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from core.api.core_facade import get_kernel_runtime
 
 # Shared graph functions — extracted to harness layer (CLAUDE.md §5.x compliance)
-from core.harness.knowledge.code_graph import (
-    _PY_IMPORT_RE as _PY_IMPORT_RE_ORIG, _JS_IMPORT_RE,
+from core.api.core_facade import (
+    PY_IMPORT_RE as PY_IMPORT_RE_ORIG, JS_IMPORT_RE,
     repo_root, default_roots,
-    _strip_py_type_checking, _is_code_file, _should_skip, _read_text,
-    _resolve_js_relative, _resolve_py_module, _detect_issues,
-    build_graph as _build_graph,
+    strip_py_type_checking, is_code_file, should_skip, read_text,
+    resolve_js_relative, resolve_py_module, detect_issues,
+    build_graph as build_graph_orig,
     convert_file_graph_to_symbols,
-    count_cycles as _count_cycles,
+    count_cycles as count_cycles_orig,
     health_score as _health_score,
     blast,
     ScanResult,
@@ -75,13 +75,13 @@ def _effective_health(
         if ok:
             excluded.add(p)
     if not excluded:
-        cyc = _count_cycles(nodes)
+        cyc = count_cycles_orig(nodes)
         return _health_score(nodes=nodes, edges=edges, issues=issues, cycles_back_edges=cyc)
 
     filt_nodes = {k: v for k, v in nodes.items() if k not in excluded}
     filt_edges = [e for e in edges if (e.get("from") not in excluded) and (e.get("to") not in excluded)]
     filt_issues = [it for it in issues if str(it.get("file") or "") not in excluded]
-    cyc = _count_cycles(filt_nodes) if filt_nodes else 0
+    cyc = count_cycles_orig(filt_nodes) if filt_nodes else 0
     base = _health_score(nodes=filt_nodes or {"_": {"out": [], "in": 0}}, edges=filt_edges, issues=filt_issues, cycles_back_edges=cyc)
     base["excluded_aggregators"] = len(excluded)
     return base
@@ -513,7 +513,7 @@ def _health_by_root(*, roots: List[str], nodes: Dict[str, Dict[str, Any]], edges
             continue
         sub_edges = [e for e in edges if str(e.get("from") or "").startswith(prefix) and str(e.get("to") or "").startswith(prefix)]
         sub_issues = [it for it in issues if str(it.get("file") or "").startswith(prefix)]
-        cyc = _count_cycles(sub_nodes)
+        cyc = count_cycles_orig(sub_nodes)
         out[r] = _health_score(nodes=sub_nodes, edges=sub_edges, issues=sub_issues, cycles_back_edges=cyc)
     return out
 
@@ -523,8 +523,8 @@ async def code_intel_scan(rt, roots: List[str]) -> ScanResult:
 
     _repo_root = repo_root()
     abs_roots = [(_repo_root / r).resolve() for r in roots]
-    nodes, edges, issues = _build_graph(_repo_root, abs_roots)
-    cycles = _count_cycles(nodes)
+    nodes, edges, issues = build_graph_orig(_repo_root, abs_roots)
+    cycles = count_cycles_orig(nodes)
     health = _health_score(nodes=nodes, edges=edges, issues=issues, cycles_back_edges=cycles)
     stats = {
         "_repo_root": str(_repo_root),

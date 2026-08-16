@@ -117,7 +117,7 @@ class OKFExporter:
                     data = _json.load(f)
                 last_ts = data.get("domains", {}).get(domain_id, {}).get("last_export_ts", 0.0)
             except Exception:
-                pass
+                logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
 
         # 从 GraphIndex 加载实体
         entities = await self._load_entities(domain_id)

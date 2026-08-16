@@ -142,8 +142,8 @@ async def pack_playbook(manifest: PlaybookManifest, output_path: str = "") -> st
             skills_dir.mkdir(parents=True, exist_ok=True)
             for skill_id in manifest.skills:
                 try:
-                    from core.apps.skills.registry import SkillRegistry
-                    registry = SkillRegistry()
+                    from core.api.core_facade import get_skill_registry
+                    registry = get_skill_registry()
                     skill = registry.get(skill_id)
                     if skill:
                         (skills_dir / f"{skill_id}.json").write_text(
@@ -262,8 +262,8 @@ async def unpack_playbook(archive_path: str, *,
         # ── Import Skills ──
         skills_dir = os.path.join(import_dir, "skills")
         if os.path.isdir(skills_dir):
-            from core.apps.skills.registry import SkillRegistry
-            registry = SkillRegistry()
+            from core.api.core_facade import get_skill_registry
+            registry = get_skill_registry()
             for fname in os.listdir(skills_dir):
                 if not fname.endswith(".json"):
                     continue

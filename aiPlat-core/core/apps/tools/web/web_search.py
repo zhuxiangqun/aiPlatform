@@ -163,5 +163,5 @@ def _parse_html_results(html: str) -> List[Dict[str, str]]:
         parser.feed(html)
         results = parser.results
     except Exception:
-        pass
+        logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
     return results[:20]

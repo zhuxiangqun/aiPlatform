@@ -23,7 +23,7 @@ services:
       - AIPLAT_SELF_CORRECT_ENABLED=false
       - AIPLAT_DEBATE_MODE=false
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8002/api/core/health"]
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8002/api/core/health', timeout=3)"]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -44,7 +44,7 @@ services:
       - AIPLAT_MANAGEMENT_MODE=docker
       - AIPLAT_TEST_MODE=true
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=3)"]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -62,7 +62,7 @@ services:
       - AIPLAT_HOME=/app/.aiplat
       - AIPLAT_TEST_MODE=true
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8003/api/platform/health"]
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8003/health', timeout=3)"]
       interval: 10s
       timeout: 5s
       retries: 10

@@ -101,14 +101,19 @@ export default function FloatingDigitalHuman({ currentRoute }: { currentRoute?: 
       analyser.connect(audioCtx.destination);
 
       const data = new Uint8Array(analyser.frequencyBinCount);
+      let frameSkip = 0;
       const loop = () => {
         if (!analyser) return;
+        frameSkip++;
         analyser.getByteTimeDomainData(data);
-        let sum = 0;
-        for (let i = 0; i < data.length; i++) {
-          sum += Math.abs(data[i] - 128);
+        // Update React state at ~20fps (skip 2 of every 3 rAF frames)
+        if (frameSkip % 3 === 0) {
+          let sum = 0;
+          for (let i = 0; i < data.length; i++) {
+            sum += Math.abs(data[i] - 128);
+          }
+          setAudioAmplitude(sum / data.length / 128);
         }
-        setAudioAmplitude(sum / data.length / 128);
         raf = requestAnimationFrame(loop);
       };
       loop();

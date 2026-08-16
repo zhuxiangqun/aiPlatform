@@ -62,7 +62,7 @@ from ...kernel.runtime import get_kernel_runtime
 
 def _infer_task_type(task: str, agent_id: str) -> str:
 
-    """推断任务来源类型（Paper Data Recipes: coding/terminal/qa/system）"""
+    """Infer the task source type (Paper Data Recipes: coding/terminal/qa/system)"""
 
     t = (task or "").lower(); a = (agent_id or "").lower()
 
@@ -154,7 +154,7 @@ class BaseLoop(ILoop):
 
         # Target continuity: detect if user input is continuation of prior task
 
-        # or a new task (Agent运行时确定性约束 第4层 — Hermes inspired)
+        # or a new task (Agent runtime deterministic constraint — layer 4 — Hermes inspired)
 
         try:
 
@@ -552,7 +552,9 @@ class BaseLoop(ILoop):
 
 
 
-        trigger_keywords = ["帮我", "优化", "做一个", "能不能", "怎么样", "如何", "帮我写", "帮我设计", "帮我实现"]
+        from core.harness.utils.zh_language import TRIGGER_KEYWORDS
+
+        trigger_keywords = TRIGGER_KEYWORDS
 
         is_short = len(task_str) < 30
 
@@ -622,7 +624,8 @@ class BaseLoop(ILoop):
 
                 else:
 
-                    answer = "不需要"
+                    from core.harness.utils.zh_language import PROACTIVE_GOAL_NEGATIVE_ANSWER
+                    answer = PROACTIVE_GOAL_NEGATIVE_ANSWER
 
                 r = continue_grilling(session_id, answer)
 
@@ -654,7 +657,7 @@ class BaseLoop(ILoop):
 
                 if answers_flat:
 
-                    clarifications.append("\n## 关键决策")
+                    clarifications.append("\n## Key decisions")
 
                     for k, v in answers_flat.items():
 

@@ -84,7 +84,7 @@ _LAZY_MODULES = {
 
     "wiki_context": ["sys_wiki_context"],
 
-    "ontology_context": ["sys_ontology_context"],
+    "ontology": ["sys_ontology_context"],
 
     "skill_corpus": ["sys_skill_corpus_search", "sys_skill_corpus_inspect", "sys_skill_corpus_select"],
 

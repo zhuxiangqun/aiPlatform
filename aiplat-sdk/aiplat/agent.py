@@ -55,6 +55,8 @@ class Agent:
         self._session_id: str = session_id or f"sdk-{uuid.uuid4().hex[:12]}"
         self._run_id: str = run_id or ""
         self._messages: List[Dict[str, str]] = []
+        self._skills: List[str] = []   # 绑定技能（bind_skill 追加）
+        self._tools: List[str] = []    # 绑定工具（bind_tool 追加）
         self._agent_id: Optional[str] = None
         self._created = False
         self._permission_grant_failed = False

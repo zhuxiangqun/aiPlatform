@@ -24,7 +24,7 @@ async def acceptance_checklist(spec_id: str = Query("")):
 
     # 1) KPI check — from ValueDashboard KPI data
     try:
-        from core.harness.learning.kpi_tracker import get_kpi_tracker
+        from core.api.core_facade import get_kpi_tracker
         tracker = get_kpi_tracker()
         kpis = tracker.get_all(spec_id=spec_id) if spec_id else tracker.get_all()
         kpi_met = sum(1 for k in (kpis or []) if k.get("met", False))

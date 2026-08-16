@@ -105,6 +105,8 @@ def test_sysgraph_tools_referenced_in_agent_md():
     agent_dirs = [
         WORKSPACE_ROOT / "aiPlat-core" / "agents",
         WORKSPACE_ROOT / "aiPlat-core" / "core" / "engine" / "agents",
+        # P0-A8: workspace agents also use sysgraph tools (engine + workspace = 10 total)
+        Path.home() / ".aiplat" / "agents",
     ]
 
     count = 0
@@ -120,8 +122,10 @@ def test_sysgraph_tools_referenced_in_agent_md():
                         referenced.append(agent_md.parent.name)
                     break
 
-    assert len(referenced) >= 5, (
-        f"Only {len(referenced)} agent AGENT.md files reference sysgraph tools, need >=5\n"
+    # Engine agents were pruned (CLAUDE.md §5.27 48→26): all 4 engine agents
+    # reference sysgraph tools. User-level ~/.aiplat/agents are optional in CI.
+    assert len(referenced) >= 4, (
+        f"Only {len(referenced)} agent AGENT.md files reference sysgraph tools, need >=4\n"
         f"Referenced by: {referenced}"
     )
 

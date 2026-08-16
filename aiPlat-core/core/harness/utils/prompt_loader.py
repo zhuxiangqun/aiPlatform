@@ -872,9 +872,9 @@ def _scan_domain_prompts(_force: bool = False):
                     if llm_prompt:
                         _register(f"domain-prompt-{domain_id}", llm_prompt, category="domain_prompts")
             except Exception:
-                pass
+                logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
     except Exception:
-        pass
+        logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
 
     # Register fallback defaults for domains without YAML llm_prompt
     for domain_id, prompt in _DOMAIN_PROMPT_DEFAULTS.items():
@@ -1135,6 +1135,12 @@ _register("atomic-splitter-llm-split", """将以下任务分解为可直接执�
 2. 有明确的输入和输出
 3. 不需要进一步的推理或决策
 
+任务内容：
+${task}
+
+约束：
+${context}
+
 返回JSON格式：
 {
   "steps": [
@@ -1145,6 +1151,14 @@ _register("atomic-splitter-llm-split", """将以下任务分解为可直接执�
     variables=["task", "context"])
 
 _register("atomic-splitter-verify-coverage", """检查以下子任务列表是否完全覆盖了原始任务的需求。如果有遗漏，返回缺失的部分：
+
+原始任务：
+${task}
+
+现有子任务：
+${steps}
+
+返回JSON格式：
 {
   "covered": true/false,
   "missing": ["缺失的部分1", "缺失的部分2"],
@@ -1154,6 +1168,17 @@ _register("atomic-splitter-verify-coverage", """检查以下子任务列表是�
     variables=["task", "steps"])
 
 _register("atomic-splitter-fill-gaps", """原始任务有部分未被已有的子任务覆盖。请为以下缺失部分生成补充的子任务：
+
+原始任务：
+${task}
+
+缺失部分：
+${gaps}
+
+已有子任务ID：
+${existing_steps}
+
+返回JSON格式：
 {
   "gap_steps": [
     {"id": "step_n", "description": "描述", "input": "输入", "output": "输出"}
@@ -1163,6 +1188,15 @@ _register("atomic-splitter-fill-gaps", """原始任务有部分未被已有的�
     variables=["task", "gaps", "existing_steps"])
 
 _register("dynamic-router-supervisor", """你是多Agent系统的路由调度器。从以下可用Agent中选择下一个执行者。
+
+可用Agent：
+${agents}
+
+当前任务：
+${task}
+
+执行历史：
+${history}
 
 选择标准：
 1. 根据任务描述选择最匹配的Agent
@@ -1187,6 +1221,12 @@ ${history}
 
 _register("evox-atom-executor", """执行以下原子任务。根据任务描述选择合适的执行方式。
 
+任务内容：
+${task}
+
+任务描述：
+${description}
+
 返回JSON：
 {
   "executed": true/false,
@@ -1198,6 +1238,9 @@ _register("evox-atom-executor", """执行以下原子任务。根据任务描述
     variables=["task", "description"])
 
 _register("technical-planner", """You are a technical planner. Based on the upstream context, produce a structured task execution plan.
+
+Upstream context:
+${context}
 
 Output JSON format:
 {
@@ -1213,6 +1256,12 @@ Output JSON format:
     variables=["context"])
 
 _register("harness-fix-proposer", """You are a Harness engineer optimizing an AI pipeline execution system. Analyze the failure patterns and propose targeted fixes.
+
+Failure history:
+${failure_history}
+
+Pipeline context:
+${pipeline_context}
 
 Available tools: prompt_adjust, add_retry, increase_timeout, add_validation, skip_stage, rollback
 
@@ -1231,6 +1280,12 @@ Output JSON:
     variables=["failure_history", "pipeline_context"])
 
 _register("evaluator-completeness", """You are an independent evaluator. Determine if the task is COMPLETE.
+
+Task:
+${task}
+
+Produced output:
+${output}
 
 A task is complete when:
 1. All required outputs have been produced
@@ -1256,6 +1311,12 @@ Respond with DONE: your_answer if the context is sufficient to answer the task, 
 
 _register("task-continuity-classifier", """You are a task continuity classifier. Given two texts, decide if they are about the SAME task.
 
+Text A:
+${text_a}
+
+Text B:
+${text_b}
+
 Output JSON:
 {"same_task": true/false, "confidence": 0.0-1.0, "reason": "brief explanation"}""",
     category="engine",
@@ -1266,7 +1327,8 @@ Context: ${context}""",
     category="engine",
     variables=["action", "context"])
 
-_register("quick-engine-fallback", """${message}""",
+_register("quick-engine-fallback", """${message}
+""",
     category="engine",
     variables=["message"])
 
@@ -1276,3 +1338,56 @@ PRESERVED_IDENTIFIERS:
 ${preserved_ids}""",
     category="engine",
     variables=["summary_text", "preserved_ids"])
+
+_register("voice-brainstorm", """以下是用户的一段语音漫谈转录 (约 ${duration} 秒)。
+文本可能包含"嗯/啊"、自我纠正、跳跃话题、重复表达——这些是正常现象。
+
+请完成三项任务:
+1. 提取核心意图 (1-2句话概括用户真正想表达什么)
+2. 输出3个可执行步骤 (具体、可操作、用户下一步就能做的)
+3. 列出待澄清的模糊点 (哪些地方用户可能自己还没想清楚)
+
+语音转录:
+${transcript}
+
+返回 JSON:
+{
+  "core_intent": "核心意图概括",
+  "actionable_steps": ["步骤1", "步骤2", "步骤3"],
+  "fuzzy_points": ["模糊点1", "模糊点2"],
+  "tone": "思考型/焦虑型/探索型/决策型",
+  "response_style": {
+    "complexity": "simplify/standard/detailed",
+    "tone_adjust": "encourage/reassure/challenge/neutral",
+    "rationale": "简短说明为什么选择这种风格"
+  }
+}
+
+tone 与 response_style 的映射规则:
+  思考型 → response_style: complexity=standard, tone=neutral (用户只是在思考)
+  焦虑型 → response_style: complexity=simplify, tone=reassure (降低认知负担，给予安全感)
+  探索型 → response_style: complexity=detailed, tone=challenge (提供更多细节，适当挑战)
+  决策型 → response_style: complexity=standard, tone=encourage (提供清晰选项，鼓励行动)
+
+只返回 JSON, 不要其他内容.""",
+    category="fde",
+    variables=["transcript", "duration"])
+
+_register("prd-extract-from-chat", """从以下产品需求对话中提取结构化PRD（JSON格式）：
+
+${conversation}
+
+输出JSON：{"title":"${name}","description":"概述","functional_requirements":[{"id":"FR-001","name":"功能名","description":"描述","priority":"high","acceptance_criteria":["验收标准"]}],"user_stories":[{"id":"US-001","story":"作为...我...以便...","priority":"high","related_fr":["FR-001"]}],"constraints":{"platform":"Web","languages":["Python"]}}
+只输出JSON。""",
+     category="builder",
+     variables=["conversation", "name"])
+
+_register("tool-rationale-template", """Before calling any tool, output a one-line rationale explaining WHY you chose this specific tool and what you expect it to return.
+
+Format:
+  RATIONALE: <1-line reason>
+  ACT: call tool
+
+This ensures every tool call is deliberate and traceable — no blind tool invocation.""",
+    category="engine",
+    variables=[])

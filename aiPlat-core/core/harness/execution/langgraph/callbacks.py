@@ -139,7 +139,7 @@ class CallbackManager:
         return self
 
     def register_global(self, handler: CallbackHandler):
-        """Register handler for all events (用于进程级持久化/审计接线)."""
+        """Register handler for all events (used for process-level persistence/audit wiring)."""
         self._registry.register_global(handler)
         return self
     

@@ -1602,8 +1602,10 @@ def sys_knowledge_retrieve(
         samples = []
 
         if _l_os.path.exists(lat_path):
-
-            samples = _l_json.loads(open(lat_path).read())
+            try:
+                samples = _l_json.loads(open(lat_path).read())
+            except Exception:
+                samples = []  # noqa: corrupt-file-recovery
 
         samples.append({"ts": _t0, "total": round(_total, 4),
 
@@ -1649,7 +1651,7 @@ def sys_knowledge_retrieve(
             cache_hit=bool(graph_early_exit),
         )
     except Exception:
-        pass
+        logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
 
     return results[:top_k]
 

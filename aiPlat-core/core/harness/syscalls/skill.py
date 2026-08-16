@@ -1325,7 +1325,7 @@ async def sys_skill_call(
             reason='',
         )
     except Exception:
-        pass
+        logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
 
     async def _run():
 
@@ -1478,7 +1478,7 @@ async def sys_skill_call(
                     outcome_summary=str(getattr(result, "output", ""))[:200] if success else str(getattr(result, "error", ""))[:200],
                 )
             except Exception:
-                pass
+                logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
 
         # Phase 44: Operation Recording (best-effort, zero-cost when not recording)
         try:
@@ -1493,7 +1493,7 @@ async def sys_skill_call(
                     duration_ms=(end_ts - start_ts) * 1000 if 'start_ts' in dir() and 'end_ts' in dir() else 0,
                 )
         except Exception:
-            pass
+            logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
 
         await trace_gate.end(span, success=bool(getattr(result, "success", True)))
 

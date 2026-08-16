@@ -256,7 +256,8 @@ class TestSelfHealGate:
         level = gate.evaluate("model_tier_escalate", {"source": "prod"}, "production")
         assert level == REJECT
 
-    def test_apply_logs_entry(self):
+    def test_apply_logs_entry(self, monkeypatch):
+        monkeypatch.setenv("AIPLAT_SELF_HEAL_AUTO", "true")
         from core.harness.evaluation.self_heal_gate import SelfHealGate
         gate = SelfHealGate()
         r = gate.apply("orphan_domain_flag", {"source": "test_domain",

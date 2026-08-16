@@ -80,3 +80,57 @@ async def list_policy_versions(tenant_id: Optional[str] = None, rt: RuntimeDep =
         if isinstance(it, dict) and it.get("tenant_id"):
             out.append({"tenant_id": it.get("tenant_id"), "version": it.get("version")})
     return {"items": out}
+
+
+# ════════════════════════════════════════════════════════════════
+# P1-A6: ManagedPolicy 端点 (仅 admin)
+# ════════════════════════════════════════════════════════════════
+
+@router.put("/managed", response_model=StatusResponse)
+async def put_managed_policy(request: dict, http_request: Request,
+                             rt: RuntimeDep = Depends(get_kernel_runtime)):
+    """Set enterprise-managed policy entries (admin only).
+
+    Body: {"tenant_id": str, "policy": {"key": {"value": ..., "managed": true}}}
+    Managed keys override local policy; local cannot relax managed entries.
+    """
+    store = _store(rt)
+    if not store:
+        raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
+    tenant_id = (request or {}).get("tenant_id")
+    policy = (request or {}).get("policy")
+    if not tenant_id:
+        raise HTTPException(status_code=400, detail="tenant_id is required")
+    if not isinstance(policy, dict):
+        raise HTTPException(status_code=400, detail="policy must be an object")
+
+    deny = await rbac_guard(
+        http_request=http_request,
+        payload=request if isinstance(request, dict) else None,
+        action="managed_policy_upsert",
+        resource_type="tenant_policy",
+        resource_id=str(tenant_id),
+    )
+    if deny:
+        return deny
+
+    # Merge managed entries into existing tenant policy
+    existing = await store.get_tenant_policy(tenant_id=str(tenant_id))
+    merged = dict((existing or {}).get("policy_json") or (existing or {}).get("policy") or {})
+    for key, val in policy.items():
+        if isinstance(val, dict):
+            merged[key] = {"value": val.get("value"), "managed": True,
+                           "source": val.get("source", "enterprise-admin")}
+        else:
+            merged[key] = {"value": val, "managed": True, "source": "enterprise-admin"}
+    result = await store.upsert_tenant_policy(
+        tenant_id=str(tenant_id), policy=merged,
+        version=existing.get("version") if existing else None)
+    # audit
+    try:
+        import logging
+        logging.getLogger("aiplat.policy").info(
+            "managed_policy_upsert tenant=%s keys=%s", tenant_id, list(policy.keys()))
+    except Exception:
+        pass  # noqa: audit-best-effort
+    return result

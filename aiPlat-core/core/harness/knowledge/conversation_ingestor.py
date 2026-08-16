@@ -331,7 +331,7 @@ class ConversationIngestor:
                     data = _json.load(f)
                 return set(data.get("processed_ids", []))
         except Exception:
-            pass
+            logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
         return set()
 
     def _save_processed(self, ids: set) -> None:
@@ -340,7 +340,7 @@ class ConversationIngestor:
             with open(self._processed_file, "w") as f:
                 _json.dump({"processed_ids": list(ids)[-500:]}, f)
         except Exception:
-            pass
+            logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
 
     @staticmethod
     def _extract_json(text: str) -> Dict[str, Any]:
@@ -362,5 +362,5 @@ class ConversationIngestor:
                 try:
                     return _json.loads(text[start:end + 1])
                 except Exception:
-                    pass
+                    logging.getLogger(__name__).debug("swallowing non-critical exception", exc_info=True)
         return {}

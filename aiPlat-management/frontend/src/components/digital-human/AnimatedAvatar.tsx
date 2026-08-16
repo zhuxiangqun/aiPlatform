@@ -8,32 +8,32 @@ interface AnimatedAvatarProps {
   size?: number;
 }
 
-/**
- * Human-style avatar with life-like CSS animations.
- * Uses DiceBear Lorelei style by default — free, no API key, SVG-based.
- * Replace with a custom image by changing the `src` prop in FloatingDigitalHuman.
- */
-export default function AnimatedAvatar({
-  state,
-  audioAmplitude = 0,
-  config = DEFAULT_ANIM_CONFIG,
-  size = 200,
-}: AnimatedAvatarProps) {
+export default function AnimatedAvatar({ state, audioAmplitude = 0, config = DEFAULT_ANIM_CONFIG, size = 200 }: AnimatedAvatarProps) {
   const [timestamp, setTimestamp] = useState(Date.now());
-  const [blink, setBlink] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [visible, setVisible] = useState(true);
   const rafRef = useRef<number>(0);
-  const blinkRef = useRef<any>(null);
-  const avatarSize = size * 0.65;
-
-  // 60fps animation loop
+  // Visibility-aware 60fps animation loop — pauses when off-screen
   useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => setVisible(entry.isIntersecting),
+      { threshold: 0 }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
+    if (!visible) return;
     const loop = () => {
       setTimestamp(Date.now());
       rafRef.current = requestAnimationFrame(loop);
     };
     rafRef.current = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(rafRef.current);
-  }, []);
+  }, [visible]);
 
   // Random blink timer
   useEffect(() => {

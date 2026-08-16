@@ -394,3 +394,27 @@ class AdoptionTracker:
 
         }
 
+    def get_historical(self, days: int = 30) -> List[Dict[str, float]]:
+        """Return daily metric snapshots for baseline calculation.
+
+        Query adoption_metrics from execution_store.
+        Returns empty list on cold start (caller handles insufficient history).
+        """
+        try:
+            from core.services.execution_store import get_execution_store
+            store = get_execution_store()
+            rows = store.query_adoption_metrics(days=days)
+            if not rows:
+                return []
+            return [
+                {
+                    "date": r.get("snapshot_date", ""),
+                    "hitl_approval_rate": float(r.get("hitl_approval_rate", 0)),
+                    "hitl_rejection_rate": float(r.get("hitl_rejection_rate", 0)),
+                    "grill_completion_rate": float(r.get("grill_completion_rate", 0)),
+                }
+                for r in rows
+            ]
+        except Exception:
+            return []
+

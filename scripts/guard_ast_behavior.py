@@ -60,6 +60,8 @@ ALLOWED_FUNCTIONS: Set[Tuple[str, str]] = {
     ("builder/builder_project_service.py", "chat"),
     ("builder/builder_project_service.py", "recommend_team"),
     ("builder/builder_project_service.py", "_semantic_output"),
+    ("builder/builder_project_service.py", "_extract_prd_from_chat"),
+    ("builder/builder_project_service.py", "execute_skill"),
     ("builder/builder_project_service.py", "start_pipeline"),
     ("builder/builder_project_service.py", "get_project_state"),
     ("builder/builder_project_service.py", "approve_stage"),

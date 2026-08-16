@@ -5,7 +5,7 @@ import json as _json
 import logging
 import time
 import uuid
-from core.harness.infrastructure.db_utils import get_db_connection
+from core.api.core_facade import get_db_connection
 
 
 from fastapi import APIRouter, HTTPException
@@ -192,7 +192,7 @@ async def create_eval_run(req: PromptEvalRunCreate):
 async def _run_evaluation(run_id: str, req: PromptEvalRunCreate, case_rows, tpl, db_path: str):
     """## platform:allowed — LLM inference for prompt evaluation."""
     try:
-        from core.harness.utils.model_injection import create_selected_adapter
+        from core.api.core_facade import create_selected_adapter
         model = create_selected_adapter(model_name=req.model)
 
         results = []

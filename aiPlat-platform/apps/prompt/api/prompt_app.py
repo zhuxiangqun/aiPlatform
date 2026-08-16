@@ -340,7 +340,7 @@ async def optimize_prompt(req: PromptOptimizeRequest):
             raise HTTPException(status_code=400, detail="No prompt text to optimize")
 
         from core.api.core_facade import best_model_for_purpose, create_selected_adapter
-        from core.harness.utils.prompt_loader import _async_prompt_resolve
+        from core.api.core_facade import _async_prompt_resolve
         model_name = req.model or best_model_for_purpose("default")
         model = create_selected_adapter(model_name=model_name)
 
@@ -701,7 +701,7 @@ async def sign_prompt_app_template(template_id: str, req: Dict[str, Any]):
         raise HTTPException(status_code=404, detail="template not found")
 
     try:
-        from core.harness.infrastructure.crypto.signature import sign_skill as sign_tpl
+        from core.api.core_facade import sign_skill as sign_tpl
 
         tmpl_dir = Path(tpl.metadata.get("filesystem", {}).get("template_dir") or "")
         if not tmpl_dir or not tmpl_dir.exists():

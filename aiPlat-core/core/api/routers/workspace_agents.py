@@ -1680,6 +1680,8 @@ async def execute_workspace_agent(agent_id: str, request: dict, http_request: Re
         user_message = inp.strip()
     elif isinstance(inp, dict):
         user_message = str(inp.get("message") or inp.get("prompt") or inp.get("task") or "")
+        if not user_message and inp:
+            user_message = json.dumps(inp, ensure_ascii=False)
     else:
         user_message = str(payload.get("message") or payload.get("prompt") or payload.get("task") or "")
 
@@ -2517,6 +2519,8 @@ async def invoke_agent(agent_id: str, request: dict, http_request: Request, rt: 
         user_message = inp.strip()
     elif isinstance(inp, dict):
         user_message = str(inp.get("message") or inp.get("prompt") or "")
+        if not user_message and inp:
+            user_message = json.dumps(inp, ensure_ascii=False)
     else:
         user_message = str(request.get("message") or request.get("prompt") or "")
 

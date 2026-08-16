@@ -485,7 +485,7 @@ async def _get_learning_stats(core_client) -> Dict[str, Any]:
         import sqlite3
         db_path = os.environ.get(
             "AIPLAT_EXECUTION_DB_PATH",
-            "data/aiplat_executions.sqlite3"
+            os.path.join(os.path.expanduser("~"), ".aiplat", "aiplat_executions.sqlite3")
         )
         if os.path.isfile(db_path):
             conn = sqlite3.connect(db_path)

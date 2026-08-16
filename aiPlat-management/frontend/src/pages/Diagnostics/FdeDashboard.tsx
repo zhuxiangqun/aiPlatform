@@ -26,7 +26,7 @@ import CognitiveSafetyPanel from './CognitiveSafetyPanel';
 import CompilationDashboard from './CompilationDashboard';
 import EvoXPanel from './EvoXPanel';
 
-const API = (path: string) => `/api/platform/apps/fde${path}`;
+const API = (path: string) => `/api/platform/apps${path}`;
 
 // ═══════════════════════════════════════════════════════════
 // ActionCardsSection — reusable action cards component (v3)

@@ -295,6 +295,42 @@ async def regenerate_project_stage(project_id: str, req: Dict[str, Any], _auth: 
     return await _get_svc().regenerate_stage(project_id, stage_id, feedback)
 
 
+@router.post("/projects/{project_id}/locate-max-error", response_model=StatusResponse)
+async def locate_project_max_error(project_id: str, req: Dict[str, Any], _auth: str = Depends(require_builder_access)):
+    """Locate the max error-contribution node from the decision trace graph."""
+    failed_stage_ids = req.get("failed_stage_ids") or []
+    return await _get_svc().locate_max_error_node(project_id, failed_stage_ids)
+
+
+@router.post("/projects/{project_id}/generate-hypotheses", response_model=StatusResponse)
+async def generate_project_hypotheses(project_id: str, req: Dict[str, Any], _auth: str = Depends(require_builder_access)):
+    """Generate root-cause hypotheses from the decision trace graph."""
+    failed_stage_ids = req.get("failed_stage_ids") or []
+    test_report = str(req.get("test_report") or "")
+    return await _get_svc().generate_fix_hypotheses(project_id, failed_stage_ids, test_report)
+
+
+@router.post("/projects/{project_id}/run-report", response_model=StatusResponse)
+async def build_project_run_report(project_id: str, req: Dict[str, Any], _auth: str = Depends(require_builder_access)):
+    """Build a governance/explainability report for a pipeline run."""
+    failed_stage_ids = req.get("failed_stage_ids") or []
+    test_report = str(req.get("test_report") or "")
+    cost_used_usd = float(req.get("cost_used_usd") or 0.0)
+    cost_budget_usd = float(req.get("cost_budget_usd") or 0.0)
+    return await _get_svc().build_run_report(project_id, failed_stage_ids, test_report,
+                                             cost_used_usd, cost_budget_usd)
+
+
+@router.put("/projects/{project_id}/stages/{stage_id}/artifact", response_model=StatusResponse)
+async def update_stage_artifact(project_id: str, stage_id: str, req: Dict[str, Any],
+                                 _auth: str = Depends(require_builder_access)):
+    """Manually edit a stage's output artifact — user edits content, then can rebuild from this stage."""
+    content = str(req.get("content") or req.get("raw_output") or "")
+    if not content:
+        raise HTTPException(400, detail="content is required")
+    return await _get_svc().update_stage_artifact(project_id, stage_id, content)
+
+
 @router.post("/projects/{project_id}/deploy-to-app", response_model=StatusResponse)
 async def deploy_project_to_app(project_id: str, _auth: str = Depends(require_builder_access)):
     """Deploy pipeline output to aiPlat-app (port 8004)."""

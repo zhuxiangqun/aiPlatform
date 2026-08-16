@@ -298,8 +298,8 @@ class SECIEngine:
         # C→I: Adjust skill weights based on atom source distribution
         adjustments = []
         try:
-            from core.apps.skills.registry import SkillRegistry
-            sr = SkillRegistry()
+            from core.api.core_facade import get_skill_registry
+            sr = get_skill_registry()
             stats = sr._binding_stats  # Internal access for weight adjustment
 
             for src, count in by_source.items():
@@ -434,7 +434,7 @@ class SECIEngine:
 
 # Module-level singleton
 _seci_engine_singleton: Optional[SECIEngine] = None
-_hook_registered: bool = False
+hook_registered: bool = False
 
 
 def get_seci_engine() -> SECIEngine:
@@ -454,8 +454,8 @@ def register_seci_hook() -> bool:
 
     Returns True if hook was registered, False if already registered.
     """
-    global _hook_registered
-    if _hook_registered:
+    global hook_registered
+    if hook_registered:
         return False
 
     async def _seci_post_loop(context):
@@ -567,7 +567,7 @@ def register_seci_hook() -> bool:
 
         hook = _SECIHook()
         hm.register(hook)
-        _hook_registered = True
+        hook_registered = True
         logger.info("SECI hook registered on POST_LOOP (priority=50)")
         return True
     except Exception as e:

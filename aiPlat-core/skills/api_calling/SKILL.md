@@ -4,6 +4,7 @@ display_name: API调用
 description: 按指定接口文档调用外部/内部 API 获取数据，并处理鉴权、重试与错误映射。
 category: execution
 version: 1.0.0
+execution_type: prompt
 status: enabled
 execution_mode: inline
 executable: true

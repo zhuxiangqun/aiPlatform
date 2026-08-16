@@ -54,3 +54,14 @@ consumers:
     note: "平台对话 API"
 
 legacy_fixes: []
+
+consumer_patterns:
+  - "harness/knowledge/"
+  - "harness/execution/loop/"
+  - "harness/infrastructure/gates/"
+  - "harness/observability/"
+  - "apps/agents/"
+  - "engine/skills/"
+  - "api/"
+  - "builder/"
+  - "server\\.py"
