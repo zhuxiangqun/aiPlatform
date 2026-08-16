@@ -33,7 +33,7 @@ def test_j1_onboarding_health(client):
 
 def test_j1_create_spec(client):
     """J1B: 创建 Spec → 验证 DRAFT 状态"""
-    r = client.post(f"{BASE}/api/core/workbench/spec/create", json={
+    r = client.post(f"{BASE_PLATFORM}/api/platform/apps/workbench/spec/create", json={
         "spec_id": "e2e-onboarding",
         "content": {"agent_md": "E2E 测试 Spec — 入驻验证"},
         "created_by": "e2e-test",
@@ -46,7 +46,7 @@ def test_j1_create_spec(client):
 
 def test_j1_submit_task_with_spec(client):
     """J1C: 提交关联 Spec 的任务 → 轮询直到完成"""
-    r = client.post(f"{BASE}/api/core/workbench/submit", json={
+    r = client.post(f"{BASE_PLATFORM}/api/platform/apps/workbench/submit", json={
         "description": "E2E 测试: 请输出 OK",
         "capability": "general",
         "spec_id": "e2e-onboarding",
@@ -58,7 +58,7 @@ def test_j1_submit_task_with_spec(client):
     # Poll for completion (up to 15s)
     for _ in range(10):
         time.sleep(1.5)
-        r = client.get(f"{BASE}/api/core/workbench/tasks/{run_id}")
+        r = client.get(f"{BASE_PLATFORM}/api/platform/apps/workbench/tasks/{run_id}")
         if r.status_code == 200:
             status = r.json().get("status", "")
             if status == "completed":
@@ -67,7 +67,7 @@ def test_j1_submit_task_with_spec(client):
         pytest.fail("Task did not complete within timeout")
 
     # Verify spec entered REVIEW
-    r = client.get(f"{BASE}/api/core/workbench/spec/e2e-onboarding/history")
+    r = client.get(f"{BASE_PLATFORM}/api/platform/apps/workbench/spec/e2e-onboarding/history")
     assert r.status_code == 200
     versions = r.json().get("versions", [])
     assert len(versions) >= 1, f"No versions found: {r.json()}"
@@ -77,7 +77,7 @@ def test_j1_submit_task_with_spec(client):
 
 def test_j1_dashboard_aggregation(client):
     """J1D: FDE 仪表板能查到 pending_decisions"""
-    r = client.get(f"{BASE}/api/core/workbench/fde-dashboard")
+    r = client.get(f"{BASE_PLATFORM}/api/platform/apps/workbench/fde-dashboard")
     assert r.status_code == 200
     data = r.json()
     assert "pending_decisions" in data, f"No pending_decisions in dashboard: {list(data.keys())}"
@@ -102,7 +102,7 @@ def test_j2_wiki_engine(client):
 
 def test_j3_trace_visualization(client):
     """J3A: Trace 数据可解析"""
-    r = client.get(f"{BASE}/api/core/workbench/spec/e2e-onboarding/trace")
+    r = client.get(f"{BASE_PLATFORM}/api/platform/apps/workbench/spec/e2e-onboarding/trace")
     assert r.status_code == 200
     data = r.json()
     # Trace may be empty if mock LLM didn't generate it — that's OK
@@ -111,7 +111,7 @@ def test_j3_trace_visualization(client):
 
 def test_j3_mark_stable(client):
     """J3B: Spec → STABLE"""
-    r = client.post(f"{BASE}/api/core/workbench/spec/e2e-onboarding/mark-stable", json={})
+    r = client.post(f"{BASE_PLATFORM}/api/platform/apps/workbench/spec/e2e-onboarding/mark-stable", json={})
     assert r.status_code == 200
     data = r.json()
     assert data.get("status") in ("stable", "unchanged"), f"Expected stable, got: {data}"
@@ -121,7 +121,7 @@ def test_j3_mark_stable(client):
 
 def test_j4_training_status(client):
     """J4A: 训练监控可读"""
-    r = client.get(f"{BASE}/api/core/workbench/training/status")
+    r = client.get(f"{BASE_PLATFORM}/api/platform/apps/workbench/training/status")
     assert r.status_code == 200
     data = r.json()
     assert "threshold" in data, f"No threshold in training status: {list(data.keys())}"
@@ -132,7 +132,7 @@ def test_j4_training_status(client):
 
 def test_j5_full_dashboard(client):
     """J5A: Dashboard 四卡 + 时间轴"""
-    r = client.get(f"{BASE}/api/core/workbench/fde-dashboard")
+    r = client.get(f"{BASE_PLATFORM}/api/platform/apps/workbench/fde-dashboard")
     assert r.status_code == 200
     data = r.json()
     for key in ("pending_decisions", "signal_alerts", "trace_anomalies", "training", "timeline", "last_updated"):
@@ -141,7 +141,7 @@ def test_j5_full_dashboard(client):
 
 def test_j5_spec_list(client):
     """J5B: Spec 列表可读"""
-    r = client.get(f"{BASE}/api/core/workbench/specs")
+    r = client.get(f"{BASE_PLATFORM}/api/platform/apps/workbench/specs")
     assert r.status_code == 200
     data = r.json()
     assert "specs" in data
@@ -149,7 +149,7 @@ def test_j5_spec_list(client):
 
 def test_j5_radar(client):
     """J5C: 信号雷达可读"""
-    r = client.get(f"{BASE}/api/core/workbench/spec/e2e-onboarding/radar")
+    r = client.get(f"{BASE_PLATFORM}/api/platform/apps/workbench/spec/e2e-onboarding/radar")
     assert r.status_code == 200
     data = r.json()
     assert "spec_id" in data
@@ -200,6 +200,6 @@ def test_prompt_cache_persistence():
 def test_cleanup_seed_demo(client):
     """清理: 种子 demo 数据（可选，不阻塞）"""
     try:
-        client.post(f"{BASE}/api/core/workbench/seed-demo", json={})
+        client.post(f"{BASE_PLATFORM}/api/platform/apps/workbench/seed-demo", json={})
     except Exception:
         pass
