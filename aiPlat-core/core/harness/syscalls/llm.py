@@ -645,9 +645,10 @@ def _guard_messages(messages: List[Message], trace_context: Optional[Dict[str, A
     try:
         session_id = (trace_context or {}).get("session_id", "") or (trace_context or {}).get("run_id", "")
         if isinstance(session_id, str) and session_id and out and out[0].get("role") == "system":
-            import os, json
-            emo_file = os.path.expanduser(f"~/.aiplat/emotion/{session_id}.json")
-            if os.path.exists(emo_file):
+            import json
+            import os as _os
+            emo_file = _os.path.expanduser(f"~/.aiplat/emotion/{session_id}.json")
+            if _os.path.exists(emo_file):
                 with open(emo_file) as f:
                     recent = json.load(f)
                 if recent:
