@@ -1,0 +1,74 @@
+# 模型 Provider 配置化注册（P2-A3）
+#
+# 新增 provider = 在此文件加条目（零代码改动）。
+# 协议复用: openai_compatible.py 已覆盖 OpenAI/DeepSeek/Qwen/LM Studio/oMLX/vLLM/llama.cpp
+#           anthropic.py 覆盖 Claude 系列; local.py 覆盖本地直接加载
+#
+# 字段:
+#   id:             provider 标识（与模型 provider 字段一致）
+#   name:           展示名
+#   type:           external(远程 API) | local(本地模型)
+#   requires_api_key: 是否必须 API key
+#   capabilities:   能力列表 (chat/reasoning/embedding/image/audio/code)
+#   env_key:        API key 环境变量名（external 必填）
+#   base_url_env:   base_url 环境变量名（可选，默认走 openai_compatible 默认）
+#   enabled:        是否默认启用
+
+providers:
+  - id: openai
+    name: OpenAI
+    type: external
+    requires_api_key: true
+    capabilities: [chat, embedding, image, audio]
+    env_key: OPENAI_API_KEY
+    base_url_env: OPENAI_BASE_URL
+    enabled: true
+
+  - id: deepseek
+    name: DeepSeek
+    type: external
+    requires_api_key: true
+    capabilities: [chat, reasoning]
+    env_key: DEEPSEEK_API_KEY
+    base_url_env: DEEPSEEK_BASE_URL
+    enabled: true
+
+  - id: anthropic
+    name: Anthropic
+    type: external
+    requires_api_key: true
+    capabilities: [chat]
+    env_key: ANTHROPIC_API_KEY
+    enabled: true
+
+  - id: openrouter
+    name: OpenRouter
+    type: external
+    requires_api_key: true
+    capabilities: [chat, reasoning]
+    env_key: OPENROUTER_API_KEY
+    enabled: true
+
+  - id: ollama
+    name: Ollama
+    type: local
+    requires_api_key: false
+    capabilities: [chat, embedding]
+    enabled: true
+
+  - id: custom
+    name: Custom
+    type: external
+    requires_api_key: false
+    capabilities: [chat, embedding]
+    enabled: true
+
+# ── 新增 provider 示例（取消注释即可启用） ──
+#  - id: qwen
+#    name: Qwen
+#    type: external
+#    requires_api_key: true
+#    capabilities: [chat, reasoning, code]
+#    env_key: DASHSCOPE_API_KEY
+#    base_url_env: DASHSCOPE_BASE_URL
+#    enabled: true

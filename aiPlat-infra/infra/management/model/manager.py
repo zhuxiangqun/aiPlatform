@@ -1558,7 +1558,43 @@ class ModelManager:
         return local_models
     
     async def get_providers(self) -> List[Dict[str, Any]]:
-        """获取支持的 Provider 列表"""
+        """获取支持的 Provider 列表。
+
+        P2-A3: provider 元数据配置化（config/providers.yaml），新增
+        provider = 改配置零代码。硬编码列表保留为 fallback（YAML 缺失时）。
+        """
+        try:
+            import yaml as _yaml
+            from pathlib import Path as _P
+            cfg_path = _P(__file__).resolve().parents[3] / "config" / "providers.yaml"
+            if cfg_path.exists():
+                data = _yaml.safe_load(cfg_path.read_text(encoding="utf-8")) or {}
+                out = []
+                for p in data.get("providers", []):
+                    if not isinstance(p, dict) or not p.get("enabled", True):
+                        continue
+                    out.append({
+                        "id": p.get("id", ""),
+                        "name": p.get("name", p.get("id", "")),
+                        "type": p.get("type", "external"),
+                        "requires_api_key": bool(p.get("requires_api_key", True)),
+                        "capabilities": list(p.get("capabilities") or []),
+                        "env_key": p.get("env_key", ""),
+                        "base_url_env": p.get("base_url_env", ""),
+                    })
+                if out:
+                    # Always expose the local embedding provider (not config-driven)
+                    out.append({
+                        "id": "local-embedding",
+                        "name": "Local Embedding (HuggingFace)",
+                        "type": "local",
+                        "requires_api_key": False,
+                        "capabilities": ["embedding"],
+                    })
+                    return out
+        except Exception as e:  # noqa: BLE001
+            import logging as _lg
+            _lg.getLogger(__name__).debug("providers.yaml load failed: %s", e)
         return [
             {
                 "id": "deepseek",
