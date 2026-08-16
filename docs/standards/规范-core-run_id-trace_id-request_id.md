@@ -61,3 +61,19 @@ management 展示层建议以：
 2) trace_id 作为“钻取链接”；
 3) request_id 作为“跨系统关联键”（platform/app 的日志也用它聚合）。
 
+
+---
+
+## 4. 自动触发 run 的产生源（P2-A6/A7，2026-08-16 补充）
+
+`core/harness/execution/event_loop.py` 的 loop scheduler 是自动 run 的产生源之一，新增两种模式：
+
+| 模式 | 触发方式 | run 语义 |
+|------|---------|---------|
+| `mode=script`（P2-A7） | cron 触发，`params.mode="script"` | **无 run_id**——直接执行 shell/python 脚本（零 LLM），结果经 `result_channel` 投递；不产生 pipeline run 记录 |
+| `mode=goal`（P2-A6） | goal 触发，每轮 `_judge_goal_condition` 评估 | 未达成时 `_start_pipeline_from_scene` 产生 pipeline run（`run-<uuid12>`），`iterations_left` 预算内续跑；达成或预算耗尽停止 |
+
+**契约要点**：
+- script 模式**不落 run 记录**（无 LLM、无 pipeline 状态机）——观测通过 scheduler 日志（`script trigger ...: OK`）完成
+- goal 模式的每次续跑都是**独立 run**（run_id 前缀 `run-`），通过 trigger_id + `iterations_left` 关联重试链，trace_id 由各 run 独立生成
+- 两者共享 scheduler 的 `_TRIGGERS_PATH`（`~/.aiplat/loop/triggers.json`）持久化 `last_run` / `iterations_left`
