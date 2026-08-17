@@ -282,7 +282,7 @@ class PipelineRunStore:
         terminal = {"pipeline_finished", "pipeline_failed", "pipeline_cancelled", "pipeline_paused"}
         terminal_phase = {"pipeline_finished": "done", "pipeline_failed": "failed",
                           "pipeline_cancelled": "cancelled", "pipeline_paused": "paused"}
-        hitl_phase = "review"  # mapped state for pipeline_hitl (not a business concept)
+        hitl_state_name = "review"  # mapped state for pipeline_hitl (not a business concept)
         last_terminal = ""
 
         for e in evs:
@@ -300,7 +300,7 @@ class PipelineRunStore:
                 except (TypeError, ValueError):
                     pass  # noqa: schema-idempotent
             elif evt == "pipeline_hitl":
-                phase = hitl_phase
+                phase = hitl_state_name
             elif evt == "pipeline_progress":
                 phase = payload.get("phase") or phase
                 current_stage_idx = int(payload.get("current_stage_idx") or current_stage_idx)
