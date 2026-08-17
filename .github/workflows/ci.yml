@@ -20,7 +20,7 @@ jobs:
           python-version: "3.11"
           cache: pip
       - name: Install dependencies
-        run: pip install -e ".[dev]" || pip install ruff mypy radon
+        run: pip install -e ../aiPlat-infra -e ".[dev]" || pip install ruff mypy radon
       - name: Ruff lint
         run: ruff check core/ --ignore F821
       - name: MyPy type check
@@ -46,7 +46,12 @@ jobs:
           python-version: "3.11"
           cache: pip
       - name: Install dependencies
-        run: pip install -e ".[dev]" || pip install pytest pytest-cov
+        run: |
+          case "${{ matrix.component }}" in
+            aiPlat-platform) pip install -e ../aiPlat-infra -e ../aiPlat-core -e ".[dev]" ;;
+            aiPlat-core)     pip install -e ../aiPlat-infra -e ".[dev]" ;;
+            *)               pip install -e ".[dev]" ;;
+          esac || pip install pytest pytest-cov
       - name: Environment consistency (docker-compose)
         run: |
           if [ -f docker-compose.test.yml ]; then
@@ -77,7 +82,7 @@ jobs:
           python-version: "3.11"
           cache: pip
       - name: Install dependencies
-        run: pip install -e "." || true
+        run: pip install -e ../aiPlat-infra -e "." || true
       - name: Run L5 depth tests
         run: python -m pytest tests/autonomy/test_l5_capabilities.py -v --tb=short -q
       - name: ACP Smoke Test (IDE integration)
@@ -96,7 +101,7 @@ jobs:
           python-version: "3.11"
           cache: pip
       - name: Install dependencies
-        run: pip install -e "." || true
+        run: pip install -e ../aiPlat-infra -e "." || true
       - name: Run benchmarks
         run: bash scripts/benchmark-ci.sh
       - name: Stress test (informational)
