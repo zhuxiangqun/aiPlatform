@@ -121,3 +121,5 @@ aiPlat 逻辑上分为：
 - **事件源双写（P2-A1）**：`PipelineRunStore` 新增 `pipeline_run_events` append-only 事件日志（阶段/phase/hitl 事件），引擎状态回调双写；run 状态快照保留（向后兼容），事件供回放/审计/UI 时间线。
 
 - **事件折叠派生（P2-A1 二阶段）**：`PipelineRunStore.replay_run_events` 从事件日志折叠 run 状态（审计交叉验证），`pipeline_state` API 附加 `event_derived` 字段；状态快照保留为快速路径。
+
+- **事件源交叉验证（P2-A1 三阶段）**：`get_full_state_from_run_id` 附加 `event_derived` + `state_event_consistent`（状态快照与事件折叠一致性检查），状态快照保留为快速路径。
