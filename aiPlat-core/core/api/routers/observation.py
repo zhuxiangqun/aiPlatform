@@ -23,13 +23,36 @@ from core.harness.observation.event_bus import EventBus
 
 router = APIRouter(prefix="/observation", tags=["observation"])
 
-# Per-run_id event buffer for diagnostics events (keeps events for 60s after completion)
+# Per-run_id event buffer for diagnostics events (keeps events for 60s after completion).
+# Bounded by _DIAG_TTL + _MAX_DIAG_RUNS: stale entries are swept on every store.
+_DIAG_TTL = 60.0
+_MAX_DIAG_RUNS = 256
 _diag_buffers: Dict[str, List[Dict[str, Any]]] = {}
 _diag_buffer_ts: Dict[str, float] = {}
 
 
+def _sweep_stale_diag_buffers() -> None:
+    """Drop expired buffers (TTL) and evict oldest when over _MAX_DIAG_RUNS.
+
+    Runs on every store_diag_event so the registry stays bounded even when a
+    run never receives an explicit cleanup event.
+    """
+    now = _time.time()
+    stale = [rid for rid, ts in _diag_buffer_ts.items() if now - ts > _DIAG_TTL]
+    for rid in stale:
+        _diag_buffers.pop(rid, None)
+        _diag_buffer_ts.pop(rid, None)
+    if len(_diag_buffers) > _MAX_DIAG_RUNS:
+        ordered = sorted(_diag_buffer_ts.items(), key=lambda kv: kv[1])
+        excess = len(_diag_buffers) - _MAX_DIAG_RUNS
+        for rid, _ in ordered[:excess]:
+            _diag_buffers.pop(rid, None)
+            _diag_buffer_ts.pop(rid, None)
+
+
 def store_diag_event(run_id: str, event: Dict[str, Any]) -> None:
     """Store a diagnostics event in the buffer."""
+    _sweep_stale_diag_buffers()
     if run_id not in _diag_buffers:
         _diag_buffers[run_id] = []
     _diag_buffers[run_id].append(event)

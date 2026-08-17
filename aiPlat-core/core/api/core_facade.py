@@ -25,8 +25,29 @@ from core.harness.utils.model_injection import best_model_for_purpose
 # Handler Registry — platform modules push capabilities to core.
 # Direction: platform → core (correct). Zero core→platform imports.
 # ═══════════════════════════════════════════════════════════════
+#
+# Runtime extension slot (P2-A2 design): registration is gated on the
+# handler's defining module — dangerous stdlib modules (os/sys/subprocess/
+# shutil/builtins) are rejected, mirroring action_contract.DANGEROUS. Data
+# handlers (plain dict/list) are allowed from any module; callables must
+# originate from a trusted platform/core prefix.
+
+_HANDLER_ALLOWED_MODULES = (
+    "core.",            # core-facade internal / core-provided handlers
+    "apps.",            # platform app modules (apps.fde.*, apps.learning.*)
+    "auth.",            # platform auth module
+    "builder.",         # platform builder module
+    "custom_handlers",  # action-contract custom handler namespace
+)
+
+_HANDLER_DANGEROUS_MODULES = (
+    "os.", "sys.", "subprocess.", "shutil.", "builtins.",
+)
 
 _handlers: Dict[str, Any] = {}
+
+_log = logging.getLogger("aiplat.core_facade")
+
 
 def register_handler(name: str, handler: Any) -> None:
     """Register a handler from platform layer into CoreFacade.
@@ -34,13 +55,28 @@ def register_handler(name: str, handler: Any) -> None:
     Called by platform module __init__.py during import.
     Direction: platform → core (符合单向依赖).
 
+    Runtime extension slot (P2-A2): callable handlers are gated on their
+    defining module — dangerous stdlib modules are rejected at registration
+    time so dispatch() can never invoke os/sys/subprocess/etc. via this slot.
+
     Args:
         name: Handler name used by dispatch()
         handler: Callable or data to return on dispatch
     """
     if name in _handlers:
-        logging.getLogger("aiplat.core_facade").warning(
-            "Handler '%s' already registered, overwriting", name)
+        _log.warning("Handler '%s' already registered, overwriting", name)
+    if callable(handler):
+        module = getattr(handler, "__module__", "") or ""
+        if any(module.startswith(d) for d in _HANDLER_DANGEROUS_MODULES):
+            raise ValueError(
+                f"Handler '{name}' rejected: defining module '{module}' is "
+                f"in the dangerous set {_HANDLER_DANGEROUS_MODULES} (runtime "
+                f"extension slot does not allow arbitrary code execution)"
+            )
+        if not any(module.startswith(a) for a in _HANDLER_ALLOWED_MODULES):
+            _log.warning(
+                "Handler '%s' registered from unvetted module '%s' "
+                "(allowed: %s)", name, module, _HANDLER_ALLOWED_MODULES)
     _handlers[name] = handler
 
 def dispatch(name: str, *args: Any, **kwargs: Any) -> Any:

@@ -316,3 +316,34 @@ pytest aiPlat-platform/tests/test_builder.py -q --tb=short
 4. **执行顺序有硬依赖**：先修守卫自检（P0-C7）→ 再修宪法违规（P0-A）→ 否则新问题会被旧噪音掩盖
 
 **行动起点建议**：Batch 1 中先做 P0-B1（SDK，0.25 天）+ P0-C7（规则黄金样本，1 天）——一个最快见效，一个防止再引入治理盲区。
+
+---
+
+## 九、三方向实施跟踪（2026-08 执行记录）
+
+### 方向 3a：缓存治理（进行中）
+
+| 项 | 处置 | 状态 |
+|---|---|---|
+| §83c LRU 无 clear（2 处） | 守卫语义修正：仅无界缓存（`@functools.cache` / `@lru_cache(maxsize=None)`）才需 `cache_clear()`；有界 maxsize=N 自动淘汰非泄漏。compression.py `get_cached_embedding(maxsize=1024)` 有界豁免 + 注释。守卫排除 arch_guard_rules 自扫描目录（meta 代码含规则字面量必自匹配） | ✅ commit `bf0d0f19` |
+| §83a 模块级 dict 无清理（18 处） | **4 处 UNBOUNDED 已修复**（a2a `_tasks` 加 `_MAX_TASKS` 淘汰 / observation `_diag_buffers` 加 TTL 清扫 / file.py `_read_cache` 加 `_MAX_CACHE` / path_planner `_discovered_cache` 加清扫+上限）；剩余 12 处经子代理逐一取证均为 STATIC_CONFIG（一次性注册表）或 BOUNDED_RUNTIME（键空间有界），**审查豁免，不造假豁免** | ✅ 18→12 |
+| §83b 无界 append（80 候选文件） | **守卫误报根因修复**：改为 AST 作用域分析，只统计模块级/类级持久容器的 append（函数内局部 list 随 GC 回收非泄漏）；排除 dataclass field 模式。80→**0** | ✅ |
+| §83c LRU 无 clear | 守卫语义修正：仅无界缓存告警；compression.py 有界豁免 | ✅ 2→0 |
+
+### 方向 3b：大文件评估（结论：记录为债务，不冒险拆分）
+
+>500 行文件全量盘点（`find + wc -l`，2026-08 实测）：
+
+| 文件 | 行数 | 角色 | 判定 |
+|---|---|:--:|---|
+| `core/harness/execution/pipeline_engine.py` | 12281 | PipelineEngine 单类 ~11700 行 / 112 方法 / 10+ 生产引用 | ⚠️ **唯一真 God Object**——超出聚合点范畴；但拆分风险极高（状态耦合 + 测试面大），且 §93 类大小门禁只覆盖 platform 层。**记录为已知债务，建议后续专项拆分（按方法域分组：stages/hitl/deploy/reflection）**，不在本轮冒险 |
+| `platform/api/rest/routes.py` | 7287 | 153 顶层符号 REST 聚合 | ✅ §5.1 允许的聚合点 |
+| `core/harness/execution/loop/_facade.py` | 4576 | ReActLoop 类 4120 行 | ⚠️ 单类偏大但属 facade 聚合，暂记录债务 |
+| `core/management/skill_manager.py` | 4012 | 管理聚合 | ✅ 聚合点 |
+| `platform/apps/fde/api/fde.py` | 3752 | FDE 模块 API 聚合 | ✅ 聚合点 |
+| `core/services/execution_store/schema.py` | 3483 | schema 聚合 | ✅ 聚合点 |
+| `core/api/core_facade.py` | 3464 | CoreFacade 唯一门面（设计使然） | ✅ 聚合点 |
+| `core/api/routers/diagnostics.py` / `wiki.py` | 3366/3366 | 路由聚合 | ✅ 聚合点 |
+| `core/harness/knowledge/wiki_engine.py` | 3104 | wiki 引擎聚合 | ✅ 聚合点 |
+
+**结论**：10 处 >500 行中 9 处为 §5.1 允许的聚合点（路由/facade/schema 聚合），1 处（pipeline_engine.py）为真 God Object。拆分风险高收益低，本轮**仅记录为已知债务**，不拆分；pipeline_engine 拆分列为独立专项（方向 2b 运行时扩展缝落地时同步评估 stage 方法域外迁）。
