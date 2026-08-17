@@ -61,3 +61,19 @@ def test_replay_folds_events_into_state(tmp_path):
 
     # no events → None
     assert store.replay_run_events("r-nope") is None
+
+
+def test_full_state_event_cross_check(tmp_path):
+    sys.path.insert(0, ".")
+    store = _fresh_store(tmp_path)
+    from core.api.routers.pipeline_execution import _make_store_callback
+
+    store.create_run("run-x", "proj-x", total_stages=2)
+    cb = _make_store_callback("run-x", store)
+    cb({"phase": "executing", "_current_stage_idx": 1, "pass_rate": 0.5})
+    cb({"phase": "done", "_current_stage_idx": 2, "pass_rate": 0.9})
+
+    state = store.get_full_state_from_run_id("run-x")
+    assert state.get("phase") == "done"
+    assert state.get("event_derived", {}).get("phase") == "done"
+    assert state.get("state_event_consistent") is True

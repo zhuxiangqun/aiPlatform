@@ -92,3 +92,10 @@ management 展示层建议以：
 - `PipelineRunStore.replay_run_events(run_id)`：从 `pipeline_run_events` 折叠出 run 状态快照（`phase / current_stage_idx / pass_rate / stages_visited / last_terminal_event`），`derived=True` 标记事件源视图
 - `pipeline_state` API 响应附加 `event_derived` 字段（审计交叉验证；状态快照仍为快速路径）
 - 终态事件（`pipeline_finished/failed/cancelled/paused`）携带最终 progress；`pipeline_hitl` 映射为 `review` 状态
+
+### 4.3 读取路径事件源交叉验证（P2-A1 第三阶段，2026-08-17 补充）
+
+- `get_full_state_from_run_id` 响应附加：
+  - `event_derived`：事件折叠视图（复用 `replay_run_events`）
+  - `state_event_consistent`：状态快照 phase 与事件折叠 phase 一致性标志
+- 用途：检测状态/事件漂移（跨 worker 不一致、崩溃恢复后偏差）；状态快照仍为快速路径，事件视图为审计交叉验证

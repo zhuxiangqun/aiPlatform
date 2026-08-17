@@ -726,6 +726,15 @@ class PipelineRunStore:
 
         if _progress:
             state["_progress"] = _progress
+        # ── P2-A1 phase 3: event-sourced cross-check (state ↔ event consistency) ──
+        try:
+            derived = self.replay_run_events(run_id)
+            if derived:
+                state["event_derived"] = derived
+                # Consistency: snapshot phase should match folded event phase
+                state["state_event_consistent"] = (state.get("phase") == derived.get("phase"))
+        except Exception as _e:  # noqa: BLE001
+            logging.getLogger(__name__).debug("replay cross-check failed: %s", _e)
         return state
 
     # ── Recovery ─────────────────────────────────────────────────
