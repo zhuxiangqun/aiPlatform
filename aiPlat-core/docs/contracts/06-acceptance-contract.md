@@ -48,6 +48,22 @@
 - 参考用例：
   - `core/tests/unit/test_harness/test_policy_denied_auto_retry.py`
 
+### 1.8 内存缓存有界化（2026-08-18）
+- MUST：harness 持久容器缓存有界——`file.py:_read_cache`（`_MAX_CACHE`）、`path_planner.py:_discovered_cache`（`_MAX_CACHE`+TTL）、`a2a/server.py:_tasks`（`_MAX_TASKS`）、`observation.py:_diag_buffers`（`_DIAG_TTL`+`_MAX_DIAG_RUNS`）
+- MUST：守卫 §83 只告警无界缓存（`@functools.cache`/`@lru_cache(maxsize=None)`/无界持久容器），有界 maxsize=N 与模块级一次性注册表不告警
+- 自动化验收：
+  - `bash scripts/architecture_guard.sh`（§83 项：Dict 无清理 ≤ 基线、Unbounded append = 0、LRU 无 clear = 0）
+
+### 1.9 运行时扩展缝门禁（P2-A2）
+- MUST：`CoreFacade.register_handler` 拒绝危险模块（os/sys/subprocess/shutil/builtins）定义的 handler，未评估模块仅 warn
+- MUST：dispatch 永不触发任意代码执行
+- 参考用例：
+  - `core/tests/integration/test_l5_verification.py`（register_handler/dispatch 正常路径）
+
+### 1.10 Provider YAML 驱动（P2-A3）
+- MUST：`ModelManager._api_provider_ids()` 从 `config/providers.yaml`（type=external）派生，新增 external provider 零代码；YAML 缺失回退硬编码集合
+- 自动化验收：`python3 -c "from infra.management.model.manager import _api_provider_ids; assert 'ollama' not in _api_provider_ids()"`
+
 ### 1.8 Exec Backends（local/docker/ssh）
 - MUST：health 输出结构包含 capabilities
 - SHOULD：capabilities 能表达 supported_languages/isolation/config 关键信息
