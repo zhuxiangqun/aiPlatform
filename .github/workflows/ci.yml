@@ -25,10 +25,10 @@ jobs:
         run: ruff check core/ --ignore F821
       - name: MyPy type check
         run: mypy core/ --ignore-missing-imports || true
-        - name: Radon complexity
-          run: radon cc core/ -a -n C -e core/tests/*,__pycache__ 2>/dev/null | awk '/^[[:space:]]*C/ || /^[[:space:]]*D/ || /^[[:space:]]*E/ || /^[[:space:]]*F/ {print; c++} END {if(c>0){print c,"high-complexity blocks found"; exit 1}}'
-        - name: Commitlint check (last commit)
-          run: npx --yes commitlint --from HEAD~1 --to HEAD --config .commitlintrc.yaml
+      - name: Radon complexity
+        run: radon cc core/ -a -n C -e core/tests/*,__pycache__ 2>/dev/null | awk '/^[[:space:]]*C/ || /^[[:space:]]*D/ || /^[[:space:]]*E/ || /^[[:space:]]*F/ {print; c++} END {if(c>0){print c,"high-complexity blocks found"; exit 1}}'
+      - name: Commitlint check (last commit)
+        run: npx --yes commitlint --from HEAD~1 --to HEAD --config .commitlintrc.yaml
 
   test:
     name: Test (pytest)
@@ -125,8 +125,8 @@ jobs:
           tags: |
             ghcr.io/${{ github.repository }}/aiplat-core:latest
             ghcr.io/${{ github.repository }}/aiplat-core:${{ github.sha }}
-           cache-from: type=gha
-           cache-to: type=gha,mode=max
+            cache-from: type=gha
+            cache-to: type=gha,mode=max
       - name: Deploy to staging
         if: false  # Enable when K8s cluster is available
         run: |
@@ -138,7 +138,7 @@ jobs:
         run: |
            bash scripts/notify-release.sh deployed "aiplat-core ${{ github.sha }}"
 
-   dast:
+  dast:
     name: DAST Active Security Scan
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
