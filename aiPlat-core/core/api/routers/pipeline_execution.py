@@ -411,11 +411,22 @@ async def pipeline_state(project_id: str) -> Dict[str, Any]:
     if state.get("phase") == "idle":
         return {"project_id": project_id, "phase": "idle", "state": {}}
 
-    return {
+    resp = {
         "project_id": project_id,
         "phase": state.get("phase", "idle"),
         "state": state,
     }
+    # P2-A1 phase 2: attach the event-sourced (folded) view for audit cross-check
+    try:
+        run_id = state.get("run_id") or state.get("_run_id") or ""
+        if run_id:
+            derived = store.replay_run_events(run_id)
+            if derived:
+                resp["event_derived"] = derived
+    except Exception as _e:  # noqa: BLE001
+        import logging as _lg
+        _lg.getLogger(__name__).debug("replay_run_events failed: %s", _e)
+    return resp
 
 
 @router.post("/{project_id}/hitl-resolve")

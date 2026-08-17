@@ -39,3 +39,25 @@ def test_store_callback_dual_write(tmp_path):
     evs = store.list_run_events("run-42")
     types = [e["event_type"] for e in evs]
     assert types == ["pipeline_progress", "pipeline_hitl", "pipeline_finished"]
+
+
+def test_replay_folds_events_into_state(tmp_path):
+    sys.path.insert(0, ".")
+    store = _fresh_store(tmp_path)
+
+    store.append_run_event("r2", "pipeline_started", "", {"phase": "executing"})
+    store.append_run_event("r2", "pipeline_progress", "1", {"phase": "executing", "current_stage_idx": 1, "pass_rate": 0.4})
+    store.append_run_event("r2", "pipeline_progress", "2", {"phase": "executing", "current_stage_idx": 2, "pass_rate": 0.6})
+    store.append_run_event("r2", "pipeline_finished", "3", {"phase": "done", "current_stage_idx": 3, "pass_rate": 0.9})
+
+    d = store.replay_run_events("r2")
+    assert d is not None
+    assert d["phase"] == "done"
+    assert d["current_stage_idx"] == 3
+    assert d["pass_rate"] == 0.9
+    assert d["event_count"] == 4
+    assert d["derived"] is True
+    assert d["last_terminal_event"] == "pipeline_finished"
+
+    # no events → None
+    assert store.replay_run_events("r-nope") is None
