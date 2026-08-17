@@ -119,3 +119,5 @@ aiPlat 逻辑上分为：
 **契约不变项**：syscall 三通道唯一性、单向依赖链、Prompt Cache 稳定性约束均未改变；script 模式不产生 syscall 事件（无 LLM 通道）。
 
 - **事件源双写（P2-A1）**：`PipelineRunStore` 新增 `pipeline_run_events` append-only 事件日志（阶段/phase/hitl 事件），引擎状态回调双写；run 状态快照保留（向后兼容），事件供回放/审计/UI 时间线。
+
+- **事件折叠派生（P2-A1 二阶段）**：`PipelineRunStore.replay_run_events` 从事件日志折叠 run 状态（审计交叉验证），`pipeline_state` API 附加 `event_derived` 字段；状态快照保留为快速路径。
