@@ -262,6 +262,67 @@ class PipelineRunStore:
             })
         return out
 
+    def replay_run_events(self, run_id: str) -> Optional[Dict[str, Any]]:
+        """P2-A1 phase 2: fold the append-only event log into a run state snapshot.
+
+        Derived (event-sourced) view — the *source of truth* for audit/replay.
+        The pipeline_runs row remains the fast-path state cache (dual-write);
+        this method reconstructs phase / current_stage_idx / pass_rate purely
+        from events, so consumers can cross-check or rebuild after a crash.
+        Returns None when no events exist for the run.
+        """
+        evs = self.list_run_events(run_id, limit=5000)
+        if not evs:
+            return None
+
+        phase = "executing"
+        current_stage_idx = 0
+        pass_rate = 0.0
+        stage_ids: List[str] = []
+        terminal = {"pipeline_finished", "pipeline_failed", "pipeline_cancelled", "pipeline_paused"}
+        terminal_phase = {"pipeline_finished": "done", "pipeline_failed": "failed",
+                          "pipeline_cancelled": "cancelled", "pipeline_paused": "paused"}
+        hitl_state_name = "review"  # mapped state for pipeline_hitl (not a business concept)
+        last_terminal = ""
+
+        for e in evs:
+            evt = e.get("event_type", "")
+            payload = e.get("payload") or {}
+            if evt == "pipeline_started":
+                phase = "executing"
+            elif evt in terminal:
+                last_terminal = evt
+                phase = terminal_phase[evt]
+                # Terminal events carry the final progress too
+                current_stage_idx = int(payload.get("current_stage_idx") or current_stage_idx)
+                try:
+                    pass_rate = float(payload.get("pass_rate") or pass_rate)
+                except (TypeError, ValueError):
+                    pass  # noqa: schema-idempotent
+            elif evt == "pipeline_hitl":
+                phase = hitl_state_name
+            elif evt == "pipeline_progress":
+                phase = payload.get("phase") or phase
+                current_stage_idx = int(payload.get("current_stage_idx") or current_stage_idx)
+                try:
+                    pass_rate = float(payload.get("pass_rate") or pass_rate)
+                except (TypeError, ValueError):
+                    pass  # noqa: schema-idempotent
+            if e.get("stage_id"):
+                if e["stage_id"] not in stage_ids:
+                    stage_ids.append(e["stage_id"])
+
+        return {
+            "run_id": run_id,
+            "phase": phase,
+            "current_stage_idx": current_stage_idx,
+            "pass_rate": pass_rate,
+            "stages_visited": stage_ids,
+            "event_count": len(evs),
+            "last_terminal_event": last_terminal or None,
+            "derived": True,  # marker: this is the event-sourced view
+        }
+
     def update_run_progress(
         self,
         run_id: str,

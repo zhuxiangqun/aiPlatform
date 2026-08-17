@@ -86,3 +86,9 @@ management 展示层建议以：
 - **事件类型**：`stage_started / stage_completed / stage_skipped / stage_paused / stage_failed / hitl_requested / hitl_resolved / run_phase_changed / pipeline_started / pipeline_finished`（引擎回调映射：progress/hitl/finished/failed/cancelled/paused）
 - **语义**：run 当前状态仍在 `pipeline_runs`（状态快照），事件日志用于回放/审计/UI 时间线；`seq` 单调递增保证顺序
 - **契约**：事件 payload 含 `phase / current_stage_idx / pass_rate`；`run_id` 复用 `run-<uuid12>` 命名空间，与 trace_id 独立
+
+### 4.2 事件折叠派生（P2-A1 第二阶段，2026-08-17 补充）
+
+- `PipelineRunStore.replay_run_events(run_id)`：从 `pipeline_run_events` 折叠出 run 状态快照（`phase / current_stage_idx / pass_rate / stages_visited / last_terminal_event`），`derived=True` 标记事件源视图
+- `pipeline_state` API 响应附加 `event_derived` 字段（审计交叉验证；状态快照仍为快速路径）
+- 终态事件（`pipeline_finished/failed/cancelled/paused`）携带最终 progress；`pipeline_hitl` 映射为 `review` 状态
