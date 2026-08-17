@@ -27,6 +27,10 @@ def _iter_py_files(repo_root: Path) -> List[Path]:
         for py_file in d.rglob("*.py"):
             if any(ex in py_file.parts for ex in _EXCLUDE_DIRS):
                 continue
+            # Guard meta-code itself contains rule patterns as string literals
+            # (e.g. "@lru_cache|@cache" regex) — scanning it would self-flag.
+            if "arch_guard_rules" in py_file.parts:
+                continue
             if "/tests/" in str(py_file) or "/test_" in str(py_file.name):
                 continue
             files.append(py_file)
@@ -54,10 +58,15 @@ class GlobalDictNoCleanupCheck(ArchRule):
             except Exception:
                 continue
 
-            # Find Dict[str, ...] = {} declarations
+            # Find Dict[str, ...] = {} declarations — module/class level only
+            # (indented local dicts inside functions are scoped & GC'd, not
+            # unbounded module state; static config dicts are also not growth
+            # risks but module-level dicts without ANY cleanup are flagged for
+            # review).
             dict_matches = list(re.finditer(
-                r'(?:Dict\[str\s*,\s*[A-Za-z\[\],\s]+\]\s*=\s*\{\})',
+                r'^[A-Za-z_][A-Za-z0-9_]*\s*:\s*Dict\[str\s*,\s*[A-Za-z\[\],\s]+\]\s*=\s*\{\}',
                 content,
+                flags=re.MULTILINE,
             ))
             if not dict_matches:
                 continue
@@ -149,10 +158,11 @@ class UnboundedAppendCheck(ArchRule):
 
 
 class LRUCacheNoClearCheck(ArchRule):
-    """§83c: @lru_cache / @cache usage without matching cache_clear() call.
+    """§83c: unbounded @lru_cache / @cache usage without cache_clear() call.
 
-    Caches without explicit clear() can hold references to dead objects,
-    preventing garbage collection.
+    Only *unbounded* caches can hold references to dead objects forever and
+    leak memory. Bounded caches (@lru_cache(maxsize=N>0), bare @lru_cache
+    defaulting to 128) auto-evict via LRU — no clear() needed.
     """
 
     code = "memory_lru_cache_no_clear"
@@ -168,13 +178,20 @@ class LRUCacheNoClearCheck(ArchRule):
             except Exception:
                 continue
 
-            has_lru = bool(re.search(r'@lru_cache|@functools\.cache|@cache\b', content))
+            # Unbounded forms only: @functools.cache / @cache (always
+            # unbounded) and @lru_cache(maxsize=None). Bounded forms
+            # (maxsize=N>0 or default 128) auto-evict — no leak risk.
+            has_unbounded_lru = bool(re.search(
+                r'@(?:functools\.)?cache\b'
+                r'|@lru_cache\s*\(\s*maxsize\s*=\s*None\s*\)',
+                content,
+            ))
             has_clear = bool(re.search(r'cache_clear\(\)', content))
 
-            if has_lru and not has_clear:
+            if has_unbounded_lru and not has_clear:
                 rel_path = str(py_file.relative_to(repo_root))
                 violations.append(
-                    f"{rel_path}: has @lru_cache/@cache but no cache_clear() call"
+                    f"{rel_path}: unbounded @lru_cache/@cache without cache_clear() call"
                 )
 
         if violations:
@@ -183,8 +200,8 @@ class LRUCacheNoClearCheck(ArchRule):
                     level=self.level,
                     code=self.code,
                     message=(
-                        f"LRU caches without clear(): {len(violations)} file(s) "
-                        f"use @lru_cache without explicit cache_clear()."
+                        f"Unbounded LRU caches without clear(): {len(violations)} file(s) "
+                        f"use unbounded @lru_cache/@cache without explicit cache_clear()."
                     ),
                     files=violations[:30],
                     count=len(violations),

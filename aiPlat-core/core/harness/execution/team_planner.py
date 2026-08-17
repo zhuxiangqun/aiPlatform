@@ -21,7 +21,6 @@ import os
 import re
 from collections import defaultdict, deque
 from dataclasses import dataclass, field
-from functools import lru_cache
 from typing import Any, Dict, List, Optional
 
 from core.schemas_builder import PipelineStageConfig
@@ -169,12 +168,6 @@ def list_available_agents() -> List[AgentCatalogEntry]:
 
     entries.sort(key=lambda e: e.agent_id)
     return entries
-
-
-@lru_cache(maxsize=1)
-def _list_agents_cached() -> tuple:
-    """Scanned & cached agent catalog. I/O once, reuse until server restart."""
-    return tuple(list_available_agents())
 
 
 def _topological_order(stages: List[Dict]) -> List[Dict]:
