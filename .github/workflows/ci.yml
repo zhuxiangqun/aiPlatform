@@ -20,7 +20,7 @@ jobs:
           python-version: "3.11"
           cache: pip
       - name: Install dependencies
-        run: pip install -e ../aiPlat-infra -e ".[dev]" || pip install ruff mypy radon
+        run: pip install -e ../aiPlat-infra -e ".[dev]" ruff mypy radon || pip install ruff mypy radon
       - name: Ruff lint
         run: ruff check core/ --ignore F821
       - name: MyPy type check
@@ -60,9 +60,15 @@ jobs:
             echo "Docker-compose test environment started"
           fi
       - name: Run tests
-        run: python -m pytest tests/ -v --tb=short -q --cov=. --cov-report=xml --cov-fail-under=80
+        run: |
+          TEST_DIR="tests"
+          [ "${{ matrix.component }}" = "aiPlat-infra" ] && TEST_DIR="infra/tests"
+          python -m pytest "$TEST_DIR" -v --tb=short -q --cov=. --cov-report=xml --cov-fail-under=80
       - name: Run regression tests
-        run: python -m pytest tests/ -v --tb=short -q -m regression 2>/dev/null || echo "No regression tests defined (informational)"
+        run: |
+          TEST_DIR="tests"
+          [ "${{ matrix.component }}" = "aiPlat-infra" ] && TEST_DIR="infra/tests"
+          python -m pytest "$TEST_DIR" -v --tb=short -q -m regression 2>/dev/null || echo "No regression tests defined (informational)"
       - name: Upload coverage
         uses: actions/upload-artifact@v4
         with:
@@ -86,7 +92,7 @@ jobs:
       - name: Run L5 depth tests
         run: python -m pytest tests/autonomy/test_l5_capabilities.py -v --tb=short -q
       - name: ACP Smoke Test (IDE integration)
-        run: bash scripts/test-acp-smoke.sh || echo "ACP smoke skipped (informational)"
+        run: bash ../scripts/test-acp-smoke.sh || echo "ACP smoke skipped (informational)"
 
   benchmark:
     name: Performance Benchmarks
@@ -103,9 +109,9 @@ jobs:
       - name: Install dependencies
         run: pip install -e ../aiPlat-infra -e "." || true
       - name: Run benchmarks
-        run: bash scripts/benchmark-ci.sh
+        run: bash ../scripts/benchmark-ci.sh
       - name: Stress test (informational)
-        run: bash scripts/stress-test.sh localhost 5 20 2>/dev/null || echo "Stress test skipped (needs running instance)"
+        run: bash ../scripts/stress-test.sh localhost 5 20 2>/dev/null || echo "Stress test skipped (needs running instance)"
 
   docker:
     name: Docker Build & Push
