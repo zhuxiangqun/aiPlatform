@@ -99,3 +99,10 @@ management 展示层建议以：
   - `event_derived`：事件折叠视图（复用 `replay_run_events`）
   - `state_event_consistent`：状态快照 phase 与事件折叠 phase 一致性标志
 - 用途：检测状态/事件漂移（跨 worker 不一致、崩溃恢复后偏差）；状态快照仍为快速路径，事件视图为审计交叉验证
+
+### 4.4 事件回放读取契约 + 观察事件缓冲（2026-08-18 补充）
+
+- **读取端点**：`GET /runs/{run_id}/events?after_seq=N&limit=M`（`runs.py:list_run_events`，经 `execution_store.runs_mixin.list_run_events`）——返回 `{items, after_seq, last_seq}`，`items[]` 含 `seq / type / payload / trace_id / tenant_id / created_at`；`after_seq` 增量拉取用于轮询/追尾
+- **回放 UI**：前端 `RunEventTimeline` 组件（Builder 运行历史内联时间线，seq/type/payload 展开查看）消费同一端点，不新增业务读取路径
+- **观察缓冲**：`api/routers/observation.py` 的 `_diag_buffers`（per-run_id 诊断事件缓冲）有界化——`_DIAG_TTL=60s` + `_MAX_DIAG_RUNS=256`，每次 `store_diag_event` 清扫过期/超额条目；缓冲仅用于 SSE 首段回放，权威事件源是 `run_events` 表
+- **事件源权威**：所有回放/时间线 UI 的最终一致来源是 `run_events` / `pipeline_run_events` 表；内存缓冲（observation / read_cache 等）仅作临时加速，不构成第二条业务真相
