@@ -1,27 +1,29 @@
 {
-  "generated_at": "2026-08-14T07:41:33.004653",
+  "generated_at": "2026-08-18T14:37:06.456243",
   "doc": "/Users/apple/workdata/person/zy/aiPlatform/AIPLAT_CAPABILITIES.md",
-  "total_declared": 920,
+  "total_declared": 1030,
   "markers": {
-    "ok": 937,
+    "ok": 1048,
     "warn": 4,
     "todo": 0
   },
   "refs": {
-    "unique_total": 1037,
+    "unique_total": 1083,
     "frontmatter": 337,
-    "table": 879,
-    "file_ok": 1037,
-    "file_missing": 0,
-    "line_ok": 1037,
+    "table": 973,
+    "file_ok": 1082,
+    "file_missing": 1,
+    "line_ok": 1082,
     "line_bad": 0
   },
-  "missing_files": [],
+  "missing_files": [
+    "harness/infrastructure/audit.py"
+  ],
   "out_of_range": [],
   "impl": {
-    "merged": 879,
+    "merged": 970,
     "phase_tagged": 0,
-    "other": 0
+    "other": 3
   },
   "fragments": {
     "auto_generated": 0,
@@ -29,9 +31,9 @@
   },
   "orphan_recheck": [],
   "rates": {
-    "file_exist": 1.0,
+    "file_exist": 0.9991,
     "line_valid": 1.0,
-    "impl": 0.8476,
-    "completion": 0.9695
+    "impl": 0.8957,
+    "completion": 0.9787
   }
 }

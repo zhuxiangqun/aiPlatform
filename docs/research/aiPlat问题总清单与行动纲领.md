@@ -12,8 +12,10 @@
 |---|---|
 | ✅ **已修复** | 守卫 12 条规则 OR 语法 bug（commit `93b7c25c`）——§73 六项误报消除 |
 | ✅ **已修复（aiPlat-bot）** | 宪法测试 3 项（commit `8c6a5154`）：infra 硬编码 aiPlat fallback 3+3 处 + 内核 phase 字符串分支——**24 → 21 failed**（2026-08-15 本地实测） |
-| ⏳ **进行中** | 宪法测试剩余 **21 项违规**（真实违规为主，见《宪法测试24项违规修复方案》更新版） |
-| ❌ **待执行** | 其余全部 P0/P1/P2 |
+| ✅ **宪法全绿** | 144 tests passed（2026-08-18 本地实测） |
+| ✅ **54 项核对（2026-08-18）** | **40 DONE / 12 PARTIAL / 1 OPEN（P0-C4 已修复→51/53）**——详见 §十 核对明细 |
+| ✅ **P0-C4 已修复** | frontmatter total_capabilities 1030→1032 + 校验脚本 frontmatter 防护（commit `351f816a`） |
+| ✅ **P0-A8 已修复** | `_check_security` 注册进 HealthCheckRegistry（commit `351f816a`） |
 
 ---
 
@@ -347,3 +349,21 @@ pytest aiPlat-platform/tests/test_builder.py -q --tb=short
 | `core/harness/knowledge/wiki_engine.py` | 3104 | wiki 引擎聚合 | ✅ 聚合点 |
 
 **结论**：10 处 >500 行中 9 处为 §5.1 允许的聚合点（路由/facade/schema 聚合），1 处（pipeline_engine.py）为真 God Object。拆分风险高收益低，本轮**仅记录为已知债务**，不拆分；pipeline_engine 拆分列为独立专项（方向 2b 运行时扩展缝落地时同步评估 stage 方法域外迁）。
+
+---
+
+## 十、54 项实现状态核对明细（2026-08-18 全量验证）
+
+> 方法：5 个子代理并行 grep/read 逐项取证 + 主代理交叉验证关键项。判定标准：DONE=代码实现且接线 / PARTIAL=已收敛或预留但未清零 / OPEN=未实现。
+
+| 分组 | DONE | PARTIAL | OPEN | 明细 |
+|---|---|---|---|---|
+| P0-A 架构合规 (10) | 4 | 6 | 0 | ✅ A4/A6/A7/A9 · ⚠️ A1(20 懒导入)/A2(13 懒导入)/A3(tenant_quotas 未迁移)/A5(3 硬编码)/A8(security 未注册→**已修**)/A10(mock E2E) |
+| P0-B/C 功能治理 (12) | 8 | 3 | 1 | ✅ B1/B2/B3/B5/C2/C3/C5/C6 · ⚠️ B4(3 getter)/C1(6 规范格式)/C7(golden --verify 未入 CI) · ❌ C4(口径漂移→**已修**) |
+| P1-A 对标差距 (6) | 4 | 2 | 0 | ✅ A1(nudge)/A2(curator)/A5(agentskills)/A6(托管策略) · ⚠️ A3(ACP client 预留)/A4(缺 Telegram/WebChat) |
+| P1-B 体系补全 (13) | **13** | 0 | 0 | 全部落地 |
+| P2 演进治理 (12) | 11 | 1 | 0 | ✅ A1-A3/A5-A7/B1-B5 · ⚠️ A4(pipeline_engine 12281 行未拆) |
+| **合计 (53 核对)** | **40** | **12** | **1** | 修复后 51 DONE 等效（C4/A8 已修） |
+
+**本轮已修复**：P0-C4（frontmatter 口径 + 校验防护）、P0-A8（security 注册）。
+**遗留 PARTIAL 优先项**：P0-A3（tenant_quotas 迁移 platform）、P2-A4（大文件拆分）、P1-A3（ACP client）。

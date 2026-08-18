@@ -112,3 +112,4 @@ management 展示层建议以：
 - **原则**：`run_events` / DB 是唯一权威真相；所有内存缓存（`model_injection._FAILURE_TRACKER` / `_model_overrides`、`context_service` 索引、`credential_pool._pools`、`plugins._slot_archives`、`sql_ontology._translators`）均为临时加速，**必须带上限**（`_MAX_*`）或 TTL，禁止无限增长
 - **约束**：新增内存缓存时须声明 `_MAX_*` 上限或 TTL 清扫；键空间来自客户端输入（HTTP 参数 / session_id / provider）时必须校验或设上限
 - **落地记录（2026-08-18 二轮）**：`skill_routing._skill_weights`（`_MAX_SKILL_WEIGHTS=512`）、`evolution._latest_predictions`（`_MAX_PREDICTIONS=256`）、`base_model_adapter._model_cache`（`_MAX_MODEL_CACHE=16`）补上限；守卫 §83a 豁免机制从文件级改为**变量名级**（仅 `_REGISTRY/_DEFAULTS/_MAP` 等命名本身豁免，运行时 dict 如 `_running_pipelines` 不再误豁免）
+- **落地记录（2026-08-18 三轮）**：`api/routers/diagnostics.py` 将 `_check_security` 注册进 HealthCheckRegistry（模块名 `security`，Severity.HIGH）——诊断体系补全；能力登记 frontmatter `total_capabilities` 与统计表口径统一（verify_capability_consistency.py 增加 frontmatter 校验，--fix 同步双口径）

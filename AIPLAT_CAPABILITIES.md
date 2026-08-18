@@ -1,7 +1,7 @@
 ---
-total_capabilities: 1030
-last_updated: 2026-08-15
-version: "30.0"
+total_capabilities: 1032
+last_updated: 2026-08-18
+version: "30.1"
 auto_sync: true
 core_guarantees:
   auto:  # 23 active, 0 missing

@@ -187,6 +187,17 @@ def main() -> int:
     if extra:
         print(f"  ⚠️ 章节映射中有但统计表无: {extra}")
 
+    # 4. Frontmatter total_capabilities must match the stats-table total (P0-C4)
+    fm = re.search(r'^total_capabilities:\s*(\d+)', content, re.MULTILINE)
+    fm_total = int(fm.group(1)) if fm else None
+    stat_total = sum(s[2] for dim, s in stats.items() if not is_total_row(dim))
+    if fm_total is not None and fm_total != stat_total:
+        print(f"  ❌ frontmatter total_capabilities={fm_total}, 统计表总计={stat_total}")
+        print(f"     修复: AIPLAT_CAPABILITIES.md frontmatter 改为 {stat_total}")
+        errors += 1
+    elif fm_total is None:
+        print("  ⚠️ frontmatter 缺 total_capabilities 字段")
+
     if errors == 0:
         print("\n  ✅ AIPLAT_CAPABILITIES.md 一致性验证通过")
         return 0
@@ -254,8 +265,17 @@ def fix() -> None:
         new_lines.append(line)
 
     if total_impl > 0:
-        CAPABILITIES.write_text("\n".join(new_lines), encoding="utf-8")
-        print(f"  ✅ Stats table recalculated: {total_impl}✅ + {total_part}⚠️ = {total_impl + total_part}")
+        # Also sync frontmatter total_capabilities (P0-C4): single source of truth
+        fixed = "\n".join(new_lines)
+        fm_total = total_impl + total_part
+        fixed = re.sub(
+            r'^total_capabilities:\s*\d+',
+            f"total_capabilities: {fm_total}",
+            fixed,
+            count=1, flags=re.MULTILINE,
+        )
+        CAPABILITIES.write_text(fixed, encoding="utf-8")
+        print(f"  ✅ Stats table + frontmatter recalculated: {total_impl}✅ + {total_part}⚠️ = {fm_total}")
     else:
         print("  ⚠ No changes (stats table not found)")
 
