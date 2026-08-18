@@ -1,6 +1,6 @@
 # PipelineEngine 拆分方案（P2-A4）
 
-> 状态：方案（2026-08-18）· 目标：pipeline_engine.py 12281 行 → 主类 + Mixin 拆分
+> 状态：**✅ 已完成（2026-08，Phase 1-4 全部实施并合并）** · 目标：pipeline_engine.py 12281 行 → 主类 + Mixin 拆分
 > 原则：**不改任何公共 API/调用语义**，纯文件结构重组（方法迁移到 Mixin 类，主类多重继承）
 > 位置：research 目录（方案定稿），代码实施按 Phase 风险递增逐步进行
 
@@ -46,10 +46,12 @@
 
 ### 目标形态
 ```
-PipelineEngine(PipelineStageMixin, PipelineHealingMixin, PipelineStateMixin,
-               PipelinePromptMixin, PipelineEvalMixin, ...)
+PipelineEngine(PipelineStageMixin, PipelineEvalMixin, PipelinePromptMixin,
+               PipelineStateMixin, PipelineHealingMixin)
 ```
-主类保留：`__init__`、核心状态、`run`/`approve`/`reject`/`rollback`（生命周期 API）、模块级函数（`get_pipeline_builder` 等）
+主类保留：`__init__`、核心状态、`run`/`approve`/`reject`/`rollback`（生命周期 API）、`_run_stages_from`（核心调度枢纽）、模块级函数（`get_pipeline_builder` 等）
+
+> **Phase 4 决策记录**：`_run_stages_from`（核心调度循环，420 行，9 处引用）**保留在主类**——它是跨域调度的唯一枢纽（调 14 个方法含 3 个 Mixin 域方法），迁移风险大于收益。Phase 4 只迁移相对独立的 dispatch/exec 方法（8 个，1112 行）。
 
 ## 4. 风险与缓解
 
@@ -82,4 +84,18 @@ PipelineEngine(PipelineStageMixin, PipelineHealingMixin, PipelineStateMixin,
 
 ## 7. 实施记录
 
-- 2026-08-18：方案定稿（本文档）。Phase 1（healing Mixin，562 行）待实施——需 workspace-write 权限做机械迁移（提取方法 → 新文件 → 主文件删除 + 继承声明）。
+- 2026-08-18：方案定稿（本文档）。
+- **Phase 1（healing Mixin，✅ PR #16 630444d3）**：`execution/pipeline_healing.py`，13 方法 550 行。`PipelineHealingMixin`。
+- **Phase 2（state_persist Mixin，✅ PR #17 91aa247d）**：`execution/pipeline_state.py`，6 方法 321 行。`PipelineStateMixin`。
+- **Phase 3（prompt_parse + eval_test Mixin，✅ PR #18 a622c2f4）**：`execution/pipeline_prompt.py`（8 方法 823 行）+ `execution/pipeline_eval.py`（6 方法 1256 行）。`PipelinePromptMixin` + `PipelineEvalMixin`。
+- **Phase 4（stage_dispatch + stage_exec Mixin，✅ 本次实施）**：`execution/pipeline_stage.py`，8 方法 1158 行（`_dispatch_execute`/`_infer_profile_from_stage`/`_calibrate_profile_from_history`/`_apply_capability_profile`/`_build_handler_params`/`_exec_isolated_stage`/`_exec_stage`/`_evaluate_stage_health`）。`PipelineStageMixin`。`_run_stages_from` 保留主类（见 §3 决策记录）。
+
+### 拆分累计
+
+| 指标 | 初始 | Phase 1 后 | Phase 2 后 | Phase 3 后 | Phase 4 后 |
+|---|---|---|---|---|---|
+| pipeline_engine.py 行数 | 12281 | ~11700 | ~11380 | 9406 | **8288** |
+| 主类方法数 | 112 | ~99 | ~93 | 79 | ~71 |
+| Mixin 文件数 | 0 | 1 | 2 | 4 | **5** |
+| 累计迁移行数 | — | 550 | 871 | 2875 | **3993** |
+| 公共 API 破坏 | — | 0 | 0 | 0 | **0** |
