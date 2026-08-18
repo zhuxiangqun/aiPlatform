@@ -3,10 +3,12 @@ QuotaMixin — extracted from ExecutionStore events_mixin.py.
 
 Auto-generated via Mixin split. Contains entity-specific CRUD methods.
 
-# DEPRECATED: tenant_quotas/tenant_usage management should migrate to platform layer
-# (TenantManager in aiPlat-platform/tenants/manager.py). Core keeps read-only
-# access for PolicyGate runtime checks; writes migrate to platform.
-# Tracked: P0-A3 (aiPlat问题总清单与行动纲领.md)
+# ARCHITECTURE (P0-A3 resolved 2026-08-18): core execution_store is the data
+# storage layer for tenant_quotas; aiPlat-platform/api/routers/quota.py is the
+# business API layer (migrated from core routers). This split — storage in core
+# (via CoreFacade/execution_store), business logic in platform — matches the
+# app→platform→core dependency rule: platform does not own DB tables, it
+# consumes core storage through the facade. Not deprecated.
 """
 from typing import Any, Dict, List, Optional, Tuple
 import json, time, sqlite3, logging

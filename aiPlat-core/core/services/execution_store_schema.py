@@ -4,8 +4,9 @@ Execution Store DDL — all CREATE TABLE / CREATE INDEX / schema migration SQL.
 Extracted from execution_store.py init() (per audit 1.8 structural debt split).
 Referenced by ExecutionStore._run_migrations().
 
-DEPRECATED: tenant_quotas management should migrate to platform layer.
-Per architecture contract (docs/index.md §Layer 2).
+ARCHITECTURE (P0-A3 resolved 2026-08-18): core stores tenant_quotas; platform
+api/routers/quota.py is the business API. Storage in core + business in platform
+matches app→platform→core dependency rule. Not deprecated.
 """
 
 from __future__ import annotations

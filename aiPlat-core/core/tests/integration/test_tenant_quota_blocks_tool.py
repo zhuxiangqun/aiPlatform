@@ -18,13 +18,20 @@ def test_quota_exceeded_blocks_tool_and_tracks_usage(tmp_path, monkeypatch):
         # PermissionManager 默认对非 system 用户可能 deny tool execute；测试用 system。
         headers_admin = {"X-AIPLAT-TENANT-ID": "t1", "X-AIPLAT-ACTOR-ID": "system", "X-AIPLAT-ACTOR-ROLE": "admin"}
 
+        # Quota routes migrated to platform (P0-A3); set quota via store directly.
+        from core.services.execution_store import get_execution_store
+        store = get_execution_store()
+
+        import asyncio
+
+        async def _set_quota(tool_calls: int) -> None:
+            await store.upsert_tenant_quota(
+                tenant_id="t1",
+                quota={"daily": {"tool_calls": tool_calls}},
+            )
+
         # Set quota: tool_calls=0 => tool execution should be blocked
-        q = client.put(
-            "/api/core/quota/snapshot",
-            json={"tenant_id": "t1", "quota": {"daily": {"tool_calls": 0}}},
-            headers=headers_admin,
-        )
-        assert q.status_code == 200, q.text
+        asyncio.run(_set_quota(0))
 
         r = client.post(
             "/api/core/tools/calculator/execute",
@@ -37,12 +44,7 @@ def test_quota_exceeded_blocks_tool_and_tracks_usage(tmp_path, monkeypatch):
         assert (body.get("error_detail") or {}).get("code") == "QUOTA_EXCEEDED"
 
         # Allow quota and ensure usage increments
-        q2 = client.put(
-            "/api/core/quota/snapshot",
-            json={"tenant_id": "t1", "quota": {"daily": {"tool_calls": 100}}},
-            headers=headers_admin,
-        )
-        assert q2.status_code == 200, q2.text
+        asyncio.run(_set_quota(100))
 
         client.post(
             "/api/core/tools/calculator/execute",
@@ -56,15 +58,17 @@ def test_quota_exceeded_blocks_tool_and_tracks_usage(tmp_path, monkeypatch):
         )
 
         day = time.strftime("%Y-%m-%d", time.gmtime())
-        u = client.get(
-            "/api/core/quota/usage",
-            params={"tenant_id": "t1", "metric_key": "tool_calls", "day_start": day, "day_end": day, "limit": 50},
-            headers=headers_admin,
-        )
-        assert u.status_code == 200, u.text
-        items = u.json().get("items") or []
+        usage = asyncio.run(_read_usage(store, "t1", "tool_calls", day))
         v = 0.0
-        for it in items:
+        for it in usage:
             if it.get("metric_key") == "tool_calls" and it.get("day") == day:
                 v = float(it.get("value") or 0)
         assert v >= 2.0
+
+
+async def _read_usage(store, tenant_id: str, metric_key: str, day: str):
+    items = await store.list_tenant_usage(
+        tenant_id=tenant_id, metric_key=metric_key,
+        day_start=day, day_end=day, limit=50,
+    )
+    return items or []
