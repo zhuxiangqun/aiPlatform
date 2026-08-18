@@ -1650,12 +1650,6 @@ def get_graph_health(domain: str = "") -> Dict[str, Any]:
         return {"domain": domain, "exists": False, "error": str(e)[:200]}
 
 
-def get_wiki_index(collection_id: str = "default") -> str:
-    u"""Phase 46: Generate global wiki index — wraps wiki_engine."""
-    from core.harness.knowledge.wiki_engine import generate_index_md
-    return generate_index_md(collection_id=collection_id)
-
-
 def code_intel_context(task: str) -> Any:
     u"""Return code graph context for a development task."""
     from core.harness.syscalls.code_intel_syscall import sys_code_intel_context
@@ -2387,16 +2381,6 @@ def get_chat_service_model(rt: Any = None) -> Any:
 # ── Ontology Facade (Phase 1: semantic↔action loop closure) ──
 
 
-def get_entity_lifecycle_summary(
-    collection_id: str = "default",
-) -> Dict[str, Any]:
-    u"""Return lifecycle state counts across all ontology entities."""
-    from core.harness.knowledge.knowledge_action import get_entity_lifecycle_summary
-    from core.harness.knowledge.knowledge_ontology import get_ontology
-    onto = get_ontology()
-    return get_entity_lifecycle_summary(onto, collection_id=collection_id)
-
-
 # ── Semantic Ontology Evolution Facade (Phase 3) ──
 
 async def generate_ontology_suggestions(
@@ -2553,13 +2537,6 @@ def check_obsidian_compatibility(collection_id: str = "default") -> Dict[str, An
 
 
 # ── Learning Coach Facade (L6 — AI Learning Coach) ──
-
-
-def get_learner_profile(learner_id: str) -> Optional[Dict[str, Any]]:
-    u"""Get a learner profile."""
-    from core.harness.knowledge.learning_ontology import load_learner_profile
-    profile = load_learner_profile(learner_id)
-    return profile.to_dict() if profile else None
 
 
 async def complete_chapter_for_learner(

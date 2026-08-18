@@ -30,9 +30,13 @@ from .health_checker import HealthChecker
 
 
 def _write_env_local(key: str, value: str) -> None:
-    """Write an env var to ~/.aiplat/.env.local, creating or updating the line."""
+    """Write an env var to ~/.aiplat/.env.local, creating or updating the line.
+
+    Path overridable via AIPLAT_ENV_LOCAL_PATH (infra must stay deployable
+    without a fixed ~/.aiplat layout).
+    """
     from pathlib import Path
-    env_file = Path.home() / ".aiplat" / ".env.local"
+    env_file = Path(os.getenv("AIPLAT_ENV_LOCAL_PATH", str(Path.home() / ".aiplat" / ".env.local")))
     env_file.parent.mkdir(parents=True, exist_ok=True)
     
     lines = env_file.read_text().splitlines() if env_file.exists() else []
