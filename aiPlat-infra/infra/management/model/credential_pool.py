@@ -218,6 +218,9 @@ class CredentialPool:
 
 
 # ── Process-wide singleton cache ──
+# Bounded by _MAX_POOLS: provider keys come from callers; cap prevents
+# arbitrary keys from growing the pool registry.
+_MAX_POOLS = 64
 
 _pools: Dict[str, CredentialPool] = {}
 
@@ -226,5 +229,7 @@ def get_credential_pool(provider: str) -> CredentialPool:
     """Get or create a credential pool for a provider (singleton per provider)."""
     key = provider.lower()
     if key not in _pools:
+        if len(_pools) >= _MAX_POOLS:
+            _pools.pop(next(iter(_pools)), None)
         _pools[key] = CredentialPool(provider)
     return _pools[key]
