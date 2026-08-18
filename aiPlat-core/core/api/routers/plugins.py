@@ -9,6 +9,7 @@ from core.api.deps import actor_from_http, rbac_guard
 from core.api.utils.governance import gate_error_envelope, ui_url
 from core.harness.kernel.runtime import get_kernel_runtime
 from core.policy.engine import PolicyDecision, evaluate_tool_policy_snapshot
+from core.services.tenant_store_protocol import get_tenant_store  # P0-A3
 from core.schemas_run import RunStatus
 from core.utils.ids import new_prefixed_id
 import logging
@@ -306,6 +307,7 @@ async def run_plugin(plugin_id: str, request: dict, http_request: Request):
     required_tools = manifest.get("required_tools") if isinstance(manifest.get("required_tools"), list) else []
     required_tools = [str(x) for x in required_tools if isinstance(x, (str, int, float)) and str(x).strip()]
 
+    store = get_tenant_store() or store  # P0-A3: tenant policy via injected store
     pol_item = await store.get_tenant_policy(tenant_id=str(tid))
     policy = pol_item.get("policy") if isinstance(pol_item, dict) and isinstance(pol_item.get("policy"), dict) else None
     policy_version = pol_item.get("version") if isinstance(pol_item, dict) else None

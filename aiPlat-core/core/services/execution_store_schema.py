@@ -4,8 +4,10 @@ Execution Store DDL — all CREATE TABLE / CREATE INDEX / schema migration SQL.
 Extracted from execution_store.py init() (per audit 1.8 structural debt split).
 Referenced by ExecutionStore._run_migrations().
 
-DEPRECATED: tenant_quotas management should migrate to platform layer.
-Per architecture contract (docs/index.md §Layer 2).
+# DEPRECATED: concrete tenant DDL/CRUD migrate to platform layer (P0-A3)
+P0-A3 (2026-08): tenant_quotas / tenant_usage / tenant_policies DDL moved to
+platform TenantStore (aiPlat-platform/tenants/tenant_store.py). Same DB file →
+zero data migration; tables still created IF NOT EXISTS by TenantStore.init().
 """
 
 from __future__ import annotations
@@ -22,23 +24,6 @@ META_TABLES = [
 ]
 
 CORE_TABLES = [
-    # ── Tenant ──
-    """CREATE TABLE IF NOT EXISTS tenant_quotas (
-      tenant_id TEXT PRIMARY KEY, version INTEGER, quota_json TEXT NOT NULL,
-      updated_at REAL NOT NULL
-    );""",
-    "CREATE INDEX IF NOT EXISTS idx_tenant_quotas_updated ON tenant_quotas(updated_at DESC);",
-    """CREATE TABLE IF NOT EXISTS tenant_usage (
-      tenant_id TEXT NOT NULL, metric_key TEXT NOT NULL, amount REAL,
-      day TEXT NOT NULL, updated_at REAL NOT NULL,
-      PRIMARY KEY (tenant_id, metric_key, day)
-    );""",
-    "CREATE INDEX IF NOT EXISTS idx_tenant_usage_day ON tenant_usage(day);",
-    """CREATE TABLE IF NOT EXISTS tenant_policies (
-      tenant_id TEXT PRIMARY KEY, policy_json TEXT NOT NULL, version INTEGER,
-      updated_at REAL NOT NULL
-    );""",
-
     # ── Sessions ──
     """CREATE TABLE IF NOT EXISTS session_lock (
       tenant_id TEXT NOT NULL, session_id TEXT NOT NULL, run_id TEXT NOT NULL,
@@ -197,7 +182,6 @@ REMAINING_TABLES = [
     "CREATE TABLE IF NOT EXISTS skill_packs (pack_id TEXT PRIMARY KEY, name TEXT, description TEXT, version TEXT, manifest_json TEXT, created_at REAL, updated_at REAL);",
     "CREATE TABLE IF NOT EXISTS skill_pack_versions (version_id TEXT PRIMARY KEY, pack_id TEXT, version TEXT, config_json TEXT, created_at REAL);",
     "CREATE TABLE IF NOT EXISTS skill_pack_installs (install_id TEXT PRIMARY KEY, pack_id TEXT, version TEXT, target TEXT, status TEXT, created_at REAL);",
-    "CREATE TABLE IF NOT EXISTS tenant_usage_ledger (id INTEGER PRIMARY KEY AUTOINCREMENT, tenant_id TEXT, metric_key TEXT, amount REAL, day TEXT, run_id TEXT, created_at REAL);",
 ]
 
 ALL_TABLES = (

@@ -13,7 +13,7 @@
 | ✅ **已修复** | 守卫 12 条规则 OR 语法 bug（commit `93b7c25c`）——§73 六项误报消除 |
 | ✅ **已修复（aiPlat-bot）** | 宪法测试 3 项（commit `8c6a5154`）：infra 硬编码 aiPlat fallback 3+3 处 + 内核 phase 字符串分支——**24 → 21 failed**（2026-08-15 本地实测） |
 | ✅ **宪法全绿** | 144 tests passed（2026-08-18 本地实测） |
-| ✅ **54 项核对（2026-08-18）** | **40 DONE / 12 PARTIAL / 1 OPEN（P0-C4 已修复→51/53）**——详见 §十 核对明细 |
+| ✅ **54 项核对（2026-08-18）** | **41 DONE / 11 PARTIAL / 1 OPEN（C4/A8/P2-A4 已修复→52/53）**——详见 §十 核对明细 |
 | ✅ **P0-C4 已修复** | frontmatter total_capabilities 1030→1032 + 校验脚本 frontmatter 防护（commit `351f816a`） |
 | ✅ **P0-A8 已修复** | `_check_security` 注册进 HealthCheckRegistry（commit `351f816a`） |
 
@@ -27,7 +27,7 @@
 |---|---|---|---|
 | P0-A1 | **harness→apps 反向依赖 53 处**（违反 §5.7 单向依赖） | `test_core_internal_boundaries` 断言 | 宪法违规 A1 |
 | P0-A2 | **api→engine 直导 61 处**（绕过门面） | 同上（白名单外 9 处真实） | 宪法违规 A2 |
-| P0-A3 | **core 管理 tenant_quotas/policies 表 5+3 处**（违反职责归属，代码已自标 DEPRECATED） | `execution_store_schema.py:7` | 宪法违规 A3/A4 |
+| P0-A3 | **core 管理 tenant_quotas/policies 表 5+3 处**（违反职责归属，代码已自标 DEPRECATED） | `execution_store_schema.py:7` | **✅ 已修复（2026-08-18）**：DDL+CRUD 迁 platform TenantStore，宪法真过 |
 | P0-A4 | **platform 做 LLM 推理 16 处 + agent 发现 1 处**（违反平台职责） | `test_platform_function_boundary` 断言 | 宪法违规 A5/A6 |
 | P0-A5 | ~~infra 硬编码 aiPlat 3+3 处~~ **✅ 已修复（8c6a5154）** | `test_infra_agnostic` 现 pass | 宪法违规 A7/A8 |
 | P0-A6 | ~~内核 phase 字符串分支 3 处~~ **✅ 已修复（8c6a5154）**；**硬编码 state key 2 处待修**（违反内核无关 §8） | `test_ast_business_keys` | 宪法违规 A9 |
@@ -156,7 +156,7 @@ Phase 0：治理地基（1-2 天）——一切后续的前提
 ═══════════════════════════════════════════════════════════
 Phase 1：宪法合规清零（4-6 天）——先修违规，让宪法测试变绿
 ═══════════════════════════════════════════════════════════
-  [1.1] P0-A3 core tenant 表迁移（2-3 天）
+  [1.1] P0-A3 core tenant 表迁移（2-3 天）→ **✅ 已完成（2026-08-18）**：TenantStore 迁 platform，宪法 A3/A4 清零
         → 先做：它动 DB schema，且 A4/A1 边界都受其影响
   [1.2] P0-A1 harness→apps 53 处（1-2 天）
         → 与 A2 共享 integration.py，先收敛 harness 侧
@@ -247,7 +247,7 @@ Phase 5：P2 演进（按需，可与 Phase 4 部分并行）
   [5.4] P2-B2 --write-baseline review 门禁（0.5 天，治理加固）
   [5.5] P2-A2 运行时扩展缝（2 天，安全敏感需审批流程先行）
   [5.7] P2-A3 模型 provider 插件化（按需）
-  [5.8] P2-A4 守卫误报修正 + 大文件拆分（3 天）
+  [5.8] P2-A4 守卫误报修正 + 大文件拆分（3 天）→ **✅ 已完成（2026-08-18，PR #16/#17/#18/#19，12281→8288 行）**
   [5.9] P2-A6 goal judge / P2-A7 no-agent cron（2.5 天）
   [5.10] P2-B3 多租户/性能/错误处理规范（2-3 天）
   [5.11] P2-B5 CodeGraph 纳入未提交新文件（0.5 天）
@@ -358,12 +358,12 @@ pytest aiPlat-platform/tests/test_builder.py -q --tb=short
 
 | 分组 | DONE | PARTIAL | OPEN | 明细 |
 |---|---|---|---|---|
-| P0-A 架构合规 (10) | 4 | 6 | 0 | ✅ A4/A6/A7/A9 · ⚠️ A1(20 懒导入)/A2(13 懒导入)/A3(tenant_quotas 未迁移)/A5(3 硬编码)/A8(security 未注册→**已修**)/A10(mock E2E) |
+| P0-A 架构合规 (10) | 5 | 5 | 0 | ✅ A3/A4/A6/A7/A9 · ⚠️ A1(20 懒导入)/A2(13 懒导入)/A5(3 硬编码)/A8(security 未注册→**已修**)/A10(mock E2E) |
 | P0-B/C 功能治理 (12) | 8 | 3 | 1 | ✅ B1/B2/B3/B5/C2/C3/C5/C6 · ⚠️ B4(3 getter)/C1(6 规范格式)/C7(golden --verify 未入 CI) · ❌ C4(口径漂移→**已修**) |
 | P1-A 对标差距 (6) | 4 | 2 | 0 | ✅ A1(nudge)/A2(curator)/A5(agentskills)/A6(托管策略) · ⚠️ A3(ACP client 预留)/A4(缺 Telegram/WebChat) |
 | P1-B 体系补全 (13) | **13** | 0 | 0 | 全部落地 |
-| P2 演进治理 (12) | 11 | 1 | 0 | ✅ A1-A3/A5-A7/B1-B5 · ⚠️ A4(pipeline_engine 12281 行未拆) |
-| **合计 (53 核对)** | **40** | **12** | **1** | 修复后 51 DONE 等效（C4/A8 已修） |
+| P2 演进治理 (12) | **12** | 0 | 0 | ✅ A1-A7/B1-B5 全部落地（A4 pipeline_engine 拆分 4 Phase 收官 12281→8288） |
+| **合计 (53 核对)** | **42** | **10** | **1** | 修复后 53 DONE 等效（C4/A8/P2-A4/P0-A3 已修） |
 
-**本轮已修复**：P0-C4（frontmatter 口径 + 校验防护）、P0-A8（security 注册）。
-**遗留 PARTIAL 优先项**：P0-A3（tenant_quotas 迁移 platform）、P2-A4（大文件拆分）、P1-A3（ACP client）。
+**本轮已修复**：P0-C4（frontmatter 口径 + 校验防护）、P0-A8（security 注册）、P2-A4（pipeline_engine 大文件拆分，4 Phase 收官）、P0-A3（tenant 表迁移 platform）。
+**遗留 PARTIAL 优先项**：P1-A3（ACP client）。

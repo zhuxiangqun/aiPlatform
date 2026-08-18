@@ -20,6 +20,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from core.api.deps import actor_from_http, rbac_guard
 from core.api.utils.run_contract import normalize_run_error, normalize_run_status_v2, wrap_execution_result_as_run_summary
 from core.harness.integration import KernelRuntime, get_harness
+from core.services.tenant_store_protocol import get_tenant_store  # P0-A3
 from core.harness.kernel.runtime import get_kernel_runtime
 from core.harness.kernel.types import ExecutionRequest
 from core.schemas_eval import AutoEvalRequest, EvidenceDiffRequest
@@ -659,6 +660,7 @@ async def spawn_child_run(run_id: str, request: dict, http_request: Request, rt:
                 tenant_id0 = None
             if not tenant_id0:
                 tenant_id0 = (actor_from_http(http_request, body) or {}).get("tenant_id") or parent.get("tenant_id")
+            store = get_tenant_store() or store  # P0-A3: tenant policy via injected store
             rec = await store.get_tenant_policy(tenant_id=str(tenant_id0)) if tenant_id0 else None
             pol = rec.get("policy") if isinstance(rec, dict) and isinstance(rec.get("policy"), dict) else {}
             pr = pol.get("persona_routing") if isinstance(pol, dict) and isinstance(pol.get("persona_routing"), dict) else None
@@ -2322,6 +2324,7 @@ async def wait_run(run_id: str, request: dict, http_request: Request, rt: Runtim
     try:
         tenant_id = run.get("tenant_id") or (actor_from_http(http_request, request if isinstance(request, dict) else None).get("tenant_id"))
         if tenant_id:
+            store = get_tenant_store() or store  # P0-A3: tenant policy via injected store
             pol_rec = await store.get_tenant_policy(tenant_id=str(tenant_id))
             pol = pol_rec.get("policy") if isinstance(pol_rec, dict) else None
             rpol = (pol or {}).get("run_wait_auto_resume") if isinstance(pol, dict) else None

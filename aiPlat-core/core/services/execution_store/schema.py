@@ -1492,32 +1492,14 @@ def run_migrations(conn, current: int, target_version: int) -> int:
 
 
     # ---- Migration v24: tenant_policies (policy-as-code) ----
+    # P0-A3 (2026-08): DDL moved to platform TenantStore (same DB file, IF NOT
+    # EXISTS). Version marker retained so existing DBs keep schema version.
 
     if current < 24:
 
         try:
 
-            conn.execute(
-
-                """
-
-                CREATE TABLE IF NOT EXISTS tenant_policies (
-
-                  tenant_id TEXT PRIMARY KEY,
-
-                  version INTEGER NOT NULL,
-
-                  policy_json TEXT NOT NULL,
-
-                  updated_at REAL NOT NULL
-
-                );
-
-                """
-
-            )
-
-            conn.execute("CREATE INDEX IF NOT EXISTS idx_tenant_policies_updated ON tenant_policies(updated_at DESC);")
+            pass  # tenant_policies table now owned by aiPlat-platform/tenants/tenant_store.py
 
         except Exception as e:
 
@@ -2441,74 +2423,14 @@ def run_migrations(conn, current: int, target_version: int) -> int:
 
 
     # ---- Migration v35: tenant quotas + usage ledger (PR-12) ----
+    # P0-A3 (2026-08): DDL moved to platform TenantStore (same DB file, IF NOT
+    # EXISTS). Version marker retained so existing DBs keep schema version.
 
     if current < 35:
 
         try:
 
-            conn.execute(
-
-                """
-
-                CREATE TABLE IF NOT EXISTS tenant_quotas (
-
-                  tenant_id TEXT PRIMARY KEY,
-
-                  version INTEGER NOT NULL,
-
-                  quota_json TEXT,
-
-                  updated_at REAL NOT NULL
-
-                );
-
-                """
-
-            )
-
-            conn.execute("CREATE INDEX IF NOT EXISTS idx_tenant_quotas_updated ON tenant_quotas(updated_at DESC);")
-
-        except Exception as e:
-
-            logging.debug(str(e), exc_info=True)
-
-        try:
-
-            conn.execute(
-
-                """
-
-                CREATE TABLE IF NOT EXISTS tenant_usage_ledger (
-
-                  tenant_id TEXT,
-
-                  day TEXT NOT NULL,           -- YYYY-MM-DD (UTC)
-
-                  metric_key TEXT NOT NULL,    -- tool_calls|llm_total_tokens|runs_started|external_access
-
-                  value REAL NOT NULL,
-
-                  updated_at REAL NOT NULL,
-
-                  PRIMARY KEY(tenant_id, day, metric_key)
-
-                );
-
-                """
-
-            )
-
-            conn.execute(
-
-                "CREATE INDEX IF NOT EXISTS idx_usage_tenant_day ON tenant_usage_ledger(tenant_id, day DESC);"
-
-            )
-
-            conn.execute(
-
-                "CREATE INDEX IF NOT EXISTS idx_usage_metric_day ON tenant_usage_ledger(metric_key, day DESC);"
-
-            )
+            pass  # tenant_quotas / tenant_usage_ledger now owned by aiPlat-platform/tenants/tenant_store.py
 
         except Exception as e:
 

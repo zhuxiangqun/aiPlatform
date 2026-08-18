@@ -21,7 +21,10 @@ RuntimeDep = Optional[KernelRuntime]
 
 
 def _store(rt: RuntimeDep):
-    return getattr(rt, "execution_store", None) if rt else None
+    # P0-A3: tenant policy reads via injected platform TenantStore first.
+    from core.api.core_facade import get_tenant_store
+
+    return get_tenant_store() or (getattr(rt, "execution_store", None) if rt else None)
 
 
 @router.get("/snapshot", response_model=StatusResponse)

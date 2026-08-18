@@ -23,3 +23,12 @@ from apps.fde.api.fde import _get_pipeline_health, _clarify, fde_health
 register_handler("fde_pipeline_health", _get_pipeline_health)
 register_handler("fde_health", fde_health)
 register_handler("fde_clarify", _clarify)
+
+# TenantStore injection (P0-A3): platform owns tenant quota/policy/usage tables.
+# Direction: platform → core via CoreFacade (set_tenant_store). Same DB file as
+# ExecutionStore → zero data migration. Core consumers resolve via protocol.
+from core.api.core_facade import set_tenant_store
+from tenants.tenant_store import TenantStore
+
+_tenant_store = TenantStore()
+set_tenant_store(_tenant_store)

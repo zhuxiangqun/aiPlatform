@@ -13,6 +13,7 @@ from typing import Dict, Annotated, Optional, Any
 from fastapi import APIRouter, Depends, HTTPException, Request
 
 from core.api.deps import actor_from_http, rbac_guard
+from core.api.core_facade import get_tenant_store  # P0-A3
 from core.api.facades.runtime_facade import KernelRuntime, get_kernel_runtime
 
 router = APIRouter(prefix="/platform/quota", tags=["quota"])
@@ -21,7 +22,8 @@ RuntimeDep = Annotated[Optional[KernelRuntime], Depends(get_kernel_runtime)]
 
 
 def _store(rt: Optional[KernelRuntime]):
-    return getattr(rt, "execution_store", None) if rt else None
+    # P0-A3: tenant quota/usage reads via injected platform TenantStore first.
+    return get_tenant_store() or (getattr(rt, "execution_store", None) if rt else None)
 
 
 @router.get("/quota/snapshot", response_model=StatusResponse)

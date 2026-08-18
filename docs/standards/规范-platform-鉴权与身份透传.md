@@ -89,3 +89,16 @@ platform 对外提供：
 - **审计**：managed 策略变更记录 `managed_policy_upsert` 审计事件。
 
 > **对照**：Claude Code 的 Server-managed settings — 企业通过远程配置强制权限/沙箱/模型，本地不可覆盖。
+
+---
+
+## 7. Tenant 数据归属 — 存储所有权（P0-A3，2026-08-18）
+
+多租户治理数据的**存储所有权**在 platform 层（`aiPlat-platform/tenants/tenant_store.py`）：
+
+- **表归属**：`tenant_quotas` / `tenant_usage_ledger` / `tenant_policies` 的 DDL + CRUD 由 platform `TenantStore` 拥有（与 ExecutionStore 同 DB 文件，零数据迁移）；
+- **注入**：platform 挂载（`apps.fde`）时 `set_tenant_store()` 经 CoreFacade 注入；core 消费方（policy gate / llm 记账 / policy engine）经 `core.services.tenant_store_protocol` 解析，未注入时 fallback execution_store（零破坏）；
+- **保留 core**：`audit_logs` / `connector_delivery` / `tenants` 主表（执行基础设施，非 tenant 业务 CRUD）；
+- **宪法**：`TestNoQuotaEnforcementInCore` / `TestPlatformResponsibilitiesNotInCore` 真过（不再依赖 DEPRECATED 豁免）。
+
+> **对照**：多租户治理归属 platform — core 保持内核无关（§5.29），租户数据生命周期由平台统一管理。

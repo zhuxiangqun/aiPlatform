@@ -26,6 +26,12 @@ RuntimeDep = Annotated[Optional[KernelRuntime], Depends(get_kernel_runtime)]
 
 
 def _store(rt: Optional[KernelRuntime]):
+    # P0-A3: tenant policy CRUD via injected platform TenantStore first.
+    from core.api.core_facade import get_tenant_store
+
+    store = get_tenant_store()
+    if store:
+        return store
     store = getattr(rt, "execution_store", None) if rt else None
     if store:
         return store
@@ -209,19 +215,21 @@ async def upsert_tenant_policy(tenant_id: str, request: dict, http_request: Requ
         raise
 
     change_id = _new_change_id()
-    # Audit (best-effort)
+    # Audit (best-effort) — audit_logs stays on ExecutionStore (execution infra)
     try:
         actor0 = actor_from_http(http_request, request if isinstance(request, dict) else None)
-        await store.add_audit_log(
-            action="tenant_policy_upsert",
-            status="ok",
-            tenant_id=str(tenant_id),
-            actor_id=str((request or {}).get("actor_id") or actor0.get("actor_id") or "admin"),
-            actor_role=str(actor0.get("actor_role") or "") or None,
-            resource_type="tenant_policy",
-            resource_id=str(tenant_id),
-            detail={"version": saved.get("version")},
-        )
+        audit_store = getattr(rt, "execution_store", None) if rt else None
+        if audit_store:
+            await audit_store.add_audit_log(
+                action="tenant_policy_upsert",
+                status="ok",
+                tenant_id=str(tenant_id),
+                actor_id=str((request or {}).get("actor_id") or actor0.get("actor_id") or "admin"),
+                actor_role=str(actor0.get("actor_role") or "") or None,
+                resource_type="tenant_policy",
+                resource_id=str(tenant_id),
+                detail={"version": saved.get("version")},
+            )
     except Exception as e:
         logging.warning(str(e), exc_info=True)
     # Changeset (best-effort): store only hash + version

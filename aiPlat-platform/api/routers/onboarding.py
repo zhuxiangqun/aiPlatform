@@ -426,7 +426,10 @@ async def init_default_tenant(request: OnboardingInitTenantRequest, _auth: str =
     if request.init_policies:
         baseline_policy = {"tool_policy": {"deny_tools": [], "approval_required_tools": ["*"] if bool(request.strict_tool_approval) else []}}
         try:
-            policy_res = await store.upsert_tenant_policy(tenant_id=request.tenant_id, policy=baseline_policy)
+            from core.api.core_facade import get_tenant_store  # P0-A3
+
+            tstore = get_tenant_store() or store
+            policy_res = await tstore.upsert_tenant_policy(tenant_id=request.tenant_id, policy=baseline_policy)
         except Exception as e:
             try:
                 await record_changeset(
@@ -983,7 +986,10 @@ async def set_strong_gate(request: OnboardingStrongGateRequest, _auth: str = Dep
     except Exception as e:
         logging.warning(str(e), exc_info=True)
 
-    cur = await store.get_tenant_policy(tenant_id=tenant_id)
+    from core.api.core_facade import get_tenant_store  # P0-A3
+
+    tstore = get_tenant_store() or store
+    cur = await tstore.get_tenant_policy(tenant_id=tenant_id)
     policy = (cur or {}).get("policy") if isinstance(cur, dict) else None
     if not isinstance(policy, dict):
         policy = {"tool_policy": {"deny_tools": [], "approval_required_tools": []}}
@@ -1007,7 +1013,7 @@ async def set_strong_gate(request: OnboardingStrongGateRequest, _auth: str = Dep
     tp["approval_required_tools"] = approval_tools
 
     try:
-        saved = await store.upsert_tenant_policy(tenant_id=tenant_id, policy=policy, version=None)
+        saved = await tstore.upsert_tenant_policy(tenant_id=tenant_id, policy=policy, version=None)
     except Exception as e:
         try:
             await record_changeset(

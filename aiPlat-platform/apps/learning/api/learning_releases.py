@@ -226,7 +226,9 @@ async def publish_release_candidate(candidate_id: str, request: dict, http_reque
     try:
         if str(cand.get("target_type") or "").lower() == "policy" and cand.get("target_id"):
             tenant_policy_id = str(cand.get("target_id"))
-            cur = await store.get_tenant_policy(tenant_id=tenant_policy_id)
+            from core.api.core_facade import get_tenant_store  # P0-A3
+            tstore = get_tenant_store() or store
+            cur = await tstore.get_tenant_policy(tenant_id=tenant_policy_id)
             cur_policy = cur.get("policy") if isinstance(cur, dict) and isinstance(cur.get("policy"), dict) else {}
             cur_ver = cur.get("version") if isinstance(cur, dict) else None
 
@@ -256,7 +258,7 @@ async def publish_release_candidate(candidate_id: str, request: dict, http_reque
                     else:
                         next_policy = _deep_merge(next_policy, p0)
 
-            up = await store.upsert_tenant_policy(
+            up = await tstore.upsert_tenant_policy(
                 tenant_id=tenant_policy_id,
                 policy=next_policy,
                 version=int(cur_ver) if cur_ver is not None else None,
@@ -563,7 +565,9 @@ async def rollback_release_candidate(candidate_id: str, request: dict, http_requ
             tenant_policy_id = meta0.get("tenant_policy_id") or cand.get("target_id")
             prev = meta0.get("previous_policy_snapshot") if isinstance(meta0.get("previous_policy_snapshot"), dict) else None
             if isinstance(tenant_policy_id, str) and tenant_policy_id and isinstance(prev, dict) and isinstance(prev.get("policy"), dict):
-                await store.upsert_tenant_policy(tenant_id=str(tenant_policy_id), policy=prev.get("policy") or {}, version=None)
+                from core.api.core_facade import get_tenant_store  # P0-A3
+                tstore = get_tenant_store() or store
+                await tstore.upsert_tenant_policy(tenant_id=str(tenant_policy_id), policy=prev.get("policy") or {}, version=None)
     except Exception as e:
         logging.warning(str(e), exc_info=True)
 
