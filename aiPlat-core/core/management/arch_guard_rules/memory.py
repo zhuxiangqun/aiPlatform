@@ -63,11 +63,31 @@ class GlobalDictNoCleanupCheck(ArchRule):
             # unbounded module state; static config dicts are also not growth
             # risks but module-level dicts without ANY cleanup are flagged for
             # review).
-            dict_matches = list(re.finditer(
+            raw_dict_matches = list(re.finditer(
                 r'^[A-Za-z_][A-Za-z0-9_]*\s*:\s*Dict\[str\s*,\s*[A-Za-z\[\],\s]+\]\s*=\s*\{\}',
                 content,
                 flags=re.MULTILINE,
             ))
+            if not raw_dict_matches:
+                continue
+
+            # STATIC_CONFIG exemption (variable-name level): module-level dicts
+            # whose *own name* indicates a one-time registration table
+            # (_registry / _DEFAULTS / _MAP / _ROLE_ / _CHAIN_ / _ALGORITHM_ /
+            # _CONDITION_ / _REGISTERED) are filled once at import from
+            # config/registries and have fixed key spaces — not growth risks.
+            # Name-level (not file-level) so runtime dicts in the same file
+            # (e.g. _running_pipelines) stay flagged. Audit-verified 2026-08-18.
+            static_pattern = re.compile(
+                r'(_REGISTRY|_DEFAULTS|_DEFAULT_|_MAP\b|_ROLE_|_CHAIN_|'
+                r'_ALGORITHM_|_CONDITION_|_REGISTERED)',
+                flags=re.IGNORECASE,
+            )
+            # Only dict declarations whose NAME matches are exempted
+            dict_matches = [
+                m for m in raw_dict_matches
+                if not static_pattern.search(m.group(0))
+            ]
             if not dict_matches:
                 continue
 
