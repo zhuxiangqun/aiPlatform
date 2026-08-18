@@ -170,3 +170,9 @@ pytest -q \
 - 自动化验收：
   - `python3 -c "from core.harness.execution.pipeline_engine import PipelineEngine; assert PipelineHealingMixin in PipelineEngine.__mro__"`
   - `bash scripts/verify-l4-claims.sh`（31/31 PASS）
+
+### 1.13 PipelineEngine Phase 2 state Mixin（P2-A4, 2026-08-18）
+- MUST：`core.harness.execution.pipeline_state.PipelineStateMixin` 存在，`PipelineEngine` MRO 含 `PipelineStateMixin`（在 `PipelineHealingMixin` 前）
+- MUST：6 个状态持久化方法（`_snapshot`/`_merge_state`/`_load_checkpoints_from_disk`/`_output_root`/`_persist_files`/`_summarize_artifact`）经继承可用
+- 自动化验收：
+  - `python3 -c "from core.harness.execution.pipeline_engine import PipelineEngine; assert PipelineEngine.__mro__[1].__name__ == 'PipelineStateMixin'"`
