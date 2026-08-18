@@ -77,7 +77,7 @@ echo ""
 # ── Phase-by-phase evidence checks ──
 
 echo "[A. Autonomy]"
-check_ref "_retry_loop" "aiPlat-core/core/harness/execution/pipeline_engine.py" 100 "async def _retry_loop"
+check_ref "_retry_loop" "aiPlat-core/core/harness/execution/pipeline_eval.py" 100 "async def _retry_loop"
 check_ref "_meta_optimize" "aiPlat-core/core/harness/execution/pipeline_healing.py" 100 "async def _meta_optimize"
 check_ref "HITL config" "aiPlat-core/core/apps/agents/operator_agent.py" 50 "AIPLAT_OPERATOR_CONFIRMATION_LEVEL"
 echo ""
