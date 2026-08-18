@@ -99,8 +99,11 @@ class InProcessProvider(SubagentProvider):
         try:
             result = await self._coordinator.execute_single(
                 task, name, context=context)
+            if hasattr(result, "success") and not result.success:
+                return ProviderResult(ok=False, error=str(result.error or "subagent failed"))
+            output = getattr(result, "output", None) or getattr(result, "summary", None) or str(result)
             return ProviderResult(
-                ok=True, output=result.summary if hasattr(result, "summary") else str(result),
+                ok=True, output=str(output),
                 instance_id=f"inproc:{name}", can_continue=True,
             )
         except Exception as e:

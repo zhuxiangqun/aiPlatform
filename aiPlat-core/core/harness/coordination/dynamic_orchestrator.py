@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import os
 import re
 import time
 from dataclasses import dataclass, field
@@ -159,12 +160,23 @@ class DynamicOrchestrator:
             from core.apps.agents.subagent.coordinator import SubagentCoordinator
             coordinator = SubagentCoordinator()
 
-            sub_result = await coordinator.execute_single(
-                task=task,
-                subagent_name=target,
-                context=[{"role": "system", "content": f"Capability: {capability}\nSource: {source_agent_id}"}],
-                isolate_context=isolate_context,
-            )
+            # P1-A3: provider 选择 — AIPLAT_SUBAGENT_PROVIDER 配置外部 provider
+            # (acp 等) 时走 provider 路径；默认 in_process 行为不变。
+            provider = os.getenv("AIPLAT_SUBAGENT_PROVIDER", "in_process").strip().lower()
+            if provider and provider != "in_process":
+                sub_result = await coordinator.execute_with_provider(
+                    task=task,
+                    subagent_name=target,
+                    context=[{"role": "system", "content": f"Capability: {capability}\nSource: {source_agent_id}"}],
+                    provider=provider,
+                )
+            else:
+                sub_result = await coordinator.execute_single(
+                    task=task,
+                    subagent_name=target,
+                    context=[{"role": "system", "content": f"Capability: {capability}\nSource: {source_agent_id}"}],
+                    isolate_context=isolate_context,
+                )
 
             if sub_result and sub_result.output:
                 result_text = str(sub_result.output)[:2000]
