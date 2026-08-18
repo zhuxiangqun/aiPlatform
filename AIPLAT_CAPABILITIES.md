@@ -1,5 +1,5 @@
 ---
-total_capabilities: 1034
+total_capabilities: 1035
 last_updated: 2026-08-18
 version: "30.1"
 auto_sync: true
@@ -929,6 +929,7 @@ scan_hash: 8f9548ec24f4
 | ProviderResult | `` | ✅ | 自动同步 | 已合入 |
 | ProviderCapabilities | `` | ✅ | 自动同步 | 已合入 |
 | SubagentProviders | `apps/agents/subagent/providers.py` | ✅ | 子代理 provider 抽象 (in_process/acp, P1-A3) | 已合入 |
+| ACPClient | `core/acp/client.py` | ✅ | ACP WebSocket client — start/continue 包装 chat 协议 (P1-A3) | 待合入 |
 | SubagentCoordinator | `apps/agents/subagent/coordinator.py` | ✅ | 自动同步 | 已合入 |
 | run_voice_brainstorm | `` | ✅ | 自动同步 | 已合入 |
 | BaseAgent | `` | ✅ | 自动同步 | 已合入 |
@@ -1951,7 +1952,7 @@ scan_hash: 8f9548ec24f4
 | 知识引擎（本体） | 134 | 0 | 134 |
 | RAG 检索 | 42 | 0 | 42 |
 | 知识基础设施 | 29 | 0 | 29 |
-| Agent 系统 | 35 | 0 | 35 |
+| Agent 系统 | 36 | 0 | 36 |
 | Skill 系统 | 54 | 0 | 54 |
 | 安全与治理 | 48 | 0 | 48 |
 | 可观测性 | 18 | 0 | 18 |
@@ -1991,7 +1992,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 16 | 0 | 16 |
-| **总计** | **1034** | **0** | **1034** |
+| **总计** | **1035** | **0** | **1035** |
 
 ---
 
