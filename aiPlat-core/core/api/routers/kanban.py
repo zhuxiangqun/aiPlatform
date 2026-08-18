@@ -33,7 +33,7 @@ class StatusUpdate(BaseModel):
 async def get_kanban_tasks(profile: str = Query("default"), status: Optional[str] = None):
     """List tasks for a profile, optionally filtered by status. Returns tasks
     grouped by status for a kanban board view."""
-    from core.harness.coordination.kanban_engine import KanbanEngine
+    from core.api.core_facade import KanbanEngine  # P0-A2: 经 CoreFacade
     kb = KanbanEngine()
     tasks = kb.list_tasks(profile, status=status)
     grouped: Dict[str, list] = {}
@@ -51,7 +51,7 @@ async def get_kanban_tasks(profile: str = Query("default"), status: Optional[str
 @router.post("/kanban/tasks", response_model=Dict[str, Any])
 async def create_kanban_task(body: TaskCreate):
     """Manually create a kanban task (for UI or admin debugging)."""
-    from core.harness.coordination.kanban_engine import KanbanEngine
+    from core.api.core_facade import KanbanEngine  # P0-A2: 经 CoreFacade
     kb = KanbanEngine()
     tid = kb.create_task(profile_id=body.profile_id, title=body.title,
                          description=body.description, priority=body.priority,
@@ -62,7 +62,7 @@ async def create_kanban_task(body: TaskCreate):
 @router.patch("/kanban/tasks/{task_id}/status", response_model=Dict[str, Any])
 async def update_kanban_task_status(task_id: str, body: StatusUpdate):
     """Transition a task to a new status (block/retry/close)."""
-    from core.harness.coordination.kanban_engine import KanbanEngine
+    from core.api.core_facade import KanbanEngine  # P0-A2: 经 CoreFacade
     kb = KanbanEngine()
     ok = kb.transition_task(task_id, body.to_status, reason=body.reason)
     if not ok:
@@ -73,7 +73,7 @@ async def update_kanban_task_status(task_id: str, body: StatusUpdate):
 @router.get("/health/kanban", response_model=Dict[str, Any])
 async def kanban_health(profile: str = Query("default")):
     """Kanban health summary: total/todo/blocked/overdue counts."""
-    from core.harness.coordination.kanban_engine import KanbanEngine
+    from core.api.core_facade import KanbanEngine  # P0-A2: 经 CoreFacade
     kb = KanbanEngine()
     all_tasks = kb.list_tasks(profile)
     counts = {"total": len(all_tasks)}

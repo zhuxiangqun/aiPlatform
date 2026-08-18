@@ -15,9 +15,9 @@ from fastapi.responses import JSONResponse
 
 from core.api.deps import actor_from_http, rbac_guard
 from core.api.utils.governance import gate_error_envelope, ui_url
-from core.harness.integration import KernelRuntime
-from core.harness.kernel.runtime import get_kernel_runtime
-from core.harness.syscalls.llm import sys_llm_generate
+from core.api.core_facade import KernelRuntime  # P0-A2: 经 CoreFacade
+from core.api.core_facade import get_kernel_runtime  # P0-A2: 经 CoreFacade
+from core.api.core_facade import sys_llm_generate  # P0-A2: 经 CoreFacade
 from core.schemas_agents import AgentAutoFillBatchRequest, AgentAutoFillBatchResponse
 from core.schemas_agents import AgentCreateRequest, AgentUpdateRequest, AgentAutoFillRequest, AgentAutoFillResponse, RoleDefinitionResponse
 import asyncio as _asyncio
@@ -278,7 +278,7 @@ async def create_workspace_agent(request: AgentCreateRequest, http_request: Requ
             store = _store(rt)
             sched = _job_scheduler(rt)
             if store is not None and sched is not None:
-                from core.harness.smoke import enqueue_autosmoke
+                from core.api.core_facade import enqueue_autosmoke  # P0-A2: 经 CoreFacade
 
                 tenant_id = http_request.headers.get("X-AIPLAT-TENANT-ID", "ops_smoke")
                 actor_id = http_request.headers.get("X-AIPLAT-ACTOR-ID", "admin")
@@ -347,14 +347,14 @@ async def generate_role_definition(req: AgentAutoFillRequest) -> Any:
 
     import json as _json, re as _re
 
-    from core.harness.utils.prompt_loader import _async_prompt_resolve
+    from core.api.core_facade import _async_prompt_resolve  # P0-A2: 经 CoreFacade
     prompt = await _async_prompt_resolve("agent-role-definition",
         name=req.name or '(待填写)', description=req.description or '(无)',
     )
 
     try:
-        from core.harness.utils.model_injection import best_model_for_purpose
-        from core.harness.syscalls.llm import sys_llm_generate
+        from core.api.core_facade import best_model_for_purpose  # P0-A2: 经 CoreFacade
+        from core.api.core_facade import sys_llm_generate  # P0-A2: 经 CoreFacade
         model_name = best_model_for_purpose("agent_creation")
         messages = [
             {"role": "system", "content": await _async_prompt_resolve("agent-role-system")},
@@ -681,9 +681,9 @@ async def _run_role_def_task(tid: str, req: "AgentAutoFillRequest"):
     """Execute role-definition generation in background and update task store."""
     try:
         import json as _json, re as _re
-        from core.harness.utils.prompt_loader import _async_prompt_resolve
-        from core.harness.utils.model_injection import best_model_for_purpose
-        from core.harness.syscalls.llm import sys_llm_generate
+        from core.api.core_facade import _async_prompt_resolve  # P0-A2: 经 CoreFacade
+        from core.api.core_facade import best_model_for_purpose  # P0-A2: 经 CoreFacade
+        from core.api.core_facade import sys_llm_generate  # P0-A2: 经 CoreFacade
 
         prompt = await _async_prompt_resolve("agent-role-definition",
             name=req.name or '(待填写)', description=req.description or '(无)',
@@ -785,7 +785,7 @@ async def _do_auto_fill(req: AgentAutoFillRequest) -> AgentAutoFillResponse:
 """
 
     # ── Call LLM (simplified: only agent_type + system_prompt + memory + triggers) ──
-    from core.harness.utils.prompt_loader import _async_prompt_resolve
+    from core.api.core_facade import _async_prompt_resolve  # P0-A2: 经 CoreFacade
     # Build skill catalog summary for LLM to directly suggest matching skill names
     # (P1: include id so LLM returns the id the frontend MultiSelect expects)
     skill_catalog = _scan_skills_direct()
@@ -815,8 +815,8 @@ async def _do_auto_fill(req: AgentAutoFillRequest) -> AgentAutoFillResponse:
     prompt = inline_prompt
 
     try:
-        from core.harness.utils.model_injection import best_model_for_purpose
-        from core.harness.syscalls.llm import sys_llm_generate
+        from core.api.core_facade import best_model_for_purpose  # P0-A2: 经 CoreFacade
+        from core.api.core_facade import sys_llm_generate  # P0-A2: 经 CoreFacade
         model_name = best_model_for_purpose("agent_creation")
         messages = [
             {"role": "system", "content": await _async_prompt_resolve("agent-role-system")},
@@ -973,7 +973,7 @@ async def agent_auto_fill_batch(req: AgentAutoFillBatchRequest) -> AgentAutoFill
 
     # ── Build batch prompt ──────────────────────────────────
     agent_list_text = "\n".join(f"  - {n}" for n in names)
-    from core.harness.utils.prompt_loader import _async_prompt_resolve
+    from core.api.core_facade import _async_prompt_resolve  # P0-A2: 经 CoreFacade
     prompt = await _async_prompt_resolve("agent-auto-fill-batch",
         count=str(len(names)),
         agent_list=agent_list_text,
@@ -986,8 +986,8 @@ async def agent_auto_fill_batch(req: AgentAutoFillBatchRequest) -> AgentAutoFill
 
     # ── Call LLM ────────────────────────────────────────────
     try:
-        from core.harness.utils.model_injection import best_model_for_purpose
-        from core.harness.syscalls.llm import sys_llm_generate
+        from core.api.core_facade import best_model_for_purpose  # P0-A2: 经 CoreFacade
+        from core.api.core_facade import sys_llm_generate  # P0-A2: 经 CoreFacade
         model_name = best_model_for_purpose("agent_creation")
         messages = [
             {"role": "system", "content": await _async_prompt_resolve("agent-role-system")},
@@ -1085,7 +1085,7 @@ async def _build_mcp_catalog() -> List[str]:
 async def _build_agent_catalog() -> List[str]:
     entries = []
     try:
-        from core.harness.kernel.runtime import get_kernel_runtime
+        from core.api.core_facade import get_kernel_runtime  # P0-A2: 经 CoreFacade
         rt = get_kernel_runtime()
         mgr = getattr(rt, "workspace_agent_manager", None) if rt else None
         if mgr:
@@ -1402,7 +1402,7 @@ async def update_workspace_agent(agent_id: str, request: AgentUpdateRequest, htt
         store = _store(rt)
         sched = _job_scheduler(rt)
         if store is not None and sched is not None:
-            from core.harness.smoke import enqueue_autosmoke
+            from core.api.core_facade import enqueue_autosmoke  # P0-A2: 经 CoreFacade
 
             tenant_id = http_request.headers.get("X-AIPLAT-TENANT-ID", "ops_smoke")
             actor_id = http_request.headers.get("X-AIPLAT-ACTOR-ID", "admin")
@@ -1738,7 +1738,7 @@ async def sign_workspace_agent(agent_id: str, request: Dict[str, Any], http_requ
         raise HTTPException(status_code=404, detail="Agent not found")
 
     try:
-        from core.harness.infrastructure.crypto.signature import sign_skill as sign_agent
+        from core.api.core_facade import sign_skill as sign_agent  # P0-A2: 经 CoreFacade
 
         agent_dir = Path(agent.metadata.get("filesystem", {}).get("agent_dir") or agent.metadata.get("provenance", {}).get("agent_dir") or "")
         if not agent_dir or not agent_dir.exists():
@@ -2215,8 +2215,9 @@ async def _ai_recommend_agent_config(
     if cache_key in _AGENT_IMPORT_CACHE:
         return _AGENT_IMPORT_CACHE[cache_key]
 
-    from core.harness.utils.model_injection import create_selected_adapter, best_model_for_purpose
-    from core.harness.utils.prompt_loader import _async_prompt_resolve
+    from core.api.core_facade import create_selected_adapter  # P0-A2: 经 CoreFacade
+    from core.api.core_facade import best_model_for_purpose  # P0-A2: 经 CoreFacade
+    from core.api.core_facade import _async_prompt_resolve  # P0-A2: 经 CoreFacade
     from .workspace_skills import _build_available_tools_list
 
     model_name = best_model_for_purpose("agent_creation")
@@ -2229,7 +2230,7 @@ async def _ai_recommend_agent_config(
     )
     user_content = f"Agent 名称: {name or '(未命名)'}\n描述: {description or '(无)'}\n\nAGENT.md:\n{agmd_body[:8000]}"
 
-    from core.harness.syscalls.llm import sys_llm_generate
+    from core.api.core_facade import sys_llm_generate  # P0-A2: 经 CoreFacade
     response = await sys_llm_generate(
         model,
         [
@@ -2407,7 +2408,7 @@ async def submit_agent_for_review(agent_id: str, rt: RuntimeDep = None):
 
     agent_path = None
     try:
-        from core.harness.kernel.runtime import get_kernel_runtime
+        from core.api.core_facade import get_kernel_runtime  # P0-A2: 经 CoreFacade
         rt2 = get_kernel_runtime()
         agent_mgr = getattr(rt2, "workspace_agent_manager", None) if rt2 else None
         if agent_mgr and hasattr(agent_mgr, "_agents_dir"):

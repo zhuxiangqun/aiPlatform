@@ -143,3 +143,5 @@ aiPlat 逻辑上分为：
 - **消息渠道适配器（P1-A4, 2026-08-18）**：`get_channel_adapter(name)` 统一解析（7 渠道：3 内置 telegram/slack/webchat + 4 扩展 discord/wecom/email/dingtalk，`wecom`→`wechat` 别名）。扩展适配器在 `aiPlat-app/channels/adapters/` 注册进 `ChannelDispatcher`（merged）。platform `POST /platform/channels/{id}/test` 校验适配器存在（fail-loud 422）。registry 补登 `get_channel_adapter`。
 
 - **harness→apps 收敛（P0-A1, 2026-08-18）**：9 处 harness lazy 直导 apps 服务改为经 integration.py DI 工厂（`get_subagent_coordinator`/`get_agent_registry`/`get_mcp_client_manager`/`get_skill_discovery`/`get_job_manager`/`get_dataset_manager`/`get_result_verifier`，新增 5 工厂）。宪法白名单 38→25；data type / static util / optional lazy（skill_execution_record/browser_test_engine/video_parser/quality.types/finetune.schemas）保留白名单（非服务调用）。
+
+- **api→CoreFacade 收敛（P0-A2, 2026-08-18）**：54 个 api 文件 292 行 harness 直导改经 CoreFacade（执行引擎核心模块直导清零）；CoreFacade 模块级补 `sys_llm_generate` re-export；修复 wiki.py 死 self-import；69/69 routers 导入通过。knowledge 域（wiki/ontology/code_graph）直导为知识检索能力，渐进跟进。

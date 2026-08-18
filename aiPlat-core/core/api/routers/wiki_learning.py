@@ -22,7 +22,7 @@ class ProfileRequest(BaseModel):
 @router.post("/profile", response_model=Dict[str, Any])
 async def create_learner_profile(req: ProfileRequest):
     """Create or update a learner profile."""
-    from core.harness.knowledge.learning_ontology import (
+    from core.api.core_facade import (  # P0-A2: 经 CoreFacade
         LearnerProfile, TargetRole, CurrentLevel, save_learner_profile, load_learner_profile,
     )
     existing = load_learner_profile(req.learner_id)
@@ -60,6 +60,7 @@ async def list_learning_paths():
 @router.post("/start", response_model=Dict[str, Any])
 async def start_learning_path(learner_id: str = Body(...), path_id: str = Body(...)):
     """Start a learning path. Returns the first chapter with content."""
+    from core.harness.knowledge.learning_ontology import save_learner_profile
     from core.harness.knowledge.learning_ontology import load_learner_profile, save_learner_profile
     from core.harness.knowledge.learning_paths import get_path, get_chapter_body_sync
 
@@ -87,6 +88,7 @@ async def start_learning_path(learner_id: str = Body(...), path_id: str = Body(.
 @router.get("/chapter/{chapter_id}", response_model=Dict[str, Any])
 async def get_chapter(chapter_id: str):
     """Get chapter content (cached body or skeleton)."""
+    from core.harness.knowledge.learning_paths import get_chapter_body_sync
     from core.harness.knowledge.learning_paths import get_builtin_paths, get_chapter_body_sync
     paths = get_builtin_paths()
     for pid, chs in paths.items():
@@ -100,6 +102,7 @@ async def get_chapter(chapter_id: str):
 @router.post("/chapter/{chapter_id}/compile", response_model=Dict[str, Any])
 async def compile_chapter_body_endpoint(chapter_id: str):
     """Trigger AI compilation of chapter body text."""
+    from core.harness.knowledge.learning_paths import compile_chapter_body
     from core.harness.knowledge.learning_paths import get_builtin_paths, compile_chapter_body
     paths = get_builtin_paths()
     for pid, chs in paths.items():
@@ -181,6 +184,7 @@ async def ask_learning_coach(
 ):
     """Ask the AI Learning Coach a question, with learning context injected."""
     from core.harness.knowledge.learning_ontology import load_learner_profile
+    from core.harness.knowledge.learning_paths import _path_name
     from core.harness.knowledge.learning_paths import get_builtin_paths, _path_name
 
     profile = load_learner_profile(learner_id)
@@ -204,8 +208,8 @@ async def ask_learning_coach(
     )
 
     try:
-        from core.harness.syscalls.llm import sys_llm_generate
-        from core.harness.utils.prompt_loader import _sync_resolve
+        from core.api.core_facade import sys_llm_generate  # P0-A2: 经 CoreFacade
+        from core.api.core_facade import _sync_resolve  # P0-A2: 经 CoreFacade
         prompt = _sync_resolve("learning-coach-chat",
             path_name=path_name, context=context, question=question)
         result = await sys_llm_generate(

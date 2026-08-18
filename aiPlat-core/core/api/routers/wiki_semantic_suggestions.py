@@ -54,7 +54,7 @@ async def generate_semantic_suggestions_endpoint(req: SemanticSuggestRequest = B
 @router.post("/suggestions/{suggestion_id}/impact", response_model=Dict[str, Any])
 async def predict_suggestion_impact(suggestion_id: str, collection: str = "default"):
     u"""Predict the impact scope of accepting an evolution suggestion."""
-    from core.harness.knowledge.knowledge_ontology import (
+    from core.api.core_facade import (  # P0-A2: 经 CoreFacade
         load_pending_suggestions, get_ontology,
     )
     from core.harness.knowledge.knowledge_evolution_llm import predict_evolution_impact

@@ -14,7 +14,7 @@ from fastapi import APIRouter, HTTPException
 from core.api.utils.governance import governance_links
 from core.governance.changeset import record_changeset
 from core.governance.gating import autosmoke_enforce, gate_with_change_control, new_change_id
-from core.harness.kernel.runtime import get_kernel_runtime
+from core.api.core_facade import get_kernel_runtime  # P0-A2: 经 CoreFacade
 from core.schemas_skills import SkillPackCreateRequest, SkillPackInstallRequest, SkillPackPublishRequest, SkillPackUpdateRequest
 
 

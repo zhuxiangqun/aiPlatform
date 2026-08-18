@@ -21,7 +21,7 @@ from __future__ import annotations
 import logging
 from typing import Any, Dict, List, Optional
 
-from core.harness.utils.model_injection import get_default_model
+from core.api.core_facade import get_default_model  # P0-A2: 经 CoreFacade
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -213,7 +213,7 @@ async def core_chat(ctx: ChatContext) -> ChatResult:
     # Try PromptLoader for templated system prompt (versioned, managed)
     if not system_prompt or len(system_prompt) < 50:
         try:
-            from core.harness.utils.prompt_loader import _async_prompt_resolve
+            from core.api.core_facade import _async_prompt_resolve  # P0-A2: 经 CoreFacade
             _tmpl_id = f"agent-{ctx.agent_name}"
             _tmpl = await _async_prompt_resolve(_tmpl_id, agent_name=ctx.agent_name)
             if _tmpl and len(_tmpl) > len(system_prompt):
@@ -251,14 +251,14 @@ async def core_chat(ctx: ChatContext) -> ChatResult:
             "Create AGENT.md at ~/.aiplat/agents/%s/AGENT.md with SOP instructions.",
             ctx.agent_name, ctx.agent_name,
         )
-        from core.harness.utils.prompt_loader import _async_prompt_resolve
+        from core.api.core_facade import _async_prompt_resolve  # P0-A2: 经 CoreFacade
         system_prompt = await _async_prompt_resolve("agent-fallback", agent_name=str(ctx.agent_name))
 
     # ── 2. MemoryManager: load conversation history + full context ──
     memory_saved = False
     message_history: List[Dict[str, str]] = [{"role": "user", "content": ctx.user_input}]
     try:
-        from core.harness.memory.manager import get_memory_manager as _get_mem
+        from core.api.core_facade import get_memory_manager as _get_mem  # P0-A2: 经 CoreFacade
         mgr = _get_mem()
         mem_ctx = await mgr.build_context(
             current_query=ctx.user_input,
@@ -404,7 +404,7 @@ async def core_chat(ctx: ChatContext) -> ChatResult:
 
     # ── 5. MemoryManager: save interaction ──
     try:
-        from core.harness.memory.manager import get_memory_manager as _get_mem2
+        from core.api.core_facade import get_memory_manager as _get_mem2  # P0-A2: 经 CoreFacade
         mgr = _get_mem2()
         await mgr.save_interaction(
             user_message=ctx.user_input, assistant_message=reply,
@@ -488,7 +488,7 @@ async def core_query(ctx: QueryContext) -> QueryResult:
     trace_id = f"query_{_uuid.uuid4().hex[:12]}"
     model = ctx.model or get_default_model()
 
-    from core.harness.utils.prompt_loader import _async_prompt_resolve
+    from core.api.core_facade import _async_prompt_resolve  # P0-A2: 经 CoreFacade
     agent = create_agent(
         agent_type="conversational",
         config={"name": "kb_query", "temperature": 0.3, "timeout": 300},

@@ -183,7 +183,7 @@ def skill_governance_preview(*, scope: str, payload: Dict[str, Any], approval_ma
     approval = {"required": False, "matched_rule_id": None, "matched_rule_type": None, "matched_rule_name": None, "matched_operations": []}
     try:
         if approval_manager is not None:
-            from core.harness.infrastructure.approval.types import ApprovalContext
+            from core.api.core_facade import ApprovalContext  # P0-A2: 经 CoreFacade
 
             ops: List[str] = []
             for p in perms:

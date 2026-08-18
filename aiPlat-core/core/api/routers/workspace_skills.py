@@ -15,10 +15,10 @@ from core.api.deps import actor_from_http, rbac_guard
 from core.api.utils.governance import gate_error_envelope, governance_links, ui_url
 from core.api.utils.run_contract import wrap_execution_result_as_run_summary
 from core.api.facades.skill_tool_facade import get_skill_registry
-from core.harness.integration import get_harness, KernelRuntime
-from core.harness.kernel.runtime import get_kernel_runtime
-from core.harness.kernel.types import ExecutionRequest
-from core.harness.syscalls.llm import sys_llm_generate
+from core.api.core_facade import get_harness, KernelRuntime  # P0-A2: 经 CoreFacade
+from core.api.core_facade import get_kernel_runtime  # P0-A2: 经 CoreFacade
+from core.api.core_facade import ExecutionRequest  # P0-A2: 经 CoreFacade
+from core.api.core_facade import sys_llm_generate  # P0-A2: 经 CoreFacade
 from core.schemas_run import RunStatus
 from core.schemas_skills import SkillCreateRequest, SkillExecuteRequest
 from core.utils.ids import new_prefixed_id
@@ -307,7 +307,7 @@ def _is_approval_resolved_approved(rt: Optional[KernelRuntime], approval_request
     mgr = _approval_mgr(rt)
     if not mgr:
         return False
-    from core.harness.infrastructure.approval.types import RequestStatus
+    from core.api.core_facade import RequestStatus  # P0-A2: 经 CoreFacade
 
     r = mgr.get_request(str(approval_request_id))
     if not r:
@@ -559,7 +559,7 @@ async def create_workspace_skill(request: SkillCreateRequest, http_request: Requ
             store = _store(rt)
             sched = _job_scheduler(rt)
             if store is not None and sched is not None:
-                from core.harness.smoke import enqueue_autosmoke
+                from core.api.core_facade import enqueue_autosmoke  # P0-A2: 经 CoreFacade
 
                 tenant_id = http_request.headers.get("X-AIPLAT-TENANT-ID", "ops_smoke")
                 actor_id = http_request.headers.get("X-AIPLAT-ACTOR-ID", "admin")
@@ -762,7 +762,7 @@ async def update_workspace_skill(skill_id: str, request: dict, http_request: Req
         store = _store(rt)
         sched = _job_scheduler(rt)
         if store is not None and sched is not None:
-            from core.harness.smoke import enqueue_autosmoke
+            from core.api.core_facade import enqueue_autosmoke  # P0-A2: 经 CoreFacade
 
             tenant_id = http_request.headers.get("X-AIPLAT-TENANT-ID", "ops_smoke")
             actor_id = http_request.headers.get("X-AIPLAT-ACTOR-ID", "admin")
@@ -1652,7 +1652,7 @@ async def sign_workspace_skill(skill_id: str, request: Dict[str, Any], http_requ
     import json, os
 
     try:
-        from core.harness.infrastructure.crypto.signature import sign_skill
+        from core.api.core_facade import sign_skill  # P0-A2: 经 CoreFacade
 
         skill_dir = Path(s.metadata.get("filesystem", {}).get("skill_dir") or s.metadata.get("provenance", {}).get("skill_dir") or "")
         if not skill_dir or not skill_dir.exists():
@@ -2516,7 +2516,7 @@ async def sign_all_workspace_skills(request: Dict[str, Any], http_request: Reque
     print(repr(private_key[:200]), flush=True)
     print("=== END_DEBUG ===", flush=True)
 
-    from core.harness.infrastructure.crypto.signature import sign_skill
+    from core.api.core_facade import sign_skill  # P0-A2: 经 CoreFacade
     import json as _json
 
     skill_ids = mgr.get_skill_ids() if hasattr(mgr, 'get_skill_ids') else list(getattr(mgr, '_skills', {}).keys())
@@ -2583,16 +2583,17 @@ async def skill_auto_fill(request: Dict[str, Any], rt: RuntimeDep = None):
         except Exception as e:
             logging.warning(str(e), exc_info=True)
 
-        from core.harness.utils.prompt_loader import _async_prompt_resolve
+        from core.api.core_facade import _async_prompt_resolve  # P0-A2: 经 CoreFacade
         prompt = await _async_prompt_resolve("skill-auto-fill",
             skill_name=name,
             description=description,
             skills_catalog=skills_catalog,
         )
-        from core.harness.utils.model_injection import create_selected_adapter, best_model_for_purpose
+        from core.api.core_facade import create_selected_adapter  # P0-A2: 经 CoreFacade
+        from core.api.core_facade import best_model_for_purpose  # P0-A2: 经 CoreFacade
         model_name = best_model_for_purpose("skill_creation")
         model = create_selected_adapter(model_name=model_name)
-        from core.harness.utils.prompt_loader import _async_prompt_resolve
+        from core.api.core_facade import _async_prompt_resolve  # P0-A2: 经 CoreFacade
         messages = [
             {"role": "system", "content": await _async_prompt_resolve("skill-auto-fill-system-role")},
             {"role": "user", "content": prompt},
@@ -2867,8 +2868,9 @@ async def _ai_recommend_skill_config(
         return cached
 
     # ── LLM 补充（仅首次，且确实需要） ──
-    from core.harness.utils.model_injection import create_selected_adapter, best_model_for_purpose
-    from core.harness.utils.prompt_loader import _async_prompt_resolve
+    from core.api.core_facade import create_selected_adapter  # P0-A2: 经 CoreFacade
+    from core.api.core_facade import best_model_for_purpose  # P0-A2: 经 CoreFacade
+    from core.api.core_facade import _async_prompt_resolve  # P0-A2: 经 CoreFacade
 
     model_name = best_model_for_purpose("skill_creation")
     model = create_selected_adapter(model_name=model_name)

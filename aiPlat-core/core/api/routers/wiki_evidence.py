@@ -17,7 +17,7 @@ async def get_claim_evidence_chain(title: str, collection: str = "default"):
     Chain: page → source documents → contradictions → resolutions.
     """
     try:
-        from core.harness.knowledge.wiki_engine import read_page, search_pages
+        from core.api.core_facade import read_page, search_pages  # P0-A2: 经 CoreFacade
         from core.harness.knowledge.knowledge_abox_builder import build_abox
         from core.harness.knowledge.knowledge_validator import TripleStore, _short
 

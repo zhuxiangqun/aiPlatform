@@ -5,8 +5,8 @@ from typing import Dict, Annotated, Optional, Any
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 
 from core.api.deps import rbac_guard
-from core.harness.integration import KernelRuntime
-from core.harness.kernel.runtime import get_kernel_runtime
+from core.api.core_facade import KernelRuntime  # P0-A2: 经 CoreFacade
+from core.api.core_facade import get_kernel_runtime  # P0-A2: 经 CoreFacade
 
 router = APIRouter()
 

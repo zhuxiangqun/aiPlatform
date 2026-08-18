@@ -19,13 +19,13 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 
 from core.api.deps import actor_from_http, rbac_guard
 from core.api.utils.run_contract import normalize_run_error, normalize_run_status_v2, wrap_execution_result_as_run_summary
-from core.harness.integration import KernelRuntime, get_harness
+from core.api.core_facade import KernelRuntime, get_harness  # P0-A2: 经 CoreFacade
 from core.services.tenant_store_protocol import get_tenant_store  # P0-A3
-from core.harness.kernel.runtime import get_kernel_runtime
-from core.harness.kernel.types import ExecutionRequest
+from core.api.core_facade import get_kernel_runtime  # P0-A2: 经 CoreFacade
+from core.api.core_facade import ExecutionRequest  # P0-A2: 经 CoreFacade
 from core.schemas_eval import AutoEvalRequest, EvidenceDiffRequest
 from core.schemas_run import RunStatus
-from core.harness.utils.llm_env import get_llm_api_key, get_llm_base_url
+from core.api.core_facade import get_llm_api_key, get_llm_base_url  # P0-A2: 经 CoreFacade
 import logging
 
 router = APIRouter()
@@ -2191,7 +2191,7 @@ async def wait_run(run_id: str, request: dict, http_request: Request, rt: Runtim
             return False
         try:
             status = getattr(req0, "status", None)
-            from core.harness.infrastructure.approval.types import RequestStatus
+            from core.api.core_facade import RequestStatus  # P0-A2: 经 CoreFacade
 
             if status not in (RequestStatus.APPROVED, RequestStatus.AUTO_APPROVED):
                 return False

@@ -31,7 +31,7 @@ async def list_writebacks(collection: str = "default"):
 @router.post("/writebacks", response_model=Dict[str, Any])
 async def register_writeback_endpoint(req: WritebackRegisterRequest, collection: str = "default"):
     u"""Register a new writeback target."""
-    from core.harness.knowledge.knowledge_writeback import (
+    from core.api.core_facade import (  # P0-A2: 经 CoreFacade
         register_writeback, WriteBackConfig, WriteBackTarget,
     )
     try:

@@ -9,9 +9,9 @@ from fastapi.responses import JSONResponse
 from core.api.utils.run_contract import wrap_execution_result_as_run_summary
 from core.api.facades.security_facade import get_permission_manager
 from core.apps.tools.permission import Permission  # noqa: data type
-from core.harness.integration import KernelRuntime, get_harness
-from core.harness.kernel.runtime import get_kernel_runtime
-from core.harness.kernel.types import ExecutionRequest
+from core.api.core_facade import KernelRuntime, get_harness  # P0-A2: 经 CoreFacade
+from core.api.core_facade import get_kernel_runtime  # P0-A2: 经 CoreFacade
+from core.api.core_facade import ExecutionRequest  # P0-A2: 经 CoreFacade
 from core.services.trace_service import SpanStatus
 import logging
 

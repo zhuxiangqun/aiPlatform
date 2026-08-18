@@ -100,7 +100,7 @@ async def _get_wiki_entity_count(domain_id: str) -> int:
 
 async def _get_graph_stats_sync(domain_id: str) -> dict:
     try:
-        from core.harness.ontology_engine.graph_index import GraphIndex
+        from core.api.core_facade import GraphIndex  # P0-A2: 经 CoreFacade
         g = GraphIndex.load(domain_id)
         edge_count = sum(len(n.out_edges) for n in g._nodes.values())
         return {
@@ -113,7 +113,7 @@ async def _get_graph_stats_sync(domain_id: str) -> dict:
 
 def _get_domain_prompt_ready(domain_id: str) -> bool:
     try:
-        from core.harness.utils.prompt_loader import _sync_resolve
+        from core.api.core_facade import _sync_resolve  # P0-A2: 经 CoreFacade
         _sync_resolve(f"domain-prompt-{domain_id}")
         return True
     except Exception:

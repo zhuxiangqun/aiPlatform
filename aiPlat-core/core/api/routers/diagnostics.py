@@ -13,10 +13,10 @@ from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, HTTPException, Query, Request
 
 from core.api.deps import actor_from_http
-from core.harness.integration import get_harness
-from core.harness.kernel.types import ExecutionRequest
-from core.harness.kernel.runtime import get_kernel_runtime
-from core.harness.syscalls.llm import sys_llm_generate
+from core.api.core_facade import get_harness  # P0-A2: 经 CoreFacade
+from core.api.core_facade import ExecutionRequest  # P0-A2: 经 CoreFacade
+from core.api.core_facade import get_kernel_runtime  # P0-A2: 经 CoreFacade
+from core.api.core_facade import sys_llm_generate  # P0-A2: 经 CoreFacade
 from core.schemas_diagnostics import DiagnosticsPromptAssembleRequest
 from core.utils.ids import new_prefixed_id
 
@@ -154,7 +154,7 @@ def _get_or_build_graph():
     nodes, edges, issues = _SHARED_GRAPH
     if nodes is not None and isinstance(nodes, dict) and len(nodes) > 0:
         return nodes, edges, issues
-    from core.harness.knowledge.code_graph import repo_root, default_roots, build_graph
+    from core.api.core_facade import repo_root, default_roots, build_graph  # P0-A2: 经 CoreFacade
     repo = repo_root()
     abs_roots = [(repo / r).resolve() for r in default_roots()]
     return build_graph(repo, abs_roots)  # noqa: build_graph_approved — canonical call site
@@ -268,7 +268,7 @@ class DiagnosticCheck:
     
     @staticmethod
     def get_repo_info():
-        from core.harness.knowledge.code_graph import repo_root, default_roots
+        from core.api.core_facade import repo_root, default_roots  # P0-A2: 经 CoreFacade
         return repo_root(), default_roots()
 
 
@@ -427,7 +427,7 @@ router = APIRouter()
 
 async def _check_core_runtime():
     try:
-        from core.harness.kernel.runtime import get_kernel_runtime
+        from core.api.core_facade import get_kernel_runtime  # P0-A2: 经 CoreFacade
         rt = get_kernel_runtime()
         store = getattr(rt, "execution_store", None) if rt else None
         return {
@@ -577,7 +577,7 @@ async def _check_code_intel():
 async def _check_capability():
     """能力图谱 — 委托 CapabilityGraph 构建检查。"""
     try:
-        from core.harness.knowledge.capability_graph import build_capability_graph
+        from core.api.core_facade import build_capability_graph  # P0-A2: 经 CoreFacade
         r = build_capability_graph()
         return {"status": "pass", "score": 100, "detail": f"{len(r.nodes)} nodes"}
     except Exception:
@@ -608,7 +608,7 @@ async def _check_wiki_health():
 async def _check_compliance():
     """合规审计 — 委托治理检查。"""
     try:
-        from core.harness.knowledge.governance_pipeline import run_all_domains
+        from core.api.core_facade import run_all_domains  # P0-A2: 经 CoreFacade
         return {"status": "pass", "score": 100, "detail": "governance available"}
     except Exception:
         return {"status": "warn", "score": 0, "detail": "governance unavailable"}
@@ -723,7 +723,7 @@ def _register_health_checks():
     try:
         from core.harness.health.registry import HealthCheckRegistry, get_registry, Severity
         from core.harness.health.registry import HealthCheck, HealthResult, Status
-        from core.harness.kernel.runtime import get_kernel_runtime
+        from core.api.core_facade import get_kernel_runtime  # P0-A2: 经 CoreFacade
 
         class SimpleHealthCheck(HealthCheck):
             """Adapter: wraps existing _check_* functions into HealthCheck protocol."""
@@ -1008,7 +1008,7 @@ async def diagnostics_prompt_assemble(request: DiagnosticsPromptAssembleRequest,
     NOTE: diagnostics only (do not use on hot paths).
     """
     from core.harness.assembly.prompt_assembler import PromptAssembler
-    from core.harness.kernel.execution_context import (
+    from core.api.core_facade import (  # P0-A2: 经 CoreFacade
         ActiveRequestContext,
         ActiveWorkspaceContext,
         reset_active_request_context,
@@ -1906,7 +1906,7 @@ async def get_tenant_usage_summary(
 
         store = get_tenant_store()
         if store is None:
-            from core.harness.integration import get_execution_store
+            from core.api.core_facade import get_execution_store  # P0-A2: 经 CoreFacade
 
             store = get_execution_store()
         now = __import__("time").time()
@@ -2314,7 +2314,7 @@ async def aggregate_all_alerts() -> Dict[str, Any]:
 
     # 5. Tool drift anomalies (best-effort — shape-tolerant)
     try:
-        from core.harness.learning.tool_drift_detector import get_drift_detector
+        from core.api.core_facade import get_drift_detector  # P0-A2: 经 CoreFacade
         rt = get_drift_detector().get_realtime_stats() or {}
         for a in (rt.get("alerts") or rt.get("anomalies") or []):
             if isinstance(a, dict):
@@ -2471,7 +2471,7 @@ async def get_model_tier_status():
 async def get_profile_status():
     """Return current ControlProfile active status + preset list."""
     try:
-        from core.harness.meta.profile_registry import (
+        from core.api.core_facade import (  # P0-A2: 经 CoreFacade
             ProfileRegistry, get_active_profile, list_profile_overrides,
             get_last_failure_domain,
         )
@@ -2492,7 +2492,7 @@ async def get_profile_status():
 async def switch_profile(name: str = "default"):
     """Switch active ControlProfile at session level."""
     try:
-        from core.harness.meta.profile_registry import (
+        from core.api.core_facade import (  # P0-A2: 经 CoreFacade
             ProfileRegistry, set_profile_override, clear_profile_override,
         )
         if name == "reset":
@@ -2920,7 +2920,7 @@ async def trigger_drift_rebuild(max_pages: int = 10):
     auto_ontology_pipeline_for_doc on each. Limited to max_pages for safety.
     """
     from core.harness.knowledge.staleness_monitor import StalenessMonitor
-    from core.harness.knowledge.wiki_engine import read_page
+    from core.api.core_facade import read_page  # P0-A2: 经 CoreFacade
 
     monitor = StalenessMonitor()
     reports = monitor.scan_all_collections()
@@ -3282,7 +3282,7 @@ async def get_data_lineage(entity: str = "", type: str = "wiki_page"):
     if type == "wiki_page":
         # 1. Sources: read wiki page → extract source_articles → query kb_elements
         try:
-            from core.harness.knowledge.wiki_engine import read_page
+            from core.api.core_facade import read_page  # P0-A2: 经 CoreFacade
             page = read_page(entity)
             if page:
                 for src in (page.get("source_articles") or []):

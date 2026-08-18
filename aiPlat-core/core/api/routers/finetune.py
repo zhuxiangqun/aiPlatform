@@ -204,7 +204,7 @@ async def start_training(body: Dict[str, Any]) -> Dict[str, Any]:
       - episodes_per_iter: int (default: 8)
     """
     try:
-        from core.harness.training.rl_trainer import get_rl_trainer
+        from core.api.core_facade import get_rl_trainer  # P0-A2: 经 CoreFacade
         base_model = body.get("base_model", "")
         dataset_id = body.get("dataset_id", "")
         if not base_model:
@@ -232,7 +232,7 @@ async def start_training(body: Dict[str, Any]) -> Dict[str, Any]:
 async def get_training_status(job_id: str) -> Dict[str, Any]:
     """Get RL training job status."""
     try:
-        from core.harness.training.rl_trainer import get_rl_trainer
+        from core.api.core_facade import get_rl_trainer  # P0-A2: 经 CoreFacade
         trainer = get_rl_trainer(base_model="")
         status = getattr(trainer, "_latest_run", None)
         if status:
@@ -264,7 +264,7 @@ async def start_distillation(body: Dict[str, Any]) -> Dict[str, Any]:
       - epochs: int (default: 3)
     """
     try:
-        from core.harness.training.distillation import get_distillation_engine
+        from core.api.core_facade import get_distillation_engine  # P0-A2: 经 CoreFacade
         engine = get_distillation_engine()
         job_id = await engine.distill(
             teacher_model=body.get("teacher_model", ""),
@@ -286,7 +286,7 @@ async def start_distillation(body: Dict[str, Any]) -> Dict[str, Any]:
 async def get_distillation_status(job_id: str) -> DistillJobResult:
     """Get knowledge distillation job status."""
     try:
-        from core.harness.training.distillation import get_distillation_engine
+        from core.api.core_facade import get_distillation_engine  # P0-A2: 经 CoreFacade
         engine = get_distillation_engine()
         status = engine.get_status(job_id)
         if not status:
@@ -302,7 +302,7 @@ async def get_distillation_status(job_id: str) -> DistillJobResult:
 async def list_distillation_jobs() -> Dict[str, Any]:
     """List all distillation jobs."""
     try:
-        from core.harness.training.distillation import get_distillation_engine
+        from core.api.core_facade import get_distillation_engine  # P0-A2: 经 CoreFacade
         engine = get_distillation_engine()
         jobs = engine.list_jobs()
         return {"jobs": jobs, "total": len(jobs)}
@@ -325,7 +325,7 @@ async def start_scratch_training(body: Dict[str, Any]) -> Dict[str, Any]:
       - learning_rate: float (default: 5e-5)
     """
     try:
-        from core.harness.training.full_training import get_full_training_engine, FullTrainingConfig
+        from core.api.core_facade import get_full_training_engine, FullTrainingConfig  # P0-A2: 经 CoreFacade
         engine = get_full_training_engine()
         config = FullTrainingConfig(
             model_architecture=body.get("model_architecture", "gpt2"),
@@ -347,7 +347,7 @@ async def start_scratch_training(body: Dict[str, Any]) -> Dict[str, Any]:
 async def get_scratch_status(job_id: str) -> ScratchJobResult:
     """Get from-scratch training job status."""
     try:
-        from core.harness.training.full_training import get_full_training_engine
+        from core.api.core_facade import get_full_training_engine  # P0-A2: 经 CoreFacade
         engine = get_full_training_engine()
         status = engine.get_status(job_id)
         if not status:
@@ -363,7 +363,7 @@ async def get_scratch_status(job_id: str) -> ScratchJobResult:
 async def list_scratch_jobs() -> Dict[str, Any]:
     """List all from-scratch training jobs."""
     try:
-        from core.harness.training.full_training import get_full_training_engine
+        from core.api.core_facade import get_full_training_engine  # P0-A2: 经 CoreFacade
         engine = get_full_training_engine()
         jobs = engine.list_jobs()
         return {"jobs": jobs, "total": len(jobs)}

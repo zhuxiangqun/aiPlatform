@@ -6,7 +6,7 @@ from typing import Any, Dict, Optional
 from fastapi import Request
 from fastapi.responses import JSONResponse
 
-from core.harness.kernel.runtime import get_kernel_runtime
+from core.api.core_facade import get_kernel_runtime  # P0-A2: 经 CoreFacade
 from core.schemas_run import RunStatus
 from core.security.rbac import check_permission as rbac_check_permission, should_enforce as rbac_should_enforce
 from core.utils.ids import new_prefixed_id

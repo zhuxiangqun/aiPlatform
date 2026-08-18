@@ -26,8 +26,8 @@ from core.api.utils.skills_meta import (
     schema_version,
     skill_governance_preview,
 )
-from core.harness.integration import KernelRuntime
-from core.harness.kernel.runtime import get_kernel_runtime
+from core.api.core_facade import KernelRuntime  # P0-A2: 经 CoreFacade
+from core.api.core_facade import get_kernel_runtime  # P0-A2: 经 CoreFacade
 from core.schemas_skills import SkillInstallerInstallRequest, SkillInstallerUpdateRequest
 
 router = APIRouter()
@@ -713,7 +713,7 @@ async def workspace_config_registry_publish(
                 )
                 if not r:
                     raise HTTPException(status_code=404, detail="approval_request_not_found")
-                from core.harness.infrastructure.approval.types import RequestStatus
+                from core.api.core_facade import RequestStatus  # P0-A2: 经 CoreFacade
 
                 if r.status not in (RequestStatus.APPROVED, RequestStatus.AUTO_APPROVED):
                     raise HTTPException(  # noqa: error-structured
@@ -856,7 +856,7 @@ async def workspace_config_registry_rollback(
             )
             if not r:
                 raise HTTPException(status_code=404, detail="approval_request_not_found")
-            from core.harness.infrastructure.approval.types import RequestStatus
+            from core.api.core_facade import RequestStatus  # P0-A2: 经 CoreFacade
 
             if r.status not in (RequestStatus.APPROVED, RequestStatus.AUTO_APPROVED):
                 raise HTTPException(  # noqa: error-structured
@@ -1125,7 +1125,7 @@ async def workspace_skills_installer_install(request: SkillInstallerInstallReque
             approval_mgr = _approval_manager(rt)
             if approval_id:
                 try:
-                    from core.harness.infrastructure.approval.types import RequestStatus
+                    from core.api.core_facade import RequestStatus  # P0-A2: 经 CoreFacade
 
                     if not approval_mgr:
                         raise HTTPException(status_code=503, detail="Approval manager not available")
@@ -1144,7 +1144,7 @@ async def workspace_skills_installer_install(request: SkillInstallerInstallReque
                     raise HTTPException(status_code=500, detail=f"approval_check_failed:{e}")
             else:
                 # create approval request
-                from core.harness.infrastructure.approval.types import ApprovalContext, ApprovalRule, RuleType
+                from core.api.core_facade import ApprovalContext, ApprovalRule, RuleType  # P0-A2: 经 CoreFacade
 
                 if not approval_mgr:
                     raise HTTPException(status_code=503, detail="Approval manager not available")
