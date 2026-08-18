@@ -1,0 +1,612 @@
+name: AI知识
+namespace: http://aiplat.local/ontology/ai-knowledge/
+description: AI领域的知识本体，覆盖AI方法/技术、AI系统/架构、核心概念、业务问题、参考资料
+version: 2.0.0
+llm_prompt: "你是AI领域专家。用通俗易懂的语言解释技术概念，尽量提供类比和实际应用场景。"
+classes:
+  AISystem:
+    label: AI系统
+    description: AI系统、产品实现
+    required_fields:
+    - name
+    - description
+    - version
+    optional_fields:
+    - components
+    - dependencies
+    - metrics
+    - diagram_ref
+    - release_date
+    - deployment_status
+    - tags
+    - state
+    - state_history
+    - enterprise_adoptions
+    categories:
+    - ai-systems
+    states:
+      description: 系统部署状态，基于版本、部署标记、生产案例自动演进
+      default: dev
+      enum:
+      - name: dev
+        label: 开发中
+        description: 仅在开发环境运行
+      - name: staging
+        label: 预发布
+        description: 在预发布环境运行但无正式生产案例
+      - name: production
+        label: 生产就绪
+        description: 有 ≥1 个企业级生产案例且处于活动部署状态
+      - name: retired
+        label: 已退役
+        description: 不再维护，被新系统替代
+      transitions:
+      - from: dev
+        to: staging
+        description: 有部署状态标记为预发布时晋级
+        trigger:
+          type: property_condition
+          field: deployment_status
+          condition: in:staging,预发布,pre-release
+      - from: staging
+        to: production
+        description: 有企业级采纳案例且处于活动部署时晋级
+        trigger:
+          type: property_condition
+          field: enterprise_adoptions
+          condition: '>= 1'
+      - from:
+        - dev
+        - staging
+        - production
+        to: retired
+        description: 有演进替代系统时退役（由函数指标 has_competing 驱动）
+        trigger:
+          type: property_condition
+          field: has_competing
+          condition: 'true'
+      side_effects:
+      - when: to == 'retired'
+        actions:
+        - type: add_tag
+          tag: retired
+  AIConcept:
+    label: AI概念
+    description: AI基础概念/理论（如工作记忆、环境优化）
+    required_fields:
+    - name
+    - definition
+    optional_fields:
+    - examples
+    - papers
+    - difficulty_level
+    - tags
+    - state
+    - state_history
+    categories:
+    - ai-concepts
+    states:
+      description: 概念成熟度，基于理论支撑、系统应用、参考资料数量自动演进
+      default: nascent
+      enum:
+      - name: nascent
+        label: 萌芽
+        description: 仅有初步定义，无理论支撑
+      - name: defined
+        label: 已定义
+        description: 有 ≥1 个 AI方法将其作为理论基础
+      - name: established
+        label: 公认
+        description: 被 ≥2 个 AI系统应用，或被 ≥1 个其他概念关联
+      - name: canonical
+        label: 经典
+        description: 被 ≥3 篇参考资料描述或引用
+      transitions:
+      - from: nascent
+        to: defined
+        description: 被 AI方法作为理论基础引用
+        trigger:
+          type: relation_count
+          relation: grounds
+          threshold: 1
+          operator: '>='
+      - from: defined
+        to: established
+        description: 被 ≥2 个 AI系统应用，或被 ≥2 个其他概念关联
+        trigger:
+          type: relation_count
+          relation: applied_by
+          threshold: 2
+          operator: '>='
+      - from: established
+        to: canonical
+        description: 被 ≥3 篇参考资料描述
+        trigger:
+          type: relation_count
+          relation: described_by
+          threshold: 3
+          operator: '>='
+      side_effects:
+      - when: to == 'canonical'
+        actions:
+        - type: add_tag
+          tag: canonical
+  BusinessProblem:
+    label: 业务问题
+    description: 业务问题、客户痛点或应用场景
+    required_fields:
+    - name
+    - description
+    - industry_context
+    optional_fields:
+    - severity
+    - frequency
+    - current_solutions
+    - typical_customer
+    - tags
+    - state
+    - state_history
+    categories:
+    - business-problems
+    states:
+      description: 问题解决状态，基于方案匹配、系统采用、解决验证自动演进
+      default: identified
+      enum:
+      - name: identified
+        label: 已识别
+        description: 问题被定义但尚无匹配方案
+      - name: analyzed
+        label: 已分析
+        description: 有 ≥1 个 AI方法声称能解决此问题
+      - name: addressed
+        label: 已覆盖
+        description: 有 ≥1 个 AI系统落地解决
+      - name: resolved
+        label: 已解决
+        description: ≥2 个 AI系统或 ≥3 个 AI方法覆盖此问题
+      transitions:
+      - from: identified
+        to: analyzed
+        description: 有 AI方法提出解决方案
+        trigger:
+          type: relation_count
+          relation: solved_by
+          threshold: 1
+          operator: '>='
+      - from: analyzed
+        to: addressed
+        description: 有 AI系统落地实施
+        trigger:
+          type: relation_count
+          relation: addressed_by
+          threshold: 1
+          operator: '>='
+      - from: addressed
+        to: resolved
+        description: ≥2 个系统或 ≥3 个方法覆盖
+        trigger:
+          type: relation_count
+          relation: addressed_by
+          threshold: 2
+          operator: '>='
+      side_effects:
+      - when: to == 'resolved'
+        actions:
+        - type: add_tag
+          tag: resolved
+  Reference:
+    label: 参考资料
+    description: 论文、博客、文档、代码库等
+    required_fields:
+    - title
+    - key_insights
+    optional_fields:
+    - source_url
+    - authors
+    - year
+    - type
+    - publisher
+    - tags
+    - state
+    - state_history
+    categories:
+    - references
+    states:
+      description: 参考资料生命周期，基于引用数量、关联实体数自动演进
+      default: draft
+      enum:
+      - name: draft
+        label: 未引用
+        description: 已录入但未被任何实体引用
+      - name: cited
+        label: 被引用
+        description: 被 ≥1 个 AI系统或 AI方法作为文档或原始论文引用
+      - name: canonical
+        label: 权威
+        description: 被 ≥3 个实体引用或描述
+      transitions:
+      - from: draft
+        to: cited
+        description: 被至少一个实体引用为文档或原始论文
+        trigger:
+          type: relation_count
+          relation: documents
+          threshold: 1
+          operator: '>='
+      - from: cited
+        to: canonical
+        description: 被 ≥3 个实体引用
+        trigger:
+          type: relation_count
+          relation: documents
+          threshold: 3
+          operator: '>='
+      side_effects:
+      - when: to == 'canonical'
+        actions:
+        - type: add_tag
+          tag: authoritative
+  AITechnique:
+    label: AI方法
+    description: AI方法、算法或技术方案（如 RAG、提示链、微调等）
+    required_fields:
+    - name
+    - description
+    - maturity
+    optional_fields:
+    - alternatives
+    - paper_ref
+    - tags
+    - state
+    - state_history
+    categories:
+    - ai-techniques
+    fields:
+    - name: maturity
+      type: enum
+      values:
+      - research
+      - prototype
+      - production
+      - deprecated
+      description: 技术本身的成熟度
+    states:
+      description: 技术成熟度状态，基于实现数量、企业采用情况、替代关系自动演进
+      default: emerging
+      enum:
+      - name: emerging
+        label: 新兴
+        description: 仅有论文或概念验证
+      - name: established
+        label: 成熟
+        description: 有 ≥3 个开源实现或系统采用
+      - name: industrial
+        label: 工业化
+        description: 有 ≥1 家企业采用
+      - name: deprecated
+        label: 已废弃
+        description: 存在竞争技术且无企业采用
+      transitions:
+      - from: emerging
+        to: established
+        trigger:
+          type: relation_count
+          relation: implemented_by
+          threshold: 3
+          operator: '>='
+        description: ≥3 个系统实现 → 成熟
+      - from: established
+        to: industrial
+        trigger:
+          type: property_condition
+          field: enterprise_adoptions
+          operator: exists
+          value: ''
+        description: 有企业采用 → 工业化
+      - from:
+        - emerging
+        - established
+        - industrial
+        to: deprecated
+        trigger:
+          type: property_condition
+          field: has_competing
+          operator: ==
+          value: true
+        description: 有竞争技术且无企业采用 → 已废弃
+      side_effects:
+      - when: to == 'deprecated'
+        actions:
+        - type: mark_related_for_review
+          value: related_instances
+        - type: add_tag
+          value: deprecated_technique
+      - when: to == 'industrial'
+        actions:
+        - type: add_tag
+          value: production_grade
+  Synthesis:
+    label: 知识合成
+    description: 知识综合与合成产物
+    required_fields:
+    - name
+    - description
+    optional_fields:
+    - source_instances
+    - synthesis_type
+    - tags
+    categories:
+    - synthesis
+  Benchmark:
+    label: 基准测试
+    required_fields:
+    - benchmark_id
+    - name
+    - task_type
+    - metric_name
+    optional_fields:
+    - dataset
+    - paper_ref
+    - baseline_score
+    - human_score
+    - best_score
+    - evaluated_systems
+    categories:
+    - ai-knowledge
+object_properties:
+- name: implements
+  label: 实现
+  domain:
+  - AISystem
+  range:
+  - AITechnique
+  inverse: implemented_by
+- name: applies
+  label: 应用
+  domain:
+  - AISystem
+  range:
+  - AIConcept
+  inverse: applied_by
+- name: addresses
+  label: 解决业务问题
+  domain:
+  - AISystem
+  range:
+  - BusinessProblem
+  inverse: addressed_by
+- name: grounded_in
+  label: 基于理论
+  domain:
+  - AITechnique
+  range:
+  - AIConcept
+  inverse: grounds
+- name: solves
+  label: 解决业务问题
+  domain:
+  - AITechnique
+  range:
+  - BusinessProblem
+  inverse: solved_by
+- name: depends_on
+  label: 依赖
+  domain:
+  - AISystem
+  range:
+  - AISystem
+  transitive: true
+  inverse: is_dependency_of
+- name: evolves_from
+  label: 演进自
+  domain:
+  - AISystem
+  range:
+  - AISystem
+  inverse: evolves_to
+- name: competes_with
+  label: 替代/竞争
+  domain:
+  - AITechnique
+  range:
+  - AITechnique
+  symmetric: true
+  inverse: competitor_of
+- name: complements
+  label: 互补
+  domain:
+  - AITechnique
+  range:
+  - AITechnique
+  symmetric: true
+- name: related_to
+  label: 关联
+  domain:
+  - AIConcept
+  range:
+  - AIConcept
+  symmetric: true
+- name: describes
+  label: 描述
+  domain:
+  - Reference
+  range:
+  - AISystem
+  - AITechnique
+  - AIConcept
+  - BusinessProblem
+  inverse: described_by
+- name: compares
+  label: 对比
+  domain:
+  - Reference
+  range:
+  - AITechnique
+  inverse: compared_in
+- name: evaluates
+  label: 评估
+  domain:
+  - Reference
+  range:
+  - AISystem
+  inverse: evaluated_in
+- name: has_documentation
+  label: 文档
+  domain:
+  - AISystem
+  range:
+  - Reference
+  inverse: documents
+- name: has_paper
+  label: 原始论文
+  domain:
+  - AITechnique
+  range:
+  - Reference
+  inverse: is_paper_for
+- name: evaluated_on
+  label: 在…上评估
+  from: AI系统
+  to: 基准测试
+data_properties:
+- name: maturity
+  label: 成熟度
+  domain:
+  - AITechnique
+  range: xsd:string
+- name: industry_context
+  label: 行业
+  domain:
+  - BusinessProblem
+  range: xsd:string
+- name: version
+  label: 版本
+  domain:
+  - AISystem
+  range: xsd:string
+- name: source_url
+  label: 来源链接
+  domain:
+  - Reference
+  range: xsd:string
+inference_rules:
+- name: technique_indirectly_applies_concept
+  description: AI方法→(implements)→AI系统→(applies)→AI概念  ⇒  间接应用
+  premises:
+  - relation: implements
+    direction: outgoing
+  - relation: applies
+    direction: outgoing
+  conclusion:
+    relation: indirectly_applies
+    label: 间接应用
+    confidence: 0.8
+- name: problem_addressed_by_chain
+  description: 业务问题←(solved_by)←AI方法→(implements)→AI系统  ⇒  AI系统解决业务问题
+  premises:
+  - relation: solved_by
+    direction: incoming
+  - relation: implements
+    direction: outgoing
+  conclusion:
+    relation: addresses
+    label: 解决(推断)
+    confidence: 0.7
+- name: technique_superseded_by_chain
+  description: AI方法A→(competes_with)→AI方法B 且 B→(implements)→AI系统  ⇒  A间接竞争
+  premises:
+  - relation: competes_with
+    direction: outgoing
+  - relation: implements
+    direction: outgoing
+  conclusion:
+    relation: indirectly_competes
+    label: 间接竞争
+    confidence: 0.65
+decomposition_rules:
+- name: profit_margin
+  composite: 利润率
+  formula: 利润 / 营收
+  parts:
+  - concept: 利润
+    relation: 分子
+  - concept: 营收
+    relation: 分母
+  units: '%'
+  domain: finance
+- name: return_on_investment
+  composite: 投资回报率
+  formula: (收益 - 成本) / 成本
+  parts:
+  - concept: 投资收益
+    relation: 分子
+  - concept: 投资成本
+    relation: 分母
+  units: '%'
+  domain: finance
+- name: customer_acquisition_cost
+  composite: 获客成本
+  formula: 总营销费用 / 新客户数
+  parts:
+  - concept: 营销费用
+    relation: 分子
+  - concept: 新客户
+    relation: 分母
+  units: 元/客户
+  domain: marketing
+interview_dimensions:
+  kb_qa:
+  - id: topic
+    label: 主题
+    question: 你想了解 AI 知识的哪个方向？
+    options:
+    - LLM/大模型
+    - Agent/RAG
+    - 计算机视觉
+    - 自然语言处理
+    - ML/Ops
+    - 不确定
+    required: true
+  - id: depth
+    label: 深度
+    question: 需要多深入的回答？
+    options:
+    - 概述(2-3句话)
+    - 技术详解
+    - 对比分析
+    - 实战教程
+    - 不确定
+    required: false
+  - id: audience
+    label: 受众
+    question: 目标读者/听众？
+    options:
+    - 技术新手
+    - 有经验开发者
+    - 技术 Leader/架构师
+    - 产品/业务人员
+    - 不确定
+    required: false
+  agent_chat:
+  - id: task_type
+    label: 任务类型
+    question: 你需要 AI 帮你完成什么类型的任务？
+    options:
+    - 代码生成
+    - 代码审查
+    - 方案设计
+    - 问题排查
+    - 文档编写
+    - 不确定
+    required: true
+  - id: language
+    label: 语言/框架
+    question: 涉及的技术语言/框架？
+    options:
+    - Python
+    - TypeScript/JavaScript
+    - Java
+    - Go
+    - Rust
+    - 不确定
+    required: false

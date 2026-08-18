@@ -67,12 +67,15 @@ jobs:
           fi
       - name: Prepare test profile presets (CI env has no ~/.aiplat)
         run: |
-          # Seed control profiles from the repository template so tests that
-          # assert preset contents (default/safety_critical/...) pass in CI.
+          # Seed control profiles + ontology (decomposition_rules) from the
+          # repository templates so tests that assert their contents pass in CI.
           mkdir -p "${AIPLAT_PROFILE_DIR:-$HOME/.aiplat/profiles}"
-          CFG="${AIPLAT_PROFILE_DIR:-$HOME/.aiplat/profiles}/control_presets.yaml"
-          cp ../aiPlat-core/workspace_seeds/profiles/control_presets.yaml "$CFG"
-          echo "presets seeded from workspace_seeds to $CFG"
+          cp ../aiPlat-core/workspace_seeds/profiles/control_presets.yaml \
+             "${AIPLAT_PROFILE_DIR:-$HOME/.aiplat/profiles}/control_presets.yaml"
+          mkdir -p "$HOME/.aiplat/ontologies"
+          cp ../aiPlat-core/workspace_seeds/ontologies/ai-knowledge.yaml \
+             "$HOME/.aiplat/ontologies/ai-knowledge.yaml"
+          echo "presets + ontology seeded"
       - name: Run tests
         run: |
           TEST_DIR="tests"

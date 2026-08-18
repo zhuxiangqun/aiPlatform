@@ -18,7 +18,7 @@ class SimpleLogger(Logger):
         return self._formatters.get(self.config.format, JSONFormatter())
 
     def _log(self, level: str, msg: str, **kwargs: Any) -> None:
-from datetime import datetime, timezone
+        from datetime import datetime, timezone
         from .schemas import LogRecord
         from .base import LogContext
 

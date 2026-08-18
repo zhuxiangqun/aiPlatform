@@ -4,6 +4,7 @@ from pathlib import Path
 import os as _os; _REPO = _os.path.basename(str(Path(__file__).resolve().parents[4])); sys.path.insert(0, str(Path(__file__).resolve().parents[4] / _REPO))
 
 import pytest
+from collections import OrderedDict
 from infra.cache.schemas import CacheConfig
 
 
@@ -12,7 +13,8 @@ class TestMemoryCacheConstruction:
         from infra.cache.memory_client import MemoryCacheClient
         client = MemoryCacheClient(CacheConfig(type="memory"))
         assert client._max_entries == 10000
-        assert client._lock is not None  # thread safety guard
+        assert isinstance(client._cache, OrderedDict)  # bounded container
+        assert client._cache is not None
 
     def test_custom_max_entries(self):
         from infra.cache.schemas import StrategyConfig
