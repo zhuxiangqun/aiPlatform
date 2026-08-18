@@ -1902,12 +1902,18 @@ async def get_tenant_usage_summary(
     """
     from collections import defaultdict as _dd
     try:
-        from core.harness.integration import get_execution_store
-        store = get_execution_store()
-        now = __import__("time").time()
-        cutoff = now - days * 86400
+        from core.services.tenant_store_protocol import get_tenant_store  # P0-A3
 
-        entries = await store.list_tenant_usage(tenant_id=tenant_id or None, since=cutoff, limit=500)
+        store = get_tenant_store()
+        if store is None:
+            from core.harness.integration import get_execution_store
+
+            store = get_execution_store()
+        now = __import__("time").time()
+        cutoff_day = __import__("time").strftime("%Y-%m-%d", __import__("time").gmtime(now - days * 86400))
+
+        res = await store.list_tenant_usage(tenant_id=tenant_id or "", day_start=cutoff_day, limit=500)
+        entries = res.get("items", []) if isinstance(res, dict) else res
         by_day = _dd(lambda: {"tokens": 0.0, "calls": 0})
         total_tokens = 0.0
         total_calls = 0

@@ -145,7 +145,10 @@ class OpsExporter:
         metric_key: Optional[str] = None,
         limit: int = 2000,
     ) -> Tuple[bytes, str]:
-        res = await self._store.list_tenant_usage(
+        from core.services.tenant_store_protocol import get_tenant_store  # P0-A3
+
+        store = get_tenant_store() or self._store
+        res = await store.list_tenant_usage(
             tenant_id=str(tenant_id),
             day_start=day_start,
             day_end=day_end,

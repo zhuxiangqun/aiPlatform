@@ -3,8 +3,10 @@ AuditMixin — extracted from ExecutionStore events_mixin.py.
 
 Auto-generated via Mixin split. Contains entity-specific CRUD methods.
 
-# DEPRECATED: tenant_policies CRUD should migrate to platform layer
-# (TenantManager; tracked P0-A3). Core keeps read-only access for audit.
+# DEPRECATED: concrete tenant DDL/CRUD migrate to platform layer (P0-A3)
+P0-A3 (2026-08): tenant_policies CRUD moved to platform TenantStore
+(aiPlat-platform/tenants/tenant_store.py). This mixin keeps audit_logs
+(execution infrastructure).
 """
 from typing import Any, Dict, List, Optional, Tuple
 import json, time, sqlite3, logging
@@ -250,103 +252,3 @@ class AuditMixin:
                 conn.close()
 
         return await anyio.to_thread.run_sync(_sync)
-
-    # ==================== Tenant Policies (policy-as-code) ====================
-
-    async def get_tenant_policy(self, *, tenant_id: str) -> Optional[Dict[str, Any]]:
-        await self.init()
-        db_path = self._config.db_path
-
-        def _sync() -> Optional[Dict[str, Any]]:
-            conn = self._connect()
-            conn.row_factory = sqlite3.Row
-            try:
-                row = conn.execute(
-                    "SELECT tenant_id, version, policy_json, updated_at FROM tenant_policies WHERE tenant_id=? LIMIT 1",
-                    (str(tenant_id),),
-                ).fetchone()
-                if not row:
-                    return None
-                return {
-                    "tenant_id": row["tenant_id"],
-                    "version": int(row["version"]),
-                    "policy": _json_loads(row["policy_json"]) or {},
-                    "updated_at": row["updated_at"],
-                }
-            finally:
-                conn.close()
-
-        return await anyio.to_thread.run_sync(_sync)
-
-    async def upsert_tenant_policy(self, *, tenant_id: str, policy: Dict[str, Any], version: Optional[int] = None) -> Dict[str, Any]:
-        """
-        Upsert a tenant policy.
-        If version is provided, treat it as optimistic concurrency: update only when current version matches.
-        """
-        await self.init()
-        db_path = self._config.db_path
-
-        def _sync() -> Dict[str, Any]:
-            conn = self._connect()
-            conn.row_factory = sqlite3.Row
-            try:
-                current = conn.execute(
-                    "SELECT version FROM tenant_policies WHERE tenant_id=? LIMIT 1", (str(tenant_id),)
-                ).fetchone()
-                cur_ver = int(current["version"]) if current else 0
-                if version is not None and current and int(version) != cur_ver:
-                    raise ValueError("version_conflict")
-                next_ver = cur_ver + 1
-                now = float(time.time())
-                conn.execute(
-                    """
-                    INSERT INTO tenant_policies(tenant_id, version, policy_json, updated_at)
-                    VALUES(?, ?, ?, ?)
-                    ON CONFLICT(tenant_id) DO UPDATE SET
-                      version=excluded.version,
-                      policy_json=excluded.policy_json,
-                      updated_at=excluded.updated_at;
-                    """,
-                    (str(tenant_id), int(next_ver), _json_dumps(policy or {}), now),
-                )
-                conn.commit()
-                return {"tenant_id": str(tenant_id), "version": int(next_ver), "policy": policy or {}, "updated_at": now}
-            finally:
-                conn.close()
-
-        return await anyio.to_thread.run_sync(_sync)
-
-    async def list_tenant_policies(self, *, limit: int = 100, offset: int = 0) -> Dict[str, Any]:
-        await self.init()
-        db_path = self._config.db_path
-
-        def _sync() -> Dict[str, Any]:
-            conn = self._connect()
-            conn.row_factory = sqlite3.Row
-            try:
-                total = conn.execute("SELECT COUNT(1) FROM tenant_policies").fetchone()[0]
-                rows = conn.execute(
-                    """
-                    SELECT tenant_id, version, policy_json, updated_at
-                    FROM tenant_policies
-                    ORDER BY updated_at DESC
-                    LIMIT ? OFFSET ?;
-                    """,
-                    (int(limit), int(offset)),
-                ).fetchall()
-                items = []
-                for r in rows:
-                    items.append(
-                        {
-                            "tenant_id": r["tenant_id"],
-                            "version": int(r["version"]),
-                            "policy": _json_loads(r["policy_json"]) or {},
-                            "updated_at": r["updated_at"],
-                        }
-                    )
-                return {"items": items, "total": int(total), "limit": int(limit), "offset": int(offset)}
-            finally:
-                conn.close()
-
-        return await anyio.to_thread.run_sync(_sync)
-

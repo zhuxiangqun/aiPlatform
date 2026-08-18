@@ -191,3 +191,14 @@ pytest -q \
 - MUST：主类 ≤ 9000 行（Phase 4 后 8288），拆分累计 -3993 行，零公共 API 破坏
 - 自动化验收：
   - `python3 -c "from core.harness.execution.pipeline_engine import PipelineEngine; from core.harness.execution.pipeline_stage import PipelineStageMixin; assert PipelineEngine.__mro__[1] is PipelineStageMixin; assert '_exec_stage' in PipelineStageMixin.__dict__; assert '_exec_stage' not in PipelineEngine.__dict__"`
+
+### 1.16 Tenant 表迁移（P0-A3, 2026-08-18）
+- MUST：`core.services.tenant_store_protocol.TenantStoreProtocol` 存在，含 8 个 tenant 方法签名（get/upsert_tenant_quota、add/get/list_tenant_usage、get/upsert/list_tenant_policies）
+- MUST：`aiPlat-platform.tenants.tenant_store.TenantStore` 存在，实现 TenantStoreProtocol；`set_tenant_store()` 经 CoreFacade 可达；挂载 `apps.fde` 后 `get_tenant_store()` 非 None
+- MUST：core ExecutionStore 不再定义 tenant_quotas/tenant_usage_ledger/tenant_policies 的 DDL 或 CRUD（宪法 `TestNoQuotaEnforcementInCore`/`TestPlatformResponsibilitiesNotInCore` 真过，无 DEPRECATED 豁免依赖）
+- MUST：同库零数据迁移（TenantStore 与 ExecutionStore 同一 db_path，IF NOT EXISTS 幂等）
+- MUST：消费方注入优先 fallback（core 9 处 + platform 6 处调用点 `get_tenant_store() or store`）
+- 自动化验收：
+  - `python3 -c "from core.services.tenant_store_protocol import TenantStoreProtocol, set_tenant_store, get_tenant_store; set_tenant_store(None); assert get_tenant_store() is None"`
+  - `AIPLAT_HOME=tmp/guard_home pytest tests/constitution/test_kernel_agnostic.py::TestNoQuotaEnforcementInCore tests/constitution/test_layer_ownership.py -q`（5 passed，无豁免依赖）
+  - `pytest tests/constitution/test_kernel_agnostic.py::TestNoQuotaEnforcementInCore tests/constitution/test_layer_ownership.py::TestPlatformResponsibilitiesNotInCore -q`（5 passed）

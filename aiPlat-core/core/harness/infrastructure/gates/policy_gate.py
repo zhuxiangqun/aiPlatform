@@ -55,6 +55,7 @@ from core.apps.tools.permission import Permission  # noqa: allowed — data type
 from core.harness.kernel.runtime import get_kernel_runtime
 
 from core.policy.engine import evaluate_tool_policy_snapshot, PolicyDecision as EngineDecision
+from core.services.tenant_store_protocol import get_tenant_store  # P0-A3: tenant policy via injected store
 
 # DI: resolve_skill_permission via SkillPermissionResolver
 
@@ -696,7 +697,7 @@ class PolicyGate:
 
         runtime = get_kernel_runtime()
 
-        store = getattr(runtime, "execution_store", None) if runtime else None
+        store = get_tenant_store() or (getattr(runtime, "execution_store", None) if runtime else None)
 
         tenant_pol = None
 
@@ -1018,7 +1019,7 @@ class PolicyGate:
 
             runtime = get_kernel_runtime()
 
-            store = getattr(runtime, "execution_store", None) if runtime else None
+            store = get_tenant_store() or (getattr(runtime, "execution_store", None) if runtime else None)
 
             if os.getenv("AIPLAT_POLICY_ENGINE", "1").lower() not in ("0", "false", "no", "n"):
 

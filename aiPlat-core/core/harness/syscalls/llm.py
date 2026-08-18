@@ -45,6 +45,7 @@ import time
 
 
 from core.harness.infrastructure.gates import TraceGate, ContextGate, ResilienceGate
+from core.services.tenant_store_protocol import get_tenant_store  # P0-A3: usage ledger via injected store
 
 from core.harness.kernel.runtime import get_kernel_runtime
 
@@ -2326,7 +2327,7 @@ async def sys_llm_generate(
 
         runtime = get_kernel_runtime()
 
-        store = getattr(runtime, "execution_store", None) if runtime else None
+        store = get_tenant_store() or (getattr(runtime, "execution_store", None) if runtime else None)
 
         if store is not None:
 

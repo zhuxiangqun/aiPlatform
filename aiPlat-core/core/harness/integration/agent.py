@@ -557,7 +557,9 @@ async def _execute_agent_impl(self, req: ExecutionRequest) -> ExecutionResult:
 
                 tenant_id0 = ctx0.get("tenant_id") if isinstance(ctx0, dict) else None
 
-                store = getattr(runtime, "execution_store", None) if runtime else None
+                from core.services.tenant_store_protocol import get_tenant_store  # P0-A3
+
+                store = get_tenant_store() or (getattr(runtime, "execution_store", None) if runtime else None)
 
                 if tenant_id0 and store:
 

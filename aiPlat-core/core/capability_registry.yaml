@@ -89,6 +89,10 @@ domains:
         type: "class"
         signature: "stage dispatch: _dispatch_execute, _exec_stage, _evaluate_stage_health (P2-A4)"
         module: "core/harness/execution/pipeline_stage.py"
+      - symbol: "TenantStoreProtocol"
+        type: "class"
+        signature: "tenant store interface contract + registry (P0-A3)"
+        module: "core/services/tenant_store_protocol.py"
       - symbol: "ReActLoop"
         type: "class"
         signature: "Reason→Act→Observe, integrate Hooks/compression/memory"
@@ -969,6 +973,10 @@ domains:
         type: "class"
         signature: "6-D maturity scoring, golden query eval"
         module: "core/harness/knowledge/domain_maturity.py"
+      - symbol: "TenantStore"
+        type: "class"
+        signature: "tenant quota/usage/policy persistence (P0-A3, same DB as ExecutionStore)"
+        module: "aiPlat-platform/tenants/tenant_store.py"
     breaks: []
     consumers_expected:
       - module: "core/server.py"

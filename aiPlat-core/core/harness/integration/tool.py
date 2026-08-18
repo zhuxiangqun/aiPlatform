@@ -77,7 +77,9 @@ async def _execute_tool_impl(self, req: ExecutionRequest) -> ExecutionResult:
 
         # Tenant policy snapshot (best-effort)
         try:
-            store = getattr(runtime, "execution_store", None) if runtime else None
+            from core.services.tenant_store_protocol import get_tenant_store  # P0-A3
+
+            store = get_tenant_store() or (getattr(runtime, "execution_store", None) if runtime else None)
             if tenant_id and store:
                 rec = await store.get_tenant_policy(tenant_id=str(tenant_id))
                 pol = rec.get("policy") if isinstance(rec, dict) and isinstance(rec.get("policy"), dict) else {}

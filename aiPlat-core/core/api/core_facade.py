@@ -3092,6 +3092,7 @@ from core.harness.ontology_engine.triple_scanner import scan_and_populate  # v2.
 from core.harness.ontology_engine.cleanup import cleanup_stale_entities_by_doc  # v2.5  # noqa: boundary — CoreFacade canonical re-export
 from core.harness.learning.skill_simulator import SkillSimulator  # v2.5  # noqa: boundary — CoreFacade canonical re-export
 from core.services.execution_store import get_execution_store  # v2.5  # noqa: boundary — CoreFacade canonical re-export
+from core.services.tenant_store_protocol import get_tenant_store, set_tenant_store  # P0-A3  # noqa: boundary — CoreFacade canonical re-export
 from core.harness.knowledge.wiki_engine import delete_page, read_page  # v2.5  # noqa: boundary — CoreFacade canonical re-export
 
 # v2.9: Additional canonical re-exports to close platform→core boundary

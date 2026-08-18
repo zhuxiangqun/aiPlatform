@@ -122,6 +122,10 @@ def evaluate_tool_policy_snapshot(
 
 async def _load_tenant_policy_snapshot(*, store: Any, tenant_id: str) -> Tuple[Optional[Dict[str, Any]], Optional[int]]:
     """Return (policy_json, version)."""
+    # P0-A3: tenant policy reads resolve via injected platform TenantStore first.
+    from core.services.tenant_store_protocol import get_tenant_store
+
+    store = get_tenant_store() or store
     if not store or not tenant_id:
         return None, None
     try:
