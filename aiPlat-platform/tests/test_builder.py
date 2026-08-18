@@ -180,7 +180,10 @@ class TestBuilderPipelineE2E:
     def test_recommend_team_no_name_error(self):
         """recommend_team() return must not use undefined 'result.trace_id'."""
         import re
-        with open("builder/builder_project_service.py", "r") as f:
+        from pathlib import Path
+
+        svc_path = Path(__file__).resolve().parents[1] / "builder" / "builder_project_service.py"
+        with open(svc_path, "r") as f:
             source = f.read()
         func_match = re.search(
             r'async def recommend_team.*?(?=\n    def |\n    async def |\n@staticmethod|\Z)',

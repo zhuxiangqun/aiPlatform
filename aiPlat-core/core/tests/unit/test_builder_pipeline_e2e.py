@@ -120,15 +120,29 @@ class TestBuilderPipelineE2E:
             "AIPLAT_LLM_MODEL": "deepseek-chat",
         }):
             config = PipelineConfig(stages=[], max_tokens_per_run=10000)
-            engine = PipelineEngine(config)
+            engine = PipelineEngine(config, model=_mock_adapter())
             
-            # Agent model should use reasoner
-            agent_model = engine._load_default_model(category="agent")
-            assert agent_model is not None
-            
-            # Default should use chat
-            chat_model = engine._load_default_model(category="default")
-            assert chat_model is not None
+            # Mock model resolution to avoid local hardware model loading
+            # (env models are not in the local registry — hardware check fails).
+            def _fake_best(purpose: str) -> str:
+                key = "AIPLAT_AGENT_MODEL" if purpose == "agent" else "AIPLAT_LLM_MODEL"
+                return os.environ.get(key, "")
+
+            with patch("core.harness.utils.model_injection.create_selected_adapter",
+                       return_value=object()) as m_create, \
+                 patch("core.harness.utils.model_injection.best_model_for_purpose",
+                       side_effect=_fake_best):
+                # Agent model should use reasoner
+                agent_model = engine._load_default_model(category="agent")
+                assert agent_model is not None
+                agent_call = m_create.call_args_list[0]
+                assert agent_call.kwargs.get("model_name") == "deepseek-reasoner"
+                
+                # Default should use chat
+                chat_model = engine._load_default_model(category="default")
+                assert chat_model is not None
+                chat_call = m_create.call_args_list[1]
+                assert chat_call.kwargs.get("model_name") == "deepseek-chat"
 
     def test_stage_crash_propagates_phase_failed(self):
         """When a stage crashes, phase must be set to 'failed' with error details."""
@@ -165,7 +179,7 @@ class TestBuilderPipelineE2E:
             stages=[_make_code_stage("fe", "frontend_engineer", "fe_code")],
             max_tokens_per_run=10000,
         )
-        engine = PipelineEngine(config)
+        engine = PipelineEngine(config, model=_mock_adapter())
         state = {
             "session_id": "test_project", "phase": "executing",
             "_current_stage_idx": 0, "tokens_used": 100, "tokens_budget": 10000,
