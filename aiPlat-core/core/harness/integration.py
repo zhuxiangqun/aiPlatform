@@ -273,6 +273,32 @@ def get_latest_predictions():
     from core.apps.skills.evolution.engine import get_latest_predictions  # noqa
     return get_latest_predictions()
 
+
+# ── P0-A1: harness→apps 服务调用经 DI 收敛 ─────────────────────
+
+def get_mcp_client_manager():
+    """Resolve MCP client manager (P0-A1: DI first, direct import fallback)."""
+    return _resolve_or_import("MCPClientManager", "core.apps.mcp.client:get_mcp_client_manager")()
+
+
+def get_skill_discovery():
+    """Resolve skill discovery (P0-A1: DI first, direct import fallback)."""
+    return _resolve_or_import("SkillDiscovery", "core.apps.skills.discovery:create_discovery")()
+
+
+def get_job_manager():
+    """Resolve finetune job manager (P0-A1: DI first, direct import fallback)."""
+    return _resolve_or_import("JobManager", "core.apps.finetune.job_manager:JobManager")()
+
+
+def get_dataset_manager():
+    """Resolve finetune dataset manager (P0-A1: DI first, direct import fallback)."""
+    return _resolve_or_import("DatasetManager", "core.apps.finetune.dataset_manager:DatasetManager")()
+
+def get_result_verifier():
+    """Resolve quality result verifier (P0-A1: DI first, direct import fallback)."""
+    return _resolve_or_import("ResultVerifier", "core.apps.quality.verifier:ResultVerifier")()
+
 import asyncio
 import time
 import uuid

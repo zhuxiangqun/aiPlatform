@@ -8178,13 +8178,10 @@ async def _verify_pipeline_outputs(state: PipelineState) -> None:
 
     try:
 
-        from core.apps.quality.verifier import ResultVerifier
+        from core.apps.quality.types import VerificationSpec, VerificationType  # noqa: data-type
+        from core.harness.integration import get_result_verifier  # P0-A1: DI 解析
 
-        from core.apps.quality.types import VerificationSpec, VerificationType
-
-        
-
-        verifier = ResultVerifier()
+        verifier = get_result_verifier()
 
         results = []
 

@@ -342,8 +342,8 @@ class AutoLearner:
             # ── Register in SkillRegistry so it's immediately available ──
             try:
                 from core.api.core_facade import get_skill_registry
-                from core.apps.skills.discovery import create_discovery
-                discovery = create_discovery()
+                from core.harness.integration import get_skill_discovery  # P0-A1: DI 解析
+                discovery = get_skill_discovery()
                 skills = await discovery.scan_directory(str(approved_path))
                 for skill in skills:
                     get_skill_registry().register(skill)
