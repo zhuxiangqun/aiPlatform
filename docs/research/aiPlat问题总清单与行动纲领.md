@@ -69,7 +69,7 @@
 | P1-A1 | **无会话内实时学习 nudge**（AutoLearner 仅夜间批量） | Hermes | 改进 P1-1 |
 | P1-A2 | **无 Curator 技能生命周期**（active→stale→archived） | Hermes | 改进 P1-2 |
 | P1-A3 | **子代理 provider 单一**（仅进程内，无外部后端） | DSH 6 provider | **✅ 已修复（2026-08-18）**：SubagentProvider 抽象 + in_process/acp 两实现 + 接线 |
-| P1-A4 | **多渠道仅 3 适配器**（Telegram/Slack/WebChat） | Hermes 22 平台 | 改进 P1-4 |
+| P1-A4 | **多渠道仅 3 适配器**（Telegram/Slack/WebChat） | Hermes 22 平台 | **✅ 已修复（2026-08-18）**：7 渠道（+4 扩展），get_channel_adapter 统一解析 |
 | P1-A5 | **无 agentskills.io 开放标准对接** | Hermes | 改进 P1-5 |
 | P1-A6 | **无 Server-managed 托管策略**（企业远程强制） | Claude Code | 改进 P1-6 |
 
@@ -219,7 +219,7 @@ Phase 3：P1 对标差距（8-10 天）——宪法已绿，新增能力安全
 ═══════════════════════════════════════════════════════════
   [3.1] P1-A1/P1-A2 学习闭环（nudge + Curator，3.5 天）
   [3.2] P1-A3 子代理 provider（2 天）→ **✅ 已完成（2026-08-18）**：SubagentProvider + 2 providers + 接线 + 14 单测
-  [3.3] P1-A4 多渠道（2 天）
+  [3.3] P1-A4 多渠道（2 天）→ **✅ 已完成（2026-08-18）**：7 渠道 + get_channel_adapter + 接线
   [3.4] P1-A5 agentskills 对接（1.5 天）
   [3.5] P1-A6 ManagedPolicy（1.5 天）
 
@@ -360,10 +360,10 @@ pytest aiPlat-platform/tests/test_builder.py -q --tb=short
 |---|---|---|---|---|
 | P0-A 架构合规 (10) | 5 | 5 | 0 | ✅ A3/A4/A6/A7/A9 · ⚠️ A1(20 懒导入)/A2(13 懒导入)/A5(3 硬编码)/A8(security 未注册→**已修**)/A10(mock E2E) |
 | P0-B/C 功能治理 (12) | 8 | 3 | 1 | ✅ B1/B2/B3/B5/C2/C3/C5/C6 · ⚠️ B4(3 getter)/C1(6 规范格式)/C7(golden --verify 未入 CI) · ❌ C4(口径漂移→**已修**) |
-| P1-A 对标差距 (6) | 5 | 1 | 0 | ✅ A1-A3/A5/A6（A3 子代理 provider 接线完成）· ⚠️ A4(缺 Telegram/WebChat) |
+| P1-A 对标差距 (6) | **6** | 0 | 0 | ✅ A1-A6 全部落地 |
 | P1-B 体系补全 (13) | **13** | 0 | 0 | 全部落地 |
 | P2 演进治理 (12) | **12** | 0 | 0 | ✅ A1-A7/B1-B5 全部落地（A4 pipeline_engine 拆分 4 Phase 收官 12281→8288） |
-| **合计 (53 核对)** | **43** | **9** | **1** | 修复后 53 DONE 等效（C4/A8/P2-A4/P0-A3/P1-A3 已修） |
+| **合计 (53 核对)** | **44** | **8** | **1** | 修复后 53 DONE 等效（C4/A8/P2-A4/P0-A3/P1-A3/P1-A4 已修） |
 
-**本轮已修复**：P0-C4（frontmatter 口径 + 校验防护）、P0-A8（security 注册）、P2-A4（pipeline_engine 大文件拆分，4 Phase 收官）、P0-A3（tenant 表迁移 platform）、P1-A3（子代理 provider 接线）。
-**遗留 PARTIAL 优先项**：P1-A4（多渠道 Telegram/WebChat 之外）。
+**本轮已修复**：P0-C4（frontmatter 口径 + 校验防护）、P0-A8（security 注册）、P2-A4（pipeline_engine 大文件拆分，4 Phase 收官）、P0-A3（tenant 表迁移 platform）、P1-A3（子代理 provider 接线）、P1-A4（多渠道 7 适配器）。
+**遗留 PARTIAL 优先项**：P0-A1（harness→apps 53 处懒导入）、P0-A2（api→engine 61 处）、P0-A5（3 硬编码）、P0-A10（mock E2E）、P1-B4（3 getter）、P1-C1（6 规范格式）。

@@ -630,6 +630,10 @@ domains:
         type: "class"
         signature: "统一调度 7 渠道 (3 内置 + 4 扩展)"
         module: "aiPlat-app/channels/adapter.py"
+      - symbol: "get_channel_adapter"
+        type: "function"
+        signature: "按 channel name 解析适配器实例（含 wecom→wechat 别名, P1-A4）"
+        module: "aiPlat-app/channels/adapter.py"
     breaks: []
     consumers_expected:
       - module: "core/harness/optimization/goal_executor.py"
