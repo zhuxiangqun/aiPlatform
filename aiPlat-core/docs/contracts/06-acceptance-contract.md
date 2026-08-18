@@ -163,3 +163,10 @@ pytest -q \
 - 自动化验收：
   - `python3 scripts/rule_golden_sample.py --verify`（0 问题）
   - `core/tests/wiring/test_meta_agent_wired.py`（接线断言 2 passed）
+
+### 1.12 PipelineEngine Mixin 拆分（P2-A4, 2026-08-18）
+- MUST：`core.harness.execution.pipeline_healing.PipelineHealingMixin` 存在，`PipelineEngine` MRO 含该 Mixin，13 个自愈方法经继承可用
+- MUST：`PipelineEngine` 类文件 ≤ 12000 行（Phase 1 后 11734）
+- 自动化验收：
+  - `python3 -c "from core.harness.execution.pipeline_engine import PipelineEngine; assert PipelineHealingMixin in PipelineEngine.__mro__"`
+  - `bash scripts/verify-l4-claims.sh`（31/31 PASS）
