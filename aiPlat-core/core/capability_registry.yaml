@@ -10,7 +10,7 @@
 version: "1.1.0"
 generated_at: "2026-08-16"
 total_capability_domains: 34
-total_capabilities: 1030
+total_capabilities: 1031
 
 domains:
   # ══════════════════════════════════════════════════════════════
@@ -33,6 +33,10 @@ domains:
       - symbol: clear_trace
       - symbol: build_run_report
       - symbol: generate_hypotheses
+      - symbol: PipelineStageMixin
+        type: class
+        signature: 'Stage dispatch tables, capability profiling, isolated/health execution.'
+        module: aiPlat-core/core/harness/execution/pipeline_stage.py
         type: function
         signature: 'Generate ranked root-cause hypotheses for a failed pipeline run.'
         module: aiPlat-core/core/harness/execution/hypothesis_generator.py
@@ -85,6 +89,10 @@ domains:
         type: "class"
         signature: "test eval: _tri_evaluate, _exec_test_runner, _retry_loop (P2-A4)"
         module: "core/harness/execution/pipeline_eval.py"
+      - symbol: "PipelineStageMixin"
+        type: "class"
+        signature: "stage dispatch: _dispatch_execute, _exec_stage, _evaluate_stage_health (P2-A4)"
+        module: "core/harness/execution/pipeline_stage.py"
       - symbol: "ReActLoop"
         type: "class"
         signature: "Reason→Act→Observe, integrate Hooks/compression/memory"

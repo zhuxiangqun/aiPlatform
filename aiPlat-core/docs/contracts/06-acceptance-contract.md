@@ -175,11 +175,19 @@ pytest -q \
 - MUST：`core.harness.execution.pipeline_state.PipelineStateMixin` 存在，`PipelineEngine` MRO 含 `PipelineStateMixin`（在 `PipelineHealingMixin` 前）
 - MUST：6 个状态持久化方法（`_snapshot`/`_merge_state`/`_load_checkpoints_from_disk`/`_output_root`/`_persist_files`/`_summarize_artifact`）经继承可用
 - 自动化验收：
-  - `python3 -c "from core.harness.execution.pipeline_engine import PipelineEngine; assert PipelineEngine.__mro__[1].__name__ == 'PipelineStateMixin'"`
+  - `python3 -c "from core.harness.execution.pipeline_engine import PipelineEngine; from core.harness.execution.pipeline_state import PipelineStateMixin; from core.harness.execution.pipeline_healing import PipelineHealingMixin; assert PipelineEngine.__mro__.index(PipelineStateMixin) < PipelineEngine.__mro__.index(PipelineHealingMixin)"`
 
 ### 1.14 PipelineEngine Phase 3 prompt/eval Mixin（P2-A4, 2026-08-18）
 - MUST：`core.harness.execution.pipeline_prompt.PipelinePromptMixin` + `pipeline_eval.PipelineEvalMixin` 存在，`PipelineEngine` MRO 含两者（顺序 EvalMixin → PromptMixin → StateMixin → HealingMixin）
 - MUST：14 个 prompt/eval 方法（`_build_prompt`/`_tri_evaluate`/`_retry_loop` 等）经继承可用
 - MUST：主类 ≤ 10000 行（Phase 3 后 9406）
 - 自动化验收：
-  - `python3 -c "from core.harness.execution.pipeline_engine import PipelineEngine; assert [c.__name__ for c in PipelineEngine.__mro__[:3]] == ['PipelineEngine','PipelineEvalMixin','PipelinePromptMixin']"`
+  - `python3 -c "from core.harness.execution.pipeline_engine import PipelineEngine; from core.harness.execution.pipeline_eval import PipelineEvalMixin; from core.harness.execution.pipeline_prompt import PipelinePromptMixin; assert PipelineEngine.__mro__.index(PipelineEvalMixin) < PipelineEngine.__mro__.index(PipelinePromptMixin)"`
+
+### 1.15 PipelineEngine Phase 4 stage Mixin（P2-A4, 2026-08-18，收官）
+- MUST：`core.harness.execution.pipeline_stage.PipelineStageMixin` 存在，`PipelineEngine` MRO 首位 Mixin（顺序 StageMixin → EvalMixin → PromptMixin → StateMixin → HealingMixin）
+- MUST：8 个 stage 方法（`_dispatch_execute`/`_exec_stage`/`_evaluate_stage_health`/`_infer_profile_from_stage`/`_calibrate_profile_from_history`/`_apply_capability_profile`/`_build_handler_params`/`_exec_isolated_stage`）经继承可用且不在主类重复定义
+- MUST：`_run_stages_from` 保留在主类（核心调度枢纽，9 处引用不变）
+- MUST：主类 ≤ 9000 行（Phase 4 后 8288），拆分累计 -3993 行，零公共 API 破坏
+- 自动化验收：
+  - `python3 -c "from core.harness.execution.pipeline_engine import PipelineEngine; from core.harness.execution.pipeline_stage import PipelineStageMixin; assert PipelineEngine.__mro__[1] is PipelineStageMixin; assert '_exec_stage' in PipelineStageMixin.__dict__; assert '_exec_stage' not in PipelineEngine.__dict__"`
