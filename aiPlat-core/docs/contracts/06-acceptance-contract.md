@@ -49,8 +49,9 @@
   - `core/tests/unit/test_harness/test_policy_denied_auto_retry.py`
 
 ### 1.8 内存缓存有界化（2026-08-18）
-- MUST：harness 持久容器缓存有界——`file.py:_read_cache`（`_MAX_CACHE`）、`path_planner.py:_discovered_cache`（`_MAX_CACHE`+TTL）、`a2a/server.py:_tasks`（`_MAX_TASKS`）、`observation.py:_diag_buffers`（`_DIAG_TTL`+`_MAX_DIAG_RUNS`）
+- MUST：harness 持久容器缓存有界——`file.py:_read_cache`（`_MAX_CACHE`）、`path_planner.py:_discovered_cache`（`_MAX_CACHE`+TTL）、`a2a/server.py:_tasks`（`_MAX_TASKS`）、`observation.py:_diag_buffers`（`_DIAG_TTL`+`_MAX_DIAG_RUNS`）、`plugins:_slot_archives`（`_MAX_ARCHIVES`）、`sql_ontology:_translators`（`_MAX_DOMAINS`）、`model_injection:_FAILURE_TRACKER`/`_model_overrides`（`_MAX_*`）、`credential_pool:_pools`（`_MAX_POOLS`）
 - MUST：守卫 §83 只告警无界缓存（`@functools.cache`/`@lru_cache(maxsize=None)`/无界持久容器），有界 maxsize=N 与模块级一次性注册表不告警
+- MUST：键空间来自客户端输入（HTTP 参数 / session_id / provider）的缓存必须校验或设上限
 - 自动化验收：
   - `bash scripts/architecture_guard.sh`（§83 项：Dict 无清理 ≤ 基线、Unbounded append = 0、LRU 无 clear = 0）
 

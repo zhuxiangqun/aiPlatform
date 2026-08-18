@@ -106,3 +106,8 @@ management 展示层建议以：
 - **回放 UI**：前端 `RunEventTimeline` 组件（Builder 运行历史内联时间线，seq/type/payload 展开查看）消费同一端点，不新增业务读取路径
 - **观察缓冲**：`api/routers/observation.py` 的 `_diag_buffers`（per-run_id 诊断事件缓冲）有界化——`_DIAG_TTL=60s` + `_MAX_DIAG_RUNS=256`，每次 `store_diag_event` 清扫过期/超额条目；缓冲仅用于 SSE 首段回放，权威事件源是 `run_events` 表
 - **事件源权威**：所有回放/时间线 UI 的最终一致来源是 `run_events` / `pipeline_run_events` 表；内存缓冲（observation / read_cache 等）仅作临时加速，不构成第二条业务真相
+
+### 4.5 运行时缓存有界化契约（2026-08-18 补充）
+
+- **原则**：`run_events` / DB 是唯一权威真相；所有内存缓存（`model_injection._FAILURE_TRACKER` / `_model_overrides`、`context_service` 索引、`credential_pool._pools`、`plugins._slot_archives`、`sql_ontology._translators`）均为临时加速，**必须带上限**（`_MAX_*`）或 TTL，禁止无限增长
+- **约束**：新增内存缓存时须声明 `_MAX_*` 上限或 TTL 清扫；键空间来自客户端输入（HTTP 参数 / session_id / provider）时必须校验或设上限

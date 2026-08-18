@@ -1039,9 +1039,12 @@ async def create_adapter_with_fallback(purpose: str, timeout: int = 60) -> Any:
 
 
 # ── Model failure cache: skip models that fail 3+ times within 5 min ──
+# Bounded by _MAX_FAILURE_MODELS: entries without recent failures are evicted
+# during the window prune so the tracker can't grow with arbitrary model names.
 _FAILURE_TRACKER: Dict[str, list] = {}  # model_name → [timestamp, ...]
 _FAILURE_THRESHOLD = 3
 _FAILURE_WINDOW_SECS = 300
+_MAX_FAILURE_MODELS = 128
 
 
 def _is_model_degraded(model_name: str) -> bool:
@@ -1050,7 +1053,16 @@ def _is_model_degraded(model_name: str) -> bool:
     failures = _FAILURE_TRACKER.get(model_name, [])
     now = _t.time()
     recent = [t for t in failures if now - t < _FAILURE_WINDOW_SECS]
-    _FAILURE_TRACKER[model_name] = recent
+    if recent:
+        _FAILURE_TRACKER[model_name] = recent
+    elif model_name in _FAILURE_TRACKER:
+        # Window pruned to empty → drop the entry entirely (bounded keyspace)
+        _FAILURE_TRACKER.pop(model_name, None)
+    if len(_FAILURE_TRACKER) > _MAX_FAILURE_MODELS:
+        # Evict entries with the fewest recent failures first
+        for name in sorted(_FAILURE_TRACKER, key=lambda n: len(_FAILURE_TRACKER[n]))[
+                : len(_FAILURE_TRACKER) - _MAX_FAILURE_MODELS]:
+            _FAILURE_TRACKER.pop(name, None)
     return len(recent) >= _FAILURE_THRESHOLD
 
 
@@ -1871,11 +1883,16 @@ def _register_adapter(provider: str, model_name: str, base_url: str = "", api_ke
 # ── Phase 13: Session-level model override (/model command) ──
 
 _model_overrides: Dict[str, str] = {}
+# Bounded: overrides are per-session; evict oldest entries over the cap so
+# long-lived servers don't accumulate one override per session forever.
+_MAX_OVERRIDES = 256
 
 
-
-
-
+def _bounded_override_write(session_id: str, model_name: str) -> None:
+    _model_overrides[session_id] = model_name
+    if len(_model_overrides) > _MAX_OVERRIDES:
+        for sid in sorted(_model_overrides)[: len(_model_overrides) - _MAX_OVERRIDES]:
+            _model_overrides.pop(sid, None)
 def _get_session_model_override() -> Optional[str]:
 
     """Check for session-level model override set by /model command.
@@ -1898,7 +1915,7 @@ def set_model_override(model_name: str, session_id: str = "_global") -> None:
 
     """Set a session-level model override."""
 
-    _model_overrides[session_id] = model_name
+    _bounded_override_write(session_id, model_name)
 
     logging.getLogger("aiplat.model").info("Model override: %s (session=%s)", model_name, session_id)
 

@@ -183,7 +183,10 @@ class ContextService:
         context = self._contexts.get(session_id)
         
         if context and context.is_expired():
-            context.state = ContextState.EXPIRED
+            # Expired context: drop it AND its index entries so the user/agent
+            # index lists and _session_files don't accumulate stale session ids
+            # indefinitely (bounded cleanup on the read path).
+            await self.delete_context(session_id)
             return None
         
         return context

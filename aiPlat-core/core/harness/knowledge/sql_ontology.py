@@ -194,11 +194,27 @@ class SqlOntologyTranslator:
 
 
 # ── Global singleton ──
+# Bounded: domain_id keys are validated against the registered domain set
+# (DomainRouter), so client-controlled HTTP params cannot grow the dict with
+# arbitrary keys. Unknown domains fall back to "default".
+_MAX_DOMAINS = 64
 
 _translators: Dict[str, SqlOntologyTranslator] = {}
 
 
 def get_sql_ontology(domain_id: str = "default") -> SqlOntologyTranslator:
+    # Validate against registered domains — client-controlled domain_id from
+    # HTTP params must not create unbounded translator entries.
+    try:
+        from core.harness.knowledge.domain_router import DomainRouter
+        known = set(DomainRouter.list_domains())
+        if known and domain_id not in known:
+            domain_id = "default"
+    except Exception:  # noqa: BLE001 — registry unavailable; fall back to default
+        domain_id = "default"
     if domain_id not in _translators:
+        if len(_translators) >= _MAX_DOMAINS:
+            # Evict least-recently-used (approximate: first inserted) to stay bounded
+            _translators.pop(next(iter(_translators)), None)
         _translators[domain_id] = SqlOntologyTranslator(domain_id)
     return _translators[domain_id]
