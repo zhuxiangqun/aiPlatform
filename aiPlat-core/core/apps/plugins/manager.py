@@ -81,7 +81,22 @@ _slot_log = _logging.getLogger("aiplat.plugins.slot")
 # Slot registry: {slot_name: active_plugin_id}
 _slot_registry: Dict[str, str] = {}
 # Archived states: {plugin_id: {slot_name: state_json}}
+# Bounded by _MAX_ARCHIVES: oldest plugin entries are evicted on write.
 _slot_archives: Dict[str, Dict[str, Any]] = {}
+_MAX_ARCHIVES = 128
+
+
+def _bounded_archive_write(plugin_id: str, slot: str, state: Dict[str, Any]) -> None:
+    """Write an archive entry, evicting oldest plugin archives over _MAX_ARCHIVES."""
+    if plugin_id not in _slot_archives:
+        _slot_archives[plugin_id] = {}
+    _slot_archives[plugin_id][slot] = state
+    if len(_slot_archives) > _MAX_ARCHIVES:
+        # Evict plugin archives with the fewest slots first (oldest likely already
+        # unregistered) — keeps the archive bounded without dropping recent state.
+        by_size = sorted(_slot_archives.items(), key=lambda kv: (len(kv[1]), kv[0]))
+        for pid, _ in by_size[: len(_slot_archives) - _MAX_ARCHIVES]:
+            _slot_archives.pop(pid, None)
 
 
 def register_plugin_slot(plugin_id: str, slot: str) -> bool:
@@ -104,5 +119,5 @@ def unregister_plugin_slot(slot: str, archive_state: Optional[Dict[str, Any]] = 
     """Unregister a slot, optionally archiving the old plugin's state."""
     old = _slot_registry.pop(slot, None)
     if old and archive_state:
-        _slot_archives.setdefault(old, {})[slot] = archive_state
+        _bounded_archive_write(old, slot, archive_state)
     _slot_log.info("Slot '%s' freed (was '%s')", slot, old or "none")
