@@ -326,7 +326,7 @@ pytest aiPlat-platform/tests/test_builder.py -q --tb=short
 | 项 | 处置 | 状态 |
 |---|---|---|
 | §83c LRU 无 clear（2 处） | 守卫语义修正：仅无界缓存（`@functools.cache` / `@lru_cache(maxsize=None)`）才需 `cache_clear()`；有界 maxsize=N 自动淘汰非泄漏。compression.py `get_cached_embedding(maxsize=1024)` 有界豁免 + 注释。守卫排除 arch_guard_rules 自扫描目录（meta 代码含规则字面量必自匹配） | ✅ commit `bf0d0f19` |
-| §83a 模块级 dict 无清理（18 处） | **4 处 UNBOUNDED 已修复**（a2a `_tasks` 加 `_MAX_TASKS` 淘汰 / observation `_diag_buffers` 加 TTL 清扫 / file.py `_read_cache` 加 `_MAX_CACHE` / path_planner `_discovered_cache` 加清扫+上限）；剩余 12 处经子代理逐一取证均为 STATIC_CONFIG（一次性注册表）或 BOUNDED_RUNTIME（键空间有界），**审查豁免，不造假豁免** | ✅ 18→12 |
+| §83a 模块级 dict 无清理（18 处） | **4 处 UNBOUNDED 已修复**（a2a `_tasks` / observation `_diag_buffers` / file.py `_read_cache` / path_planner `_discovered_cache`）+ **再 6 处 BOUNDED 有界化**（plugins `_slot_archives`、sql_ontology `_translators`、context_service 读路径清扫、model_injection `_FAILURE_TRACKER`+`_model_overrides`、credential_pool `_pools`）；剩余 8 处经子代理逐一取证均为 STATIC_CONFIG（一次性注册表）或 BOUNDED（键空间有界），**审查豁免** | ✅ 18→8 |
 | §83b 无界 append（80 候选文件） | **守卫误报根因修复**：改为 AST 作用域分析，只统计模块级/类级持久容器的 append（函数内局部 list 随 GC 回收非泄漏）；排除 dataclass field 模式。80→**0** | ✅ |
 | §83c LRU 无 clear | 守卫语义修正：仅无界缓存告警；compression.py 有界豁免 | ✅ 2→0 |
 
