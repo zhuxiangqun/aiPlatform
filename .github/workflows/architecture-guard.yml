@@ -23,6 +23,8 @@ jobs:
           pip install -e ./aiPlat-platform 2>/dev/null || true
       - name: Run architecture guard
         run: bash scripts/architecture_guard.sh
+      - name: Golden sample verify (P0-C7 — rules must have real hits)
+        run: python3 scripts/rule_golden_sample.py --verify
       - name: Run constitution tests
         run: python -m pytest tests/constitution/ -v --tb=short -q
 

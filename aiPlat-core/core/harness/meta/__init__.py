@@ -9,6 +9,7 @@ from .profile_registry import (
 )
 from .orchestration_selector import OrchestrationSelector
 from .cache_aware_router import CacheAwareRouter, get_cache_router
+from .meta_agent import MetaAgent, MetaSuggestion, get_meta_agent
 
 __all__ = [
     "ControlProfile",
@@ -27,4 +28,7 @@ __all__ = [
     "OrchestrationSelector",
     "CacheAwareRouter",
     "get_cache_router",
+    "MetaAgent",
+    "MetaSuggestion",
+    "get_meta_agent",
 ]

@@ -1,5 +1,5 @@
 ---
-total_capabilities: 1032
+total_capabilities: 1034
 last_updated: 2026-08-18
 version: "30.1"
 auto_sync: true
@@ -1499,6 +1499,8 @@ scan_hash: 8f9548ec24f4
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
 | set_model_override / clear_model_override | `harness/utils/model_injection.py` | ✅ | 自动同步 | 已合入 |
 | _model_overrides | `harness/utils/model_injection.py` | ✅ | 自动同步 | 已合入 |
+| MetaAgent / get_meta_agent | `harness/meta/meta_agent.py` | ✅ | 数据驱动元认知分析（失败/健康信号聚合 → 策略建议） | 待合入 |
+| MetaSuggestion | `harness/meta/meta_agent.py` | ✅ | area/problem/suggestion/priority/evidence | 待合入 |
 |------|------|:---:|------|------|
 | Howl Intervention | harness/intervention/howl.py | ✅ | Agent 停滞/退化检测 + redirect/clarify/fallback策略 | 已合入 |
 | RunState Restatement | harness/restatement/run_state.py | ✅ | 结构化/版本化/人可编辑的进度制品 | 已合入 |
@@ -1964,7 +1966,7 @@ scan_hash: 8f9548ec24f4
 | 工具生态 | 21 | 0 | 21 |
 | 微调系统 | 14 | 0 | 14 |
 | 部署与灰度 | 7 | 0 | 7 |
-| 运行时干预 | 4 | 0 | 4 |
+| 运行时干预 | 6 | 0 | 6 |
 | Arena & 调度 | 7 | 0 | 7 |
 | 平台治理 | 79 | 0 | 79 |
 | Infra 基础设施 | 14 | 0 | 14 |
@@ -1989,7 +1991,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 16 | 0 | 16 |
-| **总计** | **1032** | **0** | **1032** |
+| **总计** | **1034** | **0** | **1034** |
 
 ---
 
