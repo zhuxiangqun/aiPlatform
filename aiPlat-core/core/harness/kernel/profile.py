@@ -111,7 +111,7 @@ class ProfileManager:
             return cfg.mcp_servers
         # backward compat: empty list = all servers
         try:
-            from core.apps.mcp.client import get_mcp_client_manager
+            from core.harness.integration import get_mcp_client_manager  # P0-A1: DI 解析
             return get_mcp_client_manager().list_servers()
         except Exception:
             return []

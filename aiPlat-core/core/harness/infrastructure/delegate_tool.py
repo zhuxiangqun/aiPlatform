@@ -188,8 +188,8 @@ class DelegateManager:
     async def _execute_delegation(self, config: DelegateConfig) -> DelegateResult:
         """Execute a single delegation via SubagentCoordinator."""
         try:
-            from core.apps.agents.subagent.coordinator import SubagentCoordinator
-            coordinator = SubagentCoordinator()
+            from core.harness.integration import get_subagent_coordinator  # P0-A1: DI 解析
+            coordinator = get_subagent_coordinator()
 
             result = await coordinator.execute_single(
                 subagent_name=config.subagent_name,

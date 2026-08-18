@@ -155,7 +155,7 @@ async def generate_answer(text: str, page_context = "") -> Tuple[str, bytes]:
 
         from core.harness.meta.profile_registry import set_profile_override
 
-        from core.apps.agents import get_agent_registry
+        from core.harness.integration import get_agent_registry  # P0-A1: DI 解析
 
         registry = get_agent_registry()
 

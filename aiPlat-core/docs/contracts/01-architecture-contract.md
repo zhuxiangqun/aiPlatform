@@ -141,3 +141,5 @@ aiPlat 逻辑上分为：
 - **子代理 provider 接线（P1-A3, 2026-08-18）**：`SubagentProvider` 抽象 + `InProcessProvider`/`ACPProvider` 两实现（capabilities 旗标 + start/continuation/interrupt，DSH 对齐）。`execute_parallel` 增加 `provider` 参数走 `execute_with_provider`；coordinator 新增 `send_message`/`get_instance_status`（三态）/`interrupt_instance`；dynamic_orchestrator 生产路径按 `AIPLAT_SUBAGENT_PROVIDER` 选择（默认 in_process 零变化）。fail-loud 无假成功；registry 清理过时符号；14 项单测。
 
 - **消息渠道适配器（P1-A4, 2026-08-18）**：`get_channel_adapter(name)` 统一解析（7 渠道：3 内置 telegram/slack/webchat + 4 扩展 discord/wecom/email/dingtalk，`wecom`→`wechat` 别名）。扩展适配器在 `aiPlat-app/channels/adapters/` 注册进 `ChannelDispatcher`（merged）。platform `POST /platform/channels/{id}/test` 校验适配器存在（fail-loud 422）。registry 补登 `get_channel_adapter`。
+
+- **harness→apps 收敛（P0-A1, 2026-08-18）**：9 处 harness lazy 直导 apps 服务改为经 integration.py DI 工厂（`get_subagent_coordinator`/`get_agent_registry`/`get_mcp_client_manager`/`get_skill_discovery`/`get_job_manager`/`get_dataset_manager`/`get_result_verifier`，新增 5 工厂）。宪法白名单 38→25；data type / static util / optional lazy（skill_execution_record/browser_test_engine/video_parser/quality.types/finetune.schemas）保留白名单（非服务调用）。

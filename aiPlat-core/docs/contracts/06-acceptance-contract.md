@@ -219,3 +219,11 @@ pytest -q \
 - 自动化验收：
   - `python3 -c "import sys; sys.path.insert(0,'aiPlat-app'); from channels.adapter import get_channel_adapter; [get_channel_adapter(n) for n in ['telegram','slack','webchat','discord','wecom','email','dingtalk']]; print('OK')"`
   - `cd aiPlat-app && pytest tests/test_cli_and_channels.py -q`（6 passed）
+
+### 1.19 harness→apps 收敛（P0-A1, 2026-08-18）
+- MUST：integration.py 含 5 个新工厂（`get_mcp_client_manager`/`get_skill_discovery`/`get_job_manager`/`get_dataset_manager`/`get_result_verifier`），DI-first fallback direct import
+- MUST：9 个 harness 文件不再直导 apps 服务（dynamic_orchestrator/delegate_tool/voice_pipeline/profile/learning/training×3/pipeline_engine-quality）
+- MUST：宪法 `test_core_internal_boundaries.py` 白名单 ≤ 26 条（38→25）
+- 自动化验收：
+  - `pytest tests/constitution/test_core_internal_boundaries.py -q`（3 passed）
+  - `python3 -c "from core.harness.integration import get_mcp_client_manager, get_skill_discovery, get_job_manager, get_dataset_manager, get_result_verifier; assert all(callable(f) for f in [get_mcp_client_manager, get_skill_discovery, get_job_manager, get_dataset_manager, get_result_verifier])"`

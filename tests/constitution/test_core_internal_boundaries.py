@@ -16,7 +16,6 @@ CORE_DIR = WORKSPACE_ROOT / "aiPlat-core" / "core"
 # Legitimate cross-boundary imports (documented facade/interface patterns)
 ALLOWED_HARNESS_TO_APPS: Set[Tuple[str, str]] = {
     # DI / integration layer — by design, wires apps into harness
-    ("harness/integration.py", "apps/agents/registry"),
     ("harness/integration.py", "apps/skills/registry"),
     ("harness/integration.py", "apps/tools/base"),
     ("harness/integration.py", "apps/tools/permission"),
@@ -35,13 +34,10 @@ ALLOWED_HARNESS_TO_APPS: Set[Tuple[str, str]] = {
     # Pipeline engine — data type imports (class, not service call)
     ("harness/execution/pipeline_eval.py", "apps/tools/code"),  # P2-A4 Phase 3 迁移
     # LangGraph stage runner — data type access
-    ("harness/execution/langgraph/stage_runner.py", "apps/tools/code"),
     # KNOWN_DEBT: browser_test_engine in bridge, guarded by lazy import + try/except
-    ("harness/integration.py", "apps/tools/browser_test_engine"),
     # pipeline_engine — lazy import guarded by try/except for predictions
     ("harness/execution/pipeline_eval.py", "apps/skills/evolution/engine"),  # P2-A4 Phase 3 迁移
     # pipeline_engine — lazy import guarded by try/except for evolution triggers
-    ("harness/execution/pipeline_engine.py", "apps/skills/evolution/triggers"),
 
     # P0-A1: integration.py 注册中心设计职责（wire apps into harness）
     ("harness/integration.py", "apps/agents"),
@@ -62,23 +58,14 @@ ALLOWED_HARNESS_TO_APPS: Set[Tuple[str, str]] = {
     ("harness/models/spec_lifecycle.py", "apps/skills/base"),
     ("harness/feedback_loops/__init__.py", "apps/skills/evolution/engine"),
     # P0-A1: lazy import guarded by try/except — runtime-on-demand (待 CoreFacade 收敛)
-    ("harness/coordination/dynamic_orchestrator.py", "apps/agents/subagent/coordinator"),
-    ("harness/digital_human/voice_pipeline.py", "apps/agents"),
     ("harness/execution/langgraph/nodes/registry.py", "apps/tools/base"),
     ("harness/execution/pipeline_engine.py", "apps/quality/types"),
-    ("harness/execution/pipeline_engine.py", "apps/quality/verifier"),
     ("harness/execution/pipeline_eval.py", "apps/skills/evolution/engine"),  # P2-A4 Phase 3 迁移
     ("harness/execution/pipeline_eval.py", "apps/tools/code"),  # P2-A4 Phase 3 迁移
-    ("harness/infrastructure/delegate_tool.py", "apps/agents/subagent/coordinator"),
-    ("harness/kernel/profile.py", "apps/mcp/client"),
-    ("harness/learning/__init__.py", "apps/skills/discovery"),
     ("harness/multimodal/integrator.py", "apps/document_intelligence/video_parser"),
     ("harness/multimodal/integrator.py", "apps/testing/browser_test_engine"),
     ("harness/syscalls/skill.py", "apps/skills/skill_execution_record"),
-    ("harness/training/auto_trigger.py", "apps/finetune/job_manager"),
     ("harness/training/auto_trigger.py", "apps/finetune/schemas"),
-    ("harness/training/distillation.py", "apps/finetune/dataset_manager"),
-    ("harness/training/full_training.py", "apps/finetune/dataset_manager"),
 }
 
 

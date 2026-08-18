@@ -452,9 +452,9 @@ class DistillationEngine:
 
         try:
 
-            from core.apps.finetune.dataset_manager import DatasetManager
+            from core.harness.integration import get_dataset_manager  # P0-A1: DI 解析
 
-            mgr = DatasetManager()
+            mgr = get_dataset_manager()
 
             return await mgr.preview(dataset_id, limit=500)
 

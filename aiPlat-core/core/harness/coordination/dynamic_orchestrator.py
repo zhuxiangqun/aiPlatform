@@ -157,8 +157,8 @@ class DynamicOrchestrator:
         status = "failed"
 
         try:
-            from core.apps.agents.subagent.coordinator import SubagentCoordinator
-            coordinator = SubagentCoordinator()
+            from core.harness.integration import get_subagent_coordinator  # P0-A1: DI 解析
+            coordinator = get_subagent_coordinator()
 
             # P1-A3: provider 选择 — AIPLAT_SUBAGENT_PROVIDER 配置外部 provider
             # (acp 等) 时走 provider 路径；默认 in_process 行为不变。
