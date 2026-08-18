@@ -7,9 +7,8 @@ ExecutionStore (SQLite)
 - 替代 core/server.py 的全局内存 dict（_agent_executions/_agent_history/_skill_executions）
 - 服务重启后仍可查询 execution_id 与 history
 
-ARCHITECTURE (P0-A3 resolved 2026-08-18): core execution_store is the storage
-layer; platform api/routers/quota.py is the business API (app→platform→core rule).
-Not deprecated.
+DEPRECATED: migrate to platform layer — tenant_quotas management should live in platform.
+Per architecture contract (docs/index.md §Layer 2).
 
 SPLIT PLAN (audit 2026-05):
   9007 lines — target: per-entity modules ≤ 1000 lines each.
