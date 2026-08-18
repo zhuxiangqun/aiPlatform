@@ -754,6 +754,8 @@ def _register_health_checks():
         reg.register(SimpleHealthCheck("wiki_content_quality", _check_wiki_content_quality, Severity.MEDIUM))
         reg.register(SimpleHealthCheck("rag_quality", _check_rag_quality, Severity.MEDIUM))
         reg.register(SimpleHealthCheck("assessment", _check_assessment, Severity.LOW))
+        # P0-A8: security check was defined but never registered — wire it in.
+        reg.register(SimpleHealthCheck("security", _check_security, Severity.HIGH))
 
         # Additional health checks are registered in run_all_diagnostics()
 
