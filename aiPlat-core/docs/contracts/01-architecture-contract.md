@@ -128,6 +128,7 @@ aiPlat 逻辑上分为：
 - **运行时扩展缝（P2-A2 落地）**：`CoreFacade.register_handler` 增加来源门禁——handler 定义模块属危险集（os/sys/subprocess/shutil/builtins）注册即拒绝，未评估模块仅 warn；dispatch 永不触发任意代码执行。白名单方向保持 platform→core 单向依赖。
 - **缓存治理二轮（2026-08-18）**：6 处 BOUNDED 缓存补上限——`apps/plugins/manager.py:_slot_archives`（`_MAX_ARCHIVES=128`）、`harness/knowledge/sql_ontology.py:_translators`（DomainRouter 白名单 + `_MAX_DOMAINS=64`）、`services/context_service.py` 过期索引读路径清扫、`harness/utils/model_injection.py:_FAILURE_TRACKER`（`_MAX_FAILURE_MODELS=128`）+ `_model_overrides`（`_MAX_OVERRIDES=256`）、`credential_pool.py:_pools`（`_MAX_POOLS=64`）。§83a 18→8。
 - **缓存治理三轮（2026-08-18）**：§83a 归零——`harness/routing/skill_routing.py:_skill_weights`（`_MAX_SKILL_WEIGHTS=512`）、`apps/skills/evolution/engine.py:_latest_predictions`（`_MAX_PREDICTIONS=256`）、`harness/infrastructure/base_model_adapter.py:_model_cache`（`_MAX_MODEL_CACHE=16`）补上限；守卫豁免机制从文件级改为变量名级（仅 `_REGISTRY/_DEFAULTS/_MAP` 等命名本身豁免，运行时 dict 不再误豁免）。§83a 18→0，append 0，LRU 0。
+- **MetaAgent 数据驱动实现（P0-C7, 2026-08-18）**：`harness/meta/meta_agent.py` 新增 `get_meta_agent()`——EvolutionEngine meta_analysis step 引用不存在的符号（每次 error，静默失效）已修复；数据驱动聚合失败/健康信号，不引入 LLM。`rule_golden_sample.py --verify` 接入 architecture-guard.yml CI（守卫规则黄金样本验证）。
 - **provider YAML 驱动补完（P2-A3）**：`ModelManager._API_PROVIDERS` 硬编码集合改为 `_api_provider_ids()`（从 `config/providers.yaml` 按 `type=external` 派生，5min 缓存，YAML 缺失回退硬编码）；新增 external provider 零代码。
 
 **契约不变项**：syscall 三通道唯一性、单向依赖链、Prompt Cache 稳定性约束均未改变；内存缓存有界化不改任何对外接口签名。

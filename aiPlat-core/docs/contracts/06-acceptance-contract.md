@@ -156,3 +156,10 @@ pytest -q \
 
 建议在 PR 模板或 CI 里加入检查：
 - Contracts 目录变更时，必须包含至少 1 个对应用例变更；或在 PR 描述中解释原因
+
+### 1.11 元认知 MetaAgent（P0-C7, 2026-08-18）
+- MUST：`core.harness.meta.get_meta_agent()` 可导入且 `analyze(days)` 返回建议列表（EvolutionEngine meta_analysis step 不再静默 error）
+- MUST：守卫规则黄金样本验证（`rule_golden_sample.py --verify`）在 CI 中执行，规则必须有真实命中
+- 自动化验收：
+  - `python3 scripts/rule_golden_sample.py --verify`（0 问题）
+  - `core/tests/wiring/test_meta_agent_wired.py`（接线断言 2 passed）

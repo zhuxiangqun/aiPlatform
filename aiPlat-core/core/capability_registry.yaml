@@ -851,7 +851,7 @@ domains:
   runtime-intervention:
     section: "十九"
     section_name: "运行时干预"
-    caps_count: 2
+    caps_count: 4
     provides:
       - symbol: "_model_overrides"
         type: "dict"
@@ -861,6 +861,14 @@ domains:
         type: "function"
         signature: "(model_name, session_id)"
         module: "core/harness/utils/model_injection.py"
+      - symbol: "MetaAgent / get_meta_agent"
+        type: "class"
+        signature: "数据驱动元认知分析 — analyze(days) 返回策略建议(失败/健康信号聚合)"
+        module: "core/harness/meta/meta_agent.py"
+      - symbol: "MetaSuggestion"
+        type: "dataclass"
+        signature: "area/problem/suggestion/priority/evidence"
+        module: "core/harness/meta/meta_agent.py"
     breaks: []
     consumers_expected:
       - module: "core/api/routers/adapters.py"
