@@ -38,24 +38,27 @@ CHANGED_ENGINE=$(git diff --cached --name-only --diff-filter=ACM 2>/dev/null | g
 if [ -n "$CHANGED_ENGINE" ]; then
   BASELINE="$(dirname "$0")/baselines/engine_state_keys.txt"
   if [ -f "$BASELINE" ]; then
-    NEW_KEYS=$(python3 -c "
+    NEW_KEYS=$(CHANGED_ENGINE="$CHANGED_ENGINE" BASELINE="$BASELINE" python3 -c '
 import re, os, sys
-baseline_path = '$BASELINE'
+baseline_path = os.environ["BASELINE"]
 with open(baseline_path) as f:
-    allowed = {l.split('|')[0] for l in f if l.strip() and not l.startswith('#')}
-    debt_keys = {l.split('|')[0] for l in f if '|DEBT|' in l}
+    allowed = {l.split("|")[0] for l in f if l.strip() and not l.startswith("#")}
+    debt_keys = {l.split("|")[0] for l in f if "|DEBT|" in l}
 
 found = set()
-for fpath in '$CHANGED_ENGINE'.split():
+# File list passed via env (newline-separated) — safe for multi-line paths.
+# Match only quoted keys: state["key"] / state.get("key") — the `.` wildcard
+# form matched fragments (e.g. `ke` from f-strings), so anchor on quote chars.
+for fpath in os.environ.get("CHANGED_ENGINE", "").splitlines():
     if os.path.isfile(fpath):
         t = open(fpath).read()
-        for m in re.finditer(r'state\[.''(\w+)'']', t): found.add(m.group(1))
-        for m in re.finditer(r'state\.get\(.''(\w+)'']', t): found.add(m.group(1))
+        for m in re.finditer(r"""state\[(["'"'"'])(\w+)\1\]""", t): found.add(m.group(2))
+        for m in re.finditer(r"""state\.get\((["'"'"'])(\w+)\1\)""", t): found.add(m.group(2))
 
 new = found - allowed
 for k in sorted(new):
     print(k)
-" 2>/dev/null)
+' 2>/dev/null)
     if [ -n "$NEW_KEYS" ]; then
       echo "❌ R4: New state keys in engine not in baseline:"
       echo "$NEW_KEYS"

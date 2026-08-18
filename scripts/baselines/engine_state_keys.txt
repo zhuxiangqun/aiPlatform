@@ -114,3 +114,25 @@ cost_used_usd|OK|generic pipeline
 user_id|OK|generic pipeline
 # All DEBT keys resolved as of 2026-08-03 — baseline is clean
 
+_adaptive_security|OK|engine-internal
+_agent_message_bus_enabled|OK|engine-internal
+_auto_resume_on_failure|OK|engine-internal
+_force_context_compress|OK|engine-internal
+_metrics_enabled|OK|engine-internal
+_online_evolution_enabled|OK|engine-internal
+_online_evolution_triggered|OK|engine-internal
+_pii_detect_enabled|OK|engine-internal
+_policy_gate_enabled|OK|engine-internal
+_profile_auto_upgraded|OK|engine-internal
+_progress|OK|engine-internal
+_reflection_enabled|OK|engine-internal
+_subagent_coordinator_enabled|OK|engine-internal
+_sys_prompt|OK|engine-internal
+_task_skills_enabled|OK|engine-internal
+_test_env_issues|OK|engine-internal
+_tool_rationale_required|OK|engine-internal
+_trace_enabled|OK|engine-internal
+app_name|OK|generic pipeline
+error_message|OK|generic pipeline
+finished_at|OK|generic pipeline
+started_at|OK|generic pipeline
