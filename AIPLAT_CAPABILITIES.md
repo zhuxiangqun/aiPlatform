@@ -1635,7 +1635,7 @@ scan_hash: 8f9548ec24f4
 | Intent API (Unified) | core/api/intents.py | ✅ | 三统一意图：core_chat, core_execute, core_query | 已合入 |
 | CoreFacade | core/api/core_facade.py | ✅ | 统一门面，84K行暴露所有核心能力 | 已合入 |
 | CoreFacade Graph API | core_facade.py:get_graph_health/get_graph_neighbors/get_graph_sessions | ✅ | 图谱健康状态 + 邻居查询 + 会话图查询，经 CoreFacade 暴露 | 已合入 |
-| CoreFacade Wiki API | core_facade.py:get_wiki_index/wiki_search_pages | ✅ | Wiki 全局索引 + 全文搜索，经 CoreFacade 暴露 | 已合入 |
+| CoreFacade Wiki API | core_facade.py:wiki_search_pages | ✅ | Wiki 全文搜索，经 CoreFacade 暴露 | 已合入 |
 | ContextService | core/services/context_service.py | ✅ | 完整对话上下文管理 + 记忆集成 | 已合入 |
 | ConfigRegistry | core/services/config_registry_store.py | ✅ | 版本化/哈希校验的配置注册中心 | 已合入 |
 | ExecutionStore | core/services/execution_store/ | ✅ | 综合执行/审计存储 + Schema管理 | 已合入 |
