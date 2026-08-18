@@ -202,3 +202,12 @@ pytest -q \
   - `python3 -c "from core.services.tenant_store_protocol import TenantStoreProtocol, set_tenant_store, get_tenant_store; set_tenant_store(None); assert get_tenant_store() is None"`
   - `AIPLAT_HOME=tmp/guard_home pytest tests/constitution/test_kernel_agnostic.py::TestNoQuotaEnforcementInCore tests/constitution/test_layer_ownership.py -q`（5 passed，无豁免依赖）
   - `pytest tests/constitution/test_kernel_agnostic.py::TestNoQuotaEnforcementInCore tests/constitution/test_layer_ownership.py::TestPlatformResponsibilitiesNotInCore -q`（5 passed）
+
+### 1.17 子代理 provider（P1-A3, 2026-08-18）
+- MUST：`core.apps.agents.subagent.providers.SubagentProvider` 抽象存在（capabilities 旗标 + `start`/`continuation`/`interrupt`），`InProcessProvider` + `ACPProvider` 两实现，工厂 `get_provider_factories()` 返回 `{in_process, acp}`
+- MUST：`SubagentCoordinator.list_providers()` ≥2；`execute_parallel(provider=...)` 走 `execute_with_provider`；`send_message`/`get_instance_status`（running/waiting/settled 三态）可用
+- MUST：生产接线——`dynamic_orchestrator` 按 `AIPLAT_SUBAGENT_PROVIDER`（默认 in_process）选择 provider 路径
+- MUST：fail-loud——provider 不支持的能力（continuation/start）返回明确错误，无假成功
+- 自动化验收：
+  - `python3 -c "from core.apps.agents.subagent.coordinator import SubagentCoordinator; c=SubagentCoordinator(); assert 'in_process' in c.list_providers() and len(c.list_providers())>=2"`
+  - `pytest aiPlat-core/core/tests/unit/test_agents/test_subagent_providers.py -q`（14 passed）

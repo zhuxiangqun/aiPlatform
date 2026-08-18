@@ -402,14 +402,31 @@ class SubagentCoordinator:
         self,
         task: str,
         subagent_names: List[str],
-        context: Optional[List[Dict]] = None
+        context: Optional[List[Dict]] = None,
+        *,
+        provider: str = "",
     ) -> List[SubagentResult]:
-        """Execute multiple Subagents in parallel"""
-        results = await asyncio.gather(
-            *[self.execute_single(task, name, context) for name in subagent_names],
-            return_exceptions=True
-        )
-        
+        """Execute multiple Subagents in parallel.
+
+        ``provider`` (P1-A3): when non-empty, dispatch each subagent via the
+        named provider (e.g. ``acp`` external backend) instead of the default
+        in-process path. Empty → existing execute_single behavior (zero change).
+        """
+        if provider:
+            from .providers import default_provider_name
+
+            prov_name = provider or default_provider_name()
+            results = await asyncio.gather(
+                *[self.execute_with_provider(task, name, context, provider=prov_name)
+                  for name in subagent_names],
+                return_exceptions=True
+            )
+        else:
+            results = await asyncio.gather(
+                *[self.execute_single(task, name, context) for name in subagent_names],
+                return_exceptions=True
+            )
+
         processed_results = []
         for i, result in enumerate(results):
             if isinstance(result, Exception):
@@ -420,8 +437,55 @@ class SubagentCoordinator:
                 ))
             else:
                 processed_results.append(result)
-        
+
         return processed_results
+
+    # ── Continuable orchestration (P1-A3, DSH continuation) ──────────────────
+
+    async def send_message(self, instance_id: str, message: str) -> SubagentResult:
+        """Resume a settled subagent via its provider (DSH send_message tool).
+
+        Fails loud when the active provider lacks continuation capability.
+        """
+        from .providers import default_provider_name
+
+        prov = self.get_provider(default_provider_name())
+        if not prov.capabilities.continuation:
+            return SubagentResult(
+                subagent_name=instance_id,
+                success=False,
+                error=f"Provider '{prov.name}' does not support continuation",
+            )
+        result = await prov.continuation(instance_id=instance_id, message=message)
+        return SubagentResult(
+            subagent_name=instance_id,
+            success=result.ok,
+            output=result.output if result.ok else "",
+            error=result.error if not result.ok else "",
+        )
+
+    def get_instance_status(self) -> Dict[str, str]:
+        """Three-state view of active subagents (DSH running/waiting/settled)."""
+        status: Dict[str, str] = {}
+        for key, inst in self._active_instances.items():
+            st = getattr(inst, "state", "unknown")
+            if st in ("completed", "failed", "cancelled", "error", "settled"):
+                status[key] = "settled"
+            elif st in ("created", "queued"):
+                status[key] = "waiting"
+            else:
+                status[key] = "running"
+        return status
+
+    async def interrupt_instance(self, session_id: str, name: str) -> bool:
+        """Cancel a running subagent, delegating to its provider if available."""
+        cancelled = await self.cancel_instance(session_id, name)
+        if cancelled:
+            return True
+        from .providers import default_provider_name
+
+        prov = self.get_provider(default_provider_name())
+        return await prov.interrupt(instance_id=f"{session_id}:{name}")
     
     async def execute_sequential(
         self,
