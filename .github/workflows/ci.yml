@@ -92,7 +92,7 @@ jobs:
           python-version: "3.11"
           cache: pip
       - name: Install dependencies
-        run: pip install -e ../aiPlat-infra -e "." || true
+        run: pip install -e ../aiPlat-infra -e ".[dev]" || pip install pytest pytest-asyncio pytest-cov
       - name: Run L5 depth tests
         run: python -m pytest tests/autonomy/test_l5_capabilities.py -v --tb=short -q
       - name: ACP Smoke Test (IDE integration)
@@ -111,7 +111,7 @@ jobs:
           python-version: "3.11"
           cache: pip
       - name: Install dependencies
-        run: pip install -e ../aiPlat-infra -e "." || true
+        run: pip install -e ../aiPlat-infra -e ".[dev]" || true
       - name: Run benchmarks
         run: bash ../scripts/benchmark-ci.sh
       - name: Stress test (informational)

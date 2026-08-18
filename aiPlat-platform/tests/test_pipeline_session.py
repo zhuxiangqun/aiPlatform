@@ -23,7 +23,7 @@ class TestPipelineSession:
             "core_chat", "ChatContext", "ChatResult",
             "extract_json",
             "seed_all_registries", "get_skill_registry",
-            "get_tool_registry", "get_model_registry",
+            "get_tool_registry", "get_agent_registry_facade",
             "record_changeset", "new_change_id",
             "create_chat_service", "create_conversation_service",
         ]
