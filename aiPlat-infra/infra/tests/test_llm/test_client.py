@@ -7,12 +7,12 @@ class TestLLMClient:
     """LLM 客户端测试"""
 
     def test_openai_client(self):
-        """测试 OpenAI 客户端"""
-        from infra.llm.providers.openai import OpenAIClient
+        """测试 OpenAI 兼容客户端（openai.py 已合并为 openai_compatible.py）"""
+        from infra.llm.providers.openai_compatible import OpenAICompatibleClient
         from infra.llm.schemas import LLMConfig
 
         config = LLMConfig(provider="openai", model="gpt-4")
-        client = OpenAIClient(config)
+        client = OpenAICompatibleClient(config)
         assert client is not None
 
 

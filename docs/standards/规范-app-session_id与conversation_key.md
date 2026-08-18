@@ -78,3 +78,9 @@ app 负责把 session_id 传给 platform（再转发给 core），用于：
 - memory 写入与检索（core 层，但以 session_id 作为 key）
 - 审计与回放（run_id ↔ session_id）
 
+
+---
+
+## 6. 变更记录（2026-08-18）
+
+- `aiPlat-platform/tests/test_pipeline_session.py` 对齐当前 CoreFacade 导出：`get_model_registry` 已删除（model 目录收敛至 infra ModelManager），导出断言改用 `get_agent_registry_facade`。契约不变：session_id ↔ run_id 关联语义、per-session lane 串行化约束均未改变。

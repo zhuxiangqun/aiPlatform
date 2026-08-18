@@ -23,7 +23,29 @@ from .types import Task, TaskStatus
 
 a2a_router = APIRouter(prefix="/a2a", tags=["a2a"])
 
+# Bounded task registry: completed/failed tasks are evicted when the cap is
+# reached (FIFO by updated_at), so _tasks never grows unboundedly.
+_MAX_TASKS = 512
 _tasks: Dict[str, Task] = {}
+
+
+def _evict_stale_tasks() -> None:
+    """Evict oldest finished tasks once the registry exceeds _MAX_TASKS.
+
+    PENDING/RUNNING tasks are never evicted — only terminal (COMPLETED/
+    FAILED) entries are dropped, oldest updated_at first. Keeps _tasks
+    bounded without losing in-flight task state.
+    """
+    if len(_tasks) <= _MAX_TASKS:
+        return
+    finished = [
+        t for t in _tasks.values()
+        if t.status in (TaskStatus.COMPLETED, TaskStatus.FAILED)
+    ]
+    finished.sort(key=lambda t: t.updated_at or t.created_at or "")
+    excess = len(_tasks) - _MAX_TASKS
+    for t in finished[:excess]:
+        _tasks.pop(t.id, None)
 
 
 def _now() -> str:
@@ -53,6 +75,7 @@ async def create_task(request: Request):
         id=task_id, status=TaskStatus.PENDING,
         user_input=user_input, created_at=_now(), updated_at=_now(),
     )
+    _evict_stale_tasks()
     _tasks[task_id] = task
     asyncio.create_task(_execute_task(task_id, user_input))
 

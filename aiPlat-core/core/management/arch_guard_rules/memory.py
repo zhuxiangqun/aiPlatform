@@ -27,6 +27,10 @@ def _iter_py_files(repo_root: Path) -> List[Path]:
         for py_file in d.rglob("*.py"):
             if any(ex in py_file.parts for ex in _EXCLUDE_DIRS):
                 continue
+            # Guard meta-code itself contains rule patterns as string literals
+            # (e.g. "@lru_cache|@cache" regex) — scanning it would self-flag.
+            if "arch_guard_rules" in py_file.parts:
+                continue
             if "/tests/" in str(py_file) or "/test_" in str(py_file.name):
                 continue
             files.append(py_file)
@@ -54,20 +58,31 @@ class GlobalDictNoCleanupCheck(ArchRule):
             except Exception:
                 continue
 
-            # Find Dict[str, ...] = {} declarations
+            # Find Dict[str, ...] = {} declarations — module/class level only
+            # (indented local dicts inside functions are scoped & GC'd, not
+            # unbounded module state; static config dicts are also not growth
+            # risks but module-level dicts without ANY cleanup are flagged for
+            # review).
             dict_matches = list(re.finditer(
-                r'(?:Dict\[str\s*,\s*[A-Za-z\[\],\s]+\]\s*=\s*\{\})',
+                r'^[A-Za-z_][A-Za-z0-9_]*\s*:\s*Dict\[str\s*,\s*[A-Za-z\[\],\s]+\]\s*=\s*\{\}',
                 content,
+                flags=re.MULTILINE,
             ))
             if not dict_matches:
                 continue
 
             rel_path = str(py_file.relative_to(repo_root))
 
-            # Check if the file has cleanup mechanisms
+            # Check if the file has cleanup mechanisms. Case-insensitive so
+            # _CACHE_TTL / _DIAG_TTL / _MAX_TASKS / _MAX_DIAG_RUNS all count
+            # as bounded — the old regex only matched lowercase `ttl` and the
+            # exact `_MAX_CACHE` name, producing false positives on bounded
+            # caches with idiomatic UPPER_SNAKE names.
             has_cleanup = bool(re.search(
-                r'\.clear\(\)|max_size|ttl|_maybe_cleanup|_MAX_CACHE|_IDLE_TTL|_loaded_instances',
+                r'\.clear\(\)|max_size|_MAX_[A-Za-z0-9_]+|_TTL|ttl|'
+                r'_maybe_cleanup|_IDLE_TTL|_loaded_instances',
                 content,
+                flags=re.IGNORECASE,
             ))
             # Count eviction patterns (pop, del, .clear)
             evictions = len(re.findall(r'\.pop\(|del\s+\w+\[|\.clear\(\)', content))
@@ -101,11 +116,15 @@ class GlobalDictNoCleanupCheck(ArchRule):
 
 
 class UnboundedAppendCheck(ArchRule):
-    """§83b: Files with many .append() calls but no .clear() or size guard.
+    """§83b: Files with many .append() calls on *persistent* containers.
 
-    Detects accumulation patterns:
-      results.append(x)         ← growing list, never cleared
-      items.append(item)        ← no max_len guard
+    Detects accumulation patterns on module-level / class-attribute lists
+    (survive across calls, can grow unboundedly):
+      _results: List[...] = [] ; _results.append(x)   ← persistent, no clear
+      self._items.append(item)                        ← instance state
+
+    Function-local lists (results = []; results.append(x)) are scoped and
+    GC'd on return — NOT a leak, and excluded via AST scope analysis.
     """
 
     code = "memory_unbounded_append"
@@ -117,20 +136,72 @@ class UnboundedAppendCheck(ArchRule):
         violations = []
         for py_file in _iter_py_files(repo_root):
             try:
-                content = py_file.read_text(encoding="utf-8", errors="replace")
+                tree = ast.parse(py_file.read_text(encoding="utf-8", errors="replace"))
             except Exception:
                 continue
 
-            appends = len(re.findall(r'\.append\(', content))
+            # Collect names of *module-level* / class-level list/dict/set
+            # assignments (targets like `_cache = []`, `_buffer: List = []`).
+            # These persist across calls — function-local lists are excluded.
+            # Walk only top-level statements (Module body + ClassDef bodies),
+            # NOT function bodies (ast.walk would sweep locals into the set).
+            module_containers: Set[str] = set()
+            scopes: List[List[ast.stmt]] = [tree.body]
+            scopes.extend(
+                c.body for c in tree.body if isinstance(c, ast.ClassDef)
+            )
+            for stmts in scopes:
+                for node in stmts:
+                    if isinstance(node, (ast.Assign, ast.AnnAssign)):
+                        targets = node.targets if isinstance(node, ast.Assign) else [node.target]
+                        # Skip annotations without a value (`x: List[str]` is
+                        # just a type hint) and dataclass fields
+                        # (`x: List[str] = field(...)`), which are per-instance,
+                        # not persistent module/class containers.
+                        if isinstance(node, ast.AnnAssign) and node.value is None:
+                            continue
+                        if (isinstance(node, ast.AnnAssign)
+                                and isinstance(node.value, ast.Call)
+                                and isinstance(node.value.func, ast.Name)
+                                and node.value.func.id == "field"):
+                            continue
+                        for t in targets:
+                            if isinstance(t, ast.Name):
+                                module_containers.add(t.id)
+
+            # Count .append() on persistent containers only:
+            #   module-level: `_name.append(`  (Name receiver)
+            #   class attr:   `self._name.append(`  (Attribute receiver)
+            persistent_appends = 0
+            for node in ast.walk(tree):
+                if not isinstance(node, ast.Call):
+                    continue
+                fn = node.func
+                if not isinstance(fn, ast.Attribute) or fn.attr != "append":
+                    continue
+                recv = fn.value
+                if isinstance(recv, ast.Name) and recv.id in module_containers:
+                    persistent_appends += 1
+                elif isinstance(recv, ast.Attribute) and isinstance(recv.value, ast.Name) \
+                        and recv.value.id == "self":
+                    persistent_appends += 1
+
+            if persistent_appends < 5:
+                continue
+
+            content = py_file.read_text(encoding="utf-8", errors="replace")
             clears = len(re.findall(r'\.clear\(\)', content))
             size_guards = len(re.findall(
                 r'max_|MAX_|len\(.*\s*[><=!]+\s*\d+',
                 content,
             ))
 
-            if appends > 5 and clears == 0 and size_guards < 2:
+            if clears == 0 and size_guards < 2:
                 rel_path = str(py_file.relative_to(repo_root))
-                violations.append(f"{rel_path}: {appends} .append() calls, no .clear() or size guard")
+                violations.append(
+                    f"{rel_path}: {persistent_appends} persistent .append() calls, "
+                    f"no .clear() or size guard"
+                )
 
         if violations:
             return [
@@ -139,7 +210,7 @@ class UnboundedAppendCheck(ArchRule):
                     code=self.code,
                     message=(
                         f"Unbounded list growth: {len(violations)} file(s) "
-                        f"with 5+ .append() but no .clear() or size guard."
+                        f"with 5+ persistent .append() but no .clear() or size guard."
                     ),
                     files=violations[:30],
                     count=len(violations),
@@ -149,10 +220,11 @@ class UnboundedAppendCheck(ArchRule):
 
 
 class LRUCacheNoClearCheck(ArchRule):
-    """§83c: @lru_cache / @cache usage without matching cache_clear() call.
+    """§83c: unbounded @lru_cache / @cache usage without cache_clear() call.
 
-    Caches without explicit clear() can hold references to dead objects,
-    preventing garbage collection.
+    Only *unbounded* caches can hold references to dead objects forever and
+    leak memory. Bounded caches (@lru_cache(maxsize=N>0), bare @lru_cache
+    defaulting to 128) auto-evict via LRU — no clear() needed.
     """
 
     code = "memory_lru_cache_no_clear"
@@ -168,13 +240,20 @@ class LRUCacheNoClearCheck(ArchRule):
             except Exception:
                 continue
 
-            has_lru = bool(re.search(r'@lru_cache|@functools\.cache|@cache\b', content))
+            # Unbounded forms only: @functools.cache / @cache (always
+            # unbounded) and @lru_cache(maxsize=None). Bounded forms
+            # (maxsize=N>0 or default 128) auto-evict — no leak risk.
+            has_unbounded_lru = bool(re.search(
+                r'@(?:functools\.)?cache\b'
+                r'|@lru_cache\s*\(\s*maxsize\s*=\s*None\s*\)',
+                content,
+            ))
             has_clear = bool(re.search(r'cache_clear\(\)', content))
 
-            if has_lru and not has_clear:
+            if has_unbounded_lru and not has_clear:
                 rel_path = str(py_file.relative_to(repo_root))
                 violations.append(
-                    f"{rel_path}: has @lru_cache/@cache but no cache_clear() call"
+                    f"{rel_path}: unbounded @lru_cache/@cache without cache_clear() call"
                 )
 
         if violations:
@@ -183,8 +262,8 @@ class LRUCacheNoClearCheck(ArchRule):
                     level=self.level,
                     code=self.code,
                     message=(
-                        f"LRU caches without clear(): {len(violations)} file(s) "
-                        f"use @lru_cache without explicit cache_clear()."
+                        f"Unbounded LRU caches without clear(): {len(violations)} file(s) "
+                        f"use unbounded @lru_cache/@cache without explicit cache_clear()."
                     ),
                     files=violations[:30],
                     count=len(violations),

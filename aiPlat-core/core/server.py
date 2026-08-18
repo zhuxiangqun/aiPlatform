@@ -207,7 +207,6 @@ _workspace_mcp_manager = None
 _package_manager = None
 _workspace_package_manager = None
 
-_skill_executions: Dict[str, Dict[str, Any]] = {}
 _execution_store = None
 _trace_service: Optional[TraceService] = None
 

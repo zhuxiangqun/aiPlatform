@@ -1004,7 +1004,7 @@ domains:
   orchestration-system:
     section: "二十四"
     section_name: "编排系统"
-    caps_count: 4
+    caps_count: 6
     provides:
       - symbol: "IntentAnalyzer"
         type: "class"
@@ -1014,6 +1014,14 @@ domains:
         type: "class"
         signature: "execution chain topology"
         module: "core/harness/orchestration/chain_planner.py"
+      - symbol: "RunEventTimeline"
+        type: "component"
+        signature: "Pipeline run 事件回放 UI（seq/type/payload 时间线，展开查看详情）"
+        module: "aiPlat-management/frontend/src/components/Builder/RunEventTimeline.tsx"
+      - symbol: "list_run_events"
+        type: "function"
+        signature: "GET /runs/{run_id}/events — 事件源回放查询（after_seq 增量）"
+        module: "aiPlat-core/core/api/routers/runs.py"
     breaks: []
     consumers_expected:
       - module: "core/harness/execution/pipeline_engine.py"

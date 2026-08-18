@@ -1650,6 +1650,8 @@ scan_hash: 8f9548ec24f4
 | Capability Mapper | core/orchestration/capability_mapper.py | ✅ | Intent→Capability→Executor 解析链 | 已合入 |
 | Chain Planner | core/orchestration/chain_planner.py | ✅ | 执行链拓扑规划 | 已合入 |
 | Intent Analyzer | core/orchestration/intent_analyzer.py | ✅ | 意图分类与分解 | 已合入 |
+| RunEventTimeline | `frontend/src/components/Builder/RunEventTimeline.tsx` | ✅ | Pipeline run 事件回放 UI（seq/type/payload 时间线） | 待合入 |
+| list_run_events | `core/api/routers/runs.py` | ✅ | GET /runs/{run_id}/events 事件源回放查询 | 待合入 |
 
 ---
 
@@ -1967,7 +1969,7 @@ scan_hash: 8f9548ec24f4
 | 平台治理 | 79 | 0 | 79 |
 | Infra 基础设施 | 14 | 0 | 14 |
 | 核心API统一入口 | 7 | 0 | 7 |
-| 编排系统 | 6 | 0 | 6 |
+| 编排系统 | 8 | 0 | 8 |
 | 管理 & 质量 | 28 | 0 | 28 |
 | 编排层 | 22 | 0 | 22 |
 | L6 自主能力 | 8 | 0 | 8 |
@@ -1987,7 +1989,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 16 | 0 | 16 |
-| **总计** | **1030** | **0** | **1030** |
+| **总计** | **1032** | **0** | **1032** |
 
 ---
 

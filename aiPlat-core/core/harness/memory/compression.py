@@ -33,6 +33,8 @@ import os
 
 
 # ── P0-3: LRU-cached embedding for semantic relevance scoring ──
+# Bounded cache (maxsize=1024): entries auto-evict via LRU, so no
+# cache_clear() is required — arch_guard §83c only flags unbounded caches.
 
 
 

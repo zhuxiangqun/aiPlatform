@@ -46,9 +46,21 @@ from core.harness.kernel.execution_context import get_active_workspace_context
 
 
 
-# Session-level file read cache: key=path, value=(timestamp, size_chars, first_200_chars)
+# Session-level file read cache: key=path, value=(timestamp, size_chars, first_200_chars).
+# Bounded by _MAX_CACHE: oldest entries are evicted on insert.
 
+_MAX_CACHE = 512
 _read_cache: Dict[str, tuple] = {}
+
+
+def _evict_read_cache() -> None:
+    """Evict oldest cache entries once _read_cache exceeds _MAX_CACHE."""
+    if len(_read_cache) <= _MAX_CACHE:
+        return
+    ordered = sorted(_read_cache.items(), key=lambda kv: kv[1][0])
+    excess = len(_read_cache) - _MAX_CACHE
+    for path, _ in ordered[:excess]:
+        _read_cache.pop(path, None)
 
 
 
@@ -187,6 +199,8 @@ async def sys_file_read(
         # Update cache
 
         preview_text = content[:200].replace("\n", " ").strip()
+
+        _evict_read_cache()
 
         _read_cache[resolved] = (_time.time(), len(content), preview_text)
 

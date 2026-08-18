@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { CheckCircle, ArrowLeft, BarChart3, Play, Eye, Pencil, X, Rocket, TestTube, Clock, Sparkles, RefreshCw, Save } from 'lucide-react';
 import { projectApi, type ProjectItem, type ProjectRun, type BuilderSession } from '../../../services';
 import { BuilderPipeline } from '../../../components/Builder/BuilderPipeline';
+import { RunEventTimeline } from '../../../components/Builder/RunEventTimeline';
 import { ChatWidget } from '../../../components/ui';
 import { Card, CardHeader, CardContent, Button, toast } from '../../../components/ui';
 import { toastGateError } from '../../../components/ui';
@@ -372,6 +373,7 @@ const ProjectDetailPage: React.FC = () => {
                         <div className="flex gap-2"><span className="text-gray-500">Run ID:</span><span className="text-gray-300 font-mono">{r.run_id || '-'}</span></div>
                         {r.error && <div className="flex gap-2"><span className="text-red-400">错误:</span><span className="text-red-300">{r.error}</span></div>}
                         <div className="flex gap-2"><span className="text-gray-500">完成时间:</span><span className="text-gray-300">{r.finished_at?.slice(0, 16) || '进行中'}</span></div>
+                        {r.run_id && <RunEventTimeline runId={r.run_id} />}
                       </div>
                     </details>
                   ))}

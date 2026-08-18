@@ -7,8 +7,9 @@ from .schemas import CacheConfig
 class MemoryCacheClient(CacheClient):
     def __init__(self, config: CacheConfig):
         self.config = config
-        strategy = config.strategy or {}
-        max_entries = strategy.get("max_entries", 10000)
+        strategy = config.strategy
+        # strategy is a StrategyConfig dataclass (or None) — not a dict.
+        max_entries = getattr(strategy, "max_entries", 10000) if strategy else 10000
         self._cache: OrderedDict = OrderedDict()
         self._ttl: Dict[str, int] = {}
         self._max_entries = max_entries

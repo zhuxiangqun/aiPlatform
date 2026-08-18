@@ -57,8 +57,42 @@ _PROVIDER_CAPABILITIES = {
     "custom": {"chat", "embedding"},
 }
 
-# API providers — always available, no local file check
-_API_PROVIDERS = frozenset({"openai", "deepseek", "anthropic", "openrouter"})
+# API providers — always available, no local file check.
+# Derived from config/providers.yaml (type=external) so adding a provider is
+# zero-code; hardcoded set is only the fallback when the YAML is missing.
+_API_PROVIDERS_FALLBACK = frozenset({"openai", "deepseek", "anthropic", "openrouter"})
+_api_provider_cache: Dict[str, tuple] = {}  # "ids" -> (frozenset, ts)
+
+
+def _api_provider_ids() -> frozenset:
+    """IDs of external (API) providers — YAML-driven, cached 5 min.
+
+    Mirrors get_providers() semantics for the sync hot paths
+    (_get_has_local_file / _get_deployment_type): a provider registered as
+    type=external in providers.yaml is treated as API-backed (no local file
+    concept), so new providers need zero code changes.
+    """
+    import time as _t
+    now = _t.time()
+    cached = _api_provider_cache.get("ids")
+    if cached and now - cached[1] < 300:
+        return cached[0]
+    ids: set = set()
+    try:
+        import yaml as _yaml
+        from pathlib import Path as _P
+        cfg_path = _P(__file__).resolve().parents[3] / "config" / "providers.yaml"
+        if cfg_path.exists():
+            data = _yaml.safe_load(cfg_path.read_text(encoding="utf-8")) or {}
+            for p in data.get("providers", []):
+                if (isinstance(p, dict) and p.get("enabled", True)
+                        and p.get("type") == "external" and p.get("id")):
+                    ids.add(p["id"])
+    except Exception:  # noqa: BLE001 — fall back to hardcoded set
+        pass
+    result = frozenset(ids) if ids else _API_PROVIDERS_FALLBACK
+    _api_provider_cache["ids"] = (result, now)
+    return result
 
 # ── Platform resources (cached, TTL 5s) ──
 from dataclasses import dataclass as _dc
@@ -267,7 +301,7 @@ def _get_has_local_file(model, mgr=None) -> bool:
     """Check if a local model exists on disk (from adapters cache or /api/show)."""
     import time as _time, json as _json
     provider = getattr(model, 'provider', '') or ''
-    if provider in _API_PROVIDERS:
+    if provider in _api_provider_ids():
         return True
 
     # Check models_json cache from adapters table
@@ -333,7 +367,7 @@ def _derive_model_state(model, mgr=None) -> str:
     provider = getattr(model, 'provider', '') or ''
 
     # 1. API providers — always available, no local file concept
-    if provider in _API_PROVIDERS:
+    if provider in _api_provider_ids():
         return "api"
 
     # 2. Local models — check file existence first

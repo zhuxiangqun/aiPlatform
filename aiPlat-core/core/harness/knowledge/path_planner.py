@@ -41,9 +41,25 @@ from typing import Any, Dict, List, Optional, Set, Tuple
 
 logger = logging.getLogger("path_planner")
 
-# Cache: (start_class, target_class) → discovered paths
+# Cache: (start_class, target_class) → discovered paths.
+# Bounded by _MAX_CACHE + _CACHE_TTL: expired entries swept on write, oldest
+# evicted when over cap (keys embed free-text hints, so they can grow unbounded).
 _discovered_cache: Dict[str, Tuple[float, List[Dict]]] = {}
 _CACHE_TTL = 3600  # 1 hour
+_MAX_CACHE = 256
+
+
+def _sweep_discovered_cache() -> None:
+    """Sweep expired entries and evict oldest once over _MAX_CACHE."""
+    now = _time.time()
+    expired = [k for k, (ts, _) in _discovered_cache.items() if now - ts >= _CACHE_TTL]
+    for k in expired:
+        _discovered_cache.pop(k, None)
+    if len(_discovered_cache) > _MAX_CACHE:
+        ordered = sorted(_discovered_cache.items(), key=lambda kv: kv[1][0])
+        excess = len(_discovered_cache) - _MAX_CACHE
+        for k, _ in ordered[:excess]:
+            _discovered_cache.pop(k, None)
 
 
 @dataclass
@@ -284,6 +300,7 @@ def _auto_discover(
             new_steps = path_steps + [{"relation": rel_name, "direction": "outgoing",
                                         "target_class": neighbor}]
             if target_hint.lower() in neighbor.lower():
+                _sweep_discovered_cache()
                 _discovered_cache[cache_key] = (_time.time(), new_steps)
                 return ReasoningPath(
                     name=f"auto_{start_class}_{neighbor}",

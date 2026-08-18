@@ -1,0 +1,134 @@
+# aiPlat ControlProfile 预设画像
+# 文件位置: ~/.aiplat/profiles/control_presets.yaml
+# 
+# presets:   预设控制画像 — 6 维度联合参数集
+# task_hints: task_type → 默认画像名（精确匹配优先，未命中降级到语义插值）
+
+presets:
+  creative_exploration:
+    description: "创意探索 — 高温发散、多工具、宽松门控"
+    context_layers: 3
+    context_max_sources: 5
+    tool_whitelist: null
+    tool_rank_by: relevance
+    model_tier: T4
+    temperature_profile: explore_first
+    temperature: 0.7
+    orchestration_mode: tree
+    max_parallel_agents: 4
+    compression_strictness: 0.8
+    episodic_injection: false
+    semantic_injection: true
+    gate_strictness: 0.7
+    require_schema_validation: false
+
+  safety_critical:
+    description: "安全关键 — 低温、严格门控、强制自省"
+    context_layers: 10
+    context_max_sources: 8
+    tool_whitelist: null
+    tool_rank_by: success_rate
+    model_tier: T5
+    temperature_profile: flat
+    temperature: 0.1
+    orchestration_mode: reflexion
+    max_parallel_agents: 1
+    compression_strictness: 1.2
+    episodic_injection: true
+    semantic_injection: true
+    gate_strictness: 1.5
+    require_schema_validation: true
+
+  code_generation:
+    description: "代码生成 — 中温、精准工具、Schema 强校验"
+    context_layers: 5
+    context_max_sources: 4
+    tool_whitelist:
+      - sys_file_read
+      - sys_file_write
+      - sys_file_edit
+      - sys_code_intel_context
+      - sys_code_intel_blast
+    tool_rank_by: success_rate
+    model_tier: T3
+    temperature_profile: anneal
+    temperature: 0.3
+    orchestration_mode: chain
+    max_parallel_agents: 2
+    compression_strictness: 1.0
+    episodic_injection: true
+    semantic_injection: true
+    gate_strictness: 1.0
+    require_schema_validation: true
+
+  quick_fact_lookup:
+    description: "快速查证 — 极低温、极简工具、极致压缩、零自省"
+    context_layers: 1
+    context_max_sources: 2
+    tool_whitelist:
+      - sys_knowledge_retrieve
+      - sys_wiki_context
+    tool_rank_by: static
+    model_tier: T1
+    temperature_profile: flat
+    temperature: 0.0
+    orchestration_mode: single
+    max_parallel_agents: 1
+    compression_strictness: 1.5
+    episodic_injection: false
+    semantic_injection: false
+    gate_strictness: 0.5
+    require_schema_validation: false
+
+  default:
+    description: "默认 — 全维度使用 ControlProfile dataclass 默认值"
+    context_layers: 3
+    context_max_sources: 5
+    tool_whitelist: null
+    tool_rank_by: static
+    model_tier: auto
+    temperature_profile: flat
+    temperature: 0.3
+    orchestration_mode: auto
+    max_parallel_agents: 3
+    compression_strictness: 1.0
+    episodic_injection: true
+    semantic_injection: true
+    gate_strictness: 1.0
+    require_schema_validation: true
+
+  digital_human:
+    description: "数字人助手 — 口语化对话、中高温、宽松门控、短回答"
+    context_layers: 5
+    context_max_sources: 4
+    tool_whitelist:
+      - sys_knowledge_retrieve
+      - sys_wiki_context
+      - sys_file_read
+      - sys_code_intel_context
+      - browser
+    tool_rank_by: relevance
+    model_tier: T3
+    temperature_profile: flat
+    temperature: 0.65
+    orchestration_mode: chain
+    max_parallel_agents: 1
+    compression_strictness: 0.9
+    episodic_injection: true
+    semantic_injection: true
+    gate_strictness: 0.7
+    require_schema_validation: false
+    collection_filter: "system_docs"
+
+# task_type → 默认画像名（精确匹配优先，未命中降级到语义插值）
+task_hints:
+  code_generation: code_generation
+  security_audit: safety_critical
+  penetration_test: safety_critical
+  creative_writing: creative_exploration
+  fact_retrieval: quick_fact_lookup
+  document_qa: quick_fact_lookup
+  architecture_review: safety_critical
+  code_review: code_generation
+  digital_human: digital_human
+  voice_assistant: digital_human
