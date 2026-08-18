@@ -78,7 +78,7 @@ echo ""
 
 echo "[A. Autonomy]"
 check_ref "_retry_loop" "aiPlat-core/core/harness/execution/pipeline_engine.py" 100 "async def _retry_loop"
-check_ref "_meta_optimize" "aiPlat-core/core/harness/execution/pipeline_engine.py" 100 "async def _meta_optimize"
+check_ref "_meta_optimize" "aiPlat-core/core/harness/execution/pipeline_healing.py" 100 "async def _meta_optimize"
 check_ref "HITL config" "aiPlat-core/core/apps/agents/operator_agent.py" 50 "AIPLAT_OPERATOR_CONFIRMATION_LEVEL"
 echo ""
 
@@ -108,7 +108,7 @@ echo ""
 
 echo "[F. Self-Evolution]"
 check_ref "FailoverReason" "aiPlat-core/core/harness/infrastructure/gates/error_translator.py" 100 "class FailoverReason"
-check_ref "Healing strategies" "aiPlat-core/core/harness/execution/pipeline_engine.py" 100 "async def _strategy_rotate_credential"
+check_ref "Healing strategies" "aiPlat-core/core/harness/execution/pipeline_healing.py" 100 "async def _strategy_rotate_credential"
 check_ref "PromptOptimizer" "aiPlat-core/core/harness/optimization/prompt_optimizer.py" 50 "class PromptOptimizer"
 check_ref "CredentialPool" "aiPlat-infra/infra/management/model/credential_pool.py" 100 "class CredentialPool"
 # Phase 25-28

@@ -220,7 +220,7 @@ _onto_cnt=$(find "$CORE/harness/ontology_engine" -name '*.py' ! -name '__init__.
 check "本体引擎 (≥23模块)" "$_onto_cnt" 23
 
 # 8. 自愈策略 (≥ 5)
-check "自愈策略 (≥5)" "$(grep -cE 'async def _strategy_' "$CORE/harness/execution/pipeline_engine.py" 2>/dev/null)" 5
+check "自愈策略 (≥5)" "$(grep -cE 'async def _strategy_' "$CORE/harness/execution/pipeline_healing.py" 2>/dev/null)" 5
 
 if finish_layer "L4"; then
     MAX_LEVEL="L4"

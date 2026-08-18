@@ -67,8 +67,12 @@ domains:
         signature: 'Pricing table from the existing CostTracker (single source of truth).'
         module: aiPlat-core/core/harness/execution/cost_budget.py
         type: "class"
-        signature: "_run_stages_from, _exec_stage, _retry_loop, _meta_optimize"
+        signature: "_run_stages_from, _exec_stage, _retry_loop"
         module: "core/harness/execution/pipeline_engine.py"
+      - symbol: "PipelineHealingMixin"
+        type: "class"
+        signature: "self-healing: _meta_optimize, _dispatch_strategy, _strategy_* (P2-A4)"
+        module: "core/harness/execution/pipeline_healing.py"
       - symbol: "ReActLoop"
         type: "class"
         signature: "Reason→Act→Observe, integrate Hooks/compression/memory"

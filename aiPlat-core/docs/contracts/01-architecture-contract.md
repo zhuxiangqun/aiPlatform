@@ -132,3 +132,4 @@ aiPlat 逻辑上分为：
 - **provider YAML 驱动补完（P2-A3）**：`ModelManager._API_PROVIDERS` 硬编码集合改为 `_api_provider_ids()`（从 `config/providers.yaml` 按 `type=external` 派生，5min 缓存，YAML 缺失回退硬编码）；新增 external provider 零代码。
 
 **契约不变项**：syscall 三通道唯一性、单向依赖链、Prompt Cache 稳定性约束均未改变；内存缓存有界化不改任何对外接口签名。
+- **PipelineEngine 拆分 Phase 1（P2-A4, 2026-08-18）**：自愈策略 13 方法迁移至 `pipeline_healing.py`（`PipelineHealingMixin`，主类 `PipelineEngine(PipelineHealingMixin)` 继承）。纯结构迁移零语义变化；`_meta_optimize`/`_strategy_*` 等符号定位路径从 pipeline_engine.py → pipeline_healing.py（registry/l4-claims/pyramid/whitepaper_refs 已同步）。

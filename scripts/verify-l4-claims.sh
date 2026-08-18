@@ -57,7 +57,7 @@ check "_retry_loop 函数" "$_retry" 1
 _hitl=$(grep -c 'AIPLAT_OPERATOR_CONFIRMATION_LEVEL' "$REPO/aiPlat-core/core/apps/agents/operator_agent.py" 2>/dev/null || echo 0)
 check "HITL 分级配置" "$_hitl" 1
 
-_meta=$(grep -c 'async def _meta_optimize' "$REPO/aiPlat-core/core/harness/execution/pipeline_engine.py" 2>/dev/null || echo 0)
+_meta=$(grep -c 'async def _meta_optimize' "$REPO/aiPlat-core/core/harness/execution/pipeline_healing.py" 2>/dev/null || echo 0)
 check "_meta_optimize 自愈函数" "$_meta" 1
 
 
@@ -137,7 +137,7 @@ check "集成总线规模 (实际 1842)" "$_int" 1842
 echo ""
 echo "[F. 自进化]"
 
-_strat=$(grep -c 'async def _strategy_' "$REPO/aiPlat-core/core/harness/execution/pipeline_engine.py" 2>/dev/null || echo 0)
+_strat=$(grep -c 'async def _strategy_' "$REPO/aiPlat-core/core/harness/execution/pipeline_healing.py" 2>/dev/null || echo 0)
 check "自愈策略数 (声称 5)" "$_strat" 5
 
 _fr=$(grep -c 'class FailoverReason' "$REPO/aiPlat-core/core/harness/infrastructure/gates/error_translator.py" 2>/dev/null || echo 0)
