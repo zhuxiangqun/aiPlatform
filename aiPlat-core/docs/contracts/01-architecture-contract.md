@@ -126,6 +126,7 @@ aiPlat 逻辑上分为：
 
 - **缓存治理（2026-08-18）**：harness 有界化 4 处无界缓存——`syscalls/file.py:_read_cache`（`_MAX_CACHE=512` 淘汰）、`knowledge/path_planner.py:_discovered_cache`（`_MAX_CACHE`+TTL 清扫）、`apps/a2a/server.py:_tasks`（`_MAX_TASKS` FIFO 淘汰）、`api/routers/observation.py:_diag_buffers`（`_DIAG_TTL`+`_MAX_DIAG_RUNS`）。内存缓存均为临时加速，权威真相是 `run_events`/DB。守卫 §83 同步升级：仅告警无界缓存（§83c）、AST 作用域分析（§83b 只统计持久容器）、大小写不敏感（§83a）。
 - **运行时扩展缝（P2-A2 落地）**：`CoreFacade.register_handler` 增加来源门禁——handler 定义模块属危险集（os/sys/subprocess/shutil/builtins）注册即拒绝，未评估模块仅 warn；dispatch 永不触发任意代码执行。白名单方向保持 platform→core 单向依赖。
+- **缓存治理二轮（2026-08-18）**：6 处 BOUNDED 缓存补上限——`apps/plugins/manager.py:_slot_archives`（`_MAX_ARCHIVES=128`）、`harness/knowledge/sql_ontology.py:_translators`（DomainRouter 白名单 + `_MAX_DOMAINS=64`）、`services/context_service.py` 过期索引读路径清扫、`harness/utils/model_injection.py:_FAILURE_TRACKER`（`_MAX_FAILURE_MODELS=128`）+ `_model_overrides`（`_MAX_OVERRIDES=256`）、`credential_pool.py:_pools`（`_MAX_POOLS=64`）。剩余 8 处 STATIC_CONFIG/BOUNDED 审查豁免。§83a 18→8。
 - **provider YAML 驱动补完（P2-A3）**：`ModelManager._API_PROVIDERS` 硬编码集合改为 `_api_provider_ids()`（从 `config/providers.yaml` 按 `type=external` 派生，5min 缓存，YAML 缺失回退硬编码）；新增 external provider 零代码。
 
 **契约不变项**：syscall 三通道唯一性、单向依赖链、Prompt Cache 稳定性约束均未改变；内存缓存有界化不改任何对外接口签名。
