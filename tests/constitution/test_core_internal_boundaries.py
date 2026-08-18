@@ -33,13 +33,13 @@ ALLOWED_HARNESS_TO_APPS: Set[Tuple[str, str]] = {
     ("harness/infrastructure/gates/policy_gate.py", "apps/tools/permission"),
     ("harness/feedback_loops/__init__.py", "apps/skills/evolution/engine"),
     # Pipeline engine — data type imports (class, not service call)
-    ("harness/execution/pipeline_engine.py", "apps/tools/code"),
+    ("harness/execution/pipeline_eval.py", "apps/tools/code"),  # P2-A4 Phase 3 迁移
     # LangGraph stage runner — data type access
     ("harness/execution/langgraph/stage_runner.py", "apps/tools/code"),
     # KNOWN_DEBT: browser_test_engine in bridge, guarded by lazy import + try/except
     ("harness/integration.py", "apps/tools/browser_test_engine"),
     # pipeline_engine — lazy import guarded by try/except for predictions
-    ("harness/execution/pipeline_engine.py", "apps/skills/evolution/engine"),
+    ("harness/execution/pipeline_eval.py", "apps/skills/evolution/engine"),  # P2-A4 Phase 3 迁移
     # pipeline_engine — lazy import guarded by try/except for evolution triggers
     ("harness/execution/pipeline_engine.py", "apps/skills/evolution/triggers"),
 
@@ -67,8 +67,8 @@ ALLOWED_HARNESS_TO_APPS: Set[Tuple[str, str]] = {
     ("harness/execution/langgraph/nodes/registry.py", "apps/tools/base"),
     ("harness/execution/pipeline_engine.py", "apps/quality/types"),
     ("harness/execution/pipeline_engine.py", "apps/quality/verifier"),
-    ("harness/execution/pipeline_engine.py", "apps/skills/evolution/engine"),
-    ("harness/execution/pipeline_engine.py", "apps/tools/code"),
+    ("harness/execution/pipeline_eval.py", "apps/skills/evolution/engine"),  # P2-A4 Phase 3 迁移
+    ("harness/execution/pipeline_eval.py", "apps/tools/code"),  # P2-A4 Phase 3 迁移
     ("harness/infrastructure/delegate_tool.py", "apps/agents/subagent/coordinator"),
     ("harness/kernel/profile.py", "apps/mcp/client"),
     ("harness/learning/__init__.py", "apps/skills/discovery"),

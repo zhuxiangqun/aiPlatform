@@ -588,6 +588,8 @@ scan_hash: 8f9548ec24f4
 ## 一、Harness 执行引擎
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| PipelineEvalMixin | `core/harness/execution/pipeline_eval.py` | ✅ | 自动同步 | 已合入 |
+| PipelinePromptMixin | `core/harness/execution/pipeline_prompt.py` | ✅ | 自动同步 | 已合入 |
 | PipelineStateMixin | `core/harness/execution/pipeline_state.py` | ✅ | 自动同步 | 已合入 |
 | PipelineHealingMixin | `core/harness/execution/pipeline_healing.py` | ✅ | 自动同步 | 已合入 |
 | FailureClassifier | `harness/execution/failure_classifier.py` | ✅ | 自动同步 | 已合入 |

@@ -951,7 +951,7 @@ grep -rn "TODO.*wire\|0 caller\|待接线\|FIXME.*wire" aiPlat-core/core/ --incl
 | `FeedbackLoops (3 modules)` | `harness.start()` 从未调用 | ✅ 已激活，drain wired |
 | `AgentMessageBus` | 只 send 不 receive | ✅ send wired, receive 故意不使用（bus 是通知层） |
 | `PipelineEngine._summarize_artifact` | 与 ContextAssembler 重复 | ✅ 已验证——`_summarize_artifact` 做 artifact 截断，`ContextAssembler` 做 token 压缩，功能不重复 |
-<!-- verify: cmd: grep -o _summarize_artifact aiPlat-core/core/harness/execution/pipeline_engine.py aiPlat-core/core/harness/execution/pipeline_state.py | wc -l expect: 5 operator: eq desc: _summarize_artifact 在 pipeline_engine + pipeline_state 实现（P2-A4 拆分后跨文件） -->
+<!-- verify: cmd: grep -c _summarize_artifact aiPlat-core/core/harness/execution/pipeline_engine.py aiPlat-core/core/harness/execution/pipeline_state.py aiPlat-core/core/harness/execution/pipeline_prompt.py aiPlat-core/core/harness/execution/pipeline_eval.py | awk -F: '{s+=$2} END {print s}' expect: 6 operator: eq desc: _summarize_artifact 跨 pipeline_engine + Mixin 文件实现/引用（P2-A4 拆分后） -->
 | Phase 0-4 6 模块 (2026-06) | 批量创建后遗忘接线：`on_error_reflector`/`hallucination_tracker`/`parallel_executor`/`gateway`/`implicit_feedback`/`semantic_cache` | ⚠️ 已发现，待 Phase 7 接线（见 `tests/wiring/` xfail 标记） |
 
 **设计文档依据**：

@@ -90,7 +90,7 @@ echo "========================================="
 declare_layer "L0" "基础可执行" 3
 
 # 1. 核心模块编译
-python -m py_compile "$CORE/harness/execution/pipeline_engine.py" 2>/dev/null
+python -m py_compile "$CORE/harness/execution/pipeline_eval.py" 2>/dev/null
 check "核心模块编译 (pipeline_engine)" "$?" 0
 
 # 2. 主入口模块存在
@@ -197,7 +197,7 @@ fi
 declare_layer "L4" "循环工程" 8
 
 # 1. 自主重试循环
-check "自主循环 (_retry_loop)" "$(grep -cE 'async def _retry_loop' "$CORE/harness/execution/pipeline_engine.py" 2>/dev/null)" 1
+check "自主循环 (_retry_loop)" "$(grep -cE 'async def _retry_loop' "$CORE/harness/execution/pipeline_eval.py" 2>/dev/null)" 1
 
 # 2. HITL 分级配置
 check "HITL 分级" "$(grep -cE 'AIPLAT_OPERATOR_CONFIRMATION_LEVEL' "$CORE/apps/agents/operator_agent.py" 2>/dev/null)" 1

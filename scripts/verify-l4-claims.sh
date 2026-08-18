@@ -51,7 +51,7 @@ echo ""
 # ══════════════════════════════════════════════════════
 echo "[A. 自主性]"
 
-_retry=$(grep -c 'async def _retry_loop' "$REPO/aiPlat-core/core/harness/execution/pipeline_engine.py" 2>/dev/null || echo 0)
+_retry=$(grep -c 'async def _retry_loop' "$REPO/aiPlat-core/core/harness/execution/pipeline_eval.py" 2>/dev/null || echo 0)
 check "_retry_loop 函数" "$_retry" 1
 
 _hitl=$(grep -c 'AIPLAT_OPERATOR_CONFIRMATION_LEVEL' "$REPO/aiPlat-core/core/apps/agents/operator_agent.py" 2>/dev/null || echo 0)

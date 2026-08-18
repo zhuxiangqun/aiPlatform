@@ -176,3 +176,10 @@ pytest -q \
 - MUST：6 个状态持久化方法（`_snapshot`/`_merge_state`/`_load_checkpoints_from_disk`/`_output_root`/`_persist_files`/`_summarize_artifact`）经继承可用
 - 自动化验收：
   - `python3 -c "from core.harness.execution.pipeline_engine import PipelineEngine; assert PipelineEngine.__mro__[1].__name__ == 'PipelineStateMixin'"`
+
+### 1.14 PipelineEngine Phase 3 prompt/eval Mixin（P2-A4, 2026-08-18）
+- MUST：`core.harness.execution.pipeline_prompt.PipelinePromptMixin` + `pipeline_eval.PipelineEvalMixin` 存在，`PipelineEngine` MRO 含两者（顺序 EvalMixin → PromptMixin → StateMixin → HealingMixin）
+- MUST：14 个 prompt/eval 方法（`_build_prompt`/`_tri_evaluate`/`_retry_loop` 等）经继承可用
+- MUST：主类 ≤ 10000 行（Phase 3 后 9406）
+- 自动化验收：
+  - `python3 -c "from core.harness.execution.pipeline_engine import PipelineEngine; assert [c.__name__ for c in PipelineEngine.__mro__[:3]] == ['PipelineEngine','PipelineEvalMixin','PipelinePromptMixin']"`
