@@ -235,3 +235,9 @@ pytest -q \
 - 自动化验收：
   - `python3 -c "import sys; sys.path.insert(0,'aiPlat-core'); import core.api.routers.plugins, core.api.routers.runs, core.api.routers.diagnostics, core.api.routers.memory, core.api.routers.workspace_agents; print('OK')"`
   - `pytest tests/constitution/test_core_internal_boundaries.py tests/constitution/test_kernel_agnostic.py -q`（14 passed）
+
+### 1.21 Builder E2E 修复（P0-A10, 2026-08-18）
+- MUST：`aiPlat-platform/tests/test_builder.py` + `aiPlat-core/core/tests/unit/test_builder_pipeline_e2e.py` 20/20 passed（守卫 §17 放行）
+- MUST：测试不依赖本地硬件模型加载（mock create_selected_adapter/best_model_for_purpose）
+- 自动化验收：
+  - `pytest aiPlat-platform/tests/test_builder.py aiPlat-core/core/tests/unit/test_builder_pipeline_e2e.py -q`（20 passed）
