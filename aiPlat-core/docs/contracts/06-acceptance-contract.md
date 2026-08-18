@@ -211,3 +211,11 @@ pytest -q \
 - 自动化验收：
   - `python3 -c "from core.apps.agents.subagent.coordinator import SubagentCoordinator; c=SubagentCoordinator(); assert 'in_process' in c.list_providers() and len(c.list_providers())>=2"`
   - `pytest aiPlat-core/core/tests/unit/test_agents/test_subagent_providers.py -q`（14 passed）
+
+### 1.18 消息渠道适配器（P1-A4, 2026-08-18）
+- MUST：`aiPlat-app/channels/adapter.py::get_channel_adapter(name)` 存在，7 渠道（telegram/slack/webchat/discord/wecom/email/dingtalk）均可解析，`wecom` 映射 `WeComAdapter`；未知渠道 raise ValueError
+- MUST：扩展适配器（Discord/WeCom/Email/DingTalk）注册进 `ChannelDispatcher`（3 内置 + 4 扩展 = 7）
+- MUST：`POST /platform/channels/{id}/test` 校验适配器（未知通道 422）
+- 自动化验收：
+  - `python3 -c "import sys; sys.path.insert(0,'aiPlat-app'); from channels.adapter import get_channel_adapter; [get_channel_adapter(n) for n in ['telegram','slack','webchat','discord','wecom','email','dingtalk']]; print('OK')"`
+  - `cd aiPlat-app && pytest tests/test_cli_and_channels.py -q`（6 passed）

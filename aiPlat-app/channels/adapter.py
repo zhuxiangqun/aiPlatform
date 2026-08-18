@@ -166,3 +166,20 @@ class ChannelDispatcher:
 
 channel_dispatcher = ChannelDispatcher()
 channel_adapter = channel_dispatcher
+
+
+def get_channel_adapter(name: str) -> ChannelAdapter:
+    """Get a channel adapter instance by channel name (P1-A4 acceptance).
+
+    ``name`` is a ChannelType value (e.g. 'telegram', 'slack', 'webchat',
+    'discord', 'wecom', 'email', 'dingtalk', 'whatsapp'). Extended adapters
+    (Discord/WeCom/Email/DingTalk) resolve via the adapters registry.
+    ``wecom`` is accepted as an alias of ``wechat`` (WeComAdapter).
+    """
+    _aliases = {"wecom": "wechat"}
+    name = _aliases.get(name, name)
+    try:
+        channel = ChannelType(name)
+    except ValueError:
+        raise ValueError(f"Unknown channel '{name}' — valid: {[c.value for c in ChannelType]}")
+    return channel_adapter.get_adapter(channel)

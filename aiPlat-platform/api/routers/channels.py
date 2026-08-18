@@ -90,6 +90,14 @@ async def test_channel(channel_id: str, _auth: str = Depends(require_auth)):
     ch = _channels.get(channel_id)
     if not ch:
         raise HTTPException(status_code=404, detail="channel_not_found")
+    # P1-A4: verify the channel has a registered adapter (extended adapters
+    # Discord/WeCom/Email/DingTalk included). Fail loud on unknown channel type.
+    try:
+        from channels.adapter import get_channel_adapter
+
+        get_channel_adapter(str(ch.get("channel") or ch.get("type") or channel_id))
+    except Exception as e:
+        raise HTTPException(status_code=422, detail=f"no_adapter_for_channel: {e}")
     return {"status": "ok", "message": "test_sent"}
 
 

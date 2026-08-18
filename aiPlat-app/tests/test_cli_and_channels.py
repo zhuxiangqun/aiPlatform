@@ -23,3 +23,32 @@ class TestChannelAdapter:
             ChannelAdapter, ChannelMessage, ChannelResponse, ChannelDispatcher,
         )
         assert ChannelAdapter is not None
+
+    def test_get_channel_adapter_all_channels(self):
+        """P1-A4 acceptance: all 7 channels resolve via get_channel_adapter."""
+        from channels.adapter import get_channel_adapter
+
+        for name in ["telegram", "slack", "webchat", "discord", "wecom", "email", "dingtalk"]:
+            adapter = get_channel_adapter(name)
+            assert adapter is not None, name
+            assert hasattr(adapter, "parse_message")
+            assert hasattr(adapter, "format_response")
+
+    def test_get_channel_adapter_unknown_raises(self):
+        from channels.adapter import get_channel_adapter
+
+        try:
+            get_channel_adapter("no_such_channel")
+            raise AssertionError("expected ValueError")
+        except ValueError:
+            pass
+
+    def test_extended_adapter_dispatch(self):
+        """Discord adapter parses a sample webhook payload."""
+        from channels.adapter import get_channel_adapter
+
+        adapter = get_channel_adapter("discord")
+        msg = adapter.parse_message({"message": {"id": "m1", "author": {"id": "u1"},
+                                                "channel": {"id": "c1"}, "content": "hello"}})
+        assert msg.text == "hello"
+        assert msg.chat_id == "c1"

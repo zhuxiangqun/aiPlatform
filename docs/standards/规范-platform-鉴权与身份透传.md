@@ -102,3 +102,16 @@ platform 对外提供：
 - **宪法**：`TestNoQuotaEnforcementInCore` / `TestPlatformResponsibilitiesNotInCore` 真过（不再依赖 DEPRECATED 豁免）。
 
 > **对照**：多租户治理归属 platform — core 保持内核无关（§5.29），租户数据生命周期由平台统一管理。
+
+---
+
+## 8. 消息渠道适配器（P1-A4，2026-08-18）
+
+消息通道统一抽象位于 app 层（`aiPlat-app/channels/`），platform 仅经管理端点暴露：
+
+- **适配器注册**：`channels/adapter.py::get_channel_adapter(name)` 按 channel name 解析适配器实例（telegram/slack/webchat/discord/wecom/email/dingtalk，`wecom` 为 `wechat` 别名）；
+- **扩展适配器**：`channels/adapters/`（Discord/WeCom/Email/DingTalk 4 个），由 `ChannelDispatcher` 合并注册（3 内置 + 4 扩展 = 7 渠道）；
+- **测试端点**：`POST /platform/channels/{id}/test` 校验通道有注册适配器（未知通道 fail-loud 422）；
+- **身份**：渠道消息经 platform 解析为 `{ tenant_id, actor_id }` 后透传下游（见 §1-2），适配器本身不承载业务逻辑。
+
+> **对照**：Hermes 20+ IM 平台统一 Gateway — aiPlat Gateway 控制面已就绪，适配器层按需扩展。
