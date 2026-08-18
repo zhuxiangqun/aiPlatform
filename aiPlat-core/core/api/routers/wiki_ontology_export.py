@@ -42,7 +42,7 @@ async def run_inference_engine(collection: str = "default"):
     """Run full inference engine and return suggested edges."""
     try:
         from core.harness.knowledge.knowledge_abox_builder import build_abox
-        from core.harness.knowledge.knowledge_validator import (
+        from core.api.core_facade import (  # P0-A2: 经 CoreFacade
             TripleStore, run_full_inference, _short
         )
         onto = build_abox(collection_id=collection)

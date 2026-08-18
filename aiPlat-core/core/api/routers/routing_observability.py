@@ -1,8 +1,8 @@
 from typing import Any, Dict, Optional
 
 from fastapi import APIRouter, HTTPException
-from core.harness.kernel.runtime import get_kernel_runtime
-from core.harness.integration import KernelRuntime
+from core.api.core_facade import get_kernel_runtime  # P0-A2: 经 CoreFacade
+from core.api.core_facade import KernelRuntime  # P0-A2: 经 CoreFacade
 RuntimeDep = Optional[KernelRuntime]
 from core.observability.routing_service import (
     routing_explain_events,
@@ -224,7 +224,8 @@ async def apply_routing_learning(rt: RuntimeDep = None):
     Returns the adjusted weights.
     """
     try:
-        from core.harness.routing.skill_routing import apply_learned_weights, get_all_weights
+        from core.harness.routing.skill_routing import apply_learned_weights
+        from core.api.core_facade import get_all_weights  # P0-A2: 经 CoreFacade
         result = apply_learned_weights()
         result["weights"] = get_all_weights()
         return result

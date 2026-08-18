@@ -227,3 +227,11 @@ pytest -q \
 - 自动化验收：
   - `pytest tests/constitution/test_core_internal_boundaries.py -q`（3 passed）
   - `python3 -c "from core.harness.integration import get_mcp_client_manager, get_skill_discovery, get_job_manager, get_dataset_manager, get_result_verifier; assert all(callable(f) for f in [get_mcp_client_manager, get_skill_discovery, get_job_manager, get_dataset_manager, get_result_verifier])"`
+
+### 1.20 api→CoreFacade 收敛（P0-A2, 2026-08-18）
+- MUST：api/routers 不再直导执行引擎核心模块（kernel.runtime/integration/model_injection 公共符号/syscalls.llm/approval）
+- MUST：CoreFacade 模块级含 `sys_llm_generate` re-export
+- MUST：api 全部 routers 可导入（69/69）
+- 自动化验收：
+  - `python3 -c "import sys; sys.path.insert(0,'aiPlat-core'); import core.api.routers.plugins, core.api.routers.runs, core.api.routers.diagnostics, core.api.routers.memory, core.api.routers.workspace_agents; print('OK')"`
+  - `pytest tests/constitution/test_core_internal_boundaries.py tests/constitution/test_kernel_agnostic.py -q`（14 passed）

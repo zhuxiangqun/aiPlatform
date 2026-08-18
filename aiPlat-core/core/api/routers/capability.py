@@ -14,8 +14,8 @@ from typing import Any, Dict
 
 from fastapi import APIRouter
 
-from core.harness.knowledge.capability_graph import build_capability_graph
-from core.harness.knowledge.capability_health import capability_health_report
+from core.api.core_facade import build_capability_graph  # P0-A2: 经 CoreFacade
+from core.api.core_facade import capability_health_report  # P0-A2: 经 CoreFacade
 
 router = APIRouter()
 

@@ -15,9 +15,9 @@ from core.api.utils.governance import governance_links
 from core.api.utils.run_contract import wrap_execution_result_as_run_summary
 from core.api.utils.skills_meta import load_skill_spec_v2_schema, permission_catalog, req_tenant_channel, schema_version, skill_governance_preview
 from core.api.facades.skill_tool_facade import get_skill_registry
-from core.harness.integration import get_harness, KernelRuntime
-from core.harness.kernel.runtime import get_kernel_runtime
-from core.harness.kernel.types import ExecutionRequest
+from core.api.core_facade import get_harness, KernelRuntime  # P0-A2: 经 CoreFacade
+from core.api.core_facade import get_kernel_runtime  # P0-A2: 经 CoreFacade
+from core.api.core_facade import ExecutionRequest  # P0-A2: 经 CoreFacade
 from core.schemas_skills import SkillCreateRequest, SkillExecuteRequest
 import logging
 

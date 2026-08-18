@@ -28,11 +28,11 @@ from core.api.utils.governance import gate_error_envelope, ui_url
 
 from core.api.utils.run_contract import wrap_execution_result_as_run_summary
 
-from core.harness.integration import KernelRuntime, get_harness
+from core.api.core_facade import KernelRuntime, get_harness  # P0-A2: 经 CoreFacade
 
-from core.harness.kernel.runtime import get_kernel_runtime
+from core.api.core_facade import get_kernel_runtime  # P0-A2: 经 CoreFacade
 
-from core.harness.kernel.types import ExecutionRequest
+from core.api.core_facade import ExecutionRequest  # P0-A2: 经 CoreFacade
 
 from core.schemas_agents import AgentCreateRequest, AgentUpdateRequest
 
@@ -988,7 +988,7 @@ async def resume_agent_execution(execution_id: str, request: dict, rt: RuntimeDe
 
             raise HTTPException(status_code=404, detail=f"Approval request not found: {approval_id}")
 
-        from core.harness.infrastructure.approval.types import RequestStatus
+        from core.api.core_facade import RequestStatus  # P0-A2: 经 CoreFacade
 
 
 
@@ -1383,7 +1383,7 @@ async def list_models():
 
         # Fallback: return models from centralized model resolution
 
-        from core.harness.utils.model_injection import get_default_model
+        from core.api.core_facade import get_default_model  # P0-A2: 经 CoreFacade
 
         models = []
 

@@ -184,7 +184,8 @@ async def sign_workspace_tool(tool_name: str, request: dict):
     if not private_key:
         raise HTTPException(status_code=400, detail="private_key is required")
 
-    from core.harness.infrastructure.crypto.signature import sign_skill, parse_ed25519_private_key
+    from core.harness.infrastructure.crypto.signature import parse_ed25519_private_key
+    from core.api.core_facade import sign_skill  # P0-A2: 经 CoreFacade
     from core.apps.tools.base import get_tool_registry
 
     registry = get_tool_registry()
@@ -202,7 +203,7 @@ async def sign_workspace_tool(tool_name: str, request: dict):
         raise HTTPException(status_code=404, detail="Tool file not found")
 
     try:
-        from core.harness.infrastructure.crypto.signature import sign_skill as _sign_fn
+        from core.api.core_facade import sign_skill as _sign_fn  # P0-A2: 经 CoreFacade
         import hashlib
 
         bundle_sha256 = hashlib.sha256(Path(tool_path).read_bytes()).hexdigest()

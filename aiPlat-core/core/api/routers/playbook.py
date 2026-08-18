@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from typing import Any, Dict, Optional
 from fastapi import APIRouter, HTTPException, UploadFile, File
-from core.harness.learning.playbook import (
+from core.api.core_facade import (  # P0-A2: 经 CoreFacade
     PlaybookManifest, pack_playbook, unpack_playbook,
 )
 

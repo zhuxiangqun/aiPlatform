@@ -6,7 +6,7 @@ Track technical debt accumulation across projects and agents.
 from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
-from core.harness.syscalls.llm import sys_llm_generate
+from core.api.core_facade import sys_llm_generate  # P0-A2: 经 CoreFacade
 import logging
 import re as _re
 
@@ -431,7 +431,7 @@ async def generate_eval_for_agent(agent_id: str):
 
     # ── Build LLM prompt ───────────────────────────────────────────
     tool_list = "\n".join(f"  - {t}" for t in recent_tools[:15]) or "(none)"
-    from core.harness.utils.prompt_loader import _async_prompt_resolve
+    from core.api.core_facade import _async_prompt_resolve  # P0-A2: 经 CoreFacade
     prompt = await _async_prompt_resolve("eval-metrics-design",
         name=name, agent_type=agent_type, description=desc[:300],
         history=tool_list[:1000],
@@ -439,7 +439,8 @@ async def generate_eval_for_agent(agent_id: str):
 
     # ── Call LLM ───────────────────────────────────────────────────
     try:
-        from core.harness.utils.model_injection import create_selected_adapter, best_model_for_purpose
+        from core.api.core_facade import create_selected_adapter  # P0-A2: 经 CoreFacade
+        from core.api.core_facade import best_model_for_purpose  # P0-A2: 经 CoreFacade
         model_name = best_model_for_purpose("agent_creation")
         model = create_selected_adapter(model_name=model_name)
         messages = [

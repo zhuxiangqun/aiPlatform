@@ -7,7 +7,7 @@ from fastapi.responses import JSONResponse
 
 from core.api.deps import actor_from_http, rbac_guard
 from core.api.utils.governance import gate_error_envelope, ui_url
-from core.harness.kernel.runtime import get_kernel_runtime
+from core.api.core_facade import get_kernel_runtime  # P0-A2: 经 CoreFacade
 from core.policy.engine import PolicyDecision, evaluate_tool_policy_snapshot
 from core.services.tenant_store_protocol import get_tenant_store  # P0-A3
 from core.schemas_run import RunStatus
@@ -236,7 +236,7 @@ async def _require_plugin_run_approval(
     input: Optional[dict] = None,
     details: str = "",
 ) -> str:
-    from core.harness.infrastructure.approval.types import ApprovalContext, ApprovalRule, RuleType
+    from core.api.core_facade import ApprovalContext, ApprovalRule, RuleType  # P0-A2: 经 CoreFacade
 
     if not approval_manager:
         raise HTTPException(status_code=503, detail="ApprovalManager not initialized")
@@ -401,7 +401,7 @@ async def run_plugin(plugin_id: str, request: dict, http_request: Request):
     if approval_needed and approval_request_id:
         approval_mgr = _approval_mgr()
         ar = (await approval_mgr.get_request_async(str(approval_request_id))) if (approval_mgr and hasattr(approval_mgr, "get_request_async")) else (approval_mgr.get_request(str(approval_request_id)) if approval_mgr else None)
-        from core.harness.infrastructure.approval.types import RequestStatus
+        from core.api.core_facade import RequestStatus  # P0-A2: 经 CoreFacade
 
         if not ar:
             raise HTTPException(status_code=404, detail="approval_request_not_found")

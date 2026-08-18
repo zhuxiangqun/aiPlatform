@@ -10,9 +10,9 @@ from fastapi import APIRouter, Depends, HTTPException
 
 
 
-from core.harness.integration import KernelRuntime
+from core.api.core_facade import KernelRuntime  # P0-A2: 经 CoreFacade
 
-from core.harness.kernel.runtime import get_kernel_runtime
+from core.api.core_facade import get_kernel_runtime  # P0-A2: 经 CoreFacade
 
 from core.schemas_knowledge import CollectionCreateRequest, DocumentCreateRequest, SearchRequest
 
@@ -234,7 +234,7 @@ async def reindex_collection(collection_id: str, rt: RuntimeDep = Depends(get_ke
 
     try:
 
-        from core.harness.knowledge.semantic_cache import get_semantic_cache
+        from core.api.core_facade import get_semantic_cache  # P0-A2: 经 CoreFacade
 
         cache = get_semantic_cache()
 

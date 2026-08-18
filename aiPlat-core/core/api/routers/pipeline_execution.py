@@ -15,7 +15,7 @@ from typing import Any, Dict
 
 from fastapi import APIRouter, Body, HTTPException, Request
 
-from core.harness.execution.pipeline_run_store import get_pipeline_run_store
+from core.api.core_facade import get_pipeline_run_store  # P0-A2: 经 CoreFacade
 
 router = APIRouter(prefix="/pipeline", tags=["pipeline"])
 
@@ -68,7 +68,7 @@ async def cleanup_orphaned_pipelines():
                 create_pipeline_engine, register_pipeline,
             )
             from core.schemas_builder import PipelineStageConfig
-            from core.harness.utils.model_injection import best_model_for_purpose
+            from core.api.core_facade import best_model_for_purpose  # P0-A2: 经 CoreFacade
 
             for run in to_recover:
                 run_id = run["run_id"]
@@ -242,7 +242,7 @@ def _reconstruct_engine(project_id: str, run_id: str, store, stages_raw=None):
     """
     from core.api.core_facade import create_pipeline_engine
     from core.schemas_builder import PipelineStageConfig
-    from core.harness.utils.model_injection import best_model_for_purpose
+    from core.api.core_facade import best_model_for_purpose  # P0-A2: 经 CoreFacade
 
     stages = []
     if stages_raw:
@@ -353,7 +353,7 @@ async def pipeline_run(request: Request) -> Dict[str, Any]:
             from core.api.core_facade import create_pipeline_engine
             from core.schemas_builder import PipelineStageConfig
             from core.harness.execution.team_planner import _ensure_capability_profile
-            from core.harness.utils.model_injection import best_model_for_purpose
+            from core.api.core_facade import best_model_for_purpose  # P0-A2: 经 CoreFacade
 
             stages = []
             for s in stages_raw:

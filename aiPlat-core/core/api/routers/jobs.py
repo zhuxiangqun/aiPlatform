@@ -5,7 +5,7 @@ from typing import Dict, Optional, Any
 
 from fastapi import APIRouter, HTTPException
 
-from core.harness.kernel.runtime import get_kernel_runtime
+from core.api.core_facade import get_kernel_runtime  # P0-A2: 经 CoreFacade
 from core.management.job_scheduler import next_run_from_cron
 from core.schemas_jobs import JobCreateRequest, JobUpdateRequest
 

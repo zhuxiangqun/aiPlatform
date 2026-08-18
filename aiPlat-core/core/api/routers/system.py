@@ -90,7 +90,7 @@ async def system_overview():
 
     try:
 
-        from core.harness.knowledge.seci_engine import get_seci_engine
+        from core.api.core_facade import get_seci_engine  # P0-A2: 经 CoreFacade
 
         se = get_seci_engine()
 
@@ -108,7 +108,7 @@ async def system_overview():
 
     try:
 
-        from core.harness.ontology_engine.graph_index import GraphIndex
+        from core.api.core_facade import GraphIndex  # P0-A2: 经 CoreFacade
         from core.harness.knowledge.domain_router import get_domain_router
 
         router = get_domain_router()
@@ -150,7 +150,7 @@ async def system_overview():
 
     try:
 
-        from core.harness.optimization.abstract_goal_decomposer import get_abstract_goal_decomposer
+        from core.api.core_facade import get_abstract_goal_decomposer  # P0-A2: 经 CoreFacade
 
         decomposer = get_abstract_goal_decomposer()
 
@@ -162,7 +162,7 @@ async def system_overview():
 
     try:
 
-        from core.harness.deployment.deploy_engine import get_deploy_engine
+        from core.api.core_facade import get_deploy_engine  # P0-A2: 经 CoreFacade
 
         deploy_engine = get_deploy_engine()
 
@@ -174,7 +174,7 @@ async def system_overview():
 
     try:
 
-        from core.harness.infrastructure.discovery_listener import get_discovery_listener
+        from core.api.core_facade import get_discovery_listener  # P0-A2: 经 CoreFacade
 
         discovery = get_discovery_listener()
 
@@ -346,7 +346,7 @@ async def system_evolve():
 
     try:
 
-        from core.harness.knowledge.system_evolver import SystemEvolver
+        from core.api.core_facade import SystemEvolver  # P0-A2: 经 CoreFacade
 
         return SystemEvolver().evolve()
 
@@ -396,7 +396,7 @@ async def system_self_check():
 
     try:
 
-        from core.harness.knowledge.system_evolver import SystemEvolver
+        from core.api.core_facade import SystemEvolver  # P0-A2: 经 CoreFacade
 
         results["evolution"] = SystemEvolver().evolve()
 
@@ -489,7 +489,7 @@ def run_auto_check() -> dict:
 
         try:
 
-            from core.harness.knowledge.system_evolver import SystemEvolver
+            from core.api.core_facade import SystemEvolver  # P0-A2: 经 CoreFacade
 
             evolve_result = SystemEvolver().evolve()
 
@@ -552,7 +552,7 @@ async def _scheduler_loop(interval_seconds: int = 3600):
 
             from core.harness.knowledge.system_diagnostician import SystemDiagnostician, SystemHealer
 
-            from core.harness.knowledge.system_evolver import SystemEvolver
+            from core.api.core_facade import SystemEvolver  # P0-A2: 经 CoreFacade
 
 
 
@@ -693,7 +693,7 @@ async def system_status():
 
     try:
 
-        from core.harness.knowledge.seci_engine import get_seci_engine
+        from core.api.core_facade import get_seci_engine  # P0-A2: 经 CoreFacade
 
         se = get_seci_engine()
 
@@ -709,7 +709,7 @@ async def system_status():
 
     try:
 
-        from core.harness.knowledge.convergence_engine import ConvergenceEngine
+        from core.api.core_facade import ConvergenceEngine  # P0-A2: 经 CoreFacade
 
         ce = ConvergenceEngine()
 
@@ -725,7 +725,7 @@ async def system_status():
 
     try:
 
-        from core.harness.ontology_engine.graph_index import GraphIndex
+        from core.api.core_facade import GraphIndex  # P0-A2: 经 CoreFacade
         from core.harness.knowledge.domain_router import get_domain_router
 
         router = get_domain_router()

@@ -11,12 +11,12 @@ from fastapi.responses import JSONResponse
 from core.api.deps import actor_from_http, rbac_guard
 from core.api.utils.run_contract import wrap_execution_result_as_run_summary
 from core.api.facades.skill_tool_facade import get_tool_registry
-from core.harness.integration import KernelRuntime, get_harness
-from core.harness.kernel.runtime import get_kernel_runtime
+from core.api.core_facade import KernelRuntime, get_harness  # P0-A2: 经 CoreFacade
+from core.api.core_facade import get_kernel_runtime  # P0-A2: 经 CoreFacade
 
 _logger = logging.getLogger(__name__)
-from core.harness.kernel.types import ExecutionRequest
-from core.harness.syscalls.llm import sys_llm_generate
+from core.api.core_facade import ExecutionRequest  # P0-A2: 经 CoreFacade
+from core.api.core_facade import sys_llm_generate  # P0-A2: 经 CoreFacade
 
 router = APIRouter()
 
@@ -305,13 +305,14 @@ async def tool_auto_fill(request: dict):
         raise HTTPException(status_code=400, detail="name and description are required")
 
     try:
-        from core.harness.utils.prompt_loader import _async_prompt_resolve
+        from core.api.core_facade import _async_prompt_resolve  # P0-A2: 经 CoreFacade
         prompt = await _async_prompt_resolve("tool-auto-fill",
             tool_name=name,
             description=description,
         )
-        from core.harness.utils.model_injection import create_selected_adapter, best_model_for_purpose
-        from core.harness.utils.prompt_loader import _async_prompt_resolve
+        from core.api.core_facade import create_selected_adapter  # P0-A2: 经 CoreFacade
+        from core.api.core_facade import best_model_for_purpose  # P0-A2: 经 CoreFacade
+        from core.api.core_facade import _async_prompt_resolve  # P0-A2: 经 CoreFacade
         model_name = best_model_for_purpose("tool_creation")
         model = create_selected_adapter(model_name=model_name)
         messages = [
@@ -441,7 +442,7 @@ async def sign_tool(tool_name: str, request: dict, http_request: Request, rt: Ru
 
     try:
         from core.apps.tools.discovery import _sha256_file
-        from core.harness.infrastructure.crypto.signature import sign_skill as sign_tool
+        from core.api.core_facade import sign_skill as sign_tool  # P0-A2: 经 CoreFacade
 
         bundle_sha256 = _sha256_file(tool_fpath)
         version = request.get("version") or "0.1.0"

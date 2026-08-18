@@ -21,8 +21,8 @@ from core.governance.audit import audit_event
 from core.governance.changeset import record_changeset
 from core.governance.gating import autosmoke_enforce, gate_with_change_control
 from core.governance.verification import apply_autosmoke_result, mark_resource_pending
-from core.harness.integration import KernelRuntime
-from core.harness.kernel.runtime import get_kernel_runtime
+from core.api.core_facade import KernelRuntime  # P0-A2: 经 CoreFacade
+from core.api.core_facade import get_kernel_runtime  # P0-A2: 经 CoreFacade
 from core.management.mcp_manager import MCPServerInfo
 from core.mcp.prod_policy import prod_stdio_policy_check, runtime_env
 from core.mcp.runtime_sync import sync_mcp_runtime
@@ -184,7 +184,7 @@ async def sign_mcp_server(server_name: str, request: Dict[str, Any]):
         raise HTTPException(status_code=400, detail="private_key is required")
 
     try:
-        from core.harness.infrastructure.crypto.signature import sign_skill as sign_mcp
+        from core.api.core_facade import sign_skill as sign_mcp  # P0-A2: 经 CoreFacade
 
         server_dir = Path(server.metadata.get("filesystem", {}).get("server_dir") or server.metadata.get("provenance", {}).get("server_dir") or "")
         if not server_dir or not server_dir.exists():
@@ -427,7 +427,7 @@ async def upsert_workspace_mcp_server(request: dict, http_request: Request):
         # Auto-smoke on MCP upsert (async, dedup)
         try:
             if store is not None and scheduler is not None:
-                from core.harness.smoke import enqueue_autosmoke
+                from core.api.core_facade import enqueue_autosmoke  # P0-A2: 经 CoreFacade
 
                 actor0 = actor_from_http(http_request, request if isinstance(request, dict) else None)
                 tenant_id = http_request.headers.get("X-AIPLAT-TENANT-ID") or actor0.get("tenant_id") or "ops_smoke"
@@ -477,17 +477,18 @@ async def mcp_auto_fill(request: dict):
             for s in all_servers
         ) or "(无)"
 
-        from core.harness.utils.prompt_loader import _async_prompt_resolve
+        from core.api.core_facade import _async_prompt_resolve  # P0-A2: 经 CoreFacade
         prompt = await _async_prompt_resolve("mcp-auto-fill",
             server_name=name,
             description=description,
             mcp_catalog=mcp_catalog,
         )
-        from core.harness.utils.model_injection import create_selected_adapter, best_model_for_purpose
-        from core.harness.syscalls.llm import sys_llm_generate
+        from core.api.core_facade import create_selected_adapter  # P0-A2: 经 CoreFacade
+        from core.api.core_facade import best_model_for_purpose  # P0-A2: 经 CoreFacade
+        from core.api.core_facade import sys_llm_generate  # P0-A2: 经 CoreFacade
         model_name = best_model_for_purpose("tool_creation")
         model = create_selected_adapter(model_name=model_name)
-        from core.harness.utils.prompt_loader import _async_prompt_resolve
+        from core.api.core_facade import _async_prompt_resolve  # P0-A2: 经 CoreFacade
         messages = [
             {"role": "system", "content": await _async_prompt_resolve("mcp-auto-fill-system-role")},
             {"role": "user", "content": prompt},

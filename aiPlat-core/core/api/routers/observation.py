@@ -18,8 +18,8 @@ from typing import Any, Dict, List
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import StreamingResponse
 
-from core.harness.kernel.runtime import get_kernel_runtime
-from core.harness.observation.event_bus import EventBus
+from core.api.core_facade import get_kernel_runtime  # P0-A2: 经 CoreFacade
+from core.harness.observation.event_bus import EventBus  # noqa: facade-miss — CoreFacade 未模块级 re-export
 
 router = APIRouter(prefix="/observation", tags=["observation"])
 

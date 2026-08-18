@@ -232,7 +232,7 @@ async def _scan_governance() -> Dict[str, Any]:
 
     has_keys = False
     try:
-        from core.harness.kernel.runtime import get_kernel_runtime as _g_rt
+        from core.api.core_facade import get_kernel_runtime as _g_rt  # P0-A2: 经 CoreFacade
         _g_runtime = _g_rt()
         store = getattr(_g_runtime, "execution_store", None) if _g_runtime else None
         if store:
@@ -430,7 +430,7 @@ async def system_overview(refresh: bool = Query(False)) -> Dict[str, Any]:
 
     # -- Agents --
     try:
-        from core.harness.kernel.runtime import get_kernel_runtime
+        from core.api.core_facade import get_kernel_runtime  # P0-A2: 经 CoreFacade
         rt = get_kernel_runtime()
         engine_count = 0
         agent_types: Dict[str, int] = {}
@@ -493,7 +493,7 @@ async def system_overview(refresh: bool = Query(False)) -> Dict[str, Any]:
 
     # -- Skills / Tools / MCP --
     try:
-        from core.harness.knowledge.capability_graph import build_capability_graph
+        from core.api.core_facade import build_capability_graph  # P0-A2: 经 CoreFacade
         cg = build_capability_graph()
         skill_count = sum(1 for n in cg.nodes.values() if n["type"] == "skill")
         tool_count = sum(1 for n in cg.nodes.values() if n["type"] == "tool")
@@ -639,7 +639,7 @@ async def system_overview(refresh: bool = Query(False)) -> Dict[str, Any]:
 
     # -- Capability Health --
     try:
-        from core.harness.knowledge.capability_health import capability_health_report
+        from core.api.core_facade import capability_health_report  # P0-A2: 经 CoreFacade
         cap_report = capability_health_report(cg) if 'cg' in dir() else {"score": None, "grade": "?"}
         core["capability_health"] = {
             "score": cap_report.get("score"),
@@ -657,7 +657,7 @@ async def system_overview(refresh: bool = Query(False)) -> Dict[str, Any]:
 
     # -- Code Graph stats (symbol health + dead code) --
     try:
-        from core.harness.knowledge.code_graph import build_graph as _cg_build, default_roots as _cg_roots, repo_root as _cg_root
+        from core.api.core_facade import build_graph as _cg_build, default_roots as _cg_roots, repo_root as _cg_root  # P0-A2: 经 CoreFacade
         _r = _cg_root()
         _roots = [(_r / d).resolve() for d in _cg_roots()]
         _nodes, _edges, _ = _cg_build(_r, _roots)
@@ -665,7 +665,7 @@ async def system_overview(refresh: bool = Query(False)) -> Dict[str, Any]:
         total_syms = sum(len(n.get('symbols', [])) for n in _nodes.values())
         files_with_syms = sum(1 for n in _nodes.values() if n.get('symbols'))
         # Exclude files legitimately with 0 in-degree (dynamic dispatch, DI, registry, etc.)
-        from core.harness.knowledge.symbol_health import is_excluded_from_dead_code
+        from core.api.core_facade import is_excluded_from_dead_code  # P0-A2: 经 CoreFacade
         dead_code = sum(1 for nid, n in _nodes.items()
                         if not is_excluded_from_dead_code(nid)
                         and int(n.get('in', 0)) == 0

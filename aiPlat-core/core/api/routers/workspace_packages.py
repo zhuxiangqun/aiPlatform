@@ -13,7 +13,7 @@ from typing import Any, Dict, List
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import FileResponse
 
-from core.harness.kernel.runtime import get_kernel_runtime
+from core.api.core_facade import get_kernel_runtime  # P0-A2: 经 CoreFacade
 from core.mcp.runtime_sync import sync_mcp_runtime
 from core.workspace.reload import rebuild_workspace_managers_into_runtime
 
@@ -344,7 +344,7 @@ async def install_workspace_package(pkg_name: str, http_request: Request, reques
         store = getattr(rt, "execution_store", None)
         scheduler = getattr(rt, "job_scheduler", None)
         if store is not None and scheduler is not None:
-            from core.harness.smoke import enqueue_autosmoke
+            from core.api.core_facade import enqueue_autosmoke  # P0-A2: 经 CoreFacade
 
             tenant_id = http_request.headers.get("X-AIPLAT-TENANT-ID", "ops_smoke")
             actor_id = http_request.headers.get("X-AIPLAT-ACTOR-ID", "admin")

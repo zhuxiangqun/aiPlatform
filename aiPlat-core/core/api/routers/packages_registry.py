@@ -48,7 +48,7 @@ from core.governance.gating import new_change_id
 
 from core.governance.verification import apply_autosmoke_result, mark_resource_pending
 
-from core.harness.kernel.runtime import get_kernel_runtime
+from core.api.core_facade import get_kernel_runtime  # P0-A2: 经 CoreFacade
 
 from core.mcp.prod_policy import runtime_env
 
@@ -861,7 +861,7 @@ async def install_package(pkg_name: str, http_request: Request, request: Package
 
         if scheduler is not None:
 
-            from core.harness.smoke import enqueue_autosmoke
+            from core.api.core_facade import enqueue_autosmoke  # P0-A2: 经 CoreFacade
 
 
 

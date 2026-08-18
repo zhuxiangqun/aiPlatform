@@ -3111,6 +3111,7 @@ from core.harness.deployment.canary import get_skill_router  # noqa: boundary
 
 from core.harness.utils.prompt_loader import _sync_resolve
 from core.harness.utils.model_injection import best_model_for_purpose, create_selected_adapter  # v2.10
+from core.harness.syscalls.llm import sys_llm_generate  # P0-A2 canonical re-export
 from core.services.pii_detector import get_pii_detector
 from core.harness.utils.prompt_loader import _sync_resolve
 from core.harness.utils.model_injection import best_model_for_purpose, create_selected_adapter  # v2.10

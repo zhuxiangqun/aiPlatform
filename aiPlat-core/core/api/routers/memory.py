@@ -5,8 +5,8 @@ from typing import Any, Dict, Optional
 from fastapi import APIRouter, Depends, HTTPException, Request
 
 from core.api.deps import actor_from_http
-from core.harness.integration import KernelRuntime
-from core.harness.kernel.runtime import get_kernel_runtime
+from core.api.core_facade import KernelRuntime  # P0-A2: 经 CoreFacade
+from core.api.core_facade import get_kernel_runtime  # P0-A2: 经 CoreFacade
 from core.schemas_knowledge import SearchRequest
 from core.schemas_memory import LongTermMemoryAddRequest, LongTermMemorySearchRequest, LongTermMemoryUpdateRequest, MessageCreateRequest, SessionCreateRequest
 

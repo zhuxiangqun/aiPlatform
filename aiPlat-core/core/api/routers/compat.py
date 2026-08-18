@@ -196,10 +196,10 @@ async def compat_playground_chat(body: Dict[str, Any]):
         messages = [{"role": "user", "content": prompt}]
 
         if model_id:
-            from core.harness.utils.model_injection import create_selected_adapter
+            from core.api.core_facade import create_selected_adapter  # P0-A2: 经 CoreFacade
             adapter = create_selected_adapter("chat", model_id=model_id)
         else:
-            from core.harness.utils.model_injection import create_selected_adapter
+            from core.api.core_facade import create_selected_adapter  # P0-A2: 经 CoreFacade
             adapter = create_selected_adapter("chat")
 
         result = adapter.generate(messages)
@@ -247,7 +247,7 @@ async def compat_playground_compare(body: Dict[str, Any]):
         try:
             if model_name in installed_names:
                 # Installed model — use system adapter
-                from core.harness.utils.model_injection import create_selected_adapter
+                from core.api.core_facade import create_selected_adapter  # P0-A2: 经 CoreFacade
                 adapter = create_selected_adapter("chat", model_name=model_name)
                 reply = adapter.generate(messages)
             elif api_key:

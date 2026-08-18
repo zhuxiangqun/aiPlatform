@@ -162,7 +162,7 @@ async def list_pages(
 
 @router.get("/pages/{title}", response_model=Dict[str, Any])
 async def read_page(title: str, category: str = "entities", collection: str = "default"):
-    from core.harness.knowledge.wiki_engine import read_page
+    from core.api.core_facade import read_page  # P0-A2: 经 CoreFacade
     page = read_page(title, category=category, collection_id=collection)
     if not page:
         raise HTTPException(status_code=404, detail="wiki_page_not_found")
@@ -200,7 +200,7 @@ async def read_page(title: str, category: str = "entities", collection: str = "d
 
 @router.delete("/pages/{title}", response_model=DeleteResponse)
 async def delete_page(title: str, collection: str = "default"):
-    from core.harness.knowledge.wiki_engine import delete_page as _del
+    from core.api.core_facade import delete_page as _del  # P0-A2: 经 CoreFacade
     ok = _del(title, collection_id=collection)
     if not ok:
         raise HTTPException(status_code=404, detail="wiki_page_not_found")
@@ -239,7 +239,7 @@ async def get_unprocessed_docs(tenant_id: str = "default", collection: str = "de
     KB documents table. No platform auth required.
     """
     import os, json as _json, sqlite3 as _sq
-    from core.harness.knowledge.wiki_engine import search_pages
+    from core.api.core_facade import search_pages  # P0-A2: 经 CoreFacade
     
     kb_dir = os.path.expanduser(os.getenv("AIPLAT_KB_TENANTS_DIR", "~/.aiplat/kb/tenants"))
     kb_db = os.path.join(kb_dir, tenant_id, "kb.sqlite3")
@@ -469,8 +469,7 @@ async def run_self_harness_cycle():
     u"""Run the Self-Harness optimization cycle."""
     try:
         from core.harness.execution.failure_clusterer import load_clusters
-        from core.api.core_facade import run_self_harness_cycle
-        from core.harness.kernel.runtime import get_kernel_runtime
+        from core.api.core_facade import get_kernel_runtime  # P0-A2: 经 CoreFacade
 
         runtime = get_kernel_runtime()
         store = getattr(runtime, "execution_store", None) if runtime else None
@@ -536,7 +535,7 @@ async def diagnose_pipeline_run(run_id: str):
       {run_id, status, failure: {...}, blame: {prompt, retrieval, tool, model},
        stages: [...], suggestion: "..."}
     """
-    from core.harness.kernel.runtime import get_kernel_runtime
+    from core.api.core_facade import get_kernel_runtime  # P0-A2: 经 CoreFacade
     runtime = get_kernel_runtime()
     store = getattr(runtime, "execution_store", None) if runtime else None
 
@@ -562,7 +561,7 @@ async def diagnose_pipeline_run(run_id: str):
 
 def _build_diagnosis(run_id: str, state: Dict[str, Any]) -> Dict[str, Any]:
     u"""Build a structured diagnostic report from pipeline state."""
-    from core.harness.execution.failure_clusterer import (
+    from core.api.core_facade import (  # P0-A2: 经 CoreFacade
         classify_verifier_cause, classify_causal_status, classify_abstract_mechanism,
     )
 
@@ -732,6 +731,7 @@ async def handle_proposal(proposal_id: str, body: Dict[str, Any], collection: st
 
 @router.post("/pages", response_model=Dict[str, Any])
 async def create_wiki_page(body: WikiPageWrite, collection: str = "default"):
+    from core.harness.knowledge.wiki_engine import auto_link_page
     from core.harness.knowledge.wiki_engine import write_page, auto_link_page, search_pages, update_page
     try:
         path = write_page(body.title, body.body, category=body.category,
@@ -751,7 +751,7 @@ async def create_wiki_page(body: WikiPageWrite, collection: str = "default"):
         logging.warning(str(e), exc_info=True)
     # ── Version sync: if page was updated (not new), mark related ontology instances for review ──
     try:
-        from core.harness.ontology_engine.graph_index import GraphIndex
+        from core.api.core_facade import GraphIndex  # P0-A2: 经 CoreFacade
         from core.harness.ontology_engine.engine import _persist_reviews
         graph = GraphIndex.load("ai-knowledge")
         node = graph.find_by_name(body.title)
@@ -782,7 +782,7 @@ async def create_wiki_page(body: WikiPageWrite, collection: str = "default"):
         logging.warning(str(e), exc_info=True)
     # ── Provenance stale tracking: mark citations as stale if page version changed ──
     try:
-        from core.harness.knowledge.wiki_engine import read_page
+        from core.api.core_facade import read_page  # P0-A2: 经 CoreFacade
         updated = read_page(body.title, collection_id=collection)
         if updated:
             new_version = str(updated.get("fm", {}).get("version", "1"))
@@ -794,7 +794,7 @@ async def create_wiki_page(body: WikiPageWrite, collection: str = "default"):
         logging.warning(str(e), exc_info=True)
     # ── SemanticCache invalidation: clear cache for this domain on wiki update ──
     try:
-        from core.harness.knowledge.semantic_cache import get_semantic_cache
+        from core.api.core_facade import get_semantic_cache  # P0-A2: 经 CoreFacade
         cache = get_semantic_cache()
         if cache.enabled:
             await cache.invalidate_domain(collection)
@@ -823,7 +823,7 @@ async def wiki_graph(
     source: str = "",
     max_nodes: int = 300,
  collection: str = "default"):
-    from core.harness.knowledge.wiki_engine import build_graph
+    from core.api.core_facade import build_graph  # P0-A2: 经 CoreFacade
     return build_graph(category=category, keyword=keyword, source=source, max_nodes=max_nodes, collection_id=collection)
 
 
@@ -897,7 +897,7 @@ async def ingest_url(body: dict):
         title_match = _re.search(r"<title>(.*?)</title>", raw_html, _re.IGNORECASE | _re.DOTALL)
         if title_match:
             title = title_match.group(1).strip()[:200]
-        from core.harness.document.parsers import extract_text_from_html
+        from core.api.core_facade import extract_text_from_html  # P0-A2: 经 CoreFacade
         text = extract_text_from_html(raw_html)
     except Exception:
         logging.getLogger(__name__).debug('HTML text extraction failed, falling back to raw HTML', exc_info=True)
@@ -1038,7 +1038,7 @@ async def suggest_domain(body: Dict[str, Any]):
     if not query:
         return {"suggestions": [], "message": "query required"}
 
-    from core.harness.knowledge.domain_router import DomainRouter
+    from core.api.core_facade import DomainRouter  # P0-A2: 经 CoreFacade
     router = DomainRouter()
     suggestions = router.suggest(query, top_k=3)
     return {
@@ -1127,7 +1127,7 @@ async def generate_domain(
 
     # 6. 注册到 DomainRouter
     try:
-        from core.harness.knowledge.domain_router import DomainRouter
+        from core.api.core_facade import DomainRouter  # P0-A2: 经 CoreFacade
         DomainRouter().register_domain(domain_id, {"collection_id": collection, "label": domain_name})
     except Exception:
         logger.warning("DomainRouter registration skipped", exc_info=True)
@@ -1247,7 +1247,7 @@ async def convert_from_kb(req: ConvertKbRequest = Body(default=None), collection
                 # Auto-route: use DomainRouter to determine target collection
                 doc_collection = collection
                 try:
-                    from core.harness.knowledge.domain_router import DomainRouter
+                    from core.api.core_facade import DomainRouter  # P0-A2: 经 CoreFacade
                     router = DomainRouter()
                     domain_id = router.classify(title)
                     if domain_id:
@@ -1341,7 +1341,7 @@ async def convert_from_kb(req: ConvertKbRequest = Body(default=None), collection
             # Cross-link pages that share keywords (validate against actual existing pages)
             valid_titles = set()
             try:
-                from core.harness.knowledge.wiki_engine import search_pages
+                from core.api.core_facade import search_pages  # P0-A2: 经 CoreFacade
                 valid_titles = set(p["title"] for p in (search_pages(limit=1000, collection_id=collection) or []))
             except Exception as e:
                 logging.warning(str(e), exc_info=True)
@@ -1353,7 +1353,7 @@ async def convert_from_kb(req: ConvertKbRequest = Body(default=None), collection
                         continue
                     for t in real_titles:
                         related = [t2 for t2 in real_titles if t2 != t]
-                        from core.harness.knowledge.wiki_engine import read_page
+                        from core.api.core_facade import read_page  # P0-A2: 经 CoreFacade
                         page = read_page(t, category="entities", collection_id=collection)
                         if page:
                             existing = set(page.get("related", []))
@@ -1373,7 +1373,7 @@ async def convert_from_kb(req: ConvertKbRequest = Body(default=None), collection
         try:
             uploads_dir = os.path.join(kb_dir, tenant_id, "uploads")
             if os.path.exists(uploads_dir):
-                from core.harness.knowledge.wiki_engine import search_pages
+                from core.api.core_facade import search_pages  # P0-A2: 经 CoreFacade
                 existing_wiki = set(p["title"] for p in search_pages(limit=1000, collection_id=collection))
 
                 for fname in os.listdir(uploads_dir):
@@ -1452,6 +1452,7 @@ async def curate_wiki(collection: str = "default"):
     Phase: parallelized — batch llm_curate_page via asyncio.gather (BATCH=5).
     """
     import asyncio as _asyncio
+    from core.harness.knowledge.wiki_engine import auto_link_page
     from core.harness.knowledge.wiki_engine import search_pages, llm_curate_page, update_page, auto_link_page
     pages = search_pages(limit=500, collection_id=collection)
     report = {"processed": 0, "links_added": 0, "titles_updated": 0, "errors": []}
@@ -1793,7 +1794,7 @@ async def delete_wiki_collection(collection_id: str):
 async def get_wiki_schema(collection: str = "default", domain: str = ""):
     """Return T-Box class schemas, with per-collection extensions + domain ontologies applied."""
     try:
-        from core.harness.knowledge.knowledge_ontology import (
+        from core.api.core_facade import (  # P0-A2: 经 CoreFacade
             get_classes_with_templates, get_extended_class,
             load_collection_extension, OBJECT_PROPERTIES, AI
         )
@@ -2120,7 +2121,7 @@ async def evolve_ontology_domain(
     existing_classes = []
     if onto_path.exists():
         try:
-            from core.harness.knowledge.ontology_loader import load_ontology_from_yaml
+            from core.api.core_facade import load_ontology_from_yaml  # P0-A2: 经 CoreFacade
             domain = load_ontology_from_yaml(str(onto_path))
             existing_classes = [{"label": c.label, "categories": c.allowed_categories} for c in domain.classes]
         except Exception as e:
@@ -2201,7 +2202,7 @@ async def repair_ontology_domain(
     if not onto_path.exists():
         return {"repair_suggestions": {}, "error": f"Domain '{domain_id}' not found"}
 
-    from core.harness.knowledge.ontology_loader import load_ontology_from_yaml
+    from core.api.core_facade import load_ontology_from_yaml  # P0-A2: 经 CoreFacade
     domain = load_ontology_from_yaml(str(onto_path))
 
     existing = {
@@ -2411,8 +2412,9 @@ def _load_few_shot_yaml():
 async def _llm_step(prompt: str, domain_id: str, step_name: str, max_retries: int = 3):
     """LLM call with JSON parse + retry + fallback."""
     import json as _json, re as _re
-    from core.harness.utils.model_injection import best_model_for_purpose, create_selected_adapter
-    from core.harness.utils.prompt_loader import _async_prompt_resolve
+    from core.api.core_facade import create_selected_adapter  # P0-A2: 经 CoreFacade
+    from core.api.core_facade import best_model_for_purpose  # P0-A2: 经 CoreFacade
+    from core.api.core_facade import _async_prompt_resolve  # P0-A2: 经 CoreFacade
     from core.adapters.llm.base import LLMConfig
 
     model_name = best_model_for_purpose("ontology_gen")
@@ -2574,7 +2576,7 @@ async def create_ontology_domain(req: OntologyDomainCreate):
     _write_domain_yaml(req.id, data)
 
     # Hot-register in registry.json → DomainRouter auto-recognizes
-    from core.harness.knowledge.domain_router import DomainRouter
+    from core.api.core_facade import DomainRouter  # P0-A2: 经 CoreFacade
     router = DomainRouter()
     router.register_domain(req.id, {
         "name": req.name,
@@ -2594,7 +2596,7 @@ async def create_ontology_domain(req: OntologyDomainCreate):
 @router.put("/ontology/domains/{domain_id}", response_model=Dict[str, Any])
 async def update_ontology_domain(domain_id: str, req: OntologyDomainCreate):
     """Update domain metadata (name, description, version)."""
-    from core.harness.knowledge.ontology_loader import load_ontology_from_yaml
+    from core.api.core_facade import load_ontology_from_yaml  # P0-A2: 经 CoreFacade
     from pathlib import Path as _Path
     import os as _os
     d = _Path(_os.getenv("AIPLAT_HOME", _Path("~").expanduser() / ".aiplat")) / "ontologies"
@@ -2643,7 +2645,7 @@ async def update_ontology_domain(domain_id: str, req: OntologyDomainCreate):
     reeval_results = {}
     if affected_labels:
         try:
-            from core.harness.ontology_engine.graph_index import GraphIndex
+            from core.api.core_facade import GraphIndex  # P0-A2: 经 CoreFacade
             from core.harness.ontology_engine.state_machine import StateMachine, EvalContext
             from core.harness.ontology_engine.state_history import record_state_change
 
@@ -2711,7 +2713,7 @@ async def delete_ontology_domain(domain_id: str):
 
     # Auto-snapshot before destructive delete (best-effort, non-blocking)
     try:
-        from core.harness.ontology_engine.graph_index import GraphIndex
+        from core.api.core_facade import GraphIndex  # P0-A2: 经 CoreFacade
         graph = GraphIndex.load(domain_id)
         graph.snapshot(f"pre-delete-{domain_id}")
     except Exception:
@@ -2800,7 +2802,7 @@ async def update_ontology_class(domain_id: str, class_name: str, req: OntologyCl
     # v2.9: Report downstream impact
     impact = {"graph_nodes_affected": 0}
     try:
-        from core.harness.ontology_engine.graph_index import GraphIndex
+        from core.api.core_facade import GraphIndex  # P0-A2: 经 CoreFacade
         graph = GraphIndex.load(domain_id)
         affected = graph.get_entities_by_class(class_name)
         impact["graph_nodes_affected"] = len(affected)
@@ -2872,7 +2874,7 @@ async def delete_ontology_class(domain_id: str, class_name: str, force: bool = F
     orphan_nodes = 0
     orphan_pages = 0
     try:
-        from core.harness.ontology_engine.graph_index import GraphIndex
+        from core.api.core_facade import GraphIndex  # P0-A2: 经 CoreFacade
         g = GraphIndex.load(domain_id)
         orphan_nodes = sum(1 for n in g._nodes.values() if n.class_name == class_name)
     except Exception as e:
@@ -2891,7 +2893,7 @@ async def delete_ontology_class(domain_id: str, class_name: str, force: bool = F
     # Cascade: remove graph nodes
     if orphan_nodes > 0:
         try:
-            from core.harness.ontology_engine.graph_index import GraphIndex
+            from core.api.core_facade import GraphIndex  # P0-A2: 经 CoreFacade
             g = GraphIndex.load(domain_id)
             to_remove = [n.entity_id for n in g._nodes.values() if n.class_name == class_name]
             for eid in to_remove:
@@ -2945,7 +2947,7 @@ async def migrate_classify(domain_id: str, req: MigrateClassifyRequest):
     graph_migrated = 0
     if req.migrate_graph:
         try:
-            from core.harness.ontology_engine.graph_index import GraphIndex
+            from core.api.core_facade import GraphIndex  # P0-A2: 经 CoreFacade
             graph = GraphIndex.load(domain_id)
             graph_migrated = graph.migrate_class_nodes(req.old_class_name, req.new_class_name)
             graph.save()
@@ -3030,7 +3032,7 @@ async def list_inference_rules():
 async def register_inference_rule(body: Dict[str, Any]):
     """Register a custom inference rule."""
     try:
-        from core.harness.knowledge.knowledge_validator import (
+        from core.api.core_facade import (  # P0-A2: 经 CoreFacade
             InferenceRule, RuleTrigger, register_rule
         )
         trigger = body.get("trigger", "on_create")
@@ -3224,7 +3226,7 @@ async def batch_atomize_endpoint(limit: int = 10, category: str = "topics", coll
     """
     import asyncio
     try:
-        from core.harness.knowledge.wiki_engine import (
+        from core.api.core_facade import (  # P0-A2: 经 CoreFacade
             search_pages, read_page, write_atom, _extract_sub_concepts
         )
         pages = [p for p in search_pages(limit=1000, collection_id=collection)

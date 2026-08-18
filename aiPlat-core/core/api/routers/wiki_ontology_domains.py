@@ -54,7 +54,8 @@ async def discover_domain_assets(domain_id: str):
 
     """
 
-    from core.harness.knowledge.ontology_loader import load_ontology_from_yaml, list_domain_files
+    from core.harness.knowledge.ontology_loader import list_domain_files
+    from core.api.core_facade import load_ontology_from_yaml  # P0-A2: 经 CoreFacade
 
     from core.harness.knowledge.ontology_loader import get_entities_by_interface, get_interface_definition
 
@@ -201,7 +202,8 @@ async def get_domain_interfaces(domain_id: str):
 
     """Return all Interface definitions and their implementations in a domain."""
 
-    from core.harness.knowledge.ontology_loader import load_ontology_from_yaml, list_domain_files
+    from core.harness.knowledge.ontology_loader import list_domain_files
+    from core.api.core_facade import load_ontology_from_yaml  # P0-A2: 经 CoreFacade
 
     from pathlib import Path as _Path
 
@@ -275,9 +277,10 @@ async def list_ontology_domains():
 
     """List available domain ontology files."""
 
-    from core.harness.knowledge.ontology_loader import list_domain_files, load_ontology_from_yaml
+    from core.harness.knowledge.ontology_loader import list_domain_files
+    from core.api.core_facade import load_ontology_from_yaml  # P0-A2: 经 CoreFacade
 
-    from core.harness.knowledge.domain_router import DomainRouter
+    from core.api.core_facade import DomainRouter  # P0-A2: 经 CoreFacade
 
     from pathlib import Path as _Path
 
@@ -345,9 +348,9 @@ async def get_ontology_domain(domain_id: str):
 
     """Get full domain ontology including classes + properties."""
 
-    from core.harness.knowledge.ontology_loader import load_ontology_from_yaml
+    from core.api.core_facade import load_ontology_from_yaml  # P0-A2: 经 CoreFacade
 
-    from core.harness.knowledge.domain_router import DomainRouter
+    from core.api.core_facade import DomainRouter  # P0-A2: 经 CoreFacade
 
     from pathlib import Path as _Path
 
@@ -513,9 +516,9 @@ async def verify_ontology_domain(domain_id: str, collection: str = ""):
 
     from core.harness.knowledge.wiki_engine import search_pages, list_all_pages
 
-    from core.harness.ontology_engine.graph_index import GraphIndex
+    from core.api.core_facade import GraphIndex  # P0-A2: 经 CoreFacade
 
-    from core.harness.knowledge.domain_router import DomainRouter
+    from core.api.core_facade import DomainRouter  # P0-A2: 经 CoreFacade
 
     from collections import Counter
 
@@ -763,11 +766,11 @@ async def list_instances_by_class(domain_id: str, class_label: str = ""):
 
     """
 
-    from core.harness.knowledge.wiki_engine import search_pages, read_page
+    from core.api.core_facade import search_pages, read_page  # P0-A2: 经 CoreFacade
 
-    from core.harness.knowledge.ontology_loader import load_ontology_from_yaml
+    from core.api.core_facade import load_ontology_from_yaml  # P0-A2: 经 CoreFacade
 
-    from core.harness.knowledge.domain_router import DomainRouter
+    from core.api.core_facade import DomainRouter  # P0-A2: 经 CoreFacade
 
     from pathlib import Path as _Path
 
@@ -995,11 +998,11 @@ async def classify_all_pages(domain_id: str, collection: str = "", limit: int = 
 
     from core.harness.knowledge.wiki_engine import search_pages, read_page, write_page
 
-    from core.harness.knowledge.ontology_loader import load_ontology_from_yaml
+    from core.api.core_facade import load_ontology_from_yaml  # P0-A2: 经 CoreFacade
 
-    from core.harness.knowledge.domain_router import DomainRouter
+    from core.api.core_facade import DomainRouter  # P0-A2: 经 CoreFacade
 
-    from core.harness.utils.model_injection import create_selected_adapter
+    from core.api.core_facade import create_selected_adapter  # P0-A2: 经 CoreFacade
 
     from core.adapters.llm.base import LLMConfig
 

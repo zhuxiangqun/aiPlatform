@@ -12,7 +12,7 @@ from fastapi import APIRouter, HTTPException
 from core.api.utils.governance import governance_links
 from core.governance.changeset import record_changeset
 from core.governance.gating import new_change_id
-from core.harness.kernel.runtime import get_kernel_runtime
+from core.api.core_facade import get_kernel_runtime  # P0-A2: 经 CoreFacade
 from core.schemas_repo import RepoChangesetPreviewRequest, RepoGitBranchRequest, RepoGitCommitRequest, RepoStagedPreviewRequest, RepoTestsRunRequest
 import logging
 
@@ -37,7 +37,7 @@ def _approval_manager():
 def _is_approved(approval_mgr: Any, approval_request_id: str) -> bool:
     if not approval_mgr or not approval_request_id:
         return False
-    from core.harness.infrastructure.approval.types import RequestStatus
+    from core.api.core_facade import RequestStatus  # P0-A2: 经 CoreFacade
 
     req = approval_mgr.get_request(str(approval_request_id))
     return bool(req) and req.status in (RequestStatus.APPROVED, RequestStatus.AUTO_APPROVED)
@@ -340,8 +340,8 @@ async def diagnostics_repo_changeset_record(request: RepoChangesetPreviewRequest
 
     # ==================== governance: approval when high-risk / non-local ====================
     from core.api.facades.security_facade import get_exec_backend
-    from core.harness.infrastructure.approval.manager import ApprovalManager
-    from core.harness.infrastructure.approval.types import ApprovalContext, ApprovalRule, RuleType
+    from core.api.core_facade import ApprovalManager  # P0-A2: 经 CoreFacade
+    from core.api.core_facade import ApprovalContext, ApprovalRule, RuleType  # P0-A2: 经 CoreFacade
 
     approval_mgr = _approval_manager() or ApprovalManager(execution_store=store)
     backend = "local"
@@ -505,8 +505,8 @@ async def diagnostics_repo_git_branch(request: RepoGitBranchRequest):
     _validate_git_repo(repo_root)
 
     from core.api.facades.security_facade import get_exec_backend
-    from core.harness.infrastructure.approval.manager import ApprovalManager
-    from core.harness.infrastructure.approval.types import ApprovalContext, ApprovalRule, RuleType
+    from core.api.core_facade import ApprovalManager  # P0-A2: 经 CoreFacade
+    from core.api.core_facade import ApprovalContext, ApprovalRule, RuleType  # P0-A2: 经 CoreFacade
 
     backend = "local"
     try:
@@ -637,8 +637,8 @@ async def diagnostics_repo_git_commit(request: RepoGitCommitRequest):
     _validate_git_repo(repo_root)
 
     from core.api.facades.security_facade import get_exec_backend
-    from core.harness.infrastructure.approval.manager import ApprovalManager
-    from core.harness.infrastructure.approval.types import ApprovalContext, ApprovalRule, RuleType
+    from core.api.core_facade import ApprovalManager  # P0-A2: 经 CoreFacade
+    from core.api.core_facade import ApprovalContext, ApprovalRule, RuleType  # P0-A2: 经 CoreFacade
 
     backend = "local"
     try:

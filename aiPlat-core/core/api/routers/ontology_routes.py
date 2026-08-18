@@ -10,7 +10,7 @@ from typing import Any, Dict
 
 from fastapi import APIRouter, HTTPException, Query, Body
 
-from core.harness.ontology_engine.triple_store import get_triple_store
+from core.api.core_facade import get_triple_store  # P0-A2: 经 CoreFacade
 
 router = APIRouter(tags=["ontology"])
 
