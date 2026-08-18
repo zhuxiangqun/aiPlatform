@@ -123,8 +123,18 @@ def _norm(s: str) -> str:
 # ── Routing weight learning (P1: feedback loop) ──
 # Default weight = 1.0 (neutral). Higher = skill should be preferred.
 # Adjusted by apply_learned_weights() based on strict_eval metrics.
+# Bounded by _MAX_SKILL_WEIGHTS: skill names come from the registry (bounded),
+# but the cap also guards against arbitrary keys from callers.
+_MAX_SKILL_WEIGHTS = 512
 
 _skill_weights: Dict[str, float] = {}
+
+
+def _bounded_weight_write(skill_name: str, weight: float) -> None:
+    _skill_weights[skill_name] = weight
+    if len(_skill_weights) > _MAX_SKILL_WEIGHTS:
+        for name in sorted(_skill_weights)[: len(_skill_weights) - _MAX_SKILL_WEIGHTS]:
+            _skill_weights.pop(name, None)
 
 
 def get_skill_weight(skill_name: str) -> float:
@@ -134,7 +144,7 @@ def get_skill_weight(skill_name: str) -> float:
 
 def set_skill_weight(skill_name: str, weight: float) -> None:
     """Set the learned routing weight for a skill. Clamped to [0.1, 5.0]."""
-    _skill_weights[skill_name] = max(0.1, min(5.0, weight))
+    _bounded_weight_write(skill_name, max(0.1, min(5.0, weight)))
 
 
 def apply_learned_weights() -> Dict[str, Any]:

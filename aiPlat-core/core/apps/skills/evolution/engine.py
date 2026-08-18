@@ -27,6 +27,9 @@ logger = logging.getLogger(__name__)
 
 # Module-level prediction cache — bridge from EvolutionEngine to _exec_test_runner
 # Protected by _predictions_lock for concurrent access from async pipeline stages.
+# Bounded by _MAX_PREDICTIONS: skill_id keys come from the skill registry
+# (bounded), cap additionally guards against arbitrary keys from callers.
+_MAX_PREDICTIONS = 256
 _latest_predictions: Dict[str, Any] = {}
 _predictions_lock = threading.Lock()
 
@@ -130,6 +133,8 @@ class EvolutionEngine:
                 logger.info(f"Auto-enabled {skill_id} v{new_version.version} in SkillRegistry")
                 # Bridge: store predictions for cross-round verification by _exec_test_runner
                 with _predictions_lock:
+                    if len(_latest_predictions) >= _MAX_PREDICTIONS:
+                        _latest_predictions.pop(next(iter(_latest_predictions)), None)
                     _latest_predictions[skill_id] = {
                     "predicted_fixes": predicted_fixes,
                     "predicted_regressions": predicted_regressions,

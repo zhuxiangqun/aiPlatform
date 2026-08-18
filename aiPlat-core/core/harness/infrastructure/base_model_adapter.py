@@ -73,6 +73,10 @@ def resolve_model_name(capability: str) -> str:
 
 
 # ── Model cache ───────────────────────────────────────────────
+# Bounded by _MAX_MODEL_CACHE: capability keys are a fixed set
+# (embedding/reranker/audio/ocr), cap additionally guards arbitrary keys.
+
+_MAX_MODEL_CACHE = 16
 
 _model_cache: Dict[str, Any] = {}
 _model_cache_name: Dict[str, Optional[str]] = {}
@@ -92,6 +96,8 @@ def get_cached_model(capability: str, loader_fn, *, model_name: str = "") -> Any
         return cached
     model = loader_fn(name)
     if model is not None:
+        if len(_model_cache) >= _MAX_MODEL_CACHE:
+            _model_cache.pop(next(iter(_model_cache)), None)
         _model_cache[capability] = model
         _model_cache_name[capability] = name
     return model
