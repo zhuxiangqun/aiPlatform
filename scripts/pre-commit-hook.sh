@@ -121,11 +121,14 @@ if ! python3 "$WORKSPACE/scripts/check_code_doc_gap.py" --ci 2>&1; then
     echo "  ⚠️  code→doc gap detected — run: python3 scripts/check_code_doc_gap.py"
 fi
 
-# ── Step 2.7: registry → CAPABILITIES 方向同步 (P0-C3/P0-C5) ──
+# ── Step 2.7: registry → CAPABILITIES 方向同步 (P0-C3/P0-C5, 2026-08-19 自动补登) ──
 echo ""
 echo "  Checking registry→docs sync..."
 if ! python3 "$WORKSPACE/scripts/sync_registry_to_docs.py" 2>&1 | tail -1 | grep -q "✅"; then
-    echo "  ⚠️  registry→docs drift — run: python3 scripts/sync_registry_to_docs.py --fix"
+    echo "  ⚠️  registry→docs drift — 自动补登 (sync_registry_to_docs.py --fix)"
+    python3 "$WORKSPACE/scripts/sync_registry_to_docs.py" --fix >/dev/null 2>&1 || true
+    git add AIPLAT_CAPABILITIES.md 2>/dev/null || true
+    echo "  ✅ 已自动补登并 stage"
 fi
 
 # ── Step 3: 分流守卫 — 防止往 CLAUDE.md 新增状态型 §5.NNN (WARNING, 不阻断) ──

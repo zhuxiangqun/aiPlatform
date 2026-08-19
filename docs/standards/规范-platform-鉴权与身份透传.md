@@ -128,3 +128,13 @@ admin 角色拥有全权限（9 个独占管理项），**必须启用 MFA**：
 - **验证**：`pytest aiPlat-platform/tests/test_mfa.py -q`（9 passed，含端点强制/放行）。
 
 > **对照**：Claude Code enterprise 治理基线 — 管理员账号 MFA 是破坏半径控制的最低门槛。
+
+---
+
+## 10. Agent Registry 统一入口（P0-B4，2026-08-19）
+
+- **统一入口**：`get_agent_registry` 经 CoreFacade canonical re-export（`core/api/core_facade.py`，源自 `core/harness/integration.py::get_agent_registry`）；
+- **冗余清理**：`get_agent_registry_facade`（旧 CoreFacade 包装，0 调用者 + 重复实现）已删除；`conversations.py` 等收敛到统一命名；
+- **约束**：新增平台侧访问 agent registry 的代码一律 `from core.api.core_facade import get_agent_registry`（唯一入口，§10 API 入口唯一性）。
+
+> **对照**：入口唯一性治理 — 同一能力（agent registry）全系统仅一个公共入口，禁止 facade 层维护重复 getter。

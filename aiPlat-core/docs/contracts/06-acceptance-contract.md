@@ -248,3 +248,12 @@ pytest -q \
 - 自动化验收：
   - `pytest aiPlat-platform/tests/test_mfa.py -q`（9 passed）
   - `python3 -c "from auth.mfa import require_mfa_for_role; assert require_mfa_for_role('admin') and not require_mfa_for_role('developer')"`
+
+### 1.23 部分项闭环（P0-B4/B5/C3, 2026-08-19）
+- MUST：CoreFacade `get_*` 符号 0 调用者清零（`get_agent_registry_facade` 已删，统一 `get_agent_registry`）
+- MUST：`docs/standards/规范-功能开关与配置.md` 存在，登记 ≥40 个默认 false 的 AIPLAT_* 开关（分组 + 用途 + 位置 + 登记义务）
+- MUST：`sync_registry_to_docs.py` 无漂移（190 符号全同步）；pre-commit Step 2.7 自动补登
+- 自动化验收：
+  - `python3 scripts/sync_registry_to_docs.py`（✅ 190 符号全同步）
+  - `grep -c 'AIPLAT_' docs/standards/规范-功能开关与配置.md`（≥40）
+  - `python3 -c "import ast; ast.parse(open('aiPlat-core/core/api/core_facade.py').read()); print('OK')"`

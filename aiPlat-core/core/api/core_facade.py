@@ -1847,11 +1847,8 @@ async def kb_summarize_document(*, tenant_id: str, collection_id: str, doc_id: s
 from core.apps.tools.permission import Permission  # noqa: E402
 
 
-def get_agent_registry_facade() -> Any:
-    """Get the workspace AgentRegistry singleton."""
-    from core.apps.agents.discovery import get_agent_registry
-    return get_agent_registry()
-
+# P0-B4 (2026-08-19): get_agent_registry_facade 已删除 — 0 调用者，与
+# integration.py::get_agent_registry 重复（入口唯一性 §10），统一走后者。
 
 from core.apps.agents.discovery import AgentDiscovery, AgentLoader, AgentRegistry  # noqa: E402
 
@@ -3079,7 +3076,7 @@ def _invalidate_domain_caches(domain_id: str) -> None:
 # See: architecture/boundary_rules.yaml
 # ═══════════════════════════════════════════════════════════════
 
-from core.harness.integration import KernelRuntime, get_harness
+from core.harness.integration import KernelRuntime, get_harness, get_agent_registry  # P0-B4 canonical re-export (统一入口)
 from core.harness.knowledge.db import get_knowledge_db
 
 from core.harness.knowledge.wiki_engine import search_pages  # v2.5: platform→CoreFacade  # noqa: boundary — CoreFacade canonical re-export
@@ -3362,7 +3359,7 @@ from core.harness.knowledge.ontology_loader import load_ontology_from_yaml  # no
 from core.harness.knowledge.ontology_bus import load_solution_archetypes, render_solution_table  # noqa: boundary
 from core.harness.knowledge.scenario_selector import recommend_order  # noqa: boundary
 from core.harness.evaluation.adversarial_test_suite import run_cognitive_robustness_check  # noqa: boundary
-from core.harness.knowledge.metric_engine import scorecard, get_trend as _get_trend_alias  # noqa: boundary
+from core.harness.knowledge.metric_engine import scorecard  # P0-B4: get_trend 别名无调用者已清理
 from core.harness.infrastructure.crypto.signature import sign_skill  # noqa: boundary
 from core.harness.syscalls.retrieval import sys_knowledge_retrieve  # noqa: boundary
 
