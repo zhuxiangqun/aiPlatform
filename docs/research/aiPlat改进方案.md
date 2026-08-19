@@ -4,6 +4,7 @@
 > **原则**：代码事实优先；每项含现状证据、差距分析、落点方案、验收标准（可执行验证命令）
 > **分级**：P0 合规修复（守卫 FAIL + 实测缺陷，阻断合并）→ P1 对标差距补齐（Hermes/DSH/Claude Code 借鉴，增强竞争力）→ P2 架构演进（长期方向）
 > **当前基线**：`architecture_guard.py --json` → ok: False，4 个 FAIL section / 5 violations
+> **实施状态（2026-08-18 收官）**：**P0-1 ~ P0-5、P1-1 ~ P1-6、P2-1 ~ P2-7 全部落地并验证**（P0-1 §57 0 违规 / P0-3 E2E 20/20 / P0-4 SDK 已初始化 / P0-5 MFA 已实现；P1-1~6 覆盖；P2-1~7 事件源/goal judge/cron script/sandbox 隔离均已实现；对应行动纲领 53/53 DONE，PR #16-#26）
 
 ---
 
