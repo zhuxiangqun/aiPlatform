@@ -172,7 +172,7 @@ def get_tool_registry():
 
 def get_agent_registry():
     """Resolve agent registry."""
-    return _resolve_or_import("AgentRegistry", "core.apps.agents.registry:AgentRegistry")()
+    return _resolve_or_import("AgentRegistry", "core.apps.agents.discovery:AgentRegistry")()
 
 
 def get_skill_registry():
@@ -278,7 +278,7 @@ def get_latest_predictions():
 
 def get_mcp_client_manager():
     """Resolve MCP client manager (P0-A1: DI first, direct import fallback)."""
-    return _resolve_or_import("MCPClientManager", "core.apps.mcp.client:get_mcp_client_manager")()
+    return _resolve_or_import("MCPClientManager", "core.apps.mcp.client:MCPClientManager")()
 
 
 def get_skill_discovery():

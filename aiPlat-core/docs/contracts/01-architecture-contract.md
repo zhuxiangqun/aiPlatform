@@ -147,3 +147,5 @@ aiPlat 逻辑上分为：
 - **api→CoreFacade 收敛（P0-A2, 2026-08-18）**：54 个 api 文件 292 行 harness 直导改经 CoreFacade（执行引擎核心模块直导清零）；CoreFacade 模块级补 `sys_llm_generate` re-export；修复 wiki.py 死 self-import；69/69 routers 导入通过。knowledge 域（wiki/ontology/code_graph）直导为知识检索能力，渐进跟进。
 
 - **P0-A2 收敛回归修复（2026-08-19）**：knowledge-graph/stats 500 根因（CoreFacade 未 re-export `effective_cycles`）→ 全仓 AST 审计 `from core.api.core_facade import` 缺失符号：core 侧 40 符号恢复原模块导入（core 内部 api→harness 允许）、platform 侧 9 符号 CoreFacade canonical re-export（§92 platform 必须经 CoreFacade）；triple_scanner 移除引用不存在 API 的死代码（`CoreFacade.get_pipeline_stages` 全仓无定义）。约束：新增 platform 经 CoreFacade 访问的符号必须先确认 re-export 存在。
+
+- **P0-A1 DI 工厂 fallback 修复（2026-08-19）**：系统性验证 integration.py 全部 `_resolve_or_import` fallback（13 个）——修复 2 个坏路径：`get_mcp_client_manager`（指向不存在的函数 → 改 `MCPClientManager` 类，修复前 profile.list_servers 静默降级）与 `get_agent_registry`（指向不存在的模块 `agents.registry` → 改 `agents.discovery:AgentRegistry`）。约束：新增 DI 工厂时 fallback 的 `module:attr` 必须真实存在（P0-A2/P0-A1 两次教训）。
