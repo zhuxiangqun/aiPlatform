@@ -5844,7 +5844,16 @@ async def tenant_create_api_key(request: Request):
 
     perms = list(body.get("permissions", ["kb:read"]) or ["kb:read"])
 
+    # P0-5 阶段 3（CLAUDE.md §11b 强制）：admin 必须先启用 MFA 才能创建 API Key
+    if (identity.actor_role or "").strip().lower() == "admin":
+        from auth.mfa import is_mfa_enabled
 
+        user = platform_store.get_auth_user(identity.actor_id or f"admin_{tid}")
+        if user and not is_mfa_enabled(user):
+            raise HTTPException(
+                status_code=422,
+                detail="mfa_required: admin must enable MFA (POST /platform/auth/mfa/setup + /verify) before creating API keys",
+            )
 
     from auth.authenticator import authenticator
 

@@ -97,6 +97,7 @@
   python3 -c "from aiPlat-platform.auth import mfa; ..."  # TOTP 生成/校验单元测试通过
   pytest tests/ -k mfa -q   # MFA 相关测试通过
   ```
+- **实施状态（2026-08-18）**：阶段一（TOTP）✅ + 阶段三（强制策略）✅——`POST /tenant/api-keys` admin 未启用 MFA → 422 `mfa_required`；CLAUDE.md §11b 升级强制；`tests/test_mfa.py` 9 passed（含端点强制/放行测试）。阶段二（WebAuthn）按计划可选未做。
 
 ---
 

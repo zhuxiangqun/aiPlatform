@@ -58,3 +58,84 @@ def test_admin_requires_mfa():
     assert require_mfa_for_role("admin")
     assert not require_mfa_for_role("developer")
     assert not require_mfa_for_role("viewer")
+
+
+def test_admin_api_key_creation_requires_mfa(monkeypatch):
+    """P0-5 阶段 3: admin 未启用 MFA 时禁止创建 API Key（422 mfa_required）。"""
+    import sys
+    from pathlib import Path
+
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+    from fastapi import HTTPException
+    from api.rest import routes as R
+
+    # 模拟 admin 身份 + 未启用 MFA 的用户
+    class FakeIdentity:
+        tenant_id = "t1"
+        actor_id = "admin_t1"
+        actor_role = "admin"
+        scopes = []
+        auth_type = "api_key"
+        request_id = "r1"
+
+    def fake_identity(req):
+        return FakeIdentity()
+
+    monkeypatch.setattr(R, "_resolve_identity", fake_identity)
+
+    class FakeStore:
+        def get_auth_user(self, uid):
+            return {"user_id": uid, "mfa_enabled": False, "mfa_secret": ""}
+
+    monkeypatch.setattr(R, "platform_store", FakeStore())
+
+    class FakeRequest:
+        async def json(self):
+            return {"expires_days": 30, "permissions": ["kb:read"], "app_id": "api"}
+
+    async def run():
+        try:
+            await R.tenant_create_api_key(FakeRequest())
+            raise AssertionError("expected HTTPException 422")
+        except HTTPException as e:
+            assert e.status_code == 422, e.status_code
+            assert "mfa_required" in str(e.detail), e.detail
+
+    import asyncio
+    asyncio.run(run())
+
+
+def test_admin_api_key_creation_with_mfa_enabled(monkeypatch):
+    """P0-5 阶段 3: admin 已启用 MFA 时可正常创建 API Key。"""
+    import sys
+    from pathlib import Path
+
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+    from api.rest import routes as R
+
+    class FakeIdentity:
+        tenant_id = "t1"
+        actor_id = "admin_t1"
+        actor_role = "admin"
+        scopes = []
+        auth_type = "api_key"
+        request_id = "r1"
+
+    monkeypatch.setattr(R, "_resolve_identity", lambda req: FakeIdentity())
+
+    class FakeStore:
+        def get_auth_user(self, uid):
+            return {"user_id": uid, "mfa_enabled": True, "mfa_secret": "SECRET"}
+
+    monkeypatch.setattr(R, "platform_store", FakeStore())
+
+    class FakeRequest:
+        async def json(self):
+            return {"expires_days": 30, "permissions": ["kb:read"], "app_id": "api"}
+
+    async def run():
+        result = await R.tenant_create_api_key(FakeRequest())
+        assert "api_key" in result, result
+
+    import asyncio
+    asyncio.run(run())
