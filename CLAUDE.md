@@ -329,7 +329,8 @@ scripts/ruff_f821_baseline.json        ← F821 基线快照（ratchet 对比基
 
 11. **审批单次检查（强制——防多重门禁）**：同一请求对同一资源的权限检查，整个调用链中只能执行一次，且由 PolicyGate（`sys_tool_call` / `sys_skill_call` 内）作为唯一执行点。**禁止**：RBAC guard 在 HTTP 层检查一遍 → Gateway 在调用层再查一遍 → PolicyGate 在 syscall 层又查一遍 → BaseTool 内部再自查一遍。**必须**：上游层只做身份注入（JWT → tenant/actor/scopes），不做权限判断。权限判断统一委托给 PolicyGate。
 
-11b. **管理员 MFA 强制（安全策略建议）**：admin 角色拥有全权限（所有菜单组 + 9 个独占管理项），破坏半径极大。建议：admin 账号强制启用 MFA（TOTP / WebAuthn）；admin 账号不用于日常非管理操作（开发/运维应使用 developer/operator 角色）；admin 账号共享/泄露需记录安全审计事件。
+11b. **管理员 MFA 强制（强制——2026-08-18 从建议升级）**：admin 角色拥有全权限（所有菜单组 + 9 个独占管理项），破坏半径极大。**强制规则**：admin 账号必须启用 MFA（TOTP，`auth/mfa.py` RFC 6238）；admin 未启用 MFA 时禁止创建新 API Key（`POST /tenant/api-keys` 返回 422 `mfa_required`）。流程：`POST /platform/auth/mfa/setup` → 扫码 → `POST /platform/auth/mfa/verify` → 激活。admin 账号不用于日常非管理操作（开发/运维应使用 developer/operator 角色）；admin 账号共享/泄露需记录安全审计事件。
+<!-- verify: cmd: grep -c "mfa_required: admin must enable MFA" aiPlat-platform/api/rest/routes.py expect: 1 operator: eq desc: admin MFA 强制已接入 API key 创建端点 -->
 
 12. **模型解析中心化（强制——防环境变量碎片化）**：模型名称的解析必须通过统一的 `get_default_model(purpose)` 函数，**禁止**各模块直接读取 `AIPLAT_DOC_LLM_MODEL`、`AIPLAT_CODE_GEN_MODEL`、`AIPLAT_LLM_MODEL` 等环境变量做独立判断。全局只有一个解析链：`purpose 参数 → 专用 env → infra ModelManager.list_models() → 系统默认`。**模型发现、启用/禁用、健康状态均以 infra ModelManager 为唯一权威。** core 不得自行维护模型列表（`model_registry.py` 已废弃）。**禁止 core/平台绕过 infra 直接加载模型**：❌ `import sentence_transformers`（embedding）、❌ `import faster_whisper`（语音转文字）、❌ `import PaddleOCR`（OCR）、❌ `from transformers import AutoModel`（reranker）。
 

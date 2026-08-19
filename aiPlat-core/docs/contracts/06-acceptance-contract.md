@@ -241,3 +241,10 @@ pytest -q \
 - MUST：测试不依赖本地硬件模型加载（mock create_selected_adapter/best_model_for_purpose）
 - 自动化验收：
   - `pytest aiPlat-platform/tests/test_builder.py aiPlat-core/core/tests/unit/test_builder_pipeline_e2e.py -q`（20 passed）
+
+### 1.22 MFA 强制策略（P0-5 阶段 3, 2026-08-18）
+- MUST：`POST /tenant/api-keys` 对 admin 角色（`actor_role == admin`）未启用 MFA 的用户返回 422 `mfa_required`
+- MUST：CLAUDE.md §11b 升级为强制（含 verify 块）
+- 自动化验收：
+  - `pytest aiPlat-platform/tests/test_mfa.py -q`（9 passed）
+  - `python3 -c "from auth.mfa import require_mfa_for_role; assert require_mfa_for_role('admin') and not require_mfa_for_role('developer')"`
