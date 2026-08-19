@@ -270,3 +270,10 @@ pytest -q \
 - MUST：`get_mcp_client_manager()` 返回 `MCPClientManager`（有 list_servers）；`get_agent_registry()` 返回 `AgentRegistry`
 - 自动化验收：
   - `python3 -c "from core.harness.integration import get_mcp_client_manager, get_agent_registry; assert hasattr(get_mcp_client_manager(), 'list_servers'); assert get_agent_registry() is not None"`
+
+### 1.26 应用工厂 rebuild 修复（2026-08-19）
+- MUST：pipeline_execution.py 含 `PipelineConfig` import（3 处用法可解析）；`rebuild_from_state` 经 `create_pipeline_engine`（宪法 A2：api 不直导 pipeline_engine）
+- MUST：无 api/routers → core.harness.execution.pipeline_engine 直导（宪法 test_api_routers_use_facade_not_engine 通过）
+- 自动化验收：
+  - `python3 -c "from core.schemas_builder import PipelineConfig, PipelineStageConfig; c=PipelineConfig(stages=[PipelineStageConfig(id='s1', agent_id='a', prompt='p')], max_tokens_per_run=1000); assert len(c.stages)==1"`
+  - `pytest tests/constitution/test_core_internal_boundaries.py -q`（3 passed）

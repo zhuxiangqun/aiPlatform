@@ -67,7 +67,7 @@ async def cleanup_orphaned_pipelines():
             from core.api.core_facade import (
                 create_pipeline_engine, register_pipeline,
             )
-            from core.schemas_builder import PipelineStageConfig
+            from core.schemas_builder import PipelineStageConfig, PipelineConfig  # P0-A2 回归修复: PipelineConfig 未 import 致 NameError
             from core.api.core_facade import best_model_for_purpose  # P0-A2: 经 CoreFacade
 
             for run in to_recover:
@@ -241,7 +241,7 @@ def _reconstruct_engine(project_id: str, run_id: str, store, stages_raw=None):
     otherwise fall back to the stage records saved in the store.
     """
     from core.api.core_facade import create_pipeline_engine
-    from core.schemas_builder import PipelineStageConfig
+    from core.schemas_builder import PipelineStageConfig, PipelineConfig  # P0-A2 回归修复: PipelineConfig 未 import 致 NameError
     from core.api.core_facade import best_model_for_purpose  # P0-A2: 经 CoreFacade
 
     stages = []
@@ -275,11 +275,11 @@ def _reconstruct_engine(project_id: str, run_id: str, store, stages_raw=None):
         max_tokens_per_run=run.get("tokens_budget", 100000),
         max_retry_attempts=3,
     )
-    engine = PipelineEngine(
+    engine = create_pipeline_engine(
         config=pipeline_config,
         model=best_model_for_purpose("chat"),
-        persist_callback=_make_store_callback(run_id, store),
     )
+    engine._persist_callback = _make_store_callback(run_id, store)  # P0-A2 回归修复: 经 CoreFacade 构造后挂回调
     saved_state = store.get_full_state_from_run_id(run_id)
     engine._state = dict(saved_state or {})
     return engine
@@ -351,7 +351,7 @@ async def pipeline_run(request: Request) -> Dict[str, Any]:
     async def _execute_pipeline():
         try:
             from core.api.core_facade import create_pipeline_engine
-            from core.schemas_builder import PipelineStageConfig
+            from core.schemas_builder import PipelineStageConfig, PipelineConfig  # P0-A2 回归修复: PipelineConfig 未 import 致 NameError
             from core.harness.execution.team_planner import _ensure_capability_profile
             from core.api.core_facade import best_model_for_purpose  # P0-A2: 经 CoreFacade
 
