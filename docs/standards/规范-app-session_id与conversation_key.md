@@ -84,3 +84,9 @@ app 负责把 session_id 传给 platform（再转发给 core），用于：
 ## 6. 变更记录（2026-08-18）
 
 - `aiPlat-platform/tests/test_pipeline_session.py` 对齐当前 CoreFacade 导出：`get_model_registry` 已删除（model 目录收敛至 infra ModelManager），导出断言改用 `get_agent_registry_facade`。契约不变：session_id ↔ run_id 关联语义、per-session lane 串行化约束均未改变。
+
+---
+
+## 附：2026-08-19 更新 — Agent Registry 引用收敛
+
+`aiPlat-platform/api/routers/conversations.py` 的 `get_agent_registry` 引用已统一经 CoreFacade（`get_agent_registry_facade` 冗余删除，P0-B4）。会话/对话链路本身无语义变化。
