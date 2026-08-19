@@ -732,7 +732,17 @@ class PipelineRunStore:
             if derived:
                 state["event_derived"] = derived
                 # Consistency: snapshot phase should match folded event phase
-                state["state_event_consistent"] = (state.get("phase") == derived.get("phase"))
+                _consistent = (state.get("phase") == derived.get("phase"))
+                state["state_event_consistent"] = _consistent
+                if not _consistent:
+                    # P3-1: dual-track drift must be visible (upgraded from debug-only).
+                    # Read path stays side-effect free (no event-table write here);
+                    # a transient write-order window can produce this, so it is a
+                    # WARNING (not an error) — visible to diagnostics, never blocks.
+                    logging.getLogger(__name__).warning(
+                        "run state/event drift: run_id=%s snapshot_phase=%r event_phase=%r",
+                        run_id, state.get("phase"), derived.get("phase"),
+                    )
         except Exception as _e:  # noqa: BLE001
             logging.getLogger(__name__).debug("replay cross-check failed: %s", _e)
         return state

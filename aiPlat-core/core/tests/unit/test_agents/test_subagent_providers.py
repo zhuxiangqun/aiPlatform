@@ -10,6 +10,7 @@ from core.apps.agents.subagent.coordinator import SubagentCoordinator
 from core.apps.agents.subagent.providers import (
     ACPProvider,
     InProcessProvider,
+    ProcessProvider,
     ProviderCapabilities,
     ProviderResult,
     SubagentProvider,
@@ -31,9 +32,9 @@ class TestProviderAbstraction:
         assert caps.continuation is False  # default: not continuable
         assert caps.isolation is True
 
-    def test_factories_expose_both_providers(self):
+    def test_factories_expose_three_providers(self):
         factories = get_provider_factories()
-        assert set(factories.keys()) == {"in_process", "acp"}
+        assert set(factories.keys()) == {"in_process", "acp", "process"}
 
     def test_default_provider_name_env(self, monkeypatch):
         monkeypatch.setenv("AIPLAT_SUBAGENT_PROVIDER", "acp")
@@ -47,7 +48,8 @@ class TestCoordinatorProviders:
         c = SubagentCoordinator()
         providers = c.list_providers()
         assert "in_process" in providers
-        assert len(providers) >= 2  # P1-A3 acceptance: ≥2 providers
+        assert "process" in providers  # P3-2: fork-style provider registered
+        assert len(providers) >= 3  # P1-A3 acceptance: ≥2 providers, P3-2 → 3
 
     def test_get_provider_default(self):
         c = SubagentCoordinator()
@@ -109,6 +111,94 @@ class TestContinuation:
         c = SubagentCoordinator()
         res = asyncio_run(c.execute_parallel("task", ["ghost"]))
         assert res[0].success is False  # registry miss, same as before
+
+
+class TestProcessProvider:
+    """P3-2 fork-style provider: subprocess isolation + JSON protocol."""
+
+    def test_capabilities_external_isolation(self):
+        p = ProcessProvider()
+        assert p.capabilities.external is True
+        assert p.capabilities.isolation is True
+        assert p.capabilities.continuation is False
+        assert p.name == "process"
+
+    def test_roundtrip_with_fake_runner(self, tmp_path, monkeypatch):
+        """Spawn a fake runner subprocess; verify JSON stdin→stdout roundtrip."""
+        runner = tmp_path / "fake_runner.py"
+        runner.write_text(
+            "import json, sys\n"
+            "payload = json.loads(sys.stdin.read())\n"
+            "json.dump({'ok': True, 'output': 'echo:' + payload['task'],\n"
+            "           'instance_id': 'process:' + payload['name']}, sys.stdout)\n",
+            encoding="utf-8",
+        )
+        monkeypatch.setenv(
+            "PYTHONPATH",
+            str(tmp_path) + ":" + __import__("os").environ.get("PYTHONPATH", ""),
+        )
+        p = ProcessProvider(runner_module="fake_runner", timeout=30)
+        result = asyncio_run(p.start(name="pm_agent", task="build plan"))
+        assert result.ok is True
+        assert result.output == "echo:build plan"
+        assert result.instance_id == "process:pm_agent"
+
+    def test_bad_json_fails_loud(self, tmp_path, monkeypatch):
+        runner = tmp_path / "bad_runner.py"
+        runner.write_text("print('not json')\n", encoding="utf-8")
+        monkeypatch.setenv(
+            "PYTHONPATH",
+            str(tmp_path) + ":" + __import__("os").environ.get("PYTHONPATH", ""),
+        )
+        p = ProcessProvider(runner_module="bad_runner", timeout=30)
+        result = asyncio_run(p.start(name="x", task="t"))
+        assert result.ok is False
+        assert "bad JSON" in result.error
+
+    def test_runner_module_failure_fails_loud(self, monkeypatch):
+        p = ProcessProvider(runner_module="no_such_module_xyz", timeout=30)
+        result = asyncio_run(p.start(name="x", task="t"))
+        assert result.ok is False
+        assert result.error
+
+
+class TestProcessRunnerModule:
+    """process_runner.py JSON contract (error branch does not need the agent stack)."""
+
+    def test_main_bad_input_emits_json(self, tmp_path, monkeypatch):
+        import json
+        import sys
+        import io
+
+        from core.apps.agents.subagent import process_runner
+
+        monkeypatch.setattr(sys, "stdin", io.StringIO("not-json{{{"))
+        out = io.StringIO()
+        monkeypatch.setattr(sys, "stdout", out)
+        process_runner.main()
+        data = json.loads(out.getvalue().strip())
+        assert data["ok"] is False
+        assert "process_runner" in data["error"]
+
+    def test_main_emits_ok_false_on_empty_input(self, tmp_path, monkeypatch):
+        import json
+        import sys
+        import io
+
+        from core.apps.agents.subagent import process_runner
+
+        # Empty payload → empty name/task; stub _execute so no agent stack runs.
+        monkeypatch.setattr(
+            process_runner, "_execute",
+            lambda name, task, context: {"ok": False, "error": "no-op stub",
+                                         "output": "", "instance_id": "", "can_continue": False},
+        )
+        monkeypatch.setattr(sys, "stdin", io.StringIO(""))
+        out = io.StringIO()
+        monkeypatch.setattr(sys, "stdout", out)
+        process_runner.main()
+        data = json.loads(out.getvalue().strip())
+        assert data["ok"] is False
 
 
 def asyncio_run(coro):

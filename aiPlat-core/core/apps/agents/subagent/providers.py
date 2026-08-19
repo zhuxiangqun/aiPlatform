@@ -9,6 +9,7 @@ Aligns with DSH SubagentProvider contract:
 Providers:
   1. InProcessProvider (default) — existing conversational-agent path
   2. ACPProvider — external execution via core/acp/server.py WebSocket protocol
+  3. ProcessProvider — fork-style subprocess isolation (process_runner.py)
 
 Selection: SubagentCoordinator(list_providers()) exposes available providers;
 AIPLAT_SUBAGENT_PROVIDER env selects the default (default: in_process).
@@ -159,9 +160,90 @@ class ACPProvider(SubagentProvider):
             return ProviderResult(ok=False, error=str(e)[:300])
 
 
+class ProcessProvider(SubagentProvider):
+    """Fork-style provider (P3-2, DSH fork 借鉴): true process isolation.
+
+    Spawns a fresh ``python -m core.apps.agents.subagent.process_runner``
+    subprocess, streams the JSON payload {name, task, context} on stdin and
+    reads a ProviderResult-shaped JSON object from stdout. Inherits the parent
+    environment (AIPLAT_HOME / model config) — the subprocess runs the same
+    SubagentCoordinator path with a crash-isolated memory space.
+
+    Runner and timeout are configurable via env:
+      AIPLAT_SUBAGENT_PROCESS_RUNNER   (default core.apps.agents.subagent.process_runner)
+      AIPLAT_SUBAGENT_PROCESS_TIMEOUT  (seconds, default 120)
+    """
+
+    name = "process"
+
+    def __init__(self, runner_module: str = "", timeout: float = 0.0):
+        super().__init__()
+        self._runner_module = (runner_module or os.getenv(
+            "AIPLAT_SUBAGENT_PROCESS_RUNNER",
+            "core.apps.agents.subagent.process_runner"))
+        self._timeout = timeout or float(os.getenv("AIPLAT_SUBAGENT_PROCESS_TIMEOUT", "120"))
+        self._capabilities = ProviderCapabilities(
+            start=True, continuation=False, isolation=True,
+            external=True, output_schema=True, tool_filter=False,
+        )
+
+    async def start(self, name: str, task: str,
+                    context: Optional[List[Dict]] = None,
+                    config: Optional[Any] = None) -> ProviderResult:
+        import asyncio
+        import json
+        import sys
+
+        # Make the core package importable in the subprocess regardless of cwd.
+        import core as _core_pkg
+        _core_root = os.path.dirname(os.path.dirname(_core_pkg.__file__))
+        _env = dict(os.environ)
+        _env["PYTHONPATH"] = _core_root + os.pathsep + _env.get("PYTHONPATH", "")
+
+        payload = json.dumps({"name": name, "task": task, "context": context or []},
+                             ensure_ascii=False)
+        cmd = [sys.executable, "-m", self._runner_module]
+        try:
+            proc = await asyncio.create_subprocess_exec(
+                *cmd, stdin=asyncio.subprocess.PIPE,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE, env=_env,
+            )
+            out, err = await asyncio.wait_for(
+                proc.communicate(payload.encode("utf-8")), timeout=self._timeout)
+        except asyncio.TimeoutError:
+            try:
+                proc.kill()
+            except Exception:  # noqa: BLE001
+                pass
+            return ProviderResult(
+                ok=False, error=f"process provider timed out after {self._timeout}s")
+        except Exception as e:
+            logger.debug("process provider spawn failed: %s", e, exc_info=True)
+            return ProviderResult(ok=False, error=str(e)[:300])
+
+        if proc.returncode != 0:
+            _detail = (err or b"").decode("utf-8", "replace").strip()[:200]
+            return ProviderResult(
+                ok=False, error=f"process runner exited {proc.returncode}: {_detail}")
+        try:
+            data = json.loads(out.decode("utf-8", "replace"))
+            return ProviderResult(
+                ok=bool(data.get("ok", False)),
+                output=str(data.get("output", "")),
+                error=str(data.get("error", "")),
+                instance_id=str(data.get("instance_id", "")),
+                can_continue=bool(data.get("can_continue", False)),
+                metadata=dict(data.get("metadata") or {}),
+            )
+        except json.JSONDecodeError as e:
+            return ProviderResult(ok=False, error=f"process runner bad JSON: {e}")
+
+
 _PROVIDER_FACTORIES = {
     "in_process": lambda c: InProcessProvider(c),
     "acp": lambda c: ACPProvider(),
+    "process": lambda c: ProcessProvider(),
 }
 
 
