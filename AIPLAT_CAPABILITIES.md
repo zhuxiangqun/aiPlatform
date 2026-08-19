@@ -1065,8 +1065,8 @@ scan_hash: 8f9548ec24f4
 | PII 脱敏（全量覆盖） | kb/service.py` → `_mask_pii()` + `services/pii_detector.py | ✅ | 手机/身份证/邮箱/银行卡/地址/IP，全部 6 条入库路径已覆盖 | 已合入 |
 | CodeAuditor | harness/security/code_auditor.py | ✅ | 注入/XSS/CSRF/认证/授权检查 | 已合入 |
 | RBAC 多租户 | [概念] | ✅ | platform 层 — 架构决策；tenant + actor + scopes 三级隔离 | 待核实 |
-| 架构守卫 172 规则 | [配置] | ✅ | §1-§76 自动扫描 | 已合入 |
-| 172 条 CI 检查 | scripts/architecture_guard.sh | ✅ | 零依赖 grep 扫描 | 已合入 |
+| 架构守卫 190 规则 + AST 未定义符号守卫 | [配置] | ✅ | §1-§76 自动扫描 + guard_undefined_names.py（第 17 维"未定义变量"升级为 AST 级，2026-08-19） | 已合入 |
+| 190 条 CI 检查 + AST 守卫 | scripts/architecture_guard.sh | ✅ | 零依赖 grep 扫描 + AST 级未定义符号检查 | 已合入 |
 | 前端 API 契约检查 | ../../scripts/guard_frontend.py | ✅ | TS fetch ↔ Python data.get 一致性 | 已合入 |
 | PII 检测脱敏 | services/pii_detector.py | ✅ | 手机/身份证/邮箱/银行卡/地址/IP，Presidio+正则双引擎 | 已合入 |
 | 合规报告 SOC2/ISO27001 | management/compliance_checks.py | ✅ | 12检查 + SOC2 CC/ISO27001 A映射 + 自动报告生成 | 已合入 |
@@ -1170,7 +1170,7 @@ scan_hash: 8f9548ec24f4
 |------|------|:---:|------|------|
 | 一键启动/停止 | [概念] | ✅ | 6服务顺序启动，pyc清理，端口释放 | 已合入 |
 | 开发环境 | scripts/dev.sh | ✅ | 5服务并行开发启动 | 已合入 |
-| 架构守卫 | scripts/architecture_guard.sh | ✅ | 172规则零依赖扫描 | 已合入 |
+| 架构守卫 | scripts/architecture_guard.sh | ✅ | 190规则零依赖扫描 + AST 未定义符号守卫（2026-08-19） | 已合入 |
 | 守卫规则自检（黄金样本） | scripts/rule_golden_sample.py | ✅ | P0-C7：检测规则 pattern 的 \\| 反模式 + re 编译错误，防 12 条语法 bug 重演；--verify 标记规则要求未达标项 | 已合入 |
 | Phase 验收 | scripts/phase_check.sh | ✅ | caller_verify + wiring + 死代码 | 已合入 |
 | Caller 验证 | scripts/caller_verify.sh | ✅ | 零调用者模块检测 | 已合入 |
