@@ -264,3 +264,9 @@ pytest -q \
 - 自动化验收：
   - `python3 -c "from core.api.routers.knowledge_graph import _get_stats_sync; r=_get_stats_sync(); assert r.get('total_files',0)>0"`
   - `grep -rn 'from core.api.core_facade import' aiPlat-core/core/ aiPlat-platform/ --include='*.py' | grep -v __pycache__ | wc -l`（AST 校验缺失=0）
+
+### 1.25 P0-A1 DI 工厂 fallback 修复（2026-08-19）
+- MUST：integration.py 全部 `_resolve_or_import` fallback（13 个）的 `module:attr` 均真实存在
+- MUST：`get_mcp_client_manager()` 返回 `MCPClientManager`（有 list_servers）；`get_agent_registry()` 返回 `AgentRegistry`
+- 自动化验收：
+  - `python3 -c "from core.harness.integration import get_mcp_client_manager, get_agent_registry; assert hasattr(get_mcp_client_manager(), 'list_servers'); assert get_agent_registry() is not None"`
