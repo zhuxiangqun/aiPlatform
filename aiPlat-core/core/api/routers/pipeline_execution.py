@@ -112,11 +112,11 @@ async def cleanup_orphaned_pipelines():
                         max_retry_attempts=3,
                     )
 
-                    engine = PipelineEngine(
+                    engine = create_pipeline_engine(
                         config=pipeline_config,
                         model=best_model_for_purpose("chat"),
-                        persist_callback=_make_store_callback(run_id, store),
                     )
+                    engine._persist_callback = _make_store_callback(run_id, store)  # guard_undefined_names 修复
 
                     # Load saved state
                     saved_state = store.get_full_state_from_run_id(run_id)
@@ -366,11 +366,11 @@ async def pipeline_run(request: Request) -> Dict[str, Any]:
                 max_tokens_per_run=config.get("tokens_budget", 100000),
                 max_retry_attempts=3,
             )
-            engine = PipelineEngine(
+            engine = create_pipeline_engine(
                 config=pipeline_config,
                 model=best_model_for_purpose("chat"),
-                persist_callback=_persist,
             )
+            engine._persist_callback = _persist  # guard_undefined_names 修复
             state: Dict[str, Any] = {
                 "session_id": run_id,
                 "phase": "executing",
