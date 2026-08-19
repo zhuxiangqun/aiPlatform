@@ -1,8 +1,8 @@
 # PipelineEngine 拆分方案（P2-A4）
 
-> 状态：**✅ 已完成（2026-08，Phase 1-4 全部实施并合并）** · 目标：pipeline_engine.py 12281 行 → 主类 + Mixin 拆分
+> 状态：**✅ 已完成（2026-08-19，Phase 1-4 全部实施并合并，PR #16-19）** · 目标：pipeline_engine.py 12281 行 → 主类 + Mixin 拆分
 > 原则：**不改任何公共 API/调用语义**，纯文件结构重组（方法迁移到 Mixin 类，主类多重继承）
-> 位置：research 目录（方案定稿），代码实施按 Phase 风险递增逐步进行
+> 位置：research 目录（方案定稿）；代码实施已按 Phase 风险递增完成（PR #16-19，见 §7）
 
 ## 1. 现状分析
 
@@ -77,8 +77,8 @@ PipelineEngine(PipelineStageMixin, PipelineEvalMixin, PipelinePromptMixin,
 
 ## 6. 收益
 
-- 主文件从 12281 → ~8000 行（Phase 1+2 后）→ ~5000 行（全部完成后）
-- 每 Mixin < 1200 行，符合 §93 类大小门禁趋势
+- 主文件从 12281 → **8288 行**（全部完成后实测，见 §7 拆分累计）
+- 每 Mixin ≤ ~1300 行（最大 `pipeline_eval.py` 1256 行），符合 §93 类大小门禁趋势
 - 自愈策略/状态持久化可独立测试（模块化）
 - 不改任何公共 API（零破坏性）
 
@@ -88,7 +88,7 @@ PipelineEngine(PipelineStageMixin, PipelineEvalMixin, PipelinePromptMixin,
 - **Phase 1（healing Mixin，✅ PR #16 630444d3）**：`execution/pipeline_healing.py`，13 方法 550 行。`PipelineHealingMixin`。
 - **Phase 2（state_persist Mixin，✅ PR #17 91aa247d）**：`execution/pipeline_state.py`，6 方法 321 行。`PipelineStateMixin`。
 - **Phase 3（prompt_parse + eval_test Mixin，✅ PR #18 a622c2f4）**：`execution/pipeline_prompt.py`（8 方法 823 行）+ `execution/pipeline_eval.py`（6 方法 1256 行）。`PipelinePromptMixin` + `PipelineEvalMixin`。
-- **Phase 4（stage_dispatch + stage_exec Mixin，✅ 本次实施）**：`execution/pipeline_stage.py`，8 方法 1158 行（`_dispatch_execute`/`_infer_profile_from_stage`/`_calibrate_profile_from_history`/`_apply_capability_profile`/`_build_handler_params`/`_exec_isolated_stage`/`_exec_stage`/`_evaluate_stage_health`）。`PipelineStageMixin`。`_run_stages_from` 保留主类（见 §3 决策记录）。
+- **Phase 4（stage_dispatch + stage_exec Mixin，✅ PR #19）**：`execution/pipeline_stage.py`，8 方法 1158 行（`_dispatch_execute`/`_infer_profile_from_stage`/`_calibrate_profile_from_history`/`_apply_capability_profile`/`_build_handler_params`/`_exec_isolated_stage`/`_exec_stage`/`_evaluate_stage_health`）。`PipelineStageMixin`。`_run_stages_from` 保留主类（见 §3 决策记录）。
 
 ### 拆分累计
 

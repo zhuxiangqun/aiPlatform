@@ -1,8 +1,9 @@
 # aiPlat 核心能力对标报告：aiPlat vs Claude Code vs DeepSeek Harness vs Hermes
 
-> **分析方式**：以 aiPlat 实际代码为分析对象（43 万行 Python、1,719 次 commit、CoreFacade 210 接口、PipelineEngine 1.2 万行），结合 DeepSeek Harness 本地源码（`/Users/apple/workdata/person/deepseek-harness/`，0.1.0-rc.5）一手分析，以及 Claude Code 的权威 web 调研（官方文档 + 第三方分析）。Hermes 初版为文档级调研（官方文档站 + GitHub API 实测），**2026-08-15 补充最新版 v0.20.1 源码级验证**（`/Users/apple/workdata/person/openSource/hermes-agent-main/`，见 §17.1）。
+> **分析方式**：以 aiPlat 实际代码为分析对象（43 万行 Python、1,719 次 commit、CoreFacade 210 接口、PipelineEngine 8,288 行——原 12,281 行，2026-08-19 P2-A4 拆分收官），结合 DeepSeek Harness 本地源码（`/Users/apple/workdata/person/deepseek-harness/`，0.1.0-rc.5）一手分析，以及 Claude Code 的权威 web 调研（官方文档 + 第三方分析）。Hermes 初版为文档级调研（官方文档站 + GitHub API 实测），**2026-08-15 补充最新版 v0.20.1 源码级验证**（`/Users/apple/workdata/person/openSource/hermes-agent-main/`，见 §17.1）。
 > **结论原则**：代码事实优先于文档宣称；每条 aiPlat 能力均附 `文件:行号` 证据。
-> **调研时点**：2026-08-15
+> **调研时点**：2026-08-15（2026-08-19 已按行动纲领基线复核更新，见下）
+> **2026-08-19 状态更新**：行动纲领 **53 DONE / 0 PARTIAL / 0 OPEN**（54 项核对、53 项有效）；改进方案 P0/P1/P2 全部落地；宪法测试 **143 passed**（全绿）；能力数 **1032/1039**（`capability_registry.yaml` total=1032，`AIPLAT_CAPABILITIES.md` total=1039，口径不同：registry 登记 vs 扫描）；架构守卫 0 ERROR；规范 9/9 approved。**§16.3/§18/§20/§21 的差距结论已按新基线重审**——原"6 项完全缺失 + 8 项部分具备"经 P1-A/P2 批次补齐后仅剩 G6（CC/Codex hooks 协议桥）一项未纳入行动纲领（见 §20.1 状态列与 §20.2 汇总）。
 
 ---
 
@@ -21,7 +22,7 @@
 
 | 维度 | aiPlat | Claude Code | DeepSeek Harness | Hermes |
 |---|---|---|---|---|
-| 执行引擎 | **PipelineEngine 12,281 行**，声明式 `PipelineStageConfig` 驱动阶段流水线（`pipeline_engine.py:553`），含 HITL 暂停/恢复、token 预算、重试、快照 | 单进程 LLM→工具→观察循环；SDK 提供可编程 AgentLoop | 事件驱动 step/turn 双层循环（`packages/core/agent-loop`），turn=零或多个 step | AIAgent 类（~9,200 行）单一核心循环驱动全部入口 |
+| 执行引擎 | **PipelineEngine 8,288 行**（原 12,281 行，2026-08-19 P2-A4 拆分收官为 5 个 Mixin：healing/state/prompt/eval/stage），声明式 `PipelineStageConfig` 驱动阶段流水线（`pipeline_engine.py:553`），含 HITL 暂停/恢复、token 预算、重试、快照 | 单进程 LLM→工具→观察循环；SDK 提供可编程 AgentLoop | 事件驱动 step/turn 双层循环（`packages/core/agent-loop`），turn=零或多个 step | AIAgent 类（~9,200 行）单一核心循环驱动全部入口 |
 | 编排模式 | 6 种 `routing_mode`（static/llm/debate/swarm/roundtable/moa）+ 5 种 `pipeline_mode`（chain/router/parallel/orchestrator/evaluator_optimizer）+ DAG 并行（`_execute_dag`） | Dynamic workflows（2026 新特性）：phases 串行/并行、fan-out、HITL 检查点 | workflow 引擎（worker-thread provider），模型写编排脚本 `agent()/pipeline()/parallel()` 扇出子代理 | 单循环 + delegate_task 并行 batch（默认 3 并发）+ orchestrator 模式 |
 | HITL/审批 | **一等能力**：approve_session（`:1974`）/reject_session（`:2266`）/rollback（`:2536`）/resume_from_checkpoint（`:2621`） | plan/act 双阶段，Plan 批准后才执行 | plan mode 作为 logged state，`exit_plan_mode` 工具 | approvals 交互式确认（smart/manual/off） |
 | 可观测执行 | trace_id/span_id 全 syscall 覆盖 + graph trace 事件 + 决策溯源（`decision_trace.py`） | transcript 保存 + hooks | 事件源会话日志（模型可见 ⟺ 日志不变量） | 会话 DB 记录 + insights 分析 |
@@ -174,9 +175,9 @@
 | 维度 | aiPlat | Claude Code | DeepSeek Harness | Hermes |
 |---|---|---|---|---|
 | 接口 | CoreFacade 210 接口 + REST（72 core routers + 573 platform endpoints）+ aiplat-sdk + ACP + A2A + Gateway 统一代理 | CLI + headless SDK（TS/Python）+ IDE 插件 + GitHub Actions | ACP + JSON-RPC SDK + typert RPC + Web GUI（3080）+ Python SDK | CLI/TUI + **Gateway 20+ IM 平台** + ACP + API Server + Python Library |
-| 消息渠道 | Telegram/Slack/WebChat 适配器（`channels/adapter.py:44`）+ Gateway 配对/幂等/DLQ | 无 IM | 无 IM | **20+ 平台**（Telegram/Discord/Slack/WhatsApp/Signal/SMS/Email/HA/Mattermost/Matrix/DingTalk/Feishu/WeCom/QQ/LINE 等） |
+| 消息渠道 | **7 渠道适配器**（telegram/slack/webchat/discord/wecom/email/dingtalk，`channels/adapter.py:16-23` + `get_channel_adapter`，2026-08-19 P1-A4 收官，PR #22）+ Gateway 配对/幂等/DLQ | 无 IM | 无 IM | **20+ 平台**（Telegram/Discord/Slack/WhatsApp/Signal/SMS/Email/HA/Mattermost/Matrix/DingTalk/Feishu/WeCom/QQ/LINE 等） |
 | IDE | aiplat-vscode 扩展 + ACP | VS Code/JetBrains 官方 | ACP 服务器（任何 ACP 客户端可驱动） | VS Code/Zed/JetBrains（ACP） |
-| 治理面 | 管理端 Web（326 前端文件 + 50 诊断页面 + RBAC 菜单） | Console + 企业迁移 | Web GUI（VitePress） | 个人 CLI/IM 为主 |
+| 治理面 | 管理端 Web（**325 TSX 前端文件**，tsc 0 错误 + 50 诊断页面 + RBAC 菜单，2026-08-19 基线） | Console + 企业迁移 | Web GUI（VitePress） | 个人 CLI/IM 为主 |
 
 **aiPlat 差异点**：管理面最完整（企业 Web 控制台 + RBAC 菜单 + 诊断中心）；Hermes 的 Gateway 多渠道矩阵（20+ IM）是三方中最强的消息接入。
 
@@ -202,7 +203,7 @@
 | 能力维度 | aiPlat | Claude Code | DeepSeek Harness | Hermes |
 |---|---|---|---|---|
 | 定位 | 企业 FDE 操作系统 | IDE/终端 coding agent | 插件化 agent harness | 自我进化个人/团队 Agent |
-| 执行引擎 | PipelineEngine（12k 行声明式） | AgentLoop（单进程） | step/turn 事件循环 | AIAgent（9.2k 行） |
+| 执行引擎 | PipelineEngine（8.3k 行声明式，5 Mixin） | AgentLoop（单进程） | step/turn 事件循环 | AIAgent（9.2k 行） |
 | 工具治理 | ★★★★★（Syscall 封口 + 多 Gate） | ★★★☆（权限规则） | ★★★★（单调 guard） | ★★★（危险命令审批） |
 | 上下文工程 | ★★★★★（四层记忆 + 5 级压缩 + Cache 路由） | ★★★★（auto-compact + editing） | ★★★★（事件源 + compaction） | ★★★★（三层记忆 + 双压缩） |
 | 子代理 | ★★★★（多形态编排） | ★★★（Task + 声明式） | ★★★★★（6 provider + continuable） | ★★★☆（隔离 + worktree） |
@@ -214,7 +215,7 @@
 | 模型适配 | ★★★★★（统一解析 + infra 权威） | ★★★☆（官方模型为主） | ★★★★（adapter 注册表 + 热切换） | ★★★★（30+ provider 插件化） |
 | 自我进化 | ★★★★★（14 步夜间 + 训练触发 + 自愈） | ★★（官方无） | ★★★☆（运行时自修改） | ★★★★★（学习闭环标杆） |
 | 扩展机制 | ★★★★（四级阶梯 + 模块注册） | ★★★★（plugins + hooks） | ★★★★★（一切皆插件） | ★★★★（四类插件） |
-| 多渠道 | ★★★（Web + Telegram/Slack + ACP/A2A） | ★★★（CLI/IDE/CI） | ★★★（ACP + SDK + Web） | ★★★★★（20+ IM Gateway） |
+| 多渠道 | ★★★☆（Web + **7 渠道** + ACP/A2A，2026-08-19 P1-A4） | ★★★（CLI/IDE/CI） | ★★★（ACP + SDK + Web） | ★★★★★（20+ IM Gateway） |
 | 企业治理 | ★★★★★（审计/租户/计费/治理流水线） | ★★★☆（server-managed + ZDR） | ★★（无） | ★★（无） |
 | 开源状态 | 自研（非开源） | 闭源商业（2025-2026 领先） | 开源（DSH，一切皆插件，pre-release） | 开源（MIT，230K+ stars，2026-02 发布） |
 
@@ -224,7 +225,7 @@
 
 ### 16.1 aiPlat 的 5 个标志性差异化能力（代码证据）
 
-1. **声明式交付流水线引擎**（`pipeline_engine.py:553`，12,281 行）：PipelineStageConfig 字段驱动一切行为分叉（execution_backend 双后端、routing_mode 六形态、failure_strategy 退化、hitl 审批），HITL 审批/驳回/回滚/断点续跑全闭环。三方中唯一。
+1. **声明式交付流水线引擎**（`pipeline_engine.py:553`，8,288 行——原 12,281 行，2026-08-19 P2-A4 拆分收官为 5 个 Mixin：`pipeline_healing/state/prompt/eval/stage.py`，PR #16-19）：PipelineStageConfig 字段驱动一切行为分叉（execution_backend 双后端、routing_mode 六形态、failure_strategy 退化、hitl 审批），HITL 审批/驳回/回滚/断点续跑全闭环。三方中唯一。
 2. **Syscall 封口 + Gate 治理执行层**（`syscalls/skill.py:57` + `policy_gate.py:275`）：唯一强制通道 + 单点执法 + 3D 权限 + 风险评分 + 确定性采样审批。治理深度远超三方。
 3. **自演进操作系统**（`evolution_engine.py:121` 14 步夜间流水线 + AutoLearner + SelfHealGate + LoRAAutoTrigger）：唯一实现"系统自我修改 + 自动训练触发"（SFT/RL）的完整闭环。
 4. **上下文工程**（`context_bus.py:42` 10 层 + `memory/manager.py:417` 四层记忆 + `cache_aware_router.py:47`）：对标 Hermes 四层记忆但更重——语义重排 + 温度剪枝 + 5 级压缩 + CacheAwareRouter。
@@ -240,18 +241,20 @@
 | **自我进化最完整** | 14 步夜间流水线 + 失败→技能→沙盒→审批闭环 + SFT/RL 训练触发 + 跨租户聚合 |
 | **引擎层去业务化** | 内核无关原则（CLAUDE.md §8）+ PipelineStageConfig 唯一约定接口 + 架构守卫 172 规则自动执法 |
 
-### 16.3 aiPlat 相对三方的劣势/差距区（应关注的方向）
+### 16.3 aiPlat 相对三方的劣势/差距区（2026-08-19 复核：原 8 项差距中 7 项已由行动纲领 P1/P2 批次补齐）
 
-| 差距 | 三方参照 | 建议 |
-|---|---|---|
-| **学习闭环的触发与维护机制** | Hermes 的 nudge 阈值（每 10 prompt → memory review、每 10 工具迭代 → skill review）+ Curator 后台维护（active→stale→archived） | aiPlat 有 AutoLearner 但触发更多依赖夜间流水线批量，可引入 Hermes 式会话内实时 nudge + 技能生命周期维护 |
-| **Skill 生态开放度** | Hermes agentskills.io 开放标准 + Hub 市场 + 230K stars 社区；Claude Code skills marketplace | aiPlat SkillMarketplace 已实现（`skill_marketplace.py:30` git clone 安装）但无开放标准/Hub 生态，可对接 agentskills.io |
-| **子代理 provider 多样性** | DSH 6 种 provider（in-process/fork/ACP/Claude Code/Codex/dsh-sdk）+ continuable 编排 | aiPlat SubagentCoordinator 功能完整但传输单一（进程内），可增加 ACP/外部运行时子代理后端 |
-| **事件源架构纯度** | DSH append-only SessionEvent 日志为唯一真相源（模型可见 ⟺ 日志），fork/resume/replay/UI 全从同一流派生 | aiPlat 的 PipelineRunStore 是状态型（SQLite 行），可借鉴事件源模型增强回放/审计一致性 |
-| **多渠道矩阵** | Hermes 20+ IM 平台 Gateway | aiPlat 仅 Telegram/Slack/WebChat 三适配器 + Gateway 架构（`gateway/router.py:30`），扩展空间大 |
-| **模型 provider 生态** | Hermes 30+ provider 家族插件化；Claude Code 官方模型质量 | aiPlat 解析链严谨但 provider 面较窄（env 自动发现 + Ollama/LM Studio 等），可插件化扩展 |
-| **运行时自修改** | DSH 动态 Cordis 插件 define/run/undefine（opt-in） | aiPlat 的 EvolutionEngine 是"离线夜间演化"，无"运行中挂载/卸载插件"能力（安全边界需谨慎） |
-| **前端产品完成度（coding 场景）** | Claude Code IDE 插件 + checkpoint UI + diff 视图 | aiPlat 前端管理面强（326 文件）但 coding 场景交互（diff/checkpoint 回放）弱 |
+> **2026-08-19 状态更新**：下表 8 项差距在 2026-08-15 初版时均为"未落地"；经行动纲领 **53/53 DONE**（P1-A 对标差距 6/6 + P2 演进治理 12/12）后，**前 7 项已补齐**（均附代码证据），仅"前端产品完成度（coding 场景）"一项不在 53 项行动纲领覆盖内、保持原状。
+
+| 差距 | 三方参照 | 建议 | 2026-08-19 状态 |
+|---|---|---|---|
+| **学习闭环的触发与维护机制** | Hermes 的 nudge 阈值（每 10 prompt → memory review、每 10 工具迭代 → skill review）+ Curator 后台维护（active→stale→archived） | aiPlat 有 AutoLearner 但触发更多依赖夜间流水线批量，可引入 Hermes 式会话内实时 nudge + 技能生命周期维护 | ✅ **已补齐（P1-A1 + P1-A2）**：会话内实时 nudge（`harness/learning/learn_nudge_hook.py`）+ Curator 技能生命周期维护（`harness/learning/skill_curator.py`、`harness/knowledge/skill_curator.py`） |
+| **Skill 生态开放度** | Hermes agentskills.io 开放标准 + Hub 市场 + 230K stars 社区；Claude Code skills marketplace | aiPlat SkillMarketplace 已实现（`skill_marketplace.py:30` git clone 安装）但无开放标准/Hub 生态，可对接 agentskills.io | ✅ **已补齐（P1-A5）**：agentskills.io 对接（`harness/knowledge/skill_marketplace.py` + platform `api/routers/skill_marketplace.py`）；开放生态规模仍小 |
+| **子代理 provider 多样性** | DSH 6 种 provider（in-process/fork/ACP/Claude Code/Codex/dsh-sdk）+ continuable 编排 | aiPlat SubagentCoordinator 功能完整但传输单一（进程内），可增加 ACP/外部运行时子代理后端 | ✅ **已补齐（P1-A3，PR #21）**：`SubagentProvider` 抽象 + `InProcessProvider`/`ACPProvider` 双实现（`apps/agents/subagent/providers.py:49,81,119`），`execute_parallel(provider=)`/`send_message`/`get_instance_status` 三态接线 |
+| **事件源架构纯度** | DSH append-only SessionEvent 日志为唯一真相源（模型可见 ⟺ 日志），fork/resume/replay/UI 全从同一流派生 | aiPlat 的 PipelineRunStore 是状态型（SQLite 行），可借鉴事件源模型增强回放/审计一致性 | ✅ **已补齐（P2-A1）**：run_events 事件折叠派生状态（`pipeline_run_store.py:266` fold 实现），事件可回放/崩溃恢复；状态快照查询路径保留 |
+| **多渠道矩阵** | Hermes 20+ IM 平台 Gateway | aiPlat 仅 Telegram/Slack/WebChat 三适配器 + Gateway 架构（`gateway/router.py:30`），扩展空间大 | ✅ **已补齐（P1-A4，PR #22）**：7 渠道（telegram/slack/webchat/discord/wecom/email/dingtalk，`channels/adapter.py:16-23`）；相对 Hermes 22 平台广度仍有差距 |
+| **模型 provider 生态** | Hermes 30+ provider 家族插件化；Claude Code 官方模型质量 | aiPlat 解析链严谨但 provider 面较窄（env 自动发现 + Ollama/LM Studio 等），可插件化扩展 | ✅ **已补齐（P2-A3）**：provider 元数据配置化（`infra/management/model/manager.py:1601`，`config/providers.yaml`），新增 provider 无需改代码 |
+| **运行时自修改** | DSH 动态 Cordis 插件 define/run/undefine（opt-in） | aiPlat 的 EvolutionEngine 是"离线夜间演化"，无"运行中挂载/卸载插件"能力（安全边界需谨慎） | ✅ **已补齐（P2-A2）**：运行时扩展缝（`core_facade.py:29,58`，可调用 handler 白名单 + 审批门控，做成安全边界而非 DSH 式 opt-in） |
+| **前端产品完成度（coding 场景）** | Claude Code IDE 插件 + checkpoint UI + diff 视图 | aiPlat 前端管理面强（325 TSX 文件）但 coding 场景交互（diff/checkpoint 回放）弱 | ⚠️ **未变**（不在行动纲领 53 项覆盖内；2026-08-19 基线未涉及 coding 场景前端） |
 
 ### 16.4 三方可借鉴 aiPlat 的点（互证 aiPlat 优势）
 
@@ -267,7 +270,7 @@
 
 | 系统 | 分析方法 | 证据来源 |
 |---|---|---|
-| aiPlat | 代码全量分析（4 个并行子代理 40+ 关键文件 + 主代理交叉验证） | 本仓库 `aiPlat-core/`（CoreFacade 210 接口、PipelineEngine 12,281 行、policy_gate.py、evolution_engine.py、context_bus.py、seci_engine.py 等） |
+| aiPlat | 代码全量分析（4 个并行子代理 40+ 关键文件 + 主代理交叉验证） | 本仓库 `aiPlat-core/`（CoreFacade 210 接口、PipelineEngine 8,288 行（P2-A4 拆分后 5 Mixin）、policy_gate.py、evolution_engine.py、context_bus.py、seci_engine.py 等） |
 | DeepSeek Harness | 本地源码一手分析（docs + 源码双重交叉验证） | `/Users/apple/workdata/person/deepseek-harness/`（packages/core/agent-loop、core/tools、session、subagent、workflow、sandbox 等） |
 | Claude Code | web 调研（官方文档优先 + 第三方分析） | [How Claude Code works](https://code.claude.com/docs/en/how-claude-code-works)、[Workflows docs](https://code.claude.com/docs/en/workflows)、[Sandboxing](https://code.claude.com/docs/en/sandboxing)、[Sessions](https://code.claude.com/docs/en/sessions)、[Checkpointing](https://code.claude.com/docs/en/checkpointing) |
 | Hermes | 文档级调研（初版）+ **v0.20.1 源码级验证**（2026-08-15 补充，与 DSH 同深度） | 文档：[hermes-agent](https://github.com/NousResearch/hermes-agent)（230,763 stars / MIT / v0.20.1）、[官方文档站](https://hermes-agent.nousresearch.com/docs/developer-guide/architecture)；源码：`/Users/apple/workdata/person/openSource/hermes-agent-main/`（14 维度逐一验证，12 项成立 / 2 项部分成立，见 §17.4） |
@@ -282,8 +285,8 @@
 | 4 | Hermes | 学习闭环的"eval"环节 | **已确认（v0.20.1 源码）**：无独立 eval 评分器，仅 frontmatter 硬校验 + advisory lint + LLM 自评（见 §17.4） |
 | 5 | Hermes | session_search 的 LLM 摘要 | **已确认（v0.20.1 源码）**：检索本体无 LLM（`session_search_tool.py:27` "No LLM calls anywhere"）；README 的 "LLM summarization" 指其他辅助路径（见 §17.4） |
 | 6 | DSH | 自修改能力安全性 | README 自述"非安全边界、opt-in 开发工具" |
-| 7 | aiPlat | MFA（TOTP/WebAuthn） | **实测未实现**（全仓零命中），CLAUDE.md 中仅为安全建议 |
-| 8 | aiPlat | SDK bind_skill 缺陷 | `agent.py:64/:177` 引用未初始化 `self._skills`/`self._tools`，潜在 AttributeError |
+| 7 | aiPlat | MFA（TOTP/WebAuthn） | **✅ 已实现（2026-08-19 基线 P0-B2/PR #28）**：TOTP RFC 6238（`aiPlat-platform/auth/mfa.py`，setup/verify/disable 端点）+ **admin 强制**（`POST /tenant/api-keys` admin 未启用 MFA → 422 `mfa_required`，`routes.py:5855`）；CLAUDE.md §11b 已从建议升级为强制；MFA 测试 9 passed |
+| 8 | aiPlat | SDK bind_skill 缺陷 | **✅ 已修复（2026-08-19 基线 P0-B1）**：`self._skills`/`self._tools` 初始化补齐，不再潜在 AttributeError |
 | 9 | aiPlat | apps/ontology_editor 未注册 apps.yaml | 目录存在但未注册进模块注册表（小口径偏差） |
 
 ### 17.3 DeepSeek Harness 关键限制（增量源码验证，对标公平性校准）
@@ -380,10 +383,10 @@
 **aiPlat 在三方对标中的定位**：aiPlat 不是"又一个 coding agent"，而是**企业级 FDE 操作系统**——它的差异化不在单点能力（每项单点能力三方都有类似物），而在于**将治理、审计、审批、知识、交付闭环组合成平台**。核心结论：
 
 1. **aiPlat 最强**：企业治理（防篡改审计 + 多租户 + 计费 + RBAC）、交付流水线（HITL/回滚/断点续跑）、自我进化（夜间流水线 + 训练触发）、知识引擎（SECI + 本体 + GraphRAG）。
-2. **aiPlat 最弱**：渠道广度（Hermes 20+ IM vs 3）、模型 provider 生态（Hermes 30+ vs env 发现）、Skill 开放生态（Hermes 开放标准 + Hub）、事件源架构纯度（DSH）。
-3. **最值得吸收的三项外部能力**：① Hermes 的会话内实时学习 nudge + Curator 技能维护；② DSH 的子代理 provider 多样性 + 事件源会话；③ Claude Code 的 Server-managed settings（企业远程强制策略）。
+2. **aiPlat 最弱（2026-08-19 复核后）**：渠道广度（7 渠道 vs Hermes 22 平台）、模型 provider 生态家族数（插件化已建但家族数远少于 Hermes 38）、Skill 开放生态规模（已对接 agentskills.io 但社区规模小）、事件源纯度（已实现折叠派生但仍是"状态+事件"双轨，非纯事件源）。
+3. **最值得吸收的三项外部能力——2026-08-19 已全部落地**（行动纲领 P1-A 对标差距 6/6 DONE）：① Hermes 的会话内实时学习 nudge + Curator 技能维护 → **P1-A1 nudge（`learn_nudge_hook.py`）+ P1-A2 Curator（`skill_curator.py`）**；② DSH 的子代理 provider 多样性 + 事件源会话 → **P1-A3 子代理 provider（`providers.py` InProcess/ACP）+ P2-A1 run_events 折叠派生（`pipeline_run_store.py:266`）**；③ Claude Code 的 Server-managed settings（企业远程强制策略）→ **P1-A6 ManagedPolicy（`aiPlat-platform/auth/schemas_policy.py:119`）**。**更新后的"下一批最值得吸收项"**：G6 CC/Codex hooks 协议桥（§20 中唯一仍完全缺失）、Hermes 22 平台渠道广度延伸（当前 7）、Claude Code checkpoint/rewind 用户级 UI（coding 场景前端）。
 
-*报告基于 2026-08-15 代码快照与 web 调研，三方信息可能随版本更新；aiPlat 侧证据可在本仓库 `grep -rn` 复核。*
+*报告基于 2026-08-15 代码快照与 web 调研，**2026-08-19 已按行动纲领基线（53 DONE / 143 passed / 能力 1032/1039）复核更新 aiPlat 侧结论**；三方信息可能随版本更新；aiPlat 侧证据可在本仓库 `grep -rn` 复核。*
 
 ---
 
@@ -426,7 +429,7 @@ flowchart LR
 |---|---|---|---|---|
 | **组织哲学** | 分层单体 + 治理内核（四层单向依赖 + 门面） | **一切皆插件**（Cordis 无特权核心，注册即 effect、卸载即回滚） | 单进程 CLI + 插件生态（闭源核心） | 窄腰核心循环 + 边缘快速扩张（"能力在边缘"） |
 | **核心 vs 边缘** | 引擎层去业务化（PipelineStageConfig 唯一约定接口） | 能力缝 = Service Definition/Provider/Consumer 三角色强制模式 | 核心闭源，扩展走 plugins/skills/MCP | 核心是 narrow waist，新增核心工具高门槛（footprint ladder） |
-| **架构纯度** | ★★★★（分层清晰但模块间有历史耦合） | ★★★★★（无特权核心，可替换性最高） | ★★★（核心不可替换，生态可扩展） | ★★★★（核心循环稳定，边缘插件化） |
+| **架构纯度** | ★★★★（分层清晰；历史耦合已大幅消化，2026-08-19 P0-A1/A2/P2-A4） | ★★★★★（无特权核心，可替换性最高） | ★★★（核心不可替换，生态可扩展） | ★★★★（核心循环稳定，边缘插件化） |
 
 ### 19.2 状态管理范式（最重要的架构差异）
 
@@ -437,13 +440,13 @@ flowchart LR
 | **Claude Code** | 文件 + SQLite：会话持久化到 `~/.claude/projects/`（transcript.jsonl）+ 检查点（git 式快照） | 官方 Sessions/Checkpointing 文档 | 简单直观；/rewind 回滚 | 无统一事件模型；跨会话关联弱 |
 | **Hermes** | SQLite 会话库（WAL + FTS5）+ 策展记忆文件（MEMORY.md/USER.md 冻结快照注入） | `~/.hermes/state.db` 官方文档 | 检索快（FTS5 三虚拟表）；prompt cache 友好 | 会话历史与策展记忆两层分离；无事件回放模型 |
 
-**对标结论**：DSH 的事件源是架构上最优雅的（单一真相源），aiPlat 的状态+事件双轨是工程上最实用的（查询快 + 审计全），两者差异本质是"日志可重建" vs "状态可治理"——aiPlat 的 `run_events` 表（schema.py:67）已是向事件源演进的基础（详见改进方案 P2-1）。
+**对标结论**：DSH 的事件源是架构上最优雅的（单一真相源），aiPlat 的状态+事件双轨是工程上最实用的（查询快 + 审计全），两者差异本质是"日志可重建" vs "状态可治理"——aiPlat 的 `run_events` 表（schema.py:67）已是向事件源演进的基础，且 **2026-08-19 已落地折叠派生（P2-A1，`pipeline_run_store.py:266`）**：事件可回放/崩溃恢复，状态快照查询路径保留（默认快照、`from_events` 增强路径）。
 
 ### 19.3 控制平面 vs 数据平面
 
 | 系统 | 控制平面 | 数据/执行平面 | 治理集成度 |
 |---|---|---|---|
-| **aiPlat** | 管理端 Web（326 前端文件）+ platform API + RBAC 三层（permission/route/menu）+ 审批中心 + 诊断中心（50 页面） | CoreFacade 210 接口 → Syscall 封口（tool/llm/skill）→ 四大 Gate → 执行引擎 | **最高**：审批/回滚/审计/发布灰度贯穿 UI-API-落库 |
+| **aiPlat** | 管理端 Web（325 TSX 前端文件，2026-08-19）+ platform API + RBAC 三层（permission/route/menu）+ 审批中心 + 诊断中心（50 页面） | CoreFacade 210 接口 → Syscall 封口（tool/llm/skill）→ 四大 Gate → 执行引擎 | **最高**：审批/回滚/审计/发布灰度贯穿 UI-API-落库 |
 | **Claude Code** | CLI/IDE + Console（组织/席位）+ Server-managed settings（远程强制策略）+ ZDR | AgentLoop → 工具执行引擎 → Linux 沙箱（seccomp/landlock） | 高：企业策略远程强制，但审计细节官方透明度低 |
 | **DSH** | Web GUI（VitePress，loopback only）+ profile/bundle 配置树 + ACP | 插件树（tools/session/agent-loop 全可替换） | 中：配置驱动强，但无企业级 RBAC/审计平台化 |
 | **Hermes** | CLI/TUI + Gateway 多渠道控制面 + API Server | AIAgent 核心循环 → 7 种终端后端 | 低：交互式审批（smart/manual/off），无审计留痕平台化 |
@@ -487,12 +490,12 @@ flowchart LR
 
 | 维度 | aiPlat | DSH | Claude Code | Hermes |
 |---|---|---|---|---|
-| 核心可替换性 | 引擎层去业务化 + 门面，但模块间历史耦合存在（改进方案 P2-4） | **最高**（一切插件，模型适配器/工具/会话/循环全可替换） | 最低（核心闭源） | 中高（核心循环稳定，边缘插件化） |
+| 核心可替换性 | 引擎层去业务化 + 门面；历史耦合已大幅消化（P0-A1 harness→apps 收敛 DI、P0-A2 api→CoreFacade 292 行清零、P2-A4 拆分收官，2026-08-19） | **最高**（一切插件，模型适配器/工具/会话/循环全可替换） | 最低（核心闭源） | 中高（核心循环稳定，边缘插件化） |
 | 无特权扩展 | ✅（apps.yaml 注册 + 白名单 handler） | ✅（bundle 挂载） | ❌（需官方生态） | ✅（四类插件） |
 | 架构守卫 | **172 条规则自动执法**（唯一有宪法级守卫的系统） | 生成式文档 freshness 门禁 + 100% 覆盖率门禁 | 无公开守卫 | 无公开守卫 |
 | 文档纪律 | CLAUDE.md 五级规约 + 能力登记 + 证据验证强制 | 每个包 README 强制 Known Limitations + 1010 篇设计记录 | 官方文档 + 社区镜像 | 官方文档站 + 3.7MB llms-full |
 
-**对标结论**：aiPlat 的"架构守卫 172 规则 + 宪法测试 + 能力登记 + 证据验证"是四者中唯一的**工程化架构治理体系**（DSH 有纪律但偏文档化，Claude Code/Hermes 无守卫）；DSH 的可替换性最高；aiPlat 的可演进性受历史耦合限制（正是改进方案 P0/P2 要解决的）。
+**对标结论**：aiPlat 的"架构守卫 172 规则 + 宪法测试 + 能力登记 + 证据验证"是四者中唯一的**工程化架构治理体系**（DSH 有纪律但偏文档化，Claude Code/Hermes 无守卫）；DSH 的可替换性最高；aiPlat 的历史耦合限制已由改进方案 P0/P2 落地解除（P0-A1/A2 收敛 + P2-A4 拆分，2026-08-19 基线 53/53 DONE）。
 
 ### 19.8 架构维度汇总评分
 
@@ -507,7 +510,7 @@ flowchart LR
 | 可演进性 | ★★★★（守卫强但耦合存在） | ★★★★★（可替换性最高） | ★★★（闭源） | ★★★★（边缘插件化） |
 
 **架构对比核心结论**：
-1. **aiPlat 的架构定位**：四者中唯一的"分层单体 + 治理内核 + 多服务部署"架构——架构强项在**治理体系**（172 规则守卫 + 控制/数据平面双平台化 + 状态事件双轨），架构弱项在**模块间历史耦合**与**状态/事件一致性**。
+1. **aiPlat 的架构定位**：四者中唯一的"分层单体 + 治理内核 + 多服务部署"架构——架构强项在**治理体系**（172 规则守卫 + 控制/数据平面双平台化 + 状态事件双轨）；原架构弱项（模块间历史耦合、状态/事件一致性）已由行动纲领 P0/P2 批次落地解除（P0-A1/A2 收敛 + P2-A1 折叠派生 + P2-A4 拆分，2026-08-19 基线 53/53 DONE）。
 2. **DSH 是架构纯度的标杆**：一切皆插件 + 纯事件源 + 无特权核心，是"可替换性"与"可重放性"的最优解；代价是 pre-release 无兼容承诺、上层能力受限。
 3. **aiPlat 可借鉴的架构改进**（详见改进方案）：P2-1 事件源双写（向 DSH 的单一真相源演进）、P2-2 运行时扩展缝（受限白名单内）、P2-4 守卫误报修正（治理体系自身的质量）。
 
@@ -519,34 +522,36 @@ flowchart LR
 
 ### 20.1 缺口矩阵（按缺口性质分类）
 
-| # | 能力（三方参照） | 来源系统 | aiPlat 现状 | 缺口性质 | aiPlat 证据 / 缺失证据 |
-|---|---|---|---|---|---|
-| G1 | **会话内实时学习 nudge**（每 10 turn/迭代后台 review） | Hermes（`agent_init.py:1744,1860`） | 有记忆 nudge（`memory/manager.py:1104` get_nudge ~10 turns），但**无"技能"实时 review**（AutoLearner 仅夜间批量 process_pending） | ⚠️ **部分具备**（记忆 nudge 有，技能实时 review 缺） | 记忆 nudge 存在；技能侧见 `evolution_engine.py:289`（夜间批量） |
-| G2 | **Curator 技能生命周期维护**（active→stale→archived） | Hermes（`curator.py:305`） | SkillRegistry 有 `SkillBindingStats.recent_results` 但**无主动归档机制** | ❌ **缺失** | `apps/skills/registry.py:108`（无生命周期维护） |
-| G3 | **事件源会话单一真相源**（模型可见 ⟺ 日志） | DSH（`docs/architecture.md:92-96`） | 有 `run_events` 表（`execution_store_schema.py:67`）但状态快照为主，事件非"单一真相源" | ⚠️ **部分具备**（事件表有，折叠派生无） | 状态型 `pipeline_run_store.py:54` |
-| G4 | **运行时自修改**（动态插件 define/run/undefine） | DSH（cordis-host-runner） | PluginManager 是 DB 管理（注册/启停/回滚），**无运行时代码注入** | ❌ **缺失** | `apps/plugins/manager.py:8` |
-| G5 | **Server-managed settings**（企业远程强制策略，本地不可覆盖） | Claude Code | 有 tenant policy（`audit_mixin.py:253` get_tenant_policy）但**无"managed 强制层"**（本地可覆盖） | ❌ **缺失** | `schemas_policy.py`（无 managed 标志） |
-| G6 | **CC/Codex hooks 协议桥**（复用三方 hooks.json） | DSH（hooks-claude-code/codex） | 有 HookManager（`hook_manager.py:111`）但**无 CC/Codex 协议兼容层** | ❌ **缺失** | `infrastructure/hooks/`（无协议桥） |
-| G7 | **Checkpointing /rewind 用户级回滚** | Claude Code | **有**：`file_checkpoint.py:69` checkpoint_file + `restore_file_checkpoint:180` + snapshot | ✅ **具备** | `execution/file_checkpoint.py` |
-| G8 | **agentskills.io 开放标准对接** | Hermes（skills_tool.py:28-44） | SkillMarketplace 有内部市场（`skill_marketplace.py:30`）但**无开放标准/Hub 对接** | ❌ **缺失** | `knowledge/skill_marketplace.py`（git clone 内部安装） |
-| G9 | **多渠道 Gateway 广度**（22 平台） | Hermes（plugins/platforms/ 22 适配器） | 仅 3 适配器（Telegram/Slack/WebChat，`channels/adapter.py:44`）但 Gateway 控制面已就绪 | ⚠️ **部分具备**（控制面有，适配器少） | `aiPlat-app/channels/` |
-| G10 | **模型 provider 插件化**（38 家族） | Hermes（providers/ 38 profiles） | ModelManager env 发现 + Ollama/LM Studio 等，**无目录插件化** | ⚠️ **部分具备**（统一解析有，插件化无） | `infra/management/model/manager.py:664` |
-| G11 | **子代理 provider 多样性**（6 种传输） | DSH（subagent 6 providers） | SubagentCoordinator 仅进程内单实现 | ❌ **缺失** | `apps/agents/subagent/`（单实现） |
-| G12 | **工作流 worker 隔离执行** | DSH（worker-thread） | 有 PipelineEngine + WorkflowService（拓扑排序执行）但**无独立 worker 隔离** | ⚠️ 部分具备（编排有，隔离无） | `builder_workflow_service.py:51` |
-| G13 | **每 turn judge 的持久化 goals** | Hermes（goals.py:1006） | 有 goal 触发器（`event_loop.py:35` Trigger cron/webhook/goal）但**无 judge 模型每 turn 判定** | ⚠️ 部分具备（goal 触发有，judge 无） | `execution/event_loop.py` |
-| G14 | **no-agent 纯脚本 cron** | Hermes（cron/jobs.py:1571 no_agent） | 有 cron 触发器（`event_loop.py`）但**无纯脚本零 LLM 模式** | ⚠️ 部分具备 | `execution/event_loop.py` |
-| G15 | **单文件巨兽的可维护性反例** | Hermes（run_agent.py 9005 行） | PipelineEngine 12,281 行——**同样存在**大文件问题 | ⚠️ 两者皆弱（非 aiPlat 独缺） | `pipeline_engine.py`（12k 行） |
+> **2026-08-19 状态更新**：本表初版（2026-08-15）判定 6 ❌ 缺失 + 8 ⚠️ 部分具备；经行动纲领 **53/53 DONE**（P1-A 对标差距 6/6 + P2 演进治理 12/12）后，**G1-G5、G8-G14 共 12 项已补齐（✅）**，G15 已由 aiPlat 侧治理，**仅 G6（CC/Codex hooks 协议桥）仍 ❌ 缺失**（未纳入 53 项行动纲领）。闭合项均附代码证据 + 对应行动纲领项。
 
-### 20.2 缺口汇总与优先级
+| # | 能力（三方参照） | 来源系统 | aiPlat 现状 | 缺口性质 | aiPlat 证据 / 缺失证据 | 2026-08-19 状态 |
+|---|---|---|---|---|---|---|
+| G1 | **会话内实时学习 nudge**（每 10 turn/迭代后台 review） | Hermes（`agent_init.py:1744,1860`） | 有记忆 nudge（`memory/manager.py:1104` get_nudge ~10 turns），但**无"技能"实时 review**（AutoLearner 仅夜间批量 process_pending） | ⚠️ **部分具备**（记忆 nudge 有，技能实时 review 缺） | 记忆 nudge 存在；技能侧见 `evolution_engine.py:289`（夜间批量） | ✅ **已补齐（P1-A1）**：`harness/learning/learn_nudge_hook.py` 会话内实时 nudge 钩子 |
+| G2 | **Curator 技能生命周期维护**（active→stale→archived） | Hermes（`curator.py:305`） | SkillRegistry 有 `SkillBindingStats.recent_results` 但**无主动归档机制** | ❌ **缺失** | `apps/skills/registry.py:108`（无生命周期维护） | ✅ **已补齐（P1-A2）**：`harness/learning/skill_curator.py` + `harness/knowledge/skill_curator.py`（active→stale→archived 生命周期维护） |
+| G3 | **事件源会话单一真相源**（模型可见 ⟺ 日志） | DSH（`docs/architecture.md:92-96`） | 有 `run_events` 表（`execution_store_schema.py:67`）但状态快照为主，事件非"单一真相源" | ⚠️ **部分具备**（事件表有，折叠派生无） | 状态型 `pipeline_run_store.py:54` | ✅ **已补齐（P2-A1）**：`pipeline_run_store.py:266` 事件折叠派生状态（崩溃恢复可重建；默认快照路径保留） |
+| G4 | **运行时自修改**（动态插件 define/run/undefine） | DSH（cordis-host-runner） | PluginManager 是 DB 管理（注册/启停/回滚），**无运行时代码注入** | ❌ **缺失** | `apps/plugins/manager.py:8` | ✅ **已补齐（P2-A2）**：运行时扩展缝（`core_facade.py:29,58`，handler 白名单 + 审批门控，做成安全边界而非 DSH 式 opt-in） |
+| G5 | **Server-managed settings**（企业远程强制策略，本地不可覆盖） | Claude Code | 有 tenant policy（`audit_mixin.py:253` get_tenant_policy）但**无"managed 强制层"**（本地可覆盖） | ❌ **缺失** | `schemas_policy.py`（无 managed 标志） | ✅ **已补齐（P1-A6）**：`ManagedPolicy`（`aiPlat-platform/auth/schemas_policy.py:119`）+ admin 端点（`api/routers/policy.py:89`） |
+| G6 | **CC/Codex hooks 协议桥**（复用三方 hooks.json） | DSH（hooks-claude-code/codex） | 有 HookManager（`hook_manager.py:111`）但**无 CC/Codex 协议兼容层** | ❌ **缺失** | `infrastructure/hooks/`（无协议桥） | ❌ **仍缺失**（未纳入 2026-08-19 行动纲领 53 项；§20 唯一剩余完全缺失项） |
+| G7 | **Checkpointing /rewind 用户级回滚** | Claude Code | **有**：`file_checkpoint.py:69` checkpoint_file + `restore_file_checkpoint:180` + snapshot | ✅ **具备** | `execution/file_checkpoint.py` | ✅ 已具备（不变） |
+| G8 | **agentskills.io 开放标准对接** | Hermes（skills_tool.py:28-44） | SkillMarketplace 有内部市场（`skill_marketplace.py:30`）但**无开放标准/Hub 对接** | ❌ **缺失** | `knowledge/skill_marketplace.py`（git clone 内部安装） | ✅ **已补齐（P1-A5）**：agentskills.io 对接（`harness/knowledge/skill_marketplace.py` + platform `api/routers/skill_marketplace.py`） |
+| G9 | **多渠道 Gateway 广度**（22 平台） | Hermes（plugins/platforms/ 22 适配器） | 仅 3 适配器（Telegram/Slack/WebChat，`channels/adapter.py:44`）但 Gateway 控制面已就绪 | ⚠️ **部分具备**（控制面有，适配器少） | `aiPlat-app/channels/` | ✅ **已补齐（P1-A4，PR #22）**：7 渠道（`channels/adapter.py:16-23` get_channel_adapter：telegram/slack/webchat/discord/wecom/email/dingtalk）；相对 Hermes 22 平台广度仍有差距 |
+| G10 | **模型 provider 插件化**（38 家族） | Hermes（providers/ 38 profiles） | ModelManager env 发现 + Ollama/LM Studio 等，**无目录插件化** | ⚠️ **部分具备**（统一解析有，插件化无） | `infra/management/model/manager.py:664` | ✅ **已补齐（P2-A3）**：provider 元数据配置化（`infra/management/model/manager.py:1601`，`config/providers.yaml`），新增 provider 免改代码 |
+| G11 | **子代理 provider 多样性**（6 种传输） | DSH（subagent 6 providers） | SubagentCoordinator 仅进程内单实现 | ❌ **缺失** | `apps/agents/subagent/`（单实现） | ✅ **已补齐（P1-A3，PR #21）**：`SubagentProvider` + `InProcessProvider`/`ACPProvider`（`apps/agents/subagent/providers.py:49,81,119`），`execute_parallel(provider=)`/`send_message`/`get_instance_status`（三态）接线 |
+| G12 | **工作流 worker 隔离执行** | DSH（worker-thread） | 有 PipelineEngine + WorkflowService（拓扑排序执行）但**无独立 worker 隔离** | ⚠️ 部分具备（编排有，隔离无） | `builder_workflow_service.py:51` | ✅ **已补齐（P2-A5）**：阶段执行隔离（`pipeline_engine.py`/`sandbox.py` `create_sandbox` + `stage.sandbox` 配置） |
+| G13 | **每 turn judge 的持久化 goals** | Hermes（goals.py:1006） | 有 goal 触发器（`event_loop.py:35` Trigger cron/webhook/goal）但**无 judge 模型每 turn 判定** | ⚠️ 部分具备（goal 触发有，judge 无） | `execution/event_loop.py` | ✅ **已补齐（P2-A6）**：`event_loop.py:283 _judge_goal_condition` goal 条件判定 |
+| G14 | **no-agent 纯脚本 cron** | Hermes（cron/jobs.py:1571 no_agent） | 有 cron 触发器（`event_loop.py`）但**无纯脚本零 LLM 模式** | ⚠️ 部分具备 | `execution/event_loop.py` | ✅ **已补齐（P2-A7）**：`event_loop.py:220,374` cron `mode=script` 纯脚本零 LLM 模式 |
+| G15 | **单文件巨兽的可维护性反例** | Hermes（run_agent.py 9005 行） | PipelineEngine 12,281 行——**同样存在**大文件问题 | ⚠️ 两者皆弱（非 aiPlat 独缺） | `pipeline_engine.py`（12k 行） | ✅ **aiPlat 侧已治理（P2-A4，PR #16-19）**：12,281→8,288 行 + 5 个 Mixin（healing/state/prompt/eval/stage）；Hermes run_agent.py 9005 行未拆分 |
 
-| 缺口类别 | 数量 | 清单 | 对应改进方案 |
+### 20.2 缺口汇总与优先级（2026-08-19 复核）
+
+| 缺口类别 | 数量 | 清单 | 对应行动纲领/改进方案 |
 |---|---|---|---|
-| ❌ **完全缺失**（aiPlat 无此能力） | 6 | G2 Curator、G4 运行时自修改、G5 托管策略、G6 hooks 桥、G8 agentskills、G11 子代理 provider | P1-2 / P2-2 / P1-6 / P2-4 / P1-5 / P1-3 |
-| ⚠️ **部分具备**（有基础，缺关键环节） | 8 | G1 实时技能 review、G3 事件折叠、G9 适配器广度、G10 provider 插件化、G12 worker 隔离、G13 goal judge、G14 no-agent cron | P1-1 / P2-1 / P1-4 / P2-3 / — / — / — |
+| ❌ **完全缺失**（aiPlat 无此能力） | **1** | G6 CC/Codex hooks 协议桥 | 未纳入 53 项行动纲领（剩余唯一缺失项） |
+| ✅ **已补齐**（2026-08-19，原 ❌/⚠️ → ✅） | **12** | G1 nudge、G2 Curator、G3 事件折叠、G4 运行时扩展缝、G5 ManagedPolicy、G8 agentskills、G9 渠道 7、G10 provider 插件化、G11 子代理 provider、G12 worker/阶段隔离、G13 goal judge、G14 no-agent cron | P1-A1/A2/A3/A4/A5/A6 + P2-A1/A2/A3/A5/A6/A7（P1-A 对标差距 6/6 + P2 演进治理 12/12 全 DONE） |
 | ✅ **已具备**（不构成缺口） | 1 | G7 checkpoint/rewind | — |
-| ⚠️ 双方皆弱（非缺口，共同短板） | 1 | G15 单文件巨兽 | P2-4（拆分） |
+| ✅ **aiPlat 侧已治理**（原双方皆弱） | 1 | G15 单文件巨兽（P2-A4 拆分收官） | P2-A4（12,281→8,288 行 + 5 Mixin） |
 
-**结论**：aiPlat 有 **6 项完全缺失** 与 **8 项部分具备** 的三方独有能力。其中优先级最高的是 **G1（实时学习）**、**G5（托管策略）**、**G11（子代理 provider）**、**G8（开放 Skill 生态）**——四项直接对应改进方案 P1 批次的四个核心项。这证明：**维度由 aiPlat 定义会漏掉这些缺口**，本章补齐了反向视角。
+**结论（更新）**：2026-08-15 初版判定 aiPlat 有 **6 项完全缺失** 与 **8 项部分具备** 的三方独有能力，优先级最高的是 G1/G5/G11/G8（对应改进方案 P1 批次的四个核心项）。**2026-08-19 基线（行动纲领 53/53 DONE）复核：上述 12 项已全部补齐，仅剩 G6（CC/Codex hooks 协议桥）一项完全缺失**——该证明"维度由 aiPlat 定义会漏掉这些缺口"的反向扫描方法论有效，且 P1-A/P2 批次按此方法论精准闭环。**下一轮补齐候选**：G6 hooks 协议桥 + 渠道广度延伸（7→更多）+ coding 场景前端（diff/checkpoint 回放）。
 
 ---
 
@@ -558,19 +563,19 @@ flowchart LR
 
 | 维度 | 最强 | aiPlat vs CC | aiPlat vs DSH | aiPlat vs Hermes | 差距性质 |
 |---|---|---|---|---|---|
-| 执行引擎 | **aiPlat** | 优（声明式流水线 vs 单进程 loop，CC 无引擎） | 优（12k 行企业级 vs 轻量事件循环） | 优（交付引擎 vs Agent 框架） | **主动优势区** |
+| 执行引擎 | **aiPlat** | 优（声明式流水线 vs 单进程 loop，CC 无引擎） | 优（8.3k 行企业级+5 Mixin vs 轻量事件循环） | 优（交付引擎 vs Agent 框架） | **主动优势区** |
 | 工具治理 | **aiPlat** | 优（Syscall 封口+多 Gate vs 权限规则） | 优（3D 权限+审计 vs 单调 guard） | 优（不可绕过执法 vs 配置层约束） | **主动优势区** |
 | 上下文工程 | **aiPlat** | 优（四层记忆+5 级压缩 vs auto-compact） | 平（四层记忆 vs 事件源推导） | 平/微优（实现更重，Hermes 缓存哲学同构） | **主动优势区** |
-| 子代理 | **DSH** | 优（多形态 vs Task） | **劣**（进程内单实现 vs 6 provider+continuable） | 平（多形态编排 vs 完全隔离） | **被动差距区**（G11） |
-| Skill 系统 | **Hermes** | 优（3 执行+严治理 vs 目录） | 平（治理 vs 分层注册） | **劣**（无开放生态 vs agentskills+学习闭环） | **被动差距区**（G8） |
+| 子代理 | **DSH** | 优（多形态 vs Task） | **平/接近**（InProcess+ACP 双 provider，`providers.py:81,119` vs 6 provider+continuable，P1-A3 已补齐 G11） | 平（多形态编排 vs 完全隔离） | 被动差距区（G11）→ **已补齐**，continuable 编排仍缺 |
+| Skill 系统 | **Hermes** | 优（3 执行+严治理 vs 目录） | 平（治理 vs 分层注册） | **平**（已对接 agentskills.io + Curator 维护，P1-A5/A2；生态规模仍小） | 被动差距区（G8）→ **已补齐** |
 | 工作流 | **aiPlat** | 优（可视化画布 vs 声明式） | 优（12 节点画布 vs 脚本） | 优（独立引擎 vs 无） | **主动优势区** |
 | 规划 | **平**（各有所长） | 平（4 级链 vs plan mode） | 优（规划链 vs logged plan） | 平（规划链 vs /goal judge） | 中性 |
 | 沙箱/审批 | **aiPlat** | 优（RBAC+审批生命周期 vs 5 模式） | 平（RBAC vs 3 平台 presets） | 优（不可绕过 vs 配置层 mode=off） | **主动优势区** |
-| 持久化 | **平**（aiPlat/DSH） | 优（哈希链审计+决策溯源 vs transcript） | 平（状态+事件 vs 纯事件源，各有所长） | 优（企业审计 vs SQLite 会话） | 主动优势区（审计）/ 被动（G3 事件源） |
-| 模型适配 | **aiPlat**（治理）/ **Hermes**（生态） | 优（统一解析+infra 权威 vs 官方模型） | 优（ModelManager vs adapter 注册表） | **劣于生态**（38 provider vs env 发现） | 治理优势区 / **生态差距区**（G10） |
-| 自我进化 | **平**（aiPlat/Hermes 不同维度） | **优**（14 步夜间+训练触发 vs 官方无） | 优（学习闭环 vs 运行时自修改） | 平（aiPlat 系统级 vs Hermes Agent 级） | 主动优势区 / 缺实时性（G1） |
-| 扩展机制 | **DSH** | 优（四级阶梯 vs plugins） | **劣**（模块注册 vs 一切皆插件+卸载回滚） | 平（四级阶梯 vs 8 类插件） | 被动差距区（架构纯度） |
-| 多渠道 | **Hermes** | 平（Web+ACP/A2A vs CLI/IDE） | 优（ACP/A2A+SDK vs ACP 子集） | **劣**（3 适配器 vs 22 平台） | **被动差距区**（G9） |
+| 持久化 | **平**（aiPlat/DSH） | 优（哈希链审计+决策溯源 vs transcript） | 平（状态+事件 vs 纯事件源，各有所长） | 优（企业审计 vs SQLite 会话） | 主动优势区（审计）/ 事件源（G3）→ **已补齐**（P2-A1 折叠派生） |
+| 模型适配 | **aiPlat**（治理）/ **Hermes**（生态） | 优（统一解析+infra 权威 vs 官方模型） | 优（ModelManager vs adapter 注册表） | **生态广度仍窄**（插件化已建 P2-A3，但家族数远少于 38） | 治理优势区 / 生态差距区（G10）→ **已补齐机制，广度仍窄** |
+| 自我进化 | **平**（aiPlat/Hermes 不同维度） | **优**（14 步夜间+训练触发 vs 官方无） | 优（学习闭环 vs 运行时自修改） | 平（aiPlat 系统级 vs Hermes Agent 级） | 主动优势区 / 实时性（G1）→ **已补齐**（P1-A1 nudge + P1-A2 Curator） |
+| 扩展机制 | **DSH** | 优（四级阶梯 vs plugins） | **平/接近**（运行时扩展缝已补 P2-A2；卸载回滚语义仍弱于 DSH"注册即 effect、卸载即回滚"） | 平（四级阶梯 vs 8 类插件） | 被动差距区（架构纯度）→ **已补齐运行时缝** |
+| 多渠道 | **Hermes** | 平（Web+ACP/A2A vs CLI/IDE） | 优（ACP/A2A+SDK vs ACP 子集） | **劣**（7 适配器 vs 22 平台，P1-A4 已从 3 扩至 7） | 被动差距区（G9）→ **已补齐机制，广度仍落后** |
 | 企业治理 | **aiPlat** | 优（审计/租户/计费 vs server-managed） | **优**（治理体系 vs 无） | **优**（治理体系 vs 无） | **绝对优势区** |
 
 ### 21.2 优劣分布统计
@@ -578,19 +583,20 @@ flowchart LR
 | 类别 | 数量 | 维度 |
 |---|---|---|
 | **aiPlat 主动优势区**（显著强于 ≥2 方） | 7 | 执行引擎、工具治理、上下文工程、工作流、沙箱/审批、企业治理、模型适配（治理侧） |
-| **aiPlat 被动差距区**（弱于 ≥1 方，且为结构性缺口） | 4 | 子代理（G11）、Skill 生态（G8）、多渠道（G9）、模型 provider 生态（G10） |
+| **aiPlat 被动差距区**（弱于 ≥1 方，且为结构性缺口；2026-08-19 复核） | **1** | 扩展机制/生态面：G6 CC/Codex hooks 协议桥（唯一仍完全缺失） |
+| **广度差距**（机制已补齐，规模仍落后；2026-08-19 新增分类） | 2 | 多渠道（7 vs 22 平台）、模型 provider 生态（插件化已建，家族数仍少） |
 | **持平/中性** | 3 | 规划、持久化（各有侧重）、自我进化（不同维度） |
-| **双方皆弱**（非差距，共同短板） | 1 | 单文件巨兽可维护性（G15） |
+| **双方皆弱**（非差距，共同短板） | 0 | G15 已由 aiPlat 侧治理（P2-A4 拆分收官）；Hermes 侧未变 |
 
 ### 21.3 优劣分析的 5 条核心结论
 
 1. **aiPlat 的 7 个主动优势区集中在"企业级治理闭环"**：执行引擎、工具治理、沙箱/审批、企业治理、工作流——这些是 aiPlat 相对三方的**结构性优势**（不是单点领先，是"治理体系"整体领先），且全部有代码证据（Syscall 封口、多 Gate、RBAC、审计链、PipelineEngine）。
 
-2. **aiPlat 的 4 个被动差距区恰好是"生态面"而非"治理面"**：子代理传输多样性、Skill 开放生态、多渠道广度、provider 插件化——都是"对外连接/生态"能力，不是内核能力。**结论：aiPlat 的差距是"接入面"差距，不是"内核面"差距**——这正是它作为企业平台定位的合理短板，也是改进方案 P1 全部四项的落点。
+2. **aiPlat 的 4 个被动差距区恰好是"生态面"而非"治理面"**：子代理传输多样性、Skill 开放生态、多渠道广度、provider 插件化——都是"对外连接/生态"能力，不是内核能力。**结论（2026-08-19 更新）：该判断已被行动纲领 P1-A 批次（6/6 DONE）精准验证并闭环**——4 个差距区全部补齐（P1-A3/A5/A4/A6 + P2-A3），证明"aiPlat 的差距是'接入面'差距，不是'内核面'差距"的结论成立且可快速补齐；当前仅剩 G6（hooks 协议桥）未纳入行动纲领。
 
 3. **没有任何维度 aiPlat 全面垫底**：14 个能力维度中，aiPlat 在 7 个维度占优、4 个维度弱于某方、3 个持平——**最弱项（多渠道 ★★★）与最强项（企业治理 ★★★★★）的差距说明 aiPlat 是"偏科但优势集中"的系统**。
 
-4. **优势区 vs 差距区的本质差异**：优势区（治理/内核）是**难复制**的（需要多年工程积累 + 治理体系），差距区（生态/接入）是**易补齐**的（P1 四项均可在 1-2 周内落地，见改进方案）。**这个结构对 aiPlat 非常有利**。
+4. **优势区 vs 差距区的本质差异**：优势区（治理/内核）是**难复制**的（需要多年工程积累 + 治理体系），差距区（生态/接入）是**易补齐**的（P1 四项均可在 1-2 周内落地，见改进方案）。**这个结构对 aiPlat 非常有利——且已被 2026-08-19 基线验证**：P1-A 对标差距 6 项全部在行动纲领周期内落地（nudge/Curator/子代理 provider/多渠道/agentskills/ManagedPolicy），差距区确实"易补齐"。
 
 5. **"持平"维度的真实含义**：上下文工程（aiPlat vs DSH/Hermes 平）与持久化（aiPlat vs DSH 平）不是"一样好"，而是**取向不同**——aiPlat 走"状态可治理"（快查询+审计），DSH 走"日志可重建"（纯事件源），Hermes 走"缓存友好"（冻结快照）。三者各解决一类问题，企业场景下 aiPlat 的取向更匹配（要审计/回滚/多租户）。
 
@@ -611,7 +617,7 @@ flowchart LR
 | **Hermes 侧能力事实**（v0.20.1 源码级验证） | ✅ **高（阳性，源码级）** | `/Users/apple/workdata/person/openSource/hermes-agent-main/` 直接读源码，§17.4 有 8 项文档差异实证 |
 | **Claude Code 侧能力事实** | ⚠️ **中（文档级）** | 闭源无源码，基于官方文档+第三方；§17.1 已标注 |
 | **§16 优势/劣势结论** | ✅ 高 | 基于上述源码级事实推导；弱势区的"结构性缺口"经 §20 反向扫描确认 |
-| **§20 能力缺口矩阵（G1-G15）** | ✅ 高（阳性缺口） | 缺口是"grep 确认 aiPlat 无此能力"的阳性事实 |
+| **§20 能力缺口矩阵（G1-G15）** | ✅ 高（阳性缺口） | 缺口是"grep 确认 aiPlat 无此能力"的阳性事实；**2026-08-19 复核：12 项已补齐（附代码证据），仅 G6 仍缺失** |
 | **§21 逐维度优劣判定（"最强"归属）** | ⚠️ 中 | 综合判断（能力深度+治理深度），非单一可复现指标；CC 侧置信度低 |
 | **§15 速览评分（★★★★★）** | ⚠️ 中 | 主观评分，仅作速览；精确对比以 §1-14 的带证据条目为准 |
 | **任何"某系统没有 X"的阴性结论** | ⚠️ 有盲区 | 如"Claude Code 官方无内置学习闭环"——基于文档未见，无法 100% 排除（闭源） |

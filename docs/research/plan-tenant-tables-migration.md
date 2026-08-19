@@ -1,6 +1,6 @@
 # Tenant 表迁移方案（P0-A3）
 
-> 状态：**✅ 已完成（2026-08-18）** · 目标：tenant_quotas/tenant_policies/tenant_usage 表 DDL + CRUD 从 core 迁至 platform
+> 状态：**✅ 已完成（2026-08-18/19，PR #20）** · 目标：tenant_quotas/tenant_policies/tenant_usage 表 DDL + CRUD 从 core 迁至 platform
 > 原则：**不改公共 API/调用语义**（消费方调用方式不变，仅 store 来源变化）；**零数据迁移**（同库同表，仅代码位置变化）
 > 宪法依据：`tests/constitution/test_kernel_agnostic.py::TestNoQuotaEnforcementInCore` + `test_layer_ownership.py::TestPlatformResponsibilitiesNotInCore`（当前靠 DEPRECATED marker 豁免）
 
@@ -61,12 +61,12 @@ core 层（消费）
   - 未注入时 `get_tenant_store()` 返回 None（消费方已有 `if store and hasattr(...)` 模式，零破坏）
 
 ### Phase B：platform 实现 TenantStore（中风险）
-- 新建 `aiPlat-platform/services/tenant_store.py`：
+- 新建 `aiPlat-platform/services/tenant_store.py`（**实际路径：`aiPlat-platform/tenants/tenant_store.py`**）：
   - 与 execution_store 同 DB 文件（db_path 复用）
-  - DDL：从 core 迁移 5 张表（tenants/tenant_quotas/tenant_usage/tenant_usage_ledger/tenant_policies）
+  - DDL：从 core 迁移 5 张表（tenants/tenant_quotas/tenant_usage/tenant_usage_ledger/tenant_policies）（**最终范围收窄为 3 张：tenant_quotas/tenant_usage_ledger/tenant_policies，见 §7 迁移范围最终界定**）
   - CRUD：从 quota_mixin + audit_mixin 迁移 8 方法（方法体原样剪切）
   - `ensure_schema()`：建表（IF NOT EXISTS，与现有库兼容）
-- 接线：platform server 启动时创建 TenantStore + `set_tenant_store()` 注入
+- 接线：platform server 启动时创建 TenantStore + `set_tenant_store()` 注入（**实际：`apps.fde/__init__.py` 挂载时注入**）
 - **保留**：core 的 ExecutionStore 仍可访问这些表（同库，兼容期），但不再负责 DDL/CRUD 定义
 
 ### Phase C：core 消费方改注入（高风险，逐文件）
@@ -116,7 +116,7 @@ core 层（消费）
 
 - **connector_delivery / audit_logs 留 core**：执行基础设施（非 tenant 业务概念）
 - **onboarding_evidence 留 core**：不在 P0-A3 范围（最小改动面），后续单独评估
-- **tenants 主表**：随迁移（schema.py:1728），与 tenant_quotas 同源
+- **tenants 主表**：初判随迁移（schema.py:1728，与 tenant_quotas 同源）；**最终保留 core**（见 §7 迁移范围最终界定，与 2026-08-19 基线一致）
 - **cost_tracker._tenant_usage**：内存同名变量，不迁移
 
 ## 7. 实施记录

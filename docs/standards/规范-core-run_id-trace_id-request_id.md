@@ -39,7 +39,7 @@ approved_date: 2026-08-16
      - 若存在：直接返回已有 run_id（以及当前 run 状态）
      - 若不存在：生成新的 `run_<ulid>`，写入映射表，再开始执行
 
-> **状态标注（P0-C2）**：`request_dedup` 表当前**未实现**。本节为推荐设计（幂等目标），实现前不得将"已实现"写入文档或 UI 声称。
+> **状态标注（P0-C2 更新，2026-08-19）**：`request_dedup` 表**已实现**（`core/services/execution_store_schema.py` 建表 + runs_mixin 幂等映射）。本节为当前实现描述。
 
 这样可以保证：
 - 上游超时重试不会创建重复 run
