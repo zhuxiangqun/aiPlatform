@@ -8,6 +8,7 @@ move: method bodies unchanged, no API/semantics change. self._collect_files
 from __future__ import annotations
 
 import json
+import logging
 import os
 import re
 import time

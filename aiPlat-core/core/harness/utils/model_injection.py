@@ -948,96 +948,6 @@ def ensure_skill_model(skill: Any, *, model_name: str, force: bool = False) -> A
 
 
 
-
-async def create_adapter_with_fallback(purpose: str, timeout: int = 60) -> Any:
-
-    """Try models in order, fallback on timeout. Returns (adapter, model_name).
-
-
-
-    Usage:
-
-        adapter, model_name = await create_adapter_with_fallback("wiki_curation", timeout=60)
-
-    """
-
-    import asyncio, logging as _logging
-
-    _fb_log = _logging.getLogger("aiplat.model_fallback")
-
-
-
-    try:
-
-        mgr = _get_cached_model_manager()
-
-        candidates = mgr.select_by_purpose_list(purpose)
-
-    except Exception:
-
-        candidates = []
-
-
-
-    # Purpose-specific env var override (comma-separated for fallback list)
-
-    if not candidates or len(candidates) == 1:
-
-        env_val = os.getenv(f"AIPLAT_{purpose.upper()}_MODEL", "").strip()
-
-        if env_val:
-
-            env_models = [m.strip() for m in env_val.split(",") if m.strip()]
-
-            candidates = env_models
-
-
-
-    if not candidates:
-
-        candidate = best_model_for_purpose(purpose)
-
-        candidates = [candidate] if candidate else []
-
-
-
-    last_error = None
-
-    for i, model_name in enumerate(candidates):
-
-        try:
-
-            adapter = create_selected_adapter(model_name=model_name)
-
-            _fb_log.info(f"Model '{model_name}' ({i+1}/{len(candidates)}) selected for '{purpose}'")
-
-            return adapter, model_name
-
-        except asyncio.TimeoutError:
-
-            _fb_log.warning(f"Model '{model_name}' ({i+1}/{len(candidates)}) timed out for '{purpose}'")
-
-            last_error = f"timeout after {timeout}s"
-
-            continue
-
-        except Exception as e:
-
-            _fb_log.warning(f"Model '{model_name}' ({i+1}/{len(candidates)}) failed for '{purpose}': {e}")
-
-            last_error = str(e)
-
-            continue
-
-
-
-    _fb_log.warning(f"All {len(candidates)} models failed for '{purpose}': {last_error}")
-    return None
-
-
-
-
-
 # ── Model failure cache: skip models that fail 3+ times within 5 min ──
 # Bounded by _MAX_FAILURE_MODELS: entries without recent failures are evicted
 # during the window prune so the tracker can't grow with arbitrary model names.
@@ -1130,30 +1040,17 @@ async def generate_with_fallback(purpose: str,
 
     candidates = []
 
-
-
-    # Env var override (comma-separated list for fallback order)
-
-    env_val = os.getenv(f"AIPLAT_{purpose.upper()}_MODEL", "").strip()
-
-    if env_val:
-
-        candidates = [m.strip() for m in env_val.split(",") if m.strip()]
-
-
-
-    # Fallback to infra auto-selection
+    # Candidate models come exclusively from the infra registry (scored by
+    # ModelManager.select_by_purpose_list) — no env override; the operator
+    # declares models in the infra registry and env vars must not steer
+    # selection (operator decision, 2026-08-19).
+    try:
+        candidates = _get_cached_model_manager().select_by_purpose_list(purpose)
+    except Exception as e:
+        logging.warning(str(e), exc_info=True)
 
     if not candidates:
-
-        try:
-
-            candidates = _get_cached_model_manager().select_by_purpose_list(purpose)
-
-        except Exception as e:
-
-            logging.warning(str(e), exc_info=True)
-
+        candidates = [best_model_for_purpose(purpose)]
 
 
     if not candidates:
@@ -1638,42 +1535,10 @@ def _load_llm_profile() -> dict:
 
 
 def _build_preferences(purpose: str) -> dict:
-    """收集偏好参数（env var 和 model_overrides），不再硬覆盖。
-    env var 指定的模型如果硬过滤通不过（RAM/VRAM 不足），记录 Warning 并忽略该偏好。
-    size=None 的本地模型拒绝授予偏好（防止 OOM 风险）。
+    """收集偏好参数（model_overrides YAML），不再硬覆盖；不使用 env var
+    （操作员在 infra 注册表声明模型，env 不参与选择，2026-08-19）。
     """
     prefs = {}
-    purpose_env = f"AIPLAT_{purpose.upper()}_MODEL"
-    env_val = os.getenv(purpose_env, "").strip()
-    if env_val:
-        first = env_val.split(",")[0].strip()
-        try:
-            import psutil
-            mgr = _get_cached_model_manager()
-            model = mgr._find_model_by_name(first)
-            if model is None:
-                logging.getLogger(__name__).warning("Env var model '%s' not found in registry", first)
-            elif model.size is None:
-                # size=None 的本地模型：拒绝偏好（防止 OOM）
-                if model.provider in ("openai", "deepseek", "anthropic", "openrouter"):
-                    prefs["env_var_model"] = first  # API 模型安全
-                else:
-                    logging.getLogger(__name__).warning(
-                        "Env var %s=%s has UNKNOWN size (Ollama not scanned?). "
-                        "Refusing +500 preference to avoid OOM risk.",
-                        purpose_env, first)
-            elif model.size == 0:
-                prefs["env_var_model"] = first  # API 模型显式 size=0
-            elif model.size > 0:
-                ram = psutil.virtual_memory().available
-                if model.size > ram:
-                    logging.getLogger(__name__).warning(
-                        "Env var %s=%s requires %.1fGB > available %.1fGB — ignoring",
-                        purpose_env, first, model.size / 1e9, ram / 1e9)
-                else:
-                    prefs["env_var_model"] = first
-        except Exception:
-            logging.getLogger(__name__).debug('_build_preferences failed', exc_info=True)
 
     # model_overrides（兼容保留）
     profile = _load_llm_profile()
