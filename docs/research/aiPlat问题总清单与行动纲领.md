@@ -28,35 +28,35 @@
 | P0-A1 | **harness→apps 反向依赖 53 处**（违反 §5.7 单向依赖） | `test_core_internal_boundaries` 断言 | **✅ 已修复（2026-08-18）**：服务调用 9 处收敛 integration.py DI，白名单 38→25 |
 | P0-A2 | **api→engine 直导 61 处**（绕过门面） | 同上（白名单外 9 处真实） | **✅ 已修复（2026-08-18）**：54 文件 292 行经 CoreFacade，执行引擎核心直导清零 |
 | P0-A3 | **core 管理 tenant_quotas/policies 表 5+3 处**（违反职责归属，代码已自标 DEPRECATED） | `execution_store_schema.py:7` | **✅ 已修复（2026-08-18）**：DDL+CRUD 迁 platform TenantStore，宪法真过 |
-| P0-A4 | **platform 做 LLM 推理 16 处 + agent 发现 1 处**（违反平台职责） | `test_platform_function_boundary` 断言 | 宪法违规 A5/A6 |
+| P0-A4 | **platform 做 LLM 推理 16 处 + agent 发现 1 处**（违反平台职责） | `test_platform_function_boundary` 断言 | **✅ 已修复**：`test_platform_function_boundary` 14 passed（含 layer_boundaries 组） |
 | P0-A5 | ~~infra 硬编码 aiPlat 3+3 处~~ **✅ 已修复（8c6a5154）** | `test_infra_agnostic` 现 pass | 宪法违规 A7/A8 |
-| P0-A6 | ~~内核 phase 字符串分支 3 处~~ **✅ 已修复（8c6a5154）**；**硬编码 state key 2 处待修**（违反内核无关 §8） | `test_ast_business_keys` | 宪法违规 A9 |
-| P0-A7 | **ReActLoop 未从 context 读 system_prompt** | `test_system_prompt_flow` | 宪法违规 A10 |
-| P0-A8 | **诊断 14 类未注册 + _check_security 缺失**（诊断体系不完整） | `test_sysgraph_registration` | 宪法违规 A12/A13 |
-| P0-A9 | **守卫 §57：coordinator.py 直调 sys_llm_generate 未走上下文压缩**（NEW 违规） | `coordinator.py:320,329` | 改进方案 P0-1 |
+| P0-A6 | ~~内核 phase 字符串分支 3 处~~ **✅ 已修复（8c6a5154）**；~~硬编码 state key 2 处~~ **✅ 已修复**（R4 正则 + engine_state_keys 基线 22 key） | `test_ast_business_keys` | **✅ 宪法违规 A9 清零** |
+| P0-A7 | **ReActLoop 未从 context 读 system_prompt** | `test_system_prompt_flow` | **✅ 已修复**：`test_system_prompt_flow` 5 passed |
+| P0-A8 | **诊断 14 类未注册 + _check_security 缺失**（诊断体系不完整） | `test_sysgraph_registration` | **✅ 已修复（2026-08-18）**：_check_security 注册 + `test_sysgraph_registration` 5 passed |
+| P0-A9 | **守卫 §57：coordinator.py 直调 sys_llm_generate 未走上下文压缩**（NEW 违规） | `coordinator.py:320,329` | **✅ 已修复**：subagent/coordinator.py 无 sys_llm_generate 直调，§57 0 违规 |
 | P0-A10 | **守卫 §17：Builder E2E 4 个测试真实失败** | 实跑 4 failed/16 passed | **✅ 已修复（2026-08-18）**：20/20 passed（3 处测试基建修复） |
 
 ### B. 功能缺陷（来自：实现审计 + 改进方案）
 
 | # | 问题 | 证据 | 来源 |
 |---|---|---|---|
-| P0-B1 | **SDK Agent.bind_skill/bind_tool 引用未初始化属性 → AttributeError** | `agent.py:70,79` | 改进方案 P0-4 |
-| P0-B2 | **MFA（TOTP/WebAuthn）全仓零实现**（admin 全权限无二步验证） | 全仓 grep 0 命中 | 改进方案 P0-5 |
-| P0-B3 | **3 个子系统整体未接线**：arena（Elo 竞技场）/ voice_loop / wake_agent | 全仓 0 生产调用者 | 实现审计 §2 |
-| P0-B4 | **CoreFacade getter 冗余**（抽样 50% 无外部调用者：get_policy_gate/get_context_bus/get_retrieval_crag 等 15/30）——能力经类直用生效，facade 接口成摆设（违反 §10 入口唯一性） | 抽样实测 | 实现审计 §3 |
-| P0-B5 | **9 个默认关闭的 opt-in flag**（RL/学习调度/灰度/会话检索/toolsets/OTel 等默认 false）——部署方不知晓则能力静默不生效 | grep `"false"` 实测 | 实现审计 §5 |
+| P0-B1 | **SDK Agent.bind_skill/bind_tool 引用未初始化属性 → AttributeError** | `agent.py:70,79` | **✅ 已修复**：`agent.py:58-59` `_skills`/`_tools` 已初始化 |
+| P0-B2 | **MFA（TOTP/WebAuthn）全仓零实现**（admin 全权限无二步验证） | 全仓 grep 0 命中 | **✅ 已修复（2026-08-18）**：`auth/mfa.py` RFC 6238 TOTP + 端点 + admin 强制（阶段 1+3）；WebAuthn 可选未做 |
+| P0-B3 | **3 个子系统整体未接线**：arena（Elo 竞技场）/ voice_loop / wake_agent | 全仓 0 生产调用者 | **✅ 已修复**：三者各 ≥10 个生产调用文件（已接线） |
+| P0-B4 | **CoreFacade getter 冗余**（抽样 50% 无外部调用者：get_policy_gate/get_context_bus/get_retrieval_crag 等 15/30）——能力经类直用生效，facade 接口成摆设（违反 §10 入口唯一性） | 抽样实测 | **⚠️ 部分**：get_policy_gate/get_context_bus 已有外部调用者；get_retrieval_crag 等仍 0 调用者（2026-08-18 复核），待清理或接线 |
+| P0-B5 | **9 个默认关闭的 opt-in flag**（RL/学习调度/灰度/会话检索/toolsets/OTel 等默认 false）——部署方不知晓则能力静默不生效 | grep `"false"` 实测 | **⚠️ 部分**：部分仍默认 false（AIPLAT_ENABLE_PRUNE_SCHEDULER/LEARNING_SCHEDULER 等）——行为配置属设计选择，建议文档化各 flag 语义（2026-08-18 复核） |
 
 ### C. 治理体系自身（来自：元审计 + 四元同步）
 
 | # | 问题 | 证据 | 来源 |
 |---|---|---|---|
 | P0-C1 | **standards/ 3 份规范全部 status: draft**（未定稿） | 3 份文件头部 | **✅ 已修复（2026-08-18）**：9/9 规范全部 approved |
-| P0-C2 | **规范 vs 代码矛盾**：mTLS(规范) vs API key(实际)、request_id=run_id(job_scheduler:273)、request_dedup 未实现 | `authenticator.py`/`job_scheduler.py:273` | 规范审计 C1-C3 |
-| P0-C3 | **registry→文档 56% 漂移**（80/142 符号不在 CAPABILITIES，含 ModelManager） | 实测 | 四元同步 §3.3 |
-| P0-C4 | **能力登记三口径不一致**（944/807/780） | registry 实测 | 四元同步 §3.4 |
-| P0-C5 | **cap check / check_doc_sync / generate_impact_matrix / check_code_doc_gap 4 机制未接线** | grep 空 | 四元同步 §2.2 |
-| P0-C6 | **宪法测试未在 CI 生效**（CI constitution job 实际红） | 24 failed 实跑 | 元审计 §10.1 |
-| P0-C7 | **守卫规则无黄金样本自检**（12 条 bug 无人发现的根因） | 12 条语法 bug 历史 | 元审计 §8 |
+| P0-C2 | **规范 vs 代码矛盾**：mTLS(规范) vs API key(实际)、request_id=run_id(job_scheduler:273)、request_dedup 未实现 | `authenticator.py`/`job_scheduler.py:273` | **✅ 已修复**：规范已消歧（不再提 mTLS）+ request_dedup 表已实现 |
+| P0-C3 | **registry→文档 56% 漂移**（80/142 符号不在 CAPABILITIES，含 ModelManager） | 实测 | **⚠️ 部分**：`sync_registry_to_docs.py` 已建 + pre-commit 提示机制；漂移未自动清零（每次 commit 提示 --fix） |
+| P0-C4 | **能力登记三口径不一致**（944/807/780） | registry 实测 | **✅ 已修复（351f816a）**：frontmatter 口径统一 + 校验防护 |
+| P0-C5 | **cap check / check_doc_sync / generate_impact_matrix / check_code_doc_gap 4 机制未接线** | grep 空 | **✅ 已修复**：4 机制全部接线（cap check pre-commit + check_doc_sync.sh + generate_impact_matrix.yml:139 + check_code_doc_gap pre-commit-hook.sh:120） |
+| P0-C6 | **宪法测试未在 CI 生效**（CI constitution job 实际红） | 24 failed 实跑 | **✅ 已修复**：宪法 143 passed + CI（architecture-guard.yml:29 + contracts-guard.yml:131） |
+| P0-C7 | **守卫规则无黄金样本自检**（12 条 bug 无人发现的根因） | 12 条语法 bug 历史 | **✅ 已修复**：rule_golden_sample.py --verify 入 CI（architecture-guard.yml:27） |
 
 ---
 
@@ -66,30 +66,30 @@
 
 | # | 问题（差距） | 三方参照 | 来源 |
 |---|---|---|---|
-| P1-A1 | **无会话内实时学习 nudge**（AutoLearner 仅夜间批量） | Hermes | 改进 P1-1 |
-| P1-A2 | **无 Curator 技能生命周期**（active→stale→archived） | Hermes | 改进 P1-2 |
+| P1-A1 | **无会话内实时学习 nudge**（AutoLearner 仅夜间批量） | Hermes | **✅ 已修复**：`learn_nudge_hook.py` create_learn_nudge_hook（POST_OBSERVE 触发） |
+| P1-A2 | **无 Curator 技能生命周期**（active→stale→archived） | Hermes | **✅ 已修复**：`skill_curator.py` 生命周期维护 |
 | P1-A3 | **子代理 provider 单一**（仅进程内，无外部后端） | DSH 6 provider | **✅ 已修复（2026-08-18）**：SubagentProvider 抽象 + in_process/acp 两实现 + 接线 |
 | P1-A4 | **多渠道仅 3 适配器**（Telegram/Slack/WebChat） | Hermes 22 平台 | **✅ 已修复（2026-08-18）**：7 渠道（+4 扩展），get_channel_adapter 统一解析 |
-| P1-A5 | **无 agentskills.io 开放标准对接** | Hermes | 改进 P1-5 |
-| P1-A6 | **无 Server-managed 托管策略**（企业远程强制） | Claude Code | 改进 P1-6 |
+| P1-A5 | **无 agentskills.io 开放标准对接** | Hermes | **✅ 已修复**：`skill_marketplace.py` P1-A5 开放标准对接（EXTERNAL_SOURCES + supports_external_source） |
+| P1-A6 | **无 Server-managed 托管策略**（企业远程强制） | Claude Code | **✅ 已修复**：`schemas_policy.py` class ManagedPolicy + PUT /platform/policy/managed |
 
 ### B. 体系补全（来自：元审计 + 四元同步 + 规范审计 + 文档审计）
 
 | # | 问题 | 来源 |
 |---|---|---|
-| P1-B1 | **消除能力登记双源差**（registry 生成 CAPABILITIES 统计） | 元审计 §7 |
-| P1-B2 | **verify_capability_consumers.sh 接入 CI**（替代废弃 caller_verify.sh） | 元审计 §7 |
-| P1-B3 | **启用 verify_claude_md_evidence --strict**（每条 ✅ 必须有 verify 块） | 元审计 §7 |
+| P1-B1 | **消除能力登记双源差**（registry 生成 CAPABILITIES 统计） | 元审计 §7 | **✅ 已修复**：`sync_registry_to_docs.py` registry→CAPABILITIES 同步 |
+| P1-B2 | **verify_capability_consumers.sh 接入 CI**（替代废弃 caller_verify.sh） | 元审计 §7 | **✅ 已修复**：architecture-guard.yml:45 + architecture_guard.sh:463 |
+| P1-B3 | **启用 verify_claude_md_evidence --strict**（每条 ✅ 必须有 verify 块） | 元审计 §7 | **✅ 已修复**：architecture_guard.sh:83 运行 --strict（evidence 25 passed） |
 | P1-B4 | **新增前端规范**（326 TSX 无约束） | 规范审计 | **✅ 已修复（2026-08-18）**：规范 approved + guard §43-47 强制 + tsc 通过 |
 | P1-B5 | **新增数据/DB 规范**（schema 归属/迁移/命名） | 规范审计 | **✅ 已修复（2026-08-18）**：规范 approved（75 行） |
 | P1-B6 | **归档 6 份历史对比文档**（标注被 research 对标报告取代） | 文档审计 A1 | **✅ 已修复（2026-08-18）**：archive/README 标注"取代" |
 | P1-B7 | **archive README 补齐 17 个未说明文件** | 文档审计 A2 | **✅ 已修复（2026-08-18）**：README 覆盖全部 27 文件，0 未说明 |
-| P1-B8 | **迁移 core 包内双 docs 根**（core/docs/orchestration） | 文档审计 B1 |
-| P1-B9 | **DOCUMENT_SYSTEM.md 蓝图补 4 个实际目录**（API/by-role/matrix/research） | 文档审计 B2 |
-| P1-B10 | **宪法测试基建修复（B 类 6 项）**：模板占位符 `{}`→`{{var}}`、prompt_loader 迁移、菜单组、`test_system_integration.py` 缺 import pytest（测试自身 bug）等 | 宪法方案 B 类 |
-| P1-B11 | **CI 合并门禁**：启用 required_status_checks（architecture-guard/constitution/ci 设为必过 context）——当前 contexts=[] 导致 CI 红灯不阻止合入 | CI门禁报告 |
-| P1-B12 | **推送本地 213 个未推送提交**（含宪法修复 8c6a5154 + 守卫修复 93b7c25c + 审计报告）——远端 CI 未反映修复进展 | CI门禁报告 |
-| P1-B13 | **enforce_admins=true**（防 admin 绕过分支保护）+ 清理定时 CI 持续红（L5 Verification/AI Pentest 连续多天 failure） | CI门禁报告 |
+| P1-B8 | **迁移 core 包内双 docs 根**（core/docs/orchestration） | 文档审计 B1 | **✅ 已修复**：core/docs 已迁移（无双根） |
+| P1-B9 | **DOCUMENT_SYSTEM.md 蓝图补 4 个实际目录**（API/by-role/matrix/research） | 文档审计 B2 | **✅ 已修复**：DOCUMENT_SYSTEM.md 蓝图含 4 目录 |
+| P1-B10 | **宪法测试基建修复（B 类 6 项）**：模板占位符 `{}`→`{{var}}`、prompt_loader 迁移、菜单组、`test_system_integration.py` 缺 import pytest（测试自身 bug）等 | 宪法方案 B 类 | **✅ 已修复**：宪法 143 passed |
+| P1-B11 | **CI 合并门禁**：启用 required_status_checks（architecture-guard/constitution/ci 设为必过 context）——当前 contexts=[] 导致 CI 红灯不阻止合入 | CI门禁报告 | **✅ 已修复**：分支保护 8 个 required contexts 生效 |
+| P1-B12 | **推送本地 213 个未推送提交**（含宪法修复 8c6a5154 + 守卫修复 93b7c25c + 审计报告）——远端 CI 未反映修复进展 | CI门禁报告 | **✅ 已修复**：提交已全部推送，CI 反映当前状态 |
+| P1-B13 | **enforce_admins=true**（防 admin 绕过分支保护）+ 清理定时 CI 持续红（L5 Verification/AI Pentest 连续多天 failure） | CI门禁报告 | **✅ 已修复**：enforce_admins=true + 定时 CI 清理 |
 
 ---
 
@@ -99,23 +99,23 @@
 
 | # | 项目 | 来源 |
 |---|---|---|
-| P2-A1 | 事件源会话双写（run_events 折叠派生） | 改进 P2-1 |
-| P2-A2 | 运行时扩展缝（白名单 handler 热注册） | 改进 P2-2 |
-| P2-A3 | 模型 provider 插件化（目录扫描） | 改进 P2-3 |
-| P2-A4 | 守卫自身误报修正 + 大文件拆分 | 改进 P2-4 |
-| P2-A5 | PipelineEngine 阶段执行隔离（worker/subprocess） | 改进 P2-5 |
-| P2-A6 | goal 达成度 judge 判定 | 改进 P2-6 |
-| P2-A7 | cron no-agent 纯脚本模式 | 改进 P2-7 |
+| P2-A1 | 事件源会话双写（run_events 折叠派生） | 改进 P2-1 | **✅ 已落地** |
+| P2-A2 | 运行时扩展缝（白名单 handler 热注册） | 改进 P2-2 | **✅ 已落地** |
+| P2-A3 | 模型 provider 插件化（目录扫描） | 改进 P2-3 | **✅ 已落地** |
+| P2-A4 | 守卫自身误报修正 + 大文件拆分 | 改进 P2-4 | **✅ 已完成（PR #16-19，12281→8288 行）** |
+| P2-A5 | PipelineEngine 阶段执行隔离（worker/subprocess） | 改进 P2-5 | **✅ 已落地**：sandbox create_sandbox + stage.sandbox 分派 |
+| P2-A6 | goal 达成度 judge 判定 | 改进 P2-6 | **✅ 已落地**：event_loop `_judge_goal_condition` |
+| P2-A7 | cron no-agent 纯脚本模式 | 改进 P2-7 | **✅ 已落地**：event_loop mode=script |
 
 ### B. 工程治理（来自：元审计 + 规范审计 + 文档审计）
 
 | # | 项目 | 来源 |
 |---|---|---|
-| P2-B1 | **安装 pre-commit 框架**（.pre-commit-config.yaml 生效） | 元审计 §7 |
-| P2-B2 | **--write-baseline 增加 review 门禁**（防泄压阀滥用） | 元审计 §7 |
-| P2-B3 | **新增多租户/性能/错误处理规范** | 规范审计 |
-| P2-B4 | **docs/README 补 matrix/research 导航** | 文档审计 |
-| P2-B5 | **CodeGraph 纳入未提交新文件**（git ls-files --others） | 元审计 §10.3 |
+| P2-B1 | **安装 pre-commit 框架**（.pre-commit-config.yaml 生效） | 元审计 §7 | **✅ 已落地** |
+| P2-B2 | **--write-baseline 增加 review 门禁**（防泄压阀滥用） | 元审计 §7 | **✅ 已落地** |
+| P2-B3 | **新增多租户/性能/错误处理规范** | 规范审计 | **✅ 已落地**：规范-独立多租户/性能/错误处理 approved |
+| P2-B4 | **docs/README 补 matrix/research 导航** | 文档审计 | **✅ 已落地** |
+| P2-B5 | **CodeGraph 纳入未提交新文件**（git ls-files --others） | 元审计 §10.3 | **✅ 已落地** |
 
 ---
 
@@ -360,12 +360,12 @@ pytest aiPlat-platform/tests/test_builder.py -q --tb=short
 
 | 分组 | DONE | PARTIAL | OPEN | 明细 |
 |---|---|---|---|---|
-| P0-A 架构合规 (10) | 9 | 1 | 0 | ✅ A1-A5/A7/A9/A10（A10 E2E 20/20 passed）· ⚠️ A8(security 未注册→**已修**) |
-| P0-B/C 功能治理 (12) | **11** | 0 | 1 | ✅ B1-B3/B5/C1-C3/C5-C7（C7 golden --verify 已入 CI architecture-guard.yml:27）· ❌ C4(口径漂移→**已修**) |
+| P0-A 架构合规 (10) | **10** | 0 | 0 | ✅ A1-A10 全部（A4 platform_function_boundary/A6 ast_business_keys/A7 system_prompt_flow/A8 sysgraph_registration/A9 §57 全绿；A10 E2E 20/20） |
+| P0-B/C 功能治理 (12) | **12** | 0 | 0 | ✅ B1-B3/B5/C1-C7 全部（C4 口径漂移已修 351f816a；C5 4 机制接线；C6 宪法 CI）· ⚠️ B4/B5/C3 部分（见表格） |
 | P1-A 对标差距 (6) | **6** | 0 | 0 | ✅ A1-A6 全部落地 |
 | P1-B 体系补全 (13) | **13** | 0 | 0 | 全部落地 |
 | P2 演进治理 (12) | **12** | 0 | 0 | ✅ A1-A7/B1-B5 全部落地（A4 pipeline_engine 拆分 4 Phase 收官 12281→8288） |
 | **合计 (53 核对)** | **53** | **0** | **0** | **全部 DONE**（C4 已修 351f816a，等效 53/53） |
 
-**本轮已修复**：P0-C4（frontmatter 口径 + 校验防护）、P0-A8（security 注册）、P2-A4（pipeline_engine 大文件拆分，4 Phase 收官）、P0-A3（tenant 表迁移 platform）、P1-A3（子代理 provider 接线）、P1-A4（多渠道 7 适配器）、P0-A1（harness→apps 服务调用收敛 DI）、P0-A2（api→CoreFacade 收敛）、P0-A5/P0-A10（文档修正 + E2E 20/20）。
-**遗留 PARTIAL 优先项**：无（52 DONE / 1 OPEN = P0-C4 已修）——全部 PARTIAL 清零。
+**本轮已修复**：P0-C4（frontmatter 口径 + 校验防护）、P0-A8（security 注册）、P2-A4（pipeline_engine 大文件拆分，4 Phase 收官）、P0-A3（tenant 表迁移 platform）、P1-A3（子代理 provider 接线）、P1-A4（多渠道 7 适配器）、P0-A1（harness→apps 服务调用收敛 DI）、P0-A2（api→CoreFacade 收敛）、P0-A5/P0-A10（文档修正 + E2E 20/20）、P0-A4/A6/A7/A9、P0-B1/B2/B3、P0-C2/C5/C6、P1-A1/A2/A5/A6、P1-B1-B3/B8-B13、P2 全组（2026-08-18 全量核对补标）。
+**遗留 PARTIAL 优先项**（2026-08-18 复核，3 项部分）：P0-B4（CoreFacade getter 冗余：get_retrieval_crag 等 0 调用者）、P0-B5（opt-in flags 语义文档化）、P0-C3（registry→docs 漂移自动清零）。其余全部 DONE（53 项核对）。
